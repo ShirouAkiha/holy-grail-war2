@@ -6,22 +6,32 @@ import {
   ButtonStyle, 
   AttachmentBuilder, 
   EmbedBuilder,
-  StringSelectMenuBuilder,
+  StringSelectMenuBuilder, 
   ComponentType
 } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { renderServantProfileCard, renderDialogueCard } from '../canvas/renderer';
 
+// ==========================================
+// 1. SLASH COMMAND DEFINITION
+// ==========================================
+// The `/servant` command allows a Master to view their active Servant's parameters,
+// Noble Phantasm chants, equipped Craft Essence, and generated visual status card.
 export const data = new SlashCommandBuilder()
   .setName('servant')
   .setDescription('Inspect your contracted Heroic Spirit stats, Noble Phantasm, Craft Essence, and dialogue');
 
+// ==========================================
+// 2. MAIN EXECUTE HANDLER
+// ==========================================
 export async function execute(interaction: ChatInputCommandInteraction) {
+  // Defer response immediately since image rendering can take up to 1-2 seconds
   await interaction.deferReply();
 
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
 
+    // Guard: Check if player has at least 1 Servant
     if (!master.servants || master.servants.length === 0) {
       const emptyEmbed = new EmbedBuilder()
         .setTitle('❌ No Contracted Servant')
@@ -55,12 +65,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
+    // Locate active servant
     const activeServant =
       master.servants.find((s: any) => s.id === master.activeServantId) || master.servants[0];
 
     const embed = buildServantEmbed(activeServant, master);
     const rows = buildServantRows(master, activeServant);
 
+    // Generate visual Canvas image card
     let files: AttachmentBuilder[] = [];
     try {
       const cardBuffer = await renderServantProfileCard(activeServant, master.username);
@@ -79,6 +91,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       components: rows
     });
 
+    // Attach interaction listener for switching active servant or hearing voice lines
     setupServantCollector(msg, interaction.user.id, master);
 
   } catch (error: any) {
@@ -89,6 +102,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 }
 
+// ==========================================
+// 3. SERVANT EMBED BUILDER
+// ==========================================
+// Calculates total effective stats (Base + Parameters + CE) and formats the summary.
 function buildServantEmbed(servant: any, master: any) {
   const t = servant.template;
   const alloc = servant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
@@ -133,6 +150,9 @@ function buildServantEmbed(servant: any, master: any) {
   return embed;
 }
 
+// ==========================================
+// 4. ACTION BUTTONS & SERVANT SWITCHER MENU
+// ==========================================
 function buildServantRows(master: any, activeServant: any) {
   const rows: any[] = [];
 
@@ -151,6 +171,7 @@ function buildServantRows(master: any, activeServant: any) {
 
   rows.push(buttonRow);
 
+  // If the Master owns multiple Servants, provide a dropdown to switch active companion
   if (master.servants.length > 1) {
     const selectMenu = new StringSelectMenuBuilder()
       .setCustomId('switch_active_servant')
@@ -169,12 +190,16 @@ function buildServantRows(master: any, activeServant: any) {
   return rows;
 }
 
+// ==========================================
+// 5. INTERACTION COLLECTOR
+// ==========================================
 function setupServantCollector(message: any, userId: string, initialMaster: any) {
   const collector = message.createMessageComponentCollector({
-    time: 120000
+    time: 120000 // 2 minutes
   });
 
   collector.on('collect', async (i: any) => {
+    // Only the profile owner can click
     if (i.user.id !== userId) {
       await i.reply({ content: 'Only the Master who issued this command can interact with this profile.', ephemeral: true });
       return;
@@ -185,6 +210,7 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
       const activeServant =
         master.servants.find((s: any) => s.id === master.activeServantId) || master.servants[0];
 
+      // ACTION 1: Hear Voice Line (Generates visual visual dialogue box)
       if (i.customId === 'hear_dialogue') {
         const quotes = [
           { label: 'Summon Quote', text: activeServant.customQuotes?.summon || activeServant.template.summonQuote },
@@ -202,7 +228,7 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
             files.push(new AttachmentBuilder(diaBuffer, { name: 'dialogue_card.png' }));
           }
         } catch {
-          // Ignore
+          // Ignore canvas errors gracefully
         }
 
         const diaEmbed = new EmbedBuilder()
@@ -218,6 +244,7 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
         return;
       }
 
+      // ACTION 2: Quick Duel Prompt
       if (i.customId === 'quick_duel_ai') {
         await i.reply({
           content: `⚔️ Initiate a tactical battle with \`/duel\` or invite another Master with \`/duel opponent:@Master\`!`,
@@ -226,6 +253,7 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
         return;
       }
 
+      // ACTION 3: Switch Active Servant Selection
       if (i.customId === 'switch_active_servant') {
         const selectedId = i.values[0];
         master.activeServantId = selectedId;

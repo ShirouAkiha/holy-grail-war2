@@ -12,6 +12,10 @@ import { getOrCreateMaster, saveMaster } from '../database/service';
 import { MasterProfile, MasterServantInstance, CardType, ServantClass } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
 
+// ==========================================
+// 1. SLASH COMMAND DEFINITION
+// ==========================================
+// Allows a Master to challenge either a human player via `@Master` or an AI Shadow Servant.
 export const data = new SlashCommandBuilder()
   .setName('duel')
   .setDescription('Engage in a turn-based tactical Fate battle against another Master or AI Shadow Servant')
@@ -22,6 +26,10 @@ export const data = new SlashCommandBuilder()
       .setRequired(false)
   );
 
+// ==========================================
+// 2. COMBATANT INTERFACE
+// ==========================================
+// Represents an active fighter in the duel arena with runtime HP, NP gauge, and active buffs.
 interface DuelCombatant {
   userId: string;
   username: string;
@@ -36,6 +44,13 @@ interface DuelCombatant {
   activeBuffs: Array<{ name: string; type: string; value: number; turns: number }>;
 }
 
+// ==========================================
+// 3. FATE CLASS ADVANTAGE MULTIPLIER MATRIX
+// ==========================================
+// Implements canonical Fate/Grand Order 3-way triangular affinities:
+// - Saber > Lancer > Archer > Saber (1.5x damage dealt / 0.5x taken)
+// - Rider > Caster > Assassin > Rider
+// - Berserker deals 1.5x to all classes and takes 1.5x damage from all classes
 function getClassMultiplier(attacker: ServantClass, defender: ServantClass): number {
   const advantage: Record<string, string[]> = {
     Saber: ['Lancer'],
@@ -65,16 +80,22 @@ function getClassMultiplier(attacker: ServantClass, defender: ServantClass): num
   return 1.0;
 }
 
+// ==========================================
+// 4. COMBATANT FACTORY
+// ==========================================
+// Computes baseline stats + allocated Parameter points + Craft Essence bonuses.
 function createCombatant(master: MasterProfile, servant: MasterServantInstance, isAi: boolean = false): DuelCombatant {
   const t = servant.template;
   const alloc = servant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
   const ceAtk = servant.equippedCe?.atkBonus || 0;
   const ceHp = servant.equippedCe?.hpBonus || 0;
 
+  // Formula: Base Stat + (Parameter Allocation * scaling factor) + Craft Essence Equipment
   const maxHp = (t.baseHp || 12000) + (alloc.endurance || 0) * 300 + ceHp;
   const atk = (t.baseAtk || 10000) + (alloc.strength || 0) * 150 + ceAtk;
   const def = 10 + (alloc.endurance || 0) * 2;
 
+  // Check if equipped CE grants starting NP (e.g. Kaleidoscope grants 80% starting NP)
   let initialNp = 0;
   if (servant.equippedCe?.passiveType === 'starting_np') {
     initialNp = servant.equippedCe.passiveValue || 50;
@@ -95,6 +116,10 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
   };
 }
 
+// ==========================================
+// 5. VISUAL HEALTH BAR GENERATOR
+// ==========================================
+// Converts HP fraction into a colored emoji health bar with exact numbers and percentage.
 function renderHealthBar(current: number, max: number, length: number = 10): string {
   const pct = Math.max(0, Math.min(1, current / max));
   const filled = Math.round(pct * length);
@@ -103,6 +128,9 @@ function renderHealthBar(current: number, max: number, length: number = 10): str
   return `${emoji.repeat(filled)}${'⬛'.repeat(empty)} \`${Math.max(0, current).toLocaleString()}/${max.toLocaleString()}\` (${Math.round(pct * 100)}%)`;
 }
 
+// ==========================================
+// 6. DUEL UI EMBED BUILDER
+// ==========================================
 function buildDuelEmbed(
   p1: DuelCombatant,
   p2: DuelCombatant,
@@ -135,6 +163,10 @@ function buildDuelEmbed(
   return embed;
 }
 
+// ==========================================
+// 7. INTERACTIVE ACTION BUTTON BUILDER
+// ==========================================
+// Generates buttons for Buster, Arts, Quick, Noble Phantasm (locked unless NP >= 100%), and Skills.
 function buildCombatButtons(combatant: DuelCombatant) {
   const isNpReady = combatant.npGauge >= 100;
 
@@ -162,7 +194,7 @@ function buildCombatButtons(combatant: DuelCombatant) {
       .setLabel(`Noble Phantasm (${Math.round(combatant.npGauge)}%)`)
       .setEmoji('💥')
       .setStyle(isNpReady ? ButtonStyle.Danger : ButtonStyle.Secondary)
-      .setDisabled(!isNpReady),
+      .setDisabled(!isNpReady), // Disabled until NP is fully charged
     new ButtonBuilder()
       .setCustomId('card_skill')
       .setLabel(`${combatant.servant.template.skills[0]?.name || 'Activate Skill'}`)
@@ -173,6 +205,9 @@ function buildCombatButtons(combatant: DuelCombatant) {
   return [row1, row2];
 }
 
+// ==========================================
+// 8. TURN RESOLUTION & DAMAGE CALCULATION
+// ==========================================
 function resolveStrike(
   attacker: DuelCombatant,
   defender: DuelCombatant,
@@ -186,8 +221,9 @@ function resolveStrike(
   let rawDmg = 0;
   let logText = '';
 
+  // ACTION 1: BUSTER CARD (Maximum raw damage + Critical multiplier)
   if (actionType === 'buster') {
-    const isCrit = Math.random() < attacker.critStars / 100;
+    const isCrit = Math.random() < attacker.critStars / 100; // Critical chance based on gathered stars
     const baseAtk = attacker.atk * 1.5;
     const critMult = isCrit ? 2.0 : 1.0;
     rawDmg = Math.round((baseAtk - defender.def * 10) * classMult * critMult * (0.9 + Math.random() * 0.2));
@@ -196,7 +232,9 @@ function resolveStrike(
     attacker.critStars = Math.max(0, attacker.critStars - 5);
 
     logText = `🔴 **${attacker.servant.template.name}** unleashed **Buster Brave** ${isCrit ? '💥 **CRITICAL HIT!**' : ''} dealing **${rawDmg.toLocaleString()} DMG** to ${defender.servant.template.name}!`;
-  } else if (actionType === 'arts') {
+  } 
+  // ACTION 2: ARTS CARD (High NP gauge acquisition)
+  else if (actionType === 'arts') {
     const baseAtk = attacker.atk * 1.1;
     rawDmg = Math.round((baseAtk - defender.def * 10) * classMult * (0.9 + Math.random() * 0.2));
     rawDmg = Math.max(600, rawDmg);
@@ -204,7 +242,9 @@ function resolveStrike(
     attacker.npGauge = Math.min(300, attacker.npGauge + npCharge);
 
     logText = `🔵 **${attacker.servant.template.name}** connected with **Arts Chain**, dealing **${rawDmg.toLocaleString()} DMG** and gaining **+${npCharge}% NP**!`;
-  } else if (actionType === 'quick') {
+  } 
+  // ACTION 3: QUICK CARD (Generates Critical Stars for future turns)
+  else if (actionType === 'quick') {
     const baseAtk = attacker.atk * 0.95;
     rawDmg = Math.round((baseAtk - defender.def * 10) * classMult * (0.9 + Math.random() * 0.2));
     rawDmg = Math.max(500, rawDmg);
@@ -213,16 +253,20 @@ function resolveStrike(
     attacker.npGauge = Math.min(300, attacker.npGauge + 15);
 
     logText = `🟢 **${attacker.servant.template.name}** performed **Quick Strike**, dealing **${rawDmg.toLocaleString()} DMG** and gathering **+${starsGained} Critical Stars**!`;
-  } else if (actionType === 'np') {
+  } 
+  // ACTION 4: NOBLE PHANTASM (Ultimate move with custom chant & massive damage)
+  else if (actionType === 'np') {
     const npTemplate = attacker.servant.template.noblePhantasm;
     const baseAtk = attacker.atk * 3.5;
     rawDmg = Math.round((baseAtk - defender.def * 10) * classMult * (0.95 + Math.random() * 0.15));
     rawDmg = Math.max(3500, rawDmg);
-    attacker.npGauge = 0;
+    attacker.npGauge = 0; // Consume 100% NP
 
     const chant = attacker.servant.customQuotes?.noblePhantasm || npTemplate.chant;
     logText = `💥 **NOBLE PHANTASM UNLEASHED!**\n> *" ${chant} "*\n> **${attacker.servant.template.name}** obliterated ${defender.servant.template.name} with **${npTemplate.name}** for **${rawDmg.toLocaleString()} colossal DMG**!`;
-  } else if (actionType === 'skill') {
+  } 
+  // ACTION 5: CLASS SKILL (Attack buff & utility recharge)
+  else if (actionType === 'skill') {
     const skill = attacker.servant.template.skills[0];
     attacker.atk = Math.round(attacker.atk * 1.3);
     attacker.critStars += 15;
@@ -231,14 +275,19 @@ function resolveStrike(
     logText = `🛡️ **${attacker.servant.template.name}** activated **${skill?.name || 'Class Skill'}**, gaining **+30% ATK Buff**, +20% NP, and +15 Stars!`;
   }
 
+  // Apply damage to defender HP
   defender.currentHp = Math.max(0, defender.currentHp - rawDmg);
   return logText;
 }
 
+// ==========================================
+// 9. SLASH COMMAND EXECUTION
+// ==========================================
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
     const challengerMaster = await getOrCreateMaster(interaction.user.id, interaction.user.username);
 
+    // Verify challenger has summoned at least 1 Servant
     if (!challengerMaster.servants || challengerMaster.servants.length === 0) {
       await interaction.reply({
         ephemeral: true,
@@ -253,7 +302,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const opponentUser = interaction.options.getUser('opponent');
 
-    // Case 1: Challenging another human Master
+    // BRANCH 1: CHALLENGING A HUMAN MASTER (Sends an interactive Accept/Decline invite)
     if (opponentUser && opponentUser.id !== interaction.user.id && !opponentUser.bot) {
       const opponentMaster = await getOrCreateMaster(opponentUser.id, opponentUser.username);
 
@@ -300,15 +349,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       const inviteCollector = inviteMsg.createMessageComponentCollector({
         componentType: ComponentType.Button,
-        time: 60000
+        time: 60000 // 60s to accept
       });
 
       inviteCollector.on('collect', async i => {
+        // Only involved users can interact
         if (i.user.id !== opponentUser.id && i.user.id !== interaction.user.id) {
           await i.reply({ content: 'You are not involved in this duel challenge.', ephemeral: true });
           return;
         }
 
+        // Decline button
         if (i.customId === 'decline_duel') {
           inviteCollector.stop();
           await i.update({
@@ -319,6 +370,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           return;
         }
 
+        // Accept button: start multi-turn PvP duel
         if (i.customId === 'accept_duel' && i.user.id === opponentUser.id) {
           inviteCollector.stop();
           const p1 = createCombatant(challengerMaster, challengerServant, false);
@@ -330,8 +382,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    // Case 2: AI Sparring Partner / Shadow Servant
-    let aiServantTemplate = SERVANT_DATABASE[1]; // Gilgamesh or Linus
+    // BRANCH 2: CHALLENGING AI SHADOW MASTER (Instant sparring match)
+    let aiServantTemplate = SERVANT_DATABASE[1];
     if (challengerServant.template.servantClass === 'Saber') {
       aiServantTemplate = SERVANT_DATABASE.find(s => s.servantClass === 'Archer') || SERVANT_DATABASE[1];
     } else {
@@ -391,6 +443,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 }
 
+// ==========================================
+// 10. MULTI-TURN INTERACTIVE DUEL LOOP
+// ==========================================
 async function startInteractiveDuel(
   contextInteraction: any,
   p1: DuelCombatant,
@@ -421,13 +476,14 @@ async function startInteractiveDuel(
     });
   }
 
+  // Component Collector for turn choices
   const collector = battleMsg.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    time: 180000
+    time: 180000 // 3 minutes timeout
   });
 
   collector.on('collect', async (i: any) => {
-    // Verify it's the turn of the player who clicked
+    // Enforce Turn Order: Block clicks if it is not this player's turn
     if (i.user.id !== activeUserId) {
       await i.reply({
         content: `⏳ It is not your turn! Waiting for <@${activeUserId}> to take an action.`,
@@ -446,19 +502,19 @@ async function startInteractiveDuel(
     const attacker = activeUserId === p1.userId ? p1 : p2;
     const defender = activeUserId === p1.userId ? p2 : p1;
 
-    // Execute Player strike
+    // Execute Player attack
     const log = resolveStrike(attacker, defender, actionType);
     combatLogs.push(log);
-    if (combatLogs.length > 4) combatLogs.shift();
+    if (combatLogs.length > 4) combatLogs.shift(); // Keep last 4 logs clean
 
-    // Check if Defender died
+    // Check if Defender fainted
     if (defender.currentHp <= 0) {
       collector.stop();
       await finishDuel(i, attacker, defender, p1Master, p2Master);
       return;
     }
 
-    // If opponent is AI, AI immediately takes its counter turn!
+    // CASE A: Opponent is AI -> AI immediately strikes back
     if (defender.isAi) {
       round++;
       const aiAction = defender.npGauge >= 100 ? 'np' : Math.random() > 0.5 ? 'buster' : 'arts';
@@ -472,7 +528,7 @@ async function startInteractiveDuel(
         return;
       }
 
-      // Remains P1's turn
+      // Keep turn on P1
       activeUserId = p1.userId;
       const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs);
       const updatedButtons = buildCombatButtons(p1);
@@ -480,7 +536,7 @@ async function startInteractiveDuel(
       return;
     }
 
-    // If opponent is another human player, switch active turn to Defender!
+    // CASE B: Opponent is human -> Swap active player turn
     round++;
     activeUserId = defender.userId;
     const nextCombatant = activeUserId === p1.userId ? p1 : p2;
@@ -502,6 +558,9 @@ async function startInteractiveDuel(
   });
 }
 
+// ==========================================
+// 11. VICTORY REWARDS & DUEL CONCLUSION
+// ==========================================
 async function finishDuel(
   i: any,
   winner: DuelCombatant,
@@ -509,7 +568,7 @@ async function finishDuel(
   p1Master: MasterProfile,
   p2Master: MasterProfile | null
 ) {
-  // Reward winner
+  // Grant rewards to winning Master (SQ, Bond EXP, Parameter points)
   if (!winner.isAi) {
     const winningMaster = winner.userId === p1Master.discordId ? p1Master : p2Master;
     if (winningMaster) {

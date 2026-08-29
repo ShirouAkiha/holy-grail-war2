@@ -11,6 +11,11 @@ import { getOrCreateMaster, saveMaster } from '../database/service';
 import { DistrictId, WarDistrict, HolyGrailWarSession } from '../types';
 import { createHolyGrailWarSession, executeWarAction, advanceWarRound } from '../engine/grailwar';
 
+// ==========================================
+// 1. SLASH COMMAND DEFINITION
+// ==========================================
+// The `/grailwar` command runs a 7-Master battle royale system across Fuyuki City leylines.
+// Supports status checking, scouting rival territories, fortifying leylines, and resting.
 export const data = new SlashCommandBuilder()
   .setName('grailwar')
   .setDescription('Holy Grail War 7-Master Battle Royale operations')
@@ -53,6 +58,10 @@ export const data = new SlashCommandBuilder()
 // Global active Grail War session for Discord
 let activeSession: HolyGrailWarSession | null = null;
 
+// ==========================================
+// 2. SESSION INITIALIZER
+// ==========================================
+// Retrieves or instantiates a 7-Master battle session with 6 AI rivals (e.g. Gilgamesh, Heracles, Scathach).
 function getOrInitWarSession(master: any): HolyGrailWarSession {
   const activeServant =
     master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
@@ -67,7 +76,7 @@ function getOrInitWarSession(master: any): HolyGrailWarSession {
       maxHp: activeServant?.template?.baseHp || 15000
     });
   } else {
-    // Ensure this master is registered as a participant
+    // If session exists, ensure the calling player is registered
     if (!activeSession.participants[master.discordId] && activeServant) {
       activeSession.participants[master.discordId] = {
         discordId: master.discordId,
@@ -90,9 +99,13 @@ function getOrInitWarSession(master: any): HolyGrailWarSession {
   return activeSession;
 }
 
+// ==========================================
+// 3. WAR MAP EMBED BUILDER
+// ==========================================
 function buildWarEmbed(war: HolyGrailWarSession, userParticipant: any, lastMsg?: string) {
   const aliveParticipants = Object.values(war.participants).filter(p => p.isAlive);
 
+  // List status of key districts and their current controlling Masters
   const districtList = Object.values(war.districts)
     .slice(0, 5)
     .map(d => {
@@ -122,6 +135,9 @@ function buildWarEmbed(war: HolyGrailWarSession, userParticipant: any, lastMsg?:
   return embed;
 }
 
+// ==========================================
+// 4. ACTION BUTTONS (Scout, Fortify, Rest, Advance)
+// ==========================================
 function buildWarButtons(userParticipant: any) {
   const ap = userParticipant?.ap || 0;
 
@@ -152,10 +168,14 @@ function buildWarButtons(userParticipant: any) {
   );
 }
 
+// ==========================================
+// 5. COMMAND EXECUTION
+// ==========================================
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
 
+    // Guard: Player must have a Servant
     if (!master.servants || master.servants.length === 0) {
       await interaction.reply({
         ephemeral: true,
@@ -170,6 +190,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const subcommand = interaction.options.getSubcommand();
     let initialMsg = '';
 
+    // Handle Subcommands
     if (subcommand === 'scout') {
       const targetDistrict = (interaction.options.getString('district') as DistrictId) || 'ryuudou_temple';
       const res = executeWarAction(war, interaction.user.id, 'scout', targetDistrict);
@@ -197,6 +218,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       fetchReply: true
     });
 
+    // Attach button collector for continuous tactical turns
     setupWarCollector(reply, interaction.user.id);
 
   } catch (error: any) {
@@ -209,13 +231,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 }
 
+// ==========================================
+// 6. INTERACTIVE TACTICAL WAR COLLECTOR
+// ==========================================
 function setupWarCollector(message: any, userId: string) {
   const collector = message.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    time: 120000
+    time: 120000 // 2 minutes
   });
 
   collector.on('collect', async (i: any) => {
+    // Only the initiating Master can take actions
     if (i.user.id !== userId) {
       await i.reply({ content: 'Only the Master who issued this war command can control these actions.', ephemeral: true });
       return;
@@ -226,18 +252,25 @@ function setupWarCollector(message: any, userId: string) {
       const war = getOrInitWarSession(master);
       let actionResultMsg = '';
 
+      // Action 1: Scout a random district
       if (i.customId === 'war_scout') {
         const districts: DistrictId[] = ['fuyuki_church', 'shinto_bridge', 'ryuudou_temple', 'homurahara_academy', 'docks', 'einzenbern_forest'];
         const randomDistrict = districts[Math.floor(Math.random() * districts.length)];
         const res = executeWarAction(war, i.user.id, 'scout', randomDistrict);
         actionResultMsg = res.message;
-      } else if (i.customId === 'war_fortify') {
+      } 
+      // Action 2: Fortify Leyline
+      else if (i.customId === 'war_fortify') {
         const res = executeWarAction(war, i.user.id, 'fortify_leyline');
         actionResultMsg = res.message;
-      } else if (i.customId === 'war_rest') {
+      } 
+      // Action 3: Rest and restore AP & HP
+      else if (i.customId === 'war_rest') {
         const res = executeWarAction(war, i.user.id, 'rest_and_heal');
         actionResultMsg = res.message;
-      } else if (i.customId === 'war_advance') {
+      } 
+      // Action 4: Advance War Round (resolves round & restores AP)
+      else if (i.customId === 'war_advance') {
         activeSession = advanceWarRound(war);
         actionResultMsg = `⏩ Advanced to Round ${activeSession.currentRound}/${activeSession.maxRounds}! AP recovered +60 for all surviving Masters.`;
       }

@@ -2,11 +2,21 @@ import { MasterProfile, MasterServantInstance, CraftEssence } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 
-// In-memory persistent master registry
+// ==========================================
+// 1. IN-MEMORY MASTER DATABASE STORE
+// ==========================================
+// Maps Discord User IDs (e.g. "123456789012345678") to their respective MasterProfile records.
+// In a cloud/hosted production bot, this Map is persisted in-memory or easily backed by MongoDB / Postgres / Redis.
 const masterStore: Map<string, MasterProfile> = new Map();
 
 /**
- * Creates or retrieves a Master record by Discord ID
+ * Creates or retrieves a Master record by Discord ID.
+ * If the user is playing for the first time, initializes their account with starter resources:
+ * - 30 Saint Quartz (enough for a 10-pull)
+ * - 3 Summon Tickets
+ * - 3 Command Seals
+ * - 100 Action Points (AP)
+ * - 1 Starter Craft Essence (Kaleidoscope)
  */
 export async function getOrCreateMaster(discordId: string, username: string = 'Master'): Promise<MasterProfile> {
   let master = masterStore.get(discordId);
@@ -30,7 +40,7 @@ export async function getOrCreateMaster(discordId: string, username: string = 'M
     };
     masterStore.set(discordId, master);
   } else {
-    // Keep username updated if changed
+    // Keep username synchronized in case the user changed their Discord display name
     if (username && master.username !== username) {
       master.username = username;
     }
@@ -40,7 +50,7 @@ export async function getOrCreateMaster(discordId: string, username: string = 'M
 }
 
 /**
- * Updates properties on a Master's profile
+ * Updates selective properties on a Master's profile (e.g. currency, active Servant).
  */
 export async function updateMasterProfile(discordId: string, data: Partial<MasterProfile>): Promise<MasterProfile> {
   const master = await getOrCreateMaster(discordId);
@@ -60,7 +70,7 @@ export async function updateMasterProfile(discordId: string, data: Partial<Maste
 }
 
 /**
- * Saves a complete master profile
+ * Saves a complete modified master profile back to the persistent store.
  */
 export async function saveMaster(master: MasterProfile): Promise<MasterProfile> {
   masterStore.set(master.discordId, master);
@@ -68,14 +78,14 @@ export async function saveMaster(master: MasterProfile): Promise<MasterProfile> 
 }
 
 /**
- * Gets all registered masters
+ * Gets all registered masters across the server.
  */
 export async function getAllMasters(): Promise<MasterProfile[]> {
   return Array.from(masterStore.values());
 }
 
 /**
- * Retrieves a Servant instance from any Master or global template
+ * Looks up a Servant instance by ID across all registered Masters.
  */
 export async function getServantById(servantId: string): Promise<MasterServantInstance | null> {
   for (const master of masterStore.values()) {
@@ -85,7 +95,7 @@ export async function getServantById(servantId: string): Promise<MasterServantIn
   return null;
 }
 
-// Fallback prisma export for backwards compatibility
+// Fallback compatibility proxy if standard ORM methods are invoked
 export const prisma: any = new Proxy({}, {
   get: () => ({
     findMany: async () => Array.from(masterStore.values()),

@@ -11,6 +11,14 @@ import {
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 
+// ==========================================
+// 1. SLASH COMMAND DEFINITION WITH SUBCOMMANDS
+// ==========================================
+// Provides 4 specialized subcommands:
+// - `/customise stats`: Allocate earned parameter points into STR, END, AGI, MNA, LCK
+// - `/customise equip`: Attach/swap Craft Essences to boost combat passives
+// - `/customise quote`: Overwrite standard Fate voice lines with custom dialogue
+// - `/customise nickname`: Set a custom name for the Servant
 export const data = new SlashCommandBuilder()
   .setName('customise')
   .setDescription('Customize your active Servant parameters, Craft Essence, and dialogue lines')
@@ -71,10 +79,14 @@ export const data = new SlashCommandBuilder()
       )
   );
 
+// ==========================================
+// 2. MAIN EXECUTE HANDLER
+// ==========================================
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
 
+    // Validation: Player must have at least 1 Servant
     if (!master.servants || master.servants.length === 0) {
       await interaction.reply({
         ephemeral: true,
@@ -88,6 +100,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const subcommand = interaction.options.getSubcommand();
 
+    // ==========================================
+    // SUBCOMMAND A: STAT POINT ALLOCATION
+    // ==========================================
     if (subcommand === 'stats') {
       const str = interaction.options.getInteger('strength') || 0;
       const end = interaction.options.getInteger('endurance') || 0;
@@ -97,6 +112,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       const totalRequested = str + end + agi + mna + lck;
 
+      // If no points passed, display the current allocation overview and instructions
       if (totalRequested <= 0) {
         const embed = new EmbedBuilder()
           .setTitle(`📊 Parameter Allocation: ${activeServant.template.name}`)
@@ -116,6 +132,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         return;
       }
 
+      // Check if player has enough unused points
       if (totalRequested > (activeServant.availableStatPoints || 0)) {
         await interaction.reply({
           ephemeral: true,
@@ -128,6 +145,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         activeServant.allocatedStats = { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
       }
 
+      // Apply points
       activeServant.allocatedStats.strength = (activeServant.allocatedStats.strength || 0) + str;
       activeServant.allocatedStats.endurance = (activeServant.allocatedStats.endurance || 0) + end;
       activeServant.allocatedStats.agility = (activeServant.allocatedStats.agility || 0) + agi;
@@ -154,10 +172,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
+    // ==========================================
+    // SUBCOMMAND B: EQUIP CRAFT ESSENCE
+    // ==========================================
     if (subcommand === 'equip') {
       const ceNameParam = interaction.options.getString('craft_essence');
 
-      // If user typed a CE name or ID directly
+      // Direct text search
       if (ceNameParam) {
         const found = CRAFT_ESSENCE_DATABASE.find(
           (c: any) => c.name.toLowerCase().includes(ceNameParam.toLowerCase()) || c.id === ceNameParam
@@ -188,7 +209,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         return;
       }
 
-      // If no name specified, show interactive Select Menu of all CEs!
+      // Interactive Dropdown Menu selector
       const availableCes = master.craftEssences?.length ? master.craftEssences : CRAFT_ESSENCE_DATABASE;
 
       const selectMenu = new StringSelectMenuBuilder()
@@ -247,6 +268,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
+    // ==========================================
+    // SUBCOMMAND C: CUSTOM QUOTES
+    // ==========================================
     if (subcommand === 'quote') {
       const type = interaction.options.getString('type', true);
       const text = interaction.options.getString('text', true);
@@ -255,6 +279,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         activeServant.customQuotes = {};
       }
 
+      // Overwrite the specific voice line
       (activeServant.customQuotes as any)[type] = text;
       await saveMaster(master);
 
@@ -270,6 +295,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
+    // ==========================================
+    // SUBCOMMAND D: NICKNAME
+    // ==========================================
     if (subcommand === 'nickname') {
       const name = interaction.options.getString('name', true);
       activeServant.nickname = name;

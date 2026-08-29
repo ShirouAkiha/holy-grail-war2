@@ -10,6 +10,11 @@ export interface DialogueQuotes {
   defeatQuote?: string;
 }
 
+// ==========================================
+// 1. STAT POINT ALLOCATION ENGINE
+// ==========================================
+// Validates that the requested point allocation does not exceed available unspent points,
+// then applies the stat increases and decrements the remaining point pool.
 export function allocateStatPoints(
   servant: MasterServantInstance,
   statsToAdd: Partial<ServantStats>
@@ -21,6 +26,7 @@ export function allocateStatPoints(
     (statsToAdd.mana || 0) +
     (statsToAdd.luck || 0);
 
+  // Validate budget
   if (totalCost > servant.availableStatPoints) {
     throw new Error(`Cannot allocate ${totalCost} points. Only ${servant.availableStatPoints} available.`);
   }
@@ -40,6 +46,10 @@ export function allocateStatPoints(
   };
 }
 
+// ==========================================
+// 2. CRAFT ESSENCE EQUIPMENT ENGINE
+// ==========================================
+// Binds or unbinds a Craft Essence to the Servant instance.
 export function equipCraftEssence(
   servant: MasterServantInstance,
   craftEssenceId?: string
@@ -64,6 +74,9 @@ export function equipCraftEssence(
   };
 }
 
+// ==========================================
+// 3. DIALOGUE QUOTES ENGINE
+// ==========================================
 export function updateCustomDialogueQuotes(
   servant: MasterServantInstance,
   quotes: Partial<MasterServantInstance['customQuotes']>
@@ -85,6 +98,11 @@ export interface RadarPoint {
   label: string;
 }
 
+// ==========================================
+// 4. RADAR CHART GEOMETRIC ENGINE
+// ==========================================
+// Calculates 5-axis pentagonal trigonometry coordinates (STR, END, AGI, MNA, LCK)
+// for rendering the visual status radar polygon in Canvas or SVG.
 export function calculateRadarCoordinates(
   stats: ServantStats,
   centerX: number = 100,
@@ -102,6 +120,7 @@ export function calculateRadarCoordinates(
 
   const totalAxes = statKeys.length;
   const points: RadarPoint[] = statKeys.map((item, index) => {
+    // Offset angle by -90 deg (-Math.PI/2) so STR points vertically upwards
     const angle = (Math.PI * 2 / totalAxes) * index - Math.PI / 2;
     const value = Math.min(maxStatValue, Math.max(1, stats[item.key] || 1));
     const ratio = value / maxStatValue;

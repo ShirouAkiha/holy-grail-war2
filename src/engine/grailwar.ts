@@ -7,6 +7,17 @@ import {
 } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
 
+// ==========================================
+// 1. FUYUKI CITY DISTRICT MAP & LEYLINES
+// ==========================================
+// 7 key geographical locations across Fuyuki City, each offering strategic bounded field buffs:
+// - Fuyuki Church: Restores Command Seals
+// - Ryuudou Temple: High Mana concentration (+Mana Surge)
+// - Shinto Bridge: Agility scouting advantages
+// - Homurahara Academy: Defensive bounded field
+// - Industrial Docks: Critical strike sanctuary
+// - Einzbern Forest: Castle defense perimeter
+// - Commercial Center: Modern supply hub
 export const FUYUKI_DISTRICTS: Record<string, WarDistrict> = {
   fuyuki_church: {
     id: 'fuyuki_church',
@@ -59,6 +70,11 @@ export const FUYUKI_DISTRICTS: Record<string, WarDistrict> = {
   }
 };
 
+// ==========================================
+// 2. 7-MASTER WAR SESSION INITIALIZER
+// ==========================================
+// Spawns a Holy Grail War instance populated by the player Master and 6 iconic Fate AI rivals:
+// Kotomine Kirei (Gilgamesh), Bazett (Cú Chulainn), Illyasviel (Heracles), Medea (Jeanne), Kiritsugu (EMIYA), Root Admin.
 export function createHolyGrailWarSession(
   initiatorMaster: { discordId: string; username: string; servantId: string; servantName: string; avatarUrl: string; maxHp: number },
   warTitle: string = '7th Fuyuki Holy Grail War'
@@ -66,7 +82,7 @@ export function createHolyGrailWarSession(
   const warId = `grail_war_${Date.now()}`;
   const districts = JSON.parse(JSON.stringify(FUYUKI_DISTRICTS)) as Record<DistrictId, WarDistrict>;
 
-  // Initialize participants with the initiator + 6 AI / Rival Masters
+  // Register Player 1
   const participants: Record<string, WarMasterParticipant> = {
     [initiatorMaster.discordId]: {
       discordId: initiatorMaster.discordId,
@@ -85,7 +101,7 @@ export function createHolyGrailWarSession(
     }
   };
 
-  // Seed 6 other rival Masters
+  // Seed 6 AI Rival Masters
   const aiRivals = [
     { name: 'Kotomine Kirei', servantId: 'gilgamesh_archer', servantName: 'Gilgamesh', class: 'Archer' as const, district: 'fuyuki_church' as DistrictId },
     { name: 'Bazett Fraga', servantId: 'cu_chulainn_lancer', servantName: 'Cú Chulainn', class: 'Lancer' as const, district: 'docks' as DistrictId },
@@ -159,6 +175,17 @@ export interface WarActionResult {
   updatedWar: HolyGrailWarSession;
 }
 
+// ==========================================
+// 3. TACTICAL ACTION RESOLVER
+// ==========================================
+// Processes player moves during the war:
+// - Scout (20 AP): Detects presence of rival Servants in the target district
+// - Move (15 AP): Relocates Master to a new district
+// - Fortify (25 AP): Captures and establishes control over a district leyline
+// - Rest (30 AP): Heals 45% HP + restores Command Seal if at Fuyuki Church
+// - Form Alliance (25 AP): Creates a diplomatic pact with another Master
+// - Betray Ally (20 AP): Breaks an active alliance with a devastating ambush
+// - Challenge Master (35 AP): Initiates direct battle
 export function executeWarAction(
   war: HolyGrailWarSession,
   actorDiscordId: string,
@@ -168,6 +195,7 @@ export function executeWarAction(
   const updatedWar: HolyGrailWarSession = JSON.parse(JSON.stringify(war));
   const actor = updatedWar.participants[actorDiscordId];
 
+  // Validation: Check if participant is alive
   if (!actor || !actor.isAlive) {
     return { success: false, message: 'You are eliminated from the Holy Grail War!', apSpent: 0, updatedWar };
   }
@@ -178,6 +206,7 @@ export function executeWarAction(
   let eliminatedId: string | undefined;
 
   switch (action) {
+    // ACTION: SCOUT
     case 'scout':
       apCost = 20;
       if (actor.ap < apCost) return { success: false, message: 'Not enough Action Points (AP)!', apSpent: 0, updatedWar };
@@ -194,6 +223,7 @@ export function executeWarAction(
       }
       break;
 
+    // ACTION: MOVE DISTRICT
     case 'move_district':
       apCost = 15;
       if (actor.ap < apCost) return { success: false, message: 'Not enough AP to relocate!', apSpent: 0, updatedWar };
@@ -207,6 +237,7 @@ export function executeWarAction(
       resultMsg = `🗺️ Relocated from ${prevDistrict} to ${newDistrict}.`;
       break;
 
+    // ACTION: FORTIFY LEYLINE
     case 'fortify_leyline':
       apCost = 25;
       if (actor.ap < apCost) return { success: false, message: 'Not enough AP to fortify leyline!', apSpent: 0, updatedWar };
@@ -220,6 +251,7 @@ export function executeWarAction(
       }
       break;
 
+    // ACTION: REST & HEAL
     case 'rest_and_heal':
       apCost = 30;
       if (actor.ap < apCost) return { success: false, message: 'Not enough AP to rest!', apSpent: 0, updatedWar };
@@ -228,6 +260,7 @@ export function executeWarAction(
       actor.currentHp = Math.min(actor.maxHp, actor.currentHp + healAmount);
 
       let sealMsg = '';
+      // Visiting the Church allows Overseer Kotomine to restore spent Command Seals
       if (actor.currentDistrict === 'fuyuki_church' && actor.commandSeals < 3) {
         actor.commandSeals++;
         sealMsg = ' Father Kotomine restored 1 Command Seal!';
@@ -235,6 +268,7 @@ export function executeWarAction(
       resultMsg = `🩹 Rested and recovered ${healAmount.toLocaleString()} HP.${sealMsg}`;
       break;
 
+    // ACTION: FORM ALLIANCE
     case 'form_alliance':
       apCost = 25;
       if (actor.ap < apCost) return { success: false, message: 'Not enough AP to negotiate an alliance!', apSpent: 0, updatedWar };
@@ -261,6 +295,7 @@ export function executeWarAction(
       resultMsg = `🤝 Secret Alliance formed with ${targetMaster.username}! You will share reconnaissance until one breaks the vow.`;
       break;
 
+    // ACTION: BETRAY ALLIANCE
     case 'betray_ally':
       apCost = 20;
       if (actor.ap < apCost) return { success: false, message: 'Not enough AP to execute betrayal!', apSpent: 0, updatedWar };
@@ -286,6 +321,7 @@ export function executeWarAction(
       resultMsg = `🗡️ BETRAYAL! You broke the pact and ambushed ${ally.username} with lethal surprise attack!`;
       break;
 
+    // ACTION: DIRECT DUEL CHALLENGE
     case 'challenge_master':
       apCost = 35;
       if (actor.ap < apCost) return { success: false, message: 'Not enough AP to issue a duel!', apSpent: 0, updatedWar };
@@ -306,6 +342,7 @@ export function executeWarAction(
       break;
   }
 
+  // Push event to battle log
   updatedWar.eventLogs.unshift({
     id: `evt_${Date.now()}`,
     round: updatedWar.currentRound,
@@ -324,16 +361,23 @@ export function executeWarAction(
   };
 }
 
+// ==========================================
+// 4. ROUND ADVANCEMENT ENGINE
+// ==========================================
+// Increments the round counter, restores +60 AP to surviving Masters,
+// calculates autonomous AI vs AI skirmishes, and checks if only 1 Master remains to win the Grail.
 export function advanceWarRound(war: HolyGrailWarSession): HolyGrailWarSession {
   const updated: HolyGrailWarSession = JSON.parse(JSON.stringify(war));
   updated.currentRound++;
 
+  // AP regeneration for all living Masters
   Object.values(updated.participants).forEach(p => {
     if (p.isAlive) {
       p.ap = Math.min(100, p.ap + 60);
     }
   });
 
+  // AI vs AI background battle simulation
   const aliveAis = Object.values(updated.participants).filter(p => p.isAlive && p.discordId.startsWith('rival_'));
   if (aliveAis.length >= 2 && Math.random() < 0.6) {
     const ai1 = aliveAis[0];
@@ -353,6 +397,7 @@ export function advanceWarRound(war: HolyGrailWarSession): HolyGrailWarSession {
     }
   }
 
+  // Check victory condition (Sole surviving Master claims the Holy Grail)
   const remainingAlive = Object.values(updated.participants).filter(p => p.isAlive);
   if (remainingAlive.length === 1) {
     updated.status = 'concluded';

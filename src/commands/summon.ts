@@ -12,6 +12,10 @@ import { SERVANT_DATABASE } from '../data/servants';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 import { MasterServantInstance } from '../types';
 
+// ==========================================
+// 1. SLASH COMMAND DEFINITION
+// ==========================================
+// Defines the `/summon` command with an optional parameter for Single (1x) or Multi (10x) pull.
 export const data = new SlashCommandBuilder()
   .setName('summon')
   .setDescription('Summon Heroic Spirits and Craft Essences from the Saint Quartz Summoning Gate')
@@ -26,16 +30,30 @@ export const data = new SlashCommandBuilder()
       )
   );
 
+// ==========================================
+// 2. GACHA PROBABILITY & ROLLING LOGIC
+// ==========================================
+// Simulates official FGO gacha drop rates:
+// - 1% 5★ SSR Servant (with 90-pull hard pity system)
+// - 4% 5★ SSR Craft Essence
+// - 3% 4★ SR Servant
+// - 12% 4★ SR Craft Essence
+// - 40% 3★ R Servant
+// - 40% 3★ R Craft Essence
 function rollSummon(master: any, isMulti: boolean) {
   const cost = isMulti ? 30 : 3;
+  
+  // Check if player has enough Saint Quartz currency
   if (master.saintQuartz < cost) {
     return { error: `Insufficient Saint Quartz! You have **${master.saintQuartz} SQ**, but need **${cost} SQ**.` };
   }
 
+  // Deduct cost
   master.saintQuartz -= cost;
   const pullsCount = isMulti ? 10 : 1;
   const results: Array<{ item: any; type: 'servant' | 'ce'; rarity: number; isNew: boolean }> = [];
 
+  // Filter item pools by rarity category
   const ssrServants = SERVANT_DATABASE.filter(s => s.rarity === 5);
   const srServants = SERVANT_DATABASE.filter(s => s.rarity === 4);
   const rServants = SERVANT_DATABASE.filter(s => s.rarity === 3);
@@ -43,18 +61,20 @@ function rollSummon(master: any, isMulti: boolean) {
   const srCes = CRAFT_ESSENCE_DATABASE.filter(c => c.rarity === 4);
   const rCes = CRAFT_ESSENCE_DATABASE.filter(c => c.rarity === 3);
 
+  // Execute rolls
   for (let i = 0; i < pullsCount; i++) {
     master.pityCount = (master.pityCount || 0) + 1;
     const roll = Math.random() * 100;
-    const isHardPity = master.pityCount >= 90;
+    const isHardPity = master.pityCount >= 90; // Guaranteed SSR at 90 pulls
 
     let targetRarity = 3;
     let targetType: 'servant' | 'ce' = 'servant';
 
+    // Probability tier evaluation
     if (isHardPity || roll < 1.0) {
       targetRarity = 5;
       targetType = 'servant';
-      master.pityCount = 0;
+      master.pityCount = 0; // Reset pity counter on SSR drop
     } else if (roll < 5.0) {
       targetRarity = 5;
       targetType = 'ce';
@@ -72,12 +92,14 @@ function rollSummon(master: any, isMulti: boolean) {
       targetType = 'ce';
     }
 
+    // Branch A: Rolled a Servant
     if (targetType === 'servant') {
       const pool = targetRarity === 5 ? ssrServants : targetRarity === 4 ? srServants : rServants;
       const template = pool[Math.floor(Math.random() * pool.length)];
       const alreadyOwns = master.servants.some((s: any) => s.templateId === template.id);
 
       if (!alreadyOwns) {
+        // First-time summon: Instantiate new MasterServantInstance with base stats
         const newServant: MasterServantInstance = {
           id: `servant_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
           masterId: master.id,
@@ -98,11 +120,14 @@ function rollSummon(master: any, isMulti: boolean) {
           template
         };
         master.servants.push(newServant);
+
+        // If player has no active servant, set this new servant as active
         if (!master.activeServantId) {
           master.activeServantId = newServant.id;
         }
         results.push({ item: template, type: 'servant', rarity: targetRarity, isNew: true });
       } else {
+        // Duplicate summon: Upgrade existing Servant's Bond level & award bonus Parameter points
         const existing = master.servants.find((s: any) => s.templateId === template.id);
         if (existing) {
           existing.availableStatPoints = (existing.availableStatPoints || 0) + 5;
@@ -110,7 +135,9 @@ function rollSummon(master: any, isMulti: boolean) {
         }
         results.push({ item: template, type: 'servant', rarity: targetRarity, isNew: false });
       }
-    } else {
+    } 
+    // Branch B: Rolled a Craft Essence
+    else {
       const pool = targetRarity === 5 ? ssrCes : targetRarity === 4 ? srCes : rCes;
       const ce = pool[Math.floor(Math.random() * pool.length)];
       const alreadyOwns = master.craftEssences?.some((c: any) => c.id === ce.id);
@@ -125,10 +152,15 @@ function rollSummon(master: any, isMulti: boolean) {
   return { results, spent: cost };
 }
 
+// ==========================================
+// 3. UI EMBED BUILDER
+// ==========================================
+// Formats the results message with rich emojis, rarity stars, and card descriptions.
 function buildSummonEmbed(master: any, results: any[], spent: number, isMulti: boolean) {
   const servantPulls = results.filter(r => r.type === 'servant');
   const cePulls = results.filter(r => r.type === 'ce');
 
+  // Find top pull to highlight in thumbnail
   const topServant = servantPulls.find(s => s.rarity === 5) || servantPulls[0];
 
   const embed = new EmbedBuilder()
@@ -165,6 +197,9 @@ function buildSummonEmbed(master: any, results: any[], spent: number, isMulti: b
   return embed;
 }
 
+// ==========================================
+// 4. ACTION BUTTONS (Single, Multi, Daily SQ)
+// ==========================================
 function buildSummonButtons(master: any) {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -187,18 +222,23 @@ function buildSummonButtons(master: any) {
   );
 }
 
+// ==========================================
+// 5. COMMAND EXECUTION ENTRY POINT
+// ==========================================
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
     const rawType = interaction.options.getString('type');
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
     
-    // Auto choose single if user has < 30 SQ, or user specified
+    // Default to multi if player has >= 30 SQ, unless specified otherwise
     let isMulti = rawType === 'multi';
     if (!rawType) {
       isMulti = master.saintQuartz >= 30;
     }
 
     const rollRes = rollSummon(master, isMulti);
+    
+    // Handle error if player is out of Saint Quartz
     if (rollRes.error || !rollRes.results) {
       const errEmbed = new EmbedBuilder()
         .setTitle('❌ Summoning Gate Error')
@@ -222,12 +262,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
+    // Save inventory changes to database
     await saveMaster(master);
 
     const embed = buildSummonEmbed(master, rollRes.results, rollRes.spent || 3, isMulti);
     const row = buildSummonButtons(master);
 
     const response = await interaction.reply({ embeds: [embed], components: [row], fetchReply: true });
+    // Attach listener for instant re-pull button clicks
     setupSummonCollector(response, interaction.user.id);
 
   } catch (error: any) {
@@ -240,17 +282,23 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 }
 
+// ==========================================
+// 6. INTERACTIVE BUTTON COLLECTOR
+// ==========================================
+// Keeps the message interactive for 2 minutes, allowing the user to click
+// "Summon 1x", "Summon 10x", or "Daily Leyline" repeatedly without retyping the command.
 function setupSummonCollector(message: any, userId: string) {
   const collector = message.createMessageComponentCollector({
     componentType: ComponentType.Button,
     filter: (i: any) => i.user.id === userId,
-    time: 120000
+    time: 120000 // 2 minutes active window
   });
 
   collector.on('collect', async (i: any) => {
     try {
       const master = await getOrCreateMaster(i.user.id, i.user.username);
 
+      // Button: Free Daily Saint Quartz
       if (i.customId === 'summon_claim_sq') {
         master.saintQuartz += 30;
         await saveMaster(master);
@@ -263,6 +311,7 @@ function setupSummonCollector(message: any, userId: string) {
         return;
       }
 
+      // Button: 1x or 10x Pull
       const isMulti = i.customId === 'summon_10x';
       const rollRes = rollSummon(master, isMulti);
 
@@ -275,6 +324,7 @@ function setupSummonCollector(message: any, userId: string) {
       const embed = buildSummonEmbed(master, rollRes.results, rollRes.spent || 3, isMulti);
       const row = buildSummonButtons(master);
 
+      // Update original message in place
       await i.update({ embeds: [embed], components: [row] });
     } catch (err: any) {
       console.error('Error in summon collector:', err);

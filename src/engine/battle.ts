@@ -8,6 +8,14 @@ import {
   TurnActionChoice
 } from '../types';
 
+// ==========================================
+// 1. CLASS AFFINITY MULTIPLIER ENGINE
+// ==========================================
+// Evaluates the damage multiplier between attacker and defender classes according to canonical Fate rules:
+// - Standard Knight Triangle: Saber beats Lancer, Lancer beats Archer, Archer beats Saber.
+// - Standard Cavalry Triangle: Rider beats Caster, Caster beats Assassin, Assassin beats Rider.
+// - Berserker: 1.5x damage dealt, 1.5x damage taken.
+// - Ruler / Avenger / Foreigner special affinities.
 export function calculateClassMultiplier(attackerClass: ServantClass, defenderClass: ServantClass): number {
   if (attackerClass === defenderClass) return 1.0;
 
@@ -43,6 +51,10 @@ export function calculateClassMultiplier(attackerClass: ServantClass, defenderCl
   return 1.0;
 }
 
+// ==========================================
+// 2. COMBATANT INITIALIZER
+// ==========================================
+// Converts a Master's saved Servant data + equipped Craft Essence into an active combatant state object.
 export function createCombatantFromMasterServant(
   servantInstance: MasterServantInstance,
   masterName: string
@@ -50,19 +62,23 @@ export function createCombatantFromMasterServant(
   const t = servantInstance.template;
   const ce = servantInstance.equippedCe;
 
+  // Sum base parameters + allocated points
   const totalStr = t.baseStats.strength + (servantInstance.allocatedStats?.strength || 0);
   const totalEnd = t.baseStats.endurance + (servantInstance.allocatedStats?.endurance || 0);
   const totalAgi = t.baseStats.agility + (servantInstance.allocatedStats?.agility || 0);
   const totalMna = t.baseStats.mana + (servantInstance.allocatedStats?.mana || 0);
   const totalLck = t.baseStats.luck + (servantInstance.allocatedStats?.luck || 0);
 
+  // Craft Essence equipment bonuses
   const ceHp = ce ? (ce.hpBonus || 0) : 0;
   const ceAtk = ce ? (ce.atkBonus || 0) : 0;
 
+  // Scaled calculations based on Servant level and Parameter distribution
   const maxHp = Math.round(t.baseHp * (1 + (servantInstance.level - 1) * 0.05) + totalEnd * 150 + ceHp);
   const rawAtk = Math.round(t.baseAtk * (1 + (servantInstance.level - 1) * 0.05) + totalStr * 80 + ceAtk);
   const def = Math.round(totalEnd * 25);
 
+  // Starting NP bonus from Craft Essence (e.g. Starting NP +50% / +80%)
   let initialNp = 0;
   if (ce && ce.passiveType === 'starting_np') {
     initialNp = ce.passiveValue;
@@ -94,6 +110,9 @@ export function createCombatantFromMasterServant(
   };
 }
 
+// ==========================================
+// 3. BATTLE STATE FACTORY
+// ==========================================
 export function initializeBattle(
   combatant1: ActiveCombatant,
   combatant2: ActiveCombatant,
@@ -111,6 +130,10 @@ export function initializeBattle(
   };
 }
 
+// ==========================================
+// 4. COMBAT TURN CALCULATION ENGINE
+// ==========================================
+// Computes damage, card modifiers, critical strikes, NP gain, and logs every hit.
 export function resolveCombatTurn(
   battle: BattleState,
   attackerChoice: TurnActionChoice,
@@ -127,25 +150,33 @@ export function resolveCombatTurn(
 
   const classMultiplier = calculateClassMultiplier(attacker.servantClass, defender.servantClass);
 
+  // Process chosen 3-card Command Chain
   for (const card of attackerChoice.selectedCards) {
     let cardMultiplier = 1.0;
+    // BUSTER: 1.5x damage bonus
     if (card === 'Buster') {
       cardMultiplier = 1.5;
       npGain += 5;
       starsGen += 2;
-    } else if (card === 'Arts') {
+    } 
+    // ARTS: High NP gauge generation
+    else if (card === 'Arts') {
       cardMultiplier = 1.0;
       npGain += 30;
       starsGen += 1;
-    } else if (card === 'Quick') {
+    } 
+    // QUICK: High Critical Star drop rate
+    else if (card === 'Quick') {
       cardMultiplier = 0.8;
       npGain += 10;
       starsGen += 15;
     }
 
+    // Critical Hit determination based on gathered stars
     const hitCrit = Math.random() < ((attacker.critStars || 0) / 100);
     if (hitCrit) isCrit = true;
 
+    // Damage Formula: (ATK * CardMod * ClassAdvantage) - (DEF * 0.5)
     const baseHit = (attacker.atk * cardMultiplier * classMultiplier) - (defender.def * 0.5);
     const hitDamage = Math.max(200, Math.round(baseHit * (hitCrit ? 2.0 : 1.0)));
     totalDmg += hitDamage;
@@ -154,12 +185,13 @@ export function resolveCombatTurn(
   let npTriggered = false;
   let npChant = undefined;
 
+  // Trigger Noble Phantasm if requested & gauge is >= 100%
   if (attackerChoice.useNoblePhantasm && attacker.npGauge >= 100) {
     npTriggered = true;
     npChant = attacker.noblePhantasm.chant;
     const npDmg = Math.round(attacker.atk * (attacker.noblePhantasm.multiplier / 100) * classMultiplier);
     totalDmg += npDmg;
-    attacker.npGauge = 0;
+    attacker.npGauge = 0; // Consume gauge
   } else {
     attacker.npGauge = Math.min(300, attacker.npGauge + npGain);
   }
@@ -167,6 +199,7 @@ export function resolveCombatTurn(
   attacker.critStars = Math.min(50, (attacker.critStars || 0) + starsGen);
   defender.currentHp = Math.max(0, defender.currentHp - totalDmg);
 
+  // Generate combat log entry
   const log: CombatTurnLog = {
     turnNumber: battle.currentTurn,
     actorId: attacker.id,
@@ -193,6 +226,7 @@ export function resolveCombatTurn(
   battle.turnHistory.push(log);
   battle.currentTurn++;
 
+  // Victory check
   if (defender.currentHp <= 0) {
     battle.turnPhase = 'victory';
     battle.winnerId = attacker.id;
