@@ -1,0 +1,153 @@
+// Prisma Schema for Holy Grail War / Gacha RPG Discord Bot
+// Supports SQLite (default) and PostgreSQL (for production hosting)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Master {
+  id              String             @id @default(cuid())
+  discordId       String             @unique
+  username        String
+  avatarUrl       String?
+  saintQuartz     Int                @default(30)
+  summonTickets   Int                @default(5)
+  commandSeals    Int                @default(3)
+  actionPoints    Int                @default(100)
+  maxActionPoints Int                @default(100)
+  pityCount       Int                @default(0)
+  grailWarWins    Int                @default(0)
+  activeServantId String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  servants        MasterServant[]
+  inventoryItems  InventoryItem[]
+  warParticipants WarParticipant[]
+}
+
+model MasterServant {
+  id                  String       @id @default(cuid())
+  masterId            String
+  templateId          String
+  nickname            String?
+  level               Int          @default(1)
+  experience          Int          @default(0)
+  bondLevel           Int          @default(1)
+  availableStatPoints Int          @default(10)
+  
+  // Allocated Stats
+  allocatedStrength   Int          @default(0)
+  allocatedEndurance  Int          @default(0)
+  allocatedAgility    Int          @default(0)
+  allocatedMana       Int          @default(0)
+  allocatedLuck       Int          @default(0)
+
+  // Skill Levels (1-10)
+  skill1Level         Int          @default(1)
+  skill2Level         Int          @default(1)
+  skill3Level         Int          @default(1)
+
+  // Custom Player Quotes
+  summonQuote         String?
+  battleStartQuote    String?
+  noblePhantasmQuote  String?
+  victoryQuote        String?
+  defeatQuote         String?
+
+  equippedCeId        String?
+  equippedCe          CraftEssence? @relation(fields: [equippedCeId], references: [id])
+
+  master              Master        @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+}
+
+model CraftEssence {
+  id             String          @id
+  name           String
+  rarity         Int
+  description    String
+  atkBonus       Int
+  hpBonus        Int
+  effectText     String
+  passiveType    String
+  passiveValue   Int
+  artworkUrl     String?
+
+  equippedBy     MasterServant[]
+  inventoryItems InventoryItem[]
+}
+
+model InventoryItem {
+  id             String        @id @default(cuid())
+  masterId       String
+  craftEssenceId String?
+  quantity       Int           @default(1)
+  
+  master         Master        @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  craftEssence   CraftEssence? @relation(fields: [craftEssenceId], references: [id])
+}
+
+model HolyGrailWar {
+  id           String           @id @default(cuid())
+  title        String
+  status       String           @default("active") // active, concluded
+  currentRound Int              @default(1)
+  maxRounds    Int              @default(7)
+  winnerId     String?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  participants WarParticipant[]
+  alliances    WarAlliance[]
+  battleLogs   WarBattleLog[]
+}
+
+model WarParticipant {
+  id              String       @id @default(cuid())
+  warId           String
+  masterId        String
+  servantName     String
+  servantClass    String
+  currentHp       Int
+  maxHp           Int
+  commandSeals    Int          @default(3)
+  isAlive         Boolean      @default(true)
+  currentDistrict String       @default("homurahara_academy")
+  ap              Int          @default(100)
+  kills           Int          @default(0)
+  allianceId      String?
+
+  war             HolyGrailWar @relation(fields: [warId], references: [id], onDelete: Cascade)
+  master          Master       @relation(fields: [masterId], references: [id], onDelete: Cascade)
+  alliance        WarAlliance? @relation(fields: [allianceId], references: [id])
+}
+
+model WarAlliance {
+  id               String           @id @default(cuid())
+  warId            String
+  name             String
+  isSecret         Boolean          @default(true)
+  betrayalScore    Int              @default(30)
+  formedAtRound    Int
+
+  war              HolyGrailWar     @relation(fields: [warId], references: [id], onDelete: Cascade)
+  members          WarParticipant[]
+}
+
+model WarBattleLog {
+  id           String       @id @default(cuid())
+  warId        String
+  round        Int
+  summary      String
+  actionType   String
+  createdAt    DateTime     @default(now())
+
+  war          HolyGrailWar @relation(fields: [warId], references: [id], onDelete: Cascade)
+}

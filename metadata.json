@@ -1,0 +1,6 @@
+{
+  "name": "Holy Grail War Discord RPG",
+  "description": "Modular Discord bot and RPG game engine featuring gacha summoning, servant customization, turn-based combat with Buster/Arts/Quick cards, Holy Grail War battle-royale events, and high-performance Canvas card rendering.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
