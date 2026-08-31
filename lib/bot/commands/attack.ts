@@ -1,6 +1,6 @@
 /**
- * Slash Command: /attack (alias: /ambush)
- * Description: Ambush a suspected Master in the server
+ * Slash Command: /attack
+ * Description: Ambush a suspected Master or bystander in the Holy Grail War
  * Library: discord.js v14
  */
 
@@ -9,9 +9,9 @@ export const attackCommandCode = `import {
   ChatInputCommandInteraction, 
   EmbedBuilder 
 } from 'discord.js';
-import { getOrCreateMaster } from '../database/service';
+import { getOrCreateMaster, saveMaster } from '../database/service';
 import { 
-  createHolyGrailWarSession, 
+  getOrInitWarSession, 
   attackSuspectUserInWar 
 } from '../engine/grailwar';
 
@@ -29,26 +29,19 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
-    const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
+    const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
 
     if (!activeServant) {
       await interaction.editReply({
-        content: '❌ You must summon a Servant before launching an ambush! Use \`/summon\` first.'
+        content: '❌ You must summon a Servant before launching an ambush! Use /summon first.'
       });
       return;
     }
 
-    const war = createHolyGrailWarSession({
-      discordId: interaction.user.id,
-      username: interaction.user.username,
-      servantId: activeServant.id,
-      servantName: activeServant.template.name,
-      avatarUrl: activeServant.template.avatarUrl,
-      maxHp: activeServant.template.baseHp
-    });
-
+    const war = getOrInitWarSession(master);
     const targetQuery = interaction.options.getString('target', true);
     const res = attackSuspectUserInWar(war, interaction.user.id, targetQuery);
+    await saveMaster(master);
 
     const embed = new EmbedBuilder()
       .setTitle(res.targetWasMaster ? '⚔️ TACTICAL AMBUSH: RIVAL MASTER ENGAGED!' : '☠️ COLLATERAL CASUALTY: CIVILIAN SLAIN!')
@@ -64,7 +57,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   } catch (error: any) {
     console.error('Error executing /attack:', error);
     await interaction.editReply({
-      content: \`❌ Ambush execution error: \${error.message}\`
+      content: '❌ Ambush execution error: ' + error.message
     });
   }
 }

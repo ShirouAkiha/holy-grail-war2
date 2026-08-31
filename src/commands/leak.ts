@@ -5,12 +5,9 @@ import {
 } from 'discord.js';
 import { getOrCreateMaster } from '../database/service';
 import { 
-  createHolyGrailWarSession, 
+  getOrInitWarSession, 
   leakIntelInWar 
 } from '../engine/grailwar';
-import { HolyGrailWarSession } from '../types';
-
-let activeWarSession: HolyGrailWarSession | null = null;
 
 export const data = new SlashCommandBuilder()
   .setName('leak')
@@ -40,21 +37,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    if (!activeWarSession) {
-      activeWarSession = createHolyGrailWarSession({
-        discordId: interaction.user.id,
-        username: interaction.user.username,
-        servantId: activeServant.id,
-        servantName: activeServant.template.name,
-        avatarUrl: activeServant.template.avatarUrl,
-        maxHp: activeServant.template.baseHp
-      });
-    }
-
+    const war = getOrInitWarSession(master);
     const intelText = interaction.options.getString('intel', true);
     const targetQuery = interaction.options.getString('target') || undefined;
 
-    const res = leakIntelInWar(activeWarSession, interaction.user.id, intelText, targetQuery);
+    const res = leakIntelInWar(war, interaction.user.id, intelText, targetQuery);
 
     const embed = new EmbedBuilder()
       .setTitle('🕵️ HOLY GRAIL WAR INTELLIGENCE LEAK BROADCAST')
@@ -63,7 +50,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `📡 **Dispatched Intelligence Report:**\n> "${intelText}"\n\n` +
         (res.exposedTargetMaster 
           ? `🚨 **EXPOSURE RESULT:** **${res.exposedTargetMaster}** was positively identified! Their Servant and stats are now unmasked on the board.` 
-          : `🔍 Intelligence added to the global Holy Grail War Chronicle.`)
+          : `🔍 Intelligence registered to the global Holy Grail War Chronicle.`)
       )
       .setColor(0xa855f7)
       .setFooter({ text: 'Holy Grail War Surveillance Network • Check /grailwar status' });

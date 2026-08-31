@@ -1,26 +1,39 @@
 import {
   HolyGrailWarSession,
   WarMasterParticipant,
-  WarAlliance
+  WarAlliance,
+  MasterProfile
 } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
 
+// =========================================================================
+// GLOBAL SHARED HOLY GRAIL WAR SINGLETON
+// =========================================================================
+let globalWarSession: HolyGrailWarSession | null = null;
+
+const CANONICAL_WAR_CLASSES = [
+  { slot: 2, class: 'Archer' as const, servantId: 'gilgamesh_archer', servantName: 'King of Heroes (Gilgamesh)' },
+  { slot: 3, class: 'Lancer' as const, servantId: 'cu_chulainn_lancer', servantName: 'Hound of Ulster (Cu Chulainn)' },
+  { slot: 4, class: 'Berserker' as const, servantId: 'heracles_berserker', servantName: 'Great Berserker (Heracles)' },
+  { slot: 5, class: 'Ruler' as const, servantId: 'jeanne_darc_ruler', servantName: 'Holy Maiden (Jeanne d\'Arc)' },
+  { slot: 6, class: 'Assassin' as const, servantId: 'emiya_archer', servantName: 'Nameless Guardian (EMIYA)' },
+  { slot: 7, class: 'Rider' as const, servantId: 'terminal_saber_linus', servantName: 'Iron Sovereign (Linus)' }
+];
+
 export function createHolyGrailWarSession(
-  initiatorMaster: { discordId: string; username: string; servantId: string; servantName: string; avatarUrl: string; maxHp: number },
+  initiatorMaster: { discordId: string; username: string; servantId: string; servantName: string; avatarUrl: string; maxHp: number; servantClass?: string },
   warTitle: string = '7-Master Fuyuki Holy Grail War'
 ): HolyGrailWarSession {
   const warId = `grail_war_${Date.now()}`;
 
-  // Initialize participants with the initiator + 6 Rival Masters
-  // All Masters start hidden in the shadows until exposed by public command, ambush, or leak!
   const participants: Record<string, WarMasterParticipant> = {
     [initiatorMaster.discordId]: {
       discordId: initiatorMaster.discordId,
       username: initiatorMaster.username,
       servantId: initiatorMaster.servantId,
       servantName: initiatorMaster.servantName,
-      servantClass: 'Saber',
-      avatarUrl: initiatorMaster.avatarUrl,
+      servantClass: (initiatorMaster.servantClass as any) || 'Saber',
+      avatarUrl: initiatorMaster.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
       currentHp: initiatorMaster.maxHp,
       maxHp: initiatorMaster.maxHp,
       commandSeals: 3,
@@ -31,23 +44,13 @@ export function createHolyGrailWarSession(
     }
   };
 
-  // Seed 6 other rival Master slots (operating in concealment from the server shadows)
-  const defaultClasses = [
-    { slot: 2, class: 'Archer' as const, servantId: 'gilgamesh_archer', servantName: 'King of Heroes' },
-    { slot: 3, class: 'Lancer' as const, servantId: 'cu_chulainn_lancer', servantName: 'Hound of Ulster' },
-    { slot: 4, class: 'Berserker' as const, servantId: 'heracles_berserker', servantName: 'Great Berserker' },
-    { slot: 5, class: 'Ruler' as const, servantId: 'jeanne_darc_ruler', servantName: 'Holy Maiden' },
-    { slot: 6, class: 'Assassin' as const, servantId: 'emiya_archer', servantName: 'Nameless Hero' },
-    { slot: 7, class: 'Rider' as const, servantId: 'terminal_saber_linus', servantName: 'Iron Sovereign' }
-  ];
-
-  defaultClasses.forEach(r => {
-    const id = `master_slot_${r.slot}`;
+  CANONICAL_WAR_CLASSES.forEach(r => {
+    const aiSlotId = `ai_shadow_slot_${r.slot}`;
     const t = SERVANT_DATABASE.find(s => s.id === r.servantId);
-    const hp = t ? t.baseHp : 11000;
-    participants[id] = {
-      discordId: id,
-      username: `Master Slot #${r.slot}`,
+    const hp = t ? t.baseHp : 12500;
+    participants[aiSlotId] = {
+      discordId: aiSlotId,
+      username: `Shadow Master #${r.slot}`,
       servantId: r.servantId,
       servantName: r.servantName,
       servantClass: r.class,
@@ -62,12 +65,14 @@ export function createHolyGrailWarSession(
     };
   });
 
-  return {
+  const session: HolyGrailWarSession = {
     id: warId,
     title: warTitle,
     status: 'active',
     participants,
     alliances: {},
+    civilianCasualties: [],
+    leakedIntel: [],
     eventLogs: [
       {
         id: `evt_init_${Date.now()}`,
@@ -75,21 +80,119 @@ export function createHolyGrailWarSession(
         text: `🕯️ The ${warTitle} has commenced in strict secrecy! All 7 Masters operate from the shadows. Identities remain concealed until exposed by public actions, tactical ambushes, or intelligence leaks.`,
         type: 'clash'
       }
-    ],
-    innocentVictims: [],
-    leakedIntel: []
+    ]
   };
+
+  globalWarSession = session;
+  return session;
+}
+
+export function getOrInitWarSession(master: MasterProfile): HolyGrailWarSession {
+  const activeServant =
+    master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+
+  const servantName = activeServant?.template?.name || 'Artoria Pendragon';
+  const servantClass = activeServant?.template?.servantClass || 'Saber';
+  const avatarUrl = activeServant?.template?.avatarUrl || '';
+  const maxHp = activeServant?.template?.baseHp || 15000;
+
+  if (!globalWarSession) {
+    globalWarSession = createHolyGrailWarSession({
+      discordId: master.discordId,
+      username: master.username,
+      servantId: activeServant?.id || 'servant_artoria',
+      servantName,
+      avatarUrl,
+      maxHp,
+      servantClass
+    });
+    return globalWarSession;
+  }
+
+  if (!globalWarSession.leakedIntel) globalWarSession.leakedIntel = [];
+  if (!globalWarSession.civilianCasualties) globalWarSession.civilianCasualties = [];
+  if (!globalWarSession.eventLogs) globalWarSession.eventLogs = [];
+
+  if (globalWarSession.participants[master.discordId]) {
+    const existing = globalWarSession.participants[master.discordId];
+    existing.username = master.username;
+    if (activeServant) {
+      existing.servantId = activeServant.id;
+      existing.servantName = activeServant.template.name;
+      existing.servantClass = activeServant.template.servantClass;
+      existing.avatarUrl = activeServant.template.avatarUrl;
+    }
+    return globalWarSession;
+  }
+
+  const aiSlotKey = Object.keys(globalWarSession.participants).find(
+    k => k.startsWith('ai_shadow_slot_') || k.startsWith('master_slot_')
+  );
+
+  if (aiSlotKey) {
+    const oldAiSlot = globalWarSession.participants[aiSlotKey];
+    delete globalWarSession.participants[aiSlotKey];
+
+    globalWarSession.participants[master.discordId] = {
+      discordId: master.discordId,
+      username: master.username,
+      servantId: activeServant?.id || oldAiSlot.servantId,
+      servantName,
+      servantClass,
+      avatarUrl,
+      currentHp: maxHp,
+      maxHp,
+      commandSeals: master.commandSeals || 3,
+      isAlive: true,
+      isExposed: false,
+      kills: 0,
+      innocentKills: 0
+    };
+
+    globalWarSession.eventLogs.unshift({
+      id: `evt_enter_${Date.now()}`,
+      timestamp: Date.now(),
+      text: `🕯️ A new Master contracted a Heroic Spirit in secret and entered the Holy Grail War from the shadows!`,
+      type: 'clash'
+    });
+  } else if (Object.keys(globalWarSession.participants).length < 7) {
+    globalWarSession.participants[master.discordId] = {
+      discordId: master.discordId,
+      username: master.username,
+      servantId: activeServant?.id || 'servant_artoria',
+      servantName,
+      servantClass,
+      avatarUrl,
+      currentHp: maxHp,
+      maxHp,
+      commandSeals: master.commandSeals || 3,
+      isAlive: true,
+      isExposed: false,
+      kills: 0,
+      innocentKills: 0
+    };
+  }
+
+  return globalWarSession;
+}
+
+export function getActiveWarSession(): HolyGrailWarSession | null {
+  return globalWarSession;
+}
+
+export function resetWarSession(): void {
+  globalWarSession = null;
 }
 
 export type WarActionType =
-  | 'challenge_master'  // Challenge a rival Master to a duel
-  | 'form_alliance'      // Propose a pact with another Master
-  | 'betray_ally'        // Ambush an ally
-  | 'rest_and_heal'      // Recover Servant HP
-  | 'simulate_skirmish' // Simulate rival clashes across the city
-  | 'attack_suspect'     // Ambush a suspected user in the server
-  | 'leak_intel'         // Leak intelligence onto the board
-  | 'expose_master';     // Expose a master due to public command usage
+  | 'challenge_master'
+  | 'form_alliance'
+  | 'betray_ally'
+  | 'rest_and_heal'
+  | 'simulate_skirmish'
+  | 'attack_suspect'
+  | 'leak_intel'
+  | 'expose_master';
 
 export interface WarActionResult {
   success: boolean;
@@ -102,44 +205,44 @@ export interface WarActionResult {
   eliminatedMasterId?: string;
   isCollateralCasualty?: boolean;
   targetWasMaster?: boolean;
+  exposedTargetMaster?: string;
   updatedWar: HolyGrailWarSession;
 }
 
-// Expose a Master when they perform an action publicly or are identified
 export function exposeMasterInWar(
   war: HolyGrailWarSession,
   masterIdOrUsername: string,
   reason: 'public_command' | 'ambush_clash' | 'innocent_assault' | 'intel_leak' | 'direct_combat'
 ): { updatedWar: HolyGrailWarSession; newlyExposed: boolean; participant?: WarMasterParticipant } {
-  const updatedWar: HolyGrailWarSession = JSON.parse(JSON.stringify(war));
-  const query = masterIdOrUsername.toLowerCase().trim();
+  const targetWar = war || globalWarSession;
+  if (!targetWar) return { updatedWar: war, newlyExposed: false };
 
-  const participant = Object.values(updatedWar.participants).find(
+  const query = masterIdOrUsername.toLowerCase().trim();
+  const participant = Object.values(targetWar.participants).find(
     p => p.discordId.toLowerCase() === query || p.username.toLowerCase() === query || query.includes(p.username.toLowerCase())
   );
 
   if (!participant) {
-    return { updatedWar, newlyExposed: false };
+    return { updatedWar: targetWar, newlyExposed: false };
   }
 
   if (participant.isExposed) {
-    return { updatedWar, newlyExposed: false, participant };
+    return { updatedWar: targetWar, newlyExposed: false, participant };
   }
 
   participant.isExposed = true;
   participant.exposureReason = reason;
-  participant.exposedAt = Date.now();
 
   let reasonText = '';
   switch (reason) {
     case 'public_command':
-      reasonText = `📡 EXPOSURE: Master **${participant.username}** invoked magecraft in a public server channel! Their identity and contracted Servant (**${participant.servantName}** - ${participant.servantClass}) are now exposed to all participants!`;
+      reasonText = `📡 EXPOSURE: Master **${participant.username}** invoked magecraft publicly! Contracted Servant: **${participant.servantName}** (${participant.servantClass}) is now EXPOSED!`;
       break;
     case 'ambush_clash':
       reasonText = `⚔️ EXPOSURE: **${participant.username}** (${participant.servantName}) had their identity exposed during a tactical ambush clash!`;
       break;
     case 'innocent_assault':
-      reasonText = `☠️ EXPOSURE: **${participant.username}** violated the Secrecy of Magecraft by attacking a bystander! Their identity is now exposed to the entire server!`;
+      reasonText = `☠️ EXPOSURE: **${participant.username}** violated the Secrecy of Magecraft by attacking a bystander! Identity is now exposed to the server!`;
       break;
     case 'intel_leak':
       reasonText = `🕵️ EXPOSURE: **${participant.username}** (${participant.servantName} - ${participant.servantClass}) was outed by an anonymous intelligence leak!`;
@@ -149,34 +252,34 @@ export function exposeMasterInWar(
       break;
   }
 
-  updatedWar.eventLogs.unshift({
+  targetWar.eventLogs.unshift({
     id: `evt_expose_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     timestamp: Date.now(),
     text: reasonText,
     type: 'exposure'
   });
 
-  return { updatedWar, newlyExposed: true, participant };
+  return { updatedWar: targetWar, newlyExposed: true, participant };
 }
 
-// Attack a suspected user in the server
 export function attackSuspectUserInWar(
   war: HolyGrailWarSession,
   attackerId: string,
   suspectQuery: string
 ): WarActionResult {
-  let updatedWar: HolyGrailWarSession = JSON.parse(JSON.stringify(war));
-  const attacker = updatedWar.participants[attackerId];
-
-  if (!attacker || !attacker.isAlive) {
-    return { success: false, message: 'You are not active in the Holy Grail War!', updatedWar };
+  const targetWar = war || globalWarSession;
+  if (!targetWar) {
+    return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
 
-  // Clean suspect query (remove @ or discord mention wrapper <@!1234>)
+  const attacker = targetWar.participants[attackerId];
+  if (!attacker || !attacker.isAlive) {
+    return { success: false, message: 'You are not active in the Holy Grail War!', updatedWar: targetWar };
+  }
+
   const cleanQuery = suspectQuery.replace(/[<@!>]/g, '').trim().toLowerCase();
 
-  // Find if target is a real Master in this Grail War
-  const targetMaster = Object.values(updatedWar.participants).find(
+  const targetMaster = Object.values(targetWar.participants).find(
     p => p.discordId.toLowerCase() === cleanQuery ||
          p.username.toLowerCase() === cleanQuery ||
          p.username.toLowerCase().includes(cleanQuery) ||
@@ -184,23 +287,16 @@ export function attackSuspectUserInWar(
   );
 
   if (targetMaster && targetMaster.discordId === attacker.discordId) {
-    return { success: false, message: 'You cannot target yourself with an ambush!', updatedWar };
+    return { success: false, message: 'You cannot target yourself with an ambush!', updatedWar: targetWar };
   }
 
-  // ---------------------------------------------------------
-  // CASE 1: TARGET IS A REAL MASTER
-  // ---------------------------------------------------------
   if (targetMaster && targetMaster.isAlive) {
-    // Both attacker and target are now exposed!
     attacker.isExposed = true;
     attacker.exposureReason = 'ambush_clash';
-    attacker.exposedAt = Date.now();
 
     targetMaster.isExposed = true;
     targetMaster.exposureReason = 'ambush_clash';
-    targetMaster.exposedAt = Date.now();
 
-    // Calculate surprise ambush damage
     const ambushDamage = Math.round(3800 + Math.random() * 2500);
     targetMaster.currentHp = Math.max(0, targetMaster.currentHp - ambushDamage);
 
@@ -214,22 +310,21 @@ export function attackSuspectUserInWar(
       ambushText = `☠️ FATAL AMBUSH: Master **${attacker.username}** (${attacker.servantName}) ambushed and ELIMINATED Master **${targetMaster.username}** (${targetMaster.servantName})! Both identities were exposed!`;
     }
 
-    updatedWar.eventLogs.unshift({
+    targetWar.eventLogs.unshift({
       id: `evt_ambush_${Date.now()}`,
       timestamp: Date.now(),
       text: ambushText,
       type: targetMaster.currentHp <= 0 ? 'elimination' : 'ambush'
     });
 
-    // Check war conclusion
-    const remainingAlive = Object.values(updatedWar.participants).filter(p => p.isAlive);
+    const remainingAlive = Object.values(targetWar.participants).filter(p => p.isAlive);
     if (remainingAlive.length === 1) {
-      updatedWar.status = 'concluded';
-      updatedWar.grailWinnerId = remainingAlive[0].discordId;
-      updatedWar.eventLogs.unshift({
+      targetWar.status = 'concluded';
+      targetWar.grailWinnerId = remainingAlive[0].discordId;
+      targetWar.eventLogs.unshift({
         id: `evt_win_${Date.now()}`,
         timestamp: Date.now(),
-        text: `🏆 THE HOLY GRAIL HAS MANIFESTED! ${remainingAlive[0].username} is the sole survivor and has won the Holy Grail War!`,
+        text: `🏆 THE HOLY GRAIL HAS MANIFESTED! **${remainingAlive[0].username}** is the sole survivor and has won the Holy Grail War!`,
         type: 'clash'
       });
     }
@@ -240,34 +335,27 @@ export function attackSuspectUserInWar(
       targetWasMaster: true,
       isCollateralCasualty: false,
       eliminatedMasterId: eliminatedId,
-      updatedWar
+      updatedWar: targetWar
     };
   }
 
-  // ---------------------------------------------------------
-  // CASE 2: TARGET IS AN INNOCENT SERVER USER (COLLATERAL CASUALTY)
-  // ---------------------------------------------------------
-  // Attacker strikes down an innocent bystander!
-  // Attacker is immediately exposed for violating the secrecy of Magecraft!
   attacker.isExposed = true;
   attacker.exposureReason = 'innocent_assault';
-  attacker.exposedAt = Date.now();
   attacker.innocentKills = (attacker.innocentKills || 0) + 1;
 
-  if (!updatedWar.innocentVictims) updatedWar.innocentVictims = [];
+  if (!targetWar.civilianCasualties) targetWar.civilianCasualties = [];
   const bystanderName = suspectQuery.startsWith('@') ? suspectQuery : `@${suspectQuery}`;
 
-  updatedWar.innocentVictims.unshift({
+  targetWar.civilianCasualties.unshift({
     id: `victim_${Date.now()}`,
-    username: bystanderName,
-    killedBy: attacker.username,
-    killerServant: attacker.servantName,
+    name: bystanderName,
+    slainByMasterId: attacker.username,
     timestamp: Date.now()
   });
 
   const casualtyText = `☠️ COLLATERAL CASUALTY: Master **${attacker.username}**'s Servant (${attacker.servantName}) struck down innocent bystander **${bystanderName}**! The victim was killed instantly, and **${attacker.username}**'s identity is now VIOLENTLY EXPOSED on the Holy Grail War status board for breaching the Secrecy of Magecraft!`;
 
-  updatedWar.eventLogs.unshift({
+  targetWar.eventLogs.unshift({
     id: `evt_casualty_${Date.now()}`,
     timestamp: Date.now(),
     text: casualtyText,
@@ -279,49 +367,55 @@ export function attackSuspectUserInWar(
     message: casualtyText,
     targetWasMaster: false,
     isCollateralCasualty: true,
-    updatedWar
+    updatedWar: targetWar
   };
 }
 
-// Leak intelligence onto the status board
 export function leakIntelInWar(
   war: HolyGrailWarSession,
-  leakerUsername: string,
+  leakerDiscordId: string,
   intelText: string,
   targetToExposeQuery?: string
 ): WarActionResult {
-  const updatedWar: HolyGrailWarSession = JSON.parse(JSON.stringify(war));
-  if (!updatedWar.leakedIntel) updatedWar.leakedIntel = [];
+  const targetWar = war || globalWarSession;
+  if (!targetWar) {
+    return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
+  }
+
+  if (!targetWar.leakedIntel) targetWar.leakedIntel = [];
+  if (!targetWar.eventLogs) targetWar.eventLogs = [];
+
+  const leaker = targetWar.participants[leakerDiscordId];
+  const leakerName = leaker?.username || leakerDiscordId;
 
   let exposedMaster: WarMasterParticipant | undefined;
 
   if (targetToExposeQuery && targetToExposeQuery.trim()) {
     const q = targetToExposeQuery.trim().toLowerCase();
-    exposedMaster = Object.values(updatedWar.participants).find(
+    exposedMaster = Object.values(targetWar.participants).find(
       p => p.discordId.toLowerCase() === q || p.username.toLowerCase().includes(q) || q.includes(p.username.toLowerCase())
     );
 
     if (exposedMaster) {
       exposedMaster.isExposed = true;
       exposedMaster.exposureReason = 'intel_leak';
-      exposedMaster.exposedAt = Date.now();
     }
   }
 
   const leakId = `leak_${Date.now()}`;
-  updatedWar.leakedIntel.unshift({
+  targetWar.leakedIntel.unshift({
     id: leakId,
-    author: leakerUsername,
-    text: intelText,
+    informantMasterId: leakerName,
+    intel: intelText,
     timestamp: Date.now(),
-    exposedMasterId: exposedMaster?.discordId
+    targetMasterId: exposedMaster?.discordId
   });
 
   const logText = exposedMaster
     ? `🕵️ INTEL LEAK: An anonymous leak verified that **${exposedMaster.username}** is contracted to **${exposedMaster.servantName}** (${exposedMaster.servantClass})! Leaked Dispatch: "${intelText}"`
     : `🕵️ INTEL LEAK: A clandestine report was broadcasted onto the Info Board: "${intelText}"`;
 
-  updatedWar.eventLogs.unshift({
+  targetWar.eventLogs.unshift({
     id: `evt_leak_${Date.now()}`,
     timestamp: Date.now(),
     text: logText,
@@ -331,7 +425,8 @@ export function leakIntelInWar(
   return {
     success: true,
     message: logText,
-    updatedWar
+    exposedTargetMaster: exposedMaster?.username,
+    updatedWar: targetWar
   };
 }
 
@@ -339,25 +434,28 @@ export function executeWarAction(
   war: HolyGrailWarSession,
   actorDiscordId: string,
   action: WarActionType,
-  targetParam?: string // Target Master ID or query
+  targetParam?: string
 ): WarActionResult {
-  const updatedWar: HolyGrailWarSession = JSON.parse(JSON.stringify(war));
-  const actor = updatedWar.participants[actorDiscordId];
+  const targetWar = war || globalWarSession;
+  if (!targetWar) {
+    return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
+  }
 
+  const actor = targetWar.participants[actorDiscordId];
   if (!actor || !actor.isAlive) {
-    return { success: false, message: 'You are eliminated from the Holy Grail War!', updatedWar };
+    return { success: false, message: 'You are eliminated from the Holy Grail War!', updatedWar: targetWar };
   }
 
   if (action === 'attack_suspect' && targetParam) {
-    return attackSuspectUserInWar(updatedWar, actorDiscordId, targetParam);
+    return attackSuspectUserInWar(targetWar, actorDiscordId, targetParam);
   }
 
   if (action === 'leak_intel' && targetParam) {
-    return leakIntelInWar(updatedWar, actor.username, targetParam);
+    return leakIntelInWar(targetWar, actorDiscordId, targetParam);
   }
 
   if (action === 'expose_master') {
-    const res = exposeMasterInWar(updatedWar, actorDiscordId, 'public_command');
+    const res = exposeMasterInWar(targetWar, actorDiscordId, 'public_command');
     return { success: true, message: 'Master exposed publicly.', updatedWar: res.updatedWar };
   }
 
@@ -374,12 +472,12 @@ export function executeWarAction(
     }
 
     case 'form_alliance': {
-      if (!targetParam || !updatedWar.participants[targetParam]) {
-        return { success: false, message: 'Specify a valid Master to form an alliance with!', updatedWar };
+      if (!targetParam || !targetWar.participants[targetParam]) {
+        return { success: false, message: 'Specify a valid Master to form an alliance with!', updatedWar: targetWar };
       }
-      const targetMaster = updatedWar.participants[targetParam];
+      const targetMaster = targetWar.participants[targetParam];
       if (targetMaster.discordId === actor.discordId || !targetMaster.isAlive) {
-        return { success: false, message: 'Cannot form an alliance with this Master.', updatedWar };
+        return { success: false, message: 'Cannot form an alliance with this Master.', updatedWar: targetWar };
       }
       const allianceId = `alliance_${Date.now()}`;
       const alliance: WarAlliance = {
@@ -389,28 +487,27 @@ export function executeWarAction(
         isSecret: true,
         betrayalRiskScore: 30
       };
-      updatedWar.alliances[allianceId] = alliance;
+      targetWar.alliances[allianceId] = alliance;
       actor.allianceId = allianceId;
       targetMaster.allianceId = allianceId;
-      resultMsg = `🤝 Secret Covenant formed between ${actor.isExposed ? actor.username : 'Unknown Master'} & ${targetMaster.isExposed ? targetMaster.username : 'Hidden Master'}! You fight side-by-side until one betrays the pact.`;
+      resultMsg = `🤝 Secret Covenant formed between ${actor.isExposed ? actor.username : 'Unknown Master'} & ${targetMaster.isExposed ? targetMaster.username : 'Hidden Master'}!`;
       break;
     }
 
     case 'betray_ally': {
-      if (!actor.allianceId || !updatedWar.alliances[actor.allianceId]) {
-        return { success: false, message: 'You have no active alliance to betray!', updatedWar };
+      if (!actor.allianceId || !targetWar.alliances[actor.allianceId]) {
+        return { success: false, message: 'You have no active alliance to betray!', updatedWar: targetWar };
       }
-      const activeAlliance = updatedWar.alliances[actor.allianceId];
+      const activeAlliance = targetWar.alliances[actor.allianceId];
       const allyId = activeAlliance.memberMasterIds.find(id => id !== actor.discordId);
-      if (!allyId || !updatedWar.participants[allyId]) {
-        return { success: false, message: 'No ally found in current pact.', updatedWar };
+      if (!allyId || !targetWar.participants[allyId]) {
+        return { success: false, message: 'No ally found in current pact.', updatedWar: targetWar };
       }
-      const ally = updatedWar.participants[allyId];
-      delete updatedWar.alliances[actor.allianceId];
+      const ally = targetWar.participants[allyId];
+      delete targetWar.alliances[actor.allianceId];
       actor.allianceId = undefined;
       ally.allianceId = undefined;
 
-      // Betrayal exposes both!
       actor.isExposed = true;
       actor.exposureReason = 'ambush_clash';
       ally.isExposed = true;
@@ -426,15 +523,14 @@ export function executeWarAction(
     }
 
     case 'challenge_master': {
-      if (!targetParam || !updatedWar.participants[targetParam]) {
-        return { success: false, message: 'Target Master not found!', updatedWar };
+      if (!targetParam || !targetWar.participants[targetParam]) {
+        return { success: false, message: 'Target Master not found!', updatedWar: targetWar };
       }
-      const opponent = updatedWar.participants[targetParam];
+      const opponent = targetWar.participants[targetParam];
       if (opponent.discordId === actor.discordId || !opponent.isAlive) {
-        return { success: false, message: 'Cannot challenge this target.', updatedWar };
+        return { success: false, message: 'Cannot challenge this target.', updatedWar: targetWar };
       }
 
-      // Open challenge exposes both
       actor.isExposed = true;
       actor.exposureReason = 'direct_combat';
       opponent.isExposed = true;
@@ -450,12 +546,11 @@ export function executeWarAction(
     }
 
     case 'simulate_skirmish': {
-      return simulateWarSkirmish(updatedWar);
+      return simulateWarSkirmish(targetWar);
     }
   }
 
-  // Record event log
-  updatedWar.eventLogs.unshift({
+  targetWar.eventLogs.unshift({
     id: `evt_${Date.now()}`,
     timestamp: Date.now(),
     text: resultMsg,
@@ -467,23 +562,25 @@ export function executeWarAction(
     message: resultMsg,
     combatTriggered: combatInfo,
     eliminatedMasterId: eliminatedId,
-    updatedWar
+    updatedWar: targetWar
   };
 }
 
 export function simulateWarSkirmish(war: HolyGrailWarSession): WarActionResult {
-  const updated: HolyGrailWarSession = JSON.parse(JSON.stringify(war));
-  const aliveRivals = Object.values(updated.participants).filter(p => p.isAlive);
+  const targetWar = war || globalWarSession;
+  if (!targetWar) {
+    return { success: false, message: 'Holy Grail War is not active.', updatedWar: war };
+  }
 
+  const aliveRivals = Object.values(targetWar.participants).filter(p => p.isAlive);
   if (aliveRivals.length < 2) {
     return {
       success: true,
       message: 'Not enough active Masters remaining in Fuyuki for a background skirmish.',
-      updatedWar: updated
+      updatedWar: targetWar
     };
   }
 
-  // Pick two random alive rivals to clash
   const idx1 = Math.floor(Math.random() * aliveRivals.length);
   let idx2 = Math.floor(Math.random() * (aliveRivals.length - 1));
   if (idx2 >= idx1) idx2++;
@@ -493,16 +590,13 @@ export function simulateWarSkirmish(war: HolyGrailWarSession): WarActionResult {
   const damage = Math.round(3500 + Math.random() * 4500);
   ai2.currentHp = Math.max(0, ai2.currentHp - damage);
 
-  // Chance to expose during intense skirmish
   if (!ai1.isExposed && Math.random() < 0.45) {
     ai1.isExposed = true;
     ai1.exposureReason = 'direct_combat';
-    ai1.exposedAt = Date.now();
   }
   if (!ai2.isExposed && Math.random() < 0.45) {
     ai2.isExposed = true;
     ai2.exposureReason = 'direct_combat';
-    ai2.exposedAt = Date.now();
   }
 
   const name1 = ai1.isExposed ? `Master **${ai1.username}** (${ai1.servantName})` : `An unidentified Master with **${ai1.servantClass}**`;
@@ -512,25 +606,24 @@ export function simulateWarSkirmish(war: HolyGrailWarSession): WarActionResult {
 
   if (ai2.currentHp <= 0) {
     ai2.isAlive = false;
-    ai2.isExposed = true; // Elimination exposes identity!
+    ai2.isExposed = true;
     ai1.kills++;
     clashText = `☠️ ELIMINATION: ${name1} struck a fatal blow and eliminated Master **${ai2.username}** (${ai2.servantName}) from the Holy Grail War!`;
   }
 
-  updated.eventLogs.unshift({
+  targetWar.eventLogs.unshift({
     id: `evt_skirmish_${Date.now()}`,
     timestamp: Date.now(),
     text: clashText,
     type: ai2.currentHp <= 0 ? 'elimination' : 'clash'
   });
 
-  // Check victory condition
-  const remainingAlive = Object.values(updated.participants).filter(p => p.isAlive);
+  const remainingAlive = Object.values(targetWar.participants).filter(p => p.isAlive);
   if (remainingAlive.length === 1) {
-    updated.status = 'concluded';
-    updated.grailWinnerId = remainingAlive[0].discordId;
+    targetWar.status = 'concluded';
+    targetWar.grailWinnerId = remainingAlive[0].discordId;
     remainingAlive[0].isExposed = true;
-    updated.eventLogs.unshift({
+    targetWar.eventLogs.unshift({
       id: `evt_grail_win_${Date.now()}`,
       timestamp: Date.now(),
       text: `🏆 THE HOLY GRAIL HAS MANIFESTED! Master **${remainingAlive[0].username}** (${remainingAlive[0].servantName}) is the sole survivor and has won the Holy Grail War!`,
@@ -542,7 +635,6 @@ export function simulateWarSkirmish(war: HolyGrailWarSession): WarActionResult {
     success: true,
     message: clashText,
     eliminatedMasterId: ai2.currentHp <= 0 ? ai2.discordId : undefined,
-    updatedWar: updated
+    updatedWar: targetWar
   };
 }
-

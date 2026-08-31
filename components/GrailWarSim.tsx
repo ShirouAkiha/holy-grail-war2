@@ -214,7 +214,7 @@ export default function GrailWarSim({
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-rose-500" />
-            <span className="text-white/60">Civilian Deaths: <strong>{grailWar.innocentVictims?.length || 0}</strong></span>
+            <span className="text-white/60">Civilian Deaths: <strong>{grailWar.civilianCasualties?.length || 0}</strong></span>
           </div>
         </div>
       </div>
@@ -291,7 +291,7 @@ export default function GrailWarSim({
                 }`}
               >
                 <UserX className="w-3.5 h-3.5" />
-                <span>Civilian Casualties ({grailWar.innocentVictims?.length || 0})</span>
+                <span>Civilian Casualties ({grailWar.civilianCasualties?.length || 0})</span>
               </button>
             </div>
 
@@ -457,12 +457,12 @@ export default function GrailWarSim({
                     <div className="flex items-center justify-between text-[10px] text-purple-300/60">
                       <span className="flex items-center gap-1.5">
                         <Radio className="w-3 h-3 text-purple-400" />
-                        <span>Dispatch by <strong>{leak.author}</strong></span>
+                        <span>Dispatch by <strong>{leak.informantMasterId}</strong></span>
                       </span>
                       <span>{new Date(leak.timestamp).toLocaleTimeString()}</span>
                     </div>
-                    <p className="text-white text-xs leading-relaxed italic">&quot;{leak.text}&quot;</p>
-                    {leak.exposedMasterId && (
+                    <p className="text-white text-xs leading-relaxed italic">&quot;{leak.intel}&quot;</p>
+                    {leak.targetMasterId && (
                       <div className="pt-1 text-[10px] text-purple-400 font-semibold">
                         🎯 Confirmed target outed on Intelligence Board.
                       </div>
@@ -476,24 +476,24 @@ export default function GrailWarSim({
           {/* TAB 3: CIVILIAN CASUALTIES LOG */}
           {activeBoardTab === 'casualties' && (
             <div className="space-y-3">
-              {(!grailWar.innocentVictims || grailWar.innocentVictims.length === 0) ? (
+              {(!grailWar.civilianCasualties || grailWar.civilianCasualties.length === 0) ? (
                 <div className="p-8 text-center bg-[#0a0a0a] rounded-lg border border-[#1a1a1a] space-y-2">
                   <UserX className="w-8 h-8 text-white/20 mx-auto" />
                   <p className="text-xs font-mono text-white/50">Zero civilian casualties recorded.</p>
                   <p className="text-[11px] font-mono text-white/30">Attacking innocent server members who are not Masters will record their deaths and expose the attacker.</p>
                 </div>
               ) : (
-                grailWar.innocentVictims.map(vic => (
+                grailWar.civilianCasualties.map(vic => (
                   <div key={vic.id} className="p-3.5 rounded-lg bg-[#180808] border border-rose-500/30 font-mono text-xs space-y-1">
                     <div className="flex items-center justify-between text-[10px] text-rose-400/70">
                       <span className="flex items-center gap-1.5">
                         <Skull className="w-3 h-3 text-rose-500" />
-                        <span>Slain Civilian: <strong>{vic.username}</strong></span>
+                        <span>Slain Bystander: <strong>{vic.name}</strong></span>
                       </span>
                       <span>{new Date(vic.timestamp).toLocaleTimeString()}</span>
                     </div>
                     <p className="text-white/80 text-[11px]">
-                      Struck down by Master <strong>{vic.killedBy}</strong> ({vic.killerServant}) in a botched ambush.
+                      Struck down by Master <strong>{vic.slainByMasterId}</strong> in a botched ambush.
                     </p>
                   </div>
                 ))

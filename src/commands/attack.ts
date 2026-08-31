@@ -3,14 +3,11 @@ import {
   ChatInputCommandInteraction, 
   EmbedBuilder 
 } from 'discord.js';
-import { getOrCreateMaster } from '../database/service';
+import { getOrCreateMaster, saveMaster } from '../database/service';
 import { 
-  createHolyGrailWarSession, 
+  getOrInitWarSession, 
   attackSuspectUserInWar 
 } from '../engine/grailwar';
-import { HolyGrailWarSession } from '../types';
-
-let activeWarSession: HolyGrailWarSession | null = null;
 
 export const data = new SlashCommandBuilder()
   .setName('attack')
@@ -35,19 +32,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    if (!activeWarSession) {
-      activeWarSession = createHolyGrailWarSession({
-        discordId: interaction.user.id,
-        username: interaction.user.username,
-        servantId: activeServant.id,
-        servantName: activeServant.template.name,
-        avatarUrl: activeServant.template.avatarUrl,
-        maxHp: activeServant.template.baseHp
-      });
-    }
-
+    const war = getOrInitWarSession(master);
     const targetQuery = interaction.options.getString('target', true);
-    const res = attackSuspectUserInWar(activeWarSession, interaction.user.id, targetQuery);
+    const res = attackSuspectUserInWar(war, interaction.user.id, targetQuery);
+    await saveMaster(master);
 
     const embed = new EmbedBuilder()
       .setTitle(res.targetWasMaster ? '⚔️ TACTICAL AMBUSH: RIVAL MASTER ENGAGED!' : '☠️ COLLATERAL CASUALTY: CIVILIAN SLAIN!')

@@ -943,7 +943,8 @@ export default function DiscordEmulator({
       const p = grailWar.participants[master.discordId] || Object.values(grailWar.participants)[0];
       const aliveCount = Object.values(grailWar.participants).filter(x => x.isAlive).length;
       const exposedCount = Object.values(grailWar.participants).filter(x => x.isExposed).length;
-      const civilianDeaths = grailWar.innocentVictims?.length || 0;
+      const civilianDeaths = grailWar.civilianCasualties?.length || 0;
+      const leaksCount = grailWar.leakedIntel?.length || 0;
 
       // 1. Render roster lines (concealing shadow participants)
       const rosterLines = Object.values(grailWar.participants).map((m, idx) => {
