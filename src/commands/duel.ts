@@ -11,6 +11,7 @@ import {
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { MasterProfile, MasterServantInstance, CardType, ServantClass } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
+import { getOrInitWarSession, recordDuelOutcome } from '../engine/grailwar';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -568,44 +569,124 @@ async function finishDuel(
   p1Master: MasterProfile,
   p2Master: MasterProfile | null
 ) {
-  // Grant rewards to winning Master (SQ, Bond EXP, Parameter points)
-  if (!winner.isAi) {
-    const winningMaster = winner.userId === p1Master.discordId ? p1Master : p2Master;
-    if (winningMaster) {
-      winningMaster.saintQuartz += 3;
-      winningMaster.grailWarWins = (winningMaster.grailWarWins || 0) + 1;
-      const s = winningMaster.servants.find(srv => srv.id === winner.servant.id);
-      if (s) {
-        s.bondLevel = Math.min(10, (s.bondLevel || 1) + 1);
-        s.availableStatPoints = (s.availableStatPoints || 0) + 2;
-      }
-      await saveMaster(winningMaster);
+  const warSession = getOrInitWarSession(p1Master);
+
+  // If AI opponent defeated the player Master, automatically eliminate player Master
+  if (winner.isAi) {
+    const outcome = recordDuelOutcome(warSession, winner.username, loser.username, 'kill');
+
+    const defeatEmbed = new EmbedBuilder()
+      .setTitle('☠️ FATAL DUEL DEFEAT — MASTER ELIMINATED')
+      .setDescription(
+        `**${winner.servant.template.name}** (Master: ${winner.username}) has dealt a mortal blow to **${loser.servant.template.name}** (Master: ${loser.username})!\n\n` +
+        `💬 *"${loser.servant.customQuotes?.defeat || loser.servant.template.defeatQuote}"*\n\n` +
+        `💀 **You have been PERMANENTLY ELIMINATED from the Holy Grail War.**\n` +
+        `Your status on the Intelligence Board (/grailwar) is now **💀 DECEASED** (HP: 0).`
+      )
+      .setColor(0xef4444);
+
+    if (loser.servant.template.avatarUrl) {
+      defeatEmbed.setThumbnail(loser.servant.template.avatarUrl);
     }
+
+    await i.update({
+      embeds: [defeatEmbed],
+      components: []
+    });
+    return;
+  }
+
+  // Player Master won: Grant initial rewards and prompt for Kill vs Spare decision
+  const winningMaster = winner.userId === p1Master.discordId ? p1Master : p2Master;
+  if (winningMaster) {
+    winningMaster.saintQuartz += 3;
+    winningMaster.grailWarWins = (winningMaster.grailWarWins || 0) + 1;
+    const s = winningMaster.servants.find(srv => srv.id === winner.servant.id);
+    if (s) {
+      s.bondLevel = Math.min(10, (s.bondLevel || 1) + 1);
+      s.availableStatPoints = (s.availableStatPoints || 0) + 2;
+    }
+    await saveMaster(winningMaster);
   }
 
   const victoryQuote =
     winner.servant.customQuotes?.victory || winner.servant.template.victoryQuote;
 
-  const resultEmbed = new EmbedBuilder()
-    .setTitle(winner.isAi ? '☠️ DEFEAT IN THE DUEL' : '🏆 VICTORY ACHIEVED!')
+  const fateEmbed = new EmbedBuilder()
+    .setTitle('🏆 DUEL VICTORY — DECIDE MASTER\'S FATE')
     .setDescription(
-      `**${winner.servant.template.name}** has defeated **${loser.servant.template.name}** in the Holy Grail duel!\n\n` +
+      `**${winner.servant.template.name}** (Master: ${winner.username}) has brought down **${loser.servant.template.name}** (Master: ${loser.username})!\n\n` +
       `💬 *"${victoryQuote}"*\n\n` +
-      (!winner.isAi
-        ? `💰 **Master Rewards:**\n` +
-          `• +3 Saint Quartz 💎\n` +
-          `• +300 Bond EXP (+1 Bond Level) 💖\n` +
-          `• +2 Parameter Points 📊`
-        : `*The Shadow Servant dissipates back into the void... Train and try again!*`)
+      `⚖️ **The Fate of Master ${loser.username} rests in your hands:**\n` +
+      `Choose whether to **Execute** the defeated Master to permanently eliminate them from the Holy Grail War, or show mercy and **Spare** their life.`
     )
-    .setColor(winner.isAi ? 0xef4444 : 0x22c55e);
+    .setColor(0x22c55e);
 
   if (winner.servant.template.avatarUrl) {
-    resultEmbed.setThumbnail(winner.servant.template.avatarUrl);
+    fateEmbed.setThumbnail(winner.servant.template.avatarUrl);
   }
 
-  await i.update({
-    embeds: [resultEmbed],
-    components: []
+  const fateRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId('duel_fate_kill')
+      .setLabel('☠️ Execute Master (Kill & Eliminate)')
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId('duel_fate_spare')
+      .setLabel('🕊️ Spare Master (Show Mercy)')
+      .setStyle(ButtonStyle.Success)
+  );
+
+  const response = await i.update({
+    embeds: [fateEmbed],
+    components: [fateRow],
+    fetchReply: true
   });
+
+  try {
+    const confirmation = await response.awaitMessageComponent({
+      filter: (btnInteraction: any) => btnInteraction.user.id === winner.userId,
+      time: 60000,
+      componentType: ComponentType.Button
+    });
+
+    const decision = confirmation.customId === 'duel_fate_kill' ? 'kill' : 'spare';
+    const outcome = recordDuelOutcome(warSession, winner.username, loser.username, decision);
+
+    if (decision === 'kill') {
+      const execEmbed = new EmbedBuilder()
+        .setTitle('☠️ FATE SEALED — MASTER EXECUTED')
+        .setDescription(
+          `Master **${winner.username}** has chosen to **EXECUTE** Master **${loser.username}**!\n\n` +
+          `☠️ Master **${loser.username}** (${loser.servant.template.name}) was slain and **PERMANENTLY ELIMINATED** from the Holy Grail War.\n\n` +
+          `💰 **Master Rewards:** +3 Saint Quartz 💎 | +300 Bond EXP 💖 | +2 Parameter Points 📊`
+        )
+        .setColor(0xef4444);
+
+      await confirmation.update({
+        embeds: [execEmbed],
+        components: []
+      });
+    } else {
+      const spareEmbed = new EmbedBuilder()
+        .setTitle('🕊️ MERCY BESTOWED — MASTER SPARED')
+        .setDescription(
+          `Master **${winner.username}** has chosen to **SPARE** Master **${loser.username}**!\n\n` +
+          `🕊️ Mercy was shown. Master **${loser.username}** survives on critical HP (${outcome.defeatedMaster?.currentHp || 1000}/${outcome.defeatedMaster?.maxHp || 15000}), but remains in the war.\n\n` +
+          `💰 **Master Rewards:** +3 Saint Quartz 💎 | +300 Bond EXP 💖 | +2 Parameter Points 📊`
+        )
+        .setColor(0x22c55e);
+
+      await confirmation.update({
+        embeds: [spareEmbed],
+        components: []
+      });
+    }
+  } catch {
+    // Timeout default: spare
+    recordDuelOutcome(warSession, winner.username, loser.username, 'spare');
+    await i.editReply({
+      components: []
+    });
+  }
 }

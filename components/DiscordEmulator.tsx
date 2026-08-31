@@ -27,7 +27,9 @@ import {
   simulateWarSkirmish,
   attackSuspectUserInWar,
   leakIntelInWar,
-  exposeMasterInWar
+  exposeMasterInWar,
+  recordDuelOutcome,
+  createHolyGrailWarSession
 } from '../lib/engine/grailwar';
 import {
   Terminal,
@@ -206,6 +208,7 @@ export default function DiscordEmulator({
   const msgCounterRef = useRef<number>(100);
 
   const allThrone = [...SERVANT_DATABASE, ...customServants];
+  const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
 
   const getNextId = (prefix: string) => {
     msgCounterRef.current += 1;
@@ -223,7 +226,6 @@ export default function DiscordEmulator({
   const handleCommand = (cmd: string) => {
     const rawCmd = cmd.trim();
     const trimmed = rawCmd.toLowerCase();
-    const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
 
     // Check automatic exposure if executing commands in PUBLIC channel
     if (activeChannel === 'public' && activeServant) {
@@ -733,11 +735,90 @@ export default function DiscordEmulator({
         return;
       }
 
+      // Check if user is eliminated from the Holy Grail War
+      const userParticipant =
+        grailWar.participants[master.discordId] ||
+        Object.values(grailWar.participants).find(
+          p => p.username.toLowerCase() === master.username.toLowerCase()
+        );
+
+      if (userParticipant && !userParticipant.isAlive) {
+        addMessage({
+          id: getNextId('bot_duel_dead'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '💀 You Are Deceased in the Holy Grail War',
+            description:
+              `**${master.username}**, you have been slain and permanently eliminated from this Holy Grail War!\n\n` +
+              `Your contract with **${activeServant.template.name}** has been severed. You can inspect the Intelligence Board with \`/grailwar status\` or restart the Holy Grail War tournament.`,
+            color: '#ef4444',
+            footer: 'Deceased Masters are permanently removed from combat'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary', emoji: '📋' },
+              { id: 'war_reset_tournament', label: 'Restart Tournament Session', style: 'secondary', emoji: '🔄' }
+            ]
+          }
+        });
+        return;
+      }
+
+      // Match target opponent from Holy Grail War
+      const targetQuery = trimmed.replace('/duel', '').replace(/[<@!>]/g, '').trim().toLowerCase();
+      let targetParticipant = targetQuery
+        ? Object.values(grailWar.participants).find(
+            p =>
+              p.username.toLowerCase().includes(targetQuery) ||
+              p.servantName.toLowerCase().includes(targetQuery) ||
+              p.discordId.toLowerCase() === targetQuery
+          )
+        : Object.values(grailWar.participants).find(
+            p =>
+              p.discordId !== master.discordId &&
+              p.username.toLowerCase() !== master.username.toLowerCase() &&
+              p.isAlive
+          );
+
+      if (!targetParticipant) {
+        targetParticipant =
+          Object.values(grailWar.participants).find(p => p.discordId !== master.discordId) ||
+          Object.values(grailWar.participants)[1];
+      }
+
+      if (targetParticipant && !targetParticipant.isAlive) {
+        addMessage({
+          id: getNextId('bot_duel_target_dead'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '💀 Target Master Already Eliminated',
+            description: `Master **${targetParticipant.username}** (${targetParticipant.servantName}) has already been slain in this Holy Grail War. Choose an alive Master to duel!`,
+            color: '#ef4444'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary', emoji: '📋' }
+            ]
+          }
+        });
+        return;
+      }
+
       const p1 = createCombatantFromMasterServant(activeServant, master.username);
-      const rivalTemplate = allThrone.find(s => s.id !== activeServant.templateId) || SERVANT_DATABASE[1];
+      const rivalTemplate =
+        allThrone.find(s => s.id === targetParticipant?.servantId) ||
+        allThrone.find(s => s.name.toLowerCase().includes(targetParticipant?.servantName.toLowerCase() || '')) ||
+        allThrone.find(s => s.id !== activeServant.templateId) ||
+        SERVANT_DATABASE[1];
+
+      const rivalMasterName = targetParticipant?.username || 'itsderpo';
       const p2 = createCombatantFromMasterServant({
-        id: 'rival_combatant_01',
-        masterId: 'rival_master',
+        id: targetParticipant?.discordId || 'rival_combatant_01',
+        masterId: targetParticipant?.discordId || 'rival_master',
         templateId: rivalTemplate.id,
         level: 20,
         experience: 1000,
@@ -753,10 +834,10 @@ export default function DiscordEmulator({
         },
         bondLevel: 3,
         template: rivalTemplate
-      }, 'Rival Master Kirei');
+      }, rivalMasterName);
 
-      p2.id = 'rival_ai_duel';
-      p2.name = 'Rival ' + rivalTemplate.name;
+      p2.id = targetParticipant?.discordId || 'rival_ai_duel';
+      p2.name = rivalTemplate.name;
 
       const initialBattle = initializeBattle(p1, p2);
       setActiveDuel({ battle: initialBattle });
@@ -952,6 +1033,41 @@ export default function DiscordEmulator({
         return;
       }
 
+      // SUB-CASE RESET: /grailwar reset
+      if (trimmed.startsWith('/grailwar reset') || trimmed.startsWith('/resetwar')) {
+        const newWar = createHolyGrailWarSession({
+          discordId: master.discordId,
+          username: master.username,
+          servantId: activeServant?.templateId || 'artoria_pendragon_saber',
+          servantName: activeServant?.template.name || 'Artoria Pendragon',
+          servantClass: activeServant?.template.servantClass || 'Saber',
+          avatarUrl: master.avatarUrl,
+          maxHp: activeServant ? 10000 + activeServant.level * 100 : 11000
+        });
+        onUpdateGrailWar(newWar);
+        addMessage({
+          id: getNextId('bot_war_reset'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '🔄 Holy Grail War Tournament Initialized',
+            description:
+              `A brand new **7-Master Fuyuki Holy Grail War** has commenced!\n\n` +
+              `All 7 Master-Servant contracts have been restored to full health in the shadows of Fuyuki City.\n` +
+              `Conceal your identity, gather intelligence, and clash for the wish-granting artifact!`,
+            color: '#3b82f6'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary', emoji: '📋' },
+              { id: 'quick_start_duel', label: 'Initiate Duel (/duel)', style: 'danger', emoji: '⚔️' }
+            ]
+          }
+        });
+        return;
+      }
+
       // SUB-CASE E: /grailwar status (Secret Intelligence Board)
       const p = grailWar.participants[master.discordId] || Object.values(grailWar.participants)[0];
       const aliveCount = Object.values(grailWar.participants).filter(x => x.isAlive).length;
@@ -965,8 +1081,13 @@ export default function DiscordEmulator({
         const statusIcon = !m.isAlive ? '💀' : m.isExposed ? '📡' : '🕶️';
 
         if (m.isExposed || isUser || !m.isAlive) {
-          const hpBar = `${m.currentHp.toLocaleString()}/${m.maxHp.toLocaleString()}`;
-          const exposureTag = m.exposureReason === 'public_command'
+          const hpBar = !m.isAlive
+            ? `0/${m.maxHp.toLocaleString()}`
+            : `${m.currentHp.toLocaleString()}/${m.maxHp.toLocaleString()}`;
+
+          const exposureTag = !m.isAlive
+            ? '💀 [DECEASED / PERMANENTLY ELIMINATED]'
+            : m.exposureReason === 'public_command'
             ? '📡 [Exposed: Public Command]'
             : m.exposureReason === 'ambush_clash'
             ? '⚔️ [Exposed: Ambush Clash]'
@@ -977,7 +1098,7 @@ export default function DiscordEmulator({
             : '⚔️ [Exposed: Open Combat]';
 
           return `• ${statusIcon} **${m.username}** ${isUser ? '**(YOU)**' : ''} — **${m.servantName}** (${m.servantClass}) — HP: ${hpBar} | Kills: ${m.kills}` +
-                 `\n  ↳ *${!m.isAlive ? 'Eliminated from Tournament' : exposureTag}*`;
+                 `\n  ↳ *${exposureTag}*`;
         } else {
           return `• ${statusIcon} **[Unknown Master #${idx + 1} — In Shadows]** — Servant: **[CLASSIFIED]** (Class: Unknown) — HP: [CLASSIFIED] | Status: Concealed`;
         }
@@ -1230,6 +1351,91 @@ export default function DiscordEmulator({
         return;
       }
 
+      if (btnId === 'duel_fate_kill' || btnId === 'duel_fate_spare') {
+        const decision = btnId === 'duel_fate_kill' ? 'kill' : 'spare';
+        const rivalMaster = activeDuel?.battle.player2.masterName || 'itsderpo';
+        const rivalServantName = activeDuel?.battle.player2.name || 'Scáthach';
+
+        const outcome = recordDuelOutcome(grailWar, master.username, rivalMaster, decision);
+        onUpdateGrailWar(outcome.updatedWar);
+
+        // Grant winner rewards
+        const updatedServants = master.servants.map(s => {
+          if (s.id === activeServant?.id) {
+            return {
+              ...s,
+              bondLevel: Math.min(10, (s.bondLevel || 1) + 1),
+              availableStatPoints: (s.availableStatPoints || 0) + 2
+            };
+          }
+          return s;
+        });
+
+        onUpdateMaster({
+          ...master,
+          servants: updatedServants,
+          saintQuartz: master.saintQuartz + 3,
+          grailWarWins: (master.grailWarWins || 0) + 1
+        });
+
+        const aliveMastersCount = Object.values(outcome.updatedWar.participants).filter(p => p.isAlive).length;
+
+        if (decision === 'kill') {
+          addMessage({
+            id: getNextId('bot_duel_fate_exec'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '☠️ FATE SEALED — MASTER EXECUTED',
+              description:
+                `Master **${master.username}** has chosen to **EXECUTE** Master **${rivalMaster}**!\n\n` +
+                `☠️ Master **${rivalMaster}** (${rivalServantName}) was dealt a lethal strike and has been **PERMANENTLY ELIMINATED** from the Holy Grail War.\n\n` +
+                `👥 **Surviving Masters:** **${aliveMastersCount}/7** alive in Fuyuki City.\n\n` +
+                `💰 **Master Rewards Claimed:**\n` +
+                `• +3 Saint Quartz 💎\n` +
+                `• +300 Bond EXP (+1 Bond Level) 💖\n` +
+                `• +2 Parameter Points 📊`,
+              color: '#ef4444',
+              footer: outcome.updatedWar.status === 'concluded' ? '🏆 HOLY GRAIL WAR CONCLUDED!' : 'Holy Grail War State Updated'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary', emoji: '📋' },
+                { id: 'quick_start_duel', label: 'Challenge Next Master (/duel)', style: 'danger', emoji: '⚔️' }
+              ]
+            }
+          });
+        } else {
+          addMessage({
+            id: getNextId('bot_duel_fate_mercy'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '🕊️ MERCY BESTOWED — MASTER SPARED',
+              description:
+                `Master **${master.username}** has chosen to **SPARE** Master **${rivalMaster}**!\n\n` +
+                `🕊️ You showed mercy in combat. Master **${rivalMaster}** clings to life on critical HP (**${outcome.defeatedMaster?.currentHp || 1000}/${outcome.defeatedMaster?.maxHp || 14820}**), but remains an active participant in the war.\n\n` +
+                `💰 **Master Rewards Claimed:**\n` +
+                `• +3 Saint Quartz 💎\n` +
+                `• +300 Bond EXP (+1 Bond Level) 💖\n` +
+                `• +2 Parameter Points 📊`,
+              color: '#22c55e',
+              footer: 'Holy Grail War State Updated'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary', emoji: '📋' },
+                { id: 'quick_start_duel', label: 'Challenge Next Master (/duel)', style: 'danger', emoji: '⚔️' }
+              ]
+            }
+          });
+        }
+        setActiveDuel(null);
+        return;
+      }
+
       let cards: CardType[] = ['Buster', 'Arts', 'Quick'];
       let useNp = false;
 
@@ -1252,26 +1458,63 @@ export default function DiscordEmulator({
 
       if (updatedState.turnPhase === 'victory' || updatedState.turnPhase === 'defeat') {
         const isWin = updatedState.turnPhase === 'victory';
-        addMessage({
-          id: getNextId('bot_duel_end'),
-          sender: 'bot',
-          timestamp: 'Just now',
-          embed: {
-            title: isWin ? '🏆 DUEL VICTORY!' : '☠️ DUEL DEFEAT',
-            description: isWin
-              ? `**${updatedState.player1.name}** won the battle!\n\n💬 *"A worthy clash. Walk with honor, Master."*\n\n📈 **Rewards:** +500 EXP, +1 Bond Point`
-              : `**${updatedState.player2.name}** has defeated you in battle. Rest and recover!`,
-            color: isWin ? '#22c55e' : '#ef4444',
-            footer: 'Battle Finished'
-          },
-          components: {
-            type: 'buttons',
-            items: [
-              { id: 'quick_start_duel', label: 'Rematch Duel', style: 'primary', emoji: '⚔️' },
-              { id: 'quick_servant_card', label: 'View Servant', style: 'secondary', emoji: '🛡️' }
-            ]
-          }
-        });
+
+        if (isWin) {
+          // Player won: Prompt with Kill or Spare choice
+          addMessage({
+            id: getNextId('bot_duel_fate_prompt'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '🏆 DUEL VICTORY — DECIDE MASTER\'S FATE',
+              description:
+                `**${updatedState.player1.name}** (Master: ${master.username}) has defeated **${updatedState.player2.name}** (Master: ${updatedState.player2.masterName}) in the Holy Grail duel!\n\n` +
+                `💬 *"A decisive clash. The enemy Master kneels before you."*\n\n` +
+                `⚖️ **The Fate of Master ${updatedState.player2.masterName} is in your hands:**\n` +
+                `Choose whether to **Execute** the fallen Master to permanently eliminate them from the Holy Grail War, or show mercy and **Spare** their life.`,
+              color: '#22c55e',
+              footer: 'Select an execution decision below:'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'duel_fate_kill', label: '☠️ Execute Master (Kill & Eliminate)', style: 'danger', emoji: '☠️' },
+                { id: 'duel_fate_spare', label: '🕊️ Spare Master (Show Mercy)', style: 'success', emoji: '🕊️' }
+              ]
+            }
+          });
+        } else {
+          // Player defeated by opponent (e.g. itsderpo)
+          const outcome = recordDuelOutcome(grailWar, updatedState.player2.masterName, master.username, 'kill');
+          onUpdateGrailWar(outcome.updatedWar);
+          setActiveDuel(null);
+
+          const aliveCount = Object.values(outcome.updatedWar.participants).filter(p => p.isAlive).length;
+
+          addMessage({
+            id: getNextId('bot_duel_defeat_exec'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '☠️ FATAL DUEL DEFEAT — MASTER ELIMINATED',
+              description:
+                `**${updatedState.player2.name}** (Master: ${updatedState.player2.masterName}) has struck down **${updatedState.player1.name}** (Master: ${master.username})!\n\n` +
+                `💬 *"A duel in the Holy Grail War is fought to the death. Your contract has been severed."*\n\n` +
+                `💀 **You have been PERMANENTLY ELIMINATED from the Holy Grail War.**\n` +
+                `Your status on the Intelligence Board is now **💀 DECEASED** (HP: 0/${grailWar.participants[master.discordId]?.maxHp || 11000}).\n\n` +
+                `👥 **Surviving Masters:** **${aliveCount}/7** alive in Fuyuki.`,
+              color: '#ef4444',
+              footer: 'You have been eliminated from the Holy Grail War tournament'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary', emoji: '📋' },
+                { id: 'war_reset_tournament', label: 'Restart Tournament Session', style: 'secondary', emoji: '🔄' }
+              ]
+            }
+          });
+        }
       } else {
         addMessage({
           id: getNextId('bot_duel_turn'),
@@ -1351,6 +1594,40 @@ export default function DiscordEmulator({
             color: result.success ? '#22c55e' : '#ef4444'
           }
         });
+        return;
+      }
+
+      if (btnId === 'war_reset_tournament') {
+        const newWar = createHolyGrailWarSession({
+          discordId: master.discordId,
+          username: master.username,
+          servantId: activeServant?.templateId || 'artoria_pendragon_saber',
+          servantName: activeServant?.template.name || 'Artoria Pendragon',
+          servantClass: activeServant?.template.servantClass || 'Saber',
+          avatarUrl: master.avatarUrl,
+          maxHp: activeServant ? 10000 + activeServant.level * 100 : 11000
+        });
+        onUpdateGrailWar(newWar);
+        addMessage({
+          id: getNextId('bot_war_reset_btn'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '🔄 Holy Grail War Session Reset',
+            description:
+              `A brand new **7-Master Fuyuki Holy Grail War** has been initiated!\n\n` +
+              `All 7 Master-Servant contracts are restored to life with full HP in the shadows. Step into the war with honor!`,
+            color: '#3b82f6'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary', emoji: '📋' },
+              { id: 'quick_start_duel', label: 'Initiate Duel (/duel)', style: 'danger', emoji: '⚔️' }
+            ]
+          }
+        });
+        return;
       }
     }
   };

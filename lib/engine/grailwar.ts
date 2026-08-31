@@ -12,12 +12,12 @@ import { SERVANT_DATABASE } from '../data/servants';
 let globalWarSession: HolyGrailWarSession | null = null;
 
 const CANONICAL_WAR_CLASSES = [
-  { slot: 2, class: 'Archer' as const, servantId: 'gilgamesh_archer', servantName: 'King of Heroes (Gilgamesh)' },
-  { slot: 3, class: 'Lancer' as const, servantId: 'cu_chulainn_lancer', servantName: 'Hound of Ulster (Cu Chulainn)' },
-  { slot: 4, class: 'Berserker' as const, servantId: 'heracles_berserker', servantName: 'Great Berserker (Heracles)' },
-  { slot: 5, class: 'Ruler' as const, servantId: 'jeanne_darc_ruler', servantName: 'Holy Maiden (Jeanne d\'Arc)' },
-  { slot: 6, class: 'Assassin' as const, servantId: 'emiya_archer', servantName: 'Nameless Guardian (EMIYA)' },
-  { slot: 7, class: 'Rider' as const, servantId: 'terminal_saber_linus', servantName: 'Iron Sovereign (Linus)' }
+  { slot: 2, class: 'Archer' as const, servantId: 'gilgamesh_archer', servantName: 'King of Heroes (Gilgamesh)', defaultUsername: 'Shadow Master #2' },
+  { slot: 3, class: 'Lancer' as const, servantId: 'scathach_lancer', servantName: 'Scáthach (Lancer)', defaultUsername: 'itsderpo' },
+  { slot: 4, class: 'Berserker' as const, servantId: 'heracles_berserker', servantName: 'Great Berserker (Heracles)', defaultUsername: 'Shadow Master #4' },
+  { slot: 5, class: 'Ruler' as const, servantId: 'jeanne_darc_ruler', servantName: 'Holy Maiden (Jeanne d\'Arc)', defaultUsername: 'Shadow Master #5' },
+  { slot: 6, class: 'Assassin' as const, servantId: 'emiya_archer', servantName: 'Nameless Guardian (EMIYA)', defaultUsername: 'Shadow Master #6' },
+  { slot: 7, class: 'Rider' as const, servantId: 'terminal_saber_linus', servantName: 'Iron Sovereign (Linus)', defaultUsername: 'Shadow Master #7' }
 ];
 
 export function createHolyGrailWarSession(
@@ -47,10 +47,10 @@ export function createHolyGrailWarSession(
   CANONICAL_WAR_CLASSES.forEach(r => {
     const aiSlotId = `ai_shadow_slot_${r.slot}`;
     const t = SERVANT_DATABASE.find(s => s.id === r.servantId);
-    const hp = t ? t.baseHp : 12500;
+    const hp = t ? t.baseHp : 14820;
     participants[aiSlotId] = {
       discordId: aiSlotId,
-      username: `Shadow Master #${r.slot}`,
+      username: r.defaultUsername || `Shadow Master #${r.slot}`,
       servantId: r.servantId,
       servantName: r.servantName,
       servantClass: r.class,
@@ -638,3 +638,120 @@ export function simulateWarSkirmish(war: HolyGrailWarSession): WarActionResult {
     updatedWar: targetWar
   };
 }
+
+/**
+ * Records the outcome of a duel between two Masters with the decisive choice to Kill or Spare.
+ * If killed, the defeated Master is permanently eliminated from the Holy Grail War.
+ */
+export function recordDuelOutcome(
+  war: HolyGrailWarSession,
+  winnerQuery: string,
+  loserQuery: string,
+  decision: 'kill' | 'spare'
+): {
+  updatedWar: HolyGrailWarSession;
+  message: string;
+  eliminated: boolean;
+  victorMaster?: WarMasterParticipant;
+  defeatedMaster?: WarMasterParticipant;
+} {
+  const targetWar = war || globalWarSession;
+  if (!targetWar) {
+    return {
+      updatedWar: war,
+      message: 'Holy Grail War session not found.',
+      eliminated: false
+    };
+  }
+
+  const findParticipant = (q: string) => {
+    const clean = q.replace(/[<@!>]/g, '').trim().toLowerCase();
+    return Object.values(targetWar.participants).find(
+      p =>
+        p.discordId.toLowerCase() === clean ||
+        p.username.toLowerCase() === clean ||
+        p.username.toLowerCase().includes(clean) ||
+        clean.includes(p.username.toLowerCase()) ||
+        p.servantName.toLowerCase().includes(clean)
+    );
+  };
+
+  const victor = findParticipant(winnerQuery) || Object.values(targetWar.participants)[0];
+  let defeated = findParticipant(loserQuery);
+
+  // If defeated participant isn't in participants map (e.g. shadow / rival), find first alive rival
+  if (!defeated) {
+    defeated = Object.values(targetWar.participants).find(
+      p => p.discordId !== victor.discordId && p.isAlive
+    );
+  }
+
+  if (!defeated) {
+    return {
+      updatedWar: targetWar,
+      message: 'Defeated Master was not found in the Holy Grail War roster.',
+      eliminated: false,
+      victorMaster: victor
+    };
+  }
+
+  // Both identities become exposed due to the decisive duel
+  victor.isExposed = true;
+  victor.exposureReason = 'direct_combat';
+  defeated.isExposed = true;
+  defeated.exposureReason = 'direct_combat';
+
+  let outcomeLog = '';
+  let isEliminated = false;
+
+  if (decision === 'kill') {
+    defeated.isAlive = false;
+    defeated.currentHp = 0;
+    victor.kills = (victor.kills || 0) + 1;
+    isEliminated = true;
+
+    outcomeLog = `☠️ FATAL EXECUTION: Master **${victor.username}** (${victor.servantName}) dealt the finishing blow and EXECUTED Master **${defeated.username}** (${defeated.servantName})! Master **${defeated.username}** is PERMANENTLY ELIMINATED from the Holy Grail War!`;
+
+    targetWar.eventLogs.unshift({
+      id: `evt_exec_${Date.now()}`,
+      timestamp: Date.now(),
+      text: outcomeLog,
+      type: 'elimination'
+    });
+
+    const aliveList = Object.values(targetWar.participants).filter(p => p.isAlive);
+    if (aliveList.length === 1) {
+      targetWar.status = 'concluded';
+      targetWar.grailWinnerId = aliveList[0].discordId;
+      targetWar.eventLogs.unshift({
+        id: `evt_win_${Date.now()}`,
+        timestamp: Date.now(),
+        text: `🏆 THE HOLY GRAIL HAS MANIFESTED! Master **${aliveList[0].username}** (${aliveList[0].servantName}) is the sole survivor and has won the Holy Grail War!`,
+        type: 'clash'
+      });
+    }
+  } else {
+    // Spared: left on critical HP (10% max HP)
+    defeated.isAlive = true;
+    defeated.currentHp = Math.max(1, Math.round(defeated.maxHp * 0.1));
+    isEliminated = false;
+
+    outcomeLog = `🕊️ MERCY BESTOWED: Master **${victor.username}** (${victor.servantName}) defeated Master **${defeated.username}** (${defeated.servantName}) in a duel, but chose to SPARE their life! **${defeated.username}** survives with critical HP (${defeated.currentHp.toLocaleString()}/${defeated.maxHp.toLocaleString()}).`;
+
+    targetWar.eventLogs.unshift({
+      id: `evt_mercy_${Date.now()}`,
+      timestamp: Date.now(),
+      text: outcomeLog,
+      type: 'heal'
+    });
+  }
+
+  return {
+    updatedWar: targetWar,
+    message: outcomeLog,
+    eliminated: isEliminated,
+    victorMaster: victor,
+    defeatedMaster: defeated
+  };
+}
+
