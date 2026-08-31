@@ -36,15 +36,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const emptyEmbed = new EmbedBuilder()
         .setTitle('❌ No Contracted Servant')
         .setDescription(
-          'You have not summoned any Heroic Spirits yet!\n\n' +
-          'Use `/summon` to perform a Saint Quartz invocation at the Summoning Gate and form a contract with your Servant.'
+          'You have not summoned any Heroic Spirit yet for the Holy Grail War!\n\n' +
+          'Use `/summon ritual` to invoke the Throne of Heroes and form your sacred contract.'
         )
         .setColor(0xef4444);
 
       const summonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
           .setCustomId('go_summon')
-          .setLabel('Summon Heroic Spirit (3 SQ)')
+          .setLabel('Begin Summoning Ritual')
           .setEmoji('✨')
           .setStyle(ButtonStyle.Primary)
       );
@@ -59,7 +59,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       collector.on('collect', async (i: any) => {
         if (i.customId === 'go_summon') {
-          await i.reply({ content: 'Use the `/summon` command to roll the Saint Quartz Gacha!', ephemeral: true });
+          await i.reply({ content: 'Use the `/summon ritual` command to summon your Heroic Spirit!', ephemeral: true });
         }
       });
       return;

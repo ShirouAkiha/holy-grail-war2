@@ -7,325 +7,381 @@ import {
   EmbedBuilder,
   ComponentType
 } from 'discord.js';
-import { getOrCreateMaster, saveMaster } from '../database/service';
-import { SERVANT_DATABASE } from '../data/servants';
-import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
-import { MasterServantInstance } from '../types';
+import { 
+  getOrCreateMaster, 
+  saveMaster, 
+  getAvailableThroneServants, 
+  getAllThroneServants,
+  getContractedServantTemplateIds
+} from '../database/service';
+import { MasterServantInstance, ServantTemplate } from '../types';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
 // ==========================================
-// Defines the `/summon` command with an optional parameter for Single (1x) or Multi (10x) pull.
+// In an authentic Holy Grail War, summoning is not a gacha lottery:
+// - A Master performs the summoning ritual to call an available Heroic Spirit from the Throne of Heroes.
+// - Each Servant can only be summoned ONCE across the entire War (unique contract).
+// - Each Master may only hold ONE active Servant contract at a time.
 export const data = new SlashCommandBuilder()
   .setName('summon')
-  .setDescription('Summon Heroic Spirits and Craft Essences from the Saint Quartz Summoning Gate')
-  .addStringOption(option =>
-    option
-      .setName('type')
-      .setDescription('Summoning type (1x Single Pull or 10x Multi-Pull)')
-      .setRequired(false)
-      .addChoices(
-        { name: '1x Single Summon (3 SQ)', value: 'single' },
-        { name: '10x Multi Summon (30 SQ)', value: 'multi' }
-      )
+  .setDescription('Perform the Holy Grail Summoning Ritual to contract a Heroic Spirit')
+  .addSubcommand(sub =>
+    sub
+      .setName('ritual')
+      .setDescription('Draw the magic circle and summon a random available Servant from the Throne of Heroes')
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('status')
+      .setDescription('Inspect your active Holy Grail War Servant contract and Command Seals')
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('release')
+      .setDescription('Sever your contract with your current Servant to allow a new summoning')
   );
 
 // ==========================================
-// 2. GACHA PROBABILITY & ROLLING LOGIC
+// 2. HOLY GRAIL WAR SUMMONING RITUAL LOGIC
 // ==========================================
-// Simulates official FGO gacha drop rates:
-// - 1% 5★ SSR Servant (with 90-pull hard pity system)
-// - 4% 5★ SSR Craft Essence
-// - 3% 4★ SR Servant
-// - 12% 4★ SR Craft Essence
-// - 40% 3★ R Servant
-// - 40% 3★ R Craft Essence
-function rollSummon(master: any, isMulti: boolean) {
-  const cost = isMulti ? 30 : 3;
-  
-  // Check if player has enough Saint Quartz currency
-  if (master.saintQuartz < cost) {
-    return { error: `Insufficient Saint Quartz! You have **${master.saintQuartz} SQ**, but need **${cost} SQ**.` };
+function performSummoningRitual(master: any) {
+  // Guard 1: Master already has a contracted Servant
+  if (master.servants && master.servants.length > 0) {
+    const existing = master.servants.find((s: any) => s.id === master.activeServantId) || master.servants[0];
+    return {
+      alreadyContracted: true,
+      servant: existing
+    };
   }
 
-  // Deduct cost
-  master.saintQuartz -= cost;
-  const pullsCount = isMulti ? 10 : 1;
-  const results: Array<{ item: any; type: 'servant' | 'ce'; rarity: number; isNew: boolean }> = [];
+  // Guard 2: Get available unclaimed Heroic Spirits
+  const availablePool = getAvailableThroneServants();
 
-  // Filter item pools by rarity category
-  const ssrServants = SERVANT_DATABASE.filter(s => s.rarity === 5);
-  const srServants = SERVANT_DATABASE.filter(s => s.rarity === 4);
-  const rServants = SERVANT_DATABASE.filter(s => s.rarity === 3);
-  const ssrCes = CRAFT_ESSENCE_DATABASE.filter(c => c.rarity === 5);
-  const srCes = CRAFT_ESSENCE_DATABASE.filter(c => c.rarity === 4);
-  const rCes = CRAFT_ESSENCE_DATABASE.filter(c => c.rarity === 3);
-
-  // Execute rolls
-  for (let i = 0; i < pullsCount; i++) {
-    master.pityCount = (master.pityCount || 0) + 1;
-    const roll = Math.random() * 100;
-    const isHardPity = master.pityCount >= 90; // Guaranteed SSR at 90 pulls
-
-    let targetRarity = 3;
-    let targetType: 'servant' | 'ce' = 'servant';
-
-    // Probability tier evaluation
-    if (isHardPity || roll < 1.0) {
-      targetRarity = 5;
-      targetType = 'servant';
-      master.pityCount = 0; // Reset pity counter on SSR drop
-    } else if (roll < 5.0) {
-      targetRarity = 5;
-      targetType = 'ce';
-    } else if (roll < 8.0) {
-      targetRarity = 4;
-      targetType = 'servant';
-    } else if (roll < 20.0) {
-      targetRarity = 4;
-      targetType = 'ce';
-    } else if (roll < 60.0) {
-      targetRarity = 3;
-      targetType = 'servant';
-    } else {
-      targetRarity = 3;
-      targetType = 'ce';
-    }
-
-    // Branch A: Rolled a Servant
-    if (targetType === 'servant') {
-      const pool = targetRarity === 5 ? ssrServants : targetRarity === 4 ? srServants : rServants;
-      const template = pool[Math.floor(Math.random() * pool.length)];
-      const alreadyOwns = master.servants.some((s: any) => s.templateId === template.id);
-
-      if (!alreadyOwns) {
-        // First-time summon: Instantiate new MasterServantInstance with base stats
-        const newServant: MasterServantInstance = {
-          id: `servant_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          masterId: master.id,
-          templateId: template.id,
-          level: 1,
-          experience: 0,
-          allocatedStats: { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 },
-          availableStatPoints: 10,
-          skillLevels: [1, 1, 1],
-          customQuotes: {
-            summon: template.summonQuote,
-            battleStart: template.battleStartQuote,
-            noblePhantasm: template.noblePhantasm.chant,
-            victory: template.victoryQuote,
-            defeat: template.defeatQuote
-          },
-          bondLevel: 1,
-          template
-        };
-        master.servants.push(newServant);
-
-        // If player has no active servant, set this new servant as active
-        if (!master.activeServantId) {
-          master.activeServantId = newServant.id;
-        }
-        results.push({ item: template, type: 'servant', rarity: targetRarity, isNew: true });
-      } else {
-        // Duplicate summon: Upgrade existing Servant's Bond level & award bonus Parameter points
-        const existing = master.servants.find((s: any) => s.templateId === template.id);
-        if (existing) {
-          existing.availableStatPoints = (existing.availableStatPoints || 0) + 5;
-          existing.bondLevel = Math.min(10, (existing.bondLevel || 1) + 1);
-        }
-        results.push({ item: template, type: 'servant', rarity: targetRarity, isNew: false });
-      }
-    } 
-    // Branch B: Rolled a Craft Essence
-    else {
-      const pool = targetRarity === 5 ? ssrCes : targetRarity === 4 ? srCes : rCes;
-      const ce = pool[Math.floor(Math.random() * pool.length)];
-      const alreadyOwns = master.craftEssences?.some((c: any) => c.id === ce.id);
-      if (!master.craftEssences) master.craftEssences = [];
-      if (!alreadyOwns) {
-        master.craftEssences.push(ce);
-      }
-      results.push({ item: ce, type: 'ce', rarity: targetRarity, isNew: !alreadyOwns });
-    }
+  if (availablePool.length === 0) {
+    return {
+      noServantsLeft: true
+    };
   }
 
-  return { results, spent: cost };
+  // Pick ONE random unclaimed Heroic Spirit from the Throne of Heroes
+  const selectedTemplate: ServantTemplate = availablePool[Math.floor(Math.random() * availablePool.length)];
+
+  // Form the sacred contract
+  const newServantInstance: MasterServantInstance = {
+    id: `contract_${selectedTemplate.id}_${Date.now()}`,
+    masterId: master.id,
+    templateId: selectedTemplate.id,
+    level: 1,
+    experience: 0,
+    allocatedStats: { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 },
+    availableStatPoints: 10,
+    skillLevels: [1, 1, 1],
+    customQuotes: {
+      summon: selectedTemplate.summonQuote,
+      battleStart: selectedTemplate.battleStartQuote,
+      noblePhantasm: selectedTemplate.noblePhantasm.chant,
+      victory: selectedTemplate.victoryQuote,
+      defeat: selectedTemplate.defeatQuote
+    },
+    bondLevel: 1,
+    template: selectedTemplate
+  };
+
+  // Bind contract to Master
+  master.servants = [newServantInstance];
+  master.activeServantId = newServantInstance.id;
+  master.commandSeals = 3; // Bestow the 3 sacred Command Seals
+
+  return {
+    success: true,
+    servant: newServantInstance,
+    template: selectedTemplate
+  };
 }
 
 // ==========================================
-// 3. UI EMBED BUILDER
-// ==========================================
-// Formats the results message with rich emojis, rarity stars, and card descriptions.
-function buildSummonEmbed(master: any, results: any[], spent: number, isMulti: boolean) {
-  const servantPulls = results.filter(r => r.type === 'servant');
-  const cePulls = results.filter(r => r.type === 'ce');
-
-  // Find top pull to highlight in thumbnail
-  const topServant = servantPulls.find(s => s.rarity === 5) || servantPulls[0];
-
-  const embed = new EmbedBuilder()
-    .setTitle(`🌟 Summoning Portal Results (${isMulti ? '10x Multi-Pull' : '1x Single Pull'})`)
-    .setDescription(
-      `Spent **${spent} Saint Quartz**.\n` +
-      `Remaining SQ: **${master.saintQuartz} SQ** | SSR Pity: **${master.pityCount || 0}/90**\n\n` +
-      (servantPulls.length > 0
-        ? `⚔️ **Heroic Spirits Summoned:**\n` +
-          servantPulls
-            .map(
-              s =>
-                `${s.rarity === 5 ? '🌈' : s.rarity === 4 ? '✨' : '⚪'} **${s.item.name}** (${s.item.servantClass} • ${'★'.repeat(s.rarity)})${s.isNew ? ' 🆕 *(Contract Formed!)*' : ' 🔄 *(NP Upgrade +5 Stat Pts)*'}`
-            )
-            .join('\n') + '\n\n'
-        : '') +
-      (cePulls.length > 0
-        ? `🛡️ **Craft Essences Acquired:**\n` +
-          cePulls
-            .map(
-              c =>
-                `${c.rarity === 5 ? '💎' : '🔹'} **${c.item.name}** (${'★'.repeat(c.rarity)})${c.isNew ? ' 🆕' : ''} — *${c.item.effectText}*`
-            )
-            .join('\n')
-        : '') +
-      `\n\n*Use \`/servant\` to inspect your active Servant or click the buttons below to summon again!*`
-    )
-    .setColor(topServant?.rarity === 5 ? 0xd4af37 : 0x38bdf8);
-
-  if (topServant?.item?.avatarUrl) {
-    embed.setThumbnail(topServant.item.avatarUrl);
-  }
-
-  return embed;
-}
-
-// ==========================================
-// 4. ACTION BUTTONS (Single, Multi, Daily SQ)
-// ==========================================
-function buildSummonButtons(master: any) {
-  return new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId('summon_1x')
-      .setLabel('Summon 1x (3 SQ)')
-      .setEmoji('🌟')
-      .setStyle(ButtonStyle.Primary)
-      .setDisabled(master.saintQuartz < 3),
-    new ButtonBuilder()
-      .setCustomId('summon_10x')
-      .setLabel('Summon 10x (30 SQ)')
-      .setEmoji('💫')
-      .setStyle(ButtonStyle.Danger)
-      .setDisabled(master.saintQuartz < 30),
-    new ButtonBuilder()
-      .setCustomId('summon_claim_sq')
-      .setLabel('Daily Leyline (+30 SQ)')
-      .setEmoji('💎')
-      .setStyle(ButtonStyle.Success)
-  );
-}
-
-// ==========================================
-// 5. COMMAND EXECUTION ENTRY POINT
+// 3. COMMAND EXECUTION HANDLER
 // ==========================================
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
-    const rawType = interaction.options.getString('type');
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
-    
-    // Default to multi if player has >= 30 SQ, unless specified otherwise
-    let isMulti = rawType === 'multi';
-    if (!rawType) {
-      isMulti = master.saintQuartz >= 30;
-    }
+    const subcommand = interaction.options.getSubcommand(false) || 'ritual';
 
-    const rollRes = rollSummon(master, isMulti);
-    
-    // Handle error if player is out of Saint Quartz
-    if (rollRes.error || !rollRes.results) {
-      const errEmbed = new EmbedBuilder()
-        .setTitle('❌ Summoning Gate Error')
-        .setDescription(rollRes.error || 'Failed to roll summon.')
-        .setColor(0xef4444);
-      
+    // ------------------------------------------
+    // SUBCOMMAND: STATUS
+    // ------------------------------------------
+    if (subcommand === 'status') {
+      const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+
+      if (!activeServant) {
+        const emptyEmbed = new EmbedBuilder()
+          .setTitle('🕯️ No Active Servant Contract')
+          .setDescription(
+            `You have not formed a contract with any Heroic Spirit yet.\n\n` +
+            `Use \`/summon ritual\` to draw the summoning circle and call forth your Servant for the Holy Grail War!`
+          )
+          .setColor(0x3b82f6);
+
+        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId('btn_perform_ritual')
+            .setLabel('Begin Summoning Ritual')
+            .setEmoji('✨')
+            .setStyle(ButtonStyle.Primary)
+        );
+
+        const reply = await interaction.reply({ embeds: [emptyEmbed], components: [row], fetchReply: true });
+        setupSummonButtonCollector(reply, interaction.user.id);
+        return;
+      }
+
+      const t = activeServant.template;
+      const statusEmbed = new EmbedBuilder()
+        .setTitle(`📜 HOLY GRAIL WAR CONTRACT: ${t.name.toUpperCase()}`)
+        .setDescription(
+          `**Master:** <@${interaction.user.id}> (${master.username})\n` +
+          `**Class:** \`${t.servantClass}\` | **Title:** *${t.title}*\n` +
+          `**Command Seals:** 🔴🔴🔴 **${master.commandSeals}/3**\n` +
+          `**Action Points (AP):** **${master.actionPoints}/100**\n\n` +
+          `⚔️ **Combat Parameters:**\n` +
+          `• HP: \`${(t.baseHp + (activeServant.allocatedStats?.endurance || 0) * 150).toLocaleString()}\`\n` +
+          `• ATK: \`${(t.baseAtk + (activeServant.allocatedStats?.strength || 0) * 80).toLocaleString()}\`\n` +
+          `• Available Parameter Points: **${activeServant.availableStatPoints}** (Use \`/customise stats\`)\n\n` +
+          `💥 **Noble Phantasm:** **${t.noblePhantasm.name}** [${t.noblePhantasm.cardType}]\n` +
+          `* "${activeServant.customQuotes?.noblePhantasm || t.noblePhantasm.chant}" *\n\n` +
+          `💬 **Arrival Quote:**\n*"${activeServant.customQuotes?.summon || t.summonQuote}"*`
+        )
+        .setImage(t.cardArtUrl || t.avatarUrl)
+        .setColor(0xd4af37);
+
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId('summon_1x')
-          .setLabel('Summon 1x (3 SQ)')
-          .setStyle(ButtonStyle.Primary)
-          .setDisabled(master.saintQuartz < 3),
-        new ButtonBuilder()
-          .setCustomId('summon_claim_sq')
-          .setLabel('Daily Leyline (+30 SQ)')
-          .setStyle(ButtonStyle.Success)
+          .setCustomId('btn_release_contract')
+          .setLabel('Sever Contract')
+          .setEmoji('⛓️')
+          .setStyle(ButtonStyle.Danger)
       );
 
-      const reply = await interaction.reply({ embeds: [errEmbed], components: [row], fetchReply: true });
-      setupSummonCollector(reply, interaction.user.id);
+      const reply = await interaction.reply({ embeds: [statusEmbed], components: [row], fetchReply: true });
+      setupSummonButtonCollector(reply, interaction.user.id);
       return;
     }
 
-    // Save inventory changes to database
+    // ------------------------------------------
+    // SUBCOMMAND: RELEASE CONTRACT
+    // ------------------------------------------
+    if (subcommand === 'release') {
+      if (!master.servants || master.servants.length === 0) {
+        await interaction.reply({
+          ephemeral: true,
+          content: '❌ You do not have an active Servant contract to release.'
+        });
+        return;
+      }
+
+      const releasedServantName = master.servants[0].template.name;
+      master.servants = [];
+      master.activeServantId = undefined;
+      await saveMaster(master);
+
+      const releaseEmbed = new EmbedBuilder()
+        .setTitle('⛓️ Contract Severed')
+        .setDescription(
+          `You have released your command over **${releasedServantName}**.\n\n` +
+          `The Heroic Spirit has returned to the Throne of Heroes. You are now free to invoke a new summoning ritual using \`/summon ritual\`.`
+        )
+        .setColor(0xef4444);
+
+      await interaction.reply({ embeds: [releaseEmbed] });
+      return;
+    }
+
+    // ------------------------------------------
+    // SUBCOMMAND: RITUAL (Summon Once Randomly)
+    // ------------------------------------------
+    const result = performSummoningRitual(master);
+
+    // Case A: Master already has a Servant
+    if (result.alreadyContracted) {
+      const s = result.servant;
+      const embed = new EmbedBuilder()
+        .setTitle('⚠️ Sacred Contract Already Bound')
+        .setDescription(
+          `You have already formed a Holy Grail War contract with **${s.template.name}** (\`${s.template.servantClass}\`)!\n\n` +
+          `In an authentic Holy Grail War, each Master is bound to a single Heroic Spirit.\n\n` +
+          `• Use \`/servant\` to view their full status and parameters.\n` +
+          `• Use \`/duel\` to engage in turn-based combat.\n` +
+          `• Use \`/grailwar\` to battle for Fuyuki City leylines.\n` +
+          `• If you wish to release your Servant and summon anew, use \`/summon release\`.`
+        )
+        .setThumbnail(s.template.avatarUrl)
+        .setColor(0xf59e0b);
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
+    // Case B: No available Servants left in the Throne
+    if (result.noServantsLeft) {
+      const allThrone = getAllThroneServants();
+      const embed = new EmbedBuilder()
+        .setTitle('🚫 The Throne of Heroes is Fully Manifested')
+        .setDescription(
+          `All **${allThrone.length} Heroic Spirits** in the Throne of Heroes are currently contracted to other Masters across Fuyuki City!\n\n` +
+          `No more Servants can be summoned until a contracted Servant is defeated or released.\n\n` +
+          `*(Admins can add new custom Heroic Spirits using \`/addservant create\`)*`
+        )
+        .setColor(0xef4444);
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
+    // Case C: Successful Summoning Ritual
     await saveMaster(master);
+    const template = result.template!;
+    const newServant = result.servant!;
 
-    const embed = buildSummonEmbed(master, rollRes.results, rollRes.spent || 3, isMulti);
-    const row = buildSummonButtons(master);
+    const incantation = 
+      `*“Let silver and iron be the essence. Let stone and the archduke of contracts be the foundation.”*\n` +
+      `*“Let the flowing great river be created, and the four corners be filled.”*\n` +
+      `*“Let the order of the Holy Grail be fulfilled!”*`;
 
-    const response = await interaction.reply({ embeds: [embed], components: [row], fetchReply: true });
-    // Attach listener for instant re-pull button clicks
-    setupSummonCollector(response, interaction.user.id);
+    const summonEmbed = new EmbedBuilder()
+      .setTitle(`✨ HEROIC SPIRIT SUMMONED: ${template.name.toUpperCase()}`)
+      .setDescription(
+        `${incantation}\n\n` +
+        `═══════════════════════════════════\n` +
+        `🗣️ **"${newServant.customQuotes?.summon || template.summonQuote}"**\n` +
+        `═══════════════════════════════════\n\n` +
+        `👤 **True Name:** **${template.name}**\n` +
+        `🗡️ **Class:** \`${template.servantClass}\` | **Title:** *${template.title}*\n` +
+        `🔴 **Command Seals Bestowed:** **3 / 3**\n\n` +
+        `📊 **Base Parameters:**\n` +
+        `• **HP:** \`${template.baseHp.toLocaleString()}\` | **ATK:** \`${template.baseAtk.toLocaleString()}\`\n` +
+        `• **STR:** \`${template.baseStats.strength}\` | **END:** \`${template.baseStats.endurance}\` | **AGI:** \`${template.baseStats.agility}\` | **MNA:** \`${template.baseStats.mana}\` | **LCK:** \`${template.baseStats.luck}\`\n\n` +
+        `💥 **Noble Phantasm:** **${template.noblePhantasm.name}** [${template.noblePhantasm.cardType}]\n` +
+        `* "${template.noblePhantasm.chant}" *\n\n` +
+        `📜 **Lore:**\n${template.lore}`
+      )
+      .setImage(template.cardArtUrl || template.avatarUrl)
+      .setColor(0xd4af37)
+      .setFooter({ text: `Holy Grail War Contract Active • Use /servant or /duel` });
+
+    const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('btn_view_servant')
+        .setLabel('View Parameters (/servant)')
+        .setEmoji('📊')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('btn_enter_war')
+        .setLabel('Enter Grail War (/grailwar)')
+        .setEmoji('🏰')
+        .setStyle(ButtonStyle.Success)
+    );
+
+    const reply = await interaction.reply({
+      embeds: [summonEmbed],
+      components: [actionRow],
+      fetchReply: true
+    });
+
+    setupSummonButtonCollector(reply, interaction.user.id);
 
   } catch (error: any) {
-    console.error('Error executing /summon:', error);
+    console.error('Error executing /summon ritual:', error);
     if (interaction.replied || interaction.deferred) {
-      await interaction.followUp({ content: `❌ Summon error: ${error.message}`, ephemeral: true });
+      await interaction.followUp({ content: `❌ Ritual Error: ${error.message}`, ephemeral: true });
     } else {
-      await interaction.reply({ content: `❌ Summon error: ${error.message}`, ephemeral: true });
+      await interaction.reply({ content: `❌ Ritual Error: ${error.message}`, ephemeral: true });
     }
   }
 }
 
 // ==========================================
-// 6. INTERACTIVE BUTTON COLLECTOR
+// 4. BUTTON COLLECTOR FOR SUMMON EMBED
 // ==========================================
-// Keeps the message interactive for 2 minutes, allowing the user to click
-// "Summon 1x", "Summon 10x", or "Daily Leyline" repeatedly without retyping the command.
-function setupSummonCollector(message: any, userId: string) {
+function setupSummonButtonCollector(message: any, userId: string) {
   const collector = message.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    filter: (i: any) => i.user.id === userId,
-    time: 120000 // 2 minutes active window
+    time: 120000 // 2 minutes
   });
 
   collector.on('collect', async (i: any) => {
+    if (i.user.id !== userId) {
+      await i.reply({ content: 'Only the Master who performed this ritual can click these actions.', ephemeral: true });
+      return;
+    }
+
     try {
       const master = await getOrCreateMaster(i.user.id, i.user.username);
 
-      // Button: Free Daily Saint Quartz
-      if (i.customId === 'summon_claim_sq') {
-        master.saintQuartz += 30;
+      if (i.customId === 'btn_release_contract') {
+        if (!master.servants || master.servants.length === 0) {
+          await i.reply({ content: 'You have no active Servant contract to release.', ephemeral: true });
+          return;
+        }
+        const sName = master.servants[0].template.name;
+        master.servants = [];
+        master.activeServantId = undefined;
         await saveMaster(master);
-        await i.reply({
-          content: `💎 Extracted 30 Saint Quartz from the Fuyuki Leyline! Current SQ: **${master.saintQuartz} SQ**.`,
-          ephemeral: true
+
+        await i.update({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle('⛓️ Contract Severed')
+              .setDescription(`You have released **${sName}**. Use \`/summon ritual\` to summon a new Heroic Spirit.`)
+              .setColor(0xef4444)
+          ],
+          components: [
+            new ActionRowBuilder<ButtonBuilder>().addComponents(
+              new ButtonBuilder()
+                .setCustomId('btn_perform_ritual')
+                .setLabel('Begin New Ritual')
+                .setEmoji('✨')
+                .setStyle(ButtonStyle.Primary)
+            )
+          ]
         });
-        const updatedRow = buildSummonButtons(master);
-        await message.edit({ components: [updatedRow] });
         return;
       }
 
-      // Button: 1x or 10x Pull
-      const isMulti = i.customId === 'summon_10x';
-      const rollRes = rollSummon(master, isMulti);
-
-      if (rollRes.error || !rollRes.results) {
-        await i.reply({ content: `❌ ${rollRes.error || 'Summon failed.'}`, ephemeral: true });
+      if (i.customId === 'btn_perform_ritual') {
+        const result = performSummoningRitual(master);
+        if (result.success && result.template) {
+          await saveMaster(master);
+          const t = result.template;
+          await i.update({
+            embeds: [
+              new EmbedBuilder()
+                .setTitle(`✨ HEROIC SPIRIT SUMMONED: ${t.name.toUpperCase()}`)
+                .setDescription(
+                  `🗣️ **"${t.summonQuote}"**\n\n` +
+                  `• **True Name:** **${t.name}** [${t.servantClass}]\n` +
+                  `• **Noble Phantasm:** **${t.noblePhantasm.name}**\n` +
+                  `• **Command Seals:** 3 / 3\n\n` +
+                  `Contract established for the Holy Grail War!`
+                )
+                .setImage(t.cardArtUrl || t.avatarUrl)
+                .setColor(0xd4af37)
+            ],
+            components: []
+          });
+        }
         return;
       }
 
-      await saveMaster(master);
-      const embed = buildSummonEmbed(master, rollRes.results, rollRes.spent || 3, isMulti);
-      const row = buildSummonButtons(master);
+      if (i.customId === 'btn_view_servant') {
+        await i.reply({ content: 'Use `/servant` to view your detailed 2D status card and parameter radar.', ephemeral: true });
+        return;
+      }
 
-      // Update original message in place
-      await i.update({ embeds: [embed], components: [row] });
+      if (i.customId === 'btn_enter_war') {
+        await i.reply({ content: 'Use `/grailwar` to deploy into Fuyuki City districts and scout leylines.', ephemeral: true });
+        return;
+      }
     } catch (err: any) {
       console.error('Error in summon collector:', err);
     }

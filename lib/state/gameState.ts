@@ -1,23 +1,47 @@
 import {
-  GachaBanner,
   HolyGrailWarSession,
   MasterProfile,
   MasterServantInstance,
-  CraftEssence
+  CraftEssence,
+  ServantTemplate
 } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
-import { CRAFT_ESSENCE_DATABASE, GACHA_BANNERS } from '../data/craftEssences';
+import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 import { createHolyGrailWarSession } from '../engine/grailwar';
 
-const STORAGE_KEY = 'holy_grail_war_master_profile_v1';
-const WAR_STORAGE_KEY = 'holy_grail_war_active_session_v1';
+const STORAGE_KEY = 'holy_grail_war_master_profile_v2';
+const WAR_STORAGE_KEY = 'holy_grail_war_active_session_v2';
+const CUSTOM_SERVANTS_STORAGE_KEY = 'holy_grail_war_custom_servants_v1';
+
+export function getCustomServantsFromStorage(): ServantTemplate[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(CUSTOM_SERVANTS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveCustomServantsToStorage(servants: ServantTemplate[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(CUSTOM_SERVANTS_STORAGE_KEY, JSON.stringify(servants));
+  } catch (err) {
+    console.error('Failed to save custom servants to storage', err);
+  }
+}
+
+export function getAllThroneServants(customServants: ServantTemplate[] = []): ServantTemplate[] {
+  return [...SERVANT_DATABASE, ...customServants];
+}
 
 export function getInitialMasterProfile(): MasterProfile {
   const defaultServantTemplate = SERVANT_DATABASE[0]; // Artoria
   const defaultCe = CRAFT_ESSENCE_DATABASE[0]; // Kaleidoscope
 
   const initialServant: MasterServantInstance = {
-    id: 'starter_artoria_01',
+    id: 'contract_artoria_starter',
     masterId: 'master_user_01',
     templateId: defaultServantTemplate.id,
     level: 25,
@@ -44,55 +68,25 @@ export function getInitialMasterProfile(): MasterProfile {
     template: defaultServantTemplate
   };
 
-  const starterArcher = SERVANT_DATABASE.find(s => s.id === 'emiya_archer') || SERVANT_DATABASE[1];
-  const secondServant: MasterServantInstance = {
-    id: 'starter_emiya_02',
-    masterId: 'master_user_01',
-    templateId: starterArcher.id,
-    level: 15,
-    experience: 600,
-    allocatedStats: {
-      strength: 2,
-      endurance: 2,
-      agility: 3,
-      mana: 4,
-      luck: 1
-    },
-    availableStatPoints: 3,
-    equippedCeId: CRAFT_ESSENCE_DATABASE[4].id,
-    equippedCe: CRAFT_ESSENCE_DATABASE[4],
-    skillLevels: [2, 2, 1],
-    customQuotes: {
-      summon: starterArcher.summonQuote,
-      battleStart: starterArcher.battleStartQuote,
-      noblePhantasm: starterArcher.noblePhantasm.chant,
-      victory: starterArcher.victoryQuote,
-      defeat: starterArcher.defeatQuote
-    },
-    bondLevel: 2,
-    template: starterArcher
-  };
-
   return {
     id: 'master_user_01',
     discordId: '912420275492',
     username: 'Master Shirou',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
-    saintQuartz: 90,
-    summonTickets: 10,
+    saintQuartz: 0,
+    summonTickets: 0,
     commandSeals: 3,
     actionPoints: 100,
     maxActionPoints: 100,
-    pityCount: 15,
+    pityCount: 0,
     grailWarWins: 2,
     activeServantId: initialServant.id,
-    servants: [initialServant, secondServant],
+    servants: [initialServant],
     craftEssences: [
       CRAFT_ESSENCE_DATABASE[0],
       CRAFT_ESSENCE_DATABASE[1],
       CRAFT_ESSENCE_DATABASE[2],
-      CRAFT_ESSENCE_DATABASE[4],
-      CRAFT_ESSENCE_DATABASE[5]
+      CRAFT_ESSENCE_DATABASE[4]
     ]
   };
 }

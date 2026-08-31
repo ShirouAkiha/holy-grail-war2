@@ -1,6 +1,6 @@
 /**
  * Slash Command: /summon
- * Description: Summon Heroic Spirits & Craft Essences from active Gacha Banners
+ * Description: Perform authentic Holy Grail Summoning Ritual to contract a random available Heroic Spirit
  * Library: discord.js v14
  */
 
@@ -10,136 +10,114 @@ export const summonCommandCode = `import {
   ActionRowBuilder, 
   ButtonBuilder, 
   ButtonStyle, 
-  StringSelectMenuBuilder,
-  AttachmentBuilder,
-  EmbedBuilder 
+  EmbedBuilder,
+  ComponentType
 } from 'discord.js';
-import { executeGachaRoll } from '../engine/gacha';
-import { GACHA_BANNERS } from '../data/banners';
-import { renderGachaSummonBanner } from '../canvas/nodeCanvasRenderer';
-import { getOrCreateMaster, updateMasterProfile } from '../database/service';
+import { 
+  getOrCreateMaster, 
+  saveMaster, 
+  getAvailableThroneServants, 
+  getAllThroneServants 
+} from '../database/service';
+import { MasterServantInstance, ServantTemplate } from '../types';
 
 export const data = new SlashCommandBuilder()
   .setName('summon')
-  .setDescription('Summon Heroic Spirits and Craft Essences from Gacha Banners')
-  .addStringOption(option =>
-    option
-      .setName('banner')
-      .setDescription('Choose which banner to pull from')
-      .setRequired(false)
-      .addChoices(
-        { name: 'Holy Grail War: King\\'s Awakening (SSR Artoria & Gilgamesh)', value: 'banner_holy_grail_legends' },
-        { name: 'Chaldea Vanguard: Shadows & Saints (SSR Scáthach & Jeanne)', value: 'banner_shadow_lands_saint' },
-        { name: 'Server Discord Chaos: Midnight Raid (SSR Linus & Mod)', value: 'banner_server_chaos_memes' }
-      )
+  .setDescription('Perform the Holy Grail Summoning Ritual to contract a Heroic Spirit')
+  .addSubcommand(sub =>
+    sub
+      .setName('ritual')
+      .setDescription('Draw the magic circle and summon a random available Servant from the Throne of Heroes')
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('status')
+      .setDescription('Inspect your active Holy Grail War Servant contract and Command Seals')
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('release')
+      .setDescription('Sever your contract with your current Servant to allow a new summoning')
   );
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-  await interaction.deferReply();
+  const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+  const subcommand = interaction.options.getSubcommand(false) || 'ritual';
 
-  try {
-    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
-    const bannerId = interaction.options.getString('banner') || 'banner_holy_grail_legends';
-    const banner = GACHA_BANNERS.find(b => b.id === bannerId) || GACHA_BANNERS[0];
+  if (subcommand === 'ritual') {
+    // Check if Master is already bound to a Servant
+    if (master.servants && master.servants.length > 0) {
+      const s = master.servants[0];
+      const boundEmbed = new EmbedBuilder()
+        .setTitle('⚠️ Sacred Contract Already Bound')
+        .setDescription(
+          \`You are already bound to **\${s.template.name}** (\\\`\${s.template.servantClass}\\\`) in this Holy Grail War!\\n\\n\` +
+          \`• Command Seals: 🔴🔴🔴 **\${master.commandSeals}/3**\\n\` +
+          \`• Level: **\${s.level}** | HP: \${s.template.baseHp.toLocaleString()} | ATK: \${s.template.baseAtk.toLocaleString()}\\n\\n\` +
+          \`*In an authentic Holy Grail War, each Master is bound to a single Heroic Spirit. Use \\\`/summon release\\\` to sever your contract.*\`
+        )
+        .setThumbnail(s.template.avatarUrl)
+        .setColor(0xf59e0b);
 
-    // Build initial banner embed
-    const embed = new EmbedBuilder()
-      .setTitle(\`✨ Summoning Portal: \${banner.title}\`)
+      await interaction.reply({ embeds: [boundEmbed] });
+      return;
+    }
+
+    const availablePool = getAvailableThroneServants();
+    if (availablePool.length === 0) {
+      await interaction.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle('🚫 The Throne of Heroes is Fully Manifested')
+            .setDescription('All Heroic Spirits in the Throne are currently contracted in this War.')
+            .setColor(0xef4444)
+        ]
+      });
+      return;
+    }
+
+    // Pick ONE random unclaimed Heroic Spirit
+    const selectedTemplate: ServantTemplate = availablePool[Math.floor(Math.random() * availablePool.length)];
+
+    const newServant: MasterServantInstance = {
+      id: \`contract_\${selectedTemplate.id}_\${Date.now()}\`,
+      masterId: master.id,
+      templateId: selectedTemplate.id,
+      level: 1,
+      experience: 0,
+      allocatedStats: { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 },
+      availableStatPoints: 10,
+      skillLevels: [1, 1, 1],
+      customQuotes: {
+        summon: selectedTemplate.summonQuote,
+        battleStart: selectedTemplate.battleStartQuote,
+        noblePhantasm: selectedTemplate.noblePhantasm.chant,
+        victory: selectedTemplate.victoryQuote,
+        defeat: selectedTemplate.defeatQuote
+      },
+      bondLevel: 1,
+      template: selectedTemplate
+    };
+
+    master.servants = [newServant];
+    master.activeServantId = newServant.id;
+    master.commandSeals = 3;
+    await saveMaster(master);
+
+    const summonEmbed = new EmbedBuilder()
+      .setTitle(\`✨ HEROIC SPIRIT SUMMONED: \${selectedTemplate.name.toUpperCase()}\`)
       .setDescription(
-        \`**\${banner.subtitle}**\\n\\n\` +
-        \`\${banner.description}\\n\\n\` +
-        \`💎 **Your Saint Quartz:** \${master.saintQuartz} SQ\\n\` +
-        \`🎫 **Summon Tickets:** \${master.summonTickets}\\n\` +
-        \`📊 **SSR Pity Counter:** \${master.pityCount}/90 pulls\`
+        \`*“Let silver and iron be the essence. Let stone and the archduke of contracts be the foundation...”*\\n\\n\` +
+        \`🗣️ **"\${selectedTemplate.summonQuote}"**\\n\\n\` +
+        \`• **True Name:** **\${selectedTemplate.name}** [\\\`\${selectedTemplate.servantClass}\\\`]\\n\` +
+        \`• **Noble Phantasm:** **\${selectedTemplate.noblePhantasm.name}** [\\\`\${selectedTemplate.noblePhantasm.cardType}\\\`]\\n\` +
+        \`• **Command Seals Bestowed:** 3 / 3\\n\\n\` +
+        \`*Contract bound for the Fuyuki Holy Grail War! Use \\\`/servant\\\` or \\\`/duel\\\` to begin.*\`
       )
-      .setColor(0xf59e0b)
-      .setImage(banner.bannerArtUrl)
-      .setFooter({ text: 'Holy Grail War RPG • Select an option below to summon' });
+      .setImage(selectedTemplate.cardArtUrl || selectedTemplate.avatarUrl)
+      .setColor(0xd4af37);
 
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId(\`gacha_single:\${banner.id}\`)
-        .setLabel('Summon 1x (3 SQ)')
-        .setEmoji('🗡️')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId(\`gacha_multi:\${banner.id}\`)
-        .setLabel('Summon 10x (30 SQ - Guaranteed 4★+)')
-        .setEmoji('✨')
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId('gacha_info')
-        .setLabel('Drop Rates')
-        .setStyle(ButtonStyle.Secondary)
-    );
-
-    const message = await interaction.editReply({
-      embeds: [embed],
-      components: [row]
-    });
-
-    // Create button collector for 60 seconds
-    const collector = message.createMessageComponentCollector({
-      filter: i => i.user.id === interaction.user.id,
-      time: 60000
-    });
-
-    collector.on('collect', async i => {
-      if (i.customId === 'gacha_info') {
-        await i.reply({
-          ephemeral: true,
-          content: \`📊 **\${banner.title} Rates:**\\n\` +
-            \`• 5★ SSR Servant: \${banner.rates.ssrServant}%\\n\` +
-            \`• 5★ SSR Craft Essence: \${banner.rates.ssrCe}%\\n\` +
-            \`• 4★ SR Servant: \${banner.rates.srServant}%\\n\` +
-            \`• 4★ SR Craft Essence: \${banner.rates.srCe}%\\n\` +
-            \`• 3★ R Servant / CE: 80% combined\\n\` +
-            \`*Guaranteed 4★ or higher item on every 10-pull!*\`
-        });
-        return;
-      }
-
-      const isMulti = i.customId.startsWith('gacha_multi:');
-      const count = isMulti ? 10 : 1;
-
-      try {
-        const pullResult = executeGachaRoll({ banner, count, master });
-        await updateMasterProfile(pullResult.updatedMaster);
-
-        // Generate dynamic composite image with @napi-rs/canvas
-        const canvasBuffer = await renderGachaSummonBanner(pullResult.results, banner.title);
-        const attachment = new AttachmentBuilder(canvasBuffer, { name: 'summon_result.png' });
-
-        const resultEmbed = new EmbedBuilder()
-          .setTitle(\`🌟 Summoning Results (\${count}x Pull)\`)
-          .setDescription(
-            \`You spent **\${pullResult.spentQuartz} Saint Quartz**.\\n\` +
-            \`Remaining SQ: **\${pullResult.updatedMaster.saintQuartz}** | Pity: **\${pullResult.newPityCount}/90**\\n\\n\` +
-            pullResult.results
-              .map(r => \`\${r.rarity === 5 ? '🌈' : r.rarity === 4 ? '✨' : '🔹'} **\${r.item.name}** (\${'★'.repeat(r.rarity)}) \${r.isNew ? '🆕' : ''}\`)
-              .join('\\n')
-          )
-          .setColor(pullResult.results.some(r => r.rarity === 5) ? 0xf59e0b : 0x3b82f6)
-          .setImage('attachment://summon_result.png');
-
-        await i.update({
-          embeds: [resultEmbed],
-          files: [attachment],
-          components: [row] // Allow rerolling
-        });
-      } catch (err: any) {
-        await i.reply({
-          ephemeral: true,
-          content: \`❌ \${err.message || 'Summoning failed.'}\`
-        });
-      }
-    });
-
-  } catch (error: any) {
-    console.error('Error executing /summon:', error);
-    await interaction.editReply({
-      content: \`❌ An error occurred during summoning: \${error.message}\`
-    });
+    await interaction.reply({ embeds: [summonEmbed] });
   }
 }
 `;

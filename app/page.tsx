@@ -3,18 +3,21 @@
 import React, { useState, useEffect } from 'react';
 import {
   MasterProfile,
-  HolyGrailWarSession
+  HolyGrailWarSession,
+  ServantTemplate
 } from '../lib/types';
 import {
   loadMasterProfile,
   saveMasterProfile,
   loadGrailWarSession,
-  saveGrailWarSession
+  saveGrailWarSession,
+  getCustomServantsFromStorage,
+  saveCustomServantsToStorage
 } from '../lib/state/gameState';
 import DiscordEmulator from '../components/DiscordEmulator';
 import CombatArena from '../components/CombatArena';
 import GrailWarSim from '../components/GrailWarSim';
-import GachaPortal from '../components/GachaPortal';
+import SummoningSanctum from '../components/SummoningSanctum';
 import ServantWorkshop from '../components/ServantWorkshop';
 import CanvasStudio from '../components/CanvasStudio';
 import CodeExportHub from '../components/CodeExportHub';
@@ -35,8 +38,9 @@ import {
 export default function Home() {
   const [master, setMaster] = useState<MasterProfile>(loadMasterProfile);
   const [grailWar, setGrailWar] = useState<HolyGrailWarSession>(() => loadGrailWarSession(master));
+  const [customServants, setCustomServants] = useState<ServantTemplate[]>(getCustomServantsFromStorage);
   const [activeTab, setActiveTab] = useState<
-    'discord' | 'combat' | 'grailwar' | 'gacha' | 'workshop' | 'canvas' | 'code'
+    'discord' | 'combat' | 'grailwar' | 'summoning' | 'workshop' | 'canvas' | 'code'
   >('discord');
 
   useEffect(() => {
@@ -47,6 +51,10 @@ export default function Home() {
     saveGrailWarSession(grailWar);
   }, [grailWar]);
 
+  useEffect(() => {
+    saveCustomServantsToStorage(customServants);
+  }, [customServants]);
+
   const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
 
   const handleUpdateMaster = (updated: MasterProfile) => {
@@ -55,6 +63,10 @@ export default function Home() {
 
   const handleUpdateGrailWar = (updated: HolyGrailWarSession) => {
     setGrailWar(updated);
+  };
+
+  const handleUpdateCustomServants = (updated: ServantTemplate[]) => {
+    setCustomServants(updated);
   };
 
   return (
@@ -77,26 +89,30 @@ export default function Home() {
                 </span>
               </div>
               <p className="text-[11px] text-white/40 tracking-wide font-mono">
-                Canvas 2D Compositor • Tactical RPG Engine • Prisma DB
+                Holy Grail War Engine • Single Servant Summon • Admin Custom Forge
               </p>
             </div>
           </div>
 
           {/* Master Quick Info & Resources */}
           <div className="flex items-center gap-2.5">
-            {activeServant && (
+            {activeServant ? (
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-sm bg-[#0f0f0f] border border-[#1a1a1a] text-xs">
-                <span className="text-white/40 text-[10px] uppercase tracking-wider font-mono">Servant:</span>
+                <span className="text-white/40 text-[10px] uppercase tracking-wider font-mono">Contract:</span>
                 <strong className="text-white font-medium">{activeServant.template.name}</strong>
                 <span className="text-[#d4af37] text-[11px] font-mono">
                   [{activeServant.template.servantClass}]
                 </span>
               </div>
+            ) : (
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-sm bg-[#0f0f0f] border border-[#1a1a1a] text-xs text-white/40">
+                <span>No Active Contract (/summon)</span>
+              </div>
             )}
 
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-[#0f0f0f] border border-[#1a1a1a] text-xs font-mono text-[#d4af37]">
-              <span className="text-[10px] text-white/40 uppercase tracking-widest">SQ:</span>
-              <span className="font-bold">{master.saintQuartz}</span>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-[#0f0f0f] border border-[#1a1a1a] text-xs font-mono text-rose-400">
+              <span className="text-[10px] text-white/40 uppercase tracking-widest">Seals:</span>
+              <span className="font-bold">🔴 {master.commandSeals}/3</span>
             </div>
 
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-[#0f0f0f] border border-[#1a1a1a] text-xs font-mono text-[#3b82f6]">
@@ -110,9 +126,9 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-1.5 overflow-x-auto border-t border-[#1a1a1a] pt-1.5 pb-1.5 scrollbar-none">
           {[
             { id: 'discord' as const, label: 'Discord Bot Live Simulator', icon: Terminal, badge: 'Online' },
+            { id: 'summoning' as const, label: 'Throne Summoning & Admin Forge', icon: Sparkles },
             { id: 'combat' as const, label: 'Combat Arena (Turn-Based)', icon: Swords },
             { id: 'grailwar' as const, label: 'Holy Grail War (7-Master BR)', icon: Castle },
-            { id: 'gacha' as const, label: 'Summoning Gate (Gacha)', icon: Sparkles },
             { id: 'workshop' as const, label: 'Servant Workshop & Stats', icon: User },
             { id: 'canvas' as const, label: 'Canvas 2D Studio', icon: ImageIcon },
             { id: 'code' as const, label: 'Codebase & Architecture Export', icon: Code }
@@ -155,8 +171,19 @@ export default function Home() {
               onUpdateMaster={handleUpdateMaster}
               grailWar={grailWar}
               onUpdateGrailWar={handleUpdateGrailWar}
+              customServants={customServants}
+              onUpdateCustomServants={handleUpdateCustomServants}
             />
           </div>
+        )}
+
+        {activeTab === 'summoning' && (
+          <SummoningSanctum
+            master={master}
+            onUpdateMaster={handleUpdateMaster}
+            customServants={customServants}
+            onUpdateCustomServants={handleUpdateCustomServants}
+          />
         )}
 
         {activeTab === 'combat' && (
@@ -170,10 +197,6 @@ export default function Home() {
             onUpdateGrailWar={handleUpdateGrailWar}
             onUpdateMaster={handleUpdateMaster}
           />
-        )}
-
-        {activeTab === 'gacha' && (
-          <GachaPortal master={master} onUpdateMaster={handleUpdateMaster} />
         )}
 
         {activeTab === 'workshop' && (
@@ -192,10 +215,10 @@ export default function Home() {
           <span>System Online • Discord.js v14 Gateway</span>
         </div>
         <p className="text-center">
-          Fate / Holy Grail War Modular Discord RPG • @napi-rs/canvas Compositor & Prisma ORM
+          Fate / Holy Grail War Modular Discord RPG • @napi-rs/canvas Compositor & In-Memory Service
         </p>
         <div className="text-right">
-          <span className="text-[#d4af37]">GRAIL PROTOCOL v2.0.4</span>
+          <span className="text-[#d4af37]">GRAIL PROTOCOL v2.1.0</span>
         </div>
       </footer>
     </main>

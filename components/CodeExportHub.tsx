@@ -18,6 +18,7 @@ import { servantCommandCode } from '../lib/bot/commands/servant';
 import { duelCommandCode } from '../lib/bot/commands/duel';
 import { grailwarCommandCode } from '../lib/bot/commands/grailwar';
 import { customiseCommandCode } from '../lib/bot/commands/customise';
+import { addservantCommandCode } from '../lib/bot/commands/addservant';
 import { discordBotMainCode } from '../lib/bot/client';
 import { nodeCanvasRendererCode } from '../lib/bot/nodeCanvasExport';
 
@@ -43,8 +44,14 @@ const FILE_MODULES = [
   {
     id: 'cmd_summon',
     name: 'src/bot/commands/summon.ts',
-    category: 'Slash Command: /summon',
+    category: 'Slash Command: /summon (Ritual)',
     code: summonCommandCode
+  },
+  {
+    id: 'cmd_addservant',
+    name: 'src/bot/commands/addservant.ts',
+    category: 'Admin Slash Command: /addservant',
+    code: addservantCommandCode
   },
   {
     id: 'cmd_servant',

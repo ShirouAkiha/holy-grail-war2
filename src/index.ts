@@ -11,6 +11,7 @@ import * as servantCommand from './commands/servant';
 import * as duelCommand from './commands/duel';
 import * as grailwarCommand from './commands/grailwar';
 import * as customiseCommand from './commands/customise';
+import * as addservantCommand from './commands/addservant';
 import { getOrCreateMaster, saveMaster } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
 
@@ -39,6 +40,7 @@ commands.set(servantCommand.data.name, servantCommand);
 commands.set(duelCommand.data.name, duelCommand);
 commands.set(grailwarCommand.data.name, grailwarCommand);
 commands.set(customiseCommand.data.name, customiseCommand);
+commands.set(addservantCommand.data.name, addservantCommand);
 
 // ==========================================
 // 3. SLASH COMMAND DEPLOYMENT TO DISCORD API
