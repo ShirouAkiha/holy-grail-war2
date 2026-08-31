@@ -135,7 +135,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     if (!master.servants || master.servants.length === 0) {
       await interaction.reply({
         ephemeral: true,
-        content: '❌ You cannot inspect your Master Dossier without a contracted Servant! Use \`/summon\` first.'
+        content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use \`/summon\` to establish a covenant and enter the Holy Grail War.'
       });
       return;
     }

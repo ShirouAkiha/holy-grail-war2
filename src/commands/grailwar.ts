@@ -14,7 +14,8 @@ import {
   executeWarAction, 
   simulateWarSkirmish,
   attackSuspectUserInWar,
-  leakIntelInWar 
+  leakIntelInWar,
+  patrolCityInWar
 } from '../engine/grailwar';
 import { buildProfileEmbed, buildProfileButtons } from './profile';
 
@@ -76,7 +77,7 @@ export const data = new SlashCommandBuilder()
       .setDescription('Ambush a suspected Master (if civilian, they die & you get exposed!)')
       .addStringOption(opt =>
         opt.setName('target')
-          .setDescription('The username, @mention, or ID of the suspected Master')
+          .setDescription('The username, @mention, ID, or designation (e.g. Shadow Master #2) of the target')
           .setRequired(true)
       )
   )
@@ -91,9 +92,14 @@ export const data = new SlashCommandBuilder()
       )
       .addStringOption(opt =>
         opt.setName('target')
-          .setDescription('Optional: Mention or name of suspected Master to expose')
+          .setDescription('Optional: Mention, name, or designation of suspected Master to expose')
           .setRequired(false)
       )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('patrol')
+      .setDescription('👁️ Patrol/Scout channel sector to gather intel, detect rival signatures, or spy on bystanders')
   )
   .addSubcommand(sub =>
     sub
@@ -131,7 +137,7 @@ function buildWarEmbed(war: HolyGrailWarSession, userParticipant?: any, lastMsg?
     })
     .join('\n');
 
-  // Filter out any legacy private event logs (e.g. workshop defenses or mana channel)
+  // Filter out any legacy private event logs
   const publicEventsList = (war.eventLogs || []).filter(evt => {
     const txt = evt.text.toLowerCase();
     return !txt.includes('workshop defense') && 
@@ -189,6 +195,13 @@ function buildWarEmbed(war: HolyGrailWarSession, userParticipant?: any, lastMsg?
 }
 
 function buildDefensesEmbed(userParticipant: any, lastMsg?: string) {
+  if (!userParticipant) {
+    return new EmbedBuilder()
+      .setTitle('📜 Civilian Spectator Dossier')
+      .setDescription('📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.')
+      .setColor(0x71717a);
+  }
+
   const ward = userParticipant?.boundedField || 'none';
   const autoEvade = userParticipant?.autoEvadeEnabled !== false;
   const seals = userParticipant?.commandSeals ?? 3;
@@ -246,10 +259,10 @@ function buildWarButtons() {
       .setEmoji('🏰')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
-      .setCustomId('war_duel')
-      .setLabel('Duel (/duel)')
-      .setEmoji('⚔️')
-      .setStyle(ButtonStyle.Danger),
+      .setCustomId('war_patrol')
+      .setLabel('Patrol City')
+      .setEmoji('👁️')
+      .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId('war_skirmish')
       .setLabel('City Skirmish')
@@ -264,6 +277,7 @@ function buildWarButtons() {
 }
 
 function buildDefensesButtons(userParticipant: any) {
+  if (!userParticipant) return [];
   const currentWard = userParticipant?.boundedField || 'none';
   const autoEvade = userParticipant?.autoEvadeEnabled !== false;
 
@@ -311,18 +325,27 @@ function buildDefensesButtons(userParticipant: any) {
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+    const subcommand = interaction.options.getSubcommand();
 
-    if (!master.servants || master.servants.length === 0) {
-      await interaction.reply({
-        ephemeral: true,
-        content: '❌ You cannot enter the Holy Grail War without a contracted Servant! Use `/summon` first.'
-      });
-      return;
+    const isCivilian = !master.servants || master.servants.length === 0;
+
+    if (isCivilian) {
+      if (['profile', 'defenses', 'ward', 'evade', 'attack', 'rest', 'betray'].includes(subcommand)) {
+        await interaction.reply({
+          ephemeral: true,
+          content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
+        });
+        return;
+      }
     }
 
     let war = getOrInitWarSession(master);
     const userParticipant = war.participants[interaction.user.id];
-    const subcommand = interaction.options.getSubcommand();
+
+    // Obtain current Discord channel name if available
+    const currentChannelName = interaction.channel && 'name' in interaction.channel 
+      ? `#${(interaction.channel as any).name}`
+      : '#general';
 
     if (subcommand === 'profile') {
       const profEmbed = buildProfileEmbed(master, war);
@@ -388,8 +411,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     let initialMsg = '';
 
-    if (subcommand === 'skirmish') {
-      const res = simulateWarSkirmish(war);
+    if (subcommand === 'patrol') {
+      const res = patrolCityInWar(war, interaction.user.id, interaction.user.username, currentChannelName);
+      initialMsg = res.message;
+      war = res.updatedWar;
+    } else if (subcommand === 'skirmish') {
+      const res = simulateWarSkirmish(war, currentChannelName);
       initialMsg = res.message;
       war = res.updatedWar;
     } else if (subcommand === 'rest') {
@@ -404,14 +431,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       await saveMaster(master);
     } else if (subcommand === 'attack') {
       const targetQuery = interaction.options.getString('target', true);
-      const res = attackSuspectUserInWar(war, interaction.user.id, targetQuery);
+      const res = attackSuspectUserInWar(war, interaction.user.id, targetQuery, currentChannelName);
       initialMsg = res.message;
       war = res.updatedWar;
       await saveMaster(master);
     } else if (subcommand === 'leak') {
       const intelText = interaction.options.getString('intel', true);
       const targetQuery = interaction.options.getString('target') || undefined;
-      const res = leakIntelInWar(war, interaction.user.id, intelText, targetQuery);
+      const res = leakIntelInWar(war, interaction.user.id, intelText, targetQuery, currentChannelName);
       initialMsg = res.message;
       war = res.updatedWar;
     }
@@ -451,9 +478,17 @@ function setupWarCollector(message: any, userId: string) {
       const master = await getOrCreateMaster(i.user.id, i.user.username);
       let war = getOrInitWarSession(master);
       let actionResultMsg = '';
+      const isCivilian = !master.servants || master.servants.length === 0;
 
       // Secret Profile Button (Private to whoever clicks it)
       if (i.customId === 'war_my_profile') {
+        if (isCivilian) {
+          await i.reply({
+            ephemeral: true,
+            content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
+          });
+          return;
+        }
         const userP = war.participants[i.user.id];
         const profEmbed = buildProfileEmbed(master, war);
         const profBtns = buildProfileButtons(userP);
@@ -463,6 +498,13 @@ function setupWarCollector(message: any, userId: string) {
 
       // Defenses & Ward Button interactions (Private to whoever clicks it)
       if (i.customId === 'war_defenses') {
+        if (isCivilian) {
+          await i.reply({
+            ephemeral: true,
+            content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
+          });
+          return;
+        }
         const userP = war.participants[i.user.id];
         const defEmbed = buildDefensesEmbed(userP);
         const defBtns = buildDefensesButtons(userP);
@@ -532,18 +574,15 @@ function setupWarCollector(message: any, userId: string) {
         await i.update({ embeds: [defEmbed], components: defBtns });
         return;
       }
-      else if (i.customId === 'war_duel') {
-        await i.reply({ content: 'Use `/duel` to initiate tactical turn-based combat against a rival Master!', ephemeral: true });
-        return;
-      } 
-      else if (i.customId === 'war_rest') {
-        const res = executeWarAction(war, i.user.id, 'rest_and_heal');
+      else if (i.customId === 'war_patrol') {
+        const chanTag = i.channel && 'name' in i.channel ? `#${(i.channel as any).name}` : '#general';
+        const res = patrolCityInWar(war, i.user.id, i.user.username, chanTag);
         actionResultMsg = res.message;
         war = res.updatedWar;
-        await saveMaster(master);
-      } 
+      }
       else if (i.customId === 'war_skirmish') {
-        const res = simulateWarSkirmish(war);
+        const chanTag = i.channel && 'name' in i.channel ? `#${(i.channel as any).name}` : '#general';
+        const res = simulateWarSkirmish(war, chanTag);
         actionResultMsg = res.message;
         war = res.updatedWar;
       }

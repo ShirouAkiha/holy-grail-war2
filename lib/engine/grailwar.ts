@@ -7,18 +7,9 @@ import {
 import { SERVANT_DATABASE } from '../data/servants';
 
 // =========================================================================
-// GLOBAL SHARED HOLY GRAIL WAR SINGLETON
+// GLOBAL SHARED HOLY GRAIL WAR SINGLETON (Shared across all Discord commands & users)
 // =========================================================================
 let globalWarSession: HolyGrailWarSession | null = null;
-
-const CANONICAL_WAR_CLASSES = [
-  { slot: 2, class: 'Archer' as const, servantId: 'gilgamesh_archer', servantName: 'King of Heroes (Gilgamesh)', defaultUsername: 'Shadow Master #2' },
-  { slot: 3, class: 'Lancer' as const, servantId: 'scathach_lancer', servantName: 'Scáthach (Lancer)', defaultUsername: 'itsderpo' },
-  { slot: 4, class: 'Berserker' as const, servantId: 'heracles_berserker', servantName: 'Great Berserker (Heracles)', defaultUsername: 'Shadow Master #4' },
-  { slot: 5, class: 'Ruler' as const, servantId: 'jeanne_darc_ruler', servantName: 'Holy Maiden (Jeanne d\'Arc)', defaultUsername: 'Shadow Master #5' },
-  { slot: 6, class: 'Assassin' as const, servantId: 'emiya_archer', servantName: 'Nameless Guardian (EMIYA)', defaultUsername: 'Shadow Master #6' },
-  { slot: 7, class: 'Rider' as const, servantId: 'terminal_saber_linus', servantName: 'Iron Sovereign (Linus)', defaultUsername: 'Shadow Master #7' }
-];
 
 export function createHolyGrailWarSession(
   initiatorMaster: { discordId: string; username: string; servantId: string; servantName: string; avatarUrl: string; maxHp: number; servantClass?: string },
@@ -66,33 +57,52 @@ export function createHolyGrailWarSession(
   return session;
 }
 
-export function getOrInitWarSession(master: MasterProfile): HolyGrailWarSession {
+/**
+ * Returns or initializes the shared, server-wide Holy Grail War session.
+ * Real players register directly into the war.
+ * Civilians (players with no contracted Servants) can view the war board without registration.
+ */
+export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession {
+  if (!globalWarSession) {
+    const session: HolyGrailWarSession = {
+      id: `grail_war_${Date.now()}`,
+      title: 'Fuyuki Holy Grail War',
+      status: 'active',
+      participants: {},
+      alliances: {},
+      civilianCasualties: [],
+      leakedIntel: [],
+      eventLogs: [
+        {
+          id: `evt_init_${Date.now()}`,
+          timestamp: Date.now(),
+          text: `🕯️ The Fuyuki Holy Grail War has commenced! All Masters operate from the shadows. Identities remain concealed until exposed by public actions, tactical ambushes, or intelligence leaks.`,
+          type: 'clash'
+        }
+      ]
+    };
+    globalWarSession = session;
+  }
+
+  // Ensure arrays exist
+  if (!globalWarSession.leakedIntel) globalWarSession.leakedIntel = [];
+  if (!globalWarSession.civilianCasualties) globalWarSession.civilianCasualties = [];
+  if (!globalWarSession.eventLogs) globalWarSession.eventLogs = [];
+
+  // If no master or civilian without contracted servants, return active session directly
+  if (!master || !master.servants || master.servants.length === 0) {
+    return globalWarSession;
+  }
+
   const activeServant =
-    master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+    master.servants.find((s: any) => s.id === master.activeServantId) || master.servants[0];
 
   const servantName = activeServant?.template?.name || 'Heroic Spirit';
   const servantClass = activeServant?.template?.servantClass || 'Saber';
   const avatarUrl = activeServant?.template?.avatarUrl || '';
   const maxHp = activeServant?.template?.baseHp || 15000;
 
-  if (!globalWarSession) {
-    globalWarSession = createHolyGrailWarSession({
-      discordId: master.discordId,
-      username: master.username,
-      servantId: activeServant?.id || 'servant_init',
-      servantName,
-      avatarUrl,
-      maxHp,
-      servantClass
-    });
-    return globalWarSession;
-  }
-
-  if (!globalWarSession.leakedIntel) globalWarSession.leakedIntel = [];
-  if (!globalWarSession.civilianCasualties) globalWarSession.civilianCasualties = [];
-  if (!globalWarSession.eventLogs) globalWarSession.eventLogs = [];
-
-  // Check if this real player already occupies a slot (by Discord ID or username match)
+  // Check if this real player already occupies a slot
   const existingKey = Object.keys(globalWarSession.participants).find(
     k => k === master.discordId || 
          globalWarSession!.participants[k].discordId === master.discordId ||
@@ -101,8 +111,7 @@ export function getOrInitWarSession(master: MasterProfile): HolyGrailWarSession 
 
   if (existingKey) {
     const existing = globalWarSession.participants[existingKey];
-
-    // If the key was a placeholder slot ID (e.g. ai_shadow_slot_3), migrate key to real discordId
+    
     if (existingKey !== master.discordId) {
       delete globalWarSession.participants[existingKey];
       existing.discordId = master.discordId;
@@ -170,6 +179,7 @@ export type WarActionType =
   | 'simulate_skirmish'
   | 'attack_suspect'
   | 'leak_intel'
+  | 'patrol_city'
   | 'expose_master'
   | 'set_ward'
   | 'toggle_evade';
@@ -189,6 +199,37 @@ export interface WarActionResult {
   updatedWar: HolyGrailWarSession;
 }
 
+/**
+ * Helper to match a target Master in the session via username, discordId, servantName, or designation (e.g. "Shadow Master #2", "Master 2", "#2")
+ */
+export function findTargetMaster(targetWar: HolyGrailWarSession, query: string): WarMasterParticipant | undefined {
+  const clean = query.replace(/[<@!>]/g, '').trim().toLowerCase();
+  if (!clean) return undefined;
+  const participantsList = Object.values(targetWar.participants);
+
+  // 1. Exact or partial match on discordId, username, or servantName
+  let match = participantsList.find(p => 
+    p.discordId.toLowerCase() === clean ||
+    p.username.toLowerCase() === clean ||
+    p.username.toLowerCase().includes(clean) ||
+    clean.includes(p.username.toLowerCase()) ||
+    p.servantName.toLowerCase().includes(clean)
+  );
+  if (match) return match;
+
+  // 2. Designation match like "shadow master #2", "shadow master 2", "master 2", "master #2", "#2", or "2"
+  const numberMatch = clean.match(/(?:shadow\s*master|master)?\s*#?\s*([1-7])/i);
+  if (numberMatch) {
+    const slotIdx = parseInt(numberMatch[1], 10) - 1;
+    if (slotIdx >= 0 && slotIdx < participantsList.length) {
+      return participantsList[slotIdx];
+    }
+  }
+
+  return undefined;
+}
+
+// Expose a Master when they perform an action publicly or are identified
 export function exposeMasterInWar(
   war: HolyGrailWarSession,
   masterIdOrUsername: string,
@@ -197,10 +238,7 @@ export function exposeMasterInWar(
   const targetWar = war || globalWarSession;
   if (!targetWar) return { updatedWar: war, newlyExposed: false };
 
-  const query = masterIdOrUsername.toLowerCase().trim();
-  const participant = Object.values(targetWar.participants).find(
-    p => p.discordId.toLowerCase() === query || p.username.toLowerCase() === query || query.includes(p.username.toLowerCase())
-  );
+  const participant = findTargetMaster(targetWar, masterIdOrUsername);
 
   if (!participant) {
     return { updatedWar: targetWar, newlyExposed: false };
@@ -242,10 +280,16 @@ export function exposeMasterInWar(
   return { updatedWar: targetWar, newlyExposed: true, participant };
 }
 
+/**
+ * Launch an ambush on a target in a specific channel.
+ * Anonymous target designation supported (e.g. "Shadow Master #2", "@username", or username).
+ * Attacker remains ANONYMOUS in shadows unless trapped by Alarm Ward, counter-struck by Assassin, or attacking an innocent civilian.
+ */
 export function attackSuspectUserInWar(
   war: HolyGrailWarSession,
   attackerId: string,
-  suspectQuery: string
+  suspectQuery: string,
+  channelName?: string
 ): WarActionResult {
   const targetWar = war || globalWarSession;
   if (!targetWar) {
@@ -256,6 +300,10 @@ export function attackSuspectUserInWar(
   if (!attacker || !attacker.isAlive) {
     return { success: false, message: 'You are not active in the Holy Grail War!', updatedWar: targetWar };
   }
+
+  const chanTag = channelName 
+    ? (channelName.startsWith('#') ? channelName : `#${channelName}`)
+    : '#general';
 
   // A. Attacker global cooldown (2 minutes)
   const now = Date.now();
@@ -268,16 +316,7 @@ export function attackSuspectUserInWar(
     };
   }
 
-  // Clean suspect query (remove @ or discord mention wrapper <@!1234>)
-  const cleanQuery = suspectQuery.replace(/[<@!>]/g, '').trim().toLowerCase();
-
-  // Find if target is a real Master in this Grail War
-  const targetMaster = Object.values(targetWar.participants).find(
-    p => p.discordId.toLowerCase() === cleanQuery ||
-         p.username.toLowerCase() === cleanQuery ||
-         p.username.toLowerCase().includes(cleanQuery) ||
-         cleanQuery.includes(p.username.toLowerCase())
-  );
+  const targetMaster = findTargetMaster(targetWar, suspectQuery);
 
   if (targetMaster && targetMaster.discordId === attacker.discordId) {
     return { success: false, message: 'You cannot target yourself with an ambush!', updatedWar: targetWar };
@@ -288,7 +327,7 @@ export function attackSuspectUserInWar(
     const remainingSecs = Math.ceil((180000 - (now - targetMaster.lastAmbushedTime)) / 1000);
     return {
       success: false,
-      message: `🚨 **Alert Protocol Active:** **${targetMaster.username}** has recently clashed and is on high alert! Wait **${remainingSecs}s** before trying to ambush them.`,
+      message: `🚨 **Alert Protocol Active:** **${targetMaster.isExposed ? targetMaster.username : 'Target Master'}** has recently clashed and is on high alert! Wait **${remainingSecs}s** before trying to ambush them.`,
       updatedWar: targetWar
     };
   }
@@ -301,24 +340,26 @@ export function attackSuspectUserInWar(
     attacker.lastAmbushTime = now;
     targetMaster.lastAmbushedTime = now;
 
-    // Both get exposed (unless some passive/evade rescues them later)
-    attacker.isExposed = true;
-    attacker.exposureReason = 'ambush_clash';
-
-    targetMaster.isExposed = true;
-    targetMaster.exposureReason = 'ambush_clash';
-
+    const targetIdx = Object.values(targetWar.participants).indexOf(targetMaster) + 1;
+    const targetLabel = targetMaster.isExposed ? `Master **${targetMaster.username}**` : `Shadow Master #${targetIdx}`;
     const defenderClass = targetMaster.servantClass || 'Saber';
 
-    // 1. PRESENCE CONCEALMENT: ASSASSIN PASSIVE
+    // 1. PRESENCE CONCEALMENT: ASSASSIN PASSIVE (Exposes attacker!)
     if (defenderClass === 'Assassin') {
+      attacker.isExposed = true;
+      attacker.exposureReason = 'ambush_clash';
+      targetMaster.isExposed = true;
+      targetMaster.exposureReason = 'ambush_clash';
+
       const pcDamage = 2500;
       attacker.currentHp = Math.max(0, attacker.currentHp - pcDamage);
       
-      let failMsg = `🕶️ **PRESENCE CONCEALMENT DETECTION!** <@${attacker.discordId}> attempted to ambush suspected Master <@${targetMaster.discordId}> (**${targetMaster.username}**), but their Servant is an **Assassin**!\n\n` +
-        `• The Assassin detected the intrusion, nullifying the surprise ambush entirely.\n` +
+      let failMsg = `🕶️ **PRESENCE CONCEALMENT DETECTION IN ${chanTag}!**\n` +
+        `An ambush on ${targetLabel} in **${chanTag}** failed completely because their Servant is an **Assassin**!\n\n` +
+        `• The Assassin detected the intrusion, nullifying the surprise strike.\n` +
         `• The Assassin counter-struck from the shadows, dealing **${pcDamage.toLocaleString()} DMG** to Master **${attacker.username}**'s Servant (**${attacker.servantName}**)! (HP: ${attacker.currentHp}/${attacker.maxHp})\n` +
-        `• Master **${attacker.username}**'s identity is now EXPOSED to the server!`;
+        `• Master **${attacker.username}**'s identity is now **EXPOSED** to the server!\n\n` +
+        `⛪ **Fuyuki Church Overseer Gas Leak Bulletin:**\n> *"The Fuyuki Church reports a sudden high-pressure 'gas leak explosion' in **${chanTag}** following abnormal seismic signatures. Citizens advised to stay indoors."*`;
 
       if (attacker.currentHp <= 0) {
         attacker.isAlive = false;
@@ -328,7 +369,7 @@ export function attackSuspectUserInWar(
       targetWar.eventLogs.unshift({
         id: `evt_ambush_fail_${Date.now()}`,
         timestamp: now,
-        text: `🕶️ Assassin Presence Concealment triggered: **${attacker.username}**'s ambush on **${targetMaster.username}** failed, taking ${pcDamage} counter damage!`,
+        text: `🕶️ Assassin Counter in ${chanTag}: Master **${attacker.username}**'s ambush on ${targetLabel} failed! Took ${pcDamage} counter damage and was exposed!`,
         type: 'ambush'
       });
 
@@ -352,10 +393,13 @@ export function attackSuspectUserInWar(
       ambushDamage = ambushDamage - absorbed;
       defenseText += `🛡️ **Mage's Sanctuary Bounded Field** absorbed 60% of the strike (parried **${absorbed.toLocaleString()} DMG**).\n`;
     } else if (wardType === 'alarm') {
-      // Alerts and strikes back for 3000 counter-damage
+      // Alerts, exposes attacker, and strikes back for 3000 counter-damage
+      attacker.isExposed = true;
+      attacker.exposureReason = 'ambush_clash';
+
       const counterDmg = 3000;
       attacker.currentHp = Math.max(0, attacker.currentHp - counterDmg);
-      defenseText += `🚨 **Alarm Ward Triggered!** The security field triggered an intrusion defense, dealing **${counterDmg.toLocaleString()} DMG** back to Master **${attacker.username}**'s Servant (**${attacker.servantName}**)! (HP: ${attacker.currentHp}/${attacker.maxHp})\n`;
+      defenseText += `🚨 **Alarm Ward Triggered!** Intrusion alarm detected the infiltrator! Exposed Master **${attacker.username}** and dealt **${counterDmg.toLocaleString()} DMG** back to Servant **${attacker.servantName}**! (HP: ${attacker.currentHp}/${attacker.maxHp})\n`;
       
       if (attacker.currentHp <= 0) {
         attacker.isAlive = false;
@@ -367,7 +411,7 @@ export function attackSuspectUserInWar(
     if (hasInstinct && Math.random() < 0.35) {
       const parried = Math.round(ambushDamage * 0.8);
       ambushDamage = ambushDamage - parried;
-      defenseText += `👁️ **Instinct/Clairvoyance Alert:** Servant **${targetMaster.servantName}** sensed the threat instantly! They parried 80% of the damage (saved **${parried.toLocaleString()} DMG**) and counter-struck **${attacker.username}** for **1,500 DMG**!\n`;
+      defenseText += `👁️ **Instinct/Clairvoyance Alert:** Servant **${targetMaster.servantName}** sensed the threat! Parried 80% of damage (saved **${parried.toLocaleString()} DMG**) and counter-struck for **1,500 DMG**!\n`;
       
       // Deal counter dmg
       attacker.currentHp = Math.max(0, attacker.currentHp - 1500);
@@ -376,17 +420,24 @@ export function attackSuspectUserInWar(
       }
     }
 
-    // Apply the final damage to target
+    // Target becomes exposed due to taking a direct ambush
+    targetMaster.isExposed = true;
+    targetMaster.exposureReason = 'ambush_clash';
+
+    // Apply final damage to target
     targetMaster.currentHp = Math.max(0, targetMaster.currentHp - ambushDamage);
 
-    let mainMessage = `🚨 **FUYUKI AIR RAID SIREN — <@${targetMaster.discordId}>, YOU ARE BEING AMBUSHED!**\n\n` +
-      `Master <@${attacker.discordId}> (**${attacker.username}**) launched a surprise assault on suspected Master <@${targetMaster.discordId}> (**${targetMaster.username}**)! Both identities are now EXPOSED to the server!\n\n` +
-      `• **Final Result:** **${targetMaster.username}**'s Servant (**${targetMaster.servantName}**) took **${ambushDamage.toLocaleString()} DMG**! (HP: ${targetMaster.currentHp}/${targetMaster.maxHp})\n` +
-      (defenseText ? `• **Defensive Countermeasures:**\n${defenseText}` : '');
+    const attackerLabel = attacker.isExposed ? `Master **${attacker.username}**` : 'A Shadow Master';
+
+    let mainMessage = `🚨 **FUYUKI AIR RAID SIREN — AMBUSH IN ${chanTag}!**\n\n` +
+      `${attackerLabel} launched a surprise assault on ${targetLabel} in **${chanTag}**!\n\n` +
+      `• **Final Ambush Result:** **${targetMaster.username}**'s Servant (**${targetMaster.servantName}**) took **${ambushDamage.toLocaleString()} DMG**! (HP: ${targetMaster.currentHp}/${targetMaster.maxHp})\n` +
+      (defenseText ? `• **Defensive Countermeasures:**\n${defenseText}` : '') +
+      `\n⛪ **Fuyuki Church Overseer Gas Leak Bulletin:**\n> *"The Fuyuki Church and municipal police report a severe structural **'gas leak explosion'** in **${chanTag}** following abnormal seismic and thermal readings. Residents advised to stay indoors."*`;
 
     let eliminatedId: string | undefined;
 
-    // 4. COMMAND SEAL EMERGENCY EVACUATION (Auto-Evacuate on Lethal Damage)
+    // 4. COMMAND SEAL EMERGENCY EVACUATION
     if (targetMaster.currentHp <= 0 && targetMaster.autoEvadeEnabled !== false && targetMaster.commandSeals >= 1) {
       targetMaster.commandSeals--;
       targetMaster.currentHp = 1;
@@ -394,31 +445,31 @@ export function attackSuspectUserInWar(
       targetMaster.isExposed = false; // Vanish back into the shadows
       
       mainMessage += `\n\n🔴 **EMERGENCY COMMAND SEAL EVACUATION!**\n` +
-        `As **${targetMaster.username}** faced a fatal ambush, their contracted Command Seal flared: *“By my Command Seal... Spatial Evacuation!”*\n` +
+        `As **${targetMaster.username}** faced fatal damage in **${chanTag}**, their Command Seal flared: *“By my Command Seal... Spatial Evacuation!”*\n` +
         `• Consumed **1 Command Seal** (Remaining: **${targetMaster.commandSeals}/3**).\n` +
-        `• Nullified the death-blow! **${targetMaster.username}** escaped into deep shadows with **1 HP**!`;
+        `• Nullified death-blow! **${targetMaster.username}** escaped into deep shadows with **1 HP**!`;
 
       targetWar.eventLogs.unshift({
         id: `evt_evac_${Date.now()}`,
         timestamp: now,
-        text: `🔴 Emergency Evacuation: **${targetMaster.username}** consumed 1 Command Seal to escape fatal ambush from **${attacker.username}**!`,
+        text: `🔴 Emergency Evacuation in ${chanTag}: **${targetMaster.username}** consumed 1 Command Seal to escape fatal ambush by ${attackerLabel}!`,
         type: 'ambush'
       });
     }
-    // 5. BATTLE CONTINUATION PASSIVE (Berserker / Lancer)
+    // 5. BATTLE CONTINUATION PASSIVE
     else if (targetMaster.currentHp <= 0 && ['Berserker', 'Lancer'].includes(defenderClass) && !targetMaster.gutsTriggered) {
       targetMaster.gutsTriggered = true;
       targetMaster.currentHp = Math.round(targetMaster.maxHp * 0.25);
       targetMaster.isAlive = true;
       
       mainMessage += `\n\n❤️ **BATTLE CONTINUATION (GUTS)!**\n` +
-        `**${targetMaster.username}**'s Servant (**${targetMaster.servantName}**) took a lethal blow, but their indomitable class spirit activated **Battle Continuation**!\n` +
+        `**${targetMaster.username}**'s Servant (**${targetMaster.servantName}**) took a lethal blow in **${chanTag}**, but their indomitable class spirit activated **Battle Continuation**!\n` +
         `• Clung to life, reviving instantly with **25% HP** (**${targetMaster.currentHp.toLocaleString()} HP**)!`;
 
       targetWar.eventLogs.unshift({
         id: `evt_guts_${Date.now()}`,
         timestamp: now,
-        text: `❤️ Battle Continuation: **${targetMaster.username}**'s ${targetMaster.servantName} revived with 25% HP during ambush!`,
+        text: `❤️ Battle Continuation in ${chanTag}: **${targetMaster.username}**'s ${targetMaster.servantName} revived with 25% HP during ambush!`,
         type: 'ambush'
       });
     }
@@ -428,12 +479,12 @@ export function attackSuspectUserInWar(
       attacker.kills++;
       eliminatedId = targetMaster.discordId;
       
-      mainMessage += `\n\n☠️ **FATAL AMBUSH:** Master **${targetMaster.username}**'s Servant took a fatal strike and was permanently ELIMINATED from the active Holy Grail War!`;
+      mainMessage += `\n\n☠️ **FATAL AMBUSH IN ${chanTag}:** Master **${targetMaster.username}**'s Servant took a fatal strike and was permanently ELIMINATED from the active Holy Grail War!`;
 
       targetWar.eventLogs.unshift({
         id: `evt_elim_${Date.now()}`,
         timestamp: now,
-        text: `☠️ Fatal Ambush: **${attacker.username}** ambushed and ELIMINATED Master **${targetMaster.username}**!`,
+        text: `☠️ Fatal Ambush in ${chanTag}: ${attackerLabel} ambushed and ELIMINATED Master **${targetMaster.username}**!`,
         type: 'elimination'
       });
     } else {
@@ -441,7 +492,7 @@ export function attackSuspectUserInWar(
       targetWar.eventLogs.unshift({
         id: `evt_ambush_${Date.now()}`,
         timestamp: now,
-        text: `⚔️ Ambush: **${attacker.username}** ambushed **${targetMaster.username}** for ${ambushDamage} DMG!`,
+        text: `⚔️ Ambush in ${chanTag}: ${attackerLabel} ambushed **${targetMaster.username}** for ${ambushDamage.toLocaleString()} DMG!`,
         type: 'ambush'
       });
     }
@@ -451,6 +502,7 @@ export function attackSuspectUserInWar(
     if (remainingAlive.length === 1) {
       targetWar.status = 'concluded';
       targetWar.grailWinnerId = remainingAlive[0].discordId;
+      remainingAlive[0].isExposed = true;
       targetWar.eventLogs.unshift({
         id: `evt_win_${Date.now()}`,
         timestamp: now,
@@ -487,15 +539,17 @@ export function attackSuspectUserInWar(
     timestamp: now
   });
 
-  const casualtyText = `☠️ **COLLATERAL CASUALTY: CIVILIAN SLAIN!**\n\n` +
-    `Master **${attacker.username}**'s Servant (${attacker.servantName}) struck down innocent server bystander **${bystanderName}**!\n` +
-    `• The victim was killed instantly.\n` +
-    `• Master **${attacker.username}**'s identity is now **VIOLENTLY EXPOSED** to the server for breaching the Secrecy of Magecraft!`;
+  const casualtyText = `☠️ **COLLATERAL CASUALTY: CIVILIAN SLAIN IN ${chanTag}!**\n\n` +
+    `Master **${attacker.username}**'s Servant (${attacker.servantName}) struck down innocent server bystander **${bystanderName}** in **${chanTag}**!\n` +
+    `• The victim was killed instantly in the magical crossfire.\n` +
+    `• Master **${attacker.username}**'s identity is now **VIOLENTLY EXPOSED** to the server for breaching the Secrecy of Magecraft!\n\n` +
+    `⛪ **Fuyuki Church Overseer Gas Leak Bulletin:**\n` +
+    `> *"The Fuyuki Church and municipal police report a severe structural **'gas leak explosion'** in **${chanTag}** involving civilian ${bystanderName}. Cause classified as faulty underground utility piping. Public is advised to stay indoors."*`;
 
   targetWar.eventLogs.unshift({
     id: `evt_casualty_${Date.now()}`,
-    timestamp: now,
-    text: `☠️ Collateral Damage: **${attacker.username}**'s Servant killed bystander **${bystanderName}**!`,
+    timestamp: Date.now(),
+    text: `☠️ Church Cover-Up: "Gas leak explosion" reported in ${chanTag} involving bystander **${bystanderName}** (caused by **${attacker.username}**)!`,
     type: 'casualty'
   });
 
@@ -508,31 +562,36 @@ export function attackSuspectUserInWar(
   };
 }
 
+/**
+ * Leak intelligence onto the status board.
+ * Works for both contracted Masters and civilian bystanders!
+ */
 export function leakIntelInWar(
   war: HolyGrailWarSession,
   leakerDiscordId: string,
   intelText: string,
-  targetToExposeQuery?: string
+  targetToExposeQuery?: string,
+  channelName?: string
 ): WarActionResult {
   const targetWar = war || globalWarSession;
   if (!targetWar) {
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
 
+  const chanTag = channelName 
+    ? (channelName.startsWith('#') ? channelName : `#${channelName}`)
+    : '#general';
+
   if (!targetWar.leakedIntel) targetWar.leakedIntel = [];
   if (!targetWar.eventLogs) targetWar.eventLogs = [];
 
   const leaker = targetWar.participants[leakerDiscordId];
-  const leakerName = leaker?.username || leakerDiscordId;
+  const leakerName = leaker?.username || 'Civilian Informant';
 
   let exposedMaster: WarMasterParticipant | undefined;
 
   if (targetToExposeQuery && targetToExposeQuery.trim()) {
-    const q = targetToExposeQuery.trim().toLowerCase();
-    exposedMaster = Object.values(targetWar.participants).find(
-      p => p.discordId.toLowerCase() === q || p.username.toLowerCase().includes(q) || q.includes(p.username.toLowerCase())
-    );
-
+    exposedMaster = findTargetMaster(targetWar, targetToExposeQuery);
     if (exposedMaster) {
       exposedMaster.isExposed = true;
       exposedMaster.exposureReason = 'intel_leak';
@@ -549,8 +608,8 @@ export function leakIntelInWar(
   });
 
   const logText = exposedMaster
-    ? `🕵️ INTEL LEAK: An anonymous leak verified that **${exposedMaster.username}** is contracted to **${exposedMaster.servantName}** (${exposedMaster.servantClass})! Leaked Dispatch: "${intelText}"`
-    : `🕵️ INTEL LEAK: A clandestine report was broadcasted onto the Info Board: "${intelText}"`;
+    ? `🕵️ INTEL LEAK in ${chanTag}: An anonymous leak verified that **${exposedMaster.username}** is contracted to **${exposedMaster.servantName}** (${exposedMaster.servantClass})! Leaked Dispatch: "${intelText}"`
+    : `🕵️ INTEL LEAK in ${chanTag}: A clandestine report was broadcasted onto the Info Board: "${intelText}"`;
 
   targetWar.eventLogs.unshift({
     id: `evt_leak_${Date.now()}`,
@@ -563,6 +622,86 @@ export function leakIntelInWar(
     success: true,
     message: logText,
     exposedTargetMaster: exposedMaster?.username,
+    updatedWar: targetWar
+  };
+}
+
+/**
+ * Scout / Patrol a channel sector in Fuyuki.
+ * Civilians gather investigation rumors and overheard mana signatures.
+ * Masters detect rival signatures, bystander counts, or Bounded Field resonance.
+ */
+export function patrolCityInWar(
+  war: HolyGrailWarSession,
+  actorDiscordId: string,
+  actorUsername: string,
+  channelName?: string
+): WarActionResult {
+  const targetWar = war || globalWarSession;
+  if (!targetWar) {
+    return { success: false, message: 'Holy Grail War is not active.', updatedWar: war };
+  }
+
+  const chanTag = channelName 
+    ? (channelName.startsWith('#') ? channelName : `#${channelName}`)
+    : '#general';
+
+  const actorParticipant = targetWar.participants[actorDiscordId];
+
+  if (!actorParticipant || !actorParticipant.isAlive) {
+    // CIVILIAN PATROL / INVESTIGATION
+    const civilianReports = [
+      `👁️ **Civilian Patrol in ${chanTag}:** While investigating **${chanTag}**, you noticed strange glowing runes etched into an alley wall and overheard chanting! You gathered a tip-off: *"Faint Arts/Buster mana signature detected near ${chanTag}."* Use \`/grailwar leak\` or \`/leak\` to broadcast this rumor!`,
+      `👁️ **Civilian Patrol in ${chanTag}:** You surveyed **${chanTag}**. Citizens are walking by oblivious, but you detected a brief temperature drop and subtle magical static. A Servant was likely here recently!`,
+      `👁️ **Civilian Patrol in ${chanTag}:** You caught a glimpse of two shadowy figures leaping across rooftops in **${chanTag}** before vanishing into the night. You remained hidden in the crowd and escaped unnoticed!`,
+      `👁️ **Civilian Patrol in ${chanTag}:** **${chanTag}** appears calm tonight. No active Master confrontations or Servant clashes observed in this sector.`
+    ];
+    const report = civilianReports[Math.floor(Math.random() * civilianReports.length)];
+
+    targetWar.eventLogs.unshift({
+      id: `evt_patrol_${Date.now()}`,
+      timestamp: Date.now(),
+      text: `👁️ Civilian Investigation in ${chanTag}: An innocent bystander conducted a clandestine patrol of the sector.`,
+      type: 'intel_leak'
+    });
+
+    return {
+      success: true,
+      message: report,
+      updatedWar: targetWar
+    };
+  }
+
+  // MASTER SCOUT PATROL
+  const aliveRivals = Object.values(targetWar.participants).filter(p => p.discordId !== actorDiscordId && p.isAlive);
+  let masterReport = '';
+
+  if (aliveRivals.length > 0 && Math.random() < 0.65) {
+    const rival = aliveRivals[Math.floor(Math.random() * aliveRivals.length)];
+    const rivalIndex = Object.values(targetWar.participants).indexOf(rival) + 1;
+    const rivalLabel = rival.isExposed ? `Master **${rival.username}**` : `Shadow Master #${rivalIndex}`;
+    const servantLabel = rival.isExposed ? `**${rival.servantName}** (${rival.servantClass})` : `**${rival.servantClass} Class**`;
+
+    masterReport = `👁️ **Master Scout Patrol in ${chanTag}:** Your Servant (**${actorParticipant.servantName}**) surveyed **${chanTag}** and picked up the mana trail of ${rivalLabel} (${servantLabel}, ~${rival.currentHp.toLocaleString()} HP)! They are lurking near this channel.`;
+  } else {
+    const masterReports = [
+      `👁️ **Master Scout Patrol in ${chanTag}:** Your Servant surveyed **${chanTag}** and spotted 2 civilian bystanders lingering nearby. Exercise caution if ambushing here to avoid collateral casualties and Secrecy exposure!`,
+      `👁️ **Master Scout Patrol in ${chanTag}:** Your Servant detected faint Bounded Field resonance in **${chanTag}**. A rival Master in this sector may have set Sanctuary or Alarm wards!`,
+      `👁️ **Master Scout Patrol in ${chanTag}:** Your Servant combed **${chanTag}** from the shadows. The area is currently clear of rival Servant signatures.`
+    ];
+    masterReport = masterReports[Math.floor(Math.random() * masterReports.length)];
+  }
+
+  targetWar.eventLogs.unshift({
+    id: `evt_patrol_${Date.now()}`,
+    timestamp: Date.now(),
+    text: `👁️ Patrol in ${chanTag}: A Master surveyed ${chanTag} for rival signatures and civilian activity.`,
+    type: 'intel_leak'
+  });
+
+  return {
+    success: true,
+    message: masterReport,
     updatedWar: targetWar
   };
 }
@@ -591,6 +730,10 @@ export function executeWarAction(
     return leakIntelInWar(targetWar, actorDiscordId, targetParam);
   }
 
+  if (action === 'patrol_city') {
+    return patrolCityInWar(targetWar, actorDiscordId, actor.username, targetParam);
+  }
+
   if (action === 'expose_master') {
     const res = exposeMasterInWar(targetWar, actorDiscordId, 'public_command');
     return { success: true, message: 'Master exposed publicly.', updatedWar: res.updatedWar };
@@ -607,8 +750,6 @@ export function executeWarAction(
     else if (val === 'ward') desc = 'reinforced a Mage Workshop sanctuary field (blocks 60% incoming ambush damage)';
     else if (val === 'alarm') desc = 'deployed a high-alert Intrusion Alert Trap (detects ambushes and deals 3,000 retaliatory DMG)';
     
-    // Note: Private workshop defenses are NOT published to the public War Chronicle
-
     return {
       success: true,
       message: `🏰 **Sanctuary Updated:** You have successfully ${desc}!`,
@@ -622,8 +763,6 @@ export function executeWarAction(
     const desc = val 
       ? 'ENABLED Command Seal Auto-Evacuation (automatically consumes 1 Command Seal on lethal blows to retreat to shadows with 1 HP)'
       : 'DISABLED Command Seal Auto-Evacuation';
-
-    // Note: Private Command Seal evacuation settings are NOT published to the public War Chronicle
 
     return {
       success: true,
@@ -641,7 +780,6 @@ export function executeWarAction(
       const healAmount = Math.round(actor.maxHp * 0.45);
       actor.currentHp = Math.min(actor.maxHp, actor.currentHp + healAmount);
       resultMsg = `🩹 Channeled mana to recover ${healAmount.toLocaleString()} HP for ${actor.isExposed ? actor.servantName : 'contracted Servant'} (HP: ${actor.currentHp.toLocaleString()}/${actor.maxHp.toLocaleString()}).`;
-      // Private mana recovery in workshop is confidential
       return {
         success: true,
         message: resultMsg,
@@ -744,11 +882,16 @@ export function executeWarAction(
   };
 }
 
-export function simulateWarSkirmish(war: HolyGrailWarSession): WarActionResult {
+export function simulateWarSkirmish(war: HolyGrailWarSession, channelName?: string): WarActionResult {
   const targetWar = war || globalWarSession;
   if (!targetWar) {
     return { success: false, message: 'Holy Grail War is not active.', updatedWar: war };
   }
+
+  const defaultChannels = ['#general', '#bot-commands', '#lounge', '#fuyuki-crossroads', '#rooftop'];
+  const chanTag = channelName 
+    ? (channelName.startsWith('#') ? channelName : `#${channelName}`)
+    : defaultChannels[Math.floor(Math.random() * defaultChannels.length)];
 
   const aliveRivals = Object.values(targetWar.participants).filter(p => p.isAlive);
   if (aliveRivals.length < 2) {
@@ -780,13 +923,13 @@ export function simulateWarSkirmish(war: HolyGrailWarSession): WarActionResult {
   const name1 = ai1.isExposed ? `Master **${ai1.username}** (${ai1.servantName})` : `An unidentified Master with **${ai1.servantClass}**`;
   const name2 = ai2.isExposed ? `Master **${ai2.username}** (${ai2.servantName})` : `an unidentified Master with **${ai2.servantClass}**`;
 
-  let clashText = `⚔️ SKIRMISH: ${name1} clashed in the city with ${name2}, dealing ${damage.toLocaleString()} damage!`;
+  let clashText = `⚔️ SKIRMISH in ${chanTag}: ${name1} clashed in the shadows with ${name2} (${damage.toLocaleString()} DMG)!`;
 
   if (ai2.currentHp <= 0) {
     ai2.isAlive = false;
     ai2.isExposed = true;
     ai1.kills++;
-    clashText = `☠️ ELIMINATION: ${name1} struck a fatal blow and eliminated Master **${ai2.username}** (${ai2.servantName}) from the Holy Grail War!`;
+    clashText = `☠️ ELIMINATION in ${chanTag}: ${name1} struck a fatal blow and eliminated Master **${ai2.username}** (${ai2.servantName})! [Church Bulletin: Severe 'gas main rupture' in ${chanTag}]`;
   }
 
   targetWar.eventLogs.unshift({
@@ -825,7 +968,8 @@ export function recordDuelOutcome(
   war: HolyGrailWarSession,
   winnerQuery: string,
   loserQuery: string,
-  decision: 'kill' | 'spare'
+  decision: 'kill' | 'spare',
+  channelName?: string
 ): {
   updatedWar: HolyGrailWarSession;
   message: string;
@@ -842,22 +986,13 @@ export function recordDuelOutcome(
     };
   }
 
-  const findParticipant = (q: string) => {
-    const clean = q.replace(/[<@!>]/g, '').trim().toLowerCase();
-    return Object.values(targetWar.participants).find(
-      p =>
-        p.discordId.toLowerCase() === clean ||
-        p.username.toLowerCase() === clean ||
-        p.username.toLowerCase().includes(clean) ||
-        clean.includes(p.username.toLowerCase()) ||
-        p.servantName.toLowerCase().includes(clean)
-    );
-  };
+  const chanTag = channelName 
+    ? (channelName.startsWith('#') ? channelName : `#${channelName}`)
+    : '#general';
 
-  const victor = findParticipant(winnerQuery) || Object.values(targetWar.participants)[0];
-  let defeated = findParticipant(loserQuery);
+  const victor = findTargetMaster(targetWar, winnerQuery) || Object.values(targetWar.participants)[0];
+  let defeated = findTargetMaster(targetWar, loserQuery);
 
-  // If defeated participant isn't in participants map (e.g. shadow / rival), find first alive rival
   if (!defeated) {
     defeated = Object.values(targetWar.participants).find(
       p => p.discordId !== victor.discordId && p.isAlive
@@ -887,8 +1022,7 @@ export function recordDuelOutcome(
     defeated.currentHp = 0;
     victor.kills = (victor.kills || 0) + 1;
     isEliminated = true;
-
-    outcomeLog = `☠️ FATAL EXECUTION: Master **${victor.username}** (${victor.servantName}) dealt the finishing blow and EXECUTED Master **${defeated.username}** (${defeated.servantName})! Master **${defeated.username}** is PERMANENTLY ELIMINATED from the Holy Grail War!`;
+    outcomeLog = `☠️ FATAL EXECUTION in ${chanTag}: Master **${victor.username}** (${victor.servantName}) dealt the finishing blow and EXECUTED Master **${defeated.username}** (${defeated.servantName})! Church reported a massive 'gas leak explosion' in ${chanTag}.`;
 
     targetWar.eventLogs.unshift({
       id: `evt_exec_${Date.now()}`,
@@ -914,7 +1048,7 @@ export function recordDuelOutcome(
     defeated.currentHp = Math.max(1, Math.round(defeated.maxHp * 0.1));
     isEliminated = false;
 
-    outcomeLog = `🕊️ MERCY BESTOWED: Master **${victor.username}** (${victor.servantName}) defeated Master **${defeated.username}** (${defeated.servantName}) in a duel, but chose to SPARE their life! **${defeated.username}** survives with critical HP (${defeated.currentHp.toLocaleString()}/${defeated.maxHp.toLocaleString()}).`;
+    outcomeLog = `🕊️ MERCY BESTOWED in ${chanTag}: Master **${victor.username}** (${victor.servantName}) defeated Master **${defeated.username}** (${defeated.servantName}) in a duel, but chose to SPARE their life! **${defeated.username}** survives with critical HP. Both identities are now exposed.`;
 
     targetWar.eventLogs.unshift({
       id: `evt_mercy_${Date.now()}`,
@@ -932,4 +1066,3 @@ export function recordDuelOutcome(
     defeatedMaster: defeated
   };
 }
-

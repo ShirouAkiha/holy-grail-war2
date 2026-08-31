@@ -39,6 +39,13 @@ export const data = new SlashCommandBuilder()
   );
 
 function buildDefensesEmbed(userParticipant: any, lastMsg?: string) {
+  if (!userParticipant) {
+    return new EmbedBuilder()
+      .setTitle('🏰 Mage Workshop | No Sanctuary Established')
+      .setDescription('❌ You have not entered the Holy Grail War yet, so you have no magical defenses to configure. Use `/summon` to summon a Heroic Spirit and establish your workshop.')
+      .setColor(0x71717a);
+  }
+
   const ward = userParticipant?.boundedField || 'none';
   const autoEvade = userParticipant?.autoEvadeEnabled !== false;
   const seals = userParticipant?.commandSeals ?? 3;
@@ -81,6 +88,7 @@ function buildDefensesEmbed(userParticipant: any, lastMsg?: string) {
 }
 
 function buildDefensesButtons(userParticipant: any) {
+  if (!userParticipant) return [];
   const currentWard = userParticipant?.boundedField || 'none';
   const autoEvade = userParticipant?.autoEvadeEnabled !== false;
 
@@ -124,7 +132,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     if (!master.servants || master.servants.length === 0) {
       await interaction.reply({
         ephemeral: true,
-        content: '❌ You cannot enter the Holy Grail War without a contracted Servant! Use `/summon` first.'
+        content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
       });
       return;
     }

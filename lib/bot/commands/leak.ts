@@ -36,18 +36,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
     const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
 
-    if (!activeServant) {
-      await interaction.editReply({
-        content: '❌ You must have a contracted Servant to participate in the intelligence network! Use /summon first.'
-      });
-      return;
-    }
-
     const war = getOrInitWarSession(master);
     const intelText = interaction.options.getString('intel', true);
     const targetQuery = interaction.options.getString('target') || undefined;
 
-    const res = leakIntelInWar(war, interaction.user.id, intelText, targetQuery);
+    const channelName = interaction.channel && 'name' in interaction.channel 
+      ? '#' + (interaction.channel as any).name
+      : '#general';
+    const res = leakIntelInWar(war, interaction.user.id, intelText, targetQuery, channelName);
 
     const embed = new EmbedBuilder()
       .setTitle('🕵️ HOLY GRAIL WAR INTELLIGENCE LEAK BROADCAST')

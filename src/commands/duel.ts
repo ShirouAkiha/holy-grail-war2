@@ -657,9 +657,11 @@ async function finishDuel(
 ) {
   const warSession = getOrInitWarSession(p1Master);
 
+  const chanTag = i.channel && 'name' in i.channel ? `#${(i.channel as any).name}` : '#general';
+
   // If AI opponent defeated the player Master, automatically eliminate player Master
   if (winner.isAi) {
-    const outcome = recordDuelOutcome(warSession, winner.username, loser.username, 'kill');
+    const outcome = recordDuelOutcome(warSession, winner.username, loser.username, 'kill', chanTag);
 
     const defeatEmbed = new EmbedBuilder()
       .setTitle('☠️ FATAL DUEL DEFEAT — MASTER ELIMINATED')
@@ -737,7 +739,7 @@ async function finishDuel(
     });
 
     const decision = confirmation.customId === 'duel_fate_kill' ? 'kill' : 'spare';
-    const outcome = recordDuelOutcome(warSession, winner.username, loser.username, decision);
+    const outcome = recordDuelOutcome(warSession, winner.username, loser.username, decision, chanTag);
 
     if (decision === 'kill') {
       const execEmbed = new EmbedBuilder()
@@ -770,7 +772,7 @@ async function finishDuel(
     }
   } catch {
     // Timeout default: spare
-    recordDuelOutcome(warSession, winner.username, loser.username, 'spare');
+    recordDuelOutcome(warSession, winner.username, loser.username, 'spare', chanTag);
     await i.editReply({
       components: []
     });
