@@ -24,6 +24,7 @@ import { customiseCommandCode } from '../lib/bot/commands/customise';
 import { addservantCommandCode } from '../lib/bot/commands/addservant';
 import { discordBotMainCode } from '../lib/bot/client';
 import { nodeCanvasRendererCode } from '../lib/bot/nodeCanvasExport';
+import { deployScriptCode } from '../lib/bot/deploy';
 
 const FILE_MODULES = [
   {
@@ -31,6 +32,12 @@ const FILE_MODULES = [
     name: 'src/bot/index.ts',
     category: 'Discord Bot v14 Entry Point',
     code: discordBotMainCode
+  },
+  {
+    id: 'bot_deploy',
+    name: 'src/bot/deploy.ts',
+    category: 'Slash Command Deploy Script (Instant Sync)',
+    code: deployScriptCode
   },
   {
     id: 'prisma_schema',

@@ -238,6 +238,9 @@ export interface WarMasterParticipant {
   maxHp: number;
   commandSeals: number;
   isAlive: boolean;
+  isExposed?: boolean;
+  exposureReason?: 'public_command' | 'ambush_clash' | 'innocent_assault' | 'intel_leak' | 'direct_combat' | string;
+  innocentKills?: number;
   allianceId?: string;
   kills: number;
 }
@@ -256,11 +259,24 @@ export interface HolyGrailWarSession {
   status: 'active' | 'concluded';
   participants: Record<string, WarMasterParticipant>;
   alliances: Record<string, WarAlliance>;
+  civilianCasualties?: Array<{
+    id: string;
+    name: string;
+    timestamp: number;
+    slainByMasterId: string;
+  }>;
+  leakedIntel?: Array<{
+    id: string;
+    informantMasterId: string;
+    intel: string;
+    timestamp: number;
+    targetMasterId?: string;
+  }>;
   eventLogs: Array<{
     id: string;
     timestamp: number;
     text: string;
-    type: 'clash' | 'alliance' | 'betrayal' | 'elimination' | 'heal' | string;
+    type: 'clash' | 'alliance' | 'betrayal' | 'elimination' | 'heal' | 'ambush' | 'casualty' | 'exposure' | 'intel_leak' | string;
   }>;
   grailWinnerId?: string;
 }

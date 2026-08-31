@@ -8,8 +8,11 @@ import {
 } from 'discord.js';
 import * as summonCommand from './commands/summon';
 import * as servantCommand from './commands/servant';
+import * as servantsCommand from './commands/servants';
 import * as duelCommand from './commands/duel';
 import * as grailwarCommand from './commands/grailwar';
+import * as attackCommand from './commands/attack';
+import * as leakCommand from './commands/leak';
 import * as customiseCommand from './commands/customise';
 import * as addservantCommand from './commands/addservant';
 import { getOrCreateMaster, saveMaster } from './database/service';
@@ -37,8 +40,11 @@ export const client = new Client({
 export const commands = new Collection<string, any>();
 commands.set(summonCommand.data.name, summonCommand);
 commands.set(servantCommand.data.name, servantCommand);
+commands.set(servantsCommand.data.name, servantsCommand);
 commands.set(duelCommand.data.name, duelCommand);
 commands.set(grailwarCommand.data.name, grailwarCommand);
+commands.set(attackCommand.data.name, attackCommand);
+commands.set(leakCommand.data.name, leakCommand);
 commands.set(customiseCommand.data.name, customiseCommand);
 commands.set(addservantCommand.data.name, addservantCommand);
 
@@ -62,17 +68,19 @@ export async function registerSlashCommands() {
   const commandData = Array.from(commands.values()).map(c => c.data.toJSON());
 
   try {
-    console.log(`🔄 Registering ${commandData.length} Slash Commands with Discord...`);
+    const names = Array.from(commands.keys()).map(n => `/${n}`).join(', ');
+    console.log(`🔄 Registering ${commandData.length} Slash Commands with Discord [${names}]...`);
     
     // If DISCORD_GUILD_ID is provided, register commands immediately to that specific test server.
     // (Guild commands update instantly, whereas global commands can take up to an hour to cache).
     if (guildId) {
       await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commandData });
-      console.log(`✅ Successfully registered commands to Guild: ${guildId}`);
+      console.log(`✅ Successfully registered ${commandData.length} commands to Guild [${guildId}] (Instant availability).`);
     } else {
       // Otherwise, register globally to all servers where the bot is installed.
       await rest.put(Routes.applicationCommands(clientId), { body: commandData });
-      console.log('✅ Successfully registered global application commands.');
+      console.log(`✅ Successfully registered ${commandData.length} global application commands.`);
+      console.log('💡 Note: Global commands can take up to 1 hour to propagate. Add DISCORD_GUILD_ID to .env for 0-second instant updates, then press Ctrl+R in Discord.');
     }
   } catch (error) {
     console.error('❌ Failed to register slash commands:', error);

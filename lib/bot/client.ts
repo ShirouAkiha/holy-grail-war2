@@ -64,15 +64,17 @@ export async function registerSlashCommands() {
   const commandData = Array.from(commands.values()).map(c => c.data.toJSON());
 
   try {
-    console.log(\`🔄 Registering \${commandData.length} Slash Commands with Discord...\`);
+    const names = Array.from(commands.keys()).map(n => \`/\${n}\`).join(', ');
+    console.log(\`🔄 Registering \${commandData.length} Slash Commands with Discord [\${names}]...\`);
     if (guildId) {
       // Instant Guild-scoped deployment
       await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commandData });
-      console.log(\`✅ Successfully registered commands to Guild: \${guildId}\`);
+      console.log(\`✅ Successfully registered \${commandData.length} commands to Guild [\${guildId}] (Instant availability).\`);
     } else {
       // Global deployment
       await rest.put(Routes.applicationCommands(clientId), { body: commandData });
-      console.log('✅ Successfully registered global application commands.');
+      console.log(\`✅ Successfully registered \${commandData.length} global application commands.\`);
+      console.log('💡 Note: Discord global commands can take up to an hour to propagate globally. Add DISCORD_GUILD_ID to .env for instant guild-wide updates, and press Ctrl+R in Discord to refresh command cache.');
     }
   } catch (error) {
     console.error('❌ Failed to register slash commands:', error);
