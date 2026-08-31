@@ -59,6 +59,16 @@ export default function GrailWarSim({
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
   const [activeBoardTab, setActiveBoardTab] = useState<'roster' | 'leaks' | 'casualties'>('roster');
 
+  // Real-time ticking clock for pure render of cooldown counters
+  const [currentTime, setCurrentTime] = useState<number>(() => typeof window !== 'undefined' ? Date.now() : 0);
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Ambush & Leak Form State
   const [showAmbushModal, setShowAmbushModal] = useState(false);
   const [ambushInput, setAmbushInput] = useState('');
@@ -224,6 +234,148 @@ export default function GrailWarSim({
         <div className="p-3.5 rounded-sm bg-[#161616] border border-[#d4af37]/40 text-[#d4af37] text-xs font-mono flex items-center gap-2 animate-in fade-in">
           <Sparkles className="w-4 h-4 text-[#d4af37] flex-shrink-0" />
           <span>{actionFeedback}</span>
+        </div>
+      )}
+
+      {/* Mage Workshop & Personal Sanctuary Wards */}
+      {userParticipant && userParticipant.isAlive && (
+        <div className="p-5 bg-[#08080c] rounded-xl border border-[#3b82f6]/30 shadow-lg space-y-4 font-mono text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1a1a1a] pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-sm bg-[#10101a] text-[#3b82f6] border border-[#3b82f6]/20">
+                <Castle className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-serif italic text-white">Your Mage Workshop & Sanctuary Wards</h3>
+                <p className="text-[10px] text-white/40">Reinforce your defenses to secure your Servant against lethal covert ambushes</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] text-white/40">Command Seals:</span>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className={`w-3.5 h-3.5 rounded-sm flex items-center justify-center text-[8px] font-bold border transition ${
+                      i < (userParticipant.commandSeals || 0)
+                        ? 'bg-[#ef4444]/20 border-[#ef4444] text-[#ef4444]'
+                        : 'bg-[#111] border-[#222] text-white/10'
+                    }`}
+                  >
+                    ✦
+                  </span>
+                ))}
+                <span className="text-[10px] text-white/60 ml-1">({userParticipant.commandSeals || 0}/3)</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Workshop Security Ward Selection */}
+            <div className="space-y-2.5">
+              <div className="text-[11px] text-white/50 uppercase tracking-wider flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5 text-[#3b82f6]" />
+                <span>Bounded Field / Wards Protocol</span>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: 'none', label: 'No Wards', desc: 'No active magical boundary defenses.' },
+                  { value: 'ward', label: '🛡️ Sanctuary', desc: 'Absorbs 60% of incoming ambush strike damage.' },
+                  { value: 'alarm', label: '🚨 Alarm Trap', desc: 'Alerts you and counter-strikes for 3,000 retaliatory DMG.' }
+                ].map(opt => {
+                  const isActive = (userParticipant.boundedField || 'none') === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => handleAction('set_ward', opt.value)}
+                      className={`p-2.5 rounded-lg border text-left flex flex-col justify-between transition-all ${
+                        isActive
+                          ? 'bg-[#0f172a] border-[#3b82f6] text-[#3b82f6]'
+                          : 'bg-[#111] border-[#1a1a1a] text-white/40 hover:border-white/20 hover:text-white'
+                      }`}
+                    >
+                      <span className="font-bold text-[10px] block mb-1">{opt.label}</span>
+                      <span className="text-[9px] leading-snug font-normal text-white/40 block">
+                        {opt.desc}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Emergency Command Seal Evacuation Toggle */}
+            <div className="space-y-2.5 flex flex-col justify-between">
+              <div>
+                <div className="text-[11px] text-white/50 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                  <Zap className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Command Seal Emergency Evacuation</span>
+                </div>
+                <p className="text-[10px] text-white/40 leading-relaxed">
+                  Toggle the automated Spatial Escape ward. When active, if your Servant takes lethal damage, a Command Seal will automatically flare to nullify the strike and retreat you back into shadows with 1 HP.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3.5 bg-[#111] p-3 rounded-lg border border-[#1a1a1a] mt-2">
+                <button
+                  onClick={() => handleAction('toggle_evade', userParticipant.autoEvadeEnabled !== false ? 'off' : 'on')}
+                  className={`w-10 h-6 rounded-full p-1 transition-colors relative flex items-center ${
+                    userParticipant.autoEvadeEnabled !== false ? 'bg-rose-600' : 'bg-white/10'
+                  }`}
+                >
+                  <span
+                    className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-transform ${
+                      userParticipant.autoEvadeEnabled !== false ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+                <div>
+                  <span className="text-[11px] font-bold text-white block">
+                    {userParticipant.autoEvadeEnabled !== false ? '🟢 AUTO-EVACUATION ACTIVE' : '🔴 AUTO-EVACUATION DISABLED'}
+                  </span>
+                  <span className="text-[9px] text-white/40">
+                    {userParticipant.commandSeals && userParticipant.commandSeals > 0 
+                      ? 'Ready to safeguard against death'
+                      : 'Requires at least 1 Command Seal to function'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Timers & Real-time Cooldown Panel */}
+          <div className="pt-3 border-t border-[#1a1a1a] flex flex-wrap items-center justify-between gap-4 text-[10px] text-white/40">
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#3b82f6]" />
+              <span>Servant Class Passive: <strong className="text-white">
+                {userParticipant.servantClass === 'Saber' || userParticipant.servantClass === 'Archer' || userParticipant.servantClass === 'Lancer'
+                  ? '👁️ Instinct (35% chance to parry 80% and counter for 1,500 DMG)'
+                  : userParticipant.servantClass === 'Assassin'
+                  ? '🕶️ Presence Concealment (Completely counters ambushes and deals 2,500 counter DMG)'
+                  : userParticipant.servantClass === 'Berserker'
+                  ? '❤️ Battle Continuation (Guts: Revives with 25% HP once)'
+                  : 'None (Specializes in direct matches)'
+                }
+              </strong></span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span>Ambush Cooldown: <strong className="text-white">
+                {userParticipant.lastAmbushTime && (currentTime - userParticipant.lastAmbushTime < 120000)
+                  ? `${Math.ceil((120000 - (currentTime - userParticipant.lastAmbushTime)) / 1000)}s`
+                  : 'Ready'
+                }
+              </strong></span>
+              <span>Intrusion Safe Buffer: <strong className="text-white">
+                {userParticipant.lastAmbushedTime && (currentTime - userParticipant.lastAmbushedTime < 180000)
+                  ? `${Math.ceil((180000 - (currentTime - userParticipant.lastAmbushedTime)) / 1000)}s`
+                  : 'None (Exposed)'
+                }
+              </strong></span>
+            </div>
+          </div>
         </div>
       )}
 

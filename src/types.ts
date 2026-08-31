@@ -243,6 +243,11 @@ export interface WarMasterParticipant {
   innocentKills?: number;
   allianceId?: string;
   kills: number;
+  boundedField?: 'none' | 'ward' | 'alarm';
+  autoEvadeEnabled?: boolean;
+  lastAmbushTime?: number;
+  lastAmbushedTime?: number;
+  gutsTriggered?: boolean;
 }
 
 export interface WarAlliance {

@@ -175,7 +175,9 @@ export type WarActionType =
   | 'simulate_skirmish'
   | 'attack_suspect'
   | 'leak_intel'
-  | 'expose_master';
+  | 'expose_master'
+  | 'set_ward'
+  | 'toggle_evade';
 
 export interface WarActionResult {
   success: boolean;
@@ -262,6 +264,17 @@ export function attackSuspectUserInWar(
     return { success: false, message: 'You are not active in the Holy Grail War!', updatedWar: targetWar };
   }
 
+  // A. Attacker global cooldown (2 minutes)
+  const now = Date.now();
+  if (attacker.lastAmbushTime && now - attacker.lastAmbushTime < 120000) {
+    const remainingSecs = Math.ceil((120000 - (now - attacker.lastAmbushTime)) / 1000);
+    return {
+      success: false,
+      message: `⏳ **Clandestine Action Cooldown:** Your Servant is still recovering after their last maneuver! Wait another **${remainingSecs}s** before launching another ambush.`,
+      updatedWar: targetWar
+    };
+  }
+
   // Clean suspect query (remove @ or discord mention wrapper <@!1234>)
   const cleanQuery = suspectQuery.replace(/[<@!>]/g, '').trim().toLowerCase();
 
@@ -277,36 +290,168 @@ export function attackSuspectUserInWar(
     return { success: false, message: 'You cannot target yourself with an ambush!', updatedWar: targetWar };
   }
 
+  // B. Target's ambushed cooldown (3 minutes)
+  if (targetMaster && targetMaster.isAlive && targetMaster.lastAmbushedTime && now - targetMaster.lastAmbushedTime < 180000) {
+    const remainingSecs = Math.ceil((180000 - (now - targetMaster.lastAmbushedTime)) / 1000);
+    return {
+      success: false,
+      message: `🚨 **Alert Protocol Active:** **${targetMaster.username}** has recently clashed and is on high alert! Wait **${remainingSecs}s** before trying to ambush them.`,
+      updatedWar: targetWar
+    };
+  }
+
   // ---------------------------------------------------------
   // CASE 1: TARGET IS A REAL MASTER IN THE WAR
   // ---------------------------------------------------------
   if (targetMaster && targetMaster.isAlive) {
+    // Record action timers
+    attacker.lastAmbushTime = now;
+    targetMaster.lastAmbushedTime = now;
+
+    // Both get exposed (unless some passive/evade rescues them later)
     attacker.isExposed = true;
     attacker.exposureReason = 'ambush_clash';
 
     targetMaster.isExposed = true;
     targetMaster.exposureReason = 'ambush_clash';
 
-    // Calculate surprise ambush damage
-    const ambushDamage = Math.round(3800 + Math.random() * 2500);
+    const defenderClass = targetMaster.servantClass || 'Saber';
+
+    // 1. PRESENCE CONCEALMENT: ASSASSIN PASSIVE
+    if (defenderClass === 'Assassin') {
+      const pcDamage = 2500;
+      attacker.currentHp = Math.max(0, attacker.currentHp - pcDamage);
+      
+      let failMsg = `🕶️ **PRESENCE CONCEALMENT DETECTION!** <@${attacker.discordId}> attempted to ambush suspected Master <@${targetMaster.discordId}> (**${targetMaster.username}**), but their Servant is an **Assassin**!\n\n` +
+        `• The Assassin detected the intrusion, nullifying the surprise ambush entirely.\n` +
+        `• The Assassin counter-struck from the shadows, dealing **${pcDamage.toLocaleString()} DMG** to Master **${attacker.username}**'s Servant (**${attacker.servantName}**)! (HP: ${attacker.currentHp}/${attacker.maxHp})\n` +
+        `• Master **${attacker.username}**'s identity is now EXPOSED to the server!`;
+
+      if (attacker.currentHp <= 0) {
+        attacker.isAlive = false;
+        failMsg += `\n☠️ **FATAL CONSEQUENCE:** Master **${attacker.username}** was slain by the Assassin they tried to ambush!`;
+      }
+
+      targetWar.eventLogs.unshift({
+        id: `evt_ambush_fail_${Date.now()}`,
+        timestamp: now,
+        text: `🕶️ Assassin Presence Concealment triggered: **${attacker.username}**'s ambush on **${targetMaster.username}** failed, taking ${pcDamage} counter damage!`,
+        type: 'ambush'
+      });
+
+      return {
+        success: true,
+        message: failMsg,
+        targetWasMaster: true,
+        updatedWar: targetWar
+      };
+    }
+
+    // Base surprise ambush damage
+    let ambushDamage = Math.round(3800 + Math.random() * 2500);
+    let defenseText = '';
+
+    // 2. BOUNDED FIELD / WORKSHOP WARDS
+    const wardType = targetMaster.boundedField || 'none';
+    if (wardType === 'ward') {
+      // Absorbs 60% of damage
+      const absorbed = Math.round(ambushDamage * 0.6);
+      ambushDamage = ambushDamage - absorbed;
+      defenseText += `🛡️ **Mage's Sanctuary Bounded Field** absorbed 60% of the strike (parried **${absorbed.toLocaleString()} DMG**).\n`;
+    } else if (wardType === 'alarm') {
+      // Alerts and strikes back for 3000 counter-damage
+      const counterDmg = 3000;
+      attacker.currentHp = Math.max(0, attacker.currentHp - counterDmg);
+      defenseText += `🚨 **Alarm Ward Triggered!** The security field triggered an intrusion defense, dealing **${counterDmg.toLocaleString()} DMG** back to Master **${attacker.username}**'s Servant (**${attacker.servantName}**)! (HP: ${attacker.currentHp}/${attacker.maxHp})\n`;
+      
+      if (attacker.currentHp <= 0) {
+        attacker.isAlive = false;
+      }
+    }
+
+    // 3. INSTINCT / CLAIRVOYANCE (Saber, Archer, Lancer) PASSIVE (35% chance to parry 80%)
+    const hasInstinct = ['Saber', 'Archer', 'Lancer'].includes(defenderClass);
+    if (hasInstinct && Math.random() < 0.35) {
+      const parried = Math.round(ambushDamage * 0.8);
+      ambushDamage = ambushDamage - parried;
+      defenseText += `👁️ **Instinct/Clairvoyance Alert:** Servant **${targetMaster.servantName}** sensed the threat instantly! They parried 80% of the damage (saved **${parried.toLocaleString()} DMG**) and counter-struck **${attacker.username}** for **1,500 DMG**!\n`;
+      
+      // Deal counter dmg
+      attacker.currentHp = Math.max(0, attacker.currentHp - 1500);
+      if (attacker.currentHp <= 0) {
+        attacker.isAlive = false;
+      }
+    }
+
+    // Apply the final damage to target
     targetMaster.currentHp = Math.max(0, targetMaster.currentHp - ambushDamage);
 
-    let ambushText = `⚔️ TACTICAL AMBUSH: Master **${attacker.username}** (${attacker.servantName}) launched a surprise assault on suspected Master **${targetMaster.username}**! Both identities are now EXPOSED to the server! **${targetMaster.username}**'s ${targetMaster.servantName} took **${ambushDamage.toLocaleString()} damage**!`;
+    let mainMessage = `🚨 **FUYUKI AIR RAID SIREN — <@${targetMaster.discordId}>, YOU ARE BEING AMBUSHED!**\n\n` +
+      `Master <@${attacker.discordId}> (**${attacker.username}**) launched a surprise assault on suspected Master <@${targetMaster.discordId}> (**${targetMaster.username}**)! Both identities are now EXPOSED to the server!\n\n` +
+      `• **Final Result:** **${targetMaster.username}**'s Servant (**${targetMaster.servantName}**) took **${ambushDamage.toLocaleString()} DMG**! (HP: ${targetMaster.currentHp}/${targetMaster.maxHp})\n` +
+      (defenseText ? `• **Defensive Countermeasures:**\n${defenseText}` : '');
+
     let eliminatedId: string | undefined;
 
-    if (targetMaster.currentHp <= 0) {
+    // 4. COMMAND SEAL EMERGENCY EVACUATION (Auto-Evacuate on Lethal Damage)
+    if (targetMaster.currentHp <= 0 && targetMaster.autoEvadeEnabled !== false && targetMaster.commandSeals >= 1) {
+      targetMaster.commandSeals--;
+      targetMaster.currentHp = 1;
+      targetMaster.isAlive = true;
+      targetMaster.isExposed = false; // Vanish back into the shadows
+      
+      mainMessage += `\n\n🔴 **EMERGENCY COMMAND SEAL EVACUATION!**\n` +
+        `As **${targetMaster.username}** faced a fatal ambush, their contracted Command Seal flared: *“By my Command Seal... Spatial Evacuation!”*\n` +
+        `• Consumed **1 Command Seal** (Remaining: **${targetMaster.commandSeals}/3**).\n` +
+        `• Nullified the death-blow! **${targetMaster.username}** escaped into deep shadows with **1 HP**!`;
+
+      targetWar.eventLogs.unshift({
+        id: `evt_evac_${Date.now()}`,
+        timestamp: now,
+        text: `🔴 Emergency Evacuation: **${targetMaster.username}** consumed 1 Command Seal to escape fatal ambush from **${attacker.username}**!`,
+        type: 'ambush'
+      });
+    }
+    // 5. BATTLE CONTINUATION PASSIVE (Berserker / Lancer)
+    else if (targetMaster.currentHp <= 0 && ['Berserker', 'Lancer'].includes(defenderClass) && !targetMaster.gutsTriggered) {
+      targetMaster.gutsTriggered = true;
+      targetMaster.currentHp = Math.round(targetMaster.maxHp * 0.25);
+      targetMaster.isAlive = true;
+      
+      mainMessage += `\n\n❤️ **BATTLE CONTINUATION (GUTS)!**\n` +
+        `**${targetMaster.username}**'s Servant (**${targetMaster.servantName}**) took a lethal blow, but their indomitable class spirit activated **Battle Continuation**!\n` +
+        `• Clung to life, reviving instantly with **25% HP** (**${targetMaster.currentHp.toLocaleString()} HP**)!`;
+
+      targetWar.eventLogs.unshift({
+        id: `evt_guts_${Date.now()}`,
+        timestamp: now,
+        text: `❤️ Battle Continuation: **${targetMaster.username}**'s ${targetMaster.servantName} revived with 25% HP during ambush!`,
+        type: 'ambush'
+      });
+    }
+    // 6. ACTUAL DEATH / ELIMINATION
+    else if (targetMaster.currentHp <= 0) {
       targetMaster.isAlive = false;
       attacker.kills++;
       eliminatedId = targetMaster.discordId;
-      ambushText = `☠️ FATAL AMBUSH: Master **${attacker.username}** (${attacker.servantName}) ambushed and ELIMINATED Master **${targetMaster.username}** (${targetMaster.servantName})! Both identities were exposed!`;
-    }
+      
+      mainMessage += `\n\n☠️ **FATAL AMBUSH:** Master **${targetMaster.username}**'s Servant took a fatal strike and was permanently ELIMINATED from the active Holy Grail War!`;
 
-    targetWar.eventLogs.unshift({
-      id: `evt_ambush_${Date.now()}`,
-      timestamp: Date.now(),
-      text: ambushText,
-      type: targetMaster.currentHp <= 0 ? 'elimination' : 'ambush'
-    });
+      targetWar.eventLogs.unshift({
+        id: `evt_elim_${Date.now()}`,
+        timestamp: now,
+        text: `☠️ Fatal Ambush: **${attacker.username}** ambushed and ELIMINATED Master **${targetMaster.username}**!`,
+        type: 'elimination'
+      });
+    } else {
+      // Normal non-lethal ambush log
+      targetWar.eventLogs.unshift({
+        id: `evt_ambush_${Date.now()}`,
+        timestamp: now,
+        text: `⚔️ Ambush: **${attacker.username}** ambushed **${targetMaster.username}** for ${ambushDamage} DMG!`,
+        type: 'ambush'
+      });
+    }
 
     // Check war conclusion
     const remainingAlive = Object.values(targetWar.participants).filter(p => p.isAlive);
@@ -315,7 +460,7 @@ export function attackSuspectUserInWar(
       targetWar.grailWinnerId = remainingAlive[0].discordId;
       targetWar.eventLogs.unshift({
         id: `evt_win_${Date.now()}`,
-        timestamp: Date.now(),
+        timestamp: now,
         text: `🏆 THE HOLY GRAIL HAS MANIFESTED! **${remainingAlive[0].username}** is the sole survivor and has won the Holy Grail War!`,
         type: 'clash'
       });
@@ -323,7 +468,7 @@ export function attackSuspectUserInWar(
 
     return {
       success: true,
-      message: ambushText,
+      message: mainMessage,
       targetWasMaster: true,
       isCollateralCasualty: false,
       eliminatedMasterId: eliminatedId,
@@ -334,6 +479,7 @@ export function attackSuspectUserInWar(
   // ---------------------------------------------------------
   // CASE 2: TARGET IS AN INNOCENT SERVER USER (COLLATERAL CASUALTY)
   // ---------------------------------------------------------
+  attacker.lastAmbushTime = now;
   attacker.isExposed = true;
   attacker.exposureReason = 'innocent_assault';
   attacker.innocentKills = (attacker.innocentKills || 0) + 1;
@@ -345,15 +491,18 @@ export function attackSuspectUserInWar(
     id: `victim_${Date.now()}`,
     name: bystanderName,
     slainByMasterId: attacker.username,
-    timestamp: Date.now()
+    timestamp: now
   });
 
-  const casualtyText = `☠️ COLLATERAL CASUALTY: Master **${attacker.username}**'s Servant (${attacker.servantName}) struck down innocent bystander **${bystanderName}**! The victim was killed instantly, and **${attacker.username}**'s identity is now VIOLENTLY EXPOSED on the Holy Grail War status board for breaching the Secrecy of Magecraft!`;
+  const casualtyText = `☠️ **COLLATERAL CASUALTY: CIVILIAN SLAIN!**\n\n` +
+    `Master **${attacker.username}**'s Servant (${attacker.servantName}) struck down innocent server bystander **${bystanderName}**!\n` +
+    `• The victim was killed instantly.\n` +
+    `• Master **${attacker.username}**'s identity is now **VIOLENTLY EXPOSED** to the server for breaching the Secrecy of Magecraft!`;
 
   targetWar.eventLogs.unshift({
     id: `evt_casualty_${Date.now()}`,
-    timestamp: Date.now(),
-    text: casualtyText,
+    timestamp: now,
+    text: `☠️ Collateral Damage: **${attacker.username}**'s Servant killed bystander **${bystanderName}**!`,
     type: 'casualty'
   });
 
@@ -453,6 +602,52 @@ export function executeWarAction(
   if (action === 'expose_master') {
     const res = exposeMasterInWar(targetWar, actorDiscordId, 'public_command');
     return { success: true, message: 'Master exposed publicly.', updatedWar: res.updatedWar };
+  }
+
+  if (action === 'set_ward' && targetParam) {
+    const val = targetParam as 'none' | 'ward' | 'alarm';
+    if (!['none', 'ward', 'alarm'].includes(val)) {
+      return { success: false, message: 'Invalid ward type! Choose none, ward, or alarm.', updatedWar: targetWar };
+    }
+    actor.boundedField = val;
+    let desc = '';
+    if (val === 'none') desc = 'deactivated all active bounded fields';
+    else if (val === 'ward') desc = 'reinforced a Mage Workshop sanctuary field (blocks 60% incoming ambush damage)';
+    else if (val === 'alarm') desc = 'deployed a high-alert Intrusion Alert Trap (detects ambushes and deals 3,000 retaliatory DMG)';
+    
+    targetWar.eventLogs.unshift({
+      id: `evt_ward_${Date.now()}`,
+      timestamp: Date.now(),
+      text: `🛡️ Master **${actor.username}** adjusted their workshop defense settings: ${desc}.`,
+      type: 'heal'
+    });
+
+    return {
+      success: true,
+      message: `🏰 **Sanctuary Updated:** You have successfully ${desc}!`,
+      updatedWar: targetWar
+    };
+  }
+
+  if (action === 'toggle_evade' && targetParam) {
+    const val = targetParam === 'on';
+    actor.autoEvadeEnabled = val;
+    const desc = val 
+      ? 'ENABLED Command Seal Auto-Evacuation (automatically consumes 1 Command Seal on lethal blows to retreat to shadows with 1 HP)'
+      : 'DISABLED Command Seal Auto-Evacuation';
+
+    targetWar.eventLogs.unshift({
+      id: `evt_evade_toggle_${Date.now()}`,
+      timestamp: Date.now(),
+      text: `🔴 Master **${actor.username}** ${desc.toLowerCase()}.`,
+      type: 'heal'
+    });
+
+    return {
+      success: true,
+      message: `🔴 **Evacuation Settings:** Successfully ${desc}!`,
+      updatedWar: targetWar
+    };
   }
 
   let resultMsg = '';
