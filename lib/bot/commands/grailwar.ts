@@ -33,6 +33,42 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand(sub =>
     sub
+      .setName('defenses')
+      .setDescription('🏰 Manage your Mage Workshop sanctuary wards & Command Seal auto-evacuation')
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('ward')
+      .setDescription('🛡️ Configure your Mage Workshop Bounded Field ward type')
+      .addStringOption(opt =>
+        opt
+          .setName('type')
+          .setDescription('Choose your active Bounded Field ward')
+          .setRequired(true)
+          .addChoices(
+            { name: '🚫 No Wards (None)', value: 'none' },
+            { name: '🛡️ Sanctuary Bounded Field (Absorbs 60% Ambush DMG)', value: 'ward' },
+            { name: '🚨 Alarm Trap (Alerts & Deals 3,000 Retaliatory DMG)', value: 'alarm' }
+          )
+      )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('evade')
+      .setDescription('🔴 Toggle Command Seal Emergency Auto-Evacuation upon fatal damage')
+      .addStringOption(opt =>
+        opt
+          .setName('mode')
+          .setDescription('Auto-consume 1 Command Seal to escape death with 1 HP?')
+          .setRequired(true)
+          .addChoices(
+            { name: '🟢 Enable Auto-Evacuation', value: 'on' },
+            { name: '🔴 Disable Auto-Evacuation', value: 'off' }
+          )
+      )
+  )
+  .addSubcommand(sub =>
+    sub
       .setName('attack')
       .setDescription('Ambush a suspected Master (if civilian, they die & you get exposed!)')
       .addStringOption(opt =>
@@ -107,6 +143,14 @@ function buildWarEmbed(war: HolyGrailWarSession, userParticipant: any, lastMsg?:
   const casualtiesCount = war.civilianCasualties?.length || 0;
   const leaksCount = war.leakedIntel?.length || 0;
 
+  const wardLabel = userParticipant?.boundedField === 'ward' 
+    ? '🛡️ Sanctuary Field (60% Block)'
+    : userParticipant?.boundedField === 'alarm'
+    ? '🚨 Alarm Trap (3000 Counter DMG)'
+    : '🚫 None';
+
+  const evadeLabel = userParticipant?.autoEvadeEnabled !== false ? '🟢 ON' : '🔴 OFF';
+
   return new EmbedBuilder()
     .setTitle('🏆 ' + war.title)
     .setDescription(
@@ -115,18 +159,64 @@ function buildWarEmbed(war: HolyGrailWarSession, userParticipant: any, lastMsg?:
         ? ('\\n👤 **Your Master Profile:**\\n' +
           '• Servant: **' + userParticipant.servantName + '** (' + userParticipant.servantClass + ')\\n' +
           '• Status: **' + (userParticipant.isExposed ? '⚠️ Identity Exposed to Server' : '🕶️ Concealed in Shadows') + '**\\n' +
-          '• HP: **' + userParticipant.currentHp.toLocaleString() + '/' + userParticipant.maxHp.toLocaleString() + '** | Command Seals: **' + userParticipant.commandSeals + '/3** | Kills: **' + userParticipant.kills + '**\\n\\n')
+          '• HP: **' + userParticipant.currentHp.toLocaleString() + '/' + userParticipant.maxHp.toLocaleString() + '** | Command Seals: **' + (userParticipant.commandSeals || 0) + '/3** | Kills: **' + userParticipant.kills + '**\\n' +
+          '• Sanctuary Wards: **' + wardLabel + '** | Auto-Evacuate: **' + evadeLabel + '**\\n\\n')
         : '\\n') +
       (lastMsg ? ('📢 **Action Outcome:**\\n' + lastMsg + '\\n\\n') : '') +
       '⚔️ **7 Masters Intelligence Roster:**\\n' + rosterList + '\\n\\n' +
       '📜 **War Chronicle & Skirmishes (' + (war.eventLogs || []).length + ' Events | ' + leaksCount + ' Leaks):**\\n' + (recentEvents || '*The war has begun. No city skirmishes recorded yet.*') + '\\n\\n' +
-      '*Tactical commands: Use /attack to ambush suspects, /leak to expose rivals, or buttons below:*'
+      '*Tactical commands: Use /grailwar defenses to configure wards, /attack to ambush suspects, or buttons below:*'
     )
     .setColor(0xd4af37);
 }
 
+function buildDefensesEmbed(userParticipant: any, lastMsg?: string) {
+  const ward = userParticipant?.boundedField || 'none';
+  const autoEvade = userParticipant?.autoEvadeEnabled !== false;
+  const seals = userParticipant?.commandSeals ?? 3;
+
+  let wardDescription = '🚫 **No Active Wards:** Your workshop has no magical perimeter defenses.';
+  if (ward === 'ward') {
+    wardDescription = '🛡️ **Mage\\\'s Sanctuary Bounded Field Active:** Multi-layered defensive barriers parry and absorb **60% of incoming ambush damage**.';
+  } else if (ward === 'alarm') {
+    wardDescription = '🚨 **Intrusion Alarm Trap Active:** Trapped boundary detects infiltrators, immediately alerting you and striking back for **3,000 retaliatory DMG**.';
+  }
+
+  let classPassive = 'None (Specializes in direct tactical matches)';
+  const sClass = userParticipant?.servantClass;
+  if (sClass === 'Saber' || sClass === 'Archer' || sClass === 'Lancer') {
+    classPassive = '👁️ **Instinct / Clairvoyance:** 35% chance to predict ambushes, parrying 80% damage and dealing 1,500 counter DMG.';
+  } else if (sClass === 'Assassin') {
+    classPassive = '🕶️ **Presence Concealment:** Completely immune to surprise ambushes. Nullifies strike & counters for 2,500 DMG!';
+  } else if (sClass === 'Berserker') {
+    classPassive = '❤️ **Battle Continuation (Guts):** Revives once with 25% Max HP if dealt a fatal blow.';
+  }
+
+  return new EmbedBuilder()
+    .setTitle('🏰 Mage Workshop & Personal Sanctuary Defenses')
+    .setDescription(
+      'Master **' + (userParticipant?.username || 'Master') + '**\\\'s Tactical Defense Headquarters\\n\\n' +
+      (lastMsg ? ('📢 **Action Outcome:**\\n' + lastMsg + '\\n\\n') : '') +
+      '🛡️ **Bounded Field Protocol:**\\n' + wardDescription + '\\n\\n' +
+      '🔴 **Command Seal Emergency Evacuation:**\\n' +
+      (autoEvade 
+        ? '• **🟢 ENABLED:** When taking fatal ambush damage, consumes **1 Command Seal** to escape into shadows with **1 HP**.\\n'
+        : '• **🔴 DISABLED:** Fatal ambushes will eliminate your Servant normally without consuming a seal.\\n') +
+      '• **Current Command Seals:** \`' + '✦ '.repeat(seals) + '✧ '.repeat(Math.max(0, 3 - seals)) + '\` (**' + seals + '/3** remaining)\\n\\n' +
+      '👁️ **Servant Class Passive:**\\n' + classPassive + '\\n\\n' +
+      '*Configure your workshop defenses instantly using the buttons below or slash commands:*'
+    )
+    .setColor(0x3b82f6)
+    .setFooter({ text: 'Holy Grail War Defense Protocol • Use /grailwar status to return to roster' });
+}
+
 function buildWarButtons() {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId('war_defenses')
+      .setLabel('Workshop Defenses')
+      .setEmoji('🏰')
+      .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('war_duel')
       .setLabel('Challenge Duel (/duel)')
@@ -141,13 +231,55 @@ function buildWarButtons() {
       .setCustomId('war_skirmish')
       .setLabel('City Skirmish')
       .setEmoji('💥')
-      .setStyle(ButtonStyle.Primary),
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('war_refresh')
-      .setLabel('Refresh Board')
+      .setLabel('Refresh')
       .setEmoji('🔄')
       .setStyle(ButtonStyle.Secondary)
   );
+}
+
+function buildDefensesButtons(userParticipant: any) {
+  const currentWard = userParticipant?.boundedField || 'none';
+  const autoEvade = userParticipant?.autoEvadeEnabled !== false;
+
+  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId('ward_none')
+      .setLabel('No Wards')
+      .setEmoji('🚫')
+      .setStyle(currentWard === 'none' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('ward_ward')
+      .setLabel('Sanctuary (60% Block)')
+      .setEmoji('🛡️')
+      .setStyle(currentWard === 'ward' ? ButtonStyle.Success : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('ward_alarm')
+      .setLabel('Alarm Trap (3k DMG)')
+      .setEmoji('🚨')
+      .setStyle(currentWard === 'alarm' ? ButtonStyle.Danger : ButtonStyle.Secondary)
+  );
+
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId('toggle_auto_evade')
+      .setLabel(autoEvade ? 'Auto-Evacuate: ON 🟢' : 'Auto-Evacuate: OFF 🔴')
+      .setStyle(autoEvade ? ButtonStyle.Success : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('war_refresh_defenses')
+      .setLabel('Refresh Settings')
+      .setEmoji('🔄')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('war_status_board')
+      .setLabel('View War Board (/grailwar)')
+      .setEmoji('📋')
+      .setStyle(ButtonStyle.Primary)
+  );
+
+  return [row1, row2];
 }
 
 export async function execute(interaction: ChatInputCommandInteraction) {
@@ -164,8 +296,54 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     let war = getOrInitWarSession(master);
     const userParticipant = war.participants[interaction.user.id];
-
     const subcommand = interaction.options.getSubcommand();
+
+    if (subcommand === 'defenses') {
+      const defEmbed = buildDefensesEmbed(userParticipant);
+      const defButtons = buildDefensesButtons(userParticipant);
+      const reply = await interaction.reply({
+        embeds: [defEmbed],
+        components: defButtons,
+        fetchReply: true
+      });
+      setupCollector(reply, interaction.user.id);
+      return;
+    }
+
+    if (subcommand === 'ward') {
+      const wardType = interaction.options.getString('type', true);
+      const res = executeWarAction(war, interaction.user.id, 'set_ward', wardType);
+      war = res.updatedWar;
+      await saveMaster(master);
+
+      const defEmbed = buildDefensesEmbed(war.participants[interaction.user.id], res.message);
+      const defButtons = buildDefensesButtons(war.participants[interaction.user.id]);
+      const reply = await interaction.reply({
+        embeds: [defEmbed],
+        components: defButtons,
+        fetchReply: true
+      });
+      setupCollector(reply, interaction.user.id);
+      return;
+    }
+
+    if (subcommand === 'evade') {
+      const mode = interaction.options.getString('mode', true);
+      const res = executeWarAction(war, interaction.user.id, 'toggle_evade', mode);
+      war = res.updatedWar;
+      await saveMaster(master);
+
+      const defEmbed = buildDefensesEmbed(war.participants[interaction.user.id], res.message);
+      const defButtons = buildDefensesButtons(war.participants[interaction.user.id]);
+      const reply = await interaction.reply({
+        embeds: [defEmbed],
+        components: defButtons,
+        fetchReply: true
+      });
+      setupCollector(reply, interaction.user.id);
+      return;
+    }
+
     let initialMsg = '';
 
     if (subcommand === 'skirmish') {
@@ -205,47 +383,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       fetchReply: true
     });
 
-    const collector = reply.createMessageComponentCollector({
-      componentType: ComponentType.Button,
-      time: 120000
-    });
-
-    collector.on('collect', async (i: any) => {
-      if (i.user.id !== interaction.user.id) {
-        await i.reply({ content: 'Only the Master who issued this war command can control these actions.', ephemeral: true });
-        return;
-      }
-
-      try {
-        const m = await getOrCreateMaster(i.user.id, i.user.username);
-        let w = getOrInitWarSession(m);
-        let actionResultMsg = '';
-
-        if (i.customId === 'war_duel') {
-          await i.reply({ content: 'Use /duel to initiate tactical turn-based combat against a rival Master!', ephemeral: true });
-          return;
-        } else if (i.customId === 'war_rest') {
-          const res = executeWarAction(w, i.user.id, 'rest_and_heal');
-          actionResultMsg = res.message;
-          w = res.updatedWar;
-          await saveMaster(m);
-        } else if (i.customId === 'war_skirmish') {
-          const res = simulateWarSkirmish(w);
-          actionResultMsg = res.message;
-          w = res.updatedWar;
-        } else if (i.customId === 'war_refresh') {
-          actionResultMsg = '🔄 Intelligence Board refreshed.';
-        }
-
-        const uPart = w.participants[i.user.id];
-        const uEmbed = buildWarEmbed(w, uPart, actionResultMsg);
-        const uRow = buildWarButtons();
-
-        await i.update({ embeds: [uEmbed], components: [uRow] });
-      } catch (err: any) {
-        console.error('Error in grail war collector:', err);
-      }
-    });
+    setupCollector(reply, interaction.user.id);
 
   } catch (error: any) {
     console.error('Error executing /grailwar:', error);
@@ -255,5 +393,112 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       await interaction.reply({ content: '❌ Error: ' + error.message, ephemeral: true });
     }
   }
+}
+
+function setupCollector(reply: any, userId: string) {
+  const collector = reply.createMessageComponentCollector({
+    componentType: ComponentType.Button,
+    time: 120000
+  });
+
+  collector.on('collect', async (i: any) => {
+    if (i.user.id !== userId) {
+      await i.reply({ content: 'Only the Master who issued this war command can control these actions.', ephemeral: true });
+      return;
+    }
+
+    try {
+      const m = await getOrCreateMaster(i.user.id, i.user.username);
+      let w = getOrInitWarSession(m);
+      let actionResultMsg = '';
+
+      if (i.customId === 'war_defenses') {
+        const userP = w.participants[i.user.id];
+        const defEmbed = buildDefensesEmbed(userP);
+        const defBtns = buildDefensesButtons(userP);
+        await i.update({ embeds: [defEmbed], components: defBtns });
+        return;
+      }
+      else if (i.customId === 'war_status_board') {
+        const userP = w.participants[i.user.id];
+        const warEmbed = buildWarEmbed(w, userP);
+        const warBtns = buildWarButtons();
+        await i.update({ embeds: [warEmbed], components: [warBtns] });
+        return;
+      }
+      else if (i.customId === 'ward_none') {
+        const res = executeWarAction(w, i.user.id, 'set_ward', 'none');
+        w = res.updatedWar;
+        await saveMaster(m);
+        const userP = w.participants[i.user.id];
+        const defEmbed = buildDefensesEmbed(userP, res.message);
+        const defBtns = buildDefensesButtons(userP);
+        await i.update({ embeds: [defEmbed], components: defBtns });
+        return;
+      }
+      else if (i.customId === 'ward_ward') {
+        const res = executeWarAction(w, i.user.id, 'set_ward', 'ward');
+        w = res.updatedWar;
+        await saveMaster(m);
+        const userP = w.participants[i.user.id];
+        const defEmbed = buildDefensesEmbed(userP, res.message);
+        const defBtns = buildDefensesButtons(userP);
+        await i.update({ embeds: [defEmbed], components: defBtns });
+        return;
+      }
+      else if (i.customId === 'ward_alarm') {
+        const res = executeWarAction(w, i.user.id, 'set_ward', 'alarm');
+        w = res.updatedWar;
+        await saveMaster(m);
+        const userP = w.participants[i.user.id];
+        const defEmbed = buildDefensesEmbed(userP, res.message);
+        const defBtns = buildDefensesButtons(userP);
+        await i.update({ embeds: [defEmbed], components: defBtns });
+        return;
+      }
+      else if (i.customId === 'toggle_auto_evade') {
+        const currentP = w.participants[i.user.id];
+        const newMode = currentP?.autoEvadeEnabled !== false ? 'off' : 'on';
+        const res = executeWarAction(w, i.user.id, 'toggle_evade', newMode);
+        w = res.updatedWar;
+        await saveMaster(m);
+        const userP = w.participants[i.user.id];
+        const defEmbed = buildDefensesEmbed(userP, res.message);
+        const defBtns = buildDefensesButtons(userP);
+        await i.update({ embeds: [defEmbed], components: defBtns });
+        return;
+      }
+      else if (i.customId === 'war_refresh_defenses') {
+        const userP = w.participants[i.user.id];
+        const defEmbed = buildDefensesEmbed(userP, '🔄 Workshop settings refreshed.');
+        const defBtns = buildDefensesButtons(userP);
+        await i.update({ embeds: [defEmbed], components: defBtns });
+        return;
+      }
+      else if (i.customId === 'war_duel') {
+        await i.reply({ content: 'Use /duel to initiate tactical turn-based combat against a rival Master!', ephemeral: true });
+        return;
+      } else if (i.customId === 'war_rest') {
+        const res = executeWarAction(w, i.user.id, 'rest_and_heal');
+        actionResultMsg = res.message;
+        w = res.updatedWar;
+        await saveMaster(m);
+      } else if (i.customId === 'war_skirmish') {
+        const res = simulateWarSkirmish(w);
+        actionResultMsg = res.message;
+        w = res.updatedWar;
+      } else if (i.customId === 'war_refresh') {
+        actionResultMsg = '🔄 Intelligence Board refreshed.';
+      }
+
+      const uPart = w.participants[i.user.id];
+      const uEmbed = buildWarEmbed(w, uPart, actionResultMsg);
+      const uRow = buildWarButtons();
+
+      await i.update({ embeds: [uEmbed], components: [uRow] });
+    } catch (err: any) {
+      console.error('Error in grail war collector:', err);
+    }
+  });
 }
 `;

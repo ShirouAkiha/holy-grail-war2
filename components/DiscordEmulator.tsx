@@ -947,14 +947,127 @@ export default function DiscordEmulator({
     }
 
     // ----------------------------------------------------
-    // COMMAND 5: /grailwar, /attack, /leak
+    // COMMAND 5: /grailwar, /attack, /leak, /defenses
     // ----------------------------------------------------
-    if (trimmed.startsWith('/grailwar') || trimmed.startsWith('/attack') || trimmed.startsWith('/leak') || trimmed.startsWith('/ambush')) {
+    if (trimmed.startsWith('/grailwar') || trimmed.startsWith('/attack') || trimmed.startsWith('/leak') || trimmed.startsWith('/ambush') || trimmed.startsWith('/defenses') || trimmed.startsWith('/ward') || trimmed.startsWith('/evade')) {
+      const isDefenses = trimmed.startsWith('/defenses') || trimmed.startsWith('/grailwar defenses') || trimmed.startsWith('/ward') || trimmed.startsWith('/grailwar ward') || trimmed.startsWith('/evade') || trimmed.startsWith('/grailwar evade');
       const isAttack = trimmed.startsWith('/grailwar attack') || trimmed.startsWith('/attack') || trimmed.startsWith('/ambush');
       const isLeak = trimmed.startsWith('/grailwar leak') || trimmed.startsWith('/leak');
       const isSkirmish = trimmed.includes('skirmish');
       const isRest = trimmed.includes('rest') || trimmed.includes('heal');
       const isBetray = trimmed.includes('betray');
+
+      // SUB-CASE 0: /defenses, /grailwar defenses, /grailwar ward, /grailwar evade
+      if (isDefenses) {
+        let currentWar = grailWar;
+        let actionMsg = '';
+
+        if (trimmed.includes('ward alarm') || trimmed.includes('alarm')) {
+          const res = executeWarAction(currentWar, master.discordId, 'set_ward', 'alarm');
+          currentWar = res.updatedWar;
+          actionMsg = res.message;
+          onUpdateGrailWar(currentWar);
+        } else if (trimmed.includes('ward sanctuary') || trimmed.includes('ward ward') || (trimmed.startsWith('/ward') && !trimmed.includes('none') && !trimmed.includes('alarm'))) {
+          const res = executeWarAction(currentWar, master.discordId, 'set_ward', 'ward');
+          currentWar = res.updatedWar;
+          actionMsg = res.message;
+          onUpdateGrailWar(currentWar);
+        } else if (trimmed.includes('ward none')) {
+          const res = executeWarAction(currentWar, master.discordId, 'set_ward', 'none');
+          currentWar = res.updatedWar;
+          actionMsg = res.message;
+          onUpdateGrailWar(currentWar);
+        } else if (trimmed.includes('evade off')) {
+          const res = executeWarAction(currentWar, master.discordId, 'toggle_evade', 'off');
+          currentWar = res.updatedWar;
+          actionMsg = res.message;
+          onUpdateGrailWar(currentWar);
+        } else if (trimmed.includes('evade on')) {
+          const res = executeWarAction(currentWar, master.discordId, 'toggle_evade', 'on');
+          currentWar = res.updatedWar;
+          actionMsg = res.message;
+          onUpdateGrailWar(currentWar);
+        }
+
+        const uP = currentWar.participants[master.discordId];
+        const wardType = uP?.boundedField || 'none';
+        const evadeOn = uP?.autoEvadeEnabled !== false;
+        const seals = uP?.commandSeals ?? 3;
+
+        let wardDesc = '🚫 **No Active Wards:** Your workshop has no perimeter defenses.';
+        if (wardType === 'ward') {
+          wardDesc = '🛡️ **Mage\'s Sanctuary Bounded Field:** Absorbs & deflects **60% of incoming ambush damage**.';
+        } else if (wardType === 'alarm') {
+          wardDesc = '🚨 **Intrusion Alarm Trap:** Detects infiltrators, alerting you and dealing **3,000 retaliatory DMG**.';
+        }
+
+        let classPassive = 'None (Specializes in direct tactical matches)';
+        const sClass = uP?.servantClass;
+        if (sClass === 'Saber' || sClass === 'Archer' || sClass === 'Lancer') {
+          classPassive = '👁️ **Instinct / Clairvoyance:** 35% chance to predict ambushes, parrying 80% damage and dealing 1,500 counter DMG.';
+        } else if (sClass === 'Assassin') {
+          classPassive = '🕶️ **Presence Concealment:** Completely immune to surprise ambushes. Nullifies strike & counters for 2,500 DMG!';
+        } else if (sClass === 'Berserker') {
+          classPassive = '❤️ **Battle Continuation (Guts):** Revives once with 25% Max HP if dealt a fatal blow.';
+        }
+
+        addMessage({
+          id: getNextId('bot_defenses_embed'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '🏰 Mage Workshop & Sanctuary Defenses',
+            description:
+              `Master **${master.username}**'s Tactical Defense Headquarters\n\n` +
+              (actionMsg ? `📢 **Action Outcome:**\n${actionMsg}\n\n` : '') +
+              `🛡️ **Bounded Field Protocol:**\n${wardDesc}\n\n` +
+              `🔴 **Command Seal Emergency Evacuation:**\n` +
+              (evadeOn
+                ? `• **🟢 ENABLED:** When taking fatal ambush damage, consumes **1 Command Seal** to escape into shadows with **1 HP**.\n`
+                : `• **🔴 DISABLED:** Fatal ambushes will eliminate your Servant normally without consuming a seal.\n`) +
+              `• **Current Command Seals:** \`${'✦ '.repeat(seals)}${'✧ '.repeat(Math.max(0, 3 - seals))}\` (**${seals}/3** remaining)\n\n` +
+              `👁️ **Servant Class Passive:**\n${classPassive}\n\n` +
+              `*Toggle your defenses and Bounded Fields using the interactive buttons below:*`,
+            color: '#3b82f6',
+            footer: 'Holy Grail War Defense Protocol • Use /grailwar status to view roster'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              {
+                id: 'ward_none',
+                label: 'No Wards',
+                style: wardType === 'none' ? 'primary' : 'secondary',
+                emoji: '🚫'
+              },
+              {
+                id: 'ward_ward',
+                label: 'Sanctuary (60% Block)',
+                style: wardType === 'ward' ? 'success' : 'secondary',
+                emoji: '🛡️'
+              },
+              {
+                id: 'ward_alarm',
+                label: 'Alarm Trap (3k DMG)',
+                style: wardType === 'alarm' ? 'danger' : 'secondary',
+                emoji: '🚨'
+              },
+              {
+                id: 'toggle_auto_evade',
+                label: evadeOn ? 'Auto-Evacuate: ON 🟢' : 'Auto-Evacuate: OFF 🔴',
+                style: evadeOn ? 'success' : 'secondary'
+              },
+              {
+                id: 'quick_war_status',
+                label: 'War Board (/grailwar)',
+                style: 'primary',
+                emoji: '📋'
+              }
+            ]
+          }
+        });
+        return;
+      }
 
       // SUB-CASE A: /grailwar attack <target> (Ambush suspect)
       if (isAttack) {
@@ -1623,6 +1736,116 @@ export default function DiscordEmulator({
           }
         });
       }
+    } else if (btnId.startsWith('ward_') || btnId === 'toggle_auto_evade' || btnId === 'quick_war_defenses') {
+      if (btnId === 'quick_war_defenses') {
+        handleCommand('/defenses');
+        return;
+      }
+
+      let currentWar = grailWar;
+      let actionMsg = '';
+
+      if (btnId === 'ward_none') {
+        const res = executeWarAction(currentWar, master.discordId, 'set_ward', 'none');
+        currentWar = res.updatedWar;
+        actionMsg = res.message;
+        onUpdateGrailWar(currentWar);
+      } else if (btnId === 'ward_ward') {
+        const res = executeWarAction(currentWar, master.discordId, 'set_ward', 'ward');
+        currentWar = res.updatedWar;
+        actionMsg = res.message;
+        onUpdateGrailWar(currentWar);
+      } else if (btnId === 'ward_alarm') {
+        const res = executeWarAction(currentWar, master.discordId, 'set_ward', 'alarm');
+        currentWar = res.updatedWar;
+        actionMsg = res.message;
+        onUpdateGrailWar(currentWar);
+      } else if (btnId === 'toggle_auto_evade') {
+        const curMode = currentWar.participants[master.discordId]?.autoEvadeEnabled !== false ? 'off' : 'on';
+        const res = executeWarAction(currentWar, master.discordId, 'toggle_evade', curMode);
+        currentWar = res.updatedWar;
+        actionMsg = res.message;
+        onUpdateGrailWar(currentWar);
+      }
+
+      const uP = currentWar.participants[master.discordId];
+      const wardType = uP?.boundedField || 'none';
+      const evadeOn = uP?.autoEvadeEnabled !== false;
+      const seals = uP?.commandSeals ?? 3;
+
+      let wardDesc = '🚫 **No Active Wards:** Your workshop has no perimeter defenses.';
+      if (wardType === 'ward') {
+        wardDesc = '🛡️ **Mage\'s Sanctuary Bounded Field:** Absorbs & deflects **60% of incoming ambush damage**.';
+      } else if (wardType === 'alarm') {
+        wardDesc = '🚨 **Intrusion Alarm Trap:** Detects infiltrators, alerting you and dealing **3,000 retaliatory DMG**.';
+      }
+
+      let classPassive = 'None (Specializes in direct tactical matches)';
+      const sClass = uP?.servantClass;
+      if (sClass === 'Saber' || sClass === 'Archer' || sClass === 'Lancer') {
+        classPassive = '👁️ **Instinct / Clairvoyance:** 35% chance to predict ambushes, parrying 80% damage and dealing 1,500 counter DMG.';
+      } else if (sClass === 'Assassin') {
+        classPassive = '🕶️ **Presence Concealment:** Completely immune to surprise ambushes. Nullifies strike & counters for 2,500 DMG!';
+      } else if (sClass === 'Berserker') {
+        classPassive = '❤️ **Battle Continuation (Guts):** Revives once with 25% Max HP if dealt a fatal blow.';
+      }
+
+      addMessage({
+        id: getNextId('bot_defenses_updated'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '🏰 Mage Workshop Defenses Updated',
+          description:
+            `Master **${master.username}**'s Tactical Defense Headquarters\n\n` +
+            (actionMsg ? `📢 **Action Outcome:**\n${actionMsg}\n\n` : '') +
+            `🛡️ **Bounded Field Protocol:**\n${wardDesc}\n\n` +
+            `🔴 **Command Seal Emergency Evacuation:**\n` +
+            (evadeOn
+              ? `• **🟢 ENABLED:** When taking fatal ambush damage, consumes **1 Command Seal** to escape into shadows with **1 HP**.\n`
+              : `• **🔴 DISABLED:** Fatal ambushes will eliminate your Servant normally without consuming a seal.\n`) +
+            `• **Current Command Seals:** \`${'✦ '.repeat(seals)}${'✧ '.repeat(Math.max(0, 3 - seals))}\` (**${seals}/3** remaining)\n\n` +
+            `👁️ **Servant Class Passive:**\n${classPassive}\n\n` +
+            `*Settings saved to Holy Grail War Engine.*`,
+          color: '#3b82f6',
+          footer: 'Holy Grail War Defense Protocol'
+        },
+        components: {
+          type: 'buttons',
+          items: [
+            {
+              id: 'ward_none',
+              label: 'No Wards',
+              style: wardType === 'none' ? 'primary' : 'secondary',
+              emoji: '🚫'
+            },
+            {
+              id: 'ward_ward',
+              label: 'Sanctuary (60% Block)',
+              style: wardType === 'ward' ? 'success' : 'secondary',
+              emoji: '🛡️'
+            },
+            {
+              id: 'ward_alarm',
+              label: 'Alarm Trap (3k DMG)',
+              style: wardType === 'alarm' ? 'danger' : 'secondary',
+              emoji: '🚨'
+            },
+            {
+              id: 'toggle_auto_evade',
+              label: evadeOn ? 'Auto-Evacuate: ON 🟢' : 'Auto-Evacuate: OFF 🔴',
+              style: evadeOn ? 'success' : 'secondary'
+            },
+            {
+              id: 'quick_war_status',
+              label: 'War Board (/grailwar)',
+              style: 'primary',
+              emoji: '📋'
+            }
+          ]
+        }
+      });
+      return;
     } else if (btnId.startsWith('war_')) {
       if (btnId === 'war_attack_prompt') {
         setInputCommand('/grailwar attack ');
@@ -1937,6 +2160,13 @@ export default function DiscordEmulator({
             className="hover:text-[#d4af37] hover:underline whitespace-nowrap"
           >
             /grailwar
+          </button>
+          <span>•</span>
+          <button
+            onClick={() => handleCommand('/defenses')}
+            className="hover:text-[#3b82f6] hover:underline whitespace-nowrap text-[#3b82f6]"
+          >
+            /defenses
           </button>
         </div>
       </div>
