@@ -1,0 +1,71 @@
+/**
+ * Slash Command: /attack (alias: /ambush)
+ * Description: Ambush a suspected Master in the server
+ * Library: discord.js v14
+ */
+
+export const attackCommandCode = `import { 
+  SlashCommandBuilder, 
+  ChatInputCommandInteraction, 
+  EmbedBuilder 
+} from 'discord.js';
+import { getOrCreateMaster } from '../database/service';
+import { 
+  createHolyGrailWarSession, 
+  attackSuspectUserInWar 
+} from '../engine/grailwar';
+
+export const data = new SlashCommandBuilder()
+  .setName('attack')
+  .setDescription('Ambush a suspected Master in the server (if innocent, they die & you are exposed!)')
+  .addStringOption(opt =>
+    opt.setName('target')
+      .setDescription('The Master name, @mention, or ID of the suspected user')
+      .setRequired(true)
+  );
+
+export async function execute(interaction: ChatInputCommandInteraction) {
+  await interaction.deferReply();
+
+  try {
+    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+    const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
+
+    if (!activeServant) {
+      await interaction.editReply({
+        content: '❌ You must summon a Servant before launching an ambush! Use \`/summon\` first.'
+      });
+      return;
+    }
+
+    const war = createHolyGrailWarSession({
+      discordId: interaction.user.id,
+      username: interaction.user.username,
+      servantId: activeServant.id,
+      servantName: activeServant.template.name,
+      avatarUrl: activeServant.template.avatarUrl,
+      maxHp: activeServant.template.baseHp
+    });
+
+    const targetQuery = interaction.options.getString('target', true);
+    const res = attackSuspectUserInWar(war, interaction.user.id, targetQuery);
+
+    const embed = new EmbedBuilder()
+      .setTitle(res.targetWasMaster ? '⚔️ TACTICAL AMBUSH: RIVAL MASTER ENGAGED!' : '☠️ COLLATERAL CASUALTY: CIVILIAN SLAIN!')
+      .setDescription(res.message)
+      .setColor(res.targetWasMaster ? 0xef4444 : 0x7f1d1d)
+      .setFooter({
+        text: res.targetWasMaster 
+          ? 'Both Masters are now EXPOSED on the Grail War Status Board (/grailwar status)' 
+          : 'Attacking Master identity is now publicly exposed for violating Secrecy of Magecraft!'
+      });
+
+    await interaction.editReply({ embeds: [embed] });
+  } catch (error: any) {
+    console.error('Error executing /attack:', error);
+    await interaction.editReply({
+      content: \`❌ Ambush execution error: \${error.message}\`
+    });
+  }
+}
+`;

@@ -945,43 +945,53 @@ export default function DiscordEmulator({
       const exposedCount = Object.values(grailWar.participants).filter(x => x.isExposed).length;
       const civilianDeaths = grailWar.innocentVictims?.length || 0;
 
-      // Render only exposed details; hidden participants are masked
-      const rosterLines = Object.values(grailWar.participants).map(m => {
+      // 1. Render roster lines (concealing shadow participants)
+      const rosterLines = Object.values(grailWar.participants).map((m, idx) => {
         const isUser = m.discordId === master.discordId;
         const statusIcon = !m.isAlive ? '💀' : m.isExposed ? '📡' : '🕶️';
 
         if (m.isExposed || isUser || !m.isAlive) {
           const hpBar = `${m.currentHp.toLocaleString()}/${m.maxHp.toLocaleString()}`;
           const exposureTag = m.exposureReason === 'public_command'
-            ? '[Exposed: Public Command]'
+            ? '📡 [Exposed: Public Command]'
             : m.exposureReason === 'ambush_clash'
-            ? '[Exposed: Ambush Clash]'
+            ? '⚔️ [Exposed: Ambush Clash]'
             : m.exposureReason === 'innocent_assault'
-            ? '[Exposed: Civilian Assault]'
+            ? '☠️ [Exposed: Civilian Assault]'
             : m.exposureReason === 'intel_leak'
-            ? '[Exposed: Intel Leak]'
-            : '[Exposed: Open Combat]';
+            ? '🕵️ [Exposed: Intel Leak]'
+            : '⚔️ [Exposed: Open Combat]';
 
-          return `• ${statusIcon} **${m.username}** ${isUser ? '(YOU)' : ''} — **${m.servantName}** [${m.servantClass}] | HP: ${hpBar} | Kills: ${m.kills}` +
-                 `\n  ↳ *${m.isAlive ? exposureTag : 'Eliminated from Tournament'}*`;
+          return `• ${statusIcon} **${m.username}** ${isUser ? '**(YOU)**' : ''} — **${m.servantName}** (${m.servantClass}) — HP: ${hpBar} | Kills: ${m.kills}` +
+                 `\n  ↳ *${!m.isAlive ? 'Eliminated from Tournament' : exposureTag}*`;
         } else {
-          return `• ${statusIcon} **??? (Shadow Master)** — Servant: **???** [Class: Unknown] | HP: [CLASSIFIED] | Status: In Shadows`;
+          return `• ${statusIcon} **[Unknown Master #${idx + 1} — In Shadows]** — Servant: **[CLASSIFIED]** (Class: Unknown) — HP: [CLASSIFIED] | Status: Concealed`;
         }
       }).join('\n\n');
+
+      // 2. Render recent skirmishes and important events in lower part
+      const recentEvents = (grailWar.eventLogs || []).slice(0, 6).map(evt => {
+        const timeStr = new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return `• [${timeStr}] ${evt.text}`;
+      }).join('\n');
+
+      const chronicleSection = recentEvents || '• *No skirmishes or leaks recorded yet.*';
 
       addMessage({
         id: getNextId('bot_war_status'),
         sender: 'bot',
         timestamp: 'Just now',
         embed: {
-          title: `🏆 ${grailWar.title} — Intelligence Board`,
+          title: `🏆 ${grailWar.title} — Intelligence Status Board`,
           description:
-            `🩸 **Command Seals:** ${p?.commandSeals ?? 3}/3\n` +
-            `👥 **Surviving Masters:** ${aliveCount}/7 alive (${exposedCount} Exposed to Server, ${7 - exposedCount} in Shadows)\n` +
+            `⚔️ **War Status:** ${grailWar.status === 'concluded' ? '🏆 Concluded' : '🟢 ACTIVE BATTLE ROYALE'} | 🩸 **Command Seals:** ${p?.commandSeals ?? 3}/3\n` +
+            `👥 **Alive Masters:** ${aliveCount}/7 alive (${exposedCount} Exposed to Server, ${7 - exposedCount} in Shadows)\n` +
             `☠️ **Civilian Casualties:** ${civilianDeaths} innocent bystanders slain\n` +
-            `⚔️ **War Status:** ${grailWar.status === 'concluded' ? '🏆 Concluded' : '🟢 Active Battle Royale'}\n\n` +
-            `📋 **Participants Intelligence Board:**\n` +
-            rosterLines,
+            `👤 **Your Identity:** ${p?.isExposed ? '📡 **EXPOSED TO SERVER**' : '🕶️ **CONCEALED IN SHADOWS**'}\n\n` +
+            `📋 **7 Masters Roster (Intelligence Board):**\n` +
+            rosterLines +
+            `\n\n📜 **War Chronicle & Recent Events (Skirmishes & Leaks):**\n` +
+            chronicleSection,
           color: '#f59e0b',
           footer: 'Use /grailwar attack @user to ambush suspects | /grailwar leak to broadcast intel'
         },

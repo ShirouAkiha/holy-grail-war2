@@ -27,7 +27,7 @@ export const data = new SlashCommandBuilder()
   .setDescription('Holy Grail War Secret Intelligence Board & Battle Royale')
   .addSubcommand(sub =>
     sub.setName('status')
-      .setDescription('View the Holy Grail War Intelligence Board (showing only exposed participants)')
+      .setDescription('View the Holy Grail War Intelligence Board & Chronicle')
   )
   .addSubcommand(sub =>
     sub.setName('attack')
@@ -54,7 +54,7 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand(sub =>
     sub.setName('skirmish')
-      .setDescription('Simulate a background clash between rival Masters')
+      .setDescription('Simulate a background clash between rival Masters in Fuyuki')
   )
   .addSubcommand(sub =>
     sub.setName('rest')
@@ -79,7 +79,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    // In production, retrieve active session from DB
+    // Retrieve or initialize active war session
     const war = createHolyGrailWarSession({
       discordId: interaction.user.id,
       username: interaction.user.username,
@@ -102,43 +102,53 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const aliveCount = Object.values(war.participants).filter(x => x.isAlive).length;
       const exposedCount = Object.values(war.participants).filter(x => x.isExposed).length;
       const civilianDeaths = war.innocentVictims?.length || 0;
+      const isUserExposed = p?.isExposed;
 
-      // Format participants list: Only exposed details are revealed; hidden participants are masked
-      const rosterLines = Object.values(war.participants).map(m => {
+      // 1. Masters Roster Section (Masks unexposed shadow participants)
+      const rosterLines = Object.values(war.participants).map((m, idx) => {
         const isUser = m.discordId === interaction.user.id;
         const statusIcon = !m.isAlive ? '💀' : m.isExposed ? '📡' : '🕶️';
 
-        if (m.isExposed || isUser) {
+        if (m.isExposed || isUser || !m.isAlive) {
           const hpBar = \`\${m.currentHp.toLocaleString()}/\${m.maxHp.toLocaleString()}\`;
           const exposureTag = m.exposureReason === 'public_command'
-            ? '[Exposed: Public Command]'
+            ? '📡 [Exposed: Public Command]'
             : m.exposureReason === 'ambush_clash'
-            ? '[Exposed: Ambush Clash]'
+            ? '⚔️ [Exposed: Ambush Clash]'
             : m.exposureReason === 'innocent_assault'
-            ? '[Exposed: Civilian Assault]'
+            ? '☠️ [Exposed: Civilian Assault]'
             : m.exposureReason === 'intel_leak'
-            ? '[Exposed: Intel Leak]'
-            : '[Exposed: Open Combat]';
+            ? '🕵️ [Exposed: Intel Leak]'
+            : '⚔️ [Exposed: Open Combat]';
 
-          return \`• \${statusIcon} **\${m.username}** \${isUser ? '(YOU)' : ''} — **\${m.servantName}** [\${m.servantClass}] | HP: \${hpBar} | Kills: \${m.kills} \` +
-                 \`\\n  ↳ *\${exposureTag}*\`;
+          return \`• \${statusIcon} **\${m.username}** \${isUser ? '**(YOU)**' : ''} — **\${m.servantName}** (\${m.servantClass}) — HP: \${hpBar} | Kills: \${m.kills}\\n  ↳ *\${!m.isAlive ? 'Eliminated from Tournament' : exposureTag}*\`;
         } else {
-          return \`• \${statusIcon} **??? (Unknown Master)** — Servant: **???** [Class: ???] | HP: [CLASSIFIED] | Status: In Shadows\`;
+          return \`• \${statusIcon} **[Unknown Master #\${idx + 1} — In Shadows]** — Servant: **[CLASSIFIED]** (Class: Unknown) — HP: [CLASSIFIED] | Status: Concealed\`;
         }
       }).join('\\n\\n');
 
+      // 2. War Chronicle & Recent Events Section (Lower part)
+      const recentEvents = (war.eventLogs || []).slice(0, 6).map(evt => {
+        const timeStr = new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return \`• [\${timeStr}] \${evt.text}\`;
+      }).join('\\n');
+
+      const chronicleSection = recentEvents || '• *No skirmishes or leaks recorded yet.*';
+
       const embed = new EmbedBuilder()
-        .setTitle(\`🏆 \${war.title} — Intelligence Board\`)
+        .setTitle(\`🏆 \${war.title} — Intelligence Status Board\`)
         .setDescription(
-          \`🩸 **Command Seals:** \${p.commandSeals}/3\\n\` +
-          \`👥 **Surviving Masters:** \${aliveCount}/7 alive (\${exposedCount} Exposed to Server, \${7 - exposedCount} in Shadows)\\n\` +
+          \`⚔️ **War Status:** \${war.status === 'concluded' ? '🏆 Concluded' : '🟢 ACTIVE BATTLE ROYALE'} | 🩸 **Seals:** \${p?.commandSeals ?? 3}/3\\n\` +
+          \`👥 **Alive Masters:** \${aliveCount}/7 alive (\${exposedCount} Exposed, \${7 - exposedCount} in Shadows)\\n\` +
           \`☠️ **Civilian Casualties:** \${civilianDeaths} innocent bystanders slain\\n\` +
-          \`⚔️ **War Status:** \${war.status === 'concluded' ? '🏆 Concluded' : '🟢 Active Battle Royale'}\\n\\n\` +
-          \`📋 **Participants Intelligence Board:**\\n\` +
-          rosterLines
+          \`👤 **Your Identity:** \${isUserExposed ? '📡 **EXPOSED TO SERVER**' : '🕶️ **CONCEALED IN SHADOWS**'}\\n\\n\` +
+          \`📋 **7 Masters Roster (Intelligence Board):**\\n\` +
+          rosterLines +
+          \`\\n\\n📜 **War Chronicle & Recent Events (Skirmishes & Leaks):**\\n\` +
+          chronicleSection
         )
         .setColor(0xf59e0b)
-        .setFooter({ text: 'Use /grailwar attack @user to ambush suspects | /grailwar leak to broadcast intel' });
+        .setFooter({ text: 'Use /grailwar attack @user to ambush | /grailwar leak to broadcast intel' });
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId('war_attack_prompt').setLabel('Ambush Suspect (/grailwar attack)').setEmoji('⚔️').setStyle(ButtonStyle.Danger),
@@ -159,7 +169,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setTitle(res.targetWasMaster ? '⚔️ Holy Grail War: Tactical Ambush!' : '☠️ Collateral Casualty: Civilian Slain!')
         .setDescription(res.message)
         .setColor(res.targetWasMaster ? 0xef4444 : 0x7f1d1d)
-        .setFooter({ text: res.targetWasMaster ? 'Both Masters have been exposed on the Grail War Status Board!' : 'Attacking Master identity is now publicly exposed for violating Secrecy!' });
+        .setFooter({ text: res.targetWasMaster ? 'Both Masters are now EXPOSED on the Grail War Status Board!' : 'Attacking Master identity is now publicly exposed for violating Secrecy!' });
 
       await interaction.editReply({ embeds: [embed] });
       return;
@@ -216,4 +226,3 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 }
 `;
-

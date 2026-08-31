@@ -31,23 +31,23 @@ export function createHolyGrailWarSession(
     }
   };
 
-  // Seed 6 other rival Masters & Servants (initially hidden in the shadows)
-  const aiRivals = [
-    { name: 'Kotomine Kirei', servantId: 'gilgamesh_archer', servantName: 'Gilgamesh', class: 'Archer' as const, exposed: false },
-    { name: 'Bazett Fraga', servantId: 'cu_chulainn_lancer', servantName: 'Cú Chulainn', class: 'Lancer' as const, exposed: false },
-    { name: 'Illyasviel von Einzbern', servantId: 'heracles_berserker', servantName: 'Heracles', class: 'Berserker' as const, exposed: false },
-    { name: 'Medea of Colchis', servantId: 'jeanne_darc_ruler', servantName: 'Jeanne d\'Arc', class: 'Ruler' as const, exposed: false },
-    { name: 'Kiritsugu Emiya', servantId: 'emiya_archer', servantName: 'EMIYA', class: 'Archer' as const, exposed: false },
-    { name: 'Rin Tohsaka', servantId: 'terminal_saber_linus', servantName: 'Terminal Saber', class: 'Saber' as const, exposed: false }
+  // Seed 6 other rival Master slots (operating in concealment from the server shadows)
+  const defaultClasses = [
+    { slot: 2, class: 'Archer' as const, servantId: 'gilgamesh_archer', servantName: 'King of Heroes' },
+    { slot: 3, class: 'Lancer' as const, servantId: 'cu_chulainn_lancer', servantName: 'Hound of Ulster' },
+    { slot: 4, class: 'Berserker' as const, servantId: 'heracles_berserker', servantName: 'Great Berserker' },
+    { slot: 5, class: 'Ruler' as const, servantId: 'jeanne_darc_ruler', servantName: 'Holy Maiden' },
+    { slot: 6, class: 'Assassin' as const, servantId: 'emiya_archer', servantName: 'Nameless Hero' },
+    { slot: 7, class: 'Rider' as const, servantId: 'terminal_saber_linus', servantName: 'Iron Sovereign' }
   ];
 
-  aiRivals.forEach((r, idx) => {
-    const id = `rival_${idx + 1}`;
+  defaultClasses.forEach(r => {
+    const id = `master_slot_${r.slot}`;
     const t = SERVANT_DATABASE.find(s => s.id === r.servantId);
-    const hp = t ? t.baseHp : 12000;
+    const hp = t ? t.baseHp : 11000;
     participants[id] = {
       discordId: id,
-      username: r.name,
+      username: `Master Slot #${r.slot}`,
       servantId: r.servantId,
       servantName: r.servantName,
       servantClass: r.class,
@@ -56,7 +56,7 @@ export function createHolyGrailWarSession(
       maxHp: hp,
       commandSeals: 3,
       isAlive: true,
-      isExposed: r.exposed,
+      isExposed: false,
       kills: 0,
       innocentKills: 0
     };
@@ -473,23 +473,23 @@ export function executeWarAction(
 
 export function simulateWarSkirmish(war: HolyGrailWarSession): WarActionResult {
   const updated: HolyGrailWarSession = JSON.parse(JSON.stringify(war));
-  const aliveAis = Object.values(updated.participants).filter(p => p.isAlive && p.discordId.startsWith('rival_'));
+  const aliveRivals = Object.values(updated.participants).filter(p => p.isAlive);
 
-  if (aliveAis.length < 2) {
+  if (aliveRivals.length < 2) {
     return {
       success: true,
-      message: 'Not enough rival Masters remaining for a background skirmish.',
+      message: 'Not enough active Masters remaining in Fuyuki for a background skirmish.',
       updatedWar: updated
     };
   }
 
-  // Pick two random AI rivals to clash
-  const idx1 = Math.floor(Math.random() * aliveAis.length);
-  let idx2 = Math.floor(Math.random() * (aliveAis.length - 1));
+  // Pick two random alive rivals to clash
+  const idx1 = Math.floor(Math.random() * aliveRivals.length);
+  let idx2 = Math.floor(Math.random() * (aliveRivals.length - 1));
   if (idx2 >= idx1) idx2++;
 
-  const ai1 = aliveAis[idx1];
-  const ai2 = aliveAis[idx2];
+  const ai1 = aliveRivals[idx1];
+  const ai2 = aliveRivals[idx2];
   const damage = Math.round(3500 + Math.random() * 4500);
   ai2.currentHp = Math.max(0, ai2.currentHp - damage);
 

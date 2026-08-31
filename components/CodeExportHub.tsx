@@ -17,6 +17,9 @@ import { summonCommandCode } from '../lib/bot/commands/summon';
 import { servantCommandCode } from '../lib/bot/commands/servant';
 import { duelCommandCode } from '../lib/bot/commands/duel';
 import { grailwarCommandCode } from '../lib/bot/commands/grailwar';
+import { attackCommandCode } from '../lib/bot/commands/attack';
+import { leakCommandCode } from '../lib/bot/commands/leak';
+import { servantsCommandCode } from '../lib/bot/commands/servants';
 import { customiseCommandCode } from '../lib/bot/commands/customise';
 import { addservantCommandCode } from '../lib/bot/commands/addservant';
 import { discordBotMainCode } from '../lib/bot/client';
@@ -42,6 +45,30 @@ const FILE_MODULES = [
     code: nodeCanvasRendererCode
   },
   {
+    id: 'cmd_grailwar',
+    name: 'src/bot/commands/grailwar.ts',
+    category: 'Slash Command: /grailwar (Status Board & War)',
+    code: grailwarCommandCode
+  },
+  {
+    id: 'cmd_attack',
+    name: 'src/bot/commands/attack.ts',
+    category: 'Slash Command: /attack (Ambush Suspect)',
+    code: attackCommandCode
+  },
+  {
+    id: 'cmd_leak',
+    name: 'src/bot/commands/leak.ts',
+    category: 'Slash Command: /leak (Intel Leak Dispatch)',
+    code: leakCommandCode
+  },
+  {
+    id: 'cmd_servants',
+    name: 'src/bot/commands/servants.ts',
+    category: 'Slash Command: /servants (Codex & Search)',
+    code: servantsCommandCode
+  },
+  {
     id: 'cmd_summon',
     name: 'src/bot/commands/summon.ts',
     category: 'Slash Command: /summon (Ritual)',
@@ -64,12 +91,6 @@ const FILE_MODULES = [
     name: 'src/bot/commands/duel.ts',
     category: 'Slash Command: /duel',
     code: duelCommandCode
-  },
-  {
-    id: 'cmd_grailwar',
-    name: 'src/bot/commands/grailwar.ts',
-    category: 'Slash Command: /grailwar',
-    code: grailwarCommandCode
   },
   {
     id: 'cmd_customise',

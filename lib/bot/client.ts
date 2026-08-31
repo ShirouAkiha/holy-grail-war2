@@ -21,6 +21,8 @@ import * as servantsCommand from './commands/servants';
 import * as addservantCommand from './commands/addservant';
 import * as duelCommand from './commands/duel';
 import * as grailwarCommand from './commands/grailwar';
+import * as attackCommand from './commands/attack';
+import * as leakCommand from './commands/leak';
 import * as customiseCommand from './commands/customise';
 import { updateCustomDialogueQuotes, equipCraftEssence } from './engine/customization';
 import { getOrCreateMaster, updateMasterProfile } from './database/service';
@@ -43,6 +45,8 @@ commands.set(servantsCommand.data.name, servantsCommand);
 commands.set(addservantCommand.data.name, addservantCommand);
 commands.set(duelCommand.data.name, duelCommand);
 commands.set(grailwarCommand.data.name, grailwarCommand);
+commands.set(attackCommand.data.name, attackCommand);
+commands.set(leakCommand.data.name, leakCommand);
 commands.set(customiseCommand.data.name, customiseCommand);
 
 // Deploy Slash Commands to Discord Gateway

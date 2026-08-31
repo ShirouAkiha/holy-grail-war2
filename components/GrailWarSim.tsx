@@ -65,6 +65,7 @@ export default function GrailWarSim({
   const [showLeakModal, setShowLeakModal] = useState(false);
   const [leakTextInput, setLeakTextInput] = useState('');
   const [leakTargetInput, setLeakTargetInput] = useState('');
+  const [chronicleFilter, setChronicleFilter] = useState<'all' | 'clash' | 'leak' | 'casualty' | 'elimination'>('all');
 
   const handleAction = (actionType: any, targetParam?: string) => {
     const res = executeWarAction(grailWar, master.discordId, actionType, targetParam);
@@ -250,10 +251,10 @@ export default function GrailWarSim({
         </div>
       )}
 
-      {/* Main Board Layout: 2 Columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Master Roster / Leaks / Casualties */}
-        <div className="lg:col-span-2 space-y-4">
+      {/* Main Board Layout */}
+      <div className="space-y-6">
+        {/* Upper Area: Master Roster / Leaks / Casualties + Selection Controls */}
+        <div className="space-y-4">
           {/* Sub-Tabs */}
           <div className="flex items-center justify-between border-b border-[#1a1a1a] pb-2">
             <div className="flex items-center gap-2">
@@ -266,7 +267,7 @@ export default function GrailWarSim({
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
-                <span>Participants Board ({Object.values(grailWar.participants).length})</span>
+                <span>7 Masters Intelligence Roster ({Object.values(grailWar.participants).length})</span>
               </button>
 
               <button
@@ -278,7 +279,7 @@ export default function GrailWarSim({
                 }`}
               >
                 <Radio className="w-3.5 h-3.5" />
-                <span>Leaked Intel ({grailWar.leakedIntel?.length || 0})</span>
+                <span>Leaked Intel Dispatches ({grailWar.leakedIntel?.length || 0})</span>
               </button>
 
               <button
@@ -301,8 +302,8 @@ export default function GrailWarSim({
 
           {/* TAB 1: PARTICIPANTS ROSTER */}
           {activeBoardTab === 'roster' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {Object.values(grailWar.participants).map(p => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+              {Object.values(grailWar.participants).map((p, idx) => {
                 const isUser = p.discordId === master.discordId;
                 const isSelected = selectedTargetMasterId === p.discordId;
                 const hasPactWithUser = userAlliance && userAlliance.memberMasterIds.includes(p.discordId) && !isUser;
@@ -319,7 +320,7 @@ export default function GrailWarSim({
                         setSelectedTargetMasterId(p.discordId);
                       }
                     }}
-                    className={`p-4 rounded-lg border transition-all relative overflow-hidden ${
+                    className={`p-4 rounded-lg border transition-all relative overflow-hidden flex flex-col justify-between ${
                       !p.isAlive
                         ? 'bg-[#0a0a0a] border-[#1a1a1a] opacity-40 cursor-not-allowed'
                         : isSelected
@@ -331,85 +332,87 @@ export default function GrailWarSim({
                         : 'bg-[#080808] border-dashed border-[#222] hover:border-[#333] cursor-pointer'
                     }`}
                   >
-                    {/* Status Badge & Identification */}
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        {isRevealed ? (
-                          <span className="text-sm font-medium text-white font-serif flex items-center gap-1.5">
-                            <Eye className="w-3.5 h-3.5 text-[#22c55e]" />
-                            {p.username}
-                          </span>
-                        ) : (
-                          <span className="text-sm font-medium text-white/60 font-serif italic flex items-center gap-1.5">
-                            <EyeOff className="w-3.5 h-3.5 text-white/40" />
-                            ??? (Shadow Master)
-                          </span>
-                        )}
+                    <div>
+                      {/* Status Badge & Identification */}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {isRevealed ? (
+                            <span className="text-sm font-medium text-white font-serif flex items-center gap-1.5">
+                              <Eye className="w-3.5 h-3.5 text-[#22c55e]" />
+                              {p.username}
+                            </span>
+                          ) : (
+                            <span className="text-sm font-medium text-white/60 font-serif italic flex items-center gap-1.5">
+                              <EyeOff className="w-3.5 h-3.5 text-white/40" />
+                              Shadow Master #{idx + 1}
+                            </span>
+                          )}
 
-                        {isUser && (
-                          <span className="px-1.5 py-0.2 text-[8px] font-mono font-bold rounded-sm bg-[#161616] text-[#3b82f6] border border-[#3b82f6]/40">
-                            YOU
-                          </span>
-                        )}
-                        {hasPactWithUser && (
-                          <span className="px-1.5 py-0.2 text-[8px] font-mono font-bold rounded-sm bg-[#221c08] text-[#d4af37] border border-[#d4af37]/40">
-                            ALLY
-                          </span>
-                        )}
+                          {isUser && (
+                            <span className="px-1.5 py-0.2 text-[8px] font-mono font-bold rounded-sm bg-[#161616] text-[#3b82f6] border border-[#3b82f6]/40">
+                              YOU
+                            </span>
+                          )}
+                          {hasPactWithUser && (
+                            <span className="px-1.5 py-0.2 text-[8px] font-mono font-bold rounded-sm bg-[#221c08] text-[#d4af37] border border-[#d4af37]/40">
+                              ALLY
+                            </span>
+                          )}
+                        </div>
+
+                        <span
+                          className={`text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-sm font-bold ${
+                            !p.isAlive
+                              ? 'bg-[#220000] text-[#ef4444] border border-[#ef4444]/30'
+                              : isRevealed
+                              ? 'bg-[#111] text-[#22c55e] border border-[#22c55e]/30'
+                              : 'bg-[#161616] text-white/40 border border-white/10'
+                          }`}
+                        >
+                          {!p.isAlive ? 'ELIMINATED' : isRevealed ? p.servantClass : 'IN SHADOWS'}
+                        </span>
                       </div>
 
-                      <span
-                        className={`text-[9px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-sm font-bold ${
-                          !p.isAlive
-                            ? 'bg-[#220000] text-[#ef4444] border border-[#ef4444]/30'
-                            : isRevealed
-                            ? 'bg-[#111] text-[#22c55e] border border-[#22c55e]/30'
-                            : 'bg-[#161616] text-white/40 border border-white/10'
-                        }`}
-                      >
-                        {!p.isAlive ? 'ELIMINATED' : isRevealed ? p.servantClass : 'HIDDEN'}
-                      </span>
+                      {/* Servant Info */}
+                      {isRevealed ? (
+                        <div className="text-xs text-white/80 font-medium mb-1.5 flex items-center justify-between">
+                          <span>
+                            Servant: <strong className="text-[#d4af37]">{p.servantName}</strong>
+                          </span>
+                          <span className="text-[10px] font-mono text-white/40">Kills: {p.kills}</span>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-white/40 font-mono italic mb-1.5 flex items-center justify-between">
+                          <span>Servant: [CLASSIFIED IN SHADOWS]</span>
+                          <span className="text-[10px]">Kills: ???</span>
+                        </div>
+                      )}
+
+                      {/* Exposure Reason Tag */}
+                      {p.isExposed && (
+                        <div className="my-1.5">
+                          <span className="inline-block px-1.5 py-0.5 text-[9px] font-mono rounded bg-[#161616] text-[#f59e0b] border border-[#f59e0b]/30">
+                            {p.exposureReason === 'public_command' && '📡 Exposed via Public Command'}
+                            {p.exposureReason === 'ambush_clash' && '⚔️ Exposed via Ambush Clash'}
+                            {p.exposureReason === 'innocent_assault' && '☠️ Exposed via Civilian Assault'}
+                            {p.exposureReason === 'intel_leak' && '🕵️ Exposed via Intel Leak'}
+                            {p.exposureReason === 'direct_combat' && '⚔️ Exposed via Open Battle'}
+                            {!p.exposureReason && '📡 Identity Exposed'}
+                          </span>
+                        </div>
+                      )}
+
+                      {!p.isExposed && !isUser && p.isAlive && (
+                        <div className="my-1.5">
+                          <span className="inline-block px-1.5 py-0.5 text-[9px] font-mono rounded bg-[#111] text-white/40 border border-white/10">
+                            🕶️ Concealed in Shadows
+                          </span>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Servant Info */}
-                    {isRevealed ? (
-                      <div className="text-xs text-white/80 font-medium mb-1.5 flex items-center justify-between">
-                        <span>
-                          Servant: <strong className="text-[#d4af37]">{p.servantName}</strong>
-                        </span>
-                        <span className="text-[10px] font-mono text-white/40">Kills: {p.kills}</span>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-white/40 font-mono italic mb-1.5 flex items-center justify-between">
-                        <span>Servant: [CLASSIFIED IN SHADOWS]</span>
-                        <span className="text-[10px]">Kills: ???</span>
-                      </div>
-                    )}
-
-                    {/* Exposure Reason Tag */}
-                    {p.isExposed && (
-                      <div className="my-1.5">
-                        <span className="inline-block px-1.5 py-0.5 text-[9px] font-mono rounded bg-[#161616] text-[#f59e0b] border border-[#f59e0b]/30">
-                          {p.exposureReason === 'public_command' && '📡 Exposed via Public Command'}
-                          {p.exposureReason === 'ambush_clash' && '⚔️ Exposed via Ambush Clash'}
-                          {p.exposureReason === 'innocent_assault' && '☠️ Exposed via Civilian Assault'}
-                          {p.exposureReason === 'intel_leak' && '🕵️ Exposed via Intel Leak'}
-                          {p.exposureReason === 'direct_combat' && '⚔️ Exposed via Open Battle'}
-                          {!p.exposureReason && '📡 Identity Exposed'}
-                        </span>
-                      </div>
-                    )}
-
-                    {!p.isExposed && !isUser && p.isAlive && (
-                      <div className="my-1.5">
-                        <span className="inline-block px-1.5 py-0.5 text-[9px] font-mono rounded bg-[#111] text-white/40 border border-white/10">
-                          🕶️ Operating in Concealment
-                        </span>
-                      </div>
-                    )}
-
                     {/* HP Bar */}
-                    <div className="space-y-1 mt-2">
+                    <div className="space-y-1 mt-2 pt-2 border-t border-[#1a1a1a]">
                       <div className="flex items-center justify-between text-[10px] font-mono text-white/50">
                         <span>HP:</span>
                         <span>
@@ -433,14 +436,6 @@ export default function GrailWarSim({
                         />
                       </div>
                     </div>
-
-                    {/* Action Hints on Card */}
-                    {isSelected && p.isAlive && (
-                      <div className="mt-3 pt-2.5 border-t border-[#1a1a1a] flex items-center justify-between text-[10px] font-mono text-[#d4af37]">
-                        <span>Target Selected</span>
-                        <span>Ready to Ambush or Ally</span>
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -508,14 +503,14 @@ export default function GrailWarSim({
 
           {/* Selected Rival Engagement Box */}
           {selectedTargetMasterId && selectedTargetMasterId !== master.discordId && (
-            <div className="p-5 rounded-xl bg-[#0a0a0a] border border-[#d4af37]/40 space-y-3 shadow-lg">
+            <div className="p-5 rounded-xl bg-[#0a0a0a] border border-[#d4af37]/40 space-y-3 shadow-lg animate-in fade-in">
               <div className="flex items-center justify-between border-b border-[#1a1a1a] pb-3">
                 <div>
                   <h4 className="text-sm font-serif italic text-white">
-                    Engagement: {grailWar.participants[selectedTargetMasterId]?.isExposed ? grailWar.participants[selectedTargetMasterId]?.username : 'Suspected Rival Master'}
+                    Target Engagement: {grailWar.participants[selectedTargetMasterId]?.isExposed ? grailWar.participants[selectedTargetMasterId]?.username : 'Suspected Shadow Master'}
                   </h4>
                   <p className="text-[11px] font-mono text-white/40">
-                    Target ID: {selectedTargetMasterId} • {grailWar.participants[selectedTargetMasterId]?.isExposed ? `Servant: ${grailWar.participants[selectedTargetMasterId]?.servantName}` : 'Identity Hidden in Shadows'}
+                    ID: {selectedTargetMasterId} • {grailWar.participants[selectedTargetMasterId]?.isExposed ? `Servant: ${grailWar.participants[selectedTargetMasterId]?.servantName} (${grailWar.participants[selectedTargetMasterId]?.servantClass})` : 'Identity Concealed in Shadows'}
                   </p>
                 </div>
                 <button
@@ -529,7 +524,7 @@ export default function GrailWarSim({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   onClick={() => handleAction('challenge_master', selectedTargetMasterId)}
-                  className="py-3 px-4 rounded-sm bg-[#220000] hover:bg-[#330000] text-[#ef4444] border border-[#ef4444]/40 font-mono text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 transition"
+                  className="py-2.5 px-4 rounded-sm bg-[#220000] hover:bg-[#330000] text-[#ef4444] border border-[#ef4444]/40 font-mono text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 transition"
                 >
                   <Swords className="w-4 h-4" />
                   <span>Challenge Duel (Exposes Both)</span>
@@ -538,7 +533,7 @@ export default function GrailWarSim({
                 {userAlliance && userAlliance.memberMasterIds.includes(selectedTargetMasterId) ? (
                   <button
                     onClick={() => handleAction('betray_ally')}
-                    className="py-3 px-4 rounded-sm bg-[#221c08] hover:bg-[#2e260c] text-[#f59e0b] border border-[#f59e0b]/40 font-mono text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 transition"
+                    className="py-2.5 px-4 rounded-sm bg-[#221c08] hover:bg-[#2e260c] text-[#f59e0b] border border-[#f59e0b]/40 font-mono text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 transition"
                   >
                     <AlertTriangle className="w-4 h-4" />
                     <span>Betray Covenant</span>
@@ -546,7 +541,7 @@ export default function GrailWarSim({
                 ) : (
                   <button
                     onClick={() => handleAction('form_alliance', selectedTargetMasterId)}
-                    className="py-3 px-4 rounded-sm bg-[#111] hover:bg-[#161616] text-[#a855f7] border border-[#a855f7]/40 font-mono text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 transition"
+                    className="py-2.5 px-4 rounded-sm bg-[#111] hover:bg-[#161616] text-[#a855f7] border border-[#a855f7]/40 font-mono text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 transition"
                   >
                     <Handshake className="w-4 h-4" />
                     <span>Form Secret Covenant</span>
@@ -557,71 +552,129 @@ export default function GrailWarSim({
           )}
         </div>
 
-        {/* Right 1 Col: Live Chronicle / Event Logs */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-serif italic text-white flex items-center gap-2">
-              <Flame className="w-4 h-4 text-[#d4af37]" /> Holy Grail War Chronicle
-            </h3>
-            <span className="text-[11px] font-mono text-white/40">{grailWar.eventLogs.length} Events</span>
+        {/* LOWER SECTION: Full-Width Holy Grail War Chronicle & Event Intelligence Feed */}
+        <div className="p-5 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] space-y-4 shadow-xl">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1a1a1a] pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-sm bg-[#161616] text-[#d4af37] border border-[#d4af37]/20">
+                <Flame className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-serif italic text-white">Holy Grail War Chronicle &amp; Clashes</h3>
+                <p className="text-[10px] font-mono text-white/40">Real-time log of city skirmishes, intelligence leaks, ambush reports, and casualties</p>
+              </div>
+            </div>
+
+            {/* Filter Chips */}
+            <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-mono">
+              <button
+                onClick={() => setChronicleFilter('all')}
+                className={`px-2.5 py-1 rounded transition ${
+                  chronicleFilter === 'all'
+                    ? 'bg-[#161616] text-[#d4af37] border border-[#d4af37]/40 font-bold'
+                    : 'bg-[#111] text-white/50 hover:text-white border border-transparent'
+                }`}
+              >
+                All ({grailWar.eventLogs.length})
+              </button>
+              <button
+                onClick={() => setChronicleFilter('clash')}
+                className={`px-2.5 py-1 rounded transition ${
+                  chronicleFilter === 'clash'
+                    ? 'bg-[#220000] text-rose-300 border border-rose-500/40 font-bold'
+                    : 'bg-[#111] text-white/50 hover:text-white border border-transparent'
+                }`}
+              >
+                ⚔️ Skirmishes &amp; Clashes
+              </button>
+              <button
+                onClick={() => setChronicleFilter('leak')}
+                className={`px-2.5 py-1 rounded transition ${
+                  chronicleFilter === 'leak'
+                    ? 'bg-[#180a29] text-purple-300 border border-purple-500/40 font-bold'
+                    : 'bg-[#111] text-white/50 hover:text-white border border-transparent'
+                }`}
+              >
+                🕵️ Intel Leaks
+              </button>
+              <button
+                onClick={() => setChronicleFilter('casualty')}
+                className={`px-2.5 py-1 rounded transition ${
+                  chronicleFilter === 'casualty'
+                    ? 'bg-[#2b0808] text-rose-300 border border-rose-600/40 font-bold'
+                    : 'bg-[#111] text-white/50 hover:text-white border border-transparent'
+                }`}
+              >
+                ☠️ Casualties &amp; Eliminations
+              </button>
+            </div>
           </div>
 
-          {/* Active Alliances Panel */}
+          {/* Active Alliances Panel if any */}
           {Object.keys(grailWar.alliances).length > 0 && (
-            <div className="p-3.5 rounded-lg bg-[#111] border border-[#1a1a1a] space-y-2">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-[#d4af37] block">
-                Active Covenants:
-              </span>
-              {Object.values(grailWar.alliances).map(a => (
-                <div key={a.id} className="text-xs font-mono text-white/80 flex items-center gap-2">
-                  <Handshake className="w-3.5 h-3.5 text-[#a855f7]" />
-                  <span>{a.name}</span>
-                </div>
-              ))}
+            <div className="p-3 rounded-lg bg-[#111] border border-[#1a1a1a] flex items-center gap-3 text-xs font-mono">
+              <span className="text-[10px] uppercase tracking-widest text-[#d4af37] font-bold">Active Covenants:</span>
+              <div className="flex items-center gap-3 flex-wrap">
+                {Object.values(grailWar.alliances).map(a => (
+                  <span key={a.id} className="text-white/80 flex items-center gap-1.5 bg-[#160d24] px-2 py-0.5 rounded border border-[#a855f7]/30">
+                    <Handshake className="w-3 h-3 text-[#a855f7]" />
+                    {a.name}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* Chronicle Stream */}
-          <div className="p-4 rounded-lg bg-[#0a0a0a] border border-[#1a1a1a] max-h-[500px] overflow-y-auto space-y-3 font-mono text-xs scrollbar-thin">
-            {grailWar.eventLogs.map(evt => (
-              <div
-                key={evt.id}
-                className={`p-2.5 rounded-sm border ${
-                  evt.type === 'elimination'
-                    ? 'bg-[#220000]/60 border-[#ef4444]/40 text-rose-300'
-                    : evt.type === 'casualty'
-                    ? 'bg-[#2b0808] border-rose-600/50 text-rose-300'
-                    : evt.type === 'exposure'
-                    ? 'bg-[#261e05] border-[#f59e0b]/50 text-amber-300'
-                    : evt.type === 'ambush'
-                    ? 'bg-[#221008] border-[#ef4444]/40 text-orange-300'
-                    : evt.type === 'intel_leak'
-                    ? 'bg-[#180a29] border-purple-500/40 text-purple-300'
-                    : evt.type === 'alliance'
-                    ? 'bg-[#160d24] border-[#a855f7]/40 text-purple-300'
-                    : evt.type === 'betrayal'
-                    ? 'bg-[#261600] border-[#f59e0b]/40 text-amber-300'
-                    : evt.type === 'heal'
-                    ? 'bg-[#002200]/50 border-[#22c55e]/40 text-emerald-300'
-                    : 'bg-[#111] border-[#1a1a1a] text-white/70'
-                }`}
-              >
-                <div className="text-[10px] text-white/30 mb-1">
-                  {new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          {/* Chronicle List */}
+          <div className="max-h-[380px] overflow-y-auto space-y-2.5 font-mono text-xs scrollbar-thin pr-1">
+            {grailWar.eventLogs
+              .filter(evt => {
+                if (chronicleFilter === 'all') return true;
+                if (chronicleFilter === 'clash') return evt.type === 'clash' || evt.type === 'ambush';
+                if (chronicleFilter === 'leak') return evt.type === 'intel_leak';
+                if (chronicleFilter === 'casualty') return evt.type === 'casualty' || evt.type === 'elimination';
+                return true;
+              })
+              .map(evt => (
+                <div
+                  key={evt.id}
+                  className={`p-3 rounded-lg border flex items-start gap-3 transition ${
+                    evt.type === 'elimination'
+                      ? 'bg-[#220000]/70 border-[#ef4444]/40 text-rose-200'
+                      : evt.type === 'casualty'
+                      ? 'bg-[#2b0808] border-rose-600/50 text-rose-300'
+                      : evt.type === 'exposure'
+                      ? 'bg-[#261e05] border-[#f59e0b]/50 text-amber-300'
+                      : evt.type === 'ambush'
+                      ? 'bg-[#221008] border-[#ef4444]/40 text-orange-300'
+                      : evt.type === 'intel_leak'
+                      ? 'bg-[#180a29] border-purple-500/40 text-purple-200'
+                      : evt.type === 'alliance'
+                      ? 'bg-[#160d24] border-[#a855f7]/40 text-purple-300'
+                      : evt.type === 'betrayal'
+                      ? 'bg-[#261600] border-[#f59e0b]/40 text-amber-300'
+                      : evt.type === 'heal'
+                      ? 'bg-[#002200]/50 border-[#22c55e]/40 text-emerald-300'
+                      : 'bg-[#111] border-[#1a1a1a] text-white/80'
+                  }`}
+                >
+                  <div className="text-[10px] text-white/40 whitespace-nowrap pt-0.5 font-mono">
+                    {new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </div>
+                  <div className="leading-relaxed flex-1">{evt.text}</div>
                 </div>
-                <div className="leading-relaxed">{evt.text}</div>
-              </div>
-            ))}
+              ))}
           </div>
 
-          {/* Reset Session Button */}
-          <button
-            onClick={handleResetWar}
-            className="w-full py-2.5 rounded-sm bg-transparent hover:bg-[#111] text-white/40 hover:text-white text-xs font-mono uppercase tracking-wider border border-white/10 flex items-center justify-center gap-1.5 transition"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset 7-Master Tournament</span>
-          </button>
+          <div className="flex justify-end pt-1">
+            <button
+              onClick={handleResetWar}
+              className="py-1.5 px-3 rounded bg-transparent hover:bg-[#111] text-white/40 hover:text-white text-[11px] font-mono uppercase tracking-wider border border-white/10 flex items-center gap-1.5 transition"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Reset 7-Master Tournament</span>
+            </button>
+          </div>
         </div>
       </div>
 
