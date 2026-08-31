@@ -127,7 +127,15 @@ function buildWarEmbed(war: HolyGrailWarSession, userParticipant: any, lastMsg?:
     })
     .join('\\n');
 
-  const recentEvents = (war.eventLogs || []).slice(0, 6)
+  const publicEventsList = (war.eventLogs || []).filter(evt => {
+    const txt = (evt.text || '').toLowerCase();
+    return !txt.includes('workshop defense') && 
+           !txt.includes('auto-evacuation') && 
+           !txt.includes('channeled mana') &&
+           !txt.includes('bounded field');
+  });
+
+  const recentEvents = publicEventsList.slice(0, 6)
     .map(evt => {
       let icon = '📜';
       if (evt.type === 'elimination') icon = '💀';
@@ -136,7 +144,23 @@ function buildWarEmbed(war: HolyGrailWarSession, userParticipant: any, lastMsg?:
       else if (evt.type === 'ambush') icon = '⚔️';
       else if (evt.type === 'intel_leak') icon = '🕵️';
       else if (evt.type === 'alliance') icon = '🤝';
-      return icon + ' \`' + new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '\` ' + evt.text;
+
+      let displayText = evt.text;
+      participants.forEach((m, idx) => {
+        if (!m.isExposed && (!userParticipant || m.discordId !== userParticipant.discordId)) {
+          if (m.username && displayText.includes(m.username)) {
+            displayText = displayText.replace(new RegExp('Master \\*\\*' + m.username + '\\*\\*', 'g'), 'A Shadow Master');
+            displayText = displayText.replace(new RegExp('\\*\\*' + m.username + '\\*\\*', 'g'), 'Shadow Master #' + (idx + 1));
+            displayText = displayText.replace(new RegExp(m.username, 'g'), 'Shadow Master #' + (idx + 1));
+          }
+          if (m.servantName && displayText.includes(m.servantName)) {
+            displayText = displayText.replace(new RegExp('\\*\\*' + m.servantName + '\\*\\*', 'g'), 'Heroic Spirit');
+            displayText = displayText.replace(new RegExp(m.servantName, 'g'), 'Heroic Spirit');
+          }
+        }
+      });
+
+      return icon + ' \`' + new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '\` ' + displayText;
     })
     .join('\\n');
 

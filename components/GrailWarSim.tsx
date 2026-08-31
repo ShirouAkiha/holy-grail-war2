@@ -781,41 +781,62 @@ export default function GrailWarSim({
           <div className="max-h-[380px] overflow-y-auto space-y-2.5 font-mono text-xs scrollbar-thin pr-1">
             {grailWar.eventLogs
               .filter(evt => {
+                const txt = (evt.text || '').toLowerCase();
+                if (txt.includes('workshop defense') || txt.includes('auto-evacuation') || txt.includes('channeled mana') || txt.includes('bounded field')) {
+                  return false;
+                }
                 if (chronicleFilter === 'all') return true;
                 if (chronicleFilter === 'clash') return evt.type === 'clash' || evt.type === 'ambush';
                 if (chronicleFilter === 'leak') return evt.type === 'intel_leak';
                 if (chronicleFilter === 'casualty') return evt.type === 'casualty' || evt.type === 'elimination';
                 return true;
               })
-              .map(evt => (
-                <div
-                  key={evt.id}
-                  className={`p-3 rounded-lg border flex items-start gap-3 transition ${
-                    evt.type === 'elimination'
-                      ? 'bg-[#220000]/70 border-[#ef4444]/40 text-rose-200'
-                      : evt.type === 'casualty'
-                      ? 'bg-[#2b0808] border-rose-600/50 text-rose-300'
-                      : evt.type === 'exposure'
-                      ? 'bg-[#261e05] border-[#f59e0b]/50 text-amber-300'
-                      : evt.type === 'ambush'
-                      ? 'bg-[#221008] border-[#ef4444]/40 text-orange-300'
-                      : evt.type === 'intel_leak'
-                      ? 'bg-[#180a29] border-purple-500/40 text-purple-200'
-                      : evt.type === 'alliance'
-                      ? 'bg-[#160d24] border-[#a855f7]/40 text-purple-300'
-                      : evt.type === 'betrayal'
-                      ? 'bg-[#261600] border-[#f59e0b]/40 text-amber-300'
-                      : evt.type === 'heal'
-                      ? 'bg-[#002200]/50 border-[#22c55e]/40 text-emerald-300'
-                      : 'bg-[#111] border-[#1a1a1a] text-white/80'
-                  }`}
-                >
-                  <div className="text-[10px] text-white/40 whitespace-nowrap pt-0.5 font-mono">
-                    {new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              .map(evt => {
+                let displayText = evt.text;
+                Object.values(grailWar.participants).forEach((participant, idx) => {
+                  if (!participant.isExposed && participant.discordId !== master.discordId) {
+                    if (participant.username && displayText.includes(participant.username)) {
+                      displayText = displayText.replace(new RegExp(`Master \\*\\*${participant.username}\\*\\*`, 'g'), 'A Shadow Master');
+                      displayText = displayText.replace(new RegExp(`\\*\\*${participant.username}\\*\\*`, 'g'), `Shadow Master #${idx + 1}`);
+                      displayText = displayText.replace(new RegExp(participant.username, 'g'), `Shadow Master #${idx + 1}`);
+                    }
+                    if (participant.servantName && displayText.includes(participant.servantName)) {
+                      displayText = displayText.replace(new RegExp(`\\*\\*${participant.servantName}\\*\\*`, 'g'), 'Heroic Spirit');
+                      displayText = displayText.replace(new RegExp(participant.servantName, 'g'), 'Heroic Spirit');
+                    }
+                  }
+                });
+
+                return (
+                  <div
+                    key={evt.id}
+                    className={`p-3 rounded-lg border flex items-start gap-3 transition ${
+                      evt.type === 'elimination'
+                        ? 'bg-[#220000]/70 border-[#ef4444]/40 text-rose-200'
+                        : evt.type === 'casualty'
+                        ? 'bg-[#2b0808] border-rose-600/50 text-rose-300'
+                        : evt.type === 'exposure'
+                        ? 'bg-[#261e05] border-[#f59e0b]/50 text-amber-300'
+                        : evt.type === 'ambush'
+                        ? 'bg-[#221008] border-[#ef4444]/40 text-orange-300'
+                        : evt.type === 'intel_leak'
+                        ? 'bg-[#180a29] border-purple-500/40 text-purple-200'
+                        : evt.type === 'alliance'
+                        ? 'bg-[#160d24] border-[#a855f7]/40 text-purple-300'
+                        : evt.type === 'betrayal'
+                        ? 'bg-[#261600] border-[#f59e0b]/40 text-amber-300'
+                        : evt.type === 'heal'
+                        ? 'bg-[#002200]/50 border-[#22c55e]/40 text-emerald-300'
+                        : 'bg-[#111] border-[#1a1a1a] text-white/80'
+                    }`}
+                  >
+                    <div className="text-[10px] text-white/40 whitespace-nowrap pt-0.5 font-mono">
+                      {new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </div>
+                    <div className="leading-relaxed flex-1">{displayText}</div>
                   </div>
-                  <div className="leading-relaxed flex-1">{evt.text}</div>
-                </div>
-              ))}
+                );
+              })}
           </div>
 
           <div className="flex justify-end pt-1">

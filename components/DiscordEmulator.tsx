@@ -1292,10 +1292,32 @@ export default function DiscordEmulator({
         }
       }).join('\n\n');
 
-      // 2. Render recent skirmishes and important events in lower part
-      const recentEvents = (grailWar.eventLogs || []).slice(0, 6).map(evt => {
+      // 2. Render recent skirmishes and important events in lower part with stealth protection
+      const publicEvents = (grailWar.eventLogs || []).filter(evt => {
+        const txt = (evt.text || '').toLowerCase();
+        return !txt.includes('workshop defense') &&
+               !txt.includes('auto-evacuation') &&
+               !txt.includes('channeled mana') &&
+               !txt.includes('bounded field');
+      });
+
+      const recentEvents = publicEvents.slice(0, 6).map(evt => {
         const timeStr = new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        return `• [${timeStr}] ${evt.text}`;
+        let displayText = evt.text;
+        Object.values(grailWar.participants).forEach((participant, idx) => {
+          if (!participant.isExposed && participant.discordId !== master.discordId) {
+            if (participant.username && displayText.includes(participant.username)) {
+              displayText = displayText.replace(new RegExp(`Master \\*\\*${participant.username}\\*\\*`, 'g'), 'A Shadow Master');
+              displayText = displayText.replace(new RegExp(`\\*\\*${participant.username}\\*\\*`, 'g'), `Shadow Master #${idx + 1}`);
+              displayText = displayText.replace(new RegExp(participant.username, 'g'), `Shadow Master #${idx + 1}`);
+            }
+            if (participant.servantName && displayText.includes(participant.servantName)) {
+              displayText = displayText.replace(new RegExp(`\\*\\*${participant.servantName}\\*\\*`, 'g'), 'Heroic Spirit');
+              displayText = displayText.replace(new RegExp(participant.servantName, 'g'), 'Heroic Spirit');
+            }
+          }
+        });
+        return `• [${timeStr}] ${displayText}`;
       }).join('\n');
 
       const chronicleSection = recentEvents || '• *No skirmishes or leaks recorded yet.*';

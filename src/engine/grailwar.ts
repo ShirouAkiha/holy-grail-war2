@@ -152,7 +152,7 @@ export function getOrInitWarSession(master: MasterProfile): HolyGrailWarSession 
   globalWarSession.eventLogs.unshift({
     id: `evt_enter_${Date.now()}`,
     timestamp: Date.now(),
-    text: `🕯️ Master **${master.username}** contracted with **${servantName}** and entered the Holy Grail War!`,
+    text: `🕯️ A concealed Master contracted with a Heroic Spirit in the shadows and entered the Holy Grail War.`,
     type: 'clash'
   });
 
@@ -615,12 +615,7 @@ export function executeWarAction(
     else if (val === 'ward') desc = 'reinforced a Mage Workshop sanctuary field (blocks 60% incoming ambush damage)';
     else if (val === 'alarm') desc = 'deployed a high-alert Intrusion Alert Trap (detects ambushes and deals 3,000 retaliatory DMG)';
     
-    targetWar.eventLogs.unshift({
-      id: `evt_ward_${Date.now()}`,
-      timestamp: Date.now(),
-      text: `🛡️ Master **${actor.username}** adjusted their workshop defense settings: ${desc}.`,
-      type: 'heal'
-    });
+    // Note: Private workshop defenses are NOT published to the public War Chronicle
 
     return {
       success: true,
@@ -636,12 +631,7 @@ export function executeWarAction(
       ? 'ENABLED Command Seal Auto-Evacuation (automatically consumes 1 Command Seal on lethal blows to retreat to shadows with 1 HP)'
       : 'DISABLED Command Seal Auto-Evacuation';
 
-    targetWar.eventLogs.unshift({
-      id: `evt_evade_toggle_${Date.now()}`,
-      timestamp: Date.now(),
-      text: `🔴 Master **${actor.username}** ${desc.toLowerCase()}.`,
-      type: 'heal'
-    });
+    // Note: Private Command Seal evacuation settings are NOT published to the public War Chronicle
 
     return {
       success: true,
@@ -659,7 +649,12 @@ export function executeWarAction(
       const healAmount = Math.round(actor.maxHp * 0.45);
       actor.currentHp = Math.min(actor.maxHp, actor.currentHp + healAmount);
       resultMsg = `🩹 Channeled mana to recover ${healAmount.toLocaleString()} HP for ${actor.isExposed ? actor.servantName : 'contracted Servant'} (HP: ${actor.currentHp.toLocaleString()}/${actor.maxHp.toLocaleString()}).`;
-      break;
+      // Private mana recovery in workshop is confidential
+      return {
+        success: true,
+        message: resultMsg,
+        updatedWar: targetWar
+      };
     }
 
     case 'form_alliance': {
@@ -745,7 +740,7 @@ export function executeWarAction(
     id: `evt_${Date.now()}`,
     timestamp: Date.now(),
     text: resultMsg,
-    type: action === 'betray_ally' ? 'betrayal' : action === 'form_alliance' ? 'alliance' : action === 'rest_and_heal' ? 'heal' : 'clash'
+    type: action === 'betray_ally' ? 'betrayal' : action === 'form_alliance' ? 'alliance' : 'clash'
   });
 
   return {
