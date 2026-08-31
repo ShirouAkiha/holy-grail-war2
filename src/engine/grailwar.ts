@@ -1,86 +1,18 @@
 import {
-  DistrictId,
   HolyGrailWarSession,
-  WarDistrict,
   WarMasterParticipant,
   WarAlliance
 } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
 
 // ==========================================
-// 1. FUYUKI CITY DISTRICT MAP & LEYLINES
+// 1. 7-MASTER WAR SESSION INITIALIZER
 // ==========================================
-// 7 key geographical locations across Fuyuki City, each offering strategic bounded field buffs:
-// - Fuyuki Church: Restores Command Seals
-// - Ryuudou Temple: High Mana concentration (+Mana Surge)
-// - Shinto Bridge: Agility scouting advantages
-// - Homurahara Academy: Defensive bounded field
-// - Industrial Docks: Critical strike sanctuary
-// - Einzbern Forest: Castle defense perimeter
-// - Commercial Center: Modern supply hub
-export const FUYUKI_DISTRICTS: Record<string, WarDistrict> = {
-  fuyuki_church: {
-    id: 'fuyuki_church',
-    name: 'Fuyuki Church',
-    description: 'Neutral sanctuary overseen by the Overseer. Recover command seals and rest safely.',
-    leylineBonus: 'command_seal_recovery',
-    manaReserve: 500
-  },
-  ryuudou_temple: {
-    id: 'ryuudou_temple',
-    name: 'Ryuudou Temple (Mount Enzou)',
-    description: 'Primary magical focal point of the Great Holy Grail. Generates immense mana reserves.',
-    leylineBonus: 'mana_surge',
-    manaReserve: 1500
-  },
-  shinto_bridge: {
-    id: 'shinto_bridge',
-    name: 'Fuyuki Bridge',
-    description: 'Vast suspension bridge connecting Shinto and Miyama. Ideal vantage point for scout operations.',
-    leylineBonus: 'agility_scout',
-    manaReserve: 400
-  },
-  homurahara_academy: {
-    id: 'homurahara_academy',
-    name: 'Homurahara Academy',
-    description: 'Civilian school grounds surrounded by a dormant bounded field.',
-    leylineBonus: 'defensive_ward',
-    manaReserve: 600
-  },
-  docks: {
-    id: 'docks',
-    name: 'Fuyuki Industrial Docks',
-    description: 'Desolate container yard under the foggy sea breeze. Critical strike sanctuary.',
-    leylineBonus: 'crit_sanctuary',
-    manaReserve: 350
-  },
-  einzenbern_forest: {
-    id: 'einzenbern_forest',
-    name: 'Einzbern Forest & Castle',
-    description: 'Snow-capped ancient boreal woodland guarded by multi-layered defensive bounded fields.',
-    leylineBonus: 'defensive_ward',
-    manaReserve: 1200
-  },
-  commercial_district: {
-    id: 'commercial_district',
-    name: 'Shinto Commercial Center',
-    description: 'Bustling modern high-rises with plentiful supply depots.',
-    leylineBonus: 'mana_surge',
-    manaReserve: 450
-  }
-};
-
-// ==========================================
-// 2. 7-MASTER WAR SESSION INITIALIZER
-// ==========================================
-// Spawns a Holy Grail War instance populated by the player Master and 6 iconic Fate AI rivals:
-// Kotomine Kirei (Gilgamesh), Bazett (Cú Chulainn), Illyasviel (Heracles), Medea (Jeanne), Kiritsugu (EMIYA), Root Admin.
 export function createHolyGrailWarSession(
   initiatorMaster: { discordId: string; username: string; servantId: string; servantName: string; avatarUrl: string; maxHp: number },
-  warTitle: string = '7th Fuyuki Holy Grail War'
+  warTitle: string = '7-Master Fuyuki Holy Grail War'
 ): HolyGrailWarSession {
   const warId = `grail_war_${Date.now()}`;
-  const districts = JSON.parse(JSON.stringify(FUYUKI_DISTRICTS)) as Record<DistrictId, WarDistrict>;
 
   // Register Player 1
   const participants: Record<string, WarMasterParticipant> = {
@@ -95,20 +27,18 @@ export function createHolyGrailWarSession(
       maxHp: initiatorMaster.maxHp,
       commandSeals: 3,
       isAlive: true,
-      currentDistrict: 'homurahara_academy',
-      ap: 100,
       kills: 0
     }
   };
 
   // Seed 6 AI Rival Masters
   const aiRivals = [
-    { name: 'Kotomine Kirei', servantId: 'gilgamesh_archer', servantName: 'Gilgamesh', class: 'Archer' as const, district: 'fuyuki_church' as DistrictId },
-    { name: 'Bazett Fraga', servantId: 'cu_chulainn_lancer', servantName: 'Cú Chulainn', class: 'Lancer' as const, district: 'docks' as DistrictId },
-    { name: 'Illyasviel von Einzbern', servantId: 'heracles_berserker', servantName: 'Heracles', class: 'Berserker' as const, district: 'einzenbern_forest' as DistrictId },
-    { name: 'Medea of Colchis', servantId: 'jeanne_darc_ruler', servantName: 'Jeanne d\'Arc', class: 'Ruler' as const, district: 'ryuudou_temple' as DistrictId },
-    { name: 'Kiritsugu Emiya', servantId: 'emiya_archer', servantName: 'EMIYA', class: 'Archer' as const, district: 'shinto_bridge' as DistrictId },
-    { name: 'Root Administrator', servantId: 'terminal_saber_linus', servantName: 'Terminal Saber', class: 'Saber' as const, district: 'commercial_district' as DistrictId }
+    { name: 'Kotomine Kirei', servantId: 'gilgamesh_archer', servantName: 'Gilgamesh', class: 'Archer' as const },
+    { name: 'Bazett Fraga', servantId: 'cu_chulainn_lancer', servantName: 'Cú Chulainn', class: 'Lancer' as const },
+    { name: 'Illyasviel von Einzbern', servantId: 'heracles_berserker', servantName: 'Heracles', class: 'Berserker' as const },
+    { name: 'Medea of Colchis', servantId: 'jeanne_darc_ruler', servantName: 'Jeanne d\'Arc', class: 'Ruler' as const },
+    { name: 'Kiritsugu Emiya', servantId: 'emiya_archer', servantName: 'EMIYA', class: 'Archer' as const },
+    { name: 'Rin Tohsaka', servantId: 'terminal_saber_linus', servantName: 'Terminal Saber', class: 'Saber' as const }
   ];
 
   aiRivals.forEach((r, idx) => {
@@ -126,8 +56,6 @@ export function createHolyGrailWarSession(
       maxHp: hp,
       commandSeals: 3,
       isAlive: true,
-      currentDistrict: r.district,
-      ap: 100,
       kills: 0
     };
   });
@@ -136,36 +64,29 @@ export function createHolyGrailWarSession(
     id: warId,
     title: warTitle,
     status: 'active',
-    currentRound: 1,
-    maxRounds: 7,
-    districts,
     participants,
     alliances: {},
     eventLogs: [
       {
-        id: `evt_init`,
-        round: 1,
+        id: `evt_init_${Date.now()}`,
         timestamp: Date.now(),
-        text: `🕯️ The ${warTitle} has commenced! 7 Masters and Servants have descended upon Fuyuki City.`,
-        type: 'scout'
+        text: `🕯️ The ${warTitle} has commenced! 7 Masters and their contracted Heroic Spirits battle to the death for the omnipotent wish-granting device.`,
+        type: 'clash'
       }
     ]
   };
 }
 
 export type WarActionType =
-  | 'scout'
-  | 'move_district'
-  | 'fortify_leyline'
-  | 'rest_and_heal'
+  | 'challenge_master'
   | 'form_alliance'
   | 'betray_ally'
-  | 'challenge_master';
+  | 'rest_and_heal'
+  | 'simulate_skirmish';
 
 export interface WarActionResult {
   success: boolean;
   message: string;
-  apSpent: number;
   combatTriggered?: {
     opponentId: string;
     opponentName: string;
@@ -176,16 +97,8 @@ export interface WarActionResult {
 }
 
 // ==========================================
-// 3. TACTICAL ACTION RESOLVER
+// 2. TACTICAL ACTION RESOLVER
 // ==========================================
-// Processes player moves during the war:
-// - Scout (20 AP): Detects presence of rival Servants in the target district
-// - Move (15 AP): Relocates Master to a new district
-// - Fortify (25 AP): Captures and establishes control over a district leyline
-// - Rest (30 AP): Heals 45% HP + restores Command Seal if at Fuyuki Church
-// - Form Alliance (25 AP): Creates a diplomatic pact with another Master
-// - Betray Ally (20 AP): Breaks an active alliance with a devastating ambush
-// - Challenge Master (35 AP): Initiates direct battle
 export function executeWarAction(
   war: HolyGrailWarSession,
   actorDiscordId: string,
@@ -195,120 +108,55 @@ export function executeWarAction(
   const updatedWar: HolyGrailWarSession = JSON.parse(JSON.stringify(war));
   const actor = updatedWar.participants[actorDiscordId];
 
-  // Validation: Check if participant is alive
   if (!actor || !actor.isAlive) {
-    return { success: false, message: 'You are eliminated from the Holy Grail War!', apSpent: 0, updatedWar };
+    return { success: false, message: 'You are eliminated from the Holy Grail War!', updatedWar };
   }
 
-  let apCost = 0;
   let resultMsg = '';
   let combatInfo: WarActionResult['combatTriggered'];
   let eliminatedId: string | undefined;
 
   switch (action) {
-    // ACTION: SCOUT
-    case 'scout':
-      apCost = 20;
-      if (actor.ap < apCost) return { success: false, message: 'Not enough Action Points (AP)!', apSpent: 0, updatedWar };
-      actor.ap -= apCost;
-
-      const spotted = Object.values(updatedWar.participants).filter(
-        p => p.discordId !== actor.discordId && p.isAlive && p.currentDistrict === actor.currentDistrict
-      );
-
-      if (spotted.length > 0) {
-        resultMsg = `🔭 Reconnaissance at ${updatedWar.districts[actor.currentDistrict]?.name || actor.currentDistrict}: You spotted ${spotted.map(s => `${s.username} (${s.servantName})`).join(', ')}!`;
-      } else {
-        resultMsg = `🔭 Reconnaissance at ${updatedWar.districts[actor.currentDistrict]?.name || actor.currentDistrict}: The area is quiet. No hostile Servant traces detected.`;
-      }
-      break;
-
-    // ACTION: MOVE DISTRICT
-    case 'move_district':
-      apCost = 15;
-      if (actor.ap < apCost) return { success: false, message: 'Not enough AP to relocate!', apSpent: 0, updatedWar };
-      if (!targetParam || !updatedWar.districts[targetParam as DistrictId]) {
-        return { success: false, message: 'Invalid destination district!', apSpent: 0, updatedWar };
-      }
-      actor.ap -= apCost;
-      const prevDistrict = updatedWar.districts[actor.currentDistrict]?.name || actor.currentDistrict;
-      actor.currentDistrict = targetParam as DistrictId;
-      const newDistrict = updatedWar.districts[actor.currentDistrict]?.name || actor.currentDistrict;
-      resultMsg = `🗺️ Relocated from ${prevDistrict} to ${newDistrict}.`;
-      break;
-
-    // ACTION: FORTIFY LEYLINE
-    case 'fortify_leyline':
-      apCost = 25;
-      if (actor.ap < apCost) return { success: false, message: 'Not enough AP to fortify leyline!', apSpent: 0, updatedWar };
-      actor.ap -= apCost;
-      const district = updatedWar.districts[actor.currentDistrict];
-      if (district) {
-        district.controllingMasterId = actor.discordId;
-        resultMsg = `🏰 Claimed control over the Leyline at ${district.name}! Bounded field established (+${district.leylineBonus}).`;
-      } else {
-        resultMsg = `🏰 Claimed control over the local Leyline! Bounded field established.`;
-      }
-      break;
-
-    // ACTION: REST & HEAL
-    case 'rest_and_heal':
-      apCost = 30;
-      if (actor.ap < apCost) return { success: false, message: 'Not enough AP to rest!', apSpent: 0, updatedWar };
-      actor.ap -= apCost;
+    case 'rest_and_heal': {
       const healAmount = Math.round(actor.maxHp * 0.45);
       actor.currentHp = Math.min(actor.maxHp, actor.currentHp + healAmount);
-
-      let sealMsg = '';
-      // Visiting the Church allows Overseer Kotomine to restore spent Command Seals
-      if (actor.currentDistrict === 'fuyuki_church' && actor.commandSeals < 3) {
-        actor.commandSeals++;
-        sealMsg = ' Father Kotomine restored 1 Command Seal!';
-      }
-      resultMsg = `🩹 Rested and recovered ${healAmount.toLocaleString()} HP.${sealMsg}`;
+      resultMsg = `🩹 Channeled mana to recover ${healAmount.toLocaleString()} HP for ${actor.servantName} (HP: ${actor.currentHp.toLocaleString()}/${actor.maxHp.toLocaleString()}).`;
       break;
+    }
 
-    // ACTION: FORM ALLIANCE
-    case 'form_alliance':
-      apCost = 25;
-      if (actor.ap < apCost) return { success: false, message: 'Not enough AP to negotiate an alliance!', apSpent: 0, updatedWar };
+    case 'form_alliance': {
       if (!targetParam || !updatedWar.participants[targetParam]) {
-        return { success: false, message: 'Specify a valid Master to ally with!', apSpent: 0, updatedWar };
+        return { success: false, message: 'Specify a valid Master to form an alliance with!', updatedWar };
       }
       const targetMaster = updatedWar.participants[targetParam];
       if (targetMaster.discordId === actor.discordId || !targetMaster.isAlive) {
-        return { success: false, message: 'Cannot ally with this Master.', apSpent: 0, updatedWar };
+        return { success: false, message: 'Cannot form an alliance with this Master.', updatedWar };
       }
-      actor.ap -= apCost;
       const allianceId = `alliance_${Date.now()}`;
       const alliance: WarAlliance = {
         id: allianceId,
         name: `Covenant of ${actor.username} & ${targetMaster.username}`,
         memberMasterIds: [actor.discordId, targetMaster.discordId],
         isSecret: true,
-        betrayalRiskScore: 35,
-        formedAtRound: updatedWar.currentRound
+        betrayalRiskScore: 30
       };
       updatedWar.alliances[allianceId] = alliance;
       actor.allianceId = allianceId;
       targetMaster.allianceId = allianceId;
-      resultMsg = `🤝 Secret Alliance formed with ${targetMaster.username}! You will share reconnaissance until one breaks the vow.`;
+      resultMsg = `🤝 Secret Covenant formed with ${targetMaster.username}! You fight side-by-side until one betrays the pact.`;
       break;
+    }
 
-    // ACTION: BETRAY ALLIANCE
-    case 'betray_ally':
-      apCost = 20;
-      if (actor.ap < apCost) return { success: false, message: 'Not enough AP to execute betrayal!', apSpent: 0, updatedWar };
+    case 'betray_ally': {
       if (!actor.allianceId || !updatedWar.alliances[actor.allianceId]) {
-        return { success: false, message: 'You have no active alliance to betray!', apSpent: 0, updatedWar };
+        return { success: false, message: 'You have no active alliance to betray!', updatedWar };
       }
       const activeAlliance = updatedWar.alliances[actor.allianceId];
       const allyId = activeAlliance.memberMasterIds.find(id => id !== actor.discordId);
       if (!allyId || !updatedWar.participants[allyId]) {
-        return { success: false, message: 'No ally found in current pact.', apSpent: 0, updatedWar };
+        return { success: false, message: 'No ally found in current pact.', updatedWar };
       }
       const ally = updatedWar.participants[allyId];
-      actor.ap -= apCost;
       delete updatedWar.alliances[actor.allianceId];
       actor.allianceId = undefined;
       ally.allianceId = undefined;
@@ -318,43 +166,46 @@ export function executeWarAction(
         opponentName: ally.username,
         isAmbush: true
       };
-      resultMsg = `🗡️ BETRAYAL! You broke the pact and ambushed ${ally.username} with lethal surprise attack!`;
+      resultMsg = `🗡️ BETRAYAL! You broke the covenant and ambushed ${ally.username} with a lethal surprise strike!`;
       break;
+    }
 
-    // ACTION: DIRECT DUEL CHALLENGE
-    case 'challenge_master':
-      apCost = 35;
-      if (actor.ap < apCost) return { success: false, message: 'Not enough AP to issue a duel!', apSpent: 0, updatedWar };
+    case 'challenge_master': {
       if (!targetParam || !updatedWar.participants[targetParam]) {
-        return { success: false, message: 'Target Master not found!', apSpent: 0, updatedWar };
+        return { success: false, message: 'Target Master not found!', updatedWar };
       }
       const opponent = updatedWar.participants[targetParam];
       if (opponent.discordId === actor.discordId || !opponent.isAlive) {
-        return { success: false, message: 'Cannot challenge this target.', apSpent: 0, updatedWar };
+        return { success: false, message: 'Cannot challenge this target.', updatedWar };
       }
-      actor.ap -= apCost;
       combatInfo = {
         opponentId: opponent.discordId,
         opponentName: opponent.username,
         isAmbush: false
       };
-      resultMsg = `⚔️ CHALLENGE ISSUED: ${actor.servantName} clashes with ${opponent.username}'s ${opponent.servantName}!`;
+      resultMsg = `⚔️ CHALLENGE ISSUED: ${actor.username}'s ${actor.servantName} engages ${opponent.username}'s ${opponent.servantName}!`;
       break;
+    }
+
+    case 'simulate_skirmish': {
+      return {
+        ...simulateWarSkirmish(updatedWar),
+        updatedWar: simulateWarSkirmish(updatedWar).updatedWar
+      };
+    }
   }
 
   // Push event to battle log
   updatedWar.eventLogs.unshift({
     id: `evt_${Date.now()}`,
-    round: updatedWar.currentRound,
     timestamp: Date.now(),
-    text: `${actor.username}: ${resultMsg}`,
-    type: action === 'betray_ally' ? 'betrayal' : action === 'form_alliance' ? 'alliance' : 'scout'
+    text: resultMsg,
+    type: action === 'betray_ally' ? 'betrayal' : action === 'form_alliance' ? 'alliance' : action === 'rest_and_heal' ? 'heal' : 'clash'
   });
 
   return {
     success: true,
     message: resultMsg,
-    apSpent: apCost,
     combatTriggered: combatInfo,
     eliminatedMasterId: eliminatedId,
     updatedWar
@@ -362,54 +213,61 @@ export function executeWarAction(
 }
 
 // ==========================================
-// 4. ROUND ADVANCEMENT ENGINE
+// 3. BACKGROUND WAR SKIRMISH SIMULATOR
 // ==========================================
-// Increments the round counter, restores +60 AP to surviving Masters,
-// calculates autonomous AI vs AI skirmishes, and checks if only 1 Master remains to win the Grail.
-export function advanceWarRound(war: HolyGrailWarSession): HolyGrailWarSession {
+export function simulateWarSkirmish(war: HolyGrailWarSession): WarActionResult {
   const updated: HolyGrailWarSession = JSON.parse(JSON.stringify(war));
-  updated.currentRound++;
-
-  // AP regeneration for all living Masters
-  Object.values(updated.participants).forEach(p => {
-    if (p.isAlive) {
-      p.ap = Math.min(100, p.ap + 60);
-    }
-  });
-
-  // AI vs AI background battle simulation
   const aliveAis = Object.values(updated.participants).filter(p => p.isAlive && p.discordId.startsWith('rival_'));
-  if (aliveAis.length >= 2 && Math.random() < 0.6) {
-    const ai1 = aliveAis[0];
-    const ai2 = aliveAis[1];
-    const dmg = Math.round(3000 + Math.random() * 4000);
-    ai2.currentHp -= dmg;
-    if (ai2.currentHp <= 0) {
-      ai2.isAlive = false;
-      ai1.kills++;
-      updated.eventLogs.unshift({
-        id: `evt_ai_elim_${Date.now()}`,
-        round: updated.currentRound,
-        timestamp: Date.now(),
-        text: `☠️ ELIMINATION: ${ai1.username}'s ${ai1.servantName} defeated ${ai2.username}'s ${ai2.servantName}!`,
-        type: 'elimination'
-      });
-    }
+
+  if (aliveAis.length < 2) {
+    return {
+      success: true,
+      message: 'Not enough rival Masters remaining for a background skirmish.',
+      updatedWar: updated
+    };
   }
 
-  // Check victory condition (Sole surviving Master claims the Holy Grail)
+  const idx1 = Math.floor(Math.random() * aliveAis.length);
+  let idx2 = Math.floor(Math.random() * (aliveAis.length - 1));
+  if (idx2 >= idx1) idx2++;
+
+  const ai1 = aliveAis[idx1];
+  const ai2 = aliveAis[idx2];
+  const damage = Math.round(3500 + Math.random() * 4500);
+  ai2.currentHp = Math.max(0, ai2.currentHp - damage);
+
+  let clashText = `⚔️ SKIRMISH: ${ai1.username}'s ${ai1.servantName} clashed with ${ai2.username}'s ${ai2.servantName}, dealing ${damage.toLocaleString()} damage!`;
+
+  if (ai2.currentHp <= 0) {
+    ai2.isAlive = false;
+    ai1.kills++;
+    clashText = `☠️ ELIMINATION: ${ai1.username}'s ${ai1.servantName} struck a fatal blow and eliminated ${ai2.username} (${ai2.servantName}) from the Holy Grail War!`;
+  }
+
+  updated.eventLogs.unshift({
+    id: `evt_skirmish_${Date.now()}`,
+    timestamp: Date.now(),
+    text: clashText,
+    type: ai2.currentHp <= 0 ? 'elimination' : 'clash'
+  });
+
+  // Check victory condition
   const remainingAlive = Object.values(updated.participants).filter(p => p.isAlive);
   if (remainingAlive.length === 1) {
     updated.status = 'concluded';
     updated.grailWinnerId = remainingAlive[0].discordId;
     updated.eventLogs.unshift({
       id: `evt_grail_win_${Date.now()}`,
-      round: updated.currentRound,
       timestamp: Date.now(),
-      text: `🏆 THE HOLY GRAIL HAS MANIFESTED! ${remainingAlive[0].username} has claimed supreme victory!`,
+      text: `🏆 THE HOLY GRAIL HAS MANIFESTED! ${remainingAlive[0].username} is the sole survivor and has won the Holy Grail War!`,
       type: 'clash'
     });
   }
 
-  return updated;
+  return {
+    success: true,
+    message: clashText,
+    eliminatedMasterId: ai2.currentHp <= 0 ? ai2.discordId : undefined,
+    updatedWar: updated
+  };
 }

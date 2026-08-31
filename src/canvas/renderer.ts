@@ -373,21 +373,61 @@ export async function renderGachaSummonBanner(
 }
 
 /**
- * 5. Render Holy Grail War District Map
+ * 5. Render Holy Grail War Tournament Overview
  */
 export async function renderGrailWarMap(
   war: HolyGrailWarSession
 ): Promise<Buffer> {
-  const canvas = createCanvas(800, 400);
+  const canvas = createCanvas(800, 450);
   const ctx = canvas.getContext('2d');
 
-  ctx.fillStyle = '#020617';
-  ctx.fillRect(0, 0, 800, 400);
+  ctx.fillStyle = '#050505';
+  ctx.fillRect(0, 0, 800, 450);
+
+  // Border
+  ctx.strokeStyle = '#d4af37';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(10, 10, 780, 430);
 
   ctx.fillStyle = '#d4af37';
-  ctx.font = 'bold 20px serif';
+  ctx.font = 'bold 22px serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`${war.title} - Round ${war.currentRound}/${war.maxRounds}`, 400, 40);
+  ctx.fillText(war.title.toUpperCase(), 400, 45);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '14px sans-serif';
+  const alive = Object.values(war.participants).filter(p => p.isAlive).length;
+  ctx.fillText(`7-MASTER BATTLE ROYALE • ${alive}/7 SURVIVING MASTERS`, 400, 75);
+
+  // Draw roster cards
+  const participants = Object.values(war.participants);
+  participants.forEach((p, idx) => {
+    const col = idx % 2;
+    const row = Math.floor(idx / 2);
+    const x = col === 0 ? 30 : 410;
+    const y = 95 + row * 80;
+
+    ctx.fillStyle = p.isAlive ? '#0f172a' : '#1e1111';
+    ctx.strokeStyle = p.isAlive ? '#334155' : '#7f1d1d';
+    ctx.lineWidth = 1;
+    ctx.fillRect(x, y, 360, 70);
+    ctx.strokeRect(x, y, 360, 70);
+
+    ctx.fillStyle = p.isAlive ? '#ffffff' : '#6b7280';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`${p.isAlive ? '🟢' : '💀'} ${p.username}`, x + 15, y + 25);
+
+    ctx.fillStyle = '#d4af37';
+    ctx.font = '12px sans-serif';
+    ctx.fillText(`${p.servantName} [${p.servantClass}]`, x + 15, y + 45);
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(`HP: ${p.currentHp.toLocaleString()}/${p.maxHp.toLocaleString()}`, x + 345, y + 25);
+    ctx.fillText(`Kills: ${p.kills}`, x + 345, y + 45);
+  });
 
   try {
     return canvas.toBuffer('image/png');

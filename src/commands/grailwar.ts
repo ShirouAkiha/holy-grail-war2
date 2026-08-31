@@ -8,51 +8,29 @@ import {
   ComponentType
 } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
-import { DistrictId, WarDistrict, HolyGrailWarSession } from '../types';
-import { createHolyGrailWarSession, executeWarAction, advanceWarRound } from '../engine/grailwar';
+import { HolyGrailWarSession } from '../types';
+import { createHolyGrailWarSession, executeWarAction, simulateWarSkirmish } from '../engine/grailwar';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
 // ==========================================
-// The `/grailwar` command runs a 7-Master battle royale system across Fuyuki City leylines.
-// Supports status checking, scouting rival territories, fortifying leylines, and resting.
 export const data = new SlashCommandBuilder()
   .setName('grailwar')
   .setDescription('Holy Grail War 7-Master Battle Royale operations')
   .addSubcommand(sub =>
     sub
       .setName('status')
-      .setDescription('View current Holy Grail War battlefield map, districts, and Masters')
+      .setDescription('View current Holy Grail War status and surviving Masters')
   )
   .addSubcommand(sub =>
     sub
-      .setName('scout')
-      .setDescription('Scout a Fuyuki City district to locate rival Masters (Costs 20 AP)')
-      .addStringOption(opt =>
-        opt
-          .setName('district')
-          .setDescription('Target district to scout')
-          .setRequired(false)
-          .addChoices(
-            { name: 'Fuyuki Church (Command Seal Leyline)', value: 'fuyuki_church' },
-            { name: 'Shinto Bridge (Agility Corridor)', value: 'shinto_bridge' },
-            { name: 'Ryuudou Temple (Mana Surge)', value: 'ryuudou_temple' },
-            { name: 'Homurahara Academy (Defensive Ward)', value: 'homurahara_academy' },
-            { name: 'Fuyuki Docks (Critical Sanctuary)', value: 'docks' },
-            { name: 'Einzbern Forest (Ancient Sanctum)', value: 'einzenbern_forest' },
-            { name: 'Commercial District (Urban Hub)', value: 'commercial_district' }
-          )
-      )
-  )
-  .addSubcommand(sub =>
-    sub
-      .setName('fortify')
-      .setDescription('Fortify your current district leyline for tactical buffs (Costs 25 AP)')
+      .setName('skirmish')
+      .setDescription('Simulate a background clash between rival Masters')
   )
   .addSubcommand(sub =>
     sub
       .setName('rest')
-      .setDescription('Rest at a safehouse to recover Servant HP and AP (Costs 15 AP)')
+      .setDescription('Channel mana to restore Servant HP')
   );
 
 // Global active Grail War session for Discord
@@ -61,7 +39,6 @@ let activeSession: HolyGrailWarSession | null = null;
 // ==========================================
 // 2. SESSION INITIALIZER
 // ==========================================
-// Retrieves or instantiates a 7-Master battle session with 6 AI rivals (e.g. Gilgamesh, Heracles, Scathach).
 function getOrInitWarSession(master: any): HolyGrailWarSession {
   const activeServant =
     master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
@@ -76,7 +53,6 @@ function getOrInitWarSession(master: any): HolyGrailWarSession {
       maxHp: activeServant?.template?.baseHp || 15000
     });
   } else {
-    // If session exists, ensure the calling player is registered
     if (!activeSession.participants[master.discordId] && activeServant) {
       activeSession.participants[master.discordId] = {
         discordId: master.discordId,
@@ -89,8 +65,6 @@ function getOrInitWarSession(master: any): HolyGrailWarSession {
         maxHp: activeServant.template.baseHp || 15000,
         commandSeals: master.commandSeals || 3,
         isAlive: true,
-        currentDistrict: 'homurahara_academy',
-        ap: master.actionPoints || 100,
         kills: 0
       };
     }
@@ -100,35 +74,27 @@ function getOrInitWarSession(master: any): HolyGrailWarSession {
 }
 
 // ==========================================
-// 3. WAR MAP EMBED BUILDER
+// 3. WAR EMBED BUILDER
 // ==========================================
 function buildWarEmbed(war: HolyGrailWarSession, userParticipant: any, lastMsg?: string) {
   const aliveParticipants = Object.values(war.participants).filter(p => p.isAlive);
 
-  // List status of key districts and their current controlling Masters
-  const districtList = Object.values(war.districts)
-    .slice(0, 5)
-    .map(d => {
-      const controller = d.controllingMasterId
-        ? war.participants[d.controllingMasterId]?.username || 'Unknown'
-        : 'Neutral';
-      return `• **${d.name}** [${controller}] — *${d.leylineBonus}*`;
-    })
+  const rosterList = Object.values(war.participants)
+    .map(m => `• ${m.isAlive ? '🟢' : '💀'} **${m.username}** (${m.servantName} - ${m.servantClass}) — HP: ${m.currentHp.toLocaleString()}/${m.maxHp.toLocaleString()} | Kills: ${m.kills}`)
     .join('\n');
 
   const embed = new EmbedBuilder()
-    .setTitle(`🏰 FUYUKI HOLY GRAIL WAR — ROUND ${war.currentRound}/${war.maxRounds}`)
+    .setTitle(`🏆 ${war.title}`)
     .setDescription(
       `**Status:** ${war.status.toUpperCase()} | **Alive Masters:** **${aliveParticipants.length}/7**\n` +
       (userParticipant
         ? `\n👤 **Your Master Status:**\n` +
           `• Servant: **${userParticipant.servantName}** (${userParticipant.servantClass})\n` +
-          `• District: **${(war.districts as Record<string, any>)[userParticipant.currentDistrict]?.name || userParticipant.currentDistrict}**\n` +
-          `• AP: **${userParticipant.ap}/100** | Command Seals: **${userParticipant.commandSeals}/3** | Kills: **${userParticipant.kills}**\n\n`
+          `• HP: **${userParticipant.currentHp.toLocaleString()}/${userParticipant.maxHp.toLocaleString()}** | Command Seals: **${userParticipant.commandSeals}/3** | Kills: **${userParticipant.kills}**\n\n`
         : '\n') +
-      (lastMsg ? `📢 **Latest Intel:**\n${lastMsg}\n\n` : '') +
-      `📍 **Key Districts & Leylines:**\n${districtList}\n\n` +
-      `*Choose a tactical command below:*`
+      (lastMsg ? `📢 **Latest Event:**\n${lastMsg}\n\n` : '') +
+      `⚔️ **7 Masters Roster:**\n${rosterList}\n\n` +
+      `*Choose a tactical command below or challenge rivals with \`/duel\`:*`
     )
     .setColor(0xd4af37);
 
@@ -136,35 +102,25 @@ function buildWarEmbed(war: HolyGrailWarSession, userParticipant: any, lastMsg?:
 }
 
 // ==========================================
-// 4. ACTION BUTTONS (Scout, Fortify, Rest, Advance)
+// 4. ACTION BUTTONS (Duel, Heal, Skirmish)
 // ==========================================
-function buildWarButtons(userParticipant: any) {
-  const ap = userParticipant?.ap || 0;
-
+function buildWarButtons() {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId('war_scout')
-      .setLabel('Scout District (20 AP)')
-      .setEmoji('🔍')
-      .setStyle(ButtonStyle.Primary)
-      .setDisabled(ap < 20),
-    new ButtonBuilder()
-      .setCustomId('war_fortify')
-      .setLabel('Fortify Leyline (25 AP)')
-      .setEmoji('🛡️')
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(ap < 25),
+      .setCustomId('war_duel')
+      .setLabel('Challenge Duel (/duel)')
+      .setEmoji('⚔️')
+      .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId('war_rest')
-      .setLabel('Rest & Heal (15 AP)')
-      .setEmoji('☕')
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(ap < 15),
+      .setLabel('Channel Mana (Heal)')
+      .setEmoji('🩹')
+      .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
-      .setCustomId('war_advance')
-      .setLabel('Advance Round')
-      .setEmoji('⏩')
-      .setStyle(ButtonStyle.Danger)
+      .setCustomId('war_skirmish')
+      .setLabel('Simulate Rival Clash')
+      .setEmoji('💥')
+      .setStyle(ButtonStyle.Primary)
   );
 }
 
@@ -175,7 +131,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
 
-    // Guard: Player must have a Servant
     if (!master.servants || master.servants.length === 0) {
       await interaction.reply({
         ephemeral: true,
@@ -190,27 +145,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const subcommand = interaction.options.getSubcommand();
     let initialMsg = '';
 
-    // Handle Subcommands
-    if (subcommand === 'scout') {
-      const targetDistrict = (interaction.options.getString('district') as DistrictId) || 'ryuudou_temple';
-      const res = executeWarAction(war, interaction.user.id, 'scout', targetDistrict);
+    if (subcommand === 'skirmish') {
+      const res = simulateWarSkirmish(war);
       initialMsg = res.message;
-      master.actionPoints = userParticipant.ap;
-      await saveMaster(master);
-    } else if (subcommand === 'fortify') {
-      const res = executeWarAction(war, interaction.user.id, 'fortify_leyline');
-      initialMsg = res.message;
-      master.actionPoints = userParticipant.ap;
-      await saveMaster(master);
     } else if (subcommand === 'rest') {
       const res = executeWarAction(war, interaction.user.id, 'rest_and_heal');
       initialMsg = res.message;
-      master.actionPoints = userParticipant.ap;
       await saveMaster(master);
     }
 
     const embed = buildWarEmbed(war, userParticipant, initialMsg);
-    const row = buildWarButtons(userParticipant);
+    const row = buildWarButtons();
 
     const reply = await interaction.reply({
       embeds: [embed],
@@ -218,7 +163,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       fetchReply: true
     });
 
-    // Attach button collector for continuous tactical turns
     setupWarCollector(reply, interaction.user.id);
 
   } catch (error: any) {
@@ -237,11 +181,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 function setupWarCollector(message: any, userId: string) {
   const collector = message.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    time: 120000 // 2 minutes
+    time: 120000
   });
 
   collector.on('collect', async (i: any) => {
-    // Only the initiating Master can take actions
     if (i.user.id !== userId) {
       await i.reply({ content: 'Only the Master who issued this war command can control these actions.', ephemeral: true });
       return;
@@ -252,37 +195,23 @@ function setupWarCollector(message: any, userId: string) {
       const war = getOrInitWarSession(master);
       let actionResultMsg = '';
 
-      // Action 1: Scout a random district
-      if (i.customId === 'war_scout') {
-        const districts: DistrictId[] = ['fuyuki_church', 'shinto_bridge', 'ryuudou_temple', 'homurahara_academy', 'docks', 'einzenbern_forest'];
-        const randomDistrict = districts[Math.floor(Math.random() * districts.length)];
-        const res = executeWarAction(war, i.user.id, 'scout', randomDistrict);
-        actionResultMsg = res.message;
+      if (i.customId === 'war_duel') {
+        await i.reply({ content: 'Use `/duel` to initiate tactical turn-based combat against a rival Master!', ephemeral: true });
+        return;
       } 
-      // Action 2: Fortify Leyline
-      else if (i.customId === 'war_fortify') {
-        const res = executeWarAction(war, i.user.id, 'fortify_leyline');
-        actionResultMsg = res.message;
-      } 
-      // Action 3: Rest and restore AP & HP
       else if (i.customId === 'war_rest') {
         const res = executeWarAction(war, i.user.id, 'rest_and_heal');
         actionResultMsg = res.message;
+        await saveMaster(master);
       } 
-      // Action 4: Advance War Round (resolves round & restores AP)
-      else if (i.customId === 'war_advance') {
-        activeSession = advanceWarRound(war);
-        actionResultMsg = `⏩ Advanced to Round ${activeSession.currentRound}/${activeSession.maxRounds}! AP recovered +60 for all surviving Masters.`;
+      else if (i.customId === 'war_skirmish') {
+        const res = simulateWarSkirmish(war);
+        actionResultMsg = res.message;
       }
 
       const userParticipant = war.participants[i.user.id];
-      if (userParticipant) {
-        master.actionPoints = userParticipant.ap;
-        await saveMaster(master);
-      }
-
       const updatedEmbed = buildWarEmbed(war, userParticipant, actionResultMsg);
-      const updatedRow = buildWarButtons(userParticipant);
+      const updatedRow = buildWarButtons();
 
       await i.update({ embeds: [updatedEmbed], components: [updatedRow] });
     } catch (err: any) {

@@ -23,7 +23,10 @@ import {
   Scroll,
   UserCheck,
   UserX,
-  BookOpen
+  BookOpen,
+  Search,
+  X,
+  ExternalLink
 } from 'lucide-react';
 
 interface SummoningSanctumProps {
@@ -43,6 +46,9 @@ export default function SummoningSanctum({
   const [isSummoning, setIsSummoning] = useState(false);
   const [summonSuccessServant, setSummonSuccessServant] = useState<ServantTemplate | null>(null);
   const [statusNotice, setStatusNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [registrySearch, setRegistrySearch] = useState('');
+  const [registryCategory, setRegistryCategory] = useState<'all' | 'canon' | 'custom'>('all');
+  const [inspectedServant, setInspectedServant] = useState<ServantTemplate | null>(null);
 
   // Admin Custom Servant Form State
   const [formData, setFormData] = useState({
@@ -679,47 +685,284 @@ export default function SummoningSanctum({
       {/* ======================================================== */}
       {activeSubTab === 'throne_registry' && (
         <div className="space-y-4">
-          <div className="p-4 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] flex items-center justify-between">
-            <span className="text-xs font-mono text-white/60">
-              Total Registry Pool: <strong>{allThrone.length} Servants</strong> ({customServants.length} Custom Admins, {SERVANT_DATABASE.length} Canon)
-            </span>
+          {/* Search & Filter Header Bar */}
+          <div className="p-4 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            <div className="flex-1 relative">
+              <Search className="w-4 h-4 text-white/40 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={registrySearch}
+                onChange={e => setRegistrySearch(e.target.value)}
+                placeholder="Search Heroic Spirits by name, class, NP, or lore..."
+                className="w-full pl-9 pr-8 py-2 bg-[#111] border border-[#222] rounded-lg text-xs font-mono text-white placeholder-white/30 focus:outline-none focus:border-[#d4af37]"
+              />
+              {registrySearch && (
+                <button
+                  onClick={() => setRegistrySearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex items-center gap-1.5 self-start md:self-auto">
+              <button
+                onClick={() => setRegistryCategory('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${
+                  registryCategory === 'all'
+                    ? 'bg-[#d4af37] text-black font-semibold'
+                    : 'bg-[#111] text-white/60 hover:text-white border border-[#222]'
+                }`}
+              >
+                All ({allThrone.length})
+              </button>
+              <button
+                onClick={() => setRegistryCategory('canon')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${
+                  registryCategory === 'canon'
+                    ? 'bg-[#3b82f6] text-white font-semibold'
+                    : 'bg-[#111] text-white/60 hover:text-white border border-[#222]'
+                }`}
+              >
+                Canon ({SERVANT_DATABASE.length})
+              </button>
+              <button
+                onClick={() => setRegistryCategory('custom')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${
+                  registryCategory === 'custom'
+                    ? 'bg-[#9333ea] text-white font-semibold'
+                    : 'bg-[#111] text-white/60 hover:text-white border border-[#222]'
+                }`}
+              >
+                Custom ({customServants.length})
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {allThrone.map((s, idx) => (
-              <div key={s.id || idx} className="p-4 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] flex gap-3 relative group">
-                <div className="w-20 h-24 rounded-sm overflow-hidden bg-[#111] border border-[#222] flex-shrink-0">
-                  <img src={s.avatarUrl || s.cardArtUrl} alt={s.name} className="w-full h-full object-cover object-top" />
+          {/* Servants Grid */}
+          {(() => {
+            const filtered = allThrone.filter(s => {
+              if (registryCategory === 'canon' && s.isCustomOrMeme) return false;
+              if (registryCategory === 'custom' && !s.isCustomOrMeme) return false;
+              if (!registrySearch.trim()) return true;
+              const q = registrySearch.toLowerCase().trim();
+              return (
+                s.name.toLowerCase().includes(q) ||
+                s.servantClass.toLowerCase().includes(q) ||
+                s.title.toLowerCase().includes(q) ||
+                s.noblePhantasm.name.toLowerCase().includes(q) ||
+                (s.lore && s.lore.toLowerCase().includes(q))
+              );
+            });
+
+            if (filtered.length === 0) {
+              return (
+                <div className="p-8 text-center bg-[#0a0a0a] rounded-xl border border-[#1a1a1a]">
+                  <p className="text-sm font-mono text-white/60">No Heroic Spirits found matching &quot;{registrySearch}&quot;</p>
+                  <button
+                    onClick={() => {
+                      setRegistrySearch('');
+                      setRegistryCategory('all');
+                    }}
+                    className="mt-3 px-3 py-1 text-xs font-mono bg-[#161616] text-[#d4af37] border border-[#d4af37]/30 rounded-lg hover:bg-[#222]"
+                  >
+                    Reset Search Filters
+                  </button>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <h5 className="text-xs font-serif italic text-white truncate font-bold">{s.name}</h5>
-                    <span className="px-1.5 py-0.5 text-[9px] font-mono rounded bg-[#161616] text-[#d4af37] border border-[#d4af37]/30 flex-shrink-0">
-                      {s.servantClass}
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filtered.map((s, idx) => (
+                  <div
+                    key={s.id || idx}
+                    onClick={() => setInspectedServant(s)}
+                    className="p-4 bg-[#0a0a0a] hover:bg-[#111] transition-all rounded-xl border border-[#1a1a1a] hover:border-[#d4af37]/50 flex gap-3 relative group cursor-pointer shadow-lg"
+                  >
+                    <div className="w-20 h-24 rounded-sm overflow-hidden bg-[#111] border border-[#222] flex-shrink-0 relative">
+                      <img src={s.avatarUrl || s.cardArtUrl} alt={s.name} className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300" />
+                      <span className="absolute bottom-1 right-1 text-[8px] font-mono px-1 rounded bg-black/80 text-amber-300">
+                        {'★'.repeat(s.rarity || 5)}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <h5 className="text-xs font-serif italic text-white truncate font-bold group-hover:text-[#d4af37] transition-colors">{s.name}</h5>
+                        <span className="px-1.5 py-0.5 text-[9px] font-mono rounded bg-[#161616] text-[#d4af37] border border-[#d4af37]/30 flex-shrink-0">
+                          {s.servantClass}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-white/40 font-mono truncate">{s.title}</p>
+                      <p className="text-[10px] text-white/60 font-mono mt-1">
+                        HP: {s.baseHp.toLocaleString()} | ATK: {s.baseAtk.toLocaleString()}
+                      </p>
+                      <p className="text-[10px] text-[#d4af37] font-mono truncate mt-0.5">
+                        NP: {s.noblePhantasm?.name}
+                      </p>
+                      <div className="mt-2 flex items-center justify-between">
+                        <span className="text-[9px] font-mono text-white/30 group-hover:text-[#d4af37] flex items-center gap-1 transition-colors">
+                          <ExternalLink className="w-2.5 h-2.5" /> View Full Profile
+                        </span>
+                        {s.isCustomOrMeme ? (
+                          <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-purple-950/60 text-purple-300 border border-purple-800/40">Custom</span>
+                        ) : (
+                          <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-blue-950/60 text-blue-300 border border-blue-800/40">Canon</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Delete button for custom servants */}
+                    {s.isCustomOrMeme && (
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleDeleteCustomServant(s.id);
+                        }}
+                        title="Delete Custom Servant"
+                        className="absolute top-2 right-2 p-1.5 rounded bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-600/40 opacity-0 group-hover:opacity-100 transition z-10"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* Full Servant Profile Modal */}
+          {inspectedServant && (
+            <div
+              className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+              onClick={() => setInspectedServant(null)}
+            >
+              <div
+                className="bg-[#0f172a] border border-[#38bdf8]/40 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative"
+                onClick={e => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => setInspectedServant(null)}
+                  className="absolute top-4 right-4 p-2 rounded-lg bg-[#1e293b] text-white/60 hover:text-white hover:bg-[#334155] transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+
+                <div className="flex flex-col sm:flex-row gap-6 items-start">
+                  <div className="w-36 h-48 rounded-xl overflow-hidden bg-black/40 border border-white/10 flex-shrink-0 mx-auto sm:mx-0 shadow-lg">
+                    <img
+                      src={inspectedServant.avatarUrl || inspectedServant.cardArtUrl}
+                      alt={inspectedServant.name}
+                      className="w-full h-full object-cover object-top"
+                    />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="px-2 py-0.5 text-xs font-mono font-bold bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/30 rounded">
+                        {inspectedServant.servantClass}
+                      </span>
+                      <span className="text-amber-400 font-mono text-xs">
+                        {'★'.repeat(inspectedServant.rarity || 5)}
+                      </span>
+                      {inspectedServant.isCustomOrMeme ? (
+                        <span className="px-2 py-0.5 text-[10px] font-mono bg-purple-950 text-purple-300 border border-purple-800 rounded">
+                          🛠️ Custom Admin Spirit
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 text-[10px] font-mono bg-blue-950 text-blue-300 border border-blue-800 rounded">
+                          🏛️ Canon Heroic Spirit
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="text-xl font-serif italic text-white font-bold mt-2">
+                      {inspectedServant.name}
+                    </h3>
+                    <p className="text-xs text-white/50 font-mono italic">{inspectedServant.title}</p>
+
+                    <div className="grid grid-cols-2 gap-2 mt-4 text-xs font-mono">
+                      <div className="p-2 rounded bg-black/40 border border-white/5">
+                        <span className="text-white/40 block text-[10px]">BASE HP</span>
+                        <span className="text-emerald-400 font-bold">{inspectedServant.baseHp.toLocaleString()}</span>
+                      </div>
+                      <div className="p-2 rounded bg-black/40 border border-white/5">
+                        <span className="text-white/40 block text-[10px]">BASE ATK</span>
+                        <span className="text-rose-400 font-bold">{inspectedServant.baseAtk.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Parameters */}
+                <div className="mt-6 p-3.5 bg-black/40 rounded-xl border border-white/5">
+                  <h4 className="text-xs font-mono uppercase tracking-wider text-white/50 mb-2">Combat Parameters</h4>
+                  <div className="grid grid-cols-5 gap-2 text-center text-xs font-mono">
+                    <div className="p-1.5 rounded bg-white/5"><span className="text-[10px] text-white/40 block">STR</span><strong className="text-white">{inspectedServant.baseStats.strength}</strong></div>
+                    <div className="p-1.5 rounded bg-white/5"><span className="text-[10px] text-white/40 block">END</span><strong className="text-white">{inspectedServant.baseStats.endurance}</strong></div>
+                    <div className="p-1.5 rounded bg-white/5"><span className="text-[10px] text-white/40 block">AGI</span><strong className="text-white">{inspectedServant.baseStats.agility}</strong></div>
+                    <div className="p-1.5 rounded bg-white/5"><span className="text-[10px] text-white/40 block">MAN</span><strong className="text-white">{inspectedServant.baseStats.mana}</strong></div>
+                    <div className="p-1.5 rounded bg-white/5"><span className="text-[10px] text-white/40 block">LCK</span><strong className="text-white">{inspectedServant.baseStats.luck}</strong></div>
+                  </div>
+                </div>
+
+                {/* Noble Phantasm */}
+                <div className="mt-4 p-4 rounded-xl bg-amber-950/20 border border-amber-500/30">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-serif italic text-amber-300 font-bold flex items-center gap-1.5">
+                      <Flame className="w-4 h-4 text-amber-400" />
+                      {inspectedServant.noblePhantasm.name}
+                    </h4>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-200 border border-amber-500/30">
+                      {inspectedServant.noblePhantasm.cardType} • {inspectedServant.noblePhantasm.target.toUpperCase()}
                     </span>
                   </div>
-                  <p className="text-[10px] text-white/40 font-mono truncate">{s.title}</p>
-                  <p className="text-[10px] text-white/60 font-mono mt-1">
-                    HP: {s.baseHp.toLocaleString()} | ATK: {s.baseAtk.toLocaleString()}
+                  <p className="text-xs text-amber-200/70 font-mono italic mt-1.5">
+                    &quot;{inspectedServant.noblePhantasm.chant}&quot;
                   </p>
-                  <p className="text-[10px] text-[#d4af37] font-mono truncate mt-0.5">
-                    NP: {s.noblePhantasm?.name}
+                  <p className="text-xs text-white/80 font-mono mt-2 leading-relaxed">
+                    {inspectedServant.noblePhantasm.description}
                   </p>
                 </div>
 
-                {/* Delete button for custom servants */}
-                {s.isCustomOrMeme && (
-                  <button
-                    onClick={() => handleDeleteCustomServant(s.id)}
-                    title="Delete Custom Servant"
-                    className="absolute top-2 right-2 p-1.5 rounded bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-600/40 opacity-0 group-hover:opacity-100 transition"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                {/* Skills */}
+                {inspectedServant.skills && inspectedServant.skills.length > 0 && (
+                  <div className="mt-4 p-3.5 bg-black/40 rounded-xl border border-white/5">
+                    <h4 className="text-xs font-mono uppercase tracking-wider text-white/50 mb-2">Class & Active Skills</h4>
+                    <div className="space-y-2">
+                      {inspectedServant.skills.map((sk, idx) => (
+                        <div key={idx} className="p-2 rounded bg-white/5 text-xs font-mono">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[#38bdf8] font-bold">✨ {sk.name}</span>
+                            <span className="text-white/40 text-[10px]">CD: {sk.cooldown} Turns</span>
+                          </div>
+                          <p className="text-white/70 text-[11px] mt-0.5">{sk.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
+
+                {/* Historical Lore */}
+                {inspectedServant.lore && (
+                  <div className="mt-4 p-3.5 bg-black/40 rounded-xl border border-white/5">
+                    <h4 className="text-xs font-mono uppercase tracking-wider text-white/50 mb-1.5">Legend & Lore</h4>
+                    <p className="text-xs text-white/70 font-mono leading-relaxed">{inspectedServant.lore}</p>
+                  </div>
+                )}
+
+                {/* Dialogue Quotes */}
+                <div className="mt-4 p-3.5 bg-black/40 rounded-xl border border-white/5 space-y-1.5 text-xs font-mono">
+                  <h4 className="text-[10px] uppercase tracking-wider text-white/40 mb-1">Master Quotes</h4>
+                  <p className="text-white/80"><span className="text-amber-400">Summon:</span> &quot;{inspectedServant.summonQuote}&quot;</p>
+                  <p className="text-white/80"><span className="text-amber-400">Battle:</span> &quot;{inspectedServant.battleStartQuote}&quot;</p>
+                  <p className="text-white/80"><span className="text-amber-400">Victory:</span> &quot;{inspectedServant.victoryQuote}&quot;</p>
+                </div>
               </div>
-            ))}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>

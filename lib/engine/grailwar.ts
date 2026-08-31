@@ -1,72 +1,18 @@
 import {
-  DistrictId,
   HolyGrailWarSession,
-  WarDistrict,
   WarMasterParticipant,
   WarAlliance
 } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
 
-export const FUYUKI_DISTRICTS: Record<DistrictId, WarDistrict> = {
-  fuyuki_church: {
-    id: 'fuyuki_church',
-    name: 'Fuyuki Church',
-    description: 'Neutral sanctuary overseen by the Overseer. Recover command seals and rest safely.',
-    leylineBonus: 'command_seal_recovery',
-    manaReserve: 500
-  },
-  ryuudou_temple: {
-    id: 'ryuudou_temple',
-    name: 'Ryuudou Temple (Mount Enzou)',
-    description: 'Primary magical focal point of the Great Holy Grail. Generates immense mana reserves.',
-    leylineBonus: 'mana_surge',
-    manaReserve: 1500
-  },
-  shinto_bridge: {
-    id: 'shinto_bridge',
-    name: 'Fuyuki Bridge',
-    description: 'Vast suspension bridge connecting Shinto and Miyama. Ideal vantage point for scout operations.',
-    leylineBonus: 'agility_scout',
-    manaReserve: 400
-  },
-  homurahara_academy: {
-    id: 'homurahara_academy',
-    name: 'Homurahara Academy',
-    description: 'Civilian school grounds surrounded by a dormant bounded field.',
-    leylineBonus: 'defensive_ward',
-    manaReserve: 600
-  },
-  docks: {
-    id: 'docks',
-    name: 'Fuyuki Industrial Docks',
-    description: 'Desolate container yard under the foggy sea breeze. Critical strike sanctuary.',
-    leylineBonus: 'crit_sanctuary',
-    manaReserve: 350
-  },
-  einzenbern_forest: {
-    id: 'einzenbern_forest',
-    name: 'Einzbern Forest & Castle',
-    description: 'Snow-capped ancient boreal woodland guarded by multi-layered defensive bounded fields.',
-    leylineBonus: 'defensive_ward',
-    manaReserve: 1200
-  },
-  commercial_district: {
-    id: 'commercial_district',
-    name: 'Shinto Commercial Center',
-    description: 'Bustling modern high-rises with plentiful supply depots.',
-    leylineBonus: 'mana_surge',
-    manaReserve: 450
-  }
-};
-
 export function createHolyGrailWarSession(
   initiatorMaster: { discordId: string; username: string; servantId: string; servantName: string; avatarUrl: string; maxHp: number },
-  warTitle: string = '7th Fuyuki Holy Grail War'
+  warTitle: string = '7-Master Fuyuki Holy Grail War'
 ): HolyGrailWarSession {
   const warId = `grail_war_${Date.now()}`;
-  const districts = JSON.parse(JSON.stringify(FUYUKI_DISTRICTS)) as Record<DistrictId, WarDistrict>;
 
-  // Initialize participants with the initiator + 6 AI / Rival Masters
+  // Initialize participants with the initiator + 6 Rival Masters
+  // All Masters start hidden in the shadows until exposed by public command, ambush, or leak!
   const participants: Record<string, WarMasterParticipant> = {
     [initiatorMaster.discordId]: {
       discordId: initiatorMaster.discordId,
@@ -79,20 +25,20 @@ export function createHolyGrailWarSession(
       maxHp: initiatorMaster.maxHp,
       commandSeals: 3,
       isAlive: true,
-      currentDistrict: 'homurahara_academy',
-      ap: 100,
-      kills: 0
+      isExposed: false,
+      kills: 0,
+      innocentKills: 0
     }
   };
 
-  // Seed 6 other rival Masters
+  // Seed 6 other rival Masters & Servants (initially hidden in the shadows)
   const aiRivals = [
-    { name: 'Kotomine Kirei', servantId: 'gilgamesh_archer', servantName: 'Gilgamesh', class: 'Archer' as const, district: 'fuyuki_church' as DistrictId },
-    { name: 'Bazett Fraga', servantId: 'cu_chulainn_lancer', servantName: 'Cú Chulainn', class: 'Lancer' as const, district: 'docks' as DistrictId },
-    { name: 'Illyasviel von Einzbern', servantId: 'heracles_berserker', servantName: 'Heracles', class: 'Berserker' as const, district: 'einzenbern_forest' as DistrictId },
-    { name: 'Medea of Colchis', servantId: 'jeanne_darc_ruler', servantName: 'Jeanne d\'Arc', class: 'Ruler' as const, district: 'ryuudou_temple' as DistrictId },
-    { name: 'Kiritsugu Emiya', servantId: 'emiya_archer', servantName: 'EMIYA', class: 'Archer' as const, district: 'shinto_bridge' as DistrictId },
-    { name: 'Root Administrator', servantId: 'terminal_saber_linus', servantName: 'Terminal Saber', class: 'Saber' as const, district: 'commercial_district' as DistrictId }
+    { name: 'Kotomine Kirei', servantId: 'gilgamesh_archer', servantName: 'Gilgamesh', class: 'Archer' as const, exposed: false },
+    { name: 'Bazett Fraga', servantId: 'cu_chulainn_lancer', servantName: 'Cú Chulainn', class: 'Lancer' as const, exposed: false },
+    { name: 'Illyasviel von Einzbern', servantId: 'heracles_berserker', servantName: 'Heracles', class: 'Berserker' as const, exposed: false },
+    { name: 'Medea of Colchis', servantId: 'jeanne_darc_ruler', servantName: 'Jeanne d\'Arc', class: 'Ruler' as const, exposed: false },
+    { name: 'Kiritsugu Emiya', servantId: 'emiya_archer', servantName: 'EMIYA', class: 'Archer' as const, exposed: false },
+    { name: 'Rin Tohsaka', servantId: 'terminal_saber_linus', servantName: 'Terminal Saber', class: 'Saber' as const, exposed: false }
   ];
 
   aiRivals.forEach((r, idx) => {
@@ -110,9 +56,9 @@ export function createHolyGrailWarSession(
       maxHp: hp,
       commandSeals: 3,
       isAlive: true,
-      currentDistrict: r.district,
-      ap: 100,
-      kills: 0
+      isExposed: r.exposed,
+      kills: 0,
+      innocentKills: 0
     };
   });
 
@@ -120,253 +66,483 @@ export function createHolyGrailWarSession(
     id: warId,
     title: warTitle,
     status: 'active',
-    currentRound: 1,
-    maxRounds: 7,
-    districts,
     participants,
     alliances: {},
     eventLogs: [
       {
-        id: `evt_init`,
-        round: 1,
+        id: `evt_init_${Date.now()}`,
         timestamp: Date.now(),
-        text: `🕯️ The ${warTitle} has commenced! 7 Masters and Servants have descended upon Fuyuki City.`,
-        type: 'scout'
+        text: `🕯️ The ${warTitle} has commenced in strict secrecy! All 7 Masters operate from the shadows. Identities remain concealed until exposed by public actions, tactical ambushes, or intelligence leaks.`,
+        type: 'clash'
       }
-    ]
+    ],
+    innocentVictims: [],
+    leakedIntel: []
   };
 }
 
 export type WarActionType =
-  | 'scout'            // Cost 20 AP: Reveal enemy positions & gather intel
-  | 'move_district'    // Cost 15 AP: Relocate to another district
-  | 'fortify_leyline'  // Cost 25 AP: Claim district leyline for stat buffs
-  | 'rest_and_heal'    // Cost 30 AP: Recover 40% HP & gain +1 Command Seal if in Church
-  | 'form_alliance'    // Cost 25 AP: Propose secret pact with another Master
-  | 'betray_ally'      // Cost 20 AP: Backstab an ally with guaranteed critical strike
-  | 'challenge_master';// Cost 35 AP: Engage in duel to the death
+  | 'challenge_master'  // Challenge a rival Master to a duel
+  | 'form_alliance'      // Propose a pact with another Master
+  | 'betray_ally'        // Ambush an ally
+  | 'rest_and_heal'      // Recover Servant HP
+  | 'simulate_skirmish' // Simulate rival clashes across the city
+  | 'attack_suspect'     // Ambush a suspected user in the server
+  | 'leak_intel'         // Leak intelligence onto the board
+  | 'expose_master';     // Expose a master due to public command usage
 
 export interface WarActionResult {
   success: boolean;
   message: string;
-  apSpent: number;
   combatTriggered?: {
     opponentId: string;
     opponentName: string;
     isAmbush: boolean;
   };
   eliminatedMasterId?: string;
+  isCollateralCasualty?: boolean;
+  targetWasMaster?: boolean;
   updatedWar: HolyGrailWarSession;
+}
+
+// Expose a Master when they perform an action publicly or are identified
+export function exposeMasterInWar(
+  war: HolyGrailWarSession,
+  masterIdOrUsername: string,
+  reason: 'public_command' | 'ambush_clash' | 'innocent_assault' | 'intel_leak' | 'direct_combat'
+): { updatedWar: HolyGrailWarSession; newlyExposed: boolean; participant?: WarMasterParticipant } {
+  const updatedWar: HolyGrailWarSession = JSON.parse(JSON.stringify(war));
+  const query = masterIdOrUsername.toLowerCase().trim();
+
+  const participant = Object.values(updatedWar.participants).find(
+    p => p.discordId.toLowerCase() === query || p.username.toLowerCase() === query || query.includes(p.username.toLowerCase())
+  );
+
+  if (!participant) {
+    return { updatedWar, newlyExposed: false };
+  }
+
+  if (participant.isExposed) {
+    return { updatedWar, newlyExposed: false, participant };
+  }
+
+  participant.isExposed = true;
+  participant.exposureReason = reason;
+  participant.exposedAt = Date.now();
+
+  let reasonText = '';
+  switch (reason) {
+    case 'public_command':
+      reasonText = `📡 EXPOSURE: Master **${participant.username}** invoked magecraft in a public server channel! Their identity and contracted Servant (**${participant.servantName}** - ${participant.servantClass}) are now exposed to all participants!`;
+      break;
+    case 'ambush_clash':
+      reasonText = `⚔️ EXPOSURE: **${participant.username}** (${participant.servantName}) had their identity exposed during a tactical ambush clash!`;
+      break;
+    case 'innocent_assault':
+      reasonText = `☠️ EXPOSURE: **${participant.username}** violated the Secrecy of Magecraft by attacking a bystander! Their identity is now exposed to the entire server!`;
+      break;
+    case 'intel_leak':
+      reasonText = `🕵️ EXPOSURE: **${participant.username}** (${participant.servantName} - ${participant.servantClass}) was outed by an anonymous intelligence leak!`;
+      break;
+    case 'direct_combat':
+      reasonText = `⚔️ EXPOSURE: **${participant.username}** (${participant.servantName}) engaged in open combat!`;
+      break;
+  }
+
+  updatedWar.eventLogs.unshift({
+    id: `evt_expose_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    timestamp: Date.now(),
+    text: reasonText,
+    type: 'exposure'
+  });
+
+  return { updatedWar, newlyExposed: true, participant };
+}
+
+// Attack a suspected user in the server
+export function attackSuspectUserInWar(
+  war: HolyGrailWarSession,
+  attackerId: string,
+  suspectQuery: string
+): WarActionResult {
+  let updatedWar: HolyGrailWarSession = JSON.parse(JSON.stringify(war));
+  const attacker = updatedWar.participants[attackerId];
+
+  if (!attacker || !attacker.isAlive) {
+    return { success: false, message: 'You are not active in the Holy Grail War!', updatedWar };
+  }
+
+  // Clean suspect query (remove @ or discord mention wrapper <@!1234>)
+  const cleanQuery = suspectQuery.replace(/[<@!>]/g, '').trim().toLowerCase();
+
+  // Find if target is a real Master in this Grail War
+  const targetMaster = Object.values(updatedWar.participants).find(
+    p => p.discordId.toLowerCase() === cleanQuery ||
+         p.username.toLowerCase() === cleanQuery ||
+         p.username.toLowerCase().includes(cleanQuery) ||
+         cleanQuery.includes(p.username.toLowerCase())
+  );
+
+  if (targetMaster && targetMaster.discordId === attacker.discordId) {
+    return { success: false, message: 'You cannot target yourself with an ambush!', updatedWar };
+  }
+
+  // ---------------------------------------------------------
+  // CASE 1: TARGET IS A REAL MASTER
+  // ---------------------------------------------------------
+  if (targetMaster && targetMaster.isAlive) {
+    // Both attacker and target are now exposed!
+    attacker.isExposed = true;
+    attacker.exposureReason = 'ambush_clash';
+    attacker.exposedAt = Date.now();
+
+    targetMaster.isExposed = true;
+    targetMaster.exposureReason = 'ambush_clash';
+    targetMaster.exposedAt = Date.now();
+
+    // Calculate surprise ambush damage
+    const ambushDamage = Math.round(3800 + Math.random() * 2500);
+    targetMaster.currentHp = Math.max(0, targetMaster.currentHp - ambushDamage);
+
+    let ambushText = `⚔️ TACTICAL AMBUSH: Master **${attacker.username}** (${attacker.servantName}) launched a surprise assault on suspected Master **${targetMaster.username}**! Both identities are now EXPOSED to the server! **${targetMaster.username}**'s ${targetMaster.servantName} took **${ambushDamage.toLocaleString()} damage**!`;
+    let eliminatedId: string | undefined;
+
+    if (targetMaster.currentHp <= 0) {
+      targetMaster.isAlive = false;
+      attacker.kills++;
+      eliminatedId = targetMaster.discordId;
+      ambushText = `☠️ FATAL AMBUSH: Master **${attacker.username}** (${attacker.servantName}) ambushed and ELIMINATED Master **${targetMaster.username}** (${targetMaster.servantName})! Both identities were exposed!`;
+    }
+
+    updatedWar.eventLogs.unshift({
+      id: `evt_ambush_${Date.now()}`,
+      timestamp: Date.now(),
+      text: ambushText,
+      type: targetMaster.currentHp <= 0 ? 'elimination' : 'ambush'
+    });
+
+    // Check war conclusion
+    const remainingAlive = Object.values(updatedWar.participants).filter(p => p.isAlive);
+    if (remainingAlive.length === 1) {
+      updatedWar.status = 'concluded';
+      updatedWar.grailWinnerId = remainingAlive[0].discordId;
+      updatedWar.eventLogs.unshift({
+        id: `evt_win_${Date.now()}`,
+        timestamp: Date.now(),
+        text: `🏆 THE HOLY GRAIL HAS MANIFESTED! ${remainingAlive[0].username} is the sole survivor and has won the Holy Grail War!`,
+        type: 'clash'
+      });
+    }
+
+    return {
+      success: true,
+      message: ambushText,
+      targetWasMaster: true,
+      isCollateralCasualty: false,
+      eliminatedMasterId: eliminatedId,
+      updatedWar
+    };
+  }
+
+  // ---------------------------------------------------------
+  // CASE 2: TARGET IS AN INNOCENT SERVER USER (COLLATERAL CASUALTY)
+  // ---------------------------------------------------------
+  // Attacker strikes down an innocent bystander!
+  // Attacker is immediately exposed for violating the secrecy of Magecraft!
+  attacker.isExposed = true;
+  attacker.exposureReason = 'innocent_assault';
+  attacker.exposedAt = Date.now();
+  attacker.innocentKills = (attacker.innocentKills || 0) + 1;
+
+  if (!updatedWar.innocentVictims) updatedWar.innocentVictims = [];
+  const bystanderName = suspectQuery.startsWith('@') ? suspectQuery : `@${suspectQuery}`;
+
+  updatedWar.innocentVictims.unshift({
+    id: `victim_${Date.now()}`,
+    username: bystanderName,
+    killedBy: attacker.username,
+    killerServant: attacker.servantName,
+    timestamp: Date.now()
+  });
+
+  const casualtyText = `☠️ COLLATERAL CASUALTY: Master **${attacker.username}**'s Servant (${attacker.servantName}) struck down innocent bystander **${bystanderName}**! The victim was killed instantly, and **${attacker.username}**'s identity is now VIOLENTLY EXPOSED on the Holy Grail War status board for breaching the Secrecy of Magecraft!`;
+
+  updatedWar.eventLogs.unshift({
+    id: `evt_casualty_${Date.now()}`,
+    timestamp: Date.now(),
+    text: casualtyText,
+    type: 'casualty'
+  });
+
+  return {
+    success: true,
+    message: casualtyText,
+    targetWasMaster: false,
+    isCollateralCasualty: true,
+    updatedWar
+  };
+}
+
+// Leak intelligence onto the status board
+export function leakIntelInWar(
+  war: HolyGrailWarSession,
+  leakerUsername: string,
+  intelText: string,
+  targetToExposeQuery?: string
+): WarActionResult {
+  const updatedWar: HolyGrailWarSession = JSON.parse(JSON.stringify(war));
+  if (!updatedWar.leakedIntel) updatedWar.leakedIntel = [];
+
+  let exposedMaster: WarMasterParticipant | undefined;
+
+  if (targetToExposeQuery && targetToExposeQuery.trim()) {
+    const q = targetToExposeQuery.trim().toLowerCase();
+    exposedMaster = Object.values(updatedWar.participants).find(
+      p => p.discordId.toLowerCase() === q || p.username.toLowerCase().includes(q) || q.includes(p.username.toLowerCase())
+    );
+
+    if (exposedMaster) {
+      exposedMaster.isExposed = true;
+      exposedMaster.exposureReason = 'intel_leak';
+      exposedMaster.exposedAt = Date.now();
+    }
+  }
+
+  const leakId = `leak_${Date.now()}`;
+  updatedWar.leakedIntel.unshift({
+    id: leakId,
+    author: leakerUsername,
+    text: intelText,
+    timestamp: Date.now(),
+    exposedMasterId: exposedMaster?.discordId
+  });
+
+  const logText = exposedMaster
+    ? `🕵️ INTEL LEAK: An anonymous leak verified that **${exposedMaster.username}** is contracted to **${exposedMaster.servantName}** (${exposedMaster.servantClass})! Leaked Dispatch: "${intelText}"`
+    : `🕵️ INTEL LEAK: A clandestine report was broadcasted onto the Info Board: "${intelText}"`;
+
+  updatedWar.eventLogs.unshift({
+    id: `evt_leak_${Date.now()}`,
+    timestamp: Date.now(),
+    text: logText,
+    type: 'intel_leak'
+  });
+
+  return {
+    success: true,
+    message: logText,
+    updatedWar
+  };
 }
 
 export function executeWarAction(
   war: HolyGrailWarSession,
   actorDiscordId: string,
   action: WarActionType,
-  targetParam?: string // Target district ID or target Master ID
+  targetParam?: string // Target Master ID or query
 ): WarActionResult {
   const updatedWar: HolyGrailWarSession = JSON.parse(JSON.stringify(war));
   const actor = updatedWar.participants[actorDiscordId];
 
   if (!actor || !actor.isAlive) {
-    return { success: false, message: 'You are eliminated from the Holy Grail War!', apSpent: 0, updatedWar };
+    return { success: false, message: 'You are eliminated from the Holy Grail War!', updatedWar };
   }
 
-  let apCost = 0;
+  if (action === 'attack_suspect' && targetParam) {
+    return attackSuspectUserInWar(updatedWar, actorDiscordId, targetParam);
+  }
+
+  if (action === 'leak_intel' && targetParam) {
+    return leakIntelInWar(updatedWar, actor.username, targetParam);
+  }
+
+  if (action === 'expose_master') {
+    const res = exposeMasterInWar(updatedWar, actorDiscordId, 'public_command');
+    return { success: true, message: 'Master exposed publicly.', updatedWar: res.updatedWar };
+  }
+
   let resultMsg = '';
   let combatInfo: WarActionResult['combatTriggered'];
   let eliminatedId: string | undefined;
 
   switch (action) {
-    case 'scout':
-      apCost = 20;
-      if (actor.ap < apCost) return { success: false, message: 'Not enough Action Points (AP)!', apSpent: 0, updatedWar };
-      actor.ap -= apCost;
-
-      // Find other masters in current or nearby districts
-      const spotted = Object.values(updatedWar.participants).filter(
-        p => p.discordId !== actor.discordId && p.isAlive && p.currentDistrict === actor.currentDistrict
-      );
-
-      if (spotted.length > 0) {
-        resultMsg = `🔭 Reconnaissance at ${updatedWar.districts[actor.currentDistrict].name}: You spotted ${spotted.map(s => `${s.username} (${s.servantName})`).join(', ')}!`;
-      } else {
-        resultMsg = `🔭 Reconnaissance at ${updatedWar.districts[actor.currentDistrict].name}: The area is quiet. No hostile Servant traces detected.`;
-      }
-      break;
-
-    case 'move_district':
-      apCost = 15;
-      if (actor.ap < apCost) return { success: false, message: 'Not enough AP to relocate!', apSpent: 0, updatedWar };
-      if (!targetParam || !updatedWar.districts[targetParam as DistrictId]) {
-        return { success: false, message: 'Invalid destination district!', apSpent: 0, updatedWar };
-      }
-      actor.ap -= apCost;
-      const prevDistrict = updatedWar.districts[actor.currentDistrict].name;
-      actor.currentDistrict = targetParam as DistrictId;
-      const newDistrict = updatedWar.districts[actor.currentDistrict].name;
-      resultMsg = `🗺️ Relocated from ${prevDistrict} to ${newDistrict}.`;
-      break;
-
-    case 'fortify_leyline':
-      apCost = 25;
-      if (actor.ap < apCost) return { success: false, message: 'Not enough AP to fortify leyline!', apSpent: 0, updatedWar };
-      actor.ap -= apCost;
-      const district = updatedWar.districts[actor.currentDistrict];
-      district.controllingMasterId = actor.discordId;
-      resultMsg = `🏰 Claimed control over the Leyline at ${district.name}! Bounded field established (+${district.leylineBonus}).`;
-      break;
-
-    case 'rest_and_heal':
-      apCost = 30;
-      if (actor.ap < apCost) return { success: false, message: 'Not enough AP to rest!', apSpent: 0, updatedWar };
-      actor.ap -= apCost;
+    case 'rest_and_heal': {
       const healAmount = Math.round(actor.maxHp * 0.45);
       actor.currentHp = Math.min(actor.maxHp, actor.currentHp + healAmount);
-
-      let sealMsg = '';
-      if (actor.currentDistrict === 'fuyuki_church' && actor.commandSeals < 3) {
-        actor.commandSeals++;
-        sealMsg = ' Father Kotomine restored 1 Command Seal!';
-      }
-      resultMsg = `🩹 Rested and recovered ${healAmount.toLocaleString()} HP.${sealMsg}`;
+      resultMsg = `🩹 Channeled mana to recover ${healAmount.toLocaleString()} HP for ${actor.isExposed ? actor.servantName : 'contracted Servant'} (HP: ${actor.currentHp.toLocaleString()}/${actor.maxHp.toLocaleString()}).`;
       break;
+    }
 
-    case 'form_alliance':
-      apCost = 25;
-      if (actor.ap < apCost) return { success: false, message: 'Not enough AP to negotiate an alliance!', apSpent: 0, updatedWar };
+    case 'form_alliance': {
       if (!targetParam || !updatedWar.participants[targetParam]) {
-        return { success: false, message: 'Specify a valid Master to ally with!', apSpent: 0, updatedWar };
+        return { success: false, message: 'Specify a valid Master to form an alliance with!', updatedWar };
       }
       const targetMaster = updatedWar.participants[targetParam];
       if (targetMaster.discordId === actor.discordId || !targetMaster.isAlive) {
-        return { success: false, message: 'Cannot ally with this Master.', apSpent: 0, updatedWar };
+        return { success: false, message: 'Cannot form an alliance with this Master.', updatedWar };
       }
-      actor.ap -= apCost;
       const allianceId = `alliance_${Date.now()}`;
       const alliance: WarAlliance = {
         id: allianceId,
         name: `Covenant of ${actor.username} & ${targetMaster.username}`,
         memberMasterIds: [actor.discordId, targetMaster.discordId],
         isSecret: true,
-        betrayalRiskScore: 35,
-        formedAtRound: updatedWar.currentRound
+        betrayalRiskScore: 30
       };
       updatedWar.alliances[allianceId] = alliance;
       actor.allianceId = allianceId;
       targetMaster.allianceId = allianceId;
-      resultMsg = `🤝 Secret Alliance formed with ${targetMaster.username}! You will share reconnaissance until one breaks the vow.`;
+      resultMsg = `🤝 Secret Covenant formed between ${actor.isExposed ? actor.username : 'Unknown Master'} & ${targetMaster.isExposed ? targetMaster.username : 'Hidden Master'}! You fight side-by-side until one betrays the pact.`;
       break;
+    }
 
-    case 'betray_ally':
-      apCost = 20;
-      if (actor.ap < apCost) return { success: false, message: 'Not enough AP to execute betrayal!', apSpent: 0, updatedWar };
+    case 'betray_ally': {
       if (!actor.allianceId || !updatedWar.alliances[actor.allianceId]) {
-        return { success: false, message: 'You have no active alliance to betray!', apSpent: 0, updatedWar };
+        return { success: false, message: 'You have no active alliance to betray!', updatedWar };
       }
       const activeAlliance = updatedWar.alliances[actor.allianceId];
       const allyId = activeAlliance.memberMasterIds.find(id => id !== actor.discordId);
       if (!allyId || !updatedWar.participants[allyId]) {
-        return { success: false, message: 'No ally found in current pact.', apSpent: 0, updatedWar };
+        return { success: false, message: 'No ally found in current pact.', updatedWar };
       }
       const ally = updatedWar.participants[allyId];
-      actor.ap -= apCost;
       delete updatedWar.alliances[actor.allianceId];
       actor.allianceId = undefined;
       ally.allianceId = undefined;
 
-      // Guaranteed ambush combat against former ally
+      // Betrayal exposes both!
+      actor.isExposed = true;
+      actor.exposureReason = 'ambush_clash';
+      ally.isExposed = true;
+      ally.exposureReason = 'ambush_clash';
+
       combatInfo = {
         opponentId: ally.discordId,
         opponentName: ally.username,
         isAmbush: true
       };
-      resultMsg = `🗡️ BETRAYAL! You broke the pact and ambushed ${ally.username} with lethal surprise attack!`;
+      resultMsg = `🗡️ BETRAYAL! **${actor.username}** broke the covenant and ambushed **${ally.username}** with a lethal surprise strike! Both identities are exposed!`;
       break;
+    }
 
-    case 'challenge_master':
-      apCost = 35;
-      if (actor.ap < apCost) return { success: false, message: 'Not enough AP to issue a duel!', apSpent: 0, updatedWar };
+    case 'challenge_master': {
       if (!targetParam || !updatedWar.participants[targetParam]) {
-        return { success: false, message: 'Target Master not found!', apSpent: 0, updatedWar };
+        return { success: false, message: 'Target Master not found!', updatedWar };
       }
       const opponent = updatedWar.participants[targetParam];
       if (opponent.discordId === actor.discordId || !opponent.isAlive) {
-        return { success: false, message: 'Cannot challenge this target.', apSpent: 0, updatedWar };
+        return { success: false, message: 'Cannot challenge this target.', updatedWar };
       }
-      actor.ap -= apCost;
+
+      // Open challenge exposes both
+      actor.isExposed = true;
+      actor.exposureReason = 'direct_combat';
+      opponent.isExposed = true;
+      opponent.exposureReason = 'direct_combat';
+
       combatInfo = {
         opponentId: opponent.discordId,
         opponentName: opponent.username,
         isAmbush: false
       };
-      resultMsg = `⚔️ CHALLENGE ISSUED: ${actor.servantName} clashes with ${opponent.username}'s ${opponent.servantName}!`;
+      resultMsg = `⚔️ OPEN CLASH: **${actor.username}** (${actor.servantName}) directly engages **${opponent.username}** (${opponent.servantName})!`;
       break;
+    }
+
+    case 'simulate_skirmish': {
+      return simulateWarSkirmish(updatedWar);
+    }
   }
 
   // Record event log
   updatedWar.eventLogs.unshift({
     id: `evt_${Date.now()}`,
-    round: updatedWar.currentRound,
     timestamp: Date.now(),
-    text: `${actor.username}: ${resultMsg}`,
-    type: action === 'betray_ally' ? 'betrayal' : action === 'form_alliance' ? 'alliance' : 'scout'
+    text: resultMsg,
+    type: action === 'betray_ally' ? 'betrayal' : action === 'form_alliance' ? 'alliance' : action === 'rest_and_heal' ? 'heal' : 'clash'
   });
 
   return {
     success: true,
     message: resultMsg,
-    apSpent: apCost,
     combatTriggered: combatInfo,
     eliminatedMasterId: eliminatedId,
     updatedWar
   };
 }
 
-export function advanceWarRound(war: HolyGrailWarSession): HolyGrailWarSession {
+export function simulateWarSkirmish(war: HolyGrailWarSession): WarActionResult {
   const updated: HolyGrailWarSession = JSON.parse(JSON.stringify(war));
-  updated.currentRound++;
-
-  // Refill AP and simulate AI actions
-  Object.values(updated.participants).forEach(p => {
-    if (p.isAlive) {
-      p.ap = Math.min(100, p.ap + 60);
-    }
-  });
-
-  // AI vs AI random skirmishes
   const aliveAis = Object.values(updated.participants).filter(p => p.isAlive && p.discordId.startsWith('rival_'));
-  if (aliveAis.length >= 2 && Math.random() < 0.6) {
-    const ai1 = aliveAis[0];
-    const ai2 = aliveAis[1];
-    const dmg = Math.round(3000 + Math.random() * 4000);
-    ai2.currentHp -= dmg;
-    if (ai2.currentHp <= 0) {
-      ai2.isAlive = false;
-      ai1.kills++;
-      updated.eventLogs.unshift({
-        id: `evt_ai_elim_${Date.now()}`,
-        round: updated.currentRound,
-        timestamp: Date.now(),
-        text: `☠️ ELIMINATION: ${ai1.username}'s ${ai1.servantName} defeated ${ai2.username}'s ${ai2.servantName}!`,
-        type: 'elimination'
-      });
-    }
+
+  if (aliveAis.length < 2) {
+    return {
+      success: true,
+      message: 'Not enough rival Masters remaining for a background skirmish.',
+      updatedWar: updated
+    };
   }
 
-  // Check remaining alive masters
+  // Pick two random AI rivals to clash
+  const idx1 = Math.floor(Math.random() * aliveAis.length);
+  let idx2 = Math.floor(Math.random() * (aliveAis.length - 1));
+  if (idx2 >= idx1) idx2++;
+
+  const ai1 = aliveAis[idx1];
+  const ai2 = aliveAis[idx2];
+  const damage = Math.round(3500 + Math.random() * 4500);
+  ai2.currentHp = Math.max(0, ai2.currentHp - damage);
+
+  // Chance to expose during intense skirmish
+  if (!ai1.isExposed && Math.random() < 0.45) {
+    ai1.isExposed = true;
+    ai1.exposureReason = 'direct_combat';
+    ai1.exposedAt = Date.now();
+  }
+  if (!ai2.isExposed && Math.random() < 0.45) {
+    ai2.isExposed = true;
+    ai2.exposureReason = 'direct_combat';
+    ai2.exposedAt = Date.now();
+  }
+
+  const name1 = ai1.isExposed ? `Master **${ai1.username}** (${ai1.servantName})` : `An unidentified Master with **${ai1.servantClass}**`;
+  const name2 = ai2.isExposed ? `Master **${ai2.username}** (${ai2.servantName})` : `a shadow Master with **${ai2.servantClass}**`;
+
+  let clashText = `⚔️ SKIRMISH: ${name1} clashed in the city with ${name2}, dealing ${damage.toLocaleString()} damage!`;
+
+  if (ai2.currentHp <= 0) {
+    ai2.isAlive = false;
+    ai2.isExposed = true; // Elimination exposes identity!
+    ai1.kills++;
+    clashText = `☠️ ELIMINATION: ${name1} struck a fatal blow and eliminated Master **${ai2.username}** (${ai2.servantName}) from the Holy Grail War!`;
+  }
+
+  updated.eventLogs.unshift({
+    id: `evt_skirmish_${Date.now()}`,
+    timestamp: Date.now(),
+    text: clashText,
+    type: ai2.currentHp <= 0 ? 'elimination' : 'clash'
+  });
+
+  // Check victory condition
   const remainingAlive = Object.values(updated.participants).filter(p => p.isAlive);
   if (remainingAlive.length === 1) {
     updated.status = 'concluded';
     updated.grailWinnerId = remainingAlive[0].discordId;
+    remainingAlive[0].isExposed = true;
     updated.eventLogs.unshift({
       id: `evt_grail_win_${Date.now()}`,
-      round: updated.currentRound,
       timestamp: Date.now(),
-      text: `🏆 THE HOLY GRAIL HAS MANIFESTED! ${remainingAlive[0].username} has claimed supreme victory!`,
+      text: `🏆 THE HOLY GRAIL HAS MANIFESTED! Master **${remainingAlive[0].username}** (${remainingAlive[0].servantName}) is the sole survivor and has won the Holy Grail War!`,
       type: 'clash'
     });
   }
 
-  return updated;
+  return {
+    success: true,
+    message: clashText,
+    eliminatedMasterId: ai2.currentHp <= 0 ? ai2.discordId : undefined,
+    updatedWar: updated
+  };
 }
+

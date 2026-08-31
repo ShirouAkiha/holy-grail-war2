@@ -7,7 +7,6 @@ import {
   ActiveCombatant,
   CombatTurnLog,
   HolyGrailWarSession,
-  DistrictId,
   ServantTemplate,
   MasterServantInstance,
   ServantClass
@@ -23,7 +22,13 @@ import {
   renderDialogueCard,
   renderBattleTurnSummary
 } from '../lib/canvas/browserCanvas';
-import { executeWarAction, advanceWarRound } from '../lib/engine/grailwar';
+import {
+  executeWarAction,
+  simulateWarSkirmish,
+  attackSuspectUserInWar,
+  leakIntelInWar,
+  exposeMasterInWar
+} from '../lib/engine/grailwar';
 import {
   Terminal,
   Sparkles,
@@ -38,7 +43,13 @@ import {
   MessageSquare,
   Flame,
   PlusCircle,
-  Trash2
+  Trash2,
+  Crosshair,
+  Radio,
+  Eye,
+  EyeOff,
+  UserX,
+  Lock
 } from 'lucide-react';
 
 function createContractFromPool(allThrone: ServantTemplate[], masterId: string): MasterServantInstance {
@@ -152,6 +163,7 @@ export default function DiscordEmulator({
   onUpdateCustomServants
 }: DiscordEmulatorProps) {
   const [inputCommand, setInputCommand] = useState('');
+  const [activeChannel, setActiveChannel] = useState<'public' | 'dm'>('public');
   const [messages, setMessages] = useState<DiscordMessage[]>([
     {
       id: 'msg_welcome',
@@ -161,24 +173,27 @@ export default function DiscordEmulator({
         title: '⚔️ Holy Grail War Discord Bot Engine (v14.0)',
         description:
           'Welcome, Master! The Fuyuki Holy Grail War has commenced.\n' +
-          'Unlike gacha games, each Master holds **3 Command Seals** and is bound to a single Heroic Spirit summoned from the Throne of Heroes.\n\n' +
-          '**Available Commands:**\n' +
-          '• `/summon [ritual | status | release]` — Perform the summoning ritual to contract an available Servant\n' +
-          '• `/addservant [create | list | delete]` — **(Admin)** Register custom Heroic Spirits, photos & parameters\n' +
-          '• `/servant` — View your contracted Servant\'s status card, radar stats, and dialogue quotes\n' +
-          '• `/duel [opponent]` — Engage in tactical Quick/Arts/Buster turn-based combat\n' +
-          '• `/grailwar` — Access the 7-Master battle royale district map & spend AP\n' +
-          '• `/customise` — Allocate stat points, customize dialogue quotes & equip Craft Essences',
+          'All Masters operate under the **Secrecy of Magecraft**. Your true identity is hidden in shadows until exposed.\n\n' +
+          '⚠️ **Exposure Rules:**\n' +
+          '• Invoking any bot command in the **#holy-grail-war (Public)** channel will immediately **EXPOSE** your Master identity!\n' +
+          '• Switch to **#direct-messages (DM)** if you wish to issue secret commands in concealment.\n' +
+          '• Use `/grailwar attack <@user>` to ambush suspected rival Masters (if innocent, they die and you are exposed!)\n' +
+          '• Use `/grailwar leak <intel>` to broadcast clandestine intelligence onto the war board.\n\n' +
+          '**Key Slash Commands:**\n' +
+          '• `/grailwar [status | attack | leak | skirmish | rest]`\n' +
+          '• `/servants [list | search <term> | view <name>]`\n' +
+          '• `/summon [ritual | status | release]`\n' +
+          '• `/duel [opponent]`',
         color: '#f59e0b',
-        footer: 'System Ready • Discord.js v14 • Holy Grail War Engine'
+        footer: 'System Ready • Discord.js v14 • Holy Grail War Secret Engine'
       },
       components: {
         type: 'buttons',
         items: [
-          { id: 'quick_summon_ritual', label: 'Summoning Ritual', style: 'success', emoji: '✨' },
-          { id: 'quick_servant_card', label: 'My Servant Card', style: 'primary', emoji: '🛡️' },
-          { id: 'quick_start_duel', label: 'Start Duel Arena', style: 'danger', emoji: '⚔️' },
-          { id: 'quick_war_status', label: 'Grail War Status', style: 'secondary', emoji: '🏆' }
+          { id: 'quick_war_status', label: 'Intelligence Board (/grailwar)', style: 'secondary', emoji: '🏆' },
+          { id: 'war_attack_prompt', label: 'Ambush Suspect (/grailwar attack)', style: 'danger', emoji: '⚔️' },
+          { id: 'war_leak_prompt', label: 'Leak Intel (/grailwar leak)', style: 'primary', emoji: '🕵️' },
+          { id: 'quick_summon_ritual', label: 'Summoning Ritual', style: 'success', emoji: '✨' }
         ]
       }
     }
@@ -209,6 +224,34 @@ export default function DiscordEmulator({
     const rawCmd = cmd.trim();
     const trimmed = rawCmd.toLowerCase();
     const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
+
+    // Check automatic exposure if executing commands in PUBLIC channel
+    if (activeChannel === 'public' && activeServant) {
+      const userParticipant = grailWar.participants[master.discordId];
+      if (userParticipant && !userParticipant.isExposed) {
+        const { updatedWar, newlyExposed } = exposeMasterInWar(grailWar, master.discordId, 'public_command');
+        if (newlyExposed) {
+          onUpdateGrailWar(updatedWar);
+          // Insert alert embed into message stream
+          setTimeout(() => {
+            addMessage({
+              id: getNextId('bot_public_exposed_alert'),
+              sender: 'bot',
+              timestamp: 'Just now',
+              embed: {
+                title: '📡 IDENTITY EXPOSED TO SERVER',
+                description:
+                  `⚠️ **Magecraft Detected in Public Channel!**\n\n` +
+                  `Master **${master.username}** has invoked commands in **#holy-grail-war**.\n` +
+                  `Your true identity and contracted Servant (**${activeServant.template.name}** - ${activeServant.template.servantClass}) are now officially exposed on the Holy Grail War Intelligence Board!`,
+                color: '#f59e0b',
+                footer: 'Exposure Trigger: Public Channel Command Invocation'
+              }
+            });
+          }, 300);
+        }
+      }
+    }
 
     // Record User message in Discord chat stream
     addMessage({
@@ -483,9 +526,9 @@ export default function DiscordEmulator({
     }
 
     // ----------------------------------------------------
-    // COMMAND 3: /servant
+    // COMMAND 3: /servant (Master's Active Servant)
     // ----------------------------------------------------
-    if (trimmed.startsWith('/servant')) {
+    if (trimmed === '/servant' || trimmed.startsWith('/servant status')) {
       if (!activeServant) {
         addMessage({
           id: getNextId('bot_no_servant'),
@@ -493,13 +536,14 @@ export default function DiscordEmulator({
           timestamp: 'Just now',
           embed: {
             title: '🕯️ No Contracted Servant',
-            description: 'You have not summoned a Heroic Spirit yet for the Holy Grail War!\nUse `/summon ritual` to draw the summoning circle.',
+            description: 'You have not summoned a Heroic Spirit yet for the Holy Grail War!\nUse `/summon ritual` to draw the summoning circle or `/servants` to browse all spirits.',
             color: '#ef4444'
           },
           components: {
             type: 'buttons',
             items: [
-              { id: 'quick_summon_ritual', label: 'Begin Summoning Ritual', style: 'success', emoji: '✨' }
+              { id: 'quick_summon_ritual', label: 'Begin Summoning Ritual', style: 'success', emoji: '✨' },
+              { id: 'btn_show_servants_list', label: 'Browse Throne (/servants)', style: 'primary', emoji: '📜' }
             ]
           }
         });
@@ -528,10 +572,127 @@ export default function DiscordEmulator({
           type: 'buttons',
           items: [
             { id: 'btn_hear_quote', label: 'Hear Dialogue Card', style: 'primary', emoji: '💬' },
+            { id: 'btn_show_servants_list', label: 'All Servants List', style: 'secondary', emoji: '📜' },
             { id: 'quick_start_duel', label: 'Enter Battle', style: 'danger', emoji: '⚔️' }
           ]
         }
       });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // COMMAND 3.5: /servants, /servantlist, /throne (All Servants & Search)
+    // ----------------------------------------------------
+    if (trimmed.startsWith('/servants') || trimmed.startsWith('/servant list') || trimmed.startsWith('/servant search') || trimmed.startsWith('/throne') || trimmed.startsWith('/servantlist')) {
+      const isSearch = trimmed.includes('search ') || trimmed.startsWith('/servant search');
+      const isView = trimmed.includes('view ');
+
+      // Sub-case: /servants view <name_or_id>
+      if (isView) {
+        const query = trimmed.replace('/servants view', '').replace('/servant view', '').trim().toLowerCase();
+        const target = allThrone.find(
+          s => s.name.toLowerCase().includes(query) || s.id.toLowerCase() === query
+        );
+
+        if (target) {
+          postServantFullProfile(target);
+        } else {
+          addMessage({
+            id: getNextId('bot_servants_notfound'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '❌ Heroic Spirit Not Found',
+              description: `No Servant found matching "${query}". Use \`/servants\` to list all registered Heroic Spirits.`,
+              color: '#ef4444'
+            }
+          });
+        }
+        return;
+      }
+
+      // Sub-case: /servants search <query>
+      if (isSearch) {
+        const query = trimmed
+          .replace('/servants search', '')
+          .replace('/servant search', '')
+          .replace('/servants', '')
+          .trim()
+          .toLowerCase();
+
+        if (!query) {
+          addMessage({
+            id: getNextId('bot_search_empty'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '🔍 Throne of Heroes Search',
+              description:
+                `Please specify a search term!\n\n` +
+                `**Usage Examples:**\n` +
+                `• \`/servants search Artoria\`\n` +
+                `• \`/servants search Saber\`\n` +
+                `• \`/servants search Excalibur\`\n` +
+                `• \`/servants search Custom\``,
+              color: '#d4af37'
+            }
+          });
+          return;
+        }
+
+        const matches = allThrone.filter(s =>
+          s.name.toLowerCase().includes(query) ||
+          s.servantClass.toLowerCase().includes(query) ||
+          s.title.toLowerCase().includes(query) ||
+          s.noblePhantasm.name.toLowerCase().includes(query) ||
+          (s.lore && s.lore.toLowerCase().includes(query))
+        );
+
+        if (matches.length === 0) {
+          addMessage({
+            id: getNextId('bot_search_no_results'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `🔍 No Results for "${query}"`,
+              description:
+                `No Heroic Spirits found matching **"${query}"**.\n\n` +
+                `• Try searching by class name (*Saber, Archer, Lancer, Rider, Caster, Assassin, Berserker, Ruler*)\n` +
+                `• Or use \`/servants list\` to view all ${allThrone.length} registered spirits.`,
+              color: '#ef4444'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'btn_show_servants_list', label: 'View All Servants List', style: 'primary', emoji: '📜' }
+              ]
+            }
+          });
+          return;
+        }
+
+        postServantsList(
+          matches,
+          `🔍 Search Results for "${query}" (${matches.length} Found)`,
+          `Matching canon & custom Heroic Spirits recorded in the Throne of Heroes. Click any name below to broadcast their complete profile:`
+        );
+        return;
+      }
+
+      // Sub-case: /servants canon or /servants custom or /servants (all)
+      let listPool = allThrone;
+      let listTitle = `📜 Throne of Heroes Registry (${allThrone.length} Servants)`;
+      let listSubtitle = `All canon & custom Heroic Spirits registered in the Great Holy Grail database. Click any name below to view their full parameters, deck, lore, and quotes:`;
+
+      if (trimmed.includes('canon')) {
+        listPool = allThrone.filter(s => !s.isCustomOrMeme);
+        listTitle = `🏛️ Canon Heroic Spirits Registry (${listPool.length} Servants)`;
+      } else if (trimmed.includes('custom')) {
+        listPool = allThrone.filter(s => s.isCustomOrMeme);
+        listTitle = `🛠️ Custom Admin Servants Registry (${listPool.length} Servants)`;
+      }
+
+      postServantsList(listPool, listTitle, listSubtitle);
       return;
     }
 
@@ -617,42 +778,220 @@ export default function DiscordEmulator({
     }
 
     // ----------------------------------------------------
-    // COMMAND 5: /grailwar
+    // COMMAND 5: /grailwar, /attack, /leak
     // ----------------------------------------------------
-    if (trimmed.startsWith('/grailwar')) {
+    if (trimmed.startsWith('/grailwar') || trimmed.startsWith('/attack') || trimmed.startsWith('/leak') || trimmed.startsWith('/ambush')) {
+      const isAttack = trimmed.startsWith('/grailwar attack') || trimmed.startsWith('/attack') || trimmed.startsWith('/ambush');
+      const isLeak = trimmed.startsWith('/grailwar leak') || trimmed.startsWith('/leak');
+      const isSkirmish = trimmed.includes('skirmish');
+      const isRest = trimmed.includes('rest') || trimmed.includes('heal');
+      const isBetray = trimmed.includes('betray');
+
+      // SUB-CASE A: /grailwar attack <target> (Ambush suspect)
+      if (isAttack) {
+        let targetQuery = trimmed
+          .replace('/grailwar attack', '')
+          .replace('/attack', '')
+          .replace('/ambush', '')
+          .trim();
+
+        if (!targetQuery) {
+          addMessage({
+            id: getNextId('bot_attack_help'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '⚔️ Holy Grail War: Tactical Ambush',
+              description:
+                `Specify a suspect user to ambush in the server!\n\n` +
+                `**Usage Examples:**\n` +
+                `• \`/grailwar attack @Kotomine\`\n` +
+                `• \`/grailwar attack Bazett\`\n` +
+                `• \`/attack Shirou\`\n\n` +
+                `⚠️ *If the target is a real Master, both identities are exposed and you deal ambush damage. If the target is an innocent user, the civilian dies and your identity is exposed for breaching the Secrecy of Magecraft!*`,
+              color: '#ef4444'
+            }
+          });
+          return;
+        }
+
+        const res = attackSuspectUserInWar(grailWar, master.discordId, targetQuery);
+        onUpdateGrailWar(res.updatedWar);
+
+        addMessage({
+          id: getNextId('bot_attack_res'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: res.targetWasMaster
+              ? '⚔️ TACTICAL AMBUSH: RIVAL MASTER ENGAGED!'
+              : '☠️ COLLATERAL CASUALTY: CIVILIAN SLAIN!',
+            description: res.message,
+            color: res.targetWasMaster ? '#ef4444' : '#7f1d1d',
+            footer: res.targetWasMaster
+              ? 'Both Master identities are now EXPOSED on the Grail War Status Board'
+              : 'Attacking Master identity is now VIOLENTLY EXPOSED for Secrecy breach'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'quick_war_status', label: 'View Intelligence Board', style: 'primary', emoji: '📋' },
+              { id: 'war_attack_prompt', label: 'Ambush Another', style: 'danger', emoji: '⚔️' }
+            ]
+          }
+        });
+        return;
+      }
+
+      // SUB-CASE B: /grailwar leak <intel> (Broadcast intelligence)
+      if (isLeak) {
+        let intelText = trimmed
+          .replace('/grailwar leak', '')
+          .replace('/leak', '')
+          .trim();
+
+        if (!intelText) {
+          addMessage({
+            id: getNextId('bot_leak_help'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '🕵️ Holy Grail War: Intelligence Leak Dispatch',
+              description:
+                `Broadcast secret intelligence, rumors, or out a suspected rival Master!\n\n` +
+                `**Usage Examples:**\n` +
+                `• \`/grailwar leak Sighted Archer near Fuyuki Bridge\`\n` +
+                `• \`/grailwar leak Kotomine is commanding Gilgamesh Archer\`\n` +
+                `• \`/leak Berserker spotted in deep forest\``,
+              color: '#a855f7'
+            }
+          });
+          return;
+        }
+
+        // Check if a known rival name is mentioned in the leak to expose them
+        const matchMaster = Object.values(grailWar.participants).find(
+          p => p.discordId !== master.discordId && (intelText.toLowerCase().includes(p.username.toLowerCase()) || intelText.toLowerCase().includes(p.servantName.toLowerCase()))
+        );
+
+        const res = leakIntelInWar(grailWar, master.username, intelText, matchMaster?.discordId);
+        onUpdateGrailWar(res.updatedWar);
+
+        addMessage({
+          id: getNextId('bot_leak_res'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '🕵️ Intelligence Leak Broadcasted',
+            description: res.message,
+            color: '#a855f7',
+            footer: 'Information updated on the Holy Grail War Intelligence Board'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'quick_war_status', label: 'Check Status Board', style: 'primary', emoji: '📋' },
+              { id: 'war_leak_prompt', label: 'Broadcast Another Leak', style: 'secondary', emoji: '🕵️' }
+            ]
+          }
+        });
+        return;
+      }
+
+      // SUB-CASE C: /grailwar skirmish
+      if (isSkirmish) {
+        const result = simulateWarSkirmish(grailWar);
+        onUpdateGrailWar(result.updatedWar);
+        const alive = Object.values(result.updatedWar.participants).filter(x => x.isAlive).length;
+
+        addMessage({
+          id: getNextId('bot_war_skirmish'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '💥 Holy Grail War: City Skirmish',
+            description:
+              `${result.message}\n\n` +
+              `👥 **Surviving Masters:** ${alive}/7 alive`,
+            color: '#ef4444',
+            footer: 'Background clash simulated across Fuyuki'
+          }
+        });
+        return;
+      }
+
+      // SUB-CASE D: /grailwar rest or betray
+      if (isRest || isBetray) {
+        const actionType = isBetray ? 'betray_ally' : 'rest_and_heal';
+        const result = executeWarAction(grailWar, master.discordId, actionType);
+        onUpdateGrailWar(result.updatedWar);
+
+        addMessage({
+          id: getNextId('bot_war_act_res'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: result.success ? '✅ Holy Grail War Action Completed' : '⚠️ Action Interrupted',
+            description: result.message,
+            color: result.success ? '#22c55e' : '#ef4444'
+          }
+        });
+        return;
+      }
+
+      // SUB-CASE E: /grailwar status (Secret Intelligence Board)
       const p = grailWar.participants[master.discordId] || Object.values(grailWar.participants)[0];
-      const alive = Object.values(grailWar.participants).filter(x => x.isAlive).length;
-      const district = grailWar.districts[p?.currentDistrict || 'homurahara_academy'];
+      const aliveCount = Object.values(grailWar.participants).filter(x => x.isAlive).length;
+      const exposedCount = Object.values(grailWar.participants).filter(x => x.isExposed).length;
+      const civilianDeaths = grailWar.innocentVictims?.length || 0;
+
+      // Render only exposed details; hidden participants are masked
+      const rosterLines = Object.values(grailWar.participants).map(m => {
+        const isUser = m.discordId === master.discordId;
+        const statusIcon = !m.isAlive ? '💀' : m.isExposed ? '📡' : '🕶️';
+
+        if (m.isExposed || isUser || !m.isAlive) {
+          const hpBar = `${m.currentHp.toLocaleString()}/${m.maxHp.toLocaleString()}`;
+          const exposureTag = m.exposureReason === 'public_command'
+            ? '[Exposed: Public Command]'
+            : m.exposureReason === 'ambush_clash'
+            ? '[Exposed: Ambush Clash]'
+            : m.exposureReason === 'innocent_assault'
+            ? '[Exposed: Civilian Assault]'
+            : m.exposureReason === 'intel_leak'
+            ? '[Exposed: Intel Leak]'
+            : '[Exposed: Open Combat]';
+
+          return `• ${statusIcon} **${m.username}** ${isUser ? '(YOU)' : ''} — **${m.servantName}** [${m.servantClass}] | HP: ${hpBar} | Kills: ${m.kills}` +
+                 `\n  ↳ *${m.isAlive ? exposureTag : 'Eliminated from Tournament'}*`;
+        } else {
+          return `• ${statusIcon} **??? (Shadow Master)** — Servant: **???** [Class: Unknown] | HP: [CLASSIFIED] | Status: In Shadows`;
+        }
+      }).join('\n\n');
 
       addMessage({
         id: getNextId('bot_war_status'),
         sender: 'bot',
         timestamp: 'Just now',
         embed: {
-          title: `🏆 ${grailWar.title} — Round ${grailWar.currentRound}/${grailWar.maxRounds}`,
+          title: `🏆 ${grailWar.title} — Intelligence Board`,
           description:
-            `⚡ **Your Action Points:** ${p?.ap ?? 100}/100 AP\n` +
-            `📍 **Current District:** ${district.name}\n` +
-            `✨ **Leyline Effect:** \`${district.leylineBonus}\`\n` +
             `🩸 **Command Seals:** ${p?.commandSeals ?? 3}/3\n` +
-            `👥 **Surviving Masters:** ${alive}/7 alive\n\n` +
-            `**Active Participants:**\n` +
-            Object.values(grailWar.participants)
-              .map(
-                m =>
-                  `• ${m.isAlive ? '🟢' : '💀'} **${m.username}** (${m.servantName}) — *${grailWar.districts[m.currentDistrict].name}*`
-              )
-              .join('\n'),
+            `👥 **Surviving Masters:** ${aliveCount}/7 alive (${exposedCount} Exposed to Server, ${7 - exposedCount} in Shadows)\n` +
+            `☠️ **Civilian Casualties:** ${civilianDeaths} innocent bystanders slain\n` +
+            `⚔️ **War Status:** ${grailWar.status === 'concluded' ? '🏆 Concluded' : '🟢 Active Battle Royale'}\n\n` +
+            `📋 **Participants Intelligence Board:**\n` +
+            rosterLines,
           color: '#f59e0b',
-          footer: '7-Master Battle Royale Tournament'
+          footer: 'Use /grailwar attack @user to ambush suspects | /grailwar leak to broadcast intel'
         },
         components: {
           type: 'buttons',
           items: [
-            { id: 'war_scout', label: 'Scout District (20 AP)', style: 'primary', emoji: '🔭' },
-            { id: 'war_fortify', label: 'Fortify Leyline (25 AP)', style: 'success', emoji: '🏰' },
-            { id: 'war_rest', label: 'Rest & Heal (30 AP)', style: 'secondary', emoji: '🩹' },
-            { id: 'war_advance_round', label: 'Advance War Round', style: 'danger', emoji: '⏩' }
+            { id: 'war_attack_prompt', label: 'Ambush Suspect (/grailwar attack)', style: 'danger', emoji: '⚔️' },
+            { id: 'war_leak_prompt', label: 'Leak Intel (/grailwar leak)', style: 'primary', emoji: '🕵️' },
+            { id: 'war_rest', label: 'Channel Mana (Heal)', style: 'success', emoji: '🩹' },
+            { id: 'war_skirmish', label: 'Simulate City Skirmish', style: 'secondary', emoji: '💥' }
           ]
         }
       });
@@ -667,21 +1006,169 @@ export default function DiscordEmulator({
       embed: {
         title: '❓ Holy Grail War Command Guide',
         description:
+          `• \`/servants [list | search <term> | view <name>]\` — **Browse & search all canon/custom Servants**\n` +
           `• \`/summon [ritual | status | release]\` — Summon a random available Servant\n` +
-          `• \`/addservant [create | list | delete]\` — **(Admin)** Add custom Servants with pictures\n` +
-          `• \`/servant\` — View Servant Radar Card\n` +
-          `• \`/duel\` — Initiate Turn-based Battle\n` +
-          `• \`/grailwar\` — 7-Master Tournament Status`,
+          `• \`/addservant [create | list | delete]\` — **(Admin)** Register custom Heroic Spirits\n` +
+          `• \`/servant\` — View your contracted Servant profile & radar card\n` +
+          `• \`/duel\` — Initiate Turn-based RPG Combat\n` +
+          `• \`/grailwar\` — 7-Master Tournament Status & Clashes`,
         color: '#64748b'
+      },
+      components: {
+        type: 'buttons',
+        items: [
+          { id: 'btn_show_servants_list', label: 'Browse All Servants (/servants)', style: 'primary', emoji: '📜' },
+          { id: 'quick_summon_ritual', label: 'Summon Servant', style: 'success', emoji: '✨' },
+          { id: 'quick_start_duel', label: 'Enter Arena (/duel)', style: 'danger', emoji: '⚔️' }
+        ]
       }
     });
 
     setInputCommand('');
   };
 
+  // Helper: Post List of Servants with Interactive Buttons
+  const postServantsList = (
+    servantsList: ServantTemplate[],
+    headerTitle: string,
+    headerSubtitle: string
+  ) => {
+    const listLines = servantsList.map((s, idx) => {
+      const tag = s.isCustomOrMeme ? '🛠️ [CUSTOM]' : '🏛️ [CANON]';
+      const stars = '⭐'.repeat(s.rarity || 5);
+      return `${idx + 1}. **${s.name}** — *${s.title}* [${s.servantClass} ${stars}] ${tag}\n   └ *NP:* **${s.noblePhantasm.name}** | HP: ${s.baseHp.toLocaleString()} | ATK: ${s.baseAtk.toLocaleString()}`;
+    });
+
+    const buttonItems = servantsList.slice(0, 15).map(s => ({
+      id: `view_servant_${s.id}`,
+      label: s.name.length > 20 ? s.name.substring(0, 18) + '..' : s.name,
+      style: (s.isCustomOrMeme ? 'secondary' : 'primary') as 'primary' | 'secondary',
+      emoji: s.isCustomOrMeme ? '🛠️' : '⚔️'
+    }));
+
+    addMessage({
+      id: getNextId('bot_servants_list'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title: headerTitle,
+        description:
+          `${headerSubtitle}\n\n` +
+          listLines.join('\n\n') +
+          `\n\n*Tip: Search specifically with \`/servants search <keyword>\` (e.g. \`/servants search Gilgamesh\` or \`/servants search Saber\`)*`,
+        color: '#d4af37',
+        footer: `Throne of Heroes • ${servantsList.length} Total Servants Available`
+      },
+      components: {
+        type: 'buttons',
+        items: buttonItems
+      }
+    });
+  };
+
+  // Helper: Post Full Profile of a specific Servant Template to Everyone
+  const postServantFullProfile = (template: ServantTemplate) => {
+    const stars = '⭐'.repeat(template.rarity || 5);
+    const deck = (template.commandDeck || ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'])
+      .map(c => (c === 'Buster' ? '🔴 Buster' : c === 'Arts' ? '🔵 Arts' : '🟢 Quick'))
+      .join(' • ');
+
+    const tempInstance: MasterServantInstance = {
+      id: `temp_${template.id}`,
+      masterId: master.id,
+      templateId: template.id,
+      level: 50,
+      experience: 5000,
+      allocatedStats: { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 },
+      availableStatPoints: 0,
+      skillLevels: [10, 10, 10],
+      customQuotes: {
+        summon: template.summonQuote,
+        battleStart: template.battleStartQuote,
+        noblePhantasm: template.noblePhantasm.chant,
+        victory: template.victoryQuote,
+        defeat: template.defeatQuote
+      },
+      bondLevel: 5,
+      template: template
+    };
+
+    addMessage({
+      id: getNextId('bot_servant_profile'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title: `⚔️ Servant Profile: ${template.name} — ${template.title}`,
+        description:
+          `${stars} | Class: **${template.servantClass}** | Origin: **${template.isCustomOrMeme ? '🛠️ Custom Administrator Creation' : '🏛️ Canon Heroic Spirit'}**\n\n` +
+          `📜 **Historical Legend & Lore:**\n> ${template.lore || 'A legendary soul recorded in the Throne of Heroes.'}\n\n` +
+          `📊 **Base Combat Parameters:**\n` +
+          `• **STR:** \`${template.baseStats.strength}\` | **END:** \`${template.baseStats.endurance}\` | **AGI:** \`${template.baseStats.agility}\`\n` +
+          `• **MAN:** \`${template.baseStats.mana}\` | **LCK:** \`${template.baseStats.luck}\`\n` +
+          `• **Base HP:** \`${template.baseHp.toLocaleString()}\` | **Base ATK:** \`${template.baseAtk.toLocaleString()}\`\n\n` +
+          `🃏 **Command Deck:** ${deck}\n\n` +
+          `💥 **Noble Phantasm: ${template.noblePhantasm.name}** (${template.noblePhantasm.cardType} • ${template.noblePhantasm.target.toUpperCase()})\n` +
+          `> *"${template.noblePhantasm.chant || 'Noble Phantasm release!'}"*\n` +
+          `• **Multiplier:** ${template.noblePhantasm.multiplier}% | **Overcharge:** ${template.noblePhantasm.overchargeEffect || 'Standard boost'}\n` +
+          `• ${template.noblePhantasm.description}\n\n` +
+          `✨ **Active Class & Personal Skills:**\n` +
+          template.skills.map(sk => `• **${sk.name}** [CD: ${sk.cooldown}T]: ${sk.description}`).join('\n') +
+          `\n\n` +
+          `💬 **Master Dialogue Quotes:**\n` +
+          `• **Summon:** *"${template.summonQuote}"*\n` +
+          `• **Battle Start:** *"${template.battleStartQuote}"*\n` +
+          `• **Victory:** *"${template.victoryQuote}"*\n` +
+          `• **Defeat:** *"${template.defeatQuote}"*`,
+        color: template.servantClass === 'Saber' ? '#3b82f6' : template.rarity === 5 ? '#f59e0b' : '#a855f7',
+        footer: `Throne ID: ${template.id} • Holy Grail War Public Registry • Visible to everyone in channel`
+      },
+      canvasType: 'servant',
+      canvasPayload: { servant: tempInstance, masterName: 'Throne of Heroes' },
+      components: {
+        type: 'buttons',
+        items: [
+          { id: `quote_servant_${template.id}`, label: 'Hear Dialogue Card', style: 'primary', emoji: '💬' },
+          { id: 'btn_show_servants_list', label: 'All Servants List (/servants)', style: 'secondary', emoji: '📜' },
+          { id: 'quick_start_duel', label: 'Enter Arena (/duel)', style: 'danger', emoji: '⚔️' }
+        ]
+      }
+    });
+  };
+
   // Button interaction handler
   const handleButtonClick = (btnId: string) => {
-    if (btnId === 'quick_summon_ritual') {
+    if (btnId === 'btn_show_servants_list') {
+      handleCommand('/servants list');
+    } else if (btnId.startsWith('view_servant_')) {
+      const servantId = btnId.replace('view_servant_', '');
+      const target = allThrone.find(s => s.id === servantId);
+      if (target) {
+        postServantFullProfile(target);
+      }
+    } else if (btnId.startsWith('quote_servant_')) {
+      const servantId = btnId.replace('quote_servant_', '');
+      const target = allThrone.find(s => s.id === servantId);
+      if (target) {
+        addMessage({
+          id: getNextId('bot_servant_quote'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `💬 ${target.name}'s Dialogue`,
+            description: `*"${target.summonQuote}"*`,
+            color: '#f59e0b',
+            footer: `${target.title} • Class: ${target.servantClass}`
+          },
+          canvasType: 'dialogue',
+          canvasPayload: {
+            speaker: target.name,
+            quote: target.summonQuote,
+            title: target.title,
+            servantClass: target.servantClass
+          }
+        });
+      }
+    } else if (btnId === 'quick_summon_ritual') {
       handleCommand('/summon ritual');
     } else if (btnId === 'quick_release_contract') {
       handleCommand('/summon release');
@@ -795,65 +1282,117 @@ export default function DiscordEmulator({
         });
       }
     } else if (btnId.startsWith('war_')) {
-      if (btnId === 'war_advance_round') {
-        const nextWar = advanceWarRound(grailWar);
-        onUpdateGrailWar(nextWar);
+      if (btnId === 'war_attack_prompt') {
+        setInputCommand('/grailwar attack ');
+        return;
+      }
+
+      if (btnId === 'war_leak_prompt') {
+        setInputCommand('/grailwar leak ');
+        return;
+      }
+
+      if (btnId === 'war_skirmish') {
+        const result = simulateWarSkirmish(grailWar);
+        onUpdateGrailWar(result.updatedWar);
+        const alive = Object.values(result.updatedWar.participants).filter(x => x.isAlive).length;
         addMessage({
-          id: getNextId('bot_war_adv'),
+          id: getNextId('bot_war_skirmish'),
           sender: 'bot',
           timestamp: 'Just now',
           embed: {
-            title: `⏩ Holy Grail War: Round ${nextWar.currentRound} Commenced!`,
+            title: '💥 Holy Grail War: Rival Clash Simulated',
             description:
-              `Action Points have been replenished (+60 AP)!\n` +
-              `Recent Skirmishes:\n` +
-              nextWar.eventLogs.slice(0, 3).map(e => `• ${e.text}`).join('\n'),
-            color: '#a855f7'
+              `${result.message}\n\n` +
+              `👥 **Surviving Masters:** ${alive}/7 alive\n` +
+              `Recent Log:\n` +
+              result.updatedWar.eventLogs.slice(0, 2).map(e => `• ${e.text}`).join('\n'),
+            color: '#ef4444'
           }
         });
         return;
       }
 
-      let action: 'scout' | 'fortify_leyline' | 'rest_and_heal' = 'scout';
-      if (btnId === 'war_fortify') action = 'fortify_leyline';
-      if (btnId === 'war_rest') action = 'rest_and_heal';
+      if (btnId === 'war_rest') {
+        const result = executeWarAction(grailWar, master.discordId, 'rest_and_heal');
+        onUpdateGrailWar(result.updatedWar);
 
-      const result = executeWarAction(grailWar, master.discordId, action);
-      onUpdateGrailWar(result.updatedWar);
-
-      addMessage({
-        id: getNextId('bot_war_act'),
-        sender: 'bot',
-        timestamp: 'Just now',
-        embed: {
-          title: result.success ? '✅ Grail War Action Succeeded' : '⚠️ Action Interrupted',
-          description:
-            `${result.message}\n\n` +
-            `⚡ **Remaining AP:** ${result.updatedWar.participants[master.discordId]?.ap ?? 0} AP`,
-          color: result.success ? '#22c55e' : '#ef4444'
-        }
-      });
+        addMessage({
+          id: getNextId('bot_war_act'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: result.success ? '✅ Mana Recovery Completed' : '⚠️ Action Interrupted',
+            description: result.message,
+            color: result.success ? '#22c55e' : '#ef4444'
+          }
+        });
+      }
     }
   };
 
+  const userParticipant = grailWar.participants[master.discordId];
+  const isUserExposed = userParticipant?.isExposed;
+
   return (
     <div id="discord_emulator_container" className="flex flex-col h-full bg-[#0a0a0a] text-[#dbdee1] rounded-xl overflow-hidden border border-[#1a1a1a] shadow-2xl">
-      {/* Discord Header Bar */}
-      <div className="flex items-center justify-between px-4 py-3 bg-[#111] border-b border-[#1a1a1a]">
+      {/* Discord Header Bar with Channel Switcher */}
+      <div className="flex flex-wrap items-center justify-between px-4 py-2.5 bg-[#111] border-b border-[#1a1a1a] gap-2">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-7 h-7 rounded-sm bg-[#161616] text-[#d4af37] border border-[#d4af37]/30 font-mono font-bold text-xs">
-            #
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-serif italic text-white text-base">holy-grail-war</span>
-              <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold bg-[#161616] text-[#d4af37] border border-[#d4af37]/30 rounded-sm">BOT</span>
-            </div>
-            <p className="text-[11px] font-mono text-white/40">discord.js v14 Slash Command Simulator & Holy Grail Engine</p>
+          {/* Channel Switch Tabs */}
+          <div className="flex items-center bg-[#0a0a0a] p-0.5 rounded border border-[#1a1a1a]">
+            <button
+              onClick={() => setActiveChannel('public')}
+              className={`px-3 py-1 rounded text-xs font-mono flex items-center gap-1.5 transition ${
+                activeChannel === 'public'
+                  ? 'bg-[#161616] text-[#d4af37] border border-[#d4af37]/30 font-bold'
+                  : 'text-white/40 hover:text-white'
+              }`}
+              title="Public Server Channel - ⚠️ Using bot commands here exposes your Master Identity!"
+            >
+              <span>#</span>
+              <span>holy-grail-war</span>
+              <span className="text-[9px] px-1 py-0.2 rounded bg-[#220000] text-rose-400 border border-rose-500/30">PUBLIC</span>
+            </button>
+
+            <button
+              onClick={() => setActiveChannel('dm')}
+              className={`px-3 py-1 rounded text-xs font-mono flex items-center gap-1.5 transition ${
+                activeChannel === 'dm'
+                  ? 'bg-[#161616] text-purple-300 border border-purple-500/30 font-bold'
+                  : 'text-white/40 hover:text-white'
+              }`}
+              title="Private Direct Message - 🕶️ Shadow Mode: commands here keep identity concealed"
+            >
+              <Lock className="w-3 h-3 text-purple-400" />
+              <span>fuyuki-dms</span>
+              <span className="text-[9px] px-1 py-0.2 rounded bg-[#100820] text-purple-400 border border-purple-500/30">SECRET</span>
+            </button>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Master Exposure State Badge */}
+          <div
+            className={`px-2.5 py-1 text-[11px] font-mono font-medium rounded-sm border flex items-center gap-1.5 ${
+              isUserExposed
+                ? 'bg-[#221c08] text-[#f59e0b] border-[#f59e0b]/40'
+                : 'bg-[#0f172a] text-[#38bdf8] border-[#38bdf8]/40'
+            }`}
+          >
+            {isUserExposed ? (
+              <>
+                <Eye className="w-3 h-3 text-[#f59e0b]" />
+                <span>Identity: <strong>EXPOSED</strong></span>
+              </>
+            ) : (
+              <>
+                <EyeOff className="w-3 h-3 text-[#38bdf8]" />
+                <span>Identity: <strong>IN SHADOWS</strong></span>
+              </>
+            )}
+          </div>
+
           <div className="px-2.5 py-1 text-[11px] font-mono font-medium rounded-sm bg-[#161616] text-rose-400 border border-rose-400/30">
             🔴 {master.commandSeals}/3 Seals
           </div>
@@ -983,17 +1522,24 @@ export default function DiscordEmulator({
         <div className="flex items-center gap-2 mt-2 px-1 text-[10px] font-mono text-white/40 overflow-x-auto">
           <span>Quick:</span>
           <button
+            onClick={() => handleCommand('/servants list')}
+            className="hover:text-[#d4af37] hover:underline whitespace-nowrap text-[#d4af37]"
+          >
+            /servants list
+          </button>
+          <span>•</span>
+          <button
+            onClick={() => handleCommand('/servants search Artoria')}
+            className="hover:text-[#d4af37] hover:underline whitespace-nowrap"
+          >
+            /servants search Artoria
+          </button>
+          <span>•</span>
+          <button
             onClick={() => handleCommand('/summon ritual')}
             className="hover:text-[#d4af37] hover:underline whitespace-nowrap"
           >
             /summon ritual
-          </button>
-          <span>•</span>
-          <button
-            onClick={() => handleCommand('/addservant list')}
-            className="hover:text-[#d4af37] hover:underline whitespace-nowrap"
-          >
-            /addservant list
           </button>
           <span>•</span>
           <button

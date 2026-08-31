@@ -227,25 +227,6 @@ export interface BattleState {
 }
 
 // Holy Grail War Tournament
-export type DistrictId =
-  | 'fuyuki_church'
-  | 'shinto_bridge'
-  | 'ryuudou_temple'
-  | 'homurahara_academy'
-  | 'docks'
-  | 'einzenbern_forest'
-  | 'commercial_district'
-  | string;
-
-export interface WarDistrict {
-  id: DistrictId;
-  name: string;
-  description: string;
-  leylineBonus: 'mana_surge' | 'defensive_ward' | 'agility_scout' | 'crit_sanctuary' | 'command_seal_recovery' | string;
-  controllingMasterId?: string;
-  manaReserve: number;
-}
-
 export interface WarMasterParticipant {
   discordId: string;
   username: string;
@@ -257,9 +238,7 @@ export interface WarMasterParticipant {
   maxHp: number;
   commandSeals: number;
   isAlive: boolean;
-  currentDistrict: DistrictId;
   allianceId?: string;
-  ap: number;
   kills: number;
 }
 
@@ -269,24 +248,19 @@ export interface WarAlliance {
   memberMasterIds: string[];
   isSecret: boolean;
   betrayalRiskScore: number;
-  formedAtRound: number;
 }
 
 export interface HolyGrailWarSession {
   id: string;
   title: string;
-  status: 'recruiting' | 'active' | 'climax' | 'concluded';
-  currentRound: number;
-  maxRounds: number;
-  districts: Record<DistrictId, WarDistrict>;
+  status: 'active' | 'concluded';
   participants: Record<string, WarMasterParticipant>;
   alliances: Record<string, WarAlliance>;
   eventLogs: Array<{
     id: string;
-    round: number;
     timestamp: number;
     text: string;
-    type: 'scout' | 'clash' | 'alliance' | 'betrayal' | 'elimination' | 'leyline_capture' | string;
+    type: 'clash' | 'alliance' | 'betrayal' | 'elimination' | 'heal' | string;
   }>;
   grailWinnerId?: string;
 }

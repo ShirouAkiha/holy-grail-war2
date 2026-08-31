@@ -1,6 +1,6 @@
 /**
  * Slash Command: /grailwar
- * Description: Holy Grail War 7-Master Tournament Battle Royale (AP, Scouting, Alliances, Betrayal)
+ * Description: Holy Grail War 7-Master Tournament & Secret Intelligence Board
  * Library: discord.js v14
  */
 
@@ -10,34 +10,59 @@ export const grailwarCommandCode = `import {
   ActionRowBuilder, 
   ButtonBuilder, 
   ButtonStyle, 
-  EmbedBuilder,
-  StringSelectMenuBuilder 
+  EmbedBuilder
 } from 'discord.js';
 import { getOrCreateMaster } from '../database/service';
 import { 
   createHolyGrailWarSession, 
   executeWarAction, 
-  advanceWarRound 
+  attackSuspectUserInWar,
+  leakIntelInWar,
+  exposeMasterInWar,
+  simulateWarSkirmish 
 } from '../engine/grailwar';
-import { DistrictId } from '../types';
 
 export const data = new SlashCommandBuilder()
   .setName('grailwar')
-  .setDescription('Enter or manage the 7-Master Holy Grail War Battle Royale')
+  .setDescription('Holy Grail War Secret Intelligence Board & Battle Royale')
   .addSubcommand(sub =>
-    sub.setName('status').setDescription('View current Holy Grail War map, participants, and AP')
+    sub.setName('status')
+      .setDescription('View the Holy Grail War Intelligence Board (showing only exposed participants)')
   )
   .addSubcommand(sub =>
-    sub.setName('scout').setDescription('Scout your current district for enemy Servants (20 AP)')
+    sub.setName('attack')
+      .setDescription('Ambush a suspected Master in the server (if innocent, they die & you are exposed!)')
+      .addStringOption(opt =>
+        opt.setName('target')
+          .setDescription('The Master name or @mention of the suspected user')
+          .setRequired(true)
+      )
   )
   .addSubcommand(sub =>
-    sub.setName('fortify').setDescription('Claim control over the current Leyline focal point (25 AP)')
+    sub.setName('leak')
+      .setDescription('Leak tactical intelligence or rumors onto the Grail War status board')
+      .addStringOption(opt =>
+        opt.setName('intel')
+          .setDescription('The intelligence report or secret to broadcast')
+          .setRequired(true)
+      )
+      .addStringOption(opt =>
+        opt.setName('target')
+          .setDescription('Optional: Master name or ID to expose with this leak')
+          .setRequired(false)
+      )
   )
   .addSubcommand(sub =>
-    sub.setName('rest').setDescription('Rest and restore 45% HP + recover Command Seals at the Church (30 AP)')
+    sub.setName('skirmish')
+      .setDescription('Simulate a background clash between rival Masters')
   )
   .addSubcommand(sub =>
-    sub.setName('betray').setDescription('Execute a surprise betrayal attack against your ally (20 AP)')
+    sub.setName('rest')
+      .setDescription('Channel mana to restore Servant HP')
+  )
+  .addSubcommand(sub =>
+    sub.setName('betray')
+      .setDescription('Execute a surprise betrayal attack against your ally')
   );
 
 export async function execute(interaction: ChatInputCommandInteraction) {
@@ -54,8 +79,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    // In production, retrieve the guild active session from Prisma DB
-    // Here we instantiate or retrieve the war session
+    // In production, retrieve active session from DB
     const war = createHolyGrailWarSession({
       discordId: interaction.user.id,
       username: interaction.user.username,
@@ -65,52 +89,121 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       maxHp: activeServant.template.baseHp
     });
 
+    const isPublicChannel = !interaction.channel?.isDMBased();
+    // Rule: Public command invocation exposes the user if not already exposed
+    if (isPublicChannel && !war.participants[interaction.user.id]?.isExposed) {
+      exposeMasterInWar(war, interaction.user.id, 'public_command');
+    }
+
     const sub = interaction.options.getSubcommand();
     const p = war.participants[interaction.user.id];
 
     if (sub === 'status') {
       const aliveCount = Object.values(war.participants).filter(x => x.isAlive).length;
-      const currentDistrict = war.districts[p.currentDistrict];
+      const exposedCount = Object.values(war.participants).filter(x => x.isExposed).length;
+      const civilianDeaths = war.innocentVictims?.length || 0;
+
+      // Format participants list: Only exposed details are revealed; hidden participants are masked
+      const rosterLines = Object.values(war.participants).map(m => {
+        const isUser = m.discordId === interaction.user.id;
+        const statusIcon = !m.isAlive ? '💀' : m.isExposed ? '📡' : '🕶️';
+
+        if (m.isExposed || isUser) {
+          const hpBar = \`\${m.currentHp.toLocaleString()}/\${m.maxHp.toLocaleString()}\`;
+          const exposureTag = m.exposureReason === 'public_command'
+            ? '[Exposed: Public Command]'
+            : m.exposureReason === 'ambush_clash'
+            ? '[Exposed: Ambush Clash]'
+            : m.exposureReason === 'innocent_assault'
+            ? '[Exposed: Civilian Assault]'
+            : m.exposureReason === 'intel_leak'
+            ? '[Exposed: Intel Leak]'
+            : '[Exposed: Open Combat]';
+
+          return \`• \${statusIcon} **\${m.username}** \${isUser ? '(YOU)' : ''} — **\${m.servantName}** [\${m.servantClass}] | HP: \${hpBar} | Kills: \${m.kills} \` +
+                 \`\\n  ↳ *\${exposureTag}*\`;
+        } else {
+          return \`• \${statusIcon} **??? (Unknown Master)** — Servant: **???** [Class: ???] | HP: [CLASSIFIED] | Status: In Shadows\`;
+        }
+      }).join('\\n\\n');
 
       const embed = new EmbedBuilder()
-        .setTitle(\`🏆 \${war.title} — Round \${war.currentRound}/\${war.maxRounds}\`)
+        .setTitle(\`🏆 \${war.title} — Intelligence Board\`)
         .setDescription(
-          \`⚡ **Your Action Points:** \${p.ap}/100 AP\\n\` +
-          \`📍 **Current District:** \${currentDistrict.name}\\n\` +
-          \`✨ **Leyline Effect:** \${currentDistrict.leylineBonus}\\n\` +
           \`🩸 **Command Seals:** \${p.commandSeals}/3\\n\` +
-          \`👥 **Surviving Masters:** \${aliveCount}/7 alive\\n\\n\` +
-          \`**District Participants:**\\n\` +
-          Object.values(war.participants)
-            .map(m => \`• \${m.isAlive ? '🟢' : '💀'} **\${m.username}** (\${m.servantName} - \${m.servantClass}) — *\${war.districts[m.currentDistrict].name}*\`)
-            .join('\\n')
+          \`👥 **Surviving Masters:** \${aliveCount}/7 alive (\${exposedCount} Exposed to Server, \${7 - exposedCount} in Shadows)\\n\` +
+          \`☠️ **Civilian Casualties:** \${civilianDeaths} innocent bystanders slain\\n\` +
+          \`⚔️ **War Status:** \${war.status === 'concluded' ? '🏆 Concluded' : '🟢 Active Battle Royale'}\\n\\n\` +
+          \`📋 **Participants Intelligence Board:**\\n\` +
+          rosterLines
         )
         .setColor(0xf59e0b)
-        .setFooter({ text: 'Use buttons below to move, scout, fortify, or ally' });
+        .setFooter({ text: 'Use /grailwar attack @user to ambush suspects | /grailwar leak to broadcast intel' });
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder().setCustomId('war_scout').setLabel('Scout District (20 AP)').setEmoji('🔭').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('war_fortify').setLabel('Fortify Leyline (25 AP)').setEmoji('🏰').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('war_rest').setLabel('Rest & Heal (30 AP)').setEmoji('🩹').setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId('war_attack_prompt').setLabel('Ambush Suspect (/grailwar attack)').setEmoji('⚔️').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('war_leak_prompt').setLabel('Leak Intel (/grailwar leak)').setEmoji('🕵️').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('war_rest').setLabel('Channel Mana (Heal)').setEmoji('🩹').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('war_skirmish').setLabel('Simulate City Skirmish').setEmoji('💥').setStyle(ButtonStyle.Primary)
       );
 
       await interaction.editReply({ embeds: [embed], components: [row] });
       return;
     }
 
-    let actionType: 'scout' | 'fortify_leyline' | 'rest_and_heal' | 'betray_ally' = 'scout';
-    if (sub === 'fortify') actionType = 'fortify_leyline';
-    if (sub === 'rest') actionType = 'rest_and_heal';
+    if (sub === 'attack') {
+      const targetQuery = interaction.options.getString('target', true);
+      const res = attackSuspectUserInWar(war, interaction.user.id, targetQuery);
+
+      const embed = new EmbedBuilder()
+        .setTitle(res.targetWasMaster ? '⚔️ Holy Grail War: Tactical Ambush!' : '☠️ Collateral Casualty: Civilian Slain!')
+        .setDescription(res.message)
+        .setColor(res.targetWasMaster ? 0xef4444 : 0x7f1d1d)
+        .setFooter({ text: res.targetWasMaster ? 'Both Masters have been exposed on the Grail War Status Board!' : 'Attacking Master identity is now publicly exposed for violating Secrecy!' });
+
+      await interaction.editReply({ embeds: [embed] });
+      return;
+    }
+
+    if (sub === 'leak') {
+      const intelText = interaction.options.getString('intel', true);
+      const targetQuery = interaction.options.getString('target');
+      const res = leakIntelInWar(war, interaction.user.username, intelText, targetQuery || undefined);
+
+      const embed = new EmbedBuilder()
+        .setTitle('🕵️ Holy Grail War: Intelligence Leak Broadcasted')
+        .setDescription(res.message)
+        .setColor(0xa855f7)
+        .setFooter({ text: 'Information updated on the Holy Grail War Intelligence Board' });
+
+      await interaction.editReply({ embeds: [embed] });
+      return;
+    }
+
+    if (sub === 'skirmish') {
+      const result = simulateWarSkirmish(war);
+      const aliveCount = Object.values(result.updatedWar.participants).filter(x => x.isAlive).length;
+
+      const resultEmbed = new EmbedBuilder()
+        .setTitle('💥 Holy Grail War: City Skirmish')
+        .setDescription(
+          \`\${result.message}\\n\\n\` +
+          \`👥 **Surviving Masters:** \${aliveCount}/7 alive\`
+        )
+        .setColor(0xef4444);
+
+      await interaction.editReply({ embeds: [resultEmbed] });
+      return;
+    }
+
+    let actionType: 'rest_and_heal' | 'betray_ally' = 'rest_and_heal';
     if (sub === 'betray') actionType = 'betray_ally';
 
     const result = executeWarAction(war, interaction.user.id, actionType);
 
     const resultEmbed = new EmbedBuilder()
       .setTitle(result.success ? '✅ Holy Grail War Action Completed' : '⚠️ Action Failed')
-      .setDescription(
-        \`\${result.message}\\n\\n\` +
-        \`⚡ **Remaining AP:** \${result.updatedWar.participants[interaction.user.id]?.ap ?? 0} AP\`
-      )
+      .setDescription(result.message)
       .setColor(result.success ? 0x22c55e : 0xef4444);
 
     await interaction.editReply({ embeds: [resultEmbed] });
@@ -123,3 +216,4 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 }
 `;
+

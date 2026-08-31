@@ -212,7 +212,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           `In an authentic Holy Grail War, each Master is bound to a single Heroic Spirit.\n\n` +
           `• Use \`/servant\` to view their full status and parameters.\n` +
           `• Use \`/duel\` to engage in turn-based combat.\n` +
-          `• Use \`/grailwar\` to battle for Fuyuki City leylines.\n` +
+          `• Use \`/grailwar\` to enter the 7-Master battle royale tournament.\n` +
           `• If you wish to release your Servant and summon anew, use \`/summon release\`.`
         )
         .setThumbnail(s.template.avatarUrl)
@@ -379,7 +379,7 @@ function setupSummonButtonCollector(message: any, userId: string) {
       }
 
       if (i.customId === 'btn_enter_war') {
-        await i.reply({ content: 'Use `/grailwar` to deploy into Fuyuki City districts and scout leylines.', ephemeral: true });
+        await i.reply({ content: 'Use `/grailwar` to check Holy Grail War tournament standings and challenge rivals.', ephemeral: true });
         return;
       }
     } catch (err: any) {

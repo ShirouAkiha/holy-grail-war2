@@ -223,18 +223,7 @@ export interface BattleState {
   grailWarId?: string;
 }
 
-// Holy Grail War Tournament
-export type DistrictId = 'fuyuki_church' | 'shinto_bridge' | 'ryuudou_temple' | 'homurahara_academy' | 'docks' | 'einzenbern_forest' | 'commercial_district';
-
-export interface WarDistrict {
-  id: DistrictId;
-  name: string;
-  description: string;
-  leylineBonus: 'mana_surge' | 'defensive_ward' | 'agility_scout' | 'crit_sanctuary' | 'command_seal_recovery';
-  controllingMasterId?: string;
-  manaReserve: number;
-}
-
+// Holy Grail War Tournament & Secret Intel Board
 export interface WarMasterParticipant {
   discordId: string;
   username: string;
@@ -246,10 +235,12 @@ export interface WarMasterParticipant {
   maxHp: number;
   commandSeals: number;
   isAlive: boolean;
-  currentDistrict: DistrictId;
+  isExposed: boolean;
+  exposureReason?: 'public_command' | 'ambush_clash' | 'innocent_assault' | 'intel_leak' | 'direct_combat';
+  exposedAt?: number;
   allianceId?: string;
-  ap: number;
   kills: number;
+  innocentKills?: number;
 }
 
 export interface WarAlliance {
@@ -258,24 +249,33 @@ export interface WarAlliance {
   memberMasterIds: string[];
   isSecret: boolean;
   betrayalRiskScore: number; // 0 to 100
-  formedAtRound: number;
 }
 
 export interface HolyGrailWarSession {
   id: string;
   title: string;
-  status: 'recruiting' | 'active' | 'climax' | 'concluded';
-  currentRound: number;
-  maxRounds: number;
-  districts: Record<DistrictId, WarDistrict>;
+  status: 'active' | 'concluded';
   participants: Record<string, WarMasterParticipant>;
   alliances: Record<string, WarAlliance>;
   eventLogs: Array<{
     id: string;
-    round: number;
     timestamp: number;
     text: string;
-    type: 'scout' | 'clash' | 'alliance' | 'betrayal' | 'elimination' | 'leyline_capture';
+    type: 'clash' | 'alliance' | 'betrayal' | 'elimination' | 'heal' | 'exposure' | 'ambush' | 'intel_leak' | 'casualty';
+  }>;
+  innocentVictims?: Array<{
+    id: string;
+    username: string;
+    killedBy: string;
+    killerServant: string;
+    timestamp: number;
+  }>;
+  leakedIntel?: Array<{
+    id: string;
+    author: string;
+    text: string;
+    timestamp: number;
+    exposedMasterId?: string;
   }>;
   grailWinnerId?: string;
 }

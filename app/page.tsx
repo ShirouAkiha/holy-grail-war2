@@ -115,9 +115,9 @@ export default function Home() {
               <span className="font-bold">🔴 {master.commandSeals}/3</span>
             </div>
 
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-[#0f0f0f] border border-[#1a1a1a] text-xs font-mono text-[#3b82f6]">
-              <span className="text-[10px] text-white/40 uppercase tracking-widest">AP:</span>
-              <span className="font-bold">{master.actionPoints}/100</span>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-[#0f0f0f] border border-[#1a1a1a] text-xs font-mono text-[#d4af37]">
+              <span className="text-[10px] text-white/40 uppercase tracking-widest">Victories:</span>
+              <span className="font-bold">🏆 {master.grailWarWins}</span>
             </div>
           </div>
         </div>
@@ -128,7 +128,7 @@ export default function Home() {
             { id: 'discord' as const, label: 'Discord Bot Live Simulator', icon: Terminal, badge: 'Online' },
             { id: 'summoning' as const, label: 'Throne Summoning & Admin Forge', icon: Sparkles },
             { id: 'combat' as const, label: 'Combat Arena (Turn-Based)', icon: Swords },
-            { id: 'grailwar' as const, label: 'Holy Grail War (7-Master BR)', icon: Castle },
+            { id: 'grailwar' as const, label: 'Holy Grail War Tournament', icon: Castle },
             { id: 'workshop' as const, label: 'Servant Workshop & Stats', icon: User },
             { id: 'canvas' as const, label: 'Canvas 2D Studio', icon: ImageIcon },
             { id: 'code' as const, label: 'Codebase & Architecture Export', icon: Code }

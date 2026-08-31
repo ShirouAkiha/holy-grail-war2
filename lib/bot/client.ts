@@ -17,6 +17,8 @@ export const discordBotMainCode = `import {
 } from 'discord.js';
 import * as summonCommand from './commands/summon';
 import * as servantCommand from './commands/servant';
+import * as servantsCommand from './commands/servants';
+import * as addservantCommand from './commands/addservant';
 import * as duelCommand from './commands/duel';
 import * as grailwarCommand from './commands/grailwar';
 import * as customiseCommand from './commands/customise';
@@ -37,6 +39,8 @@ export const client = new Client({
 export const commands = new Collection<string, any>();
 commands.set(summonCommand.data.name, summonCommand);
 commands.set(servantCommand.data.name, servantCommand);
+commands.set(servantsCommand.data.name, servantsCommand);
+commands.set(addservantCommand.data.name, addservantCommand);
 commands.set(duelCommand.data.name, duelCommand);
 commands.set(grailwarCommand.data.name, grailwarCommand);
 commands.set(customiseCommand.data.name, customiseCommand);
