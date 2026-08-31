@@ -12,7 +12,8 @@ import {
   loadGrailWarSession,
   saveGrailWarSession,
   getCustomServantsFromStorage,
-  saveCustomServantsToStorage
+  saveCustomServantsToStorage,
+  fetchServerCustomServants
 } from '../lib/state/gameState';
 import DiscordEmulator from '../components/DiscordEmulator';
 import CombatArena from '../components/CombatArena';
@@ -42,6 +43,24 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<
     'discord' | 'combat' | 'grailwar' | 'summoning' | 'workshop' | 'canvas' | 'code'
   >('discord');
+
+  useEffect(() => {
+    // Initial fetch from backend persistence disk to recover custom servants if browser storage was empty or updated
+    fetchServerCustomServants().then(serverServants => {
+      if (serverServants && serverServants.length > 0) {
+        setCustomServants(prev => {
+          const map = new Map<string, ServantTemplate>();
+          // Server servants
+          serverServants.forEach(s => map.set(s.id, s));
+          // Local servants take precedence/merge
+          prev.forEach(s => map.set(s.id, s));
+          const merged = Array.from(map.values());
+          saveCustomServantsToStorage(merged);
+          return merged;
+        });
+      }
+    });
+  }, []);
 
   useEffect(() => {
     saveMasterProfile(master);

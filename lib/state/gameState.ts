@@ -27,8 +27,31 @@ export function saveCustomServantsToStorage(servants: ServantTemplate[]): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(CUSTOM_SERVANTS_STORAGE_KEY, JSON.stringify(servants));
+    // Asynchronously synchronize with server storage endpoint so updates survive project pull/rebuilds
+    fetch('/api/servants/custom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'save_all', servants })
+    }).catch(err => {
+      console.warn('Server storage sync failed, local copy intact:', err);
+    });
   } catch (err) {
     console.error('Failed to save custom servants to storage', err);
+  }
+}
+
+export async function fetchServerCustomServants(): Promise<ServantTemplate[]> {
+  try {
+    const res = await fetch('/api/servants/custom');
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (data.success && Array.isArray(data.servants)) {
+      return data.servants;
+    }
+    return [];
+  } catch (err) {
+    console.warn('Could not fetch server custom servants:', err);
+    return [];
   }
 }
 

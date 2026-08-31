@@ -432,6 +432,12 @@ export default function DiscordEmulator({
         const filtered = customServants.filter(s => s.id !== idToDelete && !s.id.includes(idToDelete));
         if (filtered.length < customServants.length) {
           onUpdateCustomServants(filtered);
+          fetch('/api/servants/custom', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', servantId: idToDelete })
+          }).catch(err => console.warn('Disk sync warning:', err));
+
           addMessage({
             id: getNextId('bot_addservant_del_ok'),
             sender: 'bot',
@@ -498,6 +504,13 @@ export default function DiscordEmulator({
 
       const updated = [...customServants, newCustomTemplate];
       onUpdateCustomServants(updated);
+
+      // Immediately write to server persistence disk
+      fetch('/api/servants/custom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add', servant: newCustomTemplate })
+      }).catch(err => console.warn('Disk sync warning:', err));
 
       addMessage({
         id: getNextId('bot_addservant_res'),

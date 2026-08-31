@@ -26,7 +26,10 @@ import {
   BookOpen,
   Search,
   X,
-  ExternalLink
+  ExternalLink,
+  Download,
+  Upload,
+  Database
 } from 'lucide-react';
 
 interface SummoningSanctumProps {
@@ -220,6 +223,13 @@ export default function SummoningSanctum({
     const updated = [...customServants, newServant];
     onUpdateCustomServants(updated);
 
+    // Call disk API endpoint directly as immediate persistence guarantee
+    fetch('/api/servants/custom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'add', servant: newServant })
+    }).catch(err => console.warn('Disk sync warning:', err));
+
     setStatusNotice({
       type: 'success',
       message: `✨ Heroic Spirit "${newServant.name}" [${newServant.servantClass}] successfully forged and registered into the Throne of Heroes!`
@@ -245,10 +255,80 @@ export default function SummoningSanctum({
   const handleDeleteCustomServant = (id: string) => {
     const updated = customServants.filter(s => s.id !== id);
     onUpdateCustomServants(updated);
+
+    fetch('/api/servants/custom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', servantId: id })
+    }).catch(err => console.warn('Disk sync warning:', err));
+
     setStatusNotice({
       type: 'success',
       message: 'Custom Servant removed from Throne of Heroes.'
     });
+  };
+
+  // Export Custom Servants JSON
+  const handleExportJSON = () => {
+    try {
+      const jsonStr = JSON.stringify(customServants, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `custom_servants_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setStatusNotice({
+        type: 'success',
+        message: `📥 Exported ${customServants.length} custom servants to backup JSON file.`
+      });
+    } catch (err: any) {
+      setStatusNotice({
+        type: 'error',
+        message: `Export failed: ${err?.message || 'Unknown error'}`
+      });
+    }
+  };
+
+  // Import Custom Servants JSON
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = event => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        if (Array.isArray(parsed)) {
+          const map = new Map<string, ServantTemplate>();
+          customServants.forEach(s => map.set(s.id, s));
+          parsed.forEach((s: any) => {
+            if (s && s.id && s.name && s.servantClass) {
+              map.set(s.id, s);
+            }
+          });
+          const merged = Array.from(map.values());
+          onUpdateCustomServants(merged);
+          setStatusNotice({
+            type: 'success',
+            message: `📦 Successfully imported and merged ${parsed.length} custom Heroic Spirits!`
+          });
+        } else {
+          setStatusNotice({
+            type: 'error',
+            message: 'Invalid file format: Expected an array of ServantTemplate objects.'
+          });
+        }
+      } catch (err: any) {
+        setStatusNotice({
+          type: 'error',
+          message: `Import parse error: ${err?.message || 'Invalid JSON'}`
+        });
+      }
+    };
+    reader.readAsText(file);
+    // Reset file input
+    e.target.value = '';
   };
 
   return (
@@ -676,6 +756,50 @@ export default function SummoningSanctum({
                 </div>
               </div>
             </div>
+
+            {/* Quick Summary of Active Custom Spirits */}
+            <div className="p-4 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
+                  <Database className="w-3.5 h-3.5 text-purple-400" />
+                  Custom Spirits In Throne ({customServants.length})
+                </span>
+                <button
+                  onClick={handleExportJSON}
+                  disabled={customServants.length === 0}
+                  className="px-2 py-1 rounded bg-[#161616] hover:bg-[#222] border border-[#333] text-amber-300 text-[10px] font-mono flex items-center gap-1 disabled:opacity-40 transition"
+                >
+                  <Download className="w-3 h-3" /> Backup JSON
+                </button>
+              </div>
+
+              {customServants.length === 0 ? (
+                <p className="text-[11px] font-mono text-white/40 italic">
+                  No custom Heroic Spirits registered yet. Use the form on the left to forge one!
+                </p>
+              ) : (
+                <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+                  {customServants.map(s => (
+                    <div
+                      key={s.id}
+                      className="p-2 rounded bg-[#111] border border-[#222] flex items-center justify-between text-xs font-mono"
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span className="text-[#d4af37] font-bold">[{s.servantClass}]</span>
+                        <span className="text-white font-medium truncate">{s.name}</span>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteCustomServant(s.id)}
+                        className="p-1 rounded text-rose-400 hover:bg-rose-950/60 hover:text-rose-200 transition"
+                        title="Delete custom spirit"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -706,8 +830,8 @@ export default function SummoningSanctum({
               )}
             </div>
 
-            {/* Filter Pills */}
-            <div className="flex items-center gap-1.5 self-start md:self-auto">
+            {/* Filter Pills and Export/Import Actions */}
+            <div className="flex flex-wrap items-center gap-1.5 self-start md:self-auto">
               <button
                 onClick={() => setRegistryCategory('all')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${
@@ -738,6 +862,32 @@ export default function SummoningSanctum({
               >
                 Custom ({customServants.length})
               </button>
+
+              <div className="h-4 w-[1px] bg-white/20 mx-1 hidden sm:block" />
+
+              {/* JSON Backup & Restore for custom servants */}
+              <button
+                onClick={handleExportJSON}
+                title="Backup custom servants to JSON file"
+                className="px-2.5 py-1.5 rounded-lg text-xs font-mono bg-[#181818] hover:bg-[#252525] text-amber-300 border border-amber-500/30 flex items-center gap-1 transition"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export ({customServants.length})</span>
+              </button>
+
+              <label
+                title="Import custom servants from JSON backup file"
+                className="px-2.5 py-1.5 rounded-lg text-xs font-mono bg-[#181818] hover:bg-[#252525] text-emerald-300 border border-emerald-500/30 flex items-center gap-1 cursor-pointer transition"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Import JSON</span>
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  onChange={handleImportJSON}
+                  className="hidden"
+                />
+              </label>
             </div>
           </div>
 
