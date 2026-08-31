@@ -22,11 +22,11 @@ const CANONICAL_WAR_CLASSES = [
 
 export function createHolyGrailWarSession(
   initiatorMaster: { discordId: string; username: string; servantId: string; servantName: string; avatarUrl: string; maxHp: number; servantClass?: string },
-  warTitle: string = '7-Master Fuyuki Holy Grail War'
+  warTitle: string = 'Fuyuki Holy Grail War'
 ): HolyGrailWarSession {
   const warId = `grail_war_${Date.now()}`;
 
-  // Initialize exactly 7 slots
+  // Initialize with real human Masters only (no AI NPCs)
   const participants: Record<string, WarMasterParticipant> = {
     [initiatorMaster.discordId]: {
       discordId: initiatorMaster.discordId,
@@ -45,28 +45,6 @@ export function createHolyGrailWarSession(
     }
   };
 
-  // Seed remaining 6 slots as Shadow Masters
-  CANONICAL_WAR_CLASSES.forEach(r => {
-    const aiSlotId = `ai_shadow_slot_${r.slot}`;
-    const t = SERVANT_DATABASE.find(s => s.id === r.servantId);
-    const hp = t ? t.baseHp : 14820;
-    participants[aiSlotId] = {
-      discordId: aiSlotId,
-      username: r.defaultUsername || `Shadow Master #${r.slot}`,
-      servantId: r.servantId,
-      servantName: r.servantName,
-      servantClass: r.class,
-      avatarUrl: t?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400',
-      currentHp: hp,
-      maxHp: hp,
-      commandSeals: 3,
-      isAlive: true,
-      isExposed: false,
-      kills: 0,
-      innocentKills: 0
-    };
-  });
-
   const session: HolyGrailWarSession = {
     id: warId,
     title: warTitle,
@@ -79,7 +57,7 @@ export function createHolyGrailWarSession(
       {
         id: `evt_init_${Date.now()}`,
         timestamp: Date.now(),
-        text: `🕯️ The ${warTitle} has commenced in strict secrecy! All 7 Masters operate from the shadows. Identities remain concealed until exposed by public actions, tactical ambushes, or intelligence leaks.`,
+        text: `🕯️ The ${warTitle} has commenced! All Masters operate from the shadows. Identities remain concealed until exposed by public actions, tactical ambushes, or intelligence leaks.`,
         type: 'clash'
       }
     ]
@@ -90,14 +68,14 @@ export function createHolyGrailWarSession(
 }
 
 /**
- * Returns or initializes the shared, server-wide 7-Master Holy Grail War session.
- * Real players seamlessly occupy one of the 7 shadow slots without exceeding the 7-Master limit!
+ * Returns or initializes the shared, server-wide Holy Grail War session.
+ * Real players register directly into the war without any synthetic NPCs.
  */
 export function getOrInitWarSession(master: MasterProfile): HolyGrailWarSession {
   const activeServant =
     master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
 
-  const servantName = activeServant?.template?.name || 'Artoria Pendragon';
+  const servantName = activeServant?.template?.name || 'Heroic Spirit';
   const servantClass = activeServant?.template?.servantClass || 'Saber';
   const avatarUrl = activeServant?.template?.avatarUrl || '';
   const maxHp = activeServant?.template?.baseHp || 15000;
@@ -106,7 +84,7 @@ export function getOrInitWarSession(master: MasterProfile): HolyGrailWarSession 
     globalWarSession = createHolyGrailWarSession({
       discordId: master.discordId,
       username: master.username,
-      servantId: activeServant?.id || 'servant_artoria',
+      servantId: activeServant?.id || 'servant_init',
       servantName,
       avatarUrl,
       maxHp,
@@ -130,7 +108,6 @@ export function getOrInitWarSession(master: MasterProfile): HolyGrailWarSession 
   if (existingKey) {
     const existing = globalWarSession.participants[existingKey];
     
-    // If the key was a placeholder slot ID (e.g. ai_shadow_slot_3), migrate key to real discordId
     if (existingKey !== master.discordId) {
       delete globalWarSession.participants[existingKey];
       existing.discordId = master.discordId;
@@ -155,57 +132,29 @@ export function getOrInitWarSession(master: MasterProfile): HolyGrailWarSession 
     return globalWarSession;
   }
 
-  // Player is NEW to the current war: Claim an available ALIVE AI shadow slot (keep total at exactly 7)
-  const aiSlotKey = Object.keys(globalWarSession.participants).find(
-    k => (k.startsWith('ai_shadow_slot_') || k.startsWith('master_slot_')) &&
-         globalWarSession!.participants[k].isAlive &&
-         globalWarSession!.participants[k].username.startsWith('Shadow Master #')
-  );
+  // Player is a NEW real Master entering the war: Add them directly to participants!
+  globalWarSession.participants[master.discordId] = {
+    discordId: master.discordId,
+    username: master.username,
+    servantId: activeServant?.id || 'servant_contract',
+    servantName,
+    servantClass,
+    avatarUrl,
+    currentHp: maxHp,
+    maxHp,
+    commandSeals: master.commandSeals || 3,
+    isAlive: true,
+    isExposed: false,
+    kills: 0,
+    innocentKills: 0
+  };
 
-  if (aiSlotKey) {
-    const oldAiSlot = globalWarSession.participants[aiSlotKey];
-    delete globalWarSession.participants[aiSlotKey];
-
-    globalWarSession.participants[master.discordId] = {
-      discordId: master.discordId,
-      username: master.username,
-      servantId: activeServant?.id || oldAiSlot.servantId,
-      servantName,
-      servantClass,
-      avatarUrl,
-      currentHp: maxHp,
-      maxHp,
-      commandSeals: master.commandSeals || 3,
-      isAlive: true,
-      isExposed: false,
-      kills: 0,
-      innocentKills: 0
-    };
-
-    globalWarSession.eventLogs.unshift({
-      id: `evt_enter_${Date.now()}`,
-      timestamp: Date.now(),
-      text: `🕯️ A new Master contracted a Heroic Spirit in secret and entered the Holy Grail War from the shadows!`,
-      type: 'clash'
-    });
-  } else if (Object.keys(globalWarSession.participants).length < 7) {
-    // If fewer than 7 slots exist, insert directly
-    globalWarSession.participants[master.discordId] = {
-      discordId: master.discordId,
-      username: master.username,
-      servantId: activeServant?.id || 'servant_artoria',
-      servantName,
-      servantClass,
-      avatarUrl,
-      currentHp: maxHp,
-      maxHp,
-      commandSeals: master.commandSeals || 3,
-      isAlive: true,
-      isExposed: false,
-      kills: 0,
-      innocentKills: 0
-    };
-  }
+  globalWarSession.eventLogs.unshift({
+    id: `evt_enter_${Date.now()}`,
+    timestamp: Date.now(),
+    text: `🕯️ Master **${master.username}** contracted with **${servantName}** and entered the Holy Grail War!`,
+    type: 'clash'
+  });
 
   return globalWarSession;
 }
@@ -647,7 +596,7 @@ export function simulateWarSkirmish(war: HolyGrailWarSession): WarActionResult {
   }
 
   const name1 = ai1.isExposed ? `Master **${ai1.username}** (${ai1.servantName})` : `An unidentified Master with **${ai1.servantClass}**`;
-  const name2 = ai2.isExposed ? `Master **${ai2.username}** (${ai2.servantName})` : `a shadow Master with **${ai2.servantClass}**`;
+  const name2 = ai2.isExposed ? `Master **${ai2.username}** (${ai2.servantName})` : `an unidentified Master with **${ai2.servantClass}**`;
 
   let clashText = `⚔️ SKIRMISH: ${name1} clashed in the city with ${name2}, dealing ${damage.toLocaleString()} damage!`;
 

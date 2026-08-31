@@ -297,19 +297,60 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
+    const warSession = getOrInitWarSession(challengerMaster);
+
+    // Check if challenger is eliminated from the Holy Grail War
+    const challengerParticipant = warSession.participants[challengerMaster.discordId] ||
+      Object.values(warSession.participants).find(p => p.username.toLowerCase() === challengerMaster.username.toLowerCase());
+
+    if (challengerParticipant && !challengerParticipant.isAlive) {
+      const deadEmbed = new EmbedBuilder()
+        .setTitle('☠️ DECEASED MASTERS CANNOT DUEL')
+        .setDescription(
+          `Master **${challengerMaster.username}**, you were slain and permanently eliminated from the active Holy Grail War.\n\n` +
+          `• **Status:** 💀 Deceased (HP: 0/${challengerParticipant.maxHp})\n` +
+          `• **Command Seals:** 0 / 3 (Extinguished)\n\n` +
+          `You cannot initiate duels while deceased. Inspect the battle status with \`/grailwar status\` or restart the tournament.`
+        )
+        .setColor(0xef4444);
+
+      await interaction.reply({ embeds: [deadEmbed], ephemeral: true });
+      return;
+    }
+
     const challengerServant =
       challengerMaster.servants.find(s => s.id === challengerMaster.activeServantId) ||
       challengerMaster.servants[0];
 
     const opponentUser = interaction.options.getUser('opponent');
 
-    // BRANCH 1: CHALLENGING A HUMAN MASTER (Sends an interactive Accept/Decline invite)
-    if (opponentUser && opponentUser.id !== interaction.user.id && !opponentUser.bot) {
+    // BRANCH 1: CHALLENGING A SPECIFIC HUMAN MASTER BY MENTION
+    if (opponentUser) {
+      if (opponentUser.id === interaction.user.id) {
+        await interaction.reply({ content: '❌ You cannot duel yourself!', ephemeral: true });
+        return;
+      }
+      if (opponentUser.bot) {
+        await interaction.reply({ content: '❌ You cannot duel a Discord bot! Holy Grail War only features real Masters.', ephemeral: true });
+        return;
+      }
+
       const opponentMaster = await getOrCreateMaster(opponentUser.id, opponentUser.username);
 
       if (!opponentMaster.servants || opponentMaster.servants.length === 0) {
         await interaction.reply({
           content: `❌ <@${opponentUser.id}> has not summoned any Servants yet! They need to run \`/summon\` first.`,
+          ephemeral: true
+        });
+        return;
+      }
+
+      const opponentParticipant = warSession.participants[opponentUser.id] ||
+        Object.values(warSession.participants).find(p => p.username.toLowerCase() === opponentUser.username.toLowerCase());
+
+      if (opponentParticipant && !opponentParticipant.isAlive) {
+        await interaction.reply({
+          content: `☠️ <@${opponentUser.id}> has already been eliminated and slain from the Holy Grail War!`,
           ephemeral: true
         });
         return;
@@ -354,13 +395,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
 
       inviteCollector.on('collect', async i => {
-        // Only involved users can interact
         if (i.user.id !== opponentUser.id && i.user.id !== interaction.user.id) {
           await i.reply({ content: 'You are not involved in this duel challenge.', ephemeral: true });
           return;
         }
 
-        // Decline button
         if (i.customId === 'decline_duel') {
           inviteCollector.stop();
           await i.update({
@@ -371,7 +410,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           return;
         }
 
-        // Accept button: start multi-turn PvP duel
         if (i.customId === 'accept_duel' && i.user.id === opponentUser.id) {
           inviteCollector.stop();
           const p1 = createCombatant(challengerMaster, challengerServant, false);
@@ -383,56 +421,104 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    // BRANCH 2: CHALLENGING AI SHADOW MASTER (Instant sparring match)
-    let aiServantTemplate = SERVANT_DATABASE[1];
-    if (challengerServant.template.servantClass === 'Saber') {
-      aiServantTemplate = SERVANT_DATABASE.find(s => s.servantClass === 'Archer') || SERVANT_DATABASE[1];
-    } else {
-      aiServantTemplate = SERVANT_DATABASE.find(s => s.servantClass === 'Saber') || SERVANT_DATABASE[0];
-    }
-
-    const aiServantInstance: MasterServantInstance = {
-      id: 'ai_servant_01',
-      masterId: 'ai_master',
-      templateId: aiServantTemplate.id,
-      level: challengerServant.level || 1,
-      experience: 0,
-      allocatedStats: { strength: 4, endurance: 4, agility: 4, mana: 4, luck: 4 },
-      availableStatPoints: 0,
-      skillLevels: [2, 2, 2],
-      customQuotes: {
-        summon: aiServantTemplate.summonQuote,
-        battleStart: aiServantTemplate.battleStartQuote,
-        noblePhantasm: aiServantTemplate.noblePhantasm.chant,
-        victory: aiServantTemplate.victoryQuote,
-        defeat: aiServantTemplate.defeatQuote
-      },
-      bondLevel: 3,
-      template: aiServantTemplate
-    };
-
-    const p1 = createCombatant(challengerMaster, challengerServant, false);
-    const p2 = createCombatant(
-      {
-        id: 'ai_master',
-        discordId: 'ai_shadow',
-        username: 'Shadow Doppelganger',
-        avatarUrl: '',
-        saintQuartz: 0,
-        summonTickets: 0,
-        commandSeals: 3,
-        actionPoints: 100,
-        maxActionPoints: 100,
-        pityCount: 0,
-        grailWarWins: 0,
-        servants: [aiServantInstance],
-        craftEssences: []
-      },
-      aiServantInstance,
-      true
+    // BRANCH 2: OPEN / QUICK DUEL AGAINST ANOTHER REAL LIVING MASTER
+    const livingRivalParticipants = Object.values(warSession.participants).filter(
+      p => p.discordId !== challengerMaster.discordId &&
+           p.username.toLowerCase() !== challengerMaster.username.toLowerCase() &&
+           p.isAlive
     );
 
-    await startInteractiveDuel(interaction, p1, p2, challengerMaster, null);
+    if (livingRivalParticipants.length === 0) {
+      const noRivalsEmbed = new EmbedBuilder()
+        .setTitle('⚔️ NO RIVAL MASTERS AVAILABLE IN FUYUKI')
+        .setDescription(
+          `There are currently no other living Masters with contracted Servants in the server to duel.\n\n` +
+          `• **Pure Master vs Master:** The Holy Grail War is fought exclusively by actual server members — no NPCs or synthetic shadows.\n` +
+          `• **How to Join:** Invite other members of the server to invoke \`/summon ritual\` to contract a Heroic Spirit and enter the war!\n` +
+          `• Check currently active participants at any time with \`/grailwar status\`.`
+        )
+        .setColor(0x64748b)
+        .setFooter({ text: 'Holy Grail War • Real Masters Only' });
+
+      await interaction.reply({
+        embeds: [noRivalsEmbed],
+        ephemeral: false
+      });
+      return;
+    }
+
+    // Pick a random living rival Master from the server
+    const targetRival = livingRivalParticipants[Math.floor(Math.random() * livingRivalParticipants.length)];
+    const opponentMaster = await getOrCreateMaster(targetRival.discordId, targetRival.username);
+    const opponentServant =
+      opponentMaster.servants.find(s => s.id === opponentMaster.activeServantId) ||
+      opponentMaster.servants[0];
+
+    if (!opponentServant) {
+      await interaction.reply({
+        content: `❌ Rival Master **${targetRival.username}** has not summoned a Servant yet.`,
+        ephemeral: true
+      });
+      return;
+    }
+
+    const inviteEmbed = new EmbedBuilder()
+      .setTitle('⚔️ HOLY GRAIL WAR: DUEL INVITATION')
+      .setDescription(
+        `Master <@${interaction.user.id}> with **${challengerServant.template.name}** (${challengerServant.template.servantClass})\n` +
+        `has challenged rival Master <@${targetRival.discordId}> (**${targetRival.username}**) with **${opponentServant.template.name}** (${opponentServant.template.servantClass}) to a duel!\n\n` +
+        `<@${targetRival.discordId}>, do you accept this challenge?`
+      )
+      .setColor(0xd4af37);
+
+    const inviteRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('accept_duel')
+        .setLabel('Accept Duel')
+        .setEmoji('⚔️')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('decline_duel')
+        .setLabel('Decline')
+        .setEmoji('🏳️')
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    const inviteMsg = await interaction.reply({
+      content: `<@${targetRival.discordId}>`,
+      embeds: [inviteEmbed],
+      components: [inviteRow],
+      fetchReply: true
+    });
+
+    const inviteCollector = inviteMsg.createMessageComponentCollector({
+      componentType: ComponentType.Button,
+      time: 60000
+    });
+
+    inviteCollector.on('collect', async i => {
+      if (i.user.id !== targetRival.discordId && i.user.id !== interaction.user.id) {
+        await i.reply({ content: 'You are not involved in this duel challenge.', ephemeral: true });
+        return;
+      }
+
+      if (i.customId === 'decline_duel') {
+        inviteCollector.stop();
+        await i.update({
+          content: `🏳️ Duel declined by <@${i.user.id}>.`,
+          embeds: [],
+          components: []
+        });
+        return;
+      }
+
+      if (i.customId === 'accept_duel' && i.user.id === targetRival.discordId) {
+        inviteCollector.stop();
+        const p1 = createCombatant(challengerMaster, challengerServant, false);
+        const p2 = createCombatant(opponentMaster, opponentServant, false);
+        await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster);
+      }
+    });
 
   } catch (error: any) {
     console.error('Error executing /duel:', error);

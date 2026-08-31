@@ -825,9 +825,10 @@ export default function DiscordEmulator({
       let targetParticipant = targetQuery
         ? Object.values(grailWar.participants).find(
             p =>
-              p.username.toLowerCase().includes(targetQuery) ||
+              (p.username.toLowerCase().includes(targetQuery) ||
               p.servantName.toLowerCase().includes(targetQuery) ||
-              p.discordId.toLowerCase() === targetQuery
+              p.discordId.toLowerCase() === targetQuery) &&
+              p.discordId !== master.discordId
           )
         : Object.values(grailWar.participants).find(
             p =>
@@ -837,9 +838,28 @@ export default function DiscordEmulator({
           );
 
       if (!targetParticipant) {
-        targetParticipant =
-          Object.values(grailWar.participants).find(p => p.discordId !== master.discordId) ||
-          Object.values(grailWar.participants)[1];
+        addMessage({
+          id: getNextId('bot_duel_no_rivals'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '⚔️ NO RIVAL MASTERS AVAILABLE IN FUYUKI',
+            description:
+              `There are currently no other living Masters in the server to duel.\n\n` +
+              `• **Real Masters Only:** The Holy Grail War is fought exclusively by actual server members — no NPCs or synthetic duplicates are permitted.\n` +
+              `• **How to Duel:** Invite another server member to invoke \`/summon ritual\` to contract a Heroic Spirit and join the war!\n` +
+              `• You can view current participants at any time with \`/grailwar status\`.`,
+            color: '#64748b',
+            footer: 'Holy Grail War • Real Masters Only'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary', emoji: '📋' }
+            ]
+          }
+        });
+        return;
       }
 
       if (targetParticipant && !targetParticipant.isAlive) {
@@ -864,15 +884,16 @@ export default function DiscordEmulator({
 
       const p1 = createCombatantFromMasterServant(activeServant, master.username);
       const rivalTemplate =
-        allThrone.find(s => s.id === targetParticipant?.servantId) ||
-        allThrone.find(s => s.name.toLowerCase().includes(targetParticipant?.servantName.toLowerCase() || '')) ||
+        allThrone.find(s => s.id === targetParticipant.servantId) ||
+        allThrone.find(s => s.name.toLowerCase() === targetParticipant.servantName.toLowerCase()) ||
+        allThrone.find(s => s.name.toLowerCase().includes(targetParticipant.servantName.toLowerCase())) ||
         allThrone.find(s => s.id !== activeServant.templateId) ||
         SERVANT_DATABASE[1];
 
-      const rivalMasterName = targetParticipant?.username || 'itsderpo';
+      const rivalMasterName = targetParticipant.username;
       const p2 = createCombatantFromMasterServant({
-        id: targetParticipant?.discordId || 'rival_combatant_01',
-        masterId: targetParticipant?.discordId || 'rival_master',
+        id: targetParticipant.discordId,
+        masterId: targetParticipant.discordId,
         templateId: rivalTemplate.id,
         level: 20,
         experience: 1000,
@@ -890,7 +911,7 @@ export default function DiscordEmulator({
         template: rivalTemplate
       }, rivalMasterName);
 
-      p2.id = targetParticipant?.discordId || 'rival_ai_duel';
+      p2.id = targetParticipant.discordId;
       p2.name = rivalTemplate.name;
 
       const initialBattle = initializeBattle(p1, p2);

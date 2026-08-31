@@ -51,18 +51,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     let opponentMaster = opponentUser ? await getOrCreateMaster(opponentUser.id, opponentUser.username) : null;
     let opponentServant = opponentMaster?.servants.find(s => s.id === opponentMaster?.activeServantId) || opponentMaster?.servants[0];
 
-    // Fallback to AI Servant if no opponent or opponent has no servant
-    const p1 = createCombatantFromMasterServant(challengerServant, interaction.user.username);
-    let p2;
-
-    if (opponentServant && opponentUser) {
-      p2 = createCombatantFromMasterServant(opponentServant, opponentUser.username);
-    } else {
-      // AI Shadow Boss
-      p2 = createCombatantFromMasterServant(challengerServant, 'Shadow Doppelganger');
-      p2.id = 'ai_shadow_servant';
-      p2.name = 'Shadow ' + challengerServant.template.name;
+    if (!opponentUser || !opponentServant) {
+      await interaction.editReply({
+        content: '❌ **No Rival Master Found:** Please specify a rival Master with /duel opponent:@Master. The Holy Grail War is fought strictly between real server Masters — no NPCs or synthetic duplicates are permitted.'
+      });
+      return;
     }
+
+    const p1 = createCombatantFromMasterServant(challengerServant, interaction.user.username);
+    const p2 = createCombatantFromMasterServant(opponentServant, opponentUser.username);
 
     let battleState = initializeBattle(p1, p2);
 
