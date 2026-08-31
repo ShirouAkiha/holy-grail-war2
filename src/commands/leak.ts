@@ -42,11 +42,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const embed = new EmbedBuilder()
       .setTitle('🕵️ HOLY GRAIL WAR INTELLIGENCE LEAK BROADCAST')
       .setDescription(
-        `**Informant:** <@${interaction.user.id}> (${interaction.user.username})\n\n` +
+        `**Informant:** 🕵️ Clandestine Informant (Anonymous Transmission)\n\n` +
         `📡 **Dispatched Intelligence Report:**\n> "${intelText}"\n\n` +
         (res.exposedTargetMaster 
           ? `🚨 **EXPOSURE RESULT:** **${res.exposedTargetMaster}** was positively identified! Their Servant and stats are now unmasked on the board.` 
-          : `🔍 Intelligence registered to the global Holy Grail War Chronicle.`)
+          : (targetQuery ? `❓ **UNVERIFIED TARGET:** No active Master matching "${targetQuery}" was unmasked.` : `🔍 Intelligence registered to the global Holy Grail War Chronicle.`))
       )
       .setColor(0xa855f7)
       .setFooter({ text: 'Holy Grail War Surveillance Network • Check /grailwar status' });

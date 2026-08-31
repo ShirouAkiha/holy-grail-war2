@@ -203,27 +203,49 @@ export interface WarActionResult {
  * Helper to match a target Master in the session via username, discordId, servantName, or designation (e.g. "Shadow Master #2", "Master 2", "#2")
  */
 export function findTargetMaster(targetWar: HolyGrailWarSession, query: string): WarMasterParticipant | undefined {
-  const clean = query.replace(/[<@!>]/g, '').trim().toLowerCase();
-  if (!clean) return undefined;
-  const participantsList = Object.values(targetWar.participants);
+  if (!query) return undefined;
+  const rawClean = query.trim().toLowerCase();
+  if (!rawClean) return undefined;
 
-  // 1. Exact or partial match on discordId, username, or servantName
+  // Clean Discord mention tokens <@!> and leading @
+  const idClean = rawClean.replace(/[<@!>]/g, '').replace(/^@/, '').trim();
+  if (!idClean) return undefined;
+
+  const participantsList = Object.values(targetWar.participants || {});
+  if (participantsList.length === 0) return undefined;
+
+  // 1. Exact match on discordId, username, or @username
   let match = participantsList.find(p => 
-    p.discordId.toLowerCase() === clean ||
-    p.username.toLowerCase() === clean ||
-    p.username.toLowerCase().includes(clean) ||
-    clean.includes(p.username.toLowerCase()) ||
-    p.servantName.toLowerCase().includes(clean)
+    p.discordId.toLowerCase() === idClean ||
+    p.username.toLowerCase() === idClean ||
+    p.username.toLowerCase() === rawClean ||
+    p.username.toLowerCase().replace(/^@/, '') === idClean
   );
   if (match) return match;
 
-  // 2. Designation match like "shadow master #2", "shadow master 2", "master 2", "master #2", "#2", or "2"
-  const numberMatch = clean.match(/(?:shadow\s*master|master)?\s*#?\s*([1-7])/i);
-  if (numberMatch) {
-    const slotIdx = parseInt(numberMatch[1], 10) - 1;
+  // 2. Strict designation match (e.g. "#2", "shadow master #2", "master 2", "slot 2", or exact single digit "2")
+  // MUST use start/end anchors so Discord user IDs or arbitrary strings with numbers (e.g. "pokehunter1") do not match
+  const slotMatch = rawClean.match(/^(?:shadow\s*master|master|slot)?\s*#?\s*([1-7])$/i);
+  if (slotMatch) {
+    const slotIdx = parseInt(slotMatch[1], 10) - 1;
     if (slotIdx >= 0 && slotIdx < participantsList.length) {
       return participantsList[slotIdx];
     }
+  }
+
+  // 3. Substring match on username or servantName (only for queries at least 3 characters)
+  if (idClean.length >= 3) {
+    match = participantsList.find(p => {
+      const u = p.username.toLowerCase();
+      return u === idClean || u.includes(idClean);
+    });
+    if (match) return match;
+
+    match = participantsList.find(p => {
+      const s = p.servantName ? p.servantName.toLowerCase() : '';
+      return s.length > 0 && s.includes(idClean);
+    });
+    if (match) return match;
   }
 
   return undefined;
