@@ -15,6 +15,7 @@ import {
   getContractedServantTemplateIds
 } from '../database/service';
 import { MasterServantInstance, ServantTemplate } from '../types';
+import { getOrInitWarSession } from '../engine/grailwar';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -107,6 +108,40 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
     const subcommand = interaction.options.getSubcommand(false) || 'ritual';
+
+    // Check if the Master is deceased/eliminated in the active Holy Grail War
+    const warSession = getOrInitWarSession(master);
+    const participant = warSession.participants[master.discordId] || 
+      Object.values(warSession.participants).find(p => p.username.toLowerCase() === master.username.toLowerCase());
+
+    if (participant && !participant.isAlive && subcommand !== 'status') {
+      const deceasedEmbed = new EmbedBuilder()
+        .setTitle('☠️ SACRED SUMMONING REJECTED — MASTER IS DECEASED')
+        .setDescription(
+          `**The Greater Grail rejects your invocation.**\n\n` +
+          `Master **${master.username}**, you were dealt a fatal strike and **PERMANENTLY ELIMINATED** from the Holy Grail War.\n\n` +
+          `• **Command Seals:** 💀 **0 / 3** (Extinguished)\n` +
+          `• **Status:** **💀 Deceased / Eliminated**\n\n` +
+          `*In the Fuyuki Holy Grail War, fallen Masters cannot summon a new Servant or re-enter the ongoing tournament. You must wait for the war to conclude or restart the tournament session.*`
+        )
+        .setColor(0xef4444);
+
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId('quick_war_status')
+          .setLabel('View Intelligence Board (/grailwar)')
+          .setEmoji('📋')
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId('war_reset_tournament')
+          .setLabel('Restart Tournament (/grailwar reset)')
+          .setEmoji('🔄')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+      await interaction.reply({ embeds: [deceasedEmbed], components: [row] });
+      return;
+    }
 
     // ------------------------------------------
     // SUBCOMMAND: STATUS

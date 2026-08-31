@@ -113,9 +113,32 @@ export function getOrInitWarSession(master: MasterProfile): HolyGrailWarSession 
   if (!globalWarSession.civilianCasualties) globalWarSession.civilianCasualties = [];
   if (!globalWarSession.eventLogs) globalWarSession.eventLogs = [];
 
-  if (globalWarSession.participants[master.discordId]) {
-    const existing = globalWarSession.participants[master.discordId];
+  // Check if this real player already occupies a slot (by Discord ID or username match)
+  const existingKey = Object.keys(globalWarSession.participants).find(
+    k => k === master.discordId || 
+         globalWarSession!.participants[k].discordId === master.discordId ||
+         globalWarSession!.participants[k].username.toLowerCase() === master.username.toLowerCase()
+  );
+
+  if (existingKey) {
+    const existing = globalWarSession.participants[existingKey];
+
+    // If the key was a placeholder slot ID (e.g. ai_shadow_slot_3), migrate key to real discordId
+    if (existingKey !== master.discordId) {
+      delete globalWarSession.participants[existingKey];
+      existing.discordId = master.discordId;
+      globalWarSession.participants[master.discordId] = existing;
+    }
+
     existing.username = master.username;
+
+    // CRITICAL: If the Master was slain/eliminated, NEVER resurrect them or alter their deceased status!
+    if (!existing.isAlive) {
+      existing.currentHp = 0;
+      existing.isAlive = false;
+      return globalWarSession;
+    }
+
     if (activeServant) {
       existing.servantId = activeServant.id;
       existing.servantName = activeServant.template.name;
@@ -125,8 +148,11 @@ export function getOrInitWarSession(master: MasterProfile): HolyGrailWarSession 
     return globalWarSession;
   }
 
+  // Player is NEW to the current war: Claim an available ALIVE AI shadow slot (keep total at exactly 7)
   const aiSlotKey = Object.keys(globalWarSession.participants).find(
-    k => k.startsWith('ai_shadow_slot_') || k.startsWith('master_slot_')
+    k => (k.startsWith('ai_shadow_slot_') || k.startsWith('master_slot_')) &&
+         globalWarSession!.participants[k].isAlive &&
+         globalWarSession!.participants[k].username.startsWith('Shadow Master #')
   );
 
   if (aiSlotKey) {

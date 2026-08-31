@@ -20,6 +20,7 @@ import {
   getAllThroneServants 
 } from '../database/service';
 import { MasterServantInstance, ServantTemplate } from '../types';
+import { getOrInitWarSession } from '../engine/grailwar';
 
 export const data = new SlashCommandBuilder()
   .setName('summon')
@@ -43,6 +44,29 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction) {
   const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
   const subcommand = interaction.options.getSubcommand(false) || 'ritual';
+
+  // Check if Master was eliminated/slain in Holy Grail War
+  const warSession = getOrInitWarSession(master);
+  const participant = warSession.participants[master.discordId] || 
+    Object.values(warSession.participants).find(p => p.username.toLowerCase() === master.username.toLowerCase());
+
+  if (participant && !participant.isAlive && subcommand !== 'status') {
+    await interaction.reply({
+      embeds: [
+        new EmbedBuilder()
+          .setTitle('☠️ SACRED SUMMONING REJECTED — MASTER IS DECEASED')
+          .setDescription(
+            \`**The Greater Grail rejects your call.**\\n\\n\` +
+            \`Master **\${master.username}**, you were dealt a fatal strike and **PERMANENTLY ELIMINATED** from the Holy Grail War.\\n\\n\` +
+            \`• **Command Seals:** 💀 **0 / 3** (Extinguished)\\n\` +
+            \`• **Status:** **💀 Deceased / Eliminated**\\n\\n\` +
+            \`*Fallen Masters cannot summon a new Servant or re-enter the ongoing tournament. Use /grailwar reset to start a new war.*\`
+          )
+          .setColor(0xef4444)
+      ]
+    });
+    return;
+  }
 
   if (subcommand === 'ritual') {
     // Check if Master is already bound to a Servant

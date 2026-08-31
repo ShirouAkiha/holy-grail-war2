@@ -267,6 +267,37 @@ export default function DiscordEmulator({
     // COMMAND 1: /summon
     // ----------------------------------------------------
     if (trimmed.startsWith('/summon')) {
+      const userParticipant = grailWar.participants[master.discordId] ||
+        Object.values(grailWar.participants).find(p => p.username.toLowerCase() === master.username.toLowerCase());
+
+      // Master has been eliminated from the current Holy Grail War
+      if (userParticipant && !userParticipant.isAlive && !trimmed.includes('status')) {
+        addMessage({
+          id: getNextId('bot_summon_deceased'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '☠️ SACRED SUMMONING REJECTED — MASTER IS DECEASED',
+            description:
+              `**The Greater Grail rejects your invocation.**\n\n` +
+              `Master **${master.username}**, you were dealt a lethal strike and **PERMANENTLY ELIMINATED** from the active Holy Grail War.\n\n` +
+              `• **Command Seals:** 💀 **0 / 3** (Extinguished)\n` +
+              `• **Tournament Status:** **💀 Deceased / Eliminated** (HP: 0/${userParticipant.maxHp})\n\n` +
+              `*In an authentic Holy Grail War, deceased Masters cannot summon a replacement Heroic Spirit or re-enter an ongoing tournament. You must wait for the war to conclude or restart the tournament session.*`,
+            color: '#ef4444',
+            footer: 'Eliminated Masters cannot re-enter an active Holy Grail War'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary', emoji: '📋' },
+              { id: 'war_reset_tournament', label: 'Restart Tournament Session', style: 'secondary', emoji: '🔄' }
+            ]
+          }
+        });
+        return;
+      }
+
       if (trimmed.includes('release') || trimmed.includes('sever')) {
         if (!master.servants || master.servants.length === 0) {
           addMessage({
@@ -349,6 +380,29 @@ export default function DiscordEmulator({
         activeServantId: newInstance.id,
         commandSeals: 3
       });
+
+      // Synchronize Holy Grail War participant slot if alive
+      const updatedWarParticipants = { ...grailWar.participants };
+      const mySlotKey = Object.keys(updatedWarParticipants).find(
+        k => k === master.discordId || updatedWarParticipants[k].username.toLowerCase() === master.username.toLowerCase()
+      );
+      if (mySlotKey) {
+        updatedWarParticipants[mySlotKey] = {
+          ...updatedWarParticipants[mySlotKey],
+          discordId: master.discordId,
+          username: master.username,
+          servantId: newInstance.id,
+          servantName: randomTemplate.name,
+          servantClass: randomTemplate.servantClass,
+          avatarUrl: randomTemplate.avatarUrl,
+          maxHp: randomTemplate.baseHp,
+          currentHp: Math.min(updatedWarParticipants[mySlotKey].currentHp, randomTemplate.baseHp)
+        };
+        onUpdateGrailWar({
+          ...grailWar,
+          participants: updatedWarParticipants
+        });
+      }
 
       addMessage({
         id: getNextId('bot_summon_res'),
