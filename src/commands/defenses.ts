@@ -155,6 +155,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const reply = await interaction.reply({
       embeds: [defEmbed],
       components: defButtons,
+      ephemeral: true,
       fetchReply: true
     });
 

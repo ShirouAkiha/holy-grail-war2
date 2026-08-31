@@ -16,6 +16,7 @@ import {
   attackSuspectUserInWar,
   leakIntelInWar 
 } from '../engine/grailwar';
+import { buildProfileEmbed, buildProfileButtons } from './profile';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -30,8 +31,13 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand(sub =>
     sub
+      .setName('profile')
+      .setDescription('👤 View your private Master profile, Servant parameters & defense settings (Ephemeral)')
+  )
+  .addSubcommand(sub =>
+    sub
       .setName('defenses')
-      .setDescription('🏰 Manage your Mage Workshop sanctuary wards & Command Seal auto-evacuation')
+      .setDescription('🏰 Manage your Mage Workshop sanctuary wards & Command Seal auto-evacuation (Ephemeral)')
   )
   .addSubcommand(sub =>
     sub
@@ -108,22 +114,20 @@ export const data = new SlashCommandBuilder()
 // ==========================================
 // 2. WAR EMBED BUILDERS
 // ==========================================
-function buildWarEmbed(war: HolyGrailWarSession, userParticipant: any, lastMsg?: string) {
+function buildWarEmbed(war: HolyGrailWarSession, userParticipant?: any, lastMsg?: string) {
   const participants = Object.values(war.participants);
   const aliveParticipants = participants.filter(p => p.isAlive);
 
   const rosterList = participants
     .map((m, idx) => {
-      const isUser = userParticipant && m.discordId === userParticipant.discordId;
-      const isRevealed = m.isExposed || isUser || !m.isAlive;
+      const isRevealed = m.isExposed || !m.isAlive;
       
       let statusIcon = m.isAlive ? (isRevealed ? '🟢' : '🕶️') : '💀';
       let nameLabel = isRevealed ? m.username : `Shadow Master #${idx + 1}`;
       let servantLabel = isRevealed ? `${m.servantName} (${m.servantClass})` : '[Classified in Shadows]';
-      let tag = isUser ? ' `[YOU]`' : '';
-      let exposureTag = m.isExposed ? ' `[EXPOSED]`' : '';
+      let exposureTag = m.isExposed ? ' `[EXPOSED]`' : (!m.isAlive ? ' `[FALLEN]`' : '');
 
-      return `${statusIcon} **${nameLabel}**${tag}${exposureTag} — Servant: *${servantLabel}* | HP: \`${m.currentHp.toLocaleString()}/${m.maxHp.toLocaleString()}\` | Kills: ${m.kills}`;
+      return `${statusIcon} **${nameLabel}**${exposureTag} — Servant: *${servantLabel}* | HP: \`${m.currentHp.toLocaleString()}/${m.maxHp.toLocaleString()}\` | Kills: ${m.kills}`;
     })
     .join('\n');
 
@@ -148,9 +152,9 @@ function buildWarEmbed(war: HolyGrailWarSession, userParticipant: any, lastMsg?:
       else if (evt.type === 'alliance') icon = '🤝';
 
       let displayText = evt.text;
-      // Concealment safeguard: If text mentions an unexposed Master, mask it for other players
+      // Concealment safeguard: If text mentions an unexposed Master, mask it for all viewers
       participants.forEach((m, idx) => {
-        if (!m.isExposed && (!userParticipant || m.discordId !== userParticipant.discordId)) {
+        if (!m.isExposed) {
           if (m.username && displayText.includes(m.username)) {
             displayText = displayText.replace(new RegExp(`Master \\*\\*${m.username}\\*\\*`, 'g'), 'A Shadow Master');
             displayText = displayText.replace(new RegExp(`\\*\\*${m.username}\\*\\*`, 'g'), `Shadow Master #${idx + 1}`);
@@ -170,29 +174,14 @@ function buildWarEmbed(war: HolyGrailWarSession, userParticipant: any, lastMsg?:
   const casualtiesCount = war.civilianCasualties?.length || 0;
   const leaksCount = war.leakedIntel?.length || 0;
 
-  const wardLabel = userParticipant?.boundedField === 'ward' 
-    ? '🛡️ Sanctuary Field (60% Block)'
-    : userParticipant?.boundedField === 'alarm'
-    ? '🚨 Alarm Trap (3000 Counter DMG)'
-    : '🚫 None';
-
-  const evadeLabel = userParticipant?.autoEvadeEnabled !== false ? '🟢 ON' : '🔴 OFF';
-
   const embed = new EmbedBuilder()
     .setTitle(`🏆 ${war.title}`)
     .setDescription(
-      `**Status:** ${war.status.toUpperCase()} | **Alive Masters:** **${aliveParticipants.length}/7** | **Civilian Casualties:** **${casualtiesCount}**\n` +
-      (userParticipant
-        ? `\n👤 **Your Master Profile:**\n` +
-          `• Servant: **${userParticipant.servantName}** (${userParticipant.servantClass})\n` +
-          `• Status: **${userParticipant.isExposed ? '⚠️ Identity Exposed to Server' : '🕶️ Concealed in Shadows'}**\n` +
-          `• HP: **${userParticipant.currentHp.toLocaleString()}/${userParticipant.maxHp.toLocaleString()}** | Command Seals: **${userParticipant.commandSeals || 0}/3** | Kills: **${userParticipant.kills}**\n` +
-          `• Sanctuary Wards: **${wardLabel}** | Auto-Evacuate: **${evadeLabel}**\n\n`
-        : '\n') +
+      `**Status:** ${war.status.toUpperCase()} | **Alive Masters:** **${aliveParticipants.length}/7** | **Civilian Casualties:** **${casualtiesCount}**\n\n` +
       (lastMsg ? `📢 **Action Outcome:**\n${lastMsg}\n\n` : '') +
       `⚔️ **7 Masters Intelligence Roster:**\n${rosterList}\n\n` +
       `📜 **War Chronicle & Skirmishes (${(war.eventLogs || []).length} Events | ${leaksCount} Leaks):**\n${recentEvents || '*The war has begun. No city skirmishes recorded yet.*'}\n\n` +
-      `*Tactical commands: Use \`/grailwar defenses\` to configure wards, \`/attack\` to ambush suspects, or buttons below:*`
+      `*Tactical notice: To inspect your private Master stats, Servant parameters, and workshop defenses confidentially, use \`/profile\` or click "Secret Profile" below.*`
     )
     .setColor(0xd4af37);
 
@@ -247,20 +236,20 @@ function buildDefensesEmbed(userParticipant: any, lastMsg?: string) {
 function buildWarButtons() {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId('war_defenses')
-      .setLabel('Workshop Defenses')
-      .setEmoji('🏰')
+      .setCustomId('war_my_profile')
+      .setLabel('Secret Profile (Private)')
+      .setEmoji('👤')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
+      .setCustomId('war_defenses')
+      .setLabel('Defenses')
+      .setEmoji('🏰')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
       .setCustomId('war_duel')
-      .setLabel('Challenge Duel (/duel)')
+      .setLabel('Duel (/duel)')
       .setEmoji('⚔️')
       .setStyle(ButtonStyle.Danger),
-    new ButtonBuilder()
-      .setCustomId('war_rest')
-      .setLabel('Channel Mana (Heal)')
-      .setEmoji('🩹')
-      .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId('war_skirmish')
       .setLabel('City Skirmish')
@@ -335,12 +324,26 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const userParticipant = war.participants[interaction.user.id];
     const subcommand = interaction.options.getSubcommand();
 
+    if (subcommand === 'profile') {
+      const profEmbed = buildProfileEmbed(master, war);
+      const profButtons = buildProfileButtons(userParticipant);
+      const reply = await interaction.reply({
+        embeds: [profEmbed],
+        components: profButtons,
+        ephemeral: true,
+        fetchReply: true
+      });
+      setupWarCollector(reply, interaction.user.id);
+      return;
+    }
+
     if (subcommand === 'defenses') {
       const defEmbed = buildDefensesEmbed(userParticipant);
       const defButtons = buildDefensesButtons(userParticipant);
       const reply = await interaction.reply({
         embeds: [defEmbed],
         components: defButtons,
+        ephemeral: true,
         fetchReply: true
       });
       setupWarCollector(reply, interaction.user.id);
@@ -358,6 +361,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const reply = await interaction.reply({
         embeds: [defEmbed],
         components: defButtons,
+        ephemeral: true,
         fetchReply: true
       });
       setupWarCollector(reply, interaction.user.id);
@@ -375,6 +379,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const reply = await interaction.reply({
         embeds: [defEmbed],
         components: defButtons,
+        ephemeral: true,
         fetchReply: true
       });
       setupWarCollector(reply, interaction.user.id);
@@ -442,25 +447,36 @@ function setupWarCollector(message: any, userId: string) {
   });
 
   collector.on('collect', async (i: any) => {
-    if (i.user.id !== userId) {
-      await i.reply({ content: 'Only the Master who issued this war command can control these actions.', ephemeral: true });
-      return;
-    }
-
     try {
       const master = await getOrCreateMaster(i.user.id, i.user.username);
       let war = getOrInitWarSession(master);
       let actionResultMsg = '';
 
-      // Defenses & Ward Button interactions
+      // Secret Profile Button (Private to whoever clicks it)
+      if (i.customId === 'war_my_profile') {
+        const userP = war.participants[i.user.id];
+        const profEmbed = buildProfileEmbed(master, war);
+        const profBtns = buildProfileButtons(userP);
+        await i.reply({ embeds: [profEmbed], components: profBtns, ephemeral: true });
+        return;
+      }
+
+      // Defenses & Ward Button interactions (Private to whoever clicks it)
       if (i.customId === 'war_defenses') {
         const userP = war.participants[i.user.id];
         const defEmbed = buildDefensesEmbed(userP);
         const defBtns = buildDefensesButtons(userP);
-        await i.update({ embeds: [defEmbed], components: defBtns });
+        await i.reply({ embeds: [defEmbed], components: defBtns, ephemeral: true });
         return;
       }
-      else if (i.customId === 'war_status_board') {
+
+      // If action is on the main war board, ensure only the user who triggered can control public buttons
+      if (i.user.id !== userId) {
+        await i.reply({ content: 'Only the Master who issued this war command can control these public actions. Use `/profile` to view your own stats.', ephemeral: true });
+        return;
+      }
+
+      if (i.customId === 'war_status_board') {
         const userP = war.participants[i.user.id];
         const warEmbed = buildWarEmbed(war, userP);
         const warBtns = buildWarButtons();
