@@ -46,18 +46,23 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
     wardLabel = '🚨 **Intrusion Alarm Trap** (Alerts & Deals 3,000 retaliatory DMG)';
   }
 
+  const sTemplate = activeServant.template || activeServant;
+  const servantName = activeServant.nickname || sTemplate.name || activeServant.name || 'Heroic Spirit';
+  const servantClass = sTemplate.servantClass || activeServant.servantClass || activeServant.class || userParticipant?.servantClass || 'Saber';
+
   let classPassive = 'None (Specializes in standard strategic match)';
-  const sClass = userParticipant.servantClass;
-  if (sClass === 'Saber' || sClass === 'Archer' || sClass === 'Lancer') {
+  if (servantClass === 'Saber' || servantClass === 'Archer' || servantClass === 'Lancer') {
     classPassive = '👁️ **Instinct / Clairvoyance:** 35% chance to predict ambushes, parrying 80% damage and dealing 1,500 counter DMG.';
-  } else if (sClass === 'Assassin') {
+  } else if (servantClass === 'Assassin') {
     classPassive = '🕶️ **Presence Concealment:** Completely immune to surprise ambushes. Nullifies strike & counters for 2,500 DMG!';
-  } else if (sClass === 'Berserker') {
+  } else if (servantClass === 'Berserker') {
     classPassive = '❤️ **Battle Continuation (Guts):** Revives once with 25% Max HP if dealt a fatal blow.';
   }
 
-  const rarityStars = '⭐'.repeat(activeServant.rarity || 5);
-  const np = activeServant.noblePhantasm || { name: 'Excalibur', cardType: 'Buster', description: 'Sword of Promised Victory' };
+  const rarity = sTemplate.rarity || activeServant.rarity || 5;
+  const rarityStars = '⭐'.repeat(rarity);
+  const np = sTemplate.noblePhantasm || activeServant.noblePhantasm || { name: 'Excalibur', cardType: 'Buster', description: 'Sword of Promised Victory' };
+  const baseAtk = sTemplate.baseAtk || activeServant.baseAtk || activeServant.baseStats?.atk || 12000;
 
   return new EmbedBuilder()
     .setTitle('👤 Secret Master Dossier | ' + master.username)
@@ -65,12 +70,12 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
       '*(🔒 This confidential profile is only visible to you. Other Masters cannot see these details.)*\\n\\n' +
       (lastMsg ? ('📢 **Action Outcome:**\\n' + lastMsg + '\\n\\n') : '') +
       '⚔️ **Contracted Servant:**\\n' +
-      '• **' + activeServant.name + '** [' + rarityStars + '] — Class: **' + activeServant.class + '**\\n' +
+      '• **' + servantName + '** [' + rarityStars + '] — Class: **' + servantClass + '**\\n' +
       '• **Noble Phantasm:** ✨ **' + np.name + '** (' + np.cardType + ')\\n' +
       '  *' + np.description + '*\\n\\n' +
       '📊 **Combat Parameters:**\\n' +
       '• **HP:** ❤️ \`' + userParticipant.currentHp.toLocaleString() + ' / ' + userParticipant.maxHp.toLocaleString() + '\`\\n' +
-      '• **Base ATK:** ⚔️ \`' + (activeServant.baseStats?.atk || 12000).toLocaleString() + '\`\\n' +
+      '• **Base ATK:** ⚔️ \`' + baseAtk.toLocaleString() + '\`\\n' +
       '• **Noble Phantasm Charge:** ⚡ \`100% Ready\`\\n\\n' +
       '🛡️ **Workshop Defenses & Wards:**\\n' +
       '• **Active Bounded Field:** ' + wardLabel + '\\n' +

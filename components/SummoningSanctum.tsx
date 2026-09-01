@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import React, { useState } from 'react';
 import {
@@ -500,6 +501,7 @@ export default function SummoningSanctum({
                     src={activeContract.template.cardArtUrl || activeContract.template.avatarUrl}
                     alt={activeContract.template.name}
                     className="w-full h-full object-cover object-top"
+                    referrerPolicy="no-referrer"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
                   <div className="absolute bottom-3 left-3 right-3">
@@ -726,6 +728,7 @@ export default function SummoningSanctum({
                   src={formData.imageUrl || 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=600&auto=format&fit=crop&q=80'}
                   alt="Preview"
                   className="w-full h-full object-cover object-top"
+                  referrerPolicy="no-referrer"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
                 
@@ -933,7 +936,7 @@ export default function SummoningSanctum({
                     className="p-4 bg-[#0a0a0a] hover:bg-[#111] transition-all rounded-xl border border-[#1a1a1a] hover:border-[#d4af37]/50 flex gap-3 relative group cursor-pointer shadow-lg"
                   >
                     <div className="w-20 h-24 rounded-sm overflow-hidden bg-[#111] border border-[#222] flex-shrink-0 relative">
-                      <img src={s.avatarUrl || s.cardArtUrl} alt={s.name} className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300" />
+                      <img src={s.avatarUrl || s.cardArtUrl} alt={s.name} className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300" referrerPolicy="no-referrer" />
                       <span className="absolute bottom-1 right-1 text-[8px] font-mono px-1 rounded bg-black/80 text-amber-300">
                         {'★'.repeat(s.rarity || 5)}
                       </span>
@@ -1006,6 +1009,7 @@ export default function SummoningSanctum({
                       src={inspectedServant.avatarUrl || inspectedServant.cardArtUrl}
                       alt={inspectedServant.name}
                       className="w-full h-full object-cover object-top"
+                      referrerPolicy="no-referrer"
                     />
                   </div>
 
