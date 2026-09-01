@@ -29,7 +29,8 @@ import {
   leakIntelInWar,
   exposeMasterInWar,
   recordDuelOutcome,
-  createHolyGrailWarSession
+  createHolyGrailWarSession,
+  patrolCityInWar
 } from '../lib/engine/grailwar';
 import {
   Terminal,
@@ -964,6 +965,39 @@ export default function DiscordEmulator({
     }
 
     // ----------------------------------------------------
+    // COMMAND 4.5: /profile and /patrol
+    // ----------------------------------------------------
+    if (trimmed === '/profile' || trimmed.startsWith('/profile ') || trimmed.startsWith('/grailwar profile')) {
+      postProfileEmbed();
+      return;
+    }
+
+    if (trimmed.startsWith('/patrol') || trimmed.startsWith('/grailwar patrol')) {
+      const chanTag = activeChannel === 'public' ? '#holy-grail-war' : '#general';
+      const res = patrolCityInWar(grailWar, master.discordId, master.username, chanTag);
+      onUpdateGrailWar(res.updatedWar);
+      addMessage({
+        id: getNextId('bot_patrol_res'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '👁️ Patrol Outcome — Fuyuki Surveillance',
+          description: res.message,
+          color: '#3b82f6',
+          footer: 'Holy Grail War Patrol Protocol'
+        },
+        components: {
+          type: 'buttons',
+          items: [
+            { id: 'quick_war_status', label: 'Check Status Board (/grailwar)', style: 'primary', emoji: '📋' },
+            { id: 'war_patrol', label: 'Patrol Again', style: 'success', emoji: '👁️' }
+          ]
+        }
+      });
+      return;
+    }
+
+    // ----------------------------------------------------
     // COMMAND 5: /grailwar, /attack, /leak, /defenses
     // ----------------------------------------------------
     if (trimmed.startsWith('/grailwar') || trimmed.startsWith('/attack') || trimmed.startsWith('/leak') || trimmed.startsWith('/ambush') || trimmed.startsWith('/defenses') || trimmed.startsWith('/ward') || trimmed.startsWith('/evade')) {
@@ -1360,10 +1394,11 @@ export default function DiscordEmulator({
         components: {
           type: 'buttons',
           items: [
-            { id: 'war_attack_prompt', label: 'Ambush Suspect (/grailwar attack)', style: 'danger', emoji: '⚔️' },
-            { id: 'war_leak_prompt', label: 'Leak Intel (/grailwar leak)', style: 'primary', emoji: '🕵️' },
-            { id: 'war_rest', label: 'Channel Mana (Heal)', style: 'success', emoji: '🩹' },
-            { id: 'war_skirmish', label: 'Simulate City Skirmish', style: 'secondary', emoji: '💥' }
+            { id: 'war_my_profile', label: 'Secret Profile (Private)', style: 'primary', emoji: '👤' },
+            { id: 'war_defenses', label: 'Defenses', style: 'secondary', emoji: '🏰' },
+            { id: 'war_patrol', label: 'Patrol City', style: 'success', emoji: '👁️' },
+            { id: 'war_skirmish', label: 'City Skirmish', style: 'secondary', emoji: '💥' },
+            { id: 'war_refresh', label: 'Refresh', style: 'secondary', emoji: '🔄' }
           ]
         }
       });
@@ -1507,10 +1542,170 @@ export default function DiscordEmulator({
     });
   };
 
+  const postProfileEmbed = (customMsg?: string) => {
+    const userParticipant = grailWar.participants[master.discordId] || Object.values(grailWar.participants)[0];
+    const activeServant = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
+
+    if (!activeServant || !master.servants || master.servants.length === 0) {
+      addMessage({
+        id: getNextId('bot_profile_no_servant'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '👤 Master Dossier | No Servant Contracted',
+          description: '📜 **Civilian Spectator Dossier**: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.',
+          color: '#71717a'
+        },
+        components: {
+          type: 'buttons',
+          items: [
+            { id: 'quick_summon_ritual', label: 'Begin Summoning Ritual', style: 'success', emoji: '✨' }
+          ]
+        }
+      });
+      return;
+    }
+
+    const ward = userParticipant?.boundedField || 'none';
+    const autoEvade = userParticipant?.autoEvadeEnabled !== false;
+    const seals = userParticipant?.commandSeals ?? 3;
+    const isExposed = userParticipant?.isExposed;
+
+    let wardLabel = '🚫 **No Wards Active** (No perimeter defenses)';
+    if (ward === 'ward') {
+      wardLabel = '🛡️ **Sanctuary Bounded Field** (Absorbs 60% Ambush DMG)';
+    } else if (ward === 'alarm') {
+      wardLabel = '🚨 **Intrusion Alarm Trap** (Alerts & Deals 3,000 retaliatory DMG)';
+    }
+
+    const sTemplate = activeServant.template;
+    const servantName = activeServant.nickname || sTemplate.name;
+    const servantClass = sTemplate.servantClass;
+
+    let classPassive = 'None (Specializes in standard strategic match)';
+    if (servantClass === 'Saber' || servantClass === 'Archer' || servantClass === 'Lancer') {
+      classPassive = '👁️ **Instinct / Clairvoyance:** 35% chance to predict ambushes, parrying 80% damage and dealing 1,500 counter DMG.';
+    } else if (servantClass === 'Assassin') {
+      classPassive = '🕶️ **Presence Concealment:** Completely immune to surprise ambushes. Nullifies strike & counters for 2,500 DMG!';
+    } else if (servantClass === 'Berserker') {
+      classPassive = '❤️ **Battle Continuation (Guts):** Revives once with 25% Max HP if dealt a fatal blow.';
+    }
+
+    const rarity = sTemplate.rarity || 5;
+    const rarityStars = '⭐'.repeat(rarity);
+    const np = sTemplate.noblePhantasm;
+
+    addMessage({
+      id: getNextId('bot_profile_dossier'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title: `👤 Secret Master Dossier | ${master.username}`,
+        description:
+          `*(🔒 This confidential profile is only visible to you. Other Masters cannot see these details.)*\n\n` +
+          (customMsg ? `📢 **Action Outcome:**\n${customMsg}\n\n` : '') +
+          `⚔️ **Contracted Servant:**\n` +
+          `• **${servantName}** [${rarityStars}] — Class: **${servantClass}**\n` +
+          `• **Noble Phantasm:** ✨ **${np.name}** (${np.cardType})\n` +
+          `  *${np.chant || np.description}*\n\n` +
+          `📊 **Combat Parameters:**\n` +
+          `• **HP:** ❤️ \`${(userParticipant?.currentHp || 10000).toLocaleString()} / ${(userParticipant?.maxHp || 10000).toLocaleString()}\`\n` +
+          `• **Base ATK:** ⚔️ \`${sTemplate.baseAtk.toLocaleString()}\`\n` +
+          `• **Noble Phantasm Charge:** ⚡ \`100% Ready\`\n\n` +
+          `🛡️ **Workshop Defenses & Wards:**\n` +
+          `• **Active Bounded Field:** ${wardLabel}\n` +
+          `• **Command Seal Auto-Evacuation:** ${autoEvade ? '🟢 **ENABLED** (Retreats to shadows with 1 HP on lethal blow)' : '🔴 **DISABLED**'}\n` +
+          `• **Command Seals:** \`${'✦ '.repeat(seals)}${'✧ '.repeat(Math.max(0, 3 - seals))}\` (**${seals}/3** remaining)\n\n` +
+          `👁️ **Servant Class Passive:**\n${classPassive}\n\n` +
+          `🏆 **Grail War Status:**\n` +
+          `• **Stealth Status:** ${isExposed ? '⚠️ **EXPOSED TO PUBLIC WAR BOARD**' : '🕶️ **Concealed in Shadows** (Anonymous to rivals)'}\n` +
+          `• **Kills:** **${userParticipant?.kills || 0}** | **Status:** ${userParticipant?.isAlive !== false ? '🟢 Active Competitor' : '💀 Eliminated'}`,
+        color: isExposed ? '#ef4444' : '#3b82f6',
+        footer: 'Private Master Dossier • Holy Grail War Protocol'
+      },
+      components: {
+        type: 'buttons',
+        items: [
+          {
+            id: 'profile_ward_none',
+            label: 'No Wards',
+            style: ward === 'none' ? 'primary' : 'secondary',
+            emoji: '🚫'
+          },
+          {
+            id: 'profile_ward_ward',
+            label: 'Sanctuary (60% Block)',
+            style: ward === 'ward' ? 'success' : 'secondary',
+            emoji: '🛡️'
+          },
+          {
+            id: 'profile_ward_alarm',
+            label: 'Alarm Trap (3k DMG)',
+            style: ward === 'alarm' ? 'danger' : 'secondary',
+            emoji: '🚨'
+          },
+          {
+            id: 'profile_toggle_evade',
+            label: autoEvade ? 'Auto-Evacuate: ON 🟢' : 'Auto-Evacuate: OFF 🔴',
+            style: autoEvade ? 'success' : 'secondary'
+          },
+          {
+            id: 'profile_heal',
+            label: 'Channel Mana (Heal)',
+            style: 'success',
+            emoji: '🩹'
+          },
+          {
+            id: 'quick_war_status',
+            label: 'War Board (/grailwar)',
+            style: 'primary',
+            emoji: '📋'
+          }
+        ]
+      }
+    });
+  };
+
   // Button interaction handler
   const handleButtonClick = (btnId: string) => {
     if (btnId === 'btn_show_servants_list') {
       handleCommand('/servants list');
+    } else if (btnId.startsWith('profile_')) {
+      let currentWar = grailWar;
+      let actionMsg = '';
+
+      if (btnId === 'profile_ward_none') {
+        const res = executeWarAction(currentWar, master.discordId, 'set_ward', 'none');
+        currentWar = res.updatedWar;
+        actionMsg = res.message;
+        onUpdateGrailWar(currentWar);
+      } else if (btnId === 'profile_ward_ward') {
+        const res = executeWarAction(currentWar, master.discordId, 'set_ward', 'ward');
+        currentWar = res.updatedWar;
+        actionMsg = res.message;
+        onUpdateGrailWar(currentWar);
+      } else if (btnId === 'profile_ward_alarm') {
+        const res = executeWarAction(currentWar, master.discordId, 'set_ward', 'alarm');
+        currentWar = res.updatedWar;
+        actionMsg = res.message;
+        onUpdateGrailWar(currentWar);
+      } else if (btnId === 'profile_toggle_evade') {
+        const curMode = currentWar.participants[master.discordId]?.autoEvadeEnabled !== false ? 'off' : 'on';
+        const res = executeWarAction(currentWar, master.discordId, 'toggle_evade', curMode);
+        currentWar = res.updatedWar;
+        actionMsg = res.message;
+        onUpdateGrailWar(currentWar);
+      } else if (btnId === 'profile_heal') {
+        const res = executeWarAction(currentWar, master.discordId, 'rest_and_heal');
+        currentWar = res.updatedWar;
+        actionMsg = res.message;
+        onUpdateGrailWar(currentWar);
+      } else if (btnId === 'profile_refresh') {
+        actionMsg = '🔄 Profile refreshed.';
+      }
+
+      postProfileEmbed(actionMsg);
+      return;
     } else if (btnId.startsWith('view_servant_')) {
       const servantId = btnId.replace('view_servant_', '');
       const target = allThrone.find(s => s.id === servantId);
@@ -1886,6 +2081,46 @@ export default function DiscordEmulator({
       });
       return;
     } else if (btnId.startsWith('war_')) {
+      if (btnId === 'war_my_profile') {
+        postProfileEmbed();
+        return;
+      }
+
+      if (btnId === 'war_defenses') {
+        handleCommand('/defenses');
+        return;
+      }
+
+      if (btnId === 'war_patrol') {
+        const chanTag = activeChannel === 'public' ? '#holy-grail-war' : '#general';
+        const res = patrolCityInWar(grailWar, master.discordId, master.username, chanTag);
+        onUpdateGrailWar(res.updatedWar);
+        addMessage({
+          id: getNextId('bot_patrol_res'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '👁️ Patrol Outcome — Fuyuki Surveillance',
+            description: res.message,
+            color: '#3b82f6',
+            footer: 'Holy Grail War Patrol Protocol'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'quick_war_status', label: 'Check Status Board (/grailwar)', style: 'primary', emoji: '📋' },
+              { id: 'war_patrol', label: 'Patrol Again', style: 'success', emoji: '👁️' }
+            ]
+          }
+        });
+        return;
+      }
+
+      if (btnId === 'war_refresh' || btnId === 'war_status_board') {
+        handleCommand('/grailwar status');
+        return;
+      }
+
       if (btnId === 'war_attack_prompt') {
         setInputCommand('/grailwar attack ');
         return;
@@ -1897,7 +2132,8 @@ export default function DiscordEmulator({
       }
 
       if (btnId === 'war_skirmish') {
-        const result = simulateWarSkirmish(grailWar);
+        const chanTag = activeChannel === 'public' ? '#holy-grail-war' : '#general';
+        const result = simulateWarSkirmish(grailWar, chanTag);
         onUpdateGrailWar(result.updatedWar);
         const alive = Object.values(result.updatedWar.participants).filter(x => x.isAlive).length;
         addMessage({
@@ -1912,6 +2148,13 @@ export default function DiscordEmulator({
               `Recent Log:\n` +
               result.updatedWar.eventLogs.slice(0, 2).map(e => `• ${e.text}`).join('\n'),
             color: '#ef4444'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'quick_war_status', label: 'Check Status Board (/grailwar)', style: 'primary', emoji: '📋' },
+              { id: 'war_skirmish', label: 'Simulate Another Skirmish', style: 'secondary', emoji: '💥' }
+            ]
           }
         });
         return;
