@@ -153,37 +153,62 @@ export function resolveCombatTurn(
   let npGain = 0;
   let starsGen = 0;
 
+  // Calculate active buffs for attacker and defender
+  let atkBuff = 1.0;
+  let defBuff = 1.0;
+  let isEvading = defender.isEvading || false;
+
+  for (const b of attacker.activeBuffs || []) {
+    if (b.type === 'buff_atk') atkBuff += b.value / 100;
+  }
+  for (const b of defender.activeBuffs || []) {
+    if (b.type === 'buff_def') defBuff += b.value / 100;
+    if (b.type === 'evade') isEvading = true;
+  }
+
+  const effectiveAtk = attacker.atk * atkBuff;
+  const effectiveDef = defender.def * defBuff;
   const classMultiplier = calculateClassMultiplier(attacker.servantClass, defender.servantClass);
 
-  // Process chosen 3-card Command Chain
-  for (const card of attackerChoice.selectedCards) {
+  // Process chosen Command Cards
+  for (let i = 0; i < attackerChoice.selectedCards.length; i++) {
+    const card = attackerChoice.selectedCards[i];
     let cardMultiplier = 1.0;
+
     // BUSTER: 1.5x damage bonus
     if (card === 'Buster') {
       cardMultiplier = 1.5;
-      npGain += 5;
-      starsGen += 2;
+      npGain += 8;
+      starsGen += 3;
     } 
     // ARTS: High NP gauge generation
     else if (card === 'Arts') {
       cardMultiplier = 1.0;
-      npGain += 30;
-      starsGen += 1;
+      npGain += 32;
+      starsGen += 2;
     } 
     // QUICK: High Critical Star drop rate
     else if (card === 'Quick') {
-      cardMultiplier = 0.8;
-      npGain += 10;
-      starsGen += 15;
+      cardMultiplier = 0.80;
+      npGain += 12;
+      starsGen += 22;
     }
 
     // Critical Hit determination based on gathered stars
-    const hitCrit = Math.random() < ((attacker.critStars || 0) / 100);
+    const critChance = Math.min(0.95, ((attacker.critStars || 0) * 2.0) / 100);
+    const hitCrit = Math.random() < critChance;
     if (hitCrit) isCrit = true;
 
-    // Damage Formula: (ATK * CardMod * ClassAdvantage) - (DEF * 0.5)
-    const baseHit = (attacker.atk * cardMultiplier * classMultiplier) - (defender.def * 0.5);
-    const hitDamage = Math.max(200, Math.round(baseHit * (hitCrit ? 2.0 : 1.0)));
+    // Canonical FGO Damage Formula: (ATK * CardMod * 0.23 - DEF * 4) * ClassAdvantage * CritMult * Variance
+    const variance = 0.95 + Math.random() * 0.10;
+    const baseHit = (effectiveAtk * cardMultiplier * 0.23) - (effectiveDef * 4);
+    let hitDamage = Math.max(500, Math.round(baseHit * classMultiplier * (hitCrit ? 2.0 : 1.0) * variance));
+
+    if (isEvading) {
+      hitDamage = Math.round(hitDamage * 0.15);
+      isEvading = false; // consume evade
+    }
+
     totalDmg += hitDamage;
   }
 
@@ -194,7 +219,15 @@ export function resolveCombatTurn(
   if (attackerChoice.useNoblePhantasm && attacker.npGauge >= 100) {
     npTriggered = true;
     npChant = attacker.noblePhantasm.chant;
-    const npDmg = Math.round(attacker.atk * (attacker.noblePhantasm.multiplier / 100) * classMultiplier);
+    const npMult = (attacker.noblePhantasm.multiplier || 500) / 100;
+    const variance = 0.96 + Math.random() * 0.08;
+    let npDmg = Math.round((effectiveAtk * npMult * 0.18) * classMultiplier * variance);
+    npDmg = Math.max(3500, npDmg);
+
+    if (isEvading) {
+      npDmg = Math.round(npDmg * 0.25);
+    }
+
     totalDmg += npDmg;
     attacker.npGauge = 0; // Consume gauge
   } else {
