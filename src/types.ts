@@ -200,8 +200,11 @@ export interface CombatTurnLog {
   actionSummary: string;
   cardChainType?: 'Buster Brave' | 'Arts Chain' | 'Quick Chain' | 'Normal';
   cardsUsed: CardType[];
+  p1Cards?: CardType[];
+  p2Cards?: CardType[];
   skillsUsed: string[];
   npTriggered?: boolean;
+  isNoblePhantasm?: boolean;
   npChant?: string;
   damageDealt: number;
   isCritical: boolean;
