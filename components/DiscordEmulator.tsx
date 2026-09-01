@@ -136,10 +136,10 @@ interface DiscordMessage {
   canvasType?: 'servant' | 'dialogue' | 'battle';
   canvasPayload?: any;
   artworkEmbed?: {
-    title: string;
-    description: string;
+    title?: string;
+    description?: string;
     imageUrl?: string;
-    color: string;
+    color?: string;
   };
   components?: {
     type: 'buttons' | 'select';
@@ -651,8 +651,6 @@ export default function DiscordEmulator({
         canvasType: 'servant',
         canvasPayload: { servant: activeServant, masterName: master.username },
         artworkEmbed: {
-          title: `🎨 Full Artwork: ${activeServant.nickname || t.name}`,
-          description: `*${t.title} — Heroic Spirit Full Portrait*`,
           imageUrl: t.cardArtUrl || t.avatarUrl,
           color: t.rarity === 5 ? '#f59e0b' : '#38bdf8'
         },
@@ -2105,13 +2103,17 @@ export default function DiscordEmulator({
               {/* Full Artwork Embed Below Canvas */}
               {msg.artworkEmbed && (
                 <div
-                  className="mt-3 p-4 rounded-sm bg-[#111] border-l-2 text-[#dbdee1] max-w-2xl border border-y-[#1a1a1a] border-r-[#1a1a1a]"
+                  className="mt-3 p-3 rounded-sm bg-[#111] border-l-2 text-[#dbdee1] max-w-2xl border border-y-[#1a1a1a] border-r-[#1a1a1a]"
                   style={{ borderLeftColor: msg.artworkEmbed.color || '#d4af37' }}
                 >
-                  <h4 className="font-serif italic text-white text-base mb-1.5">{msg.artworkEmbed.title}</h4>
-                  <div className="whitespace-pre-wrap text-xs text-white/80 leading-relaxed font-mono mb-3">
-                    {msg.artworkEmbed.description}
-                  </div>
+                  {msg.artworkEmbed.title && (
+                    <h4 className="font-serif italic text-white text-base mb-1.5">{msg.artworkEmbed.title}</h4>
+                  )}
+                  {msg.artworkEmbed.description && (
+                    <div className="whitespace-pre-wrap text-xs text-white/80 leading-relaxed font-mono mb-3">
+                      {msg.artworkEmbed.description}
+                    </div>
+                  )}
                   {msg.artworkEmbed.imageUrl && (
                     <div className="rounded-md overflow-hidden border border-[#222] bg-[#050505] max-w-xl">
                       <img

@@ -58,8 +58,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .setImage('attachment://servant_card.png');
 
     const artworkEmbed = new EmbedBuilder()
-      .setTitle(\`🎨 Full Artwork: \${activeServant.nickname || activeServant.template.name}\`)
-      .setDescription(\`*\${activeServant.template.title} — Heroic Spirit Full Portrait*\`)
       .setImage(activeServant.template.cardArtUrl || activeServant.template.avatarUrl)
       .setColor(activeServant.template.rarity === 5 ? 0xf59e0b : 0x38bdf8);
 
