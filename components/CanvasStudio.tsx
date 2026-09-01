@@ -115,9 +115,9 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 border-b border-[#1a1a1a] pb-3">
         {[
-          { id: 'profile' as const, label: 'Servant Status Card (800x460)' },
+          { id: 'profile' as const, label: 'Servant Status Card (850x390)' },
           { id: 'dialogue' as const, label: 'Dialogue Card (800x240)' },
-          { id: 'battle' as const, label: 'Battle Clash (800x380)' },
+          { id: 'battle' as const, label: 'Battle Clash (640x640 Square)' },
           { id: 'gacha' as const, label: 'Summon Banner (900x420)' }
         ].map(t => (
           <button
