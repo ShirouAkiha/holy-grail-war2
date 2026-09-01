@@ -26,6 +26,10 @@ import * as leakCommand from './commands/leak';
 import * as customiseCommand from './commands/customise';
 import { updateCustomDialogueQuotes, equipCraftEssence } from './engine/customization';
 import { getOrCreateMaster, updateMasterProfile } from './database/service';
+import { buildProfileEmbed, buildProfileButtons } from './commands/profile';
+import { buildDefensesEmbed, buildDefensesButtons } from './commands/defenses';
+import { buildWarEmbed, buildWarButtons } from './commands/grailwar';
+import { getOrInitWarSession, executeWarAction, patrolCityInWar, simulateWarSkirmish } from './engine/grailwar';
 
 // Initialize Client with necessary Intents
 export const client = new Client({
@@ -150,6 +154,185 @@ client.on(Events.InteractionCreate, async interaction => {
         }
       }
       return;
+    }
+
+    // 4. Button Component Router
+    if (interaction.isButton()) {
+      if (interaction.replied || interaction.deferred) return;
+
+      const btnId = interaction.customId;
+      const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+      let war = getOrInitWarSession(master);
+      const isCivilian = !master.servants || master.servants.length === 0;
+
+      // Profile Buttons
+      if (btnId === 'war_my_profile' || btnId === 'profile_refresh') {
+        if (isCivilian) {
+          await interaction.reply({
+            ephemeral: true,
+            content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use \`/summon\` to establish a covenant and enter the Holy Grail War.'
+          });
+          return;
+        }
+        const uP = war.participants[interaction.user.id];
+        const embed = buildProfileEmbed(master, war, btnId === 'profile_refresh' ? '🔄 Profile refreshed.' : undefined);
+        const btns = buildProfileButtons(uP);
+        if (btnId === 'war_my_profile') {
+          await interaction.reply({ embeds: [embed], components: btns, ephemeral: true });
+        } else {
+          await interaction.update({ embeds: [embed], components: btns });
+        }
+        return;
+      }
+
+      if (btnId.startsWith('profile_ward_') || btnId === 'profile_toggle_evade' || btnId === 'profile_heal') {
+        if (isCivilian) {
+          await interaction.reply({
+            ephemeral: true,
+            content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use \`/summon\` to establish a covenant and enter the Holy Grail War.'
+          });
+          return;
+        }
+
+        let msg = '';
+        if (btnId === 'profile_ward_none') {
+          const res = executeWarAction(war, interaction.user.id, 'set_ward', 'none');
+          war = res.updatedWar;
+          msg = res.message;
+          await updateMasterProfile(master);
+        } else if (btnId === 'profile_ward_ward') {
+          const res = executeWarAction(war, interaction.user.id, 'set_ward', 'ward');
+          war = res.updatedWar;
+          msg = res.message;
+          await updateMasterProfile(master);
+        } else if (btnId === 'profile_ward_alarm') {
+          const res = executeWarAction(war, interaction.user.id, 'set_ward', 'alarm');
+          war = res.updatedWar;
+          msg = res.message;
+          await updateMasterProfile(master);
+        } else if (btnId === 'profile_toggle_evade') {
+          const curP = war.participants[interaction.user.id];
+          const newMode = curP?.autoEvadeEnabled !== false ? 'off' : 'on';
+          const res = executeWarAction(war, interaction.user.id, 'toggle_evade', newMode);
+          war = res.updatedWar;
+          msg = res.message;
+          await updateMasterProfile(master);
+        } else if (btnId === 'profile_heal') {
+          const res = executeWarAction(war, interaction.user.id, 'rest_and_heal');
+          war = res.updatedWar;
+          msg = res.message;
+          await updateMasterProfile(master);
+        }
+
+        const uP = war.participants[interaction.user.id];
+        await interaction.update({ embeds: [buildProfileEmbed(master, war, msg)], components: buildProfileButtons(uP) });
+        return;
+      }
+
+      // Defenses Buttons
+      if (btnId === 'war_defenses' || btnId === 'war_refresh_defenses') {
+        if (isCivilian) {
+          await interaction.reply({
+            ephemeral: true,
+            content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use \`/summon\` to establish a covenant and enter the Holy Grail War.'
+          });
+          return;
+        }
+        const uP = war.participants[interaction.user.id];
+        const embed = buildDefensesEmbed(uP, btnId === 'war_refresh_defenses' ? '🔄 Workshop settings refreshed.' : undefined);
+        const btns = buildDefensesButtons(uP);
+        if (btnId === 'war_defenses') {
+          await interaction.reply({ embeds: [embed], components: btns, ephemeral: true });
+        } else {
+          await interaction.update({ embeds: [embed], components: btns });
+        }
+        return;
+      }
+
+      if (btnId.startsWith('ward_') || btnId === 'toggle_auto_evade') {
+        if (isCivilian) {
+          await interaction.reply({
+            ephemeral: true,
+            content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use \`/summon\` to establish a covenant and enter the Holy Grail War.'
+          });
+          return;
+        }
+
+        let msg = '';
+        if (btnId === 'ward_none') {
+          const res = executeWarAction(war, interaction.user.id, 'set_ward', 'none');
+          war = res.updatedWar;
+          msg = res.message;
+          await updateMasterProfile(master);
+        } else if (btnId === 'ward_ward') {
+          const res = executeWarAction(war, interaction.user.id, 'set_ward', 'ward');
+          war = res.updatedWar;
+          msg = res.message;
+          await updateMasterProfile(master);
+        } else if (btnId === 'ward_alarm') {
+          const res = executeWarAction(war, interaction.user.id, 'set_ward', 'alarm');
+          war = res.updatedWar;
+          msg = res.message;
+          await updateMasterProfile(master);
+        } else if (btnId === 'toggle_auto_evade') {
+          const curP = war.participants[interaction.user.id];
+          const newMode = curP?.autoEvadeEnabled !== false ? 'off' : 'on';
+          const res = executeWarAction(war, interaction.user.id, 'toggle_evade', newMode);
+          war = res.updatedWar;
+          msg = res.message;
+          await updateMasterProfile(master);
+        }
+
+        const uP = war.participants[interaction.user.id];
+        await interaction.update({ embeds: [buildDefensesEmbed(uP, msg)], components: buildDefensesButtons(uP) });
+        return;
+      }
+
+      // War Board Buttons
+      if (btnId === 'war_patrol') {
+        const chanTag = interaction.channel && 'name' in interaction.channel ? \`#\${(interaction.channel as any).name}\` : '#general';
+        const res = patrolCityInWar(war, interaction.user.id, interaction.user.username, chanTag);
+        const uP = res.updatedWar.participants[interaction.user.id];
+        await interaction.update({ embeds: [buildWarEmbed(res.updatedWar, uP, res.message)], components: [buildWarButtons()] });
+        return;
+      }
+
+      if (btnId === 'war_skirmish') {
+        const chanTag = interaction.channel && 'name' in interaction.channel ? \`#\${(interaction.channel as any).name}\` : '#general';
+        const res = simulateWarSkirmish(war, chanTag);
+        const uP = res.updatedWar.participants[interaction.user.id];
+        await interaction.update({ embeds: [buildWarEmbed(res.updatedWar, uP, res.message)], components: [buildWarButtons()] });
+        return;
+      }
+
+      if (btnId === 'war_refresh' || btnId === 'war_status_board' || btnId === 'quick_war_status') {
+        const uP = war.participants[interaction.user.id];
+        const embed = buildWarEmbed(war, uP, '🔄 Intelligence Board refreshed.');
+        const btns = [buildWarButtons()];
+        if (btnId === 'quick_war_status') {
+          await interaction.reply({ embeds: [embed], components: btns, ephemeral: true });
+        } else {
+          await interaction.update({ embeds: [embed], components: btns });
+        }
+        return;
+      }
+
+      // Navigation Shortcuts
+      if (btnId === 'go_summon' || btnId === 'quick_summon_ritual') {
+        await interaction.reply({
+          content: '✨ Use the \`/summon ritual\` slash command to invoke the Throne of Heroes and contract a Servant!',
+          ephemeral: true
+        });
+        return;
+      }
+
+      if (btnId === 'quick_start_duel' || btnId === 'quick_duel_ai') {
+        await interaction.reply({
+          content: '⚔️ Use \`/duel\` to enter the battle arena or challenge another Master with \`/duel opponent:@Master\`!',
+          ephemeral: true
+        });
+        return;
+      }
     }
 
   } catch (err: any) {

@@ -120,7 +120,7 @@ export const data = new SlashCommandBuilder()
 // ==========================================
 // 2. WAR EMBED BUILDERS
 // ==========================================
-function buildWarEmbed(war: HolyGrailWarSession, userParticipant?: any, lastMsg?: string) {
+export function buildWarEmbed(war: HolyGrailWarSession, userParticipant?: any, lastMsg?: string) {
   const participants = Object.values(war.participants);
   const aliveParticipants = participants.filter(p => p.isAlive);
 
@@ -246,7 +246,7 @@ function buildDefensesEmbed(userParticipant: any, lastMsg?: string) {
 // ==========================================
 // 3. ACTION BUTTONS
 // ==========================================
-function buildWarButtons() {
+export function buildWarButtons() {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId('war_my_profile')

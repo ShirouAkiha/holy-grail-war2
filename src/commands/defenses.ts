@@ -38,7 +38,7 @@ export const data = new SlashCommandBuilder()
       )
   );
 
-function buildDefensesEmbed(userParticipant: any, lastMsg?: string) {
+export function buildDefensesEmbed(userParticipant: any, lastMsg?: string) {
   if (!userParticipant) {
     return new EmbedBuilder()
       .setTitle('🏰 Mage Workshop | No Sanctuary Established')
@@ -87,7 +87,7 @@ function buildDefensesEmbed(userParticipant: any, lastMsg?: string) {
   return embed;
 }
 
-function buildDefensesButtons(userParticipant: any) {
+export function buildDefensesButtons(userParticipant: any) {
   if (!userParticipant) return [];
   const currentWard = userParticipant?.boundedField || 'none';
   const autoEvade = userParticipant?.autoEvadeEnabled !== false;
