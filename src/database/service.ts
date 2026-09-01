@@ -1,15 +1,105 @@
 import { MasterProfile, MasterServantInstance, CraftEssence, ServantTemplate } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
+import fs from 'fs';
+import path from 'path';
 
 // ==========================================
-// 1. IN-MEMORY MASTER & CUSTOM SERVANT STORE
+// 1. DISK PERSISTENCE ENGINE & DATA STORES
 // ==========================================
+const DATA_DIR = path.join(process.cwd(), 'data');
+const CUSTOM_SERVANTS_FILE = path.join(DATA_DIR, 'custom_servants.json');
+const MASTERS_FILE = path.join(DATA_DIR, 'masters.json');
+
 // Maps Discord User IDs (e.g. "123456789012345678") to their respective MasterProfile records.
 const masterStore: Map<string, MasterProfile> = new Map();
 
 // Store for custom Heroic Spirits registered by Server Admins
 let customServants: ServantTemplate[] = [];
+
+// Track all edited servant templates (both canon overrides and custom servants)
+const savedServantsMap: Map<string, ServantTemplate> = new Map();
+
+function ensureDataDirectory() {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+}
+
+/**
+ * Loads saved servants (custom and canon overrides) and master profiles from disk on startup.
+ */
+function loadFromDisk() {
+  try {
+    ensureDataDirectory();
+
+    // 1. Load Custom & Edited Servants
+    if (fs.existsSync(CUSTOM_SERVANTS_FILE)) {
+      const raw = fs.readFileSync(CUSTOM_SERVANTS_FILE, 'utf-8');
+      if (raw) {
+        const savedServants: ServantTemplate[] = JSON.parse(raw);
+        for (const s of savedServants) {
+          savedServantsMap.set(s.id, s);
+          const canonIdx = SERVANT_DATABASE.findIndex(c => c.id === s.id);
+          if (canonIdx >= 0) {
+            // Override canon servant in memory with saved edits
+            SERVANT_DATABASE[canonIdx] = { ...SERVANT_DATABASE[canonIdx], ...s };
+          } else {
+            // Custom servant
+            const customIdx = customServants.findIndex(c => c.id === s.id);
+            if (customIdx >= 0) {
+              customServants[customIdx] = s;
+            } else {
+              customServants.push(s);
+            }
+          }
+        }
+      }
+    }
+
+    // 2. Load Master Profiles
+    if (fs.existsSync(MASTERS_FILE)) {
+      const raw = fs.readFileSync(MASTERS_FILE, 'utf-8');
+      if (raw) {
+        const savedMasters: MasterProfile[] = JSON.parse(raw);
+        for (const m of savedMasters) {
+          masterStore.set(m.discordId, m);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[Database] Failed to load persistent data from disk:', err);
+  }
+}
+
+// Immediately load disk state when module initializes
+loadFromDisk();
+
+function saveCustomServantsToDisk() {
+  try {
+    ensureDataDirectory();
+    const listToSave = Array.from(savedServantsMap.values());
+    // Ensure any customServants not in map are included
+    for (const cs of customServants) {
+      if (!savedServantsMap.has(cs.id)) {
+        listToSave.push(cs);
+      }
+    }
+    fs.writeFileSync(CUSTOM_SERVANTS_FILE, JSON.stringify(listToSave, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[Database] Failed to write custom_servants.json to disk:', err);
+  }
+}
+
+function saveMastersToDisk() {
+  try {
+    ensureDataDirectory();
+    const mastersList = Array.from(masterStore.values());
+    fs.writeFileSync(MASTERS_FILE, JSON.stringify(mastersList, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[Database] Failed to write masters.json to disk:', err);
+  }
+}
 
 /**
  * Returns the entire Throne of Heroes database (Built-in + Admin Custom Servants).
@@ -29,6 +119,8 @@ export function addCustomServant(servant: ServantTemplate): ServantTemplate {
   } else {
     customServants.push(servant);
   }
+  savedServantsMap.set(servant.id, servant);
+  saveCustomServantsToDisk();
   return servant;
 }
 
@@ -111,6 +203,10 @@ export function updateServantTemplate(
     }
   }
 
+  // Save servant edit to disk map & file
+  savedServantsMap.set(target.id, { ...target });
+  saveCustomServantsToDisk();
+
   // Propagate updates to all active Master servant instances in memory
   for (const master of masterStore.values()) {
     if (master.servants) {
@@ -126,6 +222,8 @@ export function updateServantTemplate(
     }
   }
 
+  saveMastersToDisk();
+
   return { success: true, servant: target };
 }
 
@@ -135,6 +233,8 @@ export function updateServantTemplate(
 export function removeCustomServant(servantId: string): boolean {
   const initialLen = customServants.length;
   customServants = customServants.filter(s => s.id !== servantId);
+  savedServantsMap.delete(servantId);
+  saveCustomServantsToDisk();
   return customServants.length < initialLen;
 }
 
@@ -198,10 +298,12 @@ export async function getOrCreateMaster(discordId: string, username: string = 'M
       craftEssences: [CRAFT_ESSENCE_DATABASE[0]]
     };
     masterStore.set(discordId, master);
+    saveMastersToDisk();
   } else {
     // Keep username synchronized in case the user changed their Discord display name
     if (username && master.username !== username) {
       master.username = username;
+      saveMastersToDisk();
     }
   }
 
@@ -223,6 +325,7 @@ export async function updateMasterProfile(discordId: string, data: Partial<Maste
   if (data.craftEssences !== undefined) master.craftEssences = data.craftEssences;
 
   masterStore.set(discordId, master);
+  saveMastersToDisk();
   return master;
 }
 
@@ -231,6 +334,7 @@ export async function updateMasterProfile(discordId: string, data: Partial<Maste
  */
 export async function saveMaster(master: MasterProfile): Promise<MasterProfile> {
   masterStore.set(master.discordId, master);
+  saveMastersToDisk();
   return master;
 }
 

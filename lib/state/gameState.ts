@@ -56,7 +56,18 @@ export async function fetchServerCustomServants(): Promise<ServantTemplate[]> {
 }
 
 export function getAllThroneServants(customServants: ServantTemplate[] = []): ServantTemplate[] {
-  return [...SERVANT_DATABASE, ...customServants];
+  const canonMap = new Map<string, ServantTemplate>(SERVANT_DATABASE.map(s => [s.id, { ...s }]));
+  const customOnly: ServantTemplate[] = [];
+
+  for (const cs of customServants) {
+    if (canonMap.has(cs.id)) {
+      canonMap.set(cs.id, { ...canonMap.get(cs.id)!, ...cs });
+    } else {
+      customOnly.push(cs);
+    }
+  }
+
+  return [...Array.from(canonMap.values()), ...customOnly];
 }
 
 export function getInitialMasterProfile(): MasterProfile {
