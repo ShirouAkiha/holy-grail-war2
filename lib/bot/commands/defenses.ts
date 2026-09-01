@@ -169,6 +169,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     });
 
     collector.on('collect', async (i: any) => {
+      if (i.replied || i.deferred) return;
       if (i.user.id !== interaction.user.id) {
         await i.reply({ content: 'Only the Master who issued this command can configure workshop defenses.', ephemeral: true });
         return;
@@ -209,6 +210,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           await i.update({ embeds: [buildDefensesEmbed(uP, '🔄 Settings refreshed.')], components: buildDefensesButtons(uP) });
         }
       } catch (err: any) {
+        if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
         console.error('Error in defenses collector:', err);
       }
     });

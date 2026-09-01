@@ -126,7 +126,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     });
 
     collector.on('collect', async i => {
-      let p1Cards: CardType[] = ['Buster', 'Arts', 'Quick'];
+      try {
+        if (i.replied || i.deferred) return;
+        let p1Cards: CardType[] = ['Buster', 'Arts', 'Quick'];
       let useNp = false;
       let useSkillIndex: number | undefined;
 
@@ -180,6 +182,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         files: [attachment],
         components: nextView.rows
       });
+      } catch (err: any) {
+        if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
+        console.error('Error in duel collector:', err);
+      }
     });
 
   } catch (error: any) {

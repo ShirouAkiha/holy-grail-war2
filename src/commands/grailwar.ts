@@ -475,6 +475,8 @@ function setupWarCollector(message: any, userId: string) {
 
   collector.on('collect', async (i: any) => {
     try {
+      if (i.replied || i.deferred) return;
+
       const master = await getOrCreateMaster(i.user.id, i.user.username);
       let war = getOrInitWarSession(master);
       let actionResultMsg = '';
@@ -596,6 +598,7 @@ function setupWarCollector(message: any, userId: string) {
 
       await i.update({ embeds: [updatedEmbed], components: [updatedRow] });
     } catch (err: any) {
+      if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
       console.error('Error in grail war collector:', err);
     }
   });

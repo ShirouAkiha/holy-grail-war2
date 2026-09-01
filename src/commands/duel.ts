@@ -400,6 +400,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
 
       inviteCollector.on('collect', async i => {
+        if (i.replied || i.deferred) return;
         if (i.user.id !== opponentUser.id && i.user.id !== interaction.user.id) {
           await i.reply({ content: 'You are not involved in this duel challenge.', ephemeral: true });
           return;
@@ -502,6 +503,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     });
 
     inviteCollector.on('collect', async i => {
+      if (i.replied || i.deferred) return;
       if (i.user.id !== targetRival.discordId && i.user.id !== interaction.user.id) {
         await i.reply({ content: 'You are not involved in this duel challenge.', ephemeral: true });
         return;
@@ -575,7 +577,9 @@ async function startInteractiveDuel(
   });
 
   collector.on('collect', async (i: any) => {
-    // Enforce Turn Order: Block clicks if it is not this player's turn
+    try {
+      if (i.replied || i.deferred) return;
+      // Enforce Turn Order: Block clicks if it is not this player's turn
     if (i.user.id !== activeUserId) {
       await i.reply({
         content: `⏳ It is not your turn! Waiting for <@${activeUserId}> to take an action.`,
@@ -636,6 +640,10 @@ async function startInteractiveDuel(
     const updatedButtons = buildCombatButtons(nextCombatant);
 
     await i.update({ embeds: [updatedEmbed], components: updatedButtons });
+    } catch (err: any) {
+      if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
+      console.error('Error in duel battle collector:', err);
+    }
   });
 
   collector.on('end', async (_collected: any, reason: string) => {

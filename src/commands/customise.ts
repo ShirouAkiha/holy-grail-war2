@@ -248,7 +248,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
 
       collector.on('collect', async (i: any) => {
-        const ceId = i.values[0];
+        try {
+          if (i.replied || i.deferred) return;
+          const ceId = i.values[0];
         const picked = CRAFT_ESSENCE_DATABASE.find(c => c.id === ceId);
         if (picked) {
           activeServant.equippedCeId = picked.id;
@@ -268,6 +270,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             ],
             components: []
           });
+        }
+        } catch (err: any) {
+          if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
+          console.error('Error in customise collector:', err);
         }
       });
       return;

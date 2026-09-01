@@ -161,6 +161,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     });
 
     collector.on('collect', async (i: any) => {
+      if (i.replied || i.deferred) return;
       if (i.user.id !== interaction.user.id) {
         await i.reply({ content: 'Only the Master who opened this dossier can interact with it.', ephemeral: true });
         return;
@@ -208,6 +209,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           components: buildProfileButtons(uP)
         });
       } catch (err: any) {
+        if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
         console.error('Error in profile collector:', err);
       }
     });

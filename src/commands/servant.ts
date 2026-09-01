@@ -58,6 +58,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
 
       collector.on('collect', async (i: any) => {
+        if (i.replied || i.deferred) return;
         if (i.customId === 'go_summon') {
           await i.reply({ content: 'Use the `/summon ritual` command to summon your Heroic Spirit!', ephemeral: true });
         }
@@ -190,6 +191,7 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
   });
 
   collector.on('collect', async (i: any) => {
+    if (i.replied || i.deferred) return;
     // Only the profile owner can click
     if (i.user.id !== userId) {
       await i.reply({ content: 'Only the Master who issued this command can interact with this profile.', ephemeral: true });
@@ -271,6 +273,7 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
       }
 
     } catch (err: any) {
+      if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
       console.error('Error in servant collector:', err);
     }
   });

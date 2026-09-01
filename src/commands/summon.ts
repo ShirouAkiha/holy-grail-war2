@@ -363,6 +363,7 @@ function setupSummonButtonCollector(message: any, userId: string) {
   });
 
   collector.on('collect', async (i: any) => {
+    if (i.replied || i.deferred) return;
     if (i.user.id !== userId) {
       await i.reply({ content: 'Only the Master who performed this ritual can click these actions.', ephemeral: true });
       return;
@@ -436,6 +437,7 @@ function setupSummonButtonCollector(message: any, userId: string) {
         return;
       }
     } catch (err: any) {
+      if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
       console.error('Error in summon collector:', err);
     }
   });

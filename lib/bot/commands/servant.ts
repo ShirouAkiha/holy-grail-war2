@@ -86,7 +86,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     });
 
     collector.on('collect', async i => {
-      if (i.customId.startsWith('dialogue_quote:')) {
+      try {
+        if (i.replied || i.deferred) return;
+        if (i.customId.startsWith('dialogue_quote:')) {
         const dialogueBuffer = await renderDialogueCard(
           activeServant.template.name,
           activeServant.customQuotes.summon || activeServant.template.summonQuote,
@@ -99,6 +101,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           files: [dialogueAttachment],
           ephemeral: true
         });
+      }
+      } catch (err: any) {
+        if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
+        console.error('Error in servant collector:', err);
       }
     });
 

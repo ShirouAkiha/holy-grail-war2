@@ -243,6 +243,7 @@ function setupServantListCollector(message: any, allServants: ServantTemplate[])
 
   collector.on('collect', async (i: any) => {
     try {
+      if (i.replied || i.deferred) return;
       if (i.customId.startsWith('view_servant_')) {
         const id = i.customId.replace('view_servant_', '');
         const target = allServants.find(s => s.id === id);
@@ -264,6 +265,7 @@ function setupServantListCollector(message: any, allServants: ServantTemplate[])
         await i.reply({ embeds: [listEmbed], components: rows });
       }
     } catch (err: any) {
+      if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
       console.error('Error handling servants list button:', err);
     }
   });
