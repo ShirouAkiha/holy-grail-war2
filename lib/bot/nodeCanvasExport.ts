@@ -14,6 +14,47 @@ import {
 } from '../types';
 import { calculateRadarCoordinates } from '../engine/customization';
 
+function drawVectorStar(
+  ctx: any,
+  cx: number,
+  cy: number,
+  spikes: number,
+  outerRadius: number,
+  innerRadius: number,
+  fillStyle?: string,
+  strokeStyle?: string
+) {
+  let rot = (Math.PI / 2) * 3;
+  let x = cx;
+  let y = cy;
+  const step = Math.PI / spikes;
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - outerRadius);
+  for (let i = 0; i < spikes; i++) {
+    x = cx + Math.cos(rot) * outerRadius;
+    y = cy + Math.sin(rot) * outerRadius;
+    ctx.lineTo(x, y);
+    rot += step;
+
+    x = cx + Math.cos(rot) * innerRadius;
+    y = cy + Math.sin(rot) * innerRadius;
+    ctx.lineTo(x, y);
+    rot += step;
+  }
+  ctx.lineTo(cx, cy - outerRadius);
+  ctx.closePath();
+
+  if (fillStyle) {
+    ctx.fillStyle = fillStyle;
+    ctx.fill();
+  }
+  if (strokeStyle) {
+    ctx.strokeStyle = strokeStyle;
+    ctx.stroke();
+  }
+}
+
 function drawRoundRect(
   ctx: any,
   x: number,
@@ -367,111 +408,154 @@ export async function renderBattleTurnSummary(
   ctx.fillText((p1.name || 'Servant').slice(0, 12), 77, 130);
 
   ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 15px sans-serif';
+  ctx.font = 'bold 18px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(p1.masterName || 'Master 1', 148, 36);
+  ctx.fillText(p1.masterName || 'Master 1', 150, 38);
+
+  const p1NameWidth = ctx.measureText(p1.masterName || 'Master 1').width;
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = 'bold 14px sans-serif';
+  ctx.fillText(\`• \${p1.name} [\${p1.servantClass}]\`, 158 + p1NameWidth, 38);
 
   const p1HpRatio = Math.max(0, Math.min(1, p1.currentHp / p1.maxHp));
   ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 148, 46, 472, 20, 4);
+  drawRoundRect(ctx, 150, 48, 472, 24, 5);
   ctx.fill();
   ctx.fillStyle = p1HpRatio > 0.35 ? '#22c55e' : '#ef4444';
   if (p1HpRatio > 0) {
-    drawRoundRect(ctx, 148, 46, Math.max(8, 472 * p1HpRatio), 20, 4);
+    drawRoundRect(ctx, 150, 48, Math.max(8, 472 * p1HpRatio), 24, 5);
     ctx.fill();
   }
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.fillText(\`HP  \${p1.currentHp.toLocaleString()} / \${p1.maxHp.toLocaleString()} (\${Math.round(p1HpRatio * 100)}%)\`, 158, 60);
+  ctx.font = 'bold 13px sans-serif';
+  ctx.fillText(\`HP  \${p1.currentHp.toLocaleString()} / \${p1.maxHp.toLocaleString()} (\${Math.round(p1HpRatio * 100)}%)\`, 160, 65);
 
   // NP Bar
   const p1NpRatio = Math.max(0, Math.min(1, (p1.npGauge || 0) / 100));
   ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 148, 72, 350, 18, 4);
+  drawRoundRect(ctx, 150, 78, 350, 22, 5);
   ctx.fill();
   if (p1NpRatio > 0) {
     ctx.fillStyle = (p1.npGauge || 0) >= 100 ? '#f59e0b' : '#eab308';
-    drawRoundRect(ctx, 148, 72, Math.max(8, 350 * p1NpRatio), 18, 4);
+    drawRoundRect(ctx, 150, 78, Math.max(8, 350 * p1NpRatio), 22, 5);
     ctx.fill();
   }
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.fillText(\`NP: \${Math.round(p1.npGauge || 0)}% \${(p1.npGauge || 0) >= 100 ? '★ NP READY' : ''}\`, 158, 85);
+  ctx.font = 'bold 13px sans-serif';
+  ctx.fillText(\`NP: \${Math.round(p1.npGauge || 0)}% \${(p1.npGauge || 0) >= 100 ? '★ NP READY' : ''}\`, 160, 94);
 
   // Command Cards Top
   const p1Cards = log.p1Cards || ['Buster', 'Arts', 'Quick'];
   p1Cards.slice(0, 3).forEach((card: string, idx: number) => {
-    const cardX = 148 + idx * 96;
+    const cardX = 150 + idx * 96;
     const cardColor = card === 'Buster' ? '#dc2626' : card === 'Arts' ? '#2563eb' : '#16a34a';
     ctx.fillStyle = '#0f172a';
-    drawRoundRect(ctx, cardX, 96, 88, 88, 6);
+    drawRoundRect(ctx, cardX, 106, 90, 80, 6);
     ctx.fill();
     ctx.strokeStyle = cardColor;
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
     ctx.fillStyle = cardColor;
-    drawRoundRect(ctx, cardX + 2, 98, 84, 18, 4);
+    drawRoundRect(ctx, cardX + 2, 108, 86, 20, 4);
     ctx.fill();
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 10px sans-serif';
+    ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(card.toUpperCase(), cardX + 44, 111);
-    ctx.font = 'bold 22px sans-serif';
-    ctx.fillText(card === 'Buster' ? 'B' : card === 'Arts' ? 'A' : 'Q', cardX + 44, 144);
-    ctx.font = 'bold 9px sans-serif';
+    ctx.fillText(card.toUpperCase(), cardX + 45, 122);
+    ctx.font = 'bold 28px sans-serif';
+    ctx.fillText(card === 'Buster' ? 'B' : card === 'Arts' ? 'A' : 'Q', cardX + 45, 156);
+    ctx.font = 'bold 11px sans-serif';
     ctx.fillStyle = '#cbd5e1';
-    ctx.fillText(card === 'Buster' ? '+50% ATK' : card === 'Arts' ? '+35% NP' : '+20 STAR', cardX + 44, 172);
+    ctx.fillText(card === 'Buster' ? '+50% ATK' : card === 'Arts' ? '+35% NP' : '+20 STAR', cardX + 45, 178);
   });
+
+  // P1 Stars Pill
+  ctx.fillStyle = 'rgba(56, 189, 248, 0.1)';
+  drawRoundRect(ctx, 444, 106, 178, 80, 6);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('CRIT STARS', 533, 128);
+
+  drawVectorStar(ctx, 498, 156, 5, 11, 5, '#38bdf8');
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 28px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(\`\${p1.critStars || 0}\`, 518, 166);
 
   // Middle Clash Box
   ctx.fillStyle = '#030712';
-  drawRoundRect(ctx, 20, 202, 600, 280, 10);
+  drawRoundRect(ctx, 18, 198, 604, 284, 10);
   ctx.fill();
   ctx.strokeStyle = '#f59e0b';
   ctx.lineWidth = 2;
   ctx.stroke();
 
   ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 32, 212, 576, 28, 5);
+  drawRoundRect(ctx, 30, 208, 580, 30, 6);
   ctx.fill();
   ctx.fillStyle = '#f59e0b';
-  ctx.font = 'bold 13px sans-serif';
+  ctx.font = 'bold 15px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(\`★ HOLY GRAIL WAR • TURN \${log.turnNumber} CLASH RESOLUTION ★\`, 320, 231);
+  ctx.fillText(\`★ HOLY GRAIL WAR • TURN \${log.turnNumber} CLASH RESOLUTION ★\`, 320, 229);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 16px sans-serif';
-  ctx.fillText(log.actionSummary || '', 320, 280);
+  ctx.font = 'bold 20px sans-serif';
+  ctx.fillText(log.actionSummary || '', 320, 285);
 
   ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 12px sans-serif';
-  ctx.fillText(\`★ \${p1.masterName || 'P1'} Stars: \${p1.critStars || 0}   |   ★ \${p2.masterName || 'P2'} Stars: \${p2.critStars || 0}\`, 320, 446);
+  ctx.font = 'bold 14px sans-serif';
+  ctx.fillText(\`★ \${p1.masterName || 'P1'} Stars: \${p1.critStars || 0}   |   ★ \${p2.masterName || 'P2'} Stars: \${p2.critStars || 0}\`, 320, 449);
+
+  // Bottom Section: P2 Stars Pill
+  ctx.fillStyle = 'rgba(239, 68, 68, 0.1)';
+  drawRoundRect(ctx, 18, 494, 178, 80, 6);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(239, 68, 68, 0.3)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = '#f87171';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('CRIT STARS', 107, 516);
+
+  drawVectorStar(ctx, 72, 544, 5, 11, 5, '#f87171');
+  ctx.fillStyle = '#f87171';
+  ctx.font = 'bold 28px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(\`\${p2.critStars || 0}\`, 92, 554);
 
   // Bottom Section: P2 Cards
   const p2Cards = log.p2Cards || ['Arts', 'Buster', 'Quick'];
   p2Cards.slice(0, 3).forEach((card: string, idx: number) => {
-    const cardX = 204 + idx * 96;
+    const cardX = 202 + idx * 96;
     const cardColor = card === 'Buster' ? '#dc2626' : card === 'Arts' ? '#2563eb' : '#16a34a';
     ctx.fillStyle = '#0f172a';
-    drawRoundRect(ctx, cardX, 500, 88, 88, 6);
+    drawRoundRect(ctx, cardX, 494, 90, 80, 6);
     ctx.fill();
     ctx.strokeStyle = cardColor;
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
     ctx.fillStyle = cardColor;
-    drawRoundRect(ctx, cardX + 2, 502, 84, 18, 4);
+    drawRoundRect(ctx, cardX + 2, 496, 86, 20, 4);
     ctx.fill();
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 10px sans-serif';
+    ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(card.toUpperCase(), cardX + 44, 515);
-    ctx.font = 'bold 22px sans-serif';
-    ctx.fillText(card === 'Buster' ? 'B' : card === 'Arts' ? 'A' : 'Q', cardX + 44, 548);
-    ctx.font = 'bold 9px sans-serif';
+    ctx.fillText(card.toUpperCase(), cardX + 45, 510);
+    ctx.font = 'bold 28px sans-serif';
+    ctx.fillText(card === 'Buster' ? 'B' : card === 'Arts' ? 'A' : 'Q', cardX + 45, 544);
+    ctx.font = 'bold 11px sans-serif';
     ctx.fillStyle = '#cbd5e1';
-    ctx.fillText(card === 'Buster' ? '+50% ATK' : card === 'Arts' ? '+35% NP' : '+20 STAR', cardX + 44, 576);
+    ctx.fillText(card === 'Buster' ? '+50% ATK' : card === 'Arts' ? '+35% NP' : '+20 STAR', cardX + 45, 566);
   });
 
   const p2HpRatio = Math.max(0, Math.min(1, p2.currentHp / p2.maxHp));
@@ -479,50 +563,55 @@ export async function renderBattleTurnSummary(
 
   // P2 NP Bar
   ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 142, 600, 350, 18, 4);
+  drawRoundRect(ctx, 150, 584, 342, 22, 5);
   ctx.fill();
   if (p2NpRatio > 0) {
     ctx.fillStyle = (p2.npGauge || 0) >= 100 ? '#f59e0b' : '#eab308';
-    drawRoundRect(ctx, 142, 600, Math.max(8, 350 * p2NpRatio), 18, 4);
+    drawRoundRect(ctx, 150, 584, Math.max(8, 342 * p2NpRatio), 22, 5);
     ctx.fill();
   }
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 11px sans-serif';
+  ctx.font = 'bold 13px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(\`NP: \${Math.round(p2.npGauge || 0)}% \${(p2.npGauge || 0) >= 100 ? '★ NP READY' : ''}\`, 152, 613);
+  ctx.fillText(\`NP: \${Math.round(p2.npGauge || 0)}% \${(p2.npGauge || 0) >= 100 ? '★ NP READY' : ''}\`, 160, 600);
 
   // P2 HP Bar
   ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 20, 626, 472, 20, 4);
+  drawRoundRect(ctx, 18, 612, 474, 24, 5);
   ctx.fill();
   ctx.fillStyle = p2HpRatio > 0.35 ? '#22c55e' : '#ef4444';
   if (p2HpRatio > 0) {
-    drawRoundRect(ctx, 20, 626, Math.max(8, 472 * p2HpRatio), 20, 4);
+    drawRoundRect(ctx, 18, 612, Math.max(8, 474 * p2HpRatio), 24, 5);
     ctx.fill();
   }
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.fillText(\`HP  \${p2.currentHp.toLocaleString()} / \${p2.maxHp.toLocaleString()} (\${Math.round(p2HpRatio * 100)}%)\`, 30, 640);
+  ctx.font = 'bold 13px sans-serif';
+  ctx.fillText(\`HP  \${p2.currentHp.toLocaleString()} / \${p2.maxHp.toLocaleString()} (\${Math.round(p2HpRatio * 100)}%)\`, 28, 629);
 
   ctx.textAlign = 'right';
   ctx.fillStyle = '#f87171';
-  ctx.font = 'bold 15px sans-serif';
-  ctx.fillText(p2.masterName || 'Master 2', 492, 666);
+  ctx.font = 'bold 18px sans-serif';
+  ctx.fillText(p2.masterName || 'Master 2', 492, 658);
+
+  const p2NameWidth = ctx.measureText(p2.masterName || 'Master 2').width;
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = 'bold 14px sans-serif';
+  ctx.fillText(\`[\${p2.servantClass}] \${p2.name} • \`, 492 - p2NameWidth, 658);
 
   // P2 Avatar Box
   ctx.fillStyle = '#0f172a';
-  drawRoundRect(ctx, 505, 500, 115, 165, 8);
+  drawRoundRect(ctx, 505, 494, 115, 168, 8);
   ctx.fill();
   ctx.strokeStyle = '#ef4444';
   ctx.lineWidth = 2.5;
-  drawRoundRect(ctx, 505, 500, 115, 165, 8);
+  drawRoundRect(ctx, 505, 494, 115, 168, 8);
   ctx.stroke();
   ctx.fillStyle = '#ef4444';
   ctx.font = 'bold 36px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(p2.servantClass?.[0] || 'E', 562, 575);
   ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 12px sans-serif';
+  ctx.font = 'bold 14px sans-serif';
   ctx.fillText((p2.name || 'Servant').slice(0, 12), 562, 610);
 
   return canvas.toBuffer('image/png');
