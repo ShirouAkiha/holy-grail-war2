@@ -114,9 +114,28 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return { embed, rows: [cardRow, actionRow] };
     };
 
+    const initialSummaryBuffer = await renderBattleTurnSummary(
+      {
+        turnNumber: 1,
+        attackerName: p1.name,
+        targetName: p2.name,
+        actionSummary: 'The Command Seal glow resonates... The Holy Grail Duel begins!',
+        cardsUsed: ['Buster', 'Arts', 'Quick'],
+        p1Cards: ['Buster', 'Arts', 'Arts'],
+        p2Cards: ['Arts', 'Buster', 'Arts'],
+        skillsUsed: [],
+        damageDealt: 0,
+        isCritical: false
+      },
+      battleState.player1,
+      battleState.player2
+    );
+    const initialAttachment = new AttachmentBuilder(initialSummaryBuffer, { name: 'turn_summary.png' });
     const initialView = generateBattleEmbedAndRows(battleState);
+    initialView.embed.setImage('attachment://turn_summary.png');
     const msg = await interaction.editReply({
       embeds: [initialView.embed],
+      files: [initialAttachment],
       components: initialView.rows
     });
 

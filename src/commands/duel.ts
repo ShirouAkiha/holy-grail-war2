@@ -5,13 +5,15 @@ import {
   ButtonBuilder, 
   ButtonStyle, 
   EmbedBuilder,
+  AttachmentBuilder,
   User,
   ComponentType
 } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
-import { MasterProfile, MasterServantInstance, CardType, ServantClass } from '../types';
+import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
 import { getOrInitWarSession, recordDuelOutcome } from '../engine/grailwar';
+import { renderBattleTurnSummary } from '../canvas/renderer';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -134,6 +136,84 @@ function renderHealthBar(current: number, max: number, length: number = 10): str
   return `${emoji.repeat(filled)}${'⬛'.repeat(empty)} \`${Math.max(0, current).toLocaleString()}/${max.toLocaleString()}\` (${Math.round(pct * 100)}%)`;
 }
 
+async function createTurnSummaryAttachment(
+  p1: DuelCombatant,
+  p2: DuelCombatant,
+  round: number,
+  lastLogText: string,
+  p1Cards: CardType[] = ['Buster', 'Arts', 'Quick'],
+  p2Cards: CardType[] = ['Arts', 'Buster', 'Quick']
+): Promise<AttachmentBuilder> {
+  const activeP1: ActiveCombatant = {
+    id: p1.userId,
+    name: p1.servant.template.name,
+    masterName: p1.username,
+    servantClass: p1.servant.template.servantClass,
+    avatarUrl: p1.servant.template.avatarUrl || '',
+    maxHp: p1.maxHp,
+    currentHp: p1.currentHp,
+    atk: p1.atk,
+    def: p1.def,
+    stats: p1.servant.template.baseStats,
+    commandDeck: p1.servant.template.commandDeck,
+    npGauge: p1.npGauge,
+    activeBuffs: [],
+    skills: [],
+    noblePhantasm: p1.servant.template.noblePhantasm,
+    critStars: p1.critStars
+  };
+
+  const activeP2: ActiveCombatant = {
+    id: p2.userId,
+    name: p2.servant.template.name,
+    masterName: p2.username,
+    servantClass: p2.servant.template.servantClass,
+    avatarUrl: p2.servant.template.avatarUrl || '',
+    maxHp: p2.maxHp,
+    currentHp: p2.currentHp,
+    atk: p2.atk,
+    def: p2.def,
+    stats: p2.servant.template.baseStats,
+    commandDeck: p2.servant.template.commandDeck,
+    npGauge: p2.npGauge,
+    activeBuffs: [],
+    skills: [],
+    noblePhantasm: p2.servant.template.noblePhantasm,
+    critStars: p2.critStars
+  };
+
+  const isCrit = lastLogText.includes('CRITICAL');
+  const isNP = lastLogText.includes('NOBLE PHANTASM');
+
+  const turnLog: CombatTurnLog = {
+    turnNumber: round,
+    actorId: p1.userId,
+    actorName: p1.servant.template.name,
+    targetId: p2.userId,
+    targetName: p2.servant.template.name,
+    actionSummary: lastLogText.replace(/\*\*/g, '').replace(/[\r\n]+/g, ' ').slice(0, 100),
+    cardsUsed: p1Cards,
+    p1Cards: p1Cards,
+    p2Cards: p2Cards,
+    skillsUsed: [],
+    npTriggered: isNP,
+    isNoblePhantasm: isNP,
+    damageDealt: 0,
+    isCritical: isCrit,
+    starsGenerated: 0,
+    npCharged: 0,
+    actorHpRemaining: p1.currentHp,
+    targetHpRemaining: p2.currentHp,
+    actorHpMax: p1.maxHp,
+    targetHpMax: p2.maxHp,
+    actorNp: p1.npGauge,
+    targetNp: p2.npGauge
+  };
+
+  const imageBuffer = await renderBattleTurnSummary(turnLog, activeP1, activeP2);
+  return new AttachmentBuilder(imageBuffer, { name: 'turn_summary.png' });
+}
+
 // ==========================================
 // 6. DUEL UI EMBED BUILDER
 // ==========================================
@@ -149,6 +229,7 @@ function buildDuelEmbed(
 
   const embed = new EmbedBuilder()
     .setTitle(`⚔️ HOLY GRAIL WAR DUEL — ROUND ${round}`)
+    .setImage('attachment://turn_summary.png')
     .setDescription(
       `**${p1.servant.template.name}** (Master: <@${p1.userId}>)\n` +
       `Class: **${p1.servant.template.servantClass}** ★${p1.servant.template.rarity}\n` +
@@ -551,6 +632,7 @@ async function startInteractiveDuel(
   let activeUserId = p1.userId;
   const combatLogs: string[] = ['⚔️ The Command Seal glow resonates... The Holy Grail Duel begins!'];
 
+  const initialAttachment = await createTurnSummaryAttachment(p1, p2, round, combatLogs[0]);
   const initialEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs);
   const initialButtons = buildCombatButtons(p1);
 
@@ -559,12 +641,14 @@ async function startInteractiveDuel(
     battleMsg = await contextInteraction.update({
       content: null,
       embeds: [initialEmbed],
+      files: [initialAttachment],
       components: initialButtons,
       fetchReply: true
     });
   } else {
     battleMsg = await contextInteraction.reply({
       embeds: [initialEmbed],
+      files: [initialAttachment],
       components: initialButtons,
       fetchReply: true
     });
@@ -610,10 +694,14 @@ async function startInteractiveDuel(
       return;
     }
 
+    const p1CardChoice: CardType[] = actionType === 'buster' ? ['Buster', 'Buster', 'Buster'] : actionType === 'arts' ? ['Arts', 'Arts', 'Arts'] : ['Quick', 'Quick', 'Quick'];
+    let p2CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
+
     // CASE A: Opponent is AI -> AI immediately strikes back
     if (defender.isAi) {
       round++;
       const aiAction = defender.npGauge >= 100 ? 'np' : Math.random() > 0.5 ? 'buster' : 'arts';
+      p2CardChoice = aiAction === 'buster' ? ['Buster', 'Buster', 'Buster'] : aiAction === 'arts' ? ['Arts', 'Arts', 'Arts'] : ['Quick', 'Quick', 'Quick'];
       const aiLog = resolveStrike(defender, attacker, aiAction);
       combatLogs.push(aiLog);
       if (combatLogs.length > 4) combatLogs.shift();
@@ -626,9 +714,10 @@ async function startInteractiveDuel(
 
       // Keep turn on P1
       activeUserId = p1.userId;
+      const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, log, p1CardChoice, p2CardChoice);
       const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs);
       const updatedButtons = buildCombatButtons(p1);
-      await i.update({ embeds: [updatedEmbed], components: updatedButtons });
+      await i.update({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
       return;
     }
 
@@ -636,10 +725,11 @@ async function startInteractiveDuel(
     round++;
     activeUserId = defender.userId;
     const nextCombatant = activeUserId === p1.userId ? p1 : p2;
+    const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, log, p1CardChoice, p2CardChoice);
     const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs);
     const updatedButtons = buildCombatButtons(nextCombatant);
 
-    await i.update({ embeds: [updatedEmbed], components: updatedButtons });
+    await i.update({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
     } catch (err: any) {
       if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
       console.error('Error in duel battle collector:', err);
