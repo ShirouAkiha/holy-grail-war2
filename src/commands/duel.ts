@@ -231,15 +231,6 @@ function buildDuelEmbed(
     .setTitle(`⚔️ HOLY GRAIL WAR DUEL — ROUND ${round}`)
     .setImage('attachment://turn_summary.png')
     .setDescription(
-      `**${p1.servant.template.name}** (Master: <@${p1.userId}>)\n` +
-      `Class: **${p1.servant.template.servantClass}** ★${p1.servant.template.rarity}\n` +
-      `HP: ${renderHealthBar(p1.currentHp, p1.maxHp)}\n` +
-      `⚡ NP: **${Math.round(p1.npGauge)}%** | ✨ Stars: **${p1.critStars}**\n\n` +
-      `**VS**\n\n` +
-      `**${p2.servant.template.name}** (${p2.isAi ? 'Shadow AI' : `Master: <@${p2.userId}>`})\n` +
-      `Class: **${p2.servant.template.servantClass}** ★${p2.servant.template.rarity}\n` +
-      `HP: ${renderHealthBar(p2.currentHp, p2.maxHp)}\n` +
-      `⚡ NP: **${Math.round(p2.npGauge)}%** | ✨ Stars: **${p2.critStars}**\n\n` +
       (lastLogs.length > 0
         ? `📜 **Combat Log:**\n${lastLogs.map(l => `> ${l}`).join('\n')}\n\n`
         : '') +
