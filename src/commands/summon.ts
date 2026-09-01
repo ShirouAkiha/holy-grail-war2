@@ -15,7 +15,11 @@ import {
   getContractedServantTemplateIds
 } from '../database/service';
 import { MasterServantInstance, ServantTemplate } from '../types';
-import { getOrInitWarSession } from '../engine/grailwar';
+import { 
+  getOrInitWarSession, 
+  registerMasterSummonInWar, 
+  handleMasterReleaseInWar 
+} from '../engine/grailwar';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -239,6 +243,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       master.servants = [];
       master.activeServantId = undefined;
       await saveMaster(master);
+      handleMasterReleaseInWar(master.discordId);
 
       const releaseEmbed = new EmbedBuilder()
         .setTitle('⛓️ Contract Severed')
@@ -297,6 +302,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     await saveMaster(master);
     const template = result.template!;
     const newServant = result.servant!;
+    registerMasterSummonInWar(master, newServant);
 
     const incantation = 
       `*“Let silver and iron be the essence. Let stone and the archduke of contracts be the foundation.”*\n` +
@@ -383,6 +389,7 @@ function setupSummonButtonCollector(message: any, userId: string) {
         master.servants = [];
         master.activeServantId = undefined;
         await saveMaster(master);
+        handleMasterReleaseInWar(master.discordId);
 
         await i.update({
           embeds: [
@@ -408,6 +415,7 @@ function setupSummonButtonCollector(message: any, userId: string) {
         const result = performSummoningRitual(master);
         if (result.success && result.template) {
           await saveMaster(master);
+          registerMasterSummonInWar(master, result.servant);
           const t = result.template;
           await i.update({
             embeds: [

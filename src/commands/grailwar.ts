@@ -15,7 +15,8 @@ import {
   simulateWarSkirmish,
   attackSuspectUserInWar,
   leakIntelInWar,
-  patrolCityInWar
+  patrolCityInWar,
+  resetWarSession
 } from '../engine/grailwar';
 import { buildProfileEmbed, buildProfileButtons } from './profile';
 
@@ -115,29 +116,42 @@ export const data = new SlashCommandBuilder()
     sub
       .setName('betray')
       .setDescription('Break an active covenant and strike an ally with a surprise assault')
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('reset')
+      .setDescription('🔄 Reset the Holy Grail War tournament to start fresh (0/7 summoned)')
   );
 
 // ==========================================
 // 2. WAR EMBED BUILDERS
 // ==========================================
 export function buildWarEmbed(war: HolyGrailWarSession, userParticipant?: any, lastMsg?: string) {
-  const participants = Object.values(war.participants);
+  const participants = Object.values(war.participants || {});
   const aliveParticipants = participants.filter(p => p.isAlive);
+  const deadCount = participants.filter(p => !p.isAlive).length;
+  const totalSummoned = participants.length;
 
-  const rosterList = participants
-    .map((m, idx) => {
+  // Build full 7-slot roster (always 7 slots)
+  const rosterLines: string[] = [];
+  for (let slotIdx = 0; slotIdx < 7; slotIdx++) {
+    const m = participants[slotIdx];
+    if (m) {
       const isRevealed = m.isExposed || !m.isAlive;
-      
-      let statusIcon = m.isAlive ? (isRevealed ? '🟢' : '🕶️') : '💀';
-      let nameLabel = isRevealed ? m.username : `Shadow Master #${idx + 1}`;
-      let servantLabel = isRevealed ? `${m.servantName} (${m.servantClass})` : '[Classified in Shadows]';
-      let exposureTag = m.isExposed ? ' `[EXPOSED]`' : (!m.isAlive ? ' `[FALLEN]`' : '');
+      const statusIcon = m.isAlive ? (isRevealed ? '🟢' : '🕶️') : '💀';
+      const nameLabel = isRevealed ? m.username : `Shadow Master #${slotIdx + 1}`;
+      const servantLabel = isRevealed ? `${m.servantName} (${m.servantClass})` : '[Classified in Shadows]';
+      const exposureTag = m.isExposed ? ' `[EXPOSED]`' : (!m.isAlive ? ' `[FALLEN]`' : '');
 
-      return `${statusIcon} **${nameLabel}**${exposureTag} — Servant: *${servantLabel}* | HP: \`${m.currentHp.toLocaleString()}/${m.maxHp.toLocaleString()}\` | Kills: ${m.kills}`;
-    })
-    .join('\n');
+      rosterLines.push(`${statusIcon} **${nameLabel}**${exposureTag} — Servant: *${servantLabel}* | HP: \`${m.currentHp.toLocaleString()}/${m.maxHp.toLocaleString()}\` | Kills: ${m.kills}`);
+    } else {
+      rosterLines.push(`⏳ **Slot #${slotIdx + 1}** — *[Unsummoned Heroic Spirit — Awaiting Master Covenant]*`);
+    }
+  }
 
-  // Filter out any legacy private event logs
+  const rosterList = rosterLines.join('\n');
+
+  // Filter out any private event logs
   const publicEventsList = (war.eventLogs || []).filter(evt => {
     const txt = evt.text.toLowerCase();
     return !txt.includes('workshop defense') && 
@@ -180,14 +194,26 @@ export function buildWarEmbed(war: HolyGrailWarSession, userParticipant?: any, l
   const casualtiesCount = war.civilianCasualties?.length || 0;
   const leaksCount = war.leakedIntel?.length || 0;
 
+  let statusHeader = '';
+  if (war.status === 'concluded') {
+    const winner = war.grailWinnerId && war.participants[war.grailWinnerId] 
+      ? war.participants[war.grailWinnerId].username 
+      : (aliveParticipants[0]?.username || 'Victor');
+    statusHeader = `**Status:** 🏆 CONCLUDED | **Victor:** **${winner}** | **Civilian Casualties:** **${casualtiesCount}**`;
+  } else if (totalSummoned < 7) {
+    statusHeader = `**Status:** 🕯️ GATHERING MASTERS (**${totalSummoned}/7** Summoned | **${aliveParticipants.length}** Alive | **${deadCount}/6** Cores Absorbed) | **Civilian Casualties:** **${casualtiesCount}**`;
+  } else {
+    statusHeader = `**Status:** ⚔️ ACTIVE ELIMINATION PHASE (**${aliveParticipants.length}/7** Alive | **${deadCount}/6** Cores Absorbed) | **Civilian Casualties:** **${casualtiesCount}**`;
+  }
+
   const embed = new EmbedBuilder()
     .setTitle(`🏆 ${war.title}`)
     .setDescription(
-      `**Status:** ${war.status.toUpperCase()} | **Alive Masters:** **${aliveParticipants.length}/7** | **Civilian Casualties:** **${casualtiesCount}**\n\n` +
+      `${statusHeader}\n\n` +
       (lastMsg ? `📢 **Action Outcome:**\n${lastMsg}\n\n` : '') +
       `⚔️ **7 Masters Intelligence Roster:**\n${rosterList}\n\n` +
       `📜 **War Chronicle & Skirmishes (${(war.eventLogs || []).length} Events | ${leaksCount} Leaks):**\n${recentEvents || '*The war has begun. No city skirmishes recorded yet.*'}\n\n` +
-      `*Tactical notice: To inspect your private Master stats, Servant parameters, and workshop defenses confidentially, use \`/profile\` or click "Secret Profile" below.*`
+      `*Tactical notice: To summon a Servant and claim an uncontracted slot, use \`/summon ritual\`. To inspect your secret stats and workshop defenses confidentially, use \`/profile\` or click "Secret Profile" below.*`
     )
     .setColor(0xd4af37);
 
@@ -441,6 +467,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const res = leakIntelInWar(war, interaction.user.id, intelText, targetQuery, currentChannelName);
       initialMsg = res.message;
       war = res.updatedWar;
+    } else if (subcommand === 'reset') {
+      war = resetWarSession();
+      initialMsg = '🔄 The Holy Grail War has been reset! All 7 Servant slots are now vacant and awaiting Master summonings.';
     }
 
     const embed = buildWarEmbed(war, userParticipant, initialMsg);

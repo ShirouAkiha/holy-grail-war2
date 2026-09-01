@@ -264,7 +264,7 @@ export interface WarAlliance {
 export interface HolyGrailWarSession {
   id: string;
   title: string;
-  status: 'active' | 'concluded';
+  status: 'gathering' | 'active' | 'concluded';
   participants: Record<string, WarMasterParticipant>;
   alliances: Record<string, WarAlliance>;
   civilianCasualties?: Array<{

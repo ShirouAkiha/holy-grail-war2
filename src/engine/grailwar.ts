@@ -5,20 +5,62 @@ import {
   MasterProfile
 } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
+import fs from 'fs';
+import path from 'path';
 
 // =========================================================================
 // GLOBAL SHARED HOLY GRAIL WAR SINGLETON (Shared across all Discord commands & users)
 // =========================================================================
+const DATA_DIR = path.join(process.cwd(), 'data');
+const GRAIL_WAR_FILE = path.join(DATA_DIR, 'grail_war.json');
+
 let globalWarSession: HolyGrailWarSession | null = null;
 
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+}
+
+function loadWarFromDisk(): HolyGrailWarSession | null {
+  try {
+    ensureDataDir();
+    if (fs.existsSync(GRAIL_WAR_FILE)) {
+      const raw = fs.readFileSync(GRAIL_WAR_FILE, 'utf-8');
+      if (raw) {
+        return JSON.parse(raw);
+      }
+    }
+  } catch (err) {
+    console.error('[GrailWar] Failed to load grail_war.json from disk:', err);
+  }
+  return null;
+}
+
+export function saveWarToDisk(): void {
+  try {
+    ensureDataDir();
+    if (globalWarSession) {
+      fs.writeFileSync(GRAIL_WAR_FILE, JSON.stringify(globalWarSession, null, 2), 'utf-8');
+    }
+  } catch (err) {
+    console.error('[GrailWar] Failed to write grail_war.json to disk:', err);
+  }
+}
+
+// Initial load from disk
+globalWarSession = loadWarFromDisk();
+
 export function createHolyGrailWarSession(
-  initiatorMaster: { discordId: string; username: string; servantId: string; servantName: string; avatarUrl: string; maxHp: number; servantClass?: string },
+  initiatorMaster?: { discordId: string; username: string; servantId: string; servantName: string; avatarUrl: string; maxHp: number; servantClass?: string },
   warTitle: string = 'Fuyuki Holy Grail War'
 ): HolyGrailWarSession {
   const warId = `grail_war_${Date.now()}`;
 
-  const participants: Record<string, WarMasterParticipant> = {
-    [initiatorMaster.discordId]: {
+  const participants: Record<string, WarMasterParticipant> = {};
+
+  if (initiatorMaster) {
+    participants[initiatorMaster.discordId] = {
       discordId: initiatorMaster.discordId,
       username: initiatorMaster.username,
       servantId: initiatorMaster.servantId,
@@ -32,8 +74,8 @@ export function createHolyGrailWarSession(
       isExposed: false,
       kills: 0,
       innocentKills: 0
-    }
-  };
+    };
+  }
 
   const session: HolyGrailWarSession = {
     id: warId,
@@ -47,14 +89,103 @@ export function createHolyGrailWarSession(
       {
         id: `evt_init_${Date.now()}`,
         timestamp: Date.now(),
-        text: `🕯️ The ${warTitle} has commenced! All Masters operate from the shadows. Identities remain concealed until exposed by public actions, tactical ambushes, or intelligence leaks.`,
+        text: `🕯️ The ${warTitle} has commenced! All 7 Master covenants must be summoned in the shadows before the Greater Grail manifests.`,
         type: 'clash'
       }
     ]
   };
 
   globalWarSession = session;
+  saveWarToDisk();
   return session;
+}
+
+/**
+ * Registers or updates a Master's summoned Servant contract directly in the Holy Grail War memory.
+ * Broadcasts an announcement in the war chronicles.
+ */
+export function registerMasterSummonInWar(master: MasterProfile, servantInstance: any): HolyGrailWarSession {
+  const war = getOrInitWarSession();
+
+  const sAny = servantInstance as any;
+  const sTemplate = sAny?.template || sAny;
+  const servantName = sAny?.nickname || sTemplate?.name || sAny?.name || 'Heroic Spirit';
+  const servantClass = sTemplate?.servantClass || sAny?.servantClass || sAny?.class || 'Saber';
+  const avatarUrl = sTemplate?.avatarUrl || sAny?.avatarUrl || '';
+  const maxHp = sTemplate?.baseHp || sAny?.baseHp || 15000;
+
+  const existing = war.participants[master.discordId];
+  const isNewEntry = !existing;
+
+  if (existing) {
+    existing.servantId = servantInstance.id || 'servant_contract';
+    existing.servantName = servantName;
+    existing.servantClass = servantClass;
+    existing.avatarUrl = avatarUrl;
+    existing.username = master.username;
+    if (existing.currentHp <= 0 && existing.isAlive) {
+      existing.currentHp = maxHp;
+      existing.maxHp = maxHp;
+    }
+  } else {
+    war.participants[master.discordId] = {
+      discordId: master.discordId,
+      username: master.username,
+      servantId: servantInstance.id || 'servant_contract',
+      servantName,
+      servantClass,
+      avatarUrl,
+      currentHp: maxHp,
+      maxHp,
+      commandSeals: master.commandSeals || 3,
+      isAlive: true,
+      isExposed: false,
+      kills: 0,
+      innocentKills: 0
+    };
+  }
+
+  const totalSummoned = Object.keys(war.participants).length;
+
+  if (isNewEntry) {
+    war.eventLogs.unshift({
+      id: `evt_summon_${Date.now()}`,
+      timestamp: Date.now(),
+      text: `🕯️ A new Master contracted with a Heroic Spirit in the shadows! (Holy Grail War: **${totalSummoned}/7** Masters Summoned)`,
+      type: 'clash'
+    });
+
+    if (totalSummoned >= 7) {
+      war.eventLogs.unshift({
+        id: `evt_all_summoned_${Date.now()}`,
+        timestamp: Date.now(),
+        text: `⚔️ ALL 7 HEROIC SPIRITS HAVE BEEN SUMMONED! The Fuyuki Holy Grail War has reached full convergence! The Elimination Climax begins!`,
+        type: 'clash'
+      });
+    }
+  }
+
+  saveWarToDisk();
+  return war;
+}
+
+/**
+ * Removes or resets a Master's participant slot when they sever their contract.
+ */
+export function handleMasterReleaseInWar(discordId: string): HolyGrailWarSession {
+  const war = getOrInitWarSession();
+  if (war.participants[discordId]) {
+    delete war.participants[discordId];
+    const totalRemaining = Object.keys(war.participants).length;
+    war.eventLogs.unshift({
+      id: `evt_release_${Date.now()}`,
+      timestamp: Date.now(),
+      text: `⛓️ A Master severed their contract with their Heroic Spirit. Slot returned to the Throne of Heroes (**${totalRemaining}/7** Summoned).`,
+      type: 'clash'
+    });
+    saveWarToDisk();
+  }
+  return war;
 }
 
 /**
@@ -82,6 +213,7 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
       ]
     };
     globalWarSession = session;
+    saveWarToDisk();
   }
 
   // Ensure arrays exist
@@ -155,13 +287,16 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
     innocentKills: 0
   };
 
+  const totalCount = Object.keys(globalWarSession.participants).length;
+
   globalWarSession.eventLogs.unshift({
     id: `evt_enter_${Date.now()}`,
     timestamp: Date.now(),
-    text: `🕯️ A concealed Master contracted with a Heroic Spirit in the shadows and entered the Holy Grail War.`,
+    text: `🕯️ A new Master contracted with a Heroic Spirit in the shadows! (Holy Grail War: **${totalCount}/7** Masters Summoned)`,
     type: 'clash'
   });
 
+  saveWarToDisk();
   return globalWarSession;
 }
 
@@ -169,8 +304,26 @@ export function getActiveWarSession(): HolyGrailWarSession | null {
   return globalWarSession;
 }
 
-export function resetWarSession(): void {
-  globalWarSession = null;
+export function resetWarSession(): HolyGrailWarSession {
+  globalWarSession = {
+    id: `grail_war_${Date.now()}`,
+    title: 'Fuyuki Holy Grail War',
+    status: 'active',
+    participants: {},
+    alliances: {},
+    civilianCasualties: [],
+    leakedIntel: [],
+    eventLogs: [
+      {
+        id: `evt_reset_${Date.now()}`,
+        timestamp: Date.now(),
+        text: `🔄 The Holy Grail War tournament has been reset! All 7 Servant slots are now open for new summoning rituals (/summon ritual).`,
+        type: 'clash'
+      }
+    ]
+  };
+  saveWarToDisk();
+  return globalWarSession;
 }
 
 export type WarActionType =
@@ -199,6 +352,41 @@ export interface WarActionResult {
   targetWasMaster?: boolean;
   exposedTargetMaster?: string;
   updatedWar: HolyGrailWarSession;
+}
+
+/**
+ * Evaluates the Holy Grail War status and checks if the Greater Grail can manifest.
+ * The Holy Grail War requires all 7 Heroic Spirits to be summoned and 6 eliminated before victory.
+ */
+export function evaluateWarState(targetWar: HolyGrailWarSession): void {
+  const participantsList = Object.values(targetWar.participants || {});
+  const totalSummoned = participantsList.length;
+  const aliveList = participantsList.filter(p => p.isAlive);
+  const deadCount = participantsList.filter(p => !p.isAlive).length;
+
+  if (targetWar.status === 'concluded') {
+    saveWarToDisk();
+    return;
+  }
+
+  // True Holy Grail Climax: All 7 standard Servant slots summoned AND 6 eliminated!
+  if (totalSummoned >= 7 && aliveList.length === 1) {
+    targetWar.status = 'concluded';
+    targetWar.grailWinnerId = aliveList[0].discordId;
+    aliveList[0].isExposed = true;
+    targetWar.eventLogs.unshift({
+      id: `evt_grail_win_${Date.now()}`,
+      timestamp: Date.now(),
+      text: `🏆 THE GREATER GRAIL HAS MANIFESTED! With all 6 rival Heroic Spirits eliminated, Master **${aliveList[0].username}** (${aliveList[0].servantName}) is the sole survivor and has won the Fuyuki Holy Grail War!`,
+      type: 'clash'
+    });
+  } else if (totalSummoned >= 7) {
+    targetWar.status = 'active';
+  } else {
+    targetWar.status = 'gathering';
+  }
+
+  saveWarToDisk();
 }
 
 /**
@@ -523,19 +711,8 @@ export function attackSuspectUserInWar(
       });
     }
 
-    // Check war conclusion
-    const remainingAlive = Object.values(targetWar.participants).filter(p => p.isAlive);
-    if (remainingAlive.length === 1) {
-      targetWar.status = 'concluded';
-      targetWar.grailWinnerId = remainingAlive[0].discordId;
-      remainingAlive[0].isExposed = true;
-      targetWar.eventLogs.unshift({
-        id: `evt_win_${Date.now()}`,
-        timestamp: now,
-        text: `🏆 THE HOLY GRAIL HAS MANIFESTED! **${remainingAlive[0].username}** is the sole survivor and has won the Holy Grail War!`,
-        type: 'clash'
-      });
-    }
+    // Evaluate war state and check if Greater Grail can manifest
+    evaluateWarState(targetWar);
 
     return {
       success: true,
@@ -965,18 +1142,7 @@ export function simulateWarSkirmish(war: HolyGrailWarSession, channelName?: stri
     type: ai2.currentHp <= 0 ? 'elimination' : 'clash'
   });
 
-  const remainingAlive = Object.values(targetWar.participants).filter(p => p.isAlive);
-  if (remainingAlive.length === 1) {
-    targetWar.status = 'concluded';
-    targetWar.grailWinnerId = remainingAlive[0].discordId;
-    remainingAlive[0].isExposed = true;
-    targetWar.eventLogs.unshift({
-      id: `evt_grail_win_${Date.now()}`,
-      timestamp: Date.now(),
-      text: `🏆 THE HOLY GRAIL HAS MANIFESTED! Master **${remainingAlive[0].username}** (${remainingAlive[0].servantName}) is the sole survivor and has won the Holy Grail War!`,
-      type: 'clash'
-    });
-  }
+  evaluateWarState(targetWar);
 
   return {
     success: true,
@@ -1048,7 +1214,11 @@ export function recordDuelOutcome(
     defeated.currentHp = 0;
     victor.kills = (victor.kills || 0) + 1;
     isEliminated = true;
-    outcomeLog = `☠️ FATAL EXECUTION in ${chanTag}: Master **${victor.username}** (${victor.servantName}) dealt the finishing blow and EXECUTED Master **${defeated.username}** (${defeated.servantName})! Church reported a massive 'gas leak explosion' in ${chanTag}.`;
+
+    const deadCount = Object.values(targetWar.participants).filter(p => !p.isAlive).length;
+    const totalSummoned = Object.keys(targetWar.participants).length;
+
+    outcomeLog = `☠️ FATAL EXECUTION in ${chanTag}: Master **${victor.username}** (${victor.servantName}) dealt the finishing blow and EXECUTED Master **${defeated.username}** (${defeated.servantName})!\n⚱️ The Lesser Grail absorbed a Spiritual Core (${deadCount}/6 absorbed).`;
 
     targetWar.eventLogs.unshift({
       id: `evt_exec_${Date.now()}`,
@@ -1057,17 +1227,7 @@ export function recordDuelOutcome(
       type: 'elimination'
     });
 
-    const aliveList = Object.values(targetWar.participants).filter(p => p.isAlive);
-    if (aliveList.length === 1) {
-      targetWar.status = 'concluded';
-      targetWar.grailWinnerId = aliveList[0].discordId;
-      targetWar.eventLogs.unshift({
-        id: `evt_win_${Date.now()}`,
-        timestamp: Date.now(),
-        text: `🏆 THE HOLY GRAIL HAS MANIFESTED! Master **${aliveList[0].username}** (${aliveList[0].servantName}) is the sole survivor and has won the Holy Grail War!`,
-        type: 'clash'
-      });
-    }
+    evaluateWarState(targetWar);
   } else {
     // Spared: left on critical HP (10% max HP)
     defeated.isAlive = true;
@@ -1082,6 +1242,8 @@ export function recordDuelOutcome(
       text: outcomeLog,
       type: 'heal'
     });
+
+    evaluateWarState(targetWar);
   }
 
   return {
