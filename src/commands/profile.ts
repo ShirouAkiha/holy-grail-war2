@@ -152,8 +152,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       embeds: [embed],
       components: buttons,
       ephemeral: true,
-      fetchReply: true
-    });
+      withResponse: true
+    }).then(r => r.resource?.message || interaction.fetchReply());
 
     const collector = reply.createMessageComponentCollector({
       componentType: ComponentType.Button,

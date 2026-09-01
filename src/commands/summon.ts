@@ -166,7 +166,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             .setStyle(ButtonStyle.Primary)
         );
 
-        const reply = await interaction.reply({ embeds: [emptyEmbed], components: [row], fetchReply: true });
+        const reply = await interaction.reply({ embeds: [emptyEmbed], components: [row], withResponse: true })
+          .then(r => r.resource?.message || interaction.fetchReply());
         setupSummonButtonCollector(reply, interaction.user.id);
         return;
       }
@@ -216,7 +217,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setStyle(ButtonStyle.Danger)
       );
 
-      const reply = await interaction.reply({ embeds: [statusEmbed], components: [row], fetchReply: true });
+      const reply = await interaction.reply({ embeds: [statusEmbed], components: [row], withResponse: true })
+        .then(r => r.resource?.message || interaction.fetchReply());
       setupSummonButtonCollector(reply, interaction.user.id);
       return;
     }
@@ -338,8 +340,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const reply = await interaction.reply({
       embeds: [summonEmbed],
       components: [actionRow],
-      fetchReply: true
-    });
+      withResponse: true
+    }).then(r => r.resource?.message || interaction.fetchReply());
 
     setupSummonButtonCollector(reply, interaction.user.id);
 

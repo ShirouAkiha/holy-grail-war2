@@ -460,8 +460,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         content: `<@${opponentUser.id}>`,
         embeds: [inviteEmbed],
         components: [inviteRow],
-        fetchReply: true
-      });
+        withResponse: true
+      }).then(r => r.resource?.message || interaction.fetchReply());
 
       const inviteCollector = inviteMsg.createMessageComponentCollector({
         componentType: ComponentType.Button,
@@ -469,27 +469,34 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
 
       inviteCollector.on('collect', async i => {
-        if (i.replied || i.deferred) return;
-        if (i.user.id !== opponentUser.id && i.user.id !== interaction.user.id) {
-          await i.reply({ content: 'You are not involved in this duel challenge.', ephemeral: true });
-          return;
-        }
+        try {
+          if (i.replied || i.deferred) return;
+          if (i.user.id !== opponentUser.id && i.user.id !== interaction.user.id) {
+            await i.reply({ content: 'You are not involved in this duel challenge.', ephemeral: true });
+            return;
+          }
 
-        if (i.customId === 'decline_duel') {
-          inviteCollector.stop();
-          await i.update({
-            content: `🏳️ Duel declined by <@${i.user.id}>.`,
-            embeds: [],
-            components: []
-          });
-          return;
-        }
+          if (i.customId === 'decline_duel') {
+            inviteCollector.stop();
+            await i.update({
+              content: `🏳️ Duel declined by <@${i.user.id}>.`,
+              embeds: [],
+              components: []
+            });
+            return;
+          }
 
-        if (i.customId === 'accept_duel' && i.user.id === opponentUser.id) {
-          inviteCollector.stop();
-          const p1 = createCombatant(challengerMaster, challengerServant, false);
-          const p2 = createCombatant(opponentMaster, opponentServant, false);
-          await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster);
+          if (i.customId === 'accept_duel' && i.user.id === opponentUser.id) {
+            inviteCollector.stop();
+            // Acknowledge the button immediately before async canvas generation
+            await i.deferUpdate();
+            const p1 = createCombatant(challengerMaster, challengerServant, false);
+            const p2 = createCombatant(opponentMaster, opponentServant, false);
+            await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster);
+          }
+        } catch (err: any) {
+          if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) return;
+          console.error('Error in inviteCollector (opponent):', err);
         }
       });
 
@@ -563,8 +570,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       content: `<@${targetRival.discordId}>`,
       embeds: [inviteEmbed],
       components: [inviteRow],
-      fetchReply: true
-    });
+      withResponse: true
+    }).then(r => r.resource?.message || interaction.fetchReply());
 
     const inviteCollector = inviteMsg.createMessageComponentCollector({
       componentType: ComponentType.Button,
@@ -572,37 +579,46 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     });
 
     inviteCollector.on('collect', async i => {
-      if (i.replied || i.deferred) return;
-      if (i.user.id !== targetRival.discordId && i.user.id !== interaction.user.id) {
-        await i.reply({ content: 'You are not involved in this duel challenge.', ephemeral: true });
-        return;
-      }
+      try {
+        if (i.replied || i.deferred) return;
+        if (i.user.id !== targetRival.discordId && i.user.id !== interaction.user.id) {
+          await i.reply({ content: 'You are not involved in this duel challenge.', ephemeral: true });
+          return;
+        }
 
-      if (i.customId === 'decline_duel') {
-        inviteCollector.stop();
-        await i.update({
-          content: `🏳️ Duel declined by <@${i.user.id}>.`,
-          embeds: [],
-          components: []
-        });
-        return;
-      }
+        if (i.customId === 'decline_duel') {
+          inviteCollector.stop();
+          await i.update({
+            content: `🏳️ Duel declined by <@${i.user.id}>.`,
+            embeds: [],
+            components: []
+          });
+          return;
+        }
 
-      if (i.customId === 'accept_duel' && i.user.id === targetRival.discordId) {
-        inviteCollector.stop();
-        const p1 = createCombatant(challengerMaster, challengerServant, false);
-        const p2 = createCombatant(opponentMaster, opponentServant, false);
-        await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster);
+        if (i.customId === 'accept_duel' && i.user.id === targetRival.discordId) {
+          inviteCollector.stop();
+          // Acknowledge immediately before async canvas generation
+          await i.deferUpdate();
+          const p1 = createCombatant(challengerMaster, challengerServant, false);
+          const p2 = createCombatant(opponentMaster, opponentServant, false);
+          await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster);
+        }
+      } catch (err: any) {
+        if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) return;
+        console.error('Error in inviteCollector (rival):', err);
       }
     });
 
   } catch (error: any) {
     console.error('Error executing /duel:', error);
-    if (interaction.replied || interaction.deferred) {
-      await interaction.followUp({ content: `❌ Error starting duel: ${error.message}`, ephemeral: true });
-    } else {
-      await interaction.reply({ content: `❌ Error starting duel: ${error.message}`, ephemeral: true });
-    }
+    try {
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({ content: `❌ Error starting duel: ${error.message}`, ephemeral: true });
+      } else {
+        await interaction.reply({ content: `❌ Error starting duel: ${error.message}`, ephemeral: true });
+      }
+    } catch {}
   }
 }
 
@@ -625,21 +641,29 @@ async function startInteractiveDuel(
   const initialButtons = buildCombatButtons(p1);
 
   let battleMsg: any;
-  if (contextInteraction.isButton && contextInteraction.isButton()) {
-    battleMsg = await contextInteraction.update({
+  if (contextInteraction.deferred || contextInteraction.replied) {
+    battleMsg = await contextInteraction.editReply({
       content: null,
       embeds: [initialEmbed],
       files: [initialAttachment],
-      components: initialButtons,
-      fetchReply: true
+      components: initialButtons
+    });
+  } else if (contextInteraction.isButton && contextInteraction.isButton()) {
+    await contextInteraction.deferUpdate();
+    battleMsg = await contextInteraction.editReply({
+      content: null,
+      embeds: [initialEmbed],
+      files: [initialAttachment],
+      components: initialButtons
     });
   } else {
-    battleMsg = await contextInteraction.reply({
+    const res = await contextInteraction.reply({
       embeds: [initialEmbed],
       files: [initialAttachment],
       components: initialButtons,
-      fetchReply: true
+      withResponse: true
     });
+    battleMsg = res?.resource?.message || await contextInteraction.fetchReply();
   }
 
   // Component Collector for turn choices
@@ -652,74 +676,77 @@ async function startInteractiveDuel(
     try {
       if (i.replied || i.deferred) return;
       // Enforce Turn Order: Block clicks if it is not this player's turn
-    if (i.user.id !== activeUserId) {
-      await i.reply({
-        content: `⏳ It is not your turn! Waiting for <@${activeUserId}> to take an action.`,
-        ephemeral: true
-      });
-      return;
-    }
-
-    let actionType: 'buster' | 'arts' | 'quick' | 'np' | 'skill' = 'buster';
-    if (i.customId === 'card_buster') actionType = 'buster';
-    if (i.customId === 'card_arts') actionType = 'arts';
-    if (i.customId === 'card_quick') actionType = 'quick';
-    if (i.customId === 'card_np') actionType = 'np';
-    if (i.customId === 'card_skill') actionType = 'skill';
-
-    const attacker = activeUserId === p1.userId ? p1 : p2;
-    const defender = activeUserId === p1.userId ? p2 : p1;
-
-    // Execute Player attack
-    const log = resolveStrike(attacker, defender, actionType);
-    combatLogs.push(log);
-    if (combatLogs.length > 4) combatLogs.shift(); // Keep last 4 logs clean
-
-    // Check if Defender fainted
-    if (defender.currentHp <= 0) {
-      collector.stop();
-      await finishDuel(i, attacker, defender, p1Master, p2Master);
-      return;
-    }
-
-    const p1CardChoice: CardType[] = actionType === 'buster' ? ['Buster', 'Buster', 'Buster'] : actionType === 'arts' ? ['Arts', 'Arts', 'Arts'] : ['Quick', 'Quick', 'Quick'];
-    let p2CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
-
-    // CASE A: Opponent is AI -> AI immediately strikes back
-    if (defender.isAi) {
-      round++;
-      const aiAction = defender.npGauge >= 100 ? 'np' : Math.random() > 0.5 ? 'buster' : 'arts';
-      p2CardChoice = aiAction === 'buster' ? ['Buster', 'Buster', 'Buster'] : aiAction === 'arts' ? ['Arts', 'Arts', 'Arts'] : ['Quick', 'Quick', 'Quick'];
-      const aiLog = resolveStrike(defender, attacker, aiAction);
-      combatLogs.push(aiLog);
-      if (combatLogs.length > 4) combatLogs.shift();
-
-      if (attacker.currentHp <= 0) {
-        collector.stop();
-        await finishDuel(i, defender, attacker, p1Master, p2Master);
+      if (i.user.id !== activeUserId) {
+        await i.reply({
+          content: `⏳ It is not your turn! Waiting for <@${activeUserId}> to take an action.`,
+          ephemeral: true
+        });
         return;
       }
 
-      // Keep turn on P1
-      activeUserId = p1.userId;
+      // Acknowledge Discord immediately so the 3s timeout never triggers during canvas rendering
+      await i.deferUpdate();
+
+      let actionType: 'buster' | 'arts' | 'quick' | 'np' | 'skill' = 'buster';
+      if (i.customId === 'card_buster') actionType = 'buster';
+      if (i.customId === 'card_arts') actionType = 'arts';
+      if (i.customId === 'card_quick') actionType = 'quick';
+      if (i.customId === 'card_np') actionType = 'np';
+      if (i.customId === 'card_skill') actionType = 'skill';
+
+      const attacker = activeUserId === p1.userId ? p1 : p2;
+      const defender = activeUserId === p1.userId ? p2 : p1;
+
+      // Execute Player attack
+      const log = resolveStrike(attacker, defender, actionType);
+      combatLogs.push(log);
+      if (combatLogs.length > 4) combatLogs.shift(); // Keep last 4 logs clean
+
+      // Check if Defender fainted
+      if (defender.currentHp <= 0) {
+        collector.stop();
+        await finishDuel(i, attacker, defender, p1Master, p2Master);
+        return;
+      }
+
+      const p1CardChoice: CardType[] = actionType === 'buster' ? ['Buster', 'Buster', 'Buster'] : actionType === 'arts' ? ['Arts', 'Arts', 'Arts'] : ['Quick', 'Quick', 'Quick'];
+      let p2CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
+
+      // CASE A: Opponent is AI -> AI immediately strikes back
+      if (defender.isAi) {
+        round++;
+        const aiAction = defender.npGauge >= 100 ? 'np' : Math.random() > 0.5 ? 'buster' : 'arts';
+        p2CardChoice = aiAction === 'buster' ? ['Buster', 'Buster', 'Buster'] : aiAction === 'arts' ? ['Arts', 'Arts', 'Arts'] : ['Quick', 'Quick', 'Quick'];
+        const aiLog = resolveStrike(defender, attacker, aiAction);
+        combatLogs.push(aiLog);
+        if (combatLogs.length > 4) combatLogs.shift();
+
+        if (attacker.currentHp <= 0) {
+          collector.stop();
+          await finishDuel(i, defender, attacker, p1Master, p2Master);
+          return;
+        }
+
+        // Keep turn on P1
+        activeUserId = p1.userId;
+        const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, log, p1CardChoice, p2CardChoice);
+        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs);
+        const updatedButtons = buildCombatButtons(p1);
+        await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+        return;
+      }
+
+      // CASE B: Opponent is human -> Swap active player turn
+      round++;
+      activeUserId = defender.userId;
+      const nextCombatant = activeUserId === p1.userId ? p1 : p2;
       const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, log, p1CardChoice, p2CardChoice);
       const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs);
-      const updatedButtons = buildCombatButtons(p1);
-      await i.update({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
-      return;
-    }
+      const updatedButtons = buildCombatButtons(nextCombatant);
 
-    // CASE B: Opponent is human -> Swap active player turn
-    round++;
-    activeUserId = defender.userId;
-    const nextCombatant = activeUserId === p1.userId ? p1 : p2;
-    const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, log, p1CardChoice, p2CardChoice);
-    const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs);
-    const updatedButtons = buildCombatButtons(nextCombatant);
-
-    await i.update({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+      await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
     } catch (err: any) {
-      if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
+      if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) return;
       console.error('Error in duel battle collector:', err);
     }
   });
@@ -768,10 +795,17 @@ async function finishDuel(
       defeatEmbed.setThumbnail(loser.servant.template.avatarUrl);
     }
 
-    await i.update({
-      embeds: [defeatEmbed],
-      components: []
-    });
+    if (i.deferred || i.replied) {
+      await i.editReply({
+        embeds: [defeatEmbed],
+        components: []
+      });
+    } else {
+      await i.update({
+        embeds: [defeatEmbed],
+        components: []
+      });
+    }
     return;
   }
 
@@ -816,11 +850,19 @@ async function finishDuel(
       .setStyle(ButtonStyle.Success)
   );
 
-  const response = await i.update({
-    embeds: [fateEmbed],
-    components: [fateRow],
-    fetchReply: true
-  });
+  let response: any;
+  if (i.deferred || i.replied) {
+    response = await i.editReply({
+      embeds: [fateEmbed],
+      components: [fateRow]
+    });
+  } else {
+    response = await i.update({
+      embeds: [fateEmbed],
+      components: [fateRow],
+      withResponse: true
+    }).then((r: any) => r?.resource?.message || i.fetchReply());
+  }
 
   try {
     const confirmation = await response.awaitMessageComponent({
@@ -864,8 +906,10 @@ async function finishDuel(
   } catch {
     // Timeout default: spare
     recordDuelOutcome(warSession, winner.username, loser.username, 'spare', chanTag);
-    await i.editReply({
-      components: []
-    });
+    try {
+      await i.editReply({
+        components: []
+      });
+    } catch {}
   }
 }

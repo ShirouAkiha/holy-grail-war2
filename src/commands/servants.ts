@@ -127,8 +127,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const response = await interaction.reply({
       embeds: [embed],
       components: rows,
-      fetchReply: true
-    });
+      withResponse: true
+    }).then(r => r.resource?.message || interaction.fetchReply());
 
     setupServantListCollector(response, allServants);
 

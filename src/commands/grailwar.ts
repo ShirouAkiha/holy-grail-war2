@@ -354,8 +354,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         embeds: [profEmbed],
         components: profButtons,
         ephemeral: true,
-        fetchReply: true
-      });
+        withResponse: true
+      }).then(r => r.resource?.message || interaction.fetchReply());
       setupWarCollector(reply, interaction.user.id);
       return;
     }
@@ -367,8 +367,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         embeds: [defEmbed],
         components: defButtons,
         ephemeral: true,
-        fetchReply: true
-      });
+        withResponse: true
+      }).then(r => r.resource?.message || interaction.fetchReply());
       setupWarCollector(reply, interaction.user.id);
       return;
     }
@@ -385,8 +385,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         embeds: [defEmbed],
         components: defButtons,
         ephemeral: true,
-        fetchReply: true
-      });
+        withResponse: true
+      }).then(r => r.resource?.message || interaction.fetchReply());
       setupWarCollector(reply, interaction.user.id);
       return;
     }
@@ -403,8 +403,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         embeds: [defEmbed],
         components: defButtons,
         ephemeral: true,
-        fetchReply: true
-      });
+        withResponse: true
+      }).then(r => r.resource?.message || interaction.fetchReply());
       setupWarCollector(reply, interaction.user.id);
       return;
     }
@@ -449,8 +449,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const reply = await interaction.reply({
       embeds: [embed],
       components: [row],
-      fetchReply: true
-    });
+      withResponse: true
+    }).then(r => r.resource?.message || interaction.fetchReply());
 
     setupWarCollector(reply, interaction.user.id);
 

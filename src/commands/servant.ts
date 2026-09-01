@@ -205,6 +205,8 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
 
       // ACTION 1: Hear Voice Line (Generates visual visual dialogue box)
       if (i.customId === 'hear_dialogue') {
+        await i.deferReply({ ephemeral: true });
+
         const quotes = [
           { label: 'Summon Quote', text: activeServant.customQuotes?.summon || activeServant.template.summonQuote },
           { label: 'Battle Start', text: activeServant.customQuotes?.battleStart || activeServant.template.battleStartQuote },
@@ -233,7 +235,7 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
           diaEmbed.setImage('attachment://dialogue_card.png');
         }
 
-        await i.reply({ embeds: [diaEmbed], files, ephemeral: true });
+        await i.editReply({ embeds: [diaEmbed], files });
         return;
       }
 
@@ -248,6 +250,8 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
 
       // ACTION 3: Switch Active Servant Selection
       if (i.customId === 'switch_active_servant') {
+        await i.deferUpdate();
+
         const selectedId = i.values[0];
         master.activeServantId = selectedId;
         await saveMaster(master);
@@ -269,7 +273,7 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
           // Ignore
         }
 
-        await i.update({ embeds: [newEmbed, newArtworkEmbed], files, components: newRows });
+        await i.editReply({ embeds: [newEmbed, newArtworkEmbed], files, components: newRows });
       }
 
     } catch (err: any) {
