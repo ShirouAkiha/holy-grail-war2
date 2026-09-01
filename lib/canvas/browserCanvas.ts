@@ -30,6 +30,33 @@ function drawRoundRect(
 }
 
 /**
+ * Draw image using cover object-fit logic in HTML5 Canvas
+ */
+function drawImageCover(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  dx: number,
+  dy: number,
+  dw: number,
+  dh: number
+) {
+  if (!img || !img.naturalWidth || !img.naturalHeight) return;
+  const imgRatio = img.naturalWidth / img.naturalHeight;
+  const targetRatio = dw / dh;
+  let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
+
+  if (imgRatio > targetRatio) {
+    sw = img.naturalHeight * targetRatio;
+    sx = (img.naturalWidth - sw) / 2;
+  } else {
+    sh = img.naturalWidth / targetRatio;
+    sy = (img.naturalHeight - sh) / 2;
+  }
+
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+}
+
+/**
  * 1. Servant Profile Status Card (800x460)
  */
 export function renderServantProfileCard(
@@ -57,23 +84,53 @@ export function renderServantProfileCard(
   drawRoundRect(ctx, 12, 12, 776, 436, 16);
   ctx.stroke();
 
-  // Left Avatar Frame (240x360)
+  // Left Avatar Frame (220x340)
   ctx.save();
   drawRoundRect(ctx, 30, 30, 220, 340, 12);
   ctx.clip();
   ctx.fillStyle = '#1e293b';
   ctx.fillRect(30, 30, 220, 340);
 
-  // Avatar placeholder background
+  // Avatar background
   const avatarGrad = ctx.createLinearGradient(30, 30, 250, 370);
   avatarGrad.addColorStop(0, '#334155');
   avatarGrad.addColorStop(1, '#0f172a');
   ctx.fillStyle = avatarGrad;
   ctx.fillRect(30, 30, 220, 340);
 
-  // Class & Rarity overlay on avatar
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-  ctx.fillRect(30, 310, 220, 60);
+  const imgUrl = servant.template.cardArtUrl || servant.template.avatarUrl;
+  if (imgUrl) {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = imgUrl;
+    if (img.complete && img.naturalWidth > 0) {
+      drawImageCover(ctx, img, 30, 30, 220, 280);
+    } else {
+      img.onload = () => {
+        if (!ctx) return;
+        ctx.save();
+        drawRoundRect(ctx, 30, 30, 220, 340, 12);
+        ctx.clip();
+        drawImageCover(ctx, img, 30, 30, 220, 280);
+        
+        // Re-overlay bottom badge after async image loads
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        ctx.fillRect(30, 280, 220, 60);
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 16px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${servant.template.servantClass.toUpperCase()}`, 140, 312);
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = '18px system-ui, sans-serif';
+        ctx.fillText('★'.repeat(servant.template.rarity), 140, 332);
+        ctx.restore();
+      };
+    }
+  }
+
+  // Class & Rarity overlay on avatar bottom
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+  ctx.fillRect(30, 280, 220, 60);
   ctx.restore();
 
   // Class Badge on Avatar bottom

@@ -123,29 +123,32 @@ function buildServantEmbed(servant: any, master: any) {
   const totalAtk = (t.baseAtk || 10000) + (alloc.strength || 0) * 150 + ceBonusAtk;
   const totalHp = (t.baseHp || 12000) + (alloc.endurance || 0) * 300 + ceBonusHp;
 
+  const deckEmojiMap: Record<string, string> = { Buster: '🔴 Buster', Arts: '🔵 Arts', Quick: '🟢 Quick' };
+  const commandDeck = t.commandDeck || ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'];
+  const deckStr = commandDeck.map((c: string) => deckEmojiMap[c] || c).join(' • ');
+
+  const npCardEmoji = t.noblePhantasm?.cardType === 'Arts' ? '🔵' : t.noblePhantasm?.cardType === 'Quick' ? '🟢' : '🔴';
+
   const embed = new EmbedBuilder()
     .setTitle(`⚔️ Servant Profile: ${servant.nickname || t.name}`)
     .setDescription(
       `*${t.title}*\n\n` +
-      `**Class:** ${t.servantClass} | **Rarity:** ${'★'.repeat(t.rarity)} | **Bond Lv:** ${servant.bondLevel || 1}/10\n` +
-      `**Level:** ${servant.level || 1}/100 | **Available Stat Points:** **${servant.availableStatPoints || 0} pts**\n\n` +
-      `❤️ **Max HP:** ${totalHp.toLocaleString()} ${ceBonusHp ? `*(+${ceBonusHp} from CE)*` : ''}\n` +
-      `⚔️ **Attack:** ${totalAtk.toLocaleString()} ${ceBonusAtk ? `*(+${ceBonusAtk} from CE)*` : ''}\n\n` +
-      `📊 **Parameters:**\n` +
+      `🌟 **Class:** ${t.servantClass} | **Rarity:** ${'★'.repeat(t.rarity)} | **Bond Lv:** ${servant.bondLevel || 1}/10 ♥\n` +
+      `📈 **Level:** ${servant.level || 1}/100 | **Available Stat Points:** **${servant.availableStatPoints || 0} pts**\n\n` +
+      `❤️ **Max HP:** \`${totalHp.toLocaleString()}\` ${ceBonusHp ? `*(+${ceBonusHp} from CE)*` : ''}\n` +
+      `⚔️ **Attack:** \`${totalAtk.toLocaleString()}\` ${ceBonusAtk ? `*(+${ceBonusAtk} from CE)*` : ''}\n\n` +
+      `📊 **Base Parameters:**\n` +
       `• **STR:** ${totalStr} | **END:** ${totalEnd} | **AGI:** ${totalAgi}\n` +
       `• **MNA:** ${totalMna} | **LCK:** ${totalLck}\n\n` +
+      `🃏 **Command Deck:** ${deckStr}\n\n` +
       (servant.equippedCe
         ? `🛡️ **Equipped CE:** **${servant.equippedCe.name}**\n*Effect:* ${servant.equippedCe.effectText}\n\n`
         : `🛡️ **Equipped CE:** *None (Use \`/customise equip\`)*\n\n`) +
-      `📜 **Noble Phantasm:** **${t.noblePhantasm?.name || 'Unknown'}** [${t.noblePhantasm?.cardType || 'Buster'}]\n` +
-      `*"${servant.customQuotes?.noblePhantasm || t.noblePhantasm?.chant || '...'}"*\n` +
+      `💥 **Noble Phantasm:** **${t.noblePhantasm?.name || 'Unknown'}** [${npCardEmoji} ${t.noblePhantasm?.cardType || 'Buster'}]\n` +
+      `> *"${servant.customQuotes?.noblePhantasm || t.noblePhantasm?.chant || '...'}"*\n` +
       `*${t.noblePhantasm?.description || ''}*`
     )
     .setColor(t.rarity === 5 ? 0xd4af37 : 0x38bdf8);
-
-  if (t.avatarUrl) {
-    embed.setThumbnail(t.avatarUrl);
-  }
 
   return embed;
 }

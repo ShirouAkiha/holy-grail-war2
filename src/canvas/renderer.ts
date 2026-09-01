@@ -83,6 +83,36 @@ function drawRoundRect(
 }
 
 /**
+  * Draw an image into a target bounding box using object-fit: cover logic.
+  * Prevents squishing/stretching regardless of the image's aspect ratio.
+  */
+function drawImageCover(
+  ctx: any,
+  img: any,
+  dx: number,
+  dy: number,
+  dw: number,
+  dh: number
+) {
+  if (!img || !img.width || !img.height) return;
+  const imgRatio = img.width / img.height;
+  const targetRatio = dw / dh;
+  let sx = 0, sy = 0, sw = img.width, sh = img.height;
+
+  if (imgRatio > targetRatio) {
+    // Image is wider than target frame: crop horizontal overflow
+    sw = img.height * targetRatio;
+    sx = (img.width - sw) / 2;
+  } else {
+    // Image is taller than target frame: crop vertical overflow
+    sh = img.width / targetRatio;
+    sy = (img.height - sh) / 2;
+  }
+
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+}
+
+/**
  * 1. Render Servant Profile Status Card (800x460 Buffer)
  */
 export async function renderServantProfileCard(
@@ -106,19 +136,20 @@ export async function renderServantProfileCard(
   drawRoundRect(ctx, 12, 12, 776, 436, 16);
   ctx.stroke();
 
-  // Left Avatar Frame
+  // Left Avatar Frame Container
   ctx.fillStyle = '#1e293b';
   drawRoundRect(ctx, 30, 30, 220, 340, 12);
   ctx.fill();
 
-  if (servant.template?.avatarUrl) {
+  const imageUrl = servant.template?.cardArtUrl || servant.template?.avatarUrl;
+  if (imageUrl) {
     try {
-      const img = await loadImage(servant.template.avatarUrl);
+      const img = await loadImage(imageUrl);
       if (img) {
         ctx.save();
-        drawRoundRect(ctx, 34, 34, 212, 260, 8);
+        drawRoundRect(ctx, 34, 34, 212, 280, 8);
         ctx.clip();
-        ctx.drawImage(img, 34, 34, 212, 260);
+        drawImageCover(ctx, img, 34, 34, 212, 280);
         ctx.restore();
       }
     } catch {

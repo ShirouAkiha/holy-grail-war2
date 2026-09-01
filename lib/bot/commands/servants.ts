@@ -182,8 +182,7 @@ export function buildServantFullProfileEmbed(servant: ServantTemplate) {
     .setColor(cardColor)
     .setFooter({ text: \`Throne ID: \${servant.id} • Holy Grail War Registry\` });
 
-  if (servant.avatarUrl || servant.cardArtUrl) {
-    embed.setThumbnail(servant.avatarUrl || servant.cardArtUrl);
+  if (servant.cardArtUrl || servant.avatarUrl) {
     embed.setImage(servant.cardArtUrl || servant.avatarUrl);
   }
 

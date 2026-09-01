@@ -35,6 +35,30 @@ function drawRoundRect(
   ctx.closePath();
 }
 
+function drawImageCover(
+  ctx: any,
+  img: any,
+  dx: number,
+  dy: number,
+  dw: number,
+  dh: number
+) {
+  if (!img || !img.width || !img.height) return;
+  const imgRatio = img.width / img.height;
+  const targetRatio = dw / dh;
+  let sx = 0, sy = 0, sw = img.width, sh = img.height;
+
+  if (imgRatio > targetRatio) {
+    sw = img.height * targetRatio;
+    sx = (img.width - sw) / 2;
+  } else {
+    sh = img.width / targetRatio;
+    sy = (img.height - sh) / 2;
+  }
+
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+}
+
 /**
  * 1. Render Servant Profile Status Card (800x460 Buffer)
  */
