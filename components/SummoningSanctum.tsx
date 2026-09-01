@@ -602,16 +602,30 @@ export default function SummoningSanctum({
                 </div>
 
                 {/* Stats & Parameters */}
-                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                  <div className="p-2 rounded bg-[#0f0f0f] border border-[#1a1a1a]">
-                    <span className="text-white/40 text-[10px] block">HP:</span>
-                    <strong className="text-emerald-400">{activeContract.template.baseHp.toLocaleString()}</strong>
-                  </div>
-                  <div className="p-2 rounded bg-[#0f0f0f] border border-[#1a1a1a]">
-                    <span className="text-white/40 text-[10px] block">ATK:</span>
-                    <strong className="text-rose-400">{activeContract.template.baseAtk.toLocaleString()}</strong>
-                  </div>
-                </div>
+                {(() => {
+                  const baseStats = activeContract.template.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
+                  const alloc = activeContract.allocatedStats || {};
+                  const totalStr = (baseStats.strength || 10) + (alloc.strength || 0);
+                  const totalEnd = (baseStats.endurance || 10) + (alloc.endurance || 0);
+                  const ceAtk = activeContract.equippedCe?.atkBonus || 0;
+                  const ceHp = activeContract.equippedCe?.hpBonus || 0;
+                  const lvl = activeContract.level || 1;
+                  const activeMaxHp = Math.round((activeContract.template.baseHp || 12000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceHp);
+                  const activeTotalAtk = Math.round((activeContract.template.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceAtk);
+
+                  return (
+                    <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                      <div className="p-2 rounded bg-[#0f0f0f] border border-[#1a1a1a]">
+                        <span className="text-white/40 text-[10px] block">MAX HP:</span>
+                        <strong className="text-emerald-400">{activeMaxHp.toLocaleString()}</strong>
+                      </div>
+                      <div className="p-2 rounded bg-[#0f0f0f] border border-[#1a1a1a]">
+                        <span className="text-white/40 text-[10px] block">TOTAL ATK:</span>
+                        <strong className="text-rose-400">{activeTotalAtk.toLocaleString()}</strong>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <div className="p-3 bg-[#0f0f0f] rounded border border-[#1a1a1a] text-xs">
                   <span className="text-[#d4af37] font-mono text-[10px] uppercase tracking-wider block">Noble Phantasm</span>

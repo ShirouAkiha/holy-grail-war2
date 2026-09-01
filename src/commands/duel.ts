@@ -88,13 +88,18 @@ function getClassMultiplier(attacker: ServantClass, defender: ServantClass): num
 function createCombatant(master: MasterProfile, servant: MasterServantInstance, isAi: boolean = false): DuelCombatant {
   const t = servant.template;
   const alloc = servant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
+  const base = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
+  const totalStr = (base.strength || 10) + (alloc.strength || 0);
+  const totalEnd = (base.endurance || 10) + (alloc.endurance || 0);
+
   const ceAtk = servant.equippedCe?.atkBonus || 0;
   const ceHp = servant.equippedCe?.hpBonus || 0;
+  const lvl = servant.level || 1;
 
-  // Formula: Base Stat + (Parameter Allocation * scaling factor) + Craft Essence Equipment
-  const maxHp = (t.baseHp || 12000) + (alloc.endurance || 0) * 300 + ceHp;
-  const atk = (t.baseAtk || 10000) + (alloc.strength || 0) * 150 + ceAtk;
-  const def = 10 + (alloc.endurance || 0) * 2;
+  // Unified Formula: Base Stat * level Scaling + (Total Parameter * factor) + Craft Essence Equipment
+  const maxHp = Math.round((t.baseHp || 12000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceHp);
+  const atk = Math.round((t.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceAtk);
+  const def = 10 + totalEnd * 2;
 
   // Check if equipped CE grants starting NP (e.g. Kaleidoscope grants 80% starting NP)
   let initialNp = 0;

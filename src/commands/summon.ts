@@ -179,6 +179,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const baseHp = t.baseHp || sAny.baseHp || 12000;
       const baseAtk = t.baseAtk || sAny.baseAtk || 10000;
       const np = t.noblePhantasm || sAny.noblePhantasm || { name: 'Excalibur', cardType: 'Buster', chant: 'Sword of Promised Victory' };
+      const baseStats = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
+      const alloc = activeServant.allocatedStats || {};
+      const totalStr = (baseStats.strength || 10) + (alloc.strength || 0);
+      const totalEnd = (baseStats.endurance || 10) + (alloc.endurance || 0);
+      const ceAtk = activeServant.equippedCe?.atkBonus || 0;
+      const ceHp = activeServant.equippedCe?.hpBonus || 0;
+      const lvl = activeServant.level || 1;
+
+      const calcHp = Math.round(baseHp * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceHp);
+      const calcAtk = Math.round(baseAtk * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceAtk);
 
       const statusEmbed = new EmbedBuilder()
         .setTitle(`📜 HOLY GRAIL WAR CONTRACT: ${sName.toUpperCase()}`)
@@ -188,8 +198,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           `**Command Seals:** 🔴🔴🔴 **${master.commandSeals}/3**\n` +
           `**Action Points (AP):** **${master.actionPoints || 100}/100**\n\n` +
           `⚔️ **Combat Parameters:**\n` +
-          `• HP: \`${(baseHp + (activeServant.allocatedStats?.endurance || 0) * 150).toLocaleString()}\`\n` +
-          `• ATK: \`${(baseAtk + (activeServant.allocatedStats?.strength || 0) * 80).toLocaleString()}\`\n` +
+          `• HP: \`${calcHp.toLocaleString()}\`\n` +
+          `• ATK: \`${calcAtk.toLocaleString()}\`\n` +
           `• Available Parameter Points: **${activeServant.availableStatPoints || 0}** (Use \`/customise stats\`)\n\n` +
           `💥 **Noble Phantasm:** **${np.name}** [${np.cardType}]\n` +
           `* "${activeServant.customQuotes?.noblePhantasm || np.chant}" *\n\n` +

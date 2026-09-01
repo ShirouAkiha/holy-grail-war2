@@ -119,9 +119,10 @@ function buildServantEmbed(servant: any, master: any) {
 
   const ceBonusAtk = servant.equippedCe?.atkBonus || 0;
   const ceBonusHp = servant.equippedCe?.hpBonus || 0;
+  const lvl = servant.level || 1;
 
-  const totalAtk = (t.baseAtk || 10000) + (alloc.strength || 0) * 150 + ceBonusAtk;
-  const totalHp = (t.baseHp || 12000) + (alloc.endurance || 0) * 300 + ceBonusHp;
+  const totalHp = Math.round((t.baseHp || 12000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceBonusHp);
+  const totalAtk = Math.round((t.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceBonusAtk);
 
   const deckEmojiMap: Record<string, string> = { Buster: '🔴 Buster', Arts: '🔵 Arts', Quick: '🟢 Quick' };
   const commandDeck = t.commandDeck || ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'];
