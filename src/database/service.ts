@@ -33,6 +33,103 @@ export function addCustomServant(servant: ServantTemplate): ServantTemplate {
 }
 
 /**
+ * Updates an existing Servant template (both Canon and Custom servants).
+ */
+export function updateServantTemplate(
+  queryOrId: string,
+  updates: {
+    name?: string;
+    title?: string;
+    servantClass?: any;
+    avatarUrl?: string;
+    cardArtUrl?: string;
+    baseHp?: number;
+    baseAtk?: number;
+    noblePhantasmName?: string;
+    noblePhantasmChant?: string;
+    noblePhantasmCardType?: 'Buster' | 'Arts' | 'Quick';
+    summonQuote?: string;
+    lore?: string;
+  }
+): { success: boolean; servant?: ServantTemplate; error?: string } {
+  const allServants = getAllThroneServants();
+  const lowerQuery = queryOrId.toLowerCase().trim();
+
+  // Find exact ID match or name match
+  let target = allServants.find(
+    s => s.id.toLowerCase() === lowerQuery || s.name.toLowerCase() === lowerQuery
+  );
+
+  if (!target) {
+    target = allServants.find(
+      s => s.id.toLowerCase().includes(lowerQuery) || s.name.toLowerCase().includes(lowerQuery)
+    );
+  }
+
+  if (!target) {
+    return { success: false, error: `Servant matching "${queryOrId}" not found in Throne of Heroes.` };
+  }
+
+  // Apply updates
+  if (updates.name) target.name = updates.name.trim();
+  if (updates.title) target.title = updates.title.trim();
+  if (updates.servantClass) target.servantClass = updates.servantClass;
+  if (updates.avatarUrl) {
+    const newImg = updates.avatarUrl.trim();
+    target.avatarUrl = newImg;
+    if (!updates.cardArtUrl || updates.cardArtUrl === updates.avatarUrl) {
+      target.cardArtUrl = newImg;
+    }
+  }
+  if (updates.cardArtUrl) target.cardArtUrl = updates.cardArtUrl.trim();
+  if (updates.baseHp) target.baseHp = Number(updates.baseHp);
+  if (updates.baseAtk) target.baseAtk = Number(updates.baseAtk);
+  if (updates.summonQuote) target.summonQuote = updates.summonQuote.trim();
+  if (updates.lore) target.lore = updates.lore.trim();
+
+  if (updates.noblePhantasmName) {
+    target.noblePhantasm.name = updates.noblePhantasmName.trim();
+  }
+  if (updates.noblePhantasmChant) {
+    target.noblePhantasm.chant = updates.noblePhantasmChant.trim();
+  }
+  if (updates.noblePhantasmCardType) {
+    target.noblePhantasm.cardType = updates.noblePhantasmCardType;
+  }
+
+  // Persist in customServants array if custom, or update in SERVANT_DATABASE
+  const customIdx = customServants.findIndex(s => s.id === target!.id);
+  if (customIdx >= 0) {
+    customServants[customIdx] = { ...target };
+  } else if (target.isCustomOrMeme) {
+    customServants.push({ ...target });
+  } else {
+    // If it's a canon servant, update the in-memory SERVANT_DATABASE entry
+    const canonIdx = SERVANT_DATABASE.findIndex(s => s.id === target!.id);
+    if (canonIdx >= 0) {
+      SERVANT_DATABASE[canonIdx] = { ...target };
+    }
+  }
+
+  // Propagate updates to all active Master servant instances in memory
+  for (const master of masterStore.values()) {
+    if (master.servants) {
+      for (const inst of master.servants) {
+        if (inst.templateId === target.id || inst.template?.id === target.id) {
+          inst.template = { ...target };
+          if (inst.customQuotes) {
+            if (updates.summonQuote) inst.customQuotes.summon = updates.summonQuote;
+            if (updates.noblePhantasmChant) inst.customQuotes.noblePhantasm = updates.noblePhantasmChant;
+          }
+        }
+      }
+    }
+  }
+
+  return { success: true, servant: target };
+}
+
+/**
  * Removes a custom Servant from the database by ID.
  */
 export function removeCustomServant(servantId: string): boolean {

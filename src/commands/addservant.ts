@@ -11,7 +11,8 @@ import {
   addCustomServant, 
   removeCustomServant, 
   getCustomServants, 
-  getAllThroneServants 
+  getAllThroneServants,
+  updateServantTemplate
 } from '../database/service';
 import { ServantClass, ServantTemplate, CardType } from '../types';
 
@@ -127,7 +128,79 @@ export const data = new SlashCommandBuilder()
   .addSubcommand(sub =>
     sub
       .setName('list')
-      .setDescription('View all custom Servants registered in the Throne of Heroes')
+      .setDescription('View all custom and canon Servants registered in the Throne of Heroes')
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('edit')
+      .setDescription('Admin command to edit any Servant (canon or custom) - images, stats, NP, lore')
+      .addStringOption(opt =>
+        opt
+          .setName('servant_id')
+          .setDescription('ID or name of the Servant to edit (e.g. artoria_pendragon, gilgamesh_archer, or name)')
+          .setRequired(true)
+      )
+      .addStringOption(opt =>
+        opt.setName('name').setDescription('New name of the Heroic Spirit').setRequired(false)
+      )
+      .addStringOption(opt =>
+        opt.setName('title').setDescription('New Title or Epithet').setRequired(false)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('class')
+          .setDescription('New Servant Class')
+          .setRequired(false)
+          .addChoices(
+            { name: '⚔️ Saber', value: 'Saber' },
+            { name: '🏹 Archer', value: 'Archer' },
+            { name: '🔱 Lancer', value: 'Lancer' },
+            { name: '🐎 Rider', value: 'Rider' },
+            { name: '🔮 Caster', value: 'Caster' },
+            { name: '🗡️ Assassin', value: 'Assassin' },
+            { name: '🔥 Berserker', value: 'Berserker' },
+            { name: '⚖️ Ruler', value: 'Ruler' },
+            { name: '💀 Avenger', value: 'Avenger' },
+            { name: '🌌 Foreigner', value: 'Foreigner' },
+            { name: '🌙 MoonCancer', value: 'MoonCancer' },
+            { name: '🤡 Shitposter', value: 'Shitposter' }
+          )
+      )
+      .addAttachmentOption(opt =>
+        opt.setName('image_file').setDescription('Upload a new picture of the Servant').setRequired(false)
+      )
+      .addStringOption(opt =>
+        opt.setName('image_url').setDescription('Or provide a direct image URL (https://...)').setRequired(false)
+      )
+      .addIntegerOption(opt =>
+        opt.setName('hp').setDescription('New Base Max HP').setMinValue(1000).setMaxValue(50000).setRequired(false)
+      )
+      .addIntegerOption(opt =>
+        opt.setName('atk').setDescription('New Base Attack Power').setMinValue(1000).setMaxValue(50000).setRequired(false)
+      )
+      .addStringOption(opt =>
+        opt.setName('noble_phantasm').setDescription('New Noble Phantasm Name').setRequired(false)
+      )
+      .addStringOption(opt =>
+        opt.setName('np_chant').setDescription('New Noble Phantasm Chant').setRequired(false)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('np_card')
+          .setDescription('New Noble Phantasm Card Type')
+          .setRequired(false)
+          .addChoices(
+            { name: '🔴 Buster (Heavy Damage)', value: 'Buster' },
+            { name: '🔵 Arts (NP Refund)', value: 'Arts' },
+            { name: '🟢 Quick (Critical Stars)', value: 'Quick' }
+          )
+      )
+      .addStringOption(opt =>
+        opt.setName('summon_quote').setDescription('New Summon Dialogue quote').setRequired(false)
+      )
+      .addStringOption(opt =>
+        opt.setName('lore').setDescription('New Lore / Backstory').setRequired(false)
+      )
   )
   .addSubcommand(sub =>
     sub
@@ -288,31 +361,21 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const customList = getCustomServants();
     const allThrone = getAllThroneServants();
 
-    if (customList.length === 0) {
-      const embed = new EmbedBuilder()
-        .setTitle('📜 Throne of Heroes — Custom Servants')
-        .setDescription(
-          `There are currently **0 custom Servants** registered.\n\n` +
-          `The Throne contains **${allThrone.length} canon Servants** (Artoria, Gilgamesh, Heracles, EMIYA, Cu Chulainn, Jeanne, Medea, etc.).\n\n` +
-          `Use \`/addservant create\` to register your first custom Heroic Spirit!`
-        )
-        .setColor(0x3b82f6);
-
-      await interaction.reply({ embeds: [embed] });
-      return;
-    }
-
-    const items = customList.map((s, idx) => 
-      `**${idx + 1}. ${s.name}** [${s.servantClass}] — *${s.title}*\n` +
-      `   • HP: ${s.baseHp} | ATK: ${s.baseAtk} | NP: *${s.noblePhantasm.name}*\n` +
-      `   • ID: \`${s.id}\``
+    const items = allThrone.map((s, idx) => 
+      `**${idx + 1}. ${s.name}** [${s.servantClass}] ${s.isCustomOrMeme ? '🛠️ *[Custom]*' : '🏛️ *[Canon]*'}\n` +
+      `   • Title: *${s.title}* | HP: \`${s.baseHp}\` | ATK: \`${s.baseAtk}\`\n` +
+      `   • ID: \`${s.id}\` | NP: *${s.noblePhantasm.name}*`
     ).join('\n\n');
 
     const embed = new EmbedBuilder()
-      .setTitle(`📜 Custom Servants in Throne of Heroes (${customList.length})`)
-      .setDescription(items)
+      .setTitle(`📜 Throne of Heroes Servant Registry (${allThrone.length} Servants)`)
+      .setDescription(
+        `Below are all Heroic Spirits registered in the Throne of Heroes.\n` +
+        `Use \`/addservant edit servant_id:<id>\` to edit any Servant's image, stats, name, or quotes!\n\n` +
+        items
+      )
       .setColor(0xd4af37)
-      .setFooter({ text: `Total summonable pool: ${allThrone.length} Heroic Spirits` });
+      .setFooter({ text: `Canon: ${allThrone.length - customList.length} • Custom: ${customList.length}` });
 
     await interaction.reply({ embeds: [embed] });
     return;
@@ -346,5 +409,73 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         ]
       });
     }
+    return;
+  }
+
+  // ------------------------------------------
+  // SUBCOMMAND D: EDIT SERVANT (CANON OR CUSTOM)
+  // ------------------------------------------
+  if (subcommand === 'edit') {
+    const servantId = interaction.options.getString('servant_id', true).trim();
+    const name = interaction.options.getString('name');
+    const title = interaction.options.getString('title');
+    const servantClass = interaction.options.getString('class') as ServantClass | null;
+    const imageAttachment = interaction.options.getAttachment('image_file');
+    const imageUrl = interaction.options.getString('image_url');
+    const finalPicture = imageAttachment?.url || imageUrl || undefined;
+    const hp = interaction.options.getInteger('hp');
+    const atk = interaction.options.getInteger('atk');
+    const npName = interaction.options.getString('noble_phantasm');
+    const npChant = interaction.options.getString('np_chant');
+    const npCard = interaction.options.getString('np_card') as CardType | null;
+    const summonQuote = interaction.options.getString('summon_quote');
+    const lore = interaction.options.getString('lore');
+
+    const result = updateServantTemplate(servantId, {
+      name: name || undefined,
+      title: title || undefined,
+      servantClass: servantClass || undefined,
+      avatarUrl: finalPicture,
+      cardArtUrl: finalPicture,
+      baseHp: hp || undefined,
+      baseAtk: atk || undefined,
+      noblePhantasmName: npName || undefined,
+      noblePhantasmChant: npChant || undefined,
+      noblePhantasmCardType: npCard || undefined,
+      summonQuote: summonQuote || undefined,
+      lore: lore || undefined
+    });
+
+    if (!result.success || !result.servant) {
+      await interaction.reply({
+        ephemeral: true,
+        embeds: [
+          new EmbedBuilder()
+            .setTitle('❌ Servant Not Found')
+            .setDescription(result.error || `Could not find servant matching "${servantId}". Use \`/addservant list\` to see all IDs.`)
+            .setColor(0xef4444)
+        ]
+      });
+      return;
+    }
+
+    const s = result.servant;
+    const embed = new EmbedBuilder()
+      .setTitle(`✨ SERVANT TEMPLATE UPDATED: ${s.name}`)
+      .setDescription(
+        `Admin has updated the parameters and picture for **${s.name}**!\n\n` +
+        `• **Class:** \`${s.servantClass}\` | **Title:** *${s.title}*\n` +
+        `• **Base HP:** \`${s.baseHp.toLocaleString()}\` | **Base ATK:** \`${s.baseAtk.toLocaleString()}\`\n` +
+        `• **Noble Phantasm:** **${s.noblePhantasm.name}** (${s.noblePhantasm.cardType})\n` +
+        `• **NP Chant:** *"${s.noblePhantasm.chant}"*\n` +
+        `• **Summon Dialogue:** *"${s.summonQuote}"*\n\n` +
+        `*Changes take effect immediately across all active Master contracts and combat arenas!*`
+      )
+      .setImage(s.cardArtUrl || s.avatarUrl)
+      .setColor(0xd4af37)
+      .setFooter({ text: `ID: ${s.id} • Edited by Admin ${interaction.user.username}` });
+
+    await interaction.reply({ embeds: [embed] });
+    return;
   }
 }

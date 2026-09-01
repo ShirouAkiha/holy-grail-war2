@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, count: current.length, servants: current });
     }
 
-    if (action === 'add' || action === 'upsert') {
+    if (action === 'add' || action === 'upsert' || action === 'edit_servant') {
       if (!servant || !servant.id) {
         return NextResponse.json({ success: false, error: 'Invalid servant payload' }, { status: 400 });
       }

@@ -54,7 +54,9 @@ export default function SummoningSanctum({
   const [registryCategory, setRegistryCategory] = useState<'all' | 'canon' | 'custom'>('all');
   const [inspectedServant, setInspectedServant] = useState<ServantTemplate | null>(null);
 
-  // Admin Custom Servant Form State
+  // Admin Custom / Canon Servant Form State
+  const [forgeMode, setForgeMode] = useState<'create' | 'edit'>('create');
+  const [selectedEditServantId, setSelectedEditServantId] = useState<string>('');
   const [formData, setFormData] = useState({
     name: '',
     servantClass: 'Saber' as ServantClass,
@@ -71,6 +73,26 @@ export default function SummoningSanctum({
 
   const activeContract = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
   const allThrone = [...SERVANT_DATABASE, ...customServants];
+
+  const handleSelectServantToEdit = (servantId: string) => {
+    const s = allThrone.find(serv => serv.id === servantId);
+    if (!s) return;
+    setSelectedEditServantId(s.id);
+    setForgeMode('edit');
+    setFormData({
+      name: s.name,
+      servantClass: s.servantClass,
+      title: s.title || '',
+      imageUrl: s.cardArtUrl || s.avatarUrl || '',
+      hp: s.baseHp || 14500,
+      atk: s.baseAtk || 11500,
+      npName: s.noblePhantasm?.name || '',
+      npChant: s.noblePhantasm?.chant || '',
+      npCard: s.noblePhantasm?.cardType || 'Buster',
+      summonQuote: s.summonQuote || '',
+      lore: s.lore || ''
+    });
+  };
 
   // Perform Holy Grail War Summoning Ritual (One Servant, Randomly from Throne)
   const handlePerformRitual = () => {
@@ -143,16 +165,84 @@ export default function SummoningSanctum({
     });
   };
 
-  // Admin: Create Custom Servant
-  const handleCreateCustomServant = (e: React.FormEvent) => {
+  // Admin: Create or Edit Servant
+  const handleSaveCustomOrEditServant = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
       setStatusNotice({ type: 'error', message: 'Servant name is required!' });
       return;
     }
 
-    const servantId = `custom_${formData.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now().toString(36)}`;
     const finalPicture = formData.imageUrl.trim() || 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=600&auto=format&fit=crop&q=80';
+
+    if (forgeMode === 'edit' && selectedEditServantId) {
+      const target = allThrone.find(s => s.id === selectedEditServantId);
+      if (target) {
+        target.name = formData.name.trim();
+        target.title = formData.title.trim();
+        target.servantClass = formData.servantClass;
+        target.baseHp = Number(formData.hp) || 14500;
+        target.baseAtk = Number(formData.atk) || 11500;
+        target.avatarUrl = finalPicture;
+        target.cardArtUrl = finalPicture;
+        target.summonQuote = formData.summonQuote.trim();
+        target.lore = formData.lore.trim();
+        if (target.noblePhantasm) {
+          target.noblePhantasm.name = formData.npName.trim() || target.noblePhantasm.name;
+          target.noblePhantasm.chant = formData.npChant.trim() || target.noblePhantasm.chant;
+          target.noblePhantasm.cardType = formData.npCard;
+        }
+
+        // Update customServants array or add as custom overlay
+        const customIndex = customServants.findIndex(s => s.id === target.id);
+        let updatedCustom: ServantTemplate[];
+        if (customIndex >= 0) {
+          updatedCustom = [...customServants];
+          updatedCustom[customIndex] = { ...target };
+        } else {
+          updatedCustom = [...customServants, { ...target, isCustomOrMeme: target.isCustomOrMeme || false }];
+        }
+        onUpdateCustomServants(updatedCustom);
+
+        // Also update Master profile if Master has this servant contracted!
+        if (master.servants && master.servants.length > 0) {
+          const updatedMasterServants = master.servants.map(inst => {
+            if (inst.templateId === target.id || inst.template?.id === target.id) {
+              return {
+                ...inst,
+                template: { ...target },
+                customQuotes: {
+                  ...inst.customQuotes,
+                  summon: target.summonQuote,
+                  noblePhantasm: target.noblePhantasm?.chant || inst.customQuotes?.noblePhantasm
+                }
+              };
+            }
+            return inst;
+          });
+          onUpdateMaster({
+            ...master,
+            servants: updatedMasterServants
+          });
+        }
+
+        // Save to backend API
+        fetch('/api/servants/custom', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'edit_servant', servant: target })
+        }).catch(err => console.warn('Disk sync warning:', err));
+
+        setStatusNotice({
+          type: 'success',
+          message: `✨ Heroic Spirit "${target.name}" [${target.servantClass}] successfully updated! Image and stats synchronized across all contracts.`
+        });
+        return;
+      }
+    }
+
+    // Otherwise CREATE new custom servant
+    const servantId = `custom_${formData.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now().toString(36)}`;
 
     const newServant: ServantTemplate = {
       id: servantId,
@@ -545,22 +635,94 @@ export default function SummoningSanctum({
       )}
 
       {/* ======================================================== */}
-      {/* TAB 2: ADMIN SERVANT FORGE (Add Custom Servants & Photos) */}
+      {/* TAB 2: ADMIN SERVANT FORGE (Add / Edit Servants & Photos)*/}
       {/* ======================================================== */}
       {activeSubTab === 'admin_forge' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left: Form */}
           <div className="lg:col-span-7 bg-[#0a0a0a] p-6 rounded-xl border border-[#1a1a1a] space-y-5">
-            <div className="border-b border-[#1a1a1a] pb-3">
-              <h3 className="text-base font-serif italic text-[#d4af37] tracking-wider">
-                Throne of Heroes • Admin Servant Forge
-              </h3>
-              <p className="text-xs font-mono text-white/50">
-                Register new custom Heroic Spirits and picture artwork into the summonable database.
-              </p>
+            <div className="border-b border-[#1a1a1a] pb-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-serif italic text-[#d4af37] tracking-wider">
+                  Throne of Heroes • Admin Servant Forge & Editor
+                </h3>
+                <p className="text-xs font-mono text-white/50">
+                  Register custom Heroic Spirits or edit any existing Servant (Canon & Custom).
+                </p>
+              </div>
+
+              {/* Forge Mode Switcher */}
+              <div className="flex items-center gap-1 bg-[#121212] p-1 rounded border border-[#222] text-xs font-mono">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgeMode('create');
+                    setSelectedEditServantId('');
+                    setFormData({
+                      name: '',
+                      servantClass: 'Saber',
+                      title: '',
+                      imageUrl: '',
+                      hp: 14500,
+                      atk: 11500,
+                      npName: '',
+                      npChant: '',
+                      npCard: 'Buster',
+                      summonQuote: '',
+                      lore: ''
+                    });
+                  }}
+                  className={`px-3 py-1 rounded transition ${
+                    forgeMode === 'create'
+                      ? 'bg-[#d4af37] text-black font-bold'
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                >
+                  ➕ Forge New
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgeMode('edit');
+                    if (allThrone.length > 0) {
+                      handleSelectServantToEdit(allThrone[0].id);
+                    }
+                  }}
+                  className={`px-3 py-1 rounded transition ${
+                    forgeMode === 'edit'
+                      ? 'bg-[#d4af37] text-black font-bold'
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                >
+                  ✏️ Edit Existing ({allThrone.length})
+                </button>
+              </div>
             </div>
 
-            <form onSubmit={handleCreateCustomServant} className="space-y-4 text-xs font-mono">
+            {/* Select Servant Dropdown when in Edit Mode */}
+            {forgeMode === 'edit' && (
+              <div className="p-3 bg-[#111] rounded border border-[#d4af37]/40 space-y-2 text-xs font-mono">
+                <label className="text-[#d4af37] font-bold block">
+                  Select Servant to Edit (Canon or Custom):
+                </label>
+                <select
+                  value={selectedEditServantId}
+                  onChange={e => handleSelectServantToEdit(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#181818] border border-[#333] rounded text-white focus:border-[#d4af37] outline-none"
+                >
+                  {allThrone.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.isCustomOrMeme ? '🛠️ [Custom]' : '🏛️ [Canon]'} {s.name} ({s.servantClass}) — ID: {s.id}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-white/40 italic">
+                  * Editing updates picture artwork, stats, quotes, and Noble Phantasms live across all Master contracts!
+                </p>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveCustomOrEditServant} className="space-y-4 text-xs font-mono">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-white/60 block mb-1">Servant True Name *</label>
@@ -610,7 +772,7 @@ export default function SummoningSanctum({
                 </div>
 
                 <div>
-                  <label className="text-white/60 block mb-1">Servant Picture URL</label>
+                  <label className="text-white/60 block mb-1">Servant Picture URL (Avatar & Card Art)</label>
                   <input
                     type="url"
                     placeholder="https://images.unsplash.com/..."
@@ -627,8 +789,8 @@ export default function SummoningSanctum({
                   <label className="text-white/60 block mb-1">Base HP (5,000 - 30,000)</label>
                   <input
                     type="number"
-                    min="5000"
-                    max="30000"
+                    min="1000"
+                    max="50000"
                     value={formData.hp}
                     onChange={e => setFormData({ ...formData, hp: parseInt(e.target.value) || 14000 })}
                     className="w-full px-3 py-2 bg-[#141414] border border-[#262626] rounded-sm text-white focus:border-[#d4af37] outline-none"
@@ -638,8 +800,8 @@ export default function SummoningSanctum({
                   <label className="text-white/60 block mb-1">Base ATK (4,000 - 25,000)</label>
                   <input
                     type="number"
-                    min="4000"
-                    max="25000"
+                    min="1000"
+                    max="50000"
                     value={formData.atk}
                     onChange={e => setFormData({ ...formData, atk: parseInt(e.target.value) || 11000 })}
                     className="w-full px-3 py-2 bg-[#141414] border border-[#262626] rounded-sm text-white focus:border-[#d4af37] outline-none"
@@ -710,8 +872,15 @@ export default function SummoningSanctum({
                 type="submit"
                 className="w-full py-3 bg-[#d4af37] hover:bg-[#c49f27] text-black font-bold font-serif italic text-sm tracking-wider rounded-sm transition flex items-center justify-center gap-2"
               >
-                <PlusCircle className="w-4 h-4" />
-                Register to Throne of Heroes (/addservant)
+                {forgeMode === 'edit' ? (
+                  <>
+                    <Sparkles className="w-4 h-4" /> Save & Update Servant Changes (/addservant edit)
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle className="w-4 h-4" /> Register to Throne of Heroes (/addservant create)
+                  </>
+                )}
               </button>
             </form>
           </div>
@@ -1113,6 +1282,20 @@ export default function SummoningSanctum({
                   <p className="text-white/80"><span className="text-amber-400">Summon:</span> &quot;{inspectedServant.summonQuote}&quot;</p>
                   <p className="text-white/80"><span className="text-amber-400">Battle:</span> &quot;{inspectedServant.battleStartQuote}&quot;</p>
                   <p className="text-white/80"><span className="text-amber-400">Victory:</span> &quot;{inspectedServant.victoryQuote}&quot;</p>
+                </div>
+
+                {/* Admin Quick Edit Action */}
+                <div className="mt-5 pt-3 border-t border-white/10 flex justify-end">
+                  <button
+                    onClick={() => {
+                      handleSelectServantToEdit(inspectedServant.id);
+                      setActiveSubTab('admin_forge');
+                      setInspectedServant(null);
+                    }}
+                    className="px-4 py-2 bg-[#d4af37] hover:bg-[#c49f27] text-black font-bold font-mono text-xs rounded-lg transition flex items-center gap-1.5 shadow-lg"
+                  >
+                    <Sparkles className="w-4 h-4" /> ✏️ Edit Servant Details & Artwork
+                  </button>
                 </div>
               </div>
             </div>
