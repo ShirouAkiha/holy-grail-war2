@@ -3,7 +3,8 @@ import {
   GachaResultItem,
   HolyGrailWarSession,
   MasterServantInstance,
-  ActiveCombatant
+  ActiveCombatant,
+  CardType
 } from '../types';
 import { calculateRadarCoordinates } from '../engine/customization';
 
@@ -57,168 +58,160 @@ function drawImageCover(
 }
 
 /**
- * 1. Servant Profile Status Card (800x460)
+ * 1. Servant Profile Status Card (900x520)
  */
 export function renderServantProfileCard(
   canvas: HTMLCanvasElement,
-  servant: MasterServantInstance,
+  servant: MasterServantInstance | any,
   masterName: string
 ): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  canvas.width = 800;
-  canvas.height = 460;
+  canvas.width = 900;
+  canvas.height = 520;
+
+  const t = servant.template || servant;
+  const alloc = servant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
+  const base = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
+
+  const totalStr = (base.strength || 10) + (alloc.strength || 0);
+  const totalEnd = (base.endurance || 10) + (alloc.endurance || 0);
+  const totalAgi = (base.agility || 10) + (alloc.agility || 0);
+  const totalMna = (base.mana || 10) + (alloc.mana || 0);
+  const totalLck = (base.luck || 10) + (alloc.luck || 0);
+
+  const ceBonusAtk = servant.equippedCe?.atkBonus || 0;
+  const ceBonusHp = servant.equippedCe?.hpBonus || 0;
+  const lvl = servant.level || 1;
+
+  const totalHp = Math.round((t.baseHp || 12000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceBonusHp);
+  const totalAtk = Math.round((t.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceBonusAtk);
 
   // Background Gradient
-  const bgGrad = ctx.createLinearGradient(0, 0, 800, 460);
+  const bgGrad = ctx.createLinearGradient(0, 0, 900, 520);
   bgGrad.addColorStop(0, '#0f172a');
   bgGrad.addColorStop(0.5, '#090d16');
   bgGrad.addColorStop(1, '#020617');
   ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, 800, 460);
+  ctx.fillRect(0, 0, 900, 520);
 
   // Decorative Border
-  ctx.strokeStyle = servant.template.rarity === 5 ? '#f59e0b' : '#38bdf8';
+  ctx.strokeStyle = t.rarity === 5 ? '#f59e0b' : '#38bdf8';
   ctx.lineWidth = 3;
-  drawRoundRect(ctx, 12, 12, 776, 436, 16);
+  drawRoundRect(ctx, 12, 12, 876, 496, 16);
   ctx.stroke();
 
-  // Left Avatar Frame (220x340)
+  // Left Avatar Frame Container (310x464 Big Portrait)
   ctx.save();
-  drawRoundRect(ctx, 30, 30, 220, 340, 12);
+  drawRoundRect(ctx, 28, 28, 310, 464, 14);
   ctx.clip();
   ctx.fillStyle = '#1e293b';
-  ctx.fillRect(30, 30, 220, 340);
+  ctx.fillRect(28, 28, 310, 464);
 
-  // Avatar background
-  const avatarGrad = ctx.createLinearGradient(30, 30, 250, 370);
-  avatarGrad.addColorStop(0, '#334155');
-  avatarGrad.addColorStop(1, '#0f172a');
-  ctx.fillStyle = avatarGrad;
-  ctx.fillRect(30, 30, 220, 340);
-
-  const imgUrl = servant.template.cardArtUrl || servant.template.avatarUrl;
+  const imgUrl = t.cardArtUrl || t.avatarUrl;
   if (imgUrl) {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.src = imgUrl;
+    const renderCardArt = () => {
+      if (!ctx) return;
+      ctx.save();
+      drawRoundRect(ctx, 28, 28, 310, 464, 14);
+      ctx.clip();
+      drawImageCover(ctx, img, 28, 28, 310, 464);
+      
+      // Bottom overlay badge on portrait
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+      ctx.fillRect(28, 412, 310, 80);
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 18px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${(t.servantClass || 'SABER').toUpperCase()}`, 183, 440);
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = '20px system-ui, sans-serif';
+      ctx.fillText('★'.repeat(t.rarity || 5), 183, 468);
+      ctx.restore();
+    };
+
     if (img.complete && img.naturalWidth > 0) {
-      drawImageCover(ctx, img, 30, 30, 220, 280);
+      renderCardArt();
     } else {
-      img.onload = () => {
-        if (!ctx) return;
-        ctx.save();
-        drawRoundRect(ctx, 30, 30, 220, 340, 12);
-        ctx.clip();
-        drawImageCover(ctx, img, 30, 30, 220, 280);
-        
-        // Re-overlay bottom badge after async image loads
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-        ctx.fillRect(30, 280, 220, 60);
-        ctx.fillStyle = '#f8fafc';
-        ctx.font = 'bold 16px system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${servant.template.servantClass.toUpperCase()}`, 140, 312);
-        ctx.fillStyle = '#fbbf24';
-        ctx.font = '18px system-ui, sans-serif';
-        ctx.fillText('★'.repeat(servant.template.rarity), 140, 332);
-        ctx.restore();
-      };
+      img.onload = renderCardArt;
     }
   }
 
-  // Class & Rarity overlay on avatar bottom
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-  ctx.fillRect(30, 280, 220, 60);
+  // Base Overlay badge on portrait (immediate fallback)
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+  ctx.fillRect(28, 412, 310, 80);
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = 'bold 18px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${(t.servantClass || 'SABER').toUpperCase()}`, 183, 440);
+  ctx.fillStyle = '#fbbf24';
+  ctx.font = '20px system-ui, sans-serif';
+  ctx.fillText('★'.repeat(t.rarity || 5), 183, 468);
   ctx.restore();
 
-  // Class Badge on Avatar bottom
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 16px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(`${servant.template.servantClass.toUpperCase()}`, 140, 345);
-
-  // Star Rating
-  const stars = '★'.repeat(servant.template.rarity);
-  ctx.fillStyle = '#fbbf24';
-  ctx.font = '18px system-ui, sans-serif';
-  ctx.fillText(stars, 140, 362);
-
-  // Servant Name & Title
+  // Servant Name & Details (Right Column x = 360)
   ctx.textAlign = 'left';
   ctx.fillStyle = '#f8fafc';
   ctx.font = 'bold 26px system-ui, sans-serif';
-  ctx.fillText(servant.nickname || servant.template.name, 280, 65);
+  ctx.fillText(servant.nickname || t.name || 'Heroic Spirit', 360, 58);
 
   ctx.fillStyle = '#94a3b8';
   ctx.font = '14px system-ui, sans-serif';
-  ctx.fillText(`${servant.template.title} • Master: ${masterName}`, 280, 92);
+  ctx.fillText(`${t.title || 'Heroic Spirit'} • Master: ${masterName}`, 360, 82);
 
-  // Level & Bond Bar
+  // Level, Bond & Stat Points
   ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 16px system-ui, sans-serif';
-  ctx.fillText(`Lv. ${servant.level} / 100`, 280, 125);
+  ctx.font = 'bold 15px system-ui, sans-serif';
+  ctx.fillText(`Lv. ${lvl}/100`, 360, 108);
   ctx.fillStyle = '#ec4899';
-  ctx.fillText(`Bond Lv. ${servant.bondLevel} ♥`, 420, 125);
+  ctx.fillText(`Bond Lv. ${servant.bondLevel || 1} ♥`, 460, 108);
+  ctx.fillStyle = '#f59e0b';
+  ctx.fillText(`Points: ${servant.availableStatPoints || 0} pts`, 590, 108);
 
-  // HP and ATK badges
-  const totalStr = servant.template.baseStats.strength + (servant.allocatedStats.strength || 0);
-  const totalEnd = servant.template.baseStats.endurance + (servant.allocatedStats.endurance || 0);
-  const maxHp = Math.round(servant.template.baseHp * (1 + (servant.level - 1) * 0.05) + totalEnd * 150 + (servant.equippedCe?.hpBonus || 0));
-  const rawAtk = Math.round(servant.template.baseAtk * (1 + (servant.level - 1) * 0.05) + totalStr * 80 + (servant.equippedCe?.atkBonus || 0));
-
-  // HP Box
+  // HP & ATK badges
   ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 280, 145, 140, 48, 8);
+  drawRoundRect(ctx, 360, 124, 150, 48, 8);
   ctx.fill();
   ctx.fillStyle = '#4ade80';
-  ctx.font = '12px system-ui, sans-serif';
-  ctx.fillText('MAX HP', 292, 165);
+  ctx.font = 'bold 11px system-ui, sans-serif';
+  ctx.fillText('MAX HP', 372, 142);
   ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 18px system-ui, sans-serif';
-  ctx.fillText(maxHp.toLocaleString(), 292, 185);
+  ctx.font = 'bold 17px system-ui, sans-serif';
+  ctx.fillText(totalHp.toLocaleString(), 372, 162);
 
-  // ATK Box
   ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 435, 145, 140, 48, 8);
+  drawRoundRect(ctx, 524, 124, 150, 48, 8);
   ctx.fill();
   ctx.fillStyle = '#f87171';
-  ctx.font = '12px system-ui, sans-serif';
-  ctx.fillText('BASE ATK', 447, 165);
+  ctx.font = 'bold 11px system-ui, sans-serif';
+  ctx.fillText('TOTAL ATK', 536, 142);
   ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 18px system-ui, sans-serif';
-  ctx.fillText(rawAtk.toLocaleString(), 447, 185);
+  ctx.font = 'bold 17px system-ui, sans-serif';
+  ctx.fillText(totalAtk.toLocaleString(), 536, 162);
 
-  // Radar Chart on the Right (CenterX: 670, CenterY: 155)
+  // Base Parameters & Radar chart
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = 'bold 11px system-ui, sans-serif';
+  ctx.fillText('BASE PARAMETERS', 360, 196);
+
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = '13px system-ui, sans-serif';
+  ctx.fillText(`STR: ${totalStr}   END: ${totalEnd}   AGI: ${totalAgi}`, 360, 218);
+  ctx.fillText(`MNA: ${totalMna}   LCK: ${totalLck}`, 360, 238);
+
   const combinedStats = {
     strength: totalStr,
     endurance: totalEnd,
-    agility: servant.template.baseStats.agility + (servant.allocatedStats.agility || 0),
-    mana: servant.template.baseStats.mana + (servant.allocatedStats.mana || 0),
-    luck: servant.template.baseStats.luck + (servant.allocatedStats.luck || 0)
+    agility: totalAgi,
+    mana: totalMna,
+    luck: totalLck
   };
+  const radar = calculateRadarCoordinates(combinedStats, 770, 205, 52, 28);
 
-  const radar = calculateRadarCoordinates(combinedStats, 670, 155, 60, 30);
-
-  // Draw Radar concentric webs
-  [0.33, 0.66, 1.0].forEach(scale => {
-    ctx.beginPath();
-    for (let i = 0; i < 5; i++) {
-      const angle = (Math.PI * 2 / 5) * i - Math.PI / 2;
-      const r = 60 * scale;
-      const x = 670 + r * Math.cos(angle);
-      const y = 155 + r * Math.sin(angle);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  });
-
-  // Draw Radar Polygon fill
   ctx.beginPath();
   radar.points.forEach((p, idx) => {
     if (idx === 0) ctx.moveTo(p.x, p.y);
@@ -231,70 +224,65 @@ export function renderServantProfileCard(
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  // Radar Labels
-  radar.points.forEach(p => {
-    const angle = Math.atan2(p.y - 155, p.x - 670);
-    const labelX = 670 + 78 * Math.cos(angle);
-    const labelY = 155 + 78 * Math.sin(angle) + 4;
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = 'bold 11px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`${p.label} ${p.value}`, labelX, labelY);
-  });
+  // Command Deck
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = 'bold 11px system-ui, sans-serif';
+  ctx.fillText('COMMAND DECK', 360, 268);
 
-  // Command Deck Cards
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#cbd5e1';
-  ctx.font = 'bold 12px system-ui, sans-serif';
-  ctx.fillText('COMMAND DECK', 280, 222);
-
-  servant.template.commandDeck.forEach((card, idx) => {
-    const cardX = 280 + idx * 58;
-    const cardY = 232;
+  const commandDeck: CardType[] = t.commandDeck || ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'];
+  commandDeck.forEach((card: CardType, idx: number) => {
+    const cardX = 360 + idx * 54;
+    const cardY = 276;
     ctx.fillStyle = card === 'Buster' ? '#dc2626' : card === 'Arts' ? '#2563eb' : '#16a34a';
-    drawRoundRect(ctx, cardX, cardY, 50, 26, 6);
+    drawRoundRect(ctx, cardX, cardY, 46, 24, 6);
     ctx.fill();
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.font = 'bold 11px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(card[0], cardX + 25, cardY + 18);
+    ctx.fillText(card[0], cardX + 23, cardY + 16);
   });
 
-  // Noble Phantasm Section
+  // Craft Essence Section
   ctx.textAlign = 'left';
   ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 280, 275, 490, 80, 8);
+  drawRoundRect(ctx, 360, 312, 508, 46, 8);
+  ctx.fill();
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = '#60a5fa';
+  ctx.font = 'bold 13px system-ui, sans-serif';
+  ctx.fillText(`Equipped CE: ${servant.equippedCe ? servant.equippedCe.name : 'None'}`, 372, 330);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '11px system-ui, sans-serif';
+  const ceEffect = servant.equippedCe ? servant.equippedCe.effectText : 'No Craft Essence equipped. Use /customise equip.';
+  ctx.fillText(ceEffect.slice(0, 75) + (ceEffect.length > 75 ? '...' : ''), 372, 348);
+
+  // Noble Phantasm Section
+  ctx.fillStyle = '#1e293b';
+  drawRoundRect(ctx, 360, 368, 508, 110, 8);
   ctx.fill();
   ctx.strokeStyle = '#f59e0b';
   ctx.lineWidth = 1;
   ctx.stroke();
 
+  const np = t.noblePhantasm || { name: 'Excalibur', cardType: 'Buster', chant: '...', description: '' };
+  const npCardEmoji = np.cardType === 'Arts' ? '🔵' : np.cardType === 'Quick' ? '🟢' : '🔴';
   ctx.fillStyle = '#fbbf24';
   ctx.font = 'bold 14px system-ui, sans-serif';
-  ctx.fillText(`Noble Phantasm: ${servant.template.noblePhantasm.name}`, 295, 300);
-
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '12px system-ui, sans-serif';
-  ctx.fillText(`"${servant.customQuotes.noblePhantasm || servant.template.noblePhantasm.chant}"`, 295, 322);
-
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = '11px system-ui, sans-serif';
-  ctx.fillText(`${servant.template.noblePhantasm.description}`, 295, 342);
-
-  // Equipped Craft Essence strip
-  ctx.fillStyle = '#0f172a';
-  drawRoundRect(ctx, 30, 385, 740, 50, 8);
-  ctx.fill();
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 1;
-  ctx.stroke();
+  ctx.fillText(`Noble Phantasm: ${np.name} [${npCardEmoji} ${np.cardType}]`, 372, 390);
 
   ctx.fillStyle = '#e2e8f0';
-  ctx.font = 'bold 13px system-ui, sans-serif';
-  const ceText = servant.equippedCe
-    ? `Equipped CE: ${servant.equippedCe.name} (${servant.equippedCe.effectText})`
-    : 'No Craft Essence Equipped (Use /customise to equip)';
-  ctx.fillText(ceText, 45, 415);
+  ctx.font = 'italic 12px system-ui, sans-serif';
+  const chant = servant.customQuotes?.noblePhantasm || np.chant || '...';
+  ctx.fillText(`"${chant.slice(0, 72)}${chant.length > 72 ? '...' : ''}"`, 372, 412);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '11px sans-serif';
+  const npDesc = np.description || 'Deals massive damage to enemy.';
+  ctx.fillText(npDesc.slice(0, 78) + (npDesc.length > 78 ? '...' : ''), 372, 434);
 }
 
 /**

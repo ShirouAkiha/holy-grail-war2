@@ -135,6 +135,12 @@ interface DiscordMessage {
   };
   canvasType?: 'servant' | 'dialogue' | 'battle';
   canvasPayload?: any;
+  artworkEmbed?: {
+    title: string;
+    description: string;
+    imageUrl?: string;
+    color: string;
+  };
   components?: {
     type: 'buttons' | 'select';
     items: Array<{
@@ -619,24 +625,37 @@ export default function DiscordEmulator({
         return;
       }
 
+      const t = activeServant.template;
+      const alloc = activeServant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
+      const base = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
+      const totalStr = (base.strength || 10) + (alloc.strength || 0);
+      const totalEnd = (base.endurance || 10) + (alloc.endurance || 0);
+      const ceBonusAtk = activeServant.equippedCe?.atkBonus || 0;
+      const ceBonusHp = activeServant.equippedCe?.hpBonus || 0;
+      const lvl = activeServant.level || 1;
+      const totalHp = Math.round((t.baseHp || 12000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceBonusHp);
+      const totalAtk = Math.round((t.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceBonusAtk);
+
       addMessage({
         id: getNextId('bot_servant'),
         sender: 'bot',
         timestamp: 'Just now',
         embed: {
-          title: `⚔️ Servant Profile: ${activeServant.nickname || activeServant.template.name}`,
+          title: `⚔️ Servant Profile Card: ${activeServant.nickname || t.name}`,
           description:
-            `*${activeServant.template.title}*\n\n` +
-            `💬 **Master's Battle Quote:**\n` +
-            `> *"${activeServant.customQuotes.battleStart || activeServant.template.battleStartQuote}"*\n\n` +
-            `📜 **Noble Phantasm:** ${activeServant.template.noblePhantasm.name}\n` +
-            `> *"${activeServant.customQuotes.noblePhantasm || activeServant.template.noblePhantasm.chant}"*\n\n` +
-            `✨ **Available Stat Points:** ${activeServant.availableStatPoints} pts`,
-          color: activeServant.template.rarity === 5 ? '#f59e0b' : '#38bdf8',
-          footer: `Class: ${activeServant.template.servantClass} • Bond Level ${activeServant.bondLevel}`
+            `*${t.title}* • **Master:** ${master.username}\n` +
+            `🌟 **Class:** ${t.servantClass} | **Rarity:** ${'★'.repeat(t.rarity)} | **Bond Lv:** ${activeServant.bondLevel || 1}/10 ♥ | **Level:** ${lvl}/100\n` +
+            `❤️ **Max HP:** \`${totalHp.toLocaleString()}\` | ⚔️ **Total ATK:** \`${totalAtk.toLocaleString()}\` | 📈 **Stat Points:** **${activeServant.availableStatPoints || 0} pts**`,
+          color: t.rarity === 5 ? '#f59e0b' : '#38bdf8'
         },
         canvasType: 'servant',
         canvasPayload: { servant: activeServant, masterName: master.username },
+        artworkEmbed: {
+          title: `🎨 Full Artwork: ${activeServant.nickname || t.name}`,
+          description: `*${t.title} — Heroic Spirit Full Portrait*`,
+          imageUrl: t.cardArtUrl || t.avatarUrl,
+          color: t.rarity === 5 ? '#f59e0b' : '#38bdf8'
+        },
         components: {
           type: 'buttons',
           items: [
@@ -2080,6 +2099,29 @@ export default function DiscordEmulator({
               {msg.canvasType && (
                 <div className="mt-3 rounded-lg overflow-hidden border border-[#1a1a1a] bg-[#050505] inline-block shadow-lg">
                   <CanvasRenderer canvasType={msg.canvasType} payload={msg.canvasPayload} />
+                </div>
+              )}
+
+              {/* Full Artwork Embed Below Canvas */}
+              {msg.artworkEmbed && (
+                <div
+                  className="mt-3 p-4 rounded-sm bg-[#111] border-l-2 text-[#dbdee1] max-w-2xl border border-y-[#1a1a1a] border-r-[#1a1a1a]"
+                  style={{ borderLeftColor: msg.artworkEmbed.color || '#d4af37' }}
+                >
+                  <h4 className="font-serif italic text-white text-base mb-1.5">{msg.artworkEmbed.title}</h4>
+                  <div className="whitespace-pre-wrap text-xs text-white/80 leading-relaxed font-mono mb-3">
+                    {msg.artworkEmbed.description}
+                  </div>
+                  {msg.artworkEmbed.imageUrl && (
+                    <div className="rounded-md overflow-hidden border border-[#222] bg-[#050505] max-w-xl">
+                      <img
+                        src={msg.artworkEmbed.imageUrl}
+                        alt="Servant Artwork"
+                        className="w-full h-auto object-contain max-h-[550px]"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 

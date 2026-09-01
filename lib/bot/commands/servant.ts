@@ -50,16 +50,18 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const embed = new EmbedBuilder()
       .setTitle(\`⚔️ Servant Profile: \${activeServant.nickname || activeServant.template.name}\`)
       .setDescription(
-        \`*\${activeServant.template.title}*\\n\\n\` +
-        \`💬 **Master\\'s Battle Quote:**\\n\` +
-        \`> *"\${activeServant.customQuotes.battleStart || activeServant.template.battleStartQuote}"*\\n\\n\` +
-        \`📜 **Noble Phantasm:** \${activeServant.template.noblePhantasm.name}\\n\` +
-        \`> *"\${activeServant.customQuotes.noblePhantasm || activeServant.template.noblePhantasm.chant}"*\\n\\n\` +
-        \`✨ **Available Stat Points:** \${activeServant.availableStatPoints} pts (Use \`/customise\` to allocate)\`
+        \`*\${activeServant.template.title}* • **Master:** \${targetUser.username}\\n\` +
+        \`🌟 **Class:** \${activeServant.template.servantClass} | **Rarity:** \${'★'.repeat(activeServant.template.rarity)} | **Bond Lv:** \${activeServant.bondLevel || 1}/10 ♥ | **Level:** \${activeServant.level || 1}/100\\n\` +
+        \`✨ **Available Stat Points:** \${activeServant.availableStatPoints} pts\`
       )
       .setColor(activeServant.template.rarity === 5 ? 0xf59e0b : 0x38bdf8)
-      .setImage('attachment://servant_card.png')
-      .setFooter({ text: \`Class: \${activeServant.template.servantClass} • Bond Level \${activeServant.bondLevel}\` });
+      .setImage('attachment://servant_card.png');
+
+    const artworkEmbed = new EmbedBuilder()
+      .setTitle(\`🎨 Full Artwork: \${activeServant.nickname || activeServant.template.name}\`)
+      .setDescription(\`*\${activeServant.template.title} — Heroic Spirit Full Portrait*\`)
+      .setImage(activeServant.template.cardArtUrl || activeServant.template.avatarUrl)
+      .setColor(activeServant.template.rarity === 5 ? 0xf59e0b : 0x38bdf8);
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
@@ -75,7 +77,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     );
 
     const msg = await interaction.editReply({
-      embeds: [embed],
+      embeds: [embed, artworkEmbed],
       files: [attachment],
       components: [row]
     });

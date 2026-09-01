@@ -70,6 +70,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       master.servants.find((s: any) => s.id === master.activeServantId) || master.servants[0];
 
     const embed = buildServantEmbed(activeServant, master);
+    const artworkEmbed = buildServantArtworkEmbed(activeServant);
     const rows = buildServantRows(master, activeServant);
 
     // Generate visual Canvas image card
@@ -86,7 +87,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     const msg = await interaction.editReply({
-      embeds: [embed],
+      embeds: [embed, artworkEmbed],
       files,
       components: rows
     });
@@ -105,7 +106,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 // ==========================================
 // 3. SERVANT EMBED BUILDER
 // ==========================================
-// Calculates total effective stats (Base + Parameters + CE) and formats the summary.
 function buildServantEmbed(servant: any, master: any) {
   const t = servant.template || servant;
   const alloc = servant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
@@ -113,9 +113,6 @@ function buildServantEmbed(servant: any, master: any) {
 
   const totalStr = (base.strength || 10) + (alloc.strength || 0);
   const totalEnd = (base.endurance || 10) + (alloc.endurance || 0);
-  const totalAgi = (base.agility || 10) + (alloc.agility || 0);
-  const totalMna = (base.mana || 10) + (alloc.mana || 0);
-  const totalLck = (base.luck || 10) + (alloc.luck || 0);
 
   const ceBonusAtk = servant.equippedCe?.atkBonus || 0;
   const ceBonusHp = servant.equippedCe?.hpBonus || 0;
@@ -124,34 +121,26 @@ function buildServantEmbed(servant: any, master: any) {
   const totalHp = Math.round((t.baseHp || 12000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceBonusHp);
   const totalAtk = Math.round((t.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceBonusAtk);
 
-  const deckEmojiMap: Record<string, string> = { Buster: '🔴 Buster', Arts: '🔵 Arts', Quick: '🟢 Quick' };
-  const commandDeck = t.commandDeck || ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'];
-  const deckStr = commandDeck.map((c: string) => deckEmojiMap[c] || c).join(' • ');
-
-  const npCardEmoji = t.noblePhantasm?.cardType === 'Arts' ? '🔵' : t.noblePhantasm?.cardType === 'Quick' ? '🟢' : '🔴';
-
   const embed = new EmbedBuilder()
-    .setTitle(`⚔️ Servant Profile: ${servant.nickname || t.name}`)
+    .setTitle(`⚔️ Servant Profile Card: ${servant.nickname || t.name}`)
     .setDescription(
-      `*${t.title}*\n\n` +
-      `🌟 **Class:** ${t.servantClass} | **Rarity:** ${'★'.repeat(t.rarity)} | **Bond Lv:** ${servant.bondLevel || 1}/10 ♥\n` +
-      `📈 **Level:** ${servant.level || 1}/100 | **Available Stat Points:** **${servant.availableStatPoints || 0} pts**\n\n` +
-      `❤️ **Max HP:** \`${totalHp.toLocaleString()}\` ${ceBonusHp ? `*(+${ceBonusHp} from CE)*` : ''}\n` +
-      `⚔️ **Attack:** \`${totalAtk.toLocaleString()}\` ${ceBonusAtk ? `*(+${ceBonusAtk} from CE)*` : ''}\n\n` +
-      `📊 **Base Parameters:**\n` +
-      `• **STR:** ${totalStr} | **END:** ${totalEnd} | **AGI:** ${totalAgi}\n` +
-      `• **MNA:** ${totalMna} | **LCK:** ${totalLck}\n\n` +
-      `🃏 **Command Deck:** ${deckStr}\n\n` +
-      (servant.equippedCe
-        ? `🛡️ **Equipped CE:** **${servant.equippedCe.name}**\n*Effect:* ${servant.equippedCe.effectText}\n\n`
-        : `🛡️ **Equipped CE:** *None (Use \`/customise equip\`)*\n\n`) +
-      `💥 **Noble Phantasm:** **${t.noblePhantasm?.name || 'Unknown'}** [${npCardEmoji} ${t.noblePhantasm?.cardType || 'Buster'}]\n` +
-      `> *"${servant.customQuotes?.noblePhantasm || t.noblePhantasm?.chant || '...'}"*\n` +
-      `*${t.noblePhantasm?.description || ''}*`
+      `*${t.title}* • **Master:** ${master.username}\n` +
+      `🌟 **Class:** ${t.servantClass} | **Rarity:** ${'★'.repeat(t.rarity)} | **Bond Lv:** ${servant.bondLevel || 1}/10 ♥ | **Level:** ${lvl}/100\n` +
+      `❤️ **Max HP:** \`${totalHp.toLocaleString()}\` | ⚔️ **Total ATK:** \`${totalAtk.toLocaleString()}\` | 📈 **Stat Points:** **${servant.availableStatPoints || 0} pts**`
     )
     .setColor(t.rarity === 5 ? 0xd4af37 : 0x38bdf8);
 
   return embed;
+}
+
+function buildServantArtworkEmbed(servant: any) {
+  const t = servant.template || servant;
+  const imgUrl = t.cardArtUrl || t.avatarUrl;
+  return new EmbedBuilder()
+    .setTitle(`🎨 Full Artwork: ${servant.nickname || t.name}`)
+    .setDescription(`*${t.title} — Heroic Spirit Full Portrait*`)
+    .setImage(imgUrl)
+    .setColor(t.rarity === 5 ? 0xd4af37 : 0x38bdf8);
 }
 
 // ==========================================
@@ -265,6 +254,7 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
 
         const newActive = master.servants.find((s: any) => s.id === selectedId) || master.servants[0];
         const newEmbed = buildServantEmbed(newActive, master);
+        const newArtworkEmbed = buildServantArtworkEmbed(newActive);
         const newRows = buildServantRows(master, newActive);
 
         let files: AttachmentBuilder[] = [];
@@ -279,7 +269,7 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
           // Ignore
         }
 
-        await i.update({ embeds: [newEmbed], files, components: newRows });
+        await i.update({ embeds: [newEmbed, newArtworkEmbed], files, components: newRows });
       }
 
     } catch (err: any) {
