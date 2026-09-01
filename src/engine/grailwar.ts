@@ -97,10 +97,12 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
   const activeServant =
     master.servants.find((s: any) => s.id === master.activeServantId) || master.servants[0];
 
-  const servantName = activeServant?.template?.name || 'Heroic Spirit';
-  const servantClass = activeServant?.template?.servantClass || 'Saber';
-  const avatarUrl = activeServant?.template?.avatarUrl || '';
-  const maxHp = activeServant?.template?.baseHp || 15000;
+  const sAny = activeServant as any;
+  const sTemplate = sAny?.template || sAny;
+  const servantName = sAny?.nickname || sTemplate?.name || sAny?.name || 'Heroic Spirit';
+  const servantClass = sTemplate?.servantClass || sAny?.servantClass || sAny?.class || 'Saber';
+  const avatarUrl = sTemplate?.avatarUrl || sAny?.avatarUrl || '';
+  const maxHp = sTemplate?.baseHp || sAny?.baseHp || 15000;
 
   // Check if this real player already occupies a slot
   const existingKey = Object.keys(globalWarSession.participants).find(
@@ -129,9 +131,9 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
 
     if (activeServant) {
       existing.servantId = activeServant.id;
-      existing.servantName = activeServant.template.name;
-      existing.servantClass = activeServant.template.servantClass;
-      existing.avatarUrl = activeServant.template.avatarUrl;
+      existing.servantName = servantName;
+      existing.servantClass = servantClass;
+      existing.avatarUrl = avatarUrl;
     }
     return globalWarSession;
   }

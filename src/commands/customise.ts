@@ -98,6 +98,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const activeServant =
       master.servants.find((s: any) => s.id === master.activeServantId) || master.servants[0];
 
+    const sAny = activeServant as any;
+    const sTemplate = sAny.template || sAny;
+    const servantName = sAny.nickname || sTemplate.name || sAny.name || 'Heroic Spirit';
+    const baseStats = sTemplate.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
+
     const subcommand = interaction.options.getSubcommand();
 
     // ==========================================
@@ -115,7 +120,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       // If no points passed, display the current allocation overview and instructions
       if (totalRequested <= 0) {
         const embed = new EmbedBuilder()
-          .setTitle(`📊 Parameter Allocation: ${activeServant.template.name}`)
+          .setTitle(`📊 Parameter Allocation: ${servantName}`)
           .setDescription(
             `Available Stat Points: **${activeServant.availableStatPoints || 0} pts**\n\n` +
             `**Current Allocated:**\n` +
@@ -136,7 +141,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       if (totalRequested > (activeServant.availableStatPoints || 0)) {
         await interaction.reply({
           ephemeral: true,
-          content: `❌ Cannot allocate **${totalRequested} pts**. You only have **${activeServant.availableStatPoints || 0} available stat points** on ${activeServant.template.name}.`
+          content: `❌ Cannot allocate **${totalRequested} pts**. You only have **${activeServant.availableStatPoints || 0} available stat points** on ${servantName}.`
         });
         return;
       }
@@ -158,7 +163,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const embed = new EmbedBuilder()
         .setTitle('✅ Parameters Allocated Successfully!')
         .setDescription(
-          `Allocated **${totalRequested} points** to **${activeServant.template.name}**:\n` +
+          `Allocated **${totalRequested} points** to **${servantName}**:\n` +
           (str ? `• STR: +${str}\n` : '') +
           (end ? `• END: +${end}\n` : '') +
           (agi ? `• AGI: +${agi}\n` : '') +
@@ -199,7 +204,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         const embed = new EmbedBuilder()
           .setTitle('🛡️ Craft Essence Equipped!')
           .setDescription(
-            `Equipped **${found.name}** (★${found.rarity}) to **${activeServant.template.name}**!\n\n` +
+            `Equipped **${found.name}** (★${found.rarity}) to **${servantName}**!\n\n` +
             `**Effect:** ${found.effectText}\n` +
             `**Bonus:** +${found.atkBonus || 0} ATK, +${found.hpBonus || 0} HP`
           )
@@ -227,7 +232,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
 
       const embed = new EmbedBuilder()
-        .setTitle(`🛡️ Equip Craft Essence: ${activeServant.template.name}`)
+        .setTitle(`🛡️ Equip Craft Essence: ${servantName}`)
         .setDescription(
           `Current CE: **${activeServant.equippedCe?.name || 'None'}**\n\n` +
           `Select an essence from the menu below to bind its mystic code to your Servant:`
@@ -255,7 +260,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
               new EmbedBuilder()
                 .setTitle('🛡️ Craft Essence Equipped!')
                 .setDescription(
-                  `Successfully equipped **${picked.name}** to **${activeServant.template.name}**!\n\n` +
+                  `Successfully equipped **${picked.name}** to **${servantName}**!\n\n` +
                   `**Effect:** ${picked.effectText}\n` +
                   `**Stat Bonus:** +${picked.atkBonus || 0} ATK | +${picked.hpBonus || 0} HP`
                 )
@@ -286,7 +291,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const embed = new EmbedBuilder()
         .setTitle('💬 Custom Voice Line Saved!')
         .setDescription(
-          `Updated **${type}** line for **${activeServant.template.name}**:\n\n` +
+          `Updated **${type}** line for **${servantName}**:\n\n` +
           `*"${text}"*`
         )
         .setColor(0x22c55e);

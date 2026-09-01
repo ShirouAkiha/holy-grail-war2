@@ -171,23 +171,31 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         return;
       }
 
-      const t = activeServant.template;
+      const sAny = activeServant as any;
+      const t = sAny.template || sAny;
+      const sName = sAny.nickname || t.name || sAny.name || 'HEROIC SPIRIT';
+      const sClass = t.servantClass || sAny.servantClass || sAny.class || 'Saber';
+      const sTitle = t.title || sAny.title || 'Heroic Spirit';
+      const baseHp = t.baseHp || sAny.baseHp || 12000;
+      const baseAtk = t.baseAtk || sAny.baseAtk || 10000;
+      const np = t.noblePhantasm || sAny.noblePhantasm || { name: 'Excalibur', cardType: 'Buster', chant: 'Sword of Promised Victory' };
+
       const statusEmbed = new EmbedBuilder()
-        .setTitle(`📜 HOLY GRAIL WAR CONTRACT: ${t.name.toUpperCase()}`)
+        .setTitle(`📜 HOLY GRAIL WAR CONTRACT: ${sName.toUpperCase()}`)
         .setDescription(
           `**Master:** <@${interaction.user.id}> (${master.username})\n` +
-          `**Class:** \`${t.servantClass}\` | **Title:** *${t.title}*\n` +
+          `**Class:** \`${sClass}\` | **Title:** *${sTitle}*\n` +
           `**Command Seals:** 🔴🔴🔴 **${master.commandSeals}/3**\n` +
-          `**Action Points (AP):** **${master.actionPoints}/100**\n\n` +
+          `**Action Points (AP):** **${master.actionPoints || 100}/100**\n\n` +
           `⚔️ **Combat Parameters:**\n` +
-          `• HP: \`${(t.baseHp + (activeServant.allocatedStats?.endurance || 0) * 150).toLocaleString()}\`\n` +
-          `• ATK: \`${(t.baseAtk + (activeServant.allocatedStats?.strength || 0) * 80).toLocaleString()}\`\n` +
-          `• Available Parameter Points: **${activeServant.availableStatPoints}** (Use \`/customise stats\`)\n\n` +
-          `💥 **Noble Phantasm:** **${t.noblePhantasm.name}** [${t.noblePhantasm.cardType}]\n` +
-          `* "${activeServant.customQuotes?.noblePhantasm || t.noblePhantasm.chant}" *\n\n` +
-          `💬 **Arrival Quote:**\n*"${activeServant.customQuotes?.summon || t.summonQuote}"*`
+          `• HP: \`${(baseHp + (activeServant.allocatedStats?.endurance || 0) * 150).toLocaleString()}\`\n` +
+          `• ATK: \`${(baseAtk + (activeServant.allocatedStats?.strength || 0) * 80).toLocaleString()}\`\n` +
+          `• Available Parameter Points: **${activeServant.availableStatPoints || 0}** (Use \`/customise stats\`)\n\n` +
+          `💥 **Noble Phantasm:** **${np.name}** [${np.cardType}]\n` +
+          `* "${activeServant.customQuotes?.noblePhantasm || np.chant}" *\n\n` +
+          `💬 **Arrival Quote:**\n*"${activeServant.customQuotes?.summon || t.summonQuote || 'I ask of you, are you my Master?'}"*`
         )
-        .setImage(t.cardArtUrl || t.avatarUrl)
+        .setImage(t.cardArtUrl || t.avatarUrl || sAny.cardArtUrl || sAny.avatarUrl)
         .setColor(0xd4af37);
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(

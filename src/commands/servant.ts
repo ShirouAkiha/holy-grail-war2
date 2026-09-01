@@ -107,7 +107,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 // ==========================================
 // Calculates total effective stats (Base + Parameters + CE) and formats the summary.
 function buildServantEmbed(servant: any, master: any) {
-  const t = servant.template;
+  const t = servant.template || servant;
   const alloc = servant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
   const base = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
 

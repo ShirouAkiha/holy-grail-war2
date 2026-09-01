@@ -47,20 +47,25 @@ export function createCombatantFromMasterServant(
   servantInstance: MasterServantInstance,
   masterName: string
 ): ActiveCombatant {
-  const t = servantInstance.template;
+  const t = servantInstance.template || servantInstance;
   const ce = servantInstance.equippedCe;
+  const base = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
 
-  const totalStr = t.baseStats.strength + (servantInstance.allocatedStats.strength || 0);
-  const totalEnd = t.baseStats.endurance + (servantInstance.allocatedStats.endurance || 0);
-  const totalAgi = t.baseStats.agility + (servantInstance.allocatedStats.agility || 0);
-  const totalMna = t.baseStats.mana + (servantInstance.allocatedStats.mana || 0);
-  const totalLck = t.baseStats.luck + (servantInstance.allocatedStats.luck || 0);
+  const totalStr = (base.strength || 10) + (servantInstance.allocatedStats?.strength || 0);
+  const totalEnd = (base.endurance || 10) + (servantInstance.allocatedStats?.endurance || 0);
+  const totalAgi = (base.agility || 10) + (servantInstance.allocatedStats?.agility || 0);
+  const totalMna = (base.mana || 10) + (servantInstance.allocatedStats?.mana || 0);
+  const totalLck = (base.luck || 10) + (servantInstance.allocatedStats?.luck || 0);
 
-  const ceHp = ce ? ce.hpBonus : 0;
-  const ceAtk = ce ? ce.atkBonus : 0;
+  const ceHp = ce ? (ce.hpBonus || 0) : 0;
+  const ceAtk = ce ? (ce.atkBonus || 0) : 0;
 
-  const maxHp = Math.round(t.baseHp * (1 + (servantInstance.level - 1) * 0.05) + totalEnd * 150 + ceHp);
-  const rawAtk = Math.round(t.baseAtk * (1 + (servantInstance.level - 1) * 0.05) + totalStr * 80 + ceAtk);
+  const lvl = servantInstance.level || 1;
+  const baseHp = t.baseHp || 12000;
+  const baseAtk = t.baseAtk || 10000;
+
+  const maxHp = Math.round(baseHp * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceHp);
+  const rawAtk = Math.round(baseAtk * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceAtk);
   const def = Math.round(totalEnd * 25);
 
   let initialNp = 0;
