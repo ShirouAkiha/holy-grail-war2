@@ -137,8 +137,6 @@ function buildServantArtworkEmbed(servant: any) {
   const t = servant.template || servant;
   const imgUrl = t.cardArtUrl || t.avatarUrl;
   return new EmbedBuilder()
-    .setTitle(`🎨 Full Artwork: ${servant.nickname || t.name}`)
-    .setDescription(`*${t.title} — Heroic Spirit Full Portrait*`)
     .setImage(imgUrl)
     .setColor(t.rarity === 5 ? 0xd4af37 : 0x38bdf8);
 }
