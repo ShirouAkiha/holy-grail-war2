@@ -119,7 +119,7 @@ export async function renderServantProfileCard(
   servant: MasterServantInstance | any,
   masterName: string
 ): Promise<Buffer> {
-  const canvas = createCanvas(900, 520);
+  const canvas = createCanvas(850, 390);
   const ctx = canvas.getContext('2d');
 
   const t = servant.template || servant;
@@ -140,103 +140,113 @@ export async function renderServantProfileCard(
   const totalAtk = Math.round((t.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceBonusAtk);
 
   // Background
-  const bgGrad = ctx.createLinearGradient(0, 0, 900, 520);
+  const bgGrad = ctx.createLinearGradient(0, 0, 850, 390);
   bgGrad.addColorStop(0, '#0f172a');
   bgGrad.addColorStop(0.5, '#090d16');
   bgGrad.addColorStop(1, '#020617');
   ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, 900, 520);
+  ctx.fillRect(0, 0, 850, 390);
 
-  // Border
-  ctx.strokeStyle = t.rarity === 5 ? '#f59e0b' : '#38bdf8';
+  // Outer Border
+  const borderColor = t.rarity === 5 ? '#f59e0b' : '#38bdf8';
+  ctx.strokeStyle = borderColor;
   ctx.lineWidth = 3;
-  drawRoundRect(ctx, 12, 12, 876, 496, 16);
+  drawRoundRect(ctx, 10, 10, 830, 370, 14);
   ctx.stroke();
 
-  // Left Avatar Frame Container (310x464 Big Portrait)
-  ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 28, 28, 310, 464, 14);
-  ctx.fill();
-
-  const imageUrl = t.cardArtUrl || t.avatarUrl;
-  if (imageUrl) {
-    try {
-      const img = await loadImage(imageUrl);
-      if (img) {
-        ctx.save();
-        drawRoundRect(ctx, 28, 28, 310, 464, 14);
-        ctx.clip();
-        drawImageCover(ctx, img, 28, 28, 310, 464);
-        ctx.restore();
-      }
-    } catch {
-      // Fallback
-    }
-  }
-
-  // Bottom overlay on portrait for Class & Rarity
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-  ctx.fillRect(28, 412, 310, 80);
-
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 18px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText((t.servantClass || 'SABER').toUpperCase(), 183, 440);
-
-  ctx.fillStyle = '#fbbf24';
-  ctx.font = '20px sans-serif';
-  ctx.fillText('★'.repeat(t.rarity || 5), 183, 468);
-
-  // Servant Name & Details (Right Column x = 360)
+  // Top Header Line
   ctx.textAlign = 'left';
   ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 26px sans-serif';
-  ctx.fillText(servant.nickname || t.name || 'Heroic Spirit', 360, 58);
+  ctx.font = 'bold 24px sans-serif';
+  ctx.fillText(servant.nickname || t.name || 'Heroic Spirit', 32, 44);
 
+  // Title & Master
   ctx.fillStyle = '#94a3b8';
-  ctx.font = '14px sans-serif';
-  ctx.fillText(`${t.title || 'Heroic Spirit'} • Master: ${masterName}`, 360, 82);
+  ctx.font = '13px sans-serif';
+  ctx.fillText(`${t.title || 'Heroic Spirit'} • Master: ${masterName}`, 32, 64);
 
-  // Level, Bond & Stat Points
+  // Class Badge & Stars on Right
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = 'bold 16px sans-serif';
+  ctx.fillText((t.servantClass || 'SABER').toUpperCase(), 818, 44);
+
+  ctx.fillStyle = '#fbbf24';
+  ctx.font = '16px sans-serif';
+  ctx.fillText('★'.repeat(t.rarity || 5), 818, 64);
+
+  // Divider Line
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(32, 76);
+  ctx.lineTo(818, 76);
+  ctx.stroke();
+
+  // Stats Sub-Header Line (Level, Bond, Stat points)
+  ctx.textAlign = 'left';
   ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 15px sans-serif';
-  ctx.fillText(`Lv. ${lvl}/100`, 360, 108);
-  ctx.fillStyle = '#ec4899';
-  ctx.fillText(`Bond Lv. ${servant.bondLevel || 1} ♥`, 460, 108);
-  ctx.fillStyle = '#f59e0b';
-  ctx.fillText(`Points: ${servant.availableStatPoints || 0} pts`, 590, 108);
+  ctx.font = 'bold 14px sans-serif';
+  ctx.fillText(`Lv. ${lvl}/100`, 32, 96);
 
-  // HP & ATK badges
+  ctx.fillStyle = '#ec4899';
+  ctx.fillText(`Bond Lv. ${servant.bondLevel || 1} ♥`, 140, 96);
+
+  ctx.fillStyle = '#f59e0b';
+  ctx.fillText(`Available Stat Points: ${servant.availableStatPoints || 0} pts`, 270, 96);
+
+  // --- LEFT SECTION: HP/ATK + PARAMETERS + COMMAND DECK ---
+  // HP Badge
   ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 360, 124, 150, 48, 8);
+  drawRoundRect(ctx, 32, 108, 170, 48, 8);
   ctx.fill();
   ctx.fillStyle = '#4ade80';
   ctx.font = 'bold 11px sans-serif';
-  ctx.fillText('MAX HP', 372, 142);
+  ctx.fillText('MAX HP', 44, 126);
   ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 17px sans-serif';
-  ctx.fillText(totalHp.toLocaleString(), 372, 162);
+  ctx.font = 'bold 18px sans-serif';
+  ctx.fillText(totalHp.toLocaleString(), 44, 146);
 
+  // ATK Badge
   ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 524, 124, 150, 48, 8);
+  drawRoundRect(ctx, 214, 108, 170, 48, 8);
   ctx.fill();
   ctx.fillStyle = '#f87171';
   ctx.font = 'bold 11px sans-serif';
-  ctx.fillText('TOTAL ATK', 536, 142);
+  ctx.fillText('TOTAL ATK', 226, 126);
   ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 17px sans-serif';
-  ctx.fillText(totalAtk.toLocaleString(), 536, 162);
+  ctx.font = 'bold 18px sans-serif';
+  ctx.fillText(totalAtk.toLocaleString(), 226, 146);
 
-  // Base Parameters & Radar chart
+  // Base Parameters
   ctx.fillStyle = '#94a3b8';
   ctx.font = 'bold 11px sans-serif';
-  ctx.fillText('BASE PARAMETERS', 360, 196);
+  ctx.fillText('BASE PARAMETERS', 32, 173);
 
   ctx.fillStyle = '#f8fafc';
   ctx.font = '13px sans-serif';
-  ctx.fillText(`STR: ${totalStr}   END: ${totalEnd}   AGI: ${totalAgi}`, 360, 218);
-  ctx.fillText(`MNA: ${totalMna}   LCK: ${totalLck}`, 360, 238);
+  ctx.fillText(`STR: ${totalStr}    END: ${totalEnd}    AGI: ${totalAgi}`, 32, 193);
+  ctx.fillText(`MNA: ${totalMna}    LCK: ${totalLck}`, 32, 212);
 
+  // Command Deck
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillText('COMMAND DECK', 32, 233);
+
+  const commandDeck: CardType[] = t.commandDeck || ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'];
+  commandDeck.forEach((card: CardType, idx: number) => {
+    const cardX = 32 + idx * 56;
+    const cardY = 240;
+    ctx.fillStyle = card === 'Buster' ? '#dc2626' : card === 'Arts' ? '#2563eb' : '#16a34a';
+    drawRoundRect(ctx, cardX, cardY, 48, 22, 6);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(card[0], cardX + 24, cardY + 15);
+  });
+
+  // --- RIGHT SECTION: PARAMETER RADAR CHART ---
   const combinedStats = {
     strength: totalStr,
     endurance: totalEnd,
@@ -244,8 +254,26 @@ export async function renderServantProfileCard(
     mana: totalMna,
     luck: totalLck
   };
-  const radar = calculateRadarCoordinates(combinedStats, 770, 205, 52, 28);
+  const radar = calculateRadarCoordinates(combinedStats, 640, 175, 55, 30);
 
+  // Grid background lines
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1;
+  [0.35, 0.7, 1.0].forEach((ratio) => {
+    ctx.beginPath();
+    const rGrid = calculateRadarCoordinates(
+      { strength: 30 * ratio, endurance: 30 * ratio, agility: 30 * ratio, mana: 30 * ratio, luck: 30 * ratio },
+      640, 175, 55 * ratio, 30
+    );
+    rGrid.points.forEach((p: RadarPoint, idx: number) => {
+      if (idx === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    ctx.closePath();
+    ctx.stroke();
+  });
+
+  // Polygon fill
   ctx.beginPath();
   radar.points.forEach((p: RadarPoint, idx: number) => {
     if (idx === 0) ctx.moveTo(p.x, p.y);
@@ -258,45 +286,38 @@ export async function renderServantProfileCard(
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  // Command Deck
+  // Radar Labels
   ctx.fillStyle = '#94a3b8';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.fillText('COMMAND DECK', 360, 268);
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('STR', 640, 108);
+  ctx.fillText('END', 715, 144);
+  ctx.fillText('AGI', 685, 244);
+  ctx.fillText('MNA', 595, 244);
+  ctx.fillText('LCK', 565, 144);
 
-  const commandDeck: CardType[] = t.commandDeck || ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'];
-  commandDeck.forEach((card: CardType, idx: number) => {
-    const cardX = 360 + idx * 54;
-    const cardY = 276;
-    ctx.fillStyle = card === 'Buster' ? '#dc2626' : card === 'Arts' ? '#2563eb' : '#16a34a';
-    drawRoundRect(ctx, cardX, cardY, 46, 24, 6);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(card[0], cardX + 23, cardY + 16);
-  });
-
-  // Craft Essence Section
+  // --- BOTTOM SECTION: CRAFT ESSENCE & NOBLE PHANTASM ---
+  // Craft Essence Banner
   ctx.textAlign = 'left';
   ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 360, 312, 508, 46, 8);
+  drawRoundRect(ctx, 32, 272, 786, 42, 8);
   ctx.fill();
   ctx.strokeStyle = '#3b82f6';
   ctx.lineWidth = 1;
   ctx.stroke();
 
   ctx.fillStyle = '#60a5fa';
-  ctx.font = 'bold 13px sans-serif';
-  ctx.fillText(`Equipped CE: ${servant.equippedCe ? servant.equippedCe.name : 'None'}`, 372, 330);
+  ctx.font = 'bold 12px sans-serif';
+  ctx.fillText(`Equipped CE: ${servant.equippedCe ? servant.equippedCe.name : 'None'}`, 44, 289);
 
   ctx.fillStyle = '#94a3b8';
   ctx.font = '11px sans-serif';
   const ceEffect = servant.equippedCe ? servant.equippedCe.effectText : 'No Craft Essence equipped. Use /customise equip.';
-  ctx.fillText(ceEffect.slice(0, 75) + (ceEffect.length > 75 ? '...' : ''), 372, 348);
+  ctx.fillText(ceEffect.slice(0, 110) + (ceEffect.length > 110 ? '...' : ''), 44, 305);
 
-  // Noble Phantasm Section
+  // Noble Phantasm Banner
   ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 360, 368, 508, 110, 8);
+  drawRoundRect(ctx, 32, 322, 786, 52, 8);
   ctx.fill();
   ctx.strokeStyle = '#f59e0b';
   ctx.lineWidth = 1;
@@ -305,18 +326,13 @@ export async function renderServantProfileCard(
   const np = t.noblePhantasm || { name: 'Excalibur', cardType: 'Buster', chant: '...', description: '' };
   const npCardEmoji = np.cardType === 'Arts' ? '🔵' : np.cardType === 'Quick' ? '🟢' : '🔴';
   ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 14px sans-serif';
-  ctx.fillText(`Noble Phantasm: ${np.name} [${npCardEmoji} ${np.cardType}]`, 372, 390);
+  ctx.font = 'bold 13px sans-serif';
+  ctx.fillText(`Noble Phantasm: ${np.name} [${npCardEmoji} ${np.cardType}]`, 44, 340);
 
   ctx.fillStyle = '#e2e8f0';
-  ctx.font = 'italic 12px sans-serif';
+  ctx.font = 'italic 11px sans-serif';
   const chant = servant.customQuotes?.noblePhantasm || np.chant || '...';
-  ctx.fillText(`"${chant.slice(0, 72)}${chant.length > 72 ? '...' : ''}"`, 372, 412);
-
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '11px sans-serif';
-  const npDesc = np.description || 'Deals massive damage to enemy.';
-  ctx.fillText(npDesc.slice(0, 78) + (npDesc.length > 78 ? '...' : ''), 372, 434);
+  ctx.fillText(`"${chant.slice(0, 110)}${chant.length > 110 ? '...' : ''}"`, 44, 358);
 
   try {
     return canvas.toBuffer('image/png');
