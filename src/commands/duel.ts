@@ -222,7 +222,7 @@ function buildDuelEmbed(
   p2: DuelCombatant,
   round: number,
   activeUserId: string,
-  lastLogs: string[]
+  _lastLogs?: string[]
 ) {
   const isP1Turn = activeUserId === p1.userId;
   const activeCombatant = isP1Turn ? p1 : p2;
@@ -231,9 +231,6 @@ function buildDuelEmbed(
     .setTitle(`⚔️ HOLY GRAIL WAR DUEL — ROUND ${round}`)
     .setImage('attachment://turn_summary.png')
     .setDescription(
-      (lastLogs.length > 0
-        ? `📜 **Combat Log:**\n${lastLogs.map(l => `> ${l}`).join('\n')}\n\n`
-        : '') +
       `👉 **Current Turn:** ${activeCombatant.isAi ? '🤖 Shadow AI is calculating...' : `<@${activeCombatant.userId}>, select your Command Card or Noble Phantasm:`}`
     )
     .setColor(isP1Turn ? 0xef4444 : 0x38bdf8);

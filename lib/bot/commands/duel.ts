@@ -63,19 +63,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     let battleState = initializeBattle(p1, p2);
 
-    const generateBattleEmbedAndRows = (state: typeof battleState, lastLogSummary?: string) => {
+    const generateBattleEmbedAndRows = (state: typeof battleState, _lastLogSummary?: string) => {
       const isNpReady = state.player1.npGauge >= 100;
 
       const embed = new EmbedBuilder()
         .setTitle(\`⚔️ HOLY GRAIL WAR DUEL — TURN \${state.currentTurn}\`)
         .setDescription(
-          \`**\${state.player1.name}** (Master: \${state.player1.masterName})\\n\` +
-          \`❤️ HP: **\${state.player1.currentHp}/\${state.player1.maxHp}** | ⚡ NP: **\${Math.round(state.player1.npGauge)}%** | ✨ Stars: **\${state.player1.critStars}**\\n\\n\` +
-          \`**VS**\\n\\n\` +
-          \`**\${state.player2.name}** (Master: \${state.player2.masterName})\\n\` +
-          \`❤️ HP: **\${state.player2.currentHp}/\${state.player2.maxHp}** | ⚡ NP: **\${Math.round(state.player2.npGauge)}%**\\n\\n\` +
-          (lastLogSummary ? \`📝 **Last Action:**\\n\${lastLogSummary}\\n\\n\` : '') +
-          \`*Choose your 3-card Command sequence or activate your Noble Phantasm:*\`
+          \`👉 **Current Turn:** <@\${interaction.user.id}>, select your Command Card sequence or Noble Phantasm:\`
         )
         .setColor(0xef4444);
 

@@ -328,52 +328,156 @@ export async function renderDialogueCard(
 }
 
 /**
- * 3. Render Battle Turn Summary (800x380 Buffer)
+ * 3. Render Battle Turn Summary (880x490 Landscape Buffer - Fits Discord Embed Perfectly)
  */
 export async function renderBattleTurnSummary(
   log: CombatTurnLog,
   p1: ActiveCombatant,
   p2: ActiveCombatant
 ): Promise<Buffer> {
-  const canvas = createCanvas(800, 380);
+  const canvas = createCanvas(880, 490);
   const ctx = canvas.getContext('2d');
 
-  const bgGrad = ctx.createLinearGradient(0, 0, 800, 380);
-  bgGrad.addColorStop(0, '#1e1b4b');
-  bgGrad.addColorStop(1, '#3b0764');
+  const bgGrad = ctx.createLinearGradient(0, 0, 880, 490);
+  bgGrad.addColorStop(0, '#0a0f1d');
+  bgGrad.addColorStop(0.5, '#05070f');
+  bgGrad.addColorStop(1, '#11071f');
   ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, 800, 380);
+  ctx.fillRect(0, 0, 880, 490);
+
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 2.5;
+  drawRoundRect(ctx, 8, 8, 864, 474, 14);
+  ctx.stroke();
+
+  // Top Section: P1
+  ctx.fillStyle = '#0f172a';
+  drawRoundRect(ctx, 24, 20, 106, 106, 10);
+  ctx.fill();
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 2.5;
+  drawRoundRect(ctx, 24, 20, 106, 106, 10);
+  ctx.stroke();
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 36px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(p1.servantClass?.[0] || 'S', 77, 80);
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 18px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(p1.masterName || 'Master 1', 144, 38);
+
+  const p1HpRatio = Math.max(0, Math.min(1, p1.currentHp / p1.maxHp));
+  ctx.fillStyle = '#1e293b';
+  drawRoundRect(ctx, 172, 48, 290, 24, 5);
+  ctx.fill();
+  ctx.fillStyle = p1HpRatio > 0.35 ? '#22c55e' : '#ef4444';
+  if (p1HpRatio > 0) {
+    drawRoundRect(ctx, 172, 48, Math.max(8, 290 * p1HpRatio), 24, 5);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.fillText(\`\${p1.currentHp.toLocaleString()} / \${p1.maxHp.toLocaleString()} (\${Math.round(p1HpRatio * 100)}%)\`, 182, 65);
+
+  // Command Cards Top Right
+  const p1Cards = log.p1Cards || ['Buster', 'Arts', 'Quick'];
+  p1Cards.slice(0, 3).forEach((card: string, idx: number) => {
+    const cardX = 478 + idx * 126;
+    const cardColor = card === 'Buster' ? '#dc2626' : card === 'Arts' ? '#2563eb' : '#16a34a';
+    ctx.fillStyle = '#0f172a';
+    drawRoundRect(ctx, cardX, 24, 118, 98, 8);
+    ctx.fill();
+    ctx.strokeStyle = cardColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = cardColor;
+    drawRoundRect(ctx, cardX + 3, 27, 112, 22, 5);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(card.toUpperCase(), cardX + 59, 42);
+    ctx.font = 'bold 22px sans-serif';
+    ctx.fillText(card === 'Buster' ? '💥' : card === 'Arts' ? '🌀' : '⚡', cardX + 59, 78);
+  });
+
+  // Middle Clash Box
+  ctx.fillStyle = '#020617';
+  drawRoundRect(ctx, 24, 138, 832, 196, 12);
+  ctx.fill();
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  ctx.fillStyle = '#1e293b';
+  drawRoundRect(ctx, 36, 148, 808, 30, 6);
+  ctx.fill();
+  ctx.fillStyle = '#f59e0b';
+  ctx.font = 'bold 14px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(\`⚔️ HOLY GRAIL DUEL • TURN \${log.turnNumber} CLASH RESOLUTION ⚔️\`, 440, 169);
 
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 18px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(\`HOLY GRAIL WAR • TURN \${log.turnNumber} CLASH\`, 400, 35);
+  ctx.fillText(log.actionSummary, 440, 220);
 
-  // Combatant 1
-  ctx.fillStyle = '#0f172a';
-  drawRoundRect(ctx, 30, 55, 340, 240, 10);
-  ctx.fill();
-  ctx.fillStyle = '#60a5fa';
-  ctx.font = 'bold 16px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(p1.name, 45, 85);
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.fillText(\`✨ \${p1.masterName || 'P1'} Stars: \${p1.critStars || 0}   |   ✨ \${p2.masterName || 'P2'} Stars: \${p2.critStars || 0}\`, 440, 314);
 
-  // Combatant 2
-  ctx.fillStyle = '#0f172a';
-  drawRoundRect(ctx, 430, 55, 340, 240, 10);
-  ctx.fill();
+  // Bottom Section: P2
+  const p2Cards = log.p2Cards || ['Arts', 'Buster', 'Quick'];
+  p2Cards.slice(0, 3).forEach((card: string, idx: number) => {
+    const cardX = 24 + idx * 126;
+    const cardColor = card === 'Buster' ? '#dc2626' : card === 'Arts' ? '#2563eb' : '#16a34a';
+    ctx.fillStyle = '#0f172a';
+    drawRoundRect(ctx, cardX, 356, 118, 98, 8);
+    ctx.fill();
+    ctx.strokeStyle = cardColor;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = cardColor;
+    drawRoundRect(ctx, cardX + 3, 359, 112, 22, 5);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(card.toUpperCase(), cardX + 59, 374);
+    ctx.font = 'bold 22px sans-serif';
+    ctx.fillText(card === 'Buster' ? '💥' : card === 'Arts' ? '🌀' : '⚡', cardX + 59, 410);
+  });
+
+  const p2HpRatio = Math.max(0, Math.min(1, p2.currentHp / p2.maxHp));
   ctx.fillStyle = '#f87171';
-  ctx.font = 'bold 16px sans-serif';
-  ctx.fillText(p2.name, 445, 85);
+  ctx.font = 'bold 18px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(p2.masterName || 'Master 2', 418, 372);
 
-  // Bottom action bar
-  ctx.fillStyle = '#020617';
-  drawRoundRect(ctx, 30, 305, 740, 60, 8);
+  ctx.fillStyle = '#1e293b';
+  drawRoundRect(ctx, 446, 417, 290, 24, 5);
   ctx.fill();
-  ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 14px sans-serif';
+  ctx.fillStyle = p2HpRatio > 0.35 ? '#22c55e' : '#ef4444';
+  if (p2HpRatio > 0) {
+    drawRoundRect(ctx, 446, 417, Math.max(8, 290 * p2HpRatio), 24, 5);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.fillText(\`\${p2.currentHp.toLocaleString()} / \${p2.maxHp.toLocaleString()} (\${Math.round(p2HpRatio * 100)}%)\`, 456, 434);
+
+  ctx.fillStyle = '#0f172a';
+  drawRoundRect(ctx, 750, 350, 106, 106, 10);
+  ctx.fill();
+  ctx.strokeStyle = '#ef4444';
+  ctx.lineWidth = 2.5;
+  drawRoundRect(ctx, 750, 350, 106, 106, 10);
+  ctx.stroke();
+  ctx.fillStyle = '#ef4444';
+  ctx.font = 'bold 36px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(log.actionSummary, 400, 340);
+  ctx.fillText(p2.servantClass?.[0] || 'E', 803, 410);
 
   return canvas.toBuffer('image/png');
 }

@@ -1944,12 +1944,9 @@ export default function DiscordEmulator({
           timestamp: 'Just now',
           embed: {
             title: `⚔️ TURN ${updatedState.currentTurn} CLASH SUMMARY`,
-            description:
-              `**Action:** ${lastLog.actionSummary}\n\n` +
-              `**${updatedState.player1.name}**: ❤️ ${updatedState.player1.currentHp}/${updatedState.player1.maxHp} HP | ⚡ ${Math.round(updatedState.player1.npGauge)}% NP\n` +
-              `**${updatedState.player2.name}**: ❤️ ${updatedState.player2.currentHp}/${updatedState.player2.maxHp} HP | ⚡ ${Math.round(updatedState.player2.npGauge)}% NP`,
+            description: `👉 **Current Turn:** Select your next Command Card sequence or Noble Phantasm:`,
             color: '#ef4444',
-            footer: 'Next Turn Selection:'
+            footer: 'Holy Grail War • Turn-based RPG Combat Engine'
           },
           canvasType: 'battle',
           canvasPayload: { log: lastLog, p1: updatedState.player1, p2: updatedState.player2 },
@@ -2321,13 +2318,19 @@ export default function DiscordEmulator({
               {/* Discord Embed */}
               {msg.embed && (
                 <div
-                  className="mt-2.5 p-4 rounded-sm bg-[#111] border-l-2 text-[#dbdee1] max-w-2xl border border-y-[#1a1a1a] border-r-[#1a1a1a]"
+                  className="mt-2.5 p-4 rounded-sm bg-[#111] border-l-2 text-[#dbdee1] max-w-3xl border border-y-[#1a1a1a] border-r-[#1a1a1a]"
                   style={{ borderLeftColor: msg.embed.color || '#d4af37' }}
                 >
                   <h4 className="font-serif italic text-white text-base mb-1.5">{msg.embed.title}</h4>
                   <div className="whitespace-pre-wrap text-xs text-white/80 leading-relaxed font-mono">
                     {msg.embed.description}
                   </div>
+                  {/* Dynamic Canvas Image Embedded Inside Box */}
+                  {msg.canvasType && (
+                    <div className="mt-3 rounded overflow-hidden border border-[#222] bg-[#050505] w-full shadow-md">
+                      <CanvasRenderer canvasType={msg.canvasType} payload={msg.canvasPayload} />
+                    </div>
+                  )}
                   {msg.embed.footer && (
                     <div className="text-[10px] font-mono text-white/40 mt-2.5 pt-2 border-t border-[#1a1a1a]">
                       {msg.embed.footer}
@@ -2336,9 +2339,9 @@ export default function DiscordEmulator({
                 </div>
               )}
 
-              {/* Dynamic Canvas Image Output */}
-              {msg.canvasType && (
-                <div className="mt-3 rounded-lg overflow-hidden border border-[#1a1a1a] bg-[#050505] inline-block shadow-lg">
+              {/* Dynamic Canvas Image Output (if standalone without embed) */}
+              {msg.canvasType && !msg.embed && (
+                <div className="mt-3 rounded overflow-hidden border border-[#1a1a1a] bg-[#050505] w-full max-w-3xl shadow-lg">
                   <CanvasRenderer canvasType={msg.canvasType} payload={msg.canvasPayload} />
                 </div>
               )}
