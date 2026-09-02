@@ -30,7 +30,11 @@ import {
   exposeMasterInWar,
   recordDuelOutcome,
   createHolyGrailWarSession,
-  patrolCityInWar
+  patrolCityInWar,
+  setChannelTrapInWar,
+  disarmChannelTrapsInWar,
+  dispatchFamiliarInWar,
+  recallFamiliarsInWar
 } from '../lib/engine/grailwar';
 import {
   Terminal,
@@ -998,15 +1002,223 @@ export default function DiscordEmulator({
     }
 
     // ----------------------------------------------------
-    // COMMAND 5: /grailwar, /attack, /leak, /defenses
+    // COMMAND 5: /grailwar, /attack, /leak, /defenses, /familiar, /trap
     // ----------------------------------------------------
-    if (trimmed.startsWith('/grailwar') || trimmed.startsWith('/attack') || trimmed.startsWith('/leak') || trimmed.startsWith('/ambush') || trimmed.startsWith('/defenses') || trimmed.startsWith('/ward') || trimmed.startsWith('/evade')) {
-      const isDefenses = trimmed.startsWith('/defenses') || trimmed.startsWith('/grailwar defenses') || trimmed.startsWith('/ward') || trimmed.startsWith('/grailwar ward') || trimmed.startsWith('/evade') || trimmed.startsWith('/grailwar evade');
+    if (trimmed.startsWith('/grailwar') || trimmed.startsWith('/attack') || trimmed.startsWith('/leak') || trimmed.startsWith('/ambush') || trimmed.startsWith('/defenses') || trimmed.startsWith('/ward') || trimmed.startsWith('/evade') || trimmed.startsWith('/familiar') || trimmed.startsWith('/familiars') || trimmed.startsWith('/trap') || trimmed.startsWith('/traps')) {
+      const isFamiliars = trimmed.startsWith('/familiars') || trimmed.startsWith('/familiar') || trimmed.startsWith('/grailwar familiar') || trimmed.startsWith('/grailwar familiars');
+      const isTraps = trimmed.startsWith('/traps') || trimmed.startsWith('/trap') || trimmed.startsWith('/grailwar trap') || trimmed.startsWith('/grailwar traps');
+      const isDefenses = !isFamiliars && !isTraps && (trimmed.startsWith('/defenses') || trimmed.startsWith('/grailwar defenses') || trimmed.startsWith('/ward') || trimmed.startsWith('/grailwar ward') || trimmed.startsWith('/evade') || trimmed.startsWith('/grailwar evade'));
       const isAttack = trimmed.startsWith('/grailwar attack') || trimmed.startsWith('/attack') || trimmed.startsWith('/ambush');
       const isLeak = trimmed.startsWith('/grailwar leak') || trimmed.startsWith('/leak');
       const isSkirmish = trimmed.includes('skirmish');
       const isRest = trimmed.includes('rest') || trimmed.includes('heal');
       const isBetray = trimmed.includes('betray');
+
+      // SUB-CASE FAMILIARS: /grailwar familiar, /familiars
+      if (isFamiliars) {
+        const chanTag = activeChannel === 'public' ? '#holy-grail-war' : '#general';
+        if (trimmed.includes('raven') || trimmed.includes('crow')) {
+          const res = dispatchFamiliarInWar(grailWar, master.discordId, master.username, chanTag, 'raven');
+          onUpdateGrailWar(res.updatedWar);
+          addMessage({
+            id: getNextId('bot_fam_res'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: res.success ? '🦅 Scouting Raven Dispatched' : '⚠️ Dispatch Interrupted',
+              description: res.message,
+              color: res.success ? '#3b82f6' : '#ef4444'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'war_familiars', label: 'View Familiars', style: 'primary', emoji: '🦅' },
+                { id: 'quick_war_status', label: 'Status Board', style: 'secondary', emoji: '📋' }
+              ]
+            }
+          });
+          return;
+        } else if (trimmed.includes('homunculus') || trimmed.includes('doll') || trimmed.includes('decoy')) {
+          const res = dispatchFamiliarInWar(grailWar, master.discordId, master.username, chanTag, 'homunculus');
+          onUpdateGrailWar(res.updatedWar);
+          addMessage({
+            id: getNextId('bot_fam_res'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: res.success ? '🗿 Homunculus Decoy Materialized' : '⚠️ Dispatch Interrupted',
+              description: res.message,
+              color: res.success ? '#10b981' : '#ef4444'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'war_familiars', label: 'View Familiars', style: 'primary', emoji: '🦅' },
+                { id: 'quick_war_status', label: 'Status Board', style: 'secondary', emoji: '📋' }
+              ]
+            }
+          });
+          return;
+        } else if (trimmed.includes('shadow') || trimmed.includes('imp')) {
+          const res = dispatchFamiliarInWar(grailWar, master.discordId, master.username, chanTag, 'shadow_imp');
+          onUpdateGrailWar(res.updatedWar);
+          addMessage({
+            id: getNextId('bot_fam_res'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: res.success ? '🦇 Shadow Imp Infiltrated' : '⚠️ Dispatch Interrupted',
+              description: res.message,
+              color: res.success ? '#8b5cf6' : '#ef4444'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'war_familiars', label: 'View Familiars', style: 'primary', emoji: '🦅' },
+                { id: 'quick_war_status', label: 'Status Board', style: 'secondary', emoji: '📋' }
+              ]
+            }
+          });
+          return;
+        } else if (trimmed.includes('recall') || trimmed.includes('dismiss')) {
+          const res = recallFamiliarsInWar(grailWar, master.discordId);
+          onUpdateGrailWar(res.updatedWar);
+          addMessage({
+            id: getNextId('bot_fam_recall'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '🕊️ Familiars Recalled',
+              description: res.message,
+              color: '#64748b'
+            }
+          });
+          return;
+        }
+
+        // View active familiars and dispatch panel
+        const userFamiliars = (grailWar.familiars || []).filter(f => f.masterId === master.discordId);
+        const familiarLines = userFamiliars.length > 0
+          ? userFamiliars.map((f, i) => {
+              const icon = f.familiarType === 'raven' ? '🦅' : f.familiarType === 'homunculus' ? '🗿' : '🦇';
+              const name = f.familiarType === 'raven' ? 'Scouting Raven' : f.familiarType === 'homunculus' ? 'Homunculus Decoy' : 'Shadow Imp';
+              const logs = f.detectedIntel && f.detectedIntel.length > 0
+                ? f.detectedIntel.slice(0, 2).map(l => `\n    ↳ *${l}*`).join('')
+                : '\n    ↳ *No movements recorded yet.*';
+              return `${i + 1}. ${icon} **${name}** stationed in **${f.channelName}**${logs}`;
+            }).join('\n\n')
+          : '• *You have no active familiars deployed in Fuyuki City.*';
+
+        addMessage({
+          id: getNextId('bot_fam_menu'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '🦅 Familiar Reconnaissance & Tactical Espionage',
+            description:
+              `Deploy magical scouts to monitor server sectors, intercept enemy ambushes, or spy on rivals!\n\n` +
+              `📡 **Your Active Familiars (${userFamiliars.length}/2):**\n` +
+              familiarLines + `\n\n` +
+              `✨ **Available Familiar Archetypes:**\n` +
+              `• 🦅 **Scouting Raven:** Patrols a channel to record rival activity and detect Servant class auras.\n` +
+              `• 🗿 **Homunculus Decoy:** Sacrifices itself to absorb 100% of the next ambush damage and keep you concealed.\n` +
+              `• 🦇 **Shadow Imp:** Lies in ambush in a channel, siphoning HP and gathering clandestine whispers.`,
+            color: '#8b5cf6',
+            footer: 'Select a familiar to dispatch or recall active scouts below:'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'dispatch_familiar_raven', label: 'Dispatch Raven', style: 'primary', emoji: '🦅' },
+              { id: 'dispatch_familiar_homunculus', label: 'Craft Homunculus', style: 'success', emoji: '🗿' },
+              { id: 'dispatch_familiar_shadow_imp', label: 'Deploy Shadow Imp', style: 'secondary', emoji: '🦇' },
+              { id: 'recall_all_familiars', label: 'Recall All', style: 'danger', emoji: '🕊️' },
+              { id: 'quick_war_status', label: 'Status Board', style: 'secondary', emoji: '📋' }
+            ]
+          }
+        });
+        return;
+      }
+
+      // SUB-CASE TRAPS: /grailwar trap, /traps
+      if (isTraps) {
+        const chanTag = activeChannel === 'public' ? '#holy-grail-war' : '#general';
+        if (trimmed.includes('alarm')) {
+          const res = setChannelTrapInWar(grailWar, master.discordId, master.username, chanTag, 'alarm');
+          onUpdateGrailWar(res.updatedWar);
+          addMessage({
+            id: getNextId('bot_trap_res'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: res.success ? '🚨 Alarm Ward Anchored' : '⚠️ Ward Interrupted',
+              description: res.message,
+              color: res.success ? '#ef4444' : '#64748b'
+            }
+          });
+          return;
+        } else if (trimmed.includes('drain') || trimmed.includes('bloodfort')) {
+          const res = setChannelTrapInWar(grailWar, master.discordId, master.username, chanTag, 'drain');
+          onUpdateGrailWar(res.updatedWar);
+          addMessage({
+            id: getNextId('bot_trap_res'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: res.success ? '🩸 Bloodfort Drain Field Anchored' : '⚠️ Ward Interrupted',
+              description: res.message,
+              color: res.success ? '#dc2626' : '#64748b'
+            }
+          });
+          return;
+        } else if (trimmed.includes('disarm') || trimmed.includes('clear')) {
+          const res = disarmChannelTrapsInWar(grailWar, master.discordId);
+          onUpdateGrailWar(res.updatedWar);
+          addMessage({
+            id: getNextId('bot_trap_disarm'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '🧹 Bounded Traps Disarmed',
+              description: res.message,
+              color: '#64748b'
+            }
+          });
+          return;
+        }
+
+        const userTraps = (grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
+        const trapLines = userTraps.length > 0
+          ? userTraps.map((t, i) => `${i + 1}. ${t.trapType === 'alarm' ? '🚨 Alarm Ward' : '🩸 Bloodfort Drain'} in **${t.channelName}**`).join('\n')
+          : '• *No active channel Bounded Fields anchored.*';
+
+        addMessage({
+          id: getNextId('bot_trap_menu'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '🕸️ Channel Bounded Field Traps',
+            description:
+              `Anchor hidden magecraft traps in specific channels to intercept rival Masters!\n\n` +
+              `🕸️ **Your Active Traps (${userTraps.length}/2):**\n` +
+              trapLines + `\n\n` +
+              `• 🚨 **Alarm Ward:** Exposes the intruder's username and Servant class upon entering.\n` +
+              `• 🩸 **Bloodfort Drain:** Siphons 1,800–2,600 HP from intruder to heal your Servant.`,
+            color: '#dc2626',
+            footer: 'Select an action below:'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'trap_channel_alarm', label: 'Set Alarm Ward', style: 'danger', emoji: '🚨' },
+              { id: 'trap_channel_drain', label: 'Set Bloodfort Drain', style: 'danger', emoji: '🩸' },
+              { id: 'disarm_all_traps', label: 'Disarm All Traps', style: 'secondary', emoji: '🧹' },
+              { id: 'quick_war_status', label: 'Status Board', style: 'primary', emoji: '📋' }
+            ]
+          }
+        });
+        return;
+      }
 
       // SUB-CASE 0: /defenses, /grailwar defenses, /grailwar ward, /grailwar evade
       if (isDefenses) {
@@ -1396,6 +1608,8 @@ export default function DiscordEmulator({
           items: [
             { id: 'war_my_profile', label: 'Secret Profile (Private)', style: 'primary', emoji: '👤' },
             { id: 'war_defenses', label: 'Defenses', style: 'secondary', emoji: '🏰' },
+            { id: 'war_familiars', label: 'Familiars', style: 'primary', emoji: '🦅' },
+            { id: 'war_traps', label: 'Bounded Traps', style: 'secondary', emoji: '🕸️' },
             { id: 'war_patrol', label: 'Patrol City', style: 'success', emoji: '👁️' },
             { id: 'war_skirmish', label: 'City Skirmish', style: 'secondary', emoji: '💥' },
             { id: 'war_refresh', label: 'Refresh', style: 'secondary', emoji: '🔄' }
@@ -2171,6 +2385,51 @@ export default function DiscordEmulator({
             color: result.success ? '#22c55e' : '#ef4444'
           }
         });
+        return;
+      }
+
+      if (btnId === 'war_familiars') {
+        handleCommand('/familiars');
+        return;
+      }
+
+      if (btnId === 'war_traps') {
+        handleCommand('/traps');
+        return;
+      }
+
+      if (btnId === 'dispatch_familiar_raven') {
+        handleCommand('/familiar raven');
+        return;
+      }
+
+      if (btnId === 'dispatch_familiar_homunculus') {
+        handleCommand('/familiar homunculus');
+        return;
+      }
+
+      if (btnId === 'dispatch_familiar_shadow_imp') {
+        handleCommand('/familiar shadow_imp');
+        return;
+      }
+
+      if (btnId === 'recall_all_familiars') {
+        handleCommand('/familiar recall');
+        return;
+      }
+
+      if (btnId === 'trap_channel_alarm') {
+        handleCommand('/trap alarm');
+        return;
+      }
+
+      if (btnId === 'trap_channel_drain') {
+        handleCommand('/trap drain');
+        return;
+      }
+
+      if (btnId === 'disarm_all_traps') {
+        handleCommand('/trap disarm');
         return;
       }
 

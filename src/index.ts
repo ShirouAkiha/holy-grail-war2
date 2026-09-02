@@ -4,7 +4,8 @@ import {
   REST, 
   Routes, 
   Events, 
-  Collection
+  Collection,
+  EmbedBuilder
 } from 'discord.js';
 import * as summonCommand from './commands/summon';
 import * as servantCommand from './commands/servant';
@@ -22,7 +23,14 @@ import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
 import { buildProfileEmbed, buildProfileButtons } from './commands/profile';
 import { buildDefensesEmbed, buildDefensesButtons } from './commands/defenses';
 import { buildWarEmbed, buildWarButtons } from './commands/grailwar';
-import { getOrInitWarSession, executeWarAction, patrolCityInWar, simulateWarSkirmish } from './engine/grailwar';
+import { 
+  getOrInitWarSession, 
+  executeWarAction, 
+  patrolCityInWar, 
+  simulateWarSkirmish,
+  disarmChannelTrapsInWar,
+  recallFamiliarsInWar
+} from './engine/grailwar';
 
 // ==========================================
 // 1. DISCORD CLIENT INITIALIZATION
@@ -341,6 +349,30 @@ client.on(Events.InteractionCreate, async interaction => {
         } else {
           await interaction.update({ embeds: [embed], components: btns });
         }
+        return;
+      }
+
+      if (btnId === 'disarm_all_traps') {
+        const res = disarmChannelTrapsInWar(war, interaction.user.id);
+        war = res.updatedWar;
+        await saveMaster(master);
+        const disarmEmbed = new EmbedBuilder()
+          .setTitle('🧹 Bounded Fields Dissolved')
+          .setDescription(res.message)
+          .setColor(0x10b981);
+        await interaction.update({ embeds: [disarmEmbed], components: [] });
+        return;
+      }
+
+      if (btnId === 'recall_all_familiars') {
+        const res = recallFamiliarsInWar(war, interaction.user.id);
+        war = res.updatedWar;
+        await saveMaster(master);
+        const recallEmbed = new EmbedBuilder()
+          .setTitle('🕊️ Familiars Recalled')
+          .setDescription(res.message)
+          .setColor(0x0ea5e9);
+        await interaction.update({ embeds: [recallEmbed], components: [] });
         return;
       }
 

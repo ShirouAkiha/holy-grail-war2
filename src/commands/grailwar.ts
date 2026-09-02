@@ -16,7 +16,11 @@ import {
   attackSuspectUserInWar,
   leakIntelInWar,
   patrolCityInWar,
-  resetWarSession
+  resetWarSession,
+  setChannelTrapInWar,
+  disarmChannelTrapsInWar,
+  dispatchFamiliarInWar,
+  recallFamiliarsInWar
 } from '../engine/grailwar';
 import { buildProfileEmbed, buildProfileButtons } from './profile';
 
@@ -40,6 +44,59 @@ export const data = new SlashCommandBuilder()
     sub
       .setName('defenses')
       .setDescription('🏰 Manage your Mage Workshop sanctuary wards & Command Seal auto-evacuation (Ephemeral)')
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('familiar')
+      .setDescription('🦅 Dispatch a reconnaissance familiar (Raven, Homunculus, or Shadow Imp)')
+      .addStringOption(opt =>
+        opt
+          .setName('type')
+          .setDescription('Choose familiar archetype')
+          .setRequired(true)
+          .addChoices(
+            { name: '🦅 Scouting Raven (Aerial surveillance & Master tracking)', value: 'raven' },
+            { name: '🗿 Homunculus Decoy (Bodyguard absorbing 100% ambush damage)', value: 'homunculus' },
+            { name: '🦇 Shadow Imp (Saboteur siphoning HP & eavesdropping)', value: 'shadow_imp' }
+          )
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('channel')
+          .setDescription('Target sector/channel (e.g. #general, defaults to current channel)')
+          .setRequired(false)
+      )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('familiars')
+      .setDescription('🦅 View your active familiar reconnaissance network and surveillance logs')
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('trap')
+      .setDescription('🕸️ Place a concealed Bounded Field trap in a channel (alarm or mana drain)')
+      .addStringOption(opt =>
+        opt
+          .setName('type')
+          .setDescription('Choose Bounded Field trap type')
+          .setRequired(true)
+          .addChoices(
+            { name: '🚨 Alarm Ward (Exposes intruder identity & Servant Class)', value: 'alarm' },
+            { name: '🩸 Bloodfort Drain (Siphons 1,800 HP from intruder to your Servant)', value: 'drain' }
+          )
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('channel')
+          .setDescription('Target channel (e.g. #general, defaults to current channel)')
+          .setRequired(false)
+      )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('traps')
+      .setDescription('🕸️ View your active channel Bounded Field traps and disarm if desired')
   )
   .addSubcommand(sub =>
     sub
@@ -435,6 +492,134 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
+    if (subcommand === 'familiar') {
+      const familiarType = interaction.options.getString('type', true) as 'raven' | 'homunculus' | 'shadow_imp';
+      const channelOpt = interaction.options.getString('channel');
+      const targetChan = channelOpt || currentChannelName;
+
+      const res = dispatchFamiliarInWar(war, interaction.user.id, interaction.user.username, targetChan, familiarType);
+      war = res.updatedWar;
+      await saveMaster(master);
+
+      const color = familiarType === 'raven' ? 0x0284c7 : familiarType === 'homunculus' ? 0x10b981 : 0x7c3aed;
+      const famEmbed = new EmbedBuilder()
+        .setTitle('🦅 Familiar Reconnaissance Dispatched')
+        .setDescription(res.message)
+        .setColor(color)
+        .setFooter({ text: 'Holy Grail War Familiar Network • Recon & Surveillance' });
+
+      await interaction.reply({ embeds: [famEmbed], ephemeral: true });
+      return;
+    }
+
+    if (subcommand === 'familiars') {
+      const userFamiliars = (war.familiars || []).filter(f => f.masterId === interaction.user.id);
+      let desc = '';
+      if (userFamiliars.length === 0) {
+        desc = 'You currently have **no active familiars** dispatched in Fuyuki City.\n\nUse `/grailwar familiar type:<raven | homunculus | shadow_imp> channel:<#channel>` to deploy one!';
+      } else {
+        desc = `You currently command **${userFamiliars.length}/2** active familiars stationed across Fuyuki:\n\n` +
+          userFamiliars.map((f, idx) => {
+            const typeLabel = f.familiarType === 'raven'
+              ? '🦅 **Scouting Raven** (Surveillance)'
+              : f.familiarType === 'homunculus'
+              ? '🗿 **Homunculus Decoy** (Ambush Shield)'
+              : '🦇 **Shadow Imp** (Sabotage & Siphon)';
+            const intelLogs = (f.detectedIntel && f.detectedIntel.length > 0)
+              ? `\n  ↳ **Surveillance Logs:**\n  ${f.detectedIntel.slice(0, 3).join('\n  ')}`
+              : `\n  ↳ *No movement observed yet.*`;
+            return `**${idx + 1}. Sector ${f.channelName}** — ${typeLabel}\n*Deployed <t:${Math.floor(f.createdAt / 1000)}:R>*${intelLogs}`;
+          }).join('\n\n') + '\n\n*Click **Recall All Familiars** below to dismiss your familiars.*';
+      }
+
+      const famsEmbed = new EmbedBuilder()
+        .setTitle('🦅 Active Familiar Reconnaissance Network')
+        .setDescription(desc)
+        .setColor(0x0ea5e9)
+        .setFooter({ text: 'Familiars gather intelligence and shield their Masters' });
+
+      const row = new ActionRowBuilder<ButtonBuilder>();
+      if (userFamiliars.length > 0) {
+        row.addComponents(
+          new ButtonBuilder()
+            .setCustomId('recall_all_familiars')
+            .setLabel('Recall All Familiars')
+            .setEmoji('🕊️')
+            .setStyle(ButtonStyle.Danger)
+        );
+      }
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId('war_status_board')
+          .setLabel('Grail War Status')
+          .setEmoji('📜')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+      await interaction.reply({ embeds: [famsEmbed], components: [row], ephemeral: true });
+      return;
+    }
+
+    if (subcommand === 'trap') {
+      const trapType = interaction.options.getString('type', true) as 'alarm' | 'drain';
+      const channelOpt = interaction.options.getString('channel');
+      const targetChan = channelOpt || currentChannelName;
+
+      const res = setChannelTrapInWar(war, interaction.user.id, interaction.user.username, targetChan, trapType);
+      war = res.updatedWar;
+      await saveMaster(master);
+
+      const trapEmbed = new EmbedBuilder()
+        .setTitle('🕸️ Bounded Field Trap Deployed')
+        .setDescription(res.message)
+        .setColor(trapType === 'alarm' ? 0xeab308 : 0xdc2626)
+        .setFooter({ text: 'Holy Grail War Espionage & Perimeter Security' });
+
+      await interaction.reply({ embeds: [trapEmbed], ephemeral: true });
+      return;
+    }
+
+    if (subcommand === 'traps') {
+      const userTraps = (war.channelTraps || []).filter(t => t.setterMasterId === interaction.user.id);
+      let desc = '';
+      if (userTraps.length === 0) {
+        desc = 'You currently have **no active Bounded Field traps** deployed in any channels.\n\nUse `/grailwar trap type:<alarm | drain> channel:<#channel>` to place one!';
+      } else {
+        desc = `You currently have **${userTraps.length}/2** active Bounded Field traps deployed across Fuyuki:\n\n` +
+          userTraps.map((t, idx) => {
+            const typeLabel = t.trapType === 'alarm' ? '🚨 **Alarm Ward** (Exposes intruder identity)' : '🩸 **Bloodfort Drain** (Siphons 1,800 HP)';
+            return `**${idx + 1}. Sector ${t.channelName}** — ${typeLabel}\n*Deployed <t:${Math.floor(t.createdAt / 1000)}:R>*`;
+          }).join('\n\n') + '\n\n*Click **Disarm All Traps** below to dissolve your active fields.*';
+      }
+
+      const trapsEmbed = new EmbedBuilder()
+        .setTitle('🕸️ Active Bounded Field Traps')
+        .setDescription(desc)
+        .setColor(0x8b5cf6)
+        .setFooter({ text: 'Bounded fields remain hidden until tripped by a rival Master' });
+
+      const row = new ActionRowBuilder<ButtonBuilder>();
+      if (userTraps.length > 0) {
+        row.addComponents(
+          new ButtonBuilder()
+            .setCustomId('disarm_all_traps')
+            .setLabel('Disarm All Traps')
+            .setEmoji('🧹')
+            .setStyle(ButtonStyle.Danger)
+        );
+      }
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId('war_status_board')
+          .setLabel('Grail War Status')
+          .setEmoji('📜')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+      await interaction.reply({ embeds: [trapsEmbed], components: [row], ephemeral: true });
+      return;
+    }
+
     let initialMsg = '';
 
     if (subcommand === 'patrol') {
@@ -549,7 +734,29 @@ function setupWarCollector(message: any, userId: string) {
         return;
       }
 
-      if (i.customId === 'war_status_board') {
+      if (i.customId === 'disarm_all_traps') {
+        const res = disarmChannelTrapsInWar(war, i.user.id);
+        war = res.updatedWar;
+        await saveMaster(master);
+        const disarmEmbed = new EmbedBuilder()
+          .setTitle('🧹 Bounded Fields Dissolved')
+          .setDescription(res.message)
+          .setColor(0x10b981);
+        await i.update({ embeds: [disarmEmbed], components: [] });
+        return;
+      }
+      else if (i.customId === 'recall_all_familiars') {
+        const res = recallFamiliarsInWar(war, i.user.id);
+        war = res.updatedWar;
+        await saveMaster(master);
+        const recallEmbed = new EmbedBuilder()
+          .setTitle('🕊️ Familiars Recalled')
+          .setDescription(res.message)
+          .setColor(0x0ea5e9);
+        await i.update({ embeds: [recallEmbed], components: [] });
+        return;
+      }
+      else if (i.customId === 'war_status_board') {
         const userP = war.participants[i.user.id];
         const warEmbed = buildWarEmbed(war, userP);
         const warBtns = buildWarButtons();

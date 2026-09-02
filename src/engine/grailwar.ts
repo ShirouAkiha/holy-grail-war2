@@ -2,7 +2,9 @@ import {
   HolyGrailWarSession,
   WarMasterParticipant,
   WarAlliance,
-  MasterProfile
+  MasterProfile,
+  ChannelBoundedTrap,
+  ActiveFamiliar
 } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
 import fs from 'fs';
@@ -634,9 +636,25 @@ export function attackSuspectUserInWar(
       }
     }
 
-    // Target becomes exposed due to taking a direct ambush
-    targetMaster.isExposed = true;
-    targetMaster.exposureReason = 'ambush_clash';
+    // 1.5 HOMUNCULUS DECOY FAMILIAR (Intercepts 100% ambush damage & preserves secrecy)
+    let homunculusIntercepted = false;
+    if (targetWar.familiars && targetWar.familiars.length > 0) {
+      const homunculusIdx = targetWar.familiars.findIndex(
+        f => f.masterId === targetMaster.discordId && f.familiarType === 'homunculus'
+      );
+      if (homunculusIdx !== -1) {
+        targetWar.familiars.splice(homunculusIdx, 1);
+        homunculusIntercepted = true;
+        ambushDamage = 0;
+        defenseText += `🗿 **Homunculus Decoy Interception:** A crafted homunculus decoy took the lethal ambush trajectory, shattering to dust and absorbing 100% of the attack (**0 DMG taken**)! Master **${targetMaster.username}** remained unharmed and concealed in the shadows!\n`;
+      }
+    }
+
+    if (!homunculusIntercepted) {
+      // Target becomes exposed due to taking a direct ambush
+      targetMaster.isExposed = true;
+      targetMaster.exposureReason = 'ambush_clash';
+    }
 
     // Apply final damage to target
     targetMaster.currentHp = Math.max(0, targetMaster.currentHp - ambushDamage);
@@ -830,6 +848,390 @@ export function leakIntelInWar(
 }
 
 /**
+ * Sets a Bounded Field trap in a specific channel.
+ * Max 2 active traps per Master.
+ */
+export function setChannelTrapInWar(
+  war: HolyGrailWarSession,
+  setterId: string,
+  setterUsername: string,
+  channelName: string,
+  trapType: 'alarm' | 'drain'
+): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
+  const targetWar = war || globalWarSession;
+  if (!targetWar) {
+    return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
+  }
+
+  const setter = targetWar.participants[setterId];
+  if (!setter || !setter.isAlive) {
+    return { success: false, message: 'You must have an active Heroic Spirit contract to weave Bounded Field traps!', updatedWar: targetWar };
+  }
+
+  const chanTag = channelName.startsWith('#') ? channelName : `#${channelName}`;
+
+  if (!targetWar.channelTraps) {
+    targetWar.channelTraps = [];
+  }
+
+  // Check if Master already has a trap in this exact channel
+  const existingIdx = targetWar.channelTraps.findIndex(
+    t => t.setterMasterId === setterId && t.channelName.toLowerCase() === chanTag.toLowerCase()
+  );
+  
+  // Count active traps for this Master
+  const currentTrapsCount = targetWar.channelTraps.filter(t => t.setterMasterId === setterId).length;
+  if (existingIdx === -1 && currentTrapsCount >= 2) {
+    return {
+      success: false,
+      message: `❌ You can only maintain up to **2 active channel Bounded Fields** simultaneously! Use \`/grailwar traps\` or disarm an existing trap first.`,
+      updatedWar: targetWar
+    };
+  }
+
+  const trapId = `trap_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const newTrap: ChannelBoundedTrap = {
+    id: trapId,
+    channelName: chanTag,
+    setterMasterId: setterId,
+    setterUsername: setter.username || setterUsername,
+    trapType,
+    createdAt: Date.now()
+  };
+
+  if (existingIdx !== -1) {
+    targetWar.channelTraps[existingIdx] = newTrap;
+  } else {
+    targetWar.channelTraps.push(newTrap);
+  }
+
+  const trapLabel = trapType === 'alarm' 
+    ? '🚨 **Sensory Alarm Ward** (Exposes intruder identity & Servant Class upon entry)'
+    : '🩸 **Bloodfort Mana Drain Field** (Siphons 1,800 HP from intruder and heals your Servant)';
+
+  const resultMsg = `🕸️ **Bounded Field Trap Deployed in ${chanTag}!**\n` +
+    `• **Field Type:** ${trapLabel}\n` +
+    `• **Status:** Concealed in leyline currents. Triggers when any rival Master operates in ${chanTag}.\n` +
+    `• **Active Traps:** ${targetWar.channelTraps.filter(t => t.setterMasterId === setterId).length}/2 deployed.`;
+
+  targetWar.eventLogs.unshift({
+    id: `evt_trap_set_${Date.now()}`,
+    timestamp: Date.now(),
+    text: `🕸️ Bounded Field Weaving: A concealed magical perimeter was anchored in ${chanTag}.`,
+    type: 'ambush'
+  });
+
+  saveWarToDisk();
+  return {
+    success: true,
+    message: resultMsg,
+    updatedWar: targetWar
+  };
+}
+
+/**
+ * Disarms a Master's active channel trap(s).
+ */
+export function disarmChannelTrapsInWar(
+  war: HolyGrailWarSession,
+  setterId: string,
+  channelName?: string
+): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
+  const targetWar = war || globalWarSession;
+  if (!targetWar) {
+    return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
+  }
+
+  if (!targetWar.channelTraps || targetWar.channelTraps.length === 0) {
+    return { success: true, message: 'You have no active channel Bounded Fields to disarm.', updatedWar: targetWar };
+  }
+
+  const initialCount = targetWar.channelTraps.length;
+  if (channelName) {
+    const chanTag = channelName.startsWith('#') ? channelName : `#${channelName}`;
+    targetWar.channelTraps = targetWar.channelTraps.filter(
+      t => !(t.setterMasterId === setterId && t.channelName.toLowerCase() === chanTag.toLowerCase())
+    );
+  } else {
+    targetWar.channelTraps = targetWar.channelTraps.filter(t => t.setterMasterId !== setterId);
+  }
+
+  const removedCount = initialCount - targetWar.channelTraps.length;
+  saveWarToDisk();
+
+  return {
+    success: true,
+    message: removedCount > 0 
+      ? `🧹 Successfully dissolved **${removedCount}** active Bounded Field trap(s).`
+      : `No active Bounded Fields found for the specified channel.`,
+    updatedWar: targetWar
+  };
+}
+
+/**
+ * Checks if a channel has any active traps placed by rival Masters and triggers the first matching trap.
+ */
+export function checkAndTriggerChannelTraps(
+  war: HolyGrailWarSession,
+  intruderId: string,
+  intruderUsername: string,
+  channelName: string
+): { triggered: boolean; message?: string; trapType?: 'alarm' | 'drain'; setterId?: string } {
+  const targetWar = war || globalWarSession;
+  if (!targetWar || !targetWar.channelTraps || targetWar.channelTraps.length === 0) {
+    return { triggered: false };
+  }
+
+  const chanTag = channelName.startsWith('#') ? channelName : `#${channelName}`;
+  const intruder = targetWar.participants[intruderId];
+  if (!intruder || !intruder.isAlive) {
+    return { triggered: false };
+  }
+
+  // Find trap in channel placed by a rival (not intruder, not in same alliance)
+  const trapIdx = targetWar.channelTraps.findIndex(t => {
+    if (t.channelName.toLowerCase() !== chanTag.toLowerCase()) return false;
+    if (t.setterMasterId === intruderId) return false;
+    const setter = targetWar.participants[t.setterMasterId];
+    if (!setter || !setter.isAlive) return false;
+    // Check alliance
+    if (intruder.allianceId && setter.allianceId && intruder.allianceId === setter.allianceId) return false;
+    return true;
+  });
+
+  if (trapIdx === -1) {
+    return { triggered: false };
+  }
+
+  const trap = targetWar.channelTraps[trapIdx];
+  const setter = targetWar.participants[trap.setterMasterId];
+
+  // Consume/remove single-use trap
+  targetWar.channelTraps.splice(trapIdx, 1);
+
+  let trapNotice = '';
+
+  if (trap.trapType === 'alarm') {
+    intruder.isExposed = true;
+    intruder.exposureReason = 'alarm_trap';
+
+    trapNotice = `🚨 **ALARM BOUNDED FIELD TRIPPED IN ${chanTag}!**\n` +
+      `Master **${intruder.username}** entered **${chanTag}** and tripped a concealed sensory web placed by Master **${setter.username}**!\n` +
+      `• Intruder Identity: **${intruder.username}** (Servant: **${intruder.servantName}**, Class: **${intruder.servantClass}**)\n` +
+      `• Master **${intruder.username}** is now **EXPOSED** on the Holy Grail War Board!`;
+
+    targetWar.eventLogs.unshift({
+      id: `evt_trap_alarm_${Date.now()}`,
+      timestamp: Date.now(),
+      text: `🚨 Alarm Bounded Field Tripped in ${chanTag}: Master **${intruder.username}** (${intruder.servantClass}) was detected and exposed by **${setter.username}**'s ward!`,
+      type: 'exposure'
+    });
+  } else {
+    // DRAIN FIELD
+    const drainDmg = Math.round(1800 + Math.random() * 800);
+    intruder.currentHp = Math.max(0, intruder.currentHp - drainDmg);
+    setter.currentHp = Math.min(setter.maxHp, setter.currentHp + drainDmg);
+
+    trapNotice = `🩸 **BLOODFORT MANA DRAIN FIELD TRIGGERED IN ${chanTag}!**\n` +
+      `Master **${intruder.username}** walked into a predatory Bounded Field anchored by Master **${setter.username}**!\n` +
+      `• Siphoned **${drainDmg.toLocaleString()} HP** from ${intruder.isExposed ? intruder.servantName : 'contracted Servant'} (HP: ${intruder.currentHp}/${intruder.maxHp})!\n` +
+      `• Channeled **+${drainDmg.toLocaleString()} HP** to Master **${setter.username}**'s Servant!`;
+
+    if (intruder.currentHp <= 0) {
+      if (intruder.autoEvadeEnabled !== false && intruder.commandSeals >= 1) {
+        intruder.commandSeals--;
+        intruder.currentHp = 1;
+        trapNotice += `\n🔴 **EMERGENCY ESCAPE:** Consumed 1 Command Seal to escape fatal drain with 1 HP!`;
+      } else {
+        intruder.isAlive = false;
+        intruder.isExposed = true;
+        setter.kills = (setter.kills || 0) + 1;
+        trapNotice += `\n☠️ **FATAL WITHERING:** Master **${intruder.username}**'s spiritual core collapsed from total mana drain!`;
+        evaluateWarState(targetWar);
+      }
+    }
+
+    targetWar.eventLogs.unshift({
+      id: `evt_trap_drain_${Date.now()}`,
+      timestamp: Date.now(),
+      text: `🩸 Mana Drain Field in ${chanTag}: Master **${setter.username}**'s field siphoned ${drainDmg.toLocaleString()} HP from Master **${intruder.username}**!`,
+      type: 'clash'
+    });
+  }
+
+  saveWarToDisk();
+
+  return {
+    triggered: true,
+    message: trapNotice,
+    trapType: trap.trapType,
+    setterId: trap.setterMasterId
+  };
+}
+
+/**
+ * Dispatches a magical familiar (Raven, Homunculus, or Shadow Imp) to a channel sector.
+ * Max 2 active familiars per Master.
+ */
+export function dispatchFamiliarInWar(
+  war: HolyGrailWarSession,
+  masterId: string,
+  masterUsername: string,
+  channelName: string,
+  familiarType: 'raven' | 'homunculus' | 'shadow_imp'
+): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
+  const targetWar = war || globalWarSession;
+  if (!targetWar) {
+    return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
+  }
+
+  const master = targetWar.participants[masterId];
+  if (!master || !master.isAlive) {
+    return { success: false, message: 'You must have an active Heroic Spirit contract to dispatch familiars!', updatedWar: targetWar };
+  }
+
+  const chanTag = channelName.startsWith('#') ? channelName : `#${channelName}`;
+
+  if (!targetWar.familiars) {
+    targetWar.familiars = [];
+  }
+
+  // Check how many familiars this Master currently commands
+  const userFamiliars = targetWar.familiars.filter(f => f.masterId === masterId);
+  if (userFamiliars.length >= 2) {
+    return {
+      success: false,
+      message: `❌ You can only maintain up to **2 active familiars** simultaneously! Use \`/grailwar familiars\` to inspect or recall them.`,
+      updatedWar: targetWar
+    };
+  }
+
+  const familiarId = `fam_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const now = Date.now();
+  const expiresAt = now + (24 * 60 * 60 * 1000); // 24 hours
+
+  const newFamiliar: ActiveFamiliar = {
+    id: familiarId,
+    masterId,
+    masterUsername: master.username || masterUsername,
+    channelName: chanTag,
+    familiarType,
+    createdAt: now,
+    expiresAt,
+    detectedIntel: []
+  };
+
+  targetWar.familiars.push(newFamiliar);
+
+  let typeDesc = '';
+  if (familiarType === 'raven') {
+    typeDesc = '🦅 **Scouting Raven (Aerial Surveillance)**\n• Stationed in **' + chanTag + '** to observe rival Master movements, magecraft invocations, and Servant class signatures.';
+  } else if (familiarType === 'homunculus') {
+    typeDesc = '🗿 **Homunculus Decoy (Bodyguard Construct)**\n• Materialized in **' + chanTag + '** to absorb 100% damage from the next enemy ambush attempt on you and shield your identity.';
+  } else {
+    typeDesc = '🦇 **Shadow Imp (Saboteur & Mana Siphon)**\n• Latched into the shadows of **' + chanTag + '** to siphon 600–1,000 HP from trespassing rival Masters and spy on secret chatter.';
+  }
+
+  const resultMsg = `✨ **Familiar Successfully Dispatched!**\n\n` +
+    typeDesc + `\n\n` +
+    `• **Active Familiars:** ${targetWar.familiars.filter(f => f.masterId === masterId).length}/2 active.\n` +
+    `• Use \`/grailwar familiars\` to read surveillance logs or recall your scouts.`;
+
+  targetWar.eventLogs.unshift({
+    id: `evt_fam_dispatch_${Date.now()}`,
+    timestamp: now,
+    text: `🦅 Familiar Dispatch: A concealed magical familiar was deployed to patrol ${chanTag}.`,
+    type: 'intel_leak'
+  });
+
+  saveWarToDisk();
+
+  return {
+    success: true,
+    message: resultMsg,
+    updatedWar: targetWar
+  };
+}
+
+/**
+ * Recalls active familiars for a Master.
+ */
+export function recallFamiliarsInWar(
+  war: HolyGrailWarSession,
+  masterId: string,
+  channelName?: string
+): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
+  const targetWar = war || globalWarSession;
+  if (!targetWar) {
+    return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
+  }
+
+  if (!targetWar.familiars || targetWar.familiars.length === 0) {
+    return { success: true, message: 'You have no active familiars deployed.', updatedWar: targetWar };
+  }
+
+  const initialCount = targetWar.familiars.length;
+  if (channelName) {
+    const chanTag = channelName.startsWith('#') ? channelName : `#${channelName}`;
+    targetWar.familiars = targetWar.familiars.filter(
+      f => !(f.masterId === masterId && f.channelName.toLowerCase() === chanTag.toLowerCase())
+    );
+  } else {
+    targetWar.familiars = targetWar.familiars.filter(f => f.masterId !== masterId);
+  }
+
+  const recalledCount = initialCount - targetWar.familiars.length;
+  saveWarToDisk();
+
+  return {
+    success: true,
+    message: recalledCount > 0
+      ? `🕊️ Successfully recalled and dismissed **${recalledCount}** active familiar(s).`
+      : `No active familiars found in the specified channel.`,
+    updatedWar: targetWar
+  };
+}
+
+/**
+ * Records an observation to any active Ravens / Imps stationed in that channel.
+ */
+export function recordFamiliarObservation(
+  war: HolyGrailWarSession,
+  actorId: string,
+  actorUsername: string,
+  channelName: string,
+  actionText: string,
+  servantClass?: string
+): void {
+  const targetWar = war || globalWarSession;
+  if (!targetWar || !targetWar.familiars || targetWar.familiars.length === 0) return;
+
+  const chanTag = channelName.startsWith('#') ? channelName : `#${channelName}`;
+  const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  for (const fam of targetWar.familiars) {
+    // Only record for familiars owned by OTHER masters in that channel
+    if (fam.masterId === actorId) continue;
+    if (fam.channelName.toLowerCase() !== chanTag.toLowerCase()) continue;
+
+    if (fam.familiarType === 'raven') {
+      const classHint = servantClass ? ` (Resonating aura: **${servantClass}**)` : '';
+      const logEntry = `[${nowStr}] 🦅 **Raven Sighting:** Sighted **${actorUsername}** active in ${chanTag}: *${actionText}*${classHint}.`;
+      if (!fam.detectedIntel) fam.detectedIntel = [];
+      fam.detectedIntel.unshift(logEntry);
+      if (fam.detectedIntel.length > 8) fam.detectedIntel.pop();
+    } else if (fam.familiarType === 'shadow_imp') {
+      const logEntry = `[${nowStr}] 🦇 **Shadow Imp Whisper:** Overheard **${actorUsername}** operating in ${chanTag}: *${actionText}*.`;
+      if (!fam.detectedIntel) fam.detectedIntel = [];
+      fam.detectedIntel.unshift(logEntry);
+      if (fam.detectedIntel.length > 8) fam.detectedIntel.pop();
+    }
+  }
+
+  saveWarToDisk();
+}
+
+/**
  * Scout / Patrol a channel sector in Fuyuki.
  * Civilians gather investigation rumors and overheared mana signatures.
  * Masters detect rival signatures, bystander counts, or Bounded Field resonance.
@@ -876,6 +1278,7 @@ export function patrolCityInWar(
   }
 
   // MASTER SCOUT PATROL
+  const trapResult = checkAndTriggerChannelTraps(targetWar, actorDiscordId, actorUsername, chanTag);
   const aliveRivals = Object.values(targetWar.participants).filter(p => p.discordId !== actorDiscordId && p.isAlive);
   let masterReport = '';
 
@@ -894,6 +1297,47 @@ export function patrolCityInWar(
     ];
     masterReport = masterReports[Math.floor(Math.random() * masterReports.length)];
   }
+
+  if (trapResult.triggered && trapResult.message) {
+    masterReport = `${trapResult.message}\n\n${masterReport}`;
+  }
+
+  // Check if actor has active familiars in this sector to include feed
+  const ownFamiliars = (targetWar.familiars || []).filter(
+    f => f.masterId === actorDiscordId && f.channelName.toLowerCase() === chanTag.toLowerCase()
+  );
+  if (ownFamiliars.length > 0) {
+    const lines = ownFamiliars.map(f => {
+      const typeLabel = f.familiarType === 'raven' ? '🦅 **Scouting Raven**' : f.familiarType === 'homunculus' ? '🗿 **Homunculus Decoy**' : '🦇 **Shadow Imp**';
+      const logs = (f.detectedIntel && f.detectedIntel.length > 0)
+        ? f.detectedIntel.slice(0, 3).join('\n  ')
+        : '• *No hostile movement detected in this sector yet.*';
+      return `${typeLabel} stationed in ${chanTag}:\n  ${logs}`;
+    }).join('\n\n');
+    masterReport += `\n\n📡 **Active Familiar Surveillance Feed:**\n${lines}`;
+  }
+
+  // Check if enemy familiar exists and if Archer/Assassin/Rider or perception detects and neutralizes it
+  const isHighPerception = ['Archer', 'Assassin', 'Rider'].includes(actorParticipant.servantClass);
+  const enemyFamIdx = (targetWar.familiars || []).findIndex(
+    f => f.masterId !== actorDiscordId && f.channelName.toLowerCase() === chanTag.toLowerCase()
+  );
+  if (enemyFamIdx !== -1 && (isHighPerception || Math.random() < 0.45)) {
+    const enemyFam = targetWar.familiars![enemyFamIdx];
+    const famTypeName = enemyFam.familiarType === 'raven' ? 'Scouting Raven' : enemyFam.familiarType === 'homunculus' ? 'Homunculus Decoy' : 'Shadow Imp';
+    targetWar.familiars!.splice(enemyFamIdx, 1);
+    masterReport += `\n\n🏹 **Enemy Spy Neutralized!** Your Servant (**${actorParticipant.servantName}**) detected a concealed **${famTypeName}** spying on ${chanTag} and eliminated it!`;
+  }
+
+  // Record observation for any surviving rival familiars in this channel
+  recordFamiliarObservation(
+    targetWar,
+    actorDiscordId,
+    actorUsername,
+    chanTag,
+    'conducted a tactical patrol',
+    actorParticipant.servantClass
+  );
 
   targetWar.eventLogs.unshift({
     id: `evt_patrol_${Date.now()}`,

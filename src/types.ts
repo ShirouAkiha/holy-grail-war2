@@ -261,12 +261,36 @@ export interface WarAlliance {
   betrayalRiskScore: number;
 }
 
+export interface ChannelBoundedTrap {
+  id: string;
+  channelName: string;
+  setterMasterId: string;
+  setterUsername: string;
+  trapType: 'alarm' | 'drain';
+  createdAt: number;
+  expiresAt?: number;
+  triggered?: boolean;
+}
+
+export interface ActiveFamiliar {
+  id: string;
+  masterId: string;
+  masterUsername: string;
+  channelName: string;
+  familiarType: 'raven' | 'homunculus' | 'shadow_imp';
+  createdAt: number;
+  expiresAt: number;
+  detectedIntel: string[];
+}
+
 export interface HolyGrailWarSession {
   id: string;
   title: string;
   status: 'gathering' | 'active' | 'concluded';
   participants: Record<string, WarMasterParticipant>;
   alliances: Record<string, WarAlliance>;
+  channelTraps?: ChannelBoundedTrap[];
+  familiars?: ActiveFamiliar[];
   civilianCasualties?: Array<{
     id: string;
     name: string;
