@@ -96,7 +96,7 @@ function EmbedVisual({ url }: { url: string }) {
   if (!url) return null;
 
   // Handle Tenor Web Page Links (e.g. https://tenor.com/view/anime-magic-magic-circle-spell-gif-8657546)
-  if (url.includes('tenor.com')) {
+  if (url.includes('tenor.com/view/')) {
     const tenorMatch = url.match(/([0-9]+)\/?$/);
     const tenorId = tenorMatch ? tenorMatch[1] : '8657546';
     const embedUrl = `https://tenor.com/embed/${tenorId}`;
