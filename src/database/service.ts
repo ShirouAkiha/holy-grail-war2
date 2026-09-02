@@ -741,6 +741,8 @@ export async function updateMasterProfile(discordId: string, data: Partial<Maste
   const master = await getOrCreateMaster(discordId);
   
   if (data.username !== undefined) master.username = data.username;
+  if (data.saintQuartz !== undefined) master.saintQuartz = data.saintQuartz;
+  if (data.summonTickets !== undefined) master.summonTickets = data.summonTickets;
   if (data.actionPoints !== undefined) master.actionPoints = data.actionPoints;
   if (data.commandSeals !== undefined) master.commandSeals = data.commandSeals;
   if (data.grailWarWins !== undefined) master.grailWarWins = data.grailWarWins;
@@ -751,6 +753,32 @@ export async function updateMasterProfile(discordId: string, data: Partial<Maste
   masterStore.set(discordId, master);
   saveMastersToDisk();
   return master;
+}
+
+/**
+ * Grants Saint Quartz and/or Summon Tickets to a user by Discord ID.
+ */
+export async function addSaintQuartzToUser(
+  discordId: string,
+  saintQuartzAmount: number,
+  ticketsAmount: number = 0,
+  username?: string
+): Promise<{ master: MasterProfile; previousSq: number; newSq: number; previousTickets: number; newTickets: number }> {
+  const master = await getOrCreateMaster(discordId, username);
+  const previousSq = master.saintQuartz || 0;
+  const previousTickets = master.summonTickets || 0;
+
+  master.saintQuartz = Math.max(0, previousSq + saintQuartzAmount);
+  master.summonTickets = Math.max(0, previousTickets + ticketsAmount);
+
+  saveMastersToDisk();
+  return {
+    master,
+    previousSq,
+    newSq: master.saintQuartz,
+    previousTickets,
+    newTickets: master.summonTickets
+  };
 }
 
 /**

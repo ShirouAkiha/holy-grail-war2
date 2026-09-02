@@ -23,6 +23,7 @@ import * as customiseCommand from './commands/customise';
 import * as addservantCommand from './commands/addservant';
 import * as cegachaCommand from './commands/cegacha';
 import * as addceCommand from './commands/addce';
+import * as addsqCommand from './commands/addsq';
 import { getOrCreateMaster, saveMaster } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
 import { buildProfileEmbed, buildProfileButtons } from './commands/profile';
@@ -70,6 +71,7 @@ commands.set(customiseCommand.data.name, customiseCommand);
 commands.set(addservantCommand.data.name, addservantCommand);
 commands.set(cegachaCommand.data.name, cegachaCommand);
 commands.set(addceCommand.data.name, addceCommand);
+commands.set(addsqCommand.data.name, addsqCommand);
 
 // ==========================================
 // 3. SLASH COMMAND DEPLOYMENT TO DISCORD API

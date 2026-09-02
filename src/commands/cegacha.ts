@@ -16,7 +16,8 @@ import {
   getAllCraftEssences, 
   updateGachaBanner, 
   addCustomCraftEssence,
-  updateCraftEssence
+  updateCraftEssence,
+  addSaintQuartzToUser
 } from '../database/service';
 import { executeCraftEssenceGachaRoll } from '../engine/ceGacha';
 import { renderGachaSummonBanner } from '../canvas/renderer';
@@ -95,6 +96,14 @@ export const data = new SlashCommandBuilder()
       .addIntegerOption(opt => opt.setName('hp').setDescription('New Bonus HP').setRequired(false))
       .addAttachmentOption(opt => opt.setName('image_file').setDescription('Upload artwork image').setRequired(false))
       .addStringOption(opt => opt.setName('image_url').setDescription('Direct artwork image URL').setRequired(false))
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('admin_addsq')
+      .setDescription('Admin: Grant Saint Quartz & Summon Tickets to any user')
+      .addUserOption(opt => opt.setName('user').setDescription('Target Master').setRequired(true))
+      .addIntegerOption(opt => opt.setName('amount').setDescription('Amount of Saint Quartz').setRequired(true))
+      .addIntegerOption(opt => opt.setName('tickets').setDescription('Amount of Summon Tickets').setRequired(false))
   );
 
 export async function execute(interaction: ChatInputCommandInteraction) {
@@ -107,7 +116,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     // ========================================================
     // ADMIN SUBCOMMANDS: BANNER, ADD CE & EDIT CE
     // ========================================================
-    if (sub === 'admin_banner' || sub === 'admin_addce' || sub === 'admin_editce') {
+    if (sub === 'admin_banner' || sub === 'admin_addce' || sub === 'admin_editce' || sub === 'admin_addsq') {
       const isGuildAdmin = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator) ||
                            interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild);
 
@@ -268,6 +277,42 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         if (updatedCe.artworkUrl) {
           embed.setImage(updatedCe.artworkUrl);
         }
+
+        await interaction.reply({ embeds: [embed] });
+        return;
+      }
+
+      if (sub === 'admin_addsq') {
+        const targetUser = interaction.options.getUser('user', true);
+        const sqAmount = interaction.options.getInteger('amount', true);
+        const ticketsAmount = interaction.options.getInteger('tickets') || 0;
+
+        const result = await addSaintQuartzToUser(
+          targetUser.id,
+          sqAmount,
+          ticketsAmount,
+          targetUser.username
+        );
+
+        const isAddition = sqAmount >= 0;
+        const sqSign = isAddition ? '+' : '';
+        const ticketSign = ticketsAmount >= 0 ? '+' : '';
+
+        const embed = new EmbedBuilder()
+          .setTitle(`💎 CHALDEA TREASURY GRANT: ${targetUser.username}`)
+          .setDescription(
+            `**Saint Quartz & Ticket Balance Updated!**\n\n` +
+            `👤 **Master:** <@${targetUser.id}> (\`${targetUser.username}\`)\n` +
+            `💎 **Saint Quartz Adjustment:** \`${sqSign}${sqAmount.toLocaleString()} SQ\`\n` +
+            (ticketsAmount !== 0 ? `🎫 **Summon Tickets Adjustment:** \`${ticketSign}${ticketsAmount.toLocaleString()} Ticket(s)\`\n` : '') +
+            `\n📊 **New Total Balance:**\n` +
+            `• **Saint Quartz:** 💎 \`${result.newSq.toLocaleString()} SQ\` (Was: ${result.previousSq.toLocaleString()} SQ)\n` +
+            `• **Summon Tickets:** 🎫 \`${result.newTickets.toLocaleString()}\` (Was: ${result.previousTickets.toLocaleString()})`
+          )
+          .setColor(isAddition ? 0x38bdf8 : 0xf59e0b)
+          .setThumbnail(targetUser.displayAvatarURL({ size: 256 }))
+          .setFooter({ text: `Granted by Admin ${interaction.user.username} • Holy Grail War Protocol` })
+          .setTimestamp();
 
         await interaction.reply({ embeds: [embed] });
         return;
