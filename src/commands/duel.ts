@@ -958,13 +958,6 @@ async function startInteractiveDuel(
       combatLogs.push(log);
       if (combatLogs.length > 4) combatLogs.shift(); // Keep last 4 logs clean
 
-      // Check if Defender fainted
-      if (defender.currentHp <= 0) {
-        collector.stop();
-        await finishDuel(i, attacker, defender, p1Master, p2Master);
-        return;
-      }
-
       const p1CardChoice: CardType[] = actionType === 'buster' 
         ? ['Buster', 'Buster', 'Buster'] 
         : actionType === 'arts' 
@@ -973,6 +966,14 @@ async function startInteractiveDuel(
         ? ['Quick', 'Quick', 'Quick']
         : ['Arts', 'Buster', 'Quick'];
       let p2CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
+
+      // Check if Defender fainted
+      if (defender.currentHp <= 0) {
+        collector.stop();
+        const finalAttachment = await createTurnSummaryAttachment(p1, p2, round, log, p1CardChoice, p2CardChoice);
+        await finishDuel(i, attacker, defender, p1Master, p2Master, finalAttachment);
+        return;
+      }
 
       // CASE A: Opponent is AI -> AI immediately strikes back
       if (defender.isAi) {
@@ -1003,7 +1004,8 @@ async function startInteractiveDuel(
 
         if (attacker.currentHp <= 0) {
           collector.stop();
-          await finishDuel(i, defender, attacker, p1Master, p2Master);
+          const finalAttachment = await createTurnSummaryAttachment(p1, p2, round, aiLog, p1CardChoice, p2CardChoice);
+          await finishDuel(i, defender, attacker, p1Master, p2Master, finalAttachment);
           return;
         }
 
@@ -1051,7 +1053,8 @@ async function finishDuel(
   winner: DuelCombatant,
   loser: DuelCombatant,
   p1Master: MasterProfile,
-  p2Master: MasterProfile | null
+  p2Master: MasterProfile | null,
+  finalAttachment: AttachmentBuilder
 ) {
   const warSession = getOrInitWarSession(p1Master);
 
@@ -1086,11 +1089,13 @@ async function finishDuel(
     if (i.deferred || i.replied) {
       await i.editReply({
         embeds: [defeatEmbed],
+        files: [finalAttachment],
         components: []
       });
     } else {
       await i.update({
         embeds: [defeatEmbed],
+        files: [finalAttachment],
         components: []
       });
     }
@@ -1142,11 +1147,13 @@ async function finishDuel(
   if (i.deferred || i.replied) {
     response = await i.editReply({
       embeds: [fateEmbed],
+      files: [finalAttachment],
       components: [fateRow]
     });
   } else {
     response = await i.update({
       embeds: [fateEmbed],
+      files: [finalAttachment],
       components: [fateRow],
       withResponse: true
     }).then((r: any) => r?.resource?.message || i.fetchReply());
