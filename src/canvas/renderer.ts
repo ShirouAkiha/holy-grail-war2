@@ -1107,6 +1107,17 @@ export async function renderGachaSummonBanner(
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
+  // Concurrently load artwork images for CEs
+  const loadedArtworks = await Promise.all(
+    results.map(async (item) => {
+      const ce = item.item as any;
+      if (ce && ce.artworkUrl) {
+        return await loadImage(ce.artworkUrl);
+      }
+      return null;
+    })
+  );
+
   // Deep mystic night sky gradient background
   const bgGrad = ctx.createLinearGradient(0, 0, width, height);
   bgGrad.addColorStop(0, '#0a0d1a');
@@ -1131,10 +1142,10 @@ export async function renderGachaSummonBanner(
   ctx.fillStyle = '#f8fafc';
   ctx.font = 'bold 22px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`✦ ${bannerTitle.toUpperCase()} ✦`, width / 2, 38);
+  ctx.fillText(`[ ${bannerTitle.toUpperCase()} ]`, width / 2, 38);
 
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '13px sans-serif';
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 12px sans-serif';
   ctx.fillText('SACRED CRAFT ESSENCE RELICS FORGED VIA SAINT QUARTZ', width / 2, 58);
 
   // Layout cards in 1 or 2 rows
@@ -1152,6 +1163,7 @@ export async function renderGachaSummonBanner(
   for (let i = 0; i < results.length; i++) {
     const item = results[i];
     const ce = item.item as any;
+    const artImg = loadedArtworks[i];
     const row = isMultiRow ? Math.floor(i / 5) : 0;
     const col = isMultiRow ? (i % 5) : i;
 
@@ -1164,18 +1176,18 @@ export async function renderGachaSummonBanner(
     // Rarity border styling
     let borderGrad = '#64748b';
     let glowColor = 'rgba(100, 116, 139, 0.2)';
-    let rarityLabel = '★★★';
+    let rarityLabel = '3-STAR R';
     let rarityColor = '#94a3b8';
 
     if (item.rarity === 5) {
       borderGrad = '#fbbf24'; // Gold
       glowColor = 'rgba(251, 191, 36, 0.45)';
-      rarityLabel = '★★★★★ SSR';
+      rarityLabel = '5-STAR SSR';
       rarityColor = '#fcd34d';
     } else if (item.rarity === 4) {
-      borderGrad = '#c084fc'; // Purple / Silver
+      borderGrad = '#c084fc'; // Purple
       glowColor = 'rgba(192, 132, 252, 0.35)';
-      rarityLabel = '★★★★ SR';
+      rarityLabel = '4-STAR SR';
       rarityColor = '#e9d5ff';
     }
 
@@ -1184,7 +1196,7 @@ export async function renderGachaSummonBanner(
     ctx.shadowBlur = item.rarity === 5 ? 16 : 8;
 
     // Card BG
-    ctx.fillStyle = '#1e293b';
+    ctx.fillStyle = '#0f172a';
     ctx.beginPath();
     ctx.roundRect(x, y, cardWidth, cardHeight, 10);
     ctx.fill();
@@ -1195,33 +1207,68 @@ export async function renderGachaSummonBanner(
     ctx.stroke();
     ctx.restore();
 
-    // Artwork placeholder / header box
-    ctx.save();
-    ctx.fillStyle = item.rarity === 5 ? '#2d1e40' : item.rarity === 4 ? '#1e203c' : '#1a2234';
+    // Artwork box / image rendering
+    if (artImg) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(x + 6, y + 6, cardWidth - 12, 100, 6);
+      ctx.clip();
+      drawImageCover(ctx, artImg, x + 6, y + 6, cardWidth - 12, 100);
+      
+      // Gradient overlay at bottom of artwork for text readability
+      const artGrad = ctx.createLinearGradient(0, y + 60, 0, y + 106);
+      artGrad.addColorStop(0, 'transparent');
+      artGrad.addColorStop(1, 'rgba(15, 23, 42, 0.9)');
+      ctx.fillStyle = artGrad;
+      ctx.fillRect(x + 6, y + 60, cardWidth - 12, 46);
+      ctx.restore();
+    } else {
+      // Fallback vector shield graphic
+      ctx.save();
+      ctx.fillStyle = item.rarity === 5 ? '#2d1e40' : item.rarity === 4 ? '#1e203c' : '#1a2234';
+      ctx.beginPath();
+      ctx.roundRect(x + 6, y + 6, cardWidth - 12, 100, 6);
+      ctx.fill();
+
+      ctx.strokeStyle = borderGrad;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const cx = x + cardWidth / 2;
+      const cy = y + 46;
+      ctx.moveTo(cx - 16, cy - 20);
+      ctx.lineTo(cx + 16, cy - 20);
+      ctx.lineTo(cx + 16, cy);
+      ctx.quadraticCurveTo(cx + 16, cy + 20, cx, cy + 26);
+      ctx.quadraticCurveTo(cx - 16, cy + 20, cx - 16, cy);
+      ctx.closePath();
+      ctx.stroke();
+
+      drawVectorStar(ctx, cx, cy - 2, 5, 8, 4, borderGrad);
+      ctx.restore();
+    }
+
+    // Draw Vector Stars over bottom of artwork
+    const starGap = 12;
+    const starSize = 5;
+    const totalStarsWidth = (item.rarity - 1) * starGap;
+    const starStartX = (x + cardWidth / 2) - (totalStarsWidth / 2);
+    for (let s = 0; s < item.rarity; s++) {
+      drawVectorStar(ctx, starStartX + s * starGap, y + 96, 5, starSize, starSize / 2, rarityColor);
+    }
+
+    // Nameplate background
+    ctx.fillStyle = '#1e293b';
     ctx.beginPath();
-    ctx.roundRect(x + 6, y + 6, cardWidth - 12, 100, 6);
+    ctx.roundRect(x + 6, y + 110, cardWidth - 12, 28, 4);
     ctx.fill();
-    ctx.restore();
-
-    // Card Symbol icon
-    ctx.fillStyle = borderGrad;
-    ctx.font = '28px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('🛡️', x + cardWidth / 2, y + 62);
-
-    // Rarity badge text
-    ctx.fillStyle = rarityColor;
-    ctx.font = 'bold 11px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(rarityLabel, x + cardWidth / 2, y + 96);
 
     // Name
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 13px sans-serif';
+    ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
     const nameStr = ce.name || 'Craft Essence';
     const truncatedName = nameStr.length > 17 ? nameStr.substring(0, 15) + '..' : nameStr;
-    ctx.fillText(truncatedName, x + cardWidth / 2, y + 130);
+    ctx.fillText(truncatedName, x + cardWidth / 2, y + 128);
 
     // Stats
     ctx.fillStyle = '#38bdf8';
@@ -1236,6 +1283,11 @@ export async function renderGachaSummonBanner(
     const effStr = ce.effectText || '';
     const effTrunc = effStr.length > 28 ? effStr.substring(0, 26) + '...' : effStr;
     ctx.fillText(effTrunc, x + cardWidth / 2, y + 172);
+
+    // Rarity Badge at bottom
+    ctx.fillStyle = rarityColor;
+    ctx.font = 'bold 10px sans-serif';
+    ctx.fillText(rarityLabel, x + cardWidth / 2, y + 194);
 
     // NEW badge if first time pulled
     if (item.isNew) {
