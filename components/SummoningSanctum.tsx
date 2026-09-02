@@ -30,7 +30,10 @@ import {
   ExternalLink,
   Download,
   Upload,
-  Database
+  Database,
+  Zap,
+  Filter,
+  ChevronDown
 } from 'lucide-react';
 
 interface SummoningSanctumProps {
@@ -52,11 +55,14 @@ export default function SummoningSanctum({
   const [statusNotice, setStatusNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [registrySearch, setRegistrySearch] = useState('');
   const [registryCategory, setRegistryCategory] = useState<'all' | 'canon' | 'custom'>('all');
+  const [selectedClassFilter, setSelectedClassFilter] = useState<'all' | ServantClass>('all');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [inspectedServant, setInspectedServant] = useState<ServantTemplate | null>(null);
 
   // Admin Custom / Canon Servant Form State
   const [forgeMode, setForgeMode] = useState<'create' | 'edit'>('create');
   const [selectedEditServantId, setSelectedEditServantId] = useState<string>('');
+  const [editServantSearch, setEditServantSearch] = useState<string>('');
   const [formData, setFormData] = useState({
     name: '',
     servantClass: 'Saber' as ServantClass,
@@ -718,21 +724,61 @@ export default function SummoningSanctum({
 
             {/* Select Servant Dropdown when in Edit Mode */}
             {forgeMode === 'edit' && (
-              <div className="p-3 bg-[#111] rounded border border-[#d4af37]/40 space-y-2 text-xs font-mono">
-                <label className="text-[#d4af37] font-bold block">
-                  Select Servant to Edit (Canon or Custom):
-                </label>
-                <select
-                  value={selectedEditServantId}
-                  onChange={e => handleSelectServantToEdit(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#181818] border border-[#333] rounded text-white focus:border-[#d4af37] outline-none"
-                >
+              <div className="p-3 bg-[#111] rounded border border-[#d4af37]/40 space-y-2.5 text-xs font-mono">
+                <div className="flex items-center justify-between">
+                  <label className="text-[#d4af37] font-bold block flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5" /> Select Servant to Edit:
+                  </label>
+                  <span className="text-[10px] text-white/50">{allThrone.length} Spirits available</span>
+                </div>
+
+                {/* Quick Search & Select Dropdown */}
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-3.5 h-3.5 text-white/40 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={editServantSearch}
+                      onChange={e => setEditServantSearch(e.target.value)}
+                      placeholder="Filter by name..."
+                      className="w-full pl-8 pr-2 py-1.5 bg-[#181818] border border-[#333] rounded text-white text-xs outline-none focus:border-[#d4af37]"
+                    />
+                  </div>
+                  <select
+                    value={selectedEditServantId}
+                    onChange={e => handleSelectServantToEdit(e.target.value)}
+                    className="flex-1 px-3 py-1.5 bg-[#181818] border border-[#333] rounded text-white focus:border-[#d4af37] outline-none"
+                  >
+                    <option value="">-- Choose Servant to Load --</option>
+                    {allThrone
+                      .filter(s => !editServantSearch.trim() || s.name.toLowerCase().includes(editServantSearch.toLowerCase()) || s.servantClass.toLowerCase().includes(editServantSearch.toLowerCase()))
+                      .map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.isCustomOrMeme ? '🛠️ [Custom]' : '🏛️ [Canon]'} {s.name} ({s.servantClass})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {/* Quick-Pick Servant Chips for Edit */}
+                <div className="flex items-center gap-1 overflow-x-auto pt-1 pb-1 scrollbar-thin">
+                  <span className="text-[10px] text-white/40 flex-shrink-0">Quick Load:</span>
                   {allThrone.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.isCustomOrMeme ? '🛠️ [Custom]' : '🏛️ [Canon]'} {s.name} ({s.servantClass}) — ID: {s.id}
-                    </option>
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => handleSelectServantToEdit(s.id)}
+                      className={`px-2 py-0.5 rounded text-[10px] whitespace-nowrap transition ${
+                        selectedEditServantId === s.id
+                          ? 'bg-[#d4af37] text-black font-bold'
+                          : 'bg-[#181818] hover:bg-[#252525] text-white/70 hover:text-white border border-[#2a2a2a]'
+                      }`}
+                    >
+                      {s.name}
+                    </button>
                   ))}
-                </select>
+                </div>
+
                 <p className="text-[11px] text-white/40 italic">
                   * Editing updates picture artwork, stats, quotes, and Noble Phantasms live across all Master contracts!
                 </p>
@@ -999,84 +1045,258 @@ export default function SummoningSanctum({
       {activeSubTab === 'throne_registry' && (
         <div className="space-y-4">
           {/* Search & Filter Header Bar */}
-          <div className="p-4 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-            <div className="flex-1 relative">
-              <Search className="w-4 h-4 text-white/40 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={registrySearch}
-                onChange={e => setRegistrySearch(e.target.value)}
-                placeholder="Search Heroic Spirits by name, class, NP, or lore..."
-                className="w-full pl-9 pr-8 py-2 bg-[#111] border border-[#222] rounded-lg text-xs font-mono text-white placeholder-white/30 focus:outline-none focus:border-[#d4af37]"
-              />
-              {registrySearch && (
-                <button
-                  onClick={() => setRegistrySearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+          <div className="p-4 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] flex flex-col gap-3">
+            <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+              {/* Search Bar with Live Suggestions Dropdown */}
+              <div className="flex-1 relative">
+                <Search className="w-4 h-4 text-white/40 absolute left-3 top-1/2 -translate-y-1/2 z-10" />
+                <input
+                  type="text"
+                  value={registrySearch}
+                  onFocus={() => setIsSearchFocused(true)}
+                  onBlur={() => setTimeout(() => setIsSearchFocused(false), 250)}
+                  onChange={e => setRegistrySearch(e.target.value)}
+                  placeholder="Search Heroic Spirits by name, class, NP, or lore..."
+                  className="w-full pl-9 pr-8 py-2 bg-[#111] border border-[#222] focus:border-[#d4af37] rounded-lg text-xs font-mono text-white placeholder-white/30 focus:outline-none transition-colors"
+                />
+                {registrySearch && (
+                  <button
+                    onClick={() => setRegistrySearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white z-10"
+                    title="Clear Search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+
+                {/* Live Suggestions Autocomplete Dropdown */}
+                {isSearchFocused && registrySearch.trim().length > 0 && (
+                  <div className="absolute left-0 right-0 top-full mt-1.5 bg-[#0f0f0f] border border-[#d4af37]/40 rounded-xl shadow-2xl z-50 max-h-72 overflow-y-auto p-1 divide-y divide-white/5">
+                    {(() => {
+                      const q = registrySearch.toLowerCase().trim();
+                      const suggestions = allThrone.filter(s =>
+                        s.name.toLowerCase().includes(q) ||
+                        s.servantClass.toLowerCase().includes(q) ||
+                        s.title.toLowerCase().includes(q) ||
+                        s.noblePhantasm.name.toLowerCase().includes(q) ||
+                        s.id.toLowerCase().includes(q)
+                      ).slice(0, 6);
+
+                      if (suggestions.length === 0) {
+                        return (
+                          <div className="p-3 text-center text-xs font-mono text-white/40">
+                            No matching spirits found for &quot;{registrySearch}&quot;
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <>
+                          <div className="px-2 py-1 text-[10px] font-mono text-amber-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                            <Zap className="w-3 h-3" /> Live Servant Suggestions
+                          </div>
+                          {suggestions.map(s => (
+                            <button
+                              key={s.id}
+                              onMouseDown={e => {
+                                e.preventDefault();
+                                setRegistrySearch(s.name);
+                                setInspectedServant(s);
+                                setIsSearchFocused(false);
+                              }}
+                              className="w-full p-2 flex items-center justify-between gap-2.5 hover:bg-white/10 rounded-lg text-left transition group"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-8 h-8 rounded-sm overflow-hidden bg-black/40 border border-white/10 flex-shrink-0">
+                                  <img src={s.avatarUrl || s.cardArtUrl} alt={s.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-xs font-mono font-bold text-white group-hover:text-amber-400 truncate flex items-center gap-1.5">
+                                    <span>{s.name}</span>
+                                    <span className="text-[10px] px-1.5 py-0.2 bg-white/10 text-white/70 rounded">
+                                      {s.servantClass}
+                                    </span>
+                                  </div>
+                                  <div className="text-[10px] font-mono text-white/50 truncate">
+                                    NP: {s.noblePhantasm.name}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-[10px] font-mono text-amber-300 font-medium whitespace-nowrap px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 rounded">
+                                View ↗
+                              </div>
+                            </button>
+                          ))}
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+
+              {/* Quick Jump Dropdown Select */}
+              <div className="relative min-w-[200px] md:min-w-[220px]">
+                <select
+                  value=""
+                  onChange={e => {
+                    const servantId = e.target.value;
+                    if (!servantId) return;
+                    const match = allThrone.find(s => s.id === servantId);
+                    if (match) {
+                      setInspectedServant(match);
+                      setRegistrySearch(match.name);
+                    }
+                  }}
+                  className="w-full px-3 py-2 bg-[#111] border border-[#222] hover:border-[#d4af37]/60 text-white font-mono text-xs rounded-lg outline-none cursor-pointer focus:border-[#d4af37] transition"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <option value="">⚡ Quick Select Servant...</option>
+                  <optgroup label="🏛️ Canon Heroic Spirits">
+                    {SERVANT_DATABASE.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.servantClass} ★{s.rarity})
+                      </option>
+                    ))}
+                  </optgroup>
+                  {customServants.length > 0 && (
+                    <optgroup label="🛠️ Custom Heroic Spirits">
+                      {customServants.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.servantClass} ★{s.rarity})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+              </div>
+
+              {/* Category Pills and Export/Import Actions */}
+              <div className="flex flex-wrap items-center gap-1.5 self-start md:self-auto">
+                <button
+                  onClick={() => setRegistryCategory('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${
+                    registryCategory === 'all'
+                      ? 'bg-[#d4af37] text-black font-semibold'
+                      : 'bg-[#111] text-white/60 hover:text-white border border-[#222]'
+                  }`}
+                >
+                  All ({allThrone.length})
                 </button>
-              )}
+                <button
+                  onClick={() => setRegistryCategory('canon')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${
+                    registryCategory === 'canon'
+                      ? 'bg-[#3b82f6] text-white font-semibold'
+                      : 'bg-[#111] text-white/60 hover:text-white border border-[#222]'
+                  }`}
+                >
+                  Canon ({SERVANT_DATABASE.length})
+                </button>
+                <button
+                  onClick={() => setRegistryCategory('custom')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${
+                    registryCategory === 'custom'
+                      ? 'bg-[#9333ea] text-white font-semibold'
+                      : 'bg-[#111] text-white/60 hover:text-white border border-[#222]'
+                  }`}
+                >
+                  Custom ({customServants.length})
+                </button>
+
+                <div className="h-4 w-[1px] bg-white/20 mx-1 hidden sm:block" />
+
+                {/* JSON Backup & Restore for custom servants */}
+                <button
+                  onClick={handleExportJSON}
+                  title="Backup custom servants to JSON file"
+                  className="px-2.5 py-1.5 rounded-lg text-xs font-mono bg-[#181818] hover:bg-[#252525] text-amber-300 border border-amber-500/30 flex items-center gap-1 transition"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Export</span>
+                </button>
+
+                <label
+                  title="Import custom servants from JSON backup file"
+                  className="px-2.5 py-1.5 rounded-lg text-xs font-mono bg-[#181818] hover:bg-[#252525] text-emerald-300 border border-emerald-500/30 flex items-center gap-1 cursor-pointer transition"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Import</span>
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={handleImportJSON}
+                    className="hidden"
+                  />
+                </label>
+              </div>
             </div>
 
-            {/* Filter Pills and Export/Import Actions */}
-            <div className="flex flex-wrap items-center gap-1.5 self-start md:self-auto">
+            {/* Quick Servant Suggestions Pills Row */}
+            <div className="pt-2 border-t border-[#1a1a1a] flex items-center gap-1.5 overflow-x-auto text-xs font-mono pb-1 scrollbar-thin">
+              <span className="text-[11px] text-white/40 flex items-center gap-1 flex-shrink-0">
+                <Zap className="w-3 h-3 text-amber-400" /> Suggestions:
+              </span>
               <button
-                onClick={() => setRegistryCategory('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${
-                  registryCategory === 'all'
-                    ? 'bg-[#d4af37] text-black font-semibold'
-                    : 'bg-[#111] text-white/60 hover:text-white border border-[#222]'
+                onClick={() => {
+                  setRegistrySearch('');
+                  setSelectedClassFilter('all');
+                  setRegistryCategory('all');
+                }}
+                className={`px-2.5 py-1 rounded text-[11px] transition flex-shrink-0 ${
+                  !registrySearch && selectedClassFilter === 'all' && registryCategory === 'all'
+                    ? 'bg-amber-400/20 text-amber-300 border border-amber-400/50 font-semibold'
+                    : 'bg-[#151515] text-white/70 hover:text-white border border-[#262626]'
                 }`}
               >
-                All ({allThrone.length})
+                ✨ Show All
               </button>
-              <button
-                onClick={() => setRegistryCategory('canon')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${
-                  registryCategory === 'canon'
-                    ? 'bg-[#3b82f6] text-white font-semibold'
-                    : 'bg-[#111] text-white/60 hover:text-white border border-[#222]'
-                }`}
-              >
-                Canon ({SERVANT_DATABASE.length})
-              </button>
-              <button
-                onClick={() => setRegistryCategory('custom')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-mono transition ${
-                  registryCategory === 'custom'
-                    ? 'bg-[#9333ea] text-white font-semibold'
-                    : 'bg-[#111] text-white/60 hover:text-white border border-[#222]'
-                }`}
-              >
-                Custom ({customServants.length})
-              </button>
+              {allThrone.map(s => {
+                const isSelected = registrySearch.toLowerCase() === s.name.toLowerCase();
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setRegistrySearch(s.name);
+                      setSelectedClassFilter('all');
+                    }}
+                    className={`px-2 py-0.5 rounded text-[11px] transition flex-shrink-0 flex items-center gap-1 ${
+                      isSelected
+                        ? 'bg-[#d4af37] text-black font-bold border border-[#d4af37]'
+                        : 'bg-[#141414] text-white/70 hover:text-white hover:bg-[#222] border border-[#252525]'
+                    }`}
+                  >
+                    <span>{s.name}</span>
+                    <span className="text-[9px] opacity-70">({s.servantClass})</span>
+                  </button>
+                );
+              })}
+            </div>
 
-              <div className="h-4 w-[1px] bg-white/20 mx-1 hidden sm:block" />
-
-              {/* JSON Backup & Restore for custom servants */}
-              <button
-                onClick={handleExportJSON}
-                title="Backup custom servants to JSON file"
-                className="px-2.5 py-1.5 rounded-lg text-xs font-mono bg-[#181818] hover:bg-[#252525] text-amber-300 border border-amber-500/30 flex items-center gap-1 transition"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Export ({customServants.length})</span>
-              </button>
-
-              <label
-                title="Import custom servants from JSON backup file"
-                className="px-2.5 py-1.5 rounded-lg text-xs font-mono bg-[#181818] hover:bg-[#252525] text-emerald-300 border border-emerald-500/30 flex items-center gap-1 cursor-pointer transition"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span>Import JSON</span>
-                <input
-                  type="file"
-                  accept=".json,application/json"
-                  onChange={handleImportJSON}
-                  className="hidden"
-                />
-              </label>
+            {/* Class Filter Pills Row */}
+            <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-mono pt-1 border-t border-[#161616]">
+              <span className="text-[11px] text-white/40 flex items-center gap-1 flex-shrink-0">
+                <Filter className="w-3 h-3 text-blue-400" /> Class:
+              </span>
+              {(['all', 'Saber', 'Archer', 'Lancer', 'Ruler', 'Berserker', 'Assassin', 'Caster', 'Rider'] as const).map(cls => {
+                const count = cls === 'all' 
+                  ? allThrone.length 
+                  : allThrone.filter(s => s.servantClass === cls).length;
+                if (count === 0 && cls !== 'all') return null;
+                const isSelected = selectedClassFilter === cls;
+                return (
+                  <button
+                    key={cls}
+                    onClick={() => setSelectedClassFilter(cls)}
+                    className={`px-2.5 py-0.5 rounded text-[11px] transition flex-shrink-0 flex items-center gap-1 ${
+                      isSelected
+                        ? 'bg-blue-600 text-white font-semibold'
+                        : 'bg-[#141414] text-white/60 hover:text-white border border-[#222]'
+                    }`}
+                  >
+                    <span>{cls === 'all' ? 'All Classes' : cls}</span>
+                    <span className="text-[9px] opacity-70">({count})</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -1085,6 +1305,7 @@ export default function SummoningSanctum({
             const filtered = allThrone.filter(s => {
               if (registryCategory === 'canon' && s.isCustomOrMeme) return false;
               if (registryCategory === 'custom' && !s.isCustomOrMeme) return false;
+              if (selectedClassFilter !== 'all' && s.servantClass !== selectedClassFilter) return false;
               if (!registrySearch.trim()) return true;
               const q = registrySearch.toLowerCase().trim();
               return (
@@ -1099,15 +1320,16 @@ export default function SummoningSanctum({
             if (filtered.length === 0) {
               return (
                 <div className="p-8 text-center bg-[#0a0a0a] rounded-xl border border-[#1a1a1a]">
-                  <p className="text-sm font-mono text-white/60">No Heroic Spirits found matching &quot;{registrySearch}&quot;</p>
+                  <p className="text-sm font-mono text-white/60">No Heroic Spirits found matching &quot;{registrySearch}&quot; {selectedClassFilter !== 'all' ? `in class ${selectedClassFilter}` : ''}</p>
                   <button
                     onClick={() => {
                       setRegistrySearch('');
+                      setSelectedClassFilter('all');
                       setRegistryCategory('all');
                     }}
                     className="mt-3 px-3 py-1 text-xs font-mono bg-[#161616] text-[#d4af37] border border-[#d4af37]/30 rounded-lg hover:bg-[#222]"
                   >
-                    Reset Search Filters
+                    Reset All Filters
                   </button>
                 </div>
               );

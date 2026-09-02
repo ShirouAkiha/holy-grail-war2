@@ -58,7 +58,11 @@ import {
   Eye,
   EyeOff,
   UserX,
-  Lock
+  Lock,
+  Search,
+  X,
+  ChevronRight,
+  Filter
 } from 'lucide-react';
 
 const RIN_SUMMONING_GIF = 'https://i.imgur.com/hyNsgc1.jpeg';
@@ -307,6 +311,10 @@ export default function DiscordEmulator({
   onUpdateCustomServants
 }: DiscordEmulatorProps) {
   const [inputCommand, setInputCommand] = useState('');
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [showServantPickerModal, setShowServantPickerModal] = useState(false);
+  const [servantPickerSearch, setServantPickerSearch] = useState('');
+  const [servantPickerClass, setServantPickerClass] = useState<'all' | ServantClass>('all');
   const [activeChannel, setActiveChannel] = useState<'public' | 'dm'>('public');
   const [messages, setMessages] = useState<DiscordMessage[]>([
     {
@@ -865,6 +873,32 @@ export default function DiscordEmulator({
     // ----------------------------------------------------
     // COMMAND 3.5: /servants, /servantlist, /throne (All Servants & Search)
     // ----------------------------------------------------
+    // Direct servant lookup if user enters "/servant <name>" or "/servants <name>"
+    if ((trimmed.startsWith('/servant ') || trimmed.startsWith('/servants ')) &&
+        !trimmed.startsWith('/servant status') &&
+        !trimmed.startsWith('/servant list') &&
+        !trimmed.startsWith('/servants list') &&
+        !trimmed.startsWith('/servants canon') &&
+        !trimmed.startsWith('/servants custom') &&
+        !trimmed.startsWith('/servant search') &&
+        !trimmed.startsWith('/servants search') &&
+        !trimmed.startsWith('/servant view') &&
+        !trimmed.startsWith('/servants view')) {
+      const q = trimmed.replace('/servants', '').replace('/servant', '').trim().toLowerCase();
+      if (q) {
+        const direct = allThrone.find(
+          s => s.name.toLowerCase() === q || 
+               s.id.toLowerCase() === q ||
+               s.name.toLowerCase().includes(q) ||
+               s.id.toLowerCase().includes(q)
+        );
+        if (direct) {
+          postServantFullProfile(direct);
+          return;
+        }
+      }
+    }
+
     if (trimmed.startsWith('/servants') || trimmed.startsWith('/servant list') || trimmed.startsWith('/servant search') || trimmed.startsWith('/throne') || trimmed.startsWith('/servantlist')) {
       const isSearch = trimmed.includes('search ') || trimmed.startsWith('/servant search');
       const isView = trimmed.includes('view ');
@@ -2857,25 +2891,303 @@ export default function DiscordEmulator({
         <div ref={chatBottomRef} />
       </div>
 
+      {/* Servant Picker Modal Dialog */}
+      {showServantPickerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl bg-[#0d0d0d] border border-[#d4af37]/40 rounded-xl shadow-2xl p-5 space-y-4 max-h-[85vh] flex flex-col font-mono">
+            <div className="flex items-center justify-between border-b border-[#222] pb-3">
+              <div className="flex items-center gap-2">
+                <Zap className="w-5 h-5 text-[#d4af37]" />
+                <h3 className="text-sm font-bold text-white font-serif tracking-wider">
+                  Throne of Heroes — Quick Servant Codex
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowServantPickerModal(false)}
+                className="p-1 rounded text-white/50 hover:text-white hover:bg-white/10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Search & Filter */}
+            <div className="space-y-2">
+              <div className="relative">
+                <Search className="w-4 h-4 text-white/40 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={servantPickerSearch}
+                  onChange={e => setServantPickerSearch(e.target.value)}
+                  placeholder="Filter spirits by name, class, NP, or lore..."
+                  className="w-full pl-9 pr-3 py-2 bg-[#141414] border border-[#262626] focus:border-[#d4af37] rounded-lg text-xs text-white outline-none"
+                  autoFocus
+                />
+              </div>
+
+              {/* Class Filter Chips */}
+              <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[11px]">
+                {(['all', 'Saber', 'Archer', 'Lancer', 'Ruler', 'Berserker', 'Assassin', 'Caster', 'Rider'] as const).map(cls => (
+                  <button
+                    key={cls}
+                    onClick={() => setServantPickerClass(cls)}
+                    className={`px-2.5 py-0.5 rounded whitespace-nowrap transition ${
+                      servantPickerClass === cls
+                        ? 'bg-blue-600 text-white font-bold'
+                        : 'bg-[#181818] hover:bg-[#222] text-white/60 hover:text-white border border-[#2a2a2a]'
+                    }`}
+                  >
+                    {cls === 'all' ? 'All Classes' : cls}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Servant List Grid */}
+            <div className="flex-1 overflow-y-auto pr-1 space-y-2 max-h-96">
+              {allThrone
+                .filter(s => {
+                  if (servantPickerClass !== 'all' && s.servantClass !== servantPickerClass) return false;
+                  if (!servantPickerSearch.trim()) return true;
+                  const q = servantPickerSearch.toLowerCase().trim();
+                  return (
+                    s.name.toLowerCase().includes(q) ||
+                    s.servantClass.toLowerCase().includes(q) ||
+                    s.title.toLowerCase().includes(q) ||
+                    s.noblePhantasm.name.toLowerCase().includes(q)
+                  );
+                })
+                .map(s => (
+                  <div
+                    key={s.id}
+                    className="p-2.5 bg-[#121212] hover:bg-[#181818] border border-[#222] hover:border-[#d4af37]/40 rounded-lg flex items-center justify-between gap-3 transition"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded overflow-hidden bg-black border border-white/10 flex-shrink-0">
+                        <img
+                          src={s.avatarUrl || s.cardArtUrl}
+                          alt={s.name}
+                          className="w-full h-full object-cover object-top"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-white flex items-center gap-2 truncate">
+                          <span>{s.name}</span>
+                          <span className="text-[10px] px-1.5 py-0.2 bg-white/10 text-[#d4af37] rounded">
+                            {s.servantClass} ★{s.rarity}
+                          </span>
+                          {s.isCustomOrMeme && (
+                            <span className="text-[9px] px-1 bg-purple-900/60 text-purple-300 border border-purple-500/30 rounded">
+                              Custom
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-white/50 truncate">
+                          NP: {s.noblePhantasm.name} ({s.noblePhantasm.cardType})
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        onClick={() => {
+                          setShowServantPickerModal(false);
+                          handleCommand(`/servants view ${s.name}`);
+                        }}
+                        className="px-2.5 py-1 text-[11px] bg-[#d4af37] hover:bg-[#c49f27] text-black font-bold rounded transition"
+                      >
+                        View Profile
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowServantPickerModal(false);
+                          handleCommand(`/duel ${s.name}`);
+                        }}
+                        className="px-2.5 py-1 text-[11px] bg-red-900/40 hover:bg-red-900/70 text-red-300 border border-red-500/40 rounded transition"
+                      >
+                        Duel ⚔️
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowServantPickerModal(false);
+                          setInputCommand(`/servant ${s.name}`);
+                        }}
+                        className="px-2 py-1 text-[11px] bg-white/10 hover:bg-white/20 text-white/80 rounded transition"
+                        title="Insert into input box"
+                      >
+                        Insert
+                      </button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+
+            <div className="pt-2 border-t border-[#222] flex items-center justify-between text-[11px] text-white/40">
+              <span>{allThrone.length} Total Heroic Spirits registered</span>
+              <button
+                onClick={() => {
+                  setShowServantPickerModal(false);
+                  handleCommand('/servants list');
+                }}
+                className="text-[#d4af37] hover:underline"
+              >
+                Output Full List to Chat (/servants list) ↗
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Discord Input Bar */}
-      <div className="p-3 bg-[#111] border-t border-[#1a1a1a]">
+      <div className="p-3 bg-[#111] border-t border-[#1a1a1a] relative">
+        {/* Live Autocomplete Suggestions Overlay */}
+        {isInputFocused && inputCommand.trim().length > 0 && (
+          <div className="absolute left-3 right-3 bottom-full mb-2 bg-[#0d0d0d] border border-[#d4af37]/40 rounded-xl shadow-2xl z-40 max-h-80 overflow-y-auto p-2 font-mono divide-y divide-white/5 animate-in fade-in slide-in-from-bottom-2 duration-150">
+            {/* Matching Slash Commands */}
+            {(() => {
+              const q = inputCommand.toLowerCase().trim();
+              const slashCommands = [
+                { cmd: '/servants list', desc: 'Browse all registered spirits in the Throne' },
+                { cmd: '/servants search <name>', desc: 'Search spirits by name, class, NP, or lore' },
+                { cmd: '/servant <name>', desc: 'Inspect servant profile card & voice dialogue' },
+                { cmd: '/summon ritual', desc: 'Perform Holy Grail War summoning ritual' },
+                { cmd: '/duel', desc: 'Enter combat encounter with a rival Master/Servant' },
+                { cmd: '/grailwar status', desc: 'Check Holy Grail War battlefield & intelligence' },
+                { cmd: '/grailwar attack', desc: 'Ambush suspected rival Master' },
+                { cmd: '/grailwar leak', desc: 'Broadcast intel to the war board' },
+                { cmd: '/addservant create', desc: 'Register a new custom Heroic Spirit' },
+                { cmd: '/addservant edit', desc: 'Modify stats, dialogue, or artwork of any servant' },
+                { cmd: '/defenses', desc: 'Check active boundary warding fields' },
+                { cmd: '/profile', desc: 'View Master status and command seals' }
+              ].filter(c => c.cmd.toLowerCase().includes(q) || q.startsWith(c.cmd.split(' ')[0]));
+
+              const spiritMatches = allThrone.filter(s => {
+                const searchClean = q.replace('/servants', '').replace('/servant', '').replace('/duel', '').replace('/', '').trim();
+                if (!searchClean) return false;
+                return (
+                  s.name.toLowerCase().includes(searchClean) ||
+                  s.servantClass.toLowerCase().includes(searchClean) ||
+                  s.noblePhantasm.name.toLowerCase().includes(searchClean)
+                );
+              }).slice(0, 5);
+
+              return (
+                <div className="space-y-2">
+                  {spiritMatches.length > 0 && (
+                    <div className="space-y-1">
+                      <div className="px-2 py-0.5 text-[10px] text-[#d4af37] font-bold uppercase tracking-wider flex items-center gap-1">
+                        <Zap className="w-3 h-3" /> Matching Heroic Spirits:
+                      </div>
+                      {spiritMatches.map(s => (
+                        <div
+                          key={s.id}
+                          className="p-1.5 hover:bg-white/10 rounded-lg flex items-center justify-between gap-2 text-xs"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-7 h-7 rounded overflow-hidden bg-black/40 border border-white/10 flex-shrink-0">
+                              <img src={s.avatarUrl || s.cardArtUrl} alt={s.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />
+                            </div>
+                            <div className="min-w-0">
+                              <span className="font-bold text-white truncate">{s.name}</span>
+                              <span className="ml-1.5 text-[10px] text-white/50">({s.servantClass} ★{s.rarity})</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onMouseDown={e => {
+                                e.preventDefault();
+                                handleCommand(`/servants view ${s.name}`);
+                                setInputCommand('');
+                                setIsInputFocused(false);
+                              }}
+                              className="px-2 py-0.5 bg-[#d4af37] text-black font-bold text-[10px] rounded hover:bg-[#c49f27]"
+                            >
+                              View Card
+                            </button>
+                            <button
+                              onMouseDown={e => {
+                                e.preventDefault();
+                                handleCommand(`/duel ${s.name}`);
+                                setInputCommand('');
+                                setIsInputFocused(false);
+                              }}
+                              className="px-2 py-0.5 bg-red-900/60 text-red-200 text-[10px] rounded hover:bg-red-800"
+                            >
+                              Duel
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {slashCommands.length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      <div className="px-2 py-0.5 text-[10px] text-white/40 font-bold uppercase tracking-wider">
+                        Suggested Commands:
+                      </div>
+                      {slashCommands.slice(0, 4).map(c => (
+                        <button
+                          key={c.cmd}
+                          onMouseDown={e => {
+                            e.preventDefault();
+                            if (c.cmd.includes('<')) {
+                              setInputCommand(c.cmd.split('<')[0]);
+                            } else {
+                              handleCommand(c.cmd);
+                              setInputCommand('');
+                            }
+                            setIsInputFocused(false);
+                          }}
+                          className="w-full p-1.5 hover:bg-white/10 rounded-lg flex items-center justify-between text-left transition"
+                        >
+                          <span className="text-xs text-[#d4af37] font-bold">{c.cmd}</span>
+                          <span className="text-[10px] text-white/50">{c.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* Input Bar Row */}
         <div className="flex items-center gap-2 bg-[#0a0a0a] rounded-sm px-3 py-2 border border-[#1a1a1a] focus-within:border-[#d4af37]">
           <div className="text-white/40 font-mono text-xs">/</div>
           <input
             type="text"
             value={inputCommand}
+            onFocus={() => setIsInputFocused(true)}
+            onBlur={() => setTimeout(() => setIsInputFocused(false), 200)}
             onChange={e => setInputCommand(e.target.value)}
             onKeyDown={e => {
               if (e.key === 'Enter' && inputCommand.trim()) {
                 handleCommand(inputCommand);
+                setInputCommand('');
               }
             }}
-            placeholder="Type a command: /summon ritual, /addservant create name='Musashi' class='Saber', /servant, /duel..."
+            placeholder="Type /servant <name>, /duel, /summon ritual, /servants search..."
             className="flex-1 bg-transparent text-white font-mono text-xs outline-none placeholder-white/30"
           />
+
+          {/* Quick Servant Picker Button */}
+          <button
+            onClick={() => setShowServantPickerModal(true)}
+            title="Open Throne of Heroes Servant Selector"
+            className="px-2 py-1 rounded bg-[#181818] hover:bg-[#252525] text-[#d4af37] border border-[#d4af37]/40 text-xs font-mono flex items-center gap-1 transition"
+          >
+            <Zap className="w-3 h-3 text-amber-400" />
+            <span className="hidden sm:inline">Pick Servant</span>
+          </button>
+
           <button
             onClick={() => {
-              if (inputCommand.trim()) handleCommand(inputCommand);
+              if (inputCommand.trim()) {
+                handleCommand(inputCommand);
+                setInputCommand('');
+              }
             }}
             disabled={!inputCommand.trim()}
             className="p-1.5 rounded-sm bg-[#d4af37] hover:bg-[#c49f27] text-black disabled:opacity-30 transition-colors"
@@ -2884,56 +3196,46 @@ export default function DiscordEmulator({
           </button>
         </div>
 
-        {/* Command Quick Suggestions */}
-        <div className="flex items-center gap-2 mt-2 px-1 text-[10px] font-mono text-white/40 overflow-x-auto">
-          <span>Quick:</span>
+        {/* Command & Servant Quick Suggestions */}
+        <div className="flex items-center gap-1.5 mt-2 px-1 text-[10px] font-mono text-white/50 overflow-x-auto pb-1 scrollbar-thin">
+          <span className="text-[#d4af37] font-semibold flex items-center gap-1 flex-shrink-0">
+            <Zap className="w-3 h-3" /> Quick:
+          </span>
           <button
             onClick={() => handleCommand('/servants list')}
-            className="hover:text-[#d4af37] hover:underline whitespace-nowrap text-[#d4af37]"
+            className="px-2 py-0.5 rounded bg-[#161616] hover:bg-[#252525] text-[#d4af37] border border-[#d4af37]/30 whitespace-nowrap transition"
           >
-            /servants list
+            📜 /servants list
           </button>
-          <span>•</span>
-          <button
-            onClick={() => handleCommand('/servants search Artoria')}
-            className="hover:text-[#d4af37] hover:underline whitespace-nowrap"
-          >
-            /servants search Artoria
-          </button>
-          <span>•</span>
+
+          {/* Direct Servant Quick Buttons */}
+          {allThrone.map(s => (
+            <button
+              key={s.id}
+              onClick={() => handleCommand(`/servants view ${s.name}`)}
+              className="px-2 py-0.5 rounded bg-[#141414] hover:bg-[#222] hover:text-white text-white/70 border border-[#262626] whitespace-nowrap transition"
+            >
+              {s.name}
+            </button>
+          ))}
+
           <button
             onClick={() => handleCommand('/summon ritual')}
-            className="hover:text-[#d4af37] hover:underline whitespace-nowrap"
+            className="px-2 py-0.5 rounded bg-[#141414] hover:bg-[#222] text-amber-300 border border-amber-500/30 whitespace-nowrap transition"
           >
-            /summon ritual
+            ✨ /summon ritual
           </button>
-          <span>•</span>
-          <button
-            onClick={() => handleCommand('/servant')}
-            className="hover:text-[#d4af37] hover:underline whitespace-nowrap"
-          >
-            /servant
-          </button>
-          <span>•</span>
           <button
             onClick={() => handleCommand('/duel')}
-            className="hover:text-[#d4af37] hover:underline whitespace-nowrap"
+            className="px-2 py-0.5 rounded bg-[#141414] hover:bg-[#222] text-red-300 border border-red-500/30 whitespace-nowrap transition"
           >
-            /duel
+            ⚔️ /duel
           </button>
-          <span>•</span>
           <button
             onClick={() => handleCommand('/grailwar')}
-            className="hover:text-[#d4af37] hover:underline whitespace-nowrap"
+            className="px-2 py-0.5 rounded bg-[#141414] hover:bg-[#222] text-blue-300 border border-blue-500/30 whitespace-nowrap transition"
           >
-            /grailwar
-          </button>
-          <span>•</span>
-          <button
-            onClick={() => handleCommand('/defenses')}
-            className="hover:text-[#3b82f6] hover:underline whitespace-nowrap text-[#3b82f6]"
-          >
-            /defenses
+            🏆 /grailwar
           </button>
         </div>
       </div>
