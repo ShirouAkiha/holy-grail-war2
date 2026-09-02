@@ -40,7 +40,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const attackerParticipant = war.participants[interaction.user.id];
     let footerText = '';
     if (!res.targetWasMaster) {
-      footerText = 'Attacking Master identity is now publicly exposed for violating Secrecy of Magecraft!';
+      if (res.wasAlreadyExposed) {
+        footerText = 'Attacking Master was already publicly exposed on the War Board (/grailwar status)';
+      } else {
+        footerText = 'Attacking Master identity is now publicly exposed for violating Secrecy of Magecraft!';
+      }
     } else if (attackerParticipant?.isExposed) {
       footerText = 'Both Masters are now EXPOSED on the Grail War Status Board (/grailwar status)';
     } else {

@@ -238,5 +238,70 @@
     "defeatQuote": "My Discord Nitro... expired...?!",
     "avatarUrl": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80",
     "cardArtUrl": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80"
+  },
+  {
+    "id": "nero_claudius_saber",
+    "name": "Nero Claudius",
+    "title": "Emperor of Roses",
+    "servantClass": "Saber",
+    "rarity": 4,
+    "baseHp": 27200,
+    "baseAtk": 9449,
+    "baseStats": {
+      "strength": 14,
+      "endurance": 14,
+      "agility": 15,
+      "mana": 16,
+      "luck": 17
+    },
+    "commandDeck": ["Arts", "Arts", "Buster", "Buster", "Quick"],
+    "skills": [
+      {
+        "id": "migraine_b",
+        "name": "Migraine B",
+        "cooldown": 5,
+        "description": "Relieves headache through imperial willpower, charging own NP gauge by 20% and gaining focus.",
+        "effectType": "np_charge",
+        "value": 20,
+        "duration": 1,
+        "icon": "🌸"
+      },
+      {
+        "id": "imperial_privilege_ex",
+        "name: "Imperial Privilege EX",
+        "cooldown": 5,
+        "description": "Acquires supreme skills via royal prerogative. Recovers 4,200 HP and boosts combat power by 25% for 3 turns.",
+        "effectType": "heal",
+        "value": 4200,
+        "duration": 3,
+        "icon": "👑"
+      },
+      {
+        "id": "thrice_setting_sun_a",
+        "name": "Thrice Setting Sun A",
+        "cooldown": 6,
+        "description": "Invictus Spiritus. Grants absolute fortitude, increasing Defense by 100% for 1 turn and boosting survivability.",
+        "effectType": "buff_def",
+        "value": 100,
+        "duration": 1,
+        "icon": "🌹"
+      }
+    ],
+    "noblePhantasm": {
+      "name": "Laus Saint Claudius: Imperium of the Maiden's Blooming",
+      "cardType": "Arts",
+      "chant": "Behold my talent, listen to the thunderous applause! Let the golden theater open! Laus Saint Claudius!",
+      "description": "Deploys the Golden Theater Aestus Domus Aurea, raining blazing crimson rose strikes that ignore defense and shred enemy armor.",
+      "target": "aoe",
+      "multiplier": 380,
+      "overchargeEffect": "Reduces all enemies' DEF by 20% for 3 turns + 20% NP refund"
+    },
+    "lore": "The Fifth Emperor of the Roman Empire, sovereign of the Golden Theater, and self-proclaimed supreme artist. Wielding her beloved crimson meteor blade Aestus Estus, she commands the battlefield with boundless passion.",
+    "summonQuote": "Umu! Servant Saber, Nero Claudius has answered your summons! Rejoice, Master, for the greatest artist of Rome is now at your side!",
+    "battleStartQuote": "The curtains rise on our glorious stage! Behold my supreme performance!",
+    "victoryQuote": "A splendid triumph! Raise the roses high and let the applause echo throughout the empire! Umu!",
+    "defeatQuote": "The spotlight dims... But the glory of Rome shall never fade...",
+    "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80",
+    "cardArtUrl": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80"
   }
 ]

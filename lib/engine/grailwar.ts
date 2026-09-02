@@ -230,6 +230,7 @@ export interface WarActionResult {
   eliminatedMasterId?: string;
   isCollateralCasualty?: boolean;
   targetWasMaster?: boolean;
+  wasAlreadyExposed?: boolean;
   exposedTargetMaster?: string;
   updatedWar: HolyGrailWarSession;
 }
@@ -805,32 +806,42 @@ export function attackSuspectUserInWar(
   // ---------------------------------------------------------
   // CASE 2: TARGET IS AN INNOCENT SERVER USER (COLLATERAL CASUALTY)
   // ---------------------------------------------------------
+  const wasAlreadyExposed = !!attacker.isExposed;
   attacker.lastAmbushTime = now;
   attacker.isExposed = true;
-  attacker.exposureReason = 'innocent_assault';
+  if (!wasAlreadyExposed) {
+    attacker.exposureReason = 'innocent_assault';
+  }
   attacker.innocentKills = (attacker.innocentKills || 0) + 1;
 
   if (!targetWar.civilianCasualties) targetWar.civilianCasualties = [];
-  const bystanderName = suspectQuery.startsWith('@') ? suspectQuery : `@${suspectQuery}`;
+  
+  // Clean bystander string to prevent duplicate @ symbols or raw mention formatting
+  const cleanBystander = suspectQuery.replace(/^<@!?(\d+)>$/, '$1').replace(/^@+/, '').trim();
+  const bystanderDisplay = `@${cleanBystander}`;
 
   targetWar.civilianCasualties.unshift({
     id: `victim_${Date.now()}`,
-    name: bystanderName,
+    name: bystanderDisplay,
     slainByMasterId: attacker.username,
     timestamp: now
   });
 
-  const casualtyText = `☠️ **COLLATERAL CASUALTY: CIVILIAN SLAIN IN ${chanTag}!**\n\n` +
-    `Master **${attacker.username}**'s Servant (${attacker.servantName}) struck down innocent server bystander **${bystanderName}** in **${chanTag}**!\n` +
+  const exposureNote = wasAlreadyExposed
+    ? `• Master **${attacker.username}** was **already publicly exposed** on the War Board, and this civilian casualty further stains their Master record!\n`
+    : `• Master **${attacker.username}**'s identity is now **VIOLENTLY EXPOSED** to the server for breaching the Secrecy of Magecraft!\n`;
+
+  const casualtyText = 
+    `Master **${attacker.username}**'s Servant (${attacker.servantName}) struck down innocent server bystander **${bystanderDisplay}** in **${chanTag}**!\n` +
     `• The victim was killed instantly in the magical crossfire.\n` +
-    `• Master **${attacker.username}**'s identity is now **VIOLENTLY EXPOSED** to the server for breaching the Secrecy of Magecraft!\n\n` +
+    exposureNote + `\n` +
     `⛪ **Fuyuki Church Overseer Gas Leak Bulletin:**\n` +
-    `> *"The Fuyuki Church and municipal police report a severe structural **'gas leak explosion'** in **${chanTag}** involving civilian ${bystanderName}. Cause classified as faulty underground utility piping. Public is advised to stay indoors."*`;
+    `> *"The Fuyuki Church and municipal police report a severe structural **'gas leak explosion'** in **${chanTag}** involving civilian ${bystanderDisplay}. Cause classified as faulty underground utility piping. Public is advised to stay indoors."*`;
 
   targetWar.eventLogs.unshift({
     id: `evt_casualty_${Date.now()}`,
     timestamp: Date.now(),
-    text: `☠️ Church Cover-Up: "Gas leak explosion" reported in ${chanTag} involving bystander **${bystanderName}** (caused by **${attacker.username}**)!`,
+    text: `☠️ Church Cover-Up: "Gas leak explosion" reported in ${chanTag} involving bystander **${bystanderDisplay}** (caused by **${attacker.username}**)!`,
     type: 'casualty'
   });
 
@@ -839,6 +850,7 @@ export function attackSuspectUserInWar(
     message: casualtyText,
     targetWasMaster: false,
     isCollateralCasualty: true,
+    wasAlreadyExposed,
     updatedWar: targetWar
   };
 }

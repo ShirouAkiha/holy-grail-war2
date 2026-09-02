@@ -50,7 +50,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .setFooter({
         text: res.targetWasMaster 
           ? 'Both Masters are now EXPOSED on the Grail War Status Board (/grailwar status)' 
-          : 'Attacking Master identity is now publicly exposed for violating Secrecy of Magecraft!'
+          : res.wasAlreadyExposed
+            ? 'Attacking Master was already publicly exposed on the War Board (/grailwar status)'
+            : 'Attacking Master identity is now publicly exposed for violating Secrecy of Magecraft!'
       });
 
     await interaction.editReply({ embeds: [embed] });
