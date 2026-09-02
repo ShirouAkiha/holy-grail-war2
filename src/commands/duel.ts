@@ -56,6 +56,53 @@ export interface DuelCombatant {
   skillCooldowns: { [skillIdx: number]: number };
   gutsCount: number;
   commandSeals: number;
+  currentHand?: ('Buster' | 'Arts' | 'Quick')[];
+}
+
+// ==========================================
+// CLASS COMMAND DECKS & HAND DEALING ENGINE
+// ==========================================
+function getServantCommandDeck(combatant: DuelCombatant): ('Buster' | 'Arts' | 'Quick')[] {
+  if (combatant.servant?.template?.commandDeck && combatant.servant.template.commandDeck.length === 5) {
+    return [...combatant.servant.template.commandDeck];
+  }
+  const sClass = combatant.servant?.template?.servantClass || 'Saber';
+  switch (sClass) {
+    case 'Caster':
+      // Triple Arts Deck (Caster archetype): 3 Arts, 1 Buster, 1 Quick
+      return ['Arts', 'Arts', 'Arts', 'Buster', 'Quick'];
+    case 'Berserker':
+      // Triple Buster Deck (Berserker archetype): 3 Buster, 1 Arts, 1 Quick
+      return ['Buster', 'Buster', 'Buster', 'Arts', 'Quick'];
+    case 'Assassin':
+      // Triple Quick Deck (Assassin archetype): 3 Quick, 1 Arts, 1 Buster
+      return ['Quick', 'Quick', 'Quick', 'Arts', 'Buster'];
+    case 'Lancer':
+      // Double Buster, Double Quick: 2 Buster, 2 Quick, 1 Arts
+      return ['Buster', 'Buster', 'Quick', 'Quick', 'Arts'];
+    case 'Rider':
+      // Double Quick, Double Arts: 2 Quick, 2 Arts, 1 Buster
+      return ['Quick', 'Quick', 'Arts', 'Arts', 'Buster'];
+    case 'Archer':
+      // Double Arts, Double Quick: 2 Arts, 2 Quick, 1 Buster
+      return ['Arts', 'Arts', 'Quick', 'Quick', 'Buster'];
+    case 'Saber':
+    default:
+      // Double Buster, Double Arts: 2 Buster, 2 Arts, 1 Quick
+      return ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'];
+  }
+}
+
+function refreshCombatantHand(combatant: DuelCombatant): ('Buster' | 'Arts' | 'Quick')[] {
+  const deck = getServantCommandDeck(combatant);
+  const hand = [...deck];
+  // Fisher-Yates Shuffle to deal randomized hand each turn
+  for (let i = hand.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [hand[i], hand[j]] = [hand[j], hand[i]];
+  }
+  combatant.currentHand = hand;
+  return hand;
 }
 
 // ==========================================
@@ -135,7 +182,7 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
     ? Math.min(maxHp, Math.round(overrideCurrentHp))
     : maxHp;
 
-  return {
+  const combatant: DuelCombatant = {
     userId: master.discordId,
     username: master.username,
     isAi,
@@ -153,6 +200,8 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
     gutsCount: 0,
     commandSeals: isAi ? 0 : (master.commandSeals ?? 3)
   };
+  refreshCombatantHand(combatant);
+  return combatant;
 }
 
 // ==========================================
@@ -272,10 +321,22 @@ function buildDuelEmbed(
   round: number,
   activeUserId: string,
   lastLogs?: string[],
-  pendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = []
+  pendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = [],
+  pendingIndices: number[] = []
 ) {
   const isP1Turn = activeUserId === p1.userId;
   const activeCombatant = isP1Turn ? p1 : p2;
+
+  if (!activeCombatant.currentHand || activeCombatant.currentHand.length !== 5) {
+    refreshCombatantHand(activeCombatant);
+  }
+
+  const handCards = activeCombatant.currentHand!;
+  const handDisplay = handCards.map((c, i) => {
+    const emoji = c === 'Buster' ? '🔴' : c === 'Arts' ? '🔵' : '🟢';
+    const isUsed = pendingIndices.includes(i);
+    return isUsed ? `\`[#${pendingIndices.indexOf(i) + 1}: ${c} ✔️]\`` : `\`[${i + 1}: ${emoji} ${c}]\``;
+  }).join(' ');
 
   const cardEmojiMap: Record<string, string> = {
     Buster: '🔴 Buster',
@@ -297,13 +358,14 @@ function buildDuelEmbed(
     else if (first === 'NP') leadHelp = '\n💥 *Noble Phantasm leading sequence!*';
   }
 
-  const slotDisplay = `🎴 **Command Cards Selected (${pendingCards.length}/3):**\n\`[ 1: ${c1Text} ]\` ➔ \`[ 2: ${c2Text} ]\` ➔ \`[ 3: ${c3Text} ]\`${leadHelp}`;
+  const sClass = activeCombatant.servant.template?.servantClass || 'Servant';
+  const slotDisplay = `🎴 **Dealt Command Hand (${sClass} Deck):**\n${handDisplay}\n\n⚔️ **Selected Chain (${pendingCards.length}/3):**\n\`[ 1: ${c1Text} ]\` ➔ \`[ 2: ${c2Text} ]\` ➔ \`[ 3: ${c3Text} ]\`${leadHelp}`;
 
   const embed = new EmbedBuilder()
     .setTitle(`⚔️ HOLY GRAIL WAR DUEL — ROUND ${round}`)
     .setImage('attachment://turn_summary.png')
     .setDescription(
-      `👉 **Current Turn:** ${activeCombatant.isAi ? '🤖 Shadow AI is calculating...' : `<@${activeCombatant.userId}>, select **3 Command Cards** to form your Attack Chain:`}\n\n${slotDisplay}`
+      `👉 **Current Turn:** ${activeCombatant.isAi ? '🤖 Shadow AI is calculating...' : `<@${activeCombatant.userId}>, pick **3 Cards** from your dealt hand:`}\n\n${slotDisplay}`
     )
     .setColor(isP1Turn ? 0xef4444 : 0x38bdf8);
 
@@ -321,58 +383,94 @@ function buildDuelEmbed(
 // ==========================================
 // 7. INTERACTIVE ACTION BUTTON BUILDER
 // ==========================================
-// Generates 2 rows:
-// Row 1: Command Attack Cards (Buster, Arts, Quick, Noble Phantasm) + Reset
-// Row 2: 3 Active Skill Sets + Command Seal
+// Generates 3 rows:
+// Row 1: 5 Dealt Command Cards from Servant Class Deck
+// Row 2: Noble Phantasm + Reset + Command Seal
+// Row 3: 3 Active Skill Sets
 function buildCombatButtons(
   combatant: DuelCombatant,
-  pendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = []
+  pendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = [],
+  pendingIndices: number[] = []
 ) {
+  if (!combatant.currentHand || combatant.currentHand.length !== 5) {
+    refreshCombatantHand(combatant);
+  }
+
+  const hand = combatant.currentHand!;
   const isNpReady = combatant.npGauge >= 100;
-  const skills = combatant.servant.template.skills || [];
+  const isNpSelected = pendingCards.includes('NP');
+  const skills = combatant.servant.template?.skills || [];
   const bondLevel = combatant.servant.bondLevel || 1;
   const hasPending = pendingCards.length > 0;
 
-  // Row 1: Command Cards + Noble Phantasm + Reset
-  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId('card_buster')
-      .setLabel('Buster')
-      .setEmoji('🔴')
-      .setStyle(ButtonStyle.Danger),
-    new ButtonBuilder()
-      .setCustomId('card_arts')
-      .setLabel('Arts')
-      .setEmoji('🔵')
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId('card_quick')
-      .setLabel('Quick')
-      .setEmoji('🟢')
-      .setStyle(ButtonStyle.Success),
+  // Row 1: 5 Dealt Command Cards from Servant Class Deck
+  const row1 = new ActionRowBuilder<ButtonBuilder>();
+  hand.forEach((cardType, idx) => {
+    const isUsed = pendingIndices.includes(idx);
+    const orderIndex = pendingIndices.indexOf(idx);
+
+    let emoji = '🔴';
+    let style = ButtonStyle.Danger;
+    if (cardType === 'Arts') {
+      emoji = '🔵';
+      style = ButtonStyle.Primary;
+    } else if (cardType === 'Quick') {
+      emoji = '🟢';
+      style = ButtonStyle.Success;
+    }
+
+    if (isUsed) {
+      row1.addComponents(
+        new ButtonBuilder()
+          .setCustomId(`card_hand_${idx}`)
+          .setLabel(`#${orderIndex + 1}: ${cardType}`)
+          .setEmoji('✔️')
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(true)
+      );
+    } else {
+      row1.addComponents(
+        new ButtonBuilder()
+          .setCustomId(`card_hand_${idx}`)
+          .setLabel(`${cardType}`)
+          .setEmoji(emoji)
+          .setStyle(style)
+          .setDisabled(pendingCards.length >= 3)
+      );
+    }
+  });
+
+  // Row 2: Noble Phantasm + Clear + Command Seal
+  const hasSeals = (combatant.commandSeals || 0) > 0;
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId('card_np')
       .setLabel(`NP (${Math.round(combatant.npGauge)}%)`)
       .setEmoji('💥')
       .setStyle(isNpReady ? ButtonStyle.Danger : ButtonStyle.Secondary)
-      .setDisabled(!isNpReady),
+      .setDisabled(!isNpReady || isNpSelected || pendingCards.length >= 3),
     new ButtonBuilder()
       .setCustomId('card_reset')
       .setLabel('Clear')
       .setEmoji('🔄')
       .setStyle(ButtonStyle.Secondary)
-      .setDisabled(!hasPending)
+      .setDisabled(!hasPending),
+    new ButtonBuilder()
+      .setCustomId('card_seal')
+      .setLabel(`Seal (${combatant.commandSeals || 0})`)
+      .setEmoji('🔱')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(!hasSeals)
   );
 
-  // Row 2: 3 Active Skill Sets + Master Command Seal
-  const hasSeals = (combatant.commandSeals || 0) > 0;
-  const row2 = new ActionRowBuilder<ButtonBuilder>();
+  // Row 3: 3 Active Skill Sets
+  const row3 = new ActionRowBuilder<ButtonBuilder>();
 
   // Skill 1 (Unlocked by default)
   const s1 = skills[0];
   const cd1 = combatant.skillCooldowns[0] || 0;
   const s1Name = s1 ? s1.name.slice(0, 13) : 'Skill 1';
-  row2.addComponents(
+  row3.addComponents(
     new ButtonBuilder()
       .setCustomId('skill_0')
       .setLabel(cd1 > 0 ? `S1: ${s1Name} (${cd1}T)` : `✨ S1: ${s1Name}`)
@@ -384,7 +482,7 @@ function buildCombatButtons(
   const s2 = skills[1];
   const cd2 = combatant.skillCooldowns[1] || 0;
   const s2Name = s2 ? s2.name.slice(0, 13) : 'Skill 2';
-  row2.addComponents(
+  row3.addComponents(
     new ButtonBuilder()
       .setCustomId('skill_1')
       .setLabel(cd2 > 0 ? `S2: ${s2Name} (${cd2}T)` : `🛡️ S2: ${s2Name}`)
@@ -397,7 +495,7 @@ function buildCombatButtons(
   const cd3 = combatant.skillCooldowns[2] || 0;
   const isS3Unlocked = bondLevel >= 5;
   const s3Name = s3 ? s3.name.slice(0, 13) : 'Skill 3';
-  row2.addComponents(
+  row3.addComponents(
     new ButtonBuilder()
       .setCustomId('skill_2')
       .setLabel(!isS3Unlocked ? '🔒 S3 (Bond Lv 5)' : cd3 > 0 ? `S3: ${s3Name} (${cd3}T)` : `🌟 S3: ${s3Name}`)
@@ -405,17 +503,7 @@ function buildCombatButtons(
       .setDisabled(!isS3Unlocked || cd3 > 0 || !s3)
   );
 
-  // Master Command Seal
-  row2.addComponents(
-    new ButtonBuilder()
-      .setCustomId('card_seal')
-      .setLabel(`Seal (${combatant.commandSeals || 0})`)
-      .setEmoji('🔱')
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(!hasSeals)
-  );
-
-  return [row1, row2];
+  return [row1, row2, row3];
 }
 
 // Helper to activate a combatant skill without spending a turn
@@ -495,6 +583,44 @@ function invokeCombatantSeal(combatant: DuelCombatant): { success: boolean; log:
     logText = `🔱 **COMMAND SEAL INVOKED!** Master **${combatant.username}** commanded: *"Unleash your full Phantasm!"*\n> ⚡ **${combatant.servant.template.name}** reached **100% NP Gauge**!`;
   }
   return { success: true, log: logText };
+}
+
+// Helper for AI card selection based on servant hand and class deck
+function chooseAiSequence(ai: DuelCombatant): ('Buster' | 'Arts' | 'Quick' | 'NP')[] {
+  if (!ai.currentHand || ai.currentHand.length !== 5) {
+    refreshCombatantHand(ai);
+  }
+  const hand = [...ai.currentHand!];
+
+  if (ai.npGauge >= 100) {
+    return ['NP', hand[0], hand[1]];
+  }
+
+  const busters = hand.filter(c => c === 'Buster');
+  const arts = hand.filter(c => c === 'Arts');
+  const quicks = hand.filter(c => c === 'Quick');
+
+  // Perform full Chain if 3 identical cards were dealt in hand
+  if (arts.length >= 3) return ['Arts', 'Arts', 'Arts'];
+  if (busters.length >= 3) return ['Buster', 'Buster', 'Buster'];
+  if (quicks.length >= 3) return ['Quick', 'Quick', 'Quick'];
+
+  // Lean towards Servant class specialty
+  const sClass = ai.servant?.template?.servantClass || 'Saber';
+  if (sClass === 'Caster' && arts.length >= 2) {
+    const remaining = hand.filter(c => c !== 'Arts');
+    return ['Arts', 'Arts', remaining[0] || 'Buster'];
+  }
+  if (sClass === 'Berserker' && busters.length >= 2) {
+    const remaining = hand.filter(c => c !== 'Buster');
+    return ['Buster', 'Buster', remaining[0] || 'Arts'];
+  }
+  if (sClass === 'Assassin' && quicks.length >= 2) {
+    const remaining = hand.filter(c => c !== 'Quick');
+    return ['Quick', 'Quick', remaining[0] || 'Buster'];
+  }
+
+  return [hand[0], hand[1], hand[2]];
 }
 
 // ==========================================
@@ -1047,6 +1173,7 @@ async function startInteractiveDuel(
 
   let activeUserId = p1.userId;
   let activePendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = [];
+  let activePendingIndices: number[] = [];
 
   if (p2Speed > p1Speed) {
     activeUserId = p2.userId;
@@ -1055,17 +1182,9 @@ async function startInteractiveDuel(
 
     // If P2 is AI, resolve AI strike immediately on turn 1
     if (p2.isAi) {
-      let aiCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Buster', 'Arts', 'Quick'];
-      if (p2.npGauge >= 100) aiCards = ['NP', 'Buster', 'Arts'];
-      else {
-        const pool: ('Buster' | 'Arts' | 'Quick')[] = ['Buster', 'Arts', 'Quick'];
-        aiCards = [
-          pool[Math.floor(Math.random() * pool.length)],
-          pool[Math.floor(Math.random() * pool.length)],
-          pool[Math.floor(Math.random() * pool.length)]
-        ];
-      }
+      const aiCards = chooseAiSequence(p2);
       const aiLog = resolveStrike(p2, p1, aiCards);
+      refreshCombatantHand(p2);
       combatLogs.push(aiLog);
       round++;
       // Now it's P1's turn
@@ -1080,8 +1199,8 @@ async function startInteractiveDuel(
   const lastLogText = combatLogs[combatLogs.length - 1];
 
   const initialAttachment = await createTurnSummaryAttachment(p1, p2, round, lastLogText);
-  const initialEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards);
-  const initialButtons = buildCombatButtons(activeCombatant, activePendingCards);
+  const initialEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
+  const initialButtons = buildCombatButtons(activeCombatant, activePendingCards, activePendingIndices);
 
   let battleMsg: any;
   if (contextInteraction.deferred || contextInteraction.replied) {
@@ -1145,8 +1264,8 @@ async function startInteractiveDuel(
         const p1CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
         const p2CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
         const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, res.log, p1CardChoice, p2CardChoice);
-        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards);
-        const updatedButtons = buildCombatButtons(actor, activePendingCards);
+        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
+        const updatedButtons = buildCombatButtons(actor, activePendingCards, activePendingIndices);
         await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
         return;
       }
@@ -1166,8 +1285,8 @@ async function startInteractiveDuel(
         const p1CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
         const p2CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
         const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, res.log, p1CardChoice, p2CardChoice);
-        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards);
-        const updatedButtons = buildCombatButtons(actor, activePendingCards);
+        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
+        const updatedButtons = buildCombatButtons(actor, activePendingCards, activePendingIndices);
         await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
         return;
       }
@@ -1175,29 +1294,38 @@ async function startInteractiveDuel(
       // CASE: RESET PENDING CARDS
       if (i.customId === 'card_reset') {
         activePendingCards = [];
+        activePendingIndices = [];
         const actor = activeUserId === p1.userId ? p1 : p2;
-        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards);
-        const updatedButtons = buildCombatButtons(actor, activePendingCards);
+        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
+        const updatedButtons = buildCombatButtons(actor, activePendingCards, activePendingIndices);
         await i.editReply({ embeds: [updatedEmbed], components: updatedButtons });
         return;
       }
 
-      // CASE: CARD SELECTION
-      let clickedCard: 'Buster' | 'Arts' | 'Quick' | 'NP' = 'Buster';
-      if (i.customId === 'card_buster') clickedCard = 'Buster';
-      if (i.customId === 'card_arts') clickedCard = 'Arts';
-      if (i.customId === 'card_quick') clickedCard = 'Quick';
-      if (i.customId === 'card_np') clickedCard = 'NP';
-
-      activePendingCards.push(clickedCard);
-
+      // CASE: HAND CARD SELECTION
       const attacker = activeUserId === p1.userId ? p1 : p2;
       const defender = activeUserId === p1.userId ? p2 : p1;
 
+      if (!attacker.currentHand || attacker.currentHand.length !== 5) {
+        refreshCombatantHand(attacker);
+      }
+
+      if (i.customId.startsWith('card_hand_')) {
+        const handIdx = parseInt(i.customId.replace('card_hand_', ''), 10);
+        if (!activePendingIndices.includes(handIdx) && activePendingCards.length < 3 && handIdx >= 0 && handIdx < 5 && attacker.currentHand) {
+          activePendingIndices.push(handIdx);
+          activePendingCards.push(attacker.currentHand[handIdx]);
+        }
+      } else if (i.customId === 'card_np') {
+        if (!activePendingCards.includes('NP') && activePendingCards.length < 3) {
+          activePendingCards.push('NP');
+        }
+      }
+
       // If user hasn't selected 3 cards yet, update selection UI and wait for next card click
       if (activePendingCards.length < 3) {
-        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards);
-        const updatedButtons = buildCombatButtons(attacker, activePendingCards);
+        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
+        const updatedButtons = buildCombatButtons(attacker, activePendingCards, activePendingIndices);
         await i.editReply({ embeds: [updatedEmbed], components: updatedButtons });
         return;
       }
@@ -1205,8 +1333,10 @@ async function startInteractiveDuel(
       // 3 CARDS SELECTED -> Execute 3-Card Chain Attack Sequence!
       const playerSequence = [...activePendingCards];
       activePendingCards = [];
+      activePendingIndices = [];
 
       const log = resolveStrike(attacker, defender, playerSequence);
+      refreshCombatantHand(attacker);
       combatLogs.push(log);
       if (combatLogs.length > 4) combatLogs.shift();
 
@@ -1240,21 +1370,11 @@ async function startInteractiveDuel(
           }
         }
 
-        let aiSequence: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Buster', 'Arts', 'Quick'];
-        if (defender.npGauge >= 100) {
-          aiSequence = ['NP', 'Buster', 'Arts'];
-        } else {
-          const pool: ('Buster' | 'Arts' | 'Quick')[] = ['Buster', 'Arts', 'Quick'];
-          aiSequence = [
-            pool[Math.floor(Math.random() * pool.length)],
-            pool[Math.floor(Math.random() * pool.length)],
-            pool[Math.floor(Math.random() * pool.length)]
-          ];
-        }
-
+        const aiSequence = chooseAiSequence(defender);
         p2CardChoice = aiSequence;
 
         const aiLog = resolveStrike(defender, attacker, aiSequence);
+        refreshCombatantHand(defender);
         combatLogs.push(aiLog);
         if (combatLogs.length > 4) combatLogs.shift();
 
@@ -1268,8 +1388,8 @@ async function startInteractiveDuel(
         // Keep turn on P1
         activeUserId = p1.userId;
         const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, aiLog, p1CardChoice, p2CardChoice);
-        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards);
-        const updatedButtons = buildCombatButtons(p1, activePendingCards);
+        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
+        const updatedButtons = buildCombatButtons(p1, activePendingCards, activePendingIndices);
         await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
         return;
       }
@@ -1279,8 +1399,8 @@ async function startInteractiveDuel(
       activeUserId = defender.userId;
       const nextCombatant = activeUserId === p1.userId ? p1 : p2;
       const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, log, p1CardChoice, p2CardChoice);
-      const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards);
-      const updatedButtons = buildCombatButtons(nextCombatant, activePendingCards);
+      const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
+      const updatedButtons = buildCombatButtons(nextCombatant, activePendingCards, activePendingIndices);
 
       await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
     } catch (err: any) {
