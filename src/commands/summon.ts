@@ -51,8 +51,8 @@ export const data = new SlashCommandBuilder()
 // 1.5. AUTHENTIC FATE SUMMONING CHANTS & VISUALS
 // ==========================================
 // Discord embed images MUST point to raw direct image files (ending in .gif, .png, etc.), not HTML webpage URLs.
-const RIN_SUMMONING_GIF = 'https://images-ext-1.discordapp.net/external/_MZv-LGPrcP_YWRblwrEBKPWparrht4S5_WG5Kdu_9s/https/static.klipy.com/ii/d7aec6f6f171607374b2065c836f92f4/0e/0d/dItINASLzPC4eyEJhMS.mp4';
-const FALLBACK_MAGIC_CIRCLE = 'https://images-ext-1.discordapp.net/external/_MZv-LGPrcP_YWRblwrEBKPWparrht4S5_WG5Kdu_9s/https/static.klipy.com/ii/d7aec6f6f171607374b2065c836f92f4/0e/0d/dItINASLzPC4eyEJhMS.mp4';
+const RIN_SUMMONING_GIF = 'https://i.imgur.com/hyNsgc1.jpeg';
+const FALLBACK_MAGIC_CIRCLE = 'https://i.imgur.com/hyNsgc1.jpeg';
 
 function resolveDirectGifUrl(url: string): string {
   if (!url) return FALLBACK_MAGIC_CIRCLE;

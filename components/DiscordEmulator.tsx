@@ -61,7 +61,7 @@ import {
   Lock
 } from 'lucide-react';
 
-const RIN_SUMMONING_GIF = 'https://images-ext-1.discordapp.net/external/_MZv-LGPrcP_YWRblwrEBKPWparrht4S5_WG5Kdu_9s/https/static.klipy.com/ii/d7aec6f6f171607374b2065c836f92f4/0e/0d/dItINASLzPC4eyEJhMS.mp4';
+const RIN_SUMMONING_GIF = 'https://i.imgur.com/hyNsgc1.jpeg';
 
 const SUMMONING_CHANTS = [
   `*“Let silver and steel be the essence.”*\n` +
@@ -147,7 +147,7 @@ function EmbedVisual({ url }: { url: string }) {
   }
 
   const primaryFallback = 'https://media1.tenor.com/m/8YpY9q6y430AAAAC/rin-tohsaka-fate.gif';
-  const secondaryFallback = 'https://images-ext-1.discordapp.net/external/_MZv-LGPrcP_YWRblwrEBKPWparrht4S5_WG5Kdu_9s/https/static.klipy.com/ii/d7aec6f6f171607374b2065c836f92f4/0e/0d/dItINASLzPC4eyEJhMS.mp4';
+  const secondaryFallback = 'https://i.imgur.com/hyNsgc1.jpeg';
 
   let currentSrc = url;
   if (imgError) {
