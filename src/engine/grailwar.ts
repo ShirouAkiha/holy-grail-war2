@@ -59,6 +59,9 @@ export function synchronizeWarParticipants(war: HolyGrailWarSession): HolyGrailW
 
   let modified = false;
   for (const p of Object.values(war.participants)) {
+    // If maxHp is already set, don't overwrite it to prevent resetting level/CE stats!
+    if (p.maxHp && p.maxHp > 0) continue;
+
     const canonical = SERVANT_DATABASE.find(
       s => s.id === p.servantId ||
            (s.name && p.servantName && s.name.toLowerCase() === p.servantName.toLowerCase()) ||
@@ -75,7 +78,9 @@ export function synchronizeWarParticipants(war: HolyGrailWarSession): HolyGrailW
       const oldHp = p.currentHp;
       p.maxHp = computedMax;
       if (p.isAlive) {
-        if (oldHp >= oldMax || oldHp === undefined || oldHp <= 0) {
+        if (oldHp === undefined) {
+          p.currentHp = computedMax;
+        } else if (oldHp >= oldMax) {
           p.currentHp = computedMax;
         } else {
           p.currentHp = Math.min(computedMax, Math.max(1, Math.round((oldHp / oldMax) * computedMax)));

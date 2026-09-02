@@ -199,7 +199,9 @@ export function loadGrailWarSession(master: MasterProfile): HolyGrailWarSession 
           const oldMax = p.maxHp || 1;
           p.maxHp = freshMax;
           if (p.isAlive) {
-            if (p.currentHp >= oldMax || p.currentHp === undefined || p.currentHp === 0) {
+            if (p.currentHp === undefined) {
+              p.currentHp = freshMax;
+            } else if (p.currentHp >= oldMax) {
               p.currentHp = freshMax;
             } else {
               p.currentHp = Math.min(freshMax, Math.round((p.currentHp / oldMax) * freshMax));

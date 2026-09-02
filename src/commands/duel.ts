@@ -993,12 +993,54 @@ async function startInteractiveDuel(
   p2Master: MasterProfile | null
 ) {
   let round = 1;
-  let activeUserId = p1.userId;
   const combatLogs: string[] = ['⚔️ The Command Seal glow resonates... The Holy Grail Duel begins!'];
 
-  const initialAttachment = await createTurnSummaryAttachment(p1, p2, round, combatLogs[0]);
+  const t1 = p1.servant.template;
+  const t2 = p2.servant.template;
+  const base1 = t1?.baseStats || { agility: 10 };
+  const base2 = t2?.baseStats || { agility: 10 };
+  const alloc1 = p1.servant.allocatedStats || { agility: 0 };
+  const alloc2 = p2.servant.allocatedStats || { agility: 0 };
+  const agi1 = (base1.agility || 10) + (alloc1.agility || 0);
+  const agi2 = (base2.agility || 10) + (alloc2.agility || 0);
+
+  const p1Speed = agi1 * 10 + (Math.random() * 20);
+  const p2Speed = agi2 * 10 + (Math.random() * 20);
+
+  let activeUserId = p1.userId;
+
+  if (p2Speed > p1Speed) {
+    activeUserId = p2.userId;
+    const fasterName = p2.servant.nickname || p2.servant.template?.name || 'Opponent Servant';
+    combatLogs.push(`⚡ **Agility Initiative:** **${fasterName}** (Agi: ${agi2}) outmaneuvered their opponent and claims the first move!`);
+
+    // If P2 is AI, resolve AI strike immediately on turn 1
+    if (p2.isAi) {
+      let aiAction: 'buster' | 'arts' | 'quick' | 'np' = 'buster';
+      if (p2.npGauge >= 100) aiAction = 'np';
+      else {
+        const rand = Math.random();
+        if (rand < 0.45) aiAction = 'buster';
+        else if (rand < 0.75) aiAction = 'arts';
+        else aiAction = 'quick';
+      }
+      const aiLog = resolveStrike(p2, p1, aiAction);
+      combatLogs.push(aiLog);
+      round++;
+      // Now it's P1's turn
+      activeUserId = p1.userId;
+    }
+  } else {
+    const fasterName = p1.servant.nickname || p1.servant.template?.name || 'Your Servant';
+    combatLogs.push(`⚡ **Agility Initiative:** **${fasterName}** (Agi: ${agi1}) outmaneuvered their opponent and claims the first move!`);
+  }
+
+  const activeCombatant = activeUserId === p1.userId ? p1 : p2;
+  const lastLogText = combatLogs[combatLogs.length - 1];
+
+  const initialAttachment = await createTurnSummaryAttachment(p1, p2, round, lastLogText);
   const initialEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs);
-  const initialButtons = buildCombatButtons(p1);
+  const initialButtons = buildCombatButtons(activeCombatant);
 
   let battleMsg: any;
   if (contextInteraction.deferred || contextInteraction.replied) {

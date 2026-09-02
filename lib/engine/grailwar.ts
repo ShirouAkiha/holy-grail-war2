@@ -150,6 +150,7 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
     // Sanitize all participants' max HP across the board
     Object.values(globalWarSession.participants).forEach(p => {
       if (p.discordId !== master.discordId) {
+        if (p.maxHp && p.maxHp > 0) return; // Prevent overwriting already-set maxHp!
         const canonical = SERVANT_DATABASE.find(s => s.id === p.servantId || s.name.toLowerCase() === p.servantName.toLowerCase()) ||
           SERVANT_DATABASE.find(s => s.name.toLowerCase().includes(p.servantName.toLowerCase()));
         if (canonical) {
