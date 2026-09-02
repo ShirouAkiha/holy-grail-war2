@@ -25,6 +25,7 @@ import * as attackCommand from './commands/attack';
 import * as leakCommand from './commands/leak';
 import * as customiseCommand from './commands/customise';
 import * as cegachaCommand from './commands/cegacha';
+import * as addceCommand from './commands/addce';
 import { updateCustomDialogueQuotes, equipCraftEssence } from './engine/customization';
 import { getOrCreateMaster, updateMasterProfile } from './database/service';
 import { buildProfileEmbed, buildProfileButtons } from './commands/profile';
@@ -54,9 +55,7 @@ commands.set(attackCommand.data.name, attackCommand);
 commands.set(leakCommand.data.name, leakCommand);
 commands.set(customiseCommand.data.name, customiseCommand);
 commands.set(cegachaCommand.data.name, cegachaCommand);
-if ((cegachaCommand as any).gachaCommand) {
-  commands.set((cegachaCommand as any).gachaCommand.data.name, (cegachaCommand as any).gachaCommand);
-}
+commands.set(addceCommand.data.name, addceCommand);
 
 // Deploy Slash Commands to Discord Gateway
 export async function registerSlashCommands() {

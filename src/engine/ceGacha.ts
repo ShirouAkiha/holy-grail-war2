@@ -1,5 +1,5 @@
 import { CraftEssence, GachaBanner, GachaResultItem, MasterProfile, Rarity } from '../types';
-import { CRAFT_ESSENCE_DATABASE, CE_GACHA_BANNERS } from '../data/craftEssences';
+import { getAllCraftEssences, getActiveGachaBanner } from '../database/service';
 
 export interface RollCeGachaOptions {
   count: 1 | 10;
@@ -18,20 +18,12 @@ export interface CeGachaPullResponse {
 
 /**
  * Executes a Craft Essence Gacha roll using Saint Quartz.
- * 
- * Rates:
- * - 5★ SSR Craft Essence: 5% (e.g. Kaleidoscope, The Black Grail, Formal Craft, Limited/Zero Over)
- * - 4★ SR Craft Essence: 25% (e.g. The Imaginary Element, Gamer Fuel, Gandr)
- * - 3★ R Craft Essence: 70% (e.g. Dragon's Meridian, Jeweled Sword Zelretch)
- * 
- * 10-Pull Guarantee: At least one 4★ SR or higher Craft Essence guaranteed!
  */
 export function executeCraftEssenceGachaRoll({
   count,
-  master,
-  bannerId
+  master
 }: RollCeGachaOptions): CeGachaPullResponse {
-  const banner = CE_GACHA_BANNERS.find(b => b.id === bannerId) || CE_GACHA_BANNERS[0];
+  const banner = getActiveGachaBanner();
   const cost = count === 10 ? banner.costTenPull : banner.costPerPull;
 
   if ((master.saintQuartz || 0) < cost) {
@@ -42,9 +34,10 @@ export function executeCraftEssenceGachaRoll({
   const initialCeIds = new Set((master.craftEssences || []).map(c => c.id));
   const newMasterCraftEssences = [...(master.craftEssences || [])];
 
-  const ssrCes = CRAFT_ESSENCE_DATABASE.filter(c => c.rarity === 5);
-  const srCes = CRAFT_ESSENCE_DATABASE.filter(c => c.rarity === 4);
-  const rCes = CRAFT_ESSENCE_DATABASE.filter(c => c.rarity === 3);
+  const allCes = getAllCraftEssences();
+  const ssrCes = allCes.filter(c => c.rarity === 5);
+  const srCes = allCes.filter(c => c.rarity === 4);
+  const rCes = allCes.filter(c => c.rarity === 3);
 
   let ssrsPulled = 0;
   let srsPulled = 0;

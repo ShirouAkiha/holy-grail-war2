@@ -1,6 +1,6 @@
-import { MasterProfile, MasterServantInstance, CraftEssence, ServantTemplate } from '../types';
+import { MasterProfile, MasterServantInstance, CraftEssence, ServantTemplate, GachaBanner } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
-import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
+import { CRAFT_ESSENCE_DATABASE, CE_GACHA_BANNERS } from '../data/craftEssences';
 import fs from 'fs';
 import path from 'path';
 
@@ -10,12 +10,20 @@ import path from 'path';
 const DATA_DIR = path.join(process.cwd(), 'data');
 const CUSTOM_SERVANTS_FILE = path.join(DATA_DIR, 'custom_servants.json');
 const MASTERS_FILE = path.join(DATA_DIR, 'masters.json');
+const CUSTOM_CES_FILE = path.join(DATA_DIR, 'custom_ces.json');
+const GACHA_BANNER_FILE = path.join(DATA_DIR, 'gacha_banner.json');
 
 // Maps Discord User IDs (e.g. "123456789012345678") to their respective MasterProfile records.
 const masterStore: Map<string, MasterProfile> = new Map();
 
 // Store for custom Heroic Spirits registered by Server Admins
 let customServants: ServantTemplate[] = [];
+
+// Store for custom Craft Essences added by Server Admins
+let customCraftEssences: CraftEssence[] = [];
+
+// Store for current customizable Gacha Banner
+let currentGachaBanner: GachaBanner = { ...CE_GACHA_BANNERS[0] };
 
 // Track all edited servant templates (both canon overrides and custom servants)
 const savedServantsMap: Map<string, ServantTemplate> = new Map();
@@ -27,7 +35,7 @@ function ensureDataDirectory() {
 }
 
 /**
- * Loads saved servants (custom and canon overrides) and master profiles from disk on startup.
+ * Loads saved servants, custom CEs, gacha banner settings, and master profiles from disk on startup.
  */
 function loadFromDisk() {
   try {
@@ -62,6 +70,26 @@ function loadFromDisk() {
               customServants.push(s);
             }
           }
+        }
+      }
+    }
+
+    // 2. Load Custom Craft Essences
+    if (fs.existsSync(CUSTOM_CES_FILE)) {
+      const raw = fs.readFileSync(CUSTOM_CES_FILE, 'utf-8');
+      if (raw) {
+        const savedCes: CraftEssence[] = JSON.parse(raw);
+        customCraftEssences = Array.isArray(savedCes) ? savedCes : [];
+      }
+    }
+
+    // 3. Load Gacha Banner customization
+    if (fs.existsSync(GACHA_BANNER_FILE)) {
+      const raw = fs.readFileSync(GACHA_BANNER_FILE, 'utf-8');
+      if (raw) {
+        const savedBanner: GachaBanner = JSON.parse(raw);
+        if (savedBanner && savedBanner.title) {
+          currentGachaBanner = { ...CE_GACHA_BANNERS[0], ...savedBanner };
         }
       }
     }
@@ -147,6 +175,64 @@ function saveCustomServantsToDisk() {
   } catch (err) {
     console.error('[Database] Failed to write custom_servants.json to disk:', err);
   }
+}
+
+function saveCustomCesToDisk() {
+  try {
+    ensureDataDirectory();
+    fs.writeFileSync(CUSTOM_CES_FILE, JSON.stringify(customCraftEssences, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[Database] Failed to write custom_ces.json to disk:', err);
+  }
+}
+
+function saveGachaBannerToDisk() {
+  try {
+    ensureDataDirectory();
+    fs.writeFileSync(GACHA_BANNER_FILE, JSON.stringify(currentGachaBanner, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[Database] Failed to write gacha_banner.json to disk:', err);
+  }
+}
+
+/**
+ * Returns all Craft Essences (built-in + admin custom).
+ */
+export function getAllCraftEssences(): CraftEssence[] {
+  return [...CRAFT_ESSENCE_DATABASE, ...customCraftEssences];
+}
+
+/**
+ * Adds a new custom Craft Essence to the database.
+ */
+export function addCustomCraftEssence(ce: CraftEssence): CraftEssence {
+  const existingIdx = customCraftEssences.findIndex(c => c.id === ce.id);
+  if (existingIdx >= 0) {
+    customCraftEssences[existingIdx] = ce;
+  } else {
+    customCraftEssences.push(ce);
+  }
+  saveCustomCesToDisk();
+  return ce;
+}
+
+/**
+ * Returns the currently active Gacha Banner.
+ */
+export function getActiveGachaBanner(): GachaBanner {
+  return currentGachaBanner;
+}
+
+/**
+ * Updates the active Gacha Banner parameters (title, image, rate-ups, description).
+ */
+export function updateGachaBanner(updates: Partial<GachaBanner>): GachaBanner {
+  currentGachaBanner = {
+    ...currentGachaBanner,
+    ...updates
+  };
+  saveGachaBannerToDisk();
+  return currentGachaBanner;
 }
 
 function saveMastersToDisk() {

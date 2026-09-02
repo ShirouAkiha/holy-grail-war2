@@ -6,12 +6,20 @@ import {
   ButtonStyle, 
   EmbedBuilder,
   AttachmentBuilder,
-  ComponentType
+  ComponentType,
+  PermissionFlagsBits
 } from 'discord.js';
-import { getOrCreateMaster, saveMaster } from '../database/service';
-import { CE_GACHA_BANNERS, CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
+import { 
+  getOrCreateMaster, 
+  saveMaster, 
+  getActiveGachaBanner, 
+  getAllCraftEssences, 
+  updateGachaBanner, 
+  addCustomCraftEssence 
+} from '../database/service';
 import { executeCraftEssenceGachaRoll } from '../engine/ceGacha';
 import { renderGachaSummonBanner } from '../canvas/renderer';
+import { CraftEssence, Rarity } from '../types';
 
 export const data = new SlashCommandBuilder()
   .setName('cegacha')
@@ -45,26 +53,147 @@ export const data = new SlashCommandBuilder()
     sub
       .setName('rates')
       .setDescription('View the official drop rates and pity guarantees for the Craft Essence Sanctum')
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('admin_banner')
+      .setDescription('Admin: Customize current active Gacha Banner image, title, and rate-ups')
+      .addStringOption(opt => opt.setName('title').setDescription('New Banner Title').setRequired(false))
+      .addStringOption(opt => opt.setName('subtitle').setDescription('New Subtitle / Rate-up info').setRequired(false))
+      .addStringOption(opt => opt.setName('description').setDescription('New Description text').setRequired(false))
+      .addAttachmentOption(opt => opt.setName('image_file').setDescription('Upload Banner Image').setRequired(false))
+      .addStringOption(opt => opt.setName('image_url').setDescription('Or direct Banner Image URL').setRequired(false))
+      .addStringOption(opt => opt.setName('featured_ces').setDescription('Comma-separated list of CE IDs').setRequired(false))
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('admin_addce')
+      .setDescription('Admin: Create and register a new Craft Essence into the Gacha pool')
+      .addStringOption(opt => opt.setName('name').setDescription('Name of Craft Essence').setRequired(true))
+      .addIntegerOption(opt => opt.setName('rarity').setDescription('3★, 4★, or 5★').setRequired(true).addChoices({ name: '5★ SSR', value: 5 }, { name: '4★ SR', value: 4 }, { name: '3★ R', value: 3 }))
+      .addStringOption(opt => opt.setName('effect').setDescription('Passive effect description').setRequired(true))
+      .addIntegerOption(opt => opt.setName('atk').setDescription('Bonus ATK').setRequired(false))
+      .addIntegerOption(opt => opt.setName('hp').setDescription('Bonus HP').setRequired(false))
+      .addAttachmentOption(opt => opt.setName('image_file').setDescription('Upload image file').setRequired(false))
+      .addStringOption(opt => opt.setName('image_url').setDescription('Direct image URL').setRequired(false))
   );
-
-export const gachaCommand = {
-  data: {
-    ...data,
-    name: 'gacha',
-    toJSON: () => ({
-      ...data.toJSON(),
-      name: 'gacha',
-      description: 'Summon and forge Craft Essences using Saint Quartz (Alias)'
-    })
-  },
-  execute: (interaction: ChatInputCommandInteraction) => execute(interaction)
-};
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
     const sub = interaction.options.getSubcommand() || 'banner';
-    const banner = CE_GACHA_BANNERS[0];
+    const banner = getActiveGachaBanner();
+    const allCes = getAllCraftEssences();
+
+    // ========================================================
+    // ADMIN SUBCOMMANDS: BANNER & ADD CE
+    // ========================================================
+    if (sub === 'admin_banner' || sub === 'admin_addce') {
+      const isGuildAdmin = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator) ||
+                           interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild);
+
+      if (interaction.guild && !isGuildAdmin) {
+        await interaction.reply({
+          ephemeral: true,
+          embeds: [
+            new EmbedBuilder()
+              .setTitle('⛔ Administrator Access Required')
+              .setDescription('Only server administrators can customize Gacha Banners or register new Craft Essences.')
+              .setColor(0xef4444)
+          ]
+        });
+        return;
+      }
+
+      if (sub === 'admin_banner') {
+        const title = interaction.options.getString('title');
+        const subtitle = interaction.options.getString('subtitle');
+        const description = interaction.options.getString('description');
+        const imageAttachment = interaction.options.getAttachment('image_file');
+        const imageUrl = interaction.options.getString('image_url');
+        const bannerArtUrl = imageAttachment?.url || imageUrl || undefined;
+        const featuredCesRaw = interaction.options.getString('featured_ces');
+
+        let featuredCeIds = banner.featuredCeIds;
+        if (featuredCesRaw) {
+          const parsed = featuredCesRaw.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+          featuredCeIds = [];
+          for (const item of parsed) {
+            const found = allCes.find(c => c.id.toLowerCase() === item || c.name.toLowerCase().includes(item));
+            if (found) featuredCeIds.push(found.id);
+            else featuredCeIds.push(item);
+          }
+        }
+
+        const updated = updateGachaBanner({
+          title: title || banner.title,
+          subtitle: subtitle || banner.subtitle,
+          description: description || banner.description,
+          bannerArtUrl: bannerArtUrl || banner.bannerArtUrl,
+          featuredCeIds
+        });
+
+        const embed = new EmbedBuilder()
+          .setTitle(`✨ GACHA BANNER UPDATED SUCCESSFULLY`)
+          .setDescription(
+            `### ${updated.title}\n` +
+            `*${updated.subtitle}*\n\n` +
+            `${updated.description}\n\n` +
+            `**Featured Rate-Up CEs:** \`${updated.featuredCeIds.join(', ') || 'None'}\``
+          )
+          .setImage(updated.bannerArtUrl)
+          .setColor(0x38bdf8)
+          .setFooter({ text: `Updated by Admin ${interaction.user.username}` });
+
+        await interaction.reply({ embeds: [embed] });
+        return;
+      }
+
+      if (sub === 'admin_addce') {
+        const name = interaction.options.getString('name', true).trim();
+        const rarity = interaction.options.getInteger('rarity', true) as Rarity;
+        const effect = interaction.options.getString('effect', true).trim();
+        const atk = interaction.options.getInteger('atk') || (rarity === 5 ? 500 : rarity === 4 ? 300 : 150);
+        const hp = interaction.options.getInteger('hp') || (rarity === 5 ? 300 : rarity === 4 ? 200 : 100);
+        const imageAttachment = interaction.options.getAttachment('image_file');
+        const imageUrl = interaction.options.getString('image_url');
+        const finalPicture = imageAttachment?.url || imageUrl || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80';
+
+        const ceId = `ce_${name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now().toString(36)}`;
+        const newCe: CraftEssence = {
+          id: ceId,
+          name,
+          rarity,
+          description: `Custom Mystic Code created by Admin ${interaction.user.username}.`,
+          bonusAtk: atk,
+          bonusDef: 0,
+          bonusHp: hp,
+          atkBonus: atk,
+          hpBonus: hp,
+          effectText: effect,
+          passiveType: rarity === 5 ? 'starting_np' : 'atk_up',
+          passiveValue: rarity === 5 ? 50 : 20,
+          artworkUrl: finalPicture
+        };
+
+        addCustomCraftEssence(newCe);
+
+        const stars = '★'.repeat(rarity);
+        const embed = new EmbedBuilder()
+          .setTitle(`✨ NEW CRAFT ESSENCE REGISTERED`)
+          .setDescription(
+            `**${newCe.name}** [${stars}] has been added to the Gacha Summoning Pool!\n\n` +
+            `• **Effect:** ${newCe.effectText}\n` +
+            `• **Stats:** +${atk} ATK | +${hp} HP\n` +
+            `• **ID:** \`${newCe.id}\``
+          )
+          .setImage(finalPicture)
+          .setColor(rarity === 5 ? 0xfbbf24 : rarity === 4 ? 0xa855f7 : 0x38bdf8);
+
+        await interaction.reply({ embeds: [embed] });
+        return;
+      }
+    }
 
     // ========================================================
     // 1. SUBCOMMAND: INVENTORY
@@ -177,7 +306,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     // ========================================================
     if (sub === 'banner') {
       const featuredList = banner.featuredCeIds
-        .map(id => CRAFT_ESSENCE_DATABASE.find(c => c.id === id))
+        .map(id => allCes.find(c => c.id === id))
         .filter(Boolean)
         .map(c => `• **${c!.name}** (★${c!.rarity}) — *${c!.effectText}*`)
         .join('\n');

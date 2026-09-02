@@ -22,6 +22,7 @@ import * as leakCommand from './commands/leak';
 import * as customiseCommand from './commands/customise';
 import * as addservantCommand from './commands/addservant';
 import * as cegachaCommand from './commands/cegacha';
+import * as addceCommand from './commands/addce';
 import { getOrCreateMaster, saveMaster } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
 import { buildProfileEmbed, buildProfileButtons } from './commands/profile';
@@ -68,7 +69,7 @@ commands.set(leakCommand.data.name, leakCommand);
 commands.set(customiseCommand.data.name, customiseCommand);
 commands.set(addservantCommand.data.name, addservantCommand);
 commands.set(cegachaCommand.data.name, cegachaCommand);
-commands.set(cegachaCommand.gachaCommand.data.name, cegachaCommand.gachaCommand);
+commands.set(addceCommand.data.name, addceCommand);
 
 // ==========================================
 // 3. SLASH COMMAND DEPLOYMENT TO DISCORD API
