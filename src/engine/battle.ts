@@ -120,7 +120,8 @@ export function createCombatantFromMasterServant(
     skills: t.skills.map(s => ({ ...s, currentCooldown: 0 })),
     noblePhantasm: { ...t.noblePhantasm },
     critStars: 0,
-    bondLevel: servantInstance.bondLevel || 1
+    bondLevel: servantInstance.bondLevel || 1,
+    equippedCe: ce
   };
 }
 
@@ -187,18 +188,30 @@ export function resolveCombatTurn(
     // BUSTER: 1.5x damage bonus
     if (card === 'Buster') {
       cardMultiplier = 1.5;
+      if (attacker.equippedCe && (attacker.equippedCe.passiveType === 'buster_up' || attacker.equippedCe.id === 'ce_limited_zero_over' || attacker.equippedCe.id === 'ce_verdant_sound')) {
+        const val = attacker.equippedCe.passiveValue || 15;
+        cardMultiplier *= (1 + val / 100);
+      }
       npGain += 8;
       starsGen += 3;
     } 
     // ARTS: High NP gauge generation
     else if (card === 'Arts') {
       cardMultiplier = 1.0;
+      if (attacker.equippedCe && (attacker.equippedCe.passiveType === 'arts_up' || attacker.equippedCe.id === 'ce_formal_craft' || attacker.equippedCe.id === 'ce_projection')) {
+        const val = attacker.equippedCe.passiveValue || 15;
+        cardMultiplier *= (1 + val / 100);
+      }
       npGain += 32;
       starsGen += 2;
     } 
     // QUICK: High Critical Star drop rate
     else if (card === 'Quick') {
       cardMultiplier = 0.80;
+      if (attacker.equippedCe && (attacker.equippedCe.passiveType === 'quick_up' || attacker.equippedCe.id === 'ce_imaginary_around' || attacker.equippedCe.id === 'ce_gandr' || attacker.equippedCe.id === 'ce_when_the_flowers_fall')) {
+        const val = attacker.equippedCe.passiveValue || 15;
+        cardMultiplier *= (1 + val / 100);
+      }
       npGain += 12;
       starsGen += 22;
     }
@@ -211,7 +224,16 @@ export function resolveCombatTurn(
     // Balanced Tactical Damage Formula: (ATK * CardMod * 0.11 - DEF * 2) * ClassAdvantage * CritMult * Variance
     const variance = 0.95 + Math.random() * 0.10;
     const baseHit = (effectiveAtk * cardMultiplier * 0.11) - (effectiveDef * 2);
-    let hitDamage = Math.max(300, Math.round(baseHit * classMultiplier * (hitCrit ? 1.75 : 1.0) * variance));
+    
+    let critMult = 1.75;
+    if (hitCrit && attacker.equippedCe) {
+      if (attacker.equippedCe.passiveType === 'crit_dmg' || attacker.equippedCe.id === 'ce_gamer_fuel' || attacker.equippedCe.id === 'ce_hydra_dagger') {
+        const val = attacker.equippedCe.passiveValue || 15;
+        critMult += val / 100;
+      }
+    }
+
+    let hitDamage = Math.max(300, Math.round(baseHit * classMultiplier * (hitCrit ? critMult : 1.0) * variance));
 
     if (isEvading) {
       hitDamage = Math.round(hitDamage * 0.15);
@@ -230,7 +252,21 @@ export function resolveCombatTurn(
     npChant = attacker.noblePhantasm.chant;
     const npMult = (attacker.noblePhantasm.multiplier || 380) / 100;
     const variance = 0.96 + Math.random() * 0.08;
-    let npDmg = Math.round((effectiveAtk * npMult * 0.18) * classMultiplier * variance);
+    const npBaseDmg = (effectiveAtk * npMult * 0.18) * classMultiplier;
+
+    // CE NP Damage Boost
+    let npDamageMultiplier = 1.0;
+    if (attacker.equippedCe) {
+      if (attacker.equippedCe.id === 'ce_black_grail') {
+        npDamageMultiplier += 0.60;
+      } else if (attacker.equippedCe.id === 'ce_heavens_feel') {
+        npDamageMultiplier += 0.40;
+      } else if (attacker.equippedCe.id === 'ce_when_the_flowers_fall') {
+        npDamageMultiplier += 0.05;
+      }
+    }
+
+    let npDmg = Math.round(npBaseDmg * npDamageMultiplier * variance);
     npDmg = Math.max(1500, npDmg);
 
     if (isEvading) {
@@ -245,6 +281,32 @@ export function resolveCombatTurn(
 
   attacker.critStars = Math.min(50, (attacker.critStars || 0) + starsGen);
   defender.currentHp = Math.max(0, defender.currentHp - totalDmg);
+
+  // Apply end-of-turn passive adjustments for attacker and defender
+  const applyEndTurnPassives = (combatant: ActiveCombatant) => {
+    if (!combatant.equippedCe) return;
+    const ce = combatant.equippedCe;
+
+    // Prisma Cosmos / When the Flowers Fall turn NP regeneration
+    if (ce.id === 'ce_prisma_cosmos') {
+      combatant.npGauge = Math.min(300, combatant.npGauge + 8);
+    } else if (ce.id === 'ce_when_the_flowers_fall') {
+      combatant.npGauge = Math.min(300, combatant.npGauge + 4);
+    }
+
+    // A Fragment of 2030 (10 stars turn)
+    if (ce.id === 'ce_fragment_2030') {
+      combatant.critStars = Math.min(50, (combatant.critStars || 0) + 10);
+    }
+
+    // Black Grail -500 HP self-burn
+    if (ce.id === 'ce_black_grail') {
+      combatant.currentHp = Math.max(1, combatant.currentHp - 500);
+    }
+  };
+
+  applyEndTurnPassives(attacker);
+  applyEndTurnPassives(defender);
 
   // Generate combat log entry
   const log: CombatTurnLog = {

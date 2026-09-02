@@ -182,6 +182,7 @@ export interface ActiveCombatant {
   isStunned?: boolean;
   critStars: number;
   bondLevel?: number;
+  equippedCe?: CraftEssence;
 }
 
 export interface TurnActionChoice {

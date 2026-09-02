@@ -261,6 +261,21 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     passiveValue: 10,
     artworkUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80'
   },
+  {
+    id: 'ce_when_the_flowers_fall',
+    name: 'When the Flowers Fall',
+    rarity: 4,
+    description: 'Under the falling cherry blossom petals, a fleeting promise is etched forever in memory.',
+    bonusAtk: 200,
+    bonusDef: 0,
+    bonusHp: 300,
+    atkBonus: 200,
+    hpBonus: 300,
+    effectText: 'Charges NP gauge by 4% every turn. Increases Quick performance by 4%. Increases NP damage by 5%.',
+    passiveType: 'quick_up',
+    passiveValue: 4,
+    artworkUrl: 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=500&auto=format&fit=crop&q=80'
+  },
 
   // --- 3★ R CRAFT ESSENCES ---
   {
