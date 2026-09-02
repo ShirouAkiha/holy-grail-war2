@@ -1043,7 +1043,15 @@ async function finishDuel(
 
   // If AI opponent defeated the player Master, automatically eliminate player Master
   if (winner.isAi) {
-    const outcome = recordDuelOutcome(warSession, winner.username, loser.username, 'kill', chanTag);
+    const outcome = recordDuelOutcome(
+      warSession,
+      winner.username,
+      loser.username,
+      'kill',
+      chanTag,
+      winner.currentHp,
+      loser.currentHp
+    );
 
     const defeatEmbed = new EmbedBuilder()
       .setTitle('☠️ FATAL DUEL DEFEAT — MASTER ELIMINATED')
@@ -1136,7 +1144,15 @@ async function finishDuel(
     });
 
     const decision = confirmation.customId === 'duel_fate_kill' ? 'kill' : 'spare';
-    const outcome = recordDuelOutcome(warSession, winner.username, loser.username, decision, chanTag);
+    const outcome = recordDuelOutcome(
+      warSession,
+      winner.username,
+      loser.username,
+      decision,
+      chanTag,
+      winner.currentHp,
+      loser.currentHp
+    );
 
     if (decision === 'kill') {
       const execEmbed = new EmbedBuilder()

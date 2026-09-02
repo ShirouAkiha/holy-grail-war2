@@ -178,8 +178,8 @@ export function resetWarSession(): void {
 export type WarActionType =
   | 'challenge_master'
   | 'form_alliance'
-  | 'betray_ally'
   | 'rest_and_heal'
+  | 'heal_ritual'
   | 'simulate_skirmish'
   | 'attack_suspect'
   | 'leak_intel'
@@ -201,6 +201,196 @@ export interface WarActionResult {
   targetWasMaster?: boolean;
   exposedTargetMaster?: string;
   updatedWar: HolyGrailWarSession;
+}
+
+/**
+ * Calculates a participant's real-time HP based on passive leyline regeneration.
+ * Full HP recovery cycle takes 5 minutes (300,000 ms).
+ */
+export function calculateCurrentHp(participant: WarMasterParticipant, now: number = Date.now()): number {
+  if (!participant) return 0;
+  if (!participant.isAlive) {
+    participant.currentHp = 0;
+    return 0;
+  }
+  const maxHp = participant.maxHp || 15000;
+  if (participant.currentHp >= maxHp) {
+    participant.currentHp = maxHp;
+    return maxHp;
+  }
+  if (!participant.lastDamageTime) {
+    return participant.currentHp;
+  }
+
+  const elapsed = Math.max(0, now - participant.lastDamageTime);
+  const REGEN_DURATION = 300000; // 5 minutes in ms (300s)
+
+  if (elapsed >= REGEN_DURATION) {
+    participant.currentHp = maxHp;
+    participant.baseHpAtDamage = maxHp;
+    return maxHp;
+  }
+
+  const baseHp = participant.baseHpAtDamage !== undefined ? participant.baseHpAtDamage : participant.currentHp;
+  const missingHp = Math.max(0, maxHp - baseHp);
+  const progress = elapsed / REGEN_DURATION;
+  const healed = Math.round(missingHp * progress);
+  const calculatedHp = Math.min(maxHp, Math.max(baseHp, baseHp + healed));
+  participant.currentHp = calculatedHp;
+  return calculatedHp;
+}
+
+/**
+ * Returns comprehensive healing & spiritual core reconstitution status for UI display.
+ */
+export function getHealingStatus(participant: WarMasterParticipant, now: number = Date.now()): {
+  currentHp: number;
+  maxHp: number;
+  percent: number;
+  isFullyHealed: boolean;
+  remainingSecs: number;
+  statusTag: string;
+  canRitualHeal: boolean;
+  ritualCooldownSecs: number;
+} {
+  const maxHp = participant?.maxHp || 15000;
+  if (!participant || !participant.isAlive) {
+    return {
+      currentHp: 0,
+      maxHp,
+      percent: 0,
+      isFullyHealed: false,
+      remainingSecs: 0,
+      statusTag: '💀 Deceased',
+      canRitualHeal: false,
+      ritualCooldownSecs: 0
+    };
+  }
+
+  const currentHp = calculateCurrentHp(participant, now);
+  const percent = Math.min(100, Math.max(0, Math.round((currentHp / maxHp) * 100)));
+  const isFullyHealed = currentHp >= maxHp;
+
+  let remainingSecs = 0;
+  if (!isFullyHealed && participant.lastDamageTime) {
+    const elapsed = Math.max(0, now - participant.lastDamageTime);
+    remainingSecs = Math.max(0, Math.ceil((300000 - elapsed) / 1000));
+  }
+
+  const RITUAL_COOLDOWN = 300000; // 5 minutes
+  let ritualCooldownSecs = 0;
+  if (participant.lastHealRitualTime && now - participant.lastHealRitualTime < RITUAL_COOLDOWN) {
+    ritualCooldownSecs = Math.ceil((RITUAL_COOLDOWN - (now - participant.lastHealRitualTime)) / 1000);
+  }
+
+  const canRitualHeal = ritualCooldownSecs === 0 && !isFullyHealed;
+
+  let statusTag = '🟢 Full Health';
+  if (!isFullyHealed) {
+    const mins = Math.floor(remainingSecs / 60);
+    const secs = remainingSecs % 60;
+    const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+    statusTag = `⏳ Passive Regen (${timeStr} to full)`;
+  }
+
+  return {
+    currentHp,
+    maxHp,
+    percent,
+    isFullyHealed,
+    remainingSecs,
+    statusTag,
+    canRitualHeal,
+    ritualCooldownSecs
+  };
+}
+
+/**
+ * Applies damage to a participant, storing the base HP at time of injury and setting the 5-minute passive recovery timer.
+ */
+export function applyDamageToParticipant(
+  participant: WarMasterParticipant,
+  damageAmount: number,
+  now: number = Date.now()
+): void {
+  calculateCurrentHp(participant, now);
+  participant.currentHp = Math.max(0, participant.currentHp - damageAmount);
+  participant.baseHpAtDamage = participant.currentHp;
+  participant.lastDamageTime = now;
+}
+
+/**
+ * Performs a Workshop Leyline Healing Ritual for a Master (+40% HP, 5-minute cooldown).
+ */
+export function executeHealRitual(
+  war: HolyGrailWarSession,
+  masterId: string
+): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
+  const targetWar = war || globalWarSession;
+  if (!targetWar) {
+    return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
+  }
+
+  const actor = targetWar.participants[masterId];
+  if (!actor || !actor.isAlive) {
+    return { success: false, message: 'You are eliminated from the Holy Grail War!', updatedWar: targetWar };
+  }
+
+  const now = Date.now();
+  calculateCurrentHp(actor, now);
+
+  if (actor.currentHp >= actor.maxHp) {
+    return {
+      success: false,
+      message: `✨ **Spiritual Core Pristine:** Your Servant (**${actor.servantName}**) is already at **100% Full Health** (${actor.maxHp.toLocaleString()}/${actor.maxHp.toLocaleString()})! No healing required.`,
+      updatedWar: targetWar
+    };
+  }
+
+  const RITUAL_COOLDOWN = 300000; // 5 minutes
+  if (actor.lastHealRitualTime && now - actor.lastHealRitualTime < RITUAL_COOLDOWN) {
+    const rem = Math.ceil((RITUAL_COOLDOWN - (now - actor.lastHealRitualTime)) / 1000);
+    const mins = Math.floor(rem / 60);
+    const secs = rem % 60;
+    const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+    const healStat = getHealingStatus(actor, now);
+    return {
+      success: false,
+      message: `⏳ **Magical Circuit Exhaustion:** Your workshop leylines need time to reconstitute after your last ritual!\n\n` +
+        `• Next Healing Ritual available in **${timeStr}**.\n` +
+        `• Passive Leyline Regeneration is active: currently at **${healStat.currentHp.toLocaleString()}/${healStat.maxHp.toLocaleString()} HP** (${healStat.statusTag}).`,
+      updatedWar: targetWar
+    };
+  }
+
+  // Restore 40% Max HP
+  const healAmount = Math.round(actor.maxHp * 0.40);
+  actor.currentHp = Math.min(actor.maxHp, actor.currentHp + healAmount);
+  actor.baseHpAtDamage = actor.currentHp;
+  actor.lastDamageTime = now;
+  actor.lastHealRitualTime = now;
+
+  const isFull = actor.currentHp >= actor.maxHp;
+  const statusInfo = getHealingStatus(actor, now);
+
+  const msg = `✨ **WORKSHOP LEYLINE HEALING RITUAL COMPLETE!**\n\n` +
+    `Master **${actor.username}** channeled their magical crest into **${actor.servantName}**'s spiritual core!\n` +
+    `• Restored **+${healAmount.toLocaleString()} HP**! (Current HP: **${actor.currentHp.toLocaleString()}/${actor.maxHp.toLocaleString()}** — ${statusInfo.percent}%)\n` +
+    (isFull ? `• 🟢 **Servant's spiritual core is fully restored!**\n` : `• ⏳ **Remaining passive recovery:** ${statusInfo.statusTag}.\n`) +
+    `• ⏳ Next active Healing Ritual ready in **5 minutes** (or use a Command Seal for emergency recovery).`;
+
+  targetWar.eventLogs.unshift({
+    id: `evt_heal_${Date.now()}`,
+    timestamp: now,
+    text: `✨ Mana Reconstitution: Master **${actor.username}** channeled workshop leylines to heal Servant **${actor.servantName}** (+${healAmount.toLocaleString()} HP).`,
+    type: 'heal'
+  });
+
+  return {
+    success: true,
+    message: msg,
+    updatedWar: targetWar
+  };
 }
 
 /**
@@ -1241,15 +1431,9 @@ export function executeWarAction(
   let eliminatedId: string | undefined;
 
   switch (action) {
-    case 'rest_and_heal': {
-      const healAmount = Math.round(actor.maxHp * 0.45);
-      actor.currentHp = Math.min(actor.maxHp, actor.currentHp + healAmount);
-      resultMsg = `🩹 Channeled mana to recover ${healAmount.toLocaleString()} HP for ${actor.isExposed ? actor.servantName : 'contracted Servant'} (HP: ${actor.currentHp.toLocaleString()}/${actor.maxHp.toLocaleString()}).`;
-      return {
-        success: true,
-        message: resultMsg,
-        updatedWar: targetWar
-      };
+    case 'rest_and_heal':
+    case 'heal_ritual': {
+      return executeHealRitual(targetWar, actor.discordId);
     }
 
     case 'form_alliance': {
@@ -1272,34 +1456,6 @@ export function executeWarAction(
       actor.allianceId = allianceId;
       targetMaster.allianceId = allianceId;
       resultMsg = `🤝 Secret Covenant formed between ${actor.isExposed ? actor.username : 'Unknown Master'} & ${targetMaster.isExposed ? targetMaster.username : 'Hidden Master'}!`;
-      break;
-    }
-
-    case 'betray_ally': {
-      if (!actor.allianceId || !targetWar.alliances[actor.allianceId]) {
-        return { success: false, message: 'You have no active alliance to betray!', updatedWar: targetWar };
-      }
-      const activeAlliance = targetWar.alliances[actor.allianceId];
-      const allyId = activeAlliance.memberMasterIds.find(id => id !== actor.discordId);
-      if (!allyId || !targetWar.participants[allyId]) {
-        return { success: false, message: 'No ally found in current pact.', updatedWar: targetWar };
-      }
-      const ally = targetWar.participants[allyId];
-      delete targetWar.alliances[actor.allianceId];
-      actor.allianceId = undefined;
-      ally.allianceId = undefined;
-
-      actor.isExposed = true;
-      actor.exposureReason = 'ambush_clash';
-      ally.isExposed = true;
-      ally.exposureReason = 'ambush_clash';
-
-      combatInfo = {
-        opponentId: ally.discordId,
-        opponentName: ally.username,
-        isAmbush: true
-      };
-      resultMsg = `🗡️ BETRAYAL! **${actor.username}** broke the covenant and ambushed **${ally.username}** with a lethal surprise strike! Both identities are exposed!`;
       break;
     }
 
@@ -1335,7 +1491,7 @@ export function executeWarAction(
     id: `evt_${Date.now()}`,
     timestamp: Date.now(),
     text: resultMsg,
-    type: action === 'betray_ally' ? 'betrayal' : action === 'form_alliance' ? 'alliance' : 'clash'
+    type: action === 'form_alliance' ? 'alliance' : 'clash'
   });
 
   return {
@@ -1374,7 +1530,7 @@ export function simulateWarSkirmish(war: HolyGrailWarSession, channelName?: stri
   const ai1 = aliveRivals[idx1];
   const ai2 = aliveRivals[idx2];
   const damage = Math.round(3500 + Math.random() * 4500);
-  ai2.currentHp = Math.max(0, ai2.currentHp - damage);
+  applyDamageToParticipant(ai2, damage);
 
   if (!ai1.isExposed && Math.random() < 0.45) {
     ai1.isExposed = true;
@@ -1428,13 +1584,16 @@ export function simulateWarSkirmish(war: HolyGrailWarSession, channelName?: stri
 /**
  * Records the outcome of a duel between two Masters with the decisive choice to Kill or Spare.
  * If killed, the defeated Master is permanently eliminated from the Holy Grail War.
+ * Retains surviving combat damage so wounded combatants do not instantly auto-heal.
  */
 export function recordDuelOutcome(
   war: HolyGrailWarSession,
   winnerQuery: string,
   loserQuery: string,
   decision: 'kill' | 'spare',
-  channelName?: string
+  channelName?: string,
+  winnerRemainingHp?: number,
+  loserRemainingHp?: number
 ): {
   updatedWar: HolyGrailWarSession;
   message: string;
@@ -1473,11 +1632,22 @@ export function recordDuelOutcome(
     };
   }
 
+  const now = Date.now();
+
   // Both identities become exposed due to the decisive duel
   victor.isExposed = true;
   victor.exposureReason = 'direct_combat';
   defeated.isExposed = true;
   defeated.exposureReason = 'direct_combat';
+
+  // Victor retains any battle damage taken rather than resetting to 100%
+  if (winnerRemainingHp !== undefined && winnerRemainingHp > 0) {
+    victor.currentHp = Math.min(victor.maxHp, Math.round(winnerRemainingHp));
+  }
+  if (victor.currentHp < victor.maxHp) {
+    victor.baseHpAtDamage = victor.currentHp;
+    victor.lastDamageTime = now;
+  }
 
   let outcomeLog = '';
   let isEliminated = false;
@@ -1485,13 +1655,14 @@ export function recordDuelOutcome(
   if (decision === 'kill') {
     defeated.isAlive = false;
     defeated.currentHp = 0;
+    defeated.baseHpAtDamage = 0;
     victor.kills = (victor.kills || 0) + 1;
     isEliminated = true;
     outcomeLog = `☠️ FATAL EXECUTION in ${chanTag}: Master **${victor.username}** (${victor.servantName}) dealt the finishing blow and EXECUTED Master **${defeated.username}** (${defeated.servantName})! Church reported a massive 'gas leak explosion' in ${chanTag}.`;
 
     targetWar.eventLogs.unshift({
       id: `evt_exec_${Date.now()}`,
-      timestamp: Date.now(),
+      timestamp: now,
       text: outcomeLog,
       type: 'elimination'
     });
@@ -1502,22 +1673,28 @@ export function recordDuelOutcome(
       targetWar.grailWinnerId = aliveList[0].discordId;
       targetWar.eventLogs.unshift({
         id: `evt_win_${Date.now()}`,
-        timestamp: Date.now(),
+        timestamp: now,
         text: `🏆 THE HOLY GRAIL HAS MANIFESTED! Master **${aliveList[0].username}** (${aliveList[0].servantName}) is the sole survivor and has won the Holy Grail War!`,
         type: 'clash'
       });
     }
   } else {
-    // Spared: left on critical HP (10% max HP)
+    // Spared: left on critical HP (or duel remaining HP), starts 5-min regeneration recovery
     defeated.isAlive = true;
-    defeated.currentHp = Math.max(1, Math.round(defeated.maxHp * 0.1));
+    if (loserRemainingHp !== undefined && loserRemainingHp > 0) {
+      defeated.currentHp = Math.min(defeated.maxHp, Math.round(loserRemainingHp));
+    } else {
+      defeated.currentHp = Math.max(1, Math.round(defeated.maxHp * 0.1));
+    }
+    defeated.baseHpAtDamage = defeated.currentHp;
+    defeated.lastDamageTime = now;
     isEliminated = false;
 
-    outcomeLog = `🕊️ MERCY BESTOWED in ${chanTag}: Master **${victor.username}** (${victor.servantName}) defeated Master **${defeated.username}** (${defeated.servantName}) in a duel, but chose to SPARE their life! **${defeated.username}** survives with critical HP. Both identities are now exposed.`;
+    outcomeLog = `🕊️ MERCY BESTOWED in ${chanTag}: Master **${victor.username}** (${victor.servantName}) defeated Master **${defeated.username}** (${defeated.servantName}) in a duel, but chose to SPARE their life! **${defeated.username}** survives with critical HP (${defeated.currentHp.toLocaleString()}/${defeated.maxHp.toLocaleString()}). Spiritual core requires 5 minutes of leyline regeneration to fully reconstitute. Both identities are now exposed.`;
 
     targetWar.eventLogs.unshift({
       id: `evt_mercy_${Date.now()}`,
-      timestamp: Date.now(),
+      timestamp: now,
       text: outcomeLog,
       type: 'heal'
     });

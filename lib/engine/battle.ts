@@ -45,7 +45,8 @@ export function calculateClassMultiplier(attackerClass: ServantClass, defenderCl
 
 export function createCombatantFromMasterServant(
   servantInstance: MasterServantInstance,
-  masterName: string
+  masterName: string,
+  overrideCurrentHp?: number
 ): ActiveCombatant {
   const t = servantInstance.template || servantInstance;
   const ce = servantInstance.equippedCe;
@@ -73,6 +74,10 @@ export function createCombatantFromMasterServant(
     initialNp = ce.passiveValue;
   }
 
+  const startingHp = overrideCurrentHp !== undefined && overrideCurrentHp > 0
+    ? Math.min(maxHp, Math.round(overrideCurrentHp))
+    : maxHp;
+
   return {
     id: servantInstance.id,
     name: servantInstance.nickname || t.name,
@@ -80,7 +85,7 @@ export function createCombatantFromMasterServant(
     servantClass: t.servantClass,
     avatarUrl: t.avatarUrl,
     maxHp,
-    currentHp: maxHp,
+    currentHp: startingHp,
     atk: rawAtk,
     def,
     stats: {

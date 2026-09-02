@@ -1012,7 +1012,6 @@ export default function DiscordEmulator({
       const isLeak = trimmed.startsWith('/grailwar leak') || trimmed.startsWith('/leak');
       const isSkirmish = trimmed.includes('skirmish');
       const isRest = trimmed.includes('rest') || trimmed.includes('heal');
-      const isBetray = trimmed.includes('betray');
 
       // SUB-CASE FAMILIARS: /grailwar familiar, /familiars
       if (isFamiliars) {
@@ -1465,10 +1464,9 @@ export default function DiscordEmulator({
         return;
       }
 
-      // SUB-CASE D: /grailwar rest or betray
-      if (isRest || isBetray) {
-        const actionType = isBetray ? 'betray_ally' : 'rest_and_heal';
-        const result = executeWarAction(grailWar, master.discordId, actionType);
+      // SUB-CASE D: /grailwar rest or /grailwar heal
+      if (isRest) {
+        const result = executeWarAction(grailWar, master.discordId, 'heal_ritual');
         onUpdateGrailWar(result.updatedWar);
 
         addMessage({
@@ -1476,9 +1474,17 @@ export default function DiscordEmulator({
           sender: 'bot',
           timestamp: 'Just now',
           embed: {
-            title: result.success ? '✅ Holy Grail War Action Completed' : '⚠️ Action Interrupted',
+            title: result.success ? '✨ Workshop Leyline Healing Ritual' : '⏳ Magical Circuit Exhaustion',
             description: result.message,
-            color: result.success ? '#22c55e' : '#ef4444'
+            color: result.success ? '#22c55e' : '#eab308',
+            footer: 'Spiritual Core Regeneration • 5-min cooldown (Passive Leylines active)'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'war_my_profile', label: 'View Profile & HP', style: 'primary', emoji: '👤' },
+              { id: 'quick_war_status', label: 'War Status Board', style: 'secondary', emoji: '📋' }
+            ]
           }
         });
         return;
@@ -1611,7 +1617,6 @@ export default function DiscordEmulator({
             { id: 'war_familiars', label: 'Familiars', style: 'primary', emoji: '🦅' },
             { id: 'war_traps', label: 'Bounded Traps', style: 'secondary', emoji: '🕸️' },
             { id: 'war_patrol', label: 'Patrol City', style: 'success', emoji: '👁️' },
-            { id: 'war_skirmish', label: 'City Skirmish', style: 'secondary', emoji: '💥' },
             { id: 'war_refresh', label: 'Refresh', style: 'secondary', emoji: '🔄' }
           ]
         }
@@ -1992,7 +1997,15 @@ export default function DiscordEmulator({
         const rivalMaster = activeDuel?.battle.player2.masterName || 'itsderpo';
         const rivalServantName = activeDuel?.battle.player2.name || 'Scáthach';
 
-        const outcome = recordDuelOutcome(grailWar, master.username, rivalMaster, decision);
+        const outcome = recordDuelOutcome(
+          grailWar,
+          master.username,
+          rivalMaster,
+          decision,
+          activeChannel === 'public' ? 'holy-grail-war' : 'direct-messages',
+          activeDuel?.battle.player1.currentHp,
+          activeDuel?.battle.player2.currentHp
+        );
         onUpdateGrailWar(outcome.updatedWar);
 
         // Grant winner rewards
@@ -2121,7 +2134,15 @@ export default function DiscordEmulator({
           });
         } else {
           // Player defeated by opponent (e.g. itsderpo)
-          const outcome = recordDuelOutcome(grailWar, updatedState.player2.masterName, master.username, 'kill');
+          const outcome = recordDuelOutcome(
+            grailWar,
+            updatedState.player2.masterName,
+            master.username,
+            'kill',
+            activeChannel === 'public' ? 'holy-grail-war' : 'direct-messages',
+            updatedState.player2.currentHp,
+            updatedState.player1.currentHp
+          );
           onUpdateGrailWar(outcome.updatedWar);
           setActiveDuel(null);
 
@@ -2339,35 +2360,6 @@ export default function DiscordEmulator({
 
       if (btnId === 'war_leak_prompt') {
         setInputCommand('/grailwar leak ');
-        return;
-      }
-
-      if (btnId === 'war_skirmish') {
-        const chanTag = activeChannel === 'public' ? '#holy-grail-war' : '#general';
-        const result = simulateWarSkirmish(grailWar, chanTag);
-        onUpdateGrailWar(result.updatedWar);
-        const alive = Object.values(result.updatedWar.participants).filter(x => x.isAlive).length;
-        addMessage({
-          id: getNextId('bot_war_skirmish'),
-          sender: 'bot',
-          timestamp: 'Just now',
-          embed: {
-            title: '💥 Holy Grail War: Rival Clash Simulated',
-            description:
-              `${result.message}\n\n` +
-              `👥 **Surviving Masters:** ${alive}/7 alive\n` +
-              `Recent Log:\n` +
-              result.updatedWar.eventLogs.slice(0, 2).map(e => `• ${e.text}`).join('\n'),
-            color: '#ef4444'
-          },
-          components: {
-            type: 'buttons',
-            items: [
-              { id: 'quick_war_status', label: 'Check Status Board (/grailwar)', style: 'primary', emoji: '📋' },
-              { id: 'war_skirmish', label: 'Simulate Another Skirmish', style: 'secondary', emoji: '💥' }
-            ]
-          }
-        });
         return;
       }
 

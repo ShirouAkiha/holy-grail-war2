@@ -250,6 +250,9 @@ export interface WarMasterParticipant {
   autoEvadeEnabled?: boolean;
   lastAmbushTime?: number;
   lastAmbushedTime?: number;
+  lastDamageTime?: number;
+  baseHpAtDamage?: number;
+  lastHealRitualTime?: number;
   gutsTriggered?: boolean;
 }
 

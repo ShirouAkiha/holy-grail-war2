@@ -166,13 +166,13 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand(sub =>
     sub
-      .setName('rest')
-      .setDescription('Channel mana to restore Servant HP')
+      .setName('heal')
+      .setDescription('✨ Perform a Workshop Leyline Healing Ritual to restore 40% HP (5-minute cooldown)')
   )
   .addSubcommand(sub =>
     sub
-      .setName('betray')
-      .setDescription('Break an active covenant and strike an ally with a surprise assault')
+      .setName('rest')
+      .setDescription('✨ Channel mana to perform a Healing Ritual to restore 40% HP (5-minute cooldown)')
   )
   .addSubcommand(sub =>
     sub
@@ -342,15 +342,15 @@ export function buildWarButtons() {
       .setEmoji('🏰')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
+      .setCustomId('war_familiars_hub')
+      .setLabel('Familiars')
+      .setEmoji('🦅')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
       .setCustomId('war_patrol')
       .setLabel('Patrol City')
       .setEmoji('👁️')
       .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId('war_skirmish')
-      .setLabel('City Skirmish')
-      .setEmoji('💥')
-      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('war_refresh')
       .setLabel('Refresh')
@@ -413,7 +413,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const isCivilian = !master.servants || master.servants.length === 0;
 
     if (isCivilian) {
-      if (['profile', 'defenses', 'ward', 'evade', 'attack', 'rest', 'betray'].includes(subcommand)) {
+      if (['profile', 'defenses', 'ward', 'evade', 'attack', 'rest', 'heal'].includes(subcommand)) {
         await interaction.reply({
           ephemeral: true,
           content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
@@ -630,13 +630,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const res = simulateWarSkirmish(war, currentChannelName);
       initialMsg = res.message;
       war = res.updatedWar;
-    } else if (subcommand === 'rest') {
-      const res = executeWarAction(war, interaction.user.id, 'rest_and_heal');
-      initialMsg = res.message;
-      war = res.updatedWar;
-      await saveMaster(master);
-    } else if (subcommand === 'betray') {
-      const res = executeWarAction(war, interaction.user.id, 'betray_ally');
+    } else if (subcommand === 'rest' || subcommand === 'heal') {
+      const res = executeWarAction(war, interaction.user.id, 'heal_ritual');
       initialMsg = res.message;
       war = res.updatedWar;
       await saveMaster(master);
@@ -812,15 +807,63 @@ function setupWarCollector(message: any, userId: string) {
         await i.update({ embeds: [defEmbed], components: defBtns });
         return;
       }
+      else if (i.customId === 'war_familiars_hub') {
+        if (isCivilian) {
+          await i.reply({
+            ephemeral: true,
+            content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
+          });
+          return;
+        }
+        const userFamiliars = (war.familiars || []).filter(f => f.masterId === i.user.id);
+        let desc = '';
+        if (userFamiliars.length === 0) {
+          desc = 'You currently have **no active familiars** dispatched in Fuyuki City.\n\nUse `/grailwar familiar` to deploy Scouting Ravens, Homunculus Decoys, or Shadow Imps!';
+        } else {
+          desc = `You currently command **${userFamiliars.length}/2** active familiars stationed across Fuyuki:\n\n` +
+            userFamiliars.map((f, idx) => {
+              const typeLabel = f.familiarType === 'raven'
+                ? '🦅 **Scouting Raven** (Surveillance)'
+                : f.familiarType === 'homunculus'
+                ? '🗿 **Homunculus Decoy** (Ambush Shield)'
+                : '🦇 **Shadow Imp** (Sabotage & Siphon)';
+              const intelLogs = (f.detectedIntel && f.detectedIntel.length > 0)
+                ? `\n  ↳ **Surveillance Logs:**\n  ${f.detectedIntel.slice(0, 3).join('\n  ')}`
+                : `\n  ↳ *No movement observed yet.*`;
+              return `**${idx + 1}. Sector ${f.channelName}** — ${typeLabel}\n*Deployed <t:${Math.floor(f.createdAt / 1000)}:R>*${intelLogs}`;
+            }).join('\n\n');
+        }
+
+        const famsEmbed = new EmbedBuilder()
+          .setTitle('🦅 Active Familiar Reconnaissance Network')
+          .setDescription(desc)
+          .setColor(0x0ea5e9)
+          .setFooter({ text: 'Familiars gather intelligence and shield their Masters' });
+
+        const row = new ActionRowBuilder<ButtonBuilder>();
+        if (userFamiliars.length > 0) {
+          row.addComponents(
+            new ButtonBuilder()
+              .setCustomId('recall_all_familiars')
+              .setLabel('Recall All Familiars')
+              .setEmoji('🕊️')
+              .setStyle(ButtonStyle.Danger)
+          );
+        }
+        row.addComponents(
+          new ButtonBuilder()
+            .setCustomId('war_status_board')
+            .setLabel('Grail War Status')
+            .setEmoji('📜')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        await i.reply({ embeds: [famsEmbed], components: [row], ephemeral: true });
+        return;
+      }
       else if (i.customId === 'war_patrol') {
         const chanTag = i.channel && 'name' in i.channel ? `#${(i.channel as any).name}` : '#general';
         const res = patrolCityInWar(war, i.user.id, i.user.username, chanTag);
-        actionResultMsg = res.message;
-        war = res.updatedWar;
-      }
-      else if (i.customId === 'war_skirmish') {
-        const chanTag = i.channel && 'name' in i.channel ? `#${(i.channel as any).name}` : '#general';
-        const res = simulateWarSkirmish(war, chanTag);
         actionResultMsg = res.message;
         war = res.updatedWar;
       }

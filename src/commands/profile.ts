@@ -10,7 +10,8 @@ import {
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { 
   getOrInitWarSession, 
-  executeWarAction 
+  executeWarAction,
+  getHealingStatus
 } from '../engine/grailwar';
 
 export const data = new SlashCommandBuilder()
@@ -58,6 +59,8 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
   const np = sTemplate.noblePhantasm || activeServant.noblePhantasm || { name: 'Excalibur', cardType: 'Buster', description: 'Sword of Promised Victory' };
   const baseAtk = sTemplate.baseAtk || activeServant.baseAtk || activeServant.baseStats?.atk || 12000;
 
+  const healInfo = getHealingStatus(userParticipant);
+
   const embed = new EmbedBuilder()
     .setTitle(`👤 Secret Master Dossier | ${master.username}`)
     .setDescription(
@@ -67,8 +70,10 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
       `• **${servantName}** [${rarityStars}] — Class: **${servantClass}**\n` +
       `• **Noble Phantasm:** ✨ **${np.name}** (${np.cardType})\n` +
       `  *${np.description}*\n\n` +
-      `📊 **Combat Parameters:**\n` +
-      `• **HP:** ❤️ \`${userParticipant.currentHp.toLocaleString()} / ${userParticipant.maxHp.toLocaleString()}\`\n` +
+      `📊 **Combat Parameters & Health Recovery:**\n` +
+      `• **HP:** ❤️ \`${healInfo.currentHp.toLocaleString()} / ${healInfo.maxHp.toLocaleString()}\` (${healInfo.percent}%)\n` +
+      `• **Recovery State:** ${healInfo.statusTag}\n` +
+      (healInfo.ritualCooldownSecs > 0 ? `• **Healing Ritual Cooldown:** ⏳ \`${Math.floor(healInfo.ritualCooldownSecs / 60)}m ${healInfo.ritualCooldownSecs % 60}s remaining\`\n` : `• **Healing Ritual:** ✨ \`Ready (+40% HP)\`\n`) +
       `• **Base ATK:** ⚔️ \`${baseAtk.toLocaleString()}\`\n` +
       `• **Noble Phantasm Charge:** ⚡ \`100% Ready\`\n\n` +
       `🛡️ **Workshop Defenses & Wards:**\n` +
@@ -91,6 +96,7 @@ export function buildProfileButtons(userParticipant: any) {
   if (!userParticipant) return [];
   const currentWard = userParticipant?.boundedField || 'none';
   const autoEvade = userParticipant?.autoEvadeEnabled !== false;
+  const healInfo = getHealingStatus(userParticipant);
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -117,9 +123,9 @@ export function buildProfileButtons(userParticipant: any) {
       .setStyle(autoEvade ? ButtonStyle.Success : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('profile_heal')
-      .setLabel('Channel Mana (Heal)')
-      .setEmoji('🩹')
-      .setStyle(ButtonStyle.Success),
+      .setLabel(healInfo.ritualCooldownSecs > 0 ? `Healing Ritual (${Math.ceil(healInfo.ritualCooldownSecs / 60)}m)` : 'Healing Ritual (+40%)')
+      .setEmoji('✨')
+      .setStyle(healInfo.canRitualHeal ? ButtonStyle.Success : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('profile_refresh')
       .setLabel('Refresh Profile')
