@@ -268,16 +268,39 @@ function buildDuelEmbed(
   p2: DuelCombatant,
   round: number,
   activeUserId: string,
-  lastLogs?: string[]
+  lastLogs?: string[],
+  pendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = []
 ) {
   const isP1Turn = activeUserId === p1.userId;
   const activeCombatant = isP1Turn ? p1 : p2;
+
+  const cardEmojiMap: Record<string, string> = {
+    Buster: '🔴 Buster',
+    Arts: '🔵 Arts',
+    Quick: '🟢 Quick',
+    NP: '💥 Noble Phantasm'
+  };
+
+  const c1Text = pendingCards[0] ? cardEmojiMap[pendingCards[0]] || pendingCards[0] : '❓ Card 1 (1.0x Lead)';
+  const c2Text = pendingCards[1] ? cardEmojiMap[pendingCards[1]] || pendingCards[1] : '❓ Card 2 (1.2x)';
+  const c3Text = pendingCards[2] ? cardEmojiMap[pendingCards[2]] || pendingCards[2] : '❓ Card 3 (1.4x)';
+
+  let leadHelp = '';
+  if (pendingCards.length > 0) {
+    const first = pendingCards[0];
+    if (first === 'Buster') leadHelp = '\n🔥 *1st Buster Lead: +50% DMG to remaining cards!*';
+    else if (first === 'Arts') leadHelp = '\n🌊 *1st Arts Lead: +100% NP Gain to remaining cards!*';
+    else if (first === 'Quick') leadHelp = '\n⚡ *1st Quick Lead: +20% Crit Rate & Star Drop!*';
+    else if (first === 'NP') leadHelp = '\n💥 *Noble Phantasm leading sequence!*';
+  }
+
+  const slotDisplay = `🎴 **Command Cards Selected (${pendingCards.length}/3):**\n\`[ 1: ${c1Text} ]\` ➔ \`[ 2: ${c2Text} ]\` ➔ \`[ 3: ${c3Text} ]\`${leadHelp}`;
 
   const embed = new EmbedBuilder()
     .setTitle(`⚔️ HOLY GRAIL WAR DUEL — ROUND ${round}`)
     .setImage('attachment://turn_summary.png')
     .setDescription(
-      `👉 **Current Turn:** ${activeCombatant.isAi ? '🤖 Shadow AI is calculating...' : `<@${activeCombatant.userId}>, select your Command Card, Skill, or Noble Phantasm:`}`
+      `👉 **Current Turn:** ${activeCombatant.isAi ? '🤖 Shadow AI is calculating...' : `<@${activeCombatant.userId}>, select **3 Command Cards** to form your Attack Chain:`}\n\n${slotDisplay}`
     )
     .setColor(isP1Turn ? 0xef4444 : 0x38bdf8);
 
@@ -296,28 +319,32 @@ function buildDuelEmbed(
 // 7. INTERACTIVE ACTION BUTTON BUILDER
 // ==========================================
 // Generates 2 rows:
-// Row 1: Command Attack Cards (Buster, Arts, Quick, Noble Phantasm)
-// Row 2: 3 Active Skill Sets (Skill 1 & 2 unlocked, Skill 3 unlocked at Bond Level 5) + Command Seal
-function buildCombatButtons(combatant: DuelCombatant) {
+// Row 1: Command Attack Cards (Buster, Arts, Quick, Noble Phantasm) + Reset
+// Row 2: 3 Active Skill Sets + Command Seal
+function buildCombatButtons(
+  combatant: DuelCombatant,
+  pendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = []
+) {
   const isNpReady = combatant.npGauge >= 100;
   const skills = combatant.servant.template.skills || [];
   const bondLevel = combatant.servant.bondLevel || 1;
+  const hasPending = pendingCards.length > 0;
 
-  // Row 1: Command Cards + Noble Phantasm
+  // Row 1: Command Cards + Noble Phantasm + Reset
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId('card_buster')
-      .setLabel('Buster (+50% DMG)')
+      .setLabel('Buster')
       .setEmoji('🔴')
       .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId('card_arts')
-      .setLabel('Arts (+35% NP)')
+      .setLabel('Arts')
       .setEmoji('🔵')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('card_quick')
-      .setLabel('Quick (+25 Stars)')
+      .setLabel('Quick')
       .setEmoji('🟢')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
@@ -325,7 +352,13 @@ function buildCombatButtons(combatant: DuelCombatant) {
       .setLabel(`NP (${Math.round(combatant.npGauge)}%)`)
       .setEmoji('💥')
       .setStyle(isNpReady ? ButtonStyle.Danger : ButtonStyle.Secondary)
-      .setDisabled(!isNpReady)
+      .setDisabled(!isNpReady),
+    new ButtonBuilder()
+      .setCustomId('card_reset')
+      .setLabel('Clear')
+      .setEmoji('🔄')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(!hasPending)
   );
 
   // Row 2: 3 Active Skill Sets + Master Command Seal
@@ -465,17 +498,15 @@ function invokeCombatantSeal(combatant: DuelCombatant): { success: boolean; log:
 // 8. TURN RESOLUTION & BALANCED DAMAGE ENGINE
 // ==========================================
 // Uses canonical Fate / FGO combat formulas:
-// - Global 0.23 damage constant prevents 1-shots while keeping strikes impactful
-// - Buster: Heavy 1.5x damage + crit burst
-// - Arts: 1.0x damage + high NP gain (+30-45%)
-// - Quick: 0.8x damage + massive star drop (+20-30 stars)
-// - Crit: 2.0x damage multiplier consuming active stars
-// - NP: Devastating tactical finisher (7,000 - 13,000+ damage)
-// - Skills & Evade: Active buffs, mitigations, and Guts revivals
+// - 3 Command Card Sequence execution
+// - 1st Card Lead Bonuses (Buster DMG Lead, Arts NP Lead, Quick Crit Lead)
+// - Position Multipliers (1.0x, 1.2x, 1.4x)
+// - Type Chains (Buster Chain, Arts Chain, Quick Chain)
+// - Brave Chain Extra Attack Finisher
 function resolveStrike(
   attacker: DuelCombatant,
   defender: DuelCombatant,
-  actionType: 'buster' | 'arts' | 'quick' | 'np' | 'skill' | 'seal'
+  cardsSequence: ('Buster' | 'Arts' | 'Quick' | 'NP')[]
 ): string {
   // Decrement attacker skill cooldowns
   for (const idxStr of Object.keys(attacker.skillCooldowns)) {
@@ -514,191 +545,195 @@ function resolveStrike(
     defender.servant.template.servantClass
   );
 
-  let rawDmg = 0;
-  let logText = '';
+  // 1st Card Lead Bonus Evaluation
+  const firstCard = cardsSequence[0] || 'Buster';
+  const isBusterFirst = firstCard === 'Buster';
+  const isArtsFirst = firstCard === 'Arts';
+  const isQuickFirst = firstCard === 'Quick';
 
-  // -------------------------------------------------------------
-  // ACTION 1: BUSTER CARD (Raw Physical Power & Crit Impact)
-  // -------------------------------------------------------------
-  if (actionType === 'buster') {
-    const critChance = Math.min(0.95, (attacker.critStars * 2.0) / 100);
-    const isCrit = Math.random() < critChance;
-    const critMult = isCrit ? (1.75 * critDmgBonus) : 1.0;
-    const cardMult = 1.4;
-    const variance = 0.95 + Math.random() * 0.10;
+  // Type Chains Evaluation (3 cards of exact same color)
+  const is3Cards = cardsSequence.length >= 3;
+  const isBusterChain = is3Cards && cardsSequence.every(c => c === 'Buster');
+  const isArtsChain = is3Cards && cardsSequence.every(c => c === 'Arts');
+  const isQuickChain = is3Cards && cardsSequence.every(c => c === 'Quick');
 
-    // FGO formula scaled: (ATK * Card * 0.11 - DEF * 2) * Class * Crit * Variance
-    const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
-    rawDmg = Math.round(Math.max(400, baseHit) * classMult * critMult * variance);
+  const busterChainBonusDmg = isBusterChain ? Math.round(attacker.baseAtk * 0.20) : 0;
 
-    if (isEvading) {
-      rawDmg = Math.round(rawDmg * 0.15);
-      defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
-    }
-
-    attacker.npGauge = Math.min(300, attacker.npGauge + (isCrit ? 10 : 6));
-    if (isCrit) {
-      attacker.critStars = Math.max(0, attacker.critStars - 10);
-    } else {
-      attacker.critStars = Math.min(50, attacker.critStars + 3);
-    }
-
-    const evadeTag = isEvading ? ' *(Evaded 85% DMG!)*' : '';
-    const critTag = isCrit ? ' 💥 **CRITICAL HIT!**' : '';
-    logText = `🔴 **${attacker.servant.template.name}** unleashed **Buster Strike**${critTag}${evadeTag}, dealing **${rawDmg.toLocaleString()} DMG** to ${defender.servant.template.name}!`;
-  } 
-  // -------------------------------------------------------------
-  // ACTION 2: ARTS CARD (High NP Gauge Generation & Stable Hit)
-  // -------------------------------------------------------------
-  else if (actionType === 'arts') {
-    const critChance = Math.min(0.80, (attacker.critStars * 1.5) / 100);
-    const isCrit = Math.random() < critChance;
-    const critMult = isCrit ? (1.75 * critDmgBonus) : 1.0;
-    const cardMult = 1.0;
-    const variance = 0.95 + Math.random() * 0.10;
-
-    const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
-    rawDmg = Math.round(Math.max(300, baseHit) * classMult * critMult * variance);
-
-    if (isEvading) {
-      rawDmg = Math.round(rawDmg * 0.15);
-      defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
-    }
-
-    const npGain = Math.round((26 + Math.random() * 8) * npGenBonus * (isCrit ? 1.4 : 1.0));
-    attacker.npGauge = Math.min(300, attacker.npGauge + npGain);
-    attacker.critStars = Math.min(50, attacker.critStars + 2);
-
-    const evadeTag = isEvading ? ' *(Evaded 85% DMG!)*' : '';
-    const critTag = isCrit ? ' 💥 **CRITICAL HIT!**' : '';
-    logText = `🔵 **${attacker.servant.template.name}** connected with **Arts Chain**${critTag}${evadeTag}, dealing **${rawDmg.toLocaleString()} DMG** and gaining **+${npGain}% NP**!`;
-  } 
-  // -------------------------------------------------------------
-  // ACTION 3: QUICK CARD (Critical Star Engine & Agility)
-  // -------------------------------------------------------------
-  else if (actionType === 'quick') {
-    const critChance = Math.min(0.90, (attacker.critStars * 2.5) / 100);
-    const isCrit = Math.random() < critChance;
-    const critMult = isCrit ? (1.75 * critDmgBonus) : 1.0;
-    const cardMult = 0.85;
-    const variance = 0.95 + Math.random() * 0.10;
-
-    const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
-    rawDmg = Math.round(Math.max(250, baseHit) * classMult * critMult * variance);
-
-    if (isEvading) {
-      rawDmg = Math.round(rawDmg * 0.15);
-      defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
-    }
-
-    const starsGained = Math.round(18 + Math.random() * 6);
-    attacker.critStars = Math.min(50, attacker.critStars + starsGained);
-    attacker.npGauge = Math.min(300, attacker.npGauge + 10);
-
-    const evadeTag = isEvading ? ' *(Evaded 85% DMG!)*' : '';
-    const critTag = isCrit ? ' 💥 **CRITICAL HIT!**' : '';
-    logText = `🟢 **${attacker.servant.template.name}** executed **Quick Strike**${critTag}${evadeTag}, dealing **${rawDmg.toLocaleString()} DMG** and gathering **+${starsGained} Critical Stars**!`;
-  } 
-  // -------------------------------------------------------------
-  // ACTION 4: NOBLE PHANTASM (Decisive Climax Finisher)
-  // -------------------------------------------------------------
-  else if (actionType === 'np') {
-    const npTemplate = attacker.servant.template.noblePhantasm;
-    const npMultiplier = (npTemplate.multiplier || 380) / 100;
-    const variance = 0.96 + Math.random() * 0.08;
-
-    // NP Formula: Balanced climax finisher dealing ~6,000 - 12,000 damage
-    rawDmg = Math.round((effectiveAtk * npMultiplier * 0.18) * classMult * variance);
-    rawDmg = Math.max(1500, rawDmg);
-
-    if (isEvading) {
-      rawDmg = Math.round(rawDmg * 0.20);
-      defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
-    }
-
-    const isOvercharge = attacker.npGauge >= 200;
-    attacker.npGauge = 0; // Consume NP
-
-    if (isOvercharge) {
-      attacker.npGauge = 20; // 20% refund on overcharge
-      attacker.critStars = Math.min(50, attacker.critStars + 12);
-    }
-
-    const chant = attacker.servant.customQuotes?.noblePhantasm || npTemplate.chant;
-    const evadeTag = isEvading ? ' *(Evaded 75% NP Blast!)*' : '';
-    logText = `💥 **NOBLE PHANTASM UNLEASHED!**\n> *" ${chant} "*\n> **${attacker.servant.template.name}** obliterated ${defender.servant.template.name} with **${npTemplate.name}** for **${rawDmg.toLocaleString()} decisive DMG**!${evadeTag}`;
-  } 
-  // -------------------------------------------------------------
-  // ACTION 5: SERVANT SKILL ACTIVATION
-  // -------------------------------------------------------------
-  else if (actionType === 'skill') {
-    const skills = attacker.servant.template.skills || [];
-    let usedIdx = 0;
-    for (let i = 0; i < skills.length; i++) {
-      if ((attacker.skillCooldowns[i] || 0) <= 0) {
-        usedIdx = i;
-        break;
-      }
-    }
-    const skill = skills[usedIdx];
-    attacker.skillCooldowns[usedIdx] = skill?.cooldown || 4;
-
-    if (!skill || skill.effectType === 'buff_atk') {
-      const val = skill?.value || 30;
-      attacker.activeBuffs.push({ name: skill?.name || 'ATK Buff', type: 'buff_atk', value: val, remainingTurns: 2 });
-      attacker.critStars = Math.min(50, attacker.critStars + 10);
-      logText = `🛡️ **${attacker.servant.template.name}** activated **${skill?.name || 'Mana Burst'}**, gaining **+${val}% ATK Buff** for 2 turns and +10 Stars!`;
-    } else if (skill.effectType === 'evade' || skill.effectType === 'invincible') {
-      attacker.activeBuffs.push({ name: skill.name, type: 'evade', value: 85, remainingTurns: 2 });
-      logText = `💨 **${attacker.servant.template.name}** activated **${skill.name}**! Readied an impenetrable Evade against incoming attacks!`;
-    } else if (skill.effectType === 'heal') {
-      const healVal = Math.round(attacker.maxHp * 0.25);
-      attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + healVal);
-      logText = `✨ **${attacker.servant.template.name}** activated **${skill.name}**, restoring **+${healVal.toLocaleString()} HP**!`;
-    } else if (skill.effectType === 'np_charge') {
-      attacker.npGauge = Math.min(300, attacker.npGauge + (skill.value || 30));
-      attacker.critStars = Math.min(50, attacker.critStars + 15);
-      logText = `⚡ **${attacker.servant.template.name}** activated **${skill.name}**, charging **+${skill.value || 30}% NP** and +15 Critical Stars!`;
-    } else if (skill.effectType === 'crit_stars') {
-      const starVal = skill.value || 25;
-      attacker.critStars = Math.min(50, attacker.critStars + starVal);
-      attacker.activeBuffs.push({ name: skill.name, type: 'crit_dmg', value: 40, remainingTurns: 2 });
-      logText = `🌟 **${attacker.servant.template.name}** activated **${skill.name}**, generating **+${starVal} Stars** & +40% Crit DMG!`;
-    } else {
-      attacker.activeBuffs.push({ name: skill.name, type: 'buff_atk', value: 25, remainingTurns: 2 });
-      logText = `🛡️ **${attacker.servant.template.name}** activated **${skill.name}**!`;
-    }
+  if (isArtsChain) {
+    attacker.npGauge = Math.min(300, attacker.npGauge + 20);
   }
-  // -------------------------------------------------------------
-  // ACTION 6: MASTER COMMAND SEAL INVOCATION
-  // -------------------------------------------------------------
-  else if (actionType === 'seal') {
-    if (attacker.commandSeals > 0) {
-      attacker.commandSeals--;
-      const lowHp = attacker.currentHp < attacker.maxHp * 0.6;
-      if (lowHp) {
-        const healAmt = Math.round(attacker.maxHp * 0.40);
-        attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + healAmt);
-        attacker.npGauge = Math.min(300, attacker.npGauge + 50);
-        logText = `🔱 **COMMAND SEAL INVOKED!** Master **${attacker.username}** commanded: *"By the power of my Command Seal, recover and strike!"*\n> ✨ **${attacker.servant.template.name}** restored **+${healAmt.toLocaleString()} HP** and gained **+50% NP**!`;
+  if (isQuickChain) {
+    attacker.critStars = Math.min(50, attacker.critStars + 20);
+  }
+
+  const chainTags: string[] = [];
+  if (isBusterFirst) chainTags.push('🔥 Buster 1st Lead (+50% DMG)');
+  if (isArtsFirst) chainTags.push('🌊 Arts 1st Lead (+100% NP Gain)');
+  if (isQuickFirst) chainTags.push('⚡ Quick 1st Lead (+20% Crit Rate)');
+
+  if (isBusterChain) chainTags.push('🔴 BUSTER CHAIN (+20% Base ATK Hit Bonus)');
+  if (isArtsChain) chainTags.push('🔵 ARTS CHAIN (+20% NP Refund)');
+  if (isQuickChain) chainTags.push('🟢 QUICK CHAIN (+20 Critical Stars)');
+
+  const positionMultipliers = [1.0, 1.2, 1.4];
+  let totalSeqDmg = 0;
+  let totalNpGained = 0;
+  let totalStarsGained = 0;
+  let isAnyCrit = false;
+  let hasNpHit = false;
+
+  // Process 3-card sequence
+  for (let i = 0; i < cardsSequence.length; i++) {
+    const card = cardsSequence[i];
+    const posMult = positionMultipliers[i] || 1.0;
+
+    if (card === 'NP') {
+      hasNpHit = true;
+      const npTemplate = attacker.servant.template.noblePhantasm;
+      const npMultiplier = (npTemplate.multiplier || 380) / 100;
+      const variance = 0.96 + Math.random() * 0.08;
+
+      let npDmg = Math.round((effectiveAtk * npMultiplier * 0.18) * classMult * variance);
+      npDmg = Math.max(1500, npDmg);
+
+      if (isEvading) {
+        npDmg = Math.round(npDmg * 0.20);
+        defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
+      }
+
+      const isOvercharge = attacker.npGauge >= 200;
+      attacker.npGauge = 0;
+      if (isOvercharge) {
+        attacker.npGauge = 20;
+        attacker.critStars = Math.min(50, attacker.critStars + 12);
+      }
+      totalSeqDmg += npDmg;
+    } else if (card === 'Buster') {
+      let cardMult = 1.4 * posMult;
+      if (i > 0 && isBusterFirst) cardMult += 0.50; // Buster Lead Bonus
+
+      let critChance = Math.min(0.95, (attacker.critStars * 2.0) / 100);
+      if (i > 0 && isQuickFirst) critChance = Math.min(0.95, critChance + 0.20);
+
+      const hitCrit = Math.random() < critChance;
+      if (hitCrit) isAnyCrit = true;
+      const critMult = hitCrit ? (1.75 * critDmgBonus) : 1.0;
+      const variance = 0.95 + Math.random() * 0.10;
+
+      const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2) + busterChainBonusDmg;
+      let hitDmg = Math.round(Math.max(350, baseHit) * classMult * critMult * variance);
+
+      if (isEvading) {
+        hitDmg = Math.round(hitDmg * 0.15);
+        defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
+      }
+
+      const npAmt = hitCrit ? 10 : 6;
+      attacker.npGauge = Math.min(300, attacker.npGauge + npAmt);
+      totalNpGained += npAmt;
+
+      if (hitCrit) {
+        attacker.critStars = Math.max(0, attacker.critStars - 8);
       } else {
-        attacker.npGauge = 100;
-        attacker.critStars = Math.min(50, attacker.critStars + 20);
-        logText = `🔱 **COMMAND SEAL INVOKED!** Master **${attacker.username}** commanded: *"Unleash your full Phantasm!"*\n> ⚡ **${attacker.servant.template.name}** instantly reached **100% NP Gauge**!`;
+        attacker.critStars = Math.min(50, attacker.critStars + 3);
+        totalStarsGained += 3;
       }
+
+      totalSeqDmg += hitDmg;
+    } else if (card === 'Arts') {
+      let cardMult = 1.0 * posMult;
+      if (i > 0 && isBusterFirst) cardMult += 0.50;
+
+      let critChance = Math.min(0.80, (attacker.critStars * 1.5) / 100);
+      if (i > 0 && isQuickFirst) critChance = Math.min(0.95, critChance + 0.20);
+
+      const hitCrit = Math.random() < critChance;
+      if (hitCrit) isAnyCrit = true;
+      const critMult = hitCrit ? (1.75 * critDmgBonus) : 1.0;
+      const variance = 0.95 + Math.random() * 0.10;
+
+      const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
+      let hitDmg = Math.round(Math.max(280, baseHit) * classMult * critMult * variance);
+
+      if (isEvading) {
+        hitDmg = Math.round(hitDmg * 0.15);
+        defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
+      }
+
+      let npGain = Math.round((24 + Math.random() * 8) * npGenBonus * (hitCrit ? 1.4 : 1.0));
+      if (i > 0 && isArtsFirst) npGain = Math.round(npGain * 2.0); // Arts Lead Bonus
+
+      attacker.npGauge = Math.min(300, attacker.npGauge + npGain);
+      totalNpGained += npGain;
+      attacker.critStars = Math.min(50, attacker.critStars + 2);
+      totalStarsGained += 2;
+
+      totalSeqDmg += hitDmg;
+    } else if (card === 'Quick') {
+      let cardMult = 0.85 * posMult;
+      if (i > 0 && isBusterFirst) cardMult += 0.50;
+
+      let critChance = Math.min(0.90, (attacker.critStars * 2.5) / 100);
+      if (i > 0 && isQuickFirst) critChance = Math.min(0.95, critChance + 0.20);
+
+      const hitCrit = Math.random() < critChance;
+      if (hitCrit) isAnyCrit = true;
+      const critMult = hitCrit ? (1.75 * critDmgBonus) : 1.0;
+      const variance = 0.95 + Math.random() * 0.10;
+
+      const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
+      let hitDmg = Math.round(Math.max(220, baseHit) * classMult * critMult * variance);
+
+      if (isEvading) {
+        hitDmg = Math.round(hitDmg * 0.15);
+        defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
+      }
+
+      let starsGained = Math.round(18 + Math.random() * 6);
+      if (i > 0 && isQuickFirst) starsGained = Math.round(starsGained * 1.5); // Quick Lead Bonus
+
+      attacker.critStars = Math.min(50, attacker.critStars + starsGained);
+      totalStarsGained += starsGained;
+      attacker.npGauge = Math.min(300, attacker.npGauge + 8);
+      totalNpGained += 8;
+
+      totalSeqDmg += hitDmg;
     }
   }
 
-  // Apply damage to defender HP
-  defender.currentHp = Math.max(0, defender.currentHp - rawDmg);
+  // Brave Chain Extra Attack Finisher (if 3 cards were used)
+  if (is3Cards) {
+    chainTags.push('⚔️ BRAVE CHAIN (Extra Attack)');
+    const extraBase = (effectiveAtk * 1.2 * 0.11) - (effectiveDef * 2);
+    const extraDmg = Math.max(450, Math.round(extraBase * classMult * (0.95 + Math.random() * 0.10)));
+    totalSeqDmg += extraDmg;
+    attacker.npGauge = Math.min(300, attacker.npGauge + 10);
+    totalNpGained += 10;
+    attacker.critStars = Math.min(50, attacker.critStars + 5);
+    totalStarsGained += 5;
+  }
+
+  // Apply total damage to defender
+  defender.currentHp = Math.max(0, defender.currentHp - totalSeqDmg);
 
   // Check for Guts (Battle Continuation)
+  let gutsText = '';
   if (defender.currentHp <= 0 && defender.gutsCount > 0) {
     defender.gutsCount--;
     const reviveHp = Math.round(defender.maxHp * 0.20);
     defender.currentHp = reviveHp;
-    logText += `\n✝️ **BATTLE CONTINUATION!** ${defender.servant.template.name} refused to perish, clinging to life with **${reviveHp.toLocaleString()} HP**!`;
+    gutsText = `\n✝️ **BATTLE CONTINUATION!** ${defender.servant.template.name} revived with **${reviveHp.toLocaleString()} HP**!`;
   }
+
+  const critTag = isAnyCrit ? ' 💥 **CRITICAL HIT!**' : '';
+  const evadeTag = isEvading ? ' *(Evaded)*' : '';
+  const npHeader = hasNpHit ? ' 💥 **NOBLE PHANTASM UNLEASHED!**' : '';
+  const chainStr = chainTags.length > 0 ? `\n⛓️ **Chains:** ${chainTags.join(' • ')}` : '';
+
+  const seqNames = cardsSequence.join(' ➔ ');
+  const logText = `⚔️ **${attacker.servant.template.name}** executed sequence **[${seqNames}]**${npHeader}${critTag}${evadeTag}:\n` +
+    `• Dealt **${totalSeqDmg.toLocaleString()} DMG** to ${defender.servant.template.name}\n` +
+    `• Gained **+${totalNpGained}% NP** & **+${totalStarsGained} Critical Stars**${chainStr}${gutsText}`;
 
   return logText;
 }
@@ -1008,6 +1043,7 @@ async function startInteractiveDuel(
   const p2Speed = agi2 * 10 + (Math.random() * 20);
 
   let activeUserId = p1.userId;
+  let activePendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = [];
 
   if (p2Speed > p1Speed) {
     activeUserId = p2.userId;
@@ -1016,15 +1052,17 @@ async function startInteractiveDuel(
 
     // If P2 is AI, resolve AI strike immediately on turn 1
     if (p2.isAi) {
-      let aiAction: 'buster' | 'arts' | 'quick' | 'np' = 'buster';
-      if (p2.npGauge >= 100) aiAction = 'np';
+      let aiCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Buster', 'Arts', 'Quick'];
+      if (p2.npGauge >= 100) aiCards = ['NP', 'Buster', 'Arts'];
       else {
-        const rand = Math.random();
-        if (rand < 0.45) aiAction = 'buster';
-        else if (rand < 0.75) aiAction = 'arts';
-        else aiAction = 'quick';
+        const pool: ('Buster' | 'Arts' | 'Quick')[] = ['Buster', 'Arts', 'Quick'];
+        aiCards = [
+          pool[Math.floor(Math.random() * pool.length)],
+          pool[Math.floor(Math.random() * pool.length)],
+          pool[Math.floor(Math.random() * pool.length)]
+        ];
       }
-      const aiLog = resolveStrike(p2, p1, aiAction);
+      const aiLog = resolveStrike(p2, p1, aiCards);
       combatLogs.push(aiLog);
       round++;
       // Now it's P1's turn
@@ -1039,8 +1077,8 @@ async function startInteractiveDuel(
   const lastLogText = combatLogs[combatLogs.length - 1];
 
   const initialAttachment = await createTurnSummaryAttachment(p1, p2, round, lastLogText);
-  const initialEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs);
-  const initialButtons = buildCombatButtons(activeCombatant);
+  const initialEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards);
+  const initialButtons = buildCombatButtons(activeCombatant, activePendingCards);
 
   let battleMsg: any;
   if (contextInteraction.deferred || contextInteraction.replied) {
@@ -1104,8 +1142,8 @@ async function startInteractiveDuel(
         const p1CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
         const p2CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
         const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, res.log, p1CardChoice, p2CardChoice);
-        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs);
-        const updatedButtons = buildCombatButtons(actor);
+        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards);
+        const updatedButtons = buildCombatButtons(actor, activePendingCards);
         await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
         return;
       }
@@ -1125,34 +1163,56 @@ async function startInteractiveDuel(
         const p1CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
         const p2CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
         const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, res.log, p1CardChoice, p2CardChoice);
-        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs);
-        const updatedButtons = buildCombatButtons(actor);
+        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards);
+        const updatedButtons = buildCombatButtons(actor, activePendingCards);
         await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
         return;
       }
 
-      let actionType: 'buster' | 'arts' | 'quick' | 'np' = 'buster';
-      if (i.customId === 'card_buster') actionType = 'buster';
-      if (i.customId === 'card_arts') actionType = 'arts';
-      if (i.customId === 'card_quick') actionType = 'quick';
-      if (i.customId === 'card_np') actionType = 'np';
+      // CASE: RESET PENDING CARDS
+      if (i.customId === 'card_reset') {
+        activePendingCards = [];
+        const actor = activeUserId === p1.userId ? p1 : p2;
+        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards);
+        const updatedButtons = buildCombatButtons(actor, activePendingCards);
+        await i.editReply({ embeds: [updatedEmbed], components: updatedButtons });
+        return;
+      }
+
+      // CASE: CARD SELECTION
+      let clickedCard: 'Buster' | 'Arts' | 'Quick' | 'NP' = 'Buster';
+      if (i.customId === 'card_buster') clickedCard = 'Buster';
+      if (i.customId === 'card_arts') clickedCard = 'Arts';
+      if (i.customId === 'card_quick') clickedCard = 'Quick';
+      if (i.customId === 'card_np') clickedCard = 'NP';
+
+      activePendingCards.push(clickedCard);
 
       const attacker = activeUserId === p1.userId ? p1 : p2;
       const defender = activeUserId === p1.userId ? p2 : p1;
 
-      // Execute Player attack
-      const log = resolveStrike(attacker, defender, actionType);
-      combatLogs.push(log);
-      if (combatLogs.length > 4) combatLogs.shift(); // Keep last 4 logs clean
+      // If user hasn't selected 3 cards yet, update selection UI and wait for next card click
+      if (activePendingCards.length < 3) {
+        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards);
+        const updatedButtons = buildCombatButtons(attacker, activePendingCards);
+        await i.editReply({ embeds: [updatedEmbed], components: updatedButtons });
+        return;
+      }
 
-      const p1CardChoice: CardType[] = actionType === 'buster' 
-        ? ['Buster', 'Buster', 'Buster'] 
-        : actionType === 'arts' 
-        ? ['Arts', 'Arts', 'Arts'] 
-        : actionType === 'quick'
-        ? ['Quick', 'Quick', 'Quick']
-        : ['Arts', 'Buster', 'Quick'];
-      let p2CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
+      // 3 CARDS SELECTED -> Execute 3-Card Chain Attack Sequence!
+      const playerSequence = [...activePendingCards];
+      activePendingCards = [];
+
+      const log = resolveStrike(attacker, defender, playerSequence);
+      combatLogs.push(log);
+      if (combatLogs.length > 4) combatLogs.shift();
+
+      const p1CardChoice: CardType[] = (activeUserId === p1.userId ? playerSequence : ['Arts', 'Buster', 'Quick']).map(
+        c => (c === 'NP' ? 'Buster' : c) as CardType
+      );
+      let p2CardChoice: CardType[] = (activeUserId === p2.userId ? playerSequence : ['Arts', 'Buster', 'Quick']).map(
+        c => (c === 'NP' ? 'Buster' : c) as CardType
+      );
 
       // Check if Defender fainted
       if (defender.currentHp <= 0) {
@@ -1162,7 +1222,7 @@ async function startInteractiveDuel(
         return;
       }
 
-      // CASE A: Opponent is AI -> AI immediately strikes back
+      // CASE A: Opponent is AI -> AI chooses 3 cards and strikes back
       if (defender.isAi) {
         round++;
 
@@ -1181,25 +1241,21 @@ async function startInteractiveDuel(
           }
         }
 
-        let aiAction: 'buster' | 'arts' | 'quick' | 'np' = 'buster';
+        let aiSequence: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Buster', 'Arts', 'Quick'];
         if (defender.npGauge >= 100) {
-          aiAction = 'np';
+          aiSequence = ['NP', 'Buster', 'Arts'];
         } else {
-          const rand = Math.random();
-          if (rand < 0.45) aiAction = 'buster';
-          else if (rand < 0.75) aiAction = 'arts';
-          else aiAction = 'quick';
+          const pool: ('Buster' | 'Arts' | 'Quick')[] = ['Buster', 'Arts', 'Quick'];
+          aiSequence = [
+            pool[Math.floor(Math.random() * pool.length)],
+            pool[Math.floor(Math.random() * pool.length)],
+            pool[Math.floor(Math.random() * pool.length)]
+          ];
         }
 
-        p2CardChoice = aiAction === 'buster' 
-          ? ['Buster', 'Buster', 'Buster'] 
-          : aiAction === 'arts' 
-          ? ['Arts', 'Arts', 'Arts'] 
-          : aiAction === 'quick'
-          ? ['Quick', 'Quick', 'Quick']
-          : ['Arts', 'Buster', 'Quick'];
+        p2CardChoice = aiSequence.map(c => (c === 'NP' ? 'Buster' : c) as CardType);
 
-        const aiLog = resolveStrike(defender, attacker, aiAction);
+        const aiLog = resolveStrike(defender, attacker, aiSequence);
         combatLogs.push(aiLog);
         if (combatLogs.length > 4) combatLogs.shift();
 
@@ -1213,8 +1269,8 @@ async function startInteractiveDuel(
         // Keep turn on P1
         activeUserId = p1.userId;
         const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, aiLog, p1CardChoice, p2CardChoice);
-        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs);
-        const updatedButtons = buildCombatButtons(p1);
+        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards);
+        const updatedButtons = buildCombatButtons(p1, activePendingCards);
         await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
         return;
       }
@@ -1224,8 +1280,8 @@ async function startInteractiveDuel(
       activeUserId = defender.userId;
       const nextCombatant = activeUserId === p1.userId ? p1 : p2;
       const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, log, p1CardChoice, p2CardChoice);
-      const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs);
-      const updatedButtons = buildCombatButtons(nextCombatant);
+      const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards);
+      const updatedButtons = buildCombatButtons(nextCombatant, activePendingCards);
 
       await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
     } catch (err: any) {

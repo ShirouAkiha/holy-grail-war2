@@ -180,48 +180,108 @@ export function resolveCombatTurn(
   const effectiveDef = defender.def * defBuff;
   const classMultiplier = calculateClassMultiplier(attacker.servantClass, defender.servantClass);
 
+  // Evaluate First Card Lead Bonuses
+  const firstCard = attackerChoice.selectedCards[0];
+  const isBusterFirst = firstCard === 'Buster';
+  const isArtsFirst = firstCard === 'Arts';
+  const isQuickFirst = firstCard === 'Quick';
+
+  // Evaluate Type Chains (3 cards of the exact same color)
+  const is3Cards = attackerChoice.selectedCards.length === 3;
+  const isBusterChain = is3Cards && attackerChoice.selectedCards.every(c => c === 'Buster');
+  const isArtsChain = is3Cards && attackerChoice.selectedCards.every(c => c === 'Arts');
+  const isQuickChain = is3Cards && attackerChoice.selectedCards.every(c => c === 'Quick');
+
+  // Buster Chain Bonus: Flat 20% of Servant's Base ATK per hit
+  const busterChainBonusDmg = isBusterChain ? Math.round(attacker.atk * 0.20) : 0;
+
+  // Arts Chain Bonus: Instant +20% NP Gauge
+  if (isArtsChain) {
+    attacker.npGauge = Math.min(300, attacker.npGauge + 20);
+  }
+
+  // Quick Chain Bonus: Instant +20 Critical Stars
+  if (isQuickChain) {
+    starsGen += 20;
+  }
+
+  const chainTags: string[] = [];
+  if (isBusterFirst) chainTags.push('🔥 Buster First (+50% DMG to remaining cards)');
+  if (isArtsFirst) chainTags.push('🌊 Arts First (+100% NP Gain to remaining cards)');
+  if (isQuickFirst) chainTags.push('⚡ Quick First (+20% Crit Rate & Stars to remaining cards)');
+
+  if (isBusterChain) chainTags.push('🔴 BUSTER CHAIN (+20% Base ATK Bonus Damage per hit)');
+  if (isArtsChain) chainTags.push('🔵 ARTS CHAIN (+20% Instant NP Charge)');
+  if (isQuickChain) chainTags.push('🟢 QUICK CHAIN (+20 Instant Critical Stars)');
+
+  // Position multipliers in FGO sequence: 1st = 1.0x, 2nd = 1.2x, 3rd = 1.4x
+  const positionMultipliers = [1.0, 1.2, 1.4];
+
   // Process chosen Command Cards
   for (let i = 0; i < attackerChoice.selectedCards.length; i++) {
     const card = attackerChoice.selectedCards[i];
+    const posMult = positionMultipliers[i] || 1.0;
     let cardMultiplier = 1.0;
+    let cardNpGain = 0;
+    let cardStarGen = 0;
 
-    // BUSTER: 1.5x damage bonus
+    // BUSTER: Heavy physical hit
     if (card === 'Buster') {
-      cardMultiplier = 1.5;
+      cardMultiplier = 1.5 * posMult;
       if (attacker.equippedCe && (attacker.equippedCe.passiveType === 'buster_up' || attacker.equippedCe.id === 'ce_limited_zero_over' || attacker.equippedCe.id === 'ce_verdant_sound')) {
         const val = attacker.equippedCe.passiveValue || 15;
         cardMultiplier *= (1 + val / 100);
       }
-      npGain += 8;
-      starsGen += 3;
+      cardNpGain += 8;
+      cardStarGen += 3;
     } 
     // ARTS: High NP gauge generation
     else if (card === 'Arts') {
-      cardMultiplier = 1.0;
+      cardMultiplier = 1.0 * posMult;
       if (attacker.equippedCe && (attacker.equippedCe.passiveType === 'arts_up' || attacker.equippedCe.id === 'ce_formal_craft' || attacker.equippedCe.id === 'ce_projection')) {
         const val = attacker.equippedCe.passiveValue || 15;
         cardMultiplier *= (1 + val / 100);
       }
-      npGain += 32;
-      starsGen += 2;
+      cardNpGain += 32;
+      cardStarGen += 2;
     } 
     // QUICK: High Critical Star drop rate
     else if (card === 'Quick') {
-      cardMultiplier = 0.80;
+      cardMultiplier = 0.80 * posMult;
       if (attacker.equippedCe && (attacker.equippedCe.passiveType === 'quick_up' || attacker.equippedCe.id === 'ce_imaginary_around' || attacker.equippedCe.id === 'ce_gandr' || attacker.equippedCe.id === 'ce_when_the_flowers_fall')) {
         const val = attacker.equippedCe.passiveValue || 15;
         cardMultiplier *= (1 + val / 100);
       }
-      npGain += 12;
-      starsGen += 22;
+      cardNpGain += 12;
+      cardStarGen += 22;
     }
 
-    // Critical Hit determination based on gathered stars
-    const critChance = Math.min(0.95, ((attacker.critStars || 0) * 2.0) / 100);
+    // Apply First Card Lead Bonuses to cards 2 and 3 (i > 0) or all cards
+    if (i > 0) {
+      if (isBusterFirst) {
+        cardMultiplier += 0.50; // +50% flat damage bonus
+      }
+      if (isArtsFirst) {
+        cardNpGain *= 2.0; // +100% NP gain modifier
+      }
+      if (isQuickFirst) {
+        cardStarGen += 8; // +20% star drop rate
+      }
+    }
+
+    npGain += cardNpGain;
+    starsGen += cardStarGen;
+
+    // Critical Hit determination based on gathered stars + Quick First bonus
+    let critChance = Math.min(0.95, ((attacker.critStars || 0) * 2.0) / 100);
+    if (i > 0 && isQuickFirst) {
+      critChance = Math.min(0.95, critChance + 0.20);
+    }
+
     const hitCrit = Math.random() < critChance;
     if (hitCrit) isCrit = true;
 
-    // Balanced Tactical Damage Formula: (ATK * CardMod * 0.11 - DEF * 2) * ClassAdvantage * CritMult * Variance
+    // Balanced Tactical Damage Formula: (ATK * CardMod * 0.11 - DEF * 2) * ClassAdvantage * CritMult * Variance + ChainBonus
     const variance = 0.95 + Math.random() * 0.10;
     const baseHit = (effectiveAtk * cardMultiplier * 0.11) - (effectiveDef * 2);
     
@@ -233,7 +293,7 @@ export function resolveCombatTurn(
       }
     }
 
-    let hitDamage = Math.max(300, Math.round(baseHit * classMultiplier * (hitCrit ? critMult : 1.0) * variance));
+    let hitDamage = Math.max(300, Math.round(baseHit * classMultiplier * (hitCrit ? critMult : 1.0) * variance)) + busterChainBonusDmg;
 
     if (isEvading) {
       hitDamage = Math.round(hitDamage * 0.15);
@@ -241,6 +301,16 @@ export function resolveCombatTurn(
     }
 
     totalDmg += hitDamage;
+  }
+
+  // Brave Chain Extra Attack (Finisher hit if 3 cards were selected)
+  if (is3Cards) {
+    chainTags.push('⚔️ BRAVE CHAIN (Extra Attack Finisher)');
+    const extraBase = (effectiveAtk * 1.2 * 0.11) - (effectiveDef * 2);
+    const extraDamage = Math.max(400, Math.round(extraBase * classMultiplier * (0.95 + Math.random() * 0.10)));
+    totalDmg += extraDamage;
+    npGain += 10;
+    starsGen += 5;
   }
 
   let npTriggered = false;
@@ -308,6 +378,8 @@ export function resolveCombatTurn(
   applyEndTurnPassives(attacker);
   applyEndTurnPassives(defender);
 
+  const chainSummaryStr = chainTags.length > 0 ? `\n⛓️ **Chains Triggered:** ${chainTags.join(' • ')}` : '';
+
   // Generate combat log entry
   const log: CombatTurnLog = {
     turnNumber: battle.currentTurn,
@@ -315,7 +387,7 @@ export function resolveCombatTurn(
     actorName: attacker.name,
     targetId: defender.id,
     targetName: defender.name,
-    actionSummary: `${attacker.name} attacked with [${attackerChoice.selectedCards.join(', ')}] dealing ${totalDmg} damage.`,
+    actionSummary: `${attacker.name} attacked with [${attackerChoice.selectedCards.join(', ')}] dealing ${totalDmg.toLocaleString()} damage.${chainSummaryStr}`,
     cardsUsed: attackerChoice.selectedCards,
     p1Cards: isP1Attacker ? attackerChoice.selectedCards : defenderChoice.selectedCards,
     p2Cards: isP1Attacker ? defenderChoice.selectedCards : attackerChoice.selectedCards,
