@@ -1174,6 +1174,8 @@ async function startInteractiveDuel(
   let activeUserId = p1.userId;
   let activePendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = [];
   let activePendingIndices: number[] = [];
+  let p1LastCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Buster', 'Arts', 'Quick'];
+  let p2LastCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Arts', 'Buster', 'Quick'];
 
   if (p2Speed > p1Speed) {
     activeUserId = p2.userId;
@@ -1183,6 +1185,7 @@ async function startInteractiveDuel(
     // If P2 is AI, resolve AI strike immediately on turn 1
     if (p2.isAi) {
       const aiCards = chooseAiSequence(p2);
+      p2LastCards = aiCards;
       const aiLog = resolveStrike(p2, p1, aiCards);
       refreshCombatantHand(p2);
       combatLogs.push(aiLog);
@@ -1198,7 +1201,7 @@ async function startInteractiveDuel(
   const activeCombatant = activeUserId === p1.userId ? p1 : p2;
   const lastLogText = combatLogs[combatLogs.length - 1];
 
-  const initialAttachment = await createTurnSummaryAttachment(p1, p2, round, lastLogText);
+  const initialAttachment = await createTurnSummaryAttachment(p1, p2, round, lastLogText, p1LastCards, p2LastCards);
   const initialEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
   const initialButtons = buildCombatButtons(activeCombatant, activePendingCards, activePendingIndices);
 
@@ -1261,9 +1264,7 @@ async function startInteractiveDuel(
         combatLogs.push(res.log);
         if (combatLogs.length > 4) combatLogs.shift();
 
-        const p1CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
-        const p2CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
-        const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, res.log, p1CardChoice, p2CardChoice);
+        const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, res.log, p1LastCards, p2LastCards);
         const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
         const updatedButtons = buildCombatButtons(actor, activePendingCards, activePendingIndices);
         await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
@@ -1282,9 +1283,7 @@ async function startInteractiveDuel(
         combatLogs.push(res.log);
         if (combatLogs.length > 4) combatLogs.shift();
 
-        const p1CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
-        const p2CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
-        const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, res.log, p1CardChoice, p2CardChoice);
+        const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, res.log, p1LastCards, p2LastCards);
         const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
         const updatedButtons = buildCombatButtons(actor, activePendingCards, activePendingIndices);
         await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
@@ -1340,8 +1339,14 @@ async function startInteractiveDuel(
       combatLogs.push(log);
       if (combatLogs.length > 4) combatLogs.shift();
 
-      const p1CardChoice = (activeUserId === p1.userId ? playerSequence : ['Arts', 'Buster', 'Quick']) as ('Buster' | 'Arts' | 'Quick' | 'NP')[];
-      let p2CardChoice = (activeUserId === p2.userId ? playerSequence : ['Arts', 'Buster', 'Quick']) as ('Buster' | 'Arts' | 'Quick' | 'NP')[];
+      if (activeUserId === p1.userId) {
+        p1LastCards = playerSequence;
+      } else {
+        p2LastCards = playerSequence;
+      }
+
+      const p1CardChoice = p1LastCards;
+      let p2CardChoice = p2LastCards;
 
       // Check if Defender fainted
       if (defender.currentHp <= 0) {
@@ -1371,7 +1376,8 @@ async function startInteractiveDuel(
         }
 
         const aiSequence = chooseAiSequence(defender);
-        p2CardChoice = aiSequence;
+        p2LastCards = aiSequence;
+        p2CardChoice = p2LastCards;
 
         const aiLog = resolveStrike(defender, attacker, aiSequence);
         refreshCombatantHand(defender);
