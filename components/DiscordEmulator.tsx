@@ -61,7 +61,7 @@ import {
   Lock
 } from 'lucide-react';
 
-const RIN_SUMMONING_GIF = 'https://media1.tenor.com/m/K4JhNVyg5u4AAAAC/anime-magic.gif';
+const RIN_SUMMONING_GIF = 'https://upload.wikimedia.org/wikipedia/commons/9/9e/The_Red_Magic_Circle.gif';
 
 const SUMMONING_CHANTS = [
   `*“Let silver and steel be the essence.”*\n` +
@@ -131,7 +131,7 @@ function EmbedVisual({ url }: { url: string }) {
   }
 
   const primaryFallback = 'https://media1.tenor.com/m/8YpY9q6y430AAAAC/rin-tohsaka-fate.gif';
-  const secondaryFallback = 'https://upload.wikimedia.org/wikipedia/commons/e/e0/The_Red_Magic_Circle.gif';
+  const secondaryFallback = 'https://upload.wikimedia.org/wikipedia/commons/9/9e/The_Red_Magic_Circle.gif';
 
   let currentSrc = url;
   if (imgError) {
