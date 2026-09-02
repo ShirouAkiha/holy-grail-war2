@@ -12,6 +12,7 @@ import {
   ServantClass
 } from '../lib/types';
 import { SERVANT_DATABASE } from '../lib/data/servants';
+import { findServantInPool, matchServantSearch } from '../lib/utils/servantMatcher';
 import {
   createCombatantFromMasterServant,
   initializeBattle,
@@ -635,6 +636,206 @@ export default function DiscordEmulator({
               : items,
             color: '#d4af37',
             footer: `Total summonable pool: ${allThrone.length} Heroic Spirits`
+          }
+        });
+        return;
+      }
+
+      // SUBCOMMAND: EDIT SERVANT (CANON OR CUSTOM)
+      if (trimmed.includes('edit')) {
+        // Parse servant_id or target query from command
+        const servantIdMatch = rawCmd.match(/servant_id[:=]["']?([^"']+)["']?/i);
+        let targetQuery = servantIdMatch ? servantIdMatch[1].trim() : '';
+
+        if (!targetQuery) {
+          // Remove '/addservant', 'edit', and any known flags
+          targetQuery = rawCmd
+            .replace(/\/addservant/gi, '')
+            .replace(/edit/gi, '')
+            .replace(/(?:name|title|class|hp|atk|image|img|pic|noble_phantasm|np|np_chant|chant|np_card|summon_quote|lore)=["']?[^"']*["']?/gi, '')
+            .replace(/^["']|["']$/g, '')
+            .trim();
+        }
+
+        // If no servant specified at all, show interactive search & select menu
+        if (!targetQuery) {
+          addMessage({
+            id: getNextId('bot_addservant_edit_help'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '🛠️ Throne of Heroes Admin Forge — Servant Editor',
+              description: 
+                `Select or search for any Heroic Spirit in the Throne of Heroes to edit their stats, artwork, voice lines, or Noble Phantasm!\n\n` +
+                `**Usage:**\n` +
+                `• \`/addservant edit <servant_name>\`\n` +
+                `• \`/addservant edit servant_id:"saber alter" hp:18500 atk:14200\`\n` +
+                `• \`/addservant edit servant_id:"Artoria" image:"https://..."\`\n\n` +
+                `*Click any quick button below or use the ⚡ Pick Servant button beside chat:*`,
+              color: '#d4af37',
+              footer: `${allThrone.length} Servants available for editing`
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'edit_servant_artoria_pendragon_alter', label: 'Edit Saber Alter', style: 'danger', emoji: '⚔️' },
+                { id: 'edit_servant_artoria_pendragon', label: 'Edit Artoria (Saber)', style: 'primary', emoji: '👑' },
+                { id: 'edit_servant_gilgamesh', label: 'Edit Gilgamesh', style: 'secondary', emoji: '🍷' },
+                { id: 'edit_servant_emiya', label: 'Edit EMIYA (Archer)', style: 'primary', emoji: '🗡️' },
+                { id: 'btn_show_servants_list', label: 'Browse All Spirits', style: 'secondary', emoji: '📜' }
+              ]
+            }
+          });
+          return;
+        }
+
+        // Search for target servant
+        const target = findServantInPool(targetQuery, allThrone);
+
+        if (!target) {
+          // Find close matching suggestions
+          const suggestions = allThrone
+            .filter(s => matchServantSearch(s, targetQuery))
+            .slice(0, 4);
+
+          addMessage({
+            id: getNextId('bot_addservant_edit_notfound'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '❌ Servant Not Found',
+              description: 
+                `Servant matching **"${targetQuery}"** not found in Throne of Heroes.\n\n` +
+                (suggestions.length > 0
+                  ? `**Did you mean:**\n` + suggestions.map(s => `• **${s.name}** (\`${s.servantClass}\` ★${s.rarity})`).join('\n') + `\n\n*Click a suggestion below to edit immediately:*`
+                  : `Use \`/servants list\` or the \`⚡ Pick Servant\` tool to browse all Heroic Spirits.`),
+              color: '#ef4444',
+              footer: `Tip: Try searching by alias (e.g. "saber alter", "salter", "gil", "emiya")`
+            },
+            components: suggestions.length > 0 ? {
+              type: 'buttons',
+              items: suggestions.map(s => ({
+                id: `edit_servant_${s.id}`,
+                label: `Edit ${s.name.slice(0, 20)}`,
+                style: 'secondary',
+                emoji: '✏️'
+              }))
+            } : undefined
+          });
+          return;
+        }
+
+        // Check if any attribute updates were passed in the command line
+        const nameMatch = rawCmd.match(/name=["']?([^"']+)["']?/i);
+        const titleMatch = rawCmd.match(/title=["']?([^"']+)["']?/i);
+        const classMatch = rawCmd.match(/class=["']?([^"'\s]+)["']?/i);
+        const imgMatch = rawCmd.match(/(?:image|img|pic)=["']?([^"'\s]+)["']?/i);
+        const hpMatch = rawCmd.match(/hp[:=]["']?(\d+)["']?/i);
+        const atkMatch = rawCmd.match(/atk[:=]["']?(\d+)["']?/i);
+        const npMatch = rawCmd.match(/(?:noble_phantasm|np)=["']?([^"']+)["']?/i);
+        const chantMatch = rawCmd.match(/(?:np_chant|chant)=["']?([^"']+)["']?/i);
+        const cardMatch = rawCmd.match(/(?:np_card|card)=["']?(Buster|Arts|Quick)["']?/i);
+        const quoteMatch = rawCmd.match(/(?:summon_quote|quote)=["']?([^"']+)["']?/i);
+        const loreMatch = rawCmd.match(/lore=["']?([^"']+)["']?/i);
+
+        const hasUpdates = !!(nameMatch || titleMatch || classMatch || imgMatch || hpMatch || atkMatch || npMatch || chantMatch || cardMatch || quoteMatch || loreMatch);
+
+        if (hasUpdates) {
+          // Apply updates
+          if (nameMatch) target.name = nameMatch[1].trim();
+          if (titleMatch) target.title = titleMatch[1].trim();
+          if (classMatch) target.servantClass = (classMatch[1].charAt(0).toUpperCase() + classMatch[1].slice(1)) as ServantClass;
+          if (imgMatch) {
+            target.avatarUrl = imgMatch[1].trim();
+            target.cardArtUrl = imgMatch[1].trim();
+          }
+          if (hpMatch) target.baseHp = parseInt(hpMatch[1], 10);
+          if (atkMatch) target.baseAtk = parseInt(atkMatch[1], 10);
+          if (npMatch) target.noblePhantasm.name = npMatch[1].trim();
+          if (chantMatch) target.noblePhantasm.chant = chantMatch[1].trim();
+          if (cardMatch) target.noblePhantasm.cardType = cardMatch[1] as CardType;
+          if (quoteMatch) target.summonQuote = quoteMatch[1].trim();
+          if (loreMatch) target.lore = loreMatch[1].trim();
+
+          // Sync state
+          const customIdx = customServants.findIndex(s => s.id === target.id);
+          if (customIdx >= 0) {
+            const updated = [...customServants];
+            updated[customIdx] = { ...target };
+            onUpdateCustomServants(updated);
+          } else if (target.isCustomOrMeme) {
+            onUpdateCustomServants([...customServants, { ...target }]);
+          }
+
+          // Persist to server disk
+          fetch('/api/servants/custom', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'add', servant: target })
+          }).catch(err => console.warn('Disk sync warning:', err));
+
+          addMessage({
+            id: getNextId('bot_addservant_edit_success'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `✨ HEROIC SPIRIT UPDATED: ${target.name}`,
+              description: 
+                `Administrator has updated parameters for **${target.name}**!\n\n` +
+                `• **Class:** \`${target.servantClass}\` | **Title:** *${target.title}*\n` +
+                `• **Base HP:** \`${target.baseHp.toLocaleString()}\` | **Base ATK:** \`${target.baseAtk.toLocaleString()}\`\n` +
+                `• **Noble Phantasm:** **${target.noblePhantasm.name}** (${target.noblePhantasm.cardType})\n` +
+                `• **NP Chant:** *"${target.noblePhantasm.chant}"*\n` +
+                `• **Summon Dialogue:** *"${target.summonQuote}"*\n\n` +
+                `*Changes take effect immediately across all active Master contracts and combat arenas!*`,
+              imageUrl: target.cardArtUrl || target.avatarUrl,
+              color: '#d4af37',
+              footer: `ID: ${target.id} • Edited by Admin`
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: `view_servant_${target.id}`, label: 'View Profile Card', style: 'primary', emoji: '📜' },
+                { id: `edit_hp_${target.id}`, label: 'Boost HP/ATK (+2k)', style: 'secondary', emoji: '⚡' },
+                { id: `edit_np_${target.id}`, label: 'Cycle NP Card', style: 'secondary', emoji: '✨' }
+              ]
+            }
+          });
+          return;
+        }
+
+        // If no updates were supplied (just inspecting/selecting servant to edit)
+        addMessage({
+          id: getNextId('bot_addservant_edit_sheet'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `✏️ Editing Heroic Spirit: ${target.name}`,
+            description: 
+              `**Current Parameters for ${target.name}:**\n\n` +
+              `• **ID:** \`${target.id}\` | **Class:** \`${target.servantClass}\` (★${target.rarity})\n` +
+              `• **Title:** *${target.title}*\n` +
+              `• **Base HP:** \`${target.baseHp.toLocaleString()}\` | **Base ATK:** \`${target.baseAtk.toLocaleString()}\`\n` +
+              `• **Noble Phantasm:** **${target.noblePhantasm.name}** (${target.noblePhantasm.cardType})\n` +
+              `• **Chant:** *"${target.noblePhantasm.chant}"*\n` +
+              `• **Summon Quote:** *"${target.summonQuote}"*\n\n` +
+              `**Quick Modification Syntax:**\n` +
+              `\`\`\`bash\n` +
+              `/addservant edit servant_id:"${target.id}" hp:19000 atk:15000\n` +
+              `/addservant edit servant_id:"${target.id}" image:"https://..."\n` +
+              `/addservant edit servant_id:"${target.id}" np_card:"Buster"\n` +
+              `\`\`\``,
+            imageUrl: target.cardArtUrl || target.avatarUrl,
+            color: '#d4af37',
+            footer: `Click quick action buttons below or type parameters in chat`
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: `edit_hp_${target.id}`, label: 'Boost Stats (+2k HP/+1.5k ATK)', style: 'primary', emoji: '⚡' },
+              { id: `edit_np_${target.id}`, label: 'Cycle NP Card Type', style: 'secondary', emoji: '✨' },
+              { id: `view_servant_${target.id}`, label: 'View Broadcast Card', style: 'success', emoji: '📜' }
+            ]
           }
         });
         return;
@@ -2163,6 +2364,24 @@ export default function DiscordEmulator({
       if (target) {
         postServantFullProfile(target);
       }
+    } else if (btnId.startsWith('edit_servant_')) {
+      const servantId = btnId.replace('edit_servant_', '');
+      handleCommand(`/addservant edit ${servantId}`);
+    } else if (btnId.startsWith('edit_hp_')) {
+      const servantId = btnId.replace('edit_hp_', '');
+      const target = allThrone.find(s => s.id === servantId);
+      if (target) {
+        const newHp = (target.baseHp || 14000) + 2000;
+        const newAtk = (target.baseAtk || 11000) + 1500;
+        handleCommand(`/addservant edit servant_id:"${target.id}" hp:${newHp} atk:${newAtk}`);
+      }
+    } else if (btnId.startsWith('edit_np_')) {
+      const servantId = btnId.replace('edit_np_', '');
+      const target = allThrone.find(s => s.id === servantId);
+      if (target) {
+        const nextCard: CardType = target.noblePhantasm.cardType === 'Buster' ? 'Arts' : target.noblePhantasm.cardType === 'Arts' ? 'Quick' : 'Buster';
+        handleCommand(`/addservant edit servant_id:"${target.id}" np_card:"${nextCard}"`);
+      }
     } else if (btnId.startsWith('quote_servant_')) {
       const servantId = btnId.replace('quote_servant_', '');
       const target = allThrone.find(s => s.id === servantId);
@@ -3001,6 +3220,16 @@ export default function DiscordEmulator({
                       <button
                         onClick={() => {
                           setShowServantPickerModal(false);
+                          handleCommand(`/addservant edit ${s.name}`);
+                        }}
+                        className="px-2 py-1 text-[11px] bg-purple-900/50 hover:bg-purple-900/80 text-purple-200 border border-purple-500/40 rounded transition"
+                        title="Edit stats, image, or voice dialogue"
+                      >
+                        Edit ✏️
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowServantPickerModal(false);
                           handleCommand(`/duel ${s.name}`);
                         }}
                         className="px-2.5 py-1 text-[11px] bg-red-900/40 hover:bg-red-900/70 text-red-300 border border-red-500/40 rounded transition"
@@ -3046,30 +3275,36 @@ export default function DiscordEmulator({
             {/* Matching Slash Commands */}
             {(() => {
               const q = inputCommand.toLowerCase().trim();
+              const isEditing = q.startsWith('/addservant edit') || q.startsWith('/addservant');
               const slashCommands = [
                 { cmd: '/servants list', desc: 'Browse all registered spirits in the Throne' },
                 { cmd: '/servants search <name>', desc: 'Search spirits by name, class, NP, or lore' },
                 { cmd: '/servant <name>', desc: 'Inspect servant profile card & voice dialogue' },
                 { cmd: '/summon ritual', desc: 'Perform Holy Grail War summoning ritual' },
-                { cmd: '/duel', desc: 'Enter combat encounter with a rival Master/Servant' },
+                { cmd: '/duel <name>', desc: 'Enter combat encounter with a rival Master/Servant' },
                 { cmd: '/grailwar status', desc: 'Check Holy Grail War battlefield & intelligence' },
                 { cmd: '/grailwar attack', desc: 'Ambush suspected rival Master' },
                 { cmd: '/grailwar leak', desc: 'Broadcast intel to the war board' },
+                { cmd: '/addservant edit <name>', desc: 'Modify stats, dialogue, or artwork of any servant' },
                 { cmd: '/addservant create', desc: 'Register a new custom Heroic Spirit' },
-                { cmd: '/addservant edit', desc: 'Modify stats, dialogue, or artwork of any servant' },
                 { cmd: '/defenses', desc: 'Check active boundary warding fields' },
                 { cmd: '/profile', desc: 'View Master status and command seals' }
               ].filter(c => c.cmd.toLowerCase().includes(q) || q.startsWith(c.cmd.split(' ')[0]));
 
+              const searchClean = q
+                .replace(/\/addservant\s*(edit|delete|create)?/gi, '')
+                .replace(/\/servants?\s*(search|view|list)?/gi, '')
+                .replace(/\/duel/gi, '')
+                .replace(/servant_id[:=]/gi, '')
+                .replace(/[\/]/g, '')
+                .trim();
+
               const spiritMatches = allThrone.filter(s => {
-                const searchClean = q.replace('/servants', '').replace('/servant', '').replace('/duel', '').replace('/', '').trim();
-                if (!searchClean) return false;
-                return (
-                  s.name.toLowerCase().includes(searchClean) ||
-                  s.servantClass.toLowerCase().includes(searchClean) ||
-                  s.noblePhantasm.name.toLowerCase().includes(searchClean)
-                );
-              }).slice(0, 5);
+                if (!searchClean) {
+                  return isEditing; // If typing /addservant edit without args, show top spirits to edit
+                }
+                return matchServantSearch(s, searchClean);
+              }).slice(0, 6);
 
               return (
                 <div className="space-y-2">
@@ -3093,6 +3328,19 @@ export default function DiscordEmulator({
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
+                            {isEditing && (
+                              <button
+                                onMouseDown={e => {
+                                  e.preventDefault();
+                                  handleCommand(`/addservant edit ${s.name}`);
+                                  setInputCommand('');
+                                  setIsInputFocused(false);
+                                }}
+                                className="px-2 py-0.5 bg-purple-900/60 hover:bg-purple-800 text-purple-200 border border-purple-500/40 text-[10px] rounded font-bold"
+                              >
+                                Edit ✏️
+                              </button>
+                            )}
                             <button
                               onMouseDown={e => {
                                 e.preventDefault();

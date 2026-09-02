@@ -94,6 +94,15 @@ client.once(Events.ClientReady, c => {
 // Event: Interaction Create
 client.on(Events.InteractionCreate, async interaction => {
   try {
+    // 0. Autocomplete Router
+    if (interaction.isAutocomplete()) {
+      const command = commands.get(interaction.commandName);
+      if (command && typeof (command as any).autocomplete === 'function') {
+        await (command as any).autocomplete(interaction);
+      }
+      return;
+    }
+
     // 1. Slash Command Router
     if (interaction.isChatInputCommand()) {
       const command = commands.get(interaction.commandName);

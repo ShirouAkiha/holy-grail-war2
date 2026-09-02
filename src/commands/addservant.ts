@@ -1,6 +1,7 @@
 import { 
   SlashCommandBuilder, 
   ChatInputCommandInteraction, 
+  AutocompleteInteraction,
   EmbedBuilder,
   PermissionFlagsBits,
   ActionRowBuilder,
@@ -12,7 +13,9 @@ import {
   removeCustomServant, 
   getCustomServants, 
   getAllThroneServants,
-  updateServantTemplate
+  updateServantTemplate,
+  findServantInPool,
+  matchServantSearch
 } from '../database/service';
 import { ServantClass, ServantTemplate, CardType } from '../types';
 
@@ -137,8 +140,9 @@ export const data = new SlashCommandBuilder()
       .addStringOption(opt =>
         opt
           .setName('servant_id')
-          .setDescription('ID or name of the Servant to edit (e.g. artoria_pendragon, gilgamesh_archer, or name)')
+          .setDescription('ID or name of the Servant to edit (e.g. Artoria, Saber Alter, Gilgamesh)')
           .setRequired(true)
+          .setAutocomplete(true)
       )
       .addStringOption(opt =>
         opt.setName('name').setDescription('New name of the Heroic Spirit').setRequired(false)
@@ -209,10 +213,39 @@ export const data = new SlashCommandBuilder()
       .addStringOption(opt =>
         opt
           .setName('servant_id')
-          .setDescription('The ID of the custom servant to delete (use /addservant list to find IDs)')
+          .setDescription('Search or select custom servant to delete (use "all" to wipe custom spirits)')
           .setRequired(true)
+          .setAutocomplete(true)
       )
   );
+
+// ==========================================
+// 1.5 AUTOCOMPLETE HANDLER
+// ==========================================
+export async function autocomplete(interaction: AutocompleteInteraction) {
+  try {
+    const focusedOption = interaction.options.getFocused(true);
+    const subcommand = interaction.options.getSubcommand(false);
+    const query = focusedOption.value.toLowerCase().trim();
+    const allServants = getAllThroneServants();
+
+    if (focusedOption.name === 'servant_id') {
+      const list = subcommand === 'delete' ? allServants.filter(s => s.isCustomOrMeme) : allServants;
+      const matches = list
+        .filter(s => matchServantSearch(s, query))
+        .slice(0, 25);
+
+      await interaction.respond(
+        matches.map(s => ({
+          name: `${s.name} (${s.servantClass} ★${s.rarity}) ${s.isCustomOrMeme ? '[Custom]' : ''}`.slice(0, 100),
+          value: s.id
+        }))
+      );
+    }
+  } catch (err) {
+    console.error('Addservant autocomplete error:', err);
+  }
+}
 
 // ==========================================
 // 2. COMMAND EXECUTION HANDLER

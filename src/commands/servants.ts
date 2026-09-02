@@ -1,13 +1,14 @@
 import { 
   SlashCommandBuilder, 
   ChatInputCommandInteraction, 
+  AutocompleteInteraction,
   ActionRowBuilder, 
   ButtonBuilder, 
   ButtonStyle, 
   EmbedBuilder,
   ComponentType
 } from 'discord.js';
-import { SERVANT_DATABASE } from '../data/servants';
+import { getAllThroneServants, findServantInPool, matchServantSearch } from '../database/service';
 import { ServantTemplate } from '../types';
 
 export const data = new SlashCommandBuilder()
@@ -37,6 +38,7 @@ export const data = new SlashCommandBuilder()
           .setName('query')
           .setDescription('Search keyword (e.g. Artoria, Saber, Excalibur, Gilgamesh)')
           .setRequired(true)
+          .setAutocomplete(true)
       )
   )
   .addSubcommand(sub =>
@@ -46,26 +48,52 @@ export const data = new SlashCommandBuilder()
       .addStringOption(opt =>
         opt
           .setName('name')
-          .setDescription('Exact or partial name of the Servant')
+          .setDescription('Exact or partial name of the Servant (e.g. Saber Alter, Artoria)')
           .setRequired(true)
+          .setAutocomplete(true)
       )
   );
 
+export async function autocomplete(interaction: AutocompleteInteraction) {
+  try {
+    const focusedOption = interaction.options.getFocused(true);
+    const query = focusedOption.value.toLowerCase().trim();
+    const allServants = getAllThroneServants();
+
+    const matches = allServants
+      .filter(s => matchServantSearch(s, query))
+      .slice(0, 25);
+
+    await interaction.respond(
+      matches.map(s => ({
+        name: `${s.name} (${s.servantClass} ★${s.rarity}) ${s.isCustomOrMeme ? '[Custom]' : ''}`.slice(0, 100),
+        value: s.name
+      }))
+    );
+  } catch (err) {
+    console.error('Servants autocomplete error:', err);
+  }
+}
+
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
-    const allServants: ServantTemplate[] = [...SERVANT_DATABASE];
+    const allServants: ServantTemplate[] = getAllThroneServants();
     const subcommand = interaction.options.getSubcommand();
 
     if (subcommand === 'view') {
-      const query = interaction.options.getString('name', true).toLowerCase().trim();
-      const match = allServants.find(
-        s => s.name.toLowerCase().includes(query) || s.id.toLowerCase() === query
-      );
+      const query = interaction.options.getString('name', true).trim();
+      const match = findServantInPool(query, allServants);
 
       if (!match) {
+        const suggestions = allServants
+          .filter(s => matchServantSearch(s, query))
+          .slice(0, 5)
+          .map(s => `• **${s.name}** (\`${s.servantClass}\`)`)
+          .join('\n');
+
         await interaction.reply({
           ephemeral: true,
-          content: `❌ No Heroic Spirit found matching "${query}". Use \`/servants list\` to see all available spirits.`
+          content: `❌ No Heroic Spirit found matching "${query}".\n\n${suggestions ? `**Suggestions:**\n${suggestions}\n\n` : ''}Use \`/servants list\` to see all available spirits.`
         });
         return;
       }
@@ -77,14 +105,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     if (subcommand === 'search') {
-      const query = interaction.options.getString('query', true).toLowerCase().trim();
-      const results = allServants.filter(s =>
-        s.name.toLowerCase().includes(query) ||
-        s.servantClass.toLowerCase().includes(query) ||
-        s.title.toLowerCase().includes(query) ||
-        s.noblePhantasm.name.toLowerCase().includes(query) ||
-        (s.lore && s.lore.toLowerCase().includes(query))
-      );
+      const query = interaction.options.getString('query', true).trim();
+      const results = allServants.filter(s => matchServantSearch(s, query));
 
       if (results.length === 0) {
         await interaction.reply({

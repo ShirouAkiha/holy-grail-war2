@@ -122,6 +122,15 @@ client.once(Events.ClientReady, c => {
 // Central dispatcher that catches all user actions (Slash commands, Modal popups, Dropdowns).
 client.on(Events.InteractionCreate, async interaction => {
   try {
+    // ROUTE 0: Autocomplete (e.g. searching servants in /addservant or /servants)
+    if (interaction.isAutocomplete()) {
+      const command = commands.get(interaction.commandName);
+      if (command && typeof (command as any).autocomplete === 'function') {
+        await (command as any).autocomplete(interaction);
+      }
+      return;
+    }
+
     // ROUTE A: Slash Command execution (e.g. user typed /summon or /duel)
     if (interaction.isChatInputCommand()) {
       const command = commands.get(interaction.commandName);
