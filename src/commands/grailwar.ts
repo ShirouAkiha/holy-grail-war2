@@ -11,6 +11,7 @@ import { getOrCreateMaster, saveMaster } from '../database/service';
 import { HolyGrailWarSession } from '../types';
 import { 
   getOrInitWarSession,
+  calculateCurrentHp,
   executeWarAction, 
   simulateWarSkirmish,
   attackSuspectUserInWar,
@@ -200,7 +201,8 @@ export function buildWarEmbed(war: HolyGrailWarSession, userParticipant?: any, l
       const servantLabel = isRevealed ? `${m.servantName} (${m.servantClass})` : '[Classified in Shadows]';
       const exposureTag = m.isExposed ? ' `[EXPOSED]`' : (!m.isAlive ? ' `[FALLEN]`' : '');
 
-      rosterLines.push(`${statusIcon} **${nameLabel}**${exposureTag} — Servant: *${servantLabel}* | HP: \`${m.currentHp.toLocaleString()}/${m.maxHp.toLocaleString()}\` | Kills: ${m.kills}`);
+      const curHp = calculateCurrentHp(m);
+      rosterLines.push(`${statusIcon} **${nameLabel}**${exposureTag} — Servant: *${servantLabel}* | HP: \`${curHp.toLocaleString()}/${m.maxHp.toLocaleString()}\` | Kills: ${m.kills}`);
     } else {
       rosterLines.push(`⏳ **Slot #${slotIdx + 1}** — *[Unsummoned Heroic Spirit — Awaiting Master Covenant]*`);
     }

@@ -24,6 +24,7 @@ import {
 } from '../lib/canvas/browserCanvas';
 import {
   calculateCurrentHp,
+  calculateServantMaxHp,
   executeWarAction,
   simulateWarSkirmish,
   attackSuspectUserInWar,
@@ -399,6 +400,7 @@ export default function DiscordEmulator({
         k => k === master.discordId || updatedWarParticipants[k].username.toLowerCase() === master.username.toLowerCase()
       );
       if (mySlotKey) {
+        const newServantMaxHp = calculateServantMaxHp(newInstance);
         updatedWarParticipants[mySlotKey] = {
           ...updatedWarParticipants[mySlotKey],
           discordId: master.discordId,
@@ -407,8 +409,8 @@ export default function DiscordEmulator({
           servantName: randomTemplate.name,
           servantClass: randomTemplate.servantClass,
           avatarUrl: randomTemplate.avatarUrl,
-          maxHp: randomTemplate.baseHp,
-          currentHp: Math.min(updatedWarParticipants[mySlotKey].currentHp, randomTemplate.baseHp)
+          maxHp: newServantMaxHp,
+          currentHp: Math.min(updatedWarParticipants[mySlotKey].currentHp, newServantMaxHp)
         };
         onUpdateGrailWar({
           ...grailWar,
@@ -1503,7 +1505,7 @@ export default function DiscordEmulator({
           servantName: activeServant?.template.name || 'Artoria Pendragon',
           servantClass: activeServant?.template.servantClass || 'Saber',
           avatarUrl: master.avatarUrl,
-          maxHp: activeServant ? 10000 + activeServant.level * 100 : 11000
+          maxHp: activeServant ? calculateServantMaxHp(activeServant) : 15000
         });
         onUpdateGrailWar(newWar);
         addMessage({
@@ -1542,9 +1544,10 @@ export default function DiscordEmulator({
         const statusIcon = !m.isAlive ? '💀' : m.isExposed ? '📡' : '🕶️';
 
         if (m.isExposed || isUser || !m.isAlive) {
+          const curHp = calculateCurrentHp(m);
           const hpBar = !m.isAlive
             ? `0/${m.maxHp.toLocaleString()}`
-            : `${m.currentHp.toLocaleString()}/${m.maxHp.toLocaleString()}`;
+            : `${curHp.toLocaleString()}/${m.maxHp.toLocaleString()}`;
 
           const exposureTag = !m.isAlive
             ? '💀 [DECEASED / PERMANENTLY ELIMINATED]'
@@ -1818,6 +1821,9 @@ export default function DiscordEmulator({
     const rarityStars = '⭐'.repeat(rarity);
     const np = sTemplate.noblePhantasm;
 
+    const userCurHp = userParticipant ? calculateCurrentHp(userParticipant) : (activeServant ? calculateServantMaxHp(activeServant) : 10000);
+    const userMaxHp = userParticipant?.maxHp || (activeServant ? calculateServantMaxHp(activeServant) : 10000);
+
     addMessage({
       id: getNextId('bot_profile_dossier'),
       sender: 'bot',
@@ -1832,7 +1838,7 @@ export default function DiscordEmulator({
           `• **Noble Phantasm:** ✨ **${np.name}** (${np.cardType})\n` +
           `  *${np.chant || np.description}*\n\n` +
           `📊 **Combat Parameters:**\n` +
-          `• **HP:** ❤️ \`${(userParticipant?.currentHp || 10000).toLocaleString()} / ${(userParticipant?.maxHp || 10000).toLocaleString()}\`\n` +
+          `• **HP:** ❤️ \`${userCurHp.toLocaleString()} / ${userMaxHp.toLocaleString()}\`\n` +
           `• **Base ATK:** ⚔️ \`${sTemplate.baseAtk.toLocaleString()}\`\n` +
           `• **Noble Phantasm Charge:** ⚡ \`100% Ready\`\n\n` +
           `🛡️ **Workshop Defenses & Wards:**\n` +
@@ -2437,7 +2443,7 @@ export default function DiscordEmulator({
           servantName: activeServant?.template.name || 'Artoria Pendragon',
           servantClass: activeServant?.template.servantClass || 'Saber',
           avatarUrl: master.avatarUrl,
-          maxHp: activeServant ? 10000 + activeServant.level * 100 : 11000
+          maxHp: activeServant ? calculateServantMaxHp(activeServant) : 15000
         });
         onUpdateGrailWar(newWar);
         addMessage({

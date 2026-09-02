@@ -114,7 +114,7 @@ export function registerMasterSummonInWar(master: MasterProfile, servantInstance
   const servantName = sAny?.nickname || sTemplate?.name || sAny?.name || 'Heroic Spirit';
   const servantClass = sTemplate?.servantClass || sAny?.servantClass || sAny?.class || 'Saber';
   const avatarUrl = sTemplate?.avatarUrl || sAny?.avatarUrl || '';
-  const maxHp = sTemplate?.baseHp || sAny?.baseHp || 15000;
+  const maxHp = calculateServantMaxHp(servantInstance);
 
   const existing = war.participants[master.discordId];
   const isNewEntry = !existing;
@@ -125,9 +125,11 @@ export function registerMasterSummonInWar(master: MasterProfile, servantInstance
     existing.servantClass = servantClass;
     existing.avatarUrl = avatarUrl;
     existing.username = master.username;
+    existing.maxHp = maxHp;
     if (existing.currentHp <= 0 && existing.isAlive) {
       existing.currentHp = maxHp;
-      existing.maxHp = maxHp;
+    } else {
+      existing.currentHp = Math.min(maxHp, existing.currentHp);
     }
   } else {
     war.participants[master.discordId] = {
@@ -236,7 +238,7 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
   const servantName = sAny?.nickname || sTemplate?.name || sAny?.name || 'Heroic Spirit';
   const servantClass = sTemplate?.servantClass || sAny?.servantClass || sAny?.class || 'Saber';
   const avatarUrl = sTemplate?.avatarUrl || sAny?.avatarUrl || '';
-  const maxHp = sTemplate?.baseHp || sAny?.baseHp || 15000;
+  const maxHp = calculateServantMaxHp(activeServant);
 
   // Check if this real player already occupies a slot
   const existingKey = Object.keys(globalWarSession.participants).find(
@@ -268,6 +270,15 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
       existing.servantName = servantName;
       existing.servantClass = servantClass;
       existing.avatarUrl = avatarUrl;
+      const computedMax = calculateServantMaxHp(activeServant);
+      if (existing.maxHp !== computedMax) {
+        const hpRatio = existing.maxHp > 0 ? (existing.currentHp / existing.maxHp) : 1;
+        existing.maxHp = computedMax;
+        existing.currentHp = Math.min(computedMax, Math.round(hpRatio * computedMax));
+        if (existing.baseHpAtDamage !== undefined) {
+          existing.baseHpAtDamage = Math.min(computedMax, existing.baseHpAtDamage);
+        }
+      }
     }
 
     // Refresh real-time passive leyline healing
@@ -360,6 +371,22 @@ export interface WarActionResult {
   targetWasMaster?: boolean;
   exposedTargetMaster?: string;
   updatedWar: HolyGrailWarSession;
+}
+
+/**
+ * Calculates a Servant's true Max HP scaled with Level, allocated Endurance, and equipped Craft Essence.
+ */
+export function calculateServantMaxHp(servantInstance: any): number {
+  if (!servantInstance) return 15000;
+  const sAny = servantInstance as any;
+  const sTemplate = sAny?.template || sAny;
+  const base = sTemplate?.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
+  const totalEnd = (base.endurance || 10) + (sAny?.allocatedStats?.endurance || 0);
+  const ce = sAny?.equippedCe;
+  const ceHp = ce ? (ce.hpBonus || 0) : 0;
+  const lvl = sAny?.level || 1;
+  const baseHp = sTemplate?.baseHp || sAny?.baseHp || 12000;
+  return Math.round(baseHp * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceHp);
 }
 
 /**
