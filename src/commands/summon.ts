@@ -48,6 +48,33 @@ export const data = new SlashCommandBuilder()
   );
 
 // ==========================================
+// 1.5. AUTHENTIC FATE SUMMONING CHANTS & VISUALS
+// ==========================================
+const RIN_SUMMONING_GIF = 'https://klipy.com/gifs/anime-magic-3';
+
+const SUMMONING_CHANTS = [
+  `*“Let silver and steel be the essence.”*\n` +
+  `*“Let stone and the archduke of contracts be the foundation.”*\n` +
+  `*“Let red be the color I pay tribute to.”*\n` +
+  `*“Let rise a wall against the wind that shall fall.”*\n` +
+  `*“Let the four cardinal gates close.”*\n` +
+  `*“Let the three-forked road from the crown reaching unto the Kingdom rotate.”*\n\n` +
+  `*“Let it be filled. Again. Again. Again. Again.”*\n` +
+  `*“Let it be filled fivefold for every turn, simply breaking asunder with every filling.”*`,
+
+  `*“Fill. Fill. Fill. Fill. Fill. Let each be turned over five times, simply breaking asunder the fulfilled time.”*\n` +
+  `*“Let silver and steel be the essence. Let stone and the archduke of contracts be the foundation. Let my great master be the ancestor. Raise a wall, against the wind that shall fall. Close the four cardinal gates. Come out from the crown. Rotate the three-branched road reaching the Kingdom.”*\n\n` +
+  `*“– I shall declare here. Your body shall serve under me. My fate shall be with your sword. Submit to the beckoning of the Holy Grail. If you will submit to this will and this reason…… then answer!”*\n\n` +
+  `*“– An oath shall be sworn here! I shall attain all virtues of all of Heaven. I shall have dominion over all evils of all of Hell! – From the Seventh Heaven, attended to by three great words of power, come forth from the ring of restraint, Protector of the Balance!”*`,
+
+  `*“Be gone, shadows!”*\n` +
+  `*“Thou of the unseeable!”*\n` +
+  `*“Fade back into oblivion, if of darkness. Be returned to the immaterial!”*\n` +
+  `*“Ask not me, my answer is clear. In my hand is light. Know that all is in this hand.”*\n` +
+  `*“I am the truth of creation. In face of all things, thy defeat is certain!”*`
+];
+
+// ==========================================
 // 2. HOLY GRAIL WAR SUMMONING RITUAL LOGIC
 // ==========================================
 function performSummoningRitual(master: any) {
@@ -304,15 +331,22 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const newServant = result.servant!;
     registerMasterSummonInWar(master, newServant);
 
-    const incantation = 
-      `*“Let silver and iron be the essence. Let stone and the archduke of contracts be the foundation.”*\n` +
-      `*“Let the flowing great river be created, and the four corners be filled.”*\n` +
-      `*“Let the order of the Holy Grail be fulfilled!”*`;
+    const chosenChant = SUMMONING_CHANTS[Math.floor(Math.random() * SUMMONING_CHANTS.length)];
+
+    const ritualEmbed = new EmbedBuilder()
+      .setTitle('🕯️ HOLY GRAIL WAR: SACRED SUMMONING RITUAL')
+      .setDescription(
+        `Master **<@${interaction.user.id}>** channels magical energy through circuits into the summoning array...\n\n` +
+        `${chosenChant}\n\n` +
+        `✨ *The Greater Grail responds! Mana surges through the Fuyuki leylines as the magic circle erupts in blinding crimson light!*`
+      )
+      .setImage(RIN_SUMMONING_GIF)
+      .setColor(0xa855f7)
+      .setFooter({ text: 'Magecraft Circuits Active • Channelling Mana into the Greater Grail' });
 
     const summonEmbed = new EmbedBuilder()
       .setTitle(`✨ HEROIC SPIRIT SUMMONED: ${template.name.toUpperCase()}`)
       .setDescription(
-        `${incantation}\n\n` +
         `═══════════════════════════════════\n` +
         `🗣️ **"${newServant.customQuotes?.summon || template.summonQuote}"**\n` +
         `═══════════════════════════════════\n\n` +
@@ -344,7 +378,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     );
 
     const reply = await interaction.reply({
-      embeds: [summonEmbed],
+      embeds: [ritualEmbed, summonEmbed],
       components: [actionRow],
       withResponse: true
     }).then(r => r.resource?.message || interaction.fetchReply());
@@ -417,20 +451,33 @@ function setupSummonButtonCollector(message: any, userId: string) {
           await saveMaster(master);
           registerMasterSummonInWar(master, result.servant);
           const t = result.template;
+          const chosenChant = SUMMONING_CHANTS[Math.floor(Math.random() * SUMMONING_CHANTS.length)];
+
+          const rEmbed = new EmbedBuilder()
+            .setTitle('🕯️ HOLY GRAIL WAR: SACRED SUMMONING RITUAL')
+            .setDescription(
+              `Master **<@${i.user.id}>** channels magical energy through circuits into the summoning array...\n\n` +
+              `${chosenChant}\n\n` +
+              `✨ *The Greater Grail responds! Mana surges through the leylines as the magic circle erupts in blinding crimson light!*`
+            )
+            .setImage(RIN_SUMMONING_GIF)
+            .setColor(0xa855f7)
+            .setFooter({ text: 'Magecraft Circuits Active • Channelling Mana into the Greater Grail' });
+
+          const sEmbed = new EmbedBuilder()
+            .setTitle(`✨ HEROIC SPIRIT SUMMONED: ${t.name.toUpperCase()}`)
+            .setDescription(
+              `🗣️ **"${t.summonQuote}"**\n\n` +
+              `• **True Name:** **${t.name}** [${t.servantClass}]\n` +
+              `• **Noble Phantasm:** **${t.noblePhantasm.name}**\n` +
+              `• **Command Seals:** 3 / 3\n\n` +
+              `Contract established for the Holy Grail War!`
+            )
+            .setImage(t.cardArtUrl || t.avatarUrl)
+            .setColor(0xd4af37);
+
           await i.update({
-            embeds: [
-              new EmbedBuilder()
-                .setTitle(`✨ HEROIC SPIRIT SUMMONED: ${t.name.toUpperCase()}`)
-                .setDescription(
-                  `🗣️ **"${t.summonQuote}"**\n\n` +
-                  `• **True Name:** **${t.name}** [${t.servantClass}]\n` +
-                  `• **Noble Phantasm:** **${t.noblePhantasm.name}**\n` +
-                  `• **Command Seals:** 3 / 3\n\n` +
-                  `Contract established for the Holy Grail War!`
-                )
-                .setImage(t.cardArtUrl || t.avatarUrl)
-                .setColor(0xd4af37)
-            ],
+            embeds: [rEmbed, sEmbed],
             components: []
           });
         }

@@ -61,6 +61,35 @@ import {
   Lock
 } from 'lucide-react';
 
+const RIN_SUMMONING_GIF = 'https://klipy.com/gifs/anime-magic-3';
+
+const SUMMONING_CHANTS = [
+  `*“Let silver and steel be the essence.”*\n` +
+  `*“Let stone and the archduke of contracts be the foundation.”*\n` +
+  `*“Let red be the color I pay tribute to.”*\n` +
+  `*“Let rise a wall against the wind that shall fall.”*\n` +
+  `*“Let the four cardinal gates close.”*\n` +
+  `*“Let the three-forked road from the crown reaching unto the Kingdom rotate.”*\n\n` +
+  `*“Let it be filled. Again. Again. Again. Again.”*\n` +
+  `*“Let it be filled fivefold for every turn, simply breaking asunder with every filling.”*`,
+
+  `*“Fill. Fill. Fill. Fill. Fill. Let each be turned over five times, simply breaking asunder the fulfilled time.”*\n` +
+  `*“Let silver and steel be the essence. Let stone and the archduke of contracts be the foundation. Let my great master be the ancestor. Raise a wall, against the wind that shall fall. Close the four cardinal gates. Come out from the crown. Rotate the three-branched road reaching the Kingdom.”*\n\n` +
+  `*“– I shall declare here. Your body shall serve under me. My fate shall be with your sword. Submit to the beckoning of the Holy Grail. If you will submit to this will and this reason…… then answer!”*\n\n` +
+  `*“– An oath shall be sworn here! I shall attain all virtues of all of Heaven. I shall have dominion over all evils of all of Hell! – From the Seventh Heaven, attended to by three great words of power, come forth from the ring of restraint, Protector of the Balance!”*`,
+
+  `*“Be gone, shadows!”*\n` +
+  `*“Thou of the unseeable!”*\n` +
+  `*“Fade back into oblivion, if of darkness. Be returned to the immaterial!”*\n` +
+  `*“Ask not me, my answer is clear. In my hand is light. Know that all is in this hand.”*\n` +
+  `*“I am the truth of creation. In face of all things, thy defeat is certain!”*`
+];
+
+function getRandomChant(): string {
+  const index = Math.floor(Math.random() * SUMMONING_CHANTS.length);
+  return SUMMONING_CHANTS[index];
+}
+
 function createContractFromPool(allThrone: ServantTemplate[], masterId: string): MasterServantInstance {
   const randomTemplate = allThrone[Math.floor(Math.random() * allThrone.length)];
   return {
@@ -418,6 +447,27 @@ export default function DiscordEmulator({
         });
       }
 
+      // Select random chant for the ritual embed
+      const chosenChant = getRandomChant();
+
+      // Stage 1: Summoning Ritual Incantation Embed
+      addMessage({
+        id: getNextId('bot_summon_ritual_phase'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '🕯️ HOLY GRAIL WAR: SACRED SUMMONING RITUAL',
+          description:
+            `Master **${master.username}** channels magical energy through circuits into the summoning array...\n\n` +
+            chosenChant + `\n\n` +
+            `✨ *The Greater Grail responds! Mana surges through the Fuyuki leylines as the magic circle erupts in blinding crimson light!*`,
+          color: '#a855f7',
+          imageUrl: RIN_SUMMONING_GIF,
+          footer: 'Magecraft Circuits Active • Channelling Mana into the Greater Grail'
+        }
+      });
+
+      // Stage 2: Servant Reveal Embed & Contract Establishment
       addMessage({
         id: getNextId('bot_summon_res'),
         sender: 'bot',
@@ -425,14 +475,13 @@ export default function DiscordEmulator({
         embed: {
           title: `✨ HEROIC SPIRIT SUMMONED: ${randomTemplate.name.toUpperCase()}`,
           description:
-            `*“Let silver and iron be the essence. Let stone and the archduke of contracts be the foundation...”*\n\n` +
             `═══════════════════════════════════\n` +
-            `🗣️ **"${randomTemplate.summonQuote}"**\n` +
+            `🗣️ **"${newInstance.customQuotes?.summon || randomTemplate.summonQuote || `Servant ${randomTemplate.servantClass}. I have answered your summons. Are you my Master?`}"**\n` +
             `═══════════════════════════════════\n\n` +
             `👤 **True Name:** **${randomTemplate.name}**\n` +
             `🗡️ **Class:** \`${randomTemplate.servantClass}\` | **Title:** *${randomTemplate.title}*\n` +
             `🔴 **Command Seals Bestowed:** **3 / 3**\n\n` +
-            `📊 **Parameters:**\n` +
+            `📊 **Base Parameters:**\n` +
             `• **HP:** \`${randomTemplate.baseHp.toLocaleString()}\` | **ATK:** \`${randomTemplate.baseAtk.toLocaleString()}\`\n` +
             `• **STR:** ${randomTemplate.baseStats.strength} | **END:** ${randomTemplate.baseStats.endurance} | **AGI:** ${randomTemplate.baseStats.agility} | **MNA:** ${randomTemplate.baseStats.mana} | **LCK:** ${randomTemplate.baseStats.luck}\n\n` +
             `💥 **Noble Phantasm:** **${randomTemplate.noblePhantasm.name}** [${randomTemplate.noblePhantasm.cardType}]\n` +
@@ -447,7 +496,8 @@ export default function DiscordEmulator({
           type: 'buttons',
           items: [
             { id: 'quick_servant_card', label: 'View Parameters (/servant)', style: 'primary', emoji: '📊' },
-            { id: 'quick_start_duel', label: 'Test in Battle (/duel)', style: 'danger', emoji: '⚔️' }
+            { id: 'quick_start_duel', label: 'Test in Battle (/duel)', style: 'danger', emoji: '⚔️' },
+            { id: 'quick_war_status', label: 'Enter Grail War (/grailwar)', style: 'success', emoji: '🏰' }
           ]
         }
       });
@@ -2586,6 +2636,19 @@ export default function DiscordEmulator({
                   <div className="whitespace-pre-wrap text-xs text-white/80 leading-relaxed font-mono">
                     {msg.embed.description}
                   </div>
+
+                  {/* Embed Image / GIF */}
+                  {(msg.embed.imageUrl || msg.embed.thumbnailUrl) && (
+                    <div className="mt-3 rounded overflow-hidden border border-[#222] bg-[#050505] max-w-xl shadow-md">
+                      <img
+                        src={msg.embed.imageUrl || msg.embed.thumbnailUrl}
+                        alt="Embed Visual"
+                        className="w-full h-auto object-contain max-h-[400px] rounded"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  )}
+
                   {/* Dynamic Canvas Image Embedded Inside Box */}
                   {msg.canvasType && (
                     <div className="mt-3 rounded overflow-hidden border border-[#222] bg-[#050505] w-full shadow-md">
