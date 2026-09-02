@@ -5,7 +5,10 @@ import {
   Routes, 
   Events, 
   Collection,
-  EmbedBuilder
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle
 } from 'discord.js';
 import * as summonCommand from './commands/summon';
 import * as servantCommand from './commands/servant';
@@ -373,6 +376,61 @@ client.on(Events.InteractionCreate, async interaction => {
           .setDescription(res.message)
           .setColor(0x0ea5e9);
         await interaction.update({ embeds: [recallEmbed], components: [] });
+        return;
+      }
+
+      if (btnId === 'war_familiars_hub') {
+        if (isCivilian) {
+          await interaction.reply({
+            ephemeral: true,
+            content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
+          });
+          return;
+        }
+        const userFamiliars = (war.familiars || []).filter(f => f.masterId === interaction.user.id);
+        let desc = '';
+        if (userFamiliars.length === 0) {
+          desc = 'You currently have **no active familiars** dispatched in Fuyuki City.\n\nUse `/grailwar familiar` to deploy Scouting Ravens, Homunculus Decoys, or Shadow Imps!';
+        } else {
+          desc = `You currently command **${userFamiliars.length}/2** active familiars stationed across Fuyuki:\n\n` +
+            userFamiliars.map((f, idx) => {
+              const typeLabel = f.familiarType === 'raven'
+                ? '🦅 **Scouting Raven** (Surveillance)'
+                : f.familiarType === 'homunculus'
+                ? '🗿 **Homunculus Decoy** (Ambush Shield)'
+                : '🦇 **Shadow Imp** (Sabotage & Siphon)';
+              const intelLogs = (f.detectedIntel && f.detectedIntel.length > 0)
+                ? `\n  ↳ **Surveillance Logs:**\n  ${f.detectedIntel.slice(0, 3).join('\n  ')}`
+                : `\n  ↳ *No movement observed yet.*`;
+              return `**${idx + 1}. Sector ${f.channelName}** — ${typeLabel}\n*Deployed <t:${Math.floor(f.createdAt / 1000)}:R>*${intelLogs}`;
+            }).join('\n\n');
+        }
+
+        const famsEmbed = new EmbedBuilder()
+          .setTitle('🦅 Active Familiar Reconnaissance Network')
+          .setDescription(desc)
+          .setColor(0x0ea5e9)
+          .setFooter({ text: 'Familiars gather intelligence and shield their Masters' });
+
+        const row = new ActionRowBuilder<ButtonBuilder>();
+        if (userFamiliars.length > 0) {
+          row.addComponents(
+            new ButtonBuilder()
+              .setCustomId('recall_all_familiars')
+              .setLabel('Recall All Familiars')
+              .setEmoji('🕊️')
+              .setStyle(ButtonStyle.Danger)
+          );
+        }
+        row.addComponents(
+          new ButtonBuilder()
+            .setCustomId('war_status_board')
+            .setLabel('Grail War Status')
+            .setEmoji('📜')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        await interaction.reply({ embeds: [famsEmbed], components: [row], ephemeral: true });
         return;
       }
 

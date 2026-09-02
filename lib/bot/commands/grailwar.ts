@@ -10,8 +10,7 @@ export const grailwarCommandCode = `import {
   ActionRowBuilder, 
   ButtonBuilder, 
   ButtonStyle, 
-  EmbedBuilder,
-  ComponentType
+  EmbedBuilder
 } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { HolyGrailWarSession } from '../types';
@@ -339,26 +338,22 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     if (subcommand === 'profile') {
       const profEmbed = buildProfileEmbed(master, war);
       const profButtons = buildProfileButtons(userParticipant);
-      const reply = await interaction.reply({
+      await interaction.reply({
         embeds: [profEmbed],
         components: profButtons,
-        ephemeral: true,
-        fetchReply: true
+        ephemeral: true
       });
-      setupWarCollector(reply, interaction.user.id);
       return;
     }
 
     if (subcommand === 'defenses') {
       const defEmbed = buildDefensesEmbed(userParticipant);
       const defButtons = buildDefensesButtons(userParticipant);
-      const reply = await interaction.reply({
+      await interaction.reply({
         embeds: [defEmbed],
         components: defButtons,
-        ephemeral: true,
-        fetchReply: true
+        ephemeral: true
       });
-      setupWarCollector(reply, interaction.user.id);
       return;
     }
 
@@ -370,13 +365,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       const defEmbed = buildDefensesEmbed(war.participants[interaction.user.id], res.message);
       const defButtons = buildDefensesButtons(war.participants[interaction.user.id]);
-      const reply = await interaction.reply({
+      await interaction.reply({
         embeds: [defEmbed],
         components: defButtons,
-        ephemeral: true,
-        fetchReply: true
+        ephemeral: true
       });
-      setupWarCollector(reply, interaction.user.id);
       return;
     }
 
@@ -388,13 +381,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       const defEmbed = buildDefensesEmbed(war.participants[interaction.user.id], res.message);
       const defButtons = buildDefensesButtons(war.participants[interaction.user.id]);
-      const reply = await interaction.reply({
+      await interaction.reply({
         embeds: [defEmbed],
         components: defButtons,
-        ephemeral: true,
-        fetchReply: true
+        ephemeral: true
       });
-      setupWarCollector(reply, interaction.user.id);
       return;
     }
 
@@ -435,13 +426,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const embed = buildWarEmbed(war, userParticipant, initialMsg);
     const row = buildWarButtons();
 
-    const reply = await interaction.reply({
+    await interaction.reply({
       embeds: [embed],
-      components: [row],
-      fetchReply: true
+      components: [row]
     });
-
-    setupWarCollector(reply, interaction.user.id);
 
   } catch (error: any) {
     console.error('Error executing /grailwar:', error);
@@ -451,139 +439,5 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       await interaction.reply({ content: '❌ Error: ' + error.message, ephemeral: true });
     }
   }
-}
-
-function setupWarCollector(message: any, userId: string) {
-  const collector = message.createMessageComponentCollector({
-    componentType: ComponentType.Button,
-    time: 120000
-  });
-
-  collector.on('collect', async (i: any) => {
-    try {
-      if (i.replied || i.deferred) return;
-
-      const master = await getOrCreateMaster(i.user.id, i.user.username);
-      let war = getOrInitWarSession(master);
-      let actionResultMsg = '';
-      const isCivilian = !master.servants || master.servants.length === 0;
-
-      if (i.customId === 'war_my_profile') {
-        if (isCivilian) {
-          await i.reply({
-            ephemeral: true,
-            content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use /summon to establish a covenant and enter the Holy Grail War.'
-          });
-          return;
-        }
-        const userP = war.participants[i.user.id];
-        const profEmbed = buildProfileEmbed(master, war);
-        const profBtns = buildProfileButtons(userP);
-        await i.reply({ embeds: [profEmbed], components: profBtns, ephemeral: true });
-        return;
-      }
-
-      if (i.customId === 'war_defenses') {
-        if (isCivilian) {
-          await i.reply({
-            ephemeral: true,
-            content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use /summon to establish a covenant and enter the Holy Grail War.'
-          });
-          return;
-        }
-        const userP = war.participants[i.user.id];
-        const defEmbed = buildDefensesEmbed(userP);
-        const defBtns = buildDefensesButtons(userP);
-        await i.reply({ embeds: [defEmbed], components: defBtns, ephemeral: true });
-        return;
-      }
-
-      if (i.user.id !== userId) {
-        await i.reply({ content: 'Only the Master who issued this war command can control these public actions. Use /profile to view your own stats.', ephemeral: true });
-        return;
-      }
-
-      if (i.customId === 'war_status_board') {
-        const userP = war.participants[i.user.id];
-        const warEmbed = buildWarEmbed(war, userP);
-        const warBtns = buildWarButtons();
-        await i.update({ embeds: [warEmbed], components: [warBtns] });
-        return;
-      }
-      else if (i.customId === 'ward_none') {
-        const res = executeWarAction(war, i.user.id, 'set_ward', 'none');
-        war = res.updatedWar;
-        await saveMaster(master);
-        const userP = war.participants[i.user.id];
-        const defEmbed = buildDefensesEmbed(userP, res.message);
-        const defBtns = buildDefensesButtons(userP);
-        await i.update({ embeds: [defEmbed], components: defBtns });
-        return;
-      }
-      else if (i.customId === 'ward_ward') {
-        const res = executeWarAction(war, i.user.id, 'set_ward', 'ward');
-        war = res.updatedWar;
-        await saveMaster(master);
-        const userP = war.participants[i.user.id];
-        const defEmbed = buildDefensesEmbed(userP, res.message);
-        const defBtns = buildDefensesButtons(userP);
-        await i.update({ embeds: [defEmbed], components: defBtns });
-        return;
-      }
-      else if (i.customId === 'ward_alarm') {
-        const res = executeWarAction(war, i.user.id, 'set_ward', 'alarm');
-        war = res.updatedWar;
-        await saveMaster(master);
-        const userP = war.participants[i.user.id];
-        const defEmbed = buildDefensesEmbed(userP, res.message);
-        const defBtns = buildDefensesButtons(userP);
-        await i.update({ embeds: [defEmbed], components: defBtns });
-        return;
-      }
-      else if (i.customId === 'toggle_auto_evade') {
-        const currentP = war.participants[i.user.id];
-        const newMode = currentP?.autoEvadeEnabled !== false ? 'off' : 'on';
-        const res = executeWarAction(war, i.user.id, 'toggle_evade', newMode);
-        war = res.updatedWar;
-        await saveMaster(master);
-        const userP = war.participants[i.user.id];
-        const defEmbed = buildDefensesEmbed(userP, res.message);
-        const defBtns = buildDefensesButtons(userP);
-        await i.update({ embeds: [defEmbed], components: defBtns });
-        return;
-      }
-      else if (i.customId === 'war_refresh_defenses') {
-        const userP = war.participants[i.user.id];
-        const defEmbed = buildDefensesEmbed(userP, '🔄 Workshop settings refreshed.');
-        const defBtns = buildDefensesButtons(userP);
-        await i.update({ embeds: [defEmbed], components: defBtns });
-        return;
-      }
-      else if (i.customId === 'war_patrol') {
-        const chanTag = i.channel && 'name' in i.channel ? '#' + (i.channel as any).name : '#general';
-        const res = patrolCityInWar(war, i.user.id, i.user.username, chanTag);
-        actionResultMsg = res.message;
-        war = res.updatedWar;
-      }
-      else if (i.customId === 'war_skirmish') {
-        const chanTag = i.channel && 'name' in i.channel ? '#' + (i.channel as any).name : '#general';
-        const res = simulateWarSkirmish(war, chanTag);
-        actionResultMsg = res.message;
-        war = res.updatedWar;
-      }
-      else if (i.customId === 'war_refresh') {
-        actionResultMsg = '🔄 Intelligence Board refreshed.';
-      }
-
-      const userParticipant = war.participants[i.user.id];
-      const updatedEmbed = buildWarEmbed(war, userParticipant, actionResultMsg);
-      const updatedRow = buildWarButtons();
-
-      await i.update({ embeds: [updatedEmbed], components: [updatedRow] });
-    } catch (err: any) {
-      if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
-      console.error('Error in grail war collector:', err);
-    }
-  });
 }
 `;

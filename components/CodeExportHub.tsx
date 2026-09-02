@@ -22,6 +22,8 @@ import { leakCommandCode } from '../lib/bot/commands/leak';
 import { servantsCommandCode } from '../lib/bot/commands/servants';
 import { customiseCommandCode } from '../lib/bot/commands/customise';
 import { addservantCommandCode } from '../lib/bot/commands/addservant';
+import { defensesCommandCode } from '../lib/bot/commands/defenses';
+import { profileCommandCode } from '../lib/bot/commands/profile';
 import { discordBotMainCode } from '../lib/bot/client';
 import { nodeCanvasRendererCode } from '../lib/bot/nodeCanvasExport';
 import { deployScriptCode } from '../lib/bot/deploy';
@@ -104,6 +106,18 @@ const FILE_MODULES = [
     name: 'src/bot/commands/customise.ts',
     category: 'Slash Command: /customise',
     code: customiseCommandCode
+  },
+  {
+    id: 'cmd_defenses',
+    name: 'src/bot/commands/defenses.ts',
+    category: 'Slash Command: /defenses',
+    code: defensesCommandCode
+  },
+  {
+    id: 'cmd_profile',
+    name: 'src/bot/commands/profile.ts',
+    category: 'Slash Command: /profile',
+    code: profileCommandCode
   }
 ];
 
