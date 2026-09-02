@@ -72,7 +72,6 @@ export function getAllThroneServants(customServants: ServantTemplate[] = []): Se
 
 export function getInitialMasterProfile(): MasterProfile {
   const defaultServantTemplate = SERVANT_DATABASE[0]; // Artoria
-  const defaultCe = CRAFT_ESSENCE_DATABASE[0]; // Kaleidoscope
 
   const initialServant: MasterServantInstance = {
     id: 'contract_artoria_starter',
@@ -88,8 +87,8 @@ export function getInitialMasterProfile(): MasterProfile {
       luck: 1
     },
     availableStatPoints: 5,
-    equippedCeId: defaultCe.id,
-    equippedCe: defaultCe,
+    equippedCeId: undefined,
+    equippedCe: undefined,
     skillLevels: [4, 3, 2],
     customQuotes: {
       summon: defaultServantTemplate.summonQuote,
@@ -107,7 +106,7 @@ export function getInitialMasterProfile(): MasterProfile {
     discordId: '912420275492',
     username: 'Master Shirou',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
-    saintQuartz: 0,
+    saintQuartz: 30,
     summonTickets: 0,
     commandSeals: 3,
     actionPoints: 100,
@@ -116,12 +115,7 @@ export function getInitialMasterProfile(): MasterProfile {
     grailWarWins: 2,
     activeServantId: initialServant.id,
     servants: [initialServant],
-    craftEssences: [
-      CRAFT_ESSENCE_DATABASE[0],
-      CRAFT_ESSENCE_DATABASE[1],
-      CRAFT_ESSENCE_DATABASE[2],
-      CRAFT_ESSENCE_DATABASE[4]
-    ]
+    craftEssences: []
   };
 }
 
@@ -135,15 +129,41 @@ export function loadMasterProfile(): MasterProfile {
       return initial;
     }
     const parsed: MasterProfile = JSON.parse(raw);
-    // Refresh servant templates from current SERVANT_DATABASE / custom servants
+    
+    // Sanitize Craft Essences: remove Kaleidoscope (balance reset) and sync definitions
+    if (parsed.craftEssences && Array.isArray(parsed.craftEssences)) {
+      parsed.craftEssences = parsed.craftEssences
+        .filter(ce => ce && ce.id !== 'ce_kaleidoscope')
+        .map(ce => {
+          const freshCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === ce.id);
+          return freshCe ? { ...freshCe } : ce;
+        });
+    } else {
+      parsed.craftEssences = [];
+    }
+
+    // Refresh servant templates from current SERVANT_DATABASE / custom servants & strip equipped Kaleidoscope
     const customServants = getCustomServantsFromStorage();
     const allThrone = getAllThroneServants(customServants);
     if (parsed.servants && Array.isArray(parsed.servants)) {
       parsed.servants = parsed.servants.map(s => {
         const templateId = s.templateId || s.template?.id || s.id;
         const fresh = allThrone.find(t => t.id === templateId) || SERVANT_DATABASE.find(t => t.id === templateId) || s.template;
+        
+        let equippedCe = s.equippedCe;
+        let equippedCeId = s.equippedCeId;
+        if (equippedCeId === 'ce_kaleidoscope' || equippedCe?.id === 'ce_kaleidoscope') {
+          equippedCeId = undefined;
+          equippedCe = undefined;
+        } else if (equippedCeId) {
+          const freshCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === equippedCeId);
+          if (freshCe) equippedCe = { ...freshCe };
+        }
+
         return {
           ...s,
+          equippedCeId,
+          equippedCe,
           template: fresh ? { ...fresh, ...(s.template?.isCustomOrMeme ? s.template : {}) } : s.template
         };
       });

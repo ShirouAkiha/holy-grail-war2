@@ -22,6 +22,7 @@ import { leakCommandCode } from '../lib/bot/commands/leak';
 import { servantsCommandCode } from '../lib/bot/commands/servants';
 import { customiseCommandCode } from '../lib/bot/commands/customise';
 import { addservantCommandCode } from '../lib/bot/commands/addservant';
+import { cegachaCommandCode } from '../lib/bot/commands/cegacha';
 import { defensesCommandCode } from '../lib/bot/commands/defenses';
 import { profileCommandCode } from '../lib/bot/commands/profile';
 import { discordBotMainCode } from '../lib/bot/client';
@@ -108,6 +109,12 @@ const FILE_MODULES = [
     code: customiseCommandCode
   },
   {
+    id: 'cmd_cegacha',
+    name: 'src/bot/commands/cegacha.ts',
+    category: 'Slash Command: /cegacha (Craft Essence Gacha)',
+    code: cegachaCommandCode
+  },
+  {
     id: 'cmd_defenses',
     name: 'src/bot/commands/defenses.ts',
     category: 'Slash Command: /defenses',
@@ -128,7 +135,7 @@ export default function CodeExportHub() {
   const currentModule = FILE_MODULES.find(m => m.id === selectedFileId) || FILE_MODULES[0];
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(currentModule.code);
+    navigator.clipboard.writeText(String(currentModule.code));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

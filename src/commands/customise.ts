@@ -183,17 +183,46 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     if (subcommand === 'equip') {
       const ceNameParam = interaction.options.getString('craft_essence');
 
+      // Check unequip
+      if (ceNameParam && (ceNameParam.toLowerCase() === 'none' || ceNameParam.toLowerCase() === 'unequip')) {
+        activeServant.equippedCeId = undefined;
+        activeServant.equippedCe = undefined;
+        await saveMaster(master);
+
+        const embed = new EmbedBuilder()
+          .setTitle('🛡️ Craft Essence Unequipped')
+          .setDescription(`Removed Craft Essence from **${servantName}**.`)
+          .setColor(0x94a3b8);
+
+        await interaction.reply({ embeds: [embed] });
+        return;
+      }
+
+      // Check if master owns any CEs
+      const ownedCes = (master.craftEssences || []).filter(Boolean);
+
       // Direct text search
       if (ceNameParam) {
-        const found = CRAFT_ESSENCE_DATABASE.find(
+        const found = ownedCes.find(
           (c: any) => c.name.toLowerCase().includes(ceNameParam.toLowerCase()) || c.id === ceNameParam
         );
 
         if (!found) {
-          await interaction.reply({
-            ephemeral: true,
-            content: `❌ Craft Essence "${ceNameParam}" not found in database.`
-          });
+          const dbFound = CRAFT_ESSENCE_DATABASE.find(
+            (c: any) => c.name.toLowerCase().includes(ceNameParam.toLowerCase()) || c.id === ceNameParam
+          );
+
+          if (dbFound) {
+            await interaction.reply({
+              ephemeral: true,
+              content: `❌ You do not own **${dbFound.name}** in your inventory! Use \`/cegacha\` to summon Craft Essences using Saint Quartz 💎.`
+            });
+          } else {
+            await interaction.reply({
+              ephemeral: true,
+              content: `❌ Craft Essence "${ceNameParam}" not found in database or inventory.`
+            });
+          }
           return;
         }
 
@@ -214,28 +243,49 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         return;
       }
 
-      // Interactive Dropdown Menu selector
-      const availableCes = master.craftEssences?.length ? master.craftEssences : CRAFT_ESSENCE_DATABASE;
+      if (ownedCes.length === 0) {
+        const embed = new EmbedBuilder()
+          .setTitle('🛡️ No Craft Essences in Inventory')
+          .setDescription(
+            `You do not own any Craft Essences yet!\n\n` +
+            `💎 **Saint Quartz Balance:** ${master.saintQuartz || 0} SQ\n\n` +
+            `Use **/cegacha** (or **/gacha**) to summon powerful Mystic Codes and Relics from the Craft Essence Gacha!`
+          )
+          .setColor(0xf59e0b);
+
+        await interaction.reply({ embeds: [embed] });
+        return;
+      }
+
+      // Interactive Dropdown Menu selector of OWNED CEs
+      const options: any[] = [
+        {
+          label: 'Unequip Current Essence',
+          description: 'Remove equipped Craft Essence from Servant',
+          value: 'none',
+          default: !activeServant.equippedCeId
+        },
+        ...ownedCes.slice(0, 24).map((c: any) => ({
+          label: c.name,
+          description: `★${c.rarity} • ${c.effectText.slice(0, 50)}`,
+          value: c.id,
+          default: activeServant.equippedCeId === c.id
+        }))
+      ];
 
       const selectMenu = new StringSelectMenuBuilder()
         .setCustomId('customise_select_ce')
         .setPlaceholder('Choose a Craft Essence to equip...')
-        .addOptions(
-          availableCes.slice(0, 25).map((c: any) => ({
-            label: c.name,
-            description: `★${c.rarity} • ${c.effectText.slice(0, 50)}`,
-            value: c.id,
-            default: activeServant.equippedCeId === c.id
-          }))
-        );
+        .addOptions(options);
 
       const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
 
       const embed = new EmbedBuilder()
         .setTitle(`🛡️ Equip Craft Essence: ${servantName}`)
         .setDescription(
-          `Current CE: **${activeServant.equippedCe?.name || 'None'}**\n\n` +
-          `Select an essence from the menu below to bind its mystic code to your Servant:`
+          `Current CE: **${activeServant.equippedCe?.name || 'None'}**\n` +
+          `Inventory: **${ownedCes.length}** Craft Essence(s)\n\n` +
+          `Select an essence from your inventory below to bind its mystic code to your Servant:`
         )
         .setColor(0x38bdf8);
 
@@ -253,26 +303,44 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           if (i.replied || i.deferred) return;
           collector.resetTimer();
           const ceId = i.values[0];
-        const picked = CRAFT_ESSENCE_DATABASE.find(c => c.id === ceId);
-        if (picked) {
-          activeServant.equippedCeId = picked.id;
-          activeServant.equippedCe = picked;
-          await saveMaster(master);
 
-          await i.update({
-            embeds: [
-              new EmbedBuilder()
-                .setTitle('🛡️ Craft Essence Equipped!')
-                .setDescription(
-                  `Successfully equipped **${picked.name}** to **${servantName}**!\n\n` +
-                  `**Effect:** ${picked.effectText}\n` +
-                  `**Stat Bonus:** +${picked.atkBonus || 0} ATK | +${picked.hpBonus || 0} HP`
-                )
-                .setColor(0x22c55e)
-            ],
-            components: []
-          });
-        }
+          if (ceId === 'none') {
+            activeServant.equippedCeId = undefined;
+            activeServant.equippedCe = undefined;
+            await saveMaster(master);
+
+            await i.update({
+              embeds: [
+                new EmbedBuilder()
+                  .setTitle('🛡️ Craft Essence Unequipped')
+                  .setDescription(`Successfully removed Craft Essence from **${servantName}**.`)
+                  .setColor(0x94a3b8)
+              ],
+              components: []
+            });
+            return;
+          }
+
+          const picked = ownedCes.find((c: any) => c.id === ceId) || CRAFT_ESSENCE_DATABASE.find(c => c.id === ceId);
+          if (picked) {
+            activeServant.equippedCeId = picked.id;
+            activeServant.equippedCe = picked;
+            await saveMaster(master);
+
+            await i.update({
+              embeds: [
+                new EmbedBuilder()
+                  .setTitle('🛡️ Craft Essence Equipped!')
+                  .setDescription(
+                    `Successfully equipped **${picked.name}** to **${servantName}**!\n\n` +
+                    `**Effect:** ${picked.effectText}\n` +
+                    `**Stat Bonus:** +${picked.atkBonus || 0} ATK | +${picked.hpBonus || 0} HP`
+                  )
+                  .setColor(0x22c55e)
+              ],
+              components: []
+            });
+          }
         } catch (err: any) {
           if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
           console.error('Error in customise collector:', err);

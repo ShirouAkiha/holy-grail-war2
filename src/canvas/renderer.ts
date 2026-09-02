@@ -1096,22 +1096,161 @@ export async function renderBattleTurnSummary(
 }
 
 /**
- * 4. Render Gacha Summon Banner (900x420 Buffer)
+ * 4. Render Gacha Summon Banner (900x520 Buffer)
  */
 export async function renderGachaSummonBanner(
-  _results: GachaResultItem[],
+  results: GachaResultItem[],
   bannerTitle: string
 ): Promise<Buffer> {
-  const canvas = createCanvas(900, 420);
+  const width = 960;
+  const height = results.length > 5 ? 540 : 380;
+  const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  ctx.fillStyle = '#090d16';
-  ctx.fillRect(0, 0, 900, 420);
+  // Deep mystic night sky gradient background
+  const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+  bgGrad.addColorStop(0, '#0a0d1a');
+  bgGrad.addColorStop(0.5, '#0f172a');
+  bgGrad.addColorStop(1, '#05070e');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, width, height);
 
+  // Mystic leyline circles
+  ctx.save();
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.12)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(width / 2, height / 2, 220, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(width / 2, height / 2, 380, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  // Header Title
   ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 18px sans-serif';
+  ctx.font = 'bold 22px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`✦ SUMMONING: ${bannerTitle} ✦`, 450, 35);
+  ctx.fillText(`✦ ${bannerTitle.toUpperCase()} ✦`, width / 2, 38);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '13px sans-serif';
+  ctx.fillText('SACRED CRAFT ESSENCE RELICS FORGED VIA SAINT QUARTZ', width / 2, 58);
+
+  // Layout cards in 1 or 2 rows
+  const isMultiRow = results.length > 5;
+  const itemsPerRow = isMultiRow ? 5 : Math.min(results.length, 5);
+  const cardWidth = 156;
+  const cardHeight = 210;
+  const gapX = 22;
+  const gapY = 20;
+
+  const totalRowWidth = itemsPerRow * cardWidth + (itemsPerRow - 1) * gapX;
+  const startX = (width - totalRowWidth) / 2;
+  const startY = 82;
+
+  for (let i = 0; i < results.length; i++) {
+    const item = results[i];
+    const ce = item.item as any;
+    const row = isMultiRow ? Math.floor(i / 5) : 0;
+    const col = isMultiRow ? (i % 5) : i;
+
+    const x = startX + col * (cardWidth + gapX);
+    const y = startY + row * (cardHeight + gapY);
+
+    // Card frame & background
+    ctx.save();
+    
+    // Rarity border styling
+    let borderGrad = '#64748b';
+    let glowColor = 'rgba(100, 116, 139, 0.2)';
+    let rarityLabel = '★★★';
+    let rarityColor = '#94a3b8';
+
+    if (item.rarity === 5) {
+      borderGrad = '#fbbf24'; // Gold
+      glowColor = 'rgba(251, 191, 36, 0.45)';
+      rarityLabel = '★★★★★ SSR';
+      rarityColor = '#fcd34d';
+    } else if (item.rarity === 4) {
+      borderGrad = '#c084fc'; // Purple / Silver
+      glowColor = 'rgba(192, 132, 252, 0.35)';
+      rarityLabel = '★★★★ SR';
+      rarityColor = '#e9d5ff';
+    }
+
+    // Shadow & glow
+    ctx.shadowColor = glowColor;
+    ctx.shadowBlur = item.rarity === 5 ? 16 : 8;
+
+    // Card BG
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.roundRect(x, y, cardWidth, cardHeight, 10);
+    ctx.fill();
+
+    // Card Border
+    ctx.strokeStyle = borderGrad;
+    ctx.lineWidth = item.rarity === 5 ? 2.5 : 1.5;
+    ctx.stroke();
+    ctx.restore();
+
+    // Artwork placeholder / header box
+    ctx.save();
+    ctx.fillStyle = item.rarity === 5 ? '#2d1e40' : item.rarity === 4 ? '#1e203c' : '#1a2234';
+    ctx.beginPath();
+    ctx.roundRect(x + 6, y + 6, cardWidth - 12, 100, 6);
+    ctx.fill();
+    ctx.restore();
+
+    // Card Symbol icon
+    ctx.fillStyle = borderGrad;
+    ctx.font = '28px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🛡️', x + cardWidth / 2, y + 62);
+
+    // Rarity badge text
+    ctx.fillStyle = rarityColor;
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(rarityLabel, x + cardWidth / 2, y + 96);
+
+    // Name
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center';
+    const nameStr = ce.name || 'Craft Essence';
+    const truncatedName = nameStr.length > 17 ? nameStr.substring(0, 15) + '..' : nameStr;
+    ctx.fillText(truncatedName, x + cardWidth / 2, y + 130);
+
+    // Stats
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 11px sans-serif';
+    const atk = ce.bonusAtk || ce.atkBonus || 0;
+    const hp = ce.bonusHp || ce.hpBonus || 0;
+    ctx.fillText(`+${atk} ATK  |  +${hp} HP`, x + cardWidth / 2, y + 152);
+
+    // Effect summary snippet
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '10px sans-serif';
+    const effStr = ce.effectText || '';
+    const effTrunc = effStr.length > 28 ? effStr.substring(0, 26) + '...' : effStr;
+    ctx.fillText(effTrunc, x + cardWidth / 2, y + 172);
+
+    // NEW badge if first time pulled
+    if (item.isNew) {
+      ctx.save();
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.roundRect(x + cardWidth - 44, y + 8, 38, 16, 4);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('NEW!', x + cardWidth - 25, y + 20);
+      ctx.restore();
+    }
+  }
 
   try {
     return canvas.toBuffer('image/png');

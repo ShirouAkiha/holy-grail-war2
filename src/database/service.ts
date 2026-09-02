@@ -72,9 +72,32 @@ function loadFromDisk() {
       if (raw) {
         const savedMasters: MasterProfile[] = JSON.parse(raw);
         for (const m of savedMasters) {
-          // Synchronize master servant instances with canonical stats
+          // Remove Kaleidoscope from all existing masters' inventories (balance reset)
+          if (m.craftEssences && Array.isArray(m.craftEssences)) {
+            m.craftEssences = m.craftEssences
+              .filter(ce => ce && ce.id !== 'ce_kaleidoscope')
+              .map(ce => {
+                const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === ce.id);
+                return canonCe ? { ...canonCe } : ce;
+              });
+          } else {
+            m.craftEssences = [];
+          }
+
+          // Synchronize master servant instances with canonical stats & strip equipped Kaleidoscope
           if (m.servants && Array.isArray(m.servants)) {
             for (const inst of m.servants) {
+              // Unequip Kaleidoscope if equipped
+              if (inst.equippedCeId === 'ce_kaleidoscope' || inst.equippedCe?.id === 'ce_kaleidoscope') {
+                inst.equippedCeId = undefined;
+                inst.equippedCe = undefined;
+              } else if (inst.equippedCeId) {
+                const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === inst.equippedCeId);
+                if (canonCe) {
+                  inst.equippedCe = { ...canonCe };
+                }
+              }
+
               const templateId = inst.templateId || inst.template?.id || inst.id;
               const instAny = inst as any;
               const canonical = SERVANT_DATABASE.find(
@@ -562,7 +585,7 @@ export async function getOrCreateMaster(discordId: string, username: string = 'M
       grailWarWins: 0,
       activeServantId: undefined,
       servants: [],
-      craftEssences: [CRAFT_ESSENCE_DATABASE[0]]
+      craftEssences: []
     };
     masterStore.set(discordId, master);
     saveMastersToDisk();
