@@ -61,7 +61,7 @@ import {
   Lock
 } from 'lucide-react';
 
-const RIN_SUMMONING_GIF = 'https://upload.wikimedia.org/wikipedia/commons/9/9e/The_Red_Magic_Circle.gif';
+const RIN_SUMMONING_GIF = 'https://images-ext-1.discordapp.net/external/_MZv-LGPrcP_YWRblwrEBKPWparrht4S5_WG5Kdu_9s/https/static.klipy.com/ii/d7aec6f6f171607374b2065c836f92f4/0e/0d/dItINASLzPC4eyEJhMS.mp4';
 
 const SUMMONING_CHANTS = [
   `*“Let silver and steel be the essence.”*\n` +
@@ -116,7 +116,7 @@ function EmbedVisual({ url }: { url: string }) {
   }
 
   // Handle Klipy links
-  if (url.includes('klipy.com')) {
+  if (url.includes('klipy.com') && !url.includes('.mp4')) {
     return (
       <div className="mt-3 rounded overflow-hidden border border-[#222] bg-[#050505] max-w-xl shadow-md min-h-[280px]">
         <iframe
@@ -130,8 +130,24 @@ function EmbedVisual({ url }: { url: string }) {
     );
   }
 
+  // Handle direct MP4 video links
+  if (url.includes('.mp4') || url.toLowerCase().endsWith('.mp4')) {
+    return (
+      <div className="mt-3 rounded overflow-hidden border border-[#222] bg-[#050505] max-w-xl shadow-md">
+        <video
+          src={url}
+          className="w-full h-auto object-contain max-h-[400px] rounded"
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+      </div>
+    );
+  }
+
   const primaryFallback = 'https://media1.tenor.com/m/8YpY9q6y430AAAAC/rin-tohsaka-fate.gif';
-  const secondaryFallback = 'https://upload.wikimedia.org/wikipedia/commons/9/9e/The_Red_Magic_Circle.gif';
+  const secondaryFallback = 'https://images-ext-1.discordapp.net/external/_MZv-LGPrcP_YWRblwrEBKPWparrht4S5_WG5Kdu_9s/https/static.klipy.com/ii/d7aec6f6f171607374b2065c836f92f4/0e/0d/dItINASLzPC4eyEJhMS.mp4';
 
   let currentSrc = url;
   if (imgError) {
@@ -145,6 +161,21 @@ function EmbedVisual({ url }: { url: string }) {
       setUseSecondaryFallback(true);
     }
   };
+
+  if (currentSrc.includes('.mp4') || currentSrc.toLowerCase().endsWith('.mp4')) {
+    return (
+      <div className="mt-3 rounded overflow-hidden border border-[#222] bg-[#050505] max-w-xl shadow-md">
+        <video
+          src={currentSrc}
+          className="w-full h-auto object-contain max-h-[400px] rounded"
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="mt-3 rounded overflow-hidden border border-[#222] bg-[#050505] max-w-xl shadow-md">
