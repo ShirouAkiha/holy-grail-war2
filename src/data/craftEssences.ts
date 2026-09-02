@@ -109,6 +109,51 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     passiveValue: 8,
     artworkUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500&auto=format&fit=crop&q=80'
   },
+  {
+    id: 'ce_volumen_hydragyrum',
+    name: 'Volumen Hydragyrum',
+    rarity: 5,
+    description: 'Self-governing mercury fluid weapon forged by El-Melloi archmages for impenetrable defense.',
+    bonusAtk: 500,
+    bonusDef: 300,
+    bonusHp: 500,
+    atkBonus: 500,
+    hpBonus: 500,
+    effectText: 'Grants Invincibility for 3 attacks & +15% Damage Cut.',
+    passiveType: 'atk_up',
+    passiveValue: 20,
+    artworkUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'ce_heavens_feel',
+    name: "Heaven's Feel",
+    rarity: 5,
+    description: 'The Third Magic: Materialization of the Soul in divine radiance.',
+    bonusAtk: 600,
+    bonusDef: 0,
+    bonusHp: 200,
+    atkBonus: 600,
+    hpBonus: 200,
+    effectText: 'Increases Noble Phantasm Damage by 40%.',
+    passiveType: 'atk_up',
+    passiveValue: 40,
+    artworkUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'ce_origin_bullet',
+    name: 'Origin Bullet',
+    rarity: 5,
+    description: 'Mystic code rounds fashioned from Kiritsugu Emiya\'s ribs to disrupt and sever magical circuits.',
+    bonusAtk: 800,
+    bonusDef: 0,
+    bonusHp: 0,
+    atkBonus: 800,
+    hpBonus: 0,
+    effectText: 'Ignores Invincibility & +35% Special Damage against Magic users.',
+    passiveType: 'atk_up',
+    passiveValue: 35,
+    artworkUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=500&auto=format&fit=crop&q=80'
+  },
 
   // --- 4★ SR CRAFT ESSENCES ---
   {
@@ -185,6 +230,36 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     passiveType: 'buster_up',
     passiveValue: 15,
     artworkUrl: 'https://images.unsplash.com/photo-1514539079130-25950c84af65?w=500&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'ce_hollow_magic',
+    name: 'Hollow Magic',
+    rarity: 4,
+    description: 'A shadowy mystic code that channels virtual magical energy directly into noble phantasm gauge.',
+    bonusAtk: 200,
+    bonusDef: 0,
+    bonusHp: 300,
+    atkBonus: 200,
+    hpBonus: 300,
+    effectText: 'Starts battle with 60% NP Gauge filled.',
+    passiveType: 'starting_np',
+    passiveValue: 60,
+    artworkUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'ce_code_cast',
+    name: 'Code Cast',
+    rarity: 4,
+    description: 'A digital command spell program optimized for tactical engagement.',
+    bonusAtk: 350,
+    bonusDef: 100,
+    bonusHp: 150,
+    atkBonus: 350,
+    hpBonus: 150,
+    effectText: 'Increases ATK and Defense by 10%.',
+    passiveType: 'atk_up',
+    passiveValue: 10,
+    artworkUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80'
   },
 
   // --- 3★ R CRAFT ESSENCES ---

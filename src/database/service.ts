@@ -74,12 +74,20 @@ function loadFromDisk() {
       }
     }
 
-    // 2. Load Custom Craft Essences
+    // 2. Load Custom & Edited Craft Essences
     if (fs.existsSync(CUSTOM_CES_FILE)) {
       const raw = fs.readFileSync(CUSTOM_CES_FILE, 'utf-8');
       if (raw) {
         const savedCes: CraftEssence[] = JSON.parse(raw);
-        customCraftEssences = Array.isArray(savedCes) ? savedCes : [];
+        if (Array.isArray(savedCes)) {
+          customCraftEssences = savedCes;
+          for (const ce of savedCes) {
+            const canonIdx = CRAFT_ESSENCE_DATABASE.findIndex(c => c.id === ce.id);
+            if (canonIdx >= 0) {
+              CRAFT_ESSENCE_DATABASE[canonIdx] = { ...CRAFT_ESSENCE_DATABASE[canonIdx], ...ce };
+            }
+          }
+        }
       }
     }
 
@@ -214,6 +222,46 @@ export function addCustomCraftEssence(ce: CraftEssence): CraftEssence {
   }
   saveCustomCesToDisk();
   return ce;
+}
+
+/**
+ * Updates any existing Craft Essence (canonical or custom) by ID or Name.
+ */
+export function updateCraftEssence(targetIdOrName: string, updates: Partial<CraftEssence>): CraftEssence | null {
+  const query = targetIdOrName.trim().toLowerCase();
+  const all = getAllCraftEssences();
+  const found = all.find(c => c.id.toLowerCase() === query || c.name.toLowerCase() === query || c.name.toLowerCase().includes(query));
+  
+  if (!found) return null;
+
+  const updated: CraftEssence = {
+    ...found,
+    ...updates,
+    id: found.id // preserve original ID
+  };
+
+  // If custom CE, update in customCraftEssences array
+  const customIdx = customCraftEssences.findIndex(c => c.id === found.id);
+  if (customIdx >= 0) {
+    customCraftEssences[customIdx] = updated;
+    saveCustomCesToDisk();
+  } else {
+    // If canonical CE, update in CRAFT_ESSENCE_DATABASE
+    const canonIdx = CRAFT_ESSENCE_DATABASE.findIndex(c => c.id === found.id);
+    if (canonIdx >= 0) {
+      CRAFT_ESSENCE_DATABASE[canonIdx] = updated;
+    }
+    // Save to customCraftEssences list to persist override across restarts
+    const customMatchIdx = customCraftEssences.findIndex(c => c.id === found.id);
+    if (customMatchIdx >= 0) {
+      customCraftEssences[customMatchIdx] = updated;
+    } else {
+      customCraftEssences.push(updated);
+    }
+    saveCustomCesToDisk();
+  }
+
+  return updated;
 }
 
 /**

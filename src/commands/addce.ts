@@ -8,7 +8,8 @@ import {
   addCustomCraftEssence, 
   getAllCraftEssences, 
   getActiveGachaBanner, 
-  updateGachaBanner 
+  updateGachaBanner,
+  updateCraftEssence
 } from '../database/service';
 import { CraftEssence, Rarity } from '../types';
 
@@ -17,7 +18,7 @@ import { CraftEssence, Rarity } from '../types';
 // ==========================================
 export const data = new SlashCommandBuilder()
   .setName('addce')
-  .setDescription('Admin command to create custom Craft Essences and customize the Gacha Banner')
+  .setDescription('Admin command to create, edit, and customize Craft Essences and Gacha Banners')
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
   .addSubcommand(sub =>
     sub
@@ -88,6 +89,84 @@ export const data = new SlashCommandBuilder()
         opt
           .setName('passive_value')
           .setDescription('Numeric value for passive effect (e.g. 50 for 50% NP, 25 for 25% Buster)')
+          .setRequired(false)
+      )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('edit')
+      .setDescription('Edit any existing Craft Essence stats, effect, artwork, or rarity')
+      .addStringOption(opt =>
+        opt
+          .setName('target')
+          .setDescription('Name or ID of the Craft Essence to modify (e.g. "ce_kaleidoscope" or "Kaleidoscope")')
+          .setRequired(true)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('name')
+          .setDescription('New Name for the Craft Essence')
+          .setRequired(false)
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('rarity')
+          .setDescription('New Rarity Tier')
+          .setRequired(false)
+          .addChoices(
+            { name: '5★ SSR', value: 5 },
+            { name: '4★ SR', value: 4 },
+            { name: '3★ R', value: 3 }
+          )
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('effect')
+          .setDescription('New Passive Effect description')
+          .setRequired(false)
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('atk')
+          .setDescription('New Bonus ATK stat')
+          .setRequired(false)
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('hp')
+          .setDescription('New Bonus HP stat')
+          .setRequired(false)
+      )
+      .addAttachmentOption(opt =>
+        opt
+          .setName('image_file')
+          .setDescription('Upload new artwork image file')
+          .setRequired(false)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('image_url')
+          .setDescription('Direct image URL for artwork (https://...)')
+          .setRequired(false)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('passive_type')
+          .setDescription('New combat mechanic trigger')
+          .setRequired(false)
+          .addChoices(
+            { name: '✨ Starting NP Gauge', value: 'starting_np' },
+            { name: '🔴 Buster Card Up', value: 'buster_up' },
+            { name: '🔵 Arts Card Up', value: 'arts_up' },
+            { name: '🟢 Quick Card Up', value: 'quick_up' },
+            { name: '💥 Critical Damage Up', value: 'crit_dmg' },
+            { name: '⚔️ Attack Power Up', value: 'atk_up' }
+          )
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('passive_value')
+          .setDescription('New percentage / value for passive effect')
           .setRequired(false)
       )
   )
@@ -218,7 +297,75 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 
   // ------------------------------------------
-  // B. CUSTOMIZE GACHA BANNER
+  // B. EDIT EXISTING CRAFT ESSENCE
+  // ------------------------------------------
+  if (subcommand === 'edit') {
+    const target = interaction.options.getString('target', true);
+    const newName = interaction.options.getString('name');
+    const newRarity = interaction.options.getInteger('rarity') as Rarity | null;
+    const newEffect = interaction.options.getString('effect');
+    const newAtk = interaction.options.getInteger('atk');
+    const newHp = interaction.options.getInteger('hp');
+    const imageAttachment = interaction.options.getAttachment('image_file');
+    const imageUrl = interaction.options.getString('image_url');
+    const newArt = imageAttachment?.url || imageUrl || undefined;
+    const newPassiveType = interaction.options.getString('passive_type');
+    const newPassiveValue = interaction.options.getInteger('passive_value');
+
+    const updates: Partial<CraftEssence> = {};
+    if (newName) updates.name = newName.trim();
+    if (newRarity) updates.rarity = newRarity;
+    if (newEffect) updates.effectText = newEffect.trim();
+    if (newAtk !== null) {
+      updates.bonusAtk = newAtk;
+      updates.atkBonus = newAtk;
+    }
+    if (newHp !== null) {
+      updates.bonusHp = newHp;
+      updates.hpBonus = newHp;
+    }
+    if (newArt) updates.artworkUrl = newArt;
+    if (newPassiveType) updates.passiveType = newPassiveType;
+    if (newPassiveValue !== null) updates.passiveValue = newPassiveValue;
+
+    const updatedCe = updateCraftEssence(target, updates);
+
+    if (!updatedCe) {
+      await interaction.reply({
+        ephemeral: true,
+        embeds: [
+          new EmbedBuilder()
+            .setTitle('❌ Craft Essence Not Found')
+            .setDescription(`No Craft Essence matching \`${target}\` was found in the database. Use \`/addce list\` to see all registered CE IDs and names.`)
+            .setColor(0xef4444)
+        ]
+      });
+      return;
+    }
+
+    const stars = '★'.repeat(updatedCe.rarity);
+    const embed = new EmbedBuilder()
+      .setTitle(`🛠️ CRAFT ESSENCE UPDATED: ${updatedCe.name}`)
+      .setDescription(
+        `**${updatedCe.name}** [${stars}] has been updated!\n\n` +
+        `• **Effect:** ${updatedCe.effectText}\n` +
+        `• **Stats:** +${updatedCe.bonusAtk || updatedCe.atkBonus || 0} ATK | +${updatedCe.bonusHp || updatedCe.hpBonus || 0} HP\n` +
+        `• **Passive Mechanic:** \`${updatedCe.passiveType || 'N/A'}\` (${updatedCe.passiveValue || 0}%)\n` +
+        `• **ID:** \`${updatedCe.id}\``
+      )
+      .setColor(0x38bdf8)
+      .setFooter({ text: `Modified by Admin ${interaction.user.username}` });
+
+    if (updatedCe.artworkUrl) {
+      embed.setImage(updatedCe.artworkUrl);
+    }
+
+    await interaction.reply({ embeds: [embed] });
+    return;
+  }
+
+  // ------------------------------------------
+  // C. CUSTOMIZE GACHA BANNER
   // ------------------------------------------
   if (subcommand === 'banner') {
     const current = getActiveGachaBanner();
