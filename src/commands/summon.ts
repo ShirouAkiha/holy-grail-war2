@@ -51,16 +51,18 @@ export const data = new SlashCommandBuilder()
 // 1.5. AUTHENTIC FATE SUMMONING CHANTS & VISUALS
 // ==========================================
 // Discord embed images MUST point to raw direct image files (ending in .gif, .png, etc.), not HTML webpage URLs.
-const RIN_SUMMONING_GIF = 'https://c.tenor.com/8657546/tenor.gif';
+const RIN_SUMMONING_GIF = 'https://media1.tenor.com/m/K4JhNVyg5u4AAAAC/anime-magic.gif';
 const FALLBACK_MAGIC_CIRCLE = 'https://upload.wikimedia.org/wikipedia/commons/e/e0/The_Red_Magic_Circle.gif';
 
 function resolveDirectGifUrl(url: string): string {
   if (!url) return FALLBACK_MAGIC_CIRCLE;
   if (url.includes('tenor.com/view/')) {
     const match = url.match(/([0-9]+)\/?$/);
-    if (match) return `https://c.tenor.com/${match[1]}/tenor.gif`;
+    if (match && match[1] === '8657546') {
+      return 'https://media1.tenor.com/m/K4JhNVyg5u4AAAAC/anime-magic.gif';
+    }
   }
-  if (!/\.(gif|png|jpe?g|webp)(\?.*)?$/i.test(url) && !url.includes('c.tenor.com') && !url.includes('media.tenor.com')) {
+  if (!/\.(gif|png|jpe?g|webp)(\?.*)?$/i.test(url) && !url.includes('tenor.com/m/') && !url.includes('media.tenor.com')) {
     return FALLBACK_MAGIC_CIRCLE;
   }
   return url;

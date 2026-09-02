@@ -61,7 +61,7 @@ import {
   Lock
 } from 'lucide-react';
 
-const RIN_SUMMONING_GIF = 'https://c.tenor.com/8657546/tenor.gif';
+const RIN_SUMMONING_GIF = 'https://media1.tenor.com/m/K4JhNVyg5u4AAAAC/anime-magic.gif';
 
 const SUMMONING_CHANTS = [
   `*“Let silver and steel be the essence.”*\n` +
@@ -92,6 +92,7 @@ function getRandomChant(): string {
 
 function EmbedVisual({ url }: { url: string }) {
   const [imgError, setImgError] = useState(false);
+  const [useSecondaryFallback, setUseSecondaryFallback] = useState(false);
 
   if (!url) return null;
 
@@ -129,16 +130,30 @@ function EmbedVisual({ url }: { url: string }) {
     );
   }
 
-  const fallbackGif = 'https://media1.tenor.com/m/8YpY9q6y430AAAAC/rin-tohsaka-fate.gif';
+  const primaryFallback = 'https://media1.tenor.com/m/8YpY9q6y430AAAAC/rin-tohsaka-fate.gif';
+  const secondaryFallback = 'https://upload.wikimedia.org/wikipedia/commons/e/e0/The_Red_Magic_Circle.gif';
+
+  let currentSrc = url;
+  if (imgError) {
+    currentSrc = useSecondaryFallback ? secondaryFallback : primaryFallback;
+  }
+
+  const handleImageError = () => {
+    if (!imgError) {
+      setImgError(true);
+    } else if (!useSecondaryFallback) {
+      setUseSecondaryFallback(true);
+    }
+  };
 
   return (
     <div className="mt-3 rounded overflow-hidden border border-[#222] bg-[#050505] max-w-xl shadow-md">
       <img
-        src={imgError ? fallbackGif : url}
+        src={currentSrc}
         alt="Embed Visual"
         className="w-full h-auto object-contain max-h-[400px] rounded"
         referrerPolicy="no-referrer"
-        onError={() => setImgError(true)}
+        onError={handleImageError}
       />
     </div>
   );
