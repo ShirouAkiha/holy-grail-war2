@@ -50,7 +50,7 @@ export const data = new SlashCommandBuilder()
 // ==========================================
 // 1.5. AUTHENTIC FATE SUMMONING CHANTS & VISUALS
 // ==========================================
-const RIN_SUMMONING_GIF = 'https://klipy.com/gifs/anime-magic-3';
+const RIN_SUMMONING_GIF = 'https://tenor.com/view/anime-magic-magic-circle-spell-gif-8657546';
 
 const SUMMONING_CHANTS = [
   `*“Let silver and steel be the essence.”*\n` +

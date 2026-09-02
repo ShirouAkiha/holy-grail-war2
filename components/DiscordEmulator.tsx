@@ -61,7 +61,7 @@ import {
   Lock
 } from 'lucide-react';
 
-const RIN_SUMMONING_GIF = 'https://klipy.com/gifs/anime-magic-3';
+const RIN_SUMMONING_GIF = 'https://tenor.com/view/anime-magic-magic-circle-spell-gif-8657546';
 
 const SUMMONING_CHANTS = [
   `*“Let silver and steel be the essence.”*\n` +
@@ -95,13 +95,33 @@ function EmbedVisual({ url }: { url: string }) {
 
   if (!url) return null;
 
+  // Handle Tenor Web Page Links (e.g. https://tenor.com/view/anime-magic-magic-circle-spell-gif-8657546)
+  if (url.includes('tenor.com')) {
+    const tenorMatch = url.match(/([0-9]+)\/?$/);
+    const tenorId = tenorMatch ? tenorMatch[1] : '8657546';
+    const embedUrl = `https://tenor.com/embed/${tenorId}`;
+
+    return (
+      <div className="mt-3 rounded overflow-hidden border border-[#222] bg-[#050505] max-w-xl shadow-md min-h-[280px]">
+        <iframe
+          src={embedUrl}
+          title="Tenor Summoning Ritual GIF"
+          className="w-full h-[300px] rounded border-0"
+          allow="autoplay; encrypted-media"
+          allowFullScreen
+        />
+      </div>
+    );
+  }
+
+  // Handle Klipy links
   if (url.includes('klipy.com')) {
     return (
-      <div className="mt-3 rounded overflow-hidden border border-[#222] bg-[#050505] max-w-xl shadow-md">
+      <div className="mt-3 rounded overflow-hidden border border-[#222] bg-[#050505] max-w-xl shadow-md min-h-[280px]">
         <iframe
           src={url}
           title="Summoning Ritual GIF"
-          className="w-full h-[320px] rounded border-0"
+          className="w-full h-[300px] rounded border-0"
           allow="autoplay; encrypted-media"
           allowFullScreen
         />
