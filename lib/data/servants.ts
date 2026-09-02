@@ -238,6 +238,65 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80',
     cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'
   },
+  {
+    id: 'jeanne_alter',
+    name: 'Jeanne d\'Arc (Alter)',
+    title: 'Dragon Witch',
+    servantClass: 'Avenger',
+    rarity: 5,
+    baseHp: 31200,
+    baseAtk: 12240,
+    baseStats: { strength: 20, endurance: 15, agility: 14, mana: 16, luck: 8 },
+    commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
+    skills: [
+      {
+        id: 'self_modification_ex',
+        name: 'Self-Modification EX',
+        cooldown: 5,
+        description: 'Increases self attack by +35% and critical star conversion for 3 turns.',
+        effectType: 'buff_atk',
+        value: 35,
+        duration: 3,
+        icon: '⚡'
+      },
+      {
+        id: 'dragon_witch_ex',
+        name: 'Dragon Witch EX',
+        cooldown: 6,
+        description: 'Increases attack of all allies by +20% for 3 turns.',
+        effectType: 'buff_atk',
+        value: 20,
+        duration: 3,
+        icon: '🐉'
+      },
+      {
+        id: 'ephemeral_dream_a',
+        name: 'Ephemeral Dream A',
+        cooldown: 5,
+        description: 'Grants self Invincibility for 1 turn and increases attack by +40% for 1 turn.',
+        effectType: 'invincible',
+        value: 40,
+        duration: 1,
+        icon: '🦋'
+      }
+    ],
+    noblePhantasm: {
+      name: 'La Grondement Du Haine: Roar, O Rage of Mine',
+      cardType: 'Buster',
+      chant: 'This is the roar of my soul, polished by hate... La Grondement Du Haine!',
+      description: 'Deals devastating single-target Buster damage and inflicts Curse and Buff Block.',
+      target: 'single',
+      multiplier: 800,
+      overchargeEffect: 'Apply heavy burn and target defense down for 3 turns'
+    },
+    lore: 'A replica of Jeanne d\'Arc created by the Holy Grail using the desires and malice of Gilles de Rais. An Avenger who seeks vengeance against the country that burned her at the stake.',
+    summonQuote: 'Servant, Avenger. I have answered your summon. ...What\'s with that look? Come on, we have a world to burn.',
+    battleStartQuote: 'Every last one of you... I\'ll burn you to ashes!',
+    victoryQuote: 'A predictable outcome. Now, clean up this mess.',
+    defeatQuote: 'To burn again... is this my only fate...?',
+    avatarUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&auto=format&fit=crop&q=80',
+    cardArtUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80'
+  },
 
   // 4-Star SR Servants
   {
