@@ -137,7 +137,7 @@ function drawWrappedText(
 }
 
 /**
- * 1. Servant Profile Status Card (680x760 Box Card)
+ * 1. Servant Profile Status Card (800x960 High-Legibility Box Card)
  */
 export function renderServantProfileCard(
   canvas: HTMLCanvasElement,
@@ -147,8 +147,8 @@ export function renderServantProfileCard(
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  canvas.width = 680;
-  canvas.height = 760;
+  canvas.width = 800;
+  canvas.height = 960;
 
   const templateId = servant.templateId || servant.template?.id || servant.id;
   const canonical = SERVANT_DATABASE.find(s => s.id === templateId) || servant.template || servant;
@@ -170,124 +170,125 @@ export function renderServantProfileCard(
   const totalAtk = Math.round((t.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceBonusAtk);
 
   // Background Gradient
-  const bgGrad = ctx.createLinearGradient(0, 0, 0, 760);
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, 960);
   bgGrad.addColorStop(0, '#0f172a');
   bgGrad.addColorStop(0.3, '#0b0f19');
   bgGrad.addColorStop(0.7, '#080c14');
   bgGrad.addColorStop(1, '#020617');
   ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, 680, 760);
+  ctx.fillRect(0, 0, 800, 960);
 
   // Decorative Border
   const borderColor = t.rarity === 5 ? '#f59e0b' : '#38bdf8';
   ctx.strokeStyle = borderColor;
-  ctx.lineWidth = 2.5;
-  drawRoundRect(ctx, 10, 10, 660, 740, 14);
+  ctx.lineWidth = 3;
+  drawRoundRect(ctx, 12, 12, 776, 936, 16);
   ctx.stroke();
 
-  // Top Header Line
+  // Top Header Line - Servant Name
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 22px system-ui, sans-serif';
-  ctx.fillText(servant.nickname || t.name || 'Heroic Spirit', 26, 40);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 30px system-ui, sans-serif';
+  ctx.fillText(servant.nickname || t.name || 'Heroic Spirit', 30, 52);
 
   // Title & Master
   ctx.fillStyle = '#94a3b8';
-  ctx.font = '13px system-ui, sans-serif';
-  ctx.fillText(`${t.title || 'Heroic Spirit'} • Master: ${masterName}`, 26, 60);
+  ctx.font = '16px system-ui, sans-serif';
+  ctx.fillText(`${t.title || 'Heroic Spirit'} • Master: ${masterName}`, 30, 80);
 
   // Class Badge & Stars on Right
   ctx.textAlign = 'right';
   ctx.fillStyle = t.rarity === 5 ? '#fbbf24' : '#38bdf8';
-  ctx.font = 'bold 15px system-ui, sans-serif';
-  ctx.fillText((t.servantClass || 'SABER').toUpperCase(), 654, 40);
+  ctx.font = 'bold 22px system-ui, sans-serif';
+  ctx.fillText((t.servantClass || 'SABER').toUpperCase(), 770, 52);
 
   ctx.fillStyle = '#fbbf24';
-  ctx.font = '16px system-ui, sans-serif';
-  ctx.fillText('★'.repeat(t.rarity || 5), 654, 60);
+  ctx.font = '22px system-ui, sans-serif';
+  ctx.fillText('★'.repeat(t.rarity || 5), 770, 80);
 
   // Divider Line
-  ctx.strokeStyle = '#1e293b';
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(26, 72);
-  ctx.lineTo(654, 72);
+  ctx.moveTo(30, 96);
+  ctx.lineTo(770, 96);
   ctx.stroke();
 
   // Stats Sub-Header Line (Level, Bond, Stat points)
   ctx.textAlign = 'left';
   ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 13px system-ui, sans-serif';
-  ctx.fillText(`Lv. ${lvl}/100`, 26, 90);
+  ctx.font = 'bold 17px system-ui, sans-serif';
+  ctx.fillText(`Lv. ${lvl}/100`, 30, 124);
 
-  ctx.fillStyle = '#ec4899';
-  ctx.fillText(`Bond Lv. ${servant.bondLevel || 1} ♥`, 125, 90);
+  ctx.fillStyle = '#f472b6';
+  ctx.fillText(`Bond Lv. ${servant.bondLevel || 1} ♥`, 165, 124);
 
   ctx.fillStyle = '#f59e0b';
-  ctx.fillText(`Available Stat Points: ${servant.availableStatPoints || 0} pts`, 245, 90);
+  ctx.fillText(`Available Stat Points: ${servant.availableStatPoints || 0} pts`, 330, 124);
 
   // --- TOP-LEFT SECTION: HP/ATK + PARAMETERS + COMMAND DECK ---
   // HP Badge
   ctx.fillStyle = '#111827';
-  drawRoundRect(ctx, 26, 104, 180, 48, 8);
+  drawRoundRect(ctx, 30, 142, 220, 62, 10);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(74, 222, 128, 0.25)';
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(74, 222, 128, 0.35)';
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
   ctx.fillStyle = '#4ade80';
-  ctx.font = 'bold 10px system-ui, sans-serif';
-  ctx.fillText('MAX HP', 38, 122);
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 18px system-ui, sans-serif';
-  ctx.fillText(totalHp.toLocaleString(), 38, 142);
+  ctx.font = 'bold 13px system-ui, sans-serif';
+  ctx.fillText('MAX HP', 44, 166);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 24px system-ui, sans-serif';
+  ctx.fillText(totalHp.toLocaleString(), 44, 194);
 
   // ATK Badge
   ctx.fillStyle = '#111827';
-  drawRoundRect(ctx, 214, 104, 182, 48, 8);
+  drawRoundRect(ctx, 260, 142, 220, 62, 10);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(248, 113, 113, 0.25)';
+  ctx.strokeStyle = 'rgba(248, 113, 113, 0.35)';
   ctx.stroke();
 
   ctx.fillStyle = '#f87171';
-  ctx.font = 'bold 10px system-ui, sans-serif';
-  ctx.fillText('TOTAL ATK', 226, 122);
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 18px system-ui, sans-serif';
-  ctx.fillText(totalAtk.toLocaleString(), 226, 142);
+  ctx.font = 'bold 13px system-ui, sans-serif';
+  ctx.fillText('TOTAL ATK', 274, 166);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 24px system-ui, sans-serif';
+  ctx.fillText(totalAtk.toLocaleString(), 274, 194);
 
-  // Base Parameters
+  // Base Parameters Box
   ctx.fillStyle = '#111827';
-  drawRoundRect(ctx, 26, 160, 370, 60, 8);
+  drawRoundRect(ctx, 30, 214, 450, 72, 10);
   ctx.fill();
-  ctx.strokeStyle = '#1e293b';
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1;
   ctx.stroke();
 
   ctx.fillStyle = '#94a3b8';
-  ctx.font = 'bold 10px system-ui, sans-serif';
-  ctx.fillText('BASE PARAMETERS', 36, 175);
+  ctx.font = 'bold 13px system-ui, sans-serif';
+  ctx.fillText('BASE PARAMETERS', 44, 236);
 
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 12px system-ui, sans-serif';
-  ctx.fillText(`STR: ${totalStr}   END: ${totalEnd}   AGI: ${totalAgi}`, 36, 194);
-  ctx.fillText(`MNA: ${totalMna}   LCK: ${totalLck}`, 36, 210);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 16px system-ui, sans-serif';
+  ctx.fillText(`STR: ${totalStr}    END: ${totalEnd}    AGI: ${totalAgi}`, 44, 258);
+  ctx.fillText(`MNA: ${totalMna}    LCK: ${totalLck}`, 44, 277);
 
   // Command Deck
   ctx.fillStyle = '#94a3b8';
-  ctx.font = 'bold 10px system-ui, sans-serif';
-  ctx.fillText('COMMAND DECK', 26, 238);
+  ctx.font = 'bold 13px system-ui, sans-serif';
+  ctx.fillText('COMMAND DECK', 30, 308);
 
   const commandDeck: CardType[] = t.commandDeck || ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'];
   commandDeck.forEach((card: CardType, idx: number) => {
-    const cardX = 26 + idx * 74;
-    const cardY = 246;
+    const cardX = 30 + idx * 90;
+    const cardY = 318;
     ctx.fillStyle = card === 'Buster' ? '#dc2626' : card === 'Arts' ? '#2563eb' : '#16a34a';
-    drawRoundRect(ctx, cardX, cardY, 68, 24, 6);
+    drawRoundRect(ctx, cardX, cardY, 82, 30, 8);
     ctx.fill();
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.font = 'bold 14px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(card, cardX + 34, cardY + 16);
+    ctx.fillText(card, cardX + 41, cardY + 20);
   });
 
   // --- TOP-RIGHT SECTION: PARAMETER RADAR CHART ---
@@ -298,16 +299,16 @@ export function renderServantProfileCard(
     mana: totalMna,
     luck: totalLck
   };
-  const radar = calculateRadarCoordinates(combinedStats, 535, 190, 52, 30);
+  const radar = calculateRadarCoordinates(combinedStats, 630, 235, 62, 30);
 
   // Grid background lines
   ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1.5;
   [0.35, 0.7, 1.0].forEach((ratio) => {
     ctx.beginPath();
     const rGrid = calculateRadarCoordinates(
       { strength: 30 * ratio, endurance: 30 * ratio, agility: 30 * ratio, mana: 30 * ratio, luck: 30 * ratio },
-      535, 190, 52 * ratio, 30
+      630, 235, 62 * ratio, 30
     );
     rGrid.points.forEach((p, idx) => {
       if (idx === 0) ctx.moveTo(p.x, p.y);
@@ -324,27 +325,27 @@ export function renderServantProfileCard(
     else ctx.lineTo(p.x, p.y);
   });
   ctx.closePath();
-  ctx.fillStyle = 'rgba(56, 189, 248, 0.35)';
+  ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
   ctx.fill();
   ctx.strokeStyle = '#38bdf8';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2.5;
   ctx.stroke();
 
   // Radar Labels
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = 'bold 10px system-ui, sans-serif';
+  ctx.fillStyle = '#f1f5f9';
+  ctx.font = 'bold 14px system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('STR', 535, 126);
-  ctx.fillText('END', 605, 160);
-  ctx.fillText('AGI', 578, 258);
-  ctx.fillText('MNA', 492, 258);
-  ctx.fillText('LCK', 465, 160);
+  ctx.fillText('STR', 630, 155);
+  ctx.fillText('END', 715, 198);
+  ctx.fillText('AGI', 685, 320);
+  ctx.fillText('MNA', 575, 320);
+  ctx.fillText('LCK', 545, 198);
 
   // --- MIDDLE SECTION: HEROIC SPIRIT SKILLS (ACTIVE & PASSIVE) ---
   ctx.textAlign = 'left';
   ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 11px system-ui, sans-serif';
-  ctx.fillText('⚡ HEROIC SPIRIT SKILLS (ACTIVE & PASSIVE)', 26, 296);
+  ctx.font = 'bold 16px system-ui, sans-serif';
+  ctx.fillText('⚡ HEROIC SPIRIT SKILLS (ACTIVE & PASSIVE)', 30, 376);
 
   const defaultSkills = [
     { id: 'sk1', name: 'Mana Burst A', cooldown: 5, description: 'Increases own card effectiveness and combat prowess for 1 turn.', icon: '⚔️' },
@@ -354,77 +355,79 @@ export function renderServantProfileCard(
   const skillsList = (t.skills && t.skills.length > 0) ? t.skills : defaultSkills;
 
   skillsList.slice(0, 3).forEach((sk: any, idx: number) => {
-    const skY = 306 + idx * 68;
+    const skY = 390 + idx * 84;
 
     // Skill Card Container
     ctx.fillStyle = '#0f172a';
-    drawRoundRect(ctx, 26, skY, 628, 62, 8);
+    drawRoundRect(ctx, 30, skY, 740, 76, 10);
     ctx.fill();
     ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.5;
     ctx.stroke();
 
     // Skill Header: Icon + Name
     ctx.textAlign = 'left';
     ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 13px system-ui, sans-serif';
-    ctx.fillText(`${sk.icon || '✨'} ${sk.name}`, 38, skY + 22);
+    ctx.font = 'bold 17px system-ui, sans-serif';
+    ctx.fillText(`${sk.icon || '✨'} ${sk.name}`, 46, skY + 28);
 
     // Cooldown badge on right
     ctx.textAlign = 'right';
     ctx.fillStyle = '#38bdf8';
-    ctx.font = 'bold 11px system-ui, sans-serif';
-    ctx.fillText(`CD: ${sk.cooldown || 5}T`, 642, skY + 22);
+    ctx.font = 'bold 15px system-ui, sans-serif';
+    ctx.fillText(`CD: ${sk.cooldown || 5}T`, 754, skY + 28);
 
     // Skill Description
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#cbd5e1';
-    ctx.font = '11px system-ui, sans-serif';
-    drawWrappedText(ctx, sk.description || 'Special Heroic Spirit combat skill.', 38, skY + 40, 604, 15, 2);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '15px system-ui, sans-serif';
+    drawWrappedText(ctx, sk.description || 'Special Heroic Spirit combat skill.', 46, skY + 54, 708, 20, 2);
   });
 
   // --- BOTTOM SECTION: NOBLE PHANTASM & CRAFT ESSENCE ---
   // Noble Phantasm Banner
   ctx.textAlign = 'left';
   ctx.fillStyle = '#0f172a';
-  drawRoundRect(ctx, 26, 518, 628, 102, 8);
+  drawRoundRect(ctx, 30, 648, 740, 138, 10);
   ctx.fill();
   ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
   const np = t.noblePhantasm || { name: 'Excalibur', cardType: 'Buster', chant: '...', description: '' };
   const npCardEmoji = np.cardType === 'Arts' ? '🔵' : np.cardType === 'Quick' ? '🟢' : '🔴';
   ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 13px system-ui, sans-serif';
-  ctx.fillText(`Noble Phantasm: ${np.name} [${npCardEmoji} ${np.cardType}]`, 38, 540);
+  ctx.font = 'bold 18px system-ui, sans-serif';
+  ctx.fillText(`Noble Phantasm: ${np.name} [${npCardEmoji} ${np.cardType}]`, 46, 678);
 
-  ctx.fillStyle = '#e2e8f0';
-  ctx.font = 'italic 11px system-ui, sans-serif';
+  ctx.fillStyle = '#fde047';
+  ctx.font = 'italic 15px system-ui, sans-serif';
   const chant = servant.customQuotes?.noblePhantasm || np.chant || '...';
-  drawWrappedText(ctx, `"${chant}"`, 38, 558, 604, 14, 2);
+  drawWrappedText(ctx, `"${chant}"`, 46, 704, 708, 20, 2);
 
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '11px system-ui, sans-serif';
+  ctx.fillStyle = '#cbd5e1';
+  ctx.font = '15px system-ui, sans-serif';
   const npDesc = np.description ? `${np.description}` : 'Deals massive damage to opponent.';
-  drawWrappedText(ctx, npDesc, 38, 594, 604, 14, 2);
+  drawWrappedText(ctx, npDesc, 46, 750, 708, 20, 2);
 
   // Craft Essence Banner
   ctx.fillStyle = '#0f172a';
-  drawRoundRect(ctx, 26, 628, 628, 110, 8);
+  drawRoundRect(ctx, 30, 796, 740, 142, 10);
   ctx.fill();
   ctx.strokeStyle = '#3b82f6';
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
   ctx.fillStyle = '#60a5fa';
-  ctx.font = 'bold 12px system-ui, sans-serif';
-  ctx.fillText(`Equipped CE: ${servant.equippedCe ? servant.equippedCe.name : 'None'} ${servant.equippedCe ? `(+${ceBonusAtk} ATK / +${ceBonusHp} HP)` : ''}`, 38, 650);
+  ctx.font = 'bold 17px system-ui, sans-serif';
+  const ceName = servant.equippedCe ? servant.equippedCe.name : 'None';
+  const ceStatBonus = servant.equippedCe ? ` (+${ceBonusAtk} ATK / +${ceBonusHp} HP)` : '';
+  ctx.fillText(`Equipped CE: ${ceName}${ceStatBonus}`, 46, 826);
 
-  ctx.fillStyle = '#cbd5e1';
-  ctx.font = '11px system-ui, sans-serif';
+  ctx.fillStyle = '#e2e8f0';
+  ctx.font = '15px system-ui, sans-serif';
   const ceEffect = servant.equippedCe ? servant.equippedCe.effectText : 'No Craft Essence equipped. Use /customise equip to link a sacred relic.';
-  drawWrappedText(ctx, ceEffect, 38, 672, 604, 15, 3);
+  drawWrappedText(ctx, ceEffect, 46, 856, 708, 22, 3);
 }
 
 /**
