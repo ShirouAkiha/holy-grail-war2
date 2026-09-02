@@ -519,6 +519,59 @@ export async function renderBattleTurnSummary(
   ctx.font = 'bold 14px sans-serif';
   ctx.fillText(`• ${p1.name} [${p1.servantClass}]`, 156 + p1NameWidth, 38);
 
+  // 2.5 P1 3 Active Skill Badges (Top Right above HP Bar)
+  const p1Skills = p1.skills || [];
+  const p1Bond = p1.bondLevel !== undefined ? p1.bondLevel : 5;
+  [0, 1, 2].forEach((sIdx) => {
+    const sBoxX = 416 + sIdx * 70;
+    const sBoxY = 20;
+    const sBoxW = 66;
+    const sBoxH = 22;
+    const sData = p1Skills[sIdx];
+    const sCd = sData?.currentCooldown || 0;
+    const isLocked = sIdx === 2 && p1Bond < 5;
+
+    ctx.save();
+    if (isLocked) {
+      ctx.fillStyle = '#1e1b4b';
+      drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
+      ctx.fill();
+      ctx.strokeStyle = '#4338ca';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = '#a5b4fc';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🔒 Bond 5', sBoxX + sBoxW / 2, sBoxY + 15);
+    } else if (sCd > 0) {
+      ctx.fillStyle = '#1e293b';
+      drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
+      ctx.fill();
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`S${sIdx + 1}: ${sCd}T`, sBoxX + sBoxW / 2, sBoxY + 15);
+    } else {
+      ctx.fillStyle = sIdx === 2 ? '#065f46' : '#0369a1';
+      drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
+      ctx.fill();
+      ctx.strokeStyle = sIdx === 2 ? '#10b981' : '#38bdf8';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`✨ S${sIdx + 1}: RDY`, sBoxX + sBoxW / 2, sBoxY + 15);
+    }
+    ctx.restore();
+  });
+
   // 3. P1 HP & NP Bars
   const p1HpRatio = Math.max(0, Math.min(1, p1.currentHp / p1.maxHp));
   const p1NpRatio = Math.max(0, Math.min(1, (p1.npGauge || 0) / 100));
@@ -820,6 +873,59 @@ export async function renderBattleTurnSummary(
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 13px sans-serif';
   ctx.fillText(`HP  ${p2.currentHp.toLocaleString()} / ${p2.maxHp.toLocaleString()} (${Math.round(p2HpRatio * 100)}%)`, 28, 624);
+
+  // 3.5 P2 3 Active Skill Badges (Bottom Left)
+  const p2Skills = p2.skills || [];
+  const p2Bond = p2.bondLevel !== undefined ? p2.bondLevel : 3;
+  [0, 1, 2].forEach((sIdx) => {
+    const sBoxX = 18 + sIdx * 70;
+    const sBoxY = 638;
+    const sBoxW = 66;
+    const sBoxH = 22;
+    const sData = p2Skills[sIdx];
+    const sCd = sData?.currentCooldown || 0;
+    const isLocked = sIdx === 2 && p2Bond < 5;
+
+    ctx.save();
+    if (isLocked) {
+      ctx.fillStyle = '#1e1b4b';
+      drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
+      ctx.fill();
+      ctx.strokeStyle = '#4338ca';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = '#a5b4fc';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🔒 Bond 5', sBoxX + sBoxW / 2, sBoxY + 15);
+    } else if (sCd > 0) {
+      ctx.fillStyle = '#1e293b';
+      drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
+      ctx.fill();
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`S${sIdx + 1}: ${sCd}T`, sBoxX + sBoxW / 2, sBoxY + 15);
+    } else {
+      ctx.fillStyle = sIdx === 2 ? '#065f46' : '#991b1b';
+      drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
+      ctx.fill();
+      ctx.strokeStyle = sIdx === 2 ? '#10b981' : '#f87171';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`✨ S${sIdx + 1}: RDY`, sBoxX + sBoxW / 2, sBoxY + 15);
+    }
+    ctx.restore();
+  });
 
   // P2 Header Title (Right Aligned before Avatar)
   const p2DisplayName = p2.masterName || 'Master 2';

@@ -100,8 +100,108 @@ export function createCombatantFromMasterServant(
     activeBuffs: [],
     skills: t.skills.map(s => ({ ...s, currentCooldown: 0 })),
     noblePhantasm: { ...t.noblePhantasm },
-    critStars: 0
+    critStars: 0,
+    bondLevel: servantInstance.bondLevel || 1
   };
+}
+
+export function applyCombatantSkill(
+  actor: ActiveCombatant,
+  target: ActiveCombatant,
+  skillIndex: number
+): { success: boolean; log: string } {
+  if (skillIndex === 2 && (actor.bondLevel || 1) < 5) {
+    return { success: false, log: '🔒 Skill 3 is locked! Reach Bond Level 5 to unlock.' };
+  }
+
+  const skill = actor.skills[skillIndex];
+  if (!skill) {
+    return { success: false, log: 'Skill not found.' };
+  }
+
+  if (skill.currentCooldown > 0) {
+    return { success: false, log: `Skill ${skill.name} is on cooldown for ${skill.currentCooldown} more turns.` };
+  }
+
+  skill.currentCooldown = skill.cooldown;
+  let logText = `✨ **${actor.name}** activated **${skill.name}**!`;
+
+  switch (skill.effectType) {
+    case 'buff_atk':
+      actor.activeBuffs.push({
+        name: skill.name,
+        type: 'buff_atk',
+        value: skill.value || 30,
+        remainingTurns: skill.duration || 2
+      });
+      actor.critStars = Math.min(50, actor.critStars + 10);
+      logText = `⚔️ **${actor.name}** activated **${skill.name}**, gaining **+${skill.value || 30}% ATK** for ${skill.duration || 2} turns and +10 Critical Stars!`;
+      break;
+    case 'buff_def':
+      actor.activeBuffs.push({
+        name: skill.name,
+        type: 'buff_def',
+        value: skill.value || 30,
+        remainingTurns: skill.duration || 2
+      });
+      logText = `🛡️ **${actor.name}** activated **${skill.name}**, gaining **+${skill.value || 30}% DEF** for ${skill.duration || 2} turns!`;
+      break;
+    case 'heal': {
+      const healAmt = skill.value || Math.round(actor.maxHp * 0.25);
+      actor.currentHp = Math.min(actor.maxHp, actor.currentHp + healAmt);
+      logText = `💚 **${actor.name}** activated **${skill.name}**, restoring **+${healAmt.toLocaleString()} HP**!`;
+      break;
+    }
+    case 'np_charge':
+      actor.npGauge = Math.min(300, actor.npGauge + (skill.value || 30));
+      actor.critStars = Math.min(50, actor.critStars + 15);
+      logText = `⚡ **${actor.name}** activated **${skill.name}**, charging **+${skill.value || 30}% NP** and generating +15 Stars!`;
+      break;
+    case 'crit_stars': {
+      const stars = skill.value || 25;
+      actor.critStars = Math.min(50, actor.critStars + stars);
+      actor.activeBuffs.push({
+        name: skill.name,
+        type: 'crit_dmg',
+        value: 40,
+        remainingTurns: skill.duration || 2
+      });
+      logText = `🌟 **${actor.name}** activated **${skill.name}**, generating **+${stars} Critical Stars** and +40% Critical DMG!`;
+      break;
+    }
+    case 'evade':
+    case 'invincible':
+      actor.isEvading = true;
+      actor.activeBuffs.push({
+        name: skill.name,
+        type: 'evade',
+        value: 100,
+        remainingTurns: skill.duration || 1
+      });
+      logText = `💨 **${actor.name}** activated **${skill.name}**, granting absolute **Evade** against incoming damage!`;
+      break;
+    case 'stun':
+      target.isStunned = true;
+      target.activeBuffs.push({
+        name: 'Stunned',
+        type: 'stun',
+        value: 100,
+        remainingTurns: skill.duration || 1
+      });
+      logText = `💫 **${actor.name}** activated **${skill.name}**, stunning **${target.name}** for 1 turn!`;
+      break;
+    default:
+      actor.activeBuffs.push({
+        name: skill.name,
+        type: 'buff_atk',
+        value: 25,
+        remainingTurns: 2
+      });
+      logText = `✨ **${actor.name}** activated **${skill.name}**!`;
+      break;
+  }
+
+  return { success: true, log: logText };
 }
 
 export function initializeBattle(

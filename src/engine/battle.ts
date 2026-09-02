@@ -116,7 +116,8 @@ export function createCombatantFromMasterServant(
     activeBuffs: [],
     skills: t.skills.map(s => ({ ...s, currentCooldown: 0 })),
     noblePhantasm: { ...t.noblePhantasm },
-    critStars: 0
+    critStars: 0,
+    bondLevel: servantInstance.bondLevel || 1
   };
 }
 

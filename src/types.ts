@@ -181,6 +181,7 @@ export interface ActiveCombatant {
   isInvincible?: boolean;
   isStunned?: boolean;
   critStars: number;
+  bondLevel?: number;
 }
 
 export interface TurnActionChoice {

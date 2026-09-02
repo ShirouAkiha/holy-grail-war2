@@ -189,7 +189,8 @@ async function createTurnSummaryAttachment(
     activeBuffs: p1.activeBuffs.map(b => ({ name: b.name, type: b.type, value: b.value, remainingTurns: b.remainingTurns })),
     skills: (p1.servant.template.skills || []).map((s, idx) => ({ ...s, currentCooldown: p1.skillCooldowns[idx] || 0 })),
     noblePhantasm: p1.servant.template.noblePhantasm,
-    critStars: p1.critStars
+    critStars: p1.critStars,
+    bondLevel: p1.servant.bondLevel || 1
   };
 
   const activeP2: ActiveCombatant = {
@@ -208,7 +209,8 @@ async function createTurnSummaryAttachment(
     activeBuffs: p2.activeBuffs.map(b => ({ name: b.name, type: b.type, value: b.value, remainingTurns: b.remainingTurns })),
     skills: (p2.servant.template.skills || []).map((s, idx) => ({ ...s, currentCooldown: p2.skillCooldowns[idx] || 0 })),
     noblePhantasm: p2.servant.template.noblePhantasm,
-    critStars: p2.critStars
+    critStars: p2.critStars,
+    bondLevel: p2.servant.bondLevel || 1
   };
 
   const isCrit = lastLogText.includes('CRITICAL');
@@ -278,32 +280,15 @@ function buildDuelEmbed(
 // ==========================================
 // 7. INTERACTIVE ACTION BUTTON BUILDER
 // ==========================================
-// Generates buttons for Buster, Arts, Quick, Noble Phantasm, Skills, and Master Command Seals.
+// Generates 2 rows:
+// Row 1: Command Attack Cards (Buster, Arts, Quick, Noble Phantasm)
+// Row 2: 3 Active Skill Sets (Skill 1 & 2 unlocked, Skill 3 unlocked at Bond Level 5) + Command Seal
 function buildCombatButtons(combatant: DuelCombatant) {
   const isNpReady = combatant.npGauge >= 100;
   const skills = combatant.servant.template.skills || [];
-  
-  // Find first available skill or show CD
-  let availableSkillIdx = -1;
-  let skillLabel = 'Class Skill (CD)';
-  let skillDisabled = true;
+  const bondLevel = combatant.servant.bondLevel || 1;
 
-  for (let idx = 0; idx < skills.length; idx++) {
-    const cd = combatant.skillCooldowns[idx] || 0;
-    if (cd <= 0) {
-      availableSkillIdx = idx;
-      skillLabel = `🛡️ ${skills[idx].name.slice(0, 16)}`;
-      skillDisabled = false;
-      break;
-    }
-  }
-
-  if (availableSkillIdx === -1 && skills.length > 0) {
-    const minCd = Math.min(...skills.map((_, idx) => combatant.skillCooldowns[idx] || 0));
-    skillLabel = `🛡️ Skill [CD: ${minCd}t]`;
-  }
-
-  // Row 1: Command Cards
+  // Row 1: Command Cards + Noble Phantasm
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId('card_buster')
@@ -319,32 +304,146 @@ function buildCombatButtons(combatant: DuelCombatant) {
       .setCustomId('card_quick')
       .setLabel('Quick (+25 Stars)')
       .setEmoji('🟢')
-      .setStyle(ButtonStyle.Success)
-  );
-
-  // Row 2: NP, Skill, Command Seal
-  const hasSeals = (combatant.commandSeals || 0) > 0;
-  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId('card_np')
-      .setLabel(`Noble Phantasm (${Math.round(combatant.npGauge)}%)`)
+      .setLabel(`NP (${Math.round(combatant.npGauge)}%)`)
       .setEmoji('💥')
       .setStyle(isNpReady ? ButtonStyle.Danger : ButtonStyle.Secondary)
-      .setDisabled(!isNpReady),
+      .setDisabled(!isNpReady)
+  );
+
+  // Row 2: 3 Active Skill Sets + Master Command Seal
+  const hasSeals = (combatant.commandSeals || 0) > 0;
+  const row2 = new ActionRowBuilder<ButtonBuilder>();
+
+  // Skill 1 (Unlocked by default)
+  const s1 = skills[0];
+  const cd1 = combatant.skillCooldowns[0] || 0;
+  const s1Name = s1 ? s1.name.slice(0, 13) : 'Skill 1';
+  row2.addComponents(
     new ButtonBuilder()
-      .setCustomId('card_skill')
-      .setLabel(skillLabel)
-      .setStyle(skillDisabled ? ButtonStyle.Secondary : ButtonStyle.Primary)
-      .setDisabled(skillDisabled),
+      .setCustomId('skill_0')
+      .setLabel(cd1 > 0 ? `S1: ${s1Name} (${cd1}T)` : `✨ S1: ${s1Name}`)
+      .setStyle(cd1 > 0 ? ButtonStyle.Secondary : ButtonStyle.Primary)
+      .setDisabled(cd1 > 0 || !s1)
+  );
+
+  // Skill 2 (Unlocked by default)
+  const s2 = skills[1];
+  const cd2 = combatant.skillCooldowns[1] || 0;
+  const s2Name = s2 ? s2.name.slice(0, 13) : 'Skill 2';
+  row2.addComponents(
+    new ButtonBuilder()
+      .setCustomId('skill_1')
+      .setLabel(cd2 > 0 ? `S2: ${s2Name} (${cd2}T)` : `🛡️ S2: ${s2Name}`)
+      .setStyle(cd2 > 0 ? ButtonStyle.Secondary : ButtonStyle.Primary)
+      .setDisabled(cd2 > 0 || !s2)
+  );
+
+  // Skill 3 (Unlocked at Bond Level 5)
+  const s3 = skills[2];
+  const cd3 = combatant.skillCooldowns[2] || 0;
+  const isS3Unlocked = bondLevel >= 5;
+  const s3Name = s3 ? s3.name.slice(0, 13) : 'Skill 3';
+  row2.addComponents(
+    new ButtonBuilder()
+      .setCustomId('skill_2')
+      .setLabel(!isS3Unlocked ? '🔒 S3 (Bond Lv 5)' : cd3 > 0 ? `S3: ${s3Name} (${cd3}T)` : `🌟 S3: ${s3Name}`)
+      .setStyle(!isS3Unlocked || cd3 > 0 ? ButtonStyle.Secondary : ButtonStyle.Success)
+      .setDisabled(!isS3Unlocked || cd3 > 0 || !s3)
+  );
+
+  // Master Command Seal
+  row2.addComponents(
     new ButtonBuilder()
       .setCustomId('card_seal')
-      .setLabel(`Command Seal (${combatant.commandSeals || 0})`)
+      .setLabel(`Seal (${combatant.commandSeals || 0})`)
       .setEmoji('🔱')
-      .setStyle(hasSeals ? ButtonStyle.Secondary : ButtonStyle.Secondary)
-      .setDisabled(!hasSeals || (combatant.npGauge >= 100 && combatant.currentHp >= combatant.maxHp * 0.9))
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(!hasSeals)
   );
 
   return [row1, row2];
+}
+
+// Helper to activate a combatant skill without spending a turn
+function activateCombatantSkill(
+  combatant: DuelCombatant,
+  skillIdx: number
+): { success: boolean; log: string } {
+  const bondLevel = combatant.servant.bondLevel || 1;
+  if (skillIdx === 2 && bondLevel < 5) {
+    return { success: false, log: '🔒 **Skill 3 is Locked!** Reach Bond Level 5 to unlock this skill.' };
+  }
+
+  const skills = combatant.servant.template.skills || [];
+  const skill = skills[skillIdx];
+  if (!skill) {
+    return { success: false, log: 'Skill not found.' };
+  }
+
+  if ((combatant.skillCooldowns[skillIdx] || 0) > 0) {
+    return { success: false, log: `⏳ **${skill.name}** is on cooldown for **${combatant.skillCooldowns[skillIdx]}** more turns.` };
+  }
+
+  combatant.skillCooldowns[skillIdx] = skill.cooldown || 5;
+  let logText = `✨ **${combatant.servant.template.name}** activated **${skill.name}**!`;
+
+  if (skill.effectType === 'buff_atk') {
+    const val = skill.value || 35;
+    combatant.activeBuffs.push({ name: skill.name, type: 'buff_atk', value: val, remainingTurns: skill.duration || 2 });
+    combatant.critStars = Math.min(50, combatant.critStars + 10);
+    logText = `⚔️ **${combatant.servant.template.name}** activated **${skill.name}**, gaining **+${val}% ATK Buff** for ${skill.duration || 2} turns & +10 Stars!`;
+  } else if (skill.effectType === 'buff_def') {
+    const val = skill.value || 30;
+    combatant.activeBuffs.push({ name: skill.name, type: 'buff_def', value: val, remainingTurns: skill.duration || 2 });
+    logText = `🛡️ **${combatant.servant.template.name}** activated **${skill.name}**, gaining **+${val}% DEF Buff** for ${skill.duration || 2} turns!`;
+  } else if (skill.effectType === 'evade' || skill.effectType === 'invincible') {
+    combatant.activeBuffs.push({ name: skill.name, type: 'evade', value: 85, remainingTurns: skill.duration || 1 });
+    logText = `💨 **${combatant.servant.template.name}** activated **${skill.name}**! Readied an evasive barrier to dodge incoming strikes!`;
+  } else if (skill.effectType === 'heal') {
+    const healVal = skill.value || Math.round(combatant.maxHp * 0.25);
+    combatant.currentHp = Math.min(combatant.maxHp, combatant.currentHp + healVal);
+    logText = `💚 **${combatant.servant.template.name}** activated **${skill.name}**, restoring **+${healVal.toLocaleString()} HP**!`;
+  } else if (skill.effectType === 'np_charge') {
+    const npVal = skill.value || 30;
+    combatant.npGauge = Math.min(300, combatant.npGauge + npVal);
+    combatant.critStars = Math.min(50, combatant.critStars + 15);
+    logText = `⚡ **${combatant.servant.template.name}** activated **${skill.name}**, charging **+${npVal}% NP Gauge** & +15 Critical Stars!`;
+  } else if (skill.effectType === 'crit_stars') {
+    const starVal = skill.value || 25;
+    combatant.critStars = Math.min(50, combatant.critStars + starVal);
+    combatant.activeBuffs.push({ name: skill.name, type: 'crit_dmg', value: 40, remainingTurns: skill.duration || 2 });
+    logText = `🌟 **${combatant.servant.template.name}** activated **${skill.name}**, generating **+${starVal} Stars** & +40% Crit DMG!`;
+  } else {
+    combatant.activeBuffs.push({ name: skill.name, type: 'buff_atk', value: 25, remainingTurns: 2 });
+    logText = `✨ **${combatant.servant.template.name}** activated **${skill.name}**!`;
+  }
+
+  return { success: true, log: logText };
+}
+
+// Helper to invoke a command seal without spending a turn
+function invokeCombatantSeal(combatant: DuelCombatant): { success: boolean; log: string } {
+  if ((combatant.commandSeals || 0) <= 0) {
+    return { success: false, log: '⚠️ You have no Command Seals remaining!' };
+  }
+
+  combatant.commandSeals--;
+  const lowHp = combatant.currentHp < combatant.maxHp * 0.6;
+  let logText = '';
+  if (lowHp) {
+    const healAmt = Math.round(combatant.maxHp * 0.40);
+    combatant.currentHp = Math.min(combatant.maxHp, combatant.currentHp + healAmt);
+    combatant.npGauge = Math.min(300, combatant.npGauge + 50);
+    logText = `🔱 **COMMAND SEAL INVOKED!** Master **${combatant.username}** commanded: *"By my Command Seal, recover and strike!"*\n> ✨ **${combatant.servant.template.name}** restored **+${healAmt.toLocaleString()} HP** and gained **+50% NP**!`;
+  } else {
+    combatant.npGauge = 100;
+    combatant.critStars = Math.min(50, combatant.critStars + 20);
+    logText = `🔱 **COMMAND SEAL INVOKED!** Master **${combatant.username}** commanded: *"Unleash your full Phantasm!"*\n> ⚡ **${combatant.servant.template.name}** reached **100% NP Gauge**!`;
+  }
+  return { success: true, log: logText };
 }
 
 // ==========================================
@@ -933,25 +1032,52 @@ async function startInteractiveDuel(
       // Acknowledge Discord immediately so the 3s timeout never triggers during canvas rendering
       await i.deferUpdate();
 
-      let actionType: 'buster' | 'arts' | 'quick' | 'np' | 'skill' | 'seal' = 'buster';
-      if (i.customId === 'card_buster') actionType = 'buster';
-      if (i.customId === 'card_arts') actionType = 'arts';
-      if (i.customId === 'card_quick') actionType = 'quick';
-      if (i.customId === 'card_np') actionType = 'np';
-      if (i.customId === 'card_skill') actionType = 'skill';
-      if (i.customId === 'card_seal') actionType = 'seal';
+      // CASE: SKILL ACTIVATION (Instant - does NOT end turn)
+      if (i.customId.startsWith('skill_')) {
+        const skillIdx = parseInt(i.customId.replace('skill_', ''), 10);
+        const actor = activeUserId === p1.userId ? p1 : p2;
+        const res = activateCombatantSkill(actor, skillIdx);
+        combatLogs.push(res.log);
+        if (combatLogs.length > 4) combatLogs.shift();
 
-      const attacker = activeUserId === p1.userId ? p1 : p2;
-      const defender = activeUserId === p1.userId ? p2 : p1;
+        const p1CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
+        const p2CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
+        const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, res.log, p1CardChoice, p2CardChoice);
+        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs);
+        const updatedButtons = buildCombatButtons(actor);
+        await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+        return;
+      }
 
-      // Save command seals usage back to profile
-      if (actionType === 'seal') {
+      // CASE: COMMAND SEAL ACTIVATION (Instant - does NOT end turn)
+      if (i.customId === 'card_seal') {
+        const actor = activeUserId === p1.userId ? p1 : p2;
         const actingMaster = activeUserId === p1Master.discordId ? p1Master : p2Master;
         if (actingMaster && actingMaster.commandSeals > 0) {
           actingMaster.commandSeals--;
           await saveMaster(actingMaster);
         }
+        const res = invokeCombatantSeal(actor);
+        combatLogs.push(res.log);
+        if (combatLogs.length > 4) combatLogs.shift();
+
+        const p1CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
+        const p2CardChoice: CardType[] = ['Arts', 'Buster', 'Quick'];
+        const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, res.log, p1CardChoice, p2CardChoice);
+        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs);
+        const updatedButtons = buildCombatButtons(actor);
+        await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+        return;
       }
+
+      let actionType: 'buster' | 'arts' | 'quick' | 'np' = 'buster';
+      if (i.customId === 'card_buster') actionType = 'buster';
+      if (i.customId === 'card_arts') actionType = 'arts';
+      if (i.customId === 'card_quick') actionType = 'quick';
+      if (i.customId === 'card_np') actionType = 'np';
+
+      const attacker = activeUserId === p1.userId ? p1 : p2;
+      const defender = activeUserId === p1.userId ? p2 : p1;
 
       // Execute Player attack
       const log = resolveStrike(attacker, defender, actionType);
@@ -978,11 +1104,25 @@ async function startInteractiveDuel(
       // CASE A: Opponent is AI -> AI immediately strikes back
       if (defender.isAi) {
         round++;
-        let aiAction: 'buster' | 'arts' | 'quick' | 'np' | 'skill' = 'buster';
+
+        // AI tactical skill usage
+        const aiSkills = defender.servant.template.skills || [];
+        const aiBond = defender.servant.bondLevel || 3;
+        for (let sIdx = 0; sIdx < aiSkills.length; sIdx++) {
+          if (sIdx === 2 && aiBond < 5) continue;
+          if ((defender.skillCooldowns[sIdx] || 0) <= 0 && Math.random() < 0.35) {
+            const aiSkillRes = activateCombatantSkill(defender, sIdx);
+            if (aiSkillRes.success) {
+              combatLogs.push(aiSkillRes.log);
+              if (combatLogs.length > 4) combatLogs.shift();
+            }
+            break;
+          }
+        }
+
+        let aiAction: 'buster' | 'arts' | 'quick' | 'np' = 'buster';
         if (defender.npGauge >= 100) {
           aiAction = 'np';
-        } else if (defender.activeBuffs.length === 0 && Math.random() < 0.25) {
-          aiAction = 'skill';
         } else {
           const rand = Math.random();
           if (rand < 0.45) aiAction = 'buster';
