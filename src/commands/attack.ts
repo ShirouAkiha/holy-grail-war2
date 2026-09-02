@@ -37,15 +37,21 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const res = attackSuspectUserInWar(war, interaction.user.id, targetQuery);
     await saveMaster(master);
 
+    const attackerParticipant = war.participants[interaction.user.id];
+    let footerText = '';
+    if (!res.targetWasMaster) {
+      footerText = 'Attacking Master identity is now publicly exposed for violating Secrecy of Magecraft!';
+    } else if (attackerParticipant?.isExposed) {
+      footerText = 'Both Masters are now EXPOSED on the Grail War Status Board (/grailwar status)';
+    } else {
+      footerText = 'Target Master identity is now EXPOSED! You remain concealed in the shadows (/grailwar status)';
+    }
+
     const embed = new EmbedBuilder()
       .setTitle(res.targetWasMaster ? '⚔️ TACTICAL AMBUSH: RIVAL MASTER ENGAGED!' : '☠️ COLLATERAL CASUALTY: CIVILIAN SLAIN!')
       .setDescription(res.message)
       .setColor(res.targetWasMaster ? 0xef4444 : 0x7f1d1d)
-      .setFooter({
-        text: res.targetWasMaster 
-          ? 'Both Masters are now EXPOSED on the Grail War Status Board (/grailwar status)' 
-          : 'Attacking Master identity is now publicly exposed for violating Secrecy of Magecraft!'
-      });
+      .setFooter({ text: footerText });
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error: any) {
