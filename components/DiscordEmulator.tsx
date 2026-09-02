@@ -90,6 +90,40 @@ function getRandomChant(): string {
   return SUMMONING_CHANTS[index];
 }
 
+function EmbedVisual({ url }: { url: string }) {
+  const [imgError, setImgError] = useState(false);
+
+  if (!url) return null;
+
+  if (url.includes('klipy.com')) {
+    return (
+      <div className="mt-3 rounded overflow-hidden border border-[#222] bg-[#050505] max-w-xl shadow-md">
+        <iframe
+          src={url}
+          title="Summoning Ritual GIF"
+          className="w-full h-[320px] rounded border-0"
+          allow="autoplay; encrypted-media"
+          allowFullScreen
+        />
+      </div>
+    );
+  }
+
+  const fallbackGif = 'https://media1.tenor.com/m/8YpY9q6y430AAAAC/rin-tohsaka-fate.gif';
+
+  return (
+    <div className="mt-3 rounded overflow-hidden border border-[#222] bg-[#050505] max-w-xl shadow-md">
+      <img
+        src={imgError ? fallbackGif : url}
+        alt="Embed Visual"
+        className="w-full h-auto object-contain max-h-[400px] rounded"
+        referrerPolicy="no-referrer"
+        onError={() => setImgError(true)}
+      />
+    </div>
+  );
+}
+
 function createContractFromPool(allThrone: ServantTemplate[], masterId: string): MasterServantInstance {
   const randomTemplate = allThrone[Math.floor(Math.random() * allThrone.length)];
   return {
@@ -2639,14 +2673,7 @@ export default function DiscordEmulator({
 
                   {/* Embed Image / GIF */}
                   {(msg.embed.imageUrl || msg.embed.thumbnailUrl) && (
-                    <div className="mt-3 rounded overflow-hidden border border-[#222] bg-[#050505] max-w-xl shadow-md">
-                      <img
-                        src={msg.embed.imageUrl || msg.embed.thumbnailUrl}
-                        alt="Embed Visual"
-                        className="w-full h-auto object-contain max-h-[400px] rounded"
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
+                    <EmbedVisual url={msg.embed.imageUrl || msg.embed.thumbnailUrl || ''} />
                   )}
 
                   {/* Dynamic Canvas Image Embedded Inside Box */}
