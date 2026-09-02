@@ -130,6 +130,71 @@
     "cardArtUrl": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80"
   },
   {
+    "id": "artoria_pendragon_alter",
+    "name": "Artoria Pendragon (Alter)",
+    "title": "Black King of Knights",
+    "servantClass": "Saber",
+    "rarity": 4,
+    "baseHp": 26400,
+    "baseAtk": 10248,
+    "baseStats": {
+      "strength": 19,
+      "endurance": 16,
+      "agility": 12,
+      "mana": 18,
+      "luck": 10
+    },
+    "commandDeck": ["Buster", "Buster", "Arts", "Arts", "Quick"],
+    "skills": [
+      {
+        "id": "mana_burst_a_alter",
+        "name": "Mana Burst A",
+        "cooldown": 5,
+        "description": "Increases own Buster Card effectiveness by 25% for 1 turn.",
+        "effectType": "buff_atk",
+        "value": 25,
+        "duration": 1,
+        "icon": "🔥"
+      },
+      {
+        "id": "charisma_e",
+        "name": "Charisma E",
+        "cooldown": 5,
+        "description": "Increases party attack power by 12% for 3 turns.",
+        "effectType": "buff_atk",
+        "value": 12,
+        "duration": 3,
+        "icon": "👑"
+      },
+      {
+        "id": "defender_of_fuyuki_a",
+        "name": "Defender of Fuyuki A",
+        "cooldown": 6,
+        "description": "Charges own NP gauge by 20% and increases Defense by 30% for 1 turn.",
+        "effectType": "np_charge",
+        "value": 20,
+        "duration": 1,
+        "icon": "🖤"
+      }
+    ],
+    "noblePhantasm": {
+      "name": "Excalibur Morgan: Sword of Promised Victory",
+      "cardType": "Buster",
+      "chant": "Take this... The cry of a dying star! Let the dark breath of the dragon consume all! EX---CALIBUR... MORGAN!",
+      "description": "Unleashes a catastrophic wave of black light, dealing massive damage to all enemies and recharging NP gauge.",
+      "target": "aoe",
+      "multiplier": 450,
+      "overchargeEffect": "NP gauge refund +20%"
+    },
+    "lore": "The Black King of Knights, Artoria Pendragon dyed in black by the mud of the Holy Grail. A cold, merciless tyrant who fights with relentless power, wielding the corrupted Excalibur Morgan.",
+    "summonQuote": "Servant Saber, Artoria Alter. I have materialized in response to your summons. Master, are you prepared to govern with an iron fist?",
+    "battleStartQuote": "There is no mercy on this battlefield. Disappear.",
+    "victoryQuote": "A predictable outcome. Clean up the residue.",
+    "defeatQuote": "The dark... is fading...",
+    "avatarUrl": "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=400&auto=format&fit=crop&q=80",
+    "cardArtUrl": "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=600&auto=format&fit=crop&q=80"
+  },
+  {
     "id": "nero_claudius_saber",
     "name": "Nero Claudius",
     "title": "Emperor of Roses",
