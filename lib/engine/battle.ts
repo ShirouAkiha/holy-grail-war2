@@ -9,6 +9,9 @@ import {
 } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
 
+// Global PvP damage modifier (0.35x) to scale FGO-style formula output down to ~25k-35k Servant HP pools
+export const PVP_DAMAGE_MODIFIER = 0.35;
+
 export function calculateClassMultiplier(attackerClass: ServantClass, defenderClass: ServantClass): number {
   if (attackerClass === defenderClass) return 1.0;
 
@@ -386,7 +389,7 @@ export function executeBattleTurn(
         target.isEvading = false;
       }
 
-      totalDamage += Math.round(npBaseDmg);
+      totalDamage += Math.round(npBaseDmg * PVP_DAMAGE_MODIFIER);
       totalNpCharge += 20; // base refund
       totalStars += 12;
       actor.npGauge = 0; // consume gauge
@@ -434,7 +437,7 @@ export function executeBattleTurn(
           target.isEvading = false;
         }
 
-        totalDamage += Math.round(hitDmg);
+        totalDamage += Math.round(hitDmg * PVP_DAMAGE_MODIFIER);
         totalNpCharge += Math.round(8 * cardNpMult * (actor.stats.mana / 15));
         totalStars += Math.round(4 * cardStarMult);
       });

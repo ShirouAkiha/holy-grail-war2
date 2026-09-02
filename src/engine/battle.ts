@@ -9,6 +9,9 @@ import {
 } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
 
+// Global PvP damage modifier (0.35x) to scale FGO-style formula output down to ~25k-35k Servant HP pools
+export const PVP_DAMAGE_MODIFIER = 0.35;
+
 // ==========================================
 // 1. CLASS AFFINITY MULTIPLIER ENGINE
 // ==========================================
@@ -193,7 +196,7 @@ export function resolveCombatTurn(
   const isQuickChain = is3Cards && attackerChoice.selectedCards.every(c => c === 'Quick');
 
   // Buster Chain Bonus: Flat 20% of Servant's Base ATK per hit
-  const busterChainBonusDmg = isBusterChain ? Math.round(attacker.atk * 0.20) : 0;
+  const busterChainBonusDmg = isBusterChain ? Math.round(attacker.atk * 0.20 * PVP_DAMAGE_MODIFIER) : 0;
 
   // Arts Chain Bonus: Instant +20% NP Gauge
   if (isArtsChain) {
@@ -300,7 +303,7 @@ export function resolveCombatTurn(
       isEvading = false; // consume evade
     }
 
-    totalDmg += hitDamage;
+    totalDmg += Math.round(hitDamage * PVP_DAMAGE_MODIFIER);
   }
 
   // Brave Chain Extra Attack (Finisher hit if 3 cards were selected)
@@ -308,7 +311,7 @@ export function resolveCombatTurn(
     chainTags.push('⚔️ BRAVE CHAIN (Extra Attack Finisher)');
     const extraBase = (effectiveAtk * 1.2 * 0.11) - (effectiveDef * 2);
     const extraDamage = Math.max(400, Math.round(extraBase * classMultiplier * (0.95 + Math.random() * 0.10)));
-    totalDmg += extraDamage;
+    totalDmg += Math.round(extraDamage * PVP_DAMAGE_MODIFIER);
     npGain += 10;
     starsGen += 5;
   }
@@ -343,7 +346,7 @@ export function resolveCombatTurn(
       npDmg = Math.round(npDmg * 0.20);
     }
 
-    totalDmg += npDmg;
+    totalDmg += Math.round(npDmg * PVP_DAMAGE_MODIFIER);
     attacker.npGauge = 0; // Consume gauge
   } else {
     attacker.npGauge = Math.min(300, attacker.npGauge + npGain);

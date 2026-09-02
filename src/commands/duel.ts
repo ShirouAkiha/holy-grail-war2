@@ -14,6 +14,7 @@ import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCom
 import { SERVANT_DATABASE } from '../data/servants';
 import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp } from '../engine/grailwar';
 import { renderBattleTurnSummary } from '../canvas/renderer';
+import { PVP_DAMAGE_MODIFIER } from '../engine/battle';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -686,7 +687,7 @@ function resolveStrike(
   const isArtsChain = is3Cards && cardsSequence.every(c => c === 'Arts');
   const isQuickChain = is3Cards && cardsSequence.every(c => c === 'Quick');
 
-  const busterChainBonusDmg = isBusterChain ? Math.round(attacker.baseAtk * 0.20) : 0;
+  const busterChainBonusDmg = isBusterChain ? Math.round(attacker.baseAtk * 0.20 * PVP_DAMAGE_MODIFIER) : 0;
 
   if (isArtsChain) {
     attacker.npGauge = Math.min(300, attacker.npGauge + 20);
@@ -722,7 +723,7 @@ function resolveStrike(
       const npMultiplier = (npTemplate.multiplier || 380) / 100;
       const variance = 0.96 + Math.random() * 0.08;
 
-      let npDmg = Math.round((effectiveAtk * npMultiplier * 0.18) * classMult * variance);
+      let npDmg = Math.round((effectiveAtk * npMultiplier * 0.18) * classMult * variance * PVP_DAMAGE_MODIFIER);
       npDmg = Math.max(1500, npDmg);
 
       if (isEvading) {
@@ -750,7 +751,7 @@ function resolveStrike(
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2) + busterChainBonusDmg;
-      let hitDmg = Math.round(Math.max(350, baseHit) * classMult * critMult * variance);
+      let hitDmg = Math.round(Math.max(350, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER);
 
       if (isEvading) {
         hitDmg = Math.round(hitDmg * 0.15);
@@ -782,7 +783,7 @@ function resolveStrike(
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
-      let hitDmg = Math.round(Math.max(280, baseHit) * classMult * critMult * variance);
+      let hitDmg = Math.round(Math.max(280, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER);
 
       if (isEvading) {
         hitDmg = Math.round(hitDmg * 0.15);
@@ -811,7 +812,7 @@ function resolveStrike(
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
-      let hitDmg = Math.round(Math.max(220, baseHit) * classMult * critMult * variance);
+      let hitDmg = Math.round(Math.max(220, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER);
 
       if (isEvading) {
         hitDmg = Math.round(hitDmg * 0.15);
@@ -834,7 +835,7 @@ function resolveStrike(
   if (is3Cards) {
     chainTags.push('⚔️ BRAVE CHAIN (Extra Attack)');
     const extraBase = (effectiveAtk * 1.2 * 0.11) - (effectiveDef * 2);
-    const extraDmg = Math.max(450, Math.round(extraBase * classMult * (0.95 + Math.random() * 0.10)));
+    const extraDmg = Math.max(450, Math.round(extraBase * classMult * (0.95 + Math.random() * 0.10) * PVP_DAMAGE_MODIFIER));
     totalSeqDmg += extraDmg;
     attacker.npGauge = Math.min(300, attacker.npGauge + 10);
     totalNpGained += 10;
