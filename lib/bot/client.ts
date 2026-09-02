@@ -54,7 +54,9 @@ commands.set(attackCommand.data.name, attackCommand);
 commands.set(leakCommand.data.name, leakCommand);
 commands.set(customiseCommand.data.name, customiseCommand);
 commands.set(cegachaCommand.data.name, cegachaCommand);
-commands.set('gacha', cegachaCommand);
+if ((cegachaCommand as any).gachaCommand) {
+  commands.set((cegachaCommand as any).gachaCommand.data.name, (cegachaCommand as any).gachaCommand);
+}
 
 // Deploy Slash Commands to Discord Gateway
 export async function registerSlashCommands() {

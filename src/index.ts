@@ -68,7 +68,7 @@ commands.set(leakCommand.data.name, leakCommand);
 commands.set(customiseCommand.data.name, customiseCommand);
 commands.set(addservantCommand.data.name, addservantCommand);
 commands.set(cegachaCommand.data.name, cegachaCommand);
-commands.set('gacha', cegachaCommand);
+commands.set(cegachaCommand.gachaCommand.data.name, cegachaCommand.gachaCommand);
 
 // ==========================================
 // 3. SLASH COMMAND DEPLOYMENT TO DISCORD API

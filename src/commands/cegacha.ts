@@ -47,6 +47,19 @@ export const data = new SlashCommandBuilder()
       .setDescription('View the official drop rates and pity guarantees for the Craft Essence Sanctum')
   );
 
+export const gachaCommand = {
+  data: {
+    ...data,
+    name: 'gacha',
+    toJSON: () => ({
+      ...data.toJSON(),
+      name: 'gacha',
+      description: 'Summon and forge Craft Essences using Saint Quartz (Alias)'
+    })
+  },
+  execute: (interaction: ChatInputCommandInteraction) => execute(interaction)
+};
+
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
