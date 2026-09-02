@@ -50,7 +50,21 @@ export const data = new SlashCommandBuilder()
 // ==========================================
 // 1.5. AUTHENTIC FATE SUMMONING CHANTS & VISUALS
 // ==========================================
-const RIN_SUMMONING_GIF = 'https://tenor.com/view/anime-magic-magic-circle-spell-gif-8657546';
+// Discord embed images MUST point to raw direct image files (ending in .gif, .png, etc.), not HTML webpage URLs.
+const RIN_SUMMONING_GIF = 'https://c.tenor.com/8657546/tenor.gif';
+const FALLBACK_MAGIC_CIRCLE = 'https://upload.wikimedia.org/wikipedia/commons/e/e0/The_Red_Magic_Circle.gif';
+
+function resolveDirectGifUrl(url: string): string {
+  if (!url) return FALLBACK_MAGIC_CIRCLE;
+  if (url.includes('tenor.com/view/')) {
+    const match = url.match(/([0-9]+)\/?$/);
+    if (match) return `https://c.tenor.com/${match[1]}/tenor.gif`;
+  }
+  if (!/\.(gif|png|jpe?g|webp)(\?.*)?$/i.test(url) && !url.includes('c.tenor.com') && !url.includes('media.tenor.com')) {
+    return FALLBACK_MAGIC_CIRCLE;
+  }
+  return url;
+}
 
 const SUMMONING_CHANTS = [
   `*“Let silver and steel be the essence.”*\n` +
@@ -340,7 +354,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `${chosenChant}\n\n` +
         `✨ *The Greater Grail responds! Mana surges through the Fuyuki leylines as the magic circle erupts in blinding crimson light!*`
       )
-      .setImage(RIN_SUMMONING_GIF)
+      .setImage(resolveDirectGifUrl(RIN_SUMMONING_GIF))
       .setColor(0xa855f7)
       .setFooter({ text: 'Magecraft Circuits Active • Channelling Mana into the Greater Grail' });
 
@@ -460,7 +474,7 @@ function setupSummonButtonCollector(message: any, userId: string) {
               `${chosenChant}\n\n` +
               `✨ *The Greater Grail responds! Mana surges through the leylines as the magic circle erupts in blinding crimson light!*`
             )
-            .setImage(RIN_SUMMONING_GIF)
+            .setImage(resolveDirectGifUrl(RIN_SUMMONING_GIF))
             .setColor(0xa855f7)
             .setFooter({ text: 'Magecraft Circuits Active • Channelling Mana into the Greater Grail' });
 

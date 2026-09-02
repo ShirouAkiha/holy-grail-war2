@@ -61,7 +61,7 @@ import {
   Lock
 } from 'lucide-react';
 
-const RIN_SUMMONING_GIF = 'https://tenor.com/view/anime-magic-magic-circle-spell-gif-8657546';
+const RIN_SUMMONING_GIF = 'https://c.tenor.com/8657546/tenor.gif';
 
 const SUMMONING_CHANTS = [
   `*“Let silver and steel be the essence.”*\n` +
