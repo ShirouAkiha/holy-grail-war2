@@ -172,8 +172,8 @@ async function createTurnSummaryAttachment(
   p2: DuelCombatant,
   round: number,
   lastLogText: string,
-  p1Cards: CardType[] = ['Buster', 'Arts', 'Quick'],
-  p2Cards: CardType[] = ['Arts', 'Buster', 'Quick']
+  p1Cards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Buster', 'Arts', 'Quick'],
+  p2Cards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Arts', 'Buster', 'Quick']
 ): Promise<AttachmentBuilder> {
   const activeP1: ActiveCombatant = {
     id: p1.userId,
@@ -218,14 +218,17 @@ async function createTurnSummaryAttachment(
   const isCrit = lastLogText.includes('CRITICAL');
   const isNP = lastLogText.includes('NOBLE PHANTASM');
 
-  // Extract the true action and damage line from lastLogText
-  let summaryLine = lastLogText;
-  if (lastLogText.includes('\n')) {
-    const splitLines = lastLogText.split('\n').map(l => l.trim()).filter(Boolean);
-    const dmgLine = splitLines.find(l => l.includes('DMG') || l.includes('damage') || l.includes('obliterated') || l.includes('dealt') || l.includes('executed'));
-    summaryLine = dmgLine || splitLines[splitLines.length - 1];
-  }
-  const cleanActionSummary = summaryLine
+  // Extract damage, NP gained, stars generated via regex
+  const dmgMatch = lastLogText.match(/Dealt \*\*([\d,]+) DMG\*\*/i) || lastLogText.match(/([\d,]+)\s*DMG/i);
+  const damageDealt = dmgMatch ? parseInt(dmgMatch[1].replace(/,/g, ''), 10) : 0;
+
+  const npMatch = lastLogText.match(/\+(\d+)%\s*NP/i);
+  const npCharged = npMatch ? parseInt(npMatch[1], 10) : 0;
+
+  const starMatch = lastLogText.match(/\+(\d+)\s*Critical Stars/i) || lastLogText.match(/\+(\d+)\s*Stars/i);
+  const starsGenerated = starMatch ? parseInt(starMatch[1], 10) : 0;
+
+  const cleanActionSummary = lastLogText
     .replace(/[*_~`>#]/g, '')
     .replace(/[⚔️💥✨🌀⚡🔴🔵🟢🛡️👑🌟🗡️🔥💀🩸]/gu, '')
     .replace(/\s+/g, ' ')
@@ -244,10 +247,10 @@ async function createTurnSummaryAttachment(
     skillsUsed: [],
     npTriggered: isNP,
     isNoblePhantasm: isNP,
-    damageDealt: 0,
+    damageDealt,
     isCritical: isCrit,
-    starsGenerated: 0,
-    npCharged: 0,
+    starsGenerated,
+    npCharged,
     actorHpRemaining: p1.currentHp,
     targetHpRemaining: p2.currentHp,
     actorHpMax: p1.maxHp,
@@ -730,7 +733,7 @@ function resolveStrike(
   const npHeader = hasNpHit ? ' 💥 **NOBLE PHANTASM UNLEASHED!**' : '';
   const chainStr = chainTags.length > 0 ? `\n⛓️ **Chains:** ${chainTags.join(' • ')}` : '';
 
-  const seqNames = cardsSequence.join(' ➔ ');
+  const seqNames = cardsSequence.join(' -> ');
   const logText = `⚔️ **${attacker.servant.template.name}** executed sequence **[${seqNames}]**${npHeader}${critTag}${evadeTag}:\n` +
     `• Dealt **${totalSeqDmg.toLocaleString()} DMG** to ${defender.servant.template.name}\n` +
     `• Gained **+${totalNpGained}% NP** & **+${totalStarsGained} Critical Stars**${chainStr}${gutsText}`;
@@ -1207,12 +1210,8 @@ async function startInteractiveDuel(
       combatLogs.push(log);
       if (combatLogs.length > 4) combatLogs.shift();
 
-      const p1CardChoice: CardType[] = (activeUserId === p1.userId ? playerSequence : ['Arts', 'Buster', 'Quick']).map(
-        c => (c === 'NP' ? 'Buster' : c) as CardType
-      );
-      let p2CardChoice: CardType[] = (activeUserId === p2.userId ? playerSequence : ['Arts', 'Buster', 'Quick']).map(
-        c => (c === 'NP' ? 'Buster' : c) as CardType
-      );
+      const p1CardChoice = (activeUserId === p1.userId ? playerSequence : ['Arts', 'Buster', 'Quick']) as ('Buster' | 'Arts' | 'Quick' | 'NP')[];
+      let p2CardChoice = (activeUserId === p2.userId ? playerSequence : ['Arts', 'Buster', 'Quick']) as ('Buster' | 'Arts' | 'Quick' | 'NP')[];
 
       // Check if Defender fainted
       if (defender.currentHp <= 0) {
@@ -1253,7 +1252,7 @@ async function startInteractiveDuel(
           ];
         }
 
-        p2CardChoice = aiSequence.map(c => (c === 'NP' ? 'Buster' : c) as CardType);
+        p2CardChoice = aiSequence;
 
         const aiLog = resolveStrike(defender, attacker, aiSequence);
         combatLogs.push(aiLog);

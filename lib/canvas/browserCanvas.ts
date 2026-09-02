@@ -736,22 +736,40 @@ export async function renderBattleTurnSummary(
   ctx.fillText('NP', 516, 97);
 
   // 4. P1 3 Portrait Command Cards (Wireframe style - enlarged 116px height)
-  const p1Cards: CardType[] = log.p1Cards || ['Buster', 'Arts', 'Quick'];
+  const p1Cards = (log.p1Cards || log.cardsUsed || ['Buster', 'Arts', 'Quick']) as ('Buster' | 'Arts' | 'Quick' | 'NP')[];
   p1Cards.slice(0, 3).forEach((card, idx) => {
     const cardX = 148 + idx * 96;
     const cardY = 110;
     const cardW = 90;
     const cardH = 116;
 
-    const isBuster = card === 'Buster';
-    const isArts = card === 'Arts';
-    const cardColor = isBuster ? '#dc2626' : isArts ? '#2563eb' : '#16a34a';
+    let cardColor = '#dc2626';
+    let cardLabel = 'BUSTER';
+    let emblemText = 'B';
+    let statText = idx === 0 ? '1st (+50% DMG)' : `2nd (${idx === 1 ? '1.2x' : '1.4x'})`;
+
+    if (card === 'NP') {
+      cardColor = '#d97706';
+      cardLabel = 'N. PHANTASM';
+      emblemText = 'NP';
+      statText = 'MAX OUTPUT';
+    } else if (card === 'Arts') {
+      cardColor = '#2563eb';
+      cardLabel = 'ARTS';
+      emblemText = 'A';
+      statText = idx === 0 ? '1st (+100% NP)' : `2nd (${idx === 1 ? '1.2x' : '1.4x'})`;
+    } else if (card === 'Quick') {
+      cardColor = '#16a34a';
+      cardLabel = 'QUICK';
+      emblemText = 'Q';
+      statText = idx === 0 ? '1st (+20% CRIT)' : `2nd (${idx === 1 ? '1.2x' : '1.4x'})`;
+    }
 
     ctx.fillStyle = '#0f172a';
     drawRoundRect(ctx, cardX, cardY, cardW, cardH, 6);
     ctx.fill();
     ctx.strokeStyle = cardColor;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.8;
     ctx.stroke();
 
     // Top card banner
@@ -760,19 +778,19 @@ export async function renderBattleTurnSummary(
     ctx.fill();
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.font = 'bold 10px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(card.toUpperCase(), cardX + cardW / 2, cardY + 17);
+    ctx.fillText(cardLabel, cardX + cardW / 2, cardY + 17);
 
     // Center Emblem
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 32px system-ui, sans-serif';
-    ctx.fillText(isBuster ? 'B' : isArts ? 'A' : 'Q', cardX + cardW / 2, cardY + 62);
+    ctx.font = 'bold 28px system-ui, sans-serif';
+    ctx.fillText(emblemText, cardX + cardW / 2, cardY + 62);
 
     // Bottom stat
-    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.font = 'bold 9px system-ui, sans-serif';
     ctx.fillStyle = '#cbd5e1';
-    ctx.fillText(isBuster ? '+50% ATK' : isArts ? '+35% NP' : '+20 STAR', cardX + cardW / 2, cardY + 102);
+    ctx.fillText(statText, cardX + cardW / 2, cardY + 102);
   });
 
   // P1 Stars Pill (to right of cards - 116px height)
@@ -811,73 +829,58 @@ export async function renderBattleTurnSummary(
   ctx.fill();
 
   ctx.fillStyle = '#f59e0b';
-  ctx.font = 'bold 14px system-ui, sans-serif';
+  ctx.font = 'bold 13px system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`★ HOLY GRAIL WAR • TURN ${log.turnNumber} CLASH RESOLUTION ★`, 320, 265);
+  ctx.fillText(`HOLY GRAIL WAR - TURN ${log.turnNumber} CLASH RESOLUTION`, 320, 265);
 
-  // Main Action Text (Cleaned for canvas without emoji tofu boxes)
-  let summaryText = log.actionSummary || '';
-  if (summaryText.includes('\n')) {
-    const splitLines = summaryText.split('\n').map(l => l.trim()).filter(Boolean);
-    const dmgLine = splitLines.find(l => l.includes('DMG') || l.includes('damage') || l.includes('obliterated') || l.includes('dealt') || l.includes('executed'));
-    summaryText = dmgLine || splitLines[splitLines.length - 1];
-  }
+  // Main Action Text - Sanitize and format ASCII
+  const actorClean = (log.actorName || p1.name).replace(/[^\x00-\x7F]/g, '');
+  const targetClean = (log.targetName || p2.name).replace(/[^\x00-\x7F]/g, '');
+  const cardsUsedSeq = (log.cardsUsed || p1Cards).join(' -> ');
 
-  const cleanSummary = summaryText
-    .replace(/[*_~`>#]/g, '')
-    .replace(/[⚔️💥✨🌀⚡🔴🔵🟢🛡️👑🌟🗡️🔥💀🩸]/gu, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const actLine = `${actorClean} executed [${cardsUsedSeq}]`;
+  const dmgLine = `Dealt ${log.damageDealt > 0 ? log.damageDealt.toLocaleString() : '0'} DMG to ${targetClean}!`;
+  const statLine = `+${log.npCharged || 0}% NP Charged | +${log.starsGenerated || 0} Stars Gathered`;
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 17px system-ui, sans-serif';
-  const words = cleanSummary.split(' ');
-  const lines: string[] = [];
-  let currentLine = '';
+  ctx.font = 'bold 14px system-ui, sans-serif';
+  ctx.fillText(actLine, 320, 296);
 
-  for (const word of words) {
-    const testLine = currentLine ? `${currentLine} ${word}` : word;
-    if (ctx.measureText(testLine).width > 540 && currentLine) {
-      lines.push(currentLine);
-      currentLine = word;
-    } else {
-      currentLine = testLine;
-    }
-  }
-  if (currentLine) lines.push(currentLine);
+  ctx.fillStyle = log.isCritical ? '#f87171' : '#38bdf8';
+  ctx.font = 'bold 16px system-ui, sans-serif';
+  ctx.fillText(dmgLine, 320, 320);
 
-  const startY = lines.length > 1 ? 296 : 308;
-  lines.slice(0, 2).forEach((line, i) => {
-    ctx.fillText(line, 320, startY + i * 22);
-  });
+  ctx.fillStyle = '#cbd5e1';
+  ctx.font = '12px system-ui, sans-serif';
+  ctx.fillText(statLine, 320, 340);
 
   // Special Highlight Banner
   if (log.isNoblePhantasm) {
     ctx.fillStyle = 'rgba(234, 179, 8, 0.15)';
-    drawRoundRect(ctx, 32, 350, 576, 30, 5);
+    drawRoundRect(ctx, 32, 354, 576, 28, 5);
     ctx.fill();
     ctx.strokeStyle = '#eab308';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
     ctx.fillStyle = '#fde047';
-    ctx.font = 'bold 13px system-ui, sans-serif';
-    ctx.fillText('★ NOBLE PHANTASM UNLEASHED AT MAXIMUM OUTPUT! ★', 320, 370);
+    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.fillText('NOBLE PHANTASM UNLEASHED AT MAXIMUM OUTPUT!', 320, 373);
   } else if (log.isCritical) {
     ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
-    drawRoundRect(ctx, 32, 350, 576, 30, 5);
+    drawRoundRect(ctx, 32, 354, 576, 28, 5);
     ctx.fill();
     ctx.strokeStyle = '#ef4444';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
     ctx.fillStyle = '#f87171';
-    ctx.font = 'bold 13px system-ui, sans-serif';
-    ctx.fillText('★ CRITICAL STRIKE! DOUBLE DAMAGE DEALT! ★', 320, 370);
+    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.fillText('CRITICAL STRIKE! DOUBLE DAMAGE DEALT!', 320, 373);
   } else {
     ctx.fillStyle = '#94a3b8';
-    ctx.font = '13px system-ui, sans-serif';
-    ctx.fillText('Command Seals pulse with etheric energy as weapons clash.', 320, 368);
+    ctx.font = '12px system-ui, sans-serif';
+    ctx.fillText('Command Seals pulse with etheric energy as weapons clash.', 320, 373);
   }
 
   // Damage / Stars footer pill
@@ -888,9 +891,12 @@ export async function renderBattleTurnSummary(
   ctx.lineWidth = 1;
   ctx.stroke();
 
+  const p1NameClean = (p1.masterName || 'P1').replace(/[^\x00-\x7F]/g, '');
+  const p2NameClean = (p2.masterName || 'P2').replace(/[^\x00-\x7F]/g, '');
+
   ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 13px system-ui, sans-serif';
-  ctx.fillText(`★ ${p1.masterName || 'P1'} Stars: ${p1.critStars || 0}   |   ★ ${p2.masterName || 'P2'} Stars: ${p2.critStars || 0}`, 320, 411);
+  ctx.font = 'bold 12px system-ui, sans-serif';
+  ctx.fillText(`${p1NameClean} Stars: ${p1.critStars || 0}   |   ${p2NameClean} Stars: ${p2.critStars || 0}`, 320, 410);
 
   // ==========================================
   // BOTTOM SECTION: PLAYER 2 (MASTER & SERVANT)
@@ -915,22 +921,40 @@ export async function renderBattleTurnSummary(
   ctx.fillText(`${p2.critStars || 0}`, 90, 524);
 
   // 2. P2 3 Portrait Command Cards (Wireframe style - enlarged 116px height)
-  const p2Cards: CardType[] = log.p2Cards || ['Arts', 'Buster', 'Quick'];
+  const p2Cards = (log.p2Cards || ['Arts', 'Buster', 'Quick']) as ('Buster' | 'Arts' | 'Quick' | 'NP')[];
   p2Cards.slice(0, 3).forEach((card, idx) => {
     const cardX = 202 + idx * 96;
     const cardY = 448;
     const cardW = 90;
     const cardH = 116;
 
-    const isBuster = card === 'Buster';
-    const isArts = card === 'Arts';
-    const cardColor = isBuster ? '#dc2626' : isArts ? '#2563eb' : '#16a34a';
+    let cardColor = '#2563eb';
+    let cardLabel = 'ARTS';
+    let emblemText = 'A';
+    let statText = idx === 0 ? '1st (+100% NP)' : `2nd (${idx === 1 ? '1.2x' : '1.4x'})`;
+
+    if (card === 'NP') {
+      cardColor = '#d97706';
+      cardLabel = 'N. PHANTASM';
+      emblemText = 'NP';
+      statText = 'MAX OUTPUT';
+    } else if (card === 'Buster') {
+      cardColor = '#dc2626';
+      cardLabel = 'BUSTER';
+      emblemText = 'B';
+      statText = idx === 0 ? '1st (+50% DMG)' : `2nd (${idx === 1 ? '1.2x' : '1.4x'})`;
+    } else if (card === 'Quick') {
+      cardColor = '#16a34a';
+      cardLabel = 'QUICK';
+      emblemText = 'Q';
+      statText = idx === 0 ? '1st (+20% CRIT)' : `2nd (${idx === 1 ? '1.2x' : '1.4x'})`;
+    }
 
     ctx.fillStyle = '#0f172a';
     drawRoundRect(ctx, cardX, cardY, cardW, cardH, 6);
     ctx.fill();
     ctx.strokeStyle = cardColor;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.8;
     ctx.stroke();
 
     // Top card banner
@@ -939,19 +963,19 @@ export async function renderBattleTurnSummary(
     ctx.fill();
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.font = 'bold 10px system-ui, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(card.toUpperCase(), cardX + cardW / 2, cardY + 17);
+    ctx.fillText(cardLabel, cardX + cardW / 2, cardY + 17);
 
     // Center Emblem
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 32px system-ui, sans-serif';
-    ctx.fillText(isBuster ? 'B' : isArts ? 'A' : 'Q', cardX + cardW / 2, cardY + 62);
+    ctx.font = 'bold 28px system-ui, sans-serif';
+    ctx.fillText(emblemText, cardX + cardW / 2, cardY + 62);
 
     // Bottom stat
-    ctx.font = 'bold 11px system-ui, sans-serif';
+    ctx.font = 'bold 9px system-ui, sans-serif';
     ctx.fillStyle = '#cbd5e1';
-    ctx.fillText(isBuster ? '+50% ATK' : isArts ? '+35% NP' : '+20 STAR', cardX + cardW / 2, cardY + 102);
+    ctx.fillText(statText, cardX + cardW / 2, cardY + 102);
   });
 
   // 3. P2 Details (Status Bars & Avatar)

@@ -201,9 +201,9 @@ export interface CombatTurnLog {
   targetName: string;
   actionSummary: string;
   cardChainType?: 'Buster Brave' | 'Arts Chain' | 'Quick Chain' | 'Normal';
-  cardsUsed: CardType[];
-  p1Cards?: CardType[];
-  p2Cards?: CardType[];
+  cardsUsed: ('Buster' | 'Arts' | 'Quick' | 'NP')[];
+  p1Cards?: ('Buster' | 'Arts' | 'Quick' | 'NP')[];
+  p2Cards?: ('Buster' | 'Arts' | 'Quick' | 'NP')[];
   skillsUsed: string[];
   npTriggered?: boolean;
   isNoblePhantasm?: boolean;
