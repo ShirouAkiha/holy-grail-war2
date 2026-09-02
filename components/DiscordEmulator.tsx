@@ -23,6 +23,7 @@ import {
   renderBattleTurnSummary
 } from '../lib/canvas/browserCanvas';
 import {
+  calculateCurrentHp,
   executeWarAction,
   simulateWarSkirmish,
   attackSuspectUserInWar,
@@ -904,7 +905,9 @@ export default function DiscordEmulator({
         return;
       }
 
-      const p1 = createCombatantFromMasterServant(activeServant, master.username);
+      const p1Hp = userParticipant ? calculateCurrentHp(userParticipant) : undefined;
+      const p1 = createCombatantFromMasterServant(activeServant, master.username, p1Hp);
+
       const rivalTemplate =
         allThrone.find(s => s.id === targetParticipant.servantId) ||
         allThrone.find(s => s.name.toLowerCase() === targetParticipant.servantName.toLowerCase()) ||
@@ -913,6 +916,7 @@ export default function DiscordEmulator({
         SERVANT_DATABASE[1];
 
       const rivalMasterName = targetParticipant.username;
+      const p2Hp = targetParticipant ? calculateCurrentHp(targetParticipant) : undefined;
       const p2 = createCombatantFromMasterServant({
         id: targetParticipant.discordId,
         masterId: targetParticipant.discordId,
@@ -931,7 +935,7 @@ export default function DiscordEmulator({
         },
         bondLevel: 3,
         template: rivalTemplate
-      }, rivalMasterName);
+      }, rivalMasterName, p2Hp);
 
       p2.id = targetParticipant.discordId;
       p2.name = rivalTemplate.name;

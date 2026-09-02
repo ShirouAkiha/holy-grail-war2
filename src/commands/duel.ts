@@ -12,7 +12,7 @@ import {
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
-import { getOrInitWarSession, recordDuelOutcome } from '../engine/grailwar';
+import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp } from '../engine/grailwar';
 import { renderBattleTurnSummary } from '../canvas/renderer';
 
 // ==========================================
@@ -103,7 +103,7 @@ function getClassMultiplier(attacker: ServantClass, defender: ServantClass): num
 // 4. COMBATANT FACTORY
 // ==========================================
 // Computes baseline stats + allocated Parameter points + Craft Essence bonuses.
-function createCombatant(master: MasterProfile, servant: MasterServantInstance, isAi: boolean = false): DuelCombatant {
+function createCombatant(master: MasterProfile, servant: MasterServantInstance, isAi: boolean = false, overrideCurrentHp?: number): DuelCombatant {
   const t = servant.template;
   const alloc = servant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
   const base = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
@@ -129,12 +129,16 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
   // Initial stars based on Agility
   const initialStars = Math.min(30, Math.max(5, Math.round(totalAgi * 0.8)));
 
+  const startingHp = overrideCurrentHp !== undefined && overrideCurrentHp > 0
+    ? Math.min(maxHp, Math.round(overrideCurrentHp))
+    : maxHp;
+
   return {
     userId: master.discordId,
     username: master.username,
     isAi,
     servant,
-    currentHp: maxHp,
+    currentHp: startingHp,
     maxHp,
     baseAtk,
     atk: baseAtk,
@@ -720,8 +724,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             inviteCollector.stop();
             // Acknowledge the button immediately before async canvas generation
             await i.deferUpdate();
-            const p1 = createCombatant(challengerMaster, challengerServant, false);
-            const p2 = createCombatant(opponentMaster, opponentServant, false);
+            const p1Part = warSession.participants[challengerMaster.discordId];
+            const p1Hp = p1Part ? calculateCurrentHp(p1Part) : undefined;
+            const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp);
+
+            const p2Part = warSession.participants[opponentUser.id] ||
+              Object.values(warSession.participants).find(p => p.username.toLowerCase() === opponentUser.username.toLowerCase());
+            const p2Hp = p2Part ? calculateCurrentHp(p2Part) : undefined;
+            const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp);
             await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster);
           }
         } catch (err: any) {
@@ -830,8 +840,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           inviteCollector.stop();
           // Acknowledge immediately before async canvas generation
           await i.deferUpdate();
-          const p1 = createCombatant(challengerMaster, challengerServant, false);
-          const p2 = createCombatant(opponentMaster, opponentServant, false);
+          const p1Part = warSession.participants[challengerMaster.discordId];
+          const p1Hp = p1Part ? calculateCurrentHp(p1Part) : undefined;
+          const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp);
+
+          const p2Part = warSession.participants[targetRival.discordId] ||
+            Object.values(warSession.participants).find(p => p.username.toLowerCase() === targetRival.username.toLowerCase());
+          const p2Hp = p2Part ? calculateCurrentHp(p2Part) : undefined;
+          const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp);
           await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster);
         }
       } catch (err: any) {
