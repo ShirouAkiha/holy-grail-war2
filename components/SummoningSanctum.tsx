@@ -603,15 +603,18 @@ export default function SummoningSanctum({
 
                 {/* Stats & Parameters */}
                 {(() => {
-                  const baseStats = activeContract.template.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
+                  const templateId = activeContract.templateId || activeContract.template?.id || activeContract.id;
+                  const canonical = SERVANT_DATABASE.find(s => s.id === templateId) || activeContract.template;
+                  const sTemplate = { ...canonical, ...(activeContract.template?.isCustomOrMeme ? activeContract.template : {}) };
+                  const baseStats = sTemplate.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
                   const alloc = activeContract.allocatedStats || {};
                   const totalStr = (baseStats.strength || 10) + (alloc.strength || 0);
                   const totalEnd = (baseStats.endurance || 10) + (alloc.endurance || 0);
                   const ceAtk = activeContract.equippedCe?.atkBonus || 0;
                   const ceHp = activeContract.equippedCe?.hpBonus || 0;
                   const lvl = activeContract.level || 1;
-                  const activeMaxHp = Math.round((activeContract.template.baseHp || 12000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceHp);
-                  const activeTotalAtk = Math.round((activeContract.template.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceAtk);
+                  const activeMaxHp = Math.round((sTemplate.baseHp || 28000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceHp);
+                  const activeTotalAtk = Math.round((sTemplate.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceAtk);
 
                   return (
                     <div className="grid grid-cols-2 gap-2 text-xs font-mono">

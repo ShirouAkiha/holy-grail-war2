@@ -783,7 +783,9 @@ export default function DiscordEmulator({
         return;
       }
 
-      const t = activeServant.template;
+      const templateId = activeServant.templateId || activeServant.template?.id || activeServant.id;
+      const canonical = SERVANT_DATABASE.find(s => s.id === templateId) || activeServant.template || activeServant;
+      const t = { ...canonical, ...(activeServant.template?.isCustomOrMeme ? activeServant.template : {}) };
       const alloc = activeServant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
       const base = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
       const totalStr = (base.strength || 10) + (alloc.strength || 0);
@@ -791,7 +793,7 @@ export default function DiscordEmulator({
       const ceBonusAtk = activeServant.equippedCe?.atkBonus || 0;
       const ceBonusHp = activeServant.equippedCe?.hpBonus || 0;
       const lvl = activeServant.level || 1;
-      const totalHp = Math.round((t.baseHp || 12000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceBonusHp);
+      const totalHp = Math.round((t.baseHp || 28000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceBonusHp);
       const totalAtk = Math.round((t.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceBonusAtk);
 
       addMessage({

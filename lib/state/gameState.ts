@@ -7,7 +7,7 @@ import {
 } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
-import { createHolyGrailWarSession } from '../engine/grailwar';
+import { createHolyGrailWarSession, calculateServantMaxHp } from '../engine/grailwar';
 
 const STORAGE_KEY = 'holy_grail_war_master_profile_v2';
 const WAR_STORAGE_KEY = 'holy_grail_war_active_session_v2';
@@ -134,7 +134,21 @@ export function loadMasterProfile(): MasterProfile {
       saveMasterProfile(initial);
       return initial;
     }
-    return JSON.parse(raw);
+    const parsed: MasterProfile = JSON.parse(raw);
+    // Refresh servant templates from current SERVANT_DATABASE / custom servants
+    const customServants = getCustomServantsFromStorage();
+    const allThrone = getAllThroneServants(customServants);
+    if (parsed.servants && Array.isArray(parsed.servants)) {
+      parsed.servants = parsed.servants.map(s => {
+        const templateId = s.templateId || s.template?.id || s.id;
+        const fresh = allThrone.find(t => t.id === templateId) || SERVANT_DATABASE.find(t => t.id === templateId) || s.template;
+        return {
+          ...s,
+          template: fresh ? { ...fresh, ...(s.template?.isCustomOrMeme ? s.template : {}) } : s.template
+        };
+      });
+    }
+    return parsed;
   } catch {
     return getInitialMasterProfile();
   }
@@ -150,42 +164,56 @@ export function saveMasterProfile(profile: MasterProfile): void {
 }
 
 export function loadGrailWarSession(master: MasterProfile): HolyGrailWarSession {
+  const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
+  const activeMaxHp = activeServant ? calculateServantMaxHp(activeServant) : 31250;
+
   if (typeof window === 'undefined') {
-    const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
     return createHolyGrailWarSession({
       discordId: master.discordId,
       username: master.username,
       servantId: activeServant?.id || 'servant_default',
       servantName: activeServant?.template.name || 'Artoria Pendragon',
       avatarUrl: activeServant?.template.avatarUrl || '',
-      maxHp: activeServant?.template.baseHp || 15000
+      maxHp: activeMaxHp
     });
   }
 
   try {
     const raw = localStorage.getItem(WAR_STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const session: HolyGrailWarSession = JSON.parse(raw);
+      // Synchronize active player participant's max HP
+      if (session.participants && session.participants[master.discordId]) {
+        const p = session.participants[master.discordId];
+        const oldMax = p.maxHp || 1;
+        p.maxHp = activeMaxHp;
+        if (p.currentHp >= oldMax || p.currentHp === undefined) {
+          p.currentHp = activeMaxHp;
+        } else {
+          p.currentHp = Math.min(activeMaxHp, Math.round((p.currentHp / oldMax) * activeMaxHp));
+        }
+      }
+      return session;
+    }
 
-    const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
     const initial = createHolyGrailWarSession({
       discordId: master.discordId,
       username: master.username,
       servantId: activeServant?.id || 'servant_default',
       servantName: activeServant?.template.name || 'Artoria Pendragon',
       avatarUrl: activeServant?.template.avatarUrl || '',
-      maxHp: activeServant?.template.baseHp || 15000
+      maxHp: activeMaxHp
     });
     saveGrailWarSession(initial);
     return initial;
   } catch {
-    const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
     return createHolyGrailWarSession({
       discordId: master.discordId,
       username: master.username,
       servantId: activeServant?.id || 'servant_default',
       servantName: activeServant?.template.name || 'Artoria Pendragon',
       avatarUrl: activeServant?.template.avatarUrl || '',
-      maxHp: activeServant?.template.baseHp || 15000
+      maxHp: activeMaxHp
     });
   }
 }

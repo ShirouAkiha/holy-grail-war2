@@ -93,9 +93,9 @@ function getClassMultiplier(attacker: ServantClass, defender: ServantClass): num
     Ruler: ['Avenger']
   };
 
-  if (advantage[attacker]?.includes(defender)) return 1.5;
-  if (disadvantage[attacker]?.includes(defender)) return 0.5;
-  if (defender === 'Berserker') return 1.5;
+  if (advantage[attacker]?.includes(defender)) return 1.35;
+  if (disadvantage[attacker]?.includes(defender)) return 0.75;
+  if (defender === 'Berserker') return 1.35;
   return 1.0;
 }
 
@@ -104,7 +104,9 @@ function getClassMultiplier(attacker: ServantClass, defender: ServantClass): num
 // ==========================================
 // Computes baseline stats + allocated Parameter points + Craft Essence bonuses.
 function createCombatant(master: MasterProfile, servant: MasterServantInstance, isAi: boolean = false, overrideCurrentHp?: number): DuelCombatant {
-  const t = servant.template;
+  const templateId = servant.templateId || servant.template?.id || servant.id;
+  const canonical = SERVANT_DATABASE.find(s => s.id === templateId) || servant.template;
+  const t = { ...canonical, ...(servant.template?.isCustomOrMeme ? servant.template : {}) };
   const alloc = servant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
   const base = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
   const totalStr = (base.strength || 10) + (alloc.strength || 0);
@@ -116,7 +118,7 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
   const lvl = servant.level || 1;
 
   // Unified Formula: Base Stat * level Scaling + (Total Parameter * factor) + Craft Essence Equipment
-  const maxHp = Math.round((t.baseHp || 12000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceHp);
+  const maxHp = Math.round((t.baseHp || 28000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceHp);
   const baseAtk = Math.round((t.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceAtk);
   const baseDef = 10 + totalEnd * 2;
 
@@ -508,20 +510,20 @@ function resolveStrike(
   if (actionType === 'buster') {
     const critChance = Math.min(0.95, (attacker.critStars * 2.0) / 100);
     const isCrit = Math.random() < critChance;
-    const critMult = isCrit ? (2.0 * critDmgBonus) : 1.0;
-    const cardMult = 1.5;
+    const critMult = isCrit ? (1.75 * critDmgBonus) : 1.0;
+    const cardMult = 1.4;
     const variance = 0.95 + Math.random() * 0.10;
 
-    // FGO formula scaled: (ATK * Card * 0.23 - DEF * 4) * Class * Crit * Variance
-    const baseHit = (effectiveAtk * cardMult * 0.23) - (effectiveDef * 4);
-    rawDmg = Math.round(Math.max(600, baseHit) * classMult * critMult * variance);
+    // FGO formula scaled: (ATK * Card * 0.11 - DEF * 2) * Class * Crit * Variance
+    const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
+    rawDmg = Math.round(Math.max(400, baseHit) * classMult * critMult * variance);
 
     if (isEvading) {
       rawDmg = Math.round(rawDmg * 0.15);
       defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
     }
 
-    attacker.npGauge = Math.min(300, attacker.npGauge + (isCrit ? 12 : 8));
+    attacker.npGauge = Math.min(300, attacker.npGauge + (isCrit ? 10 : 6));
     if (isCrit) {
       attacker.critStars = Math.max(0, attacker.critStars - 10);
     } else {
@@ -542,15 +544,15 @@ function resolveStrike(
     const cardMult = 1.0;
     const variance = 0.95 + Math.random() * 0.10;
 
-    const baseHit = (effectiveAtk * cardMult * 0.23) - (effectiveDef * 4);
-    rawDmg = Math.round(Math.max(500, baseHit) * classMult * critMult * variance);
+    const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
+    rawDmg = Math.round(Math.max(300, baseHit) * classMult * critMult * variance);
 
     if (isEvading) {
       rawDmg = Math.round(rawDmg * 0.15);
       defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
     }
 
-    const npGain = Math.round((30 + Math.random() * 12) * npGenBonus * (isCrit ? 1.4 : 1.0));
+    const npGain = Math.round((26 + Math.random() * 8) * npGenBonus * (isCrit ? 1.4 : 1.0));
     attacker.npGauge = Math.min(300, attacker.npGauge + npGain);
     attacker.critStars = Math.min(50, attacker.critStars + 2);
 
@@ -565,20 +567,20 @@ function resolveStrike(
     const critChance = Math.min(0.90, (attacker.critStars * 2.5) / 100);
     const isCrit = Math.random() < critChance;
     const critMult = isCrit ? (1.75 * critDmgBonus) : 1.0;
-    const cardMult = 0.80;
+    const cardMult = 0.85;
     const variance = 0.95 + Math.random() * 0.10;
 
-    const baseHit = (effectiveAtk * cardMult * 0.23) - (effectiveDef * 4);
-    rawDmg = Math.round(Math.max(450, baseHit) * classMult * critMult * variance);
+    const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
+    rawDmg = Math.round(Math.max(250, baseHit) * classMult * critMult * variance);
 
     if (isEvading) {
       rawDmg = Math.round(rawDmg * 0.15);
       defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
     }
 
-    const starsGained = Math.round(22 + Math.random() * 8);
+    const starsGained = Math.round(18 + Math.random() * 6);
     attacker.critStars = Math.min(50, attacker.critStars + starsGained);
-    attacker.npGauge = Math.min(300, attacker.npGauge + 12);
+    attacker.npGauge = Math.min(300, attacker.npGauge + 10);
 
     const evadeTag = isEvading ? ' *(Evaded 85% DMG!)*' : '';
     const critTag = isCrit ? ' 💥 **CRITICAL HIT!**' : '';
@@ -589,15 +591,15 @@ function resolveStrike(
   // -------------------------------------------------------------
   else if (actionType === 'np') {
     const npTemplate = attacker.servant.template.noblePhantasm;
-    const npMultiplier = (npTemplate.multiplier || 500) / 100;
+    const npMultiplier = (npTemplate.multiplier || 380) / 100;
     const variance = 0.96 + Math.random() * 0.08;
 
-    // NP Formula: High multiplier scaled to deal ~7,000 - 13,000+ damage
+    // NP Formula: Balanced climax finisher dealing ~6,000 - 12,000 damage
     rawDmg = Math.round((effectiveAtk * npMultiplier * 0.18) * classMult * variance);
-    rawDmg = Math.max(3500, rawDmg);
+    rawDmg = Math.max(1500, rawDmg);
 
     if (isEvading) {
-      rawDmg = Math.round(rawDmg * 0.25);
+      rawDmg = Math.round(rawDmg * 0.20);
       defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
     }
 
@@ -606,7 +608,7 @@ function resolveStrike(
 
     if (isOvercharge) {
       attacker.npGauge = 20; // 20% refund on overcharge
-      attacker.critStars = Math.min(50, attacker.critStars + 15);
+      attacker.critStars = Math.min(50, attacker.critStars + 12);
     }
 
     const chant = attacker.servant.customQuotes?.noblePhantasm || npTemplate.chant;

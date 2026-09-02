@@ -7,6 +7,7 @@ import {
   CardType
 } from '../types';
 import { calculateRadarCoordinates, RadarPoint } from '../engine/customization';
+import { SERVANT_DATABASE } from '../data/servants';
 
 let canvasModule: any = null;
 try {
@@ -164,7 +165,9 @@ export async function renderServantProfileCard(
   const canvas = createCanvas(850, 390);
   const ctx = canvas.getContext('2d');
 
-  const t = servant.template || servant;
+  const templateId = servant.templateId || servant.template?.id || servant.id;
+  const canonical = SERVANT_DATABASE.find(s => s.id === templateId) || servant.template || servant;
+  const t = { ...canonical, ...(servant.template?.isCustomOrMeme ? servant.template : {}) };
   const alloc = servant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
   const base = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
 
@@ -178,7 +181,7 @@ export async function renderServantProfileCard(
   const ceBonusHp = servant.equippedCe?.hpBonus || 0;
   const lvl = servant.level || 1;
 
-  const totalHp = Math.round((t.baseHp || 12000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceBonusHp);
+  const totalHp = Math.round((t.baseHp || 28000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceBonusHp);
   const totalAtk = Math.round((t.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceBonusAtk);
 
   // Background

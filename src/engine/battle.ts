@@ -7,6 +7,7 @@ import {
   ServantClass,
   TurnActionChoice
 } from '../types';
+import { SERVANT_DATABASE } from '../data/servants';
 
 // ==========================================
 // 1. CLASS AFFINITY MULTIPLIER ENGINE
@@ -14,39 +15,39 @@ import {
 // Evaluates the damage multiplier between attacker and defender classes according to canonical Fate rules:
 // - Standard Knight Triangle: Saber beats Lancer, Lancer beats Archer, Archer beats Saber.
 // - Standard Cavalry Triangle: Rider beats Caster, Caster beats Assassin, Assassin beats Rider.
-// - Berserker: 1.5x damage dealt, 1.5x damage taken.
+// - Berserker: 1.35x damage dealt, 1.35x damage taken.
 // - Ruler / Avenger / Foreigner special affinities.
 export function calculateClassMultiplier(attackerClass: ServantClass, defenderClass: ServantClass): number {
   if (attackerClass === defenderClass) return 1.0;
 
   // Knight Triangle: Saber > Lancer > Archer > Saber
-  if (attackerClass === 'Saber' && defenderClass === 'Lancer') return 1.5;
-  if (attackerClass === 'Lancer' && defenderClass === 'Archer') return 1.5;
-  if (attackerClass === 'Archer' && defenderClass === 'Saber') return 1.5;
-  if (attackerClass === 'Saber' && defenderClass === 'Archer') return 0.5;
-  if (attackerClass === 'Lancer' && defenderClass === 'Saber') return 0.5;
-  if (attackerClass === 'Archer' && defenderClass === 'Lancer') return 0.5;
+  if (attackerClass === 'Saber' && defenderClass === 'Lancer') return 1.35;
+  if (attackerClass === 'Lancer' && defenderClass === 'Archer') return 1.35;
+  if (attackerClass === 'Archer' && defenderClass === 'Saber') return 1.35;
+  if (attackerClass === 'Saber' && defenderClass === 'Archer') return 0.75;
+  if (attackerClass === 'Lancer' && defenderClass === 'Saber') return 0.75;
+  if (attackerClass === 'Archer' && defenderClass === 'Lancer') return 0.75;
 
   // Cavalry Triangle: Rider > Caster > Assassin > Rider
-  if (attackerClass === 'Rider' && defenderClass === 'Caster') return 1.5;
-  if (attackerClass === 'Caster' && defenderClass === 'Assassin') return 1.5;
-  if (attackerClass === 'Assassin' && defenderClass === 'Rider') return 1.5;
-  if (attackerClass === 'Rider' && defenderClass === 'Assassin') return 0.5;
-  if (attackerClass === 'Caster' && defenderClass === 'Rider') return 0.5;
-  if (attackerClass === 'Assassin' && defenderClass === 'Caster') return 0.5;
+  if (attackerClass === 'Rider' && defenderClass === 'Caster') return 1.35;
+  if (attackerClass === 'Caster' && defenderClass === 'Assassin') return 1.35;
+  if (attackerClass === 'Assassin' && defenderClass === 'Rider') return 1.35;
+  if (attackerClass === 'Rider' && defenderClass === 'Assassin') return 0.75;
+  if (attackerClass === 'Caster' && defenderClass === 'Rider') return 0.75;
+  if (attackerClass === 'Assassin' && defenderClass === 'Caster') return 0.75;
 
-  // Berserker: Glass Cannon (Deals 1.5x to all, Takes 1.5x from all)
-  if (attackerClass === 'Berserker') return 1.5;
-  if (defenderClass === 'Berserker') return 1.5;
+  // Berserker: Glass Cannon (Deals 1.35x to all, Takes 1.35x from all)
+  if (attackerClass === 'Berserker') return 1.35;
+  if (defenderClass === 'Berserker') return 1.35;
 
   // Ruler: Resists standard 6 classes
   if (defenderClass === 'Ruler' && ['Saber', 'Archer', 'Lancer', 'Rider', 'Caster', 'Assassin'].includes(attackerClass)) {
-    return 0.5;
+    return 0.75;
   }
-  if (attackerClass === 'Avenger' && defenderClass === 'Ruler') return 2.0;
+  if (attackerClass === 'Avenger' && defenderClass === 'Ruler') return 1.5;
 
-  // Meme class: Shitposter deals chaotic 1.25x
-  if (attackerClass === 'Shitposter') return 1.25;
+  // Meme class: Shitposter deals chaotic 1.2x
+  if (attackerClass === 'Shitposter') return 1.2;
 
   return 1.0;
 }
@@ -60,7 +61,9 @@ export function createCombatantFromMasterServant(
   masterName: string,
   overrideCurrentHp?: number
 ): ActiveCombatant {
-  const t = servantInstance.template || servantInstance;
+  const templateId = servantInstance.templateId || servantInstance.template?.id || servantInstance.id;
+  const canonical = SERVANT_DATABASE.find(s => s.id === templateId) || servantInstance.template || servantInstance;
+  const t = { ...canonical, ...(servantInstance.template?.isCustomOrMeme ? servantInstance.template : {}) };
   const ce = servantInstance.equippedCe;
   const base = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
 
@@ -76,7 +79,7 @@ export function createCombatantFromMasterServant(
   const ceAtk = ce ? (ce.atkBonus || 0) : 0;
 
   const lvl = servantInstance.level || 1;
-  const baseHp = t.baseHp || 12000;
+  const baseHp = t.baseHp || 28000;
   const baseAtk = t.baseAtk || 10000;
 
   // Scaled calculations based on Servant level and Parameter distribution
@@ -205,10 +208,10 @@ export function resolveCombatTurn(
     const hitCrit = Math.random() < critChance;
     if (hitCrit) isCrit = true;
 
-    // Canonical FGO Damage Formula: (ATK * CardMod * 0.23 - DEF * 4) * ClassAdvantage * CritMult * Variance
+    // Balanced Tactical Damage Formula: (ATK * CardMod * 0.11 - DEF * 2) * ClassAdvantage * CritMult * Variance
     const variance = 0.95 + Math.random() * 0.10;
-    const baseHit = (effectiveAtk * cardMultiplier * 0.23) - (effectiveDef * 4);
-    let hitDamage = Math.max(500, Math.round(baseHit * classMultiplier * (hitCrit ? 2.0 : 1.0) * variance));
+    const baseHit = (effectiveAtk * cardMultiplier * 0.11) - (effectiveDef * 2);
+    let hitDamage = Math.max(300, Math.round(baseHit * classMultiplier * (hitCrit ? 1.75 : 1.0) * variance));
 
     if (isEvading) {
       hitDamage = Math.round(hitDamage * 0.15);
@@ -225,13 +228,13 @@ export function resolveCombatTurn(
   if (attackerChoice.useNoblePhantasm && attacker.npGauge >= 100) {
     npTriggered = true;
     npChant = attacker.noblePhantasm.chant;
-    const npMult = (attacker.noblePhantasm.multiplier || 500) / 100;
+    const npMult = (attacker.noblePhantasm.multiplier || 380) / 100;
     const variance = 0.96 + Math.random() * 0.08;
     let npDmg = Math.round((effectiveAtk * npMult * 0.18) * classMultiplier * variance);
-    npDmg = Math.max(3500, npDmg);
+    npDmg = Math.max(1500, npDmg);
 
     if (isEvading) {
-      npDmg = Math.round(npDmg * 0.25);
+      npDmg = Math.round(npDmg * 0.20);
     }
 
     totalDmg += npDmg;

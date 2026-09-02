@@ -7,38 +7,39 @@ import {
   ServantClass,
   TurnActionChoice
 } from '../types';
+import { SERVANT_DATABASE } from '../data/servants';
 
 export function calculateClassMultiplier(attackerClass: ServantClass, defenderClass: ServantClass): number {
   if (attackerClass === defenderClass) return 1.0;
 
   // Knight Triangle: Saber > Lancer > Archer > Saber
-  if (attackerClass === 'Saber' && defenderClass === 'Lancer') return 1.5;
-  if (attackerClass === 'Lancer' && defenderClass === 'Archer') return 1.5;
-  if (attackerClass === 'Archer' && defenderClass === 'Saber') return 1.5;
-  if (attackerClass === 'Saber' && defenderClass === 'Archer') return 0.5;
-  if (attackerClass === 'Lancer' && defenderClass === 'Saber') return 0.5;
-  if (attackerClass === 'Archer' && defenderClass === 'Lancer') return 0.5;
+  if (attackerClass === 'Saber' && defenderClass === 'Lancer') return 1.35;
+  if (attackerClass === 'Lancer' && defenderClass === 'Archer') return 1.35;
+  if (attackerClass === 'Archer' && defenderClass === 'Saber') return 1.35;
+  if (attackerClass === 'Saber' && defenderClass === 'Archer') return 0.75;
+  if (attackerClass === 'Lancer' && defenderClass === 'Saber') return 0.75;
+  if (attackerClass === 'Archer' && defenderClass === 'Lancer') return 0.75;
 
   // Cavalry Triangle: Rider > Caster > Assassin > Rider
-  if (attackerClass === 'Rider' && defenderClass === 'Caster') return 1.5;
-  if (attackerClass === 'Caster' && defenderClass === 'Assassin') return 1.5;
-  if (attackerClass === 'Assassin' && defenderClass === 'Rider') return 1.5;
-  if (attackerClass === 'Rider' && defenderClass === 'Assassin') return 0.5;
-  if (attackerClass === 'Caster' && defenderClass === 'Rider') return 0.5;
-  if (attackerClass === 'Assassin' && defenderClass === 'Caster') return 0.5;
+  if (attackerClass === 'Rider' && defenderClass === 'Caster') return 1.35;
+  if (attackerClass === 'Caster' && defenderClass === 'Assassin') return 1.35;
+  if (attackerClass === 'Assassin' && defenderClass === 'Rider') return 1.35;
+  if (attackerClass === 'Rider' && defenderClass === 'Assassin') return 0.75;
+  if (attackerClass === 'Caster' && defenderClass === 'Rider') return 0.75;
+  if (attackerClass === 'Assassin' && defenderClass === 'Caster') return 0.75;
 
-  // Berserker: Glass Cannon (Deals 1.5x to all, Takes 1.5x from all)
-  if (attackerClass === 'Berserker') return 1.5;
-  if (defenderClass === 'Berserker') return 1.5;
+  // Berserker: 1.35x dealt, 1.35x taken
+  if (attackerClass === 'Berserker') return 1.35;
+  if (defenderClass === 'Berserker') return 1.35;
 
   // Ruler: Resists standard 6 classes
   if (defenderClass === 'Ruler' && ['Saber', 'Archer', 'Lancer', 'Rider', 'Caster', 'Assassin'].includes(attackerClass)) {
-    return 0.5;
+    return 0.75;
   }
-  if (attackerClass === 'Avenger' && defenderClass === 'Ruler') return 2.0;
+  if (attackerClass === 'Avenger' && defenderClass === 'Ruler') return 1.5;
 
-  // Meme class: Shitposter deals chaotic 1.25x
-  if (attackerClass === 'Shitposter') return 1.25;
+  // Meme class: Shitposter deals chaotic 1.2x
+  if (attackerClass === 'Shitposter') return 1.2;
 
   return 1.0;
 }
@@ -48,7 +49,9 @@ export function createCombatantFromMasterServant(
   masterName: string,
   overrideCurrentHp?: number
 ): ActiveCombatant {
-  const t = servantInstance.template || servantInstance;
+  const templateId = servantInstance.templateId || servantInstance.template?.id || servantInstance.id;
+  const canonical = SERVANT_DATABASE.find(s => s.id === templateId) || servantInstance.template || servantInstance;
+  const t = { ...canonical, ...(servantInstance.template?.isCustomOrMeme ? servantInstance.template : {}) };
   const ce = servantInstance.equippedCe;
   const base = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
 
@@ -62,7 +65,7 @@ export function createCombatantFromMasterServant(
   const ceAtk = ce ? (ce.atkBonus || 0) : 0;
 
   const lvl = servantInstance.level || 1;
-  const baseHp = t.baseHp || 12000;
+  const baseHp = t.baseHp || 28000;
   const baseAtk = t.baseAtk || 10000;
 
   const maxHp = Math.round(baseHp * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceHp);
@@ -360,7 +363,7 @@ export function executeBattleTurn(
       .reduce((sum, b) => sum + b.value, 0);
 
     const classMult = calculateClassMultiplier(actor.servantClass, target.servantClass);
-    const effectiveAtk = actor.atk * (1 + atkBuff / 100) * (1 + (actor.stats.strength * 0.02));
+    const effectiveAtk = actor.atk * (1 + atkBuff / 100) * (1 + (actor.stats.strength * 0.01));
     const effectiveDef = target.def * (1 + defBuff / 100);
 
     const cards = choice.selectedCards.length === 3 ? choice.selectedCards : ['Buster', 'Arts', 'Quick'] as CardType[];
@@ -375,8 +378,8 @@ export function executeBattleTurn(
     if (choice.useNoblePhantasm && actor.npGauge >= 100) {
       npTriggered = true;
       npChant = actor.noblePhantasm.chant;
-      const npMultiplier = (actor.noblePhantasm.multiplier / 100) * (1 + (actor.npGauge / 300));
-      let npBaseDmg = Math.max(500, (effectiveAtk * npMultiplier * classMult) - effectiveDef);
+      const npMultiplier = (actor.noblePhantasm.multiplier / 100) * (1 + (actor.npGauge / 500));
+      let npBaseDmg = Math.max(800, (effectiveAtk * npMultiplier * 0.20 * classMult) - (effectiveDef * 0.3));
 
       if (target.isEvading) {
         npBaseDmg = 0;
@@ -385,45 +388,45 @@ export function executeBattleTurn(
 
       totalDamage += Math.round(npBaseDmg);
       totalNpCharge += 20; // base refund
-      totalStars += 15;
+      totalStars += 12;
       actor.npGauge = 0; // consume gauge
     } else {
       // Calculate 3-card chain attacks
       cards.forEach((card, idx) => {
-        const positionMultiplier = 1.0 + idx * 0.2; // 1st: 1.0x, 2nd: 1.2x, 3rd: 1.4x
+        const positionMultiplier = 1.0 + idx * 0.15; // 1st: 1.0x, 2nd: 1.15x, 3rd: 1.30x
 
         // Critical hit check based on Agility + Luck + Stars
-        const critChance = Math.min(0.9, (actor.stats.agility * 0.015) + (actor.critStars * 0.02));
+        const critChance = Math.min(0.85, (actor.stats.agility * 0.01) + (actor.critStars * 0.02));
         const cardIsCrit = Math.random() < critChance;
         if (cardIsCrit) isCritical = true;
-        const critMultiplier = cardIsCrit ? 2.0 + (actor.stats.luck * 0.02) : 1.0;
+        const critMultiplier = cardIsCrit ? 1.75 + (actor.stats.luck * 0.01) : 1.0;
 
         let cardDmgMult = 1.0;
         let cardNpMult = 1.0;
         let cardStarMult = 1.0;
 
         if (card === 'Buster') {
-          cardDmgMult = 1.5; // Buster deals heavy base dmg
+          cardDmgMult = 1.4; // Buster deals strong base dmg
           cardNpMult = 0.0;
           cardStarMult = 0.5;
         } else if (card === 'Arts') {
           cardDmgMult = 1.0;
-          cardNpMult = 3.0 + (actor.stats.mana * 0.05); // Arts gives huge NP charge
+          cardNpMult = 2.5 + (actor.stats.mana * 0.04); // Arts gives solid NP charge
           cardStarMult = 0.5;
         } else if (card === 'Quick') {
-          cardDmgMult = 0.8;
+          cardDmgMult = 0.85;
           cardNpMult = 1.0;
-          cardStarMult = 3.0 + (actor.stats.agility * 0.05); // Quick generates crit stars
+          cardStarMult = 2.5 + (actor.stats.agility * 0.04); // Quick generates crit stars
         }
 
         // Apply chain bonus
-        if (cardChainType === 'Buster Brave') cardDmgMult += 0.5;
-        if (cardChainType === 'Arts Chain') cardNpMult += 1.5;
-        if (cardChainType === 'Quick Chain') cardStarMult += 2.0;
+        if (cardChainType === 'Buster Brave') cardDmgMult += 0.35;
+        if (cardChainType === 'Arts Chain') cardNpMult += 1.2;
+        if (cardChainType === 'Quick Chain') cardStarMult += 1.8;
 
         let hitDmg = Math.max(
           100,
-          ((effectiveAtk * 0.35 * cardDmgMult * positionMultiplier * critMultiplier * classMult) - (effectiveDef * 0.3))
+          ((effectiveAtk * 0.11 * cardDmgMult * positionMultiplier * critMultiplier * classMult) - (effectiveDef * 0.2))
         );
 
         if (target.isEvading) {
@@ -432,8 +435,8 @@ export function executeBattleTurn(
         }
 
         totalDamage += Math.round(hitDmg);
-        totalNpCharge += Math.round(10 * cardNpMult * (actor.stats.mana / 15));
-        totalStars += Math.round(5 * cardStarMult);
+        totalNpCharge += Math.round(8 * cardNpMult * (actor.stats.mana / 15));
+        totalStars += Math.round(4 * cardStarMult);
       });
     }
 

@@ -377,15 +377,17 @@ export interface WarActionResult {
  * Calculates a Servant's true Max HP scaled with Level, allocated Endurance, and equipped Craft Essence.
  */
 export function calculateServantMaxHp(servantInstance: any): number {
-  if (!servantInstance) return 15000;
+  if (!servantInstance) return 30000;
   const sAny = servantInstance as any;
-  const sTemplate = sAny?.template || sAny;
+  const templateId = sAny.templateId || sAny.template?.id || sAny.id;
+  const canonical = SERVANT_DATABASE.find(s => s.id === templateId) || sAny.template || sAny;
+  const sTemplate = { ...canonical, ...(sAny.template?.isCustomOrMeme ? sAny.template : {}) };
   const base = sTemplate?.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
   const totalEnd = (base.endurance || 10) + (sAny?.allocatedStats?.endurance || 0);
   const ce = sAny?.equippedCe;
   const ceHp = ce ? (ce.hpBonus || 0) : 0;
   const lvl = sAny?.level || 1;
-  const baseHp = sTemplate?.baseHp || sAny?.baseHp || 12000;
+  const baseHp = sTemplate?.baseHp || 28000;
   return Math.round(baseHp * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceHp);
 }
 
