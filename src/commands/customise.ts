@@ -244,12 +244,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const collector = reply.createMessageComponentCollector({
         componentType: ComponentType.StringSelect,
         filter: (i: any) => i.user.id === interaction.user.id,
-        time: 60000
+        idle: 120000,
+        time: 600000
       });
 
       collector.on('collect', async (i: any) => {
         try {
           if (i.replied || i.deferred) return;
+          collector.resetTimer();
           const ceId = i.values[0];
         const picked = CRAFT_ESSENCE_DATABASE.find(c => c.id === ceId);
         if (picked) {

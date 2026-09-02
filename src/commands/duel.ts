@@ -1026,10 +1026,11 @@ async function startInteractiveDuel(
     battleMsg = res?.resource?.message || await contextInteraction.fetchReply();
   }
 
-  // Component Collector for turn choices
+  // Component Collector for turn choices - resets idle timer on every valid player action
   const collector = battleMsg.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    time: 180000 // 3 minutes timeout
+    idle: 120000, // 2 minutes per player turn
+    time: 3600000 // 1 hour absolute safety ceiling
   });
 
   collector.on('collect', async (i: any) => {
@@ -1043,6 +1044,9 @@ async function startInteractiveDuel(
         });
         return;
       }
+
+      // Reset inactivity idle timer on active player action
+      collector.resetTimer();
 
       // Acknowledge Discord immediately so the 3s timeout never triggers during canvas rendering
       await i.deferUpdate();
@@ -1189,10 +1193,10 @@ async function startInteractiveDuel(
   });
 
   collector.on('end', async (_collected: any, reason: string) => {
-    if (reason === 'time') {
+    if (reason === 'idle' || reason === 'time') {
       try {
         await battleMsg.edit({
-          content: '⌛ Duel ended due to inactivity.',
+          content: '⌛ **Duel ended due to inactivity** *(Turn timed out after 2 minutes of no input)*.',
           components: []
         });
       } catch {}

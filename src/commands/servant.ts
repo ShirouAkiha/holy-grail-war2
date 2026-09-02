@@ -204,7 +204,8 @@ function buildServantRows(master: any, activeServant: any) {
 // ==========================================
 function setupServantCollector(message: any, userId: string, initialMaster: any) {
   const collector = message.createMessageComponentCollector({
-    time: 120000 // 2 minutes
+    idle: 120000, // 2 minutes idle
+    time: 600000 // 10 minutes total max
   });
 
   collector.on('collect', async (i: any) => {
@@ -214,6 +215,7 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
       await i.reply({ content: 'Only the Master who issued this command can interact with this profile.', ephemeral: true });
       return;
     }
+    collector.resetTimer();
 
     try {
       const master = await getOrCreateMaster(i.user.id, i.user.username);

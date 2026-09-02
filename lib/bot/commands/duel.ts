@@ -135,12 +135,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const collector = msg.createMessageComponentCollector({
       filter: i => i.user.id === interaction.user.id,
-      time: 120000
+      idle: 120000, // 2 minutes per move
+      time: 3600000 // 1 hour absolute safety ceiling
     });
 
     collector.on('collect', async i => {
       try {
         if (i.replied || i.deferred) return;
+        collector.resetTimer();
         let p1Cards: CardType[] = ['Buster', 'Arts', 'Quick'];
       let useNp = false;
       let useSkillIndex: number | undefined;

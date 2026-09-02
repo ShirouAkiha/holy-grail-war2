@@ -169,7 +169,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const collector = reply.createMessageComponentCollector({
       componentType: ComponentType.Button,
-      time: 120000
+      idle: 120000,
+      time: 600000
     });
 
     collector.on('collect', async (i: any) => {
@@ -178,6 +179,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         await i.reply({ content: 'Only the Master who issued this command can configure workshop defenses.', ephemeral: true });
         return;
       }
+      collector.resetTimer();
 
       try {
         const m = await getOrCreateMaster(i.user.id, i.user.username);
