@@ -263,14 +263,45 @@ export function updateServantTemplate(
 }
 
 /**
- * Removes a custom Servant from the database by ID.
+ * Removes a custom Servant from the database by ID or Name, or clears all if ID is 'all' or '*'.
  */
 export function removeCustomServant(servantId: string): boolean {
+  const query = servantId.trim().toLowerCase();
+  
+  if (query === 'all' || query === '*') {
+    const prevCount = customServants.length;
+    customServants = [];
+    savedServantsMap.clear();
+    saveCustomServantsToDisk();
+    return prevCount > 0;
+  }
+
   const initialLen = customServants.length;
-  customServants = customServants.filter(s => s.id !== servantId);
-  savedServantsMap.delete(servantId);
+  // Match by exact ID, case-insensitive ID, or case-insensitive Name
+  const target = customServants.find(
+    s => s.id.toLowerCase() === query || 
+         s.name.toLowerCase() === query ||
+         s.id.toLowerCase().includes(query) ||
+         s.name.toLowerCase().includes(query)
+  );
+
+  if (!target) return false;
+
+  customServants = customServants.filter(s => s.id !== target.id);
+  savedServantsMap.delete(target.id);
   saveCustomServantsToDisk();
   return customServants.length < initialLen;
+}
+
+/**
+ * Clears all custom servants from the Throne of Heroes.
+ */
+export function clearAllCustomServants(): number {
+  const count = customServants.length;
+  customServants = [];
+  savedServantsMap.clear();
+  saveCustomServantsToDisk();
+  return count;
 }
 
 /**

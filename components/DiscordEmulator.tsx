@@ -632,9 +632,19 @@ export default function DiscordEmulator({
         return;
       }
 
-      if (trimmed.includes('delete')) {
-        const parts = rawCmd.split(' ');
-        const idToDelete = parts[2];
+      if (trimmed.includes('delete') || trimmed.includes('clear')) {
+        let idToDelete = rawCmd
+          .replace(/\/addservant/gi, '')
+          .replace(/delete/gi, '')
+          .replace(/clear/gi, '')
+          .replace(/servant_id[:=]/gi, '')
+          .trim()
+          .replace(/^["']|["']$/g, '');
+
+        if (!idToDelete && trimmed.includes('clear')) {
+          idToDelete = 'all';
+        }
+
         if (!idToDelete) {
           addMessage({
             id: getNextId('bot_addservant_del_err'),
@@ -642,20 +652,44 @@ export default function DiscordEmulator({
             timestamp: 'Just now',
             embed: {
               title: '❌ Missing Servant ID',
-              description: 'Usage: `/addservant delete <servant_id>`. Use `/addservant list` to inspect IDs.',
+              description: 'Usage: `/addservant delete <servant_id>` or `/addservant delete all`. Use `/addservant list` to inspect IDs.',
               color: '#ef4444'
             }
           });
           return;
         }
 
-        const filtered = customServants.filter(s => s.id !== idToDelete && !s.id.includes(idToDelete));
-        if (filtered.length < customServants.length) {
+        const queryLower = idToDelete.toLowerCase();
+        const isAll = queryLower === 'all' || queryLower === '*';
+
+        let filtered: typeof customServants = [];
+        let deletedTargetName = idToDelete;
+
+        if (isAll) {
+          filtered = [];
+        } else {
+          const match = customServants.find(
+            s => s.id.toLowerCase() === queryLower ||
+                 s.name.toLowerCase() === queryLower ||
+                 s.id.toLowerCase().includes(queryLower) ||
+                 s.name.toLowerCase().includes(queryLower)
+          );
+
+          if (match) {
+            deletedTargetName = `${match.name} (${match.id})`;
+            filtered = customServants.filter(s => s.id !== match.id);
+          } else {
+            filtered = customServants;
+          }
+        }
+
+        if (isAll || filtered.length < customServants.length) {
+          const removedCount = customServants.length - filtered.length;
           onUpdateCustomServants(filtered);
           fetch('/api/servants/custom', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'delete', servantId: idToDelete })
+            body: JSON.stringify({ action: isAll ? 'save_all' : 'delete', servants: isAll ? [] : undefined, servantId: idToDelete })
           }).catch(err => console.warn('Disk sync warning:', err));
 
           addMessage({
@@ -664,7 +698,9 @@ export default function DiscordEmulator({
             timestamp: 'Just now',
             embed: {
               title: '🗑️ Custom Servant Removed',
-              description: `Successfully deleted custom Servant with ID \`${idToDelete}\` from the Throne of Heroes registry.`,
+              description: isAll 
+                ? `Successfully cleared all ${removedCount} custom Heroic Spirits from the Throne of Heroes registry.`
+                : `Successfully deleted custom Servant **${deletedTargetName}** from the Throne of Heroes registry.`,
               color: '#10b981'
             }
           });
@@ -675,7 +711,7 @@ export default function DiscordEmulator({
             timestamp: 'Just now',
             embed: {
               title: '❌ Servant Not Found',
-              description: `No custom Servant found with ID matching \`${idToDelete}\`.`,
+              description: `No custom Servant found matching \`${idToDelete}\`. Use \`/addservant list\` to see registered custom spirits. (Canon Servants cannot be removed).`,
               color: '#ef4444'
             }
           });

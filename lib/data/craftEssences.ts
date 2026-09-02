@@ -129,20 +129,20 @@ export const GACHA_BANNERS: GachaBanner[] = [
     }
   },
   {
-    id: 'banner_server_chaos_memes',
-    title: 'Server Discord Chaos: Midnight Raid',
-    subtitle: 'Special Meme Rate-Up: Terminal Saber Linus & Shadow Mod (5★ / 4★)',
-    description: 'Summon overpowered developers, tyrannical Discord moderators, and hyper-caffeinated heroes!',
-    featuredServantIds: ['terminal_saber_linus', 'discord_mod_assassin', 'coffee_berserker_caffeine'],
-    featuredCeIds: ['ce_gamer_fuel', 'ce_kaleidoscope'],
-    bannerType: 'server_memes',
+    id: 'banner_imperial_rose',
+    title: 'Imperial Bloom: Golden Theater',
+    subtitle: 'Featured Rate-Up: Nero Claudius (4★ SR) & EMIYA (4★ SR)',
+    description: 'The Emperor of Rome opens her radiant theater alongside the Fabled Wrought Iron Hero!',
+    featuredServantIds: ['nero_claudius_saber', 'emiya_archer', 'heracles_berserker'],
+    featuredCeIds: ['ce_formal_craft', 'ce_kaleidoscope'],
+    bannerType: 'standard',
     costPerPull: 3,
     costTenPull: 30,
-    bannerArtUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80',
+    bannerArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
     rates: {
-      ssrServant: 1.5, // slightly boosted for meme fun
-      srServant: 5.0,
-      rServant: 37.5,
+      ssrServant: 1.0,
+      srServant: 4.5,
+      rServant: 38.5,
       ssrCe: 4.0,
       srCe: 12.0,
       rCe: 40.0

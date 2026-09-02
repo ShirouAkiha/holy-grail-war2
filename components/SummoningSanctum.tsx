@@ -1301,8 +1301,20 @@ export default function SummoningSanctum({
                   <p className="text-white/80"><span className="text-amber-400">Victory:</span> &quot;{inspectedServant.victoryQuote}&quot;</p>
                 </div>
 
-                {/* Admin Quick Edit Action */}
-                <div className="mt-5 pt-3 border-t border-white/10 flex justify-end">
+                {/* Admin Quick Edit Action & Delete for Custom Servants */}
+                <div className="mt-5 pt-3 border-t border-white/10 flex items-center justify-between">
+                  {inspectedServant.isCustomOrMeme ? (
+                    <button
+                      onClick={() => {
+                        handleDeleteCustomServant(inspectedServant.id);
+                        setInspectedServant(null);
+                      }}
+                      className="px-3 py-2 bg-rose-950/80 hover:bg-rose-900 border border-rose-600/50 text-rose-200 font-mono text-xs rounded-lg transition flex items-center gap-1.5"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Delete Custom Servant
+                    </button>
+                  ) : <div />}
+
                   <button
                     onClick={() => {
                       handleSelectServantToEdit(inspectedServant.id);

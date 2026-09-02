@@ -389,12 +389,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const deleted = removeCustomServant(servantId);
 
     if (deleted) {
+      const isAll = servantId.toLowerCase() === 'all' || servantId === '*';
       await interaction.reply({
         ephemeral: true,
         embeds: [
           new EmbedBuilder()
             .setTitle('🗑️ Custom Servant Removed')
-            .setDescription(`Successfully erased Heroic Spirit \`${servantId}\` from the Throne of Heroes registry.`)
+            .setDescription(
+              isAll 
+                ? 'Successfully cleared all custom Heroic Spirits from the Throne of Heroes registry.'
+                : `Successfully erased custom Heroic Spirit matching \`${servantId}\` from the Throne of Heroes registry.`
+            )
             .setColor(0x10b981)
         ]
       });
@@ -404,7 +409,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         embeds: [
           new EmbedBuilder()
             .setTitle('❌ Servant Not Found')
-            .setDescription(`No custom Servant found with ID \`${servantId}\`. Note: Default canonical Servants cannot be deleted.`)
+            .setDescription(`No custom Servant found matching \`${servantId}\`. Use \`/addservant list\` to see current custom spirits. Note: Default canonical Servants are permanent.`)
             .setColor(0xef4444)
         ]
       });
