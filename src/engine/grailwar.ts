@@ -401,7 +401,7 @@ export function calculateCurrentHp(participant: WarMasterParticipant, now: numbe
     participant.currentHp = 0;
     return 0;
   }
-  const maxHp = participant.maxHp || 15000;
+  const maxHp = participant.maxHp || 30000;
   if (participant.currentHp >= maxHp) {
     participant.currentHp = maxHp;
     return maxHp;

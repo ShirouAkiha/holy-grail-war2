@@ -218,13 +218,26 @@ async function createTurnSummaryAttachment(
   const isCrit = lastLogText.includes('CRITICAL');
   const isNP = lastLogText.includes('NOBLE PHANTASM');
 
+  // Extract the true action and damage line from lastLogText
+  let summaryLine = lastLogText;
+  if (lastLogText.includes('\n')) {
+    const splitLines = lastLogText.split('\n').map(l => l.trim()).filter(Boolean);
+    const dmgLine = splitLines.find(l => l.includes('DMG') || l.includes('damage') || l.includes('obliterated') || l.includes('dealt') || l.includes('executed'));
+    summaryLine = dmgLine || splitLines[splitLines.length - 1];
+  }
+  const cleanActionSummary = summaryLine
+    .replace(/[*_~`>#]/g, '')
+    .replace(/[⚔️💥✨🌀⚡🔴🔵🟢🛡️👑🌟🗡️🔥💀🩸]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
   const turnLog: CombatTurnLog = {
     turnNumber: round,
     actorId: p1.userId,
     actorName: p1.servant.template.name,
     targetId: p2.userId,
     targetName: p2.servant.template.name,
-    actionSummary: lastLogText.replace(/\*\*/g, '').replace(/[\r\n]+/g, ' ').slice(0, 100),
+    actionSummary: cleanActionSummary,
     cardsUsed: p1Cards,
     p1Cards: p1Cards,
     p2Cards: p2Cards,
@@ -1153,7 +1166,7 @@ async function startInteractiveDuel(
 
         // Keep turn on P1
         activeUserId = p1.userId;
-        const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, log, p1CardChoice, p2CardChoice);
+        const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, aiLog, p1CardChoice, p2CardChoice);
         const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs);
         const updatedButtons = buildCombatButtons(p1);
         await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });

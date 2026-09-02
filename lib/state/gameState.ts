@@ -182,16 +182,30 @@ export function loadGrailWarSession(master: MasterProfile): HolyGrailWarSession 
     const raw = localStorage.getItem(WAR_STORAGE_KEY);
     if (raw) {
       const session: HolyGrailWarSession = JSON.parse(raw);
-      // Synchronize active player participant's max HP
-      if (session.participants && session.participants[master.discordId]) {
-        const p = session.participants[master.discordId];
-        const oldMax = p.maxHp || 1;
-        p.maxHp = activeMaxHp;
-        if (p.currentHp >= oldMax || p.currentHp === undefined) {
-          p.currentHp = activeMaxHp;
-        } else {
-          p.currentHp = Math.min(activeMaxHp, Math.round((p.currentHp / oldMax) * activeMaxHp));
-        }
+      // Synchronize all participants' max HP to canonical templates
+      if (session.participants) {
+        Object.values(session.participants).forEach(p => {
+          const isCurrentMaster = p.discordId === master.discordId;
+          const freshMax = isCurrentMaster
+            ? activeMaxHp
+            : calculateServantMaxHp({
+                templateId: p.servantId,
+                name: p.servantName,
+                servantClass: p.servantClass,
+                level: 20,
+                allocatedStats: { strength: 3, endurance: 3, agility: 3, mana: 3, luck: 2 }
+              });
+
+          const oldMax = p.maxHp || 1;
+          p.maxHp = freshMax;
+          if (p.isAlive) {
+            if (p.currentHp >= oldMax || p.currentHp === undefined || p.currentHp === 0) {
+              p.currentHp = freshMax;
+            } else {
+              p.currentHp = Math.min(freshMax, Math.round((p.currentHp / oldMax) * freshMax));
+            }
+          }
+        });
       }
       return session;
     }

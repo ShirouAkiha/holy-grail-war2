@@ -701,13 +701,21 @@ export async function renderBattleTurnSummary(
   ctx.fillText(`★ HOLY GRAIL WAR • TURN ${log.turnNumber} CLASH RESOLUTION ★`, 320, 265);
 
   // Main Action Text
-  const cleanSummary = (log.actionSummary || '')
+  let summaryText = log.actionSummary || '';
+  if (summaryText.includes('\n')) {
+    const splitLines = summaryText.split('\n').map(l => l.trim()).filter(Boolean);
+    const dmgLine = splitLines.find(l => l.includes('DMG') || l.includes('damage') || l.includes('obliterated') || l.includes('dealt') || l.includes('executed'));
+    summaryText = dmgLine || splitLines[splitLines.length - 1];
+  }
+
+  const cleanSummary = summaryText
+    .replace(/[*_~`>#]/g, '')
     .replace(/[⚔️💥✨🌀⚡🔴🔵🟢🛡️👑🌟🗡️🔥💀🩸]/gu, '')
     .replace(/\s+/g, ' ')
     .trim();
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 19px sans-serif';
+  ctx.font = 'bold 17px sans-serif';
   const words = cleanSummary.split(' ');
   const lines: string[] = [];
   let currentLine = '';
@@ -723,9 +731,9 @@ export async function renderBattleTurnSummary(
   }
   if (currentLine) lines.push(currentLine);
 
-  const startY = lines.length > 1 ? 298 : 310;
-  lines.forEach((line, i) => {
-    ctx.fillText(line, 320, startY + i * 24);
+  const startY = lines.length > 1 ? 296 : 308;
+  lines.slice(0, 2).forEach((line, i) => {
+    ctx.fillText(line, 320, startY + i * 22);
   });
 
   // Special Highlight Banner

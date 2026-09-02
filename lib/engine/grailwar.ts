@@ -146,6 +146,28 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
         }
       }
     }
+    
+    // Sanitize all participants' max HP across the board
+    Object.values(globalWarSession.participants).forEach(p => {
+      if (p.discordId !== master.discordId) {
+        const canonical = SERVANT_DATABASE.find(s => s.id === p.servantId || s.name.toLowerCase() === p.servantName.toLowerCase()) ||
+          SERVANT_DATABASE.find(s => s.name.toLowerCase().includes(p.servantName.toLowerCase()));
+        if (canonical) {
+          const computed = calculateServantMaxHp({
+            template: canonical,
+            templateId: canonical.id,
+            level: 20,
+            allocatedStats: { strength: 3, endurance: 3, agility: 3, mana: 3, luck: 2 }
+          });
+          if (p.maxHp !== computed) {
+            const hpRatio = p.maxHp > 0 ? p.currentHp / p.maxHp : 1;
+            p.maxHp = computed;
+            p.currentHp = Math.min(computed, Math.round(hpRatio * computed));
+          }
+        }
+      }
+    });
+
     return globalWarSession;
   }
 
@@ -240,7 +262,7 @@ export function calculateCurrentHp(participant: WarMasterParticipant, now: numbe
     participant.currentHp = 0;
     return 0;
   }
-  const maxHp = participant.maxHp || 15000;
+  const maxHp = participant.maxHp || 30000;
   if (participant.currentHp >= maxHp) {
     participant.currentHp = maxHp;
     return maxHp;
