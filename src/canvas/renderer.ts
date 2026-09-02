@@ -166,10 +166,16 @@ export async function renderServantProfileCard(
   const ctx = canvas.getContext('2d');
 
   const templateId = servant.templateId || servant.template?.id || servant.id;
-  const canonical = SERVANT_DATABASE.find(s => s.id === templateId) || servant.template || servant;
-  const t = { ...canonical, ...(servant.template?.isCustomOrMeme ? servant.template : {}) };
+  const canonical = SERVANT_DATABASE.find(
+    s => s.id === templateId || 
+         (s.name && servant.name && s.name.toLowerCase() === servant.name.toLowerCase()) ||
+         (s.name && servant.template?.name && s.name.toLowerCase() === servant.template.name.toLowerCase())
+  ) || servant.template || servant;
+  
+  const isCustom = servant.template?.isCustomOrMeme || canonical?.isCustomOrMeme;
+  const t = isCustom ? { ...canonical, ...servant.template } : { ...(canonical || servant.template || servant) };
   const alloc = servant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
-  const base = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
+  const base = canonical?.baseStats || t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
 
   const totalStr = (base.strength || 10) + (alloc.strength || 0);
   const totalEnd = (base.endurance || 10) + (alloc.endurance || 0);
@@ -181,8 +187,10 @@ export async function renderServantProfileCard(
   const ceBonusHp = servant.equippedCe?.hpBonus || 0;
   const lvl = servant.level || 1;
 
-  const totalHp = Math.round((t.baseHp || 28000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceBonusHp);
-  const totalAtk = Math.round((t.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceBonusAtk);
+  const baseHp = canonical?.baseHp || t.baseHp || 28000;
+  const baseAtk = canonical?.baseAtk || t.baseAtk || 10000;
+  const totalHp = Math.round(baseHp * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceBonusHp);
+  const totalAtk = Math.round(baseAtk * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceBonusAtk);
 
   // Background
   const bgGrad = ctx.createLinearGradient(0, 0, 850, 390);

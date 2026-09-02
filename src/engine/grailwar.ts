@@ -30,7 +30,8 @@ function loadWarFromDisk(): HolyGrailWarSession | null {
     if (fs.existsSync(GRAIL_WAR_FILE)) {
       const raw = fs.readFileSync(GRAIL_WAR_FILE, 'utf-8');
       if (raw) {
-        return JSON.parse(raw);
+        const session = JSON.parse(raw);
+        return synchronizeWarParticipants(session);
       }
     }
   } catch (err) {
@@ -48,6 +49,48 @@ export function saveWarToDisk(): void {
   } catch (err) {
     console.error('[GrailWar] Failed to write grail_war.json to disk:', err);
   }
+}
+
+/**
+ * Ensures all participants in the active Holy Grail War are synchronized to canonical Servant stats and balanced HP pools.
+ */
+export function synchronizeWarParticipants(war: HolyGrailWarSession): HolyGrailWarSession {
+  if (!war || !war.participants) return war;
+
+  let modified = false;
+  for (const p of Object.values(war.participants)) {
+    const canonical = SERVANT_DATABASE.find(
+      s => s.id === p.servantId ||
+           (s.name && p.servantName && s.name.toLowerCase() === p.servantName.toLowerCase()) ||
+           (s.name && p.servantName && s.name.toLowerCase().includes(p.servantName.toLowerCase())) ||
+           (s.name && p.servantName && p.servantName.toLowerCase().includes(s.name.toLowerCase()))
+    );
+
+    const baseHp = canonical?.baseHp || 28000;
+    const endurance = canonical?.baseStats?.endurance || 10;
+    const computedMax = Math.round(baseHp + endurance * 150 + 500);
+
+    if (computedMax > 0 && p.maxHp !== computedMax) {
+      const oldMax = p.maxHp || 1;
+      const oldHp = p.currentHp;
+      p.maxHp = computedMax;
+      if (p.isAlive) {
+        if (oldHp >= oldMax || oldHp === undefined || oldHp <= 0) {
+          p.currentHp = computedMax;
+        } else {
+          p.currentHp = Math.min(computedMax, Math.max(1, Math.round((oldHp / oldMax) * computedMax)));
+        }
+      } else {
+        p.currentHp = 0;
+      }
+      if (p.baseHpAtDamage !== undefined) {
+        p.baseHpAtDamage = p.currentHp;
+      }
+      modified = true;
+    }
+  }
+
+  return war;
 }
 
 // Initial load from disk
@@ -227,8 +270,12 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
 
   // If no master or civilian without contracted servants, return active session directly
   if (!master || !master.servants || master.servants.length === 0) {
+    synchronizeWarParticipants(globalWarSession);
     return globalWarSession;
   }
+
+  // Always keep all participants synchronized
+  synchronizeWarParticipants(globalWarSession);
 
   const activeServant =
     master.servants.find((s: any) => s.id === master.activeServantId) || master.servants[0];
@@ -380,14 +427,23 @@ export function calculateServantMaxHp(servantInstance: any): number {
   if (!servantInstance) return 30000;
   const sAny = servantInstance as any;
   const templateId = sAny.templateId || sAny.template?.id || sAny.id;
-  const canonical = SERVANT_DATABASE.find(s => s.id === templateId) || sAny.template || sAny;
-  const sTemplate = { ...canonical, ...(sAny.template?.isCustomOrMeme ? sAny.template : {}) };
-  const base = sTemplate?.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
+  const canonical = SERVANT_DATABASE.find(
+    s => s.id === templateId ||
+         (s.name && sAny.name && s.name.toLowerCase() === sAny.name.toLowerCase()) ||
+         (s.name && sAny.template?.name && s.name.toLowerCase() === sAny.template.name.toLowerCase())
+  ) || sAny.template || sAny;
+  
+  const isCustom = sAny.template?.isCustomOrMeme || canonical?.isCustomOrMeme;
+  const sTemplate = isCustom 
+    ? { ...canonical, ...sAny.template } 
+    : { ...(canonical || sAny.template || sAny) };
+
+  const base = canonical?.baseStats || sTemplate?.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
   const totalEnd = (base.endurance || 10) + (sAny?.allocatedStats?.endurance || 0);
   const ce = sAny?.equippedCe;
   const ceHp = ce ? (ce.hpBonus || 0) : 0;
   const lvl = sAny?.level || 1;
-  const baseHp = sTemplate?.baseHp || 28000;
+  const baseHp = canonical?.baseHp || sTemplate?.baseHp || 28000;
   return Math.round(baseHp * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceHp);
 }
 

@@ -5,7 +5,7 @@
     "title": "King of Knights",
     "servantClass": "Saber",
     "rarity": 5,
-    "baseHp": 15150,
+    "baseHp": 31500,
     "baseAtk": 11221,
     "baseStats": {
       "strength": 18,
@@ -70,7 +70,7 @@
     "title": "King of Heroes",
     "servantClass": "Archer",
     "rarity": 5,
-    "baseHp": 13097,
+    "baseHp": 28000,
     "baseAtk": 12280,
     "baseStats": {
       "strength": 16,
@@ -135,7 +135,7 @@
     "title": "Daemon Lord of Kernel Space",
     "servantClass": "Saber",
     "rarity": 5,
-    "baseHp": 14200,
+    "baseHp": 29000,
     "baseAtk": 11950,
     "baseStats": {
       "strength": 17,
@@ -190,7 +190,7 @@
     "title": "Wielder of the Ban Hammer",
     "servantClass": "Assassin",
     "rarity": 4,
-    "baseHp": 11000,
+    "baseHp": 25000,
     "baseAtk": 9800,
     "baseStats": {
       "strength": 15,

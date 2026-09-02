@@ -39,13 +39,22 @@ function loadFromDisk() {
       if (raw) {
         const savedServants: ServantTemplate[] = JSON.parse(raw);
         for (const s of savedServants) {
-          savedServantsMap.set(s.id, s);
           const canonIdx = SERVANT_DATABASE.findIndex(c => c.id === s.id);
           if (canonIdx >= 0) {
-            // Override canon servant in memory with saved edits
-            SERVANT_DATABASE[canonIdx] = { ...SERVANT_DATABASE[canonIdx], ...s };
+            // If it's a canon servant, preserve the canonical balanced baseHp, baseAtk, and baseStats
+            const canon = SERVANT_DATABASE[canonIdx];
+            const updated = {
+              ...canon,
+              ...s,
+              baseHp: Math.max(canon.baseHp, s.baseHp || 0),
+              baseAtk: Math.max(canon.baseAtk, s.baseAtk || 0),
+              baseStats: { ...canon.baseStats, ...(s.baseStats || {}) }
+            };
+            SERVANT_DATABASE[canonIdx] = updated;
+            savedServantsMap.set(s.id, updated);
           } else {
             // Custom servant
+            savedServantsMap.set(s.id, s);
             const customIdx = customServants.findIndex(c => c.id === s.id);
             if (customIdx >= 0) {
               customServants[customIdx] = s;
@@ -63,8 +72,34 @@ function loadFromDisk() {
       if (raw) {
         const savedMasters: MasterProfile[] = JSON.parse(raw);
         for (const m of savedMasters) {
+          // Synchronize master servant instances with canonical stats
+          if (m.servants && Array.isArray(m.servants)) {
+            for (const inst of m.servants) {
+              const templateId = inst.templateId || inst.template?.id || inst.id;
+              const instAny = inst as any;
+              const canonical = SERVANT_DATABASE.find(
+                s => s.id === templateId || 
+                     (s.name && instAny.name && s.name.toLowerCase() === instAny.name.toLowerCase()) ||
+                     (s.name && instAny.nickname && s.name.toLowerCase() === instAny.nickname.toLowerCase()) ||
+                     (s.name && inst.template?.name && s.name.toLowerCase() === inst.template.name.toLowerCase())
+              );
+              if (canonical && !inst.template?.isCustomOrMeme) {
+                inst.template = {
+                  ...inst.template,
+                  ...canonical,
+                  baseHp: canonical.baseHp,
+                  baseAtk: canonical.baseAtk,
+                  baseStats: canonical.baseStats,
+                  noblePhantasm: canonical.noblePhantasm,
+                  skills: canonical.skills
+                };
+              }
+            }
+          }
           masterStore.set(m.discordId, m);
         }
+        // Save upgraded master profiles to disk to clean up any old cached stats
+        saveMastersToDisk();
       }
     }
   } catch (err) {
