@@ -38,6 +38,26 @@ export interface ServantSkill {
   icon: string;
 }
 
+export type PassiveSkillType =
+  | 'magic_resistance'
+  | 'riding'
+  | 'independent_action'
+  | 'territory_creation'
+  | 'item_construction'
+  | 'presence_concealment'
+  | 'madness_enhancement'
+  | 'divinity'
+  | 'avenger'
+  | 'oblivion_correction';
+
+export interface PassiveSkill {
+  name: string;
+  type: PassiveSkillType;
+  value: number;
+  description: string;
+  rank?: string;
+}
+
 export interface NoblePhantasm {
   name: string;
   cardType: CardType;
@@ -75,6 +95,7 @@ export interface ServantTemplate {
   baseStats: ServantStats;
   commandDeck: [CardType, CardType, CardType, CardType, CardType];
   skills: ServantSkill[];
+  passives?: PassiveSkill[];
   noblePhantasm: NoblePhantasm;
   lore: string;
   summonQuote: string;
@@ -176,6 +197,7 @@ export interface ActiveCombatant {
     remainingTurns: number;
   }>;
   skills: Array<ServantSkill & { currentCooldown: number }>;
+  passives?: PassiveSkill[];
   noblePhantasm: NoblePhantasm;
   isEvading?: boolean;
   isInvincible?: boolean;

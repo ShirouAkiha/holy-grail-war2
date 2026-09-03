@@ -1,4 +1,144 @@
-import { ServantTemplate, ServantClass } from '../types';
+import { ServantTemplate, ServantClass, PassiveSkill } from '../types';
+
+export function getDefaultClassPassives(servantClass: ServantClass): PassiveSkill[] {
+  switch (servantClass) {
+    case 'Saber':
+      return [
+        {
+          name: 'Magic Resistance B',
+          type: 'magic_resistance',
+          value: 17.5,
+          rank: 'B',
+          description: 'Increases debuff resistance by 17.5% (chance to nullify incoming debuffs).'
+        },
+        {
+          name: 'Riding C',
+          type: 'riding',
+          value: 6,
+          rank: 'C',
+          description: 'Increases Quick Card effectiveness by 6%.'
+        }
+      ];
+    case 'Archer':
+      return [
+        {
+          name: 'Independent Action B',
+          type: 'independent_action',
+          value: 8,
+          rank: 'B',
+          description: 'Increases Critical Strike Damage by 8%.'
+        },
+        {
+          name: 'Magic Resistance C',
+          type: 'magic_resistance',
+          value: 15,
+          rank: 'C',
+          description: 'Increases debuff resistance by 15%.'
+        }
+      ];
+    case 'Lancer':
+      return [
+        {
+          name: 'Magic Resistance B',
+          type: 'magic_resistance',
+          value: 17.5,
+          rank: 'B',
+          description: 'Increases debuff resistance by 17.5%.'
+        }
+      ];
+    case 'Rider':
+      return [
+        {
+          name: 'Riding A',
+          type: 'riding',
+          value: 10,
+          rank: 'A',
+          description: 'Increases Quick Card effectiveness by 10%.'
+        },
+        {
+          name: 'Magic Resistance C',
+          type: 'magic_resistance',
+          value: 15,
+          rank: 'C',
+          description: 'Increases debuff resistance by 15%.'
+        }
+      ];
+    case 'Caster':
+      return [
+        {
+          name: 'Territory Creation A',
+          type: 'territory_creation',
+          value: 10,
+          rank: 'A',
+          description: 'Increases Arts Card effectiveness by 10%.'
+        },
+        {
+          name: 'Item Construction B',
+          type: 'item_construction',
+          value: 8,
+          rank: 'B',
+          description: 'Increases debuff success rate by 8%.'
+        }
+      ];
+    case 'Assassin':
+      return [
+        {
+          name: 'Presence Concealment A',
+          type: 'presence_concealment',
+          value: 15,
+          rank: 'A',
+          description: 'Increases Critical Star drop rate by 15% and grants +3 bonus stars on attacks.'
+        }
+      ];
+    case 'Berserker':
+      return [
+        {
+          name: 'Madness Enhancement B',
+          type: 'madness_enhancement',
+          value: 8,
+          rank: 'B',
+          description: 'Permanently increases Buster Card damage by 8%.'
+        }
+      ];
+    case 'Ruler':
+      return [
+        {
+          name: 'Magic Resistance A',
+          type: 'magic_resistance',
+          value: 20,
+          rank: 'A',
+          description: 'Increases debuff resistance by 20%.'
+        }
+      ];
+    case 'Avenger':
+      return [
+        {
+          name: 'Avenger B',
+          type: 'avenger',
+          value: 16,
+          rank: 'B',
+          description: 'Increases NP gain when taking damage (+16% NP refund on received attacks).'
+        },
+        {
+          name: 'Oblivion Correction B',
+          type: 'oblivion_correction',
+          value: 8,
+          rank: 'B',
+          description: 'Increases Critical Strike Damage by 8%.'
+        }
+      ];
+    default:
+      return [
+        {
+          name: 'Independent Action C',
+          type: 'independent_action',
+          value: 6,
+          rank: 'C',
+          description: 'Increases Critical Strike Damage by 6%.'
+        }
+      ];
+  }
+}
 
 export const SERVANT_DATABASE: ServantTemplate[] = [
   // 5-Star SSR Servants
@@ -42,6 +182,22 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         value: 20,
         duration: 1,
         icon: '✨'
+      }
+    ],
+    passives: [
+      {
+        name: 'Magic Resistance A',
+        type: 'magic_resistance',
+        value: 20,
+        rank: 'A',
+        description: 'Increases debuff resistance by 20% (chance to completely nullify incoming debuffs).'
+      },
+      {
+        name: 'Riding B',
+        type: 'riding',
+        value: 8,
+        rank: 'B',
+        description: 'Increases Quick Card effectiveness by 8%.'
       }
     ],
     noblePhantasm: {
@@ -103,6 +259,29 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         icon: '🗝️'
       }
     ],
+    passives: [
+      {
+        name: 'Magic Resistance E',
+        type: 'magic_resistance',
+        value: 10,
+        rank: 'E',
+        description: 'Increases debuff resistance by 10%.'
+      },
+      {
+        name: 'Independent Action A+',
+        type: 'independent_action',
+        value: 11,
+        rank: 'A+',
+        description: 'Increases Critical Strike Damage by 11%.'
+      },
+      {
+        name: 'Divinity B',
+        type: 'divinity',
+        value: 175,
+        rank: 'B',
+        description: 'Adds +175 flat pure damage to every hit (ignoring enemy defense).'
+      }
+    ],
     noblePhantasm: {
       name: 'Enuma Elish: Star of Creation that Split Heaven and Earth',
       cardType: 'Buster',
@@ -160,6 +339,22 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         value: 25,
         duration: 1,
         icon: '🔱'
+      }
+    ],
+    passives: [
+      {
+        name: 'Magic Resistance A',
+        type: 'magic_resistance',
+        value: 20,
+        rank: 'A',
+        description: 'Increases debuff resistance by 20% (chance to completely nullify incoming debuffs).'
+      },
+      {
+        name: 'Divinity B',
+        type: 'divinity',
+        value: 175,
+        rank: 'B',
+        description: 'Adds +175 flat pure damage to every hit (ignoring enemy defense).'
       }
     ],
     noblePhantasm: {
@@ -221,6 +416,15 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         icon: '💖'
       }
     ],
+    passives: [
+      {
+        name: 'Magic Resistance EX',
+        type: 'magic_resistance',
+        value: 30,
+        rank: 'EX',
+        description: 'Increases debuff resistance by 30% (chance to completely nullify incoming debuffs).'
+      }
+    ],
     noblePhantasm: {
       name: 'Luminosité Eternelle: God is Here With Me',
       cardType: 'Arts',
@@ -278,6 +482,22 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         value: 40,
         duration: 1,
         icon: '🦋'
+      }
+    ],
+    passives: [
+      {
+        name: 'Avenger B',
+        type: 'avenger',
+        value: 16,
+        rank: 'B',
+        description: 'Increases NP gain when taking damage (+16% NP refund on received attacks).'
+      },
+      {
+        name: 'Oblivion Correction A',
+        type: 'oblivion_correction',
+        value: 10,
+        rank: 'A',
+        description: 'Increases Critical Strike Damage by 10%.'
       }
     ],
     noblePhantasm: {
@@ -341,6 +561,15 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         icon: '🖤'
       }
     ],
+    passives: [
+      {
+        name: 'Magic Resistance B',
+        type: 'magic_resistance',
+        value: 17.5,
+        rank: 'B',
+        description: 'Increases debuff resistance by 17.5%.'
+      }
+    ],
     noblePhantasm: {
       name: 'Excalibur Morgan: Sword of Promised Victory',
       cardType: 'Buster',
@@ -398,6 +627,22 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         value: 100,
         duration: 1,
         icon: '🌹'
+      }
+    ],
+    passives: [
+      {
+        name: 'Magic Resistance C',
+        type: 'magic_resistance',
+        value: 15,
+        rank: 'C',
+        description: 'Increases debuff resistance by 15%.'
+      },
+      {
+        name: 'Riding B',
+        type: 'riding',
+        value: 8,
+        rank: 'B',
+        description: 'Increases Quick Card effectiveness by 8%.'
       }
     ],
     noblePhantasm: {
@@ -459,6 +704,22 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         icon: '⚔️'
       }
     ],
+    passives: [
+      {
+        name: 'Magic Resistance D',
+        type: 'magic_resistance',
+        value: 12.5,
+        rank: 'D',
+        description: 'Increases debuff resistance by 12.5%.'
+      },
+      {
+        name: 'Independent Action B',
+        type: 'independent_action',
+        value: 8,
+        rank: 'B',
+        description: 'Increases Critical Strike Damage by 8%.'
+      }
+    ],
     noblePhantasm: {
       name: 'Unlimited Blade Works: Infinite Creation of Swords',
       cardType: 'Buster',
@@ -518,6 +779,22 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         icon: '🩸'
       }
     ],
+    passives: [
+      {
+        name: 'Madness Enhancement B',
+        type: 'madness_enhancement',
+        value: 8,
+        rank: 'B',
+        description: 'Permanently increases Buster Card damage by 8%.'
+      },
+      {
+        name: 'Divinity A',
+        type: 'divinity',
+        value: 200,
+        rank: 'A',
+        description: 'Adds +200 flat pure damage to every hit (ignoring enemy defense).'
+      }
+    ],
     noblePhantasm: {
       name: 'Nine Lives: Shooting the Hundred Heads',
       cardType: 'Buster',
@@ -575,6 +852,22 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         value: 2500,
         duration: 1,
         icon: '💨'
+      }
+    ],
+    passives: [
+      {
+        name: 'Magic Resistance C',
+        type: 'magic_resistance',
+        value: 15,
+        rank: 'C',
+        description: 'Increases debuff resistance by 15%.'
+      },
+      {
+        name: 'Divinity B',
+        type: 'divinity',
+        value: 175,
+        rank: 'B',
+        description: 'Adds +175 flat pure damage to every hit (ignoring enemy defense).'
       }
     ],
     noblePhantasm: {

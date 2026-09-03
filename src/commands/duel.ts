@@ -10,8 +10,8 @@ import {
   ComponentType
 } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
-import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog } from '../types';
-import { SERVANT_DATABASE } from '../data/servants';
+import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog, PassiveSkill } from '../types';
+import { SERVANT_DATABASE, getDefaultClassPassives } from '../data/servants';
 import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp } from '../engine/grailwar';
 import { renderBattleTurnSummary } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER } from '../engine/battle';
@@ -53,6 +53,7 @@ export interface DuelCombatant {
   def: number;
   npGauge: number;
   critStars: number;
+  passives?: PassiveSkill[];
   activeBuffs: CombatantBuff[];
   skillCooldowns: { [skillIdx: number]: number };
   gutsCount: number;
@@ -176,8 +177,14 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
     initialNp = servant.equippedCe.passiveValue || 50;
   }
 
-  // Initial stars based on Agility
-  const initialStars = Math.min(30, Math.max(5, Math.round(totalAgi * 0.8)));
+  // Resolve Passives (from servant template or default class passives)
+  const passives: PassiveSkill[] = (t.passives && t.passives.length > 0)
+    ? t.passives
+    : getDefaultClassPassives(t.servantClass);
+
+  // Initial stars based on Agility + Presence Concealment passive bonus
+  const pcBonus = passives.some(p => p.type === 'presence_concealment') ? 6 : 0;
+  const initialStars = Math.min(40, Math.max(5, Math.round(totalAgi * 0.8) + pcBonus));
 
   const startingHp = overrideCurrentHp !== undefined && overrideCurrentHp > 0
     ? Math.min(maxHp, Math.round(overrideCurrentHp))
@@ -196,6 +203,7 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
     def: baseDef,
     npGauge: initialNp,
     critStars: initialStars,
+    passives,
     activeBuffs: [],
     skillCooldowns: {},
     gutsCount: 0,
@@ -364,7 +372,11 @@ function buildDuelEmbed(
   }
 
   const sClass = activeCombatant.servant.template?.servantClass || 'Servant';
-  const slotDisplay = `🎴 **Dealt Command Hand (${sClass} Deck):**\n${handDisplay}\n\n⚔️ **Selected Chain (${pendingCards.length}/3):**\n\`[ 1: ${c1Text} ]\` ➔ \`[ 2: ${c2Text} ]\` ➔ \`[ 3: ${c3Text} ]\`${leadHelp}`;
+  const activePassives = activeCombatant.passives || [];
+  const passivesText = activePassives.length > 0
+    ? activePassives.map(p => `\`[${p.name}]\``).join(' ')
+    : '`None`';
+  const slotDisplay = `🎴 **Dealt Command Hand (${sClass} Deck):**\n${handDisplay}\n\n🛡️ **Active Class Passives:** ${passivesText}\n\n⚔️ **Selected Chain (${pendingCards.length}/3):**\n\`[ 1: ${c1Text} ]\` ➔ \`[ 2: ${c2Text} ]\` ➔ \`[ 3: ${c3Text} ]\`${leadHelp}`;
 
   const embed = new EmbedBuilder()
     .setTitle(`⚔️ HOLY GRAIL WAR DUEL — ROUND ${round}`)
@@ -660,6 +672,23 @@ function resolveStrike(
   let critDmgBonus = 1.0;
   let npGenBonus = 1.0;
 
+  // 1. Resolve Attacker & Defender Passives
+  const attackerPassives = attacker.passives || (attacker.servant.template.passives?.length ? attacker.servant.template.passives : getDefaultClassPassives(attacker.servant.template.servantClass));
+  const defenderPassives = defender.passives || (defender.servant.template.passives?.length ? defender.servant.template.passives : getDefaultClassPassives(defender.servant.template.servantClass));
+
+  const madnessBonus = attackerPassives.filter(p => p.type === 'madness_enhancement').reduce((s, p) => s + p.value, 0);
+  const ridingBonus = attackerPassives.filter(p => p.type === 'riding').reduce((s, p) => s + p.value, 0);
+  const territoryBonus = attackerPassives.filter(p => p.type === 'territory_creation').reduce((s, p) => s + p.value, 0);
+  const critPassiveBonus = attackerPassives.filter(p => p.type === 'independent_action' || p.type === 'oblivion_correction').reduce((s, p) => s + p.value, 0);
+  const divinityBonus = attackerPassives.filter(p => p.type === 'divinity').reduce((s, p) => s + p.value, 0);
+  const presenceConcealBonus = attackerPassives.filter(p => p.type === 'presence_concealment').reduce((s, p) => s + p.value, 0);
+  const avengerBonus = defenderPassives.filter(p => p.type === 'avenger').reduce((s, p) => s + p.value, 0);
+  const attackerAvengerAtk = attackerPassives.filter(p => p.type === 'avenger').length > 0 ? 0.04 : 0;
+  const flatDivinity = Math.round(divinityBonus * PVP_DAMAGE_MODIFIER);
+
+  // Independent Action & Oblivion Correction boost Crit Damage
+  critDmgBonus += critPassiveBonus / 100;
+
   attacker.activeBuffs = attacker.activeBuffs.filter(b => {
     b.remainingTurns--;
     if (b.type === 'buff_atk') atkBuff += b.value / 100;
@@ -676,7 +705,7 @@ function resolveStrike(
     return b.remainingTurns > 0;
   });
 
-  const effectiveAtk = attacker.baseAtk * atkBuff;
+  const effectiveAtk = attacker.baseAtk * (atkBuff + attackerAvengerAtk);
   const effectiveDef = defender.baseDef * defBuff;
 
   const classMult = getClassMultiplier(
@@ -746,10 +775,10 @@ function resolveStrike(
         }
       }
 
-      // Card-specific performance buffs (Card Type strictly dictates which card buffs interact!)
-      const busterBuff = attacker.activeBuffs.filter(b => b.type === 'buster_up' || /mana burst|buster/i.test(b.name)).reduce((s, b) => s + b.value, 0);
-      const artsBuff = attacker.activeBuffs.filter(b => b.type === 'arts_up' || /arts|fox/i.test(b.name)).reduce((s, b) => s + b.value, 0);
-      const quickBuff = attacker.activeBuffs.filter(b => b.type === 'quick_up' || /quick|primordial rune/i.test(b.name)).reduce((s, b) => s + b.value, 0);
+      // Card-specific performance buffs (Active buffs + Class Passives)
+      const busterBuff = attacker.activeBuffs.filter(b => b.type === 'buster_up' || /mana burst|buster/i.test(b.name)).reduce((s, b) => s + b.value, 0) + madnessBonus;
+      const artsBuff = attacker.activeBuffs.filter(b => b.type === 'arts_up' || /arts|fox/i.test(b.name)).reduce((s, b) => s + b.value, 0) + territoryBonus;
+      const quickBuff = attacker.activeBuffs.filter(b => b.type === 'quick_up' || /quick|primordial rune/i.test(b.name)).reduce((s, b) => s + b.value, 0) + ridingBonus;
 
       const cardPerfMult = 1.0 + ((npCardType === 'Buster' ? busterBuff : npCardType === 'Arts' ? artsBuff : quickBuff) / 100);
 
@@ -785,7 +814,7 @@ function resolveStrike(
       } else {
         const variance = 0.96 + Math.random() * 0.08;
         const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * classMult * cardPerfMult * variance);
-        npDmg = Math.round(Math.max(1200, rawNpDmg) * PVP_DAMAGE_MODIFIER);
+        npDmg = Math.round(Math.max(1200, rawNpDmg) * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
         if (isEvading) {
           npDmg = Math.round(npDmg * 0.15);
@@ -814,7 +843,7 @@ function resolveStrike(
       totalStarsGained += npStars;
       totalSeqDmg += npDmg;
     } else if (card === 'Buster') {
-      let cardMult = 1.4 * posMult;
+      let cardMult = 1.4 * posMult * (1.0 + madnessBonus / 100);
       if (i > 0 && isBusterFirst) cardMult += 0.50; // Buster Lead Bonus
 
       let critChance = Math.min(0.95, (attacker.critStars * 2.0) / 100);
@@ -826,7 +855,7 @@ function resolveStrike(
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2) + busterChainBonusDmg;
-      let hitDmg = Math.round(Math.max(350, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER);
+      let hitDmg = Math.round(Math.max(350, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
       if (isEvading) {
         hitDmg = Math.round(hitDmg * 0.15);
@@ -846,7 +875,7 @@ function resolveStrike(
 
       totalSeqDmg += hitDmg;
     } else if (card === 'Arts') {
-      let cardMult = 1.0 * posMult;
+      let cardMult = 1.0 * posMult * (1.0 + territoryBonus / 100);
       if (i > 0 && isBusterFirst) cardMult += 0.50;
 
       let critChance = Math.min(0.80, (attacker.critStars * 1.5) / 100);
@@ -858,14 +887,14 @@ function resolveStrike(
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
-      let hitDmg = Math.round(Math.max(280, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER);
+      let hitDmg = Math.round(Math.max(280, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
       if (isEvading) {
         hitDmg = Math.round(hitDmg * 0.15);
         defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
       }
 
-      let npGain = Math.round((24 + Math.random() * 8) * npGenBonus * (hitCrit ? 1.4 : 1.0));
+      let npGain = Math.round((24 + Math.random() * 8) * npGenBonus * (hitCrit ? 1.4 : 1.0) * (1.0 + territoryBonus / 100));
       if (i > 0 && isArtsFirst) npGain = Math.round(npGain * 2.0); // Arts Lead Bonus
 
       attacker.npGauge = Math.min(300, attacker.npGauge + npGain);
@@ -875,7 +904,7 @@ function resolveStrike(
 
       totalSeqDmg += hitDmg;
     } else if (card === 'Quick') {
-      let cardMult = 0.85 * posMult;
+      let cardMult = 0.85 * posMult * (1.0 + ridingBonus / 100);
       if (i > 0 && isBusterFirst) cardMult += 0.50;
 
       let critChance = Math.min(0.90, (attacker.critStars * 2.5) / 100);
@@ -887,14 +916,14 @@ function resolveStrike(
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
-      let hitDmg = Math.round(Math.max(220, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER);
+      let hitDmg = Math.round(Math.max(220, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
       if (isEvading) {
         hitDmg = Math.round(hitDmg * 0.15);
         defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
       }
 
-      let starsGained = Math.round(18 + Math.random() * 6);
+      let starsGained = Math.round((18 + Math.random() * 6) * (1.0 + (ridingBonus + presenceConcealBonus) / 100));
       if (i > 0 && isQuickFirst) starsGained = Math.round(starsGained * 1.5); // Quick Lead Bonus
 
       attacker.critStars = Math.min(50, attacker.critStars + starsGained);
@@ -910,16 +939,25 @@ function resolveStrike(
   if (is3Cards) {
     chainTags.push('⚔️ BRAVE CHAIN (Extra Attack)');
     const extraBase = (effectiveAtk * 1.2 * 0.11) - (effectiveDef * 2);
-    const extraDmg = Math.max(450, Math.round(extraBase * classMult * (0.95 + Math.random() * 0.10) * PVP_DAMAGE_MODIFIER));
+    const extraDmg = Math.max(450, Math.round(extraBase * classMult * (0.95 + Math.random() * 0.10) * PVP_DAMAGE_MODIFIER)) + flatDivinity;
     totalSeqDmg += extraDmg;
     attacker.npGauge = Math.min(300, attacker.npGauge + 10);
     totalNpGained += 10;
-    attacker.critStars = Math.min(50, attacker.critStars + 5);
-    totalStarsGained += 5;
+    const extraStars = 5 + (presenceConcealBonus > 0 ? 3 : 0);
+    attacker.critStars = Math.min(50, attacker.critStars + extraStars);
+    totalStarsGained += extraStars;
   }
 
   // Apply total damage to defender
   defender.currentHp = Math.max(0, defender.currentHp - totalSeqDmg);
+
+  // Defender Avenger Passive: NP refund on taking damage
+  let avengerLog = '';
+  if (avengerBonus > 0 && totalSeqDmg > 0) {
+    const avengerRefund = Math.round(12 * (1.0 + avengerBonus / 100));
+    defender.npGauge = Math.min(300, defender.npGauge + avengerRefund);
+    avengerLog = `\n🖤 **[Avenger]** ${defender.servant.template.name} gained **+${avengerRefund}% NP** from suffering damage!`;
+  }
 
   // Check for Guts (Battle Continuation)
   let gutsText = '';
@@ -938,7 +976,7 @@ function resolveStrike(
   const seqNames = cardsSequence.join(' -> ');
   const logText = `⚔️ **${attacker.servant.template.name}** executed sequence **[${seqNames}]**${npHeader}${critTag}${evadeTag}:\n` +
     `• Dealt **${totalSeqDmg.toLocaleString()} DMG** to ${defender.servant.template.name}\n` +
-    `• Gained **+${totalNpGained}% NP** & **+${totalStarsGained} Critical Stars**${chainStr}${gutsText}`;
+    `• Gained **+${totalNpGained}% NP** & **+${totalStarsGained} Critical Stars**${chainStr}${gutsText}${avengerLog}`;
 
   return logText;
 }

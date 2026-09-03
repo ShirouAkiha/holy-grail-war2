@@ -7,7 +7,7 @@ import {
   ServantClass,
   TurnActionChoice
 } from '../types/index';
-import { SERVANT_DATABASE } from '../data/servants';
+import { SERVANT_DATABASE, getDefaultClassPassives } from '../data/servants';
 
 // Global PvP damage modifier (0.35x) to scale FGO-style formula output down to ~25k-35k Servant HP pools
 export const PVP_DAMAGE_MODIFIER = 0.35;
@@ -80,6 +80,13 @@ export function createCombatantFromMasterServant(
     initialNp = ce.passiveValue;
   }
 
+  // Resolve passives
+  const passives = (t.passives && t.passives.length > 0)
+    ? t.passives
+    : getDefaultClassPassives(t.servantClass);
+
+  const pcBonus = passives.some(p => p.type === 'presence_concealment') ? 6 : 0;
+
   const startingHp = overrideCurrentHp !== undefined && overrideCurrentHp > 0
     ? Math.min(maxHp, Math.round(overrideCurrentHp))
     : maxHp;
@@ -103,10 +110,11 @@ export function createCombatantFromMasterServant(
     },
     commandDeck: [...t.commandDeck],
     npGauge: initialNp,
+    passives,
     activeBuffs: [],
     skills: t.skills.map(s => ({ ...s, currentCooldown: 0 })),
     noblePhantasm: { ...t.noblePhantasm },
-    critStars: 0,
+    critStars: pcBonus,
     bondLevel: servantInstance.bondLevel || 1
   };
 }
@@ -208,16 +216,27 @@ export function applyCombatantSkill(
       });
       logText = `💨 **${actor.name}** activated **${skill.name}**, granting absolute **Evade** against incoming damage!`;
       break;
-    case 'stun':
-      target.isStunned = true;
-      target.activeBuffs.push({
-        name: 'Stunned',
-        type: 'stun',
-        value: 100,
-        remainingTurns: skill.duration || 1
-      });
-      logText = `💫 **${actor.name}** activated **${skill.name}**, stunning **${target.name}** for 1 turn!`;
+    case 'stun': {
+      const targetPassives = target.passives || (getDefaultClassPassives(target.servantClass));
+      const actorPassives = actor.passives || (getDefaultClassPassives(actor.servantClass));
+      const magicResist = targetPassives.filter(p => p.type === 'magic_resistance').reduce((s, p) => s + p.value, 0);
+      const itemConstruct = actorPassives.filter(p => p.type === 'item_construction').reduce((s, p) => s + p.value, 0);
+      const effectiveResist = Math.max(0, magicResist - itemConstruct);
+
+      if (effectiveResist > 0 && Math.random() * 100 < effectiveResist) {
+        logText = `🛡️ **${target.name}** resisted **${actor.name}'s ${skill.name}** thanks to [Magic Resistance]!`;
+      } else {
+        target.isStunned = true;
+        target.activeBuffs.push({
+          name: 'Stunned',
+          type: 'stun',
+          value: 100,
+          remainingTurns: skill.duration || 1
+        });
+        logText = `💫 **${actor.name}** activated **${skill.name}**, stunning **${target.name}** for 1 turn!`;
+      }
       break;
+    }
     default:
       actor.activeBuffs.push({
         name: skill.name,
@@ -316,21 +335,32 @@ export function executeNoblePhantasmLogic(
     .filter(b => b.type === 'buff_atk')
     .reduce((s, b) => s + b.value, 0);
 
+  // Actor Passives
+  const actorPassives = actor.passives || getDefaultClassPassives(actor.servantClass);
+  const actorMadness = actorPassives.filter(p => p.type === 'madness_enhancement').reduce((s, p) => s + p.value, 0);
+  const actorTerritory = actorPassives.filter(p => p.type === 'territory_creation').reduce((s, p) => s + p.value, 0);
+  const actorRiding = actorPassives.filter(p => p.type === 'riding').reduce((s, p) => s + p.value, 0);
+  const actorDivinity = actorPassives.filter(p => p.type === 'divinity').reduce((s, p) => s + p.value, 0);
+  const flatDivinity = Math.round(actorDivinity * PVP_DAMAGE_MODIFIER);
+
   // Card Performance Buffs (Card Type strictly dictates which card buffs interact!)
   const busterBuff = actor.activeBuffs
     .filter(b => b.type === 'buster_up' || /mana burst|buster/i.test(b.name))
     .reduce((s, b) => s + b.value, 0) +
-    (actor.equippedCe?.passiveType === 'buster_up' && actor.equippedCe.id !== 'ce_black_grail' ? (actor.equippedCe.passiveValue || 0) : 0);
+    (actor.equippedCe?.passiveType === 'buster_up' && actor.equippedCe.id !== 'ce_black_grail' ? (actor.equippedCe.passiveValue || 0) : 0) +
+    actorMadness;
 
   const artsBuff = actor.activeBuffs
     .filter(b => b.type === 'arts_up' || /arts|fox/i.test(b.name))
     .reduce((s, b) => s + b.value, 0) +
-    (actor.equippedCe?.passiveType === 'arts_up' ? (actor.equippedCe.passiveValue || 0) : 0);
+    (actor.equippedCe?.passiveType === 'arts_up' ? (actor.equippedCe.passiveValue || 0) : 0) +
+    actorTerritory;
 
   const quickBuff = actor.activeBuffs
     .filter(b => b.type === 'quick_up' || /quick|primordial rune/i.test(b.name))
     .reduce((s, b) => s + b.value, 0) +
-    (actor.equippedCe?.passiveType === 'quick_up' ? (actor.equippedCe.passiveValue || 0) : 0);
+    (actor.equippedCe?.passiveType === 'quick_up' ? (actor.equippedCe.passiveValue || 0) : 0) +
+    actorRiding;
 
   // Card-specific performance multiplier strictly matching NP card type
   const cardPerformanceMultiplier = 1.0 + (
@@ -435,7 +465,7 @@ export function executeNoblePhantasmLogic(
     let totalDmg = (baseDamage * cardPerformanceMultiplier * npDmgBonus) - (effectiveDef * 0.25);
     totalDmg = Math.max(1200, totalDmg);
     const variance = 0.96 + Math.random() * 0.08;
-    totalDmg = Math.round(totalDmg * variance * PVP_DAMAGE_MODIFIER);
+    totalDmg = Math.round(totalDmg * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
     // Check Invincibility & Evade on target
     if (target.isInvincible || target.activeBuffs.some(b => b.type === 'invincible')) {
@@ -647,6 +677,19 @@ export function executeBattleTurn(
     let totalNpCharge = 0;
     let isCritical = false;
 
+    // Actor and Target Passives
+    const actorPassives = actor.passives || getDefaultClassPassives(actor.servantClass);
+    const targetPassives = target.passives || getDefaultClassPassives(target.servantClass);
+
+    const madnessBonus = actorPassives.filter(p => p.type === 'madness_enhancement').reduce((s, p) => s + p.value, 0);
+    const ridingBonus = actorPassives.filter(p => p.type === 'riding').reduce((s, p) => s + p.value, 0);
+    const territoryBonus = actorPassives.filter(p => p.type === 'territory_creation').reduce((s, p) => s + p.value, 0);
+    const critPassiveBonus = actorPassives.filter(p => p.type === 'independent_action' || p.type === 'oblivion_correction').reduce((s, p) => s + p.value, 0);
+    const divinityBonus = actorPassives.filter(p => p.type === 'divinity').reduce((s, p) => s + p.value, 0);
+    const presenceConcealBonus = actorPassives.filter(p => p.type === 'presence_concealment').reduce((s, p) => s + p.value, 0);
+    const flatDivinity = Math.round(divinityBonus * PVP_DAMAGE_MODIFIER);
+    const avengerBonus = targetPassives.filter(p => p.type === 'avenger').reduce((s, p) => s + p.value, 0);
+
     // Determine ATK & DEF buffs
     const atkBuff = actor.activeBuffs
       .filter(b => b.type === 'buff_atk')
@@ -655,21 +698,24 @@ export function executeBattleTurn(
       .filter(b => b.type === 'buff_def')
       .reduce((sum, b) => sum + b.value, 0);
 
-    // Card performance buffs
+    // Card performance buffs (Active Buffs + Passives)
     const busterBuff = actor.activeBuffs
       .filter(b => b.type === 'buster_up' || /mana burst|buster/i.test(b.name))
       .reduce((sum, b) => sum + b.value, 0) +
-      (actor.equippedCe?.passiveType === 'buster_up' && actor.equippedCe.id !== 'ce_black_grail' ? (actor.equippedCe.passiveValue || 0) : 0);
+      (actor.equippedCe?.passiveType === 'buster_up' && actor.equippedCe.id !== 'ce_black_grail' ? (actor.equippedCe.passiveValue || 0) : 0) +
+      madnessBonus;
 
     const artsBuff = actor.activeBuffs
       .filter(b => b.type === 'arts_up' || /arts|fox/i.test(b.name))
       .reduce((sum, b) => sum + b.value, 0) +
-      (actor.equippedCe?.passiveType === 'arts_up' ? (actor.equippedCe.passiveValue || 0) : 0);
+      (actor.equippedCe?.passiveType === 'arts_up' ? (actor.equippedCe.passiveValue || 0) : 0) +
+      territoryBonus;
 
     const quickBuff = actor.activeBuffs
       .filter(b => b.type === 'quick_up' || /quick|primordial rune/i.test(b.name))
       .reduce((sum, b) => sum + b.value, 0) +
-      (actor.equippedCe?.passiveType === 'quick_up' ? (actor.equippedCe.passiveValue || 0) : 0);
+      (actor.equippedCe?.passiveType === 'quick_up' ? (actor.equippedCe.passiveValue || 0) : 0) +
+      ridingBonus;
 
     const classMult = calculateClassMultiplier(actor.servantClass, target.servantClass);
     const effectiveAtk = actor.atk * (1 + atkBuff / 100) * (1 + (actor.stats.strength * 0.01));
@@ -706,7 +752,7 @@ export function executeBattleTurn(
         const critChance = Math.min(0.85, (actor.stats.agility * 0.01) + (actor.critStars * 0.02));
         const cardIsCrit = Math.random() < critChance;
         if (cardIsCrit) isCritical = true;
-        const critMultiplier = cardIsCrit ? 1.75 + (actor.stats.luck * 0.01) : 1.0;
+        const critMultiplier = cardIsCrit ? 1.75 + (actor.stats.luck * 0.01) + (critPassiveBonus / 100) : 1.0;
 
         let cardDmgMult = 1.0;
         let cardNpMult = 1.0;
@@ -723,7 +769,7 @@ export function executeBattleTurn(
         } else if (card === 'Quick') {
           cardDmgMult = 0.85;
           cardNpMult = 1.0 * (1.0 + quickBuff / 100);
-          cardStarMult = (2.5 + (actor.stats.agility * 0.04)) * (1.0 + quickBuff / 100); // Quick generates crit stars boosted by Quick buffs
+          cardStarMult = (2.5 + (actor.stats.agility * 0.04)) * (1.0 + (quickBuff + presenceConcealBonus) / 100); // Quick generates crit stars boosted by Quick buffs + PC
         }
 
         // Apply chain bonus
@@ -741,7 +787,7 @@ export function executeBattleTurn(
           target.isEvading = false;
         }
 
-        totalDamage += Math.round(hitDmg * PVP_DAMAGE_MODIFIER);
+        totalDamage += Math.round(hitDmg * PVP_DAMAGE_MODIFIER) + (hitDmg > 0 ? flatDivinity : 0);
         totalNpCharge += Math.round(8 * cardNpMult * (actor.stats.mana / 15));
         totalStars += Math.round(4 * cardStarMult);
       });
@@ -753,6 +799,13 @@ export function executeBattleTurn(
     target.currentHp = Math.max(0, target.currentHp - totalDamage);
     actor.npGauge = Math.min(300, actor.npGauge + totalNpCharge);
     actor.critStars = Math.min(50, actor.critStars + totalStars);
+
+    // Defender Avenger Passive: NP refill when suffering damage
+    if (avengerBonus > 0 && totalDamage > 0) {
+      const avengerRefund = Math.round(12 * (1.0 + avengerBonus / 100));
+      target.npGauge = Math.min(300, target.npGauge + avengerRefund);
+      actionText += `\n🖤 **[Avenger]** ${target.name} gained +${avengerRefund}% NP from suffering damage!`;
+    }
 
     // Decrement buff durations
     actor.activeBuffs = actor.activeBuffs
