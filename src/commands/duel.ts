@@ -443,9 +443,19 @@ function buildCombatButtons(
 
   // Row 1: 5 Dealt Command Cards from Servant Class Deck
   const row1 = new ActionRowBuilder<ButtonBuilder>();
+  const isQuickFirst = pendingCards[0] === 'Quick';
+
   hand.forEach((cardType, idx) => {
     const isUsed = pendingIndices.includes(idx);
     const orderIndex = pendingIndices.indexOf(idx);
+    const isFirstCard = pendingIndices[0] === idx;
+
+    let baseMult = cardType === 'Buster' ? 2.0 : cardType === 'Arts' ? 1.8 : 2.2;
+    let critPct = Math.round((combatant.critStars || 0) * baseMult);
+    if (isQuickFirst && !isFirstCard) {
+      critPct += 20;
+    }
+    critPct = Math.min(100, Math.max(0, critPct));
 
     let emoji = '🔴';
     let style = ButtonStyle.Danger;
@@ -461,7 +471,7 @@ function buildCombatButtons(
       row1.addComponents(
         new ButtonBuilder()
           .setCustomId(`card_hand_${idx}`)
-          .setLabel(`#${orderIndex + 1}: ${cardType}`)
+          .setLabel(`#${orderIndex + 1}: ${cardType} (${critPct}%)`)
           .setEmoji('✔️')
           .setStyle(ButtonStyle.Secondary)
           .setDisabled(true)
@@ -470,7 +480,7 @@ function buildCombatButtons(
       row1.addComponents(
         new ButtonBuilder()
           .setCustomId(`card_hand_${idx}`)
-          .setLabel(`${cardType}`)
+          .setLabel(`${cardType} (${critPct}%)`)
           .setEmoji(emoji)
           .setStyle(style)
           .setDisabled(pendingCards.length >= 3)

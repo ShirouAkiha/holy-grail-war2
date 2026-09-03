@@ -545,22 +545,26 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
 
           {/* Card Hand Selector */}
           <div className="flex flex-wrap items-center justify-center gap-3">
-            {p1.commandDeck.map((card, idx) => (
-              <button
-                key={idx}
-                disabled={selectedCards.length >= 3}
-                onClick={() => handleCardClick(card)}
-                className={`px-4 py-2 rounded-sm font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2 border transition disabled:opacity-30 disabled:cursor-not-allowed ${
-                  card === 'Buster'
-                    ? 'bg-[#220000] hover:bg-[#330000] text-[#ef4444] border-[#ef4444]/40'
-                    : card === 'Arts'
-                    ? 'bg-[#001133] hover:bg-[#001c4d] text-[#3b82f6] border-[#3b82f6]/40'
-                    : 'bg-[#002200] hover:bg-[#003300] text-[#22c55e] border-[#22c55e]/40'
-                }`}
-              >
-                <span>{card} Card</span>
-              </button>
-            ))}
+            {p1.commandDeck.map((card, idx) => {
+              const baseMult = card === 'Buster' ? 2.0 : card === 'Arts' ? 1.8 : 2.2;
+              const critPct = Math.min(100, Math.round((p1.critStars || 0) * baseMult));
+              return (
+                <button
+                  key={idx}
+                  disabled={selectedCards.length >= 3}
+                  onClick={() => handleCardClick(card)}
+                  className={`px-4 py-2 rounded-sm font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2 border transition disabled:opacity-30 disabled:cursor-not-allowed ${
+                    card === 'Buster'
+                      ? 'bg-[#220000] hover:bg-[#330000] text-[#ef4444] border-[#ef4444]/40'
+                      : card === 'Arts'
+                      ? 'bg-[#001133] hover:bg-[#001c4d] text-[#3b82f6] border-[#3b82f6]/40'
+                      : 'bg-[#002200] hover:bg-[#003300] text-[#22c55e] border-[#22c55e]/40'
+                  }`}
+                >
+                  <span>{card} ({critPct}% Crit)</span>
+                </button>
+              );
+            })}
 
             <button
               onClick={handleClearCards}
