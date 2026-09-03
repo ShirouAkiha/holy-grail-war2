@@ -258,6 +258,19 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
 
       // Interactive Dropdown Menu selector of OWNED CEs
+      // Deduplicate owned CEs by ID so options have unique values
+      const ceCounts = new Map<string, { ce: any; count: number }>();
+      for (const c of ownedCes) {
+        if (!c || !c.id) continue;
+        if (!ceCounts.has(c.id)) {
+          ceCounts.set(c.id, { ce: c, count: 1 });
+        } else {
+          ceCounts.get(c.id)!.count++;
+        }
+      }
+
+      const uniqueCes = Array.from(ceCounts.values());
+
       const options: any[] = [
         {
           label: 'Unequip Current Essence',
@@ -265,11 +278,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           value: 'none',
           default: !activeServant.equippedCeId
         },
-        ...ownedCes.slice(0, 24).map((c: any) => ({
-          label: c.name,
-          description: `★${c.rarity} • ${c.effectText.slice(0, 50)}`,
-          value: c.id,
-          default: activeServant.equippedCeId === c.id
+        ...uniqueCes.slice(0, 24).map(({ ce, count }) => ({
+          label: count > 1 ? `${ce.name} (x${count})` : ce.name,
+          description: `★${ce.rarity} • ${ce.effectText.slice(0, 50)}`,
+          value: ce.id,
+          default: activeServant.equippedCeId === ce.id
         }))
       ];
 
