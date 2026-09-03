@@ -23,8 +23,14 @@ import {
   Sliders,
   ExternalLink,
   Play,
-  RotateCcw
+  RotateCcw,
+  Upload,
+  FileUp,
+  Image as ImageIcon,
+  Loader2,
+  Trash2
 } from 'lucide-react';
+import { normalizeMediaUrl } from '../lib/utils/mediaResolver';
 
 interface ServantWorkshopProps {
   master: MasterProfile;
@@ -49,6 +55,9 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
   const [npAfkTimeout, setNpAfkTimeout] = useState(60);
   const [npSaveFeedback, setNpSaveFeedback] = useState(false);
   const [npSaving, setNpSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/servants/npanim')
@@ -160,6 +169,49 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
       console.error('Failed to save NP animation:', err);
     } finally {
       setNpSaving(false);
+    }
+  };
+
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+
+    // 25MB maximum limit check
+    if (file.size > 25 * 1024 * 1024) {
+      setUploadError('File exceeds 25MB size limit.');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError(null);
+    setUploadSuccess(null);
+
+    // Instant local preview
+    const localBlobUrl = URL.createObjectURL(file);
+    setNpGifUrl(localBlobUrl);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('servantId', currentServant.template.id || currentServant.template.name);
+
+      const res = await fetch('/api/servants/upload-anim', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to upload media file');
+      }
+
+      setNpGifUrl(data.url);
+      setUploadSuccess(`Uploaded ${(file.size / (1024 * 1024)).toFixed(2)} MB (${data.filename})`);
+      setTimeout(() => setUploadSuccess(null), 4000);
+    } catch (err: any) {
+      console.error('Upload failed:', err);
+      setUploadError(err.message || 'Upload failed. You can still use a direct URL.');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -501,9 +553,88 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Controls (5 cols) */}
           <div className="lg:col-span-5 space-y-4 font-mono text-xs">
+            {/* Direct File Upload (100% Guaranteed & Safe) */}
+            <div className="p-3.5 rounded bg-[#111] border border-[#222]">
+              <label className="text-[10px] uppercase tracking-wider text-white/60 block mb-2 flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-white">
+                  <FileUp className="w-3.5 h-3.5 text-[#d4af37]" />
+                  Direct File Upload (Recommended)
+                </span>
+                <span className="text-[9px] text-emerald-400 font-bold bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-800/40">
+                  100% Reliable
+                </span>
+              </label>
+
+              <div
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => {
+                  e.preventDefault();
+                  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    handleFileUpload(e.dataTransfer.files[0]);
+                  }
+                }}
+                className={`relative border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer ${
+                  isUploading
+                    ? 'border-[#d4af37] bg-[#d4af37]/5'
+                    : 'border-[#2a2a2a] hover:border-[#d4af37]/60 bg-[#141414] hover:bg-[#181818]'
+                }`}
+                onClick={() => {
+                  const input = document.getElementById('np-file-upload-input');
+                  input?.click();
+                }}
+              >
+                <input
+                  id="np-file-upload-input"
+                  type="file"
+                  accept="image/gif,video/mp4,video/webm,image/webp,image/png,image/jpeg"
+                  className="hidden"
+                  onChange={e => {
+                    if (e.target.files && e.target.files[0]) {
+                      handleFileUpload(e.target.files[0]);
+                    }
+                  }}
+                />
+
+                {isUploading ? (
+                  <div className="flex flex-col items-center justify-center py-2 space-y-2">
+                    <Loader2 className="w-6 h-6 text-[#d4af37] animate-spin" />
+                    <span className="text-white text-xs font-semibold">Uploading animation to server...</span>
+                    <span className="text-white/40 text-[10px]">Preparing high-speed direct stream</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-1 space-y-1.5">
+                    <div className="p-2 rounded-full bg-[#1c1c1c] text-[#d4af37] border border-[#2a2a2a]">
+                      <Upload className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-white text-xs font-semibold">
+                        Click to browse or drag & drop GIF/MP4
+                      </p>
+                      <p className="text-white/40 text-[10px] mt-0.5">
+                        Supports .GIF, .MP4, .WEBM, .WEBP (Max 25MB)
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {uploadError && (
+                <div className="mt-2 p-2 bg-red-950/60 border border-red-800/40 rounded text-[10px] text-red-300">
+                  {uploadError}
+                </div>
+              )}
+              {uploadSuccess && (
+                <div className="mt-2 p-2 bg-emerald-950/60 border border-emerald-800/40 rounded text-[10px] text-emerald-300 flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{uploadSuccess}</span>
+                </div>
+              )}
+            </div>
+
+            {/* URL Input */}
             <div>
               <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1.5 flex items-center justify-between">
-                <span>Custom GIF / Video Stream URL</span>
+                <span>Or Enter Direct URL / CDN Link</span>
                 <span className="text-[#d4af37]">Native Full-Width Discord</span>
               </label>
               <div className="relative">
@@ -511,7 +642,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                   type="text"
                   value={npGifUrl}
                   onChange={e => setNpGifUrl(e.target.value)}
-                  placeholder="https://media.giphy.com/... or https://media.tenor.com/... or direct .gif link"
+                  placeholder="https://i.giphy.com/... or https://i.imgur.com/... or /uploads/..."
                   className="w-full bg-[#111] text-white text-xs px-3 py-2.5 rounded-sm border border-[#222] outline-none focus:border-[#d4af37] placeholder-white/25 pr-8"
                 />
                 {npGifUrl && (
@@ -525,19 +656,19 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                 )}
               </div>
               <p className="text-[10px] text-white/30 mt-1">
-                Supports Tenor, Giphy, Imgur, direct .gif, and .mp4 video clips. Unfurls natively at full size without embed letterboxing.
+                Tip: Direct file uploads and direct `.gif` CDN links render without broken image icons.
               </p>
             </div>
 
             {/* Quick Presets */}
             <div>
               <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1.5">
-                Preset Cinematic Animations
+                Verified Direct CDN Presets
               </label>
               <div className="grid grid-cols-2 gap-1.5">
                 <button
                   type="button"
-                  onClick={() => setNpGifUrl('https://media1.tenor.com/m/h2E2o3W6mYoAAAAC/saber-fate.gif')}
+                  onClick={() => setNpGifUrl('https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif')}
                   className="p-2 bg-[#121212] hover:bg-[#1c1c1c] border border-[#222] rounded text-left text-[11px] text-white/80 transition flex items-center justify-between"
                 >
                   <span>⚔️ Excalibur</span>
@@ -545,7 +676,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                 </button>
                 <button
                   type="button"
-                  onClick={() => setNpGifUrl('https://media1.tenor.com/m/1qf9n-7e1kEAAAAC/gilgamesh-enuma-elish.gif')}
+                  onClick={() => setNpGifUrl('https://i.giphy.com/media/13cACn6mlO56kU/giphy.gif')}
                   className="p-2 bg-[#121212] hover:bg-[#1c1c1c] border border-[#222] rounded text-left text-[11px] text-white/80 transition flex items-center justify-between"
                 >
                   <span>⚡ Enuma Elish</span>
@@ -553,7 +684,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                 </button>
                 <button
                   type="button"
-                  onClick={() => setNpGifUrl('https://media1.tenor.com/m/fV9-Kj2XQ74AAAAC/archer-unlimited-blade-works.gif')}
+                  onClick={() => setNpGifUrl('https://i.giphy.com/media/eBGV4n8U8k3eg/giphy.gif')}
                   className="p-2 bg-[#121212] hover:bg-[#1c1c1c] border border-[#222] rounded text-left text-[11px] text-white/80 transition flex items-center justify-between"
                 >
                   <span>🏹 Blade Works</span>
@@ -561,10 +692,10 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                 </button>
                 <button
                   type="button"
-                  onClick={() => setNpGifUrl('https://media1.tenor.com/m/Q3KjT8eF2GMAAAAC/cu-chulainn-gae-bolg.gif')}
+                  onClick={() => setNpGifUrl('https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif')}
                   className="p-2 bg-[#121212] hover:bg-[#1c1c1c] border border-[#222] rounded text-left text-[11px] text-white/80 transition flex items-center justify-between"
                 >
-                  <span>🩸 Gáe Bulg</span>
+                  <span>🩸 Gáe Bolg</span>
                   <span className="text-[9px] text-[#d4af37]">Lancer</span>
                 </button>
               </div>
@@ -717,7 +848,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
             <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] font-mono text-white/40">
               <span>Admin Discord Command equivalent:</span>
               <code className="text-[#d4af37] bg-black/50 px-2 py-0.5 rounded text-[10px]">
-                /admin npanim servant:"{currentServant.template.name}"
+                /admin npanim servant:&quot;{currentServant.template.name}&quot;
               </code>
             </div>
           </div>

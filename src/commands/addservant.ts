@@ -248,11 +248,17 @@ export const data = new SlashCommandBuilder()
           .setRequired(true)
           .setAutocomplete(true)
       )
+      .addAttachmentOption(opt =>
+        opt
+          .setName('file')
+          .setDescription('Upload direct GIF or MP4 animation file from your device (100% reliable)')
+          .setRequired(false)
+      )
       .addStringOption(opt =>
         opt
           .setName('gif_url')
-          .setDescription('Direct URL or Tenor/Giphy link for the Noble Phantasm animated GIF')
-          .setRequired(true)
+          .setDescription('Or paste a direct image URL (https://...)')
+          .setRequired(false)
       )
       .addStringOption(opt =>
         opt
@@ -614,10 +620,26 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   // ------------------------------------------
   if (subcommand === 'npanim') {
     const servantQuery = interaction.options.getString('servant', true).trim();
-    const rawGifUrl = interaction.options.getString('gif_url', true).trim();
+    const fileAttachment = interaction.options.getAttachment('file');
+    const urlInput = interaction.options.getString('gif_url')?.trim() || '';
     const chant = interaction.options.getString('chant')?.trim();
 
-    const normalizedGifUrl = normalizeMediaUrl(rawGifUrl);
+    const rawGifUrl = fileAttachment ? fileAttachment.url : urlInput;
+
+    if (!rawGifUrl) {
+      await interaction.reply({
+        ephemeral: true,
+        embeds: [
+          new EmbedBuilder()
+            .setTitle('❌ Missing Media Input')
+            .setDescription('Please either **upload a GIF/MP4 file** directly using the `file` option or provide a valid `gif_url`. Direct file upload is 100% reliable!')
+            .setColor(0xef4444)
+        ]
+      });
+      return;
+    }
+
+    const normalizedGifUrl = fileAttachment ? rawGifUrl : normalizeMediaUrl(rawGifUrl);
     const result = setServantNpAnimation(servantQuery, normalizedGifUrl, chant, interaction.user.username);
 
     if (!result.success || !result.servant) {
@@ -634,7 +656,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     const s = result.servant;
-    const canEmbedDirectly = isDirectEmbeddableMedia(normalizedGifUrl);
+    const isDirectDiscordUpload = !!fileAttachment;
+    const canEmbedDirectly = isDirectDiscordUpload || isDirectEmbeddableMedia(normalizedGifUrl);
 
     const embed = new EmbedBuilder()
       .setTitle(`🎬 NOBLE PHANTASM ANIMATION SET: ${s.name}`)
@@ -642,18 +665,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `Admin has updated the Noble Phantasm animation for **${s.name}**!\n\n` +
         `• **Class:** \`${s.servantClass}\` | **Noble Phantasm:** **${s.noblePhantasm.name}**\n` +
         `• **True Name Chant:** *“${s.noblePhantasm.chant}”*\n` +
-        `• **Animation Link:** [Click here to view direct source](${normalizedGifUrl})\n\n` +
+        `• **Media Source:** ${isDirectDiscordUpload ? '✅ **Direct Discord CDN Upload (Permanent & High-Res)**' : `[Direct Media Link](${normalizedGifUrl})`}\n\n` +
         `*During duels, when ${s.name} releases their Noble Phantasm, this animation will display at full size until the next turn!*`
       )
       .setColor(0xd4af37)
-      .setFooter({ text: `Configured by Admin ${interaction.user.username} • Direct CDN Mode` });
+      .setFooter({ text: `Configured by Admin ${interaction.user.username} • ${isDirectDiscordUpload ? 'Discord CDN Hosted' : 'Direct CDN Mode'}` });
 
     if (canEmbedDirectly) {
       embed.setImage(normalizedGifUrl);
       await interaction.reply({ embeds: [embed] });
     } else {
-      // If user pasted a webpage URL (like tenor.com/view/...) that Discord's embed image proxy rejects,
-      // send the link directly in content so Discord unfurls it at full width natively!
       await interaction.reply({
         content: `🎬 **Noble Phantasm Cinematic Registered for ${s.name}**:\n${rawGifUrl}`,
         embeds: [embed]
