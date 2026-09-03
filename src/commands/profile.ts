@@ -154,74 +154,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const embed = buildProfileEmbed(master, war);
     const buttons = buildProfileButtons(userParticipant);
 
-    const reply = await interaction.reply({
+    await interaction.reply({
       embeds: [embed],
       components: buttons,
-      ephemeral: true,
-      withResponse: true
-    }).then(r => r.resource?.message || interaction.fetchReply());
-
-    const collector = reply.createMessageComponentCollector({
-      componentType: ComponentType.Button,
-      idle: 120000,
-      time: 600000
+      ephemeral: true
     });
-
-    collector.on('collect', async (i: any) => {
-      if (i.replied || i.deferred) return;
-      if (i.user.id !== interaction.user.id) {
-        await i.reply({ content: 'Only the Master who opened this dossier can interact with it.', ephemeral: true });
-        return;
-      }
-      collector.resetTimer();
-
-      try {
-        const m = await getOrCreateMaster(i.user.id, i.user.username);
-        let w = getOrInitWarSession(m);
-        let msg = '';
-
-        if (i.customId === 'profile_ward_none') {
-          const res = executeWarAction(w, i.user.id, 'set_ward', 'none');
-          w = res.updatedWar;
-          msg = res.message;
-          await saveMaster(m);
-        } else if (i.customId === 'profile_ward_ward') {
-          const res = executeWarAction(w, i.user.id, 'set_ward', 'ward');
-          w = res.updatedWar;
-          msg = res.message;
-          await saveMaster(m);
-        } else if (i.customId === 'profile_ward_alarm') {
-          const res = executeWarAction(w, i.user.id, 'set_ward', 'alarm');
-          w = res.updatedWar;
-          msg = res.message;
-          await saveMaster(m);
-        } else if (i.customId === 'profile_toggle_evade') {
-          const curP = w.participants[i.user.id];
-          const newMode = curP?.autoEvadeEnabled !== false ? 'off' : 'on';
-          const res = executeWarAction(w, i.user.id, 'toggle_evade', newMode);
-          w = res.updatedWar;
-          msg = res.message;
-          await saveMaster(m);
-        } else if (i.customId === 'profile_heal') {
-          const res = executeWarAction(w, i.user.id, 'rest_and_heal');
-          w = res.updatedWar;
-          msg = res.message;
-          await saveMaster(m);
-        } else if (i.customId === 'profile_refresh') {
-          msg = '🔄 Profile refreshed.';
-        }
-
-        const uP = w.participants[i.user.id];
-        await i.update({
-          embeds: [buildProfileEmbed(m, w, msg)],
-          components: buildProfileButtons(uP)
-        });
-      } catch (err: any) {
-        if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
-        console.error('Error in profile collector:', err);
-      }
-    });
-
   } catch (error: any) {
     console.error('Error executing /profile:', error);
     if (interaction.replied || interaction.deferred) {

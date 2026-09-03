@@ -368,7 +368,12 @@ client.on(Events.InteractionCreate, async interaction => {
         }
 
         const uP = war.participants[interaction.user.id];
-        await interaction.update({ embeds: [buildDefensesEmbed(uP, msg)], components: buildDefensesButtons(uP) });
+        const isChurchMsg = interaction.message?.embeds?.[0]?.title?.includes('Church');
+        if (isChurchMsg) {
+          await interaction.update({ embeds: [buildChurchEmbed(uP, msg)], components: buildChurchButtons(uP) });
+        } else {
+          await interaction.update({ embeds: [buildDefensesEmbed(uP, msg)], components: buildDefensesButtons(uP) });
+        }
         return;
       }
 

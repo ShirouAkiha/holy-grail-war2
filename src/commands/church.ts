@@ -105,47 +105,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const churchEmbed = buildChurchEmbed(userParticipant, lastMsg);
     const churchButtons = buildChurchButtons(userParticipant);
 
-    const reply = await interaction.reply({
+    await interaction.reply({
       embeds: [churchEmbed],
       components: churchButtons,
-      ephemeral: true,
-      withResponse: true
-    });
-
-    const collector = reply.resource?.message?.createMessageComponentCollector({
-      componentType: ComponentType.Button,
-      time: 120_000
-    });
-
-    if (!collector) return;
-
-    collector.on('collect', async i => {
-      if (i.user.id !== interaction.user.id) {
-        await i.reply({ content: '❌ You can only manage your own church sanctuary status.', ephemeral: true });
-        return;
-      }
-
-      const freshMaster = await getOrCreateMaster(i.user.id, i.user.username);
-      let currentWar = getOrInitWarSession(freshMaster);
-      let outcomeMsg = '';
-
-      if (i.customId === 'church_enter') {
-        const res = enterChurchSanctuary(currentWar, i.user.id);
-        currentWar = res.updatedWar;
-        outcomeMsg = res.message;
-        await saveMaster(freshMaster);
-      } else if (i.customId === 'church_leave') {
-        const res = leaveChurchSanctuary(currentWar, i.user.id);
-        currentWar = res.updatedWar;
-        outcomeMsg = res.message;
-        await saveMaster(freshMaster);
-      }
-
-      const uP = currentWar.participants[i.user.id];
-      await i.update({
-        embeds: [buildChurchEmbed(uP, outcomeMsg)],
-        components: buildChurchButtons(uP)
-      });
+      ephemeral: true
     });
   } catch (error: any) {
     console.error('Error executing /church:', error);

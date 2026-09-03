@@ -2980,7 +2980,7 @@ export default function DiscordEmulator({
           }
         });
       }
-    } else if (btnId.startsWith('ward_') || btnId === 'toggle_auto_evade' || btnId === 'quick_war_defenses') {
+    } else if (btnId.startsWith('ward_') || btnId === 'toggle_auto_evade' || btnId === 'quick_war_defenses' || btnId === 'war_refresh_defenses') {
       if (btnId === 'quick_war_defenses') {
         handleCommand('/defenses');
         return;
@@ -3010,6 +3010,18 @@ export default function DiscordEmulator({
         currentWar = res.updatedWar;
         actionMsg = res.message;
         onUpdateGrailWar(currentWar);
+      } else if (btnId === 'church_enter') {
+        const res = enterChurchSanctuary(currentWar, master.discordId);
+        currentWar = res.updatedWar;
+        actionMsg = res.message;
+        onUpdateGrailWar(currentWar);
+      } else if (btnId === 'church_leave') {
+        const res = leaveChurchSanctuary(currentWar, master.discordId);
+        currentWar = res.updatedWar;
+        actionMsg = res.message;
+        onUpdateGrailWar(currentWar);
+      } else if (btnId === 'war_refresh_defenses') {
+        actionMsg = '🔄 Settings refreshed.';
       }
 
       const uP = currentWar.participants[master.discordId];
