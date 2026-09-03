@@ -307,7 +307,8 @@ function drawTarotCommandCard(
   let deepColor = '#3b0707';
   let cardLabel = 'BUSTER';
   let emblemText = 'B';
-  let statText = orderIdx === 0 ? '1st (+50% DMG)' : `2nd (${orderIdx === 1 ? '1.2x' : '1.4x'})`;
+  const posPrefix = orderIdx === 0 ? '1st' : orderIdx === 1 ? '2nd' : '3rd';
+  let statText = orderIdx === 0 ? '1st (+50% DMG)' : `${posPrefix} (${orderIdx === 1 ? '1.2x' : '1.4x'})`;
   let baseCritMult = 2.0;
 
   if (card === 'NP') {
@@ -324,7 +325,7 @@ function drawTarotCommandCard(
     deepColor = '#082f49';
     cardLabel = 'ARTS';
     emblemText = 'A';
-    statText = orderIdx === 0 ? '1st (+100% NP)' : `2nd (${orderIdx === 1 ? '1.2x' : '1.4x'})`;
+    statText = orderIdx === 0 ? '1st (+100% NP)' : `${posPrefix} (${orderIdx === 1 ? '1.2x' : '1.4x'})`;
     baseCritMult = 1.8;
   } else if (card === 'Quick') {
     cardColor = '#16a34a';
@@ -332,7 +333,7 @@ function drawTarotCommandCard(
     deepColor = '#064e3b';
     cardLabel = 'QUICK';
     emblemText = 'Q';
-    statText = orderIdx === 0 ? '1st (+20% CRIT)' : `2nd (${orderIdx === 1 ? '1.2x' : '1.4x'})`;
+    statText = orderIdx === 0 ? '1st (+20% CRIT)' : `${posPrefix} (${orderIdx === 1 ? '1.2x' : '1.4x'})`;
     baseCritMult = 2.2;
   }
 

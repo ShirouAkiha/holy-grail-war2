@@ -12,6 +12,7 @@ import {
   ServantClass
 } from '../lib/types';
 import { SERVANT_DATABASE, getDefaultClassPassives } from '../lib/data/servants';
+import { getNoblePhantasmGif, getNoblePhantasmChant } from '../lib/data/noblePhantasmGifs';
 import { findServantInPool, matchServantSearch } from '../lib/utils/servantMatcher';
 import {
   createCombatantFromMasterServant,
@@ -267,6 +268,7 @@ interface DiscordMessage {
   id: string;
   sender: 'user' | 'bot';
   timestamp: string;
+  content?: string;
   commandText?: string;
   embed?: {
     title: string;
@@ -359,6 +361,28 @@ export default function DiscordEmulator({
   } | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const msgCounterRef = useRef<number>(100);
+  const activeNpTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const activeNpMsgIdRef = useRef<string | null>(null);
+
+  const cleanupActiveNpGif = () => {
+    if (activeNpTimeoutRef.current) {
+      clearTimeout(activeNpTimeoutRef.current);
+      activeNpTimeoutRef.current = null;
+    }
+    if (activeNpMsgIdRef.current) {
+      const idToDelete = activeNpMsgIdRef.current;
+      activeNpMsgIdRef.current = null;
+      setMessages(prev => prev.filter(m => m.id !== idToDelete));
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (activeNpTimeoutRef.current) {
+        clearTimeout(activeNpTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const allThrone = [...SERVANT_DATABASE, ...customServants];
   const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
@@ -2863,6 +2887,9 @@ export default function DiscordEmulator({
         return;
       }
 
+      // Automatically delete previous NP GIF when a new action/turn is chosen
+      cleanupActiveNpGif();
+
       let cards: CardType[] = ['Buster', 'Arts', 'Quick'];
       let useNp = false;
 
@@ -2873,6 +2900,67 @@ export default function DiscordEmulator({
 
       const aiCards: CardType[] = ['Buster', 'Arts', 'Quick'];
       const aiNp = activeDuel.battle.player2.npGauge >= 100;
+
+      // Dispatch Noble Phantasm Animated Cinematic GIF if player or AI unleashed NP
+      if (useNp) {
+        const npActor = activeDuel.battle.player1;
+        const npGif = getNoblePhantasmGif(npActor);
+        const npChant = getNoblePhantasmChant(npActor);
+        const npName = npActor.noblePhantasm?.name || 'Noble Phantasm';
+        const npColor = npActor.noblePhantasm?.cardType === 'Buster' ? '#ef4444' : npActor.noblePhantasm?.cardType === 'Arts' ? '#3b82f6' : '#10b981';
+
+        const npMsgId = getNextId('bot_duel_np_cinematic');
+        addMessage({
+          id: npMsgId,
+          sender: 'bot',
+          timestamp: 'Just now',
+          content: `💥 **${npActor.name}** invokes their True Name!\n*“${npChant}”*\n${npGif}`,
+          embed: {
+            title: `💥 NOBLE PHANTASM UNLEASHED: ${npName}`,
+            description: `🗣️ *“${npChant}”*\n\n🔥 **${npActor.name}** (Master: ${master.username}) releases maximum spirit power!`,
+            imageUrl: npGif,
+            color: npColor,
+            footer: '⏳ Auto-deleting in 10s or when the next turn is chosen'
+          }
+        });
+
+        activeNpMsgIdRef.current = npMsgId;
+        activeNpTimeoutRef.current = setTimeout(() => {
+          setMessages(prev => prev.filter(m => m.id !== npMsgId));
+          if (activeNpMsgIdRef.current === npMsgId) {
+            activeNpMsgIdRef.current = null;
+          }
+        }, 10000);
+      } else if (aiNp) {
+        const aiActor = activeDuel.battle.player2;
+        const aiNpGif = getNoblePhantasmGif(aiActor);
+        const aiNpChant = getNoblePhantasmChant(aiActor);
+        const aiNpName = aiActor.noblePhantasm?.name || 'Noble Phantasm';
+        const aiNpColor = aiActor.noblePhantasm?.cardType === 'Buster' ? '#ef4444' : aiActor.noblePhantasm?.cardType === 'Arts' ? '#3b82f6' : '#10b981';
+
+        const aiNpMsgId = getNextId('bot_duel_ai_np_cinematic');
+        addMessage({
+          id: aiNpMsgId,
+          sender: 'bot',
+          timestamp: 'Just now',
+          content: `💥 **${aiActor.name}** invokes their True Name!\n*“${aiNpChant}”*\n${aiNpGif}`,
+          embed: {
+            title: `💥 ENEMY NOBLE PHANTASM: ${aiNpName}`,
+            description: `🗣️ *“${aiNpChant}”*\n\n⚡ **${aiActor.name}** (Master: ${aiActor.masterName}) retaliates with full divine authority!`,
+            imageUrl: aiNpGif,
+            color: aiNpColor,
+            footer: '⏳ Auto-deleting in 10s or when the next turn is chosen'
+          }
+        });
+
+        activeNpMsgIdRef.current = aiNpMsgId;
+        activeNpTimeoutRef.current = setTimeout(() => {
+          setMessages(prev => prev.filter(m => m.id !== aiNpMsgId));
+          if (activeNpMsgIdRef.current === aiNpMsgId) {
+            activeNpMsgIdRef.current = null;
+          }
+        }, 10000);
+      }
 
       const { updatedState, turnLogs } = executeBattleTurn(
         activeDuel.battle,
@@ -3476,6 +3564,13 @@ export default function DiscordEmulator({
               {msg.commandText && (
                 <div className="text-[#d4af37] font-mono text-xs mt-1 bg-[#111] border border-[#1a1a1a] px-2.5 py-1 rounded-sm inline-block">
                   {msg.commandText}
+                </div>
+              )}
+
+              {/* Message Content (e.g. text links / chants) */}
+              {msg.content && (
+                <div className="text-white/90 text-xs mt-1.5 whitespace-pre-wrap leading-relaxed font-sans">
+                  {msg.content}
                 </div>
               )}
 

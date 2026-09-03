@@ -15,6 +15,7 @@ import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives } from '
 import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp } from '../engine/grailwar';
 import { renderBattleTurnSummary } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER } from '../engine/battle';
+import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -1428,6 +1429,70 @@ async function startInteractiveDuel(
     battleMsg = res?.resource?.message || await contextInteraction.fetchReply();
   }
 
+  // Active Noble Phantasm GIF message reference & auto-delete timer
+  let activeNpGifMessage: any = null;
+  let activeNpGifTimeout: any = null;
+
+  const cleanupNpGif = async () => {
+    if (activeNpGifTimeout) {
+      clearTimeout(activeNpGifTimeout);
+      activeNpGifTimeout = null;
+    }
+    if (activeNpGifMessage) {
+      const msgToDelete = activeNpGifMessage;
+      activeNpGifMessage = null;
+      try {
+        await msgToDelete.delete();
+      } catch {
+        // Ignored if already deleted or interaction expired
+      }
+    }
+  };
+
+  const dispatchNpGif = async (actor: DuelCombatant, interaction: any) => {
+    await cleanupNpGif();
+    const servant = actor.servant;
+    const npTemplate = servant.template?.noblePhantasm;
+    const npGifUrl = getNoblePhantasmGif(servant);
+    const npChant = getNoblePhantasmChant(servant);
+    const npName = npTemplate?.name || 'Noble Phantasm';
+    const cardColor = npTemplate?.cardType === 'Buster' ? 0xef4444 : npTemplate?.cardType === 'Arts' ? 0x3b82f6 : 0x10b981;
+
+    const npEmbed = new EmbedBuilder()
+      .setTitle(`💥 NOBLE PHANTASM UNLEASHED: ${npName}`)
+      .setDescription(`🗣️ *“${npChant}”*\n\n🔥 **${servant.nickname || servant.template?.name}** (Master: ${actor.username}) releases maximum spirit power!`)
+      .setImage(npGifUrl)
+      .setColor(cardColor)
+      .setFooter({ text: '⏳ Auto-deleting in 10 seconds or when the next turn is chosen' });
+
+    try {
+      let sentMsg: any = null;
+      if (interaction.channel && typeof interaction.channel.send === 'function') {
+        sentMsg = await interaction.channel.send({
+          content: `💥 **${servant.nickname || servant.template?.name}** invokes their True Name!\n*“${npChant}”*\n${npGifUrl}`,
+          embeds: [npEmbed]
+        });
+      } else if (interaction.followUp) {
+        sentMsg = await interaction.followUp({
+          content: `💥 **${servant.nickname || servant.template?.name}** invokes their True Name!\n*“${npChant}”*\n${npGifUrl}`,
+          embeds: [npEmbed],
+          fetchReply: true
+        });
+      }
+
+      if (sentMsg) {
+        activeNpGifMessage = sentMsg;
+        activeNpGifTimeout = setTimeout(async () => {
+          if (activeNpGifMessage === sentMsg) {
+            await cleanupNpGif();
+          }
+        }, 10000);
+      }
+    } catch (err) {
+      console.warn('Could not post Noble Phantasm GIF cinematic message:', err);
+    }
+  };
+
   // Component Collector for turn choices - resets idle timer on every valid player action
   const collector = battleMsg.createMessageComponentCollector({
     componentType: ComponentType.Button,
@@ -1449,6 +1514,9 @@ async function startInteractiveDuel(
 
       // Reset inactivity idle timer on active player action
       collector.resetTimer();
+
+      // Automatically delete active NP GIF when the next turn action is picked
+      await cleanupNpGif();
 
       // Acknowledge Discord immediately so the 3s timeout never triggers during canvas rendering
       await i.deferUpdate();
@@ -1536,6 +1604,11 @@ async function startInteractiveDuel(
       combatLogs.push(log);
       if (combatLogs.length > 4) combatLogs.shift();
 
+      // Trigger cinematic Noble Phantasm animated GIF if player used NP
+      if (playerSequence.includes('NP')) {
+        await dispatchNpGif(attacker, i);
+      }
+
       if (activeUserId === p1.userId) {
         p1LastCards = playerSequence;
       } else {
@@ -1548,6 +1621,7 @@ async function startInteractiveDuel(
       // Check if Defender fainted
       if (defender.currentHp <= 0) {
         collector.stop();
+        await cleanupNpGif();
         const finalAttachment = await createTurnSummaryAttachment(p1, p2, round, log, p1CardChoice, p2CardChoice);
         await finishDuel(i, attacker, defender, p1Master, p2Master, finalAttachment);
         return;
@@ -1581,8 +1655,14 @@ async function startInteractiveDuel(
         combatLogs.push(aiLog);
         if (combatLogs.length > 4) combatLogs.shift();
 
+        // Trigger cinematic Noble Phantasm animated GIF if AI used NP
+        if (aiSequence.includes('NP')) {
+          await dispatchNpGif(defender, i);
+        }
+
         if (attacker.currentHp <= 0) {
           collector.stop();
+          await cleanupNpGif();
           const finalAttachment = await createTurnSummaryAttachment(p1, p2, round, aiLog, p1CardChoice, p2CardChoice);
           await finishDuel(i, defender, attacker, p1Master, p2Master, finalAttachment);
           return;
@@ -1613,6 +1693,7 @@ async function startInteractiveDuel(
   });
 
   collector.on('end', async (_collected: any, reason: string) => {
+    await cleanupNpGif();
     if (reason === 'idle' || reason === 'time') {
       try {
         await battleMsg.edit({

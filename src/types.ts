@@ -66,6 +66,8 @@ export interface NoblePhantasm {
   target: 'single' | 'aoe' | 'support';
   multiplier: number;
   overchargeEffect: string;
+  animationUrl?: string;
+  gifUrl?: string;
 }
 
 export interface CraftEssence {
