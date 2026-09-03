@@ -33,7 +33,7 @@ function buildInventoryHub(
   const itemsPerPage = 8;
 
   if (category === 'ces') {
-    title = `👔 ${master.username}'s Inventory — Outfits & Craft Essences`;
+    title = `🛡️ ${master.username}'s Inventory — Craft Essences`;
     const activeCeName = activeServant.equippedCe?.name;
     equippedBanner = activeCeName
       ? `✅ Equipped **${activeCeName}** (★${activeServant.equippedCe?.rarity || 5}).`
@@ -156,7 +156,7 @@ function buildInventoryHub(
 
   // Row 1: Categories
   const catRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId('inv_cat_ces').setLabel('Outfits / CEs').setStyle(category === 'ces' ? ButtonStyle.Primary : ButtonStyle.Secondary).setEmoji('👔'),
+    new ButtonBuilder().setCustomId('inv_cat_ces').setLabel('Craft Essences').setStyle(category === 'ces' ? ButtonStyle.Primary : ButtonStyle.Secondary).setEmoji('🛡️'),
     new ButtonBuilder().setCustomId('inv_cat_servants').setLabel('Servants').setStyle(category === 'servants' ? ButtonStyle.Primary : ButtonStyle.Secondary).setEmoji('⚔️'),
     new ButtonBuilder().setCustomId('inv_cat_seals').setLabel('Seals & Wards').setStyle(category === 'seals' ? ButtonStyle.Primary : ButtonStyle.Secondary).setEmoji('📜'),
     new ButtonBuilder().setCustomId('inv_cat_items').setLabel('Vault & Currency').setStyle(category === 'items' ? ButtonStyle.Primary : ButtonStyle.Secondary).setEmoji('💎')

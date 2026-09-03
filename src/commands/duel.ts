@@ -571,18 +571,8 @@ function invokeCombatantSeal(combatant: DuelCombatant): { success: boolean; log:
   }
 
   combatant.commandSeals--;
-  const lowHp = combatant.currentHp < combatant.maxHp * 0.6;
-  let logText = '';
-  if (lowHp) {
-    const healAmt = Math.round(combatant.maxHp * 0.40);
-    combatant.currentHp = Math.min(combatant.maxHp, combatant.currentHp + healAmt);
-    combatant.npGauge = Math.min(300, combatant.npGauge + 50);
-    logText = `🔱 **COMMAND SEAL INVOKED!** Master **${combatant.username}** commanded: *"By my Command Seal, recover and strike!"*\n> ✨ **${combatant.servant.template.name}** restored **+${healAmt.toLocaleString()} HP** and gained **+50% NP**!`;
-  } else {
-    combatant.npGauge = 100;
-    combatant.critStars = Math.min(50, combatant.critStars + 20);
-    logText = `🔱 **COMMAND SEAL INVOKED!** Master **${combatant.username}** commanded: *"Unleash your full Phantasm!"*\n> ⚡ **${combatant.servant.template.name}** reached **100% NP Gauge**!`;
-  }
+  combatant.npGauge = 100;
+  const logText = `🔱 **COMMAND SEAL INVOKED!** Master **${combatant.username}** commanded: *"By my Command Seal, unleash your Noble Phantasm!"*\n> ⚡ **${combatant.servant.template.name}**'s NP Gauge has been completely refilled to **100%**!`;
   return { success: true, log: logText };
 }
 
@@ -1276,11 +1266,11 @@ async function startInteractiveDuel(
       if (i.customId === 'card_seal') {
         const actor = activeUserId === p1.userId ? p1 : p2;
         const actingMaster = activeUserId === p1Master.discordId ? p1Master : p2Master;
-        if (actingMaster && actingMaster.commandSeals > 0) {
-          actingMaster.commandSeals--;
+        const res = invokeCombatantSeal(actor);
+        if (actingMaster) {
+          actingMaster.commandSeals = actor.commandSeals;
           await saveMaster(actingMaster);
         }
-        const res = invokeCombatantSeal(actor);
         combatLogs.push(res.log);
         if (combatLogs.length > 4) combatLogs.shift();
 

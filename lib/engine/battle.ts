@@ -338,15 +338,10 @@ export function executeBattleTurn(
       return;
     }
 
-    // Handle Master Command Seal if activated
+    // Handle Master Command Seal if activated (Refills whole NP gauge to 100%)
     if (choice.useCommandSeal) {
-      if (choice.useCommandSeal === 'heal') {
-        actor.currentHp = actor.maxHp;
-        usedSkillNames.push('Command Seal: Complete Restoration');
-      } else if (choice.useCommandSeal === 'np_charge') {
-        actor.npGauge = 300;
-        usedSkillNames.push('Command Seal: 300% NP Overdrive');
-      }
+      actor.npGauge = 100;
+      usedSkillNames.push('Command Seal: NP Refilled (100%)');
     }
 
     // Check Noble Phantasm execution

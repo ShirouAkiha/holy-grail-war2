@@ -131,6 +131,13 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         }
       );
 
+      if (selectedCommandSeal) {
+        onUpdateMaster({
+          ...master,
+          commandSeals: Math.max(0, (master.commandSeals ?? 3) - 1)
+        });
+      }
+
       setBattle(updatedState);
       setSelectedCards([]);
       setUseNp(false);
@@ -481,28 +488,48 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
               </div>
             </div>
 
-            {/* Noble Phantasm Activation Button */}
+            {/* Noble Phantasm & Command Seals Activation */}
             <div className="space-y-2">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">Noble Phantasm:</span>
-              <button
-                disabled={p1.npGauge < 100}
-                onClick={() => setUseNp(!useNp)}
-                className={`w-full py-2 px-3.5 rounded-sm text-xs font-mono uppercase tracking-wider flex items-center justify-between border transition ${
-                  useNp
-                    ? 'bg-[#d4af37] text-black border-[#d4af37] font-bold shadow-[0_0_12px_#d4af37]'
-                    : p1.npGauge >= 100
-                    ? 'bg-[#ef4444]/20 hover:bg-[#ef4444]/30 text-[#ef4444] border-[#ef4444]/50'
-                    : 'bg-[#111] text-white/30 border-[#1a1a1a] cursor-not-allowed'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" />
-                  <span className="font-serif italic capitalize not-italic">{p1.noblePhantasm.name}</span>
-                </div>
-                <span className="text-[10px] px-2 py-0.5 rounded-sm bg-black/40 font-mono">
-                  {p1.npGauge >= 100 ? 'READY' : `${Math.round(p1.npGauge)}%`}
-                </span>
-              </button>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">Noble Phantasm & Seals:</span>
+                <span className="text-[10px] font-mono text-rose-400">🔴 {master.commandSeals ?? 3}/3 Seals</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  disabled={p1.npGauge < 100}
+                  onClick={() => setUseNp(!useNp)}
+                  className={`py-2 px-3 rounded-sm text-xs font-mono uppercase tracking-wider flex items-center justify-between border transition ${
+                    useNp
+                      ? 'bg-[#d4af37] text-black border-[#d4af37] font-bold shadow-[0_0_12px_#d4af37]'
+                      : p1.npGauge >= 100
+                      ? 'bg-[#ef4444]/20 hover:bg-[#ef4444]/30 text-[#ef4444] border-[#ef4444]/50'
+                      : 'bg-[#111] text-white/30 border-[#1a1a1a] cursor-not-allowed'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 truncate">
+                    <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                    <span className="font-serif italic capitalize not-italic truncate">{p1.noblePhantasm.name}</span>
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-black/40 font-mono ml-1">
+                    {p1.npGauge >= 100 ? 'READY' : `${Math.round(p1.npGauge)}%`}
+                  </span>
+                </button>
+
+                <button
+                  disabled={(master.commandSeals ?? 3) <= 0 || p1.npGauge >= 100}
+                  onClick={() => setSelectedCommandSeal(selectedCommandSeal ? undefined : 'np_charge')}
+                  className={`py-2 px-3 rounded-sm text-xs font-mono tracking-wider flex items-center justify-between border transition ${
+                    selectedCommandSeal
+                      ? 'bg-rose-600 text-white border-rose-400 font-bold shadow-[0_0_12px_rgba(225,29,72,0.5)]'
+                      : (master.commandSeals ?? 3) <= 0 || p1.npGauge >= 100
+                      ? 'bg-[#111] text-white/30 border-[#1a1a1a] cursor-not-allowed'
+                      : 'bg-[#111] hover:bg-[#161616] text-rose-400 border-rose-900/50'
+                  }`}
+                >
+                  <span className="truncate">🔴 Refill NP (1 Seal)</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-black/40 font-mono ml-1">100% NP</span>
+                </button>
+              </div>
             </div>
           </div>
 

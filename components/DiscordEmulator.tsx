@@ -1010,8 +1010,7 @@ export default function DiscordEmulator({
       trimmed.startsWith('/inventory') ||
       trimmed.startsWith('/equip') ||
       trimmed.startsWith('/customise') ||
-      trimmed.startsWith('/cegacha inventory') ||
-      trimmed.startsWith('/outfits')
+      trimmed.startsWith('/cegacha inventory')
     ) {
       let category: 'ces' | 'servants' | 'seals' | 'items' = 'ces';
       if (trimmed.includes('servant')) category = 'servants';
@@ -2348,14 +2347,14 @@ export default function DiscordEmulator({
     const activeServant = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
     const servantName = activeServant?.nickname || activeServant?.template?.name || (activeServant as any)?.name || 'Heroic Spirit';
 
-    let title = `👔 ${master.username}'s Inventory — Craft Essences`;
+    let title = `🛡️ ${master.username}'s Inventory — Craft Essences`;
     let equippedBanner = '';
     let itemLines: string[] = [];
     let totalItems = 0;
     const itemsPerPage = 8;
 
     if (category === 'ces') {
-      title = `👔 ${master.username}'s Inventory — Outfits & Craft Essences`;
+      title = `🛡️ ${master.username}'s Inventory — Craft Essences`;
       const activeCeName = activeServant?.equippedCe?.name;
       equippedBanner = activeCeName
         ? `✅ Equipped **${activeCeName}** (★${activeServant?.equippedCe?.rarity || 5}).`
@@ -2448,7 +2447,7 @@ export default function DiscordEmulator({
       components: {
         type: 'buttons',
         items: [
-          { id: 'inv_cat_ces', label: 'Outfits / CEs', style: category === 'ces' ? 'primary' : 'secondary', emoji: '👔' },
+          { id: 'inv_cat_ces', label: 'Craft Essences', style: category === 'ces' ? 'primary' : 'secondary', emoji: '🛡️' },
           { id: 'inv_cat_servants', label: 'Servants', style: category === 'servants' ? 'primary' : 'secondary', emoji: '⚔️' },
           { id: 'inv_cat_seals', label: 'Seals & Wards', style: category === 'seals' ? 'primary' : 'secondary', emoji: '📜' },
           { id: 'inv_cat_items', label: 'Vault & Currency', style: category === 'items' ? 'primary' : 'secondary', emoji: '💎' },
