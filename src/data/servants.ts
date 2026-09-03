@@ -517,6 +517,81 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     avatarUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&auto=format&fit=crop&q=80',
     cardArtUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80'
   },
+  {
+    id: 'mhx_alter',
+    name: 'Mysterious Heroine X (Alter)',
+    title: 'Dark Cavalier of the Round',
+    servantClass: 'Berserker',
+    rarity: 5,
+    baseHp: 28500,
+    baseAtk: 11150,
+    baseStats: { strength: 17, endurance: 16, agility: 19, mana: 18, luck: 14 },
+    commandDeck: ['Quick', 'Quick', 'Arts', 'Arts', 'Buster'],
+    skills: [
+      {
+        id: 'sweets_reactor_a',
+        name: 'Sweets Reactor A',
+        cooldown: 5,
+        description: 'Recovers 3,000 HP and increases own Quick Card performance by 20% for 3 turns.',
+        effectType: 'heal',
+        value: 3000,
+        duration: 3,
+        icon: '🍡'
+      },
+      {
+        id: 'sovereign_hand_c',
+        name: 'Sovereign\'s Unseen Hand C',
+        cooldown: 5,
+        description: 'Gains 15 Critical Stars and increases Critical Damage by 30% for 3 turns.',
+        effectType: 'crit_stars',
+        value: 15,
+        duration: 3,
+        icon: '🌌'
+      },
+      {
+        id: 'altro_reactor_a',
+        name: 'Altro Reactor A',
+        cooldown: 6,
+        description: 'Increases own ATK by 25% for 3 turns and charges NP gauge by 20%.',
+        effectType: 'buff_atk',
+        value: 25,
+        duration: 3,
+        icon: '⚡'
+      }
+    ],
+    passives: [
+      {
+        name: 'Madness Enhancement C',
+        type: 'madness_enhancement',
+        value: 6,
+        rank: 'C',
+        description: 'Increases Buster Card effectiveness by 6%.'
+      },
+      {
+        name: 'Altro Reactor EX',
+        type: 'independent_action',
+        value: 10,
+        rank: 'EX',
+        description: 'Increases Critical Strike Damage by 10%.'
+      }
+    ],
+    noblePhantasm: {
+      name: 'Cross-Calibur: Twin Black Dragon Blades of Dark Destruction',
+      cardType: 'Quick',
+      chant: 'Darkness... devour my soul! Twin black dragon blades, unleash! CROSS-CALIBUR!',
+      description: 'Slashes the foe with dual dark saber constructs infused with Dark Matter force, dealing massive single-target Quick damage with high critical star generation.',
+      target: 'single',
+      multiplier: 1400,
+      overchargeEffect: 'Super effective against Saber class targets & generates 30 Critical Stars'
+    },
+    lore: 'A dark assassin from the Servant Universe who claims to be the villainous Dark Cavalier destined to defeat Mysterious Heroine X. She loves Japanese sweets and stays energized with black bean paste.',
+    summonQuote: 'Servant Berserker, Mysterious Heroine X Alter. Do you have Japanese sweets? No? Then I shall wait until you acquire some.',
+    battleStartQuote: 'Entering Dark Matter reactor mode... Target acquired.',
+    victoryQuote: 'Objective accomplished. Time for my tea break.',
+    defeatQuote: 'Reactor core... overloaded... My sweets...',
+    avatarUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=400&auto=format&fit=crop&q=80',
+    cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'
+  },
 
   // 4-Star SR Servants
   {
