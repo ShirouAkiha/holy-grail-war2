@@ -11,7 +11,7 @@ import {
 } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { renderServantProfileCard, renderDialogueCard } from '../canvas/renderer';
-import { SERVANT_DATABASE } from '../data/servants';
+import { SERVANT_DATABASE, getDefaultClassPassives } from '../data/servants';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -133,6 +133,14 @@ function buildServantEmbed(servant: any, master: any) {
   const totalHp = Math.round(baseHp * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceBonusHp);
   const totalAtk = Math.round(baseAtk * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceBonusAtk);
 
+  const passives = (t.passives && t.passives.length > 0)
+    ? t.passives
+    : getDefaultClassPassives(t.servantClass);
+
+  const passiveText = passives.length > 0
+    ? passives.map((p: any) => `• **${p.name}** [${p.rank || 'Passive'}] — ${p.description}`).join('\n')
+    : 'None';
+
   const embed = new EmbedBuilder()
     .setTitle(`⚔️ Servant Profile Card: ${servant.nickname || t.name}`)
     .setDescription(
@@ -140,6 +148,10 @@ function buildServantEmbed(servant: any, master: any) {
       `🌟 **Class:** ${t.servantClass} | **Rarity:** ${'★'.repeat(t.rarity)} | **Bond Lv:** ${servant.bondLevel || 1}/10 ♥ | **Level:** ${lvl}/100\n` +
       `❤️ **Max HP:** \`${totalHp.toLocaleString()}\` | ⚔️ **Total ATK:** \`${totalAtk.toLocaleString()}\` | 📈 **Stat Points:** **${servant.availableStatPoints || 0} pts**`
     )
+    .addFields({
+      name: '🛡️ Class Passive Skills',
+      value: passiveText
+    })
     .setColor(t.rarity === 5 ? 0xd4af37 : 0x38bdf8);
 
   return embed;
