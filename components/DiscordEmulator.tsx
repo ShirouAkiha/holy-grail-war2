@@ -2597,6 +2597,8 @@ export default function DiscordEmulator({
       timestamp: 'Just now',
       embed: {
         title: `⚔️ Servant Profile: ${template.name} — ${template.title}`,
+        thumbnailUrl: template.avatarUrl,
+        imageUrl: template.cardArtUrl || template.avatarUrl,
         description:
           `${stars} | Class: **${template.servantClass}** | Origin: **${template.isCustomOrMeme ? '🛠️ Custom Administrator Creation' : '🏛️ Canon Heroic Spirit'}**\n\n` +
           `📜 **Historical Legend & Lore:**\n> ${template.lore || 'A legendary soul recorded in the Throne of Heroes.'}\n\n` +
@@ -2630,7 +2632,7 @@ export default function DiscordEmulator({
         type: 'buttons',
         items: [
           { id: `quote_servant_${template.id}`, label: 'Hear Dialogue Card', style: 'primary', emoji: '💬' },
-          { id: 'btn_show_servants_list', label: 'All Servants List (/servants)', style: 'secondary', emoji: '📜' },
+          { id: 'btn_show_servants_list', label: 'Back to Servants List', style: 'secondary', emoji: '📜' },
           { id: 'quick_start_duel', label: 'Enter Arena (/duel)', style: 'danger', emoji: '⚔️' }
         ]
       }
@@ -2893,7 +2895,7 @@ export default function DiscordEmulator({
 
   // Button interaction handler
   const handleButtonClick = (btnId: string) => {
-    if (btnId === 'btn_show_servants_list') {
+    if (btnId === 'btn_show_servants_list' || btnId === 'btn_back_servants_list') {
       handleCommand('/servants list');
     } else if (btnId.startsWith('inv_')) {
       if (btnId === 'inv_cat_ces') postInventoryHub('ces');

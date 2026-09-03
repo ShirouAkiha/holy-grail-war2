@@ -6,11 +6,13 @@ import {
   ButtonBuilder, 
   ButtonStyle, 
   EmbedBuilder,
+  AttachmentBuilder,
   ComponentType
 } from 'discord.js';
 import { getAllThroneServants, findServantInPool, matchServantSearch } from '../database/service';
 import { getDefaultClassPassives } from '../data/servants';
-import { ServantTemplate } from '../types';
+import { ServantTemplate, MasterServantInstance } from '../types';
+import { renderServantProfileCard } from '../canvas/renderer';
 
 export const data = new SlashCommandBuilder()
   .setName('servants')
@@ -100,8 +102,25 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
 
       const profileEmbed = buildServantFullProfileEmbed(match);
+      const artworkEmbed = buildServantArtworkEmbed(match);
       const actionRow = buildProfileActions(match.id);
-      await interaction.reply({ embeds: [profileEmbed], components: [actionRow] });
+      
+      const files: AttachmentBuilder[] = [];
+      try {
+        const tempInstance = createServantTempInstance(match);
+        const cardBuffer = await renderServantProfileCard(tempInstance, 'Throne of Heroes');
+        if (cardBuffer && cardBuffer.length > 500) {
+          files.push(new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' }));
+        }
+      } catch (e) {
+        console.warn('Canvas render error in /servants view:', e);
+      }
+
+      await interaction.reply({ 
+        embeds: [profileEmbed, artworkEmbed], 
+        files,
+        components: [actionRow] 
+      });
       return;
     }
 
@@ -216,11 +235,46 @@ export function buildServantFullProfileEmbed(servant: ServantTemplate) {
     .setColor(cardColor)
     .setFooter({ text: `Throne ID: ${servant.id} • Holy Grail War Registry` });
 
-  if (servant.cardArtUrl || servant.avatarUrl) {
-    embed.setImage(servant.cardArtUrl || servant.avatarUrl);
+  // Add portrait thumbnail to top right corner of embed
+  if (servant.avatarUrl) {
+    embed.setThumbnail(servant.avatarUrl);
   }
 
   return embed;
+}
+
+export function buildServantArtworkEmbed(servant: ServantTemplate) {
+  const embed = new EmbedBuilder()
+    .setTitle(`🖼️ ${servant.name} — Character Card Artwork`)
+    .setColor(servant.rarity === 5 ? 0xf59e0b : 0x38bdf8);
+
+  const imgUrl = servant.cardArtUrl || servant.avatarUrl;
+  if (imgUrl) {
+    embed.setImage(imgUrl);
+  }
+  return embed;
+}
+
+export function createServantTempInstance(servant: ServantTemplate): MasterServantInstance {
+  return {
+    id: `temp_${servant.id}`,
+    masterId: 'throne_registry',
+    templateId: servant.id,
+    level: 50,
+    experience: 5000,
+    allocatedStats: { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 },
+    availableStatPoints: 0,
+    skillLevels: [10, 10, 10],
+    customQuotes: {
+      summon: servant.summonQuote,
+      battleStart: servant.battleStartQuote,
+      noblePhantasm: servant.noblePhantasm.chant,
+      victory: servant.victoryQuote,
+      defeat: servant.defeatQuote
+    },
+    bondLevel: 5,
+    template: servant
+  };
 }
 
 function buildListEmbed(servants: ServantTemplate[], title: string, description: string) {
@@ -292,9 +346,26 @@ function setupServantListCollector(message: any, allServants: ServantTemplate[])
         const target = allServants.find(s => s.id === id);
         if (target) {
           const profileEmbed = buildServantFullProfileEmbed(target);
+          const artworkEmbed = buildServantArtworkEmbed(target);
           const actions = buildProfileActions(target.id);
+
+          const files: AttachmentBuilder[] = [];
+          try {
+            const tempInstance = createServantTempInstance(target);
+            const cardBuffer = await renderServantProfileCard(tempInstance, 'Throne of Heroes');
+            if (cardBuffer && cardBuffer.length > 500) {
+              files.push(new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' }));
+            }
+          } catch (e) {
+            console.warn('Canvas render error in servants list button:', e);
+          }
+
           // Show full profile to everyone in the channel
-          await i.reply({ embeds: [profileEmbed], components: [actions] });
+          await i.reply({ 
+            embeds: [profileEmbed, artworkEmbed], 
+            files,
+            components: [actions] 
+          });
         } else {
           await i.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
         }
