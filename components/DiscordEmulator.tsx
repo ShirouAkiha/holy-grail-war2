@@ -3495,12 +3495,6 @@ export default function DiscordEmulator({
                     <EmbedVisual url={msg.embed.imageUrl || msg.embed.thumbnailUrl || ''} />
                   )}
 
-                  {/* Dynamic Canvas Image Embedded Inside Box */}
-                  {msg.canvasType && (
-                    <div className="mt-3 rounded overflow-hidden border border-[#222] bg-[#050505] w-full shadow-md">
-                      <CanvasRenderer canvasType={msg.canvasType} payload={msg.canvasPayload} />
-                    </div>
-                  )}
                   {msg.embed.footer && (
                     <div className="text-[10px] font-mono text-white/40 mt-2.5 pt-2 border-t border-[#1a1a1a]">
                       {msg.embed.footer}
@@ -3509,15 +3503,15 @@ export default function DiscordEmulator({
                 </div>
               )}
 
-              {/* Dynamic Canvas Image Output (if standalone without embed) */}
-              {msg.canvasType && !msg.embed && (
-                <div className="mt-3 rounded overflow-hidden border border-[#1a1a1a] bg-[#050505] w-full max-w-3xl shadow-lg">
+              {/* Dynamic Canvas Image Output (Discord Standalone File Attachment - Outside Embed) */}
+              {msg.canvasType && (
+                <div className="mt-2.5 rounded-lg overflow-hidden border border-[#26282d] bg-[#0c0d0e] max-w-[550px] w-full shadow-xl">
                   <CanvasRenderer canvasType={msg.canvasType} payload={msg.canvasPayload} />
                 </div>
               )}
 
-              {/* Full Artwork Embed Below Canvas */}
-              {msg.artworkEmbed && (
+              {/* Full Artwork Embed Below Canvas (only if no visual canvas card attached) */}
+              {msg.artworkEmbed && !msg.canvasType && (
                 <div
                   className="mt-3 p-3 rounded-sm bg-[#111] border-l-2 text-[#dbdee1] max-w-2xl border border-y-[#1a1a1a] border-r-[#1a1a1a]"
                   style={{ borderLeftColor: msg.artworkEmbed.color || '#d4af37' }}
@@ -3970,5 +3964,5 @@ function CanvasRenderer({ canvasType, payload }: { canvasType: string; payload: 
     }
   }, [canvasType, payload]);
 
-  return <canvas ref={canvasRef} className="max-w-full h-auto rounded block" />;
+  return <canvas ref={canvasRef} className="w-full h-auto rounded block" />;
 }

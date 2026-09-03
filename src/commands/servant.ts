@@ -82,15 +82,20 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const cardBuffer = await renderServantProfileCard(activeServant, master.username);
       if (cardBuffer && cardBuffer.length > 500) {
         const attachment = new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' });
-        embed.setImage('attachment://servant_profile.png');
+        // Option 1: Send as standalone message attachment outside the embed (do not call embed.setImage).
+        // In Discord, this allows the card to scale to full attachment width (up to 550px)
+        // instead of being capped to 300px height inside the embed box.
         files.push(attachment);
       }
     } catch (e) {
       console.warn('Canvas render error in /servant:', e);
     }
 
+    // When canvas attachment is present, omit redundant raw artwork embed to keep UI clean
+    const embeds = files.length > 0 ? [embed] : [embed, artworkEmbed];
+
     const msg = await interaction.editReply({
-      embeds: [embed, artworkEmbed],
+      embeds,
       files,
       components: rows
     });
@@ -347,14 +352,14 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
           const cardBuffer = await renderServantProfileCard(newActive, master.username);
           if (cardBuffer && cardBuffer.length > 500) {
             const attachment = new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' });
-            newEmbed.setImage('attachment://servant_profile.png');
             files.push(attachment);
           }
         } catch {
           // Ignore
         }
 
-        await i.editReply({ embeds: [newEmbed, newArtworkEmbed], files, components: newRows });
+        const embeds = files.length > 0 ? [newEmbed] : [newEmbed, newArtworkEmbed];
+        await i.editReply({ embeds, files, components: newRows });
       }
 
     } catch (err: any) {
