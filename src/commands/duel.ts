@@ -9,7 +9,7 @@ import {
   User,
   ComponentType
 } from 'discord.js';
-import { getOrCreateMaster, saveMaster } from '../database/service';
+import { getOrCreateMaster, saveMaster, getDuelNpSettings } from '../database/service';
 import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog, PassiveSkill } from '../types';
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives } from '../data/servants';
 import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp } from '../engine/grailwar';
@@ -1456,37 +1456,45 @@ async function startInteractiveDuel(
     const npGifUrl = getNoblePhantasmGif(servant);
     const npChant = getNoblePhantasmChant(servant);
     const npName = npTemplate?.name || 'Noble Phantasm';
-    const cardColor = npTemplate?.cardType === 'Buster' ? 0xef4444 : npTemplate?.cardType === 'Arts' ? 0x3b82f6 : 0x10b981;
+    const servantDisplayName = servant.nickname || servant.template?.name || 'Heroic Spirit';
+    const { autoDelete, afkTimeoutSeconds } = getDuelNpSettings();
 
-    const npEmbed = new EmbedBuilder()
-      .setTitle(`💥 NOBLE PHANTASM UNLEASHED: ${npName}`)
-      .setDescription(`🗣️ *“${npChant}”*\n\n🔥 **${servant.nickname || servant.template?.name}** (Master: ${actor.username}) releases maximum spirit power!`)
-      .setImage(npGifUrl)
-      .setColor(cardColor)
-      .setFooter({ text: '⏳ Auto-deleting in 10 seconds or when the next turn is chosen' });
+    // To make the animation display as BIG as possible at full channel width,
+    // we deliver the True Name invocation as a native Discord message with the direct GIF link.
+    // Native Discord message links unfurl at full width without embed bounding box restrictions!
+    const chantBlock = npChant ? `\n> *“${npChant}”*` : '';
+    const footerNotice = autoDelete 
+      ? `*(Cinematic stays active until the next turn is chosen, or for ${afkTimeoutSeconds}s)*` 
+      : `*(Cinematic logged)*`;
+
+    const fullWidthContent = 
+      `## 💥 NOBLE PHANTASM UNLEASHED: **${npName.toUpperCase()}**\n` +
+      `⚔️ **${servantDisplayName}** (Master: <@${actor.userId}>)${chantBlock}\n` +
+      `${npGifUrl}\n` +
+      `${footerNotice}`;
 
     try {
       let sentMsg: any = null;
       if (interaction.channel && typeof interaction.channel.send === 'function') {
         sentMsg = await interaction.channel.send({
-          content: `💥 **${servant.nickname || servant.template?.name}** invokes their True Name!\n*“${npChant}”*\n${npGifUrl}`,
-          embeds: [npEmbed]
+          content: fullWidthContent
         });
       } else if (interaction.followUp) {
         sentMsg = await interaction.followUp({
-          content: `💥 **${servant.nickname || servant.template?.name}** invokes their True Name!\n*“${npChant}”*\n${npGifUrl}`,
-          embeds: [npEmbed],
+          content: fullWidthContent,
           fetchReply: true
         });
       }
 
       if (sentMsg) {
         activeNpGifMessage = sentMsg;
-        activeNpGifTimeout = setTimeout(async () => {
-          if (activeNpGifMessage === sentMsg) {
-            await cleanupNpGif();
-          }
-        }, 10000);
+        if (autoDelete) {
+          activeNpGifTimeout = setTimeout(async () => {
+            if (activeNpGifMessage === sentMsg) {
+              await cleanupNpGif();
+            }
+          }, afkTimeoutSeconds * 1000);
+        }
       }
     } catch (err) {
       console.warn('Could not post Noble Phantasm GIF cinematic message:', err);
@@ -1584,6 +1592,11 @@ async function startInteractiveDuel(
         if (!activePendingCards.includes('NP') && activePendingCards.length < 3) {
           activePendingCards.push('NP');
         }
+      }
+
+      // As soon as the active Master starts picking their next turn cards, clean up previous NP GIF
+      if (activePendingCards.length === 1) {
+        await cleanupNpGif();
       }
 
       // If user hasn't selected 3 cards yet, update selection UI and wait for next card click

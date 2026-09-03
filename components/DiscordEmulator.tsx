@@ -12,7 +12,7 @@ import {
   ServantClass
 } from '../lib/types';
 import { SERVANT_DATABASE, getDefaultClassPassives } from '../lib/data/servants';
-import { getNoblePhantasmGif, getNoblePhantasmChant } from '../lib/data/noblePhantasmGifs';
+import { getNoblePhantasmGif, getNoblePhantasmChant, setCustomNpAnimationInMemory, setCustomNpAnimationsBatch } from '../lib/data/noblePhantasmGifs';
 import { findServantInPool, matchServantSearch } from '../lib/utils/servantMatcher';
 import {
   createCombatantFromMasterServant,
@@ -186,11 +186,81 @@ function EmbedVisual({ url }: { url: string }) {
   }
 
   return (
-    <div className="mt-3 rounded overflow-hidden border border-[#222] bg-[#050505] max-w-xl shadow-md">
+    <div className="mt-3 rounded overflow-hidden border border-[#222] bg-[#050505] max-w-2xl shadow-md">
       <img
         src={currentSrc}
         alt="Embed Visual"
-        className="w-full h-auto object-contain max-h-[400px] rounded"
+        className="w-full h-auto object-contain max-h-[460px] rounded"
+        referrerPolicy="no-referrer"
+        onError={handleImageError}
+      />
+    </div>
+  );
+}
+
+function NativeMediaVisual({ url }: { url: string }) {
+  const [imgError, setImgError] = useState(false);
+  const [useSecondaryFallback, setUseSecondaryFallback] = useState(false);
+
+  if (!url) return null;
+
+  // Tenor Web Page Links (e.g. https://tenor.com/view/...)
+  if (url.includes('tenor.com/view/')) {
+    const tenorMatch = url.match(/([0-9]+)\/?$/);
+    const tenorId = tenorMatch ? tenorMatch[1] : '8657546';
+    const embedUrl = `https://tenor.com/embed/${tenorId}`;
+
+    return (
+      <div className="w-full rounded-md overflow-hidden border border-[#26282d] bg-[#050505] shadow-2xl min-h-[340px]">
+        <iframe
+          src={embedUrl}
+          title="Noble Phantasm Animation"
+          className="w-full h-[380px] rounded border-0"
+          allow="autoplay; encrypted-media"
+          allowFullScreen
+        />
+      </div>
+    );
+  }
+
+  // Direct MP4 video clips
+  if (url.includes('.mp4') || url.toLowerCase().endsWith('.mp4')) {
+    return (
+      <div className="w-full rounded-md overflow-hidden border border-[#26282d] bg-[#050505] shadow-2xl">
+        <video
+          src={url}
+          className="w-full h-auto object-contain max-h-[520px] rounded bg-black"
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+      </div>
+    );
+  }
+
+  const primaryFallback = 'https://media1.tenor.com/m/h2E2o3W6mYoAAAAC/saber-fate.gif';
+  const secondaryFallback = 'https://media1.tenor.com/m/8YpY9q6y430AAAAC/rin-tohsaka-fate.gif';
+
+  let currentSrc = url;
+  if (imgError) {
+    currentSrc = useSecondaryFallback ? secondaryFallback : primaryFallback;
+  }
+
+  const handleImageError = () => {
+    if (!imgError) {
+      setImgError(true);
+    } else if (!useSecondaryFallback) {
+      setUseSecondaryFallback(true);
+    }
+  };
+
+  return (
+    <div className="w-full rounded-md overflow-hidden border border-[#26282d] bg-[#050505] shadow-2xl">
+      <img
+        src={currentSrc}
+        alt="Noble Phantasm Full-Width Cinematic"
+        className="w-full h-auto object-contain max-h-[520px] rounded bg-black transition duration-200"
         referrerPolicy="no-referrer"
         onError={handleImageError}
       />
@@ -377,6 +447,20 @@ export default function DiscordEmulator({
   };
 
   useEffect(() => {
+    fetch('/api/servants/npanim')
+      .then(r => r.json())
+      .then(data => {
+        if (data.animations && Array.isArray(data.animations)) {
+          const map: Record<string, { gifUrl: string; chant?: string }> = {};
+          data.animations.forEach((a: any) => {
+            if (a.servantId && a.gifUrl) map[a.servantId.toLowerCase()] = { gifUrl: a.gifUrl, chant: a.chant };
+            if (a.servantName && a.gifUrl) map[a.servantName.toLowerCase()] = { gifUrl: a.gifUrl, chant: a.chant };
+          });
+          setCustomNpAnimationsBatch(map);
+        }
+      })
+      .catch(() => {});
+
     return () => {
       if (activeNpTimeoutRef.current) {
         clearTimeout(activeNpTimeoutRef.current);
@@ -635,6 +719,164 @@ export default function DiscordEmulator({
             { id: 'quick_start_duel', label: 'Test in Battle (/duel)', style: 'secondary', emoji: '⚔️' },
             { id: 'quick_war_status', label: 'Enter Grail War (/grailwar)', style: 'success', emoji: '🏰' }
           ]
+        }
+      });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // COMMAND: /admin & NP CINEMATIC STUDIO
+    // ----------------------------------------------------
+    if (trimmed.startsWith('/admin') || trimmed.startsWith('/addservant npanim') || trimmed.startsWith('/addservant npsettings')) {
+      // Subcommand: npanim (bind animated GIF to any Servant NP)
+      if (trimmed.includes('npanim')) {
+        const urlMatch = rawCmd.match(/https?:\/\/[^\s"'>]+/i);
+        const gifUrl = urlMatch ? urlMatch[0] : '';
+
+        const servantMatch = rawCmd.match(/servant[:=]["']?([^"']+)["']?/i);
+        let servantQuery = servantMatch ? servantMatch[1].trim() : '';
+
+        const chantMatch = rawCmd.match(/chant[:=]["']?([^"']+)["']?/i);
+        let chant = chantMatch ? chantMatch[1].trim() : '';
+
+        if (!servantQuery) {
+          // Parse non-flagged text before URL
+          const cleaned = rawCmd
+            .replace(/\/admin/gi, '')
+            .replace(/\/addservant/gi, '')
+            .replace(/npanim/gi, '')
+            .replace(gifUrl, '')
+            .trim();
+          const parts = cleaned.split(/\s{2,}|;/);
+          servantQuery = parts[0]?.trim() || '';
+          if (parts[1] && !chant) chant = parts[1].trim();
+        }
+
+        if (!servantQuery || !gifUrl) {
+          addMessage({
+            id: getNextId('bot_npanim_help'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '🎬 /admin npanim — Noble Phantasm Animation Studio',
+              description:
+                `Configure custom animated cinematic GIFs for any Servant's Noble Phantasm. Rendered natively at full width during duels!\n\n` +
+                `**Usage:**\n` +
+                `• \`/admin npanim <servant> <gif_url> [chant]\`\n` +
+                `• \`/admin npanim servant:"Artoria Pendragon" gif_url:"https://media.giphy.com/..." chant:"EX---CALIBUR!"\`\n\n` +
+                `**Settings:** Use \`/admin npsettings\` to configure auto-delete and turn duration.\n` +
+                `**Web UI:** You can also configure animations directly in the **Servant Workshop** tab.`,
+              color: '#d4af37',
+              footer: 'Native Discord full-width delivery mode active'
+            }
+          });
+          return;
+        }
+
+        const target = findServantInPool(servantQuery, allThrone);
+        if (!target) {
+          addMessage({
+            id: getNextId('bot_npanim_err_404'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '❌ Servant Not Found',
+              description: `Could not find any Heroic Spirit matching \`${servantQuery}\` in the Throne of Heroes. Use \`/servants list\` to check names.`,
+              color: '#ef4444'
+            }
+          });
+          return;
+        }
+
+        // Persist to backend API & disk
+        fetch('/api/servants/npanim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'set_anim',
+            servant: target.id,
+            gifUrl,
+            chant: chant || undefined,
+            configuredBy: master.username
+          })
+        }).catch(err => console.warn('Disk sync warning:', err));
+
+        // Update in-memory registry immediately
+        const finalChant = chant || target.noblePhantasm.chant;
+        setCustomNpAnimationInMemory(target.id, { gifUrl, chant: finalChant });
+        setCustomNpAnimationInMemory(target.name, { gifUrl, chant: finalChant });
+        addMessage({
+          id: getNextId('bot_npanim_success'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          content:
+            `## 🎬 NOBLE PHANTASM ANIMATION CONFIGURED\n` +
+            `Administrator **${master.username}** linked a cinematic animation to **${target.name}**!\n` +
+            `• **Noble Phantasm:** ${target.noblePhantasm.name} (${target.noblePhantasm.cardType})\n` +
+            `• **Invocation Chant:** *“${finalChant}”*\n\n` +
+            `${gifUrl}\n` +
+            `*(Now active in turn-based duels across all channels at full width)*`
+        });
+        return;
+      }
+
+      // Subcommand: npsettings (auto-delete & turn duration)
+      if (trimmed.includes('npsettings')) {
+        const autoDeleteMatch = rawCmd.match(/autodelete[:=]["']?(true|false|1|0)["']?/i);
+        const afkMatch = rawCmd.match(/(?:afk|timeout|duration)[:=]["']?([0-9]+)["']?/i);
+
+        const newAutoDelete: boolean | undefined = autoDeleteMatch ? (autoDeleteMatch[1].toLowerCase() === 'true' || autoDeleteMatch[1] === '1') : undefined;
+        const newAfk: number | undefined = afkMatch ? parseInt(afkMatch[1], 10) : undefined;
+
+        if (newAutoDelete !== undefined || newAfk !== undefined) {
+          fetch('/api/servants/npanim', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'set_settings',
+              autoDelete: newAutoDelete,
+              afkTimeoutSeconds: newAfk
+            })
+          }).catch(() => {});
+        }
+
+        addMessage({
+          id: getNextId('bot_npsettings_info'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '⚙️ Noble Phantasm Duel Delivery Settings',
+            description:
+              `Configure how cinematic animations appear and cleanup during combat encounters:\n\n` +
+              `• **Delivery Mode:** \`Native Full-Width Discord\` (No embed boundaries)\n` +
+              `• **Auto-Delete on Next Turn:** \`${newAutoDelete !== undefined ? (newAutoDelete ? 'Enabled' : 'Disabled') : 'Enabled'}\`\n` +
+              `• **AFK Fallback Timeout:** \`${newAfk || 60} seconds\`\n\n` +
+              `**Update Syntax:**\n` +
+              `\`/admin npsettings autodelete:true afk_timeout:60\``,
+            color: '#d4af37',
+            footer: 'Turn cleanup automatically removes GIF when next action is chosen'
+          }
+        });
+        return;
+      }
+
+      // Subcommand: listnp or default admin control panel
+      addMessage({
+        id: getNextId('bot_admin_hub'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '👑 Holy Grail War Admin Control Panel',
+          description:
+            `Available Administrator Commands:\n\n` +
+            `• \`/admin npanim <servant> <gif_url> [chant]\` — Bind custom GIF animation to any Servant\n` +
+            `• \`/admin npsettings [autodelete:true] [afk_timeout:60]\` — Configure GIF auto-delete and turn duration\n` +
+            `• \`/addservant create name="Spirit" class="Saber"\` — Register custom Heroic Spirit\n` +
+            `• \`/addservant edit <servant_name>\` — Modify stats, dialogue, or artwork\n` +
+            `• \`/addservant list\` — List all custom registered servants\n\n` +
+            `*Tip: You can also use the graphical Noble Phantasm Studio inside the Servant Workshop tab!*`,
+          color: '#d4af37',
+          footer: 'Administrator Authority • Fuyuki Grail War Core Engine'
         }
       });
       return;
@@ -2901,65 +3143,63 @@ export default function DiscordEmulator({
       const aiCards: CardType[] = ['Buster', 'Arts', 'Quick'];
       const aiNp = activeDuel.battle.player2.npGauge >= 100;
 
-      // Dispatch Noble Phantasm Animated Cinematic GIF if player or AI unleashed NP
+      // Dispatch Noble Phantasm Animated Cinematic GIF if player or AI unleashed NP (Full-Width Native Delivery)
       if (useNp) {
         const npActor = activeDuel.battle.player1;
         const npGif = getNoblePhantasmGif(npActor);
         const npChant = getNoblePhantasmChant(npActor);
         const npName = npActor.noblePhantasm?.name || 'Noble Phantasm';
-        const npColor = npActor.noblePhantasm?.cardType === 'Buster' ? '#ef4444' : npActor.noblePhantasm?.cardType === 'Arts' ? '#3b82f6' : '#10b981';
 
         const npMsgId = getNextId('bot_duel_np_cinematic');
+        const chantLine = npChant ? `\n> *“${npChant}”*` : '';
+
         addMessage({
           id: npMsgId,
           sender: 'bot',
           timestamp: 'Just now',
-          content: `💥 **${npActor.name}** invokes their True Name!\n*“${npChant}”*\n${npGif}`,
-          embed: {
-            title: `💥 NOBLE PHANTASM UNLEASHED: ${npName}`,
-            description: `🗣️ *“${npChant}”*\n\n🔥 **${npActor.name}** (Master: ${master.username}) releases maximum spirit power!`,
-            imageUrl: npGif,
-            color: npColor,
-            footer: '⏳ Auto-deleting in 10s or when the next turn is chosen'
-          }
+          content: 
+            `## 💥 NOBLE PHANTASM UNLEASHED: **${npName.toUpperCase()}**\n` +
+            `⚔️ **${npActor.name}** (Master: <@${master.discordId}>)${chantLine}\n\n` +
+            `${npGif}\n` +
+            `*(Full-width cinematic • Auto-dismisses on next turn command)*`
         });
 
         activeNpMsgIdRef.current = npMsgId;
+        // AFK safety timeout (60s fallback, dismissed earlier as soon as Master or Enemy acts)
         activeNpTimeoutRef.current = setTimeout(() => {
           setMessages(prev => prev.filter(m => m.id !== npMsgId));
           if (activeNpMsgIdRef.current === npMsgId) {
             activeNpMsgIdRef.current = null;
           }
-        }, 10000);
+        }, 60000);
       } else if (aiNp) {
         const aiActor = activeDuel.battle.player2;
         const aiNpGif = getNoblePhantasmGif(aiActor);
         const aiNpChant = getNoblePhantasmChant(aiActor);
         const aiNpName = aiActor.noblePhantasm?.name || 'Noble Phantasm';
-        const aiNpColor = aiActor.noblePhantasm?.cardType === 'Buster' ? '#ef4444' : aiActor.noblePhantasm?.cardType === 'Arts' ? '#3b82f6' : '#10b981';
 
         const aiNpMsgId = getNextId('bot_duel_ai_np_cinematic');
+        const chantLine = aiNpChant ? `\n> *“${aiNpChant}”*` : '';
+
         addMessage({
           id: aiNpMsgId,
           sender: 'bot',
           timestamp: 'Just now',
-          content: `💥 **${aiActor.name}** invokes their True Name!\n*“${aiNpChant}”*\n${aiNpGif}`,
-          embed: {
-            title: `💥 ENEMY NOBLE PHANTASM: ${aiNpName}`,
-            description: `🗣️ *“${aiNpChant}”*\n\n⚡ **${aiActor.name}** (Master: ${aiActor.masterName}) retaliates with full divine authority!`,
-            imageUrl: aiNpGif,
-            color: aiNpColor,
-            footer: '⏳ Auto-deleting in 10s or when the next turn is chosen'
-          }
+          content: 
+            `## 💥 ENEMY NOBLE PHANTASM: **${aiNpName.toUpperCase()}**\n` +
+            `⚔️ **${aiActor.name}** (Master: ${aiActor.masterName})${chantLine}\n\n` +
+            `${aiNpGif}\n` +
+            `*(Full-width cinematic • Auto-dismisses on next turn command)*`
         });
 
         activeNpMsgIdRef.current = aiNpMsgId;
+        // AFK safety timeout (60s fallback)
         activeNpTimeoutRef.current = setTimeout(() => {
           setMessages(prev => prev.filter(m => m.id !== aiNpMsgId));
           if (activeNpMsgIdRef.current === aiNpMsgId) {
             activeNpMsgIdRef.current = null;
           }
-        }, 10000);
+        }, 60000);
       }
 
       const { updatedState, turnLogs } = executeBattleTurn(
@@ -3567,12 +3807,35 @@ export default function DiscordEmulator({
                 </div>
               )}
 
-              {/* Message Content (e.g. text links / chants) */}
-              {msg.content && (
-                <div className="text-white/90 text-xs mt-1.5 whitespace-pre-wrap leading-relaxed font-sans">
-                  {msg.content}
-                </div>
-              )}
+              {/* Message Content & Full-Width Native Media Unfurling (Discord Edge-to-Edge) */}
+              {msg.content && (() => {
+                const urlRegex = /(https?:\/\/[^\s]+)/g;
+                const urls = msg.content.match(urlRegex) || [];
+                const mediaUrl = urls.find(u =>
+                  u.includes('giphy.com') ||
+                  u.includes('tenor.com') ||
+                  u.includes('.gif') ||
+                  u.includes('.mp4') ||
+                  u.includes('.png') ||
+                  u.includes('.jpg') ||
+                  u.includes('.webp') ||
+                  u.includes('imgur.com') ||
+                  u.includes('klipy.com')
+                );
+
+                return (
+                  <div className="space-y-2 mt-1.5">
+                    <div className="text-white/90 text-xs whitespace-pre-wrap leading-relaxed font-sans">
+                      {msg.content}
+                    </div>
+                    {mediaUrl && !msg.embed && (
+                      <div className="mt-2 max-w-[650px] w-full">
+                        <NativeMediaVisual url={mediaUrl} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Discord Embed */}
               {msg.embed && (
@@ -3833,6 +4096,8 @@ export default function DiscordEmulator({
                 { cmd: '/servant <name>', desc: 'Inspect servant profile card & voice dialogue' },
                 { cmd: '/summon ritual', desc: 'Perform Holy Grail War summoning ritual' },
                 { cmd: '/duel <name>', desc: 'Enter combat encounter with a rival Master/Servant' },
+                { cmd: '/admin npanim <servant> <gif_url>', desc: 'Configure custom NP animated GIF (Admin)' },
+                { cmd: '/admin npsettings', desc: 'Configure NP auto-delete and turn duration settings' },
                 { cmd: '/grailwar status', desc: 'Check Holy Grail War battlefield & intelligence' },
                 { cmd: '/grailwar attack', desc: 'Ambush suspected rival Master' },
                 { cmd: '/grailwar leak', desc: 'Broadcast intel to the war board' },

@@ -12,6 +12,23 @@ const CUSTOM_SERVANTS_FILE = path.join(DATA_DIR, 'custom_servants.json');
 const MASTERS_FILE = path.join(DATA_DIR, 'masters.json');
 const CUSTOM_CES_FILE = path.join(DATA_DIR, 'custom_ces.json');
 const GACHA_BANNER_FILE = path.join(DATA_DIR, 'gacha_banner.json');
+const NP_ANIMS_FILE = path.join(DATA_DIR, 'servant_np_anims.json');
+const DUEL_SETTINGS_FILE = path.join(DATA_DIR, 'duel_settings.json');
+
+// Interface for custom Noble Phantasm animation configurations
+export interface ServantNpAnimConfig {
+  servantId: string;
+  servantName: string;
+  gifUrl: string;
+  chant?: string;
+  updatedAt: number;
+  customBy?: string;
+}
+
+export interface DuelNpSettings {
+  autoDelete: boolean;
+  afkTimeoutSeconds: number;
+}
 
 // Maps Discord User IDs (e.g. "123456789012345678") to their respective MasterProfile records.
 const masterStore: Map<string, MasterProfile> = new Map();
@@ -24,6 +41,15 @@ let customCraftEssences: CraftEssence[] = [];
 
 // Store for current customizable Gacha Banner
 let currentGachaBanner: GachaBanner = { ...CE_GACHA_BANNERS[0] };
+
+// Store for custom Servant Noble Phantasm animations (mapped by servant ID and lowercase name)
+const customNpAnims: Map<string, ServantNpAnimConfig> = new Map();
+
+// Duel Noble Phantasm settings (stay active until next turn, with 60s AFK timeout default)
+let duelNpSettings: DuelNpSettings = {
+  autoDelete: true,
+  afkTimeoutSeconds: 60
+};
 
 // Track all edited servant templates (both canon overrides and custom servants)
 const savedServantsMap: Map<string, ServantTemplate> = new Map();
@@ -98,6 +124,50 @@ function loadFromDisk() {
         const savedBanner: GachaBanner = JSON.parse(raw);
         if (savedBanner && savedBanner.title) {
           currentGachaBanner = { ...CE_GACHA_BANNERS[0], ...savedBanner };
+        }
+      }
+    }
+
+    // 4. Load Custom Servant NP Animations
+    if (fs.existsSync(NP_ANIMS_FILE)) {
+      const raw = fs.readFileSync(NP_ANIMS_FILE, 'utf-8');
+      if (raw) {
+        const savedAnims: ServantNpAnimConfig[] = JSON.parse(raw);
+        if (Array.isArray(savedAnims)) {
+          for (const anim of savedAnims) {
+            if (anim && anim.gifUrl) {
+              customNpAnims.set(anim.servantId, anim);
+              customNpAnims.set(anim.servantName.toLowerCase(), anim);
+
+              // Apply to in-memory servants
+              const canon = SERVANT_DATABASE.find(s => s.id === anim.servantId || s.name.toLowerCase() === anim.servantName.toLowerCase());
+              if (canon && canon.noblePhantasm) {
+                canon.noblePhantasm.animationUrl = anim.gifUrl;
+                canon.noblePhantasm.gifUrl = anim.gifUrl;
+                if (anim.chant) canon.noblePhantasm.chant = anim.chant;
+              }
+              const custom = customServants.find(s => s.id === anim.servantId || s.name.toLowerCase() === anim.servantName.toLowerCase());
+              if (custom && custom.noblePhantasm) {
+                custom.noblePhantasm.animationUrl = anim.gifUrl;
+                custom.noblePhantasm.gifUrl = anim.gifUrl;
+                if (anim.chant) custom.noblePhantasm.chant = anim.chant;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // 5. Load Duel NP Settings
+    if (fs.existsSync(DUEL_SETTINGS_FILE)) {
+      const raw = fs.readFileSync(DUEL_SETTINGS_FILE, 'utf-8');
+      if (raw) {
+        const savedSettings = JSON.parse(raw);
+        if (savedSettings) {
+          duelNpSettings = {
+            autoDelete: savedSettings.autoDelete !== false,
+            afkTimeoutSeconds: Math.max(15, Number(savedSettings.afkTimeoutSeconds) || 60)
+          };
         }
       }
     }
@@ -200,6 +270,29 @@ function saveGachaBannerToDisk() {
     fs.writeFileSync(GACHA_BANNER_FILE, JSON.stringify(currentGachaBanner, null, 2), 'utf-8');
   } catch (err) {
     console.error('[Database] Failed to write gacha_banner.json to disk:', err);
+  }
+}
+
+function saveNpAnimsToDisk() {
+  try {
+    ensureDataDirectory();
+    // Unique by servantId
+    const unique = new Map<string, ServantNpAnimConfig>();
+    for (const anim of customNpAnims.values()) {
+      unique.set(anim.servantId, anim);
+    }
+    fs.writeFileSync(NP_ANIMS_FILE, JSON.stringify(Array.from(unique.values()), null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[Database] Failed to write servant_np_anims.json to disk:', err);
+  }
+}
+
+function saveDuelSettingsToDisk() {
+  try {
+    ensureDataDirectory();
+    fs.writeFileSync(DUEL_SETTINGS_FILE, JSON.stringify(duelNpSettings, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[Database] Failed to write duel_settings.json to disk:', err);
   }
 }
 
@@ -537,6 +630,8 @@ export function updateServantTemplate(
     noblePhantasmCardType?: 'Buster' | 'Arts' | 'Quick';
     noblePhantasmTarget?: 'single' | 'aoe' | 'support';
     noblePhantasmMultiplier?: number;
+    noblePhantasmAnimationUrl?: string;
+    noblePhantasmGifUrl?: string;
     summonQuote?: string;
     lore?: string;
   }
@@ -585,6 +680,26 @@ export function updateServantTemplate(
   }
   if (updates.noblePhantasmTarget) {
     target.noblePhantasm.target = updates.noblePhantasmTarget;
+  }
+  const animUrl = (updates.noblePhantasmAnimationUrl || updates.noblePhantasmGifUrl || '').trim();
+  if (animUrl) {
+    target.noblePhantasm.animationUrl = animUrl;
+    target.noblePhantasm.gifUrl = animUrl;
+    customNpAnims.set(target.id, {
+      servantId: target.id,
+      servantName: target.name,
+      gifUrl: animUrl,
+      chant: target.noblePhantasm.chant,
+      updatedAt: Date.now()
+    });
+    customNpAnims.set(target.name.toLowerCase(), {
+      servantId: target.id,
+      servantName: target.name,
+      gifUrl: animUrl,
+      chant: target.noblePhantasm.chant,
+      updatedAt: Date.now()
+    });
+    saveNpAnimsToDisk();
   }
   if (updates.noblePhantasmMultiplier !== undefined) {
     target.noblePhantasm.multiplier = updates.noblePhantasmMultiplier;
@@ -636,6 +751,138 @@ export function updateServantTemplate(
   saveMastersToDisk();
 
   return { success: true, servant: target };
+}
+
+/**
+ * Directly configures/overrides the Noble Phantasm animated GIF for any Servant.
+ */
+export function setServantNpAnimation(
+  queryOrId: string,
+  gifUrl: string,
+  customChant?: string,
+  adminUsername?: string
+): { success: boolean; servant?: ServantTemplate; message?: string; error?: string } {
+  const cleanUrl = (gifUrl || '').trim();
+  if (!cleanUrl) {
+    return { success: false, error: 'Animated GIF URL cannot be empty.' };
+  }
+
+  const allServants = getAllThroneServants();
+  const target = findServantInPool(queryOrId, allServants);
+
+  if (!target) {
+    return {
+      success: false,
+      error: `Could not find any Servant in the Throne of Heroes matching "${queryOrId}".`
+    };
+  }
+
+  // Update target Noble Phantasm
+  if (!target.noblePhantasm) {
+    target.noblePhantasm = {
+      name: 'Noble Phantasm',
+      cardType: 'Buster',
+      chant: customChant || 'True Name Unleashed!',
+      description: 'Ultimate attack',
+      target: 'single',
+      multiplier: 600,
+      overchargeEffect: 'Deals massive damage'
+    };
+  }
+
+  target.noblePhantasm.animationUrl = cleanUrl;
+  target.noblePhantasm.gifUrl = cleanUrl;
+  if (customChant && customChant.trim()) {
+    target.noblePhantasm.chant = customChant.trim();
+  }
+
+  // Store in config map
+  const config: ServantNpAnimConfig = {
+    servantId: target.id,
+    servantName: target.name,
+    gifUrl: cleanUrl,
+    chant: target.noblePhantasm.chant,
+    updatedAt: Date.now(),
+    customBy: adminUsername || 'Admin'
+  };
+
+  customNpAnims.set(target.id, config);
+  customNpAnims.set(target.name.toLowerCase(), config);
+  saveNpAnimsToDisk();
+
+  // Save to servant repository
+  savedServantsMap.set(target.id, { ...target });
+  const customIdx = customServants.findIndex(s => s.id === target.id);
+  if (customIdx >= 0) {
+    customServants[customIdx] = { ...target };
+  } else {
+    const canonIdx = SERVANT_DATABASE.findIndex(s => s.id === target.id);
+    if (canonIdx >= 0) {
+      SERVANT_DATABASE[canonIdx] = { ...target };
+    }
+  }
+  saveCustomServantsToDisk();
+
+  // Propagate to all active master servants
+  for (const master of masterStore.values()) {
+    if (master.servants) {
+      for (const inst of master.servants) {
+        if (inst.templateId === target.id || inst.template?.id === target.id) {
+          inst.template = { ...target };
+          if (customChant && inst.customQuotes) {
+            inst.customQuotes.noblePhantasm = customChant.trim();
+          }
+        }
+      }
+    }
+  }
+  saveMastersToDisk();
+
+  return {
+    success: true,
+    servant: target,
+    message: `Successfully set Noble Phantasm animation for **${target.name}** (${target.servantClass})!`
+  };
+}
+
+/**
+ * Returns custom Noble Phantasm animation configuration for a Servant if registered.
+ */
+export function getServantNpAnimation(queryOrId: string): ServantNpAnimConfig | undefined {
+  if (!queryOrId) return undefined;
+  return customNpAnims.get(queryOrId) || customNpAnims.get(queryOrId.trim().toLowerCase());
+}
+
+/**
+ * Returns all custom registered Noble Phantasm animations.
+ */
+export function getAllCustomNpAnimations(): ServantNpAnimConfig[] {
+  const unique = new Map<string, ServantNpAnimConfig>();
+  for (const item of customNpAnims.values()) {
+    unique.set(item.servantId, item);
+  }
+  return Array.from(unique.values());
+}
+
+/**
+ * Returns the current Duel Noble Phantasm display & auto-delete settings.
+ */
+export function getDuelNpSettings(): DuelNpSettings {
+  return { ...duelNpSettings };
+}
+
+/**
+ * Updates the Duel Noble Phantasm display & auto-delete settings.
+ */
+export function setDuelNpSettings(settings: Partial<DuelNpSettings>): DuelNpSettings {
+  if (settings.autoDelete !== undefined) {
+    duelNpSettings.autoDelete = Boolean(settings.autoDelete);
+  }
+  if (settings.afkTimeoutSeconds !== undefined && !isNaN(settings.afkTimeoutSeconds)) {
+    duelNpSettings.afkTimeoutSeconds = Math.max(15, Number(settings.afkTimeoutSeconds));
+  }
+  saveDuelSettingsToDisk();
+  return { ...duelNpSettings };
 }
 
 /**

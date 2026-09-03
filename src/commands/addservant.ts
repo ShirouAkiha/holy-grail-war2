@@ -14,6 +14,11 @@ import {
   getCustomServants, 
   getAllThroneServants,
   updateServantTemplate,
+  setServantNpAnimation,
+  getServantNpAnimation,
+  getAllCustomNpAnimations,
+  getDuelNpSettings,
+  setDuelNpSettings,
   findServantInPool,
   matchServantSearch
 } from '../database/service';
@@ -227,6 +232,52 @@ export const data = new SlashCommandBuilder()
       .addStringOption(opt =>
         opt.setName('lore').setDescription('New Lore / Backstory').setRequired(false)
       )
+      .addStringOption(opt =>
+        opt.setName('np_gif').setDescription('URL of the Noble Phantasm animated GIF (Tenor, Giphy, or direct .gif link)').setRequired(false)
+      )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('npanim')
+      .setDescription('Customize or set the Noble Phantasm animated GIF for any Servant')
+      .addStringOption(opt =>
+        opt
+          .setName('servant')
+          .setDescription('Name or ID of the Servant (e.g. Artoria, Gilgamesh, Musashi)')
+          .setRequired(true)
+          .setAutocomplete(true)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('gif_url')
+          .setDescription('Direct URL or Tenor/Giphy link for the Noble Phantasm animated GIF')
+          .setRequired(true)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('chant')
+          .setDescription('Optional custom True Name invocation dialogue chant')
+          .setRequired(false)
+      )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('npsettings')
+      .setDescription('Configure duel Noble Phantasm animation behavior (duration & auto-delete)')
+      .addBooleanOption(opt =>
+        opt
+          .setName('autodelete')
+          .setDescription('Auto-delete NP animation message when next turn is chosen (default: True)')
+          .setRequired(false)
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('afk_timeout')
+          .setDescription('AFK safety timeout in seconds before auto-delete (default: 60s)')
+          .setMinValue(15)
+          .setMaxValue(300)
+          .setRequired(false)
+      )
   )
   .addSubcommand(sub =>
     sub
@@ -251,7 +302,7 @@ export async function autocomplete(interaction: AutocompleteInteraction) {
     const query = focusedOption.value.toLowerCase().trim();
     const allServants = getAllThroneServants();
 
-    if (focusedOption.name === 'servant_id') {
+    if (focusedOption.name === 'servant_id' || focusedOption.name === 'servant') {
       const list = subcommand === 'delete' ? allServants.filter(s => s.isCustomOrMeme) : allServants;
       const matches = list
         .filter(s => matchServantSearch(s, query))
@@ -504,6 +555,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const npScope = interaction.options.getString('np_scope') as 'single' | 'aoe' | 'support' | null;
     const summonQuote = interaction.options.getString('summon_quote');
     const lore = interaction.options.getString('lore');
+    const npGif = interaction.options.getString('np_gif');
 
     const result = updateServantTemplate(servantId, {
       name: name || undefined,
@@ -517,6 +569,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       noblePhantasmChant: npChant || undefined,
       noblePhantasmCardType: npCard || undefined,
       noblePhantasmTarget: npScope || undefined,
+      noblePhantasmAnimationUrl: npGif || undefined,
       summonQuote: summonQuote || undefined,
       lore: lore || undefined
     });
@@ -543,12 +596,81 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `• **Base HP:** \`${s.baseHp.toLocaleString()}\` | **Base ATK:** \`${s.baseAtk.toLocaleString()}\`\n` +
         `• **Noble Phantasm:** **${s.noblePhantasm.name}** [${s.noblePhantasm.cardType} • ${s.noblePhantasm.target.toUpperCase()}]\n` +
         `• **NP Chant:** *"${s.noblePhantasm.chant}"*\n` +
+        (s.noblePhantasm.animationUrl ? `• **NP Animation:** [Custom GIF Configured](${s.noblePhantasm.animationUrl})\n` : '') +
         `• **Summon Dialogue:** *"${s.summonQuote}"*\n\n` +
         `*Changes take effect immediately across all active Master contracts and combat arenas!*`
       )
       .setImage(s.cardArtUrl || s.avatarUrl)
       .setColor(0xd4af37)
       .setFooter({ text: `ID: ${s.id} • Edited by Admin ${interaction.user.username}` });
+
+    await interaction.reply({ embeds: [embed] });
+    return;
+  }
+
+  // ------------------------------------------
+  // SUBCOMMAND E: CUSTOMIZE NOBLE PHANTASM ANIMATION
+  // ------------------------------------------
+  if (subcommand === 'npanim') {
+    const servantQuery = interaction.options.getString('servant', true).trim();
+    const gifUrl = interaction.options.getString('gif_url', true).trim();
+    const chant = interaction.options.getString('chant')?.trim();
+
+    const result = setServantNpAnimation(servantQuery, gifUrl, chant, interaction.user.username);
+
+    if (!result.success || !result.servant) {
+      await interaction.reply({
+        ephemeral: true,
+        embeds: [
+          new EmbedBuilder()
+            .setTitle('❌ Could Not Set Animation')
+            .setDescription(result.error || `Could not find any Servant matching "${servantQuery}".`)
+            .setColor(0xef4444)
+        ]
+      });
+      return;
+    }
+
+    const s = result.servant;
+    const embed = new EmbedBuilder()
+      .setTitle(`🎬 NOBLE PHANTASM ANIMATION SET: ${s.name}`)
+      .setDescription(
+        `Admin has updated the Noble Phantasm animation for **${s.name}**!\n\n` +
+        `• **Class:** \`${s.servantClass}\` | **Noble Phantasm:** **${s.noblePhantasm.name}**\n` +
+        `• **True Name Chant:** *“${s.noblePhantasm.chant}”*\n` +
+        `• **Animation Link:** [Click here to view direct source](${gifUrl})\n\n` +
+        `*During duels, when ${s.name} releases their Noble Phantasm, this animation will display at full size until the next turn!*`
+      )
+      .setImage(gifUrl)
+      .setColor(0xd4af37)
+      .setFooter({ text: `Configured by Admin ${interaction.user.username} • Persistent on disk` });
+
+    await interaction.reply({ embeds: [embed] });
+    return;
+  }
+
+  // ------------------------------------------
+  // SUBCOMMAND F: DUEL NOBLE PHANTASM SETTINGS
+  // ------------------------------------------
+  if (subcommand === 'npsettings') {
+    const autodelete = interaction.options.getBoolean('autodelete');
+    const afkTimeout = interaction.options.getInteger('afk_timeout');
+
+    const updated = setDuelNpSettings({
+      autoDelete: autodelete !== null ? autodelete : undefined,
+      afkTimeoutSeconds: afkTimeout !== null ? afkTimeout : undefined
+    });
+
+    const embed = new EmbedBuilder()
+      .setTitle('⚙️ DUEL NOBLE PHANTASM SETTINGS')
+      .setDescription(
+        `The duel Noble Phantasm animation parameters have been updated:\n\n` +
+        `• **Auto-Delete on Next Turn:** \`${updated.autoDelete ? 'Enabled (Cleans up when turn chosen)' : 'Disabled (Remains permanently in chat)'}\`\n` +
+        `• **AFK Safety Timeout:** \`${updated.afkTimeoutSeconds} seconds\`\n\n` +
+        `*These settings apply immediately to all ongoing and future battles.*`
+      )
+      .setColor(0x3b82f6)
+      .setFooter({ text: `Updated by Admin ${interaction.user.username}` });
 
     await interaction.reply({ embeds: [embed] });
     return;
