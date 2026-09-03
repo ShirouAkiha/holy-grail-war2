@@ -59,6 +59,7 @@ export interface DuelCombatant {
   gutsCount: number;
   commandSeals: number;
   currentHand?: ('Buster' | 'Arts' | 'Quick')[];
+  drawPile?: ('Buster' | 'Arts' | 'Quick')[];
 }
 
 // ==========================================
@@ -96,13 +97,23 @@ function getServantCommandDeck(combatant: DuelCombatant): ('Buster' | 'Arts' | '
 }
 
 function refreshCombatantHand(combatant: DuelCombatant): ('Buster' | 'Arts' | 'Quick')[] {
-  const deck = getServantCommandDeck(combatant);
-  const hand = [...deck];
-  // Fisher-Yates Shuffle to deal randomized hand each turn
-  for (let i = hand.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [hand[i], hand[j]] = [hand[j], hand[i]];
+  // Canonical FGO 3-Turn Deck Cycle:
+  // A complete draw deck cycle consists of 15 cards (3 copies of the Servant's 5-card command deck).
+  // Cards are drawn 5 at a time without replacement across a 3-turn cycle.
+  // When the draw pile runs out (< 5 cards), a fresh 15-card shoe is generated and shuffled.
+  if (!combatant.drawPile || combatant.drawPile.length < 5) {
+    const deck = getServantCommandDeck(combatant);
+    const freshShoe: ('Buster' | 'Arts' | 'Quick')[] = [...deck, ...deck, ...deck];
+    // Fisher-Yates shuffle the 15-card shoe
+    for (let i = freshShoe.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [freshShoe[i], freshShoe[j]] = [freshShoe[j], freshShoe[i]];
+    }
+    combatant.drawPile = freshShoe;
   }
+
+  // Draw top 5 cards from the 15-card shoe
+  const hand = combatant.drawPile.splice(0, 5);
   combatant.currentHand = hand;
   return hand;
 }
@@ -209,7 +220,8 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
     activeBuffs: [],
     skillCooldowns: {},
     gutsCount: 0,
-    commandSeals: isAi ? 0 : (master.commandSeals ?? 3)
+    commandSeals: isAi ? 0 : (master.commandSeals ?? 3),
+    drawPile: []
   };
   refreshCombatantHand(combatant);
   return combatant;
@@ -383,7 +395,9 @@ function buildDuelEmbed(
   const passivesText = activePassives.length > 0
     ? activePassives.map(p => `\`[${p.name}]\``).join(' ')
     : '`None`';
-  const slotDisplay = `🎴 **Dealt Command Hand (${sClass} Deck):**\n${handDisplay}\n\n🛡️ **Active Class Passives (Max 2):** ${passivesText}${lockedNote}\n\n⚔️ **Selected Chain (${pendingCards.length}/3):**\n\`[ 1: ${c1Text} ]\` ➔ \`[ 2: ${c2Text} ]\` ➔ \`[ 3: ${c3Text} ]\`${leadHelp}`;
+  const cardsRemainingInCycle = activeCombatant.drawPile?.length ?? 0;
+  const cycleTurn = 3 - Math.floor(cardsRemainingInCycle / 5);
+  const slotDisplay = `🎴 **Dealt Command Hand (${sClass} Deck • Turn ${cycleTurn}/3):**\n${handDisplay}\n\n🛡️ **Active Class Passives (Max 2):** ${passivesText}${lockedNote}\n\n⚔️ **Selected Chain (${pendingCards.length}/3):**\n\`[ 1: ${c1Text} ]\` ➔ \`[ 2: ${c2Text} ]\` ➔ \`[ 3: ${c3Text} ]\`${leadHelp}`;
 
   const embed = new EmbedBuilder()
     .setTitle(`⚔️ HOLY GRAIL WAR DUEL — ROUND ${round}`)
