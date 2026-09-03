@@ -13,6 +13,7 @@ import { getOrCreateMaster, saveMaster } from '../database/service';
 import { renderServantProfileCard, renderDialogueCard } from '../canvas/renderer';
 import { SERVANT_DATABASE, getDefaultClassPassives } from '../data/servants';
 import { getOrInitWarSession, exposeMasterInWar } from '../engine/grailwar';
+import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -198,6 +199,11 @@ function buildServantRows(master: any, activeServant: any) {
 
   const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
+      .setCustomId('view_active_np')
+      .setLabel('View Noble Phantasm')
+      .setEmoji('🎬')
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
       .setCustomId('hear_dialogue')
       .setLabel('Hear Voice Lines')
       .setEmoji('💬')
@@ -209,9 +215,9 @@ function buildServantRows(master: any, activeServant: any) {
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('boast_servant')
-      .setLabel('Boast Profile to Server')
+      .setLabel('Boast Profile')
       .setEmoji('📢')
-      .setStyle(ButtonStyle.Danger)
+      .setStyle(ButtonStyle.Secondary)
   );
 
   rows.push(buttonRow);
@@ -257,6 +263,39 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
       const master = await getOrCreateMaster(i.user.id, i.user.username);
       const activeServant =
         master.servants.find((s: any) => s.id === master.activeServantId) || master.servants[0];
+
+      // ACTION 0: View Noble Phantasm Animation
+      if (i.customId === 'view_active_np') {
+        const template = activeServant.template;
+        const gifUrl = getNoblePhantasmGif(template);
+        const chant = activeServant.customQuotes?.noblePhantasm || getNoblePhantasmChant(template);
+        const np = template.noblePhantasm;
+        const stars = '⭐'.repeat(template.rarity || 5);
+        const color = np.cardType === 'Buster' ? 0xef4444 : np.cardType === 'Arts' ? 0x3b82f6 : 0x10b981;
+
+        const npEmbed = new EmbedBuilder()
+          .setTitle(`💥 NOBLE PHANTASM: ${np.name}`)
+          .setDescription(
+            `> *"${chant || np.chant || 'True Name Unleashed!'}"*\n\n` +
+            `• **Heroic Spirit:** **${template.name}** — *${template.title}* [\`${template.servantClass}\` ${stars}]\n` +
+            `• **Card Type & Target:** **${np.cardType}** • **${np.target.toUpperCase()}**\n` +
+            `• **Damage Multiplier:** \`${np.multiplier}%\` | **Overcharge:** ${np.overchargeEffect || 'Standard boost'}\n` +
+            `• **True Name Power:** ${np.description}\n\n` +
+            `🎬 *Noble Phantasm Animated Cinematic Playback*`
+          )
+          .setColor(color)
+          .setFooter({ text: `Contracted to Master ${master.username} • Holy Grail War Registry` });
+
+        if (gifUrl) {
+          npEmbed.setImage(gifUrl);
+        }
+        if (template.avatarUrl) {
+          npEmbed.setThumbnail(template.avatarUrl);
+        }
+
+        await i.reply({ embeds: [npEmbed] });
+        return;
+      }
 
       // ACTION 1: Hear Voice Line (Generates visual visual dialogue box)
       if (i.customId === 'hear_dialogue') {

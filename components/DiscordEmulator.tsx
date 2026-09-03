@@ -1376,6 +1376,7 @@ export default function DiscordEmulator({
         components: {
           type: 'buttons',
           items: [
+            { id: 'view_active_np', label: 'View Noble Phantasm', style: 'danger', emoji: '🎬' },
             { id: 'btn_hear_quote', label: 'Hear Dialogue Card', style: 'primary', emoji: '💬' },
             { id: 'boast_servant_profile', label: 'Boast to Server 📢', style: 'danger' },
             { id: 'btn_show_servants_list', label: 'All Servants List', style: 'secondary', emoji: '📜' },
@@ -1383,6 +1384,92 @@ export default function DiscordEmulator({
           ]
         }
       });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // COMMAND: /np, /noblephantasm, /servants np, /servant np
+    // ----------------------------------------------------
+    if (trimmed.startsWith('/np') || trimmed.startsWith('/noblephantasm') || trimmed.startsWith('/servants np') || trimmed.startsWith('/servant np')) {
+      const q = trimmed
+        .replace('/servants np', '')
+        .replace('/servant np', '')
+        .replace('/noblephantasm', '')
+        .replace('/np', '')
+        .trim()
+        .toLowerCase();
+
+      let target: ServantTemplate | undefined = undefined;
+      if (q) {
+        target = allThrone.find(
+          s => s.name.toLowerCase() === q ||
+               s.id.toLowerCase() === q ||
+               s.name.toLowerCase().includes(q) ||
+               s.id.toLowerCase().includes(q)
+        );
+      } else if (activeServant) {
+        target = activeServant.template;
+      }
+
+      if (target) {
+        postNoblePhantasmCard(target);
+      } else {
+        addMessage({
+          id: getNextId('bot_np_notfound'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '❌ Noble Phantasm Not Found',
+            description: q 
+              ? `No Heroic Spirit found matching "${q}". Use \`/servants\` to list all registered Servants.`
+              : 'Please specify a Servant name (e.g. `/np Scáthach` or `/np Gilgamesh`) or contract a Servant first.',
+            color: '#ef4444'
+          }
+        });
+      }
+      return;
+    }
+
+    // ----------------------------------------------------
+    // COMMAND: /artwork, /art, /servants artwork, /servant artwork
+    // ----------------------------------------------------
+    if (trimmed.startsWith('/artwork') || trimmed.startsWith('/art') || trimmed.startsWith('/servants artwork') || trimmed.startsWith('/servant artwork')) {
+      const q = trimmed
+        .replace('/servants artwork', '')
+        .replace('/servant artwork', '')
+        .replace('/artwork', '')
+        .replace('/art', '')
+        .trim()
+        .toLowerCase();
+
+      let target: ServantTemplate | undefined = undefined;
+      if (q) {
+        target = allThrone.find(
+          s => s.name.toLowerCase() === q ||
+               s.id.toLowerCase() === q ||
+               s.name.toLowerCase().includes(q) ||
+               s.id.toLowerCase().includes(q)
+        );
+      } else if (activeServant) {
+        target = activeServant.template;
+      }
+
+      if (target) {
+        postArtworkCard(target);
+      } else {
+        addMessage({
+          id: getNextId('bot_art_notfound'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '❌ Character Artwork Not Found',
+            description: q 
+              ? `No Heroic Spirit found matching "${q}". Use \`/servants\` to list all registered Servants.`
+              : 'Please specify a Servant name (e.g. `/artwork Artoria` or `/artwork Jeanne`) or contract a Servant first.',
+            color: '#ef4444'
+          }
+        });
+      }
       return;
     }
 
@@ -2631,9 +2718,80 @@ export default function DiscordEmulator({
       components: {
         type: 'buttons',
         items: [
+          { id: `view_np_${template.id}`, label: 'View Noble Phantasm', style: 'danger', emoji: '🎬' },
+          { id: `view_art_${template.id}`, label: 'View Card Artwork', style: 'secondary', emoji: '🖼️' },
           { id: `quote_servant_${template.id}`, label: 'Hear Dialogue Card', style: 'primary', emoji: '💬' },
-          { id: 'btn_show_servants_list', label: 'Back to Servants List', style: 'secondary', emoji: '📜' },
-          { id: 'quick_start_duel', label: 'Enter Arena (/duel)', style: 'danger', emoji: '⚔️' }
+          { id: 'btn_show_servants_list', label: 'Back to Servants List', style: 'secondary', emoji: '📜' }
+        ]
+      }
+    });
+  };
+
+  // Helper: Post Noble Phantasm Animation Card
+  const postNoblePhantasmCard = (template: ServantTemplate) => {
+    const np = template.noblePhantasm;
+    const gifUrl = getNoblePhantasmGif(template);
+    const chant = getNoblePhantasmChant(template);
+    const stars = '⭐'.repeat(template.rarity || 5);
+    const cardColor = np.cardType === 'Buster' ? '#ef4444' : np.cardType === 'Arts' ? '#3b82f6' : '#10b981';
+
+    addMessage({
+      id: getNextId('bot_np_view'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title: `💥 NOBLE PHANTASM: ${np.name}`,
+        thumbnailUrl: template.avatarUrl,
+        imageUrl: gifUrl,
+        description:
+          `> *"${chant || np.chant || 'True Name Unleashed!'}"*\n\n` +
+          `• **Heroic Spirit:** **${template.name}** — *${template.title}* [\`${template.servantClass}\` ${stars}]\n` +
+          `• **Card Type & Target:** **${np.cardType}** • **${np.target.toUpperCase()}**\n` +
+          `• **Damage Multiplier:** \`${np.multiplier}%\` | **Overcharge:** ${np.overchargeEffect || 'Standard boost'}\n` +
+          `• **True Name Power:** ${np.description}\n\n` +
+          `🎬 *Noble Phantasm Animated Cinematic Playback*`,
+        color: cardColor,
+        footer: `Throne ID: ${template.id} • Holy Grail War Noble Phantasm Archive`
+      },
+      components: {
+        type: 'buttons',
+        items: [
+          { id: `view_servant_${template.id}`, label: 'Inspect Profile', style: 'primary', emoji: '⚔️' },
+          { id: `view_art_${template.id}`, label: 'View Card Artwork', style: 'secondary', emoji: '🖼️' },
+          { id: `quote_servant_${template.id}`, label: 'Hear Voice Line', style: 'secondary', emoji: '💬' },
+          { id: 'btn_show_servants_list', label: 'Back to Servants List', style: 'secondary', emoji: '📜' }
+        ]
+      }
+    });
+  };
+
+  // Helper: Post Full Artwork Card
+  const postArtworkCard = (template: ServantTemplate) => {
+    const stars = '⭐'.repeat(template.rarity || 5);
+    const imgUrl = template.cardArtUrl || template.avatarUrl;
+
+    addMessage({
+      id: getNextId('bot_art_view'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title: `🖼️ Character Artwork: ${template.name} — ${template.title}`,
+        thumbnailUrl: template.avatarUrl,
+        imageUrl: imgUrl,
+        description:
+          `${stars} | Class: **${template.servantClass}** | Origin: **${template.isCustomOrMeme ? '🛠️ Custom Administrator Creation' : '🏛️ Canon Heroic Spirit'}**\n\n` +
+          `📜 **Legend & Lore:**\n> ${template.lore || 'A legendary soul recorded in the Throne of Heroes.'}\n\n` +
+          `💥 **Noble Phantasm:** *${template.noblePhantasm.name}* (${template.noblePhantasm.cardType})`,
+        color: template.servantClass === 'Saber' ? '#3b82f6' : template.rarity === 5 ? '#f59e0b' : '#a855f7',
+        footer: `Throne ID: ${template.id} • Holy Grail War Card Archive`
+      },
+      components: {
+        type: 'buttons',
+        items: [
+          { id: `view_np_${template.id}`, label: 'View Noble Phantasm', style: 'danger', emoji: '🎬' },
+          { id: `view_servant_${template.id}`, label: 'Inspect Profile', style: 'primary', emoji: '⚔️' },
+          { id: `quote_servant_${template.id}`, label: 'Hear Voice Line', style: 'secondary', emoji: '💬' },
+          { id: 'btn_show_servants_list', label: 'Back to Servants List', style: 'secondary', emoji: '📜' }
         ]
       }
     });
@@ -2990,6 +3148,23 @@ export default function DiscordEmulator({
       const target = allThrone.find(s => s.id === servantId);
       if (target) {
         postServantFullProfile(target);
+      }
+    } else if (btnId.startsWith('view_np_')) {
+      const servantId = btnId.replace('view_np_', '');
+      const target = allThrone.find(s => s.id === servantId);
+      if (target) {
+        postNoblePhantasmCard(target);
+      }
+    } else if (btnId.startsWith('view_art_')) {
+      const servantId = btnId.replace('view_art_', '');
+      const target = allThrone.find(s => s.id === servantId);
+      if (target) {
+        postArtworkCard(target);
+      }
+    } else if (btnId === 'view_active_np') {
+      const activeServant = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
+      if (activeServant) {
+        postNoblePhantasmCard(activeServant.template);
       }
     } else if (btnId.startsWith('edit_servant_')) {
       const servantId = btnId.replace('edit_servant_', '');

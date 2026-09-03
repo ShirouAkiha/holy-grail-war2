@@ -13,6 +13,7 @@ import { getAllThroneServants, findServantInPool, matchServantSearch } from '../
 import { getDefaultClassPassives } from '../data/servants';
 import { ServantTemplate, MasterServantInstance } from '../types';
 import { renderServantProfileCard } from '../canvas/renderer';
+import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 
 export const data = new SlashCommandBuilder()
   .setName('servants')
@@ -51,7 +52,31 @@ export const data = new SlashCommandBuilder()
       .addStringOption(opt =>
         opt
           .setName('name')
-          .setDescription('Exact or partial name of the Servant (e.g. Saber Alter, Artoria)')
+          .setDescription('Exact or partial name of the Servant (e.g. Saber Alter, Artoria, Scáthach)')
+          .setRequired(true)
+          .setAutocomplete(true)
+      )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('np')
+      .setDescription('Preview the animated Noble Phantasm cinematic GIF and chant for any Servant')
+      .addStringOption(opt =>
+        opt
+          .setName('name')
+          .setDescription('Servant name to view Noble Phantasm (e.g. Scáthach, Gilgamesh, Saber Alter)')
+          .setRequired(true)
+          .setAutocomplete(true)
+      )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('artwork')
+      .setDescription('View the full-resolution card artwork for any Servant')
+      .addStringOption(opt =>
+        opt
+          .setName('name')
+          .setDescription('Servant name to view Artwork (e.g. Scáthach, Artoria, Jeanne)')
           .setRequired(true)
           .setAutocomplete(true)
       )
@@ -82,6 +107,42 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   try {
     const allServants: ServantTemplate[] = getAllThroneServants();
     const subcommand = interaction.options.getSubcommand();
+
+    if (subcommand === 'np') {
+      const query = interaction.options.getString('name', true).trim();
+      const match = findServantInPool(query, allServants);
+
+      if (!match) {
+        await interaction.reply({
+          ephemeral: true,
+          content: `❌ No Heroic Spirit found matching "${query}". Use \`/servants list\` to browse all available spirits.`
+        });
+        return;
+      }
+
+      const npEmbed = buildNoblePhantasmEmbed(match);
+      const actionRow = buildNoblePhantasmActions(match.id);
+      await interaction.reply({ embeds: [npEmbed], components: [actionRow] });
+      return;
+    }
+
+    if (subcommand === 'artwork') {
+      const query = interaction.options.getString('name', true).trim();
+      const match = findServantInPool(query, allServants);
+
+      if (!match) {
+        await interaction.reply({
+          ephemeral: true,
+          content: `❌ No Heroic Spirit found matching "${query}". Use \`/servants list\` to browse all available spirits.`
+        });
+        return;
+      }
+
+      const artworkEmbed = buildServantArtworkEmbed(match);
+      const actionRow = buildNoblePhantasmActions(match.id);
+      await interaction.reply({ embeds: [artworkEmbed], components: [actionRow] });
+      return;
+    }
 
     if (subcommand === 'view') {
       const query = interaction.options.getString('name', true).trim();
@@ -317,8 +378,73 @@ function buildServantButtons(servants: ServantTemplate[]) {
   return rows;
 }
 
+export function buildNoblePhantasmEmbed(servant: ServantTemplate) {
+  const np = servant.noblePhantasm;
+  const gifUrl = getNoblePhantasmGif(servant);
+  const chant = getNoblePhantasmChant(servant);
+  const stars = '⭐'.repeat(servant.rarity || 5);
+  const color = np.cardType === 'Buster' ? 0xef4444 : np.cardType === 'Arts' ? 0x3b82f6 : 0x10b981;
+
+  const embed = new EmbedBuilder()
+    .setTitle(`💥 NOBLE PHANTASM: ${np.name}`)
+    .setDescription(
+      `> *"${chant || np.chant || 'True Name Unleashed!'}"*\n\n` +
+      `• **Heroic Spirit:** **${servant.name}** — *${servant.title}* [\`${servant.servantClass}\` ${stars}]\n` +
+      `• **Card Type & Target:** **${np.cardType}** • **${np.target.toUpperCase()}**\n` +
+      `• **Damage Multiplier:** \`${np.multiplier}%\` | **Overcharge:** ${np.overchargeEffect || 'Standard boost'}\n` +
+      `• **True Name Power:** ${np.description}\n\n` +
+      `🎬 *Noble Phantasm Animated Cinematic Playback*`
+    )
+    .setColor(color)
+    .setFooter({ text: `Throne ID: ${servant.id} • Holy Grail War Noble Phantasm Archive` });
+
+  if (gifUrl) {
+    embed.setImage(gifUrl);
+  }
+  if (servant.avatarUrl) {
+    embed.setThumbnail(servant.avatarUrl);
+  }
+
+  return embed;
+}
+
+export function buildNoblePhantasmActions(servantId: string) {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`view_servant_${servantId}`)
+      .setLabel('Inspect Servant Profile')
+      .setEmoji('⚔️')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`view_art_${servantId}`)
+      .setLabel('View Card Artwork')
+      .setEmoji('🖼️')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`quote_servant_${servantId}`)
+      .setLabel('Hear Voice Lines')
+      .setEmoji('💬')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('btn_back_servants_list')
+      .setLabel('Back to Servants List')
+      .setEmoji('📜')
+      .setStyle(ButtonStyle.Secondary)
+  );
+}
+
 function buildProfileActions(servantId: string) {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`view_np_${servantId}`)
+      .setLabel('View Noble Phantasm')
+      .setEmoji('🎬')
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId(`view_art_${servantId}`)
+      .setLabel('View Full Artwork')
+      .setEmoji('🖼️')
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(`quote_servant_${servantId}`)
       .setLabel('Hear Voice Dialogue')
@@ -366,6 +492,39 @@ function setupServantListCollector(message: any, allServants: ServantTemplate[])
             files,
             components: [actions] 
           });
+        } else {
+          await i.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+        }
+      } else if (i.customId.startsWith('view_np_')) {
+        const id = i.customId.replace('view_np_', '');
+        const target = allServants.find(s => s.id === id);
+        if (target) {
+          const npEmbed = buildNoblePhantasmEmbed(target);
+          const actions = buildNoblePhantasmActions(target.id);
+          await i.reply({ embeds: [npEmbed], components: [actions] });
+        } else {
+          await i.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+        }
+      } else if (i.customId.startsWith('view_art_')) {
+        const id = i.customId.replace('view_art_', '');
+        const target = allServants.find(s => s.id === id);
+        if (target) {
+          const artEmbed = buildServantArtworkEmbed(target);
+          const actions = buildNoblePhantasmActions(target.id);
+          await i.reply({ embeds: [artEmbed], components: [actions] });
+        } else {
+          await i.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+        }
+      } else if (i.customId.startsWith('quote_servant_')) {
+        const id = i.customId.replace('quote_servant_', '');
+        const target = allServants.find(s => s.id === id);
+        if (target) {
+          const quoteEmbed = new EmbedBuilder()
+            .setTitle(`💬 ${target.name} — Dialogue Line`)
+            .setDescription(`*"${target.summonQuote || target.battleStartQuote}"*`)
+            .setColor(0xd4af37)
+            .setFooter({ text: `${target.title} • Class: ${target.servantClass}` });
+          await i.reply({ embeds: [quoteEmbed] });
         } else {
           await i.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
         }
