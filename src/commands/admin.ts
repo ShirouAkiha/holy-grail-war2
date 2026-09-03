@@ -86,8 +86,11 @@ export async function autocomplete(interaction: AutocompleteInteraction) {
         }))
       );
     }
-  } catch (err) {
-    console.error('Admin autocomplete error:', err);
+  } catch (err: any) {
+    if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) {
+      return; // Token expired on rapid autocomplete keystrokes
+    }
+    console.warn('Admin autocomplete warning:', err?.message || err);
   }
 }
 

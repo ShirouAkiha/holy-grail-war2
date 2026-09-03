@@ -98,8 +98,11 @@ export async function autocomplete(interaction: AutocompleteInteraction) {
         value: s.name
       }))
     );
-  } catch (err) {
-    console.error('Servants autocomplete error:', err);
+  } catch (err: any) {
+    if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) {
+      return; // Token expired on quick keystrokes; normal Discord autocomplete behavior
+    }
+    console.warn('Servants autocomplete warning:', err?.message || err);
   }
 }
 
@@ -145,6 +148,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     if (subcommand === 'view') {
+      // Defer reply immediately so Discord knows the bot is actively generating the card
+      await interaction.deferReply();
       const query = interaction.options.getString('name', true).trim();
       const match = findServantInPool(query, allServants);
 
@@ -155,8 +160,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .map(s => `• **${s.name}** (\`${s.servantClass}\`)`)
           .join('\n');
 
-        await interaction.reply({
-          ephemeral: true,
+        await interaction.editReply({
           content: `❌ No Heroic Spirit found matching "${query}".\n\n${suggestions ? `**Suggestions:**\n${suggestions}\n\n` : ''}Use \`/servants list\` to see all available spirits.`
         });
         return;
@@ -177,7 +181,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         console.warn('Canvas render error in /servants view:', e);
       }
 
-      await interaction.reply({ 
+      await interaction.editReply({ 
         embeds: [profileEmbed, artworkEmbed], 
         files,
         components: [actionRow] 
@@ -236,11 +240,21 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     setupServantListCollector(response, allServants);
 
   } catch (error: any) {
+    if (error.code === 10062 || error.code === 40060) return;
     console.error('Error executing /servants:', error);
-    await interaction.reply({
-      content: `❌ Error querying Throne of Heroes: ${error.message}`,
-      ephemeral: true
-    });
+    try {
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({
+          content: `❌ Error querying Throne of Heroes: ${error.message}`,
+          ephemeral: true
+        });
+      } else {
+        await interaction.reply({
+          content: `❌ Error querying Throne of Heroes: ${error.message}`,
+          ephemeral: true
+        });
+      }
+    } catch {}
   }
 }
 
@@ -338,7 +352,7 @@ export function createServantTempInstance(servant: ServantTemplate): MasterServa
   };
 }
 
-function buildListEmbed(servants: ServantTemplate[], title: string, description: string) {
+export function buildListEmbed(servants: ServantTemplate[], title: string, description: string) {
   const lines = servants.map((s, idx) => {
     const tag = s.isCustomOrMeme ? '🛠️ [CUSTOM]' : '🏛️ [CANON]';
     return `${idx + 1}. **${s.name}** — *${s.title}* [\`${s.servantClass}\` ${'⭐'.repeat(s.rarity || 5)}] ${tag}`;
@@ -351,7 +365,7 @@ function buildListEmbed(servants: ServantTemplate[], title: string, description:
     .setFooter({ text: 'Holy Grail War Throne Registry • Use /servants search [query] to filter' });
 }
 
-function buildServantButtons(servants: ServantTemplate[]) {
+export function buildServantButtons(servants: ServantTemplate[]) {
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];
   let currentRow = new ActionRowBuilder<ButtonBuilder>();
 
@@ -433,7 +447,7 @@ export function buildNoblePhantasmActions(servantId: string) {
   );
 }
 
-function buildProfileActions(servantId: string) {
+export function buildProfileActions(servantId: string) {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(`view_np_${servantId}`)
@@ -471,6 +485,7 @@ function setupServantListCollector(message: any, allServants: ServantTemplate[])
         const id = i.customId.replace('view_servant_', '');
         const target = allServants.find(s => s.id === id);
         if (target) {
+          await i.deferReply();
           const profileEmbed = buildServantFullProfileEmbed(target);
           const artworkEmbed = buildServantArtworkEmbed(target);
           const actions = buildProfileActions(target.id);
@@ -487,7 +502,7 @@ function setupServantListCollector(message: any, allServants: ServantTemplate[])
           }
 
           // Show full profile to everyone in the channel
-          await i.reply({ 
+          await i.editReply({ 
             embeds: [profileEmbed, artworkEmbed], 
             files,
             components: [actions] 

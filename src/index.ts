@@ -8,7 +8,8 @@ import {
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonStyle
+  ButtonStyle,
+  AttachmentBuilder
 } from 'discord.js';
 import * as summonCommand from './commands/summon';
 import * as servantCommand from './commands/servant';
@@ -34,12 +35,24 @@ import * as healCommand from './commands/heal';
 import * as inventoryCommand from './commands/inventory';
 import * as equipCommand from './commands/equip';
 import * as boastCommand from './commands/boast';
-import { getOrCreateMaster, saveMaster } from './database/service';
+import { getOrCreateMaster, saveMaster, getAllThroneServants } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
+import { getNoblePhantasmGif, getNoblePhantasmChant } from './data/noblePhantasmGifs';
+import { renderServantProfileCard, renderDialogueCard } from './canvas/renderer';
 import { buildProfileEmbed, buildProfileButtons } from './commands/profile';
 import { buildDefensesEmbed, buildDefensesButtons } from './commands/defenses';
 import { buildChurchEmbed, buildChurchButtons } from './commands/church';
 import { buildWarEmbed, buildWarButtons } from './commands/grailwar';
+import { 
+  buildServantFullProfileEmbed,
+  buildServantArtworkEmbed,
+  buildNoblePhantasmEmbed,
+  buildNoblePhantasmActions,
+  buildProfileActions,
+  buildListEmbed,
+  buildServantButtons,
+  createServantTempInstance
+} from './commands/servants';
 import { 
   getOrInitWarSession, 
   executeWarAction, 
@@ -155,7 +168,14 @@ client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isAutocomplete()) {
       const command = commands.get(interaction.commandName);
       if (command && typeof (command as any).autocomplete === 'function') {
-        await (command as any).autocomplete(interaction);
+        try {
+          await (command as any).autocomplete(interaction);
+        } catch (err: any) {
+          if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) {
+            return; // Normal Discord keystroke debounce timeout
+          }
+          console.warn(`Autocomplete warning for /${interaction.commandName}:`, err?.message || err);
+        }
       }
       return;
     }
@@ -503,7 +523,143 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
-      // Navigation Shortcuts
+      // Navigation & Servant Interactive Buttons
+      if (btnId.startsWith('view_servant_')) {
+        const servantId = btnId.replace('view_servant_', '');
+        const allServants = getAllThroneServants();
+        const target = allServants.find(s => s.id === servantId);
+        if (target) {
+          await interaction.deferReply();
+          const profileEmbed = buildServantFullProfileEmbed(target);
+          const artworkEmbed = buildServantArtworkEmbed(target);
+          const actions = buildProfileActions(target.id);
+
+          const files: AttachmentBuilder[] = [];
+          try {
+            const tempInstance = createServantTempInstance(target);
+            const cardBuffer = await renderServantProfileCard(tempInstance, 'Throne of Heroes');
+            if (cardBuffer && cardBuffer.length > 500) {
+              files.push(new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' }));
+            }
+          } catch (e) {
+            console.warn('Canvas render error in button view_servant:', e);
+          }
+
+          await interaction.editReply({ 
+            embeds: [profileEmbed, artworkEmbed], 
+            files,
+            components: [actions] 
+          });
+        } else {
+          await interaction.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+        }
+        return;
+      }
+
+      if (btnId.startsWith('view_np_')) {
+        const servantId = btnId.replace('view_np_', '');
+        const allServants = getAllThroneServants();
+        const target = allServants.find(s => s.id === servantId);
+        if (target) {
+          const npEmbed = buildNoblePhantasmEmbed(target);
+          const actions = buildNoblePhantasmActions(target.id);
+          await interaction.reply({ embeds: [npEmbed], components: [actions] });
+        } else {
+          await interaction.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+        }
+        return;
+      }
+
+      if (btnId.startsWith('view_art_')) {
+        const servantId = btnId.replace('view_art_', '');
+        const allServants = getAllThroneServants();
+        const target = allServants.find(s => s.id === servantId);
+        if (target) {
+          const artEmbed = buildServantArtworkEmbed(target);
+          const actions = buildNoblePhantasmActions(target.id);
+          await interaction.reply({ embeds: [artEmbed], components: [actions] });
+        } else {
+          await interaction.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+        }
+        return;
+      }
+
+      if (btnId.startsWith('quote_servant_')) {
+        const servantId = btnId.replace('quote_servant_', '');
+        const allServants = getAllThroneServants();
+        const target = allServants.find(s => s.id === servantId);
+        if (target) {
+          const quoteEmbed = new EmbedBuilder()
+            .setTitle(`💬 ${target.name} — Dialogue Line`)
+            .setDescription(`*"${target.summonQuote || target.battleStartQuote}"*`)
+            .setColor(0xd4af37)
+            .setFooter({ text: `${target.title} • Class: ${target.servantClass}` });
+          await interaction.reply({ embeds: [quoteEmbed] });
+        } else {
+          await interaction.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+        }
+        return;
+      }
+
+      if (btnId === 'btn_back_servants_list' || btnId === 'btn_show_servants_list') {
+        const allServants = getAllThroneServants();
+        const listEmbed = buildListEmbed(
+          allServants.slice(0, 15),
+          `📜 Throne of Heroes Registry (${allServants.length} Servants)`,
+          `Click any Servant's button below to display their full profile:`
+        );
+        const rows = buildServantButtons(allServants.slice(0, 10));
+        await interaction.reply({ embeds: [listEmbed], components: rows });
+        return;
+      }
+
+      if (btnId === 'view_active_np') {
+        const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+        if (activeServant) {
+          const template = activeServant.template;
+          const npEmbed = buildNoblePhantasmEmbed(template);
+          const actions = buildNoblePhantasmActions(template.id);
+          await interaction.reply({ embeds: [npEmbed], components: [actions] });
+        } else {
+          await interaction.reply({ content: 'You have no contracted Servant yet! Use `/summon` first.', ephemeral: true });
+        }
+        return;
+      }
+
+      if (btnId === 'hear_dialogue' || btnId === 'btn_hear_quote') {
+        const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+        if (activeServant) {
+          await interaction.deferReply({ ephemeral: true });
+          const quotes = [
+            { label: 'Summon Quote', text: activeServant.customQuotes?.summon || activeServant.template.summonQuote },
+            { label: 'Battle Start', text: activeServant.customQuotes?.battleStart || activeServant.template.battleStartQuote },
+            { label: 'Noble Phantasm Chant', text: activeServant.customQuotes?.noblePhantasm || activeServant.template.noblePhantasm.chant },
+            { label: 'Victory Quote', text: activeServant.customQuotes?.victory || activeServant.template.victoryQuote }
+          ];
+          const picked = quotes[Math.floor(Math.random() * quotes.length)];
+          let files: AttachmentBuilder[] = [];
+          try {
+            const diaBuffer = await renderDialogueCard(activeServant.template.name, picked.text, activeServant.template.title, activeServant.template.servantClass);
+            if (diaBuffer && diaBuffer.length > 500) {
+              files.push(new AttachmentBuilder(diaBuffer, { name: 'dialogue_card.png' }));
+            }
+          } catch {}
+
+          const diaEmbed = new EmbedBuilder()
+            .setTitle(`💬 ${activeServant.template.name} — [${picked.label}]`)
+            .setDescription(`*"${picked.text}"*`)
+            .setColor(0xd4af37);
+
+          if (files.length > 0) {
+            diaEmbed.setImage('attachment://dialogue_card.png');
+          }
+          await interaction.editReply({ embeds: [diaEmbed], files });
+        } else {
+          await interaction.reply({ content: 'You have no contracted Servant yet! Use `/summon` first.', ephemeral: true });
+        }
+        return;
+      }
+
       if (btnId === 'go_summon' || btnId === 'quick_summon_ritual') {
         await interaction.reply({
           content: '✨ Use the `/summon ritual` slash command to invoke the Throne of Heroes and contract a Servant!',

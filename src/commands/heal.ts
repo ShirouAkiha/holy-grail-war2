@@ -30,7 +30,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     await interaction.reply({ embeds: [embed], ephemeral: true });
   } catch (error: any) {
+    if (error.code === 10062 || error.code === 40060) return;
     console.error('Error executing /heal:', error);
-    await interaction.reply({ content: `❌ Heal command error: ${error.message}`, ephemeral: true });
+    try {
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({ content: `❌ Heal command error: ${error.message}`, ephemeral: true });
+      } else {
+        await interaction.reply({ content: `❌ Heal command error: ${error.message}`, ephemeral: true });
+      }
+    } catch {}
   }
 }

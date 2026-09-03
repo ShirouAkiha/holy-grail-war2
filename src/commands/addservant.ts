@@ -322,8 +322,11 @@ export async function autocomplete(interaction: AutocompleteInteraction) {
         }))
       );
     }
-  } catch (err) {
-    console.error('Addservant autocomplete error:', err);
+  } catch (err: any) {
+    if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) {
+      return; // Expired interaction token; ignore harmless Discord keystroke timeout
+    }
+    console.warn('Addservant autocomplete warning:', err?.message || err);
   }
 }
 
