@@ -826,6 +826,7 @@ function resolveStrike(
         if (isEvading) {
           npDmg = Math.round(npDmg * 0.15);
           defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
+          isEvading = false;
         }
 
         // Refund properties dictated by card type
@@ -867,6 +868,7 @@ function resolveStrike(
       if (isEvading) {
         hitDmg = Math.round(hitDmg * 0.15);
         defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
+        isEvading = false;
       }
 
       const npAmt = hitCrit ? 10 : 6;
@@ -899,6 +901,7 @@ function resolveStrike(
       if (isEvading) {
         hitDmg = Math.round(hitDmg * 0.15);
         defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
+        isEvading = false;
       }
 
       let npGain = Math.round((24 + Math.random() * 8) * npGenBonus * (hitCrit ? 1.4 : 1.0) * (1.0 + territoryBonus / 100));
@@ -928,6 +931,7 @@ function resolveStrike(
       if (isEvading) {
         hitDmg = Math.round(hitDmg * 0.15);
         defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
+        isEvading = false;
       }
 
       let starsGained = Math.round((18 + Math.random() * 6) * (1.0 + (ridingBonus + presenceConcealBonus) / 100));

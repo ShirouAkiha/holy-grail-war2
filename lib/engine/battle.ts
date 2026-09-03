@@ -162,14 +162,14 @@ export function applyCombatantSkill(
           value: skill.value || 30,
           remainingTurns: skill.duration || 1
         });
+      } else {
+        actor.activeBuffs.push({
+          name: skill.name,
+          type: 'buff_atk',
+          value: skill.value || 30,
+          remainingTurns: skill.duration || 2
+        });
       }
-
-      actor.activeBuffs.push({
-        name: skill.name,
-        type: 'buff_atk',
-        value: skill.value || 30,
-        remainingTurns: skill.duration || 2
-      });
       actor.critStars = Math.min(50, actor.critStars + 10);
       const cardDetail = cardBuff ? ` (+${skill.value || 30}% ${cardBuff === 'buster_up' ? 'Buster' : cardBuff === 'arts_up' ? 'Arts' : 'Quick'} Card Effectiveness)` : '';
       logText = `⚔️ **${actor.name}** activated **${skill.name}**, gaining **+${skill.value || 30}% ATK**${cardDetail} for ${skill.duration || 2} turns and +10 Critical Stars!`;
@@ -590,14 +590,14 @@ export function executeBattleTurn(
                 value: skill.value,
                 remainingTurns: skill.duration
               });
+            } else {
+              actor.activeBuffs.push({
+                name: skill.name,
+                type: 'buff_atk',
+                value: skill.value,
+                remainingTurns: skill.duration
+              });
             }
-
-            actor.activeBuffs.push({
-              name: skill.name,
-              type: 'buff_atk',
-              value: skill.value,
-              remainingTurns: skill.duration
-            });
             break;
           }
           case 'buff_def':
