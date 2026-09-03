@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { MasterProfile, MasterServantInstance, ServantStats } from '../lib/types';
+import { MasterProfile, MasterServantInstance, ServantStats, ServantTemplate } from '../lib/types';
 import { CRAFT_ESSENCE_DATABASE } from '../lib/data/craftEssences';
+import { getCustomServantsFromStorage, saveCustomServantsToStorage } from '../lib/state/gameState';
 import {
   allocateStatPoints,
   equipCraftEssence,
@@ -49,6 +50,13 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
   const [victoryQuote, setVictoryQuote] = useState(currentServant?.customQuotes.victory || '');
   const [saveFeedback, setSaveFeedback] = useState(false);
 
+  // Servant Portrait & Artwork Customization State
+  const [avatarUrl, setAvatarUrl] = useState(currentServant?.template?.avatarUrl || '');
+  const [cardArtUrl, setCardArtUrl] = useState(currentServant?.template?.cardArtUrl || '');
+  const [artSaveFeedback, setArtSaveFeedback] = useState(false);
+  const [artUploading, setArtUploading] = useState(false);
+  const [artUploadError, setArtUploadError] = useState<string | null>(null);
+
   // Noble Phantasm Animation Customization State
   const [npGifUrl, setNpGifUrl] = useState(currentServant?.template?.noblePhantasm?.animationUrl || '');
   const [npAutoDelete, setNpAutoDelete] = useState(true);
@@ -78,7 +86,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
         }
       })
       .catch(() => {});
-  }, [currentServant?.id]);
+  }, [currentServant?.id, currentServant?.template?.id, currentServant?.template?.name]);
 
   if (!currentServant) {
     return (
@@ -121,6 +129,111 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
     onUpdateMaster({ ...master, servants: updatedServants });
     setSaveFeedback(true);
     setTimeout(() => setSaveFeedback(false), 3000);
+  };
+
+  const handleSaveArt = async () => {
+    if (!currentServant) return;
+    const finalAvatar = avatarUrl.trim() || currentServant.template.avatarUrl;
+    const finalCardArt = cardArtUrl.trim() || finalAvatar || currentServant.template.cardArtUrl;
+
+    const updatedTemplate: ServantTemplate = {
+      ...currentServant.template,
+      avatarUrl: finalAvatar,
+      cardArtUrl: finalCardArt
+    };
+
+    const updatedServant: MasterServantInstance = {
+      ...currentServant,
+      template: updatedTemplate
+    };
+
+    const updatedServants = master.servants.map(s => (s.id === updatedServant.id ? updatedServant : s));
+    onUpdateMaster({ ...master, servants: updatedServants });
+
+    // Persist to browser storage custom servants list
+    const stored = getCustomServantsFromStorage();
+    const idx = stored.findIndex(s => s.id === updatedTemplate.id || s.name.toLowerCase() === updatedTemplate.name.toLowerCase());
+    let newStored: ServantTemplate[];
+    if (idx >= 0) {
+      newStored = [...stored];
+      newStored[idx] = updatedTemplate;
+    } else {
+      newStored = [...stored, updatedTemplate];
+    }
+    saveCustomServantsToStorage(newStored);
+
+    // Call server API to persist on disk database
+    fetch('/api/servants/custom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'add', servant: updatedTemplate })
+    }).catch(err => console.warn('Server disk art sync warning:', err));
+
+    setArtSaveFeedback(true);
+    setTimeout(() => setArtSaveFeedback(false), 3000);
+  };
+
+  const handleAvatarFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setArtUploadError('Please select a valid image file (PNG, JPG, GIF, WebP).');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setArtUploadError('File exceeds 10MB limit.');
+      return;
+    }
+
+    setArtUploading(true);
+    setArtUploadError(null);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setAvatarUrl(dataUrl);
+      if (!cardArtUrl || cardArtUrl === avatarUrl) {
+        setCardArtUrl(dataUrl);
+      }
+      setArtUploading(false);
+    };
+    reader.onerror = () => {
+      setArtUploadError('Failed to read image file.');
+      setArtUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCardArtFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setArtUploadError('Please select a valid image file (PNG, JPG, GIF, WebP).');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setArtUploadError('File exceeds 10MB limit.');
+      return;
+    }
+
+    setArtUploading(true);
+    setArtUploadError(null);
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setCardArtUrl(dataUrl);
+      setArtUploading(false);
+    };
+    reader.onerror = () => {
+      setArtUploadError('Failed to read image file.');
+      setArtUploading(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSaveNpAnimation = async () => {
@@ -255,6 +368,8 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
               setSelectedServantId(e.target.value);
               const target = master.servants.find(s => s.id === e.target.value);
               if (target) {
+                setAvatarUrl(target.template.avatarUrl || '');
+                setCardArtUrl(target.template.cardArtUrl || '');
                 setSummonQuote(target.customQuotes.summon || target.template.summonQuote);
                 setBattleQuote(target.customQuotes.battleStart || target.template.battleStartQuote);
                 setNpChant(target.customQuotes.noblePhantasm || target.template.noblePhantasm.chant);
@@ -520,6 +635,179 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
               {saveFeedback ? <Check className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
               <span>{saveFeedback ? 'Saved to Contract' : 'Save Custom Dialogue'}</span>
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Heroic Spirit Portrait & Card Artwork Forge */}
+      <div className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] shadow-2xl space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#1a1a1a] pb-4">
+          <div>
+            <h3 className="text-base font-serif italic text-white flex items-center gap-2">
+              <ImageIcon className="w-5 h-5 text-[#d4af37]" />
+              Heroic Spirit Portrait & Card Artwork Forge
+            </h3>
+            <p className="text-xs font-mono text-white/40 mt-1">
+              Customize avatar portraits and full card artwork for {currentServant.template.name}. Rendered on Discord canvas cards, duels, and profile cards.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 font-mono text-xs">
+            <span className="px-2.5 py-1 rounded bg-[#161616] text-[#d4af37] border border-[#d4af37]/30">
+              Permanent Sync Enabled
+            </span>
+          </div>
+        </div>
+
+        {artUploadError && (
+          <div className="p-3 bg-red-950/40 border border-red-500/40 rounded text-red-300 font-mono text-xs flex items-center gap-2">
+            <span>⚠️</span>
+            <span>{artUploadError}</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 font-mono">
+          {/* Left Column: Form Inputs & File Uploads (7 cols) */}
+          <div className="lg:col-span-7 space-y-5">
+            {/* Avatar PFP Section */}
+            <div className="p-4 rounded bg-[#111] border border-[#222] space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
+                  <User className="w-4 h-4 text-[#d4af37]" />
+                  Avatar Profile Picture (PFP)
+                </label>
+                <span className="text-[10px] text-white/40">Square / Circle Badge</span>
+              </div>
+
+              {/* Direct File Upload */}
+              <div className="flex items-center gap-2">
+                <label className="flex-1 cursor-pointer py-2 px-3 rounded bg-[#1a1a1a] hover:bg-[#252525] border border-dashed border-[#d4af37]/40 text-center transition flex items-center justify-center gap-2 text-xs text-[#d4af37]">
+                  <FileUp className="w-4 h-4" />
+                  <span>Upload Image File (PNG, JPG, GIF, WebP)</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarFileUpload}
+                    disabled={artUploading}
+                  />
+                </label>
+              </div>
+
+              {/* Or URL input */}
+              <div>
+                <label className="text-[10px] uppercase text-white/40 block mb-1">Or Direct Image / GIF URL</label>
+                <input
+                  type="text"
+                  value={avatarUrl}
+                  onChange={e => setAvatarUrl(e.target.value)}
+                  placeholder="https://... or uploaded image"
+                  className="w-full bg-[#0a0a0a] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-[#d4af37]"
+                />
+              </div>
+            </div>
+
+            {/* Card Art Section */}
+            <div className="p-4 rounded bg-[#111] border border-[#222] space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
+                  <ImageIcon className="w-4 h-4 text-[#d4af37]" />
+                  Full Card Artwork
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setCardArtUrl(avatarUrl)}
+                  className="text-[10px] text-[#d4af37] hover:underline"
+                >
+                  Match Avatar PFP
+                </button>
+              </div>
+
+              {/* Direct File Upload for Card Art */}
+              <div className="flex items-center gap-2">
+                <label className="flex-1 cursor-pointer py-2 px-3 rounded bg-[#1a1a1a] hover:bg-[#252525] border border-dashed border-[#d4af37]/40 text-center transition flex items-center justify-center gap-2 text-xs text-[#d4af37]">
+                  <FileUp className="w-4 h-4" />
+                  <span>Upload Card Artwork (PNG, JPG, GIF, WebP)</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleCardArtFileUpload}
+                    disabled={artUploading}
+                  />
+                </label>
+              </div>
+
+              {/* URL input */}
+              <div>
+                <label className="text-[10px] uppercase text-white/40 block mb-1">Or Direct Card Art URL</label>
+                <input
+                  type="text"
+                  value={cardArtUrl}
+                  onChange={e => setCardArtUrl(e.target.value)}
+                  placeholder="https://... or uploaded image"
+                  className="w-full bg-[#0a0a0a] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-[#d4af37]"
+                />
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <button
+              onClick={handleSaveArt}
+              disabled={artUploading}
+              className={`w-full py-3 rounded-sm font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-xl transition ${
+                artSaveFeedback
+                  ? 'bg-[#22c55e] text-black'
+                  : 'bg-[#d4af37] hover:bg-[#c49f27] text-black'
+              }`}
+            >
+              {artSaveFeedback ? <Check className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
+              <span>{artSaveFeedback ? 'Portrait & Card Art Saved to Throne of Heroes!' : 'Save Servant Portrait & Artwork'}</span>
+            </button>
+          </div>
+
+          {/* Right Column: Live Visual Previews (5 cols) */}
+          <div className="lg:col-span-5 flex flex-col gap-4">
+            <div className="p-4 rounded bg-[#111] border border-[#222] flex-1 flex flex-col items-center justify-center text-center">
+              <span className="text-[10px] uppercase tracking-wider text-white/40 mb-3">Live Visual Previews</span>
+              
+              <div className="flex items-center gap-6 justify-center flex-wrap">
+                {/* Avatar Preview */}
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[#d4af37] bg-black shadow-lg relative">
+                    <img
+                      src={avatarUrl || currentServant.template.avatarUrl}
+                      alt={currentServant.template.name}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                      onError={(e: any) => {
+                        e.currentTarget.src = 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=400&auto=format&fit=crop&q=80';
+                      }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-white/60">Avatar PFP</span>
+                </div>
+
+                {/* Card Art Preview */}
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-28 h-36 rounded-md overflow-hidden border border-[#333] bg-black shadow-lg relative">
+                    <img
+                      src={cardArtUrl || avatarUrl || currentServant.template.cardArtUrl}
+                      alt={currentServant.template.name}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                      onError={(e: any) => {
+                        e.currentTarget.src = 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=600&auto=format&fit=crop&q=80';
+                      }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-white/60">Card Artwork</span>
+                </div>
+              </div>
+
+              <div className="mt-4 text-[11px] text-white/40 leading-relaxed max-w-xs">
+                Avatar is rendered in circle badges, combat summary screens, and /servant status embeds.
+              </div>
+            </div>
           </div>
         </div>
       </div>

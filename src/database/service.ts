@@ -213,15 +213,21 @@ function loadFromDisk() {
                      (s.name && instAny.nickname && s.name.toLowerCase() === instAny.nickname.toLowerCase()) ||
                      (s.name && inst.template?.name && s.name.toLowerCase() === inst.template.name.toLowerCase())
               );
-              if (canonical && !inst.template?.isCustomOrMeme) {
+              if (canonical) {
+                const customSaved = savedServantsMap.get(canonical.id);
+                const preservedAvatar = inst.template?.avatarUrl || customSaved?.avatarUrl || canonical.avatarUrl;
+                const preservedCardArt = inst.template?.cardArtUrl || customSaved?.cardArtUrl || canonical.cardArtUrl;
                 inst.template = {
-                  ...inst.template,
                   ...canonical,
-                  baseHp: canonical.baseHp,
-                  baseAtk: canonical.baseAtk,
-                  baseStats: canonical.baseStats,
-                  noblePhantasm: canonical.noblePhantasm,
-                  skills: canonical.skills
+                  ...(customSaved || {}),
+                  ...(inst.template || {}),
+                  avatarUrl: preservedAvatar,
+                  cardArtUrl: preservedCardArt,
+                  baseHp: customSaved?.baseHp || canonical.baseHp,
+                  baseAtk: customSaved?.baseAtk || canonical.baseAtk,
+                  baseStats: customSaved?.baseStats || canonical.baseStats,
+                  noblePhantasm: customSaved?.noblePhantasm || canonical.noblePhantasm,
+                  skills: customSaved?.skills || canonical.skills
                 };
               }
             }

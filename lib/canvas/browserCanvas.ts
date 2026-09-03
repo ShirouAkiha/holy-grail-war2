@@ -152,7 +152,12 @@ export function renderServantProfileCard(
 
   const templateId = servant.templateId || servant.template?.id || servant.id;
   const canonical = SERVANT_DATABASE.find(s => s.id === templateId) || servant.template || servant;
-  const t = { ...canonical, ...(servant.template?.isCustomOrMeme ? servant.template : {}) };
+  const t = { 
+    ...canonical, 
+    ...(servant.template || {}),
+    avatarUrl: servant.template?.avatarUrl || servant.avatarUrl || canonical.avatarUrl,
+    cardArtUrl: servant.template?.cardArtUrl || servant.cardArtUrl || canonical.cardArtUrl
+  };
   const alloc = servant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
   const base = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
 
@@ -537,7 +542,13 @@ function loadBrowserImage(url?: string): Promise<HTMLImageElement | null> {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
+    img.onerror = () => {
+      // If CORS anonymous failed, attempt standard load so canvas can still paint it
+      const fallbackImg = new Image();
+      fallbackImg.onload = () => resolve(fallbackImg);
+      fallbackImg.onerror = () => resolve(null);
+      fallbackImg.src = url;
+    };
     img.src = url;
   });
 }

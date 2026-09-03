@@ -12,6 +12,7 @@ import {
   ServantClass
 } from '../lib/types';
 import { SERVANT_DATABASE, getDefaultClassPassives } from '../lib/data/servants';
+import { getAllThroneServants, saveCustomServantsToStorage } from '../lib/state/gameState';
 import { getNoblePhantasmGif, getNoblePhantasmChant, setCustomNpAnimationInMemory, setCustomNpAnimationsBatch } from '../lib/data/noblePhantasmGifs';
 import { normalizeMediaUrl } from '../lib/utils/mediaResolver';
 import { findServantInPool, matchServantSearch } from '../lib/utils/servantMatcher';
@@ -469,7 +470,7 @@ export default function DiscordEmulator({
     };
   }, []);
 
-  const allThrone = [...SERVANT_DATABASE, ...customServants];
+  const allThrone = getAllThroneServants(customServants);
   const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
 
   const getNextId = (prefix: string) => {
@@ -1028,15 +1029,32 @@ export default function DiscordEmulator({
           if (quoteMatch) target.summonQuote = quoteMatch[1].trim();
           if (loreMatch) target.lore = loreMatch[1].trim();
 
-          // Sync state
+          // Sync state & persist custom / canon overrides permanently
           const customIdx = customServants.findIndex(s => s.id === target.id);
+          let updatedCustom: ServantTemplate[];
           if (customIdx >= 0) {
-            const updated = [...customServants];
-            updated[customIdx] = { ...target };
-            onUpdateCustomServants(updated);
-          } else if (target.isCustomOrMeme) {
-            onUpdateCustomServants([...customServants, { ...target }]);
+            updatedCustom = [...customServants];
+            updatedCustom[customIdx] = { ...target };
+          } else {
+            updatedCustom = [...customServants, { ...target }];
           }
+          onUpdateCustomServants(updatedCustom);
+          saveCustomServantsToStorage(updatedCustom);
+
+          // If the master currently has a contract with this servant, update their active template too!
+          const updatedMasterServants = master.servants.map(s => {
+            if (s.templateId === target.id || s.template?.id === target.id || s.template?.name.toLowerCase() === target.name.toLowerCase()) {
+              return {
+                ...s,
+                template: { ...target }
+              };
+            }
+            return s;
+          });
+          onUpdateMaster({
+            ...master,
+            servants: updatedMasterServants
+          });
 
           // Persist to server disk
           fetch('/api/servants/custom', {
