@@ -5,6 +5,7 @@ import {
   ActiveCombatant,
   BattleState,
   CardType,
+  CombatBattleRecord,
   MasterProfile,
   MasterServantInstance
 } from '../lib/types';
@@ -14,6 +15,14 @@ import {
   executeBattleTurn,
   calculateClassMultiplier
 } from '../lib/engine/battle';
+import {
+  loadCombatBattleHistory,
+  saveCombatBattleRecord,
+  createRecordFromFinishedBattle,
+  clearCombatBattleHistory,
+  resetSeedCombatBattleHistory
+} from '../lib/engine/combatHistory';
+import CombatLogHistory from './CombatLogHistory';
 import { SERVANT_DATABASE } from '../lib/data/servants';
 import {
   Swords,
@@ -24,7 +33,8 @@ import {
   RotateCcw,
   Skull,
   Award,
-  ChevronRight
+  ChevronRight,
+  BookOpen
 } from 'lucide-react';
 
 interface CombatArenaProps {
@@ -73,6 +83,11 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
   const [selectedSkillIdx, setSelectedSkillIdx] = useState<number | undefined>();
   const [selectedCommandSeal, setSelectedCommandSeal] = useState<'heal' | 'np_charge' | undefined>();
   const [isSimulating, setIsSimulating] = useState(false);
+
+  // Combat Log History state (Last 10 battles)
+  const [arenaTab, setArenaTab] = useState<'duel' | 'history'>('duel');
+  const [battleHistory, setBattleHistory] = useState<CombatBattleRecord[]>(() => loadCombatBattleHistory());
+  const [lastCompletedBattleId, setLastCompletedBattleId] = useState<string | undefined>();
 
   if (!activeServant || !battle) {
     return (
@@ -152,6 +167,14 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
           grailWarWins: master.grailWarWins + 1
         });
       }
+
+      // Automatically record concluded battle into combat log history (max 10)
+      if (updatedState.turnPhase === 'victory' || updatedState.turnPhase === 'defeat') {
+        const record = createRecordFromFinishedBattle(updatedState, updatedState.turnPhase);
+        const updatedHistory = saveCombatBattleRecord(record);
+        setBattleHistory(updatedHistory);
+        setLastCompletedBattleId(record.id);
+      }
     }, 400);
   };
 
@@ -164,47 +187,123 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
 
   return (
     <div className="space-y-6">
-      {/* Top Arena Header & Opponent Select */}
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a]">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-sm bg-[#161616] text-[#d4af37] border border-[#d4af37]/30">
-            <Swords className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-lg font-serif italic text-white tracking-wide">Fuyuki Combat Arena</h2>
-            <p className="text-[11px] font-mono text-white/40 uppercase tracking-wider">
-              Turn {battle.currentTurn} • Tactical Card-Chain RPG
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="text-[11px] font-mono text-white/40 uppercase tracking-wider">Rival:</div>
-          <select
-            value={selectedEnemyId}
-            onChange={e => {
-              setSelectedEnemyId(e.target.value);
-              const opp = SERVANT_DATABASE.find(s => s.id === e.target.value);
-              if (opp) setBattle(setupNewBattle(opp));
-            }}
-            className="bg-[#111] text-white text-xs px-3 py-1.5 rounded-sm border border-[#222] outline-none font-mono focus:border-[#d4af37]"
-          >
-            {SERVANT_DATABASE.filter(s => s.id !== activeServant.template.id).map(s => (
-              <option key={s.id} value={s.id}>
-                {s.name} ({s.servantClass} • {s.rarity}★)
-              </option>
-            ))}
-          </select>
-
+      {/* Top Arena Navigation Mode Switcher */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1a1a1a] pb-3">
+        <div className="flex items-center gap-2">
           <button
-            onClick={handleRestart}
-            className="px-3 py-1.5 rounded-sm bg-transparent hover:bg-[#161616] text-white/70 hover:text-white text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 border border-white/20 transition"
+            onClick={() => setArenaTab('duel')}
+            className={`px-4 py-2 rounded-sm text-xs font-mono uppercase tracking-wider flex items-center gap-2 transition ${
+              arenaTab === 'duel'
+                ? 'bg-[#d4af37] text-black font-bold shadow-[0_0_12px_rgba(212,175,55,0.2)]'
+                : 'bg-[#111] text-white/60 hover:text-white border border-[#1a1a1a]'
+            }`}
           >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Reset
+            <Swords className="w-3.5 h-3.5" />
+            Live Arena Duel
+          </button>
+          <button
+            onClick={() => setArenaTab('history')}
+            className={`px-4 py-2 rounded-sm text-xs font-mono uppercase tracking-wider flex items-center gap-2 transition ${
+              arenaTab === 'history'
+                ? 'bg-[#d4af37] text-black font-bold shadow-[0_0_12px_rgba(212,175,55,0.2)]'
+                : 'bg-[#111] text-white/60 hover:text-white border border-[#1a1a1a]'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            Combat Log History
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ml-1 ${
+                arenaTab === 'history' ? 'bg-black text-[#d4af37]' : 'bg-[#1a1a1a] text-[#d4af37]'
+              }`}
+            >
+              {battleHistory.length}
+            </span>
           </button>
         </div>
+
+        {arenaTab === 'duel' && (
+          <button
+            onClick={() => setArenaTab('history')}
+            className="text-[11px] font-mono text-white/50 hover:text-[#d4af37] flex items-center gap-1.5 transition"
+          >
+            <span>Review Last 10 Battles</span>
+            <ChevronRight className="w-3 h-3" />
+          </button>
+        )}
       </div>
+
+      {/* When Combat Log History Tab is Active */}
+      {arenaTab === 'history' ? (
+        <CombatLogHistory
+          history={battleHistory}
+          initialSelectedBattleId={lastCompletedBattleId}
+          activeServantName={activeServant.template.name}
+          onSelectRematch={enemyTemplateId => {
+            const opp = SERVANT_DATABASE.find(s => s.id === enemyTemplateId);
+            if (opp) {
+              setSelectedEnemyId(opp.id);
+              setBattle(setupNewBattle(opp));
+            } else {
+              setBattle(setupNewBattle());
+            }
+            setSelectedCards([]);
+            setUseNp(false);
+            setSelectedSkillIdx(undefined);
+            setArenaTab('duel');
+          }}
+          onClose={() => setArenaTab('duel')}
+          onResetSeed={() => {
+            const reset = resetSeedCombatBattleHistory();
+            setBattleHistory(reset);
+          }}
+          onClearHistory={() => {
+            clearCombatBattleHistory();
+            setBattleHistory([]);
+          }}
+        />
+      ) : (
+        <>
+          {/* Top Arena Header & Opponent Select */}
+          <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a]">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-sm bg-[#161616] text-[#d4af37] border border-[#d4af37]/30">
+                <Swords className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-serif italic text-white tracking-wide">Fuyuki Combat Arena</h2>
+                <p className="text-[11px] font-mono text-white/40 uppercase tracking-wider">
+                  Turn {battle.currentTurn} • Tactical Card-Chain RPG
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="text-[11px] font-mono text-white/40 uppercase tracking-wider">Rival:</div>
+              <select
+                value={selectedEnemyId}
+                onChange={e => {
+                  setSelectedEnemyId(e.target.value);
+                  const opp = SERVANT_DATABASE.find(s => s.id === e.target.value);
+                  if (opp) setBattle(setupNewBattle(opp));
+                }}
+                className="bg-[#111] text-white text-xs px-3 py-1.5 rounded-sm border border-[#222] outline-none font-mono focus:border-[#d4af37]"
+              >
+                {SERVANT_DATABASE.filter(s => s.id !== activeServant.template.id).map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name} ({s.servantClass} • {s.rarity}★)
+                  </option>
+                ))}
+              </select>
+
+              <button
+                onClick={handleRestart}
+                className="px-3 py-1.5 rounded-sm bg-transparent hover:bg-[#161616] text-white/70 hover:text-white text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 border border-white/20 transition"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reset
+              </button>
+            </div>
+          </div>
 
       {/* Battle Stage Split Screen */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -352,12 +451,22 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
               ? `Your Servant ${p1.name} has claimed triumph. Rewards: +3 Saint Quartz & +1 Grail War Victory.`
               : `${p2.name} overwhelmed your defense. Fortify your stats in the workshop and retry.`}
           </p>
-          <button
-            onClick={handleRestart}
-            className="px-6 py-2.5 rounded-sm bg-[#d4af37] hover:bg-[#c49f27] text-black font-bold text-xs uppercase tracking-wider shadow-lg transition"
-          >
-            Rematch Duel
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              onClick={handleRestart}
+              className="px-6 py-2.5 rounded-sm bg-[#d4af37] hover:bg-[#c49f27] text-black font-bold text-xs uppercase tracking-wider shadow-lg transition flex items-center gap-1.5"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Rematch Duel
+            </button>
+            <button
+              onClick={() => setArenaTab('history')}
+              className="px-6 py-2.5 rounded-sm bg-[#161616] hover:bg-[#222] text-[#d4af37] border border-[#d4af37]/40 font-bold text-xs uppercase tracking-wider shadow-lg transition flex items-center gap-1.5"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              Review Turn-by-Turn Combat Log
+            </button>
+          </div>
         </div>
       )}
 
@@ -556,9 +665,19 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
       {/* Battle Log History */}
       {battle.turnHistory.length > 0 && (
         <div className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] space-y-3">
-          <h4 className="text-xs font-mono uppercase tracking-widest text-white/40 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-[#d4af37]" /> Combat Action History
-          </h4>
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-mono uppercase tracking-widest text-white/40 flex items-center gap-2">
+              <Zap className="w-4 h-4 text-[#d4af37]" /> Current Clash Logs
+            </h4>
+            <button
+              onClick={() => setArenaTab('history')}
+              className="text-[11px] font-mono text-[#d4af37] hover:underline flex items-center gap-1 transition"
+            >
+              <BookOpen className="w-3 h-3" />
+              <span>Review Past 10 Battles History</span>
+              <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
           <div className="space-y-2 max-h-48 overflow-y-auto font-mono text-xs">
             {battle.turnHistory.slice(-6).map((log, idx) => (
               <div
@@ -578,6 +697,8 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
             ))}
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

@@ -25,6 +25,16 @@ import { addservantCommandCode } from '../lib/bot/commands/addservant';
 import { cegachaCommandCode } from '../lib/bot/commands/cegacha';
 import { defensesCommandCode } from '../lib/bot/commands/defenses';
 import { profileCommandCode } from '../lib/bot/commands/profile';
+import { churchCommandCode } from '../lib/bot/commands/church';
+import { patrolCommandCode } from '../lib/bot/commands/patrol';
+import { familiarCommandCode } from '../lib/bot/commands/familiar';
+import { trapCommandCode } from '../lib/bot/commands/trap';
+import { healCommandCode } from '../lib/bot/commands/heal';
+import { inventoryCommandCode } from '../lib/bot/commands/inventory';
+import { equipCommandCode } from '../lib/bot/commands/equip';
+import { boastCommandCode } from '../lib/bot/commands/boast';
+import { addceCommandCode } from '../lib/bot/commands/addce';
+import { addsqCommandCode } from '../lib/bot/commands/addsq';
 import { discordBotMainCode } from '../lib/bot/client';
 import { nodeCanvasRendererCode } from '../lib/bot/nodeCanvasExport';
 import { deployScriptCode } from '../lib/bot/deploy';
@@ -125,6 +135,66 @@ const FILE_MODULES = [
     name: 'src/bot/commands/profile.ts',
     category: 'Slash Command: /profile',
     code: profileCommandCode
+  },
+  {
+    id: 'cmd_church',
+    name: 'src/bot/commands/church.ts',
+    category: 'Slash Command: /church & /sanctuary',
+    code: churchCommandCode
+  },
+  {
+    id: 'cmd_patrol',
+    name: 'src/bot/commands/patrol.ts',
+    category: 'Slash Command: /patrol',
+    code: patrolCommandCode
+  },
+  {
+    id: 'cmd_familiar',
+    name: 'src/bot/commands/familiar.ts',
+    category: 'Slash Command: /familiar',
+    code: familiarCommandCode
+  },
+  {
+    id: 'cmd_trap',
+    name: 'src/bot/commands/trap.ts',
+    category: 'Slash Command: /trap',
+    code: trapCommandCode
+  },
+  {
+    id: 'cmd_heal',
+    name: 'src/bot/commands/heal.ts',
+    category: 'Slash Command: /heal',
+    code: healCommandCode
+  },
+  {
+    id: 'cmd_inventory',
+    name: 'src/bot/commands/inventory.ts',
+    category: 'Slash Command: /inventory',
+    code: inventoryCommandCode
+  },
+  {
+    id: 'cmd_equip',
+    name: 'src/bot/commands/equip.ts',
+    category: 'Slash Command: /equip',
+    code: equipCommandCode
+  },
+  {
+    id: 'cmd_boast',
+    name: 'src/bot/commands/boast.ts',
+    category: 'Slash Command: /boast',
+    code: boastCommandCode
+  },
+  {
+    id: 'cmd_addce',
+    name: 'src/bot/commands/addce.ts',
+    category: 'Slash Command: /addce (Admin CE & Banner Manager)',
+    code: addceCommandCode
+  },
+  {
+    id: 'cmd_addsq',
+    name: 'src/bot/commands/addsq.ts',
+    category: 'Slash Command: /addsq (Admin SQ Grant)',
+    code: addsqCommandCode
   }
 ];
 

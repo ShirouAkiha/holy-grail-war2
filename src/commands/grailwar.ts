@@ -20,9 +20,12 @@ import {
   setChannelTrapInWar,
   disarmChannelTrapsInWar,
   dispatchFamiliarInWar,
-  recallFamiliarsInWar
+  recallFamiliarsInWar,
+  enterChurchSanctuary,
+  leaveChurchSanctuary
 } from '../engine/grailwar';
 import { buildProfileEmbed, buildProfileButtons } from './profile';
+import { buildChurchEmbed, buildChurchButtons } from './church';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -173,6 +176,22 @@ export const data = new SlashCommandBuilder()
     sub
       .setName('rest')
       .setDescription('✨ Channel mana to perform a Healing Ritual to restore 40% HP (5-minute cooldown)')
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('church')
+      .setDescription('⛪ Claim or depart neutral asylum at the Fuyuki Church under Father Kotomine')
+      .addStringOption(opt =>
+        opt
+          .setName('action')
+          .setDescription('Sanctuary Action: status (view rules), enter (claim asylum), leave (re-enter war)')
+          .setRequired(false)
+          .addChoices(
+            { name: '⛪ View Sanctuary Status', value: 'status' },
+            { name: '🕊️ Enter Church Sanctuary (Claim Asylum)', value: 'enter' },
+            { name: '🚪 Leave Church Sanctuary (Re-enter War)', value: 'leave' }
+          )
+      )
   )
   .addSubcommand(sub =>
     sub
@@ -640,6 +659,25 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const res = leakIntelInWar(war, interaction.user.id, intelText, targetQuery, currentChannelName);
       initialMsg = res.message;
       war = res.updatedWar;
+    } else if (subcommand === 'church') {
+      const act = interaction.options.getString('action') || 'status';
+      let lastMsg: string | undefined = undefined;
+      if (act === 'enter') {
+        const res = enterChurchSanctuary(war, interaction.user.id);
+        war = res.updatedWar;
+        lastMsg = res.message;
+        await saveMaster(master);
+      } else if (act === 'leave') {
+        const res = leaveChurchSanctuary(war, interaction.user.id);
+        war = res.updatedWar;
+        lastMsg = res.message;
+        await saveMaster(master);
+      }
+      const uP = war.participants[interaction.user.id];
+      const embed = buildChurchEmbed(uP, lastMsg);
+      const buttons = buildChurchButtons(uP);
+      await interaction.reply({ embeds: [embed], components: buttons, ephemeral: true });
+      return;
     } else if (subcommand === 'reset') {
       war = resetWarSession();
       initialMsg = '🔄 The Holy Grail War has been reset! All 7 Servant slots are now vacant and awaiting Master summonings.';

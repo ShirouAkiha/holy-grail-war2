@@ -14,7 +14,7 @@ import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 // ==========================================
 // 0. INTERACTIVE INVENTORY HUB BUILDER
 // ==========================================
-function buildInventoryHub(
+export function buildInventoryHub(
   master: any,
   activeServant: any,
   category: 'ces' | 'servants' | 'seals' | 'items' = 'ces',

@@ -253,6 +253,42 @@ export interface BattleState {
   grailWarId?: string;
 }
 
+export interface CombatBattleRecord {
+  id: string;
+  timestamp: number;
+  outcome: 'victory' | 'defeat';
+  totalTurns: number;
+  player1: {
+    id: string;
+    name: string;
+    servantClass: ServantClass;
+    masterName: string;
+    avatarUrl?: string;
+    noblePhantasmName: string;
+    finalHp: number;
+    maxHp: number;
+    atk: number;
+    def: number;
+  };
+  player2: {
+    id: string;
+    name: string;
+    servantClass: ServantClass;
+    masterName: string;
+    avatarUrl?: string;
+    noblePhantasmName: string;
+    finalHp: number;
+    maxHp: number;
+    atk: number;
+    def: number;
+  };
+  totalDamageDealt: number;
+  totalDamageTaken: number;
+  noblePhantasmsUsed: number;
+  criticalHitsLanded: number;
+  turns: CombatTurnLog[];
+}
+
 // Holy Grail War Tournament
 export interface WarMasterParticipant {
   discordId: string;

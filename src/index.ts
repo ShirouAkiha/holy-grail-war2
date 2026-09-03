@@ -24,10 +24,20 @@ import * as addservantCommand from './commands/addservant';
 import * as cegachaCommand from './commands/cegacha';
 import * as addceCommand from './commands/addce';
 import * as addsqCommand from './commands/addsq';
+import * as churchCommand from './commands/church';
+import * as sanctuaryCommand from './commands/sanctuary';
+import * as patrolCommand from './commands/patrol';
+import * as familiarCommand from './commands/familiar';
+import * as trapCommand from './commands/trap';
+import * as healCommand from './commands/heal';
+import * as inventoryCommand from './commands/inventory';
+import * as equipCommand from './commands/equip';
+import * as boastCommand from './commands/boast';
 import { getOrCreateMaster, saveMaster } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
 import { buildProfileEmbed, buildProfileButtons } from './commands/profile';
 import { buildDefensesEmbed, buildDefensesButtons } from './commands/defenses';
+import { buildChurchEmbed, buildChurchButtons } from './commands/church';
 import { buildWarEmbed, buildWarButtons } from './commands/grailwar';
 import { 
   getOrInitWarSession, 
@@ -74,6 +84,15 @@ commands.set(addservantCommand.data.name, addservantCommand);
 commands.set(cegachaCommand.data.name, cegachaCommand);
 commands.set(addceCommand.data.name, addceCommand);
 commands.set(addsqCommand.data.name, addsqCommand);
+commands.set(churchCommand.data.name, churchCommand);
+commands.set(sanctuaryCommand.data.name, sanctuaryCommand);
+commands.set(patrolCommand.data.name, patrolCommand);
+commands.set(familiarCommand.data.name, familiarCommand);
+commands.set(trapCommand.data.name, trapCommand);
+commands.set(healCommand.data.name, healCommand);
+commands.set(inventoryCommand.data.name, inventoryCommand);
+commands.set(equipCommand.data.name, equipCommand);
+commands.set(boastCommand.data.name, boastCommand);
 
 // ==========================================
 // 3. SLASH COMMAND DEPLOYMENT TO DISCORD API
@@ -391,6 +410,22 @@ client.on(Events.InteractionCreate, async interaction => {
           .setDescription(res.message)
           .setColor(0x10b981);
         await interaction.update({ embeds: [disarmEmbed], components: [] });
+        return;
+      }
+
+      if (btnId === 'war_refresh_church') {
+        const uP = war.participants[interaction.user.id];
+        const embed = buildChurchEmbed(uP, '🔄 Sanctuary records verified with Father Kotomine.');
+        const btns = buildChurchButtons(uP);
+        await interaction.update({ embeds: [embed], components: btns });
+        return;
+      }
+
+      if (btnId === 'quick_war_defenses') {
+        const uP = war.participants[interaction.user.id];
+        const embed = buildDefensesEmbed(uP);
+        const btns = buildDefensesButtons(uP);
+        await interaction.reply({ embeds: [embed], components: btns, ephemeral: true });
         return;
       }
 
