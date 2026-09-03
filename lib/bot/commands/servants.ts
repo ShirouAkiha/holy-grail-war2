@@ -13,7 +13,7 @@ export const servantsCommandCode = `import {
   EmbedBuilder,
   ComponentType
 } from 'discord.js';
-import { SERVANT_DATABASE } from '../data/servants';
+import { SERVANT_DATABASE, getDefaultClassPassives } from '../data/servants';
 import { getCustomServants } from '../database/service';
 import { ServantTemplate } from '../types';
 
@@ -160,6 +160,18 @@ export function buildServantFullProfileEmbed(servant: ServantTemplate) {
   const np = servant.noblePhantasm;
   const cardColor = servant.servantClass === 'Saber' ? 0x3b82f6 : servant.rarity === 5 ? 0xd4af37 : 0x9333ea;
 
+  const activeSkillsText = servant.skills && servant.skills.length > 0
+    ? servant.skills.map((s, idx) => \`• **Skill \${idx + 1}: \${s.name}** [CD: \${s.cooldown}T] — \${s.description}\`).join('\\n')
+    : 'None';
+
+  const passives = (servant.passives && servant.passives.length > 0)
+    ? servant.passives
+    : getDefaultClassPassives(servant.servantClass);
+
+  const passiveSkillsText = passives && passives.length > 0
+    ? passives.map(p => \`• **\${p.name}** [\${p.rank || 'Passive'}] — \${p.description}\`).join('\\n')
+    : 'None';
+
   const embed = new EmbedBuilder()
     .setTitle(\`⚔️ \${servant.name} — \${servant.title}\`)
     .setDescription(
@@ -170,6 +182,8 @@ export function buildServantFullProfileEmbed(servant: ServantTemplate) {
       \`• **MAN:** \${servant.baseStats.mana} | **LCK:** \${servant.baseStats.luck}\\n\` +
       \`• **Base HP:** \`\${servant.baseHp.toLocaleString()}\` | **Base ATK:** \`\${servant.baseAtk.toLocaleString()}\`\\n\\n\` +
       \`🃏 **Command Deck:** \${deck}\\n\\n\` +
+      \`⚡ **Active Personal Skills:**\\n\${activeSkillsText}\\n\\n\` +
+      \`🛡️ **Class Passive Skills:**\\n\${passiveSkillsText}\\n\\n\` +
       \`💥 **Noble Phantasm: \${np.name}** (\${np.cardType} • \${np.target.toUpperCase()})\\n\` +
       \`> *"\${np.chant || 'True power of the Noble Phantasm release!'}"*\\n\` +
       \`• **Multiplier:** \${np.multiplier}% | **Overcharge:** \${np.overchargeEffect || 'None'}\\n\` +

@@ -11,7 +11,7 @@ import {
   MasterServantInstance,
   ServantClass
 } from '../lib/types';
-import { SERVANT_DATABASE } from '../lib/data/servants';
+import { SERVANT_DATABASE, getDefaultClassPassives } from '../lib/data/servants';
 import { findServantInPool, matchServantSearch } from '../lib/utils/servantMatcher';
 import {
   createCombatantFromMasterServant,
@@ -2167,6 +2167,18 @@ export default function DiscordEmulator({
       template: template
     };
 
+    const passives = (template.passives && template.passives.length > 0)
+      ? template.passives
+      : getDefaultClassPassives(template.servantClass);
+
+    const passiveSkillsText = passives && passives.length > 0
+      ? passives.map(p => `• **${p.name}** [${p.rank || 'Passive'}] — ${p.description}`).join('\n')
+      : 'None';
+
+    const activeSkillsText = template.skills && template.skills.length > 0
+      ? template.skills.map((sk, idx) => `• **Skill ${idx + 1}: ${sk.name}** [CD: ${sk.cooldown}T] — ${sk.description}`).join('\n')
+      : 'None';
+
     addMessage({
       id: getNextId('bot_servant_profile'),
       sender: 'bot',
@@ -2181,13 +2193,12 @@ export default function DiscordEmulator({
           `• **MAN:** \`${template.baseStats.mana}\` | **LCK:** \`${template.baseStats.luck}\`\n` +
           `• **Base HP:** \`${template.baseHp.toLocaleString()}\` | **Base ATK:** \`${template.baseAtk.toLocaleString()}\`\n\n` +
           `🃏 **Command Deck:** ${deck}\n\n` +
+          `⚡ **Active Personal Skills:**\n${activeSkillsText}\n\n` +
+          `🛡️ **Class Passive Skills:**\n${passiveSkillsText}\n\n` +
           `💥 **Noble Phantasm: ${template.noblePhantasm.name}** (${template.noblePhantasm.cardType} • ${template.noblePhantasm.target.toUpperCase()})\n` +
           `> *"${template.noblePhantasm.chant || 'Noble Phantasm release!'}"*\n` +
           `• **Multiplier:** ${template.noblePhantasm.multiplier}% | **Overcharge:** ${template.noblePhantasm.overchargeEffect || 'Standard boost'}\n` +
           `• ${template.noblePhantasm.description}\n\n` +
-          `✨ **Active Class & Personal Skills:**\n` +
-          template.skills.map(sk => `• **${sk.name}** [CD: ${sk.cooldown}T]: ${sk.description}`).join('\n') +
-          `\n\n` +
           `💬 **Master Dialogue Quotes:**\n` +
           `• **Summon:** *"${template.summonQuote}"*\n` +
           `• **Battle Start:** *"${template.battleStartQuote}"*\n` +
