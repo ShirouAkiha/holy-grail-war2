@@ -1004,6 +1004,25 @@ export default function DiscordEmulator({
     }
 
     // ----------------------------------------------------
+    // COMMAND 2.8: /inventory, /equip, /customise equip, /cegacha inventory
+    // ----------------------------------------------------
+    if (
+      trimmed.startsWith('/inventory') ||
+      trimmed.startsWith('/equip') ||
+      trimmed.startsWith('/customise') ||
+      trimmed.startsWith('/cegacha inventory') ||
+      trimmed.startsWith('/outfits')
+    ) {
+      let category: 'ces' | 'servants' | 'seals' | 'items' = 'ces';
+      if (trimmed.includes('servant')) category = 'servants';
+      else if (trimmed.includes('seal') || trimmed.includes('ward')) category = 'seals';
+      else if (trimmed.includes('item') || trimmed.includes('vault') || trimmed.includes('quartz')) category = 'items';
+
+      postInventoryHub(category);
+      return;
+    }
+
+    // ----------------------------------------------------
     // COMMAND 3: /servant (Master's Active Servant)
     // ----------------------------------------------------
     if (trimmed === '/servant' || trimmed.startsWith('/servant status')) {
@@ -2318,10 +2337,181 @@ export default function DiscordEmulator({
     });
   };
 
+  // Helper: Post Hana Association Equipment & Inventory Hub
+  const postInventoryHub = (
+    category: 'ces' | 'servants' | 'seals' | 'items' = 'ces',
+    page: number = 1,
+    selectedId?: string
+  ) => {
+    const ownedCes = (master.craftEssences || []).filter(Boolean);
+    const ownedServants = master.servants || [];
+    const activeServant = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
+    const servantName = activeServant?.nickname || activeServant?.template?.name || (activeServant as any)?.name || 'Heroic Spirit';
+
+    let title = `👔 ${master.username}'s Inventory — Craft Essences`;
+    let equippedBanner = '';
+    let itemLines: string[] = [];
+    let totalItems = 0;
+    const itemsPerPage = 8;
+
+    if (category === 'ces') {
+      title = `👔 ${master.username}'s Inventory — Outfits & Craft Essences`;
+      const activeCeName = activeServant?.equippedCe?.name;
+      equippedBanner = activeCeName
+        ? `✅ Equipped **${activeCeName}** (★${activeServant?.equippedCe?.rarity || 5}).`
+        : `⚠️ **No Craft Essence equipped.** Select an item below and press **Equip**.`;
+
+      const ceCounts = new Map<string, { ce: any; count: number }>();
+      for (const c of ownedCes) {
+        if (!c || !c.id) continue;
+        if (!ceCounts.has(c.id)) ceCounts.set(c.id, { ce: c, count: 1 });
+        else ceCounts.get(c.id)!.count++;
+      }
+
+      const uniqueCes = Array.from(ceCounts.values());
+      totalItems = uniqueCes.length;
+
+      if (uniqueCes.length === 0) {
+        itemLines = ['• *No Craft Essences in inventory. Roll in `/cegacha` using Saint Quartz!*'];
+      } else {
+        const startIndex = (page - 1) * itemsPerPage;
+        const paginated = uniqueCes.slice(startIndex, startIndex + itemsPerPage);
+
+        itemLines = paginated.map(({ ce, count }) => {
+          const isEq = activeServant?.equippedCeId === ce.id;
+          const rarityTag = ce.rarity >= 5 ? 'Legendary' : ce.rarity >= 4 ? 'Rare' : 'Common';
+          const rankTag = ce.rarity >= 5 ? 'S Rank' : ce.rarity >= 4 ? 'A Rank' : 'B Rank';
+          const eqBadge = isEq ? ' **[EQUIPPED]**' : '';
+          const arrow = (selectedId && selectedId === ce.id) ? '➡️ ' : '• ';
+          return `${arrow}**${rarityTag}** — **${ce.name}** ×${count} — ${rankTag}${eqBadge}`;
+        });
+      }
+    } else if (category === 'servants') {
+      title = `⚔️ ${master.username}'s Inventory — Contracted Servants`;
+      const sClass = activeServant?.template?.servantClass || (activeServant as any)?.servantClass || 'Saber';
+      const sLvl = activeServant?.level || 1;
+      equippedBanner = activeServant
+        ? `✅ Active Contract: **${servantName}** (${sClass}) [Lv.${sLvl}].`
+        : `⚠️ No active Servant contract.`;
+
+      totalItems = ownedServants.length;
+      const startIndex = (page - 1) * itemsPerPage;
+      const paginated = ownedServants.slice(startIndex, startIndex + itemsPerPage);
+
+      itemLines = paginated.map((s: any) => {
+        const sN = s.nickname || s.template?.name || s.name || 'Heroic Spirit';
+        const sCls = s.template?.servantClass || s.servantClass || 'Saber';
+        const sRar = s.template?.rarity || s.rarity || 5;
+        const isAct = master.activeServantId === s.id;
+        const rarTag = sRar >= 5 ? '★5 SSR' : sRar >= 4 ? '★4 SR' : '★3 R';
+        const actBadge = isAct ? ' **[ACTIVE CONTRACT]**' : '';
+        const arrow = (selectedId && selectedId === s.id) ? '➡️ ' : '• ';
+        return `${arrow}**${rarTag}** — **${sN}** — Lv.${s.level || 1} (${sCls})${actBadge}`;
+      });
+    } else if (category === 'seals') {
+      title = `📜 ${master.username}'s Inventory — Command Seals & Master Wards`;
+      equippedBanner = `✅ Master Seals: **3 / 3 Command Seals Available** (Auto-Evac Ward Active).`;
+
+      itemLines = [
+        `• **Legendary** — **Command Seals** ×3 — S Rank [RECHARGES 1 / 24H]`,
+        `• **Rare** — **Mage Sanctuary Bounded Field** ×1 — A Rank [60% AMBUSH DEFENSE]`,
+        `• **Rare** — **Homunculus Decoy** ×${(master as any).homunculusCount || 1} — A Rank [ABSORBS 100% DAMAGE]`,
+        `• **Standard** — **Alarm Ward** ×1 — B Rank [EXPOSES INTRUDERS]`,
+        `• **Standard** — **Bloodfort Drain Field** ×1 — B Rank [SIPHONS HP]`
+      ];
+      totalItems = 5;
+    } else if (category === 'items') {
+      title = `💎 ${master.username}'s Inventory — Vault & Currency`;
+      equippedBanner = `✅ Current Balance: **${master.saintQuartz || 0} Saint Quartz 💎**`;
+
+      itemLines = [
+        `• **Mythic** — **Saint Quartz** ×${master.saintQuartz || 0} — EX Rank [GACHA SUMMON CURRENCY]`,
+        `• **Legendary** — **Holy Grail Shards** ×${(master as any).grailShards || 1} — S Rank [ASCENSION CATALYST]`,
+        `• **Rare** — **Mana Prisms** ×${(master as any).manaPrisms || 50} — A Rank [DA VINCI WORKSHOP]`
+      ];
+      totalItems = 3;
+    }
+
+    const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+    const currentPage = Math.min(Math.max(page, 1), totalPages);
+
+    addMessage({
+      id: getNextId('bot_inv_hub'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title,
+        description: `${equippedBanner}\n\n` + itemLines.join('\n'),
+        color: '#38bdf8',
+        footer: `Page ${currentPage}/${totalPages} • Select an item below, then press Equip or Read.`
+      },
+      components: {
+        type: 'buttons',
+        items: [
+          { id: 'inv_cat_ces', label: 'Outfits / CEs', style: category === 'ces' ? 'primary' : 'secondary', emoji: '👔' },
+          { id: 'inv_cat_servants', label: 'Servants', style: category === 'servants' ? 'primary' : 'secondary', emoji: '⚔️' },
+          { id: 'inv_cat_seals', label: 'Seals & Wards', style: category === 'seals' ? 'primary' : 'secondary', emoji: '📜' },
+          { id: 'inv_cat_items', label: 'Vault & Currency', style: category === 'items' ? 'primary' : 'secondary', emoji: '💎' },
+          { id: 'inv_page_prev', label: 'Previous', style: 'secondary', emoji: '◀️' },
+          { id: 'inv_page_next', label: 'Next', style: 'secondary', emoji: '▶️' },
+          { id: 'inv_act_equip', label: 'Equip', style: 'success', emoji: '✅' },
+          { id: 'inv_act_inspect', label: 'Read / Inspect', style: 'primary', emoji: '📖' },
+          { id: 'inv_act_unequip', label: 'Unequip', style: 'danger', emoji: '❌' },
+          { id: 'inv_quick_gacha', label: 'Gacha Vault', style: 'secondary', emoji: '🎲' },
+          { id: 'inv_quick_stats', label: 'Battle Stats', style: 'secondary', emoji: '⚔️' }
+        ]
+      }
+    });
+  };
+
   // Button interaction handler
   const handleButtonClick = (btnId: string) => {
     if (btnId === 'btn_show_servants_list') {
       handleCommand('/servants list');
+    } else if (btnId.startsWith('inv_')) {
+      if (btnId === 'inv_cat_ces') postInventoryHub('ces');
+      else if (btnId === 'inv_cat_servants') postInventoryHub('servants');
+      else if (btnId === 'inv_cat_seals') postInventoryHub('seals');
+      else if (btnId === 'inv_cat_items') postInventoryHub('items');
+      else if (btnId === 'inv_quick_gacha') handleCommand('/cegacha');
+      else if (btnId === 'inv_quick_stats') handleCommand('/customise stats');
+      else if (btnId === 'inv_act_equip') {
+        const ownedCes = (master.craftEssences || []).filter(Boolean);
+        const activeServant = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
+        if (activeServant && ownedCes.length > 0) {
+          activeServant.equippedCeId = ownedCes[0].id;
+          activeServant.equippedCe = ownedCes[0];
+          onUpdateMaster({ ...master });
+          postInventoryHub('ces');
+        }
+      } else if (btnId === 'inv_act_unequip') {
+        const activeServant = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
+        if (activeServant) {
+          activeServant.equippedCeId = undefined;
+          activeServant.equippedCe = undefined;
+          onUpdateMaster({ ...master });
+          postInventoryHub('ces');
+        }
+      } else if (btnId === 'inv_act_inspect') {
+        const activeServant = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
+        if (activeServant?.equippedCe) {
+          addMessage({
+            id: getNextId('bot_ce_lore'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `📖 Relic Lore: ${activeServant.equippedCe.name}`,
+              description:
+                `**Rarity:** ★${activeServant.equippedCe.rarity}\n` +
+                `**Effect:** ${activeServant.equippedCe.effectText}\n` +
+                `**Stats:** +${activeServant.equippedCe.atkBonus || 0} ATK / +${activeServant.equippedCe.hpBonus || 0} HP\n\n` +
+                `*${activeServant.equippedCe.description || 'An ancient conceptual relic forged from hero memories.'}*`,
+              color: '#38bdf8'
+            }
+          });
+        }
+      }
+      return;
     } else if (btnId.startsWith('profile_')) {
       let currentWar = grailWar;
       let actionMsg = '';
