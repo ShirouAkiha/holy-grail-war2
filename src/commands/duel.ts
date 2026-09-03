@@ -580,6 +580,24 @@ function activateCombatantSkill(
   } else if (skill.effectType === 'evade' || skill.effectType === 'invincible') {
     combatant.activeBuffs.push({ name: skill.name, type: 'evade', value: 85, remainingTurns: skill.duration || 1 });
     logText = `💨 **${combatant.servant.template.name}** activated **${skill.name}**! Readied an evasive barrier to dodge incoming strikes!`;
+  } else if (skill.effectType === 'guts' || skill.id?.includes('guts') || skill.id?.includes('battle_continuation') || skill.id?.includes('thrice')) {
+    const reviveAmt = skill.value || Math.round(combatant.maxHp * 0.20);
+    combatant.gutsCount = (combatant.gutsCount || 0) + 1;
+    combatant.activeBuffs.push({
+      name: skill.name,
+      type: 'guts',
+      value: reviveAmt,
+      remainingTurns: skill.duration || 5
+    });
+    if (skill.id?.includes('thrice')) {
+      combatant.activeBuffs.push({
+        name: `${skill.name} (DEF Up)`,
+        type: 'buff_def',
+        value: 100,
+        remainingTurns: 1
+      });
+    }
+    logText = `🩸 **${combatant.servant.template.name}** activated **${skill.name}**, gaining **Guts Status**! (Will revive with +${reviveAmt.toLocaleString()} HP on lethal damage)`;
   } else if (skill.effectType === 'heal') {
     const healVal = skill.value || Math.round(combatant.maxHp * 0.25);
     combatant.currentHp = Math.min(combatant.maxHp, combatant.currentHp + healVal);
@@ -972,9 +990,15 @@ function resolveStrike(
 
   // Check for Guts (Battle Continuation)
   let gutsText = '';
-  if (defender.currentHp <= 0 && defender.gutsCount > 0) {
-    defender.gutsCount--;
-    const reviveHp = Math.round(defender.maxHp * 0.20);
+  const gutsBuffIndex = defender.activeBuffs.findIndex(b => b.type === 'guts');
+  if (defender.currentHp <= 0 && (defender.gutsCount > 0 || gutsBuffIndex !== -1)) {
+    if (defender.gutsCount > 0) defender.gutsCount--;
+    let reviveHp = Math.round(defender.maxHp * 0.20);
+    if (gutsBuffIndex !== -1) {
+      const gutsBuff = defender.activeBuffs[gutsBuffIndex];
+      if (gutsBuff.value) reviveHp = gutsBuff.value;
+      defender.activeBuffs.splice(gutsBuffIndex, 1);
+    }
     defender.currentHp = reviveHp;
     gutsText = `\n✝️ **BATTLE CONTINUATION!** ${defender.servant.template.name} revived with **${reviveHp.toLocaleString()} HP**!`;
   }

@@ -218,6 +218,25 @@ export function applyCombatantSkill(
       });
       logText = `💨 **${actor.name}** activated **${skill.name}**, granting absolute **Evade** against incoming damage!`;
       break;
+    case 'guts': {
+      const reviveVal = skill.value || Math.round(actor.maxHp * 0.20);
+      actor.activeBuffs.push({
+        name: skill.name,
+        type: 'guts',
+        value: reviveVal,
+        remainingTurns: skill.duration || 5
+      });
+      if (skill.id?.includes('thrice')) {
+        actor.activeBuffs.push({
+          name: `${skill.name} (DEF Up)`,
+          type: 'buff_def',
+          value: 100,
+          remainingTurns: 1
+        });
+      }
+      logText = `🩸 **${actor.name}** activated **${skill.name}**, granting **Guts Status** (Will revive with +${reviveVal.toLocaleString()} HP on lethal damage)!`;
+      break;
+    }
     case 'stun': {
       const targetPassives = target.passives || getUnlockedPassives(target.servantClass, target.bondLevel || 1);
       const actorPassives = actor.passives || getUnlockedPassives(actor.servantClass, actor.bondLevel || 1);
@@ -626,6 +645,24 @@ export function executeBattleTurn(
               remainingTurns: skill.duration
             });
             break;
+          case 'guts': {
+            const reviveVal = skill.value || Math.round(actor.maxHp * 0.20);
+            actor.activeBuffs.push({
+              name: skill.name,
+              type: 'guts',
+              value: reviveVal,
+              remainingTurns: skill.duration || 5
+            });
+            if (skill.id?.includes('thrice')) {
+              actor.activeBuffs.push({
+                name: `${skill.name} (DEF Up)`,
+                type: 'buff_def',
+                value: 100,
+                remainingTurns: 1
+              });
+            }
+            break;
+          }
           case 'stun':
             target.isStunned = true;
             target.activeBuffs.push({
@@ -801,6 +838,16 @@ export function executeBattleTurn(
     target.currentHp = Math.max(0, target.currentHp - totalDamage);
     actor.npGauge = Math.min(300, actor.npGauge + totalNpCharge);
     actor.critStars = Math.min(50, actor.critStars + totalStars);
+
+    // Guts Check (Battle Continuation)
+    const gutsBuffIndex = target.activeBuffs.findIndex(b => b.type === 'guts');
+    if (target.currentHp <= 0 && gutsBuffIndex !== -1) {
+      const gutsBuff = target.activeBuffs[gutsBuffIndex];
+      const reviveHp = gutsBuff.value || Math.round(target.maxHp * 0.20);
+      target.currentHp = reviveHp;
+      target.activeBuffs.splice(gutsBuffIndex, 1);
+      actionText += `\n✝️ **BATTLE CONTINUATION!** ${target.name} revived with **${reviveHp.toLocaleString()} HP**!`;
+    }
 
     // Defender Avenger Passive: NP refill when suffering damage
     if (avengerBonus > 0 && totalDamage > 0) {

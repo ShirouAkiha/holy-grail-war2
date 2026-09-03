@@ -720,10 +720,10 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         id: 'thrice_setting_sun_a',
         name: 'Thrice Setting Sun A',
         cooldown: 6,
-        description: 'Invictus Spiritus. Grants absolute fortitude, increasing Defense by 100% for 1 turn and boosting survivability.',
-        effectType: 'buff_def',
-        value: 100,
-        duration: 1,
+        description: 'Invictus Spiritus. Grants Guts status (Revive with 3,000 HP on lethal damage) and +100% Defense for 1 turn.',
+        effectType: 'guts',
+        value: 3000,
+        duration: 5,
         icon: '🌹'
       }
     ],
@@ -871,7 +871,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         name: 'Battle Continuation A',
         cooldown: 7,
         description: 'Grants self Guts (Revive with 3,000 HP on lethal damage).',
-        effectType: 'heal',
+        effectType: 'guts',
         value: 3000,
         duration: 5,
         icon: '🩸'
@@ -936,7 +936,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         name: 'Guts B',
         cooldown: 7,
         description: 'Grants self Guts status (Revive with 2,000 HP).',
-        effectType: 'heal',
+        effectType: 'guts',
         value: 2000,
         duration: 5,
         icon: '🩸'
