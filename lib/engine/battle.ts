@@ -7,7 +7,7 @@ import {
   ServantClass,
   TurnActionChoice
 } from '../types/index';
-import { SERVANT_DATABASE, getDefaultClassPassives } from '../data/servants';
+import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives } from '../data/servants';
 
 // Global PvP damage modifier (0.35x) to scale FGO-style formula output down to ~25k-35k Servant HP pools
 export const PVP_DAMAGE_MODIFIER = 0.35;
@@ -80,10 +80,12 @@ export function createCombatantFromMasterServant(
     initialNp = ce.passiveValue;
   }
 
-  // Resolve passives
-  const passives = (t.passives && t.passives.length > 0)
+  // Resolve passives (Max 2 passives; Slot 2 unlocks after Bond Lv. 5)
+  const servantBond = servantInstance.bondLevel || 1;
+  const rawPassives = (t.passives && t.passives.length > 0)
     ? t.passives
     : getDefaultClassPassives(t.servantClass);
+  const passives = getUnlockedPassives(rawPassives, servantBond);
 
   const pcBonus = passives.some(p => p.type === 'presence_concealment') ? 6 : 0;
 
@@ -217,8 +219,8 @@ export function applyCombatantSkill(
       logText = `💨 **${actor.name}** activated **${skill.name}**, granting absolute **Evade** against incoming damage!`;
       break;
     case 'stun': {
-      const targetPassives = target.passives || (getDefaultClassPassives(target.servantClass));
-      const actorPassives = actor.passives || (getDefaultClassPassives(actor.servantClass));
+      const targetPassives = target.passives || getUnlockedPassives(target.servantClass, target.bondLevel || 1);
+      const actorPassives = actor.passives || getUnlockedPassives(actor.servantClass, actor.bondLevel || 1);
       const magicResist = targetPassives.filter(p => p.type === 'magic_resistance').reduce((s, p) => s + p.value, 0);
       const itemConstruct = actorPassives.filter(p => p.type === 'item_construction').reduce((s, p) => s + p.value, 0);
       const effectiveResist = Math.max(0, magicResist - itemConstruct);
@@ -335,8 +337,8 @@ export function executeNoblePhantasmLogic(
     .filter(b => b.type === 'buff_atk')
     .reduce((s, b) => s + b.value, 0);
 
-  // Actor Passives
-  const actorPassives = actor.passives || getDefaultClassPassives(actor.servantClass);
+  // Actor Passives (Max 2, 2nd unlocked after Bond 5)
+  const actorPassives = actor.passives || getUnlockedPassives(actor.servantClass, actor.bondLevel || 1);
   const actorMadness = actorPassives.filter(p => p.type === 'madness_enhancement').reduce((s, p) => s + p.value, 0);
   const actorTerritory = actorPassives.filter(p => p.type === 'territory_creation').reduce((s, p) => s + p.value, 0);
   const actorRiding = actorPassives.filter(p => p.type === 'riding').reduce((s, p) => s + p.value, 0);
@@ -677,9 +679,9 @@ export function executeBattleTurn(
     let totalNpCharge = 0;
     let isCritical = false;
 
-    // Actor and Target Passives
-    const actorPassives = actor.passives || getDefaultClassPassives(actor.servantClass);
-    const targetPassives = target.passives || getDefaultClassPassives(target.servantClass);
+    // Actor and Target Passives (Max 2, 2nd unlocked after Bond 5)
+    const actorPassives = actor.passives || getUnlockedPassives(actor.servantClass, actor.bondLevel || 1);
+    const targetPassives = target.passives || getUnlockedPassives(target.servantClass, target.bondLevel || 1);
 
     const madnessBonus = actorPassives.filter(p => p.type === 'madness_enhancement').reduce((s, p) => s + p.value, 0);
     const ridingBonus = actorPassives.filter(p => p.type === 'riding').reduce((s, p) => s + p.value, 0);

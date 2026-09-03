@@ -11,7 +11,7 @@ import {
 } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog, PassiveSkill } from '../types';
-import { SERVANT_DATABASE, getDefaultClassPassives } from '../data/servants';
+import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives } from '../data/servants';
 import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp } from '../engine/grailwar';
 import { renderBattleTurnSummary } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER } from '../engine/battle';
@@ -177,10 +177,12 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
     initialNp = servant.equippedCe.passiveValue || 50;
   }
 
-  // Resolve Passives (from servant template or default class passives)
-  const passives: PassiveSkill[] = (t.passives && t.passives.length > 0)
+  // Resolve Passives (Strict max 2 passives; Slot 2 unlocks after Bond Lv. 5)
+  const bondLevel = servant.bondLevel || 1;
+  const rawPassives: PassiveSkill[] = (t.passives && t.passives.length > 0)
     ? t.passives
     : getDefaultClassPassives(t.servantClass);
+  const passives: PassiveSkill[] = getUnlockedPassives(rawPassives, bondLevel);
 
   // Initial stars based on Agility + Presence Concealment passive bonus
   const pcBonus = passives.some(p => p.type === 'presence_concealment') ? 6 : 0;
@@ -373,10 +375,15 @@ function buildDuelEmbed(
 
   const sClass = activeCombatant.servant.template?.servantClass || 'Servant';
   const activePassives = activeCombatant.passives || [];
+  const rawPassives = (activeCombatant.servant.template?.passives && activeCombatant.servant.template.passives.length > 0)
+    ? activeCombatant.servant.template.passives.slice(0, 2)
+    : getDefaultClassPassives(sClass).slice(0, 2);
+  const bond = activeCombatant.servant.bondLevel || 1;
+  const lockedNote = rawPassives.length >= 2 && bond < 5 ? ' 🔒 *(2nd Passive unlocks at Bond 5)*' : '';
   const passivesText = activePassives.length > 0
     ? activePassives.map(p => `\`[${p.name}]\``).join(' ')
     : '`None`';
-  const slotDisplay = `🎴 **Dealt Command Hand (${sClass} Deck):**\n${handDisplay}\n\n🛡️ **Active Class Passives:** ${passivesText}\n\n⚔️ **Selected Chain (${pendingCards.length}/3):**\n\`[ 1: ${c1Text} ]\` ➔ \`[ 2: ${c2Text} ]\` ➔ \`[ 3: ${c3Text} ]\`${leadHelp}`;
+  const slotDisplay = `🎴 **Dealt Command Hand (${sClass} Deck):**\n${handDisplay}\n\n🛡️ **Active Class Passives (Max 2):** ${passivesText}${lockedNote}\n\n⚔️ **Selected Chain (${pendingCards.length}/3):**\n\`[ 1: ${c1Text} ]\` ➔ \`[ 2: ${c2Text} ]\` ➔ \`[ 3: ${c3Text} ]\`${leadHelp}`;
 
   const embed = new EmbedBuilder()
     .setTitle(`⚔️ HOLY GRAIL WAR DUEL — ROUND ${round}`)
@@ -672,9 +679,9 @@ function resolveStrike(
   let critDmgBonus = 1.0;
   let npGenBonus = 1.0;
 
-  // 1. Resolve Attacker & Defender Passives
-  const attackerPassives = attacker.passives || (attacker.servant.template.passives?.length ? attacker.servant.template.passives : getDefaultClassPassives(attacker.servant.template.servantClass));
-  const defenderPassives = defender.passives || (defender.servant.template.passives?.length ? defender.servant.template.passives : getDefaultClassPassives(defender.servant.template.servantClass));
+  // 1. Resolve Attacker & Defender Passives (Max 2, 2nd unlocked after Bond 5)
+  const attackerPassives = attacker.passives || getUnlockedPassives(attacker.servant.template?.passives?.length ? attacker.servant.template.passives : attacker.servant.template?.servantClass, attacker.servant.bondLevel || 1);
+  const defenderPassives = defender.passives || getUnlockedPassives(defender.servant.template?.passives?.length ? defender.servant.template.passives : defender.servant.template?.servantClass, defender.servant.bondLevel || 1);
 
   const madnessBonus = attackerPassives.filter(p => p.type === 'madness_enhancement').reduce((s, p) => s + p.value, 0);
   const ridingBonus = attackerPassives.filter(p => p.type === 'riding').reduce((s, p) => s + p.value, 0);

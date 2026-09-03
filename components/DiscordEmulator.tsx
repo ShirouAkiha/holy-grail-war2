@@ -2167,12 +2167,18 @@ export default function DiscordEmulator({
       template: template
     };
 
-    const passives = (template.passives && template.passives.length > 0)
-      ? template.passives
-      : getDefaultClassPassives(template.servantClass);
+    const rawPassives = (template.passives && template.passives.length > 0)
+      ? template.passives.slice(0, 2)
+      : getDefaultClassPassives(template.servantClass).slice(0, 2);
 
-    const passiveSkillsText = passives && passives.length > 0
-      ? passives.map(p => `• **${p.name}** [${p.rank || 'Passive'}] — ${p.description}`).join('\n')
+    const passiveSkillsText = rawPassives && rawPassives.length > 0
+      ? rawPassives.map((p, idx) => {
+          if (idx === 0) {
+            return `• **Passive 1: ${p.name}** [${p.rank || 'Passive'}] *(Unlocked at Bond 1)* — ${p.description}`;
+          } else {
+            return `• **Passive 2: ${p.name}** [${p.rank || 'Passive'}] *(Unlocks at Bond 5)* — ${p.description}`;
+          }
+        }).join('\n')
       : 'None';
 
     const activeSkillsText = template.skills && template.skills.length > 0
@@ -2194,7 +2200,7 @@ export default function DiscordEmulator({
           `• **Base HP:** \`${template.baseHp.toLocaleString()}\` | **Base ATK:** \`${template.baseAtk.toLocaleString()}\`\n\n` +
           `🃏 **Command Deck:** ${deck}\n\n` +
           `⚡ **Active Personal Skills:**\n${activeSkillsText}\n\n` +
-          `🛡️ **Class Passive Skills:**\n${passiveSkillsText}\n\n` +
+          `🛡️ **Class Passive Skills (Max 2 • 2nd Unlocks at Bond Lv. 5):**\n${passiveSkillsText}\n\n` +
           `💥 **Noble Phantasm: ${template.noblePhantasm.name}** (${template.noblePhantasm.cardType} • ${template.noblePhantasm.target.toUpperCase()})\n` +
           `> *"${template.noblePhantasm.chant || 'Noble Phantasm release!'}"*\n` +
           `• **Multiplier:** ${template.noblePhantasm.multiplier}% | **Overcharge:** ${template.noblePhantasm.overchargeEffect || 'Standard boost'}\n` +

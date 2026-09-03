@@ -164,12 +164,15 @@ export function buildServantFullProfileEmbed(servant: ServantTemplate) {
     ? servant.skills.map((s, idx) => \`• **Skill \${idx + 1}: \${s.name}** [CD: \${s.cooldown}T] — \${s.description}\`).join('\\n')
     : 'None';
 
-  const passives = (servant.passives && servant.passives.length > 0)
-    ? servant.passives
-    : getDefaultClassPassives(servant.servantClass);
+  const rawPassives = (servant.passives && servant.passives.length > 0)
+    ? servant.passives.slice(0, 2)
+    : getDefaultClassPassives(servant.servantClass).slice(0, 2);
 
-  const passiveSkillsText = passives && passives.length > 0
-    ? passives.map(p => \`• **\${p.name}** [\${p.rank || 'Passive'}] — \${p.description}\`).join('\\n')
+  const passiveSkillsText = rawPassives && rawPassives.length > 0
+    ? rawPassives.map((p, idx) => (idx === 0
+        ? \`• **Passive 1: \${p.name}** [\${p.rank || 'Passive'}] *(Unlocked at Bond 1)* — \${p.description}\`
+        : \`• **Passive 2: \${p.name}** [\${p.rank || 'Passive'}] *(Unlocks at Bond 5)* — \${p.description}\`
+      )).join('\\n')
     : 'None';
 
   const embed = new EmbedBuilder()
@@ -183,7 +186,7 @@ export function buildServantFullProfileEmbed(servant: ServantTemplate) {
       \`• **Base HP:** \`\${servant.baseHp.toLocaleString()}\` | **Base ATK:** \`\${servant.baseAtk.toLocaleString()}\`\\n\\n\` +
       \`🃏 **Command Deck:** \${deck}\\n\\n\` +
       \`⚡ **Active Personal Skills:**\\n\${activeSkillsText}\\n\\n\` +
-      \`🛡️ **Class Passive Skills:**\\n\${passiveSkillsText}\\n\\n\` +
+      \`🛡️ **Class Passive Skills (Max 2 • 2nd Unlocks at Bond Lv. 5):**\\n\${passiveSkillsText}\\n\\n\` +
       \`💥 **Noble Phantasm: \${np.name}** (\${np.cardType} • \${np.target.toUpperCase()})\\n\` +
       \`> *"\${np.chant || 'True power of the Noble Phantasm release!'}"*\\n\` +
       \`• **Multiplier:** \${np.multiplier}% | **Overcharge:** \${np.overchargeEffect || 'None'}\\n\` +

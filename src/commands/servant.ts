@@ -133,23 +133,36 @@ function buildServantEmbed(servant: any, master: any) {
   const totalHp = Math.round(baseHp * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceBonusHp);
   const totalAtk = Math.round(baseAtk * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceBonusAtk);
 
-  const passives = (t.passives && t.passives.length > 0)
-    ? t.passives
-    : getDefaultClassPassives(t.servantClass);
+  const rawPassives = (t.passives && t.passives.length > 0)
+    ? t.passives.slice(0, 2)
+    : getDefaultClassPassives(t.servantClass).slice(0, 2);
 
-  const passiveText = passives.length > 0
-    ? passives.map((p: any) => `• **${p.name}** [${p.rank || 'Passive'}] — ${p.description}`).join('\n')
+  const bondLevel = servant.bondLevel || 1;
+  const passiveText = rawPassives.length > 0
+    ? rawPassives.map((p: any, idx: number) => {
+        if (idx === 0) {
+          return `• **${p.name}** [${p.rank || 'Passive'}] *(Active)* — ${p.description}`;
+        }
+        if (idx === 1) {
+          if (bondLevel >= 5) {
+            return `• **${p.name}** [${p.rank || 'Passive'}] *(Active • Unlocked at Bond 5)* — ${p.description}`;
+          } else {
+            return `• 🔒 **${p.name}** [${p.rank || 'Passive'}] *(Locked — Unlocks at Bond Lv. 5)* — ${p.description}`;
+          }
+        }
+        return `• **${p.name}** [${p.rank || 'Passive'}] — ${p.description}`;
+      }).join('\n')
     : 'None';
 
   const embed = new EmbedBuilder()
     .setTitle(`⚔️ Servant Profile Card: ${servant.nickname || t.name}`)
     .setDescription(
       `*${t.title}* • **Master:** ${master.username}\n` +
-      `🌟 **Class:** ${t.servantClass} | **Rarity:** ${'★'.repeat(t.rarity)} | **Bond Lv:** ${servant.bondLevel || 1}/10 ♥ | **Level:** ${lvl}/100\n` +
+      `🌟 **Class:** ${t.servantClass} | **Rarity:** ${'★'.repeat(t.rarity)} | **Bond Lv:** ${bondLevel}/10 ♥ | **Level:** ${lvl}/100\n` +
       `❤️ **Max HP:** \`${totalHp.toLocaleString()}\` | ⚔️ **Total ATK:** \`${totalAtk.toLocaleString()}\` | 📈 **Stat Points:** **${servant.availableStatPoints || 0} pts**`
     )
     .addFields({
-      name: '🛡️ Class Passive Skills',
+      name: '🛡️ Class Passive Skills (Max 2 • 2nd Unlocks at Bond Lv. 5)',
       value: passiveText
     })
     .setColor(t.rarity === 5 ? 0xd4af37 : 0x38bdf8);

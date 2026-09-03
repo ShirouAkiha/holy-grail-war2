@@ -140,6 +140,36 @@ export function getDefaultClassPassives(servantClass: ServantClass): PassiveSkil
   }
 }
 
+/**
+ * Resolves active/unlocked passive skills for a servant based on their Bond level.
+ * Rule: Maximum of 2 passive skills can be held per Servant.
+ * - Passive 1 (index 0): Unlocked from Bond Lv. 1
+ * - Passive 2 (index 1): Unlocks ONLY after reaching Bond Lv. 5 (Bond Lv >= 5)
+ */
+export function getUnlockedPassives(
+  passivesOrClass: PassiveSkill[] | ServantClass | undefined,
+  bondLevel: number = 1
+): PassiveSkill[] {
+  if (!passivesOrClass) return [];
+
+  const raw: PassiveSkill[] = Array.isArray(passivesOrClass)
+    ? passivesOrClass
+    : getDefaultClassPassives(passivesOrClass);
+
+  if (!raw || raw.length === 0) return [];
+
+  // Strictly cap at max 2 passive skills
+  const maxTwo = raw.slice(0, 2);
+
+  // If bond level is below 5, only the 1st passive skill is unlocked
+  if (bondLevel < 5) {
+    return maxTwo.slice(0, 1);
+  }
+
+  // Bond Level 5 or higher unlocks both passives (up to 2)
+  return maxTwo;
+}
+
 export const SERVANT_DATABASE: ServantTemplate[] = [
   // 5-Star SSR Servants
   {
@@ -260,13 +290,6 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       }
     ],
     passives: [
-      {
-        name: 'Magic Resistance E',
-        type: 'magic_resistance',
-        value: 10,
-        rank: 'E',
-        description: 'Increases debuff resistance by 10%.'
-      },
       {
         name: 'Independent Action A+',
         type: 'independent_action',
