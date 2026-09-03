@@ -768,16 +768,9 @@ function resolveStrike(
 
   const busterChainBonusDmg = isBusterChain ? Math.round(attacker.baseAtk * 0.20 * PVP_DAMAGE_MODIFIER) : 0;
 
-  if (isArtsChain) {
-    attacker.npGauge = Math.min(300, attacker.npGauge + 20);
-  }
-  if (isQuickChain) {
-    attacker.critStars = Math.min(50, attacker.critStars + 20);
-  }
-
   const chainTags: string[] = [];
   if (isBusterFirst) chainTags.push('🔥 Buster 1st Lead (+50% DMG)');
-  if (isArtsFirst) chainTags.push('🌊 Arts 1st Lead (+100% NP Gain)');
+  if (isArtsFirst) chainTags.push('🌊 Arts 1st Lead (+50% NP Gain)');
   if (isQuickFirst) chainTags.push('⚡ Quick 1st Lead (+20% Crit Rate)');
 
   if (isBusterChain) chainTags.push('🔴 BUSTER CHAIN (+20% Base ATK Hit Bonus)');
@@ -790,6 +783,18 @@ function resolveStrike(
   let totalStarsGained = 0;
   let isAnyCrit = false;
   let hasNpHit = false;
+
+  // Type Chain Bonuses: Arts Chain grants +20% flat NP, Quick Chain grants +20 flat stars
+  if (isArtsChain) {
+    attacker.npGauge = Math.min(300, attacker.npGauge + 20);
+    totalNpGained += 20;
+  }
+  if (isQuickChain) {
+    totalStarsGained += 20;
+  }
+
+  // Available stars collected from previous turn (or active skills) used to determine this turn's crit rates
+  const starsForCrits = attacker.critStars || 0;
 
   // Process 3-card sequence
   for (let i = 0; i < cardsSequence.length; i++) {
@@ -840,15 +845,15 @@ function resolveStrike(
           attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + healAmount);
           attacker.activeBuffs.push({ name: 'Invincibility', type: 'invincible', value: 100, remainingTurns: 1 });
           attacker.activeBuffs.push({ name: 'Divine Protection', type: 'buff_def', value: 30, remainingTurns: 3 });
-          npRefund = Math.round(25 * (1.0 + artsBuff / 100));
-          npStars = 5;
+          npRefund = Math.round(15 * (1.0 + artsBuff / 100));
+          npStars = 3;
         } else if (npCardType === 'Quick') {
-          npStars = Math.round(30 * (1.0 + quickBuff / 100));
+          npStars = Math.round(20 * (1.0 + quickBuff / 100));
           attacker.activeBuffs.push({ name: 'Evade', type: 'evade', value: 100, remainingTurns: 1 });
-          npRefund = Math.round(15 * (1.0 + quickBuff / 100));
+          npRefund = Math.round(8 * (1.0 + quickBuff / 100));
         } else {
           attacker.activeBuffs.push({ name: 'War Cry', type: 'buff_atk', value: 30, remainingTurns: 3 });
-          npStars = 10;
+          npStars = 5;
         }
       } else {
         const variance = 0.96 + Math.random() * 0.08;
@@ -861,32 +866,33 @@ function resolveStrike(
           isEvading = false;
         }
 
-        // Refund properties dictated by card type
+        // Refund properties dictated by card type (Balanced FGO tuning)
         if (npCardType === 'Buster') {
-          npRefund = overchargeLevel >= 2 ? 20 : 0;
-          npStars = npScope === 'aoe' ? 8 : 5;
+          const hasOverchargeRefund = /refund|recharge/i.test(attacker.servant.template.noblePhantasm?.overchargeEffect || '');
+          npRefund = hasOverchargeRefund ? (overchargeLevel >= 2 ? 30 : 20) : 0;
+          npStars = npScope === 'aoe' ? 5 : 2;
         } else if (npCardType === 'Arts') {
-          const baseRefund = npScope === 'aoe' ? 30 : 25;
+          const baseRefund = npScope === 'aoe' ? 18 : 12;
           npRefund = Math.round(baseRefund * (1.0 + artsBuff / 100));
-          npStars = 5;
+          npStars = 2;
         } else {
-          const baseStars = npScope === 'aoe' ? 35 : 25;
+          const baseStars = npScope === 'aoe' ? 20 : 14;
           npStars = Math.round(baseStars * (1.0 + quickBuff / 100));
-          const baseRefund = npScope === 'aoe' ? 20 : 15;
+          const baseRefund = npScope === 'aoe' ? 10 : 6;
           npRefund = Math.round(baseRefund * (1.0 + quickBuff / 100));
         }
       }
 
+      // Expending NP: Reset gauge to the NP's refund amount
       attacker.npGauge = npRefund;
       totalNpGained += npRefund;
-      attacker.critStars = Math.min(50, attacker.critStars + npStars);
       totalStarsGained += npStars;
       totalSeqDmg += npDmg;
     } else if (card === 'Buster') {
       let cardMult = 1.4 * posMult * (1.0 + madnessBonus / 100);
       if (i > 0 && isBusterFirst) cardMult += 0.50; // Buster Lead Bonus
 
-      let critChance = Math.min(0.95, (attacker.critStars * 2.0) / 100);
+      let critChance = Math.min(0.95, (starsForCrits * 2.0) / 100);
       if (i > 0 && isQuickFirst) critChance = Math.min(0.95, critChance + 0.20);
 
       const hitCrit = Math.random() < critChance;
@@ -903,15 +909,20 @@ function resolveStrike(
         isEvading = false;
       }
 
-      const npAmt = hitCrit ? 10 : 6;
-      attacker.npGauge = Math.min(300, attacker.npGauge + npAmt);
-      totalNpGained += npAmt;
+      // FGO Buster NP rule: 0% base NP gain, only gains small NP (+2-3%) if Arts 1st Lead is active
+      let npAmt = 0;
+      if (i > 0 && isArtsFirst) {
+        npAmt = hitCrit ? 3 : 2;
+      }
+      if (npAmt > 0) {
+        attacker.npGauge = Math.min(300, attacker.npGauge + npAmt);
+        totalNpGained += npAmt;
+      }
 
-      if (hitCrit) {
-        attacker.critStars = Math.max(0, attacker.critStars - 8);
-      } else {
-        attacker.critStars = Math.min(50, attacker.critStars + 3);
-        totalStarsGained += 3;
+      // Buster Star Gen: 0 base (1 on crit or with Presence Concealment)
+      const starsAmt = hitCrit ? (presenceConcealBonus > 0 ? 2 : 1) : (presenceConcealBonus > 0 ? 1 : 0);
+      if (starsAmt > 0) {
+        totalStarsGained += starsAmt;
       }
 
       totalSeqDmg += hitDmg;
@@ -919,7 +930,7 @@ function resolveStrike(
       let cardMult = 1.0 * posMult * (1.0 + territoryBonus / 100);
       if (i > 0 && isBusterFirst) cardMult += 0.50;
 
-      let critChance = Math.min(0.80, (attacker.critStars * 1.5) / 100);
+      let critChance = Math.min(0.85, (starsForCrits * 1.8) / 100);
       if (i > 0 && isQuickFirst) critChance = Math.min(0.95, critChance + 0.20);
 
       const hitCrit = Math.random() < critChance;
@@ -936,20 +947,24 @@ function resolveStrike(
         isEvading = false;
       }
 
-      let npGain = Math.round((24 + Math.random() * 8) * npGenBonus * (hitCrit ? 1.4 : 1.0) * (1.0 + territoryBonus / 100));
-      if (i > 0 && isArtsFirst) npGain = Math.round(npGain * 2.0); // Arts Lead Bonus
+      // FGO Arts NP rule: 8-10 base NP gain scaled by position (1.0x/1.2x/1.4x), crit (1.5x), and Arts 1st Lead (+50%)
+      const baseArtsNp = 8 + Math.floor(Math.random() * 3);
+      let npGain = Math.round(baseArtsNp * posMult * npGenBonus * (hitCrit ? 1.5 : 1.0) * (1.0 + territoryBonus / 100));
+      if (i > 0 && isArtsFirst) npGain = Math.round(npGain * 1.5); // Arts Lead Bonus
 
       attacker.npGauge = Math.min(300, attacker.npGauge + npGain);
       totalNpGained += npGain;
-      attacker.critStars = Math.min(50, attacker.critStars + 2);
-      totalStarsGained += 2;
+
+      // Arts stars: 1 star (2 on crit)
+      const artsStars = hitCrit ? 2 : 1;
+      totalStarsGained += artsStars;
 
       totalSeqDmg += hitDmg;
     } else if (card === 'Quick') {
       let cardMult = 0.85 * posMult * (1.0 + ridingBonus / 100);
       if (i > 0 && isBusterFirst) cardMult += 0.50;
 
-      let critChance = Math.min(0.90, (attacker.critStars * 2.5) / 100);
+      let critChance = Math.min(0.95, (starsForCrits * 2.2) / 100);
       if (i > 0 && isQuickFirst) critChance = Math.min(0.95, critChance + 0.20);
 
       const hitCrit = Math.random() < critChance;
@@ -966,13 +981,19 @@ function resolveStrike(
         isEvading = false;
       }
 
-      let starsGained = Math.round((18 + Math.random() * 6) * (1.0 + (ridingBonus + presenceConcealBonus) / 100));
-      if (i > 0 && isQuickFirst) starsGained = Math.round(starsGained * 1.5); // Quick Lead Bonus
+      // FGO Quick stars: 4-6 base stars scaled by position (1.0x/1.25x/1.5x), crit (1.4x), and Quick 1st Lead (+30%)
+      const baseQuickStars = 4 + Math.floor(Math.random() * 3);
+      let starsGained = Math.round(baseQuickStars * (1.0 + (i * 0.25)) * (hitCrit ? 1.4 : 1.0) * (1.0 + (ridingBonus + presenceConcealBonus) / 100));
+      if (i > 0 && isQuickFirst) starsGained = Math.round(starsGained * 1.3); // Quick Lead Bonus
 
-      attacker.critStars = Math.min(50, attacker.critStars + starsGained);
       totalStarsGained += starsGained;
-      attacker.npGauge = Math.min(300, attacker.npGauge + 8);
-      totalNpGained += 8;
+
+      // Quick NP gain: 3-4 base
+      let quickNp = 3 + Math.floor(Math.random() * 2);
+      if (hitCrit) quickNp = Math.round(quickNp * 1.5);
+      if (i > 0 && isArtsFirst) quickNp = Math.round(quickNp * 1.5);
+      attacker.npGauge = Math.min(300, attacker.npGauge + quickNp);
+      totalNpGained += quickNp;
 
       totalSeqDmg += hitDmg;
     }
@@ -984,12 +1005,15 @@ function resolveStrike(
     const extraBase = (effectiveAtk * 1.2 * 0.11) - (effectiveDef * 2);
     const extraDmg = Math.max(450, Math.round(extraBase * classMult * (0.95 + Math.random() * 0.10) * PVP_DAMAGE_MODIFIER)) + flatDivinity;
     totalSeqDmg += extraDmg;
-    attacker.npGauge = Math.min(300, attacker.npGauge + 10);
-    totalNpGained += 10;
-    const extraStars = 5 + (presenceConcealBonus > 0 ? 3 : 0);
-    attacker.critStars = Math.min(50, attacker.critStars + extraStars);
+    const extraNp = isArtsFirst ? 5 : 3;
+    attacker.npGauge = Math.min(300, attacker.npGauge + extraNp);
+    totalNpGained += extraNp;
+    const extraStars = 3 + (isQuickFirst ? 2 : 0) + (presenceConcealBonus > 0 ? 2 : 0);
     totalStarsGained += extraStars;
   }
+
+  // Set the combatant's critical star pool for the upcoming turn based on what was gathered
+  attacker.critStars = Math.min(50, totalStarsGained);
 
   // Apply total damage to defender
   defender.currentHp = Math.max(0, defender.currentHp - totalSeqDmg);

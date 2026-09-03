@@ -800,21 +800,21 @@ export function executeBattleTurn(
         if (card === 'Buster') {
           cardDmgMult = 1.4 * (1.0 + busterBuff / 100); // Buster deals strong base dmg boosted by Buster buffs
           cardNpMult = 0.0;
-          cardStarMult = 0.5;
+          cardStarMult = 0.2;
         } else if (card === 'Arts') {
           cardDmgMult = 1.0;
-          cardNpMult = (2.5 + (actor.stats.mana * 0.04)) * (1.0 + artsBuff / 100); // Arts gives solid NP charge boosted by Arts buffs
-          cardStarMult = 0.5;
+          cardNpMult = (1.2 + (actor.stats.mana * 0.02)) * (1.0 + artsBuff / 100); // Balanced Arts NP charge
+          cardStarMult = 0.2;
         } else if (card === 'Quick') {
           cardDmgMult = 0.85;
-          cardNpMult = 1.0 * (1.0 + quickBuff / 100);
-          cardStarMult = (2.5 + (actor.stats.agility * 0.04)) * (1.0 + (quickBuff + presenceConcealBonus) / 100); // Quick generates crit stars boosted by Quick buffs + PC
+          cardNpMult = 0.4 * (1.0 + quickBuff / 100);
+          cardStarMult = (1.4 + (actor.stats.agility * 0.02)) * (1.0 + (quickBuff + presenceConcealBonus) / 100); // Balanced Quick star drop
         }
 
         // Apply chain bonus
         if (cardChainType === 'Buster Brave') cardDmgMult += 0.35;
-        if (cardChainType === 'Arts Chain') cardNpMult += 1.2;
-        if (cardChainType === 'Quick Chain') cardStarMult += 1.8;
+        if (cardChainType === 'Arts Chain') cardNpMult += 0.6;
+        if (cardChainType === 'Quick Chain') cardStarMult += 1.0;
 
         let hitDmg = Math.max(
           100,
@@ -827,8 +827,8 @@ export function executeBattleTurn(
         }
 
         totalDamage += Math.round(hitDmg * PVP_DAMAGE_MODIFIER) + (hitDmg > 0 ? flatDivinity : 0);
-        totalNpCharge += Math.round(8 * cardNpMult * (actor.stats.mana / 15));
-        totalStars += Math.round(4 * cardStarMult);
+        totalNpCharge += Math.round(5 * cardNpMult * (actor.stats.mana / 15));
+        totalStars += Math.round(2 * cardStarMult);
       });
 
       actionText = `⚔️ ${actor.name} executed a ${cards.join(' • ')} sequence dealing ${totalDamage.toLocaleString()} DMG!`;
@@ -837,7 +837,7 @@ export function executeBattleTurn(
     // Apply damage to target
     target.currentHp = Math.max(0, target.currentHp - totalDamage);
     actor.npGauge = Math.min(300, actor.npGauge + totalNpCharge);
-    actor.critStars = Math.min(50, actor.critStars + totalStars);
+    actor.critStars = Math.min(50, totalStars);
 
     // Guts Check (Battle Continuation)
     const gutsBuffIndex = target.activeBuffs.findIndex(b => b.type === 'guts');

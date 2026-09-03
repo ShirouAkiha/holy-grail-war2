@@ -236,8 +236,8 @@ export function resolveCombatTurn(
         const val = attacker.equippedCe.passiveValue || 15;
         cardMultiplier *= (1 + val / 100);
       }
-      cardNpGain += 8;
-      cardStarGen += 3;
+      cardNpGain += (isArtsFirst && i > 0) ? 2 : 0;
+      cardStarGen += 1;
     } 
     // ARTS: High NP gauge generation
     else if (card === 'Arts') {
@@ -246,8 +246,8 @@ export function resolveCombatTurn(
         const val = attacker.equippedCe.passiveValue || 15;
         cardMultiplier *= (1 + val / 100);
       }
-      cardNpGain += 32;
-      cardStarGen += 2;
+      cardNpGain += 10;
+      cardStarGen += 1;
     } 
     // QUICK: High Critical Star drop rate
     else if (card === 'Quick') {
@@ -256,8 +256,8 @@ export function resolveCombatTurn(
         const val = attacker.equippedCe.passiveValue || 15;
         cardMultiplier *= (1 + val / 100);
       }
-      cardNpGain += 12;
-      cardStarGen += 22;
+      cardNpGain += 4;
+      cardStarGen += 6;
     }
 
     // Apply First Card Lead Bonuses to cards 2 and 3 (i > 0) or all cards
@@ -265,11 +265,11 @@ export function resolveCombatTurn(
       if (isBusterFirst) {
         cardMultiplier += 0.50; // +50% flat damage bonus
       }
-      if (isArtsFirst) {
-        cardNpGain *= 2.0; // +100% NP gain modifier
+      if (isArtsFirst && card !== 'Buster') {
+        cardNpGain = Math.round(cardNpGain * 1.5); // +50% NP gain modifier
       }
       if (isQuickFirst) {
-        cardStarGen += 8; // +20% star drop rate
+        cardStarGen += 2; // +2 bonus critical stars
       }
     }
 
@@ -313,8 +313,8 @@ export function resolveCombatTurn(
     const extraBase = (effectiveAtk * 1.2 * 0.11) - (effectiveDef * 2);
     const extraDamage = Math.max(400, Math.round(extraBase * classMultiplier * (0.95 + Math.random() * 0.10)));
     totalDmg += Math.round(extraDamage * PVP_DAMAGE_MODIFIER);
-    npGain += 10;
-    starsGen += 5;
+    npGain += 3;
+    starsGen += 3;
   }
 
   let npTriggered = false;
@@ -333,7 +333,7 @@ export function resolveCombatTurn(
     attacker.npGauge = Math.min(300, attacker.npGauge + npGain);
   }
 
-  attacker.critStars = Math.min(50, (attacker.critStars || 0) + starsGen);
+  attacker.critStars = Math.min(50, starsGen);
   defender.currentHp = Math.max(0, defender.currentHp - totalDmg);
 
   // Apply end-of-turn passive adjustments for attacker and defender
