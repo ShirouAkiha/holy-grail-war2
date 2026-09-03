@@ -598,12 +598,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const embed = new EmbedBuilder()
       .setTitle(`✨ SERVANT TEMPLATE UPDATED: ${s.name}`)
       .setDescription(
-        `Admin has updated the parameters and picture for **${s.name}**!\n\n` +
+        `Admin has updated the profile parameters and character portrait for **${s.name}**!\n\n` +
         `• **Class:** \`${s.servantClass}\` | **Title:** *${s.title}*\n` +
         `• **Base HP:** \`${s.baseHp.toLocaleString()}\` | **Base ATK:** \`${s.baseAtk.toLocaleString()}\`\n` +
+        `• **Character Portrait & Card Artwork:** ${finalPicture ? '✅ Custom Image Applied' : 'Preserved'}\n` +
         `• **Noble Phantasm:** **${s.noblePhantasm.name}** [${s.noblePhantasm.cardType} • ${s.noblePhantasm.target.toUpperCase()}]\n` +
         `• **NP Chant:** *"${s.noblePhantasm.chant}"*\n` +
-        (s.noblePhantasm.animationUrl ? `• **NP Animation:** [Custom GIF Configured](${s.noblePhantasm.animationUrl})\n` : '') +
+        (npGif ? `• **NP Cinematic GIF:** [Updated Animation](${npGif})\n` : '') +
         `• **Summon Dialogue:** *"${s.summonQuote}"*\n\n` +
         `*Changes take effect immediately across all active Master contracts and combat arenas!*`
       )

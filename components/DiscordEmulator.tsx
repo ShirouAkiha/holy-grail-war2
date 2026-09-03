@@ -1001,7 +1001,7 @@ export default function DiscordEmulator({
         const nameMatch = rawCmd.match(/name=["']?([^"']+)["']?/i);
         const titleMatch = rawCmd.match(/title=["']?([^"']+)["']?/i);
         const classMatch = rawCmd.match(/class=["']?([^"'\s]+)["']?/i);
-        const imgMatch = rawCmd.match(/(?:image|img|pic)=["']?([^"'\s]+)["']?/i);
+        const imgMatch = rawCmd.match(/(?:image_url|image_file|image|img|pic|avatar|card_art|pfp|art)[:=]["']?([^"'\s]+)["']?/i) || rawCmd.match(/https?:\/\/[^\s"'>]+\.(?:png|jpg|jpeg|webp|gif)/i);
         const hpMatch = rawCmd.match(/hp[:=]["']?(\d+)["']?/i);
         const atkMatch = rawCmd.match(/atk[:=]["']?(\d+)["']?/i);
         const npMatch = rawCmd.match(/(?:noble_phantasm|np)=["']?([^"']+)["']?/i);
@@ -1018,8 +1018,9 @@ export default function DiscordEmulator({
           if (titleMatch) target.title = titleMatch[1].trim();
           if (classMatch) target.servantClass = (classMatch[1].charAt(0).toUpperCase() + classMatch[1].slice(1)) as ServantClass;
           if (imgMatch) {
-            target.avatarUrl = imgMatch[1].trim();
-            target.cardArtUrl = imgMatch[1].trim();
+            const newImage = (typeof imgMatch[1] === 'string' ? imgMatch[1] : imgMatch[0]).trim();
+            target.avatarUrl = newImage;
+            target.cardArtUrl = newImage;
           }
           if (hpMatch) target.baseHp = parseInt(hpMatch[1], 10);
           if (atkMatch) target.baseAtk = parseInt(atkMatch[1], 10);
@@ -1070,9 +1071,10 @@ export default function DiscordEmulator({
             embed: {
               title: `✨ HEROIC SPIRIT UPDATED: ${target.name}`,
               description: 
-                `Administrator has updated parameters for **${target.name}**!\n\n` +
+                `Administrator has updated profile parameters and character portrait for **${target.name}**!\n\n` +
                 `• **Class:** \`${target.servantClass}\` | **Title:** *${target.title}*\n` +
                 `• **Base HP:** \`${target.baseHp.toLocaleString()}\` | **Base ATK:** \`${target.baseAtk.toLocaleString()}\`\n` +
+                `• **Character Portrait & Card Artwork:** ${imgMatch ? '✅ Custom Image Applied' : 'Preserved'}\n` +
                 `• **Noble Phantasm:** **${target.noblePhantasm.name}** (${target.noblePhantasm.cardType})\n` +
                 `• **NP Chant:** *"${target.noblePhantasm.chant}"*\n` +
                 `• **Summon Dialogue:** *"${target.summonQuote}"*\n\n` +
@@ -1080,6 +1082,11 @@ export default function DiscordEmulator({
               imageUrl: target.cardArtUrl || target.avatarUrl,
               color: '#d4af37',
               footer: `ID: ${target.id} • Edited by Admin`
+            },
+            artworkEmbed: {
+              title: `🖼️ Character Portrait & Card Artwork: ${target.name}`,
+              imageUrl: target.cardArtUrl || target.avatarUrl,
+              color: '#d4af37'
             },
             components: {
               type: 'buttons',
@@ -2614,6 +2621,11 @@ export default function DiscordEmulator({
       },
       canvasType: 'servant',
       canvasPayload: { servant: tempInstance, masterName: 'Throne of Heroes' },
+      artworkEmbed: {
+        title: `🖼️ Character Artwork: ${template.name}`,
+        imageUrl: template.cardArtUrl || template.avatarUrl,
+        color: template.servantClass === 'Saber' ? '#3b82f6' : template.rarity === 5 ? '#f59e0b' : '#a855f7'
+      },
       components: {
         type: 'buttons',
         items: [
@@ -3893,30 +3905,36 @@ export default function DiscordEmulator({
                 </div>
               )}
 
-              {/* Full Artwork Embed Below Canvas (only if no visual canvas card attached) */}
-              {msg.artworkEmbed && !msg.canvasType && (
+              {/* Full Artwork Embed Page */}
+              {msg.artworkEmbed && msg.artworkEmbed.imageUrl && (
                 <div
-                  className="mt-3 p-3 rounded-sm bg-[#111] border-l-2 text-[#dbdee1] max-w-2xl border border-y-[#1a1a1a] border-r-[#1a1a1a]"
+                  className="mt-3 p-3.5 rounded-sm bg-[#0e0e0e] border-l-2 text-[#dbdee1] max-w-2xl border border-y-[#1a1a1a] border-r-[#1a1a1a] shadow-xl space-y-2.5"
                   style={{ borderLeftColor: msg.artworkEmbed.color || '#d4af37' }}
                 >
-                  {msg.artworkEmbed.title && (
-                    <h4 className="font-serif italic text-white text-base mb-1.5">{msg.artworkEmbed.title}</h4>
-                  )}
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-serif italic text-white text-base">
+                      {msg.artworkEmbed.title || '🖼️ Servant Artwork & Character Portrait'}
+                    </h4>
+                    <span className="text-[10px] font-mono text-[#d4af37] bg-[#161616] px-2 py-0.5 rounded border border-[#d4af37]/30">
+                      Heroic Spirit Portrait
+                    </span>
+                  </div>
                   {msg.artworkEmbed.description && (
-                    <div className="whitespace-pre-wrap text-xs text-white/80 leading-relaxed font-mono mb-3">
+                    <div className="whitespace-pre-wrap text-xs text-white/80 leading-relaxed font-mono">
                       {msg.artworkEmbed.description}
                     </div>
                   )}
-                  {msg.artworkEmbed.imageUrl && (
-                    <div className="rounded-md overflow-hidden border border-[#222] bg-[#050505] max-w-xl">
-                      <img
-                        src={msg.artworkEmbed.imageUrl}
-                        alt="Servant Artwork"
-                        className="w-full h-auto object-contain max-h-[550px]"
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
-                  )}
+                  <div className="rounded-md overflow-hidden border border-[#222] bg-[#050505] max-w-xl shadow-inner">
+                    <img
+                      src={msg.artworkEmbed.imageUrl}
+                      alt="Servant Artwork"
+                      className="w-full h-auto object-contain max-h-[550px]"
+                      referrerPolicy="no-referrer"
+                      onError={(e: any) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  </div>
                 </div>
               )}
 

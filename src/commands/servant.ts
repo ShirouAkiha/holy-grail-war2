@@ -91,8 +91,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       console.warn('Canvas render error in /servant:', e);
     }
 
-    // When canvas attachment is present, omit redundant raw artwork embed to keep UI clean
-    const embeds = files.length > 0 ? [embed] : [embed, artworkEmbed];
+    // Include both the parameters embed and the high-resolution artwork card embed
+    const embeds = [embed, artworkEmbed];
 
     const msg = await interaction.editReply({
       embeds,
@@ -358,7 +358,7 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
           // Ignore
         }
 
-        const embeds = files.length > 0 ? [newEmbed] : [newEmbed, newArtworkEmbed];
+        const embeds = [newEmbed, newArtworkEmbed];
         await i.editReply({ embeds, files, components: newRows });
       }
 
