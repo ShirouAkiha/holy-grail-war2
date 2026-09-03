@@ -1,6 +1,7 @@
 import { MasterProfile, MasterServantInstance, CraftEssence, ServantTemplate, GachaBanner } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
 import { CRAFT_ESSENCE_DATABASE, CE_GACHA_BANNERS } from '../data/craftEssences';
+import { normalizeMediaUrl } from '../utils/mediaResolver';
 import fs from 'fs';
 import path from 'path';
 
@@ -762,7 +763,7 @@ export function setServantNpAnimation(
   customChant?: string,
   adminUsername?: string
 ): { success: boolean; servant?: ServantTemplate; message?: string; error?: string } {
-  const cleanUrl = (gifUrl || '').trim();
+  const cleanUrl = normalizeMediaUrl((gifUrl || '').trim());
   if (!cleanUrl) {
     return { success: false, error: 'Animated GIF URL cannot be empty.' };
   }

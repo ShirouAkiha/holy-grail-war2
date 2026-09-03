@@ -1,81 +1,90 @@
 // High-impact Noble Phantasm Animated Cinematic URLs
 // These represent the iconic ultimate move activations from the Fate anime franchise.
 
+import { normalizeMediaUrl } from '../utils/mediaResolver';
+
 // Custom NP animations registry (safe across both client-side React and server-side runtimes)
 export const CUSTOM_NP_ANIMATIONS_REGISTRY: Record<string, { gifUrl: string; chant?: string }> = {};
 
 export function setCustomNpAnimationInMemory(idOrName: string, anim: { gifUrl: string; chant?: string }) {
   if (!idOrName) return;
-  CUSTOM_NP_ANIMATIONS_REGISTRY[idOrName.toLowerCase()] = anim;
+  const normalizedGif = normalizeMediaUrl(anim.gifUrl);
+  CUSTOM_NP_ANIMATIONS_REGISTRY[idOrName.toLowerCase()] = {
+    ...anim,
+    gifUrl: normalizedGif
+  };
 }
 
 export function setCustomNpAnimationsBatch(anims: Record<string, { gifUrl: string; chant?: string }>) {
   if (!anims) return;
   for (const [k, v] of Object.entries(anims)) {
-    CUSTOM_NP_ANIMATIONS_REGISTRY[k.toLowerCase()] = v;
+    CUSTOM_NP_ANIMATIONS_REGISTRY[k.toLowerCase()] = {
+      ...v,
+      gifUrl: normalizeMediaUrl(v.gifUrl)
+    };
   }
 }
 
 export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: string; chant: string }> = {
   'Artoria Pendragon': {
-    gifUrl: 'https://media.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
-    fallbackGif: 'https://tenor.com/view/fate-saber-excalibur-noble-phantasm-gif-18115682',
+    gifUrl: 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
+    fallbackGif: 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
     chant: 'Gathered breath of the planet, torrential light of life... EX---CALIBUR!'
   },
   'Artoria Pendragon (Alter)': {
-    gifUrl: 'https://media.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
-    fallbackGif: 'https://tenor.com/view/saber-alter-excalibur-morgan-fate-stay-night-heavens-feel-gif-21175659',
+    gifUrl: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+    fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
     chant: 'Hammer of the vile king, shatter the aurora... Swallow the light! EXCALIBUR MORGAN!'
   },
   'Gilgamesh': {
-    gifUrl: 'https://media.giphy.com/media/13cACn6mlO56kU/giphy.gif',
-    fallbackGif: 'https://tenor.com/view/gilgamesh-enuma-elish-enuma-fate-fate-strange-fake-gif-14660706691456931556',
+    gifUrl: 'https://i.giphy.com/media/13cACn6mlO56kU/giphy.gif',
+    fallbackGif: 'https://i.giphy.com/media/13cACn6mlO56kU/giphy.gif',
     chant: 'I speak of the beginning... Heaven and Earth split, and nothingness congratulated creation! ENUMA ELISH!'
   },
   'EMIYA': {
-    gifUrl: 'https://media.giphy.com/media/eBGV4n8U8k3eg/giphy.gif',
-    fallbackGif: 'https://tenor.com/view/unlimited-blade-works-archer-fate-stay-night-noble-phantasm-gif-18237937',
+    gifUrl: 'https://i.giphy.com/media/eBGV4n8U8k3eg/giphy.gif',
+    fallbackGif: 'https://i.giphy.com/media/eBGV4n8U8k3eg/giphy.gif',
     chant: 'I am the bone of my sword. Steel is my body, and fire is my blood... UNLIMITED BLADE WORKS!'
   },
   'Cú Chulainn': {
-    gifUrl: 'https://media.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
-    fallbackGif: 'https://tenor.com/view/lancer-gae-bolg-fate-stay-night-noble-phantasm-gif-19717144',
+    gifUrl: 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
+    fallbackGif: 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
     chant: 'Your heart is mine! Soar and pierce through the fated heart... GÁE BOLG!'
   },
   'Scáthach': {
-    gifUrl: 'https://media.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
-    fallbackGif: 'https://tenor.com/view/scathach-fate-fgo-noble-phantasm-gae-bolg-gif-18698126',
+    gifUrl: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+    fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
     chant: 'Pierce through, thrust of sure mortality! GÁE BOLG ALTERNATIVE!'
   },
   'Jeanne d\'Arc': {
-    gifUrl: 'https://media.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
-    fallbackGif: 'https://tenor.com/view/jeanne-d-arc-fate-apocrypha-noble-phantasm-flag-gif-18921827',
+    gifUrl: 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
+    fallbackGif: 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
     chant: 'My God is here with me! Holy banner, shield our faithful spirits! LUMINOSITÉ ETERNELLE!'
   },
   'Jeanne d\'Arc (Alter)': {
-    gifUrl: 'https://media.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
-    fallbackGif: 'https://tenor.com/view/jeanne-alter-jalter-fgo-noble-phantasm-gif-17865181',
+    gifUrl: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+    fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
     chant: 'Burn away to charred ash! This is the scream of my soul turned to roaring wrath! LA GRONDEMENT DU HAINE!'
   },
   'Nero Claudius': {
-    gifUrl: 'https://media.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
-    fallbackGif: 'https://tenor.com/view/nero-claudius-fate-extra-last-encore-noble-phantasm-gif-18238122',
+    gifUrl: 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
+    fallbackGif: 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
     chant: 'Witness the glory of the Golden Theater! Open the curtain, bloom in full resplendence! LAUS SAINT CLAUDIUS!'
   },
   'Heracles': {
-    gifUrl: 'https://media.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
-    fallbackGif: 'https://tenor.com/view/fate-stay-night-heavens-feel-nine-lives-blade-works-berserker-gif-20516422',
+    gifUrl: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+    fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
     chant: 'ROOOOOOAAARGH! Shooting the hundred heads in an unceasing barrage! NINE LIVES!'
   },
   'Mysterious Heroine X (Alter)': {
-    gifUrl: 'https://media.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
-    fallbackGif: 'https://tenor.com/view/mysterious-heroine-x-alter-cross-calibur-fgo-noble-phantasm-gif-19283719',
+    gifUrl: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+    fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
     chant: 'Darkness and sweets converge... Twin black dragon blades, severance of all Sabers! CROSS-CALIBUR!'
   }
 };
 
-const DEFAULT_NP_GIF = 'https://media.giphy.com/media/tO2sY2i2LgZSo/giphy.gif';
-const DEFAULT_NP_FALLBACK = 'https://media.giphy.com/media/13cACn6mlO56kU/giphy.gif';
+const DEFAULT_NP_GIF = 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif';
+const DEFAULT_NP_FALLBACK = 'https://i.giphy.com/media/13cACn6mlO56kU/giphy.gif';
 
 /**
  * Returns a high quality GIF / animation link for a Servant's Noble Phantasm
@@ -85,23 +94,23 @@ export function getNoblePhantasmGif(servantOrTemplate: any): string {
 
   // 1. Check direct servant template configuration
   const np = servantOrTemplate.noblePhantasm || servantOrTemplate.template?.noblePhantasm;
-  if (np?.gifUrl && np.gifUrl.trim()) return np.gifUrl.trim();
-  if (np?.animationUrl && np.animationUrl.trim()) return np.animationUrl.trim();
+  if (np?.gifUrl && np.gifUrl.trim()) return normalizeMediaUrl(np.gifUrl.trim());
+  if (np?.animationUrl && np.animationUrl.trim()) return normalizeMediaUrl(np.animationUrl.trim());
 
   // 2. Check admin-configured custom NP animation registry
   const servantId = (servantOrTemplate.id || servantOrTemplate.templateId || servantOrTemplate.template?.id || '').toLowerCase();
   const rawName = (servantOrTemplate.name || servantOrTemplate.template?.name || '').toLowerCase();
   if (servantId && CUSTOM_NP_ANIMATIONS_REGISTRY[servantId]?.gifUrl) {
-    return CUSTOM_NP_ANIMATIONS_REGISTRY[servantId].gifUrl;
+    return normalizeMediaUrl(CUSTOM_NP_ANIMATIONS_REGISTRY[servantId].gifUrl);
   }
   if (rawName && CUSTOM_NP_ANIMATIONS_REGISTRY[rawName]?.gifUrl) {
-    return CUSTOM_NP_ANIMATIONS_REGISTRY[rawName].gifUrl;
+    return normalizeMediaUrl(CUSTOM_NP_ANIMATIONS_REGISTRY[rawName].gifUrl);
   }
 
   // 3. Match against known canon Servant registry
   for (const [key, data] of Object.entries(NOBLE_PHANTASM_GIFS)) {
     if (rawName.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(rawName.toLowerCase())) {
-      return data.gifUrl || data.fallbackGif;
+      return normalizeMediaUrl(data.gifUrl || data.fallbackGif);
     }
   }
 

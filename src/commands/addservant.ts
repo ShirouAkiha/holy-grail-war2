@@ -23,6 +23,7 @@ import {
   matchServantSearch
 } from '../database/service';
 import { ServantClass, ServantTemplate, CardType } from '../types';
+import { normalizeMediaUrl, isDirectEmbeddableMedia } from '../utils/mediaResolver';
 
 // ==========================================
 // 1. ADMIN SLASH COMMAND DEFINITION
@@ -613,10 +614,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   // ------------------------------------------
   if (subcommand === 'npanim') {
     const servantQuery = interaction.options.getString('servant', true).trim();
-    const gifUrl = interaction.options.getString('gif_url', true).trim();
+    const rawGifUrl = interaction.options.getString('gif_url', true).trim();
     const chant = interaction.options.getString('chant')?.trim();
 
-    const result = setServantNpAnimation(servantQuery, gifUrl, chant, interaction.user.username);
+    const normalizedGifUrl = normalizeMediaUrl(rawGifUrl);
+    const result = setServantNpAnimation(servantQuery, normalizedGifUrl, chant, interaction.user.username);
 
     if (!result.success || !result.servant) {
       await interaction.reply({
@@ -632,20 +634,31 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     const s = result.servant;
+    const canEmbedDirectly = isDirectEmbeddableMedia(normalizedGifUrl);
+
     const embed = new EmbedBuilder()
       .setTitle(`🎬 NOBLE PHANTASM ANIMATION SET: ${s.name}`)
       .setDescription(
         `Admin has updated the Noble Phantasm animation for **${s.name}**!\n\n` +
         `• **Class:** \`${s.servantClass}\` | **Noble Phantasm:** **${s.noblePhantasm.name}**\n` +
         `• **True Name Chant:** *“${s.noblePhantasm.chant}”*\n` +
-        `• **Animation Link:** [Click here to view direct source](${gifUrl})\n\n` +
+        `• **Animation Link:** [Click here to view direct source](${normalizedGifUrl})\n\n` +
         `*During duels, when ${s.name} releases their Noble Phantasm, this animation will display at full size until the next turn!*`
       )
-      .setImage(gifUrl)
       .setColor(0xd4af37)
-      .setFooter({ text: `Configured by Admin ${interaction.user.username} • Persistent on disk` });
+      .setFooter({ text: `Configured by Admin ${interaction.user.username} • Direct CDN Mode` });
 
-    await interaction.reply({ embeds: [embed] });
+    if (canEmbedDirectly) {
+      embed.setImage(normalizedGifUrl);
+      await interaction.reply({ embeds: [embed] });
+    } else {
+      // If user pasted a webpage URL (like tenor.com/view/...) that Discord's embed image proxy rejects,
+      // send the link directly in content so Discord unfurls it at full width natively!
+      await interaction.reply({
+        content: `🎬 **Noble Phantasm Cinematic Registered for ${s.name}**:\n${rawGifUrl}`,
+        embeds: [embed]
+      });
+    }
     return;
   }
 

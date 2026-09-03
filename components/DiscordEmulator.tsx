@@ -13,6 +13,7 @@ import {
 } from '../lib/types';
 import { SERVANT_DATABASE, getDefaultClassPassives } from '../lib/data/servants';
 import { getNoblePhantasmGif, getNoblePhantasmChant, setCustomNpAnimationInMemory, setCustomNpAnimationsBatch } from '../lib/data/noblePhantasmGifs';
+import { normalizeMediaUrl } from '../lib/utils/mediaResolver';
 import { findServantInPool, matchServantSearch } from '../lib/utils/servantMatcher';
 import {
   createCombatantFromMasterServant,
@@ -731,7 +732,8 @@ export default function DiscordEmulator({
       // Subcommand: npanim (bind animated GIF to any Servant NP)
       if (trimmed.includes('npanim')) {
         const urlMatch = rawCmd.match(/https?:\/\/[^\s"'>]+/i);
-        const gifUrl = urlMatch ? urlMatch[0] : '';
+        const rawUrl = urlMatch ? urlMatch[0] : '';
+        const gifUrl = normalizeMediaUrl(rawUrl);
 
         const servantMatch = rawCmd.match(/servant[:=]["']?([^"']+)["']?/i);
         let servantQuery = servantMatch ? servantMatch[1].trim() : '';
