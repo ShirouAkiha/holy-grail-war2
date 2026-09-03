@@ -12,6 +12,7 @@ import {
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { renderServantProfileCard, renderDialogueCard } from '../canvas/renderer';
 import { SERVANT_DATABASE, getDefaultClassPassives } from '../data/servants';
+import { getOrInitWarSession, exposeMasterInWar } from '../engine/grailwar';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -26,8 +27,8 @@ export const data = new SlashCommandBuilder()
 // 2. MAIN EXECUTE HANDLER
 // ==========================================
 export async function execute(interaction: ChatInputCommandInteraction) {
-  // Defer response immediately since image rendering can take up to 1-2 seconds
-  await interaction.deferReply();
+  // Defer response ephemerally so Master identity and parameters stay concealed in shadows
+  await interaction.deferReply({ ephemeral: true });
 
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
@@ -200,7 +201,12 @@ function buildServantRows(master: any, activeServant: any) {
       .setCustomId('quick_duel_ai')
       .setLabel('Test in Duel Arena')
       .setEmoji('⚔️')
-      .setStyle(ButtonStyle.Secondary)
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('boast_servant')
+      .setLabel('Boast Profile to Server')
+      .setEmoji('📢')
+      .setStyle(ButtonStyle.Danger)
   );
 
   rows.push(buttonRow);
@@ -287,6 +293,37 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
       if (i.customId === 'quick_duel_ai') {
         await i.reply({
           content: `⚔️ Initiate a tactical battle with \`/duel\` or invite another Master with \`/duel opponent:@Master\`!`,
+          ephemeral: true
+        });
+        return;
+      }
+
+      // ACTION 2.5: Boast Servant Profile to Server (Public challenge)
+      if (i.customId === 'boast_servant') {
+        const war = getOrInitWarSession(master);
+        exposeMasterInWar(war, master.discordId, 'public_command');
+        await saveMaster(master);
+
+        const template = activeServant.template;
+        const starStr = '★'.repeat(template.rarity || 4);
+        const announceEmbed = new EmbedBuilder()
+          .setTitle(`📢 MASTER CHALLENGE: ${master.username.toUpperCase()} REVEALS SERVANT!`)
+          .setDescription(
+            `Master **${master.username}** has openly unveiled their contracted Heroic Spirit to all Masters in Fuyuki City!\n\n` +
+            `⚔️ **True Name:** **${template.name}**\n` +
+            `🗡️ **Class:** \`${template.servantClass}\` [${starStr}] | **Title:** *${template.title}*\n` +
+            `💥 **Noble Phantasm:** *${template.noblePhantasm.name}* [${template.noblePhantasm.cardType.toUpperCase()}]\n` +
+            `🗣️ *" ${activeServant.customQuotes?.summon || template.summonQuote || template.battleStartQuote} "*\n\n` +
+            `⚠️ *By boasting openly, Master **${master.username}** is now permanently **EXPOSED** on the Holy Grail War board (\`/grailwar status\`)!*`
+          )
+          .setImage(template.cardArtUrl || template.avatarUrl)
+          .setColor(template.rarity === 5 ? 0xd4af37 : 0xef4444);
+
+        if (i.channel && 'send' in i.channel) {
+          await (i.channel as any).send({ embeds: [announceEmbed] });
+        }
+        await i.reply({
+          content: '📢 You have revealed your Servant to the server! Your identity is now permanently exposed on the War Board.',
           ephemeral: true
         });
         return;

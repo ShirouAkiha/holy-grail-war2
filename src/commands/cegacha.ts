@@ -22,6 +22,7 @@ import {
 import { executeCraftEssenceGachaRoll } from '../engine/ceGacha';
 import { renderGachaSummonBanner } from '../canvas/renderer';
 import { CraftEssence, Rarity } from '../types';
+import { getOrInitWarSession, exposeMasterInWar } from '../engine/grailwar';
 
 export const data = new SlashCommandBuilder()
   .setName('cegacha')
@@ -446,7 +447,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setColor(0xf59e0b)
         .setFooter({ text: 'Authentic Fate Holy Grail War System' });
 
-      await interaction.reply({ embeds: [embed] });
+      await interaction.reply({ embeds: [embed], ephemeral: true });
       return;
     }
 
@@ -491,7 +492,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setStyle(ButtonStyle.Secondary)
       );
 
-      const reply = await interaction.reply({ embeds: [embed], components: [row], fetchReply: true });
+      const reply = await interaction.reply({ embeds: [embed], components: [row], ephemeral: true, fetchReply: true });
 
       // Handle button interactions
       const collector = reply.createMessageComponentCollector({
@@ -592,11 +593,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           )
           .setColor(0xef4444);
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.reply({ embeds: [embed], ephemeral: true });
         return;
       }
 
-      await interaction.deferReply();
+      await interaction.deferReply({ ephemeral: true });
 
       const pullResult = executeCraftEssenceGachaRoll({
         count: rolls,
@@ -627,9 +628,59 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setColor(pullResult.ssrsPulled > 0 ? 0xfbbf24 : pullResult.srsPulled > 0 ? 0xa855f7 : 0x38bdf8)
         .setFooter({ text: 'Use /customise equip to bind these Mystic Codes to your Servant!' });
 
-      await interaction.editReply({
+      const boastRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId('cegacha_btn_boast')
+          .setLabel('Boast Relics to Server')
+          .setEmoji('📢')
+          .setStyle(ButtonStyle.Danger)
+      );
+
+      const pullMsg = await interaction.editReply({
         embeds: [resultEmbed],
-        files: [attachment]
+        files: [attachment],
+        components: [boastRow]
+      });
+
+      const boastCollector = pullMsg.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        filter: (bi: any) => bi.user.id === interaction.user.id,
+        time: 120000
+      });
+
+      boastCollector.on('collect', async (bi: any) => {
+        if (bi.customId === 'cegacha_btn_boast') {
+          const war = getOrInitWarSession(pullResult.updatedMaster);
+          exposeMasterInWar(war, interaction.user.id, 'public_command');
+          await saveMaster(pullResult.updatedMaster);
+
+          const bestRelic = pullResult.results.sort((a, b) => b.rarity - a.rarity)[0];
+          const bestCe = bestRelic?.item as any;
+          const starStr = '★'.repeat(bestRelic?.rarity || 4);
+
+          const boastEmbed = new EmbedBuilder()
+            .setTitle(`📢 MASTER ANNOUNCEMENT: ${master.username.toUpperCase()} FORGES CRAFT ESSENCE!`)
+            .setDescription(
+              `Master **${master.username}** has forged sacred mystic relics from the Craft Essence Sanctum!\n\n` +
+              `🌟 **Highest Rarity Manifestation:** **${bestCe?.name || 'Mystic Relic'}** [${starStr}]\n` +
+              `📜 **Enchantment Effect:** *${bestCe?.effectText || 'Combat Enhancement'}*\n` +
+              `⚔️ **Parameters:** +${bestCe?.bonusAtk || bestCe?.atkBonus || 0} ATK | +${bestCe?.bonusHp || bestCe?.hpBonus || 0} HP\n\n` +
+              `⚠️ *By broadcasting this mystic forging, Master **${master.username}** is now permanently **EXPOSED** on the War Board (\`/grailwar status\`)!*`
+            )
+            .setColor(bestRelic?.rarity >= 5 ? 0xfbbf24 : 0x38bdf8);
+
+          if (bestCe?.artworkUrl) {
+            boastEmbed.setImage(bestCe.artworkUrl);
+          }
+
+          if (bi.channel && 'send' in bi.channel) {
+            await (bi.channel as any).send({ embeds: [boastEmbed] });
+          }
+          await bi.reply({
+            content: '📢 You have revealed your Craft Essence pull to the server! Your identity is now permanently exposed on the War Board.',
+            ephemeral: true
+          });
+        }
       });
       return;
     }

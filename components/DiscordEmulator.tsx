@@ -37,7 +37,9 @@ import {
   setChannelTrapInWar,
   disarmChannelTrapsInWar,
   dispatchFamiliarInWar,
-  recallFamiliarsInWar
+  recallFamiliarsInWar,
+  enterChurchSanctuary,
+  leaveChurchSanctuary
 } from '../lib/engine/grailwar';
 import {
   Terminal,
@@ -605,7 +607,8 @@ export default function DiscordEmulator({
           type: 'buttons',
           items: [
             { id: 'quick_servant_card', label: 'View Parameters (/servant)', style: 'primary', emoji: '📊' },
-            { id: 'quick_start_duel', label: 'Test in Battle (/duel)', style: 'danger', emoji: '⚔️' },
+            { id: 'boast_servant_summon', label: 'Boast to Server 📢', style: 'danger' },
+            { id: 'quick_start_duel', label: 'Test in Battle (/duel)', style: 'secondary', emoji: '⚔️' },
             { id: 'quick_war_status', label: 'Enter Grail War (/grailwar)', style: 'success', emoji: '🏰' }
           ]
         }
@@ -1081,6 +1084,7 @@ export default function DiscordEmulator({
           type: 'buttons',
           items: [
             { id: 'btn_hear_quote', label: 'Hear Dialogue Card', style: 'primary', emoji: '💬' },
+            { id: 'boast_servant_profile', label: 'Boast to Server 📢', style: 'danger' },
             { id: 'btn_show_servants_list', label: 'All Servants List', style: 'secondary', emoji: '📜' },
             { id: 'quick_start_duel', label: 'Enter Battle', style: 'danger', emoji: '⚔️' }
           ]
@@ -1449,6 +1453,105 @@ export default function DiscordEmulator({
     }
 
     // ----------------------------------------------------
+    // COMMAND 4.9: /church, /sanctuary (Fuyuki Church Sanctuary)
+    // ----------------------------------------------------
+    if (trimmed.startsWith('/church') || trimmed.startsWith('/sanctuary')) {
+      const uP = grailWar.participants[master.discordId] ||
+        Object.values(grailWar.participants).find(p => p.username.toLowerCase() === master.username.toLowerCase());
+
+      if (!uP || !uP.isAlive) {
+        addMessage({
+          id: getNextId('bot_church_no_part'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '⛪ Fuyuki Church — Neutral Sanctuary',
+            description: 'You are not currently an active Master in the Holy Grail War. Summon a Servant via `/summon ritual` to enter the war.',
+            color: '#71717a'
+          }
+        });
+        return;
+      }
+
+      if (trimmed.includes('leave') || trimmed.includes('exit')) {
+        const res = leaveChurchSanctuary(grailWar, uP.discordId);
+        onUpdateGrailWar(res.updatedWar);
+        addMessage({
+          id: getNextId('bot_church_leave'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: res.success ? '⚔️ Departed Fuyuki Church Sanctuary' : '⚠️ Departure Notice',
+            description: res.message,
+            color: res.success ? '#3b82f6' : '#f59e0b'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'church_enter', label: 'Enter Church Sanctuary ⛪', style: 'primary' },
+              { id: 'quick_war_defenses', label: 'Mage Defenses 🏰', style: 'secondary' }
+            ]
+          }
+        });
+        return;
+      }
+
+      if (trimmed.includes('enter') || trimmed.includes('join') || trimmed.includes('claim')) {
+        const res = enterChurchSanctuary(grailWar, uP.discordId);
+        onUpdateGrailWar(res.updatedWar);
+        addMessage({
+          id: getNextId('bot_church_enter'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: res.success ? '⛪ Fuyuki Church Asylum Granted' : '⚠️ Asylum Notice',
+            description: res.message,
+            color: res.success ? '#10b981' : '#f59e0b'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'church_leave', label: 'Leave Sanctuary 🚪', style: 'danger' },
+              { id: 'quick_war_defenses', label: 'Mage Defenses 🏰', style: 'secondary' }
+            ]
+          }
+        });
+        return;
+      }
+
+      // Default status view
+      const inSanctuary = !!uP.inSanctuary;
+      addMessage({
+        id: getNextId('bot_church_status'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '⛪ Fuyuki Church — Neutral Sanctuary Grounds',
+          description:
+            `*Father Kirei Kotomine presides over the neutral grounds of the Fuyuki Church.*\n\n` +
+            `Under Holy Church oversight and imperial leylines, Masters seeking reprieve from the Holy Grail War may claim sanctuary here.\n\n` +
+            `• **Your Current Sanctuary Status:** ${inSanctuary ? '🕊️ **ACTIVE ASYLUM** (Immune to all ambushes & attacks)' : '⚔️ **IN THE FIELD** (Active combatant)'}\n` +
+            `• **Asylum Inviolability:** No Master may target, ambush, or skirmish against anyone sheltered within the church.\n` +
+            `• **Truce Binding:** Masters in sanctuary cannot launch ambushes or attack rivals until they formally depart.\n\n` +
+            `*Use the interactive buttons below or commands \`/church enter\` and \`/church leave\`:*`,
+          color: inSanctuary ? '#10b981' : '#6366f1',
+          footer: 'Holy Church Overseer Protocol • Fuyuki City Neutral Zone'
+        },
+        components: {
+          type: 'buttons',
+          items: [
+            inSanctuary
+              ? { id: 'church_leave', label: 'Leave Sanctuary (Re-enter War) 🚪', style: 'danger' }
+              : { id: 'church_enter', label: 'Enter Church Sanctuary (Claim Asylum) ⛪', style: 'primary' },
+            { id: 'quick_war_defenses', label: 'Mage Defenses 🏰', style: 'secondary' },
+            { id: 'quick_war_status', label: 'War Board 📋', style: 'secondary' }
+          ]
+        }
+      });
+      return;
+    }
+
+    // ----------------------------------------------------
     // COMMAND 5: /grailwar, /attack, /leak, /defenses, /familiar, /trap
     // ----------------------------------------------------
     if (trimmed.startsWith('/grailwar') || trimmed.startsWith('/attack') || trimmed.startsWith('/leak') || trimmed.startsWith('/ambush') || trimmed.startsWith('/defenses') || trimmed.startsWith('/ward') || trimmed.startsWith('/evade') || trimmed.startsWith('/familiar') || trimmed.startsWith('/familiars') || trimmed.startsWith('/trap') || trimmed.startsWith('/traps')) {
@@ -1702,6 +1805,7 @@ export default function DiscordEmulator({
         const wardType = uP?.boundedField || 'none';
         const evadeOn = uP?.autoEvadeEnabled !== false;
         const seals = uP?.commandSeals ?? 3;
+        const inSanctuary = !!uP?.inSanctuary;
 
         let wardDesc = '🚫 **No Active Wards:** Your workshop has no perimeter defenses.';
         if (wardType === 'ward') {
@@ -1730,6 +1834,10 @@ export default function DiscordEmulator({
               `Master **${master.username}**'s Tactical Defense Headquarters\n\n` +
               (actionMsg ? `📢 **Action Outcome:**\n${actionMsg}\n\n` : '') +
               `🛡️ **Bounded Field Protocol:**\n${wardDesc}\n\n` +
+              `⛪ **Fuyuki Church Sanctuary:**\n` +
+              (inSanctuary
+                ? `• **🕊️ ACTIVE ASYLUM:** Sheltered under Father Kotomine. 100% immune to all ambushes & attacks (cannot attack rivals).\n\n`
+                : `• **⚔️ IN THE FIELD:** Active combatant in Holy Grail War territory.\n\n`) +
               `🔴 **Command Seal Emergency Evacuation:**\n` +
               (evadeOn
                 ? `• **🟢 ENABLED:** When taking fatal ambush damage, consumes **1 Command Seal** to escape into shadows with **1 HP**.\n`
@@ -1760,6 +1868,11 @@ export default function DiscordEmulator({
                 label: 'Alarm Trap (3k DMG)',
                 style: wardType === 'alarm' ? 'danger' : 'secondary',
                 emoji: '🚨'
+              },
+              {
+                id: inSanctuary ? 'church_leave' : 'church_enter',
+                label: inSanctuary ? 'Leave Sanctuary 🚪' : 'Church Sanctuary ⛪',
+                style: inSanctuary ? 'danger' : 'primary'
               },
               {
                 id: 'toggle_auto_evade',
@@ -2921,6 +3034,8 @@ export default function DiscordEmulator({
         classPassive = '❤️ **Battle Continuation (Guts):** Revives once with 25% Max HP if dealt a fatal blow.';
       }
 
+      const inSanctuary = !!uP?.inSanctuary;
+
       addMessage({
         id: getNextId('bot_defenses_updated'),
         sender: 'bot',
@@ -2931,6 +3046,10 @@ export default function DiscordEmulator({
             `Master **${master.username}**'s Tactical Defense Headquarters\n\n` +
             (actionMsg ? `📢 **Action Outcome:**\n${actionMsg}\n\n` : '') +
             `🛡️ **Bounded Field Protocol:**\n${wardDesc}\n\n` +
+            `⛪ **Fuyuki Church Sanctuary:**\n` +
+            (inSanctuary
+              ? `• **🕊️ ACTIVE ASYLUM:** Sheltered under Father Kotomine. 100% immune to all ambushes & attacks (cannot attack rivals).\n\n`
+              : `• **⚔️ IN THE FIELD:** Active combatant in Holy Grail War territory.\n\n`) +
             `🔴 **Command Seal Emergency Evacuation:**\n` +
             (evadeOn
               ? `• **🟢 ENABLED:** When taking fatal ambush damage, consumes **1 Command Seal** to escape into shadows with **1 HP**.\n`
@@ -2961,6 +3080,11 @@ export default function DiscordEmulator({
               label: 'Alarm Trap (3k DMG)',
               style: wardType === 'alarm' ? 'danger' : 'secondary',
               emoji: '🚨'
+            },
+            {
+              id: inSanctuary ? 'church_leave' : 'church_enter',
+              label: inSanctuary ? 'Leave Sanctuary 🚪' : 'Church Sanctuary ⛪',
+              style: inSanctuary ? 'danger' : 'primary'
             },
             {
               id: 'toggle_auto_evade',
@@ -3122,11 +3246,116 @@ export default function DiscordEmulator({
         });
         return;
       }
+      if (btnId === 'church_enter' || btnId === 'church_leave') {
+        const uP = grailWar.participants[master.discordId] ||
+          Object.values(grailWar.participants).find(p => p.username.toLowerCase() === master.username.toLowerCase());
+        if (!uP) return;
+
+        if (btnId === 'church_enter') {
+          const res = enterChurchSanctuary(grailWar, uP.discordId);
+          onUpdateGrailWar(res.updatedWar);
+          addMessage({
+            id: getNextId('bot_church_btn_res'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: res.success ? '⛪ Fuyuki Church Asylum Granted' : '⚠️ Asylum Notice',
+              description: res.message,
+              color: res.success ? '#10b981' : '#f59e0b'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'church_leave', label: 'Leave Sanctuary 🚪', style: 'danger' },
+                { id: 'quick_war_defenses', label: 'Mage Defenses 🏰', style: 'secondary' }
+              ]
+            }
+          });
+        } else {
+          const res = leaveChurchSanctuary(grailWar, uP.discordId);
+          onUpdateGrailWar(res.updatedWar);
+          addMessage({
+            id: getNextId('bot_church_btn_res'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: res.success ? '⚔️ Departed Fuyuki Church Sanctuary' : '⚠️ Departure Notice',
+              description: res.message,
+              color: res.success ? '#3b82f6' : '#f59e0b'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'church_enter', label: 'Enter Church Sanctuary ⛪', style: 'primary' },
+                { id: 'quick_war_defenses', label: 'Mage Defenses 🏰', style: 'secondary' }
+              ]
+            }
+          });
+        }
+        return;
+      }
+
+      if (btnId === 'boast_servant_summon' || btnId === 'boast_servant_profile' || btnId === 'boast_ce_pull') {
+        const updatedParticipants = { ...grailWar.participants };
+        const key = Object.keys(updatedParticipants).find(
+          k => k === master.discordId || updatedParticipants[k].username.toLowerCase() === master.username.toLowerCase()
+        );
+        if (key) {
+          updatedParticipants[key] = {
+            ...updatedParticipants[key],
+            isExposed: true,
+            exposureReason: 'public_command'
+          };
+          onUpdateGrailWar({
+            ...grailWar,
+            participants: updatedParticipants
+          });
+        }
+
+        const s = master.servants?.[0];
+        const sName = s?.nickname || s?.template?.name || 'Heroic Spirit';
+        const sClass = s?.template?.servantClass || 'Saber';
+        const userP = key ? updatedParticipants[key] : undefined;
+
+        let title = `📢 MASTER ANNOUNCEMENT: ${master.username.toUpperCase()} REVEALS HEROIC SPIRIT!`;
+        let desc = `Master **${master.username}** has chosen to boast their Servant's true parameters to the entire server!\n\n` +
+          `⚔️ **Servant:** **${sName}** (\`${sClass}\`)\n` +
+          `• **Noble Phantasm:** **${s?.template?.noblePhantasm?.name || 'Sacred Phantasm'}**\n` +
+          `• **Current Status:** HP: ${userP?.currentHp?.toLocaleString() || '30,000'}/${userP?.maxHp?.toLocaleString() || '30,000'}\n\n` +
+          `⚠️ *Master **${master.username}** has cast aside concealment and is now permanently **EXPOSED** on the Holy Grail War Board (\`/grailwar\`)! Rivals may now target them freely.*`;
+
+        if (btnId === 'boast_ce_pull') {
+          title = `📢 MASTER ANNOUNCEMENT: ${master.username.toUpperCase()} FORGES CRAFT ESSENCE!`;
+          desc = `Master **${master.username}** has broadcasted their sacred relic forges to the entire server!\n\n` +
+            `⚠️ *Master **${master.username}** has cast aside concealment and is now permanently **EXPOSED** on the Holy Grail War Board (\`/grailwar\`)!*`;
+        }
+
+        addMessage({
+          id: getNextId('bot_boast_announcement'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title,
+            description: desc,
+            color: '#ef4444',
+            thumbnailUrl: s?.template?.avatarUrl,
+            footer: 'Public Identity Broadcast • Master Permanently Exposed'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'quick_war_status', label: 'View War Board (/grailwar)', style: 'primary', emoji: '📋' }
+            ]
+          }
+        });
+        return;
+      }
     }
   };
 
   const userParticipant = grailWar.participants[master.discordId];
   const isUserExposed = userParticipant?.isExposed;
+  const isUserInSanctuary = userParticipant?.inSanctuary;
 
   return (
     <div id="discord_emulator_container" className="flex flex-col h-full bg-[#0a0a0a] text-[#dbdee1] rounded-xl overflow-hidden border border-[#1a1a1a] shadow-2xl">
@@ -3166,6 +3395,13 @@ export default function DiscordEmulator({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Sanctuary Badge */}
+          {isUserInSanctuary && (
+            <div className="px-2.5 py-1 text-[11px] font-mono font-medium rounded-sm bg-[#064e3b] text-[#34d399] border border-[#34d399]/40 flex items-center gap-1">
+              <span>⛪ Sanctuary</span>
+            </div>
+          )}
+
           {/* Master Exposure State Badge */}
           <div
             className={`px-2.5 py-1 text-[11px] font-mono font-medium rounded-sm border flex items-center gap-1.5 ${

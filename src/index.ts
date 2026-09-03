@@ -35,7 +35,9 @@ import {
   patrolCityInWar, 
   simulateWarSkirmish,
   disarmChannelTrapsInWar,
-  recallFamiliarsInWar
+  recallFamiliarsInWar,
+  enterChurchSanctuary,
+  leaveChurchSanctuary
 } from './engine/grailwar';
 
 // ==========================================
@@ -302,7 +304,7 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
-      if (btnId.startsWith('ward_') || btnId === 'toggle_auto_evade') {
+      if (btnId.startsWith('ward_') || btnId === 'toggle_auto_evade' || btnId === 'church_enter' || btnId === 'church_leave') {
         if (isCivilian) {
           await interaction.reply({
             ephemeral: true,
@@ -331,6 +333,16 @@ client.on(Events.InteractionCreate, async interaction => {
           const curP = war.participants[interaction.user.id];
           const newMode = curP?.autoEvadeEnabled !== false ? 'off' : 'on';
           const res = executeWarAction(war, interaction.user.id, 'toggle_evade', newMode);
+          war = res.updatedWar;
+          msg = res.message;
+          await saveMaster(master);
+        } else if (btnId === 'church_enter') {
+          const res = enterChurchSanctuary(war, interaction.user.id);
+          war = res.updatedWar;
+          msg = res.message;
+          await saveMaster(master);
+        } else if (btnId === 'church_leave') {
+          const res = leaveChurchSanctuary(war, interaction.user.id);
           war = res.updatedWar;
           msg = res.message;
           await saveMaster(master);

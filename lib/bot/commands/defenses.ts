@@ -16,7 +16,9 @@ export const defensesCommandCode = `import {
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { 
   getOrInitWarSession,
-  executeWarAction
+  executeWarAction,
+  enterChurchSanctuary,
+  leaveChurchSanctuary
 } from '../engine/grailwar';
 
 export const data = new SlashCommandBuilder()
@@ -66,12 +68,18 @@ function buildDefensesEmbed(userParticipant: any, lastMsg?: string) {
     classPassive = '❤️ **Battle Continuation (Guts):** Revives once with 25% Max HP if dealt a fatal blow.';
   }
 
+  const inSanctuary = !!userParticipant?.inSanctuary;
+
   return new EmbedBuilder()
     .setTitle('🏰 Mage Workshop & Personal Sanctuary Defenses')
     .setDescription(
       'Master **' + (userParticipant?.username || 'Master') + '**\\\'s Tactical Defense Headquarters\\n\\n' +
       (lastMsg ? ('📢 **Action Outcome:**\\n' + lastMsg + '\\n\\n') : '') +
       '🛡️ **Bounded Field Protocol:**\\n' + wardDescription + '\\n\\n' +
+      '⛪ **Fuyuki Church Sanctuary:**\\n' +
+      (inSanctuary
+        ? '• **🕊️ ACTIVE ASYLUM:** Sheltered by Father Kotomine. 100% immune to all ambushes & attacks (cannot attack rivals).\\n\\n'
+        : '• **⚔️ IN THE FIELD:** Active combatant in Holy Grail War territory.\\n\\n') +
       '🔴 **Command Seal Emergency Evacuation:**\\n' +
       (autoEvade 
         ? '• **🟢 ENABLED:** When taking fatal ambush damage, consumes **1 Command Seal** to escape into shadows with **1 HP**.\\n'
@@ -87,6 +95,7 @@ function buildDefensesEmbed(userParticipant: any, lastMsg?: string) {
 function buildDefensesButtons(userParticipant: any) {
   const currentWard = userParticipant?.boundedField || 'none';
   const autoEvade = userParticipant?.autoEvadeEnabled !== false;
+  const inSanctuary = !!userParticipant?.inSanctuary;
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -107,6 +116,10 @@ function buildDefensesButtons(userParticipant: any) {
   );
 
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(inSanctuary ? 'church_leave' : 'church_enter')
+      .setLabel(inSanctuary ? 'Leave Sanctuary 🚪' : 'Church Sanctuary ⛪')
+      .setStyle(inSanctuary ? ButtonStyle.Danger : ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('toggle_auto_evade')
       .setLabel(autoEvade ? 'Auto-Evacuate: ON 🟢' : 'Auto-Evacuate: OFF 🔴')
@@ -201,6 +214,18 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           const curP = w.participants[i.user.id];
           const newMode = curP?.autoEvadeEnabled !== false ? 'off' : 'on';
           const res = executeWarAction(w, i.user.id, 'toggle_evade', newMode);
+          w = res.updatedWar;
+          await saveMaster(m);
+          const uP = w.participants[i.user.id];
+          await i.update({ embeds: [buildDefensesEmbed(uP, res.message)], components: buildDefensesButtons(uP) });
+        } else if (i.customId === 'church_enter') {
+          const res = enterChurchSanctuary(w, i.user.id);
+          w = res.updatedWar;
+          await saveMaster(m);
+          const uP = w.participants[i.user.id];
+          await i.update({ embeds: [buildDefensesEmbed(uP, res.message)], components: buildDefensesButtons(uP) });
+        } else if (i.customId === 'church_leave') {
+          const res = leaveChurchSanctuary(w, i.user.id);
           w = res.updatedWar;
           await saveMaster(m);
           const uP = w.participants[i.user.id];

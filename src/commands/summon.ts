@@ -18,7 +18,8 @@ import { MasterServantInstance, ServantTemplate } from '../types';
 import { 
   getOrInitWarSession, 
   registerMasterSummonInWar, 
-  handleMasterReleaseInWar 
+  handleMasterReleaseInWar,
+  exposeMasterInWar 
 } from '../engine/grailwar';
 
 // ==========================================
@@ -258,7 +259,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setStyle(ButtonStyle.Danger)
       );
 
-      const reply = await interaction.reply({ embeds: [statusEmbed], components: [row], withResponse: true })
+      const reply = await interaction.reply({ embeds: [statusEmbed], components: [row], ephemeral: true, withResponse: true })
         .then(r => r.resource?.message || interaction.fetchReply());
       setupSummonButtonCollector(reply, interaction.user.id);
       return;
@@ -290,7 +291,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         )
         .setColor(0xef4444);
 
-      await interaction.reply({ embeds: [releaseEmbed] });
+      await interaction.reply({ embeds: [releaseEmbed], ephemeral: true });
       return;
     }
 
@@ -315,7 +316,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setThumbnail(s.template.avatarUrl)
         .setColor(0xf59e0b);
 
-      await interaction.reply({ embeds: [embed] });
+      await interaction.reply({ embeds: [embed], ephemeral: true });
       return;
     }
 
@@ -331,7 +332,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         )
         .setColor(0xef4444);
 
-      await interaction.reply({ embeds: [embed] });
+      await interaction.reply({ embeds: [embed], ephemeral: true });
       return;
     }
 
@@ -384,12 +385,18 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setCustomId('btn_enter_war')
         .setLabel('Enter Grail War (/grailwar)')
         .setEmoji('🏰')
-        .setStyle(ButtonStyle.Success)
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('btn_boast_summon')
+        .setLabel('Boast to Server')
+        .setEmoji('📢')
+        .setStyle(ButtonStyle.Danger)
     );
 
     const reply = await interaction.reply({
       embeds: [ritualEmbed, summonEmbed],
       components: [actionRow],
+      ephemeral: true,
       withResponse: true
     }).then(r => r.resource?.message || interaction.fetchReply());
 
@@ -423,6 +430,35 @@ function setupSummonButtonCollector(message: any, userId: string) {
 
     try {
       const master = await getOrCreateMaster(i.user.id, i.user.username);
+
+      if (i.customId === 'btn_boast_summon') {
+        const war = getOrInitWarSession(master);
+        exposeMasterInWar(war, i.user.id, 'public_command');
+        await saveMaster(master);
+
+        const currentServant = master.servants?.[0];
+        const template = currentServant?.template;
+        if (template && i.channel && 'send' in i.channel) {
+          const starStr = '★'.repeat(template.rarity || 4);
+          const announceEmbed = new EmbedBuilder()
+            .setTitle(`📢 MASTER ANNOUNCEMENT: ${master.username.toUpperCase()} FORGES CONTRACT!`)
+            .setDescription(
+              `Master **${master.username}** has openly unveiled their sacred covenant with **${template.name}** (\`${template.servantClass}\` • [${starStr}])!\n\n` +
+              `🗣️ *" ${currentServant.customQuotes?.summon || template.summonQuote} "*\n\n` +
+              `💥 **Noble Phantasm:** *${template.noblePhantasm.name}*\n\n` +
+              `⚠️ *Master **${master.username}** has renounced the shadows and is now permanently **EXPOSED** on the Holy Grail War board (\`/grailwar status\`)!*`
+            )
+            .setImage(template.cardArtUrl || template.avatarUrl)
+            .setColor(template.rarity === 5 ? 0xd4af37 : 0xef4444);
+
+          await (i.channel as any).send({ embeds: [announceEmbed] });
+        }
+        await i.reply({
+          content: '📢 You have revealed your Heroic Spirit to the server! Your identity is now permanently exposed on the War Board.',
+          ephemeral: true
+        });
+        return;
+      }
 
       if (i.customId === 'btn_release_contract') {
         if (!master.servants || master.servants.length === 0) {

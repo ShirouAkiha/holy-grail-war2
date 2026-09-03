@@ -278,6 +278,8 @@ export interface WarMasterParticipant {
   baseHpAtDamage?: number;
   lastHealRitualTime?: number;
   gutsTriggered?: boolean;
+  inSanctuary?: boolean;
+  sanctuaryEnteredAt?: number;
 }
 
 export interface WarAlliance {

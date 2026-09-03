@@ -819,20 +819,47 @@ export function attackSuspectUserInWar(
     };
   }
 
+  if (attacker.inSanctuary) {
+    return {
+      success: false,
+      message: `⛪ **Fuyuki Church Truce:** You are currently seeking sanctuary at the Fuyuki Church under Father Kotomine's protection! You cannot launch ambushes while under church asylum. (Use \`/church leave\` to return to the Holy Grail War).`,
+      updatedWar: targetWar
+    };
+  }
+
   const targetMaster = findTargetMaster(targetWar, suspectQuery);
 
   if (targetMaster && targetMaster.discordId === attacker.discordId) {
     return { success: false, message: 'You cannot target yourself with an ambush!', updatedWar: targetWar };
   }
 
-  // B. Target's ambushed cooldown (3 minutes)
-  if (targetMaster && targetMaster.isAlive && targetMaster.lastAmbushedTime && now - targetMaster.lastAmbushedTime < 180000) {
-    const remainingSecs = Math.ceil((180000 - (now - targetMaster.lastAmbushedTime)) / 1000);
+  if (targetMaster && targetMaster.inSanctuary) {
     return {
       success: false,
-      message: `🚨 **Alert Protocol Active:** **${targetMaster.isExposed ? targetMaster.username : 'Target Master'}** has recently clashed and is on high alert! Wait **${remainingSecs}s** before trying to ambush them.`,
+      message: `⛪ **Fuyuki Church Sanctuary:** **${targetMaster.isExposed ? targetMaster.username : 'Target Master'}** is currently residing under the neutral asylum of the Fuyuki Church Overseer! All assaults and ambushes are strictly forbidden on consecrated grounds.`,
       updatedWar: targetWar
     };
+  }
+
+  // B. Anti-Dogpiling & High Alert Protection
+  // Target cannot be ambushed if:
+  // 1. Within 5 minutes (300,000ms) of last ambush AND HP has not fully regenerated to 100%.
+  if (targetMaster && targetMaster.isAlive && targetMaster.lastAmbushedTime) {
+    const curTargetHp = calculateCurrentHp(targetMaster, now);
+    const elapsedSinceAmbushed = now - targetMaster.lastAmbushedTime;
+    const isTargetFullHp = curTargetHp >= targetMaster.maxHp;
+
+    if (elapsedSinceAmbushed < 300000 && !isTargetFullHp) {
+      const remainingSecs = Math.ceil((300000 - elapsedSinceAmbushed) / 1000);
+      const mins = Math.floor(remainingSecs / 60);
+      const secs = remainingSecs % 60;
+      const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+      return {
+        success: false,
+        message: `🚨 **Anti-Dogpiling High Alert Active:** **${targetMaster.isExposed ? targetMaster.username : 'Target Master'}** was recently attacked and their defensive wards are on maximum alert! Their workshop perimeter is fortified and deflecting all ambush attempts until their Spiritual Core reconstitutes to full HP (Immunity remaining: **${timeStr}**).`,
+        updatedWar: targetWar
+      };
+    }
   }
 
   // ---------------------------------------------------------
@@ -842,6 +869,8 @@ export function attackSuspectUserInWar(
     // Record action timers
     attacker.lastAmbushTime = now;
     targetMaster.lastAmbushedTime = now;
+    // An aggressive action breaks attacker's own high alert defense turtle
+    attacker.lastAmbushedTime = undefined;
 
     const targetIdx = Object.values(targetWar.participants).indexOf(targetMaster) + 1;
     const targetLabel = targetMaster.isExposed ? `Master **${targetMaster.username}**` : `Shadow Master #${targetIdx}`;
@@ -911,15 +940,21 @@ export function attackSuspectUserInWar(
       }
     }
 
-    // 3. INSTINCT / CLAIRVOYANCE (Saber, Archer, Lancer) PASSIVE (35% chance to parry 80%)
-    const hasInstinct = ['Saber', 'Archer', 'Lancer'].includes(defenderClass);
-    if (hasInstinct && Math.random() < 0.35) {
-      const parried = Math.round(ambushDamage * 0.8);
+    // 3. INSTINCT / CLAIRVOYANCE (Saber, Archer, Lancer) PASSIVE
+    // Anti-Vulture: If defender is below 50% HP, parry rate doubles to 70% and parries 90% of damage!
+    const targetHpBeforeStrike = calculateCurrentHp(targetMaster, now);
+    const isWounded = targetHpBeforeStrike < (targetMaster.maxHp * 0.5);
+    const hasInstinct = ['Saber', 'Archer', 'Lancer', 'Ruler', 'Shielder'].includes(defenderClass) || isWounded;
+    const parryChance = isWounded ? 0.70 : 0.35;
+    
+    if (hasInstinct && Math.random() < parryChance) {
+      const parryPercent = isWounded ? 0.90 : 0.80;
+      const parried = Math.round(ambushDamage * parryPercent);
       ambushDamage = ambushDamage - parried;
-      defenseText += `👁️ **Instinct/Clairvoyance Alert:** Servant **${targetMaster.servantName}** sensed the threat! Parried 80% of damage (saved **${parried.toLocaleString()} DMG**) and counter-struck for **1,500 DMG**!\n`;
+      defenseText += `👁️ **${isWounded ? 'Crisis Instinct / Desperation Parry' : 'Instinct / Clairvoyance Alert'}:** Servant **${targetMaster.servantName}** sensed the lethal trajectory! Parried ${Math.round(parryPercent * 100)}% of damage (saved **${parried.toLocaleString()} DMG**) and counter-struck for **2,000 DMG**!\n`;
       
       // Deal counter dmg
-      attacker.currentHp = Math.max(0, attacker.currentHp - 1500);
+      attacker.currentHp = Math.max(0, attacker.currentHp - 2000);
       if (attacker.currentHp <= 0) {
         attacker.isAlive = false;
       }
@@ -963,12 +998,12 @@ export function attackSuspectUserInWar(
       targetMaster.commandSeals--;
       targetMaster.currentHp = 1;
       targetMaster.isAlive = true;
-      targetMaster.isExposed = false; // Vanish back into the shadows
+      // Note: User rule: "once exposed, remains exposed" — Master identity does NOT vanish back into shadows
       
       mainMessage += `\n\n🔴 **EMERGENCY COMMAND SEAL EVACUATION!**\n` +
         `As **${targetMaster.username}** faced fatal damage in **${chanTag}**, their Command Seal flared: *“By my Command Seal... Spatial Evacuation!”*\n` +
         `• Consumed **1 Command Seal** (Remaining: **${targetMaster.commandSeals}/3**).\n` +
-        `• Nullified death-blow! **${targetMaster.username}** escaped into deep shadows with **1 HP**!`;
+        `• Nullified death-blow! **${targetMaster.username}** escaped with **1 HP**!`;
 
       targetWar.eventLogs.unshift({
         id: `evt_evac_${Date.now()}`,
@@ -1985,5 +2020,95 @@ export function recordDuelOutcome(
     eliminated: isEliminated,
     victorMaster: victor,
     defeatedMaster: defeated
+  };
+}
+
+// =========================================================================
+// FUYUKI CHURCH SANCTUARY PROTOCOL
+// =========================================================================
+
+export function enterChurchSanctuary(
+  war: HolyGrailWarSession,
+  masterId: string
+): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
+  const targetWar = war || globalWarSession;
+  if (!targetWar) {
+    return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
+  }
+
+  const participant = targetWar.participants[masterId];
+  if (!participant || !participant.isAlive) {
+    return { success: false, message: 'You are not an active participant in this Holy Grail War.', updatedWar: targetWar };
+  }
+
+  if (participant.inSanctuary) {
+    return { success: false, message: '⛪ You are already under the sacred protection of the Fuyuki Church Sanctuary!', updatedWar: targetWar };
+  }
+
+  participant.inSanctuary = true;
+  participant.sanctuaryEnteredAt = Date.now();
+
+  const nameLabel = participant.isExposed ? participant.username : 'A Master concealed in shadows';
+  const logMsg = `⛪ **CHURCH SANCTUARY:** Master **${participant.username}** has sought political asylum under Father Kotomine at the Fuyuki Church! Immune to all ambushes and attacks while on sacred grounds.`;
+  
+  targetWar.eventLogs.unshift({
+    id: `evt_sanctuary_${Date.now()}`,
+    timestamp: Date.now(),
+    text: logMsg,
+    type: 'heal'
+  });
+
+  saveWarToDisk();
+
+  return {
+    success: true,
+    message: `⛪ **FUYUKI CHURCH SANCTUARY ENTERED**\n\n` +
+      `You have sought political asylum at the Fuyuki Church under Father Kotomine's supervision!\n\n` +
+      `• 🛡️ **Absolute Asylum:** You are **100% immune** to all ambushes, skirmishes, and duels while in Sanctuary.\n` +
+      `• 🕊️ **Pact of Non-Aggression:** You cannot initiate attacks or ambushes against other Masters while in Sanctuary.\n` +
+      `• 🚪 **Departure:** Use \`/church leave\` or the status panel when you are prepared to re-enter the Holy Grail War.`,
+    updatedWar: targetWar
+  };
+}
+
+export function leaveChurchSanctuary(
+  war: HolyGrailWarSession,
+  masterId: string
+): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
+  const targetWar = war || globalWarSession;
+  if (!targetWar) {
+    return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
+  }
+
+  const participant = targetWar.participants[masterId];
+  if (!participant || !participant.isAlive) {
+    return { success: false, message: 'You are not an active participant in this Holy Grail War.', updatedWar: targetWar };
+  }
+
+  if (!participant.inSanctuary) {
+    return { success: false, message: 'You are not currently in the Fuyuki Church Sanctuary.', updatedWar: targetWar };
+  }
+
+  participant.inSanctuary = false;
+  participant.sanctuaryEnteredAt = undefined;
+
+  const logMsg = `⚔️ **SANCTUARY DEPARTURE:** Master **${participant.username}** has stepped down from the Fuyuki Church steps and re-entered the battlefield of the Holy Grail War!`;
+
+  targetWar.eventLogs.unshift({
+    id: `evt_sanctuary_leave_${Date.now()}`,
+    timestamp: Date.now(),
+    text: logMsg,
+    type: 'heal'
+  });
+
+  saveWarToDisk();
+
+  return {
+    success: true,
+    message: `⚔️ **DEPARTED FUYUKI CHURCH SANCTUARY**\n\n` +
+      `You have stepped out of consecrated grounds and re-entered the active battle royale!\n\n` +
+      `• Your weapons are drawn and you may now launch tactical ambushes (\`/war attack\`).\n` +
+      `• Rivals may now target you if you are exposed or tracked!`,
+    updatedWar: targetWar
   };
 }

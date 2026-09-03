@@ -353,7 +353,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         )
         .setColor(0x22c55e);
 
-      await interaction.reply({ embeds: [embed] });
+      await interaction.reply({ embeds: [embed], ephemeral: true });
       return;
     }
 
@@ -374,7 +374,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setDescription(`Removed Craft Essence from **${servantName}**.`)
           .setColor(0x94a3b8);
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.reply({ embeds: [embed], ephemeral: true });
         return;
       }
 
@@ -419,7 +419,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           )
           .setColor(0x38bdf8);
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.reply({ embeds: [embed], ephemeral: true });
         return;
       }
 
@@ -429,7 +429,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       let selectedItemId: string | undefined = activeServant.equippedCeId;
 
       const { embed, components } = buildInventoryHub(master, activeServant, currentCategory, currentPage, selectedItemId);
-      const reply = await interaction.reply({ embeds: [embed], components, fetchReply: true });
+      const reply = await interaction.reply({ embeds: [embed], components, ephemeral: true, fetchReply: true });
 
       const collector = reply.createMessageComponentCollector({
         idle: 120000,
@@ -566,7 +566,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         )
         .setColor(0x22c55e);
 
-      await interaction.reply({ embeds: [embed] });
+      await interaction.reply({ embeds: [embed], ephemeral: true });
       return;
     }
 
@@ -579,7 +579,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       await saveMaster(master);
 
       await interaction.reply({
-        content: `✨ Servant nickname updated to **${name}**!`
+        content: `✨ Servant nickname updated to **${name}**!`,
+        ephemeral: true
       });
       return;
     }
