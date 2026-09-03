@@ -3162,8 +3162,7 @@ export default function DiscordEmulator({
           content: 
             `## 💥 NOBLE PHANTASM UNLEASHED: **${npName.toUpperCase()}**\n` +
             `⚔️ **${npActor.name}** (Master: <@${master.discordId}>)${chantLine}\n\n` +
-            `${npGif}\n` +
-            `*(Full-width cinematic • Auto-dismisses on next turn command)*`
+            `${npGif}`
         });
 
         activeNpMsgIdRef.current = npMsgId;
@@ -3190,8 +3189,7 @@ export default function DiscordEmulator({
           content: 
             `## 💥 ENEMY NOBLE PHANTASM: **${aiNpName.toUpperCase()}**\n` +
             `⚔️ **${aiActor.name}** (Master: ${aiActor.masterName})${chantLine}\n\n` +
-            `${aiNpGif}\n` +
-            `*(Full-width cinematic • Auto-dismisses on next turn command)*`
+            `${aiNpGif}`
         });
 
         activeNpMsgIdRef.current = aiNpMsgId;
@@ -3214,6 +3212,13 @@ export default function DiscordEmulator({
       setActiveDuel({ battle: updatedState, lastLog });
 
       if (updatedState.turnPhase === 'victory' || updatedState.turnPhase === 'defeat') {
+        // Retain finishing Noble Phantasm cinematic in chat log upon duel conclusion
+        if (activeNpTimeoutRef.current) {
+          clearTimeout(activeNpTimeoutRef.current);
+          activeNpTimeoutRef.current = null;
+        }
+        activeNpMsgIdRef.current = null;
+
         const isWin = updatedState.turnPhase === 'victory';
 
         if (isWin) {

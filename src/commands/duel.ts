@@ -1463,15 +1463,11 @@ async function startInteractiveDuel(
     // we deliver the True Name invocation as a native Discord message with the direct GIF link.
     // Native Discord message links unfurl at full width without embed bounding box restrictions!
     const chantBlock = npChant ? `\n> *“${npChant}”*` : '';
-    const footerNotice = autoDelete 
-      ? `*(Cinematic stays active until the next turn is chosen, or for ${afkTimeoutSeconds}s)*` 
-      : `*(Cinematic logged)*`;
 
     const fullWidthContent = 
       `## 💥 NOBLE PHANTASM UNLEASHED: **${npName.toUpperCase()}**\n` +
       `⚔️ **${servantDisplayName}** (Master: <@${actor.userId}>)${chantBlock}\n` +
-      `${npGifUrl}\n` +
-      `${footerNotice}`;
+      `${npGifUrl}`;
 
     try {
       let sentMsg: any = null;
@@ -1633,8 +1629,7 @@ async function startInteractiveDuel(
 
       // Check if Defender fainted
       if (defender.currentHp <= 0) {
-        collector.stop();
-        await cleanupNpGif();
+        collector.stop('finished');
         const finalAttachment = await createTurnSummaryAttachment(p1, p2, round, log, p1CardChoice, p2CardChoice);
         await finishDuel(i, attacker, defender, p1Master, p2Master, finalAttachment);
         return;
@@ -1674,8 +1669,7 @@ async function startInteractiveDuel(
         }
 
         if (attacker.currentHp <= 0) {
-          collector.stop();
-          await cleanupNpGif();
+          collector.stop('finished');
           const finalAttachment = await createTurnSummaryAttachment(p1, p2, round, aiLog, p1CardChoice, p2CardChoice);
           await finishDuel(i, defender, attacker, p1Master, p2Master, finalAttachment);
           return;
@@ -1706,8 +1700,8 @@ async function startInteractiveDuel(
   });
 
   collector.on('end', async (_collected: any, reason: string) => {
-    await cleanupNpGif();
     if (reason === 'idle' || reason === 'time') {
+      await cleanupNpGif();
       try {
         await battleMsg.edit({
           content: '⌛ **Duel ended due to inactivity** *(Turn timed out after 2 minutes of no input)*.',
