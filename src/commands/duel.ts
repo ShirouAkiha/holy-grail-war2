@@ -35,7 +35,7 @@ export const data = new SlashCommandBuilder()
 // ==========================================
 export interface CombatantBuff {
   name: string;
-  type: 'buff_atk' | 'buff_def' | 'crit_dmg' | 'evade' | 'guts' | 'np_gen';
+  type: 'buff_atk' | 'buff_def' | 'crit_dmg' | 'evade' | 'guts' | 'np_gen' | 'buster_up' | 'arts_up' | 'quick_up' | 'invincible' | 'stun';
   value: number;
   remainingTurns: number;
 }
@@ -339,11 +339,15 @@ function buildDuelEmbed(
     return isUsed ? `\`[#${pendingIndices.indexOf(i) + 1}: ${c} ✔️]\`` : `\`[${i + 1}: ${emoji} ${c}]\``;
   }).join(' ');
 
+  const npType = activeCombatant.servant.template?.noblePhantasm?.cardType || 'Buster';
+  const npScope = activeCombatant.servant.template?.noblePhantasm?.target || 'single';
+  const npEmoji = npType === 'Buster' ? '🔴' : npType === 'Arts' ? '🔵' : '🟢';
+
   const cardEmojiMap: Record<string, string> = {
     Buster: '🔴 Buster',
     Arts: '🔵 Arts',
     Quick: '🟢 Quick',
-    NP: '💥 Noble Phantasm'
+    NP: `${npEmoji} NP [${npType} • ${npScope.toUpperCase()}]`
   };
 
   const c1Text = pendingCards[0] ? cardEmojiMap[pendingCards[0]] || pendingCards[0] : '❓ Card 1 (1.0x Lead)';
@@ -353,10 +357,10 @@ function buildDuelEmbed(
   let leadHelp = '';
   if (pendingCards.length > 0) {
     const first = pendingCards[0];
-    if (first === 'Buster') leadHelp = '\n🔥 *1st Buster Lead: +50% DMG to remaining cards!*';
-    else if (first === 'Arts') leadHelp = '\n🌊 *1st Arts Lead: +100% NP Gain to remaining cards!*';
-    else if (first === 'Quick') leadHelp = '\n⚡ *1st Quick Lead: +20% Crit Rate & Star Drop!*';
-    else if (first === 'NP') leadHelp = '\n💥 *Noble Phantasm leading sequence!*';
+    const effectiveFirst = first === 'NP' ? npType : first;
+    if (effectiveFirst === 'Buster') leadHelp = '\n🔥 *1st Buster Lead: +50% DMG to remaining cards!*';
+    else if (effectiveFirst === 'Arts') leadHelp = '\n🌊 *1st Arts Lead: +100% NP Gain to remaining cards!*';
+    else if (effectiveFirst === 'Quick') leadHelp = '\n⚡ *1st Quick Lead: +20% Crit Rate & Star Drop!*';
   }
 
   const sClass = activeCombatant.servant.template?.servantClass || 'Servant';
@@ -443,11 +447,13 @@ function buildCombatButtons(
 
   // Row 2: Noble Phantasm + Clear + Command Seal
   const hasSeals = (combatant.commandSeals || 0) > 0;
+  const npType = combatant.servant.template?.noblePhantasm?.cardType || 'Buster';
+  const npScope = combatant.servant.template?.noblePhantasm?.target || 'single';
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId('card_np')
-      .setLabel(`NP (${Math.round(combatant.npGauge)}%)`)
-      .setEmoji('💥')
+      .setLabel(`NP [${npType}] (${Math.round(combatant.npGauge)}%)`)
+      .setEmoji(npType === 'Buster' ? '🔴' : npType === 'Arts' ? '🔵' : '🟢')
       .setStyle(isNpReady ? ButtonStyle.Danger : ButtonStyle.Secondary)
       .setDisabled(!isNpReady || isNpSelected || pendingCards.length >= 3),
     new ButtonBuilder()
@@ -532,9 +538,22 @@ function activateCombatantSkill(
 
   if (skill.effectType === 'buff_atk') {
     const val = skill.value || 35;
-    combatant.activeBuffs.push({ name: skill.name, type: 'buff_atk', value: val, remainingTurns: skill.duration || 2 });
-    combatant.critStars = Math.min(50, combatant.critStars + 10);
-    logText = `⚔️ **${combatant.servant.template.name}** activated **${skill.name}**, gaining **+${val}% ATK Buff** for ${skill.duration || 2} turns & +10 Stars!`;
+    const desc = (skill.description || '').toLowerCase();
+    const nameLower = (skill.name || '').toLowerCase();
+    if (desc.includes('buster') || nameLower.includes('buster') || nameLower.includes('mana burst')) {
+      combatant.activeBuffs.push({ name: skill.name, type: 'buster_up', value: val, remainingTurns: skill.duration || 1 });
+      logText = `🔥 **${combatant.servant.template.name}** activated **${skill.name}**, gaining **+${val}% Buster Performance Up** for ${skill.duration || 1} turn!`;
+    } else if (desc.includes('arts') || nameLower.includes('arts') || nameLower.includes('fox')) {
+      combatant.activeBuffs.push({ name: skill.name, type: 'arts_up', value: val, remainingTurns: skill.duration || 1 });
+      logText = `🌊 **${combatant.servant.template.name}** activated **${skill.name}**, gaining **+${val}% Arts Performance Up** for ${skill.duration || 1} turn!`;
+    } else if (desc.includes('quick') || nameLower.includes('quick') || nameLower.includes('primordial rune')) {
+      combatant.activeBuffs.push({ name: skill.name, type: 'quick_up', value: val, remainingTurns: skill.duration || 1 });
+      logText = `⚡ **${combatant.servant.template.name}** activated **${skill.name}**, gaining **+${val}% Quick Performance Up** for ${skill.duration || 1} turn!`;
+    } else {
+      combatant.activeBuffs.push({ name: skill.name, type: 'buff_atk', value: val, remainingTurns: skill.duration || 2 });
+      combatant.critStars = Math.min(50, combatant.critStars + 10);
+      logText = `⚔️ **${combatant.servant.template.name}** activated **${skill.name}**, gaining **+${val}% ATK Buff** for ${skill.duration || 2} turns & +10 Stars!`;
+    }
   } else if (skill.effectType === 'buff_def') {
     const val = skill.value || 30;
     combatant.activeBuffs.push({ name: skill.name, type: 'buff_def', value: val, remainingTurns: skill.duration || 2 });
@@ -665,17 +684,19 @@ function resolveStrike(
     defender.servant.template.servantClass
   );
 
-  // 1st Card Lead Bonus Evaluation
-  const firstCard = cardsSequence[0] || 'Buster';
-  const isBusterFirst = firstCard === 'Buster';
-  const isArtsFirst = firstCard === 'Arts';
-  const isQuickFirst = firstCard === 'Quick';
+  // 1st Card Lead Bonus Evaluation (NP card uses its permanently mapped Card Type)
+  const npEffectiveCard = attacker.servant.template.noblePhantasm?.cardType || 'Buster';
+  const firstEffectiveCard = cardsSequence[0] === 'NP' ? npEffectiveCard : (cardsSequence[0] || 'Buster');
+  const isBusterFirst = firstEffectiveCard === 'Buster';
+  const isArtsFirst = firstEffectiveCard === 'Arts';
+  const isQuickFirst = firstEffectiveCard === 'Quick';
 
-  // Type Chains Evaluation (3 cards of exact same color)
+  // Type Chains Evaluation (3 cards of exact same color, including NP card of that color)
   const is3Cards = cardsSequence.length >= 3;
-  const isBusterChain = is3Cards && cardsSequence.every(c => c === 'Buster');
-  const isArtsChain = is3Cards && cardsSequence.every(c => c === 'Arts');
-  const isQuickChain = is3Cards && cardsSequence.every(c => c === 'Quick');
+  const effectiveChainCards = cardsSequence.map(c => c === 'NP' ? npEffectiveCard : c);
+  const isBusterChain = is3Cards && effectiveChainCards.every(c => c === 'Buster');
+  const isArtsChain = is3Cards && effectiveChainCards.every(c => c === 'Arts');
+  const isQuickChain = is3Cards && effectiveChainCards.every(c => c === 'Quick');
 
   const busterChainBonusDmg = isBusterChain ? Math.round(attacker.baseAtk * 0.20 * PVP_DAMAGE_MODIFIER) : 0;
 
@@ -710,23 +731,87 @@ function resolveStrike(
     if (card === 'NP') {
       hasNpHit = true;
       const npTemplate = attacker.servant.template.noblePhantasm;
-      const npMultiplier = (npTemplate.multiplier || 380) / 100;
-      const variance = 0.96 + Math.random() * 0.08;
+      const npCardType = npTemplate.cardType || 'Buster';
+      const npScope = npTemplate.target || 'single';
 
-      let npDmg = Math.round((effectiveAtk * npMultiplier * 0.18) * classMult * variance * PVP_DAMAGE_MODIFIER);
-      npDmg = Math.max(1500, npDmg);
-
-      if (isEvading) {
-        npDmg = Math.round(npDmg * 0.20);
-        defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
+      // Multipliers: ST vs AoE vs Support
+      let baseMultiplier = npTemplate.multiplier;
+      if (npScope === 'support') {
+        baseMultiplier = 0;
+      } else if (!baseMultiplier || baseMultiplier <= 0) {
+        if (npScope === 'single') {
+          baseMultiplier = npCardType === 'Quick' ? 1200 : npCardType === 'Arts' ? 900 : 600;
+        } else {
+          baseMultiplier = npCardType === 'Quick' ? 600 : npCardType === 'Arts' ? 450 : 400;
+        }
       }
 
-      const isOvercharge = attacker.npGauge >= 200;
-      attacker.npGauge = 0;
-      if (isOvercharge) {
-        attacker.npGauge = 20;
-        attacker.critStars = Math.min(50, attacker.critStars + 12);
+      // Card-specific performance buffs (Card Type strictly dictates which card buffs interact!)
+      const busterBuff = attacker.activeBuffs.filter(b => b.type === 'buster_up' || /mana burst|buster/i.test(b.name)).reduce((s, b) => s + b.value, 0);
+      const artsBuff = attacker.activeBuffs.filter(b => b.type === 'arts_up' || /arts|fox/i.test(b.name)).reduce((s, b) => s + b.value, 0);
+      const quickBuff = attacker.activeBuffs.filter(b => b.type === 'quick_up' || /quick|primordial rune/i.test(b.name)).reduce((s, b) => s + b.value, 0);
+
+      const cardPerfMult = 1.0 + ((npCardType === 'Buster' ? busterBuff : npCardType === 'Arts' ? artsBuff : quickBuff) / 100);
+
+      // Card inherent damage scaling: Buster (1.5x), Arts (1.0x), Quick (0.8x)
+      const cardTypeScale = npCardType === 'Buster' ? 1.50 : npCardType === 'Quick' ? 0.80 : 1.00;
+      const scopeScale = npScope === 'single' ? 1.00 : npScope === 'aoe' ? 0.70 : 0.00;
+
+      const overchargeLevel = attacker.npGauge >= 300 ? 3 : attacker.npGauge >= 200 ? 2 : 1;
+      const overchargeScale = 1.0 + (overchargeLevel - 1) * 0.20;
+
+      let npDmg = 0;
+      let npRefund = 0;
+      let npStars = 0;
+
+      if (npScope === 'support') {
+        // Non-damaging Support NP
+        npDmg = 0;
+        if (npCardType === 'Arts') {
+          const healAmount = Math.round(attacker.maxHp * 0.20);
+          attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + healAmount);
+          attacker.activeBuffs.push({ name: 'Invincibility', type: 'invincible', value: 100, remainingTurns: 1 });
+          attacker.activeBuffs.push({ name: 'Divine Protection', type: 'buff_def', value: 30, remainingTurns: 3 });
+          npRefund = Math.round(25 * (1.0 + artsBuff / 100));
+          npStars = 5;
+        } else if (npCardType === 'Quick') {
+          npStars = Math.round(30 * (1.0 + quickBuff / 100));
+          attacker.activeBuffs.push({ name: 'Evade', type: 'evade', value: 100, remainingTurns: 1 });
+          npRefund = Math.round(15 * (1.0 + quickBuff / 100));
+        } else {
+          attacker.activeBuffs.push({ name: 'War Cry', type: 'buff_atk', value: 30, remainingTurns: 3 });
+          npStars = 10;
+        }
+      } else {
+        const variance = 0.96 + Math.random() * 0.08;
+        const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * classMult * cardPerfMult * variance);
+        npDmg = Math.round(Math.max(1200, rawNpDmg) * PVP_DAMAGE_MODIFIER);
+
+        if (isEvading) {
+          npDmg = Math.round(npDmg * 0.15);
+          defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
+        }
+
+        // Refund properties dictated by card type
+        if (npCardType === 'Buster') {
+          npRefund = overchargeLevel >= 2 ? 20 : 0;
+          npStars = npScope === 'aoe' ? 8 : 5;
+        } else if (npCardType === 'Arts') {
+          const baseRefund = npScope === 'aoe' ? 30 : 25;
+          npRefund = Math.round(baseRefund * (1.0 + artsBuff / 100));
+          npStars = 5;
+        } else {
+          const baseStars = npScope === 'aoe' ? 35 : 25;
+          npStars = Math.round(baseStars * (1.0 + quickBuff / 100));
+          const baseRefund = npScope === 'aoe' ? 20 : 15;
+          npRefund = Math.round(baseRefund * (1.0 + quickBuff / 100));
+        }
       }
+
+      attacker.npGauge = npRefund;
+      totalNpGained += npRefund;
+      attacker.critStars = Math.min(50, attacker.critStars + npStars);
+      totalStarsGained += npStars;
       totalSeqDmg += npDmg;
     } else if (card === 'Buster') {
       let cardMult = 1.4 * posMult;

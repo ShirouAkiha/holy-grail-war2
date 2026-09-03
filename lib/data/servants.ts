@@ -1,4 +1,4 @@
-import { ServantTemplate, ServantClass } from '../types';
+import { ServantTemplate, ServantClass } from '../types/index';
 
 export const SERVANT_DATABASE: ServantTemplate[] = [
   // 5-Star SSR Servants
@@ -168,7 +168,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       chant: 'Pierce through, thrust of sure mortality! Gáe Bolg Alternative!',
       description: 'Pinpoints the enemy with an inescapable double spear strike, causing guaranteed Stun and lethal puncture.',
       target: 'single',
-      multiplier: 500,
+      multiplier: 1200,
       overchargeEffect: 'Stun foe for 1 turn + Critical Star burst'
     },
     lore: 'The immortal ruler and gatekeeper of the Land of Shadows who trained hero Cú Chulainn in spear mastery.',
@@ -225,10 +225,10 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       name: 'Luminosité Eternelle: God is Here With Me',
       cardType: 'Arts',
       chant: 'My Lord... I entrust this flag to you! Luminosité Eternelle!',
-      description: 'Unfurls the sacred banner, granting Invincibility to allies for 1 turn and massive DEF boost.',
-      target: 'aoe',
+      description: 'Unfurls the sacred banner, granting Invincibility to allies for 1 turn, massive DEF boost, HP recovery, and Arts NP refund.',
+      target: 'support',
       multiplier: 0,
-      overchargeEffect: 'Team Invincibility (1 turn) + 25% DEF + 2500 HP Regen'
+      overchargeEffect: 'Team Invincibility (1 turn) + 30% DEF + 2500 HP Regen + 25% Arts NP refund'
     },
     lore: 'The saint of France who received the voice of the Lord and liberated Orleans during the Hundred Years\' War.',
     summonQuote: 'Servant Ruler, Jeanne d\'Arc. The Holy Grail War requires an arbiter; I shall safeguard this pact.',
@@ -331,14 +331,14 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         icon: '👑'
       },
       {
-         id: 'defender_of_fuyuki_a',
-         name: 'Defender of Fuyuki A',
-         cooldown: 6,
-         description: 'Charges own NP gauge by 20% and increases Defense by 30% for 1 turn.',
-         effectType: 'np_charge',
-         value: 20,
-         duration: 1,
-         icon: '🖤'
+        id: 'defender_of_fuyuki_a',
+        name: 'Defender of Fuyuki A',
+        cooldown: 6,
+        description: 'Charges own NP gauge by 20% and increases Defense by 30% for 1 turn.',
+        effectType: 'np_charge',
+        value: 20,
+        duration: 1,
+        icon: '🖤'
       }
     ],
     noblePhantasm: {
@@ -581,10 +581,10 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       name: 'Gáe Bolg: Barbed Spear that Pierces with Death',
       cardType: 'Quick',
       chant: 'Your heart is mine! Gáe... BOLG!',
-      description: 'Reverses causality so the heart is pierced before the spear is thrust. Inflicts high single-target puncture.',
+      description: 'Reverses causality so the heart is pierced before the spear is thrust. Inflicts high single-target puncture with massive Critical Star drop.',
       target: 'single',
-      multiplier: 450,
-      overchargeEffect: 'Instant death chance + DEF down 20%'
+      multiplier: 1200,
+      overchargeEffect: 'Instant death chance + DEF down 20% + 25 Critical Stars'
     },
     lore: 'The tragic Celtic warrior hero of the Ulster cycle who wielded the cursed red spear Gáe Bolg.',
     summonQuote: 'Yo! Servant Lancer. Call me the Hound of Culann. Let\'s have some fun in this war!',

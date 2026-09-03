@@ -117,6 +117,17 @@ export const data = new SlashCommandBuilder()
       )
       .addStringOption(opt =>
         opt
+          .setName('np_scope')
+          .setDescription('Noble Phantasm Scope')
+          .setRequired(false)
+          .addChoices(
+            { name: '🎯 Single Target (ST)', value: 'single' },
+            { name: '💥 Area of Effect (AoE)', value: 'aoe' },
+            { name: '🛡️ Support / Non-damaging', value: 'support' }
+          )
+      )
+      .addStringOption(opt =>
+        opt
           .setName('summon_quote')
           .setDescription('Dialogue spoken when summoned by the Master')
           .setRequired(false)
@@ -197,6 +208,17 @@ export const data = new SlashCommandBuilder()
             { name: '🔴 Buster (Heavy Damage)', value: 'Buster' },
             { name: '🔵 Arts (NP Refund)', value: 'Arts' },
             { name: '🟢 Quick (Critical Stars)', value: 'Quick' }
+          )
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('np_scope')
+          .setDescription('New Noble Phantasm Scope')
+          .setRequired(false)
+          .addChoices(
+            { name: '🎯 Single Target (ST)', value: 'single' },
+            { name: '💥 Area of Effect (AoE)', value: 'aoe' },
+            { name: '🛡️ Support / Non-damaging', value: 'support' }
           )
       )
       .addStringOption(opt =>
@@ -284,8 +306,19 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const npName = interaction.options.getString('noble_phantasm') || `${name}'s Secret Art`;
     const npChant = interaction.options.getString('np_chant') || `Behold the legendary power of ${name}!`;
     const npCard = (interaction.options.getString('np_card') as CardType) || 'Buster';
+    const npScope = (interaction.options.getString('np_scope') as 'single' | 'aoe' | 'support') || 'single';
     const summonQuote = interaction.options.getString('summon_quote') || `Servant ${servantClass}. I ask of you, are you my Master?`;
     const lore = interaction.options.getString('lore') || `A legendary Heroic Spirit summoned across time to participate in the Holy Grail War.`;
+
+    // Calculate standardized base multiplier based on Card Type and Scope
+    let npMultiplier = 600;
+    if (npScope === 'support') {
+      npMultiplier = 0;
+    } else if (npScope === 'single') {
+      npMultiplier = npCard === 'Quick' ? 1200 : npCard === 'Arts' ? 900 : 600;
+    } else {
+      npMultiplier = npCard === 'Quick' ? 600 : npCard === 'Arts' ? 450 : 400;
+    }
 
     // Picture resolution: check uploaded attachment first, then image_url option, then high quality placeholder
     const imageAttachment = interaction.options.getAttachment('image_file');
@@ -348,10 +381,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         name: npName,
         cardType: npCard,
         chant: npChant,
-        description: `Unleashes supreme power, dealing 500% damage to the enemy.`,
-        target: 'single',
-        multiplier: 500,
-        overchargeEffect: 'Attack +20% for 3 turns'
+        description: npScope === 'support'
+          ? `Support Noble Phantasm granting defensive protection, HP recovery, and tactical advantages.`
+          : `Unleashes supreme power, dealing ${npMultiplier}% ${npCard} ${npScope === 'single' ? 'Single Target' : 'Area of Effect'} damage.`,
+        target: npScope,
+        multiplier: npMultiplier,
+        overchargeEffect: npCard === 'Quick' ? 'Increases Star Generation' : npCard === 'Arts' ? 'Increases NP Gain' : 'Increases ATK by 20% for 3 turns'
       },
       lore,
       summonQuote,
@@ -373,7 +408,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `• **Class:** \`${newServantTemplate.servantClass}\`\n` +
         `• **Title:** *${newServantTemplate.title}*\n` +
         `• **Base HP:** \`${newServantTemplate.baseHp.toLocaleString()}\` | **Base ATK:** \`${newServantTemplate.baseAtk.toLocaleString()}\`\n` +
-        `• **Noble Phantasm:** **${newServantTemplate.noblePhantasm.name}** (${newServantTemplate.noblePhantasm.cardType})\n` +
+        `• **Noble Phantasm:** **${newServantTemplate.noblePhantasm.name}** [${newServantTemplate.noblePhantasm.cardType} • ${newServantTemplate.noblePhantasm.target.toUpperCase()}]\n` +
         `• **NP Chant:** *"${newServantTemplate.noblePhantasm.chant}"*\n` +
         `• **Summon Dialogue:** *"${newServantTemplate.summonQuote}"*\n\n` +
         `📜 **Lore:**\n${newServantTemplate.lore}\n\n` +
@@ -466,6 +501,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const npName = interaction.options.getString('noble_phantasm');
     const npChant = interaction.options.getString('np_chant');
     const npCard = interaction.options.getString('np_card') as CardType | null;
+    const npScope = interaction.options.getString('np_scope') as 'single' | 'aoe' | 'support' | null;
     const summonQuote = interaction.options.getString('summon_quote');
     const lore = interaction.options.getString('lore');
 
@@ -480,6 +516,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       noblePhantasmName: npName || undefined,
       noblePhantasmChant: npChant || undefined,
       noblePhantasmCardType: npCard || undefined,
+      noblePhantasmTarget: npScope || undefined,
       summonQuote: summonQuote || undefined,
       lore: lore || undefined
     });
@@ -504,7 +541,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `Admin has updated the parameters and picture for **${s.name}**!\n\n` +
         `• **Class:** \`${s.servantClass}\` | **Title:** *${s.title}*\n` +
         `• **Base HP:** \`${s.baseHp.toLocaleString()}\` | **Base ATK:** \`${s.baseAtk.toLocaleString()}\`\n` +
-        `• **Noble Phantasm:** **${s.noblePhantasm.name}** (${s.noblePhantasm.cardType})\n` +
+        `• **Noble Phantasm:** **${s.noblePhantasm.name}** [${s.noblePhantasm.cardType} • ${s.noblePhantasm.target.toUpperCase()}]\n` +
         `• **NP Chant:** *"${s.noblePhantasm.chant}"*\n` +
         `• **Summon Dialogue:** *"${s.summonQuote}"*\n\n` +
         `*Changes take effect immediately across all active Master contracts and combat arenas!*`

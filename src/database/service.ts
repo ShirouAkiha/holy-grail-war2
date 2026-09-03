@@ -535,6 +535,8 @@ export function updateServantTemplate(
     noblePhantasmName?: string;
     noblePhantasmChant?: string;
     noblePhantasmCardType?: 'Buster' | 'Arts' | 'Quick';
+    noblePhantasmTarget?: 'single' | 'aoe' | 'support';
+    noblePhantasmMultiplier?: number;
     summonQuote?: string;
     lore?: string;
   }
@@ -580,6 +582,22 @@ export function updateServantTemplate(
   }
   if (updates.noblePhantasmCardType) {
     target.noblePhantasm.cardType = updates.noblePhantasmCardType;
+  }
+  if (updates.noblePhantasmTarget) {
+    target.noblePhantasm.target = updates.noblePhantasmTarget;
+  }
+  if (updates.noblePhantasmMultiplier !== undefined) {
+    target.noblePhantasm.multiplier = updates.noblePhantasmMultiplier;
+  } else if (updates.noblePhantasmTarget || updates.noblePhantasmCardType) {
+    const card = target.noblePhantasm.cardType || 'Buster';
+    const scope = target.noblePhantasm.target || 'single';
+    if (scope === 'support') {
+      target.noblePhantasm.multiplier = 0;
+    } else if (scope === 'single') {
+      target.noblePhantasm.multiplier = card === 'Quick' ? 1200 : card === 'Arts' ? 900 : 600;
+    } else {
+      target.noblePhantasm.multiplier = card === 'Quick' ? 600 : card === 'Arts' ? 450 : 400;
+    }
   }
 
   // Persist in customServants array if custom, or update in SERVANT_DATABASE

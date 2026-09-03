@@ -6,7 +6,7 @@ import {
   MasterServantInstance,
   ServantClass,
   TurnActionChoice
-} from '../types';
+} from '../types/index';
 import { SERVANT_DATABASE } from '../data/servants';
 
 // Global PvP damage modifier (0.35x) to scale FGO-style formula output down to ~25k-35k Servant HP pools
@@ -133,7 +133,27 @@ export function applyCombatantSkill(
   let logText = `✨ **${actor.name}** activated **${skill.name}**!`;
 
   switch (skill.effectType) {
-    case 'buff_atk':
+    case 'buff_atk': {
+      const descLower = (skill.description || '').toLowerCase();
+      const nameLower = skill.name.toLowerCase();
+      let cardBuff: 'buster_up' | 'arts_up' | 'quick_up' | null = null;
+      if (descLower.includes('buster') || nameLower.includes('mana burst') || nameLower.includes('bravery')) {
+        cardBuff = 'buster_up';
+      } else if (descLower.includes('arts') || nameLower.includes('fox') || descLower.includes('arts up')) {
+        cardBuff = 'arts_up';
+      } else if (descLower.includes('quick') || nameLower.includes('primordial rune') || descLower.includes('quick up')) {
+        cardBuff = 'quick_up';
+      }
+
+      if (cardBuff) {
+        actor.activeBuffs.push({
+          name: `${skill.name} (${cardBuff === 'buster_up' ? 'Buster' : cardBuff === 'arts_up' ? 'Arts' : 'Quick'} Up)`,
+          type: cardBuff,
+          value: skill.value || 30,
+          remainingTurns: skill.duration || 1
+        });
+      }
+
       actor.activeBuffs.push({
         name: skill.name,
         type: 'buff_atk',
@@ -141,8 +161,10 @@ export function applyCombatantSkill(
         remainingTurns: skill.duration || 2
       });
       actor.critStars = Math.min(50, actor.critStars + 10);
-      logText = `⚔️ **${actor.name}** activated **${skill.name}**, gaining **+${skill.value || 30}% ATK** for ${skill.duration || 2} turns and +10 Critical Stars!`;
+      const cardDetail = cardBuff ? ` (+${skill.value || 30}% ${cardBuff === 'buster_up' ? 'Buster' : cardBuff === 'arts_up' ? 'Arts' : 'Quick'} Card Effectiveness)` : '';
+      logText = `⚔️ **${actor.name}** activated **${skill.name}**, gaining **+${skill.value || 30}% ATK**${cardDetail} for ${skill.duration || 2} turns and +10 Critical Stars!`;
       break;
+    }
     case 'buff_def':
       actor.activeBuffs.push({
         name: skill.name,
@@ -227,6 +249,258 @@ export function initializeBattle(
   };
 }
 
+export interface NoblePhantasmExecutionResult {
+  cardType: CardType;
+  scope: 'single' | 'aoe' | 'support';
+  damageDealt: number;
+  npCharged: number;
+  starsGenerated: number;
+  hpHealed: number;
+  isCritical: boolean;
+  actionSummary: string;
+  isEvaded: boolean;
+  isInvincible: boolean;
+}
+
+/**
+ * Resolves Noble Phantasm execution according to Fate/Grand Order mechanics:
+ * 1. Permanently mapped Card Type: Buster, Arts, or Quick.
+ * 2. Scope classification: Single Target (ST), Area of Effect (AoE), or Support/Non-damaging.
+ * 3. Base damage scaling dictated by card type (Buster 1.5x card mod, Arts 1.0x, Quick 0.8x; ST vs AoE).
+ * 4. Refund properties (Buster: 0% base; Arts: 25-30% refund scaled by Arts buffs; Quick: massive stars + moderate refund).
+ * 5. Party-wide & active buff interaction (Buster buffs only affect Buster, Arts buffs only affect Arts & refund, Quick buffs affect Quick & stars).
+ */
+export function executeNoblePhantasmLogic(
+  actor: ActiveCombatant,
+  target: ActiveCombatant,
+  classMult: number
+): NoblePhantasmExecutionResult {
+  const np = actor.noblePhantasm || {
+    name: 'Noble Phantasm',
+    cardType: 'Buster' as CardType,
+    chant: '',
+    description: '',
+    target: 'single' as const,
+    multiplier: 600,
+    overchargeEffect: ''
+  };
+  const cardType: CardType = np.cardType || 'Buster';
+  const scope: 'single' | 'aoe' | 'support' = (np.target as any) || 'single';
+
+  // Base Multipliers according to Fate/Grand Order parameters:
+  // Buster: ST 600%, AoE 400%, Support 0%
+  // Arts: ST 900%, AoE 450%, Support 0%
+  // Quick: ST 1200%, AoE 600%, Support 0%
+  let baseMultiplier = np.multiplier;
+  if (scope === 'support') {
+    baseMultiplier = 0;
+  } else if (!baseMultiplier || baseMultiplier <= 0) {
+    if (scope === 'single') {
+      baseMultiplier = cardType === 'Quick' ? 1200 : cardType === 'Arts' ? 900 : 600;
+    } else {
+      baseMultiplier = cardType === 'Quick' ? 600 : cardType === 'Arts' ? 450 : 400;
+    }
+  }
+
+  // Command card base damage modifiers: Buster (1.5x), Arts (1.0x), Quick (0.8x)
+  const cardDamageModifier = cardType === 'Buster' ? 1.50 : cardType === 'Quick' ? 0.80 : 1.00;
+  // Scope modifier: Single Target focuses full concentrated force (1.0x); AoE distributes damage (0.70x in 1v1 duel); Support deals 0
+  const scopeModifier = scope === 'single' ? 1.00 : scope === 'aoe' ? 0.70 : 0.00;
+
+  // Overcharge scaling
+  const overchargeLevel = actor.npGauge >= 300 ? 3 : actor.npGauge >= 200 ? 2 : 1;
+  const overchargeDamageBonus = 1.0 + (overchargeLevel - 1) * 0.20;
+
+  // General ATK Buffs
+  const atkBuff = actor.activeBuffs
+    .filter(b => b.type === 'buff_atk')
+    .reduce((s, b) => s + b.value, 0);
+
+  // Card Performance Buffs (Card Type strictly dictates which card buffs interact!)
+  const busterBuff = actor.activeBuffs
+    .filter(b => b.type === 'buster_up' || /mana burst|buster/i.test(b.name))
+    .reduce((s, b) => s + b.value, 0) +
+    (actor.equippedCe?.passiveType === 'buster_up' && actor.equippedCe.id !== 'ce_black_grail' ? (actor.equippedCe.passiveValue || 0) : 0);
+
+  const artsBuff = actor.activeBuffs
+    .filter(b => b.type === 'arts_up' || /arts|fox/i.test(b.name))
+    .reduce((s, b) => s + b.value, 0) +
+    (actor.equippedCe?.passiveType === 'arts_up' ? (actor.equippedCe.passiveValue || 0) : 0);
+
+  const quickBuff = actor.activeBuffs
+    .filter(b => b.type === 'quick_up' || /quick|primordial rune/i.test(b.name))
+    .reduce((s, b) => s + b.value, 0) +
+    (actor.equippedCe?.passiveType === 'quick_up' ? (actor.equippedCe.passiveValue || 0) : 0);
+
+  // Card-specific performance multiplier strictly matching NP card type
+  const cardPerformanceMultiplier = 1.0 + (
+    (cardType === 'Buster' ? busterBuff : cardType === 'Arts' ? artsBuff : quickBuff) / 100
+  );
+
+  // NP Damage Buff (The Black Grail, Heaven's Feel, etc.)
+  let npDmgBonus = 1.0;
+  if (actor.equippedCe) {
+    if (actor.equippedCe.id === 'ce_black_grail') npDmgBonus += 0.60;
+    else if (actor.equippedCe.id === 'ce_heavens_feel') npDmgBonus += 0.40;
+    else if (actor.equippedCe.id === 'ce_when_the_flowers_fall') npDmgBonus += 0.05;
+  }
+  const npBuffVal = actor.activeBuffs
+    .filter(b => b.type === 'buff_np_dmg')
+    .reduce((s, b) => s + b.value, 0);
+  npDmgBonus += (npBuffVal / 100);
+
+  // Target defense & debuffs
+  const defBuff = target.activeBuffs
+    .filter(b => b.type === 'buff_def')
+    .reduce((s, b) => s + b.value, 0);
+  const defDebuff = target.activeBuffs
+    .filter(b => b.type === 'debuff_def')
+    .reduce((s, b) => s + b.value, 0);
+  const targetDefFactor = Math.max(0.15, 1.0 + (defBuff - defDebuff) / 100);
+
+  const strBonus = actor.stats?.strength ? (1 + actor.stats.strength * 0.01) : 1;
+  const effectiveAtk = actor.atk * (1 + atkBuff / 100) * strBonus;
+  const effectiveDef = target.def * targetDefFactor;
+
+  let damageDealt = 0;
+  let npCharged = 0;
+  let starsGenerated = 0;
+  let hpHealed = 0;
+  let isEvaded = false;
+  let isInvincible = false;
+  let actionSummary = '';
+
+  if (scope === 'support') {
+    // Non-damaging Support Noble Phantasm
+    damageDealt = 0;
+    if (cardType === 'Arts') {
+      // e.g. Jeanne d'Arc: Luminosité Eternelle
+      const manaBonus = actor.stats?.mana ? Math.round(actor.stats.mana * 50) : 0;
+      hpHealed = 2500 + manaBonus;
+      actor.currentHp = Math.min(actor.maxHp, actor.currentHp + hpHealed);
+      actor.isInvincible = true;
+      actor.activeBuffs.push({
+        name: 'Luminosité Invincibility',
+        type: 'invincible',
+        value: 100,
+        remainingTurns: 1
+      });
+      actor.activeBuffs.push({
+        name: 'Divine Protection',
+        type: 'buff_def',
+        value: 30,
+        remainingTurns: 3
+      });
+      npCharged = Math.round(25 * (1.0 + artsBuff / 100));
+      starsGenerated = 5;
+      actionSummary = `🛡️ **${actor.name}** deployed Support Noble Phantasm [${np.name}] (Arts • Non-damaging)! Bestowed Invincibility (1T), +30% DEF, healed +${hpHealed.toLocaleString()} HP, and refilled +${npCharged}% NP Gauge!`;
+    } else if (cardType === 'Quick') {
+      // Quick Support
+      starsGenerated = Math.round(30 * (1.0 + quickBuff / 100));
+      actor.isEvading = true;
+      actor.activeBuffs.push({
+        name: 'Quick Evade',
+        type: 'evade',
+        value: 100,
+        remainingTurns: 1
+      });
+      actor.activeBuffs.push({
+        name: 'Quick Surge',
+        type: 'quick_up',
+        value: 25,
+        remainingTurns: 3
+      });
+      npCharged = Math.round(15 * (1.0 + quickBuff / 100));
+      actionSummary = `🌪️ **${actor.name}** deployed Support Noble Phantasm [${np.name}] (Quick • Non-damaging)! Generated +${starsGenerated} Stars, bestowed Evade (1T), and granted +25% Quick!`;
+    } else {
+      // Buster Support
+      actor.activeBuffs.push({
+        name: 'War Cry',
+        type: 'buff_atk',
+        value: 30,
+        remainingTurns: 3
+      });
+      actor.activeBuffs.push({
+        name: 'Buster Surge',
+        type: 'buster_up',
+        value: 30,
+        remainingTurns: 3
+      });
+      starsGenerated = 10;
+      actionSummary = `🔥 **${actor.name}** deployed Support Noble Phantasm [${np.name}] (Buster • Non-damaging)! Bestowed +30% ATK, +30% Buster, and generated +${starsGenerated} Stars!`;
+    }
+  } else {
+    // Damaging Noble Phantasm (ST or AoE)
+    const baseDamage = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardDamageModifier * scopeModifier * overchargeDamageBonus * classMult);
+    let totalDmg = (baseDamage * cardPerformanceMultiplier * npDmgBonus) - (effectiveDef * 0.25);
+    totalDmg = Math.max(1200, totalDmg);
+    const variance = 0.96 + Math.random() * 0.08;
+    totalDmg = Math.round(totalDmg * variance * PVP_DAMAGE_MODIFIER);
+
+    // Check Invincibility & Evade on target
+    if (target.isInvincible || target.activeBuffs.some(b => b.type === 'invincible')) {
+      damageDealt = 0;
+      isInvincible = true;
+      target.isInvincible = false;
+      target.activeBuffs = target.activeBuffs.filter(b => b.type !== 'invincible');
+    } else if (target.isEvading || target.activeBuffs.some(b => b.type === 'evade')) {
+      damageDealt = 0;
+      isEvaded = true;
+      target.isEvading = false;
+      target.activeBuffs = target.activeBuffs.filter(b => b.type !== 'evade');
+    } else {
+      damageDealt = totalDmg;
+    }
+
+    // Refund and Star Generation dictated by cardType:
+    if (cardType === 'Buster') {
+      // Buster: 0% base refund. Inherent 1.5x card modifier power.
+      const hasInherentRecharge = np.description.toLowerCase().includes('recharg') || np.description.toLowerCase().includes('refund');
+      npCharged = (overchargeLevel >= 2 ? 20 : 0) + (hasInherentRecharge ? 20 : 0);
+      starsGenerated = scope === 'aoe' ? 8 : 5;
+      actionSummary = isInvincible
+        ? `💥 **${actor.name}** unleashed Buster Noble Phantasm [${np.name}] (${scope === 'single' ? 'ST' : 'AoE'}), but **${target.name}** was shielded by Invincibility!`
+        : isEvaded
+        ? `💨 **${actor.name}** unleashed Buster Noble Phantasm [${np.name}] (${scope === 'single' ? 'ST' : 'AoE'}), but **${target.name}** Evaded!`
+        : `💥 **${actor.name}** unleashed Buster Noble Phantasm [${np.name}] (${scope === 'single' ? 'Single Target ST' : 'AoE'}) for **${damageDealt.toLocaleString()} DMG**! (Card Mod: 1.5x${npCharged > 0 ? ` • Recharged +${npCharged}% NP` : ''})`;
+    } else if (cardType === 'Arts') {
+      // Arts: Generates heavy NP refund, boosted by Arts performance buffs!
+      const baseRefund = scope === 'aoe' ? 30 : 25;
+      npCharged = Math.round(baseRefund * (1.0 + artsBuff / 100));
+      starsGenerated = 5;
+      actionSummary = isInvincible
+        ? `🔵 **${actor.name}** unleashed Arts Noble Phantasm [${np.name}] (${scope === 'single' ? 'ST' : 'AoE'}), but **${target.name}** was shielded by Invincibility! (Arts Refund: +${npCharged}% NP)`
+        : isEvaded
+        ? `💨 **${actor.name}** unleashed Arts Noble Phantasm [${np.name}] (${scope === 'single' ? 'ST' : 'AoE'}), but **${target.name}** Evaded! (Arts Refund: +${npCharged}% NP)`
+        : `🔵 **${actor.name}** unleashed Arts Noble Phantasm [${np.name}] (${scope === 'single' ? 'Single Target ST' : 'AoE'}) for **${damageDealt.toLocaleString()} DMG** and refilled **+${npCharged}% NP Gauge** via Arts Refund!`;
+    } else {
+      // Quick: Generates massive Critical Stars and moderate NP refund, both boosted by Quick performance buffs!
+      const baseStars = scope === 'aoe' ? 35 : 25;
+      starsGenerated = Math.round(baseStars * (1.0 + quickBuff / 100));
+      const baseRefund = scope === 'aoe' ? 20 : 15;
+      npCharged = Math.round(baseRefund * (1.0 + quickBuff / 100));
+      actionSummary = isInvincible
+        ? `🟢 **${actor.name}** unleashed Quick Noble Phantasm [${np.name}] (${scope === 'single' ? 'ST' : 'AoE'}), but **${target.name}** blocked with Invincibility! (Generated +${starsGenerated} Stars, +${npCharged}% NP)`
+        : isEvaded
+        ? `💨 **${actor.name}** unleashed Quick Noble Phantasm [${np.name}] (${scope === 'single' ? 'ST' : 'AoE'}), but **${target.name}** Evaded! (Generated +${starsGenerated} Stars, +${npCharged}% NP)`
+        : `🟢 **${actor.name}** unleashed Quick Noble Phantasm [${np.name}] (${scope === 'single' ? 'Single Target ST' : 'AoE'}) for **${damageDealt.toLocaleString()} DMG**, generating **+${starsGenerated} Critical Stars** and refilling **+${npCharged}% NP**!`;
+    }
+  }
+
+  return {
+    cardType,
+    scope,
+    damageDealt,
+    npCharged,
+    starsGenerated,
+    hpHealed,
+    isCritical: false,
+    actionSummary,
+    isEvaded,
+    isInvincible
+  };
+}
+
 export function executeBattleTurn(
   state: BattleState,
   p1Choice: TurnActionChoice,
@@ -265,7 +539,27 @@ export function executeBattleTurn(
         usedSkillNames.push(skill.name);
 
         switch (skill.effectType) {
-          case 'buff_atk':
+          case 'buff_atk': {
+            const descLower = (skill.description || '').toLowerCase();
+            const nameLower = skill.name.toLowerCase();
+            let cardBuff: 'buster_up' | 'arts_up' | 'quick_up' | null = null;
+            if (descLower.includes('buster') || nameLower.includes('mana burst') || nameLower.includes('bravery')) {
+              cardBuff = 'buster_up';
+            } else if (descLower.includes('arts') || nameLower.includes('fox') || descLower.includes('arts up')) {
+              cardBuff = 'arts_up';
+            } else if (descLower.includes('quick') || nameLower.includes('primordial rune') || descLower.includes('quick up')) {
+              cardBuff = 'quick_up';
+            }
+
+            if (cardBuff) {
+              actor.activeBuffs.push({
+                name: `${skill.name} (${cardBuff === 'buster_up' ? 'Buster' : cardBuff === 'arts_up' ? 'Arts' : 'Quick'} Up)`,
+                type: cardBuff,
+                value: skill.value,
+                remainingTurns: skill.duration
+              });
+            }
+
             actor.activeBuffs.push({
               name: skill.name,
               type: 'buff_atk',
@@ -273,6 +567,7 @@ export function executeBattleTurn(
               remainingTurns: skill.duration
             });
             break;
+          }
           case 'buff_def':
             actor.activeBuffs.push({
               name: skill.name,
@@ -360,6 +655,22 @@ export function executeBattleTurn(
       .filter(b => b.type === 'buff_def')
       .reduce((sum, b) => sum + b.value, 0);
 
+    // Card performance buffs
+    const busterBuff = actor.activeBuffs
+      .filter(b => b.type === 'buster_up' || /mana burst|buster/i.test(b.name))
+      .reduce((sum, b) => sum + b.value, 0) +
+      (actor.equippedCe?.passiveType === 'buster_up' && actor.equippedCe.id !== 'ce_black_grail' ? (actor.equippedCe.passiveValue || 0) : 0);
+
+    const artsBuff = actor.activeBuffs
+      .filter(b => b.type === 'arts_up' || /arts|fox/i.test(b.name))
+      .reduce((sum, b) => sum + b.value, 0) +
+      (actor.equippedCe?.passiveType === 'arts_up' ? (actor.equippedCe.passiveValue || 0) : 0);
+
+    const quickBuff = actor.activeBuffs
+      .filter(b => b.type === 'quick_up' || /quick|primordial rune/i.test(b.name))
+      .reduce((sum, b) => sum + b.value, 0) +
+      (actor.equippedCe?.passiveType === 'quick_up' ? (actor.equippedCe.passiveValue || 0) : 0);
+
     const classMult = calculateClassMultiplier(actor.servantClass, target.servantClass);
     const effectiveAtk = actor.atk * (1 + atkBuff / 100) * (1 + (actor.stats.strength * 0.01));
     const effectiveDef = target.def * (1 + defBuff / 100);
@@ -372,22 +683,20 @@ export function executeBattleTurn(
     else if (cards.every(c => c === 'Arts')) cardChainType = 'Arts Chain';
     else if (cards.every(c => c === 'Quick')) cardChainType = 'Quick Chain';
 
+    let actionText = '';
+
     // If NP is ready and requested
     if (choice.useNoblePhantasm && actor.npGauge >= 100) {
       npTriggered = true;
       npChant = actor.noblePhantasm.chant;
-      const npMultiplier = (actor.noblePhantasm.multiplier / 100) * (1 + (actor.npGauge / 500));
-      let npBaseDmg = Math.max(800, (effectiveAtk * npMultiplier * 0.20 * classMult) - (effectiveDef * 0.3));
+      const npOutcome = executeNoblePhantasmLogic(actor, target, classMult);
 
-      if (target.isEvading) {
-        npBaseDmg = 0;
-        target.isEvading = false;
-      }
-
-      totalDamage += Math.round(npBaseDmg * PVP_DAMAGE_MODIFIER);
-      totalNpCharge += 20; // base refund
-      totalStars += 12;
+      totalDamage += npOutcome.damageDealt;
+      totalNpCharge += npOutcome.npCharged;
+      totalStars += npOutcome.starsGenerated;
       actor.npGauge = 0; // consume gauge
+
+      actionText = npOutcome.actionSummary;
     } else {
       // Calculate 3-card chain attacks
       cards.forEach((card, idx) => {
@@ -404,17 +713,17 @@ export function executeBattleTurn(
         let cardStarMult = 1.0;
 
         if (card === 'Buster') {
-          cardDmgMult = 1.4; // Buster deals strong base dmg
+          cardDmgMult = 1.4 * (1.0 + busterBuff / 100); // Buster deals strong base dmg boosted by Buster buffs
           cardNpMult = 0.0;
           cardStarMult = 0.5;
         } else if (card === 'Arts') {
           cardDmgMult = 1.0;
-          cardNpMult = 2.5 + (actor.stats.mana * 0.04); // Arts gives solid NP charge
+          cardNpMult = (2.5 + (actor.stats.mana * 0.04)) * (1.0 + artsBuff / 100); // Arts gives solid NP charge boosted by Arts buffs
           cardStarMult = 0.5;
         } else if (card === 'Quick') {
           cardDmgMult = 0.85;
-          cardNpMult = 1.0;
-          cardStarMult = 2.5 + (actor.stats.agility * 0.04); // Quick generates crit stars
+          cardNpMult = 1.0 * (1.0 + quickBuff / 100);
+          cardStarMult = (2.5 + (actor.stats.agility * 0.04)) * (1.0 + quickBuff / 100); // Quick generates crit stars boosted by Quick buffs
         }
 
         // Apply chain bonus
@@ -436,6 +745,8 @@ export function executeBattleTurn(
         totalNpCharge += Math.round(8 * cardNpMult * (actor.stats.mana / 15));
         totalStars += Math.round(4 * cardStarMult);
       });
+
+      actionText = `⚔️ ${actor.name} executed a ${cards.join(' • ')} sequence dealing ${totalDamage.toLocaleString()} DMG!`;
     }
 
     // Apply damage to target
@@ -447,10 +758,6 @@ export function executeBattleTurn(
     actor.activeBuffs = actor.activeBuffs
       .map(b => ({ ...b, remainingTurns: b.remainingTurns - 1 }))
       .filter(b => b.remainingTurns > 0);
-
-    const actionText = npTriggered
-      ? `💥 ${actor.name} unleashed Noble Phantasm [${actor.noblePhantasm.name}] for ${totalDamage.toLocaleString()} DMG!`
-      : `⚔️ ${actor.name} executed a ${cards.join(' • ')} sequence dealing ${totalDamage.toLocaleString()} DMG!`;
 
     turnLogs.push({
       turnNumber: state.currentTurn,

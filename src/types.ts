@@ -43,7 +43,7 @@ export interface NoblePhantasm {
   cardType: CardType;
   chant: string;
   description: string;
-  target: 'single' | 'aoe';
+  target: 'single' | 'aoe' | 'support';
   multiplier: number;
   overchargeEffect: string;
 }

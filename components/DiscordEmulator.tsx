@@ -2476,19 +2476,27 @@ export default function DiscordEmulator({
       else if (btnId === 'inv_quick_stats') handleCommand('/customise stats');
       else if (btnId === 'inv_act_equip') {
         const ownedCes = (master.craftEssences || []).filter(Boolean);
-        const activeServant = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
-        if (activeServant && ownedCes.length > 0) {
-          activeServant.equippedCeId = ownedCes[0].id;
-          activeServant.equippedCe = ownedCes[0];
-          onUpdateMaster({ ...master });
+        const targetServantId = master.activeServantId || master.servants?.[0]?.id;
+        if (targetServantId && ownedCes.length > 0) {
+          const updatedServants = (master.servants || []).map(s => {
+            if (s.id === targetServantId) {
+              return { ...s, equippedCeId: ownedCes[0].id, equippedCe: ownedCes[0] };
+            }
+            return s;
+          });
+          onUpdateMaster({ ...master, servants: updatedServants });
           postInventoryHub('ces');
         }
       } else if (btnId === 'inv_act_unequip') {
-        const activeServant = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
-        if (activeServant) {
-          activeServant.equippedCeId = undefined;
-          activeServant.equippedCe = undefined;
-          onUpdateMaster({ ...master });
+        const targetServantId = master.activeServantId || master.servants?.[0]?.id;
+        if (targetServantId) {
+          const updatedServants = (master.servants || []).map(s => {
+            if (s.id === targetServantId) {
+              return { ...s, equippedCeId: undefined, equippedCe: undefined };
+            }
+            return s;
+          });
+          onUpdateMaster({ ...master, servants: updatedServants });
           postInventoryHub('ces');
         }
       } else if (btnId === 'inv_act_inspect') {

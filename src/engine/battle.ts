@@ -8,6 +8,7 @@ import {
   TurnActionChoice
 } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
+import { executeNoblePhantasmLogic } from '../../lib/engine/battle';
 
 // Global PvP damage modifier (0.35x) to scale FGO-style formula output down to ~25k-35k Servant HP pools
 export const PVP_DAMAGE_MODIFIER = 0.35;
@@ -323,31 +324,11 @@ export function resolveCombatTurn(
   if (attackerChoice.useNoblePhantasm && attacker.npGauge >= 100) {
     npTriggered = true;
     npChant = attacker.noblePhantasm.chant;
-    const npMult = (attacker.noblePhantasm.multiplier || 380) / 100;
-    const variance = 0.96 + Math.random() * 0.08;
-    const npBaseDmg = (effectiveAtk * npMult * 0.18) * classMultiplier;
+    const npOutcome = executeNoblePhantasmLogic(attacker, defender, classMultiplier);
 
-    // CE NP Damage Boost
-    let npDamageMultiplier = 1.0;
-    if (attacker.equippedCe) {
-      if (attacker.equippedCe.id === 'ce_black_grail') {
-        npDamageMultiplier += 0.60;
-      } else if (attacker.equippedCe.id === 'ce_heavens_feel') {
-        npDamageMultiplier += 0.40;
-      } else if (attacker.equippedCe.id === 'ce_when_the_flowers_fall') {
-        npDamageMultiplier += 0.05;
-      }
-    }
-
-    let npDmg = Math.round(npBaseDmg * npDamageMultiplier * variance);
-    npDmg = Math.max(1500, npDmg);
-
-    if (isEvading) {
-      npDmg = Math.round(npDmg * 0.20);
-    }
-
-    totalDmg += Math.round(npDmg * PVP_DAMAGE_MODIFIER);
-    attacker.npGauge = 0; // Consume gauge
+    totalDmg += npOutcome.damageDealt;
+    attacker.npGauge = npOutcome.npCharged;
+    starsGen += npOutcome.starsGenerated;
   } else {
     attacker.npGauge = Math.min(300, attacker.npGauge + npGain);
   }

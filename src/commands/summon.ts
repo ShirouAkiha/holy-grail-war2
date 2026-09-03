@@ -366,7 +366,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `📊 **Base Parameters:**\n` +
         `• **HP:** \`${template.baseHp.toLocaleString()}\` | **ATK:** \`${template.baseAtk.toLocaleString()}\`\n` +
         `• **STR:** \`${template.baseStats.strength}\` | **END:** \`${template.baseStats.endurance}\` | **AGI:** \`${template.baseStats.agility}\` | **MNA:** \`${template.baseStats.mana}\` | **LCK:** \`${template.baseStats.luck}\`\n\n` +
-        `💥 **Noble Phantasm:** **${template.noblePhantasm.name}** [${template.noblePhantasm.cardType}]\n` +
+        `💥 **Noble Phantasm:** **${template.noblePhantasm.name}** [${template.noblePhantasm.cardType} • ${(template.noblePhantasm.target || 'single').toUpperCase()}]\n` +
         `* "${template.noblePhantasm.chant}" *\n\n` +
         `📜 **Lore:**\n${template.lore}`
       )

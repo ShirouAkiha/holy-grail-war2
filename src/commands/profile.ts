@@ -56,7 +56,7 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
 
   const rarity = sTemplate.rarity || activeServant.rarity || 5;
   const rarityStars = '⭐'.repeat(rarity);
-  const np = sTemplate.noblePhantasm || activeServant.noblePhantasm || { name: 'Excalibur', cardType: 'Buster', description: 'Sword of Promised Victory' };
+  const np = sTemplate.noblePhantasm || activeServant.noblePhantasm || { name: 'Excalibur', cardType: 'Buster', target: 'aoe', description: 'Sword of Promised Victory' };
   const baseAtk = sTemplate.baseAtk || activeServant.baseAtk || activeServant.baseStats?.atk || 12000;
 
   const healInfo = getHealingStatus(userParticipant);
@@ -68,7 +68,7 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
       (lastMsg ? `📢 **Action Outcome:**\n${lastMsg}\n\n` : '') +
       `⚔️ **Contracted Servant:**\n` +
       `• **${servantName}** [${rarityStars}] — Class: **${servantClass}**\n` +
-      `• **Noble Phantasm:** ✨ **${np.name}** (${np.cardType})\n` +
+      `• **Noble Phantasm:** ✨ **${np.name}** [${np.cardType} • ${(np.target || 'single').toUpperCase()}]\n` +
       `  *${np.description}*\n\n` +
       `📊 **Combat Parameters & Health Recovery:**\n` +
       `• **HP:** ❤️ \`${healInfo.currentHp.toLocaleString()} / ${healInfo.maxHp.toLocaleString()}\` (${healInfo.percent}%)\n` +
