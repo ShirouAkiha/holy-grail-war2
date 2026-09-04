@@ -622,7 +622,7 @@ export async function renderBattleTurnSummary(
     ctx.stroke();
 
     ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 13px sans-serif';
+    ctx.font = 'bold 15px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(dialogue.scenarioTitle || '💬 MID-BATTLE COMBAT CUT-IN', 320, boxY + 28);
 
@@ -658,23 +658,23 @@ export async function renderBattleTurnSummary(
     const badgeX = portX + 4;
     const badgeY = portY + 4;
     ctx.fillStyle = '#1e130a';
-    drawRoundRect(ctx, badgeX, badgeY, 40, 20, 4);
+    drawRoundRect(ctx, badgeX, badgeY, 44, 22, 4);
     ctx.fill();
     ctx.strokeStyle = '#b45309';
     ctx.lineWidth = 1;
-    drawRoundRect(ctx, badgeX, badgeY, 40, 20, 4);
+    drawRoundRect(ctx, badgeX, badgeY, 44, 22, 4);
     ctx.stroke();
 
     ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 11px sans-serif';
+    ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Lv.' + String(dialogue.level || 90), badgeX + 20, badgeY + 14);
+    ctx.fillText('Lv.' + String(dialogue.level || 90), badgeX + 22, badgeY + 15);
 
     // Speaker Nameplate
     const nameX = portX + portW + 12;
     const nameY = portY;
-    const nameW = 240;
-    const nameH = 28;
+    const nameW = 260;
+    const nameH = 30;
 
     ctx.fillStyle = '#1e110a';
     drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
@@ -685,15 +685,15 @@ export async function renderBattleTurnSummary(
     ctx.stroke();
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 15px sans-serif';
+    ctx.font = 'bold 18px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(dialogue.speakerName || 'Servant', nameX + 10, nameY + 19);
+    ctx.fillText(dialogue.speakerName || 'Servant', nameX + 12, nameY + 22);
 
     // Dialogue Quote Box
     const quoteBoxX = nameX;
-    const quoteBoxY = nameY + 34;
+    const quoteBoxY = nameY + 36;
     const quoteBoxW = boxW - portW - 36;
-    const quoteBoxH = 108;
+    const quoteBoxH = 106;
 
     ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
     drawRoundRect(ctx, quoteBoxX, quoteBoxY, quoteBoxW, quoteBoxH, 6);
@@ -704,13 +704,13 @@ export async function renderBattleTurnSummary(
     ctx.stroke();
 
     ctx.fillStyle = '#fef08a';
-    ctx.font = 'bold italic 16px "Georgia", serif, sans-serif';
+    ctx.font = 'bold italic 20px serif, sans-serif';
     ctx.textAlign = 'left';
 
     const quoteStr = '"' + dialogue.quote + '"';
     const words = quoteStr.split(' ');
     let line = '';
-    let lineY = quoteBoxY + 28;
+    let lineY = quoteBoxY + 30;
     const maxWidth = quoteBoxW - 24;
 
     for (let i = 0; i < words.length; i++) {
@@ -719,7 +719,7 @@ export async function renderBattleTurnSummary(
       if (metrics.width > maxWidth && i > 0) {
         ctx.fillText(line, quoteBoxX + 12, lineY);
         line = words[i] + ' ';
-        lineY += 24;
+        lineY += 28;
       } else {
         line = testLine;
       }
@@ -727,7 +727,7 @@ export async function renderBattleTurnSummary(
     ctx.fillText(line, quoteBoxX + 12, lineY);
 
     ctx.fillStyle = '#f59e0b';
-    ctx.font = 'bold 11px sans-serif';
+    ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText('⚡ PRE-ATTACK CUT-IN • COMBAT ACTION INCOMING', quoteBoxX + quoteBoxW - 12, quoteBoxY + quoteBoxH - 10);
   } else {

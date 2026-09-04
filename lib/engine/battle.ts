@@ -8,7 +8,7 @@ import {
   TurnActionChoice
 } from '../types/index';
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives } from '../data/servants';
-import { generateBattleDialogue, DialogueScenario } from './battleDialogue';
+import { generateBattleDialogue, DialogueScenario, MidBattleDialogue } from './battleDialogue';
 
 // Global PvP damage modifier (0.35x) to scale FGO-style formula output down to ~25k-35k Servant HP pools
 export const PVP_DAMAGE_MODIFIER = 0.35;
@@ -862,21 +862,12 @@ export function executeBattleTurn(
       .map(b => ({ ...b, remainingTurns: b.remainingTurns - 1 }))
       .filter(b => b.remainingTurns > 0);
 
-    // Determine Dialogue Scenario for Cut-In
-    let dialogueScenario: DialogueScenario = 'STANDARD_ATTACK';
-    if (npTriggered) {
-      dialogueScenario = 'NP_RELEASE';
-    } else if (isCritical || totalStars >= 20) {
-      dialogueScenario = 'CRITICAL_STRIKE';
-    } else if (cardChainType === 'Buster Brave' || cards.filter(c => c === 'Buster').length >= 2) {
-      dialogueScenario = 'BUSTER_CHAIN';
-    } else if (actor.currentHp / actor.maxHp <= 0.35) {
-      dialogueScenario = 'LOW_HP_CLUTCH';
-    } else if (classMult >= 1.35) {
-      dialogueScenario = 'CLASS_ADVANTAGE';
+    // Determine Dialogue Scenario for Cut-In (Only for NP Release or Turn 1 Battle Start)
+    let dialogueCutIn: MidBattleDialogue | undefined = undefined;
+    if (npTriggered || state.currentTurn === 1) {
+      const dialogueScenario: DialogueScenario = npTriggered ? 'NP_RELEASE' : 'STANDARD_ATTACK';
+      dialogueCutIn = generateBattleDialogue(actor, dialogueScenario, npChant);
     }
-
-    const dialogueCutIn = generateBattleDialogue(actor, dialogueScenario, npChant);
 
     turnLogs.push({
       turnNumber: state.currentTurn,

@@ -365,23 +365,19 @@ export function resolveCombatTurn(
 
   const chainSummaryStr = chainTags.length > 0 ? `\n⛓️ **Chains Triggered:** ${chainTags.join(' • ')}` : '';
 
-  let dialogueScenario: DialogueScenario = 'STANDARD_ATTACK';
-  if (attackerChoice.useNoblePhantasm || npTriggered) {
-    dialogueScenario = 'NP_RELEASE';
-  } else if (isCrit) {
-    dialogueScenario = 'CRITICAL_STRIKE';
-  } else if (attackerChoice.selectedCards.filter(c => c === 'Buster').length >= 3) {
-    dialogueScenario = 'BUSTER_CHAIN';
-  } else if (attacker.currentHp / attacker.maxHp < 0.25) {
-    dialogueScenario = 'LOW_HP_CLUTCH';
-  }
+  let dialogueCutIn: ReturnType<typeof generateBattleDialogue> | undefined = undefined;
+  if (attackerChoice.useNoblePhantasm || npTriggered || battle.currentTurn === 1) {
+    const dialogueScenario: DialogueScenario = (attackerChoice.useNoblePhantasm || npTriggered)
+      ? 'NP_RELEASE'
+      : 'STANDARD_ATTACK';
 
-  const dialogueCutIn = generateBattleDialogue(
-    attacker,
-    dialogueScenario,
-    npChant,
-    undefined
-  );
+    dialogueCutIn = generateBattleDialogue(
+      attacker,
+      dialogueScenario,
+      npChant,
+      undefined
+    );
+  }
 
   // Generate combat log entry
   const log: CombatTurnLog = {
