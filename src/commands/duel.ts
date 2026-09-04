@@ -1553,20 +1553,22 @@ async function startInteractiveDuel(
     // Native Discord message links unfurl at full width without embed bounding box restrictions!
     const chantBlock = npChant ? `\n> *“${npChant}”*` : '';
 
-    const fullWidthContent = 
-      `## 💥 NOBLE PHANTASM UNLEASHED: **${npName.toUpperCase()}**\n` +
-      `⚔️ **${servantDisplayName}** (Master: <@${actor.userId}>)${chantBlock}\n` +
-      `[​](${npGifUrl})`;
+    const npEmbed = new EmbedBuilder()
+      .setTitle(`💥 NOBLE PHANTASM UNLEASHED: ${npName.toUpperCase()}`)
+      .setDescription(`⚔️ **${servantDisplayName}** (Master: <@${actor.userId}>)${chantBlock}`)
+      .setColor(0xe11d48)
+      .setImage(npGifUrl)
+      .setFooter({ text: 'Holy Grail War • Noble Phantasm Unleashed' });
 
     try {
       let sentMsg: any = null;
       if (interaction.channel && typeof interaction.channel.send === 'function') {
         sentMsg = await interaction.channel.send({
-          content: fullWidthContent
+          embeds: [npEmbed]
         });
       } else if (interaction.followUp) {
         sentMsg = await interaction.followUp({
-          content: fullWidthContent,
+          embeds: [npEmbed],
           fetchReply: true
         });
       }
