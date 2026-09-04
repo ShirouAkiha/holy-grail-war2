@@ -359,7 +359,14 @@ interface DiscordMessage {
     color?: string;
   };
   components?: {
-    type: 'buttons' | 'select';
+    type: 'buttons' | 'select' | 'list_menu';
+    placeholder?: string;
+    selectOptions?: Array<{
+      value: string;
+      label: string;
+      description?: string;
+      emoji?: string;
+    }>;
     items: Array<{
       id: string;
       label: string;
@@ -429,6 +436,10 @@ export default function DiscordEmulator({
   ]);
   const [invCategory, setInvCategory] = useState<'ces' | 'servants' | 'seals' | 'items'>('ces');
   const [invPage, setInvPage] = useState<number>(1);
+  const [servantsPage, setServantsPage] = useState<number>(1);
+  const [servantsOriginFilter, setServantsOriginFilter] = useState<'all' | 'canon' | 'custom'>('all');
+  const [servantsClassFilter, setServantsClassFilter] = useState<string>('all');
+  const [servantsSearchQuery, setServantsSearchQuery] = useState<string>('');
   const [activeDuel, setActiveDuel] = useState<{
     battle: ReturnType<typeof initializeBattle>;
     lastLog?: CombatTurnLog;
@@ -1594,28 +1605,34 @@ export default function DiscordEmulator({
           return;
         }
 
+        setServantsSearchQuery(query);
+        setServantsPage(1);
         postServantsList(
-          matches,
+          allThrone,
           `🔍 Search Results for "${query}" (${matches.length} Found)`,
-          `Matching canon & custom Heroic Spirits recorded in the Throne of Heroes. Click any name below to broadcast their complete profile:`
+          `Matching canon & custom Heroic Spirits recorded in the Throne of Heroes:`,
+          1,
+          'all',
+          'all',
+          query
         );
         return;
       }
 
       // Sub-case: /servants canon or /servants custom or /servants (all)
-      let listPool = allThrone;
-      let listTitle = `📜 Throne of Heroes Registry (${allThrone.length} Servants)`;
-      let listSubtitle = `All canon & custom Heroic Spirits registered in the Great Holy Grail database. Click any name below to view their full parameters, deck, lore, and quotes:`;
-
+      let initialOrigin: 'all' | 'canon' | 'custom' = 'all';
       if (trimmed.includes('canon')) {
-        listPool = allThrone.filter(s => !s.isCustomOrMeme);
-        listTitle = `🏛️ Canon Heroic Spirits Registry (${listPool.length} Servants)`;
+        initialOrigin = 'canon';
       } else if (trimmed.includes('custom')) {
-        listPool = allThrone.filter(s => s.isCustomOrMeme);
-        listTitle = `🛠️ Custom Admin Servants Registry (${listPool.length} Servants)`;
+        initialOrigin = 'custom';
       }
 
-      postServantsList(listPool, listTitle, listSubtitle);
+      setServantsOriginFilter(initialOrigin);
+      setServantsClassFilter('all');
+      setServantsSearchQuery('');
+      setServantsPage(1);
+
+      postServantsList(allThrone, undefined, undefined, 1, initialOrigin, 'all');
       return;
     }
 
@@ -2604,41 +2621,98 @@ export default function DiscordEmulator({
     setInputCommand('');
   };
 
-  // Helper: Post List of Servants with Interactive Buttons
+  // Helper: Post List of Servants with Interactive Select Dropdown & Pagination Buttons
   const postServantsList = (
     servantsList: ServantTemplate[],
-    headerTitle: string,
-    headerSubtitle: string
+    headerTitle?: string,
+    headerSubtitle?: string,
+    page = 1,
+    originFilter: 'all' | 'canon' | 'custom' = 'all',
+    classFilter: string = 'all',
+    searchKeyword?: string
   ) => {
-    const listLines = servantsList.map((s, idx) => {
-      const tag = s.isCustomOrMeme ? '🛠️ [CUSTOM]' : '🏛️ [CANON]';
-      const stars = '⭐'.repeat(s.rarity || 5);
-      return `${idx + 1}. **${s.name}** — *${s.title}* [${s.servantClass} ${stars}] ${tag}\n   └ *NP:* **${s.noblePhantasm.name}** | HP: ${s.baseHp.toLocaleString()} | ATK: ${s.baseAtk.toLocaleString()}`;
-    });
+    let filtered = servantsList;
+    if (originFilter === 'canon') filtered = filtered.filter(s => !s.isCustomOrMeme);
+    if (originFilter === 'custom') filtered = filtered.filter(s => s.isCustomOrMeme);
+    if (classFilter !== 'all') filtered = filtered.filter(s => s.servantClass.toLowerCase() === classFilter.toLowerCase());
+    if (searchKeyword && searchKeyword.trim()) {
+      const q = searchKeyword.trim().toLowerCase();
+      filtered = filtered.filter(s => 
+        s.name.toLowerCase().includes(q) ||
+        s.servantClass.toLowerCase().includes(q) ||
+        s.title.toLowerCase().includes(q) ||
+        s.noblePhantasm.name.toLowerCase().includes(q)
+      );
+    }
 
-    const buttonItems = servantsList.slice(0, 15).map(s => ({
-      id: `view_servant_${s.id}`,
-      label: s.name.length > 20 ? s.name.substring(0, 18) + '..' : s.name,
-      style: (s.isCustomOrMeme ? 'secondary' : 'primary') as 'primary' | 'secondary',
-      emoji: s.isCustomOrMeme ? '🛠️' : '⚔️'
+    const pageSize = 8;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    const currentPage = Math.min(Math.max(1, page), totalPages);
+    const startIndex = (currentPage - 1) * pageSize;
+    const pageItems = filtered.slice(startIndex, startIndex + pageSize);
+
+    const getEmoji = (cls: string) => {
+      switch (cls.toLowerCase()) {
+        case 'saber': return '⚔️';
+        case 'archer': return '🏹';
+        case 'lancer': return '🔱';
+        case 'rider': return '🐎';
+        case 'caster': return '🪄';
+        case 'assassin': return '🗡️';
+        case 'berserker': return '🩸';
+        case 'ruler': return '⚖️';
+        case 'avenger': return '🌑';
+        default: return '⚔️';
+      }
+    };
+
+    let listLines: string[] = [];
+    if (pageItems.length === 0) {
+      listLines = ['• *No Heroic Spirits match the selected filter. Click the filter buttons below to change criteria.*'];
+    } else {
+      listLines = pageItems.map((s, idx) => {
+        const tag = s.isCustomOrMeme ? '🛠️ [CUSTOM]' : '🏛️ [CANON]';
+        const stars = '⭐'.repeat(s.rarity || 5);
+        const emoji = getEmoji(s.servantClass);
+        return `${startIndex + idx + 1}. ${emoji} **${s.name}** — *${s.title}* [\`${s.servantClass}\` ${stars}] ${tag}\n   └ *NP:* **${s.noblePhantasm.name}** | HP: \`${s.baseHp.toLocaleString()}\` | ATK: \`${s.baseAtk.toLocaleString()}\``;
+      });
+    }
+
+    const selectOptions = pageItems.map(s => ({
+      value: `view_servant_${s.id}`,
+      label: `${s.name} (${s.servantClass})`,
+      description: `★${s.rarity} • ${s.title || s.noblePhantasm.name}`,
+      emoji: getEmoji(s.servantClass)
     }));
+
+    const originLabel = originFilter === 'canon' ? '🏛️ Canon' : originFilter === 'custom' ? '🛠️ Custom' : '🌐 All';
+    const classLabel = classFilter === 'all' ? '🏷️ All Classes' : `🏷️ ${classFilter}`;
+
+    const navButtons = [
+      { id: 'servant_list_prev', label: 'Prev', style: 'secondary' as const, emoji: '◀️', disabled: currentPage <= 1 },
+      { id: 'servant_list_info', label: `${currentPage}/${totalPages}`, style: 'secondary' as const, disabled: true },
+      { id: 'servant_list_next', label: 'Next', style: 'secondary' as const, emoji: '▶️', disabled: currentPage >= totalPages },
+      { id: 'servant_list_class', label: classLabel, style: 'primary' as const },
+      { id: 'servant_list_origin', label: originLabel, style: 'primary' as const }
+    ];
 
     addMessage({
       id: getNextId('bot_servants_list'),
       sender: 'bot',
       timestamp: 'Just now',
       embed: {
-        title: headerTitle,
+        title: headerTitle || `📜 Throne of Heroes Registry (${filtered.length} Servants)`,
         description:
-          `${headerSubtitle}\n\n` +
-          listLines.join('\n\n') +
-          `\n\n*Tip: Search specifically with \`/servants search <keyword>\` (e.g. \`/servants search Gilgamesh\` or \`/servants search Saber\`)*`,
+          (headerSubtitle ? `${headerSubtitle}\n\n` : `Select any Heroic Spirit below to inspect their complete status parameters, radar card, and Noble Phantasm:\n\n`) +
+          listLines.join('\n\n'),
         color: '#d4af37',
-        footer: `Throne of Heroes • ${servantsList.length} Total Servants Available`
+        footer: `Page ${currentPage} of ${totalPages} • Filter: [${originFilter.toUpperCase()} • ${classFilter.toUpperCase()}] • Use dropdown to select`
       },
       components: {
-        type: 'buttons',
-        items: buttonItems
+        type: 'list_menu',
+        placeholder: '🔍 Select a Heroic Spirit to inspect dossier...',
+        selectOptions,
+        items: navButtons
       }
     });
   };
@@ -3242,6 +3316,33 @@ export default function DiscordEmulator({
       }
 
       postProfileEmbed(actionMsg);
+      return;
+    } else if (btnId === 'servant_list_prev') {
+      const newPage = Math.max(1, servantsPage - 1);
+      setServantsPage(newPage);
+      postServantsList(allThrone, undefined, undefined, newPage, servantsOriginFilter, servantsClassFilter, servantsSearchQuery);
+      return;
+    } else if (btnId === 'servant_list_next') {
+      const newPage = servantsPage + 1;
+      setServantsPage(newPage);
+      postServantsList(allThrone, undefined, undefined, newPage, servantsOriginFilter, servantsClassFilter, servantsSearchQuery);
+      return;
+    } else if (btnId === 'servant_list_origin') {
+      const nextOrigin: 'all' | 'canon' | 'custom' = servantsOriginFilter === 'all' ? 'canon' : servantsOriginFilter === 'canon' ? 'custom' : 'all';
+      setServantsOriginFilter(nextOrigin);
+      setServantsPage(1);
+      postServantsList(allThrone, undefined, undefined, 1, nextOrigin, servantsClassFilter, servantsSearchQuery);
+      return;
+    } else if (btnId === 'servant_list_class') {
+      const classes = ['all', 'Saber', 'Archer', 'Lancer', 'Rider', 'Caster', 'Assassin', 'Berserker', 'Ruler', 'Avenger'];
+      const curIdx = classes.indexOf(servantsClassFilter);
+      const nextClass = classes[(curIdx + 1) % classes.length];
+      setServantsClassFilter(nextClass);
+      setServantsPage(1);
+      postServantsList(allThrone, undefined, undefined, 1, servantsOriginFilter, nextClass, servantsSearchQuery);
+      return;
+    } else if (btnId === 'btn_back_servants_list' || btnId === 'btn_show_servants_list') {
+      postServantsList(allThrone, undefined, undefined, servantsPage, servantsOriginFilter, servantsClassFilter, servantsSearchQuery);
       return;
     } else if (btnId.startsWith('view_servant_')) {
       const servantId = btnId.replace('view_servant_', '');
@@ -4215,27 +4316,60 @@ export default function DiscordEmulator({
                 </div>
               )}
 
-              {/* Discord Interactive Buttons */}
+              {/* Discord Interactive Components (Select Menu + Buttons) */}
               {msg.components && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {msg.components.items.map(btn => {
-                    let bg = 'bg-[#161616] hover:bg-[#222] text-white/80 border border-[#222]';
-                    if (btn.style === 'primary') bg = 'bg-[#111] hover:bg-[#161616] text-[#d4af37] border border-[#d4af37]/40';
-                    if (btn.style === 'success') bg = 'bg-[#111] hover:bg-[#161616] text-[#22c55e] border border-[#22c55e]/40';
-                    if (btn.style === 'danger') bg = 'bg-[#220000] hover:bg-[#330000] text-[#ef4444] border border-[#ef4444]/40';
-
-                    return (
-                      <button
-                        key={btn.id}
-                        disabled={btn.disabled}
-                        onClick={() => handleButtonClick(btn.id)}
-                        className={`px-3 py-1.5 rounded-sm text-xs font-mono uppercase tracking-wider font-semibold flex items-center gap-1.5 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${bg}`}
+                <div className="flex flex-col gap-2 mt-3">
+                  {/* Select Dropdown if present */}
+                  {msg.components.selectOptions && msg.components.selectOptions.length > 0 && (
+                    <div className="relative w-full max-w-md">
+                      <select
+                        defaultValue=""
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleButtonClick(e.target.value);
+                            e.target.value = '';
+                          }
+                        }}
+                        className="w-full bg-[#161616] hover:bg-[#1f1f1f] text-[#d4af37] border border-[#d4af37]/40 rounded px-3 py-2 text-xs font-mono appearance-none cursor-pointer focus:outline-none focus:border-[#d4af37] transition-all shadow-sm pr-8"
                       >
-                        {btn.emoji && <span>{btn.emoji}</span>}
-                        <span>{btn.label}</span>
-                      </button>
-                    );
-                  })}
+                        <option value="" disabled className="text-white/40 bg-[#161616]">
+                          {msg.components.placeholder || '🔍 Select an entry...'}
+                        </option>
+                        {msg.components.selectOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value} className="text-white bg-[#1a1a1a]">
+                            {opt.emoji ? `${opt.emoji} ` : ''}{opt.label}{opt.description ? ` — ${opt.description}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-[#d4af37] text-xs">
+                        ▼
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Button Actions */}
+                  {msg.components.items && msg.components.items.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {msg.components.items.map(btn => {
+                        let bg = 'bg-[#161616] hover:bg-[#222] text-white/80 border border-[#222]';
+                        if (btn.style === 'primary') bg = 'bg-[#111] hover:bg-[#161616] text-[#d4af37] border border-[#d4af37]/40';
+                        if (btn.style === 'success') bg = 'bg-[#111] hover:bg-[#161616] text-[#22c55e] border border-[#22c55e]/40';
+                        if (btn.style === 'danger') bg = 'bg-[#220000] hover:bg-[#330000] text-[#ef4444] border border-[#ef4444]/40';
+
+                        return (
+                          <button
+                            key={btn.id}
+                            disabled={btn.disabled}
+                            onClick={() => handleButtonClick(btn.id)}
+                            className={`px-3 py-1.5 rounded-sm text-xs font-mono uppercase tracking-wider font-semibold flex items-center gap-1.5 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${bg}`}
+                          >
+                            {btn.emoji && <span>{btn.emoji}</span>}
+                            <span>{btn.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -7,13 +7,36 @@ import {
   ButtonStyle, 
   EmbedBuilder,
   AttachmentBuilder,
-  ComponentType
+  ComponentType,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder
 } from 'discord.js';
 import { getAllThroneServants, findServantInPool, matchServantSearch } from '../database/service';
 import { getDefaultClassPassives } from '../data/servants';
-import { ServantTemplate, MasterServantInstance } from '../types';
+import { ServantTemplate, MasterServantInstance, ServantClass } from '../types';
 import { renderServantProfileCard } from '../canvas/renderer';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
+
+export const CLASS_CYCLE: Array<'all' | ServantClass> = [
+  'all', 'Saber', 'Archer', 'Lancer', 'Rider', 'Caster', 'Assassin', 'Berserker', 'Ruler', 'Avenger'
+];
+
+export function getClassEmoji(servantClass: string): string {
+  switch (servantClass?.toLowerCase()) {
+    case 'saber': return '⚔️';
+    case 'archer': return '🏹';
+    case 'lancer': return '🔱';
+    case 'rider': return '🐎';
+    case 'caster': return '🪄';
+    case 'assassin': return '🗡️';
+    case 'berserker': return '🩸';
+    case 'ruler': return '⚖️';
+    case 'avenger': return '🌑';
+    case 'foreigner': return '🌌';
+    case 'pretender': return '🎭';
+    default: return '⚔️';
+  }
+}
 
 export const data = new SlashCommandBuilder()
   .setName('servants')
@@ -191,53 +214,29 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (subcommand === 'search') {
       const query = interaction.options.getString('query', true).trim();
-      const results = allServants.filter(s => matchServantSearch(s, query));
+      const { embed, components } = buildServantsListUI(allServants, 1, 'all', 'all', query);
 
-      if (results.length === 0) {
-        await interaction.reply({
-          ephemeral: true,
-          content: `🔍 No Heroic Spirits found matching query: **"${query}"**`
-        });
-        return;
-      }
-
-      const embed = buildListEmbed(
-        results,
-        `🔍 Search Results for "${query}" (${results.length} Found)`,
-        `Click any Servant button below to broadcast their full profile to the channel:`
-      );
-
-      const rows = buildServantButtons(results.slice(0, 10));
       const response = await interaction.reply({
         embeds: [embed],
-        components: rows,
-        fetchReply: true
-      });
+        components,
+        withResponse: true
+      }).then(r => r.resource?.message || interaction.fetchReply());
 
-      setupServantListCollector(response, allServants);
+      setupServantListCollector(response, allServants, 1, 'all', 'all', query);
       return;
     }
 
     // Default: list all
     const filter = interaction.options.getString('filter') || 'all';
-    let filteredList = allServants;
-    if (filter === 'canon') filteredList = allServants.filter(s => !s.isCustomOrMeme);
-    if (filter === 'custom') filteredList = allServants.filter(s => s.isCustomOrMeme);
+    const { embed, components } = buildServantsListUI(allServants, 1, filter, 'all');
 
-    const embed = buildListEmbed(
-      filteredList,
-      `📜 Throne of Heroes Registry (${filteredList.length} Servants)`,
-      `Click any Servant's name button below to reveal their complete status and parameters:`
-    );
-
-    const rows = buildServantButtons(filteredList.slice(0, 10));
     const response = await interaction.reply({
       embeds: [embed],
-      components: rows,
+      components,
       withResponse: true
     }).then(r => r.resource?.message || interaction.fetchReply());
 
-    setupServantListCollector(response, allServants);
+    setupServantListCollector(response, allServants, 1, filter, 'all');
 
   } catch (error: any) {
     if (error.code === 10062 || error.code === 40060) return;
@@ -352,44 +351,130 @@ export function createServantTempInstance(servant: ServantTemplate): MasterServa
   };
 }
 
-export function buildListEmbed(servants: ServantTemplate[], title: string, description: string) {
-  const lines = servants.map((s, idx) => {
-    const tag = s.isCustomOrMeme ? '🛠️ [CUSTOM]' : '🏛️ [CANON]';
-    return `${idx + 1}. **${s.name}** — *${s.title}* [\`${s.servantClass}\` ${'⭐'.repeat(s.rarity || 5)}] ${tag}`;
-  });
+// =========================================================================
+// SCALABLE LIST UI: Interactive Select Dropdown + Navigation Controls
+// =========================================================================
 
-  return new EmbedBuilder()
-    .setTitle(title)
-    .setDescription(`${description}\n\n${lines.join('\n')}`)
+export function buildServantsListUI(
+  allServants: ServantTemplate[],
+  page = 1,
+  originFilter = 'all',
+  classFilter = 'all',
+  searchKeyword?: string
+) {
+  let filtered = allServants;
+
+  if (originFilter === 'canon') {
+    filtered = filtered.filter(s => !s.isCustomOrMeme);
+  } else if (originFilter === 'custom') {
+    filtered = filtered.filter(s => s.isCustomOrMeme);
+  }
+
+  if (classFilter !== 'all') {
+    filtered = filtered.filter(s => s.servantClass.toLowerCase() === classFilter.toLowerCase());
+  }
+
+  if (searchKeyword && searchKeyword.trim()) {
+    filtered = filtered.filter(s => matchServantSearch(s, searchKeyword.trim()));
+  }
+
+  const pageSize = 8;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(Math.max(1, page), totalPages);
+  const startIndex = (currentPage - 1) * pageSize;
+  const pageItems = filtered.slice(startIndex, startIndex + pageSize);
+
+  const originLabel = originFilter === 'canon' ? 'Canon' : originFilter === 'custom' ? 'Custom' : 'All Origins';
+  const classLabel = classFilter === 'all' ? 'All Classes' : classFilter;
+  const searchNotice = searchKeyword ? ` for "${searchKeyword}"` : '';
+
+  let listContent = '';
+  if (pageItems.length === 0) {
+    listContent = '• *No Heroic Spirits match the selected filters. Use the buttons below to change filters.*';
+  } else {
+    listContent = pageItems.map((s, idx) => {
+      const globalIdx = startIndex + idx + 1;
+      const originTag = s.isCustomOrMeme ? '🛠️ [CUSTOM]' : '🏛️ [CANON]';
+      const stars = '⭐'.repeat(s.rarity || 5);
+      const emoji = getClassEmoji(s.servantClass);
+      return `${globalIdx}. ${emoji} **${s.name}** — *${s.title}* [\`${s.servantClass}\` ${stars}] ${originTag}\n   └ *NP:* **${s.noblePhantasm.name}** | HP: \`${s.baseHp.toLocaleString()}\` | ATK: \`${s.baseAtk.toLocaleString()}\``;
+    }).join('\n');
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle(`📜 Throne of Heroes Registry (${filtered.length} Servants${searchNotice})`)
+    .setDescription(
+      `Select any Heroic Spirit from the dropdown below to inspect their complete status parameters, radar card, and Noble Phantasm:\n\n` +
+      `${listContent}`
+    )
     .setColor(0xd4af37)
-    .setFooter({ text: 'Holy Grail War Throne Registry • Use /servants search [query] to filter' });
+    .setFooter({
+      text: `Page ${currentPage} of ${totalPages} • Filter: [${originLabel} • ${classLabel}] • Use dropdown below to select`
+    });
+
+  const components: ActionRowBuilder<any>[] = [];
+
+  // ROW 1: Dropdown Select Menu
+  if (pageItems.length > 0) {
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId(`select_servant_registry`)
+      .setPlaceholder('🔍 Select a Heroic Spirit to inspect dossier...')
+      .addOptions(
+        pageItems.map(s =>
+          new StringSelectMenuOptionBuilder()
+            .setLabel(`${s.name} (${s.servantClass})`.slice(0, 100))
+            .setDescription(`★${s.rarity} • ${s.title || s.noblePhantasm.name}`.slice(0, 100))
+            .setValue(`servant_view_${s.id}`)
+            .setEmoji(getClassEmoji(s.servantClass))
+        )
+      );
+    components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu));
+  }
+
+  // ROW 2: Navigation & Filter Bar
+  const navRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`servant_list_prev`)
+      .setLabel('Prev')
+      .setEmoji('◀️')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(currentPage <= 1),
+    new ButtonBuilder()
+      .setCustomId(`servant_list_info`)
+      .setLabel(`${currentPage}/${totalPages}`)
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(true),
+    new ButtonBuilder()
+      .setCustomId(`servant_list_next`)
+      .setLabel('Next')
+      .setEmoji('▶️')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(currentPage >= totalPages),
+    new ButtonBuilder()
+      .setCustomId(`servant_list_class`)
+      .setLabel(classFilter === 'all' ? '🏷️ All Classes' : `🏷️ ${classFilter}`)
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`servant_list_origin`)
+      .setLabel(originFilter === 'canon' ? '🏛️ Canon' : originFilter === 'custom' ? '🛠️ Custom' : '🌐 All')
+      .setStyle(ButtonStyle.Primary)
+  );
+
+  components.push(navRow);
+
+  return { embed, components, totalPages, currentPage, filteredCount: filtered.length };
+}
+
+// Backward compatibility helper
+export function buildListEmbed(servants: ServantTemplate[], title: string, description: string) {
+  const { embed } = buildServantsListUI(servants, 1, 'all', 'all');
+  if (title) embed.setTitle(title);
+  return embed;
 }
 
 export function buildServantButtons(servants: ServantTemplate[]) {
-  const rows: ActionRowBuilder<ButtonBuilder>[] = [];
-  let currentRow = new ActionRowBuilder<ButtonBuilder>();
-
-  servants.forEach((s, idx) => {
-    if (idx > 0 && idx % 5 === 0) {
-      rows.push(currentRow);
-      currentRow = new ActionRowBuilder<ButtonBuilder>();
-    }
-
-    const shortName = s.name.length > 20 ? s.name.substring(0, 18) + '..' : s.name;
-    currentRow.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`view_servant_${s.id}`)
-        .setLabel(shortName)
-        .setStyle(s.isCustomOrMeme ? ButtonStyle.Secondary : ButtonStyle.Primary)
-        .setEmoji(s.isCustomOrMeme ? '🛠️' : '⚔️')
-    );
-  });
-
-  if (currentRow.components.length > 0) {
-    rows.push(currentRow);
-  }
-
-  return rows;
+  const { components } = buildServantsListUI(servants, 1, 'all', 'all');
+  return components;
 }
 
 export function buildNoblePhantasmEmbed(servant: ServantTemplate) {
@@ -472,17 +557,104 @@ export function buildProfileActions(servantId: string) {
   );
 }
 
-function setupServantListCollector(message: any, allServants: ServantTemplate[]) {
+export function setupServantListCollector(
+  message: any,
+  allServants: ServantTemplate[],
+  initialPage = 1,
+  initialOrigin = 'all',
+  initialClass = 'all',
+  searchKeyword?: string
+) {
+  let page = initialPage;
+  let originFilter = initialOrigin;
+  let classFilter = initialClass;
+
   const collector = message.createMessageComponentCollector({
-    componentType: ComponentType.Button,
-    time: 120000
+    idle: 120000,
+    time: 600000
   });
 
   collector.on('collect', async (i: any) => {
     try {
       if (i.replied || i.deferred) return;
-      if (i.customId.startsWith('view_servant_')) {
-        const id = i.customId.replace('view_servant_', '');
+      const customId = i.customId;
+
+      // Dropdown Select Menu
+      if (i.isStringSelectMenu() && (customId === 'select_servant_registry' || customId.startsWith('select_servant_'))) {
+        const val = i.values[0];
+        const servantId = val.replace('servant_view_', '').replace('view_servant_', '');
+        const target = allServants.find(s => s.id === servantId);
+
+        if (target) {
+          await i.deferReply();
+          const profileEmbed = buildServantFullProfileEmbed(target);
+          const artworkEmbed = buildServantArtworkEmbed(target);
+          const actions = buildProfileActions(target.id);
+
+          const files: AttachmentBuilder[] = [];
+          try {
+            const tempInstance = createServantTempInstance(target);
+            const cardBuffer = await renderServantProfileCard(tempInstance, 'Throne of Heroes');
+            if (cardBuffer && cardBuffer.length > 500) {
+              files.push(new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' }));
+            }
+          } catch (e) {
+            console.warn('Canvas render error in servants list dropdown:', e);
+          }
+
+          await i.editReply({ 
+            embeds: [profileEmbed, artworkEmbed], 
+            files,
+            components: [actions] 
+          });
+        } else {
+          await i.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+        }
+        return;
+      }
+
+      // Pagination Controls
+      if (customId === 'servant_list_prev') {
+        page = Math.max(1, page - 1);
+        const { embed, components } = buildServantsListUI(allServants, page, originFilter, classFilter, searchKeyword);
+        await i.update({ embeds: [embed], components });
+        return;
+      }
+
+      if (customId === 'servant_list_next') {
+        page = page + 1;
+        const { embed, components } = buildServantsListUI(allServants, page, originFilter, classFilter, searchKeyword);
+        await i.update({ embeds: [embed], components });
+        return;
+      }
+
+      // Origin Filter Button (All -> Canon -> Custom -> All)
+      if (customId === 'servant_list_origin') {
+        if (originFilter === 'all') originFilter = 'canon';
+        else if (originFilter === 'canon') originFilter = 'custom';
+        else originFilter = 'all';
+
+        page = 1;
+        const { embed, components } = buildServantsListUI(allServants, page, originFilter, classFilter, searchKeyword);
+        await i.update({ embeds: [embed], components });
+        return;
+      }
+
+      // Class Filter Button (Cycles through classes)
+      if (customId === 'servant_list_class') {
+        const currentIdx = CLASS_CYCLE.indexOf(classFilter as any);
+        const nextIdx = (currentIdx + 1) % CLASS_CYCLE.length;
+        classFilter = CLASS_CYCLE[nextIdx];
+
+        page = 1;
+        const { embed, components } = buildServantsListUI(allServants, page, originFilter, classFilter, searchKeyword);
+        await i.update({ embeds: [embed], components });
+        return;
+      }
+
+      // Profile Actions & Detail Views
+      if (customId.startsWith('view_servant_')) {
+        const id = customId.replace('view_servant_', '');
         const target = allServants.find(s => s.id === id);
         if (target) {
           await i.deferReply();
@@ -501,7 +673,6 @@ function setupServantListCollector(message: any, allServants: ServantTemplate[])
             console.warn('Canvas render error in servants list button:', e);
           }
 
-          // Show full profile to everyone in the channel
           await i.editReply({ 
             embeds: [profileEmbed, artworkEmbed], 
             files,
@@ -510,8 +681,11 @@ function setupServantListCollector(message: any, allServants: ServantTemplate[])
         } else {
           await i.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
         }
-      } else if (i.customId.startsWith('view_np_')) {
-        const id = i.customId.replace('view_np_', '');
+        return;
+      }
+
+      if (customId.startsWith('view_np_')) {
+        const id = customId.replace('view_np_', '');
         const target = allServants.find(s => s.id === id);
         if (target) {
           const npEmbed = buildNoblePhantasmEmbed(target);
@@ -520,8 +694,11 @@ function setupServantListCollector(message: any, allServants: ServantTemplate[])
         } else {
           await i.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
         }
-      } else if (i.customId.startsWith('view_art_')) {
-        const id = i.customId.replace('view_art_', '');
+        return;
+      }
+
+      if (customId.startsWith('view_art_')) {
+        const id = customId.replace('view_art_', '');
         const target = allServants.find(s => s.id === id);
         if (target) {
           const artEmbed = buildServantArtworkEmbed(target);
@@ -530,8 +707,11 @@ function setupServantListCollector(message: any, allServants: ServantTemplate[])
         } else {
           await i.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
         }
-      } else if (i.customId.startsWith('quote_servant_')) {
-        const id = i.customId.replace('quote_servant_', '');
+        return;
+      }
+
+      if (customId.startsWith('quote_servant_')) {
+        const id = customId.replace('quote_servant_', '');
         const target = allServants.find(s => s.id === id);
         if (target) {
           const quoteEmbed = new EmbedBuilder()
@@ -543,18 +723,17 @@ function setupServantListCollector(message: any, allServants: ServantTemplate[])
         } else {
           await i.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
         }
-      } else if (i.customId === 'btn_back_servants_list') {
-        const listEmbed = buildListEmbed(
-          allServants.slice(0, 15),
-          `📜 Throne of Heroes Registry (${allServants.length} Servants)`,
-          `Click any Servant's button below to display their full profile:`
-        );
-        const rows = buildServantButtons(allServants.slice(0, 10));
-        await i.reply({ embeds: [listEmbed], components: rows });
+        return;
+      }
+
+      if (customId === 'btn_back_servants_list') {
+        const { embed, components } = buildServantsListUI(allServants, 1, 'all', 'all');
+        await i.reply({ embeds: [embed], components });
+        return;
       }
     } catch (err: any) {
       if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
-      console.error('Error handling servants list button:', err);
+      console.error('Error handling servants list interaction:', err);
     }
   });
 }

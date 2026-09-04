@@ -52,6 +52,8 @@ import {
   buildProfileActions,
   buildListEmbed,
   buildServantButtons,
+  buildServantsListUI,
+  setupServantListCollector,
   createServantTempInstance
 } from './commands/servants';
 import { 
@@ -886,29 +888,16 @@ client.on(Events.MessageCreate, async message => {
       }
 
       if (sub === 'search') {
-        const matched = searchAndRankServants(targetQuery, allServants);
-        if (matched.length === 0) {
-          await message.reply({ content: `🔍 No Heroic Spirits matched "${targetQuery}". Use \`!servants list\` to view all.` });
-          return;
-        }
-        const listEmbed = buildListEmbed(
-          matched.slice(0, 15),
-          `🔍 Throne Search Results for "${targetQuery}" (${matched.length} Found)`,
-          `Select a Servant to display their full parameters and artwork:`
-        );
-        const rows = buildServantButtons(matched.slice(0, 10));
-        await message.reply({ embeds: [listEmbed], components: rows });
+        const { embed, components } = buildServantsListUI(allServants, 1, 'all', 'all', targetQuery);
+        const replyMsg = await message.reply({ embeds: [embed], components });
+        setupServantListCollector(replyMsg, allServants, 1, 'all', 'all', targetQuery);
         return;
       }
 
       // Default !servants / !servants list
-      const listEmbed = buildListEmbed(
-        allServants.slice(0, 15),
-        `📜 Throne of Heroes Registry (${allServants.length} Servants)`,
-        `Select any Heroic Spirit below to inspect their full profile, stats, and Noble Phantasm:`
-      );
-      const rows = buildServantButtons(allServants.slice(0, 10));
-      await message.reply({ embeds: [listEmbed], components: rows });
+      const { embed, components } = buildServantsListUI(allServants, 1, 'all', 'all');
+      const replyMsg = await message.reply({ embeds: [embed], components });
+      setupServantListCollector(replyMsg, allServants, 1, 'all', 'all');
       return;
     }
 
