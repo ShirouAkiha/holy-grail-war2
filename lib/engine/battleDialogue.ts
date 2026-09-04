@@ -20,34 +20,7 @@ export interface MidBattleDialogue {
 }
 
 const SERVANT_SPECIAL_QUOTES: Record<string, Partial<Record<DialogueScenario, string[]>>> = {
-  gilgamesh_archer: {
-    NP_RELEASE: [
-      'I shall show you the origin of all treasures! Enuma Elish!',
-      'Gaze upon the weapon that split heaven and earth! ENUMA ELISH!'
-    ],
-    BUSTER_CHAIN: [
-      'Rejoice, mongrel! You are permitted to gaze upon the Gate of Babylon!',
-      'Your favorite raider just got expensive.',
-      'Bow your head! All treasures in this world belong to the King!'
-    ],
-    CRITICAL_STRIKE: [
-      'Look upon my treasury and despair, impudent worm!',
-      'A critical flaw in your defense... fall before my blade!'
-    ],
-    CLASS_ADVANTAGE: [
-      'Foolish mongrel, did you think your inferior class could challenge the King?',
-      'Class advantage is mere child\'s play before absolute royal authority.'
-    ],
-    LOW_HP_CLUTCH: [
-      'Impudent insect... to force the King to step back!',
-      'You dare draw blood? I shall obliterate every trace of your existence!'
-    ],
-    STANDARD_ATTACK: [
-      'Know your place in the Holy Grail War!',
-      'Mongrel, withstand this if you can!'
-    ]
-  },
-  artoria_saber: {
+  artoria: {
     NP_RELEASE: [
       'Gather, breath of the planet! Sword of Promised Victory — EXCALIBUR!',
       'Light of holy hope, pierce the darkness! EXCALIBUR!'
@@ -73,9 +46,191 @@ const SERVANT_SPECIAL_QUOTES: Record<string, Partial<Record<DialogueScenario, st
       'Prepare yourself, warrior of the Grail!'
     ]
   },
-  emiya_archer: {
+  artoria_alter: {
     NP_RELEASE: [
-      'I am the bone of my sword... Unlimited Blade Works!',
+      'Hammer of the Vile King... Turn the aurora upside down! EXCALIBUR MORGAN!',
+      'Drown in dark dragon flames! EXCALIBUR MORGAN!'
+    ],
+    BUSTER_CHAIN: [
+      'Fast food and absolute force... know your place!',
+      'The dragon of darkness consumes all resistance!'
+    ],
+    CRITICAL_STRIKE: [
+      'Pathetic. Fall before my black blade!',
+      'A fatal mistake. I shall crush you now!'
+    ],
+    CLASS_ADVANTAGE: [
+      'Your class is meaningless before the Vile King!',
+      'Merciless annihilation is all you shall receive.'
+    ],
+    LOW_HP_CLUTCH: [
+      'You dare push me this far? I shall erase you completely!',
+      'Dark mana surging to maximum overdrive!'
+    ],
+    STANDARD_ATTACK: [
+      'Moving forward to crush the target.',
+      'Silence yourself before my blade.'
+    ]
+  },
+  gilgamesh: {
+    NP_RELEASE: [
+      'I shall show you the origin of all treasures! Enuma Elish!',
+      'Gaze upon the weapon that split heaven and earth! ENUMA ELISH!'
+    ],
+    BUSTER_CHAIN: [
+      'Rejoice, mongrel! You are permitted to gaze upon the Gate of Babylon!',
+      'Bow your head! All treasures in this world belong to the King!'
+    ],
+    CRITICAL_STRIKE: [
+      'Look upon my treasury and despair, impudent worm!',
+      'A critical flaw in your defense... fall before my blade!'
+    ],
+    CLASS_ADVANTAGE: [
+      'Foolish mongrel, did you think your inferior class could challenge the King?',
+      'Class advantage is mere child\'s play before absolute royal authority.'
+    ],
+    LOW_HP_CLUTCH: [
+      'Impudent insect... to force the King to step back!',
+      'You dare draw blood? I shall obliterate every trace of your existence!'
+    ],
+    STANDARD_ATTACK: [
+      'Know your place in the Holy Grail War!',
+      'Mongrel, withstand this if you can!'
+    ]
+  },
+  scathach: {
+    NP_RELEASE: [
+      'Piercing death thorn! GÁE BOLG ALTERNATIVE!',
+      'Gate to the Land of Shadows open... Gáe Bolg Alternative!'
+    ],
+    BUSTER_CHAIN: [
+      'Show me if you possess the strength to slay a god!',
+      'Two spears, one fatal strike!'
+    ],
+    CRITICAL_STRIKE: [
+      'Precision thrust through your core!',
+      'A critical flaw in your guard... take this!'
+    ],
+    CLASS_ADVANTAGE: [
+      'God Slayer skill active... your class affinity is irrelevant!',
+      'Land of Shadows rune mastery breaches your position.'
+    ],
+    LOW_HP_CLUTCH: [
+      'Hmph... finally, a foe capable of giving me a true battle!',
+      'Immortal warrior of Dún Scáith... advancing!'
+    ],
+    STANDARD_ATTACK: [
+      'Servant Lancer, Scáthach. Engaging!',
+      'Let us test your martial skill.'
+    ]
+  },
+  jeanne: {
+    NP_RELEASE: [
+      'The flag of holy light shall protect us! LUMINOSITÉ ETERNELLE!',
+      'Lord, I entrust this body to You... Luminosité Eternelle!'
+    ],
+    BUSTER_CHAIN: [
+      'With the Holy Maiden\'s banner, we advance!',
+      'For justice, faith, and my Master!'
+    ],
+    CRITICAL_STRIKE: [
+      'The Lord\'s guidance reveals an opening!',
+      'A decisive strike for the holy cause!'
+    ],
+    CLASS_ADVANTAGE: [
+      'Ruler authority maintains complete order on the battlefield.',
+      'Divine protection nullifies your offensive line.'
+    ],
+    LOW_HP_CLUTCH: [
+      'Even in darkness, faith shall illuminate our path!',
+      'Lord grant me strength to shield my Master!'
+    ],
+    STANDARD_ATTACK: [
+      'Servant Ruler, Jeanne d\'Arc, standing by!',
+      'May heaven guide our strike.'
+    ]
+  },
+  jeanne_alter: {
+    NP_RELEASE: [
+      'This is the roar of my soul forged in hatred! LA GRONDEMENT DU HAINE!',
+      'Burn in the embers of revenge! LA GRONDEMENT DU HAINE!'
+    ],
+    BUSTER_CHAIN: [
+      'Burn! Burn to ashes, you wretched insects!',
+      'Dragon Witch fire consumes everything!'
+    ],
+    CRITICAL_STRIKE: [
+      'Hahaha! Die in agony!',
+      'Critical hatred strike! No mercy!'
+    ],
+    CLASS_ADVANTAGE: [
+      'Avenger class wrath overrides all your defenses!',
+      'Fools who challenge the Dragon Witch shall burn.'
+    ],
+    LOW_HP_CLUTCH: [
+      'You think you can extinguish my hatred?! Never!',
+      'The flames of vengeance burn brightest in crisis!'
+    ],
+    STANDARD_ATTACK: [
+      'Servant Avenger. Don\'t get in my way.',
+      'Black flames unleashed.'
+    ]
+  },
+  mhx: {
+    NP_RELEASE: [
+      'Darkness of the Dark Round... CROSS-CALIBUR!',
+      'Black sugar overdrive! CROSS-CALIBUR!'
+    ],
+    BUSTER_CHAIN: [
+      'Sweets intake at 200%! Commencing destruction!',
+      'Dark Matter reactor fully charged!'
+    ],
+    CRITICAL_STRIKE: [
+      'Sugar levels nominal... maximum critical raid speed!',
+      'Target acquired. Critical raid strike!'
+    ],
+    CLASS_ADVANTAGE: [
+      'Target locked. Class advantage verified.',
+      'Eliminating target with maximum efficiency.'
+    ],
+    LOW_HP_CLUTCH: [
+      'Emergency bean paste ration consumed... fighting on!',
+      'Dark side energy surging!'
+    ],
+    STANDARD_ATTACK: [
+      'Sweeps in for a tactical raid strike!',
+      'Engaging target in Dark Matter overdrive.'
+    ]
+  },
+  nero: {
+    NP_RELEASE: [
+      'Hear the applause of the Golden Theater! LAUS SAINT CLAUDIUS!',
+      'Bloom, passion of the rose! LAUS SAINT CLAUDIUS!'
+    ],
+    BUSTER_CHAIN: [
+      'Behold my magnificent artistic swordplay!',
+      'Umu! A performance worthy of Rome!'
+    ],
+    CRITICAL_STRIKE: [
+      'A climax worthy of an ovation!',
+      'Critical strike delivered with imperial perfection!'
+    ],
+    CLASS_ADVANTAGE: [
+      'Imperial Privilege EX grants absolute dominance!',
+      'The stage of victory belongs solely to Nero!'
+    ],
+    LOW_HP_CLUTCH: [
+      'Thrice Setting Sun active! The curtain shall not fall yet!',
+      'Umu! The grand finale is just beginning!'
+    ],
+    STANDARD_ATTACK: [
+      'Servant Saber, Nero Claudius! Watch my genius!',
+      'Umu! Advancing with grace!'
+    ]
+  },
+  emiya: {
+    NP_RELEASE: [
+      'I am the bone of my sword... UNLIMITED BLADE WORKS!',
       'Steel is my body, and fire is my blood... UNLIMITED BLADE WORKS!'
     ],
     BUSTER_CHAIN: [
@@ -86,6 +241,10 @@ const SERVANT_SPECIAL_QUOTES: Record<string, Partial<Record<DialogueScenario, st
       'I\'ll take this single chance to end it!',
       'Projection speed maxed out. Take this!'
     ],
+    CLASS_ADVANTAGE: [
+      'Tactical position secured. Bow against vanguard!',
+      'Hawkeye precision locks down target vulnerability.'
+    ],
     LOW_HP_CLUTCH: [
       'I\'m used to fighting against impossible odds.',
       'Still standing... Trace, ON!'
@@ -95,33 +254,33 @@ const SERVANT_SPECIAL_QUOTES: Record<string, Partial<Record<DialogueScenario, st
       'Ranged cover secured. Moving in.'
     ]
   },
-  mhx_alter_berserker: {
+  heracles: {
     NP_RELEASE: [
-      'Darkness of the Dark Round... Cross Calibur!',
-      'Black sugar overdrive! Cross Calibur!'
+      'Nine lives shooting... NINE LIVES!',
+      'GRAAAAAAARRRGH! NINE LIVES!'
     ],
     BUSTER_CHAIN: [
-      'Your favorite raider just got expensive.',
-      'Sweets intake at 200%. Commencing destruction!'
+      'CRUSH! HEAVY BUSTER IMPACT!',
+      'RAAAAAGH! FULL MADNESS ASSAULT!'
     ],
     CRITICAL_STRIKE: [
-      'Sugar levels nominal... maximum critical speed!',
-      'Target acquired. Critical raid strike!'
+      'ROAARRR! CRITICAL SAVAGE STRIKE!',
+      'DEVASTATING CRITICAL SMASH!'
     ],
     CLASS_ADVANTAGE: [
-      'Target locked. Class advantage verified.',
-      'Eliminating target with maximum efficiency.'
+      'MADNESS ENHANCEMENT CRUSHES ALL CLASS DEFENSES!',
+      'GRAAAA! OVERPOWERING TARGET!'
     ],
     LOW_HP_CLUTCH: [
-      'Emergency ration consumed... fighting on!',
-      'Dark side energy surging!'
+      'GOD HAND GUTS ACTIVE! STILL FIGHTING!',
+      'GRAAAAA! UNSTOPPABLE HEROIC WILL!'
     ],
     STANDARD_ATTACK: [
-      'Sweeps in for a tactical raid strike!',
-      'Engaging target.'
+      'GRAAAAAAAH!',
+      'SMASH THEM TO PIECES!'
     ]
   },
-  cu_chulainn_lancer: {
+  cuchulainn: {
     NP_RELEASE: [
       'Your heart is mine! Piercing Death Thorn — GÁE BOLG!',
       'Inescapable red spear of causality! GÁE BOLG!'
@@ -133,6 +292,10 @@ const SERVANT_SPECIAL_QUOTES: Record<string, Partial<Record<DialogueScenario, st
     CRITICAL_STRIKE: [
       'Got you! No dodging this strike!',
       'Critical hit right through your guard!'
+    ],
+    CLASS_ADVANTAGE: [
+      'Class advantage verified. Piercing through!',
+      'Spear length and agility counter your stance!'
     ],
     LOW_HP_CLUTCH: [
       'Protection from Arrows... I haven\'t lost yet!',
@@ -221,6 +384,7 @@ export function generateBattleDialogue(
 ): MidBattleDialogue {
   const scenarioTitle = determineScenarioTitle(scenario);
   const servantId = combatant.id.toLowerCase();
+  const servantName = combatant.name.toLowerCase();
 
   // 1. Check custom quote override
   if (customQuoteOverride && customQuoteOverride.trim().length > 0) {
@@ -235,8 +399,12 @@ export function generateBattleDialogue(
     };
   }
 
-  // 2. Check special quotes for recognized servants
-  const matchedKey = Object.keys(SERVANT_SPECIAL_QUOTES).find(k => servantId.includes(k) || k.includes(servantId));
+  // 2. Check special quotes for recognized servants using flexible fuzzy key matching
+  const matchedKey = Object.keys(SERVANT_SPECIAL_QUOTES).find(k => {
+    const keyLower = k.toLowerCase();
+    return servantId.includes(keyLower) || keyLower.includes(servantId) || servantName.includes(keyLower) || keyLower.includes(servantName);
+  });
+
   if (matchedKey) {
     const servantQuotes = SERVANT_SPECIAL_QUOTES[matchedKey];
     const scenarioQuotes = servantQuotes[scenario] || servantQuotes['STANDARD_ATTACK'];

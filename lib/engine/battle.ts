@@ -908,6 +908,33 @@ export function executeBattleTurn(
   resolveActorTurn(firstActor, secondActor, firstChoice);
   resolveActorTurn(secondActor, firstActor, secondChoice);
 
+  // Pick the most impactful dialogue cut-in across both turns (e.g. NP_RELEASE > BUSTER_CHAIN > CRITICAL_STRIKE)
+  const priorityOrder: Record<string, number> = {
+    'NP_RELEASE': 6,
+    'CRITICAL_STRIKE': 5,
+    'BUSTER_CHAIN': 4,
+    'LOW_HP_CLUTCH': 3,
+    'CLASS_ADVANTAGE': 2,
+    'STANDARD_ATTACK': 1
+  };
+
+  let bestDialogue = turnLogs[turnLogs.length - 1]?.dialogueCutIn;
+  let bestScore = bestDialogue ? (priorityOrder[bestDialogue.scenario] || 1) : 0;
+
+  for (const logItem of turnLogs) {
+    if (logItem.dialogueCutIn) {
+      const score = priorityOrder[logItem.dialogueCutIn.scenario] || 1;
+      if (score > bestScore) {
+        bestScore = score;
+        bestDialogue = logItem.dialogueCutIn;
+      }
+    }
+  }
+
+  if (turnLogs.length > 0 && bestDialogue) {
+    turnLogs[turnLogs.length - 1].dialogueCutIn = bestDialogue;
+  }
+
   // Check victory condition
   let winnerId: string | undefined;
   let nextPhase: BattleState['turnPhase'] = 'card_selection';

@@ -536,20 +536,42 @@ export function renderDialogueCard(
   ctx.fillText(line, 240, lineY);
 }
 
-function loadBrowserImage(url?: string): Promise<HTMLImageElement | null> {
-  if (!url) return Promise.resolve(null);
+function createFallbackAvatarSvg(name?: string, servantClass?: string): string {
+  const initial = (servantClass?.[0] || name?.[0] || 'S').toUpperCase();
+  const displayName = (name || 'Servant').slice(0, 12);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+    <rect width="200" height="200" fill="#0f172a"/>
+    <rect x="10" y="10" width="180" height="180" fill="#1e293b" stroke="#d4af37" stroke-width="4" rx="12"/>
+    <circle cx="100" cy="85" r="45" fill="#334155" stroke="#fbbf24" stroke-width="2"/>
+    <text x="100" y="102" font-family="sans-serif" font-size="52" font-weight="bold" fill="#f59e0b" text-anchor="middle">${initial}</text>
+    <text x="100" y="165" font-family="sans-serif" font-size="15" font-weight="bold" fill="#f8fafc" text-anchor="middle">${displayName}</text>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+function loadBrowserImage(url?: string, fallbackName?: string, fallbackClass?: string): Promise<HTMLImageElement | null> {
+  let targetUrl = url;
+  if (!targetUrl || targetUrl.trim().length === 0) {
+    targetUrl = createFallbackAvatarSvg(fallbackName, fallbackClass);
+  }
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = () => {
-      // If CORS anonymous failed, attempt standard load so canvas can still paint it
+      // If CORS anonymous failed, attempt standard load or SVG fallback
       const fallbackImg = new Image();
       fallbackImg.onload = () => resolve(fallbackImg);
-      fallbackImg.onerror = () => resolve(null);
-      fallbackImg.src = url;
+      fallbackImg.onerror = () => {
+        // Ultimate fallback to inline SVG data URL
+        const svgImg = new Image();
+        svgImg.onload = () => resolve(svgImg);
+        svgImg.onerror = () => resolve(null);
+        svgImg.src = createFallbackAvatarSvg(fallbackName, fallbackClass);
+      };
+      fallbackImg.src = targetUrl!;
     };
-    img.src = url;
+    img.src = targetUrl!;
   });
 }
 
@@ -571,8 +593,8 @@ export async function renderBattleTurnSummary(
 
   // Load Avatars concurrently
   const [p1Img, p2Img] = await Promise.all([
-    loadBrowserImage(p1.avatarUrl),
-    loadBrowserImage(p2.avatarUrl)
+    loadBrowserImage(p1.avatarUrl, p1.name, p1.servantClass),
+    loadBrowserImage(p2.avatarUrl, p2.name, p2.servantClass)
   ]);
 
   // Background - Deep Mystic War Canvas
@@ -830,7 +852,16 @@ export async function renderBattleTurnSummary(
   // ==========================================
   if (showDialogueMode && log.dialogueCutIn) {
     const dialogue = log.dialogueCutIn;
-    const speakerImg = (dialogue.speakerName === p1.name ? p1Img : (dialogue.speakerName === p2.name ? p2Img : null)) || p1Img;
+    let speakerImg: HTMLImageElement | null = null;
+    if (dialogue.speakerAvatarUrl) {
+      if (dialogue.speakerAvatarUrl === p1.avatarUrl) speakerImg = p1Img;
+      else if (dialogue.speakerAvatarUrl === p2.avatarUrl) speakerImg = p2Img;
+      else speakerImg = await loadBrowserImage(dialogue.speakerAvatarUrl, dialogue.speakerName, dialogue.speakerClass);
+    }
+    if (!speakerImg) {
+      if (dialogue.speakerName?.toLowerCase() === p2.name?.toLowerCase()) speakerImg = p2Img;
+      else speakerImg = p1Img || p2Img;
+    }
 
     // Outer Chassis
     ctx.fillStyle = '#0a0805';

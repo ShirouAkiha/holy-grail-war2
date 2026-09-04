@@ -4875,7 +4875,13 @@ export default function DiscordEmulator({
 // Inline Canvas Renderer Component for Discord attachments
 function CanvasRenderer({ canvasType, payload }: { canvasType: string; payload: any }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [prevLog, setPrevLog] = useState(payload?.log);
   const [showDialogue, setShowDialogue] = useState<boolean>(!!payload?.log?.dialogueCutIn);
+
+  if (payload?.log !== prevLog) {
+    setPrevLog(payload?.log);
+    setShowDialogue(!!payload?.log?.dialogueCutIn);
+  }
 
   useEffect(() => {
     if (!canvasRef.current || !payload) return;
