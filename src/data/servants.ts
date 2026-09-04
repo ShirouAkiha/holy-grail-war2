@@ -612,8 +612,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     battleStartQuote: 'Entering Dark Matter reactor mode... Target acquired.',
     victoryQuote: 'Objective accomplished. Time for my tea break.',
     defeatQuote: 'Reactor core... overloaded... My sweets...',
-    avatarUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=400&auto=format&fit=crop&q=80',
-    cardArtUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=600&auto=format&fit=crop&q=80'
+    avatarUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=400&auto=format&fit=crop&q=80',
+    cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'
   },
 
   // 4-Star SR Servants

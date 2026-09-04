@@ -8,7 +8,6 @@ import {
   TurnActionChoice
 } from '../types/index';
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives } from '../data/servants';
-import { generateBattleDialogue, DialogueScenario, MidBattleDialogue } from './battleDialogue';
 
 // Global PvP damage modifier (0.35x) to scale FGO-style formula output down to ~25k-35k Servant HP pools
 export const PVP_DAMAGE_MODIFIER = 0.35;
@@ -862,13 +861,6 @@ export function executeBattleTurn(
       .map(b => ({ ...b, remainingTurns: b.remainingTurns - 1 }))
       .filter(b => b.remainingTurns > 0);
 
-    // Determine Dialogue Scenario for Cut-In (Only for NP Release or Turn 1 Battle Start)
-    let dialogueCutIn: MidBattleDialogue | undefined = undefined;
-    if (npTriggered || state.currentTurn === 1) {
-      const dialogueScenario: DialogueScenario = npTriggered ? 'NP_RELEASE' : 'STANDARD_ATTACK';
-      dialogueCutIn = generateBattleDialogue(actor, dialogueScenario, npChant);
-    }
-
     turnLogs.push({
       turnNumber: state.currentTurn,
       actorId: actor.id,
@@ -881,7 +873,6 @@ export function executeBattleTurn(
       skillsUsed: usedSkillNames,
       npTriggered,
       npChant,
-      dialogueCutIn,
       damageDealt: totalDamage,
       isCritical,
       starsGenerated: totalStars,
@@ -898,33 +889,6 @@ export function executeBattleTurn(
   // Execute 1st and 2nd combatants
   resolveActorTurn(firstActor, secondActor, firstChoice);
   resolveActorTurn(secondActor, firstActor, secondChoice);
-
-  // Pick the most impactful dialogue cut-in across both turns (e.g. NP_RELEASE > BUSTER_CHAIN > CRITICAL_STRIKE)
-  const priorityOrder: Record<string, number> = {
-    'NP_RELEASE': 6,
-    'CRITICAL_STRIKE': 5,
-    'BUSTER_CHAIN': 4,
-    'LOW_HP_CLUTCH': 3,
-    'CLASS_ADVANTAGE': 2,
-    'STANDARD_ATTACK': 1
-  };
-
-  let bestDialogue = turnLogs[turnLogs.length - 1]?.dialogueCutIn;
-  let bestScore = bestDialogue ? (priorityOrder[bestDialogue.scenario] || 1) : 0;
-
-  for (const logItem of turnLogs) {
-    if (logItem.dialogueCutIn) {
-      const score = priorityOrder[logItem.dialogueCutIn.scenario] || 1;
-      if (score > bestScore) {
-        bestScore = score;
-        bestDialogue = logItem.dialogueCutIn;
-      }
-    }
-  }
-
-  if (turnLogs.length > 0 && bestDialogue) {
-    turnLogs[turnLogs.length - 1].dialogueCutIn = bestDialogue;
-  }
 
   // Check victory condition
   let winnerId: string | undefined;

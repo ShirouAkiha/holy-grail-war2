@@ -15,7 +15,6 @@ import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives } from '
 import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp } from '../engine/grailwar';
 import { renderBattleTurnSummary } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER } from '../engine/battle';
-import { generateBattleDialogue, DialogueScenario } from '../engine/battleDialogue';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 
 // ==========================================
@@ -308,22 +307,6 @@ async function createTurnSummaryAttachment(
     .replace(/\s+/g, ' ')
     .trim();
 
-  let dialogueScenario: DialogueScenario = 'STANDARD_ATTACK';
-  if (isNP) {
-    dialogueScenario = 'NP_RELEASE';
-  } else if (isCrit) {
-    dialogueScenario = 'CRITICAL_STRIKE';
-  } else if (p1Cards.filter(c => c === 'Buster').length >= 3) {
-    dialogueScenario = 'BUSTER_CHAIN';
-  } else if (p1.currentHp / p1.maxHp < 0.25) {
-    dialogueScenario = 'LOW_HP_CLUTCH';
-  }
-
-  const npChant = isNP ? p1.servant.template.noblePhantasm?.chant || p1.servant.template.noblePhantasm?.name : undefined;
-  const customQuote = p1.servant.customQuotes?.battleStart || p1.servant.template.battleStartQuote;
-
-  const dialogueCutIn = generateBattleDialogue(activeP1, dialogueScenario, npChant, customQuote);
-
   const turnLog: CombatTurnLog = {
     turnNumber: round,
     actorId: p1.userId,
@@ -346,8 +329,7 @@ async function createTurnSummaryAttachment(
     actorHpMax: p1.maxHp,
     targetHpMax: p2.maxHp,
     actorNp: p1.npGauge,
-    targetNp: p2.npGauge,
-    dialogueCutIn
+    targetNp: p2.npGauge
   };
 
   const imageBuffer = await renderBattleTurnSummary(turnLog, activeP1, activeP2);

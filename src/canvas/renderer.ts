@@ -4,8 +4,7 @@ import {
   HolyGrailWarSession, 
   MasterServantInstance, 
   ActiveCombatant,
-  CardType,
-  MidBattleDialogue
+  CardType
 } from '../types';
 import { calculateRadarCoordinates, RadarPoint } from '../engine/customization';
 import { SERVANT_DATABASE } from '../data/servants';
@@ -537,166 +536,6 @@ function drawServantPortraitCard(
   ctx.lineWidth = 1;
   drawRoundRect(ctx, x + 2, y + 2, w - 4, h - 4, 6);
   ctx.stroke();
-
-  ctx.restore();
-}
-
-/**
- * Draw Mid-Battle Combat Cut-In Dialogue Box.
- */
-function drawMidBattleDialogueCutIn(
-  ctx: any,
-  dialogue: MidBattleDialogue,
-  p1: ActiveCombatant,
-  p2: ActiveCombatant,
-  p1Img: any,
-  p2Img: any
-) {
-  const boxX = 18;
-  const boxY = 236;
-  const boxW = 604;
-  const boxH = 200;
-
-  ctx.save();
-  // 1. Outer Chassis
-  ctx.fillStyle = '#0a0805';
-  drawRoundRect(ctx, boxX, boxY, boxW, boxH, 10);
-  ctx.fill();
-  ctx.strokeStyle = '#d97706';
-  ctx.lineWidth = 2.5;
-  ctx.stroke();
-
-  // 2. Inner Filigree Frame Accent
-  ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, boxX + 4, boxY + 4, boxW - 8, boxH - 8, 8);
-  ctx.stroke();
-
-  // 3. Header Marquee Pill (Scenario Title)
-  ctx.fillStyle = '#1e130a';
-  drawRoundRect(ctx, boxX + 12, boxY + 10, boxW - 24, 28, 5);
-  ctx.fill();
-  ctx.strokeStyle = '#b45309';
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, boxX + 12, boxY + 10, boxW - 24, 28, 5);
-  ctx.stroke();
-
-  ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 15px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(dialogue.scenarioTitle || '💬 MID-BATTLE COMBAT CUT-IN', 320, boxY + 28);
-
-  // 4. Speaker Servant Portrait Box (Left)
-  let speakerImg = p1Img;
-  if (dialogue.speakerName && p2.name && dialogue.speakerName.toLowerCase().includes(p2.name.toLowerCase())) {
-    speakerImg = p2Img;
-  }
-
-  const portX = boxX + 12;
-  const portY = boxY + 44;
-  const portW = 110;
-  const portH = 142;
-
-  ctx.fillStyle = '#020617';
-  drawRoundRect(ctx, portX, portY, portW, portH, 8);
-  ctx.fill();
-
-  if (speakerImg) {
-    ctx.save();
-    drawRoundRect(ctx, portX + 2, portY + 2, portW - 4, portH - 4, 6);
-    ctx.clip();
-    try {
-      drawImageCover(ctx, speakerImg, portX + 2, portY + 2, portW - 4, portH - 4);
-    } catch {
-      // Fallback
-    }
-    ctx.restore();
-  }
-
-  // Gold Portrait Frame
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 2;
-  drawRoundRect(ctx, portX, portY, portW, portH, 8);
-  ctx.stroke();
-
-  // Level Badge positioned cleanly in top-left corner
-  const badgeX = portX + 4;
-  const badgeY = portY + 4;
-  ctx.fillStyle = '#1e130a';
-  drawRoundRect(ctx, badgeX, badgeY, 44, 22, 4);
-  ctx.fill();
-  ctx.strokeStyle = '#b45309';
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, badgeX, badgeY, 44, 22, 4);
-  ctx.stroke();
-
-  ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 12px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('Lv.' + String(dialogue.level || 90), badgeX + 22, badgeY + 15);
-
-  // 5. Speaker Nameplate
-  const nameX = portX + portW + 12;
-  const nameY = portY;
-  const nameW = 260;
-  const nameH = 30;
-
-  ctx.fillStyle = '#1e110a';
-  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
-  ctx.fill();
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 1.5;
-  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
-  ctx.stroke();
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 18px system-ui, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(dialogue.speakerName || 'Servant', nameX + 12, nameY + 22);
-
-  // 6. Dialogue Quote Box
-  const quoteBoxX = nameX;
-  const quoteBoxY = nameY + 36;
-  const quoteBoxW = boxW - portW - 36;
-  const quoteBoxH = 106;
-
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
-  drawRoundRect(ctx, quoteBoxX, quoteBoxY, quoteBoxW, quoteBoxH, 6);
-  ctx.fill();
-  ctx.strokeStyle = '#b45309';
-  ctx.lineWidth = 1.2;
-  drawRoundRect(ctx, quoteBoxX, quoteBoxY, quoteBoxW, quoteBoxH, 6);
-  ctx.stroke();
-
-  // Quote Text wrapped in prominent gold font
-  ctx.fillStyle = '#fef08a';
-  ctx.font = 'bold italic 20px "Georgia", serif, sans-serif';
-  ctx.textAlign = 'left';
-
-  const quoteStr = '"' + dialogue.quote + '"';
-  const words = quoteStr.split(' ');
-  let line = '';
-  let lineY = quoteBoxY + 30;
-  const maxWidth = quoteBoxW - 24;
-
-  for (let i = 0; i < words.length; i++) {
-    const testLine = line + words[i] + ' ';
-    const metrics = ctx.measureText(testLine);
-    if (metrics.width > maxWidth && i > 0) {
-      ctx.fillText(line, quoteBoxX + 12, lineY);
-      line = words[i] + ' ';
-      lineY += 28;
-    } else {
-      line = testLine;
-    }
-  }
-  ctx.fillText(line, quoteBoxX + 12, lineY);
-
-  // Bottom-right indicator
-  ctx.fillStyle = '#f59e0b';
-  ctx.font = 'bold 11px system-ui, sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText('⚡ PRE-ATTACK CUT-IN • COMBAT ACTION INCOMING', quoteBoxX + quoteBoxW - 12, quoteBoxY + quoteBoxH - 10);
 
   ctx.restore();
 }
@@ -1311,8 +1150,7 @@ export async function renderBattleTurnSummary(
   canvas: any,
   log: CombatTurnLog,
   p1: ActiveCombatant,
-  p2: ActiveCombatant,
-  showDialogueMode?: boolean
+  p2: ActiveCombatant
 ): Promise<Buffer>;
 export async function renderBattleTurnSummary(
   log: CombatTurnLog,
@@ -1323,14 +1161,12 @@ export async function renderBattleTurnSummary(
   canvasOrLog: any,
   logOrP1: any,
   p1OrP2: any,
-  p2Optional?: any,
-  showDialogueModeParam?: boolean
+  p2Optional?: any
 ): Promise<Buffer> {
   let canvas: any;
   let log: CombatTurnLog;
   let p1: ActiveCombatant;
   let p2: ActiveCombatant;
-  let showDialogueMode = true;
   const isClientCanvas = canvasOrLog && typeof canvasOrLog.getContext === 'function';
 
   if (isClientCanvas) {
@@ -1338,13 +1174,11 @@ export async function renderBattleTurnSummary(
     log = logOrP1;
     p1 = p1OrP2;
     p2 = p2Optional;
-    showDialogueMode = showDialogueModeParam ?? true;
   } else {
     canvas = createCanvas(640, 700);
     log = canvasOrLog;
     p1 = logOrP1;
     p2 = p1OrP2;
-    showDialogueMode = typeof p2Optional === 'boolean' ? p2Optional : true;
   }
 
   if (canvas.width !== 640 || canvas.height !== 700) {
@@ -1638,13 +1472,9 @@ export async function renderBattleTurnSummary(
   ctx.restore();
 
   // ==========================================
-  // MIDDLE SECTION: CINEMATIC CLASH THEATER OR MID-BATTLE CUT-IN DIALOGUE
+  // MIDDLE SECTION: CINEMATIC CLASH THEATER (OPTION 2)
   // ==========================================
-  if (showDialogueMode && log.dialogueCutIn) {
-    drawMidBattleDialogueCutIn(ctx, log.dialogueCutIn, p1, p2, p1Img, p2Img);
-  } else {
-    drawCinematicClashTheater(ctx, log, p1, p2, p1Cards);
-  }
+  drawCinematicClashTheater(ctx, log, p1, p2, p1Cards);
 
   // ==========================================
   // BOTTOM SECTION: PLAYER 2 (MASTER & SERVANT)

@@ -4875,13 +4875,6 @@ export default function DiscordEmulator({
 // Inline Canvas Renderer Component for Discord attachments
 function CanvasRenderer({ canvasType, payload }: { canvasType: string; payload: any }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [prevLog, setPrevLog] = useState(payload?.log);
-  const [showDialogue, setShowDialogue] = useState<boolean>(!!payload?.log?.dialogueCutIn);
-
-  if (payload?.log !== prevLog) {
-    setPrevLog(payload?.log);
-    setShowDialogue(!!payload?.log?.dialogueCutIn);
-  }
 
   useEffect(() => {
     if (!canvasRef.current || !payload) return;
@@ -4892,26 +4885,9 @@ function CanvasRenderer({ canvasType, payload }: { canvasType: string; payload: 
     } else if (canvasType === 'dialogue') {
       renderDialogueCard(canvas, payload.speaker, payload.quote, payload.title, payload.servantClass);
     } else if (canvasType === 'battle') {
-      renderBattleTurnSummary(canvas, payload.log, payload.p1, payload.p2, showDialogue);
+      renderBattleTurnSummary(canvas, payload.log, payload.p1, payload.p2);
     }
-  }, [canvasType, payload, showDialogue]);
+  }, [canvasType, payload]);
 
-  return (
-    <div>
-      <canvas ref={canvasRef} className="w-full h-auto rounded block" />
-      {canvasType === 'battle' && payload?.log?.dialogueCutIn && (
-        <div className="p-2 bg-[#111] border-t border-[#222] flex items-center justify-between text-[11px] font-mono">
-          <span className="text-[#d4af37] flex items-center gap-1.5">
-            💬 <strong>Mid-Battle Dialogue Cut-In:</strong> {payload.log.dialogueCutIn.speakerName}
-          </span>
-          <button
-            onClick={() => setShowDialogue(!showDialogue)}
-            className="px-2 py-1 rounded bg-[#1f1f1f] hover:bg-[#2f2f2f] text-white border border-[#333] transition"
-          >
-            {showDialogue ? 'View Combat Damage Result ⚔️' : 'View Dialogue Cut-In 💬'}
-          </button>
-        </div>
-      )}
-    </div>
-  );
+  return <canvas ref={canvasRef} className="w-full h-auto rounded block" />;
 }

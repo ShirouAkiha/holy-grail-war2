@@ -218,16 +218,6 @@ export interface TurnActionChoice {
   useCommandSeal?: 'heal' | 'np_charge' | 'buff';
 }
 
-export interface MidBattleDialogue {
-  speakerName: string;
-  speakerClass?: ServantClass | string;
-  speakerAvatarUrl?: string;
-  scenario: 'NP_RELEASE' | 'BUSTER_CHAIN' | 'CRITICAL_STRIKE' | 'LOW_HP_CLUTCH' | 'CLASS_ADVANTAGE' | 'STANDARD_ATTACK' | 'VICTORY';
-  scenarioTitle: string;
-  quote: string;
-  level?: number;
-}
-
 export interface CombatTurnLog {
   turnNumber: number;
   actorId: string;
@@ -243,7 +233,6 @@ export interface CombatTurnLog {
   npTriggered?: boolean;
   isNoblePhantasm?: boolean;
   npChant?: string;
-  dialogueCutIn?: MidBattleDialogue;
   damageDealt: number;
   isCritical: boolean;
   starsGenerated: number;

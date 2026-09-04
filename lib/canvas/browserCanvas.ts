@@ -536,42 +536,20 @@ export function renderDialogueCard(
   ctx.fillText(line, 240, lineY);
 }
 
-function createFallbackAvatarSvg(name?: string, servantClass?: string): string {
-  const initial = (servantClass?.[0] || name?.[0] || 'S').toUpperCase();
-  const displayName = (name || 'Servant').slice(0, 12);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
-    <rect width="200" height="200" fill="#0f172a"/>
-    <rect x="10" y="10" width="180" height="180" fill="#1e293b" stroke="#d4af37" stroke-width="4" rx="12"/>
-    <circle cx="100" cy="85" r="45" fill="#334155" stroke="#fbbf24" stroke-width="2"/>
-    <text x="100" y="102" font-family="sans-serif" font-size="52" font-weight="bold" fill="#f59e0b" text-anchor="middle">${initial}</text>
-    <text x="100" y="165" font-family="sans-serif" font-size="15" font-weight="bold" fill="#f8fafc" text-anchor="middle">${displayName}</text>
-  </svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-}
-
-function loadBrowserImage(url?: string, fallbackName?: string, fallbackClass?: string): Promise<HTMLImageElement | null> {
-  let targetUrl = url;
-  if (!targetUrl || targetUrl.trim().length === 0) {
-    targetUrl = createFallbackAvatarSvg(fallbackName, fallbackClass);
-  }
+function loadBrowserImage(url?: string): Promise<HTMLImageElement | null> {
+  if (!url) return Promise.resolve(null);
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = () => {
-      // If CORS anonymous failed, attempt standard load or SVG fallback
+      // If CORS anonymous failed, attempt standard load so canvas can still paint it
       const fallbackImg = new Image();
       fallbackImg.onload = () => resolve(fallbackImg);
-      fallbackImg.onerror = () => {
-        // Ultimate fallback to inline SVG data URL
-        const svgImg = new Image();
-        svgImg.onload = () => resolve(svgImg);
-        svgImg.onerror = () => resolve(null);
-        svgImg.src = createFallbackAvatarSvg(fallbackName, fallbackClass);
-      };
-      fallbackImg.src = targetUrl!;
+      fallbackImg.onerror = () => resolve(null);
+      fallbackImg.src = url;
     };
-    img.src = targetUrl!;
+    img.src = url;
   });
 }
 
@@ -582,8 +560,7 @@ export async function renderBattleTurnSummary(
   canvas: HTMLCanvasElement,
   log: CombatTurnLog,
   p1: ActiveCombatant,
-  p2: ActiveCombatant,
-  showDialogueMode: boolean = true
+  p2: ActiveCombatant
 ): Promise<void> {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -593,8 +570,8 @@ export async function renderBattleTurnSummary(
 
   // Load Avatars concurrently
   const [p1Img, p2Img] = await Promise.all([
-    loadBrowserImage(p1.avatarUrl, p1.name, p1.servantClass),
-    loadBrowserImage(p2.avatarUrl, p2.name, p2.servantClass)
+    loadBrowserImage(p1.avatarUrl),
+    loadBrowserImage(p2.avatarUrl)
   ]);
 
   // Background - Deep Mystic War Canvas
@@ -848,239 +825,89 @@ export async function renderBattleTurnSummary(
   ctx.fillText(`${p1.critStars || 0}`, 514, 186);
 
   // ==========================================
-  // MIDDLE SECTION: CLASH RESOLUTION THEATER (OR MID-BATTLE CUT-IN DIALOGUE)
+  // MIDDLE SECTION: CLASH RESOLUTION THEATER (COMPACT)
   // ==========================================
-  if (showDialogueMode && log.dialogueCutIn) {
-    const dialogue = log.dialogueCutIn;
-    let speakerImg: HTMLImageElement | null = null;
-    if (dialogue.speakerAvatarUrl) {
-      if (dialogue.speakerAvatarUrl === p1.avatarUrl) speakerImg = p1Img;
-      else if (dialogue.speakerAvatarUrl === p2.avatarUrl) speakerImg = p2Img;
-      else speakerImg = await loadBrowserImage(dialogue.speakerAvatarUrl, dialogue.speakerName, dialogue.speakerClass);
-    }
-    if (!speakerImg) {
-      if (dialogue.speakerName?.toLowerCase() === p2.name?.toLowerCase()) speakerImg = p2Img;
-      else speakerImg = p1Img || p2Img;
-    }
+  ctx.fillStyle = '#030712';
+  drawRoundRect(ctx, 18, 236, 604, 200, 10);
+  ctx.fill();
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 2;
+  ctx.stroke();
 
-    const boxX = 18;
-    const boxY = 236;
-    const boxW = 604;
-    const boxH = 200;
+  // Marquee Header Pill
+  ctx.fillStyle = '#1e293b';
+  drawRoundRect(ctx, 30, 246, 580, 28, 5);
+  ctx.fill();
 
-    // Outer Chassis
-    ctx.fillStyle = '#0a0805';
-    drawRoundRect(ctx, boxX, boxY, boxW, boxH, 10);
+  ctx.fillStyle = '#f59e0b';
+  ctx.font = 'bold 13px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`HOLY GRAIL WAR - TURN ${log.turnNumber} CLASH RESOLUTION`, 320, 265);
+
+  // Main Action Text - Sanitize and format ASCII
+  const actorClean = (log.actorName || p1.name).replace(/[^\x00-\x7F]/g, '');
+  const targetClean = (log.targetName || p2.name).replace(/[^\x00-\x7F]/g, '');
+  const cardsUsedSeq = (log.cardsUsed || p1Cards).join(' -> ');
+
+  const actLine = `${actorClean} executed [${cardsUsedSeq}]`;
+  const dmgLine = `Dealt ${log.damageDealt > 0 ? log.damageDealt.toLocaleString() : '0'} DMG to ${targetClean}!`;
+  const statLine = `+${log.npCharged || 0}% NP Charged | +${log.starsGenerated || 0} Stars Gathered`;
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 14px system-ui, sans-serif';
+  ctx.fillText(actLine, 320, 296);
+
+  ctx.fillStyle = log.isCritical ? '#f87171' : '#38bdf8';
+  ctx.font = 'bold 16px system-ui, sans-serif';
+  ctx.fillText(dmgLine, 320, 320);
+
+  ctx.fillStyle = '#cbd5e1';
+  ctx.font = '12px system-ui, sans-serif';
+  ctx.fillText(statLine, 320, 340);
+
+  // Special Highlight Banner
+  if (log.isNoblePhantasm) {
+    ctx.fillStyle = 'rgba(234, 179, 8, 0.15)';
+    drawRoundRect(ctx, 32, 354, 576, 28, 5);
     ctx.fill();
-    ctx.strokeStyle = '#d97706';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-
-    // Inner Filigree Frame Accent
-    ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
-    ctx.lineWidth = 1;
-    drawRoundRect(ctx, boxX + 4, boxY + 4, boxW - 8, boxH - 8, 8);
-    ctx.stroke();
-
-    // Header Marquee Pill (Scenario Title)
-    ctx.fillStyle = '#1e130a';
-    drawRoundRect(ctx, boxX + 12, boxY + 10, boxW - 24, 28, 5);
-    ctx.fill();
-    ctx.strokeStyle = '#b45309';
-    ctx.lineWidth = 1;
-    drawRoundRect(ctx, boxX + 12, boxY + 10, boxW - 24, 28, 5);
-    ctx.stroke();
-
-    ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 15px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(dialogue.scenarioTitle || '💬 MID-BATTLE COMBAT CUT-IN', 320, boxY + 28);
-
-    // Left Servant Portrait Box (X: 30, Y: 280, W: 110, H: 146)
-    const portX = boxX + 12;
-    const portY = boxY + 44;
-    const portW = 110;
-    const portH = 142;
-
-    ctx.fillStyle = '#020617';
-    drawRoundRect(ctx, portX, portY, portW, portH, 8);
-    ctx.fill();
-
-    if (speakerImg) {
-      ctx.save();
-      drawRoundRect(ctx, portX + 2, portY + 2, portW - 4, portH - 4, 6);
-      ctx.clip();
-      drawImageCover(ctx, speakerImg, portX + 2, portY + 2, portW - 4, portH - 4);
-      ctx.restore();
-    }
-
-    // Gold Portrait Frame
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 2;
-    drawRoundRect(ctx, portX, portY, portW, portH, 8);
-    ctx.stroke();
-
-    // Level Badge positioned in top-left corner
-    const badgeX = portX + 4;
-    const badgeY = portY + 4;
-    ctx.fillStyle = '#1e130a';
-    drawRoundRect(ctx, badgeX, badgeY, 44, 22, 4);
-    ctx.fill();
-    ctx.strokeStyle = '#b45309';
-    ctx.lineWidth = 1;
-    drawRoundRect(ctx, badgeX, badgeY, 44, 22, 4);
-    ctx.stroke();
-
-    ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 12px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Lv.' + String(dialogue.level || 90), badgeX + 22, badgeY + 15);
-
-    // Speaker Nameplate
-    const nameX = portX + portW + 12;
-    const nameY = portY;
-    const nameW = 260;
-    const nameH = 30;
-
-    ctx.fillStyle = '#1e110a';
-    drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
-    ctx.fill();
-    ctx.strokeStyle = '#f59e0b';
+    ctx.strokeStyle = '#eab308';
     ctx.lineWidth = 1.5;
-    drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
     ctx.stroke();
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 18px system-ui, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(dialogue.speakerName || 'Servant', nameX + 12, nameY + 22);
-
-    // Dialogue Quote Box
-    const quoteBoxX = nameX;
-    const quoteBoxY = nameY + 36;
-    const quoteBoxW = boxW - portW - 36;
-    const quoteBoxH = 106;
-
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
-    drawRoundRect(ctx, quoteBoxX, quoteBoxY, quoteBoxW, quoteBoxH, 6);
-    ctx.fill();
-    ctx.strokeStyle = '#b45309';
-    ctx.lineWidth = 1.2;
-    drawRoundRect(ctx, quoteBoxX, quoteBoxY, quoteBoxW, quoteBoxH, 6);
-    ctx.stroke();
-
-    // Quote Text wrapped in prominent gold font
-    ctx.fillStyle = '#fef08a';
-    ctx.font = 'bold italic 20px "Georgia", serif, sans-serif';
-    ctx.textAlign = 'left';
-
-    const quoteStr = '"' + dialogue.quote + '"';
-    const words = quoteStr.split(' ');
-    let line = '';
-    let lineY = quoteBoxY + 30;
-    const maxWidth = quoteBoxW - 24;
-
-    for (let i = 0; i < words.length; i++) {
-      const testLine = line + words[i] + ' ';
-      const metrics = ctx.measureText(testLine);
-      if (metrics.width > maxWidth && i > 0) {
-        ctx.fillText(line, quoteBoxX + 12, lineY);
-        line = words[i] + ' ';
-        lineY += 28;
-      } else {
-        line = testLine;
-      }
-    }
-    ctx.fillText(line, quoteBoxX + 12, lineY);
-
-    // Bottom-right indicator
-    ctx.fillStyle = '#f59e0b';
-    ctx.font = 'bold 11px system-ui, sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText('⚡ PRE-ATTACK CUT-IN • COMBAT ACTION INCOMING', quoteBoxX + quoteBoxW - 12, quoteBoxY + quoteBoxH - 10);
-  } else {
-    ctx.fillStyle = '#030712';
-    drawRoundRect(ctx, 18, 236, 604, 200, 10);
-    ctx.fill();
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Marquee Header Pill
-    ctx.fillStyle = '#1e293b';
-    drawRoundRect(ctx, 30, 246, 580, 28, 5);
-    ctx.fill();
-
-    ctx.fillStyle = '#f59e0b';
-    ctx.font = 'bold 13px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`HOLY GRAIL WAR - TURN ${log.turnNumber} CLASH RESOLUTION`, 320, 265);
-
-    // Main Action Text - Sanitize and format ASCII
-    const actorClean = (log.actorName || p1.name).replace(/[^\x00-\x7F]/g, '');
-    const targetClean = (log.targetName || p2.name).replace(/[^\x00-\x7F]/g, '');
-    const cardsUsedSeq = (log.cardsUsed || p1Cards).join(' -> ');
-
-    const actLine = `${actorClean} executed [${cardsUsedSeq}]`;
-    const dmgLine = `Dealt ${log.damageDealt > 0 ? log.damageDealt.toLocaleString() : '0'} DMG to ${targetClean}!`;
-    const statLine = `+${log.npCharged || 0}% NP Charged | +${log.starsGenerated || 0} Stars Gathered`;
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 14px system-ui, sans-serif';
-    ctx.fillText(actLine, 320, 296);
-
-    ctx.fillStyle = log.isCritical ? '#f87171' : '#38bdf8';
-    ctx.font = 'bold 16px system-ui, sans-serif';
-    ctx.fillText(dmgLine, 320, 320);
-
-    ctx.fillStyle = '#cbd5e1';
-    ctx.font = '12px system-ui, sans-serif';
-    ctx.fillText(statLine, 320, 340);
-
-    // Special Highlight Banner
-    if (log.isNoblePhantasm) {
-      ctx.fillStyle = 'rgba(234, 179, 8, 0.15)';
-      drawRoundRect(ctx, 32, 354, 576, 28, 5);
-      ctx.fill();
-      ctx.strokeStyle = '#eab308';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      ctx.fillStyle = '#fde047';
-      ctx.font = 'bold 12px system-ui, sans-serif';
-      ctx.fillText('NOBLE PHANTASM UNLEASHED AT MAXIMUM OUTPUT!', 320, 373);
-    } else if (log.isCritical) {
-      ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
-      drawRoundRect(ctx, 32, 354, 576, 28, 5);
-      ctx.fill();
-      ctx.strokeStyle = '#ef4444';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      ctx.fillStyle = '#f87171';
-      ctx.font = 'bold 12px system-ui, sans-serif';
-      ctx.fillText('CRITICAL STRIKE! DOUBLE DAMAGE DEALT!', 320, 373);
-    } else {
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '12px system-ui, sans-serif';
-      ctx.fillText('Command Seals pulse with etheric energy as weapons clash.', 320, 373);
-    }
-
-    // Damage / Stars footer pill
-    ctx.fillStyle = 'rgba(56, 189, 248, 0.08)';
-    drawRoundRect(ctx, 70, 392, 500, 28, 14);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    const p1NameClean = (p1.masterName || 'P1').replace(/[^\x00-\x7F]/g, '');
-    const p2NameClean = (p2.masterName || 'P2').replace(/[^\x00-\x7F]/g, '');
-
-    ctx.fillStyle = '#38bdf8';
+    ctx.fillStyle = '#fde047';
     ctx.font = 'bold 12px system-ui, sans-serif';
-    ctx.fillText(`${p1NameClean} Stars: ${p1.critStars || 0}   |   ${p2NameClean} Stars: ${p2.critStars || 0}`, 320, 410);
+    ctx.fillText('NOBLE PHANTASM UNLEASHED AT MAXIMUM OUTPUT!', 320, 373);
+  } else if (log.isCritical) {
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+    drawRoundRect(ctx, 32, 354, 576, 28, 5);
+    ctx.fill();
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = '#f87171';
+    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.fillText('CRITICAL STRIKE! DOUBLE DAMAGE DEALT!', 320, 373);
+  } else {
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '12px system-ui, sans-serif';
+    ctx.fillText('Command Seals pulse with etheric energy as weapons clash.', 320, 373);
   }
+
+  // Damage / Stars footer pill
+  ctx.fillStyle = 'rgba(56, 189, 248, 0.08)';
+  drawRoundRect(ctx, 70, 392, 500, 28, 14);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  const p1NameClean = (p1.masterName || 'P1').replace(/[^\x00-\x7F]/g, '');
+  const p2NameClean = (p2.masterName || 'P2').replace(/[^\x00-\x7F]/g, '');
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 12px system-ui, sans-serif';
+  ctx.fillText(`${p1NameClean} Stars: ${p1.critStars || 0}   |   ${p2NameClean} Stars: ${p2.critStars || 0}`, 320, 410);
 
   // ==========================================
   // BOTTOM SECTION: PLAYER 2 (MASTER & SERVANT)

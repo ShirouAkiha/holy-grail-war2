@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { renderBattleTurnSummary } from '../lib/canvas/browserCanvas';
+import React, { useState } from 'react';
 import {
   ActiveCombatant,
   BattleState,
@@ -85,38 +84,10 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
   const [selectedCommandSeal, setSelectedCommandSeal] = useState<'heal' | 'np_charge' | undefined>();
   const [isSimulating, setIsSimulating] = useState(false);
 
-  // Mid-Battle Dialogue Cut-In states
-  const [showDialogueMode, setShowDialogueMode] = useState<boolean>(false);
-  const [cutInCountdown, setCutInCountdown] = useState<number>(0);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
   // Combat Log History state (Last 10 battles)
   const [arenaTab, setArenaTab] = useState<'duel' | 'history'>('duel');
   const [battleHistory, setBattleHistory] = useState<CombatBattleRecord[]>(() => loadCombatBattleHistory());
   const [lastCompletedBattleId, setLastCompletedBattleId] = useState<string | undefined>();
-
-  // Timer countdown for mid-battle dialogue cut-in
-  useEffect(() => {
-    if (!showDialogueMode || cutInCountdown <= 0) return;
-    const timer = setInterval(() => {
-      setCutInCountdown(prev => {
-        if (prev <= 0.1) {
-          setShowDialogueMode(false);
-          return 0;
-        }
-        return prev - 0.1;
-      });
-    }, 100);
-    return () => clearInterval(timer);
-  }, [showDialogueMode, cutInCountdown]);
-
-  // Render Canvas Theater whenever battle turn state changes
-  useEffect(() => {
-    if (!canvasRef.current || !battle || battle.turnHistory.length === 0) return;
-    const canvas = canvasRef.current;
-    const lastLog = battle.turnHistory[battle.turnHistory.length - 1];
-    renderBattleTurnSummary(canvas, lastLog, battle.player1, battle.player2, showDialogueMode);
-  }, [battle, showDialogueMode]);
 
   if (!activeServant || !battle) {
     return (
@@ -159,7 +130,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
     const aiUseNp = p2.npGauge >= 100 && Math.random() > 0.3;
 
     setTimeout(() => {
-      const { updatedState, turnLogs } = executeBattleTurn(
+      const { updatedState } = executeBattleTurn(
         battle,
         {
           combatantId: p1.id,
@@ -182,21 +153,12 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         });
       }
 
-      const latestLog = turnLogs[turnLogs.length - 1];
-
       setBattle(updatedState);
       setSelectedCards([]);
       setUseNp(false);
       setSelectedSkillIdx(undefined);
       setSelectedCommandSeal(undefined);
       setIsSimulating(false);
-
-      if (latestLog?.dialogueCutIn) {
-        setShowDialogueMode(true);
-        setCutInCountdown(4.5);
-      } else {
-        setShowDialogueMode(false);
-      }
 
       if (updatedState.turnPhase === 'victory') {
         onUpdateMaster({
@@ -468,46 +430,6 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
           </div>
         </div>
       </div>
-
-      {/* Live Canvas Battle Theater */}
-      {battle.turnHistory.length > 0 && (
-        <div className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] shadow-2xl space-y-3 text-center">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1a1a1a] pb-3">
-            <div className="flex items-center gap-2 text-left">
-              <span className="text-[#d4af37] font-mono text-xs uppercase tracking-widest font-bold">
-                🎭 Visual Canvas Theater
-              </span>
-              {showDialogueMode && (
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-500/40 animate-pulse">
-                  ⚡ Mid-Battle Dialogue Cut-In Active ({cutInCountdown.toFixed(1)}s remaining)
-                </span>
-              )}
-            </div>
-
-            {showDialogueMode ? (
-              <button
-                onClick={() => setShowDialogueMode(false)}
-                className="px-3 py-1 rounded bg-[#161616] hover:bg-[#222] text-[#d4af37] border border-[#d4af37]/40 text-xs font-mono transition flex items-center gap-1.5"
-              >
-                <span>Fast-Forward Attack (Skip Cut-In)</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowDialogueMode(true)}
-                className="px-3 py-1 rounded bg-[#161616] hover:bg-[#222] text-white/70 hover:text-white border border-white/20 text-xs font-mono transition flex items-center gap-1.5"
-              >
-                <span>Replay Mid-Battle Dialogue</span>
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              </button>
-            )}
-          </div>
-
-          <div className="p-4 bg-[#050505] rounded-lg border border-[#161616] flex items-center justify-center overflow-x-auto shadow-2xl">
-            <canvas ref={canvasRef} className="rounded-lg border border-[#222] shadow-2xl max-w-full h-auto" />
-          </div>
-        </div>
-      )}
 
       {/* Victory / Defeat Overlay */}
       {(battle.turnPhase === 'victory' || battle.turnPhase === 'defeat') && (
