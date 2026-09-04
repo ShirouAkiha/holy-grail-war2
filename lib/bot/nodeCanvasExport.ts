@@ -593,9 +593,14 @@ export async function renderBattleTurnSummary(
   // Middle Clash Box or Mid-Battle Cut-In
   if (log.dialogueCutIn) {
     const dialogue = log.dialogueCutIn;
+    const boxX = 18;
+    const boxY = 236;
+    const boxW = 604;
+    const boxH = 200;
+
     // Outer Chassis
     ctx.fillStyle = '#0a0805';
-    drawRoundRect(ctx, 18, 236, 604, 200, 10);
+    drawRoundRect(ctx, boxX, boxY, boxW, boxH, 10);
     ctx.fill();
     ctx.strokeStyle = '#d97706';
     ctx.lineWidth = 2.5;
@@ -604,22 +609,22 @@ export async function renderBattleTurnSummary(
     // Inner Filigree Frame Accent
     ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
     ctx.lineWidth = 1;
-    drawRoundRect(ctx, 22, 240, 596, 192, 8);
+    drawRoundRect(ctx, boxX + 4, boxY + 4, boxW - 8, boxH - 8, 8);
     ctx.stroke();
 
     // Header Marquee Pill
     ctx.fillStyle = '#1e130a';
-    drawRoundRect(ctx, 30, 246, 580, 26, 5);
+    drawRoundRect(ctx, boxX + 12, boxY + 10, boxW - 24, 28, 5);
     ctx.fill();
     ctx.strokeStyle = '#b45309';
     ctx.lineWidth = 1;
-    drawRoundRect(ctx, 30, 246, 580, 26, 5);
+    drawRoundRect(ctx, boxX + 12, boxY + 10, boxW - 24, 28, 5);
     ctx.stroke();
 
     ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 12px sans-serif';
+    ctx.font = 'bold 13px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(dialogue.scenarioTitle || '💬 MID-BATTLE COMBAT CUT-IN', 320, 263);
+    ctx.fillText(dialogue.scenarioTitle || '💬 MID-BATTLE COMBAT CUT-IN', 320, boxY + 28);
 
     // Left Servant Portrait Box
     let speakerImg = p1Img;
@@ -627,81 +632,104 @@ export async function renderBattleTurnSummary(
       speakerImg = p2Img;
     }
 
+    const portX = boxX + 12;
+    const portY = boxY + 44;
+    const portW = 110;
+    const portH = 142;
+
     ctx.fillStyle = '#020617';
-    drawRoundRect(ctx, 30, 278, 110, 146, 8);
+    drawRoundRect(ctx, portX, portY, portW, portH, 8);
     ctx.fill();
 
     if (speakerImg) {
       ctx.save();
-      drawRoundRect(ctx, 32, 280, 106, 142, 6);
+      drawRoundRect(ctx, portX + 2, portY + 2, portW - 4, portH - 4, 6);
       ctx.clip();
-      try { ctx.drawImage(speakerImg, 32, 280, 106, 142); } catch {}
+      try { drawImageCover(ctx, speakerImg, portX + 2, portY + 2, portW - 4, portH - 4); } catch {}
       ctx.restore();
     }
 
     ctx.strokeStyle = '#f59e0b';
     ctx.lineWidth = 2;
-    drawRoundRect(ctx, 30, 278, 110, 146, 8);
+    drawRoundRect(ctx, portX, portY, portW, portH, 8);
     ctx.stroke();
 
-    // Level Tag
-    ctx.fillStyle = '#b45309';
-    drawRoundRect(ctx, 72, 280, 26, 18, 4);
+    // Level Tag in top-left corner
+    const badgeX = portX + 4;
+    const badgeY = portY + 4;
+    ctx.fillStyle = '#1e130a';
+    drawRoundRect(ctx, badgeX, badgeY, 40, 20, 4);
     ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 10px sans-serif';
+    ctx.strokeStyle = '#b45309';
+    ctx.lineWidth = 1;
+    drawRoundRect(ctx, badgeX, badgeY, 40, 20, 4);
+    ctx.stroke();
+
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(\`\${dialogue.level || 90}\`, 85, 293);
+    ctx.fillText('Lv.' + String(dialogue.level || 90), badgeX + 20, badgeY + 14);
 
     // Speaker Nameplate
+    const nameX = portX + portW + 12;
+    const nameY = portY;
+    const nameW = 240;
+    const nameH = 28;
+
     ctx.fillStyle = '#1e110a';
-    drawRoundRect(ctx, 148, 278, 200, 24, 4);
+    drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
     ctx.fill();
     ctx.strokeStyle = '#f59e0b';
     ctx.lineWidth = 1.5;
-    drawRoundRect(ctx, 148, 278, 200, 24, 4);
+    drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
     ctx.stroke();
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 12px sans-serif';
+    ctx.font = 'bold 15px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText((dialogue.speakerName || 'Servant').slice(0, 22), 156, 294);
+    ctx.fillText(dialogue.speakerName || 'Servant', nameX + 10, nameY + 19);
 
     // Dialogue Quote Box
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-    drawRoundRect(ctx, 148, 308, 462, 116, 6);
+    const quoteBoxX = nameX;
+    const quoteBoxY = nameY + 34;
+    const quoteBoxW = boxW - portW - 36;
+    const quoteBoxH = 108;
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+    drawRoundRect(ctx, quoteBoxX, quoteBoxY, quoteBoxW, quoteBoxH, 6);
     ctx.fill();
     ctx.strokeStyle = '#b45309';
     ctx.lineWidth = 1.2;
-    drawRoundRect(ctx, 148, 308, 462, 116, 6);
+    drawRoundRect(ctx, quoteBoxX, quoteBoxY, quoteBoxW, quoteBoxH, 6);
     ctx.stroke();
 
     ctx.fillStyle = '#fef08a';
-    ctx.font = 'italic 13px serif, sans-serif';
+    ctx.font = 'bold italic 16px "Georgia", serif, sans-serif';
     ctx.textAlign = 'left';
 
-    const words = \`"\${dialogue.quote}"\`.split(' ');
+    const quoteStr = '"' + dialogue.quote + '"';
+    const words = quoteStr.split(' ');
     let line = '';
-    let lineY = 332;
-    const maxWidth = 438;
+    let lineY = quoteBoxY + 28;
+    const maxWidth = quoteBoxW - 24;
 
     for (let i = 0; i < words.length; i++) {
       const testLine = line + words[i] + ' ';
       const metrics = ctx.measureText(testLine);
       if (metrics.width > maxWidth && i > 0) {
-        ctx.fillText(line, 162, lineY);
+        ctx.fillText(line, quoteBoxX + 12, lineY);
         line = words[i] + ' ';
-        lineY += 20;
+        lineY += 24;
       } else {
         line = testLine;
       }
     }
-    ctx.fillText(line, 162, lineY);
+    ctx.fillText(line, quoteBoxX + 12, lineY);
 
     ctx.fillStyle = '#f59e0b';
-    ctx.font = 'bold 10px sans-serif';
+    ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText('⚡ PRE-ATTACK CUT-IN • COMBAT ACTION INCOMING', 598, 414);
+    ctx.fillText('⚡ PRE-ATTACK CUT-IN • COMBAT ACTION INCOMING', quoteBoxX + quoteBoxW - 12, quoteBoxY + quoteBoxH - 10);
   } else {
     // Standard Middle Clash Box
     ctx.fillStyle = '#030712';
