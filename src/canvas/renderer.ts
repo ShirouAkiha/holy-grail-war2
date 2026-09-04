@@ -59,6 +59,103 @@ function createCanvas(width: number, height: number): any {
   };
 }
 
+const imageBufferCache = new Map<string, { buffer: Buffer; timestamp: number }>();
+const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour memory cache
+
+async function fetchWithHttpsModule(url: string, maxRedirects = 3): Promise<Buffer | null> {
+  try {
+    const parsedUrl = new URL(url);
+    const isHttps = parsedUrl.protocol === 'https:';
+    const client = isHttps ? require('https') : require('http');
+    if (!client || typeof client.get !== 'function') return null;
+
+    return new Promise((resolve) => {
+      try {
+        const req = client.get(
+          url,
+          {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+              'Referer': parsedUrl.origin + '/',
+              'Connection': 'keep-alive',
+            },
+            timeout: 10000,
+          },
+          (res: any) => {
+            if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && maxRedirects > 0) {
+              const redirectUrl = new URL(res.headers.location, url).toString();
+              return resolve(fetchWithHttpsModule(redirectUrl, maxRedirects - 1));
+            }
+
+            if (res.statusCode !== 200) {
+              return resolve(null);
+            }
+
+            const chunks: Buffer[] = [];
+            res.on('data', (chunk: any) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+            res.on('end', () => resolve(Buffer.concat(chunks)));
+            res.on('error', () => resolve(null));
+          }
+        );
+
+        req.on('error', () => resolve(null));
+        req.on('timeout', () => {
+          req.destroy();
+          resolve(null);
+        });
+      } catch {
+        resolve(null);
+      }
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function fetchImageBuffer(url: string, retries = 2): Promise<Buffer | null> {
+  const cached = imageBufferCache.get(url);
+  if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+    return cached.buffer;
+  }
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const parsedUrl = new URL(url);
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+          'Referer': parsedUrl.origin + '/',
+          'Connection': 'keep-alive',
+        },
+      });
+
+      if (res.ok) {
+        const arrayBuffer = await res.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        if (buffer && buffer.length > 0) {
+          imageBufferCache.set(url, { buffer, timestamp: Date.now() });
+          return buffer;
+        }
+      }
+    } catch {
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, (attempt + 1) * 150));
+      }
+    }
+  }
+
+  // Fallback to Node native https module if Bun/Node fetch threw ECONNRESET or socket closed
+  const httpsBuffer = await fetchWithHttpsModule(url);
+  if (httpsBuffer && httpsBuffer.length > 0) {
+    imageBufferCache.set(url, { buffer: httpsBuffer, timestamp: Date.now() });
+    return httpsBuffer;
+  }
+
+  return null;
+}
+
 async function loadImage(src: string): Promise<any> {
   if (!src || typeof src !== 'string') return null;
   const targetUrl = normalizeMediaUrl(src.trim());
@@ -70,29 +167,15 @@ async function loadImage(src: string): Promise<any> {
         return await canvasModule.loadImage(targetUrl);
       }
 
-      // Fetch remote image via Node fetch to avoid @napi-rs/canvas network/UA failures
-      const res = await fetch(targetUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
-        }
-      });
-
-      if (!res.ok) {
-        console.warn(`[Canvas loadImage] HTTP ${res.status} fetching image: ${targetUrl}`);
-        return await canvasModule.loadImage(targetUrl).catch(() => null);
+      const buffer = await fetchImageBuffer(targetUrl);
+      if (buffer && buffer.length > 0) {
+        return await canvasModule.loadImage(buffer);
       }
 
-      const arrayBuffer = await res.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      return await canvasModule.loadImage(buffer);
-    } catch (err) {
-      console.warn(`[Canvas loadImage] Error loading ${targetUrl}:`, err);
-      try {
-        return await canvasModule.loadImage(targetUrl);
-      } catch {
-        return null;
-      }
+      // Final fallback attempt
+      return await canvasModule.loadImage(targetUrl).catch(() => null);
+    } catch {
+      return null;
     }
   }
   return null;
