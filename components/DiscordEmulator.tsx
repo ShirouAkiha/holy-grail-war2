@@ -3509,7 +3509,10 @@ export default function DiscordEmulator({
             speaker: target.name,
             quote: target.summonQuote,
             title: target.title,
-            servantClass: target.servantClass
+            servantClass: target.servantClass,
+            avatarUrl: target.avatarUrl,
+            bondOrLevel: 10,
+            bgUrlOrPreset: 'fuyuki'
           }
         });
       }
@@ -3547,7 +3550,10 @@ export default function DiscordEmulator({
             speaker: activeServant.template.name,
             quote: activeServant.customQuotes.summon || activeServant.template.summonQuote,
             title: activeServant.template.title,
-            servantClass: activeServant.template.servantClass
+            servantClass: activeServant.template.servantClass,
+            avatarUrl: activeServant.template.avatarUrl,
+            bondOrLevel: activeServant.bondLevel || 8,
+            bgUrlOrPreset: 'fuyuki'
           }
         });
       }
@@ -4886,7 +4892,20 @@ function CanvasRenderer({ canvasType, payload }: { canvasType: string; payload: 
     if (canvasType === 'servant') {
       renderServantProfileCard(canvas, payload.servant, payload.masterName);
     } else if (canvasType === 'dialogue') {
-      renderDialogueCard(canvas, payload.speaker, payload.quote, payload.title, payload.servantClass);
+      renderDialogueCard(
+        canvas,
+        payload.speaker,
+        payload.quote,
+        payload.title || 'Tactical Combat Chain',
+        payload.servantClass || 'Saber',
+        payload.avatarUrl,
+        payload.bondOrLevel || 8,
+        payload.defenderName || 'Gilgamesh',
+        payload.defenderAvatarUrl,
+        payload.defenderClass || 'Archer',
+        payload.sequence || ['Buster', 'Buster', 'Buster'],
+        payload.bgUrlOrPreset || 'fuyuki'
+      );
     } else if (canvasType === 'battle') {
       renderBattleTurnSummary(canvas, payload.log, payload.p1, payload.p2);
     }

@@ -841,7 +841,179 @@ function drawTargetLockedHUD(
 }
 
 /**
- * Persona / Anime Dynamic Diagonal Slash Cut-In (Animated Frame-by-Frame)
+ * Render procedural battlefield stage backdrop or draw custom background image
+ */
+function drawBattlefieldStage(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  bgImg: HTMLImageElement | null,
+  stagePreset: string = 'fuyuki',
+  frameIdx: number = 0
+) {
+  if (bgImg) {
+    // Custom user background image
+    ctx.save();
+    drawImageCover(ctx, bgImg, 0, 0, width, height);
+
+    // Cinematic dark contrast overlay ensuring text & HUD are 100% legible
+    const vGrad = ctx.createRadialGradient(width / 2, height / 2, 90, width / 2, height / 2, width * 0.72);
+    vGrad.addColorStop(0, 'rgba(8, 4, 3, 0.40)');
+    vGrad.addColorStop(0.7, 'rgba(6, 3, 2, 0.72)');
+    vGrad.addColorStop(1, 'rgba(3, 1, 1, 0.90)');
+    ctx.fillStyle = vGrad;
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+    return;
+  }
+
+  const preset = (stagePreset || 'fuyuki').toLowerCase();
+
+  if (preset.includes('temple') || preset.includes('ryuudou')) {
+    // Ryuudou Temple - Mystic Indigo Midnight & Moonlight Beam
+    const sky = ctx.createLinearGradient(0, 0, 0, height);
+    sky.addColorStop(0, '#040716');
+    sky.addColorStop(0.5, '#0a122e');
+    sky.addColorStop(1, '#050918');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, width, height);
+
+    // Moonlight aura beam
+    const moon = ctx.createRadialGradient(400, 30, 10, 400, 30, 260);
+    moon.addColorStop(0, 'rgba(191, 219, 254, 0.35)');
+    moon.addColorStop(0.5, 'rgba(96, 165, 250, 0.12)');
+    moon.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = moon;
+    ctx.fillRect(0, 0, width, height);
+
+    // Misty mountain ridges & temple steps
+    ctx.fillStyle = '#02040c';
+    ctx.beginPath();
+    ctx.moveTo(0, 250);
+    ctx.lineTo(220, 180);
+    ctx.lineTo(400, 220);
+    ctx.lineTo(620, 160);
+    ctx.lineTo(800, 240);
+    ctx.lineTo(800, height);
+    ctx.lineTo(0, height);
+    ctx.closePath();
+    ctx.fill();
+
+    // Floating spirit motes
+    for (let i = 0; i < 14; i++) {
+      const mx = (i * 59 + frameIdx * 9) % width;
+      const my = (i * 31 + (frameIdx % 4) * 6) % 220 + 20;
+      drawSparkDiamond(ctx, mx, my, 2.5 + (i % 3), 'rgba(147, 197, 253, 0.7)');
+    }
+  } else if (preset.includes('throne')) {
+    // Throne of Heroes - Celestial Golden Cosmic Realm
+    const sky = ctx.createLinearGradient(0, 0, 0, height);
+    sky.addColorStop(0, '#1c1004');
+    sky.addColorStop(0.5, '#2e1906');
+    sky.addColorStop(1, '#0f0802');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, width, height);
+
+    const sun = ctx.createRadialGradient(400, 90, 20, 400, 90, 320);
+    sun.addColorStop(0, 'rgba(253, 224, 71, 0.32)');
+    sun.addColorStop(0.5, 'rgba(217, 119, 6, 0.15)');
+    sun.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = sun;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.18)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(400, 90, 110, 0, Math.PI * 2);
+    ctx.arc(400, 90, 175, 0, Math.PI * 2);
+    ctx.stroke();
+
+    for (let i = 0; i < 12; i++) {
+      const sx = (i * 67 + frameIdx * 7) % width;
+      const sy = (i * 41) % 200 + 15;
+      drawSparkDiamond(ctx, sx, sy, 2 + (i % 3), '#fbbf24');
+    }
+  } else if (preset.includes('grail') || preset.includes('abyss')) {
+    // Greater Grail Cavern - Dark Leyline Abyss
+    const sky = ctx.createLinearGradient(0, 0, 0, height);
+    sky.addColorStop(0, '#0c040e');
+    sky.addColorStop(0.5, '#17061a');
+    sky.addColorStop(1, '#070209');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, width, height);
+
+    const mana = ctx.createRadialGradient(400, 120, 15, 400, 120, 270);
+    mana.addColorStop(0, 'rgba(217, 70, 239, 0.3)');
+    mana.addColorStop(0.6, 'rgba(147, 51, 234, 0.14)');
+    mana.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = mana;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.strokeStyle = 'rgba(236, 72, 153, 0.25)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(80, 0); ctx.lineTo(340, 120); ctx.lineTo(240, height);
+    ctx.moveTo(720, 0); ctx.lineTo(460, 120); ctx.lineTo(560, height);
+    ctx.stroke();
+  } else if (preset.includes('snow') || preset.includes('castle')) {
+    // Einzbern Castle Twilight Blizzard
+    const sky = ctx.createLinearGradient(0, 0, 0, height);
+    sky.addColorStop(0, '#070f20');
+    sky.addColorStop(0.5, '#0d1d36');
+    sky.addColorStop(1, '#060c18');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, width, height);
+
+    const moon = ctx.createRadialGradient(400, 50, 15, 400, 50, 240);
+    moon.addColorStop(0, 'rgba(224, 242, 254, 0.35)');
+    moon.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = moon;
+    ctx.fillRect(0, 0, width, height);
+
+    for (let i = 0; i < 15; i++) {
+      const fx = (i * 57 + frameIdx * 10) % width;
+      const fy = (i * 29 + frameIdx * 8) % height;
+      drawSparkDiamond(ctx, fx, fy, 2, 'rgba(255, 255, 255, 0.6)');
+    }
+  } else {
+    // Default: Fuyuki Burning City
+    const sky = ctx.createLinearGradient(0, 0, 0, height);
+    sky.addColorStop(0, '#0c0503');
+    sky.addColorStop(0.45, '#1f0905');
+    sky.addColorStop(0.8, '#2e0d04');
+    sky.addColorStop(1, '#0e0402');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, width, height);
+
+    // Burning Horizon Aura
+    const fireGrad = ctx.createRadialGradient(400, 230, 20, 400, 230, 360);
+    fireGrad.addColorStop(0, 'rgba(239, 68, 68, 0.32)');
+    fireGrad.addColorStop(0.45, 'rgba(245, 158, 11, 0.20)');
+    fireGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = fireGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    // Distant ruined city skyline silhouettes
+    ctx.fillStyle = '#060201';
+    ctx.fillRect(170, 160, 36, 100);
+    ctx.fillRect(215, 140, 46, 120);
+    ctx.fillRect(270, 175, 32, 85);
+    ctx.fillRect(500, 155, 42, 105);
+    ctx.fillRect(550, 135, 52, 125);
+    ctx.fillRect(610, 170, 36, 90);
+
+    // Drifting flame sparks / embers
+    for (let i = 0; i < 16; i++) {
+      const ex = (i * 49 + frameIdx * 12) % width;
+      const ey = ((height - 50) - (i * 24 + frameIdx * 10)) % (height - 20);
+      drawSparkDiamond(ctx, ex, ey, 2 + (i % 3), i % 2 === 0 ? '#f59e0b' : '#ef4444');
+    }
+  }
+}
+
+/**
+ * Persona / Anime Dynamic Diagonal Full-Screen Screen-Splitting Slash
+ * Slices boldly across the entire 800x420 screen with radiant energy, speed trails, and shockwave burst.
  */
 function drawPersonaSlashAnimation(
   ctx: CanvasRenderingContext2D,
@@ -849,293 +1021,446 @@ function drawPersonaSlashAnimation(
   cardTypeTheme: string = 'Buster'
 ) {
   ctx.save();
+
   if (frameIdx === 0) {
-    ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
+    // Frame 0: Focus Tension & Eye Gleam - Screen dims, razor charge line stretches diagonally
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+    ctx.fillRect(0, 0, 800, 420);
+
+    // Diagonal gold charge line across the entire screen (top-right to bottom-left)
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.55)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(180, 15);
-    ctx.lineTo(260, 75);
-    ctx.stroke();
-    drawSparkDiamond(ctx, 220, 45, 4, '#fbbf24');
-  } else if (frameIdx === 1) {
-    ctx.strokeStyle = '#fef08a';
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.moveTo(170, 12);
-    ctx.lineTo(340, 140);
+    ctx.moveTo(760, 15);
+    ctx.lineTo(40, 405);
     ctx.stroke();
 
-    ctx.strokeStyle = 'rgba(254, 240, 138, 0.45)';
-    ctx.lineWidth = 1.6;
+    // Ignition sparks at center and attacker focus point
+    drawSparkDiamond(ctx, 400, 210, 5, '#fbbf24');
+    drawSparkDiamond(ctx, 160, 110, 6, '#ffffff');
+  } else if (frameIdx === 1) {
+    // Frame 1: Blade Draw & Sudden Strike - High velocity forward stroke
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.moveTo(140, 60); ctx.lineTo(320, 60);
-    ctx.moveTo(200, 110); ctx.lineTo(380, 110);
+    ctx.moveTo(780, 10);
+    ctx.lineTo(30, 410);
     ctx.stroke();
-    drawSparkDiamond(ctx, 330, 130, 5, '#ffffff');
-  } else if (frameIdx === 2) {
+
+    // Outer golden aura trail
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.65)';
+    ctx.lineWidth = 12;
     ctx.beginPath();
-    ctx.moveTo(170, 12);
-    ctx.lineTo(440, 12);
-    ctx.lineTo(310, 202);
-    ctx.lineTo(80, 202);
+    ctx.moveTo(780, 10);
+    ctx.lineTo(30, 410);
+    ctx.stroke();
+
+    // Dynamic speed streaks across canvas
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(680, 20); ctx.lineTo(120, 360);
+    ctx.moveTo(820, 40); ctx.lineTo(220, 430);
+    ctx.moveTo(580, 40); ctx.lineTo(40, 380);
+    ctx.stroke();
+
+    drawSparkDiamond(ctx, 400, 210, 7, '#ffffff');
+    drawSparkDiamond(ctx, 520, 140, 5, '#fde047');
+    drawSparkDiamond(ctx, 280, 280, 5, '#fde047');
+  } else if (frameIdx === 2) {
+    // Frame 2: THE SCREEN-SPLITTING CLEAVE (CLIMAX IMPACT FLASH!)
+    // Massive incandescent energy polygon ripping across the full canvas
+    ctx.beginPath();
+    ctx.moveTo(820, -10);
+    ctx.lineTo(720, -10);
+    ctx.lineTo(-20, 390);
+    ctx.lineTo(-20, 430);
     ctx.closePath();
-    const slashGrad = ctx.createLinearGradient(170, 12, 440, 202);
-    slashGrad.addColorStop(0, 'rgba(254, 240, 138, 0.35)');
-    slashGrad.addColorStop(0.5, 'rgba(245, 158, 11, 0.45)');
-    slashGrad.addColorStop(1, 'rgba(239, 68, 68, 0.15)');
-    ctx.fillStyle = slashGrad;
+    const slashFill = ctx.createLinearGradient(820, -10, -20, 430);
+    slashFill.addColorStop(0, 'rgba(254, 240, 138, 0.45)');
+    slashFill.addColorStop(0.5, 'rgba(245, 158, 11, 0.55)');
+    slashFill.addColorStop(1, 'rgba(239, 68, 68, 0.35)');
+    ctx.fillStyle = slashFill;
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)';
+    // Colossal Outer Flame Wake (38px wide)
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)';
+    ctx.lineWidth = 38;
+    ctx.beginPath();
+    ctx.moveTo(820, -10);
+    ctx.lineTo(-20, 430);
+    ctx.stroke();
+
+    // Radiant Inset Golden Blade (18px wide)
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.85)';
     ctx.lineWidth = 18;
     ctx.beginPath();
-    ctx.moveTo(440, 12);
-    ctx.lineTo(310, 202);
+    ctx.moveTo(820, -10);
+    ctx.lineTo(-20, 430);
     ctx.stroke();
 
+    // Pure Blinding White Blade Core (6px wide)
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 6;
     ctx.beginPath();
-    ctx.moveTo(440, 12);
-    ctx.lineTo(310, 202);
+    ctx.moveTo(820, -10);
+    ctx.lineTo(-20, 430);
     ctx.stroke();
 
-    ctx.strokeStyle = 'rgba(254, 240, 138, 0.6)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(210, 15); ctx.lineTo(100, 200);
-    ctx.moveTo(280, 15); ctx.lineTo(170, 200);
-    ctx.moveTo(350, 15); ctx.lineTo(240, 200);
-    ctx.stroke();
-
-    drawSparkDiamond(ctx, 435, 18, 5.5, '#ffffff');
-    drawSparkDiamond(ctx, 405, 45, 5, '#fef08a');
-    drawSparkDiamond(ctx, 375, 80, 6, '#ffffff');
-    drawSparkDiamond(ctx, 350, 115, 4.5, '#fbbf24');
-    drawSparkDiamond(ctx, 330, 150, 5.5, '#ffffff');
-    drawSparkDiamond(ctx, 310, 195, 5, '#fef08a');
-    drawSparkDiamond(ctx, 270, 100, 3.5, '#f59e0b');
-    drawSparkDiamond(ctx, 390, 140, 3.5, '#f59e0b');
-  } else if (frameIdx === 3) {
+    // Epicenter Radial Shockwave Ring at Center of Clash (400, 200)
     ctx.strokeStyle = 'rgba(254, 240, 138, 0.8)';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(440, 12);
-    ctx.lineTo(310, 202);
+    ctx.arc(400, 200, 72, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(400, 200, 105, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Secondary X-Cut Energy Blade (Lethal Anime Cross Cleave)
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(160, 30);
+    ctx.lineTo(660, 370);
+    ctx.stroke();
+
+    // Velocity speed lines streaking across full screen
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.7)';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(700, 0); ctx.lineTo(100, 360);
+    ctx.moveTo(800, 50); ctx.lineTo(200, 410);
+    ctx.moveTo(600, 20); ctx.lineTo(40, 350);
+    ctx.moveTo(750, 110); ctx.lineTo(250, 410);
+    ctx.stroke();
+
+    // Array of 14 explosive spark diamonds radiating along the blade cut
+    drawSparkDiamond(ctx, 400, 200, 9, '#ffffff');
+    drawSparkDiamond(ctx, 400, 200, 14, 'rgba(254, 240, 138, 0.6)');
+    drawSparkDiamond(ctx, 480, 150, 6, '#ffffff');
+    drawSparkDiamond(ctx, 320, 250, 6, '#ffffff');
+    drawSparkDiamond(ctx, 560, 110, 5, '#fde047');
+    drawSparkDiamond(ctx, 240, 290, 5, '#fde047');
+    drawSparkDiamond(ctx, 640, 65, 5.5, '#fbbf24');
+    drawSparkDiamond(ctx, 160, 335, 5.5, '#fbbf24');
+    drawSparkDiamond(ctx, 720, 25, 6, '#ffffff');
+    drawSparkDiamond(ctx, 80, 375, 6, '#ffffff');
+    drawSparkDiamond(ctx, 380, 130, 4, '#f87171');
+    drawSparkDiamond(ctx, 430, 270, 4, '#f87171');
+    drawSparkDiamond(ctx, 460, 230, 4.5, '#ffffff');
+    drawSparkDiamond(ctx, 340, 170, 4.5, '#ffffff');
+  } else if (frameIdx === 3) {
+    // Frame 3: Resonant Wake Expanding -> 1st Command Card Surges!
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.7)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(820, -10);
+    ctx.lineTo(-20, 430);
     ctx.stroke();
 
     ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
-    ctx.lineWidth = 8;
+    ctx.lineWidth = 14;
     ctx.beginPath();
-    ctx.moveTo(420, 12);
-    ctx.lineTo(290, 202);
+    ctx.moveTo(800, -10);
+    ctx.lineTo(-40, 430);
     ctx.stroke();
 
-    drawSparkDiamond(ctx, 380, 75, 4.5, '#fbbf24');
-    drawSparkDiamond(ctx, 330, 150, 4.5, '#fbbf24');
+    drawSparkDiamond(ctx, 400, 200, 6, '#fbbf24');
+    drawSparkDiamond(ctx, 305, 120, 7, '#fde047'); // Flaring at Card 1
   } else if (frameIdx === 4) {
-    ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)';
-    ctx.lineWidth = 2.4;
+    // Frame 4: Resonance Shockwave Sweeps to 2nd Command Card!
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.55)';
+    ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(440, 12);
-    ctx.lineTo(310, 202);
+    ctx.moveTo(820, -10);
+    ctx.lineTo(-20, 430);
     ctx.stroke();
 
-    drawSparkDiamond(ctx, 395, 60, 4, '#fde047');
-    drawSparkDiamond(ctx, 345, 135, 4, '#fde047');
+    drawSparkDiamond(ctx, 400, 120, 7, '#93c5fd'); // Flaring at Card 2
+    drawSparkDiamond(ctx, 450, 180, 4.5, '#fbbf24');
   } else if (frameIdx === 5) {
-    ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)';
-    ctx.lineWidth = 2;
+    // Frame 5: Resonance Overdrive Sweeps to 3rd Card & Full Chain Activation!
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(440, 12);
-    ctx.lineTo(310, 202);
+    ctx.moveTo(820, -10);
+    ctx.lineTo(-20, 430);
     ctx.stroke();
 
-    drawSparkDiamond(ctx, 410, 45, 3.5, '#fbbf24');
-    drawSparkDiamond(ctx, 360, 120, 3.5, '#fbbf24');
+    drawSparkDiamond(ctx, 495, 120, 7, '#6ee7b7'); // Flaring at Card 3
+    drawSparkDiamond(ctx, 400, 35, 6, '#fde047');  // Banner glowing
   } else if (frameIdx === 6) {
-    ctx.strokeStyle = 'rgba(245, 158, 11, 0.3)';
-    ctx.lineWidth = 1.6;
+    // Frame 6: Ember Scatter & Drifting Mana Sparks
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.25)';
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.moveTo(440, 12);
-    ctx.lineTo(310, 202);
+    ctx.moveTo(820, -10);
+    ctx.lineTo(-20, 430);
     ctx.stroke();
 
-    drawSparkDiamond(ctx, 425, 35, 3, '#fef08a');
-    drawSparkDiamond(ctx, 370, 110, 3, '#fef08a');
-    drawSparkDiamond(ctx, 320, 185, 3, '#fef08a');
+    drawSparkDiamond(ctx, 500, 80, 3.5, '#fef08a');
+    drawSparkDiamond(ctx, 420, 160, 4, '#fef08a');
+    drawSparkDiamond(ctx, 340, 240, 3.5, '#fef08a');
+    drawSparkDiamond(ctx, 260, 320, 3, '#fef08a');
   } else if (frameIdx === 7) {
-    ctx.strokeStyle = 'rgba(245, 158, 11, 0.2)';
+    // Frame 7: Settled Stance & Dialogue Focus
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.15)';
     ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.moveTo(440, 12);
-    ctx.lineTo(310, 202);
+    ctx.moveTo(820, -10);
+    ctx.lineTo(-20, 430);
     ctx.stroke();
   }
+
   ctx.restore();
 }
 
 /**
- * Render a single frame of the Dialogue Card Cut-In
+ * Draw Attacker Hovering Sprite on the Left Side
+ * A majestic half-body cut-in with smooth soft-edge gradient fade toward the center clash.
  */
-function renderDialogueSingleFrame(
+function drawHoveringAttacker(
   ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  frameIdx: number,
-  speakerName: string,
-  quoteText: string,
-  chainTagOrTitle: string,
-  servantClass: string,
   portraitImg: HTMLImageElement | null,
+  servantName: string,
+  servantClass: string,
   bondOrLevel: number | string,
-  defenderName: string,
-  defenderImg: HTMLImageElement | null,
-  defenderClass: string,
-  sequence: ('Buster' | 'Arts' | 'Quick' | 'NP')[]
+  frameIdx: number
 ) {
-  const bgGrad = ctx.createLinearGradient(0, 0, width, height);
-  bgGrad.addColorStop(0, '#0c0604');
-  bgGrad.addColorStop(0.5, '#160a06');
-  bgGrad.addColorStop(1, '#090403');
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, width, height);
+  ctx.save();
+  const sprX = 10;
+  const sprY = 10;
+  const sprW = 280;
+  const sprH = 340;
 
-  const auraGrad = ctx.createRadialGradient(120, 110, 20, 120, 110, 190);
-  auraGrad.addColorStop(0, 'rgba(217, 119, 6, 0.18)');
+  // Attacker golden/amber rim aura
+  const auraGrad = ctx.createRadialGradient(130, 160, 30, 130, 160, 190);
+  auraGrad.addColorStop(0, 'rgba(245, 158, 11, 0.22)');
+  auraGrad.addColorStop(0.7, 'rgba(217, 119, 6, 0.08)');
   auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = auraGrad;
-  ctx.fillRect(0, 0, width, height);
-
-  const targetAura = ctx.createRadialGradient(670, 110, 20, 670, 110, 180);
-  targetAura.addColorStop(0, 'rgba(239, 68, 68, 0.15)');
-  targetAura.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = targetAura;
-  ctx.fillRect(0, 0, width, height);
-
-  drawPersonaSlashAnimation(ctx, frameIdx, chainTagOrTitle);
-
-  ctx.strokeStyle = '#92400e';
-  ctx.lineWidth = 2.5;
-  drawRoundRect(ctx, 10, 10, 780, 400, 4);
-  ctx.stroke();
-
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 1.2;
-  drawRoundRect(ctx, 15, 15, 770, 390, 3);
-  ctx.stroke();
-
-  drawSparkDiamond(ctx, 15, 15, 4.5, '#fbbf24');
-  drawSparkDiamond(ctx, 785, 15, 4.5, '#fbbf24');
-  drawSparkDiamond(ctx, 15, 405, 4.5, '#fbbf24');
-  drawSparkDiamond(ctx, 785, 405, 4.5, '#fbbf24');
-
-  const cbLen = 14;
-  ctx.strokeStyle = '#fbbf24';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(15, 15 + cbLen);
-  ctx.lineTo(15, 15);
-  ctx.lineTo(15 + cbLen, 15);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(785 - cbLen, 15);
-  ctx.lineTo(785, 15);
-  ctx.lineTo(785, 15 + cbLen);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(15, 405 - cbLen);
-  ctx.lineTo(15, 405);
-  ctx.lineTo(15 + cbLen, 405);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(785 - cbLen, 405);
-  ctx.lineTo(785, 405);
-  ctx.lineTo(785, 405 - cbLen);
-  ctx.stroke();
-
-  const portX = 36;
-  const portY = 24;
-  const portW = 168;
-  const portH = 168;
-
-  ctx.save();
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  drawRoundRect(ctx, portX + 4, portY + 4, portW, portH, 4);
-  ctx.fill();
-  ctx.restore();
-
-  const innerPortX = portX + 4;
-  const innerPortY = portY + 4;
-  const innerPortW = portW - 8;
-  const innerPortH = portH - 8;
-
-  ctx.save();
-  drawRoundRect(ctx, innerPortX, innerPortY, innerPortW, innerPortH, 2);
-  ctx.clip();
+  ctx.fillRect(0, 0, 340, 380);
 
   if (portraitImg) {
-    drawImageCover(ctx, portraitImg, innerPortX, innerPortY, innerPortW, innerPortH);
+    ctx.save();
+    // Soft vignette on the right edge fading into the center clash
+    drawImageCover(ctx, portraitImg, sprX, sprY, sprW, sprH);
+
+    // Right-edge fade gradient so character hovers naturally over the battlefield
+    const rFade = ctx.createLinearGradient(sprX + sprW * 0.55, 0, sprX + sprW + 10, 0);
+    rFade.addColorStop(0, 'rgba(10, 5, 3, 0)');
+    rFade.addColorStop(0.75, 'rgba(10, 5, 3, 0.7)');
+    rFade.addColorStop(1, 'rgba(10, 5, 3, 0.98)');
+    ctx.fillStyle = rFade;
+    ctx.fillRect(sprX, sprY, sprW + 15, sprH + 10);
+
+    // Bottom fade into the dialogue box
+    const bFade = ctx.createLinearGradient(0, sprY + sprH * 0.65, 0, sprY + sprH);
+    bFade.addColorStop(0, 'rgba(10, 5, 3, 0)');
+    bFade.addColorStop(1, 'rgba(10, 5, 3, 0.95)');
+    ctx.fillStyle = bFade;
+    ctx.fillRect(sprX, sprY + sprH * 0.65, sprW, sprH * 0.35);
+    ctx.restore();
   } else {
-    const vGrad = ctx.createLinearGradient(innerPortX, innerPortY, innerPortX, innerPortY + innerPortH);
-    vGrad.addColorStop(0, '#26150b');
-    vGrad.addColorStop(1, '#0d0704');
+    // Stylized Heraldic Knight Silhouette Fallback
+    const vGrad = ctx.createLinearGradient(sprX, sprY, sprX + sprW, sprY + sprH);
+    vGrad.addColorStop(0, '#2b160b');
+    vGrad.addColorStop(0.6, '#150904');
+    vGrad.addColorStop(1, '#080302');
     ctx.fillStyle = vGrad;
-    ctx.fillRect(innerPortX, innerPortY, innerPortW, innerPortH);
+    drawRoundRect(ctx, sprX + 15, sprY + 15, sprW - 30, sprH - 30, 8);
+    ctx.fill();
 
-    drawVectorShield(ctx, innerPortX + innerPortW / 2, innerPortY + 66, 50, 58, 'rgba(245, 158, 11, 0.15)', '#f59e0b');
-    drawVectorCrossedSwords(ctx, innerPortX + innerPortW / 2, innerPortY + 66, 16, '#fbbf24');
-
-    ctx.fillStyle = '#fef08a';
-    ctx.font = 'bold 12px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText((servantClass || 'SERVANT').toUpperCase(), innerPortX + innerPortW / 2, innerPortY + 125);
+    drawVectorShield(ctx, sprX + sprW / 2 - 10, sprY + 140, 64, 76, 'rgba(245, 158, 11, 0.2)', '#f59e0b');
+    drawVectorCrossedSwords(ctx, sprX + sprW / 2 - 10, sprY + 140, 20, '#fbbf24');
   }
 
-  const fadeGrad = ctx.createLinearGradient(innerPortX + innerPortW * 0.45, innerPortY, innerPortX + innerPortW, innerPortY);
-  fadeGrad.addColorStop(0, 'rgba(16, 10, 6, 0)');
-  fadeGrad.addColorStop(1, 'rgba(16, 10, 6, 0.75)');
-  ctx.fillStyle = fadeGrad;
-  ctx.fillRect(innerPortX, innerPortY, innerPortW, innerPortH);
-  ctx.restore();
+  // Floating Class Crest & Level Badge (Top-Left Shoulder)
+  const badgeX = 20;
+  const badgeY = 20;
+  const badgeW = 160;
+  const badgeH = 26;
 
-  ctx.strokeStyle = '#d97706';
-  ctx.lineWidth = 2.5;
-  drawRoundRect(ctx, portX, portY, portW, portH, 4);
-  ctx.stroke();
-
-  ctx.strokeStyle = '#fbbf24';
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, portX + 3, portY + 3, portW - 6, portH - 6, 2);
-  ctx.stroke();
-
-  drawSparkDiamond(ctx, portX + 3, portY + 3, 3, '#fef08a');
-  drawSparkDiamond(ctx, portX + portW - 3, portY + 3, 3, '#fef08a');
-  drawSparkDiamond(ctx, portX + 3, portY + portH - 3, 3, '#fef08a');
-  drawSparkDiamond(ctx, portX + portW - 3, portY + portH - 3, 3, '#fef08a');
-
-  const badgeW = 48;
-  const badgeH = 19;
-  const badgeX = portX + (portW - badgeW) / 2;
-  const badgeY = portY - 9;
-
-  ctx.fillStyle = '#0f0804';
-  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 3);
+  ctx.fillStyle = 'rgba(10, 5, 3, 0.92)';
+  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
   ctx.fill();
+
   ctx.strokeStyle = '#f59e0b';
   ctx.lineWidth = 1.5;
-  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 3);
+  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
   ctx.stroke();
 
-  ctx.fillStyle = '#fde047';
-  ctx.font = 'bold 12px sans-serif';
-  ctx.textAlign = 'center';
-  const badgeDisplay = typeof bondOrLevel === 'number' ? `Lv.${bondOrLevel}` : `${bondOrLevel}`;
-  ctx.fillText(badgeDisplay, badgeX + badgeW / 2, badgeY + 14);
+  drawVectorStar(ctx, badgeX + 14, badgeY + 13, 5, 5, 2.5, '#fbbf24');
 
+  const lvlText = typeof bondOrLevel === 'number' ? `Lv.${bondOrLevel}` : `${bondOrLevel}`;
+  ctx.fillStyle = '#fde047';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(lvlText, badgeX + 24, badgeY + 17);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText((servantClass || 'SABER').toUpperCase(), badgeX + badgeW - 10, badgeY + 17);
+
+  ctx.restore();
+}
+
+/**
+ * Draw Defender Hovering Sprite on the Right Side
+ * Facing inward toward attacker with crimson target-lock HUD and soft edge fade.
+ */
+function drawHoveringDefender(
+  ctx: CanvasRenderingContext2D,
+  defenderImg: HTMLImageElement | null,
+  defenderName: string,
+  defenderClass: string,
+  frameIdx: number
+) {
+  ctx.save();
+  const sprX = 510;
+  const sprY = 10;
+  const sprW = 280;
+  const sprH = 340;
+
+  // Dark Crimson Tactical Aura
+  const auraGrad = ctx.createRadialGradient(670, 160, 30, 670, 160, 190);
+  auraGrad.addColorStop(0, 'rgba(239, 68, 68, 0.22)');
+  auraGrad.addColorStop(0.7, 'rgba(153, 27, 27, 0.08)');
+  auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = auraGrad;
+  ctx.fillRect(470, 0, 330, 380);
+
+  if (defenderImg) {
+    ctx.save();
+    drawImageCover(ctx, defenderImg, sprX, sprY, sprW, sprH);
+
+    // Left-edge fade gradient so defender hovers seamlessly over stage
+    const lFade = ctx.createLinearGradient(sprX - 10, 0, sprX + sprW * 0.45, 0);
+    lFade.addColorStop(0, 'rgba(10, 5, 3, 0.98)');
+    lFade.addColorStop(0.25, 'rgba(10, 5, 3, 0.7)');
+    lFade.addColorStop(1, 'rgba(10, 5, 3, 0)');
+    ctx.fillStyle = lFade;
+    ctx.fillRect(sprX - 10, sprY, sprW, sprH + 10);
+
+    // Bottom fade into the dialogue box
+    const bFade = ctx.createLinearGradient(0, sprY + sprH * 0.65, 0, sprY + sprH);
+    bFade.addColorStop(0, 'rgba(10, 5, 3, 0)');
+    bFade.addColorStop(1, 'rgba(10, 5, 3, 0.95)');
+    ctx.fillStyle = bFade;
+    ctx.fillRect(sprX, sprY + sprH * 0.65, sprW, sprH * 0.35);
+
+    // Tactical red combat grading
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.12)';
+    ctx.fillRect(sprX, sprY, sprW, sprH);
+
+    // Tactical scanlines
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.12)';
+    ctx.lineWidth = 1;
+    for (let ly = sprY; ly < sprY + sprH; ly += 6) {
+      ctx.beginPath();
+      ctx.moveTo(sprX, ly);
+      ctx.lineTo(sprX + sprW, ly);
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else {
+    // Crimson Phantom Silhouette Fallback
+    const fbGrad = ctx.createLinearGradient(sprX, sprY, sprX + sprW, sprY + sprH);
+    fbGrad.addColorStop(0, '#2e0a0a');
+    fbGrad.addColorStop(0.6, '#170404');
+    fbGrad.addColorStop(1, '#090202');
+    ctx.fillStyle = fbGrad;
+    drawRoundRect(ctx, sprX + 15, sprY + 15, sprW - 30, sprH - 30, 8);
+    ctx.fill();
+
+    drawVectorShield(ctx, sprX + sprW / 2, sprY + 140, 60, 72, 'rgba(239, 68, 68, 0.2)', '#ef4444');
+    drawVectorCrossedSwords(ctx, sprX + sprW / 2, sprY + 140, 18, '#f87171');
+  }
+
+  // Tactical Crosshair Reticle (cx: 650, cy: 120)
+  const cx = 650;
+  const cy = 120;
+  const crosshairAngle = (frameIdx * 15 * Math.PI) / 180;
+  const crosshairScale = frameIdx === 4 ? 0.9 : frameIdx === 2 ? 1.15 : 1.0;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(crosshairScale, crosshairScale);
+  ctx.rotate(crosshairAngle);
+
+  ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.arc(0, 0, 24, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Crosshair Ticks
+  ctx.beginPath();
+  ctx.moveTo(-32, 0); ctx.lineTo(-16, 0);
+  ctx.moveTo(16, 0); ctx.lineTo(32, 0);
+  ctx.moveTo(0, -32); ctx.lineTo(0, -16);
+  ctx.moveTo(0, 16); ctx.lineTo(0, 32);
+  ctx.stroke();
+  ctx.restore();
+
+  // Floating [ TARGET: LOCKED ] Crimson HUD Badge (Top-Right)
+  const badgeW = 140;
+  const badgeH = 26;
+  const badgeX = 630;
+  const badgeY = 20;
+
+  ctx.fillStyle = 'rgba(127, 29, 29, 0.92)';
+  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
+  ctx.fill();
+  ctx.strokeStyle = '#ef4444';
+  ctx.lineWidth = 1.5;
+  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
+  ctx.stroke();
+
+  drawMiniReticle(ctx, badgeX + 16, badgeY + 13, '#f87171');
+  ctx.fillStyle = '#fee2e2';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('TARGET: LOCKED', badgeX + badgeW / 2 + 8, badgeY + 17);
+
+  // Floating Defender Nameplate above the Dialogue Box
+  const nameBoxW = 200;
+  const nameBoxH = 24;
+  const nameBoxX = 570;
+  const nameBoxY = 216;
+
+  ctx.fillStyle = 'rgba(15, 5, 5, 0.92)';
+  drawRoundRect(ctx, nameBoxX, nameBoxY, nameBoxW, nameBoxH, 4);
+  ctx.fill();
+  ctx.strokeStyle = '#991b1b';
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, nameBoxX, nameBoxY, nameBoxW, nameBoxH, 4);
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'center';
+  const defClean = defenderName.length > 18 ? defenderName.slice(0, 17) + '…' : defenderName;
+  ctx.fillText(`${defClean} [${(defenderClass || 'ENEMY').toUpperCase()}]`, nameBoxX + nameBoxW / 2, nameBoxY + 16);
+
+  ctx.restore();
+}
+
+/**
+ * Draw Center Tactical Command Cards & Active Chain Resonance HUD
+ */
+function drawCenterCommandHUD(
+  ctx: CanvasRenderingContext2D,
+  chainTagOrTitle: string,
+  sequence: ('Buster' | 'Arts' | 'Quick' | 'NP')[],
+  frameIdx: number
+) {
+  ctx.save();
   let chainGradTop = '#78350f';
   let chainBorder = '#f59e0b';
   let chainSubtitle = 'Tactical Card Resonance • Enhanced Strike Power';
@@ -1155,98 +1480,117 @@ function renderDialogueSingleFrame(
     chainSubtitle = 'Critical Stars +20 • Lethal Critical Stance';
   }
 
-  const bannerW = 344;
-  const bannerH = 28;
-  const bannerX = 226;
-  const bannerY = 24;
+  // Active Chain Banner Pill
+  const bannerW = 310;
+  const bannerH = 26;
+  const bannerX = 245;
+  const bannerY = 20;
 
   const cbGrad = ctx.createLinearGradient(bannerX, bannerY, bannerX + bannerW, bannerY);
-  cbGrad.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
+  cbGrad.addColorStop(0, 'rgba(0, 0, 0, 0.6)');
   cbGrad.addColorStop(0.2, chainGradTop);
   cbGrad.addColorStop(0.8, chainGradTop);
-  cbGrad.addColorStop(1, 'rgba(0, 0, 0, 0.5)');
+  cbGrad.addColorStop(1, 'rgba(0, 0, 0, 0.6)');
   ctx.fillStyle = cbGrad;
   drawRoundRect(ctx, bannerX, bannerY, bannerW, bannerH, 4);
   ctx.fill();
 
-  ctx.strokeStyle = (frameIdx === 5) ? '#fde047' : chainBorder;
-  ctx.lineWidth = (frameIdx === 5) ? 2.2 : 1.5;
+  ctx.strokeStyle = frameIdx === 5 ? '#fde047' : chainBorder;
+  ctx.lineWidth = frameIdx === 5 ? 2.2 : 1.4;
   drawRoundRect(ctx, bannerX, bannerY, bannerW, bannerH, 4);
   ctx.stroke();
 
-  drawSparkDiamond(ctx, bannerX + 16, bannerY + bannerH / 2, 4.5, '#fbbf24');
-  drawSparkDiamond(ctx, bannerX + bannerW - 16, bannerY + bannerH / 2, 4.5, '#fbbf24');
+  drawSparkDiamond(ctx, bannerX + 14, bannerY + bannerH / 2, 4, '#fbbf24');
+  drawSparkDiamond(ctx, bannerX + bannerW - 14, bannerY + bannerH / 2, 4, '#fbbf24');
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 13px sans-serif';
+  ctx.font = 'bold 12px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`[ ${chainTagOrTitle.toUpperCase()} ]`, bannerX + bannerW / 2, bannerY + 19);
+  ctx.fillText(`[ ${(chainTagOrTitle || 'COMBAT CHAIN').toUpperCase()} ]`, bannerX + bannerW / 2, bannerY + 18);
 
   ctx.fillStyle = '#fef08a';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(chainSubtitle, bannerX + bannerW / 2, bannerY + 43);
+  ctx.font = 'bold 10px sans-serif';
+  ctx.fillText(chainSubtitle, bannerX + bannerW / 2, bannerY + 40);
 
-  const cardW = 104;
-  const cardH = 96;
-  const cardY = 70;
-  const cardX1 = 224;
-  const cardX2 = 348;
-  const cardX3 = 472;
+  // Command Cards Row
+  const cardW = 92;
+  const cardH = 88;
+  const cardY = 56;
+  const cardX1 = 250;
+  const cardX2 = 354;
+  const cardX3 = 458;
 
-  const validSeq = (sequence && sequence.length === 3) ? sequence : ['Buster', 'Buster', 'Buster'];
+  const validSeq = sequence && sequence.length === 3 ? sequence : ['Buster', 'Buster', 'Buster'];
 
-  const isSurging0 = frameIdx === 3;
-  const isSurging1 = frameIdx === 4;
-  const isSurging2 = frameIdx === 5;
+  drawCommandCardBadge(ctx, cardX1, cardY, cardW, cardH, validSeq[0], 0, frameIdx === 3);
+  drawCommandCardBadge(ctx, cardX2, cardY, cardW, cardH, validSeq[1], 1, frameIdx === 4);
+  drawCommandCardBadge(ctx, cardX3, cardY, cardW, cardH, validSeq[2], 2, frameIdx === 5);
 
-  drawCommandCardBadge(ctx, cardX1, cardY, cardW, cardH, validSeq[0], 0, isSurging0);
-  drawCommandCardBadge(ctx, cardX2, cardY, cardW, cardH, validSeq[1], 1, isSurging1);
-  drawCommandCardBadge(ctx, cardX3, cardY, cardW, cardH, validSeq[2], 2, isSurging2);
+  drawVectorChevronArrow(ctx, 347, cardY + cardH / 2, '#fbbf24');
+  drawVectorChevronArrow(ctx, 451, cardY + cardH / 2, '#fbbf24');
 
-  drawVectorChevronArrow(ctx, 336, cardY + cardH / 2, '#fbbf24');
-  drawVectorChevronArrow(ctx, 460, cardY + cardH / 2, '#fbbf24');
+  ctx.restore();
+}
 
-  const targetX = 596;
-  const targetY = 24;
-  const targetW = 168;
-  const targetH = 168;
+/**
+ * Render a single frame of the Visual Novel Dialogue Cut-In
+ */
+function renderDialogueSingleFrame(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  frameIdx: number,
+  speakerName: string,
+  quoteText: string,
+  chainTagOrTitle: string,
+  servantClass: string,
+  portraitImg: HTMLImageElement | null,
+  bondOrLevel: number | string,
+  defenderName: string,
+  defenderImg: HTMLImageElement | null,
+  defenderClass: string,
+  sequence: ('Buster' | 'Arts' | 'Quick' | 'NP')[],
+  bgImg: HTMLImageElement | null = null,
+  stagePreset: string = 'fuyuki'
+) {
+  // 1. Stage / Battlefield Background
+  drawBattlefieldStage(ctx, width, height, bgImg, stagePreset, frameIdx);
 
-  const crosshairAngle = (frameIdx * 15 * Math.PI) / 180;
-  const crosshairScale = frameIdx === 4 ? 0.9 : frameIdx === 2 ? 1.15 : 1.0;
+  // 2. Attacker Hovering Sprite (Left Side)
+  drawHoveringAttacker(ctx, portraitImg, speakerName, servantClass, bondOrLevel, frameIdx);
 
-  drawTargetLockedHUD(
-    ctx,
-    targetX,
-    targetY,
-    targetW,
-    targetH,
-    defenderImg,
-    defenderName,
-    defenderClass,
-    crosshairAngle,
-    crosshairScale
-  );
+  // 3. Defender Hovering Sprite (Right Side)
+  drawHoveringDefender(ctx, defenderImg, defenderName, defenderClass, frameIdx);
 
-  const boxX = 32;
-  const boxY = 214;
-  const boxW = 736;
-  const boxH = 186;
+  // 4. Center Tactical Command Cards & Active Chain HUD
+  drawCenterCommandHUD(ctx, chainTagOrTitle, sequence, frameIdx);
 
-  ctx.fillStyle = 'rgba(16, 9, 4, 0.96)';
+  // 5. Full-Screen Screen-Splitting Slash Cut-In Animation
+  drawPersonaSlashAnimation(ctx, frameIdx, chainTagOrTitle);
+
+  // 6. Visual Novel Dialogue Ribbon (Lower Section)
+  const boxX = 22;
+  const boxY = 248;
+  const boxW = 756;
+  const boxH = 154;
+
+  // Obsidian Glassmorphism Base (Semi-translucent so characters peek through)
+  ctx.fillStyle = 'rgba(10, 5, 3, 0.90)';
   drawRoundRect(ctx, boxX, boxY, boxW, boxH, 4);
   ctx.fill();
 
+  // Double Metallic Gold Border
   ctx.strokeStyle = '#d97706';
   ctx.lineWidth = 2;
   drawRoundRect(ctx, boxX, boxY, boxW, boxH, 4);
   ctx.stroke();
 
-  ctx.strokeStyle = 'rgba(245, 158, 11, 0.3)';
+  ctx.strokeStyle = 'rgba(254, 240, 138, 0.35)';
   ctx.lineWidth = 1;
   drawRoundRect(ctx, boxX + 3, boxY + 3, boxW - 6, boxH - 6, 3);
   ctx.stroke();
 
+  // Corner Filigree Brackets
   const boxCbLen = 12;
   ctx.strokeStyle = '#fbbf24';
   ctx.lineWidth = 1.6;
@@ -1262,11 +1606,12 @@ function renderDialogueSingleFrame(
   ctx.lineTo(boxX + boxW - 3, boxY + 3 + boxCbLen);
   ctx.stroke();
 
+  // 7. Speaker Nameplate Tab (Overlapping top-left border of dialogue box)
   ctx.font = 'bold 15px sans-serif';
   const nameMetrics = ctx.measureText(`${speakerName} [${servantClass || 'Servant'}]`);
   const nameW = Math.max(180, Math.min(360, nameMetrics.width + 36));
   const nameH = 30;
-  const nameX = boxX + 18;
+  const nameX = boxX + 20;
   const nameY = boxY - 16;
 
   ctx.fillStyle = '#0d0704';
@@ -1284,50 +1629,70 @@ function renderDialogueSingleFrame(
   ctx.stroke();
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 15px sans-serif';
+  ctx.font = 'bold 14px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(`${speakerName} [${(servantClass || 'Servant').toUpperCase()}]`, nameX + nameW / 2, nameY + 20);
 
-  // Large Bold Dialogue Text (Effortless to read)
+  // 8. Dialogue Quote Text (Large, High Contrast, 24px Serif)
   const textX = boxX + 28;
-  const textY = boxY + 44;
+  const textY = boxY + 42;
   const maxTextW = boxW - 56;
-  const lineHeight = 34;
+  const lineHeight = 32;
 
   ctx.fillStyle = '#fffbeb';
   ctx.font = 'bold 24px Georgia, "Times New Roman", serif';
   ctx.textAlign = 'left';
 
   const cleanQuote = quoteText.replace(/^["“]/, '').replace(/["”]$/, '').trim();
-  drawWrappedText(ctx, `“${cleanQuote}”`, textX, textY, maxTextW, lineHeight, 4);
+  drawWrappedText(ctx, `“${cleanQuote}”`, textX, textY, maxTextW, lineHeight, 3);
 
+  // 9. Continuation Prompt Indicator (Pulsing Gold Diamond at bottom-right)
   const promptScale = frameIdx % 2 === 0 ? 6 : 5;
-  drawSparkDiamond(ctx, boxX + boxW - 26, boxY + boxH - 22, promptScale, '#fbbf24');
+  drawSparkDiamond(ctx, boxX + boxW - 24, boxY + boxH - 20, promptScale, '#fbbf24');
 }
 
 /**
  * 2. Visual Novel Dialogue Frame (800x420 Animated Action Cut-In)
+ * Features Hovering Split-Screen Characters, Full-Screen Screen-Splitting Slash,
+ * Tactical Command Cards & Chain HUD, and Customizable Battlefield Backgrounds.
  */
-export function renderDialogueCard(
+export async function renderDialogueCard(
   canvas: HTMLCanvasElement,
   speakerName: string,
   quoteText: string,
-  title: string = 'Heroic Spirit',
-  servantClass: string = 'Saber'
-): void {
+  title: string = 'Tactical Chain',
+  servantClass: string = 'Saber',
+  avatarUrl?: string,
+  bondOrLevel: number | string = 8,
+  defenderName: string = 'Enemy Servant',
+  defenderAvatarUrl?: string,
+  defenderClass: string = 'Servant',
+  sequence: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Buster', 'Buster', 'Buster'],
+  bgUrlOrPreset: string = 'fuyuki'
+): Promise<void> {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
   canvas.width = 800;
   canvas.height = 420;
 
-  // Clear existing timer on this canvas if any
+  // Clear existing animation timer if any
   if ((canvas as any).__animTimer) {
     clearInterval((canvas as any).__animTimer);
     (canvas as any).__animTimer = null;
   }
 
-  // Render initial climax frame
+  // Pre-load images concurrently
+  const isCustomBgUrl = bgUrlOrPreset && (bgUrlOrPreset.startsWith('http') || bgUrlOrPreset.startsWith('data:image'));
+  const [portraitImg, defenderImg, bgImg] = await Promise.all([
+    avatarUrl ? loadBrowserImage(avatarUrl) : Promise.resolve(null),
+    defenderAvatarUrl ? loadBrowserImage(defenderAvatarUrl) : Promise.resolve(null),
+    isCustomBgUrl ? loadBrowserImage(bgUrlOrPreset) : Promise.resolve(null)
+  ]);
+
+  const stagePreset = isCustomBgUrl ? 'custom' : (bgUrlOrPreset || 'fuyuki');
+
+  // Render initial climax frame (Frame 2 - The Cleave)
   renderDialogueSingleFrame(
     ctx,
     800,
@@ -1337,12 +1702,14 @@ export function renderDialogueCard(
     quoteText,
     title,
     servantClass,
-    null,
-    8,
-    'Enemy Servant',
-    null,
-    'Opponent',
-    ['Buster', 'Buster', 'Buster']
+    portraitImg,
+    bondOrLevel,
+    defenderName,
+    defenderImg,
+    defenderClass,
+    sequence,
+    bgImg,
+    stagePreset
   );
 
   // Start animated playback loop
@@ -1364,12 +1731,14 @@ export function renderDialogueCard(
       quoteText,
       title,
       servantClass,
-      null,
-      8,
-      'Enemy Servant',
-      null,
-      'Opponent',
-      ['Buster', 'Buster', 'Buster']
+      portraitImg,
+      bondOrLevel,
+      defenderName,
+      defenderImg,
+      defenderClass,
+      sequence,
+      bgImg,
+      stagePreset
     );
   }, 120);
 
