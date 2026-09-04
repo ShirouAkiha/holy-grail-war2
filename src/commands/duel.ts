@@ -291,6 +291,29 @@ async function createTurnSummaryAttachment(
   const isCrit = lastLogText.includes('CRITICAL');
   const isNP = lastLogText.includes('NOBLE PHANTASM');
 
+  // Extract dialogue quotes & tags for mid-battle cut-in
+  const isBusterBrave = p1Cards.length === 3 && p1Cards.every(c => c === 'Buster');
+  const isArtsChain = p1Cards.length === 3 && p1Cards.every(c => c === 'Arts');
+  const isQuickChain = p1Cards.length === 3 && p1Cards.every(c => c === 'Quick');
+
+  let dQuote = p1.servant.customQuotes?.battleStart || p1.servant.template?.battleStartQuote;
+  let dTag = 'TACTICAL COMBAT CHAIN';
+  if (isNP) {
+    dQuote = p1.servant.customQuotes?.noblePhantasm || p1.servant.template?.noblePhantasm?.chant || "Sword of Promised Victory... EXCALIBUR!";
+    dTag = 'NOBLE PHANTASM CHANT';
+  } else if (isBusterBrave) {
+    dQuote = p1.servant.customQuotes?.battleStart || "All mana into maximum destruction! Unstoppable strike!";
+    dTag = 'BUSTER BRAVE CHAIN';
+  } else if (isArtsChain) {
+    dQuote = p1.servant.customQuotes?.battleStart || "Charging mana reservoir... let's flood the battlefield!";
+    dTag = 'ARTS MANA CHAIN';
+  } else if (isQuickChain) {
+    dQuote = p1.servant.customQuotes?.battleStart || "Swift like lightning... you won't even see the strike!";
+    dTag = 'QUICK STAR CHAIN';
+  } else if (!dQuote) {
+    dQuote = "Executing tactical 3-card chain! My blade answers your command, Master!";
+  }
+
   // Extract damage, NP gained, stars generated via regex
   const dmgMatch = lastLogText.match(/Dealt \*\*([\d,]+) DMG\*\*/i) || lastLogText.match(/([\d,]+)\s*DMG/i);
   const damageDealt = dmgMatch ? parseInt(dmgMatch[1].replace(/,/g, ''), 10) : 0;
@@ -314,6 +337,9 @@ async function createTurnSummaryAttachment(
     targetId: p2.userId,
     targetName: p2.servant.template.name,
     actionSummary: cleanActionSummary,
+    dialogueQuote: dQuote,
+    dialogueTag: dTag,
+    dialogueTitle: p1.servant.template.name,
     cardsUsed: p1Cards,
     p1Cards: p1Cards,
     p2Cards: p2Cards,

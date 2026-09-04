@@ -187,6 +187,47 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
       };
     }
 
+    if (selectedCards.length === 3) {
+      const isAllBuster = selectedCards.every(c => c === 'Buster');
+      const isAllArts = selectedCards.every(c => c === 'Arts');
+      const isAllQuick = selectedCards.every(c => c === 'Quick');
+
+      const chainType = isAllBuster
+        ? 'Buster Brave Chain'
+        : isAllArts
+        ? 'Arts Chain'
+        : isAllQuick
+        ? 'Quick Chain'
+        : 'Command Card Combo';
+
+      const tagText = isAllBuster
+        ? 'BUSTER BRAVE CHAIN'
+        : isAllArts
+        ? 'ARTS MANA CHAIN'
+        : isAllQuick
+        ? 'QUICK STAR CHAIN'
+        : 'TACTICAL COMBAT CHAIN';
+
+      const chainQuotes: Record<string, string> = {
+        'Buster Brave Chain': customQuotes?.battleStart || activeTemplate?.battleStartQuote || "All mana into maximum destruction! Unstoppable strike!",
+        'Arts Chain': customQuotes?.battleStart || activeTemplate?.battleStartQuote || "Charging mana reservoir... let's flood the battlefield!",
+        'Quick Chain': customQuotes?.battleStart || activeTemplate?.battleStartQuote || "Swift like lightning... you won't even see the strike!",
+        'Command Card Combo': customQuotes?.battleStart || activeTemplate?.battleStartQuote || "Executing tactical 3-card chain! My blade answers your command, Master!"
+      };
+
+      return {
+        speakerName: servantName,
+        speakerTitle: `${servantClass} • ${chainType} (${selectedCards.join(' → ')})`,
+        avatarUrl: p1.avatarUrl || activeTemplate?.avatarUrl,
+        servantClass,
+        rarity: activeTemplate?.rarity || 5,
+        tag: tagText,
+        dialogueText: chainQuotes[chainType] || "My blade answers your command, Master!",
+        badgeType: isAllBuster ? 'crit' : 'attack',
+        isPlayerMove: true
+      };
+    }
+
     if (isLowHp) {
       const lowHpQuotes = [
         "I won't fall here... Master, give me strength!",
@@ -223,35 +264,6 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         tag: 'CLASS ADVANTAGE',
         dialogueText: q,
         badgeType: 'advantage',
-        isPlayerMove: true
-      };
-    }
-
-    if (selectedCards.length === 3) {
-      const chainType = selectedCards.every(c => c === 'Buster')
-        ? 'Buster Brave Chain'
-        : selectedCards.every(c => c === 'Arts')
-        ? 'Arts Chain'
-        : selectedCards.every(c => c === 'Quick')
-        ? 'Quick Chain'
-        : 'Command Card Combo';
-
-      const chainQuotes: Record<string, string> = {
-        'Buster Brave Chain': "All mana into maximum destruction! Take this!",
-        'Arts Chain': "Charging mana reservoir... let's flood the battlefield!",
-        'Quick Chain': "Swift like lightning... you won't even see the strike!",
-        'Command Card Combo': customQuotes?.battleStart || activeTemplate?.battleStartQuote || "My blade answers your command, Master!"
-      };
-
-      return {
-        speakerName: servantName,
-        speakerTitle: `${servantClass} • ${chainType}`,
-        avatarUrl: p1.avatarUrl || activeTemplate?.avatarUrl,
-        servantClass,
-        rarity: activeTemplate?.rarity || 5,
-        tag: 'TACTICAL CHAIN',
-        dialogueText: chainQuotes[chainType] || "My blade answers your command, Master!",
-        badgeType: selectedCards.every(c => c === 'Buster') ? 'crit' : 'attack',
         isPlayerMove: true
       };
     }

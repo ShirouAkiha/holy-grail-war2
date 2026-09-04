@@ -733,10 +733,19 @@ function drawCinematicClashTheater(
     drawRoundRect(ctx, impactX, impactY, impactW, impactH, 6);
     ctx.stroke();
 
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '11px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Command Seals pulse with etheric energy as weapons clash.', 320, impactY + 16);
+    const quoteStr = log.dialogueQuote || log.npChant;
+    if (quoteStr) {
+      ctx.fillStyle = '#fde047';
+      ctx.font = 'bold italic 11px sans-serif';
+      ctx.textAlign = 'center';
+      const cleanQuote = quoteStr.length > 62 ? quoteStr.slice(0, 60) + '...' : quoteStr;
+      ctx.fillText(`“${cleanQuote}”`, 320, impactY + 16);
+    } else {
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Command Seals pulse with etheric energy as weapons clash.', 320, impactY + 16);
+    }
 
     ctx.fillStyle = '#38bdf8';
     ctx.font = 'bold 16px sans-serif';

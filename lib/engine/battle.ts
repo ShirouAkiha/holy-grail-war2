@@ -607,6 +607,48 @@ export function generateTurnDialogueQuote(
     };
   }
 
+  const cards = choice.selectedCards || ['Buster', 'Arts', 'Quick'];
+  if (cards.length === 3) {
+    if (cards.every(c => c === 'Buster')) {
+      return {
+        speakerName: servantName,
+        speakerTitle: `${servantClass} • Buster Brave Chain`,
+        servantClass,
+        tag: 'BUSTER BRAVE CHAIN',
+        quoteText: "All mana into maximum destruction! Take this!",
+        badgeType: 'crit'
+      };
+    }
+    if (cards.every(c => c === 'Arts')) {
+      return {
+        speakerName: servantName,
+        speakerTitle: `${servantClass} • Arts Chain`,
+        servantClass,
+        tag: 'ARTS CHAIN',
+        quoteText: "Charging mana reservoir... let's flood the battlefield!",
+        badgeType: 'attack'
+      };
+    }
+    if (cards.every(c => c === 'Quick')) {
+      return {
+        speakerName: servantName,
+        speakerTitle: `${servantClass} • Quick Star Chain`,
+        servantClass,
+        tag: 'QUICK STAR CHAIN',
+        quoteText: "Swift like lightning... you won't even see the strike!",
+        badgeType: 'crit'
+      };
+    }
+    return {
+      speakerName: servantName,
+      speakerTitle: `${servantClass} • Command Card Combo`,
+      servantClass,
+      tag: 'TACTICAL COMBAT CHAIN',
+      quoteText: "Executing tactical 3-card chain! My blade answers your command, Master!",
+      badgeType: 'attack'
+    };
+  }
+
   if (isLowHp) {
     const quotes = [
       "I won't fall here... Master, give me strength!",
@@ -637,40 +679,6 @@ export function generateTurnDialogueQuote(
       quoteText: quotes[Math.floor(Math.random() * quotes.length)],
       badgeType: 'advantage'
     };
-  }
-
-  const cards = choice.selectedCards || ['Buster', 'Arts', 'Quick'];
-  if (cards.length === 3) {
-    if (cards.every(c => c === 'Buster')) {
-      return {
-        speakerName: servantName,
-        speakerTitle: `${servantClass} • Buster Brave Chain`,
-        servantClass,
-        tag: 'BUSTER BRAVE CHAIN',
-        quoteText: "All mana into maximum destruction! Take this!",
-        badgeType: 'crit'
-      };
-    }
-    if (cards.every(c => c === 'Arts')) {
-      return {
-        speakerName: servantName,
-        speakerTitle: `${servantClass} • Arts Chain`,
-        servantClass,
-        tag: 'ARTS CHAIN',
-        quoteText: "Charging mana reservoir... let's flood the battlefield!",
-        badgeType: 'attack'
-      };
-    }
-    if (cards.every(c => c === 'Quick')) {
-      return {
-        speakerName: servantName,
-        speakerTitle: `${servantClass} • Quick Star Chain`,
-        servantClass,
-        tag: 'QUICK STAR CHAIN',
-        quoteText: "Swift like lightning... you won't even see the strike!",
-        badgeType: 'attack'
-      };
-    }
   }
 
   return {
