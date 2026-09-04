@@ -1554,7 +1554,7 @@ async function startInteractiveDuel(
     const fullWidthContent = 
       `## 💥 NOBLE PHANTASM UNLEASHED: **${npName.toUpperCase()}**\n` +
       `⚔️ **${servantDisplayName}** (Master: <@${actor.userId}>)${chantBlock}\n` +
-      `${npGifUrl}`;
+      `[​](${npGifUrl})`;
 
     try {
       let sentMsg: any = null;
