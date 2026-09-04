@@ -590,29 +590,143 @@ export async function renderBattleTurnSummary(
   ctx.textAlign = 'left';
   ctx.fillText(\`\${p1.critStars || 0}\`, 518, 166);
 
-  // Middle Clash Box
-  ctx.fillStyle = '#030712';
-  drawRoundRect(ctx, 18, 236, 604, 200, 10);
-  ctx.fill();
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  // Middle Clash Box or Mid-Battle Cut-In
+  if (log.dialogueCutIn) {
+    const dialogue = log.dialogueCutIn;
+    // Outer Chassis
+    ctx.fillStyle = '#0a0805';
+    drawRoundRect(ctx, 18, 236, 604, 200, 10);
+    ctx.fill();
+    ctx.strokeStyle = '#d97706';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
 
-  ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 30, 246, 580, 28, 5);
-  ctx.fill();
-  ctx.fillStyle = '#f59e0b';
-  ctx.font = 'bold 14px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(\`★ HOLY GRAIL WAR • TURN \${log.turnNumber} CLASH RESOLUTION ★\`, 320, 229);
+    // Inner Filigree Frame Accent
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
+    ctx.lineWidth = 1;
+    drawRoundRect(ctx, 22, 240, 596, 192, 8);
+    ctx.stroke();
 
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 20px sans-serif';
-  ctx.fillText(log.actionSummary || '', 320, 285);
+    // Header Marquee Pill
+    ctx.fillStyle = '#1e130a';
+    drawRoundRect(ctx, 30, 246, 580, 26, 5);
+    ctx.fill();
+    ctx.strokeStyle = '#b45309';
+    ctx.lineWidth = 1;
+    drawRoundRect(ctx, 30, 246, 580, 26, 5);
+    ctx.stroke();
 
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 14px sans-serif';
-  ctx.fillText(\`★ \${p1.masterName || 'P1'} Stars: \${p1.critStars || 0}   |   ★ \${p2.masterName || 'P2'} Stars: \${p2.critStars || 0}\`, 320, 449);
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(dialogue.scenarioTitle || '💬 MID-BATTLE COMBAT CUT-IN', 320, 263);
+
+    // Left Servant Portrait Box
+    let speakerImg = p1Img;
+    if (dialogue.speakerName && p2.name && dialogue.speakerName.toLowerCase().includes(p2.name.toLowerCase())) {
+      speakerImg = p2Img;
+    }
+
+    ctx.fillStyle = '#020617';
+    drawRoundRect(ctx, 30, 278, 110, 146, 8);
+    ctx.fill();
+
+    if (speakerImg) {
+      ctx.save();
+      drawRoundRect(ctx, 32, 280, 106, 142, 6);
+      ctx.clip();
+      try { ctx.drawImage(speakerImg, 32, 280, 106, 142); } catch {}
+      ctx.restore();
+    }
+
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2;
+    drawRoundRect(ctx, 30, 278, 110, 146, 8);
+    ctx.stroke();
+
+    // Level Tag
+    ctx.fillStyle = '#b45309';
+    drawRoundRect(ctx, 72, 280, 26, 18, 4);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(\`\${dialogue.level || 90}\`, 85, 293);
+
+    // Speaker Nameplate
+    ctx.fillStyle = '#1e110a';
+    drawRoundRect(ctx, 148, 278, 200, 24, 4);
+    ctx.fill();
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 1.5;
+    drawRoundRect(ctx, 148, 278, 200, 24, 4);
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText((dialogue.speakerName || 'Servant').slice(0, 22), 156, 294);
+
+    // Dialogue Quote Box
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+    drawRoundRect(ctx, 148, 308, 462, 116, 6);
+    ctx.fill();
+    ctx.strokeStyle = '#b45309';
+    ctx.lineWidth = 1.2;
+    drawRoundRect(ctx, 148, 308, 462, 116, 6);
+    ctx.stroke();
+
+    ctx.fillStyle = '#fef08a';
+    ctx.font = 'italic 13px serif, sans-serif';
+    ctx.textAlign = 'left';
+
+    const words = \`"\${dialogue.quote}"\`.split(' ');
+    let line = '';
+    let lineY = 332;
+    const maxWidth = 438;
+
+    for (let i = 0; i < words.length; i++) {
+      const testLine = line + words[i] + ' ';
+      const metrics = ctx.measureText(testLine);
+      if (metrics.width > maxWidth && i > 0) {
+        ctx.fillText(line, 162, lineY);
+        line = words[i] + ' ';
+        lineY += 20;
+      } else {
+        line = testLine;
+      }
+    }
+    ctx.fillText(line, 162, lineY);
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('⚡ PRE-ATTACK CUT-IN • COMBAT ACTION INCOMING', 598, 414);
+  } else {
+    // Standard Middle Clash Box
+    ctx.fillStyle = '#030712';
+    drawRoundRect(ctx, 18, 236, 604, 200, 10);
+    ctx.fill();
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = '#1e293b';
+    drawRoundRect(ctx, 30, 246, 580, 28, 5);
+    ctx.fill();
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(\`★ HOLY GRAIL WAR • TURN \${log.turnNumber} CLASH RESOLUTION ★\`, 320, 229);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillText(log.actionSummary || '', 320, 285);
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.fillText(\`★ \${p1.masterName || 'P1'} Stars: \${p1.critStars || 0}   |   ★ \${p2.masterName || 'P2'} Stars: \${p2.critStars || 0}\`, 320, 449);
+  }
 
   // Bottom Section: P2 Stars Pill (116px height)
   ctx.fillStyle = 'rgba(239, 68, 68, 0.1)';

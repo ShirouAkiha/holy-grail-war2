@@ -9,6 +9,7 @@ import {
 } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
 import { executeNoblePhantasmLogic } from '../../lib/engine/battle';
+import { generateBattleDialogue, DialogueScenario } from './battleDialogue';
 
 // Global PvP damage modifier (0.35x) to scale FGO-style formula output down to ~25k-35k Servant HP pools
 export const PVP_DAMAGE_MODIFIER = 0.35;
@@ -364,6 +365,24 @@ export function resolveCombatTurn(
 
   const chainSummaryStr = chainTags.length > 0 ? `\n⛓️ **Chains Triggered:** ${chainTags.join(' • ')}` : '';
 
+  let dialogueScenario: DialogueScenario = 'STANDARD_ATTACK';
+  if (attackerChoice.useNoblePhantasm || npTriggered) {
+    dialogueScenario = 'NP_RELEASE';
+  } else if (isCrit) {
+    dialogueScenario = 'CRITICAL_STRIKE';
+  } else if (attackerChoice.selectedCards.filter(c => c === 'Buster').length >= 3) {
+    dialogueScenario = 'BUSTER_CHAIN';
+  } else if (attacker.currentHp / attacker.maxHp < 0.25) {
+    dialogueScenario = 'LOW_HP_CLUTCH';
+  }
+
+  const dialogueCutIn = generateBattleDialogue(
+    attacker,
+    dialogueScenario,
+    npChant,
+    undefined
+  );
+
   // Generate combat log entry
   const log: CombatTurnLog = {
     turnNumber: battle.currentTurn,
@@ -388,7 +407,8 @@ export function resolveCombatTurn(
     actorHpMax: attacker.maxHp,
     targetHpMax: defender.maxHp,
     actorNp: attacker.npGauge,
-    targetNp: defender.npGauge
+    targetNp: defender.npGauge,
+    dialogueCutIn
   };
 
   battle.turnHistory.push(log);

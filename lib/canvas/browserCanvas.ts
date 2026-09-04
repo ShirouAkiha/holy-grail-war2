@@ -583,7 +583,7 @@ export async function renderBattleTurnSummary(
   log: CombatTurnLog,
   p1: ActiveCombatant,
   p2: ActiveCombatant,
-  showDialogueMode: boolean = false
+  showDialogueMode: boolean = true
 ): Promise<void> {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -850,7 +850,7 @@ export async function renderBattleTurnSummary(
   // ==========================================
   // MIDDLE SECTION: CLASH RESOLUTION THEATER (OR MID-BATTLE CUT-IN DIALOGUE)
   // ==========================================
-  if (showDialogueMode && log.dialogueCutIn) {
+  if (log.dialogueCutIn) {
     const dialogue = log.dialogueCutIn;
     let speakerImg: HTMLImageElement | null = null;
     if (dialogue.speakerAvatarUrl) {
