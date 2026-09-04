@@ -1722,13 +1722,21 @@ async function startInteractiveDuel(
           const avatarUrl = attacker.servant.template?.avatarUrl;
           const bondLvl = attacker.servant.bondLevel || 8;
 
+          const dName = defender.servant.nickname || defender.servant.template?.name || 'Opponent Servant';
+          const dClass = defender.servant.template?.servantClass || 'Servant';
+          const dAvatarUrl = defender.servant.template?.avatarUrl;
+
           const diaBuffer = await renderDialogueCard(
             sName,
             playerDialogue.quote,
             playerDialogue.tag,
             sClass,
             avatarUrl,
-            bondLvl
+            bondLvl,
+            dName,
+            dAvatarUrl,
+            dClass,
+            playerSequence
           );
 
           if (diaBuffer && diaBuffer.length > 500) {
