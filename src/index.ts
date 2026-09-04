@@ -43,6 +43,7 @@ import { buildProfileEmbed, buildProfileButtons } from './commands/profile';
 import { buildDefensesEmbed, buildDefensesButtons } from './commands/defenses';
 import { buildChurchEmbed, buildChurchButtons } from './commands/church';
 import { buildWarEmbed, buildWarButtons } from './commands/grailwar';
+import { handleGlobalInventoryInteraction } from './commands/customise';
 import { 
   buildServantFullProfileEmbed,
   buildServantArtworkEmbed,
@@ -226,8 +227,13 @@ client.on(Events.InteractionCreate, async interaction => {
       return;
     }
 
-    // ROUTE C: Select Dropdown Menus (e.g. equipping Craft Essence from /customise equip)
+    // ROUTE C: Select Dropdown Menus (e.g. equipping Craft Essence from /customise equip or /inventory)
     if (interaction.isStringSelectMenu()) {
+      if (interaction.customId === 'inv_select_item' || interaction.customId.startsWith('inv_')) {
+        await handleGlobalInventoryInteraction(interaction);
+        return;
+      }
+
       if (interaction.customId.startsWith('select_ce:')) {
         const servantId = interaction.customId.replace('select_ce:', '');
         const selectedCeId = interaction.values[0]; // The ID of the chosen Craft Essence
@@ -257,6 +263,13 @@ client.on(Events.InteractionCreate, async interaction => {
       if (interaction.replied || interaction.deferred) return;
 
       const btnId = interaction.customId;
+
+      // Inventory Buttons
+      if (btnId.startsWith('inv_')) {
+        await handleGlobalInventoryInteraction(interaction);
+        return;
+      }
+
       const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
       let war = getOrInitWarSession(master);
       const isCivilian = !master.servants || master.servants.length === 0;

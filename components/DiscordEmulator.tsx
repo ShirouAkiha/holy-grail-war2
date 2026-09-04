@@ -427,6 +427,8 @@ export default function DiscordEmulator({
       }
     }
   ]);
+  const [invCategory, setInvCategory] = useState<'ces' | 'servants' | 'seals' | 'items'>('ces');
+  const [invPage, setInvPage] = useState<number>(1);
   const [activeDuel, setActiveDuel] = useState<{
     battle: ReturnType<typeof initializeBattle>;
     lastLog?: CombatTurnLog;
@@ -3064,24 +3066,55 @@ export default function DiscordEmulator({
     if (btnId === 'btn_show_servants_list' || btnId === 'btn_back_servants_list') {
       handleCommand('/servants list');
     } else if (btnId.startsWith('inv_')) {
-      if (btnId === 'inv_cat_ces') postInventoryHub('ces');
-      else if (btnId === 'inv_cat_servants') postInventoryHub('servants');
-      else if (btnId === 'inv_cat_seals') postInventoryHub('seals');
-      else if (btnId === 'inv_cat_items') postInventoryHub('items');
-      else if (btnId === 'inv_quick_gacha') handleCommand('/cegacha');
-      else if (btnId === 'inv_quick_stats') handleCommand('/customise stats');
-      else if (btnId === 'inv_act_equip') {
-        const ownedCes = (master.craftEssences || []).filter(Boolean);
-        const targetServantId = master.activeServantId || master.servants?.[0]?.id;
-        if (targetServantId && ownedCes.length > 0) {
-          const updatedServants = (master.servants || []).map(s => {
-            if (s.id === targetServantId) {
-              return { ...s, equippedCeId: ownedCes[0].id, equippedCe: ownedCes[0] };
-            }
-            return s;
-          });
-          onUpdateMaster({ ...master, servants: updatedServants });
-          postInventoryHub('ces');
+      if (btnId === 'inv_cat_ces') {
+        setInvCategory('ces');
+        setInvPage(1);
+        postInventoryHub('ces', 1);
+      } else if (btnId === 'inv_cat_servants') {
+        setInvCategory('servants');
+        setInvPage(1);
+        postInventoryHub('servants', 1);
+      } else if (btnId === 'inv_cat_seals') {
+        setInvCategory('seals');
+        setInvPage(1);
+        postInventoryHub('seals', 1);
+      } else if (btnId === 'inv_cat_items') {
+        setInvCategory('items');
+        setInvPage(1);
+        postInventoryHub('items', 1);
+      } else if (btnId === 'inv_page_prev') {
+        const newPage = Math.max(1, invPage - 1);
+        setInvPage(newPage);
+        postInventoryHub(invCategory, newPage);
+      } else if (btnId === 'inv_page_next') {
+        const newPage = invPage + 1;
+        setInvPage(newPage);
+        postInventoryHub(invCategory, newPage);
+      } else if (btnId === 'inv_quick_gacha') {
+        handleCommand('/cegacha');
+      } else if (btnId === 'inv_quick_stats') {
+        handleCommand('/customise stats');
+      } else if (btnId === 'inv_act_equip') {
+        if (invCategory === 'ces') {
+          const ownedCes = (master.craftEssences || []).filter(Boolean);
+          const targetServantId = master.activeServantId || master.servants?.[0]?.id;
+          if (targetServantId && ownedCes.length > 0) {
+            const updatedServants = (master.servants || []).map(s => {
+              if (s.id === targetServantId) {
+                return { ...s, equippedCeId: ownedCes[0].id, equippedCe: ownedCes[0] };
+              }
+              return s;
+            });
+            onUpdateMaster({ ...master, servants: updatedServants });
+            postInventoryHub('ces', invPage);
+          }
+        } else if (invCategory === 'servants') {
+          const ownedServants = master.servants || [];
+          if (ownedServants.length > 1) {
+            const nextServant = ownedServants.find(s => s.id !== master.activeServantId) || ownedServants[0];
+            onUpdateMaster({ ...master, activeServantId: nextServant.id });
+            postInventoryHub('servants', invPage);
+          }
         }
       } else if (btnId === 'inv_act_unequip') {
         const targetServantId = master.activeServantId || master.servants?.[0]?.id;
@@ -3093,22 +3126,81 @@ export default function DiscordEmulator({
             return s;
           });
           onUpdateMaster({ ...master, servants: updatedServants });
-          postInventoryHub('ces');
+          postInventoryHub('ces', invPage);
         }
       } else if (btnId === 'inv_act_inspect') {
         const activeServant = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
-        if (activeServant?.equippedCe) {
+        if (invCategory === 'ces') {
+          if (activeServant?.equippedCe) {
+            addMessage({
+              id: getNextId('bot_ce_lore'),
+              sender: 'bot',
+              timestamp: 'Just now',
+              embed: {
+                title: `📖 Relic Lore: ${activeServant.equippedCe.name}`,
+                description:
+                  `**Rarity:** ★${activeServant.equippedCe.rarity}\n` +
+                  `**Effect:** ${activeServant.equippedCe.effectText}\n` +
+                  `**Stats:** +${activeServant.equippedCe.atkBonus || 0} ATK / +${activeServant.equippedCe.hpBonus || 0} HP\n\n` +
+                  `*${activeServant.equippedCe.description || 'An ancient conceptual relic forged from hero memories.'}*`,
+                color: '#38bdf8'
+              }
+            });
+          } else {
+            addMessage({
+              id: getNextId('bot_ce_lore_none'),
+              sender: 'bot',
+              timestamp: 'Just now',
+              embed: {
+                title: '📖 Craft Essence Lore Archive',
+                description: 'No Craft Essence is currently equipped on your active Servant. Select an essence and press **Equip** to inspect its specific origins.',
+                color: '#38bdf8'
+              }
+            });
+          }
+        } else if (invCategory === 'servants') {
+          if (activeServant) {
+            addMessage({
+              id: getNextId('bot_servant_inspect'),
+              sender: 'bot',
+              timestamp: 'Just now',
+              embed: {
+                title: `⚔️ Servant Dossier: ${activeServant.nickname || activeServant.template?.name || (activeServant as any).name}`,
+                description:
+                  `**Class:** ${activeServant.template?.servantClass || (activeServant as any).servantClass} | **Rarity:** ★${activeServant.template?.rarity || 5}\n` +
+                  `**Level:** Lv.${activeServant.level || 1} | **Bond:** Lv.${activeServant.bondLevel || 1}\n` +
+                  `**Noble Phantasm:** ${activeServant.template?.noblePhantasm?.name || 'Classified'}\n\n` +
+                  `*Use \`/servant\` to view their full parameter radar card.*`,
+                color: '#d4af37'
+              }
+            });
+          }
+        } else if (invCategory === 'seals') {
           addMessage({
-            id: getNextId('bot_ce_lore'),
+            id: getNextId('bot_seals_lore'),
             sender: 'bot',
             timestamp: 'Just now',
             embed: {
-              title: `📖 Relic Lore: ${activeServant.equippedCe.name}`,
+              title: `📜 Command Seal & Bounded Field Codex`,
               description:
-                `**Rarity:** ★${activeServant.equippedCe.rarity}\n` +
-                `**Effect:** ${activeServant.equippedCe.effectText}\n` +
-                `**Stats:** +${activeServant.equippedCe.atkBonus || 0} ATK / +${activeServant.equippedCe.hpBonus || 0} HP\n\n` +
-                `*${activeServant.equippedCe.description || 'An ancient conceptual relic forged from hero memories.'}*`,
+                `• **Command Seals (3/3):** Absolute magecraft enforcement granting instant evacuation, full HP restoration, or Noble Phantasm release.\n` +
+                `• **Mage Sanctuary Ward:** Reduces incoming ambush strike damage by 60%.\n` +
+                `• **Homunculus Decoy:** Sacrifices a decoy to absorb 100% of ambush damage.\n` +
+                `• **Alarm Ward:** Alerts you immediately upon rival scout entry.`,
+              color: '#f59e0b'
+            }
+          });
+        } else if (invCategory === 'items') {
+          addMessage({
+            id: getNextId('bot_items_lore'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `💎 Master Vault Ledger`,
+              description:
+                `• **Saint Quartz (${master.saintQuartz || 0} SQ):** Pure mana stones for summoning Heroic Spirits and Craft Essences in \`/cegacha\`.\n` +
+                `• **Holy Grail Shards (${(master as any).grailShards || 1}):** Artifacts for Holy Grail Ascension beyond Lv.90.\n` +
+                `• **Mana Prisms (${(master as any).manaPrisms || 50}):** Currency for Da Vinci shop purchases.`,
               color: '#38bdf8'
             }
           });

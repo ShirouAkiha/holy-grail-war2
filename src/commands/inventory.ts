@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { getOrCreateMaster } from '../database/service';
-import { buildInventoryHub } from './customise';
+import { buildInventoryHub, attachInventoryCollector } from './customise';
 
 export const data = new SlashCommandBuilder()
   .setName('inventory')
@@ -19,14 +19,18 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    const { embed, components } = buildInventoryHub(master, activeServant, 'ces', 1);
-    await interaction.reply({
+    const { embed, components } = buildInventoryHub(master, activeServant, 'ces', 1, activeServant.equippedCeId);
+    const reply = await interaction.reply({
       embeds: [embed],
       components,
-      ephemeral: true
+      ephemeral: true,
+      fetchReply: true
     });
+
+    attachInventoryCollector(interaction, master, activeServant, reply);
   } catch (error: any) {
     console.error('Error executing /inventory:', error);
     await interaction.reply({ content: `❌ Inventory error: ${error.message}`, ephemeral: true });
   }
 }
+

@@ -12,7 +12,7 @@ import { getOrCreateMaster, saveMaster } from '../database/service';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 
 // ==========================================
-// 0. INTERACTIVE INVENTORY HUB BUILDER
+// 0. INTERACTIVE INVENTORY HUB BUILDER & HANDLERS
 // ==========================================
 export function buildInventoryHub(
   master: any,
@@ -23,7 +23,7 @@ export function buildInventoryHub(
 ) {
   const ownedCes = (master.craftEssences || []).filter(Boolean);
   const ownedServants = master.servants || [];
-  const servantName = activeServant.nickname || activeServant.template?.name || 'Heroic Spirit';
+  const servantName = activeServant?.nickname || activeServant?.template?.name || 'Heroic Spirit';
 
   let title = `👔 ${master.username}'s Inventory — Craft Essences`;
   let equippedBanner = '';
@@ -34,7 +34,7 @@ export function buildInventoryHub(
 
   if (category === 'ces') {
     title = `🛡️ ${master.username}'s Inventory — Craft Essences`;
-    const activeCeName = activeServant.equippedCe?.name;
+    const activeCeName = activeServant?.equippedCe?.name;
     equippedBanner = activeCeName
       ? `✅ Equipped **${activeCeName}** (★${activeServant.equippedCe?.rarity || 5}).`
       : `⚠️ **No Craft Essence equipped.** Select an item below and press **Equip**.`;
@@ -56,7 +56,7 @@ export function buildInventoryHub(
       const paginated = uniqueCes.slice(startIndex, startIndex + itemsPerPage);
 
       itemLines = paginated.map(({ ce, count }) => {
-        const isEq = activeServant.equippedCeId === ce.id;
+        const isEq = activeServant?.equippedCeId === ce.id;
         const rarityTag = ce.rarity >= 5 ? '★5 Legendary' : ce.rarity >= 4 ? '★4 Rare' : '★3 Common';
         const rankTag = ce.rarity >= 5 ? 'S Rank' : ce.rarity >= 4 ? 'A Rank' : 'B Rank';
         const eqBadge = isEq ? ' **[EQUIPPED]**' : '';
@@ -70,14 +70,14 @@ export function buildInventoryHub(
       ...uniqueCes.map(({ ce, count }) => ({
         label: `${ce.rarity >= 5 ? '★5' : ce.rarity >= 4 ? '★4' : '★3'} ${ce.name}${count > 1 ? ` (x${count})` : ''}`,
         value: ce.id,
-        description: ce.effectText.slice(0, 48),
+        description: (ce.effectText || 'Craft Essence').slice(0, 48),
         default: selectedItemId === ce.id
       }))
     ];
   } else if (category === 'servants') {
     title = `⚔️ ${master.username}'s Inventory — Contracted Servants`;
-    const sClass = activeServant.template?.servantClass || 'Saber';
-    const sLvl = activeServant.level || 1;
+    const sClass = activeServant?.template?.servantClass || 'Saber';
+    const sLvl = activeServant?.level || 1;
     equippedBanner = activeServant
       ? `✅ Active Contract: **${servantName}** (${sClass}) [Lv.${sLvl}].`
       : `⚠️ No active Servant contract.`;
@@ -97,16 +97,18 @@ export function buildInventoryHub(
       return `${arrow}**${rarTag}** — **${sN}** — Lv.${s.level || 1} (${sCls})${actBadge}`;
     });
 
-    selectOptions = ownedServants.map((s: any) => {
-      const sN = s.nickname || s.template?.name || 'Heroic Spirit';
-      const sCls = s.template?.servantClass || 'Saber';
-      return {
-        label: `${sN} (Lv.${s.level || 1} ${sCls})`,
-        value: s.id,
-        description: `Bond Lv.${s.bondLevel || 1} • Stat Points: ${s.availableStatPoints || 0}`,
-        default: selectedItemId === s.id
-      };
-    });
+    selectOptions = ownedServants.length > 0 
+      ? ownedServants.map((s: any) => {
+          const sN = s.nickname || s.template?.name || 'Heroic Spirit';
+          const sCls = s.template?.servantClass || 'Saber';
+          return {
+            label: `${sN} (Lv.${s.level || 1} ${sCls})`,
+            value: s.id,
+            description: `Bond Lv.${s.bondLevel || 1} • Stat Points: ${s.availableStatPoints || 0}`,
+            default: selectedItemId === s.id
+          };
+        })
+      : [{ label: 'No Servants Contracted', value: 'none', description: 'Use /summon to contract a Servant' }];
   } else if (category === 'seals') {
     title = `📜 ${master.username}'s Inventory — Command Seals & Master Wards`;
     equippedBanner = `✅ Master Seals: **3 / 3 Command Seals Available** (Auto-Evac Ward Active).`;
@@ -167,7 +169,7 @@ export function buildInventoryHub(
     new StringSelectMenuBuilder()
       .setCustomId('inv_select_item')
       .setPlaceholder('Select an item from inventory...')
-      .addOptions(selectOptions.slice(0, 25))
+      .addOptions(selectOptions.length > 0 ? selectOptions.slice(0, 25) : [{ label: 'No items', value: 'none' }])
   );
 
   // Row 3: Action Buttons
@@ -189,6 +191,335 @@ export function buildInventoryHub(
     embed,
     components: [catRow, selectRow, actRow, linkRow]
   };
+}
+
+/**
+ * Attaches a stateful component collector to an inventory message reply
+ */
+export function attachInventoryCollector(interaction: any, master: any, activeServant: any, replyMessage: any) {
+  let currentCategory: 'ces' | 'servants' | 'seals' | 'items' = 'ces';
+  let currentPage = 1;
+  let selectedItemId: string | undefined = activeServant?.equippedCeId;
+
+  const collector = replyMessage.createMessageComponentCollector({
+    idle: 180000,
+    time: 900000
+  });
+
+  collector.on('collect', async (i: any) => {
+    try {
+      if (i.user.id !== interaction.user.id) {
+        await i.reply({ ephemeral: true, content: '❌ This inventory menu belongs to another Master.' });
+        return;
+      }
+
+      collector.resetTimer();
+      const customId = i.customId;
+      const ownedCes = (master.craftEssences || []).filter(Boolean);
+
+      // Category Switching
+      if (customId === 'inv_cat_ces') {
+        currentCategory = 'ces';
+        currentPage = 1;
+        selectedItemId = activeServant?.equippedCeId;
+      } else if (customId === 'inv_cat_servants') {
+        currentCategory = 'servants';
+        currentPage = 1;
+        selectedItemId = master.activeServantId;
+      } else if (customId === 'inv_cat_seals') {
+        currentCategory = 'seals';
+        currentPage = 1;
+        selectedItemId = 'cs_evac';
+      } else if (customId === 'inv_cat_items') {
+        currentCategory = 'items';
+        currentPage = 1;
+        selectedItemId = 'item_sq';
+      }
+
+      // Pagination
+      else if (customId === 'inv_page_prev') {
+        currentPage = Math.max(1, currentPage - 1);
+      } else if (customId === 'inv_page_next') {
+        currentPage++;
+      }
+
+      // Dropdown Selection
+      else if (customId === 'inv_select_item') {
+        selectedItemId = i.values[0];
+      }
+
+      // Action: Equip
+      else if (customId === 'inv_act_equip') {
+        if (currentCategory === 'ces') {
+          if (!selectedItemId || selectedItemId === 'none') {
+            if (activeServant) {
+              activeServant.equippedCeId = undefined;
+              activeServant.equippedCe = undefined;
+            }
+          } else {
+            const picked = ownedCes.find((c: any) => c.id === selectedItemId) || CRAFT_ESSENCE_DATABASE.find(c => c.id === selectedItemId);
+            if (picked && activeServant) {
+              activeServant.equippedCeId = picked.id;
+              activeServant.equippedCe = picked;
+            }
+          }
+          await saveMaster(master);
+        } else if (currentCategory === 'servants') {
+          if (selectedItemId && master.servants?.some((s: any) => s.id === selectedItemId)) {
+            master.activeServantId = selectedItemId;
+            activeServant = master.servants.find((s: any) => s.id === selectedItemId) || activeServant;
+            await saveMaster(master);
+          }
+        }
+      }
+
+      // Action: Unequip
+      else if (customId === 'inv_act_unequip') {
+        if (currentCategory === 'ces' && activeServant) {
+          activeServant.equippedCeId = undefined;
+          activeServant.equippedCe = undefined;
+          selectedItemId = 'none';
+          await saveMaster(master);
+        }
+      }
+
+      // Action: Inspect
+      else if (customId === 'inv_act_inspect') {
+        if (currentCategory === 'ces') {
+          const targetCeId = (selectedItemId && selectedItemId !== 'none') ? selectedItemId : activeServant?.equippedCeId;
+          const ce = ownedCes.find((c: any) => c.id === targetCeId) || CRAFT_ESSENCE_DATABASE.find(c => c.id === targetCeId);
+          if (ce) {
+            await i.reply({
+              ephemeral: true,
+              embeds: [
+                new EmbedBuilder()
+                  .setTitle(`📖 Relic Lore: ${ce.name}`)
+                  .setDescription(
+                    `**Rarity:** ★${ce.rarity}\n` +
+                    `**Effect:** ${ce.effectText}\n` +
+                    `**Stats:** +${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP\n\n` +
+                    `*${ce.description || 'An ancient conceptual weapon forged from hero memories.'}*`
+                  )
+                  .setColor(0x38bdf8)
+              ]
+            });
+            return;
+          }
+        } else if (currentCategory === 'servants') {
+          const s = master.servants?.find((srv: any) => srv.id === selectedItemId) || activeServant;
+          if (s) {
+            await i.reply({
+              ephemeral: true,
+              embeds: [
+                new EmbedBuilder()
+                  .setTitle(`⚔️ Servant Dossier: ${s.nickname || s.template?.name}`)
+                  .setDescription(
+                    `**Class:** ${s.template?.servantClass} | **Rarity:** ★${s.template?.rarity || 5}\n` +
+                    `**Level:** Lv.${s.level || 1} | **Bond:** Lv.${s.bondLevel || 1}\n` +
+                    `**Noble Phantasm:** ${s.template?.noblePhantasm?.name || 'Classified'} [${s.template?.noblePhantasm?.rank || 'A++'}]\n\n` +
+                    `*Use \`/servant\` or \`!servant\` to view their full parameter radar card.*`
+                  )
+                  .setColor(0xd4af37)
+              ]
+            });
+            return;
+          }
+        } else if (currentCategory === 'seals') {
+          await i.reply({
+            ephemeral: true,
+            embeds: [
+              new EmbedBuilder()
+                .setTitle(`📜 Command Seal & Bounded Field Codex`)
+                .setDescription(
+                  `• **Command Seals (3/3):** Absolute magecraft enforcement granting instant teleportation, full servant revival, or supreme Noble Phantasm release.\n` +
+                  `• **Mage Sanctuary Ward:** Reduces incoming ambush strike damage by 60%.\n` +
+                  `• **Homunculus Decoy:** Sacrifices an artificial homunculus to absorb 100% of an ambush attack.\n` +
+                  `• **Alarm Ward:** Instantly alerts you when rival Masters scout or enter your channel.`
+                )
+                .setColor(0xf59e0b)
+            ]
+          });
+          return;
+        } else if (currentCategory === 'items') {
+          await i.reply({
+            ephemeral: true,
+            embeds: [
+              new EmbedBuilder()
+                .setTitle(`💎 Master Vault & Currency Ledger`)
+                .setDescription(
+                  `• **Saint Quartz (${master.saintQuartz || 0} SQ):** Prismatic crystallized mana used to invoke Heroic Spirits and Craft Essences in \`/summon\` and \`/cegacha\`.\n` +
+                  `• **Holy Grail Shards (${master.grailShards || 1}):** Pieces of the Greater Grail used for Holy Grail Ascension to break level caps beyond Lv.90.\n` +
+                  `• **Mana Prisms (${master.manaPrisms || 50}):** Pure magical energy exchangeable at the Da Vinci workshop.`
+                )
+                .setColor(0x38bdf8)
+            ]
+          });
+          return;
+        }
+      }
+
+      // Action: Quick Gacha
+      else if (customId === 'inv_quick_gacha') {
+        const sq = master.saintQuartz || 0;
+        await i.reply({
+          ephemeral: true,
+          embeds: [
+            new EmbedBuilder()
+              .setTitle('🎲 Gacha Vault Invocation')
+              .setDescription(
+                `**Current Balance:** \`${sq} Saint Quartz 💎\`\n\n` +
+                `Perform invocations using:\n` +
+                `• \`/cegacha roll type:single\` — (3 SQ)\n` +
+                `• \`/cegacha roll type:multi\` — (30 SQ • Guaranteed 4★+)\n` +
+                `• \`/cegacha daily\` — Claim free daily login Saint Quartz!`
+              )
+              .setColor(0x8b5cf6)
+          ]
+        });
+        return;
+      }
+
+      // Action: Quick Stats
+      else if (customId === 'inv_quick_stats') {
+        if (!activeServant) {
+          await i.reply({ ephemeral: true, content: '❌ No active Servant contracted.' });
+          return;
+        }
+        const pts = activeServant.availableStatPoints || 0;
+        await i.reply({
+          ephemeral: true,
+          embeds: [
+            new EmbedBuilder()
+              .setTitle(`📊 Parameter Customization: ${activeServant.nickname || activeServant.template?.name}`)
+              .setDescription(
+                `**Available Stat Points:** \`${pts} Points\`\n\n` +
+                `Use the slash command:\n` +
+                `\`\`\`bash\n/customise stats strength:1 endurance:1 agility:1 mana:1 luck:1\n\`\`\`\n` +
+                `to allocate earned parameter points directly into your Servant's combat matrix!`
+              )
+              .setColor(0x10b981)
+          ]
+        });
+        return;
+      }
+
+      const refreshed = buildInventoryHub(master, activeServant, currentCategory, currentPage, selectedItemId);
+      await i.update({ embeds: [refreshed.embed], components: refreshed.components });
+    } catch (err: any) {
+      if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) return;
+      console.error('Error in inventory hub collector:', err);
+    }
+  });
+
+  return collector;
+}
+
+/**
+ * Top-level fallback handler for all inventory interactions (buttons and select menus)
+ */
+export async function handleGlobalInventoryInteraction(interaction: any) {
+  try {
+    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+    const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+    const customId = interaction.customId;
+    const ownedCes = (master.craftEssences || []).filter(Boolean);
+
+    // Default category from customId if applicable
+    let currentCategory: 'ces' | 'servants' | 'seals' | 'items' = 'ces';
+    if (customId === 'inv_cat_servants') currentCategory = 'servants';
+    else if (customId === 'inv_cat_seals') currentCategory = 'seals';
+    else if (customId === 'inv_cat_items') currentCategory = 'items';
+
+    let selectedItemId: string | undefined = activeServant?.equippedCeId;
+    if (interaction.isStringSelectMenu() && interaction.values?.[0]) {
+      selectedItemId = interaction.values[0];
+    }
+
+    // Handle Quick Gacha
+    if (customId === 'inv_quick_gacha') {
+      const sq = master.saintQuartz || 0;
+      await interaction.reply({
+        ephemeral: true,
+        embeds: [
+          new EmbedBuilder()
+            .setTitle('🎲 Gacha Vault Invocation')
+            .setDescription(
+              `**Current Balance:** \`${sq} Saint Quartz 💎\`\n\n` +
+              `Perform invocations using:\n` +
+              `• \`/cegacha roll type:single\` — (3 SQ)\n` +
+              `• \`/cegacha roll type:multi\` — (30 SQ • Guaranteed 4★+)\n` +
+              `• \`/cegacha daily\` — Claim free daily login Saint Quartz!`
+            )
+            .setColor(0x8b5cf6)
+        ]
+      });
+      return;
+    }
+
+    // Handle Quick Stats
+    if (customId === 'inv_quick_stats') {
+      const pts = activeServant?.availableStatPoints || 0;
+      await interaction.reply({
+        ephemeral: true,
+        embeds: [
+          new EmbedBuilder()
+            .setTitle(`📊 Parameter Customization: ${activeServant?.nickname || activeServant?.template?.name || 'Servant'}`)
+            .setDescription(
+              `**Available Stat Points:** \`${pts} Points\`\n\n` +
+              `Use the command:\n` +
+              `\`\`\`bash\n/customise stats strength:1 endurance:1\n\`\`\`\n` +
+              `to allocate stat points!`
+            )
+            .setColor(0x10b981)
+        ]
+      });
+      return;
+    }
+
+    // Handle Inspect
+    if (customId === 'inv_act_inspect') {
+      const targetCe = ownedCes.find((c: any) => c.id === activeServant?.equippedCeId) || CRAFT_ESSENCE_DATABASE[0];
+      await interaction.reply({
+        ephemeral: true,
+        embeds: [
+          new EmbedBuilder()
+            .setTitle(`📖 Relic Lore: ${targetCe.name}`)
+            .setDescription(
+              `**Rarity:** ★${targetCe.rarity}\n` +
+              `**Effect:** ${targetCe.effectText}\n` +
+              `**Stats:** +${targetCe.atkBonus || 0} ATK / +${targetCe.hpBonus || 0} HP\n\n` +
+              `*${targetCe.description || 'An ancient conceptual weapon forged from hero memories.'}*`
+            )
+            .setColor(0x38bdf8)
+        ]
+      });
+      return;
+    }
+
+    // Handle Equip
+    if (customId === 'inv_act_equip') {
+      if (ownedCes.length > 0 && activeServant) {
+        activeServant.equippedCeId = ownedCes[0].id;
+        activeServant.equippedCe = ownedCes[0];
+        await saveMaster(master);
+      }
+    }
+
+    // Handle Unequip
+    if (customId === 'inv_act_unequip') {
+      if (activeServant) {
+        activeServant.equippedCeId = undefined;
+        activeServant.equippedCe = undefined;
+        await saveMaster(master);
+      }
+    }
+
+    const { embed, components } = buildInventoryHub(master, activeServant, currentCategory, 1, selectedItemId);
+    await interaction.update({ embeds: [embed], components });
+  } catch (err: any) {
+    if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) return;
+    console.error('Error in global inventory interaction:', err);
+  }
 }
 
 // ==========================================
@@ -423,123 +754,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         return;
       }
 
-      // Render Full Hana Association Interactive Inventory Hub
-      let currentCategory: 'ces' | 'servants' | 'seals' | 'items' = 'ces';
-      let currentPage = 1;
-      let selectedItemId: string | undefined = activeServant.equippedCeId;
-
-      const { embed, components } = buildInventoryHub(master, activeServant, currentCategory, currentPage, selectedItemId);
+      // Render Full Interactive Inventory Hub
+      const { embed, components } = buildInventoryHub(master, activeServant, 'ces', 1, activeServant.equippedCeId);
       const reply = await interaction.reply({ embeds: [embed], components, ephemeral: true, fetchReply: true });
-
-      const collector = reply.createMessageComponentCollector({
-        idle: 120000,
-        time: 600000
-      });
-
-      collector.on('collect', async (i: any) => {
-        try {
-          if (i.user.id !== interaction.user.id) {
-            await i.reply({ ephemeral: true, content: '❌ This inventory menu belongs to another Master.' });
-            return;
-          }
-
-          collector.resetTimer();
-          const customId = i.customId;
-
-          // Category Switching
-          if (customId === 'inv_cat_ces') {
-            currentCategory = 'ces';
-            currentPage = 1;
-            selectedItemId = activeServant.equippedCeId;
-          } else if (customId === 'inv_cat_servants') {
-            currentCategory = 'servants';
-            currentPage = 1;
-            selectedItemId = master.activeServantId;
-          } else if (customId === 'inv_cat_seals') {
-            currentCategory = 'seals';
-            currentPage = 1;
-            selectedItemId = 'cs_evac';
-          } else if (customId === 'inv_cat_items') {
-            currentCategory = 'items';
-            currentPage = 1;
-            selectedItemId = 'item_sq';
-          }
-
-          // Pagination
-          else if (customId === 'inv_page_prev') {
-            currentPage = Math.max(1, currentPage - 1);
-          } else if (customId === 'inv_page_next') {
-            currentPage++;
-          }
-
-          // Dropdown Selection
-          else if (customId === 'inv_select_item') {
-            selectedItemId = i.values[0];
-          }
-
-          // Action: Equip
-          else if (customId === 'inv_act_equip') {
-            if (currentCategory === 'ces') {
-              if (!selectedItemId || selectedItemId === 'none') {
-                activeServant.equippedCeId = undefined;
-                activeServant.equippedCe = undefined;
-              } else {
-                const picked = ownedCes.find((c: any) => c.id === selectedItemId) || CRAFT_ESSENCE_DATABASE.find(c => c.id === selectedItemId);
-                if (picked) {
-                  activeServant.equippedCeId = picked.id;
-                  activeServant.equippedCe = picked;
-                }
-              }
-              await saveMaster(master);
-            } else if (currentCategory === 'servants') {
-              if (selectedItemId && master.servants.some((s: any) => s.id === selectedItemId)) {
-                master.activeServantId = selectedItemId;
-                await saveMaster(master);
-              }
-            }
-          }
-
-          // Action: Unequip
-          else if (customId === 'inv_act_unequip') {
-            if (currentCategory === 'ces') {
-              activeServant.equippedCeId = undefined;
-              activeServant.equippedCe = undefined;
-              selectedItemId = 'none';
-              await saveMaster(master);
-            }
-          }
-
-          // Action: Inspect
-          else if (customId === 'inv_act_inspect') {
-            if (currentCategory === 'ces' && selectedItemId && selectedItemId !== 'none') {
-              const ce = ownedCes.find((c: any) => c.id === selectedItemId) || CRAFT_ESSENCE_DATABASE.find(c => c.id === selectedItemId);
-              if (ce) {
-                await i.reply({
-                  ephemeral: true,
-                  embeds: [
-                    new EmbedBuilder()
-                      .setTitle(`📖 Relic Lore: ${ce.name}`)
-                      .setDescription(
-                        `**Rarity:** ★${ce.rarity}\n` +
-                        `**Effect:** ${ce.effectText}\n` +
-                        `**Stats:** +${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP\n\n` +
-                        `*${ce.description || 'An ancient conceptual weapon forged from hero memories.'}*`
-                      )
-                      .setColor(0x38bdf8)
-                  ]
-                });
-                return;
-              }
-            }
-          }
-
-          const refreshed = buildInventoryHub(master, activeServant, currentCategory, currentPage, selectedItemId);
-          await i.update({ embeds: [refreshed.embed], components: refreshed.components });
-        } catch (err: any) {
-          if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
-          console.error('Error in inventory hub collector:', err);
-        }
-      });
+      attachInventoryCollector(interaction, master, activeServant, reply);
       return;
     }
 
