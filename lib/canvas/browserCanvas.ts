@@ -560,7 +560,8 @@ export async function renderBattleTurnSummary(
   canvas: HTMLCanvasElement,
   log: CombatTurnLog,
   p1: ActiveCombatant,
-  p2: ActiveCombatant
+  p2: ActiveCombatant,
+  showDialogueMode: boolean = false
 ): Promise<void> {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -825,89 +826,183 @@ export async function renderBattleTurnSummary(
   ctx.fillText(`${p1.critStars || 0}`, 514, 186);
 
   // ==========================================
-  // MIDDLE SECTION: CLASH RESOLUTION THEATER (COMPACT)
+  // MIDDLE SECTION: CLASH RESOLUTION THEATER (OR MID-BATTLE CUT-IN DIALOGUE)
   // ==========================================
-  ctx.fillStyle = '#030712';
-  drawRoundRect(ctx, 18, 236, 604, 200, 10);
-  ctx.fill();
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  if (showDialogueMode && log.dialogueCutIn) {
+    const dialogue = log.dialogueCutIn;
+    const speakerImg = (dialogue.speakerName === p1.name ? p1Img : (dialogue.speakerName === p2.name ? p2Img : null)) || p1Img;
 
-  // Marquee Header Pill
-  ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 30, 246, 580, 28, 5);
-  ctx.fill();
-
-  ctx.fillStyle = '#f59e0b';
-  ctx.font = 'bold 13px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(`HOLY GRAIL WAR - TURN ${log.turnNumber} CLASH RESOLUTION`, 320, 265);
-
-  // Main Action Text - Sanitize and format ASCII
-  const actorClean = (log.actorName || p1.name).replace(/[^\x00-\x7F]/g, '');
-  const targetClean = (log.targetName || p2.name).replace(/[^\x00-\x7F]/g, '');
-  const cardsUsedSeq = (log.cardsUsed || p1Cards).join(' -> ');
-
-  const actLine = `${actorClean} executed [${cardsUsedSeq}]`;
-  const dmgLine = `Dealt ${log.damageDealt > 0 ? log.damageDealt.toLocaleString() : '0'} DMG to ${targetClean}!`;
-  const statLine = `+${log.npCharged || 0}% NP Charged | +${log.starsGenerated || 0} Stars Gathered`;
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 14px system-ui, sans-serif';
-  ctx.fillText(actLine, 320, 296);
-
-  ctx.fillStyle = log.isCritical ? '#f87171' : '#38bdf8';
-  ctx.font = 'bold 16px system-ui, sans-serif';
-  ctx.fillText(dmgLine, 320, 320);
-
-  ctx.fillStyle = '#cbd5e1';
-  ctx.font = '12px system-ui, sans-serif';
-  ctx.fillText(statLine, 320, 340);
-
-  // Special Highlight Banner
-  if (log.isNoblePhantasm) {
-    ctx.fillStyle = 'rgba(234, 179, 8, 0.15)';
-    drawRoundRect(ctx, 32, 354, 576, 28, 5);
+    // Outer Chassis
+    ctx.fillStyle = '#0a0805';
+    drawRoundRect(ctx, 18, 236, 604, 200, 10);
     ctx.fill();
-    ctx.strokeStyle = '#eab308';
+    ctx.strokeStyle = '#d97706';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Inner Filigree Frame Accent
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
+    ctx.lineWidth = 1;
+    drawRoundRect(ctx, 22, 240, 596, 192, 8);
+    ctx.stroke();
+
+    // Header Marquee Pill (Scenario Title)
+    ctx.fillStyle = '#1e130a';
+    drawRoundRect(ctx, 30, 246, 580, 26, 5);
+    ctx.fill();
+    ctx.strokeStyle = '#b45309';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(dialogue.scenarioTitle || '💬 MID-BATTLE COMBAT CUT-IN', 320, 263);
+
+    // Left Servant Portrait Box (X: 30, Y: 278, W: 110, H: 146)
+    ctx.fillStyle = '#020617';
+    drawRoundRect(ctx, 30, 278, 110, 146, 8);
+    ctx.fill();
+
+    if (speakerImg) {
+      ctx.save();
+      drawRoundRect(ctx, 32, 280, 106, 142, 6);
+      ctx.clip();
+      drawImageCover(ctx, speakerImg, 32, 280, 106, 142);
+      ctx.restore();
+    }
+
+    // Gold Portrait Frame
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2;
+    drawRoundRect(ctx, 30, 278, 110, 146, 8);
+    ctx.stroke();
+
+    // Level Tag
+    ctx.fillStyle = '#b45309';
+    drawRoundRect(ctx, 72, 280, 26, 18, 4);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 10px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${dialogue.level || 90}`, 85, 293);
+
+    // Speaker Nameplate overlapping top-left of dialogue box
+    ctx.fillStyle = '#1e110a';
+    drawRoundRect(ctx, 148, 278, 160, 24, 4);
+    ctx.fill();
+    ctx.strokeStyle = '#f59e0b';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    ctx.fillStyle = '#fde047';
+    ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 12px system-ui, sans-serif';
-    ctx.fillText('NOBLE PHANTASM UNLEASHED AT MAXIMUM OUTPUT!', 320, 373);
-  } else if (log.isCritical) {
-    ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
-    drawRoundRect(ctx, 32, 354, 576, 28, 5);
+    ctx.textAlign = 'left';
+    ctx.fillText(dialogue.speakerName.slice(0, 18), 156, 294);
+
+    // Dialogue Quote Box (X: 148, Y: 308, W: 462, H: 116)
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+    drawRoundRect(ctx, 148, 308, 462, 116, 6);
     ctx.fill();
-    ctx.strokeStyle = '#ef4444';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#b45309';
+    ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    ctx.fillStyle = '#f87171';
-    ctx.font = 'bold 12px system-ui, sans-serif';
-    ctx.fillText('CRITICAL STRIKE! DOUBLE DAMAGE DEALT!', 320, 373);
+    // Quote Text wrapped
+    ctx.fillStyle = '#fef08a';
+    ctx.font = 'italic 14px "Georgia", serif, sans-serif';
+    ctx.textAlign = 'left';
+    const quoteStr = `"${dialogue.quote}"`;
+    drawWrappedText(ctx, quoteStr, 162, 332, 434, 20);
+
+    // Bottom-right indicator
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 10px system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('⚡ PRE-ATTACK CUT-IN • ATTACK INCOMING IN 4s', 598, 414);
   } else {
-    ctx.fillStyle = '#94a3b8';
+    ctx.fillStyle = '#030712';
+    drawRoundRect(ctx, 18, 236, 604, 200, 10);
+    ctx.fill();
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Marquee Header Pill
+    ctx.fillStyle = '#1e293b';
+    drawRoundRect(ctx, 30, 246, 580, 28, 5);
+    ctx.fill();
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 13px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`HOLY GRAIL WAR - TURN ${log.turnNumber} CLASH RESOLUTION`, 320, 265);
+
+    // Main Action Text - Sanitize and format ASCII
+    const actorClean = (log.actorName || p1.name).replace(/[^\x00-\x7F]/g, '');
+    const targetClean = (log.targetName || p2.name).replace(/[^\x00-\x7F]/g, '');
+    const cardsUsedSeq = (log.cardsUsed || p1Cards).join(' -> ');
+
+    const actLine = `${actorClean} executed [${cardsUsedSeq}]`;
+    const dmgLine = `Dealt ${log.damageDealt > 0 ? log.damageDealt.toLocaleString() : '0'} DMG to ${targetClean}!`;
+    const statLine = `+${log.npCharged || 0}% NP Charged | +${log.starsGenerated || 0} Stars Gathered`;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 14px system-ui, sans-serif';
+    ctx.fillText(actLine, 320, 296);
+
+    ctx.fillStyle = log.isCritical ? '#f87171' : '#38bdf8';
+    ctx.font = 'bold 16px system-ui, sans-serif';
+    ctx.fillText(dmgLine, 320, 320);
+
+    ctx.fillStyle = '#cbd5e1';
     ctx.font = '12px system-ui, sans-serif';
-    ctx.fillText('Command Seals pulse with etheric energy as weapons clash.', 320, 373);
+    ctx.fillText(statLine, 320, 340);
+
+    // Special Highlight Banner
+    if (log.isNoblePhantasm) {
+      ctx.fillStyle = 'rgba(234, 179, 8, 0.15)';
+      drawRoundRect(ctx, 32, 354, 576, 28, 5);
+      ctx.fill();
+      ctx.strokeStyle = '#eab308';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.fillStyle = '#fde047';
+      ctx.font = 'bold 12px system-ui, sans-serif';
+      ctx.fillText('NOBLE PHANTASM UNLEASHED AT MAXIMUM OUTPUT!', 320, 373);
+    } else if (log.isCritical) {
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+      drawRoundRect(ctx, 32, 354, 576, 28, 5);
+      ctx.fill();
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.fillStyle = '#f87171';
+      ctx.font = 'bold 12px system-ui, sans-serif';
+      ctx.fillText('CRITICAL STRIKE! DOUBLE DAMAGE DEALT!', 320, 373);
+    } else {
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '12px system-ui, sans-serif';
+      ctx.fillText('Command Seals pulse with etheric energy as weapons clash.', 320, 373);
+    }
+
+    // Damage / Stars footer pill
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.08)';
+    drawRoundRect(ctx, 70, 392, 500, 28, 14);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const p1NameClean = (p1.masterName || 'P1').replace(/[^\x00-\x7F]/g, '');
+    const p2NameClean = (p2.masterName || 'P2').replace(/[^\x00-\x7F]/g, '');
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.fillText(`${p1NameClean} Stars: ${p1.critStars || 0}   |   ${p2NameClean} Stars: ${p2.critStars || 0}`, 320, 410);
   }
-
-  // Damage / Stars footer pill
-  ctx.fillStyle = 'rgba(56, 189, 248, 0.08)';
-  drawRoundRect(ctx, 70, 392, 500, 28, 14);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  const p1NameClean = (p1.masterName || 'P1').replace(/[^\x00-\x7F]/g, '');
-  const p2NameClean = (p2.masterName || 'P2').replace(/[^\x00-\x7F]/g, '');
-
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 12px system-ui, sans-serif';
-  ctx.fillText(`${p1NameClean} Stars: ${p1.critStars || 0}   |   ${p2NameClean} Stars: ${p2.critStars || 0}`, 320, 410);
 
   // ==========================================
   // BOTTOM SECTION: PLAYER 2 (MASTER & SERVANT)

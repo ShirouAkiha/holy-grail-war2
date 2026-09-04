@@ -17,7 +17,7 @@ interface CanvasStudioProps {
 export default function CanvasStudio({ master }: CanvasStudioProps) {
   const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'dialogue' | 'battle' | 'gacha'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'dialogue' | 'battle' | 'battle_dialogue' | 'gacha'>('profile');
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const [dialogueSpeaker, setDialogueSpeaker] = useState(activeServant?.template.name || 'Artoria Pendragon');
@@ -39,10 +39,24 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
         activeServant.template.title,
         activeServant.template.servantClass
       );
-    } else if (activeTab === 'battle') {
+    } else if (activeTab === 'battle' || activeTab === 'battle_dialogue') {
       const mockLog = {
         turnNumber: 3,
         actionSummary: `${activeServant.template.name} executed Buster Brave Chain, dealing 14,800 damage!`,
+        damageDealt: 14800,
+        isCritical: true,
+        cardsUsed: ['Buster', 'Buster', 'Buster'],
+        dialogueCutIn: {
+          speakerName: activeServant.template.name,
+          speakerClass: activeServant.template.servantClass,
+          speakerAvatarUrl: activeServant.template.avatarUrl,
+          scenario: 'BUSTER_CHAIN' as const,
+          scenarioTitle: '⚔️ BUSTER CHAIN HEAVY IMPACT',
+          quote: activeServant.template.id.includes('mhx')
+            ? 'Your favorite raider just got expensive.'
+            : activeServant.customQuotes.battleStart || 'Rejoice! You are permitted to gaze upon this strike!',
+          level: 90
+        },
         p1DamageDealt: 14800,
         p2DamageDealt: 4200,
         p1HpRemaining: 12500,
@@ -67,7 +81,7 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
         statusEffects: []
       };
       const p2 = { ...p1, id: 'p2', name: 'Gilgamesh', servantClass: 'Archer', currentHp: 6800, maxHp: 15500 };
-      renderBattleTurnSummary(canvas, mockLog as any, p1 as any, p2 as any);
+      renderBattleTurnSummary(canvas, mockLog as any, p1 as any, p2 as any, activeTab === 'battle_dialogue');
     } else if (activeTab === 'gacha') {
       const mockResults: GachaResultItem[] = [
         { type: 'servant' as const, item: activeServant.template, rarity: 5, isNew: true, isRateUp: true },
@@ -117,7 +131,8 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
         {[
           { id: 'profile' as const, label: 'Servant Status Card (850x390)' },
           { id: 'dialogue' as const, label: 'Dialogue Card (800x240)' },
-          { id: 'battle' as const, label: 'Battle Clash (640x640 Square)' },
+          { id: 'battle_dialogue' as const, label: '💬 Mid-Battle Dialogue Cut-In (640x700)' },
+          { id: 'battle' as const, label: 'Battle Clash Result (640x700)' },
           { id: 'gacha' as const, label: 'Summon Banner (900x420)' }
         ].map(t => (
           <button
