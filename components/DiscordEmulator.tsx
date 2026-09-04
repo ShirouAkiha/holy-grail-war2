@@ -740,26 +740,53 @@ export default function DiscordEmulator({
         }
       });
 
-      // Stage 2: Servant Reveal Embed & Contract Establishment
+      const summonQuote = newInstance.customQuotes?.summon || randomTemplate.summonQuote || `Servant ${randomTemplate.servantClass}. I have answered your summons. Are you my Master?`;
+
+      // Stage 2: Visual Novel Summon Dialogue Cut-In Frame
       addMessage({
-        id: getNextId('bot_summon_res'),
+        id: getNextId('bot_summon_dialogue'),
         sender: 'bot',
         timestamp: 'Just now',
         embed: {
           title: `✨ HEROIC SPIRIT SUMMONED: ${randomTemplate.name.toUpperCase()}`,
           description:
-            `═══════════════════════════════════\n` +
-            `🗣️ **"${newInstance.customQuotes?.summon || randomTemplate.summonQuote || `Servant ${randomTemplate.servantClass}. I have answered your summons. Are you my Master?`}"**\n` +
-            `═══════════════════════════════════\n\n` +
+            `💬 **[HEROIC SPIRIT SUMMON] ${randomTemplate.name}:**\n> ❝ ***${summonQuote}*** ❞\n\n` +
             `👤 **True Name:** **${randomTemplate.name}**\n` +
             `🗡️ **Class:** \`${randomTemplate.servantClass}\` | **Title:** *${randomTemplate.title}*\n` +
             `🔴 **Command Seals Bestowed:** **3 / 3**\n\n` +
+            `💥 **Noble Phantasm:** **${randomTemplate.noblePhantasm.name}** [${randomTemplate.noblePhantasm.cardType}]\n` +
+            `* "${randomTemplate.noblePhantasm.chant}" *`,
+          color: '#d4af37',
+          footer: 'Holy Grail War Contract Established • Visual Novel Invocation Frame'
+        },
+        canvasType: 'dialogue',
+        canvasPayload: {
+          speaker: randomTemplate.name,
+          quote: summonQuote,
+          title: 'HEROIC SPIRIT SUMMON',
+          servantClass: randomTemplate.servantClass,
+          avatarUrl: randomTemplate.cardArtUrl || randomTemplate.avatarUrl,
+          bondOrLevel: 1,
+          defenderName: 'Greater Grail',
+          defenderClass: 'Throne of Heroes',
+          defenderAvatarUrl: undefined,
+          sequence: ['Buster', 'Arts', 'Quick'],
+          bgUrlOrPreset: 'fuyuki'
+        }
+      });
+
+      // Stage 3: Servant Parameter Overview Card & Actions
+      addMessage({
+        id: getNextId('bot_summon_res'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: `📊 SERVANT PARAMETERS: ${randomTemplate.name.toUpperCase()}`,
+          description:
             `📊 **Base Parameters:**\n` +
             `• **HP:** \`${randomTemplate.baseHp.toLocaleString()}\` | **ATK:** \`${randomTemplate.baseAtk.toLocaleString()}\`\n` +
             `• **STR:** ${randomTemplate.baseStats.strength} | **END:** ${randomTemplate.baseStats.endurance} | **AGI:** ${randomTemplate.baseStats.agility} | **MNA:** ${randomTemplate.baseStats.mana} | **LCK:** ${randomTemplate.baseStats.luck}\n\n` +
-            `💥 **Noble Phantasm:** **${randomTemplate.noblePhantasm.name}** [${randomTemplate.noblePhantasm.cardType}]\n` +
-            `* "${randomTemplate.noblePhantasm.chant}" *\n\n` +
-            `📜 **Lore:**\n${randomTemplate.lore}`,
+            `📜 **Lore & Legend:**\n${randomTemplate.lore}`,
           color: '#d4af37',
           footer: 'Holy Grail War Contract Established • Use /servant or /duel'
         },
@@ -1916,21 +1943,39 @@ export default function DiscordEmulator({
       const initialBattle = initializeBattle(p1, p2);
       setActiveDuel({ battle: initialBattle });
 
+      const p1BattleQuote = activeServant.customQuotes?.battleStart || activeServant.template.battleStartQuote || "My blade is drawn. Let the battle commence!";
+
+      // Battle Start Visual Novel Dialogue Cut-In Card & Command Card Clash Prompt
       addMessage({
         id: getNextId('bot_duel_init'),
         sender: 'bot',
         timestamp: 'Just now',
         embed: {
-          title: `⚔️ HOLY GRAIL WAR DUEL — TURN 1`,
+          title: `⚔️ BATTLE START — ${p1.name.toUpperCase()} VS ${p2.name.toUpperCase()}`,
           description:
+            `💬 **[BATTLE ENGAGEMENT] ${p1.name}:**\n> ❝ ***${p1BattleQuote}*** ❞\n\n` +
             `**${p1.name}** (Master: ${p1.masterName})\n` +
-            `❤️ HP: **${p1.currentHp}/${p1.maxHp}** | ⚡ NP: **${Math.round(p1.npGauge)}%**\n\n` +
+            `❤️ HP: **${p1.currentHp.toLocaleString()}/${p1.maxHp.toLocaleString()}** | ⚡ NP: **${Math.round(p1.npGauge)}%**\n\n` +
             `**VS**\n\n` +
             `**${p2.name}** (Master: ${p2.masterName})\n` +
-            `❤️ HP: **${p2.currentHp}/${p2.maxHp}** | ⚡ NP: **${Math.round(p2.npGauge)}%**\n\n` +
+            `❤️ HP: **${p2.currentHp.toLocaleString()}/${p2.maxHp.toLocaleString()}** | ⚡ NP: **${Math.round(p2.npGauge)}%**\n\n` +
             `*Select your 3-card Command sequence below:*`,
           color: '#ef4444',
           footer: 'Turn-Based RPG Combat Engine • Buster / Arts / Quick'
+        },
+        canvasType: 'dialogue',
+        canvasPayload: {
+          speaker: p1.name,
+          quote: p1BattleQuote,
+          title: 'BATTLE ENGAGEMENT',
+          servantClass: activeServant.template.servantClass,
+          avatarUrl: activeServant.template.cardArtUrl || activeServant.template.avatarUrl,
+          bondOrLevel: activeServant.bondLevel || 10,
+          defenderName: p2.name,
+          defenderClass: p2.servantClass,
+          defenderAvatarUrl: rivalTemplate.cardArtUrl || rivalTemplate.avatarUrl,
+          sequence: ['Buster', 'Arts', 'Quick'],
+          bgUrlOrPreset: 'fuyuki'
         },
         components: {
           type: 'buttons',
@@ -4136,7 +4181,9 @@ export default function DiscordEmulator({
         const isWin = updatedState.turnPhase === 'victory';
 
         if (isWin) {
-          // Player won: Prompt with Kill or Spare choice
+          const p1VictoryQuote = activeServant?.customQuotes?.victory || activeServant?.template.victoryQuote || "A decisive triumph. The Holy Grail draws closer.";
+
+          // Player won: Prompt with Kill or Spare choice + Visual Novel Victory Dialogue Cut-In
           addMessage({
             id: getNextId('bot_duel_fate_prompt'),
             sender: 'bot',
@@ -4145,11 +4192,25 @@ export default function DiscordEmulator({
               title: '🏆 DUEL VICTORY — DECIDE MASTER\'S FATE',
               description:
                 `**${updatedState.player1.name}** (Master: ${master.username}) has defeated **${updatedState.player2.name}** (Master: ${updatedState.player2.masterName}) in the Holy Grail duel!\n\n` +
-                `💬 *"A decisive clash. The enemy Master kneels before you."*\n\n` +
+                `💬 **[VICTORY INVOCATION] ${updatedState.player1.name}:**\n> ❝ ***${p1VictoryQuote}*** ❞\n\n` +
                 `⚖️ **The Fate of Master ${updatedState.player2.masterName} is in your hands:**\n` +
                 `Choose whether to **Execute** the fallen Master to permanently eliminate them from the Holy Grail War, or show mercy and **Spare** their life.`,
               color: '#22c55e',
               footer: 'Select an execution decision below:'
+            },
+            canvasType: 'dialogue',
+            canvasPayload: {
+              speaker: updatedState.player1.name,
+              quote: p1VictoryQuote,
+              title: 'VICTORY INVOCATION',
+              servantClass: updatedState.player1.servantClass,
+              avatarUrl: updatedState.player1.avatarUrl || activeServant?.template.cardArtUrl || activeServant?.template.avatarUrl,
+              bondOrLevel: activeServant?.bondLevel || 10,
+              defenderName: updatedState.player2.name,
+              defenderClass: updatedState.player2.servantClass,
+              defenderAvatarUrl: updatedState.player2.avatarUrl,
+              sequence: ['Buster', 'Buster', 'Buster'],
+              bgUrlOrPreset: 'fuyuki'
             },
             components: {
               type: 'buttons',
@@ -4161,6 +4222,8 @@ export default function DiscordEmulator({
           });
         } else {
           // Player defeated by opponent (e.g. itsderpo)
+          const p1DefeatQuote = activeServant?.customQuotes?.defeat || activeServant?.template.defeatQuote || "Master... I have failed you in this Holy Grail War...";
+
           const outcome = recordDuelOutcome(
             grailWar,
             updatedState.player2.masterName,
@@ -4183,12 +4246,26 @@ export default function DiscordEmulator({
               title: '☠️ FATAL DUEL DEFEAT — MASTER ELIMINATED',
               description:
                 `**${updatedState.player2.name}** (Master: ${updatedState.player2.masterName}) has struck down **${updatedState.player1.name}** (Master: ${master.username})!\n\n` +
-                `💬 *"A duel in the Holy Grail War is fought to the death. Your contract has been severed."*\n\n` +
+                `💬 **[DEFEAT & RETREAT] ${updatedState.player1.name}:**\n> ❝ ***${p1DefeatQuote}*** ❞\n\n` +
                 `💀 **You have been PERMANENTLY ELIMINATED from the Holy Grail War.**\n` +
                 `Your status on the Intelligence Board is now **💀 DECEASED** (HP: 0/${grailWar.participants[master.discordId]?.maxHp || 11000}).\n\n` +
                 `👥 **Surviving Masters:** **${aliveCount}/7** alive in Fuyuki.`,
               color: '#ef4444',
               footer: 'You have been eliminated from the Holy Grail War tournament'
+            },
+            canvasType: 'dialogue',
+            canvasPayload: {
+              speaker: updatedState.player1.name,
+              quote: p1DefeatQuote,
+              title: 'DEFEAT & CONTRACT SEVERED',
+              servantClass: updatedState.player1.servantClass,
+              avatarUrl: updatedState.player1.avatarUrl || activeServant?.template.cardArtUrl || activeServant?.template.avatarUrl,
+              bondOrLevel: activeServant?.bondLevel || 10,
+              defenderName: updatedState.player2.name,
+              defenderClass: updatedState.player2.servantClass,
+              defenderAvatarUrl: updatedState.player2.avatarUrl,
+              sequence: ['Quick', 'Quick', 'Quick'],
+              bgUrlOrPreset: 'fuyuki'
             },
             components: {
               type: 'buttons',

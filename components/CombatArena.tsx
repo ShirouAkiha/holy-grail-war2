@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActiveCombatant,
   BattleState,
@@ -101,6 +101,48 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
   const [dialogueCutIn, setDialogueCutIn] = useState<BattleDialogueCutIn | null>(null);
   const [showDialogueMode, setShowDialogueMode] = useState(false);
   const [cutInCountdown, setCutInCountdown] = useState(4.5);
+
+  // Trigger Battle Start Dialogue Cut-In on Initial Engagement
+  useEffect(() => {
+    if (activeServant && battle && battle.currentTurn === 1 && battle.turnPhase === 'card_selection') {
+      const activeTemplate = activeServant.template;
+      const servantName = activeServant.nickname || activeTemplate.name;
+      const servantClass = activeTemplate.servantClass;
+      const quote = activeServant.customQuotes?.battleStart || activeTemplate.battleStartQuote || "My blade is drawn. Let the battle commence!";
+
+      const timer = setTimeout(() => {
+        setDialogueCutIn({
+          speakerName: servantName,
+          speakerTitle: `${servantClass} • Battle Engagement`,
+          avatarUrl: activeTemplate.cardArtUrl || activeTemplate.avatarUrl,
+          servantClass,
+          rarity: activeTemplate.rarity || 5,
+          tag: 'BATTLE ENGAGEMENT',
+          dialogueText: quote,
+          badgeType: 'attack',
+          isPlayerMove: true
+        });
+        setShowDialogueMode(true);
+        setCutInCountdown(3.5);
+      }, 50);
+
+      let remaining = 3.5;
+      const interval = setInterval(() => {
+        remaining -= 0.5;
+        if (remaining <= 0) {
+          clearInterval(interval);
+          setShowDialogueMode(false);
+        } else {
+          setCutInCountdown(Math.round(remaining * 10) / 10);
+        }
+      }, 500);
+
+      return () => {
+        clearTimeout(timer);
+        clearInterval(interval);
+      };
+    }
+  }, [battle?.currentTurn, activeServant?.id]);
 
   // Combat Log History state (Last 10 battles)
   const [arenaTab, setArenaTab] = useState<'duel' | 'history'>('duel');
@@ -709,23 +751,75 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
       {/* Victory / Defeat Overlay */}
       {(battle.turnPhase === 'victory' || battle.turnPhase === 'defeat') && (
         <div
-          className={`p-8 rounded-xl border text-center shadow-2xl ${
+          className={`p-6 md:p-8 rounded-xl border text-center shadow-2xl ${
             battle.turnPhase === 'victory'
               ? 'bg-[#0a0a0a] border-[#d4af37]/50 text-[#e5e5e5]'
               : 'bg-[#0a0a0a] border-[#ef4444]/50 text-[#e5e5e5]'
           }`}
         >
-          <div className="inline-flex p-3.5 rounded-sm bg-[#161616] border border-white/10 mb-4">
+          <div className="inline-flex p-3.5 rounded-sm bg-[#161616] border border-white/10 mb-3">
             {battle.turnPhase === 'victory' ? <Award className="w-8 h-8 text-[#d4af37]" /> : <Skull className="w-8 h-8 text-[#ef4444]" />}
           </div>
           <h3 className="text-2xl font-serif italic text-white mb-2">
             {battle.turnPhase === 'victory' ? 'VICTORY ACHIEVED' : 'DEFEAT'}
           </h3>
-          <p className="text-xs font-mono text-white/60 max-w-md mx-auto mb-6">
+          <p className="text-xs font-mono text-white/60 max-w-md mx-auto mb-5">
             {battle.turnPhase === 'victory'
               ? `Your Servant ${p1.name} has claimed triumph. Rewards: +3 Saint Quartz & +1 Grail War Victory.`
               : `${p2.name} overwhelmed your defense. Fortify your stats in the workshop and retry.`}
           </p>
+
+          {/* Visual Novel Victory / Defeat Dialogue Frame */}
+          <div className="max-w-2xl mx-auto mb-6 p-1 rounded-2xl bg-gradient-to-br from-[#d4af37] via-[#b87928] to-[#6e4610] shadow-[0_0_35px_rgba(212,175,55,0.25)] text-left">
+            <div className="p-5 md:p-6 bg-[#140d0a] rounded-xl border-2 border-[#24150b] relative overflow-hidden">
+              <div className="flex flex-col sm:flex-row items-stretch gap-5">
+                {/* Avatar portrait with 5★ badge */}
+                <div className="shrink-0 flex flex-col items-center">
+                  <div className="relative w-28 h-28 md:w-32 md:h-32 rounded-lg bg-[#0c0806] border-2 border-[#d4af37] p-1 shadow-[0_0_18px_rgba(212,175,55,0.25)] flex items-center justify-center overflow-hidden">
+                    <div className="absolute top-1 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-[#0e0a07] border border-[#d4af37] text-[10px] font-mono font-bold text-[#d4af37] rounded-sm shadow-md z-10 flex items-center gap-1">
+                      <span>{activeServant.template.rarity || 5}★</span>
+                    </div>
+                    <img
+                      src={activeServant.template.cardArtUrl || activeServant.template.avatarUrl}
+                      alt={p1.name}
+                      className="w-full h-full object-cover rounded-sm filter brightness-95 contrast-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
+                  </div>
+                  <div className="-mt-3.5 z-20 px-3 py-1 bg-[#0f0a07] border-2 border-[#d4af37] text-xs font-mono font-bold text-[#d4af37] shadow-lg rounded-sm tracking-wider uppercase text-center max-w-[140px] truncate">
+                    {p1.name}
+                  </div>
+                </div>
+
+                {/* Dialogue Speech Box */}
+                <div className="flex-1 flex flex-col justify-between space-y-3">
+                  <div className="flex items-center justify-between gap-2 border-b border-[#3d2613]/80 pb-2">
+                    <span className="text-xs font-mono text-[#d4af37] uppercase tracking-wider font-semibold">
+                      {p1.servantClass} • {battle.turnPhase === 'victory' ? 'Triumph Achieved' : 'Contract Severed'}
+                    </span>
+                    <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-sm uppercase tracking-widest font-bold border ${
+                      battle.turnPhase === 'victory'
+                        ? 'bg-[#24150b] text-[#f59e0b] border-[#d4af37]/40'
+                        : 'bg-[#2b0c0c] text-[#ef4444] border-[#ef4444]/40'
+                    }`}>
+                      [{battle.turnPhase === 'victory' ? 'VICTORY INVOCATION' : 'DEFEAT & RETREAT'}]
+                    </span>
+                  </div>
+
+                  <div className="p-4 rounded-md bg-[#0a0604] border-2 border-[#a16823] shadow-inner text-left relative min-h-[80px] flex items-center">
+                    <span className="absolute top-2 left-2 text-2xl font-serif text-[#d4af37]/20 select-none">“</span>
+                    <p className="font-serif italic text-sm md:text-base text-[#f5e6d3] leading-relaxed tracking-wide px-3">
+                      &quot;{battle.turnPhase === 'victory'
+                        ? (activeServant.customQuotes?.victory || activeServant.template.victoryQuote || "A decisive triumph. The Holy Grail draws closer.")
+                        : (activeServant.customQuotes?.defeat || activeServant.template.defeatQuote || "Master... I have failed you in battle...")}&quot;
+                    </p>
+                    <span className="absolute bottom-2 right-2 text-2xl font-serif text-[#d4af37]/20 select-none">”</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="flex flex-wrap items-center justify-center gap-3">
             <button
               onClick={handleRestart}

@@ -1436,10 +1436,15 @@ async function startInteractiveDuel(
   p2Master: MasterProfile | null
 ) {
   let round = 1;
-  const combatLogs: string[] = ['⚔️ The Command Seal glow resonates... The Holy Grail Duel begins!'];
-
   const t1 = p1.servant.template;
   const t2 = p2.servant.template;
+  const p1BattleQuote = p1.servant.customQuotes?.battleStart || t1?.battleStartQuote || "My blade is drawn. Let the duel begin!";
+  const p1Speaker = p1.servant.nickname || t1?.name || 'Servant';
+
+  const combatLogs: string[] = [
+    '⚔️ The Command Seal glow resonates... The Holy Grail Duel begins!',
+    `💬 **[BATTLE ENGAGEMENT] ${p1Speaker}:**\n> ❝ ***${p1BattleQuote}*** ❞`
+  ];
   const base1 = t1?.baseStats || { agility: 10 };
   const base2 = t2?.baseStats || { agility: 10 };
   const alloc1 = p1.servant.allocatedStats || { agility: 0 };
@@ -1917,13 +1922,13 @@ async function finishDuel(
   }
 
   const victoryQuote =
-    winner.servant.customQuotes?.victory || winner.servant.template.victoryQuote;
+    winner.servant.customQuotes?.victory || winner.servant.template.victoryQuote || "A decisive triumph. The Holy Grail draws closer.";
 
   const fateEmbed = new EmbedBuilder()
     .setTitle('🏆 DUEL VICTORY — DECIDE MASTER\'S FATE')
     .setDescription(
-      `**${winner.servant.template.name}** (Master: ${winner.username}) has brought down **${loser.servant.template.name}** (Master: ${loser.username})!\n\n` +
-      `💬 *"${victoryQuote}"*\n\n` +
+      `**${winner.servant.template.name}** (Master: ${winner.username}) has brought down **${loser.servant.template.name}** (Master: ${loser.username}) in the Holy Grail duel!\n\n` +
+      `💬 **[VICTORY INVOCATION] ${winner.servant.template.name}:**\n> ❝ ***${victoryQuote}*** ❞\n\n` +
       `⚖️ **The Fate of Master ${loser.username} rests in your hands:**\n` +
       `Choose whether to **Execute** the defeated Master to permanently eliminate them from the Holy Grail War, or show mercy and **Spare** their life.`
     )

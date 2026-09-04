@@ -502,7 +502,65 @@ export default function SummoningSanctum({
       {/* TAB 1: HOLY GRAIL SUMMONING RITUAL                       */}
       {/* ======================================================== */}
       {activeSubTab === 'ritual' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="space-y-6">
+          {/* Visual Novel Summon Dialogue Cut-In Frame (Upon Summon or Active Contract) */}
+          {(summonSuccessServant || activeContract) && (
+            <div className="p-1 rounded-2xl bg-gradient-to-br from-[#d4af37] via-[#b87928] to-[#6e4610] shadow-[0_0_35px_rgba(212,175,55,0.35)] animate-in fade-in zoom-in-95 duration-200">
+              <div className="p-5 md:p-6 bg-[#140d0a] rounded-xl border-2 border-[#24150b] relative overflow-hidden">
+                <div className="flex flex-col sm:flex-row items-stretch gap-5">
+                  {/* Left Avatar Portrait with 5★ badge */}
+                  <div className="shrink-0 flex flex-col items-center">
+                    <div className="relative w-28 h-28 md:w-32 md:h-32 rounded-lg bg-[#0c0806] border-2 border-[#d4af37] p-1 shadow-[0_0_18px_rgba(212,175,55,0.25)] flex items-center justify-center overflow-hidden">
+                      <div className="absolute top-1 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-[#0e0a07] border border-[#d4af37] text-[10px] font-mono font-bold text-[#d4af37] rounded-sm shadow-md z-10 flex items-center gap-1">
+                        <span>{(summonSuccessServant || activeContract?.template)?.rarity || 5}★</span>
+                      </div>
+                      <img
+                        src={(summonSuccessServant || activeContract?.template)?.cardArtUrl || (summonSuccessServant || activeContract?.template)?.avatarUrl}
+                        alt={(summonSuccessServant || activeContract?.template)?.name}
+                        className="w-full h-full object-cover rounded-sm filter brightness-95 contrast-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
+                    </div>
+                    <div className="-mt-3.5 z-20 px-3 py-1 bg-[#0f0a07] border-2 border-[#d4af37] text-xs font-mono font-bold text-[#d4af37] shadow-lg rounded-sm tracking-wider uppercase text-center max-w-[140px] truncate">
+                      {(summonSuccessServant || activeContract?.template)?.name}
+                    </div>
+                  </div>
+
+                  {/* Right Visual Novel Dialogue Speech Bubble */}
+                  <div className="flex-1 flex flex-col justify-between space-y-3">
+                    <div className="flex items-center justify-between gap-2 border-b border-[#3d2613]/80 pb-2">
+                      <span className="text-xs font-mono text-[#d4af37] uppercase tracking-wider font-semibold">
+                        {(summonSuccessServant || activeContract?.template)?.servantClass} • {(summonSuccessServant || activeContract?.template)?.title || 'Heroic Spirit'}
+                      </span>
+                      <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-sm bg-[#24150b] text-[#f59e0b] border border-[#d4af37]/40 uppercase tracking-widest font-bold">
+                        [HEROIC SPIRIT SUMMON]
+                      </span>
+                    </div>
+
+                    <div className="p-4 rounded-md bg-[#0a0604] border-2 border-[#a16823] shadow-inner text-left relative min-h-[85px] flex items-center">
+                      <span className="absolute top-2 left-2 text-2xl font-serif text-[#d4af37]/20 select-none">“</span>
+                      <p className="font-serif italic text-sm md:text-base text-[#f5e6d3] leading-relaxed tracking-wide px-3">
+                        &quot;{activeContract?.customQuotes?.summon || (summonSuccessServant || activeContract?.template)?.summonQuote || "I have answered your summons. Are you my Master?"}&quot;
+                      </p>
+                      <span className="absolute bottom-2 right-2 text-2xl font-serif text-[#d4af37]/20 select-none">”</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] font-mono text-white/50 pt-1">
+                      <span className="flex items-center gap-1.5 text-[#d4af37]">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Sacred contract established with Throne of Heroes</span>
+                      </span>
+                      <span className="text-white/70 font-bold bg-[#1e130a] px-2.5 py-0.5 rounded-sm border border-[#3d2a19]">
+                        Command Seals: 3/3 Active
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Column: Summoning Circle & Chant */}
           <div className="lg:col-span-7 space-y-5">
             <div className="p-6 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] relative overflow-hidden">
@@ -654,6 +712,7 @@ export default function SummoningSanctum({
               </div>
             )}
           </div>
+        </div>
         </div>
       )}
 
