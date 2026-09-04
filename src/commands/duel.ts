@@ -16,6 +16,7 @@ import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp } from '../e
 import { renderBattleTurnSummary, renderDialogueCard } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER } from '../engine/battle';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
+import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { getServantChainDialogue, shouldTriggerDialogueCutIn } from '../engine/dialogue';
 
 // ==========================================
@@ -1540,7 +1541,8 @@ async function startInteractiveDuel(
     await cleanupNpGif();
     const servant = actor.servant;
     const npTemplate = servant.template?.noblePhantasm;
-    const npGifUrl = getNoblePhantasmGif(servant);
+    const rawNpGifUrl = getNoblePhantasmGif(servant);
+    const npGifUrl = normalizeMediaUrl(rawNpGifUrl);
     const npChant = getNoblePhantasmChant(servant);
     const npName = npTemplate?.name || 'Noble Phantasm';
     const servantDisplayName = servant.nickname || servant.template?.name || 'Heroic Spirit';

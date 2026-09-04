@@ -72,7 +72,17 @@ export function normalizeMediaUrl(rawUrl: string): string {
     }
   }
 
-  // 4. Return sanitized URL
+  // 4. Handle Catbox URLs
+  if (trimmed.includes('catbox.moe/')) {
+    if (!trimmed.startsWith('https://files.catbox.moe/')) {
+      const match = trimmed.match(/catbox\.moe\/([a-zA-Z0-9_\-]+\.(?:gif|png|jpg|jpeg|webp|mp4))/i);
+      if (match && match[1]) {
+        return `https://files.catbox.moe/${match[1]}`;
+      }
+    }
+  }
+
+  // 5. Return sanitized URL
   return trimmed;
 }
 
@@ -95,6 +105,7 @@ export function isDirectEmbeddableMedia(url: string): boolean {
     lower.includes('media1.tenor.com') ||
     lower.includes('media.tenor.com') ||
     lower.includes('c.tenor.com') ||
-    lower.includes('i.imgur.com')
+    lower.includes('i.imgur.com') ||
+    lower.includes('files.catbox.moe')
   );
 }
