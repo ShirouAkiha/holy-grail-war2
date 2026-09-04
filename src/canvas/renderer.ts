@@ -16,6 +16,13 @@ try {
   canvasModule = null;
 }
 
+let gifencModule: any = null;
+try {
+  gifencModule = require('gifenc');
+} catch {
+  gifencModule = null;
+}
+
 export const MINIMAL_VALID_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
   'base64'
@@ -1110,35 +1117,78 @@ export async function renderServantProfileCard(
 }
 
 /**
+ * Helper to draw a crisp Vector Chevron Arrow (Zero missing glyph tofu)
+ */
+function drawVectorChevronArrow(ctx: any, cx: number, cy: number, color: string = '#fbbf24') {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  // First chevron
+  ctx.beginPath();
+  ctx.moveTo(cx - 6, cy - 7);
+  ctx.lineTo(cx - 1, cy);
+  ctx.lineTo(cx - 6, cy + 7);
+  ctx.stroke();
+  // Second chevron
+  ctx.beginPath();
+  ctx.moveTo(cx + 1, cy - 7);
+  ctx.lineTo(cx + 6, cy);
+  ctx.lineTo(cx + 1, cy + 7);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * Helper to draw a crisp Vector Mini Reticle Crosshair (Zero emoji tofu)
+ */
+function drawMiniReticle(ctx: any, cx: number, cy: number, color: string = '#f87171') {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx - 7, cy);
+  ctx.lineTo(cx + 7, cy);
+  ctx.moveTo(cx, cy - 7);
+  ctx.lineTo(cx, cy + 7);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
  * Helper to draw a Command Card icon
  */
 function drawCommandCardIcon(ctx: any, cx: number, cy: number, type: string) {
   ctx.save();
   if (type === 'Buster') {
-    drawVectorCrossedSwords(ctx, cx, cy, 11, '#fca5a5');
+    drawVectorCrossedSwords(ctx, cx, cy, 13, '#fca5a5');
   } else if (type === 'Arts') {
     ctx.strokeStyle = '#93c5fd';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2.2;
     ctx.beginPath();
-    ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+    ctx.arc(cx, cy, 11, 0, Math.PI * 2);
     ctx.stroke();
-    drawSparkDiamond(ctx, cx, cy, 5, '#60a5fa');
+    drawSparkDiamond(ctx, cx, cy, 6, '#60a5fa');
   } else if (type === 'Quick') {
     ctx.strokeStyle = '#6ee7b7';
-    ctx.lineWidth = 1.8;
+    ctx.lineWidth = 2.2;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(cx - 8, cy - 6);
-    ctx.lineTo(cx + 4, cy - 6);
-    ctx.moveTo(cx - 10, cy);
-    ctx.lineTo(cx + 8, cy);
-    ctx.moveTo(cx - 6, cy + 6);
-    ctx.lineTo(cx + 6, cy + 6);
+    ctx.moveTo(cx - 10, cy - 7);
+    ctx.lineTo(cx + 5, cy - 7);
+    ctx.moveTo(cx - 12, cy);
+    ctx.lineTo(cx + 10, cy);
+    ctx.moveTo(cx - 7, cy + 7);
+    ctx.lineTo(cx + 7, cy + 7);
     ctx.stroke();
   } else {
     // NP Phantasm
-    drawVectorShield(ctx, cx, cy, 14, 18, 'rgba(251, 191, 36, 0.4)', '#fde047');
-    drawSparkDiamond(ctx, cx, cy - 3, 4, '#ffffff');
+    drawVectorShield(ctx, cx, cy, 16, 20, 'rgba(251, 191, 36, 0.4)', '#fde047');
+    drawSparkDiamond(ctx, cx, cy - 3, 5, '#ffffff');
   }
   ctx.restore();
 }
@@ -1153,12 +1203,13 @@ function drawCommandCardBadge(
   w: number,
   h: number,
   cardType: string,
-  stepIndex: number
+  stepIndex: number,
+  isSurging: boolean = false
 ) {
   ctx.save();
   // Drop shadow
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-  drawRoundRect(ctx, x + 2, y + 2, w, h, 6);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+  drawRoundRect(ctx, x + 3, y + 3, w, h, 6);
   ctx.fill();
 
   let gradTop = '#7f1d1d';
@@ -1193,56 +1244,63 @@ function drawCommandCardBadge(
 
   // Card Background Gradient
   const cGrad = ctx.createLinearGradient(x, y, x, y + h);
-  cGrad.addColorStop(0, gradTop);
+  cGrad.addColorStop(0, isSurging ? '#991b1b' : gradTop);
   cGrad.addColorStop(1, gradBottom);
   ctx.fillStyle = cGrad;
   drawRoundRect(ctx, x, y, w, h, 6);
   ctx.fill();
 
-  // Card Outer Border
-  ctx.strokeStyle = borderColor;
-  ctx.lineWidth = 1.6;
-  drawRoundRect(ctx, x, y, w, h, 6);
-  ctx.stroke();
+  // Outer Border (Surging gold pulse if isSurging is true)
+  if (isSurging) {
+    ctx.strokeStyle = '#fde047';
+    ctx.lineWidth = 3;
+    drawRoundRect(ctx, x - 1, y - 1, w + 2, h + 2, 7);
+    ctx.stroke();
+  } else {
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 1.8;
+    drawRoundRect(ctx, x, y, w, h, 6);
+    ctx.stroke();
+  }
 
   // Inset hairline
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.strokeStyle = isSurging ? 'rgba(254, 240, 138, 0.4)' : 'rgba(255, 255, 255, 0.18)';
   ctx.lineWidth = 0.8;
   drawRoundRect(ctx, x + 2, y + 2, w - 4, h - 4, 4);
   ctx.stroke();
 
   // Top step pill: [ 1st ], [ 2nd ], [ 3rd ]
   const stepLabel = stepIndex === 0 ? '1st' : stepIndex === 1 ? '2nd' : '3rd';
-  const pillW = 34;
-  const pillH = 14;
+  const pillW = 38;
+  const pillH = 17;
   const pillX = x + (w - pillW) / 2;
-  const pillY = y + 4;
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-  drawRoundRect(ctx, pillX, pillY, pillW, pillH, 3);
+  const pillY = y + 5;
+  ctx.fillStyle = isSurging ? 'rgba(254, 240, 138, 0.25)' : 'rgba(0, 0, 0, 0.7)';
+  drawRoundRect(ctx, pillX, pillY, pillW, pillH, 4);
   ctx.fill();
-  ctx.strokeStyle = borderColor;
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, pillX, pillY, pillW, pillH, 3);
+  ctx.strokeStyle = isSurging ? '#fde047' : borderColor;
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, pillX, pillY, pillW, pillH, 4);
   ctx.stroke();
 
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 9px sans-serif';
+  ctx.fillStyle = isSurging ? '#fef08a' : '#f8fafc';
+  ctx.font = 'bold 11px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(stepLabel, pillX + pillW / 2, pillY + 10);
+  ctx.fillText(stepLabel, pillX + pillW / 2, pillY + 12);
 
   // Card Icon in center
-  drawCommandCardIcon(ctx, x + w / 2, y + 38, cardType);
+  drawCommandCardIcon(ctx, x + w / 2, y + 42, cardType);
 
-  // Card Title
+  // Card Title (Big & Bold)
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 10px sans-serif';
+  ctx.font = 'bold 13px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(cardTitle, x + w / 2, y + 62);
+  ctx.fillText(cardTitle, x + w / 2, y + 68);
 
-  // SubTag badge at bottom
+  // SubTag badge at bottom (Legible monospace)
   ctx.fillStyle = accentColor;
-  ctx.font = 'bold 8px monospace';
-  ctx.fillText(subTag, x + w / 2, y + 76);
+  ctx.font = 'bold 10px monospace';
+  ctx.fillText(subTag, x + w / 2, y + 84);
 
   ctx.restore();
 }
@@ -1258,7 +1316,9 @@ function drawTargetLockedHUD(
   h: number,
   defenderImg: any,
   defenderName: string,
-  defenderClass: string
+  defenderClass: string,
+  crosshairAngle: number = 0,
+  crosshairScale: number = 1.0
 ) {
   ctx.save();
   // Drop shadow
@@ -1298,7 +1358,7 @@ function drawTargetLockedHUD(
   ctx.fillRect(innerX, innerY, innerW, innerH);
 
   // Tactical Scanlines
-  ctx.strokeStyle = 'rgba(239, 68, 68, 0.12)';
+  ctx.strokeStyle = 'rgba(239, 68, 68, 0.14)';
   ctx.lineWidth = 1;
   for (let ly = innerY; ly < innerY + innerH; ly += 6) {
     ctx.beginPath();
@@ -1307,26 +1367,32 @@ function drawTargetLockedHUD(
     ctx.stroke();
   }
 
-  // Tactical Crosshair (Center circle + ticks)
+  // Tactical Crosshair with rotation and scale
   const cx = innerX + innerW / 2;
   const cy = innerY + 54;
-  ctx.strokeStyle = 'rgba(239, 68, 68, 0.75)';
-  ctx.lineWidth = 1.2;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(crosshairScale, crosshairScale);
+  ctx.rotate(crosshairAngle);
+
+  ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)';
+  ctx.lineWidth = 1.4;
   ctx.beginPath();
-  ctx.arc(cx, cy, 20, 0, Math.PI * 2);
+  ctx.arc(0, 0, 20, 0, Math.PI * 2);
   ctx.stroke();
 
   // Crosshair Ticks
   ctx.beginPath();
-  ctx.moveTo(cx - 26, cy);
-  ctx.lineTo(cx - 14, cy);
-  ctx.moveTo(cx + 14, cy);
-  ctx.lineTo(cx + 26, cy);
-  ctx.moveTo(cx, cy - 26);
-  ctx.lineTo(cx, cy - 14);
-  ctx.moveTo(cx, cy + 14);
-  ctx.lineTo(cx, cy + 26);
+  ctx.moveTo(-28, 0);
+  ctx.lineTo(-14, 0);
+  ctx.moveTo(14, 0);
+  ctx.lineTo(28, 0);
+  ctx.moveTo(0, -28);
+  ctx.lineTo(0, -14);
+  ctx.moveTo(0, 14);
+  ctx.lineTo(0, 28);
   ctx.stroke();
+  ctx.restore();
 
   ctx.restore();
 
@@ -1370,9 +1436,9 @@ function drawTargetLockedHUD(
   ctx.lineTo(x + w, y + h - bLen);
   ctx.stroke();
 
-  // [ TARGET: LOCKED ] Glowing Badge (Top)
-  const badgeW = 124;
-  const badgeH = 18;
+  // [ TARGET: LOCKED ] Glowing Badge (Top) - NO EMOJI TOFU!
+  const badgeW = 128;
+  const badgeH = 19;
   const badgeX = x + (w - badgeW) / 2;
   const badgeY = y - 9;
 
@@ -1384,15 +1450,16 @@ function drawTargetLockedHUD(
   drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 3);
   ctx.stroke();
 
+  drawMiniReticle(ctx, badgeX + 16, badgeY + 10, '#f87171');
   ctx.fillStyle = '#fee2e2';
-  ctx.font = 'bold 9px sans-serif';
+  ctx.font = 'bold 11px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('🎯 TARGET: LOCKED', badgeX + badgeW / 2, badgeY + 12);
+  ctx.fillText('TARGET: LOCKED', badgeX + badgeW / 2 + 7, badgeY + 14);
 
-  // Defender Nameplate Tab (Bottom)
-  const nameBoxH = 26;
+  // Defender Nameplate Tab (Bottom) - Larger & High Contrast
+  const nameBoxH = 28;
   const nameBoxY = y + h - nameBoxH;
-  ctx.fillStyle = 'rgba(15, 5, 5, 0.92)';
+  ctx.fillStyle = 'rgba(15, 5, 5, 0.94)';
   drawRoundRect(ctx, x + 4, nameBoxY - 2, w - 8, nameBoxH, 3);
   ctx.fill();
   ctx.strokeStyle = '#991b1b';
@@ -1401,121 +1468,209 @@ function drawTargetLockedHUD(
   ctx.stroke();
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 10px sans-serif';
+  ctx.font = 'bold 13px sans-serif';
   ctx.textAlign = 'center';
-  const defDisplay = defenderName.length > 15 ? defenderName.slice(0, 14) + '…' : defenderName;
-  ctx.fillText(defDisplay, x + w / 2, nameBoxY + 10);
+  const defDisplay = defenderName.length > 17 ? defenderName.slice(0, 16) + '…' : defenderName;
+  ctx.fillText(defDisplay, x + w / 2, nameBoxY + 11);
   ctx.fillStyle = '#fca5a5';
-  ctx.font = 'bold 8px sans-serif';
-  ctx.fillText((defenderClass || 'Enemy').toUpperCase(), x + w / 2, nameBoxY + 20);
+  ctx.font = 'bold 10px sans-serif';
+  ctx.fillText((defenderClass || 'Enemy').toUpperCase(), x + w / 2, nameBoxY + 22);
 
   ctx.restore();
 }
 
 /**
- * 2. Render Visual Novel Dialogue Frame (800x420 Authentic Fate VN Frame)
- * Features Ornate Double Gold Borders, Framed Servant Portrait with Level Badge, 
- * Persona-Style Dynamic Slash Cut-In, Glowing Command Cards & Chain HUD, Target-Locked Opponent HUD,
- * Overlapping Nameplate Tab, and Elegant Translucent Text Box.
+ * Persona / Anime Dynamic Diagonal Slash Cut-In (Animated Frame-by-Frame)
  */
-export async function renderDialogueCard(
-  canvasOrSpeaker: any,
-  quoteOrSpeaker?: any,
-  chainTagOrTitle: string = 'TACTICAL COMBAT CHAIN',
-  servantClass: string = 'Saber',
-  avatarUrl?: string,
-  bondOrLevel: number | string = 8,
-  defenderName: string = 'Opponent Servant',
-  defenderAvatarUrl?: string,
-  defenderClass: string = 'Servant',
-  sequence: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Buster', 'Buster', 'Buster']
-): Promise<Buffer> {
-  let canvas: any;
-  let speakerName: string;
-  let quoteText: string;
+function drawPersonaSlashAnimation(
+  ctx: any,
+  frameIdx: number,
+  cardTypeTheme: string = 'Buster'
+) {
+  ctx.save();
+  // Cut corridor bounds: starts around top left (x: 170, y: 12) down to center right (x: 440, y: 202)
+  if (frameIdx === 0) {
+    // Frame 0: Pre-slash charge line
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(180, 15);
+    ctx.lineTo(260, 75);
+    ctx.stroke();
+    drawSparkDiamond(ctx, 220, 45, 4, '#fbbf24');
+  } else if (frameIdx === 1) {
+    // Frame 1: Rapid Inception Slash
+    ctx.strokeStyle = '#fef08a';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(170, 12);
+    ctx.lineTo(340, 140);
+    ctx.stroke();
 
-  const isClientCanvas = canvasOrSpeaker && typeof canvasOrSpeaker.getContext === 'function';
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.45)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(140, 60); ctx.lineTo(320, 60);
+    ctx.moveTo(200, 110); ctx.lineTo(380, 110);
+    ctx.stroke();
+    drawSparkDiamond(ctx, 330, 130, 5, '#ffffff');
+  } else if (frameIdx === 2) {
+    // Frame 2: Full Screen Impact Slice (The Climax Flash!)
+    ctx.beginPath();
+    ctx.moveTo(170, 12);
+    ctx.lineTo(440, 12);
+    ctx.lineTo(310, 202);
+    ctx.lineTo(80, 202);
+    ctx.closePath();
+    const slashGrad = ctx.createLinearGradient(170, 12, 440, 202);
+    slashGrad.addColorStop(0, 'rgba(254, 240, 138, 0.35)');
+    slashGrad.addColorStop(0.5, 'rgba(245, 158, 11, 0.45)');
+    slashGrad.addColorStop(1, 'rgba(239, 68, 68, 0.15)');
+    ctx.fillStyle = slashGrad;
+    ctx.fill();
 
-  if (isClientCanvas) {
-    canvas = canvasOrSpeaker;
-    speakerName = quoteOrSpeaker || 'Heroic Spirit';
-    quoteText = chainTagOrTitle || '';
-  } else {
-    canvas = createCanvas(800, 420);
-    speakerName = canvasOrSpeaker || 'Heroic Spirit';
-    quoteText = quoteOrSpeaker || '';
+    // Wide radiant blade aura
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)';
+    ctx.lineWidth = 18;
+    ctx.beginPath();
+    ctx.moveTo(440, 12);
+    ctx.lineTo(310, 202);
+    ctx.stroke();
+
+    // Intense White-Hot Slash Core
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(440, 12);
+    ctx.lineTo(310, 202);
+    ctx.stroke();
+
+    // Velocity speed lines
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(210, 15); ctx.lineTo(100, 200);
+    ctx.moveTo(280, 15); ctx.lineTo(170, 200);
+    ctx.moveTo(350, 15); ctx.lineTo(240, 200);
+    ctx.stroke();
+
+    // Burst of 8 Spark Diamonds along the slash cut
+    drawSparkDiamond(ctx, 435, 18, 5.5, '#ffffff');
+    drawSparkDiamond(ctx, 405, 45, 5, '#fef08a');
+    drawSparkDiamond(ctx, 375, 80, 6, '#ffffff');
+    drawSparkDiamond(ctx, 350, 115, 4.5, '#fbbf24');
+    drawSparkDiamond(ctx, 330, 150, 5.5, '#ffffff');
+    drawSparkDiamond(ctx, 310, 195, 5, '#fef08a');
+    drawSparkDiamond(ctx, 270, 100, 3.5, '#f59e0b');
+    drawSparkDiamond(ctx, 390, 140, 3.5, '#f59e0b');
+  } else if (frameIdx === 3) {
+    // Frame 3: Resonant Wake Expanding (Card 1 activates)
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.8)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(440, 12);
+    ctx.lineTo(310, 202);
+    ctx.stroke();
+
+    // Shockwave band
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.35)';
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(420, 12);
+    ctx.lineTo(290, 202);
+    ctx.stroke();
+
+    drawSparkDiamond(ctx, 380, 75, 4.5, '#fbbf24');
+    drawSparkDiamond(ctx, 330, 150, 4.5, '#fbbf24');
+  } else if (frameIdx === 4) {
+    // Frame 4: Shockwave sweeps to Card 2
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(440, 12);
+    ctx.lineTo(310, 202);
+    ctx.stroke();
+
+    drawSparkDiamond(ctx, 395, 60, 4, '#fde047');
+    drawSparkDiamond(ctx, 345, 135, 4, '#fde047');
+  } else if (frameIdx === 5) {
+    // Frame 5: Shockwave sweeps to Card 3
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(440, 12);
+    ctx.lineTo(310, 202);
+    ctx.stroke();
+
+    drawSparkDiamond(ctx, 410, 45, 3.5, '#fbbf24');
+    drawSparkDiamond(ctx, 360, 120, 3.5, '#fbbf24');
+  } else if (frameIdx === 6) {
+    // Frame 6: Ember Scatter & Drift
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.3)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(440, 12);
+    ctx.lineTo(310, 202);
+    ctx.stroke();
+
+    drawSparkDiamond(ctx, 425, 35, 3, '#fef08a');
+    drawSparkDiamond(ctx, 370, 110, 3, '#fef08a');
+    drawSparkDiamond(ctx, 320, 185, 3, '#fef08a');
+  } else if (frameIdx === 7) {
+    // Frame 7: Ambient Luminous Stance
+    ctx.strokeStyle = 'rgba(245, 158, 11, 0.2)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(440, 12);
+    ctx.lineTo(310, 202);
+    ctx.stroke();
   }
+  ctx.restore();
+}
 
-  if (canvas.width !== 800 || canvas.height !== 420) {
-    canvas.width = 800;
-    canvas.height = 420;
-  }
-  const ctx = canvas.getContext('2d');
-
+/**
+ * Render a single frame of the Dialogue Card Cut-In
+ */
+function renderDialogueSingleFrame(
+  ctx: any,
+  width: number,
+  height: number,
+  frameIdx: number,
+  speakerName: string,
+  quoteText: string,
+  chainTagOrTitle: string,
+  servantClass: string,
+  portraitImg: any,
+  bondOrLevel: number | string,
+  defenderName: string,
+  defenderImg: any,
+  defenderClass: string,
+  sequence: ('Buster' | 'Arts' | 'Quick' | 'NP')[]
+) {
   // 1. Deep Mahogany / Ebony Visual Novel Canvas Background
-  const bgGrad = ctx.createLinearGradient(0, 0, 800, 420);
+  const bgGrad = ctx.createLinearGradient(0, 0, width, height);
   bgGrad.addColorStop(0, '#0c0604');
   bgGrad.addColorStop(0.5, '#160a06');
   bgGrad.addColorStop(1, '#090403');
   ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, 800, 420);
+  ctx.fillRect(0, 0, width, height);
 
   // Ambient aura behind the attacker (left)
   const auraGrad = ctx.createRadialGradient(120, 110, 20, 120, 110, 190);
   auraGrad.addColorStop(0, 'rgba(217, 119, 6, 0.18)');
   auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = auraGrad;
-  ctx.fillRect(0, 0, 800, 420);
+  ctx.fillRect(0, 0, width, height);
 
   // Target red glow behind defender (right)
   const targetAura = ctx.createRadialGradient(670, 110, 20, 670, 110, 180);
   targetAura.addColorStop(0, 'rgba(239, 68, 68, 0.15)');
   targetAura.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = targetAura;
-  ctx.fillRect(0, 0, 800, 420);
+  ctx.fillRect(0, 0, width, height);
 
-  // 2. Persona / Anime Dynamic Diagonal Slash Cut-In (Speed Lines & Impact Flash)
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(170, 12);
-  ctx.lineTo(440, 12);
-  ctx.lineTo(310, 202);
-  ctx.lineTo(80, 202);
-  ctx.closePath();
-
-  const slashGrad = ctx.createLinearGradient(170, 12, 440, 202);
-  slashGrad.addColorStop(0, 'rgba(239, 68, 68, 0.16)');
-  slashGrad.addColorStop(0.5, 'rgba(245, 158, 11, 0.22)');
-  slashGrad.addColorStop(1, 'rgba(251, 191, 36, 0.04)');
-  ctx.fillStyle = slashGrad;
-  ctx.fill();
-
-  // Speed slash lines
-  ctx.strokeStyle = 'rgba(245, 158, 11, 0.4)';
-  ctx.lineWidth = 1.8;
-  ctx.beginPath();
-  ctx.moveTo(210, 15);
-  ctx.lineTo(100, 200);
-  ctx.moveTo(280, 15);
-  ctx.lineTo(170, 200);
-  ctx.moveTo(350, 15);
-  ctx.lineTo(240, 200);
-  ctx.stroke();
-
-  // Radiant impact edge along the diagonal cut
-  ctx.strokeStyle = '#fef08a';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(440, 12);
-  ctx.lineTo(310, 202);
-  ctx.stroke();
-
-  // Impact Sparks along the cut line
-  drawSparkDiamond(ctx, 420, 30, 4.5, '#fbbf24');
-  drawSparkDiamond(ctx, 380, 75, 3.5, '#fef08a');
-  drawSparkDiamond(ctx, 340, 125, 4, '#f59e0b');
-  drawSparkDiamond(ctx, 315, 175, 3, '#fde047');
-  ctx.restore();
+  // 2. Dynamic Slash Animation Layer
+  drawPersonaSlashAnimation(ctx, frameIdx, chainTagOrTitle);
 
   // 3. Outer Ornate Golden Filigree Frame (Double Border)
   ctx.strokeStyle = '#92400e';
@@ -1576,16 +1731,6 @@ export async function renderDialogueCard(
   ctx.fill();
   ctx.restore();
 
-  // Load avatar if provided
-  let portraitImg: any = null;
-  if (avatarUrl) {
-    try {
-      portraitImg = await loadImage(avatarUrl);
-    } catch {
-      portraitImg = null;
-    }
-  }
-
   // Draw portrait content
   const innerPortX = portX + 4;
   const innerPortY = portY + 4;
@@ -1641,9 +1786,9 @@ export async function renderDialogueCard(
   drawSparkDiamond(ctx, portX + 3, portY + portH - 3, 3, '#fef08a');
   drawSparkDiamond(ctx, portX + portW - 3, portY + portH - 3, 3, '#fef08a');
 
-  // Crest / Level Badge at top of portrait frame
-  const badgeW = 44;
-  const badgeH = 18;
+  // Crest / Level Badge at top of portrait frame (Enlarged & high-contrast)
+  const badgeW = 48;
+  const badgeH = 19;
   const badgeX = portX + (portW - badgeW) / 2;
   const badgeY = portY - 9;
 
@@ -1656,32 +1801,27 @@ export async function renderDialogueCard(
   ctx.stroke();
 
   ctx.fillStyle = '#fde047';
-  ctx.font = 'bold 10px sans-serif';
+  ctx.font = 'bold 12px sans-serif';
   ctx.textAlign = 'center';
   const badgeDisplay = typeof bondOrLevel === 'number' ? `Lv.${bondOrLevel}` : `${bondOrLevel}`;
-  ctx.fillText(badgeDisplay, badgeX + badgeW / 2, badgeY + 13);
+  ctx.fillText(badgeDisplay, badgeX + badgeW / 2, badgeY + 14);
 
   // 5. Tactical Command Cards & Active Chain HUD (Center Area)
-  // Determine Chain Color Theme
   let chainGradTop = '#78350f';
-  let chainGradBottom = '#1c0d02';
   let chainBorder = '#f59e0b';
   let chainSubtitle = 'Tactical Card Resonance • Enhanced Strike Power';
 
   const tagUpper = (chainTagOrTitle || '').toUpperCase();
   if (tagUpper.includes('BUSTER')) {
     chainGradTop = '#7f1d1d';
-    chainGradBottom = '#240606';
     chainBorder = '#ef4444';
     chainSubtitle = 'Buster Power +50% • Extra Attack Guaranteed';
   } else if (tagUpper.includes('ARTS')) {
     chainGradTop = '#1e3a8a';
-    chainGradBottom = '#081226';
     chainBorder = '#3b82f6';
     chainSubtitle = 'NP Battery +20% • Arts Resonance Activated';
   } else if (tagUpper.includes('QUICK')) {
     chainGradTop = '#064e3b';
-    chainGradBottom = '#02150e';
     chainBorder = '#10b981';
     chainSubtitle = 'Critical Stars +20 • Lethal Critical Stance';
   }
@@ -1693,53 +1833,56 @@ export async function renderDialogueCard(
   const bannerY = 24;
 
   const cbGrad = ctx.createLinearGradient(bannerX, bannerY, bannerX + bannerW, bannerY);
-  cbGrad.addColorStop(0, 'rgba(0, 0, 0, 0.4)');
+  cbGrad.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
   cbGrad.addColorStop(0.2, chainGradTop);
   cbGrad.addColorStop(0.8, chainGradTop);
-  cbGrad.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+  cbGrad.addColorStop(1, 'rgba(0, 0, 0, 0.5)');
   ctx.fillStyle = cbGrad;
   drawRoundRect(ctx, bannerX, bannerY, bannerW, bannerH, 4);
   ctx.fill();
 
-  ctx.strokeStyle = chainBorder;
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = (frameIdx === 5) ? '#fde047' : chainBorder;
+  ctx.lineWidth = (frameIdx === 5) ? 2.2 : 1.5;
   drawRoundRect(ctx, bannerX, bannerY, bannerW, bannerH, 4);
   ctx.stroke();
 
-  drawSparkDiamond(ctx, bannerX + 12, bannerY + bannerH / 2, 4, '#fbbf24');
-  drawSparkDiamond(ctx, bannerX + bannerW - 12, bannerY + bannerH / 2, 4, '#fbbf24');
+  // Drawn Gold Diamonds on left & right (Zero tofu boxes!)
+  drawSparkDiamond(ctx, bannerX + 16, bannerY + bannerH / 2, 4.5, '#fbbf24');
+  drawSparkDiamond(ctx, bannerX + bannerW - 16, bannerY + bannerH / 2, 4.5, '#fbbf24');
 
   ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`[ ${chainTagOrTitle.toUpperCase()} ]`, bannerX + bannerW / 2, bannerY + 19);
+
+  // Subtitle below chain banner (Enlarged & clear)
+  ctx.fillStyle = '#fef08a';
   ctx.font = 'bold 11px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`✦ ${chainTagOrTitle.toUpperCase()} ✦`, bannerX + bannerW / 2, bannerY + 18);
-
-  // Subtitle below chain banner
-  ctx.fillStyle = '#fde68a';
-  ctx.font = '9px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(chainSubtitle, bannerX + bannerW / 2, bannerY + 42);
+  ctx.fillText(chainSubtitle, bannerX + bannerW / 2, bannerY + 43);
 
   // Render the 3 Command Cards
-  const cardW = 96;
-  const cardH = 88;
-  const cardY = 74;
-  const cardX1 = 230;
-  const cardX2 = 350;
-  const cardX3 = 470;
+  const cardW = 104;
+  const cardH = 96;
+  const cardY = 70;
+  const cardX1 = 224;
+  const cardX2 = 348;
+  const cardX3 = 472;
 
   const validSeq = (sequence && sequence.length === 3) ? sequence : ['Buster', 'Buster', 'Buster'];
 
-  drawCommandCardBadge(ctx, cardX1, cardY, cardW, cardH, validSeq[0], 0);
-  drawCommandCardBadge(ctx, cardX2, cardY, cardW, cardH, validSeq[1], 1);
-  drawCommandCardBadge(ctx, cardX3, cardY, cardW, cardH, validSeq[2], 2);
+  // Card surges pulse sequentially across frames
+  const isSurging0 = frameIdx === 3;
+  const isSurging1 = frameIdx === 4;
+  const isSurging2 = frameIdx === 5;
 
-  // Connector Arrows ➔ between cards
-  ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 15px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('➔', 338, cardY + cardH / 2 + 4);
-  ctx.fillText('➔', 458, cardY + cardH / 2 + 4);
+  drawCommandCardBadge(ctx, cardX1, cardY, cardW, cardH, validSeq[0], 0, isSurging0);
+  drawCommandCardBadge(ctx, cardX2, cardY, cardW, cardH, validSeq[1], 1, isSurging1);
+  drawCommandCardBadge(ctx, cardX3, cardY, cardW, cardH, validSeq[2], 2, isSurging2);
+
+  // Connector Arrows >> between cards (Drawn Vectors - Zero Tofu!)
+  drawVectorChevronArrow(ctx, 336, cardY + cardH / 2, '#fbbf24');
+  drawVectorChevronArrow(ctx, 460, cardY + cardH / 2, '#fbbf24');
 
   // 6. Target-Locked Opponent HUD (Right Side)
   const targetX = 596;
@@ -1747,25 +1890,31 @@ export async function renderDialogueCard(
   const targetW = 168;
   const targetH = 168;
 
-  let defenderImg: any = null;
-  if (defenderAvatarUrl) {
-    try {
-      defenderImg = await loadImage(defenderAvatarUrl);
-    } catch {
-      defenderImg = null;
-    }
-  }
+  // Crosshair rotation and pulse based on frame
+  const crosshairAngle = (frameIdx * 15 * Math.PI) / 180;
+  const crosshairScale = frameIdx === 4 ? 0.9 : frameIdx === 2 ? 1.15 : 1.0;
 
-  drawTargetLockedHUD(ctx, targetX, targetY, targetW, targetH, defenderImg, defenderName, defenderClass);
+  drawTargetLockedHUD(
+    ctx,
+    targetX,
+    targetY,
+    targetW,
+    targetH,
+    defenderImg,
+    defenderName,
+    defenderClass,
+    crosshairAngle,
+    crosshairScale
+  );
 
   // 7. Visual Novel Dialogue Textbox (Bottom Area)
   const boxX = 32;
-  const boxY = 216;
+  const boxY = 214;
   const boxW = 736;
-  const boxH = 184;
+  const boxH = 186;
 
   // Box Background
-  ctx.fillStyle = 'rgba(16, 9, 4, 0.95)';
+  ctx.fillStyle = 'rgba(16, 9, 4, 0.96)';
   drawRoundRect(ctx, boxX, boxY, boxW, boxH, 4);
   ctx.fill();
 
@@ -1782,9 +1931,9 @@ export async function renderDialogueCard(
   ctx.stroke();
 
   // Box Corner Brackets
-  const boxCbLen = 10;
+  const boxCbLen = 12;
   ctx.strokeStyle = '#fbbf24';
-  ctx.lineWidth = 1.4;
+  ctx.lineWidth = 1.6;
   ctx.beginPath();
   ctx.moveTo(boxX + 3, boxY + 3 + boxCbLen);
   ctx.lineTo(boxX + 3, boxY + 3);
@@ -1797,44 +1946,198 @@ export async function renderDialogueCard(
   ctx.lineTo(boxX + boxW - 3, boxY + 3 + boxCbLen);
   ctx.stroke();
 
-  // 8. Speaker Nameplate Tab (Overlapping top border of dialogue box)
-  ctx.font = 'bold 13px sans-serif';
-  const fullNameLabel = `${speakerName} [${servantClass || 'Servant'}]`;
-  const nameMetrics = ctx.measureText(fullNameLabel);
-  const nameW = Math.max(140, Math.min(320, nameMetrics.width + 32));
-  const nameH = 26;
+  // 8. Speaker Nameplate Tab (Overlapping top border of dialogue box) - PROMINENT & HIGH-CONTRAST
+  ctx.font = 'bold 15px sans-serif';
+  const nameMetrics = ctx.measureText(`${speakerName} [${servantClass || 'Servant'}]`);
+  const nameW = Math.max(180, Math.min(360, nameMetrics.width + 36));
+  const nameH = 30;
   const nameX = boxX + 18;
-  const nameY = boxY - 14;
+  const nameY = boxY - 16;
 
   ctx.fillStyle = '#0d0704';
-  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 3);
+  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
   ctx.fill();
 
   ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 1.8;
-  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 3);
+  ctx.lineWidth = 2;
+  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
+  ctx.stroke();
+
+  // Nameplate inner gold hairline
+  ctx.strokeStyle = 'rgba(254, 240, 138, 0.4)';
+  ctx.lineWidth = 0.8;
+  drawRoundRect(ctx, nameX + 2, nameY + 2, nameW - 4, nameH - 4, 3);
   ctx.stroke();
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 12px sans-serif';
+  ctx.font = 'bold 15px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(fullNameLabel, nameX + nameW / 2, nameY + 17);
+  ctx.fillText(`${speakerName} [${(servantClass || 'Servant').toUpperCase()}]`, nameX + nameW / 2, nameY + 20);
 
-  // 9. Dialogue Quote Text (Clean Serif typography with quotes)
-  const textX = boxX + 26;
-  const textY = boxY + 38;
-  const maxTextW = boxW - 52;
-  const lineHeight = 26;
+  // 9. Dialogue Quote Text (LARGE, BOLD, EFFORTLESS TO READ)
+  const textX = boxX + 28;
+  const textY = boxY + 44;
+  const maxTextW = boxW - 56;
+  const lineHeight = 34;
 
-  ctx.fillStyle = '#fef3c7'; // Ivory / cream
-  ctx.font = '16px Georgia, "Times New Roman", serif';
+  ctx.fillStyle = '#fffbeb'; // Luminous ivory glow
+  ctx.font = 'bold 24px Georgia, "Times New Roman", serif';
   ctx.textAlign = 'left';
 
   const cleanQuote = quoteText.replace(/^["“]/, '').replace(/["”]$/, '').trim();
   drawWrappedText(ctx, `“${cleanQuote}”`, textX, textY, maxTextW, lineHeight, 4);
 
-  // 10. Continuation Prompt Indicator (Gold Diamond at bottom right)
-  drawSparkDiamond(ctx, boxX + boxW - 24, boxY + boxH - 18, 5, '#fbbf24');
+  // 10. Continuation Prompt Indicator (Pulsing Gold Diamond at bottom right)
+  const promptScale = frameIdx % 2 === 0 ? 6 : 5;
+  drawSparkDiamond(ctx, boxX + boxW - 26, boxY + boxH - 22, promptScale, '#fbbf24');
+}
+
+/**
+ * 2. Render Visual Novel Dialogue Frame (800x420 Authentic Fate VN Animated Frame)
+ * Features Ornate Double Gold Borders, Framed Servant Portrait with Level Badge, 
+ * Persona-Style Dynamic Slash Cut-In (Animated GIF / Action Sequence), 
+ * Glowing Command Cards & Chain HUD, Target-Locked Opponent HUD,
+ * Overlapping Nameplate Tab, and Large High-Contrast Dialogue Text.
+ */
+export async function renderDialogueCard(
+  canvasOrSpeaker: any,
+  quoteOrSpeaker?: any,
+  chainTagOrTitle: string = 'TACTICAL COMBAT CHAIN',
+  servantClass: string = 'Saber',
+  avatarUrl?: string,
+  bondOrLevel: number | string = 8,
+  defenderName: string = 'Opponent Servant',
+  defenderAvatarUrl?: string,
+  defenderClass: string = 'Servant',
+  sequence: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Buster', 'Buster', 'Buster']
+): Promise<Buffer> {
+  let canvas: any;
+  let speakerName: string;
+  let quoteText: string;
+
+  const isClientCanvas = canvasOrSpeaker && typeof canvasOrSpeaker.getContext === 'function';
+
+  if (isClientCanvas) {
+    canvas = canvasOrSpeaker;
+    speakerName = quoteOrSpeaker || 'Heroic Spirit';
+    quoteText = chainTagOrTitle || '';
+  } else {
+    canvas = createCanvas(800, 420);
+    speakerName = canvasOrSpeaker || 'Heroic Spirit';
+    quoteText = quoteOrSpeaker || '';
+  }
+
+  if (canvas.width !== 800 || canvas.height !== 420) {
+    canvas.width = 800;
+    canvas.height = 420;
+  }
+  const ctx = canvas.getContext('2d');
+
+  // Pre-load images once for all frames
+  let portraitImg: any = null;
+  if (avatarUrl) {
+    try {
+      portraitImg = await loadImage(avatarUrl);
+    } catch {
+      portraitImg = null;
+    }
+  }
+
+  let defenderImg: any = null;
+  if (defenderAvatarUrl) {
+    try {
+      defenderImg = await loadImage(defenderAvatarUrl);
+    } catch {
+      defenderImg = null;
+    }
+  }
+
+  // If rendering on client canvas (HTML5 Canvas element in browser):
+  if (isClientCanvas) {
+    // Render full climax frame (Frame 2) on client canvas
+    renderDialogueSingleFrame(
+      ctx,
+      800,
+      420,
+      2,
+      speakerName,
+      quoteText,
+      chainTagOrTitle,
+      servantClass,
+      portraitImg,
+      bondOrLevel,
+      defenderName,
+      defenderImg,
+      defenderClass,
+      sequence
+    );
+    return MINIMAL_VALID_PNG;
+  }
+
+  // Server execution: Build animated GIF with 8 action frames if gifenc is available
+  if (gifencModule && typeof gifencModule.GIFEncoder === 'function') {
+    try {
+      const { GIFEncoder, quantize, applyPalette } = gifencModule;
+      const gif = GIFEncoder();
+      const totalFrames = 8;
+      const frameDelay = 120; // 120ms per frame = ~960ms loop cycle
+
+      for (let f = 0; f < totalFrames; f++) {
+        // Clear canvas
+        ctx.clearRect(0, 0, 800, 420);
+
+        // Render frame f
+        renderDialogueSingleFrame(
+          ctx,
+          800,
+          420,
+          f,
+          speakerName,
+          quoteText,
+          chainTagOrTitle,
+          servantClass,
+          portraitImg,
+          bondOrLevel,
+          defenderName,
+          defenderImg,
+          defenderClass,
+          sequence
+        );
+
+        // Quantize and write GIF frame
+        const imgData = ctx.getImageData(0, 0, 800, 420);
+        const palette = quantize(imgData.data, 256);
+        const index = applyPalette(imgData.data, palette);
+        gif.writeFrame(index, 800, 420, { palette, delay: frameDelay });
+      }
+
+      gif.finish();
+      const gifBuffer = Buffer.from(gif.bytes());
+      if (gifBuffer && gifBuffer.length > 500) {
+        return gifBuffer;
+      }
+    } catch (animErr) {
+      console.warn('Animated GIF generation failed, falling back to static PNG:', animErr);
+    }
+  }
+
+  // Fallback: Static PNG render (Frame 2 - Climax Impact)
+  renderDialogueSingleFrame(
+    ctx,
+    800,
+    420,
+    2,
+    speakerName,
+    quoteText,
+    chainTagOrTitle,
+    servantClass,
+    portraitImg,
+    bondOrLevel,
+    defenderName,
+    defenderImg,
+    defenderClass,
+    sequence
+  );
 
   try {
     return canvas.toBuffer('image/png');

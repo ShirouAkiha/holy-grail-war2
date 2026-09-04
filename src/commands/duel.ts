@@ -294,7 +294,7 @@ function buildDialogueCutInEmbed(
     .setFooter({ text: 'Holy Grail War • Tactical RPG Visual Novel Dialogue Cut-In' });
 
   if (hasImageAttachment) {
-    embed.setImage('attachment://vn_dialogue.png');
+    embed.setImage('attachment://vn_dialogue.gif');
   } else {
     const avatar = attacker.servant.template?.avatarUrl;
     const seqDisplay = sequence.map(c => {
@@ -1740,7 +1740,7 @@ async function startInteractiveDuel(
           );
 
           if (diaBuffer && diaBuffer.length > 500) {
-            const attachment = new AttachmentBuilder(diaBuffer, { name: 'vn_dialogue.png' });
+            const attachment = new AttachmentBuilder(diaBuffer, { name: 'vn_dialogue.gif' });
             const cutInEmbed = buildDialogueCutInEmbed(attacker, defender, playerSequence, playerDialogue, true);
             await i.editReply({ embeds: [cutInEmbed], files: [attachment], components: [] });
 
