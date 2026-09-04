@@ -544,17 +544,20 @@ export default function CombatLogHistory({
                           </div>
                         )}
 
-                        {/* Noble Phantasm Box */}
-                        {turn.npTriggered && turn.npChant && (
-                          <div className="p-2.5 rounded-sm bg-[#d4af37]/10 border border-[#d4af37]/40 mb-3 flex items-start gap-2 text-xs">
-                            <Sparkles className="w-4 h-4 text-[#d4af37] shrink-0 mt-0.5" />
-                            <div>
-                              <div className="text-[10px] font-mono uppercase tracking-widest text-[#d4af37] font-bold">
-                                Noble Phantasm Release
-                              </div>
-                              <div className="text-[#d4af37] font-serif italic text-xs mt-0.5">
-                                &quot;{turn.npChant}&quot;
-                              </div>
+                        {/* Mid-Battle Dialogue Cut-In Box */}
+                        {(turn.dialogueQuote || (turn.npTriggered && turn.npChant)) && (
+                          <div className="p-3 rounded-lg bg-[#140d0a] border border-[#d4af37]/60 mb-3 relative overflow-hidden shadow-[0_0_15px_rgba(212,175,55,0.15)]">
+                            <div className="flex items-center justify-between text-[10px] font-mono text-[#d4af37] mb-1.5 font-bold tracking-wider">
+                              <span className="uppercase flex items-center gap-1.5 text-[#f59e0b]">
+                                <Sparkles className="w-3.5 h-3.5 text-[#d4af37]" />
+                                {turn.dialogueTag || (turn.npTriggered ? 'NOBLE PHANTASM RELEASE' : 'MID-BATTLE DIALOGUE')}
+                              </span>
+                              <span className="text-[#d4af37] px-2 py-0.5 rounded-sm bg-[#24150b] border border-[#d4af37]/40">
+                                {turn.actorName}
+                              </span>
+                            </div>
+                            <div className="text-[#fef08a] font-serif italic text-xs leading-relaxed pl-1">
+                              &quot;{turn.dialogueQuote || turn.npChant}&quot;
                             </div>
                           </div>
                         )}

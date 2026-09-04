@@ -8,7 +8,7 @@ import {
   TurnActionChoice
 } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
-import { executeNoblePhantasmLogic } from '../../lib/engine/battle';
+import { executeNoblePhantasmLogic, generateTurnDialogueQuote } from '../../lib/engine/battle';
 
 // Global PvP damage modifier (0.35x) to scale FGO-style formula output down to ~25k-35k Servant HP pools
 export const PVP_DAMAGE_MODIFIER = 0.35;
@@ -364,6 +364,8 @@ export function resolveCombatTurn(
 
   const chainSummaryStr = chainTags.length > 0 ? `\n⛓️ **Chains Triggered:** ${chainTags.join(' • ')}` : '';
 
+  const dialogueInfo = generateTurnDialogueQuote(attacker, defender, attackerChoice, classMultiplier);
+
   // Generate combat log entry
   const log: CombatTurnLog = {
     turnNumber: battle.currentTurn,
@@ -378,7 +380,10 @@ export function resolveCombatTurn(
     skillsUsed: [],
     npTriggered,
     isNoblePhantasm: npTriggered,
-    npChant,
+    npChant: npChant || (npTriggered ? dialogueInfo.quoteText : undefined),
+    dialogueQuote: dialogueInfo.quoteText,
+    dialogueTag: dialogueInfo.tag,
+    dialogueTitle: dialogueInfo.speakerTitle,
     damageDealt: totalDmg,
     isCritical: isCrit,
     starsGenerated: starsGen,

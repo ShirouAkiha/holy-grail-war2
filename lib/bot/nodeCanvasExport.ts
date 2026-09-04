@@ -590,25 +590,81 @@ export async function renderBattleTurnSummary(
   ctx.textAlign = 'left';
   ctx.fillText(\`\${p1.critStars || 0}\`, 518, 166);
 
-  // Middle Clash Box
-  ctx.fillStyle = '#030712';
+  // Middle Clash Box (FGO Mid-Battle Dialogue Cut-In Frame)
+  ctx.fillStyle = '#0a0604';
   drawRoundRect(ctx, 18, 236, 604, 200, 10);
   ctx.fill();
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#d97706';
+  ctx.lineWidth = 3;
+  drawRoundRect(ctx, 18, 236, 604, 200, 10);
+  ctx.stroke();
+  ctx.strokeStyle = '#fde047';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, 22, 240, 596, 192, 8);
   ctx.stroke();
 
-  ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 30, 246, 580, 28, 5);
+  // Header Banner: Turn & Scenario Tag
+  const dialogueSpeaker = (log as any).actorName || p1.name;
+  const dialogueQuote = (log as any).dialogueQuote || log.npChant || (log.actionSummary ? log.actionSummary.split('\n')[0] : 'Engaging in battle!');
+  const dialogueTag = (log as any).dialogueTag || (log.npTriggered ? 'NOBLE PHANTASM' : 'BATTLE QUOTE');
+
+  ctx.fillStyle = '#1e110a';
+  drawRoundRect(ctx, 30, 246, 580, 26, 4);
   ctx.fill();
+
   ctx.fillStyle = '#f59e0b';
-  ctx.font = 'bold 14px sans-serif';
-  ctx.textAlign = 'center';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('★ TURN ' + log.turnNumber + ' CLASH • [' + dialogueTag + ']', 40, 263);
+
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#fde047';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.fillText(dialogueSpeaker.toUpperCase(), 600, 263);
   ctx.fillText(\`★ HOLY GRAIL WAR • TURN \${log.turnNumber} CLASH RESOLUTION ★\`, 320, 229);
 
+  // Left Portrait Box (Square 60x60)
+  ctx.fillStyle = '#140c07';
+  drawRoundRect(ctx, 32, 280, 68, 68, 6);
+  ctx.fill();
+  ctx.strokeStyle = '#d97706';
+  ctx.lineWidth = 2;
+  drawRoundRect(ctx, 32, 280, 68, 68, 6);
+  ctx.stroke();
+
+  ctx.fillStyle = '#f59e0b';
+  ctx.font = 'bold 24px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(p1.servantClass?.[0] || '⚔️', 66, 322);
+
+  ctx.fillStyle = '#fde047';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.fillText('5★ SERVANT', 66, 340);
+
+  // Speaker Nameplate Box
+  ctx.fillStyle = '#1f130b';
+  drawRoundRect(ctx, 110, 280, 220, 24, 4);
+  ctx.fill();
+  ctx.strokeStyle = '#b45309';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 20px sans-serif';
-  ctx.fillText(log.actionSummary || '', 320, 285);
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(dialogueSpeaker, 118, 296);
+
+  // Dialogue Quote Box (Golden Serif Quote Text)
+  ctx.fillStyle = 'rgba(20, 13, 8, 0.9)';
+  drawRoundRect(ctx, 110, 310, 490, 78, 6);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(217, 119, 6, 0.6)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = '#fef08a';
+  ctx.font = 'italic bold 14px serif';
+  drawWrappedText(ctx, '"' + dialogueQuote + '"', 122, 332, 466, 18, 3);
 
   ctx.fillStyle = '#38bdf8';
   ctx.font = 'bold 14px sans-serif';

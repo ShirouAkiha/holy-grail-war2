@@ -65,11 +65,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const generateBattleEmbedAndRows = (state: typeof battleState, _lastLogSummary?: string) => {
       const isNpReady = state.player1.npGauge >= 100;
+      const lastDialogue = (state as any).turnLogs && (state as any).turnLogs.length > 0 ? (state as any).turnLogs[(state as any).turnLogs.length - 1] : null;
+      const quoteLine = lastDialogue?.dialogueQuote ? \`\\n\\n💬 **\${lastDialogue.actorName || state.player1.name}:** *"\${lastDialogue.dialogueQuote}"*\` : '';
 
       const embed = new EmbedBuilder()
         .setTitle(\`⚔️ HOLY GRAIL WAR DUEL — TURN \${state.currentTurn}\`)
         .setDescription(
-          \`👉 **Current Turn:** <@\${interaction.user.id}>, select your Command Card sequence or Noble Phantasm:\`
+          \`👉 **Current Turn:** <@\${interaction.user.id}>, select your Command Card sequence or Noble Phantasm:\${quoteLine}\`
         )
         .setColor(0xef4444);
 

@@ -552,6 +552,137 @@ export function executeNoblePhantasmLogic(
   };
 }
 
+export interface TurnDialogueQuoteInfo {
+  speakerName: string;
+  speakerTitle: string;
+  servantClass: string;
+  tag: string;
+  quoteText: string;
+  badgeType: 'np' | 'skill' | 'advantage' | 'low_hp' | 'crit' | 'attack';
+}
+
+export function generateTurnDialogueQuote(
+  actor: ActiveCombatant,
+  target: ActiveCombatant,
+  choice: TurnActionChoice,
+  classMult: number
+): TurnDialogueQuoteInfo {
+  const hpRatio = actor.currentHp / actor.maxHp;
+  const isLowHp = hpRatio <= 0.35;
+  const servantName = actor.name;
+  const servantClass = actor.servantClass;
+
+  if (choice.useNoblePhantasm && actor.npGauge >= 100) {
+    const chant = actor.noblePhantasm?.chant || `Sword of Promised Victory... EXCALIBUR!`;
+    return {
+      speakerName: servantName,
+      speakerTitle: `${servantClass} • ${actor.noblePhantasm?.name || 'Noble Phantasm'}`,
+      servantClass,
+      tag: 'NOBLE PHANTASM CHANT',
+      quoteText: chant,
+      badgeType: 'np'
+    };
+  }
+
+  if (choice.useCommandSeal) {
+    return {
+      speakerName: actor.masterName || 'Master',
+      speakerTitle: `Master Command Seal Amplification`,
+      servantClass,
+      tag: 'COMMAND SEAL ACTIVATED',
+      quoteText: `By my Command Seal! ${servantName}, refill your Noble Phantasm and shatter enemy lines!`,
+      badgeType: 'skill'
+    };
+  }
+
+  if (choice.useSkillIndex !== undefined && choice.useSkillIndex >= 0 && actor.skills[choice.useSkillIndex]) {
+    const skill = actor.skills[choice.useSkillIndex];
+    return {
+      speakerName: servantName,
+      speakerTitle: `${servantClass} • Skill: ${skill.name}`,
+      servantClass,
+      tag: 'SKILL RELEASE',
+      quoteText: `Activating ${skill.name}! ${skill.description}`,
+      badgeType: 'skill'
+    };
+  }
+
+  if (isLowHp) {
+    const quotes = [
+      "I won't fall here... Master, give me strength!",
+      "My Spirit Origin remains unyielding! Final strike!",
+      "This pain is nothing... I shall fulfill our pact!"
+    ];
+    return {
+      speakerName: servantName,
+      speakerTitle: `${servantClass} • Desperation Strike`,
+      servantClass,
+      tag: 'DESPERATION',
+      quoteText: quotes[Math.floor(Math.random() * quotes.length)],
+      badgeType: 'low_hp'
+    };
+  }
+
+  if (classMult > 1.0) {
+    const quotes = [
+      "Your class stands no chance against my blade!",
+      "I hold the class affinity edge in this clash, prepare yourself!",
+      "A foolish match-up for you... I will take victory in one strike!"
+    ];
+    return {
+      speakerName: servantName,
+      speakerTitle: `${servantClass} (${classMult}x Advantage vs ${target.servantClass})`,
+      servantClass,
+      tag: 'CLASS ADVANTAGE',
+      quoteText: quotes[Math.floor(Math.random() * quotes.length)],
+      badgeType: 'advantage'
+    };
+  }
+
+  const cards = choice.selectedCards || ['Buster', 'Arts', 'Quick'];
+  if (cards.length === 3) {
+    if (cards.every(c => c === 'Buster')) {
+      return {
+        speakerName: servantName,
+        speakerTitle: `${servantClass} • Buster Brave Chain`,
+        servantClass,
+        tag: 'BUSTER BRAVE CHAIN',
+        quoteText: "All mana into maximum destruction! Take this!",
+        badgeType: 'crit'
+      };
+    }
+    if (cards.every(c => c === 'Arts')) {
+      return {
+        speakerName: servantName,
+        speakerTitle: `${servantClass} • Arts Chain`,
+        servantClass,
+        tag: 'ARTS CHAIN',
+        quoteText: "Charging mana reservoir... let's flood the battlefield!",
+        badgeType: 'attack'
+      };
+    }
+    if (cards.every(c => c === 'Quick')) {
+      return {
+        speakerName: servantName,
+        speakerTitle: `${servantClass} • Quick Star Chain`,
+        servantClass,
+        tag: 'QUICK STAR CHAIN',
+        quoteText: "Swift like lightning... you won't even see the strike!",
+        badgeType: 'attack'
+      };
+    }
+  }
+
+  return {
+    speakerName: servantName,
+    speakerTitle: `${servantClass} • Battle Engagement`,
+    servantClass,
+    tag: 'BATTLE QUOTE',
+    quoteText: "My blade answers your command, Master!",
+    badgeType: 'attack'
+  };
+}
+
 export function executeBattleTurn(
   state: BattleState,
   p1Choice: TurnActionChoice,
@@ -856,6 +987,12 @@ export function executeBattleTurn(
       actionText += `\n🖤 **[Avenger]** ${target.name} gained +${avengerRefund}% NP from suffering damage!`;
     }
 
+    // Generate Turn Dialogue Quote
+    const dialogueInfo = generateTurnDialogueQuote(actor, target, choice, classMult);
+    const dialogueQuote = dialogueInfo.quoteText;
+    const dialogueTag = dialogueInfo.tag;
+    const dialogueTitle = dialogueInfo.speakerTitle;
+
     // Decrement buff durations
     actor.activeBuffs = actor.activeBuffs
       .map(b => ({ ...b, remainingTurns: b.remainingTurns - 1 }))
@@ -872,7 +1009,10 @@ export function executeBattleTurn(
       cardsUsed: cards,
       skillsUsed: usedSkillNames,
       npTriggered,
-      npChant,
+      npChant: npChant || (npTriggered ? dialogueQuote : undefined),
+      dialogueQuote,
+      dialogueTag,
+      dialogueTitle,
       damageDealt: totalDamage,
       isCritical,
       starsGenerated: totalStars,

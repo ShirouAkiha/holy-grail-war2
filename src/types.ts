@@ -233,6 +233,9 @@ export interface CombatTurnLog {
   npTriggered?: boolean;
   isNoblePhantasm?: boolean;
   npChant?: string;
+  dialogueQuote?: string;
+  dialogueTag?: string;
+  dialogueTitle?: string;
   damageDealt: number;
   isCritical: boolean;
   starsGenerated: number;
