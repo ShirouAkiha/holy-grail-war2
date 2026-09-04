@@ -567,6 +567,9 @@ export const data = new SlashCommandBuilder()
             { name: 'Summon Quote', value: 'summon' },
             { name: 'Battle Start', value: 'battleStart' },
             { name: 'Noble Phantasm Chant', value: 'noblePhantasm' },
+            { name: 'Buster Brave Chain (3x Buster)', value: 'busterChain' },
+            { name: 'Arts Mana Chain (3x Arts)', value: 'artsChain' },
+            { name: 'Quick Star Chain (3x Quick)', value: 'quickChain' },
             { name: 'Victory Quote', value: 'victory' },
             { name: 'Defeat Quote', value: 'defeat' }
           )
@@ -576,6 +579,12 @@ export const data = new SlashCommandBuilder()
           .setName('text')
           .setDescription('New custom dialogue text')
           .setRequired(true)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('servant')
+          .setDescription('Servant name (defaults to your active Servant)')
+          .setRequired(false)
       )
   )
   .addSubcommand(sub =>
@@ -767,22 +776,50 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     if (subcommand === 'quote') {
       const type = interaction.options.getString('type', true);
       const text = interaction.options.getString('text', true);
+      const targetQuery = interaction.options.getString('servant')?.trim().toLowerCase();
 
-      if (!activeServant.customQuotes) {
-        activeServant.customQuotes = {};
+      let targetServant = activeServant;
+      if (targetQuery) {
+        const found = master.servants.find((s: any) =>
+          s.template?.name?.toLowerCase().includes(targetQuery) ||
+          s.nickname?.toLowerCase().includes(targetQuery) ||
+          s.id.toLowerCase() === targetQuery ||
+          s.templateId?.toLowerCase() === targetQuery
+        );
+        if (found) {
+          targetServant = found;
+        }
+      }
+
+      if (!targetServant.customQuotes) {
+        targetServant.customQuotes = {};
       }
 
       // Overwrite the specific voice line
-      (activeServant.customQuotes as any)[type] = text;
+      (targetServant.customQuotes as any)[type] = text;
       await saveMaster(master);
 
+      const targetName = targetServant.nickname || targetServant.template?.name || 'Servant';
+      const labelMap: Record<string, string> = {
+        summon: 'Summon Quote',
+        battleStart: 'Battle Start Quote',
+        noblePhantasm: 'Noble Phantasm Chant',
+        busterChain: 'Buster Brave Chain (3x Buster)',
+        artsChain: 'Arts Mana Chain (3x Arts)',
+        quickChain: 'Quick Star Chain (3x Quick)',
+        victory: 'Victory Quote',
+        defeat: 'Defeat Quote'
+      };
+
       const embed = new EmbedBuilder()
-        .setTitle('💬 Custom Voice Line Saved!')
+        .setTitle('💬 Custom Dialogue Saved!')
         .setDescription(
-          `Updated **${type}** line for **${servantName}**:\n\n` +
-          `*"${text}"*`
+          `Updated **${labelMap[type] || type}** for **${targetName}**:\n\n` +
+          `🗣️ *" ${text} "*\n\n` +
+          `✨ *This custom dialogue will trigger dynamically during battles, visual novel cut-ins, and dialogue inspects!*`
         )
-        .setColor(0x22c55e);
+        .setColor(0x22c55e)
+        .setFooter({ text: `Contracted to Master ${master.username} • Use /dialogue or /duel to hear it live!` });
 
       await interaction.reply({ embeds: [embed], ephemeral: true });
       return;

@@ -1352,6 +1352,20 @@ export default function DiscordEmulator({
     }
 
     // ----------------------------------------------------
+    // COMMAND 2.75: /customise quote, /customise dialogue, /dialogue set (Custom Dialogues & Chain Shouts)
+    // ----------------------------------------------------
+    if (
+      trimmed.startsWith('/customise quote') ||
+      trimmed.startsWith('/customise dialogue') ||
+      trimmed.startsWith('/dialogue set') ||
+      trimmed.startsWith('/dialogue add') ||
+      trimmed.startsWith('/dialogue custom')
+    ) {
+      handleCustomDialogueCommand(trimmed);
+      return;
+    }
+
+    // ----------------------------------------------------
     // COMMAND 2.8: /inventory, /equip, /customise equip, /cegacha inventory
     // ----------------------------------------------------
     if (
@@ -3188,6 +3202,217 @@ export default function DiscordEmulator({
     });
   };
 
+  // Helper: Post Custom Dialogue Studio & Chain Voice Lines Hub
+  const postCustomDialogueHub = (servantId?: string) => {
+    const ownedServants = master.servants || [];
+    if (ownedServants.length === 0) {
+      addMessage({
+        id: getNextId('bot_dialogue_err'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '❌ No Servants Contracted',
+          description: 'You must contract a Heroic Spirit via `/summon` before customizing dialogue voice lines!',
+          color: '#ef4444'
+        }
+      });
+      return;
+    }
+
+    const target = (servantId ? ownedServants.find(s => s.id === servantId) : null) ||
+      ownedServants.find(s => s.id === master.activeServantId) ||
+      ownedServants[0];
+
+    const t = target.template;
+    const name = target.nickname || t.name;
+    const quotes = target.customQuotes || {};
+
+    addMessage({
+      id: getNextId('bot_dialogue_hub'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title: `✍️ Master Dialogue Studio: ${name} (${t.servantClass})`,
+        description:
+          `*Author custom combat chants, Brave Chain shouts, and dialogue for **${name}**!*\n` +
+          `*Custom lines automatically activate during duels, action chains, and Visual Novel cut-ins.*\n\n` +
+          `⚡ **COMBAT BRAVE CHAINS & NP:**\n` +
+          `• 🔴 **Buster Brave (3x Buster):**\n  *"${quotes.busterChain || 'Default Canon Voice Line'}"*\n` +
+          `• 🔵 **Arts Mana (3x Arts):**\n  *"${quotes.artsChain || 'Default Canon Voice Line'}"*\n` +
+          `• 🟢 **Quick Star (3x Quick):**\n  *"${quotes.quickChain || 'Default Canon Voice Line'}"*\n` +
+          `• 🌟 **Noble Phantasm Chant:**\n  *"${quotes.noblePhantasm || t.noblePhantasm.chant}"*\n\n` +
+          `📜 **INVOCATIONS & STANCES:**\n` +
+          `• ⚔️ **Battle Start:** *" ${quotes.battleStart || t.battleStartQuote} "*\n` +
+          `• 🏆 **Victory:** *" ${quotes.victory || t.victoryQuote} "*\n` +
+          `• 💀 **Defeat:** *" ${quotes.defeat || t.defeatQuote || 'Master... forgive me...'} "*\n` +
+          `• 🕯️ **Summon:** *" ${quotes.summon || t.summonQuote} "*\n\n` +
+          `💡 **Quick Slash Authoring:**\n` +
+          `\`/customise quote busterChain "Your custom quote here"\`\n` +
+          `\`/customise quote artsChain "Your custom quote here"\`\n` +
+          `\`/customise quote quickChain "Your custom quote here"\`\n` +
+          `\`/customise quote battleStart "Your custom quote here"\``,
+        color: '#d4af37',
+        footer: `Contracted to Master ${master.username} • Bond Lv. ${target.bondLevel || 1} • Click a button below to set or test!`
+      },
+      components: {
+        type: 'buttons',
+        items: [
+          { id: `dlg_set_buster_${target.id}`, label: 'Set Buster Chain', style: 'danger' as const, emoji: '🔴' },
+          { id: `dlg_set_arts_${target.id}`, label: 'Set Arts Chain', style: 'primary' as const, emoji: '🔵' },
+          { id: `dlg_set_quick_${target.id}`, label: 'Set Quick Chain', style: 'success' as const, emoji: '🟢' },
+          { id: `dlg_set_battle_${target.id}`, label: 'Set Battle Start', style: 'secondary' as const, emoji: '⚔️' },
+          { id: `dlg_test_cutin_${target.id}`, label: 'Test Cut-In Live', style: 'primary' as const, emoji: '🎬' },
+          ...(ownedServants.length > 1
+            ? [{ id: `dlg_switch_servant_${target.id}`, label: 'Switch Servant', style: 'secondary' as const, emoji: '🔄' }]
+            : [])
+        ]
+      }
+    });
+  };
+
+  // Helper: Handle /customise quote / dialogue slash commands
+  const handleCustomDialogueCommand = (trimmed: string) => {
+    const ownedServants = master.servants || [];
+    if (ownedServants.length === 0) {
+      addMessage({
+        id: getNextId('bot_dialogue_err'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '❌ No Servants Summoned',
+          description: 'You must contract a Heroic Spirit via `/summon` before authoring custom voice lines!',
+          color: '#ef4444'
+        }
+      });
+      return;
+    }
+
+    // Strip prefix
+    let clean = trimmed
+      .replace('/customise quote', '')
+      .replace('/customise dialogue', '')
+      .replace('/dialogue set', '')
+      .replace('/dialogue add', '')
+      .replace('/dialogue custom', '')
+      .trim();
+
+    if (!clean) {
+      postCustomDialogueHub();
+      return;
+    }
+
+    const validKeys: Record<string, string> = {
+      buster: 'busterChain',
+      busterchain: 'busterChain',
+      arts: 'artsChain',
+      artschain: 'artsChain',
+      quick: 'quickChain',
+      quickchain: 'quickChain',
+      np: 'noblePhantasm',
+      chant: 'noblePhantasm',
+      noblephantasm: 'noblePhantasm',
+      summon: 'summon',
+      start: 'battleStart',
+      battlestart: 'battleStart',
+      battle: 'battleStart',
+      win: 'victory',
+      victory: 'victory',
+      defeat: 'defeat',
+      loss: 'defeat'
+    };
+
+    let targetType = 'busterChain';
+    let targetQuote = '';
+    let targetServant = master.servants?.find(s => s.id === master.activeServantId) || master.servants[0];
+
+    // Check if options provided in key:value format
+    const typeMatch = clean.match(/type:\s*([a-zA-Z0-9_]+)/i);
+    const textMatch = clean.match(/text:\s*["“']?([^"”']+)["”']?/i);
+    const servantMatch = clean.match(/servant:\s*["“']?([^"”']+)["”']?/i);
+
+    if (servantMatch) {
+      const q = servantMatch[1].toLowerCase();
+      const found = ownedServants.find(s =>
+        s.template.name.toLowerCase().includes(q) ||
+        (s.nickname && s.nickname.toLowerCase().includes(q)) ||
+        s.id.toLowerCase() === q
+      );
+      if (found) targetServant = found;
+    }
+
+    if (typeMatch && textMatch) {
+      const matchedKey = typeMatch[1].toLowerCase();
+      targetType = validKeys[matchedKey] || 'busterChain';
+      targetQuote = textMatch[1].trim();
+    } else {
+      // Positional args: e.g. /customise quote busterChain "I shall burn this world"
+      const parts = clean.split(' ');
+      const firstWord = parts[0].toLowerCase().replace(/[^a-z]/g, '');
+      if (validKeys[firstWord]) {
+        targetType = validKeys[firstWord];
+        targetQuote = parts.slice(1).join(' ').trim().replace(/^["“']|["”']$/g, '');
+      } else {
+        targetType = 'busterChain';
+        targetQuote = clean.replace(/^["“']|["”']$/g, '');
+      }
+    }
+
+    if (!targetQuote) {
+      postCustomDialogueHub(targetServant.id);
+      return;
+    }
+
+    const updatedServants = master.servants.map(s => {
+      if (s.id === targetServant.id) {
+        return {
+          ...s,
+          customQuotes: {
+            ...(s.customQuotes || {}),
+            [targetType]: targetQuote
+          }
+        };
+      }
+      return s;
+    });
+
+    onUpdateMaster({ ...master, servants: updatedServants });
+
+    const labelMap: Record<string, string> = {
+      summon: 'Summon Quote',
+      battleStart: 'Battle Start Quote',
+      noblePhantasm: 'Noble Phantasm Chant',
+      busterChain: 'Buster Brave Chain (3x Buster)',
+      artsChain: 'Arts Mana Chain (3x Arts)',
+      quickChain: 'Quick Star Chain (3x Quick)',
+      victory: 'Victory Quote',
+      defeat: 'Defeat Quote'
+    };
+
+    const sName = targetServant.nickname || targetServant.template.name;
+    addMessage({
+      id: getNextId('bot_dialogue_saved'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title: '💬 Custom Dialogue Saved to Contract!',
+        description:
+          `Updated **${labelMap[targetType] || targetType}** for **${sName}**:\n\n` +
+          `🗣️ *" ${targetQuote} "*\n\n` +
+          `✨ *This custom line will now trigger dynamically during duels, Visual Novel cut-ins, and dialogue inspects!*`,
+        color: '#22c55e',
+        footer: `Contracted to Master ${master.username} • Use /dialogue or /duel to hear it live!`
+      },
+      components: {
+        type: 'buttons',
+        items: [
+          { id: `dlg_test_cutin_${targetServant.id}`, label: 'Test Cut-In Preview', style: 'primary', emoji: '🎬' },
+          { id: `dlg_open_hub_${targetServant.id}`, label: 'Open Dialogue Studio', style: 'secondary', emoji: '✍️' },
+          { id: 'quick_start_duel', label: 'Enter Duel', style: 'danger', emoji: '⚔️' }
+        ]
+      }
+    });
+  };
+
   // Helper: Post Hana Association Equipment & Inventory Hub
   const postInventoryHub = (
     category: 'ces' | 'servants' | 'seals' | 'items' = 'ces',
@@ -3646,6 +3871,80 @@ export default function DiscordEmulator({
             bgUrlOrPreset: 'fuyuki'
           }
         });
+      }
+    } else if (btnId.startsWith('dlg_')) {
+      const parts = btnId.split('_');
+      // dlg_set_buster_<id>, dlg_set_arts_<id>, dlg_test_cutin_<id>, dlg_switch_servant_<id>, dlg_open_hub_<id>
+      const action = parts[1]; // set, test, switch, open
+      const subAction = parts[2]; // buster, arts, quick, battle, cutin, servant, hub
+      const servantId = parts.slice(3).join('_') || (action === 'switch' ? parts.slice(3).join('_') : '');
+
+      const targetServant = master.servants.find(s => s.id === servantId) || activeServant;
+
+      if (action === 'set') {
+        const chainMap: Record<string, string> = {
+          buster: 'busterChain',
+          arts: 'artsChain',
+          quick: 'quickChain',
+          battle: 'battleStart'
+        };
+        const key = chainMap[subAction] || 'busterChain';
+        const label = subAction.toUpperCase();
+        addMessage({
+          id: getNextId('bot_dlg_prompt'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `✍️ Author Custom ${label} Line`,
+            description:
+              `To set a custom **${label}** quote for **${targetServant?.template.name}**, run:\n\n` +
+              `\`\`\`\n/customise quote ${key} "Your custom quote here"\n\`\`\`\n` +
+              `*Or use the **Servant Workshop** tab at any time to edit and save directly!*`,
+            color: '#d4af37'
+          }
+        });
+      } else if (action === 'test') {
+        if (targetServant) {
+          const sequence: ('Buster' | 'Arts' | 'Quick')[] = ['Buster', 'Buster', 'Buster'];
+          const diaResult = getServantChainDialogue(
+            targetServant.template.name,
+            targetServant.template.servantClass,
+            sequence,
+            targetServant.customQuotes
+          );
+          addMessage({
+            id: getNextId('bot_dialogue_cutin'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `🎬 Visual Novel Cut-In: ${targetServant.template.name} — [${diaResult.tag}]`,
+              description: `*"${diaResult.quote}"*`,
+              color: '#ef4444',
+              footer: `Brave Chain Resonance • Master ${master.username}`
+            },
+            canvasType: 'dialogue',
+            canvasPayload: {
+              speaker: targetServant.nickname || targetServant.template.name,
+              quote: diaResult.quote,
+              title: diaResult.tag,
+              servantClass: targetServant.template.servantClass,
+              avatarUrl: targetServant.template.avatarUrl,
+              bondOrLevel: targetServant.bondLevel || 10,
+              defenderName: 'Enemy Combatant',
+              defenderClass: 'Archer',
+              sequence,
+              bgUrlOrPreset: 'fuyuki'
+            }
+          });
+        }
+      } else if (action === 'switch') {
+        const owned = master.servants || [];
+        const currentIndex = owned.findIndex(s => s.id === servantId);
+        const nextIndex = (currentIndex + 1) % owned.length;
+        const nextServant = owned[nextIndex];
+        postCustomDialogueHub(nextServant?.id);
+      } else if (action === 'open') {
+        postCustomDialogueHub(servantId);
       }
     } else if (btnId.startsWith('duel_')) {
       if (!activeDuel) {

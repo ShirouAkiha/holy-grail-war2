@@ -127,6 +127,9 @@ export interface MasterServantInstance {
     noblePhantasm?: string;
     victory?: string;
     defeat?: string;
+    busterChain?: string;
+    artsChain?: string;
+    quickChain?: string;
   };
   bondLevel: number;
   template: ServantTemplate;

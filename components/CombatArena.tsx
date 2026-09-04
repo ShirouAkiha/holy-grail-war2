@@ -283,15 +283,14 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
     const dialogue = getBattleDialogueForTurn();
 
     // Check if this attack sequence warrants a special Visual Novel Dialogue Cut-In:
-    // Only trigger for Pure Brave/Resonance Chains (BBB, AAA, QQQ), Desperation (<25% HP), or NP!
-    // Ordinary mixed combat chains (e.g. Buster + Arts + Quick) proceed directly without pausing!
+    // Only trigger for Pure Brave Chains (BBB, AAA, QQQ) or NP!
+    // Desperation states do NOT trigger dialogue cut-ins. Ordinary mixed combat chains proceed directly without pausing!
     const isPureBrave = selectedCards.length === 3 && (
       selectedCards.every(c => c === 'Buster') ||
       selectedCards.every(c => c === 'Arts') ||
       selectedCards.every(c => c === 'Quick')
     );
-    const isDesperation = (p1.currentHp / p1.maxHp) <= 0.25;
-    const shouldCutIn = useNp || isPureBrave || isDesperation;
+    const shouldCutIn = useNp || isPureBrave;
 
     if (!shouldCutIn) {
       runTurnCalculation();

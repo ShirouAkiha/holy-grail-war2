@@ -504,7 +504,16 @@ export function getServantChainDialogue(
   servantName: string,
   servantClass: string,
   cards: ('Buster' | 'Arts' | 'Quick' | 'NP')[],
-  customQuotes?: { battleStart?: string; noblePhantasm?: string; summon?: string; victory?: string; defeat?: string },
+  customQuotes?: { 
+    battleStart?: string; 
+    noblePhantasm?: string; 
+    summon?: string; 
+    victory?: string; 
+    defeat?: string;
+    busterChain?: string;
+    artsChain?: string;
+    quickChain?: string;
+  },
   currentHp?: number,
   maxHp?: number,
   roundOrTurnSeed: number = 0
@@ -514,9 +523,6 @@ export function getServantChainDialogue(
   const isBusterBrave = cards.length === 3 && cards.every(c => c === 'Buster');
   const isArtsChain = cards.length === 3 && cards.every(c => c === 'Arts');
   const isQuickChain = cards.length === 3 && cards.every(c => c === 'Quick');
-  const isDesperation = (currentHp !== undefined && maxHp !== undefined && maxHp > 0) 
-    ? (currentHp / maxHp) <= 0.25 
-    : false;
 
   // Helper to pick varied lines based on turn seed + time
   const pickVaried = (list: string[]) => {
@@ -533,57 +539,50 @@ export function getServantChainDialogue(
       tag: 'NOBLE PHANTASM CHANT',
       color: 0xf59e0b,
       isBraveChain: true,
-      isDesperation,
+      isDesperation: false,
       chainType: 'np'
     };
   }
 
-  if (isDesperation && Math.random() > 0.35) {
-    return {
-      quote: pickVaried(profile.desperation),
-      tag: 'CRITICAL DESPERATION STRIKE',
-      color: 0xd97706,
-      isBraveChain: false,
-      isDesperation: true,
-      chainType: 'desperation'
-    };
-  }
-
+  // Pure Brave Chains (Custom Owner Quotes prioritized over default pool)
   if (isBusterBrave) {
+    const quote = customQuotes?.busterChain || pickVaried(profile.buster);
     return {
-      quote: pickVaried(profile.buster),
+      quote,
       tag: 'BUSTER BRAVE CHAIN',
       color: 0xef4444,
       isBraveChain: true,
-      isDesperation,
+      isDesperation: false,
       chainType: 'buster_brave'
     };
   }
 
   if (isArtsChain) {
+    const quote = customQuotes?.artsChain || pickVaried(profile.arts);
     return {
-      quote: pickVaried(profile.arts),
+      quote,
       tag: 'ARTS MANA CHAIN',
       color: 0x3b82f6,
       isBraveChain: true,
-      isDesperation,
+      isDesperation: false,
       chainType: 'arts_chain'
     };
   }
 
   if (isQuickChain) {
+    const quote = customQuotes?.quickChain || pickVaried(profile.quick);
     return {
-      quote: pickVaried(profile.quick),
+      quote,
       tag: 'QUICK STAR CHAIN',
       color: 0x10b981,
       isBraveChain: true,
-      isDesperation,
+      isDesperation: false,
       chainType: 'quick_chain'
     };
   }
 
   // Mixed / Standard Tactical Chain (e.g. Buster + Arts + Quick)
-  // Combines varied mixed dialogue with occasional custom lines
+  // Combines varied mixed dialogue with custom battleStart lines if set
   const mixedPool = [...profile.mixed];
   if (customQuotes?.battleStart) {
     mixedPool.push(customQuotes.battleStart);
@@ -594,20 +593,20 @@ export function getServantChainDialogue(
     tag: 'TACTICAL COMBAT CHAIN',
     color: 0xd4af37,
     isBraveChain: false,
-    isDesperation,
+    isDesperation: false,
     chainType: 'mixed'
   };
 }
 
 /**
- * Determines whether this attack turn warrants triggering the heavy 4-second Visual Novel Dialogue Cut-In!
- * RULE: Only trigger for Pure Brave/Resonance Chains (Buster Brave, Arts Mana, Quick Star)
- * or Desperation Last Stand (<25% HP), NOT for ordinary mixed 3-card chains!
+ * Determines whether this attack turn warrants triggering the Visual Novel Dialogue Cut-In.
+ * RULE: Only trigger for Pure Brave Chains (Buster Brave, Arts Mana, Quick Star).
+ * Desperation states do NOT trigger dialogue cut-ins.
  */
 export function shouldTriggerDialogueCutIn(
   cards: ('Buster' | 'Arts' | 'Quick' | 'NP')[],
-  currentHp?: number,
-  maxHp?: number,
+  _currentHp?: number,
+  _maxHp?: number,
   forceTrigger: boolean = false
 ): boolean {
   if (forceTrigger) return true;
@@ -619,9 +618,5 @@ export function shouldTriggerDialogueCutIn(
     cards.every(c => c === 'Quick')
   );
 
-  const isDesperation = (currentHp !== undefined && maxHp !== undefined && maxHp > 0)
-    ? (currentHp / maxHp) <= 0.25
-    : false;
-
-  return isBraveChain || isDesperation;
+  return isBraveChain;
 }

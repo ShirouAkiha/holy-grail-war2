@@ -44,10 +44,15 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
 
   const currentServant = master.servants.find(s => s.id === selectedServantId) || activeServant;
 
-  const [summonQuote, setSummonQuote] = useState(currentServant?.customQuotes.summon || '');
-  const [battleQuote, setBattleQuote] = useState(currentServant?.customQuotes.battleStart || '');
-  const [npChant, setNpChant] = useState(currentServant?.customQuotes.noblePhantasm || '');
-  const [victoryQuote, setVictoryQuote] = useState(currentServant?.customQuotes.victory || '');
+  const [summonQuote, setSummonQuote] = useState(currentServant?.customQuotes?.summon || '');
+  const [battleQuote, setBattleQuote] = useState(currentServant?.customQuotes?.battleStart || '');
+  const [npChant, setNpChant] = useState(currentServant?.customQuotes?.noblePhantasm || '');
+  const [victoryQuote, setVictoryQuote] = useState(currentServant?.customQuotes?.victory || '');
+  const [busterQuote, setBusterQuote] = useState(currentServant?.customQuotes?.busterChain || '');
+  const [artsQuote, setArtsQuote] = useState(currentServant?.customQuotes?.artsChain || '');
+  const [quickQuote, setQuickQuote] = useState(currentServant?.customQuotes?.quickChain || '');
+  const [defeatQuote, setDefeatQuote] = useState(currentServant?.customQuotes?.defeat || '');
+  const [activeDialogueTab, setActiveDialogueTab] = useState<'chains' | 'general'>('chains');
   const [saveFeedback, setSaveFeedback] = useState(false);
 
   // Servant Portrait & Artwork Customization State
@@ -123,7 +128,11 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
       summon: summonQuote,
       battleStart: battleQuote,
       noblePhantasm: npChant,
-      victory: victoryQuote
+      victory: victoryQuote,
+      defeat: defeatQuote,
+      busterChain: busterQuote,
+      artsChain: artsQuote,
+      quickChain: quickQuote
     });
     const updatedServants = master.servants.map(s => (s.id === updated.id ? updated : s));
     onUpdateMaster({ ...master, servants: updatedServants });
@@ -370,10 +379,14 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
               if (target) {
                 setAvatarUrl(target.template.avatarUrl || '');
                 setCardArtUrl(target.template.cardArtUrl || '');
-                setSummonQuote(target.customQuotes.summon || target.template.summonQuote);
-                setBattleQuote(target.customQuotes.battleStart || target.template.battleStartQuote);
-                setNpChant(target.customQuotes.noblePhantasm || target.template.noblePhantasm.chant);
-                setVictoryQuote(target.customQuotes.victory || target.template.victoryQuote);
+                setSummonQuote(target.customQuotes?.summon || target.template.summonQuote || '');
+                setBattleQuote(target.customQuotes?.battleStart || target.template.battleStartQuote || '');
+                setNpChant(target.customQuotes?.noblePhantasm || target.template.noblePhantasm.chant || '');
+                setVictoryQuote(target.customQuotes?.victory || target.template.victoryQuote || '');
+                setBusterQuote(target.customQuotes?.busterChain || '');
+                setArtsQuote(target.customQuotes?.artsChain || '');
+                setQuickQuote(target.customQuotes?.quickChain || '');
+                setDefeatQuote(target.customQuotes?.defeat || target.template.defeatQuote || '');
                 setNpGifUrl(target.template.noblePhantasm.animationUrl || '');
               }
             }}
@@ -580,53 +593,169 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
 
         {/* Right Col: Custom Dialogue & Battle Quotes Writer */}
         <div className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] space-y-4 shadow-2xl">
-          <div className="border-b border-[#1a1a1a] pb-3">
-            <h3 className="text-sm font-serif italic text-white flex items-center gap-1.5">
-              <BookOpen className="w-4 h-4 text-[#d4af37]" /> Custom Dialogue & Chants
-            </h3>
-            <p className="text-[11px] font-mono text-white/40 mt-0.5">Rendered dynamically on Discord Canvas cards</p>
+          <div className="border-b border-[#1a1a1a] pb-3 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-serif italic text-white flex items-center gap-1.5">
+                <BookOpen className="w-4 h-4 text-[#d4af37]" /> Custom Dialogue & Chants
+              </h3>
+              <p className="text-[11px] font-mono text-white/40 mt-0.5">Author custom voice lines for {currentServant.template.name}</p>
+            </div>
+            <button
+              onClick={() => {
+                setSummonQuote(currentServant.template.summonQuote || '');
+                setBattleQuote(currentServant.template.battleStartQuote || '');
+                setNpChant(currentServant.template.noblePhantasm.chant || '');
+                setVictoryQuote(currentServant.template.victoryQuote || '');
+                setDefeatQuote(currentServant.template.defeatQuote || '');
+                setBusterQuote('');
+                setArtsQuote('');
+                setQuickQuote('');
+              }}
+              className="text-[10px] font-mono px-2 py-1 rounded bg-[#161616] text-white/50 hover:text-white border border-[#222] transition"
+              title="Reset to Canon Fate quotes"
+            >
+              Reset to Canon
+            </button>
+          </div>
+
+          {/* Dialogue Category Selector */}
+          <div className="flex rounded-sm bg-[#121212] p-1 border border-[#222] text-[11px] font-mono">
+            <button
+              onClick={() => setActiveDialogueTab('chains')}
+              className={`flex-1 py-1.5 rounded-sm transition font-bold ${
+                activeDialogueTab === 'chains'
+                  ? 'bg-[#d4af37] text-black shadow'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              ⚡ Combat Chains & NP
+            </button>
+            <button
+              onClick={() => setActiveDialogueTab('general')}
+              className={`flex-1 py-1.5 rounded-sm transition font-bold ${
+                activeDialogueTab === 'general'
+                  ? 'bg-[#d4af37] text-black shadow'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              📜 Invocations & Outcomes
+            </button>
           </div>
 
           <div className="space-y-3 font-mono">
-            <div>
-              <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1">Summon Quote</label>
-              <textarea
-                value={summonQuote}
-                onChange={e => setSummonQuote(e.target.value)}
-                rows={2}
-                className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-[#d4af37] resize-none"
-              />
-            </div>
+            {activeDialogueTab === 'chains' ? (
+              <>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] uppercase tracking-wider text-red-400 font-bold flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
+                      Buster Brave Chain (3x Buster)
+                    </label>
+                    <span className="text-[9px] text-white/30">Priority battle cut-in line</span>
+                  </div>
+                  <textarea
+                    value={busterQuote}
+                    onChange={e => setBusterQuote(e.target.value)}
+                    placeholder="e.g. My blade leaves nothing but scorched earth! DIE!"
+                    rows={2}
+                    className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-red-500 resize-none"
+                  />
+                </div>
 
-            <div>
-              <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1">Battle Start Quote</label>
-              <textarea
-                value={battleQuote}
-                onChange={e => setBattleQuote(e.target.value)}
-                rows={2}
-                className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-[#d4af37] resize-none"
-              />
-            </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] uppercase tracking-wider text-blue-400 font-bold flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+                      Arts Mana Chain (3x Arts)
+                    </label>
+                    <span className="text-[9px] text-white/30">Priority mana resonance line</span>
+                  </div>
+                  <textarea
+                    value={artsQuote}
+                    onChange={e => setArtsQuote(e.target.value)}
+                    placeholder="e.g. Flow, leylines of the ancient world! Answer my call!"
+                    rows={2}
+                    className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-blue-500 resize-none"
+                  />
+                </div>
 
-            <div>
-              <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1">Noble Phantasm Chant</label>
-              <textarea
-                value={npChant}
-                onChange={e => setNpChant(e.target.value)}
-                rows={2}
-                className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-[#d4af37] resize-none"
-              />
-            </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                      Quick Star Chain (3x Quick)
+                    </label>
+                    <span className="text-[9px] text-white/30">Priority critical flurry line</span>
+                  </div>
+                  <textarea
+                    value={quickQuote}
+                    onChange={e => setQuickQuote(e.target.value)}
+                    placeholder="e.g. A flash of lightning—you won't even perceive the blow!"
+                    rows={2}
+                    className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-emerald-500 resize-none"
+                  />
+                </div>
 
-            <div>
-              <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1">Victory Quote</label>
-              <textarea
-                value={victoryQuote}
-                onChange={e => setVictoryQuote(e.target.value)}
-                rows={2}
-                className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-[#d4af37] resize-none"
-              />
-            </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
+                      Noble Phantasm Chant
+                    </label>
+                    <span className="text-[9px] text-white/30">True Name Release</span>
+                  </div>
+                  <textarea
+                    value={npChant}
+                    onChange={e => setNpChant(e.target.value)}
+                    rows={2}
+                    className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-amber-500 resize-none"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1">Summon Quote</label>
+                  <textarea
+                    value={summonQuote}
+                    onChange={e => setSummonQuote(e.target.value)}
+                    rows={2}
+                    className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-[#d4af37] resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1">Battle Start Quote</label>
+                  <textarea
+                    value={battleQuote}
+                    onChange={e => setBattleQuote(e.target.value)}
+                    rows={2}
+                    className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-[#d4af37] resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1">Victory Quote</label>
+                  <textarea
+                    value={victoryQuote}
+                    onChange={e => setVictoryQuote(e.target.value)}
+                    rows={2}
+                    className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-[#d4af37] resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1">Defeat Quote</label>
+                  <textarea
+                    value={defeatQuote}
+                    onChange={e => setDefeatQuote(e.target.value)}
+                    rows={2}
+                    placeholder="e.g. Master... stand back... I must retreat..."
+                    className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-[#d4af37] resize-none"
+                  />
+                </div>
+              </>
+            )}
 
             <button
               onClick={handleSaveQuotes}
