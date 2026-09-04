@@ -35,7 +35,7 @@ import * as healCommand from './commands/heal';
 import * as inventoryCommand from './commands/inventory';
 import * as equipCommand from './commands/equip';
 import * as boastCommand from './commands/boast';
-import { getOrCreateMaster, saveMaster, getAllThroneServants } from './database/service';
+import { getOrCreateMaster, saveMaster, getAllThroneServants, findServantInPool, searchAndRankServants } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from './data/noblePhantasmGifs';
 import { renderServantProfileCard, renderDialogueCard } from './canvas/renderer';
@@ -696,7 +696,428 @@ client.on(Events.InteractionCreate, async interaction => {
 });
 
 // ==========================================
-// 6. BOT STARTUP WRAPPER
+// 6. PREFIX COMMAND HANDLER (!command)
+// ==========================================
+// Allows server members to invoke bot commands using the '!' prefix alongside '/' slash commands.
+client.on(Events.MessageCreate, async message => {
+  try {
+    if (message.author.bot) return;
+    if (!message.content.startsWith('!')) return;
+
+    const raw = message.content.slice(1).trim();
+    if (!raw) return;
+
+    const parts = raw.split(/\s+/);
+    const cmd = parts[0].toLowerCase();
+    const args = parts.slice(1);
+    const query = args.join(' ').trim();
+
+    const master = await getOrCreateMaster(message.author.id, message.author.username);
+    const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+    const allServants = getAllThroneServants();
+
+    // ----------------------------------------------------
+    // !help / !commands / !guide
+    // ----------------------------------------------------
+    if (cmd === 'help' || cmd === 'commands' || cmd === 'guide' || cmd === 'info') {
+      const helpEmbed = new EmbedBuilder()
+        .setTitle('⚔️ Holy Grail War Bot — Command Guide')
+        .setDescription(
+          `*You can execute any command using either \`/\` slash commands or \`!\` text prefixes.*\n\n` +
+          `**👑 Servants & Throne of Heroes**\n` +
+          `• \`!servant\` — View your contracted Servant profile, stats & radar card\n` +
+          `• \`!servants [list]\` — Browse all canonical and custom Heroic Spirits\n` +
+          `• \`!servants view <name>\` — Inspect full profile and parameters of any Servant\n` +
+          `• \`!np <name>\` — Watch cinematic animated Noble Phantasm cards & chanting\n` +
+          `• \`!art <name>\` — View high-definition character card artwork\n` +
+          `• \`!summon\` — Initiate the Greater Grail summoning ritual\n\n` +
+          `**🏆 Holy Grail War & Magecraft**\n` +
+          `• \`!heal\` — Perform workshop leylines healing ritual for Servant & Master\n` +
+          `• \`!grailwar\` / \`!war\` — View 7-Master tournament standing & intelligence board\n` +
+          `• \`!profile\` — View Command Seals, Mana, and combat record\n` +
+          `• \`!defenses\` — Manage workshop boundary fields and auto-evasion\n` +
+          `• \`!church\` — Enter neutral Fuyuki Church sanctuary\n` +
+          `• \`!inventory\` — Manage Craft Essences, catalysts, and vault\n` +
+          `• \`!cegacha\` — Perform Craft Essence invocation\n` +
+          `• \`!patrol\` — Patrol Fuyuki City for reconnaissance and skirmishes\n` +
+          `• \`!boast\` — Broadcast active Servant profile card to the channel`
+        )
+        .setColor(0xd4af37)
+        .setFooter({ text: 'Tip: Click the interactive buttons below for quick shortcuts' });
+
+      const helpButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('btn_show_servants_list').setLabel('All Servants (!servants)').setStyle(ButtonStyle.Primary).setEmoji('📜'),
+        new ButtonBuilder().setCustomId('go_summon').setLabel('Summon Spirit (!summon)').setStyle(ButtonStyle.Success).setEmoji('✨'),
+        new ButtonBuilder().setCustomId('war_my_profile').setLabel('My Profile (!profile)').setStyle(ButtonStyle.Secondary).setEmoji('👤')
+      );
+
+      await message.reply({ embeds: [helpEmbed], components: [helpButtons] });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // !servant / !myservant / !status
+    // ----------------------------------------------------
+    if (cmd === 'servant' || cmd === 'myservant') {
+      if (args[0]?.toLowerCase() === 'np') {
+        const targetQuery = args.slice(1).join(' ').trim();
+        const target = targetQuery ? findServantInPool(targetQuery, allServants) : (activeServant ? activeServant.template : undefined);
+        if (target) {
+          const npEmbed = buildNoblePhantasmEmbed(target);
+          const actions = buildNoblePhantasmActions(target.id);
+          await message.reply({ embeds: [npEmbed], components: [actions] });
+        } else {
+          await message.reply({ content: `❌ Heroic Spirit "${targetQuery}" not found in the Throne of Heroes.` });
+        }
+        return;
+      }
+
+      if (args[0]?.toLowerCase() === 'art' || args[0]?.toLowerCase() === 'artwork') {
+        const targetQuery = args.slice(1).join(' ').trim();
+        const target = targetQuery ? findServantInPool(targetQuery, allServants) : (activeServant ? activeServant.template : undefined);
+        if (target) {
+          const artEmbed = buildServantArtworkEmbed(target);
+          const actions = buildNoblePhantasmActions(target.id);
+          await message.reply({ embeds: [artEmbed], components: [actions] });
+        } else {
+          await message.reply({ content: `❌ Heroic Spirit "${targetQuery}" not found in the Throne of Heroes.` });
+        }
+        return;
+      }
+
+      if (!activeServant) {
+        const noServantEmbed = new EmbedBuilder()
+          .setTitle('🕯️ No Contracted Servant')
+          .setDescription('You have not summoned a Heroic Spirit yet for the Holy Grail War!\nUse `!summon` or `/summon ritual` to invoke the Greater Grail.')
+          .setColor(0xef4444);
+
+        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder().setCustomId('go_summon').setLabel('Summon Spirit').setStyle(ButtonStyle.Success).setEmoji('✨'),
+          new ButtonBuilder().setCustomId('btn_show_servants_list').setLabel('Browse Throne').setStyle(ButtonStyle.Primary).setEmoji('📜')
+        );
+
+        await message.reply({ embeds: [noServantEmbed], components: [row] });
+        return;
+      }
+
+      const t = activeServant.template;
+      const profileEmbed = buildServantFullProfileEmbed(t);
+      const artworkEmbed = buildServantArtworkEmbed(t);
+      const actions = buildProfileActions(t.id);
+
+      const files: AttachmentBuilder[] = [];
+      try {
+        const cardBuffer = await renderServantProfileCard(activeServant, message.author.username);
+        if (cardBuffer && cardBuffer.length > 500) {
+          files.push(new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' }));
+        }
+      } catch (e) {
+        console.warn('Canvas render error in !servant:', e);
+      }
+
+      await message.reply({ embeds: [profileEmbed, artworkEmbed], files, components: [actions] });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // !servants [list | search <term> | view <name> | np <name> | art <name>]
+    // ----------------------------------------------------
+    if (cmd === 'servants' || cmd === 'throne' || cmd === 'servantlist') {
+      const sub = args[0]?.toLowerCase();
+      const targetQuery = args.slice(1).join(' ').trim();
+
+      if (sub === 'np' || sub === 'noblephantasm') {
+        const target = targetQuery ? findServantInPool(targetQuery, allServants) : (activeServant?.template || allServants[0]);
+        if (target) {
+          const npEmbed = buildNoblePhantasmEmbed(target);
+          const actions = buildNoblePhantasmActions(target.id);
+          await message.reply({ embeds: [npEmbed], components: [actions] });
+        } else {
+          await message.reply({ content: `❌ Heroic Spirit "${targetQuery}" not found.` });
+        }
+        return;
+      }
+
+      if (sub === 'art' || sub === 'artwork') {
+        const target = targetQuery ? findServantInPool(targetQuery, allServants) : (activeServant?.template || allServants[0]);
+        if (target) {
+          const artEmbed = buildServantArtworkEmbed(target);
+          const actions = buildNoblePhantasmActions(target.id);
+          await message.reply({ embeds: [artEmbed], components: [actions] });
+        } else {
+          await message.reply({ content: `❌ Heroic Spirit "${targetQuery}" not found.` });
+        }
+        return;
+      }
+
+      if (sub === 'view' || sub === 'info' || (sub && sub !== 'list' && sub !== 'search')) {
+        const queryToSearch = sub === 'view' || sub === 'info' ? targetQuery : query;
+        const target = findServantInPool(queryToSearch, allServants);
+        if (target) {
+          const profileEmbed = buildServantFullProfileEmbed(target);
+          const artworkEmbed = buildServantArtworkEmbed(target);
+          const actions = buildProfileActions(target.id);
+
+          const files: AttachmentBuilder[] = [];
+          try {
+            const tempInstance = createServantTempInstance(target);
+            const cardBuffer = await renderServantProfileCard(tempInstance, 'Throne of Heroes');
+            if (cardBuffer && cardBuffer.length > 500) {
+              files.push(new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' }));
+            }
+          } catch {}
+
+          await message.reply({ embeds: [profileEmbed, artworkEmbed], files, components: [actions] });
+          return;
+        }
+      }
+
+      if (sub === 'search') {
+        const matched = searchAndRankServants(targetQuery, allServants);
+        if (matched.length === 0) {
+          await message.reply({ content: `🔍 No Heroic Spirits matched "${targetQuery}". Use \`!servants list\` to view all.` });
+          return;
+        }
+        const listEmbed = buildListEmbed(
+          matched.slice(0, 15),
+          `🔍 Throne Search Results for "${targetQuery}" (${matched.length} Found)`,
+          `Select a Servant to display their full parameters and artwork:`
+        );
+        const rows = buildServantButtons(matched.slice(0, 10));
+        await message.reply({ embeds: [listEmbed], components: rows });
+        return;
+      }
+
+      // Default !servants / !servants list
+      const listEmbed = buildListEmbed(
+        allServants.slice(0, 15),
+        `📜 Throne of Heroes Registry (${allServants.length} Servants)`,
+        `Select any Heroic Spirit below to inspect their full profile, stats, and Noble Phantasm:`
+      );
+      const rows = buildServantButtons(allServants.slice(0, 10));
+      await message.reply({ embeds: [listEmbed], components: rows });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // !np <name> / !noblephantasm <name>
+    // ----------------------------------------------------
+    if (cmd === 'np' || cmd === 'noblephantasm') {
+      const target = query ? findServantInPool(query, allServants) : (activeServant?.template || allServants[0]);
+      if (target) {
+        const npEmbed = buildNoblePhantasmEmbed(target);
+        const actions = buildNoblePhantasmActions(target.id);
+        await message.reply({ embeds: [npEmbed], components: [actions] });
+      } else {
+        await message.reply({ content: `❌ Heroic Spirit "${query}" not found in the Throne of Heroes.` });
+      }
+      return;
+    }
+
+    // ----------------------------------------------------
+    // !art <name> / !artwork <name> / !portrait <name>
+    // ----------------------------------------------------
+    if (cmd === 'art' || cmd === 'artwork' || cmd === 'portrait') {
+      const target = query ? findServantInPool(query, allServants) : (activeServant?.template || allServants[0]);
+      if (target) {
+        const artEmbed = buildServantArtworkEmbed(target);
+        const actions = buildNoblePhantasmActions(target.id);
+        await message.reply({ embeds: [artEmbed], components: [actions] });
+      } else {
+        await message.reply({ content: `❌ Heroic Spirit "${query}" not found in the Throne of Heroes.` });
+      }
+      return;
+    }
+
+    // ----------------------------------------------------
+    // !heal / !rest
+    // ----------------------------------------------------
+    if (cmd === 'heal' || cmd === 'rest') {
+      if (!master.servants || master.servants.length === 0) {
+        await message.reply({ content: '❌ You have no contracted Servant to heal. Use `!summon` to enter the Holy Grail War.' });
+        return;
+      }
+
+      let war = getOrInitWarSession(master);
+      const res = executeWarAction(war, message.author.id, 'heal_ritual');
+      war = res.updatedWar;
+      await saveMaster(master);
+
+      const healEmbed = new EmbedBuilder()
+        .setTitle(res.success ? '✨ LEYLINE HEALING RITUAL COMPLETE' : '⏳ LEYLINE HEALING ON COOLDOWN')
+        .setDescription(res.message)
+        .setColor(res.success ? 0x22c55e : 0xf59e0b)
+        .setFooter({ text: 'Command: !heal • Check !grailwar status' });
+
+      await message.reply({ embeds: [healEmbed] });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // !grailwar / !war / !tourney
+    // ----------------------------------------------------
+    if (cmd === 'grailwar' || cmd === 'war' || cmd === 'tourney' || cmd === 'tournament') {
+      const war = getOrInitWarSession(master);
+      const uP = war.participants[message.author.id];
+      const embed = buildWarEmbed(war, uP);
+      const btns = buildWarButtons();
+      await message.reply({ embeds: [embed], components: [btns] });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // !profile / !me
+    // ----------------------------------------------------
+    if (cmd === 'profile' || cmd === 'me') {
+      const war = getOrInitWarSession(master);
+      const isCivilian = !master.servants || master.servants.length === 0;
+      if (isCivilian) {
+        await message.reply({
+          content: '📜 **Civilian Spectator Dossier:** You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `!summon` to establish a covenant and enter the Holy Grail War.'
+        });
+        return;
+      }
+      const uP = war.participants[message.author.id];
+      const embed = buildProfileEmbed(master, war);
+      const btns = buildProfileButtons(uP);
+      await message.reply({ embeds: [embed], components: btns });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // !defenses / !defense / !workshop
+    // ----------------------------------------------------
+    if (cmd === 'defenses' || cmd === 'defense' || cmd === 'workshop') {
+      const war = getOrInitWarSession(master);
+      const isCivilian = !master.servants || master.servants.length === 0;
+      if (isCivilian) {
+        await message.reply({
+          content: '📜 **Civilian Spectator:** You do not have a magecraft workshop established yet. Use `!summon` first.'
+        });
+        return;
+      }
+      const uP = war.participants[message.author.id];
+      const embed = buildDefensesEmbed(uP);
+      const btns = buildDefensesButtons(uP);
+      await message.reply({ embeds: [embed], components: btns });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // !church / !sanctuary
+    // ----------------------------------------------------
+    if (cmd === 'church' || cmd === 'sanctuary') {
+      const war = getOrInitWarSession(master);
+      const uP = war.participants[message.author.id];
+      const embed = buildChurchEmbed(uP);
+      const btns = buildChurchButtons(uP);
+      await message.reply({ embeds: [embed], components: btns });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // !inventory / !inv
+    // ----------------------------------------------------
+    if (cmd === 'inventory' || cmd === 'inv') {
+      const cesCount = master.craftEssences?.length || 0;
+      const sqCount = master.saintQuartz || 0;
+      const servantsCount = master.servants?.length || 0;
+
+      const invEmbed = new EmbedBuilder()
+        .setTitle(`🎒 Master Inventory: ${message.author.username}`)
+        .setDescription(
+          `💎 **Saint Quartz:** \`${sqCount} SQ\`\n` +
+          `⚔️ **Contracted Servants:** \`${servantsCount}\`\n` +
+          `🛡️ **Craft Essences:** \`${cesCount}\`\n\n` +
+          (cesCount > 0 
+            ? master.craftEssences.map((ce: any, i: number) => `${i + 1}. **${ce.name}** [★${ce.rarity}] — *+${ce.atkBonus} ATK, +${ce.hpBonus} HP*`).join('\n')
+            : '*No Craft Essences held yet. Use `/cegacha` or `!cegacha` to summon Essences!*')
+        )
+        .setColor(0x38bdf8)
+        .setFooter({ text: 'Command: !inventory • Use !equip to equip a Craft Essence' });
+
+      await message.reply({ embeds: [invEmbed] });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // !patrol / !scout
+    // ----------------------------------------------------
+    if (cmd === 'patrol' || cmd === 'scout') {
+      let war = getOrInitWarSession(master);
+      const chanName = (message.channel as any)?.name || 'fuyuki-city';
+      const res = patrolCityInWar(war, message.author.id, message.author.username, chanName);
+      await saveMaster(master);
+
+      const patrolEmbed = new EmbedBuilder()
+        .setTitle('👁️ Fuyuki City Reconnaissance Patrol')
+        .setDescription(res.message)
+        .setColor(res.success ? 0x3b82f6 : 0xf59e0b)
+        .setFooter({ text: 'Command: !patrol' });
+
+      await message.reply({ embeds: [patrolEmbed] });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // !summon
+    // ----------------------------------------------------
+    if (cmd === 'summon') {
+      const summonEmbed = new EmbedBuilder()
+        .setTitle('✨ Throne of Heroes Invocation')
+        .setDescription(
+          `To invoke the Greater Grail and summon a Heroic Spirit, use the slash command:\n` +
+          `\`\`\`bash\n/summon ritual\`\`\`\n` +
+          `Or click the **Begin Summoning Ritual** button below!`
+        )
+        .setColor(0xd4af37);
+
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('go_summon').setLabel('Begin Summoning Ritual').setStyle(ButtonStyle.Success).setEmoji('✨'),
+        new ButtonBuilder().setCustomId('btn_show_servants_list').setLabel('Browse Throne (!servants)').setStyle(ButtonStyle.Primary).setEmoji('📜')
+      );
+
+      await message.reply({ embeds: [summonEmbed], components: [row] });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // !boast
+    // ----------------------------------------------------
+    if (cmd === 'boast') {
+      if (!activeServant) {
+        await message.reply({ content: '❌ You have no contracted Servant to boast about! Use `!summon` first.' });
+        return;
+      }
+
+      const files: AttachmentBuilder[] = [];
+      try {
+        const cardBuffer = await renderServantProfileCard(activeServant, message.author.username);
+        if (cardBuffer && cardBuffer.length > 500) {
+          files.push(new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' }));
+        }
+      } catch {}
+
+      const boastEmbed = new EmbedBuilder()
+        .setTitle(`📢 MASTER DECLARATION: ${message.author.username} & ${activeServant.template.name}`)
+        .setDescription(`*"Behold my contracted Heroic Spirit in this Holy Grail War!"*`)
+        .setColor(0xd4af37);
+
+      if (files.length > 0) {
+        boastEmbed.setImage('attachment://servant_profile.png');
+      }
+
+      await message.reply({ embeds: [boastEmbed], files });
+      return;
+    }
+
+  } catch (err: any) {
+    console.warn('Prefix command error:', err?.message || err);
+  }
+});
+
+// ==========================================
+// 7. BOT STARTUP WRAPPER
 // ==========================================
 export async function startBot() {
   const token = process.env.DISCORD_BOT_TOKEN;

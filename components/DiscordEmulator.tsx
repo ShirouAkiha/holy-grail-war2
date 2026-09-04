@@ -488,7 +488,9 @@ export default function DiscordEmulator({
 
   const handleCommand = (cmd: string) => {
     const rawCmd = cmd.trim();
-    const trimmed = rawCmd.toLowerCase();
+    // Normalize exclamation mark prefix `!command` to `/command` so both styles work interchangeably
+    const normalizedRawCmd = rawCmd.startsWith('!') ? '/' + rawCmd.slice(1) : rawCmd;
+    const trimmed = normalizedRawCmd.toLowerCase();
 
     // Check automatic exposure if executing commands in PUBLIC channel
     if (activeChannel === 'public' && activeServant) {
@@ -2571,22 +2573,28 @@ export default function DiscordEmulator({
       sender: 'bot',
       timestamp: 'Just now',
       embed: {
-        title: '❓ Holy Grail War Command Guide',
+        title: '❓ Holy Grail War Command Guide (Supports / and ! prefixes)',
         description:
-          `• \`/servants [list | search <term> | view <name>]\` — **Browse & search all canon/custom Servants**\n` +
-          `• \`/summon [ritual | status | release]\` — Summon a random available Servant\n` +
-          `• \`/addservant [create | list | delete]\` — **(Admin)** Register custom Heroic Spirits\n` +
-          `• \`/servant\` — View your contracted Servant profile & radar card\n` +
-          `• \`/duel\` — Initiate Turn-based RPG Combat\n` +
-          `• \`/grailwar\` — 7-Master Tournament Status & Clashes`,
+          `*You can type commands using either \`/\` slash syntax or \`!\` text prefix (e.g. \`/servant\` or \`!servant\`).*\n\n` +
+          `• \`!servants [list | search <term> | view <name>]\` — Browse & inspect all Servants in the Throne\n` +
+          `• \`!np <name>\` / \`!art <name>\` — View animated Noble Phantasm cinematics & full card artwork\n` +
+          `• \`!summon [ritual | status | release]\` — Summon a random Heroic Spirit to contract\n` +
+          `• \`!servant\` — View your contracted Servant profile, radar card, and voice lines\n` +
+          `• \`!heal\` — Perform workshop leylines healing ritual\n` +
+          `• \`!duel [@master]\` — Challenge a rival Master to turn-based RPG combat\n` +
+          `• \`!grailwar\` — 7-Master Tournament Battle Royal dashboard & scouting\n` +
+          `• \`!profile\` & \`!defenses\` — Manage Master Command Seals, Mana, and workshop boundary fields\n` +
+          `• \`!inventory\` & \`!equip\` — Manage Craft Essences, catalysts, and saint quartz\n` +
+          `• \`!church\` — Enter neutral Church Sanctuary protection\n` +
+          `• \`!addservant\` — **(Admin)** Register or customize Heroic Spirits`,
         color: '#64748b'
       },
       components: {
         type: 'buttons',
         items: [
-          { id: 'btn_show_servants_list', label: 'Browse All Servants (/servants)', style: 'primary', emoji: '📜' },
-          { id: 'quick_summon_ritual', label: 'Summon Servant', style: 'success', emoji: '✨' },
-          { id: 'quick_start_duel', label: 'Enter Arena (/duel)', style: 'danger', emoji: '⚔️' }
+          { id: 'btn_show_servants_list', label: 'Browse All Servants (!servants)', style: 'primary', emoji: '📜' },
+          { id: 'quick_summon_ritual', label: 'Summon Servant (!summon)', style: 'success', emoji: '✨' },
+          { id: 'quick_start_duel', label: 'Enter Arena (!duel)', style: 'danger', emoji: '⚔️' }
         ]
       }
     });
