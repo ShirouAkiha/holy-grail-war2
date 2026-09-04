@@ -136,19 +136,6 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
     });
     const updatedServants = master.servants.map(s => (s.id === updated.id ? updated : s));
     onUpdateMaster({ ...master, servants: updatedServants });
-
-    // Sync to server so bot commands (duel, summon, etc.) immediately use updated quotes
-    fetch('/api/servants/custom', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'edit',
-        servant: currentServant.template.id || currentServant.template.name,
-        summonQuote: summonQuote,
-        noblePhantasmChant: npChant
-      })
-    }).catch(err => console.warn('Server quote sync warning:', err));
-
     setSaveFeedback(true);
     setTimeout(() => setSaveFeedback(false), 3000);
   };

@@ -41,34 +41,21 @@ export async function POST(req: NextRequest) {
     const filename = `np_${safeServantName}_${timestamp}${ext}`;
 
     const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-    const cacheDir = path.join(process.cwd(), 'data', 'media_cache');
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
     }
-    if (!fs.existsSync(cacheDir)) {
-      fs.mkdirSync(cacheDir, { recursive: true });
-    }
 
     const filePath = path.join(uploadsDir, filename);
-    const cachePath = path.join(cacheDir, filename);
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
     fs.writeFileSync(filePath, buffer);
-    fs.writeFileSync(cachePath, buffer);
 
     const publicUrl = `/uploads/${filename}`;
-    let dataUrl = publicUrl;
-    if (buffer.length <= 5 * 1024 * 1024) {
-      const mime = file.type || (ext === '.gif' ? 'image/gif' : ext === '.png' ? 'image/png' : 'image/jpeg');
-      dataUrl = `data:${mime};base64,${buffer.toString('base64')}`;
-    }
 
     return NextResponse.json({
       success: true,
-      url: dataUrl || publicUrl,
-      publicUrl,
-      dataUrl,
+      url: publicUrl,
       filename,
       size: file.size,
       mimeType: file.type || 'image/gif'

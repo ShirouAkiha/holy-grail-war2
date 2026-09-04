@@ -5,10 +5,8 @@ import {
   ButtonBuilder, 
   ButtonStyle, 
   EmbedBuilder,
-  AttachmentBuilder,
   ComponentType
 } from 'discord.js';
-import { renderDialogueCard } from '../canvas/renderer';
 import { 
   getOrCreateMaster, 
   saveMaster, 
@@ -357,27 +355,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .setColor(0xa855f7)
       .setFooter({ text: 'Magecraft Circuits Active • Channelling Mana into the Greater Grail' });
 
-    const summonQuote = newServant.customQuotes?.summon || template.summonQuote;
-
-    const summonDialogueBuffer = await renderDialogueCard(
-      template.name,
-      summonQuote,
-      'HEROIC SPIRIT SUMMON',
-      template.servantClass,
-      template.cardArtUrl || template.avatarUrl,
-      1,
-      'Greater Grail',
-      undefined,
-      'Throne of Heroes',
-      ['Buster', 'Arts', 'Quick']
-    );
-    const summonAttachment = new AttachmentBuilder(summonDialogueBuffer, { name: 'summon-dialogue.png' });
-
     const summonEmbed = new EmbedBuilder()
       .setTitle(`✨ HEROIC SPIRIT SUMMONED: ${template.name.toUpperCase()}`)
       .setDescription(
         `═══════════════════════════════════\n` +
-        `🗣️ **"${summonQuote}"**\n` +
+        `🗣️ **"${newServant.customQuotes?.summon || template.summonQuote}"**\n` +
         `═══════════════════════════════════\n\n` +
         `👤 **True Name:** **${template.name}**\n` +
         `🗡️ **Class:** \`${template.servantClass}\` | **Title:** *${template.title}*\n` +
@@ -389,7 +371,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `* "${template.noblePhantasm.chant}" *\n\n` +
         `📜 **Lore:**\n${template.lore}`
       )
-      .setImage('attachment://summon-dialogue.png')
+      .setImage(template.cardArtUrl || template.avatarUrl)
       .setColor(0xd4af37)
       .setFooter({ text: `Holy Grail War Contract Active • Use /servant or /duel` });
 
@@ -413,7 +395,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const reply = await interaction.reply({
       embeds: [ritualEmbed, summonEmbed],
-      files: [summonAttachment],
       components: [actionRow],
       ephemeral: true,
       withResponse: true
@@ -459,33 +440,18 @@ function setupSummonButtonCollector(message: any, userId: string) {
         const template = currentServant?.template;
         if (template && i.channel && 'send' in i.channel) {
           const starStr = '★'.repeat(template.rarity || 4);
-          const boastQuote = currentServant.customQuotes?.summon || template.summonQuote;
-          const boastDialogueBuffer = await renderDialogueCard(
-            template.name,
-            boastQuote,
-            'HEROIC SPIRIT SUMMON',
-            template.servantClass,
-            template.cardArtUrl || template.avatarUrl,
-            1,
-            'Greater Grail',
-            undefined,
-            'Throne of Heroes',
-            ['Buster', 'Arts', 'Quick']
-          );
-          const boastAttachment = new AttachmentBuilder(boastDialogueBuffer, { name: 'boast-dialogue.png' });
-
           const announceEmbed = new EmbedBuilder()
             .setTitle(`📢 MASTER ANNOUNCEMENT: ${master.username.toUpperCase()} FORGES CONTRACT!`)
             .setDescription(
               `Master **${master.username}** has openly unveiled their sacred covenant with **${template.name}** (\`${template.servantClass}\` • [${starStr}])!\n\n` +
-              `🗣️ *" ${boastQuote} "*\n\n` +
+              `🗣️ *" ${currentServant.customQuotes?.summon || template.summonQuote} "*\n\n` +
               `💥 **Noble Phantasm:** *${template.noblePhantasm.name}*\n\n` +
               `⚠️ *Master **${master.username}** has renounced the shadows and is now permanently **EXPOSED** on the Holy Grail War board (\`/grailwar status\`)!*`
             )
-            .setImage('attachment://boast-dialogue.png')
+            .setImage(template.cardArtUrl || template.avatarUrl)
             .setColor(template.rarity === 5 ? 0xd4af37 : 0xef4444);
 
-          await (i.channel as any).send({ embeds: [announceEmbed], files: [boastAttachment] });
+          await (i.channel as any).send({ embeds: [announceEmbed] });
         }
         await i.reply({
           content: '📢 You have revealed your Heroic Spirit to the server! Your identity is now permanently exposed on the War Board.',
