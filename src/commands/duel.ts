@@ -240,6 +240,79 @@ function renderHealthBar(current: number, max: number, length: number = 10): str
   return `${emoji.repeat(filled)}${'⬛'.repeat(empty)} \`${Math.max(0, current).toLocaleString()}/${max.toLocaleString()}\` (${Math.round(pct * 100)}%)`;
 }
 
+// Helper to calculate chain-based dialogue quote, tag, and embed color
+function getCombatantChainDialogue(
+  combatant: DuelCombatant,
+  cards: ('Buster' | 'Arts' | 'Quick' | 'NP')[]
+): { quote: string; tag: string; color: number } {
+  const isNP = cards.includes('NP');
+  const isBusterBrave = cards.length === 3 && cards.every(c => c === 'Buster');
+  const isArtsChain = cards.length === 3 && cards.every(c => c === 'Arts');
+  const isQuickChain = cards.length === 3 && cards.every(c => c === 'Quick');
+
+  let quote = combatant.servant.customQuotes?.battleStart || combatant.servant.template?.battleStartQuote;
+  let tag = 'TACTICAL COMBAT CHAIN';
+  let color = 0xd4af37;
+
+  if (isNP) {
+    quote = combatant.servant.customQuotes?.noblePhantasm || combatant.servant.template?.noblePhantasm?.chant || "Sword of Promised Victory... EXCALIBUR!";
+    tag = 'NOBLE PHANTASM CHANT';
+    color = 0xf59e0b;
+  } else if (isBusterBrave) {
+    quote = combatant.servant.customQuotes?.battleStart || combatant.servant.template?.battleStartQuote || "All mana into maximum destruction! Unstoppable strike!";
+    tag = 'BUSTER BRAVE CHAIN';
+    color = 0xef4444;
+  } else if (isArtsChain) {
+    quote = combatant.servant.customQuotes?.battleStart || combatant.servant.template?.battleStartQuote || "Charging mana reservoir... let's flood the battlefield!";
+    tag = 'ARTS MANA CHAIN';
+    color = 0x3b82f6;
+  } else if (isQuickChain) {
+    quote = combatant.servant.customQuotes?.battleStart || combatant.servant.template?.battleStartQuote || "Swift like lightning... you won't even see the strike!";
+    tag = 'QUICK STAR CHAIN';
+    color = 0x10b981;
+  } else if (!quote) {
+    quote = "Executing tactical 3-card chain! My blade answers your command, Master!";
+  }
+
+  return { quote, tag, color };
+}
+
+// Helper to build pre-attack dialogue cut-in embed box
+function buildDialogueCutInEmbed(
+  attacker: DuelCombatant,
+  defender: DuelCombatant,
+  sequence: ('Buster' | 'Arts' | 'Quick' | 'NP')[],
+  dialogue: { quote: string; tag: string; color: number }
+): EmbedBuilder {
+  const sName = attacker.servant.nickname || attacker.servant.template?.name || 'Heroic Spirit';
+  const sClass = attacker.servant.template?.servantClass || 'Servant';
+  const avatar = attacker.servant.template?.avatarUrl;
+  const seqDisplay = sequence.map(c => {
+    if (c === 'Buster') return '🔴 **Buster**';
+    if (c === 'Arts') return '🔵 **Arts**';
+    if (c === 'Quick') return '🟢 **Quick**';
+    return '💥 **Noble Phantasm**';
+  }).join(' ➔ ');
+
+  const embed = new EmbedBuilder()
+    .setTitle(`💬 [${dialogue.tag}] — ${sName.toUpperCase()}`)
+    .setDescription(
+      `### ⚔️ **${sName}** *(${sClass})*\n` +
+      `> ❝ ***${dialogue.quote}*** ❞\n\n` +
+      `⚡ **Executing Sequence:** ${seqDisplay}\n` +
+      `🎯 **Target:** **${defender.servant.nickname || defender.servant.template?.name}**\n\n` +
+      `⏳ *Unleashing tactical strike in 4 seconds...*`
+    )
+    .setColor(dialogue.color)
+    .setFooter({ text: 'Holy Grail War • Tactical RPG Battle Dialogue Cut-In' });
+
+  if (avatar) {
+    embed.setThumbnail(avatar);
+  }
+
+  return embed;
+}
+
 async function createTurnSummaryAttachment(
   p1: DuelCombatant,
   p2: DuelCombatant,
@@ -291,28 +364,15 @@ async function createTurnSummaryAttachment(
   const isCrit = lastLogText.includes('CRITICAL');
   const isNP = lastLogText.includes('NOBLE PHANTASM');
 
-  // Extract dialogue quotes & tags for mid-battle cut-in
-  const isBusterBrave = p1Cards.length === 3 && p1Cards.every(c => c === 'Buster');
-  const isArtsChain = p1Cards.length === 3 && p1Cards.every(c => c === 'Arts');
-  const isQuickChain = p1Cards.length === 3 && p1Cards.every(c => c === 'Quick');
+  // Identify who was the attacker in the most recent combat log entry
+  const isP2Attacker = lastLogText.includes(`**${p2.servant.template.name}** executed sequence`);
+  const activeAttacker = isP2Attacker ? p2 : p1;
+  const activeDefender = isP2Attacker ? p1 : p2;
+  const activeCards = isP2Attacker ? p2Cards : p1Cards;
 
-  let dQuote = p1.servant.customQuotes?.battleStart || p1.servant.template?.battleStartQuote;
-  let dTag = 'TACTICAL COMBAT CHAIN';
-  if (isNP) {
-    dQuote = p1.servant.customQuotes?.noblePhantasm || p1.servant.template?.noblePhantasm?.chant || "Sword of Promised Victory... EXCALIBUR!";
-    dTag = 'NOBLE PHANTASM CHANT';
-  } else if (isBusterBrave) {
-    dQuote = p1.servant.customQuotes?.battleStart || "All mana into maximum destruction! Unstoppable strike!";
-    dTag = 'BUSTER BRAVE CHAIN';
-  } else if (isArtsChain) {
-    dQuote = p1.servant.customQuotes?.battleStart || "Charging mana reservoir... let's flood the battlefield!";
-    dTag = 'ARTS MANA CHAIN';
-  } else if (isQuickChain) {
-    dQuote = p1.servant.customQuotes?.battleStart || "Swift like lightning... you won't even see the strike!";
-    dTag = 'QUICK STAR CHAIN';
-  } else if (!dQuote) {
-    dQuote = "Executing tactical 3-card chain! My blade answers your command, Master!";
-  }
+  const dInfo = getCombatantChainDialogue(activeAttacker, activeCards);
+  const dQuote = dInfo.quote;
+  const dTag = dInfo.tag;
 
   // Extract damage, NP gained, stars generated via regex
   const dmgMatch = lastLogText.match(/Dealt \*\*([\d,]+) DMG\*\*/i) || lastLogText.match(/([\d,]+)\s*DMG/i);
@@ -332,15 +392,15 @@ async function createTurnSummaryAttachment(
 
   const turnLog: CombatTurnLog = {
     turnNumber: round,
-    actorId: p1.userId,
-    actorName: p1.servant.template.name,
-    targetId: p2.userId,
-    targetName: p2.servant.template.name,
+    actorId: activeAttacker.userId,
+    actorName: activeAttacker.servant.template.name,
+    targetId: activeDefender.userId,
+    targetName: activeDefender.servant.template.name,
     actionSummary: cleanActionSummary,
     dialogueQuote: dQuote,
     dialogueTag: dTag,
-    dialogueTitle: p1.servant.template.name,
-    cardsUsed: p1Cards,
+    dialogueTitle: activeAttacker.servant.template.name,
+    cardsUsed: activeCards,
     p1Cards: p1Cards,
     p2Cards: p2Cards,
     skillsUsed: [],
@@ -350,12 +410,12 @@ async function createTurnSummaryAttachment(
     isCritical: isCrit,
     starsGenerated,
     npCharged,
-    actorHpRemaining: p1.currentHp,
-    targetHpRemaining: p2.currentHp,
-    actorHpMax: p1.maxHp,
-    targetHpMax: p2.maxHp,
-    actorNp: p1.npGauge,
-    targetNp: p2.npGauge
+    actorHpRemaining: activeAttacker.currentHp,
+    targetHpRemaining: activeDefender.currentHp,
+    actorHpMax: activeAttacker.maxHp,
+    targetHpMax: activeDefender.maxHp,
+    actorNp: activeAttacker.npGauge,
+    targetNp: activeDefender.npGauge
   };
 
   const imageBuffer = await renderBattleTurnSummary(turnLog, activeP1, activeP2);
@@ -733,7 +793,8 @@ function chooseAiSequence(ai: DuelCombatant): ('Buster' | 'Arts' | 'Quick' | 'NP
 function resolveStrike(
   attacker: DuelCombatant,
   defender: DuelCombatant,
-  cardsSequence: ('Buster' | 'Arts' | 'Quick' | 'NP')[]
+  cardsSequence: ('Buster' | 'Arts' | 'Quick' | 'NP')[],
+  dialogue?: { quote: string; tag: string }
 ): string {
   // Decrement attacker skill cooldowns
   for (const idxStr of Object.keys(attacker.skillCooldowns)) {
@@ -1084,7 +1145,10 @@ function resolveStrike(
   const chainStr = chainTags.length > 0 ? `\n⛓️ **Chains:** ${chainTags.join(' • ')}` : '';
 
   const seqNames = cardsSequence.join(' -> ');
-  const logText = `⚔️ **${attacker.servant.template.name}** executed sequence **[${seqNames}]**${npHeader}${critTag}${evadeTag}:\n` +
+  const dInfo = dialogue || getCombatantChainDialogue(attacker, cardsSequence);
+  const quoteLine = dInfo.quote ? `\n💬 *“${dInfo.quote}”*` : '';
+
+  const logText = `⚔️ **${attacker.servant.template.name}** executed sequence **[${seqNames}]**${npHeader}${critTag}${evadeTag}:${quoteLine}\n` +
     `• Dealt **${totalSeqDmg.toLocaleString()} DMG** to ${defender.servant.template.name}\n` +
     `• Gained **+${totalNpGained}% NP** & **+${totalStarsGained} Critical Stars**${chainStr}${gutsText}${avengerLog}`;
 
@@ -1410,7 +1474,8 @@ async function startInteractiveDuel(
     if (p2.isAi) {
       const aiCards = chooseAiSequence(p2);
       p2LastCards = aiCards;
-      const aiLog = resolveStrike(p2, p1, aiCards);
+      const aiDialogue = getCombatantChainDialogue(p2, aiCards);
+      const aiLog = resolveStrike(p2, p1, aiCards, aiDialogue);
       refreshCombatantHand(p2);
       combatLogs.push(aiLog);
       round++;
@@ -1634,15 +1699,28 @@ async function startInteractiveDuel(
       activePendingCards = [];
       activePendingIndices = [];
 
-      const log = resolveStrike(attacker, defender, playerSequence);
-      refreshCombatantHand(attacker);
-      combatLogs.push(log);
-      if (combatLogs.length > 4) combatLogs.shift();
+      const playerDialogue = getCombatantChainDialogue(attacker, playerSequence);
 
       // Trigger cinematic Noble Phantasm animated GIF if player used NP
       if (playerSequence.includes('NP')) {
         await dispatchNpGif(attacker, i);
       }
+
+      // Display the Mid-Battle Dialogue Cut-In Embed Box for 4-5 seconds
+      const cutInEmbed = buildDialogueCutInEmbed(attacker, defender, playerSequence, playerDialogue);
+      try {
+        await i.editReply({ embeds: [cutInEmbed], components: [] });
+      } catch (err) {
+        console.warn('Failed to render dialogue cut-in embed:', err);
+      }
+
+      // Wait 4 seconds for dialogue box presentation before damage is resolved
+      await new Promise(r => setTimeout(r, 4000));
+
+      const log = resolveStrike(attacker, defender, playerSequence, playerDialogue);
+      refreshCombatantHand(attacker);
+      combatLogs.push(log);
+      if (combatLogs.length > 4) combatLogs.shift();
 
       if (activeUserId === p1.userId) {
         p1LastCards = playerSequence;
@@ -1684,15 +1762,17 @@ async function startInteractiveDuel(
         p2LastCards = aiSequence;
         p2CardChoice = p2LastCards;
 
-        const aiLog = resolveStrike(defender, attacker, aiSequence);
-        refreshCombatantHand(defender);
-        combatLogs.push(aiLog);
-        if (combatLogs.length > 4) combatLogs.shift();
+        const aiDialogue = getCombatantChainDialogue(defender, aiSequence);
 
         // Trigger cinematic Noble Phantasm animated GIF if AI used NP
         if (aiSequence.includes('NP')) {
           await dispatchNpGif(defender, i);
         }
+
+        const aiLog = resolveStrike(defender, attacker, aiSequence, aiDialogue);
+        refreshCombatantHand(defender);
+        combatLogs.push(aiLog);
+        if (combatLogs.length > 4) combatLogs.shift();
 
         if (attacker.currentHp <= 0) {
           collector.stop('finished');

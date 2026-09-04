@@ -688,10 +688,13 @@ function drawCinematicClashTheater(
     drawSparkDiamond(ctx, impactX + 20, impactY + impactH / 2, 6, '#ffffff');
     drawSparkDiamond(ctx, impactX + impactW - 20, impactY + impactH / 2, 6, '#ffffff');
 
+    const quoteStr = log.dialogueQuote || log.npChant;
+    const cleanQuote = quoteStr ? (quoteStr.length > 56 ? quoteStr.slice(0, 54) + '...' : quoteStr) : null;
+
     ctx.fillStyle = '#fef08a';
-    ctx.font = 'bold 11px sans-serif';
+    ctx.font = cleanQuote ? 'bold italic 11px sans-serif' : 'bold 11px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('<< NOBLE PHANTASM UNLEASHED AT MAXIMUM OUTPUT >>', 320, impactY + 17);
+    ctx.fillText(cleanQuote ? `“${cleanQuote}”` : '<< NOBLE PHANTASM UNLEASHED AT MAXIMUM OUTPUT >>', 320, impactY + 17);
 
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 17px sans-serif';
@@ -712,10 +715,13 @@ function drawCinematicClashTheater(
     drawSparkDiamond(ctx, impactX + 20, impactY + impactH / 2, 6, '#ffffff');
     drawSparkDiamond(ctx, impactX + impactW - 20, impactY + impactH / 2, 6, '#ffffff');
 
+    const quoteStr = log.dialogueQuote || log.npChant;
+    const cleanQuote = quoteStr ? (quoteStr.length > 56 ? quoteStr.slice(0, 54) + '...' : quoteStr) : null;
+
     ctx.fillStyle = '#fca5a5';
-    ctx.font = 'bold 11px sans-serif';
+    ctx.font = cleanQuote ? 'bold italic 11px sans-serif' : 'bold 11px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('>> CRITICAL STRIKE! DOUBLE DAMAGE DEALT <<', 320, impactY + 17);
+    ctx.fillText(cleanQuote ? `“${cleanQuote}”` : '>> CRITICAL STRIKE! DOUBLE DAMAGE DEALT <<', 320, impactY + 17);
 
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 17px sans-serif';

@@ -3805,13 +3805,16 @@ export default function DiscordEmulator({
           });
         }
       } else {
+        const dQuote = lastLog?.dialogueQuote || (lastLog?.isNoblePhantasm ? lastLog?.npChant : undefined);
+        const dialogueBox = dQuote ? `\n\n💬 **[${lastLog?.dialogueTag || 'COMBAT DIALOGUE'}] ${lastLog?.dialogueTitle || updatedState.player1.name}:**\n> ❝ ***${dQuote}*** ❞` : '';
+
         addMessage({
           id: getNextId('bot_duel_turn'),
           sender: 'bot',
           timestamp: 'Just now',
           embed: {
             title: `⚔️ TURN ${updatedState.currentTurn} CLASH SUMMARY`,
-            description: `👉 **Current Turn:** Select your next Command Card sequence or Noble Phantasm:`,
+            description: `👉 **Current Turn:** Select your next Command Card sequence or Noble Phantasm:${dialogueBox}`,
             color: '#ef4444',
             footer: 'Holy Grail War • Turn-based RPG Combat Engine'
           },
