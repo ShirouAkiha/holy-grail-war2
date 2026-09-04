@@ -2,6 +2,7 @@ import { MasterProfile, MasterServantInstance, CraftEssence, ServantTemplate, Ga
 import { SERVANT_DATABASE } from '../data/servants';
 import { CRAFT_ESSENCE_DATABASE, CE_GACHA_BANNERS } from '../data/craftEssences';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
+import { persistMediaUrl } from '../utils/persistentMedia';
 import fs from 'fs';
 import path from 'path';
 
@@ -802,6 +803,20 @@ export function setServantNpAnimation(
   if (customChant && customChant.trim()) {
     target.noblePhantasm.chant = customChant.trim();
   }
+
+  // Persist and cache media asynchronously to ensure it never expires
+  persistMediaUrl(cleanUrl, `np_${target.id}`).then(res => {
+    if (res.permanentUrl && res.permanentUrl !== cleanUrl) {
+      target.noblePhantasm.animationUrl = res.permanentUrl;
+      target.noblePhantasm.gifUrl = res.permanentUrl;
+      const cfg = customNpAnims.get(target.id);
+      if (cfg) {
+        cfg.gifUrl = res.permanentUrl;
+      }
+      saveNpAnimsToDisk();
+      saveCustomServantsToDisk();
+    }
+  }).catch(() => {});
 
   // Store in config map
   const config: ServantNpAnimConfig = {

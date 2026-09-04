@@ -16,6 +16,7 @@ import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp } from '../e
 import { renderBattleTurnSummary, renderDialogueCard } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER } from '../engine/battle';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
+import { resolveMediaAttachment } from '../utils/persistentMedia';
 import { getServantChainDialogue, shouldTriggerDialogueCutIn } from '../engine/dialogue';
 
 // ==========================================
@@ -1486,8 +1487,23 @@ async function startInteractiveDuel(
   const activeCombatant = activeUserId === p1.userId ? p1 : p2;
   const lastLogText = combatLogs[combatLogs.length - 1];
 
+  const battleDialogueBuffer = await renderDialogueCard(
+    p1.servant.nickname || t1.name,
+    p1BattleQuote,
+    'BATTLE ENGAGEMENT',
+    t1.servantClass,
+    t1.cardArtUrl || t1.avatarUrl,
+    p1.servant.bondLevel,
+    p2.servant.nickname || t2.name,
+    t2.cardArtUrl || t2.avatarUrl,
+    t2.servantClass,
+    ['Buster', 'Buster', 'Buster']
+  );
+  const battleDialogueAttachment = new AttachmentBuilder(battleDialogueBuffer, { name: 'battle-engagement.png' });
+
   const initialAttachment = await createTurnSummaryAttachment(p1, p2, round, lastLogText, p1LastCards, p2LastCards);
   const initialEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
+  initialEmbed.setImage('attachment://battle-engagement.png');
   const initialButtons = buildCombatButtons(activeCombatant, activePendingCards, activePendingIndices);
 
   let battleMsg: any;
@@ -1495,7 +1511,7 @@ async function startInteractiveDuel(
     battleMsg = await contextInteraction.editReply({
       content: null,
       embeds: [initialEmbed],
-      files: [initialAttachment],
+      files: [initialAttachment, battleDialogueAttachment],
       components: initialButtons
     });
   } else if (contextInteraction.isButton && contextInteraction.isButton()) {
@@ -1503,13 +1519,13 @@ async function startInteractiveDuel(
     battleMsg = await contextInteraction.editReply({
       content: null,
       embeds: [initialEmbed],
-      files: [initialAttachment],
+      files: [initialAttachment, battleDialogueAttachment],
       components: initialButtons
     });
   } else {
     const res = await contextInteraction.reply({
       embeds: [initialEmbed],
-      files: [initialAttachment],
+      files: [initialAttachment, battleDialogueAttachment],
       components: initialButtons,
       withResponse: true
     });
@@ -1546,25 +1562,33 @@ async function startInteractiveDuel(
     const servantDisplayName = servant.nickname || servant.template?.name || 'Heroic Spirit';
     const { autoDelete, afkTimeoutSeconds } = getDuelNpSettings();
 
-    // To make the animation display as BIG as possible at full channel width,
-    // we deliver the True Name invocation as a native Discord message with the direct GIF link.
-    // Native Discord message links unfurl at full width without embed bounding box restrictions!
     const chantBlock = npChant ? `\n> *“${npChant}”*` : '';
 
     const fullWidthContent = 
       `## 💥 NOBLE PHANTASM UNLEASHED: **${npName.toUpperCase()}**\n` +
-      `⚔️ **${servantDisplayName}** (Master: <@${actor.userId}>)${chantBlock}\n` +
-      `${npGifUrl}`;
+      `⚔️ **${servantDisplayName}** (Master: <@${actor.userId}>)${chantBlock}`;
 
     try {
+      const mediaResult = await resolveMediaAttachment(npGifUrl, servantDisplayName, 'noble-phantasm.gif');
+      const files: AttachmentBuilder[] = [];
+      let finalContent = fullWidthContent;
+
+      if (mediaResult.buffer) {
+        files.push(new AttachmentBuilder(mediaResult.buffer, { name: mediaResult.filename || 'noble-phantasm.gif' }));
+      } else if (mediaResult.url) {
+        finalContent = `${fullWidthContent}\n${mediaResult.url}`;
+      }
+
       let sentMsg: any = null;
       if (interaction.channel && typeof interaction.channel.send === 'function') {
         sentMsg = await interaction.channel.send({
-          content: fullWidthContent
+          content: finalContent,
+          files: files.length > 0 ? files : undefined
         });
       } else if (interaction.followUp) {
         sentMsg = await interaction.followUp({
-          content: fullWidthContent,
+          content: finalContent,
+          files: files.length > 0 ? files : undefined,
           fetchReply: true
         });
       }
@@ -1924,6 +1948,20 @@ async function finishDuel(
   const victoryQuote =
     winner.servant.customQuotes?.victory || winner.servant.template.victoryQuote || "A decisive triumph. The Holy Grail draws closer.";
 
+  const victoryDialogueBuffer = await renderDialogueCard(
+    winner.servant.nickname || winner.servant.template.name,
+    victoryQuote,
+    'VICTORY INVOCATION',
+    winner.servant.template.servantClass,
+    winner.servant.template.cardArtUrl || winner.servant.template.avatarUrl,
+    winner.servant.bondLevel,
+    loser.servant.nickname || loser.servant.template.name,
+    loser.servant.template.cardArtUrl || loser.servant.template.avatarUrl,
+    loser.servant.template.servantClass,
+    ['Buster', 'Buster', 'Buster']
+  );
+  const victoryAttachment = new AttachmentBuilder(victoryDialogueBuffer, { name: 'victory-dialogue.png' });
+
   const fateEmbed = new EmbedBuilder()
     .setTitle('🏆 DUEL VICTORY — DECIDE MASTER\'S FATE')
     .setDescription(
@@ -1932,6 +1970,7 @@ async function finishDuel(
       `⚖️ **The Fate of Master ${loser.username} rests in your hands:**\n` +
       `Choose whether to **Execute** the defeated Master to permanently eliminate them from the Holy Grail War, or show mercy and **Spare** their life.`
     )
+    .setImage('attachment://victory-dialogue.png')
     .setColor(0x22c55e);
 
   if (winner.servant.template.avatarUrl) {
@@ -1953,13 +1992,13 @@ async function finishDuel(
   if (i.deferred || i.replied) {
     response = await i.editReply({
       embeds: [fateEmbed],
-      files: [finalAttachment],
+      files: [finalAttachment, victoryAttachment],
       components: [fateRow]
     });
   } else {
     response = await i.update({
       embeds: [fateEmbed],
-      files: [finalAttachment],
+      files: [finalAttachment, victoryAttachment],
       components: [fateRow],
       withResponse: true
     }).then((r: any) => r?.resource?.message || i.fetchReply());
