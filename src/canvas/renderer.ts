@@ -1494,10 +1494,12 @@ function drawHoveringAttacker(
   const spriteW = 280;
   const spriteH = 340;
   const spriteX = 10;
-  const spriteY = 10;
+  // Sinusoidal floating hover animation (6px vertical breathing float)
+  const floatOffsetY = Math.sin((frameIdx / 8) * Math.PI * 2) * 6;
+  const spriteY = 10 + floatOffsetY;
 
   // 1. Golden Amber Spiritual Aura Glow behind Attacker
-  const auraGrad = ctx.createRadialGradient(140, 150, 30, 140, 150, 170);
+  const auraGrad = ctx.createRadialGradient(140, 150 + floatOffsetY, 30, 140, 150 + floatOffsetY, 170);
   auraGrad.addColorStop(0, 'rgba(245, 158, 11, 0.28)');
   auraGrad.addColorStop(0.6, 'rgba(217, 119, 6, 0.12)');
   auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -1578,10 +1580,12 @@ function drawHoveringDefender(
   const spriteW = 280;
   const spriteH = 340;
   const spriteX = 510;
-  const spriteY = 10;
+  // Sinusoidal floating hover animation (5px counter-phase breathing float)
+  const floatOffsetY = Math.cos((frameIdx / 8) * Math.PI * 2) * 5;
+  const spriteY = 10 + floatOffsetY;
 
   // 1. Dark Crimson Tactical Combat Aura Glow behind Defender
-  const targetAura = ctx.createRadialGradient(660, 150, 30, 660, 150, 170);
+  const targetAura = ctx.createRadialGradient(660, 150 + floatOffsetY, 30, 660, 150 + floatOffsetY, 170);
   targetAura.addColorStop(0, 'rgba(239, 68, 68, 0.26)');
   targetAura.addColorStop(0.6, 'rgba(185, 28, 28, 0.12)');
   targetAura.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -1633,10 +1637,10 @@ function drawHoveringDefender(
     ctx.stroke();
   }
 
-  // Tactical Crosshair Reticle over opponent
+  // Tactical Crosshair Reticle over opponent (rotates 45 degrees dynamically every frame)
   const cx = 650;
   const cy = 120;
-  const crosshairAngle = (frameIdx * 0.12);
+  const crosshairAngle = (frameIdx * Math.PI) / 4;
   ctx.save();
   ctx.translate(cx, cy);
   ctx.rotate(crosshairAngle);
@@ -2202,11 +2206,11 @@ export async function renderDialogueCard(
           stagePreset
         );
 
-        // Quantize and write GIF frame
+        // Quantize and write GIF frame with Netscape 2.0 loop extension on frame 0
         const imgData = ctx.getImageData(0, 0, 800, 420);
         const palette = quantize(imgData.data, 256);
         const index = applyPalette(imgData.data, palette);
-        gif.writeFrame(index, 800, 420, { palette, delay: frameDelay });
+        gif.writeFrame(index, 800, 420, { palette, delay: frameDelay, repeat: f === 0 ? 0 : undefined });
       }
 
       gif.finish();

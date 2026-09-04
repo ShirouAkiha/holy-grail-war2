@@ -99,9 +99,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       bgPreset
     );
 
+    const isGif = cardBuffer && cardBuffer.slice(0, 3).toString() === 'GIF';
+    const attachmentFileName = isGif ? 'dialogue_cutin.gif' : 'dialogue_cutin.png';
+
     const files: AttachmentBuilder[] = [];
     if (cardBuffer && Buffer.isBuffer(cardBuffer)) {
-      files.push(new AttachmentBuilder(cardBuffer, { name: 'dialogue_cutin.png' }));
+      files.push(new AttachmentBuilder(cardBuffer, { name: attachmentFileName }));
     }
 
     const embed = new EmbedBuilder()
@@ -111,8 +114,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `🏟️ **Battlefield Stage:** \`${bgPreset.toUpperCase()}\` • ⚔️ **Class:** \`${speakerClass}\` • 🎯 **Target:** \`Gilgamesh (Archer)\``
       )
       .setColor(0xd4af37)
-      .setImage('attachment://dialogue_cutin.png')
-      .setFooter({ text: 'Visual Novel Dialogue Card with Full-Screen Slash & Stage Backdrop' });
+      .setImage(`attachment://${attachmentFileName}`)
+      .setFooter({ text: 'Visual Novel Animated Action Cut-In • 8-Frame Action Sequence with Battlefield Stage' });
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()

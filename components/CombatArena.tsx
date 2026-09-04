@@ -24,6 +24,7 @@ import {
 } from '../lib/engine/combatHistory';
 import CombatLogHistory from './CombatLogHistory';
 import { SERVANT_DATABASE } from '../lib/data/servants';
+import { getServantChainDialogue } from '@/src/engine/dialogue';
 import {
   Swords,
   Shield,
@@ -200,20 +201,15 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         ? 'Quick Chain'
         : 'Command Card Combo';
 
-      const tagText = isAllBuster
-        ? 'BUSTER BRAVE CHAIN'
-        : isAllArts
-        ? 'ARTS MANA CHAIN'
-        : isAllQuick
-        ? 'QUICK STAR CHAIN'
-        : 'TACTICAL COMBAT CHAIN';
-
-      const chainQuotes: Record<string, string> = {
-        'Buster Brave Chain': customQuotes?.battleStart || activeTemplate?.battleStartQuote || "All mana into maximum destruction! Unstoppable strike!",
-        'Arts Chain': customQuotes?.battleStart || activeTemplate?.battleStartQuote || "Charging mana reservoir... let's flood the battlefield!",
-        'Quick Chain': customQuotes?.battleStart || activeTemplate?.battleStartQuote || "Swift like lightning... you won't even see the strike!",
-        'Command Card Combo': customQuotes?.battleStart || activeTemplate?.battleStartQuote || "Executing tactical 3-card chain! My blade answers your command, Master!"
-      };
+      const dialogueResult = getServantChainDialogue(
+        servantName,
+        servantClass,
+        selectedCards as any,
+        customQuotes,
+        p1.currentHp,
+        p1.maxHp,
+        battle.currentTurn
+      );
 
       return {
         speakerName: servantName,
@@ -221,8 +217,8 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         avatarUrl: p1.avatarUrl || activeTemplate?.avatarUrl,
         servantClass,
         rarity: activeTemplate?.rarity || 5,
-        tag: tagText,
-        dialogueText: chainQuotes[chainType] || "My blade answers your command, Master!",
+        tag: dialogueResult.tag,
+        dialogueText: dialogueResult.quote,
         badgeType: isAllBuster ? 'crit' : 'attack',
         isPlayerMove: true
       };
@@ -286,8 +282,18 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
 
     const dialogue = getBattleDialogueForTurn();
 
-    // If enemy move (or dialogue is not player move), skip the 4.5s cut-in delay!
-    if (!dialogue.isPlayerMove) {
+    // Check if this attack sequence warrants a special Visual Novel Dialogue Cut-In:
+    // Only trigger for Pure Brave/Resonance Chains (BBB, AAA, QQQ), Desperation (<25% HP), or NP!
+    // Ordinary mixed combat chains (e.g. Buster + Arts + Quick) proceed directly without pausing!
+    const isPureBrave = selectedCards.length === 3 && (
+      selectedCards.every(c => c === 'Buster') ||
+      selectedCards.every(c => c === 'Arts') ||
+      selectedCards.every(c => c === 'Quick')
+    );
+    const isDesperation = (p1.currentHp / p1.maxHp) <= 0.25;
+    const shouldCutIn = useNp || isPureBrave || isDesperation;
+
+    if (!shouldCutIn) {
       runTurnCalculation();
       return;
     }

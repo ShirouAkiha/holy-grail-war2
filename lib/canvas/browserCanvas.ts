@@ -1233,12 +1233,14 @@ function drawHoveringAttacker(
 ) {
   ctx.save();
   const sprX = 10;
-  const sprY = 10;
+  // Sinusoidal floating hover animation (6px vertical breathing float)
+  const floatOffsetY = Math.sin((frameIdx / 8) * Math.PI * 2) * 6;
+  const sprY = 10 + floatOffsetY;
   const sprW = 280;
   const sprH = 340;
 
   // Attacker golden/amber rim aura
-  const auraGrad = ctx.createRadialGradient(130, 160, 30, 130, 160, 190);
+  const auraGrad = ctx.createRadialGradient(130, 160 + floatOffsetY, 30, 130, 160 + floatOffsetY, 190);
   auraGrad.addColorStop(0, 'rgba(245, 158, 11, 0.22)');
   auraGrad.addColorStop(0.7, 'rgba(217, 119, 6, 0.08)');
   auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -1323,12 +1325,14 @@ function drawHoveringDefender(
 ) {
   ctx.save();
   const sprX = 510;
-  const sprY = 10;
+  // Sinusoidal floating hover animation (5px counter-phase breathing float)
+  const floatOffsetY = Math.cos((frameIdx / 8) * Math.PI * 2) * 5;
+  const sprY = 10 + floatOffsetY;
   const sprW = 280;
   const sprH = 340;
 
   // Dark Crimson Tactical Aura
-  const auraGrad = ctx.createRadialGradient(670, 160, 30, 670, 160, 190);
+  const auraGrad = ctx.createRadialGradient(670, 160 + floatOffsetY, 30, 670, 160 + floatOffsetY, 190);
   auraGrad.addColorStop(0, 'rgba(239, 68, 68, 0.22)');
   auraGrad.addColorStop(0.7, 'rgba(153, 27, 27, 0.08)');
   auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -1385,7 +1389,7 @@ function drawHoveringDefender(
   // Tactical Crosshair Reticle (cx: 650, cy: 120)
   const cx = 650;
   const cy = 120;
-  const crosshairAngle = (frameIdx * 15 * Math.PI) / 180;
+  const crosshairAngle = (frameIdx * 45 * Math.PI) / 180;
   const crosshairScale = frameIdx === 4 ? 0.9 : frameIdx === 2 ? 1.15 : 1.0;
 
   ctx.save();
@@ -1748,14 +1752,40 @@ export async function renderDialogueCard(
 function loadBrowserImage(url?: string): Promise<HTMLImageElement | null> {
   if (!url) return Promise.resolve(null);
   return new Promise((resolve) => {
+    let settled = false;
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        resolve(null);
+      }
+    }, 2500);
+
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
+    img.onload = () => {
+      if (!settled) {
+        settled = true;
+        clearTimeout(timeout);
+        resolve(img);
+      }
+    };
     img.onerror = () => {
       // If CORS anonymous failed, attempt standard load so canvas can still paint it
       const fallbackImg = new Image();
-      fallbackImg.onload = () => resolve(fallbackImg);
-      fallbackImg.onerror = () => resolve(null);
+      fallbackImg.onload = () => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timeout);
+          resolve(fallbackImg);
+        }
+      };
+      fallbackImg.onerror = () => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timeout);
+          resolve(null);
+        }
+      };
       fallbackImg.src = url;
     };
     img.src = url;

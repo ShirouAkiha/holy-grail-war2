@@ -16,6 +16,7 @@ import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp } from '../e
 import { renderBattleTurnSummary, renderDialogueCard } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER } from '../engine/battle';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
+import { getServantChainDialogue, shouldTriggerDialogueCutIn } from '../engine/dialogue';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -243,38 +244,21 @@ function renderHealthBar(current: number, max: number, length: number = 10): str
 // Helper to calculate chain-based dialogue quote, tag, and embed color
 function getCombatantChainDialogue(
   combatant: DuelCombatant,
-  cards: ('Buster' | 'Arts' | 'Quick' | 'NP')[]
+  cards: ('Buster' | 'Arts' | 'Quick' | 'NP')[],
+  roundSeed: number = 0
 ): { quote: string; tag: string; color: number } {
-  const isNP = cards.includes('NP');
-  const isBusterBrave = cards.length === 3 && cards.every(c => c === 'Buster');
-  const isArtsChain = cards.length === 3 && cards.every(c => c === 'Arts');
-  const isQuickChain = cards.length === 3 && cards.every(c => c === 'Quick');
-
-  let quote = combatant.servant.customQuotes?.battleStart || combatant.servant.template?.battleStartQuote;
-  let tag = 'TACTICAL COMBAT CHAIN';
-  let color = 0xd4af37;
-
-  if (isNP) {
-    quote = combatant.servant.customQuotes?.noblePhantasm || combatant.servant.template?.noblePhantasm?.chant || "Sword of Promised Victory... EXCALIBUR!";
-    tag = 'NOBLE PHANTASM CHANT';
-    color = 0xf59e0b;
-  } else if (isBusterBrave) {
-    quote = combatant.servant.customQuotes?.battleStart || combatant.servant.template?.battleStartQuote || "All mana into maximum destruction! Unstoppable strike!";
-    tag = 'BUSTER BRAVE CHAIN';
-    color = 0xef4444;
-  } else if (isArtsChain) {
-    quote = combatant.servant.customQuotes?.battleStart || combatant.servant.template?.battleStartQuote || "Charging mana reservoir... let's flood the battlefield!";
-    tag = 'ARTS MANA CHAIN';
-    color = 0x3b82f6;
-  } else if (isQuickChain) {
-    quote = combatant.servant.customQuotes?.battleStart || combatant.servant.template?.battleStartQuote || "Swift like lightning... you won't even see the strike!";
-    tag = 'QUICK STAR CHAIN';
-    color = 0x10b981;
-  } else if (!quote) {
-    quote = "Executing tactical 3-card chain! My blade answers your command, Master!";
-  }
-
-  return { quote, tag, color };
+  const sName = combatant.servant.nickname || combatant.servant.template?.name || 'Heroic Spirit';
+  const sClass = combatant.servant.template?.servantClass || 'Servant';
+  const customQuotes = combatant.servant.customQuotes;
+  return getServantChainDialogue(
+    sName,
+    sClass,
+    cards,
+    customQuotes,
+    combatant.currentHp,
+    combatant.maxHp,
+    roundSeed
+  );
 }
 
 // Helper to build pre-attack visual novel dialogue cut-in embed box
@@ -1706,16 +1690,25 @@ async function startInteractiveDuel(
       activePendingCards = [];
       activePendingIndices = [];
 
-      const playerDialogue = getCombatantChainDialogue(attacker, playerSequence);
+      const playerDialogue = getCombatantChainDialogue(attacker, playerSequence, round);
       const isNoblePhantasm = playerSequence.includes('NP');
+
+      // Check if this attack sequence warrants a special Visual Novel Dialogue Cut-In:
+      // Only trigger for Pure Brave/Resonance Chains (Buster Brave, Arts Mana, Quick Star)
+      // or Desperation Last Stand (<25% HP), NOT on normal mixed combat chains!
+      const shouldCutIn = shouldTriggerDialogueCutIn(
+        playerSequence,
+        attacker.currentHp,
+        attacker.maxHp
+      );
 
       // Trigger cinematic Noble Phantasm animated GIF if player used NP
       if (isNoblePhantasm) {
         // NP has its own dedicated NP Unleashed message + animated GIF!
         // No extra dialogue box needed for Noble Phantasms.
         await dispatchNpGif(attacker, i);
-      } else {
-        // Non-NP Attack Sequence: Render and display the Visual Novel Dialogue Frame Cut-In
+      } else if (shouldCutIn) {
+        // Special High-Stakes Sequence: Render and display the Visual Novel Dialogue Frame Cut-In
         try {
           const sName = attacker.servant.nickname || attacker.servant.template?.name || 'Heroic Spirit';
           const sClass = attacker.servant.template?.servantClass || 'Servant';

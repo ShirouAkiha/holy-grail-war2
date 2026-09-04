@@ -26,6 +26,7 @@ import {
   renderDialogueCard,
   renderBattleTurnSummary
 } from '../lib/canvas/browserCanvas';
+import { getServantChainDialogue } from '@/src/engine/dialogue';
 import {
   calculateCurrentHp,
   calculateServantMaxHp,
@@ -1397,7 +1398,14 @@ export default function DiscordEmulator({
         targetServant = allThrone[0] || SERVANT_DATABASE[0];
       }
 
-      const quote = (activeServant && activeServant.customQuotes?.summon) || targetServant.summonQuote || 'I ask of you: Are you my Master?';
+      // Generate personality-specific, varied dialogue using the dialogue engine
+      const dialogueResult = getServantChainDialogue(
+        targetServant.name,
+        targetServant.servantClass || 'Saber',
+        ['Buster', 'Buster', 'Buster'],
+        activeServant?.customQuotes
+      );
+      const quote = dialogueResult.quote;
 
       addMessage({
         id: getNextId('bot_dialogue_cutin'),
@@ -1405,7 +1413,7 @@ export default function DiscordEmulator({
         timestamp: 'Just now',
         embed: {
           title: `🎬 Visual Novel Action Cut-In: ${targetServant.name}`,
-          description: `*"${quote}"*\n\n🏟️ **Battlefield:** \`${chosenPreset.toUpperCase()}\` • ⚔️ **Class:** \`${targetServant.servantClass}\` • 🎯 **Target:** \`Gilgamesh (Archer)\``,
+          description: `*"${quote}"*\n\n🏟️ **Battlefield:** \`${chosenPreset.toUpperCase()}\` • ⚔️ **Class:** \`${targetServant.servantClass}\` • 🎯 **Target:** \`Gilgamesh (Archer)\` • 💬 **Chain:** \`${dialogueResult.tag}\``,
           color: '#d4af37',
           footer: 'Visual Novel Cut-In Card with Stage Atmosphere, Hovering Attacker & Full-Screen Cleave'
         },
@@ -1413,7 +1421,7 @@ export default function DiscordEmulator({
         canvasPayload: {
           speaker: targetServant.name,
           quote: quote,
-          title: targetServant.title || 'Tactical Combat Chain',
+          title: dialogueResult.tag,
           servantClass: targetServant.servantClass || 'Saber',
           avatarUrl: targetServant.avatarUrl || targetServant.cardArtUrl,
           bondOrLevel: (activeServant && activeServant.bondLevel) || 10,
@@ -3602,24 +3610,39 @@ export default function DiscordEmulator({
     } else if (btnId === 'btn_hear_quote') {
       const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
       if (activeServant) {
+        // Pick a dynamic combat chain type based on message state
+        const chainTypes: ('Buster' | 'Arts' | 'Quick')[] = ['Buster', 'Arts', 'Quick'];
+        const randomCard = chainTypes[messages.length % chainTypes.length];
+        const sequence: ('Buster' | 'Arts' | 'Quick')[] = [randomCard, randomCard, randomCard];
+
+        const diaResult = getServantChainDialogue(
+          activeServant.template.name,
+          activeServant.template.servantClass,
+          sequence,
+          activeServant.customQuotes
+        );
+
         addMessage({
           id: getNextId('bot_quote'),
           sender: 'bot',
           timestamp: 'Just now',
           embed: {
-            title: `💬 ${activeServant.template.name}'s Dialogue`,
-            description: `*"${activeServant.customQuotes.summon || activeServant.template.summonQuote}"*`,
+            title: `💬 ${activeServant.template.name} — [${diaResult.tag}]`,
+            description: `*"${diaResult.quote}"*`,
             color: '#f59e0b',
-            footer: 'Dynamic Visual Novel Dialogue Card attachment'
+            footer: 'Dynamic Animated Visual Novel Dialogue Card attachment'
           },
           canvasType: 'dialogue',
           canvasPayload: {
             speaker: activeServant.template.name,
-            quote: activeServant.customQuotes.summon || activeServant.template.summonQuote,
-            title: activeServant.template.title,
+            quote: diaResult.quote,
+            title: diaResult.tag,
             servantClass: activeServant.template.servantClass,
             avatarUrl: activeServant.template.avatarUrl,
             bondOrLevel: activeServant.bondLevel || 8,
+            defenderName: 'Opponent Servant',
+            defenderClass: 'Archer',
+            sequence,
             bgUrlOrPreset: 'fuyuki'
           }
         });
@@ -4986,6 +5009,7 @@ export default function DiscordEmulator({
 // Inline Canvas Renderer Component for Discord attachments
 function CanvasRenderer({ canvasType, payload }: { canvasType: string; payload: any }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isPlaying, setIsPlaying] = useState(true);
 
   useEffect(() => {
     if (!canvasRef.current || !payload) return;
@@ -5011,7 +5035,57 @@ function CanvasRenderer({ canvasType, payload }: { canvasType: string; payload: 
     } else if (canvasType === 'battle') {
       renderBattleTurnSummary(canvas, payload.log, payload.p1, payload.p2);
     }
+
+    return () => {
+      if (canvas && (canvas as any).__animTimer) {
+        clearInterval((canvas as any).__animTimer);
+        (canvas as any).__animTimer = null;
+      }
+    };
   }, [canvasType, payload]);
 
-  return <canvas ref={canvasRef} className="w-full h-auto rounded block" />;
+  const toggleAnimation = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    if ((canvas as any).__animTimer) {
+      clearInterval((canvas as any).__animTimer);
+      (canvas as any).__animTimer = null;
+      setIsPlaying(false);
+    } else if (canvasType === 'dialogue') {
+      renderDialogueCard(
+        canvas,
+        payload.speaker,
+        payload.quote,
+        payload.title || 'Tactical Combat Chain',
+        payload.servantClass || 'Saber',
+        payload.avatarUrl,
+        payload.bondOrLevel || 8,
+        payload.defenderName || 'Gilgamesh',
+        payload.defenderAvatarUrl,
+        payload.defenderClass || 'Archer',
+        payload.sequence || ['Buster', 'Buster', 'Buster'],
+        payload.bgUrlOrPreset || 'fuyuki'
+      );
+      setIsPlaying(true);
+    }
+  };
+
+  return (
+    <div className="relative group">
+      <canvas ref={canvasRef} className="w-full h-auto rounded block" />
+      {canvasType === 'dialogue' && (
+        <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-black/80 backdrop-blur-sm border border-amber-500/40 rounded px-2 py-0.5 text-[11px] font-mono text-amber-300 pointer-events-auto">
+          <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'}`} />
+          <span>{isPlaying ? 'ANIMATED LOOP' : 'PAUSED'}</span>
+          <button
+            onClick={toggleAnimation}
+            className="ml-1 text-zinc-400 hover:text-amber-200 transition-colors p-0.5 text-[10px]"
+            title={isPlaying ? 'Pause Animation' : 'Play Animation'}
+          >
+            {isPlaying ? '⏸️' : '▶️'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }

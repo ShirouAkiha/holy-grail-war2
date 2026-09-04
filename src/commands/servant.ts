@@ -311,10 +311,13 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
         const picked = quotes[Math.floor(Math.random() * quotes.length)];
 
         let files: AttachmentBuilder[] = [];
+        let attachmentName = 'dialogue_card.gif';
         try {
           const diaBuffer = await renderDialogueCard(activeServant.template.name, picked.text, activeServant.template.title, activeServant.template.servantClass);
           if (diaBuffer && diaBuffer.length > 500) {
-            files.push(new AttachmentBuilder(diaBuffer, { name: 'dialogue_card.png' }));
+            const isGif = diaBuffer.slice(0, 3).toString() === 'GIF';
+            attachmentName = isGif ? 'dialogue_card.gif' : 'dialogue_card.png';
+            files.push(new AttachmentBuilder(diaBuffer, { name: attachmentName }));
           }
         } catch {
           // Ignore canvas errors gracefully
@@ -326,7 +329,7 @@ function setupServantCollector(message: any, userId: string, initialMaster: any)
           .setColor(0xd4af37);
 
         if (files.length > 0) {
-          diaEmbed.setImage('attachment://dialogue_card.png');
+          diaEmbed.setImage(`attachment://${attachmentName}`);
         }
 
         await i.editReply({ embeds: [diaEmbed], files });
