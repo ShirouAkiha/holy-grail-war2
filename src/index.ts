@@ -14,6 +14,7 @@ import {
 import * as summonCommand from './commands/summon';
 import * as servantCommand from './commands/servant';
 import * as servantsCommand from './commands/servants';
+import * as dialogueCommand from './commands/dialogue';
 import * as duelCommand from './commands/duel';
 import * as grailwarCommand from './commands/grailwar';
 import * as defensesCommand from './commands/defenses';
@@ -85,37 +86,44 @@ export const client = new Client({
 });
 
 // ==========================================
-// 2. COMMAND REGISTRY MAP
+// 2. COMMAND REGISTRY MAP (UNIQUE CANONICAL SLASH COMMANDS)
 // ==========================================
-// We store all slash command modules in a Discord.js Collection (a Map structure).
-// This allows the interaction listener to look up commands in O(1) time by commandName.
+// We store unique slash command modules in a Discord.js Collection.
+// Redundant duplicate aliases (e.g. /claim vs /daily, /sanctuary vs /church, /attack vs /grailwar attack)
+// are routed via commandAliasMap to prevent duplicate entries in Discord's slash command palette.
 export const commands = new Collection<string, any>();
 commands.set(summonCommand.data.name, summonCommand);
 commands.set(servantCommand.data.name, servantCommand);
 commands.set(servantsCommand.data.name, servantsCommand);
+commands.set(dialogueCommand.data.name, dialogueCommand);
 commands.set(duelCommand.data.name, duelCommand);
 commands.set(grailwarCommand.data.name, grailwarCommand);
+commands.set(dailyCommand.data.name, dailyCommand);
+commands.set(inventoryCommand.data.name, inventoryCommand);
+commands.set(customiseCommand.data.name, customiseCommand);
 commands.set(defensesCommand.data.name, defensesCommand);
 commands.set(profileCommand.data.name, profileCommand);
-commands.set(attackCommand.data.name, attackCommand);
-commands.set(leakCommand.data.name, leakCommand);
-commands.set(customiseCommand.data.name, customiseCommand);
-commands.set(addservantCommand.data.name, addservantCommand);
-commands.set(adminCommand.data.name, adminCommand);
+commands.set(churchCommand.data.name, churchCommand);
 commands.set(cegachaCommand.data.name, cegachaCommand);
+commands.set(healCommand.data.name, healCommand);
+commands.set(adminCommand.data.name, adminCommand);
+commands.set(addservantCommand.data.name, addservantCommand);
+commands.set(boastCommand.data.name, boastCommand);
 commands.set(addceCommand.data.name, addceCommand);
 commands.set(addsqCommand.data.name, addsqCommand);
-commands.set(churchCommand.data.name, churchCommand);
-commands.set(sanctuaryCommand.data.name, sanctuaryCommand);
-commands.set(patrolCommand.data.name, patrolCommand);
-commands.set(familiarCommand.data.name, familiarCommand);
-commands.set(trapCommand.data.name, trapCommand);
-commands.set(healCommand.data.name, healCommand);
-commands.set(inventoryCommand.data.name, inventoryCommand);
-commands.set(equipCommand.data.name, equipCommand);
-commands.set(boastCommand.data.name, boastCommand);
-commands.set(dailyCommand.data.name, dailyCommand);
-commands.set(claimCommand.data.name, claimCommand);
+
+// Alias mapping for backward-compatible text shortcuts and interactions
+export const commandAliasMap: Record<string, any> = {
+  claim: dailyCommand,
+  sanctuary: churchCommand,
+  attack: attackCommand,
+  leak: leakCommand,
+  patrol: patrolCommand,
+  familiar: familiarCommand,
+  trap: trapCommand,
+  equip: equipCommand,
+  cutin: dialogueCommand
+};
 
 // ==========================================
 // 3. SLASH COMMAND DEPLOYMENT TO DISCORD API
@@ -190,7 +198,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
     // ROUTE A: Slash Command execution (e.g. user typed /summon or /duel)
     if (interaction.isChatInputCommand()) {
-      const command = commands.get(interaction.commandName);
+      const command = commands.get(interaction.commandName) || commandAliasMap[interaction.commandName];
       if (!command) {
         await interaction.reply({ ephemeral: true, content: 'Command not found.' });
         return;

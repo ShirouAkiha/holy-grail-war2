@@ -18,6 +18,7 @@ export const discordBotMainCode = `import {
 import * as summonCommand from './commands/summon';
 import * as servantCommand from './commands/servant';
 import * as servantsCommand from './commands/servants';
+import * as dialogueCommand from './commands/dialogue';
 import * as addservantCommand from './commands/addservant';
 import * as duelCommand from './commands/duel';
 import * as grailwarCommand from './commands/grailwar';
@@ -38,6 +39,7 @@ import * as healCommand from './commands/heal';
 import * as inventoryCommand from './commands/inventory';
 import * as equipCommand from './commands/equip';
 import * as boastCommand from './commands/boast';
+import * as dailyCommand from './commands/daily';
 import { updateCustomDialogueQuotes, equipCraftEssence } from './engine/customization';
 import { getOrCreateMaster, updateMasterProfile } from './database/service';
 import { buildProfileEmbed, buildProfileButtons } from './commands/profile';
@@ -63,31 +65,38 @@ export const client = new Client({
   ]
 });
 
-// Command Collection
+// Unique Canonical Command Collection (Duplicates like /claim, /sanctuary, /attack are routed via aliases)
 export const commands = new Collection<string, any>();
 commands.set(summonCommand.data.name, summonCommand);
 commands.set(servantCommand.data.name, servantCommand);
 commands.set(servantsCommand.data.name, servantsCommand);
+commands.set(dialogueCommand.data.name, dialogueCommand);
 commands.set(addservantCommand.data.name, addservantCommand);
 commands.set(duelCommand.data.name, duelCommand);
 commands.set(grailwarCommand.data.name, grailwarCommand);
-commands.set(attackCommand.data.name, attackCommand);
-commands.set(leakCommand.data.name, leakCommand);
+commands.set(dailyCommand.data.name, dailyCommand);
 commands.set(customiseCommand.data.name, customiseCommand);
+commands.set(inventoryCommand.data.name, inventoryCommand);
 commands.set(cegachaCommand.data.name, cegachaCommand);
-commands.set(addceCommand.data.name, addceCommand);
-commands.set(addsqCommand.data.name, addsqCommand);
 commands.set(defensesCommand.data.name, defensesCommand);
 commands.set(profileCommand.data.name, profileCommand);
 commands.set(churchCommand.data.name, churchCommand);
-commands.set(sanctuaryCommand.data.name, sanctuaryCommand);
-commands.set(patrolCommand.data.name, patrolCommand);
-commands.set(familiarCommand.data.name, familiarCommand);
-commands.set(trapCommand.data.name, trapCommand);
 commands.set(healCommand.data.name, healCommand);
-commands.set(inventoryCommand.data.name, inventoryCommand);
-commands.set(equipCommand.data.name, equipCommand);
 commands.set(boastCommand.data.name, boastCommand);
+commands.set(addceCommand.data.name, addceCommand);
+commands.set(addsqCommand.data.name, addsqCommand);
+
+export const commandAliasMap: Record<string, any> = {
+  claim: dailyCommand,
+  sanctuary: churchCommand,
+  attack: attackCommand,
+  leak: leakCommand,
+  patrol: patrolCommand,
+  familiar: familiarCommand,
+  trap: trapCommand,
+  equip: equipCommand,
+  cutin: dialogueCommand
+};
 
 // Deploy Slash Commands to Discord Gateway
 export async function registerSlashCommands() {
@@ -141,7 +150,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
     // 1. Slash Command Router
     if (interaction.isChatInputCommand()) {
-      const command = commands.get(interaction.commandName);
+      const command = commands.get(interaction.commandName) || commandAliasMap[interaction.commandName];
       if (!command) {
         await interaction.reply({ ephemeral: true, content: 'Command not found.' });
         return;

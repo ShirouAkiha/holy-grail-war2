@@ -1369,6 +1369,73 @@ export default function DiscordEmulator({
     }
 
     // ----------------------------------------------------
+    // COMMAND 2.9: /dialogue, /cutin, /quote (Visual Novel Action Cut-In with Battlefield Stage)
+    // ----------------------------------------------------
+    if (trimmed.startsWith('/dialogue') || trimmed.startsWith('/cutin') || trimmed.startsWith('/quote')) {
+      const rest = trimmed.replace('/dialogue', '').replace('/cutin', '').replace('/quote', '').trim();
+      let chosenPreset = 'fuyuki';
+      if (rest.includes('snow') || rest.includes('einzbern')) chosenPreset = 'snow';
+      else if (rest.includes('temple') || rest.includes('ryuudou')) chosenPreset = 'temple';
+      else if (rest.includes('throne') || rest.includes('celestial')) chosenPreset = 'throne';
+      else if (rest.includes('grail') || rest.includes('cavern')) chosenPreset = 'grail';
+
+      let targetServant: any = null;
+      if (rest) {
+        targetServant = allThrone.find(s => 
+          s.name.toLowerCase() === rest.toLowerCase() ||
+          s.name.toLowerCase().includes(rest.toLowerCase()) ||
+          s.id.toLowerCase() === rest.toLowerCase()
+        );
+      }
+
+      if (!targetServant && activeServant) {
+        const templateId = activeServant.templateId || activeServant.template?.id || activeServant.id;
+        targetServant = SERVANT_DATABASE.find(s => s.id === templateId) || activeServant.template || activeServant;
+      }
+
+      if (!targetServant) {
+        targetServant = allThrone[0] || SERVANT_DATABASE[0];
+      }
+
+      const quote = (activeServant && activeServant.customQuotes?.summon) || targetServant.summonQuote || 'I ask of you: Are you my Master?';
+
+      addMessage({
+        id: getNextId('bot_dialogue_cutin'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: `🎬 Visual Novel Action Cut-In: ${targetServant.name}`,
+          description: `*"${quote}"*\n\n🏟️ **Battlefield:** \`${chosenPreset.toUpperCase()}\` • ⚔️ **Class:** \`${targetServant.servantClass}\` • 🎯 **Target:** \`Gilgamesh (Archer)\``,
+          color: '#d4af37',
+          footer: 'Visual Novel Cut-In Card with Stage Atmosphere, Hovering Attacker & Full-Screen Cleave'
+        },
+        canvasType: 'dialogue',
+        canvasPayload: {
+          speaker: targetServant.name,
+          quote: quote,
+          title: targetServant.title || 'Tactical Combat Chain',
+          servantClass: targetServant.servantClass || 'Saber',
+          avatarUrl: targetServant.avatarUrl || targetServant.cardArtUrl,
+          bondOrLevel: (activeServant && activeServant.bondLevel) || 10,
+          defenderName: 'Gilgamesh',
+          defenderAvatarUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=600&auto=format&fit=crop&q=80',
+          defenderClass: 'Archer',
+          sequence: ['Buster', 'Buster', 'Buster'],
+          bgUrlOrPreset: chosenPreset
+        },
+        components: {
+          type: 'buttons',
+          items: [
+            { id: 'btn_hear_quote', label: 'Replay Cut-In 🎬', style: 'primary', emoji: '⚔️' },
+            { id: 'quick_servant_card', label: 'Servant Profile', style: 'secondary', emoji: '📜' },
+            { id: 'quick_start_duel', label: 'Enter Arena', style: 'danger', emoji: '⚔️' }
+          ]
+        }
+      });
+      return;
+    }
+
+    // ----------------------------------------------------
     // COMMAND 3: /servant (Master's Active Servant)
     // ----------------------------------------------------
     if (trimmed === '/servant' || trimmed.startsWith('/servant status')) {
@@ -4665,36 +4732,57 @@ export default function DiscordEmulator({
               const q = inputCommand.toLowerCase().trim();
               const isEditing = q.startsWith('/addservant edit') || q.startsWith('/addservant');
               const slashCommands = [
-                { cmd: '/servants list', desc: 'Browse all registered spirits in the Throne' },
-                { cmd: '/servants search <name>', desc: 'Search spirits by name, class, NP, or lore' },
-                { cmd: '/servant <name>', desc: 'Inspect servant profile card & voice dialogue' },
-                { cmd: '/summon ritual', desc: 'Perform Holy Grail War summoning ritual' },
-                { cmd: '/duel <name>', desc: 'Enter combat encounter with a rival Master/Servant' },
-                { cmd: '/admin npanim <servant> <gif_url>', desc: 'Configure custom NP animated GIF (Admin)' },
-                { cmd: '/admin npsettings', desc: 'Configure NP auto-delete and turn duration settings' },
-                { cmd: '/grailwar status', desc: 'Check Holy Grail War battlefield & intelligence' },
-                { cmd: '/grailwar attack', desc: 'Ambush suspected rival Master' },
-                { cmd: '/grailwar leak', desc: 'Broadcast intel to the war board' },
-                { cmd: '/addservant edit <name>', desc: 'Modify stats, dialogue, or artwork of any servant' },
-                { cmd: '/addservant create', desc: 'Register a new custom Heroic Spirit' },
-                { cmd: '/defenses', desc: 'Check active boundary warding fields' },
-                { cmd: '/profile', desc: 'View Master status and command seals' }
-              ].filter(c => c.cmd.toLowerCase().includes(q) || q.startsWith(c.cmd.split(' ')[0]));
+                { cmd: '/dialogue', desc: '🎬 Visual Novel dialogue cut-in animation with battlefield stage & slash' },
+                { cmd: '/servant', desc: '⚔️ Inspect your contracted Heroic Spirit stats, parameters, and radar' },
+                { cmd: '/servants list', desc: '📜 Browse all registered spirits in the Throne of Heroes' },
+                { cmd: '/servants search <name>', desc: '🔍 Search spirits by name, class, NP, or lore' },
+                { cmd: '/servants view <name>', desc: '👤 View full profile card, voice lines, and artwork of a Spirit' },
+                { cmd: '/summon ritual', desc: '✨ Perform Holy Grail War summoning ritual' },
+                { cmd: '/duel <target>', desc: '⚔️ Enter tactical combat with a rival Master or Servant' },
+                { cmd: '/grailwar status', desc: '🏆 Check Holy Grail War 7-Master intelligence roster' },
+                { cmd: '/grailwar attack <target>', desc: '🗡️ Ambush suspected rival Master' },
+                { cmd: '/grailwar leak <intel>', desc: '📡 Broadcast intel or deception to the war board' },
+                { cmd: '/grailwar patrol', desc: '👁️ Patrol Fuyuki sectors for enemy signatures' },
+                { cmd: '/daily', desc: '💎 Claim daily Master allowance of 30 Saint Quartz (SQ)' },
+                { cmd: '/inventory', desc: '🛡️ Manage Craft Essences, items, and equipment' },
+                { cmd: '/customise stats', desc: '📈 Allocate earned parameter points into STR, END, AGI, MNA, LCK' },
+                { cmd: '/customise equip', desc: '👔 Attach or swap Craft Essences to boost passives' },
+                { cmd: '/cegacha', desc: '🔮 Summon Craft Essences using Saint Quartz' },
+                { cmd: '/church', desc: '⛪ Enter neutral Church Sanctuary protection under Father Kotomine' },
+                { cmd: '/defenses', desc: '🏰 Manage workshop Bounded Field warding fields & auto-evac' },
+                { cmd: '/profile', desc: '👑 View Master status, Command Seals, and mana reserves' },
+                { cmd: '/heal', desc: '💚 Perform workshop leyline healing ritual' },
+                { cmd: '/admin npanim <servant> <url>', desc: '⚙️ Configure custom NP animated GIF (Admin)' },
+                { cmd: '/admin npsettings', desc: '⚙️ Configure NP auto-delete and turn duration settings' },
+                { cmd: '/addservant create', desc: '🪄 Register a new custom Heroic Spirit' },
+                { cmd: '/addservant edit <name>', desc: '✏️ Modify stats, dialogue, or artwork of any servant' }
+              ];
 
-              const searchClean = q
+              const filteredSlashCommands = slashCommands.filter(c => {
+                const cmdRoot = c.cmd.split(' ')[0].toLowerCase();
+                if (cmdRoot.startsWith(q)) return true;
+                if (c.cmd.toLowerCase().startsWith(q)) return true;
+                const cleanQ = q.replace('/', '');
+                if (cleanQ.length >= 2 && (cmdRoot.includes(cleanQ) || c.desc.toLowerCase().includes(cleanQ))) return true;
+                return false;
+              });
+
+              const isServantSearchContext = q.startsWith('/servant') || q.startsWith('/addservant') || q.startsWith('/duel') || q.startsWith('/dialogue');
+              const searchClean = isServantSearchContext ? q
                 .replace(/\/addservant\s*(edit|delete|create)?/gi, '')
                 .replace(/\/servants?\s*(search|view|list)?/gi, '')
+                .replace(/\/dialogue/gi, '')
                 .replace(/\/duel/gi, '')
                 .replace(/servant_id[:=]/gi, '')
                 .replace(/[\/]/g, '')
-                .trim();
+                .trim() : '';
 
-              const spiritMatches = allThrone.filter(s => {
+              const spiritMatches = isServantSearchContext ? allThrone.filter(s => {
                 if (!searchClean) {
                   return isEditing; // If typing /addservant edit without args, show top spirits to edit
                 }
                 return matchServantSearch(s, searchClean);
-              }).slice(0, 6);
+              }).slice(0, 5) : [];
 
               return (
                 <div className="space-y-2">
@@ -4759,18 +4847,20 @@ export default function DiscordEmulator({
                     </div>
                   )}
 
-                  {slashCommands.length > 0 && (
+                  {filteredSlashCommands.length > 0 && (
                     <div className="space-y-1 pt-1">
                       <div className="px-2 py-0.5 text-[10px] text-white/40 font-bold uppercase tracking-wider">
                         Suggested Commands:
                       </div>
-                      {slashCommands.slice(0, 4).map(c => (
+                      {filteredSlashCommands.slice(0, 6).map(c => (
                         <button
                           key={c.cmd}
                           onMouseDown={e => {
                             e.preventDefault();
                             if (c.cmd.includes('<')) {
                               setInputCommand(c.cmd.split('<')[0]);
+                            } else if (c.cmd.includes('[')) {
+                              setInputCommand(c.cmd.split('[')[0]);
                             } else {
                               handleCommand(c.cmd);
                               setInputCommand('');
@@ -4839,6 +4929,18 @@ export default function DiscordEmulator({
           <span className="text-[#d4af37] font-semibold flex items-center gap-1 flex-shrink-0">
             <Zap className="w-3 h-3" /> Quick:
           </span>
+          <button
+            onClick={() => handleCommand('/dialogue')}
+            className="px-2 py-0.5 rounded bg-[#161616] hover:bg-[#252525] text-amber-300 border border-amber-500/30 whitespace-nowrap transition"
+          >
+            🎬 /dialogue cut-in
+          </button>
+          <button
+            onClick={() => handleCommand('/daily')}
+            className="px-2 py-0.5 rounded bg-[#141414] hover:bg-[#222] text-cyan-300 border border-cyan-500/30 whitespace-nowrap transition"
+          >
+            💎 /daily
+          </button>
           <button
             onClick={() => handleCommand('/servants list')}
             className="px-2 py-0.5 rounded bg-[#161616] hover:bg-[#252525] text-[#d4af37] border border-[#d4af37]/30 whitespace-nowrap transition"
