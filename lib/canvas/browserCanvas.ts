@@ -451,89 +451,97 @@ export function renderDialogueCard(
   canvas.width = 800;
   canvas.height = 240;
 
-  // Cinematic Dark Gradient
+  // Dark Amber-Charcoal Background
   const bgGrad = ctx.createLinearGradient(0, 0, 800, 240);
-  bgGrad.addColorStop(0, '#0c1222');
-  bgGrad.addColorStop(1, '#020617');
+  bgGrad.addColorStop(0, '#160d0a');
+  bgGrad.addColorStop(1, '#0c0705');
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, 800, 240);
 
-  // Golden Frame
-  ctx.strokeStyle = '#d97706';
-  ctx.lineWidth = 2;
-  drawRoundRect(ctx, 8, 8, 784, 224, 12);
-  ctx.stroke();
-
-  // Left Avatar Circle
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(100, 120, 65, 0, Math.PI * 2);
-  ctx.closePath();
-  ctx.clip();
-  const avGrad = ctx.createLinearGradient(35, 55, 165, 185);
-  avGrad.addColorStop(0, '#1e293b');
-  avGrad.addColorStop(1, '#0f172a');
-  ctx.fillStyle = avGrad;
-  ctx.fillRect(35, 55, 130, 130);
-  ctx.restore();
-
-  // Avatar Border Ring
-  ctx.beginPath();
-  ctx.arc(100, 120, 65, 0, Math.PI * 2);
-  ctx.strokeStyle = '#f59e0b';
+  // Outer Gold Frame
+  ctx.strokeStyle = '#d4af37';
   ctx.lineWidth = 3;
+  drawRoundRect(ctx, 6, 6, 788, 228, 12);
   ctx.stroke();
 
-  // Nameplate Box
-  ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 195, 30, 320, 36, 6);
+  // Inner Amber Frame (Double Border)
+  ctx.strokeStyle = '#8a5214';
+  ctx.lineWidth = 1.5;
+  drawRoundRect(ctx, 12, 12, 776, 216, 8);
+  ctx.stroke();
+
+  // Left Avatar Square Box Frame
+  ctx.fillStyle = '#080504';
+  drawRoundRect(ctx, 24, 24, 150, 150, 8);
   ctx.fill();
-  ctx.strokeStyle = '#f59e0b';
+  ctx.strokeStyle = '#d4af37';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Avatar Icon/Badge
+  ctx.fillStyle = '#d4af37';
+  ctx.font = 'bold 36px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('⚔️', 99, 110);
+
+  // Speaker Nameplate Box overlaying bottom of avatar box
+  ctx.fillStyle = '#0f0a07';
+  drawRoundRect(ctx, 20, 162, 158, 30, 4);
+  ctx.fill();
+  ctx.strokeStyle = '#d4af37';
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 16px system-ui, sans-serif';
+  ctx.fillStyle = '#f5e6d3';
+  ctx.font = 'bold 13px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(speakerName, 99, 182);
+
+  // Header Title & Tag
   ctx.textAlign = 'left';
-  ctx.fillText(speakerName, 210, 54);
+  ctx.fillStyle = '#d4af37';
+  ctx.font = 'bold 15px system-ui, sans-serif';
+  ctx.fillText(`${servantClass} • ${title}`, 195, 45);
 
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = '12px system-ui, sans-serif';
-  ctx.fillText(`[${servantClass}] • ${title}`, 360, 54);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#f59e0b';
+  ctx.font = 'bold 12px monospace';
+  ctx.fillText('[ BATTLE DIALOGUE ]', 770, 45);
 
-  // Quote Box
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
-  drawRoundRect(ctx, 195, 76, 575, 135, 8);
+  // Golden Quote Box (Reference Image Match)
+  ctx.fillStyle = '#080504';
+  drawRoundRect(ctx, 195, 62, 580, 152, 6);
   ctx.fill();
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = '#a16823';
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  // Quotation Marks
-  ctx.fillStyle = 'rgba(245, 158, 11, 0.3)';
-  ctx.font = 'bold 64px Georgia, serif';
-  ctx.fillText('“', 205, 135);
+  // Decorative Quotation Marks
+  ctx.fillStyle = 'rgba(212, 175, 55, 0.2)';
+  ctx.font = 'bold 56px Georgia, serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('“', 205, 115);
 
   // Render Multiline Text
-  ctx.fillStyle = '#f1f5f9';
-  ctx.font = 'italic 16px system-ui, sans-serif';
-  const maxWidth = 520;
+  ctx.fillStyle = '#f5e6d3';
+  ctx.font = 'italic 17px system-ui, sans-serif';
+  const maxWidth = 530;
   const words = quoteText.split(' ');
   let line = '';
-  let lineY = 115;
+  let lineY = 110;
 
   for (let n = 0; n < words.length; n++) {
     const testLine = line + words[n] + ' ';
     const metrics = ctx.measureText(testLine);
     if (metrics.width > maxWidth && n > 0) {
-      ctx.fillText(line, 240, lineY);
+      ctx.fillText(line, 235, lineY);
       line = words[n] + ' ';
-      lineY += 26;
+      lineY += 28;
     } else {
       line = testLine;
     }
   }
-  ctx.fillText(line, 240, lineY);
+  ctx.fillText(line, 235, lineY);
 }
 
 function loadBrowserImage(url?: string): Promise<HTMLImageElement | null> {

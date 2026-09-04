@@ -42,6 +42,18 @@ interface CombatArenaProps {
   onUpdateMaster: (master: MasterProfile) => void;
 }
 
+interface BattleDialogueCutIn {
+  speakerName: string;
+  speakerTitle: string;
+  avatarUrl?: string;
+  servantClass: string;
+  rarity?: number;
+  tag: string;
+  dialogueText: string;
+  badgeType: 'np' | 'skill' | 'advantage' | 'low_hp' | 'crit' | 'attack';
+  isPlayerMove: boolean;
+}
+
 export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps) {
   const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
 
@@ -84,6 +96,11 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
   const [selectedCommandSeal, setSelectedCommandSeal] = useState<'heal' | 'np_charge' | undefined>();
   const [isSimulating, setIsSimulating] = useState(false);
 
+  // Mid-Battle Dialogue Embed State
+  const [dialogueCutIn, setDialogueCutIn] = useState<BattleDialogueCutIn | null>(null);
+  const [showDialogueMode, setShowDialogueMode] = useState(false);
+  const [cutInCountdown, setCutInCountdown] = useState(4.5);
+
   // Combat Log History state (Last 10 battles)
   const [arenaTab, setArenaTab] = useState<'duel' | 'history'>('duel');
   const [battleHistory, setBattleHistory] = useState<CombatBattleRecord[]>(() => loadCombatBattleHistory());
@@ -119,63 +136,221 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
     if (preset === 'Quick Chain') setSelectedCards(['Quick', 'Quick', 'Quick']);
   };
 
+  const getBattleDialogueForTurn = (): BattleDialogueCutIn => {
+    const p1HpRatio = p1.currentHp / p1.maxHp;
+    const isLowHp = p1HpRatio <= 0.35;
+    const servantName = p1.name;
+    const servantClass = p1.servantClass;
+    const activeTemplate = activeServant?.template;
+    const customQuotes = activeServant?.customQuotes;
+
+    if (useNp && p1.npGauge >= 100) {
+      return {
+        speakerName: servantName,
+        speakerTitle: `${servantClass} • ${p1.noblePhantasm.name}`,
+        avatarUrl: p1.avatarUrl || activeTemplate?.avatarUrl,
+        servantClass,
+        rarity: activeTemplate?.rarity || 5,
+        tag: 'NOBLE PHANTASM CHANT',
+        dialogueText: customQuotes?.noblePhantasm || p1.noblePhantasm.chant || `Sword of Promised Victory... EXCALIBUR!`,
+        badgeType: 'np',
+        isPlayerMove: true
+      };
+    }
+
+    if (selectedCommandSeal) {
+      return {
+        speakerName: master.username || 'Master',
+        speakerTitle: `Master Command Seal Amplification`,
+        avatarUrl: master.avatarUrl || p1.avatarUrl,
+        servantClass,
+        rarity: 5,
+        tag: 'COMMAND SEAL ACTIVATED',
+        dialogueText: `By my Command Seal! ${servantName}, refill your Noble Phantasm and shatter enemy lines!`,
+        badgeType: 'skill',
+        isPlayerMove: true
+      };
+    }
+
+    if (selectedSkillIdx !== undefined && p1.skills[selectedSkillIdx]) {
+      const sk = p1.skills[selectedSkillIdx];
+      return {
+        speakerName: servantName,
+        speakerTitle: `${servantClass} • Skill: ${sk.name}`,
+        avatarUrl: p1.avatarUrl || activeTemplate?.avatarUrl,
+        servantClass,
+        rarity: activeTemplate?.rarity || 5,
+        tag: 'SKILL RELEASE',
+        dialogueText: `Activating ${sk.name}! ${sk.description}`,
+        badgeType: 'skill',
+        isPlayerMove: true
+      };
+    }
+
+    if (isLowHp) {
+      const lowHpQuotes = [
+        "I won't fall here... Master, give me strength!",
+        "My Spirit Origin remains unyielding! Final strike!",
+        "This pain is nothing... I shall fulfill our pact!"
+      ];
+      const q = lowHpQuotes[Math.floor(Math.random() * lowHpQuotes.length)];
+      return {
+        speakerName: servantName,
+        speakerTitle: `${servantClass} • Desperation Strike`,
+        avatarUrl: p1.avatarUrl || activeTemplate?.avatarUrl,
+        servantClass,
+        rarity: activeTemplate?.rarity || 5,
+        tag: 'DESPERATION',
+        dialogueText: q,
+        badgeType: 'low_hp',
+        isPlayerMove: true
+      };
+    }
+
+    if (classMultiplier > 1.0) {
+      const advQuotes = [
+        "Your class stands no chance against my blade!",
+        "I hold the class affinity edge in this clash, prepare yourself!",
+        "A foolish match-up for you... I will take victory in one strike!"
+      ];
+      const q = advQuotes[Math.floor(Math.random() * advQuotes.length)];
+      return {
+        speakerName: servantName,
+        speakerTitle: `${servantClass} (1.5x Advantage vs ${p2.servantClass})`,
+        avatarUrl: p1.avatarUrl || activeTemplate?.avatarUrl,
+        servantClass,
+        rarity: activeTemplate?.rarity || 5,
+        tag: 'CLASS ADVANTAGE',
+        dialogueText: q,
+        badgeType: 'advantage',
+        isPlayerMove: true
+      };
+    }
+
+    if (selectedCards.length === 3) {
+      const chainType = selectedCards.every(c => c === 'Buster')
+        ? 'Buster Brave Chain'
+        : selectedCards.every(c => c === 'Arts')
+        ? 'Arts Chain'
+        : selectedCards.every(c => c === 'Quick')
+        ? 'Quick Chain'
+        : 'Command Card Combo';
+
+      const chainQuotes: Record<string, string> = {
+        'Buster Brave Chain': "All mana into maximum destruction! Take this!",
+        'Arts Chain': "Charging mana reservoir... let's flood the battlefield!",
+        'Quick Chain': "Swift like lightning... you won't even see the strike!",
+        'Command Card Combo': customQuotes?.battleStart || activeTemplate?.battleStartQuote || "My blade answers your command, Master!"
+      };
+
+      return {
+        speakerName: servantName,
+        speakerTitle: `${servantClass} • ${chainType}`,
+        avatarUrl: p1.avatarUrl || activeTemplate?.avatarUrl,
+        servantClass,
+        rarity: activeTemplate?.rarity || 5,
+        tag: 'TACTICAL CHAIN',
+        dialogueText: chainQuotes[chainType] || "My blade answers your command, Master!",
+        badgeType: selectedCards.every(c => c === 'Buster') ? 'crit' : 'attack',
+        isPlayerMove: true
+      };
+    }
+
+    return {
+      speakerName: servantName,
+      speakerTitle: `${servantClass} • Battle Engagement`,
+      avatarUrl: p1.avatarUrl || activeTemplate?.avatarUrl,
+      servantClass,
+      rarity: activeTemplate?.rarity || 5,
+      tag: 'BATTLE QUOTE',
+      dialogueText: customQuotes?.battleStart || activeTemplate?.battleStartQuote || "Engaging opponent in combat!",
+      badgeType: 'attack',
+      isPlayerMove: true
+    };
+  };
+
   const handleExecuteTurn = () => {
     if (selectedCards.length < 3 && !useNp) return;
 
+    const dialogue = getBattleDialogueForTurn();
+
+    // If enemy move (or dialogue is not player move), skip the 4.5s cut-in delay!
+    if (!dialogue.isPlayerMove) {
+      runTurnCalculation();
+      return;
+    }
+
+    // Display Mid-Battle Dialogue Cut-In Box for 4.5 seconds before dealing damage
+    setDialogueCutIn(dialogue);
+    setShowDialogueMode(true);
     setIsSimulating(true);
+    setCutInCountdown(4.5);
+
+    let remaining = 4.5;
+    const interval = setInterval(() => {
+      remaining -= 0.5;
+      if (remaining <= 0) {
+        clearInterval(interval);
+        setShowDialogueMode(false);
+        runTurnCalculation();
+      } else {
+        setCutInCountdown(Math.round(remaining * 10) / 10);
+      }
+    }, 500);
+  };
+
+  const runTurnCalculation = () => {
     // AI enemy card decision
     const aiDeck = p2.commandDeck;
     const shuffled = [...aiDeck].sort(() => 0.5 - Math.random());
     const aiCards = (shuffled.slice(0, 3) as CardType[]) || ['Buster', 'Arts', 'Quick'];
     const aiUseNp = p2.npGauge >= 100 && Math.random() > 0.3;
 
-    setTimeout(() => {
-      const { updatedState } = executeBattleTurn(
-        battle,
-        {
-          combatantId: p1.id,
-          selectedCards: selectedCards.length === 3 ? selectedCards : ['Buster', 'Arts', 'Quick'],
-          useNoblePhantasm: useNp,
-          useSkillIndex: selectedSkillIdx,
-          useCommandSeal: selectedCommandSeal
-        },
-        {
-          combatantId: p2.id,
-          selectedCards: aiCards,
-          useNoblePhantasm: aiUseNp
-        }
-      );
-
-      if (selectedCommandSeal) {
-        onUpdateMaster({
-          ...master,
-          commandSeals: Math.max(0, (master.commandSeals ?? 3) - 1)
-        });
+    const { updatedState } = executeBattleTurn(
+      battle,
+      {
+        combatantId: p1.id,
+        selectedCards: selectedCards.length === 3 ? selectedCards : ['Buster', 'Arts', 'Quick'],
+        useNoblePhantasm: useNp,
+        useSkillIndex: selectedSkillIdx,
+        useCommandSeal: selectedCommandSeal
+      },
+      {
+        combatantId: p2.id,
+        selectedCards: aiCards,
+        useNoblePhantasm: aiUseNp
       }
+    );
 
-      setBattle(updatedState);
-      setSelectedCards([]);
-      setUseNp(false);
-      setSelectedSkillIdx(undefined);
-      setSelectedCommandSeal(undefined);
-      setIsSimulating(false);
+    if (selectedCommandSeal) {
+      onUpdateMaster({
+        ...master,
+        commandSeals: Math.max(0, (master.commandSeals ?? 3) - 1)
+      });
+    }
 
-      if (updatedState.turnPhase === 'victory') {
-        onUpdateMaster({
-          ...master,
-          saintQuartz: master.saintQuartz + 3,
-          grailWarWins: master.grailWarWins + 1
-        });
-      }
+    setBattle(updatedState);
+    setSelectedCards([]);
+    setUseNp(false);
+    setSelectedSkillIdx(undefined);
+    setSelectedCommandSeal(undefined);
+    setIsSimulating(false);
 
-      // Automatically record concluded battle into combat log history (max 10)
-      if (updatedState.turnPhase === 'victory' || updatedState.turnPhase === 'defeat') {
-        const record = createRecordFromFinishedBattle(updatedState, updatedState.turnPhase);
-        const updatedHistory = saveCombatBattleRecord(record);
-        setBattleHistory(updatedHistory);
-        setLastCompletedBattleId(record.id);
-      }
-    }, 400);
+    if (updatedState.turnPhase === 'victory') {
+      onUpdateMaster({
+        ...master,
+        saintQuartz: master.saintQuartz + 3,
+        grailWarWins: master.grailWarWins + 1
+      });
+    }
+
+    // Automatically record concluded battle into combat log history (max 10)
+    if (updatedState.turnPhase === 'victory' || updatedState.turnPhase === 'defeat') {
+      const record = createRecordFromFinishedBattle(updatedState, updatedState.turnPhase);
+      const updatedHistory = saveCombatBattleRecord(record);
+      setBattleHistory(updatedHistory);
+      setLastCompletedBattleId(record.id);
+    }
   };
 
   const handleRestart = () => {
@@ -430,6 +605,89 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
           </div>
         </div>
       </div>
+
+      {/* Mid-Battle Dialogue Embed Box Cut-In (Reference Image Match) */}
+      {showDialogueMode && dialogueCutIn && (
+        <div className="p-1 rounded-2xl bg-gradient-to-br from-[#d4af37] via-[#b87928] to-[#6e4610] shadow-[0_0_35px_rgba(212,175,55,0.35)] animate-in fade-in zoom-in-95 duration-200 my-4">
+          <div className="p-5 md:p-6 bg-[#140d0a] rounded-xl border-2 border-[#24150b] relative overflow-hidden">
+            {/* 4.5s Animated Countdown Progress Bar */}
+            <div className="w-full h-1.5 bg-[#0a0604] rounded-full overflow-hidden mb-4 border border-[#b87928]/30">
+              <div
+                className="h-full bg-gradient-to-r from-[#d4af37] via-[#f59e0b] to-[#e59a2d] transition-all duration-300 shadow-[0_0_12px_#d4af37]"
+                style={{ width: `${(cutInCountdown / 4.5) * 100}%` }}
+              />
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch gap-5">
+              {/* Left Avatar Square Frame with Badge */}
+              <div className="shrink-0 flex flex-col items-center">
+                <div className="relative w-28 h-28 md:w-32 md:h-32 rounded-lg bg-[#0c0806] border-2 border-[#d4af37] p-1 shadow-[0_0_18px_rgba(212,175,55,0.25)] flex items-center justify-center overflow-hidden">
+                  {/* Top Badge/Rank Indicator */}
+                  <div className="absolute top-1 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-[#0e0a07] border border-[#d4af37] text-[10px] font-mono font-bold text-[#d4af37] rounded-sm shadow-md z-10 flex items-center gap-1">
+                    <span>{dialogueCutIn.rarity || 5}★</span>
+                  </div>
+
+                  {/* Avatar Image / Fallback Icon */}
+                  {dialogueCutIn.avatarUrl ? (
+                    <img
+                      src={dialogueCutIn.avatarUrl}
+                      alt={dialogueCutIn.speakerName}
+                      className="w-full h-full object-cover rounded-sm filter brightness-95 contrast-105"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-[#1c120c] flex items-center justify-center text-3xl text-[#d4af37]">
+                      ⚔️
+                    </div>
+                  )}
+
+                  {/* Dark Shadow Vignette Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
+                </div>
+
+                {/* Nameplate Tag Overlay */}
+                <div className="-mt-3.5 z-20 px-3 py-1 bg-[#0f0a07] border-2 border-[#d4af37] text-xs font-mono font-bold text-[#d4af37] shadow-lg rounded-sm tracking-wider uppercase text-center max-w-[140px] truncate">
+                  {dialogueCutIn.speakerName}
+                </div>
+              </div>
+
+              {/* Right / Bottom Dialogue Text Box (Reference Photo Match) */}
+              <div className="flex-1 flex flex-col justify-between space-y-3">
+                {/* Header Row: Title & Scenario Tag */}
+                <div className="flex items-center justify-between gap-2 border-b border-[#3d2613]/80 pb-2">
+                  <span className="text-xs font-mono text-[#d4af37] uppercase tracking-wider font-semibold">
+                    {dialogueCutIn.speakerTitle}
+                  </span>
+                  <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-sm bg-[#24150b] text-[#f59e0b] border border-[#d4af37]/40 uppercase tracking-widest font-bold">
+                    [{dialogueCutIn.tag}]
+                  </span>
+                </div>
+
+                {/* Main Golden-Border Dialogue Container */}
+                <div className="p-4 rounded-md bg-[#0a0604] border-2 border-[#a16823] shadow-inner text-left relative min-h-[90px] flex items-center">
+                  <span className="absolute top-2 left-2 text-2xl font-serif text-[#d4af37]/20 select-none">“</span>
+                  
+                  <p className="font-serif italic text-sm md:text-base text-[#f5e6d3] leading-relaxed tracking-wide px-3">
+                    &quot;{dialogueCutIn.dialogueText}&quot;
+                  </p>
+
+                  <span className="absolute bottom-2 right-2 text-2xl font-serif text-[#d4af37]/20 select-none">”</span>
+                </div>
+
+                {/* Countdown & Damage Preview Footer */}
+                <div className="flex items-center justify-between text-[11px] font-mono text-white/50 pt-1">
+                  <span className="flex items-center gap-1.5 text-[#d4af37]">
+                    <Sparkles className="w-3.5 h-3.5 animate-spin" />
+                    <span>Executing mid-battle dialogue chant...</span>
+                  </span>
+                  <span className="text-white/70 font-bold bg-[#1e130a] px-2.5 py-0.5 rounded-sm border border-[#3d2a19]">
+                    Damage Dealt in {cutInCountdown}s
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Victory / Defeat Overlay */}
       {(battle.turnPhase === 'victory' || battle.turnPhase === 'defeat') && (
