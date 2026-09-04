@@ -13,7 +13,7 @@ import { getOrCreateMaster, saveMaster, getDuelNpSettings } from '../database/se
 import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog, PassiveSkill } from '../types';
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives } from '../data/servants';
 import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp } from '../engine/grailwar';
-import { renderBattleTurnSummary } from '../canvas/renderer';
+import { renderBattleTurnSummary, renderDialogueCard } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER } from '../engine/battle';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 
@@ -277,37 +277,44 @@ function getCombatantChainDialogue(
   return { quote, tag, color };
 }
 
-// Helper to build pre-attack dialogue cut-in embed box
+// Helper to build pre-attack visual novel dialogue cut-in embed box
 function buildDialogueCutInEmbed(
   attacker: DuelCombatant,
   defender: DuelCombatant,
   sequence: ('Buster' | 'Arts' | 'Quick' | 'NP')[],
-  dialogue: { quote: string; tag: string; color: number }
+  dialogue: { quote: string; tag: string; color: number },
+  hasImageAttachment: boolean = true
 ): EmbedBuilder {
   const sName = attacker.servant.nickname || attacker.servant.template?.name || 'Heroic Spirit';
   const sClass = attacker.servant.template?.servantClass || 'Servant';
-  const avatar = attacker.servant.template?.avatarUrl;
-  const seqDisplay = sequence.map(c => {
-    if (c === 'Buster') return '🔴 **Buster**';
-    if (c === 'Arts') return '🔵 **Arts**';
-    if (c === 'Quick') return '🟢 **Quick**';
-    return '💥 **Noble Phantasm**';
-  }).join(' ➔ ');
 
   const embed = new EmbedBuilder()
     .setTitle(`💬 [${dialogue.tag}] — ${sName.toUpperCase()}`)
-    .setDescription(
+    .setColor(dialogue.color)
+    .setFooter({ text: 'Holy Grail War • Tactical RPG Visual Novel Dialogue Cut-In' });
+
+  if (hasImageAttachment) {
+    embed.setImage('attachment://vn_dialogue.png');
+  } else {
+    const avatar = attacker.servant.template?.avatarUrl;
+    const seqDisplay = sequence.map(c => {
+      if (c === 'Buster') return '🔴 **Buster**';
+      if (c === 'Arts') return '🔵 **Arts**';
+      if (c === 'Quick') return '🟢 **Quick**';
+      return '💥 **Noble Phantasm**';
+    }).join(' ➔ ');
+
+    embed.setDescription(
       `### ⚔️ **${sName}** *(${sClass})*\n` +
       `> ❝ ***${dialogue.quote}*** ❞\n\n` +
       `⚡ **Executing Sequence:** ${seqDisplay}\n` +
       `🎯 **Target:** **${defender.servant.nickname || defender.servant.template?.name}**\n\n` +
       `⏳ *Unleashing tactical strike in 4 seconds...*`
-    )
-    .setColor(dialogue.color)
-    .setFooter({ text: 'Holy Grail War • Tactical RPG Battle Dialogue Cut-In' });
+    );
 
-  if (avatar) {
-    embed.setThumbnail(avatar);
+    if (avatar) {
+      embed.setThumbnail(avatar);
+    }
   }
 
   return embed;
@@ -1700,22 +1707,42 @@ async function startInteractiveDuel(
       activePendingIndices = [];
 
       const playerDialogue = getCombatantChainDialogue(attacker, playerSequence);
+      const isNoblePhantasm = playerSequence.includes('NP');
 
       // Trigger cinematic Noble Phantasm animated GIF if player used NP
-      if (playerSequence.includes('NP')) {
+      if (isNoblePhantasm) {
+        // NP has its own dedicated NP Unleashed message + animated GIF!
+        // No extra dialogue box needed for Noble Phantasms.
         await dispatchNpGif(attacker, i);
-      }
+      } else {
+        // Non-NP Attack Sequence: Render and display the Visual Novel Dialogue Frame Cut-In
+        try {
+          const sName = attacker.servant.nickname || attacker.servant.template?.name || 'Heroic Spirit';
+          const sClass = attacker.servant.template?.servantClass || 'Servant';
+          const avatarUrl = attacker.servant.template?.avatarUrl;
+          const bondLvl = attacker.servant.bondLevel || 8;
 
-      // Display the Mid-Battle Dialogue Cut-In Embed Box for 4-5 seconds
-      const cutInEmbed = buildDialogueCutInEmbed(attacker, defender, playerSequence, playerDialogue);
-      try {
-        await i.editReply({ embeds: [cutInEmbed], components: [] });
-      } catch (err) {
-        console.warn('Failed to render dialogue cut-in embed:', err);
-      }
+          const diaBuffer = await renderDialogueCard(
+            sName,
+            playerDialogue.quote,
+            playerDialogue.tag,
+            sClass,
+            avatarUrl,
+            bondLvl
+          );
 
-      // Wait 4 seconds for dialogue box presentation before damage is resolved
-      await new Promise(r => setTimeout(r, 4000));
+          if (diaBuffer && diaBuffer.length > 500) {
+            const attachment = new AttachmentBuilder(diaBuffer, { name: 'vn_dialogue.png' });
+            const cutInEmbed = buildDialogueCutInEmbed(attacker, defender, playerSequence, playerDialogue, true);
+            await i.editReply({ embeds: [cutInEmbed], files: [attachment], components: [] });
+
+            // Display Visual Novel Dialogue Frame for 4 seconds before resolving damage
+            await new Promise(r => setTimeout(r, 4000));
+          }
+        } catch (err) {
+          console.warn('Failed to render visual novel dialogue cut-in:', err);
+        }
+      }
 
       const log = resolveStrike(attacker, defender, playerSequence, playerDialogue);
       refreshCombatantHand(attacker);

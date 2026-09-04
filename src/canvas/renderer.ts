@@ -1110,44 +1110,243 @@ export async function renderServantProfileCard(
 }
 
 /**
- * 2. Render Dialogue Card (800x240 Buffer)
+ * 2. Render Visual Novel Dialogue Frame (640x360 Authentic Fate VN Frame)
+ * Features Ornate Double Gold Borders, Framed Servant Portrait with Level Badge, 
+ * Overlapping Nameplate Tab, and Elegant Translucent Text Box.
  */
 export async function renderDialogueCard(
   speakerName: string,
   quoteText: string,
   _title: string = 'Heroic Spirit',
-  _servantClass: string = 'Saber'
+  servantClass: string = 'Saber',
+  avatarUrl?: string,
+  bondOrLevel: number | string = 8
 ): Promise<Buffer> {
-  const canvas = createCanvas(800, 240);
+  const canvas = createCanvas(640, 360);
   const ctx = canvas.getContext('2d');
 
-  const bgGrad = ctx.createLinearGradient(0, 0, 800, 240);
-  bgGrad.addColorStop(0, '#0c1222');
-  bgGrad.addColorStop(1, '#020617');
+  // 1. Deep Mahogany / Ebony Visual Novel Canvas Background
+  const bgGrad = ctx.createLinearGradient(0, 0, 640, 360);
+  bgGrad.addColorStop(0, '#100a06');
+  bgGrad.addColorStop(0.5, '#170f09');
+  bgGrad.addColorStop(1, '#0c0704');
   ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, 800, 240);
+  ctx.fillRect(0, 0, 640, 360);
 
-  ctx.strokeStyle = '#d97706';
-  ctx.lineWidth = 2;
-  drawRoundRect(ctx, 8, 8, 784, 224, 12);
+  // Subtle amber radial aura behind the portrait
+  const auraGrad = ctx.createRadialGradient(150, 120, 20, 150, 120, 200);
+  auraGrad.addColorStop(0, 'rgba(217, 119, 6, 0.15)');
+  auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = auraGrad;
+  ctx.fillRect(0, 0, 640, 360);
+
+  // 2. Outer Ornate Golden Filigree Frame (Double Border)
+  // Outer line (thick amber-gold)
+  ctx.strokeStyle = '#92400e';
+  ctx.lineWidth = 2.5;
+  drawRoundRect(ctx, 10, 10, 620, 340, 4);
   ctx.stroke();
 
-  // Nameplate
-  ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 30, 30, 320, 36, 6);
-  ctx.fill();
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 16px sans-serif';
-  ctx.fillText(speakerName, 45, 54);
+  // Inset line (vibrant gold)
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, 15, 15, 610, 330, 3);
+  ctx.stroke();
 
-  // Quote Box
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
-  drawRoundRect(ctx, 30, 76, 740, 135, 8);
+  // Corner Accent Flourishes
+  drawSparkDiamond(ctx, 15, 15, 4.5, '#fbbf24');
+  drawSparkDiamond(ctx, 625, 15, 4.5, '#fbbf24');
+  drawSparkDiamond(ctx, 15, 345, 4.5, '#fbbf24');
+  drawSparkDiamond(ctx, 625, 345, 4.5, '#fbbf24');
+
+  // Corner Brackets
+  const cbLen = 14;
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 1.5;
+  // Top-left
+  ctx.beginPath();
+  ctx.moveTo(15, 15 + cbLen);
+  ctx.lineTo(15, 15);
+  ctx.lineTo(15 + cbLen, 15);
+  ctx.stroke();
+  // Top-right
+  ctx.beginPath();
+  ctx.moveTo(625 - cbLen, 15);
+  ctx.lineTo(625, 15);
+  ctx.lineTo(625, 15 + cbLen);
+  ctx.stroke();
+  // Bottom-left
+  ctx.beginPath();
+  ctx.moveTo(15, 345 - cbLen);
+  ctx.lineTo(15, 345);
+  ctx.lineTo(15 + cbLen, 345);
+  ctx.stroke();
+  // Bottom-right
+  ctx.beginPath();
+  ctx.moveTo(625 - cbLen, 345);
+  ctx.lineTo(625, 345);
+  ctx.lineTo(625, 345 - cbLen);
+  ctx.stroke();
+
+  // 3. Servant Portrait in Ornate Golden Frame (Center-Left)
+  const portX = 54;
+  const portY = 28;
+  const portW = 180;
+  const portH = 180;
+
+  // Portrait drop shadow
+  ctx.save();
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  drawRoundRect(ctx, portX + 4, portY + 4, portW, portH, 4);
+  ctx.fill();
+  ctx.restore();
+
+  // Load avatar if provided
+  let portraitImg: any = null;
+  if (avatarUrl) {
+    try {
+      portraitImg = await loadImage(avatarUrl);
+    } catch {
+      portraitImg = null;
+    }
+  }
+
+  // Draw portrait content
+  const innerPortX = portX + 4;
+  const innerPortY = portY + 4;
+  const innerPortW = portW - 8;
+  const innerPortH = portH - 8;
+
+  ctx.save();
+  drawRoundRect(ctx, innerPortX, innerPortY, innerPortW, innerPortH, 2);
+  ctx.clip();
+
+  if (portraitImg) {
+    drawImageCover(ctx, portraitImg, innerPortX, innerPortY, innerPortW, innerPortH);
+  } else {
+    // Heraldic velvet fallback
+    const vGrad = ctx.createLinearGradient(innerPortX, innerPortY, innerPortX, innerPortY + innerPortH);
+    vGrad.addColorStop(0, '#26150b');
+    vGrad.addColorStop(1, '#0d0704');
+    ctx.fillStyle = vGrad;
+    ctx.fillRect(innerPortX, innerPortY, innerPortW, innerPortH);
+
+    drawVectorShield(ctx, innerPortX + innerPortW / 2, innerPortY + 70, 54, 62, 'rgba(245, 158, 11, 0.15)', '#f59e0b');
+    drawVectorCrossedSwords(ctx, innerPortX + innerPortW / 2, innerPortY + 70, 16, '#fbbf24');
+
+    ctx.fillStyle = '#fef08a';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText((servantClass || 'SERVANT').toUpperCase(), innerPortX + innerPortW / 2, innerPortY + 130);
+  }
+
+  // Right-side ambient shadow gradient inside portrait (as in screenshot)
+  const fadeGrad = ctx.createLinearGradient(innerPortX + innerPortW * 0.45, innerPortY, innerPortX + innerPortW, innerPortY);
+  fadeGrad.addColorStop(0, 'rgba(16, 10, 6, 0)');
+  fadeGrad.addColorStop(1, 'rgba(16, 10, 6, 0.75)');
+  ctx.fillStyle = fadeGrad;
+  ctx.fillRect(innerPortX, innerPortY, innerPortW, innerPortH);
+  ctx.restore();
+
+  // Portrait Ornate Outer Gold Border
+  ctx.strokeStyle = '#d97706';
+  ctx.lineWidth = 2.5;
+  drawRoundRect(ctx, portX, portY, portW, portH, 4);
+  ctx.stroke();
+
+  // Inset hairline
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, portX + 3, portY + 3, portW - 6, portH - 6, 2);
+  ctx.stroke();
+
+  // Portrait Corner Studs / Diamond accents
+  drawSparkDiamond(ctx, portX + 3, portY + 3, 3, '#fef08a');
+  drawSparkDiamond(ctx, portX + portW - 3, portY + 3, 3, '#fef08a');
+  drawSparkDiamond(ctx, portX + 3, portY + portH - 3, 3, '#fef08a');
+  drawSparkDiamond(ctx, portX + portW - 3, portY + portH - 3, 3, '#fef08a');
+
+  // Crest / Level Badge at top of portrait frame (e.g. [ 8 ] in screenshot)
+  const badgeW = 34;
+  const badgeH = 18;
+  const badgeX = portX + (portW - badgeW) / 2;
+  const badgeY = portY - 9;
+
+  ctx.fillStyle = '#0f0804';
+  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 3);
+  ctx.fill();
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 1.5;
+  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 3);
+  ctx.stroke();
+
+  ctx.fillStyle = '#fde047';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  const badgeDisplay = typeof bondOrLevel === 'number' ? `${bondOrLevel}` : `${bondOrLevel}`;
+  ctx.fillText(badgeDisplay, badgeX + badgeW / 2, badgeY + 13);
+
+  // 4. Visual Novel Dialogue Textbox (Bottom)
+  const boxX = 32;
+  const boxY = 226;
+  const boxW = 576;
+  const boxH = 106;
+
+  // Box Background
+  ctx.fillStyle = 'rgba(16, 9, 4, 0.94)';
+  drawRoundRect(ctx, boxX, boxY, boxW, boxH, 4);
   ctx.fill();
 
-  ctx.fillStyle = '#f1f5f9';
-  ctx.font = 'italic 16px sans-serif';
-  ctx.fillText(`"${quoteText}"`, 45, 120);
+  // Box Gold Border
+  ctx.strokeStyle = '#d97706';
+  ctx.lineWidth = 2;
+  drawRoundRect(ctx, boxX, boxY, boxW, boxH, 4);
+  ctx.stroke();
+
+  // Inset subtle hairline border
+  ctx.strokeStyle = 'rgba(245, 158, 11, 0.25)';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, boxX + 3, boxY + 3, boxW - 6, boxH - 6, 3);
+  ctx.stroke();
+
+  // 5. Speaker Nameplate Tab (Overlapping the top border of the dialogue box)
+  ctx.font = 'bold 13px sans-serif';
+  const nameMetrics = ctx.measureText(speakerName);
+  const nameW = Math.max(100, Math.min(220, nameMetrics.width + 24));
+  const nameH = 24;
+  const nameX = boxX + 16;
+  const nameY = boxY - 14;
+
+  ctx.fillStyle = '#0d0704';
+  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 3);
+  ctx.fill();
+
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 1.8;
+  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 3);
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(speakerName, nameX + nameW / 2, nameY + 16);
+
+  // 6. Dialogue Quote Text
+  const textX = boxX + 22;
+  const textY = boxY + 32;
+  const maxTextW = boxW - 44;
+  const lineHeight = 22;
+
+  ctx.fillStyle = '#fef3c7'; // Elegant ivory/cream
+  ctx.font = '15px Georgia, "Times New Roman", serif';
+  ctx.textAlign = 'left';
+
+  // Clean quote
+  const cleanQuote = quoteText.replace(/^["“]/, '').replace(/["”]$/, '').trim();
+  drawWrappedText(ctx, cleanQuote, textX, textY, maxTextW, lineHeight, 3);
+
+  // 7. Visual Novel Dialogue Prompt Indicator (Small gold diamond at bottom center)
+  drawSparkDiamond(ctx, boxX + boxW / 2, boxY + boxH - 2, 4, '#f59e0b');
 
   try {
     return canvas.toBuffer('image/png');
