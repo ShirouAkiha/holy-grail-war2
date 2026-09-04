@@ -386,6 +386,41 @@ interface DiscordEmulatorProps {
   onUpdateCustomServants: (updated: ServantTemplate[]) => void;
 }
 
+function calculateDailyClaimCooldown(lastDailyClaim?: number | string | Date, currentSq: number = 0) {
+  const now = Date.now();
+  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+  const lastClaim = typeof lastDailyClaim === 'number'
+    ? lastDailyClaim
+    : typeof lastDailyClaim === 'string'
+      ? new Date(lastDailyClaim).getTime()
+      : 0;
+
+  const timeSinceLastClaim = now - lastClaim;
+  if (lastClaim > 0 && timeSinceLastClaim < ONE_DAY_MS) {
+    const remainingMs = ONE_DAY_MS - timeSinceLastClaim;
+    const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+    const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
+    const formattedCooldown = `${hours}h ${minutes}m ${seconds}s`;
+    const nextClaimTs = Math.floor((now + remainingMs) / 1000);
+    return {
+      canClaim: false as const,
+      formattedCooldown,
+      nextClaimTs,
+      remainingMs,
+      currentSq
+    };
+  }
+
+  return {
+    canClaim: true as const,
+    now,
+    nextClaimTs: Math.floor((now + ONE_DAY_MS) / 1000),
+    prevSq: currentSq,
+    newSq: currentSq + 30
+  };
+}
+
 export default function DiscordEmulator({
   master,
   onUpdateMaster,
@@ -416,6 +451,7 @@ export default function DiscordEmulator({
           '• Use `/grailwar attack <@user>` to ambush suspected rival Masters (if innocent, they die and you are exposed!)\n' +
           '• Use `/grailwar leak <intel>` to broadcast clandestine intelligence onto the war board.\n\n' +
           '**Key Slash Commands:**\n' +
+          '• `/daily` — Claim 30 Saint Quartz (SQ) daily allowance\n' +
           '• `/grailwar [status | attack | leak | skirmish | rest]`\n' +
           '• `/servants [list | search <term> | view <name>]`\n' +
           '• `/summon [ritual | status | release]`\n' +
@@ -426,10 +462,10 @@ export default function DiscordEmulator({
       components: {
         type: 'buttons',
         items: [
+          { id: 'quick_daily_claim', label: 'Claim Daily (30 SQ)', style: 'success', emoji: '💎' },
           { id: 'quick_war_status', label: 'Intelligence Board (/grailwar)', style: 'secondary', emoji: '🏆' },
           { id: 'war_attack_prompt', label: 'Ambush Suspect (/grailwar attack)', style: 'danger', emoji: '⚔️' },
-          { id: 'war_leak_prompt', label: 'Leak Intel (/grailwar leak)', style: 'primary', emoji: '🕵️' },
-          { id: 'quick_summon_ritual', label: 'Summoning Ritual', style: 'success', emoji: '✨' }
+          { id: 'quick_summon_ritual', label: 'Summoning Ritual', style: 'primary', emoji: '✨' }
         ]
       }
     }
@@ -1821,6 +1857,74 @@ export default function DiscordEmulator({
     }
 
     // ----------------------------------------------------
+    // COMMAND 4.4: /daily, /claim (Daily 30 SQ Reward)
+    // ----------------------------------------------------
+    if (trimmed === '/daily' || trimmed.startsWith('/daily ') || trimmed === '/claim' || trimmed.startsWith('/claim ')) {
+      const claimStatus = calculateDailyClaimCooldown(master.lastDailyClaim, master.saintQuartz || 0);
+
+      if (!claimStatus.canClaim) {
+        addMessage({
+          id: getNextId('bot_daily_cooldown'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '⏳ DAILY HARVEST ON COOLDOWN',
+            description:
+              `**You have already claimed your daily 30 Saint Quartz today.**\n\n` +
+              `👤 **Master:** **${master.username}**\n` +
+              `💎 **Current Balance:** 💎 \`${claimStatus.currentSq.toLocaleString()} SQ\`\n\n` +
+              `⏱️ **Time Remaining:** \`${claimStatus.formattedCooldown}\`\n` +
+              `🔮 **Next Reset:** <t:${claimStatus.nextClaimTs}:R>\n\n` +
+              `*The Fuyuki Leyline mana reservoirs recharge once every 24 hours. Check back tomorrow!*`,
+            color: '#f59e0b',
+            footer: '24-Hour Leyline Cooldown Active'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'quick_profile_view', label: 'View Profile', style: 'primary', emoji: '👤' },
+              { id: 'quick_ce_gacha_view', label: 'Gacha Banner', style: 'secondary', emoji: '🎲' }
+            ]
+          }
+        });
+        return;
+      }
+
+      const updatedMaster: MasterProfile = {
+        ...master,
+        saintQuartz: claimStatus.newSq,
+        lastDailyClaim: claimStatus.now
+      };
+      onUpdateMaster(updatedMaster);
+
+      addMessage({
+        id: getNextId('bot_daily_success'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '💎 DAILY LEYLINE HARVEST: +30 SAINT QUARTZ CLAIMED!',
+          description:
+            `**Chaldea Daily Master Allowance Received!**\n\n` +
+            `👤 **Master:** **${master.username}**\n` +
+            `💎 **Harvested:** \`+30 Saint Quartz\` *(Full 10x Pull Value)*\n` +
+            `📊 **New Total Balance:** 💎 \`${claimStatus.newSq.toLocaleString()} SQ\` (Previous: ${claimStatus.prevSq.toLocaleString()} SQ)\n\n` +
+            `⏳ **Next Daily Claim:** Available in **24 Hours** (<t:${claimStatus.nextClaimTs}:R>)\n\n` +
+            `*Tip: You now have enough Saint Quartz to perform a 10x Craft Essence banner roll with \`/cegacha\`!*`,
+          color: '#38bdf8',
+          footer: 'Holy Grail War Daily Allowance • Leyline Sanctuary Protocol'
+        },
+        components: {
+          type: 'buttons',
+          items: [
+            { id: 'quick_ce_gacha_ten', label: 'Spend in 10x Gacha (30 SQ)', style: 'success', emoji: '💎' },
+            { id: 'quick_profile_view', label: 'View Profile', style: 'secondary', emoji: '👤' }
+          ]
+        }
+      });
+      return;
+    }
+
+    // ----------------------------------------------------
     // COMMAND 4.5: /profile and /patrol
     // ----------------------------------------------------
     if (trimmed === '/profile' || trimmed.startsWith('/profile ') || trimmed.startsWith('/grailwar profile')) {
@@ -2596,6 +2700,7 @@ export default function DiscordEmulator({
         description:
           `*You can type commands using either \`/\` slash syntax or \`!\` text prefix (e.g. \`/servant\` or \`!servant\`).*\n\n` +
           `• \`!servants [list | search <term> | view <name>]\` — Browse & inspect all Servants in the Throne\n` +
+          `• \`!daily\` / \`!claim\` — Claim daily Master allowance of 30 Saint Quartz (SQ)\n` +
           `• \`!np <name>\` / \`!art <name>\` — View animated Noble Phantasm cinematics & full card artwork\n` +
           `• \`!summon [ritual | status | release]\` — Summon a random Heroic Spirit to contract\n` +
           `• \`!servant\` — View your contracted Servant profile, radar card, and voice lines\n` +
@@ -3408,6 +3513,12 @@ export default function DiscordEmulator({
           }
         });
       }
+    } else if (btnId === 'quick_daily_claim' || btnId === 'daily_claim') {
+      handleCommand('/daily');
+    } else if (btnId === 'quick_profile_view') {
+      postProfileEmbed();
+    } else if (btnId === 'quick_ce_gacha_view' || btnId === 'quick_ce_gacha_ten') {
+      handleCommand('/cegacha');
     } else if (btnId === 'quick_summon_ritual') {
       handleCommand('/summon ritual');
     } else if (btnId === 'quick_release_contract') {

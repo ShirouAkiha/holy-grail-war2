@@ -13,6 +13,7 @@ import * as grailwarCommand from './commands/grailwar';
 import * as attackCommand from './commands/attack';
 import * as leakCommand from './commands/leak';
 import * as customiseCommand from './commands/customise';
+import * as dailyCommand from './commands/daily';
 
 const token = process.env.DISCORD_BOT_TOKEN;
 const clientId = process.env.DISCORD_CLIENT_ID;
@@ -32,7 +33,8 @@ const commands = [
   grailwarCommand.data.toJSON(),
   attackCommand.data.toJSON(),
   leakCommand.data.toJSON(),
-  customiseCommand.data.toJSON()
+  customiseCommand.data.toJSON(),
+  dailyCommand.data.toJSON()
 ];
 
 const rest = new REST({ version: '10' }).setToken(token);

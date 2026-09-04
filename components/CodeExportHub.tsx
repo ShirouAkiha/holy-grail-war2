@@ -35,6 +35,7 @@ import { equipCommandCode } from '../lib/bot/commands/equip';
 import { boastCommandCode } from '../lib/bot/commands/boast';
 import { addceCommandCode } from '../lib/bot/commands/addce';
 import { addsqCommandCode } from '../lib/bot/commands/addsq';
+import { dailyCommandCode } from '../lib/bot/commands/daily';
 import { discordBotMainCode } from '../lib/bot/client';
 import { nodeCanvasRendererCode } from '../lib/bot/nodeCanvasExport';
 import { deployScriptCode } from '../lib/bot/deploy';
@@ -195,6 +196,12 @@ const FILE_MODULES = [
     name: 'src/bot/commands/addsq.ts',
     category: 'Slash Command: /addsq (Admin SQ Grant)',
     code: addsqCommandCode
+  },
+  {
+    id: 'cmd_daily',
+    name: 'src/bot/commands/daily.ts',
+    category: 'Slash Command: /daily & /claim (+30 SQ Daily Reward)',
+    code: dailyCommandCode
   }
 ];
 

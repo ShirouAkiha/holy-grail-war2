@@ -23,6 +23,7 @@ model Master {
   maxActionPoints Int            @default(100)
   pityCount       Int            @default(0)
   grailWarWins    Int            @default(0)
+  lastDailyClaim  DateTime?
   activeServantId String?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAction

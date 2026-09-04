@@ -144,6 +144,7 @@ export interface MasterProfile {
   maxActionPoints: number;
   pityCount: number;
   grailWarWins: number;
+  lastDailyClaim?: number | string;
   activeServantId?: string;
   servants: MasterServantInstance[];
   craftEssences: CraftEssence[];

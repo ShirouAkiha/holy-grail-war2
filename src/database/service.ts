@@ -989,6 +989,7 @@ export async function getOrCreateMaster(discordId: string, username: string = 'M
       maxActionPoints: 100,
       pityCount: 0,
       grailWarWins: 0,
+      lastDailyClaim: undefined,
       activeServantId: undefined,
       servants: [],
       craftEssences: []
@@ -1018,6 +1019,7 @@ export async function updateMasterProfile(discordId: string, data: Partial<Maste
   if (data.actionPoints !== undefined) master.actionPoints = data.actionPoints;
   if (data.commandSeals !== undefined) master.commandSeals = data.commandSeals;
   if (data.grailWarWins !== undefined) master.grailWarWins = data.grailWarWins;
+  if (data.lastDailyClaim !== undefined) master.lastDailyClaim = data.lastDailyClaim;
   if (data.activeServantId !== undefined) master.activeServantId = data.activeServantId;
   if (data.servants !== undefined) master.servants = data.servants;
   if (data.craftEssences !== undefined) master.craftEssences = data.craftEssences;
@@ -1050,6 +1052,73 @@ export async function addSaintQuartzToUser(
     newSq: master.saintQuartz,
     previousTickets,
     newTickets: master.summonTickets
+  };
+}
+
+/**
+ * Daily Login / Leyline Harvest Claim Function
+ * Grants 30 Saint Quartz once every 24 hours (86,400,000 ms).
+ */
+export async function claimDailySaintQuartz(
+  discordId: string,
+  username?: string
+): Promise<{
+  success: boolean;
+  saintQuartzClaimed: number;
+  newTotalSq: number;
+  previousSq: number;
+  message: string;
+  cooldownRemainingMs?: number;
+  formattedCooldown?: string;
+  nextClaimTimestamp?: number;
+  master: MasterProfile;
+}> {
+  const master = await getOrCreateMaster(discordId, username);
+  const now = Date.now();
+  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+  const lastClaim = typeof master.lastDailyClaim === 'number'
+    ? master.lastDailyClaim
+    : typeof master.lastDailyClaim === 'string'
+      ? new Date(master.lastDailyClaim).getTime()
+      : 0;
+
+  const timeSinceLastClaim = now - lastClaim;
+
+  if (lastClaim > 0 && timeSinceLastClaim < ONE_DAY_MS) {
+    const remainingMs = ONE_DAY_MS - timeSinceLastClaim;
+    const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+    const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
+    const formattedCooldown = `${hours}h ${minutes}m ${seconds}s`;
+    const nextClaimTimestamp = now + remainingMs;
+
+    return {
+      success: false,
+      saintQuartzClaimed: 0,
+      previousSq: master.saintQuartz || 0,
+      newTotalSq: master.saintQuartz || 0,
+      message: `You have already claimed your daily Saint Quartz for today! Return in **${formattedCooldown}** (<t:${Math.floor(nextClaimTimestamp / 1000)}:R>).`,
+      cooldownRemainingMs: remainingMs,
+      formattedCooldown,
+      nextClaimTimestamp,
+      master
+    };
+  }
+
+  const previousSq = master.saintQuartz || 0;
+  const saintQuartzClaimed = 30;
+  master.saintQuartz = previousSq + saintQuartzClaimed;
+  master.lastDailyClaim = now;
+  await saveMaster(master);
+
+  return {
+    success: true,
+    saintQuartzClaimed,
+    previousSq,
+    newTotalSq: master.saintQuartz,
+    message: `Successfully harvested **30 Saint Quartz** (💎) from the Fuyuki Leyline Sanctuary!`,
+    master
   };
 }
 

@@ -35,11 +35,14 @@ import * as healCommand from './commands/heal';
 import * as inventoryCommand from './commands/inventory';
 import * as equipCommand from './commands/equip';
 import * as boastCommand from './commands/boast';
-import { getOrCreateMaster, saveMaster, getAllThroneServants, findServantInPool, searchAndRankServants } from './database/service';
+import * as dailyCommand from './commands/daily';
+import * as claimCommand from './commands/claim';
+import { getOrCreateMaster, saveMaster, getAllThroneServants, findServantInPool, searchAndRankServants, claimDailySaintQuartz } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from './data/noblePhantasmGifs';
 import { renderServantProfileCard, renderDialogueCard } from './canvas/renderer';
 import { buildProfileEmbed, buildProfileButtons } from './commands/profile';
+import { buildDailyEmbed, buildDailyButtons } from './commands/daily';
 import { buildDefensesEmbed, buildDefensesButtons } from './commands/defenses';
 import { buildChurchEmbed, buildChurchButtons } from './commands/church';
 import { buildWarEmbed, buildWarButtons } from './commands/grailwar';
@@ -111,6 +114,8 @@ commands.set(healCommand.data.name, healCommand);
 commands.set(inventoryCommand.data.name, inventoryCommand);
 commands.set(equipCommand.data.name, equipCommand);
 commands.set(boastCommand.data.name, boastCommand);
+commands.set(dailyCommand.data.name, dailyCommand);
+commands.set(claimCommand.data.name, claimCommand);
 
 // ==========================================
 // 3. SLASH COMMAND DEPLOYMENT TO DISCORD API
@@ -265,6 +270,15 @@ client.on(Events.InteractionCreate, async interaction => {
       if (interaction.replied || interaction.deferred) return;
 
       const btnId = interaction.customId;
+
+      // Daily Claim Buttons
+      if (btnId === 'quick_daily_claim' || btnId === 'daily_claim') {
+        const result = await claimDailySaintQuartz(interaction.user.id, interaction.user.username);
+        const embed = buildDailyEmbed(interaction.user, result);
+        const buttons = buildDailyButtons(result);
+        await interaction.reply({ embeds: [embed], components: [buttons] });
+        return;
+      }
 
       // Inventory Buttons
       if (btnId.startsWith('inv_')) {
