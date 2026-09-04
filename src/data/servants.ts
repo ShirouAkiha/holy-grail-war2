@@ -253,18 +253,18 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     title: 'King of Heroes',
     servantClass: 'Archer',
     rarity: 5,
-    baseHp: 28000,
-    baseAtk: 12280,
-    baseStats: { strength: 16, endurance: 14, agility: 15, mana: 18, luck: 20 },
+    baseHp: 26500,
+    baseAtk: 10850,
+    baseStats: { strength: 14, endurance: 12, agility: 14, mana: 15, luck: 16 },
     commandDeck: ['Buster', 'Buster', 'Arts', 'Quick', 'Quick'],
     skills: [
       {
         id: 'collector_ex',
         name: 'Collector EX',
-        cooldown: 5,
-        description: 'Increases Critical Star absorption and charges 20% NP Gauge.',
+        cooldown: 6,
+        description: 'Increases Critical Star absorption and charges 15% NP Gauge.',
         effectType: 'np_charge',
-        value: 20,
+        value: 15,
         duration: 2,
         icon: '💎'
       },
@@ -272,46 +272,46 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         id: 'golden_rule_a',
         name: 'Golden Rule A',
         cooldown: 6,
-        description: 'Increases own NP generation and charges 15% NP Gauge.',
+        description: 'Increases own NP generation and charges 10% NP Gauge.',
         effectType: 'np_charge',
-        value: 15,
+        value: 10,
         duration: 2,
         icon: '🪙'
       },
       {
         id: 'treasury_of_babylon',
         name: 'Treasury of Babylon',
-        cooldown: 5,
-        description: 'Gains 12 Critical Stars and increases Critical Damage by 20% for 2 turns.',
+        cooldown: 6,
+        description: 'Gains 8 Critical Stars and increases Critical Damage by 15% for 2 turns.',
         effectType: 'crit_stars',
-        value: 12,
+        value: 8,
         duration: 2,
         icon: '🗝️'
       }
     ],
     passives: [
       {
-        name: 'Independent Action A+',
+        name: 'Independent Action B',
         type: 'independent_action',
-        value: 11,
-        rank: 'A+',
-        description: 'Increases Critical Strike Damage by 11%.'
+        value: 8,
+        rank: 'B',
+        description: 'Increases Critical Strike Damage by 8%.'
       },
       {
-        name: 'Divinity B',
+        name: 'Divinity C',
         type: 'divinity',
-        value: 175,
-        rank: 'B',
-        description: 'Adds +175 flat pure damage to every hit (ignoring enemy defense).'
+        value: 100,
+        rank: 'C',
+        description: 'Adds +100 flat pure damage to every hit (ignoring enemy defense).'
       }
     ],
     noblePhantasm: {
       name: 'Enuma Elish: Star of Creation that Split Heaven and Earth',
       cardType: 'Buster',
       chant: 'I speak of the beginning... Heaven and Earth split, and nothingness congratulated creation! ENUMA ELISH!',
-      description: 'Unleashes the primordial spatial rupture of Ea, dealing devastating anti-world damage.',
+      description: 'Unleashes the primordial spatial rupture of Ea, dealing anti-world damage.',
       target: 'aoe',
-      multiplier: 380,
+      multiplier: 300,
       overchargeEffect: 'Bonus damage against Heroic Spirits'
     },
     lore: 'The oldest hero in human mythology and sovereign of Uruk who possessed all treasures of the ancient world.',
