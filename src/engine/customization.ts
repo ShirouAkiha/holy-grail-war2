@@ -184,18 +184,26 @@ export function getCeExpValue(ce: { rarity?: number }): number {
   const r = ce?.rarity || 3;
   switch (r) {
     case 1:
-      return 1000;
+      return 100;
     case 2:
-      return 2500;
+      return 250;
     case 3:
-      return 6000;
+      return 500;
     case 4:
-      return 15000;
+      return 1200;
     case 5:
-      return 35000;
+      return 3000;
     default:
-      return Math.max(1000, r * 5000);
+      return Math.max(100, r * 400);
   }
+}
+
+/**
+ * Calculates the EXP required to progress from `level` to `level + 1`.
+ */
+export function getExpForLevelStep(level: number): number {
+  if (level <= 0) return 1000;
+  return 1000 + (level - 1) * 500 + Math.floor(Math.pow(level, 1.5) * 50);
 }
 
 /**
@@ -205,7 +213,7 @@ export function getTotalExpForLevel(level: number): number {
   if (level <= 1) return 0;
   let total = 0;
   for (let l = 1; l < level; l++) {
-    total += 1000 + (l - 1) * 250;
+    total += getExpForLevelStep(l);
   }
   return total;
 }
@@ -221,7 +229,7 @@ export function calculateLevelFromExp(totalExp: number, maxLevel: number = 100):
 } {
   let level = 1;
   while (level < maxLevel) {
-    const nextLevelReq = 1000 + (level - 1) * 250;
+    const nextLevelReq = getExpForLevelStep(level);
     const currentBase = getTotalExpForLevel(level);
     if (totalExp < currentBase + nextLevelReq) {
       const currentLevelExp = Math.max(0, totalExp - currentBase);
