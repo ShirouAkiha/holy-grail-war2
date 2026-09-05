@@ -144,6 +144,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     collector.on('collect', async i => {
       try {
         if (i.replied || i.deferred) return;
+        await i.deferUpdate();
         collector.resetTimer();
         let p1Cards: CardType[] = ['Buster', 'Arts', 'Quick'];
       let useNp = false;
@@ -180,7 +181,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           )
           .setColor(battleState.winnerId === p1.id ? 0x22c55e : 0xef4444);
 
-        await i.update({
+        await i.editReply({
           embeds: [resultEmbed],
           components: []
         });
@@ -194,7 +195,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const nextView = generateBattleEmbedAndRows(battleState, turnLogs.map(l => l.actionSummary).join('\\n'));
       nextView.embed.setImage('attachment://turn_summary.png');
 
-      await i.update({
+      await i.editReply({
         embeds: [nextView.embed],
         files: [attachment],
         components: nextView.rows

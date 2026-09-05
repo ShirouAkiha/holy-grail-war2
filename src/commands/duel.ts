@@ -1669,14 +1669,14 @@ async function startInteractiveDuel(
         return;
       }
 
+      // Acknowledge Discord immediately so the 3s timeout never triggers during canvas rendering or async cleanup
+      await i.deferUpdate();
+
       // Reset inactivity idle timer on active player action
       collector.resetTimer();
 
-      // Automatically delete active NP GIF when the next turn action is picked
-      await cleanupNpGif();
-
-      // Acknowledge Discord immediately so the 3s timeout never triggers during canvas rendering
-      await i.deferUpdate();
+      // Automatically delete active NP GIF asynchronously without delaying interaction
+      cleanupNpGif().catch(() => {});
 
       // CASE: SKILL ACTIVATION (Instant - does NOT end turn)
       if (i.customId.startsWith('skill_')) {
@@ -1808,8 +1808,8 @@ async function startInteractiveDuel(
             const cutInEmbed = buildDialogueCutInEmbed(attacker, defender, playerSequence, playerDialogue, true);
             await i.editReply({ embeds: [cutInEmbed], files: [attachment], components: [] });
 
-            // Display Visual Novel Dialogue Frame for 4 seconds before resolving damage
-            await new Promise(r => setTimeout(r, 4000));
+            // Display Visual Novel Dialogue Frame for 3 seconds before resolving damage
+            await new Promise(r => setTimeout(r, 3000));
           }
         } catch (err) {
           console.warn('Failed to render visual novel dialogue cut-in:', err);

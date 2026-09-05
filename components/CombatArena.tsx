@@ -100,7 +100,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
   // Mid-Battle Dialogue Embed State
   const [dialogueCutIn, setDialogueCutIn] = useState<BattleDialogueCutIn | null>(null);
   const [showDialogueMode, setShowDialogueMode] = useState(false);
-  const [cutInCountdown, setCutInCountdown] = useState(4.5);
+  const [cutInCountdown, setCutInCountdown] = useState(3.0);
 
   // Trigger Battle Start Dialogue Cut-In on Initial Engagement
   useEffect(() => {
@@ -123,10 +123,10 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
           isPlayerMove: true
         });
         setShowDialogueMode(true);
-        setCutInCountdown(3.5);
+        setCutInCountdown(3.0);
       }, 50);
 
-      let remaining = 3.5;
+      let remaining = 3.0;
       const interval = setInterval(() => {
         remaining -= 0.5;
         if (remaining <= 0) {
@@ -339,13 +339,13 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
       return;
     }
 
-    // Display Mid-Battle Dialogue Cut-In Box for 4.5 seconds before dealing damage
+    // Display Mid-Battle Dialogue Cut-In Box for 3.0 seconds before dealing damage
     setDialogueCutIn(dialogue);
     setShowDialogueMode(true);
     setIsSimulating(true);
-    setCutInCountdown(4.5);
+    setCutInCountdown(3.0);
 
-    let remaining = 4.5;
+    let remaining = 3.0;
     const interval = setInterval(() => {
       remaining -= 0.5;
       if (remaining <= 0) {
@@ -669,11 +669,11 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
       {showDialogueMode && dialogueCutIn && (
         <div className="p-1 rounded-2xl bg-gradient-to-br from-[#d4af37] via-[#b87928] to-[#6e4610] shadow-[0_0_35px_rgba(212,175,55,0.35)] animate-in fade-in zoom-in-95 duration-200 my-4">
           <div className="p-5 md:p-6 bg-[#140d0a] rounded-xl border-2 border-[#24150b] relative overflow-hidden">
-            {/* 4.5s Animated Countdown Progress Bar */}
+            {/* 3.0s Animated Countdown Progress Bar */}
             <div className="w-full h-1.5 bg-[#0a0604] rounded-full overflow-hidden mb-4 border border-[#b87928]/30">
               <div
                 className="h-full bg-gradient-to-r from-[#d4af37] via-[#f59e0b] to-[#e59a2d] transition-all duration-300 shadow-[0_0_12px_#d4af37]"
-                style={{ width: `${(cutInCountdown / 4.5) * 100}%` }}
+                style={{ width: `${(cutInCountdown / 3.0) * 100}%` }}
               />
             </div>
 
