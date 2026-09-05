@@ -984,5 +984,87 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     defeatQuote: 'Damn it... pierced my own rule... Master, fall back...',
     avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&auto=format&fit=crop&q=80',
     cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'karna_lancer',
+    name: 'Karna',
+    title: 'Hero of Charity',
+    servantClass: 'Lancer',
+    rarity: 5,
+    baseHp: 29800,
+    baseAtk: 11975,
+    baseStats: { strength: 18, endurance: 16, agility: 17, mana: 18, luck: 8 },
+    commandDeck: ['Buster', 'Buster', 'Quick', 'Arts', 'Arts'],
+    skills: [
+      {
+        id: 'discernment_of_the_poor',
+        name: 'Discernment of the Poor A',
+        cooldown: 6,
+        description: 'Decreases enemy Noble Phantasm & attack power by 20% and seals enemy NP gauge.',
+        effectType: 'stun',
+        value: 20,
+        duration: 1,
+        icon: '👁️'
+      },
+      {
+        id: 'uncrowned_arms_mastership',
+        name: 'Uncrowned Arms Mastership',
+        cooldown: 6,
+        description: 'Charges own NP gauge by 25%, increases Critical Star drop rate and Critical Damage by 30% for 3 turns.',
+        effectType: 'np_charge',
+        value: 25,
+        duration: 3,
+        icon: '🏹'
+      },
+      {
+        id: 'mana_burst_flame_a',
+        name: 'Mana Burst (Flame) A',
+        cooldown: 5,
+        description: 'Increases own Buster Card effectiveness by 30% and Noble Phantasm Damage by 20% for 1 turn.',
+        effectType: 'buff_atk',
+        value: 30,
+        duration: 1,
+        icon: '🔥'
+      }
+    ],
+    passives: [
+      {
+        name: 'Magic Resistance C',
+        type: 'magic_resistance',
+        value: 15,
+        rank: 'C',
+        description: 'Increases debuff resistance by 15%.'
+      },
+      {
+        name: 'Riding A',
+        type: 'riding',
+        value: 10,
+        rank: 'A',
+        description: 'Increases Quick Card effectiveness by 10%.'
+      },
+      {
+        name: 'Divinity A',
+        type: 'divinity',
+        value: 200,
+        rank: 'A',
+        description: 'Adds +200 flat pure damage to every hit (ignoring enemy defense).'
+      }
+    ],
+    noblePhantasm: {
+      name: 'Vasavi Shakti: O Sun, Abide to Death',
+      cardType: 'Buster',
+      chant: 'Know the mercy of the King of Gods... O Sun, abide to death! VASAVI SHAKTI!',
+      description: 'Unleashes the divine anti-divine spear of Indra, burning all enemies with sacred solar rays and dealing massive Buster damage.',
+      target: 'aoe',
+      multiplier: 400,
+      overchargeEffect: 'Super effective against Divine targets + 20% Buster resist down'
+    },
+    lore: 'The invincible Son of the Sun God Surya from the Mahabharata. Known as the Hero of Charity who sacrificed his golden armor Kavacha and earrings without hesitation.',
+    summonQuote: 'Servant Lancer, Karna. Master... I shall serve as your spear. Let us bring charity and justice to this war.',
+    battleStartQuote: 'O Surya, witness this strike. All shall be reduced to sacred kindling.',
+    victoryQuote: 'The sun sets on this battle. A duty fulfilled.',
+    defeatQuote: 'Even if the sun sets... my honor remains untarnished...',
+    avatarUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=400&auto=format&fit=crop&q=80',
+    cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'
   }
 ];

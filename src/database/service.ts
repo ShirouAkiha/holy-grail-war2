@@ -435,6 +435,7 @@ const ALIAS_MAP: Record<string, string[]> = {
   cu_chulainn: ['lancer', 'cu', 'setanta', 'hound of culann', 'dog', 'gae bolg'],
   scathach: ['shishou', 'shadow lands', 'scathach', 'skadi', 'land of shadows'],
   karna: ['hero of charity', 'son of the sun god', 'karna', 'lancer of red', 'vasavi shakti'],
+  karna_lancer: ['hero of charity', 'son of the sun god', 'karna', 'karna lancer', 'lancer of red', 'vasavi shakti'],
   medusa: ['rider', 'gorgon', 'pegasus', 'medusa', 'bellephron'],
   iskandar: ['alexander', 'king of conquerors', 'waver rider', 'iskandar', 'ionioi hetairoi'],
   astolfo: ['hippogriff', 'paladin', 'rider of black', 'astolfo'],

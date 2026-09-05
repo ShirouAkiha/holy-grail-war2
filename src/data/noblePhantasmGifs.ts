@@ -80,6 +80,11 @@ export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: 
     gifUrl: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
     fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
     chant: 'Darkness and sweets converge... Twin black dragon blades, severance of all Sabers! CROSS-CALIBUR!'
+  },
+  'Karna': {
+    gifUrl: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+    fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+    chant: 'Know the mercy of the King of Gods... O Sun, abide to death! VASAVI SHAKTI!'
   }
 };
 
