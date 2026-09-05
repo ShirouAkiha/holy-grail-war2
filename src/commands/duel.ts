@@ -1257,19 +1257,19 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       const inviteCollector = inviteMsg.createMessageComponentCollector({
         componentType: ComponentType.Button,
-        time: 60000 // 60s to accept
+        time: 300000 // 5 minutes to accept/decline
       });
 
       inviteCollector.on('collect', async i => {
         try {
           if (i.replied || i.deferred) return;
-          if (i.user.id !== opponentUser.id && i.user.id !== interaction.user.id) {
-            await i.reply({ content: 'You are not involved in this duel challenge.', ephemeral: true });
-            return;
-          }
 
           if (i.customId === 'decline_duel') {
-            inviteCollector.stop();
+            if (i.user.id !== opponentUser.id && i.user.id !== interaction.user.id) {
+              await i.reply({ content: '❌ You are not involved in this duel challenge.', ephemeral: true });
+              return;
+            }
+            inviteCollector.stop('declined');
             await i.update({
               content: `🏳️ Duel declined by <@${i.user.id}>.`,
               embeds: [],
@@ -1278,23 +1278,54 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             return;
           }
 
-          if (i.customId === 'accept_duel' && i.user.id === opponentUser.id) {
-            inviteCollector.stop();
-            // Acknowledge the button immediately before async canvas generation
-            await i.deferUpdate();
-            const p1Part = warSession.participants[challengerMaster.discordId];
-            const p1Hp = p1Part ? calculateCurrentHp(p1Part) : undefined;
-            const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp);
+          if (i.customId === 'accept_duel') {
+            if (i.user.id !== opponentUser.id) {
+              await i.reply({
+                content: `❌ Only the challenged Master (<@${opponentUser.id}>) can accept this duel invitation.`,
+                ephemeral: true
+              });
+              return;
+            }
 
-            const p2Part = warSession.participants[opponentUser.id] ||
-              Object.values(warSession.participants).find(p => p.username.toLowerCase() === opponentUser.username.toLowerCase());
-            const p2Hp = p2Part ? calculateCurrentHp(p2Part) : undefined;
-            const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp);
-            await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster);
+            inviteCollector.stop('accepted');
+            // Acknowledge the button immediately so Discord never shows "This interaction failed"
+            await i.deferUpdate();
+
+            try {
+              const p1Part = warSession.participants[challengerMaster.discordId];
+              const p1Hp = p1Part ? calculateCurrentHp(p1Part) : undefined;
+              const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp);
+
+              const p2Part = warSession.participants[opponentUser.id] ||
+                Object.values(warSession.participants).find(p => p.username.toLowerCase() === opponentUser.username.toLowerCase());
+              const p2Hp = p2Part ? calculateCurrentHp(p2Part) : undefined;
+              const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp);
+              await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster);
+            } catch (duelErr: any) {
+              console.error('Error starting duel after accept:', duelErr);
+              await i.followUp({
+                content: `❌ Failed to initialize duel arena: ${duelErr?.message || duelErr}`,
+                ephemeral: true
+              });
+            }
           }
         } catch (err: any) {
           if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) return;
           console.error('Error in inviteCollector (opponent):', err);
+        }
+      });
+
+      inviteCollector.on('end', async (_collected, reason) => {
+        if (reason !== 'accepted' && reason !== 'declined') {
+          try {
+            const expiredEmbed = EmbedBuilder.from(inviteEmbed)
+              .setColor(0x64748b)
+              .setFooter({ text: 'Holy Grail War • Duel invitation expired (5 min timeout)' });
+            await interaction.editReply({
+              embeds: [expiredEmbed],
+              components: []
+            });
+          } catch {}
         }
       });
 
@@ -1373,19 +1404,19 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const inviteCollector = inviteMsg.createMessageComponentCollector({
       componentType: ComponentType.Button,
-      time: 60000
+      time: 300000 // 5 minutes to accept/decline
     });
 
     inviteCollector.on('collect', async i => {
       try {
         if (i.replied || i.deferred) return;
-        if (i.user.id !== targetRival.discordId && i.user.id !== interaction.user.id) {
-          await i.reply({ content: 'You are not involved in this duel challenge.', ephemeral: true });
-          return;
-        }
 
         if (i.customId === 'decline_duel') {
-          inviteCollector.stop();
+          if (i.user.id !== targetRival.discordId && i.user.id !== interaction.user.id) {
+            await i.reply({ content: '❌ You are not involved in this duel challenge.', ephemeral: true });
+            return;
+          }
+          inviteCollector.stop('declined');
           await i.update({
             content: `🏳️ Duel declined by <@${i.user.id}>.`,
             embeds: [],
@@ -1394,23 +1425,54 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           return;
         }
 
-        if (i.customId === 'accept_duel' && i.user.id === targetRival.discordId) {
-          inviteCollector.stop();
+        if (i.customId === 'accept_duel') {
+          if (i.user.id !== targetRival.discordId) {
+            await i.reply({
+              content: `❌ Only the challenged Master (<@${targetRival.discordId}>) can accept this duel invitation.`,
+              ephemeral: true
+            });
+            return;
+          }
+
+          inviteCollector.stop('accepted');
           // Acknowledge immediately before async canvas generation
           await i.deferUpdate();
-          const p1Part = warSession.participants[challengerMaster.discordId];
-          const p1Hp = p1Part ? calculateCurrentHp(p1Part) : undefined;
-          const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp);
 
-          const p2Part = warSession.participants[targetRival.discordId] ||
-            Object.values(warSession.participants).find(p => p.username.toLowerCase() === targetRival.username.toLowerCase());
-          const p2Hp = p2Part ? calculateCurrentHp(p2Part) : undefined;
-          const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp);
-          await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster);
+          try {
+            const p1Part = warSession.participants[challengerMaster.discordId];
+            const p1Hp = p1Part ? calculateCurrentHp(p1Part) : undefined;
+            const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp);
+
+            const p2Part = warSession.participants[targetRival.discordId] ||
+              Object.values(warSession.participants).find(p => p.username.toLowerCase() === targetRival.username.toLowerCase());
+            const p2Hp = p2Part ? calculateCurrentHp(p2Part) : undefined;
+            const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp);
+            await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster);
+          } catch (duelErr: any) {
+            console.error('Error starting duel after accept (rival):', duelErr);
+            await i.followUp({
+              content: `❌ Failed to initialize duel arena: ${duelErr?.message || duelErr}`,
+              ephemeral: true
+            });
+          }
         }
       } catch (err: any) {
         if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) return;
         console.error('Error in inviteCollector (rival):', err);
+      }
+    });
+
+    inviteCollector.on('end', async (_collected, reason) => {
+      if (reason !== 'accepted' && reason !== 'declined') {
+        try {
+          const expiredEmbed = EmbedBuilder.from(inviteEmbed)
+            .setColor(0x64748b)
+            .setFooter({ text: 'Holy Grail War • Duel invitation expired (5 min timeout)' });
+          await interaction.editReply({
+            embeds: [expiredEmbed],
+            components: []
+          });
+        } catch {}
       }
     });
 
@@ -1591,7 +1653,7 @@ async function startInteractiveDuel(
   // Component Collector for turn choices - resets idle timer on every valid player action
   const collector = battleMsg.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    idle: 120000, // 2 minutes per player turn
+    idle: 300000, // 5 minutes per player turn
     time: 3600000 // 1 hour absolute safety ceiling
   });
 
