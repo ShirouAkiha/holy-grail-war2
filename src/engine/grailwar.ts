@@ -472,9 +472,9 @@ export function calculateCurrentHp(participant: WarMasterParticipant, now: numbe
     return maxHp;
   }
 
-  // Auto-regeneration only channels mana if an active Bounded Field is established!
+  // Auto-regeneration only channels mana if an active Bounded Field is established and NOT in combat!
   const hasBoundedField = participant.boundedField && participant.boundedField !== 'none';
-  if (!hasBoundedField) {
+  if (!hasBoundedField || (participant as any).inCombat) {
     return participant.currentHp;
   }
 
@@ -491,11 +491,15 @@ export function calculateCurrentHp(participant: WarMasterParticipant, now: numbe
     return maxHp;
   }
 
-  const baseHp = participant.baseHpAtDamage !== undefined ? participant.baseHpAtDamage : participant.currentHp;
+  // Ensure baseHp never exceeds currentHp if currentHp was lowered by recent damage
+  const baseHp = participant.baseHpAtDamage !== undefined
+    ? Math.min(participant.currentHp, participant.baseHpAtDamage)
+    : participant.currentHp;
+
   const missingHp = Math.max(0, maxHp - baseHp);
   const progress = elapsed / REGEN_DURATION;
   const healed = Math.round(missingHp * progress);
-  const calculatedHp = Math.min(maxHp, Math.max(baseHp, baseHp + healed));
+  const calculatedHp = Math.min(maxHp, Math.max(participant.currentHp, baseHp + healed));
   participant.currentHp = calculatedHp;
   return calculatedHp;
 }

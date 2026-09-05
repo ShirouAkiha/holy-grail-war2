@@ -80,14 +80,14 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
       if (hasBoundedField && activeServant.lastDamageTime) {
         const elapsed = Math.max(0, Date.now() - activeServant.lastDamageTime);
         const REGEN_DURATION = 300000;
-        const baseHp = activeServant.baseHpAtDamage !== undefined ? activeServant.baseHpAtDamage : servantHp;
+        const baseHp = activeServant.baseHpAtDamage !== undefined ? Math.min(servantHp, activeServant.baseHpAtDamage) : servantHp;
         const maxHp = activeServant.template.baseHp || 28000;
         if (elapsed >= REGEN_DURATION) {
           servantHp = maxHp;
         } else {
           const missingHp = Math.max(0, maxHp - baseHp);
           const progress = elapsed / REGEN_DURATION;
-          servantHp = Math.min(maxHp, Math.max(baseHp, baseHp + Math.round(missingHp * progress)));
+          servantHp = Math.min(maxHp, Math.max(servantHp, baseHp + Math.round(missingHp * progress)));
         }
       }
     }
