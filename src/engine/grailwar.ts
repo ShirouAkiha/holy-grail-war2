@@ -458,6 +458,7 @@ export function calculateServantMaxHp(servantInstance: any): number {
 /**
  * Calculates a participant's real-time HP based on passive leyline regeneration.
  * Full HP recovery cycle takes 5 minutes (300,000 ms).
+ * NOTE: Auto-regeneration only occurs when the Master has an active Bounded Field ('ward', 'alarm', 'sanctuary', etc.).
  */
 export function calculateCurrentHp(participant: WarMasterParticipant, now: number = Date.now()): number {
   if (!participant) return 0;
@@ -470,6 +471,13 @@ export function calculateCurrentHp(participant: WarMasterParticipant, now: numbe
     participant.currentHp = maxHp;
     return maxHp;
   }
+
+  // Auto-regeneration only channels mana if an active Bounded Field is established!
+  const hasBoundedField = participant.boundedField && participant.boundedField !== 'none';
+  if (!hasBoundedField) {
+    return participant.currentHp;
+  }
+
   if (!participant.lastDamageTime) {
     return participant.currentHp;
   }
@@ -522,9 +530,10 @@ export function getHealingStatus(participant: WarMasterParticipant, now: number 
   const currentHp = calculateCurrentHp(participant, now);
   const percent = Math.min(100, Math.max(0, Math.round((currentHp / maxHp) * 100)));
   const isFullyHealed = currentHp >= maxHp;
+  const hasBoundedField = participant.boundedField && participant.boundedField !== 'none';
 
   let remainingSecs = 0;
-  if (!isFullyHealed && participant.lastDamageTime) {
+  if (!isFullyHealed && participant.lastDamageTime && hasBoundedField) {
     const elapsed = Math.max(0, now - participant.lastDamageTime);
     remainingSecs = Math.max(0, Math.ceil((300000 - elapsed) / 1000));
   }
@@ -539,10 +548,14 @@ export function getHealingStatus(participant: WarMasterParticipant, now: number 
 
   let statusTag = '🟢 Full Health';
   if (!isFullyHealed) {
-    const mins = Math.floor(remainingSecs / 60);
-    const secs = remainingSecs % 60;
-    const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
-    statusTag = `⏳ Passive Regen (${timeStr} to full)`;
+    if (hasBoundedField) {
+      const mins = Math.floor(remainingSecs / 60);
+      const secs = remainingSecs % 60;
+      const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+      statusTag = `🛡️ Bounded Field Regen (${timeStr} to full)`;
+    } else {
+      statusTag = '⚠️ Wounded (Auto-regen paused; deploy Bounded Field via /defenses or cast /heal)';
+    }
   }
 
   return {
@@ -1728,11 +1741,27 @@ export function executeWarAction(
     if (!['none', 'ward', 'alarm'].includes(val)) {
       return { success: false, message: 'Invalid ward type! Choose none, ward, or alarm.', updatedWar: targetWar };
     }
+    const previousWard = actor.boundedField || 'none';
     actor.boundedField = val;
+
+    const now = Date.now();
+    if (val !== 'none' && previousWard === 'none') {
+      // Activating Bounded Field begins active leyline regeneration from current HP
+      if (actor.currentHp < actor.maxHp) {
+        actor.baseHpAtDamage = actor.currentHp;
+        actor.lastDamageTime = now;
+      }
+    } else if (val === 'none' && previousWard !== 'none') {
+      // Deactivating Bounded Field calculates HP up to this instant and pauses further passive regen
+      actor.currentHp = calculateCurrentHp(actor, now);
+      actor.baseHpAtDamage = actor.currentHp;
+      actor.lastDamageTime = undefined;
+    }
+
     let desc = '';
-    if (val === 'none') desc = 'deactivated all active bounded fields';
-    else if (val === 'ward') desc = 'reinforced a Mage Workshop sanctuary field (blocks 60% incoming ambush damage)';
-    else if (val === 'alarm') desc = 'deployed a high-alert Intrusion Alert Trap (detects ambushes and deals 3,000 retaliatory DMG)';
+    if (val === 'none') desc = 'deactivated all active bounded fields (HP auto-regeneration paused)';
+    else if (val === 'ward') desc = 'reinforced a Mage Workshop sanctuary field (blocks 60% incoming ambush damage & channels HP auto-regeneration)';
+    else if (val === 'alarm') desc = 'deployed an Intrusion Alert Trap (deals 3,000 retaliatory DMG & channels HP auto-regeneration)';
     
     return {
       success: true,

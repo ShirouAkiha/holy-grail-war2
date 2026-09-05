@@ -72,7 +72,27 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
 
   const setupNewBattle = (opponentTemplate = enemyTemplate) => {
     if (!activeServant) return null;
-    const p1 = createCombatantFromMasterServant(activeServant, master.username);
+
+    // Calculate current HP taking into account Bounded Field regeneration if active
+    let servantHp = activeServant.currentHp;
+    if (servantHp !== undefined && servantHp > 0) {
+      const hasBoundedField = master.boundedField && master.boundedField !== 'none';
+      if (hasBoundedField && activeServant.lastDamageTime) {
+        const elapsed = Math.max(0, Date.now() - activeServant.lastDamageTime);
+        const REGEN_DURATION = 300000;
+        const baseHp = activeServant.baseHpAtDamage !== undefined ? activeServant.baseHpAtDamage : servantHp;
+        const maxHp = activeServant.template.baseHp || 28000;
+        if (elapsed >= REGEN_DURATION) {
+          servantHp = maxHp;
+        } else {
+          const missingHp = Math.max(0, maxHp - baseHp);
+          const progress = elapsed / REGEN_DURATION;
+          servantHp = Math.min(maxHp, Math.max(baseHp, baseHp + Math.round(missingHp * progress)));
+        }
+      }
+    }
+
+    const p1 = createCombatantFromMasterServant(activeServant, master.username, servantHp);
     const p2 = createCombatantFromMasterServant(
       {
         id: 'cpu_servant',
@@ -438,10 +458,22 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
     setIsSimulating(false);
 
     if (updatedState.turnPhase === 'victory') {
+      const updatedServants = master.servants.map(s => {
+        if (s.id === activeServant.id) {
+          return {
+            ...s,
+            currentHp: updatedState.player1.currentHp,
+            baseHpAtDamage: updatedState.player1.currentHp,
+            lastDamageTime: Date.now()
+          };
+        }
+        return s;
+      });
       onUpdateMaster({
         ...master,
         saintQuartz: master.saintQuartz + 3,
-        grailWarWins: master.grailWarWins + 1
+        grailWarWins: master.grailWarWins + 1,
+        servants: updatedServants
       });
       const record = createRecordFromFinishedBattle(updatedState, 'victory');
       const updatedHistory = saveCombatBattleRecord(record);
@@ -450,9 +482,21 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
     } else if (updatedState.turnPhase === 'defeat') {
       if ((master.commandSeals ?? 3) >= 1) {
         if (autoConsumeCommandSeal) {
+          const updatedServants = master.servants.map(s => {
+            if (s.id === activeServant.id) {
+              return {
+                ...s,
+                currentHp: 1,
+                baseHpAtDamage: 1,
+                lastDamageTime: Date.now()
+              };
+            }
+            return s;
+          });
           onUpdateMaster({
             ...master,
-            commandSeals: Math.max(0, (master.commandSeals ?? 3) - 1)
+            commandSeals: Math.max(0, (master.commandSeals ?? 3) - 1),
+            servants: updatedServants
           });
           const evacuatedCombatant = {
             ...updatedState.player1,
@@ -546,6 +590,22 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         turnPhase: 'fled',
         turnHistory: [...battle.turnHistory, fleeLog]
       };
+
+      const updatedServants = master.servants.map(s => {
+        if (s.id === activeServant.id) {
+          return {
+            ...s,
+            currentHp: battle.player1.currentHp,
+            baseHpAtDamage: battle.player1.currentHp,
+            lastDamageTime: Date.now()
+          };
+        }
+        return s;
+      });
+      onUpdateMaster({
+        ...master,
+        servants: updatedServants
+      });
 
       setSelectedCards([]);
       setUseNp(false);
@@ -664,9 +724,22 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
   const handleCommandSealEvacuate = () => {
     if (!battle || (master.commandSeals ?? 3) < 1) return;
 
+    const updatedServants = master.servants.map(s => {
+      if (s.id === activeServant.id) {
+        return {
+          ...s,
+          currentHp: 1,
+          baseHpAtDamage: 1,
+          lastDamageTime: Date.now()
+        };
+      }
+      return s;
+    });
+
     onUpdateMaster({
       ...master,
-      commandSeals: Math.max(0, (master.commandSeals ?? 3) - 1)
+      commandSeals: Math.max(0, (master.commandSeals ?? 3) - 1),
+      servants: updatedServants
     });
 
     const evacuatedCombatant = {

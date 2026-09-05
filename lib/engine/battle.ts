@@ -120,7 +120,9 @@ export function createCombatantFromMasterServant(
 
   const startingHp = overrideCurrentHp !== undefined && overrideCurrentHp > 0
     ? Math.min(maxHp, Math.round(overrideCurrentHp))
-    : maxHp;
+    : (servantInstance.currentHp !== undefined && servantInstance.currentHp > 0
+      ? Math.min(maxHp, Math.round(servantInstance.currentHp))
+      : maxHp);
 
   return {
     id: servantInstance.id,

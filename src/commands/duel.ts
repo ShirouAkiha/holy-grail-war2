@@ -205,7 +205,9 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
 
   const startingHp = overrideCurrentHp !== undefined && overrideCurrentHp > 0
     ? Math.min(maxHp, Math.round(overrideCurrentHp))
-    : maxHp;
+    : (servant.currentHp !== undefined && servant.currentHp > 0
+      ? Math.min(maxHp, Math.round(servant.currentHp))
+      : maxHp);
 
   const combatant: DuelCombatant = {
     userId: master.discordId,
@@ -1768,6 +1770,33 @@ async function startInteractiveDuel(
 
         if (success) {
           collector.stop('flee_success');
+
+          // Preserve battle damage on participants and servants
+          const warSession = getOrInitWarSession(p1Master);
+          const now = Date.now();
+          const p1Part = warSession.participants[p1.userId];
+          if (p1Part) {
+            p1Part.currentHp = Math.min(p1Part.maxHp, Math.max(1, p1.currentHp));
+            p1Part.baseHpAtDamage = p1Part.currentHp;
+            p1Part.lastDamageTime = now;
+          }
+          const p2Part = warSession.participants[p2.userId];
+          if (p2Part) {
+            p2Part.currentHp = Math.min(p2Part.maxHp, Math.max(1, p2.currentHp));
+            p2Part.baseHpAtDamage = p2Part.currentHp;
+            p2Part.lastDamageTime = now;
+          }
+          if (p1Master && p1Master.servants) {
+            const s1 = p1Master.servants.find(s => s.id === p1.servant.id);
+            if (s1) s1.currentHp = p1.currentHp;
+            await saveMaster(p1Master);
+          }
+          if (p2Master && p2Master.servants) {
+            const s2 = p2Master.servants.find(s => s.id === p2.servant.id);
+            if (s2) s2.currentHp = p2.currentHp;
+            await saveMaster(p2Master);
+          }
+
           const retreatEmbed = new EmbedBuilder()
             .setTitle('🏃 TACTICAL RETREAT SUCCESSFUL')
             .setDescription(
@@ -2043,8 +2072,11 @@ async function finishDuel(
 
   // Check if defeated Master has Command Seals to run or take defeat
   const loserMaster = loser.userId === p1Master.discordId ? p1Master : (p2Master || null);
+  const winnerMaster = winner.userId === p1Master.discordId ? p1Master : (p2Master || null);
   const loserParticipant = warSession?.participants[loser.userId] ||
     Object.values(warSession?.participants || {}).find(p => p.username.toLowerCase() === loser.username.toLowerCase() || p.servantName.toLowerCase() === loser.servant.template.name.toLowerCase());
+  const winnerParticipant = warSession?.participants[winner.userId] ||
+    Object.values(warSession?.participants || {}).find(p => p.username.toLowerCase() === winner.username.toLowerCase() || p.servantName.toLowerCase() === winner.servant.template.name.toLowerCase());
   const availableSeals = loserMaster ? (loserMaster.commandSeals ?? 3) : (loserParticipant?.commandSeals ?? loser.commandSeals ?? 3);
   const autoConsume = loserMaster 
     ? (loserMaster.autoConsumeCommandSeal === true) 
@@ -2054,13 +2086,27 @@ async function finishDuel(
     if (autoConsume === true) {
       if (loserMaster) {
         loserMaster.commandSeals = Math.max(0, availableSeals - 1);
+        const sLoser = loserMaster.servants?.find(s => s.id === loser.servant.id);
+        if (sLoser) sLoser.currentHp = 1;
         await saveMaster(loserMaster);
       }
       if (loserParticipant) {
         loserParticipant.commandSeals = Math.max(0, availableSeals - 1);
         loserParticipant.currentHp = 1;
+        loserParticipant.baseHpAtDamage = 1;
+        loserParticipant.lastDamageTime = Date.now();
         loserParticipant.isAlive = true;
         loserParticipant.inSanctuary = true;
+      }
+      if (winnerParticipant) {
+        winnerParticipant.currentHp = Math.min(winnerParticipant.maxHp, Math.max(1, winner.currentHp));
+        winnerParticipant.baseHpAtDamage = winnerParticipant.currentHp;
+        winnerParticipant.lastDamageTime = Date.now();
+      }
+      if (winnerMaster) {
+        const sWin = winnerMaster.servants?.find(s => s.id === winner.servant.id);
+        if (sWin) sWin.currentHp = winner.currentHp;
+        await saveMaster(winnerMaster);
       }
 
       const interventionEmbed = new EmbedBuilder()
@@ -2153,13 +2199,27 @@ async function finishDuel(
         if (decision.customId === 'duel_evacuate_seal') {
           if (loserMaster) {
             loserMaster.commandSeals = Math.max(0, availableSeals - 1);
+            const sLoser = loserMaster.servants?.find(s => s.id === loser.servant.id);
+            if (sLoser) sLoser.currentHp = 1;
             await saveMaster(loserMaster);
           }
           if (loserParticipant) {
             loserParticipant.commandSeals = Math.max(0, availableSeals - 1);
             loserParticipant.currentHp = 1;
+            loserParticipant.baseHpAtDamage = 1;
+            loserParticipant.lastDamageTime = Date.now();
             loserParticipant.isAlive = true;
             loserParticipant.inSanctuary = true;
+          }
+          if (winnerParticipant) {
+            winnerParticipant.currentHp = Math.min(winnerParticipant.maxHp, Math.max(1, winner.currentHp));
+            winnerParticipant.baseHpAtDamage = winnerParticipant.currentHp;
+            winnerParticipant.lastDamageTime = Date.now();
+          }
+          if (winnerMaster) {
+            const sWin = winnerMaster.servants?.find(s => s.id === winner.servant.id);
+            if (sWin) sWin.currentHp = winner.currentHp;
+            await saveMaster(winnerMaster);
           }
 
           const interventionEmbed = new EmbedBuilder()

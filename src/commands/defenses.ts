@@ -52,11 +52,11 @@ export function buildDefensesEmbed(userParticipant: any, lastMsg?: string) {
   const autoEvade = userParticipant?.autoEvadeEnabled !== false;
   const seals = userParticipant?.commandSeals ?? 3;
 
-  let wardDescription = '🚫 **No Active Wards:** Your workshop has no magical perimeter defenses.';
+  let wardDescription = '🚫 **No Active Bounded Field:** Your workshop has no magical perimeter defenses. *(HP Auto-Regeneration is paused; activate a Bounded Field to auto-recover HP over time)*';
   if (ward === 'ward') {
-    wardDescription = '🛡️ **Mage\'s Sanctuary Bounded Field Active:** Multi-layered defensive barriers parry and absorb **60% of incoming ambush damage**.';
+    wardDescription = '🛡️ **Mage\'s Sanctuary Bounded Field Active:** Multi-layered defensive barriers absorb **60% of incoming ambush damage** AND channel leyline mana for **HP Auto-Regeneration (5-minute full restoration)**.';
   } else if (ward === 'alarm') {
-    wardDescription = '🚨 **Intrusion Alarm Trap Active:** Trapped boundary detects infiltrators, immediately alerting you and striking back for **3,000 retaliatory DMG**.';
+    wardDescription = '🚨 **Intrusion Alarm Trap Active:** Trapped boundary detects infiltrators, alerts you, deals **3,000 retaliatory DMG**, AND channels leyline mana for **HP Auto-Regeneration (5-minute full restoration)**.';
   }
 
   let classPassive = 'None (Specializes in direct tactical matches)';

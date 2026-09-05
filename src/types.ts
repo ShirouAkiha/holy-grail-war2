@@ -116,6 +116,9 @@ export interface MasterServantInstance {
   nickname?: string;
   level: number;
   experience: number;
+  currentHp?: number;
+  baseHpAtDamage?: number;
+  lastDamageTime?: number;
   allocatedStats: ServantStats;
   availableStatPoints: number;
   equippedCeId?: string;
@@ -144,6 +147,7 @@ export interface MasterProfile {
   summonTickets: number;
   commandSeals: number;
   autoConsumeCommandSeal?: boolean; // Default: false (OFF by default)
+  boundedField?: 'none' | 'ward' | 'alarm';
   actionPoints: number;
   maxActionPoints: number;
   pityCount: number;
