@@ -146,8 +146,8 @@ export async function buildServantHub(
 
   const baseHp = canonical?.baseHp || t.baseHp || 28000;
   const baseAtk = canonical?.baseAtk || t.baseAtk || 10000;
-  const totalHp = Math.round(baseHp * (1 + (lvl - 1) * 0.05) + endTotal * 150 + ceBonusHp);
-  const totalAtk = Math.round(baseAtk * (1 + (lvl - 1) * 0.05) + strTotal * 80 + ceBonusAtk);
+  const totalHp = Math.round(baseHp + endTotal * 150 + ceBonusHp);
+  const totalAtk = Math.round(baseAtk + strTotal * 80 + ceBonusAtk);
   const bondLevel = targetServant.bondLevel || 1;
   const sName = targetServant.nickname || t.name;
 

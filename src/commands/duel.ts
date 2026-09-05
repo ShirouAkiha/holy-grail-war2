@@ -181,9 +181,9 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
   const ceHp = servant.equippedCe?.hpBonus || 0;
   const lvl = servant.level || 1;
 
-  // Unified Formula: Base Stat * level Scaling + (Total Parameter * factor) + Craft Essence Equipment
-  const maxHp = Math.round((t.baseHp || 28000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceHp);
-  const baseAtk = Math.round((t.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceAtk);
+  // Unified Formula: Base Stat + (Total Parameter * factor) + Craft Essence Equipment
+  const maxHp = Math.round((t.baseHp || 28000) + totalEnd * 150 + ceHp);
+  const baseAtk = Math.round((t.baseAtk || 10000) + totalStr * 80 + ceAtk);
   const baseDef = 10 + totalEnd * 2;
 
   // Check if equipped CE grants starting NP (e.g. Kaleidoscope grants 80% starting NP)

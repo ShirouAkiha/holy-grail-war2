@@ -677,8 +677,8 @@ export default function SummoningSanctum({
                   const ceAtk = activeContract.equippedCe?.atkBonus || 0;
                   const ceHp = activeContract.equippedCe?.hpBonus || 0;
                   const lvl = activeContract.level || 1;
-                  const activeMaxHp = Math.round((sTemplate.baseHp || 28000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceHp);
-                  const activeTotalAtk = Math.round((sTemplate.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceAtk);
+                  const activeMaxHp = Math.round((sTemplate.baseHp || 28000) + totalEnd * 150 + ceHp);
+                  const activeTotalAtk = Math.round((sTemplate.baseAtk || 10000) + totalStr * 80 + ceAtk);
 
                   return (
                     <div className="grid grid-cols-2 gap-2 text-xs font-mono">

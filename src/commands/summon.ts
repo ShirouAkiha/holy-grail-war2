@@ -230,8 +230,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const ceHp = activeServant.equippedCe?.hpBonus || 0;
       const lvl = activeServant.level || 1;
 
-      const calcHp = Math.round(baseHp * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceHp);
-      const calcAtk = Math.round(baseAtk * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceAtk);
+      const calcHp = Math.round(baseHp + totalEnd * 150 + ceHp);
+      const calcAtk = Math.round(baseAtk + totalStr * 80 + ceAtk);
 
       const statusEmbed = new EmbedBuilder()
         .setTitle(`📜 HOLY GRAIL WAR CONTRACT: ${sName.toUpperCase()}`)

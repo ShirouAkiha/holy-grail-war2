@@ -4270,8 +4270,8 @@ export default function DiscordEmulator({
     const ceBonusAtk = targetServant.equippedCe?.atkBonus || 0;
     const ceBonusHp = targetServant.equippedCe?.hpBonus || 0;
     const lvl = targetServant.level || 1;
-    const totalHp = Math.round((t.baseHp || 28000) * (1 + (lvl - 1) * 0.05) + endTotal * 150 + ceBonusHp);
-    const totalAtk = Math.round((t.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + strTotal * 80 + ceBonusAtk);
+    const totalHp = Math.round((t.baseHp || 28000) + endTotal * 150 + ceBonusHp);
+    const totalAtk = Math.round((t.baseAtk || 10000) + strTotal * 80 + ceBonusAtk);
     const sName = targetServant.nickname || t.name;
     const bondLvl = targetServant.bondLevel || 1;
     const availPoints = targetServant.availableStatPoints || 0;

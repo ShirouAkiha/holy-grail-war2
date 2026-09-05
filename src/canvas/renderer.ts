@@ -1182,8 +1182,8 @@ export async function renderServantProfileCard(
 
   const baseHp = canonical?.baseHp || t.baseHp || 28000;
   const baseAtk = canonical?.baseAtk || t.baseAtk || 10000;
-  const totalHp = Math.round(baseHp * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceBonusHp);
-  const totalAtk = Math.round(baseAtk * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceBonusAtk);
+  const totalHp = Math.round(baseHp + totalEnd * 150 + ceBonusHp);
+  const totalAtk = Math.round(baseAtk + totalStr * 80 + ceBonusAtk);
 
   // Background
   const bgGrad = ctx.createLinearGradient(0, 0, 0, 960);

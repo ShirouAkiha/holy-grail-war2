@@ -173,8 +173,8 @@ export function renderServantProfileCard(
   const ceBonusHp = servant.equippedCe?.hpBonus || 0;
   const lvl = servant.level || 1;
 
-  const totalHp = Math.round((t.baseHp || 28000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceBonusHp);
-  const totalAtk = Math.round((t.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceBonusAtk);
+  const totalHp = Math.round((t.baseHp || 28000) + totalEnd * 150 + ceBonusHp);
+  const totalAtk = Math.round((t.baseAtk || 10000) + totalStr * 80 + ceBonusAtk);
 
   // Background Gradient
   const bgGrad = ctx.createLinearGradient(0, 0, 0, 960);

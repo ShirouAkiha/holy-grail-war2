@@ -452,7 +452,7 @@ export function calculateServantMaxHp(servantInstance: any): number {
   const ceHp = ce ? (ce.hpBonus || 0) : 0;
   const lvl = sAny?.level || 1;
   const baseHp = canonical?.baseHp || sTemplate?.baseHp || 28000;
-  return Math.round(baseHp * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceHp);
+  return Math.round(baseHp + totalEnd * 150 + ceHp);
 }
 
 /**

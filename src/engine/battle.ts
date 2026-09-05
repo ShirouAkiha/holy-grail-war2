@@ -108,9 +108,9 @@ export function createCombatantFromMasterServant(
   const baseHp = t.baseHp || 28000;
   const baseAtk = t.baseAtk || 10000;
 
-  // Scaled calculations based on Servant level and Parameter distribution
-  const maxHp = Math.round(baseHp * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceHp);
-  const rawAtk = Math.round(baseAtk * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceAtk);
+  // Scaled calculations based on Parameter distribution and Craft Essence
+  const maxHp = Math.round(baseHp + totalEnd * 150 + ceHp);
+  const rawAtk = Math.round(baseAtk + totalStr * 80 + ceAtk);
   const def = Math.round(totalEnd * 25);
 
   // Starting NP bonus from Craft Essence (e.g. Starting NP +50% / +80%)
