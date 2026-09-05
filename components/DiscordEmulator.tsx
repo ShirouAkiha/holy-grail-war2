@@ -3435,6 +3435,140 @@ export default function DiscordEmulator({
     });
   };
 
+  // Helper: Post Dedicated Interactive Quote & Voice Line Authoring Page with Instant Presets
+  const postQuoteCustomizerPage = (servantId: string, quoteType: string) => {
+    const ownedServants = master.servants || [];
+    const target = ownedServants.find(s => s.id === servantId) ||
+      ownedServants.find(s => s.id === master.activeServantId) ||
+      ownedServants[0];
+
+    if (!target) return;
+
+    const t = target.template;
+    const name = target.nickname || t.name;
+
+    const labelMap: Record<string, { label: string; icon: string; desc: string; color: string; presets: string[] }> = {
+      busterChain: {
+        label: 'Buster Brave Chain (3x Buster)',
+        icon: '🔴',
+        desc: 'Heroic Spirit combat invocation shouted during a 3x Buster Card Brave Chain attack in battle.',
+        color: '#ef4444',
+        presets: [
+          'Burn to ash! Calamity strikes with unyielding fury!',
+          'Witness the supreme might of an unstoppable strike!',
+          'All armor is meaningless before this devastating blow!',
+          'I shall sever destiny itself! Oblivion awaits!'
+        ]
+      },
+      artsChain: {
+        label: 'Arts Mana Chain (3x Arts)',
+        icon: '🔵',
+        desc: 'Mystic chant recited during a 3x Arts Card Mana Resonance chain, supercharging NP gauge gain.',
+        color: '#3b82f6',
+        presets: [
+          'O leylines of ether, converge and unveil the true mystery!',
+          'Spiritron resonance at maximum capacity — burst forth!',
+          'Let the flow of infinite mana wash away all resistance!',
+          'Harmonize with the sacred Grail... let divine wisdom strike!'
+        ]
+      },
+      quickChain: {
+        label: 'Quick Velocity Chain (3x Quick)',
+        icon: '🟢',
+        desc: 'Agile battle cry uttered during 3x Quick Card chains, unleashing critical star cascades.',
+        color: '#10b981',
+        presets: [
+          'Faster than the wind! A thousand piercing stars!',
+          'You blinked — that was your fatal mistake!',
+          'Swift, lethal, and absolute. Disappear in an instant!',
+          'Not even light can outrun the trajectory of my strike!'
+        ]
+      },
+      battleStart: {
+        label: 'Battle Start Stance',
+        icon: '⚔️',
+        desc: 'Opening declaration spoken when engaging a rival Master or Servant in Holy Grail War combat.',
+        color: '#f59e0b',
+        presets: [
+          'Step forward, challenger. Let us engrave our names into legend.',
+          'By the honor of our covenant, I shall not falter.',
+          'Prepare yourself — this battlefield belongs to me.',
+          'A worthy foe! Let our spiritron cores clash without regret!'
+        ]
+      },
+      noblePhantasm: {
+        label: 'Noble Phantasm Chant',
+        icon: '🌟',
+        desc: 'Sacred true name invocation chant recited when charging and unleashing the ultimate Noble Phantasm.',
+        color: '#d4af37',
+        presets: [
+          'By heaven\'s decree and the sacred Grail — release the ultimate mystery!',
+          'Let all creation behold the radiant glory of my true name!',
+          'From the primordial dawn to the twilight of time — burst forth!'
+        ]
+      },
+      victory: {
+        label: 'Victory Proclamation',
+        icon: '🏆',
+        desc: 'Triumphant words declared upon defeating an enemy Master or Servant in battle.',
+        color: '#22c55e',
+        presets: [
+          'A decisive triumph. The Holy Grail draws ever closer.',
+          'Stand down. Your valor was notable, but victory is mine.',
+          'The covenant holds true. We march onward to greater battles.'
+        ]
+      },
+      defeat: {
+        label: 'Defeat / Last Words',
+        icon: '💀',
+        desc: 'Emotional departure quote uttered upon suffering mortal defeat before retreat or dissolution.',
+        color: '#71717a',
+        presets: [
+          'Master... forgive me... my spiritron core has shattered...',
+          'To fall here... what an agonizing end...',
+          'My blade... could not protect our future...'
+        ]
+      }
+    };
+
+    const cfg = labelMap[quoteType] || labelMap.busterChain;
+    const curVal = (target.customQuotes as any)?.[quoteType] || (t as any)[quoteType + 'Quote'] || 'Default Canon Voice Line';
+
+    const presetButtons = cfg.presets.map((p, idx) => ({
+      id: `dlg_preset_${target.id}_${quoteType}_${idx}`,
+      label: `Preset ${idx + 1}: "${p.slice(0, 20)}..."`,
+      style: 'primary' as const,
+      emoji: '✨'
+    }));
+
+    addMessage({
+      id: getNextId('bot_quote_customizer_page'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title: `${cfg.icon} Voice Line Studio — ${cfg.label}`,
+        description:
+          `👑 **Servant:** **${name}** (\`${t.servantClass}\`)\n` +
+          `📖 **Description:** ${cfg.desc}\n\n` +
+          `🎙️ **Current Active Line:**\n> *" ${curVal} "*\n\n` +
+          `✨ **Quick Select Presets (Click below to Equip Instantly):**\n` +
+          cfg.presets.map((p, idx) => `**${idx + 1}.** *" ${p} "*`).join('\n') +
+          `\n\n💬 *Or click **[Type Custom Line]** to auto-fill the custom prompt!*`,
+        color: cfg.color,
+        footer: `Servant: ${name} • Click any preset button to instantly equip`
+      },
+      components: {
+        type: 'buttons',
+        items: [
+          ...presetButtons,
+          { id: `dlg_autofill_${target.id}_${quoteType}`, label: 'Type Custom Line ✍️', style: 'secondary' as const },
+          { id: `dlg_open_hub_${target.id}`, label: 'Dialogue Studio 📜', style: 'secondary' as const },
+          { id: `dlg_test_cutin_${target.id}`, label: 'Test Cut-In 🎬', style: 'success' as const }
+        ]
+      }
+    });
+  };
+
   // Helper: Post Custom Dialogue Studio & Chain Voice Lines Hub
   const postCustomDialogueHub = (servantId?: string) => {
     const ownedServants = master.servants || [];
@@ -3479,25 +3613,24 @@ export default function DiscordEmulator({
           `• 🏆 **Victory:** *" ${quotes.victory || t.victoryQuote} "*\n` +
           `• 💀 **Defeat:** *" ${quotes.defeat || t.defeatQuote || 'Master... forgive me...'} "*\n` +
           `• 🕯️ **Summon:** *" ${quotes.summon || t.summonQuote} "*\n\n` +
-          `💡 **Quick Slash Authoring:**\n` +
-          `\`/customise quote busterChain "Your custom quote here"\`\n` +
-          `\`/customise quote artsChain "Your custom quote here"\`\n` +
-          `\`/customise quote quickChain "Your custom quote here"\`\n` +
-          `\`/customise quote battleStart "Your custom quote here"\``,
+          `*Click any category button below to open its dedicated Voice Line Studio and choose presets or custom text!*`,
         color: '#d4af37',
-        footer: `Contracted to Master ${master.username} • Bond Lv. ${target.bondLevel || 1} • Click a button below to set or test!`
+        footer: `Contracted to Master ${master.username} • Bond Lv. ${target.bondLevel || 1} • Click a button below to open dedicated page!`
       },
       components: {
         type: 'buttons',
         items: [
-          { id: `dlg_set_buster_${target.id}`, label: 'Set Buster Chain', style: 'danger' as const, emoji: '🔴' },
-          { id: `dlg_set_arts_${target.id}`, label: 'Set Arts Chain', style: 'primary' as const, emoji: '🔵' },
-          { id: `dlg_set_quick_${target.id}`, label: 'Set Quick Chain', style: 'success' as const, emoji: '🟢' },
-          { id: `dlg_set_battle_${target.id}`, label: 'Set Battle Start', style: 'secondary' as const, emoji: '⚔️' },
+          { id: `dlg_set_buster_${target.id}`, label: 'Buster Chain', style: 'danger' as const, emoji: '🔴' },
+          { id: `dlg_set_arts_${target.id}`, label: 'Arts Chain', style: 'primary' as const, emoji: '🔵' },
+          { id: `dlg_set_quick_${target.id}`, label: 'Quick Chain', style: 'success' as const, emoji: '🟢' },
+          { id: `dlg_set_battle_${target.id}`, label: 'Battle Start', style: 'secondary' as const, emoji: '⚔️' },
+          { id: `dlg_set_np_${target.id}`, label: 'NP Chant', style: 'primary' as const, emoji: '🌟' },
+          { id: `dlg_set_victory_${target.id}`, label: 'Victory Quote', style: 'success' as const, emoji: '🏆' },
           { id: `dlg_test_cutin_${target.id}`, label: 'Test Cut-In Live', style: 'primary' as const, emoji: '🎬' },
           ...(ownedServants.length > 1
             ? [{ id: `dlg_switch_servant_${target.id}`, label: 'Switch Servant', style: 'secondary' as const, emoji: '🔄' }]
-            : [])
+            : []),
+          { id: 'inv_cat_servants', label: 'Servants Roster', style: 'secondary' as const, emoji: '⚔️' }
         ]
       }
     });
@@ -4325,22 +4458,10 @@ export default function DiscordEmulator({
       } else if (btnId === 'inv_act_inspect_servant') {
         const targetServant = master.servants?.find(s => s.id === (invSelectedServantId || master.activeServantId)) || activeServant;
         if (targetServant) {
-          addMessage({
-            id: getNextId('bot_servant_inspect'),
-            sender: 'bot',
-            timestamp: 'Just now',
-            embed: {
-              title: `⚔️ Servant Dossier: ${targetServant.nickname || targetServant.template?.name || (targetServant as any).name}`,
-              description:
-                `**Class:** ${targetServant.template?.servantClass || (targetServant as any).servantClass} | **Rarity:** ★${targetServant.template?.rarity || 5}\n` +
-                `**Level:** Lv.${targetServant.level || 1}/100 | **Bond:** Lv.${targetServant.bondLevel || 1}/10 ♥\n` +
-                `**Available Stat Points:** \`${targetServant.availableStatPoints || 0} pts\`\n` +
-                `**Noble Phantasm:** **${targetServant.template?.noblePhantasm?.name || 'Classified'}**\n\n` +
-                `*Type \`/servant\` to view their full parameter radar card.*`,
-              color: '#d4af37'
-            }
-          });
+          postServantFullProfile(targetServant.template);
         }
+      } else if (btnId === 'inv_act_open_workshop') {
+        postCustomDialogueHub(invSelectedServantId || master.activeServantId);
       }
       // 9. Claim Practice CEs
       else if (btnId === 'inv_act_claim_practice_ces') {
@@ -4742,36 +4863,111 @@ export default function DiscordEmulator({
       }
     } else if (btnId.startsWith('dlg_')) {
       const parts = btnId.split('_');
-      // dlg_set_buster_<id>, dlg_set_arts_<id>, dlg_test_cutin_<id>, dlg_switch_servant_<id>, dlg_open_hub_<id>
-      const action = parts[1]; // set, test, switch, open
-      const subAction = parts[2]; // buster, arts, quick, battle, cutin, servant, hub
-      const servantId = parts.slice(3).join('_') || (action === 'switch' ? parts.slice(3).join('_') : '');
-
-      const targetServant = master.servants.find(s => s.id === servantId) || activeServant;
+      // dlg_set_<type>_<id>, dlg_preset_<id>_<type>_<idx>, dlg_autofill_<id>_<type>, dlg_test_cutin_<id>, dlg_switch_servant_<id>, dlg_open_hub_<id>
+      const action = parts[1]; // set, preset, autofill, test, switch, open
 
       if (action === 'set') {
+        const subAction = parts[2]; // buster, arts, quick, battle, np, victory, defeat
+        const servantId = parts.slice(3).join('_');
+        const targetServant = master.servants.find(s => s.id === servantId) || activeServant;
         const chainMap: Record<string, string> = {
           buster: 'busterChain',
           arts: 'artsChain',
           quick: 'quickChain',
-          battle: 'battleStart'
+          battle: 'battleStart',
+          np: 'noblePhantasm',
+          victory: 'victory',
+          defeat: 'defeat'
         };
         const key = chainMap[subAction] || 'busterChain';
-        const label = subAction.toUpperCase();
-        addMessage({
-          id: getNextId('bot_dlg_prompt'),
-          sender: 'bot',
-          timestamp: 'Just now',
-          embed: {
-            title: `✍️ Author Custom ${label} Line`,
-            description:
-              `To set a custom **${label}** quote for **${targetServant?.template.name}**, run:\n\n` +
-              `\`\`\`\n/customise quote ${key} "Your custom quote here"\n\`\`\`\n` +
-              `*Or use the **Servant Workshop** tab at any time to edit and save directly!*`,
-            color: '#d4af37'
-          }
-        });
+        if (targetServant) {
+          postQuoteCustomizerPage(targetServant.id, key);
+        }
+      } else if (action === 'preset') {
+        const servantId = parts[2];
+        const quoteType = parts[3];
+        const presetIdx = parseInt(parts[4], 10);
+
+        const presetsMap: Record<string, string[]> = {
+          busterChain: [
+            'Burn to ash! Calamity strikes with unyielding fury!',
+            'Witness the supreme might of an unstoppable strike!',
+            'All armor is meaningless before this devastating blow!',
+            'I shall sever destiny itself! Oblivion awaits!'
+          ],
+          artsChain: [
+            'O leylines of ether, converge and unveil the true mystery!',
+            'Spiritron resonance at maximum capacity — burst forth!',
+            'Let the flow of infinite mana wash away all resistance!',
+            'Harmonize with the sacred Grail... let divine wisdom strike!'
+          ],
+          quickChain: [
+            'Faster than the wind! A thousand piercing stars!',
+            'You blinked — that was your fatal mistake!',
+            'Swift, lethal, and absolute. Disappear in an instant!',
+            'Not even light can outrun the trajectory of my strike!'
+          ],
+          battleStart: [
+            'Step forward, challenger. Let us engrave our names into legend.',
+            'By the honor of our covenant, I shall not falter.',
+            'Prepare yourself — this battlefield belongs to me.',
+            'A worthy foe! Let our spiritron cores clash without regret!'
+          ],
+          noblePhantasm: [
+            'By heaven\'s decree and the sacred Grail — release the ultimate mystery!',
+            'Let all creation behold the radiant glory of my true name!',
+            'From the primordial dawn to the twilight of time — burst forth!'
+          ],
+          victory: [
+            'A decisive triumph. The Holy Grail draws ever closer.',
+            'Stand down. Your valor was notable, but victory is mine.',
+            'The covenant holds true. We march onward to greater battles.'
+          ],
+          defeat: [
+            'Master... forgive me... my spiritron core has shattered...',
+            'To fall here... what an agonizing end...',
+            'My blade... could not protect our future...'
+          ]
+        };
+
+        const chosenPreset = presetsMap[quoteType]?.[presetIdx] || 'Burn to ash!';
+        const targetServant = master.servants.find(s => s.id === servantId) || activeServant;
+
+        if (targetServant) {
+          const updatedServants = master.servants.map(s => {
+            if (s.id === targetServant.id) {
+              return {
+                ...s,
+                customQuotes: {
+                  ...(s.customQuotes || {}),
+                  [quoteType]: chosenPreset
+                }
+              };
+            }
+            return s;
+          });
+
+          onUpdateMaster({ ...master, servants: updatedServants });
+
+          addMessage({
+            id: getNextId('bot_preset_equipped'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `✅ Preset Line Equipped: ${targetServant.nickname || targetServant.template.name}!`,
+              description: `🗣️ *" ${chosenPreset} "*\n\n✨ *Equipped to **${quoteType}**! This quote will trigger in combat cut-ins and Brave Chains.*`,
+              color: '#22c55e'
+            }
+          });
+
+          postQuoteCustomizerPage(targetServant.id, quoteType);
+        }
+      } else if (action === 'autofill') {
+        const quoteType = parts[3] || 'busterChain';
+        setInputCommand(`/customise quote ${quoteType} "`);
       } else if (action === 'test') {
+        const servantId = parts.slice(3).join('_');
+        const targetServant = master.servants.find(s => s.id === servantId) || activeServant;
         if (targetServant) {
           const sequence: ('Buster' | 'Arts' | 'Quick')[] = ['Buster', 'Buster', 'Buster'];
           const diaResult = getServantChainDialogue(
@@ -4806,12 +5002,14 @@ export default function DiscordEmulator({
           });
         }
       } else if (action === 'switch') {
+        const servantId = parts.slice(3).join('_');
         const owned = master.servants || [];
         const currentIndex = owned.findIndex(s => s.id === servantId);
-        const nextIndex = (currentIndex + 1) % owned.length;
+        const nextIndex = (currentIndex + 1) % Math.max(1, owned.length);
         const nextServant = owned[nextIndex];
         postCustomDialogueHub(nextServant?.id);
       } else if (action === 'open') {
+        const servantId = parts.slice(3).join('_');
         postCustomDialogueHub(servantId);
       }
     } else if (btnId === 'duel_command_seal_evacuate') {
