@@ -143,6 +143,7 @@ export interface MasterProfile {
   saintQuartz: number;
   summonTickets: number;
   commandSeals: number;
+  autoConsumeCommandSeal?: boolean; // Default: false (OFF by default)
   actionPoints: number;
   maxActionPoints: number;
   pityCount: number;
@@ -316,7 +317,8 @@ export interface WarMasterParticipant {
   allianceId?: string;
   kills: number;
   boundedField?: 'none' | 'ward' | 'alarm';
-  autoEvadeEnabled?: boolean;
+  autoEvadeEnabled?: boolean; // Default: false (OFF by default)
+  autoConsumeCommandSeal?: boolean; // Default: false (OFF by default)
   lastAmbushTime?: number;
   lastAmbushedTime?: number;
   lastDamageTime?: number;

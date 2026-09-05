@@ -107,6 +107,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
   const [showEvacuatePrompt, setShowEvacuatePrompt] = useState(false);
   const [evacuateCountdown, setEvacuateCountdown] = useState(60);
   const [evacuateExpired, setEvacuateExpired] = useState(false);
+  const [autoConsumeCommandSeal, setAutoConsumeCommandSeal] = useState(false); // OFF by default
   const [fleeStatusMessage, setFleeStatusMessage] = useState<string | null>(null);
 
   // Mid-Battle Dialogue Embed State
@@ -448,9 +449,50 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
       setLastCompletedBattleId(record.id);
     } else if (updatedState.turnPhase === 'defeat') {
       if ((master.commandSeals ?? 3) >= 1) {
-        setShowEvacuatePrompt(true);
-        setEvacuateCountdown(60);
-        setEvacuateExpired(false);
+        if (autoConsumeCommandSeal) {
+          onUpdateMaster({
+            ...master,
+            commandSeals: Math.max(0, (master.commandSeals ?? 3) - 1)
+          });
+          const evacuatedCombatant = {
+            ...updatedState.player1,
+            currentHp: 1
+          };
+          const evacLog: CombatTurnLog = {
+            turnNumber: updatedState.currentTurn,
+            actorId: updatedState.player1.id,
+            actorName: master.username || 'Master',
+            targetId: updatedState.player2.id,
+            targetName: updatedState.player2.name,
+            actionSummary: `🔮 **AUTO COMMAND SEAL EVACUATION!** Master had auto-consume enabled. 1 Command Seal expended to preserve Servant at 1 HP! (${Math.max(0, (master.commandSeals ?? 3) - 1)}/3 Seals Remaining)`,
+            cardsUsed: [],
+            skillsUsed: [],
+            damageDealt: 0,
+            isCritical: false,
+            starsGenerated: 0,
+            npCharged: 0,
+            actorHpRemaining: 1,
+            targetHpRemaining: updatedState.player2.currentHp,
+            actorHpMax: updatedState.player1.maxHp,
+            targetHpMax: updatedState.player2.maxHp,
+            actorNp: updatedState.player1.npGauge,
+            targetNp: updatedState.player2.npGauge,
+            dialogueTag: 'COMMAND SEAL EVACUATION',
+            dialogueTitle: 'Emergency Spatial Extraction',
+            dialogueQuote: `By my Command Seal! Spatial evacuation initiate! Fall back to safety!`
+          };
+          setBattle({
+            ...updatedState,
+            player1: evacuatedCombatant,
+            turnPhase: 'evacuated',
+            turnHistory: [...updatedState.turnHistory, evacLog]
+          });
+        } else {
+          // Off by default: show 1-minute evacuation prompt
+          setShowEvacuatePrompt(true);
+          setEvacuateCountdown(60);
+          setEvacuateExpired(false);
+        }
       } else {
         const record = createRecordFromFinishedBattle(updatedState, 'defeat');
         const updatedHistory = saveCombatBattleRecord(record);
@@ -564,9 +606,50 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
 
       if (finalState.player1.currentHp <= 0) {
         if ((master.commandSeals ?? 3) >= 1) {
-          setShowEvacuatePrompt(true);
-          setEvacuateCountdown(60);
-          setEvacuateExpired(false);
+          if (autoConsumeCommandSeal) {
+            onUpdateMaster({
+              ...master,
+              commandSeals: Math.max(0, (master.commandSeals ?? 3) - 1)
+            });
+            const evacuatedCombatant = {
+              ...finalState.player1,
+              currentHp: 1
+            };
+            const evacLog: CombatTurnLog = {
+              turnNumber: finalState.currentTurn,
+              actorId: finalState.player1.id,
+              actorName: master.username || 'Master',
+              targetId: finalState.player2.id,
+              targetName: finalState.player2.name,
+              actionSummary: `🔮 **AUTO COMMAND SEAL EVACUATION!** Master had auto-consume enabled. 1 Command Seal expended after fatal counter-strike to preserve Servant at 1 HP! (${Math.max(0, (master.commandSeals ?? 3) - 1)}/3 Seals Remaining)`,
+              cardsUsed: [],
+              skillsUsed: [],
+              damageDealt: 0,
+              isCritical: false,
+              starsGenerated: 0,
+              npCharged: 0,
+              actorHpRemaining: 1,
+              targetHpRemaining: finalState.player2.currentHp,
+              actorHpMax: finalState.player1.maxHp,
+              targetHpMax: finalState.player2.maxHp,
+              actorNp: finalState.player1.npGauge,
+              targetNp: finalState.player2.npGauge,
+              dialogueTag: 'COMMAND SEAL EVACUATION',
+              dialogueTitle: 'Emergency Spatial Extraction',
+              dialogueQuote: `By my Command Seal! Spatial evacuation initiate! Fall back to safety!`
+            };
+            setBattle({
+              ...finalState,
+              player1: evacuatedCombatant,
+              turnPhase: 'evacuated',
+              turnHistory: [...finalState.turnHistory, evacLog]
+            });
+          } else {
+            // Off by default: show 1-minute prompt
+            setShowEvacuatePrompt(true);
+            setEvacuateCountdown(60);
+            setEvacuateExpired(false);
+          }
         } else {
           const record = createRecordFromFinishedBattle(finalState, 'defeat');
           const updatedHistory = saveCombatBattleRecord(record);
@@ -1073,6 +1156,18 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                 >
                   Accept Defeat ({evacuateCountdown}s)
                 </button>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-rose-950/40 flex items-center justify-center">
+                <label className="flex items-center gap-2 cursor-pointer text-[11px] font-mono text-white/60 hover:text-white transition select-none">
+                  <input
+                    type="checkbox"
+                    checked={autoConsumeCommandSeal}
+                    onChange={(e) => setAutoConsumeCommandSeal(e.target.checked)}
+                    className="accent-rose-500 rounded cursor-pointer"
+                  />
+                  <span>Automatically consume Command Seal on defeat <span className="text-white/40 font-normal">(Off by default)</span></span>
+                </label>
               </div>
             </div>
           )}

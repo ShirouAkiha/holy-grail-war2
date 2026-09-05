@@ -755,8 +755,8 @@ export function attackSuspectUserInWar(
 
     let eliminatedId: string | undefined;
 
-    // 4. COMMAND SEAL EMERGENCY EVACUATION
-    if (targetMaster.currentHp <= 0 && targetMaster.autoEvadeEnabled !== false && targetMaster.commandSeals >= 1) {
+    // 4. COMMAND SEAL EMERGENCY EVACUATION (Off by default: requires autoEvadeEnabled === true)
+    if (targetMaster.currentHp <= 0 && targetMaster.autoEvadeEnabled === true && targetMaster.commandSeals >= 1) {
       targetMaster.commandSeals--;
       targetMaster.currentHp = 1;
       targetMaster.isAlive = true;
@@ -1153,7 +1153,7 @@ export function checkAndTriggerChannelTraps(
       `• Channeled **+${drainDmg.toLocaleString()} HP** to Master **${setter.username}**'s Servant!`;
 
     if (intruder.currentHp <= 0) {
-      if (intruder.autoEvadeEnabled !== false && intruder.commandSeals >= 1) {
+      if (intruder.autoEvadeEnabled === true && intruder.commandSeals >= 1) {
         intruder.commandSeals--;
         intruder.currentHp = 1;
         trapNotice += `\n🔴 **EMERGENCY ESCAPE:** Consumed 1 Command Seal to escape fatal drain with 1 HP!`;

@@ -14,7 +14,7 @@ import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCom
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives } from '../data/servants';
 import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp } from '../engine/grailwar';
 import { renderBattleTurnSummary, renderDialogueCard } from '../canvas/renderer';
-import { PVP_DAMAGE_MODIFIER } from '../engine/battle';
+import { PVP_DAMAGE_MODIFIER, calculateFleeChance, rollFleeSuccess } from '../engine/battle';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { getServantChainDialogue, shouldTriggerDialogueCutIn } from '../engine/dialogue';
@@ -568,10 +568,14 @@ function buildCombatButtons(
     }
   });
 
-  // Row 2: Noble Phantasm + Clear + Command Seal
+  // Row 2: Noble Phantasm + Clear + Command Seal + Run / Flee
   const hasSeals = (combatant.commandSeals || 0) > 0;
   const npType = combatant.servant.template?.noblePhantasm?.cardType || 'Buster';
   const npScope = combatant.servant.template?.noblePhantasm?.target || 'single';
+  const sClass = combatant.servant.template?.servantClass || 'Saber';
+  const agility = combatant.servant.template?.baseStats?.agility || combatant.servant.allocatedStats?.agility || 10;
+  const fleeCalc = calculateFleeChance(combatant.currentHp, combatant.maxHp, sClass, agility);
+
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId('card_np')
@@ -590,7 +594,12 @@ function buildCombatButtons(
       .setLabel(`Seal (${combatant.commandSeals || 0})`)
       .setEmoji('🔱')
       .setStyle(ButtonStyle.Secondary)
-      .setDisabled(!hasSeals)
+      .setDisabled(!hasSeals),
+    new ButtonBuilder()
+      .setCustomId('card_flee')
+      .setLabel(`Run (${fleeCalc.chancePercent}%)`)
+      .setEmoji('🏃')
+      .setStyle(ButtonStyle.Secondary)
   );
 
   // Row 3: 3 Active Skill Sets
@@ -1746,6 +1755,63 @@ async function startInteractiveDuel(
         return;
       }
 
+      // CASE: TACTICAL RETREAT / RUN (Instant escape option)
+      if (i.customId === 'card_flee' || i.customId === 'duel_flee' || i.customId === 'card_run') {
+        const fleeActor = activeUserId === p1.userId ? p1 : p2;
+        const opponent = activeUserId === p1.userId ? p2 : p1;
+        const fleeingMaster = activeUserId === p1Master.discordId ? p1Master : p2Master;
+        const sClass = fleeActor.servant.template?.servantClass || 'Saber';
+        const agility = fleeActor.servant.template?.baseStats?.agility || fleeActor.servant.allocatedStats?.agility || 10;
+        const fleeInfo = calculateFleeChance(fleeActor.currentHp, fleeActor.maxHp, sClass, agility);
+
+        const success = rollFleeSuccess(fleeInfo.chancePercent);
+
+        if (success) {
+          collector.stop('flee_success');
+          const retreatEmbed = new EmbedBuilder()
+            .setTitle('🏃 TACTICAL RETREAT SUCCESSFUL')
+            .setDescription(
+              `**${fleeActor.servant.nickname || fleeActor.servant.template.name}** broke line of sight and safely disengaged from combat!\n\n` +
+              `> *"A tactical withdrawal preserves the spirit for the decisive battle."*\n\n` +
+              `🛡️ **Retreat Outcome:**\n` +
+              `• Escape Success Rate: **${fleeInfo.chancePercent}%**${fleeInfo.isAgilityBonus ? ' *(+5% Agility bonus applied)*' : ''}\n` +
+              `• Current HP Preserved: **${fleeActor.currentHp.toLocaleString()} / ${fleeActor.maxHp.toLocaleString()}**\n` +
+              `• No Holy Grail War rating penalties or win streak deductions were incurred.`
+            )
+            .setColor(0xf59e0b)
+            .setFooter({ text: `Holy Grail War Engine • Retreat Success Rate: ${fleeInfo.chancePercent}%` });
+
+          if (fleeActor.servant.template?.avatarUrl) {
+            retreatEmbed.setThumbnail(fleeActor.servant.template.avatarUrl);
+          }
+
+          await i.editReply({ embeds: [retreatEmbed], components: [] });
+          return;
+        } else {
+          // Failed retreat: Opponent lands an immediate counter-strike
+          const counterDmg = Math.max(1200, Math.round((opponent.atk || 2500) * 0.45));
+          fleeActor.currentHp = Math.max(0, fleeActor.currentHp - counterDmg);
+
+          const fleeFailLog = `🏃 **Retreat Failed!** (${fleeInfo.chancePercent}% chance) Opponent intercepted and counter-attacked for **${counterDmg.toLocaleString()} DMG**!`;
+          combatLogs.push(fleeFailLog);
+          if (combatLogs.length > 4) combatLogs.shift();
+
+          // Check if lethal counter-strike occurred
+          if (fleeActor.currentHp <= 0) {
+            collector.stop('finished');
+            const finalAttachment = await createTurnSummaryAttachment(p1, p2, round, fleeFailLog, p1LastCards, p2LastCards);
+            await finishDuel(i, opponent, fleeActor, p1Master, p2Master, finalAttachment);
+            return;
+          }
+
+          const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, fleeFailLog, p1LastCards, p2LastCards);
+          const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
+          const updatedButtons = buildCombatButtons(fleeActor, activePendingCards, activePendingIndices);
+          await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+          return;
+        }
+      }
+
       // CASE: HAND CARD SELECTION
       const attacker = activeUserId === p1.userId ? p1 : p2;
       const defender = activeUserId === p1.userId ? p2 : p1;
@@ -1955,8 +2021,136 @@ async function finishDuel(
 
   const chanTag = i.channel && 'name' in i.channel ? `#${(i.channel as any).name}` : '#general';
 
-  // If AI opponent defeated the player Master, automatically eliminate player Master
+  // If AI opponent defeated the player Master, check for mandatory Command Seal intervention
   if (winner.isAi) {
+    const loserMaster = loser.userId === p1Master.discordId ? p1Master : p2Master;
+    const availableSeals = loserMaster ? (loserMaster.commandSeals || 0) : (loser.commandSeals || 0);
+
+    if (availableSeals >= 1 && loserMaster) {
+      if (loserMaster.autoConsumeCommandSeal === true) {
+        loserMaster.commandSeals = Math.max(0, availableSeals - 1);
+        await saveMaster(loserMaster);
+
+        const interventionEmbed = new EmbedBuilder()
+          .setTitle('🔴 COMMAND SEAL AUTOMATIC EVACUATION')
+          .setDescription(
+            `**${winner.servant.template.name}** dealt a mortal blow to **${loser.servant.template.name}**!\n\n` +
+            `🔮 **Auto-Consume Enabled:** Master possessed **${availableSeals}/3 Command Seals**.\n` +
+            `1 Command Seal was automatically expended (Remaining: **${availableSeals - 1}/3**).\n\n` +
+            `✨ **Emergency Sanctuary:** Your Command Seal flared with blinding light, relocating your Servant from fatal annihilation preserved at **1 HP**!\n` +
+            `Permanent elimination has been averted.`
+          )
+          .setColor(0xf59e0b)
+          .setFooter({ text: 'Holy Grail War Survival Protocol • Command Seal Sanctuary' });
+
+        if (loser.servant.template.avatarUrl) {
+          interventionEmbed.setThumbnail(loser.servant.template.avatarUrl);
+        }
+
+        if (i.deferred || i.replied) {
+          await i.editReply({
+            embeds: [interventionEmbed],
+            files: [finalAttachment],
+            components: []
+          });
+        } else {
+          await i.update({
+            embeds: [interventionEmbed],
+            files: [finalAttachment],
+            components: []
+          });
+        }
+        return;
+      }
+
+      // Default: auto-consume is OFF. Present the 1-minute decision prompt!
+      const decisionEmbed = new EmbedBuilder()
+        .setTitle('⚠️ CRITICAL DEFEAT — COMMAND SEAL DECISION')
+        .setDescription(
+          `**${winner.servant.template.name}** dealt a mortal blow to **${loser.servant.template.name}**!\n\n` +
+          `🔮 **Command Seal Evacuation Available:** Master possesses **${availableSeals}/3 Command Seals**.\n` +
+          `You may expend **1 Command Seal** to emergency-teleport your Servant to safety preserved at **1 HP**, preventing contract severance and Holy Grail War elimination.\n\n` +
+          `⏱️ **Time Limit:** You have **1 minute (60 seconds)** to decide. If time expires, defeat is automatically accepted.\n` +
+          `*(Auto-consume option is OFF by default to protect your Command Seals)*`
+        )
+        .setColor(0xf59e0b)
+        .setFooter({ text: 'Holy Grail War Survival Protocol • 1-Minute Decision Window (Auto-consume: OFF)' });
+
+      if (loser.servant.template.avatarUrl) {
+        decisionEmbed.setThumbnail(loser.servant.template.avatarUrl);
+      }
+
+      const decisionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId('duel_evacuate_seal')
+          .setLabel(`Invoke Command Seal (${availableSeals}/3)`)
+          .setEmoji('🔮')
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+          .setCustomId('duel_accept_defeat')
+          .setLabel('Accept Defeat')
+          .setEmoji('💀')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+      let responseMsg: any;
+      if (i.deferred || i.replied) {
+        responseMsg = await i.editReply({
+          embeds: [decisionEmbed],
+          files: [finalAttachment],
+          components: [decisionRow]
+        });
+      } else {
+        responseMsg = await i.update({
+          embeds: [decisionEmbed],
+          files: [finalAttachment],
+          components: [decisionRow]
+        });
+      }
+
+      const targetMsg = responseMsg || (i.fetchReply ? await i.fetchReply().catch(() => null) : null);
+
+      if (targetMsg && targetMsg.awaitMessageComponent) {
+        try {
+          const decision = await targetMsg.awaitMessageComponent({
+            filter: (btnInt: any) => btnInt.user.id === (loserMaster.discordId || loser.userId),
+            componentType: ComponentType.Button,
+            time: 60000 // 1-minute time limit
+          });
+
+          if (decision.customId === 'duel_evacuate_seal') {
+            loserMaster.commandSeals = Math.max(0, availableSeals - 1);
+            await saveMaster(loserMaster);
+
+            const interventionEmbed = new EmbedBuilder()
+              .setTitle('🔴 COMMAND SEAL EMERGENCY EVACUATION')
+              .setDescription(
+                `**${loser.servant.template.name}** was saved from mortal annihilation!\n\n` +
+                `🔮 **Command Seal Invoked:** 1 Command Seal expended (Remaining: **${availableSeals - 1}/3**).\n\n` +
+                `✨ **Emergency Sanctuary:** Preserved at **1 HP** and evacuated to sanctuary.\n` +
+                `Permanent elimination has been averted.`
+              )
+              .setColor(0xf59e0b)
+              .setFooter({ text: 'Holy Grail War Survival Protocol • Command Seal Sanctuary' });
+
+            if (loser.servant.template.avatarUrl) {
+              interventionEmbed.setThumbnail(loser.servant.template.avatarUrl);
+            }
+
+            await decision.update({
+              embeds: [interventionEmbed],
+              components: []
+            });
+            return;
+          } else {
+            await decision.deferUpdate().catch(() => {});
+          }
+        } catch {
+          // 1 minute expired without choice -> Defeat is accepted!
+        }
+      }
+    }
+
     const outcome = recordDuelOutcome(
       warSession,
       winner.username,

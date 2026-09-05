@@ -2551,7 +2551,7 @@ export default function DiscordEmulator({
 
         const uP = currentWar.participants[master.discordId];
         const wardType = uP?.boundedField || 'none';
-        const evadeOn = uP?.autoEvadeEnabled !== false;
+        const evadeOn = uP?.autoEvadeEnabled === true;
         const seals = uP?.commandSeals ?? 3;
         const inSanctuary = !!uP?.inSanctuary;
 
@@ -2586,10 +2586,10 @@ export default function DiscordEmulator({
               (inSanctuary
                 ? `• **🕊️ ACTIVE ASYLUM:** Sheltered under Father Kotomine. 100% immune to all ambushes & attacks (cannot attack rivals).\n\n`
                 : `• **⚔️ IN THE FIELD:** Active combatant in Holy Grail War territory.\n\n`) +
-              `🔴 **Command Seal Emergency Evacuation:**\n` +
+              `🔴 **Command Seal Emergency Evacuation (Auto-consume):**\n` +
               (evadeOn
-                ? `• **🟢 ENABLED:** When taking fatal ambush damage, consumes **1 Command Seal** to escape into shadows with **1 HP**.\n`
-                : `• **🔴 DISABLED:** Fatal ambushes will eliminate your Servant normally without consuming a seal.\n`) +
+                ? `• **🟢 ENABLED:** When taking fatal damage, automatically consumes **1 Command Seal** to escape with **1 HP**.\n`
+                : `• **🔴 DISABLED (Default):** Auto-consume is OFF. You retain full control to manually invoke Command Seals or decide during combat.\n`) +
               `• **Current Command Seals:** \`${'✦ '.repeat(seals)}${'✧ '.repeat(Math.max(0, 3 - seals))}\` (**${seals}/3** remaining)\n\n` +
               `👁️ **Servant Class Passive:**\n${classPassive}\n\n` +
               `*Toggle your defenses and Bounded Fields using the interactive buttons below:*`,
@@ -2624,7 +2624,7 @@ export default function DiscordEmulator({
               },
               {
                 id: 'toggle_auto_evade',
-                label: evadeOn ? 'Auto-Evacuate: ON 🟢' : 'Auto-Evacuate: OFF 🔴',
+                label: evadeOn ? 'Auto-Evac: ON 🟢' : 'Auto-Evac: OFF (Default) 🔴',
                 style: evadeOn ? 'success' : 'secondary'
               },
               {
@@ -4232,42 +4232,39 @@ export default function DiscordEmulator({
           if (updatedState.turnPhase === 'defeat') {
             const seals = master.commandSeals ?? 3;
             const p1DefeatQuote = activeServant?.customQuotes?.defeat || activeServant?.template.defeatQuote || "Master... I have failed you in this Holy Grail War...";
-            const outcome = recordDuelOutcome(
-              grailWar,
-              updatedState.player2.masterName,
-              master.username,
-              'kill',
-              activeChannel === 'public' ? 'holy-grail-war' : 'direct-messages',
-              updatedState.player2.currentHp,
-              updatedState.player1.currentHp
-            );
-            onUpdateGrailWar(outcome.updatedWar);
-            setActiveDuel(null);
+            const autoConsume = grailWar.participants[master.discordId]?.autoEvadeEnabled === true || master.autoConsumeCommandSeal === true;
 
-            if (!outcome.eliminated) {
-              // Mandatory Command Seal check intervened!
-              const remainingSeals = outcome.defeatedMaster?.commandSeals ?? Math.max(0, seals - 1);
+            if (seals >= 1 && autoConsume) {
+              const remainingSeals = Math.max(0, seals - 1);
               onUpdateMaster({
                 ...master,
                 commandSeals: remainingSeals
               });
+              const uWar = { ...grailWar };
+              if (uWar.participants[master.discordId]) {
+                uWar.participants[master.discordId].currentHp = 1;
+                uWar.participants[master.discordId].isAlive = true;
+                uWar.participants[master.discordId].commandSeals = remainingSeals;
+              }
+              onUpdateGrailWar(uWar);
+              setActiveDuel(null);
 
               addMessage({
                 id: getNextId('bot_duel_flee_fail_saved'),
                 sender: 'bot',
                 timestamp: 'Just now',
                 embed: {
-                  title: '🔴 MANDATORY COMMAND SEAL INTERVENTION!',
+                  title: '🔴 COMMAND SEAL AUTOMATIC EVACUATION',
                   description:
                     `**${p1.name}** failed to escape (${fleeCalc.chancePercent}% chance) and suffered a mortal blow from **${p2.name}**!\n\n` +
                     `💬 **[MORTAL BLOW] ${p1.name}:**\n> ❝ ***${p1DefeatQuote}*** ❞\n\n` +
-                    `🔮 **Mandatory Command Seal Check:**\n` +
-                    `Defeated Master **${master.username}** had **${seals}/3 Command Seals** remaining. In accordance with Holy Grail War protocols, 1 Command Seal was automatically expended to trigger emergency spatial evacuation!\n\n` +
+                    `🔮 **Auto-Consume Enabled:**\n` +
+                    `Master possessed **${seals}/3 Command Seals**. 1 Command Seal was automatically expended to trigger emergency spatial evacuation!\n\n` +
                     `• 🔴 **Command Seals Remaining:** **${remainingSeals}/3**\n` +
                     `• ❤️ **Preserved Vitality:** **1 HP** (Emergency evacuation to Sanctuary)\n` +
                     `• 🛡️ **Tournament Standing:** Active (Contract Preserved, Elimination Averted!)`,
                   color: '#f59e0b',
-                  footer: 'Mandatory Command Seal Emergency Evacuation Protocol'
+                  footer: 'Command Seal Sanctuary Protocol'
                 },
                 components: {
                   type: 'buttons',
@@ -4278,8 +4275,47 @@ export default function DiscordEmulator({
                 }
               });
               return;
+            } else if (seals >= 1) {
+              // 1-minute decision window (Auto-consume is OFF by default)
+              addMessage({
+                id: getNextId('bot_duel_flee_decision'),
+                sender: 'bot',
+                timestamp: 'Just now',
+                embed: {
+                  title: '⚠️ CRITICAL DEFEAT — COMMAND SEAL DECISION',
+                  description:
+                    `**${p1.name}** failed to escape (${fleeCalc.chancePercent}% chance) and suffered a mortal counter-strike from **${p2.name}**!\n\n` +
+                    `💬 **[MORTAL BLOW] ${p1.name}:**\n> ❝ ***${p1DefeatQuote}*** ❞\n\n` +
+                    `🔮 **Command Seal Evacuation Available:** Master possesses **${seals}/3 Command Seals**.\n` +
+                    `You may expend **1 Command Seal** to emergency-teleport your Servant to safety preserved at **1 HP**, preventing contract severance and Holy Grail War elimination.\n\n` +
+                    `⏱️ **Time Limit:** You have **1 minute (60 seconds)** to decide. If time expires, defeat is automatically accepted.\n` +
+                    `*(Auto-consume option is OFF by default to protect your Command Seals)*`,
+                  color: '#f59e0b',
+                  footer: 'Holy Grail War Survival Protocol • 1-Minute Decision Window (Auto-consume: OFF)'
+                },
+                components: {
+                  type: 'buttons',
+                  items: [
+                    { id: 'duel_evacuate_seal', label: `Invoke Command Seal (${seals}/3)`, style: 'danger' as const, emoji: '🔮' },
+                    { id: 'duel_accept_defeat', label: 'Accept Defeat', style: 'secondary' as const, emoji: '💀' }
+                  ]
+                }
+              });
+              return;
             } else {
               // 0 Command Seals remaining — permanent elimination
+              const outcome = recordDuelOutcome(
+                grailWar,
+                updatedState.player2.masterName,
+                master.username,
+                'kill',
+                activeChannel === 'public' ? 'holy-grail-war' : 'direct-messages',
+                updatedState.player2.currentHp,
+                0
+              );
+              onUpdateGrailWar(outcome.updatedWar);
+              setActiveDuel(null);
+
               addMessage({
                 id: getNextId('bot_duel_flee_fail_fatal'),
                 sender: 'bot',
@@ -4356,6 +4392,95 @@ export default function DiscordEmulator({
           });
           return;
         }
+      }
+
+      if (btnId === 'duel_evacuate_seal') {
+        const seals = master.commandSeals ?? 3;
+        if (seals >= 1) {
+          const remainingSeals = Math.max(0, seals - 1);
+          onUpdateMaster({
+            ...master,
+            commandSeals: remainingSeals
+          });
+          const uWar = { ...grailWar };
+          if (uWar.participants[master.discordId]) {
+            uWar.participants[master.discordId].currentHp = 1;
+            uWar.participants[master.discordId].isAlive = true;
+            uWar.participants[master.discordId].commandSeals = remainingSeals;
+          }
+          onUpdateGrailWar(uWar);
+          setActiveDuel(null);
+
+          addMessage({
+            id: getNextId('bot_duel_seal_evac_success'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '🔴 COMMAND SEAL EMERGENCY EVACUATION',
+              description:
+                `Master **${master.username}** invoked a Command Seal decree!\n\n` +
+                `✨ **Emergency Spatial Relocation:**\n` +
+                `The Command Seal burned with radiant crimson prana, tearing open a leyline corridor and evacuating your Servant to the Church Sanctuary!\n\n` +
+                `• 🔴 **Command Seals Remaining:** **${remainingSeals}/3** (1 expended)\n` +
+                `• ❤️ **Preserved Vitality:** **1 HP** (Sanctuary Asylum Active)\n` +
+                `• 🛡️ **Tournament Standing:** Active (Contract Preserved, Elimination Averted!)`,
+              color: '#f59e0b',
+              footer: 'Holy Grail War Protocol • Command Seal Sanctuary'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary', emoji: '📋' },
+                { id: 'quick_war_defenses', label: 'Mage Defenses (/defenses)', style: 'secondary', emoji: '🏰' }
+              ]
+            }
+          });
+        }
+        return;
+      }
+
+      if (btnId === 'duel_accept_defeat') {
+        const rivalMaster = activeDuel?.battle.player2.masterName || 'itsderpo';
+        const rivalServantName = activeDuel?.battle.player2.name || 'Scáthach';
+        const p1DefeatQuote = activeServant?.customQuotes?.defeat || activeServant?.template.defeatQuote || "Master... I have failed you in this Holy Grail War...";
+
+        const outcome = recordDuelOutcome(
+          grailWar,
+          rivalMaster,
+          master.username,
+          'kill',
+          activeChannel === 'public' ? 'holy-grail-war' : 'direct-messages',
+          activeDuel?.battle.player2.currentHp,
+          0
+        );
+        onUpdateGrailWar(outcome.updatedWar);
+        setActiveDuel(null);
+
+        const aliveMastersCount = Object.values(outcome.updatedWar.participants).filter(p => p.isAlive).length;
+
+        addMessage({
+          id: getNextId('bot_duel_defeat_accepted'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '☠️ DEFEAT ACCEPTED — MASTER ELIMINATED',
+            description:
+              `Master **${master.username}** chose to accept defeat in the Holy Grail War.\n\n` +
+              `💬 **[CONTRACT DISSOLVED] ${activeServant?.template.name}:**\n> ❝ ***${p1DefeatQuote}*** ❞\n\n` +
+              `💀 Master **${rivalMaster}** (${rivalServantName}) has claimed victory. Your spiritual core has been absorbed into the Lesser Grail.\n\n` +
+              `🔮 **Command Seals:** Kept intact (0 consumed).\n` +
+              `👥 **Surviving Masters:** **${aliveMastersCount}/7** alive in Fuyuki City.`,
+            color: '#ef4444',
+            footer: 'Holy Grail War Elimination • Deceased'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary', emoji: '📋' }
+            ]
+          }
+        });
+        return;
       }
 
       if (btnId === 'duel_fate_kill' || btnId === 'duel_fate_spare') {
@@ -4585,49 +4710,45 @@ export default function DiscordEmulator({
           // Player defeated by opponent (e.g. itsderpo)
           const seals = master.commandSeals ?? 3;
           const p1DefeatQuote = activeServant?.customQuotes?.defeat || activeServant?.template.defeatQuote || "Master... I have failed you in this Holy Grail War...";
+          const autoConsume = grailWar.participants[master.discordId]?.autoEvadeEnabled === true || master.autoConsumeCommandSeal === true;
 
-          const outcome = recordDuelOutcome(
-            grailWar,
-            updatedState.player2.masterName,
-            master.username,
-            'kill',
-            activeChannel === 'public' ? 'holy-grail-war' : 'direct-messages',
-            updatedState.player2.currentHp,
-            updatedState.player1.currentHp
-          );
-          onUpdateGrailWar(outcome.updatedWar);
-          setActiveDuel(null);
-
-          if (!outcome.eliminated) {
-            // Mandatory Command Seal check intervened!
-            const remainingSeals = outcome.defeatedMaster?.commandSeals ?? Math.max(0, seals - 1);
+          if (seals >= 1 && autoConsume) {
+            const remainingSeals = Math.max(0, seals - 1);
             onUpdateMaster({
               ...master,
               commandSeals: remainingSeals
             });
+            const uWar = { ...grailWar };
+            if (uWar.participants[master.discordId]) {
+              uWar.participants[master.discordId].currentHp = 1;
+              uWar.participants[master.discordId].isAlive = true;
+              uWar.participants[master.discordId].commandSeals = remainingSeals;
+            }
+            onUpdateGrailWar(uWar);
+            setActiveDuel(null);
 
             addMessage({
               id: getNextId('bot_duel_defeat_saved'),
               sender: 'bot',
               timestamp: 'Just now',
               embed: {
-                title: '🔴 MANDATORY COMMAND SEAL INTERVENTION!',
+                title: '🔴 COMMAND SEAL AUTOMATIC EVACUATION',
                 description:
                   `**${updatedState.player2.name}** (Master: ${updatedState.player2.masterName}) dealt a mortal blow to **${updatedState.player1.name}**!\n\n` +
                   `💬 **[MORTAL BLOW] ${updatedState.player1.name}:**\n> ❝ ***${p1DefeatQuote}*** ❞\n\n` +
-                  `🔮 **Mandatory Command Seal Check:**\n` +
-                  `Defeated Master **${master.username}** had **${seals}/3 Command Seals** remaining. In accordance with Holy Grail War protocols, 1 Command Seal was automatically expended to trigger emergency spatial evacuation!\n\n` +
+                  `🔮 **Auto-Consume Enabled:**\n` +
+                  `Master **${master.username}** had **${seals}/3 Command Seals** remaining. 1 Command Seal was automatically expended to trigger emergency spatial evacuation!\n\n` +
                   `• 🔴 **Command Seals Remaining:** **${remainingSeals}/3**\n` +
                   `• ❤️ **Preserved Vitality:** **1 HP** (Emergency evacuation to Sanctuary)\n` +
                   `• 🛡️ **Tournament Standing:** Active (Contract Preserved, Elimination Averted!)`,
                 color: '#f59e0b',
-                footer: 'Mandatory Command Seal Emergency Evacuation Protocol'
+                footer: 'Command Seal Emergency Evacuation Protocol'
               },
               canvasType: 'dialogue',
               canvasPayload: {
                 speaker: updatedState.player1.name,
                 quote: p1DefeatQuote,
-                title: 'MANDATORY COMMAND SEAL EVACUATION',
+                title: 'COMMAND SEAL EVACUATION',
                 servantClass: updatedState.player1.servantClass,
                 avatarUrl: updatedState.player1.avatarUrl || activeServant?.template.cardArtUrl || activeServant?.template.avatarUrl,
                 bondOrLevel: activeServant?.bondLevel || 10,
@@ -4645,7 +4766,59 @@ export default function DiscordEmulator({
                 ]
               }
             });
+          } else if (seals >= 1) {
+            // 1-minute decision window (Auto-consume is OFF by default)
+            addMessage({
+              id: getNextId('bot_duel_defeat_decision'),
+              sender: 'bot',
+              timestamp: 'Just now',
+              embed: {
+                title: '⚠️ CRITICAL DEFEAT — COMMAND SEAL DECISION',
+                description:
+                  `**${updatedState.player2.name}** (Master: ${updatedState.player2.masterName}) dealt a mortal blow to **${updatedState.player1.name}**!\n\n` +
+                  `💬 **[MORTAL BLOW] ${updatedState.player1.name}:**\n> ❝ ***${p1DefeatQuote}*** ❞\n\n` +
+                  `🔮 **Command Seal Evacuation Available:** Master possesses **${seals}/3 Command Seals**.\n` +
+                  `You may expend **1 Command Seal** to emergency-teleport your Servant away from mortal danger, preserved at **1 HP**!\n\n` +
+                  `⏱️ **Time Limit:** You have **1 minute (60 seconds)** to decide before contract dissolves. If time expires without an action, defeat is automatically accepted.\n` +
+                  `*(Auto-consume option is OFF by default to protect your Command Seals)*`,
+                color: '#f59e0b',
+                footer: 'Holy Grail War Survival Protocol • 1-Minute Decision Window (Auto-consume: OFF)'
+              },
+              canvasType: 'dialogue',
+              canvasPayload: {
+                speaker: updatedState.player1.name,
+                quote: p1DefeatQuote,
+                title: 'CRITICAL DEFEAT DECISION',
+                servantClass: updatedState.player1.servantClass,
+                avatarUrl: updatedState.player1.avatarUrl || activeServant?.template.cardArtUrl || activeServant?.template.avatarUrl,
+                bondOrLevel: activeServant?.bondLevel || 10,
+                defenderName: updatedState.player2.name,
+                defenderClass: updatedState.player2.servantClass,
+                defenderAvatarUrl: updatedState.player2.avatarUrl,
+                sequence: ['Quick', 'Quick', 'Quick'],
+                bgUrlOrPreset: 'fuyuki'
+              },
+              components: {
+                type: 'buttons',
+                items: [
+                  { id: 'duel_evacuate_seal', label: `Invoke Command Seal (${seals}/3)`, style: 'danger', emoji: '🔮' },
+                  { id: 'duel_accept_defeat', label: 'Accept Defeat', style: 'secondary', emoji: '💀' }
+                ]
+              }
+            });
           } else {
+            const outcome = recordDuelOutcome(
+              grailWar,
+              updatedState.player2.masterName,
+              master.username,
+              'kill',
+              activeChannel === 'public' ? 'holy-grail-war' : 'direct-messages',
+              updatedState.player2.currentHp,
+              0
+            );
+            onUpdateGrailWar(outcome.updatedWar);
+            setActiveDuel(null);
+
             const aliveCount = Object.values(outcome.updatedWar.participants).filter(p => p.isAlive).length;
 
             addMessage({
@@ -4759,7 +4932,7 @@ export default function DiscordEmulator({
         actionMsg = res.message;
         onUpdateGrailWar(currentWar);
       } else if (btnId === 'toggle_auto_evade') {
-        const curMode = currentWar.participants[master.discordId]?.autoEvadeEnabled !== false ? 'off' : 'on';
+        const curMode = currentWar.participants[master.discordId]?.autoEvadeEnabled === true ? 'off' : 'on';
         const res = executeWarAction(currentWar, master.discordId, 'toggle_evade', curMode);
         currentWar = res.updatedWar;
         actionMsg = res.message;
@@ -4780,7 +4953,7 @@ export default function DiscordEmulator({
 
       const uP = currentWar.participants[master.discordId];
       const wardType = uP?.boundedField || 'none';
-      const evadeOn = uP?.autoEvadeEnabled !== false;
+      const evadeOn = uP?.autoEvadeEnabled === true;
       const seals = uP?.commandSeals ?? 3;
 
       let wardDesc = '🚫 **No Active Wards:** Your workshop has no perimeter defenses.';
@@ -4816,10 +4989,10 @@ export default function DiscordEmulator({
             (inSanctuary
               ? `• **🕊️ ACTIVE ASYLUM:** Sheltered under Father Kotomine. 100% immune to all ambushes & attacks (cannot attack rivals).\n\n`
               : `• **⚔️ IN THE FIELD:** Active combatant in Holy Grail War territory.\n\n`) +
-            `🔴 **Command Seal Emergency Evacuation:**\n` +
+            `🔴 **Command Seal Emergency Evacuation (Auto-consume):**\n` +
             (evadeOn
-              ? `• **🟢 ENABLED:** When taking fatal ambush damage, consumes **1 Command Seal** to escape into shadows with **1 HP**.\n`
-              : `• **🔴 DISABLED:** Fatal ambushes will eliminate your Servant normally without consuming a seal.\n`) +
+              ? `• **🟢 ENABLED:** When taking fatal damage, automatically consumes **1 Command Seal** to escape with **1 HP**.\n`
+              : `• **🔴 DISABLED (Default):** Auto-consume is OFF. You retain full control to manually invoke Command Seals or decide during combat.\n`) +
             `• **Current Command Seals:** \`${'✦ '.repeat(seals)}${'✧ '.repeat(Math.max(0, 3 - seals))}\` (**${seals}/3** remaining)\n\n` +
             `👁️ **Servant Class Passive:**\n${classPassive}\n\n` +
             `*Settings saved to Holy Grail War Engine.*`,
@@ -4854,7 +5027,7 @@ export default function DiscordEmulator({
             },
             {
               id: 'toggle_auto_evade',
-              label: evadeOn ? 'Auto-Evacuate: ON 🟢' : 'Auto-Evacuate: OFF 🔴',
+              label: evadeOn ? 'Auto-Evac: ON 🟢' : 'Auto-Evac: OFF (Default) 🔴',
               style: evadeOn ? 'success' : 'secondary'
             },
             {

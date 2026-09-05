@@ -986,6 +986,7 @@ export async function getOrCreateMaster(discordId: string, username: string = 'M
       saintQuartz: 0,
       summonTickets: 0,
       commandSeals: 3,
+      autoConsumeCommandSeal: false,
       actionPoints: 100,
       maxActionPoints: 100,
       pityCount: 0,
