@@ -1824,80 +1824,7 @@ function loadBrowserImage(url?: string): Promise<HTMLImageElement | null> {
 }
 
 /**
- * Draw Dedicated Ether Crit Stars Box (Option B - The beloved Crit Star Box)
- */
-function drawEtherCritStarsBox(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  critStars: number,
-  isPlayer1: boolean
-) {
-  ctx.save();
-  const themeColor = isPlayer1 ? '#38bdf8' : '#f87171';
-  const borderColor = isPlayer1 ? 'rgba(56, 189, 248, 0.45)' : 'rgba(244, 63, 94, 0.45)';
-  const subtitle = isPlayer1 ? 'STARS READY FOR ATTACK' : 'ENEMY CRIT RESERVOIR';
-
-  // 1. Dark Navy Obsidian Background
-  const bgGrad = ctx.createLinearGradient(x, y, x + w, y + h);
-  bgGrad.addColorStop(0, '#0a0f1d');
-  bgGrad.addColorStop(1, '#040711');
-  ctx.fillStyle = bgGrad;
-  drawRoundRect(ctx, x, y, w, h, 8);
-  ctx.fill();
-
-  // 2. Border
-  ctx.strokeStyle = borderColor;
-  ctx.lineWidth = 1.4;
-  drawRoundRect(ctx, x, y, w, h, 8);
-  ctx.stroke();
-
-  // Inset hairline
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-  ctx.lineWidth = 0.8;
-  drawRoundRect(ctx, x + 2, y + 2, w - 4, h - 4, 6);
-  ctx.stroke();
-
-  // 3. Title at top
-  ctx.fillStyle = themeColor;
-  ctx.font = 'bold 11px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('ETHER CRIT STARS', x + w / 2, y + 22);
-
-  // 4. Center Glowing Star + Big Number
-  const countStr = `${critStars || 0}`;
-  ctx.font = 'bold 36px sans-serif';
-  const textWidth = ctx.measureText(countStr).width;
-  const starRadius = 14;
-  const totalContentW = starRadius * 2 + 12 + textWidth;
-  const startContentX = x + (w - totalContentW) / 2;
-  const starCenterX = startContentX + starRadius;
-  const starCenterY = y + 58;
-
-  // Outer Star glow
-  drawVectorStar(ctx, starCenterX, starCenterY, 5, starRadius + 3, (starRadius + 3) * 0.5, `${themeColor}44`);
-  // Core Star
-  drawVectorStar(ctx, starCenterX, starCenterY, 5, starRadius, starRadius * 0.5, themeColor);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 36px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(countStr, starCenterX + starRadius + 10, starCenterY + 13);
-
-  // 5. Subtitle at bottom
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = 'bold 9px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(subtitle, x + w / 2, y + h - 14);
-
-  ctx.restore();
-}
-
-/**
- * Draw Compact Fate Command Card with Circular Emblem, Top Roman Numeral Step, 
- * Stat Bonus Line, and Crit % Badge (Matching Screenshot 2)
+ * Draw Grand Fate Tarot Command Card (Option A - Zero neon glows, metallic obsidian finish)
  */
 function drawTarotCommandCard(
   ctx: CanvasRenderingContext2D,
@@ -1905,158 +1832,128 @@ function drawTarotCommandCard(
   y: number,
   w: number,
   h: number,
-  card: 'Buster' | 'Arts' | 'Quick' | 'NP' | string,
-  orderIdx: number,
+  cardType: string,
+  stepIndex: number,
   critStars: number = 0,
-  isQuickFirstLead: boolean = false
+  isQuickFirst: boolean = false
 ) {
-  let cardColor = '#dc2626';
-  let cardCore = '#ef4444';
-  let deepColor = '#3b0707';
-  let cardLabel = 'BUSTER';
-  let emblemText = 'B';
-  const posPrefix = orderIdx === 0 ? '1st' : orderIdx === 1 ? '2nd' : '3rd';
-  let statText = orderIdx === 0 ? '1st (+50% DMG)' : `${posPrefix} (${orderIdx === 1 ? '1.2x' : '1.4x'})`;
-  let baseCritMult = 2.0;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  drawRoundRect(ctx, x + 2, y + 2, w, h, 6);
+  ctx.fill();
 
-  if (card === 'NP') {
-    cardColor = '#d97706';
-    cardCore = '#fbbf24';
-    deepColor = '#451a03';
-    cardLabel = 'N. PHANTASM';
-    emblemText = 'NP';
-    statText = 'MAX OVERCHARGE';
-    baseCritMult = 0;
-  } else if (card === 'Arts') {
-    cardColor = '#2563eb';
-    cardCore = '#60a5fa';
-    deepColor = '#0b1d3a';
-    cardLabel = 'ARTS';
-    emblemText = 'A';
-    statText = orderIdx === 0 ? '1st (+100% NP)' : `${posPrefix} (${orderIdx === 1 ? '1.2x' : '1.4x'})`;
-    baseCritMult = 1.8;
-  } else if (card === 'Quick') {
-    cardColor = '#16a34a';
-    cardCore = '#4ade80';
-    deepColor = '#062d1f';
-    cardLabel = 'QUICK';
-    emblemText = 'Q';
-    statText = orderIdx === 0 ? '1st (+20% CRIT)' : `${posPrefix} (${orderIdx === 1 ? '1.2x' : '1.4x'})`;
-    baseCritMult = 2.2;
+  let gradTop = '#5c1414';
+  let gradBottom = '#1a0505';
+  let borderColor = '#991b1b';
+  let accentColor = '#fca5a5';
+  let cardTitle = 'BUSTER';
+  let subTag = '+100% ATK';
+
+  if (cardType === 'Arts') {
+    gradTop = '#0f2942';
+    gradBottom = '#05101a';
+    borderColor = '#0284c7';
+    accentColor = '#7dd3fc';
+    cardTitle = 'ARTS';
+    subTag = '+100% NP';
+  } else if (cardType === 'Quick') {
+    gradTop = '#064e3b';
+    gradBottom = '#021810';
+    borderColor = '#059669';
+    accentColor = '#6ee7b7';
+    cardTitle = 'QUICK';
+    subTag = '+STARS';
+  } else if (cardType === 'NP') {
+    gradTop = '#5c3d05';
+    gradBottom = '#1a1102';
+    borderColor = '#d97706';
+    accentColor = '#fde047';
+    cardTitle = 'PHANTASM';
+    subTag = 'FATAL NP';
   }
 
-  ctx.save();
-
-  // 1. Rich Radial Elemental Gradient
-  const radGrad = ctx.createRadialGradient(x + w / 2, y + h / 2, 6, x + w / 2, y + h / 2, w * 0.75);
-  radGrad.addColorStop(0, deepColor);
-  radGrad.addColorStop(0.7, '#070a14');
-  radGrad.addColorStop(1, '#020408');
-  ctx.fillStyle = radGrad;
-  drawRoundRect(ctx, x, y, w, h, 8);
+  const cGrad = ctx.createLinearGradient(x, y, x, y + h);
+  cGrad.addColorStop(0, gradTop);
+  cGrad.addColorStop(1, gradBottom);
+  ctx.fillStyle = cGrad;
+  drawRoundRect(ctx, x, y, w, h, 6);
   ctx.fill();
 
-  // Outer Metallic Border
-  ctx.strokeStyle = cardColor;
-  ctx.lineWidth = 1.5;
-  drawRoundRect(ctx, x, y, w, h, 8);
+  // Subtle Metallic Border (no neon glow)
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 1.4;
+  drawRoundRect(ctx, x, y, w, h, 6);
   ctx.stroke();
 
-  // Inner Ornate Filigree Frame
+  // Inset hairline
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, x + 3, y + 3, w - 6, h - 6, 6);
-  ctx.stroke();
-
-  // 2. Card Header Ribbon
-  const ribbonH = 20;
-  const ribbonGrad = ctx.createLinearGradient(x + 4, y + 4, x + w - 4, y + 4 + ribbonH);
-  ribbonGrad.addColorStop(0, cardColor);
-  ribbonGrad.addColorStop(1, deepColor);
-  ctx.fillStyle = ribbonGrad;
-  drawRoundRect(ctx, x + 4, y + 4, w - 8, ribbonH, 4);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
   ctx.lineWidth = 0.8;
-  drawRoundRect(ctx, x + 4, y + 4, w - 8, ribbonH, 4);
+  drawRoundRect(ctx, x + 2, y + 2, w - 4, h - 4, 4);
   ctx.stroke();
 
-  // Turn Order Indicator (I, II, III) on top-left
-  const roman = orderIdx === 0 ? 'I' : orderIdx === 1 ? 'II' : 'III';
-  ctx.fillStyle = '#fde047';
-  ctx.font = 'bold 10px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(roman, x + 8, y + 18);
+  // Top Step Pill
+  const stepLabel = stepIndex === 0 ? '1st' : stepIndex === 1 ? '2nd' : '3rd';
+  const pillW = 38;
+  const pillH = 17;
+  const pillX = x + (w - pillW) / 2;
+  const pillY = y + 5;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+  drawRoundRect(ctx, pillX, pillY, pillW, pillH, 4);
+  ctx.fill();
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, pillX, pillY, pillW, pillH, 4);
+  ctx.stroke();
 
-  // Card Type Label
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(stepLabel, pillX + pillW / 2, pillY + 12);
+
+  // Card Center Icon
+  drawBrowserCommandCardIcon(ctx, x + w / 2, y + 54, cardType);
+
+  // Card Title
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 10px sans-serif';
+  ctx.font = 'bold 15px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(cardLabel, x + w / 2 + 4, y + 18);
+  ctx.fillText(cardTitle, x + w / 2, y + 104);
 
-  // 3. Center Sigil & Luminous Ether Rings
-  const cx = x + w / 2;
-  const cy = y + Math.round(h * 0.44);
+  // SubTag
+  ctx.fillStyle = accentColor;
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillText(subTag, x + w / 2, y + 124);
 
-  ctx.beginPath();
-  ctx.arc(cx, cy, Math.min(22, w * 0.22), 0, Math.PI * 2);
-  ctx.strokeStyle = `${cardCore}44`;
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
+  // Crit Stars / Bonus Badges
+  if (critStars > 0 || isQuickFirst) {
+    const starY = y + h - 22;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    drawRoundRect(ctx, x + 6, starY, w - 12, 18, 4);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 0.8;
+    drawRoundRect(ctx, x + 6, starY, w - 12, 18, 4);
+    ctx.stroke();
 
-  ctx.beginPath();
-  ctx.arc(cx, cy, Math.min(17, w * 0.17), 0, Math.PI * 2);
-  ctx.strokeStyle = `${cardCore}22`;
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  // Emblem Shadow + Main Text
-  ctx.font = card === 'NP' ? 'bold 20px sans-serif' : 'bold 28px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#000000';
-  ctx.fillText(emblemText, cx + 1, cy + 10);
-
-  ctx.fillStyle = card === 'NP' ? '#fde047' : '#ffffff';
-  ctx.fillText(emblemText, cx, cy + 9);
-
-  // 4. Subtitle Position Stat Bonus
-  ctx.font = 'bold 9px sans-serif';
-  ctx.fillStyle = '#94a3b8';
-  ctx.fillText(statText, cx, y + Math.round(h * 0.73));
-
-  // 5. Bottom Crit % Badge
-  const badgeH = 20;
-  const badgeY = y + h - badgeH - 5;
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-  drawRoundRect(ctx, x + 5, badgeY, w - 10, badgeH, 4);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-  ctx.lineWidth = 0.8;
-  drawRoundRect(ctx, x + 5, badgeY, w - 10, badgeH, 4);
-  ctx.stroke();
-
-  if (card === 'NP') {
-    ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 9px sans-serif';
-    ctx.fillText('NOBLE CARD', cx, badgeY + 14);
-  } else {
-    let critPct = Math.min(100, Math.round((critStars || 0) * baseCritMult));
-    if (isQuickFirstLead && orderIdx > 0) {
-      critPct = Math.min(100, critPct + 20);
+    if (critStars > 0) {
+      drawVectorStar(ctx, x + 16, starY + 9, 5, 4, 2, '#fbbf24');
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`+${Math.min(100, critStars * 10)}% CRIT`, x + 24, starY + 13);
+    } else if (isQuickFirst) {
+      ctx.fillStyle = '#34d399';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('QUICK LEAD', x + w / 2, starY + 13);
     }
-    // Gold vector star
-    drawVectorStar(ctx, x + 16, badgeY + 10, 5, 4.5, 2.2, '#fbbf24');
-    ctx.fillStyle = critPct >= 50 ? '#fde047' : '#ffffff';
-    ctx.font = 'bold 9px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`CRIT ${critPct}%`, cx + 6, badgeY + 14);
   }
 
   ctx.restore();
 }
 
 /**
- * Draw Servant Portrait Frame
+ * Draw Servant Portrait Frame (Option A - No neon glow, refined metallic border + class badge)
  */
 function drawServantPortraitCard(
   ctx: CanvasRenderingContext2D,
@@ -2069,8 +1966,8 @@ function drawServantPortraitCard(
   accentColor: string
 ) {
   ctx.save();
-  ctx.fillStyle = '#090d16';
-  drawRoundRect(ctx, x, y, w, h, 8);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  drawRoundRect(ctx, x + 2, y + 2, w, h, 8);
   ctx.fill();
 
   const innerX = x + 2;
@@ -2083,9 +1980,17 @@ function drawServantPortraitCard(
     drawRoundRect(ctx, innerX, innerY, innerW, innerH, 6);
     ctx.clip();
     drawImageCover(ctx, avatarImg, innerX, innerY, innerW, innerH);
+
+    // Subtle bottom vignette for contrast
+    const vGrad = ctx.createLinearGradient(innerX, innerY + innerH - 60, innerX, innerY + innerH);
+    vGrad.addColorStop(0, 'rgba(10, 15, 26, 0)');
+    vGrad.addColorStop(1, 'rgba(10, 15, 26, 0.85)');
+    ctx.fillStyle = vGrad;
+    ctx.fillRect(innerX, innerY + innerH - 60, innerW, 60);
+
     ctx.restore();
 
-    // Subtle bottom glass class badge
+    // Subtle class badge at bottom of portrait
     const badgeW = innerW - 20;
     const badgeH = 22;
     const badgeX = innerX + 10;
@@ -2139,7 +2044,7 @@ function drawServantPortraitCard(
     ctx.fillText(sName, innerX + innerW / 2, cy + 80);
   }
 
-  // Refined Dark Metallic Border
+  // Refined Dark Metallic Border (No neon glow)
   ctx.strokeStyle = '#334155';
   ctx.lineWidth = 1.6;
   drawRoundRect(ctx, x, y, w, h, 8);
@@ -2154,272 +2059,104 @@ function drawServantPortraitCard(
 }
 
 /**
- * Draw Cinematic Clash Resolution Theater (Matching Screenshot 2)
+ * Draw Minimalist Floating Damage Clash Banner (Option A - Zero redundant text)
  */
-function drawCinematicClashTheater(
+function drawMinimalClashBanner(
   ctx: CanvasRenderingContext2D,
   log: CombatTurnLog,
   p1: ActiveCombatant,
   p2: ActiveCombatant,
-  p1Cards: ('Buster' | 'Arts' | 'Quick' | 'NP')[],
-  boxX: number = 14,
-  boxY: number = 222,
-  boxW: number = 612,
-  boxH: number = 188
+  x: number = 16,
+  y: number = 286,
+  w: number = 608,
+  h: number = 54
 ) {
   ctx.save();
-  // 1. Deep Space Cosmic Backdrop
-  const bgGrad = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxH);
-  bgGrad.addColorStop(0, '#040714');
-  bgGrad.addColorStop(0.5, '#0b0918');
-  bgGrad.addColorStop(1, '#05030a');
+  // 1. Sleek Dark Obsidian Glass Banner
+  const bgGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+  bgGrad.addColorStop(0, '#0c1220');
+  bgGrad.addColorStop(0.5, '#131b2e');
+  bgGrad.addColorStop(1, '#0c1220');
   ctx.fillStyle = bgGrad;
-  drawRoundRect(ctx, boxX, boxY, boxW, boxH, 10);
+  drawRoundRect(ctx, x, y, w, h, 8);
   ctx.fill();
 
-  // Amber/Gold Outer Frame
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 2.0;
-  drawRoundRect(ctx, boxX, boxY, boxW, boxH, 10);
+  // Subtle Metallic Border (no neon glow)
+  ctx.strokeStyle = log.isNoblePhantasm ? '#d97706' : log.isCritical ? '#b91c1c' : '#334155';
+  ctx.lineWidth = 1.5;
+  drawRoundRect(ctx, x, y, w, h, 8);
   ctx.stroke();
 
-  // Inner accent line
-  ctx.strokeStyle = 'rgba(245, 158, 11, 0.25)';
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, boxX + 3, boxY + 3, boxW - 6, boxH - 6, 8);
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.lineWidth = 0.8;
+  drawRoundRect(ctx, x + 2, y + 2, w - 4, h - 4, 6);
   ctx.stroke();
 
-  // 2. Cinematic Energy Slashes & Epicenter Sparks
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(boxX + 30, boxY + 36);
-  ctx.lineTo(boxX + 300, boxY + 110);
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
-  ctx.lineWidth = 3;
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(boxX + boxW - 30, boxY + boxH - 36);
-  ctx.lineTo(boxX + 340, boxY + 110);
-  ctx.strokeStyle = 'rgba(239, 68, 68, 0.35)';
-  ctx.lineWidth = 3;
-  ctx.stroke();
-
-  // Radiant Spark Burst at clash point
-  drawSparkDiamond(ctx, 320, boxY + 110, 7, '#fbbf24');
-  drawSparkDiamond(ctx, 305, boxY + 105, 4, '#ffffff');
-  drawSparkDiamond(ctx, 335, boxY + 115, 4, '#ffffff');
-  ctx.restore();
-
-  // 3. Header Marquee Ribbon
-  ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, boxX + 12, boxY + 8, boxW - 24, 24, 4);
+  // 2. Left Turn Badge Pill
+  const turnX = x + 12;
+  const turnY = y + 12;
+  const turnW = 82;
+  const turnH = 30;
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+  drawRoundRect(ctx, turnX, turnY, turnW, turnH, 5);
   ctx.fill();
-  ctx.strokeStyle = '#f59e0b';
+  ctx.strokeStyle = '#d97706';
   ctx.lineWidth = 1.2;
-  drawRoundRect(ctx, boxX + 12, boxY + 8, boxW - 24, 24, 4);
+  drawRoundRect(ctx, turnX, turnY, turnW, turnH, 5);
   ctx.stroke();
 
-  ctx.fillStyle = '#f59e0b';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(`[ HOLY GRAIL WAR - TURN ${log.turnNumber || 1} CLASH RESOLUTION ]`, 320, boxY + 24);
-
-  // 4. Combatants Matchup & Chain Sequence Row
-  const actorClean = (log.actorName || p1.name || 'Master 1').replace(/[^\x00-\x7F]/g, '');
-  const targetClean = (log.targetName || p2.name || 'Master 2').replace(/[^\x00-\x7F]/g, '');
-  const cardsUsed = log.cardsUsed || p1Cards;
-
+  ctx.fillStyle = '#fbbf24';
   ctx.font = 'bold 12px sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#38bdf8';
-  ctx.fillText(actorClean, 285, boxY + 48);
+  ctx.textAlign = 'center';
+  ctx.fillText(`TURN ${log.turnNumber || 1}`, turnX + turnW / 2, turnY + 19);
 
-  drawVectorCrossedSwords(ctx, 320, boxY + 44, 8, '#f59e0b');
-
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#f87171';
-  ctx.fillText(targetClean, 355, boxY + 48);
-
-  // Card combo mini-badges: [ BUSTER ] > [ ARTS ] > [ BUSTER ]
-  const totalCards = Math.min(3, cardsUsed.length);
-  const badgeW = 64;
-  const badgeH = 17;
-  const spacing = 16;
-  const startX = 320 - ((totalCards * badgeW + (totalCards - 1) * spacing) / 2);
-  const cardRowY = boxY + 58;
-
-  cardsUsed.slice(0, 3).forEach((c, i) => {
-    const cx = startX + i * (badgeW + spacing);
-    let cColor = '#dc2626';
-    if (c === 'Arts') cColor = '#2563eb';
-    else if (c === 'Quick') cColor = '#16a34a';
-    else if (c === 'NP') cColor = '#d97706';
-
-    ctx.fillStyle = `${cColor}33`;
-    drawRoundRect(ctx, cx, cardRowY, badgeW, badgeH, 3);
-    ctx.fill();
-    ctx.strokeStyle = cColor;
-    ctx.lineWidth = 1;
-    drawRoundRect(ctx, cx, cardRowY, badgeW, badgeH, 3);
-    ctx.stroke();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 9px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(c.toUpperCase(), cx + badgeW / 2, cardRowY + 12);
-
-    if (i < totalCards - 1) {
-      ctx.fillStyle = '#f59e0b';
-      ctx.font = 'bold 11px sans-serif';
-      ctx.fillText('>', cx + badgeW + spacing / 2, cardRowY + 13);
-    }
-  });
-
-  // 5. Cinematic Impact / Resolution Banner
-  const impactY = boxY + 82;
-  const impactH = 44;
-  const impactW = boxW - 24;
-  const impactX = boxX + 12;
+  // 3. Center Damage Text
+  const dmg = log.damageDealt > 0 ? log.damageDealt.toLocaleString() : '0';
+  ctx.textAlign = 'center';
 
   if (log.isNoblePhantasm) {
-    const npGrad = ctx.createLinearGradient(impactX, impactY, impactX + impactW, impactY + impactH);
-    npGrad.addColorStop(0, 'rgba(120, 53, 15, 0.85)');
-    npGrad.addColorStop(0.5, 'rgba(217, 119, 6, 0.95)');
-    npGrad.addColorStop(1, 'rgba(120, 53, 15, 0.85)');
-    ctx.fillStyle = npGrad;
-    drawRoundRect(ctx, impactX, impactY, impactW, impactH, 6);
-    ctx.fill();
-    ctx.strokeStyle = '#fde047';
-    ctx.lineWidth = 1.8;
-    drawRoundRect(ctx, impactX, impactY, impactW, impactH, 6);
-    ctx.stroke();
-
-    drawSparkDiamond(ctx, impactX + 16, impactY + impactH / 2, 5, '#ffffff');
-    drawSparkDiamond(ctx, impactX + impactW - 16, impactY + impactH / 2, 5, '#ffffff');
-
-    const quoteStr = log.dialogueQuote || log.npChant;
-    const cleanQuote = quoteStr ? (quoteStr.length > 56 ? quoteStr.slice(0, 54) + '...' : quoteStr) : null;
-
-    ctx.fillStyle = '#fef08a';
-    ctx.font = cleanQuote ? 'bold italic 10px sans-serif' : 'bold 10px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(cleanQuote ? `“${cleanQuote}”` : '<< NOBLE PHANTASM UNLEASHED AT MAXIMUM OUTPUT >>', 320, impactY + 16);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.fillText(`DEALT ${log.damageDealt > 0 ? log.damageDealt.toLocaleString() : '0'} DEVASTATING DAMAGE!`, 320, impactY + 35);
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillStyle = '#fde047';
+    ctx.fillText(`NOBLE PHANTASM: ${dmg} DAMAGE!`, x + w / 2 - 10, y + 33);
   } else if (log.isCritical) {
-    const critGrad = ctx.createLinearGradient(impactX, impactY, impactX + impactW, impactY + impactH);
-    critGrad.addColorStop(0, 'rgba(127, 29, 29, 0.85)');
-    critGrad.addColorStop(0.5, 'rgba(220, 38, 38, 0.95)');
-    critGrad.addColorStop(1, 'rgba(127, 29, 29, 0.85)');
-    ctx.fillStyle = critGrad;
-    drawRoundRect(ctx, impactX, impactY, impactW, impactH, 6);
-    ctx.fill();
-    ctx.strokeStyle = '#f87171';
-    ctx.lineWidth = 1.8;
-    drawRoundRect(ctx, impactX, impactY, impactW, impactH, 6);
-    ctx.stroke();
-
-    drawSparkDiamond(ctx, impactX + 16, impactY + impactH / 2, 5, '#ffffff');
-    drawSparkDiamond(ctx, impactX + impactW - 16, impactY + impactH / 2, 5, '#ffffff');
-
-    const quoteStr = log.dialogueQuote || log.npChant;
-    const cleanQuote = quoteStr ? (quoteStr.length > 56 ? quoteStr.slice(0, 54) + '...' : quoteStr) : null;
-
-    ctx.fillStyle = '#fca5a5';
-    ctx.font = cleanQuote ? 'bold italic 10px sans-serif' : 'bold 10px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(cleanQuote ? `“${cleanQuote}”` : '>> CRITICAL STRIKE! DOUBLE DAMAGE DEALT <<', 320, impactY + 16);
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.fillText(`DEALT ${log.damageDealt > 0 ? log.damageDealt.toLocaleString() : '0'} DAMAGE!`, 320, impactY + 35);
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillStyle = '#f87171';
+    ctx.fillText(`CRITICAL STRIKE: ${dmg} DAMAGE!`, x + w / 2 - 10, y + 33);
   } else {
-    const stdGrad = ctx.createLinearGradient(impactX, impactY, impactX + impactW, impactY + impactH);
-    stdGrad.addColorStop(0, 'rgba(15, 23, 42, 0.8)');
-    stdGrad.addColorStop(0.5, 'rgba(30, 41, 59, 0.9)');
-    stdGrad.addColorStop(1, 'rgba(15, 23, 42, 0.8)');
-    ctx.fillStyle = stdGrad;
-    drawRoundRect(ctx, impactX, impactY, impactW, impactH, 6);
-    ctx.fill();
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 1.4;
-    drawRoundRect(ctx, impactX, impactY, impactW, impactH, 6);
-    ctx.stroke();
-
-    const quoteStr = log.dialogueQuote || log.npChant;
-    if (quoteStr) {
-      ctx.fillStyle = '#fde047';
-      ctx.font = 'bold italic 10px sans-serif';
-      ctx.textAlign = 'center';
-      const cleanQuote = quoteStr.length > 62 ? quoteStr.slice(0, 60) + '...' : quoteStr;
-      ctx.fillText(`“${cleanQuote}”`, 320, impactY + 15);
-    } else {
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('Command Seals pulse with etheric energy as weapons clash.', 320, impactY + 15);
-    }
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.fillText(`DEALT ${log.damageDealt > 0 ? log.damageDealt.toLocaleString() : '0'} DAMAGE!`, 320, impactY + 35);
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText(`DEALT ${dmg} DAMAGE!`, x + w / 2 - 10, y + 33);
   }
 
-  // 6. Tactical Gains Row (NP Charged & Stars Gathered)
-  const statsY = boxY + 144;
-  ctx.font = 'bold 11px sans-serif';
-  ctx.textAlign = 'center';
+  // 4. Right Tactical Gains Pill (+NP & +Stars)
+  const gainsX = x + w - 128;
+  const gainsY = y + 12;
+  const gainsW = 116;
+  const gainsH = 30;
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+  drawRoundRect(ctx, gainsX, gainsY, gainsW, gainsH, 5);
+  ctx.fill();
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, gainsX, gainsY, gainsW, gainsH, 5);
+  ctx.stroke();
 
   const npGain = (log as any).npGained ?? log.npCharged ?? 0;
   const starGain = log.starsGenerated || 0;
-
-  ctx.fillStyle = '#fbbf24';
-  ctx.fillText(`+${npGain}% NP CHARGED`, 240, statsY);
-
-  ctx.fillStyle = '#64748b';
-  ctx.fillText('|', 320, statsY);
-
-  drawVectorStar(ctx, 350, statsY - 4, 5, 5.5, 2.8, '#38bdf8');
-  ctx.fillStyle = '#38bdf8';
+  ctx.fillStyle = '#fde047';
+  ctx.font = 'bold 11px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(`+${starGain} STARS GATHERED`, 362, statsY);
+  ctx.fillText(`+${npGain}% NP`, gainsX + 10, gainsY + 19);
 
-  // 7. Footer Telemetry Pill (Dual Master Stars)
-  const footY = boxY + 156;
-  const footW = 460;
-  const footX = 320 - footW / 2;
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
-  drawRoundRect(ctx, footX, footY, footW, 22, 11);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, footX, footY, footW, 22, 11);
-  ctx.stroke();
-
-  const p1NameClean = (p1.masterName || 'P1').replace(/[^\x00-\x7F]/g, '');
-  const p2NameClean = (p2.masterName || 'P2').replace(/[^\x00-\x7F]/g, '');
-
-  ctx.font = 'bold 10px sans-serif';
-  ctx.textAlign = 'center';
-  drawVectorStar(ctx, 160, footY + 11, 5, 4.5, 2.2, '#38bdf8');
   ctx.fillStyle = '#38bdf8';
-  ctx.fillText(`${p1NameClean}: ${p1.critStars || 0} Stars`, 220, footY + 15);
-
-  ctx.fillStyle = '#64748b';
-  ctx.fillText('||', 320, footY + 15);
-
-  drawVectorStar(ctx, 360, footY + 11, 5, 4.5, 2.2, '#f87171');
-  ctx.fillStyle = '#f87171';
-  ctx.fillText(`${p2NameClean}: ${p2.critStars || 0} Stars`, 420, footY + 15);
+  ctx.textAlign = 'right';
+  ctx.fillText(`+${starGain} ★`, gainsX + gainsW - 10, gainsY + 19);
 
   ctx.restore();
 }
 
 /**
- * 3. Battle Turn Clash Summary (640x640 Authentic Fate Duel Canvas)
+ * 3. Battle Turn Clash Summary (640x680 Option A Layout)
  */
 export async function renderBattleTurnSummary(
   canvas: HTMLCanvasElement,
@@ -2431,7 +2168,7 @@ export async function renderBattleTurnSummary(
   if (!ctx) return;
 
   canvas.width = 640;
-  canvas.height = 640;
+  canvas.height = 680;
 
   // Load Avatars concurrently
   const [p1Img, p2Img] = await Promise.all([
@@ -2440,69 +2177,69 @@ export async function renderBattleTurnSummary(
   ]);
 
   // Background - Deep Mystic Slate War Canvas
-  const bgGrad = ctx.createLinearGradient(0, 0, 640, 640);
+  const bgGrad = ctx.createLinearGradient(0, 0, 640, 680);
   bgGrad.addColorStop(0, '#090d18');
   bgGrad.addColorStop(0.5, '#05070f');
   bgGrad.addColorStop(1, '#0c0b16');
   ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, 640, 640);
+  ctx.fillRect(0, 0, 640, 680);
 
-  // Subtle Matte Slate Frame
+  // Subtle Matte Slate Frame (No neon glow)
   ctx.strokeStyle = '#334155';
   ctx.lineWidth = 1.6;
-  drawRoundRect(ctx, 6, 6, 628, 628, 10);
+  drawRoundRect(ctx, 6, 6, 628, 668, 10);
   ctx.stroke();
 
   // Subtle inner accent line
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
   ctx.lineWidth = 0.8;
-  drawRoundRect(ctx, 8, 8, 624, 624, 8);
+  drawRoundRect(ctx, 8, 8, 624, 664, 8);
   ctx.stroke();
 
   // ==========================================
   // TOP SECTION: PLAYER 1 (MASTER & SERVANT)
   // ==========================================
-  // 1. P1 Avatar Portrait Card (Left, 116x198)
-  drawServantPortraitCard(ctx, 14, 14, 116, 198, p1Img, p1, '#38bdf8');
+  // 1. P1 Avatar Portrait Card (Left, 172x260) - Large Portrait
+  drawServantPortraitCard(ctx, 16, 16, 172, 260, p1Img, p1, '#38bdf8');
 
   // 2. P1 Header Title & Class Pill
   const p1DisplayName = (p1.masterName || 'Master 1').replace(/[^\x00-\x7F]/g, '');
   ctx.fillStyle = '#f8fafc';
   ctx.font = 'bold 16px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(p1DisplayName, 140, 30);
+  ctx.fillText(p1DisplayName, 200, 32);
 
   const p1NameWidth = ctx.measureText(p1DisplayName).width;
   const p1ServantClean = (p1.name || 'Heroic Spirit').replace(/[^\x00-\x7F]/g, '');
   const p1ClassClean = (p1.servantClass || 'SABER').toUpperCase();
 
   // Class badge pill
-  const pillX = 148 + p1NameWidth;
-  const pillY = 16;
+  const pillX = 208 + p1NameWidth;
+  const pillY = 18;
   ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
-  drawRoundRect(ctx, pillX, pillY, 60, 18, 9);
+  drawRoundRect(ctx, pillX, pillY, 64, 18, 9);
   ctx.fill();
   ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
   ctx.lineWidth = 1;
-  drawRoundRect(ctx, pillX, pillY, 60, 18, 9);
+  drawRoundRect(ctx, pillX, pillY, 64, 18, 9);
   ctx.stroke();
   ctx.fillStyle = '#38bdf8';
   ctx.font = 'bold 9px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(p1ClassClean, pillX + 30, pillY + 13);
+  ctx.fillText(p1ClassClean, pillX + 32, pillY + 13);
 
   // Servant Name
   ctx.fillStyle = '#cbd5e1';
   ctx.font = 'bold 12px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(p1ServantClean, pillX + 68, 30);
+  ctx.fillText(p1ServantClean, pillX + 72, 32);
 
   // 2.5 P1 3 Active Skill Badges (Top Right above HP Bar)
   const p1Skills = p1.skills || [];
   const p1Bond = p1.bondLevel !== undefined ? p1.bondLevel : 5;
   [0, 1, 2].forEach((sIdx) => {
     const sBoxX = 432 + sIdx * 64;
-    const sBoxY = 14;
+    const sBoxY = 16;
     const sBoxW = 60;
     const sBoxH = 20;
     const sData = p1Skills[sIdx];
@@ -2555,20 +2292,20 @@ export async function renderBattleTurnSummary(
     ctx.restore();
   });
 
-  // 3. P1 HP Bar (484px width, 24px height)
+  // 3. P1 HP Bar (24px height)
   const p1HpRatio = Math.max(0, Math.min(1, p1.currentHp / p1.maxHp));
   const p1NpRatio = Math.max(0, Math.min(1, (p1.npGauge || 0) / 100));
 
   ctx.fillStyle = '#0f172a';
-  drawRoundRect(ctx, 140, 40, 484, 24, 4);
+  drawRoundRect(ctx, 200, 42, 424, 24, 4);
   ctx.fill();
   ctx.strokeStyle = '#334155';
   ctx.lineWidth = 1.2;
-  drawRoundRect(ctx, 140, 40, 484, 24, 4);
+  drawRoundRect(ctx, 200, 42, 424, 24, 4);
   ctx.stroke();
 
   if (p1HpRatio > 0) {
-    const hpGrad = ctx.createLinearGradient(140, 40, 140, 64);
+    const hpGrad = ctx.createLinearGradient(200, 42, 200, 66);
     if (p1HpRatio > 0.35) {
       hpGrad.addColorStop(0, '#22c55e');
       hpGrad.addColorStop(1, '#15803d');
@@ -2577,30 +2314,30 @@ export async function renderBattleTurnSummary(
       hpGrad.addColorStop(1, '#b91c1c');
     }
     ctx.fillStyle = hpGrad;
-    drawRoundRect(ctx, 140, 40, Math.max(8, 484 * p1HpRatio), 24, 4);
+    drawRoundRect(ctx, 200, 42, Math.max(8, 424 * p1HpRatio), 24, 4);
     ctx.fill();
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
-    drawRoundRect(ctx, 140, 40, Math.max(8, 484 * p1HpRatio), 11, 4);
+    drawRoundRect(ctx, 200, 42, Math.max(8, 424 * p1HpRatio), 11, 4);
     ctx.fill();
   }
 
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 12px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(`HP  ${p1.currentHp.toLocaleString()} / ${p1.maxHp.toLocaleString()} (${Math.round(p1HpRatio * 100)}%)`, 150, 57);
+  ctx.fillText(`HP  ${p1.currentHp.toLocaleString()} / ${p1.maxHp.toLocaleString()} (${Math.round(p1HpRatio * 100)}%)`, 210, 59);
 
-  // NP Bar (484px width, 22px height)
+  // NP Bar (22px height)
   ctx.fillStyle = '#0f172a';
-  drawRoundRect(ctx, 140, 68, 484, 22, 4);
+  drawRoundRect(ctx, 200, 72, 290, 22, 4);
   ctx.fill();
   ctx.strokeStyle = '#92400e';
   ctx.lineWidth = 1.2;
-  drawRoundRect(ctx, 140, 68, 484, 22, 4);
+  drawRoundRect(ctx, 200, 72, 290, 22, 4);
   ctx.stroke();
 
   if (p1NpRatio > 0) {
-    const npGrad = ctx.createLinearGradient(140, 68, 140, 90);
+    const npGrad = ctx.createLinearGradient(200, 72, 200, 94);
     if ((p1.npGauge || 0) >= 100) {
       npGrad.addColorStop(0, '#fde047');
       npGrad.addColorStop(1, '#d97706');
@@ -2609,11 +2346,11 @@ export async function renderBattleTurnSummary(
       npGrad.addColorStop(1, '#ca8a04');
     }
     ctx.fillStyle = npGrad;
-    drawRoundRect(ctx, 140, 68, Math.max(8, 484 * p1NpRatio), 22, 4);
+    drawRoundRect(ctx, 200, 72, Math.max(8, 290 * p1NpRatio), 22, 4);
     ctx.fill();
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
-    drawRoundRect(ctx, 140, 68, Math.max(8, 484 * p1NpRatio), 10, 4);
+    drawRoundRect(ctx, 200, 72, Math.max(8, 290 * p1NpRatio), 10, 4);
     ctx.fill();
   }
 
@@ -2621,28 +2358,38 @@ export async function renderBattleTurnSummary(
   ctx.font = 'bold 12px sans-serif';
   ctx.textAlign = 'left';
   const p1NpText = `NP: ${Math.round(p1.npGauge || 0)}%`;
-  ctx.fillText(p1NpText, 150, 84);
+  ctx.fillText(p1NpText, 210, 88);
 
   if ((p1.npGauge || 0) >= 100) {
     const npTextW = ctx.measureText(p1NpText).width;
-    drawVectorStar(ctx, 160 + npTextW, 80, 5, 4.5, 2.2, '#fde047');
+    drawVectorStar(ctx, 220 + npTextW, 84, 5, 4.5, 2.2, '#fde047');
     ctx.fillStyle = '#fde047';
-    ctx.fillText('[MAX READY]', 168 + npTextW, 84);
+    ctx.fillText('[MAX READY]', 228 + npTextW, 88);
   }
 
-  ctx.fillStyle = '#fde047';
-  ctx.font = 'bold 10px sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText('NP GAUGE', 614, 84);
+  // P1 Stars Pill (to right of NP Bar)
+  ctx.fillStyle = '#0f172a';
+  drawRoundRect(ctx, 498, 72, 126, 22, 4);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, 498, 72, 126, 22, 4);
+  ctx.stroke();
 
-  // 4. P1 3 Command Cards (w: 96, h: 116)
+  drawVectorStar(ctx, 514, 83, 5, 5.5, 2.8, '#38bdf8');
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`${p1.critStars || 0} Stars`, 526, 88);
+
+  // 4. P1 3 Command Cards (w: 136, h: 176)
   const p1Cards = (log.p1Cards || log.cardsUsed || ['Buster', 'Arts', 'Quick']) as ('Buster' | 'Arts' | 'Quick' | 'NP')[];
   const isP1QuickLead = p1Cards[0] === 'Quick';
   p1Cards.slice(0, 3).forEach((card, idx) => {
-    const cardX = 140 + idx * 104;
-    const cardY = 96;
-    const cardW = 96;
-    const cardH = 116;
+    const cardX = 200 + idx * 144;
+    const cardY = 100;
+    const cardW = 136;
+    const cardH = 176;
 
     drawTarotCommandCard(
       ctx,
@@ -2657,28 +2404,22 @@ export async function renderBattleTurnSummary(
     );
   });
 
-  // 5. P1 ETHER CRIT STARS Box (Right side of cards)
-  drawEtherCritStarsBox(ctx, 452, 96, 172, 116, p1.critStars || 0, true);
-
   // ==========================================
-  // MIDDLE SECTION: CLASH RESOLUTION THEATER
+  // MIDDLE SECTION: MINIMAL CLASH BANNER (Option A - No Slop)
   // ==========================================
-  drawCinematicClashTheater(ctx, log, p1, p2, p1Cards, 14, 222, 612, 188);
+  drawMinimalClashBanner(ctx, log, p1, p2, 16, 286, 608, 54);
 
   // ==========================================
   // BOTTOM SECTION: PLAYER 2 (MASTER & SERVANT)
   // ==========================================
-  // 1. P2 ETHER CRIT STARS Box (Left side)
-  drawEtherCritStarsBox(ctx, 14, 418, 166, 116, p2.critStars || 0, false);
-
-  // 2. P2 3 Command Cards (w: 96, h: 116)
+  // 1. P2 3 Command Cards (Left, w: 136, h: 176)
   const p2Cards = (log.p2Cards || ['Arts', 'Buster', 'Quick']) as ('Buster' | 'Arts' | 'Quick' | 'NP')[];
   const isP2QuickLead = p2Cards[0] === 'Quick';
   p2Cards.slice(0, 3).forEach((card, idx) => {
-    const cardX = 188 + idx * 104;
-    const cardY = 418;
-    const cardW = 96;
-    const cardH = 116;
+    const cardX = 16 + idx * 144;
+    const cardY = 404;
+    const cardW = 136;
+    const cardH = 176;
 
     drawTarotCommandCard(
       ctx,
@@ -2693,94 +2434,15 @@ export async function renderBattleTurnSummary(
     );
   });
 
-  // 3. P2 Avatar Portrait Card (Right, 124x198)
-  drawServantPortraitCard(ctx, 502, 418, 124, 198, p2Img, p2, '#ef4444');
+  // 2. P2 Avatar Portrait Card (Right, 172x260) - Large Portrait Upgrade
+  drawServantPortraitCard(ctx, 452, 404, 172, 260, p2Img, p2, '#ef4444');
 
-  // 4. P2 NP Bar (480px width, 22px height)
-  const p2NpRatio = Math.max(0, Math.min(1, (p2.npGauge || 0) / 100));
-  ctx.fillStyle = '#0f172a';
-  drawRoundRect(ctx, 14, 542, 480, 22, 4);
-  ctx.fill();
-  ctx.strokeStyle = '#92400e';
-  ctx.lineWidth = 1.2;
-  drawRoundRect(ctx, 14, 542, 480, 22, 4);
-  ctx.stroke();
-
-  if (p2NpRatio > 0) {
-    const npGrad = ctx.createLinearGradient(14, 542, 14, 564);
-    if ((p2.npGauge || 0) >= 100) {
-      npGrad.addColorStop(0, '#fde047');
-      npGrad.addColorStop(1, '#d97706');
-    } else {
-      npGrad.addColorStop(0, '#facc15');
-      npGrad.addColorStop(1, '#ca8a04');
-    }
-    ctx.fillStyle = npGrad;
-    drawRoundRect(ctx, 14, 542, Math.max(8, 480 * p2NpRatio), 22, 4);
-    ctx.fill();
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
-    drawRoundRect(ctx, 14, 542, Math.max(8, 480 * p2NpRatio), 10, 4);
-    ctx.fill();
-  }
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 12px sans-serif';
-  ctx.textAlign = 'left';
-  const p2NpText = `NP: ${Math.round(p2.npGauge || 0)}%`;
-  ctx.fillText(p2NpText, 24, 558);
-
-  if ((p2.npGauge || 0) >= 100) {
-    const p2NpW = ctx.measureText(p2NpText).width;
-    drawVectorStar(ctx, 34 + p2NpW, 554, 5, 4.5, 2.2, '#fde047');
-    ctx.fillStyle = '#fde047';
-    ctx.fillText('[MAX READY]', 42 + p2NpW, 558);
-  }
-
-  ctx.fillStyle = '#fde047';
-  ctx.font = 'bold 10px sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText('NP GAUGE', 484, 558);
-
-  // 5. P2 HP Bar (480px width, 24px height)
-  const p2HpRatio = Math.max(0, Math.min(1, p2.currentHp / p2.maxHp));
-  ctx.fillStyle = '#0f172a';
-  drawRoundRect(ctx, 14, 570, 480, 24, 4);
-  ctx.fill();
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 1.2;
-  drawRoundRect(ctx, 14, 570, 480, 24, 4);
-  ctx.stroke();
-
-  if (p2HpRatio > 0) {
-    const hpGrad = ctx.createLinearGradient(14, 570, 14, 594);
-    if (p2HpRatio > 0.35) {
-      hpGrad.addColorStop(0, '#22c55e');
-      hpGrad.addColorStop(1, '#15803d');
-    } else {
-      hpGrad.addColorStop(0, '#ef4444');
-      hpGrad.addColorStop(1, '#b91c1c');
-    }
-    ctx.fillStyle = hpGrad;
-    drawRoundRect(ctx, 14, 570, Math.max(8, 480 * p2HpRatio), 24, 4);
-    ctx.fill();
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
-    drawRoundRect(ctx, 14, 570, Math.max(8, 480 * p2HpRatio), 11, 4);
-    ctx.fill();
-  }
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 12px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(`HP  ${p2.currentHp.toLocaleString()} / ${p2.maxHp.toLocaleString()} (${Math.round(p2HpRatio * 100)}%)`, 24, 587);
-
-  // 6. P2 Skills (Left side under HP)
+  // 3. P2 Skills (Row under cards, y: 588)
   const p2Skills = p2.skills || [];
   const p2Bond = p2.bondLevel !== undefined ? p2.bondLevel : 3;
   [0, 1, 2].forEach((sIdx) => {
-    const sBoxX = 14 + sIdx * 64;
-    const sBoxY = 600;
+    const sBoxX = 16 + sIdx * 64;
+    const sBoxY = 588;
     const sBoxW = 60;
     const sBoxH = 20;
     const sData = p2Skills[sIdx];
@@ -2833,15 +2495,124 @@ export async function renderBattleTurnSummary(
     ctx.restore();
   });
 
-  // 7. P2 Master & Servant Name Tag (Right side under HP)
+  // 4. P2 Header Title & Class Pill (Right-aligned next to skills)
   const p2DisplayName = (p2.masterName || 'Master 2').replace(/[^\x00-\x7F]/g, '');
   const p2ServantClean = (p2.name || 'Enemy Spirit').replace(/[^\x00-\x7F]/g, '');
   const p2ClassClean = (p2.servantClass || 'ARCHER').toUpperCase();
 
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = 'bold 15px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(p2DisplayName, 440, 603);
+
+  const p2NameWidth = ctx.measureText(p2DisplayName).width;
+  const p2PillX = 432 - p2NameWidth - 64;
+  const p2PillY = 589;
+  ctx.fillStyle = 'rgba(244, 63, 94, 0.12)';
+  drawRoundRect(ctx, p2PillX, p2PillY, 60, 18, 9);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(244, 63, 94, 0.4)';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, p2PillX, p2PillY, 60, 18, 9);
+  ctx.stroke();
+  ctx.fillStyle = '#f43f5e';
+  ctx.font = 'bold 9px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(p2ClassClean, p2PillX + 30, p2PillY + 13);
+
+  ctx.fillStyle = '#cbd5e1';
   ctx.font = 'bold 12px sans-serif';
   ctx.textAlign = 'right';
+  ctx.fillText(p2ServantClean, p2PillX - 8, 603);
+
+  // 5. P2 Stars Pill & NP Bar (y: 614)
+  ctx.fillStyle = '#0f172a';
+  drawRoundRect(ctx, 16, 614, 126, 22, 4);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(248, 113, 113, 0.4)';
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, 16, 614, 126, 22, 4);
+  ctx.stroke();
+
+  drawVectorStar(ctx, 32, 625, 5, 5.5, 2.8, '#f87171');
   ctx.fillStyle = '#f87171';
-  ctx.fillText(`[${p2ClassClean}] ${p2ServantClean} • ${p2DisplayName}`, 494, 615);
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`${p2.critStars || 0} Stars`, 44, 630);
+
+  // P2 NP Bar
+  const p2NpRatio = Math.max(0, Math.min(1, (p2.npGauge || 0) / 100));
+  ctx.fillStyle = '#0f172a';
+  drawRoundRect(ctx, 150, 614, 290, 22, 4);
+  ctx.fill();
+  ctx.strokeStyle = '#92400e';
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, 150, 614, 290, 22, 4);
+  ctx.stroke();
+
+  if (p2NpRatio > 0) {
+    const npGrad = ctx.createLinearGradient(150, 614, 150, 636);
+    if ((p2.npGauge || 0) >= 100) {
+      npGrad.addColorStop(0, '#fde047');
+      npGrad.addColorStop(1, '#d97706');
+    } else {
+      npGrad.addColorStop(0, '#facc15');
+      npGrad.addColorStop(1, '#ca8a04');
+    }
+    ctx.fillStyle = npGrad;
+    drawRoundRect(ctx, 150, 614, Math.max(8, 290 * p2NpRatio), 22, 4);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+    drawRoundRect(ctx, 150, 614, Math.max(8, 290 * p2NpRatio), 10, 4);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'left';
+  const p2NpText = `NP: ${Math.round(p2.npGauge || 0)}%`;
+  ctx.fillText(p2NpText, 160, 630);
+
+  if ((p2.npGauge || 0) >= 100) {
+    const p2NpW = ctx.measureText(p2NpText).width;
+    drawVectorStar(ctx, 170 + p2NpW, 626, 5, 4.5, 2.2, '#fde047');
+    ctx.fillStyle = '#fde047';
+    ctx.fillText('[MAX READY]', 178 + p2NpW, 630);
+  }
+
+  // 6. P2 HP Bar (y: 642, 24px height)
+  const p2HpRatio = Math.max(0, Math.min(1, p2.currentHp / p2.maxHp));
+  ctx.fillStyle = '#0f172a';
+  drawRoundRect(ctx, 16, 642, 424, 24, 4);
+  ctx.fill();
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, 16, 642, 424, 24, 4);
+  ctx.stroke();
+
+  if (p2HpRatio > 0) {
+    const hpGrad = ctx.createLinearGradient(16, 642, 16, 666);
+    if (p2HpRatio > 0.35) {
+      hpGrad.addColorStop(0, '#22c55e');
+      hpGrad.addColorStop(1, '#15803d');
+    } else {
+      hpGrad.addColorStop(0, '#ef4444');
+      hpGrad.addColorStop(1, '#b91c1c');
+    }
+    ctx.fillStyle = hpGrad;
+    drawRoundRect(ctx, 16, 642, Math.max(8, 424 * p2HpRatio), 24, 4);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+    drawRoundRect(ctx, 16, 642, Math.max(8, 424 * p2HpRatio), 11, 4);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`HP  ${p2.currentHp.toLocaleString()} / ${p2.maxHp.toLocaleString()} (${Math.round(p2HpRatio * 100)}%)`, 26, 659);
 }
 
 /**
