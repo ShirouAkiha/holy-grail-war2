@@ -424,7 +424,40 @@ export async function buildServantHub(
     components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu));
   }
 
-  if (category === 'stats') {
+  if (category === 'profile') {
+    const titleSelect = new StringSelectMenuBuilder()
+      .setCustomId('servant_sel_title_preset')
+      .setPlaceholder('👑 Select Custom Title / Nickname Preset...')
+      .addOptions([
+        { label: '👑 Title: King of Knights', description: 'Sets title to King of Knights', value: 'title_king_of_knights' },
+        { label: '🗡️ Title: Sword of Promised Victory', description: 'Sets title to Sword of Promised Victory', value: 'title_promised_victory' },
+        { label: '🛡️ Title: Bounded Field Guardian', description: 'Sets title to Bounded Field Guardian', value: 'title_sanctuary_warden' },
+        { label: '🌟 Title: Grand Spirit of Legend', description: 'Sets title to Grand Spirit of Legend', value: 'title_grand_hero' },
+        { label: '✨ Reset to True Name', description: 'Resets nickname back to canon True Name', value: 'title_reset' }
+      ]);
+    components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(titleSelect));
+
+    actionButtonsRow.addComponents(
+      new ButtonBuilder().setCustomId('servant_act_hear_voice').setLabel('Hear Voice Line').setEmoji('💬').setStyle(ButtonStyle.Primary)
+    );
+    components.push(actionButtonsRow);
+  } else if (category === 'dialogue') {
+    const voiceSelect = new StringSelectMenuBuilder()
+      .setCustomId('servant_sel_voice_preset')
+      .setPlaceholder('💬 Apply Voice Line Chants & Dialogue Preset...')
+      .addOptions([
+        { label: '👑 Canon Knight (Honor & Chivalry)', description: 'Chivalric, noble knight combat lines', value: 'preset_canon_knight' },
+        { label: '🔥 Fiery Vanguard (Battle Fury)', description: 'Aggressive, high-intensity battle chants', value: 'preset_fiery_vanguard' },
+        { label: '🗡️ Ruthless Avenger (Dark Oath)', description: 'Dark, vengeance-filled spirit quotes', value: 'preset_dark_avenger' },
+        { label: '✨ Mystic Noble Spirit (Graceful)', description: 'Graceful, regal incantations and chants', value: 'preset_mystic_spirit' }
+      ]);
+    components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(voiceSelect));
+
+    actionButtonsRow.addComponents(
+      new ButtonBuilder().setCustomId('servant_act_hear_voice').setLabel('Replay Dialogue Cut-In').setEmoji('🎬').setStyle(ButtonStyle.Primary)
+    );
+    components.push(actionButtonsRow);
+  } else if (category === 'stats') {
     const avail = targetServant.availableStatPoints || 0;
     actionButtonsRow.addComponents(
       new ButtonBuilder().setCustomId('servant_add_str').setLabel('+1 STR').setEmoji('💪').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
@@ -466,6 +499,12 @@ export async function buildServantHub(
         .addOptions(ceOptions);
       components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(feedSelect));
     }
+    actionButtonsRow.addComponents(
+      new ButtonBuilder().setCustomId('servant_act_feed_3star').setLabel('Feed 1-3★ CEs').setEmoji('⚡').setStyle(ButtonStyle.Success).setDisabled(ownedCes.length === 0),
+      new ButtonBuilder().setCustomId('servant_act_feed_dupes').setLabel('Feed Duplicates').setEmoji('🔥').setStyle(ButtonStyle.Primary).setDisabled(ownedCes.length === 0),
+      new ButtonBuilder().setCustomId('servant_act_feed_all').setLabel('Feed All CEs').setEmoji('☣️').setStyle(ButtonStyle.Danger).setDisabled(ownedCes.length === 0)
+    );
+    components.push(actionButtonsRow);
   } else {
     actionButtonsRow.addComponents(
       new ButtonBuilder().setCustomId('servant_act_hear_voice').setLabel('Hear Voice Line').setEmoji('💬').setStyle(ButtonStyle.Primary)
@@ -536,6 +575,138 @@ export function attachServantCollector(
       else if (i.customId === 'servant_sel_switch') {
         currentServantId = i.values[0];
         targetServant = master.servants.find((s: any) => s.id === currentServantId) || targetServant;
+      }
+      // TITLE / NICKNAME PRESET DROPDOWN
+      else if (i.customId === 'servant_sel_title_preset') {
+        const val = i.values[0];
+        let newTitle = '';
+        if (val === 'title_king_of_knights') newTitle = 'King of Knights';
+        else if (val === 'title_promised_victory') newTitle = 'Sword of Promised Victory';
+        else if (val === 'title_sanctuary_warden') newTitle = 'Bounded Field Guardian';
+        else if (val === 'title_grand_hero') newTitle = 'Grand Spirit of Legend';
+        else if (val === 'title_reset') newTitle = '';
+
+        targetServant.nickname = newTitle || undefined;
+        master.servants = master.servants.map((s: any) => s.id === targetServant.id ? targetServant : s);
+        await saveMaster(master);
+        actionOutcomeMsg = newTitle ? `👑 Title updated to **"${newTitle}"**!` : `✨ Title reset to canon True Name!`;
+      }
+      // VOICE LINE / DIALOGUE PRESET DROPDOWN
+      else if (i.customId === 'servant_sel_voice_preset') {
+        const val = i.values[0];
+        let presetQuotes = {};
+        if (val === 'preset_canon_knight') {
+          presetQuotes = {
+            noblePhantasm: 'Excalibur! Sword of Promised Victory!',
+            battleStart: 'I ask of you, are you my Master? My sword is yours!',
+            victory: 'A victory forged by honor and righteous resolve!',
+            defeat: 'Forgive me, Master... My duty remains unfulfilled...',
+            busterChain: 'Hammer of the Sun!',
+            artsChain: 'By the Oath of Chivalry!',
+            quickChain: 'Strike of the Gale!',
+            summon: 'I have answered your call. Let us fight for the Grail!'
+          };
+        } else if (val === 'preset_fiery_vanguard') {
+          presetQuotes = {
+            noblePhantasm: 'Gáe Bulg! Spear of Striking Death Flight!',
+            battleStart: 'Alright! Time for a real fight!',
+            victory: 'Haha! That was a thrilling battle!',
+            defeat: 'Tch... Not bad... catch you next time...',
+            busterChain: 'Piercing Thrust!',
+            artsChain: 'Channeled Spirit!',
+            quickChain: 'Sonic Strike!',
+            summon: 'Servant Lancer! Here to spear your enemies!'
+          };
+        } else if (val === 'preset_dark_avenger') {
+          presetQuotes = {
+            noblePhantasm: 'La Pucelle! Consume all in eternal black flames!',
+            battleStart: 'Your life expires here. Prepare for oblivion!',
+            victory: 'Ashes to ashes. None shall stand against us!',
+            defeat: 'Curse you all... The nightmare never ends...',
+            busterChain: 'Crush them!',
+            artsChain: 'Mana Burst!',
+            quickChain: 'Shadow Slice!',
+            summon: 'I emerge from the shadows to claim revenge.'
+          };
+        } else if (val === 'preset_mystic_spirit') {
+          presetQuotes = {
+            noblePhantasm: 'Gate of Babylon! Behold the treasures of the king!',
+            battleStart: 'Let us see if you are worthy of my presence!',
+            victory: 'Naturally. Perfection is my minimum standard!',
+            defeat: 'Hmph... A minor tactical delay...',
+            busterChain: 'Take this!',
+            artsChain: 'Incantation!',
+            quickChain: 'Flash Star!',
+            summon: 'Be honored, Master. You now command greatness.'
+          };
+        }
+
+        targetServant.customQuotes = { ...(targetServant.customQuotes || {}), ...presetQuotes };
+        master.servants = master.servants.map((s: any) => s.id === targetServant.id ? targetServant : s);
+        await saveMaster(master);
+        actionOutcomeMsg = `💬 Applied voice line dialogue preset! Replay cut-in to listen.`;
+      }
+      // QUICK FEED BUTTONS
+      else if (i.customId === 'servant_act_feed_3star') {
+        const owned = (master.craftEssences || []).filter(Boolean);
+        const lowRarityIndexes = owned.map((c: any, idx: number) => c.rarity <= 3 ? String(idx) : null).filter((v: any) => v !== null) as string[];
+        if (lowRarityIndexes.length === 0) {
+          actionOutcomeMsg = `⚠️ No 1-3★ Craft Essences found in inventory.`;
+        } else {
+          const result = feedCraftEssences(targetServant, lowRarityIndexes, owned);
+          master.craftEssences = result.remainingCraftEssences;
+          master.servants = master.servants.map((s: any) => s.id === targetServant.id ? result.updatedServant : s);
+          await saveMaster(master);
+          targetServant = result.updatedServant;
+          const levelDiff = result.newLevel - result.oldLevel;
+          actionOutcomeMsg = `⚡ Synthesized ${lowRarityIndexes.length} Low-Rarity Craft Essences!\n` +
+            `• Gained \`+${result.expGained.toLocaleString()} XP\`\n` +
+            (levelDiff > 0 ? `• **LEVEL UP!** Lv.${result.oldLevel} ➔ **Lv.${result.newLevel}**!\n• Gained **+${result.statPointsGained} Stat Points**!` : '');
+        }
+      } else if (i.customId === 'servant_act_feed_dupes') {
+        const owned = (master.craftEssences || []).filter(Boolean);
+        const nameCounts = new Map<string, number>();
+        owned.forEach((c: any) => nameCounts.set(c.name, (nameCounts.get(c.name) || 0) + 1));
+        const dupeIndexes: string[] = [];
+        const seenNames = new Set<string>();
+        owned.forEach((c: any, idx: number) => {
+          if ((nameCounts.get(c.name) || 0) > 1) {
+            if (seenNames.has(c.name)) {
+              dupeIndexes.push(String(idx));
+            } else {
+              seenNames.add(c.name);
+            }
+          }
+        });
+        if (dupeIndexes.length === 0) {
+          actionOutcomeMsg = `⚠️ No duplicate Craft Essences found.`;
+        } else {
+          const result = feedCraftEssences(targetServant, dupeIndexes, owned);
+          master.craftEssences = result.remainingCraftEssences;
+          master.servants = master.servants.map((s: any) => s.id === targetServant.id ? result.updatedServant : s);
+          await saveMaster(master);
+          targetServant = result.updatedServant;
+          const levelDiff = result.newLevel - result.oldLevel;
+          actionOutcomeMsg = `🔥 Synthesized ${dupeIndexes.length} Duplicate Craft Essences!\n` +
+            `• Gained \`+${result.expGained.toLocaleString()} XP\`\n` +
+            (levelDiff > 0 ? `• **LEVEL UP!** Lv.${result.oldLevel} ➔ **Lv.${result.newLevel}**!\n• Gained **+${result.statPointsGained} Stat Points**!` : '');
+        }
+      } else if (i.customId === 'servant_act_feed_all') {
+        const owned = (master.craftEssences || []).filter(Boolean);
+        if (owned.length === 0) {
+          actionOutcomeMsg = `⚠️ No Craft Essences in inventory to synthesize.`;
+        } else {
+          const allIndexes = owned.map((_: any, idx: number) => String(idx));
+          const result = feedCraftEssences(targetServant, allIndexes, owned);
+          master.craftEssences = result.remainingCraftEssences;
+          master.servants = master.servants.map((s: any) => s.id === targetServant.id ? result.updatedServant : s);
+          await saveMaster(master);
+          targetServant = result.updatedServant;
+          const levelDiff = result.newLevel - result.oldLevel;
+          actionOutcomeMsg = `☣️ Synthesized ALL ${allIndexes.length} Craft Essences!\n` +
+            `• Gained \`+${result.expGained.toLocaleString()} XP\`\n` +
+            (levelDiff > 0 ? `• **LEVEL UP!** Lv.${result.oldLevel} ➔ **Lv.${result.newLevel}**!\n• Gained **+${result.statPointsGained} Stat Points**!` : '');
+        }
       }
       // EQUIP CRAFT ESSENCE DROPDOWN
       else if (i.customId === 'servant_sel_equip_ce') {

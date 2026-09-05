@@ -4441,11 +4441,56 @@ export default function DiscordEmulator({
       { id: 'servant_link_duel', label: 'Duel Arena (/duel)', style: 'secondary' as const, emoji: '⚔️' }
     ];
 
-    const rosterSelectOptions = ownedServants.length > 1 ? ownedServants.slice(0, 25).map(s => ({
-      value: `servant_sel_switch_${s.id}`,
-      label: `${s.nickname || s.template?.name || 'Servant'} (Lv.${s.level || 1})`,
-      description: `Class: ${s.template?.servantClass || 'Saber'} • Points: ${s.availableStatPoints || 0} pts`
-    })) : undefined;
+    let selectOptions: any[] | undefined = undefined;
+    let selectPlaceholder: string | undefined = undefined;
+
+    if (category === 'profile') {
+      selectPlaceholder = '👑 Select Custom Title / Nickname Preset...';
+      selectOptions = [
+        { value: 'servant_sel_title_preset_king_of_knights', label: '👑 Title: King of Knights', description: 'Sets title to King of Knights' },
+        { value: 'servant_sel_title_preset_promised_victory', label: '🗡️ Title: Sword of Promised Victory', description: 'Sets title to Sword of Promised Victory' },
+        { value: 'servant_sel_title_preset_sanctuary_warden', label: '🛡️ Title: Bounded Field Guardian', description: 'Sets title to Bounded Field Guardian' },
+        { value: 'servant_sel_title_preset_grand_hero', label: '🌟 Title: Grand Spirit of Legend', description: 'Sets title to Grand Spirit of Legend' },
+        { value: 'servant_sel_title_preset_reset', label: '✨ Reset Title to True Name', description: 'Resets title back to canon True Name' }
+      ];
+    } else if (category === 'dialogue') {
+      selectPlaceholder = '💬 Apply Voice Line Chants & Dialogue Preset...';
+      selectOptions = [
+        { value: 'servant_sel_voice_preset_canon_knight', label: '👑 Canon Knight (Honor & Chivalry)', description: 'Chivalric, noble knight combat lines' },
+        { value: 'servant_sel_voice_preset_fiery_vanguard', label: '🔥 Fiery Vanguard (Battle Fury)', description: 'Aggressive, high-intensity battle chants' },
+        { value: 'servant_sel_voice_preset_dark_avenger', label: '🗡️ Ruthless Avenger (Dark Oath)', description: 'Dark, vengeance-filled spirit quotes' },
+        { value: 'servant_sel_voice_preset_mystic_spirit', label: '✨ Mystic Noble Spirit (Graceful)', description: 'Graceful, regal incantations and chants' }
+      ];
+    } else if (category === ('equip_ce' as any)) {
+      const ownedCes = (master.craftEssences || []).filter(Boolean);
+      if (ownedCes.length > 0) {
+        selectPlaceholder = '👔 Select Craft Essence to equip...';
+        selectOptions = ownedCes.slice(0, 25).map(c => ({
+          value: `servant_sel_equip_ce_${c.id}`,
+          label: `[★${c.rarity}] ${c.name}`,
+          description: `+${c.atkBonus || 0} ATK / +${c.hpBonus || 0} HP • ${c.effectText || c.description || 'Mystic Code'}`
+        }));
+      }
+    } else if (category === ('feed_ce' as any)) {
+      const ownedCes = (master.craftEssences || []).filter(Boolean);
+      if (ownedCes.length > 0) {
+        selectPlaceholder = '🧪 Select Craft Essence to synthesize (+EXP)...';
+        selectOptions = ownedCes.slice(0, 25).map(c => ({
+          value: `servant_sel_feed_ce_${c.id}`,
+          label: `[★${c.rarity}] ${c.name}`,
+          description: `Synthesize for Spiritron Mana (+EXP) • ${c.effectText || c.description || 'Mystic Code'}`
+        }));
+      }
+    } else if (category === 'roster' || ownedServants.length > 1) {
+      if (ownedServants.length > 1) {
+        selectPlaceholder = `Selected: ${sName} (Lv.${lvl})`;
+        selectOptions = ownedServants.slice(0, 25).map(s => ({
+          value: `servant_sel_switch_${s.id}`,
+          label: `${s.nickname || s.template?.name || 'Servant'} (Lv.${s.level || 1})`,
+          description: `Class: ${s.template?.servantClass || 'Saber'} • Points: ${s.availableStatPoints || 0} pts`
+        }));
+      }
+    }
 
     addMessage({
       id: getNextId('bot_servant_hub'),
@@ -4462,8 +4507,8 @@ export default function DiscordEmulator({
       artworkEmbed,
       components: {
         type: 'buttons',
-        placeholder: rosterSelectOptions ? `Selected: ${sName} (Lv.${lvl})` : undefined,
-        selectOptions: rosterSelectOptions,
+        placeholder: selectPlaceholder,
+        selectOptions: selectOptions,
         items: [...categoryNavButtons, ...actionButtons, ...crossHubShortcuts]
       }
     });
@@ -5535,6 +5580,10 @@ export default function DiscordEmulator({
     } else if (
       btnId.startsWith('servant_tab_') ||
       btnId.startsWith('servant_sel_switch_') ||
+      btnId.startsWith('servant_sel_title_preset_') ||
+      btnId.startsWith('servant_sel_voice_preset_') ||
+      btnId.startsWith('servant_sel_equip_ce_') ||
+      btnId.startsWith('servant_sel_feed_ce_') ||
       btnId.startsWith('servant_act_set_active') ||
       btnId.startsWith('servant_add_') ||
       btnId.startsWith('servant_link_')
@@ -5572,7 +5621,158 @@ export default function DiscordEmulator({
           postServantHub('equip_ce' as any, updated.id);
         }
       }
-      // 2. Select dropdown switch
+      // 2. Title Preset Selection
+      else if (btnId.startsWith('servant_sel_title_preset_')) {
+        const val = btnId.replace('servant_sel_title_preset_', '');
+        let newTitle = '';
+        if (val === 'king_of_knights') newTitle = 'King of Knights';
+        else if (val === 'promised_victory') newTitle = 'Sword of Promised Victory';
+        else if (val === 'sanctuary_warden') newTitle = 'Bounded Field Guardian';
+        else if (val === 'grand_hero') newTitle = 'Grand Spirit of Legend';
+        else if (val === 'reset') newTitle = '';
+
+        if (targetServant) {
+          const updated = { ...targetServant, nickname: newTitle || undefined };
+          const updatedServants = ownedServants.map(s => s.id === updated.id ? updated : s);
+          onUpdateMaster({ ...master, servants: updatedServants });
+          addMessage({
+            id: getNextId('bot_title_updated'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: newTitle ? `👑 Title Applied: "${newTitle}"` : `✨ Title Reset to True Name`,
+              description: newTitle 
+                ? `Successfully updated **${targetServant.template?.name || 'Servant'}**'s title to **"${newTitle}"**!`
+                : `Reset nickname back to canon True Name **${targetServant.template?.name || 'Servant'}**.`,
+              color: '#22c55e'
+            }
+          });
+          postServantHub('profile', targetServant.id);
+        }
+      }
+      // 3. Voice Preset Selection
+      else if (btnId.startsWith('servant_sel_voice_preset_')) {
+        const val = btnId.replace('servant_sel_voice_preset_', '');
+        let presetQuotes = {};
+        if (val === 'canon_knight') {
+          presetQuotes = {
+            noblePhantasm: 'Excalibur! Sword of Promised Victory!',
+            battleStart: 'I ask of you, are you my Master? My sword is yours!',
+            victory: 'A victory forged by honor and righteous resolve!',
+            defeat: 'Forgive me, Master... My duty remains unfulfilled...',
+            busterChain: 'Hammer of the Sun!',
+            artsChain: 'By the Oath of Chivalry!',
+            quickChain: 'Strike of the Gale!',
+            summon: 'I have answered your call. Let us fight for the Grail!'
+          };
+        } else if (val === 'fiery_vanguard') {
+          presetQuotes = {
+            noblePhantasm: 'Gáe Bulg! Spear of Striking Death Flight!',
+            battleStart: 'Alright! Time for a real fight!',
+            victory: 'Haha! That was a thrilling battle!',
+            defeat: 'Tch... Not bad... catch you next time...',
+            busterChain: 'Piercing Thrust!',
+            artsChain: 'Channeled Spirit!',
+            quickChain: 'Sonic Strike!',
+            summon: 'Servant Lancer! Here to spear your enemies!'
+          };
+        } else if (val === 'dark_avenger') {
+          presetQuotes = {
+            noblePhantasm: 'La Pucelle! Consume all in eternal black flames!',
+            battleStart: 'Your life expires here. Prepare for oblivion!',
+            victory: 'Ashes to ashes. None shall stand against us!',
+            defeat: 'Curse you all... The nightmare never ends...',
+            busterChain: 'Crush them!',
+            artsChain: 'Mana Burst!',
+            quickChain: 'Shadow Slice!',
+            summon: 'I emerge from the shadows to claim revenge.'
+          };
+        } else if (val === 'mystic_spirit') {
+          presetQuotes = {
+            noblePhantasm: 'Gate of Babylon! Behold the treasures of the king!',
+            battleStart: 'Let us see if you are worthy of my presence!',
+            victory: 'Naturally. Perfection is my minimum standard!',
+            defeat: 'Hmph... A minor tactical delay...',
+            busterChain: 'Take this!',
+            artsChain: 'Incantation!',
+            quickChain: 'Flash Star!',
+            summon: 'Be honored, Master. You now command greatness.'
+          };
+        }
+
+        if (targetServant) {
+          const updated = {
+            ...targetServant,
+            customQuotes: { ...(targetServant.customQuotes || {}), ...presetQuotes }
+          };
+          const updatedServants = ownedServants.map(s => s.id === updated.id ? updated : s);
+          onUpdateMaster({ ...master, servants: updatedServants });
+          addMessage({
+            id: getNextId('bot_voice_updated'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `💬 Voice Line Dialogue Preset Applied!`,
+              description: `Custom combat chants and invocations successfully saved for **${targetServant.nickname || targetServant.template?.name || 'Servant'}**!\n\n` +
+                `• **NP Chant:** *" ${(updated.customQuotes as any)?.noblePhantasm} "*\n` +
+                `• **Battle Start:** *" ${(updated.customQuotes as any)?.battleStart} "*`,
+              color: '#d4af37'
+            }
+          });
+          postServantHub('dialogue', targetServant.id);
+        }
+      }
+      // 4. Equip CE Selection
+      else if (btnId.startsWith('servant_sel_equip_ce_')) {
+        const ceId = btnId.replace('servant_sel_equip_ce_', '');
+        const ownedCes = (master.craftEssences || []).filter(Boolean);
+        const targetCe = ownedCes.find(c => c.id === ceId);
+        if (targetServant && targetCe) {
+          const updated = equipCraftEssence(targetServant, ceId);
+          const updatedServants = ownedServants.map(s => s.id === updated.id ? updated : s);
+          onUpdateMaster({ ...master, servants: updatedServants });
+          addMessage({
+            id: getNextId('bot_equip_ce_success'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `✅ Craft Essence Equipped: ${targetCe.name}`,
+              description: `Equipped **${targetCe.name}** [★${targetCe.rarity}] onto **${targetServant.nickname || targetServant.template?.name || 'Servant'}**!`,
+              color: '#22c55e'
+            }
+          });
+          postServantHub('equip_ce' as any, targetServant.id);
+        }
+      }
+      // 5. Feed CE Selection
+      else if (btnId.startsWith('servant_sel_feed_ce_')) {
+        const ceId = btnId.replace('servant_sel_feed_ce_', '');
+        const ownedCes = (master.craftEssences || []).filter(Boolean);
+        const ceIndex = ownedCes.findIndex(c => c.id === ceId);
+        if (targetServant && ceIndex !== -1) {
+          const result = feedCraftEssences(targetServant, [String(ceIndex)], ownedCes);
+          onUpdateMaster({
+            ...master,
+            craftEssences: result.remainingCraftEssences,
+            servants: ownedServants.map(s => s.id === targetServant.id ? result.updatedServant : s)
+          });
+          const levelDiff = result.newLevel - result.oldLevel;
+          addMessage({
+            id: getNextId('bot_feed_ce_success'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: levelDiff > 0 ? `✨ LEVEL UP! Lv.${result.oldLevel} ➔ Lv.${result.newLevel}` : `🧪 Synthesized Craft Essence`,
+              description: `Synthesized Craft Essence into spiritron mana for **${targetServant.nickname || targetServant.template?.name || 'Servant'}**!\n\n` +
+                `• Gained \`+${result.expGained.toLocaleString()} XP\`\n` +
+                (levelDiff > 0 ? `• **Gained +${result.statPointsGained} Stat Points!**` : ''),
+              color: levelDiff > 0 ? '#22c55e' : '#a855f7'
+            }
+          });
+          postServantHub('feed_ce' as any, result.updatedServant.id);
+        }
+      }
+      // 6. Select dropdown switch
       else if (btnId.startsWith('servant_sel_switch_')) {
         const selId = btnId.replace('servant_sel_switch_', '');
         setServantHubSelectedId(selId);
