@@ -237,6 +237,7 @@ export function applyCombatantSkill(
       logText = `🩸 **${actor.name}** activated **${skill.name}**, granting **Guts Status** (Will revive with +${reviveVal.toLocaleString()} HP on lethal damage)!`;
       break;
     }
+    case 'debuff':
     case 'stun': {
       const targetPassives = target.passives || getUnlockedPassives(target.servantClass, target.bondLevel || 1);
       const actorPassives = actor.passives || getUnlockedPassives(actor.servantClass, actor.bondLevel || 1);
@@ -244,8 +245,16 @@ export function applyCombatantSkill(
       const itemConstruct = actorPassives.filter(p => p.type === 'item_construction').reduce((s, p) => s + p.value, 0);
       const effectiveResist = Math.max(0, magicResist - itemConstruct);
 
+      target.npGauge = Math.max(0, target.npGauge - 20);
+      target.activeBuffs.push({
+        name: `${skill.name} (ATK Down)`,
+        type: 'debuff_atk',
+        value: skill.value || 20,
+        remainingTurns: skill.duration || 1
+      });
+
       if (effectiveResist > 0 && Math.random() * 100 < effectiveResist) {
-        logText = `🛡️ **${target.name}** resisted **${actor.name}'s ${skill.name}** thanks to [Magic Resistance]!`;
+        logText = `🛡️ **${target.name}** partially resisted **${actor.name}'s ${skill.name}** via Magic Resistance, but suffered -20% NP Gauge & -20% ATK!`;
       } else {
         target.isStunned = true;
         target.activeBuffs.push({
@@ -254,7 +263,7 @@ export function applyCombatantSkill(
           value: 100,
           remainingTurns: skill.duration || 1
         });
-        logText = `💫 **${actor.name}** activated **${skill.name}**, stunning **${target.name}** for 1 turn!`;
+        logText = `👁️ **${actor.name}** activated **${skill.name}**! Drained **${target.name}**'s NP gauge by 20%, reduced ATK by 20%, and inflicted Stun!`;
       }
       break;
     }
@@ -354,6 +363,9 @@ export function executeNoblePhantasmLogic(
   // General ATK Buffs
   const atkBuff = actor.activeBuffs
     .filter(b => b.type === 'buff_atk')
+    .reduce((s, b) => s + b.value, 0) -
+    actor.activeBuffs
+    .filter(b => b.type === 'debuff_atk')
     .reduce((s, b) => s + b.value, 0);
 
   // Actor Passives (Max 2, 2nd unlocked after Bond 5)
@@ -871,6 +883,9 @@ export function executeBattleTurn(
     // Determine ATK & DEF buffs
     const atkBuff = actor.activeBuffs
       .filter(b => b.type === 'buff_atk')
+      .reduce((sum, b) => sum + b.value, 0) -
+      actor.activeBuffs
+      .filter(b => b.type === 'debuff_atk')
       .reduce((sum, b) => sum + b.value, 0);
     const defBuff = target.activeBuffs
       .filter(b => b.type === 'buff_def')

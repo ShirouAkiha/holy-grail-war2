@@ -38,7 +38,7 @@ export const data = new SlashCommandBuilder()
 // ==========================================
 export interface CombatantBuff {
   name: string;
-  type: 'buff_atk' | 'buff_def' | 'crit_dmg' | 'evade' | 'guts' | 'np_gen' | 'buster_up' | 'arts_up' | 'quick_up' | 'invincible' | 'stun';
+  type: 'buff_atk' | 'buff_def' | 'crit_dmg' | 'evade' | 'guts' | 'np_gen' | 'buster_up' | 'arts_up' | 'quick_up' | 'invincible' | 'stun' | 'debuff_atk';
   value: number;
   remainingTurns: number;
 }
@@ -56,6 +56,7 @@ export interface DuelCombatant {
   def: number;
   npGauge: number;
   critStars: number;
+  isStunned?: boolean;
   passives?: PassiveSkill[];
   activeBuffs: CombatantBuff[];
   skillCooldowns: { [skillIdx: number]: number };
@@ -638,7 +639,8 @@ function buildCombatButtons(
 // Helper to activate a combatant skill without spending a turn
 function activateCombatantSkill(
   combatant: DuelCombatant,
-  skillIdx: number
+  skillIdx: number,
+  opponent?: DuelCombatant
 ): { success: boolean; log: string } {
   const bondLevel = combatant.servant.bondLevel || 1;
   if (skillIdx === 2 && bondLevel < 5) {
@@ -715,6 +717,19 @@ function activateCombatantSkill(
     combatant.critStars = Math.min(50, combatant.critStars + starVal);
     combatant.activeBuffs.push({ name: skill.name, type: 'crit_dmg', value: 40, remainingTurns: skill.duration || 2 });
     logText = `🌟 **${combatant.servant.template.name}** activated **${skill.name}**, generating **+${starVal} Stars** & +40% Crit DMG!`;
+  } else if (skill.effectType === 'stun' || skill.effectType === 'debuff' || skill.id?.includes('discernment')) {
+    const oppName = opponent ? opponent.servant.template.name : 'enemy';
+    if (opponent) {
+      opponent.isStunned = true;
+      opponent.npGauge = Math.max(0, opponent.npGauge - 20);
+      opponent.activeBuffs.push({
+        name: `${skill.name} (ATK Down)`,
+        type: 'debuff_atk',
+        value: skill.value || 20,
+        remainingTurns: skill.duration || 1
+      });
+    }
+    logText = `👁️ **${combatant.servant.template.name}** activated **${skill.name}**! Drained **${oppName}**'s NP gauge by 20%, reduced ATK power by 20%, and inflicted Stun!`;
   } else {
     combatant.activeBuffs.push({ name: skill.name, type: 'buff_atk', value: 25, remainingTurns: 2 });
     logText = `✨ **${combatant.servant.template.name}** activated **${skill.name}**!`;
@@ -796,6 +811,12 @@ function resolveStrike(
     }
   }
 
+  // Handle Stun status
+  if (attacker.isStunned) {
+    attacker.isStunned = false;
+    return `💫 **${attacker.servant.template.name}** was **Stunned / NP Sealed** and was unable to attack this turn!`;
+  }
+
   // Calculate active buffs
   let atkBuff = 1.0;
   let critDmgBonus = 1.0;
@@ -821,6 +842,7 @@ function resolveStrike(
   attacker.activeBuffs = attacker.activeBuffs.filter(b => {
     b.remainingTurns--;
     if (b.type === 'buff_atk') atkBuff += b.value / 100;
+    if (b.type === 'debuff_atk') atkBuff -= b.value / 100;
     if (b.type === 'crit_dmg') critDmgBonus += b.value / 100;
     if (b.type === 'np_gen') npGenBonus += b.value / 100;
     return b.remainingTurns > 0;
@@ -1682,7 +1704,8 @@ async function startInteractiveDuel(
       if (i.customId.startsWith('skill_')) {
         const skillIdx = parseInt(i.customId.replace('skill_', ''), 10);
         const actor = activeUserId === p1.userId ? p1 : p2;
-        const res = activateCombatantSkill(actor, skillIdx);
+        const opponent = activeUserId === p1.userId ? p2 : p1;
+        const res = activateCombatantSkill(actor, skillIdx, opponent);
         combatLogs.push(res.log);
         if (combatLogs.length > 4) combatLogs.shift();
 
@@ -1848,7 +1871,7 @@ async function startInteractiveDuel(
         for (let sIdx = 0; sIdx < aiSkills.length; sIdx++) {
           if (sIdx === 2 && aiBond < 5) continue;
           if ((defender.skillCooldowns[sIdx] || 0) <= 0 && Math.random() < 0.35) {
-            const aiSkillRes = activateCombatantSkill(defender, sIdx);
+            const aiSkillRes = activateCombatantSkill(defender, sIdx, attacker);
             if (aiSkillRes.success) {
               combatLogs.push(aiSkillRes.log);
               if (combatLogs.length > 4) combatLogs.shift();

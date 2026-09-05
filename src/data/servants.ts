@@ -1001,7 +1001,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         name: 'Discernment of the Poor A',
         cooldown: 6,
         description: 'Decreases enemy Noble Phantasm & attack power by 20% and seals enemy NP gauge.',
-        effectType: 'stun',
+        effectType: 'debuff',
         value: 20,
         duration: 1,
         icon: '👁️'

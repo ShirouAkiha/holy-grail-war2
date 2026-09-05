@@ -32,7 +32,7 @@ export interface ServantSkill {
   cooldown: number;
   currentCooldown?: number;
   description: string;
-  effectType: 'buff_atk' | 'buff_def' | 'heal' | 'np_charge' | 'crit_stars' | 'evade' | 'invincible' | 'stun' | 'guts';
+  effectType: 'buff_atk' | 'buff_def' | 'heal' | 'np_charge' | 'crit_stars' | 'evade' | 'invincible' | 'stun' | 'debuff' | 'guts';
   value: number;
   duration: number;
   icon: string;
