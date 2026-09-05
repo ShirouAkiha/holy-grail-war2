@@ -1755,7 +1755,7 @@ async function startInteractiveDuel(
         return;
       }
 
-      // CASE: TACTICAL RETREAT / RUN (Instant escape option)
+      // CASE: TACTICAL RETREAT / RUN (Consumes active turn)
       if (i.customId === 'card_flee' || i.customId === 'duel_flee' || i.customId === 'card_run') {
         const fleeActor = activeUserId === p1.userId ? p1 : p2;
         const opponent = activeUserId === p1.userId ? p2 : p1;
@@ -1774,12 +1774,13 @@ async function startInteractiveDuel(
               `**${fleeActor.servant.nickname || fleeActor.servant.template.name}** broke line of sight and safely disengaged from combat!\n\n` +
               `> *"A tactical withdrawal preserves the spirit for the decisive battle."*\n\n` +
               `🛡️ **Retreat Outcome:**\n` +
+              `• Turn ${round} Action: **Tactical Retreat (Turn Consumed)**\n` +
               `• Escape Success Rate: **${fleeInfo.chancePercent}%**${fleeInfo.isAgilityBonus ? ' *(+5% Agility bonus applied)*' : ''}\n` +
               `• Current HP Preserved: **${fleeActor.currentHp.toLocaleString()} / ${fleeActor.maxHp.toLocaleString()}**\n` +
               `• No Holy Grail War rating penalties or win streak deductions were incurred.`
             )
             .setColor(0xf59e0b)
-            .setFooter({ text: `Holy Grail War Engine • Retreat Success Rate: ${fleeInfo.chancePercent}%` });
+            .setFooter({ text: `Holy Grail War Engine • Round ${round} • Retreat Success Rate: ${fleeInfo.chancePercent}%` });
 
           if (fleeActor.servant.template?.avatarUrl) {
             retreatEmbed.setThumbnail(fleeActor.servant.template.avatarUrl);
@@ -1788,11 +1789,15 @@ async function startInteractiveDuel(
           await i.editReply({ embeds: [retreatEmbed], components: [] });
           return;
         } else {
-          // Failed retreat: Opponent lands an immediate counter-strike (reduced to 2,000 HP)
+          // Failed retreat: Turn is consumed attempting to flee! Opponent intercepts with counter-strike
+          activePendingCards = [];
+          activePendingIndices = [];
+          refreshCombatantHand(fleeActor);
+
           const counterDmg = 2000;
           fleeActor.currentHp = Math.max(0, fleeActor.currentHp - counterDmg);
 
-          const fleeFailLog = `🏃 **Retreat Failed!** (${fleeInfo.chancePercent}% chance) Opponent intercepted and counter-attacked for **${counterDmg.toLocaleString()} DMG**!`;
+          const fleeFailLog = `🏃 **Retreat Failed!** (${fleeInfo.chancePercent}% chance) Turn consumed — Opponent intercepted and counter-attacked for **${counterDmg.toLocaleString()} DMG**!`;
           combatLogs.push(fleeFailLog);
           if (combatLogs.length > 4) combatLogs.shift();
 
@@ -1804,9 +1809,24 @@ async function startInteractiveDuel(
             return;
           }
 
+          // Case A: Opponent is AI -> Turn consumed, round advances to next turn for player
+          if (opponent.isAi) {
+            round++;
+            activeUserId = p1.userId;
+            const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, fleeFailLog, p1LastCards, p2LastCards);
+            const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
+            const updatedButtons = buildCombatButtons(fleeActor, activePendingCards, activePendingIndices);
+            await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+            return;
+          }
+
+          // Case B: Opponent is human -> Turn consumed, pass active player turn to opponent
+          round++;
+          activeUserId = opponent.userId;
+          const nextCombatant = opponent;
           const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, fleeFailLog, p1LastCards, p2LastCards);
           const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
-          const updatedButtons = buildCombatButtons(fleeActor, activePendingCards, activePendingIndices);
+          const updatedButtons = buildCombatButtons(nextCombatant, activePendingCards, activePendingIndices);
           await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
           return;
         }

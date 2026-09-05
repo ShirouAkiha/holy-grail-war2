@@ -547,6 +547,10 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         turnHistory: [...battle.turnHistory, fleeLog]
       };
 
+      setSelectedCards([]);
+      setUseNp(false);
+      setSelectedSkillIdx(undefined);
+      setSelectedCommandSeal(undefined);
       setBattle(updatedState);
       setFleeStatusMessage(`Tactical retreat successful! Escaped with ${chancePercent}% chance.`);
 
@@ -568,7 +572,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         actorName: battle.player2.name,
         targetId: battle.player1.id,
         targetName: battle.player1.name,
-        actionSummary: `❌ **TACTICAL RETREAT FAILED!** (${chancePercent}% chance rolled). ${battle.player1.name} could not break line of sight and took a **2,000 DMG** counter-strike from ${battle.player2.name}!`,
+        actionSummary: `❌ **TACTICAL RETREAT FAILED!** (${chancePercent}% chance rolled). Turn consumed — ${battle.player1.name} could not break line of sight and took a **2,000 DMG** counter-strike from ${battle.player2.name}!`,
         cardsUsed: ['Buster'],
         skillsUsed: [],
         damageDealt: counterDmg,
@@ -594,8 +598,12 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         turnHistory: [...battle.turnHistory, failLog]
       };
 
+      setSelectedCards([]);
+      setUseNp(false);
+      setSelectedSkillIdx(undefined);
+      setSelectedCommandSeal(undefined);
       setBattle(finalState);
-      setFleeStatusMessage(`Tactical retreat failed (${chancePercent}% chance). Took 2,000 DMG counter-strike!`);
+      setFleeStatusMessage(`Tactical retreat failed (${chancePercent}% chance). Turn consumed! Took 2,000 DMG counter-strike!`);
 
       if (finalState.player1.currentHp <= 0) {
         if ((master.commandSeals ?? 3) >= 1) {

@@ -4225,7 +4225,7 @@ export default function DiscordEmulator({
             turnPhase: isDefeated ? 'defeat' : 'card_selection'
           };
 
-          const failLog = `❌ **RETREAT FAILED!** (${fleeCalc.chancePercent}% chance) **${p2.name}** counter-struck for **2,000 DMG**! (${newPlayer1Hp.toLocaleString()} / ${p1.maxHp.toLocaleString()} HP remaining)`;
+          const failLog = `❌ **RETREAT FAILED!** (${fleeCalc.chancePercent}% chance) Turn consumed — **${p2.name}** counter-struck for **2,000 DMG**! (${newPlayer1Hp.toLocaleString()} / ${p1.maxHp.toLocaleString()} HP remaining)`;
 
           if (updatedState.turnPhase === 'defeat') {
             const seals = master.commandSeals ?? 3;
@@ -4355,14 +4355,14 @@ export default function DiscordEmulator({
             sender: 'bot',
             timestamp: 'Just now',
             embed: {
-              title: `❌ TACTICAL RETREAT FAILED (${fleeCalc.chancePercent}%)`,
+              title: `❌ TACTICAL RETREAT FAILED — TURN CONSUMED (${fleeCalc.chancePercent}%)`,
               description:
-                `**${p1.name}** could not break away! **${p2.name}** took advantage and struck an undefended blow!\n\n` +
+                `**${p1.name}** could not break away! Turn consumed — **${p2.name}** took advantage and struck an undefended blow!\n\n` +
                 `❤️ **${p1.name} HP:** ${updatedState.player1.currentHp.toLocaleString()}/${updatedState.player1.maxHp.toLocaleString()}\n` +
                 `❤️ **${p2.name} HP:** ${updatedState.player2.currentHp.toLocaleString()}/${updatedState.player2.maxHp.toLocaleString()}\n\n` +
-                `👉 **Current Turn:** Select your next action:`,
+                `👉 **Turn ${updatedState.currentTurn}:** Select your next action:`,
               color: '#ef4444',
-              footer: 'Combat Engine • Flee Turn Penalty Applied'
+              footer: 'Combat Engine • Turn Consumed • 2,000 DMG Counter-Strike'
             },
             canvasType: 'battle',
             canvasPayload: { log: failLog, p1: updatedState.player1, p2: updatedState.player2 },

@@ -184,9 +184,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             return;
           }
 
-          // Flee failed - Enemy lands 2,000 HP counter-strike!
+          // Flee failed - Turn consumed! Enemy lands 2,000 HP counter-strike!
           const counterDmg = 2000;
           battleState.player1.currentHp = Math.max(0, battleState.player1.currentHp - counterDmg);
+          battleState.currentTurn = battleState.currentTurn + 1;
           if (battleState.player1.currentHp <= 0) {
             battleState.turnPhase = 'defeat';
           }
@@ -220,6 +221,43 @@ export async function execute(interaction: ChatInputCommandInteraction) {
               return;
             }
           }
+
+          // Player survived: turn was consumed! Present next turn prompt
+          const fleeFailLog: CombatTurnLog = {
+            turnNumber: battleState.currentTurn - 1,
+            actorId: p2.id,
+            actorName: p2.name,
+            targetId: p1.id,
+            targetName: p1.name,
+            actionSummary: '❌ **TACTICAL RETREAT FAILED!** (' + fleeProb.chancePercent + '% chance). ' + p1.name + '\'s turn was consumed trying to flee. ' + p2.name + ' intercepted for **2,000 DMG**!',
+            cardsUsed: ['Buster'],
+            skillsUsed: [],
+            damageDealt: counterDmg,
+            isCritical: false,
+            starsGenerated: 0,
+            npCharged: 0,
+            actorHpRemaining: battleState.player2.currentHp,
+            targetHpRemaining: battleState.player1.currentHp,
+            actorHpMax: battleState.player2.maxHp,
+            targetHpMax: battleState.player1.maxHp,
+            actorNp: battleState.player2.npGauge,
+            targetNp: battleState.player1.npGauge
+          };
+
+          battleState.turnHistory = [...battleState.turnHistory, fleeFailLog];
+
+          const summaryBuffer = await renderBattleTurnSummary(fleeFailLog, battleState.player1, battleState.player2);
+          const attachment = new AttachmentBuilder(summaryBuffer, { name: 'turn_summary.png' });
+
+          const nextView = generateBattleEmbedAndRows(battleState, fleeFailLog.actionSummary);
+          nextView.embed.setImage('attachment://turn_summary.png');
+
+          await i.editReply({
+            embeds: [nextView.embed],
+            files: [attachment],
+            components: nextView.rows
+          });
+          return;
         }
 
         let p1Cards: CardType[] = ['Buster', 'Arts', 'Quick'];
