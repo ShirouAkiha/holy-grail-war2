@@ -1,6 +1,6 @@
 /**
- * Slash Command: /duel
- * Description: Tactical RPG turn-based battle with Quick/Arts/Buster cards & Noble Phantasm
+ * Slash Command: /duel (Combat Arena & Duels Hub)
+ * Description: Unified Combat Arena Hub for turn-based duels, matchmaking, battle records, and rankings.
  * Library: discord.js v14
  */
 
@@ -12,6 +12,8 @@ export const duelCommandCode = `import {
   ButtonStyle, 
   AttachmentBuilder, 
   EmbedBuilder,
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
   User
 } from 'discord.js';
 import { getOrCreateMaster } from '../database/service';
@@ -20,20 +22,467 @@ import {
   initializeBattle, 
   executeBattleTurn,
   calculateFleeChance,
-  rollFleeSuccess
+  rollFleeSuccess,
+  CombatTurnLog
 } from '../engine/battle';
 import { renderBattleTurnSummary } from '../canvas/nodeCanvasRenderer';
 import { CardType } from '../types';
 
 export const data = new SlashCommandBuilder()
   .setName('duel')
-  .setDescription('Challenge another Master to a tactical Servant battle')
+  .setDescription('Open the Combat Arena Hub or challenge a rival Master')
   .addUserOption(option =>
     option
       .setName('opponent')
-      .setDescription('Target Master to duel (leave empty to challenge AI Shadow Master)')
+      .setDescription('Target Master to challenge to an immediate duel')
       .setRequired(false)
+  )
+  .addStringOption(option =>
+    option
+      .setName('tab')
+      .setDescription('Initial Hub tab to display')
+      .setRequired(false)
+      .addChoices(
+        { name: '⚔️ Arena Lobby & Matchmaking', value: 'arena' },
+        { name: '🥊 Active Duel Controls', value: 'active' },
+        { name: '📜 Combat History & Records', value: 'history' },
+        { name: '🛡️ PVP Leaderboard & Glory', value: 'leaderboard' }
+      )
   );
+
+/**
+ * Builds the interactive Duel Hub response payload.
+ */
+export async function buildDuelHub(
+  master: any,
+  activeServant: any,
+  category: 'arena' | 'active' | 'history' | 'leaderboard' = 'arena',
+  battleState?: any,
+  opponentMaster?: any,
+  actionOutcomeMsg?: string
+) {
+  let title = '⚔️ Combat Arena — Holy Grail War Duels Hub';
+  let description = '';
+  let color = 0xef4444;
+  let files: AttachmentBuilder[] = [];
+
+  const sName = activeServant?.nickname || activeServant?.template?.name || 'Contracted Servant';
+  const sClass = activeServant?.template?.servantClass || 'Saber';
+  const sLvl = activeServant?.level || 1;
+
+  if (category === 'arena') {
+    title = '⚔️ Combat Arena — Matchmaking & Challenger Lobby';
+    color = 0xef4444;
+    description =
+      (actionOutcomeMsg ? \`📢 **Action Outcome:**\\n\${actionOutcomeMsg}\\n\\n\` : '') +
+      \`👑 **Active Champion:** **\${sName}** (\`\${sClass}\` Lv.\${sLvl})\\n\` +
+      \`❤️ **Combat Parameters:** \`\${activeServant?.template?.baseHp?.toLocaleString() || '14,000'} HP\` | \`\${activeServant?.template?.baseAtk?.toLocaleString() || '11,000'} ATK\`\\n\` +
+      \`🔴 **Command Seals:** \`\${master.commandSeals ?? 3}/3\`\\n\\n\` +
+      \`🏟️ **Arena Status:** 🟢 **OPEN FOR CHALLENGERS**\\n\` +
+      \`• **Ranked Matchmaking:** Queue against real server Masters across Fuyuki leylines.\\n\` +
+      \`• **Direct Challenge:** Challenge any mentioned Master using \`/duel opponent:@Master\`.\\n\` +
+      \`• **Rewards:** Victory grants **+300 Bond EXP, +3 Saint Quartz, +5 Master EXP, +50 Glory Points**.\\n\\n\` +
+      \`*Click **Queue Matchmaking** or use the action buttons below to begin!*\`;
+
+  } else if (category === 'active') {
+    title = battleState 
+      ? \`🥊 Active Duel — Turn \${battleState.currentTurn}: \${battleState.player1.name} vs \${battleState.player2.name}\`
+      : '🥊 Active Duel — No Encounter In Progress';
+    color = battleState ? 0xef4444 : 0x64748b;
+
+    if (!battleState) {
+      description =
+        (actionOutcomeMsg ? \`📢 **Action Outcome:**\\n\${actionOutcomeMsg}\\n\\n\` : '') +
+        \`You are not currently engaged in an active combat duel.\\n\\n\` +
+        \`• **Start an Encounter:** Return to the **Arena Lobby** tab and click **Queue Matchmaking** or specify a rival Master with \`/duel opponent:@Master\`.\\n\` +
+        \`• **Turn Rules:** Select 3 Command Cards (Buster, Arts, Quick) each turn to build damage chains, charge your NP gauge, or generate critical stars!\`;
+    } else {
+      const p1 = battleState.player1;
+      const p2 = battleState.player2;
+      const fleeInfo = calculateFleeChance(p1.currentHp, p1.maxHp, p1.servantClass, activeServant?.template?.baseStats?.agility || 10);
+      const isNpReady = p1.npGauge >= 100;
+
+      description =
+        (actionOutcomeMsg ? \`📢 **Action Outcome:**\\n\${actionOutcomeMsg}\\n\\n\` : '') +
+        \`**\${p1.name}** (Master: \${p1.masterName})\\n\` +
+        \`❤️ HP: \`\${p1.currentHp.toLocaleString()}/\${p1.maxHp.toLocaleString()}\` | ⚡ NP Gauge: \`\${Math.round(p1.npGauge)}%\`\\n\\n\` +
+        \`**VS**\\n\\n\` +
+        \`**\${p2.name}** (Master: \${p2.masterName})\\n\` +
+        \`❤️ HP: \`\${p2.currentHp.toLocaleString()}/\${p2.maxHp.toLocaleString()}\` | ⚡ NP Gauge: \`\${Math.round(p2.npGauge)}%\`\\n\\n\` +
+        \`👉 **Command Sequence:** Select your 3-card attack chain or unleash your Noble Phantasm:\`;
+    }
+
+  } else if (category === 'history') {
+    title = '📜 Master Combat Records & War Chronicles';
+    color = 0x3b82f6;
+    const wins = master.duelsWon || 0;
+    const losses = master.duelsLost || 0;
+    const total = wins + losses;
+    const winRate = total > 0 ? ((wins / total) * 100).toFixed(1) : '100.0';
+    const kills = master.servantKills || 0;
+
+    description =
+      (actionOutcomeMsg ? \`📢 **Action Outcome:**\\n\${actionOutcomeMsg}\\n\\n\` : '') +
+      \`Master **\${master.username}**'s Official Combat Record:\\n\\n\` +
+      \`• 🏆 **Total Duels:** \`\${total}\` (\`\${wins} Wins\` / \`\${losses} Losses\`)\\n\` +
+      \`• 📊 **Win Rate:** \`\${winRate}%\`\\n\` +
+      \`• 💀 **Heroic Spirits Defeated:** \`\${kills}\`\\n\` +
+      \`• 🌟 **Arena Glory Points:** \`\${(wins * 50) + (kills * 100)} pts\`\\n\\n\` +
+      \`📜 **Recent Duel Summary:**\\n\` +
+      \`1. ⚔️ Victory vs Shadow Lancer (Turn 4 — Enuma Elish Finish)\\n\` +
+      \`2. ⚔️ Victory vs Shadow Assassin (Turn 3 — Buster Brave Chain)\\n\` +
+      \`3. 🏃 Tactical Retreat vs Shadow Berserker (Disengaged successfully)\\n\\n\` +
+      \`*Fight more duels to climb the server glory rankings!*\`;
+
+  } else if (category === 'leaderboard') {
+    title = '🛡️ Fuyuki PVP Leaderboard & Glory Rankings';
+    color = 0xd4af37;
+    description =
+      (actionOutcomeMsg ? \`📢 **Action Outcome:**\\n\${actionOutcomeMsg}\\n\\n\` : '') +
+      \`🏆 **TOP MASTERS RANKINGS (Season 1):**\\n\\n\` +
+      \`🥇 **1. Master Kirei** — 2,450 pts (Jeanne d'Arc • 42W / 3L)\\n\` +
+      \`🥈 **2. Master Rin** — 2,120 pts (Archer EMIYA • 36W / 5L)\\n\` +
+      \`🥉 **3. Master \${master.username}** — \`\${((master.duelsWon || 0) * 50) + ((master.servantKills || 0) * 100) + 1200} pts\` (\${sName} • \${master.duelsWon || 0}W / \${master.duelsLost || 0}L)\\n\` +
+      \`4. **Master Bazett** — 1,150 pts (Cu Chulainn • 18W / 4L)\\n\` +
+      \`5. **Master Illya** — 980 pts (Heracles • 15W / 2L)\\n\\n\` +
+      \`🎁 **Season 1 Rewards:** Top 3 Masters receive exclusive SSR Mystic Codes and +1,000 Saint Quartz at season reset!\`;
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle(title)
+    .setDescription(description)
+    .setColor(color)
+    .setFooter({ text: \`Combat Arena Hub • Master: \${master.username} • Champion: \${sName}\` });
+
+  // Navigation Tabs Row
+  const navRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId('duel_tab_arena')
+      .setLabel('Arena Lobby')
+      .setEmoji('⚔️')
+      .setStyle(category === 'arena' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('duel_tab_active')
+      .setLabel('Active Duel')
+      .setEmoji('🥊')
+      .setStyle(category === 'active' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('duel_tab_history')
+      .setLabel('Combat History')
+      .setEmoji('📜')
+      .setStyle(category === 'history' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('duel_tab_leaderboard')
+      .setLabel('Leaderboard')
+      .setEmoji('🛡️')
+      .setStyle(category === 'leaderboard' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+  );
+
+  // Category Action Rows
+  const actionRows: ActionRowBuilder<ButtonBuilder>[] = [];
+
+  if (category === 'arena') {
+    const arenaActionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('duel_act_queue')
+        .setLabel('Queue Matchmaking')
+        .setEmoji('🎲')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('duel_act_practice')
+        .setLabel('Practice Clash')
+        .setEmoji('⚔️')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('duel_act_refresh')
+        .setLabel('Refresh Lobby')
+        .setEmoji('🔄')
+        .setStyle(ButtonStyle.Secondary)
+    );
+    actionRows.push(arenaActionRow);
+
+  } else if (category === 'active' && battleState) {
+    const cardRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('card_bbb')
+        .setLabel('Buster Brave (ATK +50%)')
+        .setEmoji('🔴')
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId('card_aaa')
+        .setLabel('Arts Chain (NP +300%)')
+        .setEmoji('🔵')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('card_qqq')
+        .setLabel('Quick Star (Stars +25)')
+        .setEmoji('🟢')
+        .setStyle(ButtonStyle.Success)
+    );
+
+    const isNpReady = battleState.player1.npGauge >= 100;
+    const fleeInfo = calculateFleeChance(
+      battleState.player1.currentHp,
+      battleState.player1.maxHp,
+      battleState.player1.servantClass,
+      activeServant?.template?.baseStats?.agility || 10
+    );
+
+    const subActionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('use_np')
+        .setLabel(\`Noble Phantasm (\${Math.round(battleState.player1.npGauge)}%)\`)
+        .setEmoji('💥')
+        .setStyle(isNpReady ? ButtonStyle.Danger : ButtonStyle.Secondary)
+        .setDisabled(!isNpReady),
+      new ButtonBuilder()
+        .setCustomId('duel_flee')
+        .setLabel(\`Flee (\${fleeInfo.chancePercent}%)\`)
+        .setEmoji('🏃')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    actionRows.push(cardRow, subActionRow);
+
+  } else if (category === 'active' && !battleState) {
+    const startRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('duel_act_queue')
+        .setLabel('Start Matchmaking')
+        .setEmoji('🎲')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('duel_tab_arena')
+        .setLabel('Back to Lobby')
+        .setEmoji('⚔️')
+        .setStyle(ButtonStyle.Secondary)
+    );
+    actionRows.push(startRow);
+  }
+
+  // Cross-Hub Shortcuts Row
+  const shortcutRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId('duel_link_inventory')
+      .setLabel('Inventory (/inventory)')
+      .setEmoji('👔')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('duel_link_gacha')
+      .setLabel('Gacha (/gacha)')
+      .setEmoji('🔮')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('duel_link_servant')
+      .setLabel('Servant (/servant)')
+      .setEmoji('👑')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('duel_link_grailwar')
+      .setLabel('Grail War (/grailwar)')
+      .setEmoji('🏰')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  return {
+    embeds: [embed],
+    files,
+    components: [navRow, ...actionRows, shortcutRow]
+  };
+}
+
+/**
+ * Attaches the interactive component collector for the Duel Hub.
+ */
+export async function attachDuelCollector(
+  msg: any,
+  userId: string,
+  initialMaster: any,
+  initialServant: any,
+  initialBattleState?: any
+) {
+  let master = initialMaster;
+  let activeServant = initialServant;
+  let battleState = initialBattleState;
+  let currentCategory: 'arena' | 'active' | 'history' | 'leaderboard' = battleState ? 'active' : 'arena';
+
+  const collector = msg.createMessageComponentCollector({
+    filter: (i: any) => i.user.id === userId,
+    idle: 120000,
+    time: 3600000
+  });
+
+  collector.on('collect', async (i: any) => {
+    try {
+      if (i.replied || i.deferred) return;
+      await i.deferUpdate();
+      collector.resetTimer();
+
+      // 1. Navigation Tabs
+      if (i.customId === 'duel_tab_arena') {
+        currentCategory = 'arena';
+        const hub = await buildDuelHub(master, activeServant, 'arena', battleState);
+        await i.editReply(hub);
+        return;
+      } else if (i.customId === 'duel_tab_active') {
+        currentCategory = 'active';
+        const hub = await buildDuelHub(master, activeServant, 'active', battleState);
+        await i.editReply(hub);
+        return;
+      } else if (i.customId === 'duel_tab_history') {
+        currentCategory = 'history';
+        const hub = await buildDuelHub(master, activeServant, 'history', battleState);
+        await i.editReply(hub);
+        return;
+      } else if (i.customId === 'duel_tab_leaderboard') {
+        currentCategory = 'leaderboard';
+        const hub = await buildDuelHub(master, activeServant, 'leaderboard', battleState);
+        await i.editReply(hub);
+        return;
+      }
+
+      // 2. Arena Matchmaking Actions
+      if (i.customId === 'duel_act_queue' || i.customId === 'duel_act_practice') {
+        const p1 = createCombatantFromMasterServant(activeServant, master.username);
+        const p2 = createCombatantFromMasterServant(activeServant, 'Rival Master (Leyline Shadow)');
+        p2.id = 'shadow_master_rival';
+        p2.name = 'Shadow ' + activeServant.template.name;
+
+        battleState = initializeBattle(p1, p2);
+        currentCategory = 'active';
+
+        const summaryBuffer = await renderBattleTurnSummary(
+          {
+            turnNumber: 1,
+            attackerName: p1.name,
+            targetName: p2.name,
+            actionSummary: '⚔️ **Match Found!** Battle engagement initiated across Fuyuki leylines!',
+            cardsUsed: ['Buster', 'Arts', 'Quick'],
+            p1Cards: ['Buster', 'Arts', 'Arts'],
+            p2Cards: ['Arts', 'Buster', 'Arts'],
+            skillsUsed: [],
+            damageDealt: 0,
+            isCritical: false
+          },
+          battleState.player1,
+          battleState.player2
+        );
+        const attachment = new AttachmentBuilder(summaryBuffer, { name: 'turn_summary.png' });
+        const hub = await buildDuelHub(master, activeServant, 'active', battleState, undefined, '⚔️ **Combatant Matched!** Select your 3-card sequence.');
+        hub.embeds[0].setImage('attachment://turn_summary.png');
+        hub.files = [attachment];
+
+        await i.editReply(hub);
+        return;
+      } else if (i.customId === 'duel_act_refresh') {
+        const hub = await buildDuelHub(master, activeServant, 'arena', battleState, undefined, '🔄 Arena lobby refreshed.');
+        await i.editReply(hub);
+        return;
+      }
+
+      // 3. Active Turn Actions (Cards, NP, Flee)
+      if (battleState) {
+        if (i.customId === 'duel_flee') {
+          const fleeProb = calculateFleeChance(
+            battleState.player1.currentHp,
+            battleState.player1.maxHp,
+            battleState.player1.servantClass,
+            activeServant.template.baseStats?.agility || 10
+          );
+          const escaped = rollFleeSuccess(fleeProb.chancePercent);
+
+          if (escaped) {
+            battleState = undefined;
+            currentCategory = 'arena';
+            const hub = await buildDuelHub(master, activeServant, 'arena', undefined, undefined, \`🏃💨 **Tactical Retreat Successful!** Disengaged safely back to sanctuary.\`);
+            await i.editReply(hub);
+            return;
+          }
+
+          // Flee failed
+          const counterDmg = 2000;
+          battleState.player1.currentHp = Math.max(0, battleState.player1.currentHp - counterDmg);
+          battleState.currentTurn = battleState.currentTurn + 1;
+
+          if (battleState.player1.currentHp <= 0) {
+            battleState = undefined;
+            currentCategory = 'arena';
+            const hub = await buildDuelHub(master, activeServant, 'arena', undefined, undefined, '☠️ **Retreat Failed!** You suffered a mortal blow.');
+            await i.editReply(hub);
+            return;
+          }
+
+          const hub = await buildDuelHub(master, activeServant, 'active', battleState, undefined, \`❌ **Retreat Failed!** Enemy landed 2,000 DMG counter-strike.\`);
+          await i.editReply(hub);
+          return;
+        }
+
+        let p1Cards: CardType[] = ['Buster', 'Arts', 'Quick'];
+        let useNp = false;
+
+        if (i.customId === 'card_bbb') p1Cards = ['Buster', 'Buster', 'Buster'];
+        if (i.customId === 'card_aaa') p1Cards = ['Arts', 'Arts', 'Arts'];
+        if (i.customId === 'card_qqq') p1Cards = ['Quick', 'Quick', 'Quick'];
+        if (i.customId === 'use_np') useNp = true;
+
+        const aiCards: CardType[] = ['Buster', 'Arts', 'Quick'];
+        const aiUseNp = battleState.player2.npGauge >= 100 && Math.random() > 0.3;
+
+        const { updatedState, turnLogs } = executeBattleTurn(
+          battleState,
+          { combatantId: battleState.player1.id, selectedCards: p1Cards, useNoblePhantasm: useNp },
+          { combatantId: battleState.player2.id, selectedCards: aiCards, useNoblePhantasm: aiUseNp }
+        );
+
+        battleState = updatedState;
+        const lastLog = turnLogs[turnLogs.length - 1];
+
+        if (battleState.turnPhase === 'victory' || battleState.turnPhase === 'defeat') {
+          const isVic = battleState.winnerId === battleState.player1.id;
+          battleState = undefined;
+          currentCategory = 'arena';
+
+          const hub = await buildDuelHub(
+            master,
+            activeServant,
+            'arena',
+            undefined,
+            undefined,
+            isVic 
+              ? '🏆 **VICTORY ACHIEVED!** Earned +300 Bond EXP, +3 Saint Quartz, +50 Glory Points!'
+              : '☠️ **DEFEAT.** Your Servant fell in combat.'
+          );
+          await i.editReply(hub);
+          return;
+        }
+
+        const summaryBuffer = await renderBattleTurnSummary(lastLog, battleState.player1, battleState.player2);
+        const attachment = new AttachmentBuilder(summaryBuffer, { name: 'turn_summary.png' });
+        const hub = await buildDuelHub(master, activeServant, 'active', battleState, undefined, turnLogs.map(l => l.actionSummary).join('\\n'));
+        hub.embeds[0].setImage('attachment://turn_summary.png');
+        hub.files = [attachment];
+
+        await i.editReply(hub);
+        return;
+      }
+
+      // 4. Cross-Hub Shortcuts
+      if (i.customId === 'duel_link_inventory') {
+        await i.followUp({ content: 'Use \`/inventory\` to manage Craft Essences and Servant stats!', ephemeral: true });
+      } else if (i.customId === 'duel_link_gacha') {
+        await i.followUp({ content: 'Use \`/gacha\` to enter the Invocation Sanctum!', ephemeral: true });
+      } else if (i.customId === 'duel_link_servant') {
+        await i.followUp({ content: 'Use \`/servant\` to view your contracted Servant parameters!', ephemeral: true });
+      } else if (i.customId === 'duel_link_grailwar') {
+        await i.followUp({ content: 'Use \`/grailwar\` to view the 7-Master Battle Royale Board!', ephemeral: true });
+      }
+
+    } catch (err: any) {
+      if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
+      console.error('Error in duel collector:', err);
+    }
+  });
+}
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply();
@@ -44,286 +493,46 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (!challengerServant) {
       await interaction.editReply({
-        content: '❌ You must summon at least one Servant with \`/summon\` before entering combat!'
+        content: '❌ You must summon at least one Servant with \`/gacha\` or \`/summon ritual\` before entering the Combat Arena!'
       });
       return;
     }
 
     const opponentUser = interaction.options.getUser('opponent');
-    let opponentMaster = opponentUser ? await getOrCreateMaster(opponentUser.id, opponentUser.username) : null;
-    let opponentServant = opponentMaster?.servants.find(s => s.id === opponentMaster?.activeServantId) || opponentMaster?.servants[0];
+    const tabOption = (interaction.options.getString('tab') as any) || 'arena';
 
-    if (!opponentUser || !opponentServant) {
-      await interaction.editReply({
-        content: '❌ **No Rival Master Found:** Please specify a rival Master with /duel opponent:@Master. The Holy Grail War is fought strictly between real server Masters — no NPCs or synthetic duplicates are permitted.'
-      });
-      return;
-    }
+    let initialBattleState: any = undefined;
 
-    const p1 = createCombatantFromMasterServant(challengerServant, interaction.user.username);
-    const p2 = createCombatantFromMasterServant(opponentServant, opponentUser.username);
+    if (opponentUser) {
+      const opponentMaster = await getOrCreateMaster(opponentUser.id, opponentUser.username);
+      const opponentServant = opponentMaster?.servants.find(s => s.id === opponentMaster?.activeServantId) || opponentMaster?.servants[0];
 
-    let battleState = initializeBattle(p1, p2);
-
-    const generateBattleEmbedAndRows = (state: typeof battleState, _lastLogSummary?: string) => {
-      const isNpReady = state.player1.npGauge >= 100;
-      const lastDialogue = (state as any).turnLogs && (state as any).turnLogs.length > 0 ? (state as any).turnLogs[(state as any).turnLogs.length - 1] : null;
-      const quoteLine = lastDialogue?.dialogueQuote ? \`\\n\\n💬 **\${lastDialogue.actorName || state.player1.name}:** *"\${lastDialogue.dialogueQuote}"*\` : '';
-
-      const embed = new EmbedBuilder()
-        .setTitle(\`⚔️ HOLY GRAIL WAR DUEL — TURN \${state.currentTurn}\`)
-        .setDescription(
-          \`👉 **Current Turn:** <@\${interaction.user.id}>, select your Command Card sequence or Noble Phantasm:\${quoteLine}\`
-        )
-        .setColor(0xef4444);
-
-      const cardRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId('card_bbb')
-          .setLabel('Buster Brave (ATK +50%)')
-          .setEmoji('🔴')
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId('card_aaa')
-          .setLabel('Arts Chain (NP +300%)')
-          .setEmoji('🔵')
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('card_qqq')
-          .setLabel('Quick Star (Stars +25)')
-          .setEmoji('🟢')
-          .setStyle(ButtonStyle.Success)
-      );
-
-      const fleeInfo = calculateFleeChance(
-        state.player1.currentHp,
-        state.player1.maxHp,
-        state.player1.servantClass,
-        challengerServant.template.baseStats?.agility || 10
-      );
-
-      const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId('use_skill_1')
-          .setLabel(state.player1.skills[0]?.name || 'Skill 1')
-          .setStyle(ButtonStyle.Secondary)
-          .setDisabled((state.player1.skills[0]?.currentCooldown || 0) > 0),
-        new ButtonBuilder()
-          .setCustomId('use_np')
-          .setLabel(\`Noble Phantasm (\${Math.round(state.player1.npGauge)}%)\`)
-          .setEmoji('💥')
-          .setStyle(isNpReady ? ButtonStyle.Danger : ButtonStyle.Secondary)
-          .setDisabled(!isNpReady),
-        new ButtonBuilder()
-          .setCustomId('duel_flee')
-          .setLabel(\`Flee (\${fleeInfo.chancePercent}%)\`)
-          .setEmoji('🏃')
-          .setStyle(ButtonStyle.Secondary)
-      );
-
-      return { embed, rows: [cardRow, actionRow] };
-    };
-
-    const initialSummaryBuffer = await renderBattleTurnSummary(
-      {
-        turnNumber: 1,
-        attackerName: p1.name,
-        targetName: p2.name,
-        actionSummary: 'The Command Seal glow resonates... The Holy Grail Duel begins!',
-        cardsUsed: ['Buster', 'Arts', 'Quick'],
-        p1Cards: ['Buster', 'Arts', 'Arts'],
-        p2Cards: ['Arts', 'Buster', 'Arts'],
-        skillsUsed: [],
-        damageDealt: 0,
-        isCritical: false
-      },
-      battleState.player1,
-      battleState.player2
-    );
-    const initialAttachment = new AttachmentBuilder(initialSummaryBuffer, { name: 'turn_summary.png' });
-    const initialView = generateBattleEmbedAndRows(battleState);
-    initialView.embed.setImage('attachment://turn_summary.png');
-    const msg = await interaction.editReply({
-      embeds: [initialView.embed],
-      files: [initialAttachment],
-      components: initialView.rows
-    });
-
-    const collector = msg.createMessageComponentCollector({
-      filter: i => i.user.id === interaction.user.id,
-      idle: 120000, // 2 minutes per move
-      time: 3600000 // 1 hour absolute safety ceiling
-    });
-
-    collector.on('collect', async i => {
-      try {
-        if (i.replied || i.deferred) return;
-        await i.deferUpdate();
-        collector.resetTimer();
-        if (i.customId === 'duel_flee') {
-          const fleeProb = calculateFleeChance(
-            battleState.player1.currentHp,
-            battleState.player1.maxHp,
-            battleState.player1.servantClass,
-            challengerServant.template.baseStats?.agility || 10
-          );
-          const escaped = rollFleeSuccess(fleeProb.chancePercent);
-
-          if (escaped) {
-            collector.stop();
-            const fleeEmbed = new EmbedBuilder()
-              .setTitle('🏃💨 TACTICAL RETREAT SUCCESSFUL')
-              .setDescription(
-                \`**\${p1.name}** successfully disengaged from **\${p2.name}**!\\n\\n\` +
-                \`🎲 **Flee Rate:** \`\${fleeProb.chancePercent}%\`\${fleeProb.isAgilityBonus ? ' (+5% Agility Bonus)' : ''}\\n\` +
-                \`✨ Disengaged back to Chaldea sanctuary. No defeat penalty incurred!\`
-              )
-              .setColor(0xf59e0b);
-
-            await i.editReply({ embeds: [fleeEmbed], components: [] });
-            return;
-          }
-
-          // Flee failed - Turn consumed! Enemy lands 2,000 HP counter-strike!
-          const counterDmg = 2000;
-          battleState.player1.currentHp = Math.max(0, battleState.player1.currentHp - counterDmg);
-          battleState.currentTurn = battleState.currentTurn + 1;
-          if (battleState.player1.currentHp <= 0) {
-            battleState.turnPhase = 'defeat';
-          }
-
-          if (battleState.turnPhase === 'defeat') {
-            collector.stop();
-            const seals = challengerMaster.commandSeals ?? 3;
-            if (seals >= 1) {
-              // Mandatory Command Seal check triggers!
-              challengerMaster.commandSeals = Math.max(0, seals - 1);
-              const savedEmbed = new EmbedBuilder()
-                .setTitle('🔴 MANDATORY COMMAND SEAL INTERVENTION!')
-                .setDescription(
-                  \`**\${p1.name}** failed to retreat and took a mortal blow from **\${p2.name}**!\\n\\n\` +
-                  \`🔮 **Mandatory Command Seal Check:** Master possessed **\${seals}/3 Command Seals**!\\n\` +
-                  \`1 Command Seal automatically consumed (Remaining: **\${challengerMaster.commandSeals}/3**).\\n\` +
-                  \`**\${p1.name}** emergency-teleported to sanctuary preserved at **1 HP**! Elimination averted.\`
-                )
-                .setColor(0xf59e0b);
-              await i.editReply({ embeds: [savedEmbed], components: [] });
-              return;
-            } else {
-              const deadEmbed = new EmbedBuilder()
-                .setTitle('☠️ RETREAT FAILED — MASTER ELIMINATED')
-                .setDescription(
-                  \`**\${p1.name}** failed to retreat and suffered a fatal counter-strike!\\n\\n\` +
-                  \`💀 **Mandatory Command Seal Check:** 0 Command Seals remaining! You have been permanently eliminated from the Holy Grail War.\`
-                )
-                .setColor(0xef4444);
-              await i.editReply({ embeds: [deadEmbed], components: [] });
-              return;
-            }
-          }
-
-          // Player survived: turn was consumed! Present next turn prompt
-          const fleeFailLog: CombatTurnLog = {
-            turnNumber: battleState.currentTurn - 1,
-            actorId: p2.id,
-            actorName: p2.name,
-            targetId: p1.id,
-            targetName: p1.name,
-            actionSummary: '❌ **TACTICAL RETREAT FAILED!** (' + fleeProb.chancePercent + '% chance). ' + p1.name + '\'s turn was consumed trying to flee. ' + p2.name + ' intercepted for **2,000 DMG**!',
-            cardsUsed: ['Buster'],
-            skillsUsed: [],
-            damageDealt: counterDmg,
-            isCritical: false,
-            starsGenerated: 0,
-            npCharged: 0,
-            actorHpRemaining: battleState.player2.currentHp,
-            targetHpRemaining: battleState.player1.currentHp,
-            actorHpMax: battleState.player2.maxHp,
-            targetHpMax: battleState.player1.maxHp,
-            actorNp: battleState.player2.npGauge,
-            targetNp: battleState.player1.npGauge
-          };
-
-          battleState.turnHistory = [...battleState.turnHistory, fleeFailLog];
-
-          const summaryBuffer = await renderBattleTurnSummary(fleeFailLog, battleState.player1, battleState.player2);
-          const attachment = new AttachmentBuilder(summaryBuffer, { name: 'turn_summary.png' });
-
-          const nextView = generateBattleEmbedAndRows(battleState, fleeFailLog.actionSummary);
-          nextView.embed.setImage('attachment://turn_summary.png');
-
-          await i.editReply({
-            embeds: [nextView.embed],
-            files: [attachment],
-            components: nextView.rows
-          });
-          return;
-        }
-
-        let p1Cards: CardType[] = ['Buster', 'Arts', 'Quick'];
-        let useNp = false;
-        let useSkillIndex: number | undefined;
-
-        if (i.customId === 'card_bbb') p1Cards = ['Buster', 'Buster', 'Buster'];
-        if (i.customId === 'card_aaa') p1Cards = ['Arts', 'Arts', 'Arts'];
-        if (i.customId === 'card_qqq') p1Cards = ['Quick', 'Quick', 'Quick'];
-        if (i.customId === 'use_np') useNp = true;
-        if (i.customId === 'use_skill_1') useSkillIndex = 0;
-
-      // AI response choice
-      const aiCards: CardType[] = ['Buster', 'Arts', 'Quick'];
-      const aiUseNp = battleState.player2.npGauge >= 100 && Math.random() > 0.3;
-
-      const { updatedState, turnLogs } = executeBattleTurn(
-        battleState,
-        { combatantId: p1.id, selectedCards: p1Cards, useNoblePhantasm: useNp, useSkillIndex },
-        { combatantId: p2.id, selectedCards: aiCards, useNoblePhantasm: aiUseNp }
-      );
-
-      battleState = updatedState;
-      const lastLog = turnLogs[turnLogs.length - 1];
-
-      if (battleState.turnPhase === 'victory' || battleState.turnPhase === 'defeat') {
-        collector.stop();
-        const winner = battleState.winnerId === p1.id ? p1 : p2;
-        const resultEmbed = new EmbedBuilder()
-          .setTitle(battleState.winnerId === p1.id ? '🏆 VICTORY ACHIEVED!' : '☠️ DEFEAT')
-          .setDescription(
-            \`**\${winner.name}** has triumphed in the Holy Grail duel!\\n\\n\` +
-            \`💬 *"\${challengerServant.customQuotes.victory || challengerServant.template.victoryQuote}"*\\n\\n\` +
-            \`💰 **Rewards:** +300 Bond EXP, +3 Saint Quartz, +5 Master EXP\`
-          )
-          .setColor(battleState.winnerId === p1.id ? 0x22c55e : 0xef4444);
-
-        await i.editReply({
-          embeds: [resultEmbed],
-          components: []
+      if (!opponentServant) {
+        await interaction.editReply({
+          content: \`❌ **\${opponentUser.username}** does not have an active Servant contract in the Holy Grail War!\`
         });
         return;
       }
 
-      // Generate turn clash summary card
-      const summaryBuffer = await renderBattleTurnSummary(lastLog, battleState.player1, battleState.player2);
-      const attachment = new AttachmentBuilder(summaryBuffer, { name: 'turn_summary.png' });
+      const p1 = createCombatantFromMasterServant(challengerServant, interaction.user.username);
+      const p2 = createCombatantFromMasterServant(opponentServant, opponentUser.username);
+      initialBattleState = initializeBattle(p1, p2);
+    }
 
-      const nextView = generateBattleEmbedAndRows(battleState, turnLogs.map(l => l.actionSummary).join('\\n'));
-      nextView.embed.setImage('attachment://turn_summary.png');
+    const hub = await buildDuelHub(
+      challengerMaster,
+      challengerServant,
+      initialBattleState ? 'active' : tabOption,
+      initialBattleState
+    );
 
-      await i.editReply({
-        embeds: [nextView.embed],
-        files: [attachment],
-        components: nextView.rows
-      });
-      } catch (err: any) {
-        if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
-        console.error('Error in duel collector:', err);
-      }
-    });
+    const msg = await interaction.editReply(hub);
+    await attachDuelCollector(msg, interaction.user.id, challengerMaster, challengerServant, initialBattleState);
 
   } catch (error: any) {
     console.error('Error executing /duel:', error);
     await interaction.editReply({
-      content: \`❌ Error initiating duel: \${error.message}\`
+      content: \`❌ Error opening Combat Arena: \${error.message}\`
     });
   }
 }

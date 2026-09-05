@@ -17,8 +17,14 @@ export interface DialogueQuotes {
 // then applies the stat increases and decrements the remaining point pool.
 export function allocateStatPoints(
   servant: MasterServantInstance,
-  statsToAdd: Partial<ServantStats>
+  statsToAddOrKey: Partial<ServantStats> | keyof ServantStats,
+  amount: number = 1
 ): MasterServantInstance {
+  const statsToAdd: Partial<ServantStats> =
+    typeof statsToAddOrKey === 'string'
+      ? { [statsToAddOrKey]: amount }
+      : statsToAddOrKey;
+
   const totalCost =
     (statsToAdd.strength || 0) +
     (statsToAdd.endurance || 0) +
@@ -32,11 +38,11 @@ export function allocateStatPoints(
   }
 
   const updatedAllocated: ServantStats = {
-    strength: (servant.allocatedStats.strength || 0) + (statsToAdd.strength || 0),
-    endurance: (servant.allocatedStats.endurance || 0) + (statsToAdd.endurance || 0),
-    agility: (servant.allocatedStats.agility || 0) + (statsToAdd.agility || 0),
-    mana: (servant.allocatedStats.mana || 0) + (statsToAdd.mana || 0),
-    luck: (servant.allocatedStats.luck || 0) + (statsToAdd.luck || 0)
+    strength: (servant.allocatedStats?.strength || 0) + (statsToAdd.strength || 0),
+    endurance: (servant.allocatedStats?.endurance || 0) + (statsToAdd.endurance || 0),
+    agility: (servant.allocatedStats?.agility || 0) + (statsToAdd.agility || 0),
+    mana: (servant.allocatedStats?.mana || 0) + (statsToAdd.mana || 0),
+    luck: (servant.allocatedStats?.luck || 0) + (statsToAdd.luck || 0)
   };
 
   return {

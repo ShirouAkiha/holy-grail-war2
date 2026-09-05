@@ -39,6 +39,7 @@ import * as boastCommand from './commands/boast';
 import * as dailyCommand from './commands/daily';
 import * as claimCommand from './commands/claim';
 import * as feedCommand from './commands/feed';
+import * as gachaCommand from './commands/gacha';
 import { getOrCreateMaster, saveMaster, getAllThroneServants, findServantInPool, searchAndRankServants, claimDailySaintQuartz } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from './data/noblePhantasmGifs';
@@ -113,6 +114,7 @@ commands.set(boastCommand.data.name, boastCommand);
 commands.set(addceCommand.data.name, addceCommand);
 commands.set(addsqCommand.data.name, addsqCommand);
 commands.set(feedCommand.data.name, feedCommand);
+commands.set(gachaCommand.data.name, gachaCommand);
 
 // Alias mapping for backward-compatible text shortcuts and interactions
 export const commandAliasMap: Record<string, any> = {
@@ -461,7 +463,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const chanTag = interaction.channel && 'name' in interaction.channel ? `#${(interaction.channel as any).name}` : '#general';
         const res = patrolCityInWar(war, interaction.user.id, interaction.user.username, chanTag);
         const uP = res.updatedWar.participants[interaction.user.id];
-        await interaction.update({ embeds: [buildWarEmbed(res.updatedWar, uP, res.message)], components: [buildWarButtons()] });
+        await interaction.update({ embeds: [buildWarEmbed(res.updatedWar, uP, res.message)], components: buildWarButtons() });
         return;
       }
 
@@ -469,14 +471,14 @@ client.on(Events.InteractionCreate, async interaction => {
         const chanTag = interaction.channel && 'name' in interaction.channel ? `#${(interaction.channel as any).name}` : '#general';
         const res = simulateWarSkirmish(war, chanTag);
         const uP = res.updatedWar.participants[interaction.user.id];
-        await interaction.update({ embeds: [buildWarEmbed(res.updatedWar, uP, res.message)], components: [buildWarButtons()] });
+        await interaction.update({ embeds: [buildWarEmbed(res.updatedWar, uP, res.message)], components: buildWarButtons() });
         return;
       }
 
       if (btnId === 'war_refresh' || btnId === 'war_status_board' || btnId === 'quick_war_status') {
         const uP = war.participants[interaction.user.id];
         const embed = buildWarEmbed(war, uP, '🔄 Intelligence Board refreshed.');
-        const btns = [buildWarButtons()];
+        const btns = buildWarButtons();
         if (btnId === 'quick_war_status') {
           await interaction.reply({ embeds: [embed], components: btns, ephemeral: true });
         } else {
@@ -1005,7 +1007,7 @@ client.on(Events.MessageCreate, async message => {
       const uP = war.participants[message.author.id];
       const embed = buildWarEmbed(war, uP);
       const btns = buildWarButtons();
-      await message.reply({ embeds: [embed], components: [btns] });
+      await message.reply({ embeds: [embed], components: btns });
       return;
     }
 

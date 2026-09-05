@@ -152,6 +152,13 @@ export interface MasterProfile {
   maxActionPoints: number;
   pityCount: number;
   grailWarWins: number;
+  duelsWon?: number;
+  duelsLost?: number;
+  servantKills?: number;
+  qp?: number;
+  grailShards?: number;
+  manaPrisms?: number;
+  homunculusCount?: number;
   lastDailyClaim?: number | string;
   activeServantId?: string;
   servants: MasterServantInstance[];
@@ -330,6 +337,7 @@ export interface WarMasterParticipant {
   lastHealRitualTime?: number;
   gutsTriggered?: boolean;
   inSanctuary?: boolean;
+  inChurchSanctuary?: boolean;
   sanctuaryEnteredAt?: number;
 }
 

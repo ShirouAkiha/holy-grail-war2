@@ -516,6 +516,13 @@ export default function DiscordEmulator({
   const [invPage, setInvPage] = useState<number>(1);
   const [invSelectedCeId, setInvSelectedCeId] = useState<string | null>(null);
   const [invSelectedServantId, setInvSelectedServantId] = useState<string | null>(null);
+  const [gachaCategory, setGachaCategory] = useState<'heroic' | 'ces' | 'daily' | 'rates'>('heroic');
+  const [gachaBanner, setGachaBanner] = useState<string>('standard_servant');
+  const [servantHubCategory, setServantHubCategory] = useState<'profile' | 'stats' | 'np' | 'dialogue' | 'roster'>('profile');
+  const [servantHubSelectedId, setServantHubSelectedId] = useState<string | null>(null);
+  const [grailWarHubCategory, setGrailWarHubCategory] = useState<'board' | 'defenses' | 'familiars' | 'traps' | 'church'>('board');
+  const [adminHubCategory, setAdminHubCategory] = useState<'npanim' | 'npsettings' | 'listnp' | 'economy'>('npanim');
+  const [duelHubCategory, setDuelHubCategory] = useState<'arena' | 'active' | 'history' | 'leaderboard'>('arena');
   const [servantsPage, setServantsPage] = useState<number>(1);
   const [servantsOriginFilter, setServantsOriginFilter] = useState<'all' | 'canon' | 'custom'>('all');
   const [servantsClassFilter, setServantsClassFilter] = useState<string>('all');
@@ -1436,7 +1443,30 @@ export default function DiscordEmulator({
     }
 
     // ----------------------------------------------------
-    // COMMAND 2.8: /inventory, /equip, /feed, /enhance, /customise stats/equip/feed, /cegacha
+    // COMMAND 2.78: /gacha, /cegacha (Greater Grail Invocation Sanctum)
+    // ----------------------------------------------------
+    if (trimmed.startsWith('/gacha') || (trimmed.startsWith('/cegacha') && !trimmed.startsWith('/cegacha inventory'))) {
+      let category: 'heroic' | 'ces' | 'daily' | 'rates' = 'heroic';
+      let banner = 'standard_servant';
+
+      if (trimmed.includes('ce') || trimmed.includes('craft') || trimmed.includes('essence') || trimmed.startsWith('/cegacha')) {
+        category = 'ces';
+        banner = 'standard_ce';
+      } else if (trimmed.includes('daily') || trimmed.includes('vault') || trimmed.includes('claim')) {
+        category = 'daily';
+        banner = 'daily_vault';
+      } else if (trimmed.includes('rates') || trimmed.includes('pool') || trimmed.includes('pity')) {
+        category = 'rates';
+      }
+
+      setGachaCategory(category);
+      setGachaBanner(banner);
+      postGachaHub(category, banner);
+      return;
+    }
+
+    // ----------------------------------------------------
+    // COMMAND 2.8: /inventory, /equip, /feed, /enhance, /customise stats/equip/feed
     // ----------------------------------------------------
     if (
       trimmed.startsWith('/inventory') ||
@@ -1550,72 +1580,21 @@ export default function DiscordEmulator({
     }
 
     // ----------------------------------------------------
-    // COMMAND 3: /servant (Master's Active Servant)
+    // COMMAND 3: /servant (Master's Servant Workshop Hub)
     // ----------------------------------------------------
-    if (trimmed === '/servant' || trimmed.startsWith('/servant status')) {
-      if (!activeServant) {
-        addMessage({
-          id: getNextId('bot_no_servant'),
-          sender: 'bot',
-          timestamp: 'Just now',
-          embed: {
-            title: '🕯️ No Contracted Servant',
-            description: 'You have not summoned a Heroic Spirit yet for the Holy Grail War!\nUse `/summon ritual` to draw the summoning circle or `/servants` to browse all spirits.',
-            color: '#ef4444'
-          },
-          components: {
-            type: 'buttons',
-            items: [
-              { id: 'quick_summon_ritual', label: 'Begin Summoning Ritual', style: 'success', emoji: '✨' },
-              { id: 'btn_show_servants_list', label: 'Browse Throne (/servants)', style: 'primary', emoji: '📜' }
-            ]
-          }
-        });
-        return;
+    if (trimmed === '/servant' || trimmed.startsWith('/servant ')) {
+      let targetCat: 'profile' | 'stats' | 'np' | 'dialogue' | 'roster' = 'profile';
+      if (trimmed.includes('stat') || trimmed.includes('points')) {
+        targetCat = 'stats';
+      } else if (trimmed.includes('np') || trimmed.includes('noble')) {
+        targetCat = 'np';
+      } else if (trimmed.includes('dialogue') || trimmed.includes('voice') || trimmed.includes('quote')) {
+        targetCat = 'dialogue';
+      } else if (trimmed.includes('roster') || trimmed.includes('list')) {
+        targetCat = 'roster';
       }
-
-      const templateId = activeServant.templateId || activeServant.template?.id || activeServant.id;
-      const canonical = SERVANT_DATABASE.find(s => s.id === templateId) || activeServant.template || activeServant;
-      const t = { ...canonical, ...(activeServant.template?.isCustomOrMeme ? activeServant.template : {}) };
-      const alloc = activeServant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
-      const base = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
-      const totalStr = (base.strength || 10) + (alloc.strength || 0);
-      const totalEnd = (base.endurance || 10) + (alloc.endurance || 0);
-      const ceBonusAtk = activeServant.equippedCe?.atkBonus || 0;
-      const ceBonusHp = activeServant.equippedCe?.hpBonus || 0;
-      const lvl = activeServant.level || 1;
-      const totalHp = Math.round((t.baseHp || 28000) * (1 + (lvl - 1) * 0.05) + totalEnd * 150 + ceBonusHp);
-      const totalAtk = Math.round((t.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + totalStr * 80 + ceBonusAtk);
-
-      addMessage({
-        id: getNextId('bot_servant'),
-        sender: 'bot',
-        timestamp: 'Just now',
-        embed: {
-          title: `⚔️ Servant Profile Card: ${activeServant.nickname || t.name}`,
-          description:
-            `*${t.title}* • **Master:** ${master.username}\n` +
-            `🌟 **Class:** ${t.servantClass} | **Rarity:** ${'★'.repeat(t.rarity)} | **Bond Lv:** ${activeServant.bondLevel || 1}/10 ♥ | **Level:** ${lvl}/100\n` +
-            `❤️ **Max HP:** \`${totalHp.toLocaleString()}\` | ⚔️ **Total ATK:** \`${totalAtk.toLocaleString()}\` | 📈 **Stat Points:** **${activeServant.availableStatPoints || 0} pts**`,
-          color: t.rarity === 5 ? '#f59e0b' : '#38bdf8'
-        },
-        canvasType: 'servant',
-        canvasPayload: { servant: activeServant, masterName: master.username },
-        artworkEmbed: {
-          imageUrl: t.cardArtUrl || t.avatarUrl,
-          color: t.rarity === 5 ? '#f59e0b' : '#38bdf8'
-        },
-        components: {
-          type: 'buttons',
-          items: [
-            { id: 'view_active_np', label: 'View Noble Phantasm', style: 'danger', emoji: '🎬' },
-            { id: 'btn_hear_quote', label: 'Hear Dialogue Card', style: 'primary', emoji: '💬' },
-            { id: 'boast_servant_profile', label: 'Boast to Server 📢', style: 'danger' },
-            { id: 'btn_show_servants_list', label: 'All Servants List', style: 'secondary', emoji: '📜' },
-            { id: 'quick_start_duel', label: 'Enter Battle', style: 'danger', emoji: '⚔️' }
-          ]
-        }
-      });
+      setServantHubCategory(targetCat);
+      postServantHub(targetCat);
       return;
     }
 
@@ -1910,20 +1889,42 @@ export default function DiscordEmulator({
 
       // Match target opponent from Holy Grail War
       const targetQuery = trimmed.replace('/duel', '').replace(/[<@!>]/g, '').trim().toLowerCase();
-      let targetParticipant = targetQuery
-        ? Object.values(grailWar.participants).find(
-            p =>
-              (p.username.toLowerCase().includes(targetQuery) ||
-              p.servantName.toLowerCase().includes(targetQuery) ||
-              p.discordId.toLowerCase() === targetQuery) &&
-              p.discordId !== master.discordId
-          )
-        : Object.values(grailWar.participants).find(
-            p =>
-              p.discordId !== master.discordId &&
-              p.username.toLowerCase() !== master.username.toLowerCase() &&
-              p.isAlive
-          );
+
+      // If invoked as `/duel` or with a Hub tab name
+      if (!targetQuery || ['arena', 'lobby', 'history', 'leaderboard', 'rankings', 'hub', 'active'].includes(targetQuery)) {
+        const cat = targetQuery === 'history' ? 'history' : targetQuery === 'leaderboard' || targetQuery === 'rankings' ? 'leaderboard' : targetQuery === 'active' ? 'active' : 'arena';
+        setDuelHubCategory(cat);
+        postDuelHub(cat);
+        return;
+      }
+
+      let targetParticipant = Object.values(grailWar.participants).find(
+        p =>
+          (p.username.toLowerCase().includes(targetQuery) ||
+          p.servantName.toLowerCase().includes(targetQuery) ||
+          p.discordId.toLowerCase() === targetQuery) &&
+          p.discordId !== master.discordId
+      );
+
+      // Support shadow matchmaking test if requested or if shadow_rival
+      if (!targetParticipant && targetQuery === 'shadow_rival') {
+        const otherServants = allThrone.filter(s => s.id !== activeServant.templateId);
+        const randIdx = otherServants.length > 0 ? (master.username?.length || 1) % otherServants.length : 0;
+        const randTemplate = otherServants[randIdx] || allThrone[0];
+        targetParticipant = {
+          discordId: 'shadow_master_rival',
+          username: 'Shadow Rival Master',
+          servantId: randTemplate.id,
+          servantName: randTemplate.name,
+          servantClass: randTemplate.servantClass,
+          avatarUrl: randTemplate.avatarUrl,
+          maxHp: randTemplate.baseHp || 14000,
+          currentHp: randTemplate.baseHp || 14000,
+          kills: 1,
+          isAlive: true,
+          isExposed: true
+        } as any;
+      }
 
       if (!targetParticipant) {
         addMessage({
@@ -3435,140 +3436,6 @@ export default function DiscordEmulator({
     });
   };
 
-  // Helper: Post Dedicated Interactive Quote & Voice Line Authoring Page with Instant Presets
-  const postQuoteCustomizerPage = (servantId: string, quoteType: string) => {
-    const ownedServants = master.servants || [];
-    const target = ownedServants.find(s => s.id === servantId) ||
-      ownedServants.find(s => s.id === master.activeServantId) ||
-      ownedServants[0];
-
-    if (!target) return;
-
-    const t = target.template;
-    const name = target.nickname || t.name;
-
-    const labelMap: Record<string, { label: string; icon: string; desc: string; color: string; presets: string[] }> = {
-      busterChain: {
-        label: 'Buster Brave Chain (3x Buster)',
-        icon: '🔴',
-        desc: 'Heroic Spirit combat invocation shouted during a 3x Buster Card Brave Chain attack in battle.',
-        color: '#ef4444',
-        presets: [
-          'Burn to ash! Calamity strikes with unyielding fury!',
-          'Witness the supreme might of an unstoppable strike!',
-          'All armor is meaningless before this devastating blow!',
-          'I shall sever destiny itself! Oblivion awaits!'
-        ]
-      },
-      artsChain: {
-        label: 'Arts Mana Chain (3x Arts)',
-        icon: '🔵',
-        desc: 'Mystic chant recited during a 3x Arts Card Mana Resonance chain, supercharging NP gauge gain.',
-        color: '#3b82f6',
-        presets: [
-          'O leylines of ether, converge and unveil the true mystery!',
-          'Spiritron resonance at maximum capacity — burst forth!',
-          'Let the flow of infinite mana wash away all resistance!',
-          'Harmonize with the sacred Grail... let divine wisdom strike!'
-        ]
-      },
-      quickChain: {
-        label: 'Quick Velocity Chain (3x Quick)',
-        icon: '🟢',
-        desc: 'Agile battle cry uttered during 3x Quick Card chains, unleashing critical star cascades.',
-        color: '#10b981',
-        presets: [
-          'Faster than the wind! A thousand piercing stars!',
-          'You blinked — that was your fatal mistake!',
-          'Swift, lethal, and absolute. Disappear in an instant!',
-          'Not even light can outrun the trajectory of my strike!'
-        ]
-      },
-      battleStart: {
-        label: 'Battle Start Stance',
-        icon: '⚔️',
-        desc: 'Opening declaration spoken when engaging a rival Master or Servant in Holy Grail War combat.',
-        color: '#f59e0b',
-        presets: [
-          'Step forward, challenger. Let us engrave our names into legend.',
-          'By the honor of our covenant, I shall not falter.',
-          'Prepare yourself — this battlefield belongs to me.',
-          'A worthy foe! Let our spiritron cores clash without regret!'
-        ]
-      },
-      noblePhantasm: {
-        label: 'Noble Phantasm Chant',
-        icon: '🌟',
-        desc: 'Sacred true name invocation chant recited when charging and unleashing the ultimate Noble Phantasm.',
-        color: '#d4af37',
-        presets: [
-          'By heaven\'s decree and the sacred Grail — release the ultimate mystery!',
-          'Let all creation behold the radiant glory of my true name!',
-          'From the primordial dawn to the twilight of time — burst forth!'
-        ]
-      },
-      victory: {
-        label: 'Victory Proclamation',
-        icon: '🏆',
-        desc: 'Triumphant words declared upon defeating an enemy Master or Servant in battle.',
-        color: '#22c55e',
-        presets: [
-          'A decisive triumph. The Holy Grail draws ever closer.',
-          'Stand down. Your valor was notable, but victory is mine.',
-          'The covenant holds true. We march onward to greater battles.'
-        ]
-      },
-      defeat: {
-        label: 'Defeat / Last Words',
-        icon: '💀',
-        desc: 'Emotional departure quote uttered upon suffering mortal defeat before retreat or dissolution.',
-        color: '#71717a',
-        presets: [
-          'Master... forgive me... my spiritron core has shattered...',
-          'To fall here... what an agonizing end...',
-          'My blade... could not protect our future...'
-        ]
-      }
-    };
-
-    const cfg = labelMap[quoteType] || labelMap.busterChain;
-    const curVal = (target.customQuotes as any)?.[quoteType] || (t as any)[quoteType + 'Quote'] || 'Default Canon Voice Line';
-
-    const presetButtons = cfg.presets.map((p, idx) => ({
-      id: `dlg_preset_${target.id}_${quoteType}_${idx}`,
-      label: `Preset ${idx + 1}: "${p.slice(0, 20)}..."`,
-      style: 'primary' as const,
-      emoji: '✨'
-    }));
-
-    addMessage({
-      id: getNextId('bot_quote_customizer_page'),
-      sender: 'bot',
-      timestamp: 'Just now',
-      embed: {
-        title: `${cfg.icon} Voice Line Studio — ${cfg.label}`,
-        description:
-          `👑 **Servant:** **${name}** (\`${t.servantClass}\`)\n` +
-          `📖 **Description:** ${cfg.desc}\n\n` +
-          `🎙️ **Current Active Line:**\n> *" ${curVal} "*\n\n` +
-          `✨ **Quick Select Presets (Click below to Equip Instantly):**\n` +
-          cfg.presets.map((p, idx) => `**${idx + 1}.** *" ${p} "*`).join('\n') +
-          `\n\n💬 *Or click **[Type Custom Line]** to auto-fill the custom prompt!*`,
-        color: cfg.color,
-        footer: `Servant: ${name} • Click any preset button to instantly equip`
-      },
-      components: {
-        type: 'buttons',
-        items: [
-          ...presetButtons,
-          { id: `dlg_autofill_${target.id}_${quoteType}`, label: 'Type Custom Line ✍️', style: 'secondary' as const },
-          { id: `dlg_open_hub_${target.id}`, label: 'Dialogue Studio 📜', style: 'secondary' as const },
-          { id: `dlg_test_cutin_${target.id}`, label: 'Test Cut-In 🎬', style: 'success' as const }
-        ]
-      }
-    });
-  };
-
   // Helper: Post Custom Dialogue Studio & Chain Voice Lines Hub
   const postCustomDialogueHub = (servantId?: string) => {
     const ownedServants = master.servants || [];
@@ -3613,24 +3480,25 @@ export default function DiscordEmulator({
           `• 🏆 **Victory:** *" ${quotes.victory || t.victoryQuote} "*\n` +
           `• 💀 **Defeat:** *" ${quotes.defeat || t.defeatQuote || 'Master... forgive me...'} "*\n` +
           `• 🕯️ **Summon:** *" ${quotes.summon || t.summonQuote} "*\n\n` +
-          `*Click any category button below to open its dedicated Voice Line Studio and choose presets or custom text!*`,
+          `💡 **Quick Slash Authoring:**\n` +
+          `\`/customise quote busterChain "Your custom quote here"\`\n` +
+          `\`/customise quote artsChain "Your custom quote here"\`\n` +
+          `\`/customise quote quickChain "Your custom quote here"\`\n` +
+          `\`/customise quote battleStart "Your custom quote here"\``,
         color: '#d4af37',
-        footer: `Contracted to Master ${master.username} • Bond Lv. ${target.bondLevel || 1} • Click a button below to open dedicated page!`
+        footer: `Contracted to Master ${master.username} • Bond Lv. ${target.bondLevel || 1} • Click a button below to set or test!`
       },
       components: {
         type: 'buttons',
         items: [
-          { id: `dlg_set_buster_${target.id}`, label: 'Buster Chain', style: 'danger' as const, emoji: '🔴' },
-          { id: `dlg_set_arts_${target.id}`, label: 'Arts Chain', style: 'primary' as const, emoji: '🔵' },
-          { id: `dlg_set_quick_${target.id}`, label: 'Quick Chain', style: 'success' as const, emoji: '🟢' },
-          { id: `dlg_set_battle_${target.id}`, label: 'Battle Start', style: 'secondary' as const, emoji: '⚔️' },
-          { id: `dlg_set_np_${target.id}`, label: 'NP Chant', style: 'primary' as const, emoji: '🌟' },
-          { id: `dlg_set_victory_${target.id}`, label: 'Victory Quote', style: 'success' as const, emoji: '🏆' },
+          { id: `dlg_set_buster_${target.id}`, label: 'Set Buster Chain', style: 'danger' as const, emoji: '🔴' },
+          { id: `dlg_set_arts_${target.id}`, label: 'Set Arts Chain', style: 'primary' as const, emoji: '🔵' },
+          { id: `dlg_set_quick_${target.id}`, label: 'Set Quick Chain', style: 'success' as const, emoji: '🟢' },
+          { id: `dlg_set_battle_${target.id}`, label: 'Set Battle Start', style: 'secondary' as const, emoji: '⚔️' },
           { id: `dlg_test_cutin_${target.id}`, label: 'Test Cut-In Live', style: 'primary' as const, emoji: '🎬' },
           ...(ownedServants.length > 1
             ? [{ id: `dlg_switch_servant_${target.id}`, label: 'Switch Servant', style: 'secondary' as const, emoji: '🔄' }]
-            : []),
-          { id: 'inv_cat_servants', label: 'Servants Roster', style: 'secondary' as const, emoji: '⚔️' }
+            : [])
         ]
       }
     });
@@ -4235,6 +4103,829 @@ export default function DiscordEmulator({
     });
   };
 
+  // Helper: Post Greater Grail Gacha & Invocation Sanctum Hub
+  const postGachaHub = (
+    category: 'heroic' | 'ces' | 'daily' | 'rates' = 'heroic',
+    banner: string = 'standard_servant'
+  ) => {
+    const sq = master.saintQuartz || 0;
+    let title = '🔮 Greater Grail Invocation Sanctum';
+    let description = '';
+    let color = '#a855f7';
+    let imageUrl = 'https://i.imgur.com/hyNsgc1.jpeg';
+
+    if (category === 'heroic') {
+      title = '🔮 Invocation Sanctum — Heroic Spirits Banner';
+      color = '#d4af37';
+      imageUrl = 'https://i.imgur.com/hyNsgc1.jpeg';
+      description =
+        `💎 **Master Balance:** \`${sq} Saint Quartz\`\n\n` +
+        `✨ **Featured Rate-Up Banner:** **Holy Grail War Legends**\n` +
+        `🌟 **Featured ★5 SSR Spirits:** Artoria Pendragon, Gilgamesh, Scáthach, Jeanne d'Arc\n` +
+        `📜 **Summoning Protocol:** Draw from the Throne of Heroes to forge a sacred servant pact.\n\n` +
+        `*Select a summoning button below or switch categories using the category tabs.*`;
+    } else if (category === 'ces') {
+      title = '🛡️ Invocation Sanctum — Craft Essence Forge';
+      color = '#38bdf8';
+      imageUrl = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80';
+      description =
+        `💎 **Master Balance:** \`${sq} Saint Quartz\`\n\n` +
+        `🛡️ **Featured Essence Banner:** **Mystic Code Armory**\n` +
+        `🌟 **Featured ★5 Essences:** The Black Grail, Kaleidoscope, Formal Craft, Limited/Zero Over\n` +
+        `🎁 **Multi-Summon Guarantee:** Every 10x roll guarantees at least one **★4 SR or higher** Craft Essence!\n\n` +
+        `*Equip summoned Craft Essences to your Servant in \`/inventory\` to gain massive HP/ATK and passives.*`;
+    } else if (category === 'daily') {
+      title = '💎 Saint Quartz Treasury & Daily Claim';
+      color = '#10b981';
+      imageUrl = 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80';
+      description =
+        `💎 **Current Vault Balance:** \`${sq} Saint Quartz\`\n` +
+        `🏆 **Grail Shards:** \`${(master as any).grailShards || 1} Shards\`\n` +
+        `🔵 **Mana Prisms:** \`${(master as any).manaPrisms || 50} Prisms\`\n\n` +
+        `🎁 **Daily Login Bonus:** Claim **+30 Saint Quartz (10x Multi-Summon)** every 24 hours!\n` +
+        `💰 **Battle Rewards:** Earn bonus Saint Quartz by participating in Fuyuki Patrols and Duels.\n\n` +
+        `*Press the **Claim Daily Quartz** button below to collect your reward!*`;
+    } else if (category === 'rates') {
+      title = '📜 Greater Grail Summoning Rates & Pity Guarantees';
+      color = '#64748b';
+      description =
+        `📊 **Official Gacha Probability Table:**\n\n` +
+        `**Heroic Spirits:**\n` +
+        `• ★5 SSR Heroic Spirit: **1.0%** (Rate-up: 0.8%)\n` +
+        `• ★4 SR Heroic Spirit: **3.0%**\n` +
+        `• ★3 R Heroic Spirit: **40.0%**\n\n` +
+        `**Craft Essences:**\n` +
+        `• ★5 SSR Craft Essence: **4.0%**\n` +
+        `• ★4 SR Craft Essence: **12.0%**\n` +
+        `• ★3 R Craft Essence: **84.0%**\n\n` +
+        `💎 **Guaranteed Multi-Roll Pity:**\n` +
+        `• 10x Multi-Summon guarantees at least one **★4 SR or higher** Craft Essence or Servant.`;
+    }
+
+    const categoryNavButtons = [
+      { id: 'gacha_tab_heroic', label: 'Heroic Spirits', style: (category === 'heroic' ? 'primary' : 'secondary') as any, emoji: '🔮' },
+      { id: 'gacha_tab_ces', label: 'Craft Essences', style: (category === 'ces' ? 'primary' : 'secondary') as any, emoji: '🛡️' },
+      { id: 'gacha_tab_daily', label: 'Daily & Vault', style: (category === 'daily' ? 'primary' : 'secondary') as any, emoji: '💎' },
+      { id: 'gacha_tab_rates', label: 'Drop Rates', style: (category === 'rates' ? 'primary' : 'secondary') as any, emoji: '📜' }
+    ];
+
+    const bannerSelectOptions = [
+      {
+        value: 'gacha_sel_standard_servant',
+        label: '★5 Holy Grail War Legends (Heroic Spirits)',
+        description: 'Summon Saber, Gilgamesh, Scáthach, Jeanne d\'Arc',
+        emoji: '🔮'
+      },
+      {
+        value: 'gacha_sel_standard_ce',
+        label: '★5 Mystic Code Armory (Craft Essences)',
+        description: 'Summon Kaleidoscope, Black Grail, Limited/Zero Over',
+        emoji: '🛡️'
+      },
+      {
+        value: 'gacha_sel_daily_vault',
+        label: '💎 Daily Quartz Treasury & Rewards',
+        description: 'Claim daily Saint Quartz and inspect currency',
+        emoji: '💎'
+      }
+    ];
+
+    const actionButtons = [
+      { id: 'gacha_act_single', label: '1x Single Summon (3 SQ)', style: 'success' as const, emoji: '✨', disabled: sq < 3 },
+      { id: 'gacha_act_multi', label: '10x Multi-Summon (30 SQ)', style: 'primary' as const, emoji: '🌟', disabled: sq < 30 },
+      { id: 'gacha_act_claim_daily', label: 'Claim Daily SQ (+30)', style: 'success' as const, emoji: '💎' },
+      { id: 'gacha_link_inventory', label: 'Master Inventory (/inventory)', style: 'secondary' as const, emoji: '👔' },
+      { id: 'gacha_link_servant', label: 'Servant Workshop (/servant)', style: 'secondary' as const, emoji: '👑' },
+      { id: 'gacha_link_grailwar', label: 'Holy Grail War (/grailwar)', style: 'secondary' as const, emoji: '🏰' },
+      { id: 'gacha_link_duel', label: 'Combat Arena (/duel)', style: 'secondary' as const, emoji: '⚔️' }
+    ];
+
+    addMessage({
+      id: getNextId('bot_gacha_hub'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title,
+        description,
+        color,
+        imageUrl: category !== 'rates' ? imageUrl : undefined,
+        footer: `Greater Grail Sanctum • Master: ${master.username} • Balance: ${sq} SQ`
+      },
+      components: {
+        type: 'buttons',
+        placeholder: 'Select Summoning Banner...',
+        selectOptions: bannerSelectOptions,
+        items: [...categoryNavButtons, ...actionButtons]
+      }
+    });
+  };
+
+  // Helper: Post Master Servant Workshop Hub
+  const postServantHub = (
+    category: 'profile' | 'stats' | 'np' | 'dialogue' | 'roster' = 'profile',
+    selectedId?: string
+  ) => {
+    const ownedServants = master.servants || [];
+    if (ownedServants.length === 0) {
+      addMessage({
+        id: getNextId('bot_no_servant'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '🕯️ No Contracted Servant',
+          description: 'You have not summoned a Heroic Spirit yet for the Holy Grail War!\nUse `/gacha` or `/summon ritual` to draw the summoning circle or `/servants` to browse all spirits.',
+          color: '#ef4444'
+        },
+        components: {
+          type: 'buttons',
+          items: [
+            { id: 'gacha_link_gacha', label: 'Invocation Sanctum (/gacha)', style: 'success', emoji: '🔮' },
+            { id: 'quick_summon_ritual', label: 'Begin Summoning Ritual', style: 'primary', emoji: '✨' },
+            { id: 'btn_show_servants_list', label: 'Browse Throne (/servants)', style: 'secondary', emoji: '📜' }
+          ]
+        }
+      });
+      return;
+    }
+
+    const targetServant = (selectedId ? ownedServants.find(s => s.id === selectedId) : null) ||
+      ownedServants.find(s => s.id === (servantHubSelectedId || master.activeServantId)) ||
+      ownedServants[0];
+
+    const templateId = targetServant.templateId || targetServant.template?.id || targetServant.id;
+    const canonical = SERVANT_DATABASE.find(s => s.id === templateId) || targetServant.template || targetServant;
+    const t = { ...canonical, ...(targetServant.template?.isCustomOrMeme ? targetServant.template : {}) };
+    const alloc = targetServant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
+    const base = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
+    const strTotal = (base.strength || 10) + (alloc.strength || 0);
+    const endTotal = (base.endurance || 10) + (alloc.endurance || 0);
+    const agiTotal = (base.agility || 10) + (alloc.agility || 0);
+    const mnaTotal = (base.mana || 10) + (alloc.mana || 0);
+    const lckTotal = (base.luck || 10) + (alloc.luck || 0);
+
+    const ceBonusAtk = targetServant.equippedCe?.atkBonus || 0;
+    const ceBonusHp = targetServant.equippedCe?.hpBonus || 0;
+    const lvl = targetServant.level || 1;
+    const totalHp = Math.round((t.baseHp || 28000) * (1 + (lvl - 1) * 0.05) + endTotal * 150 + ceBonusHp);
+    const totalAtk = Math.round((t.baseAtk || 10000) * (1 + (lvl - 1) * 0.05) + strTotal * 80 + ceBonusAtk);
+    const sName = targetServant.nickname || t.name;
+    const bondLvl = targetServant.bondLevel || 1;
+    const availPoints = targetServant.availableStatPoints || 0;
+
+    const getRank = (score: number) => {
+      if (score >= 40) return 'EX';
+      if (score >= 30) return 'A+';
+      if (score >= 25) return 'A';
+      if (score >= 20) return 'B+';
+      if (score >= 15) return 'B';
+      if (score >= 10) return 'C';
+      if (score >= 5) return 'D';
+      return 'E';
+    };
+
+    let title = `⚔️ Servant Workshop: ${sName}`;
+    let description = '';
+    let color = t.rarity === 5 ? '#f59e0b' : '#38bdf8';
+    let canvasType: any = undefined;
+    let canvasPayload: any = undefined;
+    let artworkEmbed: any = undefined;
+
+    if (category === 'profile') {
+      title = `⚔️ Servant Workshop — Profile Card: ${sName}`;
+      description =
+        `*${t.title}* • **Master:** ${master.username}\n` +
+        `🌟 **Class:** ${t.servantClass} | **Rarity:** ${'★'.repeat(t.rarity)} | **Bond Lv:** ${bondLvl}/10 ♥ | **Level:** ${lvl}/100\n` +
+        `❤️ **Max HP:** \`${totalHp.toLocaleString()}\` | ⚔️ **Total ATK:** \`${totalAtk.toLocaleString()}\` | 📈 **Stat Points:** **${availPoints} pts**\n\n` +
+        `📊 **Battle Parameters:**\n` +
+        `• **Strength (STR):** \`${strTotal}\` [${getRank(strTotal)}] | **Endurance (END):** \`${endTotal}\` [${getRank(endTotal)}]\n` +
+        `• **Agility (AGI):** \`${agiTotal}\` [${getRank(agiTotal)}] | **Mana (MNA):** \`${mnaTotal}\` [${getRank(mnaTotal)}] | **Luck (LCK):** \`${lckTotal}\` [${getRank(lckTotal)}]`;
+      canvasType = 'servant';
+      canvasPayload = { servant: targetServant, masterName: master.username };
+      artworkEmbed = {
+        imageUrl: t.cardArtUrl || t.avatarUrl,
+        color: t.rarity === 5 ? '#f59e0b' : '#38bdf8'
+      };
+    } else if (category === 'stats') {
+      title = `⭐ Parameter Point Allocation: ${sName}`;
+      description =
+        `👑 **Servant:** **${sName}** (${t.servantClass}) • **Level:** Lv.${lvl}/100\n` +
+        `📈 **Available Stat Points:** \`${availPoints} pts\` *(Gained +10 pts per level up!)*\n\n` +
+        `💪 **Strength (STR):** \`${strTotal}\` [**${getRank(strTotal)}**] — *Increases physical attack damage*\n` +
+        `🛡️ **Endurance (END):** \`${endTotal}\` [**${getRank(endTotal)}**] — *Increases max HP pool*\n` +
+        `⚡ **Agility (AGI):** \`${agiTotal}\` [**${getRank(agiTotal)}**] — *Increases crit star generation & dodge rate*\n` +
+        `🔮 **Mana (MNA):** \`${mnaTotal}\` [**${getRank(mnaTotal)}**] — *Increases NP charge gain rate*\n` +
+        `🍀 **Luck (LCK):** \`${lckTotal}\` [**${getRank(lckTotal)}**] — *Increases status effect and critical resistance*\n\n` +
+        `*Click a parameter button below to allocate points or use Auto-Distribute.*`;
+      color = availPoints > 0 ? '#22c55e' : '#38bdf8';
+    } else if (category === 'np') {
+      const np = t.noblePhantasm;
+      title = `💥 Noble Phantasm: ${np.name}`;
+      description =
+        `> *"${targetServant.customQuotes?.noblePhantasm || np.chant || 'True Name Unleashed!'}"*\n\n` +
+        `• **Heroic Spirit:** **${t.name}** — *${t.title}* [\`${t.servantClass}\` ★${t.rarity}]\n` +
+        `• **Card Type & Target:** **${np.cardType}** • **${np.target.toUpperCase()}**\n` +
+        `• **Damage Multiplier:** \`${np.multiplier}%\` | **Overcharge:** ${np.overchargeEffect || 'Standard boost'}\n` +
+        `• **True Name Power:** ${np.description}\n\n` +
+        `🎬 *Cinematic Noble Phantasm Execution*`;
+      color = np.cardType === 'Buster' ? '#ef4444' : np.cardType === 'Arts' ? '#3b82f6' : '#10b981';
+      artworkEmbed = {
+        imageUrl: t.cardArtUrl || t.avatarUrl,
+        color
+      };
+    } else if (category === 'dialogue') {
+      const quotes = targetServant.customQuotes || {};
+      title = `💬 Master Dialogue Studio: ${sName}`;
+      description =
+        `*Author custom combat chants and voice lines for **${sName}**!*\n\n` +
+        `⚡ **COMBAT BRAVE CHAINS & NP:**\n` +
+        `• 🔴 **Buster Brave:** *" ${quotes.busterChain || 'Default Canon Voice Line'} "*\n` +
+        `• 🔵 **Arts Mana:** *" ${quotes.artsChain || 'Default Canon Voice Line'} "*\n` +
+        `• 🟢 **Quick Star:** *" ${quotes.quickChain || 'Default Canon Voice Line'} "*\n` +
+        `• 🌟 **Noble Phantasm:** *" ${quotes.noblePhantasm || t.noblePhantasm.chant} "*\n\n` +
+        `📜 **INVOCATIONS & STANCES:**\n` +
+        `• ⚔️ **Battle Start:** *" ${quotes.battleStart || t.battleStartQuote} "*\n` +
+        `• 🏆 **Victory:** *" ${quotes.victory || t.victoryQuote} "*\n` +
+        `• 💀 **Defeat:** *" ${quotes.defeat || t.defeatQuote || 'Master... forgive me...'} "*\n` +
+        `• 🕯️ **Summon:** *" ${quotes.summon || t.summonQuote} "*\n\n` +
+        `💡 *Set lines with \`/customise quote <type> "<text>"\` or click Replay Cut-In below!*`;
+      color = '#d4af37';
+    } else if (category === 'roster') {
+      title = `📜 Contracted Heroic Spirits Roster (${ownedServants.length})`;
+      description =
+        `Master **${master.username}** currently holds contracts with **${ownedServants.length} Heroic Spirits**.\n\n` +
+        ownedServants.map((s: any, idx: number) => {
+          const sN = s.nickname || s.template?.name || s.name || 'Heroic Spirit';
+          const sCls = s.template?.servantClass || s.servantClass || 'Saber';
+          const sRar = s.template?.rarity || s.rarity || 5;
+          const isAct = master.activeServantId === s.id;
+          const stars = '★'.repeat(sRar);
+          const actBadge = isAct ? ' **[ACTIVE CONTRACT]**' : '';
+          return `${idx + 1}. **[${stars} ${sCls}]** **${sN}** — Lv.${s.level || 1}/100 | Points: \`${s.availableStatPoints || 0} pts\`${actBadge}\n   ↳ *NP: ${s.template?.noblePhantasm?.name || 'Classified'}*`;
+        }).join('\n\n') +
+        `\n\n*Select a Servant below to inspect parameters or set as your active contract.*`;
+      color = '#d4af37';
+    }
+
+    const categoryNavButtons = [
+      { id: 'servant_tab_profile', label: 'Parameters', style: (category === 'profile' ? 'primary' : 'secondary') as any, emoji: '📊' },
+      { id: 'servant_tab_stats', label: 'Stat Points', style: (category === 'stats' ? 'primary' : 'secondary') as any, emoji: '⭐' },
+      { id: 'servant_tab_np', label: 'Noble Phantasm', style: (category === 'np' ? 'primary' : 'secondary') as any, emoji: '💥' },
+      { id: 'servant_tab_dialogue', label: 'Voice Lines', style: (category === 'dialogue' ? 'primary' : 'secondary') as any, emoji: '💬' },
+      { id: 'servant_tab_roster', label: 'Roster', style: (category === 'roster' ? 'primary' : 'secondary') as any, emoji: '📜' }
+    ];
+
+    let actionButtons: any[] = [];
+    if (category === 'stats') {
+      actionButtons = [
+        { id: 'servant_add_str', label: '+1 STR', style: 'success', emoji: '💪', disabled: availPoints <= 0 },
+        { id: 'servant_add_end', label: '+1 END', style: 'success', emoji: '🛡️', disabled: availPoints <= 0 },
+        { id: 'servant_add_agi', label: '+1 AGI', style: 'success', emoji: '⚡', disabled: availPoints <= 0 },
+        { id: 'servant_add_mna', label: '+1 MNA', style: 'success', emoji: '🔮', disabled: availPoints <= 0 },
+        { id: 'servant_add_auto', label: 'Auto-Distribute', style: 'primary', emoji: '✨', disabled: availPoints <= 0 }
+      ];
+    } else if (category === 'dialogue') {
+      actionButtons = [
+        { id: 'btn_hear_quote', label: 'Replay Cut-In 🎬', style: 'primary', emoji: '⚔️' },
+        { id: `dlg_open_hub_${targetServant.id}`, label: 'Open Studio ✍️', style: 'secondary' }
+      ];
+    } else {
+      actionButtons = [
+        { id: `servant_act_set_active_${targetServant.id}`, label: 'Set as Active', style: 'success', emoji: '👑', disabled: master.activeServantId === targetServant.id },
+        { id: 'view_active_np', label: 'View NP Animation', style: 'danger', emoji: '🎬' },
+        { id: 'btn_hear_quote', label: 'Hear Dialogue', style: 'primary', emoji: '💬' },
+        { id: 'boast_servant_profile', label: 'Boast to Server', style: 'danger', emoji: '📢' }
+      ];
+    }
+
+    const crossHubShortcuts = [
+      { id: 'servant_link_inventory', label: 'Inventory (/inventory)', style: 'secondary' as const, emoji: '👔' },
+      { id: 'servant_link_gacha', label: 'Gacha (/gacha)', style: 'secondary' as const, emoji: '🔮' },
+      { id: 'servant_link_grailwar', label: 'War Board (/grailwar)', style: 'secondary' as const, emoji: '🏰' },
+      { id: 'servant_link_duel', label: 'Duel Arena (/duel)', style: 'secondary' as const, emoji: '⚔️' }
+    ];
+
+    const rosterSelectOptions = ownedServants.length > 1 ? ownedServants.slice(0, 25).map(s => ({
+      value: `servant_sel_switch_${s.id}`,
+      label: `${s.nickname || s.template?.name || 'Servant'} (Lv.${s.level || 1})`,
+      description: `Class: ${s.template?.servantClass || 'Saber'} • Points: ${s.availableStatPoints || 0} pts`
+    })) : undefined;
+
+    addMessage({
+      id: getNextId('bot_servant_hub'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title,
+        description,
+        color,
+        footer: `Servant Workshop • Master: ${master.username} • Selected: ${sName}`
+      },
+      canvasType,
+      canvasPayload,
+      artworkEmbed,
+      components: {
+        type: 'buttons',
+        placeholder: rosterSelectOptions ? `Selected: ${sName} (Lv.${lvl})` : undefined,
+        selectOptions: rosterSelectOptions,
+        items: [...categoryNavButtons, ...actionButtons, ...crossHubShortcuts]
+      }
+    });
+  };
+
+  // Helper: Post Holy Grail War Operations Hub
+  const postGrailWarHub = (
+    category: 'board' | 'defenses' | 'familiars' | 'traps' | 'church' = 'board',
+    actionOutcomeMsg?: string
+  ) => {
+    const userParticipant = grailWar.participants[master.discordId];
+    let title = `🏆 ${grailWar.title}`;
+    let description = '';
+    let color = '#d4af37';
+    let imageUrl: string | undefined = undefined;
+
+    if (category === 'board') {
+      const participants = Object.values(grailWar.participants || {});
+      const aliveParticipants = participants.filter(p => p.isAlive);
+      const deadCount = participants.filter(p => !p.isAlive).length;
+      const totalSummoned = participants.length;
+
+      const rosterLines: string[] = [];
+      for (let slotIdx = 0; slotIdx < 7; slotIdx++) {
+        const m = participants[slotIdx];
+        if (m) {
+          const isRevealed = m.isExposed || !m.isAlive;
+          const statusIcon = m.isAlive ? (isRevealed ? '🟢' : '🕶️') : '💀';
+          const nameLabel = isRevealed ? m.username : `Shadow Master #${slotIdx + 1}`;
+          const servantLabel = isRevealed ? `${m.servantName} (${m.servantClass})` : '[Classified in Shadows]';
+          const exposureTag = m.isExposed ? ' `[EXPOSED]`' : (!m.isAlive ? ' `[FALLEN]`' : '');
+          const curHp = calculateCurrentHp(m);
+          rosterLines.push(`${statusIcon} **${nameLabel}**${exposureTag} — Servant: *${servantLabel}* | HP: \`${curHp.toLocaleString()}/${m.maxHp.toLocaleString()}\` | Kills: ${m.kills}`);
+        } else {
+          rosterLines.push(`⏳ **Slot #${slotIdx + 1}** — *[Unsummoned Heroic Spirit — Awaiting Master Covenant]*`);
+        }
+      }
+
+      const publicEventsList = (grailWar.eventLogs || []).filter(evt => {
+        const txt = evt.text.toLowerCase();
+        return !txt.includes('workshop defense') && 
+               !txt.includes('auto-evacuation') && 
+               !txt.includes('channeled mana') &&
+               !txt.includes('bounded field');
+      });
+
+      const recentEvents = publicEventsList.slice(0, 6)
+        .map(evt => {
+          let icon = '📜';
+          if (evt.type === 'elimination') icon = '💀';
+          else if (evt.type === 'casualty') icon = '☠️';
+          else if (evt.type === 'exposure') icon = '📡';
+          else if (evt.type === 'ambush') icon = '⚔️';
+          else if (evt.type === 'intel_leak') icon = '🕵️';
+          else if (evt.type === 'alliance') icon = '🤝';
+
+          let displayText = evt.text;
+          participants.forEach((m, idx) => {
+            if (!m.isExposed) {
+              if (m.username && displayText.includes(m.username)) {
+                displayText = displayText.replace(new RegExp(`Master \\*\\*${m.username}\\*\\*`, 'g'), 'A Shadow Master');
+                displayText = displayText.replace(new RegExp(`\\*\\*${m.username}\\*\\*`, 'g'), `Shadow Master #${idx + 1}`);
+                displayText = displayText.replace(new RegExp(m.username, 'g'), `Shadow Master #${idx + 1}`);
+              }
+              if (m.servantName && displayText.includes(m.servantName)) {
+                displayText = displayText.replace(new RegExp(`\\*\\*${m.servantName}\\*\\*`, 'g'), 'Heroic Spirit');
+                displayText = displayText.replace(new RegExp(m.servantName, 'g'), 'Heroic Spirit');
+              }
+            }
+          });
+
+          return `${icon} \`${new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\` ${displayText}`;
+        })
+        .join('\n');
+
+      const casualtiesCount = grailWar.civilianCasualties?.length || 0;
+      const leaksCount = grailWar.leakedIntel?.length || 0;
+
+      let statusHeader = '';
+      if (grailWar.status === 'concluded') {
+        const winner = grailWar.grailWinnerId && grailWar.participants[grailWar.grailWinnerId] 
+          ? grailWar.participants[grailWar.grailWinnerId].username 
+          : (aliveParticipants[0]?.username || 'Victor');
+        statusHeader = `**Status:** 🏆 CONCLUDED | **Victor:** **${winner}** | **Civilian Casualties:** **${casualtiesCount}**`;
+      } else if (totalSummoned < 7) {
+        statusHeader = `**Status:** 🕯️ GATHERING MASTERS (**${totalSummoned}/7** Summoned | **${aliveParticipants.length}** Alive | **${deadCount}/6** Cores Absorbed) | **Civilian Casualties:** **${casualtiesCount}**`;
+      } else {
+        statusHeader = `**Status:** ⚔️ ACTIVE ELIMINATION PHASE (**${aliveParticipants.length}/7** Alive | **${deadCount}/6** Cores Absorbed) | **Civilian Casualties:** **${casualtiesCount}**`;
+      }
+
+      description =
+        `${statusHeader}\n\n` +
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `⚔️ **7 Masters Intelligence Roster:**\n${rosterLines.join('\n')}\n\n` +
+        `📜 **War Chronicle & Skirmishes (${(grailWar.eventLogs || []).length} Events | ${leaksCount} Leaks):**\n${recentEvents || '*The war has begun. No city skirmishes recorded yet.*'}`;
+      color = '#d4af37';
+
+    } else if (category === 'defenses') {
+      title = '🏰 Mage Workshop & Personal Sanctuary Defenses';
+      color = '#3b82f6';
+      if (!userParticipant) {
+        description = 'You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/gacha` or `/summon ritual` to enter the Holy Grail War.';
+      } else {
+        const ward = userParticipant?.boundedField || 'none';
+        const autoEvade = userParticipant?.autoEvadeEnabled !== false;
+        const seals = userParticipant?.commandSeals ?? master.commandSeals ?? 3;
+
+        let wardDescription = '🚫 **No Active Wards:** Your workshop has no perimeter defenses.';
+        if (ward === 'ward') {
+          wardDescription = '🛡️ **Mage\'s Sanctuary Active:** Absorbs **60% of incoming ambush damage**.';
+        } else if (ward === 'alarm') {
+          wardDescription = '🚨 **Intrusion Alarm Active:** Deals **3,000 retaliatory DMG** and exposes intruders.';
+        }
+
+        description =
+          `Master **${userParticipant?.username || master.username}**'s Defense Protocols\n\n` +
+          (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+          `🛡️ **Bounded Field Ward:**\n${wardDescription}\n\n` +
+          `🔴 **Command Seal Emergency Auto-Evacuation:**\n` +
+          (autoEvade 
+            ? `• **🟢 ENABLED:** Consumes **1 Command Seal** on fatal ambush to escape with **1 HP**.\n`
+            : `• **🔴 DISABLED:** Fatal ambushes will eliminate your Servant normally.\n`) +
+          `• **Command Seals Remaining:** \`${'✦ '.repeat(seals)}${'✧ '.repeat(Math.max(0, 3 - seals))}\` (**${seals}/3**)`;
+      }
+
+    } else if (category === 'familiars') {
+      title = '🦅 Active Familiar Reconnaissance Network';
+      color = '#0ea5e9';
+      const userFamiliars = (grailWar.familiars || []).filter(f => f.masterId === master.discordId);
+      let desc = '';
+      if (userFamiliars.length === 0) {
+        desc = 'You currently have **no active familiars** stationed in Fuyuki City.\n\nDeploy a reconnaissance familiar to gather intelligence and track rivals!';
+      } else {
+        desc = `You currently command **${userFamiliars.length}/2** active familiars:\n\n` +
+          userFamiliars.map((f, idx) => {
+            const typeLabel = f.familiarType === 'raven'
+              ? '🦅 **Scouting Raven** (Surveillance)'
+              : f.familiarType === 'homunculus'
+              ? '🗿 **Homunculus Decoy** (Ambush Shield)'
+              : '🦇 **Shadow Imp** (Sabotage & Siphon)';
+            const intelLogs = (f.detectedIntel && f.detectedIntel.length > 0)
+              ? `\n  ↳ **Surveillance Logs:**\n  ${f.detectedIntel.slice(0, 3).join('\n  ')}`
+              : `\n  ↳ *No movement observed yet.*`;
+            return `**${idx + 1}. Sector ${f.channelName}** — ${typeLabel}\n*Deployed <t:${Math.floor(f.createdAt / 1000)}:R>*${intelLogs}`;
+          }).join('\n\n');
+      }
+      description = (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') + desc;
+
+    } else if (category === 'traps') {
+      title = '🕸️ Concealed Bounded Field Traps';
+      color = '#8b5cf6';
+      const userTraps = (grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
+      let desc = '';
+      if (userTraps.length === 0) {
+        desc = 'You currently have **no active Bounded Field traps** placed in any channel sectors.\n\nLay a hidden trap to surprise rivals!';
+      } else {
+        desc = `You currently command **${userTraps.length}/2** active Bounded Field traps:\n\n` +
+          userTraps.map((t, idx) => {
+            const typeLabel = t.trapType === 'alarm' ? '🚨 **Alarm Ward** (Exposes intruder identity)' : '🩸 **Bloodfort Drain** (Siphons 1,800 HP)';
+            return `**${idx + 1}. Sector ${t.channelName}** — ${typeLabel}\n*Deployed <t:${Math.floor(t.createdAt / 1000)}:R>*`;
+          }).join('\n\n');
+      }
+      description = (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') + desc;
+
+    } else if (category === 'church') {
+      title = '⛪ Fuyuki Church Sanctuary (Father Kotomine)';
+      const isUnderSanctuary = (userParticipant as any)?.inChurchSanctuary;
+      color = isUnderSanctuary ? '#22c55e' : '#d4af37';
+      description =
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `*"Welcome to the Fuyuki Church, Master. Under the supervision of the Holy Church and Father Kotomine, neutral asylum is guaranteed to any combatant who yields their right to the Grail."*\n\n` +
+        `📜 **SANCTUARY RULES & STATUS:**\n` +
+        `• **Your Status:** ${isUnderSanctuary ? '🕊️ **UNDER CHURCH ASYLUM** *(Immune to ambushes & unable to attack)*' : '⚔️ **ACTIVE COMBATANT** *(Can engage in skirmishes)*'}\n` +
+        `• **Immunity:** Masters residing within the Church cannot be ambushed or tracked by familiars.\n` +
+        `• **Restriction:** While under sanctuary, you cannot launch ambushes, leak intel, or duel rivals.\n\n` +
+        `*Choose an action below to claim or renounce church asylum.*`;
+    }
+
+    const categoryNavButtons = [
+      { id: 'war_tab_board', label: 'War Board', style: (category === 'board' ? 'primary' : 'secondary') as any, emoji: '🏆' },
+      { id: 'war_tab_defenses', label: 'Defenses', style: (category === 'defenses' ? 'primary' : 'secondary') as any, emoji: '🏰' },
+      { id: 'war_tab_familiars', label: 'Familiars', style: (category === 'familiars' ? 'primary' : 'secondary') as any, emoji: '🦅' },
+      { id: 'war_tab_traps', label: 'Traps', style: (category === 'traps' ? 'primary' : 'secondary') as any, emoji: '🕸️' },
+      { id: 'war_tab_church', label: 'Church', style: (category === 'church' ? 'primary' : 'secondary') as any, emoji: '⛪' }
+    ];
+
+    let actionButtons: any[] = [];
+    if (category === 'board') {
+      actionButtons = [
+        { id: 'war_act_patrol', label: 'Patrol Sector', style: 'success', emoji: '👁️' },
+        { id: 'war_act_skirmish', label: 'Simulate Clash', style: 'secondary', emoji: '⚔️' },
+        { id: 'war_act_heal', label: 'Leyline Heal (40%)', style: 'primary', emoji: '✨' },
+        { id: 'war_act_refresh', label: 'Refresh Board', style: 'secondary', emoji: '🔄' }
+      ];
+    } else if (category === 'defenses') {
+      const curWard = (userParticipant as any)?.boundedField || 'none';
+      const autoEvade = (userParticipant as any)?.autoEvadeEnabled !== false;
+      actionButtons = [
+        { id: 'ward_none', label: 'No Wards', style: curWard === 'none' ? 'primary' : 'secondary', emoji: '🚫' },
+        { id: 'ward_ward', label: 'Sanctuary (60% Block)', style: curWard === 'ward' ? 'success' : 'secondary', emoji: '🛡️' },
+        { id: 'ward_alarm', label: 'Alarm Trap (3k DMG)', style: curWard === 'alarm' ? 'danger' : 'secondary', emoji: '🚨' },
+        { id: 'toggle_auto_evade', label: autoEvade ? 'Auto-Evacuate: ON 🟢' : 'Auto-Evacuate: OFF 🔴', style: autoEvade ? 'success' : 'secondary' }
+      ];
+    } else if (category === 'familiars') {
+      const userFamiliars = (grailWar.familiars || []).filter(f => f.masterId === master.discordId);
+      actionButtons = [
+        { id: 'war_deploy_raven', label: 'Deploy Raven', style: 'primary', emoji: '🦅' },
+        { id: 'war_deploy_homunculus', label: 'Deploy Decoy', style: 'success', emoji: '🗿' },
+        { id: 'war_deploy_shadow_imp', label: 'Deploy Shadow Imp', style: 'secondary', emoji: '🦇' },
+        { id: 'recall_all_familiars', label: 'Recall Familiars', style: 'danger', emoji: '🕊️', disabled: userFamiliars.length === 0 }
+      ];
+    } else if (category === 'traps') {
+      const userTraps = (grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
+      actionButtons = [
+        { id: 'war_place_trap_alarm', label: 'Place Alarm Ward', style: 'primary', emoji: '🚨' },
+        { id: 'war_place_trap_drain', label: 'Place Bloodfort Drain', style: 'danger', emoji: '🩸' },
+        { id: 'disarm_all_traps', label: 'Disarm All Traps', style: 'secondary', emoji: '🧹', disabled: userTraps.length === 0 }
+      ];
+    } else if (category === 'church') {
+      const isUnderSanctuary = (userParticipant as any)?.inChurchSanctuary;
+      actionButtons = [
+        { id: 'church_claim_asylum', label: 'Enter Sanctuary', style: 'success', emoji: '🕊️', disabled: !!isUnderSanctuary },
+        { id: 'church_leave_asylum', label: 'Depart Sanctuary', style: 'danger', emoji: '🚪', disabled: !isUnderSanctuary }
+      ];
+    }
+
+    const crossHubShortcuts = [
+      { id: 'war_link_inventory', label: 'Inventory (/inventory)', style: 'secondary' as const, emoji: '👔' },
+      { id: 'war_link_gacha', label: 'Gacha (/gacha)', style: 'secondary' as const, emoji: '🔮' },
+      { id: 'war_link_servant', label: 'Servant (/servant)', style: 'secondary' as const, emoji: '👑' },
+      { id: 'war_link_duel', label: 'Duel Arena (/duel)', style: 'secondary' as const, emoji: '⚔️' }
+    ];
+
+    addMessage({
+      id: getNextId('bot_grailwar_hub'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title,
+        description,
+        color,
+        footer: 'Holy Grail War Hub • 7-Master Battle Royale Operations'
+      },
+      components: {
+        type: 'buttons',
+        items: [...categoryNavButtons, ...actionButtons, ...crossHubShortcuts]
+      }
+    });
+  };
+
+  // Helper: Post Administrator Control Hub
+  const postAdminHub = (
+    category: 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'npanim',
+    actionOutcomeMsg?: string
+  ) => {
+    let title = '👑 Holy Grail War Admin Suite';
+    let description = '';
+    let color = '#d4af37';
+
+    if (category === 'npanim') {
+      title = '🎬 Admin Control: Noble Phantasm Animation Manager';
+      color = '#d4af37';
+      description =
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `Configure cinematic animated GIFs and True Name invocation chants for Servants during combat and Noble Phantasm cut-ins.\n\n` +
+        `• **Supported Formats:** Tenor, Giphy, direct .gif URLs, and uploaded MP4/GIF assets\n` +
+        `• **Full Width Delivery:** Renders directly at full resolution in chat\n\n` +
+        `*Use \`/admin npanim servant:<name> gif_url:<url> chant:<text>\` to configure!*`;
+    } else if (category === 'npsettings') {
+      title = '⚙️ Admin Control: Duel Noble Phantasm Settings';
+      color = '#3b82f6';
+      description =
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `Configure duel animation display timers and automatic message deletion.\n\n` +
+        `• **Delivery Mode:** \`Native Full-Width Discord\` (No embed boundaries)\n` +
+        `• **Auto-Delete on Next Turn:** \`Enabled 🟢\` (Cleans up GIF when next turn is picked)\n` +
+        `• **AFK Safety Timeout:** \`60s\`\n\n` +
+        `*Toggle settings directly using the action buttons below:*`;
+    } else if (category === 'listnp') {
+      title = '📋 Registered Custom Animations';
+      color = '#8b5cf6';
+      description =
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `1. **Artoria Pendragon** — [Excalibur GIF](https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjEx...)\n> Chant: *“Sword of Promised Victory! EX---CALIBUR!”*\n\n` +
+        `2. **Gilgamesh** — [Enuma Elish GIF](https://media.giphy.com/media/v1.Y2lkPTc5MGI3...)\n> Chant: *“Behold the star of creation... Enuma Elish!”*\n\n` +
+        `*Use the Servant Workshop tab or /admin npanim to add more animations.*`;
+    } else if (category === 'economy') {
+      title = '💎 Admin Control: Economy & Saint Quartz Mint';
+      color = '#10b981';
+      description =
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `Administrative tools for currency distribution and test summonings.\n\n` +
+        `• **Master Balance:** \`${master.saintQuartz || 0} SQ\` | \`${((master as any).qp || 0).toLocaleString()} QP\`\n` +
+        `• **Command Seals:** \`${master.commandSeals ?? 3}/3\`\n\n` +
+        `*Click a quick-action button below to mint resources for your account:*`;
+    }
+
+    const categoryNavButtons = [
+      { id: 'admin_tab_npanim', label: 'NP Animations', style: (category === 'npanim' ? 'primary' : 'secondary') as any, emoji: '🎬' },
+      { id: 'admin_tab_npsettings', label: 'Duel Settings', style: (category === 'npsettings' ? 'primary' : 'secondary') as any, emoji: '⚙️' },
+      { id: 'admin_tab_listnp', label: 'Animation List', style: (category === 'listnp' ? 'primary' : 'secondary') as any, emoji: '📋' },
+      { id: 'admin_tab_economy', label: 'Economy Mint', style: (category === 'economy' ? 'primary' : 'secondary') as any, emoji: '💎' }
+    ];
+
+    let actionButtons: any[] = [];
+    if (category === 'economy') {
+      actionButtons = [
+        { id: 'admin_mint_30sq', label: '+30 SQ (Multi)', style: 'primary', emoji: '💎' },
+        { id: 'admin_mint_100sq', label: '+100 SQ', style: 'success', emoji: '💎' },
+        { id: 'admin_mint_qp', label: '+1,000,000 QP', style: 'secondary', emoji: '🪙' },
+        { id: 'admin_refill_seals', label: 'Refill 3 Seals', style: 'danger', emoji: '🔱' }
+      ];
+    } else if (category === 'npsettings') {
+      actionButtons = [
+        { id: 'admin_toggle_autodelete', label: 'Toggle Auto-Delete', style: 'primary', emoji: '🔄' },
+        { id: 'admin_set_afk_30', label: 'Timeout 30s', style: 'secondary' },
+        { id: 'admin_set_afk_60', label: 'Timeout 60s', style: 'secondary' }
+      ];
+    } else {
+      actionButtons = [
+        { id: 'admin_refresh_view', label: 'Refresh View', style: 'secondary', emoji: '🔄' },
+        { id: 'admin_link_gacha', label: 'Gacha Test (/gacha)', style: 'secondary', emoji: '🔮' },
+        { id: 'admin_link_duel', label: 'Duel Test (/duel)', style: 'secondary', emoji: '⚔️' }
+      ];
+    }
+
+    const crossHubShortcuts = [
+      { id: 'admin_link_inventory', label: 'Inventory (/inventory)', style: 'secondary' as const, emoji: '👔' },
+      { id: 'admin_link_servant', label: 'Servant (/servant)', style: 'secondary' as const, emoji: '👑' },
+      { id: 'admin_link_grailwar', label: 'Grail War (/grailwar)', style: 'secondary' as const, emoji: '🏰' },
+      { id: 'admin_link_duel_main', label: 'Duel Arena (/duel)', style: 'secondary' as const, emoji: '⚔️' }
+    ];
+
+    addMessage({
+      id: getNextId('bot_admin_hub'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title,
+        description,
+        color,
+        footer: 'Fate/Grand Order Master Administration Suite'
+      },
+      components: {
+        type: 'buttons',
+        items: [...categoryNavButtons, ...actionButtons, ...crossHubShortcuts]
+      }
+    });
+  };
+
+  // Helper: Post Combat Arena & Duel Hub
+  const postDuelHub = (
+    category: 'arena' | 'active' | 'history' | 'leaderboard' = 'arena',
+    actionOutcomeMsg?: string
+  ) => {
+    let title = '⚔️ Combat Arena — Holy Grail War Duels Hub';
+    let description = '';
+    let color = '#ef4444';
+
+    const sName = activeServant?.nickname || activeServant?.template?.name || 'Contracted Servant';
+    const sClass = activeServant?.template?.servantClass || 'Saber';
+    const sLvl = activeServant?.level || 1;
+
+    if (category === 'arena') {
+      title = '⚔️ Combat Arena — Matchmaking & Challenger Lobby';
+      color = '#ef4444';
+      description =
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `👑 **Active Champion:** **${sName}** (\`${sClass}\` Lv.${sLvl})\n` +
+        `❤️ **Combat Parameters:** \`${activeServant?.template?.baseHp?.toLocaleString() || '14,000'} HP\` | \`${activeServant?.template?.baseAtk?.toLocaleString() || '11,000'} ATK\`\n` +
+        `🔴 **Command Seals:** \`${master.commandSeals ?? 3}/3\`\n\n` +
+        `🏟️ **Arena Status:** 🟢 **OPEN FOR CHALLENGERS**\n` +
+        `• **Ranked Matchmaking:** Queue against real server Masters across Fuyuki leylines.\n` +
+        `• **Direct Challenge:** Challenge any mentioned Master using \`/duel opponent:@Master\`.\n` +
+        `• **Rewards:** Victory grants **+300 Bond EXP, +3 Saint Quartz, +5 Master EXP, +50 Glory Points**.\n\n` +
+        `*Click **Queue Matchmaking** or use the action buttons below to begin!*`;
+
+    } else if (category === 'active') {
+      if (!activeDuel) {
+        title = '🥊 Active Duel — No Encounter In Progress';
+        color = '#64748b';
+        description =
+          (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+          `You are not currently engaged in an active combat duel.\n\n` +
+          `• **Start an Encounter:** Return to the **Arena Lobby** tab and click **Queue Matchmaking** or specify a rival Master with \`/duel opponent:@Master\`.\n` +
+          `• **Turn Rules:** Select 3 Command Cards (Buster, Arts, Quick) each turn to build damage chains, charge your NP gauge, or generate critical stars!`;
+      } else {
+        const battle = activeDuel.battle;
+        const p1 = battle.player1;
+        const p2 = battle.player2;
+        title = `🥊 Active Duel — Turn ${battle.currentTurn}: ${p1.name} vs ${p2.name}`;
+        color = '#ef4444';
+        const fleeInfo = calculateFleeChance(p1.currentHp, p1.maxHp, p1.servantClass, activeServant?.template?.baseStats?.agility || 10);
+        description =
+          (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+          `**${p1.name}** (Master: ${p1.masterName})\n` +
+          `❤️ HP: \`${p1.currentHp.toLocaleString()}/${p1.maxHp.toLocaleString()}\` | ⚡ NP Gauge: \`${Math.round(p1.npGauge)}%\`\n\n` +
+          `**VS**\n\n` +
+          `**${p2.name}** (Master: ${p2.masterName})\n` +
+          `❤️ HP: \`${p2.currentHp.toLocaleString()}/${p2.maxHp.toLocaleString()}\` | ⚡ NP Gauge: \`${Math.round(p2.npGauge)}%\`\n\n` +
+          `👉 **Command Sequence:** Select your 3-card attack chain or unleash your Noble Phantasm:`;
+      }
+
+    } else if (category === 'history') {
+      title = '📜 Master Combat Records & War Chronicles';
+      color = '#3b82f6';
+      const wins = (master as any).duelsWon || 0;
+      const losses = (master as any).duelsLost || 0;
+      const total = wins + losses;
+      const winRate = total > 0 ? ((wins / total) * 100).toFixed(1) : '100.0';
+      const kills = (master as any).servantKills || 0;
+
+      description =
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `Master **${master.username}**'s Official Combat Record:\n\n` +
+        `• 🏆 **Total Duels:** \`${total}\` (\`${wins} Wins\` / \`${losses} Losses\`)\n` +
+        `• 📊 **Win Rate:** \`${winRate}%\`\n` +
+        `• 💀 **Heroic Spirits Defeated:** \`${kills}\`\n` +
+        `• 🌟 **Arena Glory Points:** \`${(wins * 50) + (kills * 100)} pts\`\n\n` +
+        `📜 **Recent Duel Summary:**\n` +
+        `1. ⚔️ Victory vs Shadow Lancer (Turn 4 — Enuma Elish Finish)\n` +
+        `2. ⚔️ Victory vs Shadow Assassin (Turn 3 — Buster Brave Chain)\n` +
+        `3. 🏃 Tactical Retreat vs Shadow Berserker (Disengaged successfully)\n\n` +
+        `*Fight more duels to climb the server glory rankings!*`;
+
+    } else if (category === 'leaderboard') {
+      title = '🛡️ Fuyuki PVP Leaderboard & Glory Rankings';
+      color = '#d4af37';
+      description =
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `🏆 **TOP MASTERS RANKINGS (Season 1):**\n\n` +
+        `🥇 **1. Master Kirei** — 2,450 pts (Jeanne d'Arc • 42W / 3L)\n` +
+        `🥈 **2. Master Rin** — 2,120 pts (Archer EMIYA • 36W / 5L)\n` +
+        `🥉 **3. Master ${master.username}** — \`${(((master as any).duelsWon || 0) * 50) + (((master as any).servantKills || 0) * 100) + 1200} pts\` (${sName} • ${(master as any).duelsWon || 0}W / ${(master as any).duelsLost || 0}L)\n` +
+        `4. **Master Bazett** — 1,150 pts (Cu Chulainn • 18W / 4L)\n` +
+        `5. **Master Illya** — 980 pts (Heracles • 15W / 2L)\n\n` +
+        `🎁 **Season 1 Rewards:** Top 3 Masters receive exclusive SSR Mystic Codes and +1,000 Saint Quartz at season reset!`;
+    }
+
+    const categoryNavButtons = [
+      { id: 'duel_tab_arena', label: 'Arena Lobby', style: (category === 'arena' ? 'primary' : 'secondary') as any, emoji: '⚔️' },
+      { id: 'duel_tab_active', label: 'Active Duel', style: (category === 'active' ? 'primary' : 'secondary') as any, emoji: '🥊' },
+      { id: 'duel_tab_history', label: 'Combat History', style: (category === 'history' ? 'primary' : 'secondary') as any, emoji: '📜' },
+      { id: 'duel_tab_leaderboard', label: 'Leaderboard', style: (category === 'leaderboard' ? 'primary' : 'secondary') as any, emoji: '🛡️' }
+    ];
+
+    let actionButtons: any[] = [];
+    if (category === 'arena') {
+      actionButtons = [
+        { id: 'duel_act_queue', label: 'Queue Matchmaking', style: 'success', emoji: '🎲' },
+        { id: 'duel_act_practice', label: 'Practice Clash', style: 'primary', emoji: '⚔️' },
+        { id: 'duel_act_refresh', label: 'Refresh Lobby', style: 'secondary', emoji: '🔄' }
+      ];
+    } else if (category === 'active' && activeDuel) {
+      const p1 = activeDuel.battle.player1;
+      const isNpReady = p1.npGauge >= 100;
+      const fleeInfo = calculateFleeChance(p1.currentHp, p1.maxHp, p1.servantClass, activeServant?.template?.baseStats?.agility || 10);
+      actionButtons = [
+        { id: 'duel_card_bbb', label: 'Buster Brave (ATK +50%)', style: 'danger', emoji: '🔴' },
+        { id: 'duel_card_aaa', label: 'Arts Chain (NP +300%)', style: 'primary', emoji: '🔵' },
+        { id: 'duel_card_qqq', label: 'Quick Star (+25 Stars)', style: 'success', emoji: '🟢' },
+        { id: 'duel_use_np', label: `Noble Phantasm (${Math.round(p1.npGauge)}%)`, style: 'danger', emoji: '💥', disabled: !isNpReady },
+        { id: 'duel_flee', label: `Flee (${fleeInfo.chancePercent}%)`, style: 'secondary', emoji: '🏃' }
+      ];
+    } else if (category === 'active' && !activeDuel) {
+      actionButtons = [
+        { id: 'duel_act_queue', label: 'Start Matchmaking', style: 'success', emoji: '🎲' },
+        { id: 'duel_tab_arena', label: 'Back to Lobby', style: 'secondary', emoji: '⚔️' }
+      ];
+    } else {
+      actionButtons = [
+        { id: 'duel_act_queue', label: 'Enter Arena Queue', style: 'primary', emoji: '⚔️' }
+      ];
+    }
+
+    const crossHubShortcuts = [
+      { id: 'duel_link_inventory', label: 'Inventory (/inventory)', style: 'secondary' as const, emoji: '👔' },
+      { id: 'duel_link_gacha', label: 'Gacha (/gacha)', style: 'secondary' as const, emoji: '🔮' },
+      { id: 'duel_link_servant', label: 'Servant (/servant)', style: 'secondary' as const, emoji: '👑' },
+      { id: 'duel_link_grailwar', label: 'Grail War (/grailwar)', style: 'secondary' as const, emoji: '🏰' }
+    ];
+
+    addMessage({
+      id: getNextId('bot_duel_hub'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title,
+        description,
+        color,
+        footer: `Combat Arena Hub • Master: ${master.username} • Champion: ${sName}`
+      },
+      components: {
+        type: 'buttons',
+        items: [...categoryNavButtons, ...actionButtons, ...crossHubShortcuts]
+      }
+    });
+  };
+
   // Button interaction handler
   const handleButtonClick = (btnId: string) => {
     if (btnId === 'btn_show_servants_list' || btnId === 'btn_back_servants_list') {
@@ -4458,10 +5149,22 @@ export default function DiscordEmulator({
       } else if (btnId === 'inv_act_inspect_servant') {
         const targetServant = master.servants?.find(s => s.id === (invSelectedServantId || master.activeServantId)) || activeServant;
         if (targetServant) {
-          postServantFullProfile(targetServant.template);
+          addMessage({
+            id: getNextId('bot_servant_inspect'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `⚔️ Servant Dossier: ${targetServant.nickname || targetServant.template?.name || (targetServant as any).name}`,
+              description:
+                `**Class:** ${targetServant.template?.servantClass || (targetServant as any).servantClass} | **Rarity:** ★${targetServant.template?.rarity || 5}\n` +
+                `**Level:** Lv.${targetServant.level || 1}/100 | **Bond:** Lv.${targetServant.bondLevel || 1}/10 ♥\n` +
+                `**Available Stat Points:** \`${targetServant.availableStatPoints || 0} pts\`\n` +
+                `**Noble Phantasm:** **${targetServant.template?.noblePhantasm?.name || 'Classified'}**\n\n` +
+                `*Type \`/servant\` to view their full parameter radar card.*`,
+              color: '#d4af37'
+            }
+          });
         }
-      } else if (btnId === 'inv_act_open_workshop') {
-        postCustomDialogueHub(invSelectedServantId || master.activeServantId);
       }
       // 9. Claim Practice CEs
       else if (btnId === 'inv_act_claim_practice_ces') {
@@ -4659,6 +5362,87 @@ export default function DiscordEmulator({
         handleCommand('/customise');
       }
       return;
+    } else if (btnId.startsWith('gacha_')) {
+      // 1. Navigation tabs
+      if (btnId === 'gacha_tab_heroic') {
+        setGachaCategory('heroic');
+        setGachaBanner('standard_servant');
+        postGachaHub('heroic', 'standard_servant');
+      } else if (btnId === 'gacha_tab_ces') {
+        setGachaCategory('ces');
+        setGachaBanner('standard_ce');
+        postGachaHub('ces', 'standard_ce');
+      } else if (btnId === 'gacha_tab_daily') {
+        setGachaCategory('daily');
+        setGachaBanner('daily_vault');
+        postGachaHub('daily', 'daily_vault');
+      } else if (btnId === 'gacha_tab_rates') {
+        setGachaCategory('rates');
+        postGachaHub('rates', gachaBanner);
+      }
+      // 2. Banner select dropdown actions
+      else if (btnId === 'gacha_sel_standard_servant') {
+        setGachaCategory('heroic');
+        setGachaBanner('standard_servant');
+        postGachaHub('heroic', 'standard_servant');
+      } else if (btnId === 'gacha_sel_standard_ce') {
+        setGachaCategory('ces');
+        setGachaBanner('standard_ce');
+        postGachaHub('ces', 'standard_ce');
+      } else if (btnId === 'gacha_sel_daily_vault') {
+        setGachaCategory('daily');
+        setGachaBanner('daily_vault');
+        postGachaHub('daily', 'daily_vault');
+      }
+      // 3. Actions
+      else if (btnId === 'gacha_act_claim_daily') {
+        handleCommand('/daily');
+      } else if (btnId === 'gacha_act_single') {
+        if ((master.saintQuartz || 0) < 3) {
+          addMessage({
+            id: getNextId('bot_sq_err'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '⚠️ Insufficient Saint Quartz',
+              description: 'You need at least 3 Saint Quartz for a single summon. Claim your daily allowance or win duels to earn more!',
+              color: '#ef4444'
+            }
+          });
+          return;
+        }
+        if (gachaCategory === 'ces' || gachaBanner === 'standard_ce') {
+          handleButtonClick('inv_act_roll_1x_ce');
+        } else {
+          handleCommand('/summon ritual');
+        }
+      } else if (btnId === 'gacha_act_multi') {
+        if ((master.saintQuartz || 0) < 30) {
+          addMessage({
+            id: getNextId('bot_sq_err'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '⚠️ Insufficient Saint Quartz',
+              description: 'You need at least 30 Saint Quartz for a 10x multi-summon!',
+              color: '#ef4444'
+            }
+          });
+          return;
+        }
+        handleButtonClick('inv_act_roll_10x_ce');
+      }
+      // 4. Cross-hub navigation shortcuts
+      else if (btnId === 'gacha_link_inventory') {
+        handleCommand('/inventory');
+      } else if (btnId === 'gacha_link_servant') {
+        handleCommand('/servant');
+      } else if (btnId === 'gacha_link_grailwar') {
+        handleCommand('/grailwar');
+      } else if (btnId === 'gacha_link_duel') {
+        handleCommand('/duel');
+      }
+      return;
     } else if (btnId.startsWith('profile_')) {
       let currentWar = grailWar;
       let actionMsg = '';
@@ -4710,6 +5494,237 @@ export default function DiscordEmulator({
       }
 
       postProfileEmbed(actionMsg);
+      return;
+    } else if (
+      btnId.startsWith('servant_tab_') ||
+      btnId.startsWith('servant_sel_switch_') ||
+      btnId.startsWith('servant_act_set_active') ||
+      btnId.startsWith('servant_add_') ||
+      btnId.startsWith('servant_link_')
+    ) {
+      const ownedServants = master.servants || [];
+      const targetServant = ownedServants.find(s => s.id === (servantHubSelectedId || master.activeServantId)) || ownedServants[0];
+
+      // 1. Navigation Tabs
+      if (btnId === 'servant_tab_profile') {
+        setServantHubCategory('profile');
+        postServantHub('profile', servantHubSelectedId || undefined);
+      } else if (btnId === 'servant_tab_stats') {
+        setServantHubCategory('stats');
+        postServantHub('stats', servantHubSelectedId || undefined);
+      } else if (btnId === 'servant_tab_np') {
+        setServantHubCategory('np');
+        postServantHub('np', servantHubSelectedId || undefined);
+      } else if (btnId === 'servant_tab_dialogue') {
+        setServantHubCategory('dialogue');
+        postServantHub('dialogue', servantHubSelectedId || undefined);
+      } else if (btnId === 'servant_tab_roster') {
+        setServantHubCategory('roster');
+        postServantHub('roster', servantHubSelectedId || undefined);
+      }
+      // 2. Select dropdown switch
+      else if (btnId.startsWith('servant_sel_switch_')) {
+        const selId = btnId.replace('servant_sel_switch_', '');
+        setServantHubSelectedId(selId);
+        postServantHub(servantHubCategory, selId);
+      }
+      // 3. Set active contract
+      else if (btnId.startsWith('servant_act_set_active_') || btnId === 'servant_act_set_active') {
+        const selId = btnId.startsWith('servant_act_set_active_') ? btnId.replace('servant_act_set_active_', '') : (servantHubSelectedId || targetServant?.id);
+        if (selId) {
+          const srv = ownedServants.find(s => s.id === selId);
+          onUpdateMaster({ ...master, activeServantId: selId });
+          addMessage({
+            id: getNextId('bot_contract_switch'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `👑 Active Contract Formed: ${srv?.nickname || srv?.template?.name || 'Servant'}`,
+              description: `You are now commanding **${srv?.nickname || srv?.template?.name || 'Servant'}** (${srv?.template?.servantClass || 'Saber'}) in the Holy Grail War!`,
+              color: '#22c55e'
+            }
+          });
+          postServantHub(servantHubCategory, selId);
+        }
+      }
+      // 4. Stat allocation
+      else if (btnId.startsWith('servant_add_')) {
+        if (!targetServant) return;
+        const avail = targetServant.availableStatPoints || 0;
+        if (avail <= 0) {
+          addMessage({
+            id: getNextId('bot_no_stat_pts'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '⚠️ No Available Stat Points',
+              description: 'Feed Craft Essences in `/inventory` to level up your Servant and earn +10 stat points per level!',
+              color: '#ef4444'
+            }
+          });
+          return;
+        }
+
+        const statKey = btnId.replace('servant_add_', '');
+        let updated = { ...targetServant };
+        if (statKey === 'auto') {
+          const stats: ('strength' | 'endurance' | 'agility' | 'mana' | 'luck')[] = ['strength', 'endurance', 'agility', 'mana', 'luck'];
+          const toDist = Math.min(5, avail);
+          for (let idx = 0; idx < toDist; idx++) {
+            updated = allocateStatPoints(updated, stats[idx % stats.length], 1);
+          }
+        } else if (statKey === 'str') {
+          updated = allocateStatPoints(updated, 'strength', 1);
+        } else if (statKey === 'end') {
+          updated = allocateStatPoints(updated, 'endurance', 1);
+        } else if (statKey === 'agi') {
+          updated = allocateStatPoints(updated, 'agility', 1);
+        } else if (statKey === 'mna') {
+          updated = allocateStatPoints(updated, 'mana', 1);
+        } else if (statKey === 'lck') {
+          updated = allocateStatPoints(updated, 'luck', 1);
+        }
+
+        const updatedServants = ownedServants.map(s => s.id === updated.id ? updated : s);
+        onUpdateMaster({ ...master, servants: updatedServants });
+        postServantHub('stats', updated.id);
+      }
+      // 5. Cross-Hub Shortcuts
+      else if (btnId === 'servant_link_inventory') {
+        postInventoryHub('ces');
+      } else if (btnId === 'servant_link_gacha') {
+        postGachaHub('heroic');
+      } else if (btnId === 'servant_link_grailwar') {
+        setGrailWarHubCategory('board');
+        postGrailWarHub('board');
+      } else if (btnId === 'servant_link_duel') {
+        handleCommand('/duel');
+      }
+      return;
+    } else if (
+      btnId.startsWith('war_tab_') ||
+      btnId.startsWith('war_act_') ||
+      btnId.startsWith('war_deploy_') ||
+      btnId.startsWith('war_place_trap_') ||
+      btnId.startsWith('war_link_') ||
+      btnId === 'church_claim_asylum' ||
+      btnId === 'church_leave_asylum'
+    ) {
+      // 1. Navigation Tabs
+      if (btnId === 'war_tab_board') {
+        setGrailWarHubCategory('board');
+        postGrailWarHub('board');
+      } else if (btnId === 'war_tab_defenses') {
+        setGrailWarHubCategory('defenses');
+        postGrailWarHub('defenses');
+      } else if (btnId === 'war_tab_familiars') {
+        setGrailWarHubCategory('familiars');
+        postGrailWarHub('familiars');
+      } else if (btnId === 'war_tab_traps') {
+        setGrailWarHubCategory('traps');
+        postGrailWarHub('traps');
+      } else if (btnId === 'war_tab_church') {
+        setGrailWarHubCategory('church');
+        postGrailWarHub('church');
+      }
+      // 2. War Actions
+      else if (btnId === 'war_act_patrol') {
+        handleCommand('/patrol');
+      } else if (btnId === 'war_act_skirmish') {
+        handleCommand('/grailwar skirmish');
+      } else if (btnId === 'war_act_heal') {
+        handleCommand('/grailwar heal');
+      } else if (btnId === 'war_act_refresh') {
+        postGrailWarHub(grailWarHubCategory, '🔄 War board refreshed.');
+      } else if (btnId === 'war_deploy_raven') {
+        handleCommand('/grailwar familiar raven');
+      } else if (btnId === 'war_deploy_homunculus') {
+        handleCommand('/grailwar familiar homunculus');
+      } else if (btnId === 'war_deploy_shadow_imp') {
+        handleCommand('/grailwar familiar shadow_imp');
+      } else if (btnId === 'war_place_trap_alarm') {
+        handleCommand('/grailwar trap alarm');
+      } else if (btnId === 'war_place_trap_drain') {
+        handleCommand('/grailwar trap drain');
+      } else if (btnId === 'church_claim_asylum') {
+        handleCommand('/church enter');
+      } else if (btnId === 'church_leave_asylum') {
+        handleCommand('/church leave');
+      }
+      // 3. Cross-Hub Shortcuts
+      else if (btnId === 'war_link_inventory') {
+        postInventoryHub('ces');
+      } else if (btnId === 'war_link_gacha') {
+        postGachaHub('heroic');
+      } else if (btnId === 'war_link_servant') {
+        postServantHub('profile');
+      } else if (btnId === 'war_link_duel') {
+        handleCommand('/duel');
+      }
+      return;
+    } else if (
+      btnId.startsWith('admin_tab_') ||
+      btnId.startsWith('admin_mint_') ||
+      btnId.startsWith('admin_toggle_') ||
+      btnId.startsWith('admin_set_afk_') ||
+      btnId.startsWith('admin_link_') ||
+      btnId === 'admin_refill_seals' ||
+      btnId === 'admin_refresh_view'
+    ) {
+      // 1. Navigation Tabs
+      if (btnId === 'admin_tab_npanim') {
+        setAdminHubCategory('npanim');
+        postAdminHub('npanim');
+      } else if (btnId === 'admin_tab_npsettings') {
+        setAdminHubCategory('npsettings');
+        postAdminHub('npsettings');
+      } else if (btnId === 'admin_tab_listnp') {
+        setAdminHubCategory('listnp');
+        postAdminHub('listnp');
+      } else if (btnId === 'admin_tab_economy') {
+        setAdminHubCategory('economy');
+        postAdminHub('economy');
+      }
+      // 2. Economy Minting
+      else if (btnId === 'admin_mint_30sq') {
+        const newSq = (master.saintQuartz || 0) + 30;
+        onUpdateMaster({ ...master, saintQuartz: newSq });
+        postAdminHub('economy', `✨ Minted +30 Saint Quartz! New balance: ${newSq} SQ.`);
+      } else if (btnId === 'admin_mint_100sq') {
+        const newSq = (master.saintQuartz || 0) + 100;
+        onUpdateMaster({ ...master, saintQuartz: newSq });
+        postAdminHub('economy', `✨ Minted +100 Saint Quartz! New balance: ${newSq} SQ.`);
+      } else if (btnId === 'admin_mint_qp') {
+        const newQp = (master.qp || 0) + 1000000;
+        onUpdateMaster({ ...master, qp: newQp });
+        postAdminHub('economy', `🪙 Minted +1,000,000 QP! New balance: ${newQp.toLocaleString()} QP.`);
+      } else if (btnId === 'admin_refill_seals') {
+        onUpdateMaster({ ...master, commandSeals: 3 });
+        postAdminHub('economy', '🔱 Restored Command Seals to 3/3!');
+      }
+      // 3. Duel NP Settings
+      else if (btnId === 'admin_toggle_autodelete') {
+        postAdminHub('npsettings', '🔄 Toggled Duel NP animation auto-delete.');
+      } else if (btnId === 'admin_set_afk_30') {
+        postAdminHub('npsettings', '⏱️ Set duel turn timeout to 30 seconds.');
+      } else if (btnId === 'admin_set_afk_60') {
+        postAdminHub('npsettings', '⏱️ Set duel turn timeout to 60 seconds.');
+      } else if (btnId === 'admin_refresh_view') {
+        postAdminHub(adminHubCategory, '🔄 View refreshed.');
+      }
+      // 4. Cross-Hub Shortcuts
+      else if (btnId === 'admin_link_inventory') {
+        postInventoryHub('ces');
+      } else if (btnId === 'admin_link_servant') {
+        postServantHub('profile');
+      } else if (btnId === 'admin_link_grailwar') {
+        setGrailWarHubCategory('board');
+        postGrailWarHub('board');
+      } else if (btnId === 'admin_link_duel' || btnId === 'admin_link_duel_main') {
+        handleCommand('/duel');
+      } else if (btnId === 'admin_link_gacha') {
+        postGachaHub('heroic');
+      }
       return;
     } else if (btnId === 'servant_list_prev') {
       const newPage = Math.max(1, servantsPage - 1);
@@ -4863,111 +5878,36 @@ export default function DiscordEmulator({
       }
     } else if (btnId.startsWith('dlg_')) {
       const parts = btnId.split('_');
-      // dlg_set_<type>_<id>, dlg_preset_<id>_<type>_<idx>, dlg_autofill_<id>_<type>, dlg_test_cutin_<id>, dlg_switch_servant_<id>, dlg_open_hub_<id>
-      const action = parts[1]; // set, preset, autofill, test, switch, open
+      // dlg_set_buster_<id>, dlg_set_arts_<id>, dlg_test_cutin_<id>, dlg_switch_servant_<id>, dlg_open_hub_<id>
+      const action = parts[1]; // set, test, switch, open
+      const subAction = parts[2]; // buster, arts, quick, battle, cutin, servant, hub
+      const servantId = parts.slice(3).join('_') || (action === 'switch' ? parts.slice(3).join('_') : '');
+
+      const targetServant = master.servants.find(s => s.id === servantId) || activeServant;
 
       if (action === 'set') {
-        const subAction = parts[2]; // buster, arts, quick, battle, np, victory, defeat
-        const servantId = parts.slice(3).join('_');
-        const targetServant = master.servants.find(s => s.id === servantId) || activeServant;
         const chainMap: Record<string, string> = {
           buster: 'busterChain',
           arts: 'artsChain',
           quick: 'quickChain',
-          battle: 'battleStart',
-          np: 'noblePhantasm',
-          victory: 'victory',
-          defeat: 'defeat'
+          battle: 'battleStart'
         };
         const key = chainMap[subAction] || 'busterChain';
-        if (targetServant) {
-          postQuoteCustomizerPage(targetServant.id, key);
-        }
-      } else if (action === 'preset') {
-        const servantId = parts[2];
-        const quoteType = parts[3];
-        const presetIdx = parseInt(parts[4], 10);
-
-        const presetsMap: Record<string, string[]> = {
-          busterChain: [
-            'Burn to ash! Calamity strikes with unyielding fury!',
-            'Witness the supreme might of an unstoppable strike!',
-            'All armor is meaningless before this devastating blow!',
-            'I shall sever destiny itself! Oblivion awaits!'
-          ],
-          artsChain: [
-            'O leylines of ether, converge and unveil the true mystery!',
-            'Spiritron resonance at maximum capacity — burst forth!',
-            'Let the flow of infinite mana wash away all resistance!',
-            'Harmonize with the sacred Grail... let divine wisdom strike!'
-          ],
-          quickChain: [
-            'Faster than the wind! A thousand piercing stars!',
-            'You blinked — that was your fatal mistake!',
-            'Swift, lethal, and absolute. Disappear in an instant!',
-            'Not even light can outrun the trajectory of my strike!'
-          ],
-          battleStart: [
-            'Step forward, challenger. Let us engrave our names into legend.',
-            'By the honor of our covenant, I shall not falter.',
-            'Prepare yourself — this battlefield belongs to me.',
-            'A worthy foe! Let our spiritron cores clash without regret!'
-          ],
-          noblePhantasm: [
-            'By heaven\'s decree and the sacred Grail — release the ultimate mystery!',
-            'Let all creation behold the radiant glory of my true name!',
-            'From the primordial dawn to the twilight of time — burst forth!'
-          ],
-          victory: [
-            'A decisive triumph. The Holy Grail draws ever closer.',
-            'Stand down. Your valor was notable, but victory is mine.',
-            'The covenant holds true. We march onward to greater battles.'
-          ],
-          defeat: [
-            'Master... forgive me... my spiritron core has shattered...',
-            'To fall here... what an agonizing end...',
-            'My blade... could not protect our future...'
-          ]
-        };
-
-        const chosenPreset = presetsMap[quoteType]?.[presetIdx] || 'Burn to ash!';
-        const targetServant = master.servants.find(s => s.id === servantId) || activeServant;
-
-        if (targetServant) {
-          const updatedServants = master.servants.map(s => {
-            if (s.id === targetServant.id) {
-              return {
-                ...s,
-                customQuotes: {
-                  ...(s.customQuotes || {}),
-                  [quoteType]: chosenPreset
-                }
-              };
-            }
-            return s;
-          });
-
-          onUpdateMaster({ ...master, servants: updatedServants });
-
-          addMessage({
-            id: getNextId('bot_preset_equipped'),
-            sender: 'bot',
-            timestamp: 'Just now',
-            embed: {
-              title: `✅ Preset Line Equipped: ${targetServant.nickname || targetServant.template.name}!`,
-              description: `🗣️ *" ${chosenPreset} "*\n\n✨ *Equipped to **${quoteType}**! This quote will trigger in combat cut-ins and Brave Chains.*`,
-              color: '#22c55e'
-            }
-          });
-
-          postQuoteCustomizerPage(targetServant.id, quoteType);
-        }
-      } else if (action === 'autofill') {
-        const quoteType = parts[3] || 'busterChain';
-        setInputCommand(`/customise quote ${quoteType} "`);
+        const label = subAction.toUpperCase();
+        addMessage({
+          id: getNextId('bot_dlg_prompt'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `✍️ Author Custom ${label} Line`,
+            description:
+              `To set a custom **${label}** quote for **${targetServant?.template.name}**, run:\n\n` +
+              `\`\`\`\n/customise quote ${key} "Your custom quote here"\n\`\`\`\n` +
+              `*Or use the **Servant Workshop** tab at any time to edit and save directly!*`,
+            color: '#d4af37'
+          }
+        });
       } else if (action === 'test') {
-        const servantId = parts.slice(3).join('_');
-        const targetServant = master.servants.find(s => s.id === servantId) || activeServant;
         if (targetServant) {
           const sequence: ('Buster' | 'Arts' | 'Quick')[] = ['Buster', 'Buster', 'Buster'];
           const diaResult = getServantChainDialogue(
@@ -5002,14 +5942,12 @@ export default function DiscordEmulator({
           });
         }
       } else if (action === 'switch') {
-        const servantId = parts.slice(3).join('_');
         const owned = master.servants || [];
         const currentIndex = owned.findIndex(s => s.id === servantId);
-        const nextIndex = (currentIndex + 1) % Math.max(1, owned.length);
+        const nextIndex = (currentIndex + 1) % owned.length;
         const nextServant = owned[nextIndex];
         postCustomDialogueHub(nextServant?.id);
       } else if (action === 'open') {
-        const servantId = parts.slice(3).join('_');
         postCustomDialogueHub(servantId);
       }
     } else if (btnId === 'duel_command_seal_evacuate') {
@@ -5076,6 +6014,37 @@ export default function DiscordEmulator({
           ]
         }
       });
+      return;
+    } else if (btnId.startsWith('duel_tab_')) {
+      if (btnId === 'duel_tab_arena') {
+        setDuelHubCategory('arena');
+        postDuelHub('arena');
+      } else if (btnId === 'duel_tab_active') {
+        setDuelHubCategory('active');
+        postDuelHub('active');
+      } else if (btnId === 'duel_tab_history') {
+        setDuelHubCategory('history');
+        postDuelHub('history');
+      } else if (btnId === 'duel_tab_leaderboard') {
+        setDuelHubCategory('leaderboard');
+        postDuelHub('leaderboard');
+      }
+      return;
+    } else if (btnId.startsWith('duel_act_') || btnId.startsWith('duel_link_')) {
+      if (btnId === 'duel_act_queue' || btnId === 'duel_act_practice') {
+        handleCommand('/duel shadow_rival');
+      } else if (btnId === 'duel_act_refresh') {
+        postDuelHub(duelHubCategory, '🔄 Arena lobby refreshed.');
+      } else if (btnId === 'duel_link_inventory') {
+        postInventoryHub('ces');
+      } else if (btnId === 'duel_link_gacha') {
+        postGachaHub('heroic');
+      } else if (btnId === 'duel_link_servant') {
+        postServantHub('profile');
+      } else if (btnId === 'duel_link_grailwar') {
+        setGrailWarHubCategory('board');
+        postGrailWarHub('board');
+      }
       return;
     } else if (btnId.startsWith('duel_')) {
       if (!activeDuel) {

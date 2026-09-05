@@ -182,10 +182,12 @@ export function buildInventoryHub(
     new ButtonBuilder().setCustomId('inv_act_unequip').setLabel('Unequip').setStyle(ButtonStyle.Danger).setEmoji('❌')
   );
 
-  // Row 4: Quick Links
+  // Row 4: Quick Links & Cross-Hub Navigation
   const linkRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId('inv_quick_gacha').setLabel('Gacha Vault (/cegacha)').setStyle(ButtonStyle.Secondary).setEmoji('🎲'),
-    new ButtonBuilder().setCustomId('inv_quick_stats').setLabel('Allocate Stats (/customise stats)').setStyle(ButtonStyle.Secondary).setEmoji('📊')
+    new ButtonBuilder().setCustomId('inv_quick_gacha').setLabel('Gacha Sanctum (/gacha)').setStyle(ButtonStyle.Secondary).setEmoji('🔮'),
+    new ButtonBuilder().setCustomId('inv_quick_stats').setLabel('Servant Workshop (/servant)').setStyle(ButtonStyle.Secondary).setEmoji('👑'),
+    new ButtonBuilder().setCustomId('inv_quick_war').setLabel('Grail War Room (/grailwar)').setStyle(ButtonStyle.Secondary).setEmoji('🏰'),
+    new ButtonBuilder().setCustomId('inv_quick_duel').setLabel('Combat Arena (/duel)').setStyle(ButtonStyle.Secondary).setEmoji('⚔️')
   );
 
   return {
@@ -366,24 +368,24 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
           ephemeral: true,
           embeds: [
             new EmbedBuilder()
-              .setTitle('🎲 Gacha Vault Invocation')
+              .setTitle('🔮 Greater Grail Invocation Sanctum')
               .setDescription(
                 `**Current Balance:** \`${sq} Saint Quartz 💎\`\n\n` +
-                `Perform invocations using:\n` +
-                `• \`/cegacha roll type:single\` — (3 SQ)\n` +
-                `• \`/cegacha roll type:multi\` — (30 SQ • Guaranteed 4★+)\n` +
-                `• \`/cegacha daily\` — Claim free daily login Saint Quartz!`
+                `Use \`/gacha\` to open the unified Invocation Sanctum for:\n` +
+                `• 🔮 Heroic Spirit Summons & Rate-ups\n` +
+                `• 🛡️ Craft Essence Forge (1x / 10x)\n` +
+                `• 💎 Claim Daily +30 Saint Quartz!`
               )
-              .setColor(0x8b5cf6)
+              .setColor(0xa855f7)
           ]
         });
         return;
       }
 
-      // Action: Quick Stats
+      // Action: Quick Servant Workshop
       else if (customId === 'inv_quick_stats') {
         if (!activeServant) {
-          await i.reply({ ephemeral: true, content: '❌ No active Servant contracted.' });
+          await i.reply({ ephemeral: true, content: '❌ No active Servant contracted. Use `/summon ritual` first.' });
           return;
         }
         const pts = activeServant.availableStatPoints || 0;
@@ -391,14 +393,51 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
           ephemeral: true,
           embeds: [
             new EmbedBuilder()
-              .setTitle(`📊 Parameter Customization: ${activeServant.nickname || activeServant.template?.name}`)
+              .setTitle(`👑 Servant Workshop: ${activeServant.nickname || activeServant.template?.name}`)
               .setDescription(
-                `**Available Stat Points:** \`${pts} Points\`\n\n` +
-                `Use the slash command:\n` +
-                `\`\`\`bash\n/customise stats strength:1 endurance:1 agility:1 mana:1 luck:1\n\`\`\`\n` +
-                `to allocate earned parameter points directly into your Servant's combat matrix!`
+                `**Available Stat Points:** \`${pts} Points\` | **Level:** \`${activeServant.level || 1}/100\`\n\n` +
+                `Use \`/servant\` to inspect parameters, allocate stats, hear voice lines, or watch Noble Phantasms!`
               )
-              .setColor(0x10b981)
+              .setColor(0xd4af37)
+          ]
+        });
+        return;
+      }
+
+      // Action: Quick Grail War Room
+      else if (customId === 'inv_quick_war') {
+        await i.reply({
+          ephemeral: true,
+          embeds: [
+            new EmbedBuilder()
+              .setTitle('🏰 Holy Grail War Room')
+              .setDescription(
+                `Open the War Operations Command with \`/grailwar\`:\n` +
+                `• 🏆 View the 7-Master Intelligence Board\n` +
+                `• 🗺️ Execute Fuyuki City patrols and ambushes\n` +
+                `• 🛡️ Configure Bounded Field defenses & alarm wards\n` +
+                `• ⛪ Seek Fuyuki Church Sanctuary leylines healing`
+              )
+              .setColor(0xef4444)
+          ]
+        });
+        return;
+      }
+
+      // Action: Quick Combat Arena
+      else if (customId === 'inv_quick_duel') {
+        await i.reply({
+          ephemeral: true,
+          embeds: [
+            new EmbedBuilder()
+              .setTitle('⚔️ Fuyuki Combat Arena & Duels')
+              .setDescription(
+                `Step into battle with \`/duel\`:\n` +
+                `• 🥊 Quick skirmish vs rogue Shadow Servants\n` +
+                `• 👥 Challenge rival Masters to turn-based PvP duels\n` +
+                `• 📜 Review combat logs and Buster/Arts/Quick battle mechanics!`
+              )
+              .setColor(0xec4899)
           ]
         });
         return;
