@@ -184,15 +184,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             return;
           }
 
-          // Flee failed - Enemy takes undefended counter-turn!
-          const aiCounterCards: CardType[] = ['Buster', 'Arts', 'Quick'];
-          const aiCounterNp = battleState.player2.npGauge >= 100;
-          const { updatedState: counterState, turnLogs: counterLogs } = executeBattleTurn(
-            battleState,
-            { combatantId: p1.id, selectedCards: [], useNoblePhantasm: false },
-            { combatantId: p2.id, selectedCards: aiCounterCards, useNoblePhantasm: aiCounterNp }
-          );
-          battleState = counterState;
+          // Flee failed - Enemy lands 2,000 HP counter-strike!
+          const counterDmg = 2000;
+          battleState.player1.currentHp = Math.max(0, battleState.player1.currentHp - counterDmg);
+          if (battleState.player1.currentHp <= 0) {
+            battleState.turnPhase = 'defeat';
+          }
 
           if (battleState.turnPhase === 'defeat') {
             collector.stop();

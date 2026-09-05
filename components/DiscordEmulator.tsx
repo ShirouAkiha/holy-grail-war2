@@ -9,7 +9,8 @@ import {
   HolyGrailWarSession,
   ServantTemplate,
   MasterServantInstance,
-  ServantClass
+  ServantClass,
+  BattleState
 } from '../lib/types';
 import { SERVANT_DATABASE, getDefaultClassPassives } from '../lib/data/servants';
 import { getAllThroneServants, saveCustomServantsToStorage } from '../lib/state/gameState';
@@ -4209,25 +4210,22 @@ export default function DiscordEmulator({
           setActiveDuel(null);
           return;
         } else {
-          // Flee failed! Enemy counter-strike undefended!
-          const aiCards: CardType[] = ['Buster', 'Arts', 'Quick'];
-          const aiNp = activeDuel.battle.player2.npGauge >= 100;
+          // Flee failed! Enemy counter-strike (reduced to 2,000 HP)
+          const counterDmg = 2000;
+          const newPlayer1Hp = Math.max(0, p1.currentHp - counterDmg);
+          const isDefeated = newPlayer1Hp <= 0;
 
-          const { updatedState, turnLogs } = executeBattleTurn(
-            activeDuel.battle,
-            {
-              combatantId: activeDuel.battle.player1.id,
-              selectedCards: [],
-              useNoblePhantasm: false
+          const updatedState: BattleState = {
+            ...activeDuel.battle,
+            currentTurn: activeDuel.battle.currentTurn + 1,
+            player1: {
+              ...activeDuel.battle.player1,
+              currentHp: newPlayer1Hp
             },
-            {
-              combatantId: activeDuel.battle.player2.id,
-              selectedCards: aiCards,
-              useNoblePhantasm: aiNp
-            }
-          );
+            turnPhase: isDefeated ? 'defeat' : 'card_selection'
+          };
 
-          const failLog = turnLogs[turnLogs.length - 1];
+          const failLog = `❌ **RETREAT FAILED!** (${fleeCalc.chancePercent}% chance) **${p2.name}** counter-struck for **2,000 DMG**! (${newPlayer1Hp.toLocaleString()} / ${p1.maxHp.toLocaleString()} HP remaining)`;
 
           if (updatedState.turnPhase === 'defeat') {
             const seals = master.commandSeals ?? 3;
@@ -4296,8 +4294,8 @@ export default function DiscordEmulator({
                 components: {
                   type: 'buttons',
                   items: [
-                    { id: 'duel_evacuate_seal', label: `Invoke Command Seal (${seals}/3)`, style: 'danger' as const, emoji: '🔮' },
-                    { id: 'duel_accept_defeat', label: 'Accept Defeat', style: 'secondary' as const, emoji: '💀' }
+                    { id: 'duel_evacuate_seal', label: `Use Command Seal to Run (${seals}/3)`, style: 'danger' as const, emoji: '🔮' },
+                    { id: 'duel_accept_defeat', label: 'Take Defeat', style: 'secondary' as const, emoji: '💀' }
                   ]
                 }
               });
@@ -4436,6 +4434,83 @@ export default function DiscordEmulator({
             }
           });
         }
+        return;
+      }
+
+      if (btnId === 'duel_evacuate_seal_p2') {
+        const rivalMasterName = activeDuel?.battle.player2.masterName || 'itsderpo';
+        const rivalParticipant = Object.values(grailWar.participants).find(
+          p => p.username.toLowerCase() === rivalMasterName.toLowerCase() || p.discordId === activeDuel?.battle.player2.id
+        );
+        const rivalSeals = rivalParticipant?.commandSeals ?? 3;
+        if (rivalSeals >= 1) {
+          const remainingSeals = Math.max(0, rivalSeals - 1);
+          const uWar = { ...grailWar };
+          if (rivalParticipant && uWar.participants[rivalParticipant.discordId]) {
+            uWar.participants[rivalParticipant.discordId].currentHp = 1;
+            uWar.participants[rivalParticipant.discordId].isAlive = true;
+            uWar.participants[rivalParticipant.discordId].commandSeals = remainingSeals;
+            uWar.participants[rivalParticipant.discordId].inSanctuary = true;
+          }
+          onUpdateGrailWar(uWar);
+          setActiveDuel(null);
+
+          addMessage({
+            id: getNextId('bot_duel_seal_evac_p2'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '🔴 COMMAND SEAL EMERGENCY EVACUATION',
+              description:
+                `Defeated Master **${rivalMasterName}** invoked a Command Seal to run!\n\n` +
+                `✨ **Emergency Spatial Relocation:**\n` +
+                `The Command Seal flared brilliant crimson, immediately evacuating **${activeDuel?.battle.player2.name || 'Servant'}** to Church Sanctuary preserved at **1 HP**!\n\n` +
+                `• 🔴 **Command Seals Remaining:** **${remainingSeals}/3** (1 expended)\n` +
+                `• ❤️ **Preserved Vitality:** **1 HP** (Sanctuary Asylum Active)\n` +
+                `• 🛡️ **Tournament Standing:** Active (Contract Preserved, Elimination Averted!)`,
+              color: '#f59e0b',
+              footer: 'Holy Grail War Protocol • Command Seal Sanctuary'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary' as const, emoji: '📋' }
+              ]
+            }
+          });
+        }
+        return;
+      }
+
+      if (btnId === 'duel_accept_defeat_p2') {
+        const rivalMasterName = activeDuel?.battle.player2.masterName || 'itsderpo';
+        const rivalServantName = activeDuel?.battle.player2.name || 'Scáthach';
+        const p1VictoryQuote = activeServant?.customQuotes?.victory || activeServant?.template.victoryQuote || "A decisive triumph. The Holy Grail draws closer.";
+
+        // Prompt victor with Kill or Spare choice
+        addMessage({
+          id: getNextId('bot_duel_fate_prompt'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '🏆 DUEL VICTORY — DECIDE MASTER\'S FATE',
+            description:
+              `Master **${rivalMasterName}** took defeat and chose not to run!\n\n` +
+              `**${activeDuel?.battle.player1.name || 'Servant'}** (Master: ${master.username}) has defeated **${rivalServantName}** (Master: ${rivalMasterName}) in the Holy Grail duel!\n\n` +
+              `💬 **[VICTORY INVOCATION] ${activeDuel?.battle.player1.name}:**\n> ❝ ***${p1VictoryQuote}*** ❞\n\n` +
+              `⚖️ **The Fate of Master ${rivalMasterName} is in your hands:**\n` +
+              `Choose whether to **Execute** the fallen Master to permanently eliminate them from the Holy Grail War, or show mercy and **Spare** their life.`,
+            color: '#22c55e',
+            footer: 'Select an execution decision below:'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'duel_fate_kill', label: '☠️ Execute Master (Kill & Eliminate)', style: 'danger', emoji: '☠️' },
+              { id: 'duel_fate_spare', label: '🕊️ Spare Master (Show Mercy)', style: 'success', emoji: '🕊️' }
+            ]
+          }
+        });
         return;
       }
 
@@ -4667,45 +4742,119 @@ export default function DiscordEmulator({
         const isWin = updatedState.turnPhase === 'victory';
 
         if (isWin) {
-          const p1VictoryQuote = activeServant?.customQuotes?.victory || activeServant?.template.victoryQuote || "A decisive triumph. The Holy Grail draws closer.";
+          const rivalMasterName = updatedState.player2.masterName;
+          const rivalParticipant = Object.values(grailWar.participants).find(
+            p => p.username.toLowerCase() === rivalMasterName.toLowerCase() || p.discordId === updatedState.player2.id
+          );
+          const rivalSeals = rivalParticipant?.commandSeals ?? 3;
+          const rivalAutoConsume = rivalParticipant?.autoEvadeEnabled === true || rivalParticipant?.autoConsumeCommandSeal === true;
+          const p2DefeatQuote = rivalParticipant?.servantName ? `${rivalParticipant.servantName} has fallen in combat...` : "Master... I have failed you in this Holy Grail War...";
 
-          // Player won: Prompt with Kill or Spare choice + Visual Novel Victory Dialogue Cut-In
-          addMessage({
-            id: getNextId('bot_duel_fate_prompt'),
-            sender: 'bot',
-            timestamp: 'Just now',
-            embed: {
-              title: '🏆 DUEL VICTORY — DECIDE MASTER\'S FATE',
-              description:
-                `**${updatedState.player1.name}** (Master: ${master.username}) has defeated **${updatedState.player2.name}** (Master: ${updatedState.player2.masterName}) in the Holy Grail duel!\n\n` +
-                `💬 **[VICTORY INVOCATION] ${updatedState.player1.name}:**\n> ❝ ***${p1VictoryQuote}*** ❞\n\n` +
-                `⚖️ **The Fate of Master ${updatedState.player2.masterName} is in your hands:**\n` +
-                `Choose whether to **Execute** the fallen Master to permanently eliminate them from the Holy Grail War, or show mercy and **Spare** their life.`,
-              color: '#22c55e',
-              footer: 'Select an execution decision below:'
-            },
-            canvasType: 'dialogue',
-            canvasPayload: {
-              speaker: updatedState.player1.name,
-              quote: p1VictoryQuote,
-              title: 'VICTORY INVOCATION',
-              servantClass: updatedState.player1.servantClass,
-              avatarUrl: updatedState.player1.avatarUrl || activeServant?.template.cardArtUrl || activeServant?.template.avatarUrl,
-              bondOrLevel: activeServant?.bondLevel || 10,
-              defenderName: updatedState.player2.name,
-              defenderClass: updatedState.player2.servantClass,
-              defenderAvatarUrl: updatedState.player2.avatarUrl,
-              sequence: ['Buster', 'Buster', 'Buster'],
-              bgUrlOrPreset: 'fuyuki'
-            },
-            components: {
-              type: 'buttons',
-              items: [
-                { id: 'duel_fate_kill', label: '☠️ Execute Master (Kill & Eliminate)', style: 'danger', emoji: '☠️' },
-                { id: 'duel_fate_spare', label: '🕊️ Spare Master (Show Mercy)', style: 'success', emoji: '🕊️' }
-              ]
+          if (rivalSeals >= 1 && rivalAutoConsume) {
+            const remainingSeals = Math.max(0, rivalSeals - 1);
+            const uWar = { ...grailWar };
+            if (rivalParticipant && uWar.participants[rivalParticipant.discordId]) {
+              uWar.participants[rivalParticipant.discordId].currentHp = 1;
+              uWar.participants[rivalParticipant.discordId].isAlive = true;
+              uWar.participants[rivalParticipant.discordId].commandSeals = remainingSeals;
+              uWar.participants[rivalParticipant.discordId].inSanctuary = true;
             }
-          });
+            onUpdateGrailWar(uWar);
+            setActiveDuel(null);
+
+            addMessage({
+              id: getNextId('bot_duel_defeat_saved_p2'),
+              sender: 'bot',
+              timestamp: 'Just now',
+              embed: {
+                title: '🔴 COMMAND SEAL AUTOMATIC EVACUATION',
+                description:
+                  `**${updatedState.player1.name}** (Master: ${master.username}) dealt a mortal blow to **${updatedState.player2.name}**!\n\n` +
+                  `🔮 **Auto-Consume Triggered:**\n` +
+                  `Defeated Master **${rivalMasterName}** possessed **${rivalSeals}/3 Command Seals**. 1 Command Seal was automatically expended to trigger emergency spatial evacuation to Sanctuary!\n\n` +
+                  `• 🔴 **Command Seals Remaining:** **${remainingSeals}/3**\n` +
+                  `• ❤️ **Preserved Vitality:** **1 HP** (Emergency evacuation to Church Sanctuary)\n` +
+                  `• 🛡️ **Tournament Standing:** Active (Contract Preserved, Elimination Averted!)`,
+                color: '#f59e0b',
+                footer: 'Command Seal Emergency Evacuation Protocol'
+              },
+              components: {
+                type: 'buttons',
+                items: [
+                  { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary', emoji: '📋' },
+                  { id: 'quick_start_duel', label: 'Enter Arena (/duel)', style: 'danger', emoji: '⚔️' }
+                ]
+              }
+            });
+          } else if (rivalSeals >= 1) {
+            // Defeated Master gets the last chance to use Command Seal to run or take defeat!
+            setActiveDuel({ battle: updatedState });
+
+            addMessage({
+              id: getNextId('bot_duel_defeat_decision_p2'),
+              sender: 'bot',
+              timestamp: 'Just now',
+              embed: {
+                title: '⚠️ CRITICAL DEFEAT — COMMAND SEAL DECISION',
+                description:
+                  `**${updatedState.player1.name}** (Master: ${master.username}) dealt a mortal blow to **${updatedState.player2.name}** (Master: ${rivalMasterName})!\n\n` +
+                  `💬 **[MORTAL BLOW] ${updatedState.player2.name}:**\n> ❝ ***${p2DefeatQuote}*** ❞\n\n` +
+                  `🔮 **Command Seal Evacuation Available:** Defeated Master **${rivalMasterName}** possesses **${rivalSeals}/3 Command Seals**.\n` +
+                  `When a Master loses, they get a last chance to expend **1 Command Seal** to run and emergency-teleport their Servant to Sanctuary preserved at **1 HP**, or take defeat.\n\n` +
+                  `⏱️ **Time Limit:** You have **1 minute (60 seconds)** to decide. If time expires or defeat is taken, the victor will decide their fate.\n` +
+                  `*(Auto-consume option is OFF by default to protect your Command Seals)*`,
+                color: '#f59e0b',
+                footer: 'Holy Grail War Survival Protocol • 1-Minute Decision Window (Auto-consume: OFF)'
+              },
+              components: {
+                type: 'buttons',
+                items: [
+                  { id: 'duel_evacuate_seal_p2', label: `Use Command Seal to Run (${rivalSeals}/3)`, style: 'danger', emoji: '🔮' },
+                  { id: 'duel_accept_defeat_p2', label: 'Take Defeat', style: 'secondary', emoji: '💀' }
+                ]
+              }
+            });
+          } else {
+            // 0 Command Seals remaining: Winner immediately decides fate!
+            const p1VictoryQuote = activeServant?.customQuotes?.victory || activeServant?.template.victoryQuote || "A decisive triumph. The Holy Grail draws closer.";
+
+            addMessage({
+              id: getNextId('bot_duel_fate_prompt'),
+              sender: 'bot',
+              timestamp: 'Just now',
+              embed: {
+                title: '🏆 DUEL VICTORY — DECIDE MASTER\'S FATE',
+                description:
+                  `**${updatedState.player1.name}** (Master: ${master.username}) has defeated **${updatedState.player2.name}** (Master: ${updatedState.player2.masterName}) in the Holy Grail duel!\n\n` +
+                  `💬 **[VICTORY INVOCATION] ${updatedState.player1.name}:**\n> ❝ ***${p1VictoryQuote}*** ❞\n\n` +
+                  `⚖️ **The Fate of Master ${updatedState.player2.masterName} is in your hands:**\n` +
+                  `The defeated Master has **0 Command Seals** remaining. Choose whether to **Execute** the fallen Master to permanently eliminate them from the Holy Grail War, or show mercy and **Spare** their life.`,
+                color: '#22c55e',
+                footer: 'Select an execution decision below:'
+              },
+              canvasType: 'dialogue',
+              canvasPayload: {
+                speaker: updatedState.player1.name,
+                quote: p1VictoryQuote,
+                title: 'VICTORY INVOCATION',
+                servantClass: updatedState.player1.servantClass,
+                avatarUrl: updatedState.player1.avatarUrl || activeServant?.template.cardArtUrl || activeServant?.template.avatarUrl,
+                bondOrLevel: activeServant?.bondLevel || 10,
+                defenderName: updatedState.player2.name,
+                defenderClass: updatedState.player2.servantClass,
+                defenderAvatarUrl: updatedState.player2.avatarUrl,
+                sequence: ['Buster', 'Buster', 'Buster'],
+                bgUrlOrPreset: 'fuyuki'
+              },
+              components: {
+                type: 'buttons',
+                items: [
+                  { id: 'duel_fate_kill', label: '☠️ Execute Master (Kill & Eliminate)', style: 'danger', emoji: '☠️' },
+                  { id: 'duel_fate_spare', label: '🕊️ Spare Master (Show Mercy)', style: 'success', emoji: '🕊️' }
+                ]
+              }
+            });
+          }
         } else {
           // Player defeated by opponent (e.g. itsderpo)
           const seals = master.commandSeals ?? 3;
@@ -4801,8 +4950,8 @@ export default function DiscordEmulator({
               components: {
                 type: 'buttons',
                 items: [
-                  { id: 'duel_evacuate_seal', label: `Invoke Command Seal (${seals}/3)`, style: 'danger', emoji: '🔮' },
-                  { id: 'duel_accept_defeat', label: 'Accept Defeat', style: 'secondary', emoji: '💀' }
+                  { id: 'duel_evacuate_seal', label: `Use Command Seal to Run (${seals}/3)`, style: 'danger', emoji: '🔮' },
+                  { id: 'duel_accept_defeat', label: 'Take Defeat', style: 'secondary', emoji: '💀' }
                 ]
               }
             });

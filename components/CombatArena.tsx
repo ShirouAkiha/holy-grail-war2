@@ -557,52 +557,45 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
     } else {
       // Escape Failed! Turn consumed and enemy strikes unguarded target!
       const aiDeck = battle.player2.commandDeck;
-      const shuffled = [...aiDeck].sort(() => 0.5 - Math.random());
-      const aiCards = (shuffled.slice(0, 3) as CardType[]) || ['Buster', 'Arts', 'Quick'];
-      const aiUseNp = battle.player2.npGauge >= 100 && Math.random() > 0.3;
-
-      const { updatedState, turnLogs } = executeBattleTurn(
-        battle,
-        {
-          combatantId: battle.player1.id,
-          selectedCards: [],
-          useNoblePhantasm: false
-        },
-        {
-          combatantId: battle.player2.id,
-          selectedCards: aiCards,
-          useNoblePhantasm: aiUseNp
-        }
-      );
+      // Flee failed: Opponent lands an immediate 2,000 HP counter-strike
+      const counterDmg = 2000;
+      const newPlayer1Hp = Math.max(0, battle.player1.currentHp - counterDmg);
+      const isDefeated = newPlayer1Hp <= 0;
 
       const failLog: CombatTurnLog = {
         turnNumber: battle.currentTurn,
-        actorId: battle.player1.id,
-        actorName: battle.player1.name,
-        targetId: battle.player2.id,
-        targetName: battle.player2.name,
-        actionSummary: `❌ **TACTICAL RETREAT FAILED!** (${chancePercent}% chance rolled). ${battle.player1.name} could not break line of sight and took an undefended counter-strike from ${battle.player2.name}!`,
-        cardsUsed: [],
+        actorId: battle.player2.id,
+        actorName: battle.player2.name,
+        targetId: battle.player1.id,
+        targetName: battle.player1.name,
+        actionSummary: `❌ **TACTICAL RETREAT FAILED!** (${chancePercent}% chance rolled). ${battle.player1.name} could not break line of sight and took a **2,000 DMG** counter-strike from ${battle.player2.name}!`,
+        cardsUsed: ['Buster'],
         skillsUsed: [],
-        damageDealt: 0,
+        damageDealt: counterDmg,
         isCritical: false,
         starsGenerated: 0,
         npCharged: 0,
-        actorHpRemaining: updatedState.player1.currentHp,
-        targetHpRemaining: updatedState.player2.currentHp,
-        actorHpMax: updatedState.player1.maxHp,
-        targetHpMax: updatedState.player2.maxHp,
-        actorNp: updatedState.player1.npGauge,
-        targetNp: updatedState.player2.npGauge
+        actorHpRemaining: battle.player2.currentHp,
+        targetHpRemaining: newPlayer1Hp,
+        actorHpMax: battle.player2.maxHp,
+        targetHpMax: battle.player1.maxHp,
+        actorNp: battle.player2.npGauge,
+        targetNp: battle.player1.npGauge
       };
 
       const finalState: BattleState = {
-        ...updatedState,
-        turnHistory: [...battle.turnHistory, failLog, ...turnLogs]
+        ...battle,
+        currentTurn: battle.currentTurn + 1,
+        player1: {
+          ...battle.player1,
+          currentHp: newPlayer1Hp
+        },
+        turnPhase: isDefeated ? 'defeat' : 'card_selection',
+        turnHistory: [...battle.turnHistory, failLog]
       };
 
       setBattle(finalState);
-      setFleeStatusMessage(`Tactical retreat failed (${chancePercent}% chance). Took counter-strike!`);
+      setFleeStatusMessage(`Tactical retreat failed (${chancePercent}% chance). Took 2,000 DMG counter-strike!`);
 
       if (finalState.player1.currentHp <= 0) {
         if ((master.commandSeals ?? 3) >= 1) {
@@ -1148,13 +1141,13 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                   className="px-6 py-3 rounded-sm bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs uppercase tracking-wider font-mono shadow-[0_0_20px_rgba(225,29,72,0.4)] flex items-center gap-2 transition active:scale-95 cursor-pointer"
                 >
                   <Sparkles className="w-4 h-4" />
-                  <span>Invoke Command Seal Evacuation ({(master.commandSeals ?? 3)}/3 Left)</span>
+                  <span>Use Command Seal to Run ({(master.commandSeals ?? 3)}/3 Left)</span>
                 </button>
                 <button
                   onClick={handleAcceptDefeat}
                   className="px-5 py-3 rounded-sm bg-[#161616] hover:bg-[#222] text-white/70 hover:text-white font-mono text-xs uppercase tracking-wider border border-white/20 transition active:scale-95 cursor-pointer"
                 >
-                  Accept Defeat ({evacuateCountdown}s)
+                  Take Defeat ({evacuateCountdown}s)
                 </button>
               </div>
 

@@ -1788,8 +1788,8 @@ async function startInteractiveDuel(
           await i.editReply({ embeds: [retreatEmbed], components: [] });
           return;
         } else {
-          // Failed retreat: Opponent lands an immediate counter-strike
-          const counterDmg = Math.max(1200, Math.round((opponent.atk || 2500) * 0.45));
+          // Failed retreat: Opponent lands an immediate counter-strike (reduced to 2,000 HP)
+          const counterDmg = 2000;
           fleeActor.currentHp = Math.max(0, fleeActor.currentHp - counterDmg);
 
           const fleeFailLog = `🏃 **Retreat Failed!** (${fleeInfo.chancePercent}% chance) Opponent intercepted and counter-attacked for **${counterDmg.toLocaleString()} DMG**!`;
@@ -2021,136 +2021,158 @@ async function finishDuel(
 
   const chanTag = i.channel && 'name' in i.channel ? `#${(i.channel as any).name}` : '#general';
 
-  // If AI opponent defeated the player Master, check for mandatory Command Seal intervention
-  if (winner.isAi) {
-    const loserMaster = loser.userId === p1Master.discordId ? p1Master : p2Master;
-    const availableSeals = loserMaster ? (loserMaster.commandSeals || 0) : (loser.commandSeals || 0);
+  // Check if defeated Master has Command Seals to run or take defeat
+  const loserMaster = loser.userId === p1Master.discordId ? p1Master : (p2Master || null);
+  const loserParticipant = warSession?.participants[loser.userId] ||
+    Object.values(warSession?.participants || {}).find(p => p.username.toLowerCase() === loser.username.toLowerCase() || p.servantName.toLowerCase() === loser.servant.template.name.toLowerCase());
+  const availableSeals = loserMaster ? (loserMaster.commandSeals ?? 3) : (loserParticipant?.commandSeals ?? loser.commandSeals ?? 3);
+  const autoConsume = loserMaster 
+    ? (loserMaster.autoConsumeCommandSeal === true) 
+    : (loserParticipant?.autoEvadeEnabled === true || loserParticipant?.autoConsumeCommandSeal === true);
 
-    if (availableSeals >= 1 && loserMaster) {
-      if (loserMaster.autoConsumeCommandSeal === true) {
+  if (availableSeals >= 1) {
+    if (autoConsume === true) {
+      if (loserMaster) {
         loserMaster.commandSeals = Math.max(0, availableSeals - 1);
         await saveMaster(loserMaster);
-
-        const interventionEmbed = new EmbedBuilder()
-          .setTitle('🔴 COMMAND SEAL AUTOMATIC EVACUATION')
-          .setDescription(
-            `**${winner.servant.template.name}** dealt a mortal blow to **${loser.servant.template.name}**!\n\n` +
-            `🔮 **Auto-Consume Enabled:** Master possessed **${availableSeals}/3 Command Seals**.\n` +
-            `1 Command Seal was automatically expended (Remaining: **${availableSeals - 1}/3**).\n\n` +
-            `✨ **Emergency Sanctuary:** Your Command Seal flared with blinding light, relocating your Servant from fatal annihilation preserved at **1 HP**!\n` +
-            `Permanent elimination has been averted.`
-          )
-          .setColor(0xf59e0b)
-          .setFooter({ text: 'Holy Grail War Survival Protocol • Command Seal Sanctuary' });
-
-        if (loser.servant.template.avatarUrl) {
-          interventionEmbed.setThumbnail(loser.servant.template.avatarUrl);
-        }
-
-        if (i.deferred || i.replied) {
-          await i.editReply({
-            embeds: [interventionEmbed],
-            files: [finalAttachment],
-            components: []
-          });
-        } else {
-          await i.update({
-            embeds: [interventionEmbed],
-            files: [finalAttachment],
-            components: []
-          });
-        }
-        return;
+      }
+      if (loserParticipant) {
+        loserParticipant.commandSeals = Math.max(0, availableSeals - 1);
+        loserParticipant.currentHp = 1;
+        loserParticipant.isAlive = true;
+        loserParticipant.inSanctuary = true;
       }
 
-      // Default: auto-consume is OFF. Present the 1-minute decision prompt!
-      const decisionEmbed = new EmbedBuilder()
-        .setTitle('⚠️ CRITICAL DEFEAT — COMMAND SEAL DECISION')
+      const interventionEmbed = new EmbedBuilder()
+        .setTitle('🔴 COMMAND SEAL AUTOMATIC EVACUATION')
         .setDescription(
-          `**${winner.servant.template.name}** dealt a mortal blow to **${loser.servant.template.name}**!\n\n` +
-          `🔮 **Command Seal Evacuation Available:** Master possesses **${availableSeals}/3 Command Seals**.\n` +
-          `You may expend **1 Command Seal** to emergency-teleport your Servant to safety preserved at **1 HP**, preventing contract severance and Holy Grail War elimination.\n\n` +
-          `⏱️ **Time Limit:** You have **1 minute (60 seconds)** to decide. If time expires, defeat is automatically accepted.\n` +
-          `*(Auto-consume option is OFF by default to protect your Command Seals)*`
+          `**${winner.servant.template.name}** (Master: ${winner.username}) dealt a mortal blow to **${loser.servant.template.name}** (Master: ${loser.username})!\n\n` +
+          `🔮 **Auto-Consume Enabled:** Defeated Master possessed **${availableSeals}/3 Command Seals**.\n` +
+          `1 Command Seal was automatically expended (Remaining: **${availableSeals - 1}/3**).\n\n` +
+          `✨ **Emergency Sanctuary:** Your Command Seal flared with crimson light, relocating your Servant from fatal annihilation preserved at **1 HP**!\n` +
+          `Contract preserved. Permanent elimination has been averted.`
         )
         .setColor(0xf59e0b)
-        .setFooter({ text: 'Holy Grail War Survival Protocol • 1-Minute Decision Window (Auto-consume: OFF)' });
+        .setFooter({ text: 'Holy Grail War Survival Protocol • Command Seal Sanctuary' });
 
       if (loser.servant.template.avatarUrl) {
-        decisionEmbed.setThumbnail(loser.servant.template.avatarUrl);
+        interventionEmbed.setThumbnail(loser.servant.template.avatarUrl);
       }
 
-      const decisionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId('duel_evacuate_seal')
-          .setLabel(`Invoke Command Seal (${availableSeals}/3)`)
-          .setEmoji('🔮')
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId('duel_accept_defeat')
-          .setLabel('Accept Defeat')
-          .setEmoji('💀')
-          .setStyle(ButtonStyle.Secondary)
-      );
-
-      let responseMsg: any;
       if (i.deferred || i.replied) {
-        responseMsg = await i.editReply({
-          embeds: [decisionEmbed],
+        await i.editReply({
+          embeds: [interventionEmbed],
           files: [finalAttachment],
-          components: [decisionRow]
+          components: []
         });
       } else {
-        responseMsg = await i.update({
-          embeds: [decisionEmbed],
+        await i.update({
+          embeds: [interventionEmbed],
           files: [finalAttachment],
-          components: [decisionRow]
+          components: []
         });
       }
-
-      const targetMsg = responseMsg || (i.fetchReply ? await i.fetchReply().catch(() => null) : null);
-
-      if (targetMsg && targetMsg.awaitMessageComponent) {
-        try {
-          const decision = await targetMsg.awaitMessageComponent({
-            filter: (btnInt: any) => btnInt.user.id === (loserMaster.discordId || loser.userId),
-            componentType: ComponentType.Button,
-            time: 60000 // 1-minute time limit
-          });
-
-          if (decision.customId === 'duel_evacuate_seal') {
-            loserMaster.commandSeals = Math.max(0, availableSeals - 1);
-            await saveMaster(loserMaster);
-
-            const interventionEmbed = new EmbedBuilder()
-              .setTitle('🔴 COMMAND SEAL EMERGENCY EVACUATION')
-              .setDescription(
-                `**${loser.servant.template.name}** was saved from mortal annihilation!\n\n` +
-                `🔮 **Command Seal Invoked:** 1 Command Seal expended (Remaining: **${availableSeals - 1}/3**).\n\n` +
-                `✨ **Emergency Sanctuary:** Preserved at **1 HP** and evacuated to sanctuary.\n` +
-                `Permanent elimination has been averted.`
-              )
-              .setColor(0xf59e0b)
-              .setFooter({ text: 'Holy Grail War Survival Protocol • Command Seal Sanctuary' });
-
-            if (loser.servant.template.avatarUrl) {
-              interventionEmbed.setThumbnail(loser.servant.template.avatarUrl);
-            }
-
-            await decision.update({
-              embeds: [interventionEmbed],
-              components: []
-            });
-            return;
-          } else {
-            await decision.deferUpdate().catch(() => {});
-          }
-        } catch {
-          // 1 minute expired without choice -> Defeat is accepted!
-        }
-      }
+      return;
     }
 
+    // Default: auto-consume is OFF. Present the 1-minute decision prompt for the defeated Master!
+    const decisionEmbed = new EmbedBuilder()
+      .setTitle('⚠️ CRITICAL DEFEAT — COMMAND SEAL DECISION')
+      .setDescription(
+        `**${winner.servant.template.name}** (Master: ${winner.username}) dealt a mortal blow to **${loser.servant.template.name}** (Master: ${loser.username})!\n\n` +
+        `🔮 **Command Seal Evacuation Available:** Defeated Master **${loser.username}** possesses **${availableSeals}/3 Command Seals**.\n` +
+        `When a Master loses, they get a last chance to expend **1 Command Seal** to run and emergency-teleport their Servant to safety preserved at **1 HP**, preventing contract severance and Holy Grail War elimination.\n\n` +
+        `⏱️ **Time Limit:** You have **1 minute (60 seconds)** to decide. If time expires or defeat is taken, the victor will decide your fate.\n` +
+        `*(Auto-consume option is OFF by default to protect your Command Seals)*`
+      )
+      .setColor(0xf59e0b)
+      .setFooter({ text: 'Holy Grail War Survival Protocol • 1-Minute Decision Window (Auto-consume: OFF)' });
+
+    if (loser.servant.template.avatarUrl) {
+      decisionEmbed.setThumbnail(loser.servant.template.avatarUrl);
+    }
+
+    const decisionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('duel_evacuate_seal')
+        .setLabel(`Use Command Seal to Run (${availableSeals}/3)`)
+        .setEmoji('🔮')
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId('duel_accept_defeat')
+        .setLabel('Take Defeat')
+        .setEmoji('💀')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    let responseMsg: any;
+    if (i.deferred || i.replied) {
+      responseMsg = await i.editReply({
+        embeds: [decisionEmbed],
+        files: [finalAttachment],
+        components: [decisionRow]
+      });
+    } else {
+      responseMsg = await i.update({
+        embeds: [decisionEmbed],
+        files: [finalAttachment],
+        components: [decisionRow]
+      });
+    }
+
+    const targetMsg = responseMsg || (i.fetchReply ? await i.fetchReply().catch(() => null) : null);
+
+    if (targetMsg && targetMsg.awaitMessageComponent) {
+      try {
+        const decision = await targetMsg.awaitMessageComponent({
+          filter: (btnInt: any) => btnInt.user.id === (loserMaster?.discordId || loser.userId),
+          componentType: ComponentType.Button,
+          time: 60000 // 1-minute time limit
+        });
+
+        if (decision.customId === 'duel_evacuate_seal') {
+          if (loserMaster) {
+            loserMaster.commandSeals = Math.max(0, availableSeals - 1);
+            await saveMaster(loserMaster);
+          }
+          if (loserParticipant) {
+            loserParticipant.commandSeals = Math.max(0, availableSeals - 1);
+            loserParticipant.currentHp = 1;
+            loserParticipant.isAlive = true;
+            loserParticipant.inSanctuary = true;
+          }
+
+          const interventionEmbed = new EmbedBuilder()
+            .setTitle('🔴 COMMAND SEAL EMERGENCY EVACUATION')
+            .setDescription(
+              `**${loser.servant.template.name}** was saved from mortal annihilation!\n\n` +
+              `🔮 **Command Seal Invoked:** 1 Command Seal expended by Master **${loser.username}** (Remaining: **${availableSeals - 1}/3**).\n\n` +
+              `✨ **Emergency Sanctuary:** Preserved at **1 HP** and evacuated to sanctuary.\n` +
+              `Contract preserved. Permanent elimination has been averted.`
+            )
+            .setColor(0xf59e0b)
+            .setFooter({ text: 'Holy Grail War Survival Protocol • Command Seal Sanctuary' });
+
+          if (loser.servant.template.avatarUrl) {
+            interventionEmbed.setThumbnail(loser.servant.template.avatarUrl);
+          }
+
+          await decision.update({
+            embeds: [interventionEmbed],
+            components: []
+          });
+          return;
+        } else {
+          await decision.deferUpdate().catch(() => {});
+        }
+      } catch {
+        // 1 minute expired without choice -> Defeat is accepted!
+      }
+    }
+  }
+
+  // If AI opponent won and defeat is accepted (or no seals left): Eliminate player
+  if (winner.isAi) {
     const outcome = recordDuelOutcome(
       warSession,
       winner.username,
