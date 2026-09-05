@@ -4824,11 +4824,17 @@ export default function DiscordEmulator({
                   u.includes('klipy.com')
                 );
 
+                const cleanContent = mediaUrl
+                  ? msg.content.replace(mediaUrl, '').trim()
+                  : msg.content;
+
                 return (
                   <div className="space-y-2 mt-1.5">
-                    <div className="text-white/90 text-xs whitespace-pre-wrap leading-relaxed font-sans">
-                      {msg.content}
-                    </div>
+                    {cleanContent && (
+                      <div className="text-white/90 text-xs whitespace-pre-wrap leading-relaxed font-sans">
+                        {cleanContent}
+                      </div>
+                    )}
                     {mediaUrl && !msg.embed && (
                       <div className="mt-2 max-w-[650px] w-full">
                         <NativeMediaVisual url={mediaUrl} />

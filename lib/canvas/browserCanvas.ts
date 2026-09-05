@@ -14,12 +14,13 @@ function drawVectorStar(
   ctx: CanvasRenderingContext2D,
   cx: number,
   cy: number,
-  spikes: number,
-  outerRadius: number,
-  innerRadius: number,
+  spikes: number = 5,
+  outerRadius: number = 6,
+  innerRadius: number = 3,
   fillStyle?: string,
   strokeStyle?: string
 ) {
+  ctx.save();
   let rot = (Math.PI / 2) * 3;
   let x = cx;
   let y = cy;
@@ -49,6 +50,7 @@ function drawVectorStar(
     ctx.strokeStyle = strokeStyle;
     ctx.stroke();
   }
+  ctx.restore();
 }
 
 // Helper to draw rounded rectangles
@@ -496,6 +498,35 @@ function drawVectorShield(ctx: CanvasRenderingContext2D, cx: number, cy: number,
     ctx.lineWidth = 1.5;
     ctx.stroke();
   }
+  ctx.restore();
+}
+
+function drawVectorLock(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  color: string = '#94a3b8'
+) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 1.2;
+
+  // Lock shackle
+  ctx.beginPath();
+  ctx.arc(cx, cy - 3, 3, Math.PI, 0, false);
+  ctx.stroke();
+
+  // Lock body
+  drawRoundRect(ctx, cx - 4, cy - 1, 8, 7, 1.5);
+  ctx.fill();
+
+  // Keyhole
+  ctx.fillStyle = '#0f172a';
+  ctx.beginPath();
+  ctx.arc(cx, cy + 2, 1, 0, Math.PI * 2);
+  ctx.fill();
+
   ctx.restore();
 }
 
@@ -1793,7 +1824,339 @@ function loadBrowserImage(url?: string): Promise<HTMLImageElement | null> {
 }
 
 /**
- * 3. Battle Turn Clash Summary (640x700 Fate Wireframe Layout)
+ * Draw Grand Fate Tarot Command Card (Option A - Zero neon glows, metallic obsidian finish)
+ */
+function drawTarotCommandCard(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  cardType: string,
+  stepIndex: number,
+  critStars: number = 0,
+  isQuickFirst: boolean = false
+) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  drawRoundRect(ctx, x + 2, y + 2, w, h, 6);
+  ctx.fill();
+
+  let gradTop = '#5c1414';
+  let gradBottom = '#1a0505';
+  let borderColor = '#991b1b';
+  let accentColor = '#fca5a5';
+  let cardTitle = 'BUSTER';
+  let subTag = '+100% ATK';
+
+  if (cardType === 'Arts') {
+    gradTop = '#0f2942';
+    gradBottom = '#05101a';
+    borderColor = '#0284c7';
+    accentColor = '#7dd3fc';
+    cardTitle = 'ARTS';
+    subTag = '+100% NP';
+  } else if (cardType === 'Quick') {
+    gradTop = '#064e3b';
+    gradBottom = '#021810';
+    borderColor = '#059669';
+    accentColor = '#6ee7b7';
+    cardTitle = 'QUICK';
+    subTag = '+STARS';
+  } else if (cardType === 'NP') {
+    gradTop = '#5c3d05';
+    gradBottom = '#1a1102';
+    borderColor = '#d97706';
+    accentColor = '#fde047';
+    cardTitle = 'PHANTASM';
+    subTag = 'FATAL NP';
+  }
+
+  const cGrad = ctx.createLinearGradient(x, y, x, y + h);
+  cGrad.addColorStop(0, gradTop);
+  cGrad.addColorStop(1, gradBottom);
+  ctx.fillStyle = cGrad;
+  drawRoundRect(ctx, x, y, w, h, 6);
+  ctx.fill();
+
+  // Subtle Metallic Border (no neon glow)
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 1.4;
+  drawRoundRect(ctx, x, y, w, h, 6);
+  ctx.stroke();
+
+  // Inset hairline
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.lineWidth = 0.8;
+  drawRoundRect(ctx, x + 2, y + 2, w - 4, h - 4, 4);
+  ctx.stroke();
+
+  // Top Step Pill
+  const stepLabel = stepIndex === 0 ? '1st' : stepIndex === 1 ? '2nd' : '3rd';
+  const pillW = 38;
+  const pillH = 17;
+  const pillX = x + (w - pillW) / 2;
+  const pillY = y + 5;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+  drawRoundRect(ctx, pillX, pillY, pillW, pillH, 4);
+  ctx.fill();
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, pillX, pillY, pillW, pillH, 4);
+  ctx.stroke();
+
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(stepLabel, pillX + pillW / 2, pillY + 12);
+
+  // Card Center Icon
+  drawBrowserCommandCardIcon(ctx, x + w / 2, y + 54, cardType);
+
+  // Card Title
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 15px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(cardTitle, x + w / 2, y + 104);
+
+  // SubTag
+  ctx.fillStyle = accentColor;
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillText(subTag, x + w / 2, y + 124);
+
+  // Crit Stars / Bonus Badges
+  if (critStars > 0 || isQuickFirst) {
+    const starY = y + h - 22;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+    drawRoundRect(ctx, x + 6, starY, w - 12, 18, 4);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 0.8;
+    drawRoundRect(ctx, x + 6, starY, w - 12, 18, 4);
+    ctx.stroke();
+
+    if (critStars > 0) {
+      drawVectorStar(ctx, x + 16, starY + 9, 5, 4, 2, '#fbbf24');
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`+${Math.min(100, critStars * 10)}% CRIT`, x + 24, starY + 13);
+    } else if (isQuickFirst) {
+      ctx.fillStyle = '#34d399';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('QUICK LEAD', x + w / 2, starY + 13);
+    }
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Draw Servant Portrait Frame (Option A - No neon glow, refined metallic border + class badge)
+ */
+function drawServantPortraitCard(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  avatarImg: HTMLImageElement | null,
+  servant: ActiveCombatant,
+  accentColor: string
+) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  drawRoundRect(ctx, x + 2, y + 2, w, h, 8);
+  ctx.fill();
+
+  const innerX = x + 2;
+  const innerY = y + 2;
+  const innerW = w - 4;
+  const innerH = h - 4;
+
+  if (avatarImg) {
+    ctx.save();
+    drawRoundRect(ctx, innerX, innerY, innerW, innerH, 6);
+    ctx.clip();
+    drawImageCover(ctx, avatarImg, innerX, innerY, innerW, innerH);
+
+    // Subtle bottom vignette for contrast
+    const vGrad = ctx.createLinearGradient(innerX, innerY + innerH - 60, innerX, innerY + innerH);
+    vGrad.addColorStop(0, 'rgba(10, 15, 26, 0)');
+    vGrad.addColorStop(1, 'rgba(10, 15, 26, 0.85)');
+    ctx.fillStyle = vGrad;
+    ctx.fillRect(innerX, innerY + innerH - 60, innerW, 60);
+
+    ctx.restore();
+
+    // Subtle class badge at bottom of portrait
+    const badgeW = innerW - 20;
+    const badgeH = 22;
+    const badgeX = innerX + 10;
+    const badgeY = innerY + innerH - badgeH - 8;
+
+    ctx.fillStyle = 'rgba(10, 15, 26, 0.85)';
+    drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 0.8;
+    drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
+    ctx.stroke();
+
+    const sClass = (servant.servantClass || 'SABER').toUpperCase();
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(sClass, badgeX + badgeW / 2, badgeY + 15);
+  } else {
+    // Heraldic Velvet Fallback
+    const velvetGrad = ctx.createRadialGradient(
+      innerX + innerW / 2, innerY + innerH / 2, 10,
+      innerX + innerW / 2, innerY + innerH / 2, innerW * 0.8
+    );
+    velvetGrad.addColorStop(0, '#1e293b');
+    velvetGrad.addColorStop(0.6, '#0f172a');
+    velvetGrad.addColorStop(1, '#050811');
+    ctx.fillStyle = velvetGrad;
+    drawRoundRect(ctx, innerX, innerY, innerW, innerH, 6);
+    ctx.fill();
+
+    const cy = innerY + Math.round(innerH * 0.38);
+    ctx.beginPath();
+    ctx.arc(innerX + innerW / 2, cy, 42, 0, Math.PI * 2);
+    ctx.strokeStyle = `${accentColor}33`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    drawVectorShield(ctx, innerX + innerW / 2, cy, 54, 64, `${accentColor}22`, accentColor);
+    drawVectorCrossedSwords(ctx, innerX + innerW / 2, cy, 16, '#ffffff');
+
+    const sClass = (servant.servantClass || 'SABER').toUpperCase();
+    ctx.fillStyle = accentColor;
+    ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(sClass, innerX + innerW / 2, cy + 56);
+
+    const sName = (servant.name || 'Heroic Spirit').slice(0, 16);
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.fillText(sName, innerX + innerW / 2, cy + 80);
+  }
+
+  // Refined Dark Metallic Border (No neon glow)
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1.6;
+  drawRoundRect(ctx, x, y, w, h, 8);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.lineWidth = 0.8;
+  drawRoundRect(ctx, x + 2, y + 2, w - 4, h - 4, 6);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/**
+ * Draw Minimalist Floating Damage Clash Banner (Option A - Zero redundant text)
+ */
+function drawMinimalClashBanner(
+  ctx: CanvasRenderingContext2D,
+  log: CombatTurnLog,
+  p1: ActiveCombatant,
+  p2: ActiveCombatant,
+  x: number = 16,
+  y: number = 286,
+  w: number = 608,
+  h: number = 54
+) {
+  ctx.save();
+  // 1. Sleek Dark Obsidian Glass Banner
+  const bgGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+  bgGrad.addColorStop(0, '#0c1220');
+  bgGrad.addColorStop(0.5, '#131b2e');
+  bgGrad.addColorStop(1, '#0c1220');
+  ctx.fillStyle = bgGrad;
+  drawRoundRect(ctx, x, y, w, h, 8);
+  ctx.fill();
+
+  // Subtle Metallic Border (no neon glow)
+  ctx.strokeStyle = log.isNoblePhantasm ? '#d97706' : log.isCritical ? '#b91c1c' : '#334155';
+  ctx.lineWidth = 1.5;
+  drawRoundRect(ctx, x, y, w, h, 8);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.lineWidth = 0.8;
+  drawRoundRect(ctx, x + 2, y + 2, w - 4, h - 4, 6);
+  ctx.stroke();
+
+  // 2. Left Turn Badge Pill
+  const turnX = x + 12;
+  const turnY = y + 12;
+  const turnW = 82;
+  const turnH = 30;
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+  drawRoundRect(ctx, turnX, turnY, turnW, turnH, 5);
+  ctx.fill();
+  ctx.strokeStyle = '#d97706';
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, turnX, turnY, turnW, turnH, 5);
+  ctx.stroke();
+
+  ctx.fillStyle = '#fbbf24';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`TURN ${log.turnNumber || 1}`, turnX + turnW / 2, turnY + 19);
+
+  // 3. Center Damage Text
+  const dmg = log.damageDealt > 0 ? log.damageDealt.toLocaleString() : '0';
+  ctx.textAlign = 'center';
+
+  if (log.isNoblePhantasm) {
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillStyle = '#fde047';
+    ctx.fillText(`NOBLE PHANTASM: ${dmg} DAMAGE!`, x + w / 2 - 10, y + 33);
+  } else if (log.isCritical) {
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillStyle = '#f87171';
+    ctx.fillText(`CRITICAL STRIKE: ${dmg} DAMAGE!`, x + w / 2 - 10, y + 33);
+  } else {
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText(`DEALT ${dmg} DAMAGE!`, x + w / 2 - 10, y + 33);
+  }
+
+  // 4. Right Tactical Gains Pill (+NP & +Stars)
+  const gainsX = x + w - 128;
+  const gainsY = y + 12;
+  const gainsW = 116;
+  const gainsH = 30;
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+  drawRoundRect(ctx, gainsX, gainsY, gainsW, gainsH, 5);
+  ctx.fill();
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, gainsX, gainsY, gainsW, gainsH, 5);
+  ctx.stroke();
+
+  const npGain = (log as any).npGained ?? log.npCharged ?? 0;
+  const starGain = log.starsGenerated || 0;
+  ctx.fillStyle = '#fde047';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`+${npGain}% NP`, gainsX + 10, gainsY + 19);
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.textAlign = 'right';
+  ctx.fillText(`+${starGain} ★`, gainsX + gainsW - 10, gainsY + 19);
+
+  ctx.restore();
+}
+
+/**
+ * 3. Battle Turn Clash Summary (640x680 Option A Layout)
  */
 export async function renderBattleTurnSummary(
   canvas: HTMLCanvasElement,
@@ -1805,7 +2168,7 @@ export async function renderBattleTurnSummary(
   if (!ctx) return;
 
   canvas.width = 640;
-  canvas.height = 700;
+  canvas.height = 680;
 
   // Load Avatars concurrently
   const [p1Img, p2Img] = await Promise.all([
@@ -1813,88 +2176,72 @@ export async function renderBattleTurnSummary(
     loadBrowserImage(p2.avatarUrl)
   ]);
 
-  // Background - Deep Mystic War Canvas
-  const bgGrad = ctx.createLinearGradient(0, 0, 640, 700);
-  bgGrad.addColorStop(0, '#090d19');
-  bgGrad.addColorStop(0.5, '#04060e');
-  bgGrad.addColorStop(1, '#11071d');
+  // Background - Deep Mystic Slate War Canvas
+  const bgGrad = ctx.createLinearGradient(0, 0, 640, 680);
+  bgGrad.addColorStop(0, '#090d18');
+  bgGrad.addColorStop(0.5, '#05070f');
+  bgGrad.addColorStop(1, '#0c0b16');
   ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, 640, 700);
+  ctx.fillRect(0, 0, 640, 680);
 
-  // Outer Border with glowing accents
-  ctx.strokeStyle = '#38bdf8';
-  ctx.lineWidth = 2.5;
-  drawRoundRect(ctx, 8, 8, 624, 684, 14);
+  // Subtle Matte Slate Frame (No neon glow)
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1.6;
+  drawRoundRect(ctx, 6, 6, 628, 668, 10);
   ctx.stroke();
 
-  // Grid / Rune background lines
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.04)';
-  ctx.lineWidth = 1;
-  for (let x = 30; x < 630; x += 40) {
-    ctx.beginPath();
-    ctx.moveTo(x, 12);
-    ctx.lineTo(x, 688);
-    ctx.stroke();
-  }
-  for (let y = 30; y < 690; y += 40) {
-    ctx.beginPath();
-    ctx.moveTo(12, y);
-    ctx.lineTo(628, y);
-    ctx.stroke();
-  }
+  // Subtle inner accent line
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+  ctx.lineWidth = 0.8;
+  drawRoundRect(ctx, 8, 8, 624, 664, 8);
+  ctx.stroke();
 
   // ==========================================
   // TOP SECTION: PLAYER 1 (MASTER & SERVANT)
   // ==========================================
-  // 1. P1 Avatar Box (Left, 120x208)
-  ctx.fillStyle = '#0f172a';
-  drawRoundRect(ctx, 18, 18, 120, 208, 8);
-  ctx.fill();
+  // 1. P1 Avatar Portrait Card (Left, 172x260) - Large Portrait
+  drawServantPortraitCard(ctx, 16, 16, 172, 260, p1Img, p1, '#38bdf8');
 
-  if (p1Img) {
-    ctx.save();
-    drawRoundRect(ctx, 20, 20, 116, 204, 6);
-    ctx.clip();
-    drawImageCover(ctx, p1Img, 20, 20, 116, 204);
-    ctx.restore();
-  } else {
-    ctx.fillStyle = '#1e293b';
-    drawRoundRect(ctx, 20, 20, 116, 204, 6);
-    ctx.fill();
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = 'bold 38px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(p1.servantClass?.[0] || 'S', 78, 110);
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = 'bold 14px system-ui, sans-serif';
-    ctx.fillText((p1.name || 'Servant').slice(0, 12), 78, 150);
-  }
-
-  ctx.strokeStyle = '#38bdf8';
-  ctx.lineWidth = 2.5;
-  drawRoundRect(ctx, 18, 18, 120, 208, 8);
-  ctx.stroke();
-
-  // 2. P1 Header Title
-  const p1DisplayName = p1.masterName || 'Master 1';
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 18px system-ui, sans-serif';
+  // 2. P1 Header Title & Class Pill
+  const p1DisplayName = (p1.masterName || 'Master 1').replace(/[^\x00-\x7F]/g, '');
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = 'bold 16px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(p1DisplayName, 148, 38);
+  ctx.fillText(p1DisplayName, 200, 32);
 
   const p1NameWidth = ctx.measureText(p1DisplayName).width;
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = 'bold 14px system-ui, sans-serif';
-  ctx.fillText(`• ${p1.name} [${p1.servantClass}]`, 156 + p1NameWidth, 38);
+  const p1ServantClean = (p1.name || 'Heroic Spirit').replace(/[^\x00-\x7F]/g, '');
+  const p1ClassClean = (p1.servantClass || 'SABER').toUpperCase();
+
+  // Class badge pill
+  const pillX = 208 + p1NameWidth;
+  const pillY = 18;
+  ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
+  drawRoundRect(ctx, pillX, pillY, 64, 18, 9);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, pillX, pillY, 64, 18, 9);
+  ctx.stroke();
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 9px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(p1ClassClean, pillX + 32, pillY + 13);
+
+  // Servant Name
+  ctx.fillStyle = '#cbd5e1';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(p1ServantClean, pillX + 72, 32);
 
   // 2.5 P1 3 Active Skill Badges (Top Right above HP Bar)
   const p1Skills = p1.skills || [];
   const p1Bond = p1.bondLevel !== undefined ? p1.bondLevel : 5;
   [0, 1, 2].forEach((sIdx) => {
-    const sBoxX = 416 + sIdx * 70;
-    const sBoxY = 20;
-    const sBoxW = 66;
-    const sBoxH = 22;
+    const sBoxX = 432 + sIdx * 64;
+    const sBoxY = 16;
+    const sBoxW = 60;
+    const sBoxH = 20;
     const sData = p1Skills[sIdx];
     const sCd = sData?.currentCooldown || 0;
     const isLocked = sIdx === 2 && p1Bond < 5;
@@ -1905,383 +2252,199 @@ export async function renderBattleTurnSummary(
       drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
       ctx.fill();
       ctx.strokeStyle = '#4338ca';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 0.8;
+      drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
       ctx.stroke();
 
+      drawVectorLock(ctx, sBoxX + 12, sBoxY + 10, '#a5b4fc');
       ctx.fillStyle = '#a5b4fc';
-      ctx.font = 'bold 10px system-ui, sans-serif';
+      ctx.font = 'bold 9px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('🔒 Bond 5', sBoxX + sBoxW / 2, sBoxY + 15);
+      ctx.fillText('Bond 5', sBoxX + sBoxW / 2 + 6, sBoxY + 14);
     } else if (sCd > 0) {
       ctx.fillStyle = '#1e293b';
       drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
       ctx.fill();
       ctx.strokeStyle = '#475569';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 0.8;
+      drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
       ctx.stroke();
 
       ctx.fillStyle = '#94a3b8';
-      ctx.font = 'bold 10px system-ui, sans-serif';
+      ctx.font = 'bold 9px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`S${sIdx + 1}: ${sCd}T`, sBoxX + sBoxW / 2, sBoxY + 15);
+      ctx.fillText(`S${sIdx + 1}: ${sCd}T`, sBoxX + sBoxW / 2, sBoxY + 14);
     } else {
-      ctx.fillStyle = sIdx === 2 ? '#065f46' : '#0369a1';
+      ctx.fillStyle = sIdx === 2 ? '#064e3b' : '#075985';
       drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
       ctx.fill();
       ctx.strokeStyle = sIdx === 2 ? '#10b981' : '#38bdf8';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 0.8;
+      drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
       ctx.stroke();
 
+      drawSparkDiamond(ctx, sBoxX + 11, sBoxY + 10, 3, '#ffffff');
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 10px system-ui, sans-serif';
+      ctx.font = 'bold 9px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`✨ S${sIdx + 1}: RDY`, sBoxX + sBoxW / 2, sBoxY + 15);
+      ctx.fillText(`S${sIdx + 1}: RDY`, sBoxX + sBoxW / 2 + 5, sBoxY + 14);
     }
     ctx.restore();
   });
 
-  // 3. P1 HP & NP Bars
+  // 3. P1 HP Bar (24px height)
   const p1HpRatio = Math.max(0, Math.min(1, p1.currentHp / p1.maxHp));
   const p1NpRatio = Math.max(0, Math.min(1, (p1.npGauge || 0) / 100));
 
-  // HP Bar (26px height)
-  ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 148, 48, 474, 26, 5);
+  ctx.fillStyle = '#0f172a';
+  drawRoundRect(ctx, 200, 42, 424, 24, 4);
   ctx.fill();
   ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, 200, 42, 424, 24, 4);
   ctx.stroke();
 
-  ctx.fillStyle = p1HpRatio > 0.35 ? '#22c55e' : '#ef4444';
   if (p1HpRatio > 0) {
-    drawRoundRect(ctx, 148, 48, Math.max(8, 474 * p1HpRatio), 26, 5);
+    const hpGrad = ctx.createLinearGradient(200, 42, 200, 66);
+    if (p1HpRatio > 0.35) {
+      hpGrad.addColorStop(0, '#22c55e');
+      hpGrad.addColorStop(1, '#15803d');
+    } else {
+      hpGrad.addColorStop(0, '#ef4444');
+      hpGrad.addColorStop(1, '#b91c1c');
+    }
+    ctx.fillStyle = hpGrad;
+    drawRoundRect(ctx, 200, 42, Math.max(8, 424 * p1HpRatio), 24, 4);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+    drawRoundRect(ctx, 200, 42, Math.max(8, 424 * p1HpRatio), 11, 4);
     ctx.fill();
   }
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 13px system-ui, sans-serif';
-  ctx.fillText(`HP  ${p1.currentHp.toLocaleString()} / ${p1.maxHp.toLocaleString()} (${Math.round(p1HpRatio * 100)}%)`, 158, 66);
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`HP  ${p1.currentHp.toLocaleString()} / ${p1.maxHp.toLocaleString()} (${Math.round(p1HpRatio * 100)}%)`, 210, 59);
 
-  // NP Bar (24px height)
-  ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 148, 80, 356, 24, 5);
+  // NP Bar (22px height)
+  ctx.fillStyle = '#0f172a';
+  drawRoundRect(ctx, 200, 72, 290, 22, 4);
   ctx.fill();
-  ctx.strokeStyle = '#b45309';
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#92400e';
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, 200, 72, 290, 22, 4);
   ctx.stroke();
 
   if (p1NpRatio > 0) {
-    ctx.fillStyle = (p1.npGauge || 0) >= 100 ? '#f59e0b' : '#eab308';
-    drawRoundRect(ctx, 148, 80, Math.max(8, 356 * p1NpRatio), 24, 5);
+    const npGrad = ctx.createLinearGradient(200, 72, 200, 94);
+    if ((p1.npGauge || 0) >= 100) {
+      npGrad.addColorStop(0, '#fde047');
+      npGrad.addColorStop(1, '#d97706');
+    } else {
+      npGrad.addColorStop(0, '#facc15');
+      npGrad.addColorStop(1, '#ca8a04');
+    }
+    ctx.fillStyle = npGrad;
+    drawRoundRect(ctx, 200, 72, Math.max(8, 290 * p1NpRatio), 22, 4);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+    drawRoundRect(ctx, 200, 72, Math.max(8, 290 * p1NpRatio), 10, 4);
     ctx.fill();
   }
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 13px system-ui, sans-serif';
-  ctx.fillText(`NP: ${Math.round(p1.npGauge || 0)}% ${(p1.npGauge || 0) >= 100 ? '★ NP READY' : ''}`, 158, 97);
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'left';
+  const p1NpText = `NP: ${Math.round(p1.npGauge || 0)}%`;
+  ctx.fillText(p1NpText, 210, 88);
 
-  // NP Tag Right
-  ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 13px system-ui, sans-serif';
-  ctx.fillText('NP', 516, 97);
+  if ((p1.npGauge || 0) >= 100) {
+    const npTextW = ctx.measureText(p1NpText).width;
+    drawVectorStar(ctx, 220 + npTextW, 84, 5, 4.5, 2.2, '#fde047');
+    ctx.fillStyle = '#fde047';
+    ctx.fillText('[MAX READY]', 228 + npTextW, 88);
+  }
 
-  // 4. P1 3 Portrait Command Cards (Wireframe style - enlarged 116px height)
+  // P1 Stars Pill (to right of NP Bar)
+  ctx.fillStyle = '#0f172a';
+  drawRoundRect(ctx, 498, 72, 126, 22, 4);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, 498, 72, 126, 22, 4);
+  ctx.stroke();
+
+  drawVectorStar(ctx, 514, 83, 5, 5.5, 2.8, '#38bdf8');
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`${p1.critStars || 0} Stars`, 526, 88);
+
+  // 4. P1 3 Command Cards (w: 136, h: 176)
   const p1Cards = (log.p1Cards || log.cardsUsed || ['Buster', 'Arts', 'Quick']) as ('Buster' | 'Arts' | 'Quick' | 'NP')[];
+  const isP1QuickLead = p1Cards[0] === 'Quick';
   p1Cards.slice(0, 3).forEach((card, idx) => {
-    const cardX = 148 + idx * 96;
-    const cardY = 110;
-    const cardW = 90;
-    const cardH = 116;
+    const cardX = 200 + idx * 144;
+    const cardY = 100;
+    const cardW = 136;
+    const cardH = 176;
 
-    let cardColor = '#dc2626';
-    let cardLabel = 'BUSTER';
-    let emblemText = 'B';
-    let statText = idx === 0 ? '1st (+50% DMG)' : `2nd (${idx === 1 ? '1.2x' : '1.4x'})`;
-
-    if (card === 'NP') {
-      cardColor = '#d97706';
-      cardLabel = 'N. PHANTASM';
-      emblemText = 'NP';
-      statText = 'MAX OUTPUT';
-    } else if (card === 'Arts') {
-      cardColor = '#2563eb';
-      cardLabel = 'ARTS';
-      emblemText = 'A';
-      statText = idx === 0 ? '1st (+100% NP)' : `2nd (${idx === 1 ? '1.2x' : '1.4x'})`;
-    } else if (card === 'Quick') {
-      cardColor = '#16a34a';
-      cardLabel = 'QUICK';
-      emblemText = 'Q';
-      statText = idx === 0 ? '1st (+20% CRIT)' : `2nd (${idx === 1 ? '1.2x' : '1.4x'})`;
-    }
-
-    ctx.fillStyle = '#0f172a';
-    drawRoundRect(ctx, cardX, cardY, cardW, cardH, 6);
-    ctx.fill();
-    ctx.strokeStyle = cardColor;
-    ctx.lineWidth = 1.8;
-    ctx.stroke();
-
-    // Top card banner
-    ctx.fillStyle = cardColor;
-    drawRoundRect(ctx, cardX + 2, cardY + 2, cardW - 4, 22, 4);
-    ctx.fill();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 10px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(cardLabel, cardX + cardW / 2, cardY + 17);
-
-    // Center Emblem
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 28px system-ui, sans-serif';
-    ctx.fillText(emblemText, cardX + cardW / 2, cardY + 62);
-
-    // Bottom stat
-    ctx.font = 'bold 9px system-ui, sans-serif';
-    ctx.fillStyle = '#cbd5e1';
-    ctx.fillText(statText, cardX + cardW / 2, cardY + 102);
+    drawTarotCommandCard(
+      ctx,
+      cardX,
+      cardY,
+      cardW,
+      cardH,
+      card,
+      idx,
+      p1.critStars || 0,
+      isP1QuickLead
+    );
   });
 
-  // P1 Stars Pill (to right of cards - 116px height)
-  ctx.fillStyle = 'rgba(56, 189, 248, 0.1)';
-  drawRoundRect(ctx, 444, 110, 178, 116, 6);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 13px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('CRIT STARS', 533, 136);
-
-  // Vector star + count
-  drawVectorStar(ctx, 492, 175, 5, 13, 6, '#38bdf8');
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 36px system-ui, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(`${p1.critStars || 0}`, 514, 186);
-
   // ==========================================
-  // MIDDLE SECTION: CLASH RESOLUTION THEATER (COMPACT)
+  // MIDDLE SECTION: MINIMAL CLASH BANNER (Option A - No Slop)
   // ==========================================
-  ctx.fillStyle = '#030712';
-  drawRoundRect(ctx, 18, 236, 604, 200, 10);
-  ctx.fill();
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // Marquee Header Pill
-  ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 30, 246, 580, 28, 5);
-  ctx.fill();
-
-  ctx.fillStyle = '#f59e0b';
-  ctx.font = 'bold 13px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(`HOLY GRAIL WAR - TURN ${log.turnNumber} CLASH RESOLUTION`, 320, 265);
-
-  // Main Action Text - Sanitize and format ASCII
-  const actorClean = (log.actorName || p1.name).replace(/[^\x00-\x7F]/g, '');
-  const targetClean = (log.targetName || p2.name).replace(/[^\x00-\x7F]/g, '');
-  const cardsUsedSeq = (log.cardsUsed || p1Cards).join(' -> ');
-
-  const actLine = `${actorClean} executed [${cardsUsedSeq}]`;
-  const dmgLine = `Dealt ${log.damageDealt > 0 ? log.damageDealt.toLocaleString() : '0'} DMG to ${targetClean}!`;
-  const statLine = `+${log.npCharged || 0}% NP Charged | +${log.starsGenerated || 0} Stars Gathered`;
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 14px system-ui, sans-serif';
-  ctx.fillText(actLine, 320, 296);
-
-  ctx.fillStyle = log.isCritical ? '#f87171' : '#38bdf8';
-  ctx.font = 'bold 16px system-ui, sans-serif';
-  ctx.fillText(dmgLine, 320, 320);
-
-  ctx.fillStyle = '#cbd5e1';
-  ctx.font = '12px system-ui, sans-serif';
-  ctx.fillText(statLine, 320, 340);
-
-  // Special Highlight Banner
-  if (log.isNoblePhantasm) {
-    ctx.fillStyle = 'rgba(234, 179, 8, 0.15)';
-    drawRoundRect(ctx, 32, 354, 576, 28, 5);
-    ctx.fill();
-    ctx.strokeStyle = '#eab308';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    ctx.fillStyle = '#fde047';
-    ctx.font = 'bold 12px system-ui, sans-serif';
-    ctx.fillText('NOBLE PHANTASM UNLEASHED AT MAXIMUM OUTPUT!', 320, 373);
-  } else if (log.isCritical) {
-    ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
-    drawRoundRect(ctx, 32, 354, 576, 28, 5);
-    ctx.fill();
-    ctx.strokeStyle = '#ef4444';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    ctx.fillStyle = '#f87171';
-    ctx.font = 'bold 12px system-ui, sans-serif';
-    ctx.fillText('CRITICAL STRIKE! DOUBLE DAMAGE DEALT!', 320, 373);
-  } else {
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '12px system-ui, sans-serif';
-    ctx.fillText('Command Seals pulse with etheric energy as weapons clash.', 320, 373);
-  }
-
-  // Damage / Stars footer pill
-  ctx.fillStyle = 'rgba(56, 189, 248, 0.08)';
-  drawRoundRect(ctx, 70, 392, 500, 28, 14);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  const p1NameClean = (p1.masterName || 'P1').replace(/[^\x00-\x7F]/g, '');
-  const p2NameClean = (p2.masterName || 'P2').replace(/[^\x00-\x7F]/g, '');
-
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 12px system-ui, sans-serif';
-  ctx.fillText(`${p1NameClean} Stars: ${p1.critStars || 0}   |   ${p2NameClean} Stars: ${p2.critStars || 0}`, 320, 410);
+  drawMinimalClashBanner(ctx, log, p1, p2, 16, 286, 608, 54);
 
   // ==========================================
   // BOTTOM SECTION: PLAYER 2 (MASTER & SERVANT)
   // ==========================================
-  // 1. P2 Stars Pill (to left of cards - 116px height)
-  ctx.fillStyle = 'rgba(239, 68, 68, 0.1)';
-  drawRoundRect(ctx, 18, 448, 178, 116, 6);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(239, 68, 68, 0.3)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  ctx.fillStyle = '#f87171';
-  ctx.font = 'bold 13px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('CRIT STARS', 107, 472);
-
-  drawVectorStar(ctx, 68, 513, 5, 13, 6, '#f87171');
-  ctx.fillStyle = '#f87171';
-  ctx.font = 'bold 36px system-ui, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(`${p2.critStars || 0}`, 90, 524);
-
-  // 2. P2 3 Portrait Command Cards (Wireframe style - enlarged 116px height)
+  // 1. P2 3 Command Cards (Left, w: 136, h: 176)
   const p2Cards = (log.p2Cards || ['Arts', 'Buster', 'Quick']) as ('Buster' | 'Arts' | 'Quick' | 'NP')[];
+  const isP2QuickLead = p2Cards[0] === 'Quick';
   p2Cards.slice(0, 3).forEach((card, idx) => {
-    const cardX = 202 + idx * 96;
-    const cardY = 448;
-    const cardW = 90;
-    const cardH = 116;
+    const cardX = 16 + idx * 144;
+    const cardY = 404;
+    const cardW = 136;
+    const cardH = 176;
 
-    let cardColor = '#2563eb';
-    let cardLabel = 'ARTS';
-    let emblemText = 'A';
-    let statText = idx === 0 ? '1st (+100% NP)' : `2nd (${idx === 1 ? '1.2x' : '1.4x'})`;
-
-    if (card === 'NP') {
-      cardColor = '#d97706';
-      cardLabel = 'N. PHANTASM';
-      emblemText = 'NP';
-      statText = 'MAX OUTPUT';
-    } else if (card === 'Buster') {
-      cardColor = '#dc2626';
-      cardLabel = 'BUSTER';
-      emblemText = 'B';
-      statText = idx === 0 ? '1st (+50% DMG)' : `2nd (${idx === 1 ? '1.2x' : '1.4x'})`;
-    } else if (card === 'Quick') {
-      cardColor = '#16a34a';
-      cardLabel = 'QUICK';
-      emblemText = 'Q';
-      statText = idx === 0 ? '1st (+20% CRIT)' : `2nd (${idx === 1 ? '1.2x' : '1.4x'})`;
-    }
-
-    ctx.fillStyle = '#0f172a';
-    drawRoundRect(ctx, cardX, cardY, cardW, cardH, 6);
-    ctx.fill();
-    ctx.strokeStyle = cardColor;
-    ctx.lineWidth = 1.8;
-    ctx.stroke();
-
-    // Top card banner
-    ctx.fillStyle = cardColor;
-    drawRoundRect(ctx, cardX + 2, cardY + 2, cardW - 4, 22, 4);
-    ctx.fill();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 10px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(cardLabel, cardX + cardW / 2, cardY + 17);
-
-    // Center Emblem
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 28px system-ui, sans-serif';
-    ctx.fillText(emblemText, cardX + cardW / 2, cardY + 62);
-
-    // Bottom stat
-    ctx.font = 'bold 9px system-ui, sans-serif';
-    ctx.fillStyle = '#cbd5e1';
-    ctx.fillText(statText, cardX + cardW / 2, cardY + 102);
+    drawTarotCommandCard(
+      ctx,
+      cardX,
+      cardY,
+      cardW,
+      cardH,
+      card,
+      idx,
+      p2.critStars || 0,
+      isP2QuickLead
+    );
   });
 
-  // 3. P2 Details (Status Bars & Avatar)
-  const p2HpRatio = Math.max(0, Math.min(1, p2.currentHp / p2.maxHp));
-  const p2NpRatio = Math.max(0, Math.min(1, (p2.npGauge || 0) / 100));
+  // 2. P2 Avatar Portrait Card (Right, 172x260) - Large Portrait Upgrade
+  drawServantPortraitCard(ctx, 452, 404, 172, 260, p2Img, p2, '#ef4444');
 
-  // P2 NP Bar (24px height)
-  ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 148, 574, 344, 24, 5);
-  ctx.fill();
-  ctx.strokeStyle = '#b45309';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  if (p2NpRatio > 0) {
-    ctx.fillStyle = (p2.npGauge || 0) >= 100 ? '#f59e0b' : '#eab308';
-    drawRoundRect(ctx, 148, 574, Math.max(8, 344 * p2NpRatio), 24, 5);
-    ctx.fill();
-  }
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 13px system-ui, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(`NP: ${Math.round(p2.npGauge || 0)}% ${(p2.npGauge || 0) >= 100 ? '★ NP READY' : ''}`, 158, 591);
-
-  ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 13px system-ui, sans-serif';
-  ctx.fillText('NP', 120, 591);
-
-  // P2 HP Bar (26px height)
-  ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, 18, 606, 474, 26, 5);
-  ctx.fill();
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  ctx.fillStyle = p2HpRatio > 0.35 ? '#22c55e' : '#ef4444';
-  if (p2HpRatio > 0) {
-    drawRoundRect(ctx, 18, 606, Math.max(8, 474 * p2HpRatio), 26, 5);
-    ctx.fill();
-  }
-
-  ctx.textAlign = 'left';
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 13px system-ui, sans-serif';
-  ctx.fillText(`HP  ${p2.currentHp.toLocaleString()} / ${p2.maxHp.toLocaleString()} (${Math.round(p2HpRatio * 100)}%)`, 28, 624);
-
-  // 3.5 P2 3 Active Skill Badges (Bottom Left)
+  // 3. P2 Skills (Row under cards, y: 588)
   const p2Skills = p2.skills || [];
   const p2Bond = p2.bondLevel !== undefined ? p2.bondLevel : 3;
   [0, 1, 2].forEach((sIdx) => {
-    const sBoxX = 18 + sIdx * 70;
-    const sBoxY = 638;
-    const sBoxW = 66;
-    const sBoxH = 22;
+    const sBoxX = 16 + sIdx * 64;
+    const sBoxY = 588;
+    const sBoxW = 60;
+    const sBoxH = 20;
     const sData = p2Skills[sIdx];
     const sCd = sData?.currentCooldown || 0;
     const isLocked = sIdx === 2 && p2Bond < 5;
@@ -2292,81 +2455,164 @@ export async function renderBattleTurnSummary(
       drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
       ctx.fill();
       ctx.strokeStyle = '#4338ca';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 0.8;
+      drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
       ctx.stroke();
 
+      drawVectorLock(ctx, sBoxX + 12, sBoxY + 10, '#a5b4fc');
       ctx.fillStyle = '#a5b4fc';
-      ctx.font = 'bold 10px system-ui, sans-serif';
+      ctx.font = 'bold 9px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('🔒 Bond 5', sBoxX + sBoxW / 2, sBoxY + 15);
+      ctx.fillText('Bond 5', sBoxX + sBoxW / 2 + 6, sBoxY + 14);
     } else if (sCd > 0) {
       ctx.fillStyle = '#1e293b';
       drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
       ctx.fill();
       ctx.strokeStyle = '#475569';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 0.8;
+      drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
       ctx.stroke();
 
       ctx.fillStyle = '#94a3b8';
-      ctx.font = 'bold 10px system-ui, sans-serif';
+      ctx.font = 'bold 9px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`S${sIdx + 1}: ${sCd}T`, sBoxX + sBoxW / 2, sBoxY + 15);
+      ctx.fillText(`S${sIdx + 1}: ${sCd}T`, sBoxX + sBoxW / 2, sBoxY + 14);
     } else {
-      ctx.fillStyle = sIdx === 2 ? '#065f46' : '#991b1b';
+      ctx.fillStyle = sIdx === 2 ? '#064e3b' : '#881337';
       drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
       ctx.fill();
-      ctx.strokeStyle = sIdx === 2 ? '#10b981' : '#f87171';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = sIdx === 2 ? '#10b981' : '#f43f5e';
+      ctx.lineWidth = 0.8;
+      drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
       ctx.stroke();
 
+      drawSparkDiamond(ctx, sBoxX + 11, sBoxY + 10, 3, '#ffffff');
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 10px system-ui, sans-serif';
+      ctx.font = 'bold 9px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`✨ S${sIdx + 1}: RDY`, sBoxX + sBoxW / 2, sBoxY + 15);
+      ctx.fillText(`S${sIdx + 1}: RDY`, sBoxX + sBoxW / 2 + 5, sBoxY + 14);
     }
     ctx.restore();
   });
 
-  // P2 Header Title (Right Aligned before Avatar)
-  const p2DisplayName = p2.masterName || 'Master 2';
+  // 4. P2 Header Title & Class Pill (Right-aligned next to skills)
+  const p2DisplayName = (p2.masterName || 'Master 2').replace(/[^\x00-\x7F]/g, '');
+  const p2ServantClean = (p2.name || 'Enemy Spirit').replace(/[^\x00-\x7F]/g, '');
+  const p2ClassClean = (p2.servantClass || 'ARCHER').toUpperCase();
+
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = 'bold 15px sans-serif';
   ctx.textAlign = 'right';
-  ctx.fillStyle = '#f87171';
-  ctx.font = 'bold 18px system-ui, sans-serif';
-  ctx.fillText(p2DisplayName, 492, 652);
+  ctx.fillText(p2DisplayName, 440, 603);
 
   const p2NameWidth = ctx.measureText(p2DisplayName).width;
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = 'bold 14px system-ui, sans-serif';
-  ctx.fillText(`[${p2.servantClass}] ${p2.name} • `, 492 - p2NameWidth, 652);
-
-  // 4. P2 Avatar Box (Right, 120x226)
-  ctx.fillStyle = '#0f172a';
-  drawRoundRect(ctx, 502, 448, 120, 226, 8);
+  const p2PillX = 432 - p2NameWidth - 64;
+  const p2PillY = 589;
+  ctx.fillStyle = 'rgba(244, 63, 94, 0.12)';
+  drawRoundRect(ctx, p2PillX, p2PillY, 60, 18, 9);
   ctx.fill();
+  ctx.strokeStyle = 'rgba(244, 63, 94, 0.4)';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, p2PillX, p2PillY, 60, 18, 9);
+  ctx.stroke();
+  ctx.fillStyle = '#f43f5e';
+  ctx.font = 'bold 9px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(p2ClassClean, p2PillX + 30, p2PillY + 13);
 
-  if (p2Img) {
-    ctx.save();
-    drawRoundRect(ctx, 504, 450, 116, 222, 6);
-    ctx.clip();
-    drawImageCover(ctx, p2Img, 504, 450, 116, 222);
-    ctx.restore();
-  } else {
-    ctx.fillStyle = '#1e293b';
-    drawRoundRect(ctx, 504, 450, 116, 222, 6);
+  ctx.fillStyle = '#cbd5e1';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(p2ServantClean, p2PillX - 8, 603);
+
+  // 5. P2 Stars Pill & NP Bar (y: 614)
+  ctx.fillStyle = '#0f172a';
+  drawRoundRect(ctx, 16, 614, 126, 22, 4);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(248, 113, 113, 0.4)';
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, 16, 614, 126, 22, 4);
+  ctx.stroke();
+
+  drawVectorStar(ctx, 32, 625, 5, 5.5, 2.8, '#f87171');
+  ctx.fillStyle = '#f87171';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`${p2.critStars || 0} Stars`, 44, 630);
+
+  // P2 NP Bar
+  const p2NpRatio = Math.max(0, Math.min(1, (p2.npGauge || 0) / 100));
+  ctx.fillStyle = '#0f172a';
+  drawRoundRect(ctx, 150, 614, 290, 22, 4);
+  ctx.fill();
+  ctx.strokeStyle = '#92400e';
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, 150, 614, 290, 22, 4);
+  ctx.stroke();
+
+  if (p2NpRatio > 0) {
+    const npGrad = ctx.createLinearGradient(150, 614, 150, 636);
+    if ((p2.npGauge || 0) >= 100) {
+      npGrad.addColorStop(0, '#fde047');
+      npGrad.addColorStop(1, '#d97706');
+    } else {
+      npGrad.addColorStop(0, '#facc15');
+      npGrad.addColorStop(1, '#ca8a04');
+    }
+    ctx.fillStyle = npGrad;
+    drawRoundRect(ctx, 150, 614, Math.max(8, 290 * p2NpRatio), 22, 4);
     ctx.fill();
-    ctx.fillStyle = '#ef4444';
-    ctx.font = 'bold 38px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(p2.servantClass?.[0] || 'E', 562, 540);
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = 'bold 14px system-ui, sans-serif';
-    ctx.fillText((p2.name || 'Servant').slice(0, 12), 562, 580);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+    drawRoundRect(ctx, 150, 614, Math.max(8, 290 * p2NpRatio), 10, 4);
+    ctx.fill();
   }
 
-  ctx.strokeStyle = '#ef4444';
-  ctx.lineWidth = 2.5;
-  drawRoundRect(ctx, 502, 448, 120, 226, 8);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'left';
+  const p2NpText = `NP: ${Math.round(p2.npGauge || 0)}%`;
+  ctx.fillText(p2NpText, 160, 630);
+
+  if ((p2.npGauge || 0) >= 100) {
+    const p2NpW = ctx.measureText(p2NpText).width;
+    drawVectorStar(ctx, 170 + p2NpW, 626, 5, 4.5, 2.2, '#fde047');
+    ctx.fillStyle = '#fde047';
+    ctx.fillText('[MAX READY]', 178 + p2NpW, 630);
+  }
+
+  // 6. P2 HP Bar (y: 642, 24px height)
+  const p2HpRatio = Math.max(0, Math.min(1, p2.currentHp / p2.maxHp));
+  ctx.fillStyle = '#0f172a';
+  drawRoundRect(ctx, 16, 642, 424, 24, 4);
+  ctx.fill();
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, 16, 642, 424, 24, 4);
   ctx.stroke();
+
+  if (p2HpRatio > 0) {
+    const hpGrad = ctx.createLinearGradient(16, 642, 16, 666);
+    if (p2HpRatio > 0.35) {
+      hpGrad.addColorStop(0, '#22c55e');
+      hpGrad.addColorStop(1, '#15803d');
+    } else {
+      hpGrad.addColorStop(0, '#ef4444');
+      hpGrad.addColorStop(1, '#b91c1c');
+    }
+    ctx.fillStyle = hpGrad;
+    drawRoundRect(ctx, 16, 642, Math.max(8, 424 * p2HpRatio), 24, 4);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+    drawRoundRect(ctx, 16, 642, Math.max(8, 424 * p2HpRatio), 11, 4);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(`HP  ${p2.currentHp.toLocaleString()} / ${p2.maxHp.toLocaleString()} (${Math.round(p2HpRatio * 100)}%)`, 26, 659);
 }
 
 /**
