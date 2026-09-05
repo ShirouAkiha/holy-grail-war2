@@ -1582,10 +1582,14 @@ export default function DiscordEmulator({
     // ----------------------------------------------------
     // COMMAND 3: /servant (Master's Servant Workshop Hub)
     // ----------------------------------------------------
-    if (trimmed === '/servant' || trimmed.startsWith('/servant ')) {
-      let targetCat: 'profile' | 'stats' | 'np' | 'dialogue' | 'roster' = 'profile';
+    if (trimmed === '/servant' || trimmed.startsWith('/servant ') || trimmed === '!servant' || trimmed.startsWith('!servant ') || trimmed === '!myservant' || trimmed.startsWith('!myservant ')) {
+      let targetCat: 'profile' | 'stats' | 'equip_ce' | 'feed_ce' | 'np' | 'dialogue' | 'roster' = 'profile';
       if (trimmed.includes('stat') || trimmed.includes('points')) {
         targetCat = 'stats';
+      } else if (trimmed.includes('equip') || trimmed.includes('ce')) {
+        targetCat = 'equip_ce';
+      } else if (trimmed.includes('feed') || trimmed.includes('exp')) {
+        targetCat = 'feed_ce';
       } else if (trimmed.includes('np') || trimmed.includes('noble')) {
         targetCat = 'np';
       } else if (trimmed.includes('dialogue') || trimmed.includes('voice') || trimmed.includes('quote')) {
@@ -1593,8 +1597,8 @@ export default function DiscordEmulator({
       } else if (trimmed.includes('roster') || trimmed.includes('list')) {
         targetCat = 'roster';
       }
-      setServantHubCategory(targetCat);
-      postServantHub(targetCat);
+      setServantHubCategory(targetCat as any);
+      postServantHub(targetCat as any);
       return;
     }
 
@@ -4349,6 +4353,26 @@ export default function DiscordEmulator({
         `• 🕯️ **Summon:** *" ${quotes.summon || t.summonQuote} "*\n\n` +
         `💡 *Set lines with \`/customise quote <type> "<text>"\` or click Replay Cut-In below!*`;
       color = '#d4af37';
+    } else if (category === ('equip_ce' as any)) {
+      title = `👔 Equip Craft Essence — ${sName}`;
+      const ownedCes = (master.craftEssences || []).filter(Boolean);
+      const equippedCe = targetServant.equippedCe;
+      description =
+        `*Select a Craft Essence from your Master Vault to equip onto **${sName}**.*\n\n` +
+        `🛡️ **Currently Equipped:** ${equippedCe ? `**[★${equippedCe.rarity}] ${equippedCe.name}** (+${equippedCe.atkBonus || 0} ATK / +${equippedCe.hpBonus || 0} HP)\n> *${equippedCe.effectText || equippedCe.description}*` : '*(None equipped)*'}\n\n` +
+        `🎒 **Available Vault Craft Essences (${ownedCes.length}):**\n` +
+        (ownedCes.length === 0
+          ? '• *No Craft Essences in inventory. Claim practice CEs in `/inventory` or roll in `/gacha`!*'
+          : ownedCes.slice(0, 5).map(c => `• **[★${c.rarity}] ${c.name}** (+${c.atkBonus || 0} ATK / +${c.hpBonus || 0} HP)`).join('\n'));
+      color = '#38bdf8';
+    } else if (category === ('feed_ce' as any)) {
+      title = `🧪 Craft Essence Synthesis & EXP Feed — ${sName}`;
+      const ownedCes = (master.craftEssences || []).filter(Boolean);
+      description =
+        `*Synthesize Craft Essences into spiritron mana to level up **${sName}** and earn +10 Stat Points per Level Up!*\n\n` +
+        `🌟 **Current Level:** Lv.${lvl}/100 | **Available Stat Points:** \`${availPoints} pts\`\n` +
+        `🎒 **Inventory Essences:** \`${ownedCes.length} Essences available to feed\``;
+      color = '#a855f7';
     } else if (category === 'roster') {
       title = `📜 Contracted Heroic Spirits Roster (${ownedServants.length})`;
       description =
@@ -4369,8 +4393,10 @@ export default function DiscordEmulator({
     const categoryNavButtons = [
       { id: 'servant_tab_profile', label: 'Parameters', style: (category === 'profile' ? 'primary' : 'secondary') as any, emoji: '📊' },
       { id: 'servant_tab_stats', label: 'Stat Points', style: (category === 'stats' ? 'primary' : 'secondary') as any, emoji: '⭐' },
-      { id: 'servant_tab_np', label: 'Noble Phantasm', style: (category === 'np' ? 'primary' : 'secondary') as any, emoji: '💥' },
+      { id: 'servant_tab_equip_ce', label: 'Equip CE', style: (category === ('equip_ce' as any) ? 'primary' : 'secondary') as any, emoji: '👔' },
+      { id: 'servant_tab_feed_ce', label: 'Feed CEs', style: (category === ('feed_ce' as any) ? 'primary' : 'secondary') as any, emoji: '🧪' },
       { id: 'servant_tab_dialogue', label: 'Voice Lines', style: (category === 'dialogue' ? 'primary' : 'secondary') as any, emoji: '💬' },
+      { id: 'servant_tab_np', label: 'Noble Phantasm', style: (category === 'np' ? 'primary' : 'secondary') as any, emoji: '💥' },
       { id: 'servant_tab_roster', label: 'Roster', style: (category === 'roster' ? 'primary' : 'secondary') as any, emoji: '📜' }
     ];
 
@@ -4382,6 +4408,17 @@ export default function DiscordEmulator({
         { id: 'servant_add_agi', label: '+1 AGI', style: 'success', emoji: '⚡', disabled: availPoints <= 0 },
         { id: 'servant_add_mna', label: '+1 MNA', style: 'success', emoji: '🔮', disabled: availPoints <= 0 },
         { id: 'servant_add_auto', label: 'Auto-Distribute', style: 'primary', emoji: '✨', disabled: availPoints <= 0 }
+      ];
+    } else if (category === ('equip_ce' as any)) {
+      actionButtons = [
+        { id: 'inv_cat_ces', label: 'Open Vault', style: 'primary', emoji: '🛡️' },
+        ...(targetServant.equippedCe ? [{ id: 'servant_act_unequip_ce', label: 'Unequip CE', style: 'danger' as const, emoji: '❌' }] : [])
+      ];
+    } else if (category === ('feed_ce' as any)) {
+      actionButtons = [
+        { id: 'inv_act_feed_1_3star', label: 'Feed 1-3★ CEs', style: 'success', emoji: '⚡' },
+        { id: 'inv_act_feed_duplicates', label: 'Feed Duplicates', style: 'primary', emoji: '⚡' },
+        { id: 'inv_act_feed_all', label: 'Feed All CEs', style: 'danger', emoji: '🔥' }
       ];
     } else if (category === 'dialogue') {
       actionButtons = [
@@ -5512,6 +5549,12 @@ export default function DiscordEmulator({
       } else if (btnId === 'servant_tab_stats') {
         setServantHubCategory('stats');
         postServantHub('stats', servantHubSelectedId || undefined);
+      } else if (btnId === 'servant_tab_equip_ce') {
+        setServantHubCategory('equip_ce' as any);
+        postServantHub('equip_ce' as any, servantHubSelectedId || undefined);
+      } else if (btnId === 'servant_tab_feed_ce') {
+        setServantHubCategory('feed_ce' as any);
+        postServantHub('feed_ce' as any, servantHubSelectedId || undefined);
       } else if (btnId === 'servant_tab_np') {
         setServantHubCategory('np');
         postServantHub('np', servantHubSelectedId || undefined);
@@ -5521,6 +5564,13 @@ export default function DiscordEmulator({
       } else if (btnId === 'servant_tab_roster') {
         setServantHubCategory('roster');
         postServantHub('roster', servantHubSelectedId || undefined);
+      } else if (btnId === 'servant_act_unequip_ce') {
+        if (targetServant) {
+          const updated = { ...targetServant, equippedCe: undefined, equippedCeId: undefined };
+          const updatedServants = ownedServants.map(s => s.id === updated.id ? updated : s);
+          onUpdateMaster({ ...master, servants: updatedServants });
+          postServantHub('equip_ce' as any, updated.id);
+        }
       }
       // 2. Select dropdown switch
       else if (btnId.startsWith('servant_sel_switch_')) {

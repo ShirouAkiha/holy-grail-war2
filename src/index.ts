@@ -859,22 +859,17 @@ client.on(Events.MessageCreate, async message => {
         return;
       }
 
-      const t = activeServant.template;
-      const profileEmbed = buildServantFullProfileEmbed(t);
-      const artworkEmbed = buildServantArtworkEmbed(t);
-      const actions = buildProfileActions(t.id);
+      let category: 'profile' | 'stats' | 'equip_ce' | 'feed_ce' | 'np' | 'dialogue' | 'roster' = 'profile';
+      const sub = args[0]?.toLowerCase();
+      if (sub === 'stat' || sub === 'stats' || sub === 'points') category = 'stats';
+      else if (sub === 'equip' || sub === 'ce' || sub === 'equip_ce') category = 'equip_ce';
+      else if (sub === 'feed' || sub === 'feed_ce' || sub === 'exp') category = 'feed_ce';
+      else if (sub === 'dialogue' || sub === 'voice' || sub === 'quote') category = 'dialogue';
+      else if (sub === 'roster' || sub === 'list') category = 'roster';
 
-      const files: AttachmentBuilder[] = [];
-      try {
-        const cardBuffer = await renderServantProfileCard(activeServant, message.author.username);
-        if (cardBuffer && cardBuffer.length > 500) {
-          files.push(new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' }));
-        }
-      } catch (e) {
-        console.warn('Canvas render error in !servant:', e);
-      }
-
-      await message.reply({ embeds: [profileEmbed, artworkEmbed], files, components: [actions] });
+      const hub = await servantCommand.buildServantHub(master, activeServant, category, activeServant.id);
+      const replyMsg = await message.reply({ embeds: hub.embeds, files: hub.files, components: hub.components });
+      servantCommand.attachServantCollector(replyMsg, message.author.id, master, activeServant, category);
       return;
     }
 
