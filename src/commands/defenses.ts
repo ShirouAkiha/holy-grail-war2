@@ -158,6 +158,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const res = executeWarAction(war, interaction.user.id, 'set_ward', wardOpt);
       war = res.updatedWar;
       lastMsg = res.message;
+      if (['none', 'ward', 'alarm'].includes(wardOpt)) {
+        master.boundedField = wardOpt as 'none' | 'ward' | 'alarm';
+      }
       await saveMaster(master);
     }
 
@@ -166,6 +169,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const res = executeWarAction(war, interaction.user.id, 'toggle_evade', evadeOpt);
       war = res.updatedWar;
       lastMsg = res.message;
+      master.autoConsumeCommandSeal = evadeOpt === 'on';
       await saveMaster(master);
     }
 

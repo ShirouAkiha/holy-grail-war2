@@ -253,16 +253,19 @@ client.on(Events.InteractionCreate, async interaction => {
           const res = executeWarAction(war, interaction.user.id, 'set_ward', 'none');
           war = res.updatedWar;
           msg = res.message;
+          master.boundedField = 'none';
           await updateMasterProfile(master);
         } else if (btnId === 'profile_ward_ward') {
           const res = executeWarAction(war, interaction.user.id, 'set_ward', 'ward');
           war = res.updatedWar;
           msg = res.message;
+          master.boundedField = 'ward';
           await updateMasterProfile(master);
         } else if (btnId === 'profile_ward_alarm') {
           const res = executeWarAction(war, interaction.user.id, 'set_ward', 'alarm');
           war = res.updatedWar;
           msg = res.message;
+          master.boundedField = 'alarm';
           await updateMasterProfile(master);
         } else if (btnId === 'profile_toggle_evade') {
           const curP = war.participants[interaction.user.id];
@@ -270,11 +273,20 @@ client.on(Events.InteractionCreate, async interaction => {
           const res = executeWarAction(war, interaction.user.id, 'toggle_evade', newMode);
           war = res.updatedWar;
           msg = res.message;
+          master.autoConsumeCommandSeal = newMode === 'on';
           await updateMasterProfile(master);
         } else if (btnId === 'profile_heal') {
           const res = executeWarAction(war, interaction.user.id, 'rest_and_heal');
           war = res.updatedWar;
           msg = res.message;
+          if (res.success && master.servants && master.servants.length > 0) {
+            const activePart = war.participants[interaction.user.id];
+            if (activePart) {
+              master.servants[0].currentHp = activePart.currentHp;
+              master.servants[0].baseHpAtDamage = activePart.baseHpAtDamage;
+              master.servants[0].lastDamageTime = activePart.lastDamageTime;
+            }
+          }
           await updateMasterProfile(master);
         }
 
@@ -317,16 +329,19 @@ client.on(Events.InteractionCreate, async interaction => {
           const res = executeWarAction(war, interaction.user.id, 'set_ward', 'none');
           war = res.updatedWar;
           msg = res.message;
+          master.boundedField = 'none';
           await updateMasterProfile(master);
         } else if (btnId === 'ward_ward') {
           const res = executeWarAction(war, interaction.user.id, 'set_ward', 'ward');
           war = res.updatedWar;
           msg = res.message;
+          master.boundedField = 'ward';
           await updateMasterProfile(master);
         } else if (btnId === 'ward_alarm') {
           const res = executeWarAction(war, interaction.user.id, 'set_ward', 'alarm');
           war = res.updatedWar;
           msg = res.message;
+          master.boundedField = 'alarm';
           await updateMasterProfile(master);
         } else if (btnId === 'toggle_auto_evade') {
           const curP = war.participants[interaction.user.id];
@@ -334,6 +349,7 @@ client.on(Events.InteractionCreate, async interaction => {
           const res = executeWarAction(war, interaction.user.id, 'toggle_evade', newMode);
           war = res.updatedWar;
           msg = res.message;
+          master.autoConsumeCommandSeal = newMode === 'on';
           await updateMasterProfile(master);
         } else if (btnId === 'church_enter') {
           const res = enterChurchSanctuary(war, interaction.user.id);

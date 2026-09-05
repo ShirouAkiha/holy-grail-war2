@@ -82,6 +82,28 @@ export default function GrailWarSim({
     onUpdateGrailWar(res.updatedWar);
     setActionFeedback(res.message);
     setTimeout(() => setActionFeedback(null), 6000);
+
+    if (actionType === 'set_ward' && targetParam) {
+      onUpdateMaster({ ...master, boundedField: targetParam as any });
+    } else if (actionType === 'toggle_evade' && targetParam) {
+      onUpdateMaster({ ...master, autoConsumeCommandSeal: targetParam === 'on' });
+    } else if ((actionType === 'rest_and_heal' || actionType === 'heal_ritual') && res.success) {
+      const activePart = res.updatedWar.participants[master.discordId];
+      if (activePart && master.servants.length > 0) {
+        const updatedServants = master.servants.map((s, idx) => {
+          if (s.id === (master.activeServantId || master.servants[0].id) || idx === 0) {
+            return {
+              ...s,
+              currentHp: activePart.currentHp,
+              baseHpAtDamage: activePart.baseHpAtDamage,
+              lastDamageTime: activePart.lastDamageTime
+            };
+          }
+          return s;
+        });
+        onUpdateMaster({ ...master, servants: updatedServants });
+      }
+    }
   };
 
   const handleAmbushSubmit = (e: React.FormEvent) => {

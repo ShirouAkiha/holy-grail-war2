@@ -2303,7 +2303,7 @@ export default function DiscordEmulator({
     // ----------------------------------------------------
     // COMMAND 5: /grailwar, /attack, /leak, /defenses, /familiar, /trap
     // ----------------------------------------------------
-    if (trimmed.startsWith('/grailwar') || trimmed.startsWith('/attack') || trimmed.startsWith('/leak') || trimmed.startsWith('/ambush') || trimmed.startsWith('/defenses') || trimmed.startsWith('/ward') || trimmed.startsWith('/evade') || trimmed.startsWith('/familiar') || trimmed.startsWith('/familiars') || trimmed.startsWith('/trap') || trimmed.startsWith('/traps')) {
+    if (trimmed.startsWith('/grailwar') || trimmed.startsWith('/attack') || trimmed.startsWith('/leak') || trimmed.startsWith('/ambush') || trimmed.startsWith('/defenses') || trimmed.startsWith('/ward') || trimmed.startsWith('/evade') || trimmed.startsWith('/familiar') || trimmed.startsWith('/familiars') || trimmed.startsWith('/trap') || trimmed.startsWith('/traps') || trimmed.startsWith('/heal') || trimmed.startsWith('/rest')) {
       const isFamiliars = trimmed.startsWith('/familiars') || trimmed.startsWith('/familiar') || trimmed.startsWith('/grailwar familiar') || trimmed.startsWith('/grailwar familiars');
       const isTraps = trimmed.startsWith('/traps') || trimmed.startsWith('/trap') || trimmed.startsWith('/grailwar trap') || trimmed.startsWith('/grailwar traps');
       const isDefenses = !isFamiliars && !isTraps && (trimmed.startsWith('/defenses') || trimmed.startsWith('/grailwar defenses') || trimmed.startsWith('/ward') || trimmed.startsWith('/grailwar ward') || trimmed.startsWith('/evade') || trimmed.startsWith('/grailwar evade'));
@@ -2528,26 +2528,31 @@ export default function DiscordEmulator({
           currentWar = res.updatedWar;
           actionMsg = res.message;
           onUpdateGrailWar(currentWar);
+          onUpdateMaster({ ...master, boundedField: 'alarm' });
         } else if (trimmed.includes('ward sanctuary') || trimmed.includes('ward ward') || (trimmed.startsWith('/ward') && !trimmed.includes('none') && !trimmed.includes('alarm'))) {
           const res = executeWarAction(currentWar, master.discordId, 'set_ward', 'ward');
           currentWar = res.updatedWar;
           actionMsg = res.message;
           onUpdateGrailWar(currentWar);
+          onUpdateMaster({ ...master, boundedField: 'ward' });
         } else if (trimmed.includes('ward none')) {
           const res = executeWarAction(currentWar, master.discordId, 'set_ward', 'none');
           currentWar = res.updatedWar;
           actionMsg = res.message;
           onUpdateGrailWar(currentWar);
+          onUpdateMaster({ ...master, boundedField: 'none' });
         } else if (trimmed.includes('evade off')) {
           const res = executeWarAction(currentWar, master.discordId, 'toggle_evade', 'off');
           currentWar = res.updatedWar;
           actionMsg = res.message;
           onUpdateGrailWar(currentWar);
+          onUpdateMaster({ ...master, autoConsumeCommandSeal: false });
         } else if (trimmed.includes('evade on')) {
           const res = executeWarAction(currentWar, master.discordId, 'toggle_evade', 'on');
           currentWar = res.updatedWar;
           actionMsg = res.message;
           onUpdateGrailWar(currentWar);
+          onUpdateMaster({ ...master, autoConsumeCommandSeal: true });
         }
 
         const uP = currentWar.participants[master.discordId];
@@ -2777,6 +2782,18 @@ export default function DiscordEmulator({
       if (isRest) {
         const result = executeWarAction(grailWar, master.discordId, 'heal_ritual');
         onUpdateGrailWar(result.updatedWar);
+        if (result.success && activeServant) {
+          const updatedHp = result.updatedWar.participants[master.discordId]?.currentHp;
+          if (updatedHp !== undefined) {
+            const updatedServants = master.servants.map(s => s.id === activeServant.id ? {
+              ...s,
+              currentHp: updatedHp,
+              baseHpAtDamage: updatedHp,
+              lastDamageTime: Date.now()
+            } : s);
+            onUpdateMaster({ ...master, servants: updatedServants });
+          }
+        }
 
         addMessage({
           id: getNextId('bot_war_act_res'),
@@ -3850,27 +3867,43 @@ export default function DiscordEmulator({
         currentWar = res.updatedWar;
         actionMsg = res.message;
         onUpdateGrailWar(currentWar);
+        onUpdateMaster({ ...master, boundedField: 'none' });
       } else if (btnId === 'profile_ward_ward') {
         const res = executeWarAction(currentWar, master.discordId, 'set_ward', 'ward');
         currentWar = res.updatedWar;
         actionMsg = res.message;
         onUpdateGrailWar(currentWar);
+        onUpdateMaster({ ...master, boundedField: 'ward' });
       } else if (btnId === 'profile_ward_alarm') {
         const res = executeWarAction(currentWar, master.discordId, 'set_ward', 'alarm');
         currentWar = res.updatedWar;
         actionMsg = res.message;
         onUpdateGrailWar(currentWar);
+        onUpdateMaster({ ...master, boundedField: 'alarm' });
       } else if (btnId === 'profile_toggle_evade') {
         const curMode = currentWar.participants[master.discordId]?.autoEvadeEnabled !== false ? 'off' : 'on';
         const res = executeWarAction(currentWar, master.discordId, 'toggle_evade', curMode);
         currentWar = res.updatedWar;
         actionMsg = res.message;
         onUpdateGrailWar(currentWar);
+        onUpdateMaster({ ...master, autoConsumeCommandSeal: curMode === 'on' });
       } else if (btnId === 'profile_heal') {
         const res = executeWarAction(currentWar, master.discordId, 'rest_and_heal');
         currentWar = res.updatedWar;
         actionMsg = res.message;
         onUpdateGrailWar(currentWar);
+        if (res.success && activeServant) {
+          const updatedHp = currentWar.participants[master.discordId]?.currentHp;
+          if (updatedHp !== undefined) {
+            const updatedServants = master.servants.map(s => s.id === activeServant.id ? {
+              ...s,
+              currentHp: updatedHp,
+              baseHpAtDamage: updatedHp,
+              lastDamageTime: Date.now()
+            } : s);
+            onUpdateMaster({ ...master, servants: updatedServants });
+          }
+        }
       } else if (btnId === 'profile_refresh') {
         actionMsg = '🔄 Profile refreshed.';
       }
@@ -5070,22 +5103,26 @@ export default function DiscordEmulator({
         currentWar = res.updatedWar;
         actionMsg = res.message;
         onUpdateGrailWar(currentWar);
+        onUpdateMaster({ ...master, boundedField: 'none' });
       } else if (btnId === 'ward_ward') {
         const res = executeWarAction(currentWar, master.discordId, 'set_ward', 'ward');
         currentWar = res.updatedWar;
         actionMsg = res.message;
         onUpdateGrailWar(currentWar);
+        onUpdateMaster({ ...master, boundedField: 'ward' });
       } else if (btnId === 'ward_alarm') {
         const res = executeWarAction(currentWar, master.discordId, 'set_ward', 'alarm');
         currentWar = res.updatedWar;
         actionMsg = res.message;
         onUpdateGrailWar(currentWar);
+        onUpdateMaster({ ...master, boundedField: 'alarm' });
       } else if (btnId === 'toggle_auto_evade') {
         const curMode = currentWar.participants[master.discordId]?.autoEvadeEnabled === true ? 'off' : 'on';
         const res = executeWarAction(currentWar, master.discordId, 'toggle_evade', curMode);
         currentWar = res.updatedWar;
         actionMsg = res.message;
         onUpdateGrailWar(currentWar);
+        onUpdateMaster({ ...master, autoConsumeCommandSeal: curMode === 'on' });
       } else if (btnId === 'church_enter') {
         const res = enterChurchSanctuary(currentWar, master.discordId);
         currentWar = res.updatedWar;
@@ -5243,6 +5280,18 @@ export default function DiscordEmulator({
       if (btnId === 'war_rest') {
         const result = executeWarAction(grailWar, master.discordId, 'rest_and_heal');
         onUpdateGrailWar(result.updatedWar);
+        if (result.success && activeServant) {
+          const updatedHp = result.updatedWar.participants[master.discordId]?.currentHp;
+          if (updatedHp !== undefined) {
+            const updatedServants = master.servants.map(s => s.id === activeServant.id ? {
+              ...s,
+              currentHp: updatedHp,
+              baseHpAtDamage: updatedHp,
+              lastDamageTime: Date.now()
+            } : s);
+            onUpdateMaster({ ...master, servants: updatedServants });
+          }
+        }
 
         addMessage({
           id: getNextId('bot_war_act'),

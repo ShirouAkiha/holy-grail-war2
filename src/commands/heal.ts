@@ -20,6 +20,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     let war = getOrInitWarSession(master);
     const res = executeWarAction(war, interaction.user.id, 'heal_ritual');
     war = res.updatedWar;
+    if (res.success && master.servants && master.servants.length > 0) {
+      const activePart = war.participants[interaction.user.id];
+      if (activePart) {
+        master.servants[0].currentHp = activePart.currentHp;
+        master.servants[0].baseHpAtDamage = activePart.baseHpAtDamage;
+        master.servants[0].lastDamageTime = activePart.lastDamageTime;
+      }
+    }
     await saveMaster(master);
 
     const embed = new EmbedBuilder()
