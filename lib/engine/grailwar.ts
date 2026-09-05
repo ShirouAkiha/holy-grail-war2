@@ -1750,30 +1750,51 @@ export function recordDuelOutcome(
   let isEliminated = false;
 
   if (decision === 'kill') {
-    defeated.isAlive = false;
-    defeated.currentHp = 0;
-    defeated.baseHpAtDamage = 0;
-    victor.kills = (victor.kills || 0) + 1;
-    isEliminated = true;
-    outcomeLog = `☠️ FATAL EXECUTION in ${chanTag}: Master **${victor.username}** (${victor.servantName}) dealt the finishing blow and EXECUTED Master **${defeated.username}** (${defeated.servantName})! Church reported a massive 'gas leak explosion' in ${chanTag}.`;
+    // MANDATORY COMMAND SEAL CHECK FOR DEFEATED MASTERS:
+    // If the defeated Master still possesses Command Seals (>= 1), the Command Seal automatically
+    // intervenes to emergency spatial-evacuate Master and Servant to sanctuary at 1 HP, consuming 1 Command Seal.
+    // Defeated Masters are only permanently eliminated when Command Seals are exhausted (0 remaining).
+    if ((defeated.commandSeals ?? 3) >= 1) {
+      defeated.commandSeals = Math.max(0, (defeated.commandSeals ?? 3) - 1);
+      defeated.isAlive = true;
+      defeated.currentHp = 1;
+      defeated.baseHpAtDamage = 1;
+      defeated.lastDamageTime = now;
+      isEliminated = false;
+      outcomeLog = `🔴 **MANDATORY COMMAND SEAL INTERVENTION in ${chanTag}:** Defeated Master **${defeated.username}** (${defeated.servantName}) suffered a mortal defeat against **${victor.username}**, but the mandatory Command Seal check intervened! Consumed 1 Command Seal (Remaining: **${defeated.commandSeals}/3**) to execute emergency spatial evacuation! Preserved at **1 HP**!`;
 
-    targetWar.eventLogs.unshift({
-      id: `evt_exec_${Date.now()}`,
-      timestamp: now,
-      text: outcomeLog,
-      type: 'elimination'
-    });
-
-    const aliveList = Object.values(targetWar.participants).filter(p => p.isAlive);
-    if (aliveList.length === 1) {
-      targetWar.status = 'concluded';
-      targetWar.grailWinnerId = aliveList[0].discordId;
       targetWar.eventLogs.unshift({
-        id: `evt_win_${Date.now()}`,
+        id: `evt_evac_${Date.now()}`,
         timestamp: now,
-        text: `🏆 THE HOLY GRAIL HAS MANIFESTED! Master **${aliveList[0].username}** (${aliveList[0].servantName}) is the sole survivor and has won the Holy Grail War!`,
-        type: 'clash'
+        text: outcomeLog,
+        type: 'escape'
       });
+    } else {
+      defeated.isAlive = false;
+      defeated.currentHp = 0;
+      defeated.baseHpAtDamage = 0;
+      victor.kills = (victor.kills || 0) + 1;
+      isEliminated = true;
+      outcomeLog = `☠️ FATAL EXECUTION in ${chanTag}: Master **${victor.username}** (${victor.servantName}) dealt the finishing blow and EXECUTED Master **${defeated.username}** (${defeated.servantName})! Defeated Master had 0 Command Seals remaining and is PERMANENTLY ELIMINATED! Church reported a massive 'gas leak explosion' in ${chanTag}.`;
+
+      targetWar.eventLogs.unshift({
+        id: `evt_exec_${Date.now()}`,
+        timestamp: now,
+        text: outcomeLog,
+        type: 'elimination'
+      });
+
+      const aliveList = Object.values(targetWar.participants).filter(p => p.isAlive);
+      if (aliveList.length === 1) {
+        targetWar.status = 'concluded';
+        targetWar.grailWinnerId = aliveList[0].discordId;
+        targetWar.eventLogs.unshift({
+          id: `evt_win_${Date.now()}`,
+          timestamp: now,
+          text: `🏆 THE HOLY GRAIL HAS MANIFESTED! Master **${aliveList[0].username}** (${aliveList[0].servantName}) is the sole survivor and has won the Holy Grail War!`,
+          type: 'clash'
+        });
+      }
     }
   } else {
     // Spared: left on critical HP (or duel remaining HP), starts 5-min regeneration recovery

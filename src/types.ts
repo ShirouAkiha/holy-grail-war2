@@ -256,7 +256,7 @@ export interface BattleState {
   player1: ActiveCombatant;
   player2: ActiveCombatant;
   currentTurn: number;
-  turnPhase: 'card_selection' | 'action_resolution' | 'victory' | 'defeat';
+  turnPhase: 'card_selection' | 'action_resolution' | 'victory' | 'defeat' | 'fled' | 'evacuated';
   turnHistory: CombatTurnLog[];
   winnerId?: string;
   grailWarId?: string;
@@ -265,7 +265,7 @@ export interface BattleState {
 export interface CombatBattleRecord {
   id: string;
   timestamp: number;
-  outcome: 'victory' | 'defeat';
+  outcome: 'victory' | 'defeat' | 'fled' | 'evacuated';
   totalTurns: number;
   player1: {
     id: string;

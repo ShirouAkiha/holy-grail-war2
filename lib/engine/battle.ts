@@ -47,6 +47,35 @@ export function calculateClassMultiplier(attackerClass: ServantClass, defenderCl
   return 1.0;
 }
 
+/**
+ * Calculates flee success probability (in percent 0-100).
+ * - Base rate is 30% when HP is >= 50%.
+ * - When HP drops below 50%, rate decreases proportionally:
+ *   rate = 30 * (currentHp / (maxHp * 0.5))
+ * - Agility Servants (Rider, Lancer, Assassin, or agilityStat >= 12) gain +5% escape bonus!
+ */
+export function calculateFleeChance(
+  currentHp: number,
+  maxHp: number,
+  servantClass: ServantClass | string,
+  agilityStat: number = 10
+): { chancePercent: number; isAgilityBonus: boolean } {
+  const safeMax = Math.max(1, maxHp);
+  const hpRatio = Math.max(0, currentHp / safeMax);
+  let baseRate = hpRatio >= 0.5 ? 30 : Math.round(30 * (hpRatio / 0.5));
+
+  const isAgilityBonus =
+    ['Rider', 'Lancer', 'Assassin'].includes(servantClass) || agilityStat >= 12;
+  const bonus = isAgilityBonus ? 5 : 0;
+
+  const total = Math.min(95, Math.max(5, baseRate + bonus));
+  return { chancePercent: total, isAgilityBonus };
+}
+
+export function rollFleeSuccess(chancePercent: number): boolean {
+  return Math.random() * 100 < chancePercent;
+}
+
 export function createCombatantFromMasterServant(
   servantInstance: MasterServantInstance,
   masterName: string,
@@ -727,6 +756,10 @@ export function executeBattleTurn(
 
     const usedSkillNames: string[] = [];
 
+    // Actor and Target Passives (Max 2, 2nd unlocked after Bond 5)
+    const actorPassives = actor.passives || getUnlockedPassives(actor.servantClass, actor.bondLevel || 1);
+    const targetPassives = target.passives || getUnlockedPassives(target.servantClass, target.bondLevel || 1);
+
     // Decrement skill cooldowns at start of turn
     actor.skills = actor.skills.map(sk => ({
       ...sk,
@@ -814,6 +847,32 @@ export function executeBattleTurn(
             }
             break;
           }
+          case 'debuff': {
+            const magicResist = targetPassives.filter(p => p.type === 'magic_resistance').reduce((s, p) => s + p.value, 0);
+            const itemConstruct = actorPassives.filter(p => p.type === 'item_construction').reduce((s, p) => s + p.value, 0);
+            const effectiveResist = Math.max(0, magicResist - itemConstruct);
+
+            // Drain target NP gauge & apply ATK debuff (Discernment of the Poor / debuff skills)
+            const drainAmount = skill.value || 20;
+            target.npGauge = Math.max(0, target.npGauge - drainAmount);
+            target.activeBuffs.push({
+              name: `${skill.name} (ATK Down)`,
+              type: 'debuff_atk',
+              value: skill.value || 20,
+              remainingTurns: skill.duration || 1
+            });
+
+            if (effectiveResist <= 0 || Math.random() * 100 >= effectiveResist) {
+              target.isStunned = true;
+              target.activeBuffs.push({
+                name: `${skill.name} (NP Seal / Stun)`,
+                type: 'stun',
+                value: 100,
+                remainingTurns: skill.duration || 1
+              });
+            }
+            break;
+          }
           case 'stun':
             target.isStunned = true;
             target.activeBuffs.push({
@@ -867,10 +926,7 @@ export function executeBattleTurn(
     let totalNpCharge = 0;
     let isCritical = false;
 
-    // Actor and Target Passives (Max 2, 2nd unlocked after Bond 5)
-    const actorPassives = actor.passives || getUnlockedPassives(actor.servantClass, actor.bondLevel || 1);
-    const targetPassives = target.passives || getUnlockedPassives(target.servantClass, target.bondLevel || 1);
-
+    // Calculate Passives bonuses (Max 2, 2nd unlocked after Bond 5)
     const madnessBonus = actorPassives.filter(p => p.type === 'madness_enhancement').reduce((s, p) => s + p.value, 0);
     const ridingBonus = actorPassives.filter(p => p.type === 'riding').reduce((s, p) => s + p.value, 0);
     const territoryBonus = actorPassives.filter(p => p.type === 'territory_creation').reduce((s, p) => s + p.value, 0);
@@ -918,9 +974,17 @@ export function executeBattleTurn(
 
     // Check Card Chain Bonuses
     let cardChainType: 'Buster Brave' | 'Arts Chain' | 'Quick Chain' | 'Normal' = 'Normal';
-    if (cards.every(c => c === 'Buster')) cardChainType = 'Buster Brave';
-    else if (cards.every(c => c === 'Arts')) cardChainType = 'Arts Chain';
-    else if (cards.every(c => c === 'Quick')) cardChainType = 'Quick Chain';
+    if (cards.every(c => c === 'Buster')) {
+      cardChainType = 'Buster Brave';
+    } else if (cards.every(c => c === 'Arts')) {
+      cardChainType = 'Arts Chain';
+      totalNpCharge += 20; // Canonical FGO +20% flat NP gauge battery on Arts Chain
+    } else if (cards.every(c => c === 'Quick')) {
+      cardChainType = 'Quick Chain';
+      // Canonical FGO Quick Chain: Immediate +20 Critical Stars burst into the pool!
+      actor.critStars = Math.min(50, (actor.critStars || 0) + 20);
+      totalStars += 20;
+    }
 
     let actionText = '';
 
@@ -941,11 +1005,13 @@ export function executeBattleTurn(
       cards.forEach((card, idx) => {
         const positionMultiplier = 1.0 + idx * 0.15; // 1st: 1.0x, 2nd: 1.15x, 3rd: 1.30x
 
-        // Critical hit check based on Agility + Luck + Stars
-        const critChance = Math.min(0.85, (actor.stats.agility * 0.01) + (actor.critStars * 0.02));
+        // Critical hit check based on Agility + Luck + Stars + Quick Chain Bonus
+        const quickChainCritBonus = cardChainType === 'Quick Chain' ? 0.25 : 0.0;
+        const critChance = Math.min(0.95, (actor.stats.agility * 0.01) + ((actor.critStars || 0) * 0.02) + quickChainCritBonus);
         const cardIsCrit = Math.random() < critChance;
         if (cardIsCrit) isCritical = true;
-        const critMultiplier = cardIsCrit ? 1.75 + (actor.stats.luck * 0.01) + (critPassiveBonus / 100) : 1.0;
+        const quickChainCritDmg = cardChainType === 'Quick Chain' ? 0.30 : 0.0;
+        const critMultiplier = cardIsCrit ? 1.75 + (actor.stats.luck * 0.01) + (critPassiveBonus / 100) + quickChainCritDmg : 1.0;
 
         let cardDmgMult = 1.0;
         let cardNpMult = 1.0;
@@ -985,13 +1051,25 @@ export function executeBattleTurn(
         totalStars += Math.round(2 * cardStarMult);
       });
 
-      actionText = `⚔️ ${actor.name} executed a ${cards.join(' • ')} sequence dealing ${totalDamage.toLocaleString()} DMG!`;
+      const chainNotice = cardChainType === 'Quick Chain'
+        ? `\n🟢 **QUICK CHAIN BONUS:** +20 Critical Stars added & +25% Crit Rate!`
+        : cardChainType === 'Buster Brave'
+        ? `\n🔴 **BUSTER BRAVE CHAIN:** +35% Card Damage Power!`
+        : cardChainType === 'Arts Chain'
+        ? `\n🔵 **ARTS CHAIN:** +20% Flat NP Gauge Battery!`
+        : '';
+      const critNotice = isCritical ? ' ⚡ **CRITICAL HIT!**' : '';
+      actionText = `⚔️ ${actor.name} executed a ${cards.join(' • ')} sequence dealing ${totalDamage.toLocaleString()} DMG!${critNotice}${chainNotice}`;
+    }
+
+    if (usedSkillNames.length > 0) {
+      actionText = `✨ **${actor.name}** activated **${usedSkillNames.join(', ')}**!\n` + actionText;
     }
 
     // Apply damage to target
     target.currentHp = Math.max(0, target.currentHp - totalDamage);
     actor.npGauge = Math.min(300, actor.npGauge + totalNpCharge);
-    actor.critStars = Math.min(50, totalStars);
+    actor.critStars = Math.min(50, (actor.critStars || 0) + totalStars);
 
     // Guts Check (Battle Continuation)
     const gutsBuffIndex = target.activeBuffs.findIndex(b => b.type === 'guts');

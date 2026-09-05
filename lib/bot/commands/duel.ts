@@ -18,7 +18,9 @@ import { getOrCreateMaster } from '../database/service';
 import { 
   createCombatantFromMasterServant, 
   initializeBattle, 
-  executeBattleTurn 
+  executeBattleTurn,
+  calculateFleeChance,
+  rollFleeSuccess
 } from '../engine/battle';
 import { renderBattleTurnSummary } from '../canvas/nodeCanvasRenderer';
 import { CardType } from '../types';
@@ -93,6 +95,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setStyle(ButtonStyle.Success)
       );
 
+      const fleeInfo = calculateFleeChance(
+        state.player1.currentHp,
+        state.player1.maxHp,
+        state.player1.servantClass,
+        challengerServant.template.baseStats?.agility || 10
+      );
+
       const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
           .setCustomId('use_skill_1')
@@ -104,7 +113,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setLabel(\`Noble Phantasm (\${Math.round(state.player1.npGauge)}%)\`)
           .setEmoji('💥')
           .setStyle(isNpReady ? ButtonStyle.Danger : ButtonStyle.Secondary)
-          .setDisabled(!isNpReady)
+          .setDisabled(!isNpReady),
+        new ButtonBuilder()
+          .setCustomId('duel_flee')
+          .setLabel(\`Flee (\${fleeInfo.chancePercent}%)\`)
+          .setEmoji('🏃')
+          .setStyle(ButtonStyle.Secondary)
       );
 
       return { embed, rows: [cardRow, actionRow] };
@@ -146,15 +160,80 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         if (i.replied || i.deferred) return;
         await i.deferUpdate();
         collector.resetTimer();
-        let p1Cards: CardType[] = ['Buster', 'Arts', 'Quick'];
-      let useNp = false;
-      let useSkillIndex: number | undefined;
+        if (i.customId === 'duel_flee') {
+          const fleeProb = calculateFleeChance(
+            battleState.player1.currentHp,
+            battleState.player1.maxHp,
+            battleState.player1.servantClass,
+            challengerServant.template.baseStats?.agility || 10
+          );
+          const escaped = rollFleeSuccess(fleeProb.chancePercent);
 
-      if (i.customId === 'card_bbb') p1Cards = ['Buster', 'Buster', 'Buster'];
-      if (i.customId === 'card_aaa') p1Cards = ['Arts', 'Arts', 'Arts'];
-      if (i.customId === 'card_qqq') p1Cards = ['Quick', 'Quick', 'Quick'];
-      if (i.customId === 'use_np') useNp = true;
-      if (i.customId === 'use_skill_1') useSkillIndex = 0;
+          if (escaped) {
+            collector.stop();
+            const fleeEmbed = new EmbedBuilder()
+              .setTitle('🏃💨 TACTICAL RETREAT SUCCESSFUL')
+              .setDescription(
+                \`**\${p1.name}** successfully disengaged from **\${p2.name}**!\\n\\n\` +
+                \`🎲 **Flee Rate:** \`\${fleeProb.chancePercent}%\`\${fleeProb.isAgilityBonus ? ' (+5% Agility Bonus)' : ''}\\n\` +
+                \`✨ Disengaged back to Chaldea sanctuary. No defeat penalty incurred!\`
+              )
+              .setColor(0xf59e0b);
+
+            await i.editReply({ embeds: [fleeEmbed], components: [] });
+            return;
+          }
+
+          // Flee failed - Enemy takes undefended counter-turn!
+          const aiCounterCards: CardType[] = ['Buster', 'Arts', 'Quick'];
+          const aiCounterNp = battleState.player2.npGauge >= 100;
+          const { updatedState: counterState, turnLogs: counterLogs } = executeBattleTurn(
+            battleState,
+            { combatantId: p1.id, selectedCards: [], useNoblePhantasm: false },
+            { combatantId: p2.id, selectedCards: aiCounterCards, useNoblePhantasm: aiCounterNp }
+          );
+          battleState = counterState;
+
+          if (battleState.turnPhase === 'defeat') {
+            collector.stop();
+            const seals = challengerMaster.commandSeals ?? 3;
+            if (seals >= 1) {
+              // Mandatory Command Seal check triggers!
+              challengerMaster.commandSeals = Math.max(0, seals - 1);
+              const savedEmbed = new EmbedBuilder()
+                .setTitle('🔴 MANDATORY COMMAND SEAL INTERVENTION!')
+                .setDescription(
+                  \`**\${p1.name}** failed to retreat and took a mortal blow from **\${p2.name}**!\\n\\n\` +
+                  \`🔮 **Mandatory Command Seal Check:** Master possessed **\${seals}/3 Command Seals**!\\n\` +
+                  \`1 Command Seal automatically consumed (Remaining: **\${challengerMaster.commandSeals}/3**).\\n\` +
+                  \`**\${p1.name}** emergency-teleported to sanctuary preserved at **1 HP**! Elimination averted.\`
+                )
+                .setColor(0xf59e0b);
+              await i.editReply({ embeds: [savedEmbed], components: [] });
+              return;
+            } else {
+              const deadEmbed = new EmbedBuilder()
+                .setTitle('☠️ RETREAT FAILED — MASTER ELIMINATED')
+                .setDescription(
+                  \`**\${p1.name}** failed to retreat and suffered a fatal counter-strike!\\n\\n\` +
+                  \`💀 **Mandatory Command Seal Check:** 0 Command Seals remaining! You have been permanently eliminated from the Holy Grail War.\`
+                )
+                .setColor(0xef4444);
+              await i.editReply({ embeds: [deadEmbed], components: [] });
+              return;
+            }
+          }
+        }
+
+        let p1Cards: CardType[] = ['Buster', 'Arts', 'Quick'];
+        let useNp = false;
+        let useSkillIndex: number | undefined;
+
+        if (i.customId === 'card_bbb') p1Cards = ['Buster', 'Buster', 'Buster'];
+        if (i.customId === 'card_aaa') p1Cards = ['Arts', 'Arts', 'Arts'];
+        if (i.customId === 'card_qqq') p1Cards = ['Quick', 'Quick', 'Quick'];
+        if (i.customId === 'use_np') useNp = true;
+        if (i.customId === 'use_skill_1') useSkillIndex = 0;
 
       // AI response choice
       const aiCards: CardType[] = ['Buster', 'Arts', 'Quick'];

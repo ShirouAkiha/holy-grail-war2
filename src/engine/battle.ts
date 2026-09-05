@@ -56,6 +56,28 @@ export function calculateClassMultiplier(attackerClass: ServantClass, defenderCl
   return 1.0;
 }
 
+export function calculateFleeChance(
+  currentHp: number,
+  maxHp: number,
+  servantClass: ServantClass | string,
+  agilityStat: number = 10
+): { chancePercent: number; isAgilityBonus: boolean } {
+  const safeMax = Math.max(1, maxHp);
+  const hpRatio = Math.max(0, currentHp / safeMax);
+  let baseRate = hpRatio >= 0.5 ? 30 : Math.round(30 * (hpRatio / 0.5));
+
+  const isAgilityBonus =
+    ['Rider', 'Lancer', 'Assassin'].includes(servantClass) || agilityStat >= 12;
+  const bonus = isAgilityBonus ? 5 : 0;
+
+  const total = Math.min(95, Math.max(5, baseRate + bonus));
+  return { chancePercent: total, isAgilityBonus };
+}
+
+export function rollFleeSuccess(chancePercent: number): boolean {
+  return Math.random() * 100 < chancePercent;
+}
+
 // ==========================================
 // 2. COMBATANT INITIALIZER
 // ==========================================
@@ -206,6 +228,7 @@ export function resolveCombatTurn(
 
   // Quick Chain Bonus: Instant +20 Critical Stars
   if (isQuickChain) {
+    attacker.critStars = Math.min(50, (attacker.critStars || 0) + 20);
     starsGen += 20;
   }
 
@@ -276,8 +299,8 @@ export function resolveCombatTurn(
     npGain += cardNpGain;
     starsGen += cardStarGen;
 
-    // Critical Hit determination based on gathered stars + Quick First bonus
-    let critChance = Math.min(0.95, ((attacker.critStars || 0) * 2.0) / 100);
+    // Critical Hit determination based on gathered stars + Quick First bonus + Quick Chain
+    let critChance = Math.min(0.95, (((attacker.critStars || 0) * 2.0) / 100) + (isQuickChain ? 0.25 : 0.0));
     if (i > 0 && isQuickFirst) {
       critChance = Math.min(0.95, critChance + 0.20);
     }
@@ -333,7 +356,7 @@ export function resolveCombatTurn(
     attacker.npGauge = Math.min(300, attacker.npGauge + npGain);
   }
 
-  attacker.critStars = Math.min(50, starsGen);
+  attacker.critStars = Math.min(50, (attacker.critStars || 0) + starsGen);
   defender.currentHp = Math.max(0, defender.currentHp - totalDmg);
 
   // Apply end-of-turn passive adjustments for attacker and defender

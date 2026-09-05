@@ -43,7 +43,7 @@ export default function CombatLogHistory({
   const [selectedBattleId, setSelectedBattleId] = useState<string>(
     initialSelectedBattleId || history[0]?.id || ''
   );
-  const [filterOutcome, setFilterOutcome] = useState<'all' | 'victory' | 'defeat'>('all');
+  const [filterOutcome, setFilterOutcome] = useState<'all' | 'victory' | 'defeat' | 'retreat'>('all');
   const [selectedTurnTab, setSelectedTurnTab] = useState<'all' | number>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -51,6 +51,7 @@ export default function CombatLogHistory({
   const filteredBattles = history.filter(b => {
     if (filterOutcome === 'victory') return b.outcome === 'victory';
     if (filterOutcome === 'defeat') return b.outcome === 'defeat';
+    if (filterOutcome === 'retreat') return b.outcome === 'fled' || b.outcome === 'evacuated';
     return true;
   });
 
@@ -63,6 +64,7 @@ export default function CombatLogHistory({
   const totalBattles = history.length;
   const victoriesCount = history.filter(b => b.outcome === 'victory').length;
   const defeatsCount = history.filter(b => b.outcome === 'defeat').length;
+  const retreatsCount = history.filter(b => b.outcome === 'fled' || b.outcome === 'evacuated').length;
   const winRate = totalBattles > 0 ? Math.round((victoriesCount / totalBattles) * 100) : 0;
   const totalDamageDealt = history.reduce((sum, b) => sum + (b.totalDamageDealt || 0), 0);
   const totalTurnsFought = history.reduce((sum, b) => sum + (b.totalTurns || 0), 0);
@@ -240,6 +242,16 @@ export default function CombatLogHistory({
               >
                 Loss ({defeatsCount})
               </button>
+              <button
+                onClick={() => setFilterOutcome('retreat')}
+                className={`px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider rounded-sm transition ${
+                  filterOutcome === 'retreat'
+                    ? 'bg-amber-600 text-white font-bold'
+                    : 'text-amber-400/70 hover:text-amber-300 bg-[#141414]'
+                }`}
+              >
+                Retreat ({retreatsCount})
+              </button>
             </div>
             <span className="text-[10px] font-mono text-white/40 mr-1">Max 10 Logs</span>
           </div>
@@ -254,6 +266,8 @@ export default function CombatLogHistory({
               filteredBattles.map((battle, idx) => {
                 const isSelected = selectedBattle?.id === battle.id;
                 const isVictory = battle.outcome === 'victory';
+                const isFled = battle.outcome === 'fled';
+                const isEvacuated = battle.outcome === 'evacuated';
 
                 return (
                   <div
@@ -278,10 +292,20 @@ export default function CombatLogHistory({
                           className={`text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-sm border ${
                             isVictory
                               ? 'bg-[#10b981]/15 text-[#10b981] border-[#10b981]/40'
+                              : isFled
+                              ? 'bg-amber-950/40 text-amber-300 border-amber-500/40'
+                              : isEvacuated
+                              ? 'bg-rose-950/40 text-rose-300 border-rose-500/40'
                               : 'bg-rose-950/40 text-rose-400 border-rose-800/40'
                           }`}
                         >
-                          {isVictory ? 'VICTORY' : 'DEFEAT'}
+                          {isVictory
+                            ? 'VICTORY'
+                            : isFled
+                            ? 'RETREAT'
+                            : isEvacuated
+                            ? 'SEAL EVAC'
+                            : 'DEFEAT'}
                         </span>
                         <span className="text-[10px] font-mono text-white/40">
                           {battle.totalTurns} {battle.totalTurns === 1 ? 'Turn' : 'Turns'}
@@ -347,10 +371,20 @@ export default function CombatLogHistory({
                       className={`text-xs font-mono font-bold uppercase tracking-widest px-3 py-1 rounded-sm border ${
                         selectedBattle.outcome === 'victory'
                           ? 'bg-[#10b981]/20 text-[#10b981] border-[#10b981]/50 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+                          : selectedBattle.outcome === 'fled'
+                          ? 'bg-amber-950/40 text-amber-300 border-amber-500/50 shadow-[0_0_12px_rgba(245,158,11,0.2)]'
+                          : selectedBattle.outcome === 'evacuated'
+                          ? 'bg-rose-950/40 text-rose-300 border-rose-500/50 shadow-[0_0_12px_rgba(244,63,94,0.2)]'
                           : 'bg-rose-950/40 text-rose-400 border-rose-800/50'
                       }`}
                     >
-                      {selectedBattle.outcome === 'victory' ? 'VICTORY ACHIEVED' : 'COMBAT DEFEAT'}
+                      {selectedBattle.outcome === 'victory'
+                        ? 'VICTORY ACHIEVED'
+                        : selectedBattle.outcome === 'fled'
+                        ? 'TACTICAL RETREAT'
+                        : selectedBattle.outcome === 'evacuated'
+                        ? 'COMMAND SEAL EVACUATION'
+                        : 'COMBAT DEFEAT'}
                     </span>
                     <span className="text-xs font-mono text-white/40">
                       {selectedBattle.totalTurns} Turns Duration • {formatTimestamp(selectedBattle.timestamp)}

@@ -841,7 +841,7 @@ export function saveCombatBattleRecord(record: CombatBattleRecord): CombatBattle
 
 export function createRecordFromFinishedBattle(
   battle: BattleState,
-  outcome: 'victory' | 'defeat'
+  outcome: 'victory' | 'defeat' | 'fled' | 'evacuated'
 ): CombatBattleRecord {
   const p1 = battle.player1;
   const p2 = battle.player2;

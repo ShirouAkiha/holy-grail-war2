@@ -19,7 +19,10 @@ import { findServantInPool, matchServantSearch } from '../lib/utils/servantMatch
 import {
   createCombatantFromMasterServant,
   initializeBattle,
-  executeBattleTurn
+  executeBattleTurn,
+  calculateFleeChance,
+  rollFleeSuccess,
+  applyCombatantSkill
 } from '../lib/engine/battle';
 import {
   renderServantProfileCard,
@@ -1944,6 +1947,12 @@ export default function DiscordEmulator({
       setActiveDuel({ battle: initialBattle });
 
       const p1BattleQuote = activeServant.customQuotes?.battleStart || activeServant.template.battleStartQuote || "My blade is drawn. Let the battle commence!";
+      const initialFlee = calculateFleeChance(
+        p1.currentHp,
+        p1.maxHp,
+        p1.servantClass,
+        activeServant.template.baseStats?.agility || 10
+      );
 
       // Battle Start Visual Novel Dialogue Cut-In Card & Command Card Clash Prompt
       addMessage({
@@ -1982,11 +1991,111 @@ export default function DiscordEmulator({
           items: [
             { id: 'duel_card_bbb', label: 'Buster Brave (ATK +50%)', style: 'danger', emoji: '🔴' },
             { id: 'duel_card_aaa', label: 'Arts Chain (NP +300%)', style: 'primary', emoji: '🔵' },
-            { id: 'duel_card_qqq', label: 'Quick Chain (Stars +25)', style: 'success', emoji: '🟢' },
-            { id: 'duel_use_np', label: `Noble Phantasm (${Math.round(p1.npGauge)}%)`, style: 'danger', emoji: '💥', disabled: p1.npGauge < 100 }
+            { id: 'duel_card_qqq', label: 'Quick Chain (+20 Stars & Crits)', style: 'success', emoji: '🟢' },
+            { id: 'duel_use_np', label: `Noble Phantasm (${Math.round(p1.npGauge)}%)`, style: 'danger', emoji: '💥', disabled: p1.npGauge < 100 },
+            { id: 'duel_flee', label: `Flee (${initialFlee.chancePercent}%)`, style: 'secondary', emoji: '🏃' }
           ]
         }
       });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // COMMAND: /skill, /skills (Active Servant Skills)
+    // ----------------------------------------------------
+    if (trimmed === '/skill' || trimmed.startsWith('/skill ') || trimmed === '/skills' || trimmed.startsWith('/skills ') || trimmed.startsWith('/duel skill')) {
+      if (!activeServant) {
+        addMessage({
+          id: getNextId('bot_skill_err'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: 'No Active Servant',
+            description: 'You need an active Servant to view or activate skills! Summon one with `/summon ritual`.',
+            color: '#ef4444'
+          }
+        });
+        return;
+      }
+
+      const match = trimmed.match(/\b(1|2|3)\b/);
+      if (match && activeDuel) {
+        const skillIdx = parseInt(match[1], 10) - 1;
+        const res = applyCombatantSkill(activeDuel.battle.player1, activeDuel.battle.player2, skillIdx);
+        if (res.success) {
+          setActiveDuel({
+            ...activeDuel,
+            battle: { ...activeDuel.battle }
+          });
+          addMessage({
+            id: getNextId('bot_skill_use'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            content: res.log
+          });
+        } else {
+          addMessage({
+            id: getNextId('bot_skill_fail'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: 'Skill Failed',
+              description: res.log,
+              color: '#ef4444'
+            }
+          });
+        }
+        return;
+      }
+
+      // Display Servant Skills status
+      const skills = activeDuel ? activeDuel.battle.player1.skills : activeServant.template.skills;
+      const skillsDesc = skills && skills.length > 0
+        ? skills.map((s, idx) => {
+            const cd = (s as any).currentCooldown > 0 ? ` (Cooldown: ${(s as any).currentCooldown}t)` : ' (Ready)';
+            return `• **Skill ${idx + 1}: ${s.name}** [CD: ${s.cooldown}T]${cd}\n  ${s.description}`;
+          }).join('\n\n')
+        : 'No skills found.';
+
+      addMessage({
+        id: getNextId('bot_skill_list'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: `⚡ ${activeServant.template.name} — Personal Skills`,
+          description: `${skillsDesc}\n\n*Combat command:* Type \`/skill 1\`, \`/skill 2\`, or \`/skill 3\` during an active duel to trigger!`,
+          color: '#d4af37'
+        }
+      });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // COMMAND: /flee, /run, /retreat (Tactical Disengagement)
+    // ----------------------------------------------------
+    if (trimmed === '/flee' || trimmed === '/run' || trimmed === '/retreat' || trimmed.startsWith('/flee ') || trimmed.startsWith('/run ')) {
+      if (!activeDuel) {
+        addMessage({
+          id: getNextId('bot_flee_no_duel'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '🏃 No Active Duel',
+            description: 'You can only attempt a tactical flee or retreat during an active duel! Enter combat with `/duel`.',
+            color: '#ef4444'
+          }
+        });
+        return;
+      }
+      handleButtonClick('duel_flee');
+      return;
+    }
+
+    // ----------------------------------------------------
+    // COMMAND: /evacuate, /escape (Emergency Command Seal Evacuation)
+    // ----------------------------------------------------
+    if (trimmed === '/evacuate' || trimmed === '/escape' || trimmed === '/seal evacuate') {
+      handleButtonClick('duel_command_seal_evacuate');
       return;
     }
 
@@ -3991,10 +4100,262 @@ export default function DiscordEmulator({
       } else if (action === 'open') {
         postCustomDialogueHub(servantId);
       }
+    } else if (btnId === 'duel_command_seal_evacuate') {
+      const seals = master.commandSeals ?? 3;
+      if (seals < 1) {
+        addMessage({
+          id: getNextId('bot_duel_no_seals'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '❌ Insufficient Command Seals',
+            description: 'You do not have any Command Seals remaining to execute emergency spatial evacuation!',
+            color: '#ef4444'
+          }
+        });
+        return;
+      }
+      const newSeals = Math.max(0, seals - 1);
+      onUpdateMaster({
+        ...master,
+        commandSeals: newSeals
+      });
+
+      // Restore Holy Grail War participant if they were eliminated
+      const uId = master.discordId;
+      if (grailWar.participants[uId]) {
+        const updatedWar = {
+          ...grailWar,
+          participants: {
+            ...grailWar.participants,
+            [uId]: {
+              ...grailWar.participants[uId],
+              isAlive: true,
+              currentHp: 1
+            }
+          }
+        };
+        onUpdateGrailWar(updatedWar);
+      }
+
+      setActiveDuel(null);
+
+      const p1Name = activeServant?.nickname || activeServant?.template.name || 'Your Servant';
+      addMessage({
+        id: getNextId('bot_duel_seal_evac'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '🔮 COMMAND SEAL SPATIAL EVACUATION EXECUTED',
+          description:
+            `By the absolute authority of your Command Seal, **${p1Name}** was spatially recalled from lethal defeat!\n\n` +
+            `✨ **Status:** Preserved and extracted to safety at **1 HP**.\n` +
+            `✦ **Command Seals Remaining:** **${newSeals}/3**\n` +
+            `🛡️ **Holy Grail War Tournament Standing:** Restored to Active Competitor!`,
+          color: '#f43f5e',
+          footer: 'Emergency Spatial Extraction • 1 Command Seal Expended'
+        },
+        components: {
+          type: 'buttons',
+          items: [
+            { id: 'quick_war_status', label: 'Intelligence Board (/grailwar)', style: 'primary', emoji: '📋' },
+            { id: 'profile_heal', label: 'Heal at Workshop (/heal)', style: 'success', emoji: '🩹' },
+            { id: 'quick_start_duel', label: 'Resume Duel (/duel)', style: 'danger', emoji: '⚔️' }
+          ]
+        }
+      });
+      return;
     } else if (btnId.startsWith('duel_')) {
       if (!activeDuel) {
         handleCommand('/duel');
         return;
+      }
+
+      if (btnId === 'duel_flee') {
+        cleanupActiveNpGif();
+        const p1 = activeDuel.battle.player1;
+        const p2 = activeDuel.battle.player2;
+        const fleeCalc = calculateFleeChance(
+          p1.currentHp,
+          p1.maxHp,
+          p1.servantClass,
+          activeServant?.template.baseStats?.agility || 10
+        );
+
+        const success = rollFleeSuccess(fleeCalc.chancePercent);
+
+        if (success) {
+          addMessage({
+            id: getNextId('bot_duel_flee_success'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '🏃💨 TACTICAL RETREAT SUCCESSFUL',
+              description:
+                `**${p1.name}** broke away from combat and safely disengaged from **${p2.name}**!\n\n` +
+                `🎲 **Flee Calculation:** \`${fleeCalc.chancePercent}%\` success rate${fleeCalc.isAgilityBonus ? ' (+5% Agility Servant bonus)' : ''}\n` +
+                `✨ **Outcome:** Disengaged to Chaldea sanctuary. No defeat penalty, streak loss, or elimination incurred!`,
+              color: '#f59e0b',
+              footer: 'Tactical Disengagement • Holy Grail War Protocol'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary', emoji: '📋' },
+                { id: 'quick_start_duel', label: 'Enter Arena (/duel)', style: 'danger', emoji: '⚔️' }
+              ]
+            }
+          });
+          setActiveDuel(null);
+          return;
+        } else {
+          // Flee failed! Enemy counter-strike undefended!
+          const aiCards: CardType[] = ['Buster', 'Arts', 'Quick'];
+          const aiNp = activeDuel.battle.player2.npGauge >= 100;
+
+          const { updatedState, turnLogs } = executeBattleTurn(
+            activeDuel.battle,
+            {
+              combatantId: activeDuel.battle.player1.id,
+              selectedCards: [],
+              useNoblePhantasm: false
+            },
+            {
+              combatantId: activeDuel.battle.player2.id,
+              selectedCards: aiCards,
+              useNoblePhantasm: aiNp
+            }
+          );
+
+          const failLog = turnLogs[turnLogs.length - 1];
+
+          if (updatedState.turnPhase === 'defeat') {
+            const seals = master.commandSeals ?? 3;
+            const p1DefeatQuote = activeServant?.customQuotes?.defeat || activeServant?.template.defeatQuote || "Master... I have failed you in this Holy Grail War...";
+            const outcome = recordDuelOutcome(
+              grailWar,
+              updatedState.player2.masterName,
+              master.username,
+              'kill',
+              activeChannel === 'public' ? 'holy-grail-war' : 'direct-messages',
+              updatedState.player2.currentHp,
+              updatedState.player1.currentHp
+            );
+            onUpdateGrailWar(outcome.updatedWar);
+            setActiveDuel(null);
+
+            if (!outcome.eliminated) {
+              // Mandatory Command Seal check intervened!
+              const remainingSeals = outcome.defeatedMaster?.commandSeals ?? Math.max(0, seals - 1);
+              onUpdateMaster({
+                ...master,
+                commandSeals: remainingSeals
+              });
+
+              addMessage({
+                id: getNextId('bot_duel_flee_fail_saved'),
+                sender: 'bot',
+                timestamp: 'Just now',
+                embed: {
+                  title: '🔴 MANDATORY COMMAND SEAL INTERVENTION!',
+                  description:
+                    `**${p1.name}** failed to escape (${fleeCalc.chancePercent}% chance) and suffered a mortal blow from **${p2.name}**!\n\n` +
+                    `💬 **[MORTAL BLOW] ${p1.name}:**\n> ❝ ***${p1DefeatQuote}*** ❞\n\n` +
+                    `🔮 **Mandatory Command Seal Check:**\n` +
+                    `Defeated Master **${master.username}** had **${seals}/3 Command Seals** remaining. In accordance with Holy Grail War protocols, 1 Command Seal was automatically expended to trigger emergency spatial evacuation!\n\n` +
+                    `• 🔴 **Command Seals Remaining:** **${remainingSeals}/3**\n` +
+                    `• ❤️ **Preserved Vitality:** **1 HP** (Emergency evacuation to Sanctuary)\n` +
+                    `• 🛡️ **Tournament Standing:** Active (Contract Preserved, Elimination Averted!)`,
+                  color: '#f59e0b',
+                  footer: 'Mandatory Command Seal Emergency Evacuation Protocol'
+                },
+                components: {
+                  type: 'buttons',
+                  items: [
+                    { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary' as const, emoji: '📋' },
+                    { id: 'quick_start_duel', label: 'Enter Arena (/duel)', style: 'danger' as const, emoji: '⚔️' }
+                  ]
+                }
+              });
+              return;
+            } else {
+              // 0 Command Seals remaining — permanent elimination
+              addMessage({
+                id: getNextId('bot_duel_flee_fail_fatal'),
+                sender: 'bot',
+                timestamp: 'Just now',
+                embed: {
+                  title: '☠️ RETREAT FAILED — LETHAL COUNTER-STRIKE!',
+                  description:
+                    `**${p1.name}** failed to escape (${fleeCalc.chancePercent}% chance) and suffered an undefended fatal strike from **${p2.name}**!\n\n` +
+                    `💬 **[DEFEAT] ${p1.name}:**\n> ❝ ***${p1DefeatQuote}*** ❞\n\n` +
+                    `💀 **Mandatory Command Seal Check:** **0/3 Command Seals remaining.**\n` +
+                    `With no Command Seals left to execute emergency evacuation, your contract dissolves and you have been **PERMANENTLY ELIMINATED** from the Holy Grail War!`,
+                  color: '#ef4444',
+                  footer: 'Combat Engine • Fatal Counter-Strike • 0 Seals Remaining'
+                },
+                components: {
+                  type: 'buttons',
+                  items: [
+                    { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary' as const, emoji: '📋' },
+                    { id: 'war_reset_tournament', label: 'Restart Tournament Session', style: 'secondary' as const, emoji: '🔄' }
+                  ]
+                }
+              });
+              return;
+            }
+          }
+
+          // Player survived the failed flee counter-strike
+          setActiveDuel({ battle: updatedState });
+
+          const nextFleeCalc = calculateFleeChance(
+            updatedState.player1.currentHp,
+            updatedState.player1.maxHp,
+            updatedState.player1.servantClass,
+            activeServant?.template.baseStats?.agility || 10
+          );
+
+          addMessage({
+            id: getNextId('bot_duel_flee_fail'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `❌ TACTICAL RETREAT FAILED (${fleeCalc.chancePercent}%)`,
+              description:
+                `**${p1.name}** could not break away! **${p2.name}** took advantage and struck an undefended blow!\n\n` +
+                `❤️ **${p1.name} HP:** ${updatedState.player1.currentHp.toLocaleString()}/${updatedState.player1.maxHp.toLocaleString()}\n` +
+                `❤️ **${p2.name} HP:** ${updatedState.player2.currentHp.toLocaleString()}/${updatedState.player2.maxHp.toLocaleString()}\n\n` +
+                `👉 **Current Turn:** Select your next action:`,
+              color: '#ef4444',
+              footer: 'Combat Engine • Flee Turn Penalty Applied'
+            },
+            canvasType: 'battle',
+            canvasPayload: { log: failLog, p1: updatedState.player1, p2: updatedState.player2 },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'duel_card_bbb', label: 'Buster Brave', style: 'danger', emoji: '🔴' },
+                { id: 'duel_card_aaa', label: 'Arts Chain', style: 'primary', emoji: '🔵' },
+                { id: 'duel_card_qqq', label: 'Quick Chain (+20 Stars & Crits)', style: 'success', emoji: '🟢' },
+                {
+                  id: 'duel_use_np',
+                  label: `Noble Phantasm (${Math.round(updatedState.player1.npGauge)}%)`,
+                  style: 'danger',
+                  emoji: '💥',
+                  disabled: updatedState.player1.npGauge < 100
+                },
+                {
+                  id: 'duel_flee',
+                  label: `Flee (${nextFleeCalc.chancePercent}%)`,
+                  style: 'secondary',
+                  emoji: '🏃'
+                }
+              ]
+            }
+          });
+          return;
+        }
       }
 
       if (btnId === 'duel_fate_kill' || btnId === 'duel_fate_spare') {
@@ -4222,6 +4583,7 @@ export default function DiscordEmulator({
           });
         } else {
           // Player defeated by opponent (e.g. itsderpo)
+          const seals = master.commandSeals ?? 3;
           const p1DefeatQuote = activeServant?.customQuotes?.defeat || activeServant?.template.defeatQuote || "Master... I have failed you in this Holy Grail War...";
 
           const outcome = recordDuelOutcome(
@@ -4236,49 +4598,106 @@ export default function DiscordEmulator({
           onUpdateGrailWar(outcome.updatedWar);
           setActiveDuel(null);
 
-          const aliveCount = Object.values(outcome.updatedWar.participants).filter(p => p.isAlive).length;
+          if (!outcome.eliminated) {
+            // Mandatory Command Seal check intervened!
+            const remainingSeals = outcome.defeatedMaster?.commandSeals ?? Math.max(0, seals - 1);
+            onUpdateMaster({
+              ...master,
+              commandSeals: remainingSeals
+            });
 
-          addMessage({
-            id: getNextId('bot_duel_defeat_exec'),
-            sender: 'bot',
-            timestamp: 'Just now',
-            embed: {
-              title: '☠️ FATAL DUEL DEFEAT — MASTER ELIMINATED',
-              description:
-                `**${updatedState.player2.name}** (Master: ${updatedState.player2.masterName}) has struck down **${updatedState.player1.name}** (Master: ${master.username})!\n\n` +
-                `💬 **[DEFEAT & RETREAT] ${updatedState.player1.name}:**\n> ❝ ***${p1DefeatQuote}*** ❞\n\n` +
-                `💀 **You have been PERMANENTLY ELIMINATED from the Holy Grail War.**\n` +
-                `Your status on the Intelligence Board is now **💀 DECEASED** (HP: 0/${grailWar.participants[master.discordId]?.maxHp || 11000}).\n\n` +
-                `👥 **Surviving Masters:** **${aliveCount}/7** alive in Fuyuki.`,
-              color: '#ef4444',
-              footer: 'You have been eliminated from the Holy Grail War tournament'
-            },
-            canvasType: 'dialogue',
-            canvasPayload: {
-              speaker: updatedState.player1.name,
-              quote: p1DefeatQuote,
-              title: 'DEFEAT & CONTRACT SEVERED',
-              servantClass: updatedState.player1.servantClass,
-              avatarUrl: updatedState.player1.avatarUrl || activeServant?.template.cardArtUrl || activeServant?.template.avatarUrl,
-              bondOrLevel: activeServant?.bondLevel || 10,
-              defenderName: updatedState.player2.name,
-              defenderClass: updatedState.player2.servantClass,
-              defenderAvatarUrl: updatedState.player2.avatarUrl,
-              sequence: ['Quick', 'Quick', 'Quick'],
-              bgUrlOrPreset: 'fuyuki'
-            },
-            components: {
-              type: 'buttons',
-              items: [
-                { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary', emoji: '📋' },
-                { id: 'war_reset_tournament', label: 'Restart Tournament Session', style: 'secondary', emoji: '🔄' }
-              ]
-            }
-          });
+            addMessage({
+              id: getNextId('bot_duel_defeat_saved'),
+              sender: 'bot',
+              timestamp: 'Just now',
+              embed: {
+                title: '🔴 MANDATORY COMMAND SEAL INTERVENTION!',
+                description:
+                  `**${updatedState.player2.name}** (Master: ${updatedState.player2.masterName}) dealt a mortal blow to **${updatedState.player1.name}**!\n\n` +
+                  `💬 **[MORTAL BLOW] ${updatedState.player1.name}:**\n> ❝ ***${p1DefeatQuote}*** ❞\n\n` +
+                  `🔮 **Mandatory Command Seal Check:**\n` +
+                  `Defeated Master **${master.username}** had **${seals}/3 Command Seals** remaining. In accordance with Holy Grail War protocols, 1 Command Seal was automatically expended to trigger emergency spatial evacuation!\n\n` +
+                  `• 🔴 **Command Seals Remaining:** **${remainingSeals}/3**\n` +
+                  `• ❤️ **Preserved Vitality:** **1 HP** (Emergency evacuation to Sanctuary)\n` +
+                  `• 🛡️ **Tournament Standing:** Active (Contract Preserved, Elimination Averted!)`,
+                color: '#f59e0b',
+                footer: 'Mandatory Command Seal Emergency Evacuation Protocol'
+              },
+              canvasType: 'dialogue',
+              canvasPayload: {
+                speaker: updatedState.player1.name,
+                quote: p1DefeatQuote,
+                title: 'MANDATORY COMMAND SEAL EVACUATION',
+                servantClass: updatedState.player1.servantClass,
+                avatarUrl: updatedState.player1.avatarUrl || activeServant?.template.cardArtUrl || activeServant?.template.avatarUrl,
+                bondOrLevel: activeServant?.bondLevel || 10,
+                defenderName: updatedState.player2.name,
+                defenderClass: updatedState.player2.servantClass,
+                defenderAvatarUrl: updatedState.player2.avatarUrl,
+                sequence: ['Quick', 'Quick', 'Quick'],
+                bgUrlOrPreset: 'fuyuki'
+              },
+              components: {
+                type: 'buttons',
+                items: [
+                  { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary', emoji: '📋' },
+                  { id: 'quick_start_duel', label: 'Enter Arena (/duel)', style: 'danger', emoji: '⚔️' }
+                ]
+              }
+            });
+          } else {
+            const aliveCount = Object.values(outcome.updatedWar.participants).filter(p => p.isAlive).length;
+
+            addMessage({
+              id: getNextId('bot_duel_defeat_exec'),
+              sender: 'bot',
+              timestamp: 'Just now',
+              embed: {
+                title: '☠️ FATAL DUEL DEFEAT — MASTER ELIMINATED',
+                description:
+                  `**${updatedState.player2.name}** (Master: ${updatedState.player2.masterName}) has struck down **${updatedState.player1.name}** (Master: ${master.username})!\n\n` +
+                  `💬 **[DEFEAT & RETREAT] ${updatedState.player1.name}:**\n> ❝ ***${p1DefeatQuote}*** ❞\n\n` +
+                  `💀 **Mandatory Command Seal Check:** **0/3 Command Seals remaining.**\n` +
+                  `With no Command Seals remaining to invoke emergency evacuation, your contract dissolves and you have been **PERMANENTLY ELIMINATED** from the Holy Grail War.\n` +
+                  `Your status on the Intelligence Board is now **💀 DECEASED** (HP: 0/${grailWar.participants[master.discordId]?.maxHp || 11000}).\n\n` +
+                  `👥 **Surviving Masters:** **${aliveCount}/7** alive in Fuyuki.`,
+                color: '#ef4444',
+                footer: '0 Command Seals Remaining • You have been eliminated from the Holy Grail War'
+              },
+              canvasType: 'dialogue',
+              canvasPayload: {
+                speaker: updatedState.player1.name,
+                quote: p1DefeatQuote,
+                title: 'DEFEAT & CONTRACT SEVERED',
+                servantClass: updatedState.player1.servantClass,
+                avatarUrl: updatedState.player1.avatarUrl || activeServant?.template.cardArtUrl || activeServant?.template.avatarUrl,
+                bondOrLevel: activeServant?.bondLevel || 10,
+                defenderName: updatedState.player2.name,
+                defenderClass: updatedState.player2.servantClass,
+                defenderAvatarUrl: updatedState.player2.avatarUrl,
+                sequence: ['Quick', 'Quick', 'Quick'],
+                bgUrlOrPreset: 'fuyuki'
+              },
+              components: {
+                type: 'buttons',
+                items: [
+                  { id: 'quick_war_status', label: 'View Intelligence Board (/grailwar)', style: 'primary', emoji: '📋' },
+                  { id: 'war_reset_tournament', label: 'Restart Tournament Session', style: 'secondary', emoji: '🔄' }
+                ]
+              }
+            });
+          }
         }
       } else {
         const dQuote = lastLog?.dialogueQuote || (lastLog?.isNoblePhantasm ? lastLog?.npChant : undefined);
         const dialogueBox = dQuote ? `\n\n💬 **[${lastLog?.dialogueTag || 'COMBAT DIALOGUE'}] ${lastLog?.dialogueTitle || updatedState.player1.name}:**\n> ❝ ***${dQuote}*** ❞` : '';
+
+        const fleeTurnCalc = calculateFleeChance(
+          updatedState.player1.currentHp,
+          updatedState.player1.maxHp,
+          updatedState.player1.servantClass,
+          activeServant?.template.baseStats?.agility || 10
+        );
 
         addMessage({
           id: getNextId('bot_duel_turn'),
@@ -4297,13 +4716,19 @@ export default function DiscordEmulator({
             items: [
               { id: 'duel_card_bbb', label: 'Buster Brave', style: 'danger', emoji: '🔴' },
               { id: 'duel_card_aaa', label: 'Arts Chain', style: 'primary', emoji: '🔵' },
-              { id: 'duel_card_qqq', label: 'Quick Chain', style: 'success', emoji: '🟢' },
+              { id: 'duel_card_qqq', label: 'Quick Chain (+20 Stars & Crits)', style: 'success', emoji: '🟢' },
               {
                 id: 'duel_use_np',
                 label: `Noble Phantasm (${Math.round(updatedState.player1.npGauge)}%)`,
                 style: 'danger',
                 emoji: '💥',
                 disabled: updatedState.player1.npGauge < 100
+              },
+              {
+                id: 'duel_flee',
+                label: `Flee (${fleeTurnCalc.chancePercent}%)`,
+                style: 'secondary',
+                emoji: '🏃'
               }
             ]
           }

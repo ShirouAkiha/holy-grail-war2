@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ActiveCombatant,
   BattleState,
   CardType,
   CombatBattleRecord,
+  CombatTurnLog,
   MasterProfile,
   MasterServantInstance
 } from '../lib/types';
@@ -13,7 +14,9 @@ import {
   createCombatantFromMasterServant,
   initializeBattle,
   executeBattleTurn,
-  calculateClassMultiplier
+  calculateClassMultiplier,
+  calculateFleeChance,
+  rollFleeSuccess
 } from '../lib/engine/battle';
 import {
   loadCombatBattleHistory,
@@ -35,7 +38,12 @@ import {
   Skull,
   Award,
   ChevronRight,
-  BookOpen
+  BookOpen,
+  Footprints,
+  Wind,
+  ShieldAlert,
+  Clock,
+  Timer
 } from 'lucide-react';
 
 interface CombatArenaProps {
@@ -96,6 +104,10 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
   const [selectedSkillIdx, setSelectedSkillIdx] = useState<number | undefined>();
   const [selectedCommandSeal, setSelectedCommandSeal] = useState<'heal' | 'np_charge' | undefined>();
   const [isSimulating, setIsSimulating] = useState(false);
+  const [showEvacuatePrompt, setShowEvacuatePrompt] = useState(false);
+  const [evacuateCountdown, setEvacuateCountdown] = useState(60);
+  const [evacuateExpired, setEvacuateExpired] = useState(false);
+  const [fleeStatusMessage, setFleeStatusMessage] = useState<string | null>(null);
 
   // Mid-Battle Dialogue Embed State
   const [dialogueCutIn, setDialogueCutIn] = useState<BattleDialogueCutIn | null>(null);
@@ -148,6 +160,35 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
   const [arenaTab, setArenaTab] = useState<'duel' | 'history'>('duel');
   const [battleHistory, setBattleHistory] = useState<CombatBattleRecord[]>(() => loadCombatBattleHistory());
   const [lastCompletedBattleId, setLastCompletedBattleId] = useState<string | undefined>();
+
+  // 1-minute (60-second) decision time limit for Emergency Command Seal evacuation
+  useEffect(() => {
+    if (!showEvacuatePrompt || battle?.turnPhase !== 'defeat') {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setEvacuateCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setTimeout(() => {
+            setEvacuateExpired(true);
+            setShowEvacuatePrompt(false);
+            if (battle) {
+              const record = createRecordFromFinishedBattle(battle, 'defeat');
+              const updatedHistory = saveCombatBattleRecord(record);
+              setBattleHistory(updatedHistory);
+              setLastCompletedBattleId(record.id);
+            }
+          }, 0);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [showEvacuatePrompt, battle?.turnPhase, battle]);
 
   if (!activeServant || !battle) {
     return (
@@ -401,15 +442,204 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         saintQuartz: master.saintQuartz + 3,
         grailWarWins: master.grailWarWins + 1
       });
-    }
-
-    // Automatically record concluded battle into combat log history (max 10)
-    if (updatedState.turnPhase === 'victory' || updatedState.turnPhase === 'defeat') {
-      const record = createRecordFromFinishedBattle(updatedState, updatedState.turnPhase);
+      const record = createRecordFromFinishedBattle(updatedState, 'victory');
       const updatedHistory = saveCombatBattleRecord(record);
       setBattleHistory(updatedHistory);
       setLastCompletedBattleId(record.id);
+    } else if (updatedState.turnPhase === 'defeat') {
+      if ((master.commandSeals ?? 3) >= 1) {
+        setShowEvacuatePrompt(true);
+        setEvacuateCountdown(60);
+        setEvacuateExpired(false);
+      } else {
+        const record = createRecordFromFinishedBattle(updatedState, 'defeat');
+        const updatedHistory = saveCombatBattleRecord(record);
+        setBattleHistory(updatedHistory);
+        setLastCompletedBattleId(record.id);
+      }
     }
+  };
+
+  const handleAttemptFlee = () => {
+    if (!battle || isSimulating) return;
+    if (battle.turnPhase === 'victory' || battle.turnPhase === 'defeat' || battle.turnPhase === 'fled' || battle.turnPhase === 'evacuated') return;
+
+    const { chancePercent, isAgilityBonus } = calculateFleeChance(
+      battle.player1.currentHp,
+      battle.player1.maxHp,
+      battle.player1.servantClass,
+      battle.player1.stats?.agility || 10
+    );
+
+    const success = rollFleeSuccess(chancePercent);
+
+    if (success) {
+      // Escape Succeeded!
+      const fleeLog: CombatTurnLog = {
+        turnNumber: battle.currentTurn,
+        actorId: battle.player1.id,
+        actorName: battle.player1.name,
+        targetId: battle.player2.id,
+        targetName: battle.player2.name,
+        actionSummary: `🏃💨 **TACTICAL RETREAT SUCCESSFUL!** ${battle.player1.name} broke away from combat (${chancePercent}% chance${isAgilityBonus ? ' with +5% Agility Servant bonus' : ''}) and safely disengaged from the battlefield!`,
+        cardsUsed: [],
+        skillsUsed: [],
+        damageDealt: 0,
+        isCritical: false,
+        starsGenerated: 0,
+        npCharged: 0,
+        actorHpRemaining: battle.player1.currentHp,
+        targetHpRemaining: battle.player2.currentHp,
+        actorHpMax: battle.player1.maxHp,
+        targetHpMax: battle.player2.maxHp,
+        actorNp: battle.player1.npGauge,
+        targetNp: battle.player2.npGauge,
+        dialogueTag: 'TACTICAL RETREAT',
+        dialogueTitle: `${battle.player1.servantClass} • Tactical Disengagement`,
+        dialogueQuote: 'A strategic retreat today ensures victory tomorrow, Master. Returning to safety!'
+      };
+
+      const updatedState: BattleState = {
+        ...battle,
+        turnPhase: 'fled',
+        turnHistory: [...battle.turnHistory, fleeLog]
+      };
+
+      setBattle(updatedState);
+      setFleeStatusMessage(`Tactical retreat successful! Escaped with ${chancePercent}% chance.`);
+
+      const record = createRecordFromFinishedBattle(updatedState, 'fled');
+      const updatedHistory = saveCombatBattleRecord(record);
+      setBattleHistory(updatedHistory);
+      setLastCompletedBattleId(record.id);
+    } else {
+      // Escape Failed! Turn consumed and enemy strikes unguarded target!
+      const aiDeck = battle.player2.commandDeck;
+      const shuffled = [...aiDeck].sort(() => 0.5 - Math.random());
+      const aiCards = (shuffled.slice(0, 3) as CardType[]) || ['Buster', 'Arts', 'Quick'];
+      const aiUseNp = battle.player2.npGauge >= 100 && Math.random() > 0.3;
+
+      const { updatedState, turnLogs } = executeBattleTurn(
+        battle,
+        {
+          combatantId: battle.player1.id,
+          selectedCards: [],
+          useNoblePhantasm: false
+        },
+        {
+          combatantId: battle.player2.id,
+          selectedCards: aiCards,
+          useNoblePhantasm: aiUseNp
+        }
+      );
+
+      const failLog: CombatTurnLog = {
+        turnNumber: battle.currentTurn,
+        actorId: battle.player1.id,
+        actorName: battle.player1.name,
+        targetId: battle.player2.id,
+        targetName: battle.player2.name,
+        actionSummary: `❌ **TACTICAL RETREAT FAILED!** (${chancePercent}% chance rolled). ${battle.player1.name} could not break line of sight and took an undefended counter-strike from ${battle.player2.name}!`,
+        cardsUsed: [],
+        skillsUsed: [],
+        damageDealt: 0,
+        isCritical: false,
+        starsGenerated: 0,
+        npCharged: 0,
+        actorHpRemaining: updatedState.player1.currentHp,
+        targetHpRemaining: updatedState.player2.currentHp,
+        actorHpMax: updatedState.player1.maxHp,
+        targetHpMax: updatedState.player2.maxHp,
+        actorNp: updatedState.player1.npGauge,
+        targetNp: updatedState.player2.npGauge
+      };
+
+      const finalState: BattleState = {
+        ...updatedState,
+        turnHistory: [...battle.turnHistory, failLog, ...turnLogs]
+      };
+
+      setBattle(finalState);
+      setFleeStatusMessage(`Tactical retreat failed (${chancePercent}% chance). Took counter-strike!`);
+
+      if (finalState.player1.currentHp <= 0) {
+        if ((master.commandSeals ?? 3) >= 1) {
+          setShowEvacuatePrompt(true);
+          setEvacuateCountdown(60);
+          setEvacuateExpired(false);
+        } else {
+          const record = createRecordFromFinishedBattle(finalState, 'defeat');
+          const updatedHistory = saveCombatBattleRecord(record);
+          setBattleHistory(updatedHistory);
+          setLastCompletedBattleId(record.id);
+        }
+      }
+    }
+  };
+
+  const handleCommandSealEvacuate = () => {
+    if (!battle || (master.commandSeals ?? 3) < 1) return;
+
+    onUpdateMaster({
+      ...master,
+      commandSeals: Math.max(0, (master.commandSeals ?? 3) - 1)
+    });
+
+    const evacuatedCombatant = {
+      ...battle.player1,
+      currentHp: 1
+    };
+
+    const evacLog: CombatTurnLog = {
+      turnNumber: battle.currentTurn,
+      actorId: battle.player1.id,
+      actorName: master.username || 'Master',
+      targetId: battle.player2.id,
+      targetName: battle.player2.name,
+      actionSummary: `🔮 **COMMAND SEAL SPATIAL EVACUATION!** Master invoked 1 Command Seal to emergency-teleport ${battle.player1.name} away from mortal danger! Preserved at 1 HP. (${Math.max(0, (master.commandSeals ?? 3) - 1)}/3 Seals Remaining)`,
+      cardsUsed: [],
+      skillsUsed: [],
+      damageDealt: 0,
+      isCritical: false,
+      starsGenerated: 0,
+      npCharged: 0,
+      actorHpRemaining: 1,
+      targetHpRemaining: battle.player2.currentHp,
+      actorHpMax: battle.player1.maxHp,
+      targetHpMax: battle.player2.maxHp,
+      actorNp: battle.player1.npGauge,
+      targetNp: battle.player2.npGauge,
+      dialogueTag: 'COMMAND SEAL EVACUATION',
+      dialogueTitle: 'Emergency Spatial Extraction',
+      dialogueQuote: `By my Command Seal! Spatial evacuation initiate! Fall back to safety!`
+    };
+
+    const updatedState: BattleState = {
+      ...battle,
+      player1: evacuatedCombatant,
+      turnPhase: 'evacuated',
+      turnHistory: [...battle.turnHistory, evacLog]
+    };
+
+    setBattle(updatedState);
+    setShowEvacuatePrompt(false);
+    setEvacuateCountdown(60);
+    setEvacuateExpired(false);
+
+    const record = createRecordFromFinishedBattle(updatedState, 'evacuated');
+    const updatedHistory = saveCombatBattleRecord(record);
+    setBattleHistory(updatedHistory);
+    setLastCompletedBattleId(record.id);
+  };
+
+  const handleAcceptDefeat = () => {
+    if (!battle) return;
+    setShowEvacuatePrompt(false);
+    setEvacuateCountdown(60);
+    const record = createRecordFromFinishedBattle(battle, 'defeat');
+    const updatedHistory = saveCombatBattleRecord(record);
+    setBattleHistory(updatedHistory);
+    setLastCompletedBattleId(record.id);
   };
 
   const handleRestart = () => {
@@ -417,6 +647,10 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
     setSelectedCards([]);
     setUseNp(false);
     setSelectedSkillIdx(undefined);
+    setShowEvacuatePrompt(false);
+    setEvacuateCountdown(60);
+    setEvacuateExpired(false);
+    setFleeStatusMessage(null);
   };
 
   return (
@@ -748,28 +982,134 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         </div>
       )}
 
-      {/* Victory / Defeat Overlay */}
-      {(battle.turnPhase === 'victory' || battle.turnPhase === 'defeat') && (
+      {/* Victory / Defeat / Retreat / Evacuate Overlay */}
+      {(battle.turnPhase === 'victory' ||
+        battle.turnPhase === 'defeat' ||
+        battle.turnPhase === 'fled' ||
+        battle.turnPhase === 'evacuated') && (
         <div
           className={`p-6 md:p-8 rounded-xl border text-center shadow-2xl ${
             battle.turnPhase === 'victory'
               ? 'bg-[#0a0a0a] border-[#d4af37]/50 text-[#e5e5e5]'
+              : battle.turnPhase === 'fled'
+              ? 'bg-[#0a0a0a] border-[#f59e0b]/50 text-[#e5e5e5]'
+              : battle.turnPhase === 'evacuated'
+              ? 'bg-[#0a0a0a] border-rose-500/50 text-[#e5e5e5]'
               : 'bg-[#0a0a0a] border-[#ef4444]/50 text-[#e5e5e5]'
           }`}
         >
+          {/* Emergency Command Seal Evacuation Prompt (When Defeated & Seals Available) */}
+          {showEvacuatePrompt && battle.turnPhase === 'defeat' && (
+            <div className="mb-6 p-5 rounded-xl bg-gradient-to-r from-[#22070c] via-[#150508] to-[#22070c] border-2 border-rose-500/80 shadow-[0_0_35px_rgba(244,63,94,0.35)] animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2 text-rose-400 font-mono text-xs uppercase tracking-widest font-bold">
+                  <ShieldAlert className="w-4 h-4 text-rose-400 animate-pulse" />
+                  <span>EMERGENCY COMMAND SEAL INTERVENTION</span>
+                </div>
+                {/* 1-Minute Decision Time Limit Badge */}
+                <div
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-mono font-bold tracking-wider ${
+                    evacuateCountdown <= 15
+                      ? 'bg-red-950/90 border-red-500 text-red-300 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.6)]'
+                      : 'bg-rose-950/70 border-rose-500/60 text-rose-300 shadow-[0_0_10px_rgba(244,63,94,0.2)]'
+                  }`}
+                >
+                  <Clock
+                    className={`w-3.5 h-3.5 ${evacuateCountdown <= 15 ? 'text-red-400 animate-spin' : 'text-rose-400'}`}
+                    style={{ animationDuration: evacuateCountdown <= 15 ? '1.5s' : '4s' }}
+                  />
+                  <span>
+                    TIME LIMIT: {Math.floor(evacuateCountdown / 60)}:{String(evacuateCountdown % 60).padStart(2, '0')}
+                  </span>
+                </div>
+              </div>
+
+              <h4 className="text-xl font-serif italic text-white mb-2">
+                Your Servant Has Suffered Lethal Damage!
+              </h4>
+
+              <p className="text-xs font-mono text-white/70 max-w-xl mx-auto mb-4 leading-relaxed">
+                Before the spiritual contract dissolves, you may expend <strong className="text-rose-400">1 Command Seal</strong> to execute an emergency spatial extraction. {p1.name} will be teleported to safety at 1 HP, preventing tournament streak loss and contract severance!
+              </p>
+
+              {/* 1-Minute Visual Countdown Bar */}
+              <div className="w-full max-w-md mx-auto mb-5 p-2.5 rounded-lg bg-black/40 border border-rose-950/60">
+                <div className="flex items-center justify-between text-[11px] font-mono mb-1.5">
+                  <span className="text-rose-300/80 flex items-center gap-1.5">
+                    <Timer className="w-3.5 h-3.5 text-rose-400" />
+                    Contract Dissolution Window
+                  </span>
+                  <span className={`font-bold ${evacuateCountdown <= 15 ? 'text-red-400 animate-pulse' : 'text-rose-300'}`}>
+                    {evacuateCountdown}s remaining
+                  </span>
+                </div>
+                <div className="h-1.5 w-full bg-black/80 rounded-full overflow-hidden border border-rose-900/40">
+                  <div
+                    className={`h-full transition-all duration-1000 ease-linear rounded-full ${
+                      evacuateCountdown <= 15
+                        ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.9)]'
+                        : 'bg-gradient-to-r from-rose-500 via-rose-400 to-amber-400'
+                    }`}
+                    style={{ width: `${(evacuateCountdown / 60) * 100}%` }}
+                  />
+                </div>
+                <div className="text-[10px] font-mono text-white/40 text-center mt-1.5">
+                  ⏱️ You have 1 minute to decide. If time expires, defeat is automatically accepted.
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <button
+                  disabled={(master.commandSeals ?? 3) < 1}
+                  onClick={handleCommandSealEvacuate}
+                  className="px-6 py-3 rounded-sm bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs uppercase tracking-wider font-mono shadow-[0_0_20px_rgba(225,29,72,0.4)] flex items-center gap-2 transition active:scale-95 cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Invoke Command Seal Evacuation ({(master.commandSeals ?? 3)}/3 Left)</span>
+                </button>
+                <button
+                  onClick={handleAcceptDefeat}
+                  className="px-5 py-3 rounded-sm bg-[#161616] hover:bg-[#222] text-white/70 hover:text-white font-mono text-xs uppercase tracking-wider border border-white/20 transition active:scale-95 cursor-pointer"
+                >
+                  Accept Defeat ({evacuateCountdown}s)
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="inline-flex p-3.5 rounded-sm bg-[#161616] border border-white/10 mb-3">
-            {battle.turnPhase === 'victory' ? <Award className="w-8 h-8 text-[#d4af37]" /> : <Skull className="w-8 h-8 text-[#ef4444]" />}
+            {battle.turnPhase === 'victory' ? (
+              <Award className="w-8 h-8 text-[#d4af37]" />
+            ) : battle.turnPhase === 'fled' ? (
+              <Wind className="w-8 h-8 text-[#f59e0b]" />
+            ) : battle.turnPhase === 'evacuated' ? (
+              <Sparkles className="w-8 h-8 text-rose-400" />
+            ) : (
+              <Skull className="w-8 h-8 text-[#ef4444]" />
+            )}
           </div>
           <h3 className="text-2xl font-serif italic text-white mb-2">
-            {battle.turnPhase === 'victory' ? 'VICTORY ACHIEVED' : 'DEFEAT'}
+            {battle.turnPhase === 'victory'
+              ? 'VICTORY ACHIEVED'
+              : battle.turnPhase === 'fled'
+              ? 'TACTICAL RETREAT SUCCESSFUL'
+              : battle.turnPhase === 'evacuated'
+              ? 'COMMAND SEAL SPATIAL EVACUATION'
+              : 'DEFEAT'}
           </h3>
           <p className="text-xs font-mono text-white/60 max-w-md mx-auto mb-5">
             {battle.turnPhase === 'victory'
               ? `Your Servant ${p1.name} has claimed triumph. Rewards: +3 Saint Quartz & +1 Grail War Victory.`
+              : battle.turnPhase === 'fled'
+              ? `${p1.name} safely broke line of sight and disengaged from combat. No streak or penalty loss incurred.`
+              : battle.turnPhase === 'evacuated'
+              ? `Command Seal teleportation successful! ${p1.name} was pulled from mortal peril and survives at 1 HP.`
+              : evacuateExpired
+              ? `Decision window expired (1 minute limit reached). No Command Seal was invoked in time — contract dissolved.`
               : `${p2.name} overwhelmed your defense. Fortify your stats in the workshop and retry.`}
           </p>
 
-          {/* Visual Novel Victory / Defeat Dialogue Frame */}
+          {/* Visual Novel Victory / Defeat / Retreat Dialogue Frame */}
           <div className="max-w-2xl mx-auto mb-6 p-1 rounded-2xl bg-gradient-to-br from-[#d4af37] via-[#b87928] to-[#6e4610] shadow-[0_0_35px_rgba(212,175,55,0.25)] text-left">
             <div className="p-5 md:p-6 bg-[#140d0a] rounded-xl border-2 border-[#24150b] relative overflow-hidden">
               <div className="flex flex-col sm:flex-row items-stretch gap-5">
@@ -795,14 +1135,26 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                 <div className="flex-1 flex flex-col justify-between space-y-3">
                   <div className="flex items-center justify-between gap-2 border-b border-[#3d2613]/80 pb-2">
                     <span className="text-xs font-mono text-[#d4af37] uppercase tracking-wider font-semibold">
-                      {p1.servantClass} • {battle.turnPhase === 'victory' ? 'Triumph Achieved' : 'Contract Severed'}
+                      {p1.servantClass} • {battle.turnPhase === 'victory' ? 'Triumph Achieved' : battle.turnPhase === 'fled' ? 'Tactical Disengagement' : battle.turnPhase === 'evacuated' ? 'Emergency Spatial Recall' : 'Contract Severed'}
                     </span>
-                    <span className={`text-[10px] font-mono px-2.5 py-0.5 rounded-sm uppercase tracking-widest font-bold border ${
-                      battle.turnPhase === 'victory'
-                        ? 'bg-[#24150b] text-[#f59e0b] border-[#d4af37]/40'
-                        : 'bg-[#2b0c0c] text-[#ef4444] border-[#ef4444]/40'
-                    }`}>
-                      [{battle.turnPhase === 'victory' ? 'VICTORY INVOCATION' : 'DEFEAT & RETREAT'}]
+                    <span
+                      className={`text-[10px] font-mono px-2.5 py-0.5 rounded-sm uppercase tracking-widest font-bold border ${
+                        battle.turnPhase === 'victory'
+                          ? 'bg-[#24150b] text-[#f59e0b] border-[#d4af37]/40'
+                          : battle.turnPhase === 'fled'
+                          ? 'bg-[#261c0c] text-amber-300 border-amber-500/40'
+                          : battle.turnPhase === 'evacuated'
+                          ? 'bg-[#260c14] text-rose-300 border-rose-500/40'
+                          : 'bg-[#2b0c0c] text-[#ef4444] border-[#ef4444]/40'
+                      }`}
+                    >
+                      [{battle.turnPhase === 'victory'
+                        ? 'VICTORY INVOCATION'
+                        : battle.turnPhase === 'fled'
+                        ? 'TACTICAL RETREAT'
+                        : battle.turnPhase === 'evacuated'
+                        ? 'SEAL EVACUATION'
+                        : 'DEFEAT & RETREAT'}]
                     </span>
                   </div>
 
@@ -811,6 +1163,10 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                     <p className="font-serif italic text-sm md:text-base text-[#f5e6d3] leading-relaxed tracking-wide px-3">
                       &quot;{battle.turnPhase === 'victory'
                         ? (activeServant.customQuotes?.victory || activeServant.template.victoryQuote || "A decisive triumph. The Holy Grail draws closer.")
+                        : battle.turnPhase === 'fled'
+                        ? "A strategic retreat today ensures our victory tomorrow, Master. Returning to safety!"
+                        : battle.turnPhase === 'evacuated'
+                        ? "Understood, Master! Spatial extraction initiated through the Command Seal's authority!"
                         : (activeServant.customQuotes?.defeat || activeServant.template.defeatQuote || "Master... I have failed you in battle...")}&quot;
                     </p>
                     <span className="absolute bottom-2 right-2 text-2xl font-serif text-[#d4af37]/20 select-none">”</span>
@@ -840,7 +1196,10 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
       )}
 
       {/* Combat Command Controller */}
-      {battle.turnPhase !== 'victory' && battle.turnPhase !== 'defeat' && (
+      {battle.turnPhase !== 'victory' &&
+        battle.turnPhase !== 'defeat' &&
+        battle.turnPhase !== 'fled' &&
+        battle.turnPhase !== 'evacuated' && (
         <div className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] shadow-2xl space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1a1a1a] pb-4">
             <div>
@@ -1015,23 +1374,70 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
             </div>
           </div>
 
-          {/* Turn Execution Submit Button */}
-          <div className="pt-2">
-            <button
-              disabled={selectedCards.length < 3 && !useNp}
-              onClick={handleExecuteTurn}
-              className="w-full py-3 rounded-sm bg-[#d4af37] hover:bg-[#c49f27] text-black font-bold text-xs font-mono uppercase tracking-widest shadow-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isSimulating ? (
-                <span>Resolving Turn Clash...</span>
-              ) : (
-                <>
-                  <span>Execute Turn {battle.currentTurn} Clash</span>
-                  <ChevronRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </div>
+          {/* Flee Status Message Banner if applicable */}
+          {fleeStatusMessage && (
+            <div className="p-3 rounded bg-amber-950/30 border border-amber-500/40 text-amber-300 text-xs font-mono flex items-center justify-between">
+              <span>{fleeStatusMessage}</span>
+              <button
+                type="button"
+                onClick={() => setFleeStatusMessage(null)}
+                className="text-white/40 hover:text-white text-xs font-mono ml-2"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Turn Execution & Flee Control Row */}
+          {(() => {
+            const fleeCalc = calculateFleeChance(
+              p1.currentHp,
+              p1.maxHp,
+              p1.servantClass,
+              p1.stats?.agility || 10
+            );
+
+            return (
+              <div className="pt-2 flex flex-col sm:flex-row items-stretch gap-3">
+                <button
+                  disabled={selectedCards.length < 3 && !useNp}
+                  onClick={handleExecuteTurn}
+                  className="flex-1 py-3 rounded-sm bg-[#d4af37] hover:bg-[#c49f27] text-black font-bold text-xs font-mono uppercase tracking-widest shadow-xl transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isSimulating ? (
+                    <span>Resolving Turn Clash...</span>
+                  ) : (
+                    <>
+                      <span>Execute Turn {battle.currentTurn} Clash</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isSimulating}
+                  onClick={handleAttemptFlee}
+                  title={`Tactical Flee chance: ${fleeCalc.chancePercent}%. ${
+                    fleeCalc.isAgilityBonus ? '+5% Agility Servant bonus applied! ' : ''
+                  }${
+                    p1.currentHp / p1.maxHp < 0.5
+                      ? 'Escape rate decreased because HP < 50%.'
+                      : 'Base 30% rate.'
+                  } Consumes turn and risks counter-strike on failure!`}
+                  className="px-5 py-3 rounded-sm border border-amber-500/40 bg-amber-950/20 hover:bg-amber-950/40 active:bg-amber-900/50 text-amber-300 font-mono text-xs uppercase tracking-wider transition flex items-center justify-center gap-2 disabled:opacity-40 shadow-md"
+                >
+                  <Footprints className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Flee ({fleeCalc.chancePercent}%)</span>
+                  {fleeCalc.isAgilityBonus && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-200 border border-amber-500/30">
+                      +5% AGI
+                    </span>
+                  )}
+                </button>
+              </div>
+            );
+          })()}
         </div>
       )}
 
