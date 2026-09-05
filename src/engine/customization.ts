@@ -153,3 +153,149 @@ export async function updateDialogueQuotesDB(inventoryId: string, quotes: Dialog
     return null;
   }
 }
+
+// ==========================================
+// 5. CRAFT ESSENCE FEEDING & EXP ENGINE
+// ==========================================
+
+export interface FeedResult {
+  updatedServant: MasterServantInstance;
+  remainingCraftEssences: any[];
+  fedEssences: any[];
+  expGained: number;
+  oldLevel: number;
+  newLevel: number;
+  levelsGained: number;
+  statPointsGained: number;
+  oldTotalExp: number;
+  newTotalExp: number;
+}
+
+/**
+ * Returns the EXP amount provided by a Craft Essence based on its rarity.
+ */
+export function getCeExpValue(ce: { rarity?: number }): number {
+  const r = ce?.rarity || 3;
+  switch (r) {
+    case 1:
+      return 1000;
+    case 2:
+      return 2500;
+    case 3:
+      return 6000;
+    case 4:
+      return 15000;
+    case 5:
+      return 35000;
+    default:
+      return Math.max(1000, r * 5000);
+  }
+}
+
+/**
+ * Calculates the cumulative total EXP needed to reach a specific level starting from level 1.
+ */
+export function getTotalExpForLevel(level: number): number {
+  if (level <= 1) return 0;
+  let total = 0;
+  for (let l = 1; l < level; l++) {
+    total += 1000 + (l - 1) * 250;
+  }
+  return total;
+}
+
+/**
+ * Determines a Servant's current level, remaining EXP, and progress towards the next level.
+ */
+export function calculateLevelFromExp(totalExp: number, maxLevel: number = 100): {
+  level: number;
+  currentLevelExp: number;
+  nextLevelExp: number;
+  progressPercent: number;
+} {
+  let level = 1;
+  while (level < maxLevel) {
+    const nextLevelReq = 1000 + (level - 1) * 250;
+    const currentBase = getTotalExpForLevel(level);
+    if (totalExp < currentBase + nextLevelReq) {
+      const currentLevelExp = Math.max(0, totalExp - currentBase);
+      const progressPercent = Math.min(100, Math.floor((currentLevelExp / nextLevelReq) * 100));
+      return { level, currentLevelExp, nextLevelExp: nextLevelReq, progressPercent };
+    }
+    level++;
+  }
+  return { level: maxLevel, currentLevelExp: 0, nextLevelExp: 0, progressPercent: 100 };
+}
+
+/**
+ * Feeds a list of Craft Essences to a Servant, granting EXP, increasing level,
+ * and awarding 10 stat points for every level gained.
+ */
+export function feedCraftEssences(
+  servant: MasterServantInstance,
+  ceIndicesOrIds: string[],
+  masterCraftEssences: any[]
+): FeedResult {
+  if (!ceIndicesOrIds || ceIndicesOrIds.length === 0) {
+    throw new Error('No Craft Essences selected for synthesis.');
+  }
+
+  const remaining = [...(masterCraftEssences || [])];
+  const fedEssences: any[] = [];
+  let totalExpGained = 0;
+
+  for (const target of ceIndicesOrIds) {
+    // Find first matching CE by ID or matching name
+    const idx = remaining.findIndex(
+      (c: any, index: number) =>
+        c &&
+        (c.id === target ||
+          String(index) === target ||
+          c.name?.toLowerCase() === target.toLowerCase())
+    );
+
+    if (idx !== -1) {
+      const [consumed] = remaining.splice(idx, 1);
+      fedEssences.push(consumed);
+      totalExpGained += getCeExpValue(consumed);
+    }
+  }
+
+  if (fedEssences.length === 0) {
+    throw new Error('None of the selected Craft Essences were found in inventory.');
+  }
+
+  const oldLevel = servant.level || 1;
+  const currentExp = servant.experience ?? getTotalExpForLevel(oldLevel);
+  const newTotalExp = currentExp + totalExpGained;
+  const { level: newLevel } = calculateLevelFromExp(newTotalExp);
+  const levelsGained = Math.max(0, newLevel - oldLevel);
+  const statPointsGained = levelsGained * 10;
+
+  // Un-equip if the equipped CE was consumed
+  const consumedIds = new Set(fedEssences.map((c: any) => c.id));
+  const isEquippedConsumed = servant.equippedCeId ? consumedIds.has(servant.equippedCeId) : false;
+
+  const updatedServant: MasterServantInstance = {
+    ...servant,
+    level: newLevel,
+    experience: newTotalExp,
+    availableStatPoints: (servant.availableStatPoints || 0) + statPointsGained,
+    equippedCeId: isEquippedConsumed ? undefined : servant.equippedCeId,
+    equippedCe: isEquippedConsumed ? undefined : servant.equippedCe
+  };
+
+  return {
+    updatedServant,
+    remainingCraftEssences: remaining,
+    fedEssences,
+    expGained: totalExpGained,
+    oldLevel,
+    newLevel,
+    levelsGained,
+    statPointsGained,
+    oldTotalExp: currentExp,
+    newTotalExp
+  };
+}
+

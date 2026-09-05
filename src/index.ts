@@ -38,6 +38,7 @@ import * as equipCommand from './commands/equip';
 import * as boastCommand from './commands/boast';
 import * as dailyCommand from './commands/daily';
 import * as claimCommand from './commands/claim';
+import * as feedCommand from './commands/feed';
 import { getOrCreateMaster, saveMaster, getAllThroneServants, findServantInPool, searchAndRankServants, claimDailySaintQuartz } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from './data/noblePhantasmGifs';
@@ -111,6 +112,7 @@ commands.set(addservantCommand.data.name, addservantCommand);
 commands.set(boastCommand.data.name, boastCommand);
 commands.set(addceCommand.data.name, addceCommand);
 commands.set(addsqCommand.data.name, addsqCommand);
+commands.set(feedCommand.data.name, feedCommand);
 
 // Alias mapping for backward-compatible text shortcuts and interactions
 export const commandAliasMap: Record<string, any> = {
@@ -122,6 +124,8 @@ export const commandAliasMap: Record<string, any> = {
   familiar: familiarCommand,
   trap: trapCommand,
   equip: equipCommand,
+  feed: feedCommand,
+  enhance: feedCommand,
   cutin: dialogueCommand
 };
 

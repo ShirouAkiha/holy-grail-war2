@@ -1,14 +1,19 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { MasterProfile, MasterServantInstance, ServantStats, ServantTemplate } from '../lib/types';
+import { MasterProfile, MasterServantInstance, ServantStats, ServantTemplate, CraftEssence } from '../lib/types';
 import { CRAFT_ESSENCE_DATABASE } from '../lib/data/craftEssences';
 import { getCustomServantsFromStorage, saveCustomServantsToStorage } from '../lib/state/gameState';
 import {
   allocateStatPoints,
   equipCraftEssence,
   updateCustomDialogueQuotes,
-  calculateRadarCoordinates
+  calculateRadarCoordinates,
+  feedCraftEssences,
+  getCeExpValue,
+  calculateLevelFromExp,
+  getTotalExpForLevel,
+  FeedResult
 } from '../lib/engine/customization';
 import {
   User,
@@ -29,7 +34,10 @@ import {
   FileUp,
   Image as ImageIcon,
   Loader2,
-  Trash2
+  Trash2,
+  ChevronRight,
+  TrendingUp,
+  Plus
 } from 'lucide-react';
 import { normalizeMediaUrl } from '../lib/utils/mediaResolver';
 
@@ -54,6 +62,18 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
   const [defeatQuote, setDefeatQuote] = useState(currentServant?.customQuotes?.defeat || '');
   const [activeDialogueTab, setActiveDialogueTab] = useState<'chains' | 'general'>('chains');
   const [saveFeedback, setSaveFeedback] = useState(false);
+
+  // Craft Essence Feeding & Synthesis State
+  const [workshopCeTab, setWorkshopCeTab] = useState<'feed' | 'equip'>('feed');
+  const [selectedFeedIndices, setSelectedFeedIndices] = useState<number[]>([]);
+  const [feedResult, setFeedResult] = useState<{
+    message: string;
+    expGained: number;
+    oldLevel: number;
+    newLevel: number;
+    statPointsGained: number;
+  } | null>(null);
+  const [feedError, setFeedError] = useState<string | null>(null);
 
   // Servant Portrait & Artwork Customization State
   const [avatarUrl, setAvatarUrl] = useState(currentServant?.template?.avatarUrl || '');
@@ -121,6 +141,111 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleToggleSelectCe = (index: number) => {
+    setSelectedFeedIndices(prev =>
+      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+    );
+  };
+
+  const handleSelectAllCes = () => {
+    const owned = (master.craftEssences || []).filter(Boolean);
+    setSelectedFeedIndices(owned.map((_, i) => i));
+  };
+
+  const handleSelectLowRarityCes = () => {
+    const owned = (master.craftEssences || []).filter(Boolean);
+    const lowRarity = owned
+      .map((ce, i) => ({ ce, i }))
+      .filter(({ ce }) => (ce?.rarity || 3) <= 3)
+      .map(({ i }) => i);
+    setSelectedFeedIndices(lowRarity);
+  };
+
+  const handleClearCeSelection = () => {
+    setSelectedFeedIndices([]);
+  };
+
+  const handleExecuteFeed = () => {
+    const owned = (master.craftEssences || []).filter(Boolean);
+    if (selectedFeedIndices.length === 0) {
+      setFeedError('Please select at least one Craft Essence to feed.');
+      setTimeout(() => setFeedError(null), 3000);
+      return;
+    }
+
+    try {
+      const targetIndices = selectedFeedIndices.map(String);
+      const result = feedCraftEssences(currentServant, targetIndices, owned);
+
+      const updatedServants = master.servants.map(s =>
+        s.id === result.updatedServant.id ? result.updatedServant : s
+      );
+
+      onUpdateMaster({
+        ...master,
+        craftEssences: result.remainingCraftEssences,
+        servants: updatedServants
+      });
+
+      setSelectedFeedIndices([]);
+      setFeedError(null);
+      setFeedResult({
+        message: `✨ Enhancement Complete! Fed ${result.fedEssences.length} Craft Essence${result.fedEssences.length > 1 ? 's' : ''}.`,
+        expGained: result.expGained,
+        oldLevel: result.oldLevel,
+        newLevel: result.newLevel,
+        statPointsGained: result.statPointsGained
+      });
+
+      setTimeout(() => setFeedResult(null), 5000);
+    } catch (err: any) {
+      setFeedError(err.message || 'Failed to feed Craft Essences.');
+      setTimeout(() => setFeedError(null), 4000);
+    }
+  };
+
+  const handleFeedSingle = (index: number) => {
+    const owned = (master.craftEssences || []).filter(Boolean);
+    try {
+      const result = feedCraftEssences(currentServant, [String(index)], owned);
+
+      const updatedServants = master.servants.map(s =>
+        s.id === result.updatedServant.id ? result.updatedServant : s
+      );
+
+      onUpdateMaster({
+        ...master,
+        craftEssences: result.remainingCraftEssences,
+        servants: updatedServants
+      });
+
+      setSelectedFeedIndices(prev => prev.filter(i => i !== index).map(i => (i > index ? i - 1 : i)));
+      setFeedError(null);
+      setFeedResult({
+        message: `✨ Enhancement Complete! Fed 1x ${result.fedEssences[0]?.name || 'Craft Essence'}.`,
+        expGained: result.expGained,
+        oldLevel: result.oldLevel,
+        newLevel: result.newLevel,
+        statPointsGained: result.statPointsGained
+      });
+
+      setTimeout(() => setFeedResult(null), 5000);
+    } catch (err: any) {
+      setFeedError(err.message || 'Failed to feed Craft Essence.');
+      setTimeout(() => setFeedError(null), 4000);
+    }
+  };
+
+  const handleGrantStarterCes = () => {
+    // Add sample CEs to master's inventory for quick testing
+    const starters = CRAFT_ESSENCE_DATABASE.slice(0, 5);
+    const existing = master.craftEssences || [];
+    onUpdateMaster({
+      ...master,
+      craftEssences: [...existing, ...starters]
+    });
   };
 
   const handleSaveQuotes = () => {
@@ -515,79 +640,355 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
           </div>
         </div>
 
-        {/* Middle Col: Craft Essence Inventory & Equipment */}
-        <div className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] space-y-5 shadow-2xl">
-          <div className="flex items-center justify-between border-b border-[#1a1a1a] pb-3">
-            <div>
-              <h3 className="text-sm font-serif italic text-white flex items-center gap-1.5">
-                <Shield className="w-4 h-4 text-[#d4af37]" /> Equipped Craft Essence
-              </h3>
-              <p className="text-[11px] font-mono text-white/40 mt-0.5">Attach passive magical artifacts</p>
-            </div>
-            {currentServant.equippedCe && (
-              <button
-                onClick={() => handleEquipCe(undefined)}
-                className="text-[11px] font-mono uppercase tracking-wider text-[#ef4444] hover:underline"
-              >
-                Unequip
-              </button>
-            )}
-          </div>
-
-          {/* Currently Equipped Card Banner */}
-          {currentServant.equippedCe ? (
-            <div className="p-4 rounded-sm bg-[#161616] border border-[#d4af37]/40 shadow-md">
-              <div className="flex items-center justify-between mb-1">
-                <h4 className="font-serif italic text-white text-sm">{currentServant.equippedCe.name}</h4>
-                <span className="text-[#d4af37] font-mono text-xs">{'★'.repeat(currentServant.equippedCe.rarity)}</span>
+        {/* Middle Col: Craft Essence Inventory, Equipment & EXP Feeding */}
+        <div className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] space-y-4 shadow-2xl flex flex-col justify-between">
+          <div className="space-y-4">
+            {/* Mode Selector Header Tabs */}
+            <div className="flex items-center justify-between border-b border-[#1a1a1a] pb-3">
+              <div>
+                <h3 className="text-sm font-serif italic text-white flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-[#d4af37]" /> Craft Essence Workshop
+                </h3>
+                <p className="text-[11px] font-mono text-white/40 mt-0.5">
+                  Feed essences for EXP (+10 pts/lv) or equip passive artifacts
+                </p>
               </div>
-              <p className="text-xs font-mono text-[#22c55e] mb-2">{currentServant.equippedCe.effectText}</p>
-              <div className="flex gap-3 text-[11px] font-mono text-white/60">
-                <span>ATK: +{currentServant.equippedCe.atkBonus}</span>
-                <span>HP: +{currentServant.equippedCe.hpBonus}</span>
+              <div className="flex rounded-sm bg-[#111] p-0.5 border border-[#222]">
+                <button
+                  onClick={() => setWorkshopCeTab('feed')}
+                  className={`px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider rounded-sm transition flex items-center gap-1 ${
+                    workshopCeTab === 'feed'
+                      ? 'bg-[#d4af37] text-black font-bold shadow-sm'
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                >
+                  <TrendingUp className="w-3 h-3" /> Feed (EXP)
+                </button>
+                <button
+                  onClick={() => setWorkshopCeTab('equip')}
+                  className={`px-2.5 py-1 text-[11px] font-mono uppercase tracking-wider rounded-sm transition flex items-center gap-1 ${
+                    workshopCeTab === 'equip'
+                      ? 'bg-[#d4af37] text-black font-bold shadow-sm'
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                >
+                  <Shield className="w-3 h-3" /> Equip
+                </button>
               </div>
             </div>
-          ) : (
-            <div className="p-4 rounded-sm bg-[#111] border border-dashed border-[#222] text-center text-xs font-mono text-white/40">
-              No Craft Essence equipped. Select from inventory below.
-            </div>
-          )}
 
-          <div className="space-y-2">
-            <h4 className="text-[10px] font-mono uppercase tracking-widest text-white/40">Available CEs</h4>
-            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-              {CRAFT_ESSENCE_DATABASE.map(ce => {
-                const isEquipped = currentServant.equippedCeId === ce.id;
-                return (
-                  <div
-                    key={ce.id}
-                    className={`p-3 rounded-sm border text-xs font-mono flex items-center justify-between transition ${
-                      isEquipped
-                        ? 'bg-[#161616] border-[#d4af37] text-white'
-                        : 'bg-[#111] border-[#1a1a1a] text-white/70 hover:bg-[#161616]'
-                    }`}
-                  >
-                    <div>
-                      <div className="font-serif italic text-white flex items-center gap-1.5">
-                        <span>{ce.name}</span>
-                        <span className="text-[#d4af37] text-[10px]">{'★'.repeat(ce.rarity)}</span>
-                      </div>
-                      <div className="text-[10px] text-white/40 mt-0.5 line-clamp-1">{ce.effectText}</div>
+            {/* Servant Level & EXP Status Gauge */}
+            {(() => {
+              const currentExp = currentServant.experience ?? getTotalExpForLevel(currentServant.level || 1);
+              const expInfo = calculateLevelFromExp(currentExp);
+              const currentLvl = currentServant.level || expInfo.level || 1;
+
+              return (
+                <div className="p-3 rounded-lg bg-[#121212] border border-[#222] space-y-2">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <div className="flex items-center gap-2">
+                      <span className="font-serif italic text-white font-bold">{currentServant.template.name}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-[#1a1a1a] text-[#d4af37] text-[10px] border border-[#d4af37]/30">
+                        Lv. {currentLvl} / 100
+                      </span>
                     </div>
-                    <button
-                      onClick={() => handleEquipCe(ce.id)}
-                      className={`px-2.5 py-1 rounded-sm font-mono text-[10px] uppercase tracking-wider font-bold transition ${
-                        isEquipped
-                          ? 'bg-[#22c55e] text-black'
-                          : 'bg-[#222] hover:bg-[#333] text-white/80'
-                      }`}
-                    >
-                      {isEquipped ? 'Equipped' : 'Equip'}
-                    </button>
+                    <span className="text-[#22c55e] font-bold text-[11px]">
+                      +{currentServant.availableStatPoints || 0} Stat Pts
+                    </span>
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Progress Bar */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[10px] font-mono text-white/50">
+                      <span>EXP: {expInfo.currentLevelExp.toLocaleString()} / {expInfo.nextLevelExp.toLocaleString()}</span>
+                      <span>{expInfo.progressPercent}%</span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-[#1e1e1e] overflow-hidden border border-[#333]/50">
+                      <div
+                        className="h-full bg-gradient-to-r from-[#d4af37] to-[#eab308] transition-all duration-300 rounded-full"
+                        style={{ width: `${expInfo.progressPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Notification Feedback Banners */}
+            {feedResult && (
+              <div className="p-3 rounded-lg bg-[#062412] border border-[#22c55e]/60 text-xs font-mono space-y-1 animate-fadeIn">
+                <div className="flex items-center justify-between text-[#22c55e] font-bold">
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" /> {feedResult.message}
+                  </span>
+                  <span>+{feedResult.expGained.toLocaleString()} EXP</span>
+                </div>
+                <div className="text-[11px] text-white/80 flex items-center justify-between">
+                  <span>Level {feedResult.oldLevel} ➔ {feedResult.newLevel}</span>
+                  {feedResult.statPointsGained > 0 && (
+                    <span className="text-[#d4af37] font-bold">
+                      ⭐ +{feedResult.statPointsGained} Stat Points Added!
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {feedError && (
+              <div className="p-2.5 rounded-lg bg-[#2a0e0e] border border-[#ef4444]/60 text-xs font-mono text-[#ef4444] animate-fadeIn">
+                {feedError}
+              </div>
+            )}
+
+            {/* TAB CONTENT 1: FEED FOR EXP */}
+            {workshopCeTab === 'feed' && (() => {
+              const ownedCes = (master.craftEssences || []).filter(Boolean);
+              const currentExp = currentServant.experience ?? getTotalExpForLevel(currentServant.level || 1);
+              const currentLvl = currentServant.level || calculateLevelFromExp(currentExp).level || 1;
+
+              const selectedCes = selectedFeedIndices.map(idx => ownedCes[idx]).filter(Boolean);
+              const projectedExpGain = selectedCes.reduce((sum, ce) => sum + getCeExpValue(ce), 0);
+              const projectedTotalExp = currentExp + projectedExpGain;
+              const projectedExpInfo = calculateLevelFromExp(projectedTotalExp);
+              const projectedLevel = projectedExpInfo.level;
+              const projectedLevelsGained = Math.max(0, projectedLevel - currentLvl);
+              const projectedStatPoints = projectedLevelsGained * 10;
+
+              return (
+                <div className="space-y-3">
+                  {/* Selection Toolbar */}
+                  <div className="flex items-center justify-between text-[11px] font-mono">
+                    <span className="text-white/60">
+                      Inventory: <strong className="text-white">{ownedCes.length}</strong> CEs
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={handleSelectLowRarityCes}
+                        disabled={ownedCes.length === 0}
+                        className="px-2 py-0.5 rounded-sm bg-[#161616] hover:bg-[#222] text-[#d4af37] text-[10px] uppercase tracking-wider border border-[#d4af37]/30 disabled:opacity-30"
+                      >
+                        1-3★ All
+                      </button>
+                      <button
+                        onClick={handleSelectAllCes}
+                        disabled={ownedCes.length === 0}
+                        className="px-2 py-0.5 rounded-sm bg-[#161616] hover:bg-[#222] text-white/80 text-[10px] uppercase tracking-wider border border-[#333] disabled:opacity-30"
+                      >
+                        Select All
+                      </button>
+                      {selectedFeedIndices.length > 0 && (
+                        <button
+                          onClick={handleClearCeSelection}
+                          className="px-2 py-0.5 rounded-sm bg-[#221111] hover:bg-[#331111] text-[#ef4444] text-[10px] uppercase tracking-wider border border-[#ef4444]/30"
+                        >
+                          Clear ({selectedFeedIndices.length})
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Craft Essence Feed Inventory List */}
+                  {ownedCes.length === 0 ? (
+                    <div className="p-5 rounded-lg bg-[#111] border border-dashed border-[#222] text-center space-y-3">
+                      <p className="text-xs font-mono text-white/50">
+                        No Craft Essences in your inventory to feed.
+                      </p>
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+                        <button
+                          onClick={handleGrantStarterCes}
+                          className="px-3 py-1.5 rounded-sm bg-[#d4af37] hover:bg-[#c49f27] text-black font-bold font-mono text-[11px] uppercase tracking-wider transition flex items-center gap-1"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Claim 5 Practice CEs
+                        </button>
+                      </div>
+                      <p className="text-[10px] font-mono text-white/30">
+                        Or roll in /cegacha using Saint Quartz 💎
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                      {ownedCes.map((ce, idx) => {
+                        const isSelected = selectedFeedIndices.includes(idx);
+                        const isEquipped = currentServant.equippedCeId === ce.id;
+                        const expVal = getCeExpValue(ce);
+
+                        return (
+                          <div
+                            key={`${ce.id}_${idx}`}
+                            onClick={() => handleToggleSelectCe(idx)}
+                            className={`p-2.5 rounded-lg border text-xs font-mono flex items-center justify-between cursor-pointer transition ${
+                              isSelected
+                                ? 'bg-[#1e1a0e] border-[#d4af37] text-white shadow-md'
+                                : 'bg-[#111] border-[#1c1c1c] text-white/80 hover:bg-[#161616]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {}} // Handled by parent div
+                                className="accent-[#d4af37] w-3.5 h-3.5 rounded cursor-pointer"
+                              />
+                              <div className="min-w-0">
+                                <div className="font-serif italic text-white flex items-center gap-1.5 truncate">
+                                  <span className="truncate">{ce.name}</span>
+                                  <span className="text-[#d4af37] text-[10px] shrink-0">
+                                    {'★'.repeat(ce.rarity || 3)}
+                                  </span>
+                                  {isEquipped && (
+                                    <span className="px-1 py-0.2 rounded text-[9px] bg-[#22c55e]/20 text-[#22c55e] border border-[#22c55e]/40 shrink-0">
+                                      EQUIPPED
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-white/40 truncate mt-0.5">
+                                  {ce.effectText}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0 ml-2">
+                              <span className="text-[11px] font-mono font-bold text-[#d4af37] bg-[#1a180e] px-1.5 py-0.5 rounded border border-[#d4af37]/20">
+                                +{expVal.toLocaleString()} EXP
+                              </span>
+                              <button
+                                type="button"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  handleFeedSingle(idx);
+                                }}
+                                className="px-2 py-0.5 rounded-sm bg-[#222] hover:bg-[#d4af37] hover:text-black text-white/80 font-mono text-[10px] uppercase tracking-wider font-bold transition"
+                              >
+                                Feed 1x
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Batch Feed Projected Preview Box */}
+                  {selectedFeedIndices.length > 0 && (
+                    <div className="p-3.5 rounded-lg bg-[#161616] border border-[#d4af37]/50 space-y-2.5 shadow-lg animate-fadeIn">
+                      <div className="flex items-center justify-between text-xs font-mono border-b border-[#222] pb-2">
+                        <span className="text-white/70">
+                          Selected: <strong className="text-white">{selectedFeedIndices.length} Essences</strong>
+                        </span>
+                        <span className="text-[#d4af37] font-bold">
+                          +{projectedExpGain.toLocaleString()} EXP
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs font-mono">
+                        <div className="text-white/80">
+                          Level Progression:
+                          <span className="ml-1.5 text-white font-bold">
+                            Lv. {currentLvl} ➔ <strong className="text-[#22c55e]">Lv. {projectedLevel}</strong>
+                          </span>
+                          {projectedLevelsGained > 0 && (
+                            <span className="ml-1 text-[10px] text-[#22c55e]">
+                              (+{projectedLevelsGained} Levels)
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[#d4af37] font-bold text-[11px]">
+                          +{projectedStatPoints} Stat Pts
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={handleExecuteFeed}
+                        className="w-full py-2 rounded-sm bg-gradient-to-r from-[#d4af37] to-[#eab308] hover:from-[#c49f27] hover:to-[#ca8a04] text-black font-serif font-bold text-xs uppercase tracking-wider transition shadow-md flex items-center justify-center gap-1.5"
+                      >
+                        <Sparkles className="w-4 h-4" /> Synthesize & Feed ({selectedFeedIndices.length} Essences)
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* TAB CONTENT 2: EQUIP CRAFT ESSENCE */}
+            {workshopCeTab === 'equip' && (
+              <div className="space-y-4">
+                {/* Currently Equipped Card Banner */}
+                {currentServant.equippedCe ? (
+                  <div className="p-4 rounded-lg bg-[#161616] border border-[#d4af37]/40 shadow-md">
+                    <div className="flex items-center justify-between mb-1">
+                      <h4 className="font-serif italic text-white text-sm">
+                        {currentServant.equippedCe.name}
+                      </h4>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[#d4af37] font-mono text-xs">
+                          {'★'.repeat(currentServant.equippedCe.rarity || 5)}
+                        </span>
+                        <button
+                          onClick={() => handleEquipCe(undefined)}
+                          className="text-[10px] font-mono uppercase tracking-wider text-[#ef4444] hover:underline"
+                        >
+                          Unequip
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-xs font-mono text-[#22c55e] mb-2">
+                      {currentServant.equippedCe.effectText}
+                    </p>
+                    <div className="flex gap-3 text-[11px] font-mono text-white/60">
+                      <span>ATK: +{currentServant.equippedCe.atkBonus}</span>
+                      <span>HP: +{currentServant.equippedCe.hpBonus}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-lg bg-[#111] border border-dashed border-[#222] text-center text-xs font-mono text-white/40">
+                    No Craft Essence equipped. Select an artifact below to bind.
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-mono uppercase tracking-widest text-white/40">
+                    Available Artifacts in Database & Inventory
+                  </h4>
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {CRAFT_ESSENCE_DATABASE.map(ce => {
+                      const isEquipped = currentServant.equippedCeId === ce.id;
+                      return (
+                        <div
+                          key={ce.id}
+                          className={`p-2.5 rounded-lg border text-xs font-mono flex items-center justify-between transition ${
+                            isEquipped
+                              ? 'bg-[#161616] border-[#d4af37] text-white'
+                              : 'bg-[#111] border-[#1a1a1a] text-white/70 hover:bg-[#161616]'
+                          }`}
+                        >
+                          <div>
+                            <div className="font-serif italic text-white flex items-center gap-1.5">
+                              <span>{ce.name}</span>
+                              <span className="text-[#d4af37] text-[10px]">
+                                {'★'.repeat(ce.rarity)}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-white/40 mt-0.5 line-clamp-1">
+                              {ce.effectText}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleEquipCe(isEquipped ? undefined : ce.id)}
+                            className={`px-2.5 py-1 rounded-sm font-mono text-[10px] uppercase tracking-wider font-bold transition shrink-0 ml-2 ${
+                              isEquipped
+                                ? 'bg-[#22c55e] text-black'
+                                : 'bg-[#222] hover:bg-[#333] text-white/80'
+                            }`}
+                          >
+                            {isEquipped ? 'Equipped' : 'Equip'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

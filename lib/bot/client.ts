@@ -40,6 +40,7 @@ import * as inventoryCommand from './commands/inventory';
 import * as equipCommand from './commands/equip';
 import * as boastCommand from './commands/boast';
 import * as dailyCommand from './commands/daily';
+import * as feedCommand from './commands/feed';
 import { updateCustomDialogueQuotes, equipCraftEssence } from './engine/customization';
 import { getOrCreateMaster, updateMasterProfile } from './database/service';
 import { buildProfileEmbed, buildProfileButtons } from './commands/profile';
@@ -85,6 +86,7 @@ commands.set(healCommand.data.name, healCommand);
 commands.set(boastCommand.data.name, boastCommand);
 commands.set(addceCommand.data.name, addceCommand);
 commands.set(addsqCommand.data.name, addsqCommand);
+commands.set(feedCommand.data.name, feedCommand);
 
 export const commandAliasMap: Record<string, any> = {
   claim: dailyCommand,
@@ -95,6 +97,8 @@ export const commandAliasMap: Record<string, any> = {
   familiar: familiarCommand,
   trap: trapCommand,
   equip: equipCommand,
+  feed: feedCommand,
+  enhance: feedCommand,
   cutin: dialogueCommand
 };
 

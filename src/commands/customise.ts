@@ -10,6 +10,7 @@ import {
 } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
+import { feedCraftEssences, getCeExpValue, calculateLevelFromExp, getTotalExpForLevel } from '../engine/customization';
 
 // ==========================================
 // 0. INTERACTIVE INVENTORY HUB BUILDER & HANDLERS
@@ -597,6 +598,17 @@ export const data = new SlashCommandBuilder()
           .setDescription('New nickname')
           .setRequired(true)
       )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('feed')
+      .setDescription('Feed Craft Essences to your Servant for EXP and +10 Stat Points per level!')
+      .addStringOption(opt =>
+        opt
+          .setName('craft_essence')
+          .setDescription('Craft Essence name, "all_3star", "duplicates", or "all"')
+          .setRequired(false)
+      )
   );
 
 // ==========================================
@@ -837,6 +849,125 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         content: `✨ Servant nickname updated to **${name}**!`,
         ephemeral: true
       });
+      return;
+    }
+
+    // ==========================================
+    // SUBCOMMAND E: FEED CRAFT ESSENCES FOR EXP & STAT POINTS
+    // ==========================================
+    if (subcommand === 'feed') {
+      const ownedCes = (master.craftEssences || []).filter(Boolean);
+      if (ownedCes.length === 0) {
+        await interaction.reply({
+          ephemeral: true,
+          content: '❌ You have no Craft Essences in your inventory to feed! Summon more in `/cegacha` using Saint Quartz 💎.'
+        });
+        return;
+      }
+
+      const query = interaction.options.getString('craft_essence')?.trim();
+
+      // If no query passed, show feed status & guidance
+      if (!query) {
+        const currentExp = activeServant.experience ?? getTotalExpForLevel(activeServant.level || 1);
+        const expStatus = calculateLevelFromExp(currentExp);
+
+        const ceSummary = ownedCes.slice(0, 8).map((ce: any, idx: number) => {
+          const exp = getCeExpValue(ce);
+          const star = '★'.repeat(ce.rarity || 3);
+          const isEq = activeServant.equippedCeId === ce.id ? ' `[EQUIPPED]`' : '';
+          return `\`#${idx + 1}\` **${ce.name}** [${star}] — **+${exp.toLocaleString()} EXP**${isEq}`;
+        }).join('\n');
+
+        const embed = new EmbedBuilder()
+          .setTitle(`✨ Spirit Origin Enhancement: ${servantName}`)
+          .setDescription(
+            `Feed Craft Essences into **${servantName}**'s Saint Graph to grant massive Spirit EXP.\n` +
+            `⭐ **Leveling Rule:** Every Level Up awards **+10 Available Stat Points**!\n\n` +
+            `📊 **Current Status:**\n` +
+            `• **Level:** \`Lv. ${activeServant.level || 1} / 100\`\n` +
+            `• **Total EXP:** \`${currentExp.toLocaleString()} EXP\`\n` +
+            `• **Next Level:** \`${expStatus.currentLevelExp.toLocaleString()} / ${expStatus.nextLevelExp.toLocaleString()} EXP\` (${expStatus.progressPercent}%)\n` +
+            `• **Unspent Stat Points:** \`${activeServant.availableStatPoints || 0} pts\`\n\n` +
+            `📦 **Inventory Essences (${ownedCes.length} total):**\n` +
+            `${ceSummary}\n\n` +
+            `*Quick Commands to Feed:*\n` +
+            `• \`/customise feed craft_essence:all_3star\` — Feed all 3★ Essences\n` +
+            `• \`/customise feed craft_essence:duplicates\` — Feed all duplicate copies\n` +
+            `• \`/customise feed craft_essence:<name>\` — Feed a specific Essence\n` +
+            `• Or use \`/feed\` for an interactive selection dropdown!`
+          )
+          .setColor(0xd4af37);
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        return;
+      }
+
+      let targetsToFeed: string[] = [];
+      const lowQuery = query.toLowerCase();
+
+      if (lowQuery === 'all_3star' || lowQuery === '3star' || lowQuery === '3*') {
+        targetsToFeed = ownedCes
+          .map((c: any, idx: number) => (c && c.rarity <= 3 ? String(idx) : null))
+          .filter(Boolean) as string[];
+      } else if (lowQuery === 'duplicates' || lowQuery === 'dupes') {
+        const seen = new Set<string>();
+        targetsToFeed = ownedCes
+          .map((c: any, idx: number) => {
+            if (!c) return null;
+            if (seen.has(c.id)) return String(idx);
+            seen.add(c.id);
+            return null;
+          })
+          .filter(Boolean) as string[];
+      } else if (lowQuery === 'all') {
+        targetsToFeed = ownedCes.map((_: any, idx: number) => String(idx));
+      } else {
+        const matchIdx = ownedCes.findIndex(
+          (c: any) => c.name?.toLowerCase().includes(lowQuery) || c.id === query
+        );
+        if (matchIdx !== -1) {
+          targetsToFeed = [String(matchIdx)];
+        }
+      }
+
+      if (targetsToFeed.length === 0) {
+        await interaction.reply({
+          ephemeral: true,
+          content: `❌ No Craft Essences matching "${query}" found in your inventory.`
+        });
+        return;
+      }
+
+      const result = feedCraftEssences(activeServant, targetsToFeed, master.craftEssences);
+      master.craftEssences = result.remainingCraftEssences;
+      const sIdx = master.servants.findIndex((s: any) => s.id === activeServant.id);
+      if (sIdx !== -1) {
+        master.servants[sIdx] = result.updatedServant;
+      }
+      await saveMaster(master);
+
+      const lvlMsg = result.levelsGained > 0
+        ? `🌟 **LEVEL UP!** \`Lv. ${result.oldLevel} ➔ Lv. ${result.newLevel}\` (+${result.levelsGained} Levels!)\n` +
+          `📈 **Stat Points Gained:** \`+${result.statPointsGained} Available Points\` (+10 pts per level!)\n` +
+          `✨ **Total Available Points:** \`${result.updatedServant.availableStatPoints} pts\``
+        : `📊 **Level:** \`Lv. ${result.newLevel}\` (Progressed towards next level)\n` +
+          `✨ **Available Stat Points:** \`${result.updatedServant.availableStatPoints} pts\``;
+
+      const fedList = result.fedEssences.map((c: any) => `• **${c.name}** (★${c.rarity || 3}) — +${getCeExpValue(c).toLocaleString()} EXP`).slice(0, 8).join('\n');
+
+      const embed = new EmbedBuilder()
+        .setTitle(`✨ Spirit Origin Enhancement: ${servantName}`)
+        .setDescription(
+          `Synthesized **${result.fedEssences.length} Craft Essence(s)** into **${servantName}**!\n\n` +
+          `🔮 **EXP Gained:** \`+${result.expGained.toLocaleString()} EXP\`\n` +
+          `${lvlMsg}\n\n` +
+          `**Consolidated Essences:**\n${fedList}${result.fedEssences.length > 8 ? `\n*...and ${result.fedEssences.length - 8} more*` : ''}\n\n` +
+          `*To allocate your newly gained stat points, use:*\n\`/customise stats strength:5 endurance:5\``
+        )
+        .setColor(result.levelsGained > 0 ? 0x22c55e : 0x38bdf8);
+
+      await interaction.reply({ embeds: [embed] });
       return;
     }
 
