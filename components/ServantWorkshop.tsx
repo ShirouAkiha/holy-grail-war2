@@ -535,10 +535,89 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
         </div>
       </div>
 
+      {/* Quick Servant Improvement & Customization Shortcuts Bar */}
+      <div className="p-4 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] space-y-2 shadow-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sliders className="w-4 h-4 text-[#d4af37]" />
+            <h3 className="text-xs font-serif italic text-white uppercase tracking-wider">
+              Servant Customization & Improvement Shortcuts
+            </h3>
+          </div>
+          <span className="text-[10px] font-mono text-white/40">
+            1-Click Improvement Navigation
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <button
+            onClick={() => {
+              setWorkshopCeTab('feed');
+              const el = document.getElementById('ce-workshop-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="px-3 py-1.5 rounded bg-[#161616] hover:bg-[#222] text-[#d4af37] border border-[#d4af37]/30 text-xs font-mono font-bold flex items-center gap-1.5 transition"
+          >
+            <TrendingUp className="w-3.5 h-3.5" /> 🧪 Feed CEs (+EXP & Level Up)
+          </button>
+
+          <button
+            onClick={() => {
+              setWorkshopCeTab('equip');
+              const el = document.getElementById('ce-workshop-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="px-3 py-1.5 rounded bg-[#161616] hover:bg-[#222] text-[#38bdf8] border border-[#38bdf8]/30 text-xs font-mono font-bold flex items-center gap-1.5 transition"
+          >
+            <Shield className="w-3.5 h-3.5" /> 👔 Equip Craft Essence
+          </button>
+
+          <button
+            onClick={() => {
+              const el = document.getElementById('stat-allocation-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="px-3 py-1.5 rounded bg-[#161616] hover:bg-[#222] text-[#22c55e] border border-[#22c55e]/30 text-xs font-mono font-bold flex items-center gap-1.5 transition"
+          >
+            <Zap className="w-3.5 h-3.5" /> ⭐ Allocate Stat Points ({currentServant.availableStatPoints || 0} pts)
+          </button>
+
+          <button
+            onClick={() => {
+              const el = document.getElementById('dialogue-studio-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="px-3 py-1.5 rounded bg-[#161616] hover:bg-[#222] text-[#eab308] border border-[#eab308]/30 text-xs font-mono font-bold flex items-center gap-1.5 transition"
+          >
+            <BookOpen className="w-3.5 h-3.5" /> 💬 Voice Lines & Quotes
+          </button>
+
+          <button
+            onClick={() => {
+              const el = document.getElementById('artwork-customization-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="px-3 py-1.5 rounded bg-[#161616] hover:bg-[#222] text-[#a855f7] border border-[#a855f7]/30 text-xs font-mono font-bold flex items-center gap-1.5 transition"
+          >
+            <ImageIcon className="w-3.5 h-3.5" /> 🖼️ Portrait & Card Art
+          </button>
+
+          <button
+            onClick={() => {
+              const el = document.getElementById('np-animation-section');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }}
+            className="px-3 py-1.5 rounded bg-[#161616] hover:bg-[#222] text-[#ef4444] border border-[#ef4444]/30 text-xs font-mono font-bold flex items-center gap-1.5 transition"
+          >
+            <Film className="w-3.5 h-3.5" /> 💥 NP Animation & Chant
+          </button>
+        </div>
+      </div>
+
       {/* Main Builder Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Col: Stat Distribution & Interactive Radar Chart */}
-        <div className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] space-y-6 shadow-2xl">
+        <div id="stat-allocation-section" className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] space-y-6 shadow-2xl">
           <div className="flex items-center justify-between border-b border-[#1a1a1a] pb-3">
             <div>
               <h3 className="text-sm font-serif italic text-white flex items-center gap-1.5">
@@ -641,7 +720,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
         </div>
 
         {/* Middle Col: Craft Essence Inventory, Equipment & EXP Feeding */}
-        <div className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] space-y-4 shadow-2xl flex flex-col justify-between">
+        <div id="ce-workshop-section" className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] space-y-4 shadow-2xl flex flex-col justify-between">
           <div className="space-y-4">
             {/* Mode Selector Header Tabs */}
             <div className="flex items-center justify-between border-b border-[#1a1a1a] pb-3">
@@ -993,7 +1072,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
         </div>
 
         {/* Right Col: Custom Dialogue & Battle Quotes Writer */}
-        <div className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] space-y-4 shadow-2xl">
+        <div id="dialogue-studio-section" className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] space-y-4 shadow-2xl">
           <div className="border-b border-[#1a1a1a] pb-3 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-serif italic text-white flex items-center gap-1.5">
@@ -1170,7 +1249,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
       </div>
 
       {/* Heroic Spirit Portrait & Card Artwork Forge */}
-      <div className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] shadow-2xl space-y-6">
+      <div id="artwork-customization-section" className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] shadow-2xl space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#1a1a1a] pb-4">
           <div>
             <h3 className="text-base font-serif italic text-white flex items-center gap-2">
@@ -1343,7 +1422,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
       </div>
 
       {/* Full-Width Noble Phantasm Cinematic Delivery Studio */}
-      <div className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] shadow-2xl space-y-6">
+      <div id="np-animation-section" className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] shadow-2xl space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#1a1a1a] pb-4">
           <div>
             <h3 className="text-base font-serif italic text-white flex items-center gap-2">

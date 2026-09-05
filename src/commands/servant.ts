@@ -15,13 +15,14 @@ import { SERVANT_DATABASE, getDefaultClassPassives } from '../data/servants';
 import { getOrInitWarSession, exposeMasterInWar } from '../engine/grailwar';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { allocateStatPoints, calculateServantMaxHp, calculateServantMaxAtk } from '../engine/statSystem';
+import { equipCraftEssence, feedCraftEssences, getCeExpValue } from '../engine/customization';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
 // ==========================================
 export const data = new SlashCommandBuilder()
   .setName('servant')
-  .setDescription('Master Servant Workshop — parameters, stat allocation, Noble Phantasm, dialogues & roster')
+  .setDescription('Master Servant Workshop — parameters, stat allocation, CE equipment, feeding, dialogues & roster')
   .addStringOption(opt =>
     opt
       .setName('category')
@@ -30,6 +31,8 @@ export const data = new SlashCommandBuilder()
       .addChoices(
         { name: '📊 Parameters & Status', value: 'profile' },
         { name: '⭐ Parameter Stat Points', value: 'stats' },
+        { name: '👔 Equip Craft Essence', value: 'equip_ce' },
+        { name: '🧪 CE Synthesis & EXP Feed', value: 'feed_ce' },
         { name: '💥 Noble Phantasm Art', value: 'np' },
         { name: '💬 Dialogue & Voice Lines', value: 'dialogue' },
         { name: '📜 Contracted Roster', value: 'roster' }
@@ -114,8 +117,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 export async function buildServantHub(
   master: any,
   activeServant: any,
-  category: 'profile' | 'stats' | 'np' | 'dialogue' | 'roster' = 'profile',
-  selectedServantId?: string
+  category: 'profile' | 'stats' | 'equip_ce' | 'feed_ce' | 'np' | 'dialogue' | 'roster' = 'profile',
+  selectedServantId?: string,
+  actionOutcomeMsg?: string
 ) {
   const targetServant = (selectedServantId ? master.servants.find((s: any) => s.id === selectedServantId) : null) || activeServant;
   const templateId = targetServant.templateId || targetServant.template?.id || targetServant.id;
@@ -181,6 +185,7 @@ export async function buildServantHub(
     const embed = new EmbedBuilder()
       .setTitle(`⚔️ Servant Workshop — Profile Card: ${sName}`)
       .setDescription(
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `*${t.title}* • **Master:** ${master.username}\n` +
         `🌟 **Class:** ${t.servantClass} | **Rarity:** ${'★'.repeat(t.rarity)} | **Bond Lv:** ${bondLevel}/10 ♥ | **Level:** ${lvl}/100\n` +
         `❤️ **Max HP:** \`${totalHp.toLocaleString()}\` | ⚔️ **Total ATK:** \`${totalAtk.toLocaleString()}\` | 📈 **Stat Points:** **${targetServant.availableStatPoints || 0} pts**\n\n` +
@@ -214,6 +219,7 @@ export async function buildServantHub(
     const embed = new EmbedBuilder()
       .setTitle(`⭐ Parameter Point Allocation: ${sName}`)
       .setDescription(
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `👑 **Servant:** **${sName}** (${t.servantClass}) • **Level:** Lv.${lvl}/100\n` +
         `📈 **Available Stat Points:** \`${availPoints} pts\` *(+10 pts per level up from feeding CEs!)*\n\n` +
         `💪 **Strength (STR):** \`${strTotal}\` [**${getRank(strTotal)}**] — *Increases base attack damage*\n` +
@@ -225,6 +231,52 @@ export async function buildServantHub(
       )
       .setColor(availPoints > 0 ? 0x22c55e : 0x38bdf8)
       .setFooter({ text: `Contracted to Master ${master.username} • Feed Craft Essences in /inventory to level up!` });
+
+    embeds = [embed];
+
+  } else if (category === 'equip_ce') {
+    const ownedCes = (master.craftEssences || []).filter(Boolean);
+    const currentEq = targetServant.equippedCe;
+
+    const embed = new EmbedBuilder()
+      .setTitle(`👔 Craft Essence Equipment Studio: ${sName}`)
+      .setDescription(
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `👑 **Servant:** **${sName}** (${t.servantClass}) • **Level:** Lv.${lvl}/100\n` +
+        `🛡️ **Currently Equipped:** ${currentEq ? `**${currentEq.name}** (★${currentEq.rarity}) — *${currentEq.effectText || 'Stat Boost'}*` : 'None (No Essence Equipped)'}\n\n` +
+        `📦 **Inventory Collection:** You own **${ownedCes.length} Craft Essences**.\n` +
+        `*Equipping a Craft Essence grants ATK (+1,000–3,000) & HP (+1,000–3,000) bonuses plus unique passives in combat!*\n\n` +
+        `*Select an essence from the dropdown menu below to equip or click Unequip.*`
+      )
+      .setColor(currentEq ? 0x22c55e : 0x38bdf8)
+      .setFooter({ text: `Master ${master.username} • Use /cegacha to pull new Craft Essences!` });
+
+    embeds = [embed];
+
+  } else if (category === 'feed_ce') {
+    const ownedCes = (master.craftEssences || []).filter(Boolean);
+    const availPts = targetServant.availableStatPoints || 0;
+
+    const ceSummaryLines = ownedCes.slice(0, 6).map((c: any) => {
+      const expVal = getCeExpValue(c);
+      return `• **★${c.rarity || 3} ${c.name}** — Grants \`+${expVal.toLocaleString()} EXP\``;
+    }).join('\n');
+
+    const embed = new EmbedBuilder()
+      .setTitle(`🧪 Servant Enhancement & CE Synthesis: ${sName}`)
+      .setDescription(
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `👑 **Servant:** **${sName}** (${t.servantClass})\n` +
+        `📊 **Current Level:** \`Lv.${lvl}/100\` | **Total EXP:** \`${(targetServant.experience || 0).toLocaleString()} XP\`\n` +
+        `⭐ **Unspent Stat Points:** \`${availPts} pts\` *(+10 Stat Points earned on every Level Up!)*\n\n` +
+        `💡 **SYNTHESIS MECHANICS:**\n` +
+        `Synthesize surplus Craft Essences from your inventory to bestow raw magical energy. Higher rarity CEs grant massive EXP boosts to accelerate Servant leveling.\n\n` +
+        `📦 **Available CEs to Feed (${ownedCes.length}):**\n` +
+        (ceSummaryLines || '• *No Craft Essences in inventory. Roll in /gacha!*') +
+        `\n\n*Select a Craft Essence from the menu below to feed directly to **${sName}**!*`
+      )
+      .setColor(0x8b5cf6)
+      .setFooter({ text: `Master ${master.username} • Servant Workshop Synthesis Portal` });
 
     embeds = [embed];
 
@@ -313,49 +365,48 @@ export async function buildServantHub(
       .setEmoji('⭐')
       .setStyle(category === 'stats' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
+      .setCustomId('servant_tab_equip_ce')
+      .setLabel('Equip CE')
+      .setEmoji('👔')
+      .setStyle(category === 'equip_ce' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('servant_tab_feed_ce')
+      .setLabel('Feed CEs')
+      .setEmoji('🧪')
+      .setStyle(category === 'feed_ce' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('servant_tab_dialogue')
+      .setLabel('Voice Lines')
+      .setEmoji('💬')
+      .setStyle(category === 'dialogue' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+  );
+
+  const subNavRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
       .setCustomId('servant_tab_np')
       .setLabel('Noble Phantasm')
       .setEmoji('💥')
       .setStyle(category === 'np' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
-      .setCustomId('servant_tab_dialogue')
-      .setLabel('Voice Lines')
-      .setEmoji('💬')
-      .setStyle(category === 'dialogue' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    new ButtonBuilder()
       .setCustomId('servant_tab_roster')
       .setLabel('Roster')
       .setEmoji('📜')
-      .setStyle(category === 'roster' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+      .setStyle(category === 'roster' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('servant_act_set_active')
+      .setLabel('Set Active')
+      .setEmoji('👑')
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(master.activeServantId === targetServant.id),
+    new ButtonBuilder()
+      .setCustomId('servant_act_boast')
+      .setLabel('Boast Profile')
+      .setEmoji('📢')
+      .setStyle(ButtonStyle.Danger)
   );
 
   const actionButtonsRow = new ActionRowBuilder<ButtonBuilder>();
-
-  if (category === 'stats') {
-    const avail = targetServant.availableStatPoints || 0;
-    actionButtonsRow.addComponents(
-      new ButtonBuilder().setCustomId('servant_add_str').setLabel('+1 STR').setEmoji('💪').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
-      new ButtonBuilder().setCustomId('servant_add_end').setLabel('+1 END').setEmoji('🛡️').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
-      new ButtonBuilder().setCustomId('servant_add_agi').setLabel('+1 AGI').setEmoji('⚡').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
-      new ButtonBuilder().setCustomId('servant_add_mna').setLabel('+1 MNA').setEmoji('🔮').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
-      new ButtonBuilder().setCustomId('servant_add_auto').setLabel('Auto-Distribute').setEmoji('✨').setStyle(ButtonStyle.Primary).setDisabled(avail <= 0)
-    );
-  } else {
-    actionButtonsRow.addComponents(
-      new ButtonBuilder().setCustomId('servant_act_set_active').setLabel('Set as Active').setEmoji('👑').setStyle(ButtonStyle.Success).setDisabled(master.activeServantId === targetServant.id),
-      new ButtonBuilder().setCustomId('servant_act_hear_voice').setLabel('Hear Voice Line').setEmoji('💬').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('servant_act_boast').setLabel('Boast to Server').setEmoji('📢').setStyle(ButtonStyle.Danger)
-    );
-  }
-
-  const crossHubShortcutsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId('servant_link_inventory').setLabel('Inventory (/inventory)').setEmoji('👔').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('servant_link_gacha').setLabel('Gacha (/gacha)').setEmoji('🔮').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('servant_link_grailwar').setLabel('War Board (/grailwar)').setEmoji('🏰').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('servant_link_duel').setLabel('Duel Arena (/duel)').setEmoji('⚔️').setStyle(ButtonStyle.Secondary)
-  );
-
-  const components: any[] = [categoryNavRow];
+  const components: any[] = [categoryNavRow, subNavRow];
 
   // Roster Dropdown if multiple servants
   if (master.servants.length > 1) {
@@ -373,7 +424,62 @@ export async function buildServantHub(
     components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu));
   }
 
-  components.push(actionButtonsRow);
+  if (category === 'stats') {
+    const avail = targetServant.availableStatPoints || 0;
+    actionButtonsRow.addComponents(
+      new ButtonBuilder().setCustomId('servant_add_str').setLabel('+1 STR').setEmoji('💪').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
+      new ButtonBuilder().setCustomId('servant_add_end').setLabel('+1 END').setEmoji('🛡️').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
+      new ButtonBuilder().setCustomId('servant_add_agi').setLabel('+1 AGI').setEmoji('⚡').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
+      new ButtonBuilder().setCustomId('servant_add_mna').setLabel('+1 MNA').setEmoji('🔮').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
+      new ButtonBuilder().setCustomId('servant_add_auto').setLabel('Auto-Distribute').setEmoji('✨').setStyle(ButtonStyle.Primary).setDisabled(avail <= 0)
+    );
+    components.push(actionButtonsRow);
+  } else if (category === 'equip_ce') {
+    const ownedCes = (master.craftEssences || []).filter(Boolean);
+    const ceOptions = ownedCes.slice(0, 25).map((c: any, idx: number) => ({
+      label: `★${c.rarity || 3} ${c.name}`,
+      description: (c.effectText || 'Craft Essence').slice(0, 48),
+      value: c.id || String(idx)
+    }));
+    if (ceOptions.length > 0) {
+      const ceSelect = new StringSelectMenuBuilder()
+        .setCustomId('servant_sel_equip_ce')
+        .setPlaceholder('👔 Select Craft Essence to equip...')
+        .addOptions(ceOptions);
+      components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(ceSelect));
+    }
+    actionButtonsRow.addComponents(
+      new ButtonBuilder().setCustomId('servant_act_unequip_ce').setLabel('Unequip Current CE').setEmoji('🚫').setStyle(ButtonStyle.Danger).setDisabled(!targetServant.equippedCe)
+    );
+    components.push(actionButtonsRow);
+  } else if (category === 'feed_ce') {
+    const ownedCes = (master.craftEssences || []).filter(Boolean);
+    const ceOptions = ownedCes.slice(0, 25).map((c: any, idx: number) => ({
+      label: `★${c.rarity || 3} ${c.name} (+${getCeExpValue(c)} XP)`,
+      description: (c.effectText || 'Craft Essence').slice(0, 48),
+      value: String(idx)
+    }));
+    if (ceOptions.length > 0) {
+      const feedSelect = new StringSelectMenuBuilder()
+        .setCustomId('servant_sel_feed_ce')
+        .setPlaceholder('🧪 Select Craft Essence to synthesize (+EXP)...')
+        .addOptions(ceOptions);
+      components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(feedSelect));
+    }
+  } else {
+    actionButtonsRow.addComponents(
+      new ButtonBuilder().setCustomId('servant_act_hear_voice').setLabel('Hear Voice Line').setEmoji('💬').setStyle(ButtonStyle.Primary)
+    );
+    components.push(actionButtonsRow);
+  }
+
+  const crossHubShortcutsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId('servant_link_inventory').setLabel('Inventory (/inventory)').setEmoji('👔').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('servant_link_gacha').setLabel('Gacha (/gacha)').setEmoji('🔮').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('servant_link_grailwar').setLabel('War Board (/grailwar)').setEmoji('🏰').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('servant_link_duel').setLabel('Duel Arena (/duel)').setEmoji('⚔️').setStyle(ButtonStyle.Secondary)
+  );
+
   components.push(crossHubShortcutsRow);
 
   return { embeds, files, components };
@@ -387,7 +493,7 @@ export function attachServantCollector(
   userId: string,
   initialMaster: any,
   initialServant: any,
-  initialCategory: 'profile' | 'stats' | 'np' | 'dialogue' | 'roster' = 'profile'
+  initialCategory: 'profile' | 'stats' | 'equip_ce' | 'feed_ce' | 'np' | 'dialogue' | 'roster' = 'profile'
 ) {
   let currentCategory = initialCategory;
   let currentServantId = initialServant.id;
@@ -408,12 +514,17 @@ export function attachServantCollector(
     try {
       const master = await getOrCreateMaster(i.user.id, i.user.username);
       let targetServant = master.servants.find((s: any) => s.id === currentServantId) || master.servants[0];
+      let actionOutcomeMsg = '';
 
       // TAB NAVIGATION
       if (i.customId === 'servant_tab_profile') {
         currentCategory = 'profile';
       } else if (i.customId === 'servant_tab_stats') {
         currentCategory = 'stats';
+      } else if (i.customId === 'servant_tab_equip_ce') {
+        currentCategory = 'equip_ce';
+      } else if (i.customId === 'servant_tab_feed_ce') {
+        currentCategory = 'feed_ce';
       } else if (i.customId === 'servant_tab_np') {
         currentCategory = 'np';
       } else if (i.customId === 'servant_tab_dialogue') {
@@ -426,10 +537,44 @@ export function attachServantCollector(
         currentServantId = i.values[0];
         targetServant = master.servants.find((s: any) => s.id === currentServantId) || targetServant;
       }
+      // EQUIP CRAFT ESSENCE DROPDOWN
+      else if (i.customId === 'servant_sel_equip_ce') {
+        const selectedCeId = i.values[0];
+        const updated = equipCraftEssence(targetServant, selectedCeId);
+        master.servants = master.servants.map((s: any) => s.id === targetServant.id ? updated : s);
+        await saveMaster(master);
+        targetServant = updated;
+        actionOutcomeMsg = `✅ Successfully equipped **${updated.equippedCe?.name || 'Craft Essence'}**!`;
+      }
+      // UNEQUIP CRAFT ESSENCE
+      else if (i.customId === 'servant_act_unequip_ce') {
+        const updated = equipCraftEssence(targetServant, undefined);
+        master.servants = master.servants.map((s: any) => s.id === targetServant.id ? updated : s);
+        await saveMaster(master);
+        targetServant = updated;
+        actionOutcomeMsg = `🚫 Craft Essence unequipped.`;
+      }
+      // FEED CRAFT ESSENCE SYNTHESIS
+      else if (i.customId === 'servant_sel_feed_ce') {
+        const ceIndex = i.values[0];
+        const owned = (master.craftEssences || []).filter(Boolean);
+        const result = feedCraftEssences(targetServant, [ceIndex], owned);
+        
+        master.craftEssences = result.remainingCraftEssences;
+        master.servants = master.servants.map((s: any) => s.id === targetServant.id ? result.updatedServant : s);
+        await saveMaster(master);
+        targetServant = result.updatedServant;
+
+        const levelDiff = result.newLevel - result.oldLevel;
+        actionOutcomeMsg = `✨ Synthesized Craft Essence!\n` +
+          `• Gained \`+${result.expGained.toLocaleString()} XP\`\n` +
+          (levelDiff > 0 ? `• **LEVEL UP!** Lv.${result.oldLevel} ➔ **Lv.${result.newLevel}**!\n• Gained **+${result.statPointsGained} Stat Points**!` : '');
+      }
       // SET ACTIVE CONTRACT
       else if (i.customId === 'servant_act_set_active') {
         master.activeServantId = targetServant.id;
         await saveMaster(master);
+        actionOutcomeMsg = `👑 Contract updated! **${targetServant.nickname || targetServant.template?.name || 'Servant'}** is now your Active Servant.`;
       }
       // STAT ALLOCATION
       else if (i.customId.startsWith('servant_add_')) {
@@ -522,7 +667,7 @@ export function attachServantCollector(
         return;
       }
 
-      const hub = await buildServantHub(master, targetServant, currentCategory, currentServantId);
+      const hub = await buildServantHub(master, targetServant, currentCategory, currentServantId, actionOutcomeMsg);
       await i.update({
         embeds: hub.embeds,
         files: hub.files,
