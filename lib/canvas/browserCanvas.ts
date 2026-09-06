@@ -1261,7 +1261,7 @@ function drawHoveringAttacker(
   servantClass: string,
   bondOrLevel: number | string,
   frameIdx: number,
-  hideLevelBadge: boolean = false
+  hideLevelBadge: boolean = true
 ) {
   ctx.save();
   const sprX = 10;
@@ -1356,7 +1356,7 @@ function drawHoveringDefender(
   defenderName: string,
   defenderClass: string,
   frameIdx: number,
-  hideTargetHUD: boolean = false
+  hideTargetHUD: boolean = true
 ) {
   ctx.save();
   const sprX = 510;
@@ -1908,25 +1908,6 @@ function renderDefeatSingleFrame(
   ctx.fillRect(spriteX + spriteW - 90, spriteY, 90, spriteH);
 
   ctx.restore();
-
-  // Defeated Servant Badge: [ SPIRIT ORIGIN: SEVERED ]
-  const dBadgeW = 190;
-  const dBadgeH = 24;
-  const dBadgeX = spriteX + 10;
-  const dBadgeY = spriteY + 12;
-
-  ctx.fillStyle = 'rgba(153, 27, 27, 0.95)';
-  drawRoundRect(ctx, dBadgeX, dBadgeY, dBadgeW, dBadgeH, 4);
-  ctx.fill();
-  ctx.strokeStyle = '#ef4444';
-  ctx.lineWidth = 1.5;
-  drawRoundRect(ctx, dBadgeX, dBadgeY, dBadgeW, dBadgeH, 4);
-  ctx.stroke();
-
-  ctx.fillStyle = '#fef2f2';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('⚡ SPIRIT ORIGIN: SEVERED', dBadgeX + dBadgeW / 2, dBadgeY + 16);
 
   ctx.restore();
 

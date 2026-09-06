@@ -843,7 +843,7 @@ export function attackSuspectUserInWar(
     };
   }
 
-  if (attacker.inSanctuary) {
+  if (attacker.inSanctuary || (attacker as any).inChurchSanctuary) {
     return {
       success: false,
       message: `⛪ **Fuyuki Church Truce:** You are currently seeking sanctuary at the Fuyuki Church under Father Kotomine's protection! You cannot launch ambushes while under church asylum. (Use \`/church leave\` to return to the Holy Grail War).`,
@@ -857,7 +857,7 @@ export function attackSuspectUserInWar(
     return { success: false, message: 'You cannot target yourself with an ambush!', updatedWar: targetWar };
   }
 
-  if (targetMaster && targetMaster.inSanctuary) {
+  if (targetMaster && (targetMaster.inSanctuary || (targetMaster as any).inChurchSanctuary)) {
     return {
       success: false,
       message: `⛪ **Fuyuki Church Sanctuary:** **${targetMaster.isExposed ? targetMaster.username : 'Target Master'}** is currently residing under the neutral asylum of the Fuyuki Church Overseer! All assaults and ambushes are strictly forbidden on consecrated grounds.`,
@@ -2076,16 +2076,23 @@ export function enterChurchSanctuary(
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
 
-  const participant = targetWar.participants[masterId];
+  let participant: WarMasterParticipant | undefined = targetWar.participants[masterId];
+  if (!participant) {
+    participant = Object.values(targetWar.participants).find(
+      p => p.discordId === masterId || p.username.toLowerCase() === masterId.toLowerCase()
+    );
+  }
   if (!participant || !participant.isAlive) {
     return { success: false, message: 'You are not an active participant in this Holy Grail War.', updatedWar: targetWar };
   }
 
-  if (participant.inSanctuary) {
+  const isUnderSanctuary = !!(participant.inSanctuary || (participant as any).inChurchSanctuary);
+  if (isUnderSanctuary) {
     return { success: false, message: '⛪ You are already under the sacred protection of the Fuyuki Church Sanctuary!', updatedWar: targetWar };
   }
 
   participant.inSanctuary = true;
+  (participant as any).inChurchSanctuary = true;
   participant.sanctuaryEnteredAt = Date.now();
 
   const nameLabel = participant.isExposed ? participant.username : 'A Master concealed in shadows';
@@ -2120,16 +2127,23 @@ export function leaveChurchSanctuary(
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
 
-  const participant = targetWar.participants[masterId];
+  let participant: WarMasterParticipant | undefined = targetWar.participants[masterId];
+  if (!participant) {
+    participant = Object.values(targetWar.participants).find(
+      p => p.discordId === masterId || p.username.toLowerCase() === masterId.toLowerCase()
+    );
+  }
   if (!participant || !participant.isAlive) {
     return { success: false, message: 'You are not an active participant in this Holy Grail War.', updatedWar: targetWar };
   }
 
-  if (!participant.inSanctuary) {
+  const isUnderSanctuary = !!(participant.inSanctuary || (participant as any).inChurchSanctuary);
+  if (!isUnderSanctuary) {
     return { success: false, message: 'You are not currently in the Fuyuki Church Sanctuary.', updatedWar: targetWar };
   }
 
   participant.inSanctuary = false;
+  (participant as any).inChurchSanctuary = false;
   participant.sanctuaryEnteredAt = undefined;
 
   const logMsg = `⚔️ **SANCTUARY DEPARTURE:** Master **${participant.username}** has stepped down from the Fuyuki Church steps and re-entered the battlefield of the Holy Grail War!`;

@@ -37,6 +37,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const res = attackSuspectUserInWar(war, interaction.user.id, targetQuery);
     await saveMaster(master);
 
+    if (!res.success) {
+      const isChurch = res.message.includes('Fuyuki Church');
+      const failEmbed = new EmbedBuilder()
+        .setTitle(isChurch ? '⛪ Fuyuki Church Neutral Grounds' : '⚠️ Ambush Blocked')
+        .setDescription(res.message)
+        .setColor(isChurch ? 0x10b981 : 0xf59e0b)
+        .setFooter({ text: isChurch ? 'Depart church asylum (/church leave) to resume offensive actions' : 'Ambush prevented' });
+      await interaction.editReply({ embeds: [failEmbed] });
+      return;
+    }
+
     const attackerParticipant = war.participants[interaction.user.id];
     let footerText = '';
     if (!res.targetWasMaster) {

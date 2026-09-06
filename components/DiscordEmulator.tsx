@@ -2890,6 +2890,36 @@ export default function DiscordEmulator({
         const res = attackSuspectUserInWar(currentWar, master.discordId, targetQuery, chanTag);
         onUpdateGrailWar(res.updatedWar);
 
+        if (!res.success) {
+          const isChurch = res.message.includes('Fuyuki Church');
+          addMessage({
+            id: getNextId('bot_attack_fail'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: isChurch ? '⛪ Fuyuki Church Neutral Grounds' : '⚠️ Ambush Blocked',
+              description: res.message,
+              color: isChurch ? '#10b981' : '#f59e0b',
+              footer: isChurch
+                ? 'Depart church asylum (/church leave) to resume offensive actions'
+                : 'Action prevented by Holy Grail War rules'
+            },
+            components: {
+              type: 'buttons',
+              items: isChurch
+                ? [
+                    { id: 'church_leave', label: 'Depart Sanctuary 🚪', style: 'danger' },
+                    { id: 'war_tab_church', label: 'Church Sanctuary ⛪', style: 'secondary' }
+                  ]
+                : [
+                    { id: 'quick_war_status', label: 'View Intelligence Board', style: 'primary', emoji: '📋' },
+                    { id: 'war_attack_prompt', label: 'Ambush Suspect', style: 'danger', emoji: '⚔️' }
+                  ]
+            }
+          });
+          return;
+        }
+
         const attackerParticipant = res.updatedWar.participants[master.discordId] ||
           Object.values(res.updatedWar.participants).find(p => p.username.toLowerCase() === master.username.toLowerCase());
 
@@ -4861,7 +4891,7 @@ export default function DiscordEmulator({
 
     } else if (category === 'church') {
       title = '⛪ Fuyuki Church Sanctuary (Father Kotomine)';
-      const isUnderSanctuary = (userParticipant as any)?.inChurchSanctuary;
+      const isUnderSanctuary = !!(userParticipant?.inSanctuary || (userParticipant as any)?.inChurchSanctuary);
       color = isUnderSanctuary ? '#22c55e' : '#d4af37';
       description =
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
@@ -4915,9 +4945,9 @@ export default function DiscordEmulator({
         { id: 'disarm_all_traps', label: 'Disarm All Traps', style: 'secondary', emoji: '🧹', disabled: userTraps.length === 0 }
       ];
     } else if (category === 'church') {
-      const isUnderSanctuary = (userParticipant as any)?.inChurchSanctuary;
+      const isUnderSanctuary = !!(userParticipant?.inSanctuary || (userParticipant as any)?.inChurchSanctuary);
       actionButtons = [
-        { id: 'church_claim_asylum', label: 'Enter Sanctuary', style: 'success', emoji: '🕊️', disabled: !!isUnderSanctuary },
+        { id: 'church_claim_asylum', label: 'Enter Sanctuary', style: 'success', emoji: '🕊️', disabled: isUnderSanctuary },
         { id: 'church_leave_asylum', label: 'Depart Sanctuary', style: 'danger', emoji: '🚪', disabled: !isUnderSanctuary }
       ];
     }
@@ -6156,9 +6186,25 @@ export default function DiscordEmulator({
       } else if (btnId === 'war_place_trap_drain') {
         handleCommand('/grailwar trap drain');
       } else if (btnId === 'church_claim_asylum') {
-        handleCommand('/church enter');
+        const uP = grailWar.participants[master.discordId] ||
+          Object.values(grailWar.participants).find(p => p.username.toLowerCase() === master.username.toLowerCase());
+        if (uP) {
+          const res = enterChurchSanctuary(grailWar, uP.discordId);
+          onUpdateGrailWar(res.updatedWar);
+          postGrailWarHub('church', res.message);
+        } else {
+          handleCommand('/church enter');
+        }
       } else if (btnId === 'church_leave_asylum') {
-        handleCommand('/church leave');
+        const uP = grailWar.participants[master.discordId] ||
+          Object.values(grailWar.participants).find(p => p.username.toLowerCase() === master.username.toLowerCase());
+        if (uP) {
+          const res = leaveChurchSanctuary(grailWar, uP.discordId);
+          onUpdateGrailWar(res.updatedWar);
+          postGrailWarHub('church', res.message);
+        } else {
+          handleCommand('/church leave');
+        }
       }
       // 3. Cross-Hub Shortcuts
       else if (btnId === 'war_link_inventory') {
@@ -7889,9 +7935,10 @@ export default function DiscordEmulator({
     }
   };
 
-  const userParticipant = grailWar.participants[master.discordId];
+  const userParticipant = grailWar.participants[master.discordId] ||
+    Object.values(grailWar.participants).find(p => p.username.toLowerCase() === master.username.toLowerCase());
   const isUserExposed = userParticipant?.isExposed;
-  const isUserInSanctuary = userParticipant?.inSanctuary;
+  const isUserInSanctuary = !!(userParticipant?.inSanctuary || (userParticipant as any)?.inChurchSanctuary);
 
   return (
     <div id="discord_emulator_container" className="flex flex-col h-full bg-[#0a0a0a] text-[#dbdee1] rounded-xl overflow-hidden border border-[#1a1a1a] shadow-2xl">

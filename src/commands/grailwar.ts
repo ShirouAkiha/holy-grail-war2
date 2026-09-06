@@ -269,7 +269,7 @@ export function buildGrailWarHub(
     embeds = [embed];
 
   } else if (category === 'church') {
-    const isUnderSanctuary = userParticipant?.inChurchSanctuary;
+    const isUnderSanctuary = !!(userParticipant?.inSanctuary || userParticipant?.inChurchSanctuary);
     const embed = new EmbedBuilder()
       .setTitle('⛪ Fuyuki Church Sanctuary (Father Kotomine)')
       .setDescription(
@@ -330,7 +330,7 @@ export function buildGrailWarHub(
       new ButtonBuilder().setCustomId('disarm_all_traps').setLabel('Disarm All Traps').setEmoji('🧹').setStyle(ButtonStyle.Secondary).setDisabled(userTraps.length === 0)
     );
   } else if (category === 'church') {
-    const isUnderSanctuary = userParticipant?.inChurchSanctuary;
+    const isUnderSanctuary = !!(userParticipant?.inSanctuary || userParticipant?.inChurchSanctuary);
     actionButtonsRow.addComponents(
       new ButtonBuilder().setCustomId('church_claim_asylum').setLabel('Enter Sanctuary').setEmoji('🕊️').setStyle(ButtonStyle.Success).setDisabled(!!isUnderSanctuary),
       new ButtonBuilder().setCustomId('church_leave_asylum').setLabel('Depart Sanctuary').setEmoji('🚪').setStyle(ButtonStyle.Danger).setDisabled(!isUnderSanctuary)

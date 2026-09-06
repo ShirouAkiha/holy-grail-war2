@@ -1092,14 +1092,9 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
             </div>
 
             <div className="flex flex-col sm:flex-row items-stretch gap-5">
-              {/* Left Avatar Square Frame with Badge */}
+              {/* Left Avatar Square Frame */}
               <div className="shrink-0 flex flex-col items-center">
                 <div className="relative w-28 h-28 md:w-32 md:h-32 rounded-lg bg-[#0c0806] border-2 border-[#d4af37] p-1 shadow-[0_0_18px_rgba(212,175,55,0.25)] flex items-center justify-center overflow-hidden">
-                  {/* Top Badge/Rank Indicator */}
-                  <div className="absolute top-1 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-[#0e0a07] border border-[#d4af37] text-[10px] font-mono font-bold text-[#d4af37] rounded-sm shadow-md z-10 flex items-center gap-1">
-                    <span>{dialogueCutIn.rarity || 5}★</span>
-                  </div>
-
                   {/* Avatar Image / Fallback Icon */}
                   {dialogueCutIn.avatarUrl ? (
                     <img
@@ -1117,8 +1112,8 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
                 </div>
 
-                {/* Nameplate Tag Overlay */}
-                <div className="-mt-3.5 z-20 px-3 py-1 bg-[#0f0a07] border-2 border-[#d4af37] text-xs font-mono font-bold text-[#d4af37] shadow-lg rounded-sm tracking-wider uppercase text-center max-w-[140px] truncate">
+                {/* Nameplate Tag (Cleanly positioned below portrait without blocking face) */}
+                <div className="mt-2 z-10 px-3 py-1 bg-[#0f0a07] border border-[#d4af37] text-xs font-mono font-bold text-[#d4af37] shadow-lg rounded-sm tracking-wider uppercase text-center max-w-[140px] truncate">
                   {dialogueCutIn.speakerName}
                 </div>
               </div>
@@ -1319,12 +1314,9 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
             <div className="max-w-2xl mx-auto mb-6 p-1 rounded-2xl bg-gradient-to-br from-[#d4af37] via-[#b87928] to-[#6e4610] shadow-[0_0_35px_rgba(212,175,55,0.25)] text-left">
               <div className="p-5 md:p-6 bg-[#140d0a] rounded-xl border-2 border-[#24150b] relative overflow-hidden">
                 <div className="flex flex-col sm:flex-row items-stretch gap-5">
-                  {/* Avatar portrait with 5★ badge */}
+                  {/* Avatar portrait */}
                   <div className="shrink-0 flex flex-col items-center">
                     <div className="relative w-28 h-28 md:w-32 md:h-32 rounded-lg bg-[#0c0806] border-2 border-[#d4af37] p-1 shadow-[0_0_18px_rgba(212,175,55,0.25)] flex items-center justify-center overflow-hidden">
-                      <div className="absolute top-1 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-[#0e0a07] border border-[#d4af37] text-[10px] font-mono font-bold text-[#d4af37] rounded-sm shadow-md z-10 flex items-center gap-1">
-                        <span>{activeServant.template.rarity || 5}★</span>
-                      </div>
                       <img
                         src={activeServant.template.cardArtUrl || activeServant.template.avatarUrl}
                         alt={p1.name}
@@ -1332,7 +1324,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none" />
                     </div>
-                    <div className="-mt-3.5 z-20 px-3 py-1 bg-[#0f0a07] border-2 border-[#d4af37] text-xs font-mono font-bold text-[#d4af37] shadow-lg rounded-sm tracking-wider uppercase text-center max-w-[140px] truncate">
+                    <div className="mt-2 z-10 px-3 py-1 bg-[#0f0a07] border border-[#d4af37] text-xs font-mono font-bold text-[#d4af37] shadow-lg rounded-sm tracking-wider uppercase text-center max-w-[140px] truncate">
                       {p1.name}
                     </div>
                   </div>
