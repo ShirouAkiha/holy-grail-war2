@@ -11,6 +11,12 @@ import {
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 import { feedCraftEssences, getCeExpValue, calculateLevelFromExp, getTotalExpForLevel } from '../engine/customization';
+import { 
+  getOrInitWarSession, 
+  invokeCommandSealInWar, 
+  setWorkshopWardInWar, 
+  setChannelTrapInWar 
+} from '../engine/grailwar';
 
 // ==========================================
 // 0. INTERACTIVE INVENTORY HUB BUILDER & HANDLERS
@@ -272,6 +278,31 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
             master.activeServantId = selectedItemId;
             activeServant = master.servants.find((s: any) => s.id === selectedItemId) || activeServant;
             await saveMaster(master);
+          }
+        } else if (currentCategory === 'seals') {
+          const war = getOrInitWarSession(master);
+          let resMsg = '';
+          if (selectedItemId === 'cs_evac') {
+            const res = invokeCommandSealInWar(war, interaction.user.id, 'toggle_evac');
+            resMsg = res.message;
+          } else if (selectedItemId === 'ward_sanctuary') {
+            const res = setWorkshopWardInWar(war, interaction.user.id, 'ward');
+            resMsg = res.message;
+          } else if (selectedItemId === 'ward_decoy') {
+            const res = setWorkshopWardInWar(war, interaction.user.id, 'decoy');
+            resMsg = res.message;
+          } else if (selectedItemId === 'ward_alarm') {
+            const chanName = interaction.channel && 'name' in interaction.channel ? `#${(interaction.channel as any).name}` : '#general';
+            const res = setChannelTrapInWar(war, interaction.user.id, interaction.user.username, chanName, 'alarm');
+            resMsg = res.message;
+          } else if (selectedItemId === 'ward_drain') {
+            const chanName = interaction.channel && 'name' in interaction.channel ? `#${(interaction.channel as any).name}` : '#general';
+            const res = setChannelTrapInWar(war, interaction.user.id, interaction.user.username, chanName, 'drain');
+            resMsg = res.message;
+          }
+          if (resMsg) {
+            await i.reply({ flags: MessageFlags.Ephemeral, content: resMsg });
+            return;
           }
         }
       }

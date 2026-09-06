@@ -30,6 +30,7 @@ import * as addceCommand from './commands/addce';
 import * as addsqCommand from './commands/addsq';
 import * as churchCommand from './commands/church';
 import * as patrolCommand from './commands/patrol';
+import * as petrolCommand from './commands/petrol';
 import * as familiarCommand from './commands/familiar';
 import * as trapCommand from './commands/trap';
 import * as healCommand from './commands/heal';
@@ -127,6 +128,7 @@ commands.set(trapCommand.data.name, trapCommand);
 commands.set(familiarCommand.data.name, familiarCommand);
 commands.set(leakCommand.data.name, leakCommand);
 commands.set(patrolCommand.data.name, patrolCommand);
+commands.set(petrolCommand.data.name, petrolCommand);
 commands.set(equipCommand.data.name, equipCommand);
 
 // Alias mapping for backward-compatible text shortcuts and interactions
@@ -137,6 +139,7 @@ export const commandAliasMap: Record<string, any> = {
   ambush: ambushCommand,
   leak: leakCommand,
   patrol: patrolCommand,
+  petrol: petrolCommand,
   familiar: familiarCommand,
   familiars: familiarCommand,
   trap: trapCommand,
@@ -327,7 +330,7 @@ client.on(Events.InteractionCreate, async interaction => {
   try {
     // If an interaction happens in a guild text channel, check for territorial Bounded Field traps asynchronously
     if (interaction.guild && interaction.channel && !interaction.user.bot) {
-      const isPatrol = interaction.isChatInputCommand() && interaction.commandName === 'patrol';
+      const isPatrol = interaction.isChatInputCommand() && (interaction.commandName === 'patrol' || interaction.commandName === 'petrol');
       if (!interaction.isAutocomplete() && !isPatrol) {
         triggerChannelTrapsIfAny(client, interaction.user.id, interaction.user.username, interaction.channel).catch(err => {
           console.warn('[TrapTrigger] Background trap trigger error:', err);
@@ -1213,7 +1216,7 @@ client.on(Events.MessageCreate, async message => {
 
     // Check if the message was posted in a guild channel with a rival Bounded Field trap (exclude patrol reconnaissance)
     if (message.guild && message.channel) {
-      const isPatrolMsg = message.content.startsWith('!patrol') || message.content.startsWith('!scout');
+      const isPatrolMsg = message.content.startsWith('!patrol') || message.content.startsWith('!petrol') || message.content.startsWith('!scout');
       if (!isPatrolMsg) {
         triggerChannelTrapsIfAny(client, message.author.id, message.author.username, message.channel).catch(err => {
           console.warn('[TrapTrigger] Background message trap trigger error:', err);

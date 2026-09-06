@@ -146,8 +146,8 @@ export interface MasterProfile {
   saintQuartz: number;
   summonTickets: number;
   commandSeals: number;
-  autoConsumeCommandSeal?: boolean; // Default: false (OFF by default)
-  boundedField?: 'none' | 'ward' | 'alarm';
+  autoConsumeCommandSeal?: boolean;
+  boundedField?: 'none' | 'ward' | 'alarm' | 'decoy';
   actionPoints: number;
   maxActionPoints: number;
   pityCount: number;
@@ -327,7 +327,7 @@ export interface WarMasterParticipant {
   innocentKills?: number;
   allianceId?: string;
   kills: number;
-  boundedField?: 'none' | 'ward' | 'alarm';
+  boundedField?: 'none' | 'ward' | 'alarm' | 'decoy';
   autoEvadeEnabled?: boolean; // Default: false (OFF by default)
   autoConsumeCommandSeal?: boolean; // Default: false (OFF by default)
   lastAmbushTime?: number;

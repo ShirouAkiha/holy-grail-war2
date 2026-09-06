@@ -985,7 +985,7 @@ export default function DiscordEmulator({
 
     // Check if the current channel sector contains a rival Master's concealed Bounded Field trap!
     // Civilians (no activeServant) and stealth patrol commands never trigger traps.
-    const isPatrolCmd = trimmed.startsWith('/patrol') || trimmed.startsWith('/grailwar patrol') || trimmed.startsWith('!patrol') || trimmed.startsWith('!scout');
+    const isPatrolCmd = trimmed.startsWith('/patrol') || trimmed.startsWith('/petrol') || trimmed.startsWith('/grailwar patrol') || trimmed.startsWith('!patrol') || trimmed.startsWith('!petrol') || trimmed.startsWith('!scout');
     if (activeServant && !isPatrolCmd && grailWar.channelTraps && grailWar.channelTraps.length > 0) {
       const curChanName = activeChannel === 'public' ? '#holy-grail-war' : activeChannel.startsWith('#') ? activeChannel : `#${activeChannel}`;
       const trapRes = checkAndTriggerChannelTraps(grailWar, master.discordId, master.username, curChanName);
@@ -2716,7 +2716,7 @@ export default function DiscordEmulator({
       return;
     }
 
-    if (trimmed.startsWith('/patrol') || trimmed.startsWith('/grailwar patrol')) {
+    if (trimmed.startsWith('/patrol') || trimmed.startsWith('/petrol') || trimmed.startsWith('/grailwar patrol') || trimmed.startsWith('!patrol') || trimmed.startsWith('!petrol')) {
       const chanTag = activeChannel === 'public' ? '#holy-grail-war' : activeChannel.startsWith('#') ? activeChannel : `#${activeChannel}`;
       const res = patrolCityInWar(grailWar, master.discordId, master.username, chanTag);
       onUpdateGrailWar(res.updatedWar);
@@ -4701,9 +4701,14 @@ export default function DiscordEmulator({
         { id: 'inv_quick_gacha', label: 'Roll Gacha (SQ)', style: 'secondary', emoji: '🎲' }
       ];
     } else if (category === 'seals') {
+      const uP = grailWar.participants[master.discordId];
+      const autoEvacOn = uP?.autoEvadeEnabled === true;
       actionButtons = [
         { id: 'inv_act_use_seal_heal', label: 'Use Seal (Full Heal)', style: 'success', emoji: '⚡' },
-        { id: 'inv_act_deploy_sanctuary', label: 'Sanctuary Field', style: 'primary', emoji: '🛡️' },
+        { id: 'toggle_auto_evade', label: autoEvacOn ? 'Auto-Evac: ON 🟢' : 'Auto-Evac: OFF 🔴', style: autoEvacOn ? 'success' : 'secondary', emoji: '🛡️' },
+        { id: 'inv_act_deploy_sanctuary', label: 'Sanctuary Field (60% Def)', style: 'primary', emoji: '🛡️' },
+        { id: 'inv_act_deploy_decoy', label: 'Homunculus Decoy (100% Absorb)', style: 'secondary', emoji: '🗿' },
+        { id: 'open_traps_hub_modal_btn', label: 'Traps & Wards Hub (/trap)', style: 'primary', emoji: '🔮' },
         { id: 'inv_act_patrol', label: 'Patrol Fuyuki', style: 'secondary', emoji: '👁️' }
       ];
     } else if (category === 'items') {
@@ -6164,6 +6169,18 @@ export default function DiscordEmulator({
         });
       } else if (btnId === 'inv_act_deploy_sanctuary') {
         onUpdateMaster({ ...master, boundedField: 'ward' });
+        if (grailWar.participants[master.discordId]) {
+          onUpdateGrailWar({
+            ...grailWar,
+            participants: {
+              ...grailWar.participants,
+              [master.discordId]: {
+                ...grailWar.participants[master.discordId],
+                boundedField: 'ward'
+              }
+            }
+          });
+        }
         addMessage({
           id: getNextId('bot_sanctuary_deployed'),
           sender: 'bot',
@@ -6172,6 +6189,31 @@ export default function DiscordEmulator({
             title: '🛡️ Mage Sanctuary Bounded Field Deployed',
             description: 'Territory ward established around your workshop. Ambush damage taken reduced by **60%**.',
             color: '#38bdf8'
+          }
+        });
+      } else if (btnId === 'inv_act_deploy_decoy') {
+        const curCount = (master.homunculusCount || 0) + 1;
+        onUpdateMaster({ ...master, boundedField: 'decoy', homunculusCount: curCount } as any);
+        if (grailWar.participants[master.discordId]) {
+          onUpdateGrailWar({
+            ...grailWar,
+            participants: {
+              ...grailWar.participants,
+              [master.discordId]: {
+                ...grailWar.participants[master.discordId],
+                boundedField: 'decoy'
+              }
+            }
+          });
+        }
+        addMessage({
+          id: getNextId('bot_decoy_deployed'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '🗿 Homunculus Decoy Ward Deployed',
+            description: 'An artificial homunculus decoy has been created at your workshop. Absorbs **100% of incoming ambush damage** on the next strike!',
+            color: '#22c55e'
           }
         });
       } else if (btnId === 'inv_act_patrol') {
@@ -9020,6 +9062,8 @@ export default function DiscordEmulator({
               const q = inputCommand.toLowerCase().trim();
               const isEditing = q.startsWith('/addservant edit') || q.startsWith('/addservant');
               const slashCommands = [
+                { cmd: '/patrol', desc: '👁️ Stealth patrol Fuyuki sectors to detect concealed traps & Bounded Fields safely' },
+                { cmd: '/petrol', desc: '👁️ Stealth patrol Fuyuki sectors to detect concealed traps & Bounded Fields safely' },
                 { cmd: '/trap', desc: '🕸️ Conceal Bounded Field traps in specific channels' },
                 { cmd: '/trap set type:alarm channel:#channel', desc: '🚨 Conceal an Alarm Ward in a specific channel' },
                 { cmd: '/trap set type:drain channel:#channel', desc: '🩸 Conceal a Bloodfort Drain Bounded Field in a channel' },

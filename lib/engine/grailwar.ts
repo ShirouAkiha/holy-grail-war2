@@ -2021,3 +2021,111 @@ export function leaveChurchSanctuary(
     updatedWar: targetWar
   };
 }
+
+export function invokeCommandSealInWar(
+  war: HolyGrailWarSession,
+  actorDiscordId: string,
+  effect: 'heal' | 'overdrive' | 'toggle_evac'
+): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
+  const targetWar = war || globalWarSession;
+  if (!targetWar) {
+    return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
+  }
+  const actor = targetWar.participants[actorDiscordId];
+  if (!actor || !actor.isAlive) {
+    return { success: false, message: 'You have no active Servant contract in the Holy Grail War!', updatedWar: targetWar };
+  }
+
+  if (effect === 'toggle_evac') {
+    actor.autoEvadeEnabled = actor.autoEvadeEnabled === false ? true : false;
+    const statusStr = actor.autoEvadeEnabled ? '🟢 ENABLED' : '🔴 DISABLED';
+    return {
+      success: true,
+      message: `📜 **Command Seal Auto-Evacuation:** ${statusStr}! When enabled, taking fatal ambush damage will automatically consume **1 Command Seal** to escape into shadows with **1 HP** (Remaining Seals: **${actor.commandSeals ?? 3}/3**).`,
+      updatedWar: targetWar
+    };
+  }
+
+  const seals = actor.commandSeals ?? 3;
+  if (seals < 1) {
+    return {
+      success: false,
+      message: '❌ **Command Seals Depleted:** You have 0 Command Seals remaining! Seals auto-recharge (1 Seal per 24 hours).',
+      updatedWar: targetWar
+    };
+  }
+
+  if (effect === 'heal') {
+    actor.commandSeals = seals - 1;
+    actor.currentHp = actor.maxHp;
+    actor.baseHpAtDamage = actor.maxHp;
+    actor.lastDamageTime = Date.now();
+    return {
+      success: true,
+      message: `⚡ **COMMAND SEAL INVOKED: HEAL & REPAIR!** Consumed **1 Command Seal** (Remaining: **${actor.commandSeals}/3**).\n\nYour Servant **${actor.servantName}** was instantly restored to **100% Max HP (${actor.maxHp.toLocaleString()} HP)**!`,
+      updatedWar: targetWar
+    };
+  }
+
+  if (effect === 'overdrive') {
+    actor.commandSeals = seals - 1;
+    (actor as any).npGauge = 100;
+    return {
+      success: true,
+      message: `🔮 **COMMAND SEAL INVOKED: NOBLE PHANTASM OVERDRIVE!** Consumed **1 Command Seal** (Remaining: **${actor.commandSeals}/3**).\n\nYour Servant **${actor.servantName}**'s Noble Phantasm gauge was instantly charged to **100% MAXIMUM OVERDRIVE**!`,
+      updatedWar: targetWar
+    };
+  }
+
+  return { success: false, message: 'Invalid Command Seal action.', updatedWar: targetWar };
+}
+
+export function setWorkshopWardInWar(
+  war: HolyGrailWarSession,
+  actorDiscordId: string,
+  wardType: 'ward' | 'decoy' | 'alarm' | 'none'
+): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
+  const targetWar = war || globalWarSession;
+  if (!targetWar) {
+    return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
+  }
+  const actor = targetWar.participants[actorDiscordId];
+  if (!actor || !actor.isAlive) {
+    return { success: false, message: 'You have no active Servant contract in the Holy Grail War!', updatedWar: targetWar };
+  }
+
+  const previousWard = actor.boundedField || 'none';
+  if (wardType === 'decoy') {
+    (actor as any).homunculusCount = ((actor as any).homunculusCount || 0) + 1;
+    actor.boundedField = 'decoy';
+    return {
+      success: true,
+      message: `🗿 **HOMUNCULUS DECOY DEPLOYED!** Created an artificial Homunculus Decoy guarding your workshop.\n\n• *Effect:* The decoy will sacrifice itself to absorb **100% of incoming ambush damage** on the next surprise strike! (Active Decoys: **${(actor as any).homunculusCount}**)`,
+      updatedWar: targetWar
+    };
+  }
+
+  actor.boundedField = wardType;
+  const now = Date.now();
+  if (wardType !== 'none' && previousWard === 'none') {
+    if (actor.currentHp < actor.maxHp) {
+      actor.baseHpAtDamage = actor.currentHp;
+      actor.lastDamageTime = now;
+    }
+  } else if (wardType === 'none' && previousWard !== 'none') {
+    actor.currentHp = calculateCurrentHp(actor, now);
+    actor.baseHpAtDamage = actor.currentHp;
+    actor.lastDamageTime = undefined;
+  }
+
+  let desc = '';
+  if (wardType === 'none') desc = 'deactivated all active workshop bounded fields (HP auto-regeneration paused)';
+  else if (wardType === 'ward') desc = 'reinforced a Mage Sanctuary Bounded Field (deflects 60% incoming ambush damage & channels HP auto-regeneration)';
+  else if (wardType === 'alarm') desc = 'deployed an Intrusion Alert Ward (deals 3,000 retaliatory DMG & channels HP auto-regeneration)';
+
+  return {
+    success: true,
+    message: `🏰 **Workshop Ward Deployed:** ${desc}!`,
+    updatedWar: targetWar
+  };
+}

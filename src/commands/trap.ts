@@ -13,43 +13,63 @@ import { getOrCreateMaster, saveMaster } from '../database/service';
 import { 
   getOrInitWarSession, 
   setChannelTrapInWar, 
-  disarmChannelTrapsInWar 
+  disarmChannelTrapsInWar,
+  setWorkshopWardInWar,
+  invokeCommandSealInWar,
+  calculateServantMaxHp
 } from '../engine/grailwar';
 
 export const data = new SlashCommandBuilder()
   .setName('trap')
-  .setDescription('🕸️ Place or manage concealed Bounded Field traps in channels')
+  .setDescription('🕸️ Place or manage concealed Bounded Field traps, Workshop Wards, and Command Seals')
   .addSubcommand(sub =>
     sub
       .setName('set')
-      .setDescription('Conceal a Bounded Field trap in an actual Discord channel')
+      .setDescription('Conceal a Bounded Field trap or Workshop Ward')
       .addStringOption(opt =>
         opt
           .setName('type')
-          .setDescription('Choose Bounded Field trap type')
+          .setDescription('Choose Bounded Field or Ward type')
           .setRequired(true)
           .addChoices(
             { name: '🚨 Alarm Ward (Exposes intruder identity & Servant Class)', value: 'alarm' },
-            { name: '🩸 Bloodfort Drain (Siphons 1,800 HP from intruder to your Servant)', value: 'drain' }
+            { name: '🩸 Bloodfort Drain (Siphons 1,800 HP from intruder to your Servant)', value: 'drain' },
+            { name: '🛡️ Mage Sanctuary Ward (Absorbs 60% incoming ambush damage)', value: 'sanctuary' },
+            { name: '🗿 Homunculus Decoy Ward (Absorbs 100% incoming ambush damage)', value: 'decoy' }
           )
       )
       .addChannelOption(opt =>
         opt
           .setName('channel')
-          .setDescription('Actual Discord channel to anchor the Bounded Field in (defaults to current channel)')
+          .setDescription('Actual Discord channel to anchor (for channel traps)')
           .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
           .setRequired(false)
       )
   )
   .addSubcommand(sub =>
     sub
+      .setName('seal')
+      .setDescription('Invoke Command Seals or manage auto-evacuation defenses')
+      .addStringOption(opt =>
+        opt
+          .setName('action')
+          .setDescription('Command Seal action')
+          .setRequired(true)
+          .addChoices(
+            { name: '⚡ Full Heal (Restores Servant to 100% HP)', value: 'heal' },
+            { name: '🔴 Toggle Auto-Evacuation Ward (Consumes 1 CS on fatal hit to survive with 1 HP)', value: 'evac' }
+          )
+      )
+  )
+  .addSubcommand(sub =>
+    sub
       .setName('list')
-      .setDescription('View where your active channel Bounded Fields are deployed and select channels')
+      .setDescription('View active channel Bounded Fields, Workshop Wards, and Command Seals')
   )
   .addSubcommand(sub =>
     sub
       .setName('disarm')
-      .setDescription('Disarm and dissolve your deployed channel traps')
+      .setDescription('Disarm and dissolve your deployed channel traps or workshop wards')
       .addChannelOption(opt =>
         opt
           .setName('channel')
@@ -76,14 +96,45 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       ? `#${(interaction.channel as any).name}`
       : '#general';
 
+    if (sub === 'seal') {
+      const act = interaction.options.getString('action', true);
+      if (act === 'heal') {
+        const res = invokeCommandSealInWar(war, interaction.user.id, 'heal');
+        war = res.updatedWar;
+        await saveMaster(master);
+        await interaction.reply({ content: res.message, flags: MessageFlags.Ephemeral });
+        return;
+      } else if (act === 'evac') {
+        const res = invokeCommandSealInWar(war, interaction.user.id, 'toggle_evac');
+        war = res.updatedWar;
+        await saveMaster(master);
+        await interaction.reply({ content: res.message, flags: MessageFlags.Ephemeral });
+        return;
+      }
+    }
+
     if (sub === 'set') {
-      const trapType = interaction.options.getString('type', true) as 'alarm' | 'drain';
+      const trapType = interaction.options.getString('type', true);
+      if (trapType === 'sanctuary') {
+        const res = setWorkshopWardInWar(war, interaction.user.id, 'ward');
+        war = res.updatedWar;
+        await saveMaster(master);
+        await interaction.reply({ content: res.message, flags: MessageFlags.Ephemeral });
+        return;
+      } else if (trapType === 'decoy') {
+        const res = setWorkshopWardInWar(war, interaction.user.id, 'decoy');
+        war = res.updatedWar;
+        await saveMaster(master);
+        await interaction.reply({ content: res.message, flags: MessageFlags.Ephemeral });
+        return;
+      }
+
       const channelOpt = interaction.options.getChannel('channel');
       const targetChan = channelOpt && 'name' in channelOpt 
         ? `#${channelOpt.name}` 
         : currentChannelName;
 
-      const res = setChannelTrapInWar(war, interaction.user.id, interaction.user.username, targetChan, trapType);
+      const res = setChannelTrapInWar(war, interaction.user.id, interaction.user.username, targetChan, trapType as 'alarm' | 'drain');
       war = res.updatedWar;
       await saveMaster(master);
 
@@ -127,6 +178,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     // list / default handler
     const userTraps = (war.channelTraps || []).filter(t => t.setterMasterId === interaction.user.id);
+    const uP = war.participants[interaction.user.id];
+    const wardType = uP?.boundedField || 'none';
+    const autoEvac = uP?.autoEvadeEnabled === true;
+    const csCount = uP?.commandSeals ?? 3;
+
     let desc = '';
     if (userTraps.length === 0) {
       desc = '📍 **YOUR ACTIVE BOUNDED FIELDS (0/3):**\n• *You currently have no active Bounded Fields deployed in any channel sectors.*\n• Use the channel dropdown below or `/trap set` to anchor one!';
@@ -138,6 +194,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             : '🩸 **Bloodfort Drain** (Siphons 1,800–2,600 HP from intruder)';
           return `**${idx + 1}. Sector \`${t.channelName}\`** — ${typeLabel}\n*Status: 🟢 Armed & Concealed • Deployed <t:${Math.floor(t.createdAt / 1000)}:R>*`;
         }).join('\n\n');
+    }
+
+    // Workshop Ward Status
+    let workshopDesc = '🚫 **No Workshop Ward Active**';
+    if (wardType === 'ward') {
+      workshopDesc = '🛡️ **Mage Sanctuary Bounded Field:** Absorbs & deflects **60% of incoming ambush damage**.';
+    } else if (wardType === 'decoy') {
+      workshopDesc = '🗿 **Homunculus Decoy:** Sacrifices an artificial homunculus to absorb **100% of incoming ambush damage**.';
+    } else if (wardType === 'alarm') {
+      workshopDesc = '🚨 **Sensory Alarm Trap:** Detects infiltrators, alerting you and dealing **3,000 retaliatory DMG**.';
     }
 
     // Dynamic Sector Radar for all active traps and default channels
@@ -157,16 +223,21 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return `• \`${secName}\`: 🔒 **Occupied** *(Master ${otherMaster} claims this territory)*`;
     }).join('\n');
 
-    const fullDesc = desc + '\n\n🗺️ **ACTIVE CHANNELS RADAR:**\n' + radarLines +
+    const fullDesc = 
+      `🏰 **WORKSHOP DEFENSES & WARDS:**\n${workshopDesc}\n\n` +
+      `📜 **COMMAND SEALS & AUTO-EVAC:**\n` +
+      `• **Remaining Seals:** \`${'✦ '.repeat(csCount)}${'✧ '.repeat(Math.max(0, 3 - csCount))}\` (**${csCount}/3**)\n` +
+      `• **Auto-Evacuate Ward:** ${autoEvac ? '🟢 **ENABLED** (Survives lethal hit with 1 HP)' : '🔴 **DISABLED**'}\n\n` +
+      desc + '\n\n🗺️ **ACTIVE CHANNELS RADAR:**\n' + radarLines +
       '\n\n🎯 **TARGET A SPECIFIC CHANNEL:**\nSelect an existing Discord channel below to anchor or disarm a Bounded Field!';
 
     const trapsEmbed = new EmbedBuilder()
-      .setTitle('🕸️ Bounded Field Traps & Radar')
+      .setTitle('🕸️ Bounded Fields, Workshop Wards & Command Seals')
       .setDescription(fullDesc)
       .setColor(0x8b5cf6)
-      .setFooter({ text: 'A Master can set 2–3 Bounded Fields per channel • Rival Masters cannot claim the same channel' });
+      .setFooter({ text: 'A Master can set 3 Bounded Fields • Seals regenerate 1 per 24 hours' });
 
-    const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    const btnRow1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setCustomId('war_place_trap_alarm')
         .setLabel(`Alarm (${currentChannelName})`)
@@ -176,20 +247,34 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setCustomId('war_place_trap_drain')
         .setLabel(`Drain (${currentChannelName})`)
         .setEmoji('🩸')
-        .setStyle(ButtonStyle.Danger)
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId('trap_set_sanctuary')
+        .setLabel('Sanctuary (60% Block)')
+        .setEmoji('🛡️')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('trap_set_decoy')
+        .setLabel('Decoy (100% Absorb)')
+        .setEmoji('🗿')
+        .setStyle(ButtonStyle.Secondary)
     );
 
-    if (userTraps.length > 0) {
-      btnRow.addComponents(
-        new ButtonBuilder()
-          .setCustomId('disarm_all_traps')
-          .setLabel('Disarm All Traps')
-          .setEmoji('🧹')
-          .setStyle(ButtonStyle.Secondary)
-      );
-    }
-
-    btnRow.addComponents(
+    const btnRow2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('trap_use_seal_heal')
+        .setLabel('Use Seal (Full Heal)')
+        .setEmoji('⚡')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('trap_toggle_evac')
+        .setLabel(autoEvac ? 'Auto-Evac: ON 🟢' : 'Auto-Evac: OFF 🔴')
+        .setStyle(autoEvac ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('disarm_all_traps')
+        .setLabel('Disarm Traps')
+        .setEmoji('🧹')
+        .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('war_status_board')
         .setLabel('Grail War Board')
@@ -206,7 +291,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     await interaction.reply({
       embeds: [trapsEmbed],
-      components: [btnRow, channelSelectRow],
+      components: [btnRow1, btnRow2, channelSelectRow],
       flags: MessageFlags.Ephemeral
     });
 
@@ -256,6 +341,38 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         );
 
         await i.update({ embeds: [promptEmbed], components: [promptRow] });
+        return;
+      }
+
+      if (i.customId === 'trap_set_sanctuary') {
+        const res = setWorkshopWardInWar(war, i.user.id, 'ward');
+        war = res.updatedWar;
+        await saveMaster(master);
+        await i.reply({ content: res.message, flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      if (i.customId === 'trap_set_decoy') {
+        const res = setWorkshopWardInWar(war, i.user.id, 'decoy');
+        war = res.updatedWar;
+        await saveMaster(master);
+        await i.reply({ content: res.message, flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      if (i.customId === 'trap_use_seal_heal') {
+        const res = invokeCommandSealInWar(war, i.user.id, 'heal');
+        war = res.updatedWar;
+        await saveMaster(master);
+        await i.reply({ content: res.message, flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      if (i.customId === 'trap_toggle_evac') {
+        const res = invokeCommandSealInWar(war, i.user.id, 'toggle_evac');
+        war = res.updatedWar;
+        await saveMaster(master);
+        await i.reply({ content: res.message, flags: MessageFlags.Ephemeral });
         return;
       }
 
