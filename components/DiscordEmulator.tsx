@@ -2607,7 +2607,8 @@ export default function DiscordEmulator({
 
       // SUB-CASE TRAPS: /grailwar trap, /traps
       if (isTraps) {
-        const chanTag = activeChannel === 'public' ? '#holy-grail-war' : '#general';
+        const channelMatch = trimmed.match(/#([a-zA-Z0-9_-]+)/);
+        const chanTag = channelMatch ? `#${channelMatch[1]}` : (activeChannel === 'public' ? '#holy-grail-war' : '#general');
         if (trimmed.includes('alarm')) {
           const res = setChannelTrapInWar(grailWar, master.discordId, master.username, chanTag, 'alarm');
           onUpdateGrailWar(res.updatedWar);
@@ -2616,9 +2617,9 @@ export default function DiscordEmulator({
             sender: 'bot',
             timestamp: 'Just now',
             embed: {
-              title: res.success ? '🚨 Alarm Ward Anchored' : '⚠️ Ward Interrupted',
+              title: res.success ? '🚨 Alarm Ward Anchored' : '⚠️ Bounded Field Interrupted',
               description: res.message,
-              color: res.success ? '#ef4444' : '#64748b'
+              color: res.success ? '#ef4444' : '#f59e0b'
             }
           });
           return;
@@ -2630,9 +2631,9 @@ export default function DiscordEmulator({
             sender: 'bot',
             timestamp: 'Just now',
             embed: {
-              title: res.success ? '🩸 Bloodfort Drain Field Anchored' : '⚠️ Ward Interrupted',
+              title: res.success ? '🩸 Bloodfort Drain Field Anchored' : '⚠️ Bounded Field Interrupted',
               description: res.message,
-              color: res.success ? '#dc2626' : '#64748b'
+              color: res.success ? '#dc2626' : '#f59e0b'
             }
           });
           return;
@@ -2653,9 +2654,14 @@ export default function DiscordEmulator({
         }
 
         const userTraps = (grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
+        const channelTrap = (grailWar.channelTraps || []).find(t => t.channelName.toLowerCase() === chanTag.toLowerCase());
         const trapLines = userTraps.length > 0
           ? userTraps.map((t, i) => `${i + 1}. ${t.trapType === 'alarm' ? '🚨 Alarm Ward' : '🩸 Bloodfort Drain'} in **${t.channelName}**`).join('\n')
           : '• *No active channel Bounded Fields anchored.*';
+
+        const channelStatusNote = channelTrap
+          ? `⚠️ **Channel Status (${chanTag}):** A Bounded Field is already active here (${channelTrap.setterMasterId === master.discordId ? 'by you' : `by Master ${channelTrap.setterUsername}`}). *Only 1 Bounded Field can be open per channel.*\n\n`
+          : `✨ **Channel Status (${chanTag}):** Leylines are clear. Ready for Bounded Field deployment.\n\n`;
 
         addMessage({
           id: getNextId('bot_trap_menu'),
@@ -2667,6 +2673,7 @@ export default function DiscordEmulator({
               `Anchor hidden magecraft traps in specific channels to intercept rival Masters!\n\n` +
               `🕸️ **Your Active Traps (${userTraps.length}/2):**\n` +
               trapLines + `\n\n` +
+              channelStatusNote +
               `• 🚨 **Alarm Ward:** Exposes the intruder's username and Servant class upon entering.\n` +
               `• 🩸 **Bloodfort Drain:** Siphons 1,800–2,600 HP from intruder to heal your Servant.`,
             color: '#dc2626',
@@ -2675,9 +2682,9 @@ export default function DiscordEmulator({
           components: {
             type: 'buttons',
             items: [
-              { id: 'trap_channel_alarm', label: 'Set Alarm Ward', style: 'danger', emoji: '🚨' },
-              { id: 'trap_channel_drain', label: 'Set Bloodfort Drain', style: 'danger', emoji: '🩸' },
-              { id: 'disarm_all_traps', label: 'Disarm All Traps', style: 'secondary', emoji: '🧹' },
+              { id: 'trap_channel_alarm', label: 'Set Alarm Ward', style: 'danger', emoji: '🚨', disabled: !!channelTrap || userTraps.length >= 2 },
+              { id: 'trap_channel_drain', label: 'Set Bloodfort Drain', style: 'danger', emoji: '🩸', disabled: !!channelTrap || userTraps.length >= 2 },
+              { id: 'disarm_all_traps', label: 'Disarm All Traps', style: 'secondary', emoji: '🧹', disabled: userTraps.length === 0 },
               { id: 'quick_war_status', label: 'Status Board', style: 'primary', emoji: '📋' }
             ]
           }
@@ -4877,17 +4884,25 @@ export default function DiscordEmulator({
       title = '🕸️ Concealed Bounded Field Traps';
       color = '#8b5cf6';
       const userTraps = (grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
+      const chanTag = activeChannel === 'public' ? '#holy-grail-war' : '#general';
+      const channelTrap = (grailWar.channelTraps || []).find(t => t.channelName.toLowerCase() === chanTag.toLowerCase());
+
       let desc = '';
       if (userTraps.length === 0) {
         desc = 'You currently have **no active Bounded Field traps** placed in any channel sectors.\n\nLay a hidden trap to surprise rivals!';
       } else {
-        desc = `You currently command **${userTraps.length}/2** active Bounded Field traps:\n\n` +
+        desc = `You currently command **${userTraps.length}/2** active Bounded Field traps across Fuyuki:\n\n` +
           userTraps.map((t, idx) => {
             const typeLabel = t.trapType === 'alarm' ? '🚨 **Alarm Ward** (Exposes intruder identity)' : '🩸 **Bloodfort Drain** (Siphons 1,800 HP)';
             return `**${idx + 1}. Sector ${t.channelName}** — ${typeLabel}\n*Deployed <t:${Math.floor(t.createdAt / 1000)}:R>*`;
           }).join('\n\n');
       }
-      description = (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') + desc;
+
+      const sectorNote = channelTrap
+        ? `\n\n⚠️ **Sector Status (${chanTag}):** A Bounded Field is already anchored here (${channelTrap.setterMasterId === master.discordId ? 'by you' : `by Master **${channelTrap.setterUsername}**`}). Masters cannot open two Bounded Fields in the same channel.`
+        : `\n\n✨ **Sector Status (${chanTag}):** Channel leylines are clear (0/1 Bounded Fields active).`;
+
+      description = (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') + desc + sectorNote;
 
     } else if (category === 'church') {
       title = '⛪ Fuyuki Church Sanctuary (Father Kotomine)';
@@ -4939,9 +4954,11 @@ export default function DiscordEmulator({
       ];
     } else if (category === 'traps') {
       const userTraps = (grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
+      const chanTag = activeChannel === 'public' ? '#holy-grail-war' : '#general';
+      const channelHasTrap = (grailWar.channelTraps || []).some(t => t.channelName.toLowerCase() === chanTag.toLowerCase());
       actionButtons = [
-        { id: 'war_place_trap_alarm', label: 'Place Alarm Ward', style: 'primary', emoji: '🚨' },
-        { id: 'war_place_trap_drain', label: 'Place Bloodfort Drain', style: 'danger', emoji: '🩸' },
+        { id: 'war_place_trap_alarm', label: 'Place Alarm Ward', style: 'primary', emoji: '🚨', disabled: channelHasTrap || userTraps.length >= 2 },
+        { id: 'war_place_trap_drain', label: 'Place Bloodfort Drain', style: 'danger', emoji: '🩸', disabled: channelHasTrap || userTraps.length >= 2 },
         { id: 'disarm_all_traps', label: 'Disarm All Traps', style: 'secondary', emoji: '🧹', disabled: userTraps.length === 0 }
       ];
     } else if (category === 'church') {

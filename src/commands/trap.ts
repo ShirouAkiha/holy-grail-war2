@@ -74,6 +74,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       war = res.updatedWar;
       await saveMaster(master);
 
+      if (!res.success) {
+        const errorEmbed = new EmbedBuilder()
+          .setTitle('⚠️ Bounded Field Interrupted')
+          .setDescription(res.message)
+          .setColor(0xef4444)
+          .setFooter({ text: 'Holy Grail War Espionage & Perimeter Security' });
+
+        await interaction.reply({ embeds: [errorEmbed], flags: MessageFlags.Ephemeral });
+        return;
+      }
+
       const trapEmbed = new EmbedBuilder()
         .setTitle('🕸️ Bounded Field Trap Deployed')
         .setDescription(res.message)

@@ -1233,36 +1233,45 @@ export function setChannelTrapInWar(
     targetWar.channelTraps = [];
   }
 
-  // Check if Master already has a trap in this exact channel
-  const existingIdx = targetWar.channelTraps.findIndex(
-    t => t.setterMasterId === setterId && t.channelName.toLowerCase() === chanTag.toLowerCase()
+  // Check if ANY Bounded Field already exists in this channel sector (cannot open two bounded fields in the same channel)
+  const existingInChannel = targetWar.channelTraps.find(
+    t => t.channelName.toLowerCase() === chanTag.toLowerCase()
   );
-  
-  // Count active traps for this Master
-  const currentTrapsCount = targetWar.channelTraps.filter(t => t.setterMasterId === setterId).length;
-  if (existingIdx === -1 && currentTrapsCount >= 2) {
+  if (existingInChannel) {
+    const isOwnField = existingInChannel.setterMasterId === setterId;
+    const existingType = existingInChannel.trapType === 'alarm' ? '🚨 Sensory Alarm Ward' : '🩸 Bloodfort Mana Drain Field';
     return {
       success: false,
-      message: `❌ You can only maintain up to **2 active channel Bounded Fields** simultaneously! Use \`/grailwar traps\` or disarm an existing trap first.`,
+      message: isOwnField
+        ? `❌ **Leyline Saturation:** You already have an active Bounded Field (${existingType}) anchored in **${chanTag}**! You cannot open two Bounded Fields in the same channel. Disarm your existing field first with \`/trap disarm\` before anchoring a new one.`
+        : `❌ **Magical Leyline Clash:** A Bounded Field is already anchored in **${chanTag}** by Master **${existingInChannel.setterUsername}**! You cannot open two Bounded Fields in the same channel due to magical interference. The existing field must be triggered or disarmed first.`,
+      updatedWar: targetWar
+    };
+  }
+  
+  // Count active traps for this Master across all channels (max 2)
+  const currentTrapsCount = targetWar.channelTraps.filter(t => t.setterMasterId === setterId).length;
+  if (currentTrapsCount >= 2) {
+    return {
+      success: false,
+      message: `❌ You can only maintain up to **2 active channel Bounded Fields** simultaneously across Fuyuki! Use \`/grailwar traps\` or disarm an existing trap first.`,
       updatedWar: targetWar
     };
   }
 
   const trapId = `trap_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const now = Date.now();
   const newTrap: ChannelBoundedTrap = {
     id: trapId,
     channelName: chanTag,
     setterMasterId: setterId,
     setterUsername: setter.username || setterUsername,
     trapType,
-    createdAt: Date.now()
+    createdAt: now,
+    expiresAt: now + (24 * 60 * 60 * 1000)
   };
 
-  if (existingIdx !== -1) {
-    targetWar.channelTraps[existingIdx] = newTrap;
-  } else {
-    targetWar.channelTraps.push(newTrap);
-  }
+  targetWar.channelTraps.push(newTrap);
 
   const trapLabel = trapType === 'alarm' 
     ? '🚨 **Sensory Alarm Ward** (Exposes intruder identity & Servant Class upon entry)'

@@ -1004,21 +1004,18 @@ export function setChannelTrapInWar(
     targetWar.channelTraps = [];
   }
 
+  // Check if ANY Bounded Field already exists in this channel sector (cannot open two bounded fields in the same channel)
   const existingInChannel = targetWar.channelTraps.find(
-    t => t.setterMasterId === masterId && t.channelName.toLowerCase() === chanTag.toLowerCase()
+    t => t.channelName.toLowerCase() === chanTag.toLowerCase()
   );
   if (existingInChannel) {
-    existingInChannel.trapType = trapType;
-    existingInChannel.createdAt = Date.now();
-    existingInChannel.expiresAt = Date.now() + (24 * 60 * 60 * 1000);
-
-    const typeDesc = trapType === 'alarm'
-      ? '🚨 **Alarm Ward** (Exposes intruder identity & Servant Class)'
-      : '🩸 **Bloodfort Drain** (Siphons 1,800 HP from intruder to your Servant)';
-
+    const isOwnField = existingInChannel.setterMasterId === masterId;
+    const fieldTypeLabel = existingInChannel.trapType === 'alarm' ? '🚨 Alarm Ward' : '🩸 Bloodfort Drain';
     return {
-      success: true,
-      message: `🔄 **Bounded Field Updated in ${chanTag}!**\nReplaced existing ward with: ${typeDesc}.`,
+      success: false,
+      message: isOwnField
+        ? `❌ **Leyline Saturation:** You already have an active Bounded Field (${fieldTypeLabel}) anchored in **${chanTag}**! You cannot open two Bounded Fields in the same channel. Disarm your existing field first with \`/trap disarm\` before anchoring a new one.`
+        : `❌ **Magical Leyline Clash:** A Bounded Field is already active in **${chanTag}** (anchored by Master **${existingInChannel.setterUsername}**)! You cannot open two Bounded Fields in the same channel due to magical interference. The existing field must be triggered or disarmed first.`,
       updatedWar: targetWar
     };
   }
@@ -1027,7 +1024,7 @@ export function setChannelTrapInWar(
   if (userTraps.length >= 2) {
     return {
       success: false,
-      message: `❌ You can only maintain up to **2 active Bounded Field traps** simultaneously! Use \`/grailwar traps\` to disarm old traps.`,
+      message: `❌ You can only maintain up to **2 active Bounded Field traps** simultaneously! Use \`/grailwar traps\` or \`/trap disarm\` to clear old traps.`,
       updatedWar: targetWar
     };
   }
