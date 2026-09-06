@@ -475,7 +475,7 @@ export async function buildServantHub(
   );
 
   const actionButtonsRow = new ActionRowBuilder<ButtonBuilder>();
-  const components: any[] = [categoryNavRow, subNavRow];
+  let components: any[] = [categoryNavRow, subNavRow];
 
   // Roster Dropdown if multiple servants
   if (master.servants.length > 1) {
@@ -534,7 +534,7 @@ export async function buildServantHub(
     const avail = targetServant.availableStatPoints || 0;
     const stepLabel = currentStep >= 9999 ? 'MAX' : `${currentStep}`;
 
-    // Row 1: Parameter Buttons (+Step)
+    // Row 1: Parameter Allocation Buttons (+Step)
     const paramRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('servant_add_str').setLabel(`+${stepLabel} STR`).setEmoji('💪').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
       new ButtonBuilder().setCustomId('servant_add_end').setLabel(`+${stepLabel} END`).setEmoji('🛡️').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
@@ -543,22 +543,17 @@ export async function buildServantHub(
       new ButtonBuilder().setCustomId('servant_add_lck').setLabel(`+${stepLabel} LCK`).setEmoji('🍀').setStyle(ButtonStyle.Success).setDisabled(avail <= 0)
     );
 
-    // Row 2: Step Multipliers Selector
-    const stepRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId('servant_step_1').setLabel('1x Step').setStyle(currentStep === 1 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('servant_step_10').setLabel('10x Step').setStyle(currentStep === 10 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('servant_step_50').setLabel('50x Step').setStyle(currentStep === 50 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('servant_step_100').setLabel('100x Step').setStyle(currentStep === 100 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('servant_step_max').setLabel('MAX Step').setStyle(currentStep >= 9999 ? ButtonStyle.Primary : ButtonStyle.Secondary)
+    // Row 2: Bulk Allocation & Step Controls (Max 5 buttons)
+    const step100Label = currentStep >= 9999 ? 'MAX Step' : '100x Step';
+    const ctrlRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('servant_step_1').setLabel('1x').setStyle(currentStep === 1 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_step_10').setLabel('10x').setStyle(currentStep === 10 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_step_100').setLabel(step100Label).setStyle(currentStep >= 100 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_act_open_stat_modal').setLabel('Custom Input').setEmoji('📝').setStyle(ButtonStyle.Primary).setDisabled(avail <= 0),
+      new ButtonBuilder().setCustomId('servant_add_auto').setLabel('Auto-Distribute').setEmoji('✨').setStyle(ButtonStyle.Success).setDisabled(avail <= 0)
     );
 
-    // Row 3: Bulk Allocation Modal & Auto-Distribute
-    const bulkRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId('servant_act_open_stat_modal').setLabel('Custom Input (Modal)').setEmoji('📝').setStyle(ButtonStyle.Primary).setDisabled(avail <= 0),
-      new ButtonBuilder().setCustomId('servant_add_auto').setLabel('Auto-Distribute All').setEmoji('✨').setStyle(ButtonStyle.Success).setDisabled(avail <= 0)
-    );
-
-    components.push(paramRow, stepRow, bulkRow);
+    components.push(paramRow, ctrlRow);
   } else if (category === 'equip_ce') {
     const ownedCes = (master.craftEssences || []).filter(Boolean);
     const ceOptions = ownedCes.slice(0, 25).map((c: any, idx: number) => ({
@@ -611,7 +606,14 @@ export async function buildServantHub(
     new ButtonBuilder().setCustomId('servant_link_duel').setLabel('Duel Arena (/duel)').setEmoji('⚔️').setStyle(ButtonStyle.Secondary)
   );
 
-  components.push(crossHubShortcutsRow);
+  if (components.length < 5) {
+    components.push(crossHubShortcutsRow);
+  }
+
+  // Strict safety cap: Discord allows maximum 5 Action Rows per message
+  if (components.length > 5) {
+    components = components.slice(0, 5);
+  }
 
   return { embeds, files, components };
 }
@@ -929,15 +931,14 @@ export function attachServantCollector(
       } else if (i.customId === 'servant_step_10') {
         currentStep = 10;
         actionOutcomeMsg = `🔢 Step multiplier set to **10x**. Click parameter buttons to add +10 points!`;
-      } else if (i.customId === 'servant_step_50') {
-        currentStep = 50;
-        actionOutcomeMsg = `🔢 Step multiplier set to **50x**. Click parameter buttons to add +50 points!`;
       } else if (i.customId === 'servant_step_100') {
-        currentStep = 100;
-        actionOutcomeMsg = `🔢 Step multiplier set to **100x**. Click parameter buttons to add +100 points!`;
-      } else if (i.customId === 'servant_step_max') {
-        currentStep = 9999;
-        actionOutcomeMsg = `⚡ Step multiplier set to **MAX**! Clicking a parameter button will allocate ALL remaining points!`;
+        if (currentStep === 100) {
+          currentStep = 9999;
+          actionOutcomeMsg = `⚡ Step multiplier toggled to **MAX**! Clicking a parameter button will allocate ALL remaining points!`;
+        } else {
+          currentStep = 100;
+          actionOutcomeMsg = `🔢 Step multiplier set to **100x**. Click parameter buttons to add +100 points! (Click 100x again for MAX)`;
+        }
       }
       // OPEN BULK STAT ALLOCATION MODAL
       else if (i.customId === 'servant_act_open_stat_modal') {
