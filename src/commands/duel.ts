@@ -13,7 +13,7 @@ import { getOrCreateMaster, saveMaster, getDuelNpSettings } from '../database/se
 import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog, PassiveSkill } from '../types';
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives } from '../data/servants';
 import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp } from '../engine/grailwar';
-import { renderBattleTurnSummary, renderDialogueCard } from '../canvas/renderer';
+import { renderBattleTurnSummary, renderDialogueCard, renderDefeatDialogueCard } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER, calculateFleeChance, rollFleeSuccess } from '../engine/battle';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
@@ -2082,6 +2082,39 @@ async function finishDuel(
     ? (loserMaster.autoConsumeCommandSeal === true) 
     : (loserParticipant?.autoEvadeEnabled === true || loserParticipant?.autoConsumeCommandSeal === true);
 
+  // Setup visual novel defeat card data
+  const loserName = loser.servant.nickname || loser.servant.template?.name || 'Heroic Spirit';
+  const loserClass = loser.servant.template?.servantClass || 'Saber';
+  const loserAvatarUrl = loser.servant.template?.avatarUrl;
+  const loserBond = loser.servant.bondLevel || 5;
+  const loserDefeatQuote = loser.servant.customQuotes?.defeat || loser.servant.template?.defeatQuote || "Master... I have failed you in battle...";
+
+  const winnerName = winner.servant.nickname || winner.servant.template?.name || 'Heroic Spirit';
+  const winnerClass = winner.servant.template?.servantClass || 'Saber';
+  const winnerAvatarUrl = winner.servant.template?.avatarUrl;
+
+  const defaultTag = availableSeals >= 1 ? 'CRITICAL DEFEAT' : 'SPIRIT ORIGIN DISSOLVED';
+
+  const defeatCardBuffer = await renderDefeatDialogueCard(
+    loserName,
+    loserDefeatQuote,
+    defaultTag,
+    loserClass,
+    loserAvatarUrl,
+    loserBond,
+    winnerName,
+    winnerAvatarUrl,
+    winnerClass,
+    'fuyuki'
+  ).catch((err) => {
+    console.error('Error rendering defeat dialogue card on server:', err);
+    return null;
+  });
+
+  const defeatCardAttachment = defeatCardBuffer 
+    ? new AttachmentBuilder(defeatCardBuffer, { name: 'defeat_dialogue.png' })
+    : null;
+
   if (availableSeals >= 1) {
     if (autoConsume === true) {
       if (loserMaster) {
@@ -2125,16 +2158,38 @@ async function finishDuel(
         interventionEmbed.setThumbnail(loser.servant.template.avatarUrl);
       }
 
+      // Render custom sanctuary/evac card
+      const autoEvacCardBuffer = await renderDefeatDialogueCard(
+        loserName,
+        loserDefeatQuote,
+        'EMERGENCY SANCTUARY',
+        loserClass,
+        loserAvatarUrl,
+        loserBond,
+        winnerName,
+        winnerAvatarUrl,
+        winnerClass,
+        'fuyuki'
+      ).catch(() => null);
+
+      const autoEvacAttachment = autoEvacCardBuffer 
+        ? new AttachmentBuilder(autoEvacCardBuffer, { name: 'evac_dialogue.png' }) 
+        : null;
+
+      if (autoEvacAttachment) {
+        interventionEmbed.setImage('attachment://evac_dialogue.png');
+      }
+
       if (i.deferred || i.replied) {
         await i.editReply({
           embeds: [interventionEmbed],
-          files: [finalAttachment],
+          files: autoEvacAttachment ? [autoEvacAttachment] : [finalAttachment],
           components: []
         });
       } else {
         await i.update({
           embeds: [interventionEmbed],
-          files: [finalAttachment],
+          files: autoEvacAttachment ? [autoEvacAttachment] : [finalAttachment],
           components: []
         });
       }
@@ -2158,6 +2213,10 @@ async function finishDuel(
       decisionEmbed.setThumbnail(loser.servant.template.avatarUrl);
     }
 
+    if (defeatCardAttachment) {
+      decisionEmbed.setImage('attachment://defeat_dialogue.png');
+    }
+
     const decisionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setCustomId('duel_evacuate_seal')
@@ -2175,13 +2234,13 @@ async function finishDuel(
     if (i.deferred || i.replied) {
       responseMsg = await i.editReply({
         embeds: [decisionEmbed],
-        files: [finalAttachment],
+        files: defeatCardAttachment ? [defeatCardAttachment] : [finalAttachment],
         components: [decisionRow]
       });
     } else {
       responseMsg = await i.update({
         embeds: [decisionEmbed],
-        files: [finalAttachment],
+        files: defeatCardAttachment ? [defeatCardAttachment] : [finalAttachment],
         components: [decisionRow]
       });
     }
@@ -2237,8 +2296,30 @@ async function finishDuel(
             interventionEmbed.setThumbnail(loser.servant.template.avatarUrl);
           }
 
+          const manualEvacCardBuffer = await renderDefeatDialogueCard(
+            loserName,
+            loserDefeatQuote,
+            'EMERGENCY SANCTUARY',
+            loserClass,
+            loserAvatarUrl,
+            loserBond,
+            winnerName,
+            winnerAvatarUrl,
+            winnerClass,
+            'fuyuki'
+          ).catch(() => null);
+
+          const manualEvacAttachment = manualEvacCardBuffer 
+            ? new AttachmentBuilder(manualEvacCardBuffer, { name: 'evac_dialogue.png' }) 
+            : null;
+
+          if (manualEvacAttachment) {
+            interventionEmbed.setImage('attachment://evac_dialogue.png');
+          }
+
           await decision.update({
             embeds: [interventionEmbed],
+            files: manualEvacAttachment ? [manualEvacAttachment] : [],
             components: []
           });
           return;
@@ -2277,16 +2358,20 @@ async function finishDuel(
       defeatEmbed.setThumbnail(loser.servant.template.avatarUrl);
     }
 
+    if (defeatCardAttachment) {
+      defeatEmbed.setImage('attachment://defeat_dialogue.png');
+    }
+
     if (i.deferred || i.replied) {
       await i.editReply({
         embeds: [defeatEmbed],
-        files: [finalAttachment],
+        files: defeatCardAttachment ? [defeatCardAttachment] : [finalAttachment],
         components: []
       });
     } else {
       await i.update({
         embeds: [defeatEmbed],
-        files: [finalAttachment],
+        files: defeatCardAttachment ? [defeatCardAttachment] : [finalAttachment],
         components: []
       });
     }
@@ -2323,6 +2408,10 @@ async function finishDuel(
     fateEmbed.setThumbnail(winner.servant.template.avatarUrl);
   }
 
+  if (defeatCardAttachment) {
+    fateEmbed.setImage('attachment://defeat_dialogue.png');
+  }
+
   const fateRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId('duel_fate_kill')
@@ -2338,13 +2427,13 @@ async function finishDuel(
   if (i.deferred || i.replied) {
     response = await i.editReply({
       embeds: [fateEmbed],
-      files: [finalAttachment],
+      files: defeatCardAttachment ? [defeatCardAttachment] : [finalAttachment],
       components: [fateRow]
     });
   } else {
     response = await i.update({
       embeds: [fateEmbed],
-      files: [finalAttachment],
+      files: defeatCardAttachment ? [defeatCardAttachment] : [finalAttachment],
       components: [fateRow],
       withResponse: true
     }).then((r: any) => r?.resource?.message || i.fetchReply());
