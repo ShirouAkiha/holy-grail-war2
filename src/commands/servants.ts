@@ -737,3 +737,112 @@ export function setupServantListCollector(
     }
   });
 }
+
+export async function handleServantsListInteraction(i: any) {
+  try {
+    if (i.replied || i.deferred) return true;
+    const customId = i.customId;
+    const allServants = getAllThroneServants();
+
+    // Parse state from footer if available
+    const footerText = i.message?.embeds?.[0]?.footer?.text;
+    let page = 1;
+    let originFilter = 'all';
+    let classFilter = 'all';
+
+    if (footerText) {
+      const pageMatch = footerText.match(/Page\s+(\d+)\s+of/i);
+      if (pageMatch) page = parseInt(pageMatch[1], 10) || 1;
+
+      const filterMatch = footerText.match(/Filter:\s*\[(.*?)\s*•\s*(.*?)\]/i);
+      if (filterMatch) {
+        const originStr = filterMatch[1].trim().toLowerCase();
+        const classStr = filterMatch[2].trim();
+
+        if (originStr.includes('canon')) originFilter = 'canon';
+        else if (originStr.includes('custom')) originFilter = 'custom';
+        else originFilter = 'all';
+
+        if (classStr.toLowerCase().includes('all')) classFilter = 'all';
+        else classFilter = classStr;
+      }
+    }
+
+    // Dropdown Select Menu
+    if (i.isStringSelectMenu() && (customId === 'select_servant_registry' || customId.startsWith('select_servant_'))) {
+      const val = i.values[0];
+      const servantId = val.replace('servant_view_', '').replace('view_servant_', '');
+      const target = allServants.find(s => s.id === servantId);
+
+      if (target) {
+        await i.deferReply({ ephemeral: true });
+        const profileEmbed = buildServantFullProfileEmbed(target);
+        const artworkEmbed = buildServantArtworkEmbed(target);
+        const actions = buildProfileActions(target.id);
+
+        const files: AttachmentBuilder[] = [];
+        try {
+          const tempInstance = createServantTempInstance(target);
+          const cardBuffer = await renderServantProfileCard(tempInstance, 'Throne of Heroes');
+          if (cardBuffer && cardBuffer.length > 500) {
+            files.push(new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' }));
+          }
+        } catch (e) {
+          console.warn('Canvas render error in servants list dropdown:', e);
+        }
+
+        await i.editReply({ 
+          embeds: [profileEmbed, artworkEmbed], 
+          files,
+          components: [actions] 
+        });
+      } else {
+        await i.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+      }
+      return true;
+    }
+
+    // Pagination Controls
+    if (customId === 'servant_list_prev') {
+      page = Math.max(1, page - 1);
+      const { embed, components } = buildServantsListUI(allServants, page, originFilter, classFilter);
+      await i.update({ embeds: [embed], components });
+      return true;
+    }
+
+    if (customId === 'servant_list_next') {
+      page = page + 1;
+      const { embed, components } = buildServantsListUI(allServants, page, originFilter, classFilter);
+      await i.update({ embeds: [embed], components });
+      return true;
+    }
+
+    if (customId === 'servant_list_origin') {
+      if (originFilter === 'all') originFilter = 'canon';
+      else if (originFilter === 'canon') originFilter = 'custom';
+      else originFilter = 'all';
+
+      page = 1;
+      const { embed, components } = buildServantsListUI(allServants, page, originFilter, classFilter);
+      await i.update({ embeds: [embed], components });
+      return true;
+    }
+
+    if (customId === 'servant_list_class') {
+      const currentIdx = CLASS_CYCLE.indexOf(classFilter as any);
+      const nextIdx = (currentIdx + 1) % CLASS_CYCLE.length;
+      classFilter = CLASS_CYCLE[nextIdx];
+
+      page = 1;
+      const { embed, components } = buildServantsListUI(allServants, page, originFilter, classFilter);
+      await i.update({ embeds: [embed], components });
+      return true;
+    }
+
+    return false;
+  } catch (err: any) {
+    if (err.code === 10062 || err.message?.includes('Unknown interaction')) return true;
+    console.error('Error handling servants list interaction:', err);
+    return false;
+  }
+}

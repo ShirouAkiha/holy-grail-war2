@@ -60,6 +60,7 @@ import {
   buildServantButtons,
   buildServantsListUI,
   setupServantListCollector,
+  handleServantsListInteraction,
   createServantTempInstance
 } from './commands/servants';
 import { 
@@ -262,6 +263,11 @@ client.on(Events.InteractionCreate, async interaction => {
 
     // ROUTE C: Select Dropdown Menus (e.g. equipping Craft Essence from /customise equip or /inventory)
     if (interaction.isStringSelectMenu()) {
+      if (interaction.customId === 'select_servant_registry' || interaction.customId.startsWith('select_servant_')) {
+        await handleServantsListInteraction(interaction);
+        return;
+      }
+
       if (interaction.customId === 'inv_select_item' || interaction.customId.startsWith('inv_')) {
         await handleGlobalInventoryInteraction(interaction);
         return;
@@ -296,6 +302,30 @@ client.on(Events.InteractionCreate, async interaction => {
       if (interaction.replied || interaction.deferred) return;
 
       const btnId = interaction.customId;
+
+      // Servant List Pagination & Filter Controls
+      if (btnId.startsWith('servant_list_')) {
+        await handleServantsListInteraction(interaction);
+        return;
+      }
+
+      // Cross-hub Shortcuts
+      if (btnId === 'servant_link_inventory') {
+        await interaction.reply({ content: 'Use `/inventory` to access your Master Vault and equip Craft Essences!', ephemeral: true });
+        return;
+      }
+      if (btnId === 'servant_link_gacha') {
+        await interaction.reply({ content: 'Use `/gacha` to roll the Throne of Heroes and Craft Essence banners!', ephemeral: true });
+        return;
+      }
+      if (btnId === 'servant_link_grailwar') {
+        await interaction.reply({ content: 'Use `/grailwar` to view the 7-Master war roster, patrol sectors, and workshop defenses!', ephemeral: true });
+        return;
+      }
+      if (btnId === 'servant_link_duel') {
+        await interaction.reply({ content: 'Use `/duel` to enter the combat arena and test your tactical card chains!', ephemeral: true });
+        return;
+      }
 
       // Daily Claim Buttons
       if (btnId === 'quick_daily_claim' || btnId === 'daily_claim') {
@@ -772,13 +802,8 @@ client.on(Events.InteractionCreate, async interaction => {
 
       if (btnId === 'btn_back_servants_list' || btnId === 'btn_show_servants_list') {
         const allServants = getAllThroneServants();
-        const listEmbed = buildListEmbed(
-          allServants.slice(0, 15),
-          `📜 Throne of Heroes Registry (${allServants.length} Servants)`,
-          `Click any Servant's button below to display their full profile:`
-        );
-        const rows = buildServantButtons(allServants.slice(0, 10));
-        await interaction.reply({ embeds: [listEmbed], components: rows });
+        const { embed, components } = buildServantsListUI(allServants, 1, 'all', 'all');
+        await interaction.reply({ embeds: [embed], components, ephemeral: true });
         return;
       }
 
