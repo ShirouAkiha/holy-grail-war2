@@ -2180,16 +2180,25 @@ async function finishDuel(
         interventionEmbed.setImage('attachment://evac_dialogue.png');
       }
 
+      const summaryEmbed = new EmbedBuilder()
+        .setTitle('⚔️ FINAL COMBAT ROUND SUMMARY')
+        .setDescription(`**${winner.servant.template.name}** dealt the final blow to **${loser.servant.template.name}**!`)
+        .setImage('attachment://turn_summary.png')
+        .setColor(0x0f172a);
+
+      const responseFiles = [finalAttachment];
+      if (autoEvacAttachment) responseFiles.push(autoEvacAttachment);
+
       if (i.deferred || i.replied) {
         await i.editReply({
-          embeds: [interventionEmbed],
-          files: autoEvacAttachment ? [autoEvacAttachment] : [finalAttachment],
+          embeds: [summaryEmbed, interventionEmbed],
+          files: responseFiles,
           components: []
         });
       } else {
         await i.update({
-          embeds: [interventionEmbed],
-          files: autoEvacAttachment ? [autoEvacAttachment] : [finalAttachment],
+          embeds: [summaryEmbed, interventionEmbed],
+          files: responseFiles,
           components: []
         });
       }
@@ -2230,17 +2239,26 @@ async function finishDuel(
         .setStyle(ButtonStyle.Secondary)
     );
 
+    const summaryEmbed = new EmbedBuilder()
+      .setTitle('⚔️ FINAL COMBAT ROUND SUMMARY')
+      .setDescription(`**${winner.servant.template.name}** dealt the final blow to **${loser.servant.template.name}**!`)
+      .setImage('attachment://turn_summary.png')
+      .setColor(0x0f172a);
+
+    const responseFiles = [finalAttachment];
+    if (defeatCardAttachment) responseFiles.push(defeatCardAttachment);
+
     let responseMsg: any;
     if (i.deferred || i.replied) {
       responseMsg = await i.editReply({
-        embeds: [decisionEmbed],
-        files: defeatCardAttachment ? [defeatCardAttachment] : [finalAttachment],
+        embeds: [summaryEmbed, decisionEmbed],
+        files: responseFiles,
         components: [decisionRow]
       });
     } else {
       responseMsg = await i.update({
-        embeds: [decisionEmbed],
-        files: defeatCardAttachment ? [defeatCardAttachment] : [finalAttachment],
+        embeds: [summaryEmbed, decisionEmbed],
+        files: responseFiles,
         components: [decisionRow]
       });
     }
@@ -2362,16 +2380,25 @@ async function finishDuel(
       defeatEmbed.setImage('attachment://defeat_dialogue.png');
     }
 
+    const summaryEmbed = new EmbedBuilder()
+      .setTitle('⚔️ FINAL COMBAT ROUND SUMMARY')
+      .setDescription(`**${winner.servant.template.name}** dealt the final blow to **${loser.servant.template.name}**!`)
+      .setImage('attachment://turn_summary.png')
+      .setColor(0x0f172a);
+
+    const responseFiles = [finalAttachment];
+    if (defeatCardAttachment) responseFiles.push(defeatCardAttachment);
+
     if (i.deferred || i.replied) {
       await i.editReply({
-        embeds: [defeatEmbed],
-        files: defeatCardAttachment ? [defeatCardAttachment] : [finalAttachment],
+        embeds: [summaryEmbed, defeatEmbed],
+        files: responseFiles,
         components: []
       });
     } else {
       await i.update({
-        embeds: [defeatEmbed],
-        files: defeatCardAttachment ? [defeatCardAttachment] : [finalAttachment],
+        embeds: [summaryEmbed, defeatEmbed],
+        files: responseFiles,
         components: []
       });
     }
@@ -2448,11 +2475,16 @@ async function finishDuel(
     fateEmbed.setImage('attachment://defeat_dialogue.png');
   }
 
-  const responseEmbeds = [victoryEmbed, fateEmbed];
-  const responseFiles: any[] = [];
+  const summaryEmbed = new EmbedBuilder()
+    .setTitle('⚔️ FINAL COMBAT ROUND SUMMARY')
+    .setDescription(`**${winner.servant.template.name}** dealt the final blow to **${loser.servant.template.name}**!`)
+    .setImage('attachment://turn_summary.png')
+    .setColor(0x0f172a);
+
+  const responseEmbeds = [summaryEmbed, victoryEmbed, fateEmbed];
+  const responseFiles: any[] = [finalAttachment];
   if (victoryCardAttachment) responseFiles.push(victoryCardAttachment);
   if (defeatCardAttachment) responseFiles.push(defeatCardAttachment);
-  if (responseFiles.length === 0) responseFiles.push(finalAttachment);
 
   const fateRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
