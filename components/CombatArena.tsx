@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ActiveCombatant,
   BattleState,
@@ -136,16 +136,14 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
   const [showDialogueMode, setShowDialogueMode] = useState(false);
   const [cutInCountdown, setCutInCountdown] = useState(3.0);
 
-  const defeatCanvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  useEffect(() => {
-    if (defeatCanvasRef.current && battle && (battle.turnPhase === 'defeat' || battle.turnPhase === 'evacuated')) {
+  const defeatCanvasCallback = useCallback((canvas: HTMLCanvasElement | null) => {
+    if (canvas && battle && (battle.turnPhase === 'defeat' || battle.turnPhase === 'evacuated')) {
       const p1 = battle.player1;
       const p2 = battle.player2;
       const quote = activeServant.customQuotes?.defeat || activeServant.template.defeatQuote || "Master... I have failed you in battle...";
       const title = battle.turnPhase === 'evacuated' ? 'EMERGENCY EVACUATION' : 'SPIRIT ORIGIN DISSOLVED';
       renderDefeatDialogueCard(
-        defeatCanvasRef.current,
+        canvas,
         p1.name,
         quote,
         title,
@@ -158,7 +156,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         'fuyuki'
       ).catch(err => console.warn('Failed rendering live defeat VN card:', err));
     }
-  }, [battle?.turnPhase, activeServant?.id]);
+  }, [battle, activeServant?.id, activeServant?.level, activeServant?.customQuotes?.defeat, activeServant?.template.defeatQuote]);
 
   // Trigger Battle Start Dialogue Cut-In on Initial Engagement
   useEffect(() => {
@@ -1308,7 +1306,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
             <div className="max-w-2xl mx-auto mb-6 p-1 rounded-2xl bg-gradient-to-br from-[#ef4444]/60 via-[#dc2626]/40 to-[#7f1d1d]/80 shadow-[0_0_35px_rgba(239,68,68,0.25)] text-left">
               <div className="p-1.5 bg-[#0a0204] rounded-xl overflow-hidden relative">
                 <canvas
-                  ref={defeatCanvasRef}
+                  ref={defeatCanvasCallback}
                   className="w-full h-auto rounded block shadow-[0_0_20px_rgba(0,0,0,0.8)]"
                 />
                 <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/85 border border-red-500/40 rounded px-2.5 py-1 text-[11px] font-mono text-red-400 select-none">

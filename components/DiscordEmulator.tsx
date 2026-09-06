@@ -6814,6 +6814,20 @@ export default function DiscordEmulator({
             color: '#22c55e',
             footer: 'Select an execution decision below:'
           },
+          canvasType: 'dialogue',
+          canvasPayload: {
+            speaker: activeDuel?.battle.player1.name || 'Servant',
+            quote: p1VictoryQuote,
+            title: 'VICTORY INVOCATION',
+            servantClass: activeDuel?.battle.player1.servantClass || 'Saber',
+            avatarUrl: activeDuel?.battle.player1.avatarUrl || activeServant?.template.cardArtUrl || activeServant?.template.avatarUrl,
+            bondOrLevel: activeServant?.bondLevel || 10,
+            defenderName: rivalServantName,
+            defenderClass: activeDuel?.battle.player2.servantClass || 'Enemy',
+            defenderAvatarUrl: activeDuel?.battle.player2.avatarUrl || 'https://i.imgur.com/hyNsgc1.jpeg',
+            sequence: ['Buster', 'Buster', 'Buster'],
+            bgUrlOrPreset: 'fuyuki'
+          },
           components: {
             type: 'buttons',
             items: [
@@ -7089,6 +7103,20 @@ export default function DiscordEmulator({
                 color: '#f59e0b',
                 footer: 'Command Seal Emergency Evacuation Protocol'
               },
+              canvasType: 'defeat_dialogue',
+              canvasPayload: {
+                speaker: updatedState.player2.name,
+                quote: p2DefeatQuote,
+                title: 'COMMAND SEAL EVACUATION',
+                servantClass: updatedState.player2.servantClass,
+                avatarUrl: updatedState.player2.avatarUrl,
+                bondOrLevel: 10,
+                defenderName: updatedState.player1.name,
+                defenderClass: updatedState.player1.servantClass,
+                defenderAvatarUrl: updatedState.player1.avatarUrl || activeServant?.template.cardArtUrl || activeServant?.template.avatarUrl,
+                sequence: ['Quick', 'Quick', 'Quick'],
+                bgUrlOrPreset: 'fuyuki'
+              },
               components: {
                 type: 'buttons',
                 items: [
@@ -7116,6 +7144,20 @@ export default function DiscordEmulator({
                   `*(Auto-consume option is OFF by default to protect your Command Seals)*`,
                 color: '#f59e0b',
                 footer: 'Holy Grail War Survival Protocol • 1-Minute Decision Window (Auto-consume: OFF)'
+              },
+              canvasType: 'defeat_dialogue',
+              canvasPayload: {
+                speaker: updatedState.player2.name,
+                quote: p2DefeatQuote,
+                title: 'CRITICAL DEFEAT DECISION',
+                servantClass: updatedState.player2.servantClass,
+                avatarUrl: updatedState.player2.avatarUrl,
+                bondOrLevel: 10,
+                defenderName: updatedState.player1.name,
+                defenderClass: updatedState.player1.servantClass,
+                defenderAvatarUrl: updatedState.player1.avatarUrl || activeServant?.template.cardArtUrl || activeServant?.template.avatarUrl,
+                sequence: ['Quick', 'Quick', 'Quick'],
+                bgUrlOrPreset: 'fuyuki'
               },
               components: {
                 type: 'buttons',
@@ -7204,7 +7246,7 @@ export default function DiscordEmulator({
                 color: '#f59e0b',
                 footer: 'Command Seal Emergency Evacuation Protocol'
               },
-              canvasType: 'dialogue',
+              canvasType: 'defeat_dialogue',
               canvasPayload: {
                 speaker: updatedState.player1.name,
                 quote: p1DefeatQuote,
@@ -7244,7 +7286,7 @@ export default function DiscordEmulator({
                 color: '#f59e0b',
                 footer: 'Holy Grail War Survival Protocol • 1-Minute Decision Window (Auto-consume: OFF)'
               },
-              canvasType: 'dialogue',
+              canvasType: 'defeat_dialogue',
               canvasPayload: {
                 speaker: updatedState.player1.name,
                 quote: p1DefeatQuote,
@@ -7297,7 +7339,7 @@ export default function DiscordEmulator({
                 color: '#ef4444',
                 footer: '0 Command Seals Remaining • You have been eliminated from the Holy Grail War'
               },
-              canvasType: 'dialogue',
+              canvasType: 'defeat_dialogue',
               canvasPayload: {
                 speaker: updatedState.player1.name,
                 quote: p1DefeatQuote,
