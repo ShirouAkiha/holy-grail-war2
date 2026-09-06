@@ -258,16 +258,16 @@ async function triggerChannelTrapsIfAny(
       .setDescription(
         isDrain
           ? `⚠️ **MAGICAL PERIMETER BREACH IN ${targetChanLabel}!**\n\n` +
-            `Rival Master ${intruderMention} (**${actorUsername}**) operated in **${targetChanLabel}** and walked directly into a predatory Bounded Field anchored by Master ${setterMention}!\n\n` +
+            `Rival Master ${intruderMention} (**${actorUsername}**) operated in **${targetChanLabel}** and walked directly into a concealed predatory Bounded Field!\n\n` +
             `🩸 **Mana Siphon Repercussion:**\n` +
             `• **Intruder Servant:** ${res.intruderServantName || 'Heroic Spirit'} (${res.intruderServantClass || 'Unknown Class'})\n` +
             `• **Mana Siphoned:** **${res.drainDmg?.toLocaleString()} HP** drained instantly!\n` +
-            `• **Channeled Vitality:** **+${res.drainDmg?.toLocaleString()} HP** channeled directly to ${setterMention}'s Servant!\n` +
+            `• **Channeled Vitality:** Siphoned vitality was absorbed by the territory's hidden ward anchor!\n` +
             `• **Intruder Remaining Vitality:** **${res.intruderRemainingHp?.toLocaleString()} / ${res.intruderMaxHp?.toLocaleString()} HP**` +
             (res.usedAutoEvade ? `\n\n🔴 **EMERGENCY ESCAPE:** Consumed 1 Command Seal to escape lethal drain with 1 HP!` : '') +
-            (res.isLethal ? `\n\n☠️ **FATAL WITHERING:** Master **${actorUsername}**'s spiritual core collapsed from total mana drain! Eliminator: **${setterMaster?.username || 'Rival Master'}**!` : '')
+            (res.isLethal ? `\n\n☠️ **FATAL WITHERING:** Master **${actorUsername}**'s spiritual core collapsed from total mana drain!` : '')
           : `🚨 **INTRUDER DETECTED IN ${targetChanLabel}!**\n\n` +
-            `Rival Master ${intruderMention} (**${actorUsername}**) operated in **${targetChanLabel}** and tripped a concealed sensory web woven by Master ${setterMention}!\n\n` +
+            `Rival Master ${intruderMention} (**${actorUsername}**) operated in **${targetChanLabel}** and tripped a concealed sensory web!\n\n` +
             `👁️ **Exposed Intelligence:**\n` +
             `• **Intruder Identity:** ${intruderMention} (**${actorUsername}**)\n` +
             `• **True Servant:** **${res.intruderServantName}** (${res.intruderServantClass})\n` +
@@ -278,11 +278,11 @@ async function triggerChannelTrapsIfAny(
       })
       .setTimestamp();
 
-    // 1. Post prominent public Alert Message in the channel where the trap sprang
+    // 1. Post prominent public Alert Message in the channel where the trap sprang (WITHOUT exposing the trap setter's identity)
     if (typeof channel.send === 'function') {
       try {
         await channel.send({
-          content: `⚠️ ${setterMention} — Your Bounded Field in **${targetChanLabel}** has caught rival Master ${intruderMention}!`,
+          content: `⚠️ A concealed Bounded Field in **${targetChanLabel}** has caught rival Master ${intruderMention}!`,
           embeds: [alertEmbed]
         });
       } catch (postErr) {
@@ -300,8 +300,8 @@ async function triggerChannelTrapsIfAny(
           .setDescription(
             `Your **${isDrain ? 'Bloodfort Mana Drain Field' : 'Sensory Alarm Ward'}** in **${targetChanLabel}** was triggered by rival Master **${actorUsername}**!\n\n` +
             (isDrain
-              ? `🩸 Siphoned **${res.drainDmg?.toLocaleString()} HP** from their Servant and healed your Servant!`
-              : `🚨 Master **${actorUsername}** (${res.intruderServantClass}) was detected and exposed on the war board!`)
+              ? `🩸 Siphoned **${res.drainDmg?.toLocaleString()} HP** from their Servant and healed your Servant!\n• Intruder Remaining: **${res.intruderRemainingHp?.toLocaleString()} / ${res.intruderMaxHp?.toLocaleString()} HP**`
+              : `🚨 Master **${actorUsername}** (${res.intruderServantClass}) was detected and publicly exposed on the War Board!`)
           )
           .setFooter({ text: 'Holy Grail War Leyline Radar' })
           .setTimestamp();
@@ -322,10 +322,12 @@ async function triggerChannelTrapsIfAny(
 // Central dispatcher that catches all user actions (Slash commands, Modal popups, Dropdowns).
 client.on(Events.InteractionCreate, async interaction => {
   try {
-    // If an interaction happens in a guild text channel, check for territorial Bounded Field traps!
+    // If an interaction happens in a guild text channel, check for territorial Bounded Field traps asynchronously
     if (interaction.guild && interaction.channel && !interaction.user.bot) {
       if (!interaction.isAutocomplete()) {
-        await triggerChannelTrapsIfAny(client, interaction.user.id, interaction.user.username, interaction.channel);
+        triggerChannelTrapsIfAny(client, interaction.user.id, interaction.user.username, interaction.channel).catch(err => {
+          console.warn('[TrapTrigger] Background trap trigger error:', err);
+        });
       }
     }
 

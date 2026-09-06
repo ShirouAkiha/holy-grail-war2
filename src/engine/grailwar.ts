@@ -1415,14 +1415,14 @@ export function checkAndTriggerChannelTraps(
     intruder.exposureReason = 'alarm_trap';
 
     trapNotice = `🚨 **ALARM BOUNDED FIELD TRIPPED IN ${chanTag}!**\n` +
-      `Master **${intruder.username}** entered **${chanTag}** and tripped a concealed sensory web placed by Master **${setter.username}**!\n` +
+      `Master **${intruder.username}** entered **${chanTag}** and tripped a concealed sensory web!\n` +
       `• Intruder Identity: **${intruder.username}** (Servant: **${intruder.servantName}**, Class: **${intruder.servantClass}**)\n` +
       `• Master **${intruder.username}** is now **EXPOSED** on the Holy Grail War Board!`;
 
     targetWar.eventLogs.unshift({
       id: `evt_trap_alarm_${Date.now()}`,
       timestamp: Date.now(),
-      text: `🚨 Alarm Bounded Field Tripped in ${chanTag}: Master **${intruder.username}** (${intruder.servantClass}) was detected and exposed by **${setter.username}**'s ward!`,
+      text: `🚨 Alarm Bounded Field Tripped in ${chanTag}: Master **${intruder.username}** (${intruder.servantClass}) was detected and exposed!`,
       type: 'exposure'
     });
   } else {
@@ -1432,9 +1432,9 @@ export function checkAndTriggerChannelTraps(
     setter.currentHp = Math.min(setter.maxHp, setter.currentHp + drainDmg);
 
     trapNotice = `🩸 **BLOODFORT MANA DRAIN FIELD TRIGGERED IN ${chanTag}!**\n` +
-      `Master **${intruder.username}** walked into a predatory Bounded Field anchored by Master **${setter.username}**!\n` +
+      `Master **${intruder.username}** walked into a concealed predatory Bounded Field in **${chanTag}**!\n` +
       `• Siphoned **${drainDmg.toLocaleString()} HP** from ${intruder.isExposed ? intruder.servantName : 'contracted Servant'} (HP: ${intruder.currentHp}/${intruder.maxHp})!\n` +
-      `• Channeled **+${drainDmg.toLocaleString()} HP** to Master **${setter.username}**'s Servant!`;
+      `• Channeled vitality directly to the ward anchor!`;
 
     if (intruder.currentHp <= 0) {
       if (intruder.autoEvadeEnabled === true && intruder.commandSeals >= 1) {
@@ -1455,7 +1455,7 @@ export function checkAndTriggerChannelTraps(
     targetWar.eventLogs.unshift({
       id: `evt_trap_drain_${Date.now()}`,
       timestamp: Date.now(),
-      text: `🩸 Mana Drain Field in ${chanTag}: Master **${setter.username}**'s field siphoned ${drainDmg.toLocaleString()} HP from Master **${intruder.username}**!`,
+      text: `🩸 Mana Drain Field in ${chanTag}: A predatory Bounded Field siphoned ${drainDmg.toLocaleString()} HP from Master **${intruder.username}**!`,
       type: 'clash'
     });
   }
