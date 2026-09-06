@@ -1579,6 +1579,14 @@ async function startInteractiveDuel(
     combatLogs.push(`⚡ **Agility Initiative:** **${fasterName}** (Agi: ${agi1}) outmaneuvered their opponent and claims the first move!`);
   }
 
+  const p1Class = t1?.servantClass || 'Saber';
+  const p1AvatarUrl = t1?.avatarUrl;
+
+  const p2BattleQuote = p2.servant.customQuotes?.battleStart || t2?.battleStartQuote || "Prepare to face your destiny!";
+  const p2Speaker = p2.servant.nickname || t2?.name || 'Servant';
+  const p2Class = t2?.servantClass || 'Saber';
+  const p2AvatarUrl = t2?.avatarUrl;
+
   const activeCombatant = activeUserId === p1.userId ? p1 : p2;
   const lastLogText = combatLogs[combatLogs.length - 1];
 
@@ -1586,26 +1594,99 @@ async function startInteractiveDuel(
   const initialEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
   const initialButtons = buildCombatButtons(activeCombatant, activePendingCards, activePendingIndices);
 
+  const startEmbeds = [initialEmbed];
+  const startFiles = [initialAttachment];
+
+  const p1StartBuffer = await renderDialogueCard(
+    p1Speaker,
+    p1BattleQuote,
+    'SUMMON INVOCATION',
+    p1Class,
+    p1AvatarUrl,
+    p1.servant.bondLevel || 5,
+    p2Speaker,
+    p2AvatarUrl,
+    p2Class,
+    ['Buster', 'Buster', 'Buster'],
+    'fuyuki'
+  ).catch((err) => {
+    console.error('Error rendering p1 starting dialogue card:', err);
+    return null;
+  });
+
+  const p2StartBuffer = await renderDialogueCard(
+    p2Speaker,
+    p2BattleQuote,
+    'SUMMON INVOCATION',
+    p2Class,
+    p2AvatarUrl,
+    p2.servant.bondLevel || 5,
+    p1Speaker,
+    p1AvatarUrl,
+    p1Class,
+    ['Buster', 'Buster', 'Buster'],
+    'fuyuki'
+  ).catch((err) => {
+    console.error('Error rendering p2 starting dialogue card:', err);
+    return null;
+  });
+
+  if (p1StartBuffer) {
+    const p1StartAttachment = new AttachmentBuilder(p1StartBuffer, { name: 'p1_start.png' });
+    const p1StartEmbed = new EmbedBuilder()
+      .setTitle(`💬 BATTLE ENGAGEMENT — ${p1.servant.template.name.toUpperCase()}`)
+      .setDescription(
+        `💬 **${p1.servant.template.name}** (Master: ${p1.username}):\n> ❝ ***${p1BattleQuote}*** ❞`
+      )
+      .setImage('attachment://p1_start.png')
+      .setColor(0xef4444);
+
+    if (p1AvatarUrl) {
+      p1StartEmbed.setThumbnail(p1AvatarUrl);
+    }
+
+    startEmbeds.push(p1StartEmbed);
+    startFiles.push(p1StartAttachment);
+  }
+
+  if (p2StartBuffer) {
+    const p2StartAttachment = new AttachmentBuilder(p2StartBuffer, { name: 'p2_start.png' });
+    const p2StartEmbed = new EmbedBuilder()
+      .setTitle(`💬 BATTLE ENGAGEMENT — ${p2.servant.template.name.toUpperCase()}`)
+      .setDescription(
+        `💬 **${p2.servant.template.name}** (Master: ${p2.username}):\n> ❝ ***${p2BattleQuote}*** ❞`
+      )
+      .setImage('attachment://p2_start.png')
+      .setColor(0x38bdf8);
+
+    if (p2AvatarUrl) {
+      p2StartEmbed.setThumbnail(p2AvatarUrl);
+    }
+
+    startEmbeds.push(p2StartEmbed);
+    startFiles.push(p2StartAttachment);
+  }
+
   let battleMsg: any;
   if (contextInteraction.deferred || contextInteraction.replied) {
     battleMsg = await contextInteraction.editReply({
       content: null,
-      embeds: [initialEmbed],
-      files: [initialAttachment],
+      embeds: startEmbeds,
+      files: startFiles,
       components: initialButtons
     });
   } else if (contextInteraction.isButton && contextInteraction.isButton()) {
     await contextInteraction.deferUpdate();
     battleMsg = await contextInteraction.editReply({
       content: null,
-      embeds: [initialEmbed],
-      files: [initialAttachment],
+      embeds: startEmbeds,
+      files: startFiles,
       components: initialButtons
     });
   } else {
     const res = await contextInteraction.reply({
-      embeds: [initialEmbed],
-      files: [initialAttachment],
+      embeds: startEmbeds,
+      files: startFiles,
       components: initialButtons,
       withResponse: true
     });
