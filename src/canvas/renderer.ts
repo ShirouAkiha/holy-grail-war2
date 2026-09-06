@@ -2322,10 +2322,12 @@ function renderDialogueSingleFrame(
   drawHoveringDefender(ctx, defenderImg, defenderName, defenderClass, frameIdx);
 
   // 4. Center Tactical Command Cards & Active Chain HUD
-  drawCenterCommandHUD(ctx, chainTagOrTitle, sequence, frameIdx);
+  if (chainTagOrTitle !== 'VICTORY INVOCATION' && chainTagOrTitle !== 'DIALOGUE' && chainTagOrTitle !== 'SUMMON INVOCATION') {
+    drawCenterCommandHUD(ctx, chainTagOrTitle, sequence, frameIdx);
 
-  // 5. Full-Screen Screen-Splitting Slash Cut-In Animation
-  drawPersonaSlashAnimation(ctx, frameIdx, chainTagOrTitle);
+    // 5. Full-Screen Screen-Splitting Slash Cut-In Animation
+    drawPersonaSlashAnimation(ctx, frameIdx, chainTagOrTitle);
+  }
 
   // 6. Visual Novel Dialogue Ribbon (Lower Section)
   const boxX = 22;
