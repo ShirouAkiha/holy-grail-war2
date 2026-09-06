@@ -18,6 +18,7 @@ import { servantCommandCode } from '../lib/bot/commands/servant';
 import { duelCommandCode } from '../lib/bot/commands/duel';
 import { grailwarCommandCode } from '../lib/bot/commands/grailwar';
 import { attackCommandCode } from '../lib/bot/commands/attack';
+import { ambushCommandCode } from '../lib/bot/commands/ambush';
 import { leakCommandCode } from '../lib/bot/commands/leak';
 import { servantsCommandCode } from '../lib/bot/commands/servants';
 import { customiseCommandCode } from '../lib/bot/commands/customise';
@@ -76,6 +77,12 @@ const FILE_MODULES = [
     name: 'src/bot/commands/attack.ts',
     category: 'Slash Command: /attack (Ambush Suspect)',
     code: attackCommandCode
+  },
+  {
+    id: 'cmd_ambush',
+    name: 'src/bot/commands/ambush.ts',
+    category: 'Slash Command: /ambush (Covert Ambush Strike)',
+    code: ambushCommandCode
   },
   {
     id: 'cmd_leak',

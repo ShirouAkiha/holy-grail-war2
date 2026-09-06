@@ -695,13 +695,25 @@ export default function GrailWarSim({
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <button
                   onClick={() => handleAction('challenge_master', selectedTargetMasterId)}
                   className="py-2.5 px-4 rounded-sm bg-[#220000] hover:bg-[#330000] text-[#ef4444] border border-[#ef4444]/40 font-mono text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 transition"
                 >
                   <Swords className="w-4 h-4" />
                   <span>Challenge Duel (Exposes Both)</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const targetName = grailWar.participants[selectedTargetMasterId]?.username || '';
+                    setAmbushInput(targetName);
+                    setShowAmbushModal(true);
+                  }}
+                  className="py-2.5 px-4 rounded-sm bg-[#160000] hover:bg-[#250000] text-rose-400 border border-rose-500/40 font-mono text-xs uppercase tracking-wider font-bold flex items-center justify-center gap-2 transition"
+                >
+                  <Crosshair className="w-4 h-4 text-rose-400" />
+                  <span>Ambush Suspect</span>
                 </button>
 
                 {userAlliance && userAlliance.memberMasterIds.includes(selectedTargetMasterId) ? (
@@ -880,7 +892,7 @@ export default function GrailWarSim({
             <div className="flex items-center justify-between border-b border-[#1a1a1a] pb-3">
               <div className="flex items-center gap-2 text-rose-400 font-serif italic text-base">
                 <Crosshair className="w-5 h-5 text-rose-400" />
-                <span>Tactical Ambush Command (/grailwar attack)</span>
+                <span>Tactical Ambush Command (/attack & /ambush)</span>
               </div>
               <button onClick={() => setShowAmbushModal(false)} className="text-white/40 hover:text-white font-mono text-sm">
                 ✕

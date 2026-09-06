@@ -580,9 +580,14 @@ export function attackSuspectUserInWar(
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
 
-  const attacker = targetWar.participants[attackerId];
+  let attacker: WarMasterParticipant | undefined = targetWar.participants[attackerId];
+  if (!attacker) {
+    attacker = Object.values(targetWar.participants).find(
+      p => p.discordId === attackerId || p.username.toLowerCase() === attackerId.toLowerCase()
+    );
+  }
   if (!attacker || !attacker.isAlive) {
-    return { success: false, message: 'You are not active in the Holy Grail War!', updatedWar: targetWar };
+    return { success: false, message: 'You are not active in the Holy Grail War! Summon a Servant first using `/summon ritual`.', updatedWar: targetWar };
   }
 
   const chanTag = channelName 

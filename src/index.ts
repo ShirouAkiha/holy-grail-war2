@@ -20,6 +20,7 @@ import * as grailwarCommand from './commands/grailwar';
 import * as defensesCommand from './commands/defenses';
 import * as profileCommand from './commands/profile';
 import * as attackCommand from './commands/attack';
+import * as ambushCommand from './commands/ambush';
 import * as leakCommand from './commands/leak';
 import * as customiseCommand from './commands/customise';
 import * as addservantCommand from './commands/addservant';
@@ -117,12 +118,15 @@ commands.set(addceCommand.data.name, addceCommand);
 commands.set(addsqCommand.data.name, addsqCommand);
 commands.set(feedCommand.data.name, feedCommand);
 commands.set(gachaCommand.data.name, gachaCommand);
+commands.set(attackCommand.data.name, attackCommand);
+commands.set(ambushCommand.data.name, ambushCommand);
 
 // Alias mapping for backward-compatible text shortcuts and interactions
 export const commandAliasMap: Record<string, any> = {
   claim: dailyCommand,
   sanctuary: churchCommand,
   attack: attackCommand,
+  ambush: ambushCommand,
   leak: leakCommand,
   patrol: patrolCommand,
   familiar: familiarCommand,

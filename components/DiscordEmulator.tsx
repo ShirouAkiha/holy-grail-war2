@@ -589,8 +589,22 @@ export default function DiscordEmulator({
 
   const handleCommand = (cmd: string) => {
     const rawCmd = cmd.trim();
-    // Normalize exclamation mark prefix `!command` to `/command` so both styles work interchangeably
-    const normalizedRawCmd = rawCmd.startsWith('!') ? '/' + rawCmd.slice(1) : rawCmd;
+    // Normalize exclamation mark prefix `!command` to `/command` or detect command keywords without slash
+    let normalizedRawCmd = rawCmd;
+    if (rawCmd.startsWith('!')) {
+      normalizedRawCmd = '/' + rawCmd.slice(1);
+    } else if (!rawCmd.startsWith('/')) {
+      const firstWord = rawCmd.split(/\s+/)[0].toLowerCase();
+      const knownCommands = [
+        'attack', 'ambush', 'duel', 'summon', 'servant', 'servants', 'grailwar',
+        'daily', 'claim', 'church', 'sanctuary', 'defenses', 'profile', 'inventory',
+        'equip', 'dialogue', 'heal', 'feed', 'cegacha', 'gacha', 'patrol', 'leak',
+        'trap', 'traps', 'familiar', 'familiars', 'help', 'boast', 'art', 'artwork', 'np'
+      ];
+      if (knownCommands.includes(firstWord)) {
+        normalizedRawCmd = '/' + rawCmd;
+      }
+    }
     const trimmed = normalizedRawCmd.toLowerCase();
 
     // Check automatic exposure if executing commands in PUBLIC channel
@@ -2798,13 +2812,31 @@ export default function DiscordEmulator({
         return;
       }
 
-      // SUB-CASE A: /grailwar attack <target> (Ambush suspect)
+      // SUB-CASE A: /grailwar attack <target>, /attack <target>, /ambush <target>
       if (isAttack) {
-        let targetQuery = trimmed
-          .replace('/grailwar attack', '')
-          .replace('/attack', '')
-          .replace('/ambush', '')
+        let targetQuery = rawCmd
+          .replace(/^\/?(?:grailwar\s+)?(?:attack|ambush)\s*/i, '')
           .trim();
+
+        if (!activeServant) {
+          addMessage({
+            id: getNextId('bot_attack_no_servant'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '❌ No Contracted Servant',
+              description: 'You cannot launch an ambush without a contracted Servant! Perform a summoning ritual using `/summon ritual` first.',
+              color: '#ef4444'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'quick_summon_ritual', label: 'Summon Servant (!summon)', style: 'success', emoji: '✨' }
+              ]
+            }
+          });
+          return;
+        }
 
         if (!targetQuery) {
           addMessage({
@@ -2812,22 +2844,67 @@ export default function DiscordEmulator({
             sender: 'bot',
             timestamp: 'Just now',
             embed: {
-              title: '⚔️ Holy Grail War: Tactical Ambush',
+              title: '⚔️ Holy Grail War: Covert Ambush & Attack',
               description:
-                `Specify a suspect user to ambush in the server!\n\n` +
-                `**Usage Examples:**\n` +
-                `• \`/grailwar attack @Kotomine\`\n` +
-                `• \`/grailwar attack Bazett\`\n` +
-                `• \`/attack Shirou\`\n\n` +
-                `⚠️ *If the target is a real Master, both identities are exposed and you deal ambush damage. If the target is an innocent user, the civilian dies and your identity is exposed for breaching the Secrecy of Magecraft!*`,
+                `Launch a covert strike on any user in the server to expose hidden Masters!\n\n` +
+                `**Usage:**\n` +
+                `• \`/attack <@user | MasterName | #slot>\`\n` +
+                `• \`/ambush <@user | MasterName | #slot>\`\n` +
+                `• \`/grailwar attack <target>\`\n\n` +
+                `**Ambush Mechanics:**\n` +
+                `🎯 **Target is a Rival Master:**\n` +
+                `Your Servant strikes from the shadows dealing heavy damage. Their true Master identity and Servant are **EXPOSED** on the war board! (You remain hidden unless intercepted by an Alarm Ward or Assassin Servant).\n\n` +
+                `☠️ **Target is an Innocent User:**\n` +
+                `The bystander is slain as collateral damage, and the Church issues an emergency "gas leak explosion" cover-up bulletin. **Your identity is publicly EXPOSED** for violating the Secrecy of Magecraft!`,
               color: '#ef4444'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'war_attack_prompt', label: 'Ambush Suspect', style: 'danger', emoji: '⚔️' },
+                { id: 'quick_war_status', label: 'View Intelligence Board', style: 'primary', emoji: '📋' }
+              ]
             }
           });
           return;
         }
 
-        const res = attackSuspectUserInWar(grailWar, master.discordId, targetQuery);
+        let currentWar = grailWar;
+        let userParticipant = currentWar.participants[master.discordId] ||
+          Object.values(currentWar.participants).find(p => p.username.toLowerCase() === master.username.toLowerCase());
+
+        if (!userParticipant && activeServant) {
+          currentWar = createHolyGrailWarSession({
+            discordId: master.discordId,
+            username: master.username,
+            servantId: activeServant.templateId,
+            servantName: activeServant.template.name,
+            servantClass: activeServant.template.servantClass,
+            avatarUrl: master.avatarUrl,
+            maxHp: calculateServantMaxHp(activeServant)
+          });
+          onUpdateGrailWar(currentWar);
+        }
+
+        const chanTag = activeChannel === 'public' ? '#holy-grail-war' : '#general';
+        const res = attackSuspectUserInWar(currentWar, master.discordId, targetQuery, chanTag);
         onUpdateGrailWar(res.updatedWar);
+
+        const attackerParticipant = res.updatedWar.participants[master.discordId] ||
+          Object.values(res.updatedWar.participants).find(p => p.username.toLowerCase() === master.username.toLowerCase());
+
+        let footerText = '';
+        if (!res.targetWasMaster) {
+          if (res.wasAlreadyExposed) {
+            footerText = 'Attacking Master was already publicly exposed on the War Board';
+          } else {
+            footerText = 'Attacking Master identity is now publicly EXPOSED for violating Secrecy of Magecraft!';
+          }
+        } else if (attackerParticipant?.isExposed) {
+          footerText = 'Both Masters are now EXPOSED on the Grail War Status Board (/grailwar status)';
+        } else {
+          footerText = 'Target Master identity is now EXPOSED! You remain concealed in the shadows (/grailwar status)';
+        }
 
         addMessage({
           id: getNextId('bot_attack_res'),
@@ -2839,9 +2916,7 @@ export default function DiscordEmulator({
               : '☠️ COLLATERAL CASUALTY: CIVILIAN SLAIN!',
             description: res.message,
             color: res.targetWasMaster ? '#ef4444' : '#7f1d1d',
-            footer: res.targetWasMaster
-              ? 'Both Master identities are now EXPOSED on the Grail War Status Board'
-              : 'Attacking Master identity is now VIOLENTLY EXPOSED for Secrecy breach'
+            footer: footerText
           },
           components: {
             type: 'buttons',
@@ -3097,6 +3172,7 @@ export default function DiscordEmulator({
             { id: 'war_familiars', label: 'Familiars', style: 'primary', emoji: '🦅' },
             { id: 'war_traps', label: 'Bounded Traps', style: 'secondary', emoji: '🕸️' },
             { id: 'war_patrol', label: 'Patrol City', style: 'success', emoji: '👁️' },
+            { id: 'war_attack_prompt', label: 'Ambush Suspect', style: 'danger', emoji: '⚔️' },
             { id: 'war_refresh', label: 'Refresh', style: 'secondary', emoji: '🔄' }
           ]
         }
@@ -3120,6 +3196,7 @@ export default function DiscordEmulator({
           `• \`!servant\` — View your contracted Servant profile, radar card, and voice lines\n` +
           `• \`!heal\` — Perform workshop leylines healing ritual\n` +
           `• \`!duel [@master]\` — Challenge a rival Master to turn-based RPG combat\n` +
+          `• \`!attack <@user>\` / \`!ambush <@user>\` — Ambush a suspected Master (if innocent, bystander dies & you are exposed!)\n` +
           `• \`!grailwar\` — 7-Master Tournament Battle Royal dashboard & scouting\n` +
           `• \`!profile\` & \`!defenses\` — Manage Master Command Seals, Mana, and workshop boundary fields\n` +
           `• \`!inventory\` & \`!equip\` — Manage Craft Essences, catalysts, and saint quartz\n` +
@@ -4808,6 +4885,7 @@ export default function DiscordEmulator({
     if (category === 'board') {
       actionButtons = [
         { id: 'war_act_patrol', label: 'Patrol Sector', style: 'success', emoji: '👁️' },
+        { id: 'war_attack_prompt', label: 'Ambush Suspect', style: 'danger', emoji: '⚔️' },
         { id: 'war_act_skirmish', label: 'Simulate Clash', style: 'secondary', emoji: '⚔️' },
         { id: 'war_act_heal', label: 'Leyline Heal (40%)', style: 'primary', emoji: '✨' },
         { id: 'war_act_refresh', label: 'Refresh Board', style: 'secondary', emoji: '🔄' }
@@ -7588,7 +7666,8 @@ export default function DiscordEmulator({
       }
 
       if (btnId === 'war_attack_prompt') {
-        setInputCommand('/grailwar attack ');
+        setInputCommand('/attack ');
+        setIsInputFocused(true);
         return;
       }
 
@@ -8260,8 +8339,10 @@ export default function DiscordEmulator({
                 { cmd: '/servants view <name>', desc: '👤 View full profile card, voice lines, and artwork of a Spirit' },
                 { cmd: '/summon ritual', desc: '✨ Perform Holy Grail War summoning ritual' },
                 { cmd: '/duel <target>', desc: '⚔️ Enter tactical combat with a rival Master or Servant' },
+                { cmd: '/attack <target>', desc: '🗡️ Ambush suspected Master (if innocent, bystander dies & you are exposed!)' },
+                { cmd: '/ambush <target>', desc: '🗡️ Covert ambush strike on suspected Master or server user' },
                 { cmd: '/grailwar status', desc: '🏆 Check Holy Grail War 7-Master intelligence roster' },
-                { cmd: '/grailwar attack <target>', desc: '🗡️ Ambush suspected rival Master' },
+                { cmd: '/grailwar attack <target>', desc: '🗡️ Ambush suspected rival Master on the war board' },
                 { cmd: '/grailwar leak <intel>', desc: '📡 Broadcast intel or deception to the war board' },
                 { cmd: '/grailwar patrol', desc: '👁️ Patrol Fuyuki sectors for enemy signatures' },
                 { cmd: '/daily', desc: '💎 Claim daily Master allowance of 30 Saint Quartz (SQ)' },
@@ -8417,7 +8498,7 @@ export default function DiscordEmulator({
                 setInputCommand('');
               }
             }}
-            placeholder="Type /servant <name>, /duel, /summon ritual, /servants search..."
+            placeholder="Type /attack @user, /ambush <name>, /duel, /summon ritual, /servant..."
             className="flex-1 bg-transparent text-white font-mono text-xs outline-none placeholder-white/30"
           />
 
@@ -8491,6 +8572,12 @@ export default function DiscordEmulator({
             className="px-2 py-0.5 rounded bg-[#141414] hover:bg-[#222] text-red-300 border border-red-500/30 whitespace-nowrap transition"
           >
             ⚔️ /duel
+          </button>
+          <button
+            onClick={() => handleCommand('/attack')}
+            className="px-2 py-0.5 rounded bg-[#141414] hover:bg-[#222] text-rose-300 border border-rose-500/30 whitespace-nowrap transition"
+          >
+            🗡️ /attack
           </button>
           <button
             onClick={() => handleCommand('/grailwar')}
