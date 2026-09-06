@@ -10,7 +10,8 @@ export const trapCommandCode = `import {
   ActionRowBuilder, 
   ButtonBuilder, 
   ButtonStyle, 
-  EmbedBuilder 
+  EmbedBuilder,
+  ChannelType
 } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { 
@@ -25,7 +26,7 @@ export const data = new SlashCommandBuilder()
   .addSubcommand(sub =>
     sub
       .setName('set')
-      .setDescription('Conceal a Bounded Field trap in a channel sector')
+      .setDescription('Conceal a Bounded Field trap in an actual Discord channel')
       .addStringOption(opt =>
         opt
           .setName('type')
@@ -36,22 +37,30 @@ export const data = new SlashCommandBuilder()
             { name: '🩸 Bloodfort Drain (Siphons 1,800 HP from intruder to your Servant)', value: 'drain' }
           )
       )
-      .addStringOption(opt =>
+      .addChannelOption(opt =>
         opt
           .setName('channel')
-          .setDescription('Target channel (e.g. #general, defaults to current channel)')
+          .setDescription('Actual Discord channel to anchor the Bounded Field in (defaults to current channel)')
+          .addChannelTypes(ChannelType.GuildText)
           .setRequired(false)
       )
   )
   .addSubcommand(sub =>
     sub
       .setName('list')
-      .setDescription('View your active channel traps')
+      .setDescription('View where your active channel Bounded Fields are deployed')
   )
   .addSubcommand(sub =>
     sub
       .setName('disarm')
-      .setDescription('Disarm and dissolve all your deployed channel traps')
+      .setDescription('Disarm and dissolve your deployed channel traps')
+      .addChannelOption(opt =>
+        opt
+          .setName('channel')
+          .setDescription('Specific Discord channel to disarm (leave blank to disarm all)')
+          .addChannelTypes(ChannelType.GuildText)
+          .setRequired(false)
+      )
   );
 
 export async function execute(interaction: ChatInputCommandInteraction) {
@@ -73,8 +82,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (sub === 'set') {
       const trapType = interaction.options.getString('type', true) as 'alarm' | 'drain';
-      const channelOpt = interaction.options.getString('channel');
-      const targetChan = channelOpt || currentChannelName;
+      const channelOpt = interaction.options.getChannel('channel');
+      const targetChan = channelOpt && 'name' in channelOpt 
+        ? \`#\${(channelOpt as any).name}\` 
+        : currentChannelName;
 
       const res = setChannelTrapInWar(war, interaction.user.id, interaction.user.username, targetChan, trapType);
       war = res.updatedWar;
@@ -102,12 +113,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     if (sub === 'disarm') {
-      const res = disarmChannelTrapsInWar(war, interaction.user.id);
+      const channelOpt = interaction.options.getChannel('channel');
+      const targetChan = channelOpt && 'name' in channelOpt ? \`#\${(channelOpt as any).name}\` : undefined;
+      const res = disarmChannelTrapsInWar(war, interaction.user.id, targetChan);
       war = res.updatedWar;
       await saveMaster(master);
 
       await interaction.reply({
-        content: \`🧹 **Traps Disarmed:** Dissolved \${res.disarmedCount} active Bounded Field trap(s).\`,
+        content: res.message,
         ephemeral: true
       });
       return;
@@ -117,18 +130,37 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const userTraps = (war.channelTraps || []).filter(t => t.setterMasterId === interaction.user.id);
     let desc = '';
     if (userTraps.length === 0) {
-      desc = 'You currently have **no active Bounded Field traps** deployed in any channels.\\n\\nUse \`/trap set type:<alarm | drain>\` to place one!';
+      desc = '📍 **YOUR ACTIVE BOUNDED FIELDS (0/2):**\\n• *You currently have no active Bounded Fields deployed in any channel sectors.*\\n• Use \`/trap set\` and select a target channel to anchor one!';
     } else {
-      desc = \`You currently have **\${userTraps.length}/2** active Bounded Field traps deployed across Fuyuki:\\n\\n\` +
+      desc = '📍 **YOUR ACTIVE BOUNDED FIELDS (' + userTraps.length + '/2):**\\n' +
         userTraps.map((t, idx) => {
-          const typeLabel = t.trapType === 'alarm' ? '🚨 **Alarm Ward** (Exposes intruder identity)' : '🩸 **Bloodfort Drain** (Siphons 1,800 HP)';
-          return \`**\${idx + 1}. Sector \${t.channelName}** — \${typeLabel}\\n*Deployed <t:\${Math.floor(t.createdAt / 1000)}:R>*\`;
+          const typeLabel = t.trapType === 'alarm' 
+            ? '🚨 **Sensory Alarm Ward** (Exposes intruder identity & Servant class)' 
+            : '🩸 **Bloodfort Drain** (Siphons 1,800 HP from intruder)';
+          return '**' + (idx + 1) + '. Sector \`' + t.channelName + '\`** — ' + typeLabel + '\\n*Status: 🟢 Armed & Concealed • Deployed <t:' + Math.floor(t.createdAt / 1000) + ':R>*';
         }).join('\\n\\n');
     }
 
+    // Dynamic Sector Radar
+    const defaultSectors = ['#holy-grail-war', '#general', currentChannelName];
+    const allSectors = Array.from(new Set([...defaultSectors, ...(war.channelTraps || []).map(t => t.channelName)]));
+    const radarLines = allSectors.map(secName => {
+      const activeTrap = (war.channelTraps || []).find(t => t.channelName.toLowerCase() === secName.toLowerCase());
+      if (!activeTrap) {
+        return '• \`' + secName + '\`: ✨ **Clear** *(Available to anchor)*';
+      }
+      if (activeTrap.setterMasterId === interaction.user.id) {
+        const icon = activeTrap.trapType === 'alarm' ? '🚨' : '🩸';
+        return '• \`' + secName + '\`: ' + icon + ' **Armed by You** (' + (activeTrap.trapType === 'alarm' ? 'Alarm Ward' : 'Bloodfort Drain') + ')';
+      }
+      return '• \`' + secName + '\`: 🔒 **Occupied** *(Master ' + activeTrap.setterUsername + ')*';
+    }).join('\\n');
+
+    const fullDesc = desc + '\\n\\n🗺️ **ACTIVE CHANNELS RADAR:**\\n' + radarLines;
+
     const trapsEmbed = new EmbedBuilder()
-      .setTitle('🕸️ Active Bounded Field Traps')
-      .setDescription(desc)
+      .setTitle('🕸️ Bounded Field Traps & Radar')
+      .setDescription(fullDesc)
       .setColor(0x8b5cf6)
       .setFooter({ text: 'Bounded fields remain hidden until tripped by a rival Master' });
 

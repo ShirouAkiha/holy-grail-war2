@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   MasterProfile,
   CardType,
@@ -464,6 +464,16 @@ function calculateDailyClaimCooldown(lastDailyClaim?: number | string | Date, cu
   };
 }
 
+export const FUYUKI_SECTORS = [
+  { id: '#holy-grail-war', name: 'holy-grail-war', label: 'Central Front', emoji: '⛩️', desc: 'Central War Front' },
+  { id: '#mount-enzo', name: 'mount-enzo', label: 'Mt. Enzo', emoji: '⛰️', desc: 'Ryuudou Temple Leylines' },
+  { id: '#shinto-district', name: 'shinto-district', label: 'Shinto District', emoji: '🏙️', desc: 'Commercial District' },
+  { id: '#miyama-town', name: 'miyama-town', label: 'Miyama Town', emoji: '🏡', desc: 'Residential Sector' },
+  { id: '#fuyuki-bridge', name: 'fuyuki-bridge', label: 'Fuyuki Bridge', emoji: '🌉', desc: 'Strategic River Chokepoint' },
+  { id: '#church-grounds', name: 'church-grounds', label: 'Church Grounds', emoji: '⛪', desc: 'Outer Sanctuary Perimeter' },
+  { id: '#general', name: 'general', label: 'General Sector', emoji: '💬', desc: 'Civilian District' }
+] as const;
+
 export default function DiscordEmulator({
   master,
   onUpdateMaster,
@@ -478,6 +488,67 @@ export default function DiscordEmulator({
   const [servantPickerSearch, setServantPickerSearch] = useState('');
   const [servantPickerClass, setServantPickerClass] = useState<'all' | ServantClass>('all');
   const [activeChannel, setActiveChannel] = useState<'public' | 'dm'>('public');
+  const [activePublicSector, setActivePublicSector] = useState<string>('#holy-grail-war');
+  const [serverChannels, setServerChannels] = useState<Array<{ id: string; name: string; label: string; emoji: string; desc: string }>>([
+    { id: '#holy-grail-war', name: 'holy-grail-war', label: 'Central Front', emoji: '⛩️', desc: 'Central War Front' },
+    { id: '#mount-enzo', name: 'mount-enzo', label: 'Mt. Enzo', emoji: '⛰️', desc: 'Ryuudou Temple Leylines' },
+    { id: '#shinto-district', name: 'shinto-district', label: 'Shinto District', emoji: '🏙️', desc: 'Commercial District' },
+    { id: '#miyama-town', name: 'miyama-town', label: 'Miyama Town', emoji: '🏡', desc: 'Residential Sector' },
+    { id: '#fuyuki-bridge', name: 'fuyuki-bridge', label: 'Fuyuki Bridge', emoji: '🌉', desc: 'Strategic River Chokepoint' },
+    { id: '#church-grounds', name: 'church-grounds', label: 'Church Grounds', emoji: '⛪', desc: 'Outer Sanctuary Perimeter' },
+    { id: '#general', name: 'general', label: 'General Sector', emoji: '💬', desc: 'Civilian District' }
+  ]);
+  const [showAddChannelModal, setShowAddChannelModal] = useState(false);
+  const [newChannelNameInput, setNewChannelNameInput] = useState('');
+
+  const effectiveChannels = useMemo(() => {
+    const list = [...serverChannels];
+    (grailWar.channelTraps || []).forEach(t => {
+      if (!list.some(c => c.id.toLowerCase() === t.channelName.toLowerCase())) {
+        const clean = t.channelName.replace(/^#/, '');
+        list.push({
+          id: t.channelName,
+          name: clean,
+          label: clean,
+          emoji: '💬',
+          desc: 'Discord Text Channel'
+        });
+      }
+    });
+    return list;
+  }, [serverChannels, grailWar.channelTraps]);
+
+  const handleAddCustomChannel = () => {
+    const clean = newChannelNameInput.trim().toLowerCase().replace(/^#/, '');
+    if (!clean) return;
+    const channelId = `#${clean}`;
+    if (!serverChannels.some(c => c.id.toLowerCase() === channelId)) {
+      setServerChannels(prev => [
+        ...prev,
+        {
+          id: channelId,
+          name: clean,
+          label: clean,
+          emoji: '💬',
+          desc: 'Discord Text Channel'
+        }
+      ]);
+    }
+    setActivePublicSector(channelId);
+    setShowAddChannelModal(false);
+    setNewChannelNameInput('');
+    addMessage({
+      id: getNextId('channel_added'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title: `📍 Channel Connected: ${channelId}`,
+        description: `Added actual Discord channel **${channelId}** to the active war theater.\nYou are now switched to this channel. You can conceal Bounded Field traps, dispatch scouts, or send commands here.`,
+        color: '#d4af37'
+      }
+    });
+  };
+
   const [messages, setMessages] = useState<DiscordMessage[]>([
     {
       id: 'msg_welcome',
@@ -586,6 +657,191 @@ export default function DiscordEmulator({
   const addMessage = (msg: DiscordMessage) => {
     setMessages(prev => [...prev, msg]);
   };
+
+  function postTrapsRadarOverview(actionOutcomeMsg?: string) {
+    const userTraps = (grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
+    
+    let myTrapsText = '';
+    if (userTraps.length === 0) {
+      myTrapsText = '• *You currently have no active Bounded Fields deployed in Fuyuki (0/2).*';
+    } else {
+      myTrapsText = userTraps.map((t, idx) => {
+        const typeLabel = t.trapType === 'alarm'
+          ? '🚨 **Sensory Alarm Ward** (Exposes intruder identity & Servant class upon entering)'
+          : '🩸 **Bloodfort Mana Drain** (Siphons 1,800–2,600 HP from intruder to heal your Servant)';
+        return `**${idx + 1}. Sector \`${t.channelName}\`** — ${typeLabel}\n   └ *Status:* 🟢 **Concealed & Armed** • *Anchor Time: <t:${Math.floor(t.createdAt / 1000)}:R>*`;
+      }).join('\n\n');
+    }
+
+    const radarLines = effectiveChannels.map(sec => {
+      const activeTrap = (grailWar.channelTraps || []).find(t => t.channelName.toLowerCase() === sec.id.toLowerCase());
+      if (!activeTrap) {
+        return `• \`${sec.id}\`: ✨ **Clear** *(Available to anchor)* — *${sec.desc}*`;
+      }
+      if (activeTrap.setterMasterId === master.discordId) {
+        const icon = activeTrap.trapType === 'alarm' ? '🚨' : '🩸';
+        const typeStr = activeTrap.trapType === 'alarm' ? 'Alarm Ward' : 'Bloodfort Drain';
+        return `• \`${sec.id}\`: ${icon} **Armed by You** (${typeStr}) — *${sec.desc}*`;
+      }
+      return `• \`${sec.id}\`: 🔒 **Occupied** *(Rival Master ${activeTrap.setterUsername})* — *${sec.desc}*`;
+    }).join('\n');
+
+    // Build selectOptions for channel selection:
+    const selectOptions: Array<{ value: string; label: string; description?: string; emoji?: string }> = [];
+    
+    effectiveChannels.forEach(sec => {
+      const activeTrap = (grailWar.channelTraps || []).find(t => t.channelName.toLowerCase() === sec.id.toLowerCase());
+      if (!activeTrap && userTraps.length < 2) {
+        selectOptions.push({
+          value: `anchor_trap_alarm_${sec.id}`,
+          label: `Anchor Alarm Ward in ${sec.id}`,
+          description: `Expose intruders entering ${sec.label}`,
+          emoji: '🚨'
+        });
+        selectOptions.push({
+          value: `anchor_trap_drain_${sec.id}`,
+          label: `Anchor Bloodfort Drain in ${sec.id}`,
+          description: `Siphon 1,800 HP in ${sec.label}`,
+          emoji: '🩸'
+        });
+      } else if (activeTrap && activeTrap.setterMasterId === master.discordId) {
+        selectOptions.push({
+          value: `disarm_trap_${sec.id}`,
+          label: `Disarm Bounded Field in ${sec.id}`,
+          description: `Dissolve ${activeTrap.trapType === 'alarm' ? 'Alarm Ward' : 'Bloodfort Drain'}`,
+          emoji: '🧹'
+        });
+      }
+    });
+
+    const buttons: Array<{ id: string; label: string; style: 'primary' | 'secondary' | 'success' | 'danger'; emoji?: string; disabled?: boolean }> = [
+      { id: 'prompt_anchor_alarm', label: 'Anchor Alarm Ward...', style: 'primary', emoji: '🚨', disabled: userTraps.length >= 2 },
+      { id: 'prompt_anchor_drain', label: 'Anchor Bloodfort Drain...', style: 'danger', emoji: '🩸', disabled: userTraps.length >= 2 }
+    ];
+
+    userTraps.forEach(t => {
+      buttons.push({
+        id: `disarm_trap_${t.channelName}`,
+        label: `Disarm ${t.channelName}`,
+        style: 'secondary',
+        emoji: '🧹'
+      });
+    });
+
+    if (userTraps.length > 0) {
+      buttons.push({
+        id: 'disarm_all_traps',
+        label: 'Disarm All Traps',
+        style: 'danger',
+        emoji: '🧹'
+      });
+    }
+
+    buttons.push({
+      id: 'refresh_traps_radar',
+      label: 'Refresh Radar',
+      style: 'secondary',
+      emoji: '🔄'
+    });
+
+    addMessage({
+      id: getNextId('bot_traps_radar'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title: '🕸️ Bounded Field Traps & Fuyuki Leyline Radar',
+        description:
+          (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+          `Conceal magecraft Bounded Fields in specific channels to intercept rival Masters!\n` +
+          `*(Max 2 active Bounded Fields per Master • Only 1 Bounded Field can exist per channel)*\n\n` +
+          `📍 **YOUR ACTIVE BOUNDED FIELDS (${userTraps.length}/2):**\n${myTrapsText}\n\n` +
+          `🗺️ **FUYUKI LEYLINE SECTORS RADAR:**\n${radarLines}\n\n` +
+          `*Select a sector from the menu below or click an action button to deploy/disarm:*`,
+        color: '#8b5cf6',
+        footer: 'Fuyuki Leyline Radar • Real-time channel perimeter detection'
+      },
+      components: {
+        type: 'buttons',
+        placeholder: selectOptions.length > 0 ? '🎯 Select a channel to anchor Bounded Field...' : undefined,
+        selectOptions: selectOptions.length > 0 ? selectOptions.slice(0, 25) : undefined,
+        items: buttons
+      }
+    });
+  }
+
+  function postChannelSelectorPrompt(trapType: 'alarm' | 'drain') {
+    const userTraps = (grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
+    if (userTraps.length >= 2) {
+      postTrapsRadarOverview('⚠️ **Trap Limit Reached:** You already have 2 active Bounded Fields deployed across Fuyuki. Disarm one before placing another.');
+      return;
+    }
+
+    const typeName = trapType === 'alarm' ? 'Sensory Alarm Ward' : 'Bloodfort Drain Field';
+    const typeIcon = trapType === 'alarm' ? '🚨' : '🩸';
+    const typeDesc = trapType === 'alarm'
+      ? 'Secretly alerts you and reveals the rival intruder’s username and Servant class.'
+      : 'Siphons 1,800–2,600 HP from rival intruders to replenish your Servant’s health.';
+
+    const selectOptions: Array<{ value: string; label: string; description?: string; emoji?: string }> = [];
+    const buttons: Array<{ id: string; label: string; style: 'primary' | 'secondary' | 'success' | 'danger'; emoji?: string; disabled?: boolean }> = [];
+
+    effectiveChannels.forEach(sec => {
+      const activeTrap = (grailWar.channelTraps || []).find(t => t.channelName.toLowerCase() === sec.id.toLowerCase());
+      const isClear = !activeTrap;
+      const isMine = activeTrap && activeTrap.setterMasterId === master.discordId;
+
+      if (isClear) {
+        selectOptions.push({
+          value: `anchor_trap_${trapType}_${sec.id}`,
+          label: `${sec.id} (${sec.label})`,
+          description: `✨ Leylines clear • ${sec.desc}`,
+          emoji: sec.emoji
+        });
+        buttons.push({
+          id: `anchor_trap_${trapType}_${sec.id}`,
+          label: `${sec.id}`,
+          style: trapType === 'alarm' ? 'primary' : 'danger',
+          emoji: sec.emoji
+        });
+      } else {
+        selectOptions.push({
+          value: isMine ? `disarm_trap_${sec.id}` : `blocked_trap_${sec.id}`,
+          label: `${sec.id} (${isMine ? '🔒 Armed by You' : '🔒 Occupied'})`,
+          description: isMine ? 'Click to disarm current trap' : `Occupied by rival (${activeTrap?.setterUsername})`,
+          emoji: isMine ? (activeTrap?.trapType === 'alarm' ? '🚨' : '🩸') : '🔒'
+        });
+      }
+    });
+
+    buttons.push({
+      id: 'refresh_traps_radar',
+      label: 'Back to Radar',
+      style: 'secondary',
+      emoji: '⬅️'
+    });
+
+    addMessage({
+      id: getNextId(`bot_prompt_${trapType}`),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title: `${typeIcon} Anchor ${typeName} — Choose Target Channel`,
+        description:
+          `Select which Fuyuki sector to establish your **${typeName}** into.\n\n` +
+          `• **Effect:** ${typeDesc}\n` +
+          `• **Rule:** Only **1 Bounded Field** can exist per channel. Leylines cannot support multiple fields.\n\n` +
+          `👇 **Select a target channel below:**`,
+        color: trapType === 'alarm' ? '#eab308' : '#dc2626',
+        footer: 'Holy Grail War Perimeter Magecraft • Choose sector'
+      },
+      components: {
+        type: 'buttons',
+        placeholder: `🎯 Select channel to anchor ${trapType === 'alarm' ? 'Alarm Ward' : 'Bloodfort Drain'}...`,
+        selectOptions: selectOptions.slice(0, 25),
+        items: buttons
+      }
+    });
+  }
 
   const handleCommand = (cmd: string) => {
     const rawCmd = cmd.trim();
@@ -2608,87 +2864,70 @@ export default function DiscordEmulator({
       // SUB-CASE TRAPS: /grailwar trap, /traps
       if (isTraps) {
         const channelMatch = trimmed.match(/#([a-zA-Z0-9_-]+)/);
-        const chanTag = channelMatch ? `#${channelMatch[1]}` : (activeChannel === 'public' ? '#holy-grail-war' : '#general');
-        if (trimmed.includes('alarm')) {
-          const res = setChannelTrapInWar(grailWar, master.discordId, master.username, chanTag, 'alarm');
-          onUpdateGrailWar(res.updatedWar);
-          addMessage({
-            id: getNextId('bot_trap_res'),
-            sender: 'bot',
-            timestamp: 'Just now',
-            embed: {
-              title: res.success ? '🚨 Alarm Ward Anchored' : '⚠️ Bounded Field Interrupted',
-              description: res.message,
-              color: res.success ? '#ef4444' : '#f59e0b'
+        let targetSector: string | null = channelMatch ? `#${channelMatch[1]}` : null;
+        if (!targetSector) {
+          for (const sec of effectiveChannels) {
+            if (trimmed.includes(sec.name)) {
+              targetSector = sec.id;
+              break;
             }
+          }
+        }
+
+        if (targetSector) {
+          const matchedTarget = targetSector;
+          setServerChannels(prev => {
+            if (prev.some(c => c.id.toLowerCase() === matchedTarget.toLowerCase())) return prev;
+            const clean = matchedTarget.replace(/^#/, '');
+            return [
+              ...prev,
+              {
+                id: matchedTarget,
+                name: clean,
+                label: clean,
+                emoji: '💬',
+                desc: 'Discord Text Channel'
+              }
+            ];
           });
-          return;
-        } else if (trimmed.includes('drain') || trimmed.includes('bloodfort')) {
-          const res = setChannelTrapInWar(grailWar, master.discordId, master.username, chanTag, 'drain');
+        }
+
+        if (trimmed.includes('disarm') || trimmed.includes('clear')) {
+          const res = disarmChannelTrapsInWar(grailWar, master.discordId, targetSector || undefined);
           onUpdateGrailWar(res.updatedWar);
-          addMessage({
-            id: getNextId('bot_trap_res'),
-            sender: 'bot',
-            timestamp: 'Just now',
-            embed: {
-              title: res.success ? '🩸 Bloodfort Drain Field Anchored' : '⚠️ Bounded Field Interrupted',
-              description: res.message,
-              color: res.success ? '#dc2626' : '#f59e0b'
-            }
-          });
-          return;
-        } else if (trimmed.includes('disarm') || trimmed.includes('clear')) {
-          const res = disarmChannelTrapsInWar(grailWar, master.discordId);
-          onUpdateGrailWar(res.updatedWar);
-          addMessage({
-            id: getNextId('bot_trap_disarm'),
-            sender: 'bot',
-            timestamp: 'Just now',
-            embed: {
-              title: '🧹 Bounded Traps Disarmed',
-              description: res.message,
-              color: '#64748b'
-            }
-          });
+          postTrapsRadarOverview(res.message);
           return;
         }
 
-        const userTraps = (grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
-        const channelTrap = (grailWar.channelTraps || []).find(t => t.channelName.toLowerCase() === chanTag.toLowerCase());
-        const trapLines = userTraps.length > 0
-          ? userTraps.map((t, i) => `${i + 1}. ${t.trapType === 'alarm' ? '🚨 Alarm Ward' : '🩸 Bloodfort Drain'} in **${t.channelName}**`).join('\n')
-          : '• *No active channel Bounded Fields anchored.*';
+        const isAlarm = trimmed.includes('alarm');
+        const isDrain = trimmed.includes('drain') || trimmed.includes('bloodfort');
 
-        const channelStatusNote = channelTrap
-          ? `⚠️ **Channel Status (${chanTag}):** A Bounded Field is already active here (${channelTrap.setterMasterId === master.discordId ? 'by you' : `by Master ${channelTrap.setterUsername}`}). *Only 1 Bounded Field can be open per channel.*\n\n`
-          : `✨ **Channel Status (${chanTag}):** Leylines are clear. Ready for Bounded Field deployment.\n\n`;
+        if (isAlarm && targetSector) {
+          const res = setChannelTrapInWar(grailWar, master.discordId, master.username, targetSector, 'alarm');
+          onUpdateGrailWar(res.updatedWar);
+          postTrapsRadarOverview(res.message);
+          return;
+        }
 
-        addMessage({
-          id: getNextId('bot_trap_menu'),
-          sender: 'bot',
-          timestamp: 'Just now',
-          embed: {
-            title: '🕸️ Channel Bounded Field Traps',
-            description:
-              `Anchor hidden magecraft traps in specific channels to intercept rival Masters!\n\n` +
-              `🕸️ **Your Active Traps (${userTraps.length}/2):**\n` +
-              trapLines + `\n\n` +
-              channelStatusNote +
-              `• 🚨 **Alarm Ward:** Exposes the intruder's username and Servant class upon entering.\n` +
-              `• 🩸 **Bloodfort Drain:** Siphons 1,800–2,600 HP from intruder to heal your Servant.`,
-            color: '#dc2626',
-            footer: 'Select an action below:'
-          },
-          components: {
-            type: 'buttons',
-            items: [
-              { id: 'trap_channel_alarm', label: 'Set Alarm Ward', style: 'danger', emoji: '🚨', disabled: !!channelTrap || userTraps.length >= 2 },
-              { id: 'trap_channel_drain', label: 'Set Bloodfort Drain', style: 'danger', emoji: '🩸', disabled: !!channelTrap || userTraps.length >= 2 },
-              { id: 'disarm_all_traps', label: 'Disarm All Traps', style: 'secondary', emoji: '🧹', disabled: userTraps.length === 0 },
-              { id: 'quick_war_status', label: 'Status Board', style: 'primary', emoji: '📋' }
-            ]
-          }
-        });
+        if (isDrain && targetSector) {
+          const res = setChannelTrapInWar(grailWar, master.discordId, master.username, targetSector, 'drain');
+          onUpdateGrailWar(res.updatedWar);
+          postTrapsRadarOverview(res.message);
+          return;
+        }
+
+        if (isAlarm && !targetSector) {
+          postChannelSelectorPrompt('alarm');
+          return;
+        }
+
+        if (isDrain && !targetSector) {
+          postChannelSelectorPrompt('drain');
+          return;
+        }
+
+        // Default: display full Bounded Field & Leyline Radar
+        postTrapsRadarOverview();
         return;
       }
 
@@ -2734,6 +2973,7 @@ export default function DiscordEmulator({
         const evadeOn = uP?.autoEvadeEnabled === true;
         const seals = uP?.commandSeals ?? 3;
         const inSanctuary = !!uP?.inSanctuary;
+        const userTraps = (currentWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
 
         let wardDesc = '🚫 **No Active Wards:** Your workshop has no perimeter defenses.';
         if (wardType === 'ward') {
@@ -2741,6 +2981,10 @@ export default function DiscordEmulator({
         } else if (wardType === 'alarm') {
           wardDesc = '🚨 **Intrusion Alarm Trap:** Detects infiltrators, alerting you and dealing **3,000 retaliatory DMG**.';
         }
+
+        const channelTrapsDesc = userTraps.length > 0
+          ? userTraps.map(t => `• ${t.trapType === 'alarm' ? '🚨' : '🩸'} **${t.channelName}** (${t.trapType === 'alarm' ? 'Sensory Alarm Ward' : 'Bloodfort Mana Drain'})`).join('\n')
+          : '• *None active (0/2). Use `/trap` or Traps Radar to establish territory.*';
 
         let classPassive = 'None (Specializes in direct tactical matches)';
         const sClass = uP?.servantClass;
@@ -2761,7 +3005,8 @@ export default function DiscordEmulator({
             description:
               `Master **${master.username}**'s Tactical Defense Headquarters\n\n` +
               (actionMsg ? `📢 **Action Outcome:**\n${actionMsg}\n\n` : '') +
-              `🛡️ **Bounded Field Protocol:**\n${wardDesc}\n\n` +
+              `🛡️ **Workshop Bounded Field:**\n${wardDesc}\n\n` +
+              `🕸️ **Channel Bounded Fields Deployed (${userTraps.length}/2):**\n${channelTrapsDesc}\n\n` +
               `⛪ **Fuyuki Church Sanctuary:**\n` +
               (inSanctuary
                 ? `• **🕊️ ACTIVE ASYLUM:** Sheltered under Father Kotomine. 100% immune to all ambushes & attacks (cannot attack rivals).\n\n`
@@ -2796,6 +3041,12 @@ export default function DiscordEmulator({
                 label: 'Alarm Trap (3k DMG)',
                 style: wardType === 'alarm' ? 'danger' : 'secondary',
                 emoji: '🚨'
+              },
+              {
+                id: 'war_tab_traps',
+                label: `Traps Radar (${userTraps.length}/2)`,
+                style: 'secondary',
+                emoji: '🕸️'
               },
               {
                 id: inSanctuary ? 'church_leave' : 'church_enter',
@@ -4881,28 +5132,39 @@ export default function DiscordEmulator({
       description = (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') + desc;
 
     } else if (category === 'traps') {
-      title = '🕸️ Concealed Bounded Field Traps';
+      title = '🕸️ Concealed Bounded Field Traps & Radar';
       color = '#8b5cf6';
       const userTraps = (grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
-      const chanTag = activeChannel === 'public' ? '#holy-grail-war' : '#general';
-      const channelTrap = (grailWar.channelTraps || []).find(t => t.channelName.toLowerCase() === chanTag.toLowerCase());
 
-      let desc = '';
+      let myTrapsDesc = '';
       if (userTraps.length === 0) {
-        desc = 'You currently have **no active Bounded Field traps** placed in any channel sectors.\n\nLay a hidden trap to surprise rivals!';
+        myTrapsDesc = '• *You currently have no active Bounded Fields deployed in Fuyuki (0/2).*';
       } else {
-        desc = `You currently command **${userTraps.length}/2** active Bounded Field traps across Fuyuki:\n\n` +
-          userTraps.map((t, idx) => {
-            const typeLabel = t.trapType === 'alarm' ? '🚨 **Alarm Ward** (Exposes intruder identity)' : '🩸 **Bloodfort Drain** (Siphons 1,800 HP)';
-            return `**${idx + 1}. Sector ${t.channelName}** — ${typeLabel}\n*Deployed <t:${Math.floor(t.createdAt / 1000)}:R>*`;
-          }).join('\n\n');
+        myTrapsDesc = userTraps.map((t, idx) => {
+          const typeLabel = t.trapType === 'alarm' ? '🚨 **Alarm Ward** (Exposes intruder identity)' : '🩸 **Bloodfort Drain** (Siphons 1,800 HP)';
+          return `**${idx + 1}. Sector \`${t.channelName}\`** — ${typeLabel}\n   └ *Status:* 🟢 **Concealed & Armed** • *Anchor: <t:${Math.floor(t.createdAt / 1000)}:R>*`;
+        }).join('\n\n');
       }
 
-      const sectorNote = channelTrap
-        ? `\n\n⚠️ **Sector Status (${chanTag}):** A Bounded Field is already anchored here (${channelTrap.setterMasterId === master.discordId ? 'by you' : `by Master **${channelTrap.setterUsername}**`}). Masters cannot open two Bounded Fields in the same channel.`
-        : `\n\n✨ **Sector Status (${chanTag}):** Channel leylines are clear (0/1 Bounded Fields active).`;
+      const radarLines = FUYUKI_SECTORS.map(sec => {
+        const activeTrap = (grailWar.channelTraps || []).find(t => t.channelName.toLowerCase() === sec.id.toLowerCase());
+        if (!activeTrap) {
+          return `• \`${sec.id}\`: ✨ **Clear** *(Available to anchor)*`;
+        }
+        if (activeTrap.setterMasterId === master.discordId) {
+          const icon = activeTrap.trapType === 'alarm' ? '🚨' : '🩸';
+          return `• \`${sec.id}\`: ${icon} **Armed by You** (${activeTrap.trapType === 'alarm' ? 'Alarm Ward' : 'Bloodfort Drain'})`;
+        }
+        return `• \`${sec.id}\`: 🔒 **Occupied** *(Master ${activeTrap.setterUsername})*`;
+      }).join('\n');
 
-      description = (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') + desc + sectorNote;
+      description =
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `Anchor hidden magecraft Bounded Fields in specific channels across Fuyuki.\n` +
+        `*(Max 2 active Bounded Fields per Master • Only 1 Bounded Field can exist per channel)*\n\n` +
+        `📍 **YOUR ACTIVE BOUNDED FIELDS (${userTraps.length}/2):**\n${myTrapsDesc}\n\n` +
+        `🗺️ **FUYUKI LEYLINE SECTORS RADAR:**\n${radarLines}\n\n` +
+        `*Select a sector from the menu or click an action below to deploy/disarm:*`;
 
     } else if (category === 'church') {
       title = '⛪ Fuyuki Church Sanctuary (Father Kotomine)';
@@ -4954,13 +5216,32 @@ export default function DiscordEmulator({
       ];
     } else if (category === 'traps') {
       const userTraps = (grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
-      const chanTag = activeChannel === 'public' ? '#holy-grail-war' : '#general';
-      const channelHasTrap = (grailWar.channelTraps || []).some(t => t.channelName.toLowerCase() === chanTag.toLowerCase());
       actionButtons = [
-        { id: 'war_place_trap_alarm', label: 'Place Alarm Ward', style: 'primary', emoji: '🚨', disabled: channelHasTrap || userTraps.length >= 2 },
-        { id: 'war_place_trap_drain', label: 'Place Bloodfort Drain', style: 'danger', emoji: '🩸', disabled: channelHasTrap || userTraps.length >= 2 },
-        { id: 'disarm_all_traps', label: 'Disarm All Traps', style: 'secondary', emoji: '🧹', disabled: userTraps.length === 0 }
+        { id: 'prompt_anchor_alarm', label: 'Anchor Alarm Ward...', style: 'primary', emoji: '🚨', disabled: userTraps.length >= 2 },
+        { id: 'prompt_anchor_drain', label: 'Anchor Bloodfort Drain...', style: 'danger', emoji: '🩸', disabled: userTraps.length >= 2 }
       ];
+      userTraps.forEach(t => {
+        actionButtons.push({
+          id: `disarm_trap_${t.channelName}`,
+          label: `Disarm ${t.channelName}`,
+          style: 'secondary',
+          emoji: '🧹'
+        });
+      });
+      if (userTraps.length > 0) {
+        actionButtons.push({
+          id: 'disarm_all_traps',
+          label: 'Disarm All Traps',
+          style: 'secondary',
+          emoji: '🧹'
+        });
+      }
+      actionButtons.push({
+        id: 'refresh_traps_radar',
+        label: 'Refresh Radar',
+        style: 'secondary',
+        emoji: '🔄'
+      });
     } else if (category === 'church') {
       const isUnderSanctuary = !!(userParticipant?.inSanctuary || (userParticipant as any)?.inChurchSanctuary);
       actionButtons = [
@@ -4976,6 +5257,42 @@ export default function DiscordEmulator({
       { id: 'war_link_duel', label: 'Duel Arena (/duel)', style: 'secondary' as const, emoji: '⚔️' }
     ];
 
+    let hubSelectOptions: any[] | undefined = undefined;
+    let hubPlaceholder: string | undefined = undefined;
+
+    if (category === 'traps') {
+      const userTraps = (grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
+      const opts: any[] = [];
+      FUYUKI_SECTORS.forEach(sec => {
+        const activeTrap = (grailWar.channelTraps || []).find(t => t.channelName.toLowerCase() === sec.id.toLowerCase());
+        if (!activeTrap && userTraps.length < 2) {
+          opts.push({
+            value: `anchor_trap_alarm_${sec.id}`,
+            label: `Anchor Alarm Ward in ${sec.id}`,
+            description: `Expose intruders entering ${sec.label}`,
+            emoji: '🚨'
+          });
+          opts.push({
+            value: `anchor_trap_drain_${sec.id}`,
+            label: `Anchor Bloodfort Drain in ${sec.id}`,
+            description: `Siphon 1,800 HP from intruders in ${sec.label}`,
+            emoji: '🩸'
+          });
+        } else if (activeTrap && activeTrap.setterMasterId === master.discordId) {
+          opts.push({
+            value: `disarm_trap_${sec.id}`,
+            label: `Disarm Bounded Field in ${sec.id}`,
+            description: `Dissolve your active ${activeTrap.trapType === 'alarm' ? 'Alarm Ward' : 'Bloodfort Drain'}`,
+            emoji: '🧹'
+          });
+        }
+      });
+      if (opts.length > 0) {
+        hubSelectOptions = opts.slice(0, 25);
+        hubPlaceholder = '🎯 Select channel to anchor or disarm Bounded Field...';
+      }
+    }
+
     addMessage({
       id: getNextId('bot_grailwar_hub'),
       sender: 'bot',
@@ -4988,6 +5305,8 @@ export default function DiscordEmulator({
       },
       components: {
         type: 'buttons',
+        placeholder: hubPlaceholder,
+        selectOptions: hubSelectOptions,
         items: [...categoryNavButtons, ...actionButtons, ...crossHubShortcuts]
       }
     });
@@ -6162,6 +6481,11 @@ export default function DiscordEmulator({
       btnId.startsWith('war_act_') ||
       btnId.startsWith('war_deploy_') ||
       btnId.startsWith('war_place_trap_') ||
+      btnId.startsWith('anchor_trap_') ||
+      btnId.startsWith('disarm_trap_') ||
+      btnId.startsWith('prompt_anchor_') ||
+      btnId === 'disarm_all_traps' ||
+      btnId === 'refresh_traps_radar' ||
       btnId.startsWith('war_link_') ||
       btnId === 'church_claim_asylum' ||
       btnId === 'church_leave_asylum'
@@ -6198,10 +6522,31 @@ export default function DiscordEmulator({
         handleCommand('/grailwar familiar homunculus');
       } else if (btnId === 'war_deploy_shadow_imp') {
         handleCommand('/grailwar familiar shadow_imp');
-      } else if (btnId === 'war_place_trap_alarm') {
-        handleCommand('/grailwar trap alarm');
-      } else if (btnId === 'war_place_trap_drain') {
-        handleCommand('/grailwar trap drain');
+      } else if (btnId === 'war_place_trap_alarm' || btnId === 'prompt_anchor_alarm') {
+        postChannelSelectorPrompt('alarm');
+      } else if (btnId === 'war_place_trap_drain' || btnId === 'prompt_anchor_drain') {
+        postChannelSelectorPrompt('drain');
+      } else if (btnId.startsWith('anchor_trap_alarm_')) {
+        const targetChan = btnId.replace('anchor_trap_alarm_', '');
+        const res = setChannelTrapInWar(grailWar, master.discordId, master.username, targetChan, 'alarm');
+        onUpdateGrailWar(res.updatedWar);
+        postTrapsRadarOverview(res.message);
+      } else if (btnId.startsWith('anchor_trap_drain_')) {
+        const targetChan = btnId.replace('anchor_trap_drain_', '');
+        const res = setChannelTrapInWar(grailWar, master.discordId, master.username, targetChan, 'drain');
+        onUpdateGrailWar(res.updatedWar);
+        postTrapsRadarOverview(res.message);
+      } else if (btnId.startsWith('disarm_trap_')) {
+        const targetChan = btnId.replace('disarm_trap_', '');
+        const res = disarmChannelTrapsInWar(grailWar, master.discordId, targetChan);
+        onUpdateGrailWar(res.updatedWar);
+        postTrapsRadarOverview(res.message);
+      } else if (btnId === 'disarm_all_traps') {
+        const res = disarmChannelTrapsInWar(grailWar, master.discordId);
+        onUpdateGrailWar(res.updatedWar);
+        postTrapsRadarOverview(res.message);
+      } else if (btnId === 'refresh_traps_radar') {
+        postTrapsRadarOverview();
       } else if (btnId === 'church_claim_asylum') {
         const uP = grailWar.participants[master.discordId] ||
           Object.values(grailWar.participants).find(p => p.username.toLowerCase() === master.username.toLowerCase());
@@ -7959,7 +8304,7 @@ export default function DiscordEmulator({
 
   return (
     <div id="discord_emulator_container" className="flex flex-col h-full bg-[#0a0a0a] text-[#dbdee1] rounded-xl overflow-hidden border border-[#1a1a1a] shadow-2xl">
-      {/* Discord Header Bar with Channel Switcher */}
+      {/* Discord Header Bar with Channel Switcher & Sector Radar */}
       <div className="flex flex-wrap items-center justify-between px-4 py-2.5 bg-[#111] border-b border-[#1a1a1a] gap-2">
         <div className="flex items-center gap-3">
           {/* Channel Switch Tabs */}
@@ -7974,7 +8319,7 @@ export default function DiscordEmulator({
               title="Public Server Channel - ⚠️ Using bot commands here exposes your Master Identity!"
             >
               <span>#</span>
-              <span>holy-grail-war</span>
+              <span>{activePublicSector.replace('#', '')}</span>
               <span className="text-[9px] px-1 py-0.2 rounded bg-[#220000] text-rose-400 border border-rose-500/30">PUBLIC</span>
             </button>
 
@@ -7992,9 +8337,97 @@ export default function DiscordEmulator({
               <span className="text-[9px] px-1 py-0.2 rounded bg-[#100820] text-purple-400 border border-purple-500/30">SECRET</span>
             </button>
           </div>
+
+          {/* Sector Selector Dropdown for Public Frontlines */}
+          {activeChannel === 'public' && (
+            <div className="relative flex items-center gap-1">
+              <div className="relative flex items-center">
+                <select
+                  id="fuyuki_channel_sector_select"
+                  value={activePublicSector}
+                  onChange={(e) => {
+                    const newSector = e.target.value;
+                    setActivePublicSector(newSector);
+                    const activeTrap = (grailWar.channelTraps || []).find(t => t.channelName.toLowerCase() === newSector.toLowerCase());
+                    let trapStatusNote = '✨ Leylines clear (0/1 active Bounded Fields).';
+                    if (activeTrap) {
+                      trapStatusNote = activeTrap.setterMasterId === master.discordId
+                        ? `⚠️ ${activeTrap.trapType === 'alarm' ? '🚨 Alarm Ward' : '🩸 Bloodfort Drain'} is anchored here by you.`
+                        : `⚠️ Occupied by rival Master ${activeTrap.setterUsername}.`;
+                    }
+                    addMessage({
+                      id: getNextId('channel_switched'),
+                      sender: 'bot',
+                      timestamp: 'Just now',
+                      embed: {
+                        title: `📍 Switched Sector: ${newSector}`,
+                        description: `You are now operating in **${newSector}**.\n${trapStatusNote}\n*Channel traps and patrols in this channel will now affect this sector.*`,
+                        color: '#d4af37'
+                      }
+                    });
+                  }}
+                  className="bg-[#141414] hover:bg-[#1a1a1a] text-[#d4af37] border border-[#d4af37]/40 rounded px-2.5 py-1 text-xs font-mono appearance-none cursor-pointer focus:outline-none pr-6 transition max-w-[190px] truncate"
+                  title="Select active Discord text channel"
+                >
+                  {effectiveChannels.map(sec => {
+                    const trapInSec = (grailWar.channelTraps || []).find(t => t.channelName.toLowerCase() === sec.id.toLowerCase());
+                    let tag = '';
+                    if (trapInSec) {
+                      tag = trapInSec.setterMasterId === master.discordId
+                        ? ` [${trapInSec.trapType === 'alarm' ? '🚨' : '🩸'} YOUR WARD]`
+                        : ' [🔒 OCCUPIED]';
+                    }
+                    return (
+                      <option key={sec.id} value={sec.id} className="bg-[#141414] text-white">
+                        {sec.emoji} {sec.id}{tag}
+                      </option>
+                    );
+                  })}
+                </select>
+                <div className="pointer-events-none absolute right-2 text-[#d4af37] text-[10px]">▼</div>
+              </div>
+
+              <button
+                id="add_discord_channel_btn"
+                onClick={() => setShowAddChannelModal(true)}
+                className="px-2 py-1 text-xs font-mono font-bold rounded bg-[#141414] hover:bg-[#202020] text-[#d4af37] border border-[#d4af37]/40 hover:border-[#d4af37] transition cursor-pointer flex items-center gap-1"
+                title="Add an actual Discord channel from your server"
+              >
+                <span>+</span>
+                <span className="hidden sm:inline text-[11px] font-normal">Channel</span>
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Active Bounded Fields Tracker Badge */}
+          {(() => {
+            const userTraps = (grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
+            return (
+              <button
+                id="header_bounded_fields_radar_btn"
+                onClick={() => postTrapsRadarOverview()}
+                className={`px-2.5 py-1 text-[11px] font-mono font-medium rounded-sm border flex items-center gap-1.5 transition cursor-pointer ${
+                  userTraps.length > 0
+                    ? 'bg-[#200830] text-purple-300 border-purple-500/40 hover:bg-[#2e0c45]'
+                    : 'bg-[#141414] text-white/50 border-white/10 hover:text-white/80'
+                }`}
+                title="Click to view where your Bounded Fields are anchored & Fuyuki Leyline Radar"
+              >
+                <span>🕸️</span>
+                <span>
+                  Bounded Fields: <strong className="text-white">{userTraps.length}/2</strong>
+                  {userTraps.length > 0 && (
+                    <span className="text-purple-300 ml-1 font-semibold">
+                      ({userTraps.map(t => `${t.channelName} ${t.trapType === 'alarm' ? '🚨' : '🩸'}`).join(', ')})
+                    </span>
+                  )}
+                </span>
+              </button>
+            );
+          })()}
+
           {/* Sanctuary Badge */}
           {isUserInSanctuary && (
             <div className="px-2.5 py-1 text-[11px] font-mono font-medium rounded-sm bg-[#064e3b] text-[#34d399] border border-[#34d399]/40 flex items-center gap-1">
@@ -8651,6 +9084,59 @@ export default function DiscordEmulator({
           </button>
         </div>
       </div>
+
+      {/* Add Custom Discord Channel Modal */}
+      {showAddChannelModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-[#141414] border border-[#d4af37]/50 rounded-xl p-5 max-w-sm w-full shadow-2xl">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-white font-bold text-sm flex items-center gap-2">
+                <span>💬</span> Connect Discord Channel
+              </h3>
+              <button
+                onClick={() => {
+                  setShowAddChannelModal(false);
+                  setNewChannelNameInput('');
+                }}
+                className="text-zinc-400 hover:text-white text-xs cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-xs text-zinc-300 mb-3 leading-relaxed">
+              Enter the name of any text channel from your Discord server (e.g. <code>#war-room</code>, <code>#announcements</code>, <code>#general-chat</code>).
+            </p>
+            <input
+              type="text"
+              placeholder="#channel-name"
+              value={newChannelNameInput}
+              onChange={(e) => setNewChannelNameInput(e.target.value)}
+              className="w-full bg-[#0a0a0a] border border-zinc-700 focus:border-[#d4af37] rounded px-3 py-2 text-xs text-white font-mono mb-4 outline-none"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleAddCustomChannel();
+              }}
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowAddChannelModal(false);
+                  setNewChannelNameInput('');
+                }}
+                className="px-3 py-1.5 text-xs rounded bg-[#202020] text-zinc-300 hover:text-white transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddCustomChannel}
+                className="px-3 py-1.5 text-xs font-semibold rounded bg-[#d4af37] text-black hover:bg-[#e6c258] transition cursor-pointer"
+              >
+                Connect Channel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
