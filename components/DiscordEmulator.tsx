@@ -58,7 +58,8 @@ import {
   dispatchFamiliarInWar,
   recallFamiliarsInWar,
   enterChurchSanctuary,
-  leaveChurchSanctuary
+  leaveChurchSanctuary,
+  checkAndTriggerChannelTraps
 } from '../lib/engine/grailwar';
 import {
   Terminal,
@@ -500,6 +501,10 @@ export default function DiscordEmulator({
   ]);
   const [showAddChannelModal, setShowAddChannelModal] = useState(false);
   const [newChannelNameInput, setNewChannelNameInput] = useState('');
+  const [showTrapsMenuModal, setShowTrapsMenuModal] = useState(false);
+  const [modalTrapChannel, setModalTrapChannel] = useState<string>('#holy-grail-war');
+  const [modalTrapType, setModalTrapType] = useState<'alarm' | 'bloodfort'>('alarm');
+  const [modalCustomChannel, setModalCustomChannel] = useState<string>('');
 
   const effectiveChannels = useMemo(() => {
     const list = [...serverChannels];
@@ -663,7 +668,7 @@ export default function DiscordEmulator({
     
     let myTrapsText = '';
     if (userTraps.length === 0) {
-      myTrapsText = '• *You currently have no active Bounded Fields deployed in Fuyuki (0/2).*';
+      myTrapsText = '• *You currently have no active Bounded Fields deployed in Fuyuki (0/3).*';
     } else {
       myTrapsText = userTraps.map((t, idx) => {
         const typeLabel = t.trapType === 'alarm'
@@ -693,7 +698,7 @@ export default function DiscordEmulator({
       const activeTrap = (grailWar.channelTraps || []).find(t => t.channelName.toLowerCase() === sec.id.toLowerCase());
       const isCurrent = sec.id === activePublicSector;
       const currentTag = isCurrent ? ' ⭐ [CURRENT]' : '';
-      if (!activeTrap && userTraps.length < 2) {
+      if (!activeTrap && userTraps.length < 3) {
         selectOptions.push({
           value: `anchor_trap_alarm_${sec.id}`,
           label: `Anchor Alarm Ward in ${sec.id}${currentTag}`,
@@ -717,8 +722,9 @@ export default function DiscordEmulator({
     });
 
     const buttons: Array<{ id: string; label: string; style: 'primary' | 'secondary' | 'success' | 'danger'; emoji?: string; disabled?: boolean }> = [
-      { id: 'prompt_anchor_alarm', label: 'Anchor Alarm Ward...', style: 'primary', emoji: '🚨', disabled: userTraps.length >= 2 },
-      { id: 'prompt_anchor_drain', label: 'Anchor Bloodfort Drain...', style: 'danger', emoji: '🩸', disabled: userTraps.length >= 2 }
+      { id: 'open_traps_hub_modal_btn', label: '🕸️ Open Traps Hub', style: 'primary', emoji: '🕸️' },
+      { id: 'prompt_anchor_alarm', label: 'Anchor Alarm...', style: 'primary', emoji: '🚨', disabled: userTraps.length >= 3 },
+      { id: 'prompt_anchor_drain', label: 'Anchor Bloodfort...', style: 'danger', emoji: '🩸', disabled: userTraps.length >= 3 }
     ];
 
     userTraps.forEach(t => {
@@ -860,6 +866,75 @@ export default function DiscordEmulator({
     });
   }
 
+  const handleModalDeployTrap = (targetSector: string, trapType: 'alarm' | 'bloodfort') => {
+    const cleanSector = targetSector.trim().startsWith('#') ? targetSector.trim() : `#${targetSector.trim()}`;
+    const engineTrapType = trapType === 'bloodfort' ? 'drain' : 'alarm';
+    const res = setChannelTrapInWar(grailWar, master.discordId, master.username, cleanSector, engineTrapType);
+    onUpdateGrailWar(res.updatedWar);
+    addMessage({
+      id: getNextId('trap_modal_deploy'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title: res.success ? `⚡ Bounded Field Established: ${cleanSector}` : `⚠️ Magecraft Failure`,
+        description: res.message,
+        color: res.success ? (trapType === 'alarm' ? '#a855f7' : '#e11d48') : '#ef4444',
+        footer: 'Fuyuki Territorial Defense Network • Bounded Field Sanctum'
+      }
+    });
+  };
+
+  const handleModalDisarmTrap = (channelName?: string) => {
+    const res = disarmChannelTrapsInWar(grailWar, master.discordId, channelName);
+    onUpdateGrailWar(res.updatedWar);
+    addMessage({
+      id: getNextId('trap_modal_disarm'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title: `🧹 Bounded Field Dissolved`,
+        description: res.message,
+        color: '#6b7280',
+        footer: 'Fuyuki Territorial Defense Network'
+      }
+    });
+  };
+
+  const handleModalTriggerIntrusionTest = (channelName: string) => {
+    const cleanSector = channelName.trim().startsWith('#') ? channelName.trim() : `#${channelName.trim()}`;
+    const rivals = Object.values(grailWar.participants).filter(p => p.discordId !== master.discordId && p.isAlive);
+    const rival = rivals.length > 0 ? rivals[0] : null;
+    const triggerId = rival ? rival.discordId : 'shadow_rival_tester';
+    const triggerName = rival ? rival.username : 'Shadow Infiltrator';
+    const res = checkAndTriggerChannelTraps(grailWar, triggerId, triggerName, cleanSector);
+    if (res.triggered) {
+      onUpdateGrailWar({ ...grailWar });
+      addMessage({
+        id: getNextId('trap_modal_test_triggered'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: `🚨 INTRUSION ALERT TRIGGERED in ${cleanSector}!`,
+          description: res.message || `An intruder triggered a Bounded Field trap in ${cleanSector}!`,
+          color: '#e11d48',
+          footer: 'Perimeter Intrusion Sensor Feed'
+        }
+      });
+    } else {
+      addMessage({
+        id: getNextId('trap_modal_test_clear'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: `ℹ️ Perimeter Clear in ${cleanSector}`,
+          description: `No active Bounded Field trap triggered when ${triggerName} passed through ${cleanSector}. Anchor a ward in this sector first to capture intruders.`,
+          color: '#6b7280',
+          footer: 'Perimeter Intrusion Sensor Feed'
+        }
+      });
+    }
+  };
+
   const handleCommand = (cmd: string) => {
     const rawCmd = cmd.trim();
     // Normalize exclamation mark prefix `!command` to `/command` or detect command keywords without slash
@@ -905,6 +980,29 @@ export default function DiscordEmulator({
             });
           }, 300);
         }
+      }
+    }
+
+    // Check if the current channel sector contains a rival Master's concealed Bounded Field trap!
+    if (activeServant && grailWar.channelTraps && grailWar.channelTraps.length > 0) {
+      const curChanName = activeChannel === 'public' ? '#holy-grail-war' : activeChannel.startsWith('#') ? activeChannel : `#${activeChannel}`;
+      const trapRes = checkAndTriggerChannelTraps(grailWar, master.discordId, master.username, curChanName);
+      if (trapRes.triggered && trapRes.trapType && trapRes.setterId) {
+        onUpdateGrailWar(grailWar);
+        const isDrain = trapRes.trapType === 'drain';
+        setTimeout(() => {
+          addMessage({
+            id: getNextId('bot_trap_sprung_alert'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: isDrain ? '🩸 BOUNDED FIELD TRIGGERED: Bloodfort Mana Drain!' : '🚨 BOUNDED FIELD TRIPPED: Sensory Alarm Ward!',
+              description: trapRes.message || (isDrain ? 'Mana drain field triggered!' : 'Alarm ward tripped!'),
+              color: isDrain ? '#dc2626' : '#eab308',
+              footer: 'Holy Grail War • Territorial Leyline Defense'
+            }
+          });
+        }, 150);
       }
     }
 
@@ -8229,6 +8327,11 @@ export default function DiscordEmulator({
         return;
       }
 
+      if (btnId === 'open_traps_hub_modal_btn') {
+        setShowTrapsMenuModal(true);
+        return;
+      }
+
       if (btnId === 'trap_channel_alarm') {
         handleCommand('/trap alarm');
         return;
@@ -8493,17 +8596,17 @@ export default function DiscordEmulator({
             return (
               <button
                 id="header_bounded_fields_radar_btn"
-                onClick={() => postTrapsRadarOverview()}
+                onClick={() => setShowTrapsMenuModal(true)}
                 className={`px-2.5 py-1 text-[11px] font-mono font-medium rounded-sm border flex items-center gap-1.5 transition cursor-pointer ${
                   userTraps.length > 0
                     ? 'bg-[#200830] text-purple-300 border-purple-500/40 hover:bg-[#2e0c45]'
                     : 'bg-[#141414] text-white/50 border-white/10 hover:text-white/80'
                 }`}
-                title="Click to view where your Bounded Fields are anchored & Fuyuki Leyline Radar"
+                title="Click to open Dedicated Bounded Fields & Traps Menu"
               >
                 <span>🕸️</span>
                 <span>
-                  Bounded Fields: <strong className="text-white">{userTraps.length}/2</strong>
+                  Bounded Fields: <strong className="text-white">{userTraps.length}/3</strong>
                   {userTraps.length > 0 && (
                     <span className="text-purple-300 ml-1 font-semibold">
                       ({userTraps.map(t => `${t.channelName} ${t.trapType === 'alarm' ? '🚨' : '🩸'}`).join(', ')})
@@ -9128,6 +9231,14 @@ export default function DiscordEmulator({
             <Zap className="w-3 h-3" /> Quick:
           </span>
           <button
+            id="quick_traps_menu_btn"
+            onClick={() => setShowTrapsMenuModal(true)}
+            className="px-2.5 py-0.5 rounded bg-[#1c0c28] hover:bg-[#2c1340] text-purple-300 border border-purple-500/40 whitespace-nowrap font-semibold transition flex items-center gap-1 cursor-pointer"
+          >
+            <span>🕸️</span>
+            <span>Traps &amp; Wards Menu</span>
+          </button>
+          <button
             onClick={() => handleCommand('/dialogue')}
             className="px-2 py-0.5 rounded bg-[#161616] hover:bg-[#252525] text-amber-300 border border-amber-500/30 whitespace-nowrap transition"
           >
@@ -9231,6 +9342,334 @@ export default function DiscordEmulator({
                 className="px-3 py-1.5 text-xs font-semibold rounded bg-[#d4af37] text-black hover:bg-[#e6c258] transition cursor-pointer"
               >
                 Connect Channel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DEDICATED BOUNDED FIELDS & TRAPS MENU MODAL */}
+      {showTrapsMenuModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col bg-[#0d0d11] border border-purple-500/40 rounded-xl shadow-2xl overflow-hidden font-mono text-xs">
+            {/* Modal Header */}
+            <div className="p-4 bg-gradient-to-r from-[#1b0b2e] via-[#130b20] to-[#0d0d11] border-b border-purple-500/30 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-purple-950/80 text-purple-300 border border-purple-500/50 shadow-inner">
+                  <span className="text-base">🕸️</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white font-serif italic flex items-center gap-2">
+                    <span>Territorial Traps &amp; Bounded Field Sanctum</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-900/60 text-purple-200 border border-purple-400/30 font-normal">
+                      {(grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId).length}/3 Armed
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-purple-200/60 mt-0.5">
+                    Deploy and monitor perimeter magecraft without typing slash commands.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowTrapsMenuModal(false)}
+                className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="p-4 overflow-y-auto space-y-4 max-h-[calc(90vh-130px)]">
+              {/* 3 Dedicated Ward Slots Status */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-white/80 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>Magecraft Slots</span>
+                    <span className="text-white/40 text-[10px]">
+                      ({(grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId).length}/3 Active)
+                    </span>
+                  </span>
+                  {(grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId).length > 0 && (
+                    <button
+                      onClick={() => handleModalDisarmTrap(undefined)}
+                      className="text-[10px] text-rose-400 hover:text-rose-300 font-semibold underline cursor-pointer"
+                    >
+                      Disarm All Wards
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {[0, 1, 2].map(slotIdx => {
+                    const myTraps = (grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
+                    const trap = myTraps[slotIdx];
+                    if (trap) {
+                      const isAlarm = trap.trapType === 'alarm';
+                      return (
+                        <div
+                          key={trap.id || slotIdx}
+                          className={`p-3 rounded-lg border flex flex-col justify-between space-y-2 ${
+                            isAlarm
+                              ? 'bg-[#180f2c] border-purple-500/50 text-purple-200'
+                              : 'bg-[#260a13] border-rose-500/50 text-rose-200'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <span className="text-[9px] uppercase font-bold tracking-wider text-white/50">
+                              Slot {slotIdx + 1} • {isAlarm ? '🚨 Alarm' : '🩸 Bloodfort'}
+                            </span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/40">
+                              ARMED
+                            </span>
+                          </div>
+                          <span className="font-bold text-white text-xs block truncate">
+                            {trap.channelName}
+                          </span>
+                          <p className="text-[10px] text-white/60 leading-tight">
+                            {isAlarm
+                              ? 'Exposes rival Master & Servant true class on entry.'
+                              : 'Drains 1,800–2,600 HP to heal your contracted Servant.'}
+                          </p>
+                          <button
+                            onClick={() => handleModalDisarmTrap(trap.channelName)}
+                            className="w-full py-1 text-[10px] rounded bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-500/40 font-semibold transition cursor-pointer"
+                          >
+                            🧹 Disarm Sector
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={slotIdx}
+                        className="p-3 rounded-lg bg-[#08080a] border border-dashed border-white/15 flex flex-col justify-center items-center text-center space-y-1 min-h-[95px]"
+                      >
+                        <span className="text-[10px] text-white/40 font-medium">
+                          ✨ Slot {slotIdx + 1} (Available)
+                        </span>
+                        <span className="text-[9px] text-white/30">
+                          Ready to anchor
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Quick Deploy Form */}
+              <div className="p-3.5 rounded-lg bg-[#121216] border border-white/10 space-y-3">
+                <span className="text-[11px] font-bold text-white/80 uppercase tracking-wider block">
+                  ⚡ Quick Deploy Bounded Field
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Sector Picker */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-white/60 block">
+                      Target Sector Channel:
+                    </label>
+                    <select
+                      value={modalTrapChannel}
+                      onChange={e => setModalTrapChannel(e.target.value)}
+                      className="w-full bg-[#0a0a0c] text-[#d4af37] border border-white/20 focus:border-[#d4af37] rounded-md px-2.5 py-1.5 text-xs outline-none"
+                    >
+                      {effectiveChannels.map(sec => {
+                        const existing = (grailWar.channelTraps || []).find(t => t.channelName.toLowerCase() === sec.id.toLowerCase());
+                        let statusLabel = '✨ Clear';
+                        if (existing) {
+                          statusLabel = existing.setterMasterId === master.discordId
+                            ? `🕸️ Armed by You (${existing.trapType})`
+                            : `🔒 Rival (${existing.setterUsername})`;
+                        }
+                        return (
+                          <option key={sec.id} value={sec.id} className="bg-[#0a0a0c] text-white">
+                            {sec.id} ({sec.label}) — [{statusLabel}]
+                          </option>
+                        );
+                      })}
+                    </select>
+
+                    <div className="flex items-center gap-1.5 pt-0.5">
+                      <input
+                        type="text"
+                        value={modalCustomChannel}
+                        onChange={e => setModalCustomChannel(e.target.value)}
+                        placeholder="Or type custom (#channel)..."
+                        className="flex-1 bg-[#0a0a0c] text-white border border-white/15 focus:border-[#d4af37] rounded px-2 py-1 text-[10px] outline-none placeholder-white/30"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (modalCustomChannel.trim()) {
+                            const clean = modalCustomChannel.trim().startsWith('#') ? modalCustomChannel.trim() : `#${modalCustomChannel.trim()}`;
+                            setModalTrapChannel(clean);
+                            setModalCustomChannel('');
+                          }
+                        }}
+                        className="px-2 py-1 text-[10px] bg-[#1a1a20] hover:bg-[#252530] text-[#d4af37] rounded border border-[#d4af37]/30 transition"
+                      >
+                        Use
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Type Choice */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] text-white/60 block">
+                      Select Ward Magecraft:
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setModalTrapType('alarm')}
+                        className={`p-2 rounded-md border text-left flex flex-col justify-between transition cursor-pointer ${
+                          modalTrapType === 'alarm'
+                            ? 'bg-[#1b1030] border-purple-500 text-purple-200 ring-1 ring-purple-500'
+                            : 'bg-[#0a0a0c] border-white/10 text-white/50 hover:text-white'
+                        }`}
+                      >
+                        <span className="font-bold text-[11px] flex items-center gap-1">
+                          <span>🚨</span> Alarm Ward
+                        </span>
+                        <span className="text-[9px] text-white/50 mt-1 leading-tight">
+                          Exposes intruder &amp; true class.
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setModalTrapType('bloodfort')}
+                        className={`p-2 rounded-md border text-left flex flex-col justify-between transition cursor-pointer ${
+                          modalTrapType === 'bloodfort'
+                            ? 'bg-[#290812] border-rose-500 text-rose-200 ring-1 ring-rose-500'
+                            : 'bg-[#0a0a0c] border-white/10 text-white/50 hover:text-white'
+                        }`}
+                      >
+                        <span className="font-bold text-[11px] flex items-center gap-1">
+                          <span>🩸</span> Bloodfort Drain
+                        </span>
+                        <span className="text-[9px] text-white/50 mt-1 leading-tight">
+                          Siphons 1,800 HP to heal Servant.
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <button
+                    id="modal_anchor_trap_btn"
+                    disabled={(grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId).length >= 3}
+                    onClick={() => handleModalDeployTrap(modalTrapChannel, modalTrapType)}
+                    className="px-4 py-2 rounded-md bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md disabled:opacity-40 transition cursor-pointer"
+                  >
+                    <span>⚡</span>
+                    <span>Anchor {modalTrapType === 'alarm' ? 'Alarm Ward' : 'Bloodfort Drain'} in {modalTrapChannel}</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleModalTriggerIntrusionTest(modalTrapChannel)}
+                    className="px-3 py-1.5 rounded-md bg-[#181820] hover:bg-[#22222e] text-amber-300 border border-amber-500/30 text-[11px] transition cursor-pointer"
+                  >
+                    <span>🎯</span>
+                    <span>Test Intrusion in {modalTrapChannel}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Leyline Radar Grid */}
+              <div className="space-y-2">
+                <span className="text-[11px] font-bold text-white/80 uppercase tracking-wider block">
+                  📡 Fuyuki Leyline Radar Overview
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {effectiveChannels.map(sec => {
+                    const trap = (grailWar.channelTraps || []).find(t => t.channelName.toLowerCase() === sec.id.toLowerCase());
+                    const isMyTrap = trap && trap.setterMasterId === master.discordId;
+                    const isRivalTrap = trap && trap.setterMasterId !== master.discordId;
+                    const userTrapsCount = (grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId).length;
+
+                    return (
+                      <div
+                        key={sec.id}
+                        className={`p-2.5 rounded-md border flex flex-col justify-between space-y-1.5 ${
+                          isMyTrap
+                            ? 'bg-[#180e28] border-purple-500/40'
+                            : isRivalTrap
+                            ? 'bg-[#1c080e] border-rose-500/40'
+                            : 'bg-[#0e0e11] border-white/10'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-white text-[11px] flex items-center gap-1">
+                            <span>{sec.emoji}</span>
+                            <span>{sec.id}</span>
+                          </span>
+                          {isMyTrap ? (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-purple-900/80 text-purple-200 border border-purple-400/40 font-semibold">
+                              {trap.trapType === 'alarm' ? '🚨 MY ALARM' : '🩸 MY BLOODFORT'}
+                            </span>
+                          ) : isRivalTrap ? (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-950 text-rose-300 border border-rose-500/40 font-semibold">
+                              🔒 RIVAL WARD
+                            </span>
+                          ) : (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/30">
+                              ✨ CLEAR
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between text-[10px] pt-1 border-t border-white/10">
+                          {isMyTrap ? (
+                            <button
+                              onClick={() => handleModalDisarmTrap(sec.id)}
+                              className="w-full py-0.5 text-[10px] text-rose-300 bg-rose-950/40 hover:bg-rose-900/60 rounded border border-rose-500/30 transition cursor-pointer text-center"
+                            >
+                              🧹 Disarm This Sector
+                            </button>
+                          ) : isRivalTrap ? (
+                            <span className="text-[9px] text-white/40 italic">
+                              Master {trap.setterUsername}&apos;s Territory
+                            </span>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-1 w-full">
+                              <button
+                                disabled={userTrapsCount >= 3}
+                                onClick={() => handleModalDeployTrap(sec.id, 'alarm')}
+                                className="py-0.5 text-[9px] text-purple-200 bg-purple-950/50 hover:bg-purple-900/70 rounded border border-purple-500/30 transition disabled:opacity-40 cursor-pointer text-center"
+                              >
+                                🚨 +Alarm
+                              </button>
+                              <button
+                                disabled={userTrapsCount >= 3}
+                                onClick={() => handleModalDeployTrap(sec.id, 'bloodfort')}
+                                className="py-0.5 text-[9px] text-rose-200 bg-rose-950/50 hover:bg-rose-900/70 rounded border border-rose-500/30 transition disabled:opacity-40 cursor-pointer text-center"
+                              >
+                                🩸 +Bloodfort
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 bg-[#0a0a0d] border-t border-white/10 flex items-center justify-between flex-shrink-0">
+              <span className="text-[10px] text-white/40">
+                Tip: When rival Masters type in your sectors, traps spring automatically in real-time.
+              </span>
+              <button
+                onClick={() => setShowTrapsMenuModal(false)}
+                className="px-4 py-1.5 rounded bg-[#202025] hover:bg-[#2d2d35] text-white text-xs font-semibold transition cursor-pointer"
+              >
+                Done / Close
               </button>
             </div>
           </div>

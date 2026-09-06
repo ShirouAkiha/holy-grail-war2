@@ -1233,28 +1233,34 @@ export function setChannelTrapInWar(
     targetWar.channelTraps = [];
   }
 
-  // Check if ANY Bounded Field already exists in this channel sector (cannot open two bounded fields in the same channel)
-  const existingInChannel = targetWar.channelTraps.find(
-    t => t.channelName.toLowerCase() === chanTag.toLowerCase()
+  // Check if ANOTHER Master has already anchored a Bounded Field in this channel sector
+  const rivalFieldInChannel = targetWar.channelTraps.find(
+    t => t.channelName.toLowerCase() === chanTag.toLowerCase() && t.setterMasterId !== setterId
   );
-  if (existingInChannel) {
-    const isOwnField = existingInChannel.setterMasterId === setterId;
-    const existingType = existingInChannel.trapType === 'alarm' ? '🚨 Sensory Alarm Ward' : '🩸 Bloodfort Mana Drain Field';
+  if (rivalFieldInChannel) {
     return {
       success: false,
-      message: isOwnField
-        ? `❌ **Leyline Saturation:** You already have an active Bounded Field (${existingType}) anchored in **${chanTag}**! You cannot open two Bounded Fields in the same channel. Disarm your existing field first with \`/trap disarm\` before anchoring a new one.`
-        : `❌ **Magical Leyline Clash:** A Bounded Field is already anchored in **${chanTag}** by Master **${existingInChannel.setterUsername}**! You cannot open two Bounded Fields in the same channel due to magical interference. The existing field must be triggered or disarmed first.`,
+      message: `❌ **Magical Territory Clash:** A Bounded Field is already anchored in **${chanTag}** by rival Master **${rivalFieldInChannel.setterUsername}**! Multiple Masters cannot set Bounded Fields in the same channel due to conflicting leyline interference. Their field must be triggered or disarmed first.`,
       updatedWar: targetWar
     };
   }
   
-  // Count active traps for this Master across all channels (max 2)
-  const currentTrapsCount = targetWar.channelTraps.filter(t => t.setterMasterId === setterId).length;
-  if (currentTrapsCount >= 2) {
+  // Count active traps for this Master across all channels (max 3)
+  const currentTraps = targetWar.channelTraps.filter(t => t.setterMasterId === setterId);
+  if (currentTraps.length >= 3) {
     return {
       success: false,
-      message: `❌ You can only maintain up to **2 active channel Bounded Fields** simultaneously across Fuyuki! Use \`/grailwar traps\` or disarm an existing trap first.`,
+      message: `❌ You can only maintain up to **3 active channel Bounded Fields** simultaneously across Fuyuki! Use \`/trap disarm\` to remove an existing field first.`,
+      updatedWar: targetWar
+    };
+  }
+
+  // Count active traps for this Master in this specific channel (max 3 in a channel)
+  const currentTrapsInChannel = currentTraps.filter(t => t.channelName.toLowerCase() === chanTag.toLowerCase());
+  if (currentTrapsInChannel.length >= 3) {
+    return {
+      success: false,
+      message: `❌ You have reached the maximum capacity of **3 Bounded Fields** anchored in **${chanTag}**! Disarm an existing field in this channel with \`/trap disarm\`.`,
       updatedWar: targetWar
     };
   }
@@ -1274,13 +1280,14 @@ export function setChannelTrapInWar(
   targetWar.channelTraps.push(newTrap);
 
   const trapLabel = trapType === 'alarm' 
-    ? '🚨 **Sensory Alarm Ward** (Exposes intruder identity & Servant Class upon entry)'
-    : '🩸 **Bloodfort Mana Drain Field** (Siphons 1,800 HP from intruder and heals your Servant)';
+    ? '🚨 **Sensory Alarm Ward** (Exposes intruder identity & Servant Class upon action)'
+    : '🩸 **Bloodfort Mana Drain Field** (Siphons 1,800–2,600 HP from intruder and heals your Servant)';
 
+  const myCountInChan = currentTrapsInChannel.length + 1;
   const resultMsg = `🕸️ **Bounded Field Trap Deployed in ${chanTag}!**\n` +
     `• **Field Type:** ${trapLabel}\n` +
     `• **Status:** Concealed in leyline currents. Triggers when any rival Master operates in ${chanTag}.\n` +
-    `• **Active Traps:** ${targetWar.channelTraps.filter(t => t.setterMasterId === setterId).length}/2 deployed.`;
+    `• **Active Traps:** ${currentTraps.length + 1}/3 deployed (${myCountInChan} anchored in ${chanTag}).`;
 
   targetWar.eventLogs.unshift({
     id: `evt_trap_set_${Date.now()}`,
@@ -1343,14 +1350,32 @@ export function checkAndTriggerChannelTraps(
   war: HolyGrailWarSession,
   intruderId: string,
   intruderUsername: string,
-  channelName: string
-): { triggered: boolean; message?: string; trapType?: 'alarm' | 'drain'; setterId?: string } {
+  channelName: string,
+  channelId?: string
+): { 
+  triggered: boolean; 
+  message?: string; 
+  trapType?: 'alarm' | 'drain'; 
+  setterId?: string;
+  setterUsername?: string;
+  drainDmg?: number;
+  intruderRemainingHp?: number;
+  intruderMaxHp?: number;
+  intruderServantName?: string;
+  intruderServantClass?: string;
+  isLethal?: boolean;
+  usedAutoEvade?: boolean;
+  channelName?: string;
+} {
   const targetWar = war || globalWarSession;
   if (!targetWar || !targetWar.channelTraps || targetWar.channelTraps.length === 0) {
     return { triggered: false };
   }
 
   const chanTag = channelName.startsWith('#') ? channelName : `#${channelName}`;
+  const cleanChan = chanTag.replace(/^[#<@>]/, '').toLowerCase();
+  const cId = channelId ? channelId.toLowerCase() : '';
+
   const intruder = targetWar.participants[intruderId];
   if (!intruder || !intruder.isAlive) {
     return { triggered: false };
@@ -1358,7 +1383,10 @@ export function checkAndTriggerChannelTraps(
 
   // Find trap in channel placed by a rival (not intruder, not in same alliance)
   const trapIdx = targetWar.channelTraps.findIndex(t => {
-    if (t.channelName.toLowerCase() !== chanTag.toLowerCase()) return false;
+    const tClean = t.channelName.replace(/^[#<@>]/, '').toLowerCase();
+    const matchesName = tClean === cleanChan || t.channelName.toLowerCase() === chanTag.toLowerCase();
+    const matchesId = !!cId && (tClean === cId || t.channelName.toLowerCase() === cId || t.channelName === `<#${channelId}>`);
+    if (!matchesName && !matchesId) return false;
     if (t.setterMasterId === intruderId) return false;
     const setter = targetWar.participants[t.setterMasterId];
     if (!setter || !setter.isAlive) return false;
@@ -1378,6 +1406,9 @@ export function checkAndTriggerChannelTraps(
   targetWar.channelTraps.splice(trapIdx, 1);
 
   let trapNotice = '';
+  let drainDmg = 0;
+  let isLethal = false;
+  let usedAutoEvade = false;
 
   if (trap.trapType === 'alarm') {
     intruder.isExposed = true;
@@ -1396,7 +1427,7 @@ export function checkAndTriggerChannelTraps(
     });
   } else {
     // DRAIN FIELD
-    const drainDmg = Math.round(1800 + Math.random() * 800);
+    drainDmg = Math.round(1800 + Math.random() * 800);
     intruder.currentHp = Math.max(0, intruder.currentHp - drainDmg);
     setter.currentHp = Math.min(setter.maxHp, setter.currentHp + drainDmg);
 
@@ -1409,10 +1440,12 @@ export function checkAndTriggerChannelTraps(
       if (intruder.autoEvadeEnabled === true && intruder.commandSeals >= 1) {
         intruder.commandSeals--;
         intruder.currentHp = 1;
+        usedAutoEvade = true;
         trapNotice += `\n🔴 **EMERGENCY ESCAPE:** Consumed 1 Command Seal to escape fatal drain with 1 HP!`;
       } else {
         intruder.isAlive = false;
         intruder.isExposed = true;
+        isLethal = true;
         setter.kills = (setter.kills || 0) + 1;
         trapNotice += `\n☠️ **FATAL WITHERING:** Master **${intruder.username}**'s spiritual core collapsed from total mana drain!`;
         evaluateWarState(targetWar);
@@ -1433,7 +1466,16 @@ export function checkAndTriggerChannelTraps(
     triggered: true,
     message: trapNotice,
     trapType: trap.trapType,
-    setterId: trap.setterMasterId
+    setterId: trap.setterMasterId,
+    setterUsername: setter.username,
+    drainDmg: trap.trapType === 'drain' ? drainDmg : 0,
+    intruderRemainingHp: intruder.currentHp,
+    intruderMaxHp: intruder.maxHp,
+    intruderServantName: intruder.servantName,
+    intruderServantClass: intruder.servantClass,
+    isLethal,
+    usedAutoEvade,
+    channelName: chanTag
   };
 }
 

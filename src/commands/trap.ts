@@ -129,13 +129,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const userTraps = (war.channelTraps || []).filter(t => t.setterMasterId === interaction.user.id);
     let desc = '';
     if (userTraps.length === 0) {
-      desc = '📍 **YOUR ACTIVE BOUNDED FIELDS (0/2):**\n• *You currently have no active Bounded Fields deployed in any channel sectors.*\n• Use the channel dropdown below or `/trap set` to anchor one!';
+      desc = '📍 **YOUR ACTIVE BOUNDED FIELDS (0/3):**\n• *You currently have no active Bounded Fields deployed in any channel sectors.*\n• Use the channel dropdown below or `/trap set` to anchor one!';
     } else {
-      desc = `📍 **YOUR ACTIVE BOUNDED FIELDS (${userTraps.length}/2):**\n` +
+      desc = `📍 **YOUR ACTIVE BOUNDED FIELDS (${userTraps.length}/3):**\n` +
         userTraps.map((t, idx) => {
           const typeLabel = t.trapType === 'alarm' 
             ? '🚨 **Sensory Alarm Ward** (Exposes intruder identity & Servant class)' 
-            : '🩸 **Bloodfort Drain** (Siphons 1,800 HP from intruder)';
+            : '🩸 **Bloodfort Drain** (Siphons 1,800–2,600 HP from intruder)';
           return `**${idx + 1}. Sector \`${t.channelName}\`** — ${typeLabel}\n*Status: 🟢 Armed & Concealed • Deployed <t:${Math.floor(t.createdAt / 1000)}:R>*`;
         }).join('\n\n');
     }
@@ -144,15 +144,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const defaultSectors = ['#holy-grail-war', '#general', currentChannelName];
     const allSectors = Array.from(new Set([...defaultSectors, ...(war.channelTraps || []).map(t => t.channelName)]));
     const radarLines = allSectors.map(secName => {
-      const activeTrap = (war.channelTraps || []).find(t => t.channelName.toLowerCase() === secName.toLowerCase());
-      if (!activeTrap) {
+      const trapsInSec = (war.channelTraps || []).filter(t => t.channelName.toLowerCase() === secName.toLowerCase());
+      if (trapsInSec.length === 0) {
         return `• \`${secName}\`: ✨ **Clear** *(Available to anchor)*`;
       }
-      if (activeTrap.setterMasterId === interaction.user.id) {
-        const icon = activeTrap.trapType === 'alarm' ? '🚨' : '🩸';
-        return `• \`${secName}\`: ${icon} **Armed by You** (${activeTrap.trapType === 'alarm' ? 'Alarm Ward' : 'Bloodfort Drain'})`;
+      const myTrapsInSec = trapsInSec.filter(t => t.setterMasterId === interaction.user.id);
+      if (myTrapsInSec.length > 0) {
+        const labels = myTrapsInSec.map(t => t.trapType === 'alarm' ? '🚨 Alarm Ward' : '🩸 Bloodfort Drain').join(' + ');
+        return `• \`${secName}\`: 🕸️ **Armed by You** (${myTrapsInSec.length}/3 fields: ${labels})`;
       }
-      return `• \`${secName}\`: 🔒 **Occupied** *(Master ${activeTrap.setterUsername})*`;
+      const otherMaster = trapsInSec[0].setterUsername;
+      return `• \`${secName}\`: 🔒 **Occupied** *(Master ${otherMaster} claims this territory)*`;
     }).join('\n');
 
     const fullDesc = desc + '\n\n🗺️ **ACTIVE CHANNELS RADAR:**\n' + radarLines +
@@ -162,7 +164,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .setTitle('🕸️ Bounded Field Traps & Radar')
       .setDescription(fullDesc)
       .setColor(0x8b5cf6)
-      .setFooter({ text: 'Only 1 Bounded Field can exist per channel • Max 2 active per Master' });
+      .setFooter({ text: 'A Master can set 2–3 Bounded Fields per channel • Rival Masters cannot claim the same channel' });
 
     const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()

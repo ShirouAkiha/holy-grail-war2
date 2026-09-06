@@ -39,7 +39,7 @@ import * as boastCommand from './commands/boast';
 import * as dailyCommand from './commands/daily';
 import * as feedCommand from './commands/feed';
 import * as gachaCommand from './commands/gacha';
-import { getOrCreateMaster, saveMaster, getAllThroneServants, findServantInPool, searchAndRankServants, claimDailySaintQuartz } from './database/service';
+import { getOrCreateMaster, getMaster, saveMaster, getAllThroneServants, findServantInPool, searchAndRankServants, claimDailySaintQuartz } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
 import { allocateStatPoints } from './engine/statSystem';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from './data/noblePhantasmGifs';
@@ -74,7 +74,9 @@ import {
   disarmChannelTrapsInWar,
   recallFamiliarsInWar,
   enterChurchSanctuary,
-  leaveChurchSanctuary
+  leaveChurchSanctuary,
+  checkAndTriggerChannelTraps,
+  calculateServantMaxHp
 } from './engine/grailwar';
 
 // ==========================================
@@ -194,12 +196,139 @@ client.once(Events.ClientReady, c => {
   c.user.setActivity('Fuyuki Holy Grail War | /summon', { type: 0 });
 });
 
+/**
+ * Evaluates whether an action in a guild channel trips a rival's concealed Bounded Field trap.
+ * If triggered: drains HP or exposes intel, posts a prominent public Discord alert in the channel,
+ * sends a notification DM to the trap setter, and saves the updated participant/Master records.
+ */
+async function triggerChannelTrapsIfAny(
+  discordClient: Client,
+  actorId: string,
+  actorUsername: string,
+  channel: any
+): Promise<void> {
+  if (!channel || !actorId) return;
+  try {
+    const actorMaster = await getMaster(actorId);
+    // Only Masters with summoned Servants interact with territorial Grail War traps
+    if (!actorMaster || !actorMaster.servants || actorMaster.servants.length === 0) return;
+
+    let war = getOrInitWarSession(actorMaster);
+    if (!war || !war.channelTraps || war.channelTraps.length === 0) return;
+
+    const channelName = channel.name ? `#${channel.name}` : `#${channel.id}`;
+    const channelId = channel.id;
+
+    const res = checkAndTriggerChannelTraps(war, actorId, actorUsername, channelName, channelId);
+    if (!res.triggered || !res.trapType || !res.setterId) return;
+
+    const setterMaster = await getMaster(res.setterId);
+    const setterMention = `<@${res.setterId}>`;
+    const intruderMention = `<@${actorId}>`;
+    const targetChanLabel = res.channelName || channelName;
+
+    // Sync servant HP changes to persistent database Master profiles
+    if (res.trapType === 'drain' && res.drainDmg && res.drainDmg > 0) {
+      const intruderActiveServant = actorMaster.servants?.find((s: any) => s.id === actorMaster.activeServantId) || actorMaster.servants?.[0];
+      if (intruderActiveServant) {
+        intruderActiveServant.currentHp = res.intruderRemainingHp ?? Math.max(0, (intruderActiveServant.currentHp || 28000) - res.drainDmg);
+      }
+      await saveMaster(actorMaster);
+
+      if (setterMaster) {
+        const setterActiveServant = setterMaster.servants?.find((s: any) => s.id === setterMaster.activeServantId) || setterMaster.servants?.[0];
+        if (setterActiveServant) {
+          const maxHp = calculateServantMaxHp(setterActiveServant);
+          setterActiveServant.currentHp = Math.min(maxHp, (setterActiveServant.currentHp || 28000) + res.drainDmg);
+          await saveMaster(setterMaster);
+        }
+      }
+    } else if (res.trapType === 'alarm') {
+      await saveMaster(actorMaster);
+    }
+
+    const isDrain = res.trapType === 'drain';
+    const alertEmbed = new EmbedBuilder()
+      .setTitle(
+        isDrain
+          ? `🩸 BOUNDED FIELD TRIGGERED: Bloodfort Mana Drain!`
+          : `🚨 BOUNDED FIELD TRIPPED: Sensory Alarm Ward!`
+      )
+      .setColor(isDrain ? 0xdc2626 : 0xeab308)
+      .setDescription(
+        isDrain
+          ? `⚠️ **MAGICAL PERIMETER BREACH IN ${targetChanLabel}!**\n\n` +
+            `Rival Master ${intruderMention} (**${actorUsername}**) operated in **${targetChanLabel}** and walked directly into a predatory Bounded Field anchored by Master ${setterMention}!\n\n` +
+            `🩸 **Mana Siphon Repercussion:**\n` +
+            `• **Intruder Servant:** ${res.intruderServantName || 'Heroic Spirit'} (${res.intruderServantClass || 'Unknown Class'})\n` +
+            `• **Mana Siphoned:** **${res.drainDmg?.toLocaleString()} HP** drained instantly!\n` +
+            `• **Channeled Vitality:** **+${res.drainDmg?.toLocaleString()} HP** channeled directly to ${setterMention}'s Servant!\n` +
+            `• **Intruder Remaining Vitality:** **${res.intruderRemainingHp?.toLocaleString()} / ${res.intruderMaxHp?.toLocaleString()} HP**` +
+            (res.usedAutoEvade ? `\n\n🔴 **EMERGENCY ESCAPE:** Consumed 1 Command Seal to escape lethal drain with 1 HP!` : '') +
+            (res.isLethal ? `\n\n☠️ **FATAL WITHERING:** Master **${actorUsername}**'s spiritual core collapsed from total mana drain! Eliminator: **${setterMaster?.username || 'Rival Master'}**!` : '')
+          : `🚨 **INTRUDER DETECTED IN ${targetChanLabel}!**\n\n` +
+            `Rival Master ${intruderMention} (**${actorUsername}**) operated in **${targetChanLabel}** and tripped a concealed sensory web woven by Master ${setterMention}!\n\n` +
+            `👁️ **Exposed Intelligence:**\n` +
+            `• **Intruder Identity:** ${intruderMention} (**${actorUsername}**)\n` +
+            `• **True Servant:** **${res.intruderServantName}** (${res.intruderServantClass})\n` +
+            `• **Status:** Master **${actorUsername}** is now **PUBLICLY EXPOSED** on the Holy Grail War Board!`
+      )
+      .setFooter({
+        text: `Territorial Leyline Defense • Holy Grail War Alert`
+      })
+      .setTimestamp();
+
+    // 1. Post prominent public Alert Message in the channel where the trap sprang
+    if (typeof channel.send === 'function') {
+      try {
+        await channel.send({
+          content: `⚠️ ${setterMention} — Your Bounded Field in **${targetChanLabel}** has caught rival Master ${intruderMention}!`,
+          embeds: [alertEmbed]
+        });
+      } catch (postErr) {
+        console.warn('[TrapTrigger] Failed to post alert to channel:', postErr);
+      }
+    }
+
+    // 2. Also send Direct Message notification to the trap setter so they know their field triggered
+    try {
+      const setterUser = await discordClient.users.fetch(res.setterId);
+      if (setterUser) {
+        const dmEmbed = new EmbedBuilder()
+          .setTitle(`🕸️ Your Bounded Field in ${targetChanLabel} Triggered!`)
+          .setColor(isDrain ? 0xdc2626 : 0xeab308)
+          .setDescription(
+            `Your **${isDrain ? 'Bloodfort Mana Drain Field' : 'Sensory Alarm Ward'}** in **${targetChanLabel}** was triggered by rival Master **${actorUsername}**!\n\n` +
+            (isDrain
+              ? `🩸 Siphoned **${res.drainDmg?.toLocaleString()} HP** from their Servant and healed your Servant!`
+              : `🚨 Master **${actorUsername}** (${res.intruderServantClass}) was detected and exposed on the war board!`)
+          )
+          .setFooter({ text: 'Holy Grail War Leyline Radar' })
+          .setTimestamp();
+
+        await setterUser.send({ embeds: [dmEmbed] });
+      }
+    } catch {
+      // User may have DMs disabled; safe to ignore
+    }
+  } catch (err) {
+    console.error('[TrapTrigger] Error checking channel traps:', err);
+  }
+}
+
 // ==========================================
 // 5. GLOBAL INTERACTION ROUTER
 // ==========================================
 // Central dispatcher that catches all user actions (Slash commands, Modal popups, Dropdowns).
 client.on(Events.InteractionCreate, async interaction => {
   try {
+    // If an interaction happens in a guild text channel, check for territorial Bounded Field traps!
+    if (interaction.guild && interaction.channel && !interaction.user.bot) {
+      if (!interaction.isAutocomplete()) {
+        await triggerChannelTrapsIfAny(client, interaction.user.id, interaction.user.username, interaction.channel);
+      }
+    }
+
     // ROUTE 0: Autocomplete (e.g. searching servants in /addservant or /servants)
     if (interaction.isAutocomplete()) {
       const command = commands.get(interaction.commandName);
@@ -1075,6 +1204,12 @@ client.on(Events.InteractionCreate, async interaction => {
 client.on(Events.MessageCreate, async message => {
   try {
     if (message.author.bot) return;
+
+    // Check if the message was posted in a guild channel with a rival Bounded Field trap
+    if (message.guild && message.channel) {
+      await triggerChannelTrapsIfAny(client, message.author.id, message.author.username, message.channel);
+    }
+
     if (!message.content.startsWith('!')) return;
 
     const raw = message.content.slice(1).trim();

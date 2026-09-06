@@ -1010,6 +1010,13 @@ export async function getOrCreateMaster(discordId: string, username: string = 'M
 }
 
 /**
+ * Retrieves a Master profile by Discord ID if it exists, without auto-creating.
+ */
+export function getMaster(discordId: string): MasterProfile | undefined {
+  return masterStore.get(discordId);
+}
+
+/**
  * Updates selective properties on a Master's profile.
  */
 export async function updateMasterProfile(discordId: string, data: Partial<MasterProfile>): Promise<MasterProfile> {

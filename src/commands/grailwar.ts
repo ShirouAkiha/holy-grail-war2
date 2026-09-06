@@ -250,13 +250,13 @@ export function buildGrailWarHub(
     const userTraps = (war.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
     let desc = '';
     if (userTraps.length === 0) {
-      desc = 'You currently have **no active Bounded Field traps** placed in any channel sectors.\n\n' +
+      desc = 'You currently have **no active Bounded Field traps (0/3)** placed in any channel sectors.\n\n' +
         '• **Place in current channel:** Use the quick buttons below.\n' +
         '• **Place in another server channel:** Select any channel from the dropdown menu below, or use `/trap set type:... channel:#target`!';
     } else {
-      desc = `You currently command **${userTraps.length}/2** active Bounded Field traps:\n\n` +
+      desc = `You currently command **${userTraps.length}/3** active Bounded Field traps:\n\n` +
         userTraps.map((t, idx) => {
-          const typeLabel = t.trapType === 'alarm' ? '🚨 **Alarm Ward** (Exposes intruder identity)' : '🩸 **Bloodfort Drain** (Siphons 1,800 HP)';
+          const typeLabel = t.trapType === 'alarm' ? '🚨 **Alarm Ward** (Exposes intruder identity)' : '🩸 **Bloodfort Drain** (Siphons 1,800–2,600 HP)';
           return `**${idx + 1}. Sector ${t.channelName}** — ${typeLabel}\n*Deployed <t:${Math.floor(t.createdAt / 1000)}:R>*`;
         }).join('\n\n') +
         '\n\n🎯 **To anchor or disarm in other server channels:** Select an existing channel from the dropdown menu below!';
@@ -269,7 +269,7 @@ export function buildGrailWarHub(
         desc
       )
       .setColor(0x8b5cf6)
-      .setFooter({ text: 'Bounded fields remain hidden until tripped by a rival Master' });
+      .setFooter({ text: 'Bounded fields remain hidden until tripped • Max 3 fields per Master • 2–3 fields allowed per channel' });
 
     embeds = [embed];
 
