@@ -167,38 +167,95 @@ export async function buildServantHub(
   };
 
   if (category === 'profile') {
+    // Command Deck
+    const deckArr = t.commandDeck || ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'];
+    const deckStr = deckArr
+      .map((c: string) => (c === 'Buster' ? '🔴 Buster' : c === 'Arts' ? '🔵 Arts' : '🟢 Quick'))
+      .join(' • ');
+
+    // Active Skills
+    const skillLvls = targetServant.skillLevels || [1, 1, 1];
+    const activeSkillsText = (t.skills && t.skills.length > 0)
+      ? t.skills.map((s: any, idx: number) => {
+          const icon = s.icon || (idx === 0 ? '⚔️' : idx === 1 ? '🛡️' : '✨');
+          const sLvl = skillLvls[idx] || 1;
+          return `• **${icon} Skill ${idx + 1}: ${s.name}** [Lv.${sLvl} • CD: ${s.cooldown}T]\n  *${s.description}*`;
+        }).join('\n')
+      : '• *No active skills registered.*';
+
+    // Passive Skills
     const rawPassives = (t.passives && t.passives.length > 0)
       ? t.passives.slice(0, 2)
       : getDefaultClassPassives(t.servantClass).slice(0, 2);
 
     const passiveText = rawPassives.length > 0
       ? rawPassives.map((p: any, idx: number) => {
-          if (idx === 0) return `• **${p.name}** [${p.rank || 'Passive'}] *(Active)* — ${p.description}`;
+          if (idx === 0) return `• **${p.name}** [${p.rank || 'Passive'}] *(Active • Bond 1)* — ${p.description}`;
           if (idx === 1) {
             return bondLevel >= 5
-              ? `• **${p.name}** [${p.rank || 'Passive'}] *(Active • Unlocked at Bond 5)* — ${p.description}`
-              : `• 🔒 **${p.name}** [${p.rank || 'Passive'}] *(Locked — Unlocks at Bond Lv. 5)* — ${p.description}`;
+              ? `• **${p.name}** [${p.rank || 'Passive'}] *(Active • Bond 5 Unlocked)* — ${p.description}`
+              : `• 🔒 **${p.name}** [${p.rank || 'Passive'}] *(Locked — Reaches Bond Lv. 5 to unlock)* — ${p.description}`;
           }
           return `• **${p.name}** [${p.rank || 'Passive'}] — ${p.description}`;
         }).join('\n')
       : 'None';
+
+    // Noble Phantasm
+    const np = t.noblePhantasm || {
+      name: 'Excalibur',
+      cardType: 'Buster',
+      chant: 'Sword of Promised Victory!',
+      target: 'single',
+      multiplier: 600,
+      description: 'Deals massive damage to a single enemy.'
+    };
+    const npCardEmoji = np.cardType === 'Buster' ? '🔴' : np.cardType === 'Arts' ? '🔵' : '🟢';
+    const npChant = targetServant.customQuotes?.noblePhantasm || np.chant || 'True Name Release!';
+
+    const npText = 
+      `• **True Name:** **${np.name}** (${npCardEmoji} ${np.cardType} • ${np.target ? np.target.toUpperCase() : 'SINGLE'})\n` +
+      `  > *"${npChant}"*\n` +
+      `• **Multiplier:** \`${np.multiplier || 600}%\` | **Overcharge:** ${np.overchargeEffect || 'Standard damage boost'}\n` +
+      `• **Effect:** ${np.description}`;
+
+    // Craft Essence
+    const currentEq = targetServant.equippedCe;
+    const ceText = currentEq
+      ? `• **${currentEq.name}** (${'★'.repeat(currentEq.rarity)}) — \`+${(currentEq.atkBonus || 0).toLocaleString()} ATK\` | \`+${(currentEq.hpBonus || 0).toLocaleString()} HP\`\n  *Passive Effect: ${currentEq.effectText || 'Stat boost granted in battle.'}*`
+      : '• *No Craft Essence equipped. Click "Equip CE" below or use /customise equip to link a relic.*';
+
+    // Voice Lines & Quotes
+    const customQ = targetServant.customQuotes || {};
+    const quotesText = 
+      `• 🕯️ **Summon:** *"${customQ.summon || t.summonQuote || 'I answer your call, Master.'}"*\n` +
+      `• ⚔️ **Battle Start:** *"${customQ.battleStart || t.battleStartQuote || 'Enemies ahead!'}"*\n` +
+      `• 🏆 **Victory:** *"${customQ.victory || t.victoryQuote || 'A victorious battle.'}"*`;
 
     const embed = new EmbedBuilder()
       .setTitle(`⚔️ Servant Workshop — Profile Card: ${sName}`)
       .setDescription(
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `*${t.title}* • **Master:** ${master.username}\n` +
-        `🌟 **Class:** ${t.servantClass} | **Rarity:** ${'★'.repeat(t.rarity)} | **Bond Lv:** ${bondLevel}/10 ♥ | **Level:** ${lvl}/100\n` +
+        `🌟 **Class:** ${t.servantClass} | **Rarity:** ${'★'.repeat(t.rarity)} | **Bond Lv:** ${bondLevel}/10 ♥ | **Level:** Lv.${lvl}/100\n` +
         `❤️ **Max HP:** \`${totalHp.toLocaleString()}\` | ⚔️ **Total ATK:** \`${totalAtk.toLocaleString()}\` | 📈 **Stat Points:** **${targetServant.availableStatPoints || 0} pts**\n\n` +
+        `📜 **Historical Legend & Lore:**\n> *${t.lore || 'A legendary heroic soul recorded in the Throne of Heroes, bound to fight in the Holy Grail War.'}*\n\n` +
         `📊 **Battle Parameters:**\n` +
-        `• **Strength (STR):** \`${strTotal}\` [${getRank(strTotal)}] | **Endurance (END):** \`${endTotal}\` [${getRank(endTotal)}]\n` +
-        `• **Agility (AGI):** \`${agiTotal}\` [${getRank(agiTotal)}] | **Mana (MNA):** \`${mnaTotal}\` [${getRank(mnaTotal)}] | **Luck (LCK):** \`${lckTotal}\` [${getRank(lckTotal)}]`
+        `• **Strength (STR):** \`${strTotal}\` [**${getRank(strTotal)}**] | **Endurance (END):** \`${endTotal}\` [**${getRank(endTotal)}**]\n` +
+        `• **Agility (AGI):** \`${agiTotal}\` [**${getRank(agiTotal)}**] | **Mana (MNA):** \`${mnaTotal}\` [**${getRank(mnaTotal)}**] | **Luck (LCK):** \`${lckTotal}\` [**${getRank(lckTotal)}**]\n\n` +
+        `🃏 **Command Deck:** ${deckStr}`
       )
-      .addFields({
-        name: '🛡️ Class Passive Skills',
-        value: passiveText
-      })
+      .addFields(
+        { name: '⚡ Active Personal Skills', value: activeSkillsText },
+        { name: '💥 Noble Phantasm', value: npText },
+        { name: '🛡️ Class Passive Skills', value: passiveText },
+        { name: '👔 Equipped Craft Essence', value: ceText },
+        { name: '💬 Master Combat Invocations', value: quotesText }
+      )
       .setColor(t.rarity === 5 ? 0xd4af37 : 0x38bdf8);
+
+    if (t.avatarUrl || t.cardArtUrl) {
+      embed.setThumbnail(t.avatarUrl || t.cardArtUrl);
+    }
 
     const artworkEmbed = new EmbedBuilder()
       .setImage(t.cardArtUrl || t.avatarUrl)
