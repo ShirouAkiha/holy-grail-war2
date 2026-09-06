@@ -46,33 +46,33 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
   // Artoria Pendragon - Saber
   artoria: {
     buster: [
-      "Excalibur's radiant light shall vanquish all! Strike true!",
-      "All mana into my blade! For the honor of Britain, yield!",
-      "Unwavering conviction! Smite evil with the sacred golden flame!",
-      "Dragon core ignite! Witness the furious might of the King of Knights!"
+      "Blade of Selection... Strike true! Dragon Core, ignite!",
+      "Excalibur's radiant light shall vanquish all! Yield!",
+      "All mana into my blade! For the honor of the Holy Vow!",
+      "Smite evil with the sacred golden flame of Britain!"
     ],
     arts: [
-      "Prana circulation stable. Directing the noble path into the holy sword.",
-      "Clear your mind, breathe as one... The sword guides our destiny.",
+      "With pure heart and steadfast oath... I channel the holy sword.",
+      "Clear your mind, breathe as one... Prana circulation stable!",
       "Channelling the breath of the dragon into our sacred strike.",
       "The battlefield reveals all truths. I shall cut down your hesitation."
     ],
     quick: [
-      "Wind of the King, sweep the battlefield! Strike before they draw breath!",
-      "Invisible Air releases! A gale of unseen blades!",
+      "Invisible Air, release! Wind of the King, sweep the field!",
       "Fleet-footed chivalry! You shall not evade the strike of Camelot!",
-      "Critical Star convergence! Slicing through your opening with blinding speed!"
+      "A gale of unseen blades! Striking before you draw breath!",
+      "Critical Star convergence! Slicing through your guard with blinding speed!"
     ],
     mixed: [
       "Executing tactical chain! Master, observe the swordsmanship of the King!",
       "My sword is yours, Master. Together we shall claim the Holy Grail!",
-      "Step forward, knight. Let our steel test each other's resolve.",
+      "I ask of you, stay behind me. I shall be your sword and shield.",
       "Advancing across the front line with steady blade and steadfast heart."
     ],
     desperation: [
       "Even if my body falters, the oath to my kingdom and Master shall never break!",
       "Stand tall, Artoria! As long as Excalibur shines, victory is not lost!",
-      "This wound is trivial... I will cut our way to the dawn!"
+      "Forgive me, Master... My duty... remains unfulfilled..."
     ]
   },
 

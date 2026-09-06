@@ -233,17 +233,17 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     noblePhantasm: {
       name: 'Excalibur: Sword of Promised Victory',
       cardType: 'Buster',
-      chant: 'Gathered breath of the planet, torrential light of life... EX---CALIBUR!',
+      chant: 'Gathered breath of the planet, torrential stream of shining life... Take this! EX---CALIBUR!',
       description: 'Deals devastating holy burst damage to all foes and recharges 20% NP gauge.',
       target: 'aoe',
       multiplier: 380,
       overchargeEffect: 'NP gauge refund +20%'
     },
     lore: 'The legendary King of Britain who pulled the sword of selection Caliburn from the stone. Bearer of the Holy Sword Excalibur.',
-    summonQuote: 'Servant Saber. I ask of you, are you my Master?',
-    battleStartQuote: 'My blade is drawn. For chivalry and the holy vow!',
-    victoryQuote: 'Victory is decided. Let our honor remain untarnished.',
-    defeatQuote: 'Forgive me, Master... I have failed to protect Britain...',
+    summonQuote: 'Servant Saber. I have answered your summons. I ask of you, are you my Master?',
+    battleStartQuote: 'I take the field! Saber, Artoria Pendragon, moving out!',
+    victoryQuote: 'The battle is decided. May honor guide our victory, Master.',
+    defeatQuote: 'Forgive me, Master... My duty... remains unfulfilled...',
     avatarUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=400&auto=format&fit=crop&q=80',
     cardArtUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=600&auto=format&fit=crop&q=80'
   },

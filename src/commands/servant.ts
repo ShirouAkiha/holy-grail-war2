@@ -12,6 +12,7 @@ import {
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { renderServantProfileCard, renderDialogueCard } from '../canvas/renderer';
 import { SERVANT_DATABASE, getDefaultClassPassives } from '../data/servants';
+import { getServantProfile } from '../engine/dialogue';
 import { getOrInitWarSession, exposeMasterInWar } from '../engine/grailwar';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { allocateStatPoints, calculateServantMaxHp, calculateServantMaxAtk } from '../engine/statSystem';
@@ -307,21 +308,26 @@ export async function buildServantHub(
 
   } else if (category === 'dialogue') {
     const quotes = targetServant.customQuotes || {};
+    const profile = getServantProfile(sName);
+    const busterDef = profile.buster[0] || "Blade of Selection... Strike true! Dragon Core, ignite!";
+    const artsDef = profile.arts[0] || "With pure heart and steadfast oath... Prana circulation stable!";
+    const quickDef = profile.quick[0] || "Invisible Air, release! Wind of the King, sweep the field!";
+
     const embed = new EmbedBuilder()
       .setTitle(`💬 Master Dialogue Studio: ${sName}`)
       .setDescription(
         `*Author combat chants, chain shouts, and voice lines for **${sName}**!*\n\n` +
         `⚡ **COMBAT BRAVE CHAINS & NP:**\n` +
-        `• 🔴 **Buster Brave:** *" ${quotes.busterChain || 'Default Canon Voice Line'} "*\n` +
-        `• 🔵 **Arts Mana:** *" ${quotes.artsChain || 'Default Canon Voice Line'} "*\n` +
-        `• 🟢 **Quick Star:** *" ${quotes.quickChain || 'Default Canon Voice Line'} "*\n` +
+        `• 🔴 **Buster Brave:** *" ${quotes.busterChain || busterDef} "*\n` +
+        `• 🔵 **Arts Mana:** *" ${quotes.artsChain || artsDef} "*\n` +
+        `• 🟢 **Quick Star:** *" ${quotes.quickChain || quickDef} "*\n` +
         `• 🌟 **Noble Phantasm:** *" ${quotes.noblePhantasm || t.noblePhantasm.chant} "*\n\n` +
         `📜 **INVOCATIONS & STANCES:**\n` +
         `• ⚔️ **Battle Start:** *" ${quotes.battleStart || t.battleStartQuote} "*\n` +
         `• 🏆 **Victory:** *" ${quotes.victory || t.victoryQuote} "*\n` +
-        `• 💀 **Defeat:** *" ${quotes.defeat || t.defeatQuote || 'Master... forgive me...'} "*\n` +
+        `• 💀 **Defeat:** *" ${quotes.defeat || t.defeatQuote || 'Forgive me, Master... My duty... remains unfulfilled...'} "*\n` +
         `• 🕯️ **Summon:** *" ${quotes.summon || t.summonQuote} "*\n\n` +
-        `💡 *Set lines with \`/customise quote <type> "<text>"\` or preview with the buttons below.*`
+        `💡 *Set lines with \`/customise quote <type> "<text>"\`, click **Custom Dialogue Studio ✍️** below, or choose a Preset!*`
       )
       .setColor(0xd4af37)
       .setFooter({ text: `Contracted to Master ${master.username} • Bond Lv. ${bondLevel}` });
@@ -446,15 +452,19 @@ export async function buildServantHub(
       .setCustomId('servant_sel_voice_preset')
       .setPlaceholder('💬 Apply Voice Line Chants & Dialogue Preset...')
       .addOptions([
-        { label: '👑 Canon Knight (Honor & Chivalry)', description: 'Chivalric, noble knight combat lines', value: 'preset_canon_knight' },
-        { label: '🔥 Fiery Vanguard (Battle Fury)', description: 'Aggressive, high-intensity battle chants', value: 'preset_fiery_vanguard' },
-        { label: '🗡️ Ruthless Avenger (Dark Oath)', description: 'Dark, vengeance-filled spirit quotes', value: 'preset_dark_avenger' },
-        { label: '✨ Mystic Noble Spirit (Graceful)', description: 'Graceful, regal incantations and chants', value: 'preset_mystic_spirit' }
+        { label: '👑 Artoria Pendragon (Fate Canon)', description: 'True lore-accurate Fate/stay night & FGO voice lines', value: 'preset_artoria_canon' },
+        { label: '🗡️ EMIYA (Unlimited Blade Works)', description: 'Tracing projection incantation and combat quotes', value: 'preset_emiya_ubw' },
+        { label: '🔥 Gilgamesh (King of Heroes)', description: 'Vault of Babylon & Gate of Heaven quotes', value: 'preset_gilgamesh_king' },
+        { label: '🔱 Cú Chulainn (Gáe Bolg Thrust)', description: 'Ulster Hound battle shouts & pierced heart quotes', value: 'preset_cu_lancer' },
+        { label: '🖤 Jeanne d\'Arc Alter (Dragon Witch)', description: 'Dark flames of vengeance & burning quotes', value: 'preset_jalter_avenger' },
+        { label: '✨ Reset to Pure Canon Defaults', description: 'Clears custom lines & uses exact database lore defaults', value: 'preset_reset_lore' }
       ]);
     components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(voiceSelect));
 
     actionButtonsRow.addComponents(
-      new ButtonBuilder().setCustomId('servant_act_hear_voice').setLabel('Replay Dialogue Cut-In').setEmoji('🎬').setStyle(ButtonStyle.Primary)
+      new ButtonBuilder().setCustomId('servant_act_open_dialogue_modal').setLabel('Custom Dialogue Studio').setEmoji('✍️').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('servant_act_reset_dialogue').setLabel('Reset to Lore Defaults').setEmoji('✨').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_act_hear_voice').setLabel('Replay Cut-In').setEmoji('🎬').setStyle(ButtonStyle.Success)
     );
     components.push(actionButtonsRow);
   } else if (category === 'stats') {
@@ -553,6 +563,7 @@ export function attachServantCollector(
     try {
       const master = await getOrCreateMaster(i.user.id, i.user.username);
       let targetServant = master.servants.find((s: any) => s.id === currentServantId) || master.servants[0];
+      const sName = targetServant?.nickname || targetServant?.template?.name || 'Servant';
       let actionOutcomeMsg = '';
 
       // TAB NAVIGATION
@@ -594,57 +605,138 @@ export function attachServantCollector(
       // VOICE LINE / DIALOGUE PRESET DROPDOWN
       else if (i.customId === 'servant_sel_voice_preset') {
         const val = i.values[0];
-        let presetQuotes = {};
-        if (val === 'preset_canon_knight') {
-          presetQuotes = {
-            noblePhantasm: 'Excalibur! Sword of Promised Victory!',
-            battleStart: 'I ask of you, are you my Master? My sword is yours!',
-            victory: 'A victory forged by honor and righteous resolve!',
-            defeat: 'Forgive me, Master... My duty remains unfulfilled...',
-            busterChain: 'Hammer of the Sun!',
-            artsChain: 'By the Oath of Chivalry!',
-            quickChain: 'Strike of the Gale!',
-            summon: 'I have answered your call. Let us fight for the Grail!'
-          };
-        } else if (val === 'preset_fiery_vanguard') {
-          presetQuotes = {
-            noblePhantasm: 'Gáe Bulg! Spear of Striking Death Flight!',
-            battleStart: 'Alright! Time for a real fight!',
-            victory: 'Haha! That was a thrilling battle!',
-            defeat: 'Tch... Not bad... catch you next time...',
-            busterChain: 'Piercing Thrust!',
-            artsChain: 'Channeled Spirit!',
-            quickChain: 'Sonic Strike!',
-            summon: 'Servant Lancer! Here to spear your enemies!'
-          };
-        } else if (val === 'preset_dark_avenger') {
-          presetQuotes = {
-            noblePhantasm: 'La Pucelle! Consume all in eternal black flames!',
-            battleStart: 'Your life expires here. Prepare for oblivion!',
-            victory: 'Ashes to ashes. None shall stand against us!',
-            defeat: 'Curse you all... The nightmare never ends...',
-            busterChain: 'Crush them!',
-            artsChain: 'Mana Burst!',
-            quickChain: 'Shadow Slice!',
-            summon: 'I emerge from the shadows to claim revenge.'
-          };
-        } else if (val === 'preset_mystic_spirit') {
-          presetQuotes = {
-            noblePhantasm: 'Gate of Babylon! Behold the treasures of the king!',
-            battleStart: 'Let us see if you are worthy of my presence!',
-            victory: 'Naturally. Perfection is my minimum standard!',
-            defeat: 'Hmph... A minor tactical delay...',
-            busterChain: 'Take this!',
-            artsChain: 'Incantation!',
-            quickChain: 'Flash Star!',
-            summon: 'Be honored, Master. You now command greatness.'
-          };
+        if (val === 'preset_reset_lore') {
+          targetServant.customQuotes = {};
+          actionOutcomeMsg = `✨ Cleared custom lines for **${sName}**! Reverted to exact canon lore defaults.`;
+        } else {
+          let presetQuotes = {};
+          if (val === 'preset_artoria_canon' || val === 'preset_canon_knight') {
+            presetQuotes = {
+              noblePhantasm: 'Gathered breath of the planet, torrential stream of shining life... Take this! EX---CALIBUR!',
+              battleStart: 'I take the field! Saber, Artoria Pendragon, moving out!',
+              victory: 'The battle is decided. May honor guide our victory, Master.',
+              defeat: 'Forgive me, Master... My duty... remains unfulfilled...',
+              busterChain: 'Blade of Selection... Strike true! Dragon Core, ignite!',
+              artsChain: 'With pure heart and steadfast oath... Prana circulation stable!',
+              quickChain: 'Invisible Air, release! Wind of the King, sweep the field!',
+              summon: 'Servant Saber. I have answered your summons. I ask of you, are you my Master?'
+            };
+          } else if (val === 'preset_emiya_ubw') {
+            presetQuotes = {
+              noblePhantasm: 'I am the bone of my sword... UNLIMITED BLADE WORKS!',
+              battleStart: 'Analyzing structural blueprint... All blades stand ready.',
+              victory: 'An iron will is sharper than any steel. Victory secured.',
+              defeat: 'My entire life was Unlimited Blade Works... I falter here...',
+              busterChain: 'Caladbolg II, overcharge projection! Shatter the perimeter!',
+              artsChain: 'Tracing the origin, replicating craftsmanship... Steel is my body!',
+              quickChain: 'Kanshou and Bakuya, dual arc trajectory! Intercepting flanks!',
+              summon: 'Servant Archer. I have answered your call. Leave the tactics to me.'
+            };
+          } else if (val === 'preset_gilgamesh_king') {
+            presetQuotes = {
+              noblePhantasm: 'Look upon the glory of creation! ENUMA ELISH!',
+              battleStart: 'Rejoice, mongrel! You are granted the honor of facing the King!',
+              victory: 'Hahaha! Perfection is my minimum standard! Perish, fool!',
+              defeat: 'How dare an insect push the King of Heroes this far?!',
+              busterChain: 'Drown in the peerless treasures of Babylon! Insolent worm!',
+              artsChain: 'A measured judgment from the Golden King. Accept your fate.',
+              quickChain: 'Fleeing is useless! A flurry of treasures rains from heaven!',
+              summon: 'Be honored, Master. You now stand in the presence of the King.'
+            };
+          } else if (val === 'preset_cu_lancer' || val === 'preset_fiery_vanguard') {
+            presetQuotes = {
+              noblePhantasm: 'Gáe Bolg! Spear of Striking Death Flight!',
+              battleStart: 'Alright Master, point me at \'em and let me loose!',
+              victory: 'Heh, not half bad! That\'s another win for the Hound of Ulster!',
+              defeat: 'Tch... Battle Continuation isn\'t enough... catch you next time...',
+              busterChain: 'Gáe Bolg won\'t miss! Full-force thrust straight through!',
+              artsChain: 'Nordic runes align! Mana charging straight into the crimson spear!',
+              quickChain: 'Too slow! The Hound leaves no tracks in the bloodied grass!',
+              summon: 'Servant Lancer! The Hound of Culann answers your summons!'
+            };
+          } else if (val === 'preset_jalter_avenger' || val === 'preset_dark_avenger') {
+            presetQuotes = {
+              noblePhantasm: 'La Grondement du Haine! Burn to cinders!',
+              battleStart: 'Your life expires here. Turn every single soul to ash!',
+              victory: 'Ashes to ashes. None shall stand against my black flames!',
+              defeat: 'Curse you all... My hatred is an infinite inferno!',
+              busterChain: 'Burn! BURN TO CINDERS! There is no salvation for you!',
+              artsChain: 'Curse the heavens, curse the earth... Dark fire burns brightest!',
+              quickChain: 'Too slow! I\'ll carve you up before you even scream!',
+              summon: 'I emerge from the dark flames to claim retribution.'
+            };
+          }
+          targetServant.customQuotes = { ...(targetServant.customQuotes || {}), ...presetQuotes };
+          actionOutcomeMsg = `💬 Applied voice line dialogue preset for **${sName}**! Replay cut-in to listen.`;
         }
 
-        targetServant.customQuotes = { ...(targetServant.customQuotes || {}), ...presetQuotes };
         master.servants = master.servants.map((s: any) => s.id === targetServant.id ? targetServant : s);
         await saveMaster(master);
-        actionOutcomeMsg = `💬 Applied voice line dialogue preset! Replay cut-in to listen.`;
+      }
+      else if (i.customId === 'servant_act_reset_dialogue') {
+        targetServant.customQuotes = {};
+        master.servants = master.servants.map((s: any) => s.id === targetServant.id ? targetServant : s);
+        await saveMaster(master);
+        actionOutcomeMsg = `✨ Cleared custom quotes for **${sName}**! Restored to exact canon lore defaults.`;
+      }
+      else if (i.customId === 'servant_act_open_dialogue_modal') {
+        const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = await import('discord.js');
+        const modal = new ModalBuilder()
+          .setCustomId(`modal_quotes:${targetServant.id}`)
+          .setTitle(`Custom Voice Lines: ${sName.slice(0, 20)}`);
+
+        const quotes = targetServant.customQuotes || {};
+
+        const busterInput = new TextInputBuilder()
+          .setCustomId('quote_buster')
+          .setLabel('🔴 Buster Brave Chain Line')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('e.g. Blade of Selection... Strike true!')
+          .setValue(quotes.busterChain || '')
+          .setRequired(false);
+
+        const artsInput = new TextInputBuilder()
+          .setCustomId('quote_arts')
+          .setLabel('🔵 Arts Mana Chain Line')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('e.g. With pure heart and steadfast oath!')
+          .setValue(quotes.artsChain || '')
+          .setRequired(false);
+
+        const quickInput = new TextInputBuilder()
+          .setCustomId('quote_quick')
+          .setLabel('🟢 Quick Star Chain Line')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('e.g. Invisible Air, release!')
+          .setValue(quotes.quickChain || '')
+          .setRequired(false);
+
+        const npInput = new TextInputBuilder()
+          .setCustomId('quote_np')
+          .setLabel('💥 Noble Phantasm Chant')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('e.g. Gathered breath of the planet... EX---CALIBUR!')
+          .setValue(quotes.noblePhantasm || '')
+          .setRequired(false);
+
+        const startInput = new TextInputBuilder()
+          .setCustomId('quote_battleStart')
+          .setLabel('⚔️ Battle Start Quote')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('e.g. I take the field! Saber, moving out!')
+          .setValue(quotes.battleStart || '')
+          .setRequired(false);
+
+        modal.addComponents(
+          new ActionRowBuilder<any>().addComponents(busterInput),
+          new ActionRowBuilder<any>().addComponents(artsInput),
+          new ActionRowBuilder<any>().addComponents(quickInput),
+          new ActionRowBuilder<any>().addComponents(npInput),
+          new ActionRowBuilder<any>().addComponents(startInput)
+        );
+
+        await i.showModal(modal);
+        return;
       }
       // QUICK FEED BUTTONS
       else if (i.customId === 'servant_act_feed_3star') {

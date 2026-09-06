@@ -221,17 +221,29 @@ client.on(Events.InteractionCreate, async interaction => {
         const servant = master.servants?.find((s: any) => s.id === servantId);
 
         if (servant) {
-          // Read the text values typed into the modal input boxes
-          const summonQuote = interaction.fields.getTextInputValue('quote_summon');
-          const npQuote = interaction.fields.getTextInputValue('quote_np');
-          const victoryQuote = interaction.fields.getTextInputValue('quote_victory');
+          // Read the text values typed into the modal input boxes safely
+          const getVal = (id: string) => {
+            try { return interaction.fields.getTextInputValue(id); } catch { return ''; }
+          };
+
+          const summonQuote = getVal('quote_summon');
+          const npQuote = getVal('quote_np');
+          const victoryQuote = getVal('quote_victory');
+          const battleStart = getVal('quote_battleStart');
+          const busterChain = getVal('quote_buster');
+          const artsChain = getVal('quote_arts');
+          const quickChain = getVal('quote_quick');
 
           // Update servant quotes (keep existing quote if the user left a field blank)
           servant.customQuotes = {
             ...servant.customQuotes,
-            summon: summonQuote || servant.customQuotes.summon,
-            noblePhantasm: npQuote || servant.customQuotes.noblePhantasm,
-            victory: victoryQuote || servant.customQuotes.victory
+            ...(summonQuote ? { summon: summonQuote } : {}),
+            ...(npQuote ? { noblePhantasm: npQuote } : {}),
+            ...(victoryQuote ? { victory: victoryQuote } : {}),
+            ...(battleStart ? { battleStart } : {}),
+            ...(busterChain ? { busterChain } : {}),
+            ...(artsChain ? { artsChain } : {}),
+            ...(quickChain ? { quickChain } : {})
           };
 
           // Save back to master database
@@ -239,7 +251,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
           await interaction.reply({
             ephemeral: true,
-            content: `✅ Custom quotes successfully saved for **${servant.template.name}**!`
+            content: `💬 Custom voice lines and combat chants saved for **${servant.nickname || servant.template.name}**!`
           });
         }
       }
