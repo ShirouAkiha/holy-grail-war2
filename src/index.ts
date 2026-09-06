@@ -70,6 +70,7 @@ import {
   executeWarAction, 
   patrolCityInWar, 
   simulateWarSkirmish,
+  setChannelTrapInWar,
   disarmChannelTrapsInWar,
   recallFamiliarsInWar,
   enterChurchSanctuary,
@@ -120,6 +121,11 @@ commands.set(feedCommand.data.name, feedCommand);
 commands.set(gachaCommand.data.name, gachaCommand);
 commands.set(attackCommand.data.name, attackCommand);
 commands.set(ambushCommand.data.name, ambushCommand);
+commands.set(trapCommand.data.name, trapCommand);
+commands.set(familiarCommand.data.name, familiarCommand);
+commands.set(leakCommand.data.name, leakCommand);
+commands.set(patrolCommand.data.name, patrolCommand);
+commands.set(equipCommand.data.name, equipCommand);
 
 // Alias mapping for backward-compatible text shortcuts and interactions
 export const commandAliasMap: Record<string, any> = {
@@ -130,7 +136,9 @@ export const commandAliasMap: Record<string, any> = {
   leak: leakCommand,
   patrol: patrolCommand,
   familiar: familiarCommand,
+  familiars: familiarCommand,
   trap: trapCommand,
+  traps: trapCommand,
   equip: equipCommand,
   feed: feedCommand,
   enhance: feedCommand,
@@ -375,6 +383,58 @@ client.on(Events.InteractionCreate, async interaction => {
       return;
     }
 
+    // ROUTE C.2: Channel Select Menus (e.g. choosing channel sector for Bounded Field traps)
+    if (interaction.isChannelSelectMenu()) {
+      if (interaction.customId === 'war_trap_channel_select') {
+        const selectedChanId = interaction.values[0];
+        const selectedChan = interaction.guild?.channels.cache.get(selectedChanId);
+        const targetChanName = selectedChan ? `#${selectedChan.name}` : `#${selectedChanId}`;
+
+        const promptEmbed = new EmbedBuilder()
+          .setTitle(`🕸️ Anchor Bounded Field in ${targetChanName}`)
+          .setDescription(
+            `You selected target channel: **${targetChanName}**\n\n` +
+            `Choose which Bounded Field to deploy or manage in this sector:\n\n` +
+            `• 🚨 **Sensory Alarm Ward:** Conceals an early warning perimeter that exposes rival Master identity and Servant true class upon typing.\n` +
+            `• 🩸 **Bloodfort Mana Drain:** Traps the channel in a bounded field that siphons 1,800 HP from rival intruders directly into your Servant.\n` +
+            `• 🧹 **Disarm Sector:** Dissolves any Bounded Field you have placed in ${targetChanName}.\n\n` +
+            `*Or click Back to return to the War Hub.*`
+          )
+          .setColor(0x8b5cf6)
+          .setFooter({ text: `Sector Target: ${targetChanName} • Holy Grail War` });
+
+        const channelActionsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`war_anchor_alarm_${selectedChanId}`)
+            .setLabel(`Anchor Alarm (${targetChanName})`)
+            .setEmoji('🚨')
+            .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+            .setCustomId(`war_anchor_drain_${selectedChanId}`)
+            .setLabel(`Anchor Drain (${targetChanName})`)
+            .setEmoji('🩸')
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId(`war_anchor_disarm_${selectedChanId}`)
+            .setLabel(`Disarm ${targetChanName}`)
+            .setEmoji('🧹')
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId('war_tab_traps')
+            .setLabel('Back to Traps')
+            .setEmoji('⬅️')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        await interaction.update({
+          embeds: [promptEmbed],
+          components: [channelActionsRow]
+        });
+        return;
+      }
+      return;
+    }
+
     // ROUTE D: Button Component Interactions
     if (interaction.isButton()) {
       if (interaction.replied || interaction.deferred) return;
@@ -423,6 +483,45 @@ client.on(Events.InteractionCreate, async interaction => {
       const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
       let war = getOrInitWarSession(master);
       const isCivilian = !master.servants || master.servants.length === 0;
+
+      // Trap actions from channel select menu or trap hub
+      if (btnId.startsWith('war_anchor_alarm_') || btnId.startsWith('trap_set_alarm_')) {
+        const chanId = btnId.replace('war_anchor_alarm_', '').replace('trap_set_alarm_', '');
+        const chan = interaction.guild?.channels.cache.get(chanId);
+        const chanName = chan ? `#${chan.name}` : `#${chanId}`;
+        const res = setChannelTrapInWar(war, interaction.user.id, interaction.user.username, chanName, 'alarm');
+        war = res.updatedWar;
+        await saveMaster(master);
+        await interaction.reply({ content: `${res.success ? '✅' : '⚠️'} ${res.message}`, flags: MessageFlags.Ephemeral });
+        return;
+      }
+      if (btnId.startsWith('war_anchor_drain_') || btnId.startsWith('trap_set_drain_')) {
+        const chanId = btnId.replace('war_anchor_drain_', '').replace('trap_set_drain_', '');
+        const chan = interaction.guild?.channels.cache.get(chanId);
+        const chanName = chan ? `#${chan.name}` : `#${chanId}`;
+        const res = setChannelTrapInWar(war, interaction.user.id, interaction.user.username, chanName, 'drain');
+        war = res.updatedWar;
+        await saveMaster(master);
+        await interaction.reply({ content: `${res.success ? '✅' : '⚠️'} ${res.message}`, flags: MessageFlags.Ephemeral });
+        return;
+      }
+      if (btnId.startsWith('war_anchor_disarm_') || btnId.startsWith('trap_disarm_')) {
+        const chanId = btnId.replace('war_anchor_disarm_', '').replace('trap_disarm_', '');
+        const chan = interaction.guild?.channels.cache.get(chanId);
+        const chanName = chan ? `#${chan.name}` : `#${chanId}`;
+        const res = disarmChannelTrapsInWar(war, interaction.user.id, chanName);
+        war = res.updatedWar;
+        await saveMaster(master);
+        await interaction.reply({ content: `🧹 ${res.message}`, flags: MessageFlags.Ephemeral });
+        return;
+      }
+      if (btnId === 'war_status_board') {
+        const uP = war.participants[interaction.user.id];
+        const embed = buildWarEmbed(war, uP, '🏰 Welcome to the Holy Grail War Board!');
+        const btns = buildWarButtons();
+        await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
+        return;
+      }
 
       // Quick Daily & Navigation Buttons
       if (btnId === 'quick_profile_view') {

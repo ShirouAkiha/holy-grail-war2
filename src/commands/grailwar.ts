@@ -6,6 +6,8 @@ import {
   ButtonStyle, 
   EmbedBuilder,
   StringSelectMenuBuilder,
+  ChannelSelectMenuBuilder,
+  ChannelType,
   ComponentType
 , MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
@@ -248,13 +250,16 @@ export function buildGrailWarHub(
     const userTraps = (war.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
     let desc = '';
     if (userTraps.length === 0) {
-      desc = 'You currently have **no active Bounded Field traps** placed in any channel sectors.\n\nLay a hidden trap to surprise rivals!';
+      desc = 'You currently have **no active Bounded Field traps** placed in any channel sectors.\n\n' +
+        '• **Place in current channel:** Use the quick buttons below.\n' +
+        '• **Place in another server channel:** Select any channel from the dropdown menu below, or use `/trap set type:... channel:#target`!';
     } else {
       desc = `You currently command **${userTraps.length}/2** active Bounded Field traps:\n\n` +
         userTraps.map((t, idx) => {
           const typeLabel = t.trapType === 'alarm' ? '🚨 **Alarm Ward** (Exposes intruder identity)' : '🩸 **Bloodfort Drain** (Siphons 1,800 HP)';
           return `**${idx + 1}. Sector ${t.channelName}** — ${typeLabel}\n*Deployed <t:${Math.floor(t.createdAt / 1000)}:R>*`;
-        }).join('\n\n');
+        }).join('\n\n') +
+        '\n\n🎯 **To anchor or disarm in other server channels:** Select an existing channel from the dropdown menu below!';
     }
 
     const embed = new EmbedBuilder()
@@ -325,8 +330,8 @@ export function buildGrailWarHub(
   } else if (category === 'traps') {
     const userTraps = (war.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
     actionButtonsRow.addComponents(
-      new ButtonBuilder().setCustomId('war_place_trap_alarm').setLabel('Place Alarm Ward').setEmoji('🚨').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('war_place_trap_drain').setLabel('Place Bloodfort Drain').setEmoji('🩸').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('war_place_trap_alarm').setLabel('Place Alarm Ward (Current)').setEmoji('🚨').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('war_place_trap_drain').setLabel('Place Bloodfort Drain (Current)').setEmoji('🩸').setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId('disarm_all_traps').setLabel('Disarm All Traps').setEmoji('🧹').setStyle(ButtonStyle.Secondary).setDisabled(userTraps.length === 0)
     );
   } else if (category === 'church') {
@@ -344,7 +349,19 @@ export function buildGrailWarHub(
     new ButtonBuilder().setCustomId('war_link_duel').setLabel('Duel Arena (/duel)').setEmoji('⚔️').setStyle(ButtonStyle.Secondary)
   );
 
-  const components: any[] = [categoryNavRow, actionButtonsRow, crossHubShortcutsRow];
+  const components: any[] = [categoryNavRow, actionButtonsRow];
+
+  if (category === 'traps') {
+    const trapChannelSelectRow = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
+      new ChannelSelectMenuBuilder()
+        .setCustomId('war_trap_channel_select')
+        .setPlaceholder('🎯 Select an existing Discord channel to place Bounded Field...')
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+    );
+    components.push(trapChannelSelectRow);
+  }
+
+  components.push(crossHubShortcutsRow);
   return { embeds, components };
 }
 
@@ -436,16 +453,95 @@ export function attachGrailWarCollector(
         actionOutcome = res.message;
         await saveMaster(master);
       }
-      // TRAP ACTIONS
-      else if (i.customId === 'war_place_trap_alarm') {
+      // TRAP CHANNEL SELECTION & ACTIONS
+      else if (i.isChannelSelectMenu && i.isChannelSelectMenu() && i.customId === 'war_trap_channel_select') {
+        const selectedChanId = i.values[0];
+        const selectedChan = i.guild?.channels.cache.get(selectedChanId);
+        const targetChanName = selectedChan ? `#${selectedChan.name}` : `#${selectedChanId}`;
+
+        const promptEmbed = new EmbedBuilder()
+          .setTitle(`🕸️ Anchor Bounded Field in ${targetChanName}`)
+          .setDescription(
+            `You selected target channel: **${targetChanName}**\n\n` +
+            `Choose which Bounded Field to deploy or manage in this sector:\n\n` +
+            `• 🚨 **Sensory Alarm Ward:** Conceals an early warning perimeter that exposes rival Master identity and Servant true class upon typing.\n` +
+            `• 🩸 **Bloodfort Mana Drain:** Traps the channel in a bounded field that siphons 1,800 HP from rival intruders directly into your Servant.\n` +
+            `• 🧹 **Disarm Sector:** Dissolves any Bounded Field you have placed in ${targetChanName}.\n\n` +
+            `*Or click Back to return to the War Hub.*`
+          )
+          .setColor(0x8b5cf6)
+          .setFooter({ text: `Sector Target: ${targetChanName} • Holy Grail War` });
+
+        const channelActionsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`war_anchor_alarm_${selectedChanId}`)
+            .setLabel(`Anchor Alarm (${targetChanName})`)
+            .setEmoji('🚨')
+            .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+            .setCustomId(`war_anchor_drain_${selectedChanId}`)
+            .setLabel(`Anchor Drain (${targetChanName})`)
+            .setEmoji('🩸')
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId(`war_anchor_disarm_${selectedChanId}`)
+            .setLabel(`Disarm ${targetChanName}`)
+            .setEmoji('🧹')
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId('war_tab_traps')
+            .setLabel('Back to Traps')
+            .setEmoji('⬅️')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        await i.update({
+          embeds: [promptEmbed],
+          components: [channelActionsRow]
+        });
+        return;
+      } else if (i.customId.startsWith('war_anchor_alarm_')) {
+        const chanId = i.customId.replace('war_anchor_alarm_', '');
+        const chan = i.guild?.channels.cache.get(chanId);
+        const chanName = chan ? `#${chan.name}` : `#${chanId}`;
+        const res = setChannelTrapInWar(war, i.user.id, i.user.username, chanName, 'alarm');
+        war = res.updatedWar;
+        actionOutcome = res.message;
+        await saveMaster(master);
+        currentCategory = 'traps';
+      } else if (i.customId.startsWith('war_anchor_drain_')) {
+        const chanId = i.customId.replace('war_anchor_drain_', '');
+        const chan = i.guild?.channels.cache.get(chanId);
+        const chanName = chan ? `#${chan.name}` : `#${chanId}`;
+        const res = setChannelTrapInWar(war, i.user.id, i.user.username, chanName, 'drain');
+        war = res.updatedWar;
+        actionOutcome = res.message;
+        await saveMaster(master);
+        currentCategory = 'traps';
+      } else if (i.customId.startsWith('war_anchor_disarm_')) {
+        const chanId = i.customId.replace('war_anchor_disarm_', '');
+        const chan = i.guild?.channels.cache.get(chanId);
+        const chanName = chan ? `#${chan.name}` : `#${chanId}`;
+        const res = disarmChannelTrapsInWar(war, i.user.id, chanName);
+        war = res.updatedWar;
+        actionOutcome = res.message;
+        await saveMaster(master);
+        currentCategory = 'traps';
+      } else if (i.customId === 'war_place_trap_alarm') {
         const res = setChannelTrapInWar(war, i.user.id, i.user.username, currentChan, 'alarm');
         war = res.updatedWar;
         actionOutcome = res.message;
+        if (!res.success) {
+          actionOutcome += '\n💡 *Tip: Select an existing channel from the dropdown menu below or use `/trap set type:alarm channel:#target` to anchor in a different channel.*';
+        }
         await saveMaster(master);
       } else if (i.customId === 'war_place_trap_drain') {
         const res = setChannelTrapInWar(war, i.user.id, i.user.username, currentChan, 'drain');
         war = res.updatedWar;
         actionOutcome = res.message;
+        if (!res.success) {
+          actionOutcome += '\n💡 *Tip: Select an existing channel from the dropdown menu below or use `/trap set type:drain channel:#target` to anchor in a different channel.*';
+        }
         await saveMaster(master);
       } else if (i.customId === 'disarm_all_traps') {
         const res = disarmChannelTrapsInWar(war, i.user.id);
