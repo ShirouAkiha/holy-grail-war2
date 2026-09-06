@@ -1780,6 +1780,358 @@ export async function renderDialogueCard(
   (canvas as any).__animTimer = timer;
 }
 
+/**
+ * Render a single frame of the Tragic Servant Defeat Visual Novel Cut-In (800x420)
+ */
+function renderDefeatSingleFrame(
+  ctx: any,
+  width: number,
+  height: number,
+  frameIdx: number,
+  speakerName: string,
+  defeatQuote: string,
+  defeatTag: string,
+  servantClass: string,
+  portraitImg: any,
+  bondOrLevel: number | string,
+  victorName: string,
+  victorImg: any,
+  victorClass: string,
+  bgImg: any = null,
+  stagePreset: string = 'fuyuki'
+) {
+  // 1. Somber Tragic Battlefield Stage Background with Crimson/Purple Vignette
+  drawBattlefieldStage(ctx, width, height, bgImg, stagePreset, frameIdx);
+
+  // Dark Tragic Vignette & Color Grading Overlay
+  const darkVignette = ctx.createRadialGradient(width / 2, height / 2, 100, width / 2, height / 2, 450);
+  darkVignette.addColorStop(0, 'rgba(15, 3, 5, 0.55)');
+  darkVignette.addColorStop(0.7, 'rgba(25, 4, 8, 0.88)');
+  darkVignette.addColorStop(1, 'rgba(8, 2, 3, 0.98)');
+  ctx.fillStyle = darkVignette;
+  ctx.fillRect(0, 0, width, height);
+
+  // 2. Rising Spirit Origin Dissolution Embers & Shattered Glass Shards
+  ctx.save();
+  for (let i = 0; i < 24; i++) {
+    const emberX = ((i * 37 + frameIdx * 8) % 760) + 20;
+    const emberY = 380 - ((i * 23 + frameIdx * 12) % 360);
+    const emberSize = (i % 3) + 2;
+    const alpha = Math.max(0.2, 1 - (380 - emberY) / 360);
+
+    ctx.fillStyle = i % 2 === 0 ? `rgba(239, 68, 68, ${alpha})` : `rgba(245, 158, 11, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(emberX, emberY, emberSize, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Floating Glass Fragment (Triangles)
+    if (i % 4 === 0) {
+      ctx.save();
+      ctx.translate(emberX, emberY);
+      ctx.rotate((frameIdx * 0.1) + i);
+      ctx.strokeStyle = `rgba(254, 240, 138, ${alpha * 0.7})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, -6);
+      ctx.lineTo(4, 4);
+      ctx.lineTo(-4, 4);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+  ctx.restore();
+
+  // 3. Defeated Servant Sprite (Left Side - 280x340) - Grayscale / Crimson Dissolution Tint
+  ctx.save();
+  const spriteW = 280;
+  const spriteH = 340;
+  const spriteX = 10;
+  const spriteY = 20;
+
+  // Crimson Dissolution Aura
+  const auraGrad = ctx.createRadialGradient(150, 180, 20, 150, 180, 180);
+  auraGrad.addColorStop(0, 'rgba(220, 38, 38, 0.35)');
+  auraGrad.addColorStop(0.7, 'rgba(127, 29, 29, 0.15)');
+  auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = auraGrad;
+  ctx.fillRect(spriteX - 20, spriteY, spriteW + 40, spriteH);
+
+  // Clip & Draw Defeated Servant Portrait
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(spriteX, spriteY, spriteW, spriteH);
+  ctx.clip();
+
+  if (portraitImg) {
+    drawImageCover(ctx, portraitImg, spriteX, spriteY, spriteW, spriteH);
+    // Apply Dark Crimson & Desaturation Tint Overlay over portrait
+    const tintGrad = ctx.createLinearGradient(spriteX, spriteY, spriteX, spriteY + spriteH);
+    tintGrad.addColorStop(0, 'rgba(20, 5, 5, 0.40)');
+    tintGrad.addColorStop(0.5, 'rgba(153, 27, 27, 0.30)');
+    tintGrad.addColorStop(1, 'rgba(10, 2, 2, 0.75)');
+    ctx.fillStyle = tintGrad;
+    ctx.fillRect(spriteX, spriteY, spriteW, spriteH);
+  } else {
+    const fbGrad = ctx.createLinearGradient(spriteX, spriteY, spriteX, spriteY + spriteH);
+    fbGrad.addColorStop(0, '#3b0707');
+    fbGrad.addColorStop(1, '#0f0202');
+    ctx.fillStyle = fbGrad;
+    ctx.fillRect(spriteX, spriteY, spriteW, spriteH);
+  }
+
+  // Vertical Scanning Dissolution Dissolve Lines
+  ctx.strokeStyle = 'rgba(239, 68, 68, 0.25)';
+  ctx.lineWidth = 1;
+  for (let ly = spriteY; ly < spriteY + spriteH; ly += 8) {
+    ctx.beginPath();
+    ctx.moveTo(spriteX, ly);
+    ctx.lineTo(spriteX + spriteW, ly);
+    ctx.stroke();
+  }
+
+  // Right Edge Smooth Fade
+  const fadeRight = ctx.createLinearGradient(spriteX + spriteW - 90, spriteY, spriteX + spriteW, spriteY);
+  fadeRight.addColorStop(0, 'rgba(10, 3, 5, 0)');
+  fadeRight.addColorStop(1, 'rgba(10, 3, 5, 0.95)');
+  ctx.fillStyle = fadeRight;
+  ctx.fillRect(spriteX + spriteW - 90, spriteY, 90, spriteH);
+
+  ctx.restore();
+
+  // Defeated Servant Badge: [ SPIRIT ORIGIN: SEVERED ]
+  const dBadgeW = 190;
+  const dBadgeH = 24;
+  const dBadgeX = spriteX + 10;
+  const dBadgeY = spriteY + 12;
+
+  ctx.fillStyle = 'rgba(153, 27, 27, 0.95)';
+  drawRoundRect(ctx, dBadgeX, dBadgeY, dBadgeW, dBadgeH, 4);
+  ctx.fill();
+  ctx.strokeStyle = '#ef4444';
+  ctx.lineWidth = 1.5;
+  drawRoundRect(ctx, dBadgeX, dBadgeY, dBadgeW, dBadgeH, 4);
+  ctx.stroke();
+
+  ctx.fillStyle = '#fef2f2';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('⚡ SPIRIT ORIGIN: SEVERED', dBadgeX + dBadgeW / 2, dBadgeY + 16);
+
+  ctx.restore();
+
+  // 4. Victor / Opponent Hovering Sprite (Right Side)
+  drawHoveringDefender(ctx, victorImg, victorName, victorClass, frameIdx);
+
+  // 5. Center Defeat Warning Header Banner (Golden / Crimson Filigree)
+  const bannerW = 360;
+  const bannerH = 38;
+  const bannerX = 220;
+  const bannerY = 22;
+
+  const bGrad = ctx.createLinearGradient(bannerX, bannerY, bannerX, bannerY + bannerH);
+  bGrad.addColorStop(0, '#991b1b');
+  bGrad.addColorStop(1, '#180303');
+  ctx.fillStyle = bGrad;
+  drawRoundRect(ctx, bannerX, bannerY, bannerW, bannerH, 4);
+  ctx.fill();
+
+  ctx.strokeStyle = '#dc2626';
+  ctx.lineWidth = 2;
+  drawRoundRect(ctx, bannerX, bannerY, bannerW, bannerH, 4);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(254, 240, 138, 0.4)';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, bannerX + 3, bannerY + 3, bannerW - 6, bannerH - 6, 3);
+  ctx.stroke();
+
+  // Header Title
+  const cleanTag = (defeatTag || 'SPIRIT ORIGIN DISSOLVED').toUpperCase();
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`[ ${cleanTag} ]`, bannerX + bannerW / 2, bannerY + 16);
+
+  ctx.fillStyle = '#fca5a5';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.fillText('Contract Severance • Final Defeat Quote', bannerX + bannerW / 2, bannerY + 30);
+
+  // 6. Visual Novel Dialogue Ribbon (Lower Section - 756x154)
+  const boxX = 22;
+  const boxY = 248;
+  const boxW = 756;
+  const boxH = 154;
+
+  // Obsidian Base Box
+  ctx.fillStyle = 'rgba(12, 4, 6, 0.94)';
+  drawRoundRect(ctx, boxX, boxY, boxW, boxH, 4);
+  ctx.fill();
+
+  // Double Metallic Border (Crimson Outer, Gold Inner)
+  ctx.strokeStyle = '#dc2626';
+  ctx.lineWidth = 2;
+  drawRoundRect(ctx, boxX, boxY, boxW, boxH, 4);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(217, 119, 6, 0.5)';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, boxX + 3, boxY + 3, boxW - 6, boxH - 6, 3);
+  ctx.stroke();
+
+  // Corner Filigree Brackets
+  const boxCbLen = 12;
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(boxX + 3, boxY + 3 + boxCbLen);
+  ctx.lineTo(boxX + 3, boxY + 3);
+  ctx.lineTo(boxX + 3 + boxCbLen, boxY + 3);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(boxX + boxW - 3 - boxCbLen, boxY + 3);
+  ctx.lineTo(boxX + boxW - 3, boxY + 3);
+  ctx.lineTo(boxX + boxW - 3, boxY + 3 + boxCbLen);
+  ctx.stroke();
+
+  // 7. Speaker Nameplate Tab (Overlapping top-left)
+  ctx.font = 'bold 15px sans-serif';
+  const nameLabel = `${speakerName} [${(servantClass || 'Servant').toUpperCase()} • DEFEATED]`;
+  const nameMetrics = ctx.measureText(nameLabel);
+  const nameW = Math.max(200, Math.min(380, nameMetrics.width + 36));
+  const nameH = 30;
+  const nameX = boxX + 20;
+  const nameY = boxY - 16;
+
+  ctx.fillStyle = '#170303';
+  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
+  ctx.fill();
+
+  ctx.strokeStyle = '#dc2626';
+  ctx.lineWidth = 2;
+  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(nameLabel, nameX + nameW / 2, nameY + 20);
+
+  // 8. Tragic Defeat Dialogue Quote Text (Large, High Contrast 23px Serif)
+  const textX = boxX + 28;
+  const textY = boxY + 42;
+  const maxTextW = boxW - 56;
+  const lineHeight = 32;
+
+  ctx.fillStyle = '#fff1f2';
+  ctx.font = 'italic bold 23px Georgia, "Times New Roman", serif';
+  ctx.textAlign = 'left';
+
+  const cleanQuote = defeatQuote.replace(/^["“]/, '').replace(/["”]$/, '').trim();
+  drawWrappedText(ctx, `“${cleanQuote}”`, textX, textY, maxTextW, lineHeight, 3);
+
+  // 9. Pulsing Shattered Gem Prompt Indicator (Bottom Right)
+  const promptScale = frameIdx % 2 === 0 ? 6 : 5;
+  drawSparkDiamond(ctx, boxX + boxW - 24, boxY + boxH - 20, promptScale, '#ef4444');
+}
+
+/**
+ * Render Visual Novel Defeat Dialogue Cut-In (Client Browser Canvas)
+ */
+export async function renderDefeatDialogueCard(
+  canvas: HTMLCanvasElement,
+  speakerName: string,
+  defeatQuote: string,
+  defeatTag: string = 'SPIRIT ORIGIN DISSOLVED',
+  servantClass: string = 'Saber',
+  avatarUrl?: string,
+  bondOrLevel: number | string = 8,
+  victorName: string = 'Opponent Servant',
+  victorAvatarUrl?: string,
+  victorClass: string = 'Enemy',
+  battlefieldPresetOrBg: string = 'fuyuki'
+) {
+  if (!canvas) return;
+
+  if ((canvas as any).__animTimer) {
+    clearInterval((canvas as any).__animTimer);
+    (canvas as any).__animTimer = null;
+  }
+
+  if (canvas.width !== 800 || canvas.height !== 420) {
+    canvas.width = 800;
+    canvas.height = 420;
+  }
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  let bgImg: HTMLImageElement | null = null;
+  let stagePreset = 'fuyuki';
+
+  if (battlefieldPresetOrBg) {
+    if (battlefieldPresetOrBg.startsWith('http') || battlefieldPresetOrBg.startsWith('data:')) {
+      bgImg = await loadBrowserImage(battlefieldPresetOrBg);
+    } else {
+      stagePreset = battlefieldPresetOrBg;
+    }
+  }
+
+  const [portraitImg, victorImg] = await Promise.all([
+    loadBrowserImage(avatarUrl),
+    loadBrowserImage(victorAvatarUrl)
+  ]);
+
+  renderDefeatSingleFrame(
+    ctx,
+    800,
+    420,
+    2,
+    speakerName,
+    defeatQuote,
+    defeatTag,
+    servantClass,
+    portraitImg,
+    bondOrLevel,
+    victorName,
+    victorImg,
+    victorClass,
+    bgImg,
+    stagePreset
+  );
+
+  let frame = 2;
+  const timer = setInterval(() => {
+    if (!canvas.isConnected) {
+      clearInterval(timer);
+      (canvas as any).__animTimer = null;
+      return;
+    }
+    frame = (frame + 1) % 8;
+    ctx.clearRect(0, 0, 800, 420);
+    renderDefeatSingleFrame(
+      ctx,
+      800,
+      420,
+      frame,
+      speakerName,
+      defeatQuote,
+      defeatTag,
+      servantClass,
+      portraitImg,
+      bondOrLevel,
+      victorName,
+      victorImg,
+      victorClass,
+      bgImg,
+      stagePreset
+    );
+  }, 120);
+
+  (canvas as any).__animTimer = timer;
+}
+
 function loadBrowserImage(url?: string): Promise<HTMLImageElement | null> {
   if (!url) return Promise.resolve(null);
   return new Promise((resolve) => {

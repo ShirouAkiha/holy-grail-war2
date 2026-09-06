@@ -38,9 +38,10 @@ import { CRAFT_ESSENCE_DATABASE } from '../lib/data/craftEssences';
 import {
   renderServantProfileCard,
   renderDialogueCard,
+  renderDefeatDialogueCard,
   renderBattleTurnSummary
 } from '../lib/canvas/browserCanvas';
-import { getServantChainDialogue } from '@/src/engine/dialogue';
+import { getServantChainDialogue, getServantDefeatDialogue } from '@/src/engine/dialogue';
 import {
   calculateCurrentHp,
   calculateServantMaxHp,
@@ -392,7 +393,7 @@ interface DiscordMessage {
     imageUrl?: string;
     thumbnailUrl?: string;
   };
-  canvasType?: 'servant' | 'dialogue' | 'battle';
+  canvasType?: 'servant' | 'dialogue' | 'battle' | 'defeat_dialogue';
   canvasPayload?: any;
   artworkEmbed?: {
     title?: string;
@@ -1685,6 +1686,92 @@ export default function DiscordEmulator({
           }
         });
       }
+      return;
+    }
+
+    // ----------------------------------------------------
+    // COMMAND 3.4: /dialogue, /vn, /cutin (Visual Novel Dialogue Cut-Ins)
+    // ----------------------------------------------------
+    if (trimmed.startsWith('/dialogue') || trimmed.startsWith('/vn') || trimmed.startsWith('/cutin')) {
+      if (!activeServant) {
+        addMessage({
+          id: getNextId('bot_dia_err'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: 'No Active Servant',
+            description: 'You need an active Servant to render visual novel dialogue cut-ins! Summon one with `/summon ritual`.',
+            color: '#ef4444'
+          }
+        });
+        return;
+      }
+
+      const isDefeatMode = trimmed.includes('defeat') || trimmed.includes('dissolve') || trimmed.includes('death');
+      const speaker = activeServant.nickname || activeServant.template.name;
+      const servantClass = activeServant.template.servantClass;
+      const avatarUrl = activeServant.template.cardArtUrl || activeServant.template.avatarUrl;
+
+      if (isDefeatMode) {
+        const defeatDia = getServantDefeatDialogue(speaker, activeServant.customQuotes);
+        addMessage({
+          id: getNextId('bot_vn_defeat'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `☠️ VISUAL NOVEL CUT-IN — ${speaker.toUpperCase()} [DISSOLVED]`,
+            description:
+              `💬 **[SPIRIT ORIGIN DISSOLUTION] ${speaker}:**\n> ❝ ***${defeatDia.quote}*** ❞\n\n` +
+              `*The spiritual covenant breaks. Spectral embers rise from the dissolved saint graph.*`,
+            color: '#ef4444',
+            footer: 'Spirit Origin Dissolution Visual Novel Canvas'
+          },
+          canvasType: 'defeat_dialogue',
+          canvasPayload: {
+            speaker,
+            quote: defeatDia.quote,
+            title: 'SPIRIT ORIGIN DISSOLVED',
+            servantClass,
+            avatarUrl,
+            bondOrLevel: activeServant.bondLevel || 10,
+            defenderName: 'Gilgamesh Archer',
+            defenderClass: 'Archer',
+            defenderAvatarUrl: 'https://i.imgur.com/hyNsgc1.jpeg',
+            bgUrlOrPreset: 'fuyuki'
+          }
+        });
+        return;
+      }
+
+      // Default Tactical Chain Dialogue Cut-In
+      const chainDia = getServantChainDialogue(speaker, servantClass, ['Buster', 'Buster', 'Buster'], activeServant.customQuotes);
+      addMessage({
+        id: getNextId('bot_vn_chain'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: `💬 VISUAL NOVEL CUT-IN — ${speaker.toUpperCase()}`,
+          description:
+            `💬 **[TACTICAL CHAIN] ${speaker}:**\n> ❝ ***${chainDia.quote}*** ❞\n\n` +
+            `*Use \`/dialogue defeat\` to test the Spirit Origin Dissolution visual novel cut-in!*`,
+          color: '#d4af37',
+          footer: 'Tactical Combat Chain Visual Novel Canvas'
+        },
+        canvasType: 'dialogue',
+        canvasPayload: {
+          speaker,
+          quote: chainDia.quote,
+          title: 'TACTICAL COMBAT CHAIN',
+          servantClass,
+          avatarUrl,
+          bondOrLevel: activeServant.bondLevel || 10,
+          defenderName: 'Gilgamesh Archer',
+          defenderClass: 'Archer',
+          defenderAvatarUrl: 'https://i.imgur.com/hyNsgc1.jpeg',
+          sequence: ['Buster', 'Buster', 'Buster'],
+          bgUrlOrPreset: 'fuyuki'
+        }
+      });
       return;
     }
 
@@ -8401,6 +8488,20 @@ function CanvasRenderer({ canvasType, payload }: { canvasType: string; payload: 
         payload.sequence || ['Buster', 'Buster', 'Buster'],
         payload.bgUrlOrPreset || 'fuyuki'
       );
+    } else if (canvasType === 'defeat_dialogue') {
+      renderDefeatDialogueCard(
+        canvas,
+        payload.speaker,
+        payload.quote,
+        payload.title || 'SPIRIT ORIGIN DISSOLVED',
+        payload.servantClass || 'Saber',
+        payload.avatarUrl,
+        payload.bondOrLevel || 8,
+        payload.defenderName || 'Opponent Servant',
+        payload.defenderAvatarUrl,
+        payload.defenderClass || 'Enemy',
+        payload.bgUrlOrPreset || 'fuyuki'
+      );
     } else if (canvasType === 'battle') {
       renderBattleTurnSummary(canvas, payload.log, payload.p1, payload.p2);
     }
@@ -8436,13 +8537,28 @@ function CanvasRenderer({ canvasType, payload }: { canvasType: string; payload: 
         payload.bgUrlOrPreset || 'fuyuki'
       );
       setIsPlaying(true);
+    } else if (canvasType === 'defeat_dialogue') {
+      renderDefeatDialogueCard(
+        canvas,
+        payload.speaker,
+        payload.quote,
+        payload.title || 'SPIRIT ORIGIN DISSOLVED',
+        payload.servantClass || 'Saber',
+        payload.avatarUrl,
+        payload.bondOrLevel || 8,
+        payload.defenderName || 'Opponent Servant',
+        payload.defenderAvatarUrl,
+        payload.defenderClass || 'Enemy',
+        payload.bgUrlOrPreset || 'fuyuki'
+      );
+      setIsPlaying(true);
     }
   };
 
   return (
     <div className="relative group">
       <canvas ref={canvasRef} className="w-full h-auto rounded block" />
-      {canvasType === 'dialogue' && (
+      {(canvasType === 'dialogue' || canvasType === 'defeat_dialogue') && (
         <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-black/80 backdrop-blur-sm border border-amber-500/40 rounded px-2 py-0.5 text-[11px] font-mono text-amber-300 pointer-events-auto">
           <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'}`} />
           <span>{isPlaying ? 'ANIMATED LOOP' : 'PAUSED'}</span>

@@ -25,7 +25,8 @@ import {
   rollFleeSuccess,
   CombatTurnLog
 } from '../engine/battle';
-import { renderBattleTurnSummary } from '../canvas/nodeCanvasRenderer';
+import { renderBattleTurnSummary, renderDefeatDialogueCard } from '../canvas/nodeCanvasRenderer';
+import { getServantDefeatDialogue } from '../../src/engine/dialogue';
 import { CardType } from '../types';
 
 export const data = new SlashCommandBuilder()
@@ -439,8 +440,39 @@ export async function attachDuelCollector(
 
         if (battleState.turnPhase === 'victory' || battleState.turnPhase === 'defeat') {
           const isVic = battleState.winnerId === battleState.player1.id;
+          const p1Name = activeServant?.nickname || activeServant?.template?.name || 'Your Servant';
+          const defeatDia = getServantDefeatDialogue(p1Name, activeServant?.customQuotes);
+
           battleState = undefined;
           currentCategory = 'arena';
+
+          if (!isVic) {
+            const defeatBuffer = await renderDefeatDialogueCard(
+              p1Name,
+              defeatDia.quote,
+              'SPIRIT ORIGIN DISSOLVED',
+              activeServant?.template?.servantClass || 'Saber',
+              activeServant?.template?.avatarUrl,
+              activeServant?.level || 10,
+              'Opponent Servant',
+              undefined,
+              'Enemy',
+              'fuyuki'
+            );
+            const attachment = new AttachmentBuilder(defeatBuffer, { name: 'defeat_dialogue.png' });
+            const hub = await buildDuelHub(
+              master,
+              activeServant,
+              'arena',
+              undefined,
+              undefined,
+              "[DEFEAT] Your Servant fell in combat.\n" + p1Name + ": \"" + defeatDia.quote + "\""
+            );
+            hub.embeds[0].setImage('attachment://defeat_dialogue.png');
+            hub.files = [attachment];
+            await i.editReply(hub);
+            return;
+          }
 
           const hub = await buildDuelHub(
             master,
@@ -448,9 +480,7 @@ export async function attachDuelCollector(
             'arena',
             undefined,
             undefined,
-            isVic 
-              ? '🏆 **VICTORY ACHIEVED!** Earned +300 Bond EXP, +3 Saint Quartz, +50 Glory Points!'
-              : '☠️ **DEFEAT.** Your Servant fell in combat.'
+            '🏆 **VICTORY ACHIEVED!** Earned +300 Bond EXP, +3 Saint Quartz, +50 Glory Points!'
           );
           await i.editReply(hub);
           return;

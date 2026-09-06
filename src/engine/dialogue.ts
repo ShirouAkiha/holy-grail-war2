@@ -620,3 +620,26 @@ export function shouldTriggerDialogueCutIn(
 
   return isBraveChain;
 }
+
+/**
+ * Retrieves the authentic Servant defeat quote and tag.
+ * Checks custom quotes first, then desperation profile lines, then fallback.
+ */
+export function getServantDefeatDialogue(
+  servantName: string,
+  customQuotes?: { defeat?: string; desperation?: string }
+): { quote: string; tag: string } {
+  if (customQuotes?.defeat) {
+    return {
+      quote: customQuotes.defeat,
+      tag: 'SPIRIT ORIGIN DISSOLVED'
+    };
+  }
+
+  const profile = getServantProfile(servantName);
+  const quote = profile.desperation?.[0] || customQuotes?.desperation || "Master... Forgive me... My spirit origin is dissolving...";
+  return {
+    quote,
+    tag: 'SPIRIT ORIGIN DISSOLVED'
+  };
+}
