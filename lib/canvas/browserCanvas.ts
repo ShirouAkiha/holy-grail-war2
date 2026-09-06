@@ -1352,7 +1352,8 @@ function drawHoveringDefender(
   defenderImg: HTMLImageElement | null,
   defenderName: string,
   defenderClass: string,
-  frameIdx: number
+  frameIdx: number,
+  hideTargetHUD: boolean = false
 ) {
   ctx.save();
   const sprX = 510;
@@ -1417,51 +1418,53 @@ function drawHoveringDefender(
     drawVectorCrossedSwords(ctx, sprX + sprW / 2, sprY + 140, 18, '#f87171');
   }
 
-  // Tactical Crosshair Reticle (cx: 650, cy: 120)
-  const cx = 650;
-  const cy = 120;
-  const crosshairAngle = (frameIdx * 45 * Math.PI) / 180;
-  const crosshairScale = frameIdx === 4 ? 0.9 : frameIdx === 2 ? 1.15 : 1.0;
+  if (!hideTargetHUD) {
+    // Tactical Crosshair Reticle (cx: 650, cy: 120)
+    const cx = 650;
+    const cy = 120;
+    const crosshairAngle = (frameIdx * 45 * Math.PI) / 180;
+    const crosshairScale = frameIdx === 4 ? 0.9 : frameIdx === 2 ? 1.15 : 1.0;
 
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.scale(crosshairScale, crosshairScale);
-  ctx.rotate(crosshairAngle);
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(crosshairScale, crosshairScale);
+    ctx.rotate(crosshairAngle);
 
-  ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)';
-  ctx.lineWidth = 1.4;
-  ctx.beginPath();
-  ctx.arc(0, 0, 24, 0, Math.PI * 2);
-  ctx.stroke();
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(0, 0, 24, 0, Math.PI * 2);
+    ctx.stroke();
 
-  // Crosshair Ticks
-  ctx.beginPath();
-  ctx.moveTo(-32, 0); ctx.lineTo(-16, 0);
-  ctx.moveTo(16, 0); ctx.lineTo(32, 0);
-  ctx.moveTo(0, -32); ctx.lineTo(0, -16);
-  ctx.moveTo(0, 16); ctx.lineTo(0, 32);
-  ctx.stroke();
-  ctx.restore();
+    // Crosshair Ticks
+    ctx.beginPath();
+    ctx.moveTo(-32, 0); ctx.lineTo(-16, 0);
+    ctx.moveTo(16, 0); ctx.lineTo(32, 0);
+    ctx.moveTo(0, -32); ctx.lineTo(0, -16);
+    ctx.moveTo(0, 16); ctx.lineTo(0, 32);
+    ctx.stroke();
+    ctx.restore();
 
-  // Floating [ TARGET: LOCKED ] Crimson HUD Badge (Top-Right)
-  const badgeW = 140;
-  const badgeH = 26;
-  const badgeX = 630;
-  const badgeY = 20;
+    // Floating [ TARGET: LOCKED ] Crimson HUD Badge (Top-Right)
+    const badgeW = 140;
+    const badgeH = 26;
+    const badgeX = 630;
+    const badgeY = 20;
 
-  ctx.fillStyle = 'rgba(127, 29, 29, 0.92)';
-  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
-  ctx.fill();
-  ctx.strokeStyle = '#ef4444';
-  ctx.lineWidth = 1.5;
-  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
-  ctx.stroke();
+    ctx.fillStyle = 'rgba(127, 29, 29, 0.92)';
+    drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
+    ctx.fill();
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 1.5;
+    drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
+    ctx.stroke();
 
-  drawMiniReticle(ctx, badgeX + 16, badgeY + 13, '#f87171');
-  ctx.fillStyle = '#fee2e2';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('TARGET: LOCKED', badgeX + badgeW / 2 + 8, badgeY + 17);
+    drawMiniReticle(ctx, badgeX + 16, badgeY + 13, '#f87171');
+    ctx.fillStyle = '#fee2e2';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('TARGET: LOCKED', badgeX + badgeW / 2 + 8, badgeY + 17);
+  }
 
   // Floating Defender Nameplate above the Dialogue Box
   const nameBoxW = 200;
@@ -1595,7 +1598,7 @@ function renderDialogueSingleFrame(
   drawHoveringAttacker(ctx, portraitImg, speakerName, servantClass, bondOrLevel, frameIdx);
 
   // 3. Defender Hovering Sprite (Right Side)
-  drawHoveringDefender(ctx, defenderImg, defenderName, defenderClass, frameIdx);
+  drawHoveringDefender(ctx, defenderImg, defenderName, defenderClass, frameIdx, true);
 
   // 4. Center Tactical Command Cards & Active Chain HUD
   if (chainTagOrTitle !== 'VICTORY INVOCATION' && chainTagOrTitle !== 'DIALOGUE' && chainTagOrTitle !== 'SUMMON INVOCATION') {
@@ -1923,7 +1926,7 @@ function renderDefeatSingleFrame(
   ctx.restore();
 
   // 4. Victor / Opponent Hovering Sprite (Right Side)
-  drawHoveringDefender(ctx, victorImg, victorName, victorClass, frameIdx);
+  drawHoveringDefender(ctx, victorImg, victorName, victorClass, frameIdx, true);
 
   // 5. Center Defeat Warning Header Banner (Golden / Crimson Filigree)
   const bannerW = 360;

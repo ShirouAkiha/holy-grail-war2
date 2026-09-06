@@ -1910,7 +1910,8 @@ function drawHoveringDefender(
   defenderImg: any,
   defenderName: string,
   defenderClass: string,
-  frameIdx: number = 0
+  frameIdx: number = 0,
+  hideTargetHUD: boolean = false
 ) {
   ctx.save();
   const spriteW = 280;
@@ -1974,48 +1975,52 @@ function drawHoveringDefender(
   }
 
   // Tactical Crosshair Reticle over opponent (rotates 45 degrees dynamically every frame)
-  const cx = 650;
-  const cy = 120;
-  const crosshairAngle = (frameIdx * Math.PI) / 4;
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(crosshairAngle);
+  if (!hideTargetHUD) {
+    const cx = 650;
+    const cy = 120;
+    const crosshairAngle = (frameIdx * Math.PI) / 4;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(crosshairAngle);
 
-  ctx.strokeStyle = 'rgba(239, 68, 68, 0.75)';
-  ctx.lineWidth = 1.4;
-  ctx.beginPath();
-  ctx.arc(0, 0, 22, 0, Math.PI * 2);
-  ctx.stroke();
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.75)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.arc(0, 0, 22, 0, Math.PI * 2);
+    ctx.stroke();
 
-  ctx.beginPath();
-  ctx.moveTo(-30, 0); ctx.lineTo(-14, 0);
-  ctx.moveTo(14, 0);  ctx.lineTo(30, 0);
-  ctx.moveTo(0, -30); ctx.lineTo(0, -14);
-  ctx.moveTo(0, 14);  ctx.lineTo(0, 30);
-  ctx.stroke();
-  ctx.restore();
+    ctx.beginPath();
+    ctx.moveTo(-30, 0); ctx.lineTo(-14, 0);
+    ctx.moveTo(14, 0);  ctx.lineTo(30, 0);
+    ctx.moveTo(0, -30); ctx.lineTo(0, -14);
+    ctx.moveTo(0, 14);  ctx.lineTo(0, 30);
+    ctx.stroke();
+    ctx.restore();
+  }
 
   ctx.restore();
 
   // 3. Floating [ TARGET: LOCKED ] Crimson HUD Badge (Top Right)
-  const badgeW = 138;
-  const badgeH = 22;
-  const badgeX = spriteX + spriteW - badgeW - 16;
-  const badgeY = spriteY + 16;
+  if (!hideTargetHUD) {
+    const badgeW = 138;
+    const badgeH = 22;
+    const badgeX = spriteX + spriteW - badgeW - 16;
+    const badgeY = spriteY + 16;
 
-  ctx.fillStyle = 'rgba(127, 29, 29, 0.92)';
-  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
-  ctx.fill();
-  ctx.strokeStyle = '#ef4444';
-  ctx.lineWidth = 1.5;
-  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
-  ctx.stroke();
+    ctx.fillStyle = 'rgba(127, 29, 29, 0.92)';
+    drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
+    ctx.fill();
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 1.5;
+    drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
+    ctx.stroke();
 
-  drawMiniReticle(ctx, badgeX + 16, badgeY + 11, '#fca5a5');
-  ctx.fillStyle = '#fee2e2';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('TARGET: LOCKED', badgeX + badgeW / 2 + 7, badgeY + 15);
+    drawMiniReticle(ctx, badgeX + 16, badgeY + 11, '#fca5a5');
+    ctx.fillStyle = '#fee2e2';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('TARGET: LOCKED', badgeX + badgeW / 2 + 7, badgeY + 15);
+  }
 
   // 4. Floating Defender Nameplate
   const nameW = 180;
@@ -2319,7 +2324,7 @@ function renderDialogueSingleFrame(
   drawHoveringAttacker(ctx, portraitImg, speakerName, servantClass, bondOrLevel, frameIdx);
 
   // 3. Defender Hovering Sprite (Right Side)
-  drawHoveringDefender(ctx, defenderImg, defenderName, defenderClass, frameIdx);
+  drawHoveringDefender(ctx, defenderImg, defenderName, defenderClass, frameIdx, true);
 
   // 4. Center Tactical Command Cards & Active Chain HUD
   if (chainTagOrTitle !== 'VICTORY INVOCATION' && chainTagOrTitle !== 'DIALOGUE' && chainTagOrTitle !== 'SUMMON INVOCATION') {
@@ -2732,7 +2737,7 @@ function renderDefeatSingleFrame(
   ctx.restore();
 
   // 4. Victor / Opponent Hovering Sprite (Right Side - Sharp Contrast)
-  drawHoveringDefender(ctx, victorImg, victorName, victorClass, frameIdx);
+  drawHoveringDefender(ctx, victorImg, victorName, victorClass, frameIdx, true);
 
   // 5. Center Defeat Warning Header Banner (Golden / Crimson Filigree)
   const bannerW = 360;
