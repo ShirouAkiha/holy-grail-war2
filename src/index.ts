@@ -48,6 +48,8 @@ import { buildDefensesEmbed, buildDefensesButtons } from './commands/defenses';
 import { buildChurchEmbed, buildChurchButtons } from './commands/church';
 import { buildWarEmbed, buildWarButtons } from './commands/grailwar';
 import { handleGlobalInventoryInteraction } from './commands/customise';
+import { buildGachaHub, attachGachaCollector } from './commands/gacha';
+import { executeCraftEssenceGachaRoll } from './engine/ceGacha';
 import { 
   buildServantFullProfileEmbed,
   buildServantArtworkEmbed,
@@ -313,6 +315,104 @@ client.on(Events.InteractionCreate, async interaction => {
       const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
       let war = getOrInitWarSession(master);
       const isCivilian = !master.servants || master.servants.length === 0;
+
+      // Quick Daily & Navigation Buttons
+      if (btnId === 'quick_profile_view') {
+        if (isCivilian) {
+          await interaction.reply({
+            ephemeral: true,
+            content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
+          });
+          return;
+        }
+        const uP = war.participants[interaction.user.id];
+        const embed = buildProfileEmbed(master, war);
+        const btns = buildProfileButtons(uP);
+        await interaction.reply({ embeds: [embed], components: btns, ephemeral: true });
+        return;
+      }
+
+      if (btnId === 'quick_ce_gacha_view') {
+        const { embed, components } = buildGachaHub(master, 'ces');
+        const reply = await interaction.reply({ embeds: [embed], components, ephemeral: true, fetchReply: true });
+        attachGachaCollector(interaction, master, reply);
+        return;
+      }
+
+      if (btnId === 'quick_ce_gacha_ten') {
+        if ((master.saintQuartz || 0) < 30) {
+          await interaction.reply({
+            ephemeral: true,
+            content: `❌ Insufficient Saint Quartz! You need **30 SQ** for a 10x Multi-Summon, but you currently have **${master.saintQuartz || 0} SQ**.`
+          });
+          return;
+        }
+        const rollResult = executeCraftEssenceGachaRoll({ count: 10, master });
+        await saveMaster(master);
+        const embed = new EmbedBuilder()
+          .setTitle('🎁 10x Craft Essence Multi-Summon Results')
+          .setDescription(
+            `**10x Craft Essence Invocations Complete!**\n\n` +
+            `💎 **Remaining Balance:** \`${master.saintQuartz} SQ\`\n\n` +
+            rollResult.results.map((ce: any, idx: number) => `**${idx + 1}.** ${'⭐'.repeat(ce.rarity)} **${ce.name}** (${ce.type || 'CE'})`).join('\n')
+          )
+          .setColor(0x38bdf8)
+          .setFooter({ text: 'Craft Essence Forge • Holy Grail War' });
+        
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+        return;
+      }
+
+      if (btnId === 'quick_servant_card' || btnId === 'btn_view_servant') {
+        const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+        if (!activeServant) {
+          await interaction.reply({ content: 'You have no active Servant contracted! Use `/summon` first.', ephemeral: true });
+          return;
+        }
+        const profileEmbed = buildServantFullProfileEmbed(activeServant.template || activeServant);
+        await interaction.reply({ embeds: [profileEmbed], ephemeral: true });
+        return;
+      }
+
+      if (btnId === 'btn_perform_ritual') {
+        const { embed, components } = buildGachaHub(master, 'heroic');
+        const reply = await interaction.reply({ embeds: [embed], components, ephemeral: true, fetchReply: true });
+        attachGachaCollector(interaction, master, reply);
+        return;
+      }
+
+      if (btnId === 'btn_enter_war') {
+        const uP = war.participants[interaction.user.id];
+        const embed = buildWarEmbed(war, uP, '🏰 Welcome to the Holy Grail War Board!');
+        const btns = buildWarButtons();
+        await interaction.reply({ embeds: [embed], components: btns, ephemeral: true });
+        return;
+      }
+
+      if (btnId === 'btn_boast_summon') {
+        const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+        if (!activeServant) {
+          await interaction.reply({ content: 'You have no contracted Servant to boast about!', ephemeral: true });
+          return;
+        }
+        const template = activeServant.template || activeServant;
+        const avatarUrl = interaction.user.displayAvatarURL ? interaction.user.displayAvatarURL() : undefined;
+        const boastEmbed = new EmbedBuilder()
+          .setTitle(`📢 MASTER DECLARATION | Covenant Established!`)
+          .setDescription(`Master **${interaction.user.username}** boasts a covenant with **${template.name}** (${'⭐'.repeat(template.rarity || 5)} ${template.servantClass})!\n\n*"${template.summonQuote || 'I answer your call, Master.'}"*`)
+          .setColor(0xd4af37);
+        if (avatarUrl) boastEmbed.setThumbnail(avatarUrl);
+        await interaction.reply({ embeds: [boastEmbed] });
+        return;
+      }
+
+      if (btnId === 'btn_release_contract') {
+        await interaction.reply({
+          ephemeral: true,
+          content: '⚠️ To release or dissolve a Servant contract, use the `/summon release` command.'
+        });
+        return;
+      }
 
       // Profile Buttons
       if (btnId === 'war_my_profile' || btnId === 'profile_refresh') {
