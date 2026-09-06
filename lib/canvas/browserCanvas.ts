@@ -1260,7 +1260,8 @@ function drawHoveringAttacker(
   servantName: string,
   servantClass: string,
   bondOrLevel: number | string,
-  frameIdx: number
+  frameIdx: number,
+  hideLevelBadge: boolean = false
 ) {
   ctx.save();
   const sprX = 10;
@@ -1301,7 +1302,7 @@ function drawHoveringAttacker(
   } else {
     // Stylized Heraldic Knight Silhouette Fallback
     const vGrad = ctx.createLinearGradient(sprX, sprY, sprX + sprW, sprY + sprH);
-    vGrad.addColorStop(0, '#2b160b');
+    vGrad.addColorStop(0, '#2b160a');
     vGrad.addColorStop(0.6, '#150904');
     vGrad.addColorStop(1, '#080302');
     ctx.fillStyle = vGrad;
@@ -1312,33 +1313,35 @@ function drawHoveringAttacker(
     drawVectorCrossedSwords(ctx, sprX + sprW / 2 - 10, sprY + 140, 20, '#fbbf24');
   }
 
-  // Floating Class Crest & Level Badge (Top-Left Shoulder)
-  const badgeX = 20;
-  const badgeY = 20;
-  const badgeW = 160;
-  const badgeH = 26;
+  if (!hideLevelBadge) {
+    // Floating Class Crest & Level Badge (Top-Left Shoulder)
+    const badgeX = 20;
+    const badgeY = 20;
+    const badgeW = 160;
+    const badgeH = 26;
 
-  ctx.fillStyle = 'rgba(10, 5, 3, 0.92)';
-  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
-  ctx.fill();
+    ctx.fillStyle = 'rgba(10, 5, 3, 0.92)';
+    drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
+    ctx.fill();
 
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 1.5;
-  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
-  ctx.stroke();
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 1.5;
+    drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
+    ctx.stroke();
 
-  drawVectorStar(ctx, badgeX + 14, badgeY + 13, 5, 5, 2.5, '#fbbf24');
+    drawVectorStar(ctx, badgeX + 14, badgeY + 13, 5, 5, 2.5, '#fbbf24');
 
-  const lvlText = typeof bondOrLevel === 'number' ? `Lv.${bondOrLevel}` : `${bondOrLevel}`;
-  ctx.fillStyle = '#fde047';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(lvlText, badgeX + 24, badgeY + 17);
+    const lvlText = typeof bondOrLevel === 'number' ? `Lv.${bondOrLevel}` : `${bondOrLevel}`;
+    ctx.fillStyle = '#fde047';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(lvlText, badgeX + 24, badgeY + 17);
 
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText((servantClass || 'SABER').toUpperCase(), badgeX + badgeW - 10, badgeY + 17);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText((servantClass || 'SABER').toUpperCase(), badgeX + badgeW - 10, badgeY + 17);
+  }
 
   ctx.restore();
 }
@@ -1466,25 +1469,27 @@ function drawHoveringDefender(
     ctx.fillText('TARGET: LOCKED', badgeX + badgeW / 2 + 8, badgeY + 17);
   }
 
-  // Floating Defender Nameplate above the Dialogue Box
-  const nameBoxW = 200;
-  const nameBoxH = 24;
-  const nameBoxX = 570;
-  const nameBoxY = 216;
+  if (!hideTargetHUD) {
+    // Floating Defender Nameplate above the Dialogue Box
+    const nameBoxW = 200;
+    const nameBoxH = 24;
+    const nameBoxX = 570;
+    const nameBoxY = 216;
 
-  ctx.fillStyle = 'rgba(15, 5, 5, 0.92)';
-  drawRoundRect(ctx, nameBoxX, nameBoxY, nameBoxW, nameBoxH, 4);
-  ctx.fill();
-  ctx.strokeStyle = '#991b1b';
-  ctx.lineWidth = 1.2;
-  drawRoundRect(ctx, nameBoxX, nameBoxY, nameBoxW, nameBoxH, 4);
-  ctx.stroke();
+    ctx.fillStyle = 'rgba(15, 5, 5, 0.92)';
+    drawRoundRect(ctx, nameBoxX, nameBoxY, nameBoxW, nameBoxH, 4);
+    ctx.fill();
+    ctx.strokeStyle = '#991b1b';
+    ctx.lineWidth = 1.2;
+    drawRoundRect(ctx, nameBoxX, nameBoxY, nameBoxW, nameBoxH, 4);
+    ctx.stroke();
 
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.textAlign = 'center';
-  const defClean = defenderName.length > 18 ? defenderName.slice(0, 17) + '…' : defenderName;
-  ctx.fillText(`${defClean} [${(defenderClass || 'ENEMY').toUpperCase()}]`, nameBoxX + nameBoxW / 2, nameBoxY + 16);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    const defClean = defenderName.length > 18 ? defenderName.slice(0, 17) + '…' : defenderName;
+    ctx.fillText(`${defClean} [${(defenderClass || 'ENEMY').toUpperCase()}]`, nameBoxX + nameBoxW / 2, nameBoxY + 16);
+  }
 
   ctx.restore();
 }
@@ -1595,7 +1600,7 @@ function renderDialogueSingleFrame(
   drawBattlefieldStage(ctx, width, height, bgImg, stagePreset, frameIdx);
 
   // 2. Attacker Hovering Sprite (Left Side)
-  drawHoveringAttacker(ctx, portraitImg, speakerName, servantClass, bondOrLevel, frameIdx);
+  drawHoveringAttacker(ctx, portraitImg, speakerName, servantClass, bondOrLevel, frameIdx, true);
 
   // 3. Defender Hovering Sprite (Right Side)
   drawHoveringDefender(ctx, defenderImg, defenderName, defenderClass, frameIdx, true);

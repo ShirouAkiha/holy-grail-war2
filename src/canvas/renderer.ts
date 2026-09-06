@@ -1824,7 +1824,8 @@ function drawHoveringAttacker(
   servantName: string,
   servantClass: string,
   bondOrLevel: number | string = 8,
-  frameIdx: number = 0
+  frameIdx: number = 0,
+  hideLevelBadge: boolean = false
 ) {
   ctx.save();
   const spriteW = 280;
@@ -1879,25 +1880,27 @@ function drawHoveringAttacker(
 
   ctx.restore();
 
-  // 3. Floating Class Crest & Level Badge on Left Shoulder
-  const badgeW = 76;
-  const badgeH = 22;
-  const badgeX = spriteX + 16;
-  const badgeY = spriteY + 16;
+  if (!hideLevelBadge) {
+    // 3. Floating Class Crest & Level Badge on Left Shoulder
+    const badgeW = 76;
+    const badgeH = 22;
+    const badgeX = spriteX + 16;
+    const badgeY = spriteY + 16;
 
-  ctx.fillStyle = 'rgba(13, 7, 4, 0.88)';
-  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
-  ctx.fill();
-  ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 1.6;
-  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
-  ctx.stroke();
+    ctx.fillStyle = 'rgba(13, 7, 4, 0.88)';
+    drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
+    ctx.fill();
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 1.6;
+    drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
+    ctx.stroke();
 
-  ctx.fillStyle = '#fde047';
-  ctx.font = 'bold 12px sans-serif';
-  ctx.textAlign = 'center';
-  const badgeDisplay = typeof bondOrLevel === 'number' ? `Lv.${bondOrLevel}` : `${bondOrLevel}`;
-  ctx.fillText(badgeDisplay, badgeX + badgeW / 2, badgeY + 15);
+    ctx.fillStyle = '#fde047';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    const badgeDisplay = typeof bondOrLevel === 'number' ? `Lv.${bondOrLevel}` : `${bondOrLevel}`;
+    ctx.fillText(badgeDisplay, badgeX + badgeW / 2, badgeY + 15);
+  }
 
   ctx.restore();
 }
@@ -2022,29 +2025,31 @@ function drawHoveringDefender(
     ctx.fillText('TARGET: LOCKED', badgeX + badgeW / 2 + 7, badgeY + 15);
   }
 
-  // 4. Floating Defender Nameplate
-  const nameW = 180;
-  const nameH = 34;
-  const nameX = spriteX + spriteW - nameW - 16;
-  const nameY = spriteY + 44;
+  if (!hideTargetHUD) {
+    // 4. Floating Defender Nameplate
+    const nameW = 180;
+    const nameH = 34;
+    const nameX = spriteX + spriteW - nameW - 16;
+    const nameY = spriteY + 44;
 
-  ctx.fillStyle = 'rgba(15, 5, 5, 0.90)';
-  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
-  ctx.fill();
-  ctx.strokeStyle = '#991b1b';
-  ctx.lineWidth = 1.2;
-  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
-  ctx.stroke();
+    ctx.fillStyle = 'rgba(15, 5, 5, 0.90)';
+    drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
+    ctx.fill();
+    ctx.strokeStyle = '#991b1b';
+    ctx.lineWidth = 1.2;
+    drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
+    ctx.stroke();
 
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 12px sans-serif';
-  ctx.textAlign = 'center';
-  const defDisplay = defenderName.length > 17 ? defenderName.slice(0, 16) + '…' : defenderName;
-  ctx.fillText(defDisplay, nameX + nameW / 2, nameY + 14);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    const defDisplay = defenderName.length > 17 ? defenderName.slice(0, 16) + '…' : defenderName;
+    ctx.fillText(defDisplay, nameX + nameW / 2, nameY + 14);
 
-  ctx.fillStyle = '#fca5a5';
-  ctx.font = 'bold 10px sans-serif';
-  ctx.fillText((defenderClass || 'Enemy').toUpperCase(), nameX + nameW / 2, nameY + 27);
+    ctx.fillStyle = '#fca5a5';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.fillText((defenderClass || 'Enemy').toUpperCase(), nameX + nameW / 2, nameY + 27);
+  }
 
   ctx.restore();
 }
@@ -2321,7 +2326,7 @@ function renderDialogueSingleFrame(
   drawBattlefieldStage(ctx, width, height, bgImg, stagePreset, frameIdx);
 
   // 2. Attacker Hovering Sprite (Left Side)
-  drawHoveringAttacker(ctx, portraitImg, speakerName, servantClass, bondOrLevel, frameIdx);
+  drawHoveringAttacker(ctx, portraitImg, speakerName, servantClass, bondOrLevel, frameIdx, true);
 
   // 3. Defender Hovering Sprite (Right Side)
   drawHoveringDefender(ctx, defenderImg, defenderName, defenderClass, frameIdx, true);
