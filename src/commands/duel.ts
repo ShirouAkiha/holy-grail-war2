@@ -2394,23 +2394,65 @@ async function finishDuel(
   const victoryQuote =
     winner.servant.customQuotes?.victory || winner.servant.template.victoryQuote || "A decisive triumph. The Holy Grail draws closer.";
 
-  const fateEmbed = new EmbedBuilder()
-    .setTitle('🏆 DUEL VICTORY — DECIDE MASTER\'S FATE')
+  const victoryCardBuffer = await renderDialogueCard(
+    winnerName,
+    victoryQuote,
+    'VICTORY INVOCATION',
+    winnerClass,
+    winnerAvatarUrl,
+    winner.servant.bondLevel || 5,
+    loserName,
+    loserAvatarUrl,
+    loserClass,
+    ['Buster', 'Buster', 'Buster'],
+    'fuyuki'
+  ).catch((err) => {
+    console.error('Error rendering victory dialogue card on server:', err);
+    return null;
+  });
+
+  const victoryCardAttachment = victoryCardBuffer 
+    ? new AttachmentBuilder(victoryCardBuffer, { name: 'victory_dialogue.png' })
+    : null;
+
+  const victoryEmbed = new EmbedBuilder()
+    .setTitle('🏆 DUEL VICTORY — VICTORY INVOCATION')
     .setDescription(
-      `**${winner.servant.template.name}** (Master: ${winner.username}) has brought down **${loser.servant.template.name}** (Master: ${loser.username}) in the Holy Grail duel!\n\n` +
-      `💬 **[VICTORY INVOCATION] ${winner.servant.template.name}:**\n> ❝ ***${victoryQuote}*** ❞\n\n` +
-      `⚖️ **The Fate of Master ${loser.username} rests in your hands:**\n` +
-      `Choose whether to **Execute** the defeated Master to permanently eliminate them from the Holy Grail War, or show mercy and **Spare** their life.`
+      `**${winner.servant.template.name}** (Master: ${winner.username}) has triumphed over **${loser.servant.template.name}** (Master: ${loser.username}) in the Holy Grail duel!\n\n` +
+      `💬 **[VICTORY INVOCATION] ${winner.servant.template.name}:**\n> ❝ ***${victoryQuote}*** ❞`
     )
     .setColor(0x22c55e);
 
   if (winner.servant.template.avatarUrl) {
-    fateEmbed.setThumbnail(winner.servant.template.avatarUrl);
+    victoryEmbed.setThumbnail(winner.servant.template.avatarUrl);
+  }
+
+  if (victoryCardAttachment) {
+    victoryEmbed.setImage('attachment://victory_dialogue.png');
+  }
+
+  const fateEmbed = new EmbedBuilder()
+    .setTitle('⚖️ FATE DECISION — DECIDE MASTER\'S FATE')
+    .setDescription(
+      `⚖️ **The Fate of Master ${loser.username} rests in your hands:**\n` +
+      `Choose whether to **Execute** the defeated Master to permanently eliminate them from the Holy Grail War, or show mercy and **Spare** their life.\n\n` +
+      `💬 **[DEFEAT MONOLOGUE] ${loser.servant.template.name}:**\n> ❝ ***${loserDefeatQuote}*** ❞`
+    )
+    .setColor(0xef4444);
+
+  if (loser.servant.template.avatarUrl) {
+    fateEmbed.setThumbnail(loser.servant.template.avatarUrl);
   }
 
   if (defeatCardAttachment) {
     fateEmbed.setImage('attachment://defeat_dialogue.png');
   }
+
+  const responseEmbeds = [victoryEmbed, fateEmbed];
+  const responseFiles: any[] = [];
+  if (victoryCardAttachment) responseFiles.push(victoryCardAttachment);
+  if (defeatCardAttachment) responseFiles.push(defeatCardAttachment);
+  if (responseFiles.length === 0) responseFiles.push(finalAttachment);
 
   const fateRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -2426,14 +2468,14 @@ async function finishDuel(
   let response: any;
   if (i.deferred || i.replied) {
     response = await i.editReply({
-      embeds: [fateEmbed],
-      files: defeatCardAttachment ? [defeatCardAttachment] : [finalAttachment],
+      embeds: responseEmbeds,
+      files: responseFiles,
       components: [fateRow]
     });
   } else {
     response = await i.update({
-      embeds: [fateEmbed],
-      files: defeatCardAttachment ? [defeatCardAttachment] : [finalAttachment],
+      embeds: responseEmbeds,
+      files: responseFiles,
       components: [fateRow],
       withResponse: true
     }).then((r: any) => r?.resource?.message || i.fetchReply());
