@@ -40,6 +40,7 @@ import * as feedCommand from './commands/feed';
 import * as gachaCommand from './commands/gacha';
 import { getOrCreateMaster, saveMaster, getAllThroneServants, findServantInPool, searchAndRankServants, claimDailySaintQuartz } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
+import { allocateStatPoints } from './engine/statSystem';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from './data/noblePhantasmGifs';
 import { renderServantProfileCard, renderDialogueCard } from './canvas/renderer';
 import { buildProfileEmbed, buildProfileButtons } from './commands/profile';
@@ -255,6 +256,79 @@ client.on(Events.InteractionCreate, async interaction => {
           await interaction.reply({
             flags: MessageFlags.Ephemeral,
             content: `💬 Custom voice lines and combat chants saved for **${servant.nickname || servant.template.name}**!`
+          });
+        }
+      }
+      else if (interaction.customId.startsWith('modal_allocate_stats:')) {
+        const servantId = interaction.customId.replace('modal_allocate_stats:', '');
+        const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+        const servant = master.servants?.find((s: any) => s.id === servantId);
+
+        if (servant) {
+          const getNum = (id: string) => {
+            try {
+              const val = interaction.fields.getTextInputValue(id);
+              if (!val || !val.trim()) return 0;
+              const num = parseInt(val.trim(), 10);
+              return isNaN(num) || num < 0 ? 0 : num;
+            } catch {
+              return 0;
+            }
+          };
+
+          const str = getNum('stat_str');
+          const end = getNum('stat_end');
+          const agi = getNum('stat_agi');
+          const mna = getNum('stat_mna');
+          const lck = getNum('stat_lck');
+
+          const totalRequested = str + end + agi + mna + lck;
+          const avail = servant.availableStatPoints || 0;
+
+          if (totalRequested <= 0) {
+            await interaction.reply({
+              flags: MessageFlags.Ephemeral,
+              content: `⚠️ No valid numeric stat points were entered.`
+            });
+            return;
+          }
+
+          if (totalRequested > avail) {
+            await interaction.reply({
+              flags: MessageFlags.Ephemeral,
+              content: `❌ Cannot allocate **${totalRequested.toLocaleString()} pts**. You only have **${avail.toLocaleString()} available stat points** on **${servant.nickname || servant.template?.name || 'Servant'}**.`
+            });
+            return;
+          }
+
+          const updated = allocateStatPoints(servant, {
+            strength: str,
+            endurance: end,
+            agility: agi,
+            mana: mna,
+            luck: lck
+          });
+
+          master.servants = master.servants.map((s: any) => s.id === servant.id ? updated : s);
+          await saveMaster(master);
+
+          const sName = updated.nickname || updated.template?.name || 'Servant';
+          const allocEmbed = new EmbedBuilder()
+            .setTitle(`📈 Bulk Stat Allocation Complete: ${sName}`)
+            .setDescription(
+              `Successfully allocated **${totalRequested.toLocaleString()} Stat Points**!\n\n` +
+              `💪 **STR:** +${str.toLocaleString()} *(Total: ${((updated.template?.baseStats?.strength || 10) + (updated.allocatedStats?.strength || 0)).toLocaleString()})*\n` +
+              `🛡️ **END:** +${end.toLocaleString()} *(Total: ${((updated.template?.baseStats?.endurance || 10) + (updated.allocatedStats?.endurance || 0)).toLocaleString()})*\n` +
+              `⚡ **AGI:** +${agi.toLocaleString()} *(Total: ${((updated.template?.baseStats?.agility || 10) + (updated.allocatedStats?.agility || 0)).toLocaleString()})*\n` +
+              `🔮 **MNA:** +${mna.toLocaleString()} *(Total: ${((updated.template?.baseStats?.mana || 10) + (updated.allocatedStats?.mana || 0)).toLocaleString()})*\n` +
+              `🍀 **LCK:** +${lck.toLocaleString()} *(Total: ${((updated.template?.baseStats?.luck || 10) + (updated.allocatedStats?.luck || 0)).toLocaleString()})*\n\n` +
+              `📈 **Remaining Unspent Points:** \`${updated.availableStatPoints.toLocaleString()} pts\``
+            )
+            .setColor(0x22c55e);
+
+          await interaction.reply({
+            flags: MessageFlags.Ephemeral,
+            embeds: [allocEmbed]
           });
         }
       }

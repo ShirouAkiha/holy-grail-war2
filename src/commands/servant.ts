@@ -120,7 +120,8 @@ export async function buildServantHub(
   activeServant: any,
   category: 'profile' | 'stats' | 'equip_ce' | 'feed_ce' | 'np' | 'dialogue' | 'roster' = 'profile',
   selectedServantId?: string,
-  actionOutcomeMsg?: string
+  actionOutcomeMsg?: string,
+  currentStep: number = 1
 ) {
   const targetServant = (selectedServantId ? master.servants.find((s: any) => s.id === selectedServantId) : null) || activeServant;
   const templateId = targetServant.templateId || targetServant.template?.id || targetServant.id;
@@ -274,18 +275,23 @@ export async function buildServantHub(
 
   } else if (category === 'stats') {
     const availPoints = targetServant.availableStatPoints || 0;
+    const stepLabel = currentStep >= 9999 ? 'MAX' : `${currentStep}`;
+
     const embed = new EmbedBuilder()
       .setTitle(`⭐ Parameter Point Allocation: ${sName}`)
       .setDescription(
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `👑 **Servant:** **${sName}** (${t.servantClass}) • **Level:** Lv.${lvl}/100\n` +
-        `📈 **Available Stat Points:** \`${availPoints} pts\` *(+10 pts per level up from feeding CEs!)*\n\n` +
+        `📈 **Available Stat Points:** \`${availPoints.toLocaleString()} pts\` *(+10 pts per level up from feeding CEs!)*\n\n` +
         `💪 **Strength (STR):** \`${strTotal}\` [**${getRank(strTotal)}**] — *Increases base attack damage*\n` +
         `🛡️ **Endurance (END):** \`${endTotal}\` [**${getRank(endTotal)}**] — *Increases maximum health pool*\n` +
         `⚡ **Agility (AGI):** \`${agiTotal}\` [**${getRank(agiTotal)}**] — *Boosts crit generation and dodge rate*\n` +
         `🔮 **Mana (MNA):** \`${mnaTotal}\` [**${getRank(mnaTotal)}**] — *Accelerates NP gauge gain rate*\n` +
         `🍀 **Luck (LCK):** \`${lckTotal}\` [**${getRank(lckTotal)}**] — *Enhances status effect and crit resistance*\n\n` +
-        `*Click a button below to allocate 1 point into the desired parameter or use Auto-Distribute.*`
+        `💡 **BULK ALLOCATION METHODS:**\n` +
+        `• **Step Multipliers:** Click \`1x\`, \`10x\`, \`50x\`, \`100x\`, or \`MAX\` to change increment size, then click parameter buttons.\n` +
+        `• **Custom Numbers (Modal):** Click **📝 Custom Input** to type exact numeric amounts for each stat.\n` +
+        `• **Auto-Distribute:** Click **✨ Auto-Distribute All** to split all remaining points evenly.`
       )
       .setColor(availPoints > 0 ? 0x22c55e : 0x38bdf8)
       .setFooter({ text: `Contracted to Master ${master.username} • Feed Craft Essences in /inventory to level up!` });
@@ -526,14 +532,33 @@ export async function buildServantHub(
     components.push(actionButtonsRow);
   } else if (category === 'stats') {
     const avail = targetServant.availableStatPoints || 0;
-    actionButtonsRow.addComponents(
-      new ButtonBuilder().setCustomId('servant_add_str').setLabel('+1 STR').setEmoji('💪').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
-      new ButtonBuilder().setCustomId('servant_add_end').setLabel('+1 END').setEmoji('🛡️').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
-      new ButtonBuilder().setCustomId('servant_add_agi').setLabel('+1 AGI').setEmoji('⚡').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
-      new ButtonBuilder().setCustomId('servant_add_mna').setLabel('+1 MNA').setEmoji('🔮').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
-      new ButtonBuilder().setCustomId('servant_add_auto').setLabel('Auto-Distribute').setEmoji('✨').setStyle(ButtonStyle.Primary).setDisabled(avail <= 0)
+    const stepLabel = currentStep >= 9999 ? 'MAX' : `${currentStep}`;
+
+    // Row 1: Parameter Buttons (+Step)
+    const paramRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('servant_add_str').setLabel(`+${stepLabel} STR`).setEmoji('💪').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
+      new ButtonBuilder().setCustomId('servant_add_end').setLabel(`+${stepLabel} END`).setEmoji('🛡️').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
+      new ButtonBuilder().setCustomId('servant_add_agi').setLabel(`+${stepLabel} AGI`).setEmoji('⚡').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
+      new ButtonBuilder().setCustomId('servant_add_mna').setLabel(`+${stepLabel} MNA`).setEmoji('🔮').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
+      new ButtonBuilder().setCustomId('servant_add_lck').setLabel(`+${stepLabel} LCK`).setEmoji('🍀').setStyle(ButtonStyle.Success).setDisabled(avail <= 0)
     );
-    components.push(actionButtonsRow);
+
+    // Row 2: Step Multipliers Selector
+    const stepRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('servant_step_1').setLabel('1x Step').setStyle(currentStep === 1 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_step_10').setLabel('10x Step').setStyle(currentStep === 10 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_step_50').setLabel('50x Step').setStyle(currentStep === 50 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_step_100').setLabel('100x Step').setStyle(currentStep === 100 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_step_max').setLabel('MAX Step').setStyle(currentStep >= 9999 ? ButtonStyle.Primary : ButtonStyle.Secondary)
+    );
+
+    // Row 3: Bulk Allocation Modal & Auto-Distribute
+    const bulkRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('servant_act_open_stat_modal').setLabel('Custom Input (Modal)').setEmoji('📝').setStyle(ButtonStyle.Primary).setDisabled(avail <= 0),
+      new ButtonBuilder().setCustomId('servant_add_auto').setLabel('Auto-Distribute All').setEmoji('✨').setStyle(ButtonStyle.Success).setDisabled(avail <= 0)
+    );
+
+    components.push(paramRow, stepRow, bulkRow);
   } else if (category === 'equip_ce') {
     const ownedCes = (master.craftEssences || []).filter(Boolean);
     const ceOptions = ownedCes.slice(0, 25).map((c: any, idx: number) => ({
@@ -603,6 +628,7 @@ export function attachServantCollector(
 ) {
   let currentCategory = initialCategory;
   let currentServantId = initialServant.id;
+  let currentStep = 1;
 
   const collector = message.createMessageComponentCollector({
     idle: 120000,
@@ -896,6 +922,77 @@ export function attachServantCollector(
         await saveMaster(master);
         actionOutcomeMsg = `👑 Contract updated! **${targetServant.nickname || targetServant.template?.name || 'Servant'}** is now your Active Servant.`;
       }
+      // STEP MULTIPLIER TOGGLES
+      else if (i.customId === 'servant_step_1') {
+        currentStep = 1;
+        actionOutcomeMsg = `🔢 Step multiplier set to **1x**. Click parameter buttons to add +1 point.`;
+      } else if (i.customId === 'servant_step_10') {
+        currentStep = 10;
+        actionOutcomeMsg = `🔢 Step multiplier set to **10x**. Click parameter buttons to add +10 points!`;
+      } else if (i.customId === 'servant_step_50') {
+        currentStep = 50;
+        actionOutcomeMsg = `🔢 Step multiplier set to **50x**. Click parameter buttons to add +50 points!`;
+      } else if (i.customId === 'servant_step_100') {
+        currentStep = 100;
+        actionOutcomeMsg = `🔢 Step multiplier set to **100x**. Click parameter buttons to add +100 points!`;
+      } else if (i.customId === 'servant_step_max') {
+        currentStep = 9999;
+        actionOutcomeMsg = `⚡ Step multiplier set to **MAX**! Clicking a parameter button will allocate ALL remaining points!`;
+      }
+      // OPEN BULK STAT ALLOCATION MODAL
+      else if (i.customId === 'servant_act_open_stat_modal') {
+        const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = await import('discord.js');
+        const avail = targetServant.availableStatPoints || 0;
+        const modal = new ModalBuilder()
+          .setCustomId(`modal_allocate_stats:${targetServant.id}`)
+          .setTitle(`Allocate Stats (${avail.toLocaleString()} pts)`);
+
+        const strInput = new TextInputBuilder()
+          .setCustomId('stat_str')
+          .setLabel('💪 Strength (STR) Points to Add')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('e.g. 100')
+          .setRequired(false);
+
+        const endInput = new TextInputBuilder()
+          .setCustomId('stat_end')
+          .setLabel('🛡️ Endurance (END) Points to Add')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('e.g. 50')
+          .setRequired(false);
+
+        const agiInput = new TextInputBuilder()
+          .setCustomId('stat_agi')
+          .setLabel('⚡ Agility (AGI) Points to Add')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('e.g. 50')
+          .setRequired(false);
+
+        const mnaInput = new TextInputBuilder()
+          .setCustomId('stat_mna')
+          .setLabel('🔮 Mana (MNA) Points to Add')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('e.g. 100')
+          .setRequired(false);
+
+        const lckInput = new TextInputBuilder()
+          .setCustomId('stat_lck')
+          .setLabel('🍀 Luck (LCK) Points to Add')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('e.g. 100')
+          .setRequired(false);
+
+        modal.addComponents(
+          new ActionRowBuilder<any>().addComponents(strInput),
+          new ActionRowBuilder<any>().addComponents(endInput),
+          new ActionRowBuilder<any>().addComponents(agiInput),
+          new ActionRowBuilder<any>().addComponents(mnaInput),
+          new ActionRowBuilder<any>().addComponents(lckInput)
+        );
+
+        await i.showModal(modal);
+        return;
+      }
       // STAT ALLOCATION
       else if (i.customId.startsWith('servant_add_')) {
         const statKey = i.customId.replace('servant_add_', '');
@@ -904,20 +1001,30 @@ export function attachServantCollector(
           let updated = { ...targetServant };
           if (statKey === 'auto') {
             const stats: ('strength' | 'endurance' | 'agility' | 'mana' | 'luck')[] = ['strength', 'endurance', 'agility', 'mana', 'luck'];
-            const toDist = Math.min(5, avail);
-            for (let idx = 0; idx < toDist; idx++) {
-              updated = allocateStatPoints(updated, stats[idx % stats.length], 1);
-            }
-          } else if (statKey === 'str') {
-            updated = allocateStatPoints(updated, 'strength', 1);
-          } else if (statKey === 'end') {
-            updated = allocateStatPoints(updated, 'endurance', 1);
-          } else if (statKey === 'agi') {
-            updated = allocateStatPoints(updated, 'agility', 1);
-          } else if (statKey === 'mna') {
-            updated = allocateStatPoints(updated, 'mana', 1);
-          } else if (statKey === 'lck') {
-            updated = allocateStatPoints(updated, 'luck', 1);
+            const ptsPerStat = Math.floor(avail / 5);
+            const remainder = avail % 5;
+
+            const alloc = {
+              strength: ptsPerStat + (remainder > 0 ? 1 : 0),
+              endurance: ptsPerStat + (remainder > 1 ? 1 : 0),
+              agility: ptsPerStat + (remainder > 2 ? 1 : 0),
+              mana: ptsPerStat + (remainder > 3 ? 1 : 0),
+              luck: ptsPerStat
+            };
+            updated = allocateStatPoints(updated, alloc);
+            actionOutcomeMsg = `✨ Auto-distributed **${avail.toLocaleString()} Stat Points** evenly across all 5 parameters!`;
+          } else {
+            const amountToAdd = Math.min(currentStep, avail);
+            let keyName: 'strength' | 'endurance' | 'agility' | 'mana' | 'luck' = 'strength';
+            let label = 'STR';
+            if (statKey === 'str') { keyName = 'strength'; label = 'STR'; }
+            else if (statKey === 'end') { keyName = 'endurance'; label = 'END'; }
+            else if (statKey === 'agi') { keyName = 'agility'; label = 'AGI'; }
+            else if (statKey === 'mna') { keyName = 'mana'; label = 'MNA'; }
+            else if (statKey === 'lck') { keyName = 'luck'; label = 'LCK'; }
+
+            updated = allocateStatPoints(updated, keyName, amountToAdd);
+            actionOutcomeMsg = `⚡ Allocated **+${amountToAdd.toLocaleString()} ${label}** into **${sName}**! (\`${updated.availableStatPoints.toLocaleString()} pts\` left)`;
           }
 
           master.servants = master.servants.map((s: any) => s.id === targetServant.id ? updated : s);
@@ -987,7 +1094,7 @@ export function attachServantCollector(
         return;
       }
 
-      const hub = await buildServantHub(master, targetServant, currentCategory, currentServantId, actionOutcomeMsg);
+      const hub = await buildServantHub(master, targetServant, currentCategory, currentServantId, actionOutcomeMsg, currentStep);
       await i.update({
         embeds: hub.embeds,
         files: hub.files,
