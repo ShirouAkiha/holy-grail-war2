@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction , MessageFlags } from 'discord.js';
 import { getOrCreateMaster } from '../database/service';
 import { buildInventoryHub, attachInventoryCollector } from './customise';
 
@@ -13,24 +13,24 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (!activeServant) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         content: '❌ You must summon a Servant first to open your Master Inventory! Use `/summon`.'
       });
       return;
     }
 
     const { embed, components } = buildInventoryHub(master, activeServant, 'ces', 1, activeServant.equippedCeId);
-    const reply = await interaction.reply({
+    await interaction.reply({
       embeds: [embed],
       components,
-      ephemeral: true,
-      fetchReply: true
+      flags: MessageFlags.Ephemeral
     });
+    const reply = await interaction.fetchReply();
 
     attachInventoryCollector(interaction, master, activeServant, reply);
   } catch (error: any) {
     console.error('Error executing /inventory:', error);
-    await interaction.reply({ content: `❌ Inventory error: ${error.message}`, ephemeral: true });
+    await interaction.reply({ content: `❌ Inventory error: ${error.message}`, flags: MessageFlags.Ephemeral });
   }
 }
 

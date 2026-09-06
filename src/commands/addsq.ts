@@ -3,7 +3,7 @@ import {
   ChatInputCommandInteraction, 
   EmbedBuilder, 
   PermissionFlagsBits 
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { addSaintQuartzToUser } from '../database/service';
 
 // ==========================================
@@ -48,7 +48,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   if (!isGuildAdmin) {
     await interaction.reply({
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
       embeds: [
         new EmbedBuilder()
           .setTitle('⛔ Administrator Access Required')
@@ -97,7 +97,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   } catch (err: any) {
     console.error('Error executing /addsq:', err);
     await interaction.reply({
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
       embeds: [
         new EmbedBuilder()
           .setTitle('❌ Grant Failed')

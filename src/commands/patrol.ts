@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder , MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { getOrInitWarSession, patrolCityInWar } from '../engine/grailwar';
 

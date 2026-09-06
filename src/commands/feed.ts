@@ -6,7 +6,7 @@ import {
   StringSelectMenuBuilder,
   ButtonBuilder,
   ButtonStyle
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { feedCraftEssences, getCeExpValue, calculateLevelFromExp, getTotalExpForLevel } from '../engine/customization';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
@@ -46,7 +46,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (!activeServant) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         content: '❌ You have no contracted Servant to enhance! Use `/summon` first.'
       });
       return;
@@ -55,7 +55,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const ownedCes = (master.craftEssences || []).filter(Boolean);
     if (ownedCes.length === 0) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         content: '❌ You have no Craft Essences in your inventory to feed! Summon more in `/cegacha` using Saint Quartz 💎.'
       });
       return;
@@ -124,19 +124,19 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setEmoji('📊')
       );
 
-      const reply = await interaction.reply({
+      await interaction.reply({
         embeds: [embed],
         components: [selectRow, btnRow],
-        ephemeral: true,
-        fetchReply: true
+        flags: MessageFlags.Ephemeral
       });
+      const reply = await interaction.fetchReply();
 
       // Attach interaction collector
       const collector = reply.createMessageComponentCollector({ time: 120000 });
       collector.on('collect', async (i: any) => {
         try {
           if (i.user.id !== interaction.user.id) {
-            await i.reply({ ephemeral: true, content: '❌ This menu belongs to another Master.' });
+            await i.reply({ flags: MessageFlags.Ephemeral, content: '❌ This menu belongs to another Master.' });
             return;
           }
 
@@ -150,7 +150,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
               .map((c: any, idx: number) => (c && c.rarity <= 3 ? String(idx) : null))
               .filter(Boolean) as string[];
             if (targetsToFeed.length === 0) {
-              await i.reply({ ephemeral: true, content: 'ℹ️ No 3★ or lower Craft Essences found in inventory.' });
+              await i.reply({ flags: MessageFlags.Ephemeral, content: 'ℹ️ No 3★ or lower Craft Essences found in inventory.' });
               return;
             }
           } else if (i.customId === 'feed_quick_duplicates') {
@@ -164,12 +164,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
               })
               .filter(Boolean) as string[];
             if (targetsToFeed.length === 0) {
-              await i.reply({ ephemeral: true, content: 'ℹ️ No duplicate Craft Essences found in inventory.' });
+              await i.reply({ flags: MessageFlags.Ephemeral, content: 'ℹ️ No duplicate Craft Essences found in inventory.' });
               return;
             }
           } else if (i.customId === 'feed_quick_stats') {
             await i.reply({
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
               content: `📊 **Stat Points Available:** \`${activeServant.availableStatPoints || 0} pts\`\nUse \`/customise stats strength:5 mana:5\` or the Servant Workshop to allocate!`
             });
             return;
@@ -206,7 +206,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
           await i.update({ embeds: [successEmbed], components: [] });
         } catch (err: any) {
-          await i.reply({ ephemeral: true, content: `❌ Error: ${err.message}` });
+          await i.reply({ flags: MessageFlags.Ephemeral, content: `❌ Error: ${err.message}` });
         }
       });
       return;
@@ -244,7 +244,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (targetsToFeed.length === 0) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         content: `❌ No Craft Essences matching "${query}" found in your inventory.`
       });
       return;
@@ -282,7 +282,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   } catch (error: any) {
     console.error('Error in /feed command:', error);
     await interaction.reply({
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
       content: `❌ Error: ${error.message}`
     });
   }

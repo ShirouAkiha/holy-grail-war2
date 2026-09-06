@@ -8,7 +8,7 @@ import {
   AttachmentBuilder,
   User,
   ComponentType
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster, getDuelNpSettings } from '../database/service';
 import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog, PassiveSkill } from '../types';
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives } from '../data/servants';
@@ -1190,7 +1190,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     // Verify challenger has summoned at least 1 Servant
     if (!challengerMaster.servants || challengerMaster.servants.length === 0) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         content: '❌ You must summon a Servant using `/summon` before entering a duel!'
       });
       return;
@@ -1213,7 +1213,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         )
         .setColor(0xef4444);
 
-      await interaction.reply({ embeds: [deadEmbed], ephemeral: true });
+      await interaction.reply({ embeds: [deadEmbed], flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -1226,11 +1226,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     // BRANCH 1: CHALLENGING A SPECIFIC HUMAN MASTER BY MENTION
     if (opponentUser) {
       if (opponentUser.id === interaction.user.id) {
-        await interaction.reply({ content: '❌ You cannot duel yourself!', ephemeral: true });
+        await interaction.reply({ content: '❌ You cannot duel yourself!', flags: MessageFlags.Ephemeral });
         return;
       }
       if (opponentUser.bot) {
-        await interaction.reply({ content: '❌ You cannot duel a Discord bot! Holy Grail War only features real Masters.', ephemeral: true });
+        await interaction.reply({ content: '❌ You cannot duel a Discord bot! Holy Grail War only features real Masters.', flags: MessageFlags.Ephemeral });
         return;
       }
 
@@ -1239,7 +1239,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       if (!opponentMaster.servants || opponentMaster.servants.length === 0) {
         await interaction.reply({
           content: `❌ <@${opponentUser.id}> has not summoned any Servants yet! They need to run \`/summon\` first.`,
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
         return;
       }
@@ -1250,7 +1250,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       if (opponentParticipant && !opponentParticipant.isAlive) {
         await interaction.reply({
           content: `☠️ <@${opponentUser.id}> has already been eliminated and slain from the Holy Grail War!`,
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
         return;
       }
@@ -1299,7 +1299,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
           if (i.customId === 'decline_duel') {
             if (i.user.id !== opponentUser.id && i.user.id !== interaction.user.id) {
-              await i.reply({ content: '❌ You are not involved in this duel challenge.', ephemeral: true });
+              await i.reply({ content: '❌ You are not involved in this duel challenge.', flags: MessageFlags.Ephemeral });
               return;
             }
             inviteCollector.stop('declined');
@@ -1315,7 +1315,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             if (i.user.id !== opponentUser.id) {
               await i.reply({
                 content: `❌ Only the challenged Master (<@${opponentUser.id}>) can accept this duel invitation.`,
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
               });
               return;
             }
@@ -1338,7 +1338,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
               console.error('Error starting duel after accept:', duelErr);
               await i.followUp({
                 content: `❌ Failed to initialize duel arena: ${duelErr?.message || duelErr}`,
-                ephemeral: true
+                flags: MessageFlags.Ephemeral
               });
             }
           }
@@ -1401,7 +1401,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     if (!opponentServant) {
       await interaction.reply({
         content: `❌ Rival Master **${targetRival.username}** has not summoned a Servant yet.`,
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
       return;
     }
@@ -1446,7 +1446,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
         if (i.customId === 'decline_duel') {
           if (i.user.id !== targetRival.discordId && i.user.id !== interaction.user.id) {
-            await i.reply({ content: '❌ You are not involved in this duel challenge.', ephemeral: true });
+            await i.reply({ content: '❌ You are not involved in this duel challenge.', flags: MessageFlags.Ephemeral });
             return;
           }
           inviteCollector.stop('declined');
@@ -1462,7 +1462,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           if (i.user.id !== targetRival.discordId) {
             await i.reply({
               content: `❌ Only the challenged Master (<@${targetRival.discordId}>) can accept this duel invitation.`,
-              ephemeral: true
+              flags: MessageFlags.Ephemeral
             });
             return;
           }
@@ -1485,7 +1485,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             console.error('Error starting duel after accept (rival):', duelErr);
             await i.followUp({
               content: `❌ Failed to initialize duel arena: ${duelErr?.message || duelErr}`,
-              ephemeral: true
+              flags: MessageFlags.Ephemeral
             });
           }
         }
@@ -1513,9 +1513,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     console.error('Error executing /duel:', error);
     try {
       if (interaction.replied || interaction.deferred) {
-        await interaction.followUp({ content: `❌ Error starting duel: ${error.message}`, ephemeral: true });
+        await interaction.followUp({ content: `❌ Error starting duel: ${error.message}`, flags: MessageFlags.Ephemeral });
       } else {
-        await interaction.reply({ content: `❌ Error starting duel: ${error.message}`, ephemeral: true });
+        await interaction.reply({ content: `❌ Error starting duel: ${error.message}`, flags: MessageFlags.Ephemeral });
       }
     } catch {}
   }
@@ -1664,7 +1664,7 @@ async function startInteractiveDuel(
       } else if (interaction.followUp) {
         sentMsg = await interaction.followUp({
           embeds: [npEmbed],
-          fetchReply: true
+          withResponse: true
         });
       }
 
@@ -1697,7 +1697,7 @@ async function startInteractiveDuel(
       if (i.user.id !== activeUserId) {
         await i.reply({
           content: `⏳ It is not your turn! Waiting for <@${activeUserId}> to take an action.`,
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
         return;
       }

@@ -6,7 +6,7 @@ import {
   ButtonStyle, 
   EmbedBuilder,
   ComponentType
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { 
   getOrCreateMaster, 
   saveMaster, 
@@ -208,8 +208,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             .setStyle(ButtonStyle.Primary)
         );
 
-        const reply = await interaction.reply({ embeds: [emptyEmbed], components: [row], withResponse: true })
-          .then(r => r.resource?.message || interaction.fetchReply());
+        await interaction.reply({ embeds: [emptyEmbed], components: [row] });
+        const reply = await interaction.fetchReply();
         setupSummonButtonCollector(reply, interaction.user.id);
         return;
       }
@@ -259,8 +259,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setStyle(ButtonStyle.Danger)
       );
 
-      const reply = await interaction.reply({ embeds: [statusEmbed], components: [row], ephemeral: true, withResponse: true })
-        .then(r => r.resource?.message || interaction.fetchReply());
+      await interaction.reply({ embeds: [statusEmbed], components: [row], flags: MessageFlags.Ephemeral });
+      const reply = await interaction.fetchReply();
       setupSummonButtonCollector(reply, interaction.user.id);
       return;
     }
@@ -271,7 +271,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     if (subcommand === 'release') {
       if (!master.servants || master.servants.length === 0) {
         await interaction.reply({
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           content: '❌ You do not have an active Servant contract to release.'
         });
         return;
@@ -291,7 +291,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         )
         .setColor(0xef4444);
 
-      await interaction.reply({ embeds: [releaseEmbed], ephemeral: true });
+      await interaction.reply({ embeds: [releaseEmbed], flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -316,7 +316,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setThumbnail(s.template.avatarUrl)
         .setColor(0xf59e0b);
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -332,7 +332,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         )
         .setColor(0xef4444);
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -393,21 +393,21 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setStyle(ButtonStyle.Danger)
     );
 
-    const reply = await interaction.reply({
+    await interaction.reply({
       embeds: [ritualEmbed, summonEmbed],
       components: [actionRow],
-      ephemeral: true,
-      withResponse: true
-    }).then(r => r.resource?.message || interaction.fetchReply());
+      flags: MessageFlags.Ephemeral
+    });
+    const reply = await interaction.fetchReply();
 
     setupSummonButtonCollector(reply, interaction.user.id);
 
   } catch (error: any) {
     console.error('Error executing /summon ritual:', error);
     if (interaction.replied || interaction.deferred) {
-      await interaction.followUp({ content: `❌ Ritual Error: ${error.message}`, ephemeral: true });
+      await interaction.followUp({ content: `❌ Ritual Error: ${error.message}`, flags: MessageFlags.Ephemeral });
     } else {
-      await interaction.reply({ content: `❌ Ritual Error: ${error.message}`, ephemeral: true });
+      await interaction.reply({ content: `❌ Ritual Error: ${error.message}`, flags: MessageFlags.Ephemeral });
     }
   }
 }
@@ -424,7 +424,7 @@ function setupSummonButtonCollector(message: any, userId: string) {
   collector.on('collect', async (i: any) => {
     if (i.replied || i.deferred) return;
     if (i.user.id !== userId) {
-      await i.reply({ content: 'Only the Master who performed this ritual can click these actions.', ephemeral: true });
+      await i.reply({ content: 'Only the Master who performed this ritual can click these actions.', flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -455,14 +455,14 @@ function setupSummonButtonCollector(message: any, userId: string) {
         }
         await i.reply({
           content: '📢 You have revealed your Heroic Spirit to the server! Your identity is now permanently exposed on the War Board.',
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
         return;
       }
 
       if (i.customId === 'btn_release_contract') {
         if (!master.servants || master.servants.length === 0) {
-          await i.reply({ content: 'You have no active Servant contract to release.', ephemeral: true });
+          await i.reply({ content: 'You have no active Servant contract to release.', flags: MessageFlags.Ephemeral });
           return;
         }
         const sName = master.servants[0].template.name;
@@ -531,12 +531,12 @@ function setupSummonButtonCollector(message: any, userId: string) {
       }
 
       if (i.customId === 'btn_view_servant') {
-        await i.reply({ content: 'Use `/servant` to view your detailed 2D status card and parameter radar.', ephemeral: true });
+        await i.reply({ content: 'Use `/servant` to view your detailed 2D status card and parameter radar.', flags: MessageFlags.Ephemeral });
         return;
       }
 
       if (i.customId === 'btn_enter_war') {
-        await i.reply({ content: 'Use `/grailwar` to check Holy Grail War tournament standings and challenge rivals.', ephemeral: true });
+        await i.reply({ content: 'Use `/grailwar` to check Holy Grail War tournament standings and challenge rivals.', flags: MessageFlags.Ephemeral });
         return;
       }
     } catch (err: any) {

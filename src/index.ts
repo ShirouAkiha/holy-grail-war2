@@ -10,7 +10,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   AttachmentBuilder
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import * as summonCommand from './commands/summon';
 import * as servantCommand from './commands/servant';
 import * as servantsCommand from './commands/servants';
@@ -207,7 +207,7 @@ client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isChatInputCommand()) {
       const command = commands.get(interaction.commandName) || commandAliasMap[interaction.commandName];
       if (!command) {
-        await interaction.reply({ ephemeral: true, content: 'Command not found.' });
+        await interaction.reply({ flags: MessageFlags.Ephemeral, content: 'Command not found.' });
         return;
       }
       // Execute the command's main handler
@@ -253,7 +253,7 @@ client.on(Events.InteractionCreate, async interaction => {
           await saveMaster(master);
 
           await interaction.reply({
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
             content: `💬 Custom voice lines and combat chants saved for **${servant.nickname || servant.template.name}**!`
           });
         }
@@ -288,7 +288,7 @@ client.on(Events.InteractionCreate, async interaction => {
             await saveMaster(master);
 
             await interaction.reply({
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
               content: `🛡️ Equipped **${pickedCe.name}** to **${servant.template.name}**!`
             });
           }
@@ -311,19 +311,19 @@ client.on(Events.InteractionCreate, async interaction => {
 
       // Cross-hub Shortcuts
       if (btnId === 'servant_link_inventory') {
-        await interaction.reply({ content: 'Use `/inventory` to access your Master Vault and equip Craft Essences!', ephemeral: true });
+        await interaction.reply({ content: 'Use `/inventory` to access your Master Vault and equip Craft Essences!', flags: MessageFlags.Ephemeral });
         return;
       }
       if (btnId === 'servant_link_gacha') {
-        await interaction.reply({ content: 'Use `/gacha` to roll the Throne of Heroes and Craft Essence banners!', ephemeral: true });
+        await interaction.reply({ content: 'Use `/gacha` to roll the Throne of Heroes and Craft Essence banners!', flags: MessageFlags.Ephemeral });
         return;
       }
       if (btnId === 'servant_link_grailwar') {
-        await interaction.reply({ content: 'Use `/grailwar` to view the 7-Master war roster, patrol sectors, and workshop defenses!', ephemeral: true });
+        await interaction.reply({ content: 'Use `/grailwar` to view the 7-Master war roster, patrol sectors, and workshop defenses!', flags: MessageFlags.Ephemeral });
         return;
       }
       if (btnId === 'servant_link_duel') {
-        await interaction.reply({ content: 'Use `/duel` to enter the combat arena and test your tactical card chains!', ephemeral: true });
+        await interaction.reply({ content: 'Use `/duel` to enter the combat arena and test your tactical card chains!', flags: MessageFlags.Ephemeral });
         return;
       }
 
@@ -350,7 +350,7 @@ client.on(Events.InteractionCreate, async interaction => {
       if (btnId === 'quick_profile_view') {
         if (isCivilian) {
           await interaction.reply({
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
             content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
           });
           return;
@@ -358,13 +358,14 @@ client.on(Events.InteractionCreate, async interaction => {
         const uP = war.participants[interaction.user.id];
         const embed = buildProfileEmbed(master, war);
         const btns = buildProfileButtons(uP);
-        await interaction.reply({ embeds: [embed], components: btns, ephemeral: true });
+        await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
         return;
       }
 
       if (btnId === 'quick_ce_gacha_view') {
         const { embed, components } = buildGachaHub(master, 'ces');
-        const reply = await interaction.reply({ embeds: [embed], components, ephemeral: true, fetchReply: true });
+        await interaction.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
+        const reply = await interaction.fetchReply();
         attachGachaCollector(interaction, master, reply);
         return;
       }
@@ -372,7 +373,7 @@ client.on(Events.InteractionCreate, async interaction => {
       if (btnId === 'quick_ce_gacha_ten') {
         if ((master.saintQuartz || 0) < 30) {
           await interaction.reply({
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
             content: `❌ Insufficient Saint Quartz! You need **30 SQ** for a 10x Multi-Summon, but you currently have **${master.saintQuartz || 0} SQ**.`
           });
           return;
@@ -389,24 +390,25 @@ client.on(Events.InteractionCreate, async interaction => {
           .setColor(0x38bdf8)
           .setFooter({ text: 'Craft Essence Forge • Holy Grail War' });
         
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         return;
       }
 
       if (btnId === 'quick_servant_card' || btnId === 'btn_view_servant') {
         const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
         if (!activeServant) {
-          await interaction.reply({ content: 'You have no active Servant contracted! Use `/summon` first.', ephemeral: true });
+          await interaction.reply({ content: 'You have no active Servant contracted! Use `/summon` first.', flags: MessageFlags.Ephemeral });
           return;
         }
         const profileEmbed = buildServantFullProfileEmbed(activeServant.template || activeServant);
-        await interaction.reply({ embeds: [profileEmbed], ephemeral: true });
+        await interaction.reply({ embeds: [profileEmbed], flags: MessageFlags.Ephemeral });
         return;
       }
 
       if (btnId === 'btn_perform_ritual') {
         const { embed, components } = buildGachaHub(master, 'heroic');
-        const reply = await interaction.reply({ embeds: [embed], components, ephemeral: true, fetchReply: true });
+        await interaction.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
+        const reply = await interaction.fetchReply();
         attachGachaCollector(interaction, master, reply);
         return;
       }
@@ -415,14 +417,14 @@ client.on(Events.InteractionCreate, async interaction => {
         const uP = war.participants[interaction.user.id];
         const embed = buildWarEmbed(war, uP, '🏰 Welcome to the Holy Grail War Board!');
         const btns = buildWarButtons();
-        await interaction.reply({ embeds: [embed], components: btns, ephemeral: true });
+        await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
         return;
       }
 
       if (btnId === 'btn_boast_summon') {
         const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
         if (!activeServant) {
-          await interaction.reply({ content: 'You have no contracted Servant to boast about!', ephemeral: true });
+          await interaction.reply({ content: 'You have no contracted Servant to boast about!', flags: MessageFlags.Ephemeral });
           return;
         }
         const template = activeServant.template || activeServant;
@@ -438,7 +440,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
       if (btnId === 'btn_release_contract') {
         await interaction.reply({
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           content: '⚠️ To release or dissolve a Servant contract, use the `/summon release` command.'
         });
         return;
@@ -448,7 +450,7 @@ client.on(Events.InteractionCreate, async interaction => {
       if (btnId === 'war_my_profile' || btnId === 'profile_refresh') {
         if (isCivilian) {
           await interaction.reply({
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
             content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
           });
           return;
@@ -457,7 +459,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const embed = buildProfileEmbed(master, war, btnId === 'profile_refresh' ? '🔄 Profile refreshed.' : undefined);
         const btns = buildProfileButtons(uP);
         if (btnId === 'war_my_profile') {
-          await interaction.reply({ embeds: [embed], components: btns, ephemeral: true });
+          await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
         } else {
           await interaction.update({ embeds: [embed], components: btns });
         }
@@ -467,7 +469,7 @@ client.on(Events.InteractionCreate, async interaction => {
       if (btnId.startsWith('profile_ward_') || btnId === 'profile_toggle_evade' || btnId === 'profile_heal') {
         if (isCivilian) {
           await interaction.reply({
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
             content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
           });
           return;
@@ -524,7 +526,7 @@ client.on(Events.InteractionCreate, async interaction => {
       if (btnId === 'war_defenses' || btnId === 'war_refresh_defenses') {
         if (isCivilian) {
           await interaction.reply({
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
             content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
           });
           return;
@@ -533,7 +535,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const embed = buildDefensesEmbed(uP, btnId === 'war_refresh_defenses' ? '🔄 Workshop settings refreshed.' : undefined);
         const btns = buildDefensesButtons(uP);
         if (btnId === 'war_defenses') {
-          await interaction.reply({ embeds: [embed], components: btns, ephemeral: true });
+          await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
         } else {
           await interaction.update({ embeds: [embed], components: btns });
         }
@@ -543,7 +545,7 @@ client.on(Events.InteractionCreate, async interaction => {
       if (btnId.startsWith('ward_') || btnId === 'toggle_auto_evade' || btnId === 'church_enter' || btnId === 'church_leave') {
         if (isCivilian) {
           await interaction.reply({
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
             content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
           });
           return;
@@ -620,7 +622,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const embed = buildWarEmbed(war, uP, '🔄 Intelligence Board refreshed.');
         const btns = buildWarButtons();
         if (btnId === 'quick_war_status') {
-          await interaction.reply({ embeds: [embed], components: btns, ephemeral: true });
+          await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
         } else {
           await interaction.update({ embeds: [embed], components: btns });
         }
@@ -651,7 +653,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const uP = war.participants[interaction.user.id];
         const embed = buildDefensesEmbed(uP);
         const btns = buildDefensesButtons(uP);
-        await interaction.reply({ embeds: [embed], components: btns, ephemeral: true });
+        await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
         return;
       }
 
@@ -670,7 +672,7 @@ client.on(Events.InteractionCreate, async interaction => {
       if (btnId === 'war_familiars_hub') {
         if (isCivilian) {
           await interaction.reply({
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
             content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
           });
           return;
@@ -718,7 +720,7 @@ client.on(Events.InteractionCreate, async interaction => {
             .setStyle(ButtonStyle.Secondary)
         );
 
-        await interaction.reply({ embeds: [famsEmbed], components: [row], ephemeral: true });
+        await interaction.reply({ embeds: [famsEmbed], components: [row], flags: MessageFlags.Ephemeral });
         return;
       }
 
@@ -750,7 +752,7 @@ client.on(Events.InteractionCreate, async interaction => {
             components: [actions] 
           });
         } else {
-          await interaction.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+          await interaction.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
         }
         return;
       }
@@ -764,7 +766,7 @@ client.on(Events.InteractionCreate, async interaction => {
           const actions = buildNoblePhantasmActions(target.id);
           await interaction.reply({ embeds: [npEmbed], components: [actions] });
         } else {
-          await interaction.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+          await interaction.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
         }
         return;
       }
@@ -778,7 +780,7 @@ client.on(Events.InteractionCreate, async interaction => {
           const actions = buildNoblePhantasmActions(target.id);
           await interaction.reply({ embeds: [artEmbed], components: [actions] });
         } else {
-          await interaction.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+          await interaction.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
         }
         return;
       }
@@ -795,7 +797,7 @@ client.on(Events.InteractionCreate, async interaction => {
             .setFooter({ text: `${target.title} • Class: ${target.servantClass}` });
           await interaction.reply({ embeds: [quoteEmbed] });
         } else {
-          await interaction.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+          await interaction.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
         }
         return;
       }
@@ -803,7 +805,7 @@ client.on(Events.InteractionCreate, async interaction => {
       if (btnId === 'btn_back_servants_list' || btnId === 'btn_show_servants_list') {
         const allServants = getAllThroneServants();
         const { embed, components } = buildServantsListUI(allServants, 1, 'all', 'all');
-        await interaction.reply({ embeds: [embed], components, ephemeral: true });
+        await interaction.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
         return;
       }
 
@@ -815,7 +817,7 @@ client.on(Events.InteractionCreate, async interaction => {
           const actions = buildNoblePhantasmActions(template.id);
           await interaction.reply({ embeds: [npEmbed], components: [actions] });
         } else {
-          await interaction.reply({ content: 'You have no contracted Servant yet! Use `/summon` first.', ephemeral: true });
+          await interaction.reply({ content: 'You have no contracted Servant yet! Use `/summon` first.', flags: MessageFlags.Ephemeral });
         }
         return;
       }
@@ -823,7 +825,7 @@ client.on(Events.InteractionCreate, async interaction => {
       if (btnId === 'hear_dialogue' || btnId === 'btn_hear_quote') {
         const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
         if (activeServant) {
-          await interaction.deferReply({ ephemeral: true });
+          await interaction.deferReply({ flags: MessageFlags.Ephemeral });
           const quotes = [
             { label: 'Summon Quote', text: activeServant.customQuotes?.summon || activeServant.template.summonQuote },
             { label: 'Battle Start', text: activeServant.customQuotes?.battleStart || activeServant.template.battleStartQuote },
@@ -849,7 +851,7 @@ client.on(Events.InteractionCreate, async interaction => {
           }
           await interaction.editReply({ embeds: [diaEmbed], files });
         } else {
-          await interaction.reply({ content: 'You have no contracted Servant yet! Use `/summon` first.', ephemeral: true });
+          await interaction.reply({ content: 'You have no contracted Servant yet! Use `/summon` first.', flags: MessageFlags.Ephemeral });
         }
         return;
       }
@@ -857,7 +859,7 @@ client.on(Events.InteractionCreate, async interaction => {
       if (btnId === 'go_summon' || btnId === 'quick_summon_ritual') {
         await interaction.reply({
           content: '✨ Use the `/summon ritual` slash command to invoke the Throne of Heroes and contract a Servant!',
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
         return;
       }
@@ -865,7 +867,7 @@ client.on(Events.InteractionCreate, async interaction => {
       if (btnId === 'quick_start_duel' || btnId === 'quick_duel_ai') {
         await interaction.reply({
           content: '⚔️ Use `/duel` to enter the battle arena or challenge another Master with `/duel opponent:@Master`!',
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
         return;
       }
@@ -880,9 +882,9 @@ client.on(Events.InteractionCreate, async interaction => {
     try {
       if (interaction.isRepliable()) {
         if (interaction.deferred || interaction.replied) {
-          await interaction.followUp({ ephemeral: true, content: `❌ Error: ${err.message}` });
+          await interaction.followUp({ flags: MessageFlags.Ephemeral, content: `❌ Error: ${err.message}` });
         } else {
-          await interaction.reply({ ephemeral: true, content: `❌ Error: ${err.message}` });
+          await interaction.reply({ flags: MessageFlags.Ephemeral, content: `❌ Error: ${err.message}` });
         }
       }
     } catch {}

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder , MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 
 export const data = new SlashCommandBuilder()
@@ -18,7 +18,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (!activeServant) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         content: '❌ You have no active Servant to equip! Use `/summon` first.'
       });
       return;
@@ -41,14 +41,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         )
         .setColor(0xd4af37);
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
       return;
     }
 
     const targetCe = ownedCes.find((c: any) => c.name?.toLowerCase().includes(query.toLowerCase()) || c.id === query);
     if (!targetCe) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         content: `❌ You do not own a Craft Essence matching "${query}". Check your inventory with \`/inventory\`.`
       });
       return;
@@ -77,6 +77,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     await interaction.reply({ embeds: [embed] });
   } catch (error: any) {
     console.error('Error executing /equip:', error);
-    await interaction.reply({ content: `❌ Equip error: ${error.message}`, ephemeral: true });
+    await interaction.reply({ content: `❌ Equip error: ${error.message}`, flags: MessageFlags.Ephemeral });
   }
 }

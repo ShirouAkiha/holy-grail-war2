@@ -6,7 +6,7 @@ import {
   ButtonStyle, 
   EmbedBuilder,
   ComponentType
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { 
   getOrInitWarSession, 
@@ -142,7 +142,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (!master.servants || master.servants.length === 0) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
       });
       return;
@@ -157,14 +157,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     await interaction.reply({
       embeds: [embed],
       components: buttons,
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   } catch (error: any) {
     console.error('Error executing /profile:', error);
     if (interaction.replied || interaction.deferred) {
-      await interaction.followUp({ content: `❌ Error: ${error.message}`, ephemeral: true });
+      await interaction.followUp({ content: `❌ Error: ${error.message}`, flags: MessageFlags.Ephemeral });
     } else {
-      await interaction.reply({ content: `❌ Error: ${error.message}`, ephemeral: true });
+      await interaction.reply({ content: `❌ Error: ${error.message}`, flags: MessageFlags.Ephemeral });
     }
   }
 }

@@ -7,7 +7,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { 
   addCustomServant, 
   removeCustomServant, 
@@ -342,7 +342,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   // Allow in DM or if user has admin permissions
   if (interaction.guild && !isGuildAdmin) {
     await interaction.reply({
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
       embeds: [
         new EmbedBuilder()
           .setTitle('⛔ Administrator Access Required')
@@ -520,7 +520,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     if (deleted) {
       const isAll = servantId.toLowerCase() === 'all' || servantId === '*';
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         embeds: [
           new EmbedBuilder()
             .setTitle('🗑️ Custom Servant Removed')
@@ -534,7 +534,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
     } else {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         embeds: [
           new EmbedBuilder()
             .setTitle('❌ Servant Not Found')
@@ -586,7 +586,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (!result.success || !result.servant) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         embeds: [
           new EmbedBuilder()
             .setTitle('❌ Servant Not Found')
@@ -632,7 +632,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (!rawGifUrl) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         embeds: [
           new EmbedBuilder()
             .setTitle('❌ Missing Media Input')
@@ -648,7 +648,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (!result.success || !result.servant) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         embeds: [
           new EmbedBuilder()
             .setTitle('❌ Could Not Set Animation')

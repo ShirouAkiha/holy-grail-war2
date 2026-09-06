@@ -7,7 +7,7 @@ import {
   EmbedBuilder,
   StringSelectMenuBuilder,
   ComponentType
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { 
   getOrCreateMaster, 
   saveMaster, 
@@ -240,7 +240,7 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
   collector.on('collect', async (i: any) => {
     try {
       if (i.user.id !== interaction.user.id) {
-        await i.reply({ ephemeral: true, content: '❌ This Gacha Sanctum belongs to another Master.' });
+        await i.reply({ flags: MessageFlags.Ephemeral, content: '❌ This Gacha Sanctum belongs to another Master.' });
         return;
       }
 
@@ -276,12 +276,12 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
           master.saintQuartz = claimResult.newTotalSq;
           await saveMaster(master);
           await i.reply({
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
             content: `🎉 **Daily Reward Claimed!** Received **+30 Saint Quartz 💎**!\nNew Balance: **${master.saintQuartz} SQ** (Ready for a 10x Multi-Summon!)`
           });
         } else {
           await i.reply({
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
             content: `⏳ ${claimResult.message || 'You have already claimed your Daily Saint Quartz! Please check back tomorrow.'}`
           });
         }
@@ -290,7 +290,7 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
       // 1x Single Summon Action
       else if (customId === 'gacha_act_single') {
         if ((master.saintQuartz || 0) < 3) {
-          await i.reply({ ephemeral: true, content: '❌ You need at least 3 Saint Quartz to perform a summon! Claim daily SQ or earn quartz from battles.' });
+          await i.reply({ flags: MessageFlags.Ephemeral, content: '❌ You need at least 3 Saint Quartz to perform a summon! Claim daily SQ or earn quartz from battles.' });
           return;
         }
 
@@ -304,13 +304,13 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
           const pulled = rollResult.results[0].item;
           const rarityStars = '★'.repeat(pulled.rarity);
           await i.reply({
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
             content: `✨ **Summon Result:** You pulled **${rarityStars} ${pulled.name}**!\n• Effect: ${pulled.effectText}\n• Remaining Quartz: **${master.saintQuartz} SQ**\nUse \`/inventory\` to equip it to your Servant!`
           });
         } else {
           // Heroic Spirit Summon Info
           await i.reply({
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
             content: `✨ **Heroic Spirit Summoning Ritual:** To invoke an authentic Holy Grail War contract, use \`/summon ritual\`!\nRemaining Quartz: **${master.saintQuartz} SQ**`
           });
         }
@@ -319,7 +319,7 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
       // 10x Multi-Summon Action
       else if (customId === 'gacha_act_multi') {
         if ((master.saintQuartz || 0) < 30) {
-          await i.reply({ ephemeral: true, content: '❌ You need at least 30 Saint Quartz for a 10x Multi-Summon!' });
+          await i.reply({ flags: MessageFlags.Ephemeral, content: '❌ You need at least 30 Saint Quartz for a 10x Multi-Summon!' });
           return;
         }
 
@@ -334,7 +334,7 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
           .join('\n');
 
         await i.reply({
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           content: `🌟 **10x Multi-Summon Results:**\n\n${cardSummary}\n\n💎 **Remaining Quartz:** \`${master.saintQuartz} SQ\`\nUse \`/inventory\` to view your expanded collection and equip them!`
         });
       }
@@ -350,7 +350,7 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
       // Cross-Hub Shortcut: Servant
       else if (customId === 'gacha_link_servant') {
         await i.reply({
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           content: '👑 Opening Servant Workshop... Use `/servant` to view full parameter radar cards and customisation options!'
         });
         return;
@@ -359,7 +359,7 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
       // Cross-Hub Shortcut: Grail War
       else if (customId === 'gacha_link_grailwar') {
         await i.reply({
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           content: '🏰 Opening War Room... Use `/grailwar` to view the 7-Master Intelligence Board and city operations!'
         });
         return;
@@ -390,12 +390,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         master.saintQuartz = claimResult.newTotalSq;
         await saveMaster(master);
         await interaction.reply({
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           content: `🎉 **Daily Reward Claimed!** Received **+30 Saint Quartz 💎**!\nNew Balance: **${master.saintQuartz} SQ** (Ready for a 10x Multi-Summon!)`
         });
       } else {
         await interaction.reply({
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           content: `⏳ ${claimResult.message || 'You have already claimed your Daily Saint Quartz! Please check back tomorrow.'}`
         });
       }
@@ -407,16 +407,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     else if (sub === 'rates') initialCategory = 'rates';
 
     const { embed, components } = buildGachaHub(master, initialCategory);
-    const reply = await interaction.reply({
+    await interaction.reply({
       embeds: [embed],
       components,
-      ephemeral: true,
-      fetchReply: true
+      flags: MessageFlags.Ephemeral
     });
+    const reply = await interaction.fetchReply();
 
     attachGachaCollector(interaction, master, reply);
   } catch (error: any) {
     console.error('Error executing /gacha:', error);
-    await interaction.reply({ content: `❌ Gacha error: ${error.message}`, ephemeral: true });
+    await interaction.reply({ content: `❌ Gacha error: ${error.message}`, flags: MessageFlags.Ephemeral });
   }
 }

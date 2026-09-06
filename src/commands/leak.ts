@@ -2,7 +2,7 @@ import {
   SlashCommandBuilder, 
   ChatInputCommandInteraction, 
   EmbedBuilder 
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { getOrCreateMaster } from '../database/service';
 import { 
   getOrInitWarSession, 

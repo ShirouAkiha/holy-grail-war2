@@ -8,7 +8,7 @@ import {
   EmbedBuilder,
   StringSelectMenuBuilder, 
   ComponentType
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { renderServantProfileCard, renderDialogueCard } from '../canvas/renderer';
 import { SERVANT_DATABASE, getDefaultClassPassives } from '../data/servants';
@@ -44,7 +44,7 @@ export const data = new SlashCommandBuilder()
 // 2. MAIN EXECUTE HANDLER
 // ==========================================
 export async function execute(interaction: ChatInputCommandInteraction) {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
@@ -83,9 +83,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       collector.on('collect', async (i: any) => {
         if (i.replied || i.deferred) return;
         if (i.customId === 'go_gacha') {
-          await i.reply({ content: 'Opening `/gacha` Invocation Sanctum!', ephemeral: true });
+          await i.reply({ content: 'Opening `/gacha` Invocation Sanctum!', flags: MessageFlags.Ephemeral });
         } else if (i.customId === 'go_summon') {
-          await i.reply({ content: 'Use the `/summon ritual` command to summon your Heroic Spirit!', ephemeral: true });
+          await i.reply({ content: 'Use the `/summon ritual` command to summon your Heroic Spirit!', flags: MessageFlags.Ephemeral });
         }
       });
       return;
@@ -612,7 +612,7 @@ export function attachServantCollector(
   collector.on('collect', async (i: any) => {
     if (i.replied || i.deferred) return;
     if (i.user.id !== userId) {
-      await i.reply({ content: 'Only the Master who issued this command can interact with this workshop.', ephemeral: true });
+      await i.reply({ content: 'Only the Master who issued this command can interact with this workshop.', flags: MessageFlags.Ephemeral });
       return;
     }
     collector.resetTimer();
@@ -939,7 +939,7 @@ export function attachServantCollector(
           .setDescription(`*"${picked.text}"*`)
           .setColor(0xd4af37);
 
-        await i.reply({ embeds: [diaEmbed], ephemeral: true });
+        await i.reply({ embeds: [diaEmbed], flags: MessageFlags.Ephemeral });
         return;
       }
       // BOAST TO SERVER
@@ -968,22 +968,22 @@ export function attachServantCollector(
         }
         await i.reply({
           content: '📢 You have revealed your Servant to the server! Your identity is now permanently exposed on the War Board.',
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
         return;
       }
       // CROSS-HUB SHORTCUTS
       else if (i.customId === 'servant_link_inventory') {
-        await i.reply({ content: 'Use `/inventory` to access your Master Vault and equip Craft Essences!', ephemeral: true });
+        await i.reply({ content: 'Use `/inventory` to access your Master Vault and equip Craft Essences!', flags: MessageFlags.Ephemeral });
         return;
       } else if (i.customId === 'servant_link_gacha') {
-        await i.reply({ content: 'Use `/gacha` to roll the Throne of Heroes and Craft Essence banners!', ephemeral: true });
+        await i.reply({ content: 'Use `/gacha` to roll the Throne of Heroes and Craft Essence banners!', flags: MessageFlags.Ephemeral });
         return;
       } else if (i.customId === 'servant_link_grailwar') {
-        await i.reply({ content: 'Use `/grailwar` to view the 7-Master war roster, patrol sectors, and workshop defenses!', ephemeral: true });
+        await i.reply({ content: 'Use `/grailwar` to view the 7-Master war roster, patrol sectors, and workshop defenses!', flags: MessageFlags.Ephemeral });
         return;
       } else if (i.customId === 'servant_link_duel') {
-        await i.reply({ content: 'Use `/duel` to enter the combat arena and test your tactical card chains!', ephemeral: true });
+        await i.reply({ content: 'Use `/duel` to enter the combat arena and test your tactical card chains!', flags: MessageFlags.Ephemeral });
         return;
       }
 

@@ -5,7 +5,7 @@ import {
   ButtonBuilder, 
   ButtonStyle, 
   EmbedBuilder 
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { 
   getOrInitWarSession, 
@@ -53,7 +53,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
     if (!master.servants || master.servants.length === 0) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         content: '❌ You must summon a Servant before setting traps! Use `/summon` first.'
       });
       return;
@@ -80,7 +80,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setColor(trapType === 'alarm' ? 0xeab308 : 0xdc2626)
         .setFooter({ text: 'Holy Grail War Espionage & Perimeter Security' });
 
-      await interaction.reply({ embeds: [trapEmbed], ephemeral: true });
+      await interaction.reply({ embeds: [trapEmbed], flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -91,7 +91,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       await interaction.reply({
         content: res.message,
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
       return;
     }
@@ -133,9 +133,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setStyle(ButtonStyle.Secondary)
     );
 
-    await interaction.reply({ embeds: [trapsEmbed], components: [row], ephemeral: true });
+    await interaction.reply({ embeds: [trapsEmbed], components: [row], flags: MessageFlags.Ephemeral });
   } catch (error: any) {
     console.error('Error executing /trap:', error);
-    await interaction.reply({ content: `❌ Trap command error: ${error.message}`, ephemeral: true });
+    await interaction.reply({ content: `❌ Trap command error: ${error.message}`, flags: MessageFlags.Ephemeral });
   }
 }

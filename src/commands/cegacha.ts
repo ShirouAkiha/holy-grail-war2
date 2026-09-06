@@ -8,7 +8,7 @@ import {
   AttachmentBuilder,
   ComponentType,
   PermissionFlagsBits
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { 
   getOrCreateMaster, 
   saveMaster, 
@@ -123,7 +123,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       if (interaction.guild && !isGuildAdmin) {
         await interaction.reply({
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           embeds: [
             new EmbedBuilder()
               .setTitle('⛔ Administrator Access Required')
@@ -252,7 +252,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
         if (!updatedCe) {
           await interaction.reply({
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
             embeds: [
               new EmbedBuilder()
                 .setTitle('❌ Craft Essence Not Found')
@@ -447,7 +447,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setColor(0xf59e0b)
         .setFooter({ text: 'Authentic Fate Holy Grail War System' });
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -492,7 +492,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setStyle(ButtonStyle.Secondary)
       );
 
-      const reply = await interaction.reply({ embeds: [embed], components: [row], ephemeral: true, fetchReply: true });
+      await interaction.reply({ embeds: [embed], components: [row], flags: MessageFlags.Ephemeral });
+      const reply = await interaction.fetchReply();
 
       // Handle button interactions
       const collector = reply.createMessageComponentCollector({
@@ -516,7 +517,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             const listStr = owned.map(c => `• **${c.name}** (★${c.rarity})${activeServ?.equippedCeId === c.id ? ' [⚔️ EQUIPPED]' : ''}: ${c.effectText}`).slice(0, 10).join('\n');
             
             await i.followUp({
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
               content: `🛡️ **Your Craft Essence Vault (${owned.length} items):**\n${listStr || 'No Craft Essences owned yet.'}`
             });
             return;
@@ -527,7 +528,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
           if ((currentMaster.saintQuartz || 0) < cost) {
             await i.reply({
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
               content: `❌ Insufficient Saint Quartz! You need ${cost} SQ 💎, but only have ${currentMaster.saintQuartz || 0} SQ. Win Grail War battles or claim daily rewards!`
             });
             return;
@@ -593,11 +594,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           )
           .setColor(0xef4444);
 
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         return;
       }
 
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
       const pullResult = executeCraftEssenceGachaRoll({
         count: rolls,
@@ -678,7 +679,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           }
           await bi.reply({
             content: '📢 You have revealed your Craft Essence pull to the server! Your identity is now permanently exposed on the War Board.',
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
           });
         }
       });
@@ -688,7 +689,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   } catch (error: any) {
     console.error('Error executing /cegacha:', error);
     if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ ephemeral: true, content: `❌ Error: ${error.message}` });
+      await interaction.reply({ flags: MessageFlags.Ephemeral, content: `❌ Error: ${error.message}` });
     } else {
       await interaction.editReply({ content: `❌ Error: ${error.message}` });
     }

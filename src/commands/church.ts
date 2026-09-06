@@ -6,7 +6,7 @@ import {
   ButtonStyle, 
   EmbedBuilder,
   ComponentType
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { 
   getOrInitWarSession,
@@ -78,7 +78,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (!master.servants || master.servants.length === 0) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
       });
       return;
@@ -108,12 +108,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     await interaction.reply({
       embeds: [churchEmbed],
       components: churchButtons,
-      ephemeral: true
+      flags: MessageFlags.Ephemeral
     });
   } catch (error: any) {
     console.error('Error executing /church:', error);
     if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ ephemeral: true, content: `❌ Error in Church Sanctuary: ${error.message}` });
+      await interaction.reply({ flags: MessageFlags.Ephemeral, content: `❌ Error in Church Sanctuary: ${error.message}` });
     }
   }
 }

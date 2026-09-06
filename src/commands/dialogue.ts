@@ -6,7 +6,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { getOrCreateMaster } from '../database/service';
 import { renderDialogueCard } from '../canvas/renderer';
 import { SERVANT_DATABASE } from '../data/servants';

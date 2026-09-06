@@ -7,7 +7,7 @@ import {
   EmbedBuilder,
   StringSelectMenuBuilder,
   ComponentType
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { HolyGrailWarSession } from '../types';
 import { 
@@ -53,7 +53,7 @@ export const data = new SlashCommandBuilder()
 // 2. MAIN EXECUTE HANDLER
 // ==========================================
 export async function execute(interaction: ChatInputCommandInteraction) {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
@@ -367,7 +367,7 @@ export function attachGrailWarCollector(
   collector.on('collect', async (i: any) => {
     if (i.replied || i.deferred) return;
     if (i.user.id !== userId) {
-      await i.reply({ content: 'Only the Master who issued this command can interact with this Holy Grail War board.', ephemeral: true });
+      await i.reply({ content: 'Only the Master who issued this command can interact with this Holy Grail War board.', flags: MessageFlags.Ephemeral });
       return;
     }
     collector.resetTimer();
@@ -467,16 +467,16 @@ export function attachGrailWarCollector(
       }
       // CROSS-HUB SHORTCUTS
       else if (i.customId === 'war_link_inventory') {
-        await i.reply({ content: 'Use `/inventory` to open your Master Vault and equip Craft Essences!', ephemeral: true });
+        await i.reply({ content: 'Use `/inventory` to open your Master Vault and equip Craft Essences!', flags: MessageFlags.Ephemeral });
         return;
       } else if (i.customId === 'war_link_gacha') {
-        await i.reply({ content: 'Use `/gacha` to roll for Heroic Spirits and Craft Essences!', ephemeral: true });
+        await i.reply({ content: 'Use `/gacha` to roll for Heroic Spirits and Craft Essences!', flags: MessageFlags.Ephemeral });
         return;
       } else if (i.customId === 'war_link_servant') {
-        await i.reply({ content: 'Use `/servant` to view your Heroic Spirit parameter card, allocate points, and hear dialogue!', ephemeral: true });
+        await i.reply({ content: 'Use `/servant` to view your Heroic Spirit parameter card, allocate points, and hear dialogue!', flags: MessageFlags.Ephemeral });
         return;
       } else if (i.customId === 'war_link_duel') {
-        await i.reply({ content: 'Use `/duel` to enter the combat arena and battle rivals or AI!', ephemeral: true });
+        await i.reply({ content: 'Use `/duel` to enter the combat arena and battle rivals or AI!', flags: MessageFlags.Ephemeral });
         return;
       }
 

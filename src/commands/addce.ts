@@ -3,7 +3,7 @@ import {
   ChatInputCommandInteraction, 
   EmbedBuilder,
   PermissionFlagsBits
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { 
   addCustomCraftEssence, 
   getAllCraftEssences, 
@@ -227,7 +227,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   if (interaction.guild && !isGuildAdmin) {
     await interaction.reply({
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
       embeds: [
         new EmbedBuilder()
           .setTitle('⛔ Administrator Access Required')
@@ -332,7 +332,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (!updatedCe) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         embeds: [
           new EmbedBuilder()
             .setTitle('❌ Craft Essence Not Found')

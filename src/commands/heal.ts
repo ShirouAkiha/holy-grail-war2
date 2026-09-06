@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder , MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { getOrInitWarSession, executeWarAction } from '../engine/grailwar';
 
@@ -11,7 +11,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
     if (!master.servants || master.servants.length === 0) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         content: '❌ You must summon a Servant before channeling healing rituals! Use `/summon` first.'
       });
       return;
@@ -36,15 +36,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .setColor(res.success ? 0x22c55e : 0xf59e0b)
       .setFooter({ text: 'Holy Grail War Regeneration • Check /grailwar status' });
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   } catch (error: any) {
     if (error.code === 10062 || error.code === 40060) return;
     console.error('Error executing /heal:', error);
     try {
       if (interaction.deferred || interaction.replied) {
-        await interaction.followUp({ content: `❌ Heal command error: ${error.message}`, ephemeral: true });
+        await interaction.followUp({ content: `❌ Heal command error: ${error.message}`, flags: MessageFlags.Ephemeral });
       } else {
-        await interaction.reply({ content: `❌ Heal command error: ${error.message}`, ephemeral: true });
+        await interaction.reply({ content: `❌ Heal command error: ${error.message}`, flags: MessageFlags.Ephemeral });
       }
     } catch {}
   }

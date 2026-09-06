@@ -7,7 +7,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ComponentType
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 import { feedCraftEssences, getCeExpValue, calculateLevelFromExp, getTotalExpForLevel } from '../engine/customization';
@@ -212,7 +212,7 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
   collector.on('collect', async (i: any) => {
     try {
       if (i.user.id !== interaction.user.id) {
-        await i.reply({ ephemeral: true, content: '❌ This inventory menu belongs to another Master.' });
+        await i.reply({ flags: MessageFlags.Ephemeral, content: '❌ This inventory menu belongs to another Master.' });
         return;
       }
 
@@ -293,7 +293,7 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
           const ce = ownedCes.find((c: any) => c.id === targetCeId) || CRAFT_ESSENCE_DATABASE.find(c => c.id === targetCeId);
           if (ce) {
             await i.reply({
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
               embeds: [
                 new EmbedBuilder()
                   .setTitle(`📖 Relic Lore: ${ce.name}`)
@@ -312,7 +312,7 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
           const s = master.servants?.find((srv: any) => srv.id === selectedItemId) || activeServant;
           if (s) {
             await i.reply({
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
               embeds: [
                 new EmbedBuilder()
                   .setTitle(`⚔️ Servant Dossier: ${s.nickname || s.template?.name}`)
@@ -329,7 +329,7 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
           }
         } else if (currentCategory === 'seals') {
           await i.reply({
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
             embeds: [
               new EmbedBuilder()
                 .setTitle(`📜 Command Seal & Bounded Field Codex`)
@@ -345,7 +345,7 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
           return;
         } else if (currentCategory === 'items') {
           await i.reply({
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
             embeds: [
               new EmbedBuilder()
                 .setTitle(`💎 Master Vault & Currency Ledger`)
@@ -365,7 +365,7 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
       else if (customId === 'inv_quick_gacha') {
         const sq = master.saintQuartz || 0;
         await i.reply({
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           embeds: [
             new EmbedBuilder()
               .setTitle('🔮 Greater Grail Invocation Sanctum')
@@ -385,12 +385,12 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
       // Action: Quick Servant Workshop
       else if (customId === 'inv_quick_stats') {
         if (!activeServant) {
-          await i.reply({ ephemeral: true, content: '❌ No active Servant contracted. Use `/summon ritual` first.' });
+          await i.reply({ flags: MessageFlags.Ephemeral, content: '❌ No active Servant contracted. Use `/summon ritual` first.' });
           return;
         }
         const pts = activeServant.availableStatPoints || 0;
         await i.reply({
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           embeds: [
             new EmbedBuilder()
               .setTitle(`👑 Servant Workshop: ${activeServant.nickname || activeServant.template?.name}`)
@@ -407,7 +407,7 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
       // Action: Quick Grail War Room
       else if (customId === 'inv_quick_war') {
         await i.reply({
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           embeds: [
             new EmbedBuilder()
               .setTitle('🏰 Holy Grail War Room')
@@ -427,7 +427,7 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
       // Action: Quick Combat Arena
       else if (customId === 'inv_quick_duel') {
         await i.reply({
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           embeds: [
             new EmbedBuilder()
               .setTitle('⚔️ Fuyuki Combat Arena & Duels')
@@ -479,7 +479,7 @@ export async function handleGlobalInventoryInteraction(interaction: any) {
     if (customId === 'inv_quick_gacha') {
       const sq = master.saintQuartz || 0;
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         embeds: [
           new EmbedBuilder()
             .setTitle('🎲 Gacha Vault Invocation')
@@ -500,7 +500,7 @@ export async function handleGlobalInventoryInteraction(interaction: any) {
     if (customId === 'inv_quick_stats') {
       const pts = activeServant?.availableStatPoints || 0;
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         embeds: [
           new EmbedBuilder()
             .setTitle(`📊 Parameter Customization: ${activeServant?.nickname || activeServant?.template?.name || 'Servant'}`)
@@ -520,7 +520,7 @@ export async function handleGlobalInventoryInteraction(interaction: any) {
     if (customId === 'inv_act_inspect') {
       const targetCe = ownedCes.find((c: any) => c.id === activeServant?.equippedCeId) || CRAFT_ESSENCE_DATABASE[0];
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         embeds: [
           new EmbedBuilder()
             .setTitle(`📖 Relic Lore: ${targetCe.name}`)
@@ -660,7 +660,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     // Validation: Player must have at least 1 Servant
     if (!master.servants || master.servants.length === 0) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         content: '❌ You must summon a Servant using `/summon` before you can customize them!'
       });
       return;
@@ -704,14 +704,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           )
           .setColor(0xd4af37);
 
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         return;
       }
 
       // Check if player has enough unused points
       if (totalRequested > (activeServant.availableStatPoints || 0)) {
         await interaction.reply({
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           content: `❌ Cannot allocate **${totalRequested} pts**. You only have **${activeServant.availableStatPoints || 0} available stat points** on ${servantName}.`
         });
         return;
@@ -744,7 +744,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         )
         .setColor(0x22c55e);
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -765,7 +765,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setDescription(`Removed Craft Essence from **${servantName}**.`)
           .setColor(0x94a3b8);
 
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         return;
       }
 
@@ -785,12 +785,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
           if (dbFound) {
             await interaction.reply({
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
               content: `❌ You do not own **${dbFound.name}** in your inventory! Roll in \`/cegacha\` using Saint Quartz 💎.`
             });
           } else {
             await interaction.reply({
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
               content: `❌ Item "${ceNameParam}" not found in database or inventory.`
             });
           }
@@ -810,13 +810,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           )
           .setColor(0x38bdf8);
 
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         return;
       }
 
       // Render Full Interactive Inventory Hub
       const { embed, components } = buildInventoryHub(master, activeServant, 'ces', 1, activeServant.equippedCeId);
-      const reply = await interaction.reply({ embeds: [embed], components, ephemeral: true, fetchReply: true });
+      await interaction.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
+      const reply = await interaction.fetchReply();
       attachInventoryCollector(interaction, master, activeServant, reply);
       return;
     }
@@ -872,7 +873,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setColor(0x22c55e)
         .setFooter({ text: `Contracted to Master ${master.username} • Use /dialogue or /duel to hear it live!` });
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -886,7 +887,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       await interaction.reply({
         content: `✨ Servant nickname updated to **${name}**!`,
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
       return;
     }
@@ -898,7 +899,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const ownedCes = (master.craftEssences || []).filter(Boolean);
       if (ownedCes.length === 0) {
         await interaction.reply({
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           content: '❌ You have no Craft Essences in your inventory to feed! Summon more in `/cegacha` using Saint Quartz 💎.'
         });
         return;
@@ -938,7 +939,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           )
           .setColor(0xd4af37);
 
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
         return;
       }
 
@@ -972,7 +973,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       if (targetsToFeed.length === 0) {
         await interaction.reply({
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           content: `❌ No Craft Essences matching "${query}" found in your inventory.`
         });
         return;
@@ -1013,9 +1014,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   } catch (error: any) {
     console.error('Error executing /customise:', error);
     if (interaction.replied || interaction.deferred) {
-      await interaction.followUp({ content: `❌ Error: ${error.message}`, ephemeral: true });
+      await interaction.followUp({ content: `❌ Error: ${error.message}`, flags: MessageFlags.Ephemeral });
     } else {
-      await interaction.reply({ content: `❌ Error: ${error.message}`, ephemeral: true });
+      await interaction.reply({ content: `❌ Error: ${error.message}`, flags: MessageFlags.Ephemeral });
     }
   }
 }

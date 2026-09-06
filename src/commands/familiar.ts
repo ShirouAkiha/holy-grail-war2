@@ -5,7 +5,7 @@ import {
   ButtonBuilder, 
   ButtonStyle, 
   EmbedBuilder 
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { 
   getOrInitWarSession, 
@@ -54,7 +54,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
     if (!master.servants || master.servants.length === 0) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         content: '❌ You must summon a Servant before dispatching familiars! Use `/summon` first.'
       });
       return;
@@ -81,7 +81,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setColor(famType === 'homunculus' ? 0x10b981 : famType === 'shadow_imp' ? 0x8b5cf6 : 0x0ea5e9)
         .setFooter({ text: 'Familiars actively gather intelligence and shield their Masters' });
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -92,7 +92,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       await interaction.reply({
         content: res.message,
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
       return;
     }
@@ -141,9 +141,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setStyle(ButtonStyle.Secondary)
     );
 
-    await interaction.reply({ embeds: [embed], components: [row], ephemeral: true });
+    await interaction.reply({ embeds: [embed], components: [row], flags: MessageFlags.Ephemeral });
   } catch (error: any) {
     console.error('Error executing /familiar:', error);
-    await interaction.reply({ content: `❌ Familiar command error: ${error.message}`, ephemeral: true });
+    await interaction.reply({ content: `❌ Familiar command error: ${error.message}`, flags: MessageFlags.Ephemeral });
   }
 }

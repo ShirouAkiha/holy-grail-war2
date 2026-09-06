@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder , MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { getOrInitWarSession } from '../engine/grailwar';
 
@@ -13,7 +13,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (!s) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         content: '❌ You must summon a Servant first to boast! Use `/summon`.'
       });
       return;
@@ -49,6 +49,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     await interaction.reply({ embeds: [embed] });
   } catch (error: any) {
     console.error('Error executing /boast:', error);
-    await interaction.reply({ content: `❌ Boast error: ${error.message}`, ephemeral: true });
+    await interaction.reply({ content: `❌ Boast error: ${error.message}`, flags: MessageFlags.Ephemeral });
   }
 }

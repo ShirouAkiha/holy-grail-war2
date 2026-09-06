@@ -10,7 +10,7 @@ import {
   ComponentType,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { getAllThroneServants, findServantInPool, matchServantSearch } from '../database/service';
 import { getDefaultClassPassives } from '../data/servants';
 import { ServantTemplate, MasterServantInstance, ServantClass } from '../types';
@@ -140,7 +140,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       if (!match) {
         await interaction.reply({
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           content: `❌ No Heroic Spirit found matching "${query}". Use \`/servants list\` to browse all available spirits.`
         });
         return;
@@ -158,7 +158,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       if (!match) {
         await interaction.reply({
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
           content: `❌ No Heroic Spirit found matching "${query}". Use \`/servants list\` to browse all available spirits.`
         });
         return;
@@ -245,12 +245,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       if (interaction.deferred || interaction.replied) {
         await interaction.followUp({
           content: `❌ Error querying Throne of Heroes: ${error.message}`,
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
       } else {
         await interaction.reply({
           content: `❌ Error querying Throne of Heroes: ${error.message}`,
-          ephemeral: true
+          flags: MessageFlags.Ephemeral
         });
       }
     } catch {}
@@ -608,7 +608,7 @@ export function setupServantListCollector(
             components: [actions] 
           });
         } else {
-          await i.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+          await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
         }
         return;
       }
@@ -679,7 +679,7 @@ export function setupServantListCollector(
             components: [actions] 
           });
         } else {
-          await i.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+          await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
         }
         return;
       }
@@ -692,7 +692,7 @@ export function setupServantListCollector(
           const actions = buildNoblePhantasmActions(target.id);
           await i.reply({ embeds: [npEmbed], components: [actions] });
         } else {
-          await i.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+          await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
         }
         return;
       }
@@ -705,7 +705,7 @@ export function setupServantListCollector(
           const actions = buildNoblePhantasmActions(target.id);
           await i.reply({ embeds: [artEmbed], components: [actions] });
         } else {
-          await i.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+          await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
         }
         return;
       }
@@ -721,7 +721,7 @@ export function setupServantListCollector(
             .setFooter({ text: `${target.title} • Class: ${target.servantClass}` });
           await i.reply({ embeds: [quoteEmbed] });
         } else {
-          await i.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+          await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
         }
         return;
       }
@@ -775,7 +775,7 @@ export async function handleServantsListInteraction(i: any) {
       const target = allServants.find(s => s.id === servantId);
 
       if (target) {
-        await i.deferReply({ ephemeral: true });
+        await i.deferReply({ flags: MessageFlags.Ephemeral });
         const profileEmbed = buildServantFullProfileEmbed(target);
         const artworkEmbed = buildServantArtworkEmbed(target);
         const actions = buildProfileActions(target.id);
@@ -797,7 +797,7 @@ export async function handleServantsListInteraction(i: any) {
           components: [actions] 
         });
       } else {
-        await i.reply({ content: 'Heroic Spirit not found.', ephemeral: true });
+        await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
       }
       return true;
     }

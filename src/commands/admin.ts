@@ -8,7 +8,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   StringSelectMenuBuilder
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { 
   getAllThroneServants,
   setServantNpAnimation,
@@ -145,7 +145,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (!result.success || !result.servant) {
       await interaction.reply({
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
         embeds: [
           new EmbedBuilder()
             .setTitle('❌ Could Not Set Animation')
@@ -199,7 +199,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 
   // Open the interactive Admin Hub
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const { embeds, components } = buildAdminHub(category);
   const msg = await interaction.editReply({ embeds, components });
   attachAdminCollector(msg, interaction.user.id, category);
@@ -348,7 +348,7 @@ export function attachAdminCollector(
   collector.on('collect', async (i: any) => {
     if (i.replied || i.deferred) return;
     if (i.user.id !== userId) {
-      await i.reply({ content: 'Only the administrator who opened this panel can interact with it.', ephemeral: true });
+      await i.reply({ content: 'Only the administrator who opened this panel can interact with it.', flags: MessageFlags.Ephemeral });
       return;
     }
     collector.resetTimer();
@@ -400,19 +400,19 @@ export function attachAdminCollector(
       }
       // CROSS-HUB SHORTCUTS
       else if (i.customId === 'admin_link_inventory') {
-        await i.reply({ content: 'Use `/inventory` to open Master Inventory!', ephemeral: true });
+        await i.reply({ content: 'Use `/inventory` to open Master Inventory!', flags: MessageFlags.Ephemeral });
         return;
       } else if (i.customId === 'admin_link_gacha') {
-        await i.reply({ content: 'Use `/gacha` to open Summoning Sanctum!', ephemeral: true });
+        await i.reply({ content: 'Use `/gacha` to open Summoning Sanctum!', flags: MessageFlags.Ephemeral });
         return;
       } else if (i.customId === 'admin_link_servant') {
-        await i.reply({ content: 'Use `/servant` to open Servant Workshop!', ephemeral: true });
+        await i.reply({ content: 'Use `/servant` to open Servant Workshop!', flags: MessageFlags.Ephemeral });
         return;
       } else if (i.customId === 'admin_link_grailwar') {
-        await i.reply({ content: 'Use `/grailwar` to open Holy Grail War operations!', ephemeral: true });
+        await i.reply({ content: 'Use `/grailwar` to open Holy Grail War operations!', flags: MessageFlags.Ephemeral });
         return;
       } else if (i.customId.startsWith('admin_link_duel')) {
-        await i.reply({ content: 'Use `/duel` to enter the combat arena!', ephemeral: true });
+        await i.reply({ content: 'Use `/duel` to enter the combat arena!', flags: MessageFlags.Ephemeral });
         return;
       }
 

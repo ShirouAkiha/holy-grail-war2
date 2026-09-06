@@ -5,7 +5,7 @@ import {
   ActionRowBuilder, 
   ButtonBuilder, 
   ButtonStyle 
-} from 'discord.js';
+, MessageFlags } from 'discord.js';
 import { claimDailySaintQuartz } from '../database/service';
 
 // ==========================================
@@ -109,7 +109,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   } catch (err: any) {
     console.error('Error executing /daily command:', err);
     await interaction.reply({
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
       embeds: [
         new EmbedBuilder()
           .setTitle('❌ Claim Failed')
