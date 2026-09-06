@@ -1687,29 +1687,54 @@ export function patrolCityInWar(
     };
   }
 
-  // MASTER SCOUT PATROL
-  const trapResult = checkAndTriggerChannelTraps(targetWar, actorDiscordId, actorUsername, chanTag);
+  // MASTER SCOUT PATROL (Stealth Reconnaissance - DOES NOT trigger traps)
+  const cleanChan = chanTag.replace(/^[#<@>]/, '').toLowerCase();
+  const activeTraps = (targetWar.channelTraps || []).filter(t => {
+    const tClean = t.channelName.replace(/^[#<@>]/, '').toLowerCase();
+    return tClean === cleanChan || t.channelName.toLowerCase() === chanTag.toLowerCase();
+  });
+
+  let trapIntel = '';
+  if (activeTraps.length > 0) {
+    const rivalTraps = activeTraps.filter(t => t.setterMasterId !== actorDiscordId);
+    const ownTraps = activeTraps.filter(t => t.setterMasterId === actorDiscordId);
+
+    const intelLines: string[] = [];
+    if (rivalTraps.length > 0) {
+      for (const t of rivalTraps) {
+        if (t.trapType === 'drain') {
+          intelLines.push(`🩸 **Hostile Bounded Field Detected:** Concealed **Bloodfort Mana Drain Field** anchored in **${chanTag}**!\n• *Hazard:* Walking or casting spells here normally will siphon 2,500–5,000 HP from your Servant!\n• *Disarm:* Use \`/trap disarm channel:${chanTag}\` to safely dismantle it before engaging.`);
+        } else {
+          intelLines.push(`🚨 **Hostile Alarm Ward Detected:** Concealed **Sensory Alarm Ward** woven into **${chanTag}**!\n• *Hazard:* Operating here normally will trip perimeter sensors and expose your identity to the War Board!\n• *Disarm:* Use \`/trap disarm channel:${chanTag}\` to dismantle it safely.`);
+        }
+      }
+    }
+    if (ownTraps.length > 0) {
+      for (const t of ownTraps) {
+        intelLines.push(`🛡️ **Your Active Ward:** You have an active **${t.trapType === 'drain' ? 'Bloodfort Mana Drain Field' : 'Sensory Alarm Ward'}** guarding **${chanTag}**.`);
+      }
+    }
+    trapIntel = intelLines.join('\n\n');
+  } else {
+    trapIntel = `✨ **Leyline Reconnaissance:** **${chanTag}** is clear of concealed Bounded Fields, Alarm Wards, and Bloodfort Drains.`;
+  }
+
   const aliveRivals = Object.values(targetWar.participants).filter(p => p.discordId !== actorDiscordId && p.isAlive);
   let masterReport = '';
 
-  if (aliveRivals.length > 0 && Math.random() < 0.65) {
+  if (aliveRivals.length > 0 && Math.random() < 0.60) {
     const rival = aliveRivals[Math.floor(Math.random() * aliveRivals.length)];
     const rivalIndex = Object.values(targetWar.participants).indexOf(rival) + 1;
     const rivalLabel = rival.isExposed ? `Master **${rival.username}**` : `Shadow Master #${rivalIndex}`;
     const servantLabel = rival.isExposed ? `**${rival.servantName}** (${rival.servantClass})` : `**${rival.servantClass} Class**`;
 
-    masterReport = `👁️ **Master Scout Patrol in ${chanTag}:** Your Servant (**${actorParticipant.servantName}**) surveyed **${chanTag}** and picked up the mana trail of ${rivalLabel} (${servantLabel}, ~${rival.currentHp.toLocaleString()} HP)! They are lurking near this channel.`;
+    masterReport = `👁️ **Scout Intel for ${chanTag}:** Your Servant (**${actorParticipant.servantName}**) surveyed **${chanTag}** and detected the distant mana trail of ${rivalLabel} (${servantLabel}, ~${rival.currentHp.toLocaleString()} HP).`;
   } else {
     const masterReports = [
-      `👁️ **Master Scout Patrol in ${chanTag}:** Your Servant surveyed **${chanTag}** and spotted 2 civilian bystanders lingering nearby. Exercise caution if ambushing here to avoid collateral casualties and Secrecy exposure!`,
-      `👁️ **Master Scout Patrol in ${chanTag}:** Your Servant detected faint Bounded Field resonance in **${chanTag}**. A rival Master in this sector may have set Sanctuary or Alarm wards!`,
-      `👁️ **Master Scout Patrol in ${chanTag}:** Your Servant combed **${chanTag}** from the shadows. The area is currently clear of rival Servant signatures.`
+      `👁️ **Scout Intel for ${chanTag}:** Your Servant surveyed **${chanTag}** and spotted civilian bystanders lingering nearby. Exercise caution if ambushing here to avoid collateral casualties.`,
+      `👁️ **Scout Intel for ${chanTag}:** Your Servant combed **${chanTag}** from the shadows. The area is currently clear of rival Servant signatures.`
     ];
     masterReport = masterReports[Math.floor(Math.random() * masterReports.length)];
-  }
-
-  if (trapResult.triggered && trapResult.message) {
-    masterReport = `${trapResult.message}\n\n${masterReport}`;
   }
 
   // Check if actor has active familiars in this sector to include feed
@@ -1739,6 +1764,8 @@ export function patrolCityInWar(
     masterReport += `\n\n🏹 **Enemy Spy Neutralized!** Your Servant (**${actorParticipant.servantName}**) detected a concealed **${famTypeName}** spying on ${chanTag} and eliminated it!`;
   }
 
+  const fullReport = `${trapIntel}\n\n${masterReport}`;
+
   // Record observation for any surviving rival familiars in this channel
   recordFamiliarObservation(
     targetWar,
@@ -1749,16 +1776,9 @@ export function patrolCityInWar(
     actorParticipant.servantClass
   );
 
-  targetWar.eventLogs.unshift({
-    id: `evt_patrol_${Date.now()}`,
-    timestamp: Date.now(),
-    text: `👁️ Patrol in ${chanTag}: A Master surveyed ${chanTag} for rival signatures and civilian activity.`,
-    type: 'intel_leak'
-  });
-
   return {
     success: true,
-    message: masterReport,
+    message: fullReport,
     updatedWar: targetWar
   };
 }

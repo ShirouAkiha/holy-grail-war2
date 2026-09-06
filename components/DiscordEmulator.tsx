@@ -984,7 +984,9 @@ export default function DiscordEmulator({
     }
 
     // Check if the current channel sector contains a rival Master's concealed Bounded Field trap!
-    if (activeServant && grailWar.channelTraps && grailWar.channelTraps.length > 0) {
+    // Civilians (no activeServant) and stealth patrol commands never trigger traps.
+    const isPatrolCmd = trimmed.startsWith('/patrol') || trimmed.startsWith('/grailwar patrol') || trimmed.startsWith('!patrol') || trimmed.startsWith('!scout');
+    if (activeServant && !isPatrolCmd && grailWar.channelTraps && grailWar.channelTraps.length > 0) {
       const curChanName = activeChannel === 'public' ? '#holy-grail-war' : activeChannel.startsWith('#') ? activeChannel : `#${activeChannel}`;
       const trapRes = checkAndTriggerChannelTraps(grailWar, master.discordId, master.username, curChanName);
       if (trapRes.triggered && trapRes.trapType && trapRes.setterId) {
@@ -2715,7 +2717,7 @@ export default function DiscordEmulator({
     }
 
     if (trimmed.startsWith('/patrol') || trimmed.startsWith('/grailwar patrol')) {
-      const chanTag = activeChannel === 'public' ? '#holy-grail-war' : '#general';
+      const chanTag = activeChannel === 'public' ? '#holy-grail-war' : activeChannel.startsWith('#') ? activeChannel : `#${activeChannel}`;
       const res = patrolCityInWar(grailWar, master.discordId, master.username, chanTag);
       onUpdateGrailWar(res.updatedWar);
       addMessage({
@@ -2723,10 +2725,10 @@ export default function DiscordEmulator({
         sender: 'bot',
         timestamp: 'Just now',
         embed: {
-          title: '👁️ Patrol Outcome — Fuyuki Surveillance',
+          title: '👁️ CITY PATROL RECONNAISSANCE REPORT',
           description: res.message,
-          color: '#3b82f6',
-          footer: 'Holy Grail War Patrol Protocol'
+          color: '#0284c7',
+          footer: 'Stealth Reconnaissance • Wards & Traps Detected Safely (No Trigger)'
         },
         components: {
           type: 'buttons',

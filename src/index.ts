@@ -210,11 +210,14 @@ async function triggerChannelTrapsIfAny(
   if (!channel || !actorId) return;
   try {
     const actorMaster = await getMaster(actorId);
-    // Only Masters with summoned Servants interact with territorial Grail War traps
+    // Only Masters with active summoned Servants interact with territorial Grail War traps (Civilians never trigger traps)
     if (!actorMaster || !actorMaster.servants || actorMaster.servants.length === 0) return;
 
     let war = getOrInitWarSession(actorMaster);
     if (!war || !war.channelTraps || war.channelTraps.length === 0) return;
+
+    const actorPart = war.participants[actorId];
+    if (!actorPart || !actorPart.isAlive) return;
 
     const channelName = channel.name ? `#${channel.name}` : `#${channel.id}`;
     const channelId = channel.id;
@@ -324,7 +327,8 @@ client.on(Events.InteractionCreate, async interaction => {
   try {
     // If an interaction happens in a guild text channel, check for territorial Bounded Field traps asynchronously
     if (interaction.guild && interaction.channel && !interaction.user.bot) {
-      if (!interaction.isAutocomplete()) {
+      const isPatrol = interaction.isChatInputCommand() && interaction.commandName === 'patrol';
+      if (!interaction.isAutocomplete() && !isPatrol) {
         triggerChannelTrapsIfAny(client, interaction.user.id, interaction.user.username, interaction.channel).catch(err => {
           console.warn('[TrapTrigger] Background trap trigger error:', err);
         });
@@ -1207,9 +1211,14 @@ client.on(Events.MessageCreate, async message => {
   try {
     if (message.author.bot) return;
 
-    // Check if the message was posted in a guild channel with a rival Bounded Field trap
+    // Check if the message was posted in a guild channel with a rival Bounded Field trap (exclude patrol reconnaissance)
     if (message.guild && message.channel) {
-      await triggerChannelTrapsIfAny(client, message.author.id, message.author.username, message.channel);
+      const isPatrolMsg = message.content.startsWith('!patrol') || message.content.startsWith('!scout');
+      if (!isPatrolMsg) {
+        triggerChannelTrapsIfAny(client, message.author.id, message.author.username, message.channel).catch(err => {
+          console.warn('[TrapTrigger] Background message trap trigger error:', err);
+        });
+      }
     }
 
     if (!message.content.startsWith('!')) return;

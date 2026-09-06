@@ -4,10 +4,16 @@ import { getOrInitWarSession, patrolCityInWar } from '../engine/grailwar';
 
 export const data = new SlashCommandBuilder()
   .setName('patrol')
-  .setDescription('👁️ Patrol Fuyuki City sectors to gather intel, detect rival signatures, or spy on bystanders');
+  .setDescription('👁️ Patrol a Fuyuki sector to detect concealed traps & Bounded Fields safely without triggering them')
+  .addChannelOption(opt =>
+    opt
+      .setName('channel')
+      .setDescription('Channel sector to scout (defaults to current channel)')
+      .setRequired(false)
+  );
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-  await interaction.deferReply();
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
     const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
@@ -20,9 +26,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     let war = getOrInitWarSession(master);
-    const currentChannelName = interaction.channel && 'name' in interaction.channel 
-      ? `#${(interaction.channel as any).name}`
-      : '#fuyuki-city';
+    const targetChannelObj = interaction.options.getChannel('channel');
+    const currentChannelName = targetChannelObj && 'name' in targetChannelObj
+      ? `#${(targetChannelObj as any).name}`
+      : interaction.channel && 'name' in interaction.channel 
+        ? `#${(interaction.channel as any).name}`
+        : '#general';
 
     const res = patrolCityInWar(war, interaction.user.id, interaction.user.username, currentChannelName);
     war = res.updatedWar;
@@ -32,7 +41,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .setTitle('👁️ CITY PATROL RECONNAISSANCE REPORT')
       .setDescription(res.message)
       .setColor(0x0284c7)
-      .setFooter({ text: 'Fuyuki City Reconnaissance • Check /grailwar status' });
+      .setFooter({ text: 'Stealth Reconnaissance • Wards & Traps Detected Safely (No Trigger)' });
 
     await interaction.editReply({ embeds: [embed] });
   } catch (error: any) {
