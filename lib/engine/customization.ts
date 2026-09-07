@@ -219,22 +219,33 @@ export function feedCraftEssences(
     throw new Error('No Craft Essences selected for synthesis.');
   }
 
-  const remaining = [...(masterCraftEssences || [])];
+  const originalList = (masterCraftEssences || []).filter(Boolean);
+  const consumedIndices = new Set<number>();
   const fedEssences: any[] = [];
   let totalExpGained = 0;
 
   for (const rawTarget of ceIndicesOrIds) {
-    const target = String(rawTarget);
-    const idx = remaining.findIndex(
-      (c: any, index: number) =>
-        c &&
-        (c.id === target ||
-          String(index) === target ||
-          c.name?.toLowerCase() === target.toLowerCase())
-    );
+    const targetStr = String(rawTarget).trim();
+    const asNum = Number(targetStr);
 
-    if (idx !== -1) {
-      const [consumed] = remaining.splice(idx, 1);
+    // If it's a valid original array index, consume that exact index
+    if (!isNaN(asNum) && Number.isInteger(asNum) && asNum >= 0 && asNum < originalList.length && !consumedIndices.has(asNum)) {
+      consumedIndices.add(asNum);
+      const consumed = originalList[asNum];
+      fedEssences.push(consumed);
+      totalExpGained += getCeExpValue(consumed);
+      continue;
+    }
+
+    // Otherwise match by exact ID, or name, among unconsumed items
+    const matchIdx = originalList.findIndex((c: any, i: number) => {
+      if (consumedIndices.has(i) || !c) return false;
+      return c.id === targetStr || c.name?.toLowerCase() === targetStr.toLowerCase();
+    });
+
+    if (matchIdx !== -1) {
+      consumedIndices.add(matchIdx);
+      const consumed = originalList[matchIdx];
       fedEssences.push(consumed);
       totalExpGained += getCeExpValue(consumed);
     }
@@ -243,6 +254,8 @@ export function feedCraftEssences(
   if (fedEssences.length === 0) {
     throw new Error('None of the selected Craft Essences were found in inventory.');
   }
+
+  const remaining = originalList.filter((_, idx) => !consumedIndices.has(idx));
 
   const oldLevel = servant.level || 1;
   const currentExp = servant.experience ?? getTotalExpForLevel(oldLevel);

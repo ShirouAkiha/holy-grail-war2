@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { CanvasRenderer } from './CanvasRenderer';
 import {
   MasterProfile,
   CardType,
@@ -476,6 +477,12 @@ export const FUYUKI_SECTORS = [
   { id: '#general', name: 'general', label: 'General Sector', emoji: '💬', desc: 'Civilian District' }
 ] as const;
 
+let _globalMsgCounter = 100;
+function getNextId(prefix: string): string {
+  _globalMsgCounter += 1;
+  return `${prefix}_${_globalMsgCounter}`;
+}
+
 export default function DiscordEmulator({
   master,
   onUpdateMaster,
@@ -601,6 +608,7 @@ export default function DiscordEmulator({
   const [grailWarHubCategory, setGrailWarHubCategory] = useState<'board' | 'defenses' | 'familiars' | 'traps' | 'church'>('board');
   const [adminHubCategory, setAdminHubCategory] = useState<'war' | 'war_rules' | 'npanim' | 'npsettings' | 'listnp' | 'economy'>('war');
   const [duelHubCategory, setDuelHubCategory] = useState<'arena' | 'active' | 'history' | 'leaderboard'>('arena');
+  const [multiSelectState, setMultiSelectState] = useState<Record<string, string[]>>({});
   const [servantsPage, setServantsPage] = useState<number>(1);
   const [servantsOriginFilter, setServantsOriginFilter] = useState<'all' | 'canon' | 'custom'>('all');
   const [servantsClassFilter, setServantsClassFilter] = useState<string>('all');
@@ -609,22 +617,25 @@ export default function DiscordEmulator({
     battle: ReturnType<typeof initializeBattle>;
     lastLog?: CombatTurnLog;
   } | null>(null);
+  const [activeNpMsgId, setActiveNpMsgId] = useState<string | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
-  const msgCounterRef = useRef<number>(100);
-  const activeNpTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const activeNpMsgIdRef = useRef<string | null>(null);
 
   const cleanupActiveNpGif = () => {
-    if (activeNpTimeoutRef.current) {
-      clearTimeout(activeNpTimeoutRef.current);
-      activeNpTimeoutRef.current = null;
-    }
-    if (activeNpMsgIdRef.current) {
-      const idToDelete = activeNpMsgIdRef.current;
-      activeNpMsgIdRef.current = null;
+    if (activeNpMsgId) {
+      const idToDelete = activeNpMsgId;
+      setActiveNpMsgId(null);
       setMessages(prev => prev.filter(m => m.id !== idToDelete));
     }
   };
+
+  useEffect(() => {
+    if (!activeNpMsgId) return;
+    const timer = setTimeout(() => {
+      setMessages(prev => prev.filter(m => m.id !== activeNpMsgId));
+      setActiveNpMsgId(null);
+    }, 60000);
+    return () => clearTimeout(timer);
+  }, [activeNpMsgId]);
 
   useEffect(() => {
     fetch('/api/servants/npanim')
@@ -640,21 +651,10 @@ export default function DiscordEmulator({
         }
       })
       .catch(() => {});
-
-    return () => {
-      if (activeNpTimeoutRef.current) {
-        clearTimeout(activeNpTimeoutRef.current);
-      }
-    };
   }, []);
 
   const allThrone = getAllThroneServants(customServants);
   const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
-
-  const getNextId = (prefix: string) => {
-    msgCounterRef.current += 1;
-    return `${prefix}_${msgCounterRef.current}`;
-  };
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -4506,15 +4506,24 @@ export default function DiscordEmulator({
     const q = feedArg.toLowerCase().trim();
 
     if (q === '3star' || q === '1-3star' || q === 'low' || q === 'bronze' || q === 'silver') {
-      indicesToFeed = ownedCes.map((ce, idx) => (ce.rarity <= 3 ? idx : -1)).filter(i => i !== -1);
+      indicesToFeed = ownedCes.map((ce, idx) => ((ce.rarity || 3) <= 3 ? idx : -1)).filter(i => i !== -1);
     } else if (q === 'dupes' || q === 'duplicates' || q === 'dupe') {
+      const nameCounts = new Map<string, number>();
+      ownedCes.forEach(c => {
+        if (c) nameCounts.set(c.name, (nameCounts.get(c.name) || 0) + 1);
+      });
       const seen = new Set<string>();
       indicesToFeed = ownedCes.map((ce, idx) => {
-        if (!seen.has(ce.id)) {
-          seen.add(ce.id);
-          return -1;
+        if (!ce || (ce.rarity || 3) >= 5) return -1; // Protect 5-star SSRs
+        if ((nameCounts.get(ce.name) || 0) > 1) {
+          if (seen.has(ce.name)) {
+            return idx;
+          } else {
+            seen.add(ce.name);
+            return -1;
+          }
         }
-        return idx;
+        return -1;
       }).filter(i => i !== -1);
     } else if (q === 'all') {
       indicesToFeed = ownedCes.map((_, idx) => idx);
@@ -6765,7 +6774,34 @@ export default function DiscordEmulator({
           postServantHub('equip_ce' as any, targetServant.id);
         }
       }
-      // 5. Feed CE Selection
+      // 5. Feed CE Selection (Batch and Single)
+      else if (btnId.startsWith('servant_multi_feed_ce:')) {
+        const rawIds = btnId.replace('servant_multi_feed_ce:', '').split(',').filter(Boolean);
+        const ownedCes = (master.craftEssences || []).filter(Boolean);
+        if (targetServant && rawIds.length > 0) {
+          const result = feedCraftEssences(targetServant, rawIds, ownedCes);
+          onUpdateMaster({
+            ...master,
+            craftEssences: result.remainingCraftEssences,
+            servants: ownedServants.map(s => s.id === targetServant.id ? result.updatedServant : s)
+          });
+          const levelDiff = result.newLevel - result.oldLevel;
+          addMessage({
+            id: getNextId('bot_feed_ce_success'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: levelDiff > 0 ? `✨ LEVEL UP! Lv.${result.oldLevel} ➔ Lv.${result.newLevel}` : `🧪 Synthesized ${result.fedEssences.length} Craft Essences`,
+              description: `Synthesized **${result.fedEssences.length} Craft Essence(s)** into spiritron mana for **${targetServant.nickname || targetServant.template?.name || 'Servant'}**!\n\n` +
+                `• **EXP Gained:** \`+${result.expGained.toLocaleString()} XP\`\n` +
+                (levelDiff > 0 ? `• **LEVEL UP!** Lv.${result.oldLevel} ➔ **Lv.${result.newLevel}** (+${result.levelsGained} Levels!)\n• **Stat Points:** \`+${result.statPointsGained} Available Points\`\n` : '') +
+                `• **Remaining Inventory:** \`${result.remainingCraftEssences.length} Essences\``,
+              color: levelDiff > 0 ? '#22c55e' : '#a855f7'
+            }
+          });
+          postServantHub('feed_ce' as any, result.updatedServant.id);
+        }
+      }
       else if (btnId.startsWith('servant_sel_feed_ce_')) {
         const ceId = btnId.replace('servant_sel_feed_ce_', '');
         const ownedCes = (master.craftEssences || []).filter(Boolean);
@@ -6784,9 +6820,9 @@ export default function DiscordEmulator({
             timestamp: 'Just now',
             embed: {
               title: levelDiff > 0 ? `✨ LEVEL UP! Lv.${result.oldLevel} ➔ Lv.${result.newLevel}` : `🧪 Synthesized Craft Essence`,
-              description: `Synthesized Craft Essence into spiritron mana for **${targetServant.nickname || targetServant.template?.name || 'Servant'}**!\n\n` +
+              description: `Synthesized **${result.fedEssences[0]?.name || 'Craft Essence'}** into spiritron mana for **${targetServant.nickname || targetServant.template?.name || 'Servant'}**!\n\n` +
                 `• Gained \`+${result.expGained.toLocaleString()} XP\`\n` +
-                (levelDiff > 0 ? `• **Gained +${result.statPointsGained} Stat Points!**` : ''),
+                (levelDiff > 0 ? `• **LEVEL UP!** Lv.${result.oldLevel} ➔ **Lv.${result.newLevel}**\n• **Gained +${result.statPointsGained} Stat Points!**` : ''),
               color: levelDiff > 0 ? '#22c55e' : '#a855f7'
             }
           });
@@ -8107,14 +8143,7 @@ export default function DiscordEmulator({
             `${npGif}`
         });
 
-        activeNpMsgIdRef.current = npMsgId;
-        // AFK safety timeout (60s fallback, dismissed earlier as soon as Master or Enemy acts)
-        activeNpTimeoutRef.current = setTimeout(() => {
-          setMessages(prev => prev.filter(m => m.id !== npMsgId));
-          if (activeNpMsgIdRef.current === npMsgId) {
-            activeNpMsgIdRef.current = null;
-          }
-        }, 60000);
+        setActiveNpMsgId(npMsgId);
       } else if (aiNp) {
         const aiActor = activeDuel.battle.player2;
         const aiNpGif = getNoblePhantasmGif(aiActor);
@@ -8134,14 +8163,7 @@ export default function DiscordEmulator({
             `${aiNpGif}`
         });
 
-        activeNpMsgIdRef.current = aiNpMsgId;
-        // AFK safety timeout (60s fallback)
-        activeNpTimeoutRef.current = setTimeout(() => {
-          setMessages(prev => prev.filter(m => m.id !== aiNpMsgId));
-          if (activeNpMsgIdRef.current === aiNpMsgId) {
-            activeNpMsgIdRef.current = null;
-          }
-        }, 60000);
+        setActiveNpMsgId(aiNpMsgId);
       }
 
       const { updatedState, turnLogs } = executeBattleTurn(
@@ -8155,11 +8177,7 @@ export default function DiscordEmulator({
 
       if (updatedState.turnPhase === 'victory' || updatedState.turnPhase === 'defeat') {
         // Retain finishing Noble Phantasm cinematic in chat log upon duel conclusion
-        if (activeNpTimeoutRef.current) {
-          clearTimeout(activeNpTimeoutRef.current);
-          activeNpTimeoutRef.current = null;
-        }
-        activeNpMsgIdRef.current = null;
+        setActiveNpMsgId(null);
 
         const isWin = updatedState.turnPhase === 'victory';
 
@@ -9219,33 +9237,179 @@ export default function DiscordEmulator({
               {/* Discord Interactive Components (Select Menu + Buttons) */}
               {msg.components && (
                 <div className="flex flex-col gap-2 mt-3">
-                  {/* Select Dropdown if present */}
-                  {msg.components.selectOptions && msg.components.selectOptions.length > 0 && (
-                    <div className="relative w-full max-w-md">
-                      <select
-                        defaultValue=""
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handleButtonClick(e.target.value);
-                            e.target.value = '';
+                  {/* Select Dropdown / Multi-Select if present */}
+                  {msg.components.selectOptions && msg.components.selectOptions.length > 0 && (() => {
+                    const isFeedMenu = msg.components?.selectOptions?.some(opt => opt.value.startsWith('servant_sel_feed_ce_') || opt.value.startsWith('feed_ce_'));
+                    const selectedValues = multiSelectState[msg.id] || [];
+
+                    if (isFeedMenu) {
+                      const allOptions = msg.components.selectOptions;
+                      const handleToggle = (val: string) => {
+                        setMultiSelectState(prev => {
+                          const curr = prev[msg.id] || [];
+                          return {
+                            ...prev,
+                            [msg.id]: curr.includes(val) ? curr.filter(x => x !== val) : [...curr, val]
+                          };
+                        });
+                      };
+
+                      const handleSelectLow = () => {
+                        const lowVals = allOptions.filter(o => o.label.includes('[★1]') || o.label.includes('[★2]') || o.label.includes('[★3]')).map(o => o.value);
+                        setMultiSelectState(prev => ({ ...prev, [msg.id]: lowVals }));
+                      };
+
+                      const handleSelectDupes = () => {
+                        // Protect 5-stars: only duplicate 1-4 stars
+                        const labelCounts = new Map<string, number>();
+                        allOptions.forEach(o => {
+                          const baseName = o.label.replace(/\[★\d\]\s*/, '').trim();
+                          labelCounts.set(baseName, (labelCounts.get(baseName) || 0) + 1);
+                        });
+                        const seen = new Set<string>();
+                        const dupeVals: string[] = [];
+                        allOptions.forEach(o => {
+                          if (o.label.includes('[★5]')) return; // Safe 5-star protection
+                          const baseName = o.label.replace(/\[★\d\]\s*/, '').trim();
+                          if ((labelCounts.get(baseName) || 0) > 1) {
+                            if (seen.has(baseName)) {
+                              dupeVals.push(o.value);
+                            } else {
+                              seen.add(baseName);
+                            }
                           }
-                        }}
-                        className="w-full bg-[#161616] hover:bg-[#1f1f1f] text-[#d4af37] border border-[#d4af37]/40 rounded px-3 py-2 text-xs font-mono appearance-none cursor-pointer focus:outline-none focus:border-[#d4af37] transition-all shadow-sm pr-8"
-                      >
-                        <option value="" disabled className="text-white/40 bg-[#161616]">
-                          {msg.components.placeholder || '🔍 Select an entry...'}
-                        </option>
-                        {msg.components.selectOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value} className="text-white bg-[#1a1a1a]">
-                            {opt.emoji ? `${opt.emoji} ` : ''}{opt.label}{opt.description ? ` — ${opt.description}` : ''}
+                        });
+                        setMultiSelectState(prev => ({ ...prev, [msg.id]: dupeVals }));
+                      };
+
+                      const handleSelectAll = () => {
+                        setMultiSelectState(prev => ({ ...prev, [msg.id]: allOptions.map(o => o.value) }));
+                      };
+
+                      const handleClear = () => {
+                        setMultiSelectState(prev => ({ ...prev, [msg.id]: [] }));
+                      };
+
+                      const handleConfirmFeed = () => {
+                        if (selectedValues.length === 0) return;
+                        const targets = selectedValues.map(v => v.replace('servant_sel_feed_ce_', '').replace('feed_ce_', ''));
+                        handleButtonClick(`servant_multi_feed_ce:${targets.join(',')}`);
+                        setMultiSelectState(prev => ({ ...prev, [msg.id]: [] }));
+                      };
+
+                      return (
+                        <div className="w-full max-w-xl bg-[#0f0f0f] border border-[#a855f7]/40 rounded-lg p-3 space-y-2.5 font-mono text-xs shadow-md">
+                          <div className="flex items-center justify-between flex-wrap gap-1 border-b border-[#222] pb-2">
+                            <span className="text-[#a855f7] font-bold flex items-center gap-1.5">
+                              <span>🧪</span> Multi-Select CEs to Synthesize ({selectedValues.length}/{allOptions.length} selected)
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={handleSelectLow}
+                                className="px-2 py-0.5 rounded bg-[#1c1427] hover:bg-[#281b3a] text-[#c084fc] text-[10px] border border-[#a855f7]/30 font-semibold"
+                              >
+                                ⚡ 1-3★ All
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleSelectDupes}
+                                className="px-2 py-0.5 rounded bg-[#1c1427] hover:bg-[#281b3a] text-[#38bdf8] text-[10px] border border-[#38bdf8]/30 font-semibold"
+                              >
+                                🔄 Dupes (Safe)
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleSelectAll}
+                                className="px-2 py-0.5 rounded bg-[#1c1427] hover:bg-[#281b3a] text-white/80 text-[10px] border border-[#444]"
+                              >
+                                All
+                              </button>
+                              {selectedValues.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={handleClear}
+                                  className="px-2 py-0.5 rounded bg-[#2a1111] hover:bg-[#3a1111] text-[#ef4444] text-[10px] border border-[#ef4444]/30"
+                                >
+                                  Clear
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="max-h-48 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                            {allOptions.map(opt => {
+                              const isSelected = selectedValues.includes(opt.value);
+                              return (
+                                <div
+                                  key={opt.value}
+                                  onClick={() => handleToggle(opt.value)}
+                                  className={`flex items-center justify-between px-2.5 py-1.5 rounded cursor-pointer transition border text-[11px] ${
+                                    isSelected
+                                      ? 'bg-[#a855f7]/20 border-[#a855f7] text-white'
+                                      : 'bg-[#151515] hover:bg-[#1f1f1f] border-[#252525] text-white/70'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 truncate">
+                                    <span className={`w-3.5 h-3.5 flex items-center justify-center rounded-sm text-[9px] border ${isSelected ? 'bg-[#a855f7] text-black border-[#a855f7] font-bold' : 'border-white/30 text-transparent'}`}>
+                                      ✓
+                                    </span>
+                                    <span className="font-semibold text-white truncate">{opt.label}</span>
+                                    {opt.description && (
+                                      <span className="text-white/40 text-[10px] truncate hidden sm:inline">
+                                        • {opt.description}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1">
+                            <span className="text-[10px] text-white/50">
+                              {selectedValues.length > 0 ? `Selected: ${selectedValues.length} Craft Essence${selectedValues.length > 1 ? 's' : ''}` : 'Click items above to toggle selection'}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={selectedValues.length === 0}
+                              onClick={handleConfirmFeed}
+                              className="px-3 py-1.5 rounded bg-[#a855f7] hover:bg-[#9333ea] text-black font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 transition disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+                            >
+                              <span>✨</span> Synthesize Selected ({selectedValues.length})
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="relative w-full max-w-md">
+                        <select
+                          defaultValue=""
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              handleButtonClick(e.target.value);
+                              e.target.value = '';
+                            }
+                          }}
+                          className="w-full bg-[#161616] hover:bg-[#1f1f1f] text-[#d4af37] border border-[#d4af37]/40 rounded px-3 py-2 text-xs font-mono appearance-none cursor-pointer focus:outline-none focus:border-[#d4af37] transition-all shadow-sm pr-8"
+                        >
+                          <option value="" disabled className="text-white/40 bg-[#161616]">
+                            {msg.components.placeholder || '🔍 Select an entry...'}
                           </option>
-                        ))}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-[#d4af37] text-xs">
-                        ▼
+                          {msg.components.selectOptions.map((opt) => (
+                            <option key={opt.value} value={opt.value} className="text-white bg-[#1a1a1a]">
+                              {opt.emoji ? `${opt.emoji} ` : ''}{opt.label}{opt.description ? ` — ${opt.description}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-[#d4af37] text-xs">
+                          ▼
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Button Actions */}
                   {msg.components.items && msg.components.items.length > 0 && (
@@ -10102,119 +10266,6 @@ export default function DiscordEmulator({
               </button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Inline Canvas Renderer Component for Discord attachments
-function CanvasRenderer({ canvasType, payload }: { canvasType: string; payload: any }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isPlaying, setIsPlaying] = useState(true);
-
-  useEffect(() => {
-    if (!canvasRef.current || !payload) return;
-    const canvas = canvasRef.current;
-
-    if (canvasType === 'servant') {
-      renderServantProfileCard(canvas, payload.servant, payload.masterName);
-    } else if (canvasType === 'dialogue') {
-      renderDialogueCard(
-        canvas,
-        payload.speaker,
-        payload.quote,
-        payload.title || 'Tactical Combat Chain',
-        payload.servantClass || 'Saber',
-        payload.avatarUrl,
-        payload.bondOrLevel || 8,
-        payload.defenderName || 'Gilgamesh',
-        payload.defenderAvatarUrl,
-        payload.defenderClass || 'Archer',
-        payload.sequence || ['Buster', 'Buster', 'Buster'],
-        payload.bgUrlOrPreset || 'fuyuki'
-      );
-    } else if (canvasType === 'defeat_dialogue') {
-      renderDefeatDialogueCard(
-        canvas,
-        payload.speaker,
-        payload.quote,
-        payload.title || 'SPIRIT ORIGIN DISSOLVED',
-        payload.servantClass || 'Saber',
-        payload.avatarUrl,
-        payload.bondOrLevel || 8,
-        payload.defenderName || 'Opponent Servant',
-        payload.defenderAvatarUrl,
-        payload.defenderClass || 'Enemy',
-        payload.bgUrlOrPreset || 'fuyuki'
-      );
-    } else if (canvasType === 'battle') {
-      renderBattleTurnSummary(canvas, payload.log, payload.p1, payload.p2);
-    }
-
-    return () => {
-      if (canvas && (canvas as any).__animTimer) {
-        clearInterval((canvas as any).__animTimer);
-        (canvas as any).__animTimer = null;
-      }
-    };
-  }, [canvasType, payload]);
-
-  const toggleAnimation = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    if ((canvas as any).__animTimer) {
-      clearInterval((canvas as any).__animTimer);
-      (canvas as any).__animTimer = null;
-      setIsPlaying(false);
-    } else if (canvasType === 'dialogue') {
-      renderDialogueCard(
-        canvas,
-        payload.speaker,
-        payload.quote,
-        payload.title || 'Tactical Combat Chain',
-        payload.servantClass || 'Saber',
-        payload.avatarUrl,
-        payload.bondOrLevel || 8,
-        payload.defenderName || 'Gilgamesh',
-        payload.defenderAvatarUrl,
-        payload.defenderClass || 'Archer',
-        payload.sequence || ['Buster', 'Buster', 'Buster'],
-        payload.bgUrlOrPreset || 'fuyuki'
-      );
-      setIsPlaying(true);
-    } else if (canvasType === 'defeat_dialogue') {
-      renderDefeatDialogueCard(
-        canvas,
-        payload.speaker,
-        payload.quote,
-        payload.title || 'SPIRIT ORIGIN DISSOLVED',
-        payload.servantClass || 'Saber',
-        payload.avatarUrl,
-        payload.bondOrLevel || 8,
-        payload.defenderName || 'Opponent Servant',
-        payload.defenderAvatarUrl,
-        payload.defenderClass || 'Enemy',
-        payload.bgUrlOrPreset || 'fuyuki'
-      );
-      setIsPlaying(true);
-    }
-  };
-
-  return (
-    <div className="relative group">
-      <canvas ref={canvasRef} className="w-full h-auto rounded block" />
-      {(canvasType === 'dialogue' || canvasType === 'defeat_dialogue') && (
-        <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-black/80 backdrop-blur-sm border border-amber-500/40 rounded px-2 py-0.5 text-[11px] font-mono text-amber-300 pointer-events-auto">
-          <span className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'}`} />
-          <span>{isPlaying ? 'ANIMATED LOOP' : 'PAUSED'}</span>
-          <button
-            onClick={toggleAnimation}
-            className="ml-1 text-zinc-400 hover:text-amber-200 transition-colors p-0.5 text-[10px]"
-            title={isPlaying ? 'Pause Animation' : 'Play Animation'}
-          >
-            {isPlaying ? '⏸️' : '▶️'}
-          </button>
         </div>
       )}
     </div>

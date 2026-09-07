@@ -977,15 +977,21 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       if (lowQuery === 'all_3star' || lowQuery === '3star' || lowQuery === '3*') {
         targetsToFeed = ownedCes
-          .map((c: any, idx: number) => (c && c.rarity <= 3 ? String(idx) : null))
+          .map((c: any, idx: number) => (c && (c.rarity || 3) <= 3 ? String(idx) : null))
           .filter(Boolean) as string[];
       } else if (lowQuery === 'duplicates' || lowQuery === 'dupes') {
+        const nameCounts = new Map<string, number>();
+        ownedCes.forEach((c: any) => {
+          if (c) nameCounts.set(c.name, (nameCounts.get(c.name) || 0) + 1);
+        });
         const seen = new Set<string>();
         targetsToFeed = ownedCes
           .map((c: any, idx: number) => {
-            if (!c) return null;
-            if (seen.has(c.id)) return String(idx);
-            seen.add(c.id);
+            if (!c || (c.rarity || 3) >= 5) return null; // Protect 5-stars
+            if ((nameCounts.get(c.name) || 0) > 1) {
+              if (seen.has(c.name)) return String(idx);
+              seen.add(c.name);
+            }
             return null;
           })
           .filter(Boolean) as string[];

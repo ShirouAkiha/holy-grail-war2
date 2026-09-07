@@ -588,7 +588,9 @@ export async function buildServantHub(
     if (ceOptions.length > 0) {
       const feedSelect = new StringSelectMenuBuilder()
         .setCustomId('servant_sel_feed_ce')
-        .setPlaceholder('🧪 Select Craft Essence to synthesize (+EXP)...')
+        .setPlaceholder('🧪 Select Craft Essence(s) to synthesize (+EXP)...')
+        .setMinValues(1)
+        .setMaxValues(Math.min(ceOptions.length, 25))
         .addOptions(ceOptions);
       components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(feedSelect));
     }
@@ -832,7 +834,9 @@ export function attachServantCollector(
       // QUICK FEED BUTTONS
       else if (i.customId === 'servant_act_feed_3star') {
         const owned = (master.craftEssences || []).filter(Boolean);
-        const lowRarityIndexes = owned.map((c: any, idx: number) => c.rarity <= 3 ? String(idx) : null).filter((v: any) => v !== null) as string[];
+        const lowRarityIndexes = owned
+          .map((c: any, idx: number) => ((c.rarity || 3) <= 3 ? String(idx) : null))
+          .filter((v: any) => v !== null) as string[];
         if (lowRarityIndexes.length === 0) {
           actionOutcomeMsg = `⚠️ No 1-3★ Craft Essences found in inventory.`;
         } else {
@@ -842,7 +846,7 @@ export function attachServantCollector(
           await saveMaster(master);
           targetServant = result.updatedServant;
           const levelDiff = result.newLevel - result.oldLevel;
-          actionOutcomeMsg = `⚡ Synthesized ${lowRarityIndexes.length} Low-Rarity Craft Essences!\n` +
+          actionOutcomeMsg = `⚡ Synthesized ${result.fedEssences.length} Low-Rarity (1-3★) Craft Essences!\n` +
             `• Gained \`+${result.expGained.toLocaleString()} XP\`\n` +
             (levelDiff > 0 ? `• **LEVEL UP!** Lv.${result.oldLevel} ➔ **Lv.${result.newLevel}**!\n• Gained **+${result.statPointsGained} Stat Points**!` : '');
         }
@@ -853,6 +857,8 @@ export function attachServantCollector(
         const dupeIndexes: string[] = [];
         const seenNames = new Set<string>();
         owned.forEach((c: any, idx: number) => {
+          // Strictly protect 5★ SSR Craft Essences from bulk duplicate feeding
+          if ((c.rarity || 3) >= 5) return;
           if ((nameCounts.get(c.name) || 0) > 1) {
             if (seenNames.has(c.name)) {
               dupeIndexes.push(String(idx));
@@ -862,7 +868,7 @@ export function attachServantCollector(
           }
         });
         if (dupeIndexes.length === 0) {
-          actionOutcomeMsg = `⚠️ No duplicate Craft Essences found.`;
+          actionOutcomeMsg = `⚠️ No duplicate 1-4★ Craft Essences found (5★ SSRs are protected).`;
         } else {
           const result = feedCraftEssences(targetServant, dupeIndexes, owned);
           master.craftEssences = result.remainingCraftEssences;
@@ -870,7 +876,7 @@ export function attachServantCollector(
           await saveMaster(master);
           targetServant = result.updatedServant;
           const levelDiff = result.newLevel - result.oldLevel;
-          actionOutcomeMsg = `🔥 Synthesized ${dupeIndexes.length} Duplicate Craft Essences!\n` +
+          actionOutcomeMsg = `🔥 Synthesized ${result.fedEssences.length} Duplicate Craft Essences!\n` +
             `• Gained \`+${result.expGained.toLocaleString()} XP\`\n` +
             (levelDiff > 0 ? `• **LEVEL UP!** Lv.${result.oldLevel} ➔ **Lv.${result.newLevel}**!\n• Gained **+${result.statPointsGained} Stat Points**!` : '');
         }
@@ -886,7 +892,7 @@ export function attachServantCollector(
           await saveMaster(master);
           targetServant = result.updatedServant;
           const levelDiff = result.newLevel - result.oldLevel;
-          actionOutcomeMsg = `☣️ Synthesized ALL ${allIndexes.length} Craft Essences!\n` +
+          actionOutcomeMsg = `☣️ Synthesized ALL ${result.fedEssences.length} Craft Essences!\n` +
             `• Gained \`+${result.expGained.toLocaleString()} XP\`\n` +
             (levelDiff > 0 ? `• **LEVEL UP!** Lv.${result.oldLevel} ➔ **Lv.${result.newLevel}**!\n• Gained **+${result.statPointsGained} Stat Points**!` : '');
         }
@@ -908,11 +914,11 @@ export function attachServantCollector(
         targetServant = updated;
         actionOutcomeMsg = `🚫 Craft Essence unequipped.`;
       }
-      // FEED CRAFT ESSENCE SYNTHESIS
+      // FEED CRAFT ESSENCE SYNTHESIS (Multi-select supported)
       else if (i.customId === 'servant_sel_feed_ce') {
-        const ceIndex = i.values[0];
+        const ceIndices = i.values;
         const owned = (master.craftEssences || []).filter(Boolean);
-        const result = feedCraftEssences(targetServant, [ceIndex], owned);
+        const result = feedCraftEssences(targetServant, ceIndices, owned);
         
         master.craftEssences = result.remainingCraftEssences;
         master.servants = master.servants.map((s: any) => s.id === targetServant.id ? result.updatedServant : s);
@@ -920,7 +926,7 @@ export function attachServantCollector(
         targetServant = result.updatedServant;
 
         const levelDiff = result.newLevel - result.oldLevel;
-        actionOutcomeMsg = `✨ Synthesized Craft Essence!\n` +
+        actionOutcomeMsg = `✨ Synthesized ${result.fedEssences.length} Craft Essence${result.fedEssences.length > 1 ? 's' : ''}!\n` +
           `• Gained \`+${result.expGained.toLocaleString()} XP\`\n` +
           (levelDiff > 0 ? `• **LEVEL UP!** Lv.${result.oldLevel} ➔ **Lv.${result.newLevel}**!\n• Gained **+${result.statPointsGained} Stat Points**!` : '');
       }

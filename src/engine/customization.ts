@@ -168,6 +168,7 @@ export interface FeedResult {
   updatedServant: MasterServantInstance;
   remainingCraftEssences: any[];
   fedEssences: any[];
+  consumedCount: number;
   expGained: number;
   oldLevel: number;
   newLevel: number;
@@ -247,29 +248,40 @@ export function calculateLevelFromExp(totalExp: number, maxLevel: number = 100):
  */
 export function feedCraftEssences(
   servant: MasterServantInstance,
-  ceIndicesOrIds: string[],
+  ceIndicesOrIds: (string | number)[],
   masterCraftEssences: any[]
 ): FeedResult {
   if (!ceIndicesOrIds || ceIndicesOrIds.length === 0) {
     throw new Error('No Craft Essences selected for synthesis.');
   }
 
-  const remaining = [...(masterCraftEssences || [])];
+  const originalList = (masterCraftEssences || []).filter(Boolean);
+  const consumedIndices = new Set<number>();
   const fedEssences: any[] = [];
   let totalExpGained = 0;
 
-  for (const target of ceIndicesOrIds) {
-    // Find first matching CE by ID or matching name
-    const idx = remaining.findIndex(
-      (c: any, index: number) =>
-        c &&
-        (c.id === target ||
-          String(index) === target ||
-          c.name?.toLowerCase() === target.toLowerCase())
-    );
+  for (const rawTarget of ceIndicesOrIds) {
+    const targetStr = String(rawTarget).trim();
+    const asNum = Number(targetStr);
 
-    if (idx !== -1) {
-      const [consumed] = remaining.splice(idx, 1);
+    // If it's a valid original array index, consume that exact index
+    if (!isNaN(asNum) && Number.isInteger(asNum) && asNum >= 0 && asNum < originalList.length && !consumedIndices.has(asNum)) {
+      consumedIndices.add(asNum);
+      const consumed = originalList[asNum];
+      fedEssences.push(consumed);
+      totalExpGained += getCeExpValue(consumed);
+      continue;
+    }
+
+    // Otherwise match by exact ID, or name, among unconsumed items
+    const matchIdx = originalList.findIndex((c: any, i: number) => {
+      if (consumedIndices.has(i) || !c) return false;
+      return c.id === targetStr || c.name?.toLowerCase() === targetStr.toLowerCase();
+    });
+
+    if (matchIdx !== -1) {
+      consumedIndices.add(matchIdx);
+      const consumed = originalList[matchIdx];
       fedEssences.push(consumed);
       totalExpGained += getCeExpValue(consumed);
     }
@@ -278,6 +290,8 @@ export function feedCraftEssences(
   if (fedEssences.length === 0) {
     throw new Error('None of the selected Craft Essences were found in inventory.');
   }
+
+  const remaining = originalList.filter((_, idx) => !consumedIndices.has(idx));
 
   const oldLevel = servant.level || 1;
   const currentExp = servant.experience ?? getTotalExpForLevel(oldLevel);
@@ -303,6 +317,7 @@ export function feedCraftEssences(
     updatedServant,
     remainingCraftEssences: remaining,
     fedEssences,
+    consumedCount: fedEssences.length,
     expGained: totalExpGained,
     oldLevel,
     newLevel,

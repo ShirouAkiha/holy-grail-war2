@@ -101,7 +101,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId('feed_select_ce')
-          .setPlaceholder('Select Craft Essence to feed for EXP...')
+          .setPlaceholder('Select Craft Essence(s) to feed for EXP...')
+          .setMinValues(1)
+          .setMaxValues(Math.min(selectOptions.length, 25))
           .addOptions(selectOptions)
       );
 
@@ -140,29 +142,33 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
           let targetsToFeed: string[] = [];
           if (i.customId === 'feed_select_ce') {
-            const val = i.values[0];
-            const idxStr = val.replace('feed_ce_', '');
-            targetsToFeed = [idxStr];
+            targetsToFeed = i.values.map((v: string) => v.replace('feed_ce_', ''));
           } else if (i.customId === 'feed_quick_3star') {
             targetsToFeed = master.craftEssences
-              .map((c: any, idx: number) => (c && c.rarity <= 3 ? String(idx) : null))
+              .map((c: any, idx: number) => (c && (c.rarity || 3) <= 3 ? String(idx) : null))
               .filter(Boolean) as string[];
             if (targetsToFeed.length === 0) {
               await i.reply({ ephemeral: true, content: 'ℹ️ No 3★ or lower Craft Essences found in inventory.' });
               return;
             }
           } else if (i.customId === 'feed_quick_duplicates') {
+            const nameCounts = new Map<string, number>();
+            master.craftEssences.forEach((c: any) => {
+              if (c) nameCounts.set(c.name, (nameCounts.get(c.name) || 0) + 1);
+            });
             const seen = new Set<string>();
             targetsToFeed = master.craftEssences
               .map((c: any, idx: number) => {
-                if (!c) return null;
-                if (seen.has(c.id)) return String(idx);
-                seen.add(c.id);
+                if (!c || (c.rarity || 3) >= 5) return null; // Protect 5-stars
+                if ((nameCounts.get(c.name) || 0) > 1) {
+                  if (seen.has(c.name)) return String(idx);
+                  seen.add(c.name);
+                }
                 return null;
               })
               .filter(Boolean) as string[];
             if (targetsToFeed.length === 0) {
-              await i.reply({ ephemeral: true, content: 'ℹ️ No duplicate Craft Essences found in inventory.' });
+              await i.reply({ ephemeral: true, content: 'ℹ️ No duplicate 1-4★ Craft Essences found in inventory (5★ SSRs protected).' });
               return;
             }
           } else if (i.customId === 'feed_quick_stats') {

@@ -163,6 +163,27 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
     setSelectedFeedIndices(lowRarity);
   };
 
+  const handleSelectDuplicateCes = () => {
+    const owned = (master.craftEssences || []).filter(Boolean);
+    const nameCounts = new Map<string, number>();
+    owned.forEach(c => {
+      if (c) nameCounts.set(c.name, (nameCounts.get(c.name) || 0) + 1);
+    });
+    const seen = new Set<string>();
+    const dupeIndices: number[] = [];
+    owned.forEach((ce, i) => {
+      if (!ce || (ce.rarity || 3) >= 5) return; // Strict 5-star protection
+      if ((nameCounts.get(ce.name) || 0) > 1) {
+        if (seen.has(ce.name)) {
+          dupeIndices.push(i);
+        } else {
+          seen.add(ce.name);
+        }
+      }
+    });
+    setSelectedFeedIndices(dupeIndices);
+  };
+
   const handleClearCeSelection = () => {
     setSelectedFeedIndices([]);
   };
@@ -840,13 +861,20 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                     <span className="text-white/60">
                       Inventory: <strong className="text-white">{ownedCes.length}</strong> CEs
                     </span>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <button
                         onClick={handleSelectLowRarityCes}
                         disabled={ownedCes.length === 0}
                         className="px-2 py-0.5 rounded-sm bg-[#161616] hover:bg-[#222] text-[#d4af37] text-[10px] uppercase tracking-wider border border-[#d4af37]/30 disabled:opacity-30"
                       >
                         1-3★ All
+                      </button>
+                      <button
+                        onClick={handleSelectDuplicateCes}
+                        disabled={ownedCes.length === 0}
+                        className="px-2 py-0.5 rounded-sm bg-[#161616] hover:bg-[#222] text-[#38bdf8] text-[10px] uppercase tracking-wider border border-[#38bdf8]/30 disabled:opacity-30"
+                      >
+                        Dupes (Safe)
                       </button>
                       <button
                         onClick={handleSelectAllCes}
