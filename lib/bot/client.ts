@@ -420,14 +420,19 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 
   } catch (err: any) {
-    console.error('Unhandled interaction error:', err);
-    if (interaction.isRepliable()) {
-      if (interaction.deferred || interaction.replied) {
-        await interaction.followUp({ ephemeral: true, content: \`❌ Error: \${err.message}\` });
-      } else {
-        await interaction.reply({ ephemeral: true, content: \`❌ Error: \${err.message}\` });
-      }
+    if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) {
+      return; // Token expired or already acknowledged; silently ignore
     }
+    console.error('Unhandled interaction error:', err);
+    try {
+      if (interaction.isRepliable()) {
+        if (interaction.deferred || interaction.replied) {
+          await interaction.followUp({ ephemeral: true, content: \`❌ Error: \${err.message}\` });
+        } else {
+          await interaction.reply({ ephemeral: true, content: \`❌ Error: \${err.message}\` });
+        }
+      }
+    } catch {}
   }
 });
 

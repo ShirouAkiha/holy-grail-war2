@@ -77,8 +77,28 @@ import {
   enterChurchSanctuary,
   leaveChurchSanctuary,
   checkAndTriggerChannelTraps,
-  calculateServantMaxHp
+  calculateServantMaxHp,
+  exposeMasterInWar,
+  handleMasterReleaseInWar
 } from './engine/grailwar';
+
+// ==========================================
+// PROCESS SAFETY: UNHANDLED REJECTIONS & DISCORD TIMEOUT ERRORS
+// ==========================================
+// Prevents bot crashing from unavoidable Discord API timeouts (code 10062 Unknown interaction, 40060, 50027, 10008).
+process.on('unhandledRejection', (reason: any) => {
+  if (reason && (reason.code === 10062 || reason.code === 40060 || reason.code === 50027 || reason.code === 10008 || reason.message?.includes('Unknown interaction'))) {
+    return; // Token expired or acknowledged; ignore silently
+  }
+  console.warn('⚠️ Unhandled Promise Rejection:', reason?.message || reason);
+});
+
+process.on('uncaughtException', (err: any) => {
+  if (err && (err.code === 10062 || err.code === 40060 || err.code === 50027 || err.code === 10008 || err.message?.includes('Unknown interaction'))) {
+    return;
+  }
+  console.error('💥 Uncaught Exception:', err);
+});
 
 // ==========================================
 // 1. DISCORD CLIENT INITIALIZATION
@@ -743,10 +763,12 @@ client.on(Events.InteractionCreate, async interaction => {
           return;
         }
         const template = activeServant.template || activeServant;
+        exposeMasterInWar(war, interaction.user.id, 'public_command');
+        await saveMaster(master);
         const avatarUrl = interaction.user.displayAvatarURL ? interaction.user.displayAvatarURL() : undefined;
         const boastEmbed = new EmbedBuilder()
           .setTitle(`📢 MASTER DECLARATION | Covenant Established!`)
-          .setDescription(`Master **${interaction.user.username}** boasts a covenant with **${template.name}** (${'⭐'.repeat(template.rarity || 5)} ${template.servantClass})!\n\n*"${template.summonQuote || 'I answer your call, Master.'}"*`)
+          .setDescription(`Master **${interaction.user.username}** boasts a covenant with **${template.name}** (${'⭐'.repeat(template.rarity || 5)} ${template.servantClass})!\n\n*"${activeServant.customQuotes?.summon || template.summonQuote || 'I answer your call, Master.'}"*`)
           .setColor(0xd4af37);
         if (avatarUrl) boastEmbed.setThumbnail(avatarUrl);
         await interaction.reply({ embeds: [boastEmbed] });
@@ -754,10 +776,28 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       if (btnId === 'btn_release_contract') {
-        await interaction.reply({
-          flags: MessageFlags.Ephemeral,
-          content: '⚠️ To release or dissolve a Servant contract, use the `/summon release` command.'
-        });
+        if (!master.servants || master.servants.length === 0) {
+          await interaction.reply({
+            flags: MessageFlags.Ephemeral,
+            content: '⚠️ You do not have an active Servant contract to release.'
+          });
+          return;
+        }
+        const releasedServantName = master.servants[0].template?.name || 'your Heroic Spirit';
+        master.servants = [];
+        master.activeServantId = undefined;
+        await saveMaster(master);
+        handleMasterReleaseInWar(master.discordId);
+
+        const releaseEmbed = new EmbedBuilder()
+          .setTitle('⛓️ Contract Severed')
+          .setDescription(
+            `You have released your command over **${releasedServantName}**.\n\n` +
+            `The Heroic Spirit has returned to the Throne of Heroes. You are now free to invoke a new summoning ritual using \`/summon ritual\`.`
+          )
+          .setColor(0xef4444);
+
+        await interaction.reply({ embeds: [releaseEmbed], flags: MessageFlags.Ephemeral });
         return;
       }
 

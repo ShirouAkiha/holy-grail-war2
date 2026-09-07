@@ -209,8 +209,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         );
 
         await interaction.reply({ embeds: [emptyEmbed], components: [row] });
-        const reply = await interaction.fetchReply();
-        setupSummonButtonCollector(reply, interaction.user.id);
         return;
       }
 
@@ -260,8 +258,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       );
 
       await interaction.reply({ embeds: [statusEmbed], components: [row], flags: MessageFlags.Ephemeral });
-      const reply = await interaction.fetchReply();
-      setupSummonButtonCollector(reply, interaction.user.id);
       return;
     }
 
@@ -398,150 +394,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       components: [actionRow],
       flags: MessageFlags.Ephemeral
     });
-    const reply = await interaction.fetchReply();
-
-    setupSummonButtonCollector(reply, interaction.user.id);
-
   } catch (error: any) {
+    if (error.code === 10062 || error.code === 40060 || error.message?.includes('Unknown interaction')) return;
     console.error('Error executing /summon ritual:', error);
-    if (interaction.replied || interaction.deferred) {
-      await interaction.followUp({ content: `❌ Ritual Error: ${error.message}`, flags: MessageFlags.Ephemeral });
-    } else {
-      await interaction.reply({ content: `❌ Ritual Error: ${error.message}`, flags: MessageFlags.Ephemeral });
-    }
-  }
-}
-
-// ==========================================
-// 4. BUTTON COLLECTOR FOR SUMMON EMBED
-// ==========================================
-function setupSummonButtonCollector(message: any, userId: string) {
-  const collector = message.createMessageComponentCollector({
-    componentType: ComponentType.Button,
-    time: 120000 // 2 minutes
-  });
-
-  collector.on('collect', async (i: any) => {
-    if (i.replied || i.deferred) return;
-    if (i.user.id !== userId) {
-      await i.reply({ content: 'Only the Master who performed this ritual can click these actions.', flags: MessageFlags.Ephemeral });
-      return;
-    }
-
     try {
-      const master = await getOrCreateMaster(i.user.id, i.user.username);
-
-      if (i.customId === 'btn_boast_summon') {
-        const war = getOrInitWarSession(master);
-        exposeMasterInWar(war, i.user.id, 'public_command');
-        await saveMaster(master);
-
-        const currentServant = master.servants?.[0];
-        const template = currentServant?.template;
-        if (template && i.channel && 'send' in i.channel) {
-          const starStr = '★'.repeat(template.rarity || 4);
-          const announceEmbed = new EmbedBuilder()
-            .setTitle(`📢 MASTER ANNOUNCEMENT: ${master.username.toUpperCase()} FORGES CONTRACT!`)
-            .setDescription(
-              `Master **${master.username}** has openly unveiled their sacred covenant with **${template.name}** (\`${template.servantClass}\` • [${starStr}])!\n\n` +
-              `🗣️ *" ${currentServant.customQuotes?.summon || template.summonQuote} "*\n\n` +
-              `💥 **Noble Phantasm:** *${template.noblePhantasm.name}*\n\n` +
-              `⚠️ *Master **${master.username}** has renounced the shadows and is now permanently **EXPOSED** on the Holy Grail War board (\`/grailwar status\`)!*`
-            )
-            .setImage(template.cardArtUrl || template.avatarUrl)
-            .setColor(template.rarity === 5 ? 0xd4af37 : 0xef4444);
-
-          await (i.channel as any).send({ embeds: [announceEmbed] });
-        }
-        await i.reply({
-          content: '📢 You have revealed your Heroic Spirit to the server! Your identity is now permanently exposed on the War Board.',
-          flags: MessageFlags.Ephemeral
-        });
-        return;
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({ content: `❌ Ritual Error: ${error.message}`, flags: MessageFlags.Ephemeral });
+      } else {
+        await interaction.reply({ content: `❌ Ritual Error: ${error.message}`, flags: MessageFlags.Ephemeral });
       }
-
-      if (i.customId === 'btn_release_contract') {
-        if (!master.servants || master.servants.length === 0) {
-          await i.reply({ content: 'You have no active Servant contract to release.', flags: MessageFlags.Ephemeral });
-          return;
-        }
-        const sName = master.servants[0].template.name;
-        master.servants = [];
-        master.activeServantId = undefined;
-        await saveMaster(master);
-        handleMasterReleaseInWar(master.discordId);
-
-        await i.update({
-          embeds: [
-            new EmbedBuilder()
-              .setTitle('⛓️ Contract Severed')
-              .setDescription(`You have released **${sName}**. Use \`/summon ritual\` to summon a new Heroic Spirit.`)
-              .setColor(0xef4444)
-          ],
-          components: [
-            new ActionRowBuilder<ButtonBuilder>().addComponents(
-              new ButtonBuilder()
-                .setCustomId('btn_perform_ritual')
-                .setLabel('Begin New Ritual')
-                .setEmoji('✨')
-                .setStyle(ButtonStyle.Primary)
-            )
-          ]
-        });
-        return;
-      }
-
-      if (i.customId === 'btn_perform_ritual') {
-        const result = performSummoningRitual(master);
-        if (result.success && result.template) {
-          await saveMaster(master);
-          registerMasterSummonInWar(master, result.servant);
-          const t = result.template;
-          const chosenChant = SUMMONING_CHANTS[Math.floor(Math.random() * SUMMONING_CHANTS.length)];
-
-          const rEmbed = new EmbedBuilder()
-            .setTitle('🕯️ HOLY GRAIL WAR: SACRED SUMMONING RITUAL')
-            .setDescription(
-              `Master **<@${i.user.id}>** channels magical energy through circuits into the summoning array...\n\n` +
-              `${chosenChant}\n\n` +
-              `✨ *The Greater Grail responds! Mana surges through the leylines as the magic circle erupts in blinding crimson light!*`
-            )
-            .setImage(resolveDirectGifUrl(RIN_SUMMONING_GIF))
-            .setColor(0xa855f7)
-            .setFooter({ text: 'Magecraft Circuits Active • Channelling Mana into the Greater Grail' });
-
-          const sEmbed = new EmbedBuilder()
-            .setTitle(`✨ HEROIC SPIRIT SUMMONED: ${t.name.toUpperCase()}`)
-            .setDescription(
-              `🗣️ **"${t.summonQuote}"**\n\n` +
-              `• **True Name:** **${t.name}** [${t.servantClass}]\n` +
-              `• **Noble Phantasm:** **${t.noblePhantasm.name}**\n` +
-              `• **Command Seals:** 3 / 3\n\n` +
-              `Contract established for the Holy Grail War!`
-            )
-            .setImage(t.cardArtUrl || t.avatarUrl)
-            .setColor(0xd4af37);
-
-          await i.update({
-            embeds: [rEmbed, sEmbed],
-            components: []
-          });
-        }
-        return;
-      }
-
-      if (i.customId === 'btn_view_servant') {
-        await i.reply({ content: 'Use `/servant` to view your detailed 2D status card and parameter radar.', flags: MessageFlags.Ephemeral });
-        return;
-      }
-
-      if (i.customId === 'btn_enter_war') {
-        await i.reply({ content: 'Use `/grailwar` to check Holy Grail War tournament standings and challenge rivals.', flags: MessageFlags.Ephemeral });
-        return;
-      }
-    } catch (err: any) {
-      if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
-      console.error('Error in summon collector:', err);
-    }
-  });
+    } catch {}
+  }
 }
