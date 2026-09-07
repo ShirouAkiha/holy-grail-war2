@@ -273,11 +273,29 @@ export async function buildServantHub(
       )
       .setColor(t.rarity === 5 ? 0xd4af37 : 0x38bdf8);
 
-    if (t.avatarUrl || t.cardArtUrl) {
-      embed.setThumbnail(t.avatarUrl || t.cardArtUrl);
+    const isUnsplash = (url?: string) => !url || url.includes('unsplash.com');
+
+    let avatarUrl = (!isUnsplash(targetServant.avatarUrl) ? targetServant.avatarUrl : null) ||
+                    (!isUnsplash(targetServant.template?.avatarUrl) ? targetServant.template?.avatarUrl : null) ||
+                    canonical?.avatarUrl ||
+                    t.avatarUrl;
+
+    let cardArtUrl = (!isUnsplash(targetServant.cardArtUrl) ? targetServant.cardArtUrl : null) ||
+                     (!isUnsplash(targetServant.template?.cardArtUrl) ? targetServant.template?.cardArtUrl : null) ||
+                     canonical?.cardArtUrl ||
+                     t.cardArtUrl ||
+                     avatarUrl;
+
+    if (avatarUrl) {
+      embed.setThumbnail(avatarUrl);
     }
 
-    embeds = [embed];
+    const artworkEmbed = new EmbedBuilder()
+      .setTitle(`🖼️ Servant Character Portrait: ${sName}`)
+      .setImage(cardArtUrl || avatarUrl)
+      .setColor(t.rarity === 5 ? 0xd4af37 : 0x38bdf8);
+
+    embeds = [embed, artworkEmbed];
 
     try {
       const cardBuffer = await renderServantProfileCard(targetServant, master.username);

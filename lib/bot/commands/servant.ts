@@ -71,8 +71,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setStyle(ButtonStyle.Secondary)
     );
 
+    const artworkEmbed = new EmbedBuilder()
+      .setTitle(\`🖼️ Servant Character Portrait: \${activeServant.nickname || activeServant.template.name}\`)
+      .setImage(activeServant.template.cardArtUrl || activeServant.template.avatarUrl)
+      .setColor(activeServant.template.rarity === 5 ? 0xf59e0b : 0x38bdf8);
+
     const msg = await interaction.editReply({
-      embeds: [embed],
+      embeds: [embed, artworkEmbed],
       files: [attachment],
       components: [row]
     });

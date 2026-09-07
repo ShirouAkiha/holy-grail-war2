@@ -1470,7 +1470,7 @@ client.on(Events.MessageCreate, async message => {
             }
           } catch {}
 
-          await message.reply({ embeds: [profileEmbed], files, components: [actions] });
+          await message.reply({ embeds: [profileEmbed, artworkEmbed], files, components: [actions] });
           return;
         }
       }

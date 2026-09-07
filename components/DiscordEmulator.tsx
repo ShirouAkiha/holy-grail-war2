@@ -5044,7 +5044,24 @@ export default function DiscordEmulator({
         `• **Agility (AGI):** \`${agiTotal}\` [${getRank(agiTotal)}] | **Mana (MNA):** \`${mnaTotal}\` [${getRank(mnaTotal)}] | **Luck (LCK):** \`${lckTotal}\` [${getRank(lckTotal)}]`;
       canvasType = 'servant';
       canvasPayload = { servant: targetServant, masterName: master.username };
-      artworkEmbed = undefined;
+
+      const tsAny = targetServant as any;
+      const isUnsplash = (url?: string) => !url || url.includes('unsplash.com');
+      let avatarUrl = (!isUnsplash(tsAny.avatarUrl) ? tsAny.avatarUrl : null) ||
+                      (!isUnsplash(tsAny.template?.avatarUrl) ? tsAny.template?.avatarUrl : null) ||
+                      canonical?.avatarUrl ||
+                      t.avatarUrl;
+      let cardArtUrl = (!isUnsplash(tsAny.cardArtUrl) ? tsAny.cardArtUrl : null) ||
+                       (!isUnsplash(tsAny.template?.cardArtUrl) ? tsAny.template?.cardArtUrl : null) ||
+                       canonical?.cardArtUrl ||
+                       t.cardArtUrl ||
+                       avatarUrl;
+
+      artworkEmbed = {
+        title: `🖼️ Servant Character Portrait: ${sName}`,
+        imageUrl: cardArtUrl || avatarUrl,
+        color
+      };
     } else if (category === 'stats') {
       title = `⭐ Parameter Point Allocation: ${sName}`;
       description =
@@ -5252,7 +5269,7 @@ export default function DiscordEmulator({
       id: getNextId('bot_servant_hub'),
       sender: 'bot',
       timestamp: 'Just now',
-      embed: canvasType ? undefined : {
+      embed: {
         title,
         description,
         color,

@@ -205,7 +205,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
 
       await interaction.editReply({ 
-        embeds: [profileEmbed], 
+        embeds: [profileEmbed, artworkEmbed], 
         files,
         components: [actionRow] 
       });
@@ -618,7 +618,7 @@ export function setupServantListCollector(
           }
 
           await i.editReply({ 
-            embeds: [profileEmbed], 
+            embeds: [profileEmbed, artworkEmbed], 
             files,
             components: [actions] 
           });
@@ -689,7 +689,7 @@ export function setupServantListCollector(
           }
 
           await i.editReply({ 
-            embeds: [profileEmbed], 
+            embeds: [profileEmbed, artworkEmbed], 
             files,
             components: [actions] 
           });
@@ -807,7 +807,7 @@ export async function handleServantsListInteraction(i: any) {
         }
 
         await i.editReply({ 
-          embeds: [profileEmbed], 
+          embeds: [profileEmbed, artworkEmbed], 
           files,
           components: [actions] 
         });
