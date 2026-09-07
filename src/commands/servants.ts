@@ -361,7 +361,14 @@ export function buildServantsListUI(
   classFilter = 'all',
   searchKeyword?: string
 ) {
-  let filtered = allServants;
+  // Deduplicate input servant templates by ID and Name
+  const uniqueServantsMap = new Map<string, ServantTemplate>();
+  for (const s of allServants) {
+    if (s && s.id && !uniqueServantsMap.has(s.id)) {
+      uniqueServantsMap.set(s.id, s);
+    }
+  }
+  let filtered = Array.from(uniqueServantsMap.values());
 
   if (originFilter === 'canon') {
     filtered = filtered.filter(s => !s.isCustomOrMeme);
@@ -412,21 +419,32 @@ export function buildServantsListUI(
 
   const components: ActionRowBuilder<any>[] = [];
 
-  // ROW 1: Dropdown Select Menu
+  // ROW 1: Dropdown Select Menu (Deduplicated values guaranteed)
   if (pageItems.length > 0) {
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId(`select_servant_registry`)
-      .setPlaceholder('🔍 Select a Heroic Spirit to inspect dossier...')
-      .addOptions(
-        pageItems.map(s =>
+    const seenValues = new Set<string>();
+    const options: StringSelectMenuOptionBuilder[] = [];
+
+    for (const s of pageItems) {
+      const optionValue = `servant_view_${s.id}`;
+      if (!seenValues.has(optionValue)) {
+        seenValues.add(optionValue);
+        options.push(
           new StringSelectMenuOptionBuilder()
             .setLabel(`${s.name} (${s.servantClass})`.slice(0, 100))
             .setDescription(`${s.servantClass} • ${s.title || s.noblePhantasm.name}`.slice(0, 100))
-            .setValue(`servant_view_${s.id}`)
+            .setValue(optionValue)
             .setEmoji(getClassEmoji(s.servantClass))
-        )
-      );
-    components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu));
+        );
+      }
+    }
+
+    if (options.length > 0) {
+      const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId(`select_servant_registry`)
+        .setPlaceholder('🔍 Select a Heroic Spirit to inspect dossier...')
+        .addOptions(options);
+      components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu));
+    }
   }
 
   // ROW 2: Navigation & Filter Bar
