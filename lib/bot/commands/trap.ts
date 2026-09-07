@@ -72,7 +72,7 @@ export const data = new SlashCommandBuilder()
   .addSubcommand(sub =>
     sub
       .setName('disarm')
-      .setDescription('Disarm and dissolve your deployed channel traps or workshop wards')
+      .setDescription('Dissolve your deployed Bounded Fields or infiltrate and dismantle a rival Master field')
       .addChannelOption(opt =>
         opt
           .setName('channel')

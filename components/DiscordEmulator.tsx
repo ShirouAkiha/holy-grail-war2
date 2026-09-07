@@ -822,10 +822,12 @@ export default function DiscordEmulator({
         });
       } else {
         selectOptions.push({
-          value: isMine ? `disarm_trap_${sec.id}` : `blocked_trap_${sec.id}`,
-          label: `${sec.id} (${isMine ? '🔒 Armed by You' : '🔒 Occupied'})${isCurrent ? ' ⭐ [CURRENT]' : ''}`,
-          description: isMine ? 'Click to disarm current trap' : `Occupied by rival (${activeTrap?.setterUsername})`,
-          emoji: isMine ? (activeTrap?.trapType === 'alarm' ? '🚨' : '🩸') : '🔒'
+          value: `disarm_trap_${sec.id}`,
+          label: `${sec.id} (${isMine ? '🔒 Armed by You' : '🔒 Occupied by Rival'})${isCurrent ? ' ⭐ [CURRENT]' : ''}`,
+          description: isMine
+            ? 'Click to disarm current trap'
+            : `Click to infiltrate & dismantle rival Master ${activeTrap?.setterUsername}'s Bounded Field`,
+          emoji: isMine ? (activeTrap?.trapType === 'alarm' ? '🚨' : '🩸') : '🗡️'
         });
       }
     });
@@ -5508,12 +5510,17 @@ export default function DiscordEmulator({
             description: `Siphon 1,800 HP from intruders in ${sec.label}`,
             emoji: '🩸'
           });
-        } else if (activeTrap && activeTrap.setterMasterId === master.discordId) {
+        } else if (activeTrap) {
+          const isMine = activeTrap.setterMasterId === master.discordId;
           opts.push({
             value: `disarm_trap_${sec.id}`,
-            label: `Disarm Bounded Field in ${sec.id}${currentTag}`,
-            description: `Dissolve your active ${activeTrap.trapType === 'alarm' ? 'Alarm Ward' : 'Bloodfort Drain'}`,
-            emoji: '🧹'
+            label: isMine 
+              ? `Disarm Bounded Field in ${sec.id}${currentTag}`
+              : `🗡️ Infiltrate & Disarm Rival Field in ${sec.id}${currentTag}`,
+            description: isMine
+              ? `Dissolve your active ${activeTrap.trapType === 'alarm' ? 'Alarm Ward' : 'Bloodfort Drain'}`
+              : `Dismantle Master ${activeTrap.setterUsername}'s ${activeTrap.trapType === 'alarm' ? 'Alarm Ward' : 'Bloodfort Drain'}`,
+            emoji: isMine ? '🧹' : '🗡️'
           });
         }
       });

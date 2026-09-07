@@ -1077,7 +1077,7 @@ export function setChannelTrapInWar(
 }
 
 /**
- * Disarms active Bounded Field traps placed by a Master.
+ * Disarms active Bounded Field traps placed by a Master or infiltrates and dismantles rival enemy fields.
  */
 export function disarmChannelTrapsInWar(
   war: HolyGrailWarSession,
@@ -1089,27 +1089,74 @@ export function disarmChannelTrapsInWar(
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
 
-  if (!targetWar.channelTraps || targetWar.channelTraps.length === 0) {
-    return { success: true, message: 'You have no active Bounded Field traps to disarm.', updatedWar: targetWar };
+  if (!targetWar.channelTraps) {
+    targetWar.channelTraps = [];
+  }
+
+  const disarmer = targetWar.participants[masterId];
+  const disarmerName = disarmer?.username || 'Master';
+
+  if (channelName) {
+    const chanTag = channelName.startsWith('#') ? channelName : `#${channelName}`;
+    const matchingTraps = targetWar.channelTraps.filter(
+      t => t.channelName.toLowerCase() === chanTag.toLowerCase()
+    );
+
+    if (matchingTraps.length === 0) {
+      return {
+        success: true,
+        message: `ℹ️ No active Bounded Fields found anchored in **${chanTag}**. The sector is already clear of magical wards.`,
+        updatedWar: targetWar
+      };
+    }
+
+    const myTraps = matchingTraps.filter(t => t.setterMasterId === masterId);
+    const enemyTraps = matchingTraps.filter(t => t.setterMasterId !== masterId);
+
+    targetWar.channelTraps = targetWar.channelTraps.filter(
+      t => t.channelName.toLowerCase() !== chanTag.toLowerCase()
+    );
+
+    if (myTraps.length > 0 && enemyTraps.length === 0) {
+      return {
+        success: true,
+        message: `🧹 **Bounded Field Dissolved:** Successfully dismissed and disarmed **${myTraps.length}** of your active Bounded Field trap(s) in **${chanTag}**.`,
+        updatedWar: targetWar
+      };
+    }
+
+    if (enemyTraps.length > 0) {
+      const enemyNames = Array.from(new Set(enemyTraps.map(t => t.setterUsername))).join(', ');
+      const enemyTypes = enemyTraps.map(t => t.trapType === 'alarm' ? '🚨 Sensory Alarm Ward' : '🩸 Bloodfort Mana Drain Field').join(' & ');
+
+      targetWar.eventLogs.unshift({
+        id: `evt_disarm_${Date.now()}`,
+        timestamp: Date.now(),
+        text: `🧹 **Leyline Infiltration:** Master **${disarmerName}** infiltrated **${chanTag}** and dismantled rival Master **${enemyNames}**'s concealed Bounded Field!`,
+        type: 'ambush'
+      });
+
+      return {
+        success: true,
+        message: `🗡️ **Enemy Bounded Field Dismantled & Neutralized!**\n` +
+          `• **Target Sector:** **${chanTag}**\n` +
+          `• **Rival Master:** **${enemyNames}**\n` +
+          `• **Neutralized Ward(s):** ${enemyTypes}\n` +
+          `• **Tactical Outcome:** Your Servant infiltrated the sector's mana leylines and severed the rival magical circuits! The enemy's trap has been dissolved and the channel is now clear for your own deployment.`,
+        updatedWar: targetWar
+      };
+    }
   }
 
   const initialCount = targetWar.channelTraps.length;
-  if (channelName) {
-    const chanTag = channelName.startsWith('#') ? channelName : `#${channelName}`;
-    targetWar.channelTraps = targetWar.channelTraps.filter(
-      t => !(t.setterMasterId === masterId && t.channelName.toLowerCase() === chanTag.toLowerCase())
-    );
-  } else {
-    targetWar.channelTraps = targetWar.channelTraps.filter(t => t.setterMasterId !== masterId);
-  }
-
+  targetWar.channelTraps = targetWar.channelTraps.filter(t => t.setterMasterId !== masterId);
   const removedCount = initialCount - targetWar.channelTraps.length;
 
   return {
     success: true,
     message: removedCount > 0
-      ? `🧹 Successfully dissolved and disarmed **${removedCount}** active Bounded Field trap(s).`
-      : `No active traps found in the specified channel.`,
+      ? `🧹 Successfully dissolved and disarmed **${removedCount}** of your active Bounded Field trap(s) across Fuyuki.`
+      : `You have no active Bounded Field traps to disarm. (To dismantle an enemy Bounded Field, specify the target sector with \`/trap disarm channel:#channel-name\`).`,
     updatedWar: targetWar
   };
 }

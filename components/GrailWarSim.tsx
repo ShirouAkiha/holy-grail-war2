@@ -1050,9 +1050,14 @@ export default function GrailWarSim({
                                 🧹 Disarm This Sector
                               </button>
                             ) : isRivalTrap ? (
-                              <span className="text-[10px] text-white/40 italic">
-                                Territory Locked by Rival
-                              </span>
+                              <button
+                                onClick={() => handleDisarmTrapFromBoard(secName)}
+                                className="w-full py-1 text-[11px] text-amber-300 bg-amber-950/50 hover:bg-amber-900/70 rounded border border-amber-500/40 font-medium transition cursor-pointer flex items-center justify-center gap-1 shadow-sm"
+                                title={`Infiltrate leylines and dismantle Master ${trap.setterUsername}'s Bounded Field`}
+                              >
+                                <span>🗡️</span>
+                                <span>Infiltrate &amp; Disarm Rival Field</span>
+                              </button>
                             ) : (
                               <div className="grid grid-cols-2 gap-1 w-full">
                                 <button

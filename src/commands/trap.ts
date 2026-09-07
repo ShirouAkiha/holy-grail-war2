@@ -237,7 +237,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         return `• \`${secName}\`: 🕸️ **Armed by You** (${myTrapsInSec.length}/3 fields: ${labels})`;
       }
       const otherMaster = trapsInSec[0].setterUsername;
-      return `• \`${secName}\`: 🔒 **Occupied** *(Master ${otherMaster} claims this territory)*`;
+      return `• \`${secName}\`: 🔒 **Occupied** *(Master ${otherMaster}'s territory — use \`/trap disarm channel:${secName}\` to infiltrate & dismantle)*`;
     }).join('\n');
 
     const fullDesc = 
@@ -334,7 +334,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             `• 🛡️ **Mage Sanctuary (Auto-Heal & 60% Ambush Block):** Anchors your primary workshop in this channel. **This is the sole method of continuous HP auto-regeneration** and deflects 60% ambush DMG.\n` +
             `• 🚨 **Sensory Alarm Ward:** Conceals an early warning perimeter that exposes rival Master identity and Servant true class upon typing.\n` +
             `• 🩸 **Bloodfort Mana Drain:** Traps the channel in a bounded field that siphons 1,800 HP from rival intruders directly into your Servant.\n` +
-            `• 🧹 **Disarm Sector:** Dissolves any Bounded Field you have placed in ${targetChanName}.\n\n` +
+            `• 🧹 **Disarm Sector:** Dissolves your own Bounded Field or infiltrates and dismantles a rival's Bounded Field in ${targetChanName}.\n\n` +
             `*Or click Back to return.*`
           )
           .setColor(0x8b5cf6)
