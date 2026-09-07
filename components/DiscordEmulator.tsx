@@ -2040,21 +2040,44 @@ export default function DiscordEmulator({
     }
 
     // ----------------------------------------------------
-    // COMMAND 3: /servant (Master's Servant Workshop Hub)
+    // COMMAND 3: /servant (Master's Servant Workshop Hub or Direct Lookup)
     // ----------------------------------------------------
     if (trimmed === '/servant' || trimmed.startsWith('/servant ') || trimmed === '!servant' || trimmed.startsWith('!servant ') || trimmed === '!myservant' || trimmed.startsWith('!myservant ')) {
+      const rawArg = trimmed
+        .replace(/^\/servant/i, '')
+        .replace(/^!servant/i, '')
+        .replace(/^!myservant/i, '')
+        .trim();
+
+      const argLower = rawArg.toLowerCase();
+
+      // If user provided a specific servant name or ID (e.g. /servant Artoria or !servant gilgamesh), display full profile card directly
+      if (argLower &&
+          !['status', 'profile', 'stats', 'stat', 'points', 'equip', 'ce', 'feed', 'exp', 'np', 'noble', 'dialogue', 'voice', 'quote', 'roster', 'list', 'search', 'view'].includes(argLower)) {
+        const directMatch = allThrone.find(
+          s => s.name.toLowerCase() === argLower ||
+               s.id.toLowerCase() === argLower ||
+               s.name.toLowerCase().includes(argLower) ||
+               s.id.toLowerCase().includes(argLower)
+        );
+        if (directMatch) {
+          postServantFullProfile(directMatch);
+          return;
+        }
+      }
+
       let targetCat: 'profile' | 'stats' | 'equip_ce' | 'feed_ce' | 'np' | 'dialogue' | 'roster' = 'profile';
-      if (trimmed.includes('stat') || trimmed.includes('points')) {
+      if (argLower.includes('stat') || argLower.includes('points')) {
         targetCat = 'stats';
-      } else if (trimmed.includes('equip') || trimmed.includes('ce')) {
+      } else if (argLower.includes('equip') || argLower.includes('ce')) {
         targetCat = 'equip_ce';
-      } else if (trimmed.includes('feed') || trimmed.includes('exp')) {
+      } else if (argLower.includes('feed') || argLower.includes('exp')) {
         targetCat = 'feed_ce';
-      } else if (trimmed.includes('np') || trimmed.includes('noble')) {
+      } else if (argLower.includes('np') || argLower.includes('noble')) {
         targetCat = 'np';
-      } else if (trimmed.includes('dialogue') || trimmed.includes('voice') || trimmed.includes('quote')) {
+      } else if (argLower.includes('dialogue') || argLower.includes('voice') || argLower.includes('quote')) {
         targetCat = 'dialogue';
-      } else if (trimmed.includes('roster') || trimmed.includes('list')) {
+      } else if (argLower.includes('roster') || argLower.includes('list')) {
         targetCat = 'roster';
       }
       setServantHubCategory(targetCat as any);
@@ -3959,7 +3982,6 @@ export default function DiscordEmulator({
       embed: {
         title: `⚔️ Servant Profile: ${template.name} — ${template.title}`,
         thumbnailUrl: template.avatarUrl,
-        imageUrl: template.cardArtUrl || template.avatarUrl,
         description:
           `Class: **${template.servantClass}** | Origin: **${template.isCustomOrMeme ? '🛠️ Custom Administrator Creation' : '🏛️ Canon Heroic Spirit'}** | Status: **⚖️ Balanced Parity**\n\n` +
           `📜 **Historical Legend & Lore:**\n> ${template.lore || 'A legendary soul recorded in the Throne of Heroes.'}\n\n` +
@@ -3984,11 +4006,6 @@ export default function DiscordEmulator({
       },
       canvasType: 'servant',
       canvasPayload: { servant: tempInstance, masterName: 'Throne of Heroes' },
-      artworkEmbed: {
-        title: `🖼️ Character Artwork: ${template.name}`,
-        imageUrl: template.cardArtUrl || template.avatarUrl,
-        color: template.servantClass === 'Saber' ? '#3b82f6' : '#d4af37'
-      },
       components: {
         type: 'buttons',
         items: [
@@ -5052,10 +5069,7 @@ export default function DiscordEmulator({
         `• **Agility (AGI):** \`${agiTotal}\` [${getRank(agiTotal)}] | **Mana (MNA):** \`${mnaTotal}\` [${getRank(mnaTotal)}] | **Luck (LCK):** \`${lckTotal}\` [${getRank(lckTotal)}]`;
       canvasType = 'servant';
       canvasPayload = { servant: targetServant, masterName: master.username };
-      artworkEmbed = {
-        imageUrl: t.cardArtUrl || t.avatarUrl,
-        color: t.rarity === 5 ? '#f59e0b' : '#38bdf8'
-      };
+      artworkEmbed = undefined;
     } else if (category === 'stats') {
       title = `⭐ Parameter Point Allocation: ${sName}`;
       description =
