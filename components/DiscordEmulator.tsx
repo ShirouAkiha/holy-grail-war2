@@ -55,6 +55,7 @@ import {
   patrolCityInWar,
   setChannelTrapInWar,
   disarmChannelTrapsInWar,
+  setWorkshopWardInWar,
   dispatchFamiliarInWar,
   recallFamiliarsInWar,
   enterChurchSanctuary,
@@ -3041,8 +3042,47 @@ export default function DiscordEmulator({
           return;
         }
 
+        const isSanctuary = trimmed.includes('sanctuary') || trimmed.includes('ward');
+        const isDecoy = trimmed.includes('decoy');
         const isAlarm = trimmed.includes('alarm');
         const isDrain = trimmed.includes('drain') || trimmed.includes('bloodfort');
+
+        if (isSanctuary) {
+          const targetChan = targetSector || activePublicSector;
+          const res = setWorkshopWardInWar(grailWar, master.discordId, 'ward', targetChan);
+          onUpdateGrailWar(res.updatedWar);
+          onUpdateMaster({ ...master, boundedField: 'ward', sanctuaryChannelName: targetChan });
+          addMessage({
+            id: getNextId('bot_trap_sanctuary'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `🛡️ Mage Sanctuary Established in ${targetChan}`,
+              description: res.message,
+              color: '#3b82f6',
+              footer: `Sanctuary Sector: ${targetChan} • Sole HP Auto-Regen active`
+            }
+          });
+          return;
+        }
+
+        if (isDecoy) {
+          const res = setWorkshopWardInWar(grailWar, master.discordId, 'decoy');
+          onUpdateGrailWar(res.updatedWar);
+          onUpdateMaster({ ...master, boundedField: 'decoy' });
+          addMessage({
+            id: getNextId('bot_trap_decoy'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `🗿 Homunculus Decoy Activated`,
+              description: res.message,
+              color: '#8b5cf6',
+              footer: `Workshop Decoy • Absorbs next incoming strike`
+            }
+          });
+          return;
+        }
 
         if (isAlarm && targetSector) {
           const res = setChannelTrapInWar(grailWar, master.discordId, master.username, targetSector, 'alarm');
@@ -3065,9 +3105,10 @@ export default function DiscordEmulator({
             sender: 'bot',
             timestamp: 'Just now',
             embed: {
-              title: `🕸️ Anchor Bounded Field in ${targetSector}`,
+              title: `🕸️ Establish Bounded Field in ${targetSector}`,
               description:
                 `Select which type of Bounded Field to anchor in **${targetSector}**:\n\n` +
+                `• 🛡️ **Mage Sanctuary:** Absorbs 60% ambush DMG & enables passive Leyline HP Auto-Regen in this channel.\n` +
                 `• 🚨 **Alarm Ward:** Concealed sensory ward that alerts you and exposes intruder identity & Servant class.\n` +
                 `• 🩸 **Bloodfort Mana Drain:** Siphons 1,800–2,600 HP from rival intruders to replenish your Servant.\n\n` +
                 `*Click an action below to establish the field:*`,
@@ -3077,7 +3118,8 @@ export default function DiscordEmulator({
             components: {
               type: 'buttons',
               items: [
-                { id: `anchor_trap_alarm_${targetSector}`, label: `Anchor Alarm Ward (${targetSector})`, style: 'primary', emoji: '🚨' },
+                { id: `anchor_trap_sanctuary_${targetSector}`, label: `Anchor Sanctuary (${targetSector})`, style: 'primary', emoji: '🛡️' },
+                { id: `anchor_trap_alarm_${targetSector}`, label: `Anchor Alarm Ward (${targetSector})`, style: 'secondary', emoji: '🚨' },
                 { id: `anchor_trap_drain_${targetSector}`, label: `Anchor Bloodfort Drain (${targetSector})`, style: 'danger', emoji: '🩸' },
                 { id: 'refresh_traps_radar', label: 'Back to Radar', style: 'secondary', emoji: '⬅️' }
               ]
@@ -6752,6 +6794,12 @@ export default function DiscordEmulator({
         postChannelSelectorPrompt('alarm');
       } else if (btnId === 'war_place_trap_drain' || btnId === 'prompt_anchor_drain') {
         postChannelSelectorPrompt('drain');
+      } else if (btnId.startsWith('anchor_trap_sanctuary_')) {
+        const targetChan = btnId.replace('anchor_trap_sanctuary_', '');
+        const res = setWorkshopWardInWar(grailWar, master.discordId, 'ward', targetChan);
+        onUpdateGrailWar(res.updatedWar);
+        onUpdateMaster({ ...master, boundedField: 'ward', sanctuaryChannelName: targetChan });
+        postTrapsRadarOverview(res.message);
       } else if (btnId.startsWith('anchor_trap_alarm_')) {
         const targetChan = btnId.replace('anchor_trap_alarm_', '');
         const res = setChannelTrapInWar(grailWar, master.discordId, master.username, targetChan, 'alarm');

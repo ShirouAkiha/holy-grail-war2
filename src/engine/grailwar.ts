@@ -458,7 +458,8 @@ export function calculateServantMaxHp(servantInstance: any): number {
 /**
  * Calculates a participant's real-time HP based on passive leyline regeneration.
  * Full HP recovery cycle takes 5 minutes (300,000 ms).
- * NOTE: Auto-regeneration only occurs when the Master has an active Bounded Field ('ward', 'alarm', 'sanctuary', etc.).
+ * NOTE: Auto-regeneration ONLY occurs when the Master has an active Mage Sanctuary ('ward').
+ * All other auto-regen is disabled per Holy Grail War rules; Mage Sanctuary is the sole auto-heal method.
  */
 export function calculateCurrentHp(participant: WarMasterParticipant, now: number = Date.now()): number {
   if (!participant) return 0;
@@ -472,9 +473,9 @@ export function calculateCurrentHp(participant: WarMasterParticipant, now: numbe
     return maxHp;
   }
 
-  // Auto-regeneration only channels mana if an active Bounded Field is established and NOT in combat!
-  const hasBoundedField = participant.boundedField && participant.boundedField !== 'none';
-  if (!hasBoundedField || (participant as any).inCombat) {
+  // Auto-regeneration ONLY channels mana if an active Mage Sanctuary ('ward') is established and NOT in combat!
+  const hasMageSanctuary = participant.boundedField === 'ward';
+  if (!hasMageSanctuary || (participant as any).inCombat) {
     return participant.currentHp;
   }
 
@@ -534,10 +535,10 @@ export function getHealingStatus(participant: WarMasterParticipant, now: number 
   const currentHp = calculateCurrentHp(participant, now);
   const percent = Math.min(100, Math.max(0, Math.round((currentHp / maxHp) * 100)));
   const isFullyHealed = currentHp >= maxHp;
-  const hasBoundedField = participant.boundedField && participant.boundedField !== 'none';
+  const hasMageSanctuary = participant.boundedField === 'ward';
 
   let remainingSecs = 0;
-  if (!isFullyHealed && participant.lastDamageTime && hasBoundedField) {
+  if (!isFullyHealed && participant.lastDamageTime && hasMageSanctuary) {
     const elapsed = Math.max(0, now - participant.lastDamageTime);
     remainingSecs = Math.max(0, Math.ceil((300000 - elapsed) / 1000));
   }
@@ -552,13 +553,14 @@ export function getHealingStatus(participant: WarMasterParticipant, now: number 
 
   let statusTag = '🟢 Full Health';
   if (!isFullyHealed) {
-    if (hasBoundedField) {
+    if (hasMageSanctuary) {
       const mins = Math.floor(remainingSecs / 60);
       const secs = remainingSecs % 60;
       const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
-      statusTag = `🛡️ Bounded Field Regen (${timeStr} to full)`;
+      const chanInfo = (participant as any).sanctuaryChannelName ? ` in ${(participant as any).sanctuaryChannelName}` : '';
+      statusTag = `🛡️ Mage Sanctuary Regen${chanInfo} (${timeStr} to full)`;
     } else {
-      statusTag = '⚠️ Wounded (Auto-regen paused; deploy Bounded Field via /defenses or cast /heal)';
+      statusTag = '⚠️ Wounded (Auto-regen inactive — Mage Sanctuary is the only auto-heal method; deploy via /trap or cast /heal)';
     }
   }
 
@@ -1825,23 +1827,23 @@ export function executeWarAction(
     actor.boundedField = val;
 
     const now = Date.now();
-    if (val !== 'none' && previousWard === 'none') {
-      // Activating Bounded Field begins active leyline regeneration from current HP
+    if (val === 'ward' && previousWard !== 'ward') {
+      // Activating Mage Sanctuary begins active leyline regeneration from current HP
       if (actor.currentHp < actor.maxHp) {
         actor.baseHpAtDamage = actor.currentHp;
         actor.lastDamageTime = now;
       }
-    } else if (val === 'none' && previousWard !== 'none') {
-      // Deactivating Bounded Field calculates HP up to this instant and pauses further passive regen
+    } else if (val !== 'ward' && previousWard === 'ward') {
+      // Deactivating Mage Sanctuary calculates HP up to this instant and pauses further auto-regen
       actor.currentHp = calculateCurrentHp(actor, now);
       actor.baseHpAtDamage = actor.currentHp;
       actor.lastDamageTime = undefined;
     }
 
     let desc = '';
-    if (val === 'none') desc = 'deactivated all active bounded fields (HP auto-regeneration paused)';
-    else if (val === 'ward') desc = 'reinforced a Mage Workshop sanctuary field (blocks 60% incoming ambush damage & channels HP auto-regeneration)';
-    else if (val === 'alarm') desc = 'deployed an Intrusion Alert Trap (deals 3,000 retaliatory DMG & channels HP auto-regeneration)';
+    if (val === 'none') desc = 'deactivated all active workshop bounded fields (HP auto-regeneration paused)';
+    else if (val === 'ward') desc = `established a Mage Sanctuary Bounded Field in \`${actor.sanctuaryChannelName || '#general'}\` (blocks 60% incoming ambush damage & is the sole method of HP auto-regeneration)`;
+    else if (val === 'alarm') desc = 'deployed an Intrusion Alert Trap (deals 3,000 retaliatory DMG; note: auto-regeneration requires Mage Sanctuary)';
     
     return {
       success: true,
@@ -2299,7 +2301,8 @@ export function invokeCommandSealInWar(
 export function setWorkshopWardInWar(
   war: HolyGrailWarSession,
   actorDiscordId: string,
-  wardType: 'ward' | 'decoy' | 'alarm' | 'none'
+  wardType: 'ward' | 'decoy' | 'alarm' | 'none',
+  channelName?: string
 ): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
   const targetWar = war || globalWarSession;
   if (!targetWar) {
@@ -2321,27 +2324,36 @@ export function setWorkshopWardInWar(
     };
   }
 
+  const targetChannel = channelName || actor.sanctuaryChannelName || '#general';
+  if (wardType === 'ward') {
+    actor.sanctuaryChannelName = targetChannel;
+  }
   actor.boundedField = wardType;
+
   const now = Date.now();
-  if (wardType !== 'none' && previousWard === 'none') {
+  if (wardType === 'ward' && previousWard !== 'ward') {
     if (actor.currentHp < actor.maxHp) {
       actor.baseHpAtDamage = actor.currentHp;
       actor.lastDamageTime = now;
     }
-  } else if (wardType === 'none' && previousWard !== 'none') {
+  } else if (wardType !== 'ward' && previousWard === 'ward') {
     actor.currentHp = calculateCurrentHp(actor, now);
     actor.baseHpAtDamage = actor.currentHp;
     actor.lastDamageTime = undefined;
   }
 
   let desc = '';
-  if (wardType === 'none') desc = 'deactivated all active workshop bounded fields (HP auto-regeneration paused)';
-  else if (wardType === 'ward') desc = 'reinforced a Mage Sanctuary Bounded Field (deflects 60% incoming ambush damage & channels HP auto-regeneration)';
-  else if (wardType === 'alarm') desc = 'deployed an Intrusion Alert Ward (deals 3,000 retaliatory DMG & channels HP auto-regeneration)';
+  if (wardType === 'none') {
+    desc = 'deactivated all active workshop bounded fields (HP auto-regeneration paused)';
+  } else if (wardType === 'ward') {
+    desc = `anchored a **Mage Sanctuary in \`${targetChannel}\`**!\n\n• 🛡️ **Defensive Barrier:** Absorbs and deflects **60% of incoming ambush damage**.\n• 💧 **Leyline Auto-Heal:** Channels continuous **HP Auto-Regeneration** (sole method of auto-healing; 5 min full recovery)`;
+  } else if (wardType === 'alarm') {
+    desc = 'deployed an Intrusion Alert Ward (deals 3,000 retaliatory DMG; note: auto-healing is disabled without an active Mage Sanctuary)';
+  }
 
   return {
     success: true,
-    message: `🏰 **Workshop Ward Deployed:** ${desc}!`,
+    message: `🏰 **Workshop Ward Deployed:** ${desc}`,
     updatedWar: targetWar
   };
 }

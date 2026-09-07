@@ -74,11 +74,11 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
   const setupNewBattle = (opponentTemplate = enemyTemplate) => {
     if (!activeServant) return null;
 
-    // Calculate current HP taking into account Bounded Field regeneration if active
+    // Calculate current HP taking into account Mage Sanctuary regeneration if active
     let servantHp = activeServant.currentHp;
     if (servantHp !== undefined && servantHp > 0) {
-      const hasBoundedField = master.boundedField && master.boundedField !== 'none';
-      if (hasBoundedField && activeServant.lastDamageTime) {
+      const hasMageSanctuary = master.boundedField === 'ward';
+      if (hasMageSanctuary && activeServant.lastDamageTime) {
         const elapsed = Math.max(0, Date.now() - activeServant.lastDamageTime);
         const REGEN_DURATION = 300000;
         const baseHp = activeServant.baseHpAtDamage !== undefined ? Math.min(servantHp, activeServant.baseHpAtDamage) : servantHp;

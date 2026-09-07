@@ -21,27 +21,27 @@ import {
 
 export const data = new SlashCommandBuilder()
   .setName('trap')
-  .setDescription('🕸️ Place or manage concealed Bounded Field traps, Workshop Wards, and Command Seals')
+  .setDescription('🕸️ Place or manage concealed Bounded Field traps, Mage Sanctuary, and Command Seals')
   .addSubcommand(sub =>
     sub
       .setName('set')
-      .setDescription('Conceal a Bounded Field trap or Workshop Ward')
+      .setDescription('Conceal a Bounded Field trap or establish a Mage Sanctuary')
       .addStringOption(opt =>
         opt
           .setName('type')
           .setDescription('Choose Bounded Field or Ward type')
           .setRequired(true)
           .addChoices(
+            { name: '🛡️ Mage Sanctuary (Anchors auto-healing & deflects 60% ambush damage)', value: 'sanctuary' },
             { name: '🚨 Alarm Ward (Exposes intruder identity & Servant Class)', value: 'alarm' },
             { name: '🩸 Bloodfort Drain (Siphons 1,800 HP from intruder to your Servant)', value: 'drain' },
-            { name: '🛡️ Mage Sanctuary Ward (Absorbs 60% incoming ambush damage)', value: 'sanctuary' },
             { name: '🗿 Homunculus Decoy Ward (Absorbs 100% incoming ambush damage)', value: 'decoy' }
           )
       )
       .addChannelOption(opt =>
         opt
           .setName('channel')
-          .setDescription('Actual Discord channel to anchor (for channel traps)')
+          .setDescription('Actual Discord channel to anchor Mage Sanctuary or channel trap')
           .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
           .setRequired(false)
       )
@@ -115,24 +115,40 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (sub === 'set') {
       const trapType = interaction.options.getString('type', true);
-      if (trapType === 'sanctuary') {
-        const res = setWorkshopWardInWar(war, interaction.user.id, 'ward');
-        war = res.updatedWar;
-        await saveMaster(master);
-        await interaction.reply({ content: res.message, flags: MessageFlags.Ephemeral });
-        return;
-      } else if (trapType === 'decoy') {
-        const res = setWorkshopWardInWar(war, interaction.user.id, 'decoy');
-        war = res.updatedWar;
-        await saveMaster(master);
-        await interaction.reply({ content: res.message, flags: MessageFlags.Ephemeral });
-        return;
-      }
-
       const channelOpt = interaction.options.getChannel('channel');
       const targetChan = channelOpt && 'name' in channelOpt 
         ? `#${channelOpt.name}` 
         : currentChannelName;
+
+      if (trapType === 'sanctuary') {
+        const res = setWorkshopWardInWar(war, interaction.user.id, 'ward', targetChan);
+        war = res.updatedWar;
+        master.boundedField = 'ward';
+        master.sanctuaryChannelName = targetChan;
+        await saveMaster(master);
+
+        const sanctuaryEmbed = new EmbedBuilder()
+          .setTitle('🛡️ Mage Sanctuary Established')
+          .setDescription(
+            `**Mage Sanctuary Bounded Field Anchored in \`${targetChan}\`!**\n\n` +
+            `• 💧 **HP Auto-Regeneration:** Your Servant is protected inside this Sanctuary and steadily regenerates missing HP (5-minute full recovery cycle).\n` +
+            `• 🛡️ **Ambush Protection:** Absorbs & deflects **60% of incoming ambush damage**!\n\n` +
+            `⚠️ *Important: Mage Sanctuary is the sole method of passive HP auto-regeneration in the Holy Grail War. All other auto-regen is inactive.*`
+          )
+          .setColor(0x10b981)
+          .setFooter({ text: `Anchored Sector: ${targetChan} • Holy Grail War` })
+          .setTimestamp();
+
+        await interaction.reply({ embeds: [sanctuaryEmbed], flags: MessageFlags.Ephemeral });
+        return;
+      } else if (trapType === 'decoy') {
+        const res = setWorkshopWardInWar(war, interaction.user.id, 'decoy');
+        war = res.updatedWar;
+        master.boundedField = 'decoy';
+        await saveMaster(master);
+        await interaction.reply({ content: res.message, flags: MessageFlags.Ephemeral });
+        return;
+      }
 
       const res = setChannelTrapInWar(war, interaction.user.id, interaction.user.username, targetChan, trapType as 'alarm' | 'drain');
       war = res.updatedWar;
@@ -197,13 +213,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     // Workshop Ward Status
-    let workshopDesc = '🚫 **No Workshop Ward Active**';
+    let workshopDesc = '🚫 **No Workshop Ward Active** *(HP auto-regeneration is disabled. Establish Mage Sanctuary in a channel to auto-heal)*';
     if (wardType === 'ward') {
-      workshopDesc = '🛡️ **Mage Sanctuary Bounded Field:** Absorbs & deflects **60% of incoming ambush damage**.';
+      const sChan = uP?.sanctuaryChannelName || '#general';
+      workshopDesc = `🛡️ **Mage Sanctuary Bounded Field (Anchored in \`${sChan}\`):**\n• 💧 **HP Auto-Regeneration Active:** (Sole auto-heal method; 5 min full recovery)\n• 🛡️ **Ambush Protection:** Deflects **60% of incoming ambush damage**.`;
     } else if (wardType === 'decoy') {
-      workshopDesc = '🗿 **Homunculus Decoy:** Sacrifices an artificial homunculus to absorb **100% of incoming ambush damage**.';
+      workshopDesc = '🗿 **Homunculus Decoy:** Sacrifices an artificial homunculus to absorb **100% of incoming ambush damage** *(Auto-regen is inactive)*.';
     } else if (wardType === 'alarm') {
-      workshopDesc = '🚨 **Sensory Alarm Trap:** Detects infiltrators, alerting you and dealing **3,000 retaliatory DMG**.';
+      workshopDesc = '🚨 **Sensory Alarm Trap:** Detects infiltrators, alerting you and dealing **3,000 retaliatory DMG** *(Auto-regen is inactive)*.';
     }
 
     // Dynamic Sector Radar for all active traps and default channels
@@ -224,18 +241,18 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }).join('\n');
 
     const fullDesc = 
-      `🏰 **WORKSHOP DEFENSES & WARDS:**\n${workshopDesc}\n\n` +
+      `🏰 **WORKSHOP DEFENSES & SANCTUARY:**\n${workshopDesc}\n\n` +
       `📜 **COMMAND SEALS & AUTO-EVAC:**\n` +
       `• **Remaining Seals:** \`${'✦ '.repeat(csCount)}${'✧ '.repeat(Math.max(0, 3 - csCount))}\` (**${csCount}/3**)\n` +
       `• **Auto-Evacuate Ward:** ${autoEvac ? '🟢 **ENABLED** (Survives lethal hit with 1 HP)' : '🔴 **DISABLED**'}\n\n` +
       desc + '\n\n🗺️ **ACTIVE CHANNELS RADAR:**\n' + radarLines +
-      '\n\n🎯 **TARGET A SPECIFIC CHANNEL:**\nSelect an existing Discord channel below to anchor or disarm a Bounded Field!';
+      '\n\n🎯 **TARGET A SPECIFIC CHANNEL:**\nSelect an existing Discord channel below to anchor Mage Sanctuary, deploy traps, or disarm sectors!';
 
     const trapsEmbed = new EmbedBuilder()
-      .setTitle('🕸️ Bounded Fields, Workshop Wards & Command Seals')
+      .setTitle('🕸️ Bounded Fields, Mage Sanctuary & Command Seals')
       .setDescription(fullDesc)
       .setColor(0x8b5cf6)
-      .setFooter({ text: 'A Master can set 3 Bounded Fields • Seals regenerate 1 per 24 hours' });
+      .setFooter({ text: 'A Master can set 3 Bounded Fields • Mage Sanctuary is the sole HP auto-regen source' });
 
     const btnRow1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
@@ -250,7 +267,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setStyle(ButtonStyle.Danger),
       new ButtonBuilder()
         .setCustomId('trap_set_sanctuary')
-        .setLabel('Sanctuary (60% Block)')
+        .setLabel(`Sanctuary (${currentChannelName})`)
         .setEmoji('🛡️')
         .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
@@ -285,7 +302,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const channelSelectRow = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
       new ChannelSelectMenuBuilder()
         .setCustomId('war_trap_channel_select')
-        .setPlaceholder('🎯 Select an existing Discord channel to place Bounded Field...')
+        .setPlaceholder('🎯 Select an existing Discord channel to place Bounded Field or Sanctuary...')
         .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
     );
 
@@ -310,10 +327,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         const targetChanName = selectedChan ? `#${selectedChan.name}` : `#${selectedChanId}`;
 
         const promptEmbed = new EmbedBuilder()
-          .setTitle(`🕸️ Anchor Bounded Field in ${targetChanName}`)
+          .setTitle(`🕸️ Anchor Bounded Field or Sanctuary in ${targetChanName}`)
           .setDescription(
             `You selected target channel: **${targetChanName}**\n\n` +
             `Choose which Bounded Field to deploy or manage in this sector:\n\n` +
+            `• 🛡️ **Mage Sanctuary (Auto-Heal & 60% Ambush Block):** Anchors your primary workshop in this channel. **This is the sole method of continuous HP auto-regeneration** and deflects 60% ambush DMG.\n` +
             `• 🚨 **Sensory Alarm Ward:** Conceals an early warning perimeter that exposes rival Master identity and Servant true class upon typing.\n` +
             `• 🩸 **Bloodfort Mana Drain:** Traps the channel in a bounded field that siphons 1,800 HP from rival intruders directly into your Servant.\n` +
             `• 🧹 **Disarm Sector:** Dissolves any Bounded Field you have placed in ${targetChanName}.\n\n` +
@@ -323,6 +341,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setFooter({ text: `Sector Target: ${targetChanName} • Holy Grail War` });
 
         const promptRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`trap_set_sanctuary_${selectedChanId}`)
+            .setLabel(`Anchor Sanctuary (${targetChanName})`)
+            .setEmoji('🛡️')
+            .setStyle(ButtonStyle.Success),
           new ButtonBuilder()
             .setCustomId(`trap_set_alarm_${selectedChanId}`)
             .setLabel(`Anchor Alarm (${targetChanName})`)
@@ -345,8 +368,23 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
 
       if (i.customId === 'trap_set_sanctuary') {
-        const res = setWorkshopWardInWar(war, i.user.id, 'ward');
+        const res = setWorkshopWardInWar(war, i.user.id, 'ward', currentChannelName);
         war = res.updatedWar;
+        master.boundedField = 'ward';
+        master.sanctuaryChannelName = currentChannelName;
+        await saveMaster(master);
+        await i.reply({ content: res.message, flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      if (i.customId.startsWith('trap_set_sanctuary_')) {
+        const chanId = i.customId.replace('trap_set_sanctuary_', '');
+        const chan = i.guild?.channels.cache.get(chanId);
+        const chanName = chan ? `#${chan.name}` : `#${chanId}`;
+        const res = setWorkshopWardInWar(war, i.user.id, 'ward', chanName);
+        war = res.updatedWar;
+        master.boundedField = 'ward';
+        master.sanctuaryChannelName = chanName;
         await saveMaster(master);
         await i.reply({ content: res.message, flags: MessageFlags.Ephemeral });
         return;
@@ -355,6 +393,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       if (i.customId === 'trap_set_decoy') {
         const res = setWorkshopWardInWar(war, i.user.id, 'decoy');
         war = res.updatedWar;
+        master.boundedField = 'decoy';
         await saveMaster(master);
         await i.reply({ content: res.message, flags: MessageFlags.Ephemeral });
         return;

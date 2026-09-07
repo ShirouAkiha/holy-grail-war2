@@ -35,16 +35,16 @@ export const data = new SlashCommandBuilder()
           .setDescription('Choose Bounded Field or Ward type')
           .setRequired(true)
           .addChoices(
+            { name: '🛡️ Mage Sanctuary (Anchors auto-healing & deflects 60% ambush damage)', value: 'sanctuary' },
             { name: '🚨 Alarm Ward (Exposes intruder identity & Servant Class)', value: 'alarm' },
             { name: '🩸 Bloodfort Drain (Siphons 1,800 HP from intruder to your Servant)', value: 'drain' },
-            { name: '🛡️ Mage Sanctuary Ward (Absorbs 60% incoming ambush damage)', value: 'sanctuary' },
             { name: '🗿 Homunculus Decoy Ward (Absorbs 100% incoming ambush damage)', value: 'decoy' }
           )
       )
       .addChannelOption(opt =>
         opt
           .setName('channel')
-          .setDescription('Actual Discord channel to anchor (for channel traps)')
+          .setDescription('Actual Discord channel to anchor Mage Sanctuary or channel trap')
           .addChannelTypes(ChannelType.GuildText)
           .setRequired(false)
       )
@@ -118,24 +118,27 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (sub === 'set') {
       const trapType = interaction.options.getString('type', true);
+      const channelOpt = interaction.options.getChannel('channel') as any;
+      const targetChan = channelOpt && channelOpt.name 
+        ? '#' + channelOpt.name 
+        : currentChannelName;
+
       if (trapType === 'sanctuary') {
-        const res = setWorkshopWardInWar(war, interaction.user.id, 'ward');
+        const res = setWorkshopWardInWar(war, interaction.user.id, 'ward', targetChan);
         war = res.updatedWar;
+        master.boundedField = 'ward';
+        master.sanctuaryChannelName = targetChan;
         await saveMaster(master);
         await interaction.reply({ content: res.message, ephemeral: true });
         return;
       } else if (trapType === 'decoy') {
         const res = setWorkshopWardInWar(war, interaction.user.id, 'decoy');
         war = res.updatedWar;
+        master.boundedField = 'decoy';
         await saveMaster(master);
         await interaction.reply({ content: res.message, ephemeral: true });
         return;
       }
-
-      const channelOpt = interaction.options.getChannel('channel');
-      const targetChan = channelOpt && 'name' in channelOpt 
-        ? \`#\${(channelOpt as any).name}\` 
-        : currentChannelName;
 
       const res = setChannelTrapInWar(war, interaction.user.id, interaction.user.username, targetChan, trapType as 'alarm' | 'drain');
       war = res.updatedWar;

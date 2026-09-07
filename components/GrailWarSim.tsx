@@ -345,9 +345,9 @@ export default function GrailWarSim({
               
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { value: 'none', label: 'No Wards', desc: 'No active defenses. (HP Auto-Regen paused).' },
-                  { value: 'ward', label: '🛡️ Sanctuary', desc: 'Absorbs 60% DMG + Leyline HP Auto-Regen (5m).' },
-                  { value: 'alarm', label: '🚨 Alarm Trap', desc: '3k counter DMG + Leyline HP Auto-Regen (5m).' }
+                  { value: 'none', label: 'No Wards', desc: 'No active defenses. (HP Auto-Regen inactive).' },
+                  { value: 'ward', label: '🛡️ Sanctuary', desc: 'Absorbs 60% DMG + Sole Leyline HP Auto-Regen (5m).' },
+                  { value: 'alarm', label: '🚨 Alarm Trap', desc: '3k counter DMG (Auto-regen inactive without Sanctuary).' }
                 ].map(opt => {
                   const isActive = (userParticipant.boundedField || 'none') === opt.value;
                   return (

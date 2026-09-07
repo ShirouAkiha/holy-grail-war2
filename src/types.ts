@@ -148,6 +148,7 @@ export interface MasterProfile {
   commandSeals: number;
   autoConsumeCommandSeal?: boolean;
   boundedField?: 'none' | 'ward' | 'alarm' | 'decoy';
+  sanctuaryChannelName?: string;
   actionPoints: number;
   maxActionPoints: number;
   pityCount: number;
@@ -328,6 +329,7 @@ export interface WarMasterParticipant {
   allianceId?: string;
   kills: number;
   boundedField?: 'none' | 'ward' | 'alarm' | 'decoy';
+  sanctuaryChannelName?: string;
   autoEvadeEnabled?: boolean; // Default: false (OFF by default)
   autoConsumeCommandSeal?: boolean; // Default: false (OFF by default)
   lastAmbushTime?: number;
