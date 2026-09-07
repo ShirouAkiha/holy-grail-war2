@@ -10,16 +10,11 @@ import {
 
 export const data = new SlashCommandBuilder()
   .setName('gacha')
-  .setDescription('🔮 Greater Grail Invocation Sanctum — Summon Heroic Spirits, Craft Essences & Claim Daily SQ')
+  .setDescription('🔮 Greater Grail Invocation Sanctum — Forge Craft Essences & Claim Daily SQ')
   .addSubcommand(sub =>
     sub
       .setName('menu')
       .setDescription('Open the interactive Gacha Invocation Sanctum Hub')
-  )
-  .addSubcommand(sub =>
-    sub
-      .setName('summon')
-      .setDescription('Summon a random Heroic Spirit from the Throne of Heroes (3 SQ)')
   )
   .addSubcommand(sub =>
     sub
@@ -49,7 +44,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   await interaction.reply({
-    content: '🔮 Greater Grail Invocation Sanctum opened! Use the interactive tabs below to summon spirits and craft essences.',
+    content: '🛡️ Greater Grail Invocation Sanctum opened! Use the interactive tabs to forge Craft Essences and claim daily rewards.',
     ephemeral: true
   });
 }

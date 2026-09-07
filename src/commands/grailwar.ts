@@ -566,7 +566,7 @@ export function attachGrailWarCollector(
         await i.reply({ content: 'Use `/inventory` to open your Master Vault and equip Craft Essences!', flags: MessageFlags.Ephemeral });
         return;
       } else if (i.customId === 'war_link_gacha') {
-        await i.reply({ content: 'Use `/gacha` to roll for Heroic Spirits and Craft Essences!', flags: MessageFlags.Ephemeral });
+        await i.reply({ content: 'Use `/gacha` to forge Mystic Codes & Craft Essences using Saint Quartz!', flags: MessageFlags.Ephemeral });
         return;
       } else if (i.customId === 'war_link_servant') {
         await i.reply({ content: 'Use `/servant` to view your Heroic Spirit parameter card, allocate points, and hear dialogue!', flags: MessageFlags.Ephemeral });

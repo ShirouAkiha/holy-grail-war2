@@ -780,7 +780,7 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       if (btnId === 'btn_perform_ritual') {
-        const { embed, components } = buildGachaHub(master, 'heroic');
+        const { embed, components } = buildGachaHub(master, 'ces');
         await interaction.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
         const reply = await interaction.fetchReply();
         attachGachaCollector(interaction, master, reply);

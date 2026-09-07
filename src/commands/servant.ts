@@ -55,21 +55,21 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setTitle('🕯️ No Contracted Heroic Spirit')
         .setDescription(
           'You have not summoned any Heroic Spirit yet for the Holy Grail War!\n\n' +
-          'Use `/gacha` or `/summon ritual` to invoke the Throne of Heroes and form your sacred covenant.'
+          'Use `/summon ritual` to invoke the Throne of Heroes and form your sacred covenant for the war.'
         )
         .setColor(0xef4444);
 
       const summonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId('go_gacha')
-          .setLabel('Open Gacha Sanctum (/gacha)')
-          .setEmoji('🔮')
-          .setStyle(ButtonStyle.Success),
-        new ButtonBuilder()
           .setCustomId('go_summon')
-          .setLabel('Summon Ritual')
+          .setLabel('Begin Summoning Ritual (/summon)')
           .setEmoji('✨')
-          .setStyle(ButtonStyle.Primary)
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId('go_gacha')
+          .setLabel('Mystic Code Forge (/gacha)')
+          .setEmoji('🛡️')
+          .setStyle(ButtonStyle.Secondary)
       );
 
       const reply = await interaction.editReply({ embeds: [emptyEmbed], components: [summonRow] });
@@ -422,7 +422,7 @@ export async function buildServantHub(
         `\n\n*Select a Servant from the dropdown below to inspect their workshop profile or set as active contract.*`
       )
       .setColor(0xd4af37)
-      .setFooter({ text: `Holy Grail War Master Registry • Use /gacha to summon more spirits!` });
+      .setFooter({ text: `Holy Grail War Master Registry • Use /gacha to forge Craft Essences!` });
 
     embeds = [embed];
   }

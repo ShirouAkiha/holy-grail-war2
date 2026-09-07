@@ -523,7 +523,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (!challengerServant) {
       await interaction.editReply({
-        content: '❌ You must summon at least one Servant with \`/gacha\` or \`/summon ritual\` before entering the Combat Arena!'
+        content: '❌ You must summon a Servant with \`/summon ritual\` before entering the Combat Arena!'
       });
       return;
     }

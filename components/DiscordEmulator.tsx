@@ -594,8 +594,8 @@ export default function DiscordEmulator({
   const [invPage, setInvPage] = useState<number>(1);
   const [invSelectedCeId, setInvSelectedCeId] = useState<string | null>(null);
   const [invSelectedServantId, setInvSelectedServantId] = useState<string | null>(null);
-  const [gachaCategory, setGachaCategory] = useState<'heroic' | 'ces' | 'daily' | 'rates'>('heroic');
-  const [gachaBanner, setGachaBanner] = useState<string>('standard_servant');
+  const [gachaCategory, setGachaCategory] = useState<'ces' | 'daily' | 'rates'>('ces');
+  const [gachaBanner, setGachaBanner] = useState<string>('standard_ce');
   const [servantHubCategory, setServantHubCategory] = useState<'profile' | 'stats' | 'np' | 'dialogue' | 'roster'>('profile');
   const [servantHubSelectedId, setServantHubSelectedId] = useState<string | null>(null);
   const [grailWarHubCategory, setGrailWarHubCategory] = useState<'board' | 'defenses' | 'familiars' | 'traps' | 'church'>('board');
@@ -1904,17 +1904,17 @@ export default function DiscordEmulator({
     // COMMAND 2.78: /gacha, /cegacha (Greater Grail Invocation Sanctum)
     // ----------------------------------------------------
     if (trimmed.startsWith('/gacha') || (trimmed.startsWith('/cegacha') && !trimmed.startsWith('/cegacha inventory'))) {
-      let category: 'heroic' | 'ces' | 'daily' | 'rates' = 'heroic';
-      let banner = 'standard_servant';
+      let category: 'ces' | 'daily' | 'rates' = 'ces';
+      let banner = 'standard_ce';
 
-      if (trimmed.includes('ce') || trimmed.includes('craft') || trimmed.includes('essence') || trimmed.startsWith('/cegacha')) {
-        category = 'ces';
-        banner = 'standard_ce';
-      } else if (trimmed.includes('daily') || trimmed.includes('vault') || trimmed.includes('claim')) {
+      if (trimmed.includes('daily') || trimmed.includes('vault') || trimmed.includes('claim')) {
         category = 'daily';
         banner = 'daily_vault';
       } else if (trimmed.includes('rates') || trimmed.includes('pool') || trimmed.includes('pity')) {
         category = 'rates';
+      } else {
+        category = 'ces';
+        banner = 'standard_ce';
       }
 
       setGachaCategory(category);
@@ -4844,35 +4844,25 @@ export default function DiscordEmulator({
 
   // Helper: Post Greater Grail Gacha & Invocation Sanctum Hub
   const postGachaHub = (
-    category: 'heroic' | 'ces' | 'daily' | 'rates' = 'heroic',
-    banner: string = 'standard_servant'
+    category: 'ces' | 'daily' | 'rates' = 'ces',
+    banner: string = 'standard_ce'
   ) => {
     const sq = master.saintQuartz || 0;
-    let title = '🔮 Greater Grail Invocation Sanctum';
+    let title = '🛡️ Invocation Sanctum — Craft Essence Forge';
     let description = '';
-    let color = '#a855f7';
-    let imageUrl = 'https://i.imgur.com/hyNsgc1.jpeg';
+    let color = '#38bdf8';
+    let imageUrl = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80';
 
-    if (category === 'heroic') {
-      title = '🔮 Invocation Sanctum — Heroic Spirits Banner';
-      color = '#d4af37';
-      imageUrl = 'https://i.imgur.com/hyNsgc1.jpeg';
-      description =
-        `💎 **Master Balance:** \`${sq} Saint Quartz\`\n\n` +
-        `✨ **Featured Rate-Up Banner:** **Holy Grail War Legends**\n` +
-        `🌟 **Featured ★5 SSR Spirits:** Artoria Pendragon, Gilgamesh, Scáthach, Jeanne d'Arc\n` +
-        `📜 **Summoning Protocol:** Draw from the Throne of Heroes to forge a sacred servant pact.\n\n` +
-        `*Select a summoning button below or switch categories using the category tabs.*`;
-    } else if (category === 'ces') {
+    if (category === 'ces') {
       title = '🛡️ Invocation Sanctum — Craft Essence Forge';
       color = '#38bdf8';
       imageUrl = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80';
       description =
         `💎 **Master Balance:** \`${sq} Saint Quartz\`\n\n` +
         `🛡️ **Featured Essence Banner:** **Mystic Code Armory**\n` +
-        `🌟 **Featured ★5 Essences:** The Black Grail, Kaleidoscope, Formal Craft, Limited/Zero Over\n` +
+        `🌟 **Featured Essences:** The Black Grail, Kaleidoscope, Formal Craft, Limited/Zero Over\n` +
         `🎁 **Multi-Summon Guarantee:** Every 10x roll guarantees at least one **★4 SR or higher** Craft Essence!\n\n` +
-        `*Equip summoned Craft Essences to your Servant in \`/inventory\` to gain massive HP/ATK and passives.*`;
+        `⚔️ **Holy Grail War Covenant:** *Heroic Spirits are contracted once per Master via \`/summon ritual\`. Forge and equip powerful Mystic Codes below to empower your Servant!*`;
     } else if (category === 'daily') {
       title = '💎 Saint Quartz Treasury & Daily Claim';
       color = '#10b981';
@@ -4885,36 +4875,27 @@ export default function DiscordEmulator({
         `💰 **Battle Rewards:** Earn bonus Saint Quartz by participating in Fuyuki Patrols and Duels.\n\n` +
         `*Press the **Claim Daily Quartz** button below to collect your reward!*`;
     } else if (category === 'rates') {
-      title = '📜 Greater Grail Summoning Rates & Pity Guarantees';
+      title = '📜 Greater Grail Summoning Rates & Crafting Guarantees';
       color = '#64748b';
       description =
-        `📊 **Official Gacha Probability Table:**\n\n` +
-        `**Heroic Spirits:**\n` +
-        `• ★5 SSR Heroic Spirit: **1.0%** (Rate-up: 0.8%)\n` +
-        `• ★4 SR Heroic Spirit: **3.0%**\n` +
-        `• ★3 R Heroic Spirit: **40.0%**\n\n` +
-        `**Craft Essences:**\n` +
+        `📊 **Official Mystic Code Forge Probability Table:**\n\n` +
+        `**Craft Essences (Mystic Codes):**\n` +
         `• ★5 SSR Craft Essence: **4.0%**\n` +
         `• ★4 SR Craft Essence: **12.0%**\n` +
         `• ★3 R Craft Essence: **84.0%**\n\n` +
         `💎 **Guaranteed Multi-Roll Pity:**\n` +
-        `• 10x Multi-Summon guarantees at least one **★4 SR or higher** Craft Essence or Servant.`;
+        `• 10x Multi-Summon guarantees at least one **★4 SR or higher** Craft Essence.\n\n` +
+        `⚔️ **Heroic Spirit Covenant:**\n` +
+        `• Servants cannot be summoned via Gacha. In an authentic Holy Grail War, each Master establishes a singular bond with a Heroic Spirit via \`/summon ritual\`.`;
     }
 
     const categoryNavButtons = [
-      { id: 'gacha_tab_heroic', label: 'Heroic Spirits', style: (category === 'heroic' ? 'primary' : 'secondary') as any, emoji: '🔮' },
       { id: 'gacha_tab_ces', label: 'Craft Essences', style: (category === 'ces' ? 'primary' : 'secondary') as any, emoji: '🛡️' },
       { id: 'gacha_tab_daily', label: 'Daily & Vault', style: (category === 'daily' ? 'primary' : 'secondary') as any, emoji: '💎' },
       { id: 'gacha_tab_rates', label: 'Drop Rates', style: (category === 'rates' ? 'primary' : 'secondary') as any, emoji: '📜' }
     ];
 
     const bannerSelectOptions = [
-      {
-        value: 'gacha_sel_standard_servant',
-        label: '★5 Holy Grail War Legends (Heroic Spirits)',
-        description: 'Summon Saber, Gilgamesh, Scáthach, Jeanne d\'Arc',
-        emoji: '🔮'
-      },
       {
         value: 'gacha_sel_standard_ce',
         label: '★5 Mystic Code Armory (Craft Essences)',
@@ -4972,7 +4953,7 @@ export default function DiscordEmulator({
         timestamp: 'Just now',
         embed: {
           title: '🕯️ No Contracted Servant',
-          description: 'You have not summoned a Heroic Spirit yet for the Holy Grail War!\nUse `/gacha` or `/summon ritual` to draw the summoning circle or `/servants` to browse all spirits.',
+          description: 'You have not summoned a Heroic Spirit yet for the Holy Grail War!\nUse `/summon ritual` to establish your sacred contract or `/servants` to browse all spirits.',
           color: '#ef4444'
         },
         components: {
@@ -6426,11 +6407,7 @@ export default function DiscordEmulator({
       return;
     } else if (btnId.startsWith('gacha_')) {
       // 1. Navigation tabs
-      if (btnId === 'gacha_tab_heroic') {
-        setGachaCategory('heroic');
-        setGachaBanner('standard_servant');
-        postGachaHub('heroic', 'standard_servant');
-      } else if (btnId === 'gacha_tab_ces') {
+      if (btnId === 'gacha_tab_ces') {
         setGachaCategory('ces');
         setGachaBanner('standard_ce');
         postGachaHub('ces', 'standard_ce');
@@ -6443,11 +6420,7 @@ export default function DiscordEmulator({
         postGachaHub('rates', gachaBanner);
       }
       // 2. Banner select dropdown actions
-      else if (btnId === 'gacha_sel_standard_servant') {
-        setGachaCategory('heroic');
-        setGachaBanner('standard_servant');
-        postGachaHub('heroic', 'standard_servant');
-      } else if (btnId === 'gacha_sel_standard_ce') {
+      else if (btnId === 'gacha_sel_standard_ce') {
         setGachaCategory('ces');
         setGachaBanner('standard_ce');
         postGachaHub('ces', 'standard_ce');
@@ -6467,17 +6440,13 @@ export default function DiscordEmulator({
             timestamp: 'Just now',
             embed: {
               title: '⚠️ Insufficient Saint Quartz',
-              description: 'You need at least 3 Saint Quartz for a single summon. Claim your daily allowance or win duels to earn more!',
+              description: 'You need at least 3 Saint Quartz for a single Craft Essence summon. Claim your daily allowance or win duels to earn more!',
               color: '#ef4444'
             }
           });
           return;
         }
-        if (gachaCategory === 'ces' || gachaBanner === 'standard_ce') {
-          handleButtonClick('inv_act_roll_1x_ce');
-        } else {
-          handleCommand('/summon ritual');
-        }
+        handleButtonClick('inv_act_roll_1x_ce');
       } else if (btnId === 'gacha_act_multi') {
         if ((master.saintQuartz || 0) < 30) {
           addMessage({
@@ -6895,7 +6864,7 @@ export default function DiscordEmulator({
       else if (btnId === 'servant_link_inventory') {
         postInventoryHub('ces');
       } else if (btnId === 'servant_link_gacha') {
-        postGachaHub('heroic');
+        postGachaHub('ces');
       } else if (btnId === 'servant_link_grailwar') {
         setGrailWarHubCategory('board');
         postGrailWarHub('board');
@@ -7008,7 +6977,7 @@ export default function DiscordEmulator({
       else if (btnId === 'war_link_inventory') {
         postInventoryHub('ces');
       } else if (btnId === 'war_link_gacha') {
-        postGachaHub('heroic');
+        postGachaHub('ces');
       } else if (btnId === 'war_link_servant') {
         postServantHub('profile');
       } else if (btnId === 'war_link_duel') {
@@ -7282,7 +7251,7 @@ export default function DiscordEmulator({
       } else if (btnId === 'admin_link_duel' || btnId === 'admin_link_duel_main') {
         handleCommand('/duel');
       } else if (btnId === 'admin_link_gacha') {
-        postGachaHub('heroic');
+        postGachaHub('ces');
       }
       return;
     } else if (btnId === 'servant_list_prev') {
@@ -7597,7 +7566,7 @@ export default function DiscordEmulator({
       } else if (btnId === 'duel_link_inventory') {
         postInventoryHub('ces');
       } else if (btnId === 'duel_link_gacha') {
-        postGachaHub('heroic');
+        postGachaHub('ces');
       } else if (btnId === 'duel_link_servant') {
         postServantHub('profile');
       } else if (btnId === 'duel_link_grailwar') {
