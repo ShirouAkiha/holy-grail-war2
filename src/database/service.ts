@@ -215,22 +215,14 @@ function loadFromDisk() {
               );
               if (canonical) {
                 const customSaved = savedServantsMap.get(canonical.id);
-                const isBadUrl = (u?: string) => !u || u.includes('ephemeral-attachments') || u.includes('wikia.nocookie.net');
-                
-                const rawAvatar = inst.template?.avatarUrl;
-                const savedAvatar = customSaved?.avatarUrl;
-                const preservedAvatar = (!isBadUrl(rawAvatar) ? rawAvatar : (!isBadUrl(savedAvatar) ? savedAvatar : canonical.avatarUrl));
-                
-                const rawCardArt = inst.template?.cardArtUrl;
-                const savedCardArt = customSaved?.cardArtUrl;
-                const preservedCardArt = (!isBadUrl(rawCardArt) ? rawCardArt : (!isBadUrl(savedCardArt) ? savedCardArt : canonical.cardArtUrl));
-                
+                const preservedAvatar = inst.template?.avatarUrl || customSaved?.avatarUrl || canonical.avatarUrl;
+                const preservedCardArt = inst.template?.cardArtUrl || customSaved?.cardArtUrl || canonical.cardArtUrl;
                 inst.template = {
                   ...canonical,
                   ...(customSaved || {}),
                   ...(inst.template || {}),
-                  avatarUrl: preservedAvatar || canonical.avatarUrl,
-                  cardArtUrl: preservedCardArt || canonical.cardArtUrl,
+                  avatarUrl: preservedAvatar,
+                  cardArtUrl: preservedCardArt,
                   baseHp: customSaved?.baseHp || canonical.baseHp,
                   baseAtk: customSaved?.baseAtk || canonical.baseAtk,
                   baseStats: customSaved?.baseStats || canonical.baseStats,

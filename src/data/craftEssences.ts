@@ -17,7 +17,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Starts battle with 60% NP Gauge filled.',
     passiveType: 'starting_np',
     passiveValue: 60,
-    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/d/d4/CE033.png'
+    artworkUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80'
   },
   {
     id: 'ce_black_grail',
@@ -32,7 +32,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Noble Phantasm Damage by 60%, but loses 500 HP each turn.',
     passiveType: 'buster_up',
     passiveValue: 60,
-    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/e/e0/CE048.png'
+    artworkUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&auto=format&fit=crop&q=80'
   },
   {
     id: 'ce_formal_craft',
@@ -47,7 +47,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Arts Card effectiveness and NP gain by 25%.',
     passiveType: 'arts_up',
     passiveValue: 25,
-    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/0/07/CE031.png'
+    artworkUrl: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=500&auto=format&fit=crop&q=80'
   },
   {
     id: 'ce_limited_zero_over',
