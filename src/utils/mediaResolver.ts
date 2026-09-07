@@ -82,7 +82,14 @@ export function normalizeMediaUrl(rawUrl: string): string {
     }
   }
 
-  // 5. Return sanitized URL
+  // 5. Handle Wikia / Fandom URLs
+  // Clean up static.wikia.nocookie.net URLs by removing /revision/latest or trailing query parameters
+  if (trimmed.includes('wikia.nocookie.net')) {
+    const cleanWikia = trimmed.replace(/\/revision\/latest.*$/i, '').split('?')[0];
+    return cleanWikia;
+  }
+
+  // 6. Return sanitized URL
   return trimmed;
 }
 
@@ -106,6 +113,7 @@ export function isDirectEmbeddableMedia(url: string): boolean {
     lower.includes('media.tenor.com') ||
     lower.includes('c.tenor.com') ||
     lower.includes('i.imgur.com') ||
-    lower.includes('files.catbox.moe')
+    lower.includes('files.catbox.moe') ||
+    lower.includes('wikia.nocookie.net')
   );
 }

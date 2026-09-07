@@ -246,8 +246,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     battleStartQuote: 'I take the field! Saber, Artoria Pendragon, moving out!',
     victoryQuote: 'The battle is decided. May honor guide our victory, Master.',
     defeatQuote: 'Forgive me, Master... My duty... remains unfulfilled...',
-    avatarUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=400&auto=format&fit=crop&q=80',
-    cardArtUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=600&auto=format&fit=crop&q=80'
+    avatarUrl: 'https://ella.janitorai.com/media-approved/B9sAHeFp8-jdUk8VB4Y_f.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/B9sAHeFp8-jdUk8VB4Y_f.webp'
   },
   {
     id: 'gilgamesh_archer',
@@ -321,8 +321,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     battleStartQuote: 'Know your place before the King of Heroes!',
     victoryQuote: 'A foregone conclusion. Even a worm could not expect to stand before Ea.',
     defeatQuote: 'Im-impossible... A mere mongrel defeated the King...?!',
-    avatarUrl: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=400&auto=format&fit=crop&q=80',
-    cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'
+    avatarUrl: 'https://ella.janitorai.com/media-approved/4f4Ohvjxoy5qWV9FuCIpV.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/4f4Ohvjxoy5qWV9FuCIpV.webp'
   },
   {
     id: 'scathach_lancer',
@@ -396,8 +396,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     battleStartQuote: 'Come. Let me test if you have grown beyond a novice.',
     victoryQuote: 'A good spar, but you still have centuries of training to undergo.',
     defeatQuote: 'Ah... is this the end I have long sought...?',
-    avatarUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=400&auto=format&fit=crop&q=80',
-    cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'
+    avatarUrl: 'https://ella.janitorai.com/media-approved/LLAGPFOtuFFMfvpwnlcar.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/LLAGPFOtuFFMfvpwnlcar.webp'
   },
   {
     id: 'jeanne_darc_ruler',
@@ -464,8 +464,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     battleStartQuote: 'The Lord protects the righteous. Raise your banners!',
     victoryQuote: 'Let us offer our prayers of gratitude for this blessed triumph.',
     defeatQuote: 'Even if my light fades, the holy flag will never fall...',
-    avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80',
-    cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'
+    avatarUrl: 'https://ella.janitorai.com/media-approved/LfnkdoCSDCJ8i40QetNmZ.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/LfnkdoCSDCJ8i40QetNmZ.webp'
   },
   {
     id: 'jeanne_alter',
@@ -539,8 +539,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     battleStartQuote: 'Every last one of you... I\'ll burn you to ashes!',
     victoryQuote: 'A predictable outcome. Now, clean up this mess.',
     defeatQuote: 'To burn again... is this my only fate...?',
-    avatarUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&auto=format&fit=crop&q=80',
-    cardArtUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80'
+    avatarUrl: 'https://ella.janitorai.com/media-approved/LLgWFfDHOldSBezIlG2bE.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/LLgWFfDHOldSBezIlG2bE.webp'
   },
   {
     id: 'mhx_alter',
@@ -614,8 +614,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     battleStartQuote: 'Entering Dark Matter reactor mode... Target acquired.',
     victoryQuote: 'Objective accomplished. Time for my tea break.',
     defeatQuote: 'Reactor core... overloaded... My sweets...',
-    avatarUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=400&auto=format&fit=crop&q=80',
-    cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'
+    avatarUrl: 'https://ella.janitorai.com/media-approved/Syn9pbEhWP-Rh74E_yz2p.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/Syn9pbEhWP-Rh74E_yz2p.webp'
   },
 
   {
@@ -683,8 +683,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     battleStartQuote: 'There is no mercy on this battlefield. Disappear.',
     victoryQuote: 'A predictable outcome. Clean up the residue.',
     defeatQuote: 'The dark... is fading...',
-    avatarUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=400&auto=format&fit=crop&q=80',
-    cardArtUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=600&auto=format&fit=crop&q=80'
+    avatarUrl: 'https://ella.janitorai.com/media-approved/ZxbsnJvadU9f-ZGO_jgnW.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/ZxbsnJvadU9f-ZGO_jgnW.webp'
   },
   {
     id: 'nero_claudius_saber',
@@ -758,8 +758,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     battleStartQuote: 'The curtains rise on our glorious stage! Behold my supreme performance!',
     victoryQuote: 'A splendid triumph! Raise the roses high and let the applause echo throughout the empire! Umu!',
     defeatQuote: 'The spotlight dims... But the glory of Rome shall never fade...',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
-    cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'
+    avatarUrl: 'https://ella.janitorai.com/media-approved/hnSI3iEdOGx6bIS1OFOm0.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/hnSI3iEdOGx6bIS1OFOm0.webp'
   },
   {
     id: 'emiya_archer',
@@ -833,8 +833,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     battleStartQuote: 'Trace on. Replicating the ultimate armaments.',
     victoryQuote: 'Just another cleanup job. Don\'t get cocky, Master.',
     defeatQuote: 'My steel has cracked... A fitting end for a fake.',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
-    cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'
+    avatarUrl: 'https://ella.janitorai.com/media-approved/iA3boFrqm1VqSxH7GJPQL.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/iA3boFrqm1VqSxH7GJPQL.webp'
   },
   {
     id: 'heracles_berserker',
@@ -908,8 +908,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     battleStartQuote: 'ROOOOOOAAAARRRR!',
     victoryQuote: '■■■■■■... (Breathes heavily while standing atop the pulverized battlefield).',
     defeatQuote: '■■■■... (Crumbles into golden embers with unyielding dignity).',
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80',
-    cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'
+    avatarUrl: 'https://ella.janitorai.com/media-approved/Uugg_5Y73rmtQsnPKYUBo.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/Uugg_5Y73rmtQsnPKYUBo.webp'
   },
   {
     id: 'cu_chulainn_lancer',
@@ -983,8 +983,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     battleStartQuote: 'Come on, don\'t disappoint me. Let\'s see what you\'ve got!',
     victoryQuote: 'Tch, over already? Barely broke a sweat.',
     defeatQuote: 'Damn it... pierced my own rule... Master, fall back...',
-    avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&auto=format&fit=crop&q=80',
-    cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'
+    avatarUrl: 'https://ella.janitorai.com/media-approved/t-BCAX4vdfQprQASUcMVO.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/t-BCAX4vdfQprQASUcMVO.webp'
   },
   {
     id: 'karna_lancer',
@@ -1065,8 +1065,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     battleStartQuote: 'O Surya, witness this strike. All shall be reduced to sacred kindling.',
     victoryQuote: 'The sun sets on this battle. A duty fulfilled.',
     defeatQuote: 'Even if the sun sets... my honor remains untarnished...',
-    avatarUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=400&auto=format&fit=crop&q=80',
-    cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'
+    avatarUrl: 'https://ella.janitorai.com/media-approved/uZTE4FVgCnWDCxDE9kUY4.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/uZTE4FVgCnWDCxDE9kUY4.webp'
   },
   {
     id: 'adiosa_dragon_envoy',
@@ -1147,8 +1147,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     battleStartQuote: '⟨ Skar zhal, Krav\'nok! Voth ruk\'thar Xal\'nok. ⟩ (Leave now, mortal pests! I annihilate them all.)',
     victoryQuote: '⟨ Drazk\'hlor Krav\'nok. Krag zul Vael\'ix. ⟩ (Pathetic mortals. The earth is mine.)',
     defeatQuote: '⟨ Vrak\'ix... Voth zul Vael\'drom Kor Lyozes! ⟩ (Void... I am bound for eternity to Lyozes!)',
-    avatarUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=400&auto=format&fit=crop&q=80',
-    cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
+    avatarUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/2/23/S339_Stage1.png',
+    cardArtUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/6/62/S339_Stage4.png',
     isCustomOrMeme: false
   }
 ];
