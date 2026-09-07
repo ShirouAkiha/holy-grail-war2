@@ -2645,6 +2645,24 @@ export function updateWarRules(
   return { updatedWar: targetWar, message: msg };
 }
 
+export function refillAllWarParticipantsSeals(
+  war: HolyGrailWarSession,
+  adminUsername: string = 'Overseer'
+): { updatedWar: HolyGrailWarSession; message: string } {
+  const targetWar = war || globalWarSession || getOrInitWarSession();
+  const maxSeals = targetWar.rules?.startingCommandSeals || 3;
+  let count = 0;
+  for (const p of Object.values(targetWar.participants || {})) {
+    if (p.isAlive) {
+      p.commandSeals = maxSeals;
+      count++;
+    }
+  }
+  saveWarToDisk();
+  const msg = `🔱 **Overseer Re-inscription Ritual:** Restored Command Seals to **${maxSeals}/${maxSeals}** for all **${count}** living Masters!`;
+  return { updatedWar: targetWar, message: msg };
+}
+
 export function triggerAdminCataclysm(
   war: HolyGrailWarSession,
   cataclysmType: 'grail_mud' | 'fuyuki_fire' | 'angra_mainyu' | 'mana_surge',

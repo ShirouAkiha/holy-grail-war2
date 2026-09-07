@@ -599,7 +599,7 @@ export default function DiscordEmulator({
   const [servantHubCategory, setServantHubCategory] = useState<'profile' | 'stats' | 'np' | 'dialogue' | 'roster'>('profile');
   const [servantHubSelectedId, setServantHubSelectedId] = useState<string | null>(null);
   const [grailWarHubCategory, setGrailWarHubCategory] = useState<'board' | 'defenses' | 'familiars' | 'traps' | 'church'>('board');
-  const [adminHubCategory, setAdminHubCategory] = useState<'npanim' | 'npsettings' | 'listnp' | 'economy'>('npanim');
+  const [adminHubCategory, setAdminHubCategory] = useState<'war' | 'war_rules' | 'npanim' | 'npsettings' | 'listnp' | 'economy'>('war');
   const [duelHubCategory, setDuelHubCategory] = useState<'arena' | 'active' | 'history' | 'leaderboard'>('arena');
   const [servantsPage, setServantsPage] = useState<number>(1);
   const [servantsOriginFilter, setServantsOriginFilter] = useState<'all' | 'canon' | 'custom'>('all');
@@ -5551,29 +5551,67 @@ export default function DiscordEmulator({
 
   // Helper: Post Administrator Control Hub
   const postAdminHub = (
-    category: 'war' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war',
+    category: 'war' | 'war_rules' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war',
     actionOutcomeMsg?: string
   ) => {
     let title = '👑 Holy Grail War Admin Suite';
     let description = '';
     let color = '#d4af37';
 
+    const currentRules = (grailWar as any).rules || {
+      maxMasters: 7,
+      startingCommandSeals: 3,
+      classExclusivity: true,
+      servantPool: 'canon_only',
+      permadeath: true,
+      churchAsylum: true,
+      leylineDensity: 'standard',
+      trapLimitPerMaster: 2,
+      factionMode: false
+    };
+
     if (category === 'war') {
       title = '🏆 Overseer Control: Holy Grail War Master Dashboard';
       color = '#d4af37';
+      const poolTag = currentRules.servantPool === 'canon_only'
+        ? '📖 Canon Type-Moon Only'
+        : currentRules.servantPool === 'custom_only'
+          ? '🎨 Custom Community Only'
+          : '✨ Canon + Custom Servants';
+
       description =
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `Configure rituals, adjust lethality & servant pools, or trigger leyline cataclysms across the server.\n\n` +
-        `🏰 **Active War Format:** **5th Fuyuki Holy Grail War**\n` +
-        `👥 **Roster Status:** **7/7 Masters Active** | ☠️ **Eliminations:** **0 Fallen**\n\n` +
+        `🏰 **Active War Format:** **${grailWar.title || '5th Fuyuki Holy Grail War'}**\n` +
+        `👥 **Roster Status:** **${Object.keys(grailWar.participants || {}).length}/${currentRules.maxMasters || 7} Masters Active** | ☠️ **Eliminations:** **${Object.values(grailWar.participants || {}).filter(p => !p.isAlive).length} Fallen**\n\n` +
         `📋 **Active Ritual Configuration & Rules:**\n` +
-        `• ⚔️ **Servant Pool:** 📖 Canon Type-Moon Only\n` +
-        `• 🔒 **Class Exclusivity:** \`Strict (1 per Class)\`\n` +
-        `• 💀 **Lethality Mode:** \`Permadeath (Eliminated on HP 0)\`\n` +
-        `• ✦ **Starting Command Seals:** \`3 Seals\`\n` +
-        `• 💧 **Leyline Density:** \`Standard (5 min full recovery)\`\n` +
-        `• ⛪ **Church Sanctuary:** \`Active Asylum under Father Kotomine\`\n\n` +
-        `*Click a preset or lifecycle button below to configure the war!*`;
+        `• ⚔️ **Servant Pool:** ${poolTag}\n` +
+        `• 🔒 **Class Exclusivity:** \`${currentRules.classExclusivity ? 'Strict (1 per Class)' : 'Open (Duplicates Allowed)'}\`\n` +
+        `• 💀 **Lethality Mode:** \`${currentRules.permadeath ? 'Permadeath (Eliminated on HP 0)' : 'Casual / Training Mode'}\`\n` +
+        `• ✦ **Starting Command Seals:** \`${currentRules.startingCommandSeals || 3} Seals\`\n` +
+        `• 💧 **Leyline Density:** \`${currentRules.leylineDensity === 'fast' ? 'High Surge (2x Fast)' : currentRules.leylineDensity === 'desolate' ? 'Desolate (No Regen)' : 'Standard (5 min full recovery)'}\`\n` +
+        `• ⛪ **Church Sanctuary:** \`${currentRules.churchAsylum ? 'Active Asylum under Father Kotomine' : 'Desecrated (No Asylum)'}\`\n\n` +
+        `*Click a preset or switch to the **Customize Rules** tab to tune individual settings!*`;
+    } else if (category === 'war_rules') {
+      title = '⚙️ Overseer Ritual Workshop — Interactive Rule Customizer';
+      color = '#eab308';
+      const poolTag = currentRules.servantPool === 'canon_only'
+        ? '📖 Canon Type-Moon Only'
+        : currentRules.servantPool === 'custom_only'
+          ? '🎨 Custom Community Only'
+          : '✨ Canon + Custom Servants';
+
+      description =
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `Directly tune ritual parameters for the active Holy Grail War. Use the direct action buttons below.\n\n` +
+        `🔱 **Starting Command Seals:** \`${currentRules.startingCommandSeals || 3} Seals\` *(Options: 1, 2, 3, 5, 10)*\n` +
+        `👥 **Master Roster Capacity:** \`${currentRules.maxMasters || 7} Masters\` *(Options: 7, 14, 30)*\n` +
+        `⚔️ **Servant Summon Pool:** ${poolTag}\n` +
+        `🔒 **Class Exclusivity:** \`${currentRules.classExclusivity ? 'Strict (1 per Class)' : 'Open (Duplicates Allowed)'}\`\n` +
+        `💀 **Lethality & Permadeath:** \`${currentRules.permadeath ? 'Permadeath (Eliminated on HP 0)' : 'Casual / Training Mode'}\`\n` +
+        `⛪ **Church Sanctuary:** \`${currentRules.churchAsylum ? '🟢 Active Asylum (Father Kotomine)' : '🔴 Desecrated (No Asylum)'}\`\n` +
+        `🚩 **Factions:** \`${currentRules.factionMode ? 'Red vs Black (Apocrypha)' : 'Free-For-All'}\`\n\n` +
+        `*Click any button below to instantly apply or toggle that rule!*`;
     } else if (category === 'npanim') {
       title = '🎬 Admin Control: Noble Phantasm Animation Manager';
       color = '#d4af37';
@@ -5613,7 +5651,8 @@ export default function DiscordEmulator({
     }
 
     const categoryNavButtons = [
-      { id: 'admin_tab_war', label: 'Grail War Rules', style: (category === 'war' ? 'primary' : 'secondary') as any, emoji: '🏆' },
+      { id: 'admin_tab_war', label: 'Grail War', style: (category === 'war' ? 'primary' : 'secondary') as any, emoji: '🏆' },
+      { id: 'admin_tab_war_rules', label: 'Customize Rules', style: (category === 'war_rules' ? 'primary' : 'secondary') as any, emoji: '⚙️' },
       { id: 'admin_tab_npanim', label: 'NP Animations', style: (category === 'npanim' ? 'primary' : 'secondary') as any, emoji: '🎬' },
       { id: 'admin_tab_npsettings', label: 'Duel Settings', style: (category === 'npsettings' ? 'primary' : 'secondary') as any, emoji: '⚙️' },
       { id: 'admin_tab_economy', label: 'Economy Mint', style: (category === 'economy' ? 'primary' : 'secondary') as any, emoji: '💎' }
@@ -5630,6 +5669,29 @@ export default function DiscordEmulator({
         { id: 'admin_war_action_reset', label: 'Quick Refresh', style: 'secondary', emoji: '🔄' },
         { id: 'admin_war_cataclysm_hub', label: 'Cataclysm', style: 'danger', emoji: '⚡' },
         { id: 'admin_war_history_view', label: 'Hall of Fame', style: 'secondary', emoji: '📜' }
+      ];
+    } else if (category === 'war_rules') {
+      const curSeals = currentRules.startingCommandSeals || 3;
+      const curCap = currentRules.maxMasters || 7;
+      actionButtons = [
+        // Command seals selection buttons
+        { id: 'admin_set_seals_1', label: '1 Seal', style: curSeals === 1 ? 'primary' : 'secondary', emoji: '🔱' },
+        { id: 'admin_set_seals_2', label: '2 Seals', style: curSeals === 2 ? 'primary' : 'secondary', emoji: '🔱' },
+        { id: 'admin_set_seals_3', label: '3 Seals (Default)', style: curSeals === 3 ? 'primary' : 'secondary', emoji: '🔱' },
+        { id: 'admin_set_seals_5', label: '5 Seals', style: curSeals === 5 ? 'primary' : 'secondary', emoji: '🔱' },
+        { id: 'admin_set_seals_10', label: '10 Seals (Overdrive)', style: curSeals === 10 ? 'primary' : 'secondary', emoji: '🔱' },
+        // Capacity selection buttons
+        { id: 'admin_set_cap_7', label: '7 Masters', style: curCap === 7 ? 'primary' : 'secondary', emoji: '👥' },
+        { id: 'admin_set_cap_14', label: '14 Masters (Apocrypha)', style: curCap === 14 ? 'primary' : 'secondary', emoji: '👥' },
+        { id: 'admin_set_cap_30', label: '30 Masters (Grand War)', style: curCap === 30 ? 'primary' : 'secondary', emoji: '👥' },
+        // Toggles
+        { id: 'admin_toggle_permadeath', label: currentRules.permadeath ? 'Permadeath: ON 💀' : 'Permadeath: OFF (Casual) 🛡️', style: currentRules.permadeath ? 'danger' : 'success' },
+        { id: 'admin_toggle_church', label: currentRules.churchAsylum ? 'Church Asylum: ON ⛪' : 'Church Asylum: OFF 🚫', style: currentRules.churchAsylum ? 'success' : 'secondary' },
+        { id: 'admin_toggle_class_excl', label: currentRules.classExclusivity ? 'Class Exclusivity: ON 🔒' : 'Class Exclusivity: OFF 🔓', style: currentRules.classExclusivity ? 'primary' : 'secondary' },
+        { id: 'admin_toggle_factions', label: currentRules.factionMode ? 'Factions: ON (Red vs Black) 🚩' : 'Factions: OFF (FFA) ⚔️', style: currentRules.factionMode ? 'primary' : 'secondary' },
+        // Refill all seals
+        { id: 'admin_refill_all_seals', label: 'Refill All Masters Seals', style: 'success', emoji: '✨' },
+        { id: 'admin_war_action_reset', label: 'Refresh State', style: 'secondary', emoji: '🔄' }
       ];
     } else if (category === 'economy') {
       actionButtons = [
@@ -6896,6 +6958,9 @@ export default function DiscordEmulator({
       if (btnId === 'admin_tab_war') {
         setAdminHubCategory('war' as any);
         postAdminHub('war' as any);
+      } else if (btnId === 'admin_tab_war_rules') {
+        setAdminHubCategory('war_rules' as any);
+        postAdminHub('war_rules' as any);
       } else if (btnId === 'admin_tab_npanim') {
         setAdminHubCategory('npanim');
         postAdminHub('npanim');
@@ -6909,7 +6974,68 @@ export default function DiscordEmulator({
         setAdminHubCategory('economy');
         postAdminHub('economy');
       }
-      // 2. Grail War Presets & Rules Configuration
+      // 2. Command Seals Customization
+      else if (btnId.startsWith('admin_set_seals_')) {
+        const count = parseInt(btnId.replace('admin_set_seals_', ''), 10) || 3;
+        const currentRules = (grailWar as any).rules || {};
+        const updatedRules = { ...currentRules, startingCommandSeals: count };
+        const updatedWar = { ...grailWar, rules: updatedRules };
+        onUpdateGrailWar(updatedWar);
+        postAdminHub('war_rules', `🔱 **Starting Command Seals set to ${count} Seals!** All future summonings will begin with ${count} Command Seals.`);
+      }
+      // 3. Roster Capacity Customization
+      else if (btnId.startsWith('admin_set_cap_')) {
+        const cap = parseInt(btnId.replace('admin_set_cap_', ''), 10) || 7;
+        const currentRules = (grailWar as any).rules || {};
+        const updatedRules = { ...currentRules, maxMasters: cap };
+        const updatedWar = { ...grailWar, rules: updatedRules };
+        onUpdateGrailWar(updatedWar);
+        postAdminHub('war_rules', `👥 **Master Roster Capacity set to ${cap} Masters!**`);
+      }
+      // 4. Rule Toggles
+      else if (btnId === 'admin_toggle_permadeath') {
+        const currentRules = (grailWar as any).rules || {};
+        const newVal = currentRules.permadeath === false;
+        const updatedRules = { ...currentRules, permadeath: newVal };
+        const updatedWar = { ...grailWar, rules: updatedRules };
+        onUpdateGrailWar(updatedWar);
+        postAdminHub('war_rules', newVal ? '💀 **Permadeath ENABLED!** Masters with 0 HP are permanently eliminated.' : '🛡️ **Permadeath DISABLED!** Casual/training mode activated.');
+      } else if (btnId === 'admin_toggle_church') {
+        const currentRules = (grailWar as any).rules || {};
+        const newVal = currentRules.churchAsylum === false;
+        const updatedRules = { ...currentRules, churchAsylum: newVal };
+        const updatedWar = { ...grailWar, rules: updatedRules };
+        onUpdateGrailWar(updatedWar);
+        postAdminHub('war_rules', newVal ? '⛪ **Church Sanctuary ENABLED!** Neutral asylum under Father Kotomine active.' : '🚫 **Church Sanctuary DESECRATED!** No sanctuary allowed.');
+      } else if (btnId === 'admin_toggle_class_excl') {
+        const currentRules = (grailWar as any).rules || {};
+        const newVal = currentRules.classExclusivity === false;
+        const updatedRules = { ...currentRules, classExclusivity: newVal };
+        const updatedWar = { ...grailWar, rules: updatedRules };
+        onUpdateGrailWar(updatedWar);
+        postAdminHub('war_rules', newVal ? '🔒 **Class Exclusivity: STRICT (1 per Class)**' : '🔓 **Class Exclusivity: OPEN (Duplicates Allowed)**');
+      } else if (btnId === 'admin_toggle_factions') {
+        const currentRules = (grailWar as any).rules || {};
+        const newVal = currentRules.factionMode === false;
+        const updatedRules = { ...currentRules, factionMode: newVal };
+        const updatedWar = { ...grailWar, rules: updatedRules };
+        onUpdateGrailWar(updatedWar);
+        postAdminHub('war_rules', newVal ? '🚩 **Faction Mode ENABLED!** Red vs Black (Apocrypha) war active.' : '⚔️ **Faction Mode: Free-For-All**');
+      } else if (btnId === 'admin_refill_all_seals') {
+        const currentRules = (grailWar as any).rules || {};
+        const targetSeals = currentRules.startingCommandSeals || 3;
+        const updatedParts = { ...grailWar.participants };
+        Object.keys(updatedParts).forEach(k => {
+          if (updatedParts[k]) {
+            updatedParts[k] = { ...updatedParts[k], commandSeals: targetSeals };
+          }
+        });
+        const updatedWar = { ...grailWar, participants: updatedParts };
+        onUpdateGrailWar(updatedWar);
+        onUpdateMaster({ ...master, commandSeals: targetSeals });
+        postAdminHub('war_rules', `✨ **Restored all active Masters' Command Seals to ${targetSeals} Seals!**`);
+      }
+      // 5. Grail War Presets & Rules Configuration
       else if (btnId === 'admin_war_preset_fuyuki_7') {
         postAdminHub('war' as any, '✨ Applied **5th Fuyuki (7 Masters)** format! Strict 1-per-class, Canon Only, Permadeath.');
       } else if (btnId === 'admin_war_preset_apocrypha_14') {

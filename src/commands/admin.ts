@@ -29,7 +29,8 @@ import {
   startOrRestartWar,
   resetHolyGrailWar,
   updateWarRules,
-  triggerAdminCataclysm
+  triggerAdminCataclysm,
+  refillAllWarParticipantsSeals
 } from '../engine/grailwar';
 import { WarRules } from '../types';
 
@@ -329,7 +330,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 // 4. ADMIN HUB BUILDER
 // ==========================================
 export function buildAdminHub(
-  category: 'war' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war',
+  category: 'war' | 'war_rules' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war',
   actionOutcomeMsg?: string
 ) {
   let embeds: EmbedBuilder[] = [];
@@ -359,14 +360,44 @@ export function buildAdminHub(
         `• ⚔️ **Servant Pool:** ${poolTag}\n` +
         `• 🔒 **Class Exclusivity:** \`${rules.classExclusivity ? 'Strict (1 per Class)' : 'Open (Multiple Allowed)'}\`\n` +
         `• 💀 **Lethality Mode:** \`${rules.permadeath ? 'Permadeath (Eliminated on HP 0)' : 'Casual / Training (Revive Cooldown)'}\`\n` +
-        `• ✦ **Starting Command Seals:** \`${rules.startingCommandSeals} Seals\`\n` +
+        `• 🔱 **Starting Command Seals:** \`${rules.startingCommandSeals} Seals\`\n` +
         `• 💧 **Leyline Density:** \`${rules.leylineDensity === 'fast' ? '⚡ High Surge (2x Fast Recovery)' : rules.leylineDensity === 'desolate' ? '🏜️ Desolate (No Auto-Regen)' : 'Balanced Standard (5 min full)'}\`\n` +
         `• ⛪ **Church Sanctuary:** \`${rules.churchAsylum ? '🟢 Active Asylum under Father Kotomine' : '🔴 Desecrated (No Asylum)'}\`\n` +
         `• 🕸️ **Trap Limit:** \`Max ${rules.trapLimitPerMaster || 3} per Master\` | 🚩 **Factions:** \`${rules.factionMode ? 'Red vs Black (Apocrypha)' : 'Free-For-All'}\`\n\n` +
-        `*Choose a preset below to instantly reconfigure, or use the dropdown to customize specific rules!*`
+        `*Click **⚙️ Customize Rules** to adjust Command Seals & settings with 1-click buttons, or use presets & dropdown below!*`
       )
       .setColor(0xd4af37)
       .setFooter({ text: 'Admin Suite • FGO Holy Grail War Overseer Engine' });
+
+    embeds = [embed];
+
+  } else if (category === 'war_rules') {
+    const war = getOrInitWarSession();
+    const rules = war.rules || WAR_PRESETS.fuyuki_7;
+
+    const poolTag = rules.servantPool === 'canon_only' 
+      ? '📖 Canon Type-Moon Only' 
+      : rules.servantPool === 'custom_only' 
+        ? '🎨 Custom Community Only' 
+        : '✨ Canon + Custom Servants';
+
+    const embed = new EmbedBuilder()
+      .setTitle('⚙️ Overseer Ritual Workshop — Interactive Rule Customizer')
+      .setDescription(
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `Directly tune ritual parameters for the active Holy Grail War. Use the direct action buttons or dropdown menu below.\n\n` +
+        `🔱 **Starting Command Seals:** \`${rules.startingCommandSeals} Seals\` *(Options: 1, 2, 3, 5, 10)*\n` +
+        `👥 **Master Roster Capacity:** \`${rules.maxMasters} Masters\` *(Options: 7, 14, 20, 30)*\n` +
+        `⚔️ **Servant Summon Pool:** ${poolTag}\n` +
+        `🔒 **Class Exclusivity:** \`${rules.classExclusivity ? 'Strict (1 per Class)' : 'Open (Duplicates Allowed)'}\`\n` +
+        `💀 **Lethality & Permadeath:** \`${rules.permadeath ? 'Permadeath (Eliminated on HP 0)' : 'Casual / Training Mode'}\`\n` +
+        `⛪ **Church Sanctuary:** \`${rules.churchAsylum ? '🟢 Active Asylum (Father Kotomine)' : '🔴 Desecrated (No Asylum)'}\`\n` +
+        `💧 **Leyline Mana Density:** \`${rules.leylineDensity === 'fast' ? '⚡ High Surge (2x Fast)' : rules.leylineDensity === 'desolate' ? '🏜️ Desolate (No Regen)' : 'Standard (5 min)'}\`\n` +
+        `🕸️ **Trap Limits:** \`Max ${rules.trapLimitPerMaster || 3} per Master\` | 🚩 **Factions:** \`${rules.factionMode ? 'Red vs Black (Apocrypha)' : 'Free-For-All'}\`\n\n` +
+        `*Click any button below to instantly apply or toggle that rule!*`
+      )
+      .setColor(0xeab308)
+      .setFooter({ text: 'Admin Suite • Holy Grail War Rule Tuner' });
 
     embeds = [embed];
 
@@ -444,13 +475,46 @@ export function buildAdminHub(
 
   // --- UI BUTTON ROWS ---
   const categoryNavRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId('admin_tab_war').setLabel('Grail War Rules').setEmoji('🏆').setStyle(category === 'war' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('admin_tab_war').setLabel('War Hub').setEmoji('🏆').setStyle(category === 'war' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('admin_tab_war_rules').setLabel('Customize Rules').setEmoji('⚙️').setStyle(category === 'war_rules' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('admin_tab_npanim').setLabel('NP Animations').setEmoji('🎬').setStyle(category === 'npanim' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('admin_tab_npsettings').setLabel('Duel Settings').setEmoji('⚙️').setStyle(category === 'npsettings' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('admin_tab_economy').setLabel('Economy Mint').setEmoji('💎').setStyle(category === 'economy' ? ButtonStyle.Primary : ButtonStyle.Secondary)
   );
 
   const components: any[] = [categoryNavRow];
+
+  // Helper for fine-tune dropdown
+  const createRuleSelectMenu = () => new StringSelectMenuBuilder()
+    .setCustomId('admin_war_rule_select')
+    .setPlaceholder('⚙️ Fine-Tune War Rules (Seals, Pools, Capacity, Lethality)...')
+    .addOptions(
+      new StringSelectMenuOptionBuilder().setLabel('Command Seals: 1 Seal (Hardcore)').setValue('seals_1').setEmoji('🔱').setDescription('1 Command Seal per Master (Desolate)'),
+      new StringSelectMenuOptionBuilder().setLabel('Command Seals: 2 Seals (Tactical)').setValue('seals_2').setEmoji('🔱').setDescription('2 Command Seals per Master'),
+      new StringSelectMenuOptionBuilder().setLabel('Command Seals: 3 Seals (Canon Standard)').setValue('seals_3').setEmoji('🔱').setDescription('Standard 3 Command Seals (Fuyuki)'),
+      new StringSelectMenuOptionBuilder().setLabel('Command Seals: 5 Seals (Mana Surge)').setValue('seals_5').setEmoji('🔱').setDescription('High mana 5 Command Seals'),
+      new StringSelectMenuOptionBuilder().setLabel('Command Seals: 10 Seals (Chaos / Unlimited)').setValue('seals_10').setEmoji('🔱').setDescription('10 Command Seals for ultimate freedom'),
+      new StringSelectMenuOptionBuilder().setLabel('Capacity: 7 Masters (Classic 5th Fuyuki)').setValue('cap_7').setEmoji('👥').setDescription('Standard 7-Master ritual'),
+      new StringSelectMenuOptionBuilder().setLabel('Capacity: 14 Masters (Apocrypha Factions)').setValue('cap_14').setEmoji('👥').setDescription('Large-scale 14-Master conflict (7 Red vs 7 Black)'),
+      new StringSelectMenuOptionBuilder().setLabel('Capacity: 20 Masters (Singularity)').setValue('cap_20').setEmoji('👥').setDescription('20 Masters Grand Singularity'),
+      new StringSelectMenuOptionBuilder().setLabel('Capacity: 30 Masters (Chaos Brawl)').setValue('cap_30').setEmoji('👥').setDescription('All-out server-wide chaos'),
+      new StringSelectMenuOptionBuilder().setLabel('Servant Pool: Canon Type-Moon Only').setValue('pool_canon').setEmoji('📖').setDescription('Only official Type-Moon/FGO Servants'),
+      new StringSelectMenuOptionBuilder().setLabel('Servant Pool: Canon + Custom Servants').setValue('pool_all').setEmoji('✨').setDescription('Allow all registered and custom Heroic Spirits'),
+      new StringSelectMenuOptionBuilder().setLabel('Servant Pool: Custom Community Only').setValue('pool_custom').setEmoji('🎨').setDescription('Only user-created and meme Servants'),
+      new StringSelectMenuOptionBuilder().setLabel('Class Exclusivity: Strict (1 per Class)').setValue('class_strict').setEmoji('🔒').setDescription('1 Saber, 1 Archer, etc.'),
+      new StringSelectMenuOptionBuilder().setLabel('Class Exclusivity: Open Classes').setValue('class_open').setEmoji('🔓').setDescription('Allow duplicate classes'),
+      new StringSelectMenuOptionBuilder().setLabel('Permadeath: Classic Elimination').setValue('permadeath_on').setEmoji('☠️').setDescription('Defeated Masters without seals are eliminated'),
+      new StringSelectMenuOptionBuilder().setLabel('Permadeath: Casual Training Mode').setValue('permadeath_off').setEmoji('🛡️').setDescription('Defeated Masters can recover and rejoin'),
+      new StringSelectMenuOptionBuilder().setLabel('Leylines: High Surge (2x Fast Regen)').setValue('leyline_fast').setEmoji('⚡').setDescription('2.5 min full recovery in Sanctuaries'),
+      new StringSelectMenuOptionBuilder().setLabel('Leylines: Balanced Standard').setValue('leyline_standard').setEmoji('💧').setDescription('Standard 5 min full recovery'),
+      new StringSelectMenuOptionBuilder().setLabel('Leylines: Desolate (No Auto-Regen)').setValue('leyline_desolate').setEmoji('🏜️').setDescription('HP recovery only via Command Seals/rituals'),
+      new StringSelectMenuOptionBuilder().setLabel('Church Sanctuary: Active Asylum').setValue('church_active').setEmoji('⛪').setDescription('Masters can take asylum with Father Kotomine'),
+      new StringSelectMenuOptionBuilder().setLabel('Church Sanctuary: Desecrated (No Asylum)').setValue('church_desecrated').setEmoji('🔥').setDescription('Church is unsafe; no sanctuary granted'),
+      new StringSelectMenuOptionBuilder().setLabel('Trap Limit: Max 1 per Master').setValue('trap_1').setEmoji('🕸️').setDescription('Limit each Master to 1 Channel Trap'),
+      new StringSelectMenuOptionBuilder().setLabel('Trap Limit: Max 3 per Master').setValue('trap_3').setEmoji('🕸️').setDescription('Standard 3 Traps per Master'),
+      new StringSelectMenuOptionBuilder().setLabel('Trap Limit: Max 5 per Master').setValue('trap_5').setEmoji('🕸️').setDescription('Heavy fortification: 5 Traps'),
+      new StringSelectMenuOptionBuilder().setLabel('Faction Mode: Free-For-All').setValue('faction_ffa').setEmoji('⚔️').setDescription('Every Master for themselves'),
+      new StringSelectMenuOptionBuilder().setLabel('Faction Mode: Red vs Black Factions').setValue('faction_teams').setEmoji('🚩').setDescription('Apocrypha team war')
+    );
 
   if (category === 'war') {
     // Presets Row
@@ -464,39 +528,49 @@ export function buildAdminHub(
     // Lifecycle Actions Row
     const lifecycleRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('admin_war_action_restart').setLabel('Launch / Restart War').setEmoji('🚀').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId('admin_war_action_reset').setLabel('Quick Refresh (HP/Seals)').setEmoji('🔄').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_war_action_reset').setLabel('Quick Refresh').setEmoji('🔄').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_war_refill_all_seals').setLabel('Refill All Seals').setEmoji('🔱').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('admin_war_cataclysm_hub').setLabel('Trigger Cataclysm').setEmoji('⚡').setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId('admin_war_history_view').setLabel('Hall of Fame').setEmoji('📜').setStyle(ButtonStyle.Secondary)
     );
 
-    // Fine-Tuning Select Menu
-    const ruleSelectMenu = new StringSelectMenuBuilder()
-      .setCustomId('admin_war_rule_select')
-      .setPlaceholder('⚙️ Fine-Tune War Rules (Select a setting to modify)...')
-      .addOptions(
-        new StringSelectMenuOptionBuilder().setLabel('Capacity: 7 Masters (Classic)').setValue('cap_7').setEmoji('👥').setDescription('Standard 7-Master ritual'),
-        new StringSelectMenuOptionBuilder().setLabel('Capacity: 14 Masters (Apocrypha)').setValue('cap_14').setEmoji('👥').setDescription('Large-scale 14-Master conflict'),
-        new StringSelectMenuOptionBuilder().setLabel('Capacity: 30 Masters (Singularity)').setValue('cap_30').setEmoji('👥').setDescription('All-out server-wide chaos'),
-        new StringSelectMenuOptionBuilder().setLabel('Servant Pool: Canon Type-Moon Only').setValue('pool_canon').setEmoji('📖').setDescription('Only official Type-Moon/FGO Servants'),
-        new StringSelectMenuOptionBuilder().setLabel('Servant Pool: Canon + Custom Servants').setValue('pool_all').setEmoji('✨').setDescription('Allow all registered and custom Heroic Spirits'),
-        new StringSelectMenuOptionBuilder().setLabel('Servant Pool: Custom Community Only').setValue('pool_custom').setEmoji('🎨').setDescription('Only user-created and meme Servants'),
-        new StringSelectMenuOptionBuilder().setLabel('Class Exclusivity: Strict (1 per Class)').setValue('class_strict').setEmoji('🔒').setDescription('1 Saber, 1 Archer, etc.'),
-        new StringSelectMenuOptionBuilder().setLabel('Class Exclusivity: Open Classes').setValue('class_open').setEmoji('🔓').setDescription('Allow duplicate classes'),
-        new StringSelectMenuOptionBuilder().setLabel('Permadeath: Classic Elimination').setValue('permadeath_on').setEmoji('☠️').setDescription('Defeated Masters without seals are eliminated'),
-        new StringSelectMenuOptionBuilder().setLabel('Permadeath: Casual Training Mode').setValue('permadeath_off').setEmoji('🛡️').setDescription('Defeated Masters can recover and rejoin'),
-        new StringSelectMenuOptionBuilder().setLabel('Starting Seals: 1 Seal (Hardcore)').setValue('seals_1').setEmoji('🔱').setDescription('1 Command Seal per Master'),
-        new StringSelectMenuOptionBuilder().setLabel('Starting Seals: 3 Seals (Standard)').setValue('seals_3').setEmoji('🔱').setDescription('Standard 3 Command Seals'),
-        new StringSelectMenuOptionBuilder().setLabel('Starting Seals: 5 Seals (Overflow)').setValue('seals_5').setEmoji('🔱').setDescription('High mana 5 Command Seals'),
-        new StringSelectMenuOptionBuilder().setLabel('Leylines: High Surge (2x Fast Regen)').setValue('leyline_fast').setEmoji('⚡').setDescription('2.5 min full recovery in Sanctuaries'),
-        new StringSelectMenuOptionBuilder().setLabel('Leylines: Balanced Standard').setValue('leyline_standard').setEmoji('💧').setDescription('Standard 5 min full recovery'),
-        new StringSelectMenuOptionBuilder().setLabel('Leylines: Desolate (No Auto-Regen)').setValue('leyline_desolate').setEmoji('🏜️').setDescription('HP recovery only via Command Seals/rituals'),
-        new StringSelectMenuOptionBuilder().setLabel('Church Sanctuary: Active Asylum').setValue('church_active').setEmoji('⛪').setDescription('Masters can take asylum with Father Kotomine'),
-        new StringSelectMenuOptionBuilder().setLabel('Church Sanctuary: Desecrated (No Asylum)').setValue('church_desecrated').setEmoji('🔥').setDescription('Church is unsafe; no sanctuary granted')
-      );
-
-    const ruleSelectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(ruleSelectMenu);
+    const ruleSelectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(createRuleSelectMenu());
 
     components.push(presetsRow, lifecycleRow, ruleSelectRow);
+
+  } else if (category === 'war_rules') {
+    const war = getOrInitWarSession();
+    const rules = war.rules || WAR_PRESETS.fuyuki_7;
+
+    // DIRECT 1-CLICK COMMAND SEALS BUTTONS ROW
+    const sealsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('admin_set_seals_1').setLabel('1 Seal').setEmoji('🔱').setStyle(rules.startingCommandSeals === 1 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_seals_2').setLabel('2 Seals').setEmoji('🔱').setStyle(rules.startingCommandSeals === 2 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_seals_3').setLabel('3 Seals (Canon)').setEmoji('🔱').setStyle(rules.startingCommandSeals === 3 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_seals_5').setLabel('5 Seals').setEmoji('🔱').setStyle(rules.startingCommandSeals === 5 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_seals_10').setLabel('10 Seals (Chaos)').setEmoji('🔱').setStyle(rules.startingCommandSeals === 10 ? ButtonStyle.Primary : ButtonStyle.Secondary)
+    );
+
+    // DIRECT 1-CLICK CAPACITY & POOL BUTTONS ROW
+    const capPoolRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('admin_set_cap_7').setLabel('7 Masters').setEmoji('👥').setStyle(rules.maxMasters === 7 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_cap_14').setLabel('14 Masters').setEmoji('👥').setStyle(rules.maxMasters === 14 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_cap_30').setLabel('30 Masters').setEmoji('👥').setStyle(rules.maxMasters === 30 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_pool_canon').setLabel('Canon Only').setEmoji('📖').setStyle(rules.servantPool === 'canon_only' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_pool_all').setLabel('All Servants').setEmoji('✨').setStyle(rules.servantPool === 'all' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+    );
+
+    // DIRECT 1-CLICK TOGGLE BUTTONS ROW
+    const toggleRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('admin_toggle_permadeath').setLabel(`Permadeath: ${rules.permadeath ? 'ON 🟢' : 'OFF 🔴'}`).setEmoji('☠️').setStyle(rules.permadeath ? ButtonStyle.Danger : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_toggle_church').setLabel(`Church: ${rules.churchAsylum ? 'ON 🟢' : 'OFF 🔴'}`).setEmoji('⛪').setStyle(rules.churchAsylum ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_toggle_class_strict').setLabel(`Strict Classes: ${rules.classExclusivity ? 'ON 🔒' : 'OFF 🔓'}`).setEmoji('🔒').setStyle(rules.classExclusivity ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_toggle_factions').setLabel(`Factions: ${rules.factionMode ? 'Teams 🚩' : 'FFA ⚔️'}`).setEmoji('🚩').setStyle(rules.factionMode ? ButtonStyle.Success : ButtonStyle.Secondary)
+    );
+
+    const ruleSelectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(createRuleSelectMenu());
+
+    components.push(sealsRow, capPoolRow, toggleRow, ruleSelectRow);
 
   } else if (category === 'npsettings') {
     const settings = getDuelNpSettings();
@@ -527,12 +601,14 @@ export function buildAdminHub(
 export async function handleAdminGlobalInteraction(interaction: any) {
   try {
     const customId = interaction.customId;
-    let currentCategory: 'war' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war';
+    let currentCategory: 'war' | 'war_rules' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war';
     let actionOutcome: string | undefined = undefined;
 
     // Detect category
     if (customId === 'admin_tab_war' || customId.startsWith('admin_war_') || customId.startsWith('admin_cata_')) {
       currentCategory = 'war';
+    } else if (customId === 'admin_tab_war_rules' || customId.startsWith('admin_set_') || customId.startsWith('admin_toggle_')) {
+      currentCategory = 'war_rules';
     } else if (customId === 'admin_tab_npanim') {
       currentCategory = 'npanim';
     } else if (customId === 'admin_tab_npsettings' || customId === 'admin_toggle_autodelete' || customId.startsWith('admin_set_afk_')) {
@@ -546,6 +622,8 @@ export async function handleAdminGlobalInteraction(interaction: any) {
     // TAB NAVIGATION
     if (customId === 'admin_tab_war') {
       currentCategory = 'war';
+    } else if (customId === 'admin_tab_war_rules') {
+      currentCategory = 'war_rules';
     } else if (customId === 'admin_tab_npanim') {
       currentCategory = 'npanim';
     } else if (customId === 'admin_tab_npsettings') {
@@ -579,6 +657,10 @@ export async function handleAdminGlobalInteraction(interaction: any) {
     } else if (customId === 'admin_war_action_reset') {
       const res = resetHolyGrailWar(true, interaction.user.username);
       actionOutcome = `🔄 **Ritual Refreshed:** ${res.message}`;
+    } else if (customId === 'admin_war_refill_all_seals') {
+      const war = getOrInitWarSession();
+      const res = refillAllWarParticipantsSeals(war, interaction.user.username);
+      actionOutcome = res.message;
     } else if (customId === 'admin_war_cataclysm_hub') {
       const cataclysmEmbed = new EmbedBuilder()
         .setTitle('⚡ Overseer Leyline Cataclysm Selector')
@@ -646,14 +728,69 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       return;
     }
 
+    // DIRECT 1-CLICK BUTTON RULE HANDLERS
+    else if (customId.startsWith('admin_set_seals_')) {
+      const seals = parseInt(customId.replace('admin_set_seals_', ''), 10);
+      const war = getOrInitWarSession();
+      const updateRes = updateWarRules(war, { startingCommandSeals: seals }, interaction.user.username);
+      actionOutcome = `🔱 **Starting Command Seals set to ${seals}!**\n${updateRes.message}`;
+      currentCategory = 'war_rules';
+    } else if (customId.startsWith('admin_set_cap_')) {
+      const cap = parseInt(customId.replace('admin_set_cap_', ''), 10);
+      const war = getOrInitWarSession();
+      const updateRes = updateWarRules(war, { maxMasters: cap, formatName: `Custom ${cap}-Master War` }, interaction.user.username);
+      actionOutcome = `👥 **Master Capacity set to ${cap}!**\n${updateRes.message}`;
+      currentCategory = 'war_rules';
+    } else if (customId === 'admin_set_pool_canon') {
+      const war = getOrInitWarSession();
+      const updateRes = updateWarRules(war, { servantPool: 'canon_only' }, interaction.user.username);
+      actionOutcome = `📖 **Servant Pool set to Canon Type-Moon Only!**\n${updateRes.message}`;
+      currentCategory = 'war_rules';
+    } else if (customId === 'admin_set_pool_all') {
+      const war = getOrInitWarSession();
+      const updateRes = updateWarRules(war, { servantPool: 'all' }, interaction.user.username);
+      actionOutcome = `✨ **Servant Pool set to Canon + Custom Servants (All)!**\n${updateRes.message}`;
+      currentCategory = 'war_rules';
+    } else if (customId === 'admin_toggle_permadeath') {
+      const war = getOrInitWarSession();
+      const current = war.rules?.permadeath ?? true;
+      const updateRes = updateWarRules(war, { permadeath: !current }, interaction.user.username);
+      actionOutcome = `☠️ **Permadeath is now ${!current ? 'ENABLED (Defeat = Elimination)' : 'DISABLED (Casual Training Mode)'}!**\n${updateRes.message}`;
+      currentCategory = 'war_rules';
+    } else if (customId === 'admin_toggle_church') {
+      const war = getOrInitWarSession();
+      const current = war.rules?.churchAsylum ?? true;
+      const updateRes = updateWarRules(war, { churchAsylum: !current }, interaction.user.username);
+      actionOutcome = `⛪ **Church Asylum is now ${!current ? 'ACTIVE (Sanctuary granted)' : 'DESECRATED (No Sanctuary)'}!**\n${updateRes.message}`;
+      currentCategory = 'war_rules';
+    } else if (customId === 'admin_toggle_class_strict') {
+      const war = getOrInitWarSession();
+      const current = war.rules?.classExclusivity ?? true;
+      const updateRes = updateWarRules(war, { classExclusivity: !current }, interaction.user.username);
+      actionOutcome = `🔒 **Class Exclusivity is now ${!current ? 'STRICT (1 per class)' : 'OPEN (Duplicate classes allowed)'}!**\n${updateRes.message}`;
+      currentCategory = 'war_rules';
+    } else if (customId === 'admin_toggle_factions') {
+      const war = getOrInitWarSession();
+      const current = war.rules?.factionMode ?? false;
+      const updateRes = updateWarRules(war, { factionMode: !current }, interaction.user.username);
+      actionOutcome = `🚩 **Faction War Mode is now ${!current ? 'ACTIVE (Red vs Black Teams)' : 'FREE-FOR-ALL (Every Master for themselves)'}!**\n${updateRes.message}`;
+      currentCategory = 'war_rules';
+    }
+
     // RULE CUSTOMIZATION SELECT MENU
     else if (customId === 'admin_war_rule_select' && interaction.isStringSelectMenu()) {
       const val = interaction.values[0];
       const war = getOrInitWarSession();
       let ruleChanges: Partial<WarRules> = {};
 
-      if (val === 'cap_7') ruleChanges = { maxMasters: 7, formatName: 'Custom 7-Master War' };
+      if (val === 'seals_1') ruleChanges = { startingCommandSeals: 1 };
+      else if (val === 'seals_2') ruleChanges = { startingCommandSeals: 2 };
+      else if (val === 'seals_3') ruleChanges = { startingCommandSeals: 3 };
+      else if (val === 'seals_5') ruleChanges = { startingCommandSeals: 5 };
+      else if (val === 'seals_10') ruleChanges = { startingCommandSeals: 10 };
+      else if (val === 'cap_7') ruleChanges = { maxMasters: 7, formatName: 'Custom 7-Master War' };
       else if (val === 'cap_14') ruleChanges = { maxMasters: 14, formatName: 'Custom 14-Master War' };
+      else if (val === 'cap_20') ruleChanges = { maxMasters: 20, formatName: 'Custom 20-Master Singularity' };
       else if (val === 'cap_30') ruleChanges = { maxMasters: 30, formatName: 'Custom 30-Master War' };
       else if (val === 'pool_canon') ruleChanges = { servantPool: 'canon_only' };
       else if (val === 'pool_all') ruleChanges = { servantPool: 'all' };
@@ -662,14 +799,16 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       else if (val === 'class_open') ruleChanges = { classExclusivity: false };
       else if (val === 'permadeath_on') ruleChanges = { permadeath: true };
       else if (val === 'permadeath_off') ruleChanges = { permadeath: false };
-      else if (val === 'seals_1') ruleChanges = { startingCommandSeals: 1 };
-      else if (val === 'seals_3') ruleChanges = { startingCommandSeals: 3 };
-      else if (val === 'seals_5') ruleChanges = { startingCommandSeals: 5 };
       else if (val === 'leyline_fast') ruleChanges = { leylineDensity: 'fast' };
       else if (val === 'leyline_standard') ruleChanges = { leylineDensity: 'standard' };
       else if (val === 'leyline_desolate') ruleChanges = { leylineDensity: 'desolate' };
       else if (val === 'church_active') ruleChanges = { churchAsylum: true };
       else if (val === 'church_desecrated') ruleChanges = { churchAsylum: false };
+      else if (val === 'trap_1') ruleChanges = { trapLimitPerMaster: 1 };
+      else if (val === 'trap_3') ruleChanges = { trapLimitPerMaster: 3 };
+      else if (val === 'trap_5') ruleChanges = { trapLimitPerMaster: 5 };
+      else if (val === 'faction_ffa') ruleChanges = { factionMode: false };
+      else if (val === 'faction_teams') ruleChanges = { factionMode: true };
 
       const updateRes = updateWarRules(war, ruleChanges, interaction.user.username);
       actionOutcome = `⚙️ **Rule Applied:** ${updateRes.message}`;
@@ -680,10 +819,12 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       const settings = getDuelNpSettings();
       const updated = setDuelNpSettings({ autoDelete: !settings.autoDelete });
       actionOutcome = `Auto-Delete updated to: **${updated.autoDelete ? 'Enabled' : 'Disabled'}**`;
+      currentCategory = 'npsettings';
     } else if (customId.startsWith('admin_set_afk_')) {
       const val = parseInt(customId.replace('admin_set_afk_', ''), 10);
       const updated = setDuelNpSettings({ afkTimeoutSeconds: val });
       actionOutcome = `AFK Safety Timeout updated to: **${updated.afkTimeoutSeconds}s**`;
+      currentCategory = 'npsettings';
     }
 
     // ECONOMY MINT ACTIONS
@@ -692,21 +833,25 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       master.saintQuartz = (master.saintQuartz || 0) + 30;
       await saveMaster(master);
       actionOutcome = `✨ Minted **+30 Saint Quartz**! Total SQ: **${master.saintQuartz}**`;
+      currentCategory = 'economy';
     } else if (customId === 'admin_mint_100sq') {
       const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
       master.saintQuartz = (master.saintQuartz || 0) + 100;
       await saveMaster(master);
       actionOutcome = `✨ Minted **+100 Saint Quartz**! Total SQ: **${master.saintQuartz}**`;
+      currentCategory = 'economy';
     } else if (customId === 'admin_mint_qp') {
       const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
       master.qp = (master.qp || 0) + 1000000;
       await saveMaster(master);
       actionOutcome = `🪙 Minted **+1,000,000 QP**! Total QP: **${master.qp.toLocaleString()}**`;
+      currentCategory = 'economy';
     } else if (customId === 'admin_refill_seals') {
       const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
       master.commandSeals = 3;
       await saveMaster(master);
       actionOutcome = `🔱 Refilled Command Seals to **3/3**!`;
+      currentCategory = 'economy';
     }
 
     const hub = buildAdminHub(currentCategory, actionOutcome);
