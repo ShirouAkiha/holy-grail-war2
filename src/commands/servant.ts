@@ -267,13 +267,16 @@ export async function buildServantHub(
       embed.setThumbnail(t.avatarUrl || t.cardArtUrl);
     }
 
-    embeds = [embed];
+    const artworkEmbed = new EmbedBuilder()
+      .setImage(t.cardArtUrl || t.avatarUrl)
+      .setColor(t.rarity === 5 ? 0xd4af37 : 0x38bdf8);
+
+    embeds = [embed, artworkEmbed];
 
     try {
       const cardBuffer = await renderServantProfileCard(targetServant, master.username);
       if (cardBuffer && cardBuffer.length > 500) {
         files.push(new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' }));
-        embed.setImage('attachment://servant_profile.png');
       }
     } catch (e) {
       console.warn('Canvas render profile error:', e);

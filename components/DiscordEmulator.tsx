@@ -5052,6 +5052,10 @@ export default function DiscordEmulator({
         `• **Agility (AGI):** \`${agiTotal}\` [${getRank(agiTotal)}] | **Mana (MNA):** \`${mnaTotal}\` [${getRank(mnaTotal)}] | **Luck (LCK):** \`${lckTotal}\` [${getRank(lckTotal)}]`;
       canvasType = 'servant';
       canvasPayload = { servant: targetServant, masterName: master.username };
+      artworkEmbed = {
+        imageUrl: t.cardArtUrl || t.avatarUrl,
+        color: t.rarity === 5 ? '#f59e0b' : '#38bdf8'
+      };
     } else if (category === 'stats') {
       title = `⭐ Parameter Point Allocation: ${sName}`;
       description =
