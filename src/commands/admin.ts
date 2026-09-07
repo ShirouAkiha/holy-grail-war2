@@ -321,10 +321,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 
   // Open the interactive Admin Hub
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   const { embeds, components } = buildAdminHub(category);
-  const msg = await interaction.editReply({ embeds, components });
-  attachAdminCollector(msg, interaction.user.id, category);
+  await interaction.reply({ embeds, components, flags: MessageFlags.Ephemeral });
 }
 
 // ==========================================
@@ -524,198 +522,214 @@ export function buildAdminHub(
 }
 
 // ==========================================
-// 5. INTERACTION COLLECTOR
+// 5. GLOBAL INTERACTION HANDLER
 // ==========================================
-export function attachAdminCollector(
-  message: any,
-  userId: string,
-  initialCategory: 'war' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war'
-) {
-  let currentCategory = initialCategory;
+export async function handleAdminGlobalInteraction(interaction: any) {
+  try {
+    const customId = interaction.customId;
+    let currentCategory: 'war' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war';
+    let actionOutcome: string | undefined = undefined;
 
-  const collector = message.createMessageComponentCollector({
-    idle: 120000,
-    time: 600000
-  });
+    // Detect category
+    if (customId === 'admin_tab_war' || customId.startsWith('admin_war_') || customId.startsWith('admin_cata_')) {
+      currentCategory = 'war';
+    } else if (customId === 'admin_tab_npanim') {
+      currentCategory = 'npanim';
+    } else if (customId === 'admin_tab_npsettings' || customId === 'admin_toggle_autodelete' || customId.startsWith('admin_set_afk_')) {
+      currentCategory = 'npsettings';
+    } else if (customId === 'admin_tab_listnp') {
+      currentCategory = 'listnp';
+    } else if (customId === 'admin_tab_economy' || customId.startsWith('admin_mint_') || customId === 'admin_refill_seals') {
+      currentCategory = 'economy';
+    }
 
-  collector.on('collect', async (i: any) => {
-    if (i.replied || i.deferred) return;
-    if (i.user.id !== userId) {
-      await i.reply({ content: 'Only the administrator who opened this panel can interact with it.', flags: MessageFlags.Ephemeral });
+    // TAB NAVIGATION
+    if (customId === 'admin_tab_war') {
+      currentCategory = 'war';
+    } else if (customId === 'admin_tab_npanim') {
+      currentCategory = 'npanim';
+    } else if (customId === 'admin_tab_npsettings') {
+      currentCategory = 'npsettings';
+    } else if (customId === 'admin_tab_listnp') {
+      currentCategory = 'listnp';
+    } else if (customId === 'admin_tab_economy') {
+      currentCategory = 'economy';
+    }
+
+    // WAR PRESETS
+    else if (customId === 'admin_war_preset_fuyuki_7') {
+      const res = startOrRestartWar('fuyuki_7', undefined, interaction.user.username);
+      actionOutcome = `🏆 **Applied Preset: 5th Fuyuki Holy Grail War (7 Masters)!**\n${res.message}`;
+    } else if (customId === 'admin_war_preset_apocrypha_14') {
+      const res = startOrRestartWar('apocrypha_14', undefined, interaction.user.username);
+      actionOutcome = `⚔️ **Applied Preset: Trifas Great Holy Grail War (14 Masters, Black vs Red)!**\n${res.message}`;
+    } else if (customId === 'admin_war_preset_singularity_chaos') {
+      const res = startOrRestartWar('singularity_chaos', undefined, interaction.user.username);
+      actionOutcome = `🌌 **Applied Preset: Grand Singularity Chaos (30 Masters FFA, Fast Mana)!**\n${res.message}`;
+    } else if (customId === 'admin_war_preset_desolate_hardcore') {
+      const res = startOrRestartWar('desolate_hardcore', undefined, interaction.user.username);
+      actionOutcome = `💀 **Applied Preset: Desolate Hardcore Ritual (1 Seal, Permadeath, No Sanctuary)!**\n${res.message}`;
+    }
+
+    // WAR LIFECYCLE
+    else if (customId === 'admin_war_action_restart') {
+      const war = getOrInitWarSession();
+      const res = startOrRestartWar(war.rules?.preset || 'fuyuki_7', war.rules, interaction.user.username);
+      actionOutcome = `🚀 **Holy Grail War Restarted!**\n${res.message}`;
+    } else if (customId === 'admin_war_action_reset') {
+      const res = resetHolyGrailWar(true, interaction.user.username);
+      actionOutcome = `🔄 **Ritual Refreshed:** ${res.message}`;
+    } else if (customId === 'admin_war_cataclysm_hub') {
+      const cataclysmEmbed = new EmbedBuilder()
+        .setTitle('⚡ Overseer Leyline Cataclysm Selector')
+        .setDescription(
+          `Select a catastrophic mid-war event to unleash upon all Masters:\n\n` +
+          `• 🌊 **Grail Mud Overflow:** All living Masters take **2,500 corruption DMG** and their spiritual concealment is stripped (**EXPOSED**).\n` +
+          `• 🔥 **Fuyuki Inferno:** Destroys all channel bounded traps and flushes all Church refugees into active combat.\n` +
+          `• 👁️ **Angra Mainyu Descends:** Deals **1,500 shockwave DMG** to all contracted Servants.\n` +
+          `• ⚡ **Leyline Mana Surge:** Grants **+1 Command Seal** and **+50% HP heal** to all living Masters.`
+        )
+        .setColor(0xef4444);
+
+      const cataclysmRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('admin_cata_grail_mud').setLabel('Grail Mud').setEmoji('🌊').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('admin_cata_fuyuki_fire').setLabel('Fuyuki Inferno').setEmoji('🔥').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('admin_cata_angra_mainyu').setLabel('Angra Mainyu').setEmoji('👁️').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('admin_cata_mana_surge').setLabel('Mana Surge').setEmoji('⚡').setStyle(ButtonStyle.Success)
+      );
+
+      const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('admin_tab_war').setLabel('Back to War Dashboard').setEmoji('◀️').setStyle(ButtonStyle.Secondary)
+      );
+
+      if (interaction.replied || interaction.deferred) {
+        await interaction.editReply({ embeds: [cataclysmEmbed], components: [cataclysmRow, backRow] });
+      } else {
+        await interaction.update({ embeds: [cataclysmEmbed], components: [cataclysmRow, backRow] });
+      }
+      return;
+    } else if (customId.startsWith('admin_cata_')) {
+      const cataType = customId.replace('admin_cata_', '') as any;
+      const war = getOrInitWarSession();
+      const res = triggerAdminCataclysm(war, cataType, interaction.user.username);
+      actionOutcome = `⚡ **${res.banner}**\n${res.message}`;
+      currentCategory = 'war';
+    } else if (customId === 'admin_war_history_view') {
+      const war = getOrInitWarSession();
+      const hist = war.history || [];
+      let desc = '';
+      if (hist.length === 0) {
+        desc = 'No archived Grail Wars in the Hall of Fame yet.\n\nOnce a Grail War concludes or is restarted, the previous victor and battle statistics will be recorded here.';
+      } else {
+        desc = hist.slice(0, 10).map((h, idx) => 
+          `**${idx + 1}. ${h.title}** (${new Date(h.concludedAt).toLocaleDateString()})\n` +
+          `• 🏆 **Victor:** **${h.winnerUsername}** with *${h.winnerServantName}*\n` +
+          `• 👥 **Participants:** ${h.totalParticipants} Masters | ⚔️ **Eliminations:** ${h.totalEliminations}\n` +
+          `• 📜 **Rules:** \`${h.rulesSummary}\``
+        ).join('\n\n');
+      }
+
+      const histEmbed = new EmbedBuilder()
+        .setTitle('📜 Hall of Fame — Historical Grail War Chronicles')
+        .setDescription(desc)
+        .setColor(0xd4af37);
+
+      const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('admin_tab_war').setLabel('Back to War Dashboard').setEmoji('◀️').setStyle(ButtonStyle.Secondary)
+      );
+
+      if (interaction.replied || interaction.deferred) {
+        await interaction.editReply({ embeds: [histEmbed], components: [backRow] });
+      } else {
+        await interaction.update({ embeds: [histEmbed], components: [backRow] });
+      }
       return;
     }
-    collector.resetTimer();
 
-    try {
-      let actionOutcome: string | undefined = undefined;
+    // RULE CUSTOMIZATION SELECT MENU
+    else if (customId === 'admin_war_rule_select' && interaction.isStringSelectMenu()) {
+      const val = interaction.values[0];
+      const war = getOrInitWarSession();
+      let ruleChanges: Partial<WarRules> = {};
 
-      // TAB NAVIGATION
-      if (i.customId === 'admin_tab_war') {
-        currentCategory = 'war';
-      } else if (i.customId === 'admin_tab_npanim') {
-        currentCategory = 'npanim';
-      } else if (i.customId === 'admin_tab_npsettings') {
-        currentCategory = 'npsettings';
-      } else if (i.customId === 'admin_tab_listnp') {
-        currentCategory = 'listnp';
-      } else if (i.customId === 'admin_tab_economy') {
-        currentCategory = 'economy';
-      }
+      if (val === 'cap_7') ruleChanges = { maxMasters: 7, formatName: 'Custom 7-Master War' };
+      else if (val === 'cap_14') ruleChanges = { maxMasters: 14, formatName: 'Custom 14-Master War' };
+      else if (val === 'cap_30') ruleChanges = { maxMasters: 30, formatName: 'Custom 30-Master War' };
+      else if (val === 'pool_canon') ruleChanges = { servantPool: 'canon_only' };
+      else if (val === 'pool_all') ruleChanges = { servantPool: 'all' };
+      else if (val === 'pool_custom') ruleChanges = { servantPool: 'custom_only' };
+      else if (val === 'class_strict') ruleChanges = { classExclusivity: true };
+      else if (val === 'class_open') ruleChanges = { classExclusivity: false };
+      else if (val === 'permadeath_on') ruleChanges = { permadeath: true };
+      else if (val === 'permadeath_off') ruleChanges = { permadeath: false };
+      else if (val === 'seals_1') ruleChanges = { startingCommandSeals: 1 };
+      else if (val === 'seals_3') ruleChanges = { startingCommandSeals: 3 };
+      else if (val === 'seals_5') ruleChanges = { startingCommandSeals: 5 };
+      else if (val === 'leyline_fast') ruleChanges = { leylineDensity: 'fast' };
+      else if (val === 'leyline_standard') ruleChanges = { leylineDensity: 'standard' };
+      else if (val === 'leyline_desolate') ruleChanges = { leylineDensity: 'desolate' };
+      else if (val === 'church_active') ruleChanges = { churchAsylum: true };
+      else if (val === 'church_desecrated') ruleChanges = { churchAsylum: false };
 
-      // WAR PRESETS
-      else if (i.customId === 'admin_war_preset_fuyuki_7') {
-        const res = startOrRestartWar('fuyuki_7', undefined, i.user.username);
-        actionOutcome = `🏆 **Applied Preset: 5th Fuyuki Holy Grail War (7 Masters)!**\n${res.message}`;
-      } else if (i.customId === 'admin_war_preset_apocrypha_14') {
-        const res = startOrRestartWar('apocrypha_14', undefined, i.user.username);
-        actionOutcome = `⚔️ **Applied Preset: Trifas Great Holy Grail War (14 Masters, Black vs Red)!**\n${res.message}`;
-      } else if (i.customId === 'admin_war_preset_singularity_chaos') {
-        const res = startOrRestartWar('singularity_chaos', undefined, i.user.username);
-        actionOutcome = `🌌 **Applied Preset: Grand Singularity Chaos (30 Masters FFA, Fast Mana)!**\n${res.message}`;
-      } else if (i.customId === 'admin_war_preset_desolate_hardcore') {
-        const res = startOrRestartWar('desolate_hardcore', undefined, i.user.username);
-        actionOutcome = `💀 **Applied Preset: Desolate Hardcore Ritual (1 Seal, Permadeath, No Sanctuary)!**\n${res.message}`;
-      }
+      const updateRes = updateWarRules(war, ruleChanges, interaction.user.username);
+      actionOutcome = `⚙️ **Rule Applied:** ${updateRes.message}`;
+    }
 
-      // WAR LIFECYCLE
-      else if (i.customId === 'admin_war_action_restart') {
-        const war = getOrInitWarSession();
-        const res = startOrRestartWar(war.rules?.preset || 'fuyuki_7', war.rules, i.user.username);
-        actionOutcome = `🚀 **Holy Grail War Restarted!**\n${res.message}`;
-      } else if (i.customId === 'admin_war_action_reset') {
-        const res = resetHolyGrailWar(true, i.user.username);
-        actionOutcome = `🔄 **Ritual Refreshed:** ${res.message}`;
-      } else if (i.customId === 'admin_war_cataclysm_hub') {
-        // Build Cataclysm Sub-menu
-        const cataclysmEmbed = new EmbedBuilder()
-          .setTitle('⚡ Overseer Leyline Cataclysm Selector')
-          .setDescription(
-            `Select a catastrophic mid-war event to unleash upon all Masters:\n\n` +
-            `• 🌊 **Grail Mud Overflow:** All living Masters take **2,500 corruption DMG** and their spiritual concealment is stripped (**EXPOSED**).\n` +
-            `• 🔥 **Fuyuki Inferno:** Destroys all channel bounded traps and flushes all Church refugees into active combat.\n` +
-            `• 👁️ **Angra Mainyu Descends:** Deals **1,500 shockwave DMG** to all contracted Servants.\n` +
-            `• ⚡ **Leyline Mana Surge:** Grants **+1 Command Seal** and **+50% HP heal** to all living Masters.`
-          )
-          .setColor(0xef4444);
+    // SETTINGS ACTIONS
+    else if (customId === 'admin_toggle_autodelete') {
+      const settings = getDuelNpSettings();
+      const updated = setDuelNpSettings({ autoDelete: !settings.autoDelete });
+      actionOutcome = `Auto-Delete updated to: **${updated.autoDelete ? 'Enabled' : 'Disabled'}**`;
+    } else if (customId.startsWith('admin_set_afk_')) {
+      const val = parseInt(customId.replace('admin_set_afk_', ''), 10);
+      const updated = setDuelNpSettings({ afkTimeoutSeconds: val });
+      actionOutcome = `AFK Safety Timeout updated to: **${updated.afkTimeoutSeconds}s**`;
+    }
 
-        const cataclysmRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder().setCustomId('admin_cata_grail_mud').setLabel('Grail Mud').setEmoji('🌊').setStyle(ButtonStyle.Danger),
-          new ButtonBuilder().setCustomId('admin_cata_fuyuki_fire').setLabel('Fuyuki Inferno').setEmoji('🔥').setStyle(ButtonStyle.Danger),
-          new ButtonBuilder().setCustomId('admin_cata_angra_mainyu').setLabel('Angra Mainyu').setEmoji('👁️').setStyle(ButtonStyle.Secondary),
-          new ButtonBuilder().setCustomId('admin_cata_mana_surge').setLabel('Mana Surge').setEmoji('⚡').setStyle(ButtonStyle.Success)
-        );
+    // ECONOMY MINT ACTIONS
+    else if (customId === 'admin_mint_30sq') {
+      const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+      master.saintQuartz = (master.saintQuartz || 0) + 30;
+      await saveMaster(master);
+      actionOutcome = `✨ Minted **+30 Saint Quartz**! Total SQ: **${master.saintQuartz}**`;
+    } else if (customId === 'admin_mint_100sq') {
+      const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+      master.saintQuartz = (master.saintQuartz || 0) + 100;
+      await saveMaster(master);
+      actionOutcome = `✨ Minted **+100 Saint Quartz**! Total SQ: **${master.saintQuartz}**`;
+    } else if (customId === 'admin_mint_qp') {
+      const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+      master.qp = (master.qp || 0) + 1000000;
+      await saveMaster(master);
+      actionOutcome = `🪙 Minted **+1,000,000 QP**! Total QP: **${master.qp.toLocaleString()}**`;
+    } else if (customId === 'admin_refill_seals') {
+      const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+      master.commandSeals = 3;
+      await saveMaster(master);
+      actionOutcome = `🔱 Refilled Command Seals to **3/3**!`;
+    }
 
-        const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder().setCustomId('admin_tab_war').setLabel('Back to War Dashboard').setEmoji('◀️').setStyle(ButtonStyle.Secondary)
-        );
-
-        await i.update({ embeds: [cataclysmEmbed], components: [cataclysmRow, backRow] });
-        return;
-      } else if (i.customId.startsWith('admin_cata_')) {
-        const cataType = i.customId.replace('admin_cata_', '') as any;
-        const war = getOrInitWarSession();
-        const res = triggerAdminCataclysm(war, cataType, i.user.username);
-        actionOutcome = `⚡ **${res.banner}**\n${res.message}`;
-        currentCategory = 'war';
-      } else if (i.customId === 'admin_war_history_view') {
-        const war = getOrInitWarSession();
-        const hist = war.history || [];
-        let desc = '';
-        if (hist.length === 0) {
-          desc = 'No archived Grail Wars in the Hall of Fame yet.\n\nOnce a Grail War concludes or is restarted, the previous victor and battle statistics will be recorded here.';
-        } else {
-          desc = hist.slice(0, 10).map((h, idx) => 
-            `**${idx + 1}. ${h.title}** (${new Date(h.concludedAt).toLocaleDateString()})\n` +
-            `• 🏆 **Victor:** **${h.winnerUsername}** with *${h.winnerServantName}*\n` +
-            `• 👥 **Participants:** ${h.totalParticipants} Masters | ⚔️ **Eliminations:** ${h.totalEliminations}\n` +
-            `• 📜 **Rules:** \`${h.rulesSummary}\``
-          ).join('\n\n');
-        }
-
-        const histEmbed = new EmbedBuilder()
-          .setTitle('📜 Hall of Fame — Historical Grail War Chronicles')
-          .setDescription(desc)
-          .setColor(0xd4af37);
-
-        const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder().setCustomId('admin_tab_war').setLabel('Back to War Dashboard').setEmoji('◀️').setStyle(ButtonStyle.Secondary)
-        );
-
-        await i.update({ embeds: [histEmbed], components: [backRow] });
-        return;
-      }
-
-      // RULE CUSTOMIZATION SELECT
-      else if (i.customId === 'admin_war_rule_select') {
-        const val = i.values[0];
-        const war = getOrInitWarSession();
-        let ruleChanges: Partial<WarRules> = {};
-
-        if (val === 'cap_7') ruleChanges = { maxMasters: 7, formatName: 'Custom 7-Master War' };
-        else if (val === 'cap_14') ruleChanges = { maxMasters: 14, formatName: 'Custom 14-Master War' };
-        else if (val === 'cap_30') ruleChanges = { maxMasters: 30, formatName: 'Custom 30-Master War' };
-        else if (val === 'pool_canon') ruleChanges = { servantPool: 'canon_only' };
-        else if (val === 'pool_all') ruleChanges = { servantPool: 'all' };
-        else if (val === 'pool_custom') ruleChanges = { servantPool: 'custom_only' };
-        else if (val === 'class_strict') ruleChanges = { classExclusivity: true };
-        else if (val === 'class_open') ruleChanges = { classExclusivity: false };
-        else if (val === 'permadeath_on') ruleChanges = { permadeath: true };
-        else if (val === 'permadeath_off') ruleChanges = { permadeath: false };
-        else if (val === 'seals_1') ruleChanges = { startingCommandSeals: 1 };
-        else if (val === 'seals_3') ruleChanges = { startingCommandSeals: 3 };
-        else if (val === 'seals_5') ruleChanges = { startingCommandSeals: 5 };
-        else if (val === 'leyline_fast') ruleChanges = { leylineDensity: 'fast' };
-        else if (val === 'leyline_standard') ruleChanges = { leylineDensity: 'standard' };
-        else if (val === 'leyline_desolate') ruleChanges = { leylineDensity: 'desolate' };
-        else if (val === 'church_active') ruleChanges = { churchAsylum: true };
-        else if (val === 'church_desecrated') ruleChanges = { churchAsylum: false };
-
-        const updateRes = updateWarRules(war, ruleChanges, i.user.username);
-        actionOutcome = `⚙️ **Rule Applied:** ${updateRes.message}`;
-      }
-
-      // SETTINGS ACTIONS
-      else if (i.customId === 'admin_toggle_autodelete') {
-        const settings = getDuelNpSettings();
-        const updated = setDuelNpSettings({ autoDelete: !settings.autoDelete });
-        actionOutcome = `Auto-Delete updated to: **${updated.autoDelete ? 'Enabled' : 'Disabled'}**`;
-      } else if (i.customId.startsWith('admin_set_afk_')) {
-        const val = parseInt(i.customId.replace('admin_set_afk_', ''), 10);
-        const updated = setDuelNpSettings({ afkTimeoutSeconds: val });
-        actionOutcome = `AFK Safety Timeout updated to: **${updated.afkTimeoutSeconds}s**`;
-      }
-      // ECONOMY MINT ACTIONS
-      else if (i.customId === 'admin_mint_30sq') {
-        const master = await getOrCreateMaster(i.user.id, i.user.username);
-        master.saintQuartz = (master.saintQuartz || 0) + 30;
-        await saveMaster(master);
-        actionOutcome = `✨ Minted **+30 Saint Quartz**! Total SQ: **${master.saintQuartz}**`;
-      } else if (i.customId === 'admin_mint_100sq') {
-        const master = await getOrCreateMaster(i.user.id, i.user.username);
-        master.saintQuartz = (master.saintQuartz || 0) + 100;
-        await saveMaster(master);
-        actionOutcome = `✨ Minted **+100 Saint Quartz**! Total SQ: **${master.saintQuartz}**`;
-      } else if (i.customId === 'admin_mint_qp') {
-        const master = await getOrCreateMaster(i.user.id, i.user.username);
-        master.qp = (master.qp || 0) + 1000000;
-        await saveMaster(master);
-        actionOutcome = `🪙 Minted **+1,000,000 QP**! Total QP: **${master.qp.toLocaleString()}**`;
-      } else if (i.customId === 'admin_refill_seals') {
-        const master = await getOrCreateMaster(i.user.id, i.user.username);
-        master.commandSeals = 3;
-        await saveMaster(master);
-        actionOutcome = `🔱 Refilled Command Seals to **3/3**!`;
-      }
-
-      const hub = buildAdminHub(currentCategory, actionOutcome);
-      await i.update({
+    const hub = buildAdminHub(currentCategory, actionOutcome);
+    if (interaction.replied || interaction.deferred) {
+      await interaction.editReply({
         embeds: hub.embeds,
         components: hub.components
       });
-
-    } catch (err: any) {
-      if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
-      console.error('Error in admin collector:', err);
+    } else {
+      await interaction.update({
+        embeds: hub.embeds,
+        components: hub.components
+      });
     }
-  });
+  } catch (err: any) {
+    if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
+    console.error('Error handling global admin interaction:', err);
+    try {
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: '⚠️ An error occurred while processing admin action.', flags: MessageFlags.Ephemeral });
+      }
+    } catch {
+      // ignore
+    }
+  }
 }

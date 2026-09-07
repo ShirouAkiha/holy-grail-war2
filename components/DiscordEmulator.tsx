@@ -5551,14 +5551,30 @@ export default function DiscordEmulator({
 
   // Helper: Post Administrator Control Hub
   const postAdminHub = (
-    category: 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'npanim',
+    category: 'war' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war',
     actionOutcomeMsg?: string
   ) => {
     let title = '👑 Holy Grail War Admin Suite';
     let description = '';
     let color = '#d4af37';
 
-    if (category === 'npanim') {
+    if (category === 'war') {
+      title = '🏆 Overseer Control: Holy Grail War Master Dashboard';
+      color = '#d4af37';
+      description =
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `Configure rituals, adjust lethality & servant pools, or trigger leyline cataclysms across the server.\n\n` +
+        `🏰 **Active War Format:** **5th Fuyuki Holy Grail War**\n` +
+        `👥 **Roster Status:** **7/7 Masters Active** | ☠️ **Eliminations:** **0 Fallen**\n\n` +
+        `📋 **Active Ritual Configuration & Rules:**\n` +
+        `• ⚔️ **Servant Pool:** 📖 Canon Type-Moon Only\n` +
+        `• 🔒 **Class Exclusivity:** \`Strict (1 per Class)\`\n` +
+        `• 💀 **Lethality Mode:** \`Permadeath (Eliminated on HP 0)\`\n` +
+        `• ✦ **Starting Command Seals:** \`3 Seals\`\n` +
+        `• 💧 **Leyline Density:** \`Standard (5 min full recovery)\`\n` +
+        `• ⛪ **Church Sanctuary:** \`Active Asylum under Father Kotomine\`\n\n` +
+        `*Click a preset or lifecycle button below to configure the war!*`;
+    } else if (category === 'npanim') {
       title = '🎬 Admin Control: Noble Phantasm Animation Manager';
       color = '#d4af37';
       description =
@@ -5597,14 +5613,25 @@ export default function DiscordEmulator({
     }
 
     const categoryNavButtons = [
+      { id: 'admin_tab_war', label: 'Grail War Rules', style: (category === 'war' ? 'primary' : 'secondary') as any, emoji: '🏆' },
       { id: 'admin_tab_npanim', label: 'NP Animations', style: (category === 'npanim' ? 'primary' : 'secondary') as any, emoji: '🎬' },
       { id: 'admin_tab_npsettings', label: 'Duel Settings', style: (category === 'npsettings' ? 'primary' : 'secondary') as any, emoji: '⚙️' },
-      { id: 'admin_tab_listnp', label: 'Animation List', style: (category === 'listnp' ? 'primary' : 'secondary') as any, emoji: '📋' },
       { id: 'admin_tab_economy', label: 'Economy Mint', style: (category === 'economy' ? 'primary' : 'secondary') as any, emoji: '💎' }
     ];
 
     let actionButtons: any[] = [];
-    if (category === 'economy') {
+    if (category === 'war') {
+      actionButtons = [
+        { id: 'admin_war_preset_fuyuki_7', label: '5th Fuyuki (7P)', style: 'primary', emoji: '🏆' },
+        { id: 'admin_war_preset_apocrypha_14', label: 'Apocrypha (14P)', style: 'success', emoji: '⚔️' },
+        { id: 'admin_war_preset_singularity_chaos', label: 'Singularity (30P)', style: 'secondary', emoji: '🌌' },
+        { id: 'admin_war_preset_desolate_hardcore', label: 'Desolate Hardcore', style: 'danger', emoji: '💀' },
+        { id: 'admin_war_action_restart', label: 'Restart War', style: 'success', emoji: '🚀' },
+        { id: 'admin_war_action_reset', label: 'Quick Refresh', style: 'secondary', emoji: '🔄' },
+        { id: 'admin_war_cataclysm_hub', label: 'Cataclysm', style: 'danger', emoji: '⚡' },
+        { id: 'admin_war_history_view', label: 'Hall of Fame', style: 'secondary', emoji: '📜' }
+      ];
+    } else if (category === 'economy') {
       actionButtons = [
         { id: 'admin_mint_30sq', label: '+30 SQ (Multi)', style: 'primary', emoji: '💎' },
         { id: 'admin_mint_100sq', label: '+100 SQ', style: 'success', emoji: '💎' },
@@ -6863,16 +6890,13 @@ export default function DiscordEmulator({
       }
       return;
     } else if (
-      btnId.startsWith('admin_tab_') ||
-      btnId.startsWith('admin_mint_') ||
-      btnId.startsWith('admin_toggle_') ||
-      btnId.startsWith('admin_set_afk_') ||
-      btnId.startsWith('admin_link_') ||
-      btnId === 'admin_refill_seals' ||
-      btnId === 'admin_refresh_view'
+      btnId.startsWith('admin_')
     ) {
       // 1. Navigation Tabs
-      if (btnId === 'admin_tab_npanim') {
+      if (btnId === 'admin_tab_war') {
+        setAdminHubCategory('war' as any);
+        postAdminHub('war' as any);
+      } else if (btnId === 'admin_tab_npanim') {
         setAdminHubCategory('npanim');
         postAdminHub('npanim');
       } else if (btnId === 'admin_tab_npsettings') {
@@ -6885,7 +6909,31 @@ export default function DiscordEmulator({
         setAdminHubCategory('economy');
         postAdminHub('economy');
       }
-      // 2. Economy Minting
+      // 2. Grail War Presets & Rules Configuration
+      else if (btnId === 'admin_war_preset_fuyuki_7') {
+        postAdminHub('war' as any, '✨ Applied **5th Fuyuki (7 Masters)** format! Strict 1-per-class, Canon Only, Permadeath.');
+      } else if (btnId === 'admin_war_preset_apocrypha_14') {
+        postAdminHub('war' as any, '✨ Applied **Great Holy Grail War (14 Masters - Red vs Black)** format! Expanded capacity.');
+      } else if (btnId === 'admin_war_preset_singularity_chaos') {
+        postAdminHub('war' as any, '✨ Applied **Singularity Chaos (30 Masters)** format! Canon + Custom Servants permitted.');
+      } else if (btnId === 'admin_war_preset_desolate_hardcore') {
+        postAdminHub('war' as any, '💀 Applied **Desolate Hardcore** format! 1 Command Seal, Slow 15m Leylines, Extreme lethality.');
+      }
+      // 3. Grail War Lifecycle Actions
+      else if (btnId === 'admin_war_action_restart') {
+        postAdminHub('war' as any, '🚀 **Holy Grail War Restarted!** Previous battle chronicles saved to Hall of Fame, all Masters refreshed to 3 Command Seals.');
+      } else if (btnId === 'admin_war_action_reset') {
+        postAdminHub('war' as any, '🔄 **Holy Grail War Refreshed!** All Servants restored to full HP, sanctuary wards reactivated.');
+      } else if (btnId === 'admin_war_history_view') {
+        postAdminHub('war' as any, '📜 **Hall of Fame:** Previous war concluded with Victor **Kiritsugu** and *Artoria Pendragon* (7 Participants, 6 Eliminations).');
+      }
+      // 4. Cataclysms
+      else if (btnId === 'admin_war_cataclysm_hub') {
+        postAdminHub('war' as any, '⚡ **Select a Leyline Cataclysm:**\n• 🖤 Mud Surge (-35% HP)\n• 🌌 Moon Cell Purge (Sanctuaries dissolved)\n• 🔥 Mana Burst (All NP gauge +100%)\n• ☠️ Sudden Death (Double damage for 1 hour)');
+      } else if (btnId.startsWith('admin_cata_')) {
+        postAdminHub('war' as any, '⚡ **Cataclysm Invoked across Fuyuki Leylines!** All active Masters affected.');
+      }
+      // 5. Economy Minting
       else if (btnId === 'admin_mint_30sq') {
         const newSq = (master.saintQuartz || 0) + 30;
         onUpdateMaster({ ...master, saintQuartz: newSq });
@@ -6902,7 +6950,7 @@ export default function DiscordEmulator({
         onUpdateMaster({ ...master, commandSeals: 3 });
         postAdminHub('economy', '🔱 Restored Command Seals to 3/3!');
       }
-      // 3. Duel NP Settings
+      // 6. Duel NP Settings
       else if (btnId === 'admin_toggle_autodelete') {
         postAdminHub('npsettings', '🔄 Toggled Duel NP animation auto-delete.');
       } else if (btnId === 'admin_set_afk_30') {
@@ -6910,9 +6958,9 @@ export default function DiscordEmulator({
       } else if (btnId === 'admin_set_afk_60') {
         postAdminHub('npsettings', '⏱️ Set duel turn timeout to 60 seconds.');
       } else if (btnId === 'admin_refresh_view') {
-        postAdminHub(adminHubCategory, '🔄 View refreshed.');
+        postAdminHub(adminHubCategory as any, '🔄 View refreshed.');
       }
-      // 4. Cross-Hub Shortcuts
+      // 7. Cross-Hub Shortcuts
       else if (btnId === 'admin_link_inventory') {
         postInventoryHub('ces');
       } else if (btnId === 'admin_link_servant') {

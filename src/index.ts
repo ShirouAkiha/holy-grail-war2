@@ -517,6 +517,11 @@ client.on(Events.InteractionCreate, async interaction => {
 
     // ROUTE C: Select Dropdown Menus (e.g. equipping Craft Essence from /customise equip or /inventory)
     if (interaction.isStringSelectMenu()) {
+      if (interaction.customId.startsWith('admin_')) {
+        await adminCommand.handleAdminGlobalInteraction(interaction);
+        return;
+      }
+
       if (interaction.customId === 'select_servant_registry' || interaction.customId.startsWith('select_servant_')) {
         await handleServantsListInteraction(interaction);
         return;
@@ -614,6 +619,12 @@ client.on(Events.InteractionCreate, async interaction => {
       if (interaction.replied || interaction.deferred) return;
 
       const btnId = interaction.customId;
+
+      // Admin Hub Control Suite
+      if (btnId.startsWith('admin_')) {
+        await adminCommand.handleAdminGlobalInteraction(interaction);
+        return;
+      }
 
       // Servant List Pagination & Filter Controls
       if (btnId.startsWith('servant_list_')) {
