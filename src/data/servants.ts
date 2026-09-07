@@ -1147,8 +1147,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     battleStartQuote: '⟨ Skar zhal, Krav\'nok! Voth ruk\'thar Xal\'nok. ⟩ (Leave now, mortal pests! I annihilate them all.)',
     victoryQuote: '⟨ Drazk\'hlor Krav\'nok. Krag zul Vael\'ix. ⟩ (Pathetic mortals. The earth is mine.)',
     defeatQuote: '⟨ Vrak\'ix... Voth zul Vael\'drom Kor Lyozes! ⟩ (Void... I am bound for eternity to Lyozes!)',
-    avatarUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/2/23/S339_Stage1.png',
-    cardArtUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/6/62/S339_Stage4.png',
+    avatarUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=400&auto=format&fit=crop&q=80',
+    cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
     isCustomOrMeme: false
   }
 ];

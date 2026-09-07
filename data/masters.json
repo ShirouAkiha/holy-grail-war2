@@ -146,7 +146,7 @@
         "effectText": "Charges NP gauge by 4% every turn. Increases Quick performance by 4%. Increases NP damage by 5%.",
         "passiveType": "quick_up",
         "passiveValue": 4,
-        "artworkUrl": "https://cdn.discordapp.com/ephemeral-attachments/1544741784398340116/1544751958865223840/CE2470.webp?ex=6a99a5df&is=6a98545f&hm=dbd1d7ff68a7fba5139d5a05b8cf759e01360c544396492d92ebc527af41eb67&"
+        "artworkUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400"
       },
       {
         "id": "ce_imaginary_element",
@@ -292,8 +292,8 @@
             "target": "single",
             "multiplier": 1200,
             "overchargeEffect": "Instant death chance + DEF down 20% + 25 Critical Stars",
-            "animationUrl": "https://cdn.discordapp.com/ephemeral-attachments/1543963987723681853/1545053235021090927/cu_chulain_np.gif?ex=6a9abe74&is=6a996cf4&hm=2aaca87db3c0a2b8384b5d406a23fca493ca32b7d6456bd753474d115a255ce5&",
-            "gifUrl": "https://cdn.discordapp.com/ephemeral-attachments/1543963987723681853/1545053235021090927/cu_chulain_np.gif?ex=6a9abe74&is=6a996cf4&hm=2aaca87db3c0a2b8384b5d406a23fca493ca32b7d6456bd753474d115a255ce5&"
+            "animationUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400",
+            "gifUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400"
           },
           "lore": "The tragic Celtic warrior hero of the Ulster cycle who wielded the cursed red spear Gáe Bolg.",
           "summonQuote": "Yo! Servant Lancer. Call me the Hound of Culann. Let's have some fun in this war!",
@@ -320,7 +320,7 @@
           "effectText": "Increases Arts Card effectiveness and NP gain by 25%.",
           "passiveType": "arts_up",
           "passiveValue": 25,
-          "artworkUrl": "https://cdn.discordapp.com/ephemeral-attachments/1544735360225906740/1544754678967836802/Screenshot_2026-09-02_223308.png?ex=6a99a867&is=6a9856e7&hm=c62e49b15aef35fb1286e3877149cad01b2415db6d719eb0327a1e2bec412352&"
+          "artworkUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400"
         }
       }
     ],
@@ -338,7 +338,7 @@
         "effectText": "Increases Arts Card effectiveness and NP gain by 25%.",
         "passiveType": "arts_up",
         "passiveValue": 25,
-        "artworkUrl": "https://cdn.discordapp.com/ephemeral-attachments/1544735360225906740/1544754678967836802/Screenshot_2026-09-02_223308.png?ex=6a99a867&is=6a9856e7&hm=c62e49b15aef35fb1286e3877149cad01b2415db6d719eb0327a1e2bec412352&"
+        "artworkUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400"
       },
       {
         "id": "ce_dragon_meridian",
@@ -413,7 +413,7 @@
         "effectText": "Charges NP gauge by 4% every turn. Increases Quick performance by 4%. Increases NP damage by 5%.",
         "passiveType": "quick_up",
         "passiveValue": 4,
-        "artworkUrl": "https://cdn.discordapp.com/ephemeral-attachments/1544741784398340116/1544751958865223840/CE2470.webp?ex=6a99a5df&is=6a98545f&hm=dbd1d7ff68a7fba5139d5a05b8cf759e01360c544396492d92ebc527af41eb67&"
+        "artworkUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400"
       },
       {
         "id": "ce_hydra_dagger",
@@ -443,7 +443,7 @@
         "effectText": "Increases Arts Card effectiveness and NP gain by 25%.",
         "passiveType": "arts_up",
         "passiveValue": 25,
-        "artworkUrl": "https://cdn.discordapp.com/ephemeral-attachments/1544735360225906740/1544754678967836802/Screenshot_2026-09-02_223308.png?ex=6a99a867&is=6a9856e7&hm=c62e49b15aef35fb1286e3877149cad01b2415db6d719eb0327a1e2bec412352&"
+        "artworkUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400"
       }
     ],
     "lastDailyClaim": 1788777440522,

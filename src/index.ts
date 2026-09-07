@@ -1148,7 +1148,7 @@ client.on(Events.InteractionCreate, async interaction => {
           }
 
           await interaction.editReply({ 
-            embeds: [profileEmbed, artworkEmbed], 
+            embeds: [profileEmbed], 
             files,
             components: [actions] 
           });
@@ -1470,7 +1470,7 @@ client.on(Events.MessageCreate, async message => {
             }
           } catch {}
 
-          await message.reply({ embeds: [profileEmbed, artworkEmbed], files, components: [actions] });
+          await message.reply({ embeds: [profileEmbed], files, components: [actions] });
           return;
         }
       }
