@@ -1106,15 +1106,38 @@ export function attachServantCollector(
         return;
       }
 
+      // Modals and ephemeral replies are handled above with immediate return
+      // For hub updates that involve canvas rendering, defer update to avoid 3000ms Discord timeout
+      if (!i.deferred && !i.replied) {
+        await i.deferUpdate().catch(() => {});
+      }
+
       const hub = await buildServantHub(master, targetServant, currentCategory, currentServantId, actionOutcomeMsg, currentStep);
-      await i.update({
-        embeds: hub.embeds,
-        files: hub.files,
-        components: hub.components
-      });
+      
+      if (i.deferred || i.replied) {
+        await i.editReply({
+          embeds: hub.embeds,
+          files: hub.files,
+          components: hub.components
+        });
+      } else {
+        await i.update({
+          embeds: hub.embeds,
+          files: hub.files,
+          components: hub.components
+        });
+      }
 
     } catch (err: any) {
-      if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
+      if (
+        err.code === 10062 || 
+        err.code === 40060 || 
+        err.code === 50027 || 
+        err.message?.includes('Unknown interaction') || 
+        err.message?.includes('already been acknowledged')
+      ) {
+        return;
+      }
       console.error('Error in servant collector:', err);
     }
   });

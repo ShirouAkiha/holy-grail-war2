@@ -583,7 +583,15 @@ export function attachGrailWarCollector(
       });
 
     } catch (err: any) {
-      if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
+      if (
+        err.code === 10062 || 
+        err.code === 40060 || 
+        err.code === 50027 || 
+        err.message?.includes('Unknown interaction') || 
+        err.message?.includes('already been acknowledged')
+      ) {
+        return;
+      }
       console.error('Error in grailwar collector:', err);
     }
   });
