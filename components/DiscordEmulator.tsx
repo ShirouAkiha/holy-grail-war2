@@ -3888,7 +3888,6 @@ export default function DiscordEmulator({
 
   // Helper: Post Full Profile of a specific Servant Template to Everyone
   const postServantFullProfile = (template: ServantTemplate) => {
-    const stars = '⭐'.repeat(template.rarity || 5);
     const deck = (template.commandDeck || ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'])
       .map(c => (c === 'Buster' ? '🔴 Buster' : c === 'Arts' ? '🔵 Arts' : '🟢 Quick'))
       .join(' • ');
@@ -3940,7 +3939,7 @@ export default function DiscordEmulator({
         thumbnailUrl: template.avatarUrl,
         imageUrl: template.cardArtUrl || template.avatarUrl,
         description:
-          `${stars} | Class: **${template.servantClass}** | Origin: **${template.isCustomOrMeme ? '🛠️ Custom Administrator Creation' : '🏛️ Canon Heroic Spirit'}**\n\n` +
+          `Class: **${template.servantClass}** | Origin: **${template.isCustomOrMeme ? '🛠️ Custom Administrator Creation' : '🏛️ Canon Heroic Spirit'}** | Status: **⚖️ Balanced Parity**\n\n` +
           `📜 **Historical Legend & Lore:**\n> ${template.lore || 'A legendary soul recorded in the Throne of Heroes.'}\n\n` +
           `📊 **Base Combat Parameters:**\n` +
           `• **STR:** \`${template.baseStats.strength}\` | **END:** \`${template.baseStats.endurance}\` | **AGI:** \`${template.baseStats.agility}\`\n` +
@@ -3958,7 +3957,7 @@ export default function DiscordEmulator({
           `• **Battle Start:** *"${template.battleStartQuote}"*\n` +
           `• **Victory:** *"${template.victoryQuote}"*\n` +
           `• **Defeat:** *"${template.defeatQuote}"*`,
-        color: template.servantClass === 'Saber' ? '#3b82f6' : template.rarity === 5 ? '#f59e0b' : '#a855f7',
+        color: template.servantClass === 'Saber' ? '#3b82f6' : '#d4af37',
         footer: `Throne ID: ${template.id} • Holy Grail War Public Registry • Visible to everyone in channel`
       },
       canvasType: 'servant',
@@ -3966,7 +3965,7 @@ export default function DiscordEmulator({
       artworkEmbed: {
         title: `🖼️ Character Artwork: ${template.name}`,
         imageUrl: template.cardArtUrl || template.avatarUrl,
-        color: template.servantClass === 'Saber' ? '#3b82f6' : template.rarity === 5 ? '#f59e0b' : '#a855f7'
+        color: template.servantClass === 'Saber' ? '#3b82f6' : '#d4af37'
       },
       components: {
         type: 'buttons',
@@ -3985,7 +3984,6 @@ export default function DiscordEmulator({
     const np = template.noblePhantasm;
     const gifUrl = getNoblePhantasmGif(template);
     const chant = getNoblePhantasmChant(template);
-    const stars = '⭐'.repeat(template.rarity || 5);
     const cardColor = np.cardType === 'Buster' ? '#ef4444' : np.cardType === 'Arts' ? '#3b82f6' : '#10b981';
 
     addMessage({
@@ -3998,7 +3996,7 @@ export default function DiscordEmulator({
         imageUrl: gifUrl,
         description:
           `> *"${chant || np.chant || 'True Name Unleashed!'}"*\n\n` +
-          `• **Heroic Spirit:** **${template.name}** — *${template.title}* [\`${template.servantClass}\` ${stars}]\n` +
+          `• **Heroic Spirit:** **${template.name}** — *${template.title}* [\`${template.servantClass}\`]\n` +
           `• **Card Type & Target:** **${np.cardType}** • **${np.target.toUpperCase()}**\n` +
           `• **Damage Multiplier:** \`${np.multiplier}%\` | **Overcharge:** ${np.overchargeEffect || 'Standard boost'}\n` +
           `• **True Name Power:** ${np.description}\n\n` +
@@ -4020,7 +4018,6 @@ export default function DiscordEmulator({
 
   // Helper: Post Full Artwork Card
   const postArtworkCard = (template: ServantTemplate) => {
-    const stars = '⭐'.repeat(template.rarity || 5);
     const imgUrl = template.cardArtUrl || template.avatarUrl;
 
     addMessage({
@@ -4032,10 +4029,10 @@ export default function DiscordEmulator({
         thumbnailUrl: template.avatarUrl,
         imageUrl: imgUrl,
         description:
-          `${stars} | Class: **${template.servantClass}** | Origin: **${template.isCustomOrMeme ? '🛠️ Custom Administrator Creation' : '🏛️ Canon Heroic Spirit'}**\n\n` +
+          `Class: **${template.servantClass}** | Origin: **${template.isCustomOrMeme ? '🛠️ Custom Administrator Creation' : '🏛️ Canon Heroic Spirit'}** | Status: **⚖️ Balanced Parity**\n\n` +
           `📜 **Legend & Lore:**\n> ${template.lore || 'A legendary soul recorded in the Throne of Heroes.'}\n\n` +
           `💥 **Noble Phantasm:** *${template.noblePhantasm.name}* (${template.noblePhantasm.cardType})`,
-        color: template.servantClass === 'Saber' ? '#3b82f6' : template.rarity === 5 ? '#f59e0b' : '#a855f7',
+        color: template.servantClass === 'Saber' ? '#3b82f6' : '#d4af37',
         footer: `Throne ID: ${template.id} • Holy Grail War Card Archive`
       },
       components: {
@@ -4099,8 +4096,6 @@ export default function DiscordEmulator({
       classPassive = '❤️ **Battle Continuation (Guts):** Revives once with 25% Max HP if dealt a fatal blow.';
     }
 
-    const rarity = sTemplate.rarity || 5;
-    const rarityStars = '⭐'.repeat(rarity);
     const np = sTemplate.noblePhantasm;
 
     const userCurHp = userParticipant ? calculateCurrentHp(userParticipant) : (activeServant ? calculateServantMaxHp(activeServant) : 10000);
@@ -4116,7 +4111,7 @@ export default function DiscordEmulator({
           `*(🔒 This confidential profile is only visible to you. Other Masters cannot see these details.)*\n\n` +
           (customMsg ? `📢 **Action Outcome:**\n${customMsg}\n\n` : '') +
           `⚔️ **Contracted Servant:**\n` +
-          `• **${servantName}** [${rarityStars}] — Class: **${servantClass}**\n` +
+          `• **${servantName}** — Class: **${servantClass}** [Balanced Parity]\n` +
           `• **Noble Phantasm:** ✨ **${np.name}** (${np.cardType})\n` +
           `  *${np.chant || np.description}*\n\n` +
           `📊 **Combat Parameters:**\n` +
@@ -4677,7 +4672,6 @@ export default function DiscordEmulator({
       itemLines = paginated.map((s: any) => {
         const sN = s.nickname || s.template?.name || s.name || 'Heroic Spirit';
         const sCls = s.template?.servantClass || s.servantClass || 'Saber';
-        const sRar = s.template?.rarity || s.rarity || 5;
         const isAct = master.activeServantId === s.id;
         const isSel = (selectedId || invSelectedServantId) === s.id;
         const actBadge = isAct ? ' **[ACTIVE CONTRACT]**' : '';
@@ -5140,11 +5134,9 @@ export default function DiscordEmulator({
         ownedServants.map((s: any, idx: number) => {
           const sN = s.nickname || s.template?.name || s.name || 'Heroic Spirit';
           const sCls = s.template?.servantClass || s.servantClass || 'Saber';
-          const sRar = s.template?.rarity || s.rarity || 5;
           const isAct = master.activeServantId === s.id;
-          const stars = '★'.repeat(sRar);
           const actBadge = isAct ? ' **[ACTIVE CONTRACT]**' : '';
-          return `${idx + 1}. **[${stars} ${sCls}]** **${sN}** — Lv.${s.level || 1}/100 | Points: \`${s.availableStatPoints || 0} pts\`${actBadge}\n   ↳ *NP: ${s.template?.noblePhantasm?.name || 'Classified'}*`;
+          return `${idx + 1}. **[${sCls}]** **${sN}** — Lv.${s.level || 1}/100 | Points: \`${s.availableStatPoints || 0} pts\`${actBadge}\n   ↳ *NP: ${s.template?.noblePhantasm?.name || 'Classified'}*`;
         }).join('\n\n') +
         `\n\n*Select a Servant below to inspect parameters or set as your active contract.*`;
       color = '#d4af37';

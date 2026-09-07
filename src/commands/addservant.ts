@@ -317,7 +317,7 @@ export async function autocomplete(interaction: AutocompleteInteraction) {
 
       await interaction.respond(
         matches.map(s => ({
-          name: `${s.name} (${s.servantClass} ★${s.rarity}) ${s.isCustomOrMeme ? '[Custom]' : ''}`.slice(0, 100),
+          name: `${s.name} (${s.servantClass}) ${s.isCustomOrMeme ? '[Custom]' : ''}`.slice(0, 100),
           value: s.id
         }))
       );

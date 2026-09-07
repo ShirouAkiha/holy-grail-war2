@@ -117,7 +117,7 @@ export async function autocomplete(interaction: AutocompleteInteraction) {
 
     await interaction.respond(
       matches.map(s => ({
-        name: `${s.name} (${s.servantClass} ★${s.rarity}) ${s.isCustomOrMeme ? '[Custom]' : ''}`.slice(0, 100),
+        name: `${s.name} (${s.servantClass}) ${s.isCustomOrMeme ? '[Custom]' : ''}`.slice(0, 100),
         value: s.name
       }))
     );
@@ -259,13 +259,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
 // Build Servant Full Profile Embed
 export function buildServantFullProfileEmbed(servant: ServantTemplate) {
-  const stars = '⭐'.repeat(servant.rarity || 5);
   const deck = (servant.commandDeck || ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'])
     .map(c => (c === 'Buster' ? '🔴 Buster' : c === 'Arts' ? '🔵 Arts' : '🟢 Quick'))
     .join(' • ');
 
   const np = servant.noblePhantasm;
-  const cardColor = servant.servantClass === 'Saber' ? 0x3b82f6 : servant.rarity === 5 ? 0xd4af37 : 0x9333ea;
+  const cardColor = servant.servantClass === 'Saber' ? 0x3b82f6 : 0xd4af37;
 
   const activeSkillsText = servant.skills && servant.skills.length > 0
     ? servant.skills.map((s, idx) => `• **Skill ${idx + 1}: ${s.name}** [CD: ${s.cooldown}T] — ${s.description}`).join('\n')
@@ -288,7 +287,7 @@ export function buildServantFullProfileEmbed(servant: ServantTemplate) {
   const embed = new EmbedBuilder()
     .setTitle(`⚔️ ${servant.name} — ${servant.title}`)
     .setDescription(
-      `${stars} | Class: **${servant.servantClass}** | Origin: **${servant.isCustomOrMeme ? '🛠️ Custom Administrator Creation' : '🏛️ Canon Heroic Spirit'}**\n\n` +
+      `Class: **${servant.servantClass}** | Origin: **${servant.isCustomOrMeme ? '🛠️ Custom Administrator Creation' : '🏛️ Canon Heroic Spirit'}** | Status: **⚖️ Balanced Parity**\n\n` +
       `📜 **Historical Legend & Lore:**\n> ${servant.lore || 'A legendary soul recorded in the Throne of Heroes.'}\n\n` +
       `📊 **Base Parameters:**\n` +
       `• **STR:** ${servant.baseStats.strength} | **END:** ${servant.baseStats.endurance} | **AGI:** ${servant.baseStats.agility}\n` +
@@ -395,9 +394,8 @@ export function buildServantsListUI(
     listContent = pageItems.map((s, idx) => {
       const globalIdx = startIndex + idx + 1;
       const originTag = s.isCustomOrMeme ? '🛠️ [CUSTOM]' : '🏛️ [CANON]';
-      const stars = '⭐'.repeat(s.rarity || 5);
       const emoji = getClassEmoji(s.servantClass);
-      return `${globalIdx}. ${emoji} **${s.name}** — *${s.title}* [\`${s.servantClass}\` ${stars}] ${originTag}\n   └ *NP:* **${s.noblePhantasm.name}** | HP: \`${s.baseHp.toLocaleString()}\` | ATK: \`${s.baseAtk.toLocaleString()}\``;
+      return `${globalIdx}. ${emoji} **${s.name}** — *${s.title}* [\`${s.servantClass}\`] ${originTag}\n   └ *NP:* **${s.noblePhantasm.name}** | HP: \`${s.baseHp.toLocaleString()}\` | ATK: \`${s.baseAtk.toLocaleString()}\``;
     }).join('\n');
   }
 
@@ -423,7 +421,7 @@ export function buildServantsListUI(
         pageItems.map(s =>
           new StringSelectMenuOptionBuilder()
             .setLabel(`${s.name} (${s.servantClass})`.slice(0, 100))
-            .setDescription(`★${s.rarity} • ${s.title || s.noblePhantasm.name}`.slice(0, 100))
+            .setDescription(`${s.servantClass} • ${s.title || s.noblePhantasm.name}`.slice(0, 100))
             .setValue(`servant_view_${s.id}`)
             .setEmoji(getClassEmoji(s.servantClass))
         )
@@ -481,14 +479,13 @@ export function buildNoblePhantasmEmbed(servant: ServantTemplate) {
   const np = servant.noblePhantasm;
   const gifUrl = getNoblePhantasmGif(servant);
   const chant = getNoblePhantasmChant(servant);
-  const stars = '⭐'.repeat(servant.rarity || 5);
   const color = np.cardType === 'Buster' ? 0xef4444 : np.cardType === 'Arts' ? 0x3b82f6 : 0x10b981;
 
   const embed = new EmbedBuilder()
     .setTitle(`💥 NOBLE PHANTASM: ${np.name}`)
     .setDescription(
       `> *"${chant || np.chant || 'True Name Unleashed!'}"*\n\n` +
-      `• **Heroic Spirit:** **${servant.name}** — *${servant.title}* [\`${servant.servantClass}\` ${stars}]\n` +
+      `• **Heroic Spirit:** **${servant.name}** — *${servant.title}* [\`${servant.servantClass}\`]\n` +
       `• **Card Type & Target:** **${np.cardType}** • **${np.target.toUpperCase()}**\n` +
       `• **Damage Multiplier:** \`${np.multiplier}%\` | **Overcharge:** ${np.overchargeEffect || 'Standard boost'}\n` +
       `• **True Name Power:** ${np.description}\n\n` +

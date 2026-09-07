@@ -807,7 +807,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const avatarUrl = interaction.user.displayAvatarURL ? interaction.user.displayAvatarURL() : undefined;
         const boastEmbed = new EmbedBuilder()
           .setTitle(`📢 MASTER DECLARATION | Covenant Established!`)
-          .setDescription(`Master **${interaction.user.username}** boasts a covenant with **${template.name}** (${'⭐'.repeat(template.rarity || 5)} ${template.servantClass})!\n\n*"${activeServant.customQuotes?.summon || template.summonQuote || 'I answer your call, Master.'}"*`)
+          .setDescription(`Master **${interaction.user.username}** boasts a covenant with **${template.name}** (${template.servantClass})!\n\n*"${activeServant.customQuotes?.summon || template.summonQuote || 'I answer your call, Master.'}"*`)
           .setColor(0xd4af37);
         if (avatarUrl) boastEmbed.setThumbnail(avatarUrl);
         await interaction.reply({ embeds: [boastEmbed] });

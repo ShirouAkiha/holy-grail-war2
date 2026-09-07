@@ -1212,15 +1212,15 @@ export async function renderServantProfileCard(
   ctx.font = '16px sans-serif';
   ctx.fillText(`${t.title || 'Heroic Spirit'} • Master: ${masterName}`, 30, 80);
 
-  // Class Badge & Stars on Right
+  // Class Badge & Parity on Right
   ctx.textAlign = 'right';
-  ctx.fillStyle = t.rarity === 5 ? '#fbbf24' : '#38bdf8';
+  ctx.fillStyle = '#fbbf24';
   ctx.font = 'bold 22px sans-serif';
   ctx.fillText((t.servantClass || 'SABER').toUpperCase(), 770, 52);
 
-  ctx.fillStyle = '#fbbf24';
-  ctx.font = '22px sans-serif';
-  ctx.fillText('★'.repeat(t.rarity || 5), 770, 80);
+  ctx.fillStyle = '#d4af37';
+  ctx.font = 'bold 12px monospace, sans-serif';
+  ctx.fillText('HEROIC SPIRIT • BALANCED', 770, 78);
 
   // Divider Line
   ctx.strokeStyle = '#334155';

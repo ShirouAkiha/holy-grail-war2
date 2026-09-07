@@ -64,8 +64,6 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
     classPassive = '❤️ **Battle Continuation (Guts):** Revives once with 25% Max HP if dealt a fatal blow.';
   }
 
-  const rarity = sTemplate.rarity || activeServant.rarity || 5;
-  const rarityStars = '⭐'.repeat(rarity);
   const np = sTemplate.noblePhantasm || activeServant.noblePhantasm || { name: 'Excalibur', cardType: 'Buster', target: 'aoe', description: 'Sword of Promised Victory' };
   const baseAtk = sTemplate.baseAtk || activeServant.baseAtk || activeServant.baseStats?.atk || 12000;
 
@@ -77,7 +75,7 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
       `*(🔒 This confidential profile is only visible to you. Other Masters cannot see these details.)*\n\n` +
       (lastMsg ? `📢 **Action Outcome:**\n${lastMsg}\n\n` : '') +
       `⚔️ **Contracted Servant:**\n` +
-      `• **${servantName}** [${rarityStars}] — Class: **${servantClass}**\n` +
+      `• **${servantName}** — Class: **${servantClass}** [Balanced Parity]\n` +
       `• **Noble Phantasm:** ✨ **${np.name}** [${np.cardType} • ${(np.target || 'single').toUpperCase()}]\n` +
       `  *${np.description}*\n\n` +
       `📊 **Combat Parameters & Live Vitality:**\n` +

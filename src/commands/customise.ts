@@ -96,12 +96,10 @@ export function buildInventoryHub(
     itemLines = paginated.map((s: any) => {
       const sN = s.nickname || s.template?.name || 'Heroic Spirit';
       const sCls = s.template?.servantClass || 'Saber';
-      const sRar = s.template?.rarity || 5;
       const isAct = master.activeServantId === s.id;
-      const rarTag = sRar >= 5 ? '★5 SSR' : sRar >= 4 ? '★4 SR' : '★3 R';
       const actBadge = isAct ? ' **[ACTIVE CONTRACT]**' : '';
       const arrow = (selectedItemId && selectedItemId === s.id) ? '➡️ ' : '• ';
-      return `${arrow}**${rarTag}** — **${sN}** — Lv.${s.level || 1} (${sCls})${actBadge}`;
+      return `${arrow}**[${sCls}]** — **${sN}** — Lv.${s.level || 1}${actBadge}`;
     });
 
     selectOptions = ownedServants.length > 0 
@@ -348,7 +346,7 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
                 new EmbedBuilder()
                   .setTitle(`⚔️ Servant Dossier: ${s.nickname || s.template?.name}`)
                   .setDescription(
-                    `**Class:** ${s.template?.servantClass} | **Rarity:** ★${s.template?.rarity || 5}\n` +
+                    `**Class:** ${s.template?.servantClass} | **Status:** ⚖️ Balanced Parity\n` +
                     `**Level:** Lv.${s.level || 1} | **Bond:** Lv.${s.bondLevel || 1}\n` +
                     `**Noble Phantasm:** ${s.template?.noblePhantasm?.name || 'Classified'} [${s.template?.noblePhantasm?.rank || 'A++'}]\n\n` +
                     `*Use \`/servant\` or \`!servant\` to view their full parameter radar card.*`

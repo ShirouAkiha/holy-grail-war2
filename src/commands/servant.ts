@@ -246,7 +246,7 @@ export async function buildServantHub(
       .setDescription(
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `*${t.title}* • **Master:** ${master.username}\n` +
-        `🌟 **Class:** ${t.servantClass} | **Rarity:** ${'★'.repeat(t.rarity)} | **Bond Lv:** ${bondLevel}/10 ♥ | **Level:** Lv.${lvl}/100\n` +
+        `🌟 **Class:** ${t.servantClass} | **Status:** ⚖️ Balanced Parity | **Bond Lv:** ${bondLevel}/10 ♥ | **Level:** Lv.${lvl}/100\n` +
         `❤️ **HP:** \`${currentHp.toLocaleString()} / ${totalHp.toLocaleString()}\` (${hpPercent}%) | ⚔️ **Total ATK:** \`${totalAtk.toLocaleString()}\` | 📈 **Stat Points:** **${targetServant.availableStatPoints || 0} pts**\n\n` +
         `📜 **Historical Legend & Lore:**\n> *${t.lore || 'A legendary heroic soul recorded in the Throne of Heroes, bound to fight in the Holy Grail War.'}*\n\n` +
         `📊 **Battle Parameters:**\n` +
@@ -357,14 +357,13 @@ export async function buildServantHub(
     const gifUrl = getNoblePhantasmGif(t);
     const chant = targetServant.customQuotes?.noblePhantasm || getNoblePhantasmChant(t);
     const np = t.noblePhantasm;
-    const stars = '⭐'.repeat(t.rarity || 5);
     const color = np.cardType === 'Buster' ? 0xef4444 : np.cardType === 'Arts' ? 0x3b82f6 : 0x10b981;
 
     const npEmbed = new EmbedBuilder()
       .setTitle(`💥 NOBLE PHANTASM: ${np.name}`)
       .setDescription(
         `> *"${chant || np.chant || 'True Name Unleashed!'}"*\n\n` +
-        `• **Heroic Spirit:** **${t.name}** — *${t.title}* [\`${t.servantClass}\` ${stars}]\n` +
+        `• **Heroic Spirit:** **${t.name}** — *${t.title}* [\`${t.servantClass}\`]\n` +
         `• **Card Type & Target:** **${np.cardType}** • **${np.target.toUpperCase()}**\n` +
         `• **Damage Multiplier:** \`${np.multiplier}%\` | **Overcharge:** ${np.overchargeEffect || 'Standard boost'}\n` +
         `• **True Name Power:** ${np.description}\n\n` +
@@ -410,11 +409,9 @@ export async function buildServantHub(
     const rosterList = master.servants.map((s: any, idx: number) => {
       const sN = s.nickname || s.template?.name || s.name || 'Heroic Spirit';
       const sCls = s.template?.servantClass || s.servantClass || 'Saber';
-      const sRar = s.template?.rarity || s.rarity || 5;
       const isAct = master.activeServantId === s.id;
-      const stars = '★'.repeat(sRar);
       const actBadge = isAct ? ' **[ACTIVE CONTRACT]**' : '';
-      return `${idx + 1}. **[${stars} ${sCls}]** **${sN}** — Lv.${s.level || 1}/100 | Points: \`${s.availableStatPoints || 0} pts\`${actBadge}\n   ↳ *NP: ${s.template?.noblePhantasm?.name || 'Classified'}*`;
+      return `${idx + 1}. **[${sCls}]** **${sN}** — Lv.${s.level || 1}/100 | Points: \`${s.availableStatPoints || 0} pts\`${actBadge}\n   ↳ *NP: ${s.template?.noblePhantasm?.name || 'Classified'}*`;
     }).join('\n\n');
 
     const embed = new EmbedBuilder()
@@ -494,7 +491,7 @@ export async function buildServantHub(
       .addOptions(
         master.servants.slice(0, 25).map((s: any) => ({
           label: `${s.nickname || s.template?.name || 'Servant'} (${s.template?.servantClass || 'Saber'})`,
-          description: `Lv. ${s.level || 1} • ★${s.template?.rarity || 5} • Available: ${s.availableStatPoints || 0} pts`,
+          description: `Lv. ${s.level || 1} • ${s.template?.servantClass || 'Heroic Spirit'} • Points: ${s.availableStatPoints || 0} pts`,
           value: s.id,
           default: s.id === targetServant.id
         }))
@@ -1066,19 +1063,18 @@ export function attachServantCollector(
         await saveMaster(master);
 
         const template = targetServant.template;
-        const starStr = '★'.repeat(template.rarity || 4);
         const announceEmbed = new EmbedBuilder()
           .setTitle(`📢 MASTER CHALLENGE: ${master.username.toUpperCase()} REVEALS SERVANT!`)
           .setDescription(
             `Master **${master.username}** has openly unveiled their contracted Heroic Spirit to all Masters in Fuyuki City!\n\n` +
             `⚔️ **True Name:** **${template.name}**\n` +
-            `🗡️ **Class:** \`${template.servantClass}\` [${starStr}] | **Title:** *${template.title}*\n` +
+            `🗡️ **Class:** \`${template.servantClass}\` [Balanced Parity] | **Title:** *${template.title}*\n` +
             `💥 **Noble Phantasm:** *${template.noblePhantasm.name}* [${template.noblePhantasm.cardType.toUpperCase()}]\n` +
             `🗣️ *" ${targetServant.customQuotes?.summon || template.summonQuote || template.battleStartQuote} "*\n\n` +
             `⚠️ *By boasting openly, Master **${master.username}** is now permanently **EXPOSED** on the Holy Grail War board (\`/grailwar\`)!*`
           )
           .setImage(template.cardArtUrl || template.avatarUrl)
-          .setColor(template.rarity === 5 ? 0xd4af37 : 0xef4444);
+          .setColor(0xd4af37);
 
         if (i.channel && 'send' in i.channel) {
           await (i.channel as any).send({ embeds: [announceEmbed] });
