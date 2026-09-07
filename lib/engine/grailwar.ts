@@ -1403,7 +1403,7 @@ export function dispatchFamiliarInWar(
     id: `evt_fam_dispatch_${Date.now()}`,
     timestamp: now,
     text: `🦅 Familiar Dispatch: A concealed magical familiar was deployed to patrol ${chanTag}.`,
-    type: 'intel_leak'
+    type: 'patrol'
   });
 
   return {
@@ -1523,7 +1523,7 @@ export function patrolCityInWar(
       id: `evt_patrol_${Date.now()}`,
       timestamp: Date.now(),
       text: `👁️ Civilian Investigation in ${chanTag}: An innocent bystander conducted a clandestine patrol of the sector.`,
-      type: 'intel_leak'
+      type: 'patrol'
     });
 
     return {

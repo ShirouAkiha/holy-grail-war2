@@ -6,7 +6,8 @@ import {
 import { getOrCreateMaster } from '../database/service';
 import { 
   getOrInitWarSession, 
-  leakIntelInWar 
+  leakIntelInWar,
+  saveWarToDisk
 } from '../engine/grailwar';
 
 export const data = new SlashCommandBuilder()
@@ -37,6 +38,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       ? `#${(interaction.channel as any).name}`
       : '#general';
     const res = leakIntelInWar(war, interaction.user.id, intelText, targetQuery, channelName);
+    saveWarToDisk();
 
     const embed = new EmbedBuilder()
       .setTitle('🕵️ HOLY GRAIL WAR INTELLIGENCE LEAK BROADCAST')
