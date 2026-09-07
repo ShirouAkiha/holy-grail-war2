@@ -1566,7 +1566,7 @@ export default function DiscordEmulator({
               description: 
                 `Servant matching **"${targetQuery}"** not found in Throne of Heroes.\n\n` +
                 (suggestions.length > 0
-                  ? `**Did you mean:**\n` + suggestions.map(s => `• **${s.name}** (\`${s.servantClass}\` ★${s.rarity})`).join('\n') + `\n\n*Click a suggestion below to edit immediately:*`
+                  ? `**Did you mean:**\n` + suggestions.map(s => `• **${s.name}** (\`${s.servantClass}\`)`).join('\n') + `\n\n*Click a suggestion below to edit immediately:*`
                   : `Use \`/servants list\` or the \`⚡ Pick Servant\` tool to browse all Heroic Spirits.`),
               color: '#ef4444',
               footer: `Tip: Try searching by alias (e.g. "saber alter", "salter", "gil", "emiya")`
@@ -1696,7 +1696,7 @@ export default function DiscordEmulator({
             title: `✏️ Editing Heroic Spirit: ${target.name}`,
             description: 
               `**Current Parameters for ${target.name}:**\n\n` +
-              `• **ID:** \`${target.id}\` | **Class:** \`${target.servantClass}\` (★${target.rarity})\n` +
+              `• **ID:** \`${target.id}\` | **Class:** \`${target.servantClass}\` (Balanced Parity)\n` +
               `• **Title:** *${target.title}*\n` +
               `• **Base HP:** \`${target.baseHp.toLocaleString()}\` | **Base ATK:** \`${target.baseAtk.toLocaleString()}\`\n` +
               `• **Noble Phantasm:** **${target.noblePhantasm.name}** (${target.noblePhantasm.cardType})\n` +
@@ -3842,16 +3842,15 @@ export default function DiscordEmulator({
     } else {
       listLines = pageItems.map((s, idx) => {
         const tag = s.isCustomOrMeme ? '🛠️ [CUSTOM]' : '🏛️ [CANON]';
-        const stars = '⭐'.repeat(s.rarity || 5);
         const emoji = getEmoji(s.servantClass);
-        return `${startIndex + idx + 1}. ${emoji} **${s.name}** — *${s.title}* [\`${s.servantClass}\` ${stars}] ${tag}\n   └ *NP:* **${s.noblePhantasm.name}** | HP: \`${s.baseHp.toLocaleString()}\` | ATK: \`${s.baseAtk.toLocaleString()}\``;
+        return `${startIndex + idx + 1}. ${emoji} **${s.name}** — *${s.title}* [\`${s.servantClass}\`] ${tag}\n   └ *NP:* **${s.noblePhantasm.name}** | HP: \`${s.baseHp.toLocaleString()}\` | ATK: \`${s.baseAtk.toLocaleString()}\``;
       });
     }
 
     const selectOptions = pageItems.map(s => ({
       value: `view_servant_${s.id}`,
       label: `${s.name} (${s.servantClass})`,
-      description: `★${s.rarity} • ${s.title || s.noblePhantasm.name}`,
+      description: `${s.servantClass} • ${s.title || s.noblePhantasm.name}`,
       emoji: getEmoji(s.servantClass)
     }));
 
@@ -4681,10 +4680,9 @@ export default function DiscordEmulator({
         const sRar = s.template?.rarity || s.rarity || 5;
         const isAct = master.activeServantId === s.id;
         const isSel = (selectedId || invSelectedServantId) === s.id;
-        const stars = '★'.repeat(sRar);
         const actBadge = isAct ? ' **[ACTIVE CONTRACT]**' : '';
         const pointer = isSel ? '▶ ' : '• ';
-        return `${pointer}**[${stars} ${sCls}]** **${sN}** — Lv.${s.level || 1}/100 | Points: \`${s.availableStatPoints || 0} pts\`${actBadge}\n   ↳ *NP: ${s.template?.noblePhantasm?.name || 'Classified'}*`;
+        return `${pointer}**[${sCls}]** **${sN}** — Lv.${s.level || 1}/100 | Points: \`${s.availableStatPoints || 0} pts\`${actBadge}\n   ↳ *NP: ${s.template?.noblePhantasm?.name || 'Classified'}*`;
       });
 
       selectPlaceholder = selServant
@@ -4696,7 +4694,7 @@ export default function DiscordEmulator({
         return {
           value: `inv_sel_srv_${s.id}`,
           label: `${sN} (Lv.${s.level || 1} ${sCls})`,
-          description: `★${s.template?.rarity || 5} • Available: ${s.availableStatPoints || 0} pts • NP: ${s.template?.noblePhantasm?.name || 'Noble Phantasm'}`
+          description: `Balanced • Available: ${s.availableStatPoints || 0} pts • NP: ${s.template?.noblePhantasm?.name || 'Noble Phantasm'}`
         };
       });
     } else if (category === 'feed') {
@@ -5041,7 +5039,7 @@ export default function DiscordEmulator({
       title = `⚔️ Servant Workshop — Profile Card: ${sName}`;
       description =
         `*${t.title}* • **Master:** ${master.username}\n` +
-        `🌟 **Class:** ${t.servantClass} | **Rarity:** ${'★'.repeat(t.rarity)} | **Bond Lv:** ${bondLvl}/10 ♥ | **Level:** ${lvl}/100\n` +
+        `🌟 **Class:** ${t.servantClass} | **Parity:** Balanced | **Bond Lv:** ${bondLvl}/10 ♥ | **Level:** ${lvl}/100\n` +
         `❤️ **Max HP:** \`${totalHp.toLocaleString()}\` | ⚔️ **Total ATK:** \`${totalAtk.toLocaleString()}\` | 📈 **Stat Points:** **${availPoints} pts**\n\n` +
         `📊 **Battle Parameters:**\n` +
         `• **Strength (STR):** \`${strTotal}\` [${getRank(strTotal)}] | **Endurance (END):** \`${endTotal}\` [${getRank(endTotal)}]\n` +
@@ -5069,7 +5067,7 @@ export default function DiscordEmulator({
       title = `💥 Noble Phantasm: ${np.name}`;
       description =
         `> *"${targetServant.customQuotes?.noblePhantasm || np.chant || 'True Name Unleashed!'}"*\n\n` +
-        `• **Heroic Spirit:** **${t.name}** — *${t.title}* [\`${t.servantClass}\` ★${t.rarity}]\n` +
+        `• **Heroic Spirit:** **${t.name}** — *${t.title}* [\`${t.servantClass}\`]\n` +
         `• **Card Type & Target:** **${np.cardType}** • **${np.target.toUpperCase()}**\n` +
         `• **Damage Multiplier:** \`${np.multiplier}%\` | **Overcharge:** ${np.overchargeEffect || 'Standard boost'}\n` +
         `• **True Name Power:** ${np.description}\n\n` +
@@ -6191,7 +6189,7 @@ export default function DiscordEmulator({
             embed: {
               title: `⚔️ Servant Dossier: ${targetServant.nickname || targetServant.template?.name || (targetServant as any).name}`,
               description:
-                `**Class:** ${targetServant.template?.servantClass || (targetServant as any).servantClass} | **Rarity:** ★${targetServant.template?.rarity || 5}\n` +
+                `**Class:** ${targetServant.template?.servantClass || (targetServant as any).servantClass} | **Parity:** Balanced\n` +
                 `**Level:** Lv.${targetServant.level || 1}/100 | **Bond:** Lv.${targetServant.bondLevel || 1}/10 ♥\n` +
                 `**Available Stat Points:** \`${targetServant.availableStatPoints || 0} pts\`\n` +
                 `**Noble Phantasm:** **${targetServant.template?.noblePhantasm?.name || 'Classified'}**\n\n` +
@@ -9402,7 +9400,7 @@ export default function DiscordEmulator({
                         <div className="text-xs font-bold text-white flex items-center gap-2 truncate">
                           <span>{s.name}</span>
                           <span className="text-[10px] px-1.5 py-0.2 bg-white/10 text-[#d4af37] rounded">
-                            {s.servantClass} ★{s.rarity}
+                            {s.servantClass}
                           </span>
                           {s.isCustomOrMeme && (
                             <span className="text-[9px] px-1 bg-purple-900/60 text-purple-300 border border-purple-500/30 rounded">
@@ -9571,7 +9569,7 @@ export default function DiscordEmulator({
                             </div>
                             <div className="min-w-0">
                               <span className="font-bold text-white truncate">{s.name}</span>
-                              <span className="ml-1.5 text-[10px] text-white/50">({s.servantClass} ★{s.rarity})</span>
+                              <span className="ml-1.5 text-[10px] text-white/50">({s.servantClass})</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-1">

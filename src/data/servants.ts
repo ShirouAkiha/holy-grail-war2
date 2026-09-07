@@ -171,16 +171,18 @@ export function getUnlockedPassives(
 }
 
 export const SERVANT_DATABASE: ServantTemplate[] = [
-  // 5-Star SSR Servants
+  // Heroic Spirits - Equalized & Balanced for Competitive Grail War
+  // All Servants share an equalized total power budget (STR+END+AGI+MNA+LCK = 76 points).
+  // Zero star-rating penalties: 3-star and 4-star tier caps have been completely eliminated.
   {
     id: 'artoria_pendragon',
     name: 'Artoria Pendragon',
     title: 'King of Knights',
     servantClass: 'Saber',
     rarity: 5,
-    baseHp: 31500,
-    baseAtk: 11221,
-    baseStats: { strength: 18, endurance: 17, agility: 14, mana: 19, luck: 12 },
+    baseHp: 30000,
+    baseAtk: 10800,
+    baseStats: { strength: 17, endurance: 16, agility: 14, mana: 17, luck: 12 },
     commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
     skills: [
       {
@@ -253,9 +255,9 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     title: 'King of Heroes',
     servantClass: 'Archer',
     rarity: 5,
-    baseHp: 26500,
-    baseAtk: 10850,
-    baseStats: { strength: 14, endurance: 12, agility: 14, mana: 15, luck: 16 },
+    baseHp: 28000,
+    baseAtk: 11400,
+    baseStats: { strength: 15, endurance: 13, agility: 15, mana: 16, luck: 17 },
     commandDeck: ['Buster', 'Buster', 'Arts', 'Quick', 'Quick'],
     skills: [
       {
@@ -328,9 +330,9 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     title: 'Queen of the Land of Shadows',
     servantClass: 'Lancer',
     rarity: 5,
-    baseHp: 29500,
-    baseAtk: 11375,
-    baseStats: { strength: 17, endurance: 16, agility: 20, mana: 15, luck: 12 },
+    baseHp: 29000,
+    baseAtk: 11200,
+    baseStats: { strength: 16, endurance: 15, agility: 18, mana: 15, luck: 12 },
     commandDeck: ['Quick', 'Quick', 'Buster', 'Buster', 'Arts'],
     skills: [
       {
@@ -403,9 +405,9 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     title: 'Holy Maiden of Orleans',
     servantClass: 'Ruler',
     rarity: 5,
-    baseHp: 36000,
-    baseAtk: 9593,
-    baseStats: { strength: 14, endurance: 20, agility: 13, mana: 18, luck: 15 },
+    baseHp: 34500,
+    baseAtk: 9200,
+    baseStats: { strength: 13, endurance: 20, agility: 12, mana: 17, luck: 14 },
     commandDeck: ['Arts', 'Arts', 'Arts', 'Buster', 'Quick'],
     skills: [
       {
@@ -471,9 +473,9 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     title: 'Dragon Witch',
     servantClass: 'Avenger',
     rarity: 5,
-    baseHp: 31200,
-    baseAtk: 12240,
-    baseStats: { strength: 20, endurance: 15, agility: 14, mana: 16, luck: 8 },
+    baseHp: 27500,
+    baseAtk: 11800,
+    baseStats: { strength: 19, endurance: 14, agility: 14, mana: 16, luck: 13 },
     commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
     skills: [
       {
@@ -546,9 +548,9 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     title: 'Dark Cavalier of the Round',
     servantClass: 'Berserker',
     rarity: 5,
-    baseHp: 28500,
-    baseAtk: 11150,
-    baseStats: { strength: 17, endurance: 16, agility: 19, mana: 18, luck: 14 },
+    baseHp: 27500,
+    baseAtk: 11400,
+    baseStats: { strength: 17, endurance: 15, agility: 18, mana: 16, luck: 10 },
     commandDeck: ['Quick', 'Quick', 'Arts', 'Arts', 'Buster'],
     skills: [
       {
@@ -616,16 +618,15 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'
   },
 
-  // 4-Star SR Servants
   {
     id: 'artoria_pendragon_alter',
     name: 'Artoria Pendragon (Alter)',
     title: 'Black King of Knights',
     servantClass: 'Saber',
-    rarity: 4,
-    baseHp: 26400,
-    baseAtk: 10248,
-    baseStats: { strength: 19, endurance: 16, agility: 12, mana: 18, luck: 10 },
+    rarity: 5,
+    baseHp: 29000,
+    baseAtk: 11200,
+    baseStats: { strength: 19, endurance: 15, agility: 13, mana: 17, luck: 12 },
     commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
     skills: [
       {
@@ -690,10 +691,10 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     name: 'Nero Claudius',
     title: 'Emperor of Roses',
     servantClass: 'Saber',
-    rarity: 4,
-    baseHp: 27200,
-    baseAtk: 9449,
-    baseStats: { strength: 14, endurance: 14, agility: 15, mana: 16, luck: 17 },
+    rarity: 5,
+    baseHp: 31000,
+    baseAtk: 10400,
+    baseStats: { strength: 15, endurance: 15, agility: 15, mana: 16, luck: 15 },
     commandDeck: ['Arts', 'Arts', 'Buster', 'Buster', 'Quick'],
     skills: [
       {
@@ -765,10 +766,10 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     name: 'EMIYA',
     title: 'Wrought Iron Hero',
     servantClass: 'Archer',
-    rarity: 4,
-    baseHp: 26000,
-    baseAtk: 9398,
-    baseStats: { strength: 14, endurance: 14, agility: 16, mana: 15, luck: 11 },
+    rarity: 5,
+    baseHp: 29000,
+    baseAtk: 10800,
+    baseStats: { strength: 15, endurance: 15, agility: 16, mana: 16, luck: 14 },
     commandDeck: ['Arts', 'Arts', 'Arts', 'Buster', 'Quick'],
     skills: [
       {
@@ -840,10 +841,10 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     name: 'Heracles',
     title: 'Great Hero of Olympus',
     servantClass: 'Berserker',
-    rarity: 4,
-    baseHp: 24500,
-    baseAtk: 10655,
-    baseStats: { strength: 20, endurance: 18, agility: 14, mana: 10, luck: 14 },
+    rarity: 5,
+    baseHp: 26500,
+    baseAtk: 11800,
+    baseStats: { strength: 21, endurance: 18, agility: 14, mana: 10, luck: 13 },
     commandDeck: ['Buster', 'Buster', 'Buster', 'Arts', 'Quick'],
     skills: [
       {
@@ -899,7 +900,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       chant: '■■■■■■■■■■■■---!!! (ROOOOOAAAR)',
       description: 'Unleashes 9 simultaneous supersonic crushing blows with his gigantic stone slab blade.',
       target: 'single',
-      multiplier: 480,
+      multiplier: 800,
       overchargeEffect: 'Reduces target DEF by 20% for 3 turns'
     },
     lore: 'The greatest hero of Greek mythology who completed the Twelve Labors through superhuman fortitude.',
@@ -915,10 +916,10 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     name: 'Cú Chulainn',
     title: 'Hound of Culann',
     servantClass: 'Lancer',
-    rarity: 3,
-    baseHp: 22500,
-    baseAtk: 7239,
-    baseStats: { strength: 15, endurance: 15, agility: 19, mana: 12, luck: 10 },
+    rarity: 5,
+    baseHp: 29500,
+    baseAtk: 10800,
+    baseStats: { strength: 16, endurance: 16, agility: 19, mana: 13, luck: 12 },
     commandDeck: ['Quick', 'Quick', 'Arts', 'Buster', 'Buster'],
     skills: [
       {
@@ -991,9 +992,9 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     title: 'Hero of Charity',
     servantClass: 'Lancer',
     rarity: 5,
-    baseHp: 29800,
-    baseAtk: 11975,
-    baseStats: { strength: 18, endurance: 16, agility: 17, mana: 18, luck: 8 },
+    baseHp: 29500,
+    baseAtk: 11200,
+    baseStats: { strength: 18, endurance: 16, agility: 16, mana: 16, luck: 10 },
     commandDeck: ['Buster', 'Buster', 'Quick', 'Arts', 'Arts'],
     skills: [
       {

@@ -8,7 +8,8 @@ import {
   CombatBattleRecord,
   CombatTurnLog,
   MasterProfile,
-  MasterServantInstance
+  MasterServantInstance,
+  StatBalanceMode
 } from '../lib/types';
 import {
   createCombatantFromMasterServant,
@@ -70,8 +71,9 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
   // Enemy selection
   const [selectedEnemyId, setSelectedEnemyId] = useState<string>('gilgamesh_archer');
   const enemyTemplate = SERVANT_DATABASE.find(s => s.id === selectedEnemyId) || SERVANT_DATABASE[1];
+  const [balanceMode, setBalanceMode] = useState<StatBalanceMode>('archetype');
 
-  const setupNewBattle = (opponentTemplate = enemyTemplate) => {
+  const setupNewBattle = (opponentTemplate = enemyTemplate, mode: StatBalanceMode = 'archetype') => {
     if (!activeServant) return null;
 
     // Calculate current HP taking into account Mage Sanctuary regeneration if active
@@ -82,7 +84,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         const elapsed = Math.max(0, Date.now() - activeServant.lastDamageTime);
         const REGEN_DURATION = 300000;
         const baseHp = activeServant.baseHpAtDamage !== undefined ? Math.min(servantHp, activeServant.baseHpAtDamage) : servantHp;
-        const maxHp = activeServant.template.baseHp || 28000;
+        const maxHp = mode === 'flat' ? 28000 : (activeServant.template.baseHp || 29000);
         if (elapsed >= REGEN_DURATION) {
           servantHp = maxHp;
         } else {
@@ -93,7 +95,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
       }
     }
 
-    const p1 = createCombatantFromMasterServant(activeServant, master.username, servantHp);
+    const p1 = createCombatantFromMasterServant(activeServant, master.username, servantHp, mode);
     const p2 = createCombatantFromMasterServant(
       {
         id: 'cpu_servant',
@@ -114,12 +116,14 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         bondLevel: 5,
         template: opponentTemplate
       },
-      'Rival Master Kotomine'
+      'Rival Master Kotomine',
+      undefined,
+      mode
     );
-    return initializeBattle(p1, p2);
+    return initializeBattle(p1, p2, undefined, undefined, mode);
   };
 
-  const [battle, setBattle] = useState<BattleState | null>(() => setupNewBattle());
+  const [battle, setBattle] = useState<BattleState | null>(() => setupNewBattle(enemyTemplate, 'archetype'));
   const [selectedCards, setSelectedCards] = useState<CardType[]>([]);
   const [useNp, setUseNp] = useState(false);
   const [selectedSkillIdx, setSelectedSkillIdx] = useState<number | undefined>();
@@ -925,20 +929,60 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Balance Mode Switcher */}
+              <div className="flex items-center gap-1 bg-[#141414] p-1 rounded border border-[#222]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBalanceMode('archetype');
+                    setBattle(setupNewBattle(enemyTemplate, 'archetype'));
+                    setSelectedCards([]);
+                    setUseNp(false);
+                    setSelectedSkillIdx(undefined);
+                  }}
+                  className={`px-2 py-1 text-[11px] font-mono rounded transition ${
+                    balanceMode === 'archetype'
+                      ? 'bg-[#d4af37] text-black font-bold shadow'
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                  title="Archetype Budget: Canonical parameters and stats balanced to equal total power"
+                >
+                  Archetype
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBalanceMode('flat');
+                    setBattle(setupNewBattle(enemyTemplate, 'flat'));
+                    setSelectedCards([]);
+                    setUseNp(false);
+                    setSelectedSkillIdx(undefined);
+                  }}
+                  className={`px-2 py-1 text-[11px] font-mono rounded transition ${
+                    balanceMode === 'flat'
+                      ? 'bg-[#d4af37] text-black font-bold shadow'
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                  title="Pure Flat Parity: Exactly equal 28,000 HP / 10,000 ATK baseline for all Servants"
+                >
+                  Flat Parity
+                </button>
+              </div>
+
               <div className="text-[11px] font-mono text-white/40 uppercase tracking-wider">Rival:</div>
               <select
                 value={selectedEnemyId}
                 onChange={e => {
                   setSelectedEnemyId(e.target.value);
                   const opp = SERVANT_DATABASE.find(s => s.id === e.target.value);
-                  if (opp) setBattle(setupNewBattle(opp));
+                  if (opp) setBattle(setupNewBattle(opp, balanceMode));
                 }}
                 className="bg-[#111] text-white text-xs px-3 py-1.5 rounded-sm border border-[#222] outline-none font-mono focus:border-[#d4af37]"
               >
                 {SERVANT_DATABASE.filter(s => s.id !== activeServant.template.id).map(s => (
                   <option key={s.id} value={s.id}>
-                    {s.name} ({s.servantClass} • {s.rarity}★)
+                    {s.name} ({s.servantClass})
                   </option>
                 ))}
               </select>

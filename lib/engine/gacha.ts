@@ -75,9 +75,9 @@ export function executeGachaRoll({ banner, count, master }: RollGachaOptions): G
     }
 
     if (targetType === 'servant') {
-      let pool = targetRarity === 5 ? ssrServants : targetRarity === 4 ? srServants : rServants;
-      // Filter if banner has featured rate-up
-      const featuredInPool = pool.filter(s => banner.featuredServantIds.includes(s.id));
+      // In the balanced model, all Heroic Spirits are equalized and drawn from the complete SERVANT_DATABASE
+      const pool = SERVANT_DATABASE;
+      const featuredInPool = pool.filter(s => banner.featuredServantIds?.includes(s.id));
       let chosenServant = pool[Math.floor(Math.random() * pool.length)];
       let isRateUp = false;
 
@@ -105,6 +105,7 @@ export function executeGachaRoll({ banner, count, master }: RollGachaOptions): G
             defeat: chosenServant.defeatQuote
           },
           bondLevel: 1,
+          npLevel: 1,
           template: chosenServant
         };
         updatedMaster.servants.push(newInstance);
@@ -112,17 +113,18 @@ export function executeGachaRoll({ banner, count, master }: RollGachaOptions): G
           updatedMaster.activeServantId = newInstance.id;
         }
       } else {
-        // Duplicate gives bonus stat points to existing servant
+        // Duplicate gives bonus stat points to existing servant & upgrades NP level
         const existing = updatedMaster.servants.find(s => s.templateId === chosenServant.id);
         if (existing) {
           existing.availableStatPoints += 5;
           existing.bondLevel = Math.min(10, existing.bondLevel + 1);
+          existing.npLevel = Math.min(5, (existing.npLevel || 1) + 1);
         }
       }
 
       return {
         type: 'servant',
-        rarity: targetRarity,
+        rarity: 5,
         item: chosenServant,
         isNew: !alreadyOwns,
         isRateUp

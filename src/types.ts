@@ -16,6 +16,11 @@ export type ServantClass =
 
 export type Rarity = 1 | 2 | 3 | 4 | 5;
 
+// Stat Balancing Modes:
+// - 'archetype': Standardized Stat Budget based on canonical Fate parameters (STR/END/AGI/MNA/LCK) and combat role. All servants have equalized total combat rating!
+// - 'flat': Pure Parity Baseline mode. All servants have strictly identical base HP (28,000) and base ATK (10,000). Victory is 100% tactical via cards, skills, NP, and class affinity.
+export type StatBalanceMode = 'archetype' | 'flat';
+
 export type CardType = 'Buster' | 'Arts' | 'Quick';
 
 export interface ServantStats {
@@ -135,6 +140,7 @@ export interface MasterServantInstance {
     quickChain?: string;
   };
   bondLevel: number;
+  npLevel?: number;
   template: ServantTemplate;
 }
 
@@ -223,7 +229,9 @@ export interface ActiveCombatant {
   isStunned?: boolean;
   critStars: number;
   bondLevel?: number;
+  npLevel?: number;
   equippedCe?: CraftEssence;
+  statBalanceMode?: StatBalanceMode;
 }
 
 export interface TurnActionChoice {
@@ -273,6 +281,8 @@ export interface BattleState {
   turnHistory: CombatTurnLog[];
   winnerId?: string;
   grailWarId?: string;
+  statBalanceMode?: StatBalanceMode;
+  balanceMode?: StatBalanceMode;
 }
 
 export interface CombatBattleRecord {

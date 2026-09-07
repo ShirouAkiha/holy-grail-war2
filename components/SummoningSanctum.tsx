@@ -508,11 +508,11 @@ export default function SummoningSanctum({
             <div className="p-1 rounded-2xl bg-gradient-to-br from-[#d4af37] via-[#b87928] to-[#6e4610] shadow-[0_0_35px_rgba(212,175,55,0.35)] animate-in fade-in zoom-in-95 duration-200">
               <div className="p-5 md:p-6 bg-[#140d0a] rounded-xl border-2 border-[#24150b] relative overflow-hidden">
                 <div className="flex flex-col sm:flex-row items-stretch gap-5">
-                  {/* Left Avatar Portrait with 5★ badge */}
+                  {/* Left Avatar Portrait with Class badge */}
                   <div className="shrink-0 flex flex-col items-center">
                     <div className="relative w-28 h-28 md:w-32 md:h-32 rounded-lg bg-[#0c0806] border-2 border-[#d4af37] p-1 shadow-[0_0_18px_rgba(212,175,55,0.25)] flex items-center justify-center overflow-hidden">
                       <div className="absolute top-1 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-[#0e0a07] border border-[#d4af37] text-[10px] font-mono font-bold text-[#d4af37] rounded-sm shadow-md z-10 flex items-center gap-1">
-                        <span>{(summonSuccessServant || activeContract?.template)?.rarity || 5}★</span>
+                        <span>{(summonSuccessServant || activeContract?.template)?.servantClass}</span>
                       </div>
                       <img
                         src={(summonSuccessServant || activeContract?.template)?.cardArtUrl || (summonSuccessServant || activeContract?.template)?.avatarUrl}
@@ -1212,7 +1212,7 @@ export default function SummoningSanctum({
                   <optgroup label="🏛️ Canon Heroic Spirits">
                     {SERVANT_DATABASE.map(s => (
                       <option key={s.id} value={s.id}>
-                        {s.name} ({s.servantClass} ★{s.rarity})
+                        {s.name} ({s.servantClass})
                       </option>
                     ))}
                   </optgroup>
@@ -1220,7 +1220,7 @@ export default function SummoningSanctum({
                     <optgroup label="🛠️ Custom Heroic Spirits">
                       {customServants.map(s => (
                         <option key={s.id} value={s.id}>
-                          {s.name} ({s.servantClass} ★{s.rarity})
+                          {s.name} ({s.servantClass})
                         </option>
                       ))}
                     </optgroup>
@@ -1405,7 +1405,7 @@ export default function SummoningSanctum({
                     <div className="w-20 h-24 rounded-sm overflow-hidden bg-[#111] border border-[#222] flex-shrink-0 relative">
                       <img src={s.avatarUrl || s.cardArtUrl} alt={s.name} className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300" referrerPolicy="no-referrer" />
                       <span className="absolute bottom-1 right-1 text-[8px] font-mono px-1 rounded bg-black/80 text-amber-300">
-                        {'★'.repeat(s.rarity || 5)}
+                        {s.servantClass}
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1485,8 +1485,8 @@ export default function SummoningSanctum({
                       <span className="px-2 py-0.5 text-xs font-mono font-bold bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/30 rounded">
                         {inspectedServant.servantClass}
                       </span>
-                      <span className="text-amber-400 font-mono text-xs">
-                        {'★'.repeat(inspectedServant.rarity || 5)}
+                      <span className="px-2 py-0.5 text-[10px] font-mono bg-emerald-950/60 text-emerald-300 border border-emerald-800/40 rounded">
+                        Balanced Parity
                       </span>
                       {inspectedServant.isCustomOrMeme ? (
                         <span className="px-2 py-0.5 text-[10px] font-mono bg-purple-950 text-purple-300 border border-purple-800 rounded">

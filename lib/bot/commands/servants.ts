@@ -152,13 +152,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
 // Build Servant Full Profile Embed
 export function buildServantFullProfileEmbed(servant: ServantTemplate) {
-  const stars = '⭐'.repeat(servant.rarity || 5);
   const deck = (servant.commandDeck || ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'])
     .map(c => (c === 'Buster' ? '🔴 Buster' : c === 'Arts' ? '🔵 Arts' : '🟢 Quick'))
     .join(' • ');
 
   const np = servant.noblePhantasm;
-  const cardColor = servant.servantClass === 'Saber' ? 0x3b82f6 : servant.rarity === 5 ? 0xd4af37 : 0x9333ea;
+  const cardColor = servant.servantClass === 'Saber' ? 0x3b82f6 : 0xd4af37;
 
   const activeSkillsText = servant.skills && servant.skills.length > 0
     ? servant.skills.map((s, idx) => \`• **Skill \${idx + 1}: \${s.name}** [CD: \${s.cooldown}T] — \${s.description}\`).join('\\n')
@@ -178,7 +177,7 @@ export function buildServantFullProfileEmbed(servant: ServantTemplate) {
   const embed = new EmbedBuilder()
     .setTitle(\`⚔️ \${servant.name} — \${servant.title}\`)
     .setDescription(
-      \`\${stars} | Class: **\${servant.servantClass}** | Origin: **\${servant.isCustomOrMeme ? '🛠️ Custom Administrator Creation' : '🏛️ Canon Heroic Spirit'}**\\n\\n\` +
+      \`Class: **\${servant.servantClass}** | Origin: **\${servant.isCustomOrMeme ? '🛠️ Custom Administrator Creation' : '🏛️ Canon Heroic Spirit'}** | **Balanced Parity**\\n\\n\` +
       \`📜 **Historical Legend & Lore:**\\n> \${servant.lore || 'A legendary soul recorded in the Throne of Heroes.'}\\n\\n\` +
       \`📊 **Base Parameters:**\\n\` +
       \`• **STR:** \${servant.baseStats.strength} | **END:** \${servant.baseStats.endurance} | **AGI:** \${servant.baseStats.agility}\\n\` +
@@ -209,7 +208,7 @@ export function buildServantFullProfileEmbed(servant: ServantTemplate) {
 function buildListEmbed(servants: ServantTemplate[], title: string, description: string) {
   const lines = servants.map((s, idx) => {
     const tag = s.isCustomOrMeme ? '🛠️ [CUSTOM]' : '🏛️ [CANON]';
-    return \`\`\${idx + 1}. **\${s.name}** — *\${s.title}* [\`\${s.servantClass}\` \${'⭐'.repeat(s.rarity || 5)}] \${tag}\`\`;
+    return \`\`\${idx + 1}. **\${s.name}** — *\${s.title}* [\`\${s.servantClass}\`] \${tag}\`\`;
   });
 
   return new EmbedBuilder()

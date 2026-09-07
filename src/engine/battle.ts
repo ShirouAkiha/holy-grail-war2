@@ -5,6 +5,7 @@ import {
   CombatTurnLog,
   MasterServantInstance,
   ServantClass,
+  StatBalanceMode,
   TurnActionChoice
 } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
@@ -85,13 +86,18 @@ export function rollFleeSuccess(chancePercent: number): boolean {
 export function createCombatantFromMasterServant(
   servantInstance: MasterServantInstance,
   masterName: string,
-  overrideCurrentHp?: number
+  overrideCurrentHp?: number,
+  balanceMode: StatBalanceMode = 'archetype'
 ): ActiveCombatant {
   const templateId = servantInstance.templateId || servantInstance.template?.id || servantInstance.id;
   const canonical = SERVANT_DATABASE.find(s => s.id === templateId) || servantInstance.template || servantInstance;
   const t = { ...canonical, ...(servantInstance.template?.isCustomOrMeme ? servantInstance.template : {}) };
   const ce = servantInstance.equippedCe;
-  const base = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
+
+  // Base parameters: under 'flat' mode, all base stats are 10. Under 'archetype', use canonical parameter distribution.
+  const base = balanceMode === 'flat'
+    ? { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 }
+    : (t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 });
 
   // Sum base parameters + allocated points
   const totalStr = (base.strength || 10) + (servantInstance.allocatedStats?.strength || 0);
@@ -105,8 +111,9 @@ export function createCombatantFromMasterServant(
   const ceAtk = ce ? (ce.atkBonus || 0) : 0;
 
   const lvl = servantInstance.level || 1;
-  const baseHp = t.baseHp || 28000;
-  const baseAtk = t.baseAtk || 10000;
+  // Base HP & ATK: under 'flat' mode, flat 28,000 HP / 10,000 ATK. Under 'archetype', use normalized balanced template stats.
+  const baseHp = balanceMode === 'flat' ? 28000 : (t.baseHp || 29000);
+  const baseAtk = balanceMode === 'flat' ? 10000 : (t.baseAtk || 11000);
 
   // Scaled calculations based on Parameter distribution and Craft Essence
   const maxHp = Math.round(baseHp + totalEnd * 150 + ceHp);
@@ -147,7 +154,9 @@ export function createCombatantFromMasterServant(
     noblePhantasm: { ...t.noblePhantasm },
     critStars: 0,
     bondLevel: servantInstance.bondLevel || 1,
-    equippedCe: ce
+    npLevel: servantInstance.npLevel || 1,
+    equippedCe: ce,
+    statBalanceMode: balanceMode
   };
 }
 
@@ -158,7 +167,8 @@ export function initializeBattle(
   combatant1: ActiveCombatant,
   combatant2: ActiveCombatant,
   battleId?: string,
-  grailWarId?: string
+  grailWarId?: string,
+  balanceMode: StatBalanceMode = 'archetype'
 ): BattleState {
   return {
     battleId: battleId || `battle_${Date.now()}`,
@@ -167,7 +177,8 @@ export function initializeBattle(
     currentTurn: 1,
     turnPhase: 'card_selection',
     turnHistory: [],
-    grailWarId
+    grailWarId,
+    statBalanceMode: balanceMode
   };
 }
 

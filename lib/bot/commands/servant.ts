@@ -51,7 +51,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .setTitle(\`⚔️ Servant Profile: \${activeServant.nickname || activeServant.template.name}\`)
       .setDescription(
         \`*\${activeServant.template.title}* • **Master:** \${targetUser.username}\\n\` +
-        \`🌟 **Class:** \${activeServant.template.servantClass} | **Rarity:** \${'★'.repeat(activeServant.template.rarity)} | **Bond Lv:** \${activeServant.bondLevel || 1}/10 ♥ | **Level:** \${activeServant.level || 1}/100\\n\` +
+        \`🌟 **Class:** \${activeServant.template.servantClass} | **Parity:** Balanced | **Bond Lv:** \${activeServant.bondLevel || 1}/10 ♥ | **Level:** \${activeServant.level || 1}/100\\n\` +
         \`✨ **Available Stat Points:** \${activeServant.availableStatPoints} pts\`
       )
       .setColor(activeServant.template.rarity === 5 ? 0xf59e0b : 0x38bdf8)
