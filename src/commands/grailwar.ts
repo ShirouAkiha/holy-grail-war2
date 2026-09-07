@@ -117,10 +117,20 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     attachGrailWarCollector(msg, interaction.user.id, master, category);
 
   } catch (error: any) {
+    if (error?.code === 10062 || error?.code === 40060 || error?.code === 50027 || error?.code === 10008 || error?.message?.includes('Unknown interaction') || error?.message?.includes('acknowledged')) return;
     console.error('Error executing /grailwar:', error);
-    await interaction.editReply({
-      content: `❌ Error opening Holy Grail War hub: ${error.message}`
-    });
+    try {
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({
+          content: `❌ Error opening Holy Grail War hub: ${error.message}`
+        });
+      } else {
+        await interaction.reply({
+          flags: MessageFlags.Ephemeral,
+          content: `❌ Error opening Holy Grail War hub: ${error.message}`
+        });
+      }
+    } catch {}
   }
 }
 

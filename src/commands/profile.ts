@@ -194,11 +194,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       flags: MessageFlags.Ephemeral
     });
   } catch (error: any) {
+    if (error?.code === 10062 || error?.code === 40060 || error?.code === 50027 || error?.code === 10008 || error?.message?.includes('Unknown interaction') || error?.message?.includes('acknowledged')) return;
     console.error('Error executing /profile:', error);
-    if (interaction.replied || interaction.deferred) {
-      await interaction.followUp({ content: `❌ Error: ${error.message}`, flags: MessageFlags.Ephemeral });
-    } else {
-      await interaction.reply({ content: `❌ Error: ${error.message}`, flags: MessageFlags.Ephemeral });
-    }
+    try {
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({ content: `❌ Error: ${error.message}`, flags: MessageFlags.Ephemeral });
+      } else {
+        await interaction.reply({ content: `❌ Error: ${error.message}`, flags: MessageFlags.Ephemeral });
+      }
+    } catch {}
   }
 }

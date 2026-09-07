@@ -102,20 +102,33 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const embed = buildDailyEmbed(interaction.user, result);
     const buttons = buildDailyButtons(result);
 
-    await interaction.reply({
-      embeds: [embed],
-      components: [buttons]
-    });
+    if (interaction.deferred || interaction.replied) {
+      await interaction.editReply({
+        embeds: [embed],
+        components: [buttons]
+      });
+    } else {
+      await interaction.reply({
+        embeds: [embed],
+        components: [buttons]
+      });
+    }
   } catch (err: any) {
+    if (err?.code === 10062 || err?.code === 40060 || err?.code === 50027 || err?.code === 10008 || err?.message?.includes('Unknown interaction') || err?.message?.includes('acknowledged')) {
+      return;
+    }
     console.error('Error executing /daily command:', err);
-    await interaction.reply({
-      flags: MessageFlags.Ephemeral,
-      embeds: [
-        new EmbedBuilder()
-          .setTitle('❌ Claim Failed')
-          .setDescription(`An unexpected error occurred while claiming your daily Saint Quartz: ${err?.message || 'Unknown error'}`)
-          .setColor(0xef4444)
-      ]
-    });
+    try {
+      const errorEmbed = new EmbedBuilder()
+        .setTitle('❌ Claim Failed')
+        .setDescription(`An unexpected error occurred while claiming your daily Saint Quartz: ${err?.message || 'Unknown error'}`)
+        .setColor(0xef4444);
+
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp({ flags: MessageFlags.Ephemeral, embeds: [errorEmbed] });
+      } else {
+        await interaction.reply({ flags: MessageFlags.Ephemeral, embeds: [errorEmbed] });
+      }
+    } catch {}
   }
 }

@@ -105,10 +105,20 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     attachServantCollector(msg, interaction.user.id, master, activeServant, initialCategory);
 
   } catch (error: any) {
+    if (error?.code === 10062 || error?.code === 40060 || error?.code === 50027 || error?.code === 10008 || error?.message?.includes('Unknown interaction') || error?.message?.includes('acknowledged')) return;
     console.error('Error executing /servant:', error);
-    await interaction.editReply({
-      content: `❌ Error fetching servant profile: ${error.message}`
-    });
+    try {
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({
+          content: `❌ Error fetching servant profile: ${error.message}`
+        });
+      } else {
+        await interaction.reply({
+          flags: MessageFlags.Ephemeral,
+          content: `❌ Error fetching servant profile: ${error.message}`
+        });
+      }
+    } catch {}
   }
 }
 
