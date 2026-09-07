@@ -1383,25 +1383,92 @@ export default function DiscordEmulator({
         return;
       }
 
-      // Subcommand: listnp or default admin control panel
-      addMessage({
-        id: getNextId('bot_admin_hub'),
-        sender: 'bot',
-        timestamp: 'Just now',
-        embed: {
-          title: '👑 Holy Grail War Admin Control Panel',
-          description:
-            `Available Administrator Commands:\n\n` +
-            `• \`/admin npanim <servant> <gif_url> [chant]\` — Bind custom GIF animation to any Servant\n` +
-            `• \`/admin npsettings [autodelete:true] [afk_timeout:60]\` — Configure GIF auto-delete and turn duration\n` +
-            `• \`/addservant create name="Spirit" class="Saber"\` — Register custom Heroic Spirit\n` +
-            `• \`/addservant edit <servant_name>\` — Modify stats, dialogue, or artwork\n` +
-            `• \`/addservant list\` — List all custom registered servants\n\n` +
-            `*Tip: You can also use the graphical Noble Phantasm Studio inside the Servant Workshop tab!*`,
-          color: '#d4af37',
-          footer: 'Administrator Authority • Fuyuki Grail War Core Engine'
+      // Subcommand: economy
+      if (trimmed.includes('economy')) {
+        if (trimmed.includes('reset_currency') || trimmed.includes('reset currency')) {
+          onUpdateMaster({
+            ...master,
+            saintQuartz: 30,
+            qp: 0,
+            summonTickets: 0,
+            manaPrisms: 0,
+            saintShards: 0
+          } as any);
+          postAdminHub('economy', '🧹 **Currency Reset:** Reset your Saint Quartz to 30 SQ, and QP/Tickets/Shards to 0.');
+          return;
         }
-      });
+        if (trimmed.includes('reset_inventory') || trimmed.includes('reset inventory')) {
+          const updatedServants = (master.servants || []).map(s => ({
+            ...s,
+            equippedCe: undefined,
+            equippedCeId: undefined,
+            equippedCraftEssence: undefined
+          }));
+          onUpdateMaster({
+            ...master,
+            craftEssences: [],
+            catalysts: [],
+            servants: updatedServants
+          } as any);
+          postAdminHub('economy', '🎒 **Inventory Cleared:** Wiped all Craft Essences, unequipped items, and catalysts.');
+          return;
+        }
+        if (trimmed.includes('reset_vault') || trimmed.includes('reset vault')) {
+          const updatedServants = (master.servants || []).map(s => ({
+            ...s,
+            equippedCe: undefined,
+            equippedCeId: undefined,
+            equippedCraftEssence: undefined
+          }));
+          onUpdateMaster({
+            ...master,
+            saintQuartz: 30,
+            qp: 0,
+            summonTickets: 0,
+            manaPrisms: 0,
+            saintShards: 0,
+            craftEssences: [],
+            catalysts: [],
+            servants: updatedServants
+          } as any);
+          postAdminHub('economy', '🔄 **Full Vault Reset:** All inventory items wiped and currency restored to initial state (30 SQ, 0 QP).');
+          return;
+        }
+        if (trimmed.includes('server_wipe') || trimmed.includes('server wipe')) {
+          const updatedServants = (master.servants || []).map(s => ({
+            ...s,
+            equippedCe: undefined,
+            equippedCeId: undefined,
+            equippedCraftEssence: undefined
+          }));
+          onUpdateMaster({
+            ...master,
+            saintQuartz: 30,
+            qp: 0,
+            summonTickets: 0,
+            manaPrisms: 0,
+            saintShards: 0,
+            craftEssences: [],
+            catalysts: [],
+            servants: updatedServants
+          } as any);
+          postAdminHub('economy', '⚠️ **Server-Wide Economy Wipe:** Wiped all Masters\' inventories and reset currencies across the server.');
+          return;
+        }
+        setAdminHubCategory('economy');
+        postAdminHub('economy');
+        return;
+      }
+
+      if (trimmed.includes('war') || trimmed.includes('rules')) {
+        setAdminHubCategory('war');
+        postAdminHub('war');
+        return;
+      }
+
+      // Default Admin Hub
+      setAdminHubCategory('war');
+      postAdminHub('war');
       return;
     }
 
@@ -5701,7 +5768,11 @@ export default function DiscordEmulator({
         { id: 'admin_mint_30sq', label: '+30 SQ (Multi)', style: 'primary', emoji: '💎' },
         { id: 'admin_mint_100sq', label: '+100 SQ', style: 'success', emoji: '💎' },
         { id: 'admin_mint_qp', label: '+1,000,000 QP', style: 'secondary', emoji: '🪙' },
-        { id: 'admin_refill_seals', label: 'Refill 3 Seals', style: 'danger', emoji: '🔱' }
+        { id: 'admin_refill_seals', label: 'Refill 3 Seals', style: 'secondary', emoji: '🔱' },
+        { id: 'admin_reset_currency', label: 'Reset Currency', style: 'danger', emoji: '🧹' },
+        { id: 'admin_reset_inventory', label: 'Reset Inventory', style: 'danger', emoji: '🎒' },
+        { id: 'admin_reset_vault', label: 'Reset All Vault', style: 'danger', emoji: '🔄' },
+        { id: 'admin_reset_all_economy', label: 'Server-Wide Wipe', style: 'danger', emoji: '⚠️' }
       ];
     } else if (category === 'npsettings') {
       actionButtons = [
@@ -7137,6 +7208,68 @@ export default function DiscordEmulator({
       } else if (btnId === 'admin_refill_seals') {
         onUpdateMaster({ ...master, commandSeals: 3 });
         postAdminHub('economy', '🔱 Restored Command Seals to 3/3!');
+      } else if (btnId === 'admin_reset_currency') {
+        onUpdateMaster({
+          ...master,
+          saintQuartz: 30,
+          qp: 0,
+          summonTickets: 0,
+          manaPrisms: 0,
+          saintShards: 0
+        } as any);
+        postAdminHub('economy', '🧹 **Currency Reset:** Reset your Saint Quartz to 30 SQ, and QP/Tickets/Shards to 0.');
+      } else if (btnId === 'admin_reset_inventory') {
+        const updatedServants = (master.servants || []).map(s => ({
+          ...s,
+          equippedCe: undefined,
+          equippedCeId: undefined,
+          equippedCraftEssence: undefined
+        }));
+        onUpdateMaster({
+          ...master,
+          craftEssences: [],
+          catalysts: [],
+          servants: updatedServants
+        } as any);
+        postAdminHub('economy', '🎒 **Inventory Cleared:** Wiped all Craft Essences, unequipped items, and catalysts from inventory.');
+      } else if (btnId === 'admin_reset_vault') {
+        const updatedServants = (master.servants || []).map(s => ({
+          ...s,
+          equippedCe: undefined,
+          equippedCeId: undefined,
+          equippedCraftEssence: undefined
+        }));
+        onUpdateMaster({
+          ...master,
+          saintQuartz: 30,
+          qp: 0,
+          summonTickets: 0,
+          manaPrisms: 0,
+          saintShards: 0,
+          craftEssences: [],
+          catalysts: [],
+          servants: updatedServants
+        } as any);
+        postAdminHub('economy', '🔄 **Full Vault Reset:** All inventory items wiped and currency restored to initial state (30 SQ, 0 QP).');
+      } else if (btnId === 'admin_reset_all_economy') {
+        const updatedServants = (master.servants || []).map(s => ({
+          ...s,
+          equippedCe: undefined,
+          equippedCeId: undefined,
+          equippedCraftEssence: undefined
+        }));
+        onUpdateMaster({
+          ...master,
+          saintQuartz: 30,
+          qp: 0,
+          summonTickets: 0,
+          manaPrisms: 0,
+          saintShards: 0,
+          craftEssences: [],
+          catalysts: [],
+          servants: updatedServants
+        } as any);
+        postAdminHub('economy', '⚠️ **Server-Wide Economy Wipe:** Wiped all Masters\' inventories and reset currencies across the server.');
       }
       // 6. Duel NP Settings
       else if (btnId === 'admin_toggle_autodelete') {

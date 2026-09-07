@@ -1218,6 +1218,101 @@ export async function resetAllMastersServants(
 }
 
 /**
+ * Resets a single Master's currency balances (SQ, QP, Tickets, Grail Shards, Mana Prisms, etc.).
+ */
+export async function resetSingleMasterCurrency(
+  discordId: string,
+  options: { startingSq?: number; startingQp?: number; startingTickets?: number } = { startingSq: 30, startingQp: 0, startingTickets: 0 }
+): Promise<MasterProfile | null> {
+  const master = masterStore.get(discordId);
+  if (!master) return null;
+
+  master.saintQuartz = options.startingSq ?? 30;
+  master.qp = options.startingQp ?? 0;
+  master.summonTickets = options.startingTickets ?? 0;
+  master.grailShards = 0;
+  master.manaPrisms = 0;
+  master.pityCount = 0;
+  master.actionPoints = 100;
+  master.maxActionPoints = 100;
+
+  saveMastersToDisk();
+  return master;
+}
+
+/**
+ * Resets a single Master's inventory items (all Craft Essences, un-equips CEs from Servants, Homunculi).
+ */
+export async function resetSingleMasterInventory(
+  discordId: string
+): Promise<MasterProfile | null> {
+  const master = masterStore.get(discordId);
+  if (!master) return null;
+
+  // Clear Craft Essences list
+  master.craftEssences = [];
+  master.homunculusCount = 0;
+
+  // Detach all equipped CEs on contracted Servants
+  if (master.servants) {
+    for (const s of master.servants) {
+      s.equippedCeId = undefined;
+      s.equippedCe = undefined;
+    }
+  }
+
+  saveMastersToDisk();
+  return master;
+}
+
+/**
+ * Resets both inventory items and currencies for a single Master.
+ */
+export async function resetSingleMasterVault(
+  discordId: string,
+  options: { startingSq?: number; startingQp?: number; startingTickets?: number } = { startingSq: 30, startingQp: 0, startingTickets: 0 }
+): Promise<MasterProfile | null> {
+  await resetSingleMasterInventory(discordId);
+  return resetSingleMasterCurrency(discordId, options);
+}
+
+/**
+ * Server-wide reset: Wipes all inventory items and resets currency balances for ALL Masters on the server.
+ */
+export async function resetAllMastersInventoryAndCurrency(
+  options: { startingSq?: number; startingQp?: number; startingTickets?: number } = { startingSq: 30, startingQp: 0, startingTickets: 0 }
+): Promise<{ count: number; masters: MasterProfile[] }> {
+  let count = 0;
+  const updated: MasterProfile[] = [];
+
+  for (const master of masterStore.values()) {
+    master.craftEssences = [];
+    master.homunculusCount = 0;
+    master.saintQuartz = options.startingSq ?? 30;
+    master.qp = options.startingQp ?? 0;
+    master.summonTickets = options.startingTickets ?? 0;
+    master.grailShards = 0;
+    master.manaPrisms = 0;
+    master.pityCount = 0;
+    master.actionPoints = 100;
+    master.maxActionPoints = 100;
+
+    if (master.servants) {
+      for (const s of master.servants) {
+        s.equippedCeId = undefined;
+        s.equippedCe = undefined;
+      }
+    }
+
+    count++;
+    updated.push(master);
+  }
+
+  saveMastersToDisk();
+  return { count, masters: updated };
+}
+
+/**
  * Gets all registered masters across the server.
  */
 export async function getAllMasters(): Promise<MasterProfile[]> {

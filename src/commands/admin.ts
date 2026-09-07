@@ -23,7 +23,11 @@ import {
   getOrCreateMaster,
   saveMaster,
   resetAllMastersServants,
-  resetSingleMasterServant
+  resetSingleMasterServant,
+  resetSingleMasterCurrency,
+  resetSingleMasterInventory,
+  resetSingleMasterVault,
+  resetAllMastersInventoryAndCurrency
 } from '../database/service';
 import {
   getOrInitWarSession,
@@ -150,6 +154,27 @@ export const data = new SlashCommandBuilder()
     sub
       .setName('listnp')
       .setDescription('View all custom Noble Phantasm animations currently registered')
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('economy')
+      .setDescription('Manage currency minting, inventory resets, and vault wipes')
+      .addStringOption(opt =>
+        opt
+          .setName('action')
+          .setDescription('Economy & Vault action')
+          .setRequired(true)
+          .addChoices(
+            { name: '💎 Mint +30 Saint Quartz', value: 'mint_30sq' },
+            { name: '💎 Mint +100 Saint Quartz', value: 'mint_100sq' },
+            { name: '🪙 Mint +1,000,000 QP', value: 'mint_qp' },
+            { name: '🔱 Refill Command Seals (3/3)', value: 'refill_seals' },
+            { name: '🧹 Reset My Currency (SQ to 30, QP/Tickets/Shards to 0)', value: 'reset_currency' },
+            { name: '🎒 Reset My Inventory (Wipe all Craft Essences & items)', value: 'reset_inventory' },
+            { name: '🔄 Reset All My Vault (Items + Currency to defaults)', value: 'reset_vault' },
+            { name: '⚠️ Server-Wide Wipe (All Masters Items & Currency)', value: 'server_wipe' }
+          )
+      )
   );
 
 // ==========================================
@@ -323,6 +348,57 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     return;
   }
 
+  if (subcommand === 'economy') {
+    const action = interaction.options.getString('action', true);
+    let outcome = '';
+
+    if (action === 'mint_30sq') {
+      const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+      master.saintQuartz = (master.saintQuartz || 0) + 30;
+      await saveMaster(master);
+      outcome = `✨ Minted **+30 Saint Quartz**! Total SQ: **${master.saintQuartz}**`;
+    } else if (action === 'mint_100sq') {
+      const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+      master.saintQuartz = (master.saintQuartz || 0) + 100;
+      await saveMaster(master);
+      outcome = `✨ Minted **+100 Saint Quartz**! Total SQ: **${master.saintQuartz}**`;
+    } else if (action === 'mint_qp') {
+      const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+      master.qp = (master.qp || 0) + 1000000;
+      await saveMaster(master);
+      outcome = `🪙 Minted **+1,000,000 QP**! Total QP: **${master.qp.toLocaleString()}**`;
+    } else if (action === 'refill_seals') {
+      const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+      master.commandSeals = 3;
+      await saveMaster(master);
+      outcome = `🔱 Refilled Command Seals to **3/3**!`;
+    } else if (action === 'reset_currency') {
+      const master = await resetSingleMasterCurrency(interaction.user.id, { startingSq: 30, startingQp: 0, startingTickets: 0 });
+      outcome = `🧹 **Currency Balances Reset!**\n• Saint Quartz: **${master?.saintQuartz || 30} SQ**\n• QP: **0**\n• Summon Tickets: **0**\n• Grail Shards & Mana Prisms: **0**`;
+    } else if (action === 'reset_inventory') {
+      await resetSingleMasterInventory(interaction.user.id);
+      outcome = `🎒 **Inventory Reset!**\n• All Craft Essences wiped (**0 CEs**)\n• All Servants un-equipped from Craft Essences\n• Homunculi count reset to **0**`;
+    } else if (action === 'reset_vault') {
+      const master = await resetSingleMasterVault(interaction.user.id, { startingSq: 30, startingQp: 0, startingTickets: 0 });
+      outcome = `🔄 **Full Vault Reset (Items & Currency)!**\n• Craft Essences & Items: **Wiped**\n• Saint Quartz: **30 SQ** (Default)\n• QP, Tickets, Prisms, Shards: **0**`;
+    } else if (action === 'server_wipe') {
+      const res = await resetAllMastersInventoryAndCurrency({ startingSq: 30, startingQp: 0, startingTickets: 0 });
+      outcome = `⚠️ **SERVER-WIDE INVENTORY & CURRENCY WIPE!**\n\n` +
+        `• **${res.count} Master(s)** updated.\n` +
+        `• All Craft Essences dissolved and unequipped.\n` +
+        `• All currency balances reset (30 SQ starting pool, 0 QP, 0 Tickets, 0 Shards).`;
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle('💎 ECONOMY & VAULT ADMINISTRATION')
+      .setDescription(outcome)
+      .setColor(0x06b6d4)
+      .setFooter({ text: `Overseer Action by ${interaction.user.username}` });
+
+    await interaction.reply({ embeds: [embed] });
+    return;
+  }
+
   // Open the interactive Admin Hub
   const { embeds, components } = buildAdminHub(category);
   await interaction.reply({ embeds, components, flags: MessageFlags.Ephemeral });
@@ -460,17 +536,19 @@ export function buildAdminHub(
 
   } else if (category === 'economy') {
     const embed = new EmbedBuilder()
-      .setTitle('💎 Admin Control: Economy & Saint Quartz Mint')
+      .setTitle('💎 Admin Control: Economy, Inventory & Vault Management')
       .setDescription(
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
-        `Administrative tools for currency distribution and test summonings.\n\n` +
-        `• **Grant Saint Quartz (SQ):** Add currency for gacha testing\n` +
-        `• **Grant Quantum Particles (QP):** Add currency for enhancements\n` +
-        `• **Grant Command Seals:** Refill tactical Command Seals\n\n` +
-        `*Click a quick-action button below to mint resources for your Master account:*`
+        `Administrative tools for currency minting, Craft Essence inventory resets, and complete vault wipes.\n\n` +
+        `• **Mint Resources:** Add Saint Quartz (SQ), QP, or refill Command Seals\n` +
+        `• **Reset Currency:** Zero out QP, Mana Prisms, Grail Shards & set SQ to starting 30\n` +
+        `• **Reset Inventory:** Wipe all Craft Essences, un-equip active CEs, and reset Homunculi\n` +
+        `• **Reset All Vault:** Full reset of inventory items and currencies to fresh defaults\n` +
+        `• **Server Economy Wipe:** Complete vault & currency reset for all registered Masters\n\n` +
+        `*Click a quick-action button below to manage account resources:*`
       )
-      .setColor(0x10b981)
-      .setFooter({ text: 'Admin Suite • Holy Grail Treasury' });
+      .setColor(0x06b6d4)
+      .setFooter({ text: 'Admin Suite • Holy Grail Treasury & Inventory Manager' });
 
     embeds = [embed];
   }
@@ -594,13 +672,21 @@ export function buildAdminHub(
     components.push(actionButtonsRow);
 
   } else if (category === 'economy') {
-    const actionButtonsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    const mintRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('admin_mint_30sq').setLabel('+30 SQ (1 Multi)').setEmoji('💎').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('admin_mint_100sq').setLabel('+100 SQ').setEmoji('💎').setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId('admin_mint_qp').setLabel('+1,000,000 QP').setEmoji('🪙').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_refill_seals').setLabel('Refill 3 Seals').setEmoji('🔱').setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId('admin_refill_seals').setLabel('Refill 3 Seals').setEmoji('🔱').setStyle(ButtonStyle.Primary)
     );
-    components.push(actionButtonsRow);
+
+    const resetRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('admin_reset_my_currency').setLabel('Reset My Currency').setEmoji('🧹').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_reset_my_inventory').setLabel('Reset My Inventory (CEs)').setEmoji('🎒').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_reset_my_all_vault').setLabel('Reset All My Items & SQ').setEmoji('🔄').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('admin_reset_server_economy').setLabel('Server Wipe (All Items & SQ)').setEmoji('⚠️').setStyle(ButtonStyle.Danger)
+    );
+
+    components.push(mintRow, resetRow);
   }
 
   return { embeds, components };
@@ -626,7 +712,7 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       currentCategory = 'npsettings';
     } else if (customId === 'admin_tab_listnp') {
       currentCategory = 'listnp';
-    } else if (customId === 'admin_tab_economy' || customId.startsWith('admin_mint_') || customId === 'admin_refill_seals') {
+    } else if (customId === 'admin_tab_economy' || customId.startsWith('admin_mint_') || customId === 'admin_refill_seals' || customId.startsWith('admin_reset_')) {
       currentCategory = 'economy';
     }
 
@@ -887,6 +973,28 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       master.commandSeals = 3;
       await saveMaster(master);
       actionOutcome = `🔱 Refilled Command Seals to **3/3**!`;
+      currentCategory = 'economy';
+    }
+    
+    // ECONOMY & INVENTORY RESETS
+    else if (customId === 'admin_reset_my_currency') {
+      const master = await resetSingleMasterCurrency(interaction.user.id, { startingSq: 30, startingQp: 0, startingTickets: 0 });
+      actionOutcome = `🧹 **Currency Balances Reset!**\n• Saint Quartz: **${master?.saintQuartz || 30} SQ**\n• QP: **0**\n• Summon Tickets: **0**\n• Grail Shards & Mana Prisms: **0**`;
+      currentCategory = 'economy';
+    } else if (customId === 'admin_reset_my_inventory') {
+      const master = await resetSingleMasterInventory(interaction.user.id);
+      actionOutcome = `🎒 **Inventory Reset!**\n• All Craft Essences wiped (**0 CEs**)\n• All Servants un-equipped from Craft Essences\n• Homunculi count reset to **0**`;
+      currentCategory = 'economy';
+    } else if (customId === 'admin_reset_my_all_vault') {
+      const master = await resetSingleMasterVault(interaction.user.id, { startingSq: 30, startingQp: 0, startingTickets: 0 });
+      actionOutcome = `🔄 **Full Vault Reset (Items & Currency)!**\n• Craft Essences & Items: **Wiped**\n• Saint Quartz: **30 SQ** (Default)\n• QP, Tickets, Prisms, Shards: **0**`;
+      currentCategory = 'economy';
+    } else if (customId === 'admin_reset_server_economy') {
+      const res = await resetAllMastersInventoryAndCurrency({ startingSq: 30, startingQp: 0, startingTickets: 0 });
+      actionOutcome = `⚠️ **SERVER-WIDE INVENTORY & CURRENCY WIPE!**\n\n` +
+        `• **${res.count} Master(s)** updated.\n` +
+        `• All Craft Essences dissolved and unequipped across all Masters.\n` +
+        `• All currency balances reset (30 SQ starting pool, 0 QP, 0 Tickets, 0 Shards).`;
       currentCategory = 'economy';
     }
 
