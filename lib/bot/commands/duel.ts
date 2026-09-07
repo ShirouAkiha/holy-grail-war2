@@ -523,7 +523,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (!challengerServant) {
       await interaction.editReply({
-        content: '❌ You must summon a Servant with \`/summon ritual\` before entering the Combat Arena!'
+        content: '❌ You are a civilian without a contracted Servant! Civilians cannot initiate duels in the Holy Grail War. Invoke /summon to contract a Heroic Spirit first.'
       });
       return;
     }

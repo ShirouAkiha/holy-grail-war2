@@ -12,7 +12,7 @@ import {
 import { getOrCreateMaster, saveMaster, getDuelNpSettings } from '../database/service';
 import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog, PassiveSkill } from '../types';
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives } from '../data/servants';
-import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp } from '../engine/grailwar';
+import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp, getReputationInfo } from '../engine/grailwar';
 import { renderBattleTurnSummary, renderDialogueCard, renderDefeatDialogueCard } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER, calculateFleeChance, rollFleeSuccess } from '../engine/battle';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
@@ -183,7 +183,13 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
 
   // Unified Formula: Base Stat + (Total Parameter * factor) + Craft Essence Equipment
   const maxHp = Math.round((t.baseHp || 28000) + totalEnd * 150 + ceHp);
-  const baseAtk = Math.round((t.baseAtk || 10000) + totalStr * 80 + ceAtk);
+  let baseAtk = Math.round((t.baseAtk || 10000) + totalStr * 80 + ceAtk);
+
+  // Curse of Heresy for Rogue Heretics (10+ civilian kills): -10% ATK suppression by Church Wards
+  if ((master.innocentKills || 0) >= 10 || master.isRogueHeretic) {
+    baseAtk = Math.max(1000, Math.round(baseAtk * 0.9));
+  }
+
   const baseDef = 10 + totalEnd * 2;
 
   // Check if equipped CE grants starting NP (e.g. Kaleidoscope grants 80% starting NP)
@@ -1191,7 +1197,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     if (!challengerMaster.servants || challengerMaster.servants.length === 0) {
       await interaction.reply({
         flags: MessageFlags.Ephemeral,
-        content: '❌ You must summon a Servant using `/summon` before entering a duel!'
+        content: '❌ You are a civilian without a contracted Servant! Civilians cannot initiate duels in the Holy Grail War. Invoke `/summon` to contract a Heroic Spirit first.'
       });
       return;
     }
@@ -1235,34 +1241,31 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
 
       const opponentMaster = await getOrCreateMaster(opponentUser.id, opponentUser.username);
-
-      if (!opponentMaster.servants || opponentMaster.servants.length === 0) {
-        await interaction.reply({
-          content: `❌ <@${opponentUser.id}> has not summoned any Servants yet! They need to run \`/summon\` first.`,
-          flags: MessageFlags.Ephemeral
-        });
-        return;
-      }
+      const isOpponentCivilian = !opponentMaster.servants || opponentMaster.servants.length === 0;
 
       const opponentParticipant = warSession.participants[opponentUser.id] ||
         Object.values(warSession.participants).find(p => p.username.toLowerCase() === opponentUser.username.toLowerCase());
 
-      if (opponentParticipant && !opponentParticipant.isAlive) {
+      const alreadySlainCivilian = (warSession.civilianCasualties || []).find(
+        c => c.id === opponentUser.id || c.name.toLowerCase().includes(opponentUser.username.toLowerCase())
+      );
+
+      if ((opponentParticipant && !opponentParticipant.isAlive) || (isOpponentCivilian && alreadySlainCivilian)) {
         await interaction.reply({
-          content: `☠️ <@${opponentUser.id}> has already been eliminated and slain from the Holy Grail War!`,
+          content: `☠️ Civilian <@${opponentUser.id}> was already slain earlier in this Holy Grail War! A civilian cannot be killed twice.`,
           flags: MessageFlags.Ephemeral
         });
         return;
       }
 
-      const opponentServant =
-        opponentMaster.servants.find(s => s.id === opponentMaster.activeServantId) ||
-        opponentMaster.servants[0];
+      const opponentServant = isOpponentCivilian
+        ? null
+        : (opponentMaster.servants.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants[0]);
 
       const inviteEmbed = new EmbedBuilder()
         .setTitle('⚔️ HOLY GRAIL WAR: DUEL INVITATION')
         .setDescription(
-          `Master <@${interaction.user.id}> has challenged Master <@${opponentUser.id}> to a battle!\n\n` +
+          `Master <@${interaction.user.id}> has challenged ${isOpponentCivilian ? 'civilian' : 'Master'} <@${opponentUser.id}> to a battle!\n\n` +
           `<@${opponentUser.id}>, do you accept this challenge?`
         )
         .setColor(0xd4af37);
@@ -1313,7 +1316,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           if (i.customId === 'accept_duel') {
             if (i.user.id !== opponentUser.id) {
               await i.reply({
-                content: `❌ Only the challenged Master (<@${opponentUser.id}>) can accept this duel invitation.`,
+                content: `❌ Only the challenged ${isOpponentCivilian ? 'civilian' : 'Master'} (<@${opponentUser.id}>) can accept this duel invitation.`,
                 flags: MessageFlags.Ephemeral
               });
               return;
@@ -1322,6 +1325,118 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             inviteCollector.stop('accepted');
             // Acknowledge the button immediately so Discord never shows "This interaction failed"
             await i.deferUpdate();
+
+            if (isOpponentCivilian || !opponentServant) {
+              const alreadyDead = (warSession.civilianCasualties || []).some(
+                c => c.id === opponentUser.id || c.name.toLowerCase().includes(opponentUser.username.toLowerCase())
+              );
+              if (alreadyDead) {
+                await i.editReply({
+                  content: `☠️ Civilian <@${opponentUser.id}> was already slain earlier in this Holy Grail War! A civilian cannot be killed twice.`,
+                  embeds: [],
+                  components: []
+                });
+                return;
+              }
+
+              const pEntry = warSession.participants[opponentUser.id] || {
+                discordId: opponentUser.id,
+                username: opponentUser.username,
+                servantId: 'none',
+                servantName: 'Civilian',
+                servantClass: 'Civilian' as any,
+                avatarUrl: opponentUser.displayAvatarURL?.() || '',
+                maxHp: 100,
+                currentHp: 0,
+                commandSeals: 0,
+                kills: 0,
+                isAlive: false
+              };
+              pEntry.isAlive = false;
+              pEntry.currentHp = 0;
+              pEntry.deathTimestamp = Date.now();
+              pEntry.killedByMaster = challengerMaster.username;
+              warSession.participants[opponentUser.id] = pEntry;
+
+              if (!warSession.civilianCasualties) warSession.civilianCasualties = [];
+              warSession.civilianCasualties.unshift({
+                id: opponentUser.id,
+                name: `@${opponentUser.username}`,
+                slainByMasterId: challengerMaster.discordId,
+                timestamp: Date.now(),
+                cause: 'duel_civilian_execution'
+              });
+
+              challengerMaster.innocentKills = (challengerMaster.innocentKills || 0) + 1;
+              const rep = getReputationInfo(challengerMaster.innocentKills);
+              challengerMaster.reputationRank = rep.rank;
+              challengerMaster.bountyActive = rep.bountyActive;
+              challengerMaster.bountyRewardSq = rep.bountyRewardSq;
+              challengerMaster.isRogueHeretic = rep.isRogue;
+
+              const challengerParticipant = warSession.participants[challengerMaster.discordId];
+              if (challengerParticipant) {
+                challengerParticipant.innocentKills = challengerMaster.innocentKills;
+                challengerParticipant.reputationRank = rep.rank;
+                challengerParticipant.bountyActive = rep.bountyActive;
+                challengerParticipant.isRogueHeretic = rep.isRogue;
+                if (rep.isRogue) {
+                  challengerParticipant.isExposed = true;
+                  challengerParticipant.exposureReason = 'heretic_bounty';
+                  challengerParticipant.inSanctuary = false;
+                  (challengerParticipant as any).inChurchSanctuary = false;
+                }
+              }
+
+              challengerMaster.duelsWon = (challengerMaster.duelsWon || 0) + 1;
+              challengerMaster.servantKills = (challengerMaster.servantKills || 0) + 1;
+              challengerMaster.saintQuartz = (challengerMaster.saintQuartz || 0) + 3;
+              if (challengerServant) {
+                challengerServant.experience = (challengerServant.experience || 0) + 300;
+              }
+              await saveMaster(challengerMaster);
+
+              opponentMaster.duelsLost = (opponentMaster.duelsLost || 0) + 1;
+              await saveMaster(opponentMaster);
+
+              const sName = challengerServant?.template?.name || 'Heroic Spirit';
+
+              let repNotice = '';
+              if (challengerMaster.innocentKills === 10) {
+                repNotice = `\n\n📜 **CHURCH ORDER OF EXTERMINATION & BOUNTY ISSUED!**\n` +
+                  `> *"By decree of Father Kotomine: Master <@${challengerMaster.discordId}> has reached 10 civilian kills! They are hereby excommunicated and branded a **Rogue Heretic**."*\n\n` +
+                  `• 🎯 **Open Server Bounty:** **+1 Extra Command Seal** & **+15 Saint Quartz** to any Master who eliminates them!\n` +
+                  `• 🚫 **Church Sanctuary:** Permanently revoked.\n` +
+                  `• ⛓️ **Curse of Heresy:** Servant suffers -10% ATK suppression in all combat.`;
+              } else if (challengerMaster.innocentKills > 10) {
+                repNotice = `\n\n☠️ **WANTED ROGUE HERETIC:** Active Bounty: +1 Command Seal & +15 Saint Quartz! Barred from Church sanctuary.`;
+              } else if (challengerMaster.innocentKills >= 7) {
+                repNotice = `\n\n🩸 **NOTORIOUS MAGUS (${challengerMaster.innocentKills}/10 Kills):** The Holy Church has placed you under heavy surveillance. Reaching 10 civilian kills activates a Rogue Heretic Bounty!`;
+              } else if (challengerMaster.innocentKills >= 4) {
+                repNotice = `\n\n⚠️ **SUSPECT MAGUS (${challengerMaster.innocentKills}/10 Kills):** The Holy Church notes your disregard for the Secrecy of Magecraft.`;
+              }
+
+              const civilianKilledEmbed = new EmbedBuilder()
+                .setTitle('☠️ CIVILIAN SLAIN WITHOUT A FIGHT')
+                .setDescription(
+                  `Civilian <@${opponentUser.id}> (**${opponentUser.username}**) accepted the duel invitation without a contracted Servant!\n\n` +
+                  `⚔️ **${sName}** easily struck down the defenceless civilian on the spot without a fight.\n\n` +
+                  `• **Target Status:** 💀 Slain & Permanently Eliminated (Civilian casualty recorded)\n` +
+                  `• **Victor:** Master <@${interaction.user.id}> (**${challengerMaster.username}**)\n` +
+                  `• **Civilian Kills:** ${challengerMaster.innocentKills} (${rep.rank})\n` +
+                  `• **Rewards Granted:** +300 Bond EXP, +3 Saint Quartz, +1 Kill` +
+                  repNotice
+                )
+                .setColor(0xef4444)
+                .setFooter({ text: 'Holy Grail War • Civilian Execution Ledger' });
+
+              await i.editReply({
+                content: `<@${interaction.user.id}> <@${opponentUser.id}>`,
+                embeds: [civilianKilledEmbed],
+                components: []
+              });
+              return;
+            }
 
             try {
               const p1Part = warSession.participants[challengerMaster.discordId];
@@ -1393,22 +1508,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     // Pick a random living rival Master from the server
     const targetRival = livingRivalParticipants[Math.floor(Math.random() * livingRivalParticipants.length)];
     const opponentMaster = await getOrCreateMaster(targetRival.discordId, targetRival.username);
-    const opponentServant =
-      opponentMaster.servants.find(s => s.id === opponentMaster.activeServantId) ||
-      opponentMaster.servants[0];
-
-    if (!opponentServant) {
-      await interaction.reply({
-        content: `❌ Rival Master **${targetRival.username}** has not summoned a Servant yet.`,
-        flags: MessageFlags.Ephemeral
-      });
-      return;
-    }
+    const isOpponentCivilian = !opponentMaster.servants || opponentMaster.servants.length === 0;
+    const opponentServant = isOpponentCivilian
+      ? null
+      : (opponentMaster.servants.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants[0]);
 
     const inviteEmbed = new EmbedBuilder()
       .setTitle('⚔️ HOLY GRAIL WAR: DUEL INVITATION')
       .setDescription(
-        `Master <@${interaction.user.id}> has challenged rival Master <@${targetRival.discordId}> (**${targetRival.username}**) to a duel!\n\n` +
+        `Master <@${interaction.user.id}> has challenged ${isOpponentCivilian ? 'civilian' : 'rival Master'} <@${targetRival.discordId}> (**${targetRival.username}**) to a duel!\n\n` +
         `<@${targetRival.discordId}>, do you accept this challenge?`
       )
       .setColor(0xd4af37);
@@ -1459,7 +1567,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         if (i.customId === 'accept_duel') {
           if (i.user.id !== targetRival.discordId) {
             await i.reply({
-              content: `❌ Only the challenged Master (<@${targetRival.discordId}>) can accept this duel invitation.`,
+              content: `❌ Only the challenged ${isOpponentCivilian ? 'civilian' : 'Master'} (<@${targetRival.discordId}>) can accept this duel invitation.`,
               flags: MessageFlags.Ephemeral
             });
             return;
@@ -1468,6 +1576,118 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           inviteCollector.stop('accepted');
           // Acknowledge immediately before async canvas generation
           await i.deferUpdate();
+
+          if (isOpponentCivilian || !opponentServant) {
+            const alreadyDead = (warSession.civilianCasualties || []).some(
+              c => c.id === targetRival.discordId || c.name.toLowerCase().includes(targetRival.username.toLowerCase())
+            );
+            if (alreadyDead) {
+              await i.editReply({
+                content: `☠️ Civilian <@${targetRival.discordId}> was already slain earlier in this Holy Grail War! A civilian cannot be killed twice.`,
+                embeds: [],
+                components: []
+              });
+              return;
+            }
+
+            const pEntry = warSession.participants[targetRival.discordId] || {
+              discordId: targetRival.discordId,
+              username: targetRival.username,
+              servantId: 'none',
+              servantName: 'Civilian',
+              servantClass: 'Civilian' as any,
+              avatarUrl: '',
+              maxHp: 100,
+              currentHp: 0,
+              commandSeals: 0,
+              kills: 0,
+              isAlive: false
+            };
+            pEntry.isAlive = false;
+            pEntry.currentHp = 0;
+            pEntry.deathTimestamp = Date.now();
+            pEntry.killedByMaster = challengerMaster.username;
+            warSession.participants[targetRival.discordId] = pEntry;
+
+            if (!warSession.civilianCasualties) warSession.civilianCasualties = [];
+            warSession.civilianCasualties.unshift({
+              id: targetRival.discordId,
+              name: `@${targetRival.username}`,
+              slainByMasterId: challengerMaster.discordId,
+              timestamp: Date.now(),
+              cause: 'duel_civilian_execution'
+            });
+
+            challengerMaster.innocentKills = (challengerMaster.innocentKills || 0) + 1;
+            const rep = getReputationInfo(challengerMaster.innocentKills);
+            challengerMaster.reputationRank = rep.rank;
+            challengerMaster.bountyActive = rep.bountyActive;
+            challengerMaster.bountyRewardSq = rep.bountyRewardSq;
+            challengerMaster.isRogueHeretic = rep.isRogue;
+
+            const challengerParticipant = warSession.participants[challengerMaster.discordId];
+            if (challengerParticipant) {
+              challengerParticipant.innocentKills = challengerMaster.innocentKills;
+              challengerParticipant.reputationRank = rep.rank;
+              challengerParticipant.bountyActive = rep.bountyActive;
+              challengerParticipant.isRogueHeretic = rep.isRogue;
+              if (rep.isRogue) {
+                challengerParticipant.isExposed = true;
+                challengerParticipant.exposureReason = 'heretic_bounty';
+                challengerParticipant.inSanctuary = false;
+                (challengerParticipant as any).inChurchSanctuary = false;
+              }
+            }
+
+            challengerMaster.duelsWon = (challengerMaster.duelsWon || 0) + 1;
+            challengerMaster.servantKills = (challengerMaster.servantKills || 0) + 1;
+            challengerMaster.saintQuartz = (challengerMaster.saintQuartz || 0) + 3;
+            if (challengerServant) {
+              challengerServant.experience = (challengerServant.experience || 0) + 300;
+            }
+            await saveMaster(challengerMaster);
+
+            opponentMaster.duelsLost = (opponentMaster.duelsLost || 0) + 1;
+            await saveMaster(opponentMaster);
+
+            const sName = challengerServant?.template?.name || 'Heroic Spirit';
+
+            let repNotice = '';
+            if (challengerMaster.innocentKills === 10) {
+              repNotice = `\n\n📜 **CHURCH ORDER OF EXTERMINATION & BOUNTY ISSUED!**\n` +
+                `> *"By decree of Father Kotomine: Master <@${challengerMaster.discordId}> has reached 10 civilian kills! They are excommunicated as a **Rogue Heretic**."*\n\n` +
+                `• 🎯 **Open Server Bounty:** **+1 Extra Command Seal** & **+15 Saint Quartz** to any Master who slays them!\n` +
+                `• 🚫 **Church Sanctuary:** Permanently revoked.\n` +
+                `• ⛓️ **Curse of Heresy:** Servant suffers -10% ATK suppression in all combat.`;
+            } else if (challengerMaster.innocentKills > 10) {
+              repNotice = `\n\n☠️ **WANTED ROGUE HERETIC:** Active Bounty: +1 Command Seal & +15 Saint Quartz! Barred from Church sanctuary.`;
+            } else if (challengerMaster.innocentKills >= 7) {
+              repNotice = `\n\n🩸 **NOTORIOUS MAGUS (${challengerMaster.innocentKills}/10 Kills):** The Holy Church has placed you under heavy surveillance. Reaching 10 civilian kills activates a Rogue Heretic Bounty!`;
+            } else if (challengerMaster.innocentKills >= 4) {
+              repNotice = `\n\n⚠️ **SUSPECT MAGUS (${challengerMaster.innocentKills}/10 Kills):** The Holy Church notes your disregard for the Secrecy of Magecraft.`;
+            }
+
+            const civilianKilledEmbed = new EmbedBuilder()
+              .setTitle('☠️ CIVILIAN SLAIN WITHOUT A FIGHT')
+              .setDescription(
+                `Civilian <@${targetRival.discordId}> (**${targetRival.username}**) accepted the duel invitation without a contracted Servant!\n\n` +
+                `⚔️ **${sName}** easily struck down the defenceless civilian on the spot without a fight.\n\n` +
+                `• **Target Status:** 💀 Slain & Permanently Eliminated (Civilian casualty recorded)\n` +
+                `• **Victor:** Master <@${interaction.user.id}> (**${challengerMaster.username}**)\n` +
+                `• **Civilian Kills:** ${challengerMaster.innocentKills} (${rep.rank})\n` +
+                `• **Rewards Granted:** +300 Bond EXP, +3 Saint Quartz, +1 Kill` +
+                repNotice
+              )
+              .setColor(0xef4444)
+              .setFooter({ text: 'Holy Grail War • Civilian Execution Ledger' });
+
+            await i.editReply({
+              content: `<@${interaction.user.id}> <@${targetRival.discordId}>`,
+              embeds: [civilianKilledEmbed],
+              components: []
+            });
+            return;
+          }
 
           try {
             const p1Part = warSession.participants[challengerMaster.discordId];
@@ -2611,12 +2831,32 @@ async function finishDuel(
     );
 
     if (decision === 'kill') {
+      const loserMaster = await getOrCreateMaster(loser.userId, loser.username);
+      const winnerMaster = await getOrCreateMaster(winner.userId, winner.username);
+      
+      let bountyRewardText = '';
+      if (loserMaster.bountyActive || (loserMaster.innocentKills || 0) >= 10 || loserMaster.isRogueHeretic) {
+        winnerMaster.saintQuartz = (winnerMaster.saintQuartz || 0) + 15;
+        winnerMaster.commandSeals = Math.min(3, (winnerMaster.commandSeals || 0) + 1);
+        loserMaster.bountyActive = false;
+        loserMaster.isRogueHeretic = false;
+        await saveMaster(winnerMaster);
+        await saveMaster(loserMaster);
+
+        bountyRewardText = `\n\n🏆 **CHURCH EXTERMINATION BOUNTY CLAIMED!**\n` +
+          `Father Kotomine has awarded Master **${winner.username}** the Extermination Bounty for slaying the Rogue Heretic:\n` +
+          `• **+1 Command Seal** 💠 (Consecrated Sigil Restored)\n` +
+          `• **+15 Saint Quartz** 💎 (Church Treasury Bounty)\n` +
+          `The Blight of Fuyuki has been purged!`;
+      }
+
       const execEmbed = new EmbedBuilder()
         .setTitle('☠️ FATE SEALED — MASTER EXECUTED')
         .setDescription(
           `Master **${winner.username}** has chosen to **EXECUTE** Master **${loser.username}**!\n\n` +
           `☠️ Master **${loser.username}** (${loser.servant.template.name}) was slain and **PERMANENTLY ELIMINATED** from the Holy Grail War.\n\n` +
-          `💰 **Master Rewards:** +3 Saint Quartz 💎 | +300 Bond EXP 💖 | +2 Parameter Points 📊`
+          `💰 **Master Rewards:** +3 Saint Quartz 💎 | +300 Bond EXP 💖 | +2 Parameter Points 📊` +
+          bountyRewardText
         )
         .setColor(0xef4444);
 

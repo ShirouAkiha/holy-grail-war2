@@ -36,6 +36,7 @@ import {
   getTotalExpForLevel
 } from '../lib/engine/customization';
 import { CRAFT_ESSENCE_DATABASE } from '../lib/data/craftEssences';
+import MASTERS_DATABASE from '../data/masters.json';
 import {
   renderServantProfileCard,
   renderDialogueCard,
@@ -61,7 +62,8 @@ import {
   recallFamiliarsInWar,
   enterChurchSanctuary,
   leaveChurchSanctuary,
-  checkAndTriggerChannelTraps
+  checkAndTriggerChannelTraps,
+  getReputationInfo
 } from '../lib/engine/grailwar';
 import {
   Terminal,
@@ -2390,8 +2392,8 @@ export default function DiscordEmulator({
           sender: 'bot',
           timestamp: 'Just now',
           embed: {
-            title: 'Combat Error',
-            description: 'You must contract a Servant via `/summon ritual` before entering combat!',
+            title: '❌ Civilians Cannot Challenge',
+            description: 'You are a civilian without a contracted Servant! Civilians cannot initiate duels in the Holy Grail War. Invoke `/summon` to contract a Heroic Spirit first.',
             color: '#ef4444'
           },
           components: {
@@ -2475,6 +2477,56 @@ export default function DiscordEmulator({
       }
 
       if (!targetParticipant) {
+        const civilianMaster = MASTERS_DATABASE.find(
+          (m: any) =>
+            m.username.toLowerCase().includes(targetQuery) &&
+            (!m.servants || m.servants.length === 0)
+        );
+
+        if (civilianMaster) {
+          const alreadyDead = (grailWar.civilianCasualties || []).some(
+            c => c.name.toLowerCase().includes(civilianMaster.username.toLowerCase()) || c.id === `civilian_${civilianMaster.username}`
+          ) || Object.values(grailWar.participants).some(
+            p => p.username.toLowerCase() === civilianMaster.username.toLowerCase() && !p.isAlive
+          );
+
+          if (alreadyDead) {
+            addMessage({
+              id: getNextId('bot_duel_civilian_already_dead'),
+              sender: 'bot',
+              timestamp: 'Just now',
+              embed: {
+                title: '☠️ CIVILIAN ALREADY SLAIN',
+                description: `Civilian **${civilianMaster.username}** was already slain earlier in this Holy Grail War! A civilian cannot be killed twice.`,
+                color: '#ef4444'
+              }
+            });
+            return;
+          }
+
+          addMessage({
+            id: getNextId('bot_duel_civilian_invite'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '⚔️ HOLY GRAIL WAR: DUEL INVITATION',
+              description:
+                `Master **${master.username}** has challenged civilian **${civilianMaster.username}** to a battle!\n\n` +
+                `**${civilianMaster.username}**, do you accept this challenge?`,
+              color: '#d4af37',
+              footer: 'Holy Grail War • Civilian Challenge'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: `accept_civilian_duel_${civilianMaster.username}`, label: 'Accept Duel', style: 'success', emoji: '⚔️' },
+                { id: `decline_civilian_duel_${civilianMaster.username}`, label: 'Decline', style: 'danger', emoji: '🏳️' }
+              ]
+            }
+          });
+          return;
+        }
+
         addMessage({
           id: getNextId('bot_duel_no_rivals'),
           sender: 'bot',
@@ -3394,12 +3446,14 @@ export default function DiscordEmulator({
                 `**Usage:**\n` +
                 `• \`/attack <@user | MasterName | #slot>\`\n` +
                 `• \`/ambush <@user | MasterName | #slot>\`\n` +
+                `• \`/ambush list\` (View target registry & rogue bounties)\n` +
                 `• \`/grailwar attack <target>\`\n\n` +
                 `**Ambush Mechanics:**\n` +
                 `🎯 **Target is a Rival Master:**\n` +
                 `Your Servant strikes from the shadows dealing heavy damage. Their true Master identity and Servant are **EXPOSED** on the war board! (You remain hidden unless intercepted by an Alarm Ward or Assassin Servant).\n\n` +
                 `☠️ **Target is an Innocent User:**\n` +
-                `The bystander is slain as collateral damage, and the Church issues an emergency "gas leak explosion" cover-up bulletin. **Your identity is publicly EXPOSED** for violating the Secrecy of Magecraft!`,
+                `The bystander is slain as collateral damage, and the Church issues an emergency "gas leak explosion" cover-up bulletin. **Your identity is publicly EXPOSED** for violating the Secrecy of Magecraft!\n\n` +
+                `⚠️ **Reputation System:** Masters with 10+ civilian kills become **Rogue Heretics** with permanent Church Bounties (+1 CS & +15 SQ) and lose Church sanctuary!`,
               color: '#ef4444'
             },
             components: {
@@ -3407,6 +3461,42 @@ export default function DiscordEmulator({
               items: [
                 { id: 'war_attack_prompt', label: 'Ambush Suspect', style: 'danger', emoji: '⚔️' },
                 { id: 'quick_war_status', label: 'View Intelligence Board', style: 'primary', emoji: '📋' }
+              ]
+            }
+          });
+          return;
+        }
+
+        if (targetQuery.toLowerCase() === 'list') {
+          const parts = Object.values(grailWar.participants || {});
+          const lines = parts.map((p, idx) => {
+            const isRogue = (p.innocentKills || 0) >= 10 || p.bountyActive;
+            const inSanc = p.inSanctuary || (p as any).inChurchSanctuary;
+            const nameLabel = isRogue || p.isExposed || !p.isAlive ? p.username : `Shadow Master #${idx + 1}`;
+            const sLabel = isRogue || p.isExposed || !p.isAlive ? `${p.servantName} (${p.servantClass})` : '[Classified]';
+            let tag = p.isAlive ? (p.isExposed ? '`[EXPOSED]`' : '`[HIDDEN]`') : '`[FALLEN]`';
+            if (isRogue) tag = '`[☠️ WANTED HERETIC - 15 SQ BOUNTY]`';
+            else if (inSanc) tag += ' `[⛪ CHURCH SANCTUARY]`';
+            return `${p.isAlive ? (isRogue ? '☠️' : '🟢') : '💀'} **${nameLabel}** ${tag} — Servant: *${sLabel}* | HP: \`${calculateCurrentHp(p)}/${p.maxHp}\``;
+          });
+
+          addMessage({
+            id: getNextId('bot_ambush_list'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '🗺️ Ambush Target Registry & Leyline Surveillance',
+              description:
+                `*Surveillance records of all recognized Masters operating in Fuyuki City:*\n\n` +
+                (lines.length > 0 ? lines.join('\n') : '*No Masters detected in the sector.*') +
+                `\n\n🎯 **Extermination Bounty:** Defeating a Rogue Heretic (10+ civilian kills) grants **+1 Extra Command Seal** & **+15 Saint Quartz**!`,
+              color: '#ef4444'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'war_attack_prompt', label: 'Ambush Suspect', style: 'danger', emoji: '⚔️' },
+                { id: 'quick_war_status', label: 'War Board 📋', style: 'secondary' }
               ]
             }
           });
@@ -5247,11 +5337,17 @@ export default function DiscordEmulator({
       for (let slotIdx = 0; slotIdx < 7; slotIdx++) {
         const m = participants[slotIdx];
         if (m) {
-          const isRevealed = m.isExposed || !m.isAlive;
-          const statusIcon = m.isAlive ? (isRevealed ? '🟢' : '🕶️') : '💀';
+          const isRogue = (m.innocentKills || 0) >= 10 || m.bountyActive;
+          const isRevealed = m.isExposed || !m.isAlive || isRogue;
+          const statusIcon = m.isAlive ? (isRogue ? '☠️' : (isRevealed ? '🟢' : '🕶️')) : '💀';
           const nameLabel = isRevealed ? m.username : `Shadow Master #${slotIdx + 1}`;
           const servantLabel = isRevealed ? `${m.servantName} (${m.servantClass})` : '[Classified in Shadows]';
-          const exposureTag = m.isExposed ? ' `[EXPOSED]`' : (!m.isAlive ? ' `[FALLEN]`' : '');
+          let exposureTag = m.isExposed ? ' `[EXPOSED]`' : (!m.isAlive ? ' `[FALLEN]`' : '');
+          if (isRogue) {
+            exposureTag = ' `[WANTED - 15 SQ BOUNTY] ☠️ ROGUE HERETIC`';
+          } else if (m.inSanctuary || (m as any).inChurchSanctuary) {
+            exposureTag += ' `[⛪ SANCTUARY]`';
+          }
           const curHp = calculateCurrentHp(m);
           rosterLines.push(`${statusIcon} **${nameLabel}**${exposureTag} — Servant: *${servantLabel}* | HP: \`${curHp.toLocaleString()}/${m.maxHp.toLocaleString()}\` | Kills: ${m.kills}`);
         } else {
@@ -5311,10 +5407,17 @@ export default function DiscordEmulator({
         statusHeader = `**Status:** ⚔️ ACTIVE ELIMINATION PHASE (**${aliveParticipants.length}/7** Alive | **${deadCount}/6** Cores Absorbed) | **Civilian Casualties:** **${civilianCasualtiesList.length}**`;
       }
 
+      const rogueMasters = participants.filter(p => p.isAlive && (((p.innocentKills || 0) >= 10) || p.bountyActive));
+      const bountyNotice = rogueMasters.length > 0
+        ? `\n\n🎯 **CHURCH EXTERMINATION BOUNTY ACTIVE:**\n` +
+          rogueMasters.map(r => `• ☠️ **${r.username}** (${r.servantName} [${r.servantClass}]) — **${r.innocentKills} Civilian Kills**\n  ↳ **Bounty Reward:** **+1 Extra Command Seal** 💠 & **+15 Saint Quartz** 💎 for the Master who slays them!`).join('\n') + '\n'
+        : '';
+
       description =
         `${statusHeader}\n\n` +
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `⚔️ **7 Masters Intelligence Roster:**\n${rosterLines.join('\n')}\n\n` +
+        bountyNotice +
         `📜 **War Chronicle & Skirmishes (${eventLogsList.length} Events | ${leakedIntelList.length} Leaks):**\n${recentEvents || '*The war has begun. No city skirmishes recorded yet.*'}`;
       color = '#d4af37';
 
@@ -6047,6 +6150,149 @@ export default function DiscordEmulator({
 
   // Button interaction handler
   const handleButtonClick = (btnId: string) => {
+    if (btnId.startsWith('accept_civilian_duel_')) {
+      const civilianName = btnId.replace('accept_civilian_duel_', '');
+      const activeS = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
+      const sName = activeS?.template?.name || 'Heroic Spirit';
+
+      // Check if already dead
+      const isAlreadyDead = (grailWar.civilianCasualties || []).some(
+        c => c.name.toLowerCase().includes(civilianName.toLowerCase()) || c.id === `civilian_${civilianName}`
+      ) || Object.values(grailWar.participants).some(
+        p => p.username.toLowerCase() === civilianName.toLowerCase() && !p.isAlive
+      );
+
+      if (isAlreadyDead) {
+        addMessage({
+          id: getNextId('bot_civilian_already_dead'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '☠️ CIVILIAN ALREADY SLAIN',
+            description: `Civilian **${civilianName}** was already slain earlier in this Holy Grail War! A civilian cannot be killed twice.`,
+            color: '#ef4444'
+          }
+        });
+        return;
+      }
+
+      // Update grailWar session state
+      const updatedWar = { ...grailWar };
+      const civParticipant = Object.values(updatedWar.participants).find(
+        p => p.username.toLowerCase() === civilianName.toLowerCase()
+      ) || {
+        discordId: `civilian_${civilianName}`,
+        username: civilianName,
+        servantId: 'none',
+        servantName: 'Civilian',
+        servantClass: 'Civilian' as any,
+        avatarUrl: '',
+        maxHp: 100,
+        currentHp: 0,
+        commandSeals: 0,
+        kills: 0,
+        isAlive: false
+      };
+      civParticipant.isAlive = false;
+      civParticipant.currentHp = 0;
+      updatedWar.participants[civParticipant.discordId] = civParticipant;
+
+      if (!updatedWar.civilianCasualties) updatedWar.civilianCasualties = [];
+      const timestampNow = getTimestampNow();
+      updatedWar.civilianCasualties.unshift({
+        id: `civilian_${timestampNow}`,
+        name: `@${civilianName}`,
+        slainByMasterId: master.discordId || master.username,
+        timestamp: timestampNow,
+        cause: 'duel_civilian_execution'
+      });
+
+      const currentInnocentKills = (master.innocentKills || 0) + 1;
+      const rep = getReputationInfo(currentInnocentKills);
+
+      // Reward victor Master
+      const updatedMaster: MasterProfile = {
+        ...master,
+        saintQuartz: (master.saintQuartz || 0) + 3,
+        duelsWon: (master.duelsWon || 0) + 1,
+        servantKills: (master.servantKills || 0) + 1,
+        innocentKills: currentInnocentKills,
+        reputationRank: rep.rank,
+        bountyActive: rep.bountyActive,
+        bountyRewardSq: rep.bountyRewardSq,
+        isRogueHeretic: rep.isRogue
+      };
+      onUpdateMaster(updatedMaster);
+
+      const masterPart = updatedWar.participants[master.discordId] ||
+        Object.values(updatedWar.participants).find(p => p.username.toLowerCase() === master.username.toLowerCase());
+      if (masterPart) {
+        masterPart.innocentKills = currentInnocentKills;
+        masterPart.reputationRank = rep.rank;
+        masterPart.bountyActive = rep.bountyActive;
+        masterPart.isRogueHeretic = rep.isRogue;
+        if (rep.isRogue) {
+          masterPart.isExposed = true;
+          masterPart.exposureReason = 'heretic_bounty';
+          masterPart.inSanctuary = false;
+          (masterPart as any).inChurchSanctuary = false;
+        }
+      }
+
+      onUpdateGrailWar(updatedWar);
+
+      let repNotice = '';
+      if (currentInnocentKills === 10) {
+        repNotice = `\n\n📜 **CHURCH ORDER OF EXTERMINATION & BOUNTY ISSUED!**\n` +
+          `> *"By decree of Father Kotomine: Master **${master.username}** has reached 10 civilian kills! They are excommunicated as a **Rogue Heretic**."*\n\n` +
+          `• 🎯 **Open Server Bounty:** **+1 Extra Command Seal** & **+15 Saint Quartz** to any Master who eliminates them!\n` +
+          `• 🚫 **Church Sanctuary:** Permanently revoked.\n` +
+          `• ⛓️ **Curse of Heresy:** -10% ATK suppression in all combat encounters.\n` +
+          `• 🗺️ **Permanent Exposure:** Concealment broken permanently on intelligence maps.`;
+      } else if (currentInnocentKills > 10) {
+        repNotice = `\n\n☠️ **WANTED ROGUE HERETIC:** Extermination Bounty active on your head (+1 Command Seal & +15 Saint Quartz). Barred from Church sanctuary.`;
+      } else if (currentInnocentKills >= 7) {
+        repNotice = `\n\n🩸 **NOTORIOUS MAGUS (${currentInnocentKills}/10 Kills):** The Holy Church has placed you under high surveillance. Reaching 10 kills activates a Rogue Heretic Bounty!`;
+      } else if (currentInnocentKills >= 4) {
+        repNotice = `\n\n⚠️ **SUSPECT MAGUS (${currentInnocentKills}/10 Kills):** The Holy Church notes your violation of the Secrecy of Magecraft.`;
+      }
+
+      addMessage({
+        id: getNextId('bot_civilian_slain'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '☠️ CIVILIAN SLAIN WITHOUT A FIGHT',
+          description:
+            `Civilian **${civilianName}** accepted the duel invitation without a contracted Servant!\n\n` +
+            `⚔️ **${sName}** easily struck down the defenceless civilian on the spot without a fight.\n\n` +
+            `• **Target Status:** 💀 Slain & Permanently Eliminated (Civilian casualty recorded)\n` +
+            `• **Victor:** Master **${master.username}**\n` +
+            `• **Civilian Kills:** ${currentInnocentKills} (${rep.rank})\n` +
+            `• **Rewards Granted:** +300 Bond EXP, +3 Saint Quartz, +1 Kill` +
+            repNotice,
+          color: '#ef4444',
+          footer: 'Holy Grail War • Civilian Execution Ledger'
+        }
+      });
+      return;
+    }
+
+    if (btnId.startsWith('decline_civilian_duel_')) {
+      const civilianName = btnId.replace('decline_civilian_duel_', '');
+      addMessage({
+        id: getNextId('bot_civilian_declined'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '🏳️ Duel Declined',
+          description: `Civilian **${civilianName}** declined the duel challenge.`,
+          color: '#64748b'
+        }
+      });
+      return;
+    }
+
     if (btnId === 'btn_show_servants_list' || btnId === 'btn_back_servants_list') {
       handleCommand('/servants list');
     } else if (btnId.startsWith('inv_') || btnId.startsWith('stat_')) {
@@ -8158,10 +8404,28 @@ export default function DiscordEmulator({
           return s;
         });
 
+        let bountyRewardText = '';
+        let extraSq = 0;
+        let extraCs = 0;
+        const defeatedParticipant = outcome.defeatedMaster || Object.values(grailWar.participants).find(
+          p => p.username.toLowerCase() === rivalMaster.toLowerCase()
+        );
+
+        if (decision === 'kill' && defeatedParticipant && (defeatedParticipant.bountyActive || (defeatedParticipant.innocentKills || 0) >= 10)) {
+          extraSq = 15;
+          extraCs = 1;
+          bountyRewardText =
+            `\n\n🏆 **CHURCH EXTERMINATION BOUNTY CLAIMED!**\n` +
+            `Father Kotomine has rewarded you for purging the Rogue Heretic **${rivalMaster}**:\n` +
+            `• **+1 Command Seal** 💠 (Consecrated Sigil Restored)\n` +
+            `• **+15 Saint Quartz** 💎 (Church Treasury Payout)`;
+        }
+
         onUpdateMaster({
           ...master,
           servants: updatedServants,
-          saintQuartz: master.saintQuartz + 3,
+          saintQuartz: master.saintQuartz + 3 + extraSq,
+          commandSeals: Math.min(3, (master.commandSeals || 0) + extraCs),
           grailWarWins: (master.grailWarWins || 0) + 1
         });
 
@@ -8181,7 +8445,8 @@ export default function DiscordEmulator({
                 `💰 **Master Rewards Claimed:**\n` +
                 `• +3 Saint Quartz 💎\n` +
                 `• +300 Bond EXP (+1 Bond Level) 💖\n` +
-                `• +2 Parameter Points 📊`,
+                `• +2 Parameter Points 📊` +
+                bountyRewardText,
               color: '#ef4444',
               footer: outcome.updatedWar.status === 'concluded' ? '🏆 HOLY GRAIL WAR CONCLUDED!' : 'Holy Grail War State Updated'
             },

@@ -163,6 +163,11 @@ export interface MasterProfile {
   duelsWon?: number;
   duelsLost?: number;
   servantKills?: number;
+  innocentKills?: number;
+  reputationRank?: 'Honorable Magus' | 'Suspect Magus' | 'Notorious Magus' | 'Rogue Heretic';
+  bountyActive?: boolean;
+  bountyRewardSq?: number;
+  isRogueHeretic?: boolean;
   qp?: number;
   grailShards?: number;
   manaPrisms?: number;
@@ -337,6 +342,10 @@ export interface WarMasterParticipant {
   isExposed?: boolean;
   exposureReason?: 'public_command' | 'ambush_clash' | 'innocent_assault' | 'intel_leak' | 'direct_combat' | string;
   innocentKills?: number;
+  bountyActive?: boolean;
+  bountyRewardSq?: number;
+  isRogueHeretic?: boolean;
+  reputationRank?: 'Honorable Magus' | 'Suspect Magus' | 'Notorious Magus' | 'Rogue Heretic';
   allianceId?: string;
   kills: number;
   boundedField?: 'none' | 'ward' | 'alarm' | 'decoy';

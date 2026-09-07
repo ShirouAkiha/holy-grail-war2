@@ -116,6 +116,54 @@ export function saveWarToDisk(): void {
   }
 }
 
+export function getReputationInfo(innocentKills: number = 0): {
+  rank: 'Honorable Magus' | 'Suspect Magus' | 'Notorious Magus' | 'Rogue Heretic';
+  badge: string;
+  isRogue: boolean;
+  bountyActive: boolean;
+  bountyRewardSq: number;
+  description: string;
+} {
+  if (innocentKills >= 10) {
+    return {
+      rank: 'Rogue Heretic',
+      badge: '☠️ ROGUE HERETIC [WANTED - 15 SQ BOUNTY]',
+      isRogue: true,
+      bountyActive: true,
+      bountyRewardSq: 15,
+      description: 'Grand Extermination Decree issued by Father Kotomine. Barred from Church Sanctuary. Curse of Heresy (-10% ATK) in effect.'
+    };
+  }
+  if (innocentKills >= 7) {
+    return {
+      rank: 'Notorious Magus',
+      badge: '🩸 NOTORIOUS MAGUS',
+      isRogue: false,
+      bountyActive: false,
+      bountyRewardSq: 0,
+      description: 'Heavily scrutinized by the Holy Church. On the verge of an Excommunication Decree.'
+    };
+  }
+  if (innocentKills >= 4) {
+    return {
+      rank: 'Suspect Magus',
+      badge: '⚠️ SUSPECT MAGUS',
+      isRogue: false,
+      bountyActive: false,
+      bountyRewardSq: 0,
+      description: 'Formally reprimanded by the Overseer for violating the Secrecy of Magecraft.'
+    };
+  }
+  return {
+    rank: 'Honorable Magus',
+    badge: '🕊️ HONORABLE MAGUS',
+    isRogue: false,
+    bountyActive: false,
+    bountyRewardSq: 0,
+    description: 'In the good graces of the Holy Church.'
+  };
+}
+
 /**
  * Ensures all participants in the active Holy Grail War are synchronized to canonical Servant stats and balanced HP pools.
  */
@@ -1169,6 +1217,25 @@ export function attackSuspectUserInWar(
   // ---------------------------------------------------------
   // CASE 2: TARGET IS AN INNOCENT SERVER USER (COLLATERAL CASUALTY)
   // ---------------------------------------------------------
+  const cleanBystander = suspectQuery.replace(/[<@!>]/g, '').trim();
+  let bystanderName = resolvedTargetUsername ? resolvedTargetUsername.replace(/^@+/, '') : '';
+
+  // Check if this innocent bystander was already slain earlier
+  const alreadySlainCivilian = (targetWar.civilianCasualties || []).find(
+    c => c.id === cleanBystander || 
+         c.name.toLowerCase().includes(cleanBystander.toLowerCase()) ||
+         (bystanderName && c.name.toLowerCase().includes(bystanderName.toLowerCase()))
+  );
+  if (alreadySlainCivilian) {
+    return {
+      success: false,
+      message: `☠️ That civilian bystander was already slain earlier in this Holy Grail War! A civilian cannot be killed twice.`,
+      targetWasMaster: false,
+      isCollateralCasualty: false,
+      updatedWar: targetWar
+    };
+  }
+
   const wasAlreadyExposed = !!attacker.isExposed;
   attacker.lastAmbushTime = now;
   attacker.isExposed = true;
@@ -1177,11 +1244,21 @@ export function attackSuspectUserInWar(
   }
   attacker.innocentKills = (attacker.innocentKills || 0) + 1;
 
+  // Evaluate attacker reputation and rogue status
+  const repInfo = getReputationInfo(attacker.innocentKills);
+  attacker.reputationRank = repInfo.rank;
+  attacker.bountyActive = repInfo.bountyActive;
+  attacker.bountyRewardSq = repInfo.bountyRewardSq;
+  attacker.isRogueHeretic = repInfo.isRogue;
+
+  if (repInfo.isRogue) {
+    attacker.isExposed = true;
+    attacker.exposureReason = 'heretic_bounty';
+    attacker.inSanctuary = false;
+    (attacker as any).inChurchSanctuary = false;
+  }
+
   if (!targetWar.civilianCasualties) targetWar.civilianCasualties = [];
-  
-  // Clean bystander string to prevent duplicate @ symbols or raw mention formatting
-  const cleanBystander = suspectQuery.replace(/[<@!>]/g, '').trim();
-  let bystanderName = resolvedTargetUsername ? resolvedTargetUsername.replace(/^@+/, '') : '';
 
   // If bystander is a raw Discord snowflake ID, resolve their true username
   const idMatch = cleanBystander.match(/\d{16,21}/);
@@ -1865,6 +1942,26 @@ export function patrolCityInWar(
   }
 
   // MASTER SCOUT PATROL (Stealth Reconnaissance - DOES NOT trigger traps)
+  if ((actorParticipant.innocentKills || 0) >= 10 && Math.random() < 0.35) {
+    const holyDmg = 2500;
+    applyDamageToParticipant(actorParticipant, holyDmg);
+    targetWar.eventLogs.unshift({
+      id: `evt_church_ambush_${Date.now()}`,
+      timestamp: Date.now(),
+      text: `✝️ Holy Inquisition: Burial Agency Executioners ambushed Rogue Heretic **${actorParticipant.username}** in ${chanTag} dealing ${holyDmg.toLocaleString()} holy damage!`,
+      type: 'clash'
+    });
+    return {
+      success: true,
+      message: `✝️ **CHURCH EXECUTIONER INTERCEPTION IN ${chanTag}!**\n\n` +
+        `> *"Heretic. By decree of Father Kotomine, the Burial Agency gives you no safe quarter in Fuyuki."*\n\n` +
+        `While patrolling ${chanTag}, Black Key Executioners ambushed you from the shadows, hurling consecrated blades at your Servant before vanishing into the leylines!\n\n` +
+        `• **Holy Damage Taken:** -${holyDmg.toLocaleString()} HP (Current HP: ${actorParticipant.currentHp.toLocaleString()}/${actorParticipant.maxHp.toLocaleString()})\n` +
+        `• **Status:** Rogue Heretic (Active Bounty: +1 Command Seal, +15 Saint Quartz)`,
+      updatedWar: targetWar
+    };
+  }
+
   const cleanChan = chanTag.replace(/^[#<@>]/, '').toLowerCase();
   const activeTraps = (targetWar.channelTraps || []).filter(t => {
     const tClean = t.channelName.replace(/^[#<@>]/, '').toLowerCase();
@@ -2266,7 +2363,21 @@ export function recordDuelOutcome(
 
     const deadCount = Object.values(targetWar.participants).filter(p => !p.isAlive).length;
 
-    outcomeLog = `☠️ FATAL EXECUTION in ${chanTag}: Master **${victor.username}** (${victor.servantName}) dealt the finishing blow and EXECUTED Master **${defeated.username}** (${defeated.servantName})!\n⚱️ The Lesser Grail absorbed a Spiritual Core (${deadCount}/6 absorbed).`;
+    let bountyClaimMsg = '';
+    if (defeated.bountyActive || (defeated.innocentKills || 0) >= 10) {
+      victor.commandSeals = (victor.commandSeals || 0) + 1;
+      defeated.bountyActive = false;
+      defeated.isRogueHeretic = false;
+      bountyClaimMsg = `\n\n🏆 **CHURCH BOUNTY CLAIMED:** Master **${victor.username}** has eliminated the Rogue Heretic **${defeated.username}**! Father Kotomine has awarded **+1 Command Seal** and **+15 Saint Quartz** to the victor!`;
+      targetWar.eventLogs.unshift({
+        id: `evt_bounty_claimed_${Date.now()}`,
+        timestamp: now,
+        text: `🏆 Church Bounty Claimed: Master **${victor.username}** eliminated Rogue Heretic **${defeated.username}** (+1 Command Seal, +15 Saint Quartz awarded)!`,
+        type: 'elimination'
+      });
+    }
+
+    outcomeLog = `☠️ FATAL EXECUTION in ${chanTag}: Master **${victor.username}** (${victor.servantName}) dealt the finishing blow and EXECUTED Master **${defeated.username}** (${defeated.servantName})!\n⚱️ The Lesser Grail absorbed a Spiritual Core (${deadCount}/6 absorbed).` + bountyClaimMsg;
 
     targetWar.eventLogs.unshift({
       id: `evt_exec_${Date.now()}`,
@@ -2332,6 +2443,18 @@ export function enterChurchSanctuary(
   }
   if (!participant || !participant.isAlive) {
     return { success: false, message: 'You are not an active participant in this Holy Grail War.', updatedWar: targetWar };
+  }
+
+  if ((participant.innocentKills || 0) >= 10) {
+    return {
+      success: false,
+      message:
+        `🚫 **CHURCH SANCTUARY REFUSED BY FATHER KOTOMINE**\n\n` +
+        `> *"The holy grounds of this church shall never shelter a butcher of the innocent."*\n\n` +
+        `• **Rogue Heretic Status:** With **${participant.innocentKills} civilian kills**, you are declared an excommunicated enemy of the Church.\n` +
+        `• A formal **Extermination Decree & Bounty** is active on your head (+1 Command Seal, +15 Saint Quartz). Face your fate in Fuyuki.`,
+      updatedWar: targetWar
+    };
   }
 
   const isUnderSanctuary = !!(participant.inSanctuary || (participant as any).inChurchSanctuary);
