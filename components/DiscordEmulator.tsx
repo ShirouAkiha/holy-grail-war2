@@ -3480,10 +3480,20 @@ export default function DiscordEmulator({
           footerText = 'Target Master identity is now EXPOSED! You remain concealed in the shadows (/grailwar status)';
         }
 
+        let pingContent: string | undefined = undefined;
+        if (res.targetWasMaster) {
+          const pingTarget = res.targetMasterDiscordId ? `<@${res.targetMasterDiscordId}>` : (targetQuery.startsWith('<@') ? targetQuery : `@${res.targetMasterUsername || targetQuery}`);
+          pingContent = `🚨 ${pingTarget} ⚔️ **AMBUSH ALERT! You are under attack in the Holy Grail War!**`;
+        } else {
+          const pingTarget = targetQuery.startsWith('<@') ? targetQuery : `@${targetQuery.replace(/^@/, '')}`;
+          pingContent = `☠️ ${pingTarget} 💥 **COLLATERAL CASUALTY ALERT! Caught in magecraft crossfire!**`;
+        }
+
         addMessage({
           id: getNextId('bot_attack_res'),
           sender: 'bot',
           timestamp: 'Just now',
+          content: pingContent,
           embed: {
             title: res.targetWasMaster
               ? '⚔️ TACTICAL AMBUSH: RIVAL MASTER ENGAGED!'

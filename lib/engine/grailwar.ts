@@ -231,6 +231,8 @@ export interface WarActionResult {
   eliminatedMasterId?: string;
   isCollateralCasualty?: boolean;
   targetWasMaster?: boolean;
+  targetMasterDiscordId?: string;
+  targetMasterUsername?: string;
   wasAlreadyExposed?: boolean;
   exposedTargetMaster?: string;
   updatedWar: HolyGrailWarSession;
@@ -697,6 +699,9 @@ export function attackSuspectUserInWar(
         success: true,
         message: failMsg,
         targetWasMaster: true,
+        targetMasterDiscordId: targetMaster.discordId,
+        targetMasterUsername: targetMaster.username,
+        exposedTargetMaster: targetMaster.username,
         updatedWar: targetWar
       };
     }
@@ -857,6 +862,9 @@ export function attackSuspectUserInWar(
       success: true,
       message: mainMessage,
       targetWasMaster: true,
+      targetMasterDiscordId: targetMaster.discordId,
+      targetMasterUsername: targetMaster.username,
+      exposedTargetMaster: targetMaster.username,
       isCollateralCasualty: false,
       eliminatedMasterId: eliminatedId,
       updatedWar: targetWar
@@ -909,6 +917,8 @@ export function attackSuspectUserInWar(
     success: true,
     message: casualtyText,
     targetWasMaster: false,
+    targetMasterDiscordId: cleanBystander,
+    targetMasterUsername: bystanderDisplay,
     isCollateralCasualty: true,
     wasAlreadyExposed,
     updatedWar: targetWar

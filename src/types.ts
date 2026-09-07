@@ -447,6 +447,24 @@ export interface HolyGrailWarSession {
   history?: WarHistoryRecord[];
 }
 
+export interface WarActionResult {
+  success: boolean;
+  message: string;
+  combatTriggered?: {
+    opponentId: string;
+    opponentName: string;
+    isAmbush: boolean;
+  };
+  eliminatedMasterId?: string;
+  isCollateralCasualty?: boolean;
+  targetWasMaster?: boolean;
+  targetMasterDiscordId?: string;
+  targetMasterUsername?: string;
+  wasAlreadyExposed?: boolean;
+  exposedTargetMaster?: string;
+  updatedWar: HolyGrailWarSession;
+}
+
 // Compatibility types for legacy structures
 export interface ServantData {
   id: string;

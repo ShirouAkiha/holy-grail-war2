@@ -7,7 +7,8 @@
 export const attackCommandCode = `import { 
   SlashCommandBuilder, 
   ChatInputCommandInteraction, 
-  EmbedBuilder 
+  EmbedBuilder,
+  MessageFlags
 } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { 
@@ -25,7 +26,8 @@ export const data = new SlashCommandBuilder()
   );
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-  await interaction.deferReply();
+  // Ephemeral deferral prevents Discord from broadcasting "<User> used /attack" to the channel, keeping the attacker anonymous
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
@@ -40,7 +42,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const war = getOrInitWarSession(master);
     const targetQuery = interaction.options.getString('target', true);
-    const res = attackSuspectUserInWar(war, interaction.user.id, targetQuery);
+    const channelName = interaction.channel && 'name' in interaction.channel 
+      ? '#' + (interaction.channel as any).name
+      : '#general';
+
+    const res = attackSuspectUserInWar(war, interaction.user.id, targetQuery, channelName);
     await saveMaster(master);
 
     if (!res.success) {
@@ -54,24 +60,68 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
+    const attackerParticipant = res.updatedWar.participants[interaction.user.id];
+    let footerText = '';
+    if (!res.targetWasMaster) {
+      if (res.wasAlreadyExposed) {
+        footerText = 'Attacking Master was already publicly exposed on the War Board (/grailwar status)';
+      } else {
+        footerText = 'Attacking Master identity is now publicly exposed for violating Secrecy of Magecraft!';
+      }
+    } else if (attackerParticipant?.isExposed) {
+      footerText = 'Both Masters are now EXPOSED on the Grail War Status Board (/grailwar status)';
+    } else {
+      footerText = 'Target Master identity is now EXPOSED! You remain concealed in the shadows (/grailwar status)';
+    }
+
     const embed = new EmbedBuilder()
       .setTitle(res.targetWasMaster ? '⚔️ TACTICAL AMBUSH: RIVAL MASTER ENGAGED!' : '☠️ COLLATERAL CASUALTY: CIVILIAN SLAIN!')
       .setDescription(res.message)
       .setColor(res.targetWasMaster ? 0xef4444 : 0x7f1d1d)
-      .setFooter({
-        text: res.targetWasMaster 
-          ? 'Both Masters are now EXPOSED on the Grail War Status Board (/grailwar status)' 
-          : res.wasAlreadyExposed
-            ? 'Attacking Master was already publicly exposed on the War Board (/grailwar status)'
-            : 'Attacking Master identity is now publicly exposed for violating Secrecy of Magecraft!'
-      });
+      .setFooter({ text: footerText });
 
-    await interaction.editReply({ embeds: [embed] });
+    // Ping the ambushed Master or civilian so they receive an immediate notification of the attack
+    let pingContent: string | undefined = undefined;
+    if (res.targetWasMaster) {
+      const pingId = res.targetMasterDiscordId || (targetQuery.startsWith('<@') ? targetQuery.replace(/[<@!>]/g, '') : undefined);
+      if (pingId) {
+        pingContent = '🚨 <@' + pingId + '> ⚔️ **AMBUSH ALERT! You are under attack in the Holy Grail War!**';
+      }
+    } else {
+      const pingId = res.targetMasterDiscordId && /^\\d+$/.test(res.targetMasterDiscordId) 
+        ? res.targetMasterDiscordId 
+        : (targetQuery.startsWith('<@') ? targetQuery.replace(/[<@!>]/g, '') : undefined);
+      if (pingId) {
+        pingContent = '☠️ <@' + pingId + '> 💥 **COLLATERAL CASUALTY ALERT! You were caught in magecraft crossfire!**';
+      }
+    }
+
+    // Broadcast the ambush announcement to the channel from the bot
+    if (interaction.channel && 'send' in interaction.channel) {
+      await (interaction.channel as any).send({
+        content: pingContent,
+        embeds: [embed]
+      });
+    }
+
+    const victimLabel = res.targetMasterUsername || (res.targetMasterDiscordId ? '<@' + res.targetMasterDiscordId + '>' : targetQuery);
+    await interaction.editReply({
+      content: res.targetWasMaster
+        ? '⚔️ **Tactical Ambush Dispatched!** Target ' + victimLabel + ' was ambushed and alerted in the channel.'
+        : '☠️ **Civilian Casualties Incurred!** Struck down ' + victimLabel + '. Your identity has been exposed for violating magecraft secrecy!'
+    });
   } catch (error: any) {
     console.error('Error executing /attack:', error);
-    await interaction.editReply({
-      content: '❌ Ambush execution error: ' + error.message
-    });
+    if (interaction.deferred || interaction.replied) {
+      await interaction.editReply({
+        content: '❌ Ambush execution error: ' + error.message
+      });
+    } else {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: '❌ Ambush execution error: ' + error.message
+      });
+    }
   }
 }
 `;
