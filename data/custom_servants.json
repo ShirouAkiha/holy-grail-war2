@@ -7,18 +7,30 @@
     "rarity": 5,
     "baseHp": 32000,
     "baseAtk": 11600,
-    "baseStats": { "strength": 18, "endurance": 19, "agility": 10, "mana": 19, "luck": 10 },
-    "commandDeck": ["Buster", "Buster", "Arts", "Arts", "Quick"],
+    "baseStats": {
+      "strength": 18,
+      "endurance": 19,
+      "agility": 10,
+      "mana": 19,
+      "luck": 10
+    },
+    "commandDeck": [
+      "Buster",
+      "Buster",
+      "Arts",
+      "Arts",
+      "Quick"
+    ],
     "skills": [
       {
-        "id": "the_weight_of_heaven",
-        "name": "The Weight of Heaven EX",
+        "id": "cataclysmic_pruner",
+        "name": "Cataclysmic Pruner A++",
         "cooldown": 5,
-        "description": "Emits a 50m dense draconic gravitational field crushing lesser beings into red mist. Increases own ATK by 30% for 3 turns and drains 20% enemy NP gauge.",
+        "description": "Emits an intense draconic pressure wave to prune mortal resistance. Increases own ATK by 30% for 3 turns and drains 20% enemy NP gauge.",
         "effectType": "buff_atk",
         "value": 30,
         "duration": 3,
-        "icon": "🌌"
+        "icon": "⚔️"
       },
       {
         "id": "cute_aggression_lethal",
@@ -43,6 +55,13 @@
     ],
     "passives": [
       {
+        "name": "The Weight of Heaven EX",
+        "type": "the_weight_of_heaven",
+        "value": 2000,
+        "rank": "EX",
+        "description": "50m draconic gravitational field. Decreases enemy HP by 2,000 every turn if their Mana stat is lower than Adiosa's (Mana: 19)."
+      },
+      {
         "name": "Black Glass Stride EX",
         "type": "territory_creation",
         "value": 12,
@@ -60,17 +79,17 @@
     "noblePhantasm": {
       "name": "Azure-Magenta Ruin: Incineration of Aethel",
       "cardType": "Buster",
-      "chant": "⟨ Kz'vohl aethren... Purge the fungal rot. Ground to glass, sky to ash. Ruin of Ixenor... AZURE-MAGENTA RUIN! ⟩",
+      "chant": "⟨ Ruk'thar Krav'nok! Vur Aeth'ra... Ground to glass, sky to ash. Ruin of Ixenor... AZURE-MAGENTA RUIN! ⟩",
       "description": "Fires concentrated beams of magenta light that bypass physical durability, incinerating the target's Aethel directly and crystallizing the earth into black obsidian glass.",
       "target": "single",
       "multiplier": 950,
       "overchargeEffect": "Ignores Defense buffs + Reduces target DEF by 25% for 3 turns + 20% Buster resist down"
     },
     "lore": "An ancient draconic entity from the skyborne sanctuary of Aethelian, predating the founding of Aethelgard. Sworn envoy of Dragon King Ixenor, dispatched to purge the corruption of the Ebonwatch Dungeon. She walks in a relentless straight line, unbothered by obstacles or diplomacy, leaving a trail of petrified black glass. Motivated strictly by the structural preservation of planet Lyozes, she views mortal races as an irritating fungal infection—yet suffers from a lethal form of cute aggression that compels her to violently crush small, innocent creatures without malice.",
-    "summonQuote": "⟨ Vohl... Shaz'dor aethren. ⟩ ...You summoned this vessel? Know that I serve Dragon King Ixenor. If you impede the planet's preservation, you will be crushed like the rest of the weeds.",
-    "battleStartQuote": "⟨ Kz'rath lyozes. ⟩ Disperse or be pulverized into red mist. The Envoy does not negotiate.",
-    "victoryQuote": "⟨ Skar'na. ⟩ The fungal growth has been pruned. The planet's structural integrity remains secure.",
-    "defeatQuote": "⟨ Zhor... ⟩ You cannot erase what is anchored to the world... The Black Glass shall remember...",
+    "summonQuote": "⟨ Voth zul Adiosa. Nok zul Krav'nok kri. Shak zhal, Dra'vos Ixenor rath. ⟩ (I am Adiosa. You are tiny mortal dust. Obey now, Dragon King Ixenor acts through me.)",
+    "battleStartQuote": "⟨ Skar zhal, Krav'nok! Voth ruk'thar Xal'nok. ⟩ (Leave now, mortal pests! I annihilate them all.)",
+    "victoryQuote": "⟨ Drazk'hlor Krav'nok. Krag zul Vael'ix. ⟩ (Pathetic mortals. The earth is mine.)",
+    "defeatQuote": "⟨ Vrak'ix... Voth zul Vael'drom Kor Lyozes! ⟩ (Void... I am bound for eternity to Lyozes!)",
     "avatarUrl": "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=400&auto=format&fit=crop&q=80",
     "cardArtUrl": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80",
     "isCustomOrMeme": true

@@ -394,10 +394,34 @@ function saveMastersToDisk() {
 }
 
 /**
- * Returns the entire Throne of Heroes database (Built-in + Admin Custom Servants).
+ * Returns the entire Throne of Heroes database (Built-in + Admin Custom Servants), safely deduplicated by ID and Name.
  */
 export function getAllThroneServants(): ServantTemplate[] {
-  return [...SERVANT_DATABASE, ...customServants];
+  const map = new Map<string, ServantTemplate>();
+
+  // 1. Add built-in canonical database servants
+  for (const s of SERVANT_DATABASE) {
+    if (s && s.id) {
+      map.set(s.id, s);
+    }
+  }
+
+  // 2. Add custom servants without duplicating existing IDs or Names
+  for (const s of customServants) {
+    if (s && s.id) {
+      if (!map.has(s.id)) {
+        // Also ensure no duplicate by lowercased servant name
+        const nameMatch = Array.from(map.values()).find(
+          existing => existing.name.toLowerCase().trim() === s.name.toLowerCase().trim()
+        );
+        if (!nameMatch) {
+          map.set(s.id, s);
+        }
+      }
+    }
+  }
+
+  return Array.from(map.values());
 }
 
 /**
