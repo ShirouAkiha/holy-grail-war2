@@ -1262,8 +1262,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const inviteEmbed = new EmbedBuilder()
         .setTitle('⚔️ HOLY GRAIL WAR: DUEL INVITATION')
         .setDescription(
-          `Master <@${interaction.user.id}> with **${challengerServant.template.name}** (${challengerServant.template.servantClass})\n` +
-          `has challenged Master <@${opponentUser.id}> with **${opponentServant.template.name}** (${opponentServant.template.servantClass}) to a battle!\n\n` +
+          `Master <@${interaction.user.id}> has challenged Master <@${opponentUser.id}> to a battle!\n\n` +
           `<@${opponentUser.id}>, do you accept this challenge?`
         )
         .setColor(0xd4af37);
@@ -1409,8 +1408,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const inviteEmbed = new EmbedBuilder()
       .setTitle('⚔️ HOLY GRAIL WAR: DUEL INVITATION')
       .setDescription(
-        `Master <@${interaction.user.id}> with **${challengerServant.template.name}** (${challengerServant.template.servantClass})\n` +
-        `has challenged rival Master <@${targetRival.discordId}> (**${targetRival.username}**) with **${opponentServant.template.name}** (${opponentServant.template.servantClass}) to a duel!\n\n` +
+        `Master <@${interaction.user.id}> has challenged rival Master <@${targetRival.discordId}> (**${targetRival.username}**) to a duel!\n\n` +
         `<@${targetRival.discordId}>, do you accept this challenge?`
       )
       .setColor(0xd4af37);
