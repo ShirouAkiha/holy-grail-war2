@@ -3979,31 +3979,6 @@ export default function DiscordEmulator({
       id: getNextId('bot_servant_profile'),
       sender: 'bot',
       timestamp: 'Just now',
-      embed: {
-        title: `⚔️ Servant Profile: ${template.name} — ${template.title}`,
-        thumbnailUrl: template.avatarUrl,
-        description:
-          `Class: **${template.servantClass}** | Origin: **${template.isCustomOrMeme ? '🛠️ Custom Administrator Creation' : '🏛️ Canon Heroic Spirit'}** | Status: **⚖️ Balanced Parity**\n\n` +
-          `📜 **Historical Legend & Lore:**\n> ${template.lore || 'A legendary soul recorded in the Throne of Heroes.'}\n\n` +
-          `📊 **Base Combat Parameters:**\n` +
-          `• **STR:** \`${template.baseStats.strength}\` | **END:** \`${template.baseStats.endurance}\` | **AGI:** \`${template.baseStats.agility}\`\n` +
-          `• **MAN:** \`${template.baseStats.mana}\` | **LCK:** \`${template.baseStats.luck}\`\n` +
-          `• **Base HP:** \`${template.baseHp.toLocaleString()}\` | **Base ATK:** \`${template.baseAtk.toLocaleString()}\`\n\n` +
-          `🃏 **Command Deck:** ${deck}\n\n` +
-          `⚡ **Active Personal Skills:**\n${activeSkillsText}\n\n` +
-          `🛡️ **Class Passive Skills (Max 2 • 2nd Unlocks at Bond Lv. 5):**\n${passiveSkillsText}\n\n` +
-          `💥 **Noble Phantasm: ${template.noblePhantasm.name}** (${template.noblePhantasm.cardType} • ${template.noblePhantasm.target.toUpperCase()})\n` +
-          `> *"${template.noblePhantasm.chant || 'Noble Phantasm release!'}"*\n` +
-          `• **Multiplier:** ${template.noblePhantasm.multiplier}% | **Overcharge:** ${template.noblePhantasm.overchargeEffect || 'Standard boost'}\n` +
-          `• ${template.noblePhantasm.description}\n\n` +
-          `💬 **Master Dialogue Quotes:**\n` +
-          `• **Summon:** *"${template.summonQuote}"*\n` +
-          `• **Battle Start:** *"${template.battleStartQuote}"*\n` +
-          `• **Victory:** *"${template.victoryQuote}"*\n` +
-          `• **Defeat:** *"${template.defeatQuote}"*`,
-        color: template.servantClass === 'Saber' ? '#3b82f6' : '#d4af37',
-        footer: `Throne ID: ${template.id} • Holy Grail War Public Registry • Visible to everyone in channel`
-      },
       canvasType: 'servant',
       canvasPayload: { servant: tempInstance, masterName: 'Throne of Heroes' },
       components: {
@@ -5277,7 +5252,7 @@ export default function DiscordEmulator({
       id: getNextId('bot_servant_hub'),
       sender: 'bot',
       timestamp: 'Just now',
-      embed: {
+      embed: canvasType ? undefined : {
         title,
         description,
         color,
