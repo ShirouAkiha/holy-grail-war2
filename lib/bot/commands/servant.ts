@@ -57,10 +57,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .setColor(activeServant.template.rarity === 5 ? 0xf59e0b : 0x38bdf8)
       .setImage('attachment://servant_card.png');
 
-    const artworkEmbed = new EmbedBuilder()
-      .setImage(activeServant.template.cardArtUrl || activeServant.template.avatarUrl)
-      .setColor(activeServant.template.rarity === 5 ? 0xf59e0b : 0x38bdf8);
-
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setCustomId(\`dialogue_quote:\${activeServant.id}\`)
@@ -75,7 +71,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     );
 
     const msg = await interaction.editReply({
-      embeds: [embed, artworkEmbed],
+      embeds: [embed],
       files: [attachment],
       components: [row]
     });
