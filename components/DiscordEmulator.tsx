@@ -5210,6 +5210,35 @@ export default function DiscordEmulator({
     const eventLogsList = grailWar.eventLogs || [];
     const totalCasualties = deadParticipants.length + civilianCasualtiesList.length;
 
+    const resolveDiscordUsername = (rawStr: string | undefined): string => {
+      if (!rawStr) return 'Citizen';
+      const idMatch = rawStr.match(/\d{16,21}/);
+      if (idMatch) {
+        const uid = idMatch[0];
+        const participant = participants.find(p => p.discordId === uid);
+        if (participant?.username) return `@${participant.username.replace(/^@+/, '')}`;
+        if (master && master.discordId === uid) return `@${master.username.replace(/^@+/, '')}`;
+        const knownMap: Record<string, string> = {
+          '780278575860678676': 'pokehunter1',
+          '492833398461562880': 'itsderpo',
+          '1257784101906157589': 'fou.chiii',
+          '521112557810090005': 'cccp001',
+          '1499028902104797237': 'fou.chii',
+          '152568236896944130': 'bwjolioliravioli',
+          '442009903809429515': 'fluffycat78',
+          '189710170597752832': 'ixyan',
+          '499898049145995276': 'togata_my_beloved',
+          '728294594378203177': 'snoic_2',
+          '373115070068162561': 'stahlgeist',
+          '707978460697460758': 'paradise3812'
+        };
+        if (knownMap[uid]) return `@${knownMap[uid]}`;
+        return `@Citizen_${uid.slice(-4)}`;
+      }
+      const clean = rawStr.replace(/[<@!>]/g, '').trim();
+      return clean.length > 0 ? (clean.startsWith('@') ? clean : `@${clean}`) : rawStr;
+    };
+
     if (category === 'board') {
       const deadCount = deadParticipants.length;
       const totalSummoned = participants.length;
@@ -5249,6 +5278,9 @@ export default function DiscordEmulator({
           else if (evt.type === 'alliance') icon = '🤝';
 
           let displayText = evt.text;
+          displayText = displayText.replace(/@(\d{16,21})/g, (_, uid) => {
+            return resolveDiscordUsername(uid);
+          });
           participants.forEach((m, idx) => {
             if (!m.isExposed) {
               if (m.username && displayText.includes(m.username)) {
@@ -5305,10 +5337,12 @@ export default function DiscordEmulator({
 
       const civilianEntries = civilianCasualtiesList.slice(0, 15).map((c, idx) => {
         const timeStr = new Date(c.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const slayerInfo = c.slayerUsername ? `Master **${c.slayerUsername}**` : 'Unregistered Mage';
+        const victimDisplay = resolveDiscordUsername(c.name);
+        const rawSlayer = c.slayerUsername || c.slainByMasterId;
+        const slayerInfo = rawSlayer ? `Master **${resolveDiscordUsername(rawSlayer).replace(/^@/, '')}**` : 'Unregistered Mage';
         const servantInfo = c.servantName ? ` (${c.servantName})` : '';
         const sectorStr = c.channelName || 'Fuyuki Sector';
-        return `• 🩸 **${idx + 1}. ${c.name}** — Sector \`${sectorStr}\`\n` +
+        return `• 🩸 **${idx + 1}. ${victimDisplay}** — Sector \`${sectorStr}\`\n` +
                `  ↳ **Slayer:** ${slayerInfo}${servantInfo} | **Cause:** *${c.cause || 'Collateral Thaumaturgical Shockwave'}* • *Time: ${timeStr}*`;
       });
 
@@ -5334,8 +5368,10 @@ export default function DiscordEmulator({
 
       const leakEntries = leakedIntelList.slice(0, 15).map((l, idx) => {
         const timeStr = new Date(l.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const sourceLabel = l.informantMasterName ? `Informant: **${l.informantMasterName}**` : 'Anonymous Recon Familiar';
-        const targetLabel = l.exposedMasterName ? ` | Target Compromised: **${l.exposedMasterName}**` : '';
+        const informantName = l.informantMasterName || l.informantMasterId;
+        const sourceLabel = informantName ? `Informant: **${resolveDiscordUsername(informantName).replace(/^@/, '')}**` : 'Anonymous Recon Familiar';
+        const targetName = l.exposedMasterName || l.targetMasterId;
+        const targetLabel = targetName ? ` | Target Compromised: **${resolveDiscordUsername(targetName).replace(/^@/, '')}**` : '';
         const sectorStr = l.channelName || 'Fuyuki Intelligence Feed';
         return `• 📡 **[DISPATCH #${idx + 1}]** — Sector \`${sectorStr}\` (${timeStr})\n` +
                `  ↳ **Source:** ${sourceLabel}${targetLabel}\n` +

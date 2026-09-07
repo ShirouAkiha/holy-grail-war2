@@ -73,7 +73,7 @@
   "civilianCasualties": [
     {
       "id": "victim_1788776742418",
-      "name": "@189710170597752832",
+      "name": "@ixyan",
       "slainByMasterId": "pokehunter1",
       "timestamp": 1788776742418
     }
@@ -113,7 +113,7 @@
     {
       "id": "evt_casualty_1788776742418",
       "timestamp": 1788776742418,
-      "text": "☠️ Church Cover-Up: \"Gas leak explosion\" reported in #general involving bystander **@189710170597752832** (caused by **pokehunter1**)!",
+      "text": "☠️ Church Cover-Up: \"Gas leak explosion\" reported in #general involving bystander **@ixyan** (caused by **pokehunter1**)!",
       "type": "casualty"
     },
     {

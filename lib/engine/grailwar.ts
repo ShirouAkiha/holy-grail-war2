@@ -577,7 +577,8 @@ export function attackSuspectUserInWar(
   war: HolyGrailWarSession,
   attackerId: string,
   suspectQuery: string,
-  channelName?: string
+  channelName?: string,
+  resolvedTargetUsername?: string
 ): WarActionResult {
   const targetWar = war || globalWarSession;
   if (!targetWar) {
@@ -885,8 +886,39 @@ export function attackSuspectUserInWar(
   if (!targetWar.civilianCasualties) targetWar.civilianCasualties = [];
   
   // Clean bystander string to prevent duplicate @ symbols or raw mention formatting
-  const cleanBystander = suspectQuery.replace(/^<@!?(\d+)>$/, '$1').replace(/^@+/, '').trim();
-  const bystanderDisplay = `@${cleanBystander}`;
+  const cleanBystander = suspectQuery.replace(/[<@!>]/g, '').trim();
+  let bystanderName = resolvedTargetUsername ? resolvedTargetUsername.replace(/^@+/, '') : '';
+
+  // If bystander is a raw Discord snowflake ID, resolve their true username
+  const idMatch = cleanBystander.match(/\d{16,21}/);
+  if (!bystanderName && idMatch) {
+    const uid = idMatch[0];
+    const knownMap: Record<string, string> = {
+      '780278575860678676': 'pokehunter1',
+      '492833398461562880': 'itsderpo',
+      '1257784101906157589': 'fou.chiii',
+      '521112557810090005': 'cccp001',
+      '1499028902104797237': 'fou.chii',
+      '152568236896944130': 'bwjolioliravioli',
+      '442009903809429515': 'fluffycat78',
+      '189710170597752832': 'ixyan',
+      '499898049145995276': 'togata_my_beloved',
+      '728294594378203177': 'snoic_2',
+      '373115070068162561': 'stahlgeist',
+      '707978460697460758': 'paradise3812'
+    };
+    if (knownMap[uid]) {
+      bystanderName = knownMap[uid];
+    }
+  }
+
+  // If still not resolved and suspectQuery is not pure digits
+  if (!bystanderName && !/^\d+$/.test(cleanBystander)) {
+    bystanderName = cleanBystander;
+  }
+
+  const finalName = bystanderName || `Citizen (${cleanBystander.slice(-4)})`;
+  const bystanderDisplay = `@${finalName.replace(/^@+/, '')}`;
 
   targetWar.civilianCasualties.unshift({
     id: `victim_${Date.now()}`,

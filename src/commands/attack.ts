@@ -3,7 +3,7 @@ import {
   ChatInputCommandInteraction, 
   EmbedBuilder 
 , MessageFlags } from 'discord.js';
-import { getOrCreateMaster, saveMaster } from '../database/service';
+import { getOrCreateMaster, saveMaster, getMaster } from '../database/service';
 import { 
   getOrInitWarSession, 
   attackSuspectUserInWar 
@@ -39,7 +39,30 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       ? `#${(interaction.channel as any).name}`
       : '#general';
 
-    const res = attackSuspectUserInWar(war, interaction.user.id, targetQuery, channelName);
+    // Resolve target username if a raw Discord ID or mention was supplied
+    let resolvedTargetUsername: string | undefined = undefined;
+    const cleanIdMatch = targetQuery.match(/\d{16,21}/);
+    if (cleanIdMatch) {
+      const uid = cleanIdMatch[0];
+      const known = getMaster(uid);
+      if (known?.username) {
+        resolvedTargetUsername = known.username;
+      } else {
+        try {
+          const cached = interaction.client.users.cache.get(uid);
+          if (cached?.username) {
+            resolvedTargetUsername = cached.username;
+          } else {
+            const fetched = await interaction.client.users.fetch(uid).catch(() => null);
+            if (fetched?.username) {
+              resolvedTargetUsername = fetched.username;
+            }
+          }
+        } catch {}
+      }
+    }
+
+    const res = attackSuspectUserInWar(war, interaction.user.id, targetQuery, channelName, resolvedTargetUsername);
     await saveMaster(master);
 
     if (!res.success) {

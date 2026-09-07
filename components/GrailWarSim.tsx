@@ -53,6 +53,32 @@ interface GrailWarSimProps {
   onStartDuelWithRival?: (rivalParticipant: WarMasterParticipant) => void;
 }
 
+function formatVictimOrUsername(raw: string | undefined): string {
+  if (!raw) return 'Innocent Bystander';
+  const idMatch = raw.match(/\d{16,21}/);
+  if (idMatch) {
+    const uid = idMatch[0];
+    const knownMap: Record<string, string> = {
+      '780278575860678676': 'pokehunter1',
+      '492833398461562880': 'itsderpo',
+      '1257784101906157589': 'fou.chiii',
+      '521112557810090005': 'cccp001',
+      '1499028902104797237': 'fou.chii',
+      '152568236896944130': 'bwjolioliravioli',
+      '442009903809429515': 'fluffycat78',
+      '189710170597752832': 'ixyan',
+      '499898049145995276': 'togata_my_beloved',
+      '728294594378203177': 'snoic_2',
+      '373115070068162561': 'stahlgeist',
+      '707978460697460758': 'paradise3812'
+    };
+    if (knownMap[uid]) return `@${knownMap[uid]}`;
+    return `@Citizen_${uid.slice(-4)}`;
+  }
+  const clean = raw.replace(/[<@!>]/g, '').trim();
+  return clean.length > 0 ? (clean.startsWith('@') ? clean : `@${clean}`) : raw;
+}
+
 export default function GrailWarSim({
   master,
   grailWar,
@@ -717,12 +743,12 @@ export default function GrailWarSim({
                     <div className="flex items-center justify-between text-[10px] text-rose-400/70">
                       <span className="flex items-center gap-1.5">
                         <Skull className="w-3 h-3 text-rose-500" />
-                        <span>Slain Bystander: <strong>{vic.name}</strong></span>
+                        <span>Slain Bystander: <strong>{formatVictimOrUsername(vic.name)}</strong></span>
                       </span>
                       <span>{new Date(vic.timestamp).toLocaleTimeString()}</span>
                     </div>
                     <p className="text-white/80 text-[11px]">
-                      Struck down by Master <strong>{vic.slainByMasterId}</strong> in a botched ambush.
+                      Struck down by Master <strong>{formatVictimOrUsername(vic.slainByMasterId).replace(/^@/, '')}</strong> in a botched ambush.
                     </p>
                   </div>
                 ))

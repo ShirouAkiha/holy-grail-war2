@@ -10,8 +10,50 @@ import {
   ChannelType,
   ComponentType
 , MessageFlags } from 'discord.js';
-import { getOrCreateMaster, saveMaster } from '../database/service';
+import { getOrCreateMaster, saveMaster, getMaster } from '../database/service';
 import { HolyGrailWarSession } from '../types';
+
+/**
+ * Resolves a raw Discord ID, mention string, or username to a clean human username.
+ * Ensures numbers are never shown to users.
+ */
+export function resolveDisplayName(raw: string | undefined, client?: any): string {
+  if (!raw) return 'Unknown Citizen';
+  // Check if raw contains a 16-21 digit snowflake ID
+  const idMatch = raw.match(/\d{16,21}/);
+  if (idMatch) {
+    const uid = idMatch[0];
+    const knownMaster = getMaster(uid);
+    if (knownMaster?.username) {
+      return `@${knownMaster.username.replace(/^@+/, '')}`;
+    }
+    if (client?.users?.cache?.get(uid)?.username) {
+      return `@${client.users.cache.get(uid).username.replace(/^@+/, '')}`;
+    }
+    const fallbackMap: Record<string, string> = {
+      '780278575860678676': 'pokehunter1',
+      '492833398461562880': 'itsderpo',
+      '1257784101906157589': 'fou.chiii',
+      '521112557810090005': 'cccp001',
+      '1499028902104797237': 'fou.chii',
+      '152568236896944130': 'bwjolioliravioli',
+      '442009903809429515': 'fluffycat78',
+      '189710170597752832': 'ixyan',
+      '499898049145995276': 'togata_my_beloved',
+      '728294594378203177': 'snoic_2',
+      '373115070068162561': 'stahlgeist',
+      '707978460697460758': 'paradise3812'
+    };
+    if (fallbackMap[uid]) {
+      return `@${fallbackMap[uid]}`;
+    }
+  }
+  const clean = raw.replace(/[<@!>]/g, '').trim();
+  if (/^\d+$/.test(clean)) {
+    return `@Citizen_${clean.slice(-4)}`;
+  }
+  return clean.length > 0 ? (clean.startsWith('@') ? clean : `@${clean}`) : raw;
+}
 import { 
   getOrInitWarSession,
   calculateCurrentHp,
@@ -65,7 +107,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const category = (interaction.options.getString('category') as any) || 'board';
 
     const war = getOrInitWarSession(master);
-    const { embeds, components } = buildGrailWarHub(war, master, category);
+    const { embeds, components } = buildGrailWarHub(war, master, category, undefined, interaction.client);
 
     const msg = await interaction.editReply({
       embeds,
@@ -89,7 +131,8 @@ export function buildGrailWarHub(
   war: HolyGrailWarSession,
   master: any,
   category: 'board' | 'casualties' | 'leaks' | 'battles' | 'defenses' | 'familiars' | 'traps' | 'church' = 'board',
-  actionOutcomeMsg?: string
+  actionOutcomeMsg?: string,
+  client?: any
 ) {
   const userParticipant = war.participants[master.discordId];
   let embeds: EmbedBuilder[] = [];
@@ -145,6 +188,11 @@ export function buildGrailWarHub(
         else if (evt.type === 'alliance') icon = '🤝';
 
         let displayText = evt.text;
+        // Clean any raw @\d{16,21} mentions in event logs to human usernames
+        displayText = displayText.replace(/@(\d{16,21})/g, (_, uid) => {
+          return resolveDisplayName(uid, client);
+        });
+
         participants.forEach((m, idx) => {
           if (!m.isExposed) {
             if (m.username && displayText.includes(m.username)) {
@@ -202,7 +250,10 @@ export function buildGrailWarHub(
     const civilianLines = civilianCasualties.length > 0
       ? civilianCasualties.slice(0, 10).map((vic, idx) => {
           const timeStr = new Date(vic.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          return `• ☠️ **${vic.name}** \`${timeStr}\`\n  ↳ Struck down by: **Master ${vic.slainByMasterId}** (Botched ambush in civilian sector)\n  ↳ *Church Cover-up:* Filed with municipal police as an industrial gas leak explosion.`;
+          const victimDisplay = resolveDisplayName(vic.name, client);
+          const rawSlayer = vic.slainByMasterId || 'Unknown Mage';
+          const slayerDisplay = resolveDisplayName(rawSlayer, client).replace(/^@/, '');
+          return `• ☠️ **${victimDisplay}** \`${timeStr}\`\n  ↳ Struck down by: **Master ${slayerDisplay}** (Botched ambush in civilian sector)\n  ↳ *Church Cover-up:* Filed with municipal police as an industrial gas leak explosion.`;
         }).join('\n\n')
       : '• *🛡️ Zero civilian casualties reported. The Concealment of Mystery holds firm across Fuyuki City.*';
 
@@ -231,8 +282,11 @@ export function buildGrailWarHub(
     const leakLines = leaks.length > 0
       ? leaks.slice(0, 10).map((lk, idx) => {
           const timeStr = new Date(lk.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          const targetTag = lk.targetMasterId ? ` ➔ Target: **Master ${lk.targetMasterId}**` : '';
-          return `• 📡 \`${timeStr}\` **Informant:** ${lk.informantMasterId || 'Shadow Operative'}${targetTag}\n  ↳ Intercept: *"${lk.intel}"*`;
+          const targetName = lk.targetMasterId ? resolveDisplayName(lk.targetMasterId, client).replace(/^@/, '') : '';
+          const targetTag = targetName ? ` ➔ Target: **Master ${targetName}**` : '';
+          const rawInformant = lk.informantMasterId || 'Shadow Operative';
+          const informantName = resolveDisplayName(rawInformant, client).replace(/^@/, '');
+          return `• 📡 \`${timeStr}\` **Informant:** ${informantName}${targetTag}\n  ↳ Intercept: *"${lk.intel}"*`;
         }).join('\n\n')
       : '• *🔒 No leaked intelligence intercepted yet. Masters are maintaining encrypted silence and bounded fields.*';
 
@@ -709,7 +763,7 @@ export function attachGrailWarCollector(
         return;
       }
 
-      const hub = buildGrailWarHub(war, master, currentCategory, actionOutcome);
+      const hub = buildGrailWarHub(war, master, currentCategory, actionOutcome, i.client);
       await i.update({
         embeds: hub.embeds,
         components: hub.components
