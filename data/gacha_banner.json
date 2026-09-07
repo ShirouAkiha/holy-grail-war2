@@ -1,0 +1,24 @@
+{
+  "id": "ce_banner_fuyuki_relics",
+  "title": "Mystic Code Sanctum: Sacred Relics",
+  "subtitle": "Featured Rate-Up: Kaleidoscope & The Black Grail (5★ SSR)",
+  "description": "Channel your Saint Quartz into the leyline altar to forge legendary mystic Craft Essences!",
+  "featuredServantIds": [],
+  "featuredCeIds": [
+    "ce_kaleidoscope",
+    "ce_black_grail",
+    "ce_formal_craft"
+  ],
+  "bannerType": "standard",
+  "costPerPull": 3,
+  "costTenPull": 30,
+  "bannerArtUrl": "https://static.wikia.nocookie.net/fategrandorder/images/8/82/CE1458.webp/revision/latest/smart/width/250/height/250?cb=20230312121529",
+  "rates": {
+    "ssrServant": 0,
+    "srServant": 0,
+    "rServant": 0,
+    "ssrCe": 5,
+    "srCe": 25,
+    "rCe": 70
+  }
+}
