@@ -5,8 +5,11 @@ import {
   ButtonBuilder, 
   ButtonStyle, 
   EmbedBuilder,
-  ComponentType
-, MessageFlags } from 'discord.js';
+  ChannelSelectMenuBuilder,
+  ChannelType,
+  ComponentType,
+  MessageFlags 
+} from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { 
   getOrInitWarSession,
@@ -40,7 +43,7 @@ export const data = new SlashCommandBuilder()
       )
   );
 
-export function buildDefensesEmbed(userParticipant: any, lastMsg?: string) {
+export function buildDefensesEmbed(userParticipant: any, war?: any, lastMsg?: string) {
   if (!userParticipant) {
     return new EmbedBuilder()
       .setTitle('🏰 Mage Workshop | No Sanctuary Established')
@@ -54,10 +57,17 @@ export function buildDefensesEmbed(userParticipant: any, lastMsg?: string) {
 
   let wardDescription = '🚫 **No Active Bounded Field:** Your workshop has no magical perimeter defenses. *(HP Auto-Regeneration is paused; activate a Bounded Field to auto-recover HP over time)*';
   if (ward === 'ward') {
-    wardDescription = '🛡️ **Mage\'s Sanctuary Bounded Field Active:** Multi-layered defensive barriers absorb **60% of incoming ambush damage** AND channel leyline mana for **HP Auto-Regeneration (5-minute full restoration)**.';
+    const sChan = (userParticipant as any)?.sanctuaryChannelName ? ` in ${(userParticipant as any).sanctuaryChannelName}` : '';
+    wardDescription = `🛡️ **Mage\'s Sanctuary Bounded Field Active${sChan}:** Multi-layered defensive barriers absorb **60% of incoming ambush damage** AND channel leyline mana for **HP Auto-Regeneration (5-minute full restoration)**.`;
   } else if (ward === 'alarm') {
     wardDescription = '🚨 **Intrusion Alarm Trap Active:** Trapped boundary detects infiltrators, alerts you, deals **3,000 retaliatory DMG**, AND channels leyline mana for **HP Auto-Regeneration (5-minute full restoration)**.';
   }
+
+  // Active channel traps
+  const myChannelTraps = (war?.channelTraps || []).filter((t: any) => t.setterMasterId === userParticipant?.discordId);
+  const channelTrapsSummary = myChannelTraps.length > 0
+    ? myChannelTraps.map((t: any) => `\`${t.channelName}\` (${t.trapType === 'alarm' ? '🚨 Alarm Ward' : '🩸 Bloodfort Drain'})`).join(', ')
+    : 'None *(Select a channel below to anchor)*';
 
   let classPassive = 'None (Specializes in direct tactical matches)';
   const sClass = userParticipant?.servantClass;
@@ -76,7 +86,8 @@ export function buildDefensesEmbed(userParticipant: any, lastMsg?: string) {
     .setDescription(
       `Master **${userParticipant?.username || 'Master'}**'s Tactical Defense Headquarters\n\n` +
       (lastMsg ? `📢 **Action Outcome:**\n${lastMsg}\n\n` : '') +
-      `🛡️ **Bounded Field Protocol:**\n${wardDescription}\n\n` +
+      `🛡️ **Personal Workshop Bounded Field:**\n${wardDescription}\n\n` +
+      `🗺️ **Territorial Channel Wards:**\n${channelTrapsSummary}\n\n` +
       `⛪ **Fuyuki Church Sanctuary:**\n` +
       (inSanctuary
         ? `• **🕊️ ACTIVE ASYLUM:** Sheltered by Father Kotomine. 100% immune to all ambushes & attacks (cannot attack rivals).\n\n`
@@ -87,7 +98,7 @@ export function buildDefensesEmbed(userParticipant: any, lastMsg?: string) {
         : `• **🔴 DISABLED:** Fatal ambushes will eliminate your Servant normally without consuming a seal.\n`) +
       `• **Current Command Seals:** \`${'✦ '.repeat(seals)}${'✧ '.repeat(Math.max(0, 3 - seals))}\` (**${seals}/3** remaining)\n\n` +
       `👁️ **Servant Class Passive:**\n${classPassive}\n\n` +
-      `*Configure your workshop defenses instantly using the buttons below or slash command arguments:*`
+      `*Configure workshop defenses or select a Discord channel below to anchor Bounded Fields:*`
     )
     .setColor(0x3b82f6)
     .setFooter({ text: 'Holy Grail War Defense Protocol • Use /grailwar status to view roster' });
@@ -135,7 +146,32 @@ export function buildDefensesButtons(userParticipant: any) {
       .setStyle(ButtonStyle.Secondary)
   );
 
-  return [row1, row2];
+  const row3 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId('war_tab_traps')
+      .setLabel('Channel Traps Hub (/trap)')
+      .setEmoji('🎯')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId('disarm_all_traps')
+      .setLabel('Disarm All Traps')
+      .setEmoji('🧹')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('war_status_board')
+      .setLabel('Grail War Board')
+      .setEmoji('📜')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  const channelSelectRow = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
+    new ChannelSelectMenuBuilder()
+      .setCustomId('war_trap_channel_select')
+      .setPlaceholder('🎯 Select a channel to anchor Bounded Field, Sanctuary, or Disarm...')
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+  );
+
+  return [row1, row2, row3, channelSelectRow];
 }
 
 export async function execute(interaction: ChatInputCommandInteraction) {
@@ -174,7 +210,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     const userParticipant = war.participants[interaction.user.id];
-    const defEmbed = buildDefensesEmbed(userParticipant, lastMsg);
+    const defEmbed = buildDefensesEmbed(userParticipant, war, lastMsg);
     const defButtons = buildDefensesButtons(userParticipant);
 
     await interaction.reply({

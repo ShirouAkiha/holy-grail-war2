@@ -13,7 +13,7 @@ import { getOrCreateMaster, saveMaster } from '../database/service';
 import { renderServantProfileCard, renderDialogueCard } from '../canvas/renderer';
 import { SERVANT_DATABASE, getDefaultClassPassives } from '../data/servants';
 import { getServantProfile } from '../engine/dialogue';
-import { getOrInitWarSession, exposeMasterInWar } from '../engine/grailwar';
+import { getOrInitWarSession, exposeMasterInWar, getHealingStatus } from '../engine/grailwar';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { allocateStatPoints, calculateServantMaxHp, calculateServantMaxAtk } from '../engine/statSystem';
 import { equipCraftEssence, feedCraftEssences, getCeExpValue } from '../engine/customization';
@@ -153,6 +153,15 @@ export async function buildServantHub(
   const bondLevel = targetServant.bondLevel || 1;
   const sName = targetServant.nickname || t.name;
 
+  const war = getOrInitWarSession(master);
+  const uPart = war?.participants?.[master.discordId];
+  const healStatus = uPart ? getHealingStatus(uPart) : null;
+  const currentHp = healStatus 
+    ? healStatus.currentHp 
+    : (targetServant.currentHp !== undefined ? Math.min(totalHp, Math.max(0, Math.round(targetServant.currentHp))) : totalHp);
+  const hpPercent = totalHp > 0 ? Math.round((currentHp / totalHp) * 100) : 100;
+  targetServant.currentHp = currentHp;
+
   let embeds: EmbedBuilder[] = [];
   let files: AttachmentBuilder[] = [];
 
@@ -238,7 +247,7 @@ export async function buildServantHub(
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `*${t.title}* • **Master:** ${master.username}\n` +
         `🌟 **Class:** ${t.servantClass} | **Rarity:** ${'★'.repeat(t.rarity)} | **Bond Lv:** ${bondLevel}/10 ♥ | **Level:** Lv.${lvl}/100\n` +
-        `❤️ **Max HP:** \`${totalHp.toLocaleString()}\` | ⚔️ **Total ATK:** \`${totalAtk.toLocaleString()}\` | 📈 **Stat Points:** **${targetServant.availableStatPoints || 0} pts**\n\n` +
+        `❤️ **HP:** \`${currentHp.toLocaleString()} / ${totalHp.toLocaleString()}\` (${hpPercent}%) | ⚔️ **Total ATK:** \`${totalAtk.toLocaleString()}\` | 📈 **Stat Points:** **${targetServant.availableStatPoints || 0} pts**\n\n` +
         `📜 **Historical Legend & Lore:**\n> *${t.lore || 'A legendary heroic soul recorded in the Throne of Heroes, bound to fight in the Holy Grail War.'}*\n\n` +
         `📊 **Battle Parameters:**\n` +
         `• **Strength (STR):** \`${strTotal}\` [**${getRank(strTotal)}**] | **Endurance (END):** \`${endTotal}\` [**${getRank(endTotal)}**]\n` +

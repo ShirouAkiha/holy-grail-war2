@@ -72,6 +72,7 @@ import {
   patrolCityInWar, 
   simulateWarSkirmish,
   setChannelTrapInWar,
+  setWorkshopWardInWar,
   disarmChannelTrapsInWar,
   recallFamiliarsInWar,
   enterChurchSanctuary,
@@ -348,13 +349,22 @@ async function triggerChannelTrapsIfAny(
 // Central dispatcher that catches all user actions (Slash commands, Modal popups, Dropdowns).
 client.on(Events.InteractionCreate, async interaction => {
   try {
-    // If an interaction happens in a guild text channel, check for territorial Bounded Field traps asynchronously
+    // If an interaction happens in a guild text channel, check for territorial Bounded Field traps ONLY on public offensive/loud commands
+    // UI clicks (buttons, menus, modals) and stealth/defense operations (/trap, /defenses, /profile, /heal, /church) NEVER trip traps!
     if (interaction.guild && interaction.channel && !interaction.user.bot) {
-      const isPatrol = interaction.isChatInputCommand() && (interaction.commandName === 'patrol' || interaction.commandName === 'petrol');
-      if (!interaction.isAutocomplete() && !isPatrol) {
-        triggerChannelTrapsIfAny(client, interaction.user.id, interaction.user.username, interaction.channel).catch(err => {
-          console.warn('[TrapTrigger] Background trap trigger error:', err);
-        });
+      if (interaction.isChatInputCommand()) {
+        const cmd = interaction.commandName.toLowerCase();
+        const isStealthOrMaint = [
+          'trap', 'traps', 'patrol', 'petrol', 'defenses', 'profile', 'heal', 
+          'church', 'sanctuary', 'servant', 'servants', 'inventory', 'gacha', 
+          'summon', 'daily', 'customise', 'cegacha', 'addce', 'addsq'
+        ].includes(cmd);
+        
+        if (!isStealthOrMaint) {
+          triggerChannelTrapsIfAny(client, interaction.user.id, interaction.user.username, interaction.channel).catch(err => {
+            console.warn('[TrapTrigger] Background trap trigger error:', err);
+          });
+        }
       }
     }
 
@@ -549,19 +559,25 @@ client.on(Events.InteractionCreate, async interaction => {
         const targetChanName = selectedChan ? `#${selectedChan.name}` : `#${selectedChanId}`;
 
         const promptEmbed = new EmbedBuilder()
-          .setTitle(`🕸️ Anchor Bounded Field in ${targetChanName}`)
+          .setTitle(`🕸️ Anchor Bounded Field or Sanctuary in ${targetChanName}`)
           .setDescription(
             `You selected target channel: **${targetChanName}**\n\n` +
             `Choose which Bounded Field to deploy or manage in this sector:\n\n` +
+            `• 🛡️ **Mage Sanctuary (Auto-Heal & 60% Block):** Anchors your primary workshop in this channel for continuous HP recovery.\n` +
             `• 🚨 **Sensory Alarm Ward:** Conceals an early warning perimeter that exposes rival Master identity and Servant true class upon typing.\n` +
             `• 🩸 **Bloodfort Mana Drain:** Traps the channel in a bounded field that siphons 1,800 HP from rival intruders directly into your Servant.\n` +
-            `• 🧹 **Disarm Sector:** Dissolves any Bounded Field you have placed in ${targetChanName}.\n\n` +
-            `*Or click Back to return to the War Hub.*`
+            `• 🧹 **Disarm Sector:** Dissolves your own Bounded Field or infiltrates and dismantles rival traps in ${targetChanName}.\n\n` +
+            `*Or click Back to return.*`
           )
           .setColor(0x8b5cf6)
           .setFooter({ text: `Sector Target: ${targetChanName} • Holy Grail War` });
 
         const channelActionsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`war_anchor_sanctuary_${selectedChanId}`)
+            .setLabel(`Anchor Sanctuary (${targetChanName})`)
+            .setEmoji('🛡️')
+            .setStyle(ButtonStyle.Success),
           new ButtonBuilder()
             .setCustomId(`war_anchor_alarm_${selectedChanId}`)
             .setLabel(`Anchor Alarm (${targetChanName})`)
@@ -579,7 +595,7 @@ client.on(Events.InteractionCreate, async interaction => {
             .setStyle(ButtonStyle.Secondary),
           new ButtonBuilder()
             .setCustomId('war_tab_traps')
-            .setLabel('Back to Traps')
+            .setLabel('Back')
             .setEmoji('⬅️')
             .setStyle(ButtonStyle.Secondary)
         );
@@ -643,6 +659,18 @@ client.on(Events.InteractionCreate, async interaction => {
       const isCivilian = !master.servants || master.servants.length === 0;
 
       // Trap actions from channel select menu or trap hub
+      if (btnId.startsWith('war_anchor_sanctuary_') || btnId.startsWith('trap_set_sanctuary_')) {
+        const chanId = btnId.replace('war_anchor_sanctuary_', '').replace('trap_set_sanctuary_', '');
+        const chan = interaction.guild?.channels.cache.get(chanId);
+        const chanName = chan ? `#${chan.name}` : `#${chanId}`;
+        const res = setWorkshopWardInWar(war, interaction.user.id, 'ward', chanName);
+        war = res.updatedWar;
+        master.boundedField = 'ward';
+        master.sanctuaryChannelName = chanName;
+        await saveMaster(master);
+        await interaction.reply({ content: `🛡️ ${res.message}`, flags: MessageFlags.Ephemeral });
+        return;
+      }
       if (btnId.startsWith('war_anchor_alarm_') || btnId.startsWith('trap_set_alarm_')) {
         const chanId = btnId.replace('war_anchor_alarm_', '').replace('trap_set_alarm_', '');
         const chan = interaction.guild?.channels.cache.get(chanId);
@@ -887,7 +915,7 @@ client.on(Events.InteractionCreate, async interaction => {
           return;
         }
         const uP = war.participants[interaction.user.id];
-        const embed = buildDefensesEmbed(uP, btnId === 'war_refresh_defenses' ? '🔄 Workshop settings refreshed.' : undefined);
+        const embed = buildDefensesEmbed(uP, war, btnId === 'war_refresh_defenses' ? '🔄 Workshop settings refreshed.' : undefined);
         const btns = buildDefensesButtons(uP);
         if (btnId === 'war_defenses') {
           await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
@@ -950,7 +978,7 @@ client.on(Events.InteractionCreate, async interaction => {
         if (isChurchMsg) {
           await interaction.update({ embeds: [buildChurchEmbed(uP, msg)], components: buildChurchButtons(uP) });
         } else {
-          await interaction.update({ embeds: [buildDefensesEmbed(uP, msg)], components: buildDefensesButtons(uP) });
+          await interaction.update({ embeds: [buildDefensesEmbed(uP, war, msg)], components: buildDefensesButtons(uP) });
         }
         return;
       }

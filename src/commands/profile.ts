@@ -5,8 +5,11 @@ import {
   ButtonBuilder, 
   ButtonStyle, 
   EmbedBuilder,
-  ComponentType
-, MessageFlags } from 'discord.js';
+  ChannelSelectMenuBuilder,
+  ChannelType,
+  ComponentType,
+  MessageFlags 
+} from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { 
   getOrInitWarSession, 
@@ -36,10 +39,17 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
 
   let wardLabel = '🚫 **No Wards Active** (No perimeter defenses)';
   if (ward === 'ward') {
-    wardLabel = '🛡️ **Sanctuary Bounded Field** (Absorbs 60% Ambush DMG)';
+    const sChan = (userParticipant as any)?.sanctuaryChannelName ? ` in ${(userParticipant as any).sanctuaryChannelName}` : '';
+    wardLabel = `🛡️ **Mage Sanctuary Bounded Field**${sChan} (Absorbs 60% Ambush DMG & Continuous Auto-Heal)`;
   } else if (ward === 'alarm') {
     wardLabel = '🚨 **Intrusion Alarm Trap** (Alerts & Deals 3,000 retaliatory DMG)';
   }
+
+  // Active channel traps
+  const myChannelTraps = (war?.channelTraps || []).filter((t: any) => t.setterMasterId === master.discordId);
+  const channelTrapsSummary = myChannelTraps.length > 0
+    ? myChannelTraps.map((t: any) => `\`${t.channelName}\` (${t.trapType === 'alarm' ? '🚨 Alarm Ward' : '🩸 Bloodfort Drain'})`).join(', ')
+    : 'None *(Select a channel below to anchor)*';
 
   const sTemplate = activeServant.template || activeServant;
   const servantName = activeServant.nickname || sTemplate.name || activeServant.name || 'Heroic Spirit';
@@ -70,21 +80,22 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
       `• **${servantName}** [${rarityStars}] — Class: **${servantClass}**\n` +
       `• **Noble Phantasm:** ✨ **${np.name}** [${np.cardType} • ${(np.target || 'single').toUpperCase()}]\n` +
       `  *${np.description}*\n\n` +
-      `📊 **Combat Parameters & Health Recovery:**\n` +
+      `📊 **Combat Parameters & Live Vitality:**\n` +
       `• **HP:** ❤️ \`${healInfo.currentHp.toLocaleString()} / ${healInfo.maxHp.toLocaleString()}\` (${healInfo.percent}%)\n` +
       `• **Recovery State:** ${healInfo.statusTag}\n` +
       (healInfo.ritualCooldownSecs > 0 ? `• **Healing Ritual Cooldown:** ⏳ \`${Math.floor(healInfo.ritualCooldownSecs / 60)}m ${healInfo.ritualCooldownSecs % 60}s remaining\`\n` : `• **Healing Ritual:** ✨ \`Ready (+40% HP)\`\n`) +
       `• **Base ATK:** ⚔️ \`${baseAtk.toLocaleString()}\`\n` +
       `• **Noble Phantasm Charge:** ⚡ \`100% Ready\`\n\n` +
-      `🛡️ **Workshop Defenses & Wards:**\n` +
-      `• **Active Bounded Field:** ${wardLabel}\n` +
+      `🛡️ **Workshop Defenses & Territorial Wards:**\n` +
+      `• **Personal Bounded Field:** ${wardLabel}\n` +
+      `• **Territorial Channel Wards:** ${channelTrapsSummary}\n` +
       `• **Command Seal Auto-Evacuation:** ${autoEvade ? '🟢 **ENABLED** (Retreats to shadows with 1 HP on lethal blow)' : '🔴 **DISABLED**'}\n` +
       `• **Command Seals:** \`${'✦ '.repeat(seals)}${'✧ '.repeat(Math.max(0, 3 - seals))}\` (**${seals}/3** remaining)\n\n` +
       `👁️ **Servant Class Passive:**\n${classPassive}\n\n` +
       `🏆 **Grail War Status:**\n` +
       `• **Stealth Status:** ${isExposed ? '⚠️ **EXPOSED TO PUBLIC WAR BOARD**' : '🕶️ **Concealed in Shadows** (Anonymous to rivals)'}\n` +
       `• **Kills:** **${userParticipant.kills || 0}** | **Status:** ${userParticipant.isAlive ? '🟢 Active Competitor' : '💀 Eliminated'}\n\n` +
-      `*Configure your workshop defenses or manage your Servant using the buttons below:*`
+      `*Configure workshop wards, heal, or select a Discord channel below to anchor Bounded Fields:*`
     )
     .setColor(isExposed ? 0xef4444 : 0x3b82f6)
     .setFooter({ text: 'Private Master Dossier • Holy Grail War Protocol' });
@@ -133,7 +144,32 @@ export function buildProfileButtons(userParticipant: any) {
       .setStyle(ButtonStyle.Secondary)
   );
 
-  return [row1, row2];
+  const row3 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId('war_tab_traps')
+      .setLabel('Channel Traps Hub (/trap)')
+      .setEmoji('🎯')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId('disarm_all_traps')
+      .setLabel('Disarm All Traps')
+      .setEmoji('🧹')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('war_status_board')
+      .setLabel('Grail War Board')
+      .setEmoji('📜')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  const channelSelectRow = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
+    new ChannelSelectMenuBuilder()
+      .setCustomId('war_trap_channel_select')
+      .setPlaceholder('🎯 Select a channel to anchor Bounded Field, Sanctuary, or Disarm...')
+      .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+  );
+
+  return [row1, row2, row3, channelSelectRow];
 }
 
 export async function execute(interaction: ChatInputCommandInteraction) {
