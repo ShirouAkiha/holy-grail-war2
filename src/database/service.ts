@@ -1141,6 +1141,83 @@ export async function saveMaster(master: MasterProfile): Promise<MasterProfile> 
 }
 
 /**
+ * Resets a single Master's contracted Servants (severs contract or resets stats to Lv.1).
+ */
+export async function resetSingleMasterServant(
+  discordId: string,
+  options: { fullSever?: boolean; resetStatsOnly?: boolean; resetSeals?: number } = { fullSever: true }
+): Promise<MasterProfile | null> {
+  const master = masterStore.get(discordId);
+  if (!master) return null;
+
+  if (options.resetStatsOnly) {
+    if (master.servants) {
+      for (const s of master.servants) {
+        s.level = 1;
+        s.experience = 0;
+        s.availableStatPoints = 0;
+        s.allocatedStats = { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
+        s.bondLevel = 0;
+        s.equippedCe = undefined;
+        s.equippedCeId = undefined;
+        s.skillLevels = [1, 1, 1];
+      }
+    }
+  } else {
+    // Full contract sever / clean slate
+    master.servants = [];
+    master.activeServantId = undefined;
+  }
+
+  if (options.resetSeals !== undefined) {
+    master.commandSeals = options.resetSeals;
+  }
+
+  saveMastersToDisk();
+  return master;
+}
+
+/**
+ * Resets all Masters' contracted Servants across the entire server for a fresh Holy Grail War season.
+ */
+export async function resetAllMastersServants(
+  options: { fullSever?: boolean; resetStatsOnly?: boolean; startingSeals?: number } = { fullSever: true }
+): Promise<{ count: number; masters: MasterProfile[] }> {
+  let count = 0;
+  const updated: MasterProfile[] = [];
+
+  for (const master of masterStore.values()) {
+    if (options.resetStatsOnly) {
+      if (master.servants && master.servants.length > 0) {
+        for (const s of master.servants) {
+          s.level = 1;
+          s.experience = 0;
+          s.availableStatPoints = 0;
+          s.allocatedStats = { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
+          s.bondLevel = 0;
+          s.equippedCe = undefined;
+          s.equippedCeId = undefined;
+          s.skillLevels = [1, 1, 1];
+        }
+      }
+    } else {
+      master.servants = [];
+      master.activeServantId = undefined;
+    }
+
+    if (options.startingSeals !== undefined) {
+      master.commandSeals = options.startingSeals;
+    }
+
+    count++;
+    updated.push(master);
+  }
+
+  saveMastersToDisk();
+  return { count, masters: updated };
+}
+
+/**
  * Gets all registered masters across the server.
  */
 export async function getAllMasters(): Promise<MasterProfile[]> {

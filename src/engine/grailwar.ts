@@ -2483,7 +2483,8 @@ export function setWorkshopWardInWar(
 export function startOrRestartWar(
   presetKey: string = 'fuyuki_7',
   customRules?: Partial<WarRules>,
-  adminUsername: string = 'Overseer'
+  adminUsername: string = 'Overseer',
+  options: { wipeRoster?: boolean } = { wipeRoster: true }
 ): { war: HolyGrailWarSession; message: string } {
   const war = getOrInitWarSession();
   const basePreset = WAR_PRESETS[presetKey] || WAR_PRESETS.fuyuki_7;
@@ -2512,19 +2513,25 @@ export function startOrRestartWar(
     });
   }
 
-  // Reset and re-vitalize all registered participants
   const startingSeals = newRules.startingCommandSeals || 3;
-  for (const p of Object.values(war.participants)) {
-    p.currentHp = p.maxHp;
-    p.baseHpAtDamage = p.maxHp;
-    p.lastDamageTime = undefined;
-    p.commandSeals = startingSeals;
-    p.isAlive = true;
-    p.isExposed = false;
-    p.inSanctuary = false;
-    (p as any).inChurchSanctuary = false;
-    p.boundedField = 'none';
-    p.kills = 0;
+
+  if (options.wipeRoster) {
+    // True fresh war: Wipe active roster so all Masters must invoke /summon ritual anew
+    war.participants = {};
+  } else {
+    // Retain existing roster but reset status & seals
+    for (const p of Object.values(war.participants)) {
+      p.currentHp = p.maxHp;
+      p.baseHpAtDamage = p.maxHp;
+      p.lastDamageTime = undefined;
+      p.commandSeals = startingSeals;
+      p.isAlive = true;
+      p.isExposed = false;
+      p.inSanctuary = false;
+      (p as any).inChurchSanctuary = false;
+      p.boundedField = 'none';
+      p.kills = 0;
+    }
   }
 
   // Clear traps, familiars, casualties, and start fresh
@@ -2540,7 +2547,7 @@ export function startOrRestartWar(
   war.rules = newRules;
 
   // If Apocrypha faction mode, assign participants evenly to Red vs Black
-  if (newRules.factionMode) {
+  if (newRules.factionMode && Object.keys(war.participants).length > 0) {
     const pKeys = Object.keys(war.participants);
     const red: string[] = [];
     const black: string[] = [];
@@ -2560,7 +2567,9 @@ export function startOrRestartWar(
     `⚡ **Command Seals:** **${newRules.startingCommandSeals} Seals** per Master\n` +
     `💧 **Leylines:** ${newRules.leylineDensity === 'fast' ? '⚡ High Surge (2x Fast Recovery)' : newRules.leylineDensity === 'desolate' ? '🏜️ Desolate (No Auto-Regen)' : 'Balanced Standard'}\n` +
     `⛪ **Church Sanctuary:** ${newRules.churchAsylum ? '🟢 Active Asylum under Father Kotomine' : '🔴 Desecrated (No Asylum)'}\n\n` +
-    `*All Master HP and Command Seals have been fully restored. Summon your Servant or enter the shadows with \`/patrol\` or \`/profile\`!*`;
+    (options.wipeRoster 
+      ? `🧹 **Fresh Season:** The war roster has been cleared! All Masters must perform the Summoning Ritual (\`/summon ritual\`) to form new contracts.\n`
+      : `*All Master HP and Command Seals have been fully restored. Summon your Servant or enter the shadows with \`/patrol\` or \`/profile\`!*\n`);
 
   war.eventLogs.unshift({
     id: `evt_restart_${Date.now()}`,

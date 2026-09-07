@@ -21,7 +21,9 @@ import {
   setDuelNpSettings,
   matchServantSearch,
   getOrCreateMaster,
-  saveMaster
+  saveMaster,
+  resetAllMastersServants,
+  resetSingleMasterServant
 } from '../database/service';
 import {
   getOrInitWarSession,
@@ -529,16 +531,23 @@ export function buildAdminHub(
 
     // Lifecycle Actions Row
     const lifecycleRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId('admin_war_action_restart').setLabel('Launch / Restart War').setEmoji('🚀').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('admin_war_action_restart').setLabel('Restart War').setEmoji('🚀').setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId('admin_war_action_reset').setLabel('Quick Refresh').setEmoji('🔄').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('admin_war_refill_all_seals').setLabel('Refill All Seals').setEmoji('🔱').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('admin_war_cataclysm_hub').setLabel('Trigger Cataclysm').setEmoji('⚡').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('admin_war_cataclysm_hub').setLabel('Cataclysm').setEmoji('⚡').setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId('admin_war_history_view').setLabel('Hall of Fame').setEmoji('📜').setStyle(ButtonStyle.Secondary)
+    );
+
+    // Contract & Servant Management Row (Fresh War & Reset)
+    const contractRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('admin_war_fresh_slate').setLabel('Fresh Season (Wipe All Contracts)').setEmoji('🧹').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('admin_war_reset_my_servant').setLabel('Release My Servant').setEmoji('🗡️').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('admin_war_reset_my_stats').setLabel('Reset My Servant to Lv.1').setEmoji('🌱').setStyle(ButtonStyle.Secondary)
     );
 
     const ruleSelectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(createRuleSelectMenu());
 
-    components.push(presetsRow, lifecycleRow, ruleSelectRow);
+    components.push(presetsRow, lifecycleRow, contractRow, ruleSelectRow);
 
   } else if (category === 'war_rules') {
     const war = getOrInitWarSession();
@@ -651,11 +660,36 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       actionOutcome = `💀 **Applied Preset: Desolate Hardcore Ritual (1 Seal, Permadeath, No Sanctuary)!**\n${res.message}`;
     }
 
-    // WAR LIFECYCLE
+    // WAR LIFECYCLE & CONTRACTS
     else if (customId === 'admin_war_action_restart') {
       const war = getOrInitWarSession();
-      const res = startOrRestartWar(war.rules?.preset || 'fuyuki_7', war.rules, interaction.user.username);
+      const res = startOrRestartWar(war.rules?.preset || 'fuyuki_7', war.rules, interaction.user.username, { wipeRoster: true });
       actionOutcome = `🚀 **Holy Grail War Restarted!**\n${res.message}`;
+    } else if (customId === 'admin_war_fresh_slate') {
+      const war = getOrInitWarSession();
+      startOrRestartWar(war.rules?.preset || 'fuyuki_7', war.rules, interaction.user.username, { wipeRoster: true });
+      const startingSeals = war.rules?.startingCommandSeals || 3;
+      const wipeResult = await resetAllMastersServants({ fullSever: true, startingSeals });
+      actionOutcome = `🧹 **FRESH SEASON LAUNCHED (COMPLETE CONTRACT WIPE)!**\n\n` +
+        `• ⚔️ **Severed Contracts:** All **${wipeResult.count} Master(s)** contracts dissolved.\n` +
+        `• 📜 **Roster Cleared:** All 7 Master slots are now open in the Throne of Heroes.\n` +
+        `• 🔱 **Command Seals:** Re-inscribed **${startingSeals} Command Seals** for all Masters.\n` +
+        `• 🕯️ Use \`/summon ritual\` to draw the magic circle and summon a new Heroic Spirit!`;
+    } else if (customId === 'admin_war_reset_my_servant') {
+      const war = getOrInitWarSession();
+      const startingSeals = war.rules?.startingCommandSeals || 3;
+      await resetSingleMasterServant(interaction.user.id, { fullSever: true, resetSeals: startingSeals });
+      if (war.participants && war.participants[interaction.user.id]) {
+        delete war.participants[interaction.user.id];
+      }
+      actionOutcome = `🗡️ **SACRED COVENANT SEVERED!**\n\n` +
+        `Your Servant contract has been completely released and your war registration cleared.\n` +
+        `• 🔱 Command Seals restored to **${startingSeals}**.\n` +
+        `• Use \`/summon ritual\` to summon a brand new Heroic Spirit from the Throne!`;
+    } else if (customId === 'admin_war_reset_my_stats') {
+      await resetSingleMasterServant(interaction.user.id, { resetStatsOnly: true });
+      actionOutcome = `🌱 **SERVANT LEVEL & STATS RESET TO LV.1!**\n\n` +
+        `Your active Servant has been reset to **Level 1** with 0 EXP and 0 allocated bonus stat points. Base parameters and Noble Phantasm remain intact.`;
     } else if (customId === 'admin_war_action_reset') {
       const res = resetHolyGrailWar(true, interaction.user.username);
       actionOutcome = `🔄 **Ritual Refreshed:** ${res.message}`;

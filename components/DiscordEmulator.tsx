@@ -5665,7 +5665,10 @@ export default function DiscordEmulator({
         { id: 'admin_war_preset_apocrypha_14', label: 'Apocrypha (14P)', style: 'success', emoji: '⚔️' },
         { id: 'admin_war_preset_singularity_chaos', label: 'Singularity (30P)', style: 'secondary', emoji: '🌌' },
         { id: 'admin_war_preset_desolate_hardcore', label: 'Desolate Hardcore', style: 'danger', emoji: '💀' },
-        { id: 'admin_war_action_restart', label: 'Restart War', style: 'success', emoji: '🚀' },
+        { id: 'admin_war_fresh_slate', label: 'Fresh Season (Wipe All Contracts)', style: 'danger', emoji: '🧹' },
+        { id: 'admin_war_reset_my_servant', label: 'Release My Servant', style: 'danger', emoji: '🗡️' },
+        { id: 'admin_war_reset_my_stats', label: 'Reset Servant to Lv.1', style: 'secondary', emoji: '🌱' },
+        { id: 'admin_war_action_restart', label: 'Restart War (Wipe Roster)', style: 'success', emoji: '🚀' },
         { id: 'admin_war_action_reset', label: 'Quick Refresh', style: 'secondary', emoji: '🔄' },
         { id: 'admin_war_cataclysm_hub', label: 'Cataclysm', style: 'danger', emoji: '⚡' },
         { id: 'admin_war_history_view', label: 'Hall of Fame', style: 'secondary', emoji: '📜' }
@@ -7045,9 +7048,68 @@ export default function DiscordEmulator({
       } else if (btnId === 'admin_war_preset_desolate_hardcore') {
         postAdminHub('war' as any, '💀 Applied **Desolate Hardcore** format! 1 Command Seal, Slow 15m Leylines, Extreme lethality.');
       }
-      // 3. Grail War Lifecycle Actions
+      // 3. Grail War Lifecycle & Contract Actions
       else if (btnId === 'admin_war_action_restart') {
-        postAdminHub('war' as any, '🚀 **Holy Grail War Restarted!** Previous battle chronicles saved to Hall of Fame, all Masters refreshed to 3 Command Seals.');
+        const resetParticipants: Record<string, any> = {};
+        onUpdateGrailWar({
+          ...grailWar,
+          participants: resetParticipants,
+          channelTraps: [],
+          familiars: [],
+          civilianCasualties: []
+        });
+        postAdminHub('war' as any, '🚀 **Holy Grail War Restarted!** War roster cleared and archived to Hall of Fame. Masters can now invoke `/summon ritual` to form new covenants.');
+      } else if (btnId === 'admin_war_fresh_slate') {
+        onUpdateMaster({
+          ...master,
+          servants: [],
+          activeServantId: undefined,
+          commandSeals: 3
+        });
+        onUpdateGrailWar({
+          ...grailWar,
+          participants: {},
+          channelTraps: [],
+          familiars: [],
+          civilianCasualties: []
+        });
+        postAdminHub('war' as any, '🧹 **FRESH SEASON LAUNCHED!** All active Servant contracts have been dissolved across the server, the war roster has been wiped clean, and Command Seals restored to 3/3! All Masters can now invoke `/summon ritual` for the new war.');
+      } else if (btnId === 'admin_war_reset_my_servant') {
+        onUpdateMaster({
+          ...master,
+          servants: [],
+          activeServantId: undefined,
+          commandSeals: 3
+        });
+        const updatedParticipants = { ...grailWar.participants };
+        delete updatedParticipants[master.discordId];
+        onUpdateGrailWar({
+          ...grailWar,
+          participants: updatedParticipants
+        });
+        postAdminHub('war' as any, '🗡️ **Contract Severed!** Your active Servant covenant has been released. You can now use `/summon ritual` to summon a brand new Heroic Spirit!');
+      } else if (btnId === 'admin_war_reset_my_stats') {
+        const resetServants = (master.servants || []).map(s => ({
+          ...s,
+          level: 1,
+          exp: 0,
+          availableStatPoints: 0,
+          bonusStrength: 0,
+          bonusEndurance: 0,
+          bonusAgility: 0,
+          bonusMana: 0,
+          bonusLuck: 0,
+          allocatedStats: { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 },
+          bondLevel: 0,
+          bondExp: 0,
+          equippedCraftEssence: undefined,
+          equippedCeId: undefined
+        }));
+        onUpdateMaster({
+          ...master,
+          servants: resetServants
+        });
+        postAdminHub('war' as any, '🌱 **Servant Level & Stats Reset!** Your Servant has been reset to **Level 1** with 0 EXP and base parameters.');
       } else if (btnId === 'admin_war_action_reset') {
         postAdminHub('war' as any, '🔄 **Holy Grail War Refreshed!** All Servants restored to full HP, sanctuary wards reactivated.');
       } else if (btnId === 'admin_war_history_view') {
