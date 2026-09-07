@@ -483,20 +483,17 @@ export function buildAdminHub(
 
   const components: any[] = [categoryNavRow];
 
-  // Helper for fine-tune dropdown
-  const createRuleSelectMenu = () => new StringSelectMenuBuilder()
-    .setCustomId('admin_war_rule_select')
-    .setPlaceholder('⚙️ Fine-Tune War Rules (Seals, Pools, Capacity, Lethality)...')
-    .addOptions(
+  // Helper for fine-tune dropdown (Strictly <= 25 options for Discord constraints)
+  const createRuleSelectMenu = () => {
+    const rawOptions = [
       new StringSelectMenuOptionBuilder().setLabel('Command Seals: 1 Seal (Hardcore)').setValue('seals_1').setEmoji('🔱').setDescription('1 Command Seal per Master (Desolate)'),
       new StringSelectMenuOptionBuilder().setLabel('Command Seals: 2 Seals (Tactical)').setValue('seals_2').setEmoji('🔱').setDescription('2 Command Seals per Master'),
       new StringSelectMenuOptionBuilder().setLabel('Command Seals: 3 Seals (Canon Standard)').setValue('seals_3').setEmoji('🔱').setDescription('Standard 3 Command Seals (Fuyuki)'),
       new StringSelectMenuOptionBuilder().setLabel('Command Seals: 5 Seals (Mana Surge)').setValue('seals_5').setEmoji('🔱').setDescription('High mana 5 Command Seals'),
       new StringSelectMenuOptionBuilder().setLabel('Command Seals: 10 Seals (Chaos / Unlimited)').setValue('seals_10').setEmoji('🔱').setDescription('10 Command Seals for ultimate freedom'),
       new StringSelectMenuOptionBuilder().setLabel('Capacity: 7 Masters (Classic 5th Fuyuki)').setValue('cap_7').setEmoji('👥').setDescription('Standard 7-Master ritual'),
-      new StringSelectMenuOptionBuilder().setLabel('Capacity: 14 Masters (Apocrypha Factions)').setValue('cap_14').setEmoji('👥').setDescription('Large-scale 14-Master conflict (7 Red vs 7 Black)'),
-      new StringSelectMenuOptionBuilder().setLabel('Capacity: 20 Masters (Singularity)').setValue('cap_20').setEmoji('👥').setDescription('20 Masters Grand Singularity'),
-      new StringSelectMenuOptionBuilder().setLabel('Capacity: 30 Masters (Chaos Brawl)').setValue('cap_30').setEmoji('👥').setDescription('All-out server-wide chaos'),
+      new StringSelectMenuOptionBuilder().setLabel('Capacity: 14 Masters (Apocrypha Factions)').setValue('cap_14').setEmoji('👥').setDescription('14-Master conflict (7 Red vs 7 Black)'),
+      new StringSelectMenuOptionBuilder().setLabel('Capacity: 30 Masters (Chaos Brawl)').setValue('cap_30').setEmoji('👥').setDescription('All-out server-wide 30 Masters chaos'),
       new StringSelectMenuOptionBuilder().setLabel('Servant Pool: Canon Type-Moon Only').setValue('pool_canon').setEmoji('📖').setDescription('Only official Type-Moon/FGO Servants'),
       new StringSelectMenuOptionBuilder().setLabel('Servant Pool: Canon + Custom Servants').setValue('pool_all').setEmoji('✨').setDescription('Allow all registered and custom Heroic Spirits'),
       new StringSelectMenuOptionBuilder().setLabel('Servant Pool: Custom Community Only').setValue('pool_custom').setEmoji('🎨').setDescription('Only user-created and meme Servants'),
@@ -511,10 +508,15 @@ export function buildAdminHub(
       new StringSelectMenuOptionBuilder().setLabel('Church Sanctuary: Desecrated (No Asylum)').setValue('church_desecrated').setEmoji('🔥').setDescription('Church is unsafe; no sanctuary granted'),
       new StringSelectMenuOptionBuilder().setLabel('Trap Limit: Max 1 per Master').setValue('trap_1').setEmoji('🕸️').setDescription('Limit each Master to 1 Channel Trap'),
       new StringSelectMenuOptionBuilder().setLabel('Trap Limit: Max 3 per Master').setValue('trap_3').setEmoji('🕸️').setDescription('Standard 3 Traps per Master'),
-      new StringSelectMenuOptionBuilder().setLabel('Trap Limit: Max 5 per Master').setValue('trap_5').setEmoji('🕸️').setDescription('Heavy fortification: 5 Traps'),
       new StringSelectMenuOptionBuilder().setLabel('Faction Mode: Free-For-All').setValue('faction_ffa').setEmoji('⚔️').setDescription('Every Master for themselves'),
       new StringSelectMenuOptionBuilder().setLabel('Faction Mode: Red vs Black Factions').setValue('faction_teams').setEmoji('🚩').setDescription('Apocrypha team war')
-    );
+    ];
+
+    return new StringSelectMenuBuilder()
+      .setCustomId('admin_war_rule_select')
+      .setPlaceholder('⚙️ Fine-Tune War Rules (Seals, Pools, Capacity, Lethality)...')
+      .addOptions(rawOptions.slice(0, 25));
+  };
 
   if (category === 'war') {
     // Presets Row
