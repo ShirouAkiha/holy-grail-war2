@@ -151,6 +151,7 @@ export function createCombatantFromMasterServant(
     npGauge: initialNp,
     activeBuffs: [],
     skills: t.skills.map(s => ({ ...s, currentCooldown: 0 })),
+    passives: t.passives,
     noblePhantasm: { ...t.noblePhantasm },
     critStars: 0,
     bondLevel: servantInstance.bondLevel || 1,
@@ -365,6 +366,14 @@ export function resolveCombatTurn(
     starsGen += npOutcome.starsGenerated;
   } else {
     attacker.npGauge = Math.min(300, attacker.npGauge + npGain);
+  }
+
+  // Check "The Weight of Heaven EX" passive (Aethel Gravitational Aura)
+  const weightPassive = (attacker.passives || []).find(p => p.type === 'the_weight_of_heaven' || (p.name && p.name.includes('Weight of Heaven')));
+  if (weightPassive && defender.stats.mana < attacker.stats.mana) {
+    const auraDmg = weightPassive.value || 2000;
+    totalDmg += auraDmg;
+    chainTags.push(`🌌 The Weight of Heaven EX (-${auraDmg} HP enemy Mana ${defender.stats.mana} < ${attacker.stats.mana})`);
   }
 
   attacker.critStars = Math.min(50, (attacker.critStars || 0) + starsGen);

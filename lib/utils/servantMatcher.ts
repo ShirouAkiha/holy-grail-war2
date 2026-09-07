@@ -52,7 +52,8 @@ const ALIAS_MAP: Record<string, string[]> = {
   sasaki_kojirou: ['kojirou', 'fake assassin', 'swallow slayer', 'gatekeeper', 'tsubame gaeshi'],
   hassan_of_cursed_arm: ['cursed arm', 'true assassin', 'zabaniya', 'hassan'],
   king_hassan: ['first hassan', 'grand assassin', 'old man of the mountain'],
-  kama: ['goddess of love', 'mara', 'beast iii']
+  kama: ['goddess of love', 'mara', 'beast iii'],
+  adiosa_dragon_envoy: ['adiosa', 'world pruner', 'world-pruner', 'dragon envoy', 'cataclysm dragon', 'cataclysm-class', 'ixenor', 'aethelian', 'lyozes', 'cataclysm', 'adiosa dragon envoy', 'envoy of ixenor', 'azure-magenta ruin']
 };
 
 /**

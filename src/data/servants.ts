@@ -1067,5 +1067,88 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     defeatQuote: 'Even if the sun sets... my honor remains untarnished...',
     avatarUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=400&auto=format&fit=crop&q=80',
     cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80'
+  },
+  {
+    id: 'adiosa_dragon_envoy',
+    name: 'Adiosa',
+    title: 'Cataclysm-Class World-Pruner',
+    servantClass: 'Foreigner',
+    rarity: 5,
+    baseHp: 32000,
+    baseAtk: 11600,
+    baseStats: { strength: 18, endurance: 19, agility: 10, mana: 19, luck: 10 },
+    commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
+    skills: [
+      {
+        id: 'cataclysmic_pruner',
+        name: 'Cataclysmic Pruner A++',
+        cooldown: 5,
+        description: 'Emits an intense draconic pressure wave to prune mortal resistance. Increases own ATK by 30% for 3 turns and drains 20% enemy NP gauge.',
+        effectType: 'buff_atk',
+        value: 30,
+        duration: 3,
+        icon: '⚔️'
+      },
+      {
+        id: 'cute_aggression_lethal',
+        name: 'Lethal Cute Aggression A++',
+        cooldown: 5,
+        description: 'An overwhelming, intrusive urge to violently crush anything small or adorable. Gains 20 Critical Stars and increases Buster & Crit damage by 35% for 1 turn.',
+        effectType: 'crit_stars',
+        value: 20,
+        duration: 1,
+        icon: '🐾'
+      },
+      {
+        id: 'absolute_permanence',
+        name: 'Absolute Permanence EX',
+        cooldown: 7,
+        description: 'Anchors Spirit Origin to the core of planet Lyozes, rejecting all erasure. Grants Guts status (Revive with 4,000 HP) and Invincibility for 1 turn.',
+        effectType: 'guts',
+        value: 4000,
+        duration: 5,
+        icon: '🪐'
+      }
+    ],
+    passives: [
+      {
+        name: 'The Weight of Heaven EX',
+        type: 'the_weight_of_heaven',
+        value: 2000,
+        rank: 'EX',
+        description: '50m draconic gravitational field. Decreases enemy HP by 2,000 every turn if their Mana stat is lower than Adiosa\'s (Mana: 19).'
+      },
+      {
+        name: 'Black Glass Stride EX',
+        type: 'territory_creation',
+        value: 12,
+        rank: 'EX',
+        description: 'Dense Aethel crystallizes the earth underfoot into black glass. Increases Arts & Buster performance by 12% and adds +200 flat damage.'
+      },
+      {
+        name: 'Envoy of Dragon King Ixenor',
+        type: 'magic_resistance',
+        value: 25,
+        rank: 'EX',
+        description: 'Increases debuff resistance by 25% and rejects existence erasure.'
+      }
+    ],
+    noblePhantasm: {
+      name: 'Azure-Magenta Ruin: Incineration of Aethel',
+      cardType: 'Buster',
+      chant: '⟨ Ruk\'thar Krav\'nok! Vur Aeth\'ra... Ground to glass, sky to ash. Ruin of Ixenor... AZURE-MAGENTA RUIN! ⟩',
+      description: 'Fires concentrated beams of magenta light that bypass physical durability, incinerating the target\'s Aethel directly and crystallizing the earth into black obsidian glass.',
+      target: 'single',
+      multiplier: 950,
+      overchargeEffect: 'Ignores Defense buffs + Reduces target DEF by 25% for 3 turns + 20% Buster resist down'
+    },
+    lore: 'An ancient draconic entity from the skyborne sanctuary of Aethelian, predating the founding of Aethelgard. Sworn envoy of Dragon King Ixenor, dispatched to purge the corruption of the Ebonwatch Dungeon. She walks in a relentless straight line, unbothered by obstacles or diplomacy, leaving a trail of petrified black glass. Motivated strictly by the structural preservation of planet Lyozes, she views mortal races as an irritating fungal infection—yet suffers from a lethal form of cute aggression that compels her to violently crush small, innocent creatures without malice.',
+    summonQuote: '⟨ Voth zul Adiosa. Nok zul Krav\'nok kri. Shak zhal, Dra\'vos Ixenor rath. ⟩ (I am Adiosa. You are tiny mortal dust. Obey now, Dragon King Ixenor acts through me.)',
+    battleStartQuote: '⟨ Skar zhal, Krav\'nok! Voth ruk\'thar Xal\'nok. ⟩ (Leave now, mortal pests! I annihilate them all.)',
+    victoryQuote: '⟨ Drazk\'hlor Krav\'nok. Krag zul Vael\'ix. ⟩ (Pathetic mortals. The earth is mine.)',
+    defeatQuote: '⟨ Vrak\'ix... Voth zul Vael\'drom Kor Lyozes! ⟩ (Void... I am bound for eternity to Lyozes!)',
+    avatarUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=400&auto=format&fit=crop&q=80',
+    cardArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
+    isCustomOrMeme: false
   }
 ];

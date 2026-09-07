@@ -404,6 +404,39 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "Even if this armor fractures, the will to protect you stands unbreakable!",
       "Lord Camelot will never fall! Senpai, stand behind me!"
     ]
+  },
+
+  // Adiosa - Cataclysm-Class World-Pruner / Foreigner
+  adiosa: {
+    buster: [
+      "⟨ Ruk'thar Nok, Krav'nok kri! ⟩ Annihilate you, tiny mortal dust! My hands twitch to crush your fragile form!",
+      "⟨ Vur Aeth'ra Rok Voth! ⟩ Burn in pure power from me! The Weight of Heaven crushes your weak frame!",
+      "⟨ Khaar Xal'nok! ⟩ Devour those pests! You are nothing before the Envoy of Dragon King Ixenor.",
+      "⟨ Zek kor Voth! ⟩ Kneel to me! Azure-Magenta Ruin incinerates your lifeforce!"
+    ],
+    arts: [
+      "⟨ Vozk Aeth'ra! ⟩ Witness pure power! Dense Aethel warps the light, crystallizing the ground into black glass.",
+      "⟨ Dra'vos Ixenor rath. ⟩ Dragon King Ixenor acts through me. Purging the Ebonwatch corruption.",
+      "⟨ Thul, Krav'nok Drazk'hlor! ⟩ Silence, pathetic mortal! Your words are merely buzzing insects.",
+      "⟨ Krag zul Vael'ix. ⟩ The earth is mine. The structural integrity of planet Lyozes shall be preserved."
+    ],
+    quick: [
+      "⟨ Skar zhal or Zol! ⟩ Leave now or be broken! I walk in a straight line without stealth!",
+      "⟨ Rhun Rok Voth! ⟩ Fang from me! A flurry of magenta beams tearing directly through your spiritual origin!",
+      "⟨ Kri Krok! ⟩ Tiny prey! My armored tail cleaves through your feeble barrier!",
+      "⟨ Vur Xyk Rok Nok! ⟩ Burn lifeforce from you! Black obsidian glass extends beneath your feet."
+    ],
+    mixed: [
+      "⟨ Nok zul Kri Krok. ⟩ You are tiny prey. Mortals are weeds that breed if left unpruned.",
+      "⟨ Voth rath Throk Aeth'ra. ⟩ I act with absolute magic. Parley is meaningless—disintegrate!",
+      "⟨ Grol Vrak, Krav'nok! ⟩ Speak not, mortal! The Envoy does not negotiate with lesser pests.",
+      "⟨ Shak zhal Dra'vos Ixenor! ⟩ Obey now Dragon King Ixenor! Lyozes rejects your fungal presence."
+    ],
+    desperation: [
+      "⟨ Vrak! Voth zul Vael'drom Kor Lyozes! ⟩ No! I am bound for eternity to planet Lyozes—I cannot be erased!",
+      "⟨ Zar Rok Aeth'ra! ⟩ Draconic breath of pure power! The corruption of this world will NOT claim the Envoy!",
+      "⟨ Krag Zol, Ghul Voth Zul Throk! ⟩ Earth broken, but I am absolute! The Black Glass shall remember..."
+    ]
   }
 };
 
@@ -482,6 +515,9 @@ export function getServantProfile(servantName?: string): ServantDialogueProfile 
   }
   if (n.includes('mash') || n.includes('shielder')) {
     return SERVANT_COMBAT_DIALOGUES.mash;
+  }
+  if (n.includes('adiosa') || n.includes('world-pruner') || n.includes('world pruner') || n.includes('dragon envoy') || n.includes('aethelian') || n.includes('ixenor')) {
+    return SERVANT_COMBAT_DIALOGUES.adiosa;
   }
 
   return GENERIC_PROFILE;

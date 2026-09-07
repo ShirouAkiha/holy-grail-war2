@@ -1079,6 +1079,14 @@ export function executeBattleTurn(
       actionText = `✨ **${actor.name}** activated **${usedSkillNames.join(', ')}**!\n` + actionText;
     }
 
+    // Check "The Weight of Heaven EX" passive (Aethel Gravitational Aura)
+    const weightPassive = actorPassives.find(p => p.type === 'the_weight_of_heaven' || (p.name && p.name.includes('Weight of Heaven')));
+    if (weightPassive && target.stats.mana < actor.stats.mana) {
+      const auraDmg = weightPassive.value || 2000;
+      totalDamage += auraDmg;
+      actionText += `\n🌌 **[The Weight of Heaven EX]** Dense draconic aura crushed ${target.name} for ${auraDmg.toLocaleString()} true HP damage! (Enemy Mana: ${target.stats.mana} < ${actor.name} Mana: ${actor.stats.mana})`;
+    }
+
     // Apply damage to target
     target.currentHp = Math.max(0, target.currentHp - totalDamage);
     actor.npGauge = Math.min(300, actor.npGauge + totalNpCharge);

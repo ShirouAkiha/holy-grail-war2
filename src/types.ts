@@ -53,7 +53,8 @@ export type PassiveSkillType =
   | 'madness_enhancement'
   | 'divinity'
   | 'avenger'
-  | 'oblivion_correction';
+  | 'oblivion_correction'
+  | 'the_weight_of_heaven';
 
 export interface PassiveSkill {
   name: string;

@@ -85,6 +85,11 @@ export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: 
     gifUrl: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
     fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
     chant: 'Know the mercy of the King of Gods... O Sun, abide to death! VASAVI SHAKTI!'
+  },
+  'Adiosa': {
+    gifUrl: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+    fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+    chant: '⟨ Kz\'vohl aethren... Ground to glass, sky to ash. Ruin of Ixenor... AZURE-MAGENTA RUIN! ⟩'
   }
 };
 
@@ -143,6 +148,9 @@ export function getNoblePhantasmGif(servantOrTemplate: any): string {
     }
     if (lowerNp.includes('luminosité') || lowerNp.includes('luminosite')) {
       return NOBLE_PHANTASM_GIFS['Jeanne d\'Arc'].gifUrl;
+    }
+    if (lowerNp.includes('azure-magenta') || lowerNp.includes('ruin of ixenor') || lowerNp.includes('incineration of aethel')) {
+      return NOBLE_PHANTASM_GIFS['Adiosa'].gifUrl;
     }
   }
 
