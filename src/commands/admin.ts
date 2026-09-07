@@ -7,8 +7,11 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  StringSelectMenuBuilder
-, MessageFlags } from 'discord.js';
+  StringSelectMenuBuilder,
+  StringSelectMenuOptionBuilder,
+  ComponentType,
+  MessageFlags
+} from 'discord.js';
 import { 
   getAllThroneServants,
   setServantNpAnimation,
@@ -20,13 +23,22 @@ import {
   getOrCreateMaster,
   saveMaster
 } from '../database/service';
+import {
+  getOrInitWarSession,
+  WAR_PRESETS,
+  startOrRestartWar,
+  resetHolyGrailWar,
+  updateWarRules,
+  triggerAdminCataclysm
+} from '../engine/grailwar';
+import { WarRules } from '../types';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
 // ==========================================
 export const data = new SlashCommandBuilder()
   .setName('admin')
-  .setDescription('Fate/Grand Order Admin Hub — Manage NP Animations, Settings & System Utilities')
+  .setDescription('Fate/Grand Order Admin Hub — War Rules, NP Animations & System Controls')
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
   .addSubcommand(sub =>
     sub
@@ -38,10 +50,53 @@ export const data = new SlashCommandBuilder()
           .setDescription('Select administrative control panel')
           .setRequired(false)
           .addChoices(
+            { name: '🏆 Holy Grail War Ritual & Rules', value: 'war' },
             { name: '🎬 NP Animations & Chant Registry', value: 'npanim' },
             { name: '⚙️ Duel NP Settings & Timing', value: 'npsettings' },
             { name: '📋 Registered Custom Animations', value: 'listnp' },
             { name: '💎 Economy & Saint Quartz Mint', value: 'economy' }
+          )
+      )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('war')
+      .setDescription('Manage Holy Grail War lifecycle, rules presets, reset, and cataclysm events')
+      .addStringOption(opt =>
+        opt
+          .setName('action')
+          .setDescription('War administration action')
+          .setRequired(true)
+          .addChoices(
+            { name: '📊 Open War Rules Dashboard', value: 'dashboard' },
+            { name: '🚀 Launch / Restart War with Preset', value: 'restart' },
+            { name: '🔄 Quick Reset (Restore HP & Seals)', value: 'reset' },
+            { name: '⚡ Trigger Leyline Cataclysm Event', value: 'cataclysm' },
+            { name: '📜 View War History & Hall of Fame', value: 'history' }
+          )
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('preset')
+          .setDescription('Rules preset for war initialization')
+          .setRequired(false)
+          .addChoices(
+            { name: '🏆 5th Fuyuki War (7 Masters, Canon Only, Strict Classes)', value: 'fuyuki_7' },
+            { name: '⚔️ Trifas Great War (14 Masters, Black vs Red Factions)', value: 'apocrypha_14' },
+            { name: '🌌 Grand Singularity Chaos (30 Masters FFA, Fast Mana)', value: 'singularity_chaos' },
+            { name: '💀 Desolate Hardcore (7 Masters, 1 Seal, Permadeath, No Church)', value: 'desolate_hardcore' }
+          )
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('cataclysm')
+          .setDescription('Leyline cataclysm event type')
+          .setRequired(false)
+          .addChoices(
+            { name: '🌊 Grail Mud Overflow (All Masters Take 2,500 DMG & Exposed)', value: 'grail_mud' },
+            { name: '🔥 Fuyuki Inferno (Dissolves Traps & Forces Out Church Refugees)', value: 'fuyuki_fire' },
+            { name: '👁️ Angra Mainyu Descends (1,500 Shockwave DMG to All Servants)', value: 'angra_mainyu' },
+            { name: '⚡ Leyline Mana Surge (+1 Seal & 50% HP Heal to All Masters)', value: 'mana_surge' }
           )
       )
   )
@@ -134,7 +189,74 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     // If no subcommand was supplied, fallback to category option or default hub
   }
 
-  const category = (subcommand as any) || (interaction.options.getString('category') as any) || 'npanim';
+  const category = (subcommand as any) || (interaction.options.getString('category') as any) || 'war';
+
+  if (subcommand === 'war') {
+    const action = interaction.options.getString('action', true);
+    const preset = interaction.options.getString('preset') || 'fuyuki_7';
+    const cataclysm = interaction.options.getString('cataclysm') as any;
+
+    if (action === 'restart') {
+      const res = startOrRestartWar(preset, undefined, interaction.user.username);
+      const embed = new EmbedBuilder()
+        .setTitle('🌟 HOLY GRAIL WAR RITUAL LAUNCHED')
+        .setDescription(res.message)
+        .setColor(0xd4af37)
+        .setFooter({ text: `Authorized by Overseer Admin ${interaction.user.username}` });
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
+    if (action === 'reset') {
+      const res = resetHolyGrailWar(true, interaction.user.username);
+      const embed = new EmbedBuilder()
+        .setTitle('🔄 HOLY GRAIL WAR REFRESHED')
+        .setDescription(res.message)
+        .setColor(0x10b981)
+        .setFooter({ text: `Overseer Ritual Refresh by ${interaction.user.username}` });
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
+    if (action === 'cataclysm' && cataclysm) {
+      const war = getOrInitWarSession();
+      const res = triggerAdminCataclysm(war, cataclysm, interaction.user.username);
+      const embed = new EmbedBuilder()
+        .setTitle(`⚡ LEYLINE CATACLYSM: ${res.banner}`)
+        .setDescription(res.message)
+        .setColor(0xef4444)
+        .setFooter({ text: `Cataclysm invoked by Overseer ${interaction.user.username}` });
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
+    if (action === 'history') {
+      const war = getOrInitWarSession();
+      const hist = war.history || [];
+      let desc = '';
+      if (hist.length === 0) {
+        desc = 'No archived Grail Wars in the Hall of Fame yet.\n\nOnce a Grail War concludes or is restarted, the previous victor and battle statistics will be recorded here.';
+      } else {
+        desc = hist.slice(0, 10).map((h, idx) => 
+          `**${idx + 1}. ${h.title}** (${new Date(h.concludedAt).toLocaleDateString()})\n` +
+          `• 🏆 **Victor:** **${h.winnerUsername}** with *${h.winnerServantName}*\n` +
+          `• 👥 **Participants:** ${h.totalParticipants} Masters | ⚔️ **Eliminations:** ${h.totalEliminations}\n` +
+          `• 📜 **Rules:** \`${h.rulesSummary}\``
+        ).join('\n\n');
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle('📜 Hall of Fame — Historical Grail War Chronicles')
+        .setDescription(desc)
+        .setColor(0xd4af37);
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+  }
 
   if (subcommand === 'npanim') {
     const servantQuery = interaction.options.getString('servant', true).trim();
@@ -209,12 +331,48 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 // 4. ADMIN HUB BUILDER
 // ==========================================
 export function buildAdminHub(
-  category: 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'npanim',
+  category: 'war' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war',
   actionOutcomeMsg?: string
 ) {
   let embeds: EmbedBuilder[] = [];
 
-  if (category === 'npanim') {
+  if (category === 'war') {
+    const war = getOrInitWarSession();
+    const rules = war.rules || WAR_PRESETS.fuyuki_7;
+    const participants = Object.values(war.participants || {});
+    const aliveCount = participants.filter(p => p.isAlive).length;
+    const deadCount = participants.length - aliveCount;
+
+    const poolTag = rules.servantPool === 'canon_only' 
+      ? '📖 Canon Type-Moon Only' 
+      : rules.servantPool === 'custom_only' 
+        ? '🎨 Custom Community Only' 
+        : '✨ Canon + Custom Servants';
+
+    const embed = new EmbedBuilder()
+      .setTitle('🏆 Overseer Control: Holy Grail War Master Dashboard')
+      .setDescription(
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `Configure rituals, adjust lethality & servant pools, or trigger leyline cataclysms across the server.\n\n` +
+        `🏰 **Active War Format:** **${rules.formatName}**\n` +
+        `👥 **Roster Status:** **${aliveCount} Alive** / **${participants.length} Total** (Max Cap: **${rules.maxMasters} Masters**)\n` +
+        `☠️ **Eliminations:** **${deadCount} Fallen** | ⚱️ **Status:** \`${war.status.toUpperCase()}\`\n\n` +
+        `📋 **Active Ritual Configuration & Rules:**\n` +
+        `• ⚔️ **Servant Pool:** ${poolTag}\n` +
+        `• 🔒 **Class Exclusivity:** \`${rules.classExclusivity ? 'Strict (1 per Class)' : 'Open (Multiple Allowed)'}\`\n` +
+        `• 💀 **Lethality Mode:** \`${rules.permadeath ? 'Permadeath (Eliminated on HP 0)' : 'Casual / Training (Revive Cooldown)'}\`\n` +
+        `• ✦ **Starting Command Seals:** \`${rules.startingCommandSeals} Seals\`\n` +
+        `• 💧 **Leyline Density:** \`${rules.leylineDensity === 'fast' ? '⚡ High Surge (2x Fast Recovery)' : rules.leylineDensity === 'desolate' ? '🏜️ Desolate (No Auto-Regen)' : 'Balanced Standard (5 min full)'}\`\n` +
+        `• ⛪ **Church Sanctuary:** \`${rules.churchAsylum ? '🟢 Active Asylum under Father Kotomine' : '🔴 Desecrated (No Asylum)'}\`\n` +
+        `• 🕸️ **Trap Limit:** \`Max ${rules.trapLimitPerMaster || 3} per Master\` | 🚩 **Factions:** \`${rules.factionMode ? 'Red vs Black (Apocrypha)' : 'Free-For-All'}\`\n\n` +
+        `*Choose a preset below to instantly reconfigure, or use the dropdown to customize specific rules!*`
+      )
+      .setColor(0xd4af37)
+      .setFooter({ text: 'Admin Suite • FGO Holy Grail War Overseer Engine' });
+
+    embeds = [embed];
+
+  } else if (category === 'npanim') {
     const npList = getAllCustomNpAnimations();
     const embed = new EmbedBuilder()
       .setTitle('🎬 Admin Control: Noble Phantasm Animation Manager')
@@ -288,45 +446,80 @@ export function buildAdminHub(
 
   // --- UI BUTTON ROWS ---
   const categoryNavRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId('admin_tab_war').setLabel('Grail War Rules').setEmoji('🏆').setStyle(category === 'war' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('admin_tab_npanim').setLabel('NP Animations').setEmoji('🎬').setStyle(category === 'npanim' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('admin_tab_npsettings').setLabel('Duel Settings').setEmoji('⚙️').setStyle(category === 'npsettings' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('admin_tab_listnp').setLabel('Animation List').setEmoji('📋').setStyle(category === 'listnp' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('admin_tab_economy').setLabel('Economy Mint').setEmoji('💎').setStyle(category === 'economy' ? ButtonStyle.Primary : ButtonStyle.Secondary)
   );
 
-  const actionButtonsRow = new ActionRowBuilder<ButtonBuilder>();
+  const components: any[] = [categoryNavRow];
 
-  if (category === 'npsettings') {
+  if (category === 'war') {
+    // Presets Row
+    const presetsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('admin_war_preset_fuyuki_7').setLabel('5th Fuyuki (7P)').setEmoji('🏆').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('admin_war_preset_apocrypha_14').setLabel('Apocrypha (14P Factions)').setEmoji('⚔️').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('admin_war_preset_singularity_chaos').setLabel('Singularity (30P Fast)').setEmoji('🌌').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_war_preset_desolate_hardcore').setLabel('Desolate (1-Seal Hardcore)').setEmoji('💀').setStyle(ButtonStyle.Danger)
+    );
+
+    // Lifecycle Actions Row
+    const lifecycleRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('admin_war_action_restart').setLabel('Launch / Restart War').setEmoji('🚀').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('admin_war_action_reset').setLabel('Quick Refresh (HP/Seals)').setEmoji('🔄').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_war_cataclysm_hub').setLabel('Trigger Cataclysm').setEmoji('⚡').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('admin_war_history_view').setLabel('Hall of Fame').setEmoji('📜').setStyle(ButtonStyle.Secondary)
+    );
+
+    // Fine-Tuning Select Menu
+    const ruleSelectMenu = new StringSelectMenuBuilder()
+      .setCustomId('admin_war_rule_select')
+      .setPlaceholder('⚙️ Fine-Tune War Rules (Select a setting to modify)...')
+      .addOptions(
+        new StringSelectMenuOptionBuilder().setLabel('Capacity: 7 Masters (Classic)').setValue('cap_7').setEmoji('👥').setDescription('Standard 7-Master ritual'),
+        new StringSelectMenuOptionBuilder().setLabel('Capacity: 14 Masters (Apocrypha)').setValue('cap_14').setEmoji('👥').setDescription('Large-scale 14-Master conflict'),
+        new StringSelectMenuOptionBuilder().setLabel('Capacity: 30 Masters (Singularity)').setValue('cap_30').setEmoji('👥').setDescription('All-out server-wide chaos'),
+        new StringSelectMenuOptionBuilder().setLabel('Servant Pool: Canon Type-Moon Only').setValue('pool_canon').setEmoji('📖').setDescription('Only official Type-Moon/FGO Servants'),
+        new StringSelectMenuOptionBuilder().setLabel('Servant Pool: Canon + Custom Servants').setValue('pool_all').setEmoji('✨').setDescription('Allow all registered and custom Heroic Spirits'),
+        new StringSelectMenuOptionBuilder().setLabel('Servant Pool: Custom Community Only').setValue('pool_custom').setEmoji('🎨').setDescription('Only user-created and meme Servants'),
+        new StringSelectMenuOptionBuilder().setLabel('Class Exclusivity: Strict (1 per Class)').setValue('class_strict').setEmoji('🔒').setDescription('1 Saber, 1 Archer, etc.'),
+        new StringSelectMenuOptionBuilder().setLabel('Class Exclusivity: Open Classes').setValue('class_open').setEmoji('🔓').setDescription('Allow duplicate classes'),
+        new StringSelectMenuOptionBuilder().setLabel('Permadeath: Classic Elimination').setValue('permadeath_on').setEmoji('☠️').setDescription('Defeated Masters without seals are eliminated'),
+        new StringSelectMenuOptionBuilder().setLabel('Permadeath: Casual Training Mode').setValue('permadeath_off').setEmoji('🛡️').setDescription('Defeated Masters can recover and rejoin'),
+        new StringSelectMenuOptionBuilder().setLabel('Starting Seals: 1 Seal (Hardcore)').setValue('seals_1').setEmoji('✦').setDescription('1 Command Seal per Master'),
+        new StringSelectMenuOptionBuilder().setLabel('Starting Seals: 3 Seals (Standard)').setValue('seals_3').setEmoji('✦').setDescription('Standard 3 Command Seals'),
+        new StringSelectMenuOptionBuilder().setLabel('Starting Seals: 5 Seals (Overflow)').setValue('seals_5').setEmoji('✦').setDescription('High mana 5 Command Seals'),
+        new StringSelectMenuOptionBuilder().setLabel('Leylines: High Surge (2x Fast Regen)').setValue('leyline_fast').setEmoji('⚡').setDescription('2.5 min full recovery in Sanctuaries'),
+        new StringSelectMenuOptionBuilder().setLabel('Leylines: Balanced Standard').setValue('leyline_standard').setEmoji('💧').setDescription('Standard 5 min full recovery'),
+        new StringSelectMenuOptionBuilder().setLabel('Leylines: Desolate (No Auto-Regen)').setValue('leyline_desolate').setEmoji('🏜️').setDescription('HP recovery only via Command Seals/rituals'),
+        new StringSelectMenuOptionBuilder().setLabel('Church Sanctuary: Active Asylum').setValue('church_active').setEmoji('⛪').setDescription('Masters can take asylum with Father Kotomine'),
+        new StringSelectMenuOptionBuilder().setLabel('Church Sanctuary: Desecrated (No Asylum)').setValue('church_desecrated').setEmoji('🔥').setDescription('Church is unsafe; no sanctuary granted')
+      );
+
+    const ruleSelectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(ruleSelectMenu);
+
+    components.push(presetsRow, lifecycleRow, ruleSelectRow);
+
+  } else if (category === 'npsettings') {
     const settings = getDuelNpSettings();
-    actionButtonsRow.addComponents(
+    const actionButtonsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('admin_toggle_autodelete').setLabel(settings.autoDelete ? 'Auto-Delete: ON 🟢' : 'Auto-Delete: OFF 🔴').setStyle(settings.autoDelete ? ButtonStyle.Success : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('admin_set_afk_30').setLabel('Timeout: 30s').setStyle(settings.afkTimeoutSeconds === 30 ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('admin_set_afk_60').setLabel('Timeout: 60s').setStyle(settings.afkTimeoutSeconds === 60 ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('admin_set_afk_120').setLabel('Timeout: 120s').setStyle(settings.afkTimeoutSeconds === 120 ? ButtonStyle.Primary : ButtonStyle.Secondary)
     );
+    components.push(actionButtonsRow);
+
   } else if (category === 'economy') {
-    actionButtonsRow.addComponents(
+    const actionButtonsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('admin_mint_30sq').setLabel('+30 SQ (1 Multi)').setEmoji('💎').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('admin_mint_100sq').setLabel('+100 SQ').setEmoji('💎').setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId('admin_mint_qp').setLabel('+1,000,000 QP').setEmoji('🪙').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('admin_refill_seals').setLabel('Refill 3 Seals').setEmoji('🔱').setStyle(ButtonStyle.Danger)
     );
-  } else {
-    actionButtonsRow.addComponents(
-      new ButtonBuilder().setCustomId('admin_refresh_view').setLabel('Refresh View').setEmoji('🔄').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_link_gacha').setLabel('Gacha Test (/gacha)').setEmoji('🔮').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_link_duel').setLabel('Duel Test (/duel)').setEmoji('⚔️').setStyle(ButtonStyle.Secondary)
-    );
+    components.push(actionButtonsRow);
   }
 
-  const crossHubShortcutsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId('admin_link_inventory').setLabel('Inventory (/inventory)').setEmoji('👔').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('admin_link_servant').setLabel('Servant (/servant)').setEmoji('⚔️').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('admin_link_grailwar').setLabel('Grail War (/grailwar)').setEmoji('🏆').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('admin_link_duel_main').setLabel('Duel Arena (/duel)').setEmoji('⚔️').setStyle(ButtonStyle.Secondary)
-  );
-
-  const components: any[] = [categoryNavRow, actionButtonsRow, crossHubShortcutsRow];
   return { embeds, components };
 }
 
@@ -336,7 +529,7 @@ export function buildAdminHub(
 export function attachAdminCollector(
   message: any,
   userId: string,
-  initialCategory: 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'npanim'
+  initialCategory: 'war' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war'
 ) {
   let currentCategory = initialCategory;
 
@@ -357,7 +550,9 @@ export function attachAdminCollector(
       let actionOutcome: string | undefined = undefined;
 
       // TAB NAVIGATION
-      if (i.customId === 'admin_tab_npanim') {
+      if (i.customId === 'admin_tab_war') {
+        currentCategory = 'war';
+      } else if (i.customId === 'admin_tab_npanim') {
         currentCategory = 'npanim';
       } else if (i.customId === 'admin_tab_npsettings') {
         currentCategory = 'npsettings';
@@ -366,6 +561,119 @@ export function attachAdminCollector(
       } else if (i.customId === 'admin_tab_economy') {
         currentCategory = 'economy';
       }
+
+      // WAR PRESETS
+      else if (i.customId === 'admin_war_preset_fuyuki_7') {
+        const res = startOrRestartWar('fuyuki_7', undefined, i.user.username);
+        actionOutcome = `🏆 **Applied Preset: 5th Fuyuki Holy Grail War (7 Masters)!**\n${res.message}`;
+      } else if (i.customId === 'admin_war_preset_apocrypha_14') {
+        const res = startOrRestartWar('apocrypha_14', undefined, i.user.username);
+        actionOutcome = `⚔️ **Applied Preset: Trifas Great Holy Grail War (14 Masters, Black vs Red)!**\n${res.message}`;
+      } else if (i.customId === 'admin_war_preset_singularity_chaos') {
+        const res = startOrRestartWar('singularity_chaos', undefined, i.user.username);
+        actionOutcome = `🌌 **Applied Preset: Grand Singularity Chaos (30 Masters FFA, Fast Mana)!**\n${res.message}`;
+      } else if (i.customId === 'admin_war_preset_desolate_hardcore') {
+        const res = startOrRestartWar('desolate_hardcore', undefined, i.user.username);
+        actionOutcome = `💀 **Applied Preset: Desolate Hardcore Ritual (1 Seal, Permadeath, No Sanctuary)!**\n${res.message}`;
+      }
+
+      // WAR LIFECYCLE
+      else if (i.customId === 'admin_war_action_restart') {
+        const war = getOrInitWarSession();
+        const res = startOrRestartWar(war.rules?.preset || 'fuyuki_7', war.rules, i.user.username);
+        actionOutcome = `🚀 **Holy Grail War Restarted!**\n${res.message}`;
+      } else if (i.customId === 'admin_war_action_reset') {
+        const res = resetHolyGrailWar(true, i.user.username);
+        actionOutcome = `🔄 **Ritual Refreshed:** ${res.message}`;
+      } else if (i.customId === 'admin_war_cataclysm_hub') {
+        // Build Cataclysm Sub-menu
+        const cataclysmEmbed = new EmbedBuilder()
+          .setTitle('⚡ Overseer Leyline Cataclysm Selector')
+          .setDescription(
+            `Select a catastrophic mid-war event to unleash upon all Masters:\n\n` +
+            `• 🌊 **Grail Mud Overflow:** All living Masters take **2,500 corruption DMG** and their spiritual concealment is stripped (**EXPOSED**).\n` +
+            `• 🔥 **Fuyuki Inferno:** Destroys all channel bounded traps and flushes all Church refugees into active combat.\n` +
+            `• 👁️ **Angra Mainyu Descends:** Deals **1,500 shockwave DMG** to all contracted Servants.\n` +
+            `• ⚡ **Leyline Mana Surge:** Grants **+1 Command Seal** and **+50% HP heal** to all living Masters.`
+          )
+          .setColor(0xef4444);
+
+        const cataclysmRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder().setCustomId('admin_cata_grail_mud').setLabel('Grail Mud').setEmoji('🌊').setStyle(ButtonStyle.Danger),
+          new ButtonBuilder().setCustomId('admin_cata_fuyuki_fire').setLabel('Fuyuki Inferno').setEmoji('🔥').setStyle(ButtonStyle.Danger),
+          new ButtonBuilder().setCustomId('admin_cata_angra_mainyu').setLabel('Angra Mainyu').setEmoji('👁️').setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId('admin_cata_mana_surge').setLabel('Mana Surge').setEmoji('⚡').setStyle(ButtonStyle.Success)
+        );
+
+        const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder().setCustomId('admin_tab_war').setLabel('Back to War Dashboard').setEmoji('◀️').setStyle(ButtonStyle.Secondary)
+        );
+
+        await i.update({ embeds: [cataclysmEmbed], components: [cataclysmRow, backRow] });
+        return;
+      } else if (i.customId.startsWith('admin_cata_')) {
+        const cataType = i.customId.replace('admin_cata_', '') as any;
+        const war = getOrInitWarSession();
+        const res = triggerAdminCataclysm(war, cataType, i.user.username);
+        actionOutcome = `⚡ **${res.banner}**\n${res.message}`;
+        currentCategory = 'war';
+      } else if (i.customId === 'admin_war_history_view') {
+        const war = getOrInitWarSession();
+        const hist = war.history || [];
+        let desc = '';
+        if (hist.length === 0) {
+          desc = 'No archived Grail Wars in the Hall of Fame yet.\n\nOnce a Grail War concludes or is restarted, the previous victor and battle statistics will be recorded here.';
+        } else {
+          desc = hist.slice(0, 10).map((h, idx) => 
+            `**${idx + 1}. ${h.title}** (${new Date(h.concludedAt).toLocaleDateString()})\n` +
+            `• 🏆 **Victor:** **${h.winnerUsername}** with *${h.winnerServantName}*\n` +
+            `• 👥 **Participants:** ${h.totalParticipants} Masters | ⚔️ **Eliminations:** ${h.totalEliminations}\n` +
+            `• 📜 **Rules:** \`${h.rulesSummary}\``
+          ).join('\n\n');
+        }
+
+        const histEmbed = new EmbedBuilder()
+          .setTitle('📜 Hall of Fame — Historical Grail War Chronicles')
+          .setDescription(desc)
+          .setColor(0xd4af37);
+
+        const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder().setCustomId('admin_tab_war').setLabel('Back to War Dashboard').setEmoji('◀️').setStyle(ButtonStyle.Secondary)
+        );
+
+        await i.update({ embeds: [histEmbed], components: [backRow] });
+        return;
+      }
+
+      // RULE CUSTOMIZATION SELECT
+      else if (i.customId === 'admin_war_rule_select') {
+        const val = i.values[0];
+        const war = getOrInitWarSession();
+        let ruleChanges: Partial<WarRules> = {};
+
+        if (val === 'cap_7') ruleChanges = { maxMasters: 7, formatName: 'Custom 7-Master War' };
+        else if (val === 'cap_14') ruleChanges = { maxMasters: 14, formatName: 'Custom 14-Master War' };
+        else if (val === 'cap_30') ruleChanges = { maxMasters: 30, formatName: 'Custom 30-Master War' };
+        else if (val === 'pool_canon') ruleChanges = { servantPool: 'canon_only' };
+        else if (val === 'pool_all') ruleChanges = { servantPool: 'all' };
+        else if (val === 'pool_custom') ruleChanges = { servantPool: 'custom_only' };
+        else if (val === 'class_strict') ruleChanges = { classExclusivity: true };
+        else if (val === 'class_open') ruleChanges = { classExclusivity: false };
+        else if (val === 'permadeath_on') ruleChanges = { permadeath: true };
+        else if (val === 'permadeath_off') ruleChanges = { permadeath: false };
+        else if (val === 'seals_1') ruleChanges = { startingCommandSeals: 1 };
+        else if (val === 'seals_3') ruleChanges = { startingCommandSeals: 3 };
+        else if (val === 'seals_5') ruleChanges = { startingCommandSeals: 5 };
+        else if (val === 'leyline_fast') ruleChanges = { leylineDensity: 'fast' };
+        else if (val === 'leyline_standard') ruleChanges = { leylineDensity: 'standard' };
+        else if (val === 'leyline_desolate') ruleChanges = { leylineDensity: 'desolate' };
+        else if (val === 'church_active') ruleChanges = { churchAsylum: true };
+        else if (val === 'church_desecrated') ruleChanges = { churchAsylum: false };
+
+        const updateRes = updateWarRules(war, ruleChanges, i.user.username);
+        actionOutcome = `⚙️ **Rule Applied:** ${updateRes.message}`;
+      }
+
       // SETTINGS ACTIONS
       else if (i.customId === 'admin_toggle_autodelete') {
         const settings = getDuelNpSettings();
@@ -397,23 +705,6 @@ export function attachAdminCollector(
         master.commandSeals = 3;
         await saveMaster(master);
         actionOutcome = `🔱 Refilled Command Seals to **3/3**!`;
-      }
-      // CROSS-HUB SHORTCUTS
-      else if (i.customId === 'admin_link_inventory') {
-        await i.reply({ content: 'Use `/inventory` to open Master Inventory!', flags: MessageFlags.Ephemeral });
-        return;
-      } else if (i.customId === 'admin_link_gacha') {
-        await i.reply({ content: 'Use `/gacha` to open Summoning Sanctum!', flags: MessageFlags.Ephemeral });
-        return;
-      } else if (i.customId === 'admin_link_servant') {
-        await i.reply({ content: 'Use `/servant` to open Servant Workshop!', flags: MessageFlags.Ephemeral });
-        return;
-      } else if (i.customId === 'admin_link_grailwar') {
-        await i.reply({ content: 'Use `/grailwar` to open Holy Grail War operations!', flags: MessageFlags.Ephemeral });
-        return;
-      } else if (i.customId.startsWith('admin_link_duel')) {
-        await i.reply({ content: 'Use `/duel` to enter the combat arena!', flags: MessageFlags.Ephemeral });
-        return;
       }
 
       const hub = buildAdminHub(currentCategory, actionOutcome);

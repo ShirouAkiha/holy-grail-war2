@@ -4,11 +4,76 @@ import {
   WarAlliance,
   MasterProfile,
   ChannelBoundedTrap,
-  ActiveFamiliar
+  ActiveFamiliar,
+  WarRules,
+  WarHistoryRecord
 } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
 import fs from 'fs';
 import path from 'path';
+
+// =========================================================================
+// WAR PRESETS & RITUAL CONFIGURATIONS
+// =========================================================================
+export const WAR_PRESETS: Record<string, WarRules> = {
+  fuyuki_7: {
+    preset: 'fuyuki_7',
+    formatName: '5th Fuyuki Holy Grail War (7 Masters)',
+    maxMasters: 7,
+    servantPool: 'canon_only',
+    classExclusivity: true,
+    permadeath: true,
+    startingCommandSeals: 3,
+    autoEvacuateAllowed: true,
+    leylineDensity: 'standard',
+    churchAsylum: true,
+    trapLimitPerMaster: 3,
+    factionMode: false
+  },
+  apocrypha_14: {
+    preset: 'apocrypha_14',
+    formatName: 'Great Holy Grail War (14 Masters, Black vs Red)',
+    maxMasters: 14,
+    servantPool: 'all',
+    classExclusivity: false,
+    permadeath: true,
+    startingCommandSeals: 3,
+    autoEvacuateAllowed: true,
+    leylineDensity: 'standard',
+    churchAsylum: true,
+    trapLimitPerMaster: 3,
+    factionMode: true,
+    factions: { red: [], black: [], ruler: [] }
+  },
+  singularity_chaos: {
+    preset: 'singularity_chaos',
+    formatName: 'Grand Singularity Chaos (30 Masters FFA)',
+    maxMasters: 30,
+    servantPool: 'all',
+    classExclusivity: false,
+    permadeath: false,
+    startingCommandSeals: 5,
+    autoEvacuateAllowed: true,
+    leylineDensity: 'fast',
+    churchAsylum: true,
+    trapLimitPerMaster: 5,
+    factionMode: false
+  },
+  desolate_hardcore: {
+    preset: 'desolate_hardcore',
+    formatName: 'Desolate Hardcore Ritual (7 Masters, 1 Seal, Permadeath)',
+    maxMasters: 7,
+    servantPool: 'canon_only',
+    classExclusivity: true,
+    permadeath: true,
+    startingCommandSeals: 1,
+    autoEvacuateAllowed: false,
+    leylineDensity: 'desolate',
+    churchAsylum: false,
+    trapLimitPerMaster: 1,
+    factionMode: false
+  }
+};
 
 // =========================================================================
 // GLOBAL SHARED HOLY GRAIL WAR SINGLETON (Shared across all Discord commands & users)
@@ -2409,4 +2474,250 @@ export function setWorkshopWardInWar(
     message: `🏰 **Workshop Ward Deployed:** ${desc}`,
     updatedWar: targetWar
   };
+}
+
+// =========================================================================
+// ADMIN LIFECYCLE & WAR CUSTOMIZATION ENGINE
+// =========================================================================
+
+export function startOrRestartWar(
+  presetKey: string = 'fuyuki_7',
+  customRules?: Partial<WarRules>,
+  adminUsername: string = 'Overseer'
+): { war: HolyGrailWarSession; message: string } {
+  const war = getOrInitWarSession();
+  const basePreset = WAR_PRESETS[presetKey] || WAR_PRESETS.fuyuki_7;
+  const newRules: WarRules = {
+    ...basePreset,
+    ...(customRules || {})
+  };
+
+  // Archive previous war if there were active participants
+  if (Object.keys(war.participants).length > 0) {
+    const living = Object.values(war.participants).filter(p => p.isAlive);
+    const topScorer = Object.values(war.participants).sort((a, b) => (b.kills || 0) - (a.kills || 0))[0];
+    const victor = living.length === 1 ? living[0] : (war.grailWinnerId ? war.participants[war.grailWinnerId] : topScorer);
+
+    if (!war.history) war.history = [];
+    war.history.unshift({
+      warId: war.id,
+      title: war.title,
+      concludedAt: Date.now(),
+      winnerMasterId: victor?.discordId,
+      winnerUsername: victor?.username || 'None',
+      winnerServantName: victor?.servantName || 'None',
+      totalParticipants: Object.keys(war.participants).length,
+      totalEliminations: Object.values(war.participants).reduce((sum, p) => sum + (p.kills || 0), 0),
+      rulesSummary: `${war.rules?.formatName || 'Standard'} • ${war.rules?.permadeath ? 'Permadeath' : 'Casual'}`
+    });
+  }
+
+  // Reset and re-vitalize all registered participants
+  const startingSeals = newRules.startingCommandSeals || 3;
+  for (const p of Object.values(war.participants)) {
+    p.currentHp = p.maxHp;
+    p.baseHpAtDamage = p.maxHp;
+    p.lastDamageTime = undefined;
+    p.commandSeals = startingSeals;
+    p.isAlive = true;
+    p.isExposed = false;
+    p.inSanctuary = false;
+    (p as any).inChurchSanctuary = false;
+    p.boundedField = 'none';
+    p.kills = 0;
+  }
+
+  // Clear traps, familiars, casualties, and start fresh
+  war.channelTraps = [];
+  war.familiars = [];
+  war.civilianCasualties = [];
+  war.leakedIntel = [];
+  war.alliances = {};
+  war.grailWinnerId = undefined;
+  war.status = 'active';
+  war.id = `grail_war_${Date.now()}`;
+  war.title = newRules.formatName;
+  war.rules = newRules;
+
+  // If Apocrypha faction mode, assign participants evenly to Red vs Black
+  if (newRules.factionMode) {
+    const pKeys = Object.keys(war.participants);
+    const red: string[] = [];
+    const black: string[] = [];
+    pKeys.forEach((key, idx) => {
+      if (idx % 2 === 0) red.push(key);
+      else black.push(key);
+    });
+    war.rules.factions = { red, black, ruler: [] };
+  }
+
+  const broadcastMsg = `🌟 **THE HOLY GRAIL WAR HAS COMMENCED!**\n\n` +
+    `🏰 **Format:** ${newRules.formatName}\n` +
+    `👥 **Participant Capacity:** Max **${newRules.maxMasters} Masters**\n` +
+    `⚔️ **Servant Pool:** ${newRules.servantPool === 'canon_only' ? '📖 Canon Type-Moon Servants Only' : newRules.servantPool === 'custom_only' ? '🎨 Custom Community Servants Only' : '✨ Canon + Custom Servants'}\n` +
+    `🔒 **Class Exclusivity:** ${newRules.classExclusivity ? 'Strict (1 per Class)' : 'Open (Multiple Allowed)'}\n` +
+    `💀 **Lethality:** ${newRules.permadeath ? '☠️ Classic Permadeath' : '🛡️ Casual Training (Recovery Allowed)'}\n` +
+    `⚡ **Command Seals:** **${newRules.startingCommandSeals} Seals** per Master\n` +
+    `💧 **Leylines:** ${newRules.leylineDensity === 'fast' ? '⚡ High Surge (2x Fast Recovery)' : newRules.leylineDensity === 'desolate' ? '🏜️ Desolate (No Auto-Regen)' : 'Balanced Standard'}\n` +
+    `⛪ **Church Sanctuary:** ${newRules.churchAsylum ? '🟢 Active Asylum under Father Kotomine' : '🔴 Desecrated (No Asylum)'}\n\n` +
+    `*All Master HP and Command Seals have been fully restored. Summon your Servant or enter the shadows with \`/patrol\` or \`/profile\`!*`;
+
+  war.eventLogs.unshift({
+    id: `evt_restart_${Date.now()}`,
+    timestamp: Date.now(),
+    text: `👑 **Admin ${adminUsername} launched a new Holy Grail War:** ${newRules.formatName}!`,
+    type: 'admin_reset'
+  });
+
+  saveWarToDisk();
+  return { war, message: broadcastMsg };
+}
+
+export function resetHolyGrailWar(
+  archiveVictor: boolean = true,
+  adminUsername: string = 'Overseer'
+): { war: HolyGrailWarSession; message: string } {
+  const war = getOrInitWarSession();
+  const startingSeals = war.rules?.startingCommandSeals || 3;
+
+  for (const p of Object.values(war.participants)) {
+    p.currentHp = p.maxHp;
+    p.baseHpAtDamage = p.maxHp;
+    p.lastDamageTime = undefined;
+    p.commandSeals = startingSeals;
+    p.isAlive = true;
+    p.isExposed = false;
+    p.inSanctuary = false;
+    (p as any).inChurchSanctuary = false;
+    p.boundedField = 'none';
+  }
+
+  war.channelTraps = [];
+  war.familiars = [];
+  war.civilianCasualties = [];
+  war.grailWinnerId = undefined;
+  war.status = 'active';
+
+  const resetMsg = `🔄 **HOLY GRAIL WAR RITUAL REFRESHED BY ADMIN (${adminUsername})!**\n\n` +
+    `• ❤️ **Vitality:** All living and fallen Masters have been restored to **100% Max HP**.\n` +
+    `• ✦ **Command Seals:** Re-inscribed **${startingSeals} Command Seals** for all Masters.\n` +
+    `• 🕸️ **Territory:** All hostile channel traps and bounded fields dissolved.\n` +
+    `• 🕶️ **Shadows:** All public exposure states cleared.`;
+
+  war.eventLogs.unshift({
+    id: `evt_quick_reset_${Date.now()}`,
+    timestamp: Date.now(),
+    text: `🔄 Admin ${adminUsername} performed a ritual refresh: Restored all Master HP and Command Seals.`,
+    type: 'admin_reset'
+  });
+
+  saveWarToDisk();
+  return { war, message: resetMsg };
+}
+
+export function updateWarRules(
+  war: HolyGrailWarSession,
+  ruleChanges: Partial<WarRules>,
+  adminUsername: string = 'Overseer'
+): { updatedWar: HolyGrailWarSession; message: string } {
+  const targetWar = war || globalWarSession || getOrInitWarSession();
+  if (!targetWar.rules) {
+    targetWar.rules = { ...WAR_PRESETS.fuyuki_7 };
+  }
+
+  targetWar.rules = {
+    ...targetWar.rules,
+    ...ruleChanges,
+    preset: 'custom'
+  };
+
+  const changeSummaries = Object.entries(ruleChanges).map(([k, v]) => `• **${k}:** \`${String(v)}\``).join('\n');
+  const msg = `⚙️ **War Rules Updated by Admin (${adminUsername}):**\n${changeSummaries}`;
+
+  targetWar.eventLogs.unshift({
+    id: `evt_rule_update_${Date.now()}`,
+    timestamp: Date.now(),
+    text: msg,
+    type: 'admin_reset'
+  });
+
+  saveWarToDisk();
+  return { updatedWar: targetWar, message: msg };
+}
+
+export function triggerAdminCataclysm(
+  war: HolyGrailWarSession,
+  cataclysmType: 'grail_mud' | 'fuyuki_fire' | 'angra_mainyu' | 'mana_surge',
+  adminUsername: string = 'Overseer'
+): { updatedWar: HolyGrailWarSession; message: string; banner: string } {
+  const targetWar = war || globalWarSession || getOrInitWarSession();
+  const now = Date.now();
+  let msg = '';
+  let banner = '';
+
+  if (cataclysmType === 'grail_mud') {
+    banner = '🌊 ALL THE WORLD\'S EVIL: GRAIL MUD OVERFLOW!';
+    let count = 0;
+    for (const p of Object.values(targetWar.participants)) {
+      if (p.isAlive) {
+        p.currentHp = Math.max(1, p.currentHp - 2500);
+        p.baseHpAtDamage = p.currentHp;
+        p.lastDamageTime = now;
+        p.isExposed = true;
+        p.exposureReason = 'grail_mud_overflow';
+        count++;
+      }
+    }
+    msg = `🖤 **THE LESSER GRAIL HAS OVERFLOWED WITH CORRUPTED MUD!**\n\n` +
+      `Black ichor floods Fuyuki City! **${count} Masters** suffered **2,500 direct corruption damage** and their spiritual concealment was destroyed (ALL Masters are now **EXPOSED** on the War Board)!`;
+  } else if (cataclysmType === 'fuyuki_fire') {
+    banner = '🔥 FUYUKI INFERNO: GREAT FIRE OF THE FOURTH WAR!';
+    let refugeeCount = 0;
+    for (const p of Object.values(targetWar.participants)) {
+      if (p.inSanctuary || (p as any).inChurchSanctuary) {
+        p.inSanctuary = false;
+        (p as any).inChurchSanctuary = false;
+        refugeeCount++;
+      }
+    }
+    const trapCount = targetWar.channelTraps?.length || 0;
+    targetWar.channelTraps = [];
+    msg = `🔥 **THE GREAT FIRE OF FUYUKI HAS CONSUMED THE DISTRICTS!**\n\n` +
+      `Raging hellfire sweeps the battlefield! **${trapCount} Bounded Field traps** were vaporized, and **${refugeeCount} Masters** taking asylum at the Holy Church were smoked out into active combat!`;
+  } else if (cataclysmType === 'angra_mainyu') {
+    banner = '👁️ ANGRA MAINYU DESCENDS: THE SHADOW RAID BOSS!';
+    for (const p of Object.values(targetWar.participants)) {
+      if (p.isAlive) {
+        p.currentHp = Math.max(1, p.currentHp - 1500);
+        p.baseHpAtDamage = p.currentHp;
+        p.lastDamageTime = now;
+      }
+    }
+    msg = `👁️ **ANGRA MAINYU HAS AWAKENED FROM THE DEPTHS OF THE GREATER GRAIL!**\n\n` +
+      `A monstrous shadowy aura descends upon the war! All contracted Servants took **1,500 spiritual shockwave damage**. High-intensity leyline mana surges across the city!`;
+  } else if (cataclysmType === 'mana_surge') {
+    banner = '⚡ GREATER GRAIL LEYLINE ERUPTION: MANA SURGE!';
+    let buffedCount = 0;
+    for (const p of Object.values(targetWar.participants)) {
+      if (p.isAlive) {
+        p.commandSeals = Math.min(5, (p.commandSeals || 0) + 1);
+        p.currentHp = Math.min(p.maxHp, p.currentHp + Math.round(p.maxHp * 0.5));
+        p.baseHpAtDamage = p.currentHp;
+        p.lastDamageTime = now;
+        buffedCount++;
+      }
+    }
+    msg = `✨ **THE GREATER GRAIL HAS ERUPTED WITH PRISMATIC MANA!**\n\n` +
+      `A radiant column of magical energy fills the heavens! **${buffedCount} active Masters** received **+1 Command Seal** and had **50% of their Max HP** instantly replenished!`;
+  }
+
+  targetWar.eventLogs.unshift({
+    id: `evt_cata_${Date.now()}`,
+    timestamp: now,
+    text: `⚡ Admin ${adminUsername} triggered Cataclysm: ${banner}`,
+    type: 'cataclysm'
+  });
+
+  saveWarToDisk();
+  return { updatedWar: targetWar, message: msg, banner };
 }

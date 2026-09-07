@@ -373,10 +373,43 @@ export interface ActiveFamiliar {
   detectedIntel: string[];
 }
 
+export interface WarRules {
+  preset: 'fuyuki_7' | 'apocrypha_14' | 'singularity_chaos' | 'desolate_hardcore' | 'custom';
+  formatName: string;
+  maxMasters: number;
+  servantPool: 'canon_only' | 'all' | 'custom_only';
+  classExclusivity: boolean;
+  permadeath: boolean;
+  startingCommandSeals: number;
+  autoEvacuateAllowed: boolean;
+  leylineDensity: 'standard' | 'fast' | 'desolate';
+  churchAsylum: boolean;
+  trapLimitPerMaster: number;
+  factionMode?: boolean;
+  factions?: {
+    red?: string[];
+    black?: string[];
+    ruler?: string[];
+  };
+}
+
+export interface WarHistoryRecord {
+  warId: string;
+  title: string;
+  concludedAt: number;
+  winnerMasterId?: string;
+  winnerUsername?: string;
+  winnerServantName?: string;
+  totalParticipants: number;
+  totalEliminations: number;
+  rulesSummary: string;
+}
+
 export interface HolyGrailWarSession {
   id: string;
   title: string;
   status: 'gathering' | 'active' | 'concluded';
+  rules?: WarRules;
   participants: Record<string, WarMasterParticipant>;
   alliances: Record<string, WarAlliance>;
   channelTraps?: ChannelBoundedTrap[];
@@ -398,9 +431,10 @@ export interface HolyGrailWarSession {
     id: string;
     timestamp: number;
     text: string;
-    type: 'clash' | 'alliance' | 'betrayal' | 'elimination' | 'heal' | 'ambush' | 'casualty' | 'exposure' | 'intel_leak' | string;
+    type: 'clash' | 'alliance' | 'betrayal' | 'elimination' | 'heal' | 'ambush' | 'casualty' | 'exposure' | 'intel_leak' | 'cataclysm' | 'admin_reset' | string;
   }>;
   grailWinnerId?: string;
+  history?: WarHistoryRecord[];
 }
 
 // Compatibility types for legacy structures
