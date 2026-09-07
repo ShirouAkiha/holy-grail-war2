@@ -36,14 +36,17 @@ import { buildChurchEmbed, buildChurchButtons } from './church';
 // ==========================================
 export const data = new SlashCommandBuilder()
   .setName('grailwar')
-  .setDescription('Holy Grail War Hub — 7-Master Roster, Defenses, Familiars, Traps & Church Sanctuary')
+  .setDescription('🏆 Holy Grail War Hub — 7-Master Roster, Casualties, Leaks, Battles, Defenses & Sanctuary')
   .addStringOption(opt =>
     opt
       .setName('category')
-      .setDescription('Select Grail War operations sector')
+      .setDescription('Select Grail War operations sector or intelligence dossier')
       .setRequired(false)
       .addChoices(
         { name: '🏆 War Board & 7-Master Roster', value: 'board' },
+        { name: '☠️ Casualties Dossier (Masters & Civilians)', value: 'casualties' },
+        { name: '🕵️ Leaked Intel & Intercepts', value: 'leaks' },
+        { name: '⚔️ Battles & Skirmishes Chronicle', value: 'battles' },
         { name: '🏰 Workshop Defenses & Wards', value: 'defenses' },
         { name: '🦅 Familiar Recon Network', value: 'familiars' },
         { name: '🕸️ Bounded Field Traps', value: 'traps' },
@@ -85,18 +88,28 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 export function buildGrailWarHub(
   war: HolyGrailWarSession,
   master: any,
-  category: 'board' | 'defenses' | 'familiars' | 'traps' | 'church' = 'board',
+  category: 'board' | 'casualties' | 'leaks' | 'battles' | 'defenses' | 'familiars' | 'traps' | 'church' = 'board',
   actionOutcomeMsg?: string
 ) {
   const userParticipant = war.participants[master.discordId];
   let embeds: EmbedBuilder[] = [];
 
-  if (category === 'board') {
-    const participants = Object.values(war.participants || {});
-    const aliveParticipants = participants.filter(p => p.isAlive);
-    const deadCount = participants.filter(p => !p.isAlive).length;
-    const totalSummoned = participants.length;
+  const participants = Object.values(war.participants || {});
+  const aliveParticipants = participants.filter(p => p.isAlive);
+  const deadCount = participants.filter(p => !p.isAlive).length;
+  const totalSummoned = participants.length;
+  const casualtiesCount = war.civilianCasualties?.length || 0;
+  const leaksCount = war.leakedIntel?.length || 0;
+  const totalCasualties = deadCount + casualtiesCount;
 
+  const battleEventsList = (war.eventLogs || []).filter(evt => {
+    const t = evt.type;
+    const txt = (evt.text || '').toLowerCase();
+    return t === 'clash' || t === 'ambush' || t === 'elimination' || t === 'casualty' || t === 'betrayal' ||
+           txt.includes('dmg') || txt.includes('ambush') || txt.includes('attack') || txt.includes('skirmish') || txt.includes('clash') || txt.includes('struck');
+  });
+
+  if (category === 'board') {
     const rosterLines: string[] = [];
     for (let slotIdx = 0; slotIdx < 7; slotIdx++) {
       const m = participants[slotIdx];
@@ -150,19 +163,16 @@ export function buildGrailWarHub(
       })
       .join('\n');
 
-    const casualtiesCount = war.civilianCasualties?.length || 0;
-    const leaksCount = war.leakedIntel?.length || 0;
-
     let statusHeader = '';
     if (war.status === 'concluded') {
       const winner = war.grailWinnerId && war.participants[war.grailWinnerId] 
         ? war.participants[war.grailWinnerId].username 
         : (aliveParticipants[0]?.username || 'Victor');
-      statusHeader = `**Status:** 🏆 CONCLUDED | **Victor:** **${winner}** | **Civilian Casualties:** **${casualtiesCount}**`;
+      statusHeader = `**Status:** 🏆 CONCLUDED | **Victor:** **${winner}** | **Total Casualties:** **${totalCasualties}** (${deadCount} Masters, ${casualtiesCount} Civilians)`;
     } else if (totalSummoned < 7) {
-      statusHeader = `**Status:** 🕯️ GATHERING MASTERS (**${totalSummoned}/7** Summoned | **${aliveParticipants.length}** Alive | **${deadCount}/6** Cores Absorbed) | **Civilian Casualties:** **${casualtiesCount}**`;
+      statusHeader = `**Status:** 🕯️ GATHERING MASTERS (**${totalSummoned}/7** Summoned | **${aliveParticipants.length}** Alive | **${deadCount}/6** Cores Absorbed) | **Total Casualties:** **${totalCasualties}**`;
     } else {
-      statusHeader = `**Status:** ⚔️ ACTIVE ELIMINATION PHASE (**${aliveParticipants.length}/7** Alive | **${deadCount}/6** Cores Absorbed) | **Civilian Casualties:** **${casualtiesCount}**`;
+      statusHeader = `**Status:** ⚔️ ACTIVE ELIMINATION PHASE (**${aliveParticipants.length}/7** Alive | **${deadCount}/6** Cores Absorbed) | **Total Casualties:** **${totalCasualties}**`;
     }
 
     const embed = new EmbedBuilder()
@@ -171,10 +181,114 @@ export function buildGrailWarHub(
         `${statusHeader}\n\n` +
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `⚔️ **7 Masters Intelligence Roster:**\n${rosterLines.join('\n')}\n\n` +
-        `📜 **War Chronicle & Skirmishes (${(war.eventLogs || []).length} Events | ${leaksCount} Leaks):**\n${recentEvents || '*The war has begun. No city skirmishes recorded yet.*'}`
+        `📜 **War Chronicle & Skirmishes (${(war.eventLogs || []).length} Events | ${leaksCount} Leaks):**\n${recentEvents || '*The war has begun. No city skirmishes recorded yet.*'}\n\n` +
+        `💡 *Click the buttons below to view detailed records of Casualties, Intercepted Leaks, or Battles.*`
       )
       .setColor(0xd4af37)
-      .setFooter({ text: 'Holy Grail War Operations Board • Use tabs below to navigate systems' });
+      .setFooter({ text: 'Holy Grail War Operations Board • Click options below to view lists' });
+
+    embeds = [embed];
+
+  } else if (category === 'casualties') {
+    const fallenMasters = participants.filter(p => !p.isAlive);
+    const civilianCasualties = war.civilianCasualties || [];
+
+    const fallenLines = fallenMasters.length > 0
+      ? fallenMasters.map((m, idx) => {
+          return `• 💀 **${m.username}** — Contracted Servant: **${m.servantName}** (${m.servantClass})\n  ↳ Kills: ${m.kills} | Status: 💀 Saint Graph Dissolved | Core absorbed into Lesser Grail`;
+        }).join('\n\n')
+      : '• *✨ All 7 Masters currently remain active in the field. Zero Master eliminations recorded.*';
+
+    const civilianLines = civilianCasualties.length > 0
+      ? civilianCasualties.slice(0, 10).map((vic, idx) => {
+          const timeStr = new Date(vic.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          return `• ☠️ **${vic.name}** \`${timeStr}\`\n  ↳ Struck down by: **Master ${vic.slainByMasterId}** (Botched ambush in civilian sector)\n  ↳ *Church Cover-up:* Filed with municipal police as an industrial gas leak explosion.`;
+        }).join('\n\n')
+      : '• *🛡️ Zero civilian casualties reported. The Concealment of Mystery holds firm across Fuyuki City.*';
+
+    const embed = new EmbedBuilder()
+      .setTitle(`🏆 ${war.title} — ☠️ Casualty Ledger`)
+      .setDescription(
+        `📊 **Casualty Ledger Summary:**\n` +
+        `• 💀 **Fallen Masters:** **${fallenMasters.length}/7** eliminated\n` +
+        `• ☠️ **Civilian Casualties:** **${civilianCasualties.length}** collateral casualties\n` +
+        `• 🏺 **Servant Cores Absorbed:** **${deadCount}/6** required for Greater Grail descent\n\n` +
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `💀 **FALLEN MASTERS RECORD (${fallenMasters.length}):**\n${fallenLines}\n\n` +
+        `☠️ **CIVILIAN COLLATERAL CASUALTIES RECORD (${civilianCasualties.length}):**\n${civilianLines}\n\n` +
+        `⚠️ *Warning: Striking non-combatant citizens exposes the attacker's true identity to the Holy Church and incurs penalty.*`
+      )
+      .setColor(0xe11d48)
+      .setFooter({ text: 'Holy Grail War Casualty Dossier • Use options below to switch views' });
+
+    embeds = [embed];
+
+  } else if (category === 'leaks') {
+    const leaks = war.leakedIntel || [];
+    const exposedMasters = participants.filter(p => p.isExposed);
+    const exposureEvents = (war.eventLogs || []).filter(e => e.type === 'intel_leak' || e.type === 'exposure');
+
+    const leakLines = leaks.length > 0
+      ? leaks.slice(0, 10).map((lk, idx) => {
+          const timeStr = new Date(lk.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const targetTag = lk.targetMasterId ? ` ➔ Target: **Master ${lk.targetMasterId}**` : '';
+          return `• 📡 \`${timeStr}\` **Informant:** ${lk.informantMasterId || 'Shadow Operative'}${targetTag}\n  ↳ Intercept: *"${lk.intel}"*`;
+        }).join('\n\n')
+      : '• *🔒 No leaked intelligence intercepted yet. Masters are maintaining encrypted silence and bounded fields.*';
+
+    const exposureLines = exposureEvents.length > 0
+      ? exposureEvents.slice(0, 6).map(e => {
+          const timeStr = new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          return `• 🕵️ \`${timeStr}\` ${e.text}`;
+        }).join('\n')
+      : '• *No identity exposures recorded.*';
+
+    const embed = new EmbedBuilder()
+      .setTitle(`🏆 ${war.title} — 🕵️ Intercepted Intelligence & Leaks`)
+      .setDescription(
+        `📡 **Surveillance & Intel Overview:**\n` +
+        `• 🕵️ **Total Leaks Intercepted:** **${leaks.length}** dispatches\n` +
+        `• 📡 **Compromised Masters:** **${exposedMasters.length}/${totalSummoned}** publicly exposed\n` +
+        `• 🦅 **Active Familiar Scouts:** **${(war.familiars || []).length}** units stationed\n\n` +
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `📜 **INTERCEPTED TRANSMISSIONS & DISPATCHES (${leaks.length}):**\n${leakLines}\n\n` +
+        `👁️ **RECENT RECON & EXPOSURE LOGS:**\n${exposureLines}\n\n` +
+        `💡 *Tip: Deploy familiars or use \`/patrol\` in sectors to eavesdrop on rivals and intercept new intel.*`
+      )
+      .setColor(0x8b5cf6)
+      .setFooter({ text: 'Holy Grail War Intelligence Dossier • Use options below to switch views' });
+
+    embeds = [embed];
+
+  } else if (category === 'battles') {
+    const battleLines = battleEventsList.length > 0
+      ? battleEventsList.slice(0, 12).map(evt => {
+          let icon = '⚔️';
+          if (evt.type === 'elimination') icon = '💀';
+          else if (evt.type === 'casualty') icon = '☠️';
+          else if (evt.type === 'ambush') icon = '🗡️';
+          else if (evt.type === 'betrayal') icon = '💔';
+          const timeStr = new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          return `• ${icon} \`${timeStr}\` **${evt.text}**`;
+        }).join('\n\n')
+      : '• *No active clashes recorded in Fuyuki City yet. Tension mounts in the dark.*';
+
+    const fatalCount = battleEventsList.filter(b => b.type === 'elimination').length;
+    const ambushCount = battleEventsList.filter(b => b.type === 'ambush').length;
+
+    const embed = new EmbedBuilder()
+      .setTitle(`🏆 ${war.title} — ⚔️ Battle & Skirmish Chronicle`)
+      .setDescription(
+        `⚔️ **Combat Operations Overview:**\n` +
+        `• 💥 **Total Recorded Engagements:** **${battleEventsList.length}** skirmishes\n` +
+        `• 💀 **Fatal Eliminations:** **${fatalCount}** Servant Saint Graphs dissolved\n` +
+        `• 🗡️ **Surprise Ambushes:** **${ambushCount}** ambush strikes launched\n\n` +
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `📜 **CHRONICLE OF RECORDED ENGAGEMENTS:**\n${battleLines}\n\n` +
+        `💡 *Tip: Use \`/attack\` to ambush suspects, or click [Simulate Clash] below to provoke skirmishes.*`
+      )
+      .setColor(0xf97316)
+      .setFooter({ text: 'Holy Grail War Battle Chronicle • Use options below to switch views' });
 
     embeds = [embed];
 
@@ -293,53 +407,76 @@ export function buildGrailWarHub(
   }
 
   // --- UI COMPONENTS ---
+  const isBoardSection = ['board', 'casualties', 'leaks', 'battles'].includes(category);
+
   const categoryNavRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId('war_tab_board').setLabel('War Board').setEmoji('🏆').setStyle(category === 'board' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('war_tab_board').setLabel('War Board').setEmoji('🏆').setStyle(isBoardSection ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('war_tab_defenses').setLabel('Defenses').setEmoji('🏰').setStyle(category === 'defenses' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('war_tab_familiars').setLabel('Familiars').setEmoji('🦅').setStyle(category === 'familiars' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('war_tab_traps').setLabel('Traps').setEmoji('🕸️').setStyle(category === 'traps' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('war_tab_church').setLabel('Church').setEmoji('⛪').setStyle(category === 'church' ? ButtonStyle.Primary : ButtonStyle.Secondary)
   );
 
-  const actionButtonsRow = new ActionRowBuilder<ButtonBuilder>();
+  const components: any[] = [categoryNavRow];
 
-  if (category === 'board') {
-    actionButtonsRow.addComponents(
+  if (isBoardSection) {
+    const boardSubViewsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('war_board_roster').setLabel('7 Masters').setEmoji('📋').setStyle(category === 'board' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('war_board_casualties').setLabel(`Casualties (${totalCasualties})`).setEmoji('☠️').setStyle(category === 'casualties' ? ButtonStyle.Danger : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('war_board_leaks').setLabel(`Leaks (${leaksCount})`).setEmoji('🕵️').setStyle(category === 'leaks' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('war_board_battles').setLabel(`Battles (${battleEventsList.length})`).setEmoji('⚔️').setStyle(category === 'battles' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('war_act_refresh').setLabel('Refresh').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
+    );
+    components.push(boardSubViewsRow);
+
+    const actionButtonsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('war_act_patrol').setLabel('Patrol Sector').setEmoji('👁️').setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId('war_act_skirmish').setLabel('Simulate Clash').setEmoji('⚔️').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('war_act_heal').setLabel('Leyline Heal (40%)').setEmoji('✨').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('war_act_refresh').setLabel('Refresh Board').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('war_act_heal').setLabel('Leyline Heal (40%)').setEmoji('✨').setStyle(ButtonStyle.Primary)
     );
+    components.push(actionButtonsRow);
   } else if (category === 'defenses') {
     const curWard = userParticipant?.boundedField || 'none';
     const autoEvade = userParticipant?.autoEvadeEnabled !== false;
-    actionButtonsRow.addComponents(
+    const actionButtonsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('ward_none').setLabel('No Wards').setEmoji('🚫').setStyle(curWard === 'none' ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('ward_ward').setLabel('Sanctuary (60% Block)').setEmoji('🛡️').setStyle(curWard === 'ward' ? ButtonStyle.Success : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('ward_alarm').setLabel('Alarm Trap (3k DMG)').setEmoji('🚨').setStyle(curWard === 'alarm' ? ButtonStyle.Danger : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('toggle_auto_evade').setLabel(autoEvade ? 'Auto-Evacuate: ON 🟢' : 'Auto-Evacuate: OFF 🔴').setStyle(autoEvade ? ButtonStyle.Success : ButtonStyle.Secondary)
     );
+    components.push(actionButtonsRow);
   } else if (category === 'familiars') {
     const userFamiliars = (war.familiars || []).filter(f => f.masterId === master.discordId);
-    actionButtonsRow.addComponents(
+    const actionButtonsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('war_deploy_raven').setLabel('Deploy Raven').setEmoji('🦅').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('war_deploy_homunculus').setLabel('Deploy Decoy').setEmoji('🗿').setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId('war_deploy_shadow_imp').setLabel('Deploy Shadow Imp').setEmoji('🦇').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('recall_all_familiars').setLabel('Recall Familiars').setEmoji('🕊️').setStyle(ButtonStyle.Danger).setDisabled(userFamiliars.length === 0)
     );
+    components.push(actionButtonsRow);
   } else if (category === 'traps') {
     const userTraps = (war.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
-    actionButtonsRow.addComponents(
+    const actionButtonsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('war_place_trap_alarm').setLabel('Place Alarm Ward (Current)').setEmoji('🚨').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('war_place_trap_drain').setLabel('Place Bloodfort Drain (Current)').setEmoji('🩸').setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId('disarm_all_traps').setLabel('Disarm All Traps').setEmoji('🧹').setStyle(ButtonStyle.Secondary).setDisabled(userTraps.length === 0)
     );
+    components.push(actionButtonsRow);
+
+    const trapChannelSelectRow = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
+      new ChannelSelectMenuBuilder()
+        .setCustomId('war_trap_channel_select')
+        .setPlaceholder('🎯 Select an existing Discord channel to place Bounded Field...')
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+    );
+    components.push(trapChannelSelectRow);
   } else if (category === 'church') {
     const isUnderSanctuary = !!(userParticipant?.inSanctuary || userParticipant?.inChurchSanctuary);
-    actionButtonsRow.addComponents(
+    const actionButtonsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('church_claim_asylum').setLabel('Enter Sanctuary').setEmoji('🕊️').setStyle(ButtonStyle.Success).setDisabled(!!isUnderSanctuary),
       new ButtonBuilder().setCustomId('church_leave_asylum').setLabel('Depart Sanctuary').setEmoji('🚪').setStyle(ButtonStyle.Danger).setDisabled(!isUnderSanctuary)
     );
+    components.push(actionButtonsRow);
   }
 
   const crossHubShortcutsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -348,18 +485,6 @@ export function buildGrailWarHub(
     new ButtonBuilder().setCustomId('war_link_servant').setLabel('Servant (/servant)').setEmoji('⚔️').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('war_link_duel').setLabel('Duel Arena (/duel)').setEmoji('⚔️').setStyle(ButtonStyle.Secondary)
   );
-
-  const components: any[] = [categoryNavRow, actionButtonsRow];
-
-  if (category === 'traps') {
-    const trapChannelSelectRow = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
-      new ChannelSelectMenuBuilder()
-        .setCustomId('war_trap_channel_select')
-        .setPlaceholder('🎯 Select an existing Discord channel to place Bounded Field...')
-        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
-    );
-    components.push(trapChannelSelectRow);
-  }
 
   components.push(crossHubShortcutsRow);
   return { embeds, components };
@@ -372,7 +497,7 @@ export function attachGrailWarCollector(
   message: any,
   userId: string,
   initialMaster: any,
-  initialCategory: 'board' | 'defenses' | 'familiars' | 'traps' | 'church' = 'board'
+  initialCategory: 'board' | 'casualties' | 'leaks' | 'battles' | 'defenses' | 'familiars' | 'traps' | 'church' = 'board'
 ) {
   let currentCategory = initialCategory;
 
@@ -396,9 +521,17 @@ export function attachGrailWarCollector(
 
       const currentChan = i.channel && 'name' in i.channel ? `#${(i.channel as any).name}` : '#general';
 
-      // TAB NAVIGATION
-      if (i.customId === 'war_tab_board') {
+      // TAB NAVIGATION & BOARD SUB-VIEWS
+      if (i.customId === 'war_tab_board' || i.customId === 'war_board_roster') {
         currentCategory = 'board';
+      } else if (i.customId === 'war_board_casualties') {
+        currentCategory = 'casualties';
+      } else if (i.customId === 'war_board_leaks') {
+        currentCategory = 'leaks';
+      } else if (i.customId === 'war_board_battles') {
+        currentCategory = 'battles';
+      } else if (i.customId === 'war_act_refresh') {
+        actionOutcome = '🔄 Holy Grail War records updated.';
       } else if (i.customId === 'war_tab_defenses') {
         currentCategory = 'defenses';
       } else if (i.customId === 'war_tab_familiars') {

@@ -352,6 +352,10 @@ export interface WarMasterParticipant {
   inSanctuary?: boolean;
   inChurchSanctuary?: boolean;
   sanctuaryEnteredAt?: number;
+  deathTimestamp?: number;
+  killedByMaster?: string;
+  fatalSkillUsed?: string;
+  deathChannel?: string;
 }
 
 export interface WarAlliance {
@@ -430,10 +434,17 @@ export interface HolyGrailWarSession {
     name: string;
     timestamp: number;
     slainByMasterId: string;
+    slayerUsername?: string;
+    servantName?: string;
+    channelName?: string;
+    cause?: string;
   }>;
   leakedIntel?: Array<{
     id: string;
     informantMasterId: string;
+    informantMasterName?: string;
+    exposedMasterName?: string;
+    channelName?: string;
     intel: string;
     timestamp: number;
     targetMasterId?: string;

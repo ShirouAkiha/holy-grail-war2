@@ -49,7 +49,9 @@ import { buildProfileEmbed, buildProfileButtons } from './commands/profile';
 import { buildDailyEmbed, buildDailyButtons } from './commands/daily';
 import { buildDefensesEmbed, buildDefensesButtons } from './commands/defenses';
 import { buildChurchEmbed, buildChurchButtons } from './commands/church';
-import { buildWarEmbed, buildWarButtons } from './commands/grailwar';
+import { buildWarEmbed, buildWarButtons, buildGrailWarHub, attachGrailWarCollector } from './commands/grailwar';
+import * as grailCommand from './commands/grail';
+import * as boardCommand from './commands/board';
 import { handleGlobalInventoryInteraction } from './commands/customise';
 import { buildGachaHub, attachGachaCollector } from './commands/gacha';
 import { executeCraftEssenceGachaRoll } from './engine/ceGacha';
@@ -151,6 +153,8 @@ commands.set(leakCommand.data.name, leakCommand);
 commands.set(patrolCommand.data.name, patrolCommand);
 commands.set(petrolCommand.data.name, petrolCommand);
 commands.set(equipCommand.data.name, equipCommand);
+commands.set(grailCommand.data.name, grailCommand);
+commands.set(boardCommand.data.name, boardCommand);
 
 // Alias mapping for backward-compatible text shortcuts and interactions
 export const commandAliasMap: Record<string, any> = {
@@ -168,7 +172,10 @@ export const commandAliasMap: Record<string, any> = {
   equip: equipCommand,
   feed: feedCommand,
   enhance: feedCommand,
-  cutin: dialogueCommand
+  cutin: dialogueCommand,
+  grail: grailCommand,
+  board: boardCommand,
+  war: grailwarCommand
 };
 
 // ==========================================
@@ -1537,14 +1544,31 @@ client.on(Events.MessageCreate, async message => {
     }
 
     // ----------------------------------------------------
-    // !grailwar / !war / !tourney
+    // !grailwar / !grail / !board / !war / !tourney
     // ----------------------------------------------------
-    if (cmd === 'grailwar' || cmd === 'war' || cmd === 'tourney' || cmd === 'tournament') {
+    if (cmd === 'grailwar' || cmd === 'grail' || cmd === 'board' || cmd === 'war' || cmd === 'tourney' || cmd === 'tournament') {
       const war = getOrInitWarSession(master);
-      const uP = war.participants[message.author.id];
-      const embed = buildWarEmbed(war, uP);
-      const btns = buildWarButtons();
-      await message.reply({ embeds: [embed], components: btns });
+      const categoryArg = args[0]?.toLowerCase();
+      let category: any = 'board';
+      if (categoryArg === 'casualties' || categoryArg === 'casualty' || categoryArg === 'deaths' || categoryArg === 'death') {
+        category = 'casualties';
+      } else if (categoryArg === 'leaks' || categoryArg === 'leak' || categoryArg === 'intel') {
+        category = 'leaks';
+      } else if (categoryArg === 'battles' || categoryArg === 'battle' || categoryArg === 'skirmish' || categoryArg === 'skirmishes' || categoryArg === 'clashes') {
+        category = 'battles';
+      } else if (categoryArg === 'defenses' || categoryArg === 'wards' || categoryArg === 'defense') {
+        category = 'defenses';
+      } else if (categoryArg === 'familiars' || categoryArg === 'familiar') {
+        category = 'familiars';
+      } else if (categoryArg === 'traps' || categoryArg === 'trap') {
+        category = 'traps';
+      } else if (categoryArg === 'church' || categoryArg === 'sanctuary') {
+        category = 'church';
+      }
+
+      const { embeds, components } = buildGrailWarHub(war, master, category);
+      const msg = await message.reply({ embeds, components });
+      attachGrailWarCollector(msg, message.author.id, master, category);
       return;
     }
 
