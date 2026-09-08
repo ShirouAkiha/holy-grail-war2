@@ -206,8 +206,12 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
 
   // Combat Log History state (Last 10 battles)
   const [arenaTab, setArenaTab] = useState<'duel' | 'history'>('duel');
-  const [battleHistory, setBattleHistory] = useState<CombatBattleRecord[]>(() => loadCombatBattleHistory());
+  const [battleHistory, setBattleHistory] = useState<CombatBattleRecord[]>([]);
   const [lastCompletedBattleId, setLastCompletedBattleId] = useState<string | undefined>();
+
+  useEffect(() => {
+    setBattleHistory(loadCombatBattleHistory());
+  }, []);
 
   // 1-minute (60-second) decision time limit for Emergency Command Seal evacuation
   useEffect(() => {

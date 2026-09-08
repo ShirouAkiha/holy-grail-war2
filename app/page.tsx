@@ -13,7 +13,8 @@ import {
   saveGrailWarSession,
   getCustomServantsFromStorage,
   saveCustomServantsToStorage,
-  fetchServerCustomServants
+  fetchServerCustomServants,
+  getInitialMasterProfile
 } from '../lib/state/gameState';
 import DiscordEmulator from '../components/DiscordEmulator';
 import CombatArena from '../components/CombatArena';
@@ -37,14 +38,23 @@ import {
 } from 'lucide-react';
 
 export default function Home() {
-  const [master, setMaster] = useState<MasterProfile>(loadMasterProfile);
-  const [grailWar, setGrailWar] = useState<HolyGrailWarSession>(() => loadGrailWarSession(master));
-  const [customServants, setCustomServants] = useState<ServantTemplate[]>(getCustomServantsFromStorage);
+  const [master, setMaster] = useState<MasterProfile>(getInitialMasterProfile);
+  const [grailWar, setGrailWar] = useState<HolyGrailWarSession>(() => loadGrailWarSession(getInitialMasterProfile()));
+  const [customServants, setCustomServants] = useState<ServantTemplate[]>([]);
   const [activeTab, setActiveTab] = useState<
     'discord' | 'combat' | 'grailwar' | 'summoning' | 'workshop' | 'canvas' | 'code'
   >('discord');
 
   useEffect(() => {
+    // Load persisted profile & war session from localStorage after hydration to avoid SSR mismatch
+    const loadedMaster = loadMasterProfile();
+    setMaster(loadedMaster);
+    setGrailWar(loadGrailWarSession(loadedMaster));
+    const localCustom = getCustomServantsFromStorage();
+    if (localCustom && localCustom.length > 0) {
+      setCustomServants(localCustom);
+    }
+
     // Initial fetch from backend persistence disk to recover custom servants if browser storage was empty or updated
     fetchServerCustomServants().then(serverServants => {
       if (serverServants && serverServants.length > 0) {

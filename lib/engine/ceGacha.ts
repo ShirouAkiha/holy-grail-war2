@@ -70,8 +70,9 @@ export function executeCraftEssenceGachaRoll({
     if (targetRarity === 5) ssrsPulled++;
     if (targetRarity === 4) srsPulled++;
 
-    const pool = targetRarity === 5 ? ssrCes : targetRarity === 4 ? srCes : rCes;
-    const featuredInPool = pool.filter(c => banner.featuredCeIds.includes(c.id));
+    const pool = (targetRarity === 5 ? ssrCes : targetRarity === 4 ? srCes : rCes);
+    const validPool = pool.length > 0 ? pool : CRAFT_ESSENCE_DATABASE;
+    const featuredInPool = validPool.filter(c => banner.featuredCeIds.includes(c.id));
     
     let chosenCe: CraftEssence;
     let isRateUp = false;
@@ -80,7 +81,7 @@ export function executeCraftEssenceGachaRoll({
       chosenCe = featuredInPool[Math.floor(Math.random() * featuredInPool.length)];
       isRateUp = true;
     } else {
-      chosenCe = pool[Math.floor(Math.random() * pool.length)];
+      chosenCe = validPool[Math.floor(Math.random() * validPool.length)];
     }
 
     const isFirstTime = !initialCeIds.has(chosenCe.id);

@@ -97,9 +97,10 @@ export default function GrailWarSim({
   const [customChannelInput, setCustomChannelInput] = useState<string>('');
 
   // Real-time ticking clock for pure render of cooldown counters
-  const [currentTime, setCurrentTime] = useState<number>(() => typeof window !== 'undefined' ? Date.now() : 0);
+  const [currentTime, setCurrentTime] = useState<number>(0);
 
   React.useEffect(() => {
+    setCurrentTime(Date.now());
     const interval = setInterval(() => {
       setCurrentTime(Date.now());
     }, 1000);

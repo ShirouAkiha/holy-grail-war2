@@ -69,9 +69,14 @@ export default function CombatLogHistory({
   const totalDamageDealt = history.reduce((sum, b) => sum + (b.totalDamageDealt || 0), 0);
   const totalTurnsFought = history.reduce((sum, b) => sum + (b.totalTurns || 0), 0);
 
-  const [currentTime] = useState<number>(() => Date.now());
+  const [currentTime, setCurrentTime] = useState<number>(0);
+
+  React.useEffect(() => {
+    setCurrentTime(Date.now());
+  }, []);
 
   const formatTimestamp = (timestamp: number) => {
+    if (!currentTime) return 'Recently';
     const diffMs = Math.max(0, currentTime - timestamp);
     const diffMins = Math.floor(diffMs / (1000 * 60));
     if (diffMins < 1) return 'Just now';

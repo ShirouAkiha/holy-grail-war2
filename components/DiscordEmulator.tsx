@@ -35,6 +35,7 @@ import {
   calculateLevelFromExp,
   getTotalExpForLevel
 } from '../lib/engine/customization';
+import { executeCraftEssenceGachaRoll } from '../lib/engine/ceGacha';
 import { CRAFT_ESSENCE_DATABASE } from '../lib/data/craftEssences';
 import MASTERS_DATABASE from '../data/masters.json';
 import {
@@ -355,29 +356,6 @@ function buildCustomTemplate(
     cardArtUrl: customImg,
     isCustomOrMeme: true
   };
-}
-
-function rollRandomSingleCe(): CraftEssence {
-  const pool = CRAFT_ESSENCE_DATABASE;
-  return pool[Math.floor(Math.random() * pool.length)] || pool[0];
-}
-
-function rollRandomTenCes(): CraftEssence[] {
-  const pulled: CraftEssence[] = [];
-  for (let i = 0; i < 10; i++) {
-    const rand = Math.random();
-    let pool = CRAFT_ESSENCE_DATABASE;
-    if (rand < 0.15) {
-      pool = CRAFT_ESSENCE_DATABASE.filter(c => c.rarity >= 5);
-    } else if (rand < 0.45) {
-      pool = CRAFT_ESSENCE_DATABASE.filter(c => c.rarity === 4);
-    } else {
-      pool = CRAFT_ESSENCE_DATABASE.filter(c => c.rarity <= 3);
-    }
-    if (pool.length === 0) pool = CRAFT_ESSENCE_DATABASE;
-    pulled.push(pool[Math.floor(Math.random() * pool.length)] || CRAFT_ESSENCE_DATABASE[0]);
-  }
-  return pulled;
 }
 
 function getTimestampNow(): number {
@@ -1906,6 +1884,73 @@ export default function DiscordEmulator({
     // COMMAND 2.78: /gacha, /cegacha (Greater Grail Invocation Sanctum)
     // ----------------------------------------------------
     if (trimmed.startsWith('/gacha') || (trimmed.startsWith('/cegacha') && !trimmed.startsWith('/cegacha inventory'))) {
+      if (trimmed.includes('pull') || trimmed.includes('roll') || trimmed.includes('summon')) {
+        const isTen = trimmed.includes('10') || trimmed.includes('multi') || trimmed.includes('ten');
+        const rollCount = isTen ? 10 : 1;
+        const requiredSq = isTen ? 30 : 3;
+
+        if ((master.saintQuartz || 0) < requiredSq) {
+          addMessage({
+            id: getNextId('bot_cegacha_no_sq'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '⚠️ Insufficient Saint Quartz',
+              description: `You need **${requiredSq} SQ** 💎 for a ${rollCount}x Craft Essence summon, but only have **${master.saintQuartz || 0} SQ**. Use \`/daily\` to claim 30 free SQ!`,
+              color: '#ef4444'
+            },
+            components: {
+              type: 'buttons',
+              items: [{ id: 'quick_daily_claim', label: 'Claim Daily (30 SQ)', style: 'success', emoji: '💎' }]
+            }
+          });
+          return;
+        }
+
+        const pullResult = executeCraftEssenceGachaRoll({ count: rollCount, master });
+        onUpdateMaster(pullResult.updatedMaster);
+
+        const lines = pullResult.results.map((r, idx) => {
+          const c = r.item as CraftEssence;
+          const newTag = r.isNew ? ' 🌟 **[NEW!]**' : '';
+          const rateUpTag = r.isRateUp ? ' ✨ **[RATE-UP!]**' : '';
+          const atk = c.bonusAtk || c.atkBonus || 0;
+          const hp = c.bonusHp || c.hpBonus || 0;
+          return `${rollCount === 10 ? `${idx + 1}. ` : '• '}**[★${c.rarity}]** **${c.name}**${newTag}${rateUpTag}\n   ↳ *${c.effectText || c.description}* (+${atk} ATK / +${hp} HP)`;
+        }).join('\n');
+
+        const bestResult = pullResult.results.slice().sort((a, b) => b.rarity - a.rarity)[0];
+        const bestCe = bestResult?.item as CraftEssence;
+        const embedColor = pullResult.ssrsPulled > 0 ? '#f59e0b' : pullResult.srsPulled > 0 ? '#a855f7' : '#38bdf8';
+
+        addMessage({
+          id: getNextId('bot_cegacha_pull_success'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `✨ Sacred Relics Forged! (${rollCount}x Summon)`,
+            description:
+              `Channeling completed! You spent **${pullResult.spentQuartz} Saint Quartz** 💎.\n\n` +
+              `### 🔮 Relics Summoned:\n${lines}\n\n` +
+              `💎 **Remaining Saint Quartz:** \`${pullResult.updatedMaster.saintQuartz} SQ\`\n` +
+              `📦 **Total Essences in Vault:** \`${(pullResult.updatedMaster.craftEssences || []).length}\``,
+            color: embedColor,
+            footer: rollCount === 10 ? '10x Multi-Summon guarantees a 4★ SR or higher Craft Essence!' : 'Equip CEs in /inventory or feed for EXP in /feed'
+          },
+          artworkEmbed: bestCe?.artworkUrl ? { imageUrl: bestCe.artworkUrl, color: embedColor } : undefined,
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'inv_act_roll_1x_ce', label: 'Roll 1x Again (3 SQ)', style: 'primary', emoji: '🎲' },
+              { id: 'inv_act_roll_10x_ce', label: 'Roll 10x Again (30 SQ)', style: 'success', emoji: '💎' },
+              { id: 'inv_cat_ces', label: 'Open Inventory', style: 'secondary', emoji: '🛡️' },
+              { id: 'inv_act_feed_duplicates', label: 'Feed Duplicates for EXP', style: 'secondary', emoji: '✨' }
+            ]
+          }
+        });
+        return;
+      }
+
       let category: 'ces' | 'daily' | 'rates' = 'ces';
       let banner = 'standard_ce';
 
@@ -6593,13 +6638,14 @@ export default function DiscordEmulator({
           return;
         }
 
-        const rolledCe = rollRandomSingleCe();
-        const updatedMaster: MasterProfile = {
-          ...master,
-          saintQuartz: (master.saintQuartz || 0) - 3,
-          craftEssences: [...(master.craftEssences || []), rolledCe]
-        };
-        onUpdateMaster(updatedMaster);
+        const pullResult = executeCraftEssenceGachaRoll({ count: 1, master });
+        onUpdateMaster(pullResult.updatedMaster);
+
+        const rolledCe = pullResult.results[0].item as CraftEssence;
+        const isNew = pullResult.results[0].isNew;
+        const isRateUp = pullResult.results[0].isRateUp;
+        const atk = rolledCe.bonusAtk || rolledCe.atkBonus || 0;
+        const hp = rolledCe.bonusHp || rolledCe.hpBonus || 0;
 
         addMessage({
           id: getNextId('bot_gacha_1x_success'),
@@ -6608,13 +6654,13 @@ export default function DiscordEmulator({
           embed: {
             title: `🎲 1x Craft Essence Summon: ${rolledCe.name}!`,
             description:
-              `Summoned **[★${rolledCe.rarity}] ${rolledCe.name}**!\n\n` +
+              `Summoned **[★${rolledCe.rarity}] ${rolledCe.name}**!${isNew ? ' 🌟 **[NEW!]**' : ''}${isRateUp ? ' ✨ **[RATE-UP!]**' : ''}\n\n` +
               `🔮 **Effect:** *${rolledCe.effectText || rolledCe.description}*\n` +
-              `⚔️ **Stats:** +${rolledCe.atkBonus || 0} ATK / +${rolledCe.hpBonus || 0} HP\n` +
-              `💎 **Remaining Saint Quartz:** \`${updatedMaster.saintQuartz} SQ\``,
-            color: rolledCe.rarity >= 5 ? '#f59e0b' : '#38bdf8'
+              `⚔️ **Stats:** +${atk} ATK / +${hp} HP\n` +
+              `💎 **Remaining Saint Quartz:** \`${pullResult.updatedMaster.saintQuartz} SQ\``,
+            color: rolledCe.rarity >= 5 ? '#f59e0b' : rolledCe.rarity >= 4 ? '#a855f7' : '#38bdf8'
           },
-          artworkEmbed: (rolledCe.artworkUrl || (rolledCe as any).imageUrl) ? { imageUrl: rolledCe.artworkUrl || (rolledCe as any).imageUrl, color: '#38bdf8' } : undefined,
+          artworkEmbed: rolledCe.artworkUrl ? { imageUrl: rolledCe.artworkUrl, color: '#38bdf8' } : undefined,
           components: {
             type: 'buttons',
             items: [
@@ -6643,14 +6689,19 @@ export default function DiscordEmulator({
           return;
         }
 
-        const pulled = rollRandomTenCes();
+        const pullResult = executeCraftEssenceGachaRoll({ count: 10, master });
+        onUpdateMaster(pullResult.updatedMaster);
 
-        const updatedMaster: MasterProfile = {
-          ...master,
-          saintQuartz: (master.saintQuartz || 0) - 30,
-          craftEssences: [...(master.craftEssences || []), ...pulled]
-        };
-        onUpdateMaster(updatedMaster);
+        const lines = pullResult.results.map((r, idx) => {
+          const c = r.item as CraftEssence;
+          const newTag = r.isNew ? ' 🌟 **[NEW!]**' : '';
+          const rateUpTag = r.isRateUp ? ' ✨ **[RATE-UP!]**' : '';
+          const atk = c.bonusAtk || c.atkBonus || 0;
+          const hp = c.bonusHp || c.hpBonus || 0;
+          return `${idx + 1}. **[★${c.rarity}]** **${c.name}**${newTag}${rateUpTag} — *+${atk} ATK / +${hp} HP*`;
+        }).join('\n');
+
+        const embedColor = pullResult.ssrsPulled > 0 ? '#f59e0b' : pullResult.srsPulled > 0 ? '#a855f7' : '#d4af37';
 
         addMessage({
           id: getNextId('bot_gacha_10x_success'),
@@ -6660,9 +6711,10 @@ export default function DiscordEmulator({
             title: `💎 10x Craft Essence Multi-Summon Results!`,
             description:
               `**Chaldea Summoning Gate Opened:**\n\n` +
-              pulled.map((c, idx) => `${idx + 1}. **[★${c.rarity}]** **${c.name}** — *+${c.atkBonus || 0} ATK / +${c.hpBonus || 0} HP*`).join('\n') +
-              `\n\n💎 **Remaining Saint Quartz:** \`${updatedMaster.saintQuartz} SQ\``,
-            color: '#d4af37'
+              lines +
+              `\n\n💎 **Remaining Saint Quartz:** \`${pullResult.updatedMaster.saintQuartz} SQ\`\n` +
+              `🛡️ **Guarantee Applied:** Guaranteed 4★ SR or higher included!`,
+            color: embedColor
           },
           components: {
             type: 'buttons',
