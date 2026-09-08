@@ -210,7 +210,10 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
   const [lastCompletedBattleId, setLastCompletedBattleId] = useState<string | undefined>();
 
   useEffect(() => {
-    setBattleHistory(loadCombatBattleHistory());
+    const timer = setTimeout(() => {
+      setBattleHistory(loadCombatBattleHistory());
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   // 1-minute (60-second) decision time limit for Emergency Command Seal evacuation

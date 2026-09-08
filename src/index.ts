@@ -29,6 +29,8 @@ import * as cegachaCommand from './commands/cegacha';
 import * as addceCommand from './commands/addce';
 import * as addsqCommand from './commands/addsq';
 import * as churchCommand from './commands/church';
+import * as bountyCommand from './commands/bounty';
+import * as reputationCommand from './commands/reputation';
 import * as patrolCommand from './commands/patrol';
 import * as petrolCommand from './commands/petrol';
 import * as familiarCommand from './commands/familiar';
@@ -136,6 +138,8 @@ commands.set(customiseCommand.data.name, customiseCommand);
 commands.set(defensesCommand.data.name, defensesCommand);
 commands.set(profileCommand.data.name, profileCommand);
 commands.set(churchCommand.data.name, churchCommand);
+commands.set(bountyCommand.data.name, bountyCommand);
+commands.set(reputationCommand.data.name, reputationCommand);
 commands.set(cegachaCommand.data.name, cegachaCommand);
 commands.set(healCommand.data.name, healCommand);
 commands.set(adminCommand.data.name, adminCommand);
@@ -160,6 +164,10 @@ commands.set(boardCommand.data.name, boardCommand);
 export const commandAliasMap: Record<string, any> = {
   claim: dailyCommand,
   sanctuary: churchCommand,
+  bounty: bountyCommand,
+  bounties: bountyCommand,
+  reputation: reputationCommand,
+  rep: reputationCommand,
   attack: attackCommand,
   ambush: ambushCommand,
   leak: leakCommand,

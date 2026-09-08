@@ -100,11 +100,16 @@ export default function GrailWarSim({
   const [currentTime, setCurrentTime] = useState<number>(0);
 
   React.useEffect(() => {
-    setCurrentTime(Date.now());
+    const timer = setTimeout(() => {
+      setCurrentTime(Date.now());
+    }, 0);
     const interval = setInterval(() => {
       setCurrentTime(Date.now());
     }, 1000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, []);
 
   // Ambush & Leak Form State

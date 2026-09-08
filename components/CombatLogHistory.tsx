@@ -72,7 +72,10 @@ export default function CombatLogHistory({
   const [currentTime, setCurrentTime] = useState<number>(0);
 
   React.useEffect(() => {
-    setCurrentTime(Date.now());
+    const timer = setTimeout(() => {
+      setCurrentTime(Date.now());
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const formatTimestamp = (timestamp: number) => {

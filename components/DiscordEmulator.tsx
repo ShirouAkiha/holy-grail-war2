@@ -928,7 +928,7 @@ export default function DiscordEmulator({
       const firstWord = rawCmd.split(/\s+/)[0].toLowerCase();
       const knownCommands = [
         'attack', 'ambush', 'duel', 'summon', 'servant', 'servants', 'grailwar', 'grail', 'board', 'war',
-        'daily', 'claim', 'church', 'sanctuary', 'defenses', 'profile', 'inventory',
+        'daily', 'claim', 'church', 'sanctuary', 'bounty', 'bounties', 'reputation', 'rep', 'defenses', 'profile', 'inventory',
         'equip', 'dialogue', 'heal', 'feed', 'cegacha', 'gacha', 'patrol', 'leak',
         'trap', 'traps', 'familiar', 'familiars', 'help', 'boast', 'art', 'artwork', 'np'
       ];
@@ -2937,11 +2937,106 @@ export default function DiscordEmulator({
     }
 
     // ----------------------------------------------------
-    // COMMAND 4.9: /church, /sanctuary (Fuyuki Church Sanctuary)
+    // COMMAND 4.9: /church, /sanctuary, /bounty, /bounties, /reputation, /rep (Fuyuki Church Sanctuary & Bounty Board)
     // ----------------------------------------------------
-    if (trimmed.startsWith('/church') || trimmed.startsWith('/sanctuary')) {
+    if (
+      trimmed.startsWith('/church') ||
+      trimmed.startsWith('/sanctuary') ||
+      trimmed.startsWith('/bounty') ||
+      trimmed.startsWith('/bounties') ||
+      trimmed.startsWith('/reputation') ||
+      trimmed.startsWith('/rep')
+    ) {
       const uP = grailWar.participants[master.discordId] ||
         Object.values(grailWar.participants).find(p => p.username.toLowerCase() === master.username.toLowerCase());
+
+      const kills = uP ? (uP.innocentKills || 0) : (master.innocentKills || 0);
+      const rep = getReputationInfo(kills);
+      const participants = Object.values(grailWar.participants || {});
+      const rogueMasters = participants.filter(
+        p => p.isAlive && (((p.innocentKills || 0) >= 10) || p.bountyActive || p.isRogueHeretic)
+      );
+
+      // Subcommand: /bounties or /bounty or /church bounties
+      if (trimmed.startsWith('/bounty') || trimmed.startsWith('/bounties') || trimmed.includes('bount')) {
+        let bountyListText = '';
+        if (rogueMasters.length === 0) {
+          bountyListText = '🕊️ **No Active Church Extermination Bounties.**\nAll active Masters are currently abiding by the Secrecy of Magecraft or haven\'t reached 10 civilian casualties.';
+        } else {
+          bountyListText = rogueMasters.map((r, idx) => {
+            return `**${idx + 1}. ☠️ Master ${r.username}** (${r.servantName || 'Unknown Servant'} [${r.servantClass || 'Class'}])\n` +
+              `   • **Civilian Casualties:** \`${r.innocentKills || 10} Kills\` (Excommunicated)\n` +
+              `   • 🎯 **Bounty Reward:** **+1 Extra Command Seal** 💠 & **+15 Saint Quartz** 💎\n` +
+              `   • **Status:** Permanently Barred from Church Sanctuary • Curse of Heresy Active`;
+          }).join('\n\n');
+        }
+
+        addMessage({
+          id: getNextId('bot_bounty_board'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '🎯 Holy Church Extermination Bounty Registry',
+            description:
+              `*Father Kirei Kotomine maintains this public bounty ledger at the Fuyuki Church altar.*\n\n` +
+              `📜 **CHURCH EXTERMINATION BOUNTY PROTOCOL:**\n` +
+              `• Any Master who slays **10+ innocent bystanders** is declared a **Rogue Heretic**.\n` +
+              `• An open **+1 Command Seal & +15 Saint Quartz** bounty is placed on their head.\n` +
+              `• Defeating or executing a wanted Rogue Heretic in battle or duel immediately awards the bounty to the victor!\n\n` +
+              `🎯 **CURRENT WANTED LIST (${rogueMasters.length} Active):**\n` +
+              bountyListText + '\n\n' +
+              `👤 **YOUR CHURCH STANDING:**\n` +
+              `• Rank: **${rep.badge}** (${kills}/10 Civilian Kills)\n` +
+              `• Status: ${rep.isRogue ? '☠️ **WANTED ROGUE HERETIC (BOUNTY ON YOUR HEAD)**' : '🕊️ **Good Standing with Holy Church**'}`,
+            color: rogueMasters.length > 0 ? '#ef4444' : '#d4af37',
+            footer: 'Holy Church Inquisitorial Office • Father Kirei Kotomine'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'war_tab_church', label: 'Church Sanctuary ⛪', style: 'primary' },
+              { id: 'war_tab_reputation', label: 'Reputation Dossier 📜', style: 'secondary' },
+              { id: 'quick_war_status', label: 'War Board 📋', style: 'secondary' }
+            ]
+          }
+        });
+        return;
+      }
+
+      // Subcommand: /reputation or /rep or /church reputation
+      if (trimmed.startsWith('/reputation') || trimmed.startsWith('/rep') || trimmed.includes('reputation') || trimmed.includes('rank')) {
+        addMessage({
+          id: getNextId('bot_rep_dossier'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '📜 Holy Church Reputation & Oversight Dossier',
+            description:
+              `*Overseer Father Kirei Kotomine observes all Masters participating in the Fuyuki Holy Grail War.*\n\n` +
+              `👤 **MASTER STANDING: ${rep.badge}**\n` +
+              `• **Civilian Casualties:** \`${kills}/10 Kills\`\n` +
+              `• **Overseer Assessment:** *"${rep.description}"*\n` +
+              `• **Church Sanctuary Eligibility:** ${rep.isRogue ? '🚫 **REVOKED (Excommunicated)**' : '🕊️ **ELIGIBLE (Neutral Asylum Granted on request)**'}\n` +
+              `• **Combat Modifier:** ${rep.isRogue ? '⛓️ **Curse of Heresy (-10% ATK)**' : '✨ **Standard Leyline Alignment**'}\n\n` +
+              `⚖️ **REPUTATION RANKS OVERVIEW:**\n` +
+              `• 🕊️ **Honorable Magus (0-3 Kills):** Full sanctuary rights & Overseer protection.\n` +
+              `• ⚠️ **Suspect Magus (4-6 Kills):** Under surveillance for collateral damage.\n` +
+              `• 🩸 **Notorious Magus (7-9 Kills):** High scrutiny. Impending excommunication.\n` +
+              `• ☠️ **Rogue Heretic (10+ Kills):** +1 CS & +15 SQ Extermination Bounty, barred from church sanctuary, exposed on war map, -10% ATK.`,
+            color: rep.isRogue ? '#ef4444' : kills >= 7 ? '#f97316' : kills >= 4 ? '#eab308' : '#10b981',
+            footer: 'Holy Church Inquisitorial Office • Father Kirei Kotomine'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'war_tab_church', label: 'Church Sanctuary ⛪', style: 'primary' },
+              { id: 'war_tab_bounties', label: 'Bounty Registry 🎯', style: 'secondary' },
+              { id: 'quick_war_status', label: 'War Board 📋', style: 'secondary' }
+            ]
+          }
+        });
+        return;
+      }
 
       if (!uP || !uP.isAlive) {
         addMessage({
@@ -2973,6 +3068,7 @@ export default function DiscordEmulator({
             type: 'buttons',
             items: [
               { id: 'church_enter', label: 'Enter Church Sanctuary ⛪', style: 'primary' },
+              { id: 'war_tab_bounties', label: 'Bounty Registry 🎯', style: 'secondary' },
               { id: 'quick_war_defenses', label: 'Mage Defenses 🏰', style: 'secondary' }
             ]
           }
@@ -2996,6 +3092,7 @@ export default function DiscordEmulator({
             type: 'buttons',
             items: [
               { id: 'church_leave', label: 'Leave Sanctuary 🚪', style: 'danger' },
+              { id: 'war_tab_bounties', label: 'Bounty Registry 🎯', style: 'secondary' },
               { id: 'quick_war_defenses', label: 'Mage Defenses 🏰', style: 'secondary' }
             ]
           }
@@ -3005,6 +3102,25 @@ export default function DiscordEmulator({
 
       // Default status view
       const inSanctuary = !!uP.inSanctuary;
+      let bountySummary = '';
+      if (rogueMasters.length > 0) {
+        bountySummary = `\n\n🎯 **ACTIVE CHURCH EXTERMINATION BOUNTIES (${rogueMasters.length} WANTED):**\n` +
+          rogueMasters.map(r => `• ☠️ **${r.username}** (${r.servantName || 'Servant'}) — **${r.innocentKills || 10} Civilian Kills** (+1 CS & +15 SQ Reward)`).join('\n');
+      } else {
+        bountySummary = `\n\n🎯 **CHURCH BOUNTY REGISTRY:** No active rogue heretics wanted at this time.`;
+      }
+
+      let standingLine = `• **Your Church Standing:** ${rep.badge} (\`${kills}/10\` Civilian Kills)\n`;
+      if (rep.isRogue) {
+        standingLine += `  ↳ ☠️ **EXCOMMUNICATED:** Barred from asylum. Bounty of +1 CS & +15 SQ active on your head.\n`;
+      } else if (kills >= 7) {
+        standingLine += `  ↳ 🩸 **Critical Warning:** Approaching 10 kills excommunication threshold.\n`;
+      } else if (kills >= 4) {
+        standingLine += `  ↳ ⚠️ **Reprimanded:** Monitored for Secrecy of Magecraft violations.\n`;
+      } else {
+        standingLine += `  ↳ 🕊️ **Good Standing:** Full sanctuary and arbitration rights active.\n`;
+      }
+
       addMessage({
         id: getNextId('bot_church_status'),
         sender: 'bot',
@@ -3014,11 +3130,13 @@ export default function DiscordEmulator({
           description:
             `*Father Kirei Kotomine presides over the neutral grounds of the Fuyuki Church.*\n\n` +
             `Under Holy Church oversight and imperial leylines, Masters seeking reprieve from the Holy Grail War may claim sanctuary here.\n\n` +
-            `• **Your Current Sanctuary Status:** ${inSanctuary ? '🕊️ **ACTIVE ASYLUM** (Immune to all ambushes & attacks)' : '⚔️ **IN THE FIELD** (Active combatant)'}\n` +
+            `• **Your Sanctuary Status:** ${inSanctuary ? '🕊️ **ACTIVE ASYLUM** (Immune to all ambushes & attacks)' : '⚔️ **IN THE FIELD** (Active combatant)'}\n` +
+            standingLine +
             `• **Asylum Inviolability:** No Master may target, ambush, or skirmish against anyone sheltered within the church.\n` +
-            `• **Truce Binding:** Masters in sanctuary cannot launch ambushes or attack rivals until they formally depart.\n\n` +
-            `*Use the interactive buttons below or commands \`/church enter\` and \`/church leave\`:*`,
-          color: inSanctuary ? '#10b981' : '#6366f1',
+            `• **Truce Binding:** Masters in sanctuary cannot launch ambushes or attack rivals until they formally depart.` +
+            bountySummary +
+            `\n\n*Use the interactive buttons below or commands \`/church enter\`, \`/church leave\`, \`/bounties\`:*`,
+          color: rep.isRogue ? '#ef4444' : inSanctuary ? '#10b981' : '#6366f1',
           footer: 'Holy Church Overseer Protocol • Fuyuki City Neutral Zone'
         },
         components: {
@@ -3026,8 +3144,9 @@ export default function DiscordEmulator({
           items: [
             inSanctuary
               ? { id: 'church_leave', label: 'Leave Sanctuary (Re-enter War) 🚪', style: 'danger' }
-              : { id: 'church_enter', label: 'Enter Church Sanctuary (Claim Asylum) ⛪', style: 'primary' },
-            { id: 'quick_war_defenses', label: 'Mage Defenses 🏰', style: 'secondary' },
+              : { id: 'church_enter', label: 'Enter Church Sanctuary ⛪', style: 'primary', disabled: rep.isRogue },
+            { id: 'war_tab_bounties', label: 'Bounty Registry 🎯', style: 'secondary' },
+            { id: 'war_tab_reputation', label: 'Reputation Dossier 📜', style: 'secondary' },
             { id: 'quick_war_status', label: 'War Board 📋', style: 'secondary' }
           ]
         }
@@ -5688,17 +5807,44 @@ export default function DiscordEmulator({
         `*Select a sector from the menu or click an action below to deploy/disarm:*`;
 
     } else if (category === 'church') {
-      title = '⛪ Fuyuki Church Sanctuary (Father Kotomine)';
+      title = '⛪ Fuyuki Church Sanctuary & Bounty Board (Father Kotomine)';
       const isUnderSanctuary = !!(userParticipant?.inSanctuary || (userParticipant as any)?.inChurchSanctuary);
-      color = isUnderSanctuary ? '#22c55e' : '#d4af37';
+      const kills = userParticipant ? (userParticipant.innocentKills || 0) : (master.innocentKills || 0);
+      const rep = getReputationInfo(kills);
+      const rogueMasters = Object.values(grailWar.participants || {}).filter(
+        p => p.isAlive && (((p.innocentKills || 0) >= 10) || p.bountyActive || p.isRogueHeretic)
+      );
+
+      let standingText = `• **Your Standing:** ${rep.badge} (\`${kills}/10\` Civilian Kills)\n`;
+      if (rep.isRogue) {
+        standingText += `  ↳ ☠️ **EXCOMMUNICATED:** Sanctuary barred. Active +1 CS & +15 SQ bounty on head.\n`;
+      } else if (kills >= 7) {
+        standingText += `  ↳ 🩸 **High Scrutiny:** Approaching 10 civilian kills threshold.\n`;
+      } else if (kills >= 4) {
+        standingText += `  ↳ ⚠️ **Reprimanded:** Monitored for Magecraft secrecy violations.\n`;
+      } else {
+        standingText += `  ↳ 🕊️ **Good Standing:** Neutral asylum rights granted upon request.\n`;
+      }
+
+      let bountyBoardSection = '';
+      if (rogueMasters.length > 0) {
+        bountyBoardSection = `\n\n🎯 **ACTIVE CHURCH EXTERMINATION BOUNTIES (${rogueMasters.length} WANTED):**\n` +
+          rogueMasters.map(r => `• ☠️ **${r.username}** (${r.servantName || 'Servant'} [${r.servantClass || 'Class'}]) — **${r.innocentKills || 10} Kills** (+1 CS & +15 SQ)`).join('\n');
+      } else {
+        bountyBoardSection = `\n\n🎯 **ACTIVE BOUNTIES:** No Rogue Heretics currently wanted by the Church.`;
+      }
+
+      color = rep.isRogue ? '#ef4444' : isUnderSanctuary ? '#22c55e' : '#d4af37';
       description =
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `*"Welcome to the Fuyuki Church, Master. Under the supervision of the Holy Church and Father Kotomine, neutral asylum is guaranteed to any combatant who yields their right to the Grail."*\n\n` +
         `📜 **SANCTUARY RULES & STATUS:**\n` +
         `• **Your Status:** ${isUnderSanctuary ? '🕊️ **UNDER CHURCH ASYLUM** *(Immune to ambushes & unable to attack)*' : '⚔️ **ACTIVE COMBATANT** *(Can engage in skirmishes)*'}\n` +
+        standingText +
         `• **Immunity:** Masters residing within the Church cannot be ambushed or tracked by familiars.\n` +
-        `• **Restriction:** While under sanctuary, you cannot launch ambushes, leak intel, or duel rivals.\n\n` +
-        `*Choose an action below to claim or renounce church asylum.*`;
+        `• **Restriction:** While under sanctuary, you cannot launch ambushes, leak intel, or duel rivals.` +
+        bountyBoardSection +
+        `\n\n*Choose an action below to claim or renounce church asylum, or inspect bounties and reputation.*`;
     }
 
     const isBoardView = ['board', 'casualties', 'leaks', 'battles'].includes(category);
@@ -5784,9 +5930,12 @@ export default function DiscordEmulator({
       });
     } else if (category === 'church') {
       const isUnderSanctuary = !!(userParticipant?.inSanctuary || (userParticipant as any)?.inChurchSanctuary);
+      const isRogue = (userParticipant?.innocentKills || 0) >= 10 || (userParticipant as any)?.bountyActive;
       actionButtons = [
-        { id: 'church_claim_asylum', label: 'Enter Sanctuary', style: 'success', emoji: '🕊️', disabled: isUnderSanctuary },
-        { id: 'church_leave_asylum', label: 'Depart Sanctuary', style: 'danger', emoji: '🚪', disabled: !isUnderSanctuary }
+        { id: 'church_claim_asylum', label: 'Enter Sanctuary', style: 'success', emoji: '🕊️', disabled: isUnderSanctuary || isRogue },
+        { id: 'church_leave_asylum', label: 'Depart Sanctuary', style: 'danger', emoji: '🚪', disabled: !isUnderSanctuary },
+        { id: 'war_tab_bounties', label: 'Bounty Registry', style: 'secondary', emoji: '🎯' },
+        { id: 'war_tab_reputation', label: 'Reputation Dossier', style: 'secondary', emoji: '📜' }
       ];
     }
 
@@ -7441,6 +7590,10 @@ export default function DiscordEmulator({
         } else {
           handleCommand('/church leave');
         }
+      } else if (btnId === 'war_tab_bounties' || btnId === 'war_show_bounties') {
+        handleCommand('/bounties');
+      } else if (btnId === 'war_tab_reputation' || btnId === 'war_show_reputation') {
+        handleCommand('/reputation');
       }
       // 3. Cross-Hub Shortcuts
       else if (btnId === 'war_link_inventory') {
