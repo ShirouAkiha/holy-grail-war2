@@ -6,8 +6,9 @@ import {
   ButtonStyle, 
   EmbedBuilder,
   StringSelectMenuBuilder,
-  ComponentType
-, MessageFlags } from 'discord.js';
+  ComponentType,
+  AttachmentBuilder,
+  MessageFlags } from 'discord.js';
 import { 
   getOrCreateMaster, 
   saveMaster, 
@@ -18,6 +19,7 @@ import {
   addSaintQuartzToUser
 } from '../database/service';
 import { executeCraftEssenceGachaRoll } from '../engine/ceGacha';
+import { renderGachaSummonBanner } from '../canvas/renderer';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 import { SERVANT_DATABASE } from '../data/servants';
 import { buildInventoryHub, attachInventoryCollector } from './customise';
@@ -267,11 +269,40 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
         master.craftEssences = rollResult.updatedMaster.craftEssences;
         await saveMaster(master);
 
-        const pulled = rollResult.results[0].item;
+        const pulled = rollResult.results[0].item as any;
         const rarityStars = '★'.repeat(pulled.rarity);
+
+        let files: AttachmentBuilder[] = [];
+        let imageAttachmentName: string | undefined = undefined;
+
+        try {
+          const canvasBuffer = await renderGachaSummonBanner(rollResult.results, '1x Craft Essence Single Summon');
+          const attachment = new AttachmentBuilder(canvasBuffer, { name: 'ce_summon.png' });
+          files = [attachment];
+          imageAttachmentName = 'attachment://ce_summon.png';
+        } catch (canvasErr) {
+          console.error('Failed to render gacha canvas banner:', canvasErr);
+        }
+
+        const embed = new EmbedBuilder()
+          .setTitle(`✨ 1x Craft Essence Summon: ${pulled.name}!`)
+          .setDescription(
+            `Summoned **[${rarityStars}] ${pulled.name}**!\n\n` +
+            `🔮 **Effect:** *${pulled.effectText || pulled.description}*\n` +
+            `⚔️ **Stats:** +${pulled.bonusAtk || pulled.atkBonus || 0} ATK / +${pulled.bonusHp || pulled.hpBonus || 0} HP\n` +
+            `💎 **Remaining Saint Quartz:** \`${master.saintQuartz} SQ\`\n\n` +
+            `Use \`/inventory\` to equip it to your Servant!`
+          )
+          .setColor(pulled.rarity >= 5 ? 0xf59e0b : pulled.rarity >= 4 ? 0xa855f7 : 0x38bdf8);
+
+        if (imageAttachmentName) {
+          embed.setImage(imageAttachmentName);
+        }
+
         await i.reply({
           flags: MessageFlags.Ephemeral,
-          content: `✨ **Craft Essence Forged:** You summoned **${rarityStars} ${pulled.name}**!\n• Effect: ${pulled.effectText}\n• Remaining Quartz: **${master.saintQuartz} SQ**\nUse \`/inventory\` to equip it to your Servant!`
+          embeds: [embed],
+          files
         });
       }
 
@@ -289,12 +320,41 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
         await saveMaster(master);
 
         const cardSummary = rollResult.results
-          .map((r: any) => `• **${'★'.repeat(r.item.rarity)} ${r.item.name}** — ${r.item.effectText.slice(0, 45)}...`)
+          .map((r: any, idx: number) => `${idx + 1}. **[★${r.item.rarity}] ${r.item.name}**${r.isNew ? ' 🌟 **[NEW!]**' : ''} — *${(r.item.effectText || r.item.description || '').slice(0, 40)}...*`)
           .join('\n');
+
+        let files: AttachmentBuilder[] = [];
+        let imageAttachmentName: string | undefined = undefined;
+
+        try {
+          const canvasBuffer = await renderGachaSummonBanner(rollResult.results, '10x Craft Essence Multi-Summon');
+          const attachment = new AttachmentBuilder(canvasBuffer, { name: 'ce_summon.png' });
+          files = [attachment];
+          imageAttachmentName = 'attachment://ce_summon.png';
+        } catch (canvasErr) {
+          console.error('Failed to render gacha canvas banner:', canvasErr);
+        }
+
+        const embedColor = rollResult.ssrsPulled > 0 ? 0xf59e0b : rollResult.srsPulled > 0 ? 0xa855f7 : 0x38bdf8;
+
+        const embed = new EmbedBuilder()
+          .setTitle(`💎 10x Multi-Summon Results!`)
+          .setDescription(
+            `**Chaldea Summoning Gate Opened:**\n\n` +
+            cardSummary +
+            `\n\n💎 **Remaining Quartz:** \`${master.saintQuartz} SQ\`\n` +
+            `Use \`/inventory\` to view your expanded collection and equip them!`
+          )
+          .setColor(embedColor);
+
+        if (imageAttachmentName) {
+          embed.setImage(imageAttachmentName);
+        }
 
         await i.reply({
           flags: MessageFlags.Ephemeral,
-          content: `🌟 **10x Multi-Summon Results:**\n\n${cardSummary}\n\n💎 **Remaining Quartz:** \`${master.saintQuartz} SQ\`\nUse \`/inventory\` to view your expanded collection and equip them!`
+          embeds: [embed],
+          files
         });
       }
 
