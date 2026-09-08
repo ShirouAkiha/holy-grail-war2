@@ -5,7 +5,8 @@ import {
   renderServantProfileCard,
   renderDialogueCard,
   renderDefeatDialogueCard,
-  renderBattleTurnSummary
+  renderBattleTurnSummary,
+  renderGachaSummonBanner
 } from '../lib/canvas/browserCanvas';
 
 export function CanvasRenderer({ canvasType, payload }: { canvasType: string; payload: any }) {
@@ -49,6 +50,8 @@ export function CanvasRenderer({ canvasType, payload }: { canvasType: string; pa
       );
     } else if (canvasType === 'battle') {
       renderBattleTurnSummary(canvas, payload.log, payload.p1, payload.p2);
+    } else if (canvasType === 'gacha') {
+      renderGachaSummonBanner(canvas, payload.results || [], payload.bannerTitle || 'Craft Essence Forge');
     }
 
     return () => {

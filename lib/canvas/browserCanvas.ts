@@ -3108,69 +3108,159 @@ export function renderGachaSummonBanner(
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, 900, 420);
 
+  // Background glowing circles
+  ctx.save();
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.15)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(450, 210, 180, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(450, 210, 130, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
   // Title Banner
   ctx.fillStyle = '#f8fafc';
   ctx.font = 'bold 18px system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText(`✦ SUMMONING COMPLETE: ${bannerTitle} ✦`, 450, 35);
 
-  // Draw up to 10 cards in 2 rows of 5
-  const cardW = 150;
-  const cardH = 160;
-  const startX = 45;
-  const startY = 60;
-  const gapX = 22;
-  const gapY = 20;
+  if (results.length === 1) {
+    // Single Roll Showcase Layout
+    const item = results[0];
+    const cardW = 320;
+    const cardH = 320;
+    const x = (900 - cardW) / 2;
+    const y = 60;
 
-  results.slice(0, 10).forEach((item, idx) => {
-    const row = Math.floor(idx / 5);
-    const col = idx % 5;
-    const x = startX + col * (cardW + gapX);
-    const y = startY + row * (cardH + gapY);
+    // Outer glow
+    ctx.shadowColor = item.rarity === 5 ? '#f59e0b' : item.rarity === 4 ? '#a855f7' : '#38bdf8';
+    ctx.shadowBlur = 15;
 
     // Card background
     ctx.fillStyle = item.rarity === 5 ? '#311042' : item.rarity === 4 ? '#172554' : '#1e293b';
-    drawRoundRect(ctx, x, y, cardW, cardH, 8);
+    drawRoundRect(ctx, x, y, cardW, cardH, 12);
     ctx.fill();
 
-    // Rarity Border
+    ctx.shadowBlur = 0; // Reset shadow
+
+    // Border
     ctx.strokeStyle = item.rarity === 5 ? '#f59e0b' : item.rarity === 4 ? '#a855f7' : '#64748b';
-    ctx.lineWidth = item.rarity >= 4 ? 2.5 : 1;
+    ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Item Type Header
+    // Type Header
     ctx.fillStyle = item.type === 'servant' ? '#38bdf8' : '#34d399';
-    ctx.font = 'bold 10px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(item.type === 'servant' ? 'SERVANT' : 'CRAFT ESSENCE', x + cardW / 2, y + 20);
-
-    // Rating / Class Header
-    ctx.fillStyle = '#fbbf24';
-    ctx.font = '12px system-ui, sans-serif';
-    if (item.type === 'servant') {
-      ctx.fillText((item.item as any).servantClass?.toUpperCase() || 'HEROIC SPIRIT', x + cardW / 2, y + 36);
-    } else {
-      ctx.fillText('★'.repeat(item.rarity), x + cardW / 2, y + 36);
-    }
-
-    // Item Name (Wrapped)
-    ctx.fillStyle = '#f8fafc';
     ctx.font = 'bold 12px system-ui, sans-serif';
-    const name = item.item.name;
-    if (name.length > 16) {
-      ctx.fillText(name.substring(0, 15) + '...', x + cardW / 2, y + 90);
-    } else {
-      ctx.fillText(name, x + cardW / 2, y + 90);
+    ctx.textAlign = 'center';
+    ctx.fillText(item.type === 'servant' ? 'HEROIC SPIRIT' : 'CRAFT ESSENCE', x + cardW / 2, y + 30);
+
+    // Star Rating
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 20px system-ui, sans-serif';
+    ctx.fillText('★'.repeat(item.rarity), x + cardW / 2, y + 60);
+
+    // Name
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 18px system-ui, sans-serif';
+    ctx.fillText(item.item.name, x + cardW / 2, y + 105);
+
+    // Stats / Details
+    if (item.type === 'craft_essence') {
+      const ce = item.item as any;
+      const atk = ce.bonusAtk || ce.atkBonus || 0;
+      const hp = ce.bonusHp || ce.hpBonus || 0;
+
+      ctx.fillStyle = '#f1f5f9';
+      ctx.font = 'bold 14px system-ui, sans-serif';
+      ctx.fillText(`⚔️ +${atk} ATK   |   ❤️ +${hp} HP`, x + cardW / 2, y + 145);
+
+      if (ce.effectText || ce.description) {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'italic 12px system-ui, sans-serif';
+        const eff = ce.effectText || ce.description;
+        ctx.fillText(`"${eff.length > 45 ? eff.substring(0, 42) + '...' : eff}"`, x + cardW / 2, y + 185);
+      }
     }
 
-    // New Badge
     if (item.isNew) {
       ctx.fillStyle = '#ef4444';
-      drawRoundRect(ctx, x + 6, y + 6, 34, 16, 4);
+      drawRoundRect(ctx, x + 15, y + 15, 45, 22, 6);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 9px system-ui, sans-serif';
-      ctx.fillText('NEW', x + 23, y + 17);
+      ctx.font = 'bold 11px system-ui, sans-serif';
+      ctx.fillText('NEW!', x + 37, y + 30);
     }
-  });
+  } else {
+    // 10-Pull Grid Layout
+    const cardW = 150;
+    const cardH = 160;
+    const startX = 45;
+    const startY = 60;
+    const gapX = 22;
+    const gapY = 20;
+
+    results.slice(0, 10).forEach((item, idx) => {
+      const row = Math.floor(idx / 5);
+      const col = idx % 5;
+      const x = startX + col * (cardW + gapX);
+      const y = startY + row * (cardH + gapY);
+
+      // Card background
+      ctx.fillStyle = item.rarity === 5 ? '#311042' : item.rarity === 4 ? '#172554' : '#1e293b';
+      drawRoundRect(ctx, x, y, cardW, cardH, 8);
+      ctx.fill();
+
+      // Rarity Border
+      ctx.strokeStyle = item.rarity === 5 ? '#f59e0b' : item.rarity === 4 ? '#a855f7' : '#64748b';
+      ctx.lineWidth = item.rarity >= 4 ? 2.5 : 1;
+      ctx.stroke();
+
+      // Item Type Header
+      ctx.fillStyle = item.type === 'servant' ? '#38bdf8' : '#34d399';
+      ctx.font = 'bold 10px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(item.type === 'servant' ? 'SERVANT' : 'CRAFT ESSENCE', x + cardW / 2, y + 20);
+
+      // Rating / Class Header
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = '12px system-ui, sans-serif';
+      if (item.type === 'servant') {
+        ctx.fillText((item.item as any).servantClass?.toUpperCase() || 'HEROIC SPIRIT', x + cardW / 2, y + 36);
+      } else {
+        ctx.fillText('★'.repeat(item.rarity), x + cardW / 2, y + 36);
+      }
+
+      // Item Name
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 11px system-ui, sans-serif';
+      const name = item.item.name;
+      if (name.length > 16) {
+        ctx.fillText(name.substring(0, 15) + '...', x + cardW / 2, y + 75);
+      } else {
+        ctx.fillText(name, x + cardW / 2, y + 75);
+      }
+
+      // Stats
+      if (item.type === 'craft_essence') {
+        const ce = item.item as any;
+        const atk = ce.bonusAtk || ce.atkBonus || 0;
+        const hp = ce.bonusHp || ce.hpBonus || 0;
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '10px system-ui, sans-serif';
+        ctx.fillText(`+${atk} ATK / +${hp} HP`, x + cardW / 2, y + 95);
+      }
+
+      // New Badge
+      if (item.isNew) {
+        ctx.fillStyle = '#ef4444';
+        drawRoundRect(ctx, x + 6, y + 6, 34, 16, 4);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 9px system-ui, sans-serif';
+        ctx.fillText('NEW', x + 23, y + 17);
+      }
+    });
+  }
 }

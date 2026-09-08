@@ -376,7 +376,7 @@ interface DiscordMessage {
     imageUrl?: string;
     thumbnailUrl?: string;
   };
-  canvasType?: 'servant' | 'dialogue' | 'battle' | 'defeat_dialogue';
+  canvasType?: 'servant' | 'dialogue' | 'battle' | 'defeat_dialogue' | 'gacha';
   canvasPayload?: any;
   artworkEmbed?: {
     title?: string;
@@ -1927,6 +1927,11 @@ export default function DiscordEmulator({
           id: getNextId('bot_cegacha_pull_success'),
           sender: 'bot',
           timestamp: 'Just now',
+          canvasType: 'gacha',
+          canvasPayload: {
+            results: pullResult.results,
+            bannerTitle: rollCount === 10 ? '10x Craft Essence Multi-Summon' : '1x Craft Essence Single Summon'
+          },
           embed: {
             title: `✨ Sacred Relics Forged! (${rollCount}x Summon)`,
             description:
@@ -6651,6 +6656,11 @@ export default function DiscordEmulator({
           id: getNextId('bot_gacha_1x_success'),
           sender: 'bot',
           timestamp: 'Just now',
+          canvasType: 'gacha',
+          canvasPayload: {
+            results: pullResult.results,
+            bannerTitle: '1x Craft Essence Single Summon'
+          },
           embed: {
             title: `🎲 1x Craft Essence Summon: ${rolledCe.name}!`,
             description:
@@ -6707,6 +6717,11 @@ export default function DiscordEmulator({
           id: getNextId('bot_gacha_10x_success'),
           sender: 'bot',
           timestamp: 'Just now',
+          canvasType: 'gacha',
+          canvasPayload: {
+            results: pullResult.results,
+            bannerTitle: '10x Craft Essence Multi-Summon'
+          },
           embed: {
             title: `💎 10x Craft Essence Multi-Summon Results!`,
             description:
