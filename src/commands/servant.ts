@@ -23,7 +23,7 @@ import { equipCraftEssence, feedCraftEssences, getCeExpValue } from '../engine/c
 // ==========================================
 export const data = new SlashCommandBuilder()
   .setName('servant')
-  .setDescription('Master Servant Workshop — parameters, stat allocation, CE equipment, feeding, dialogues & roster')
+  .setDescription('Master Servant Workshop — parameters, stats, CE equipment, dialogues & roster')
   .addStringOption(opt =>
     opt
       .setName('category')

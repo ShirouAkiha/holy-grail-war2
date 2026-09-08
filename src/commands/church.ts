@@ -18,11 +18,11 @@ import {
 
 export const data = new SlashCommandBuilder()
   .setName('church')
-  .setDescription('⛪ Fuyuki Church — Neutral asylum, reputation standing & bounty registry under Father Kotomine')
+  .setDescription('⛪ Fuyuki Church — Neutral asylum, reputation & bounties under Father Kotomine')
   .addStringOption(opt =>
     opt
       .setName('action')
-      .setDescription('Sanctuary Action: status (view rules), enter (claim asylum), leave (re-enter war), bounties, reputation')
+      .setDescription('Action: status (rules), enter (asylum), leave (re-enter war), bounties, reputation')
       .setRequired(false)
       .addChoices(
         { name: '⛪ View Sanctuary & Church Status', value: 'status' },

@@ -3,7 +3,7 @@ import { execute as executePatrol } from './patrol';
 
 export const data = new SlashCommandBuilder()
   .setName('petrol')
-  .setDescription('👁️ Patrol a Fuyuki sector to detect concealed traps & Bounded Fields safely without triggering them')
+  .setDescription('👁️ Patrol a Fuyuki sector to scout concealed traps & Bounded Fields')
   .addChannelOption(opt =>
     opt
       .setName('channel')
