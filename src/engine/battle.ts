@@ -368,12 +368,20 @@ export function resolveCombatTurn(
     attacker.npGauge = Math.min(300, attacker.npGauge + npGain);
   }
 
-  // Check "The Weight of Heaven EX" passive (Aethel Gravitational Aura)
+  // Check "The Weight of Heaven EX" passive (Aethel Gravitational Aura - Attacker)
   const weightPassive = (attacker.passives || []).find(p => p.type === 'the_weight_of_heaven' || (p.name && p.name.includes('Weight of Heaven')));
   if (weightPassive && defender.stats.mana < attacker.stats.mana) {
     const auraDmg = weightPassive.value || 2000;
     totalDmg += auraDmg;
     chainTags.push(`🌌 The Weight of Heaven EX (-${auraDmg} HP enemy Mana ${defender.stats.mana} < ${attacker.stats.mana})`);
+  }
+
+  // Check "The Weight of Heaven EX" passive (Aethel Gravitational Aura - Defender)
+  const defWeightPassive = (defender.passives || []).find(p => p.type === 'the_weight_of_heaven' || (p.name && p.name.includes('Weight of Heaven')));
+  if (defWeightPassive && attacker.stats.mana < defender.stats.mana) {
+    const auraDmg = defWeightPassive.value || 2000;
+    attacker.currentHp = Math.max(0, attacker.currentHp - auraDmg);
+    chainTags.push(`🌌 Enemy [The Weight of Heaven EX] (-${auraDmg} HP to attacker: Mana ${attacker.stats.mana} < ${defender.stats.mana})`);
   }
 
   attacker.critStars = Math.min(50, (attacker.critStars || 0) + starsGen);

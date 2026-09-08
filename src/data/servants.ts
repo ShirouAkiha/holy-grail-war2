@@ -1136,7 +1136,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     noblePhantasm: {
       name: 'Azure-Magenta Ruin: Incineration of Aethel',
       cardType: 'Buster',
-      chant: '⟨ Ruk\'thar Krav\'nok! Vur Aeth\'ra... Ground to glass, sky to ash. Ruin of Ixenor... AZURE-MAGENTA RUIN! ⟩',
+      chant: '⟨ Ruk\'thar Krav\'nok! Vur Aeth\'ra... Krag Kor glass, Zar Kor ash. Ruin of Ixenor... AZURE-MAGENTA RUIN! ⟩',
       description: 'Fires concentrated beams of magenta light that bypass physical durability, incinerating the target\'s Aethel directly and crystallizing the earth into black obsidian glass.',
       target: 'single',
       multiplier: 950,
