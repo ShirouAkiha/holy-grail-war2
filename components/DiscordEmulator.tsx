@@ -2907,7 +2907,11 @@ export default function DiscordEmulator({
     // COMMAND 4.5: /profile and /patrol
     // ----------------------------------------------------
     if (trimmed === '/profile' || trimmed.startsWith('/profile ') || trimmed.startsWith('/grailwar profile')) {
-      postProfileEmbed();
+      if (trimmed.includes('public') || trimmed.includes('share') || trimmed.includes('boast')) {
+        handleButtonClick('profile_share_public');
+      } else {
+        postProfileEmbed();
+      }
       return;
     }
 
@@ -4232,9 +4236,9 @@ export default function DiscordEmulator({
 
   const postProfileEmbed = (customMsg?: string) => {
     const userParticipant = grailWar.participants[master.discordId] || Object.values(grailWar.participants)[0];
-    const activeServant = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
+    const curServant = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
 
-    if (!activeServant || !master.servants || master.servants.length === 0) {
+    if (!curServant || !master.servants || master.servants.length === 0) {
       addMessage({
         id: getNextId('bot_profile_no_servant'),
         sender: 'bot',
@@ -4256,21 +4260,27 @@ export default function DiscordEmulator({
 
     const ward = userParticipant?.boundedField || 'none';
     const autoEvade = userParticipant?.autoEvadeEnabled !== false;
-    const seals = userParticipant?.commandSeals ?? 3;
+    const seals = userParticipant?.commandSeals ?? master.commandSeals ?? 3;
     const isExposed = userParticipant?.isExposed;
+    const isUnderSanctuary = userParticipant?.inSanctuary || userParticipant?.inChurchSanctuary;
 
-    let wardLabel = '🚫 **No Wards Active** (No perimeter defenses)';
+    let wardLabel = '🚫 **No Wards Active** *(No perimeter defenses)*';
     if (ward === 'ward') {
-      wardLabel = '🛡️ **Sanctuary Bounded Field** (Absorbs 60% Ambush DMG)';
+      wardLabel = '🛡️ **Mage Sanctuary Bounded Field** *(Absorbs 60% Ambush DMG & Auto-Heals)*';
     } else if (ward === 'alarm') {
-      wardLabel = '🚨 **Intrusion Alarm Trap** (Alerts & Deals 3,000 retaliatory DMG)';
+      wardLabel = '🚨 **Intrusion Alarm Trap** *(Alerts & Deals 3,000 retaliatory DMG)*';
     }
 
-    const sTemplate = activeServant.template;
-    const servantName = activeServant.nickname || sTemplate.name;
+    const myChannelTraps = (grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
+    const channelTrapsSummary = myChannelTraps.length > 0
+      ? myChannelTraps.map(t => `\`${t.channelName}\` (${t.trapType === 'alarm' ? '🚨 Alarm' : '🩸 Bloodfort'})`).join(', ')
+      : 'None *(Deploy from /trap)*';
+
+    const sTemplate = curServant.template;
+    const servantName = curServant.nickname || sTemplate.name;
     const servantClass = sTemplate.servantClass;
 
-    let classPassive = 'None (Specializes in standard strategic match)';
+    let classPassive = 'None (Specializes in standard tactical combat)';
     if (servantClass === 'Saber' || servantClass === 'Archer' || servantClass === 'Lancer') {
       classPassive = '👁️ **Instinct / Clairvoyance:** 35% chance to predict ambushes, parrying 80% damage and dealing 1,500 counter DMG.';
     } else if (servantClass === 'Assassin') {
@@ -4279,37 +4289,58 @@ export default function DiscordEmulator({
       classPassive = '❤️ **Battle Continuation (Guts):** Revives once with 25% Max HP if dealt a fatal blow.';
     }
 
-    const np = sTemplate.noblePhantasm;
+    const userCurHp = userParticipant ? calculateCurrentHp(userParticipant) : calculateServantMaxHp(curServant);
+    const userMaxHp = userParticipant?.maxHp || calculateServantMaxHp(curServant);
+    const hpPercent = Math.max(0, Math.min(100, Math.round((userCurHp / Math.max(1, userMaxHp)) * 100)));
 
-    const userCurHp = userParticipant ? calculateCurrentHp(userParticipant) : (activeServant ? calculateServantMaxHp(activeServant) : 10000);
-    const userMaxHp = userParticipant?.maxHp || (activeServant ? calculateServantMaxHp(activeServant) : 10000);
+    const totalBlocks = 14;
+    const filledBlocks = Math.max(0, Math.min(totalBlocks, Math.round((hpPercent / 100) * totalBlocks)));
+    const hpBar = '█'.repeat(filledBlocks) + '░'.repeat(totalBlocks - filledBlocks);
+
+    const kills = userParticipant?.kills ?? master.servantKills ?? 0;
+    const duelsWon = master.duelsWon || 0;
+    const duelsLost = master.duelsLost || 0;
+    const totalDuels = duelsWon + duelsLost;
+    const winRate = totalDuels > 0 ? Math.round((duelsWon / totalDuels) * 100) : 0;
+
+    let standingTag = '🟢 Active Competitor';
+    if (userParticipant?.isAlive === false) {
+      standingTag = '💀 Dissolved Saint Graph';
+    } else if (isUnderSanctuary) {
+      standingTag = '🕊️ Under Church Asylum';
+    }
+
+    let churchStanding = master.reputationRank || '🕊️ Honorable Neutral';
+    if (master.bountyActive && master.bountyRewardSq) {
+      churchStanding += ` *(⚠️ 💎 ${master.bountyRewardSq} SQ Bounty)*`;
+    }
 
     addMessage({
       id: getNextId('bot_profile_dossier'),
       sender: 'bot',
       timestamp: 'Just now',
       embed: {
-        title: `👤 Secret Master Dossier | ${master.username}`,
+        title: `👤 Master Dossier | ${master.username} [${standingTag}]`,
         description:
-          `*(🔒 This confidential profile is only visible to you. Other Masters cannot see these details.)*\n\n` +
+          `*(🔒 Confidential Private Dossier — only visible to you)*\n\n` +
+          `💠 **Command Seals:** \`${'✦ '.repeat(seals)}${'✧ '.repeat(Math.max(0, 3 - seals))}\` (**${seals}/3**) | 💎 **${master.saintQuartz || 0} SQ** | 🎴 **${master.servants?.length || 1}** Servant(s)\n\n` +
           (customMsg ? `📢 **Action Outcome:**\n${customMsg}\n\n` : '') +
-          `⚔️ **Contracted Servant:**\n` +
-          `• **${servantName}** — Class: **${servantClass}** [Balanced Parity]\n` +
-          `• **Noble Phantasm:** ✨ **${np.name}** (${np.cardType})\n` +
-          `  *${np.chant || np.description}*\n\n` +
-          `📊 **Combat Parameters:**\n` +
-          `• **HP:** ❤️ \`${userCurHp.toLocaleString()} / ${userMaxHp.toLocaleString()}\`\n` +
-          `• **Base ATK:** ⚔️ \`${sTemplate.baseAtk.toLocaleString()}\`\n` +
-          `• **Noble Phantasm Charge:** ⚡ \`100% Ready\`\n\n` +
-          `🛡️ **Workshop Defenses & Wards:**\n` +
-          `• **Active Bounded Field:** ${wardLabel}\n` +
-          `• **Command Seal Auto-Evacuation:** ${autoEvade ? '🟢 **ENABLED** (Retreats to shadows with 1 HP on lethal blow)' : '🔴 **DISABLED**'}\n` +
-          `• **Command Seals:** \`${'✦ '.repeat(seals)}${'✧ '.repeat(Math.max(0, 3 - seals))}\` (**${seals}/3** remaining)\n\n` +
-          `👁️ **Servant Class Passive:**\n${classPassive}\n\n` +
-          `🏆 **Grail War Status:**\n` +
-          `• **Stealth Status:** ${isExposed ? '⚠️ **EXPOSED TO PUBLIC WAR BOARD**' : '🕶️ **Concealed in Shadows** (Anonymous to rivals)'}\n` +
-          `• **Kills:** **${userParticipant?.kills || 0}** | **Status:** ${userParticipant?.isAlive !== false ? '🟢 Active Competitor' : '💀 Eliminated'}`,
+          `⚔️ **MASTER COMBAT RECORD & WAR STATUS:**\n` +
+          `• **War Standing:** ${standingTag} [${isExposed ? '⚠️ **EXPOSED TO PUBLIC WAR BOARD**' : '🕶️ **Concealed in Shadows**'}]\n` +
+          `• **Servant Kills:** 💀 **${kills}** Dissolved\n` +
+          `• **Duel Record:** ⚔️ **${duelsWon}W - ${duelsLost}L** (${winRate}% Win Rate)\n` +
+          `• **Church Standing:** ${churchStanding}\n\n` +
+          `🗡️ **ACTIVE CONTRACTED SERVANT:**\n` +
+          `• **Servant:** **${servantName}** (${servantClass})\n` +
+          `• **Vitality:** ❤️ [${hpBar}] \`${userCurHp.toLocaleString()} / ${userMaxHp.toLocaleString()}\` (${hpPercent}%)\n` +
+          `• **Class Passive:** ${classPassive}\n\n` +
+          `🏰 **WORKSHOP DEFENSES:**\n` +
+          `• **Bounded Field:** ${wardLabel}\n` +
+          `• **Auto-Evacuation:** ${autoEvade ? '🟢 **ON** *(Retreats automatically on lethal blow)*' : '🔴 **OFF**'}\n` +
+          `• **Territorial Wards:** ${channelTrapsSummary}\n\n` +
+          `*Configure workshop defenses, heal, or click **[Share Public Card]** below to broadcast your profile to the server:*`,
         color: isExposed ? '#ef4444' : '#3b82f6',
+        thumbnailUrl: curServant.template?.avatarUrl,
         footer: 'Private Master Dossier • Holy Grail War Protocol'
       },
       components: {
@@ -4334,21 +4365,33 @@ export default function DiscordEmulator({
             emoji: '🚨'
           },
           {
+            id: 'profile_share_public',
+            label: 'Share Public Card',
+            style: 'primary',
+            emoji: '📢'
+          },
+          {
+            id: 'profile_heal',
+            label: 'Healing Ritual (+40%)',
+            style: 'success',
+            emoji: '✨'
+          },
+          {
             id: 'profile_toggle_evade',
             label: autoEvade ? 'Auto-Evacuate: ON 🟢' : 'Auto-Evacuate: OFF 🔴',
             style: autoEvade ? 'success' : 'secondary'
           },
           {
-            id: 'profile_heal',
-            label: 'Channel Mana (Heal)',
-            style: 'success',
-            emoji: '🩹'
+            id: 'profile_refresh',
+            label: 'Refresh',
+            style: 'secondary',
+            emoji: '🔄'
           },
           {
             id: 'quick_war_status',
             label: 'War Board (/grailwar)',
-            style: 'primary',
-            emoji: '📋'
+            style: 'secondary',
+            emoji: '📜'
           }
         ]
       }
@@ -7100,6 +7143,62 @@ export default function DiscordEmulator({
             onUpdateMaster({ ...master, servants: updatedServants });
           }
         }
+      } else if (btnId === 'profile_share_public') {
+        const userParticipant = currentWar.participants[master.discordId] || Object.values(currentWar.participants)[0];
+        const curServant = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
+        if (!curServant) return;
+
+        const seals = userParticipant?.commandSeals ?? master.commandSeals ?? 3;
+        const isExposed = userParticipant?.isExposed;
+        const isUnderSanctuary = userParticipant?.inSanctuary || userParticipant?.inChurchSanctuary;
+
+        const sTemplate = curServant.template;
+        const servantName = isExposed ? (curServant.nickname || sTemplate.name || 'Heroic Spirit') : '[Classified in Shadows]';
+        const servantClass = sTemplate.servantClass;
+
+        const userCurHp = userParticipant ? calculateCurrentHp(userParticipant) : calculateServantMaxHp(curServant);
+        const userMaxHp = userParticipant?.maxHp || calculateServantMaxHp(curServant);
+        const hpPercent = Math.max(0, Math.min(100, Math.round((userCurHp / Math.max(1, userMaxHp)) * 100)));
+        const totalBlocks = 14;
+        const filledBlocks = Math.max(0, Math.min(totalBlocks, Math.round((hpPercent / 100) * totalBlocks)));
+        const hpBar = '█'.repeat(filledBlocks) + '░'.repeat(totalBlocks - filledBlocks);
+
+        const kills = userParticipant?.kills ?? master.servantKills ?? 0;
+        const duelsWon = master.duelsWon || 0;
+        const duelsLost = master.duelsLost || 0;
+        const totalDuels = duelsWon + duelsLost;
+        const winRate = totalDuels > 0 ? Math.round((duelsWon / totalDuels) * 100) : 0;
+
+        let standingTag = '🟢 Active Competitor';
+        if (userParticipant?.isAlive === false) {
+          standingTag = '💀 Dissolved Saint Graph';
+        } else if (isUnderSanctuary) {
+          standingTag = '🕊️ Under Church Asylum';
+        }
+
+        addMessage({
+          id: getNextId('bot_public_profile'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `📢 MASTER DOSSIER | ${master.username.toUpperCase()}`,
+            description:
+              `Master **${master.username}** has broadcast their Master credentials to the server!\n\n` +
+              `💠 **Command Seals:** \`${'✦ '.repeat(seals)}${'✧ '.repeat(Math.max(0, 3 - seals))}\` (${seals}/3) | 🎴 **${master.servants?.length || 1}** Contracted Spirit(s)\n\n` +
+              `⚔️ **COMBAT RECORD & STANDING:**\n` +
+              `• **War Standing:** ${standingTag} [${isExposed ? '⚠️ **EXPOSED**' : '🕶️ **Stealth**'}]\n` +
+              `• **Servant Kills:** 💀 **${kills}** Dissolved\n` +
+              `• **Duel Record:** ⚔️ **${duelsWon}W - ${duelsLost}L** (${winRate}% Win Rate)\n` +
+              `• **Church Standing:** ${master.reputationRank || '🕊️ Honorable Neutral'}\n\n` +
+              `🗡️ **CONTRACTED HEROIC SPIRIT:**\n` +
+              `• **Heroic Spirit:** **${servantName}** (\`${servantClass}\`)\n` +
+              `• **Vitality:** ❤️ [${hpBar}] \`${userCurHp.toLocaleString()} / ${userMaxHp.toLocaleString()}\` (${hpPercent}%)`,
+            color: '#3b82f6',
+            thumbnailUrl: isExposed ? curServant.template?.avatarUrl : undefined,
+            footer: 'Public Master Dossier • Holy Grail War'
+          }
+        });
+        return;
       } else if (btnId === 'profile_refresh') {
         actionMsg = '🔄 Profile refreshed.';
       }

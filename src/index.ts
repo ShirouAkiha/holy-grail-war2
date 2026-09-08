@@ -47,7 +47,7 @@ import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
 import { allocateStatPoints } from './engine/statSystem';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from './data/noblePhantasmGifs';
 import { renderServantProfileCard, renderDialogueCard } from './canvas/renderer';
-import { buildProfileEmbed, buildProfileButtons } from './commands/profile';
+import { buildProfileEmbed, buildPublicProfileEmbed, buildProfileButtons } from './commands/profile';
 import { buildDailyEmbed, buildDailyButtons } from './commands/daily';
 import { buildDefensesEmbed, buildDefensesButtons } from './commands/defenses';
 import { buildChurchEmbed, buildChurchButtons } from './commands/church';
@@ -871,6 +871,28 @@ client.on(Events.InteractionCreate, async interaction => {
           await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
         } else {
           await interaction.update({ embeds: [embed], components: btns });
+        }
+        return;
+      }
+
+      if (btnId === 'profile_share_public') {
+        if (isCivilian) {
+          await interaction.reply({
+            flags: MessageFlags.Ephemeral,
+            content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
+          });
+          return;
+        }
+        const publicEmbed = buildPublicProfileEmbed(master, war);
+        try {
+          if (interaction.channel && 'send' in interaction.channel) {
+            await (interaction.channel as any).send({ embeds: [publicEmbed] });
+            await interaction.reply({ content: '📢 **Master Dossier card successfully shared to channel!**', flags: MessageFlags.Ephemeral });
+          } else {
+            await interaction.reply({ embeds: [publicEmbed] });
+          }
+        } catch {
+          await interaction.reply({ embeds: [publicEmbed] });
         }
         return;
       }
