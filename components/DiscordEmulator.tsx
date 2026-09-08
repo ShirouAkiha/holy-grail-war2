@@ -5718,7 +5718,7 @@ export default function DiscordEmulator({
         `⚔️ **FUYUKI BATTLE ENGAGEMENT CHRONICLES (${battleEvents.length} Recorded Clashes):**\n` +
         `• Tracks all ambushes, Noble Phantasm clashes, bounded field triggers, and master eliminations.\n\n` +
         `${battleText}\n\n` +
-        `💡 *Initiate an ambush via \`/ambush @Master\` or click "Simulate Clash" below to test combat preparedness.*`;
+        `💡 *Initiate an ambush via \`/ambush @Master\` or patrol sectors to uncover traps and scout enemy movements.*`;
 
     } else if (category === 'defenses') {
       title = '🏰 Mage Workshop & Personal Sanctuary Defenses';
@@ -5874,7 +5874,6 @@ export default function DiscordEmulator({
       actionButtons = [
         { id: 'war_act_patrol', label: 'Patrol Sector', style: 'success', emoji: '👁️' },
         { id: 'war_attack_prompt', label: 'Ambush Suspect', style: 'danger', emoji: '⚔️' },
-        { id: 'war_act_skirmish', label: 'Simulate Clash', style: 'secondary', emoji: '⚔️' },
         { id: 'war_act_heal', label: 'Leyline Heal (40%)', style: 'primary', emoji: '✨' }
       ];
     } else if (category === 'defenses') {

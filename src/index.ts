@@ -1018,14 +1018,6 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
-      if (btnId === 'war_skirmish') {
-        const chanTag = interaction.channel && 'name' in interaction.channel ? `#${(interaction.channel as any).name}` : '#general';
-        const res = simulateWarSkirmish(war, chanTag);
-        const uP = res.updatedWar.participants[interaction.user.id];
-        await interaction.update({ embeds: [buildWarEmbed(res.updatedWar, uP, res.message)], components: buildWarButtons() });
-        return;
-      }
-
       if (btnId === 'war_refresh' || btnId === 'war_status_board' || btnId === 'quick_war_status') {
         const uP = war.participants[interaction.user.id];
         const embed = buildWarEmbed(war, uP, '🔄 Intelligence Board refreshed.');

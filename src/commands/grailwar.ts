@@ -349,7 +349,7 @@ export function buildGrailWarHub(
         `• 🗡️ **Surprise Ambushes:** **${ambushCount}** ambush strikes launched\n\n` +
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `📜 **CHRONICLE OF RECORDED ENGAGEMENTS:**\n${battleLines}\n\n` +
-        `💡 *Tip: Use \`/attack\` to ambush suspects, or click [Simulate Clash] below to provoke skirmishes.*`
+        `💡 *Tip: Use \`/attack\` to ambush suspects or \`/patrol\` to uncover traps and enemy positions.*`
       )
       .setColor(0xf97316)
       .setFooter({ text: 'Holy Grail War Battle Chronicle • Use options below to switch views' });
@@ -495,7 +495,6 @@ export function buildGrailWarHub(
 
     const actionButtonsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('war_act_patrol').setLabel('Patrol Sector').setEmoji('👁️').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId('war_act_skirmish').setLabel('Simulate Clash').setEmoji('⚔️').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('war_act_heal').setLabel('Leyline Heal (40%)').setEmoji('✨').setStyle(ButtonStyle.Primary)
     );
     components.push(actionButtonsRow);
@@ -608,11 +607,6 @@ export function attachGrailWarCollector(
       // BOARD ACTIONS
       else if (i.customId === 'war_act_patrol') {
         const res = patrolCityInWar(war, i.user.id, i.user.username, currentChan);
-        war = res.updatedWar;
-        actionOutcome = res.message;
-        await saveMaster(master);
-      } else if (i.customId === 'war_act_skirmish') {
-        const res = simulateWarSkirmish(war, currentChan);
         war = res.updatedWar;
         actionOutcome = res.message;
         await saveMaster(master);
