@@ -8,7 +8,7 @@ import {
   StatBalanceMode,
   TurnActionChoice
 } from '../types/index';
-import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives } from '../data/servants';
+import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives, getServantAvatarAndCardArt } from '../data/servants';
 
 // Global PvP damage modifier (0.35x) to scale FGO-style formula output down to ~25k-35k Servant HP pools
 export const PVP_DAMAGE_MODIFIER = 0.35;
@@ -185,7 +185,7 @@ export function createCombatantFromMasterServant(
     name: servantInstance.nickname || t.name,
     masterName,
     servantClass: t.servantClass,
-    avatarUrl: t.avatarUrl,
+    avatarUrl: getServantAvatarAndCardArt(servantInstance).avatarUrl,
     maxHp,
     currentHp: startingHp,
     atk: rawAtk,

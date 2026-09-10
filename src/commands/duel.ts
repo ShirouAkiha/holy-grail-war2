@@ -11,7 +11,7 @@ import {
 , MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster, getDuelNpSettings } from '../database/service';
 import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog, PassiveSkill } from '../types';
-import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives } from '../data/servants';
+import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives, getServantAvatarAndCardArt } from '../data/servants';
 import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp, getReputationInfo } from '../engine/grailwar';
 import { renderBattleTurnSummary, renderDialogueCard, renderDefeatDialogueCard } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER, calculateFleeChance, rollFleeSuccess } from '../engine/battle';
@@ -378,7 +378,7 @@ async function createTurnSummaryAttachment(
     name: p1.servant.template.name,
     masterName: p1.username,
     servantClass: p1.servant.template.servantClass,
-    avatarUrl: (p1.servant as any).avatarUrl || p1.servant.template?.avatarUrl || '',
+    avatarUrl: getServantAvatarAndCardArt(p1.servant).avatarUrl,
     maxHp: p1.maxHp,
     currentHp: p1.currentHp,
     atk: p1.atk,
@@ -399,7 +399,7 @@ async function createTurnSummaryAttachment(
     name: p2.servant.template.name,
     masterName: p2.username,
     servantClass: p2.servant.template.servantClass,
-    avatarUrl: (p2.servant as any).avatarUrl || p2.servant.template?.avatarUrl || '',
+    avatarUrl: getServantAvatarAndCardArt(p2.servant).avatarUrl,
     maxHp: p2.maxHp,
     currentHp: p2.currentHp,
     atk: p2.atk,

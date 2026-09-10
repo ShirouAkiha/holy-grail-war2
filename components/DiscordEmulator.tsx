@@ -14,7 +14,7 @@ import {
   BattleState,
   CraftEssence
 } from '../lib/types';
-import { SERVANT_DATABASE, getDefaultClassPassives } from '../lib/data/servants';
+import { SERVANT_DATABASE, getDefaultClassPassives, getServantAvatarAndCardArt } from '../lib/data/servants';
 import { getAllThroneServants, saveCustomServantsToStorage } from '../lib/state/gameState';
 import { getNoblePhantasmGif, getNoblePhantasmChant, setCustomNpAnimationInMemory, setCustomNpAnimationsBatch } from '../lib/data/noblePhantasmGifs';
 import { normalizeMediaUrl } from '../lib/utils/mediaResolver';
@@ -5257,17 +5257,7 @@ export default function DiscordEmulator({
       canvasType = 'servant';
       canvasPayload = { servant: targetServant, masterName: master.username };
 
-      const tsAny = targetServant as any;
-      const isUnsplash = (url?: string) => !url || url.includes('unsplash.com');
-      let avatarUrl = (!isUnsplash(tsAny.avatarUrl) ? tsAny.avatarUrl : null) ||
-                      (!isUnsplash(tsAny.template?.avatarUrl) ? tsAny.template?.avatarUrl : null) ||
-                      canonical?.avatarUrl ||
-                      t.avatarUrl;
-      let cardArtUrl = (!isUnsplash(tsAny.cardArtUrl) ? tsAny.cardArtUrl : null) ||
-                       (!isUnsplash(tsAny.template?.cardArtUrl) ? tsAny.template?.cardArtUrl : null) ||
-                       canonical?.cardArtUrl ||
-                       t.cardArtUrl ||
-                       avatarUrl;
+      const { avatarUrl, cardArtUrl } = getServantAvatarAndCardArt(targetServant, customServants);
 
       artworkEmbed = {
         title: `🖼️ Servant Character Portrait: ${sName}`,

@@ -11,7 +11,7 @@ import {
 , MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { renderServantProfileCard, renderDialogueCard } from '../canvas/renderer';
-import { SERVANT_DATABASE, getDefaultClassPassives } from '../data/servants';
+import { SERVANT_DATABASE, getDefaultClassPassives, getServantAvatarAndCardArt } from '../data/servants';
 import { getServantProfile } from '../engine/dialogue';
 import { getOrInitWarSession, exposeMasterInWar, getHealingStatus } from '../engine/grailwar';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
@@ -273,18 +273,7 @@ export async function buildServantHub(
       )
       .setColor(t.rarity === 5 ? 0xd4af37 : 0x38bdf8);
 
-    const isUnsplash = (url?: string) => !url || url.includes('unsplash.com');
-
-    let avatarUrl = (!isUnsplash(targetServant.avatarUrl) ? targetServant.avatarUrl : null) ||
-                    (!isUnsplash(targetServant.template?.avatarUrl) ? targetServant.template?.avatarUrl : null) ||
-                    canonical?.avatarUrl ||
-                    t.avatarUrl;
-
-    let cardArtUrl = (!isUnsplash(targetServant.cardArtUrl) ? targetServant.cardArtUrl : null) ||
-                     (!isUnsplash(targetServant.template?.cardArtUrl) ? targetServant.template?.cardArtUrl : null) ||
-                     canonical?.cardArtUrl ||
-                     t.cardArtUrl ||
-                     avatarUrl;
+    const { avatarUrl, cardArtUrl } = getServantAvatarAndCardArt(targetServant);
 
     if (avatarUrl) {
       embed.setThumbnail(avatarUrl);

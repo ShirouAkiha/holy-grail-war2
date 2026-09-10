@@ -170,6 +170,70 @@ export function getUnlockedPassives(
   return maxTwo;
 }
 
+/**
+ * Safely resolves avatarUrl and cardArtUrl for a servant, ensuring no invalid URLs
+ * (such as Unsplash stock placeholders or NP animation GIFs) leak into portrait fields.
+ */
+export function getServantAvatarAndCardArt(
+  servantInput: any,
+  customServants?: ServantTemplate[]
+): { avatarUrl: string; cardArtUrl: string } {
+  if (!servantInput) {
+    return {
+      avatarUrl: 'https://ella.janitorai.com/media-approved/B9sAHeFp8-jdUk8VB4Y_f.webp',
+      cardArtUrl: 'https://ella.janitorai.com/media-approved/B9sAHeFp8-jdUk8VB4Y_f.webp'
+    };
+  }
+
+  const template = servantInput.template || servantInput;
+  const templateId = servantInput.templateId || template.id || servantInput.id;
+  const canonical = SERVANT_DATABASE.find(
+    s => s.id === templateId || 
+         (s.name && template.name && s.name.toLowerCase() === template.name.toLowerCase())
+  ) || (customServants && customServants.find(
+    s => s.id === templateId || 
+         (s.name && template.name && s.name.toLowerCase() === template.name.toLowerCase())
+  ));
+
+  const npGif = template.noblePhantasm?.animationUrl ||
+                template.noblePhantasm?.gifUrl ||
+                canonical?.noblePhantasm?.animationUrl ||
+                canonical?.noblePhantasm?.gifUrl;
+
+  const isInvalid = (url?: string) => {
+    if (!url || typeof url !== 'string' || !url.trim()) return true;
+    const clean = url.trim().toLowerCase();
+    if (clean.includes('unsplash.com')) return true;
+    if (npGif && clean === npGif.trim().toLowerCase()) return true;
+    if (clean.includes('banaaizq4gi91.gif') || clean.includes('cu_chulain_np')) return true;
+    return false;
+  };
+
+  let avatarUrl = '';
+  if (!isInvalid(servantInput.avatarUrl)) {
+    avatarUrl = servantInput.avatarUrl;
+  } else if (!isInvalid(template.avatarUrl)) {
+    avatarUrl = template.avatarUrl;
+  } else if (canonical && !isInvalid(canonical.avatarUrl)) {
+    avatarUrl = canonical.avatarUrl;
+  } else {
+    avatarUrl = canonical?.avatarUrl || 'https://ella.janitorai.com/media-approved/B9sAHeFp8-jdUk8VB4Y_f.webp';
+  }
+
+  let cardArtUrl = '';
+  if (!isInvalid(servantInput.cardArtUrl)) {
+    cardArtUrl = servantInput.cardArtUrl;
+  } else if (!isInvalid(template.cardArtUrl)) {
+    cardArtUrl = template.cardArtUrl;
+  } else if (canonical && !isInvalid(canonical.cardArtUrl)) {
+    cardArtUrl = canonical.cardArtUrl;
+  } else {
+    cardArtUrl = avatarUrl;
+  }
+
+  return { avatarUrl, cardArtUrl };
+}
+
 export const SERVANT_DATABASE: ServantTemplate[] = [
   // Heroic Spirits - Equalized & Balanced for Competitive Grail War
   // All Servants share an equalized total power budget (STR+END+AGI+MNA+LCK = 76 points).

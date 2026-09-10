@@ -127,6 +127,8 @@ export interface MasterServantInstance {
   masterId: string;
   templateId: string;
   nickname?: string;
+  avatarUrl?: string;
+  cardArtUrl?: string;
   level: number;
   experience: number;
   currentHp?: number;

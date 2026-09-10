@@ -1,5 +1,5 @@
 import { MasterProfile, MasterServantInstance, CraftEssence, ServantTemplate, GachaBanner } from '../types';
-import { SERVANT_DATABASE } from '../data/servants';
+import { SERVANT_DATABASE, getServantAvatarAndCardArt } from '../data/servants';
 import { CRAFT_ESSENCE_DATABASE, CE_GACHA_BANNERS } from '../data/craftEssences';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import fs from 'fs';
@@ -215,20 +215,21 @@ function loadFromDisk() {
               );
               if (canonical) {
                 const customSaved = savedServantsMap.get(canonical.id);
-                const preservedAvatar = inst.template?.avatarUrl || customSaved?.avatarUrl || canonical.avatarUrl;
-                const preservedCardArt = inst.template?.cardArtUrl || customSaved?.cardArtUrl || canonical.cardArtUrl;
+                const { avatarUrl, cardArtUrl } = getServantAvatarAndCardArt(inst, Array.from(savedServantsMap.values()));
                 inst.template = {
                   ...canonical,
                   ...(customSaved || {}),
                   ...(inst.template || {}),
-                  avatarUrl: preservedAvatar,
-                  cardArtUrl: preservedCardArt,
+                  avatarUrl,
+                  cardArtUrl,
                   baseHp: customSaved?.baseHp || canonical.baseHp,
                   baseAtk: customSaved?.baseAtk || canonical.baseAtk,
                   baseStats: customSaved?.baseStats || canonical.baseStats,
                   noblePhantasm: customSaved?.noblePhantasm || canonical.noblePhantasm,
                   skills: customSaved?.skills || canonical.skills
                 };
+                inst.avatarUrl = avatarUrl;
+                inst.cardArtUrl = cardArtUrl;
               }
             }
           }
