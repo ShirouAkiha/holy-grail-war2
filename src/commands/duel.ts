@@ -1999,12 +1999,14 @@ async function startInteractiveDuel(
   let p1LastCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Buster', 'Arts', 'Quick'];
   let p2LastCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Arts', 'Buster', 'Quick'];
 
+  let initiativeUserId = p1.userId;
   if (p2Speed > p1Speed) {
+    initiativeUserId = p2.userId;
     activeUserId = p2.userId;
     const fasterName = p2.servant.nickname || p2.servant.template?.name || 'Opponent Servant';
     combatLogs.push(`⚡ **Agility Initiative:** **${fasterName}** (Agi: ${agi2}) outmaneuvered their opponent and claims the first move!`);
 
-    // If P2 is AI, resolve AI strike immediately on turn 1
+    // If P2 is AI, resolve AI strike immediately on turn 1 of Round 1
     if (p2.isAi) {
       const aiCards = chooseAiSequence(p2);
       p2LastCards = aiCards;
@@ -2012,11 +2014,11 @@ async function startInteractiveDuel(
       const aiLog = resolveStrike(p2, p1, aiCards, aiDialogue);
       refreshCombatantHand(p2);
       combatLogs.push(aiLog);
-      round++;
-      // Now it's P1's turn
+      // Now it's P1's turn to complete Round 1 (keep round at 1)
       activeUserId = p1.userId;
     }
   } else {
+    initiativeUserId = p1.userId;
     const fasterName = p1.servant.nickname || p1.servant.template?.name || 'Your Servant';
     combatLogs.push(`⚡ **Agility Initiative:** **${fasterName}** (Agi: ${agi1}) outmaneuvered their opponent and claims the first move!`);
   }
@@ -2499,8 +2501,6 @@ async function startInteractiveDuel(
 
       // CASE A: Opponent is AI -> AI chooses 3 cards and strikes back
       if (defender.isAi) {
-        round++;
-
         // AI tactical skill usage
         const aiSkills = defender.servant.template.skills || [];
         const aiBond = defender.servant.bondLevel || 3;
@@ -2532,6 +2532,9 @@ async function startInteractiveDuel(
         combatLogs.push(aiLog);
         if (combatLogs.length > 4) combatLogs.shift();
 
+        // 1 full round is complete after both player and AI have acted
+        round++;
+
         if (attacker.currentHp <= 0) {
           collector.stop('finished');
           const finalAttachment = await createTurnSummaryAttachment(p1, p2, round, aiLog, p1CardChoice, p2CardChoice);
@@ -2549,8 +2552,11 @@ async function startInteractiveDuel(
       }
 
       // CASE B: Opponent is human -> Swap active player turn
-      round++;
       activeUserId = defender.userId;
+      // Increment round only when both players have completed their turns (returning to initiative player)
+      if (activeUserId === initiativeUserId) {
+        round++;
+      }
       const nextCombatant = activeUserId === p1.userId ? p1 : p2;
       const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, log, p1CardChoice, p2CardChoice);
       const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
