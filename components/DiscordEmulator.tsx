@@ -8072,7 +8072,9 @@ export default function DiscordEmulator({
       handleCommand('/daily');
     } else if (btnId === 'quick_profile_view') {
       postProfileEmbed();
-    } else if (btnId === 'quick_ce_gacha_view' || btnId === 'quick_ce_gacha_ten') {
+    } else if (btnId === 'quick_ce_gacha_ten') {
+      handleCommand('/cegacha 10');
+    } else if (btnId === 'quick_ce_gacha_view') {
       handleCommand('/cegacha');
     } else if (btnId === 'quick_summon_ritual') {
       handleCommand('/summon ritual');

@@ -46,7 +46,7 @@ import { getOrCreateMaster, getMaster, saveMaster, getAllThroneServants, findSer
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
 import { allocateStatPoints } from './engine/statSystem';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from './data/noblePhantasmGifs';
-import { renderServantProfileCard, renderDialogueCard } from './canvas/renderer';
+import { renderServantProfileCard, renderDialogueCard, renderGachaSummonBanner } from './canvas/renderer';
 import { buildProfileEmbed, buildPublicProfileEmbed, buildProfileButtons } from './commands/profile';
 import { buildDailyEmbed, buildDailyButtons } from './commands/daily';
 import { buildDefensesEmbed, buildDefensesButtons } from './commands/defenses';
@@ -768,18 +768,70 @@ client.on(Events.InteractionCreate, async interaction => {
           return;
         }
         const rollResult = executeCraftEssenceGachaRoll({ count: 10, master });
+        master.saintQuartz = rollResult.updatedMaster.saintQuartz;
+        master.craftEssences = rollResult.updatedMaster.craftEssences;
         await saveMaster(master);
+
+        const cardSummary = rollResult.results.map((r: any, idx: number) => {
+          const ce = r.item;
+          const star = '⭐'.repeat(r.rarity || ce.rarity || 3);
+          const newTag = r.isNew ? ' 🌟 **[NEW!]**' : '';
+          const atk = ce.bonusAtk || ce.atkBonus || 0;
+          const hp = ce.bonusHp || ce.hpBonus || 0;
+          const effect = ce.effectText || ce.description || '';
+          return `**${idx + 1}.** ${star} **${ce.name}**${newTag}\n   ↳ *${effect}* (+${atk} ATK / +${hp} HP)`;
+        }).join('\n');
+
+        let files: AttachmentBuilder[] = [];
+        let imageAttachmentName: string | undefined = undefined;
+
+        try {
+          const canvasBuffer = await renderGachaSummonBanner(rollResult.results, '10x Craft Essence Multi-Summon');
+          const attachment = new AttachmentBuilder(canvasBuffer, { name: 'ce_summon.png' });
+          files = [attachment];
+          imageAttachmentName = 'attachment://ce_summon.png';
+        } catch (canvasErr) {
+          console.error('Failed to render gacha canvas banner:', canvasErr);
+        }
+
+        const embedColor = rollResult.ssrsPulled > 0 ? 0xf59e0b : rollResult.srsPulled > 0 ? 0xa855f7 : 0x38bdf8;
+
         const embed = new EmbedBuilder()
           .setTitle('🎁 10x Craft Essence Multi-Summon Results')
           .setDescription(
             `**10x Craft Essence Invocations Complete!**\n\n` +
-            `💎 **Remaining Balance:** \`${master.saintQuartz} SQ\`\n\n` +
-            rollResult.results.map((ce: any, idx: number) => `**${idx + 1}.** ${'⭐'.repeat(ce.rarity)} **${ce.name}** (${ce.type || 'CE'})`).join('\n')
+            `💎 **Remaining Balance:** \`${master.saintQuartz} SQ\` *(Spent 30 SQ)*\n` +
+            `📦 **Total Essences in Vault:** \`${master.craftEssences?.length || 0}\`\n\n` +
+            `### 🔮 Relics Summoned:\n` +
+            cardSummary +
+            `\n\n*Use \`/inventory\` or \`/customise equip\` to bind these Mystic Codes to your Servant!*`
           )
-          .setColor(0x38bdf8)
-          .setFooter({ text: 'Craft Essence Forge • Holy Grail War' });
-        
-        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+          .setColor(embedColor)
+          .setFooter({ text: 'Craft Essence Forge • Holy Grail War Protocol' });
+
+        if (imageAttachmentName) {
+          embed.setImage(imageAttachmentName);
+        }
+
+        const actionButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId('quick_ce_gacha_ten')
+            .setLabel('Roll 10x Again (30 SQ)')
+            .setEmoji('💎')
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId('btn_view_inventory')
+            .setLabel('View Inventory')
+            .setEmoji('📦')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        await interaction.reply({
+          embeds: [embed],
+          files,
+          components: [actionButtons],
+          flags: MessageFlags.Ephemeral
+        });
         return;
       }
 
