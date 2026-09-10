@@ -509,17 +509,24 @@ export async function buildServantHub(
 
   // Roster Dropdown if multiple servants
   if (master.servants.length > 1) {
+    const seenServantIds = new Set<string>();
+    const servantOptions = master.servants.slice(0, 25).map((s: any, sIdx: number) => {
+      let val = s.id || `servant_${sIdx}`;
+      if (seenServantIds.has(val)) {
+        val = `${val}_${sIdx}`;
+      }
+      seenServantIds.add(val);
+      return {
+        label: `${s.nickname || s.template?.name || 'Servant'} (${s.template?.servantClass || 'Saber'})`.slice(0, 100),
+        description: `Lv. ${s.level || 1} • ${s.template?.servantClass || 'Heroic Spirit'} • Points: ${s.availableStatPoints || 0} pts`.slice(0, 100),
+        value: val,
+        default: s.id === targetServant.id
+      };
+    });
     const selectMenu = new StringSelectMenuBuilder()
       .setCustomId('servant_sel_switch')
       .setPlaceholder(`Selected: ${sName} (Lv.${lvl})`)
-      .addOptions(
-        master.servants.slice(0, 25).map((s: any) => ({
-          label: `${s.nickname || s.template?.name || 'Servant'} (${s.template?.servantClass || 'Saber'})`,
-          description: `Lv. ${s.level || 1} • ${s.template?.servantClass || 'Heroic Spirit'} • Points: ${s.availableStatPoints || 0} pts`,
-          value: s.id,
-          default: s.id === targetServant.id
-        }))
-      );
+      .addOptions(servantOptions);
     components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu));
   }
 
@@ -586,10 +593,22 @@ export async function buildServantHub(
     components.push(paramRow, ctrlRow);
   } else if (category === 'equip_ce') {
     const ownedCes = (master.craftEssences || []).filter(Boolean);
-    const ceOptions = ownedCes.slice(0, 25).map((c: any, idx: number) => ({
-      label: `★${c.rarity || 3} ${c.name}`,
-      description: (c.effectText || 'Craft Essence').slice(0, 48),
-      value: c.id || String(idx)
+    const ceCounts = new Map<string, { ce: any; count: number }>();
+    for (const c of ownedCes) {
+      if (!c) continue;
+      const id = c.id || c.name;
+      if (!ceCounts.has(id)) {
+        ceCounts.set(id, { ce: c, count: 1 });
+      } else {
+        ceCounts.get(id)!.count++;
+      }
+    }
+    const uniqueCes = Array.from(ceCounts.values());
+    const ceOptions = uniqueCes.slice(0, 25).map(({ ce, count }) => ({
+      label: `★${ce.rarity || 3} ${ce.name}${count > 1 ? ` (x${count})` : ''}`.slice(0, 100),
+      description: (ce.effectText || 'Craft Essence').slice(0, 100),
+      value: ce.id || ce.name,
+      default: targetServant.equippedCeId === ce.id
     }));
     if (ceOptions.length > 0) {
       const ceSelect = new StringSelectMenuBuilder()
@@ -605,8 +624,8 @@ export async function buildServantHub(
   } else if (category === 'feed_ce') {
     const ownedCes = (master.craftEssences || []).filter(Boolean);
     const ceOptions = ownedCes.slice(0, 25).map((c: any, idx: number) => ({
-      label: `★${c.rarity || 3} ${c.name} (+${getCeExpValue(c)} XP)`,
-      description: (c.effectText || 'Craft Essence').slice(0, 48),
+      label: `★${c.rarity || 3} ${c.name} (+${getCeExpValue(c)} XP)`.slice(0, 100),
+      description: (c.effectText || 'Craft Essence').slice(0, 100),
       value: String(idx)
     }));
     if (ceOptions.length > 0) {

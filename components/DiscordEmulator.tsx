@@ -5450,30 +5450,47 @@ export default function DiscordEmulator({
       const ownedCes = (master.craftEssences || []).filter(Boolean);
       if (ownedCes.length > 0) {
         selectPlaceholder = '👔 Select Craft Essence to equip...';
-        selectOptions = ownedCes.slice(0, 25).map(c => ({
-          value: `servant_sel_equip_ce_${c.id}`,
-          label: `[★${c.rarity}] ${c.name}`,
-          description: `+${c.atkBonus || 0} ATK / +${c.hpBonus || 0} HP • ${c.effectText || c.description || 'Mystic Code'}`
+        const ceCounts = new Map<string, { ce: any; count: number }>();
+        for (const c of ownedCes) {
+          if (!c) continue;
+          const id = c.id || c.name;
+          if (!ceCounts.has(id)) {
+            ceCounts.set(id, { ce: c, count: 1 });
+          } else {
+            ceCounts.get(id)!.count++;
+          }
+        }
+        const uniqueCes = Array.from(ceCounts.values());
+        selectOptions = uniqueCes.slice(0, 25).map(({ ce, count }) => ({
+          value: `servant_sel_equip_ce_${ce.id}`,
+          label: `[★${ce.rarity || 3}] ${ce.name}${count > 1 ? ` (x${count})` : ''}`,
+          description: `+${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP • ${ce.effectText || ce.description || 'Mystic Code'}`
         }));
       }
     } else if (category === ('feed_ce' as any)) {
       const ownedCes = (master.craftEssences || []).filter(Boolean);
       if (ownedCes.length > 0) {
         selectPlaceholder = '🧪 Select Craft Essence to synthesize (+EXP)...';
-        selectOptions = ownedCes.slice(0, 25).map(c => ({
-          value: `servant_sel_feed_ce_${c.id}`,
-          label: `[★${c.rarity}] ${c.name}`,
+        selectOptions = ownedCes.slice(0, 25).map((c, idx) => ({
+          value: `servant_sel_feed_ce_${idx}`,
+          label: `[★${c.rarity || 3}] ${c.name}`,
           description: `Synthesize for Spiritron Mana (+EXP) • ${c.effectText || c.description || 'Mystic Code'}`
         }));
       }
     } else if (category === 'roster' || ownedServants.length > 1) {
       if (ownedServants.length > 1) {
         selectPlaceholder = `Selected: ${sName} (Lv.${lvl})`;
-        selectOptions = ownedServants.slice(0, 25).map(s => ({
-          value: `servant_sel_switch_${s.id}`,
-          label: `${s.nickname || s.template?.name || 'Servant'} (Lv.${s.level || 1})`,
-          description: `Class: ${s.template?.servantClass || 'Saber'} • Points: ${s.availableStatPoints || 0} pts`
-        }));
+        const seenIds = new Set<string>();
+        selectOptions = ownedServants.slice(0, 25).map((s, sIdx) => {
+          let sVal = s.id || `servant_${sIdx}`;
+          if (seenIds.has(sVal)) sVal = `${sVal}_${sIdx}`;
+          seenIds.add(sVal);
+          return {
+            value: `servant_sel_switch_${sVal}`,
+            label: `${s.nickname || s.template?.name || 'Servant'} (Lv.${s.level || 1})`,
+            description: `Class: ${s.template?.servantClass || 'Saber'} • Points: ${s.availableStatPoints || 0} pts`
+          };
+        });
       }
     }
 
