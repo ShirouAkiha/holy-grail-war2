@@ -1139,8 +1139,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       chant: '⟨ Ruk\'thar Krav\'nok! Vur Aeth\'ra... Krag Kor glass, Zar Kor ash. Ruin of Ixenor... AZURE-MAGENTA RUIN! ⟩',
       description: 'Fires concentrated beams of magenta light that bypass physical durability, incinerating the target\'s Aethel directly and crystallizing the earth into black obsidian glass.',
       target: 'single',
-      multiplier: 950,
-      overchargeEffect: 'Ignores Defense buffs + Reduces target DEF by 25% for 3 turns + 20% Buster resist down'
+      multiplier: 600,
+      overchargeEffect: 'Reduces target DEF by 15% for 3 turns + 10% Buster resist down'
     },
     lore: 'An ancient draconic entity from the skyborne sanctuary of Aethelian, predating the founding of Aethelgard. Sworn envoy of Dragon King Ixenor, dispatched to purge the corruption of the Ebonwatch Dungeon. She walks in a relentless straight line, unbothered by obstacles or diplomacy, leaving a trail of petrified black glass. Motivated strictly by the structural preservation of planet Lyozes, she views mortal races as an irritating fungal infection—yet suffers from a lethal form of cute aggression that compels her to violently crush small, innocent creatures without malice.',
     summonQuote: '⟨ Voth zul Adiosa. Nok zul Krav\'nok kri. Shak zhal, Dra\'vos Ixenor rath. ⟩ (I am Adiosa. You are tiny mortal dust. Obey now, Dragon King Ixenor acts through me.)',
