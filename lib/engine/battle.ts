@@ -138,12 +138,14 @@ export function createCombatantFromMasterServant(
 
   if (ce) {
     if (ce.id === 'ce_volumen_hydragyrum' || ce.passiveType === 'invincible_hits') {
+      const hits = 3;
+      const turns = 3;
       initialBuffs.push({
         name: 'Volumen Hydragyrum (Invincibility)',
         type: 'invincible',
         value: 100,
-        remainingTurns: ce.passiveValue || 3,
-        remainingHits: ce.passiveValue || 3,
+        remainingTurns: turns,
+        remainingHits: hits,
         isHitCount: true
       });
       initialBuffs.push({
@@ -603,11 +605,15 @@ export function executeNoblePhantasmLogic(
     // Check Invincibility & Evade on target
     const invIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'invincible') : -1;
     const evaIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'evade') : -1;
-    if ((target.isInvincible || invIdx !== -1) && !actorIgnoresInvincible) {
-      damageDealt = 0;
-      isInvincible = true;
-      if (invIdx !== -1 && target.activeBuffs) {
-        const buff = target.activeBuffs[invIdx];
+    if (invIdx !== -1 && !actorIgnoresInvincible && target.activeBuffs) {
+      const buff = target.activeBuffs[invIdx];
+      if (buff.remainingTurns <= 0 || (buff.remainingHits !== undefined && buff.remainingHits <= 0)) {
+        target.activeBuffs.splice(invIdx, 1);
+        if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
+        damageDealt = totalDmg;
+      } else {
+        damageDealt = 0;
+        isInvincible = true;
         const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /volumen/i.test(buff.name);
         if (isHitBased) {
           if (buff.remainingHits !== undefined) {
@@ -618,15 +624,19 @@ export function executeNoblePhantasmLogic(
             if (buff.remainingTurns <= 0) target.activeBuffs.splice(invIdx, 1);
           }
         }
+        if (!target.activeBuffs.some(b => b.type === 'invincible')) {
+          target.isInvincible = false;
+        }
       }
-      if (!target.activeBuffs || !target.activeBuffs.some(b => b.type === 'invincible')) {
-        target.isInvincible = false;
-      }
-    } else if ((target.isEvading || evaIdx !== -1) && !actorIgnoresInvincible) {
-      damageDealt = 0;
-      isEvaded = true;
-      if (evaIdx !== -1 && target.activeBuffs) {
-        const buff = target.activeBuffs[evaIdx];
+    } else if (evaIdx !== -1 && !actorIgnoresInvincible && target.activeBuffs) {
+      const buff = target.activeBuffs[evaIdx];
+      if (buff.remainingTurns <= 0 || (buff.remainingHits !== undefined && buff.remainingHits <= 0)) {
+        target.activeBuffs.splice(evaIdx, 1);
+        if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
+        damageDealt = totalDmg;
+      } else {
+        damageDealt = 0;
+        isEvaded = true;
         const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /protection from arrows/i.test(buff.name);
         if (isHitBased) {
           if (buff.remainingHits !== undefined) {
@@ -637,9 +647,9 @@ export function executeNoblePhantasmLogic(
             if (buff.remainingTurns <= 0) target.activeBuffs.splice(evaIdx, 1);
           }
         }
-      }
-      if (!target.activeBuffs || !target.activeBuffs.some(b => b.type === 'evade')) {
-        target.isEvading = false;
+        if (!target.activeBuffs.some(b => b.type === 'evade')) {
+          target.isEvading = false;
+        }
       }
     } else {
       damageDealt = totalDmg;
@@ -1101,9 +1111,12 @@ export function executeBattleTurn(
       if (actorIgnores) return { isProtected: false, isInvincible: false, isEvade: false };
 
       const invIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'invincible') : -1;
-      if (target.isInvincible || invIdx !== -1) {
-        if (invIdx !== -1 && target.activeBuffs) {
-          const buff = target.activeBuffs[invIdx];
+      if (invIdx !== -1 && target.activeBuffs) {
+        const buff = target.activeBuffs[invIdx];
+        if (buff.remainingTurns <= 0 || (buff.remainingHits !== undefined && buff.remainingHits <= 0)) {
+          target.activeBuffs.splice(invIdx, 1);
+          if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
+        } else {
           const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /volumen/i.test(buff.name);
           if (isHitBased) {
             if (buff.remainingHits !== undefined) {
@@ -1114,17 +1127,22 @@ export function executeBattleTurn(
               if (buff.remainingTurns <= 0) target.activeBuffs.splice(invIdx, 1);
             }
           }
+          if (!target.activeBuffs.some(b => b.type === 'invincible')) {
+            target.isInvincible = false;
+          }
+          return { isProtected: true, isInvincible: true, isEvade: false };
         }
-        if (!target.activeBuffs || !target.activeBuffs.some(b => b.type === 'invincible')) {
-          target.isInvincible = false;
-        }
-        return { isProtected: true, isInvincible: true, isEvade: false };
+      } else {
+        target.isInvincible = false;
       }
 
       const evaIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'evade') : -1;
-      if (target.isEvading || evaIdx !== -1) {
-        if (evaIdx !== -1 && target.activeBuffs) {
-          const buff = target.activeBuffs[evaIdx];
+      if (evaIdx !== -1 && target.activeBuffs) {
+        const buff = target.activeBuffs[evaIdx];
+        if (buff.remainingTurns <= 0 || (buff.remainingHits !== undefined && buff.remainingHits <= 0)) {
+          target.activeBuffs.splice(evaIdx, 1);
+          if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
+        } else {
           const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /protection from arrows/i.test(buff.name);
           if (isHitBased) {
             if (buff.remainingHits !== undefined) {
@@ -1135,11 +1153,13 @@ export function executeBattleTurn(
               if (buff.remainingTurns <= 0) target.activeBuffs.splice(evaIdx, 1);
             }
           }
+          if (!target.activeBuffs.some(b => b.type === 'evade')) {
+            target.isEvading = false;
+          }
+          return { isProtected: true, isInvincible: false, isEvade: true };
         }
-        if (!target.activeBuffs || !target.activeBuffs.some(b => b.type === 'evade')) {
-          target.isEvading = false;
-        }
-        return { isProtected: true, isInvincible: false, isEvade: true };
+      } else {
+        target.isEvading = false;
       }
 
       return { isProtected: false, isInvincible: false, isEvade: false };
@@ -1242,13 +1262,15 @@ export function executeBattleTurn(
         totalStars += Math.round(2 * cardStarMult);
       });
 
-      // Consume turn-based Evade / Invincibility and tick DEF buffs after defending against this attack sequence
+      // Consume turn-based and hit-based Evade / Invincibility and tick DEF buffs after defending against this attack sequence
       if (target.activeBuffs) {
         target.activeBuffs = target.activeBuffs.filter(b => {
           const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
-          if ((b.type === 'evade' || b.type === 'invincible') && !isHitBased) {
+          if (b.type === 'evade' || b.type === 'invincible') {
             b.remainingTurns--;
-            return b.remainingTurns > 0;
+            if (b.remainingTurns <= 0) return false;
+            if (isHitBased && b.remainingHits !== undefined && b.remainingHits <= 0) return false;
+            return true;
           }
           if (b.type === 'buff_def' && b.remainingTurns < 90) {
             b.remainingTurns--;
@@ -1373,6 +1395,14 @@ export function executeBattleTurn(
   // Execute 1st and 2nd combatants
   resolveActorTurn(firstActor, secondActor, firstChoice);
   resolveActorTurn(secondActor, firstActor, secondChoice);
+
+  // Clean up any expired buffs and sync defensive booleans
+  p1.activeBuffs = p1.activeBuffs.filter(b => b.remainingTurns > 0 && (!b.isHitCount || b.remainingHits === undefined || b.remainingHits > 0));
+  p2.activeBuffs = p2.activeBuffs.filter(b => b.remainingTurns > 0 && (!b.isHitCount || b.remainingHits === undefined || b.remainingHits > 0));
+  p1.isInvincible = p1.activeBuffs.some(b => b.type === 'invincible');
+  p2.isInvincible = p2.activeBuffs.some(b => b.type === 'invincible');
+  p1.isEvading = p1.activeBuffs.some(b => b.type === 'evade');
+  p2.isEvading = p2.activeBuffs.some(b => b.type === 'evade');
 
   // Check victory condition
   let winnerId: string | undefined;

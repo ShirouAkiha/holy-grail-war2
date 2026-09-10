@@ -225,12 +225,14 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
   const ce = servant.equippedCe;
   if (ce) {
     if (ce.id === 'ce_volumen_hydragyrum' || ce.passiveType === 'invincible_hits') {
+      const hits = 3;
+      const turns = 3;
       initialBuffs.push({
         name: 'Volumen Hydragyrum (Invincibility)',
         type: 'invincible',
         value: 100,
-        remainingTurns: ce.passiveValue || 3,
-        remainingHits: ce.passiveValue || 3,
+        remainingTurns: turns,
+        remainingHits: hits,
         isHitCount: true
       });
       initialBuffs.push({
@@ -987,45 +989,53 @@ function resolveStrike(
     // 1. Invincible has priority over Evade
     const invIdx = defender.activeBuffs.findIndex(b => b.type === 'invincible');
     if (invIdx !== -1) {
-      turnBlockedByInvincible = true;
       const buff = defender.activeBuffs[invIdx];
-      const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /volumen/i.test(buff.name);
-      if (isHitBased) {
-        if (buff.remainingHits !== undefined) {
-          buff.remainingHits--;
-          if (buff.remainingHits <= 0) {
-            defender.activeBuffs.splice(invIdx, 1);
-          }
-        } else {
-          buff.remainingTurns--;
-          if (buff.remainingTurns <= 0) {
-            defender.activeBuffs.splice(invIdx, 1);
+      if (buff.remainingTurns <= 0 || (buff.remainingHits !== undefined && buff.remainingHits <= 0)) {
+        defender.activeBuffs.splice(invIdx, 1);
+      } else {
+        turnBlockedByInvincible = true;
+        const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /volumen/i.test(buff.name);
+        if (isHitBased) {
+          if (buff.remainingHits !== undefined) {
+            buff.remainingHits--;
+            if (buff.remainingHits <= 0) {
+              defender.activeBuffs.splice(invIdx, 1);
+            }
+          } else {
+            buff.remainingTurns--;
+            if (buff.remainingTurns <= 0) {
+              defender.activeBuffs.splice(invIdx, 1);
+            }
           }
         }
+        return { isProtected: true, type: 'invincible' };
       }
-      return { isProtected: true, type: 'invincible' };
     }
 
     // 2. Evade check
     const evaIdx = defender.activeBuffs.findIndex(b => b.type === 'evade');
     if (evaIdx !== -1) {
-      turnBlockedByEvade = true;
       const buff = defender.activeBuffs[evaIdx];
-      const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /protection from arrows/i.test(buff.name);
-      if (isHitBased) {
-        if (buff.remainingHits !== undefined) {
-          buff.remainingHits--;
-          if (buff.remainingHits <= 0) {
-            defender.activeBuffs.splice(evaIdx, 1);
-          }
-        } else {
-          buff.remainingTurns--;
-          if (buff.remainingTurns <= 0) {
-            defender.activeBuffs.splice(evaIdx, 1);
+      if (buff.remainingTurns <= 0 || (buff.remainingHits !== undefined && buff.remainingHits <= 0)) {
+        defender.activeBuffs.splice(evaIdx, 1);
+      } else {
+        turnBlockedByEvade = true;
+        const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /protection from arrows/i.test(buff.name);
+        if (isHitBased) {
+          if (buff.remainingHits !== undefined) {
+            buff.remainingHits--;
+            if (buff.remainingHits <= 0) {
+              defender.activeBuffs.splice(evaIdx, 1);
+            }
+          } else {
+            buff.remainingTurns--;
+            if (buff.remainingTurns <= 0) {
+              defender.activeBuffs.splice(evaIdx, 1);
+            }
           }
         }
+        return { isProtected: true, type: 'evade' };
       }
-      return { isProtected: true, type: 'evade' };
     }
 
     return { isProtected: false };
@@ -1331,12 +1341,14 @@ function resolveStrike(
   // Apply total damage to defender
   defender.currentHp = Math.max(0, defender.currentHp - totalSeqDmg);
 
-  // Consume turn-based Evade / Invincibility and decrement DEF buffs after defending against an attack sequence
+  // Consume turn-based and hit-based Evade / Invincibility and decrement DEF buffs after defending against an attack sequence
   defender.activeBuffs = defender.activeBuffs.filter(b => {
     const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
-    if ((b.type === 'evade' || b.type === 'invincible') && !isHitBased) {
+    if (b.type === 'evade' || b.type === 'invincible') {
       b.remainingTurns--;
-      return b.remainingTurns > 0;
+      if (b.remainingTurns <= 0) return false;
+      if (isHitBased && b.remainingHits !== undefined && b.remainingHits <= 0) return false;
+      return true;
     }
     if (b.type === 'buff_def' && b.remainingTurns < 90) {
       b.remainingTurns--;

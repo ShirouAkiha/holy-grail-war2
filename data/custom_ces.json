@@ -70,8 +70,8 @@
     "atkBonus": 500,
     "hpBonus": 500,
     "effectText": "Grants Invincibility for 3 attacks & +15% Damage Cut.",
-    "passiveType": "atk_up",
-    "passiveValue": 20,
+    "passiveType": "invincible_hits",
+    "passiveValue": 3,
     "artworkUrl": "https://cdn.discordapp.com/ephemeral-attachments/1544741784398340116/1544754986469036103/CE2470.webp?ex=6a99a8b0&is=6a985730&hm=87379d776ec451ab4182d1c33c19d4a3597c3f001f407f66595681f893ede6eb&"
   }
 ]
