@@ -205,6 +205,7 @@ export function resolveCombatTurn(
   let atkBuff = 1.0;
   let defBuff = 1.0;
   let isEvading = defender.isEvading || false;
+  let isInvincible = defender.isInvincible || false;
 
   for (const b of attacker.activeBuffs || []) {
     if (b.type === 'buff_atk') atkBuff += b.value / 100;
@@ -212,7 +213,9 @@ export function resolveCombatTurn(
   for (const b of defender.activeBuffs || []) {
     if (b.type === 'buff_def') defBuff += b.value / 100;
     if (b.type === 'evade') isEvading = true;
+    if (b.type === 'invincible') isInvincible = true;
   }
+  const isProtected = isEvading || isInvincible;
 
   const effectiveAtk = attacker.atk * atkBuff;
   const effectiveDef = defender.def * defBuff;
@@ -334,9 +337,8 @@ export function resolveCombatTurn(
 
     let hitDamage = Math.max(300, Math.round(baseHit * classMultiplier * (hitCrit ? critMult : 1.0) * variance)) + busterChainBonusDmg;
 
-    if (isEvading) {
-      hitDamage = Math.round(hitDamage * 0.15);
-      isEvading = false; // consume evade
+    if (isProtected) {
+      hitDamage = 0;
     }
 
     totalDmg += Math.round(hitDamage * PVP_DAMAGE_MODIFIER);
@@ -346,7 +348,10 @@ export function resolveCombatTurn(
   if (is3Cards) {
     chainTags.push('⚔️ BRAVE CHAIN (Extra Attack Finisher)');
     const extraBase = (effectiveAtk * 1.2 * 0.11) - (effectiveDef * 2);
-    const extraDamage = Math.max(400, Math.round(extraBase * classMultiplier * (0.95 + Math.random() * 0.10)));
+    let extraDamage = Math.max(400, Math.round(extraBase * classMultiplier * (0.95 + Math.random() * 0.10)));
+    if (isProtected) {
+      extraDamage = 0;
+    }
     totalDmg += Math.round(extraDamage * PVP_DAMAGE_MODIFIER);
     npGain += 3;
     starsGen += 3;

@@ -546,13 +546,9 @@ export function executeNoblePhantasmLogic(
     if (target.isInvincible || target.activeBuffs.some(b => b.type === 'invincible')) {
       damageDealt = 0;
       isInvincible = true;
-      target.isInvincible = false;
-      target.activeBuffs = target.activeBuffs.filter(b => b.type !== 'invincible');
     } else if (target.isEvading || target.activeBuffs.some(b => b.type === 'evade')) {
       damageDealt = 0;
       isEvaded = true;
-      target.isEvading = false;
-      target.activeBuffs = target.activeBuffs.filter(b => b.type !== 'evade');
     } else {
       damageDealt = totalDmg;
     }
@@ -1054,9 +1050,9 @@ export function executeBattleTurn(
           ((effectiveAtk * 0.11 * cardDmgMult * positionMultiplier * critMultiplier * classMult) - (effectiveDef * 0.2))
         );
 
-        if (target.isEvading) {
+        const isTargetProtected = target.isEvading || target.isInvincible || (target.activeBuffs && target.activeBuffs.some(b => b.type === 'evade' || b.type === 'invincible'));
+        if (isTargetProtected) {
           hitDmg = 0;
-          target.isEvading = false;
         }
 
         totalDamage += Math.round(hitDmg * PVP_DAMAGE_MODIFIER) + (hitDmg > 0 ? flatDivinity : 0);

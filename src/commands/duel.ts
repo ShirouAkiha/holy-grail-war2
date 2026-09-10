@@ -700,8 +700,8 @@ function activateCombatantSkill(
     combatant.activeBuffs.push({ name: skill.name, type: 'buff_def', value: val, remainingTurns: skill.duration || 2 });
     logText = `🛡️ **${combatant.servant.template.name}** activated **${skill.name}**, gaining **+${val}% DEF Buff** for ${skill.duration || 2} turns!`;
   } else if (skill.effectType === 'evade' || skill.effectType === 'invincible') {
-    combatant.activeBuffs.push({ name: skill.name, type: 'evade', value: 85, remainingTurns: skill.duration || 1 });
-    logText = `💨 **${combatant.servant.template.name}** activated **${skill.name}**! Readied an evasive barrier to dodge incoming strikes!`;
+    combatant.activeBuffs.push({ name: skill.name, type: 'evade', value: 100, remainingTurns: skill.duration || 1 });
+    logText = `💨 **${combatant.servant.template.name}** activated **${skill.name}**! Readied an absolute evasive barrier to dodge incoming strikes and Noble Phantasms!`;
   } else if (skill.effectType === 'guts' || skill.id?.includes('guts') || skill.id?.includes('battle_continuation') || skill.id?.includes('thrice')) {
     const reviveAmt = skill.value || Math.round(combatant.maxHp * 0.20);
     combatant.gutsCount = (combatant.gutsCount || 0) + 1;
@@ -867,11 +867,14 @@ function resolveStrike(
 
   let defBuff = 1.0;
   let isEvading = false;
+  let isInvincible = false;
   defender.activeBuffs = defender.activeBuffs.filter(b => {
     if (b.type === 'buff_def') defBuff += b.value / 100;
     if (b.type === 'evade') isEvading = true;
+    if (b.type === 'invincible') isInvincible = true;
     return b.remainingTurns > 0;
   });
+  const isTargetProtected = isEvading || isInvincible;
 
   const effectiveAtk = attacker.baseAtk * (atkBuff + attackerAvengerAtk);
   const effectiveDef = defender.baseDef * defBuff;
@@ -989,10 +992,8 @@ function resolveStrike(
         const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * classMult * cardPerfMult * variance);
         npDmg = Math.round(Math.max(1200, rawNpDmg) * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
-        if (isEvading) {
-          npDmg = Math.round(npDmg * 0.15);
-          defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
-          isEvading = false;
+        if (isTargetProtected) {
+          npDmg = 0; // Completely evade/nullify incoming NP damage
         }
 
         // Refund properties dictated by card type (Balanced FGO tuning)
@@ -1032,10 +1033,8 @@ function resolveStrike(
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2) + busterChainBonusDmg;
       let hitDmg = Math.round(Math.max(350, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
-      if (isEvading) {
-        hitDmg = Math.round(hitDmg * 0.15);
-        defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
-        isEvading = false;
+      if (isTargetProtected) {
+        hitDmg = 0; // 0 DMG on Evade/Invincible
       }
 
       // FGO Buster NP rule: 0% base NP gain, only gains small NP (+2-3%) if Arts 1st Lead is active
@@ -1070,10 +1069,8 @@ function resolveStrike(
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
       let hitDmg = Math.round(Math.max(280, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
-      if (isEvading) {
-        hitDmg = Math.round(hitDmg * 0.15);
-        defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
-        isEvading = false;
+      if (isTargetProtected) {
+        hitDmg = 0; // 0 DMG on Evade/Invincible
       }
 
       // FGO Arts NP rule: 8-10 base NP gain scaled by position (1.0x/1.2x/1.4x), crit (1.5x), and Arts 1st Lead (+50%)
@@ -1104,10 +1101,8 @@ function resolveStrike(
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
       let hitDmg = Math.round(Math.max(220, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
-      if (isEvading) {
-        hitDmg = Math.round(hitDmg * 0.15);
-        defender.activeBuffs = defender.activeBuffs.filter(b => b.type !== 'evade');
-        isEvading = false;
+      if (isTargetProtected) {
+        hitDmg = 0; // 0 DMG on Evade/Invincible
       }
 
       // FGO Quick stars: 4-6 base stars scaled by position (1.0x/1.25x/1.5x), crit (1.4x), and Quick 1st Lead (+30%)
@@ -1132,7 +1127,10 @@ function resolveStrike(
   if (is3Cards) {
     chainTags.push('⚔️ BRAVE CHAIN (Extra Attack)');
     const extraBase = (effectiveAtk * 1.2 * 0.11) - (effectiveDef * 2);
-    const extraDmg = Math.max(450, Math.round(extraBase * classMult * (0.95 + Math.random() * 0.10) * PVP_DAMAGE_MODIFIER)) + flatDivinity;
+    let extraDmg = Math.max(450, Math.round(extraBase * classMult * (0.95 + Math.random() * 0.10) * PVP_DAMAGE_MODIFIER)) + flatDivinity;
+    if (isTargetProtected) {
+      extraDmg = 0;
+    }
     totalSeqDmg += extraDmg;
     const extraNp = isArtsFirst ? 5 : 3;
     attacker.npGauge = Math.min(300, attacker.npGauge + extraNp);
@@ -1171,7 +1169,7 @@ function resolveStrike(
   }
 
   const critTag = isAnyCrit ? ' 💥 **CRITICAL HIT!**' : '';
-  const evadeTag = isEvading ? ' *(Evaded)*' : '';
+  const evadeTag = isInvincible ? ' 🛡️ **(Invincible - 0 DMG!)**' : isEvading ? ' 💨 **(Evaded - 0 DMG!)**' : '';
   const npHeader = hasNpHit ? ' 💥 **NOBLE PHANTASM UNLEASHED!**' : '';
   const chainStr = chainTags.length > 0 ? `\n⛓️ **Chains:** ${chainTags.join(' • ')}` : '';
 
