@@ -142,7 +142,9 @@ export function createCombatantFromMasterServant(
         name: 'Volumen Hydragyrum (Invincibility)',
         type: 'invincible',
         value: 100,
-        remainingTurns: ce.passiveValue || 3
+        remainingTurns: ce.passiveValue || 3,
+        remainingHits: ce.passiveValue || 3,
+        isHitCount: true
       });
       initialBuffs.push({
         name: 'Volumen Hydragyrum (Damage Cut)',
@@ -599,22 +601,44 @@ export function executeNoblePhantasmLogic(
     }
 
     // Check Invincibility & Evade on target
-    if ((target.isInvincible || target.activeBuffs.some(b => b.type === 'invincible')) && !actorIgnoresInvincible) {
+    const invIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'invincible') : -1;
+    const evaIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'evade') : -1;
+    if ((target.isInvincible || invIdx !== -1) && !actorIgnoresInvincible) {
       damageDealt = 0;
       isInvincible = true;
-      target.activeBuffs = target.activeBuffs
-        .map(b => (b.type === 'invincible' ? { ...b, remainingTurns: b.remainingTurns - 1 } : b))
-        .filter(b => b.remainingTurns > 0);
-      if (!target.activeBuffs.some(b => b.type === 'invincible')) {
+      if (invIdx !== -1 && target.activeBuffs) {
+        const buff = target.activeBuffs[invIdx];
+        const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /volumen/i.test(buff.name);
+        if (isHitBased) {
+          if (buff.remainingHits !== undefined) {
+            buff.remainingHits--;
+            if (buff.remainingHits <= 0) target.activeBuffs.splice(invIdx, 1);
+          } else {
+            buff.remainingTurns--;
+            if (buff.remainingTurns <= 0) target.activeBuffs.splice(invIdx, 1);
+          }
+        }
+      }
+      if (!target.activeBuffs || !target.activeBuffs.some(b => b.type === 'invincible')) {
         target.isInvincible = false;
       }
-    } else if ((target.isEvading || target.activeBuffs.some(b => b.type === 'evade')) && !actorIgnoresInvincible) {
+    } else if ((target.isEvading || evaIdx !== -1) && !actorIgnoresInvincible) {
       damageDealt = 0;
       isEvaded = true;
-      target.activeBuffs = target.activeBuffs
-        .map(b => (b.type === 'evade' ? { ...b, remainingTurns: b.remainingTurns - 1 } : b))
-        .filter(b => b.remainingTurns > 0);
-      if (!target.activeBuffs.some(b => b.type === 'evade')) {
+      if (evaIdx !== -1 && target.activeBuffs) {
+        const buff = target.activeBuffs[evaIdx];
+        const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /protection from arrows/i.test(buff.name);
+        if (isHitBased) {
+          if (buff.remainingHits !== undefined) {
+            buff.remainingHits--;
+            if (buff.remainingHits <= 0) target.activeBuffs.splice(evaIdx, 1);
+          } else {
+            buff.remainingTurns--;
+            if (buff.remainingTurns <= 0) target.activeBuffs.splice(evaIdx, 1);
+          }
+        }
+      }
+      if (!target.activeBuffs || !target.activeBuffs.some(b => b.type === 'evade')) {
         target.isEvading = false;
       }
     } else {
@@ -1072,9 +1096,55 @@ export function executeBattleTurn(
     const effectiveAtk = actor.atk * (1 + atkBuff / 100) * (1 + (actor.stats.strength * 0.01));
     const effectiveDef = target.def * (1 + defBuff / 100);
 
-    const targetHasInvincible = target.isInvincible || (target.activeBuffs && target.activeBuffs.some(b => b.type === 'invincible'));
-    const targetHasEvade = target.isEvading || (target.activeBuffs && target.activeBuffs.some(b => b.type === 'evade'));
-    const isTargetProtected = targetHasInvincible || targetHasEvade;
+    const processHitProtection = (): { isProtected: boolean; isInvincible: boolean; isEvade: boolean } => {
+      const actorIgnores = actor.equippedCe?.id === 'ce_origin_bullet' || actor.equippedCe?.passiveType === 'ignore_invincible' || actor.activeBuffs.some(b => b.type === 'ignore_invincible');
+      if (actorIgnores) return { isProtected: false, isInvincible: false, isEvade: false };
+
+      const invIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'invincible') : -1;
+      if (target.isInvincible || invIdx !== -1) {
+        if (invIdx !== -1 && target.activeBuffs) {
+          const buff = target.activeBuffs[invIdx];
+          const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /volumen/i.test(buff.name);
+          if (isHitBased) {
+            if (buff.remainingHits !== undefined) {
+              buff.remainingHits--;
+              if (buff.remainingHits <= 0) target.activeBuffs.splice(invIdx, 1);
+            } else {
+              buff.remainingTurns--;
+              if (buff.remainingTurns <= 0) target.activeBuffs.splice(invIdx, 1);
+            }
+          }
+        }
+        if (!target.activeBuffs || !target.activeBuffs.some(b => b.type === 'invincible')) {
+          target.isInvincible = false;
+        }
+        return { isProtected: true, isInvincible: true, isEvade: false };
+      }
+
+      const evaIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'evade') : -1;
+      if (target.isEvading || evaIdx !== -1) {
+        if (evaIdx !== -1 && target.activeBuffs) {
+          const buff = target.activeBuffs[evaIdx];
+          const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /protection from arrows/i.test(buff.name);
+          if (isHitBased) {
+            if (buff.remainingHits !== undefined) {
+              buff.remainingHits--;
+              if (buff.remainingHits <= 0) target.activeBuffs.splice(evaIdx, 1);
+            } else {
+              buff.remainingTurns--;
+              if (buff.remainingTurns <= 0) target.activeBuffs.splice(evaIdx, 1);
+            }
+          }
+        }
+        if (!target.activeBuffs || !target.activeBuffs.some(b => b.type === 'evade')) {
+          target.isEvading = false;
+        }
+        return { isProtected: true, isInvincible: false, isEvade: true };
+      }
+
+      return { isProtected: false, isInvincible: false, isEvade: false };
+    };
+
     let turnWasEvaded = false;
     let turnWasInvincible = false;
 
@@ -1156,18 +1226,15 @@ export function executeBattleTurn(
         );
 
         // Origin Bullet special bonus vs Caster or high Mana
-        const actorIgnoresInvincible = actor.equippedCe?.id === 'ce_origin_bullet' || actor.equippedCe?.passiveType === 'ignore_invincible' || actor.activeBuffs.some(b => b.type === 'ignore_invincible');
         if (actor.equippedCe?.id === 'ce_origin_bullet' && (target.servantClass === 'Caster' || target.stats.mana >= 12)) {
           hitDmg = Math.round(hitDmg * 1.35);
         }
 
-        if (isTargetProtected && !actorIgnoresInvincible) {
+        const hitProt = processHitProtection();
+        if (hitProt.isProtected) {
           hitDmg = 0;
-          if (targetHasInvincible) {
-            turnWasInvincible = true;
-          } else if (targetHasEvade) {
-            turnWasEvaded = true;
-          }
+          if (hitProt.isInvincible) turnWasInvincible = true;
+          if (hitProt.isEvade) turnWasEvaded = true;
         }
 
         totalDamage += Math.round(hitDmg * PVP_DAMAGE_MODIFIER) + (hitDmg > 0 ? flatDivinity : 0);
@@ -1175,17 +1242,23 @@ export function executeBattleTurn(
         totalStars += Math.round(2 * cardStarMult);
       });
 
-      // Consume Evade / Invincibility and tick DEF buffs after defending against this attack sequence
-      if (target.isEvading || target.isInvincible || (target.activeBuffs && target.activeBuffs.some(b => b.type === 'evade' || b.type === 'invincible'))) {
-        target.activeBuffs = target.activeBuffs
-          .map(b => (b.type === 'evade' || b.type === 'invincible' ? { ...b, remainingTurns: b.remainingTurns - 1 } : b))
-          .filter(b => b.remainingTurns > 0);
+      // Consume turn-based Evade / Invincibility and tick DEF buffs after defending against this attack sequence
+      if (target.activeBuffs) {
+        target.activeBuffs = target.activeBuffs.filter(b => {
+          const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
+          if ((b.type === 'evade' || b.type === 'invincible') && !isHitBased) {
+            b.remainingTurns--;
+            return b.remainingTurns > 0;
+          }
+          if (b.type === 'buff_def' && b.remainingTurns < 90) {
+            b.remainingTurns--;
+            return b.remainingTurns > 0;
+          }
+          return true;
+        });
         if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
         if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
       }
-      target.activeBuffs = target.activeBuffs
-        .map(b => (b.type === 'buff_def' && b.remainingTurns < 90 ? { ...b, remainingTurns: b.remainingTurns - 1 } : b))
-        .filter(b => b.remainingTurns > 0);
 
       const chainNotice = cardChainType === 'Quick Chain'
         ? `\n🟢 **QUICK CHAIN BONUS:** +20 Critical Stars added & +25% Crit Rate!`

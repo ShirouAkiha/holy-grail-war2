@@ -42,6 +42,8 @@ export interface CombatantBuff {
   type: 'buff_atk' | 'buff_def' | 'crit_dmg' | 'evade' | 'guts' | 'np_gen' | 'buster_up' | 'arts_up' | 'quick_up' | 'invincible' | 'stun' | 'debuff_atk' | 'ignore_invincible';
   value: number;
   remainingTurns: number;
+  remainingHits?: number;
+  isHitCount?: boolean;
 }
 
 export interface DuelCombatant {
@@ -227,7 +229,9 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
         name: 'Volumen Hydragyrum (Invincibility)',
         type: 'invincible',
         value: 100,
-        remainingTurns: ce.passiveValue || 3
+        remainingTurns: ce.passiveValue || 3,
+        remainingHits: ce.passiveValue || 3,
+        isHitCount: true
       });
       initialBuffs.push({
         name: 'Volumen Hydragyrum (Damage Cut)',
@@ -380,7 +384,7 @@ async function createTurnSummaryAttachment(
     stats: p1.servant.template.baseStats,
     commandDeck: p1.servant.template.commandDeck,
     npGauge: p1.npGauge,
-    activeBuffs: p1.activeBuffs.map(b => ({ name: b.name, type: b.type, value: b.value, remainingTurns: b.remainingTurns })),
+    activeBuffs: p1.activeBuffs.map(b => ({ name: b.name, type: b.type, value: b.value, remainingTurns: b.remainingTurns, remainingHits: b.remainingHits, isHitCount: b.isHitCount })),
     equippedCe: p1.servant.equippedCe,
     skills: (p1.servant.template.skills || []).map((s, idx) => ({ ...s, currentCooldown: p1.skillCooldowns[idx] || 0 })),
     noblePhantasm: p1.servant.template.noblePhantasm,
@@ -401,7 +405,7 @@ async function createTurnSummaryAttachment(
     stats: p2.servant.template.baseStats,
     commandDeck: p2.servant.template.commandDeck,
     npGauge: p2.npGauge,
-    activeBuffs: p2.activeBuffs.map(b => ({ name: b.name, type: b.type, value: b.value, remainingTurns: b.remainingTurns })),
+    activeBuffs: p2.activeBuffs.map(b => ({ name: b.name, type: b.type, value: b.value, remainingTurns: b.remainingTurns, remainingHits: b.remainingHits, isHitCount: b.isHitCount })),
     equippedCe: p2.servant.equippedCe,
     skills: (p2.servant.template.skills || []).map((s, idx) => ({ ...s, currentCooldown: p2.skillCooldowns[idx] || 0 })),
     noblePhantasm: p2.servant.template.noblePhantasm,
@@ -749,11 +753,14 @@ function activateCombatantSkill(
     logText = `🛡️ **${combatant.servant.template.name}** activated **${skill.name}**!`;
   } else if (skill.effectType === 'evade' || skill.effectType === 'invincible') {
     const bType: 'evade' | 'invincible' = skill.effectType === 'invincible' ? 'invincible' : 'evade';
+    const isHitBased = skill.name.toLowerCase().includes('protection from arrows') || (skill.description || '').toLowerCase().includes('attacks') || (skill.description || '').toLowerCase().includes('hits');
     combatant.activeBuffs.push({
       name: skill.name,
       type: bType,
       value: 100,
-      remainingTurns: skill.duration || 1
+      remainingTurns: isHitBased ? 3 : (skill.duration || 1),
+      remainingHits: isHitBased ? 3 : undefined,
+      isHitCount: isHitBased
     });
     if (skill.id === 'wisdom_dun_scaith') {
       combatant.critStars = Math.min(50, combatant.critStars + 15);
@@ -958,14 +965,9 @@ function resolveStrike(
   });
 
   let defBuff = 1.0;
-  let isEvading = false;
-  let isInvincible = false;
   defender.activeBuffs.forEach(b => {
     if (b.type === 'buff_def') defBuff += b.value / 100;
-    if (b.type === 'evade') isEvading = true;
-    if (b.type === 'invincible') isInvincible = true;
   });
-  const isTargetProtected = isEvading || isInvincible;
 
   const effectiveAtk = attacker.baseAtk * (atkBuff + attackerAvengerAtk);
   const effectiveDef = defender.baseDef * defBuff;
@@ -974,6 +976,60 @@ function resolveStrike(
     attacker.servant.template.servantClass,
     defender.servant.template.servantClass
   );
+
+  let turnBlockedByInvincible = false;
+  let turnBlockedByEvade = false;
+
+  const processHitProtection = (): { isProtected: boolean; type?: 'invincible' | 'evade' } => {
+    const actorIgnores = attackerCe?.id === 'ce_origin_bullet' || attackerCe?.passiveType === 'ignore_invincible' || attacker.activeBuffs.some(b => b.type === 'ignore_invincible');
+    if (actorIgnores) return { isProtected: false };
+
+    // 1. Invincible has priority over Evade
+    const invIdx = defender.activeBuffs.findIndex(b => b.type === 'invincible');
+    if (invIdx !== -1) {
+      turnBlockedByInvincible = true;
+      const buff = defender.activeBuffs[invIdx];
+      const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /volumen/i.test(buff.name);
+      if (isHitBased) {
+        if (buff.remainingHits !== undefined) {
+          buff.remainingHits--;
+          if (buff.remainingHits <= 0) {
+            defender.activeBuffs.splice(invIdx, 1);
+          }
+        } else {
+          buff.remainingTurns--;
+          if (buff.remainingTurns <= 0) {
+            defender.activeBuffs.splice(invIdx, 1);
+          }
+        }
+      }
+      return { isProtected: true, type: 'invincible' };
+    }
+
+    // 2. Evade check
+    const evaIdx = defender.activeBuffs.findIndex(b => b.type === 'evade');
+    if (evaIdx !== -1) {
+      turnBlockedByEvade = true;
+      const buff = defender.activeBuffs[evaIdx];
+      const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /protection from arrows/i.test(buff.name);
+      if (isHitBased) {
+        if (buff.remainingHits !== undefined) {
+          buff.remainingHits--;
+          if (buff.remainingHits <= 0) {
+            defender.activeBuffs.splice(evaIdx, 1);
+          }
+        } else {
+          buff.remainingTurns--;
+          if (buff.remainingTurns <= 0) {
+            defender.activeBuffs.splice(evaIdx, 1);
+          }
+        }
+      }
+      return { isProtected: true, type: 'evade' };
+    }
+
+    return { isProtected: false };
+  };
 
   // 1st Card Lead Bonus Evaluation (NP card uses its permanently mapped Card Type)
   const npEffectiveCard = attacker.servant.template.noblePhantasm?.cardType || 'Buster';
@@ -1093,12 +1149,8 @@ function resolveStrike(
         const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * classMult * cardPerfMult * ceNpDmgMult * variance);
         npDmg = Math.round(Math.max(1200, rawNpDmg) * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
-        const actorIgnoresInvincible = attackerCe?.id === 'ce_origin_bullet' || attackerCe?.passiveType === 'ignore_invincible' || attacker.activeBuffs.some(b => b.type === 'ignore_invincible');
-        if (attackerCe?.id === 'ce_origin_bullet' && (defender.servant.template.servantClass === 'Caster' || (defender.servant.template.baseStats?.mana || 0) >= 12)) {
-          npDmg = Math.round(npDmg * 1.35);
-        }
-
-        if (isTargetProtected && !actorIgnoresInvincible) {
+        const hitProt = processHitProtection();
+        if (hitProt.isProtected) {
           npDmg = 0; // Completely evade/nullify incoming NP damage
         }
 
@@ -1144,12 +1196,12 @@ function resolveStrike(
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2) + busterChainBonusDmg;
       let hitDmg = Math.round(Math.max(350, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
-      const actorIgnoresInvincible = attackerCe?.id === 'ce_origin_bullet' || attackerCe?.passiveType === 'ignore_invincible' || attacker.activeBuffs.some(b => b.type === 'ignore_invincible');
       if (attackerCe?.id === 'ce_origin_bullet' && (defender.servant.template.servantClass === 'Caster' || (defender.servant.template.baseStats?.mana || 0) >= 12)) {
         hitDmg = Math.round(hitDmg * 1.35);
       }
 
-      if (isTargetProtected && !actorIgnoresInvincible) {
+      const hitProt = processHitProtection();
+      if (hitProt.isProtected) {
         hitDmg = 0; // 0 DMG on Evade/Invincible
       }
 
@@ -1187,12 +1239,12 @@ function resolveStrike(
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
       let hitDmg = Math.round(Math.max(280, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
-      const actorIgnoresInvincible = attackerCe?.id === 'ce_origin_bullet' || attackerCe?.passiveType === 'ignore_invincible' || attacker.activeBuffs.some(b => b.type === 'ignore_invincible');
       if (attackerCe?.id === 'ce_origin_bullet' && (defender.servant.template.servantClass === 'Caster' || (defender.servant.template.baseStats?.mana || 0) >= 12)) {
         hitDmg = Math.round(hitDmg * 1.35);
       }
 
-      if (isTargetProtected && !actorIgnoresInvincible) {
+      const hitProt = processHitProtection();
+      if (hitProt.isProtected) {
         hitDmg = 0; // 0 DMG on Evade/Invincible
       }
 
@@ -1229,12 +1281,12 @@ function resolveStrike(
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
       let hitDmg = Math.round(Math.max(220, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
-      const actorIgnoresInvincible = attackerCe?.id === 'ce_origin_bullet' || attackerCe?.passiveType === 'ignore_invincible' || attacker.activeBuffs.some(b => b.type === 'ignore_invincible');
       if (attackerCe?.id === 'ce_origin_bullet' && (defender.servant.template.servantClass === 'Caster' || (defender.servant.template.baseStats?.mana || 0) >= 12)) {
         hitDmg = Math.round(hitDmg * 1.35);
       }
 
-      if (isTargetProtected && !actorIgnoresInvincible) {
+      const hitProt = processHitProtection();
+      if (hitProt.isProtected) {
         hitDmg = 0; // 0 DMG on Evade/Invincible
       }
 
@@ -1261,8 +1313,8 @@ function resolveStrike(
     chainTags.push('⚔️ BRAVE CHAIN (Extra Attack)');
     const extraBase = (effectiveAtk * 1.2 * 0.11) - (effectiveDef * 2);
     let extraDmg = Math.max(450, Math.round(extraBase * classMult * (0.95 + Math.random() * 0.10) * PVP_DAMAGE_MODIFIER)) + flatDivinity;
-    const actorIgnoresInvincible = attackerCe?.id === 'ce_origin_bullet' || attackerCe?.passiveType === 'ignore_invincible' || attacker.activeBuffs.some(b => b.type === 'ignore_invincible');
-    if (isTargetProtected && !actorIgnoresInvincible) {
+    const extraProt = processHitProtection();
+    if (extraProt.isProtected) {
       extraDmg = 0;
     }
     totalSeqDmg += extraDmg;
@@ -1279,14 +1331,12 @@ function resolveStrike(
   // Apply total damage to defender
   defender.currentHp = Math.max(0, defender.currentHp - totalSeqDmg);
 
-  // Consume 1 turn/stack of Evade or Invincibility, and decrement DEF buffs after defending against an attack sequence
+  // Consume turn-based Evade / Invincibility and decrement DEF buffs after defending against an attack sequence
   defender.activeBuffs = defender.activeBuffs.filter(b => {
-    if (b.type === 'evade' || b.type === 'invincible') {
-      if (isTargetProtected) {
-        b.remainingTurns--;
-        return b.remainingTurns > 0;
-      }
-      return true;
+    const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
+    if ((b.type === 'evade' || b.type === 'invincible') && !isHitBased) {
+      b.remainingTurns--;
+      return b.remainingTurns > 0;
     }
     if (b.type === 'buff_def' && b.remainingTurns < 90) {
       b.remainingTurns--;
@@ -1319,7 +1369,15 @@ function resolveStrike(
   }
 
   const critTag = isAnyCrit ? ' 💥 **CRITICAL HIT!**' : '';
-  const evadeTag = isInvincible ? ' 🛡️ **(Invincible - 0 DMG!)**' : isEvading ? ' 💨 **(Evaded - 0 DMG!)**' : '';
+  const evadeTag = (totalSeqDmg === 0 && turnBlockedByInvincible)
+    ? ' 🛡️ **(Invincible - 0 DMG!)**'
+    : (totalSeqDmg === 0 && turnBlockedByEvade)
+    ? ' 💨 **(Evaded - 0 DMG!)**'
+    : turnBlockedByInvincible
+    ? ' 🛡️ **(Invincible Broke • Hits Absorbed)**'
+    : turnBlockedByEvade
+    ? ' 💨 **(Evade Broke • Hits Evaded)**'
+    : '';
   const npHeader = hasNpHit ? ' 💥 **NOBLE PHANTASM UNLEASHED!**' : '';
   const chainStr = chainTags.length > 0 ? `\n⛓️ **Chains:** ${chainTags.join(' • ')}` : '';
 

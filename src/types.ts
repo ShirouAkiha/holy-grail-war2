@@ -234,6 +234,8 @@ export interface ActiveCombatant {
     type: 'buff_atk' | 'buff_def' | 'crit_rate' | 'evade' | 'invincible' | 'stun' | string;
     value: number;
     remainingTurns: number;
+    remainingHits?: number;
+    isHitCount?: boolean;
   }>;
   skills: Array<ServantSkill & { currentCooldown: number }>;
   passives?: PassiveSkill[];
