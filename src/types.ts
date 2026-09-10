@@ -276,6 +276,8 @@ export interface CombatTurnLog {
   dialogueTitle?: string;
   damageDealt: number;
   isCritical: boolean;
+  isEvaded?: boolean;
+  isInvincible?: boolean;
   starsGenerated: number;
   npCharged: number;
   actorHpRemaining: number;

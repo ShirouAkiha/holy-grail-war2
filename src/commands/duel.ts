@@ -385,6 +385,8 @@ async function createTurnSummaryAttachment(
 
   const starMatch = lastLogText.match(/\+(\d+)\s*Critical Stars/i) || lastLogText.match(/\+(\d+)\s*Stars/i);
   const starsGenerated = starMatch ? parseInt(starMatch[1], 10) : 0;
+  const isEvaded = /evaded/i.test(lastLogText) || /evade/i.test(lastLogText);
+  const isInvincible = /invincible/i.test(lastLogText);
 
   const cleanActionSummary = lastLogText
     .replace(/[*_~`>#]/g, '')
@@ -410,6 +412,8 @@ async function createTurnSummaryAttachment(
     isNoblePhantasm: isNP,
     damageDealt,
     isCritical: isCrit,
+    isEvaded,
+    isInvincible,
     starsGenerated,
     npCharged,
     actorHpRemaining: activeAttacker.currentHp,
@@ -698,8 +702,19 @@ function activateCombatantSkill(
     combatant.activeBuffs.push({ name: skill.name, type: 'buff_def', value: val, remainingTurns: skill.duration || 2 });
     logText = `🛡️ **${combatant.servant.template.name}** activated **${skill.name}**!`;
   } else if (skill.effectType === 'evade' || skill.effectType === 'invincible') {
-    combatant.activeBuffs.push({ name: skill.name, type: 'evade', value: 100, remainingTurns: skill.duration || 1 });
-    logText = `💨 **${combatant.servant.template.name}** activated **${skill.name}**!`;
+    const bType: 'evade' | 'invincible' = skill.effectType === 'invincible' ? 'invincible' : 'evade';
+    combatant.activeBuffs.push({
+      name: skill.name,
+      type: bType,
+      value: 100,
+      remainingTurns: skill.duration || 1
+    });
+    if (skill.id === 'wisdom_dun_scaith') {
+      combatant.critStars = Math.min(50, combatant.critStars + 15);
+    }
+    logText = bType === 'invincible'
+      ? `🛡️ **${combatant.servant.template.name}** activated **${skill.name}** (Invincible)!`
+      : `💨 **${combatant.servant.template.name}** activated **${skill.name}** (Evade)!`;
   } else if (skill.effectType === 'guts' || skill.id?.includes('guts') || skill.id?.includes('battle_continuation') || skill.id?.includes('thrice')) {
     const reviveAmt = skill.value || Math.round(combatant.maxHp * 0.20);
     combatant.gutsCount = (combatant.gutsCount || 0) + 1;
@@ -858,7 +873,20 @@ function resolveStrike(
   critDmgBonus += critPassiveBonus / 100;
 
   attacker.activeBuffs = attacker.activeBuffs.filter(b => {
-    b.remainingTurns--;
+    // Only decrement offensive / attack-phase buffs when executing an attack!
+    // Defensive buffs (evade, invincible, buff_def, guts) must NOT decrement when attacking,
+    // so they remain active to protect against enemy strikes.
+    if (
+      b.type === 'buff_atk' ||
+      b.type === 'debuff_atk' ||
+      b.type === 'crit_dmg' ||
+      b.type === 'np_gen' ||
+      b.type === 'buster_up' ||
+      b.type === 'arts_up' ||
+      b.type === 'quick_up'
+    ) {
+      b.remainingTurns--;
+    }
     if (b.type === 'buff_atk') atkBuff += b.value / 100;
     if (b.type === 'debuff_atk') atkBuff -= b.value / 100;
     if (b.type === 'crit_dmg') critDmgBonus += b.value / 100;
@@ -869,11 +897,10 @@ function resolveStrike(
   let defBuff = 1.0;
   let isEvading = false;
   let isInvincible = false;
-  defender.activeBuffs = defender.activeBuffs.filter(b => {
+  defender.activeBuffs.forEach(b => {
     if (b.type === 'buff_def') defBuff += b.value / 100;
     if (b.type === 'evade') isEvading = true;
     if (b.type === 'invincible') isInvincible = true;
-    return b.remainingTurns > 0;
   });
   const isTargetProtected = isEvading || isInvincible;
 
@@ -1146,16 +1173,21 @@ function resolveStrike(
   // Apply total damage to defender
   defender.currentHp = Math.max(0, defender.currentHp - totalSeqDmg);
 
-  // Consume 1 turn/stack of Evade or Invincibility after successfully deflecting an attack sequence
-  if (isTargetProtected) {
-    defender.activeBuffs = defender.activeBuffs.filter(b => {
-      if (b.type === 'evade' || b.type === 'invincible') {
+  // Consume 1 turn/stack of Evade or Invincibility, and decrement DEF buffs after defending against an attack sequence
+  defender.activeBuffs = defender.activeBuffs.filter(b => {
+    if (b.type === 'evade' || b.type === 'invincible') {
+      if (isTargetProtected) {
         b.remainingTurns--;
         return b.remainingTurns > 0;
       }
       return true;
-    });
-  }
+    }
+    if (b.type === 'buff_def') {
+      b.remainingTurns--;
+      return b.remainingTurns > 0;
+    }
+    return true;
+  });
 
   // Defender Avenger Passive: NP refund on taking damage
   let avengerLog = '';

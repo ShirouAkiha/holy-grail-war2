@@ -843,11 +843,14 @@ export function executeBattleTurn(
           case 'evade':
             actor.isEvading = true;
             actor.activeBuffs.push({
-              name: 'Evade',
+              name: skill.name || 'Evade',
               type: 'evade',
               value: 100,
-              remainingTurns: skill.duration
+              remainingTurns: skill.duration || 1
             });
+            if (skill.id === 'wisdom_dun_scaith') {
+              actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
+            }
             break;
           case 'guts': {
             const reviveVal = skill.value || Math.round(actor.maxHp * 0.20);
@@ -995,6 +998,12 @@ export function executeBattleTurn(
     const effectiveAtk = actor.atk * (1 + atkBuff / 100) * (1 + (actor.stats.strength * 0.01));
     const effectiveDef = target.def * (1 + defBuff / 100);
 
+    const targetHasInvincible = target.isInvincible || (target.activeBuffs && target.activeBuffs.some(b => b.type === 'invincible'));
+    const targetHasEvade = target.isEvading || (target.activeBuffs && target.activeBuffs.some(b => b.type === 'evade'));
+    const isTargetProtected = targetHasInvincible || targetHasEvade;
+    let turnWasEvaded = false;
+    let turnWasInvincible = false;
+
     const cards = choice.selectedCards.length === 3 ? choice.selectedCards : ['Buster', 'Arts', 'Quick'] as CardType[];
 
     // Check Card Chain Bonuses
@@ -1023,6 +1032,8 @@ export function executeBattleTurn(
       totalNpCharge += npOutcome.npCharged;
       totalStars += npOutcome.starsGenerated;
       actor.npGauge = 0; // consume gauge
+      turnWasEvaded = npOutcome.isEvaded || false;
+      turnWasInvincible = npOutcome.isInvincible || false;
 
       actionText = npOutcome.actionSummary;
     } else {
@@ -1066,9 +1077,13 @@ export function executeBattleTurn(
           ((effectiveAtk * 0.11 * cardDmgMult * positionMultiplier * critMultiplier * classMult) - (effectiveDef * 0.2))
         );
 
-        const isTargetProtected = target.isEvading || target.isInvincible || (target.activeBuffs && target.activeBuffs.some(b => b.type === 'evade' || b.type === 'invincible'));
         if (isTargetProtected) {
           hitDmg = 0;
+          if (targetHasInvincible) {
+            turnWasInvincible = true;
+          } else if (targetHasEvade) {
+            turnWasEvaded = true;
+          }
         }
 
         totalDamage += Math.round(hitDmg * PVP_DAMAGE_MODIFIER) + (hitDmg > 0 ? flatDivinity : 0);
@@ -1076,7 +1091,7 @@ export function executeBattleTurn(
         totalStars += Math.round(2 * cardStarMult);
       });
 
-      // Consume Evade / Invincibility after deflecting this attack sequence
+      // Consume Evade / Invincibility and tick DEF buffs after defending against this attack sequence
       if (target.isEvading || target.isInvincible || (target.activeBuffs && target.activeBuffs.some(b => b.type === 'evade' || b.type === 'invincible'))) {
         target.activeBuffs = target.activeBuffs
           .map(b => (b.type === 'evade' || b.type === 'invincible' ? { ...b, remainingTurns: b.remainingTurns - 1 } : b))
@@ -1084,6 +1099,9 @@ export function executeBattleTurn(
         if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
         if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
       }
+      target.activeBuffs = target.activeBuffs
+        .map(b => (b.type === 'buff_def' ? { ...b, remainingTurns: b.remainingTurns - 1 } : b))
+        .filter(b => b.remainingTurns > 0);
 
       const chainNotice = cardChainType === 'Quick Chain'
         ? `\n🟢 **QUICK CHAIN BONUS:** +20 Critical Stars added & +25% Crit Rate!`
@@ -1144,9 +1162,23 @@ export function executeBattleTurn(
     const dialogueTag = dialogueInfo.tag;
     const dialogueTitle = dialogueInfo.speakerTitle;
 
-    // Decrement buff durations
+    // Decrement buff durations (offensive/attack-phase buffs only!)
+    // Defensive buffs (evade, invincible, buff_def, guts) must NOT decrement when attacking!
     actor.activeBuffs = actor.activeBuffs
-      .map(b => ({ ...b, remainingTurns: b.remainingTurns - 1 }))
+      .map(b => {
+        if (
+          b.type === 'buff_atk' ||
+          b.type === 'debuff_atk' ||
+          b.type === 'buster_up' ||
+          b.type === 'arts_up' ||
+          b.type === 'quick_up' ||
+          b.type === 'crit_dmg' ||
+          b.type === 'np_gen'
+        ) {
+          return { ...b, remainingTurns: b.remainingTurns - 1 };
+        }
+        return b;
+      })
       .filter(b => b.remainingTurns > 0);
     if (!actor.activeBuffs.some(b => b.type === 'evade')) actor.isEvading = false;
     if (!actor.activeBuffs.some(b => b.type === 'invincible')) actor.isInvincible = false;
@@ -1168,6 +1200,8 @@ export function executeBattleTurn(
       dialogueTitle,
       damageDealt: totalDamage,
       isCritical,
+      isEvaded: turnWasEvaded,
+      isInvincible: turnWasInvincible,
       starsGenerated: totalStars,
       npCharged: totalNpCharge,
       actorHpRemaining: actor.currentHp,

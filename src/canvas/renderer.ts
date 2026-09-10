@@ -860,7 +860,15 @@ function drawMinimalClashBanner(
   const dmg = log.damageDealt > 0 ? log.damageDealt.toLocaleString() : '0';
   ctx.textAlign = 'center';
 
-  if (log.isNoblePhantasm) {
+  if (log.isEvaded || (log.damageDealt === 0 && (log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade')))) {
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText('💨 ATTACK EVADED! (0 DMG)', x + w / 2 - 10, y + 33);
+  } else if (log.isInvincible || (log.damageDealt === 0 && log.actionSummary?.toLowerCase().includes('invincible'))) {
+    ctx.font = 'bold 18px sans-serif';
+    ctx.fillStyle = '#fde047';
+    ctx.fillText('🛡️ INVINCIBLE! (0 DMG)', x + w / 2 - 10, y + 33);
+  } else if (log.isNoblePhantasm) {
     ctx.font = 'bold 18px sans-serif';
     ctx.fillStyle = '#fde047';
     ctx.fillText(`NOBLE PHANTASM: ${dmg} DAMAGE!`, x + w / 2 - 10, y + 33);
