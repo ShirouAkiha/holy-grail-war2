@@ -39,7 +39,7 @@ export const data = new SlashCommandBuilder()
 // ==========================================
 export interface CombatantBuff {
   name: string;
-  type: 'buff_atk' | 'buff_def' | 'crit_dmg' | 'evade' | 'guts' | 'np_gen' | 'buster_up' | 'arts_up' | 'quick_up' | 'invincible' | 'stun' | 'debuff_atk';
+  type: 'buff_atk' | 'buff_def' | 'crit_dmg' | 'evade' | 'guts' | 'np_gen' | 'buster_up' | 'arts_up' | 'quick_up' | 'invincible' | 'stun' | 'debuff_atk' | 'ignore_invincible';
   value: number;
   remainingTurns: number;
 }
@@ -195,8 +195,11 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
 
   // Check if equipped CE grants starting NP (e.g. Kaleidoscope grants 80% starting NP)
   let initialNp = 0;
-  if (servant.equippedCe?.passiveType === 'starting_np') {
-    initialNp = servant.equippedCe.passiveValue || 50;
+  if (servant.equippedCe) {
+    const ce = servant.equippedCe;
+    if (ce.passiveType === 'starting_np' || ce.id === 'ce_kaleidoscope' || ce.id === 'ce_imaginary_element' || ce.id === 'ce_hollow_magic' || ce.id === 'ce_dragon_meridian' || ce.id === 'ce_jeweled_sword') {
+      initialNp = ce.passiveValue || 50;
+    }
   }
 
   // Resolve Passives (Strict max 2 passives; Slot 2 unlocks after Bond Lv. 5)
@@ -216,6 +219,47 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
       ? Math.min(maxHp, Math.round(servant.currentHp))
       : maxHp);
 
+  const initialBuffs: CombatantBuff[] = [];
+  const ce = servant.equippedCe;
+  if (ce) {
+    if (ce.id === 'ce_volumen_hydragyrum' || ce.passiveType === 'invincible_hits') {
+      initialBuffs.push({
+        name: 'Volumen Hydragyrum (Invincibility)',
+        type: 'invincible',
+        value: 100,
+        remainingTurns: ce.passiveValue || 3
+      });
+      initialBuffs.push({
+        name: 'Volumen Hydragyrum (Damage Cut)',
+        type: 'buff_def',
+        value: 15,
+        remainingTurns: 99
+      });
+    }
+    if (ce.id === 'ce_code_cast' || ce.passiveType === 'atk_def_up') {
+      initialBuffs.push({
+        name: 'Code Cast (ATK Up)',
+        type: 'buff_atk',
+        value: 10,
+        remainingTurns: 99
+      });
+      initialBuffs.push({
+        name: 'Code Cast (DEF Up)',
+        type: 'buff_def',
+        value: 10,
+        remainingTurns: 99
+      });
+    }
+    if (ce.id === 'ce_origin_bullet' || ce.passiveType === 'ignore_invincible') {
+      initialBuffs.push({
+        name: 'Origin Bullet (Ignore Invincible)',
+        type: 'ignore_invincible',
+        value: 35,
+        remainingTurns: 99
+      });
+    }
+  }
+
   const combatant: DuelCombatant = {
     userId: master.discordId,
     username: master.username,
@@ -230,7 +274,7 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
     npGauge: initialNp,
     critStars: initialStars,
     passives,
-    activeBuffs: [],
+    activeBuffs: initialBuffs,
     skillCooldowns: {},
     gutsCount: 0,
     commandSeals: isAi ? 0 : (master.commandSeals ?? 3),
@@ -337,6 +381,7 @@ async function createTurnSummaryAttachment(
     commandDeck: p1.servant.template.commandDeck,
     npGauge: p1.npGauge,
     activeBuffs: p1.activeBuffs.map(b => ({ name: b.name, type: b.type, value: b.value, remainingTurns: b.remainingTurns })),
+    equippedCe: p1.servant.equippedCe,
     skills: (p1.servant.template.skills || []).map((s, idx) => ({ ...s, currentCooldown: p1.skillCooldowns[idx] || 0 })),
     noblePhantasm: p1.servant.template.noblePhantasm,
     critStars: p1.critStars,
@@ -357,6 +402,7 @@ async function createTurnSummaryAttachment(
     commandDeck: p2.servant.template.commandDeck,
     npGauge: p2.npGauge,
     activeBuffs: p2.activeBuffs.map(b => ({ name: b.name, type: b.type, value: b.value, remainingTurns: b.remainingTurns })),
+    equippedCe: p2.servant.equippedCe,
     skills: (p2.servant.template.skills || []).map((s, idx) => ({ ...s, currentCooldown: p2.skillCooldowns[idx] || 0 })),
     noblePhantasm: p2.servant.template.noblePhantasm,
     critStars: p2.critStars,
@@ -840,6 +886,23 @@ function resolveStrike(
     }
   }
 
+  // Craft Essence Turn-Start Passives
+  const attackerCe = attacker.servant.equippedCe;
+  if (attackerCe) {
+    if (attackerCe.id === 'ce_prisma_cosmos' || attackerCe.passiveType === 'np_per_turn') {
+      attacker.npGauge = Math.min(300, attacker.npGauge + (attackerCe.passiveValue || 8));
+    }
+    if (attackerCe.id === 'ce_fragment_2030' || attackerCe.passiveType === 'stars_per_turn') {
+      attacker.critStars = Math.min(50, (attacker.critStars || 0) + (attackerCe.passiveValue || 10));
+    }
+    if (attackerCe.id === 'ce_when_the_flowers_fall') {
+      attacker.npGauge = Math.min(300, attacker.npGauge + 4);
+    }
+    if (attackerCe.id === 'ce_black_grail') {
+      attacker.currentHp = Math.max(1, attacker.currentHp - 500);
+    }
+  }
+
   // Handle Stun status
   if (attacker.isStunned) {
     attacker.isStunned = false;
@@ -979,10 +1042,14 @@ function resolveStrike(
         }
       }
 
-      // Card-specific performance buffs (Active buffs + Class Passives)
-      const busterBuff = attacker.activeBuffs.filter(b => b.type === 'buster_up' || /mana burst|buster/i.test(b.name)).reduce((s, b) => s + b.value, 0) + madnessBonus;
-      const artsBuff = attacker.activeBuffs.filter(b => b.type === 'arts_up' || /arts|fox/i.test(b.name)).reduce((s, b) => s + b.value, 0) + territoryBonus;
-      const quickBuff = attacker.activeBuffs.filter(b => b.type === 'quick_up' || /quick|primordial rune/i.test(b.name)).reduce((s, b) => s + b.value, 0) + ridingBonus;
+      // Card-specific performance buffs (Active buffs + Class Passives + CE Passives)
+      const ceBuster = attackerCe?.passiveType === 'buster_up' && attackerCe.id !== 'ce_black_grail' ? (attackerCe.passiveValue || 0) : 0;
+      const ceArts = attackerCe?.passiveType === 'arts_up' ? (attackerCe.passiveValue || 0) : 0;
+      const ceQuick = attackerCe?.passiveType === 'quick_up' ? (attackerCe.passiveValue || 0) : 0;
+
+      const busterBuff = attacker.activeBuffs.filter(b => b.type === 'buster_up' || /mana burst|buster/i.test(b.name)).reduce((s, b) => s + b.value, 0) + madnessBonus + ceBuster;
+      const artsBuff = attacker.activeBuffs.filter(b => b.type === 'arts_up' || /arts|fox/i.test(b.name)).reduce((s, b) => s + b.value, 0) + territoryBonus + ceArts;
+      const quickBuff = attacker.activeBuffs.filter(b => b.type === 'quick_up' || /quick|primordial rune/i.test(b.name)).reduce((s, b) => s + b.value, 0) + ridingBonus + ceQuick;
 
       const cardPerfMult = 1.0 + ((npCardType === 'Buster' ? busterBuff : npCardType === 'Arts' ? artsBuff : quickBuff) / 100);
 
@@ -1017,10 +1084,21 @@ function resolveStrike(
         }
       } else {
         const variance = 0.96 + Math.random() * 0.08;
-        const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * classMult * cardPerfMult * variance);
+        let ceNpDmgMult = 1.0;
+        if (attackerCe) {
+          if (attackerCe.id === 'ce_black_grail' || attackerCe.id === 'ce_heavens_feel' || attackerCe.id === 'ce_when_the_flowers_fall' || attackerCe.passiveType === 'np_dmg_up') {
+            ceNpDmgMult += (attackerCe.passiveValue || 30) / 100;
+          }
+        }
+        const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * classMult * cardPerfMult * ceNpDmgMult * variance);
         npDmg = Math.round(Math.max(1200, rawNpDmg) * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
-        if (isTargetProtected) {
+        const actorIgnoresInvincible = attackerCe?.id === 'ce_origin_bullet' || attackerCe?.passiveType === 'ignore_invincible' || attacker.activeBuffs.some(b => b.type === 'ignore_invincible');
+        if (attackerCe?.id === 'ce_origin_bullet' && (defender.servant.template.servantClass === 'Caster' || (defender.servant.template.baseStats?.mana || 0) >= 12)) {
+          npDmg = Math.round(npDmg * 1.35);
+        }
+
+        if (isTargetProtected && !actorIgnoresInvincible) {
           npDmg = 0; // Completely evade/nullify incoming NP damage
         }
 
@@ -1031,7 +1109,10 @@ function resolveStrike(
           npStars = npScope === 'aoe' ? 5 : 2;
         } else if (npCardType === 'Arts') {
           const baseRefund = npScope === 'aoe' ? 18 : 12;
-          npRefund = Math.round(baseRefund * (1.0 + artsBuff / 100));
+          let artsRefundScale = 1.0 + artsBuff / 100;
+          if (attackerCe?.id === 'ce_jeweled_sword') artsRefundScale *= 1.15;
+          if (attackerCe?.id === 'ce_formal_craft') artsRefundScale *= 1.10;
+          npRefund = Math.round(baseRefund * artsRefundScale);
           npStars = 2;
         } else {
           const baseStars = npScope === 'aoe' ? 20 : 14;
@@ -1047,7 +1128,8 @@ function resolveStrike(
       totalStarsGained += npStars;
       totalSeqDmg += npDmg;
     } else if (card === 'Buster') {
-      let cardMult = 1.4 * posMult * (1.0 + madnessBonus / 100);
+      const ceBuster = attackerCe?.passiveType === 'buster_up' && attackerCe.id !== 'ce_black_grail' ? (attackerCe.passiveValue || 0) : 0;
+      let cardMult = 1.4 * posMult * (1.0 + (madnessBonus + ceBuster) / 100);
       if (i > 0 && isBusterFirst) cardMult += 0.50; // Buster Lead Bonus
 
       let critChance = Math.min(0.95, (starsForCrits * 2.0) / 100);
@@ -1055,13 +1137,19 @@ function resolveStrike(
 
       const hitCrit = Math.random() < critChance;
       if (hitCrit) isAnyCrit = true;
-      const critMult = hitCrit ? (1.75 * critDmgBonus) : 1.0;
+      const ceCritBonus = (attackerCe?.passiveType === 'crit_dmg' ? (attackerCe.passiveValue || 0) : 0) / 100;
+      const critMult = hitCrit ? (1.75 * (critDmgBonus + ceCritBonus)) : 1.0;
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2) + busterChainBonusDmg;
       let hitDmg = Math.round(Math.max(350, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
-      if (isTargetProtected) {
+      const actorIgnoresInvincible = attackerCe?.id === 'ce_origin_bullet' || attackerCe?.passiveType === 'ignore_invincible' || attacker.activeBuffs.some(b => b.type === 'ignore_invincible');
+      if (attackerCe?.id === 'ce_origin_bullet' && (defender.servant.template.servantClass === 'Caster' || (defender.servant.template.baseStats?.mana || 0) >= 12)) {
+        hitDmg = Math.round(hitDmg * 1.35);
+      }
+
+      if (isTargetProtected && !actorIgnoresInvincible) {
         hitDmg = 0; // 0 DMG on Evade/Invincible
       }
 
@@ -1083,7 +1171,8 @@ function resolveStrike(
 
       totalSeqDmg += hitDmg;
     } else if (card === 'Arts') {
-      let cardMult = 1.0 * posMult * (1.0 + territoryBonus / 100);
+      const ceArts = attackerCe?.passiveType === 'arts_up' ? (attackerCe.passiveValue || 0) : 0;
+      let cardMult = 1.0 * posMult * (1.0 + (territoryBonus + ceArts) / 100);
       if (i > 0 && isBusterFirst) cardMult += 0.50;
 
       let critChance = Math.min(0.85, (starsForCrits * 1.8) / 100);
@@ -1091,19 +1180,28 @@ function resolveStrike(
 
       const hitCrit = Math.random() < critChance;
       if (hitCrit) isAnyCrit = true;
-      const critMult = hitCrit ? (1.75 * critDmgBonus) : 1.0;
+      const ceCritBonus = (attackerCe?.passiveType === 'crit_dmg' ? (attackerCe.passiveValue || 0) : 0) / 100;
+      const critMult = hitCrit ? (1.75 * (critDmgBonus + ceCritBonus)) : 1.0;
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
       let hitDmg = Math.round(Math.max(280, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
-      if (isTargetProtected) {
+      const actorIgnoresInvincible = attackerCe?.id === 'ce_origin_bullet' || attackerCe?.passiveType === 'ignore_invincible' || attacker.activeBuffs.some(b => b.type === 'ignore_invincible');
+      if (attackerCe?.id === 'ce_origin_bullet' && (defender.servant.template.servantClass === 'Caster' || (defender.servant.template.baseStats?.mana || 0) >= 12)) {
+        hitDmg = Math.round(hitDmg * 1.35);
+      }
+
+      if (isTargetProtected && !actorIgnoresInvincible) {
         hitDmg = 0; // 0 DMG on Evade/Invincible
       }
 
       // FGO Arts NP rule: 8-10 base NP gain scaled by position (1.0x/1.2x/1.4x), crit (1.5x), and Arts 1st Lead (+50%)
       const baseArtsNp = 8 + Math.floor(Math.random() * 3);
-      let npGain = Math.round(baseArtsNp * posMult * npGenBonus * (hitCrit ? 1.5 : 1.0) * (1.0 + territoryBonus / 100));
+      let ceNpArtScale = 1.0;
+      if (attackerCe?.id === 'ce_jeweled_sword') ceNpArtScale *= 1.15;
+      if (attackerCe?.id === 'ce_formal_craft') ceNpArtScale *= 1.10;
+      let npGain = Math.round(baseArtsNp * posMult * npGenBonus * ceNpArtScale * (hitCrit ? 1.5 : 1.0) * (1.0 + (territoryBonus + ceArts) / 100));
       if (i > 0 && isArtsFirst) npGain = Math.round(npGain * 1.5); // Arts Lead Bonus
 
       attacker.npGauge = Math.min(300, attacker.npGauge + npGain);
@@ -1115,7 +1213,8 @@ function resolveStrike(
 
       totalSeqDmg += hitDmg;
     } else if (card === 'Quick') {
-      let cardMult = 0.85 * posMult * (1.0 + ridingBonus / 100);
+      const ceQuick = attackerCe?.passiveType === 'quick_up' ? (attackerCe.passiveValue || 0) : 0;
+      let cardMult = 0.85 * posMult * (1.0 + (ridingBonus + ceQuick) / 100);
       if (i > 0 && isBusterFirst) cardMult += 0.50;
 
       let critChance = Math.min(0.95, (starsForCrits * 2.2) / 100);
@@ -1123,19 +1222,25 @@ function resolveStrike(
 
       const hitCrit = Math.random() < critChance;
       if (hitCrit) isAnyCrit = true;
-      const critMult = hitCrit ? (1.75 * critDmgBonus) : 1.0;
+      const ceCritBonus = (attackerCe?.passiveType === 'crit_dmg' ? (attackerCe.passiveValue || 0) : 0) / 100;
+      const critMult = hitCrit ? (1.75 * (critDmgBonus + ceCritBonus)) : 1.0;
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
       let hitDmg = Math.round(Math.max(220, baseHit) * classMult * critMult * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
-      if (isTargetProtected) {
+      const actorIgnoresInvincible = attackerCe?.id === 'ce_origin_bullet' || attackerCe?.passiveType === 'ignore_invincible' || attacker.activeBuffs.some(b => b.type === 'ignore_invincible');
+      if (attackerCe?.id === 'ce_origin_bullet' && (defender.servant.template.servantClass === 'Caster' || (defender.servant.template.baseStats?.mana || 0) >= 12)) {
+        hitDmg = Math.round(hitDmg * 1.35);
+      }
+
+      if (isTargetProtected && !actorIgnoresInvincible) {
         hitDmg = 0; // 0 DMG on Evade/Invincible
       }
 
       // FGO Quick stars: 4-6 base stars scaled by position (1.0x/1.25x/1.5x), crit (1.4x), and Quick 1st Lead (+30%)
       const baseQuickStars = 4 + Math.floor(Math.random() * 3);
-      let starsGained = Math.round(baseQuickStars * (1.0 + (i * 0.25)) * (hitCrit ? 1.4 : 1.0) * (1.0 + (ridingBonus + presenceConcealBonus) / 100));
+      let starsGained = Math.round(baseQuickStars * (1.0 + (i * 0.25)) * (hitCrit ? 1.4 : 1.0) * (1.0 + (ridingBonus + ceQuick + presenceConcealBonus) / 100));
       if (i > 0 && isQuickFirst) starsGained = Math.round(starsGained * 1.3); // Quick Lead Bonus
 
       totalStarsGained += starsGained;
@@ -1156,7 +1261,8 @@ function resolveStrike(
     chainTags.push('⚔️ BRAVE CHAIN (Extra Attack)');
     const extraBase = (effectiveAtk * 1.2 * 0.11) - (effectiveDef * 2);
     let extraDmg = Math.max(450, Math.round(extraBase * classMult * (0.95 + Math.random() * 0.10) * PVP_DAMAGE_MODIFIER)) + flatDivinity;
-    if (isTargetProtected) {
+    const actorIgnoresInvincible = attackerCe?.id === 'ce_origin_bullet' || attackerCe?.passiveType === 'ignore_invincible' || attacker.activeBuffs.some(b => b.type === 'ignore_invincible');
+    if (isTargetProtected && !actorIgnoresInvincible) {
       extraDmg = 0;
     }
     totalSeqDmg += extraDmg;
@@ -1182,7 +1288,7 @@ function resolveStrike(
       }
       return true;
     }
-    if (b.type === 'buff_def') {
+    if (b.type === 'buff_def' && b.remainingTurns < 90) {
       b.remainingTurns--;
       return b.remainingTurns > 0;
     }

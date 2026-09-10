@@ -112,8 +112,10 @@ export function createCombatantFromMasterServant(
   const def = Math.round(totalEnd * 25);
 
   let initialNp = 0;
-  if (ce && ce.passiveType === 'starting_np') {
-    initialNp = ce.passiveValue;
+  if (ce) {
+    if (ce.passiveType === 'starting_np' || ce.id === 'ce_kaleidoscope' || ce.id === 'ce_imaginary_element' || ce.id === 'ce_hollow_magic' || ce.id === 'ce_dragon_meridian' || ce.id === 'ce_jeweled_sword') {
+      initialNp = ce.passiveValue || 50;
+    }
   }
 
   // Resolve passives (Max 2 passives; Slot 2 unlocks after Bond Lv. 5)
@@ -130,6 +132,49 @@ export function createCombatantFromMasterServant(
     : (servantInstance.currentHp !== undefined && servantInstance.currentHp > 0
       ? Math.min(maxHp, Math.round(servantInstance.currentHp))
       : maxHp);
+
+  const initialBuffs: ActiveCombatant['activeBuffs'] = [];
+  let isInvincible = false;
+
+  if (ce) {
+    if (ce.id === 'ce_volumen_hydragyrum' || ce.passiveType === 'invincible_hits') {
+      initialBuffs.push({
+        name: 'Volumen Hydragyrum (Invincibility)',
+        type: 'invincible',
+        value: 100,
+        remainingTurns: ce.passiveValue || 3
+      });
+      initialBuffs.push({
+        name: 'Volumen Hydragyrum (Damage Cut)',
+        type: 'buff_def',
+        value: 15,
+        remainingTurns: 99
+      });
+      isInvincible = true;
+    }
+    if (ce.id === 'ce_code_cast' || ce.passiveType === 'atk_def_up') {
+      initialBuffs.push({
+        name: 'Code Cast (ATK Up)',
+        type: 'buff_atk',
+        value: 10,
+        remainingTurns: 99
+      });
+      initialBuffs.push({
+        name: 'Code Cast (DEF Up)',
+        type: 'buff_def',
+        value: 10,
+        remainingTurns: 99
+      });
+    }
+    if (ce.id === 'ce_origin_bullet' || ce.passiveType === 'ignore_invincible') {
+      initialBuffs.push({
+        name: 'Origin Bullet (Ignore Invincible)',
+        type: 'ignore_invincible',
+        value: 35,
+        remainingTurns: 99
+      });
+    }
+  }
 
   return {
     id: servantInstance.id,
@@ -151,7 +196,9 @@ export function createCombatantFromMasterServant(
     commandDeck: [...t.commandDeck],
     npGauge: initialNp,
     passives,
-    activeBuffs: [],
+    activeBuffs: initialBuffs,
+    isInvincible,
+    equippedCe: ce ? { ...ce } : undefined,
     skills: t.skills.map(s => ({ ...s, currentCooldown: 0 })),
     noblePhantasm: { ...t.noblePhantasm },
     critStars: pcBonus,
@@ -433,7 +480,7 @@ export function executeNoblePhantasmLogic(
   const quickBuff = actor.activeBuffs
     .filter(b => b.type === 'quick_up' || /quick|primordial rune/i.test(b.name))
     .reduce((s, b) => s + b.value, 0) +
-    (actor.equippedCe?.passiveType === 'quick_up' ? (actor.equippedCe.passiveValue || 0) : 0) +
+    (actor.equippedCe?.passiveType === 'quick_up' ? (actor.equippedCe.passiveValue || 0) : (actor.equippedCe?.id === 'ce_when_the_flowers_fall' ? 4 : 0)) +
     actorRiding;
 
   // Card-specific performance multiplier strictly matching NP card type
@@ -444,9 +491,13 @@ export function executeNoblePhantasmLogic(
   // NP Damage Buff (The Black Grail, Heaven's Feel, etc.)
   let npDmgBonus = 1.0;
   if (actor.equippedCe) {
-    if (actor.equippedCe.id === 'ce_black_grail') npDmgBonus += 0.60;
-    else if (actor.equippedCe.id === 'ce_heavens_feel') npDmgBonus += 0.40;
-    else if (actor.equippedCe.id === 'ce_when_the_flowers_fall') npDmgBonus += 0.05;
+    if (actor.equippedCe.id === 'ce_black_grail' || actor.equippedCe.passiveType === 'np_damage') {
+      npDmgBonus += (actor.equippedCe.passiveValue || 60) / 100;
+    } else if (actor.equippedCe.id === 'ce_heavens_feel') {
+      npDmgBonus += 0.40;
+    } else if (actor.equippedCe.id === 'ce_when_the_flowers_fall') {
+      npDmgBonus += 0.05;
+    }
   }
   const npBuffVal = actor.activeBuffs
     .filter(b => b.type === 'buff_np_dmg')
@@ -541,8 +592,14 @@ export function executeNoblePhantasmLogic(
     const variance = 0.96 + Math.random() * 0.08;
     totalDmg = Math.round(totalDmg * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
+    // Check Ignore Invincible (e.g. Origin Bullet)
+    const actorIgnoresInvincible = actor.equippedCe?.id === 'ce_origin_bullet' || actor.equippedCe?.passiveType === 'ignore_invincible' || actor.activeBuffs.some(b => b.type === 'ignore_invincible');
+    if (actor.equippedCe?.id === 'ce_origin_bullet' && (target.servantClass === 'Caster' || (target.stats?.mana || 0) >= 12)) {
+      totalDmg = Math.round(totalDmg * 1.35);
+    }
+
     // Check Invincibility & Evade on target
-    if (target.isInvincible || target.activeBuffs.some(b => b.type === 'invincible')) {
+    if ((target.isInvincible || target.activeBuffs.some(b => b.type === 'invincible')) && !actorIgnoresInvincible) {
       damageDealt = 0;
       isInvincible = true;
       target.activeBuffs = target.activeBuffs
@@ -551,7 +608,7 @@ export function executeNoblePhantasmLogic(
       if (!target.activeBuffs.some(b => b.type === 'invincible')) {
         target.isInvincible = false;
       }
-    } else if (target.isEvading || target.activeBuffs.some(b => b.type === 'evade')) {
+    } else if ((target.isEvading || target.activeBuffs.some(b => b.type === 'evade')) && !actorIgnoresInvincible) {
       damageDealt = 0;
       isEvaded = true;
       target.activeBuffs = target.activeBuffs
@@ -785,6 +842,23 @@ export function executeBattleTurn(
       ...sk,
       currentCooldown: Math.max(0, sk.currentCooldown - 1)
     }));
+
+    // Craft Essence Turn-Start Passives
+    if (actor.equippedCe) {
+      const ce = actor.equippedCe;
+      if (ce.id === 'ce_prisma_cosmos' || ce.passiveType === 'np_per_turn') {
+        actor.npGauge = Math.min(300, actor.npGauge + (ce.passiveValue || 8));
+      }
+      if (ce.id === 'ce_fragment_2030' || ce.passiveType === 'stars_per_turn') {
+        actor.critStars = Math.min(50, (actor.critStars || 0) + (ce.passiveValue || 10));
+      }
+      if (ce.id === 'ce_when_the_flowers_fall') {
+        actor.npGauge = Math.min(300, actor.npGauge + 4);
+      }
+      if (ce.id === 'ce_black_grail') {
+        actor.currentHp = Math.max(1, actor.currentHp - 500);
+      }
+    }
 
     // Handle Active Skill trigger if chosen
     if (choice.useSkillIndex !== undefined && choice.useSkillIndex >= 0) {
@@ -1047,7 +1121,8 @@ export function executeBattleTurn(
         const cardIsCrit = Math.random() < critChance;
         if (cardIsCrit) isCritical = true;
         const quickChainCritDmg = cardChainType === 'Quick Chain' ? 0.30 : 0.0;
-        const critMultiplier = cardIsCrit ? 1.75 + (actor.stats.luck * 0.01) + (critPassiveBonus / 100) + quickChainCritDmg : 1.0;
+        const ceCritBonus = (actor.equippedCe?.passiveType === 'crit_dmg' ? (actor.equippedCe.passiveValue || 0) : 0) / 100;
+        const critMultiplier = cardIsCrit ? 1.75 + (actor.stats.luck * 0.01) + (critPassiveBonus / 100) + ceCritBonus + quickChainCritDmg : 1.0;
 
         let cardDmgMult = 1.0;
         let cardNpMult = 1.0;
@@ -1059,7 +1134,10 @@ export function executeBattleTurn(
           cardStarMult = 0.2;
         } else if (card === 'Arts') {
           cardDmgMult = 1.0;
-          cardNpMult = (1.2 + (actor.stats.mana * 0.02)) * (1.0 + artsBuff / 100); // Balanced Arts NP charge
+          let artsNpScale = (1.2 + (actor.stats.mana * 0.02)) * (1.0 + artsBuff / 100); // Balanced Arts NP charge
+          if (actor.equippedCe?.id === 'ce_jeweled_sword') artsNpScale *= 1.15;
+          if (actor.equippedCe?.id === 'ce_formal_craft') artsNpScale *= 1.10;
+          cardNpMult = artsNpScale;
           cardStarMult = 0.2;
         } else if (card === 'Quick') {
           cardDmgMult = 0.85;
@@ -1077,7 +1155,13 @@ export function executeBattleTurn(
           ((effectiveAtk * 0.11 * cardDmgMult * positionMultiplier * critMultiplier * classMult) - (effectiveDef * 0.2))
         );
 
-        if (isTargetProtected) {
+        // Origin Bullet special bonus vs Caster or high Mana
+        const actorIgnoresInvincible = actor.equippedCe?.id === 'ce_origin_bullet' || actor.equippedCe?.passiveType === 'ignore_invincible' || actor.activeBuffs.some(b => b.type === 'ignore_invincible');
+        if (actor.equippedCe?.id === 'ce_origin_bullet' && (target.servantClass === 'Caster' || target.stats.mana >= 12)) {
+          hitDmg = Math.round(hitDmg * 1.35);
+        }
+
+        if (isTargetProtected && !actorIgnoresInvincible) {
           hitDmg = 0;
           if (targetHasInvincible) {
             turnWasInvincible = true;
@@ -1100,7 +1184,7 @@ export function executeBattleTurn(
         if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
       }
       target.activeBuffs = target.activeBuffs
-        .map(b => (b.type === 'buff_def' ? { ...b, remainingTurns: b.remainingTurns - 1 } : b))
+        .map(b => (b.type === 'buff_def' && b.remainingTurns < 90 ? { ...b, remainingTurns: b.remainingTurns - 1 } : b))
         .filter(b => b.remainingTurns > 0);
 
       const chainNotice = cardChainType === 'Quick Chain'

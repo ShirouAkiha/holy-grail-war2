@@ -641,8 +641,15 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
-      // Servant List Pagination & Filter Controls
-      if (btnId.startsWith('servant_list_')) {
+      // Servant List Pagination, Filters, and Profile View Controls
+      if (
+        btnId.startsWith('servant_list_') ||
+        btnId.startsWith('view_servant_') ||
+        btnId.startsWith('view_np_') ||
+        btnId.startsWith('view_art_') ||
+        btnId.startsWith('quote_servant_') ||
+        btnId === 'btn_back_servants_list'
+      ) {
         await handleServantsListInteraction(interaction);
         return;
       }

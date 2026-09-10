@@ -14,9 +14,9 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     bonusHp: 200,
     atkBonus: 500,
     hpBonus: 200,
-    effectText: 'Starts battle with 60% NP Gauge filled.',
+    effectText: 'Starts battle with 80% NP Gauge filled.',
     passiveType: 'starting_np',
-    passiveValue: 60,
+    passiveValue: 80,
     artworkUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80'
   },
   {
@@ -30,7 +30,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     atkBonus: 800,
     hpBonus: -100,
     effectText: 'Increases Noble Phantasm Damage by 60%, but loses 500 HP each turn.',
-    passiveType: 'buster_up',
+    passiveType: 'np_damage',
     passiveValue: 60,
     artworkUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&auto=format&fit=crop&q=80'
   },
@@ -90,7 +90,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     atkBonus: 0,
     hpBonus: 750,
     effectText: 'Gains 10 Critical Stars every turn automatically.',
-    passiveType: 'quick_up',
+    passiveType: 'stars_per_turn',
     passiveValue: 10,
     artworkUrl: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=500&auto=format&fit=crop&q=80'
   },
@@ -105,7 +105,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     atkBonus: 200,
     hpBonus: 600,
     effectText: 'Regenerates 8% NP Gauge automatically at the start of each combat turn.',
-    passiveType: 'starting_np',
+    passiveType: 'np_per_turn',
     passiveValue: 8,
     artworkUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500&auto=format&fit=crop&q=80'
   },
@@ -120,8 +120,8 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     atkBonus: 500,
     hpBonus: 500,
     effectText: 'Grants Invincibility for 3 attacks & +15% Damage Cut.',
-    passiveType: 'atk_up',
-    passiveValue: 20,
+    passiveType: 'invincible_hits',
+    passiveValue: 3,
     artworkUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80'
   },
   {
@@ -135,7 +135,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     atkBonus: 600,
     hpBonus: 200,
     effectText: 'Increases Noble Phantasm Damage by 40%.',
-    passiveType: 'atk_up',
+    passiveType: 'np_damage',
     passiveValue: 40,
     artworkUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&auto=format&fit=crop&q=80'
   },
@@ -150,7 +150,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     atkBonus: 800,
     hpBonus: 0,
     effectText: 'Ignores Invincibility & +35% Special Damage against Magic users.',
-    passiveType: 'atk_up',
+    passiveType: 'ignore_invincible',
     passiveValue: 35,
     artworkUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=500&auto=format&fit=crop&q=80'
   },

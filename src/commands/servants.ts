@@ -572,185 +572,16 @@ export function buildProfileActions(servantId: string) {
   );
 }
 
+// Note: Handled globally via handleServantsListInteraction in index.ts to prevent duplicate acknowledgement races
 export function setupServantListCollector(
-  message: any,
-  allServants: ServantTemplate[],
-  initialPage = 1,
-  initialOrigin = 'all',
-  initialClass = 'all',
-  searchKeyword?: string
+  _message: any,
+  _allServants: ServantTemplate[],
+  _initialPage = 1,
+  _initialOrigin = 'all',
+  _initialClass = 'all',
+  _searchKeyword?: string
 ) {
-  let page = initialPage;
-  let originFilter = initialOrigin;
-  let classFilter = initialClass;
-
-  const collector = message.createMessageComponentCollector({
-    idle: 120000,
-    time: 600000
-  });
-
-  collector.on('collect', async (i: any) => {
-    try {
-      if (i.replied || i.deferred) return;
-      const customId = i.customId;
-
-      // Dropdown Select Menu
-      if (i.isStringSelectMenu() && (customId === 'select_servant_registry' || customId.startsWith('select_servant_'))) {
-        const val = i.values[0];
-        const servantId = val.replace('servant_view_', '').replace('view_servant_', '');
-        const target = allServants.find(s => s.id === servantId);
-
-        if (target) {
-          await i.deferReply();
-          const profileEmbed = buildServantFullProfileEmbed(target);
-          const artworkEmbed = buildServantArtworkEmbed(target);
-          const actions = buildProfileActions(target.id);
-
-          const files: AttachmentBuilder[] = [];
-          try {
-            const tempInstance = createServantTempInstance(target);
-            const cardBuffer = await renderServantProfileCard(tempInstance, 'Throne of Heroes');
-            if (cardBuffer && cardBuffer.length > 500) {
-              files.push(new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' }));
-            }
-          } catch (e) {
-            console.warn('Canvas render error in servants list dropdown:', e);
-          }
-
-          await i.editReply({ 
-            embeds: [profileEmbed, artworkEmbed], 
-            files,
-            components: [actions] 
-          });
-        } else {
-          await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
-        }
-        return;
-      }
-
-      // Pagination Controls
-      if (customId === 'servant_list_prev') {
-        page = Math.max(1, page - 1);
-        const { embed, components } = buildServantsListUI(allServants, page, originFilter, classFilter, searchKeyword);
-        await i.update({ embeds: [embed], components });
-        return;
-      }
-
-      if (customId === 'servant_list_next') {
-        page = page + 1;
-        const { embed, components } = buildServantsListUI(allServants, page, originFilter, classFilter, searchKeyword);
-        await i.update({ embeds: [embed], components });
-        return;
-      }
-
-      // Origin Filter Button (All -> Canon -> Custom -> All)
-      if (customId === 'servant_list_origin') {
-        if (originFilter === 'all') originFilter = 'canon';
-        else if (originFilter === 'canon') originFilter = 'custom';
-        else originFilter = 'all';
-
-        page = 1;
-        const { embed, components } = buildServantsListUI(allServants, page, originFilter, classFilter, searchKeyword);
-        await i.update({ embeds: [embed], components });
-        return;
-      }
-
-      // Class Filter Button (Cycles through classes)
-      if (customId === 'servant_list_class') {
-        const currentIdx = CLASS_CYCLE.indexOf(classFilter as any);
-        const nextIdx = (currentIdx + 1) % CLASS_CYCLE.length;
-        classFilter = CLASS_CYCLE[nextIdx];
-
-        page = 1;
-        const { embed, components } = buildServantsListUI(allServants, page, originFilter, classFilter, searchKeyword);
-        await i.update({ embeds: [embed], components });
-        return;
-      }
-
-      // Profile Actions & Detail Views
-      if (customId.startsWith('view_servant_')) {
-        const id = customId.replace('view_servant_', '');
-        const target = allServants.find(s => s.id === id);
-        if (target) {
-          await i.deferReply();
-          const profileEmbed = buildServantFullProfileEmbed(target);
-          const artworkEmbed = buildServantArtworkEmbed(target);
-          const actions = buildProfileActions(target.id);
-
-          const files: AttachmentBuilder[] = [];
-          try {
-            const tempInstance = createServantTempInstance(target);
-            const cardBuffer = await renderServantProfileCard(tempInstance, 'Throne of Heroes');
-            if (cardBuffer && cardBuffer.length > 500) {
-              files.push(new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' }));
-            }
-          } catch (e) {
-            console.warn('Canvas render error in servants list button:', e);
-          }
-
-          await i.editReply({ 
-            embeds: [profileEmbed, artworkEmbed], 
-            files,
-            components: [actions] 
-          });
-        } else {
-          await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
-        }
-        return;
-      }
-
-      if (customId.startsWith('view_np_')) {
-        const id = customId.replace('view_np_', '');
-        const target = allServants.find(s => s.id === id);
-        if (target) {
-          const npEmbed = buildNoblePhantasmEmbed(target);
-          const actions = buildNoblePhantasmActions(target.id);
-          await i.reply({ embeds: [npEmbed], components: [actions] });
-        } else {
-          await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
-        }
-        return;
-      }
-
-      if (customId.startsWith('view_art_')) {
-        const id = customId.replace('view_art_', '');
-        const target = allServants.find(s => s.id === id);
-        if (target) {
-          const artEmbed = buildServantArtworkEmbed(target);
-          const actions = buildNoblePhantasmActions(target.id);
-          await i.reply({ embeds: [artEmbed], components: [actions] });
-        } else {
-          await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
-        }
-        return;
-      }
-
-      if (customId.startsWith('quote_servant_')) {
-        const id = customId.replace('quote_servant_', '');
-        const target = allServants.find(s => s.id === id);
-        if (target) {
-          const quoteEmbed = new EmbedBuilder()
-            .setTitle(`💬 ${target.name} — Dialogue Line`)
-            .setDescription(`*"${target.summonQuote || target.battleStartQuote}"*`)
-            .setColor(0xd4af37)
-            .setFooter({ text: `${target.title} • Class: ${target.servantClass}` });
-          await i.reply({ embeds: [quoteEmbed] });
-        } else {
-          await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
-        }
-        return;
-      }
-
-      if (customId === 'btn_back_servants_list') {
-        const { embed, components } = buildServantsListUI(allServants, 1, 'all', 'all');
-        await i.reply({ embeds: [embed], components });
-        return;
-      }
-    } catch (err: any) {
-      if (err.code === 10062 || err.message?.includes('Unknown interaction')) return;
-      console.error('Error handling servants list interaction:', err);
-    }
-  });
+  // Global interaction router handles all button/dropdown events permanently
 }
 
 export async function handleServantsListInteraction(i: any) {
@@ -854,9 +685,96 @@ export async function handleServantsListInteraction(i: any) {
       return true;
     }
 
+    // Profile Actions & Detail Views
+    if (customId.startsWith('view_servant_')) {
+      const id = customId.replace('view_servant_', '');
+      const target = allServants.find(s => s.id === id);
+      if (target) {
+        await i.deferReply({ flags: MessageFlags.Ephemeral });
+        const profileEmbed = buildServantFullProfileEmbed(target);
+        const artworkEmbed = buildServantArtworkEmbed(target);
+        const actions = buildProfileActions(target.id);
+
+        const files: AttachmentBuilder[] = [];
+        try {
+          const tempInstance = createServantTempInstance(target);
+          const cardBuffer = await renderServantProfileCard(tempInstance, 'Throne of Heroes');
+          if (cardBuffer && cardBuffer.length > 500) {
+            files.push(new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' }));
+          }
+        } catch (e) {
+          console.warn('Canvas render error in servants list button:', e);
+        }
+
+        await i.editReply({ 
+          embeds: [profileEmbed, artworkEmbed], 
+          files,
+          components: [actions] 
+        });
+      } else {
+        await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
+      }
+      return true;
+    }
+
+    if (customId.startsWith('view_np_')) {
+      const id = customId.replace('view_np_', '');
+      const target = allServants.find(s => s.id === id);
+      if (target) {
+        const npEmbed = buildNoblePhantasmEmbed(target);
+        const actions = buildNoblePhantasmActions(target.id);
+        await i.reply({ embeds: [npEmbed], components: [actions], flags: MessageFlags.Ephemeral });
+      } else {
+        await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
+      }
+      return true;
+    }
+
+    if (customId.startsWith('view_art_')) {
+      const id = customId.replace('view_art_', '');
+      const target = allServants.find(s => s.id === id);
+      if (target) {
+        const artEmbed = buildServantArtworkEmbed(target);
+        const actions = buildNoblePhantasmActions(target.id);
+        await i.reply({ embeds: [artEmbed], components: [actions], flags: MessageFlags.Ephemeral });
+      } else {
+        await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
+      }
+      return true;
+    }
+
+    if (customId.startsWith('quote_servant_')) {
+      const id = customId.replace('quote_servant_', '');
+      const target = allServants.find(s => s.id === id);
+      if (target) {
+        const quoteEmbed = new EmbedBuilder()
+          .setTitle(`💬 ${target.name} — Dialogue Line`)
+          .setDescription(`*"${target.summonQuote || target.battleStartQuote}"*`)
+          .setColor(0xd4af37)
+          .setFooter({ text: `${target.title} • Class: ${target.servantClass}` });
+        await i.reply({ embeds: [quoteEmbed], flags: MessageFlags.Ephemeral });
+      } else {
+        await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
+      }
+      return true;
+    }
+
+    if (customId === 'btn_back_servants_list') {
+      const { embed, components } = buildServantsListUI(allServants, 1, 'all', 'all');
+      await i.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
+      return true;
+    }
+
     return false;
   } catch (err: any) {
-    if (err.code === 10062 || err.message?.includes('Unknown interaction')) return true;
+    if (
+      err.code === 10062 ||
+      err.code === 40060 ||
+      err.message?.includes('Unknown interaction') ||
+      err.message?.includes('already been acknowledged')
+    ) {
+      return true;
+    }
     console.error('Error handling servants list interaction:', err);
     return false;
   }
