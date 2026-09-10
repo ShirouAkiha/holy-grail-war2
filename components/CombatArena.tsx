@@ -30,6 +30,8 @@ import CombatLogHistory from './CombatLogHistory';
 import { SERVANT_DATABASE } from '../lib/data/servants';
 import { getServantChainDialogue } from '@/src/engine/dialogue';
 import { renderDefeatDialogueCard } from '../lib/canvas/browserCanvas';
+import VsClashScreen from './VsClashScreen';
+import { getServantMatchupDialogue } from '../lib/data/servantMatchups';
 import {
   Swords,
   Shield,
@@ -140,6 +142,13 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
   const [showDialogueMode, setShowDialogueMode] = useState(false);
   const [cutInCountdown, setCutInCountdown] = useState(3.0);
 
+  // Interactive Pre-Battle Matchup & VS Clash Screen State
+  const [showVsClash, setShowVsClash] = useState<boolean>(true);
+  const resolvedMatchup = activeServant && enemyTemplate ? getServantMatchupDialogue(activeServant, enemyTemplate) : null;
+  const handleDismissVsClash = useCallback(() => {
+    setShowVsClash(false);
+  }, []);
+
   const defeatCanvasCallback = useCallback((canvas: HTMLCanvasElement | null) => {
     if (canvas && battle && (battle.turnPhase === 'defeat' || battle.turnPhase === 'evacuated')) {
       const p1 = battle.player1;
@@ -168,7 +177,8 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
       const activeTemplate = activeServant.template;
       const servantName = activeServant.nickname || activeTemplate.name;
       const servantClass = activeTemplate.servantClass;
-      const quote = activeServant.customQuotes?.battleStart || activeTemplate.battleStartQuote || "My blade is drawn. Let the battle commence!";
+      const quote = resolvedMatchup?.challengerLine || activeServant.customQuotes?.battleStart || activeTemplate.battleStartQuote || "My blade is drawn. Let the battle commence!";
+      const clashTag = resolvedMatchup?.tag || 'BATTLE ENGAGEMENT';
 
       const timer = setTimeout(() => {
         setDialogueCutIn({
@@ -177,7 +187,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
           avatarUrl: activeTemplate.cardArtUrl || activeTemplate.avatarUrl,
           servantClass,
           rarity: activeTemplate.rarity || 5,
-          tag: 'BATTLE ENGAGEMENT',
+          tag: clashTag,
           dialogueText: quote,
           badgeType: 'attack',
           isPlayerMove: true
@@ -983,7 +993,10 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                 onChange={e => {
                   setSelectedEnemyId(e.target.value);
                   const opp = SERVANT_DATABASE.find(s => s.id === e.target.value);
-                  if (opp) setBattle(setupNewBattle(opp, balanceMode));
+                  if (opp) {
+                    setBattle(setupNewBattle(opp, balanceMode));
+                    setShowVsClash(true);
+                  }
                 }}
                 className="bg-[#111] text-white text-xs px-3 py-1.5 rounded-sm border border-[#222] outline-none font-mono focus:border-[#d4af37]"
               >
@@ -995,7 +1008,24 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
               </select>
 
               <button
-                onClick={handleRestart}
+                type="button"
+                onClick={() => setShowVsClash(!showVsClash)}
+                className={`px-3 py-1.5 rounded-sm text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 border transition ${
+                  showVsClash
+                    ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black font-bold border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+                    : 'bg-transparent hover:bg-[#161616] text-amber-300 hover:text-amber-200 border-amber-500/40'
+                }`}
+                title="Display interactive starting dialogue between the two Servants"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>VS Clash</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  handleRestart();
+                  setShowVsClash(true);
+                }}
                 className="px-3 py-1.5 rounded-sm bg-transparent hover:bg-[#161616] text-white/70 hover:text-white text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 border border-white/20 transition"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -1003,6 +1033,31 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
               </button>
             </div>
           </div>
+
+      {/* Interactive VS Clash Face-Off Screen Banner */}
+      {showVsClash && resolvedMatchup && (
+        <VsClashScreen
+          challenger={{
+            name: activeServant.nickname || activeServant.template.name,
+            title: activeServant.template.title,
+            servantClass: activeServant.template.servantClass,
+            avatarUrl: activeServant.template.avatarUrl,
+            masterName: master.username,
+            rarity: activeServant.template.rarity
+          }}
+          defender={{
+            name: enemyTemplate.name,
+            title: enemyTemplate.title,
+            servantClass: enemyTemplate.servantClass,
+            avatarUrl: enemyTemplate.avatarUrl,
+            masterName: 'Rival Master Kotomine',
+            rarity: enemyTemplate.rarity
+          }}
+          dialogue={resolvedMatchup}
+          onEngage={handleDismissVsClash}
+          onSkip={handleDismissVsClash}
+        />
+      )}
 
       {/* Battle Stage Split Screen */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

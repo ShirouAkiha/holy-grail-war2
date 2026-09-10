@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { MasterProfile, MasterServantInstance, ServantStats, ServantTemplate, CraftEssence } from '../lib/types';
 import { CRAFT_ESSENCE_DATABASE } from '../lib/data/craftEssences';
+import { SERVANT_DATABASE } from '../lib/data/servants';
+import { SERVANT_MATCHUP_DATABASE, getServantMatchupDialogue } from '../lib/data/servantMatchups';
+import VsClashScreen from './VsClashScreen';
 import { getCustomServantsFromStorage, saveCustomServantsToStorage } from '../lib/state/gameState';
 import {
   allocateStatPoints,
@@ -25,6 +28,7 @@ import {
   Award,
   BookOpen,
   Sword,
+  Swords,
   Film,
   Sliders,
   ExternalLink,
@@ -60,8 +64,34 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
   const [artsQuote, setArtsQuote] = useState(currentServant?.customQuotes?.artsChain || '');
   const [quickQuote, setQuickQuote] = useState(currentServant?.customQuotes?.quickChain || '');
   const [defeatQuote, setDefeatQuote] = useState(currentServant?.customQuotes?.defeat || '');
-  const [activeDialogueTab, setActiveDialogueTab] = useState<'chains' | 'general'>('chains');
+  const [activeDialogueTab, setActiveDialogueTab] = useState<'chains' | 'general' | 'matchups'>('chains');
   const [saveFeedback, setSaveFeedback] = useState(false);
+
+  // Rival Matchup Dialogue Customization State
+  const defaultRival = SERVANT_DATABASE.find(s => s.id !== currentServant?.template?.id)?.id || 'gilgamesh_archer';
+  const [selectedRivalId, setSelectedRivalId] = useState<string>(defaultRival);
+  const [rivalDrafts, setRivalDrafts] = useState<Record<string, { intro?: string; retort?: string; tag?: string }>>({});
+  const [matchupSaveFeedback, setMatchupSaveFeedback] = useState(false);
+  const [showMatchupClashPreview, setShowMatchupClashPreview] = useState(false);
+
+  const currentDraft = rivalDrafts[selectedRivalId];
+  const customMatchup = currentServant?.customQuotes?.matchups?.[selectedRivalId];
+  const canonMatchup = currentServant ? SERVANT_MATCHUP_DATABASE[currentServant.template.id]?.[selectedRivalId] : null;
+
+  const rivalIntro = currentDraft?.intro !== undefined ? currentDraft.intro : (customMatchup?.intro ?? canonMatchup?.intro ?? '');
+  const rivalRetort = currentDraft?.retort !== undefined ? currentDraft.retort : (customMatchup?.retort ?? canonMatchup?.retort ?? '');
+  const rivalTag = currentDraft?.tag !== undefined ? currentDraft.tag : (customMatchup?.tag ?? canonMatchup?.tag ?? '');
+
+  const handleUpdateRivalDraft = (field: 'intro' | 'retort' | 'tag', value: string) => {
+    setRivalDrafts(prev => ({
+      ...prev,
+      [selectedRivalId]: {
+        intro: field === 'intro' ? value : (prev[selectedRivalId]?.intro !== undefined ? prev[selectedRivalId].intro : rivalIntro),
+        retort: field === 'retort' ? value : (prev[selectedRivalId]?.retort !== undefined ? prev[selectedRivalId].retort : rivalRetort),
+        tag: field === 'tag' ? value : (prev[selectedRivalId]?.tag !== undefined ? prev[selectedRivalId].tag : rivalTag)
+      }
+    }));
+  };
 
   // Craft Essence Feeding & Synthesis State
   const [workshopCeTab, setWorkshopCeTab] = useState<'feed' | 'equip'>('feed');
@@ -284,6 +314,45 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
     onUpdateMaster({ ...master, servants: updatedServants });
     setSaveFeedback(true);
     setTimeout(() => setSaveFeedback(false), 3000);
+  };
+
+  const handleSaveMatchupDialogue = () => {
+    if (!currentServant || !selectedRivalId) return;
+    const currentMatchups = currentServant.customQuotes?.matchups || {};
+    const updatedMatchups = {
+      ...currentMatchups,
+      [selectedRivalId]: {
+        intro: rivalIntro.trim(),
+        retort: rivalRetort.trim(),
+        tag: rivalTag.trim() || undefined
+      }
+    };
+    const updated = updateCustomDialogueQuotes(currentServant, {
+      matchups: updatedMatchups
+    });
+    const updatedServants = master.servants.map(s => (s.id === updated.id ? updated : s));
+    onUpdateMaster({ ...master, servants: updatedServants });
+    setMatchupSaveFeedback(true);
+    setTimeout(() => setMatchupSaveFeedback(false), 3000);
+  };
+
+  const handleResetMatchupDialogue = () => {
+    if (!currentServant || !selectedRivalId) return;
+    setRivalDrafts(prev => {
+      const next = { ...prev };
+      delete next[selectedRivalId];
+      return next;
+    });
+
+    if (currentServant.customQuotes?.matchups?.[selectedRivalId]) {
+      const nextMatchups = { ...(currentServant.customQuotes.matchups || {}) };
+      delete nextMatchups[selectedRivalId];
+      const updated = updateCustomDialogueQuotes(currentServant, {
+        matchups: nextMatchups
+      });
+      const updatedServants = master.servants.map(s => (s.id === updated.id ? updated : s));
+      onUpdateMaster({ ...master, servants: updatedServants });
+    }
   };
 
   const handleSaveArt = async () => {
@@ -1146,7 +1215,18 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                   : 'text-white/60 hover:text-white'
               }`}
             >
-              📜 Invocations & Outcomes
+              📜 Invocations
+            </button>
+            <button
+              onClick={() => setActiveDialogueTab('matchups')}
+              className={`flex-1 py-1.5 rounded-sm transition font-bold flex items-center justify-center gap-1 ${
+                activeDialogueTab === 'matchups'
+                  ? 'bg-[#d4af37] text-black shadow'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              <Swords className="w-3.5 h-3.5" />
+              <span>Rival Banter</span>
             </button>
           </div>
 
@@ -1219,8 +1299,16 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                     className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-amber-500 resize-none"
                   />
                 </div>
+
+                <button
+                  onClick={handleSaveQuotes}
+                  className="w-full py-2.5 rounded-sm bg-[#d4af37] hover:bg-[#c49f27] text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg transition"
+                >
+                  {saveFeedback ? <Check className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
+                  <span>{saveFeedback ? 'Saved to Contract' : 'Save Custom Dialogue'}</span>
+                </button>
               </>
-            ) : (
+            ) : activeDialogueTab === 'general' ? (
               <>
                 <div>
                   <label className="text-[10px] uppercase tracking-wider text-white/40 block mb-1">Summon Quote</label>
@@ -1262,16 +1350,150 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                     className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-[#d4af37] resize-none"
                   />
                 </div>
-              </>
-            )}
 
-            <button
-              onClick={handleSaveQuotes}
-              className="w-full py-2.5 rounded-sm bg-[#d4af37] hover:bg-[#c49f27] text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg transition"
-            >
-              {saveFeedback ? <Check className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
-              <span>{saveFeedback ? 'Saved to Contract' : 'Save Custom Dialogue'}</span>
-            </button>
+                <button
+                  onClick={handleSaveQuotes}
+                  className="w-full py-2.5 rounded-sm bg-[#d4af37] hover:bg-[#c49f27] text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg transition"
+                >
+                  {saveFeedback ? <Check className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
+                  <span>{saveFeedback ? 'Saved to Contract' : 'Save Custom Dialogue'}</span>
+                </button>
+              </>
+            ) : (
+              /* Matchup-specific dialogue editor */
+              (() => {
+                const targetRival = SERVANT_DATABASE.find(s => s.id === selectedRivalId) || SERVANT_DATABASE[0];
+                const canonMatchup = SERVANT_MATCHUP_DATABASE[currentServant.template.id]?.[selectedRivalId];
+                const isCustomMatchup = Boolean(currentServant.customQuotes?.matchups?.[selectedRivalId]);
+
+                return (
+                  <div className="space-y-4">
+                    {/* Rival Picker */}
+                    <div className="p-3 bg-[#121212] rounded border border-[#222] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] uppercase tracking-wider text-[#d4af37] font-bold flex items-center gap-1.5">
+                          <Swords className="w-3.5 h-3.5" />
+                          Target Opponent / Rival
+                        </label>
+                        <span className={`text-[9px] px-2 py-0.5 rounded font-mono ${
+                          isCustomMatchup ? 'bg-[#d4af37]/20 text-[#d4af37] border border-[#d4af37]/40' : 'bg-white/10 text-white/60'
+                        }`}>
+                          {isCustomMatchup ? '★ Custom Rival Lines Active' : 'Canonical Dialogue'}
+                        </span>
+                      </div>
+
+                      <select
+                        value={selectedRivalId}
+                        onChange={e => setSelectedRivalId(e.target.value)}
+                        className="w-full bg-[#0a0a0a] text-white text-xs px-3 py-2 rounded-sm border border-[#333] outline-none font-mono focus:border-[#d4af37]"
+                      >
+                        {SERVANT_DATABASE.filter(s => s.id !== currentServant.template.id).map(s => (
+                          <option key={s.id} value={s.id}>
+                            {s.name} ({s.servantClass} • {s.title})
+                          </option>
+                        ))}
+                      </select>
+
+                      {targetRival && (
+                        <div className="flex items-center gap-2.5 pt-1 text-[11px] text-white/70">
+                          <div className="w-6 h-6 rounded bg-[#1e1e1e] border border-white/20 overflow-hidden shrink-0">
+                            {targetRival.avatarUrl ? (
+                              <img src={targetRival.avatarUrl} alt={targetRival.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="flex items-center justify-center text-[10px]">⚔️</span>
+                            )}
+                          </div>
+                          <span className="font-serif italic text-white">{targetRival.name}</span>
+                          <span className="text-white/40">• {targetRival.servantClass}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Challenger Provocation */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] uppercase tracking-wider text-amber-300 font-bold">
+                          Challenger Provocation (Engaging {targetRival?.name || 'Rival'})
+                        </label>
+                        <span className="text-[9px] text-white/30">Opening Clash Quote</span>
+                      </div>
+                      <textarea
+                        value={rivalIntro}
+                        onChange={e => handleUpdateRivalDraft('intro', e.target.value)}
+                        placeholder={canonMatchup?.intro || "Face me, warrior of the Grail War!"}
+                        rows={2}
+                        className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-amber-400 resize-none"
+                      />
+                    </div>
+
+                    {/* Defender Retort */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] uppercase tracking-wider text-sky-300 font-bold">
+                          Defender Retort (When Challenged by {targetRival?.name || 'Rival'})
+                        </label>
+                        <span className="text-[9px] text-white/30">Counter-Banter Quote</span>
+                      </div>
+                      <textarea
+                        value={rivalRetort}
+                        onChange={e => handleUpdateRivalDraft('retort', e.target.value)}
+                        placeholder={canonMatchup?.retort || "Your words are empty—let your weapon speak!"}
+                        rows={2}
+                        className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-sky-400 resize-none"
+                      />
+                    </div>
+
+                    {/* Clash Tag Title */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] uppercase tracking-wider text-white/50 font-bold">
+                          Clash Tag Title (Optional)
+                        </label>
+                        <span className="text-[9px] text-white/30">e.g. FATEFUL DUEL, KINGS&apos; SUMMIT</span>
+                      </div>
+                      <input
+                        type="text"
+                        value={rivalTag}
+                        onChange={e => handleUpdateRivalDraft('tag', e.target.value)}
+                        placeholder={canonMatchup?.tag || "HOLY GRAIL RIVALRY"}
+                        className="w-full bg-[#111] text-white text-xs px-2.5 py-2 rounded-sm border border-[#222] outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={handleSaveMatchupDialogue}
+                        className="py-2.5 rounded-sm bg-[#d4af37] hover:bg-[#c49f27] text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg transition"
+                      >
+                        {matchupSaveFeedback ? <Check className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
+                        <span>{matchupSaveFeedback ? 'Saved Rival Line' : 'Save Rival Line'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowMatchupClashPreview(true)}
+                        className="py-2.5 rounded-sm bg-[#161616] hover:bg-[#202020] text-amber-300 hover:text-amber-200 border border-amber-500/40 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow transition"
+                      >
+                        <Play className="w-3.5 h-3.5" />
+                        <span>Preview VS Clash</span>
+                      </button>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleResetMatchupDialogue}
+                        className="text-[10px] text-white/40 hover:text-white underline transition"
+                      >
+                        Reset this rival to Canon lines
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()
+            )}
           </div>
         </div>
       </div>
@@ -1779,6 +2001,43 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
           </div>
         </div>
       </div>
+
+      {/* Interactive VS Clash Screen Live Preview Modal */}
+      {showMatchupClashPreview && (() => {
+        const previewTargetRival = SERVANT_DATABASE.find(s => s.id === selectedRivalId) || SERVANT_DATABASE[0];
+        const canonMatchup = SERVANT_MATCHUP_DATABASE[currentServant.template.id]?.[selectedRivalId];
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="w-full max-w-4xl relative">
+              <VsClashScreen
+                challenger={{
+                  name: currentServant.nickname || currentServant.template.name,
+                  title: currentServant.template.title,
+                  servantClass: currentServant.template.servantClass,
+                  avatarUrl: currentServant.template.avatarUrl,
+                  masterName: master.username,
+                  rarity: currentServant.template.rarity
+                }}
+                defender={{
+                  name: previewTargetRival.name,
+                  title: previewTargetRival.title,
+                  servantClass: previewTargetRival.servantClass,
+                  avatarUrl: previewTargetRival.avatarUrl,
+                  masterName: 'Rival Master Kotomine',
+                  rarity: previewTargetRival.rarity
+                }}
+                dialogue={{
+                  challengerLine: rivalIntro || canonMatchup?.intro || "Face me in battle!",
+                  defenderLine: rivalRetort || canonMatchup?.retort || "You shall not pass!",
+                  tag: rivalTag || canonMatchup?.tag || "RIVAL ENCOUNTER"
+                }}
+                onEngage={() => setShowMatchupClashPreview(false)}
+                onSkip={() => setShowMatchupClashPreview(false)}
+              />
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

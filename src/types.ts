@@ -92,6 +92,12 @@ export interface CraftEssence {
   artworkUrl?: string;
 }
 
+export interface MatchupQuoteEntry {
+  intro?: string;
+  retort?: string;
+  tag?: string;
+}
+
 export interface ServantTemplate {
   id: string;
   name: string;
@@ -113,6 +119,7 @@ export interface ServantTemplate {
   avatarUrl: string;
   cardArtUrl: string;
   isCustomOrMeme?: boolean;
+  matchupDialogues?: Record<string, MatchupQuoteEntry>;
 }
 
 export interface MasterServantInstance {
@@ -139,6 +146,7 @@ export interface MasterServantInstance {
     busterChain?: string;
     artsChain?: string;
     quickChain?: string;
+    matchups?: Record<string, MatchupQuoteEntry>;
   };
   bondLevel: number;
   npLevel?: number;

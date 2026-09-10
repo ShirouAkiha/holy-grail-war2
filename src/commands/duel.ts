@@ -18,6 +18,7 @@ import { PVP_DAMAGE_MODIFIER, calculateFleeChance, rollFleeSuccess } from '../en
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { getServantChainDialogue, shouldTriggerDialogueCutIn } from '../engine/dialogue';
+import { getServantMatchupDialogue } from '../data/servantMatchups';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -1746,12 +1747,18 @@ async function startInteractiveDuel(
   let round = 1;
   const t1 = p1.servant.template;
   const t2 = p2.servant.template;
-  const p1BattleQuote = p1.servant.customQuotes?.battleStart || t1?.battleStartQuote || "My blade is drawn. Let the duel begin!";
   const p1Speaker = p1.servant.nickname || t1?.name || 'Servant';
+  const p2Speaker = p2.servant.nickname || t2?.name || 'Opponent Servant';
+
+  // Interactive Matchup Banter Resolution
+  const clashMatchup = getServantMatchupDialogue(p1.servant, t2);
+  const p1BattleQuote = clashMatchup.challengerLine;
+  const p2BattleQuote = clashMatchup.defenderLine;
 
   const combatLogs: string[] = [
-    '⚔️ The Command Seal glow resonates... The Holy Grail Duel begins!',
-    `💬 **[BATTLE ENGAGEMENT] ${p1Speaker}:**\n> ❝ ***${p1BattleQuote}*** ❞`
+    `⚔️ **[VS CLASH: ${clashMatchup.tag}]** The Command Seal glow resonates... The Holy Grail Duel begins!`,
+    `💬 **${p1Speaker} (${t1.servantClass}):**\n> ❝ ***${clashMatchup.challengerLine}*** ❞`,
+    `💬 **${p2Speaker} (${t2.servantClass}):**\n> ❝ ***${clashMatchup.defenderLine}*** ❞`
   ];
   const base1 = t1?.baseStats || { agility: 10 };
   const base2 = t2?.baseStats || { agility: 10 };
@@ -1794,8 +1801,6 @@ async function startInteractiveDuel(
   const p1Class = t1?.servantClass || 'Saber';
   const p1AvatarUrl = t1?.avatarUrl;
 
-  const p2BattleQuote = p2.servant.customQuotes?.battleStart || t2?.battleStartQuote || "Prepare to face your destiny!";
-  const p2Speaker = p2.servant.nickname || t2?.name || 'Servant';
   const p2Class = t2?.servantClass || 'Saber';
   const p2AvatarUrl = t2?.avatarUrl;
 
