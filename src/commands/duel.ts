@@ -828,6 +828,10 @@ function resolveStrike(
   // Handle Stun status
   if (attacker.isStunned) {
     attacker.isStunned = false;
+    attacker.activeBuffs = attacker.activeBuffs.filter(b => {
+      b.remainingTurns--;
+      return b.remainingTurns > 0;
+    });
     return `💫 **${attacker.servant.template.name}** was **Stunned / NP Sealed** and was unable to attack this turn!`;
   }
 
@@ -1141,6 +1145,17 @@ function resolveStrike(
 
   // Apply total damage to defender
   defender.currentHp = Math.max(0, defender.currentHp - totalSeqDmg);
+
+  // Consume 1 turn/stack of Evade or Invincibility after successfully deflecting an attack sequence
+  if (isTargetProtected) {
+    defender.activeBuffs = defender.activeBuffs.filter(b => {
+      if (b.type === 'evade' || b.type === 'invincible') {
+        b.remainingTurns--;
+        return b.remainingTurns > 0;
+      }
+      return true;
+    });
+  }
 
   // Defender Avenger Passive: NP refund on taking damage
   let avengerLog = '';

@@ -545,9 +545,21 @@ export function executeNoblePhantasmLogic(
     if (target.isInvincible || target.activeBuffs.some(b => b.type === 'invincible')) {
       damageDealt = 0;
       isInvincible = true;
+      target.activeBuffs = target.activeBuffs
+        .map(b => (b.type === 'invincible' ? { ...b, remainingTurns: b.remainingTurns - 1 } : b))
+        .filter(b => b.remainingTurns > 0);
+      if (!target.activeBuffs.some(b => b.type === 'invincible')) {
+        target.isInvincible = false;
+      }
     } else if (target.isEvading || target.activeBuffs.some(b => b.type === 'evade')) {
       damageDealt = 0;
       isEvaded = true;
+      target.activeBuffs = target.activeBuffs
+        .map(b => (b.type === 'evade' ? { ...b, remainingTurns: b.remainingTurns - 1 } : b))
+        .filter(b => b.remainingTurns > 0);
+      if (!target.activeBuffs.some(b => b.type === 'evade')) {
+        target.isEvading = false;
+      }
     } else {
       damageDealt = totalDmg;
     }
@@ -897,6 +909,11 @@ export function executeBattleTurn(
     // Check Stun state
     if (actor.isStunned) {
       actor.isStunned = false; // wears off
+      actor.activeBuffs = actor.activeBuffs
+        .map(b => ({ ...b, remainingTurns: b.remainingTurns - 1 }))
+        .filter(b => b.remainingTurns > 0);
+      if (!actor.activeBuffs.some(b => b.type === 'evade')) actor.isEvading = false;
+      if (!actor.activeBuffs.some(b => b.type === 'invincible')) actor.isInvincible = false;
       turnLogs.push({
         turnNumber: state.currentTurn,
         actorId: actor.id,
@@ -1059,6 +1076,15 @@ export function executeBattleTurn(
         totalStars += Math.round(2 * cardStarMult);
       });
 
+      // Consume Evade / Invincibility after deflecting this attack sequence
+      if (target.isEvading || target.isInvincible || (target.activeBuffs && target.activeBuffs.some(b => b.type === 'evade' || b.type === 'invincible'))) {
+        target.activeBuffs = target.activeBuffs
+          .map(b => (b.type === 'evade' || b.type === 'invincible' ? { ...b, remainingTurns: b.remainingTurns - 1 } : b))
+          .filter(b => b.remainingTurns > 0);
+        if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
+        if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
+      }
+
       const chainNotice = cardChainType === 'Quick Chain'
         ? `\n🟢 **QUICK CHAIN BONUS:** +20 Critical Stars added & +25% Crit Rate!`
         : cardChainType === 'Buster Brave'
@@ -1122,6 +1148,8 @@ export function executeBattleTurn(
     actor.activeBuffs = actor.activeBuffs
       .map(b => ({ ...b, remainingTurns: b.remainingTurns - 1 }))
       .filter(b => b.remainingTurns > 0);
+    if (!actor.activeBuffs.some(b => b.type === 'evade')) actor.isEvading = false;
+    if (!actor.activeBuffs.some(b => b.type === 'invincible')) actor.isInvincible = false;
 
     turnLogs.push({
       turnNumber: state.currentTurn,
