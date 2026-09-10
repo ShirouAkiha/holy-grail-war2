@@ -683,25 +683,22 @@ function activateCombatantSkill(
     const nameLower = (skill.name || '').toLowerCase();
     if (desc.includes('buster') || nameLower.includes('buster') || nameLower.includes('mana burst')) {
       combatant.activeBuffs.push({ name: skill.name, type: 'buster_up', value: val, remainingTurns: skill.duration || 1 });
-      logText = `🔥 **${combatant.servant.template.name}** activated **${skill.name}**, gaining **+${val}% Buster Performance Up** for ${skill.duration || 1} turn!`;
     } else if (desc.includes('arts') || nameLower.includes('arts') || nameLower.includes('fox')) {
       combatant.activeBuffs.push({ name: skill.name, type: 'arts_up', value: val, remainingTurns: skill.duration || 1 });
-      logText = `🌊 **${combatant.servant.template.name}** activated **${skill.name}**, gaining **+${val}% Arts Performance Up** for ${skill.duration || 1} turn!`;
     } else if (desc.includes('quick') || nameLower.includes('quick') || nameLower.includes('primordial rune')) {
       combatant.activeBuffs.push({ name: skill.name, type: 'quick_up', value: val, remainingTurns: skill.duration || 1 });
-      logText = `⚡ **${combatant.servant.template.name}** activated **${skill.name}**, gaining **+${val}% Quick Performance Up** for ${skill.duration || 1} turn!`;
     } else {
       combatant.activeBuffs.push({ name: skill.name, type: 'buff_atk', value: val, remainingTurns: skill.duration || 2 });
       combatant.critStars = Math.min(50, combatant.critStars + 10);
-      logText = `⚔️ **${combatant.servant.template.name}** activated **${skill.name}**, gaining **+${val}% ATK Buff** for ${skill.duration || 2} turns & +10 Stars!`;
     }
+    logText = `⚔️ **${combatant.servant.template.name}** activated **${skill.name}**!`;
   } else if (skill.effectType === 'buff_def') {
     const val = skill.value || 30;
     combatant.activeBuffs.push({ name: skill.name, type: 'buff_def', value: val, remainingTurns: skill.duration || 2 });
-    logText = `🛡️ **${combatant.servant.template.name}** activated **${skill.name}**, gaining **+${val}% DEF Buff** for ${skill.duration || 2} turns!`;
+    logText = `🛡️ **${combatant.servant.template.name}** activated **${skill.name}**!`;
   } else if (skill.effectType === 'evade' || skill.effectType === 'invincible') {
     combatant.activeBuffs.push({ name: skill.name, type: 'evade', value: 100, remainingTurns: skill.duration || 1 });
-    logText = `💨 **${combatant.servant.template.name}** activated **${skill.name}**! Readied an absolute evasive barrier to dodge incoming strikes and Noble Phantasms!`;
+    logText = `💨 **${combatant.servant.template.name}** activated **${skill.name}**!`;
   } else if (skill.effectType === 'guts' || skill.id?.includes('guts') || skill.id?.includes('battle_continuation') || skill.id?.includes('thrice')) {
     const reviveAmt = skill.value || Math.round(combatant.maxHp * 0.20);
     combatant.gutsCount = (combatant.gutsCount || 0) + 1;
@@ -719,23 +716,22 @@ function activateCombatantSkill(
         remainingTurns: 1
       });
     }
-    logText = `🩸 **${combatant.servant.template.name}** activated **${skill.name}**, gaining **Guts Status**! (Will revive with +${reviveAmt.toLocaleString()} HP on lethal damage)`;
+    logText = `🩸 **${combatant.servant.template.name}** activated **${skill.name}**!`;
   } else if (skill.effectType === 'heal') {
     const healVal = skill.value || Math.round(combatant.maxHp * 0.25);
     combatant.currentHp = Math.min(combatant.maxHp, combatant.currentHp + healVal);
-    logText = `💚 **${combatant.servant.template.name}** activated **${skill.name}**, restoring **+${healVal.toLocaleString()} HP**!`;
+    logText = `💚 **${combatant.servant.template.name}** activated **${skill.name}**!`;
   } else if (skill.effectType === 'np_charge') {
     const npVal = skill.value || 30;
     combatant.npGauge = Math.min(300, combatant.npGauge + npVal);
     combatant.critStars = Math.min(50, combatant.critStars + 15);
-    logText = `⚡ **${combatant.servant.template.name}** activated **${skill.name}**, charging **+${npVal}% NP Gauge** & +15 Critical Stars!`;
+    logText = `⚡ **${combatant.servant.template.name}** activated **${skill.name}**!`;
   } else if (skill.effectType === 'crit_stars') {
     const starVal = skill.value || 25;
     combatant.critStars = Math.min(50, combatant.critStars + starVal);
     combatant.activeBuffs.push({ name: skill.name, type: 'crit_dmg', value: 40, remainingTurns: skill.duration || 2 });
-    logText = `🌟 **${combatant.servant.template.name}** activated **${skill.name}**, generating **+${starVal} Stars** & +40% Crit DMG!`;
+    logText = `🌟 **${combatant.servant.template.name}** activated **${skill.name}**!`;
   } else if (skill.effectType === 'stun' || skill.effectType === 'debuff' || skill.id?.includes('discernment')) {
-    const oppName = opponent ? opponent.servant.template.name : 'enemy';
     if (opponent) {
       opponent.isStunned = true;
       opponent.npGauge = Math.max(0, opponent.npGauge - 20);
@@ -746,7 +742,7 @@ function activateCombatantSkill(
         remainingTurns: skill.duration || 1
       });
     }
-    logText = `👁️ **${combatant.servant.template.name}** activated **${skill.name}**! Drained **${oppName}**'s NP gauge by 20%, reduced ATK power by 20%, and inflicted Stun!`;
+    logText = `👁️ **${combatant.servant.template.name}** activated **${skill.name}**!`;
   } else {
     combatant.activeBuffs.push({ name: skill.name, type: 'buff_atk', value: 25, remainingTurns: 2 });
     logText = `✨ **${combatant.servant.template.name}** activated **${skill.name}**!`;

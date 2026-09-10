@@ -211,8 +211,7 @@ export function applyCombatantSkill(
         });
       }
       actor.critStars = Math.min(50, actor.critStars + 10);
-      const cardDetail = cardBuff ? ` (+${skill.value || 30}% ${cardBuff === 'buster_up' ? 'Buster' : cardBuff === 'arts_up' ? 'Arts' : 'Quick'} Card Effectiveness)` : '';
-      logText = `⚔️ **${actor.name}** activated **${skill.name}**, gaining **+${skill.value || 30}% ATK**${cardDetail} for ${skill.duration || 2} turns and +10 Critical Stars!`;
+      logText = `⚔️ **${actor.name}** activated **${skill.name}**!`;
       break;
     }
     case 'buff_def':
@@ -222,18 +221,18 @@ export function applyCombatantSkill(
         value: skill.value || 30,
         remainingTurns: skill.duration || 2
       });
-      logText = `🛡️ **${actor.name}** activated **${skill.name}**, gaining **+${skill.value || 30}% DEF** for ${skill.duration || 2} turns!`;
+      logText = `🛡️ **${actor.name}** activated **${skill.name}**!`;
       break;
     case 'heal': {
       const healAmt = skill.value || Math.round(actor.maxHp * 0.25);
       actor.currentHp = Math.min(actor.maxHp, actor.currentHp + healAmt);
-      logText = `💚 **${actor.name}** activated **${skill.name}**, restoring **+${healAmt.toLocaleString()} HP**!`;
+      logText = `💚 **${actor.name}** activated **${skill.name}**!`;
       break;
     }
     case 'np_charge':
       actor.npGauge = Math.min(300, actor.npGauge + (skill.value || 30));
       actor.critStars = Math.min(50, actor.critStars + 15);
-      logText = `⚡ **${actor.name}** activated **${skill.name}**, charging **+${skill.value || 30}% NP** and generating +15 Stars!`;
+      logText = `⚡ **${actor.name}** activated **${skill.name}**!`;
       break;
     case 'crit_stars': {
       const stars = skill.value || 25;
@@ -244,7 +243,7 @@ export function applyCombatantSkill(
         value: 40,
         remainingTurns: skill.duration || 2
       });
-      logText = `🌟 **${actor.name}** activated **${skill.name}**, generating **+${stars} Critical Stars** and +40% Critical DMG!`;
+      logText = `🌟 **${actor.name}** activated **${skill.name}**!`;
       break;
     }
     case 'evade':
@@ -256,7 +255,7 @@ export function applyCombatantSkill(
         value: 100,
         remainingTurns: skill.duration || 1
       });
-      logText = `💨 **${actor.name}** activated **${skill.name}**, granting absolute **Evade** against incoming damage!`;
+      logText = `💨 **${actor.name}** activated **${skill.name}**!`;
       break;
     case 'guts': {
       const reviveVal = skill.value || Math.round(actor.maxHp * 0.20);
@@ -274,7 +273,7 @@ export function applyCombatantSkill(
           remainingTurns: 1
         });
       }
-      logText = `🩸 **${actor.name}** activated **${skill.name}**, granting **Guts Status** (Will revive with +${reviveVal.toLocaleString()} HP on lethal damage)!`;
+      logText = `🩸 **${actor.name}** activated **${skill.name}**!`;
       break;
     }
     case 'debuff':
@@ -294,7 +293,7 @@ export function applyCombatantSkill(
       });
 
       if (effectiveResist > 0 && Math.random() * 100 < effectiveResist) {
-        logText = `🛡️ **${target.name}** partially resisted **${actor.name}'s ${skill.name}** via Magic Resistance, but suffered -20% NP Gauge & -20% ATK!`;
+        logText = `🛡️ **${target.name}** partially resisted **${actor.name}'s ${skill.name}** via Magic Resistance!`;
       } else {
         target.isStunned = true;
         target.activeBuffs.push({
@@ -303,7 +302,7 @@ export function applyCombatantSkill(
           value: 100,
           remainingTurns: skill.duration || 1
         });
-        logText = `👁️ **${actor.name}** activated **${skill.name}**! Drained **${target.name}**'s NP gauge by 20%, reduced ATK by 20%, and inflicted Stun!`;
+        logText = `👁️ **${actor.name}** activated **${skill.name}**!`;
       }
       break;
     }
