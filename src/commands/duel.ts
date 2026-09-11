@@ -632,6 +632,18 @@ function buildDuelEmbed(
     )
     .setColor(isP1Team ? 0xef4444 : 0x38bdf8);
 
+  const team1List = [p1, p1Ally].filter((c): c is DuelCombatant => !!c);
+  const team2List = [p2, p2Ally].filter((c): c is DuelCombatant => !!c);
+
+  if (p1Ally || p2Ally) {
+    const team1Str = team1List.map(c => `• <@${c.userId}> (**${c.servant.nickname || c.servant.template?.name || 'Servant'}** • ${Math.round(c.currentHp).toLocaleString()} HP)`).join('\n');
+    const team2Str = team2List.map(c => `• <@${c.userId}> (**${c.servant.nickname || c.servant.template?.name || 'Servant'}** • ${Math.round(c.currentHp).toLocaleString()} HP)`).join('\n');
+    embed.addFields(
+      { name: '🛡️ Team 1', value: team1Str, inline: true },
+      { name: '⚔️ Team 2', value: team2Str, inline: true }
+    );
+  }
+
   if (lastLogs && lastLogs.length > 0) {
     const recent = lastLogs.slice(-2).join('\n\n');
     embed.addFields({
@@ -1601,14 +1613,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     // BRANCH 0: 2v2 ALLIANCE TAG-TEAM OR 1v2 RAID MODE
     if (mode === '2v2' || mode === '1v2') {
-      await interaction.deferReply();
       const is2v2 = mode === '2v2';
       let opponentMaster: MasterProfile;
       let opponentServant: any;
 
       if (opponentUser && !opponentUser.bot && opponentUser.id !== interaction.user.id) {
         opponentMaster = await getOrCreateMaster(opponentUser.id, opponentUser.username);
-        opponentServant = opponentMaster.servants?.[0];
+        opponentServant = opponentMaster.servants?.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants?.[0];
       } else {
         opponentMaster = {
           id: 'master_ai_shadow_kirei',
@@ -1771,17 +1782,174 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         });
       }
 
-      await startInteractiveDuel(
-        interaction,
-        p1,
-        p2,
-        challengerMaster,
-        opponentMaster,
-        p1Ally,
-        p2Ally,
-        p1AllyMaster,
-        p2AllyMaster
+      // Collect required human confirmations
+      const invitedHumans = new Map<string, { user: User; role: string; accepted: boolean }>();
+      if (opponentUser && !opponentUser.bot && opponentUser.id !== interaction.user.id) {
+        invitedHumans.set(opponentUser.id, { user: opponentUser, role: 'Opponent Master', accepted: false });
+      }
+      if (allyUser && !allyUser.bot && allyUser.id !== interaction.user.id && !invitedHumans.has(allyUser.id)) {
+        invitedHumans.set(allyUser.id, { user: allyUser, role: 'Ally Master', accepted: false });
+      }
+      if (opponent2User && !opponent2User.bot && opponent2User.id !== interaction.user.id && !invitedHumans.has(opponent2User.id)) {
+        invitedHumans.set(opponent2User.id, { user: opponent2User, role: 'Secondary Opponent', accepted: false });
+      }
+
+      // If no human masters need confirmation, start immediately!
+      if (invitedHumans.size === 0) {
+        await interaction.deferReply();
+        await startInteractiveDuel(
+          interaction,
+          p1,
+          p2,
+          challengerMaster,
+          opponentMaster,
+          p1Ally,
+          p2Ally,
+          p1AllyMaster,
+          p2AllyMaster
+        );
+        return;
+      }
+
+      // Send multi-master invitation prompt requiring confirmation from all challenged human masters
+      const inviteEmbed = new EmbedBuilder()
+        .setTitle(`⚔️ HOLY GRAIL WAR: ${is2v2 ? '2v2 TAG-TEAM' : '1v2 RAID'} DUEL CHALLENGE`)
+        .setDescription(
+          `Master <@${interaction.user.id}> has issued a **${is2v2 ? '2v2 Tag-Team' : '1v2 Raid'}** challenge!\n\n` +
+          `🛡️ **Team 1:** <@${interaction.user.id}> (**${p1.servant.template?.name || 'Servant'}**) ${p1AllyMaster ? `& <@${p1AllyMaster.discordId}> (**${p1Ally?.servant.template?.name || 'Servant'}**)` : ''}\n` +
+          `⚔️ **Team 2:** <@${opponentMaster.discordId}> (**${p2.servant.template?.name || 'Servant'}**) ${p2AllyMaster ? `& <@${p2AllyMaster.discordId}> (**${p2Ally?.servant.template?.name || 'Servant'}**)` : ''}\n\n` +
+          `📜 **Challenge Confirmation Status:**\n` +
+          `• <@${interaction.user.id}> (Challenger): ✅ **Initiator**\n` +
+          `• ${[...invitedHumans.values()].map(h => `<@${h.user.id}> (${h.role}): ⏳ **Pending Confirmation**`).join('\n• ')}\n\n` +
+          `*All challenged Masters must accept to enter the Holy Grail War arena!*`
+        )
+        .setColor(0xd4af37);
+
+      const inviteRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId('accept_2v2_duel')
+          .setLabel('Accept Challenge')
+          .setEmoji('⚔️')
+          .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId('decline_2v2_duel')
+          .setLabel('Decline')
+          .setEmoji('🏳️')
+          .setStyle(ButtonStyle.Danger)
       );
+
+      const pingContent = [...invitedHumans.keys()].map(id => `<@${id}>`).join(' ');
+
+      const inviteMsg = await interaction.reply({
+        content: `⚔️ **Attention Masters:** ${pingContent}`,
+        embeds: [inviteEmbed],
+        components: [inviteRow],
+        withResponse: true
+      }).then(r => r.resource?.message || interaction.fetchReply());
+
+      const inviteCollector = inviteMsg.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        time: 300000 // 5 minutes
+      });
+
+      inviteCollector.on('collect', async i => {
+        try {
+          if (i.replied || i.deferred) return;
+
+          if (i.customId === 'decline_2v2_duel') {
+            if (!invitedHumans.has(i.user.id) && i.user.id !== interaction.user.id) {
+              await i.reply({ content: '❌ You are not involved in this duel challenge.', flags: MessageFlags.Ephemeral });
+              return;
+            }
+            inviteCollector.stop('declined');
+            await i.update({
+              content: `🏳️ Duel challenge declined by <@${i.user.id}>.`,
+              embeds: [],
+              components: []
+            });
+            return;
+          }
+
+          if (i.customId === 'accept_2v2_duel') {
+            if (!invitedHumans.has(i.user.id)) {
+              await i.reply({
+                content: '❌ You are not one of the challenged Masters in this duel invitation.',
+                flags: MessageFlags.Ephemeral
+              });
+              return;
+            }
+
+            const humanEntry = invitedHumans.get(i.user.id)!;
+            if (humanEntry.accepted) {
+              await i.reply({ content: '✅ You have already accepted this challenge!', flags: MessageFlags.Ephemeral });
+              return;
+            }
+
+            humanEntry.accepted = true;
+            const allAccepted = [...invitedHumans.values()].every(h => h.accepted);
+
+            if (!allAccepted) {
+              await i.deferUpdate();
+              const updatedStatusText = [...invitedHumans.values()]
+                .map(h => `<@${h.user.id}> (${h.role}): ${h.accepted ? '✅ **Accepted**' : '⏳ **Pending Confirmation**'}`)
+                .join('\n• ');
+
+              const updatedEmbed = EmbedBuilder.from(inviteEmbed)
+                .setDescription(
+                  `Master <@${interaction.user.id}> has issued a **${is2v2 ? '2v2 Tag-Team' : '1v2 Raid'}** challenge!\n\n` +
+                  `🛡️ **Team 1:** <@${interaction.user.id}> (**${p1.servant.template?.name || 'Servant'}**) ${p1AllyMaster ? `& <@${p1AllyMaster.discordId}> (**${p1Ally?.servant.template?.name || 'Servant'}**)` : ''}\n` +
+                  `⚔️ **Team 2:** <@${opponentMaster.discordId}> (**${p2.servant.template?.name || 'Servant'}**) ${p2AllyMaster ? `& <@${p2AllyMaster.discordId}> (**${p2Ally?.servant.template?.name || 'Servant'}**)` : ''}\n\n` +
+                  `📜 **Challenge Confirmation Status:**\n` +
+                  `• <@${interaction.user.id}> (Challenger): ✅ **Initiator**\n` +
+                  `• ${updatedStatusText}\n\n` +
+                  `*Awaiting remaining challenged Masters...*`
+                );
+
+              await i.editReply({ embeds: [updatedEmbed] });
+            } else {
+              inviteCollector.stop('accepted');
+              await i.deferUpdate();
+
+              const startingEmbed = EmbedBuilder.from(inviteEmbed)
+                .setTitle(`⚔️ ALL MASTERS ACCEPTED — ENTERING ARENA...`)
+                .setDescription(`⚔️ All challenged Masters have accepted the duel! Preparing battle arena canvas...`)
+                .setColor(0x22c55e);
+
+              await i.editReply({ embeds: [startingEmbed], components: [] });
+
+              await startInteractiveDuel(
+                i,
+                p1,
+                p2,
+                challengerMaster,
+                opponentMaster,
+                p1Ally,
+                p2Ally,
+                p1AllyMaster,
+                p2AllyMaster
+              );
+            }
+          }
+        } catch (err: any) {
+          if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) return;
+          console.error('Error in 2v2 inviteCollector:', err);
+        }
+      });
+
+      inviteCollector.on('end', async (_collected, reason) => {
+        if (reason !== 'accepted' && reason !== 'declined') {
+          try {
+            const expiredEmbed = EmbedBuilder.from(inviteEmbed)
+              .setColor(0x64748b)
+              .setFooter({ text: 'Holy Grail War • Duel invitation expired (5 min timeout)' });
+            await interaction.editReply({
+              embeds: [expiredEmbed],
+              components: []
+            });
+          } catch {}
+        }
+      });
+
       return;
     }
 
@@ -2326,6 +2494,20 @@ async function startInteractiveDuel(
     `💬 **${p2Speaker} (${t2.servantClass}):**\n> ❝ ***${clashMatchup.defenderLine}*** ❞`
   ];
 
+  if (p1Ally) {
+    const p1AllyTpl = p1Ally.servant.template;
+    const p1AllySpeaker = p1Ally.servant.nickname || p1AllyTpl?.name || 'Ally Servant';
+    const p1AllyMatchup = getServantMatchupDialogue(p1Ally.servant, t2);
+    combatLogs.push(`💬 **${p1AllySpeaker} (${p1AllyTpl?.servantClass || 'Servant'}):**\n> ❝ ***${p1AllyMatchup.challengerLine}*** ❞`);
+  }
+
+  if (p2Ally) {
+    const p2AllyTpl = p2Ally.servant.template;
+    const p2AllySpeaker = p2Ally.servant.nickname || p2AllyTpl?.name || 'Opponent Ally Servant';
+    const p2AllyMatchup = getServantMatchupDialogue(p2Ally.servant, t1);
+    combatLogs.push(`💬 **${p2AllySpeaker} (${p2AllyTpl?.servantClass || 'Servant'}):**\n> ❝ ***${p2AllyMatchup.challengerLine}*** ❞`);
+  }
+
   const team1: DuelCombatant[] = [p1, ...(p1Ally ? [p1Ally] : [])];
   const team2: DuelCombatant[] = [p2, ...(p2Ally ? [p2Ally] : [])];
   let team1AssistUsed = false;
@@ -2512,10 +2694,105 @@ async function startInteractiveDuel(
     startFiles.push(p2StartAttachment);
   }
 
+  if (p1Ally) {
+    const p1AllyTpl = p1Ally.servant.template;
+    const p1AllySpeaker = p1Ally.servant.nickname || p1AllyTpl?.name || 'Ally Servant';
+    const p1AllyClass = p1AllyTpl?.servantClass || 'Saber';
+    const p1AllyAvatarUrl = p1AllyTpl?.avatarUrl;
+    const p1AllyMatchup = getServantMatchupDialogue(p1Ally.servant, t2);
+    const p1AllyQuote = p1AllyMatchup.challengerLine;
+
+    const p1AllyStartBuffer = await renderDialogueCard(
+      p1AllySpeaker,
+      p1AllyQuote,
+      'ALLIANCE INVOCATION',
+      p1AllyClass,
+      p1AllyAvatarUrl,
+      p1Ally.servant.bondLevel || 5,
+      p2Speaker,
+      p2AvatarUrl,
+      p2Class,
+      ['Buster', 'Arts', 'Quick'],
+      'fuyuki'
+    ).catch(err => {
+      console.error('Error rendering p1Ally starting dialogue card:', err);
+      return null;
+    });
+
+    if (p1AllyStartBuffer) {
+      const p1AllyStartAttachment = new AttachmentBuilder(p1AllyStartBuffer, { name: 'p1_ally_start.png' });
+      const p1AllyStartEmbed = new EmbedBuilder()
+        .setTitle(`💬 BATTLE ENGAGEMENT — ${p1AllyTpl.name.toUpperCase()}`)
+        .setDescription(
+          `💬 **${p1AllyTpl.name}** (Master: <@${p1Ally.userId}>):\n> ❝ ***${p1AllyQuote}*** ❞`
+        )
+        .setImage('attachment://p1_ally_start.png')
+        .setColor(0xef4444);
+
+      if (p1AllyAvatarUrl) {
+        safeSetEmbedThumbnail(p1AllyStartEmbed, p1AllyAvatarUrl, startFiles);
+      }
+
+      startEmbeds.push(p1AllyStartEmbed);
+      startFiles.push(p1AllyStartAttachment);
+    }
+  }
+
+  if (p2Ally) {
+    const p2AllyTpl = p2Ally.servant.template;
+    const p2AllySpeaker = p2Ally.servant.nickname || p2AllyTpl?.name || 'Opponent Ally Servant';
+    const p2AllyClass = p2AllyTpl?.servantClass || 'Saber';
+    const p2AllyAvatarUrl = p2AllyTpl?.avatarUrl;
+    const p2AllyMatchup = getServantMatchupDialogue(p2Ally.servant, t1);
+    const p2AllyQuote = p2AllyMatchup.challengerLine;
+
+    const p2AllyStartBuffer = await renderDialogueCard(
+      p2AllySpeaker,
+      p2AllyQuote,
+      'ALLIANCE INVOCATION',
+      p2AllyClass,
+      p2AllyAvatarUrl,
+      p2Ally.servant.bondLevel || 5,
+      p1Speaker,
+      p1AvatarUrl,
+      p1Class,
+      ['Buster', 'Arts', 'Quick'],
+      'fuyuki'
+    ).catch(err => {
+      console.error('Error rendering p2Ally starting dialogue card:', err);
+      return null;
+    });
+
+    if (p2AllyStartBuffer) {
+      const p2AllyStartAttachment = new AttachmentBuilder(p2AllyStartBuffer, { name: 'p2_ally_start.png' });
+      const p2AllyStartEmbed = new EmbedBuilder()
+        .setTitle(`💬 BATTLE ENGAGEMENT — ${p2AllyTpl.name.toUpperCase()}`)
+        .setDescription(
+          `💬 **${p2AllyTpl.name}** (Master: <@${p2Ally.userId}>):\n> ❝ ***${p2AllyQuote}*** ❞`
+        )
+        .setImage('attachment://p2_ally_start.png')
+        .setColor(0x38bdf8);
+
+      if (p2AllyAvatarUrl) {
+        safeSetEmbedThumbnail(p2AllyStartEmbed, p2AllyAvatarUrl, startFiles);
+      }
+
+      startEmbeds.push(p2AllyStartEmbed);
+      startFiles.push(p2AllyStartAttachment);
+    }
+  }
+
+  const activeHumanUsers = [p1, p2, p1Ally, p2Ally]
+    .filter((c): c is DuelCombatant => !!c && !c.isAi)
+    .map(c => `<@${c.userId}>`);
+  const activePingsContent = activeHumanUsers.length > 0
+    ? `⚔️ **Holy Grail War Duel In Progress!** ${activeHumanUsers.join(' ')}`
+    : null;
+
   let battleMsg: any;
   if (contextInteraction.deferred || contextInteraction.replied) {
     battleMsg = await contextInteraction.editReply({
-      content: null,
+      content: activePingsContent,
       embeds: startEmbeds,
       files: startFiles,
       components: initialButtons
@@ -2523,13 +2800,14 @@ async function startInteractiveDuel(
   } else if (contextInteraction.isButton && contextInteraction.isButton()) {
     await contextInteraction.deferUpdate();
     battleMsg = await contextInteraction.editReply({
-      content: null,
+      content: activePingsContent,
       embeds: startEmbeds,
       files: startFiles,
       components: initialButtons
     });
   } else {
     const res = await contextInteraction.reply({
+      content: activePingsContent,
       embeds: startEmbeds,
       files: startFiles,
       components: initialButtons,
