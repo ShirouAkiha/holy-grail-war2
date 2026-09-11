@@ -93,6 +93,7 @@ export interface DuelCombatant {
   currentHand?: ('Buster' | 'Arts' | 'Quick')[];
   drawPile?: ('Buster' | 'Arts' | 'Quick')[];
   masterAvatarUrl?: string;
+  selectedTargetId?: string;
 }
 
 // ==========================================
@@ -431,60 +432,52 @@ async function createTurnSummaryAttachment(
   round: number,
   lastLogText: string,
   p1Cards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Buster', 'Arts', 'Quick'],
-  p2Cards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Arts', 'Buster', 'Quick']
+  p2Cards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Arts', 'Buster', 'Quick'],
+  p1Ally?: DuelCombatant,
+  p2Ally?: DuelCombatant
 ): Promise<AttachmentBuilder> {
-  const activeP1: ActiveCombatant = {
-    id: p1.userId,
-    name: p1.servant.template.name,
-    masterName: p1.username,
-    servantClass: p1.servant.template.servantClass,
-    avatarUrl: getServantAvatarAndCardArt(p1.servant).avatarUrl,
-    maxHp: p1.maxHp,
-    currentHp: p1.currentHp,
-    atk: p1.atk,
-    def: p1.def,
-    stats: p1.servant.template.baseStats,
-    commandDeck: p1.servant.template.commandDeck,
-    npGauge: p1.npGauge,
-    activeBuffs: p1.activeBuffs.map(b => ({ name: b.name, type: b.type, value: b.value, remainingTurns: b.remainingTurns, remainingHits: b.remainingHits, isHitCount: b.isHitCount })),
-    equippedCe: p1.servant.equippedCe,
-    skills: (p1.servant.template.skills || []).map((s, idx) => ({ ...s, currentCooldown: p1.skillCooldowns[idx] || 0 })),
-    noblePhantasm: p1.servant.template.noblePhantasm,
-    critStars: p1.critStars,
-    bondLevel: p1.servant.bondLevel || 1
-  };
+  const mapToActive = (c: DuelCombatant): ActiveCombatant => ({
+    id: c.userId,
+    name: c.servant.template.name,
+    masterName: c.username,
+    servantClass: c.servant.template.servantClass,
+    avatarUrl: getServantAvatarAndCardArt(c.servant).avatarUrl,
+    maxHp: c.maxHp,
+    currentHp: c.currentHp,
+    atk: c.atk,
+    def: c.def,
+    stats: c.servant.template.baseStats,
+    commandDeck: c.servant.template.commandDeck,
+    npGauge: c.npGauge,
+    activeBuffs: c.activeBuffs.map(b => ({ name: b.name, type: b.type, value: b.value, remainingTurns: b.remainingTurns, remainingHits: b.remainingHits, isHitCount: b.isHitCount })),
+    equippedCe: c.servant.equippedCe,
+    skills: (c.servant.template.skills || []).map((s, idx) => ({ ...s, currentCooldown: c.skillCooldowns[idx] || 0 })),
+    noblePhantasm: c.servant.template.noblePhantasm,
+    critStars: c.critStars,
+    bondLevel: c.servant.bondLevel || 1
+  });
 
-  const activeP2: ActiveCombatant = {
-    id: p2.userId,
-    name: p2.servant.template.name,
-    masterName: p2.username,
-    servantClass: p2.servant.template.servantClass,
-    avatarUrl: getServantAvatarAndCardArt(p2.servant).avatarUrl,
-    maxHp: p2.maxHp,
-    currentHp: p2.currentHp,
-    atk: p2.atk,
-    def: p2.def,
-    stats: p2.servant.template.baseStats,
-    commandDeck: p2.servant.template.commandDeck,
-    npGauge: p2.npGauge,
-    activeBuffs: p2.activeBuffs.map(b => ({ name: b.name, type: b.type, value: b.value, remainingTurns: b.remainingTurns, remainingHits: b.remainingHits, isHitCount: b.isHitCount })),
-    equippedCe: p2.servant.equippedCe,
-    skills: (p2.servant.template.skills || []).map((s, idx) => ({ ...s, currentCooldown: p2.skillCooldowns[idx] || 0 })),
-    noblePhantasm: p2.servant.template.noblePhantasm,
-    critStars: p2.critStars,
-    bondLevel: p2.servant.bondLevel || 1
-  };
+  const activeP1 = mapToActive(p1);
+  const activeP2 = mapToActive(p2);
+  const activeP1Ally = p1Ally ? mapToActive(p1Ally) : undefined;
+  const activeP2Ally = p2Ally ? mapToActive(p2Ally) : undefined;
 
   const isCrit = lastLogText.includes('CRITICAL');
   const isNP = lastLogText.includes('NOBLE PHANTASM');
 
   // Identify who was the attacker in the most recent combat log entry
-  const isP2Attacker = lastLogText.includes(`**${p2.servant.template.name}** executed sequence`) ||
-    lastLogText.includes(`**${p2.username}** commanded`) ||
-    lastLogText.includes(`**${p2.servant.nickname || p2.servant.template.name}** activated`);
-  const activeAttacker = isP2Attacker ? p2 : p1;
-  const activeDefender = isP2Attacker ? p1 : p2;
-  const activeCards = isP2Attacker ? p2Cards : p1Cards;
+  const allCombatants = [p1, p2, p1Ally, p2Ally].filter((c): c is DuelCombatant => !!c);
+  const foundAttacker = allCombatants.find(c =>
+    lastLogText.includes(`**${c.servant.template.name}** executed sequence`) ||
+    lastLogText.includes(`**${c.username}** commanded`) ||
+    lastLogText.includes(`**${c.servant.nickname || c.servant.template.name}** activated`)
+  );
+  const activeAttacker = foundAttacker || p1;
+
+  const foundDefender = allCombatants.find(c => c !== activeAttacker && lastLogText.includes(`to ${c.servant.template.name}`));
+  const activeDefender = foundDefender || (activeAttacker === p1 ? p2 : p1);
+
+  const activeCards = activeAttacker === p2 ? p2Cards : p1Cards;
 
   let dQuote = '';
   let dTag = '';
@@ -551,7 +544,7 @@ async function createTurnSummaryAttachment(
     targetNp: activeDefender.npGauge
   };
 
-  const imageBuffer = await renderBattleTurnSummary(turnLog, activeP1, activeP2);
+  const imageBuffer = await renderBattleTurnSummary(turnLog, activeP1, activeP2, activeP1Ally, activeP2Ally);
   return new AttachmentBuilder(imageBuffer, { name: 'turn_summary.png' });
 }
 
@@ -565,10 +558,14 @@ function buildDuelEmbed(
   activeUserId: string,
   lastLogs?: string[],
   pendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = [],
-  pendingIndices: number[] = []
+  pendingIndices: number[] = [],
+  p1Ally?: DuelCombatant,
+  p2Ally?: DuelCombatant,
+  selectedTarget?: DuelCombatant
 ) {
-  const isP1Turn = activeUserId === p1.userId;
-  const activeCombatant = isP1Turn ? p1 : p2;
+  const allCombatants = [p1, p2, p1Ally, p2Ally].filter((c): c is DuelCombatant => !!c);
+  const activeCombatant = allCombatants.find(c => c.userId === activeUserId) || p1;
+  const isP1Team = activeCombatant === p1 || activeCombatant === p1Ally;
 
   if (!activeCombatant.currentHand || activeCombatant.currentHand.length !== 5) {
     refreshCombatantHand(activeCombatant);
@@ -617,15 +614,23 @@ function buildDuelEmbed(
     : '`None`';
   const cardsRemainingInCycle = activeCombatant.drawPile?.length ?? 0;
   const cycleTurn = 3 - Math.floor(cardsRemainingInCycle / 5);
-  const slotDisplay = `🎴 **Dealt Command Hand (${sClass} Deck • Turn ${cycleTurn}/3):**\n${handDisplay}\n\n🛡️ **Active Class Passives (Max 2):** ${passivesText}${lockedNote}\n\n⚔️ **Selected Chain (${pendingCards.length}/3):**\n\`[ 1: ${c1Text} ]\` ➔ \`[ 2: ${c2Text} ]\` ➔ \`[ 3: ${c3Text} ]\`${leadHelp}`;
 
+  let targetSection = '';
+  if (selectedTarget) {
+    const tName = selectedTarget.servant.nickname || selectedTarget.servant.template?.name || 'Opponent';
+    targetSection = `\n🎯 **Target Locked:** **${tName}** (Master: <@${selectedTarget.userId}> • HP: **${Math.round(selectedTarget.currentHp).toLocaleString()} / ${selectedTarget.maxHp.toLocaleString()}**)\n`;
+  }
+
+  const slotDisplay = `${targetSection}🎴 **Dealt Command Hand (${sClass} Deck • Turn ${cycleTurn}/3):**\n${handDisplay}\n\n🛡️ **Active Class Passives (Max 2):** ${passivesText}${lockedNote}\n\n⚔️ **Selected Chain (${pendingCards.length}/3):**\n\`[ 1: ${c1Text} ]\` ➔ \`[ 2: ${c2Text} ]\` ➔ \`[ 3: ${c3Text} ]\`${leadHelp}`;
+
+  const combatantName = activeCombatant.servant.nickname || activeCombatant.servant.template?.name || 'Servant';
   const embed = new EmbedBuilder()
     .setTitle(`⚔️ HOLY GRAIL WAR DUEL — ROUND ${round}`)
     .setImage('attachment://turn_summary.png')
     .setDescription(
-      `👉 **Current Turn:** ${activeCombatant.isAi ? '🤖 Shadow AI is calculating...' : `<@${activeCombatant.userId}>, pick **3 Cards** from your dealt hand:`}\n\n${slotDisplay}`
+      `👉 **Current Turn:** ${activeCombatant.isAi ? `🤖 Shadow AI (${combatantName}) is calculating...` : `<@${activeCombatant.userId}> (**${combatantName}**), pick **3 Cards** from your dealt hand:`}\n\n${slotDisplay}`
     )
-    .setColor(isP1Turn ? 0xef4444 : 0x38bdf8);
+    .setColor(isP1Team ? 0xef4444 : 0x38bdf8);
 
   if (lastLogs && lastLogs.length > 0) {
     const recent = lastLogs.slice(-2).join('\n\n');
@@ -641,14 +646,15 @@ function buildDuelEmbed(
 // ==========================================
 // 7. INTERACTIVE ACTION BUTTON BUILDER
 // ==========================================
-// Generates 3 rows:
-// Row 1: 5 Dealt Command Cards from Servant Class Deck
-// Row 2: Noble Phantasm + Reset + Command Seal
-// Row 3: 3 Active Skill Sets
 function buildCombatButtons(
   combatant: DuelCombatant,
   pendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = [],
-  pendingIndices: number[] = []
+  pendingIndices: number[] = [],
+  livingOpponents: DuelCombatant[] = [],
+  selectedTargetId?: string,
+  hasAlly: boolean = false,
+  allianceAssistAvailable: boolean = false,
+  forceJoinAvailable: boolean = false
 ) {
   if (!combatant.currentHand || combatant.currentHand.length !== 5) {
     refreshCombatantHand(combatant);
@@ -711,7 +717,6 @@ function buildCombatButtons(
   // Row 2: Noble Phantasm + Clear + Command Seal + Run / Flee
   const hasSeals = (combatant.commandSeals || 0) > 0;
   const npType = combatant.servant.template?.noblePhantasm?.cardType || 'Buster';
-  const npScope = combatant.servant.template?.noblePhantasm?.target || 'single';
   const sClass = combatant.servant.template?.servantClass || 'Saber';
   const agility = combatant.servant.template?.baseStats?.agility || combatant.servant.allocatedStats?.agility || 10;
   const fleeCalc = calculateFleeChance(combatant.currentHp, combatant.maxHp, sClass, agility);
@@ -782,21 +787,53 @@ function buildCombatButtons(
       .setDisabled(!isS3Unlocked || cd3 > 0 || !s3)
   );
 
-  // Row 4: Multi-Combat Tactical Actions & Mid-Battle Intervention
-  const row4 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+  const actionRows: ActionRowBuilder<ButtonBuilder>[] = [row1, row2, row3];
+
+  // Optional Row 4: Target Selection (when multiple opponents are alive in battle)
+  if (livingOpponents.length > 1) {
+    const targetRow = new ActionRowBuilder<ButtonBuilder>();
+    livingOpponents.forEach(opp => {
+      const isTarget = opp.userId === selectedTargetId;
+      const oppServantName = opp.servant.nickname || opp.servant.template?.name || 'Foe';
+      const label = isTarget
+        ? `🎯 [TARGET] ${oppServantName} (${Math.round(opp.currentHp)})`
+        : `Target: ${oppServantName} (${Math.round(opp.currentHp)})`;
+
+      targetRow.addComponents(
+        new ButtonBuilder()
+          .setCustomId(`target_${opp.userId}`)
+          .setLabel(label.slice(0, 80))
+          .setStyle(isTarget ? ButtonStyle.Success : ButtonStyle.Secondary)
+      );
+    });
+    actionRows.push(targetRow);
+  }
+
+  // Row 4 or 5: Tactical Actions & Mid-Battle Intervention
+  const tacticalRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId('card_alliance_assist')
-      .setLabel('Alliance Tag Assist (+25% ATK)')
+      .setLabel(
+        !hasAlly
+          ? 'Alliance Assist (No Ally)'
+          : !allianceAssistAvailable
+          ? 'Alliance Assist (Used)'
+          : 'Alliance Tag Assist (+25% ATK)'
+      )
       .setEmoji('🛡️')
-      .setStyle(ButtonStyle.Primary),
+      .setStyle(!hasAlly || !allianceAssistAvailable ? ButtonStyle.Secondary : ButtonStyle.Primary)
+      .setDisabled(!hasAlly || !allianceAssistAvailable),
     new ButtonBuilder()
       .setCustomId('card_forcejoin')
-      .setLabel('Force Join Arena')
+      .setLabel(forceJoinAvailable ? 'Force Join Arena' : 'Force Join (Locked)')
       .setEmoji('⚡')
-      .setStyle(ButtonStyle.Danger)
+      .setStyle(forceJoinAvailable ? ButtonStyle.Danger : ButtonStyle.Secondary)
+      .setDisabled(!forceJoinAvailable)
   );
 
-  return [row1, row2, row3, row4];
+  actionRows.push(tacticalRow);
+
+  return actionRows;
 }
 
 // Helper to activate a combatant skill without spending a turn
@@ -1581,12 +1618,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         const oppTemplate = SERVANT_DATABASE.find(s => s.id === 'servant_lancer_cuchulainn') || SERVANT_DATABASE[1] || SERVANT_DATABASE[0];
         opponentServant = {
           id: 'shadow_cu',
+          masterId: opponentMaster.id,
           templateId: oppTemplate.id,
           template: oppTemplate,
           level: 70,
+          experience: 0,
           bondLevel: 5,
           currentHp: oppTemplate.baseHp || 28000,
-          allocatedStats: { strength: 15, endurance: 15, agility: 20, mana: 10, luck: 10 }
+          allocatedStats: { strength: 15, endurance: 15, agility: 20, mana: 10, luck: 10 },
+          availableStatPoints: 0,
+          skillLevels: [6, 6, 6],
+          customQuotes: {}
         };
       }
 
@@ -1594,12 +1636,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         const oppTemplate = SERVANT_DATABASE.find(s => s.id === 'servant_lancer_cuchulainn') || SERVANT_DATABASE[0];
         opponentServant = {
           id: 'shadow_servant',
+          masterId: opponentMaster.id,
           templateId: oppTemplate.id,
           template: oppTemplate,
           level: 70,
+          experience: 0,
           bondLevel: 5,
           currentHp: oppTemplate.baseHp || 28000,
-          allocatedStats: { strength: 15, endurance: 15, agility: 20, mana: 10, luck: 10 }
+          allocatedStats: { strength: 15, endurance: 15, agility: 20, mana: 10, luck: 10 },
+          availableStatPoints: 0,
+          skillLevels: [6, 6, 6],
+          customQuotes: {}
         };
       }
 
@@ -1610,6 +1657,97 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const p2Part = opponentMaster.discordId.startsWith('ai_') ? null : warSession.participants[opponentMaster.discordId];
       const p2Hp = p2Part ? calculateCurrentHp(p2Part) : undefined;
       const p2 = createCombatant(opponentMaster, opponentServant, opponentMaster.discordId.startsWith('ai_'), p2Hp);
+
+      let p1Ally: DuelCombatant | undefined;
+      let p1AllyMaster: MasterProfile | null = null;
+      let p2Ally: DuelCombatant | undefined;
+      let p2AllyMaster: MasterProfile | null = null;
+
+      if (allyUser && !allyUser.bot && allyUser.id !== interaction.user.id) {
+        p1AllyMaster = await getOrCreateMaster(allyUser.id, allyUser.username);
+        const allyServant = p1AllyMaster.servants?.find(s => s.id === p1AllyMaster!.activeServantId) || p1AllyMaster.servants?.[0];
+        if (allyServant) {
+          const allyPart = warSession.participants[p1AllyMaster.discordId];
+          const allyHp = allyPart ? calculateCurrentHp(allyPart) : undefined;
+          p1Ally = createCombatant(p1AllyMaster, allyServant, false, allyHp);
+        }
+      } else if (is2v2) {
+        p1AllyMaster = {
+          id: 'master_ai_shadow_rin',
+          discordId: 'ai_shadow_rin',
+          username: 'Shadow Magus Rin',
+          avatarUrl: '',
+          commandSeals: 3,
+          saintQuartz: 0,
+          summonTickets: 0,
+          actionPoints: 100,
+          maxActionPoints: 100,
+          pityCount: 0,
+          grailWarWins: 0,
+          reputationRank: 'Honorable Magus',
+          servants: [],
+          craftEssences: []
+        };
+        const allyTpl = SERVANT_DATABASE.find(s => s.id === 'servant_archer_emiya') || SERVANT_DATABASE[0];
+        const allySrv: MasterServantInstance = {
+          id: 'shadow_archer',
+          masterId: p1AllyMaster.id,
+          templateId: allyTpl.id,
+          template: allyTpl,
+          level: 70,
+          experience: 0,
+          bondLevel: 5,
+          currentHp: allyTpl.baseHp || 26000,
+          allocatedStats: { strength: 15, endurance: 15, agility: 15, mana: 15, luck: 10 },
+          availableStatPoints: 0,
+          skillLevels: [6, 6, 6],
+          customQuotes: {}
+        };
+        p1Ally = createCombatant(p1AllyMaster, allySrv, true);
+      }
+
+      if (opponent2User && !opponent2User.bot && opponent2User.id !== interaction.user.id) {
+        p2AllyMaster = await getOrCreateMaster(opponent2User.id, opponent2User.username);
+        const opp2Servant = p2AllyMaster.servants?.find(s => s.id === p2AllyMaster!.activeServantId) || p2AllyMaster.servants?.[0];
+        if (opp2Servant) {
+          const opp2Part = warSession.participants[p2AllyMaster.discordId];
+          const opp2Hp = opp2Part ? calculateCurrentHp(opp2Part) : undefined;
+          p2Ally = createCombatant(p2AllyMaster, opp2Servant, false, opp2Hp);
+        }
+      } else {
+        p2AllyMaster = {
+          id: 'master_ai_shadow_sakura',
+          discordId: 'ai_shadow_sakura',
+          username: 'Shadow Magus Sakura',
+          avatarUrl: '',
+          commandSeals: 3,
+          saintQuartz: 0,
+          summonTickets: 0,
+          actionPoints: 100,
+          maxActionPoints: 100,
+          pityCount: 0,
+          grailWarWins: 0,
+          reputationRank: 'Honorable Magus',
+          servants: [],
+          craftEssences: []
+        };
+        const opp2Tpl = SERVANT_DATABASE.find(s => s.id === 'servant_rider_medusa') || SERVANT_DATABASE[2] || SERVANT_DATABASE[0];
+        const opp2Srv: MasterServantInstance = {
+          id: 'shadow_rider',
+          masterId: p2AllyMaster.id,
+          templateId: opp2Tpl.id,
+          template: opp2Tpl,
+          level: 70,
+          experience: 0,
+          bondLevel: 5,
+          currentHp: opp2Tpl.baseHp || 25000,
+          allocatedStats: { strength: 15, endurance: 15, agility: 20, mana: 10, luck: 10 },
+          availableStatPoints: 0,
+          skillLevels: [6, 6, 6],
+          customQuotes: {}
+        };
+        p2Ally = createCombatant(p2AllyMaster, opp2Srv, true);
+      }
 
       if (is2v2) {
         p1.critStars = 25;
@@ -1622,7 +1760,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         });
       }
 
-      await startInteractiveDuel(interaction, p1, p2, challengerMaster, opponentMaster);
+      await startInteractiveDuel(
+        interaction,
+        p1,
+        p2,
+        challengerMaster,
+        opponentMaster,
+        p1Ally,
+        p2Ally,
+        p1AllyMaster,
+        p2AllyMaster
+      );
       return;
     }
 
@@ -2144,7 +2292,11 @@ async function startInteractiveDuel(
   p1: DuelCombatant,
   p2: DuelCombatant,
   p1Master: MasterProfile,
-  p2Master: MasterProfile | null
+  p2Master: MasterProfile | null,
+  p1Ally?: DuelCombatant,
+  p2Ally?: DuelCombatant,
+  p1AllyMaster?: MasterProfile | null,
+  p2AllyMaster?: MasterProfile | null
 ) {
   let round = 1;
   const t1 = p1.servant.template;
@@ -2162,45 +2314,109 @@ async function startInteractiveDuel(
     `💬 **${p1Speaker} (${t1.servantClass}):**\n> ❝ ***${clashMatchup.challengerLine}*** ❞`,
     `💬 **${p2Speaker} (${t2.servantClass}):**\n> ❝ ***${clashMatchup.defenderLine}*** ❞`
   ];
-  const base1 = t1?.baseStats || { agility: 10 };
-  const base2 = t2?.baseStats || { agility: 10 };
-  const alloc1 = p1.servant.allocatedStats || { agility: 0 };
-  const alloc2 = p2.servant.allocatedStats || { agility: 0 };
-  const agi1 = (base1.agility || 10) + (alloc1.agility || 0);
-  const agi2 = (base2.agility || 10) + (alloc2.agility || 0);
 
-  const p1Speed = agi1 * 10 + (Math.random() * 20);
-  const p2Speed = agi2 * 10 + (Math.random() * 20);
+  const team1: DuelCombatant[] = [p1, ...(p1Ally ? [p1Ally] : [])];
+  const team2: DuelCombatant[] = [p2, ...(p2Ally ? [p2Ally] : [])];
+  let team1AssistUsed = false;
+  let team2AssistUsed = false;
+  let forceJoinCount = (team1.length + team2.length >= 4 ? 1 : 0);
 
-  let activeUserId = p1.userId;
+  const getLivingTeam1 = () => team1.filter(c => c.currentHp > 0);
+  const getLivingTeam2 = () => team2.filter(c => c.currentHp > 0);
+  const getTargetsFor = (combatant: DuelCombatant) => {
+    if (team1.includes(combatant)) return getLivingTeam2();
+    return getLivingTeam1();
+  };
+  const getMyTeamFor = (combatant: DuelCombatant) => {
+    if (team1.includes(combatant)) return team1;
+    return team2;
+  };
+  const getSelectedTarget = (combatant: DuelCombatant): DuelCombatant | undefined => {
+    const opps = getTargetsFor(combatant);
+    if (opps.length === 0) return undefined;
+    let target = opps.find(o => o.userId === combatant.selectedTargetId && o.currentHp > 0);
+    if (!target) {
+      target = opps[0];
+      combatant.selectedTargetId = target.userId;
+    }
+    return target;
+  };
+
+  let turnOrder: DuelCombatant[] = [p1, p2, ...(p1Ally ? [p1Ally] : []), ...(p2Ally ? [p2Ally] : [])];
+  let currentTurnIndex = 0;
+
+  // Find fastest combatant for initiative
+  let fastestIdx = 0;
+  let maxSpeed = -1;
+  turnOrder.forEach((c, idx) => {
+    const baseAgi = c.servant.template?.baseStats?.agility || 10;
+    const allocAgi = c.servant.allocatedStats?.agility || 0;
+    const spd = (baseAgi + allocAgi) * 10 + Math.random() * 20;
+    if (spd > maxSpeed) {
+      maxSpeed = spd;
+      fastestIdx = idx;
+    }
+  });
+
+  currentTurnIndex = fastestIdx;
+  let activeCombatant = turnOrder[currentTurnIndex];
+  let activeUserId = activeCombatant.userId;
+  const fasterName = activeCombatant.servant.nickname || activeCombatant.servant.template?.name || 'Heroic Spirit';
+  combatLogs.push(`⚡ **Agility Initiative:** **${fasterName}** outmaneuvered the arena and claims the first move!`);
+
   let activePendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = [];
   let activePendingIndices: number[] = [];
   let p1LastCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Buster', 'Arts', 'Quick'];
   let p2LastCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Arts', 'Buster', 'Quick'];
 
-  let initiativeUserId = p1.userId;
-  if (p2Speed > p1Speed) {
-    initiativeUserId = p2.userId;
-    activeUserId = p2.userId;
-    const fasterName = p2.servant.nickname || p2.servant.template?.name || 'Opponent Servant';
-    combatLogs.push(`⚡ **Agility Initiative:** **${fasterName}** (Agi: ${agi2}) outmaneuvered their opponent and claims the first move!`);
+  const buildCurrentButtons = () => {
+    const oppLiving = getTargetsFor(activeCombatant);
+    const myTeam = getMyTeamFor(activeCombatant);
+    const hasAlly = myTeam.length > 1;
+    const isT1 = team1.includes(activeCombatant);
+    const assistAvail = isT1 ? (!team1AssistUsed && hasAlly) : (!team2AssistUsed && hasAlly);
+    const forceJoinAvail = forceJoinCount === 0 && (team1.length + team2.length < 4);
 
-    // If P2 is AI, resolve AI strike immediately on turn 1 of Round 1
-    if (p2.isAi) {
-      const aiCards = chooseAiSequence(p2);
-      p2LastCards = aiCards;
-      const aiDialogue = getCombatantChainDialogue(p2, aiCards);
-      const aiLog = resolveStrike(p2, p1, aiCards, aiDialogue);
-      refreshCombatantHand(p2);
-      combatLogs.push(aiLog);
-      // Now it's P1's turn to complete Round 1 (keep round at 1)
-      activeUserId = p1.userId;
-    }
-  } else {
-    initiativeUserId = p1.userId;
-    const fasterName = p1.servant.nickname || p1.servant.template?.name || 'Your Servant';
-    combatLogs.push(`⚡ **Agility Initiative:** **${fasterName}** (Agi: ${agi1}) outmaneuvered their opponent and claims the first move!`);
-  }
+    return buildCombatButtons(
+      activeCombatant,
+      activePendingCards,
+      activePendingIndices,
+      oppLiving,
+      activeCombatant.selectedTargetId,
+      hasAlly,
+      assistAvail,
+      forceJoinAvail
+    );
+  };
+
+  const buildCurrentEmbed = () => {
+    const target = getSelectedTarget(activeCombatant);
+    return buildDuelEmbed(
+      p1,
+      p2,
+      round,
+      activeUserId,
+      combatLogs,
+      activePendingCards,
+      activePendingIndices,
+      p1Ally,
+      p2Ally,
+      target
+    );
+  };
+
+  const buildCurrentAttachment = async (logText?: string) => {
+    return createTurnSummaryAttachment(
+      p1,
+      p2,
+      round,
+      logText || combatLogs[combatLogs.length - 1],
+      p1LastCards,
+      p2LastCards,
+      p1Ally,
+      p2Ally
+    );
+  };
 
   const p1Class = t1?.servantClass || 'Saber';
   const p1AvatarUrl = t1?.avatarUrl;
@@ -2208,12 +2424,9 @@ async function startInteractiveDuel(
   const p2Class = t2?.servantClass || 'Saber';
   const p2AvatarUrl = t2?.avatarUrl;
 
-  const activeCombatant = activeUserId === p1.userId ? p1 : p2;
-  const lastLogText = combatLogs[combatLogs.length - 1];
-
-  const initialAttachment = await createTurnSummaryAttachment(p1, p2, round, lastLogText, p1LastCards, p2LastCards);
-  const initialEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
-  const initialButtons = buildCombatButtons(activeCombatant, activePendingCards, activePendingIndices);
+  const initialAttachment = await buildCurrentAttachment();
+  const initialEmbed = buildCurrentEmbed();
+  const initialButtons = buildCurrentButtons();
 
   const startEmbeds = [initialEmbed];
   const startFiles = [initialAttachment];
@@ -2345,9 +2558,6 @@ async function startInteractiveDuel(
     const servantDisplayName = servant.nickname || servant.template?.name || 'Heroic Spirit';
     const { autoDelete, afkTimeoutSeconds } = getDuelNpSettings();
 
-    // To make the animation display as BIG as possible at full channel width,
-    // we deliver the True Name invocation as a native Discord message with the direct GIF link.
-    // Native Discord message links unfurl at full width without embed bounding box restrictions!
     const chantBlock = npChant ? `\n> *“${npChant}”*` : '';
 
     const npFiles: AttachmentBuilder[] = [];
@@ -2395,16 +2605,218 @@ async function startInteractiveDuel(
     time: 3600000 // 1 hour absolute safety ceiling
   });
 
+  const advanceTurn = async (interactionToEdit?: any) => {
+    // If either team is completely eliminated, conclude duel!
+    if (getLivingTeam1().length === 0 || getLivingTeam2().length === 0) {
+      collector.stop('finished');
+      const isTeam1Winner = getLivingTeam1().length > 0;
+      const winner = isTeam1Winner ? (team1.find(c => c.currentHp > 0) || p1) : (team2.find(c => c.currentHp > 0) || p2);
+      const loser = isTeam1Winner ? (team2[0] || p2) : (team1[0] || p1);
+      const finalAttachment = await buildCurrentAttachment();
+      await finishDuel(interactionToEdit || contextInteraction, winner, loser, p1Master, p2Master, finalAttachment);
+      return;
+    }
+
+    let cycleCount = 0;
+    while (cycleCount < turnOrder.length * 2) {
+      currentTurnIndex = (currentTurnIndex + 1) % turnOrder.length;
+      cycleCount++;
+      if (currentTurnIndex === 0) {
+        round++;
+      }
+      const candidate = turnOrder[currentTurnIndex];
+      if (candidate.currentHp > 0) {
+        activeCombatant = candidate;
+        activeUserId = activeCombatant.userId;
+        break;
+      }
+    }
+
+    activePendingCards = [];
+    activePendingIndices = [];
+    refreshCombatantHand(activeCombatant);
+
+    // If activeCombatant is AI, run AI turn immediately
+    if (activeCombatant.isAi) {
+      const opps = getTargetsFor(activeCombatant);
+      if (opps.length === 0) {
+        await advanceTurn(interactionToEdit);
+        return;
+      }
+      // AI chooses target (prefer lowest HP or random)
+      const target = opps[Math.floor(Math.random() * opps.length)];
+      activeCombatant.selectedTargetId = target.userId;
+
+      // AI tactical skill usage
+      const aiSkills = activeCombatant.servant.template.skills || [];
+      const aiBond = activeCombatant.servant.bondLevel || 3;
+      for (let sIdx = 0; sIdx < aiSkills.length; sIdx++) {
+        if (sIdx === 2 && aiBond < 5) continue;
+        if ((activeCombatant.skillCooldowns[sIdx] || 0) <= 0 && Math.random() < 0.35) {
+          const aiSkillRes = activateCombatantSkill(activeCombatant, sIdx, target);
+          if (aiSkillRes.success) {
+            combatLogs.push(aiSkillRes.log);
+            if (combatLogs.length > 4) combatLogs.shift();
+          }
+          break;
+        }
+      }
+
+      const aiSequence = chooseAiSequence(activeCombatant);
+      if (team1.includes(activeCombatant)) {
+        p1LastCards = aiSequence;
+      } else {
+        p2LastCards = aiSequence;
+      }
+
+      const aiDialogue = getCombatantChainDialogue(activeCombatant, aiSequence);
+
+      if (aiSequence.includes('NP')) {
+        await dispatchNpGif(activeCombatant, interactionToEdit || contextInteraction);
+      }
+
+      const aiLog = resolveStrike(activeCombatant, target, aiSequence, aiDialogue);
+      refreshCombatantHand(activeCombatant);
+      combatLogs.push(aiLog);
+      if (combatLogs.length > 4) combatLogs.shift();
+
+      // Check if target was slain
+      if (target.currentHp <= 0) {
+        const killLog = `💀 **${target.servant.nickname || target.servant.template.name}** (Master: ${target.username}) has fallen in battle!`;
+        combatLogs.push(killLog);
+        if (combatLogs.length > 4) combatLogs.shift();
+      }
+
+      // Check if duel is over
+      if (getLivingTeam1().length === 0 || getLivingTeam2().length === 0) {
+        collector.stop('finished');
+        const isTeam1Winner = getLivingTeam1().length > 0;
+        const winner = isTeam1Winner ? (team1.find(c => c.currentHp > 0) || p1) : (team2.find(c => c.currentHp > 0) || p2);
+        const loser = isTeam1Winner ? (team2[0] || p2) : (team1[0] || p1);
+        const finalAttachment = await buildCurrentAttachment();
+        await finishDuel(interactionToEdit || contextInteraction, winner, loser, p1Master, p2Master, finalAttachment);
+        return;
+      }
+
+      // Recursively advance until a human player turn is reached
+      await advanceTurn(interactionToEdit);
+      return;
+    }
+
+    // Human player turn reached: update message
+    const turnAttachment = await buildCurrentAttachment();
+    const updatedEmbed = buildCurrentEmbed();
+    const updatedButtons = buildCurrentButtons();
+
+    if (interactionToEdit) {
+      await interactionToEdit.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+    }
+  };
+
+  // If initial fastest combatant is AI, run their turn immediately
+  if (activeCombatant.isAi) {
+    const opps = getTargetsFor(activeCombatant);
+    if (opps.length > 0) {
+      const target = opps[0];
+      activeCombatant.selectedTargetId = target.userId;
+      const aiSequence = chooseAiSequence(activeCombatant);
+      if (team1.includes(activeCombatant)) {
+        p1LastCards = aiSequence;
+      } else {
+        p2LastCards = aiSequence;
+      }
+      const aiDialogue = getCombatantChainDialogue(activeCombatant, aiSequence);
+      const aiLog = resolveStrike(activeCombatant, target, aiSequence, aiDialogue);
+      refreshCombatantHand(activeCombatant);
+      combatLogs.push(aiLog);
+
+      // Advance to next living turn
+      currentTurnIndex = (currentTurnIndex + 1) % turnOrder.length;
+      activeCombatant = turnOrder[currentTurnIndex];
+      activeUserId = activeCombatant.userId;
+    }
+  }
+
   collector.on('collect', async (i: any) => {
     try {
       if (i.replied || i.deferred) return;
 
+      // CASE: TARGET SELECTION BUTTON (e.g. target_123456789)
+      if (i.customId.startsWith('target_')) {
+        if (i.user.id !== activeUserId) {
+          await i.reply({
+            content: `⏳ It is not your turn! Waiting for <@${activeUserId}> to take an action.`,
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        const targetId = i.customId.replace('target_', '');
+        activeCombatant.selectedTargetId = targetId;
+
+        const target = getSelectedTarget(activeCombatant);
+        const targetName = target?.servant.nickname || target?.servant.template?.name || 'Target Opponent';
+        combatLogs.push(`🎯 **Target Locked:** <@${activeUserId}> set focus on **${targetName}**!`);
+        if (combatLogs.length > 4) combatLogs.shift();
+
+        const updatedEmbed = buildCurrentEmbed();
+        const updatedButtons = buildCurrentButtons();
+
+        await i.deferUpdate();
+        await i.editReply({ embeds: [updatedEmbed], components: updatedButtons });
+        return;
+      }
+
       // CASE: ALLIANCE TAG ASSIST (+25% ATK & +15 Crit Stars)
       if (i.customId === 'card_alliance_assist' || i.customId === 'duel_act_alliance_assist') {
-        const actor = activeUserId === p1.userId ? p1 : p2;
-        actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
-        actor.activeBuffs = actor.activeBuffs || [];
-        actor.activeBuffs.push({
+        const isTeam1Member = team1.some(c => c.userId === i.user.id);
+        const isTeam2Member = team2.some(c => c.userId === i.user.id);
+
+        if (!isTeam1Member && !isTeam2Member) {
+          await i.reply({
+            content: '❌ You are not a combatant in this active duel arena.',
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        if (i.user.id !== activeUserId) {
+          await i.reply({
+            content: `⏳ Alliance Assist can only be triggered during your active turn!`,
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        const isT1 = team1.includes(activeCombatant);
+        const myTeam = isT1 ? team1 : team2;
+        const assistAlreadyUsed = isT1 ? team1AssistUsed : team2AssistUsed;
+
+        if (myTeam.length < 2) {
+          await i.reply({
+            content: '❌ Alliance Tag Assist requires an active allied Servant on your team!',
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        if (assistAlreadyUsed) {
+          await i.reply({
+            content: '❌ Your alliance tag assist was already used in this duel (Limit 1 per team per battle)!',
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        if (isT1) {
+          team1AssistUsed = true;
+        } else {
+          team2AssistUsed = true;
+        }
+
+        activeCombatant.critStars = Math.min(50, (activeCombatant.critStars || 0) + 15);
+        activeCombatant.activeBuffs = activeCombatant.activeBuffs || [];
+        activeCombatant.activeBuffs.push({
           name: 'Alliance Tag Assist',
           type: 'buff_atk',
           value: 25,
@@ -2415,9 +2827,9 @@ async function startInteractiveDuel(
         combatLogs.push(assistLog);
         if (combatLogs.length > 4) combatLogs.shift();
 
-        const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, assistLog, p1LastCards, p2LastCards);
-        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
-        const updatedButtons = buildCombatButtons(actor, activePendingCards, activePendingIndices);
+        const turnAttachment = await buildCurrentAttachment(assistLog);
+        const updatedEmbed = buildCurrentEmbed();
+        const updatedButtons = buildCurrentButtons();
 
         await i.deferUpdate();
         await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
@@ -2426,6 +2838,22 @@ async function startInteractiveDuel(
 
       // CASE: FORCE JOIN MID-BATTLE INTERVENTION
       if (i.customId === 'card_forcejoin' || i.customId === 'duel_prompt_forcejoin') {
+        if (forceJoinCount > 0 || (team1.length + team2.length >= 4)) {
+          await i.reply({
+            content: '❌ Force Join is unavailable! Arena is at maximum capacity (4 combatants) or Force Join was already utilized.',
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        if (team1.some(c => c.userId === i.user.id) || team2.some(c => c.userId === i.user.id)) {
+          await i.reply({
+            content: '❌ You are already an active participant in this Holy Grail duel!',
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
         const joinerMaster = await getOrCreateMaster(i.user.id, i.user.username);
         if (!joinerMaster.servants || joinerMaster.servants.length === 0) {
           await i.reply({
@@ -2438,23 +2866,41 @@ async function startInteractiveDuel(
         const joinServant = joinerMaster.servants.find(s => s.id === joinerMaster.activeServantId) || joinerMaster.servants[0];
         const joinName = joinServant.nickname || joinServant.template?.name || 'Heroic Spirit';
 
-        const actor = activeUserId === p1.userId ? p1 : p2;
-        actor.critStars = Math.min(50, (actor.critStars || 0) + 20);
-        actor.activeBuffs = actor.activeBuffs || [];
-        actor.activeBuffs.push({
+        const warSession = getOrInitWarSession(p1Master);
+        const joinPart = warSession.participants[joinerMaster.discordId];
+        const joinHp = joinPart ? calculateCurrentHp(joinPart) : undefined;
+        const joinCombatant = createCombatant(joinerMaster, joinServant, false, joinHp);
+
+        joinCombatant.critStars = 20;
+        joinCombatant.activeBuffs = joinCombatant.activeBuffs || [];
+        joinCombatant.activeBuffs.push({
           name: '3rd Master Reinforcement',
           type: 'buff_atk',
           value: 30,
           remainingTurns: 3
         });
 
-        const forceJoinLog = `⚡ **3RD MASTER FORCE JOIN INTERVENTION!** <@${i.user.id}> entered the fray with **${joinName}**! Reinforced <@${actor.userId}> with **+30% ATK (3 Turns)** & **+20 Critical Stars**!`;
+        // Add to team with fewer members
+        if (team1.length <= team2.length) {
+          p1Ally = joinCombatant;
+          p1AllyMaster = joinerMaster;
+          team1.push(joinCombatant);
+        } else {
+          p2Ally = joinCombatant;
+          p2AllyMaster = joinerMaster;
+          team2.push(joinCombatant);
+        }
+
+        turnOrder.push(joinCombatant);
+        forceJoinCount++;
+
+        const forceJoinLog = `⚡ **3RD MASTER FORCE JOIN INTERVENTION!** <@${i.user.id}> entered the fray with **${joinName}**! Reinforced with **+30% ATK (3 Turns)** & **+20 Critical Stars**!`;
         combatLogs.push(forceJoinLog);
         if (combatLogs.length > 4) combatLogs.shift();
 
-        const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, forceJoinLog, p1LastCards, p2LastCards);
-        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
-        const updatedButtons = buildCombatButtons(actor, activePendingCards, activePendingIndices);
+        const turnAttachment = await buildCurrentAttachment(forceJoinLog);
+        const updatedEmbed = buildCurrentEmbed();
+        const updatedButtons = buildCurrentButtons();
 
         await i.deferUpdate();
         await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
@@ -2464,7 +2910,7 @@ async function startInteractiveDuel(
       // Enforce Turn Order: Block clicks if it is not this player's turn
       if (i.user.id !== activeUserId) {
         await i.reply({
-          content: `⏳ It is not your turn! Waiting for <@${activeUserId}> to take an action.`,
+          content: `⏳ It is not your turn! Waiting for <@${activeUserId}> (${activeCombatant.servant.nickname || activeCombatant.servant.template?.name}) to act.`,
           flags: MessageFlags.Ephemeral
         });
         return;
@@ -2482,8 +2928,8 @@ async function startInteractiveDuel(
       // CASE: SKILL ACTIVATION (Instant - does NOT end turn)
       if (i.customId.startsWith('skill_')) {
         const skillIdx = parseInt(i.customId.replace('skill_', ''), 10);
-        const actor = activeUserId === p1.userId ? p1 : p2;
-        const opponent = activeUserId === p1.userId ? p2 : p1;
+        const actor = activeCombatant;
+        const opponent = getSelectedTarget(actor) || (team1.includes(actor) ? p2 : p1);
         const res = activateCombatantSkill(actor, skillIdx, opponent);
 
         if (!res.success) {
@@ -2491,7 +2937,6 @@ async function startInteractiveDuel(
           return;
         }
 
-        // Special High-Stakes Sequence: Render and display the Visual Novel Dialogue Frame Cut-In for Skill Release!
         try {
           const sName = actor.servant.nickname || actor.servant.template?.name || 'Heroic Spirit';
           const sClass = actor.servant.template?.servantClass || 'Servant';
@@ -2527,7 +2972,6 @@ async function startInteractiveDuel(
             const cutInEmbed = buildDialogueCutInEmbed(actor, opponent, ['Arts'], skillDialogueObj, true);
             await i.editReply({ embeds: [cutInEmbed], files: [attachment], components: [] });
 
-            // Display Visual Novel Dialogue Frame for 2.5 seconds before updating tactical arena
             await new Promise(r => setTimeout(r, 2500));
           }
         } catch (err) {
@@ -2537,18 +2981,17 @@ async function startInteractiveDuel(
         combatLogs.push(res.log);
         if (combatLogs.length > 4) combatLogs.shift();
 
-        const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, res.log, p1LastCards, p2LastCards);
-        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
-        const updatedButtons = buildCombatButtons(actor, activePendingCards, activePendingIndices);
+        const turnAttachment = await buildCurrentAttachment(res.log);
+        const updatedEmbed = buildCurrentEmbed();
+        const updatedButtons = buildCurrentButtons();
         await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
         return;
       }
 
       // CASE: COMMAND SEAL ACTIVATION (Instant - does NOT end turn)
       if (i.customId === 'card_seal') {
-        const actor = activeUserId === p1.userId ? p1 : p2;
-        const opponent = activeUserId === p1.userId ? p2 : p1;
-        const actingMaster = activeUserId === p1Master.discordId ? p1Master : p2Master;
+        const actor = activeCombatant;
+        const actingMaster = activeUserId === p1Master.discordId ? p1Master : (p2Master && activeUserId === p2Master.discordId ? p2Master : null);
         const res = invokeCombatantSeal(actor);
 
         if (!res.success) {
@@ -2561,14 +3004,12 @@ async function startInteractiveDuel(
           await saveMaster(actingMaster);
         }
 
-        // Special High-Stakes Sequence: Render and display the Master-specific Visual Novel Cut-In for Command Seal Invocation!
         try {
           const sName = actor.servant.nickname || actor.servant.template?.name || 'Heroic Spirit';
           const sClass = actor.servant.template?.servantClass || 'Servant';
           const servantAvatarUrl = actor.servant.template?.avatarUrl;
 
           const masterName = actingMaster?.username || actor.username;
-          // Prefer live Discord user PFP, then stored master avatarUrl, then combatant masterAvatarUrl
           const masterAvatarUrl = (i.user?.id === actingMaster?.discordId ? i.user.displayAvatarURL({ extension: 'png', size: 512 }) : undefined)
             || actingMaster?.avatarUrl
             || actor.masterAvatarUrl;
@@ -2598,7 +3039,6 @@ async function startInteractiveDuel(
             );
             await i.editReply({ embeds: [cutInEmbed], files: [attachment], components: [] });
 
-            // Display Visual Novel Dialogue Frame for 2.5 seconds before updating tactical arena
             await new Promise(r => setTimeout(r, 2500));
           }
         } catch (err) {
@@ -2608,9 +3048,9 @@ async function startInteractiveDuel(
         combatLogs.push(res.log);
         if (combatLogs.length > 4) combatLogs.shift();
 
-        const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, res.log, p1LastCards, p2LastCards);
-        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
-        const updatedButtons = buildCombatButtons(actor, activePendingCards, activePendingIndices);
+        const turnAttachment = await buildCurrentAttachment(res.log);
+        const updatedEmbed = buildCurrentEmbed();
+        const updatedButtons = buildCurrentButtons();
         await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
         return;
       }
@@ -2619,18 +3059,15 @@ async function startInteractiveDuel(
       if (i.customId === 'card_reset') {
         activePendingCards = [];
         activePendingIndices = [];
-        const actor = activeUserId === p1.userId ? p1 : p2;
-        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
-        const updatedButtons = buildCombatButtons(actor, activePendingCards, activePendingIndices);
+        const updatedEmbed = buildCurrentEmbed();
+        const updatedButtons = buildCurrentButtons();
         await i.editReply({ embeds: [updatedEmbed], components: updatedButtons });
         return;
       }
 
       // CASE: TACTICAL RETREAT / RUN (Consumes active turn)
       if (i.customId === 'card_flee' || i.customId === 'duel_flee' || i.customId === 'card_run') {
-        const fleeActor = activeUserId === p1.userId ? p1 : p2;
-        const opponent = activeUserId === p1.userId ? p2 : p1;
-        const fleeingMaster = activeUserId === p1Master.discordId ? p1Master : p2Master;
+        const fleeActor = activeCombatant;
         const sClass = fleeActor.servant.template?.servantClass || 'Saber';
         const agility = fleeActor.servant.template?.baseStats?.agility || fleeActor.servant.allocatedStats?.agility || 10;
         const fleeInfo = calculateFleeChance(fleeActor.currentHp, fleeActor.maxHp, sClass, agility);
@@ -2640,7 +3077,6 @@ async function startInteractiveDuel(
         if (success) {
           collector.stop('flee_success');
 
-          // Preserve battle damage on participants and servants
           const warSession = getOrInitWarSession(p1Master);
           const now = Date.now();
           const p1Part = warSession.participants[p1.userId];
@@ -2687,7 +3123,6 @@ async function startInteractiveDuel(
           await i.editReply({ embeds: [retreatEmbed], components: [] });
           return;
         } else {
-          // Failed retreat: Turn is consumed attempting to flee! Opponent intercepts with counter-strike
           activePendingCards = [];
           activePendingIndices = [];
           refreshCombatantHand(fleeActor);
@@ -2699,40 +3134,27 @@ async function startInteractiveDuel(
           combatLogs.push(fleeFailLog);
           if (combatLogs.length > 4) combatLogs.shift();
 
-          // Check if lethal counter-strike occurred
           if (fleeActor.currentHp <= 0) {
+            const target = getSelectedTarget(fleeActor) || (team1.includes(fleeActor) ? p2 : p1);
             collector.stop('finished');
-            const finalAttachment = await createTurnSummaryAttachment(p1, p2, round, fleeFailLog, p1LastCards, p2LastCards);
-            await finishDuel(i, opponent, fleeActor, p1Master, p2Master, finalAttachment);
+            const finalAttachment = await buildCurrentAttachment(fleeFailLog);
+            await finishDuel(i, target, fleeActor, p1Master, p2Master, finalAttachment);
             return;
           }
 
-          // Case A: Opponent is AI -> Turn consumed, round advances to next turn for player
-          if (opponent.isAi) {
-            round++;
-            activeUserId = p1.userId;
-            const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, fleeFailLog, p1LastCards, p2LastCards);
-            const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
-            const updatedButtons = buildCombatButtons(fleeActor, activePendingCards, activePendingIndices);
-            await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
-            return;
-          }
-
-          // Case B: Opponent is human -> Turn consumed, pass active player turn to opponent
-          round++;
-          activeUserId = opponent.userId;
-          const nextCombatant = opponent;
-          const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, fleeFailLog, p1LastCards, p2LastCards);
-          const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
-          const updatedButtons = buildCombatButtons(nextCombatant, activePendingCards, activePendingIndices);
-          await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+          await advanceTurn(i);
           return;
         }
       }
 
       // CASE: HAND CARD SELECTION
-      const attacker = activeUserId === p1.userId ? p1 : p2;
-      const defender = activeUserId === p1.userId ? p2 : p1;
+      const attacker = activeCombatant;
+      const defender = getSelectedTarget(attacker);
+
+      if (!defender) {
+        await advanceTurn(i);
+        return;
+      }
 
       if (!attacker.currentHand || attacker.currentHand.length !== 5) {
         refreshCombatantHand(attacker);
@@ -2750,15 +3172,13 @@ async function startInteractiveDuel(
         }
       }
 
-      // As soon as the active Master starts picking their next turn cards, clean up previous NP GIF
       if (activePendingCards.length === 1) {
         await cleanupNpGif();
       }
 
-      // If user hasn't selected 3 cards yet, update selection UI and wait for next card click
       if (activePendingCards.length < 3) {
-        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
-        const updatedButtons = buildCombatButtons(attacker, activePendingCards, activePendingIndices);
+        const updatedEmbed = buildCurrentEmbed();
+        const updatedButtons = buildCurrentButtons();
         await i.editReply({ embeds: [updatedEmbed], components: updatedButtons });
         return;
       }
@@ -2771,22 +3191,15 @@ async function startInteractiveDuel(
       const playerDialogue = getCombatantChainDialogue(attacker, playerSequence, round);
       const isNoblePhantasm = playerSequence.includes('NP');
 
-      // Check if this attack sequence warrants a special Visual Novel Dialogue Cut-In:
-      // Only trigger for Pure Brave/Resonance Chains (Buster Brave, Arts Mana, Quick Star)
-      // or Desperation Last Stand (<25% HP), NOT on normal mixed combat chains!
       const shouldCutIn = shouldTriggerDialogueCutIn(
         playerSequence,
         attacker.currentHp,
         attacker.maxHp
       );
 
-      // Trigger cinematic Noble Phantasm animated GIF if player used NP
       if (isNoblePhantasm) {
-        // NP has its own dedicated NP Unleashed message + animated GIF!
-        // No extra dialogue box needed for Noble Phantasms.
         await dispatchNpGif(attacker, i);
       } else if (shouldCutIn) {
-        // Special High-Stakes Sequence: Render and display the Visual Novel Dialogue Frame Cut-In
         try {
           const sName = attacker.servant.nickname || attacker.servant.template?.name || 'Heroic Spirit';
           const sClass = attacker.servant.template?.servantClass || 'Servant';
@@ -2815,7 +3228,6 @@ async function startInteractiveDuel(
             const cutInEmbed = buildDialogueCutInEmbed(attacker, defender, playerSequence, playerDialogue, true);
             await i.editReply({ embeds: [cutInEmbed], files: [attachment], components: [] });
 
-            // Display Visual Novel Dialogue Frame for 3 seconds before resolving damage
             await new Promise(r => setTimeout(r, 3000));
           }
         } catch (err) {
@@ -2828,87 +3240,21 @@ async function startInteractiveDuel(
       combatLogs.push(log);
       if (combatLogs.length > 4) combatLogs.shift();
 
-      if (activeUserId === p1.userId) {
+      if (team1.includes(attacker)) {
         p1LastCards = playerSequence;
       } else {
         p2LastCards = playerSequence;
       }
 
-      const p1CardChoice = p1LastCards;
-      let p2CardChoice = p2LastCards;
-
-      // Check if Defender fainted
+      // Check if Defender was slain
       if (defender.currentHp <= 0) {
-        collector.stop('finished');
-        const finalAttachment = await createTurnSummaryAttachment(p1, p2, round, log, p1CardChoice, p2CardChoice);
-        await finishDuel(i, attacker, defender, p1Master, p2Master, finalAttachment);
-        return;
-      }
-
-      // CASE A: Opponent is AI -> AI chooses 3 cards and strikes back
-      if (defender.isAi) {
-        // AI tactical skill usage
-        const aiSkills = defender.servant.template.skills || [];
-        const aiBond = defender.servant.bondLevel || 3;
-        for (let sIdx = 0; sIdx < aiSkills.length; sIdx++) {
-          if (sIdx === 2 && aiBond < 5) continue;
-          if ((defender.skillCooldowns[sIdx] || 0) <= 0 && Math.random() < 0.35) {
-            const aiSkillRes = activateCombatantSkill(defender, sIdx, attacker);
-            if (aiSkillRes.success) {
-              combatLogs.push(aiSkillRes.log);
-              if (combatLogs.length > 4) combatLogs.shift();
-            }
-            break;
-          }
-        }
-
-        const aiSequence = chooseAiSequence(defender);
-        p2LastCards = aiSequence;
-        p2CardChoice = p2LastCards;
-
-        const aiDialogue = getCombatantChainDialogue(defender, aiSequence);
-
-        // Trigger cinematic Noble Phantasm animated GIF if AI used NP
-        if (aiSequence.includes('NP')) {
-          await dispatchNpGif(defender, i);
-        }
-
-        const aiLog = resolveStrike(defender, attacker, aiSequence, aiDialogue);
-        refreshCombatantHand(defender);
-        combatLogs.push(aiLog);
+        const killLog = `💀 **${defender.servant.nickname || defender.servant.template.name}** (Master: ${defender.username}) was vanquished!`;
+        combatLogs.push(killLog);
         if (combatLogs.length > 4) combatLogs.shift();
-
-        // 1 full round is complete after both player and AI have acted
-        round++;
-
-        if (attacker.currentHp <= 0) {
-          collector.stop('finished');
-          const finalAttachment = await createTurnSummaryAttachment(p1, p2, round, aiLog, p1CardChoice, p2CardChoice);
-          await finishDuel(i, defender, attacker, p1Master, p2Master, finalAttachment);
-          return;
-        }
-
-        // Keep turn on P1
-        activeUserId = p1.userId;
-        const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, aiLog, p1CardChoice, p2CardChoice);
-        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
-        const updatedButtons = buildCombatButtons(p1, activePendingCards, activePendingIndices);
-        await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
-        return;
       }
 
-      // CASE B: Opponent is human -> Swap active player turn
-      activeUserId = defender.userId;
-      // Increment round only when both players have completed their turns (returning to initiative player)
-      if (activeUserId === initiativeUserId) {
-        round++;
-      }
-      const nextCombatant = activeUserId === p1.userId ? p1 : p2;
-      const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, log, p1CardChoice, p2CardChoice);
-      const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
-      const updatedButtons = buildCombatButtons(nextCombatant, activePendingCards, activePendingIndices);
-
-      await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+      // Advance to the next player's / servant's turn!
+      await advanceTurn(i);
     } catch (err: any) {
       if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) return;
       console.error('Error in duel battle collector:', err);
@@ -2920,7 +3266,7 @@ async function startInteractiveDuel(
       await cleanupNpGif();
       try {
         await battleMsg.edit({
-          content: '⌛ **Duel ended due to inactivity** *(Turn timed out after 2 minutes of no input)*.',
+          content: '⌛ **Duel ended due to inactivity** *(Turn timed out after 5 minutes of no input)*.',
           components: []
         });
       } catch {}
