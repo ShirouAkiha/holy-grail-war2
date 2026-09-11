@@ -13,7 +13,7 @@ import { getOrCreateMaster, saveMaster, getDuelNpSettings } from '../database/se
 import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog, PassiveSkill } from '../types';
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives, getServantAvatarAndCardArt } from '../data/servants';
 import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp, getReputationInfo } from '../engine/grailwar';
-import { renderBattleTurnSummary, renderDialogueCard, renderDefeatDialogueCard } from '../canvas/renderer';
+import { renderBattleTurnSummary, renderDialogueCard, renderDefeatDialogueCard, renderMasterCommandSealDialogueCard } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER, calculateFleeChance, rollFleeSuccess } from '../engine/battle';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
@@ -68,6 +68,7 @@ export interface DuelCombatant {
   commandSeals: number;
   currentHand?: ('Buster' | 'Arts' | 'Quick')[];
   drawPile?: ('Buster' | 'Arts' | 'Quick')[];
+  masterAvatarUrl?: string;
 }
 
 // ==========================================
@@ -285,7 +286,8 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
     skillCooldowns: {},
     gutsCount: 0,
     commandSeals: isAi ? 0 : (master.commandSeals ?? 3),
-    drawPile: []
+    drawPile: [],
+    masterAvatarUrl: master.avatarUrl
   };
   refreshCombatantHand(combatant);
   return combatant;
@@ -361,6 +363,39 @@ function buildDialogueCutInEmbed(
     if (avatar) {
       embed.setThumbnail(avatar);
     }
+  }
+
+  return embed;
+}
+
+// Master-specific Command Seal Invocation Cut-In Embed Builder
+function buildMasterCommandSealDialogueCutInEmbed(
+  masterName: string,
+  masterAvatarUrl: string | undefined,
+  servantName: string,
+  servantClass: string,
+  quote: string,
+  hasImageAttachment: boolean = true
+): EmbedBuilder {
+  const embed = new EmbedBuilder()
+    .setTitle(`🔱 [COMMAND SEAL INVOCATION] — MASTER ${masterName.toUpperCase()}`)
+    .setColor(0xe11d48)
+    .setFooter({ text: 'Holy Grail War • Master Absolute Authority Invocation' });
+
+  const cleanQuote = quote.replace(/^["“]/, '').replace(/["”]$/, '').trim();
+
+  embed.setDescription(
+    `### 🔱 **Master ${masterName}** *(Chaldea Magus)*\n` +
+    `> ❝ ***“${cleanQuote}”*** ❞\n\n` +
+    `⚡ **Command Decree:** Surge Noble Phantasm Gauge to **100% Ready**\n` +
+    `🛡️ **Contracted Servant:** **${servantName}** *(${servantClass})*\n\n` +
+    `⏳ *Invoking absolute magus authority...*`
+  );
+
+  if (hasImageAttachment) {
+    embed.setImage('attachment://vn_dialogue.gif');
+  } else if (masterAvatarUrl) {
+    embed.setThumbnail(masterAvatarUrl);
   }
 
   return embed;
@@ -2342,40 +2377,41 @@ async function startInteractiveDuel(
           await saveMaster(actingMaster);
         }
 
-        // Special High-Stakes Sequence: Render and display the Visual Novel Dialogue Frame Cut-In for Command Seal Invocation!
+        // Special High-Stakes Sequence: Render and display the Master-specific Visual Novel Cut-In for Command Seal Invocation!
         try {
           const sName = actor.servant.nickname || actor.servant.template?.name || 'Heroic Spirit';
           const sClass = actor.servant.template?.servantClass || 'Servant';
-          const avatarUrl = actor.servant.template?.avatarUrl;
-          const bondLvl = actor.servant.bondLevel || 8;
+          const servantAvatarUrl = actor.servant.template?.avatarUrl;
 
-          const oppName = opponent.servant.nickname || opponent.servant.template?.name || 'Opponent Servant';
-          const oppClass = opponent.servant.template?.servantClass || 'Servant';
-          const oppAvatarUrl = opponent.servant.template?.avatarUrl;
+          const masterName = actingMaster?.username || actor.username;
+          // Prefer live Discord user PFP, then stored master avatarUrl, then combatant masterAvatarUrl
+          const masterAvatarUrl = (i.user?.id === actingMaster?.discordId ? i.user.displayAvatarURL({ extension: 'png', size: 512 }) : undefined)
+            || actingMaster?.avatarUrl
+            || actor.masterAvatarUrl;
 
           const sealQuote = res.quote || 'By my Command Seal, unleash your Noble Phantasm!';
 
-          const sealDiaBuffer = await renderDialogueCard(
-            `Master ${actingMaster?.username || actor.username}`,
+          const sealDiaBuffer = await renderMasterCommandSealDialogueCard(
+            masterName,
             sealQuote,
-            'COMMAND SEAL INVOCATION',
-            'Master',
-            avatarUrl,
-            bondLvl,
-            oppName,
-            oppAvatarUrl,
-            oppClass,
-            ['NP']
+            masterAvatarUrl,
+            actor.commandSeals,
+            sName,
+            sClass,
+            servantAvatarUrl,
+            'fuyuki'
           );
 
           if (sealDiaBuffer && sealDiaBuffer.length > 500) {
             const attachment = new AttachmentBuilder(sealDiaBuffer, { name: 'vn_dialogue.gif' });
-            const sealDialogueObj = {
-              quote: sealQuote,
-              tag: 'COMMAND SEAL INVOCATION',
-              color: 0xe11d48
-            };
-            const cutInEmbed = buildDialogueCutInEmbed(actor, opponent, ['NP'], sealDialogueObj, true);
+            const cutInEmbed = buildMasterCommandSealDialogueCutInEmbed(
+              masterName,
+              masterAvatarUrl,
+              sName,
+              sClass,
+              sealQuote,
+              true
+            );
             await i.editReply({ embeds: [cutInEmbed], files: [attachment], components: [] });
 
             // Display Visual Novel Dialogue Frame for 2.5 seconds before updating tactical arena

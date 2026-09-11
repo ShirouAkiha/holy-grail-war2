@@ -1791,6 +1791,680 @@ export async function renderDialogueCard(
 }
 
 /**
+ * Helper to draw iconic Fate 3-winged Command Seal Vector Insignia
+ */
+function drawVectorCommandSeal(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  scale: number = 1,
+  color: string = '#ef4444'
+) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = color;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 14;
+
+  // Central Wing / Blade
+  ctx.beginPath();
+  ctx.moveTo(0, -32);
+  ctx.bezierCurveTo(9, -18, 10, 4, 0, 24);
+  ctx.bezierCurveTo(-10, 4, -9, -18, 0, -32);
+  ctx.fill();
+
+  // Left Crescent Wing
+  ctx.beginPath();
+  ctx.moveTo(-6, -22);
+  ctx.bezierCurveTo(-26, -14, -32, 12, -12, 28);
+  ctx.bezierCurveTo(-20, 16, -18, -4, -6, -22);
+  ctx.fill();
+
+  // Right Crescent Wing
+  ctx.beginPath();
+  ctx.moveTo(6, -22);
+  ctx.bezierCurveTo(26, -14, 32, 12, 12, 28);
+  ctx.bezierCurveTo(20, 16, 18, -4, 6, -22);
+  ctx.fill();
+
+  // Center core spark
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = '#ffffff';
+  ctx.shadowBlur = 6;
+  ctx.beginPath();
+  ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/**
+ * Draw Hovering Master Sprite on the Left Side (280x340)
+ * Showcases Master's Profile Picture (PFP), glowing Command Seal crest, flaring magic circuits,
+ * and Magus Authority status badge.
+ */
+function drawHoveringMaster(
+  ctx: CanvasRenderingContext2D,
+  masterImg: HTMLImageElement | null,
+  masterName: string,
+  commandSealsCount: number = 3,
+  frameIdx: number = 0
+) {
+  ctx.save();
+  const spriteW = 280;
+  const spriteH = 340;
+  const spriteX = 10;
+  // Sinusoidal floating hover animation (5px breathing float)
+  const floatOffsetY = Math.sin((frameIdx / 8) * Math.PI * 2) * 5;
+  const spriteY = 10 + floatOffsetY;
+
+  // 1. Intense Crimson & Rose Magus Mana Aura
+  const auraGrad = ctx.createRadialGradient(140, 150 + floatOffsetY, 25, 140, 150 + floatOffsetY, 180);
+  auraGrad.addColorStop(0, 'rgba(244, 63, 94, 0.40)');
+  auraGrad.addColorStop(0.5, 'rgba(225, 29, 72, 0.18)');
+  auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = auraGrad;
+  ctx.fillRect(spriteX - 20, spriteY, spriteW + 40, spriteH);
+
+  // 2. Glowing Magic Circuit lines flaring behind Master
+  ctx.save();
+  ctx.strokeStyle = 'rgba(251, 113, 133, 0.50)';
+  ctx.lineWidth = 1.8;
+  ctx.shadowColor = '#f43f5e';
+  ctx.shadowBlur = 8;
+  // Circuit vein 1
+  ctx.beginPath();
+  ctx.moveTo(spriteX + 20, spriteY + spriteH - 40);
+  ctx.lineTo(spriteX + 55, spriteY + 160);
+  ctx.lineTo(spriteX + 35, spriteY + 90);
+  ctx.stroke();
+  // Circuit vein 2
+  ctx.beginPath();
+  ctx.moveTo(spriteX + spriteW - 20, spriteY + spriteH - 50);
+  ctx.lineTo(spriteX + spriteW - 45, spriteY + 175);
+  ctx.lineTo(spriteX + spriteW - 25, spriteY + 105);
+  ctx.stroke();
+  ctx.restore();
+
+  // 3. Render Master PFP
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(spriteX, spriteY, spriteW, spriteH);
+  ctx.clip();
+
+  if (masterImg) {
+    drawImageCover(ctx, masterImg, spriteX, spriteY, spriteW, spriteH);
+  } else {
+    // Stylized Magus Silhouette Fallback
+    const mGrad = ctx.createLinearGradient(spriteX, spriteY, spriteX, spriteY + spriteH);
+    mGrad.addColorStop(0, '#3f0c18');
+    mGrad.addColorStop(0.55, '#1a050a');
+    mGrad.addColorStop(1, '#080103');
+    ctx.fillStyle = mGrad;
+    ctx.fillRect(spriteX, spriteY, spriteW, spriteH);
+
+    drawVectorShield(ctx, spriteX + spriteW / 2, spriteY + 120, 72, 84, 'rgba(225, 29, 72, 0.25)', '#e11d48');
+    drawVectorCommandSeal(ctx, spriteX + spriteW / 2, spriteY + 120, 1.2, '#f43f5e');
+  }
+
+  // Right Edge Smooth Fade into Center Leyline
+  const fadeRight = ctx.createLinearGradient(spriteX + spriteW - 90, spriteY, spriteX + spriteW, spriteY);
+  fadeRight.addColorStop(0, 'rgba(10, 5, 3, 0)');
+  fadeRight.addColorStop(0.6, 'rgba(10, 5, 3, 0.65)');
+  fadeRight.addColorStop(1, 'rgba(10, 5, 3, 0.98)');
+  ctx.fillStyle = fadeRight;
+  ctx.fillRect(spriteX + spriteW - 90, spriteY, 90, spriteH);
+
+  // Bottom Edge Fade into Dialogue Ribbon
+  const fadeBottom = ctx.createLinearGradient(spriteX, spriteY + spriteH - 80, spriteX, spriteY + spriteH);
+  fadeBottom.addColorStop(0, 'rgba(10, 5, 3, 0)');
+  fadeBottom.addColorStop(1, 'rgba(10, 5, 3, 0.95)');
+  ctx.fillStyle = fadeBottom;
+  ctx.fillRect(spriteX, spriteY + spriteH - 80, spriteW, 80);
+
+  ctx.restore(); // end clip
+
+  // 4. Glowing Command Seal on Master's wrist / bottom right of portrait
+  const sealScale = 0.75 + Math.sin(frameIdx * 0.8) * 0.06;
+  drawVectorCommandSeal(ctx, spriteX + spriteW - 48, spriteY + spriteH - 95, sealScale, '#ff2056');
+
+  // 5. Floating Master Crest & Command Seals Badge (Top Left)
+  const badgeW = 126;
+  const badgeH = 24;
+  const badgeX = spriteX + 14;
+  const badgeY = spriteY + 14;
+
+  ctx.fillStyle = 'rgba(18, 4, 8, 0.92)';
+  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
+  ctx.fill();
+  ctx.strokeStyle = '#e11d48';
+  ctx.lineWidth = 1.6;
+  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
+  ctx.stroke();
+
+  ctx.fillStyle = '#fee2e2';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('🔱 MASTER', badgeX + 8, badgeY + 16);
+
+  // Dots for seals
+  const sealsCount = Math.max(0, Math.min(3, commandSealsCount));
+  for (let s = 0; s < 3; s++) {
+    const dotX = badgeX + badgeW - 14 - (2 - s) * 14;
+    const dotY = badgeY + 12;
+    ctx.beginPath();
+    ctx.arc(dotX, dotY, 4, 0, Math.PI * 2);
+    ctx.fillStyle = s < sealsCount ? '#f43f5e' : '#4b1520';
+    ctx.fill();
+    if (s < sealsCount) {
+      ctx.strokeStyle = '#fecdd3';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Draw Hovering Contracted Servant on the Right Side (280x340)
+ * Displays Servant receiving the Master's absolute command, glowing with cyan-gold resonance.
+ */
+function drawHoveringContractedServant(
+  ctx: CanvasRenderingContext2D,
+  servantImg: HTMLImageElement | null,
+  servantName: string,
+  servantClass: string,
+  frameIdx: number = 0
+) {
+  ctx.save();
+  const spriteW = 280;
+  const spriteH = 340;
+  const spriteX = 510;
+  // Sinusoidal floating hover animation (5px counter-phase breathing float)
+  const floatOffsetY = Math.cos((frameIdx / 8) * Math.PI * 2) * 5;
+  const spriteY = 10 + floatOffsetY;
+
+  // 1. Radiant Cyan-Gold Spiritual Resonance Aura (Command Accepted)
+  const auraGrad = ctx.createRadialGradient(660, 150 + floatOffsetY, 30, 660, 150 + floatOffsetY, 175);
+  auraGrad.addColorStop(0, 'rgba(56, 189, 248, 0.28)');
+  auraGrad.addColorStop(0.5, 'rgba(245, 158, 11, 0.14)');
+  auraGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = auraGrad;
+  ctx.fillRect(spriteX - 20, spriteY, spriteW + 40, spriteH);
+
+  // 2. Render Servant Sprite
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(spriteX, spriteY, spriteW, spriteH);
+  ctx.clip();
+
+  if (servantImg) {
+    drawImageCover(ctx, servantImg, spriteX, spriteY, spriteW, spriteH);
+  } else {
+    // Golden amber fallback
+    const fbGrad = ctx.createLinearGradient(spriteX, spriteY, spriteX, spriteY + spriteH);
+    fbGrad.addColorStop(0, '#2b160a');
+    fbGrad.addColorStop(1, '#0e0603');
+    ctx.fillStyle = fbGrad;
+    ctx.fillRect(spriteX, spriteY, spriteW, spriteH);
+
+    drawVectorShield(ctx, spriteX + spriteW / 2, spriteY + 110, 68, 78, 'rgba(245, 158, 11, 0.25)', '#f59e0b');
+    drawVectorCrossedSwords(ctx, spriteX + spriteW / 2, spriteY + 110, 20, '#fbbf24');
+  }
+
+  // Left Edge Smooth Fade into Center Leyline
+  const fadeLeft = ctx.createLinearGradient(spriteX, spriteY, spriteX + 90, spriteY);
+  fadeLeft.addColorStop(0, 'rgba(10, 5, 3, 0.98)');
+  fadeLeft.addColorStop(0.4, 'rgba(10, 5, 3, 0.65)');
+  fadeLeft.addColorStop(1, 'rgba(10, 5, 3, 0)');
+  ctx.fillStyle = fadeLeft;
+  ctx.fillRect(spriteX, spriteY, 90, spriteH);
+
+  // Bottom Edge Fade into Dialogue Ribbon
+  const fadeBottom = ctx.createLinearGradient(spriteX, spriteY + spriteH - 80, spriteX, spriteY + spriteH);
+  fadeBottom.addColorStop(0, 'rgba(10, 5, 3, 0)');
+  fadeBottom.addColorStop(1, 'rgba(10, 5, 3, 0.95)');
+  ctx.fillStyle = fadeBottom;
+  ctx.fillRect(spriteX, spriteY + spriteH - 80, spriteW, 80);
+
+  ctx.restore(); // end clip
+
+  // 3. Floating [ CONTRACTED SERVANT ] Cyan HUD Badge (Top Right)
+  const badgeW = 160;
+  const badgeH = 24;
+  const badgeX = spriteX + spriteW - badgeW - 14;
+  const badgeY = spriteY + 14;
+
+  ctx.fillStyle = 'rgba(7, 24, 38, 0.92)';
+  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
+  ctx.fill();
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 1.4;
+  drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4);
+  ctx.stroke();
+
+  drawSparkDiamond(ctx, badgeX + 12, badgeY + 12, 3.5, '#38bdf8');
+  ctx.fillStyle = '#e0f2fe';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('CONTRACTED SERVANT', badgeX + badgeW / 2 + 5, badgeY + 16);
+
+  // 4. Floating Servant Nameplate & Overdrive Tag
+  const nameW = 190;
+  const nameH = 38;
+  const nameX = spriteX + spriteW - nameW - 14;
+  const nameY = spriteY + 44;
+
+  ctx.fillStyle = 'rgba(10, 5, 8, 0.90)';
+  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
+  ctx.fill();
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'center';
+  const sDisplay = servantName.length > 17 ? servantName.slice(0, 16) + '…' : servantName;
+  ctx.fillText(sDisplay, nameX + nameW / 2, nameY + 15);
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.fillText(`[${(servantClass || 'Servant').toUpperCase()}] • NP 100% READY`, nameX + nameW / 2, nameY + 30);
+
+  ctx.restore();
+}
+
+/**
+ * Draw Master Command Seal Arcane HUD in Center
+ */
+function drawMasterCommandSealCenterHUD(
+  ctx: CanvasRenderingContext2D,
+  frameIdx: number
+) {
+  ctx.save();
+
+  // 1. Center Banner Pill
+  const bannerW = 340;
+  const bannerH = 36;
+  const bannerX = 230;
+  const bannerY = 22;
+
+  const bGrad = ctx.createLinearGradient(bannerX, bannerY, bannerX, bannerY + bannerH);
+  bGrad.addColorStop(0, '#881337');
+  bGrad.addColorStop(0.5, '#4c0519');
+  bGrad.addColorStop(1, '#1e0508');
+  ctx.fillStyle = bGrad;
+  drawRoundRect(ctx, bannerX, bannerY, bannerW, bannerH, 4);
+  ctx.fill();
+
+  ctx.strokeStyle = '#f43f5e';
+  ctx.lineWidth = 1.8;
+  drawRoundRect(ctx, bannerX, bannerY, bannerW, bannerH, 4);
+  ctx.stroke();
+
+  drawSparkDiamond(ctx, bannerX + 16, bannerY + bannerH / 2, 4.5, '#f43f5e');
+  drawSparkDiamond(ctx, bannerX + bannerW - 16, bannerY + bannerH / 2, 4.5, '#f43f5e');
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('[ 🔱 COMMAND SEAL INVOCATION 🔱 ]', bannerX + bannerW / 2, bannerY + 16);
+
+  ctx.fillStyle = '#fecdd3';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.fillText('Absolute Authority Invoked • NP Max Surge 100%', bannerX + bannerW / 2, bannerY + 29);
+
+  // 2. Arcane Leyline Energy Beam streaming horizontally between Master and Servant
+  const beamY = 145;
+  const beamGrad = ctx.createLinearGradient(230, beamY, 570, beamY);
+  beamGrad.addColorStop(0, 'rgba(244, 63, 94, 0.85)');
+  beamGrad.addColorStop(0.5, 'rgba(254, 205, 211, 0.95)');
+  beamGrad.addColorStop(1, 'rgba(56, 189, 248, 0.85)');
+  ctx.strokeStyle = beamGrad;
+  ctx.lineWidth = 3 + Math.sin(frameIdx * 0.9) * 1.5;
+  ctx.shadowColor = '#f43f5e';
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.moveTo(230, beamY);
+  ctx.lineTo(570, beamY);
+  ctx.stroke();
+
+  // 3. Central Concentric Magic Circles & Flaring Command Seal Sigil
+  const cx = 400;
+  const cy = 145;
+
+  // Outer runic ring
+  ctx.strokeStyle = 'rgba(244, 63, 94, 0.55)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 54, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Inner ring
+  ctx.strokeStyle = 'rgba(254, 240, 138, 0.45)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 40, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Runic ticks
+  const tickAngleOffset = (frameIdx * Math.PI) / 8;
+  for (let t = 0; t < 8; t++) {
+    const ang = tickAngleOffset + (t * Math.PI) / 4;
+    const x1 = cx + Math.cos(ang) * 44;
+    const y1 = cy + Math.sin(ang) * 44;
+    const x2 = cx + Math.cos(ang) * 54;
+    const y2 = cy + Math.sin(ang) * 54;
+    ctx.strokeStyle = 'rgba(251, 113, 133, 0.65)';
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+
+  // Large Central Glowing Command Seal Symbol
+  const centerScale = 1.35 + Math.sin(frameIdx * 0.7) * 0.12;
+  drawVectorCommandSeal(ctx, cx, cy, centerScale, '#ff2056');
+
+  // Spark diamonds around sigil
+  drawSparkDiamond(ctx, cx - 62, cy, 5, '#fb7185');
+  drawSparkDiamond(ctx, cx + 62, cy, 5, '#38bdf8');
+  drawSparkDiamond(ctx, cx, cy - 62, 5, '#ffffff');
+  drawSparkDiamond(ctx, cx, cy + 62, 5, '#f43f5e');
+
+  ctx.restore();
+}
+
+/**
+ * Master Command Seal Screen-Splitting Slash / Radiant Shockwave Animation
+ */
+function drawMasterCommandSlashAnimation(
+  ctx: CanvasRenderingContext2D,
+  frameIdx: number
+) {
+  ctx.save();
+  if (frameIdx === 0) {
+    ctx.strokeStyle = 'rgba(244, 63, 94, 0.45)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(850, -30);
+    ctx.lineTo(-50, 450);
+    ctx.stroke();
+  } else if (frameIdx === 1) {
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(860, -20);
+    ctx.lineTo(-60, 440);
+    ctx.stroke();
+  } else if (frameIdx === 2) {
+    // Climax Cleave: Brilliant Ruby & White Shockwave
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 9;
+    ctx.shadowColor = '#f43f5e';
+    ctx.shadowBlur = 18;
+    ctx.beginPath();
+    ctx.moveTo(860, -20);
+    ctx.lineTo(-60, 440);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(254, 205, 211, 0.85)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(250, 40);
+    ctx.lineTo(550, 220);
+    ctx.stroke();
+
+    // Burst of Radiant Diamond Sparks
+    drawSparkDiamond(ctx, 720, 50, 9, '#ffffff');
+    drawSparkDiamond(ctx, 640, 95, 7, '#fb7185');
+    drawSparkDiamond(ctx, 560, 135, 8, '#ffffff');
+    drawSparkDiamond(ctx, 480, 175, 10, '#f43f5e');
+    drawSparkDiamond(ctx, 400, 215, 11, '#ffffff');
+    drawSparkDiamond(ctx, 320, 260, 8, '#fb7185');
+    drawSparkDiamond(ctx, 240, 305, 9, '#ffffff');
+    drawSparkDiamond(ctx, 160, 350, 7, '#f43f5e');
+  } else if (frameIdx === 3) {
+    ctx.strokeStyle = 'rgba(251, 113, 133, 0.85)';
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(820, 0);
+    ctx.lineTo(0, 410);
+    ctx.stroke();
+    drawSparkDiamond(ctx, 520, 150, 6, '#f43f5e');
+    drawSparkDiamond(ctx, 360, 240, 6, '#f43f5e');
+  } else if (frameIdx >= 4 && frameIdx <= 6) {
+    const alpha = (7 - frameIdx) * 0.2;
+    ctx.strokeStyle = `rgba(244, 63, 94, ${alpha})`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(820, 0);
+    ctx.lineTo(0, 410);
+    ctx.stroke();
+    drawSparkDiamond(ctx, 460, 180, 5, '#fb7185');
+  }
+  ctx.restore();
+}
+
+/**
+ * Render a single frame of the Master Command Seal Visual Novel Cut-In (800x420)
+ */
+function renderMasterCommandSealSingleFrame(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  frameIdx: number,
+  masterName: string,
+  quoteText: string,
+  masterImg: HTMLImageElement | null,
+  commandSealsCount: number = 3,
+  servantName: string = 'Heroic Spirit',
+  servantClass: string = 'Saber',
+  servantImg: HTMLImageElement | null = null,
+  bgImg: HTMLImageElement | null = null,
+  stagePreset: string = 'fuyuki'
+) {
+  // 1. Stage / Battlefield Background
+  drawBattlefieldStage(ctx, width, height, bgImg, stagePreset, frameIdx);
+
+  // Subtle crimson vignette to indicate Command Seal activation
+  const redVig = ctx.createRadialGradient(width / 2, height / 2, 80, width / 2, height / 2, 450);
+  redVig.addColorStop(0, 'rgba(136, 19, 55, 0.22)');
+  redVig.addColorStop(0.7, 'rgba(76, 5, 25, 0.45)');
+  redVig.addColorStop(1, 'rgba(20, 2, 5, 0.65)');
+  ctx.fillStyle = redVig;
+  ctx.fillRect(0, 0, width, height);
+
+  // 2. Master Hovering Sprite (Left Side) - Features Master's PFP!
+  drawHoveringMaster(ctx, masterImg, masterName, commandSealsCount, frameIdx);
+
+  // 3. Contracted Servant Hovering Sprite (Right Side)
+  drawHoveringContractedServant(ctx, servantImg, servantName, servantClass, frameIdx);
+
+  // 4. Center Arcane Command HUD & Leyline Transfusion
+  drawMasterCommandSealCenterHUD(ctx, frameIdx);
+
+  // 5. Full-Screen Screen-Splitting Slash Cut-In Animation
+  drawMasterCommandSlashAnimation(ctx, frameIdx);
+
+  // 6. Visual Novel Dialogue Ribbon (Lower Section)
+  const boxX = 22;
+  const boxY = 248;
+  const boxW = 756;
+  const boxH = 154;
+
+  // Obsidian Base with rich crimson glassmorphism
+  ctx.fillStyle = 'rgba(16, 4, 7, 0.94)';
+  drawRoundRect(ctx, boxX, boxY, boxW, boxH, 4);
+  ctx.fill();
+
+  // Double Metallic Border: Outer Crimson, Inner Gold Hairline
+  ctx.strokeStyle = '#e11d48';
+  ctx.lineWidth = 2;
+  drawRoundRect(ctx, boxX, boxY, boxW, boxH, 4);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(254, 240, 138, 0.40)';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, boxX + 3, boxY + 3, boxW - 6, boxH - 6, 3);
+  ctx.stroke();
+
+  // Corner Filigree Brackets
+  const boxCbLen = 12;
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(boxX + 3, boxY + 3 + boxCbLen);
+  ctx.lineTo(boxX + 3, boxY + 3);
+  ctx.lineTo(boxX + 3 + boxCbLen, boxY + 3);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(boxX + boxW - 3 - boxCbLen, boxY + 3);
+  ctx.lineTo(boxX + boxW - 3, boxY + 3);
+  ctx.lineTo(boxX + boxW - 3, boxY + 3 + boxCbLen);
+  ctx.stroke();
+
+  // 7. Speaker Nameplate Tab (Overlapping top-left border of dialogue box)
+  ctx.font = 'bold 15px sans-serif';
+  const nameLabel = `🔱 MASTER ${masterName.toUpperCase()} [CHALDEA MAGUS]`;
+  const nameMetrics = ctx.measureText(nameLabel);
+  const nameW = Math.max(220, Math.min(420, nameMetrics.width + 44));
+  const nameH = 30;
+  const nameX = boxX + 20;
+  const nameY = boxY - 16;
+
+  ctx.fillStyle = '#26040a';
+  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
+  ctx.fill();
+
+  ctx.strokeStyle = '#f43f5e';
+  ctx.lineWidth = 2;
+  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(254, 240, 138, 0.45)';
+  ctx.lineWidth = 0.8;
+  drawRoundRect(ctx, nameX + 2, nameY + 2, nameW - 4, nameH - 4, 3);
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(nameLabel, nameX + nameW / 2, nameY + 20);
+
+  // 8. Dialogue Quote Text (Large, High Contrast, 24px Serif)
+  const textX = boxX + 28;
+  const textY = boxY + 42;
+  const maxTextW = boxW - 56;
+  const lineHeight = 32;
+
+  ctx.fillStyle = '#fff1f2';
+  ctx.font = 'bold 24px Georgia, "Times New Roman", serif';
+  ctx.textAlign = 'left';
+
+  const cleanQuote = quoteText.replace(/^["“]/, '').replace(/["”]$/, '').trim();
+  drawWrappedText(ctx, `“${cleanQuote}”`, textX, textY, maxTextW, lineHeight, 2);
+
+  // Bottom Command Decree Banner Strip
+  ctx.fillStyle = '#fda4af';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillText('✦ ABSOLUTE COMMAND SEAL INVOCATION • NOBLE PHANTASM GAUGE SURGED TO 100%', textX, boxY + boxH - 18);
+
+  // 9. Continuation Prompt Indicator (Pulsing Crimson Diamond at bottom-right)
+  const promptScale = frameIdx % 2 === 0 ? 6 : 5;
+  drawSparkDiamond(ctx, boxX + boxW - 24, boxY + boxH - 20, promptScale, '#f43f5e');
+}
+
+/**
+ * Render Master Command Seal Visual Novel Dialogue Frame on HTML5 Canvas (800x420)
+ * Features Master's PFP with flaring Magic Circuits, Command Seal tattoo,
+ * Contracted Servant receiving order, center Leyline surge, and Master commandment.
+ */
+export async function renderMasterCommandSealDialogueCard(
+  canvas: HTMLCanvasElement,
+  masterName: string = 'Master',
+  quoteText: string = 'By my Command Seal, unleash your true power!',
+  masterAvatarUrl?: string,
+  commandSealsCount: number = 3,
+  servantName: string = 'Heroic Spirit',
+  servantClass: string = 'Saber',
+  servantAvatarUrl?: string,
+  bgUrlOrPreset: string = 'fuyuki'
+): Promise<void> {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  canvas.width = 800;
+  canvas.height = 420;
+
+  // Clear existing animation timer if any
+  if ((canvas as any).__animTimer) {
+    clearInterval((canvas as any).__animTimer);
+    (canvas as any).__animTimer = null;
+  }
+
+  const isCustomBgUrl = bgUrlOrPreset && (bgUrlOrPreset.startsWith('http') || bgUrlOrPreset.startsWith('data:image'));
+  const [masterImg, servantImg, bgImg] = await Promise.all([
+    masterAvatarUrl ? loadBrowserImage(masterAvatarUrl) : Promise.resolve(null),
+    servantAvatarUrl ? loadBrowserImage(servantAvatarUrl) : Promise.resolve(null),
+    isCustomBgUrl ? loadBrowserImage(bgUrlOrPreset) : Promise.resolve(null)
+  ]);
+
+  const stagePreset = isCustomBgUrl ? 'custom' : (bgUrlOrPreset || 'fuyuki');
+
+  // Render initial climax frame (Frame 2 - The Climax Cleave)
+  renderMasterCommandSealSingleFrame(
+    ctx,
+    800,
+    420,
+    2,
+    masterName,
+    quoteText,
+    masterImg,
+    commandSealsCount,
+    servantName,
+    servantClass,
+    servantImg,
+    bgImg,
+    stagePreset
+  );
+
+  // Start animated playback loop
+  let frame = 2;
+  const timer = setInterval(() => {
+    if (!canvas.isConnected) {
+      clearInterval(timer);
+      (canvas as any).__animTimer = null;
+      return;
+    }
+    frame = (frame + 1) % 8;
+    ctx.clearRect(0, 0, 800, 420);
+    renderMasterCommandSealSingleFrame(
+      ctx,
+      800,
+      420,
+      frame,
+      masterName,
+      quoteText,
+      masterImg,
+      commandSealsCount,
+      servantName,
+      servantClass,
+      servantImg,
+      bgImg,
+      stagePreset
+    );
+  }, 120);
+
+  (canvas as any).__animTimer = timer;
+}
+
+/**
  * Render a single frame of the Tragic Servant Defeat Visual Novel Cut-In (800x420)
  */
 function renderDefeatSingleFrame(
