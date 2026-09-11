@@ -172,15 +172,21 @@ export function initializeBattle(
   grailWarId?: string,
   balanceMode: StatBalanceMode = 'archetype'
 ): BattleState {
+  const p1 = { ...combatant1 };
+  const p2 = { ...combatant2 };
   return {
     battleId: battleId || `battle_${Date.now()}`,
-    player1: { ...combatant1 },
-    player2: { ...combatant2 },
+    battleMode: '1v1',
+    teamA: [p1],
+    teamB: [p2],
+    player1: p1,
+    player2: p2,
     currentTurn: 1,
     turnPhase: 'card_selection',
     turnHistory: [],
     grailWarId,
-    statBalanceMode: balanceMode
+    statBalanceMode: balanceMode,
+    forceJoinedCombatants: []
   };
 }
 

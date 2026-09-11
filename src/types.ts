@@ -256,8 +256,11 @@ export interface ActiveCombatant {
   customQuotes?: MasterServantInstance['customQuotes'];
 }
 
+export type BattleCombatMode = '1v1' | '1v2' | '2v2';
+
 export interface TurnActionChoice {
   combatantId: string;
+  targetId?: string; // Target combatant ID for multi-combatant (1v2, 2v2) engagements
   selectedCards: CardType[];
   useSkillIndex?: number;
   useNoblePhantasm?: boolean;
@@ -270,6 +273,18 @@ export interface CombatTurnLog {
   actorName: string;
   targetId: string;
   targetName: string;
+  targetIds?: string[];
+  targetNames?: string[];
+  isAoE?: boolean;
+  allDamages?: Array<{
+    targetId: string;
+    targetName: string;
+    damage: number;
+    isEvaded?: boolean;
+    isInvincible?: boolean;
+    isCritical?: boolean;
+    hpRemaining?: number;
+  }>;
   actionSummary: string;
   cardChainType?: 'Buster Brave' | 'Arts Chain' | 'Quick Chain' | 'Normal';
   cardsUsed: ('Buster' | 'Arts' | 'Quick' | 'NP')[];
@@ -298,22 +313,52 @@ export interface CombatTurnLog {
 
 export interface BattleState {
   battleId: string;
+  battleMode?: BattleCombatMode;
+  teamA: ActiveCombatant[];
+  teamB: ActiveCombatant[];
   player1: ActiveCombatant;
   player2: ActiveCombatant;
   currentTurn: number;
   turnPhase: 'card_selection' | 'action_resolution' | 'victory' | 'defeat' | 'fled' | 'evacuated';
   turnHistory: CombatTurnLog[];
   winnerId?: string;
+  winnerTeam?: 'teamA' | 'teamB';
   grailWarId?: string;
   statBalanceMode?: StatBalanceMode;
   balanceMode?: StatBalanceMode;
+  forceJoinedCombatants?: string[];
 }
 
 export interface CombatBattleRecord {
   id: string;
   timestamp: number;
   outcome: 'victory' | 'defeat' | 'fled' | 'evacuated';
+  battleMode?: BattleCombatMode;
   totalTurns: number;
+  teamA?: Array<{
+    id: string;
+    name: string;
+    servantClass: ServantClass;
+    masterName: string;
+    avatarUrl?: string;
+    noblePhantasmName: string;
+    finalHp: number;
+    maxHp: number;
+    atk: number;
+    def: number;
+  }>;
+  teamB?: Array<{
+    id: string;
+    name: string;
+    servantClass: ServantClass;
+    masterName: string;
+    avatarUrl?: string;
+    noblePhantasmName: string;
+    finalHp: number;
+    maxHp: number;
+    atk: number;
+    def: number;
+  }>;
   player1: {
     id: string;
     name: string;

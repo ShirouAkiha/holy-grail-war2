@@ -1,5 +1,6 @@
 import {
   ActiveCombatant,
+  BattleCombatMode,
   BattleState,
   CardType,
   CombatTurnLog,
@@ -381,16 +382,73 @@ export function initializeBattle(
   grailWarId?: string,
   balanceMode: StatBalanceMode = 'archetype'
 ): BattleState {
+  const p1 = { ...combatant1 };
+  const p2 = { ...combatant2 };
   return {
     battleId: battleId || `battle_${Date.now()}`,
-    player1: combatant1,
-    player2: combatant2,
+    battleMode: '1v1',
+    teamA: [p1],
+    teamB: [p2],
+    player1: p1,
+    player2: p2,
     currentTurn: 1,
     turnPhase: 'card_selection',
     turnHistory: [],
     grailWarId,
-    statBalanceMode: balanceMode
+    statBalanceMode: balanceMode,
+    balanceMode,
+    forceJoinedCombatants: []
   };
+}
+
+export function initializeMultiBattle(
+  teamA: ActiveCombatant[],
+  teamB: ActiveCombatant[],
+  mode: BattleCombatMode = '1v1',
+  battleId?: string,
+  grailWarId?: string,
+  balanceMode: StatBalanceMode = 'archetype'
+): BattleState {
+  const p1 = teamA[0];
+  const p2 = teamB[0];
+  return {
+    battleId: battleId || `battle_${Date.now()}`,
+    battleMode: mode,
+    teamA: teamA.map(c => ({ ...c })),
+    teamB: teamB.map(c => ({ ...c })),
+    player1: p1,
+    player2: p2,
+    currentTurn: 1,
+    turnPhase: 'card_selection',
+    turnHistory: [],
+    grailWarId,
+    statBalanceMode: balanceMode,
+    balanceMode,
+    forceJoinedCombatants: []
+  };
+}
+
+export function forceJoinBattle(
+  battle: BattleState,
+  newCombatant: ActiveCombatant,
+  team: 'teamA' | 'teamB'
+): BattleState {
+  const updated = { ...battle };
+  const joined = { ...newCombatant };
+  if (team === 'teamA') {
+    updated.teamA = [...(updated.teamA || [updated.player1]), joined];
+  } else {
+    updated.teamB = [...(updated.teamB || [updated.player2]), joined];
+  }
+  updated.forceJoinedCombatants = [...(updated.forceJoinedCombatants || []), joined.id];
+  const countA = updated.teamA.length;
+  const countB = updated.teamB.length;
+  if (countA >= 2 && countB >= 2) {
+    updated.battleMode = '2v2';
+  } else if (countA >= 2 || countB >= 2) {
+    updated.battleMode = '1v2';
+  }
+  return updated;
 }
 
 export interface NoblePhantasmExecutionResult {
@@ -1445,10 +1503,23 @@ export function executeBattleTurn(
     winnerId = p2.id;
   }
 
+  const updatedTeamA = (state.teamA && state.teamA.length > 0 ? state.teamA : [p1]).map(c => {
+    if (c.id === p1.id) return p1;
+    if (c.id === p2.id) return p2;
+    return c;
+  });
+  const updatedTeamB = (state.teamB && state.teamB.length > 0 ? state.teamB : [p2]).map(c => {
+    if (c.id === p1.id) return p1;
+    if (c.id === p2.id) return p2;
+    return c;
+  });
+
   const updatedState: BattleState = {
     ...state,
     player1: p1,
     player2: p2,
+    teamA: updatedTeamA,
+    teamB: updatedTeamB,
     currentTurn: state.currentTurn + 1,
     turnPhase: nextPhase,
     turnHistory: [...state.turnHistory, ...turnLogs],
