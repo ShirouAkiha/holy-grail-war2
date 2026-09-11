@@ -1320,7 +1320,7 @@ export async function resetAllMastersServants(
           s.experience = 0;
           s.availableStatPoints = 0;
           s.allocatedStats = { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
-          s.bondLevel = 0;
+          s.bondLevel = 1;
           s.equippedCe = undefined;
           s.equippedCeId = undefined;
           s.skillLevels = [1, 1, 1];

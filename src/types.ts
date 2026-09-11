@@ -148,6 +148,9 @@ export interface MasterServantInstance {
     busterChain?: string;
     artsChain?: string;
     quickChain?: string;
+    skill?: string;
+    commandSeal?: string;
+    critHit?: string;
     matchups?: Record<string, MatchupQuoteEntry>;
   };
   bondLevel: number;
@@ -250,6 +253,7 @@ export interface ActiveCombatant {
   npLevel?: number;
   equippedCe?: CraftEssence;
   statBalanceMode?: StatBalanceMode;
+  customQuotes?: MasterServantInstance['customQuotes'];
 }
 
 export interface TurnActionChoice {

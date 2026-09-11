@@ -157,7 +157,8 @@ export function createCombatantFromMasterServant(
     bondLevel: servantInstance.bondLevel || 1,
     npLevel: servantInstance.npLevel || 1,
     equippedCe: ce,
-    statBalanceMode: balanceMode
+    statBalanceMode: balanceMode,
+    customQuotes: servantInstance.customQuotes
   };
 }
 

@@ -208,7 +208,8 @@ export function createCombatantFromMasterServant(
     critStars: pcBonus,
     bondLevel: servantInstance.bondLevel || 1,
     npLevel: servantInstance.npLevel || 1,
-    statBalanceMode: balanceMode
+    statBalanceMode: balanceMode,
+    customQuotes: servantInstance.customQuotes
   };
 }
 
@@ -725,7 +726,7 @@ export function generateTurnDialogueQuote(
   const servantClass = actor.servantClass;
 
   if (choice.useNoblePhantasm && actor.npGauge >= 100) {
-    const chant = actor.noblePhantasm?.chant || `Sword of Promised Victory... EXCALIBUR!`;
+    const chant = actor.customQuotes?.noblePhantasm || actor.noblePhantasm?.chant || `Sword of Promised Victory... EXCALIBUR!`;
     return {
       speakerName: servantName,
       speakerTitle: `${servantClass} • ${actor.noblePhantasm?.name || 'Noble Phantasm'}`,
@@ -737,24 +738,26 @@ export function generateTurnDialogueQuote(
   }
 
   if (choice.useCommandSeal) {
+    const quote = actor.customQuotes?.commandSeal || `By my Command Seal! ${servantName}, refill your Noble Phantasm and shatter enemy lines!`;
     return {
       speakerName: actor.masterName || 'Master',
       speakerTitle: `Master Command Seal Amplification`,
       servantClass,
       tag: 'COMMAND SEAL ACTIVATED',
-      quoteText: `By my Command Seal! ${servantName}, refill your Noble Phantasm and shatter enemy lines!`,
+      quoteText: quote,
       badgeType: 'skill'
     };
   }
 
   if (choice.useSkillIndex !== undefined && choice.useSkillIndex >= 0 && actor.skills[choice.useSkillIndex]) {
     const skill = actor.skills[choice.useSkillIndex];
+    const quote = actor.customQuotes?.skill || `Activating ${skill.name}! ${skill.description}`;
     return {
       speakerName: servantName,
       speakerTitle: `${servantClass} • Skill: ${skill.name}`,
       servantClass,
       tag: 'SKILL RELEASE',
-      quoteText: `Activating ${skill.name}! ${skill.description}`,
+      quoteText: quote,
       badgeType: 'skill'
     };
   }
@@ -767,7 +770,7 @@ export function generateTurnDialogueQuote(
         speakerTitle: `${servantClass} • Buster Brave Chain`,
         servantClass,
         tag: 'BUSTER BRAVE CHAIN',
-        quoteText: "All mana into maximum destruction! Take this!",
+        quoteText: actor.customQuotes?.busterChain || "All mana into maximum destruction! Take this!",
         badgeType: 'crit'
       };
     }
@@ -777,7 +780,7 @@ export function generateTurnDialogueQuote(
         speakerTitle: `${servantClass} • Arts Chain`,
         servantClass,
         tag: 'ARTS CHAIN',
-        quoteText: "Charging mana reservoir... let's flood the battlefield!",
+        quoteText: actor.customQuotes?.artsChain || "Charging mana reservoir... let's flood the battlefield!",
         badgeType: 'attack'
       };
     }
@@ -787,7 +790,7 @@ export function generateTurnDialogueQuote(
         speakerTitle: `${servantClass} • Quick Star Chain`,
         servantClass,
         tag: 'QUICK STAR CHAIN',
-        quoteText: "Swift like lightning... you won't even see the strike!",
+        quoteText: actor.customQuotes?.quickChain || "Swift like lightning... you won't even see the strike!",
         badgeType: 'crit'
       };
     }
