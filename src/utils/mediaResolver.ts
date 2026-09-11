@@ -8,6 +8,21 @@ export function normalizeMediaUrl(rawUrl: string): string {
   if (!rawUrl || typeof rawUrl !== 'string') return '';
   const trimmed = rawUrl.trim();
 
+  // 0. Handle Local / Relative Media URLs
+  if (
+    trimmed.startsWith('/api/media/') ||
+    trimmed.startsWith('/media/') ||
+    trimmed.startsWith('/uploads/') ||
+    trimmed.startsWith('data/media/') ||
+    trimmed.startsWith('data/media_cache/') ||
+    trimmed.startsWith('file://')
+  ) {
+    if (trimmed.startsWith('data/media/')) {
+      return `/api/media/${trimmed.replace(/^data\/media\//, '')}`;
+    }
+    return trimmed;
+  }
+
   // 1. Handle Giphy URLs
   // Case A: https://giphy.com/gifs/fate-stay-night-unlimited-blade-works-tO2sY2i2LgZSo
   // Case B: https://giphy.com/gifs/tO2sY2i2LgZSo
@@ -99,6 +114,9 @@ export function normalizeMediaUrl(rawUrl: string): string {
 export function isDirectEmbeddableMedia(url: string): boolean {
   if (!url) return false;
   const lower = url.toLowerCase();
+  if (lower.startsWith('/api/media/') || lower.startsWith('/media/') || lower.startsWith('/uploads/') || lower.startsWith('data/media/')) {
+    return true;
+  }
   if (lower.includes('tenor.com/view/')) return false; // Web page, not direct image
   if (lower.includes('giphy.com/gifs/') && !lower.includes('i.giphy.com') && !lower.includes('media.giphy.com')) return false;
   return (

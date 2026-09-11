@@ -9,6 +9,8 @@ import {
 import { calculateRadarCoordinates, RadarPoint } from '../engine/customization';
 import { SERVANT_DATABASE } from '../data/servants';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
+import { getLocalMediaDiskPath } from '../utils/localMedia';
+import fs from 'fs';
 
 let canvasModule: any = null;
 try {
@@ -171,6 +173,17 @@ async function loadImage(src: string): Promise<any> {
 
   if (canvasModule && typeof canvasModule.loadImage === 'function') {
     try {
+      // 1. Check if it's already a local disk file or /api/media path
+      const diskPath = getLocalMediaDiskPath(targetUrl);
+      if (diskPath && fs.existsSync(diskPath)) {
+        try {
+          const localBuffer = fs.readFileSync(diskPath);
+          return await canvasModule.loadImage(localBuffer);
+        } catch {
+          return await canvasModule.loadImage(diskPath);
+        }
+      }
+
       if (targetUrl.startsWith('data:') || !targetUrl.startsWith('http')) {
         return await canvasModule.loadImage(targetUrl);
       }

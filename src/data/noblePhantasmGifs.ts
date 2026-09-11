@@ -27,74 +27,74 @@ export function setCustomNpAnimationsBatch(anims: Record<string, { gifUrl: strin
 
 export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: string; chant: string }> = {
   'Artoria Pendragon': {
-    gifUrl: 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
+    gifUrl: '/api/media/np_artoria_pendragon.gif',
     fallbackGif: 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
     chant: 'Gathered breath of the planet, torrential light of life... EX---CALIBUR!'
   },
   'Artoria Pendragon (Alter)': {
-    gifUrl: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+    gifUrl: '/api/media/np_artoria_pendragon_alter.gif',
     fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
     chant: 'Hammer of the vile king, shatter the aurora... Swallow the light! EXCALIBUR MORGAN!'
   },
   'Gilgamesh': {
-    gifUrl: 'https://i.giphy.com/media/13cACn6mlO56kU/giphy.gif',
+    gifUrl: '/api/media/np_gilgamesh_archer.gif',
     fallbackGif: 'https://i.giphy.com/media/13cACn6mlO56kU/giphy.gif',
     chant: 'I speak of the beginning... Heaven and Earth split, and nothingness congratulated creation! ENUMA ELISH!'
   },
   'EMIYA': {
-    gifUrl: 'https://i.giphy.com/media/eBGV4n8U8k3eg/giphy.gif',
+    gifUrl: '/api/media/np_emiya_archer.gif',
     fallbackGif: 'https://i.giphy.com/media/eBGV4n8U8k3eg/giphy.gif',
     chant: 'I am the bone of my sword. Steel is my body, and fire is my blood... UNLIMITED BLADE WORKS!'
   },
   'Cú Chulainn': {
-    gifUrl: 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
+    gifUrl: '/api/media/np_cu_chulainn_lancer.gif',
     fallbackGif: 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
     chant: 'Your heart is mine! Soar and pierce through the fated heart... GÁE BOLG!'
   },
   'Scáthach': {
-    gifUrl: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+    gifUrl: '/api/media/np_scathach_lancer.gif',
     fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
     chant: 'Pierce through, thrust of sure mortality! GÁE BOLG ALTERNATIVE!'
   },
   'Jeanne d\'Arc': {
-    gifUrl: 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
+    gifUrl: '/api/media/np_jeanne_darc_ruler.jpg',
     fallbackGif: 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
     chant: 'My God is here with me! Holy banner, shield our faithful spirits! LUMINOSITÉ ETERNELLE!'
   },
   'Jeanne d\'Arc (Alter)': {
-    gifUrl: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+    gifUrl: '/api/media/np_jeanne_alter.gif',
     fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
     chant: 'Burn away to charred ash! This is the scream of my soul turned to roaring wrath! LA GRONDEMENT DU HAINE!'
   },
   'Nero Claudius': {
-    gifUrl: 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
+    gifUrl: '/api/media/np_nero_claudius_saber.gif',
     fallbackGif: 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
     chant: 'Witness the glory of the Golden Theater! Open the curtain, bloom in full resplendence! LAUS SAINT CLAUDIUS!'
   },
   'Heracles': {
-    gifUrl: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+    gifUrl: '/api/media/np_heracles_berserker.jpg',
     fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
     chant: 'ROOOOOOAAARGH! Shooting the hundred heads in an unceasing barrage! NINE LIVES!'
   },
   'Mysterious Heroine X (Alter)': {
-    gifUrl: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+    gifUrl: '/api/media/np_mhx_alter.gif',
     fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
     chant: 'Darkness and sweets converge... Twin black dragon blades, severance of all Sabers! CROSS-CALIBUR!'
   },
   'Karna': {
-    gifUrl: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+    gifUrl: '/api/media/np_karna_lancer.gif',
     fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
     chant: 'Know the mercy of the King of Gods... O Sun, abide to death! VASAVI SHAKTI!'
   },
   'Adiosa': {
-    gifUrl: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+    gifUrl: '/api/media/np_adiosa_dragon_envoy.webp',
     fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
     chant: '⟨ Kz\'vohl aethren... Ground to glass, sky to ash. Ruin of Ixenor... AZURE-MAGENTA RUIN! ⟩'
   }
 };
 
-const DEFAULT_NP_GIF = 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif';
-const DEFAULT_NP_FALLBACK = 'https://i.giphy.com/media/13cACn6mlO56kU/giphy.gif';
+const DEFAULT_NP_GIF = '/api/media/np_artoria_pendragon.gif';
+const DEFAULT_NP_FALLBACK = 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif';
 
 /**
  * Returns a high quality GIF / animation link for a Servant's Noble Phantasm

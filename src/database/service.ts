@@ -2,6 +2,7 @@ import { MasterProfile, MasterServantInstance, CraftEssence, ServantTemplate, Ga
 import { SERVANT_DATABASE, getServantAvatarAndCardArt } from '../data/servants';
 import { CRAFT_ESSENCE_DATABASE, CE_GACHA_BANNERS } from '../data/craftEssences';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
+import { downloadMediaToLocal } from '../utils/localMedia';
 import fs from 'fs';
 import path from 'path';
 
@@ -919,6 +920,22 @@ export function setServantNpAnimation(
   customNpAnims.set(target.id, config);
   customNpAnims.set(target.name.toLowerCase(), config);
   saveNpAnimsToDisk();
+
+  // If the URL is external, download to local media asynchronously
+  if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+    downloadMediaToLocal(cleanUrl, `np_${target.id}`).then((localUrl) => {
+      if (localUrl && localUrl.startsWith('/api/media/')) {
+        config.gifUrl = localUrl;
+        if (target.noblePhantasm) {
+          target.noblePhantasm.animationUrl = localUrl;
+          target.noblePhantasm.gifUrl = localUrl;
+        }
+        customNpAnims.set(target.id, config);
+        customNpAnims.set(target.name.toLowerCase(), config);
+        saveNpAnimsToDisk();
+      }
+    }).catch(() => {});
+  }
 
   // Save to servant repository
   savedServantsMap.set(target.id, { ...target });
