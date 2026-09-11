@@ -27,11 +27,35 @@ import { getServantMatchupDialogue } from '../data/servantMatchups';
 // Allows a Master to challenge either a human player via `@Master` or an AI Shadow Servant.
 export const data = new SlashCommandBuilder()
   .setName('duel')
-  .setDescription('Engage in a turn-based tactical Fate battle against another Master or AI Shadow Servant')
+  .setDescription('Engage in a turn-based tactical Fate battle (1v1, 2v2 Alliance, 1v2 Raid, or Force Join)')
+  .addStringOption(option =>
+    option
+      .setName('mode')
+      .setDescription('Battle Format: 1v1 Solo, 2v2 Alliance Tag-Team, 1v2 Raid, or Force Join')
+      .setRequired(false)
+      .addChoices(
+        { name: '⚔️ 1v1 Solo Duel', value: '1v1' },
+        { name: '🛡️ 2v2 Alliance Tag-Team', value: '2v2' },
+        { name: '⚔️ 1v2 Raid Survival', value: '1v2' },
+        { name: '⚡ Force Join Ongoing Battle', value: 'forcejoin' }
+      )
+  )
   .addUserOption(option =>
     option
       .setName('opponent')
-      .setDescription('Target Master to duel (leave empty to challenge AI Shadow Master)')
+      .setDescription('Primary target Master to duel (leave empty to challenge AI Shadow Master)')
+      .setRequired(false)
+  )
+  .addUserOption(option =>
+    option
+      .setName('ally')
+      .setDescription('Allied Master for 2v2 Alliance Tag-Team (leave empty for Shadow Ally)')
+      .setRequired(false)
+  )
+  .addUserOption(option =>
+    option
+      .setName('opponent2')
+      .setDescription('Second Opponent Master for 2v2 or 1v2 Raid (leave empty for Shadow Rival)')
       .setRequired(false)
   );
 
@@ -758,7 +782,21 @@ function buildCombatButtons(
       .setDisabled(!isS3Unlocked || cd3 > 0 || !s3)
   );
 
-  return [row1, row2, row3];
+  // Row 4: Multi-Combat Tactical Actions & Mid-Battle Intervention
+  const row4 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId('card_alliance_assist')
+      .setLabel('Alliance Tag Assist (+25% ATK)')
+      .setEmoji('🛡️')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId('card_forcejoin')
+      .setLabel('Force Join Arena')
+      .setEmoji('⚡')
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  return [row1, row2, row3, row4];
 }
 
 // Helper to activate a combatant skill without spending a turn
