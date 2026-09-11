@@ -2601,30 +2601,96 @@ function drawMinimalClashBanner(
   ctx.textAlign = 'center';
   ctx.fillText(`TURN ${log.turnNumber || 1}`, turnX + turnW / 2, turnY + 19);
 
-  // 3. Center Damage Text
+  // 3. Center Damage Text & Cinematic Dialogue (High-contrast, bold and prominent)
   const dmg = log.damageDealt > 0 ? log.damageDealt.toLocaleString() : '0';
+  const centerX = x + w / 2 - 10;
   ctx.textAlign = 'center';
 
-  if (log.isEvaded || (log.damageDealt === 0 && (log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade')))) {
-    ctx.font = 'bold 18px sans-serif';
-    ctx.fillStyle = '#38bdf8';
-    ctx.fillText('💨 ATTACK EVADED! (0 DMG)', x + w / 2 - 10, y + 33);
-  } else if (log.isInvincible || (log.damageDealt === 0 && log.actionSummary?.toLowerCase().includes('invincible'))) {
-    ctx.font = 'bold 18px sans-serif';
-    ctx.fillStyle = '#fde047';
-    ctx.fillText('🛡️ INVINCIBLE! (0 DMG)', x + w / 2 - 10, y + 33);
-  } else if (log.isNoblePhantasm) {
-    ctx.font = 'bold 18px sans-serif';
-    ctx.fillStyle = '#fde047';
-    ctx.fillText(`NOBLE PHANTASM: ${dmg} DAMAGE!`, x + w / 2 - 10, y + 33);
-  } else if (log.isCritical) {
-    ctx.font = 'bold 18px sans-serif';
-    ctx.fillStyle = '#f87171';
-    ctx.fillText(`CRITICAL STRIKE: ${dmg} DAMAGE!`, x + w / 2 - 10, y + 33);
+  const rawQuote = (log.dialogueQuote || '').trim().replace(/^["“'❝*]+|["”'❞*]+$/g, '');
+  const quoteText = rawQuote.length > 38 ? rawQuote.substring(0, 37) + '…' : rawQuote;
+
+  if (quoteText) {
+    // Two-tier display: Quote above, damage / action decree below
+    ctx.font = 'italic bold 12px sans-serif';
+    if (log.dialogueTag?.includes('COMMAND SEAL') || log.actionSummary?.toLowerCase().includes('command seal')) {
+      ctx.fillStyle = '#fb7185';
+      ctx.fillText(`🔱 “${quoteText}”`, centerX, y + 21);
+    } else if (log.dialogueTag?.includes('SKILL') || log.actionSummary?.toLowerCase().includes('activated')) {
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText(`✨ “${quoteText}”`, centerX, y + 21);
+    } else {
+      ctx.fillStyle = '#fde047';
+      ctx.fillText(`💬 “${quoteText}”`, centerX, y + 21);
+    }
+
+    if (log.isEvaded || (log.damageDealt === 0 && (log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade')))) {
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('💨 ATTACK EVADED! (0 DMG)', centerX, y + 39);
+    } else if (log.isInvincible || (log.damageDealt === 0 && log.actionSummary?.toLowerCase().includes('invincible'))) {
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillStyle = '#fde047';
+      ctx.fillText('🛡️ INVINCIBLE! (0 DMG)', centerX, y + 39);
+    } else if (log.damageDealt > 0) {
+      ctx.font = 'bold 15px sans-serif';
+      if (log.isNoblePhantasm) {
+        ctx.fillStyle = '#fde047';
+        ctx.fillText(`NOBLE PHANTASM: ${dmg} DAMAGE!`, centerX, y + 39);
+      } else if (log.isCritical) {
+        ctx.fillStyle = '#f87171';
+        ctx.fillText(`CRITICAL STRIKE: ${dmg} DAMAGE!`, centerX, y + 39);
+      } else {
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillText(`DEALT ${dmg} DAMAGE!`, centerX, y + 39);
+      }
+    } else if (log.dialogueTag?.includes('COMMAND SEAL') || log.actionSummary?.toLowerCase().includes('command seal')) {
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillStyle = '#f43f5e';
+      ctx.fillText('🔱 COMMAND SEAL: NP REFILLED TO 100%', centerX, y + 39);
+    } else if (log.dialogueTag?.includes('SKILL') || log.actionSummary?.toLowerCase().includes('activated')) {
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('✨ TACTICAL SKILL ACTIVATED!', centerX, y + 39);
+    } else {
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText('TACTICAL MANEUVER EXECUTED', centerX, y + 39);
+    }
   } else {
-    ctx.font = 'bold 18px sans-serif';
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillText(`DEALT ${dmg} DAMAGE!`, x + w / 2 - 10, y + 33);
+    // Single-tier display when no dialogue quote is available
+    if (log.isEvaded || (log.damageDealt === 0 && (log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade')))) {
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('💨 ATTACK EVADED! (0 DMG)', centerX, y + 33);
+    } else if (log.isInvincible || (log.damageDealt === 0 && log.actionSummary?.toLowerCase().includes('invincible'))) {
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillStyle = '#fde047';
+      ctx.fillText('🛡️ INVINCIBLE! (0 DMG)', centerX, y + 33);
+    } else if (log.isNoblePhantasm) {
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillStyle = '#fde047';
+      ctx.fillText(`NOBLE PHANTASM: ${dmg} DAMAGE!`, centerX, y + 33);
+    } else if (log.isCritical) {
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillStyle = '#f87171';
+      ctx.fillText(`CRITICAL STRIKE: ${dmg} DAMAGE!`, centerX, y + 33);
+    } else if (log.damageDealt > 0) {
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillText(`DEALT ${dmg} DAMAGE!`, centerX, y + 33);
+    } else if (log.actionSummary?.toLowerCase().includes('command seal')) {
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillStyle = '#f43f5e';
+      ctx.fillText('🔱 COMMAND SEAL: NP REFILLED TO 100%', centerX, y + 33);
+    } else if (log.actionSummary?.toLowerCase().includes('activated')) {
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('✨ TACTICAL SKILL ACTIVATED!', centerX, y + 33);
+    } else {
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillText(`DEALT ${dmg} DAMAGE!`, centerX, y + 33);
+    }
   }
 
   // 4. Right Tactical Gains Pill (+NP & +Stars)

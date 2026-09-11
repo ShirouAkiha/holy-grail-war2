@@ -339,25 +339,25 @@ function buildDialogueCutInEmbed(
     .setColor(dialogue.color)
     .setFooter({ text: 'Holy Grail War • Tactical RPG Visual Novel Dialogue Cut-In' });
 
+  const seqDisplay = sequence.map(c => {
+    if (c === 'Buster') return '🔴 **Buster**';
+    if (c === 'Arts') return '🔵 **Arts**';
+    if (c === 'Quick') return '🟢 **Quick**';
+    return '💥 **Noble Phantasm**';
+  }).join(' ➔ ');
+
+  embed.setDescription(
+    `### ⚔️ **${sName}** *(${sClass})*\n` +
+    `> ❝ ***${dialogue.quote}*** ❞\n\n` +
+    (sequence.length > 0 ? `⚡ **Tactical Focus:** ${seqDisplay}\n` : '') +
+    `🎯 **Target:** **${defender.servant.nickname || defender.servant.template?.name}**\n\n` +
+    `⏳ *Resolving tactical action...*`
+  );
+
   if (hasImageAttachment) {
     embed.setImage('attachment://vn_dialogue.gif');
   } else {
     const avatar = attacker.servant.template?.avatarUrl;
-    const seqDisplay = sequence.map(c => {
-      if (c === 'Buster') return '🔴 **Buster**';
-      if (c === 'Arts') return '🔵 **Arts**';
-      if (c === 'Quick') return '🟢 **Quick**';
-      return '💥 **Noble Phantasm**';
-    }).join(' ➔ ');
-
-    embed.setDescription(
-      `### ⚔️ **${sName}** *(${sClass})*\n` +
-      `> ❝ ***${dialogue.quote}*** ❞\n\n` +
-      `⚡ **Executing Sequence:** ${seqDisplay}\n` +
-      `🎯 **Target:** **${defender.servant.nickname || defender.servant.template?.name}**\n\n` +
-      `⏳ *Unleashing tactical strike in 4 seconds...*`
-    );
-
     if (avatar) {
       embed.setThumbnail(avatar);
     }
@@ -420,14 +420,29 @@ async function createTurnSummaryAttachment(
   const isNP = lastLogText.includes('NOBLE PHANTASM');
 
   // Identify who was the attacker in the most recent combat log entry
-  const isP2Attacker = lastLogText.includes(`**${p2.servant.template.name}** executed sequence`);
+  const isP2Attacker = lastLogText.includes(`**${p2.servant.template.name}** executed sequence`) ||
+    lastLogText.includes(`**${p2.username}** commanded`) ||
+    lastLogText.includes(`**${p2.servant.nickname || p2.servant.template.name}** activated`);
   const activeAttacker = isP2Attacker ? p2 : p1;
   const activeDefender = isP2Attacker ? p1 : p2;
   const activeCards = isP2Attacker ? p2Cards : p1Cards;
 
-  const dInfo = getCombatantChainDialogue(activeAttacker, activeCards);
-  const dQuote = dInfo.quote;
-  const dTag = dInfo.tag;
+  let dQuote = '';
+  let dTag = '';
+
+  if (lastLogText.includes('COMMAND SEAL INVOKED')) {
+    const quoteMatch = lastLogText.match(/❝ \*\*\*(.*?)\*\*\* ❞/) || lastLogText.match(/\*“{1,2}(.*?)[”"]{1,2}\*/);
+    dQuote = quoteMatch ? quoteMatch[1] : (activeAttacker.servant.customQuotes?.commandSeal || 'By my Command Seal, unleash your Noble Phantasm!');
+    dTag = 'COMMAND SEAL INVOCATION';
+  } else if (lastLogText.includes('activated')) {
+    const quoteMatch = lastLogText.match(/❝ \*\*\*(.*?)\*\*\* ❞/) || lastLogText.match(/\*“(.*?)[”"]\*/);
+    dQuote = quoteMatch ? quoteMatch[1] : (activeAttacker.servant.customQuotes?.skill || 'My power answers the command!');
+    dTag = 'SKILL ACTIVATION';
+  } else {
+    const dInfo = getCombatantChainDialogue(activeAttacker, activeCards);
+    dQuote = dInfo.quote;
+    dTag = dInfo.tag;
+  }
 
   // Extract damage, NP gained, stars generated via regex
   const dmgMatch = lastLogText.match(/Dealt \*\*([\d,]+) DMG\*\*/i) || lastLogText.match(/([\d,]+)\s*DMG/i);
@@ -716,7 +731,7 @@ function activateCombatantSkill(
   combatant: DuelCombatant,
   skillIdx: number,
   opponent?: DuelCombatant
-): { success: boolean; log: string } {
+): { success: boolean; log: string; quote?: string; skillName?: string } {
   const bondLevel = combatant.servant.bondLevel || 1;
   if (skillIdx === 2 && bondLevel < 5) {
     return { success: false, log: '🔒 **Skill 3 is Locked!** Reach Bond Level 5 to unlock this skill.' };
@@ -733,9 +748,11 @@ function activateCombatantSkill(
   }
 
   combatant.skillCooldowns[skillIdx] = skill.cooldown || 5;
+  const sName = combatant.servant.nickname || combatant.servant.template.name;
   const customSkillQuote = combatant.servant.customQuotes?.skill;
-  const quoteLine = customSkillQuote ? `\n> 💬 *“${customSkillQuote}”*` : '';
-  let logText = `✨ **${combatant.servant.template.name}** activated **${skill.name}**!${quoteLine}`;
+  const skillQuote = customSkillQuote || `My power answers the command! Witness ${skill.name}!`;
+  const quoteLine = `\n> 💬 ❝ ***${skillQuote}*** ❞`;
+  let logText = `✨ **${sName}** activated **${skill.name}**!${quoteLine}`;
 
   if (skill.effectType === 'buff_atk') {
     const val = skill.value || 35;
@@ -751,11 +768,11 @@ function activateCombatantSkill(
       combatant.activeBuffs.push({ name: skill.name, type: 'buff_atk', value: val, remainingTurns: skill.duration || 2 });
       combatant.critStars = Math.min(50, combatant.critStars + 10);
     }
-    logText = `⚔️ **${combatant.servant.template.name}** activated **${skill.name}**!`;
+    logText = `⚔️ **${sName}** activated **${skill.name}**!${quoteLine}`;
   } else if (skill.effectType === 'buff_def') {
     const val = skill.value || 30;
     combatant.activeBuffs.push({ name: skill.name, type: 'buff_def', value: val, remainingTurns: skill.duration || 2 });
-    logText = `🛡️ **${combatant.servant.template.name}** activated **${skill.name}**!`;
+    logText = `🛡️ **${sName}** activated **${skill.name}**!${quoteLine}`;
   } else if (skill.effectType === 'evade' || skill.effectType === 'invincible') {
     const bType: 'evade' | 'invincible' = skill.effectType === 'invincible' ? 'invincible' : 'evade';
     const isHitBased = skill.name.toLowerCase().includes('protection from arrows') || (skill.description || '').toLowerCase().includes('attacks') || (skill.description || '').toLowerCase().includes('hits');
@@ -771,8 +788,8 @@ function activateCombatantSkill(
       combatant.critStars = Math.min(50, combatant.critStars + 15);
     }
     logText = bType === 'invincible'
-      ? `🛡️ **${combatant.servant.template.name}** activated **${skill.name}** (Invincible)!`
-      : `💨 **${combatant.servant.template.name}** activated **${skill.name}** (Evade)!`;
+      ? `🛡️ **${sName}** activated **${skill.name}** (Invincible)!${quoteLine}`
+      : `💨 **${sName}** activated **${skill.name}** (Evade)!${quoteLine}`;
   } else if (skill.effectType === 'guts' || skill.id?.includes('guts') || skill.id?.includes('battle_continuation') || skill.id?.includes('thrice')) {
     const reviveAmt = skill.value || Math.round(combatant.maxHp * 0.20);
     combatant.gutsCount = (combatant.gutsCount || 0) + 1;
@@ -790,21 +807,21 @@ function activateCombatantSkill(
         remainingTurns: 1
       });
     }
-    logText = `🩸 **${combatant.servant.template.name}** activated **${skill.name}**!`;
+    logText = `🩸 **${sName}** activated **${skill.name}**!${quoteLine}`;
   } else if (skill.effectType === 'heal') {
     const healVal = skill.value || Math.round(combatant.maxHp * 0.25);
     combatant.currentHp = Math.min(combatant.maxHp, combatant.currentHp + healVal);
-    logText = `💚 **${combatant.servant.template.name}** activated **${skill.name}**!`;
+    logText = `💚 **${sName}** activated **${skill.name}**!${quoteLine}`;
   } else if (skill.effectType === 'np_charge') {
     const npVal = skill.value || 30;
     combatant.npGauge = Math.min(300, combatant.npGauge + npVal);
     combatant.critStars = Math.min(50, combatant.critStars + 15);
-    logText = `⚡ **${combatant.servant.template.name}** activated **${skill.name}**!`;
+    logText = `⚡ **${sName}** activated **${skill.name}**!${quoteLine}`;
   } else if (skill.effectType === 'crit_stars') {
     const starVal = skill.value || 25;
     combatant.critStars = Math.min(50, combatant.critStars + starVal);
     combatant.activeBuffs.push({ name: skill.name, type: 'crit_dmg', value: 40, remainingTurns: skill.duration || 2 });
-    logText = `🌟 **${combatant.servant.template.name}** activated **${skill.name}**!`;
+    logText = `🌟 **${sName}** activated **${skill.name}**!${quoteLine}`;
   } else if (skill.effectType === 'stun' || skill.effectType === 'debuff' || skill.id?.includes('discernment')) {
     if (opponent) {
       opponent.isStunned = true;
@@ -816,26 +833,27 @@ function activateCombatantSkill(
         remainingTurns: skill.duration || 1
       });
     }
-    logText = `👁️ **${combatant.servant.template.name}** activated **${skill.name}**!`;
+    logText = `👁️ **${sName}** activated **${skill.name}**!${quoteLine}`;
   } else {
     combatant.activeBuffs.push({ name: skill.name, type: 'buff_atk', value: 25, remainingTurns: 2 });
-    logText = `✨ **${combatant.servant.template.name}** activated **${skill.name}**!`;
+    logText = `✨ **${sName}** activated **${skill.name}**!${quoteLine}`;
   }
 
-  return { success: true, log: logText };
+  return { success: true, log: logText, quote: skillQuote, skillName: skill.name };
 }
 
 // Helper to invoke a command seal without spending a turn
-function invokeCombatantSeal(combatant: DuelCombatant): { success: boolean; log: string } {
+function invokeCombatantSeal(combatant: DuelCombatant): { success: boolean; log: string; quote: string } {
   if ((combatant.commandSeals || 0) <= 0) {
-    return { success: false, log: '⚠️ You have no Command Seals remaining!' };
+    return { success: false, log: '⚠️ You have no Command Seals remaining!', quote: '' };
   }
 
   combatant.commandSeals--;
   combatant.npGauge = 100;
-  const sealQuote = combatant.servant.customQuotes?.commandSeal || "By my Command Seal, unleash your Noble Phantasm!";
-  const logText = `🔱 **COMMAND SEAL INVOKED!** Master **${combatant.username}** commanded: *"“${sealQuote}”*\n> ⚡ **${combatant.servant.template.name}**'s NP Gauge has been completely refilled to **100%**!`;
-  return { success: true, log: logText };
+  const sName = combatant.servant.nickname || combatant.servant.template.name;
+  const sealQuote = combatant.servant.customQuotes?.commandSeal || "By my Command Seal, shatter all opposition and surge with true ether!";
+  const logText = `🔱 **COMMAND SEAL INVOKED!** Master **${combatant.username}** commanded: ❝ ***${sealQuote}*** ❞\n> ⚡ **${sName}**'s NP Gauge has been completely refilled to **100%**!`;
+  return { success: true, log: logText, quote: sealQuote };
 }
 
 // Helper for AI card selection based on servant hand and class deck
@@ -2247,6 +2265,56 @@ async function startInteractiveDuel(
         const actor = activeUserId === p1.userId ? p1 : p2;
         const opponent = activeUserId === p1.userId ? p2 : p1;
         const res = activateCombatantSkill(actor, skillIdx, opponent);
+
+        if (!res.success) {
+          await i.followUp({ content: res.log, flags: MessageFlags.Ephemeral });
+          return;
+        }
+
+        // Special High-Stakes Sequence: Render and display the Visual Novel Dialogue Frame Cut-In for Skill Release!
+        try {
+          const sName = actor.servant.nickname || actor.servant.template?.name || 'Heroic Spirit';
+          const sClass = actor.servant.template?.servantClass || 'Servant';
+          const avatarUrl = actor.servant.template?.avatarUrl;
+          const bondLvl = actor.servant.bondLevel || 8;
+
+          const oppName = opponent.servant.nickname || opponent.servant.template?.name || 'Opponent Servant';
+          const oppClass = opponent.servant.template?.servantClass || 'Servant';
+          const oppAvatarUrl = opponent.servant.template?.avatarUrl;
+
+          const skillName = res.skillName || 'TACTICAL SKILL';
+          const skillQuote = res.quote || 'My power answers the command!';
+
+          const skillDiaBuffer = await renderDialogueCard(
+            sName,
+            skillQuote,
+            `SKILL: ${skillName.toUpperCase()}`,
+            sClass,
+            avatarUrl,
+            bondLvl,
+            oppName,
+            oppAvatarUrl,
+            oppClass,
+            ['Arts']
+          );
+
+          if (skillDiaBuffer && skillDiaBuffer.length > 500) {
+            const attachment = new AttachmentBuilder(skillDiaBuffer, { name: 'vn_dialogue.gif' });
+            const skillDialogueObj = {
+              quote: skillQuote,
+              tag: `SKILL: ${skillName.toUpperCase()}`,
+              color: 0x38bdf8
+            };
+            const cutInEmbed = buildDialogueCutInEmbed(actor, opponent, ['Arts'], skillDialogueObj, true);
+            await i.editReply({ embeds: [cutInEmbed], files: [attachment], components: [] });
+
+            // Display Visual Novel Dialogue Frame for 2.5 seconds before updating tactical arena
+            await new Promise(r => setTimeout(r, 2500));
+          }
+        } catch (err) {
+          console.warn('Failed to render Skill visual novel dialogue cut-in:', err);
+        }
+
         combatLogs.push(res.log);
         if (combatLogs.length > 4) combatLogs.shift();
 
@@ -2260,12 +2328,63 @@ async function startInteractiveDuel(
       // CASE: COMMAND SEAL ACTIVATION (Instant - does NOT end turn)
       if (i.customId === 'card_seal') {
         const actor = activeUserId === p1.userId ? p1 : p2;
+        const opponent = activeUserId === p1.userId ? p2 : p1;
         const actingMaster = activeUserId === p1Master.discordId ? p1Master : p2Master;
         const res = invokeCombatantSeal(actor);
+
+        if (!res.success) {
+          await i.followUp({ content: res.log, flags: MessageFlags.Ephemeral });
+          return;
+        }
+
         if (actingMaster) {
           actingMaster.commandSeals = actor.commandSeals;
           await saveMaster(actingMaster);
         }
+
+        // Special High-Stakes Sequence: Render and display the Visual Novel Dialogue Frame Cut-In for Command Seal Invocation!
+        try {
+          const sName = actor.servant.nickname || actor.servant.template?.name || 'Heroic Spirit';
+          const sClass = actor.servant.template?.servantClass || 'Servant';
+          const avatarUrl = actor.servant.template?.avatarUrl;
+          const bondLvl = actor.servant.bondLevel || 8;
+
+          const oppName = opponent.servant.nickname || opponent.servant.template?.name || 'Opponent Servant';
+          const oppClass = opponent.servant.template?.servantClass || 'Servant';
+          const oppAvatarUrl = opponent.servant.template?.avatarUrl;
+
+          const sealQuote = res.quote || 'By my Command Seal, unleash your Noble Phantasm!';
+
+          const sealDiaBuffer = await renderDialogueCard(
+            `Master ${actingMaster?.username || actor.username}`,
+            sealQuote,
+            'COMMAND SEAL INVOCATION',
+            'Master',
+            avatarUrl,
+            bondLvl,
+            oppName,
+            oppAvatarUrl,
+            oppClass,
+            ['NP']
+          );
+
+          if (sealDiaBuffer && sealDiaBuffer.length > 500) {
+            const attachment = new AttachmentBuilder(sealDiaBuffer, { name: 'vn_dialogue.gif' });
+            const sealDialogueObj = {
+              quote: sealQuote,
+              tag: 'COMMAND SEAL INVOCATION',
+              color: 0xe11d48
+            };
+            const cutInEmbed = buildDialogueCutInEmbed(actor, opponent, ['NP'], sealDialogueObj, true);
+            await i.editReply({ embeds: [cutInEmbed], files: [attachment], components: [] });
+
+            // Display Visual Novel Dialogue Frame for 2.5 seconds before updating tactical arena
+            await new Promise(r => setTimeout(r, 2500));
+          }
+        } catch (err) {
+          console.warn('Failed to render Command Seal visual novel dialogue cut-in:', err);
+        }
+
         combatLogs.push(res.log);
         if (combatLogs.length > 4) combatLogs.shift();
 

@@ -217,7 +217,7 @@ export function applyCombatantSkill(
   actor: ActiveCombatant,
   target: ActiveCombatant,
   skillIndex: number
-): { success: boolean; log: string } {
+): { success: boolean; log: string; quote?: string; skillName?: string } {
   if (skillIndex === 2 && (actor.bondLevel || 1) < 5) {
     return { success: false, log: '🔒 Skill 3 is locked! Reach Bond Level 5 to unlock.' };
   }
@@ -232,8 +232,8 @@ export function applyCombatantSkill(
   }
 
   skill.currentCooldown = skill.cooldown;
-  const skillQuote = actor.customQuotes?.skill;
-  const quoteLine = skillQuote ? `\n> 💬 *“${skillQuote}”*` : '';
+  const skillQuote = actor.customQuotes?.skill || `My power answers the command! Witness ${skill.name}!`;
+  const quoteLine = `\n> 💬 ❝ ***${skillQuote}*** ❞`;
   let logText = `✨ **${actor.name}** activated **${skill.name}**!${quoteLine}`;
 
   switch (skill.effectType) {
@@ -265,7 +265,7 @@ export function applyCombatantSkill(
         });
       }
       actor.critStars = Math.min(50, actor.critStars + 10);
-      logText = `⚔️ **${actor.name}** activated **${skill.name}**!`;
+      logText = `⚔️ **${actor.name}** activated **${skill.name}**!${quoteLine}`;
       break;
     }
     case 'buff_def':
@@ -275,18 +275,18 @@ export function applyCombatantSkill(
         value: skill.value || 30,
         remainingTurns: skill.duration || 2
       });
-      logText = `🛡️ **${actor.name}** activated **${skill.name}**!`;
+      logText = `🛡️ **${actor.name}** activated **${skill.name}**!${quoteLine}`;
       break;
     case 'heal': {
       const healAmt = skill.value || Math.round(actor.maxHp * 0.25);
       actor.currentHp = Math.min(actor.maxHp, actor.currentHp + healAmt);
-      logText = `💚 **${actor.name}** activated **${skill.name}**!`;
+      logText = `💚 **${actor.name}** activated **${skill.name}**!${quoteLine}`;
       break;
     }
     case 'np_charge':
       actor.npGauge = Math.min(300, actor.npGauge + (skill.value || 30));
       actor.critStars = Math.min(50, actor.critStars + 15);
-      logText = `⚡ **${actor.name}** activated **${skill.name}**!`;
+      logText = `⚡ **${actor.name}** activated **${skill.name}**!${quoteLine}`;
       break;
     case 'crit_stars': {
       const stars = skill.value || 25;
@@ -297,7 +297,7 @@ export function applyCombatantSkill(
         value: 40,
         remainingTurns: skill.duration || 2
       });
-      logText = `🌟 **${actor.name}** activated **${skill.name}**!`;
+      logText = `🌟 **${actor.name}** activated **${skill.name}**!${quoteLine}`;
       break;
     }
     case 'evade':
@@ -309,7 +309,7 @@ export function applyCombatantSkill(
         value: 100,
         remainingTurns: skill.duration || 1
       });
-      logText = `💨 **${actor.name}** activated **${skill.name}**!`;
+      logText = `💨 **${actor.name}** activated **${skill.name}**!${quoteLine}`;
       break;
     case 'guts': {
       const reviveVal = skill.value || Math.round(actor.maxHp * 0.20);
@@ -327,7 +327,7 @@ export function applyCombatantSkill(
           remainingTurns: 1
         });
       }
-      logText = `🩸 **${actor.name}** activated **${skill.name}**!`;
+      logText = `🩸 **${actor.name}** activated **${skill.name}**!${quoteLine}`;
       break;
     }
     case 'debuff':
@@ -347,7 +347,7 @@ export function applyCombatantSkill(
       });
 
       if (effectiveResist > 0 && Math.random() * 100 < effectiveResist) {
-        logText = `🛡️ **${target.name}** partially resisted **${actor.name}'s ${skill.name}** via Magic Resistance!`;
+        logText = `🛡️ **${target.name}** partially resisted **${actor.name}'s ${skill.name}** via Magic Resistance!${quoteLine}`;
       } else {
         target.isStunned = true;
         target.activeBuffs.push({
@@ -356,7 +356,7 @@ export function applyCombatantSkill(
           value: 100,
           remainingTurns: skill.duration || 1
         });
-        logText = `👁️ **${actor.name}** activated **${skill.name}**!`;
+        logText = `👁️ **${actor.name}** activated **${skill.name}**!${quoteLine}`;
       }
       break;
     }
@@ -367,11 +367,11 @@ export function applyCombatantSkill(
         value: 25,
         remainingTurns: 2
       });
-      logText = `✨ **${actor.name}** activated **${skill.name}**!`;
+      logText = `✨ **${actor.name}** activated **${skill.name}**!${quoteLine}`;
       break;
   }
 
-  return { success: true, log: logText };
+  return { success: true, log: logText, quote: skillQuote, skillName: skill.name };
 }
 
 export function initializeBattle(
