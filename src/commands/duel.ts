@@ -2838,86 +2838,6 @@ async function startInteractiveDuel(
         return;
       }
 
-      // CASE: FORCE JOIN TEAM SELECTION (fj_join_team1 / fj_join_team2)
-      if (i.customId === 'fj_join_team1' || i.customId === 'fj_join_team2') {
-        if (forceJoinCount > 0 || (team1.length + team2.length >= 4)) {
-          await i.reply({
-            content: '❌ Force Join is unavailable! Arena is at maximum capacity (4 combatants) or Force Join was already utilized.',
-            flags: MessageFlags.Ephemeral
-          });
-          return;
-        }
-
-        if (team1.some(c => c.userId === i.user.id) || team2.some(c => c.userId === i.user.id)) {
-          await i.reply({
-            content: '❌ You are already an active participant in this Holy Grail duel!',
-            flags: MessageFlags.Ephemeral
-          });
-          return;
-        }
-
-        const joinerMaster = await getOrCreateMaster(i.user.id, i.user.username);
-        if (!joinerMaster.servants || joinerMaster.servants.length === 0) {
-          await i.reply({
-            content: '❌ You must summon a Servant before force-joining an active Holy Grail War battle! Invoke `/summon ritual` first.',
-            flags: MessageFlags.Ephemeral
-          });
-          return;
-        }
-
-        const joinServant = joinerMaster.servants.find(s => s.id === joinerMaster.activeServantId) || joinerMaster.servants[0];
-        const joinName = joinServant.nickname || joinServant.template?.name || 'Heroic Spirit';
-
-        const warSession = getOrInitWarSession(p1Master);
-        const joinPart = warSession.participants[joinerMaster.discordId];
-        const joinHp = joinPart ? calculateCurrentHp(joinPart) : undefined;
-        const joinCombatant = createCombatant(joinerMaster, joinServant, false, joinHp);
-
-        joinCombatant.critStars = 20;
-        joinCombatant.activeBuffs = joinCombatant.activeBuffs || [];
-        joinCombatant.activeBuffs.push({
-          name: '3rd Master Reinforcement',
-          type: 'buff_atk',
-          value: 30,
-          remainingTurns: 3
-        });
-
-        const targetTeam1 = i.customId === 'fj_join_team1';
-        if (targetTeam1) {
-          p1Ally = joinCombatant;
-          p1AllyMaster = joinerMaster;
-          team1.push(joinCombatant);
-        } else {
-          p2Ally = joinCombatant;
-          p2AllyMaster = joinerMaster;
-          team2.push(joinCombatant);
-        }
-
-        turnOrder.push(joinCombatant);
-        forceJoinCount++;
-
-        const teamLeaderName = targetTeam1 ? p1.username : p2.username;
-        const forceJoinLog = `⚡ **3RD MASTER FORCE JOIN INTERVENTION!** <@${i.user.id}> entered the fray with **${joinName}** to assist **${teamLeaderName}**! Reinforced with **+30% ATK (3T)** & **+20 Critical Stars**!`;
-        combatLogs.push(forceJoinLog);
-        if (combatLogs.length > 4) combatLogs.shift();
-
-        const turnAttachment = await buildCurrentAttachment(forceJoinLog);
-        const updatedEmbed = buildCurrentEmbed();
-        const updatedButtons = buildCurrentButtons();
-
-        await i.update({
-          content: `⚡ **FORCE JOIN SUCCESSFUL!** You have allied with **${teamLeaderName}** as a 3rd Master reinforcement! Entering combat...`,
-          components: []
-        });
-
-        if (battleMsg) {
-          await battleMsg.edit({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
-        } else if (contextInteraction) {
-          await contextInteraction.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
-        }
-        return;
-      }
-
       // CASE: FORCE JOIN MID-BATTLE INTERVENTION
       if (i.customId === 'card_forcejoin' || i.customId === 'duel_prompt_forcejoin') {
         if (forceJoinCount > 0 || (team1.length + team2.length >= 4)) {
@@ -2945,6 +2865,9 @@ async function startInteractiveDuel(
           return;
         }
 
+        let targetTeam1 = true;
+        let actionInteraction: any = i;
+
         // If 1v1 battle, prompt 3rd Master to choose which team to reinforce!
         if (team1.length === 1 && team2.length === 1) {
           const p1Name = p1.username || p1.servant.nickname || p1.servant.template.name;
@@ -2963,12 +2886,45 @@ async function startInteractiveDuel(
               .setEmoji('⚔️')
           );
 
-          await i.reply({
+          const ephemeralReply = await i.reply({
             content: `⚡ **FORCE JOIN ARENA:** Select which Master/Team you wish to assist in combat:`,
             components: [fjRow],
-            flags: MessageFlags.Ephemeral
+            flags: MessageFlags.Ephemeral,
+            withResponse: true,
+            fetchReply: true
           });
-          return;
+
+          const promptMsg = (ephemeralReply as any)?.resource?.message || ephemeralReply || (await i.fetchReply().catch(() => null));
+
+          let selectionInteraction: any = null;
+          try {
+            if (promptMsg && typeof promptMsg.awaitMessageComponent === 'function') {
+              selectionInteraction = await promptMsg.awaitMessageComponent({
+                filter: (btn: any) => btn.user.id === i.user.id && (btn.customId === 'fj_join_team1' || btn.customId === 'fj_join_team2'),
+                time: 30000
+              });
+            } else if (i.channel && typeof i.channel.awaitMessageComponent === 'function') {
+              selectionInteraction = await i.channel.awaitMessageComponent({
+                filter: (btn: any) => btn.user.id === i.user.id && (btn.customId === 'fj_join_team1' || btn.customId === 'fj_join_team2'),
+                time: 30000
+              });
+            }
+          } catch {
+            await i.editReply({
+              content: '⏱️ Force Join team selection timed out.',
+              components: []
+            }).catch(() => {});
+            return;
+          }
+
+          if (!selectionInteraction) {
+            return;
+          }
+
+          actionInteraction = selectionInteraction;
+          targetTeam1 = selectionInteraction.customId === 'fj_join_team1';
+        } else {
+          targetTeam1 = team1.length <= team2.length;
         }
 
         const joinServant = joinerMaster.servants.find(s => s.id === joinerMaster.activeServantId) || joinerMaster.servants[0];
@@ -2988,8 +2944,7 @@ async function startInteractiveDuel(
           remainingTurns: 3
         });
 
-        // Add to team with fewer members to balance 2v2
-        if (team1.length < team2.length) {
+        if (targetTeam1) {
           p1Ally = joinCombatant;
           p1AllyMaster = joinerMaster;
           team1.push(joinCombatant);
@@ -3002,7 +2957,8 @@ async function startInteractiveDuel(
         turnOrder.push(joinCombatant);
         forceJoinCount++;
 
-        const forceJoinLog = `⚡ **3RD MASTER FORCE JOIN INTERVENTION!** <@${i.user.id}> entered the fray with **${joinName}**! Reinforced with **+30% ATK (3 Turns)** & **+20 Critical Stars**!`;
+        const teamLeaderName = targetTeam1 ? p1.username : p2.username;
+        const forceJoinLog = `⚡ **3RD MASTER FORCE JOIN INTERVENTION!** <@${i.user.id}> entered the fray with **${joinName}** to assist **${teamLeaderName}**! Reinforced with **+30% ATK (3T)** & **+20 Critical Stars**!`;
         combatLogs.push(forceJoinLog);
         if (combatLogs.length > 4) combatLogs.shift();
 
@@ -3010,8 +2966,23 @@ async function startInteractiveDuel(
         const updatedEmbed = buildCurrentEmbed();
         const updatedButtons = buildCurrentButtons();
 
-        await i.deferUpdate();
-        await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+        if (actionInteraction !== i) {
+          await actionInteraction.update({
+            content: `⚡ **FORCE JOIN SUCCESSFUL!** You have allied with **${teamLeaderName}** as a 3rd Master reinforcement! Entering combat...`,
+            components: []
+          });
+        } else {
+          await i.reply({
+            content: `⚡ **FORCE JOIN SUCCESSFUL!** You entered the fray to assist **${teamLeaderName}**!`,
+            flags: MessageFlags.Ephemeral
+          });
+        }
+
+        if (battleMsg) {
+          await battleMsg.edit({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+        } else if (contextInteraction) {
+          await contextInteraction.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+        }
         return;
       }
 
