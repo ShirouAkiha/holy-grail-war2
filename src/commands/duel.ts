@@ -27,35 +27,11 @@ import { getServantMatchupDialogue } from '../data/servantMatchups';
 // Allows a Master to challenge either a human player via `@Master` or an AI Shadow Servant.
 export const data = new SlashCommandBuilder()
   .setName('duel')
-  .setDescription('Engage in a turn-based tactical Fate battle (1v1, 2v2 Alliance, 1v2 Raid, or Force Join)')
-  .addStringOption(option =>
-    option
-      .setName('mode')
-      .setDescription('Battle Format: 1v1 Solo, 2v2 Alliance Tag-Team, 1v2 Raid, or Force Join')
-      .setRequired(false)
-      .addChoices(
-        { name: '⚔️ 1v1 Solo Duel', value: '1v1' },
-        { name: '🛡️ 2v2 Alliance Tag-Team', value: '2v2' },
-        { name: '⚔️ 1v2 Raid Survival', value: '1v2' },
-        { name: '⚡ Force Join Ongoing Battle', value: 'forcejoin' }
-      )
-  )
+  .setDescription('Engage in a turn-based tactical Fate battle against another Master or AI Shadow Servant')
   .addUserOption(option =>
     option
       .setName('opponent')
-      .setDescription('Primary target Master to duel (leave empty to challenge AI Shadow Master)')
-      .setRequired(false)
-  )
-  .addUserOption(option =>
-    option
-      .setName('ally')
-      .setDescription('Allied Master for 2v2 Alliance Tag-Team (leave empty for Shadow Ally)')
-      .setRequired(false)
-  )
-  .addUserOption(option =>
-    option
-      .setName('opponent2')
-      .setDescription('Second Opponent Master for 2v2 or 1v2 Raid (leave empty for Shadow Rival)')
+      .setDescription('Target Master to duel (leave empty to challenge AI Shadow Master)')
       .setRequired(false)
   );
 
@@ -782,21 +758,7 @@ function buildCombatButtons(
       .setDisabled(!isS3Unlocked || cd3 > 0 || !s3)
   );
 
-  // Row 4: Multi-Combat Tactical Actions & Mid-Battle Intervention
-  const row4 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId('card_alliance_assist')
-      .setLabel('Alliance Tag Assist (+25% ATK)')
-      .setEmoji('🛡️')
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId('card_forcejoin')
-      .setLabel('Force Join Arena')
-      .setEmoji('⚡')
-      .setStyle(ButtonStyle.Danger)
-  );
-
-  return [row1, row2, row3, row4];
+  return [row1, row2, row3];
 }
 
 // Helper to activate a combatant skill without spending a turn
@@ -1547,7 +1509,84 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       challengerMaster.servants.find(s => s.id === challengerMaster.activeServantId) ||
       challengerMaster.servants[0];
 
+    const mode = interaction.options.getString('mode') || '1v1';
     const opponentUser = interaction.options.getUser('opponent');
+    const allyUser = interaction.options.getUser('ally');
+    const opponent2User = interaction.options.getUser('opponent2');
+
+    // BRANCH 0: 2v2 ALLIANCE TAG-TEAM OR 1v2 RAID MODE
+    if (mode === '2v2' || mode === '1v2') {
+      const is2v2 = mode === '2v2';
+      let opponentMaster: MasterProfile;
+      let opponentServant: any;
+
+      if (opponentUser && !opponentUser.bot && opponentUser.id !== interaction.user.id) {
+        opponentMaster = await getOrCreateMaster(opponentUser.id, opponentUser.username);
+        opponentServant = opponentMaster.servants?.[0];
+      } else {
+        opponentMaster = {
+          id: 'master_ai_shadow_kirei',
+          discordId: 'ai_shadow_kirei',
+          username: 'Shadow Magus Kirei',
+          avatarUrl: '',
+          commandSeals: 3,
+          saintQuartz: 0,
+          summonTickets: 0,
+          actionPoints: 100,
+          maxActionPoints: 100,
+          pityCount: 0,
+          grailWarWins: 0,
+          reputationRank: 'Honorable Magus',
+          servants: [],
+          craftEssences: []
+        };
+        const oppTemplate = SERVANT_DATABASE.find(s => s.id === 'servant_lancer_cuchulainn') || SERVANT_DATABASE[1] || SERVANT_DATABASE[0];
+        opponentServant = {
+          id: 'shadow_cu',
+          templateId: oppTemplate.id,
+          template: oppTemplate,
+          level: 70,
+          bondLevel: 5,
+          currentHp: oppTemplate.baseHp || 28000,
+          allocatedStats: { strength: 15, endurance: 15, agility: 20, mana: 10, luck: 10 }
+        };
+      }
+
+      if (!opponentServant) {
+        const oppTemplate = SERVANT_DATABASE.find(s => s.id === 'servant_lancer_cuchulainn') || SERVANT_DATABASE[0];
+        opponentServant = {
+          id: 'shadow_servant',
+          templateId: oppTemplate.id,
+          template: oppTemplate,
+          level: 70,
+          bondLevel: 5,
+          currentHp: oppTemplate.baseHp || 28000,
+          allocatedStats: { strength: 15, endurance: 15, agility: 20, mana: 10, luck: 10 }
+        };
+      }
+
+      const p1Part = warSession.participants[challengerMaster.discordId];
+      const p1Hp = p1Part ? calculateCurrentHp(p1Part) : undefined;
+      const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp);
+
+      const p2Part = opponentMaster.discordId.startsWith('ai_') ? null : warSession.participants[opponentMaster.discordId];
+      const p2Hp = p2Part ? calculateCurrentHp(p2Part) : undefined;
+      const p2 = createCombatant(opponentMaster, opponentServant, opponentMaster.discordId.startsWith('ai_'), p2Hp);
+
+      if (is2v2) {
+        p1.critStars = 25;
+        p1.activeBuffs = p1.activeBuffs || [];
+        p1.activeBuffs.push({
+          name: '2v2 Alliance Formation',
+          type: 'buff_atk',
+          value: 15,
+          remainingTurns: 3
+        });
+      }
+
+      await startInteractiveDuel(interaction, p1, p2, challengerMaster, opponentMaster);
+      return;
+    }
 
     // BRANCH 1: CHALLENGING A SPECIFIC HUMAN MASTER BY MENTION
     if (opponentUser) {
@@ -2321,6 +2360,69 @@ async function startInteractiveDuel(
   collector.on('collect', async (i: any) => {
     try {
       if (i.replied || i.deferred) return;
+
+      // CASE: ALLIANCE TAG ASSIST (+25% ATK & +15 Crit Stars)
+      if (i.customId === 'card_alliance_assist' || i.customId === 'duel_act_alliance_assist') {
+        const actor = activeUserId === p1.userId ? p1 : p2;
+        actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
+        actor.activeBuffs = actor.activeBuffs || [];
+        actor.activeBuffs.push({
+          name: 'Alliance Tag Assist',
+          type: 'buff_atk',
+          value: 25,
+          remainingTurns: 2
+        });
+
+        const assistLog = `🛡️ **ALLIANCE TAG ASSIST ACTIVATED!** Allied partner delivers a coordinated flank strike! **+25% ATK (2 Turns)** & **+15 Critical Stars** generated!`;
+        combatLogs.push(assistLog);
+        if (combatLogs.length > 4) combatLogs.shift();
+
+        const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, assistLog, p1LastCards, p2LastCards);
+        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
+        const updatedButtons = buildCombatButtons(actor, activePendingCards, activePendingIndices);
+
+        await i.deferUpdate();
+        await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+        return;
+      }
+
+      // CASE: FORCE JOIN MID-BATTLE INTERVENTION
+      if (i.customId === 'card_forcejoin' || i.customId === 'duel_prompt_forcejoin') {
+        const joinerMaster = await getOrCreateMaster(i.user.id, i.user.username);
+        if (!joinerMaster.servants || joinerMaster.servants.length === 0) {
+          await i.reply({
+            content: '❌ You must summon a Servant before force-joining an active Holy Grail War battle! Invoke `/summon ritual` first.',
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        const joinServant = joinerMaster.servants.find(s => s.id === joinerMaster.activeServantId) || joinerMaster.servants[0];
+        const joinName = joinServant.nickname || joinServant.template?.name || 'Heroic Spirit';
+
+        const actor = activeUserId === p1.userId ? p1 : p2;
+        actor.critStars = Math.min(50, (actor.critStars || 0) + 20);
+        actor.activeBuffs = actor.activeBuffs || [];
+        actor.activeBuffs.push({
+          name: '3rd Master Reinforcement',
+          type: 'buff_atk',
+          value: 30,
+          remainingTurns: 3
+        });
+
+        const forceJoinLog = `⚡ **3RD MASTER FORCE JOIN INTERVENTION!** <@${i.user.id}> entered the fray with **${joinName}**! Reinforced <@${actor.userId}> with **+30% ATK (3 Turns)** & **+20 Critical Stars**!`;
+        combatLogs.push(forceJoinLog);
+        if (combatLogs.length > 4) combatLogs.shift();
+
+        const turnAttachment = await createTurnSummaryAttachment(p1, p2, round, forceJoinLog, p1LastCards, p2LastCards);
+        const updatedEmbed = buildDuelEmbed(p1, p2, round, activeUserId, combatLogs, activePendingCards, activePendingIndices);
+        const updatedButtons = buildCombatButtons(actor, activePendingCards, activePendingIndices);
+
+        await i.deferUpdate();
+        await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+        return;
+      }
+
       // Enforce Turn Order: Block clicks if it is not this player's turn
       if (i.user.id !== activeUserId) {
         await i.reply({
