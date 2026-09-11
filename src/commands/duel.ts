@@ -2905,8 +2905,16 @@ async function startInteractiveDuel(
         const updatedEmbed = buildCurrentEmbed();
         const updatedButtons = buildCurrentButtons();
 
-        await i.deferUpdate();
-        await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+        await i.update({
+          content: `⚡ **FORCE JOIN SUCCESSFUL!** You have allied with **${teamLeaderName}** as a 3rd Master reinforcement! Entering combat...`,
+          components: []
+        });
+
+        if (battleMsg) {
+          await battleMsg.edit({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+        } else if (contextInteraction) {
+          await contextInteraction.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+        }
         return;
       }
 
