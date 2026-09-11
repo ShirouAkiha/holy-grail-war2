@@ -434,7 +434,8 @@ async function createTurnSummaryAttachment(
   p1Cards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Buster', 'Arts', 'Quick'],
   p2Cards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Arts', 'Buster', 'Quick'],
   p1Ally?: DuelCombatant,
-  p2Ally?: DuelCombatant
+  p2Ally?: DuelCombatant,
+  combatLogsHistory: string[] = []
 ): Promise<AttachmentBuilder> {
   const mapToActive = (c: DuelCombatant): ActiveCombatant => ({
     id: c.userId,
@@ -462,19 +463,38 @@ async function createTurnSummaryAttachment(
   const activeP1Ally = p1Ally ? mapToActive(p1Ally) : undefined;
   const activeP2Ally = p2Ally ? mapToActive(p2Ally) : undefined;
 
-  const isCrit = lastLogText.includes('CRITICAL');
-  const isNP = lastLogText.includes('NOBLE PHANTASM');
+  // If lastLogText is a kill log or skill log without damage, look back in combatLogsHistory for the strike log
+  let strikeLogText = lastLogText || '';
+  if (!/DMG/i.test(strikeLogText) && combatLogsHistory && combatLogsHistory.length > 0) {
+    for (let k = combatLogsHistory.length - 1; k >= 0; k--) {
+      if (/DMG/i.test(combatLogsHistory[k])) {
+        strikeLogText = combatLogsHistory[k];
+        break;
+      }
+    }
+  }
+
+  const isCrit = lastLogText.includes('CRITICAL') || strikeLogText.includes('CRITICAL');
+  const isNP = lastLogText.includes('NOBLE PHANTASM') || strikeLogText.includes('NOBLE PHANTASM');
 
   // Identify who was the attacker in the most recent combat log entry
   const allCombatants = [p1, p2, p1Ally, p2Ally].filter((c): c is DuelCombatant => !!c);
   const foundAttacker = allCombatants.find(c =>
-    lastLogText.includes(`**${c.servant.template.name}** executed sequence`) ||
-    lastLogText.includes(`**${c.username}** commanded`) ||
-    lastLogText.includes(`**${c.servant.nickname || c.servant.template.name}** activated`)
+    strikeLogText.includes(`**${c.servant.template.name}**`) ||
+    strikeLogText.includes(`**${c.servant.nickname || c.servant.template.name}**`) ||
+    strikeLogText.includes(`**${c.username}**`) ||
+    lastLogText.includes(`**${c.servant.template.name}**`) ||
+    lastLogText.includes(`**${c.username}**`)
   );
   const activeAttacker = foundAttacker || p1;
 
-  const foundDefender = allCombatants.find(c => c !== activeAttacker && lastLogText.includes(`to ${c.servant.template.name}`));
+  const foundDefender = allCombatants.find(c =>
+    c !== activeAttacker && (
+      strikeLogText.includes(`to ${c.servant.template.name}`) ||
+      strikeLogText.includes(`to ${c.servant.nickname || c.servant.template.name}`) ||
+      lastLogText.includes(`to ${c.servant.template.name}`)
+    )
+  );
   const activeDefender = foundDefender || (activeAttacker === p1 ? p2 : p1);
 
   const activeCards = activeAttacker === p2 ? p2Cards : p1Cards;
@@ -496,17 +516,24 @@ async function createTurnSummaryAttachment(
     dTag = dInfo.tag;
   }
 
+  // Clean quote from markdown symbols and emojis
+  dQuote = dQuote.replace(/^[*_~`#💬✨🔱"“'❝\s]+|[*_~`#💬✨🔱"”'❞\s]+$/g, '').trim();
+
   // Extract damage, NP gained, stars generated via regex
-  const dmgMatch = lastLogText.match(/Dealt \*\*([\d,]+) DMG\*\*/i) || lastLogText.match(/([\d,]+)\s*DMG/i);
+  const dmgMatch = strikeLogText.match(/Dealt \*\*([\d,]+) DMG\*\*/i)
+    || strikeLogText.match(/counter-attacked for \*\*([\d,]+) DMG\*\*/i)
+    || strikeLogText.match(/([\d,]+)\s*DMG/i)
+    || lastLogText.match(/Dealt \*\*([\d,]+) DMG\*\*/i)
+    || lastLogText.match(/([\d,]+)\s*DMG/i);
   const damageDealt = dmgMatch ? parseInt(dmgMatch[1].replace(/,/g, ''), 10) : 0;
 
-  const npMatch = lastLogText.match(/\+(\d+)%\s*NP/i);
+  const npMatch = strikeLogText.match(/\+(\d+)%\s*NP/i) || lastLogText.match(/\+(\d+)%\s*NP/i);
   const npCharged = npMatch ? parseInt(npMatch[1], 10) : 0;
 
-  const starMatch = lastLogText.match(/\+(\d+)\s*Critical Stars/i) || lastLogText.match(/\+(\d+)\s*Stars/i);
+  const starMatch = strikeLogText.match(/\+(\d+)\s*Critical Stars/i) || strikeLogText.match(/\+(\d+)\s*Stars/i) || lastLogText.match(/\+(\d+)\s*Critical Stars/i);
   const starsGenerated = starMatch ? parseInt(starMatch[1], 10) : 0;
-  const isEvaded = /evaded/i.test(lastLogText) || /evade/i.test(lastLogText);
-  const isInvincible = /invincible/i.test(lastLogText);
+  const isEvaded = /evaded/i.test(lastLogText) || /evaded/i.test(strikeLogText) || /evade/i.test(lastLogText);
+  const isInvincible = /invincible/i.test(lastLogText) || /invincible/i.test(strikeLogText);
 
   const cleanActionSummary = lastLogText
     .replace(/[*_~`>#]/g, '')
@@ -2607,7 +2634,8 @@ async function startInteractiveDuel(
       p1LastCards,
       p2LastCards,
       p1Ally,
-      p2Ally
+      p2Ally,
+      combatLogs
     );
   };
 

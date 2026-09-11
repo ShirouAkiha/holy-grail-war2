@@ -882,23 +882,23 @@ function drawMinimalClashBanner(
     ctx.font = 'italic bold 12px sans-serif';
     if (log.dialogueTag?.includes('COMMAND SEAL') || log.actionSummary?.toLowerCase().includes('command seal')) {
       ctx.fillStyle = '#fb7185';
-      ctx.fillText(`🔱 “${quoteText}”`, centerX, y + 21);
+      ctx.fillText(`“${quoteText}”`, centerX, y + 21);
     } else if (log.dialogueTag?.includes('SKILL') || log.actionSummary?.toLowerCase().includes('activated')) {
       ctx.fillStyle = '#38bdf8';
-      ctx.fillText(`✨ “${quoteText}”`, centerX, y + 21);
+      ctx.fillText(`“${quoteText}”`, centerX, y + 21);
     } else {
       ctx.fillStyle = '#fde047';
-      ctx.fillText(`💬 “${quoteText}”`, centerX, y + 21);
+      ctx.fillText(`“${quoteText}”`, centerX, y + 21);
     }
 
     if (log.isEvaded || (log.damageDealt === 0 && (log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade')))) {
       ctx.font = 'bold 13px sans-serif';
       ctx.fillStyle = '#38bdf8';
-      ctx.fillText('💨 ATTACK EVADED! (0 DMG)', centerX, y + 39);
+      ctx.fillText('ATTACK EVADED! (0 DMG)', centerX, y + 39);
     } else if (log.isInvincible || (log.damageDealt === 0 && log.actionSummary?.toLowerCase().includes('invincible'))) {
       ctx.font = 'bold 13px sans-serif';
       ctx.fillStyle = '#fde047';
-      ctx.fillText('🛡️ INVINCIBLE! (0 DMG)', centerX, y + 39);
+      ctx.fillText('INVINCIBLE! (0 DMG)', centerX, y + 39);
     } else if (log.damageDealt > 0) {
       ctx.font = 'bold 15px sans-serif';
       if (log.isNoblePhantasm) {
@@ -914,26 +914,26 @@ function drawMinimalClashBanner(
     } else if (log.dialogueTag?.includes('COMMAND SEAL') || log.actionSummary?.toLowerCase().includes('command seal')) {
       ctx.font = 'bold 13px sans-serif';
       ctx.fillStyle = '#f43f5e';
-      ctx.fillText('🔱 COMMAND SEAL: NP REFILLED TO 100%', centerX, y + 39);
+      ctx.fillText('COMMAND SEAL: NP REFILLED TO 100%', centerX, y + 39);
     } else if (log.dialogueTag?.includes('SKILL') || log.actionSummary?.toLowerCase().includes('activated')) {
       ctx.font = 'bold 13px sans-serif';
       ctx.fillStyle = '#38bdf8';
-      ctx.fillText('✨ TACTICAL SKILL ACTIVATED!', centerX, y + 39);
+      ctx.fillText('TACTICAL SKILL ACTIVATED!', centerX, y + 39);
     } else {
       ctx.font = 'bold 13px sans-serif';
       ctx.fillStyle = '#cbd5e1';
-      ctx.fillText('TACTICAL MANEUVER EXECUTED', centerX, y + 39);
+      ctx.fillText(`DEALT ${dmg} DAMAGE!`, centerX, y + 39);
     }
   } else {
     // Single-tier display when no dialogue quote is available
     if (log.isEvaded || (log.damageDealt === 0 && (log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade')))) {
       ctx.font = 'bold 18px sans-serif';
       ctx.fillStyle = '#38bdf8';
-      ctx.fillText('💨 ATTACK EVADED! (0 DMG)', centerX, y + 33);
+      ctx.fillText('ATTACK EVADED! (0 DMG)', centerX, y + 33);
     } else if (log.isInvincible || (log.damageDealt === 0 && log.actionSummary?.toLowerCase().includes('invincible'))) {
       ctx.font = 'bold 18px sans-serif';
       ctx.fillStyle = '#fde047';
-      ctx.fillText('🛡️ INVINCIBLE! (0 DMG)', centerX, y + 33);
+      ctx.fillText('INVINCIBLE! (0 DMG)', centerX, y + 33);
     } else if (log.isNoblePhantasm) {
       ctx.font = 'bold 18px sans-serif';
       ctx.fillStyle = '#fde047';
@@ -949,11 +949,11 @@ function drawMinimalClashBanner(
     } else if (log.actionSummary?.toLowerCase().includes('command seal')) {
       ctx.font = 'bold 15px sans-serif';
       ctx.fillStyle = '#f43f5e';
-      ctx.fillText('🔱 COMMAND SEAL: NP REFILLED TO 100%', centerX, y + 33);
+      ctx.fillText('COMMAND SEAL: NP REFILLED TO 100%', centerX, y + 33);
     } else if (log.actionSummary?.toLowerCase().includes('activated')) {
       ctx.font = 'bold 15px sans-serif';
       ctx.fillStyle = '#38bdf8';
-      ctx.fillText('✨ TACTICAL SKILL ACTIVATED!', centerX, y + 33);
+      ctx.fillText('TACTICAL SKILL ACTIVATED!', centerX, y + 33);
     } else {
       ctx.font = 'bold 18px sans-serif';
       ctx.fillStyle = '#f8fafc';
@@ -1456,7 +1456,7 @@ export async function renderServantProfileCard(
   ctx.textAlign = 'left';
   ctx.fillStyle = '#38bdf8';
   ctx.font = 'bold 16px sans-serif';
-  ctx.fillText('⚡ HEROIC SPIRIT SKILLS (ACTIVE & PASSIVE)', 30, 376);
+  ctx.fillText('HEROIC SPIRIT SKILLS (ACTIVE & PASSIVE)', 30, 376);
 
   const defaultSkills = [
     { id: 'sk1', name: 'Mana Burst A', cooldown: 5, description: 'Increases own card effectiveness and combat prowess for 1 turn.', icon: '⚔️' },
@@ -1480,7 +1480,7 @@ export async function renderServantProfileCard(
     ctx.textAlign = 'left';
     ctx.fillStyle = '#fbbf24';
     ctx.font = 'bold 17px sans-serif';
-    ctx.fillText(`${sk.icon || '✨'} ${sk.name}`, 46, skY + 28);
+    ctx.fillText(`${sk.name}`, 46, skY + 28);
 
     // Cooldown badge on right
     ctx.textAlign = 'right';
@@ -3224,7 +3224,7 @@ function drawHoveringMaster(
   ctx.fillStyle = '#fee2e2';
   ctx.font = 'bold 11px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('🔱 MASTER', badgeX + 8, badgeY + 16);
+  ctx.fillText('MASTER', badgeX + 8, badgeY + 16);
 
   // Dots for seals
   const sealsCount = Math.max(0, Math.min(3, commandSealsCount));
@@ -3390,7 +3390,7 @@ function drawMasterCommandSealCenterHUD(
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 13px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('[ 🔱 COMMAND SEAL INVOCATION 🔱 ]', bannerX + bannerW / 2, bannerY + 16);
+  ctx.fillText('[ COMMAND SEAL INVOCATION ]', bannerX + bannerW / 2, bannerY + 16);
 
   ctx.fillStyle = '#fecdd3';
   ctx.font = 'bold 10px sans-serif';
@@ -5412,7 +5412,7 @@ export async function renderGrailWarMap(
     ctx.fillStyle = p.isAlive ? '#ffffff' : '#6b7280';
     ctx.font = 'bold 14px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(`${p.isAlive ? '🟢' : '💀'} ${p.username}`, x + 15, y + 25);
+    ctx.fillText(`${p.isAlive ? '[ACTIVE]' : '[FALLEN]'} ${p.username}`, x + 15, y + 25);
 
     ctx.fillStyle = '#d4af37';
     ctx.font = '12px sans-serif';
