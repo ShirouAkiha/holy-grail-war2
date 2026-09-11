@@ -78,7 +78,8 @@ export const WAR_PRESETS: Record<string, WarRules> = {
 // =========================================================================
 // GLOBAL SHARED HOLY GRAIL WAR SINGLETON (Shared across all Discord commands & users)
 // =========================================================================
-const DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+const BACKUPS_DIR = path.join(DATA_DIR, 'backups');
 const GRAIL_WAR_FILE = path.join(DATA_DIR, 'grail_war.json');
 
 let globalWarSession: HolyGrailWarSession | null = null;
@@ -87,17 +88,53 @@ function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
+  if (!fs.existsSync(BACKUPS_DIR)) {
+    fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+  }
 }
 
 function loadWarFromDisk(): HolyGrailWarSession | null {
   try {
     ensureDataDir();
+    const backupPath = path.join(BACKUPS_DIR, 'grail_war.latest.json');
+
     if (fs.existsSync(GRAIL_WAR_FILE)) {
       const raw = fs.readFileSync(GRAIL_WAR_FILE, 'utf-8');
-      if (raw) {
-        const session = JSON.parse(raw);
-        return synchronizeWarParticipants(session);
+      if (raw && raw.trim().length > 0) {
+        try {
+          const session = JSON.parse(raw);
+          if (session && session.id && session.participants && Object.keys(session.participants).length > 0) {
+            // Backup healthy session state
+            try {
+              fs.writeFileSync(backupPath, raw, 'utf-8');
+            } catch {}
+            return synchronizeWarParticipants(session);
+          } else if (fs.existsSync(backupPath)) {
+            // Empty or reset session detected: auto-recover from backup!
+            const backupRaw = fs.readFileSync(backupPath, 'utf-8');
+            const backupSession = JSON.parse(backupRaw);
+            if (backupSession && backupSession.id) {
+              console.warn('[GrailWar] Active session file was empty/reset (possibly by git pull). Auto-recovering previous Holy Grail War session from backup.');
+              saveWarToDisk();
+              return synchronizeWarParticipants(backupSession);
+            }
+          }
+        } catch (parseErr) {
+          console.error('[GrailWar] Error parsing grail_war.json, attempting backup restore:', parseErr);
+        }
       }
+    }
+
+    // Try backup if main file is missing or unparseable
+    if (fs.existsSync(backupPath)) {
+      try {
+        const backupRaw = fs.readFileSync(backupPath, 'utf-8');
+        const backupSession = JSON.parse(backupRaw);
+        if (backupSession && backupSession.id) {
+          console.warn('[GrailWar] Successfully restored Holy Grail War session from backup.');
+          return synchronizeWarParticipants(backupSession);
+        }
+      } catch {}
     }
   } catch (err) {
     console.error('[GrailWar] Failed to load grail_war.json from disk:', err);
@@ -109,7 +146,15 @@ export function saveWarToDisk(): void {
   try {
     ensureDataDir();
     if (globalWarSession) {
-      fs.writeFileSync(GRAIL_WAR_FILE, JSON.stringify(globalWarSession, null, 2), 'utf-8');
+      const serialized = JSON.stringify(globalWarSession, null, 2);
+      // Update backup file
+      const backupPath = path.join(BACKUPS_DIR, 'grail_war.latest.json');
+      fs.writeFileSync(backupPath, serialized, 'utf-8');
+
+      // Atomic write to prevent partial file writes
+      const tmpPath = `${GRAIL_WAR_FILE}.${Date.now()}.${Math.random().toString(36).substring(2, 7)}.tmp`;
+      fs.writeFileSync(tmpPath, serialized, 'utf-8');
+      fs.renameSync(tmpPath, GRAIL_WAR_FILE);
     }
   } catch (err) {
     console.error('[GrailWar] Failed to write grail_war.json to disk:', err);

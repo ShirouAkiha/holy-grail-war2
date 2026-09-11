@@ -5,3 +5,17 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Runtime Discord Bot & Holy Grail War Live Data (Prevents Git Pull/Stash from wiping player progress)
+/data/*.json
+/data/backups/
+/data/media_cache/
+!/data/.gitkeep
+!/data/seeds/
+
+# Database & SQLite files
+*.db
+*.db-journal
+*.sqlite
+/prisma/*.db
+

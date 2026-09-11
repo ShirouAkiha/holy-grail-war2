@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "clean": "next clean"
+    "clean": "next clean",
+    "backup": "node scripts/backup_manager.js backup",
+    "restore": "node scripts/backup_manager.js restore",
+    "git-protect": "node scripts/backup_manager.js git-protect"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

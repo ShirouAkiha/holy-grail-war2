@@ -8,7 +8,8 @@ import path from 'path';
 // ==========================================
 // 1. DISK PERSISTENCE ENGINE & DATA STORES
 // ==========================================
-const DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
+const BACKUPS_DIR = path.join(DATA_DIR, 'backups');
 const CUSTOM_SERVANTS_FILE = path.join(DATA_DIR, 'custom_servants.json');
 const MASTERS_FILE = path.join(DATA_DIR, 'masters.json');
 const CUSTOM_CES_FILE = path.join(DATA_DIR, 'custom_ces.json');
@@ -59,6 +60,95 @@ function ensureDataDirectory() {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
+  if (!fs.existsSync(BACKUPS_DIR)) {
+    fs.mkdirSync(BACKUPS_DIR, { recursive: true });
+  }
+}
+
+/**
+ * Safely and atomically writes data to disk using a temporary file.
+ * Also keeps a rolling backup so that accidental git pull overrides or corrupted files can be restored.
+ */
+function writeJsonAtomic(filePath: string, data: any, backupPrefix?: string): void {
+  try {
+    ensureDataDirectory();
+    const serialized = JSON.stringify(data, null, 2);
+
+    // If writing non-empty data, maintain an automatic backup in data/backups/
+    if (backupPrefix && Array.isArray(data) ? data.length > 0 : Boolean(data)) {
+      const backupPath = path.join(BACKUPS_DIR, `${backupPrefix}.latest.json`);
+      fs.writeFileSync(backupPath, serialized, 'utf-8');
+    }
+
+    // Atomic write to prevent partial file writes on process restart
+    const tmpPath = `${filePath}.${Date.now()}.${Math.random().toString(36).substring(2, 7)}.tmp`;
+    fs.writeFileSync(tmpPath, serialized, 'utf-8');
+    fs.renameSync(tmpPath, filePath);
+  } catch (err) {
+    console.error(`[Database] Failed to atomically write ${filePath}:`, err);
+  }
+}
+
+/**
+ * Safely reads a JSON file from disk with automated recovery from backup
+ * in case a git pull or stash-pop replaced it with an empty array or corrupted JSON.
+ */
+function readJsonWithBackupFallback<T>(filePath: string, backupPrefix: string, fallbackDefault: T): T {
+  ensureDataDirectory();
+  const backupPath = path.join(BACKUPS_DIR, `${backupPrefix}.latest.json`);
+
+  if (fs.existsSync(filePath)) {
+    try {
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      if (raw && raw.trim().length > 0) {
+        const parsed = JSON.parse(raw);
+
+        // If it's a non-empty array or populated object, update backup and return
+        const isNonEmptyArray = Array.isArray(parsed) && parsed.length > 0;
+        const isPopulatedObject = !Array.isArray(parsed) && parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0;
+
+        if (isNonEmptyArray || isPopulatedObject) {
+          try {
+            fs.writeFileSync(backupPath, raw, 'utf-8');
+          } catch {}
+          return parsed as T;
+        }
+
+        // If file is empty [] but backup exists and has data, auto-restore from backup!
+        if (fs.existsSync(backupPath)) {
+          const backupRaw = fs.readFileSync(backupPath, 'utf-8');
+          if (backupRaw && backupRaw.trim().length > 0) {
+            const backupParsed = JSON.parse(backupRaw);
+            if (Array.isArray(backupParsed) && backupParsed.length > 0) {
+              console.warn(`[Database] Main file ${path.basename(filePath)} was empty (possibly reset by git pull). Auto-restoring ${backupParsed.length} records from backup.`);
+              writeJsonAtomic(filePath, backupParsed, backupPrefix);
+              return backupParsed as T;
+            }
+          }
+        }
+        return parsed as T;
+      }
+    } catch (err) {
+      console.error(`[Database] Error parsing ${filePath}, checking backup for auto-recovery:`, err);
+    }
+  }
+
+  // File was missing or corrupted: attempt backup recovery
+  if (fs.existsSync(backupPath)) {
+    try {
+      const backupRaw = fs.readFileSync(backupPath, 'utf-8');
+      if (backupRaw && backupRaw.trim().length > 0) {
+        const backupParsed = JSON.parse(backupRaw);
+        console.warn(`[Database] Successfully auto-recovered ${path.basename(filePath)} from persistent backup.`);
+        writeJsonAtomic(filePath, backupParsed, backupPrefix);
+        return backupParsed as T;
+      }
+    } catch (err) {
+      console.error(`[Database] Backup file also corrupted for ${backupPrefix}:`, err);
+    }
+  }
+
+  return fallbackDefault;
 }
 
 /**
@@ -68,176 +158,165 @@ function loadFromDisk() {
   try {
     ensureDataDirectory();
 
-    // 1. Load Custom & Edited Servants
-    if (fs.existsSync(CUSTOM_SERVANTS_FILE)) {
-      const raw = fs.readFileSync(CUSTOM_SERVANTS_FILE, 'utf-8');
-      if (raw) {
-        const savedServants: ServantTemplate[] = JSON.parse(raw);
-        for (const s of savedServants) {
-          const canonIdx = SERVANT_DATABASE.findIndex(c => c.id === s.id);
-          if (canonIdx >= 0) {
-            // If it's a canon servant, preserve the canonical balanced baseHp, baseAtk, and baseStats
-            const canon = SERVANT_DATABASE[canonIdx];
-            const updated = {
-              ...canon,
-              ...s,
-              baseHp: Math.max(canon.baseHp, s.baseHp || 0),
-              baseAtk: Math.max(canon.baseAtk, s.baseAtk || 0),
-              baseStats: { ...canon.baseStats, ...(s.baseStats || {}) }
-            };
-            SERVANT_DATABASE[canonIdx] = updated;
-            savedServantsMap.set(s.id, updated);
-          } else {
-            // Custom servant
-            savedServantsMap.set(s.id, s);
-            const customIdx = customServants.findIndex(c => c.id === s.id);
-            if (customIdx >= 0) {
-              customServants[customIdx] = s;
-            } else {
-              customServants.push(s);
-            }
+    // 1. Load Custom & Edited Servants (with auto-recovery)
+    const savedServants: ServantTemplate[] = readJsonWithBackupFallback<ServantTemplate[]>(
+      CUSTOM_SERVANTS_FILE,
+      'custom_servants',
+      []
+    );
+    for (const s of savedServants) {
+      const canonIdx = SERVANT_DATABASE.findIndex(c => c.id === s.id);
+      if (canonIdx >= 0) {
+        const canon = SERVANT_DATABASE[canonIdx];
+        const updated = {
+          ...canon,
+          ...s,
+          baseHp: Math.max(canon.baseHp, s.baseHp || 0),
+          baseAtk: Math.max(canon.baseAtk, s.baseAtk || 0),
+          baseStats: { ...canon.baseStats, ...(s.baseStats || {}) }
+        };
+        SERVANT_DATABASE[canonIdx] = updated;
+        savedServantsMap.set(s.id, updated);
+      } else {
+        savedServantsMap.set(s.id, s);
+        const customIdx = customServants.findIndex(c => c.id === s.id);
+        if (customIdx >= 0) {
+          customServants[customIdx] = s;
+        } else {
+          customServants.push(s);
+        }
+      }
+    }
+
+    // 2. Load Custom & Edited Craft Essences (with auto-recovery)
+    const savedCes: CraftEssence[] = readJsonWithBackupFallback<CraftEssence[]>(
+      CUSTOM_CES_FILE,
+      'custom_ces',
+      []
+    );
+    if (Array.isArray(savedCes)) {
+      customCraftEssences = savedCes;
+      for (const ce of savedCes) {
+        const canonIdx = CRAFT_ESSENCE_DATABASE.findIndex(c => c.id === ce.id);
+        if (canonIdx >= 0) {
+          CRAFT_ESSENCE_DATABASE[canonIdx] = { ...CRAFT_ESSENCE_DATABASE[canonIdx], ...ce };
+        }
+      }
+    }
+
+    // 3. Load Gacha Banner customization (with auto-recovery)
+    const savedBanner: GachaBanner | null = readJsonWithBackupFallback<GachaBanner | null>(
+      GACHA_BANNER_FILE,
+      'gacha_banner',
+      null
+    );
+    if (savedBanner && savedBanner.title) {
+      currentGachaBanner = { ...CE_GACHA_BANNERS[0], ...savedBanner };
+    }
+
+    // 4. Load Custom Servant NP Animations (with auto-recovery)
+    const savedAnims: ServantNpAnimConfig[] = readJsonWithBackupFallback<ServantNpAnimConfig[]>(
+      NP_ANIMS_FILE,
+      'servant_np_anims',
+      []
+    );
+    if (Array.isArray(savedAnims)) {
+      for (const anim of savedAnims) {
+        if (anim && anim.gifUrl) {
+          customNpAnims.set(anim.servantId, anim);
+          customNpAnims.set(anim.servantName.toLowerCase(), anim);
+
+          // Apply to in-memory servants
+          const canon = SERVANT_DATABASE.find(s => s.id === anim.servantId || s.name.toLowerCase() === anim.servantName.toLowerCase());
+          if (canon && canon.noblePhantasm) {
+            canon.noblePhantasm.animationUrl = anim.gifUrl;
+            canon.noblePhantasm.gifUrl = anim.gifUrl;
+            if (anim.chant) canon.noblePhantasm.chant = anim.chant;
           }
-        }
-      }
-    }
-
-    // 2. Load Custom & Edited Craft Essences
-    if (fs.existsSync(CUSTOM_CES_FILE)) {
-      const raw = fs.readFileSync(CUSTOM_CES_FILE, 'utf-8');
-      if (raw) {
-        const savedCes: CraftEssence[] = JSON.parse(raw);
-        if (Array.isArray(savedCes)) {
-          customCraftEssences = savedCes;
-          for (const ce of savedCes) {
-            const canonIdx = CRAFT_ESSENCE_DATABASE.findIndex(c => c.id === ce.id);
-            if (canonIdx >= 0) {
-              CRAFT_ESSENCE_DATABASE[canonIdx] = { ...CRAFT_ESSENCE_DATABASE[canonIdx], ...ce };
-            }
-          }
-        }
-      }
-    }
-
-    // 3. Load Gacha Banner customization
-    if (fs.existsSync(GACHA_BANNER_FILE)) {
-      const raw = fs.readFileSync(GACHA_BANNER_FILE, 'utf-8');
-      if (raw) {
-        const savedBanner: GachaBanner = JSON.parse(raw);
-        if (savedBanner && savedBanner.title) {
-          currentGachaBanner = { ...CE_GACHA_BANNERS[0], ...savedBanner };
-        }
-      }
-    }
-
-    // 4. Load Custom Servant NP Animations
-    if (fs.existsSync(NP_ANIMS_FILE)) {
-      const raw = fs.readFileSync(NP_ANIMS_FILE, 'utf-8');
-      if (raw) {
-        const savedAnims: ServantNpAnimConfig[] = JSON.parse(raw);
-        if (Array.isArray(savedAnims)) {
-          for (const anim of savedAnims) {
-            if (anim && anim.gifUrl) {
-              customNpAnims.set(anim.servantId, anim);
-              customNpAnims.set(anim.servantName.toLowerCase(), anim);
-
-              // Apply to in-memory servants
-              const canon = SERVANT_DATABASE.find(s => s.id === anim.servantId || s.name.toLowerCase() === anim.servantName.toLowerCase());
-              if (canon && canon.noblePhantasm) {
-                canon.noblePhantasm.animationUrl = anim.gifUrl;
-                canon.noblePhantasm.gifUrl = anim.gifUrl;
-                if (anim.chant) canon.noblePhantasm.chant = anim.chant;
-              }
-              const custom = customServants.find(s => s.id === anim.servantId || s.name.toLowerCase() === anim.servantName.toLowerCase());
-              if (custom && custom.noblePhantasm) {
-                custom.noblePhantasm.animationUrl = anim.gifUrl;
-                custom.noblePhantasm.gifUrl = anim.gifUrl;
-                if (anim.chant) custom.noblePhantasm.chant = anim.chant;
-              }
-            }
+          const custom = customServants.find(s => s.id === anim.servantId || s.name.toLowerCase() === anim.servantName.toLowerCase());
+          if (custom && custom.noblePhantasm) {
+            custom.noblePhantasm.animationUrl = anim.gifUrl;
+            custom.noblePhantasm.gifUrl = anim.gifUrl;
+            if (anim.chant) custom.noblePhantasm.chant = anim.chant;
           }
         }
       }
     }
 
     // 5. Load Duel NP Settings
-    if (fs.existsSync(DUEL_SETTINGS_FILE)) {
-      const raw = fs.readFileSync(DUEL_SETTINGS_FILE, 'utf-8');
-      if (raw) {
-        const savedSettings = JSON.parse(raw);
-        if (savedSettings) {
-          duelNpSettings = {
-            autoDelete: savedSettings.autoDelete !== false,
-            afkTimeoutSeconds: Math.max(15, Number(savedSettings.afkTimeoutSeconds) || 60)
-          };
-        }
-      }
+    const savedSettings = readJsonWithBackupFallback<any>(DUEL_SETTINGS_FILE, 'duel_settings', null);
+    if (savedSettings) {
+      duelNpSettings = {
+        autoDelete: savedSettings.autoDelete !== false,
+        afkTimeoutSeconds: Math.max(15, Number(savedSettings.afkTimeoutSeconds) || 60)
+      };
     }
 
-    // 2. Load Master Profiles
-    if (fs.existsSync(MASTERS_FILE)) {
-      const raw = fs.readFileSync(MASTERS_FILE, 'utf-8');
-      if (raw) {
-        const savedMasters: MasterProfile[] = JSON.parse(raw);
-        for (const m of savedMasters) {
-          // Remove Kaleidoscope from all existing masters' inventories (balance reset)
-          if (m.craftEssences && Array.isArray(m.craftEssences)) {
-            m.craftEssences = m.craftEssences
-              .filter(ce => ce && ce.id !== 'ce_kaleidoscope')
-              .map(ce => {
-                const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === ce.id);
-                return canonCe ? { ...canonCe } : ce;
-              });
-          } else {
-            m.craftEssences = [];
-          }
+    // 6. Load Master Profiles (with auto-recovery)
+    const savedMasters: MasterProfile[] = readJsonWithBackupFallback<MasterProfile[]>(
+      MASTERS_FILE,
+      'masters',
+      []
+    );
+    if (Array.isArray(savedMasters) && savedMasters.length > 0) {
+      for (const m of savedMasters) {
+        // Remove Kaleidoscope from all existing masters' inventories (balance reset)
+        if (m.craftEssences && Array.isArray(m.craftEssences)) {
+          m.craftEssences = m.craftEssences
+            .filter(ce => ce && ce.id !== 'ce_kaleidoscope')
+            .map(ce => {
+              const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === ce.id);
+              return canonCe ? { ...canonCe } : ce;
+            });
+        } else {
+          m.craftEssences = [];
+        }
 
-          // Synchronize master servant instances with canonical stats & strip equipped Kaleidoscope
-          if (m.servants && Array.isArray(m.servants)) {
-            for (const inst of m.servants) {
-              // Unequip Kaleidoscope if equipped
-              if (inst.equippedCeId === 'ce_kaleidoscope' || inst.equippedCe?.id === 'ce_kaleidoscope') {
-                inst.equippedCeId = undefined;
-                inst.equippedCe = undefined;
-              } else if (inst.equippedCeId) {
-                const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === inst.equippedCeId);
-                if (canonCe) {
-                  inst.equippedCe = { ...canonCe };
-                }
-              }
-
-              const templateId = inst.templateId || inst.template?.id || inst.id;
-              const instAny = inst as any;
-              const canonical = SERVANT_DATABASE.find(
-                s => s.id === templateId || 
-                     (s.name && instAny.name && s.name.toLowerCase() === instAny.name.toLowerCase()) ||
-                     (s.name && instAny.nickname && s.name.toLowerCase() === instAny.nickname.toLowerCase()) ||
-                     (s.name && inst.template?.name && s.name.toLowerCase() === inst.template.name.toLowerCase())
-              );
-              if (canonical) {
-                const customSaved = savedServantsMap.get(canonical.id);
-                const { avatarUrl, cardArtUrl } = getServantAvatarAndCardArt(inst, Array.from(savedServantsMap.values()));
-                inst.template = {
-                  ...canonical,
-                  ...(customSaved || {}),
-                  ...(inst.template || {}),
-                  avatarUrl,
-                  cardArtUrl,
-                  baseHp: customSaved?.baseHp || canonical.baseHp,
-                  baseAtk: customSaved?.baseAtk || canonical.baseAtk,
-                  baseStats: customSaved?.baseStats || canonical.baseStats,
-                  noblePhantasm: customSaved?.noblePhantasm || canonical.noblePhantasm,
-                  skills: customSaved?.skills || canonical.skills
-                };
-                inst.avatarUrl = avatarUrl;
-                inst.cardArtUrl = cardArtUrl;
+        // Synchronize master servant instances with canonical stats & strip equipped Kaleidoscope
+        if (m.servants && Array.isArray(m.servants)) {
+          for (const inst of m.servants) {
+            if (inst.equippedCeId === 'ce_kaleidoscope' || inst.equippedCe?.id === 'ce_kaleidoscope') {
+              inst.equippedCeId = undefined;
+              inst.equippedCe = undefined;
+            } else if (inst.equippedCeId) {
+              const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === inst.equippedCeId);
+              if (canonCe) {
+                inst.equippedCe = { ...canonCe };
               }
             }
+
+            const templateId = inst.templateId || inst.template?.id || inst.id;
+            const instAny = inst as any;
+            const canonical = SERVANT_DATABASE.find(
+              s => s.id === templateId || 
+                   (s.name && instAny.name && s.name.toLowerCase() === instAny.name.toLowerCase()) ||
+                   (s.name && instAny.nickname && s.name.toLowerCase() === instAny.nickname.toLowerCase()) ||
+                   (s.name && inst.template?.name && s.name.toLowerCase() === inst.template.name.toLowerCase())
+            );
+            if (canonical) {
+              const customSaved = savedServantsMap.get(canonical.id);
+              const { avatarUrl, cardArtUrl } = getServantAvatarAndCardArt(inst, Array.from(savedServantsMap.values()));
+              inst.template = {
+                ...canonical,
+                ...(customSaved || {}),
+                ...(inst.template || {}),
+                avatarUrl,
+                cardArtUrl,
+                baseHp: customSaved?.baseHp || canonical.baseHp,
+                baseAtk: customSaved?.baseAtk || canonical.baseAtk,
+                baseStats: customSaved?.baseStats || canonical.baseStats,
+                noblePhantasm: customSaved?.noblePhantasm || canonical.noblePhantasm,
+                skills: customSaved?.skills || canonical.skills
+              };
+              inst.avatarUrl = avatarUrl;
+              inst.cardArtUrl = cardArtUrl;
+            }
           }
-          masterStore.set(m.discordId, m);
         }
-        // Save upgraded master profiles to disk to clean up any old cached stats
-        saveMastersToDisk();
+        masterStore.set(m.discordId, m);
       }
+      // Save upgraded master profiles atomically
+      saveMastersToDisk();
     }
   } catch (err) {
     console.error('[Database] Failed to load persistent data from disk:', err);
@@ -251,13 +330,12 @@ function saveCustomServantsToDisk() {
   try {
     ensureDataDirectory();
     const listToSave = Array.from(savedServantsMap.values());
-    // Ensure any customServants not in map are included
     for (const cs of customServants) {
       if (!savedServantsMap.has(cs.id)) {
         listToSave.push(cs);
       }
     }
-    fs.writeFileSync(CUSTOM_SERVANTS_FILE, JSON.stringify(listToSave, null, 2), 'utf-8');
+    writeJsonAtomic(CUSTOM_SERVANTS_FILE, listToSave, 'custom_servants');
   } catch (err) {
     console.error('[Database] Failed to write custom_servants.json to disk:', err);
   }
@@ -266,7 +344,7 @@ function saveCustomServantsToDisk() {
 function saveCustomCesToDisk() {
   try {
     ensureDataDirectory();
-    fs.writeFileSync(CUSTOM_CES_FILE, JSON.stringify(customCraftEssences, null, 2), 'utf-8');
+    writeJsonAtomic(CUSTOM_CES_FILE, customCraftEssences, 'custom_ces');
   } catch (err) {
     console.error('[Database] Failed to write custom_ces.json to disk:', err);
   }
@@ -275,7 +353,7 @@ function saveCustomCesToDisk() {
 function saveGachaBannerToDisk() {
   try {
     ensureDataDirectory();
-    fs.writeFileSync(GACHA_BANNER_FILE, JSON.stringify(currentGachaBanner, null, 2), 'utf-8');
+    writeJsonAtomic(GACHA_BANNER_FILE, currentGachaBanner, 'gacha_banner');
   } catch (err) {
     console.error('[Database] Failed to write gacha_banner.json to disk:', err);
   }
@@ -284,12 +362,11 @@ function saveGachaBannerToDisk() {
 function saveNpAnimsToDisk() {
   try {
     ensureDataDirectory();
-    // Unique by servantId
     const unique = new Map<string, ServantNpAnimConfig>();
     for (const anim of customNpAnims.values()) {
       unique.set(anim.servantId, anim);
     }
-    fs.writeFileSync(NP_ANIMS_FILE, JSON.stringify(Array.from(unique.values()), null, 2), 'utf-8');
+    writeJsonAtomic(NP_ANIMS_FILE, Array.from(unique.values()), 'servant_np_anims');
   } catch (err) {
     console.error('[Database] Failed to write servant_np_anims.json to disk:', err);
   }
@@ -298,7 +375,7 @@ function saveNpAnimsToDisk() {
 function saveDuelSettingsToDisk() {
   try {
     ensureDataDirectory();
-    fs.writeFileSync(DUEL_SETTINGS_FILE, JSON.stringify(duelNpSettings, null, 2), 'utf-8');
+    writeJsonAtomic(DUEL_SETTINGS_FILE, duelNpSettings, 'duel_settings');
   } catch (err) {
     console.error('[Database] Failed to write duel_settings.json to disk:', err);
   }
@@ -388,7 +465,7 @@ function saveMastersToDisk() {
   try {
     ensureDataDirectory();
     const mastersList = Array.from(masterStore.values());
-    fs.writeFileSync(MASTERS_FILE, JSON.stringify(mastersList, null, 2), 'utf-8');
+    writeJsonAtomic(MASTERS_FILE, mastersList, 'masters');
   } catch (err) {
     console.error('[Database] Failed to write masters.json to disk:', err);
   }
