@@ -17,6 +17,7 @@ import { renderBattleTurnSummary, renderDialogueCard, renderDefeatDialogueCard }
 import { PVP_DAMAGE_MODIFIER, calculateFleeChance, rollFleeSuccess } from '../engine/battle';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
+import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 import { getServantChainDialogue, shouldTriggerDialogueCutIn } from '../engine/dialogue';
 import { getServantMatchupDialogue } from '../data/servantMatchups';
 
@@ -2084,7 +2085,7 @@ async function startInteractiveDuel(
       .setColor(0xef4444);
 
     if (p1AvatarUrl) {
-      p1StartEmbed.setThumbnail(p1AvatarUrl);
+      safeSetEmbedThumbnail(p1StartEmbed, p1AvatarUrl, startFiles);
     }
 
     startEmbeds.push(p1StartEmbed);
@@ -2102,7 +2103,7 @@ async function startInteractiveDuel(
       .setColor(0x38bdf8);
 
     if (p2AvatarUrl) {
-      p2StartEmbed.setThumbnail(p2AvatarUrl);
+      safeSetEmbedThumbnail(p2StartEmbed, p2AvatarUrl, startFiles);
     }
 
     startEmbeds.push(p2StartEmbed);
@@ -2171,22 +2172,25 @@ async function startInteractiveDuel(
     // Native Discord message links unfurl at full width without embed bounding box restrictions!
     const chantBlock = npChant ? `\n> *“${npChant}”*` : '';
 
+    const npFiles: AttachmentBuilder[] = [];
     const npEmbed = new EmbedBuilder()
       .setTitle(`💥 NOBLE PHANTASM UNLEASHED: ${npName.toUpperCase()}`)
       .setDescription(`⚔️ **${servantDisplayName}** (Master: <@${actor.userId}>)${chantBlock}`)
       .setColor(0xe11d48)
-      .setImage(npGifUrl)
       .setFooter({ text: 'Holy Grail War • Noble Phantasm Unleashed' });
+    safeSetEmbedImage(npEmbed, npGifUrl, npFiles);
 
     try {
       let sentMsg: any = null;
       if (interaction.channel && typeof interaction.channel.send === 'function') {
         sentMsg = await interaction.channel.send({
-          embeds: [npEmbed]
+          embeds: [npEmbed],
+          files: npFiles
         });
       } else if (interaction.followUp) {
         sentMsg = await interaction.followUp({
           embeds: [npEmbed],
+          files: npFiles,
           withResponse: true
         });
       }
@@ -2682,7 +2686,7 @@ async function finishDuel(
         .setFooter({ text: 'Holy Grail War Survival Protocol • Command Seal Sanctuary' });
 
       if (loser.servant.template.avatarUrl) {
-        interventionEmbed.setThumbnail(loser.servant.template.avatarUrl);
+        safeSetEmbedThumbnail(interventionEmbed, loser.servant.template.avatarUrl);
       }
 
       // Render custom sanctuary/evac card
@@ -2746,7 +2750,7 @@ async function finishDuel(
       .setFooter({ text: 'Holy Grail War Survival Protocol • 1-Minute Decision Window (Auto-consume: OFF)' });
 
     if (loser.servant.template.avatarUrl) {
-      decisionEmbed.setThumbnail(loser.servant.template.avatarUrl);
+      safeSetEmbedThumbnail(decisionEmbed, loser.servant.template.avatarUrl);
     }
 
     if (defeatCardAttachment) {
@@ -2978,7 +2982,7 @@ async function finishDuel(
     .setColor(0x22c55e);
 
   if (winner.servant.template.avatarUrl) {
-    victoryEmbed.setThumbnail(winner.servant.template.avatarUrl);
+    safeSetEmbedThumbnail(victoryEmbed, winner.servant.template.avatarUrl);
   }
 
   if (victoryCardAttachment) {
@@ -2995,7 +2999,7 @@ async function finishDuel(
     .setColor(0xef4444);
 
   if (loser.servant.template.avatarUrl) {
-    fateEmbed.setThumbnail(loser.servant.template.avatarUrl);
+    safeSetEmbedThumbnail(fateEmbed, loser.servant.template.avatarUrl);
   }
 
   if (defeatCardAttachment) {

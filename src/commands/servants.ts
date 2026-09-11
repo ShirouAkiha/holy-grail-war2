@@ -16,6 +16,7 @@ import { getDefaultClassPassives } from '../data/servants';
 import { ServantTemplate, MasterServantInstance, ServantClass } from '../types';
 import { renderServantProfileCard } from '../canvas/renderer';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
+import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
 export const CLASS_CYCLE: Array<'all' | ServantClass> = [
   'all', 'Saber', 'Archer', 'Lancer', 'Rider', 'Caster', 'Assassin', 'Berserker', 'Ruler', 'Avenger'
@@ -310,20 +311,20 @@ export function buildServantFullProfileEmbed(servant: ServantTemplate) {
 
   // Add portrait thumbnail to top right corner of embed
   if (servant.avatarUrl) {
-    embed.setThumbnail(servant.avatarUrl);
+    safeSetEmbedThumbnail(embed, servant.avatarUrl);
   }
 
   return embed;
 }
 
-export function buildServantArtworkEmbed(servant: ServantTemplate) {
+export function buildServantArtworkEmbed(servant: ServantTemplate, files?: AttachmentBuilder[]) {
   const embed = new EmbedBuilder()
     .setTitle(`🖼️ ${servant.name} — Character Card Artwork`)
     .setColor(servant.rarity === 5 ? 0xf59e0b : 0x38bdf8);
 
   const imgUrl = servant.cardArtUrl || servant.avatarUrl;
   if (imgUrl) {
-    embed.setImage(imgUrl);
+    safeSetEmbedImage(embed, imgUrl, files);
   }
   return embed;
 }
@@ -493,7 +494,7 @@ export function buildServantButtons(servants: ServantTemplate[]) {
   return components;
 }
 
-export function buildNoblePhantasmEmbed(servant: ServantTemplate) {
+export function buildNoblePhantasmEmbed(servant: ServantTemplate, files?: AttachmentBuilder[]) {
   const np = servant.noblePhantasm;
   const gifUrl = getNoblePhantasmGif(servant);
   const chant = getNoblePhantasmChant(servant);
@@ -513,10 +514,10 @@ export function buildNoblePhantasmEmbed(servant: ServantTemplate) {
     .setFooter({ text: `Throne ID: ${servant.id} • Holy Grail War Noble Phantasm Archive` });
 
   if (gifUrl) {
-    embed.setImage(gifUrl);
+    safeSetEmbedImage(embed, gifUrl, files);
   }
   if (servant.avatarUrl) {
-    embed.setThumbnail(servant.avatarUrl);
+    safeSetEmbedThumbnail(embed, servant.avatarUrl, files);
   }
 
   return embed;
@@ -721,9 +722,10 @@ export async function handleServantsListInteraction(i: any) {
       const id = customId.replace('view_np_', '');
       const target = allServants.find(s => s.id === id);
       if (target) {
-        const npEmbed = buildNoblePhantasmEmbed(target);
+        const files: AttachmentBuilder[] = [];
+        const npEmbed = buildNoblePhantasmEmbed(target, files);
         const actions = buildNoblePhantasmActions(target.id);
-        await i.reply({ embeds: [npEmbed], components: [actions], flags: MessageFlags.Ephemeral });
+        await i.reply({ embeds: [npEmbed], files, components: [actions], flags: MessageFlags.Ephemeral });
       } else {
         await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
       }
@@ -734,9 +736,10 @@ export async function handleServantsListInteraction(i: any) {
       const id = customId.replace('view_art_', '');
       const target = allServants.find(s => s.id === id);
       if (target) {
-        const artEmbed = buildServantArtworkEmbed(target);
+        const files: AttachmentBuilder[] = [];
+        const artEmbed = buildServantArtworkEmbed(target, files);
         const actions = buildNoblePhantasmActions(target.id);
-        await i.reply({ embeds: [artEmbed], components: [actions], flags: MessageFlags.Ephemeral });
+        await i.reply({ embeds: [artEmbed], files, components: [actions], flags: MessageFlags.Ephemeral });
       } else {
         await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
       }

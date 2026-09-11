@@ -14,6 +14,7 @@ import {
   getOrInitWarSession, 
   getHealingStatus
 } from '../engine/grailwar';
+import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
 export const data = new SlashCommandBuilder()
   .setName('profile')
@@ -123,7 +124,7 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
     .setFooter({ text: 'Private Master Dossier • Holy Grail War Protocol' });
 
   if (activeServant.template?.avatarUrl) {
-    embed.setThumbnail(activeServant.template.avatarUrl);
+    safeSetEmbedThumbnail(embed, activeServant.template.avatarUrl);
   }
 
   return embed;
@@ -182,7 +183,7 @@ export function buildPublicProfileEmbed(master: any, war: any) {
     .setFooter({ text: 'Public Master Dossier • Holy Grail War' });
 
   if (isExposed && activeServant.template?.avatarUrl) {
-    embed.setThumbnail(activeServant.template.avatarUrl);
+    safeSetEmbedThumbnail(embed, activeServant.template.avatarUrl);
   }
 
   return embed;

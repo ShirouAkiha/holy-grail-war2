@@ -2,6 +2,7 @@ import {
   SlashCommandBuilder, 
   ChatInputCommandInteraction, 
   EmbedBuilder,
+  AttachmentBuilder,
   PermissionFlagsBits
 , MessageFlags } from 'discord.js';
 import { 
@@ -12,6 +13,7 @@ import {
   updateCraftEssence
 } from '../database/service';
 import { CraftEssence, Rarity } from '../types';
+import { safeSetEmbedImage } from '../utils/discordEmbedHelper';
 
 // ==========================================
 // 1. ADMIN SLASH COMMAND DEFINITION FOR CRAFT ESSENCES & GACHA BANNERS
@@ -288,11 +290,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `• **ID:** \`${newCe.id}\`\n\n` +
         `*Masters can now pull this Craft Essence using \`/cegacha pull\`!*`
       )
-      .setImage(finalPicture)
       .setColor(rarity === 5 ? 0xfbbf24 : rarity === 4 ? 0xa855f7 : 0x38bdf8)
       .setFooter({ text: `Registered by Admin ${interaction.user.username}` });
+    const createFiles: AttachmentBuilder[] = [];
+    safeSetEmbedImage(embed, finalPicture, createFiles);
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.reply({ embeds: [embed], files: createFiles });
     return;
   }
 
@@ -356,11 +359,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .setColor(0x38bdf8)
       .setFooter({ text: `Modified by Admin ${interaction.user.username}` });
 
+    const editFiles: AttachmentBuilder[] = [];
     if (updatedCe.artworkUrl) {
-      embed.setImage(updatedCe.artworkUrl);
+      safeSetEmbedImage(embed, updatedCe.artworkUrl, editFiles);
     }
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.reply({ embeds: [embed], files: editFiles });
     return;
   }
 
@@ -410,11 +414,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `**Featured Rate-Up CEs:** \`${updated.featuredCeIds.join(', ') || 'None'}\`\n\n` +
         `*Changes are now live for all Masters invoking \`/cegacha banner\`!*`
       )
-      .setImage(updated.bannerArtUrl)
       .setColor(0x38bdf8)
       .setFooter({ text: `Updated by Admin ${interaction.user.username}` });
+    const bannerFiles: AttachmentBuilder[] = [];
+    safeSetEmbedImage(embed, updated.bannerArtUrl, bannerFiles);
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.reply({ embeds: [embed], files: bannerFiles });
     return;
   }
 

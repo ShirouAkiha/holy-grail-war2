@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder , MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { getOrInitWarSession } from '../engine/grailwar';
+import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
 export const data = new SlashCommandBuilder()
   .setName('boast')
@@ -43,7 +44,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .setFooter({ text: 'Public Identity Broadcast • Master Permanently Exposed' });
 
     if (s.template?.avatarUrl) {
-      embed.setThumbnail(s.template.avatarUrl);
+      safeSetEmbedThumbnail(embed, s.template.avatarUrl);
     }
 
     await interaction.reply({ embeds: [embed] });

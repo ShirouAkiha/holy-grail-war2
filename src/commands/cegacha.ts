@@ -23,6 +23,7 @@ import { executeCraftEssenceGachaRoll } from '../engine/ceGacha';
 import { renderGachaSummonBanner } from '../canvas/renderer';
 import { CraftEssence, Rarity } from '../types';
 import { getOrInitWarSession, exposeMasterInWar } from '../engine/grailwar';
+import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
 export const data = new SlashCommandBuilder()
   .setName('cegacha')
@@ -170,9 +171,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             `${updated.description}\n\n` +
             `**Featured Rate-Up CEs:** \`${updated.featuredCeIds.join(', ') || 'None'}\``
           )
-          .setImage(updated.bannerArtUrl)
           .setColor(0x38bdf8)
           .setFooter({ text: `Updated by Admin ${interaction.user.username}` });
+        safeSetEmbedImage(embed, updated.bannerArtUrl);
 
         await interaction.reply({ embeds: [embed] });
         return;
@@ -216,8 +217,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             `• **Stats:** +${atk} ATK | +${hp} HP\n` +
             `• **ID:** \`${newCe.id}\``
           )
-          .setImage(finalPicture)
           .setColor(rarity === 5 ? 0xfbbf24 : rarity === 4 ? 0xa855f7 : 0x38bdf8);
+        safeSetEmbedImage(embed, finalPicture);
 
         await interaction.reply({ embeds: [embed] });
         return;
@@ -276,7 +277,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setFooter({ text: `Modified by Admin ${interaction.user.username}` });
 
         if (updatedCe.artworkUrl) {
-          embed.setImage(updatedCe.artworkUrl);
+          safeSetEmbedImage(embed, updatedCe.artworkUrl);
         }
 
         await interaction.reply({ embeds: [embed] });
@@ -471,9 +472,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           `💎 **Your Saint Quartz:** **${master.saintQuartz || 0} SQ**\n` +
           `📦 **Owned Craft Essences:** **${(master.craftEssences || []).length}**`
         )
-        .setImage(banner.bannerArtUrl)
         .setColor(0x38bdf8)
         .setFooter({ text: '10x Multi-Summon guarantees a 4★ SR or higher Craft Essence!' });
+      safeSetEmbedImage(embed, banner.bannerArtUrl);
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
@@ -680,7 +681,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             .setColor(bestRelic?.rarity >= 5 ? 0xfbbf24 : 0x38bdf8);
 
           if (bestCe?.artworkUrl) {
-            boastEmbed.setImage(bestCe.artworkUrl);
+            safeSetEmbedImage(boastEmbed, bestCe.artworkUrl);
           }
 
           if (bi.channel && 'send' in bi.channel) {

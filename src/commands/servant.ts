@@ -17,6 +17,7 @@ import { getOrInitWarSession, exposeMasterInWar, getHealingStatus } from '../eng
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { allocateStatPoints, calculateServantMaxHp, calculateServantMaxAtk } from '../engine/statSystem';
 import { equipCraftEssence, feedCraftEssences, getCeExpValue } from '../engine/customization';
+import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -276,13 +277,13 @@ export async function buildServantHub(
     const { avatarUrl, cardArtUrl } = getServantAvatarAndCardArt(targetServant);
 
     if (avatarUrl) {
-      embed.setThumbnail(avatarUrl);
+      safeSetEmbedThumbnail(embed, avatarUrl, files);
     }
 
     const artworkEmbed = new EmbedBuilder()
       .setTitle(`🖼️ Servant Character Portrait: ${sName}`)
-      .setImage(cardArtUrl || avatarUrl)
       .setColor(t.rarity === 5 ? 0xd4af37 : 0x38bdf8);
+    safeSetEmbedImage(artworkEmbed, cardArtUrl || avatarUrl, files);
 
     embeds = [embed, artworkEmbed];
 
@@ -385,8 +386,8 @@ export async function buildServantHub(
       .setColor(color)
       .setFooter({ text: `Contracted to Master ${master.username} • Holy Grail War Registry` });
 
-    if (gifUrl) npEmbed.setImage(gifUrl);
-    if (t.avatarUrl) npEmbed.setThumbnail(t.avatarUrl);
+    if (gifUrl) safeSetEmbedImage(npEmbed, gifUrl, files);
+    if (t.avatarUrl) safeSetEmbedThumbnail(npEmbed, t.avatarUrl, files);
 
     embeds = [npEmbed];
 
@@ -1101,6 +1102,7 @@ export function attachServantCollector(
         await saveMaster(master);
 
         const template = targetServant.template;
+        const announceFiles: AttachmentBuilder[] = [];
         const announceEmbed = new EmbedBuilder()
           .setTitle(`📢 MASTER CHALLENGE: ${master.username.toUpperCase()} REVEALS SERVANT!`)
           .setDescription(
@@ -1111,11 +1113,11 @@ export function attachServantCollector(
             `🗣️ *" ${targetServant.customQuotes?.summon || template.summonQuote || template.battleStartQuote} "*\n\n` +
             `⚠️ *By boasting openly, Master **${master.username}** is now permanently **EXPOSED** on the Holy Grail War board (\`/grailwar\`)!*`
           )
-          .setImage(template.cardArtUrl || template.avatarUrl)
           .setColor(0xd4af37);
+        safeSetEmbedImage(announceEmbed, template.cardArtUrl || template.avatarUrl, announceFiles);
 
         if (i.channel && 'send' in i.channel) {
-          await (i.channel as any).send({ embeds: [announceEmbed] });
+          await (i.channel as any).send({ embeds: [announceEmbed], files: announceFiles });
         }
         await i.reply({
           content: '📢 You have revealed your Servant to the server! Your identity is now permanently exposed on the War Board.',

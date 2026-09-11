@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder , MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
+import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
 export const data = new SlashCommandBuilder()
   .setName('equip')
@@ -71,7 +72,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .setColor(0x22c55e);
 
     if (targetCe.artworkUrl) {
-      embed.setThumbnail(targetCe.artworkUrl);
+      safeSetEmbedThumbnail(embed, targetCe.artworkUrl);
     }
 
     await interaction.reply({ embeds: [embed] });

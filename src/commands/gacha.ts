@@ -23,6 +23,7 @@ import { renderGachaSummonBanner } from '../canvas/renderer';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 import { SERVANT_DATABASE } from '../data/servants';
 import { buildInventoryHub, attachInventoryCollector } from './customise';
+import { safeSetEmbedImage } from '../utils/discordEmbedHelper';
 
 export const data = new SlashCommandBuilder()
   .setName('gacha')
@@ -109,8 +110,8 @@ export function buildGachaHub(
     .setTitle(title)
     .setDescription(description)
     .setColor(color)
-    .setImage(bannerImage)
     .setFooter({ text: `Greater Grail Sanctum • Master: ${master.username} • Balance: ${sq} SQ` });
+  safeSetEmbedImage(embed, bannerImage);
 
   // Row 1: Category Navigation Tabs
   const catRow = new ActionRowBuilder<ButtonBuilder>().addComponents(

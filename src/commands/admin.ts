@@ -3,6 +3,7 @@ import {
   ChatInputCommandInteraction, 
   AutocompleteInteraction,
   EmbedBuilder,
+  AttachmentBuilder,
   PermissionFlagsBits,
   ActionRowBuilder,
   ButtonBuilder,
@@ -39,6 +40,7 @@ import {
   refillAllWarParticipantsSeals
 } from '../engine/grailwar';
 import { WarRules } from '../types';
+import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -316,11 +318,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `• **Animation Link:** [Click to open source](${gifUrl})\n\n` +
         `*During duels, when ${s.name} releases their Noble Phantasm, this animation will display at full size until the next turn!*`
       )
-      .setImage(gifUrl)
       .setColor(0xd4af37)
       .setFooter({ text: `Configured by Admin ${interaction.user.username} • Persistent on disk` });
+    const npFiles: AttachmentBuilder[] = [];
+    safeSetEmbedImage(embed, gifUrl, npFiles);
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.reply({ embeds: [embed], files: npFiles });
     return;
   }
 

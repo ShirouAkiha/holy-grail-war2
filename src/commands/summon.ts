@@ -21,6 +21,7 @@ import {
   handleMasterReleaseInWar,
   exposeMasterInWar 
 } from '../engine/grailwar';
+import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -246,8 +247,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           `* "${activeServant.customQuotes?.noblePhantasm || np.chant}" *\n\n` +
           `💬 **Arrival Quote:**\n*"${activeServant.customQuotes?.summon || t.summonQuote || 'I ask of you, are you my Master?'}"*`
         )
-        .setImage(t.cardArtUrl || t.avatarUrl || sAny.cardArtUrl || sAny.avatarUrl)
         .setColor(0xd4af37);
+      safeSetEmbedImage(statusEmbed, t.cardArtUrl || t.avatarUrl || sAny.cardArtUrl || sAny.avatarUrl);
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
@@ -309,8 +310,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           `• Use \`/grailwar\` to enter the 7-Master battle royale tournament.\n` +
           `• If you wish to release your Servant and summon anew, use \`/summon release\`.`
         )
-        .setThumbnail(s.template.avatarUrl)
         .setColor(0xf59e0b);
+      safeSetEmbedThumbnail(embed, s.template.avatarUrl);
 
       await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
       return;
@@ -367,9 +368,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `* "${template.noblePhantasm.chant}" *\n\n` +
         `📜 **Lore:**\n${template.lore}`
       )
-      .setImage(template.cardArtUrl || template.avatarUrl)
       .setColor(0xd4af37)
       .setFooter({ text: `Holy Grail War Contract Active • Use /servant or /duel` });
+    safeSetEmbedImage(summonEmbed, template.cardArtUrl || template.avatarUrl);
 
     const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()

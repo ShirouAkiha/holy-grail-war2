@@ -3,6 +3,7 @@ import {
   ChatInputCommandInteraction, 
   AutocompleteInteraction,
   EmbedBuilder,
+  AttachmentBuilder,
   PermissionFlagsBits,
   ActionRowBuilder,
   ButtonBuilder,
@@ -24,6 +25,7 @@ import {
 } from '../database/service';
 import { ServantClass, ServantTemplate, CardType } from '../types';
 import { normalizeMediaUrl, isDirectEmbeddableMedia } from '../utils/mediaResolver';
+import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
 // ==========================================
 // 1. ADMIN SLASH COMMAND DEFINITION
@@ -475,11 +477,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `📜 **Lore:**\n${newServantTemplate.lore}\n\n` +
         `*This Servant can now be summoned randomly by Masters performing the \`/summon\` ritual!*`
       )
-      .setImage(finalPicture)
       .setColor(0xd4af37)
       .setFooter({ text: `ID: ${newServantTemplate.id} • Registered by Admin ${interaction.user.username}` });
+    const createFiles: AttachmentBuilder[] = [];
+    safeSetEmbedImage(embed, finalPicture, createFiles);
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.reply({ embeds: [embed], files: createFiles });
     return;
   }
 
@@ -611,11 +614,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `• **Summon Dialogue:** *"${s.summonQuote}"*\n\n` +
         `*Changes take effect immediately across all active Master contracts and combat arenas!*`
       )
-      .setImage(s.cardArtUrl || s.avatarUrl)
       .setColor(0xd4af37)
       .setFooter({ text: `ID: ${s.id} • Edited by Admin ${interaction.user.username}` });
+    const editFiles: AttachmentBuilder[] = [];
+    safeSetEmbedImage(embed, s.cardArtUrl || s.avatarUrl, editFiles);
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.reply({ embeds: [embed], files: editFiles });
     return;
   }
 
@@ -675,15 +679,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .setColor(0xd4af37)
       .setFooter({ text: `Configured by Admin ${interaction.user.username} • ${isDirectDiscordUpload ? 'Discord CDN Hosted' : 'Direct CDN Mode'}` });
 
-    if (canEmbedDirectly) {
-      embed.setImage(normalizedGifUrl);
-      await interaction.reply({ embeds: [embed] });
-    } else {
-      await interaction.reply({
-        content: `🎬 **Noble Phantasm Cinematic Registered for ${s.name}**:\n${rawGifUrl}`,
-        embeds: [embed]
-      });
-    }
+    const npFiles: AttachmentBuilder[] = [];
+    safeSetEmbedImage(embed, normalizedGifUrl, npFiles);
+    await interaction.reply({ embeds: [embed], files: npFiles });
     return;
   }
 

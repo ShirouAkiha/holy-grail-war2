@@ -1,8 +1,25 @@
 /**
  * Media Resolver & URL Normalizer
- * Converts web page URLs (Tenor, Giphy, Imgur, etc.) into 100% direct CDN media links
- * that Discord's Embed proxy and Web views can render reliably without "Image failed to load".
+ * Converts web page URLs (Tenor, Giphy, Imgur, etc.) and local media routes (/api/media/...)
+ * into 100% direct CDN media links that Web views and API endpoints can render reliably.
  */
+
+// Known reliable fallbacks for canon servants and assets
+export const CANON_MEDIA_FALLBACKS: Record<string, string> = {
+  'np_artoria_pendragon.gif': 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
+  'np_artoria_pendragon_alter.gif': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+  'np_gilgamesh_archer.gif': 'https://i.giphy.com/media/13cACn6mlO56kU/giphy.gif',
+  'np_emiya_archer.gif': 'https://i.giphy.com/media/eBGV4n8U8k3eg/giphy.gif',
+  'np_cu_chulainn_lancer.gif': 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
+  'np_scathach_lancer.gif': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+  'np_jeanne_darc_ruler.jpg': 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
+  'np_jeanne_alter.gif': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+  'np_nero_claudius_saber.gif': 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
+  'np_heracles_berserker.jpg': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+  'np_mhx_alter.gif': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+  'np_karna_lancer.gif': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+  'np_adiosa_dragon_envoy.webp': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif'
+};
 
 export function normalizeMediaUrl(rawUrl: string): string {
   if (!rawUrl || typeof rawUrl !== 'string') return '';
@@ -24,9 +41,6 @@ export function normalizeMediaUrl(rawUrl: string): string {
   }
 
   // 1. Handle Giphy URLs
-  // Case A: https://giphy.com/gifs/fate-stay-night-unlimited-blade-works-tO2sY2i2LgZSo
-  // Case B: https://giphy.com/gifs/tO2sY2i2LgZSo
-  // Case C: https://media.giphy.com/media/tO2sY2i2LgZSo/200.gif -> https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif
   if (trimmed.includes('giphy.com/gifs/')) {
     const parts = trimmed.split('giphy.com/gifs/')[1].split('?')[0].split('/');
     const lastPart = parts[0];
@@ -43,8 +57,6 @@ export function normalizeMediaUrl(rawUrl: string): string {
   }
 
   // 2. Handle Imgur URLs
-  // https://imgur.com/gallery/abcXYZ -> https://i.imgur.com/abcXYZ.gif
-  // https://imgur.com/abcXYZ -> https://i.imgur.com/abcXYZ.gif
   if (trimmed.includes('imgur.com/')) {
     const match = trimmed.match(/imgur\.com\/(?:gallery\/|a\/|r\/[^/]+\/)?([a-zA-Z0-9]+)/);
     if (match && match[1]) {
@@ -56,19 +68,14 @@ export function normalizeMediaUrl(rawUrl: string): string {
   }
 
   // 3. Handle Tenor URLs
-  // If it's already a direct Tenor CDN asset (media1.tenor.com, c.tenor.com, media.tenor.com), keep as is
   if (trimmed.includes('media.tenor.com') || trimmed.includes('media1.tenor.com') || trimmed.includes('c.tenor.com')) {
     return trimmed;
   }
 
-  // If it's a Tenor webpage link (e.g. tenor.com/view/...)
-  // Discord embeds fail on tenor.com/view because it's HTML.
-  // We can return the direct CDN URL if we have standard canonical mappings, or keep the URL for native message content.
   if (trimmed.includes('tenor.com/view/')) {
     const match = trimmed.match(/-([0-9]+)$/) || trimmed.match(/([0-9]+)\/?$/);
     const tenorId = match ? match[1] : '';
     
-    // Check known Fate mappings
     const TENOR_FATE_MAP: Record<string, string> = {
       '18115682': 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif', // Saber Excalibur
       '21175659': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif', // Saber Alter Excalibur Morgan
@@ -98,7 +105,6 @@ export function normalizeMediaUrl(rawUrl: string): string {
   }
 
   // 5. Handle Wikia / Fandom URLs
-  // Clean up static.wikia.nocookie.net URLs by removing /revision/latest or trailing query parameters
   if (trimmed.includes('wikia.nocookie.net')) {
     const cleanWikia = trimmed.replace(/\/revision\/latest.*$/i, '').split('?')[0];
     return cleanWikia;
@@ -117,7 +123,7 @@ export function isDirectEmbeddableMedia(url: string): boolean {
   if (lower.startsWith('/api/media/') || lower.startsWith('/media/') || lower.startsWith('/uploads/') || lower.startsWith('data/media/')) {
     return true;
   }
-  if (lower.includes('tenor.com/view/')) return false; // Web page, not direct image
+  if (lower.includes('tenor.com/view/')) return false;
   if (lower.includes('giphy.com/gifs/') && !lower.includes('i.giphy.com') && !lower.includes('media.giphy.com')) return false;
   return (
     lower.endsWith('.gif') ||
