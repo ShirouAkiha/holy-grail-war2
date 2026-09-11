@@ -22,6 +22,7 @@ import { findServantInPool, matchServantSearch } from '../lib/utils/servantMatch
 import {
   createCombatantFromMasterServant,
   initializeBattle,
+  initializeMultiBattle,
   executeBattleTurn,
   calculateFleeChance,
   rollFleeSuccess,
@@ -2683,6 +2684,178 @@ export default function DiscordEmulator({
           });
           return;
         }
+      }
+
+      // Handle /duel 2v2 or /duel alliance or /duel tag
+      if (
+        targetQuery === '2v2' ||
+        targetQuery.startsWith('2v2') ||
+        targetQuery === 'alliance' ||
+        targetQuery.startsWith('alliance') ||
+        targetQuery === 'tag'
+      ) {
+        const otherServants = allThrone.filter(s => s.id !== activeServant.templateId);
+        const allyTemplate = otherServants[0] || allThrone[0];
+        const enemy1Template = otherServants[1] || allThrone[1] || allThrone[0];
+        const enemy2Template = otherServants[2] || allThrone[2] || allThrone[0];
+
+        const p1 = createCombatantFromMasterServant(activeServant, master.username);
+        const ally = createCombatantFromMasterServant({
+          id: 'shadow_master_ally',
+          masterId: 'shadow_master_ally',
+          templateId: allyTemplate.id,
+          level: 20,
+          experience: 1000,
+          allocatedStats: { strength: 3, endurance: 3, agility: 3, mana: 3, luck: 2 },
+          availableStatPoints: 0,
+          skillLevels: [2, 2, 2],
+          customQuotes: { summon: allyTemplate.summonQuote, battleStart: allyTemplate.battleStartQuote, noblePhantasm: allyTemplate.noblePhantasm.chant, victory: allyTemplate.victoryQuote, defeat: allyTemplate.defeatQuote },
+          bondLevel: 3,
+          template: allyTemplate
+        }, 'Allied Master Rin');
+        ally.id = 'shadow_master_ally';
+        ally.name = allyTemplate.name;
+
+        const enemy1 = createCombatantFromMasterServant({
+          id: 'shadow_master_enemy_1',
+          masterId: 'shadow_master_enemy_1',
+          templateId: enemy1Template.id,
+          level: 20,
+          experience: 1000,
+          allocatedStats: { strength: 3, endurance: 3, agility: 3, mana: 3, luck: 2 },
+          availableStatPoints: 0,
+          skillLevels: [2, 2, 2],
+          customQuotes: { summon: enemy1Template.summonQuote, battleStart: enemy1Template.battleStartQuote, noblePhantasm: enemy1Template.noblePhantasm.chant, victory: enemy1Template.victoryQuote, defeat: enemy1Template.defeatQuote },
+          bondLevel: 3,
+          template: enemy1Template
+        }, 'Enemy Master Kirei');
+        enemy1.id = 'shadow_master_enemy_1';
+        enemy1.name = enemy1Template.name;
+
+        const enemy2 = createCombatantFromMasterServant({
+          id: 'shadow_master_enemy_2',
+          masterId: 'shadow_master_enemy_2',
+          templateId: enemy2Template.id,
+          level: 20,
+          experience: 1000,
+          allocatedStats: { strength: 3, endurance: 3, agility: 3, mana: 3, luck: 2 },
+          availableStatPoints: 0,
+          skillLevels: [2, 2, 2],
+          customQuotes: { summon: enemy2Template.summonQuote, battleStart: enemy2Template.battleStartQuote, noblePhantasm: enemy2Template.noblePhantasm.chant, victory: enemy2Template.victoryQuote, defeat: enemy2Template.defeatQuote },
+          bondLevel: 3,
+          template: enemy2Template
+        }, 'Enemy Master Illya');
+        enemy2.id = 'shadow_master_enemy_2';
+        enemy2.name = enemy2Template.name;
+
+        const multiBattle = initializeMultiBattle([p1, ally], [enemy1, enemy2], '2v2');
+        setActiveDuel({ battle: multiBattle });
+
+        addMessage({
+          id: getNextId('bot_duel_2v2_start'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `🛡️ 2v2 ALLIANCE CLASH INITIALIZED!`,
+            description:
+              `⚔️ **TEAM A ALLIANCE:**\n` +
+              `• **${p1.name}** (Master: ${master.username}) — \`${p1.currentHp.toLocaleString()} HP\`\n` +
+              `• **${ally.name}** (Master: Allied Master Rin) — \`${ally.currentHp.toLocaleString()} HP\`\n\n` +
+              `⚔️ **TEAM B ALLIANCE:**\n` +
+              `• **${enemy1.name}** (Master: Enemy Master Kirei) — \`${enemy1.currentHp.toLocaleString()} HP\`\n` +
+              `• **${enemy2.name}** (Master: Enemy Master Illya) — \`${enemy2.currentHp.toLocaleString()} HP\`\n\n` +
+              `✨ **Support Mechanic Active:** Ally & rival partners deliver coordinated support strikes (+25% bonus ATK) every turn!\n\n` +
+              `👉 *Execute your 3-card Command sequence below to strike the enemy alliance:*`,
+            color: '#3b82f6',
+            footer: 'Holy Grail War • 2v2 Alliance Tag-Team Engagement'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'duel_card_bbb', label: 'Buster Brave', style: 'danger', emoji: '🔴' },
+              { id: 'duel_card_aaa', label: 'Arts Chain', style: 'primary', emoji: '🔵' },
+              { id: 'duel_card_qqq', label: 'Quick Chain', style: 'success', emoji: '🟢' },
+              { id: 'duel_tab_active', label: 'Open Battle Stage', style: 'secondary', emoji: '🥊' }
+            ]
+          }
+        });
+        return;
+      }
+
+      // Handle /duel 1v2 or /duel raid
+      if (
+        targetQuery === '1v2' ||
+        targetQuery.startsWith('1v2') ||
+        targetQuery === 'raid' ||
+        targetQuery.startsWith('raid')
+      ) {
+        const otherServants = allThrone.filter(s => s.id !== activeServant.templateId);
+        const enemy1Template = otherServants[0] || allThrone[0];
+        const enemy2Template = otherServants[1] || allThrone[1] || allThrone[0];
+
+        const p1 = createCombatantFromMasterServant(activeServant, master.username);
+        const enemy1 = createCombatantFromMasterServant({
+          id: 'shadow_master_enemy_1',
+          masterId: 'shadow_master_enemy_1',
+          templateId: enemy1Template.id,
+          level: 20,
+          experience: 1000,
+          allocatedStats: { strength: 3, endurance: 3, agility: 3, mana: 3, luck: 2 },
+          availableStatPoints: 0,
+          skillLevels: [2, 2, 2],
+          customQuotes: { summon: enemy1Template.summonQuote, battleStart: enemy1Template.battleStartQuote, noblePhantasm: enemy1Template.noblePhantasm.chant, victory: enemy1Template.victoryQuote, defeat: enemy1Template.defeatQuote },
+          bondLevel: 3,
+          template: enemy1Template
+        }, 'Enemy Vanguard');
+        enemy1.id = 'shadow_master_enemy_1';
+        enemy1.name = enemy1Template.name;
+
+        const enemy2 = createCombatantFromMasterServant({
+          id: 'shadow_master_enemy_2',
+          masterId: 'shadow_master_enemy_2',
+          templateId: enemy2Template.id,
+          level: 20,
+          experience: 1000,
+          allocatedStats: { strength: 3, endurance: 3, agility: 3, mana: 3, luck: 2 },
+          availableStatPoints: 0,
+          skillLevels: [2, 2, 2],
+          customQuotes: { summon: enemy2Template.summonQuote, battleStart: enemy2Template.battleStartQuote, noblePhantasm: enemy2Template.noblePhantasm.chant, victory: enemy2Template.victoryQuote, defeat: enemy2Template.defeatQuote },
+          bondLevel: 3,
+          template: enemy2Template
+        }, 'Enemy Flanker');
+        enemy2.id = 'shadow_master_enemy_2';
+        enemy2.name = enemy2Template.name;
+
+        const multiBattle = initializeMultiBattle([p1], [enemy1, enemy2], '1v2');
+        setActiveDuel({ battle: multiBattle });
+
+        addMessage({
+          id: getNextId('bot_duel_1v2_start'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `⚔️ 1v2 RAID CLASH INITIALIZED!`,
+            description:
+              `🚨 **SOLO SURVIVAL ENGAGEMENT:**\n\n` +
+              `• **Solo Champion:** **${p1.name}** (Master: ${master.username}) — \`${p1.currentHp.toLocaleString()} HP\`\n\n` +
+              `⚔️ **VERSUS ENEMY DUO:**\n` +
+              `• **${enemy1.name}** (Vanguard) — \`${enemy1.currentHp.toLocaleString()} HP\`\n` +
+              `• **${enemy2.name}** (Flanker) — \`${enemy2.currentHp.toLocaleString()} HP\`\n\n` +
+              `👉 *Execute your 3-card Command sequence below to overcome the dual threat:*`,
+            color: '#ef4444',
+            footer: 'Holy Grail War • 1v2 Raid Clash Engagement'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'duel_card_bbb', label: 'Buster Brave', style: 'danger', emoji: '🔴' },
+              { id: 'duel_card_aaa', label: 'Arts Chain', style: 'primary', emoji: '🔵' },
+              { id: 'duel_card_qqq', label: 'Quick Chain', style: 'success', emoji: '🟢' },
+              { id: 'duel_tab_active', label: 'Open Battle Stage', style: 'secondary', emoji: '🥊' }
+            ]
+          }
+        });
+        return;
       }
 
       // If invoked as `/duel` or with a Hub tab name
@@ -6541,7 +6714,9 @@ export default function DiscordEmulator({
     if (category === 'arena') {
       actionButtons = [
         { id: 'duel_act_queue', label: 'Queue Matchmaking', style: 'success', emoji: '🎲' },
-        { id: 'duel_act_practice', label: 'Practice Clash', style: 'primary', emoji: '⚔️' },
+        { id: 'duel_act_practice', label: '1v1 Practice Clash', style: 'primary', emoji: '⚔️' },
+        { id: 'duel_act_2v2', label: '2v2 Alliance Clash', style: 'primary', emoji: '🛡️' },
+        { id: 'duel_act_1v2', label: '1v2 Raid Clash', style: 'secondary', emoji: '⚔️' },
         { id: 'duel_prompt_forcejoin', label: '⚡ Force Join Arena', style: 'danger', emoji: '🚨' },
         { id: 'duel_act_refresh', label: 'Refresh Lobby', style: 'secondary', emoji: '🔄' }
       ];
@@ -8490,6 +8665,10 @@ export default function DiscordEmulator({
     } else if (btnId.startsWith('duel_act_') || btnId.startsWith('duel_link_')) {
       if (btnId === 'duel_act_queue' || btnId === 'duel_act_practice') {
         handleCommand('/duel shadow_rival');
+      } else if (btnId === 'duel_act_2v2' || btnId === 'duel_act_alliance') {
+        handleCommand('/duel 2v2');
+      } else if (btnId === 'duel_act_1v2' || btnId === 'duel_act_raid') {
+        handleCommand('/duel 1v2');
       } else if (btnId === 'duel_act_refresh') {
         postDuelHub(duelHubCategory, '🔄 Arena lobby refreshed.');
       } else if (btnId === 'duel_link_inventory') {
@@ -10555,6 +10734,10 @@ export default function DiscordEmulator({
                 { cmd: '/servants search <name>', desc: '🔍 Search spirits by name, class, NP, or lore' },
                 { cmd: '/servants view <name>', desc: '👤 View full profile card, voice lines, and artwork of a Spirit' },
                 { cmd: '/summon ritual', desc: '✨ Perform Holy Grail War summoning ritual' },
+                { cmd: '/duel', desc: '⚔️ Open Combat Arena lobby & match queue' },
+                { cmd: '/duel 2v2', desc: '🛡️ 2v2 Alliance Tag-Team Clash with partner Master' },
+                { cmd: '/duel 1v2', desc: '⚔️ 1v2 Raid Clash solo survival against two foes' },
+                { cmd: '/duel forcejoin', desc: '🚨 Force join ongoing combat arena as 3rd Master' },
                 { cmd: '/duel <target>', desc: '⚔️ Enter tactical combat with a rival Master or Servant' },
                 { cmd: '/attack <target>', desc: '🗡️ Ambush suspected Master (if innocent, bystander dies & you are exposed!)' },
                 { cmd: '/ambush <target>', desc: '🗡️ Covert ambush strike on suspected Master or server user' },

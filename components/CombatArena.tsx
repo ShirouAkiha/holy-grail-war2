@@ -14,6 +14,7 @@ import {
 import {
   createCombatantFromMasterServant,
   initializeBattle,
+  initializeMultiBattle,
   executeBattleTurn,
   calculateClassMultiplier,
   calculateFleeChance,
@@ -74,12 +75,27 @@ interface BattleDialogueCutIn {
 export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps) {
   const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
 
+  // Match Format & Multi-Combatant Setup State
+  const [battleFormat, setBattleFormat] = useState<'1v1' | '2v2' | '1v2'>('1v1');
+  const [selectedAllyId, setSelectedAllyId] = useState<string>('archer_emiya');
+  const [selectedAllyMasterName, setSelectedAllyMasterName] = useState<string>('Rin Tohsaka');
+  const [selectedEnemy2Id, setSelectedEnemy2Id] = useState<string>('berserker_heracles');
+  const [selectedEnemy2MasterName, setSelectedEnemy2MasterName] = useState<string>('Illyasviel');
+
   // Enemy selection
   const [selectedEnemyId, setSelectedEnemyId] = useState<string>('gilgamesh_archer');
   const enemyTemplate = SERVANT_DATABASE.find(s => s.id === selectedEnemyId) || SERVANT_DATABASE[1];
   const [balanceMode, setBalanceMode] = useState<StatBalanceMode>('archetype');
 
-  const setupNewBattle = (opponentTemplate = enemyTemplate, mode: StatBalanceMode = 'archetype') => {
+  const setupNewBattle = (
+    opponentTemplate = enemyTemplate,
+    mode: StatBalanceMode = 'archetype',
+    format: '1v1' | '2v2' | '1v2' = battleFormat,
+    allyId = selectedAllyId,
+    allyMaster = selectedAllyMasterName,
+    enemy2Id = selectedEnemy2Id,
+    enemy2Master = selectedEnemy2MasterName
+  ) => {
     if (!activeServant) return null;
 
     // Calculate current HP taking into account Mage Sanctuary regeneration if active
@@ -104,8 +120,8 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
     const p1 = createCombatantFromMasterServant(activeServant, master.username, servantHp, mode);
     const p2 = createCombatantFromMasterServant(
       {
-        id: 'cpu_servant',
-        masterId: 'cpu_master',
+        id: 'cpu_servant_1',
+        masterId: 'cpu_master_1',
         templateId: opponentTemplate.id,
         level: 30,
         experience: 0,
@@ -126,7 +142,74 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
       undefined,
       mode
     );
-    return initializeBattle(p1, p2, undefined, undefined, mode);
+    p2.id = 'cpu_servant_1';
+
+    const teamA: ActiveCombatant[] = [p1];
+    const teamB: ActiveCombatant[] = [p2];
+
+    if (format === '2v2') {
+      const allyTemplate = SERVANT_DATABASE.find(s => s.id === allyId) || SERVANT_DATABASE[2];
+      const allyCombatant = createCombatantFromMasterServant(
+        {
+          id: 'ally_servant_2',
+          masterId: 'ally_master_2',
+          templateId: allyTemplate.id,
+          level: 30,
+          experience: 0,
+          allocatedStats: { strength: 4, endurance: 3, agility: 3, mana: 4, luck: 2 },
+          availableStatPoints: 0,
+          skillLevels: [5, 5, 5],
+          customQuotes: {
+            summon: allyTemplate.summonQuote,
+            battleStart: allyTemplate.battleStartQuote,
+            noblePhantasm: allyTemplate.noblePhantasm.chant,
+            victory: allyTemplate.victoryQuote,
+            defeat: allyTemplate.defeatQuote
+          },
+          bondLevel: 5,
+          template: allyTemplate
+        },
+        allyMaster,
+        undefined,
+        mode
+      );
+      allyCombatant.id = 'ally_servant_2';
+      allyCombatant.name = `${allyTemplate.name} (Ally)`;
+      teamA.push(allyCombatant);
+    }
+
+    if (format === '2v2' || format === '1v2') {
+      const enemy2Template = SERVANT_DATABASE.find(s => s.id === enemy2Id) || SERVANT_DATABASE[3];
+      const enemy2Combatant = createCombatantFromMasterServant(
+        {
+          id: 'cpu_servant_2',
+          masterId: 'cpu_master_2',
+          templateId: enemy2Template.id,
+          level: 30,
+          experience: 0,
+          allocatedStats: { strength: 4, endurance: 3, agility: 3, mana: 4, luck: 2 },
+          availableStatPoints: 0,
+          skillLevels: [5, 5, 5],
+          customQuotes: {
+            summon: enemy2Template.summonQuote,
+            battleStart: enemy2Template.battleStartQuote,
+            noblePhantasm: enemy2Template.noblePhantasm.chant,
+            victory: enemy2Template.victoryQuote,
+            defeat: enemy2Template.defeatQuote
+          },
+          bondLevel: 5,
+          template: enemy2Template
+        },
+        enemy2Master,
+        undefined,
+        mode
+      );
+      enemy2Combatant.id = 'cpu_servant_2';
+      enemy2Combatant.name = `${enemy2Template.name} (Rival 2)`;
+      teamB.push(enemy2Combatant);
+    }
+
+    return initializeMultiBattle(teamA, teamB, format, undefined, undefined, mode);
   };
 
   const [battle, setBattle] = useState<BattleState | null>(() => setupNewBattle(enemyTemplate, 'archetype'));
@@ -978,119 +1061,250 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
       ) : (
         <>
           {/* Top Arena Header & Opponent Select */}
-          <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a]">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-sm bg-[#161616] text-[#d4af37] border border-[#d4af37]/30">
-                <Swords className="w-5 h-5" />
+          <div className="space-y-3 p-4 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a]">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-sm bg-[#161616] text-[#d4af37] border border-[#d4af37]/30">
+                  <Swords className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-serif italic text-white tracking-wide">Fuyuki Combat Arena</h2>
+                  <p className="text-[11px] font-mono text-white/40 uppercase tracking-wider">
+                    Turn {battle.currentTurn} • Tactical Card-Chain RPG • {battle.battleMode || '1v1'} Mode
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-lg font-serif italic text-white tracking-wide">Fuyuki Combat Arena</h2>
-                <p className="text-[11px] font-mono text-white/40 uppercase tracking-wider">
-                  Turn {battle.currentTurn} • Tactical Card-Chain RPG
-                </p>
+
+              {/* Match Format Switcher Buttons */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center bg-[#141414] p-1 rounded-lg border border-[#262626]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBattleFormat('1v1');
+                      setBattle(setupNewBattle(enemyTemplate, balanceMode, '1v1'));
+                      setSelectedCards([]);
+                      setUseNp(false);
+                      setSelectedSkillIdx(undefined);
+                      setShowVsClash(true);
+                    }}
+                    className={`px-3 py-1 text-xs font-mono rounded transition flex items-center gap-1.5 ${
+                      battleFormat === '1v1'
+                        ? 'bg-[#d4af37] text-black font-bold shadow'
+                        : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    <Swords className="w-3.5 h-3.5" />
+                    <span>1v1 Duel</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBattleFormat('2v2');
+                      setBattle(setupNewBattle(enemyTemplate, balanceMode, '2v2', selectedAllyId, selectedAllyMasterName, selectedEnemy2Id, selectedEnemy2MasterName));
+                      setSelectedCards([]);
+                      setUseNp(false);
+                      setSelectedSkillIdx(undefined);
+                      setShowVsClash(false);
+                    }}
+                    className={`px-3 py-1 text-xs font-mono rounded transition flex items-center gap-1.5 ${
+                      battleFormat === '2v2'
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold shadow-[0_0_10px_rgba(59,130,246,0.4)]'
+                        : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>2v2 Alliance Tag-Team</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBattleFormat('1v2');
+                      setBattle(setupNewBattle(enemyTemplate, balanceMode, '1v2', selectedAllyId, selectedAllyMasterName, selectedEnemy2Id, selectedEnemy2MasterName));
+                      setSelectedCards([]);
+                      setUseNp(false);
+                      setSelectedSkillIdx(undefined);
+                      setShowVsClash(false);
+                    }}
+                    className={`px-3 py-1 text-xs font-mono rounded transition flex items-center gap-1.5 ${
+                      battleFormat === '1v2'
+                        ? 'bg-gradient-to-r from-rose-600 to-red-600 text-white font-bold shadow-[0_0_10px_rgba(239,68,68,0.4)]'
+                        : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>1v2 Raid Clash</span>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowForceJoinModal(true)}
+                  className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-black font-bold text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.4)] transition animate-pulse"
+                  title="Intervene mid-battle as a 3rd Master"
+                >
+                  <Zap className="w-4 h-4 fill-black" />
+                  <span>⚡ Join Mid-Battle</span>
+                </button>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Balance Mode Switcher */}
-              <div className="flex items-center gap-1 bg-[#141414] p-1 rounded border border-[#222]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBalanceMode('archetype');
-                    setBattle(setupNewBattle(enemyTemplate, 'archetype'));
-                    setSelectedCards([]);
-                    setUseNp(false);
-                    setSelectedSkillIdx(undefined);
-                  }}
-                  className={`px-2 py-1 text-[11px] font-mono rounded transition ${
-                    balanceMode === 'archetype'
-                      ? 'bg-[#d4af37] text-black font-bold shadow'
-                      : 'text-white/60 hover:text-white'
-                  }`}
-                  title="Archetype Budget: Canonical parameters and stats balanced to equal total power"
-                >
-                  Archetype
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBalanceMode('flat');
-                    setBattle(setupNewBattle(enemyTemplate, 'flat'));
-                    setSelectedCards([]);
-                    setUseNp(false);
-                    setSelectedSkillIdx(undefined);
-                  }}
-                  className={`px-2 py-1 text-[11px] font-mono rounded transition ${
-                    balanceMode === 'flat'
-                      ? 'bg-[#d4af37] text-black font-bold shadow'
-                      : 'text-white/60 hover:text-white'
-                  }`}
-                  title="Pure Flat Parity: Exactly equal 28,000 HP / 10,000 ATK baseline for all Servants"
-                >
-                  Flat Parity
-                </button>
+            {/* 2v2 Alliance / 1v2 Raid Configuration Panel */}
+            {battleFormat !== '1v1' && (
+              <div className="p-3 bg-[#111] rounded-lg border border-[#262626] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-mono">
+                {battleFormat === '2v2' && (
+                  <div>
+                    <label className="text-blue-400 block mb-1 font-bold flex items-center gap-1">
+                      <Shield className="w-3.5 h-3.5" /> Allied Servant (Team A):
+                    </label>
+                    <select
+                      value={selectedAllyId}
+                      onChange={e => {
+                        setSelectedAllyId(e.target.value);
+                        const aTemplate = SERVANT_DATABASE.find(s => s.id === e.target.value);
+                        if (aTemplate) {
+                          setBattle(setupNewBattle(enemyTemplate, balanceMode, '2v2', e.target.value, selectedAllyMasterName, selectedEnemy2Id, selectedEnemy2MasterName));
+                        }
+                      }}
+                      className="w-full bg-[#181818] text-white px-2 py-1.5 rounded border border-[#333] outline-none"
+                    >
+                      {SERVANT_DATABASE.filter(s => s.id !== activeServant.template.id).map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} ({s.servantClass})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-red-400 block mb-1 font-bold flex items-center gap-1">
+                    <Crosshair className="w-3.5 h-3.5" /> Primary Rival (Team B):
+                  </label>
+                  <select
+                    value={selectedEnemyId}
+                    onChange={e => {
+                      setSelectedEnemyId(e.target.value);
+                      const opp = SERVANT_DATABASE.find(s => s.id === e.target.value);
+                      if (opp) {
+                        setBattle(setupNewBattle(opp, balanceMode, battleFormat, selectedAllyId, selectedAllyMasterName, selectedEnemy2Id, selectedEnemy2MasterName));
+                      }
+                    }}
+                    className="w-full bg-[#181818] text-white px-2 py-1.5 rounded border border-[#333] outline-none"
+                  >
+                    {SERVANT_DATABASE.filter(s => s.id !== activeServant.template.id && s.id !== selectedEnemy2Id).map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.servantClass})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-rose-400 block mb-1 font-bold flex items-center gap-1">
+                    <Crosshair className="w-3.5 h-3.5" /> Second Rival (Team B):
+                  </label>
+                  <select
+                    value={selectedEnemy2Id}
+                    onChange={e => {
+                      setSelectedEnemy2Id(e.target.value);
+                      setBattle(setupNewBattle(enemyTemplate, balanceMode, battleFormat, selectedAllyId, selectedAllyMasterName, e.target.value, selectedEnemy2MasterName));
+                    }}
+                    className="w-full bg-[#181818] text-white px-2 py-1.5 rounded border border-[#333] outline-none"
+                  >
+                    {SERVANT_DATABASE.filter(s => s.id !== activeServant.template.id && s.id !== selectedEnemyId).map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.servantClass})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBattle(setupNewBattle(enemyTemplate, balanceMode, battleFormat, selectedAllyId, selectedAllyMasterName, selectedEnemy2Id, selectedEnemy2MasterName));
+                      setSelectedCards([]);
+                      setUseNp(false);
+                      setSelectedSkillIdx(undefined);
+                    }}
+                    className="w-full py-1.5 bg-[#d4af37] text-black font-bold rounded hover:bg-[#e5c158] transition flex items-center justify-center gap-1.5"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Apply Format</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Quick Balance & Match Controls */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#1a1a1a]">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-mono text-white/40 uppercase">Stat Calibration:</span>
+                <div className="flex items-center gap-1 bg-[#141414] p-1 rounded border border-[#222]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBalanceMode('archetype');
+                      setBattle(setupNewBattle(enemyTemplate, 'archetype'));
+                      setSelectedCards([]);
+                      setUseNp(false);
+                    }}
+                    className={`px-2 py-0.5 text-[11px] font-mono rounded transition ${
+                      balanceMode === 'archetype'
+                        ? 'bg-[#d4af37] text-black font-bold shadow'
+                        : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    Archetype Budget
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBalanceMode('flat');
+                      setBattle(setupNewBattle(enemyTemplate, 'flat'));
+                      setSelectedCards([]);
+                      setUseNp(false);
+                    }}
+                    className={`px-2 py-0.5 text-[11px] font-mono rounded transition ${
+                      balanceMode === 'flat'
+                        ? 'bg-[#d4af37] text-black font-bold shadow'
+                        : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    Flat Parity
+                  </button>
+                </div>
               </div>
 
-              <div className="text-[11px] font-mono text-white/40 uppercase tracking-wider">Rival:</div>
-              <select
-                value={selectedEnemyId}
-                onChange={e => {
-                  setSelectedEnemyId(e.target.value);
-                  const opp = SERVANT_DATABASE.find(s => s.id === e.target.value);
-                  if (opp) {
-                    setBattle(setupNewBattle(opp, balanceMode));
-                    setShowVsClash(true);
-                  }
-                }}
-                className="bg-[#111] text-white text-xs px-3 py-1.5 rounded-sm border border-[#222] outline-none font-mono focus:border-[#d4af37]"
-              >
-                {SERVANT_DATABASE.filter(s => s.id !== activeServant.template.id).map(s => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} ({s.servantClass})
-                  </option>
-                ))}
-              </select>
-
-              <button
-                type="button"
-                onClick={() => setShowForceJoinModal(true)}
-                className="px-3 py-1.5 rounded-sm bg-[#221500] hover:bg-[#382300] text-[#f59e0b] hover:text-[#fbbf24] text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 border border-[#f59e0b]/50 shadow-md transition"
-                title="Force join a 3rd Master into this battle"
-              >
-                <Zap className="w-3.5 h-3.5 text-[#f59e0b]" />
-                <span>Force Join</span>
-                {battle.battleMode && (
-                  <span className="px-1.5 py-0.2 rounded bg-[#f59e0b] text-black font-bold text-[9px]">
-                    {battle.battleMode}
-                  </span>
+              <div className="flex items-center gap-2">
+                {battleFormat === '1v1' && (
+                  <button
+                    type="button"
+                    onClick={() => setShowVsClash(!showVsClash)}
+                    className={`px-3 py-1 rounded text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 border transition ${
+                      showVsClash
+                        ? 'bg-amber-500 text-black font-bold border-amber-400'
+                        : 'bg-transparent text-amber-300 hover:bg-[#161616] border-amber-500/40'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>VS Clash Screen</span>
+                  </button>
                 )}
-              </button>
 
-              <button
-                type="button"
-                onClick={() => setShowVsClash(!showVsClash)}
-                className={`px-3 py-1.5 rounded-sm text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 border transition ${
-                  showVsClash
-                    ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black font-bold border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
-                    : 'bg-transparent hover:bg-[#161616] text-amber-300 hover:text-amber-200 border-amber-500/40'
-                }`}
-                title="Display interactive starting dialogue between the two Servants"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>VS Clash</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  handleRestart();
-                  setShowVsClash(true);
-                }}
-                className="px-3 py-1.5 rounded-sm bg-transparent hover:bg-[#161616] text-white/70 hover:text-white text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 border border-white/20 transition"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Reset
-              </button>
+                <button
+                  onClick={() => {
+                    handleRestart();
+                    if (battleFormat === '1v1') setShowVsClash(true);
+                  }}
+                  className="px-3 py-1 rounded bg-transparent hover:bg-[#161616] text-white/70 hover:text-white text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 border border-white/20 transition"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Reset Stage
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1800,6 +2014,27 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         battle.turnPhase !== 'fled' &&
         battle.turnPhase !== 'evacuated' && (
         <div className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] shadow-2xl space-y-6">
+          {/* Mid-Battle Force Join Action Banner */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg bg-gradient-to-r from-[#291700] via-[#1a0f00] to-[#120a00] border border-[#f59e0b]/60 text-xs font-mono shadow-[0_0_15px_rgba(245,158,11,0.15)]">
+            <div className="flex items-center gap-2.5 text-[#f59e0b]">
+              <div className="p-1 rounded bg-[#f59e0b]/20 border border-[#f59e0b]/40">
+                <Zap className="w-4 h-4 text-[#f59e0b] animate-pulse" />
+              </div>
+              <div>
+                <strong className="text-white">⚡ Mid-Battle 3rd Master Intervention:</strong>
+                <span className="text-[#f59e0b] ml-1.5">Force join an extra Master/Servant to reinforce Team A or Team B right now!</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowForceJoinModal(true)}
+              className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-bold rounded text-xs uppercase tracking-wider transition shadow-[0_0_10px_rgba(245,158,11,0.4)] flex items-center gap-1.5"
+            >
+              <Zap className="w-3.5 h-3.5 fill-black" />
+              <span>Intervene Now</span>
+            </button>
+          </div>
+
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1a1a1a] pb-4">
             <div>
               <h3 className="text-sm font-serif italic text-white flex items-center gap-2">
