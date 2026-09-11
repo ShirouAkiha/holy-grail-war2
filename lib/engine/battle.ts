@@ -923,18 +923,19 @@ export function executeBattleTurn(
   p1Choice: TurnActionChoice,
   p2Choice: TurnActionChoice
 ): { updatedState: BattleState; turnLogs: CombatTurnLog[] } {
-  const p1 = { ...state.player1, activeBuffs: [...state.player1.activeBuffs] };
-  const p2 = { ...state.player2, activeBuffs: [...state.player2.activeBuffs] };
+  // Initialize teams with deep cloned buff arrays
+  const teamA: ActiveCombatant[] = (state.teamA && state.teamA.length > 0 ? state.teamA : [state.player1]).map(c => ({
+    ...c,
+    activeBuffs: [...c.activeBuffs]
+  }));
+  const teamB: ActiveCombatant[] = (state.teamB && state.teamB.length > 0 ? state.teamB : [state.player2]).map(c => ({
+    ...c,
+    activeBuffs: [...c.activeBuffs]
+  }));
+
+  const p1 = teamA.find(c => c.id === state.player1.id) || teamA[0];
+  const p2 = teamB.find(c => c.id === state.player2.id) || teamB[0];
   const turnLogs: CombatTurnLog[] = [];
-
-  // Determine initiative order based on Agility + random variance + Quick buffs
-  const p1Speed = p1.stats.agility * 10 + (Math.random() * 20);
-  const p2Speed = p2.stats.agility * 10 + (Math.random() * 20);
-
-  const [firstActor, secondActor, firstChoice, secondChoice] =
-    p1Speed >= p2Speed
-      ? [p1, p2, p1Choice, p2Choice]
-      : [p2, p1, p2Choice, p1Choice];
 
   // Helper for single action resolution
   const resolveActorTurn = (actor: ActiveCombatant, target: ActiveCombatant, choice: TurnActionChoice) => {
@@ -1476,54 +1477,101 @@ export function executeBattleTurn(
     });
   };
 
-  // Execute 1st and 2nd combatants
-  resolveActorTurn(firstActor, secondActor, firstChoice);
-  resolveActorTurn(secondActor, firstActor, secondChoice);
+  // Determine primary targets based on choices or living opponents
+  const getEnemyTarget = (actorTeam: 'teamA' | 'teamB', requestedTargetId?: string): ActiveCombatant | undefined => {
+    const opposingTeam = actorTeam === 'teamA' ? teamB : teamA;
+    if (requestedTargetId) {
+      const match = opposingTeam.find(c => c.id === requestedTargetId && c.currentHp > 0);
+      if (match) return match;
+    }
+    return opposingTeam.find(c => c.currentHp > 0);
+  };
 
-  // Clean up any expired buffs and sync defensive booleans
-  p1.activeBuffs = p1.activeBuffs.filter(b => b.remainingTurns > 0 && (!b.isHitCount || b.remainingHits === undefined || b.remainingHits > 0));
-  p2.activeBuffs = p2.activeBuffs.filter(b => b.remainingTurns > 0 && (!b.isHitCount || b.remainingHits === undefined || b.remainingHits > 0));
-  p1.isInvincible = p1.activeBuffs.some(b => b.type === 'invincible');
-  p2.isInvincible = p2.activeBuffs.some(b => b.type === 'invincible');
-  p1.isEvading = p1.activeBuffs.some(b => b.type === 'evade');
-  p2.isEvading = p2.activeBuffs.some(b => b.type === 'evade');
+  // Determine initiative order based on Agility + variance
+  const p1Speed = p1.stats.agility * 10 + (Math.random() * 20);
+  const p2Speed = p2.stats.agility * 10 + (Math.random() * 20);
 
-  // Check victory condition
-  let winnerId: string | undefined;
-  let nextPhase: BattleState['turnPhase'] = 'card_selection';
+  const primaryActors = p1Speed >= p2Speed
+    ? [{ actor: p1, choice: p1Choice, team: 'teamA' as const }, { actor: p2, choice: p2Choice, team: 'teamB' as const }]
+    : [{ actor: p2, choice: p2Choice, team: 'teamB' as const }, { actor: p1, choice: p1Choice, team: 'teamA' as const }];
 
-  if (p1.currentHp <= 0 && p2.currentHp <= 0) {
-    nextPhase = 'victory';
-    winnerId = p1Speed >= p2Speed ? p1.id : p2.id;
-  } else if (p2.currentHp <= 0) {
-    nextPhase = 'victory';
-    winnerId = p1.id;
-  } else if (p1.currentHp <= 0) {
-    nextPhase = 'defeat';
-    winnerId = p2.id;
+  for (const entry of primaryActors) {
+    if (entry.actor.currentHp > 0) {
+      const target = getEnemyTarget(entry.team, entry.choice.targetId);
+      if (target && target.currentHp > 0) {
+        resolveActorTurn(entry.actor, target, entry.choice);
+      }
+    }
   }
 
-  const updatedTeamA = (state.teamA && state.teamA.length > 0 ? state.teamA : [p1]).map(c => {
-    if (c.id === p1.id) return p1;
-    if (c.id === p2.id) return p2;
-    return c;
+  // Support strikes for any force-joined allies in Team A
+  const extraTeamA = teamA.filter(c => c.id !== p1.id && c.currentHp > 0);
+  for (const ally of extraTeamA) {
+    const enemyTarget = getEnemyTarget('teamA');
+    if (enemyTarget && enemyTarget.currentHp > 0) {
+      const allyChoice: TurnActionChoice = {
+        combatantId: ally.id,
+        selectedCards: ['Buster', 'Arts', 'Quick']
+      };
+      resolveActorTurn(ally, enemyTarget, allyChoice);
+    }
+  }
+
+  // Support strikes for any force-joined allies in Team B
+  const extraTeamB = teamB.filter(c => c.id !== p2.id && c.currentHp > 0);
+  for (const ally of extraTeamB) {
+    const enemyTarget = getEnemyTarget('teamB');
+    if (enemyTarget && enemyTarget.currentHp > 0) {
+      const allyChoice: TurnActionChoice = {
+        combatantId: ally.id,
+        selectedCards: ['Buster', 'Arts', 'Quick']
+      };
+      resolveActorTurn(ally, enemyTarget, allyChoice);
+    }
+  }
+
+  // Clean up expired buffs and sync defensive booleans for all team members
+  [...teamA, ...teamB].forEach(combatant => {
+    combatant.activeBuffs = combatant.activeBuffs.filter(
+      b => b.remainingTurns > 0 && (!b.isHitCount || b.remainingHits === undefined || b.remainingHits > 0)
+    );
+    combatant.isInvincible = combatant.activeBuffs.some(b => b.type === 'invincible');
+    combatant.isEvading = combatant.activeBuffs.some(b => b.type === 'evade');
   });
-  const updatedTeamB = (state.teamB && state.teamB.length > 0 ? state.teamB : [p2]).map(c => {
-    if (c.id === p1.id) return p1;
-    if (c.id === p2.id) return p2;
-    return c;
-  });
+
+  // Check victory condition across full teams
+  const teamADefeated = teamA.every(c => c.currentHp <= 0);
+  const teamBDefeated = teamB.every(c => c.currentHp <= 0);
+
+  let winnerId: string | undefined;
+  let winnerTeam: 'teamA' | 'teamB' | undefined;
+  let nextPhase: BattleState['turnPhase'] = 'card_selection';
+
+  if (teamADefeated && teamBDefeated) {
+    nextPhase = 'victory';
+    winnerId = p1Speed >= p2Speed ? p1.id : p2.id;
+    winnerTeam = p1Speed >= p2Speed ? 'teamA' : 'teamB';
+  } else if (teamBDefeated) {
+    nextPhase = 'victory';
+    winnerId = p1.id;
+    winnerTeam = 'teamA';
+  } else if (teamADefeated) {
+    nextPhase = 'defeat';
+    winnerId = p2.id;
+    winnerTeam = 'teamB';
+  }
 
   const updatedState: BattleState = {
     ...state,
     player1: p1,
     player2: p2,
-    teamA: updatedTeamA,
-    teamB: updatedTeamB,
+    teamA,
+    teamB,
     currentTurn: state.currentTurn + 1,
     turnPhase: nextPhase,
     turnHistory: [...state.turnHistory, ...turnLogs],
-    winnerId
+    winnerId,
+    winnerTeam
   };
 
   return { updatedState, turnLogs };

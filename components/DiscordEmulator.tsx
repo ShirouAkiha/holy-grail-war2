@@ -25,7 +25,8 @@ import {
   executeBattleTurn,
   calculateFleeChance,
   rollFleeSuccess,
-  applyCombatantSkill
+  applyCombatantSkill,
+  forceJoinBattle
 } from '../lib/engine/battle';
 import {
   allocateStatPoints,
@@ -2512,6 +2513,177 @@ export default function DiscordEmulator({
 
       // Match target opponent from Holy Grail War
       const targetQuery = trimmed.replace('/duel', '').replace(/[<@!>]/g, '').trim().toLowerCase();
+
+      // Handle /duel forcejoin [side] or /duel intervene [side]
+      if (
+        targetQuery === 'forcejoin' ||
+        targetQuery.startsWith('forcejoin') ||
+        targetQuery === 'force_join' ||
+        targetQuery.startsWith('force_join') ||
+        targetQuery === 'intervene' ||
+        targetQuery.startsWith('intervene')
+      ) {
+        if (!activeServant) {
+          addMessage({
+            id: getNextId('bot_forcejoin_no_srv'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '⚠️ No Active Servant Contract',
+              description: 'You must contract and equip a Servant before you can breach a battle arena and force join!',
+              color: '#ef4444'
+            }
+          });
+          return;
+        }
+
+        const rawSideArg = targetQuery
+          .replace('forcejoin', '')
+          .replace('force_join', '')
+          .replace('intervene', '')
+          .trim()
+          .toLowerCase();
+
+        let chosenSide: 'teamA' | 'teamB' | null = null;
+        if (rawSideArg === 'teama' || rawSideArg === 'team_a' || rawSideArg === 'a' || rawSideArg === '1' || rawSideArg === 'sidea' || rawSideArg === 'p1') {
+          chosenSide = 'teamA';
+        } else if (rawSideArg === 'teamb' || rawSideArg === 'team_b' || rawSideArg === 'b' || rawSideArg === '2' || rawSideArg === 'sideb' || rawSideArg === 'p2') {
+          chosenSide = 'teamB';
+        }
+
+        // If an active duel exists, force join it
+        if (activeDuel) {
+          if (!chosenSide) {
+            // Prompt side selection
+            addMessage({
+              id: getNextId('bot_forcejoin_pick_side'),
+              sender: 'bot',
+              timestamp: 'Just now',
+              embed: {
+                title: '⚡ 3RD MASTER INTERVENTION — CHOOSE ALLEGIANCE',
+                description:
+                  `An active duel is underway between **${activeDuel.battle.player1.name}** and **${activeDuel.battle.player2.name}**!\n\n` +
+                  `Master **${master.username}** and **${activeServant.nickname || activeServant.template.name}**, choose which side to reinforce with your Spiritron mana:`,
+                color: '#d4af37',
+                footer: 'Holy Grail War Multi-Combatant Intervention Engine'
+              },
+              components: {
+                type: 'buttons',
+                items: [
+                  { id: 'duel_forcejoin_side_teama', label: `Reinforce Team A (${activeDuel.battle.player1.name})`, style: 'primary', emoji: '🛡️' },
+                  { id: 'duel_forcejoin_side_teamb', label: `Reinforce Team B (${activeDuel.battle.player2.name})`, style: 'danger', emoji: '⚔️' },
+                  { id: 'duel_tab_active', label: 'View Active Clash', style: 'secondary', emoji: '🥊' }
+                ]
+              }
+            });
+            return;
+          }
+
+          const intervenorHp = userParticipant ? calculateCurrentHp(userParticipant) : undefined;
+          const thirdCombatant = createCombatantFromMasterServant(activeServant, master.username, intervenorHp);
+          const updatedBattle = forceJoinBattle(activeDuel.battle, thirdCombatant, chosenSide);
+          setActiveDuel({ battle: updatedBattle });
+
+          const allyTarget = chosenSide === 'teamA' ? updatedBattle.player1.name : updatedBattle.player2.name;
+          const enemyTarget = chosenSide === 'teamA' ? updatedBattle.player2.name : updatedBattle.player1.name;
+
+          addMessage({
+            id: getNextId('bot_forcejoin_success'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `🚨 3RD MASTER FORCE JOINED COMBAT!`,
+              description:
+                `💥 **BOUNDED FIELD BREACHED!**\n\n` +
+                `Master **${master.username}** unleashed **${thirdCombatant.name}** into the ongoing clash, joining **${chosenSide === 'teamA' ? 'Team A' : 'Team B'}** alongside **${allyTarget}** against **${enemyTarget}**!\n\n` +
+                `⚔️ **Updated Battle Format:** \`${updatedBattle.teamA.length}v${updatedBattle.teamB.length} Multi-Combat Encounter\`\n` +
+                `❤️ **${thirdCombatant.name} HP:** \`${thirdCombatant.currentHp.toLocaleString()}/${thirdCombatant.maxHp.toLocaleString()}\`\n` +
+                `✨ **Support Action:** Extra combatants contribute bonus support strikes (+25% ATK) each turn!`,
+              color: '#e11d48',
+              footer: 'Holy Grail War • Multi-Combat Dynamic Team Engagement'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'duel_card_bbb', label: 'Buster Brave', style: 'danger', emoji: '🔴' },
+                { id: 'duel_card_aaa', label: 'Arts Chain', style: 'primary', emoji: '🔵' },
+                { id: 'duel_card_qqq', label: 'Quick Chain', style: 'success', emoji: '🟢' },
+                { id: 'duel_tab_active', label: 'Open Battle Stage', style: 'secondary', emoji: '🥊' }
+              ]
+            }
+          });
+          return;
+        } else {
+          // No active duel in progress -> Spawn a 3-way multi-combat skirmish arena!
+          const otherServants = allThrone.filter(s => s.id !== activeServant.templateId);
+          const r1 = otherServants[0] || allThrone[0];
+          const r2 = otherServants[1] || allThrone[1] || allThrone[0];
+
+          const p1 = createCombatantFromMasterServant(activeServant, master.username);
+          const p2 = createCombatantFromMasterServant({
+            id: 'shadow_master_rival_1',
+            masterId: 'shadow_master_rival_1',
+            templateId: r1.id,
+            level: 20,
+            experience: 1000,
+            allocatedStats: { strength: 3, endurance: 3, agility: 3, mana: 3, luck: 2 },
+            availableStatPoints: 0,
+            skillLevels: [2, 2, 2],
+            customQuotes: { summon: r1.summonQuote, battleStart: r1.battleStartQuote, noblePhantasm: r1.noblePhantasm.chant, victory: r1.victoryQuote, defeat: r1.defeatQuote },
+            bondLevel: 3,
+            template: r1
+          }, 'Shadow Rival Alpha');
+          p2.id = 'shadow_master_rival_1';
+          p2.name = r1.name;
+
+          const p3 = createCombatantFromMasterServant({
+            id: 'shadow_master_intervenor',
+            masterId: 'shadow_master_intervenor',
+            templateId: r2.id,
+            level: 20,
+            experience: 1000,
+            allocatedStats: { strength: 3, endurance: 3, agility: 3, mana: 3, luck: 2 },
+            availableStatPoints: 0,
+            skillLevels: [2, 2, 2],
+            customQuotes: { summon: r2.summonQuote, battleStart: r2.battleStartQuote, noblePhantasm: r2.noblePhantasm.chant, victory: r2.victoryQuote, defeat: r2.defeatQuote },
+            bondLevel: 3,
+            template: r2
+          }, 'Shadow Intervenor Omega');
+          p3.id = 'shadow_master_intervenor';
+          p3.name = r2.name;
+
+          let newBattle = initializeBattle(p1, p2);
+          newBattle = forceJoinBattle(newBattle, p3, chosenSide || 'teamB');
+          setActiveDuel({ battle: newBattle });
+
+          addMessage({
+            id: getNextId('bot_forcejoin_arena_start'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `⚔️ 3-MASTER MULTI-COMBAT ARENA INITIATED!`,
+              description:
+                `🚨 **MULTI-COMBATANT ENGAGEMENT INITIALIZED!**\n\n` +
+                `Master **${master.username}** entered the arena with **${p1.name}** against **${p2.name}** and 3rd combatant **${p3.name}**!\n\n` +
+                `👥 **Team A:** ${newBattle.teamA.map(c => `**${c.name}** (${c.currentHp.toLocaleString()} HP)`).join(', ')}\n` +
+                `👥 **Team B:** ${newBattle.teamB.map(c => `**${c.name}** (${c.currentHp.toLocaleString()} HP)`).join(', ')}\n\n` +
+                `*Execute your Command Card sequence below to strike the enemy team!*`,
+              color: '#ef4444',
+              footer: 'Holy Grail War Multi-Combat Arena'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'duel_card_bbb', label: 'Buster Brave', style: 'danger', emoji: '🔴' },
+                { id: 'duel_card_aaa', label: 'Arts Chain', style: 'primary', emoji: '🔵' },
+                { id: 'duel_card_qqq', label: 'Quick Chain', style: 'success', emoji: '🟢' },
+                { id: 'duel_tab_active', label: 'Open Battle Stage', style: 'secondary', emoji: '🥊' }
+              ]
+            }
+          });
+          return;
+        }
+      }
 
       // If invoked as `/duel` or with a Hub tab name
       if (!targetQuery || ['arena', 'lobby', 'history', 'leaderboard', 'rankings', 'hub', 'active'].includes(targetQuery)) {
@@ -6370,6 +6542,7 @@ export default function DiscordEmulator({
       actionButtons = [
         { id: 'duel_act_queue', label: 'Queue Matchmaking', style: 'success', emoji: '🎲' },
         { id: 'duel_act_practice', label: 'Practice Clash', style: 'primary', emoji: '⚔️' },
+        { id: 'duel_prompt_forcejoin', label: '⚡ Force Join Arena', style: 'danger', emoji: '🚨' },
         { id: 'duel_act_refresh', label: 'Refresh Lobby', style: 'secondary', emoji: '🔄' }
       ];
     } else if (category === 'active' && activeDuel) {
@@ -6381,16 +6554,19 @@ export default function DiscordEmulator({
         { id: 'duel_card_aaa', label: 'Arts Chain (NP +300%)', style: 'primary', emoji: '🔵' },
         { id: 'duel_card_qqq', label: 'Quick Star (+25 Stars)', style: 'success', emoji: '🟢' },
         { id: 'duel_use_np', label: `Noble Phantasm (${Math.round(p1.npGauge)}%)`, style: 'danger', emoji: '💥', disabled: !isNpReady },
+        { id: 'duel_prompt_forcejoin', label: '⚡ 3rd Master Join', style: 'secondary', emoji: '🚨' },
         { id: 'duel_flee', label: `Flee (${fleeInfo.chancePercent}%)`, style: 'secondary', emoji: '🏃' }
       ];
     } else if (category === 'active' && !activeDuel) {
       actionButtons = [
         { id: 'duel_act_queue', label: 'Start Matchmaking', style: 'success', emoji: '🎲' },
+        { id: 'duel_prompt_forcejoin', label: '⚡ 3-Way Force Join', style: 'danger', emoji: '🚨' },
         { id: 'duel_tab_arena', label: 'Back to Lobby', style: 'secondary', emoji: '⚔️' }
       ];
     } else {
       actionButtons = [
-        { id: 'duel_act_queue', label: 'Enter Arena Queue', style: 'primary', emoji: '⚔️' }
+        { id: 'duel_act_queue', label: 'Enter Arena Queue', style: 'primary', emoji: '⚔️' },
+        { id: 'duel_prompt_forcejoin', label: '⚡ Force Join (/duel forcejoin)', style: 'danger', emoji: '🚨' }
       ];
     }
 
@@ -8328,6 +8504,19 @@ export default function DiscordEmulator({
       }
       return;
     } else if (btnId.startsWith('duel_')) {
+      if (btnId === 'duel_prompt_forcejoin') {
+        handleCommand('/duel forcejoin');
+        return;
+      }
+      if (btnId === 'duel_forcejoin_side_teama') {
+        handleCommand('/duel forcejoin teama');
+        return;
+      }
+      if (btnId === 'duel_forcejoin_side_teamb') {
+        handleCommand('/duel forcejoin teamb');
+        return;
+      }
+
       if (!activeDuel) {
         handleCommand('/duel');
         return;

@@ -17,7 +17,8 @@ import {
   executeBattleTurn,
   calculateClassMultiplier,
   calculateFleeChance,
-  rollFleeSuccess
+  rollFleeSuccess,
+  forceJoinBattle
 } from '../lib/engine/battle';
 import {
   loadCombatBattleHistory,
@@ -47,7 +48,10 @@ import {
   Wind,
   ShieldAlert,
   Clock,
-  Timer
+  Timer,
+  Crosshair,
+  Users,
+  X
 } from 'lucide-react';
 
 interface CombatArenaProps {
@@ -141,6 +145,14 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
   const [dialogueCutIn, setDialogueCutIn] = useState<BattleDialogueCutIn | null>(null);
   const [showDialogueMode, setShowDialogueMode] = useState(false);
   const [cutInCountdown, setCutInCountdown] = useState(3.0);
+
+  // Force Join & Multi-Combatant state
+  const [showForceJoinModal, setShowForceJoinModal] = useState(false);
+  const [forceJoinMasterName, setForceJoinMasterName] = useState('Rin Tohsaka');
+  const [forceJoinServantId, setForceJoinServantId] = useState('archer_emiya');
+  const [forceJoinSide, setForceJoinSide] = useState<'teamA' | 'teamB'>('teamA');
+  const [selectedTargetEnemyId, setSelectedTargetEnemyId] = useState<string | undefined>(undefined);
+  const [forceJoinSuccessMessage, setForceJoinSuccessMessage] = useState<string | null>(null);
 
   // Interactive Pre-Battle Matchup & VS Clash Screen State
   const [showVsClash, setShowVsClash] = useState<boolean>(true);
@@ -267,7 +279,40 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
 
   const p1 = battle.player1;
   const p2 = battle.player2;
+  const teamA = battle.teamA && battle.teamA.length > 0 ? battle.teamA : [p1];
+  const teamB = battle.teamB && battle.teamB.length > 0 ? battle.teamB : [p2];
   const classMultiplier = calculateClassMultiplier(p1.servantClass, p2.servantClass);
+
+  const handleExecuteForceJoin = () => {
+    const template = SERVANT_DATABASE.find(s => s.id === forceJoinServantId) || SERVANT_DATABASE[2];
+    const mockServant: MasterServantInstance = {
+      id: `third_servant_${Date.now()}`,
+      masterId: `master_${forceJoinMasterName.toLowerCase().replace(/\s+/g, '_')}`,
+      templateId: template.id,
+      level: 30,
+      experience: 2500,
+      allocatedStats: { strength: 4, endurance: 4, agility: 4, mana: 4, luck: 2 },
+      availableStatPoints: 0,
+      skillLevels: [4, 4, 4],
+      customQuotes: {
+        summon: template.summonQuote,
+        battleStart: template.battleStartQuote,
+        noblePhantasm: template.noblePhantasm.chant,
+        victory: template.victoryQuote,
+        defeat: template.defeatQuote
+      },
+      bondLevel: 5,
+      template
+    };
+
+    const newCombatant = createCombatantFromMasterServant(mockServant, forceJoinMasterName.trim() || 'Third Master');
+    newCombatant.id = `third_${Date.now()}`;
+    const updated = forceJoinBattle(battle, newCombatant, forceJoinSide);
+    setBattle(updated);
+    setShowForceJoinModal(false);
+    setForceJoinSuccessMessage(`⚡ ${newCombatant.masterName} & ${newCombatant.name} have force-joined backing ${forceJoinSide === 'teamA' ? 'Team A' : 'Team B'}! (${updated.battleMode} Multi-Combat)`);
+    setTimeout(() => setForceJoinSuccessMessage(null), 6000);
+  };
 
   const handleCardClick = (card: CardType) => {
     if (selectedCards.length < 3) {
@@ -474,6 +519,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
       battle,
       {
         combatantId: p1.id,
+        targetId: selectedTargetEnemyId,
         selectedCards: selectedCards.length === 3 ? selectedCards : ['Buster', 'Arts', 'Quick'],
         useNoblePhantasm: useNp,
         useSkillIndex: selectedSkillIdx,
@@ -1008,6 +1054,21 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
 
               <button
                 type="button"
+                onClick={() => setShowForceJoinModal(true)}
+                className="px-3 py-1.5 rounded-sm bg-[#221500] hover:bg-[#382300] text-[#f59e0b] hover:text-[#fbbf24] text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 border border-[#f59e0b]/50 shadow-md transition"
+                title="Force join a 3rd Master into this battle"
+              >
+                <Zap className="w-3.5 h-3.5 text-[#f59e0b]" />
+                <span>Force Join</span>
+                {battle.battleMode && (
+                  <span className="px-1.5 py-0.2 rounded bg-[#f59e0b] text-black font-bold text-[9px]">
+                    {battle.battleMode}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setShowVsClash(!showVsClash)}
                 className={`px-3 py-1.5 rounded-sm text-xs font-mono uppercase tracking-wider flex items-center gap-1.5 border transition ${
                   showVsClash
@@ -1032,6 +1093,178 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
               </button>
             </div>
           </div>
+
+      {/* Force Join / Third Master Intervention Modal */}
+      {showForceJoinModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-lg bg-[#0d0d0d] border-2 border-[#f59e0b]/60 rounded-xl shadow-2xl p-6 relative text-left">
+            <button
+              onClick={() => setShowForceJoinModal(false)}
+              className="absolute top-4 right-4 text-white/40 hover:text-white p-1 rounded-sm"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2.5 mb-4 border-b border-[#222] pb-3">
+              <Zap className="w-5 h-5 text-[#f59e0b]" />
+              <div>
+                <h3 className="text-base font-serif italic text-white">Holy Grail War: Force Join Protocol</h3>
+                <p className="text-[11px] font-mono text-white/50">Intervene in active duel with a 3rd Master & Servant</p>
+              </div>
+            </div>
+
+            {/* Quick Presets */}
+            <div className="mb-4">
+              <label className="text-[11px] font-mono text-white/60 block mb-1.5 uppercase tracking-wider">
+                Quick Preset Champions:
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {[
+                  { name: 'Rin Tohsaka', servantId: 'archer_emiya', label: 'Rin & Archer' },
+                  { name: 'Illyasviel', servantId: 'berserker_heracles', label: 'Illya & Heracles' },
+                  { name: 'Sakura Matou', servantId: 'rider_medusa', label: 'Sakura & Medusa' },
+                  { name: 'Kirei Kotomine', servantId: 'lancer_cuchulainn', label: 'Kirei & Cu Chulainn' },
+                  { name: 'King of Heroes', servantId: 'archer_gilgamesh', label: 'Gilgamesh' }
+                ].map(pre => (
+                  <button
+                    key={pre.label}
+                    type="button"
+                    onClick={() => {
+                      setForceJoinMasterName(pre.name);
+                      setForceJoinServantId(pre.servantId);
+                    }}
+                    className={`p-2 rounded border text-left text-xs font-mono transition ${
+                      forceJoinServantId === pre.servantId && forceJoinMasterName === pre.name
+                        ? 'bg-[#382300] border-[#f59e0b] text-[#f59e0b]'
+                        : 'bg-[#141414] border-[#262626] text-white/70 hover:border-white/40'
+                    }`}
+                  >
+                    <span className="font-semibold block truncate">{pre.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Input */}
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="text-[11px] font-mono text-white/60 block mb-1 uppercase tracking-wider">
+                  Intervening Master Name:
+                </label>
+                <input
+                  type="text"
+                  value={forceJoinMasterName}
+                  onChange={e => setForceJoinMasterName(e.target.value)}
+                  placeholder="Master Name..."
+                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded px-3 py-2 text-xs font-mono text-white focus:border-[#f59e0b] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-mono text-white/60 block mb-1 uppercase tracking-wider">
+                  Select Servant to Deploy:
+                </label>
+                <select
+                  value={forceJoinServantId}
+                  onChange={e => setForceJoinServantId(e.target.value)}
+                  className="w-full bg-[#141414] border border-[#2a2a2a] rounded px-3 py-2 text-xs font-mono text-white focus:border-[#f59e0b] outline-none"
+                >
+                  {SERVANT_DATABASE.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.servantClass}) — {s.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Allegiance Choice */}
+              <div>
+                <label className="text-[11px] font-mono text-white/60 block mb-1.5 uppercase tracking-wider">
+                  Team Allegiance:
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setForceJoinSide('teamA')}
+                    className={`p-3 rounded border text-left transition flex items-center gap-2.5 ${
+                      forceJoinSide === 'teamA'
+                        ? 'bg-[#001c4d] border-[#3b82f6] text-[#3b82f6] shadow-[0_0_12px_rgba(59,130,246,0.3)]'
+                        : 'bg-[#141414] border-[#262626] text-white/70 hover:border-white/30'
+                    }`}
+                  >
+                    <Shield className="w-4 h-4 text-[#3b82f6]" />
+                    <div>
+                      <div className="text-xs font-bold font-mono">Join Team A</div>
+                      <div className="text-[10px] text-white/50 truncate">Back {p1.name}</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setForceJoinSide('teamB')}
+                    className={`p-3 rounded border text-left transition flex items-center gap-2.5 ${
+                      forceJoinSide === 'teamB'
+                        ? 'bg-[#330000] border-[#ef4444] text-[#ef4444] shadow-[0_0_12px_rgba(239,68,68,0.3)]'
+                        : 'bg-[#141414] border-[#262626] text-white/70 hover:border-white/30'
+                    }`}
+                  >
+                    <Swords className="w-4 h-4 text-[#ef4444]" />
+                    <div>
+                      <div className="text-xs font-bold font-mono">Join Team B</div>
+                      <div className="text-[10px] text-white/50 truncate">Back {p2.name}</div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#222]">
+              <button
+                type="button"
+                onClick={() => setShowForceJoinModal(false)}
+                className="px-4 py-2 rounded text-xs font-mono uppercase tracking-wider text-white/60 hover:text-white bg-[#1a1a1a] transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteForceJoin}
+                className="px-5 py-2 rounded text-xs font-mono uppercase tracking-wider font-bold bg-[#f59e0b] hover:bg-[#fbbf24] text-black shadow-[0_0_15px_rgba(245,158,11,0.4)] transition flex items-center gap-1.5"
+              >
+                <Zap className="w-3.5 h-3.5 fill-black" />
+                Breach Bounded Field & Join
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Force Join Flash Message */}
+      {forceJoinSuccessMessage && (
+        <div className="p-3 rounded-lg bg-[#241500] border border-[#f59e0b] text-[#f59e0b] font-mono text-xs shadow-[0_0_15px_rgba(245,158,11,0.2)] flex items-center gap-2 animate-in fade-in duration-200">
+          <Zap className="w-4 h-4 text-[#f59e0b] shrink-0" />
+          <span>{forceJoinSuccessMessage}</span>
+        </div>
+      )}
+
+      {/* Multi-Combat Mode Indicator Banner */}
+      {battle.battleMode && battle.battleMode !== '1v1' && (
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-gradient-to-r from-[#1c1200] via-[#0f0a00] to-[#0a0a0a] border border-[#f59e0b]/40 shadow-xl">
+          <div className="flex items-center gap-2.5">
+            <span className="px-2.5 py-1 rounded bg-[#f59e0b] text-black font-bold text-xs font-mono uppercase tracking-wider flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 fill-black" />
+              {battle.battleMode} MULTI-COMBAT
+            </span>
+            <span className="text-xs font-mono text-[#f59e0b]">
+              Third Master Intervention Active: {battle.forceJoinedCombatants?.join(', ')}
+            </span>
+          </div>
+          <div className="text-[11px] font-mono text-white/50">
+            Team A: {teamA.filter(c => c.currentHp > 0).length}/{teamA.length} Living • Team B: {teamB.filter(c => c.currentHp > 0).length}/{teamB.length} Living
+          </div>
+        </div>
+      )}
 
       {/* Interactive VS Clash Face-Off Screen Banner */}
       {showVsClash && resolvedMatchup && (
@@ -1058,129 +1291,191 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         />
       )}
 
-      {/* Battle Stage Split Screen */}
+      {/* Battle Stage Split Screen (Supports 1v1, 1v2, 2v2) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Player 1 Card */}
-        <div className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] relative overflow-hidden shadow-2xl">
-          <div className="absolute top-0 right-0 px-3 py-1 bg-[#161616] text-[#d4af37] text-[10px] font-mono uppercase tracking-widest border-l border-b border-[#1a1a1a]">
-            YOUR SERVANT • {p1.servantClass}
+        {/* Team A Column */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-mono uppercase tracking-wider text-[#3b82f6] font-bold flex items-center gap-1.5">
+              <Shield className="w-3.5 h-3.5 text-[#3b82f6]" /> TEAM A ({teamA.length} {teamA.length === 1 ? 'Servant' : 'Servants'})
+            </span>
           </div>
 
-          <div className="flex items-center gap-4 mb-5 mt-2">
-            <div className="w-14 h-14 rounded-sm bg-[#161616] border border-[#d4af37]/40 flex items-center justify-center text-xl text-[#d4af37]">
-              ⚔️
-            </div>
-            <div>
-              <h3 className="text-lg font-serif italic text-white">{p1.name}</h3>
-              <p className="text-xs text-white/40 font-mono">Master: {p1.masterName}</p>
-              <div className="flex items-center gap-2 mt-1.5">
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-[#111] text-[#3b82f6] border border-[#3b82f6]/30">
-                  ATK: {p1.atk.toLocaleString()}
-                </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-[#111] text-[#22c55e] border border-[#22c55e]/30">
-                  DEF: {p1.def.toLocaleString()}
-                </span>
-                {classMultiplier > 1 && (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/40">
-                    Advantage 1.5x
+          {teamA.map((member, idx) => (
+            <div
+              key={member.id || idx}
+              className={`p-6 rounded-xl bg-[#0a0a0a] border ${
+                member.currentHp <= 0 ? 'border-[#331111] opacity-50' : 'border-[#1a1a1a]'
+              } relative overflow-hidden shadow-2xl transition-all`}
+            >
+              <div className="absolute top-0 right-0 px-3 py-1 bg-[#161616] text-[#d4af37] text-[10px] font-mono uppercase tracking-widest border-l border-b border-[#1a1a1a]">
+                {idx === 0 ? 'PRIMARY' : 'INTERVENOR'} • {member.servantClass}
+              </div>
+
+              <div className="flex items-center gap-4 mb-5 mt-2">
+                <div className="w-14 h-14 rounded-sm bg-[#161616] border border-[#d4af37]/40 flex items-center justify-center text-xl text-[#d4af37]">
+                  {member.currentHp <= 0 ? '💀' : '⚔️'}
+                </div>
+                <div>
+                  <h3 className="text-lg font-serif italic text-white flex items-center gap-2">
+                    {member.name}
+                    {member.currentHp <= 0 && (
+                      <span className="text-[10px] font-mono text-red-500 uppercase font-bold">[Dissolved]</span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-white/40 font-mono">Master: {member.masterName}</p>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-[#111] text-[#3b82f6] border border-[#3b82f6]/30">
+                      ATK: {member.atk.toLocaleString()}
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-[#111] text-[#22c55e] border border-[#22c55e]/30">
+                      DEF: {member.def.toLocaleString()}
+                    </span>
+                    {classMultiplier > 1 && idx === 0 && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/40">
+                        Advantage 1.5x
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* HP Bar */}
+              <div className="space-y-1.5 mb-4">
+                <div className="flex justify-between text-[11px] font-mono">
+                  <span className="text-white/40 uppercase tracking-wider">HP</span>
+                  <span className="text-white font-bold">
+                    {Math.max(0, member.currentHp).toLocaleString()} / {member.maxHp.toLocaleString()}
                   </span>
-                )}
+                </div>
+                <div className="w-full h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${
+                      member.currentHp / member.maxHp > 0.3 ? 'bg-[#22c55e]' : 'bg-[#ef4444]'
+                    }`}
+                    style={{ width: `${Math.max(0, (member.currentHp / member.maxHp) * 100)}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* NP Gauge */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-[11px] font-mono">
+                  <span className="text-[#d4af37] flex items-center gap-1 uppercase tracking-wider">
+                    <Sparkles className="w-3 h-3" /> NP Gauge
+                  </span>
+                  <span className="text-[#d4af37] font-bold">{Math.round(member.npGauge)}%</span>
+                </div>
+                <div className="w-full h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#d4af37] shadow-[0_0_8px_#d4af37] transition-all duration-300"
+                    style={{ width: `${Math.min(100, (member.npGauge / 100) * 100)}%` }}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* HP Bar */}
-          <div className="space-y-1.5 mb-4">
-            <div className="flex justify-between text-[11px] font-mono">
-              <span className="text-white/40 uppercase tracking-wider">HP</span>
-              <span className="text-white font-bold">
-                {p1.currentHp.toLocaleString()} / {p1.maxHp.toLocaleString()}
-              </span>
-            </div>
-            <div className="w-full h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
-              <div
-                className={`h-full transition-all duration-300 ${
-                  p1.currentHp / p1.maxHp > 0.3 ? 'bg-[#22c55e]' : 'bg-[#ef4444]'
-                }`}
-                style={{ width: `${Math.max(0, (p1.currentHp / p1.maxHp) * 100)}%` }}
-              />
-            </div>
-          </div>
-
-          {/* NP Gauge */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-[11px] font-mono">
-              <span className="text-[#d4af37] flex items-center gap-1 uppercase tracking-wider">
-                <Sparkles className="w-3 h-3" /> NP Gauge
-              </span>
-              <span className="text-[#d4af37] font-bold">{Math.round(p1.npGauge)}%</span>
-            </div>
-            <div className="w-full h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#d4af37] shadow-[0_0_8px_#d4af37] transition-all duration-300"
-                style={{ width: `${Math.min(100, (p1.npGauge / 100) * 100)}%` }}
-              />
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* Player 2 (Enemy) Card */}
-        <div className="p-6 rounded-xl bg-[#0a0a0a] border border-[#1a1a1a] relative overflow-hidden shadow-2xl">
-          <div className="absolute top-0 right-0 px-3 py-1 bg-[#161616] text-[#ef4444] text-[10px] font-mono uppercase tracking-widest border-l border-b border-[#1a1a1a]">
-            OPPONENT • {p2.servantClass}
+        {/* Team B Column (Opponents) */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-mono uppercase tracking-wider text-[#ef4444] font-bold flex items-center gap-1.5">
+              <Swords className="w-3.5 h-3.5 text-[#ef4444]" /> TEAM B ({teamB.length} {teamB.length === 1 ? 'Opponent' : 'Opponents'})
+            </span>
+            {teamB.length > 1 && (
+              <span className="text-[10px] font-mono text-white/50">Click an opponent to target</span>
+            )}
           </div>
 
-          <div className="flex items-center gap-4 mb-5 mt-2">
-            <div className="w-14 h-14 rounded-sm bg-[#161616] border border-[#ef4444]/40 flex items-center justify-center text-xl text-[#ef4444]">
-              💀
-            </div>
-            <div>
-              <h3 className="text-lg font-serif italic text-white">{p2.name}</h3>
-              <p className="text-xs text-white/40 font-mono">Master: {p2.masterName}</p>
-              <div className="flex items-center gap-2 mt-1.5">
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-[#111] text-[#ef4444] border border-[#ef4444]/30">
-                  ATK: {p2.atk.toLocaleString()}
-                </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-[#111] text-[#22c55e] border border-[#22c55e]/30">
-                  DEF: {p2.def.toLocaleString()}
-                </span>
+          {teamB.map((member, idx) => {
+            const isTargeted = selectedTargetEnemyId === member.id || (!selectedTargetEnemyId && idx === 0);
+            return (
+              <div
+                key={member.id || idx}
+                onClick={() => {
+                  if (member.currentHp > 0 && teamB.length > 1) {
+                    setSelectedTargetEnemyId(member.id);
+                  }
+                }}
+                className={`p-6 rounded-xl bg-[#0a0a0a] border ${
+                  isTargeted && teamB.length > 1
+                    ? 'border-[#ef4444] ring-2 ring-[#ef4444]/40 shadow-[0_0_20px_rgba(239,68,68,0.25)] cursor-pointer'
+                    : member.currentHp <= 0
+                    ? 'border-[#331111] opacity-50'
+                    : teamB.length > 1
+                    ? 'border-[#1a1a1a] hover:border-white/30 cursor-pointer'
+                    : 'border-[#1a1a1a]'
+                } relative overflow-hidden shadow-2xl transition-all`}
+              >
+                <div className="absolute top-0 right-0 px-3 py-1 bg-[#161616] text-[#ef4444] text-[10px] font-mono uppercase tracking-widest border-l border-b border-[#1a1a1a] flex items-center gap-1.5">
+                  {isTargeted && teamB.length > 1 && (
+                    <span className="text-[#ef4444] font-bold flex items-center gap-1">
+                      <Crosshair className="w-3 h-3" /> TARGETED
+                    </span>
+                  )}
+                  <span>{idx === 0 ? 'RIVAL' : 'INTERVENOR'} • {member.servantClass}</span>
+                </div>
+
+                <div className="flex items-center gap-4 mb-5 mt-2">
+                  <div className="w-14 h-14 rounded-sm bg-[#161616] border border-[#ef4444]/40 flex items-center justify-center text-xl text-[#ef4444]">
+                    {member.currentHp <= 0 ? '💀' : '⚔️'}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-serif italic text-white flex items-center gap-2">
+                      {member.name}
+                      {member.currentHp <= 0 && (
+                        <span className="text-[10px] font-mono text-red-500 uppercase font-bold">[Dissolved]</span>
+                      )}
+                    </h3>
+                    <p className="text-xs text-white/40 font-mono">Master: {member.masterName}</p>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-[#111] text-[#ef4444] border border-[#ef4444]/30">
+                        ATK: {member.atk.toLocaleString()}
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-[#111] text-[#22c55e] border border-[#22c55e]/30">
+                        DEF: {member.def.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* HP Bar */}
+                <div className="space-y-1.5 mb-4">
+                  <div className="flex justify-between text-[11px] font-mono">
+                    <span className="text-white/40 uppercase tracking-wider">HP</span>
+                    <span className="text-white font-bold">
+                      {Math.max(0, member.currentHp).toLocaleString()} / {member.maxHp.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 ${
+                        member.currentHp / member.maxHp > 0.3 ? 'bg-[#22c55e]' : 'bg-[#ef4444]'
+                      }`}
+                      style={{ width: `${Math.max(0, (member.currentHp / member.maxHp) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* NP Gauge */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-[11px] font-mono">
+                    <span className="text-[#d4af37] flex items-center gap-1 uppercase tracking-wider">
+                      <Sparkles className="w-3 h-3" /> NP Gauge
+                    </span>
+                    <span className="text-[#d4af37] font-bold">{Math.round(member.npGauge)}%</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#d4af37] shadow-[0_0_8px_#d4af37] transition-all duration-300"
+                      style={{ width: `${Math.min(100, (member.npGauge / 100) * 100)}%` }}
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-
-          {/* HP Bar */}
-          <div className="space-y-1.5 mb-4">
-            <div className="flex justify-between text-[11px] font-mono">
-              <span className="text-white/40 uppercase tracking-wider">HP</span>
-              <span className="text-white font-bold">
-                {p2.currentHp.toLocaleString()} / {p2.maxHp.toLocaleString()}
-              </span>
-            </div>
-            <div className="w-full h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
-              <div
-                className={`h-full transition-all duration-300 ${
-                  p2.currentHp / p2.maxHp > 0.3 ? 'bg-[#22c55e]' : 'bg-[#ef4444]'
-                }`}
-                style={{ width: `${Math.max(0, (p2.currentHp / p2.maxHp) * 100)}%` }}
-              />
-            </div>
-          </div>
-
-          {/* NP Gauge */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-[11px] font-mono">
-              <span className="text-[#d4af37] flex items-center gap-1 uppercase tracking-wider">
-                <Sparkles className="w-3 h-3" /> NP Gauge
-              </span>
-              <span className="text-[#d4af37] font-bold">{Math.round(p2.npGauge)}%</span>
-            </div>
-            <div className="w-full h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#d4af37] shadow-[0_0_8px_#d4af37] transition-all duration-300"
-                style={{ width: `${Math.min(100, (p2.npGauge / 100) * 100)}%` }}
-              />
-            </div>
-          </div>
+            );
+          })}
         </div>
       </div>
 
@@ -1514,6 +1809,37 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                 Select 3 cards to chain tactical Buster / Arts / Quick multipliers
               </p>
             </div>
+
+            {/* Multi-Combat Target Enemy Selector */}
+            {teamB.length > 1 && (
+              <div className="flex items-center gap-2 bg-[#140000] p-1.5 rounded-md border border-[#ef4444]/40">
+                <span className="text-[10px] font-mono text-[#ef4444] font-bold flex items-center gap-1 uppercase tracking-wider pl-1">
+                  <Crosshair className="w-3 h-3 text-[#ef4444]" /> Target:
+                </span>
+                {teamB.map((enemy, eIdx) => {
+                  const isSelected = selectedTargetEnemyId === enemy.id || (!selectedTargetEnemyId && eIdx === 0);
+                  const isDead = enemy.currentHp <= 0;
+                  return (
+                    <button
+                      key={enemy.id || eIdx}
+                      type="button"
+                      disabled={isDead}
+                      onClick={() => setSelectedTargetEnemyId(enemy.id)}
+                      className={`px-2 py-0.5 text-[10px] font-mono rounded transition flex items-center gap-1 ${
+                        isDead
+                          ? 'opacity-30 line-through cursor-not-allowed bg-transparent text-white/40'
+                          : isSelected
+                          ? 'bg-[#ef4444] text-black font-bold shadow'
+                          : 'bg-[#220000] text-[#ef4444] hover:bg-[#330000]'
+                      }`}
+                    >
+                      <span>{enemy.name}</span>
+                      <span className="text-[9px] opacity-80">({Math.max(0, enemy.currentHp).toLocaleString()} HP)</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Quick Chain Presets */}
             <div className="flex items-center gap-2">
