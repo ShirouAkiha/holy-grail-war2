@@ -733,7 +733,9 @@ function activateCombatantSkill(
   }
 
   combatant.skillCooldowns[skillIdx] = skill.cooldown || 5;
-  let logText = `✨ **${combatant.servant.template.name}** activated **${skill.name}**!`;
+  const customSkillQuote = combatant.servant.customQuotes?.skill;
+  const quoteLine = customSkillQuote ? `\n> 💬 *“${customSkillQuote}”*` : '';
+  let logText = `✨ **${combatant.servant.template.name}** activated **${skill.name}**!${quoteLine}`;
 
   if (skill.effectType === 'buff_atk') {
     const val = skill.value || 35;
@@ -831,7 +833,8 @@ function invokeCombatantSeal(combatant: DuelCombatant): { success: boolean; log:
 
   combatant.commandSeals--;
   combatant.npGauge = 100;
-  const logText = `🔱 **COMMAND SEAL INVOKED!** Master **${combatant.username}** commanded: *"By my Command Seal, unleash your Noble Phantasm!"*\n> ⚡ **${combatant.servant.template.name}**'s NP Gauge has been completely refilled to **100%**!`;
+  const sealQuote = combatant.servant.customQuotes?.commandSeal || "By my Command Seal, unleash your Noble Phantasm!";
+  const logText = `🔱 **COMMAND SEAL INVOKED!** Master **${combatant.username}** commanded: *"“${sealQuote}”*\n> ⚡ **${combatant.servant.template.name}**'s NP Gauge has been completely refilled to **100%**!`;
   return { success: true, log: logText };
 }
 

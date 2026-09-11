@@ -8270,6 +8270,7 @@ export default function DiscordEmulator({
       setActiveDuel(null);
 
       const p1Name = activeServant?.nickname || activeServant?.template.name || 'Your Servant';
+      const sealQuote = activeServant?.customQuotes?.commandSeal || "By my Command Seal, withdraw from this battlefield and survive!";
       addMessage({
         id: getNextId('bot_duel_seal_evac'),
         sender: 'bot',
@@ -8277,6 +8278,7 @@ export default function DiscordEmulator({
         embed: {
           title: '🔮 COMMAND SEAL SPATIAL EVACUATION EXECUTED',
           description:
+            `🔱 **[COMMAND SEAL] ${master.username || 'Master'}:**\n> ❝ ***${sealQuote}*** ❞\n\n` +
             `By the absolute authority of your Command Seal, **${p1Name}** was spatially recalled from lethal defeat!\n\n` +
             `✨ **Status:** Preserved and extracted to safety at **1 HP**.\n` +
             `✦ **Command Seals Remaining:** **${newSeals}/3**\n` +
@@ -8415,6 +8417,7 @@ export default function DiscordEmulator({
                   description:
                     `**${p1.name}** failed to escape (${fleeCalc.chancePercent}% chance) and suffered a mortal blow from **${p2.name}**!\n\n` +
                     `💬 **[MORTAL BLOW] ${p1.name}:**\n> ❝ ***${p1DefeatQuote}*** ❞\n\n` +
+                    `🔱 **[COMMAND SEAL] ${master.username || 'Master'}:**\n> ❝ ***${activeServant?.customQuotes?.commandSeal || 'By my Command Seal, withdraw from this battlefield!'}*** ❞\n\n` +
                     `🔮 **Auto-Consume Enabled:**\n` +
                     `Master possessed **${seals}/3 Command Seals**. 1 Command Seal was automatically expended to trigger emergency spatial evacuation!\n\n` +
                     `• 🔴 **Command Seals Remaining:** **${remainingSeals}/3**\n` +
@@ -8575,7 +8578,8 @@ export default function DiscordEmulator({
             embed: {
               title: '🔴 COMMAND SEAL EMERGENCY EVACUATION',
               description:
-                `Master **${master.username}** invoked a Command Seal decree!\n\n` +
+                `Master **${master.username}** invoked a Command Seal decree!\n` +
+                `> 🔱 ❝ ***${activeServant?.customQuotes?.commandSeal || 'By my Command Seal, withdraw from this battlefield!'}*** ❞\n\n` +
                 `✨ **Emergency Spatial Relocation:**\n` +
                 `The Command Seal burned with radiant crimson prana, tearing open a leyline corridor and evacuating your Servant to the Church Sanctuary!\n\n` +
                 `• 🔴 **Command Seals Remaining:** **${remainingSeals}/3** (1 expended)\n` +

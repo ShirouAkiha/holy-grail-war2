@@ -232,7 +232,9 @@ export function applyCombatantSkill(
   }
 
   skill.currentCooldown = skill.cooldown;
-  let logText = `✨ **${actor.name}** activated **${skill.name}**!`;
+  const skillQuote = actor.customQuotes?.skill;
+  const quoteLine = skillQuote ? `\n> 💬 *“${skillQuote}”*` : '';
+  let logText = `✨ **${actor.name}** activated **${skill.name}**!${quoteLine}`;
 
   switch (skill.effectType) {
     case 'buff_atk': {
@@ -718,24 +720,13 @@ export function generateTurnDialogueQuote(
   actor: ActiveCombatant,
   target: ActiveCombatant,
   choice: TurnActionChoice,
-  classMult: number
+  classMult: number,
+  isCritical: boolean = false
 ): TurnDialogueQuoteInfo {
   const hpRatio = actor.currentHp / actor.maxHp;
   const isLowHp = hpRatio <= 0.35;
   const servantName = actor.name;
   const servantClass = actor.servantClass;
-
-  if (choice.useNoblePhantasm && actor.npGauge >= 100) {
-    const chant = actor.customQuotes?.noblePhantasm || actor.noblePhantasm?.chant || `Sword of Promised Victory... EXCALIBUR!`;
-    return {
-      speakerName: servantName,
-      speakerTitle: `${servantClass} • ${actor.noblePhantasm?.name || 'Noble Phantasm'}`,
-      servantClass,
-      tag: 'NOBLE PHANTASM CHANT',
-      quoteText: chant,
-      badgeType: 'np'
-    };
-  }
 
   if (choice.useCommandSeal) {
     const quote = actor.customQuotes?.commandSeal || `By my Command Seal! ${servantName}, refill your Noble Phantasm and shatter enemy lines!`;
@@ -759,6 +750,29 @@ export function generateTurnDialogueQuote(
       tag: 'SKILL RELEASE',
       quoteText: quote,
       badgeType: 'skill'
+    };
+  }
+
+  if (choice.useNoblePhantasm && actor.npGauge >= 100) {
+    const chant = actor.customQuotes?.noblePhantasm || actor.noblePhantasm?.chant || `Sword of Promised Victory... EXCALIBUR!`;
+    return {
+      speakerName: servantName,
+      speakerTitle: `${servantClass} • ${actor.noblePhantasm?.name || 'Noble Phantasm'}`,
+      servantClass,
+      tag: 'NOBLE PHANTASM CHANT',
+      quoteText: chant,
+      badgeType: 'np'
+    };
+  }
+
+  if (isCritical && actor.customQuotes?.critHit) {
+    return {
+      speakerName: servantName,
+      speakerTitle: `${servantClass} • Critical Strike`,
+      servantClass,
+      tag: 'CRITICAL STRIKE',
+      quoteText: actor.customQuotes.critHit,
+      badgeType: 'crit'
     };
   }
 
@@ -1297,7 +1311,16 @@ export function executeBattleTurn(
     }
 
     if (usedSkillNames.length > 0) {
-      actionText = `✨ **${actor.name}** activated **${usedSkillNames.join(', ')}**!\n` + actionText;
+      let quotePrefix = '';
+      if (choice.useCommandSeal) {
+        const sealQuote = actor.customQuotes?.commandSeal || `By my Command Seal! ${actor.name}, refill your Noble Phantasm and shatter enemy lines!`;
+        quotePrefix = `🔱 **[COMMAND SEAL]** *“${sealQuote}”*\n`;
+      } else if (choice.useSkillIndex !== undefined && choice.useSkillIndex >= 0 && actor.skills[choice.useSkillIndex]) {
+        const sk = actor.skills[choice.useSkillIndex];
+        const skQuote = actor.customQuotes?.skill || `Activating ${sk.name}! ${sk.description}`;
+        quotePrefix = `💬 **[${sk.name}]** *“${skQuote}”*\n`;
+      }
+      actionText = quotePrefix + `✨ **${actor.name}** activated **${usedSkillNames.join(', ')}**!\n` + actionText;
     }
 
     // Check "The Weight of Heaven EX" passive (Aethel Gravitational Aura - Actor)
@@ -1339,7 +1362,7 @@ export function executeBattleTurn(
     }
 
     // Generate Turn Dialogue Quote
-    const dialogueInfo = generateTurnDialogueQuote(actor, target, choice, classMult);
+    const dialogueInfo = generateTurnDialogueQuote(actor, target, choice, classMult, isCritical);
     const dialogueQuote = dialogueInfo.quoteText;
     const dialogueTag = dialogueInfo.tag;
     const dialogueTitle = dialogueInfo.speakerTitle;

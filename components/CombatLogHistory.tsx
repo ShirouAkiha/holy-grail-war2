@@ -103,7 +103,9 @@ export default function CombatLogHistory({
       if (turn.skillsUsed && turn.skillsUsed.length > 0) {
         text += `  Skills: ${turn.skillsUsed.join(', ')}\n`;
       }
-      if (turn.npTriggered && turn.npChant) {
+      if (turn.dialogueQuote) {
+        text += `  Dialogue [${turn.dialogueTag || 'VOICE'}]: "${turn.dialogueQuote}"\n`;
+      } else if (turn.npTriggered && turn.npChant) {
         text += `  Noble Phantasm Chant: "${turn.npChant}"\n`;
       }
       text += `  Damage: ${turn.damageDealt.toLocaleString()}${turn.isCritical ? ' (CRITICAL!)' : ''}\n`;

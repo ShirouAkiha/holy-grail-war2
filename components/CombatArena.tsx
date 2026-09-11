@@ -293,20 +293,6 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
     const activeTemplate = activeServant?.template;
     const customQuotes = activeServant?.customQuotes;
 
-    if (useNp && p1.npGauge >= 100) {
-      return {
-        speakerName: servantName,
-        speakerTitle: `${servantClass} • ${p1.noblePhantasm.name}`,
-        avatarUrl: p1.avatarUrl || activeTemplate?.avatarUrl,
-        servantClass,
-        rarity: activeTemplate?.rarity || 5,
-        tag: 'NOBLE PHANTASM CHANT',
-        dialogueText: customQuotes?.noblePhantasm || p1.noblePhantasm.chant || `Sword of Promised Victory... EXCALIBUR!`,
-        badgeType: 'np',
-        isPlayerMove: true
-      };
-    }
-
     if (selectedCommandSeal) {
       return {
         speakerName: master.username || 'Master',
@@ -315,7 +301,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         servantClass,
         rarity: 5,
         tag: 'COMMAND SEAL ACTIVATED',
-        dialogueText: `By my Command Seal! ${servantName}, refill your Noble Phantasm and shatter enemy lines!`,
+        dialogueText: customQuotes?.commandSeal || `By my Command Seal! ${servantName}, refill your Noble Phantasm and shatter enemy lines!`,
         badgeType: 'skill',
         isPlayerMove: true
       };
@@ -330,8 +316,22 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         servantClass,
         rarity: activeTemplate?.rarity || 5,
         tag: 'SKILL RELEASE',
-        dialogueText: `Activating ${sk.name}! ${sk.description}`,
+        dialogueText: customQuotes?.skill || `Activating ${sk.name}! ${sk.description}`,
         badgeType: 'skill',
+        isPlayerMove: true
+      };
+    }
+
+    if (useNp && p1.npGauge >= 100) {
+      return {
+        speakerName: servantName,
+        speakerTitle: `${servantClass} • ${p1.noblePhantasm.name}`,
+        avatarUrl: p1.avatarUrl || activeTemplate?.avatarUrl,
+        servantClass,
+        rarity: activeTemplate?.rarity || 5,
+        tag: 'NOBLE PHANTASM CHANT',
+        dialogueText: customQuotes?.noblePhantasm || p1.noblePhantasm.chant || `Sword of Promised Victory... EXCALIBUR!`,
+        badgeType: 'np',
         isPlayerMove: true
       };
     }
@@ -431,14 +431,13 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
     const dialogue = getBattleDialogueForTurn();
 
     // Check if this attack sequence warrants a special Visual Novel Dialogue Cut-In:
-    // Only trigger for Pure Brave Chains (BBB, AAA, QQQ) or NP!
-    // Desperation states do NOT trigger dialogue cut-ins. Ordinary mixed combat chains proceed directly without pausing!
+    // Triggers for Skill activations, Command Seal invocations, Noble Phantasm, or Pure Brave Chains (BBB, AAA, QQQ)!
     const isPureBrave = selectedCards.length === 3 && (
       selectedCards.every(c => c === 'Buster') ||
       selectedCards.every(c => c === 'Arts') ||
       selectedCards.every(c => c === 'Quick')
     );
-    const shouldCutIn = useNp || isPureBrave;
+    const shouldCutIn = useNp || isPureBrave || selectedSkillIdx !== undefined || Boolean(selectedCommandSeal);
 
     if (!shouldCutIn) {
       runTurnCalculation();
@@ -1679,6 +1678,30 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
             </div>
           </div>
 
+          {/* Active Skill & Command Seal Quote Voice Preview */}
+          {selectedSkillIdx !== undefined && p1.skills[selectedSkillIdx] && (
+            <div className="p-3 rounded-lg bg-[#140d0a] border border-[#d4af37]/60 text-xs font-mono flex items-start gap-2.5 text-[#fef08a] shadow-[0_0_15px_rgba(212,175,55,0.15)]">
+              <span className="px-2 py-0.5 rounded bg-[#d4af37]/20 text-[#d4af37] text-[10px] font-bold tracking-wider shrink-0 uppercase">
+                Skill Voice Ready
+              </span>
+              <div className="flex-1">
+                <span className="font-bold text-[#d4af37]">{p1.skills[selectedSkillIdx].name}: </span>
+                <span className="italic font-serif">&quot;{activeServant?.customQuotes?.skill || `Activating ${p1.skills[selectedSkillIdx].name}! ${p1.skills[selectedSkillIdx].description}`}&quot;</span>
+              </div>
+            </div>
+          )}
+          {selectedCommandSeal && (
+            <div className="p-3 rounded-lg bg-rose-950/40 border border-rose-500/60 text-xs font-mono flex items-start gap-2.5 text-rose-200 shadow-[0_0_15px_rgba(225,29,72,0.2)]">
+              <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 text-[10px] font-bold tracking-wider shrink-0 uppercase">
+                Command Seal Invocation
+              </span>
+              <div className="flex-1">
+                <span className="font-bold text-rose-400">{master.username || 'Master'}: </span>
+                <span className="italic font-serif">&quot;{activeServant?.customQuotes?.commandSeal || `By my Command Seal! ${p1.name}, refill your Noble Phantasm and shatter enemy lines!`}&quot;</span>
+              </div>
+            </div>
+          )}
+
           {/* Flee Status Message Banner if applicable */}
           {fleeStatusMessage && (
             <div className="p-3 rounded bg-amber-950/30 border border-amber-500/40 text-amber-300 text-xs font-mono flex items-center justify-between">
@@ -1771,7 +1794,15 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                 <span className="text-[#d4af37] font-bold">T{log.turnNumber}:</span>
                 <div className="flex-1">
                   <div>{log.actionSummary}</div>
-                  {log.npChant && (
+                  {log.dialogueQuote && (
+                    <div className="text-[#fef08a] italic text-[11px] mt-1 flex items-start gap-1.5 flex-wrap">
+                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#d4af37]/20 text-[#d4af37] not-italic font-bold tracking-wider shrink-0">
+                        {log.dialogueTag || (log.npTriggered ? 'NOBLE PHANTASM' : 'COMBAT VOICE')}
+                      </span>
+                      <span className="font-serif">&quot;{log.dialogueQuote}&quot;</span>
+                    </div>
+                  )}
+                  {log.npChant && !log.dialogueQuote && (
                     <div className="text-[#d4af37] italic text-[11px] mt-0.5">
                       &quot;{log.npChant}&quot;
                     </div>
