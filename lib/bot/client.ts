@@ -165,21 +165,41 @@ client.on(Events.InteractionCreate, async interaction => {
 
     // 2. Modal Submission Router
     if (interaction.isModalSubmit()) {
-      if (interaction.customId.startsWith('modal_quotes:')) {
-        const servantId = interaction.customId.replace('modal_quotes:', '');
+      if (interaction.customId.startsWith('modal_quotes:') || interaction.customId.startsWith('modal_quotes_combat:') || interaction.customId.startsWith('modal_quotes_tactical:')) {
+        const servantId = interaction.customId.replace(/^modal_quotes(_combat|_tactical)?:/, '');
         const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
         const servant = master.servants.find(s => s.id === servantId);
 
         if (servant) {
-          const summonQuote = interaction.fields.getTextInputValue('quote_summon');
-          const npQuote = interaction.fields.getTextInputValue('quote_np');
-          const victoryQuote = interaction.fields.getTextInputValue('quote_victory');
+          const getVal = (id: string) => {
+            try { return interaction.fields.getTextInputValue(id); } catch { return ''; }
+          };
+
+          const summonQuote = getVal('quote_summon');
+          const npQuote = getVal('quote_np');
+          const victoryQuote = getVal('quote_victory');
+          const battleStart = getVal('quote_battleStart');
+          const defeatQuote = getVal('quote_defeat');
+          const busterChain = getVal('quote_buster');
+          const artsChain = getVal('quote_arts');
+          const quickChain = getVal('quote_quick');
+          const critHit = getVal('quote_crit');
+          const skill = getVal('quote_skill');
+          const commandSeal = getVal('quote_commandSeal');
 
           servant.customQuotes = {
             ...servant.customQuotes,
-            summon: summonQuote || servant.customQuotes.summon,
-            noblePhantasm: npQuote || servant.customQuotes.noblePhantasm,
-            victory: victoryQuote || servant.customQuotes.victory
+            ...(summonQuote ? { summon: summonQuote } : {}),
+            ...(npQuote ? { noblePhantasm: npQuote } : {}),
+            ...(victoryQuote ? { victory: victoryQuote } : {}),
+            ...(battleStart ? { battleStart } : {}),
+            ...(defeatQuote ? { defeat: defeatQuote } : {}),
+            ...(busterChain ? { busterChain } : {}),
+            ...(artsChain ? { artsChain } : {}),
+            ...(quickChain ? { quickChain } : {}),
+            ...(critHit ? { critHit } : {}),
+            ...(skill ? { skill } : {}),
+            ...(commandSeal ? { commandSeal } : {})
           };
 
           await updateMasterProfile(master);

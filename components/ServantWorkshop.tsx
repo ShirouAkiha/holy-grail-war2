@@ -64,7 +64,10 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
   const [artsQuote, setArtsQuote] = useState(currentServant?.customQuotes?.artsChain || '');
   const [quickQuote, setQuickQuote] = useState(currentServant?.customQuotes?.quickChain || '');
   const [defeatQuote, setDefeatQuote] = useState(currentServant?.customQuotes?.defeat || '');
-  const [activeDialogueTab, setActiveDialogueTab] = useState<'chains' | 'general' | 'matchups'>('chains');
+  const [critQuote, setCritQuote] = useState(currentServant?.customQuotes?.critHit || '');
+  const [skillQuote, setSkillQuote] = useState(currentServant?.customQuotes?.skill || '');
+  const [commandSealQuote, setCommandSealQuote] = useState(currentServant?.customQuotes?.commandSeal || '');
+  const [activeDialogueTab, setActiveDialogueTab] = useState<'chains' | 'tactical' | 'general' | 'matchups'>('chains');
   const [saveFeedback, setSaveFeedback] = useState(false);
 
   // Rival Matchup Dialogue Customization State
@@ -308,7 +311,10 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
       defeat: defeatQuote,
       busterChain: busterQuote,
       artsChain: artsQuote,
-      quickChain: quickQuote
+      quickChain: quickQuote,
+      critHit: critQuote,
+      skill: skillQuote,
+      commandSeal: commandSealQuote
     });
     const updatedServants = master.servants.map(s => (s.id === updated.id ? updated : s));
     onUpdateMaster({ ...master, servants: updatedServants });
@@ -602,6 +608,9 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                 setArtsQuote(target.customQuotes?.artsChain || '');
                 setQuickQuote(target.customQuotes?.quickChain || '');
                 setDefeatQuote(target.customQuotes?.defeat || target.template.defeatQuote || '');
+                setCritQuote(target.customQuotes?.critHit || '');
+                setSkillQuote(target.customQuotes?.skill || '');
+                setCommandSealQuote(target.customQuotes?.commandSeal || '');
                 setNpGifUrl(target.template.noblePhantasm.animationUrl || '');
               }
             }}
@@ -1199,17 +1208,27 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
           <div className="flex rounded-sm bg-[#121212] p-1 border border-[#222] text-[11px] font-mono">
             <button
               onClick={() => setActiveDialogueTab('chains')}
-              className={`flex-1 py-1.5 rounded-sm transition font-bold ${
+              className={`flex-1 py-1.5 rounded-sm transition font-bold text-xs ${
                 activeDialogueTab === 'chains'
                   ? 'bg-[#d4af37] text-black shadow'
                   : 'text-white/60 hover:text-white'
               }`}
             >
-              ⚡ Combat Chains & NP
+              ⚡ Combat & NP
+            </button>
+            <button
+              onClick={() => setActiveDialogueTab('tactical')}
+              className={`flex-1 py-1.5 rounded-sm transition font-bold text-xs ${
+                activeDialogueTab === 'tactical'
+                  ? 'bg-[#d4af37] text-black shadow'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              🔮 Tactical & Seals
             </button>
             <button
               onClick={() => setActiveDialogueTab('general')}
-              className={`flex-1 py-1.5 rounded-sm transition font-bold ${
+              className={`flex-1 py-1.5 rounded-sm transition font-bold text-xs ${
                 activeDialogueTab === 'general'
                   ? 'bg-[#d4af37] text-black shadow'
                   : 'text-white/60 hover:text-white'
@@ -1219,7 +1238,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
             </button>
             <button
               onClick={() => setActiveDialogueTab('matchups')}
-              className={`flex-1 py-1.5 rounded-sm transition font-bold flex items-center justify-center gap-1 ${
+              className={`flex-1 py-1.5 rounded-sm transition font-bold text-xs flex items-center justify-center gap-1 ${
                 activeDialogueTab === 'matchups'
                   ? 'bg-[#d4af37] text-black shadow'
                   : 'text-white/60 hover:text-white'
@@ -1297,6 +1316,67 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                     onChange={e => setNpChant(e.target.value)}
                     rows={2}
                     className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-amber-500 resize-none"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] uppercase tracking-wider text-yellow-400 font-bold flex items-center gap-1">
+                      <Zap className="w-3 h-3 text-yellow-400" />
+                      Critical Strike Quote (Crit Hit)
+                    </label>
+                    <span className="text-[9px] text-white/30">Lethal critical cut-in line</span>
+                  </div>
+                  <textarea
+                    value={critQuote}
+                    onChange={e => setCritQuote(e.target.value)}
+                    placeholder="e.g. Direct hit! Piercing through the heart of fate!"
+                    rows={2}
+                    className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-yellow-400 resize-none"
+                  />
+                </div>
+
+                <button
+                  onClick={handleSaveQuotes}
+                  className="w-full py-2.5 rounded-sm bg-[#d4af37] hover:bg-[#c49f27] text-black font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg transition"
+                >
+                  {saveFeedback ? <Check className="w-4 h-4" /> : <Edit3 className="w-4 h-4" />}
+                  <span>{saveFeedback ? 'Saved to Contract' : 'Save Custom Dialogue'}</span>
+                </button>
+              </>
+            ) : activeDialogueTab === 'tactical' ? (
+              <>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] uppercase tracking-wider text-purple-400 font-bold flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-purple-400" />
+                      Skill Activation Line
+                    </label>
+                    <span className="text-[9px] text-white/30">Triggered on Master/Servant Skill</span>
+                  </div>
+                  <textarea
+                    value={skillQuote}
+                    onChange={e => setSkillQuote(e.target.value)}
+                    placeholder="e.g. Charisma of the King! Rally under my banner!"
+                    rows={2}
+                    className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-purple-400 resize-none"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1">
+                      <Shield className="w-3 h-3 text-amber-400" />
+                      Command Seal Invocation Response
+                    </label>
+                    <span className="text-[9px] text-white/30">Response to Master&apos;s Command Seal</span>
+                  </div>
+                  <textarea
+                    value={commandSealQuote}
+                    onChange={e => setCommandSealQuote(e.target.value)}
+                    placeholder="e.g. By my Command Seal, shatter all opposition! Blade at full power!"
+                    rows={2}
+                    className="w-full bg-[#111] text-white text-xs p-2.5 rounded-sm border border-[#222] outline-none focus:border-amber-400 resize-none"
                   />
                 </div>
 

@@ -413,9 +413,9 @@ client.on(Events.InteractionCreate, async interaction => {
 
     // ROUTE B: Modal Text Popup Submission (e.g. user typed custom quotes in /customise quote)
     if (interaction.isModalSubmit()) {
-      if (interaction.customId.startsWith('modal_quotes:')) {
-        // Extract the servant ID from the customId string (format: "modal_quotes:servant_id")
-        const servantId = interaction.customId.replace('modal_quotes:', '');
+      if (interaction.customId.startsWith('modal_quotes:') || interaction.customId.startsWith('modal_quotes_combat:') || interaction.customId.startsWith('modal_quotes_tactical:')) {
+        // Extract the servant ID from the customId string (format: "modal_quotes:servant_id", "modal_quotes_combat:servant_id", or "modal_quotes_tactical:servant_id")
+        const servantId = interaction.customId.replace(/^modal_quotes(_combat|_tactical)?:/, '');
         const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
         const servant = master.servants?.find((s: any) => s.id === servantId);
 
@@ -429,9 +429,13 @@ client.on(Events.InteractionCreate, async interaction => {
           const npQuote = getVal('quote_np');
           const victoryQuote = getVal('quote_victory');
           const battleStart = getVal('quote_battleStart');
+          const defeatQuote = getVal('quote_defeat');
           const busterChain = getVal('quote_buster');
           const artsChain = getVal('quote_arts');
           const quickChain = getVal('quote_quick');
+          const critHit = getVal('quote_crit');
+          const skill = getVal('quote_skill');
+          const commandSeal = getVal('quote_commandSeal');
 
           // Update servant quotes (keep existing quote if the user left a field blank)
           servant.customQuotes = {
@@ -440,9 +444,13 @@ client.on(Events.InteractionCreate, async interaction => {
             ...(npQuote ? { noblePhantasm: npQuote } : {}),
             ...(victoryQuote ? { victory: victoryQuote } : {}),
             ...(battleStart ? { battleStart } : {}),
+            ...(defeatQuote ? { defeat: defeatQuote } : {}),
             ...(busterChain ? { busterChain } : {}),
             ...(artsChain ? { artsChain } : {}),
-            ...(quickChain ? { quickChain } : {})
+            ...(quickChain ? { quickChain } : {}),
+            ...(critHit ? { critHit } : {}),
+            ...(skill ? { skill } : {}),
+            ...(commandSeal ? { commandSeal } : {})
           };
 
           // Save back to master database

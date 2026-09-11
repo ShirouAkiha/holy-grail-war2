@@ -406,13 +406,17 @@ export async function buildServantHub(
         `• 🔴 **Buster Brave:** *" ${quotes.busterChain || busterDef} "*\n` +
         `• 🔵 **Arts Mana:** *" ${quotes.artsChain || artsDef} "*\n` +
         `• 🟢 **Quick Star:** *" ${quotes.quickChain || quickDef} "*\n` +
-        `• 🌟 **Noble Phantasm:** *" ${quotes.noblePhantasm || t.noblePhantasm.chant} "*\n\n` +
+        `• 🌟 **Noble Phantasm:** *" ${quotes.noblePhantasm || t.noblePhantasm.chant} "*\n` +
+        `• ⚡ **Critical Strike:** *" ${quotes.critHit || 'Direct hit! Piercing the heart of fate!'} "*\n\n` +
+        `🔮 **TACTICAL & COMMAND SEALS:**\n` +
+        `• ✨ **Skill Activation:** *" ${quotes.skill || 'Unleashing arcane technique!'} "*\n` +
+        `• 🔱 **Command Seal:** *" ${quotes.commandSeal || 'By my Command Seal, shatter all opposition!'} "*\n\n` +
         `📜 **INVOCATIONS & STANCES:**\n` +
         `• ⚔️ **Battle Start:** *" ${quotes.battleStart || t.battleStartQuote} "*\n` +
         `• 🏆 **Victory:** *" ${quotes.victory || t.victoryQuote} "*\n` +
         `• 💀 **Defeat:** *" ${quotes.defeat || t.defeatQuote || 'Forgive me, Master... My duty... remains unfulfilled...'} "*\n` +
         `• 🕯️ **Summon:** *" ${quotes.summon || t.summonQuote} "*\n\n` +
-        `💡 *Set lines with \`/customise quote <type> "<text>"\`, click **Custom Dialogue Studio ✍️** below, or choose a Preset!*`
+        `💡 *Set lines with \`/customise quote <type> "<text>"\`, click the Studio buttons below, or choose a Preset!*`
       )
       .setColor(0xd4af37)
       .setFooter({ text: `Contracted to Master ${master.username} • Bond Lv. ${bondLevel}` });
@@ -552,8 +556,9 @@ export async function buildServantHub(
     components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(voiceSelect));
 
     actionButtonsRow.addComponents(
-      new ButtonBuilder().setCustomId('servant_act_open_dialogue_modal').setLabel('Custom Dialogue Studio').setEmoji('✍️').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('servant_act_reset_dialogue').setLabel('Reset to Lore Defaults').setEmoji('✨').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_act_open_dialogue_modal_combat').setLabel('Combat & NP Studio').setEmoji('⚔️').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('servant_act_open_dialogue_modal_tactical').setLabel('Skills & Stances Studio').setEmoji('🔮').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('servant_act_reset_dialogue').setLabel('Reset Defaults').setEmoji('✨').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('servant_act_hear_voice').setLabel('Replay Cut-In').setEmoji('🎬').setStyle(ButtonStyle.Success)
     );
     components.push(actionButtonsRow);
@@ -745,7 +750,10 @@ export function attachServantCollector(
               busterChain: 'Blade of Selection... Strike true! Dragon Core, ignite!',
               artsChain: 'With pure heart and steadfast oath... Prana circulation stable!',
               quickChain: 'Invisible Air, release! Wind of the King, sweep the field!',
-              summon: 'Servant Saber. I have answered your summons. I ask of you, are you my Master?'
+              summon: 'Servant Saber. I have answered your summons. I ask of you, are you my Master?',
+              critHit: 'Strike true, golden light! Piercing the shadow of calamity!',
+              skill: 'Charisma of the King! Rally under my banner!',
+              commandSeal: 'My blade shall not falter! Mana burst at maximum output!'
             };
           } else if (val === 'preset_emiya_ubw') {
             presetQuotes = {
@@ -756,7 +764,10 @@ export function attachServantCollector(
               busterChain: 'Caladbolg II, overcharge projection! Shatter the perimeter!',
               artsChain: 'Tracing the origin, replicating craftsmanship... Steel is my body!',
               quickChain: 'Kanshou and Bakuya, dual arc trajectory! Intercepting flanks!',
-              summon: 'Servant Archer. I have answered your call. Leave the tactics to me.'
+              summon: 'Servant Archer. I have answered your call. Leave the tactics to me.',
+              critHit: 'Structural analysis complete... Weak point shattered!',
+              skill: 'Magecraft projection engaged. Reenacting divine phantasm.',
+              commandSeal: 'Reinforcing spirit origin! Rho Aias, hold the line!'
             };
           } else if (val === 'preset_gilgamesh_king') {
             presetQuotes = {
@@ -767,7 +778,10 @@ export function attachServantCollector(
               busterChain: 'Drown in the peerless treasures of Babylon! Insolent worm!',
               artsChain: 'A measured judgment from the Golden King. Accept your fate.',
               quickChain: 'Fleeing is useless! A flurry of treasures rains from heaven!',
-              summon: 'Be honored, Master. You now stand in the presence of the King.'
+              summon: 'Be honored, Master. You now stand in the presence of the King.',
+              critHit: 'Kneel! You dare look upon my supreme treasury?!',
+              skill: 'Golden Rule manifested! Everything under heaven belongs to me!',
+              commandSeal: 'Very well, Master! Witness the absolute authority of the King!'
             };
           } else if (val === 'preset_cu_lancer' || val === 'preset_fiery_vanguard') {
             presetQuotes = {
@@ -778,7 +792,10 @@ export function attachServantCollector(
               busterChain: 'Gáe Bolg won\'t miss! Full-force thrust straight through!',
               artsChain: 'Nordic runes align! Mana charging straight into the crimson spear!',
               quickChain: 'Too slow! The Hound leaves no tracks in the bloodied grass!',
-              summon: 'Servant Lancer! The Hound of Culann answers your summons!'
+              summon: 'Servant Lancer! The Hound of Culann answers your summons!',
+              critHit: 'Gotcha right in the dead center! That\'s a lethal pierce!',
+              skill: 'Protection from Arrows! You can\'t touch what you can\'t hit!',
+              commandSeal: 'Command accepted! Let\'s end this in one thrust!'
             };
           } else if (val === 'preset_jalter_avenger' || val === 'preset_dark_avenger') {
             presetQuotes = {
@@ -789,7 +806,10 @@ export function attachServantCollector(
               busterChain: 'Burn! BURN TO CINDERS! There is no salvation for you!',
               artsChain: 'Curse the heavens, curse the earth... Dark fire burns brightest!',
               quickChain: 'Too slow! I\'ll carve you up before you even scream!',
-              summon: 'I emerge from the dark flames to claim retribution.'
+              summon: 'I emerge from the dark flames to claim retribution.',
+              critHit: 'Scream louder! Black flames consume everything in existence!',
+              skill: 'Ephemeral Dream! I will burn your very soul!',
+              commandSeal: 'I don\'t need your orders, Master... but this power I\'ll gladly take!'
             };
           }
           targetServant.customQuotes = { ...(targetServant.customQuotes || {}), ...presetQuotes };
@@ -805,11 +825,11 @@ export function attachServantCollector(
         await saveMaster(master);
         actionOutcomeMsg = `✨ Cleared custom quotes for **${sName}**! Restored to exact canon lore defaults.`;
       }
-      else if (i.customId === 'servant_act_open_dialogue_modal') {
+      else if (i.customId === 'servant_act_open_dialogue_modal_combat' || i.customId === 'servant_act_open_dialogue_modal') {
         const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = await import('discord.js');
         const modal = new ModalBuilder()
-          .setCustomId(`modal_quotes:${targetServant.id}`)
-          .setTitle(`Custom Voice Lines: ${sName.slice(0, 20)}`);
+          .setCustomId(`modal_quotes_combat:${targetServant.id}`)
+          .setTitle(`Combat Lines: ${sName.slice(0, 20)}`);
 
         const quotes = targetServant.customQuotes || {};
 
@@ -845,6 +865,49 @@ export function attachServantCollector(
           .setValue(quotes.noblePhantasm || '')
           .setRequired(false);
 
+        const critInput = new TextInputBuilder()
+          .setCustomId('quote_crit')
+          .setLabel('⚡ Critical Strike Line')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('e.g. Direct hit! Piercing the heart of fate!')
+          .setValue(quotes.critHit || '')
+          .setRequired(false);
+
+        modal.addComponents(
+          new ActionRowBuilder<any>().addComponents(busterInput),
+          new ActionRowBuilder<any>().addComponents(artsInput),
+          new ActionRowBuilder<any>().addComponents(quickInput),
+          new ActionRowBuilder<any>().addComponents(npInput),
+          new ActionRowBuilder<any>().addComponents(critInput)
+        );
+
+        await i.showModal(modal);
+        return;
+      }
+      else if (i.customId === 'servant_act_open_dialogue_modal_tactical') {
+        const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = await import('discord.js');
+        const modal = new ModalBuilder()
+          .setCustomId(`modal_quotes_tactical:${targetServant.id}`)
+          .setTitle(`Skills & Stances: ${sName.slice(0, 20)}`);
+
+        const quotes = targetServant.customQuotes || {};
+
+        const skillInput = new TextInputBuilder()
+          .setCustomId('quote_skill')
+          .setLabel('✨ Skill Activation Line')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('e.g. Charisma of the King! Rally under my banner!')
+          .setValue(quotes.skill || '')
+          .setRequired(false);
+
+        const sealInput = new TextInputBuilder()
+          .setCustomId('quote_commandSeal')
+          .setLabel('🔱 Command Seal Invocation')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('e.g. By my Command Seal, shatter all opposition!')
+          .setValue(quotes.commandSeal || '')
+          .setRequired(false);
+
         const startInput = new TextInputBuilder()
           .setCustomId('quote_battleStart')
           .setLabel('⚔️ Battle Start Quote')
@@ -853,12 +916,28 @@ export function attachServantCollector(
           .setValue(quotes.battleStart || '')
           .setRequired(false);
 
+        const victoryInput = new TextInputBuilder()
+          .setCustomId('quote_victory')
+          .setLabel('🏆 Victory Quote')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('e.g. The battle is decided. May honor guide us.')
+          .setValue(quotes.victory || '')
+          .setRequired(false);
+
+        const defeatInput = new TextInputBuilder()
+          .setCustomId('quote_defeat')
+          .setLabel('💀 Defeat Quote')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('e.g. Forgive me, Master... My duty... remains unfulfilled...')
+          .setValue(quotes.defeat || '')
+          .setRequired(false);
+
         modal.addComponents(
-          new ActionRowBuilder<any>().addComponents(busterInput),
-          new ActionRowBuilder<any>().addComponents(artsInput),
-          new ActionRowBuilder<any>().addComponents(quickInput),
-          new ActionRowBuilder<any>().addComponents(npInput),
-          new ActionRowBuilder<any>().addComponents(startInput)
+          new ActionRowBuilder<any>().addComponents(skillInput),
+          new ActionRowBuilder<any>().addComponents(sealInput),
+          new ActionRowBuilder<any>().addComponents(startInput),
+          new ActionRowBuilder<any>().addComponents(victoryInput),
+          new ActionRowBuilder<any>().addComponents(defeatInput)
         );
 
         await i.showModal(modal);

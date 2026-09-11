@@ -4504,6 +4504,14 @@ export default function DiscordEmulator({
       artschain: 'artsChain',
       quick: 'quickChain',
       quickchain: 'quickChain',
+      crit: 'critHit',
+      crithit: 'critHit',
+      critical: 'critHit',
+      skill: 'skill',
+      skills: 'skill',
+      seal: 'commandSeal',
+      commandseal: 'commandSeal',
+      command: 'commandSeal',
       np: 'noblePhantasm',
       chant: 'noblePhantasm',
       noblephantasm: 'noblePhantasm',
@@ -4580,6 +4588,9 @@ export default function DiscordEmulator({
       busterChain: 'Buster Brave Chain (3x Buster)',
       artsChain: 'Arts Mana Chain (3x Arts)',
       quickChain: 'Quick Star Chain (3x Quick)',
+      critHit: 'Critical Strike Quote',
+      skill: 'Skill Activation Quote',
+      commandSeal: 'Command Seal Invocation',
       victory: 'Victory Quote',
       defeat: 'Defeat Quote'
     };
@@ -5319,13 +5330,17 @@ export default function DiscordEmulator({
         `• 🔴 **Buster Brave:** *" ${quotes.busterChain || busterDef} "*\n` +
         `• 🔵 **Arts Mana:** *" ${quotes.artsChain || artsDef} "*\n` +
         `• 🟢 **Quick Star:** *" ${quotes.quickChain || quickDef} "*\n` +
-        `• 🌟 **Noble Phantasm:** *" ${quotes.noblePhantasm || t.noblePhantasm.chant} "*\n\n` +
+        `• 🌟 **Noble Phantasm:** *" ${quotes.noblePhantasm || t.noblePhantasm.chant} "*\n` +
+        `• ⚡ **Critical Strike:** *" ${quotes.critHit || 'Direct hit! Piercing the heart of fate!'} "*\n\n` +
+        `🔮 **TACTICAL & COMMAND SEALS:**\n` +
+        `• ✨ **Skill Activation:** *" ${quotes.skill || 'Unleashing arcane technique!'} "*\n` +
+        `• 🔱 **Command Seal:** *" ${quotes.commandSeal || 'By my Command Seal, shatter all opposition!'} "*\n\n` +
         `📜 **INVOCATIONS & STANCES:**\n` +
         `• ⚔️ **Battle Start:** *" ${quotes.battleStart || t.battleStartQuote} "*\n` +
         `• 🏆 **Victory:** *" ${quotes.victory || t.victoryQuote} "*\n` +
         `• 💀 **Defeat:** *" ${quotes.defeat || t.defeatQuote || 'Forgive me, Master... My duty... remains unfulfilled...'} "*\n` +
         `• 🕯️ **Summon:** *" ${quotes.summon || t.summonQuote} "*\n\n` +
-        `💡 *Set lines with \`/customise quote <type> "<text>"\`, click **Custom Studio ✍️** below, or choose a Preset!*`;
+        `💡 *Set lines with \`/customise quote <type> "<text>"\`, click the Studio buttons below, or choose a Preset!*`;
       color = '#d4af37';
     } else if (category === ('equip_ce' as any)) {
       title = `👔 Equip Craft Essence — ${sName}`;
@@ -5394,9 +5409,10 @@ export default function DiscordEmulator({
       ];
     } else if (category === 'dialogue') {
       actionButtons = [
-        { id: `dlg_open_modal_${targetServant.id}`, label: 'Custom Studio ✍️', style: 'primary', emoji: '✍️' },
-        { id: `dlg_reset_lore_${targetServant.id}`, label: 'Reset Lore Defaults ✨', style: 'secondary', emoji: '✨' },
-        { id: 'btn_hear_quote', label: 'Replay Cut-In 🎬', style: 'success', emoji: '⚔️' }
+        { id: `dlg_open_modal_combat_${targetServant.id}`, label: 'Combat & NP Studio ⚔️', style: 'primary', emoji: '⚔️' },
+        { id: `dlg_open_modal_tactical_${targetServant.id}`, label: 'Tactical & Seals 🔮', style: 'primary', emoji: '🔮' },
+        { id: `dlg_reset_lore_${targetServant.id}`, label: 'Reset Defaults ✨', style: 'secondary', emoji: '✨' },
+        { id: 'btn_hear_quote', label: 'Replay Cut-In 🎬', style: 'success', emoji: '🎬' }
       ];
     } else {
       actionButtons = [
@@ -7408,24 +7424,30 @@ export default function DiscordEmulator({
         }
       }
       else if (btnId.startsWith('dlg_open_modal_')) {
+        const isTactical = btnId.includes('tactical');
         addMessage({
           id: getNextId('bot_dlg_studio_prompt'),
           sender: 'bot',
           timestamp: 'Just now',
           embed: {
-            title: `✍️ Master Dialogue Studio — Custom Quotes`,
-            description:
-              `Customize combat lines for **${targetServant.nickname || targetServant.template?.name || 'Servant'}** using slash commands:\n\n` +
-              `• \`/customise quote buster "<text>"\` — Set Buster Brave Chain line\n` +
-              `• \`/customise quote arts "<text>"\` — Set Arts Mana Chain line\n` +
-              `• \`/customise quote quick "<text>"\` — Set Quick Star Chain line\n` +
-              `• \`/customise quote np "<text>"\` — Set Noble Phantasm Chant\n` +
-              `• \`/customise quote start "<text>"\` — Set Battle Start line\n` +
-              `• \`/customise quote victory "<text>"\` — Set Victory line\n` +
-              `• \`/customise quote defeat "<text>"\` — Set Defeat line\n` +
-              `• \`/customise quote summon "<text>"\` — Set Summon line\n\n` +
-              `*Or use the **Servant Workshop** tab in the main web app to author quotes with live interactive textareas!*`,
-            color: '#d4af37'
+            title: isTactical ? `🔮 Master Dialogue Studio — Tactical & Command Seals` : `⚔️ Master Dialogue Studio — Combat & Chains`,
+            description: isTactical
+              ? `Customize tactical combat responses for **${targetServant.nickname || targetServant.template?.name || 'Servant'}** using slash commands:\n\n` +
+                `• \`/customise quote skill "<text>"\` — Set Skill Activation quote\n` +
+                `• \`/customise quote seal "<text>"\` — Set Command Seal invocation quote\n` +
+                `• \`/customise quote start "<text>"\` — Set Battle Start line\n` +
+                `• \`/customise quote victory "<text>"\` — Set Victory line\n` +
+                `• \`/customise quote defeat "<text>"\` — Set Defeat line\n\n` +
+                `*Or use the **Servant Workshop -> Tactical & Seals** tab in the web app to edit with live inputs!*`
+              : `Customize combat chants for **${targetServant.nickname || targetServant.template?.name || 'Servant'}** using slash commands:\n\n` +
+                `• \`/customise quote buster "<text>"\` — Set Buster Brave Chain line\n` +
+                `• \`/customise quote arts "<text>"\` — Set Arts Mana Chain line\n` +
+                `• \`/customise quote quick "<text>"\` — Set Quick Star Chain line\n` +
+                `• \`/customise quote crit "<text>"\` — Set Critical Strike line\n` +
+                `• \`/customise quote np "<text>"\` — Set Noble Phantasm Chant\n` +
+                `• \`/customise quote summon "<text>"\` — Set Summon line\n\n` +
+                `*Or use the **Servant Workshop -> Combat & NP** tab in the web app to author quotes with live interactive textareas!*`,
+            color: isTactical ? '#a855f7' : '#d4af37'
           }
         });
       }
