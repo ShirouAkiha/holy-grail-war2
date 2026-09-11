@@ -1591,8 +1591,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const allyUser = interaction.options.getUser('ally');
     const opponent2User = interaction.options.getUser('opponent2');
 
+    if (mode === 'forcejoin') {
+      await interaction.reply({
+        content: '⚡ **Force Join Active Duel:** To force join an ongoing Holy Grail War duel, click the **⚡ Force Join Arena** button located directly on any active battle message in the channel!',
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
+
     // BRANCH 0: 2v2 ALLIANCE TAG-TEAM OR 1v2 RAID MODE
     if (mode === '2v2' || mode === '1v2') {
+      await interaction.deferReply();
       const is2v2 = mode === '2v2';
       let opponentMaster: MasterProfile;
       let opponentServant: any;
@@ -2377,7 +2386,7 @@ async function startInteractiveDuel(
     const hasAlly = myTeam.length > 1;
     const isT1 = team1.includes(activeCombatant);
     const assistAvail = isT1 ? (!team1AssistUsed && hasAlly) : (!team2AssistUsed && hasAlly);
-    const forceJoinAvail = forceJoinCount === 0 && (team1.length + team2.length < 4);
+    const forceJoinAvail = (team1.length + team2.length < 4);
 
     return buildCombatButtons(
       activeCombatant,
@@ -2840,9 +2849,9 @@ async function startInteractiveDuel(
 
       // CASE: FORCE JOIN MID-BATTLE INTERVENTION
       if (i.customId === 'card_forcejoin' || i.customId === 'duel_prompt_forcejoin') {
-        if (forceJoinCount > 0 || (team1.length + team2.length >= 4)) {
+        if (team1.length + team2.length >= 4) {
           await i.reply({
-            content: '❌ Force Join is unavailable! Arena is at maximum capacity (4 combatants) or Force Join was already utilized.',
+            content: '❌ Force Join is unavailable! Arena is at maximum capacity (4 combatants).',
             flags: MessageFlags.Ephemeral
           });
           return;
@@ -2955,10 +2964,11 @@ async function startInteractiveDuel(
         }
 
         turnOrder.push(joinCombatant);
-        forceJoinCount++;
 
+        const totalParticipants = team1.length + team2.length;
+        const joinOrdinal = totalParticipants === 3 ? '3RD' : totalParticipants === 4 ? '4TH' : `${totalParticipants}TH`;
         const teamLeaderName = targetTeam1 ? p1.username : p2.username;
-        const forceJoinLog = `⚡ **3RD MASTER FORCE JOIN INTERVENTION!** <@${i.user.id}> entered the fray with **${joinName}** to assist **${teamLeaderName}**! Reinforced with **+30% ATK (3T)** & **+20 Critical Stars**!`;
+        const forceJoinLog = `⚡ **${joinOrdinal} MASTER FORCE JOIN INTERVENTION!** <@${i.user.id}> entered the fray with **${joinName}** to assist **${teamLeaderName}**! Reinforced with **+30% ATK (3T)** & **+20 Critical Stars**!`;
         combatLogs.push(forceJoinLog);
         if (combatLogs.length > 4) combatLogs.shift();
 
