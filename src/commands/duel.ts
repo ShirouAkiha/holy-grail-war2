@@ -777,6 +777,7 @@ function buildCombatButtons(
   // Skill 3 (Unlocked at Bond Level 5)
   const s3 = skills[2];
   const cd3 = combatant.skillCooldowns[2] || 0;
+  // Row 3: Skills + Tactical Alliance Assist + Force Join
   const isS3Unlocked = bondLevel >= 5;
   const s3Name = s3 ? s3.name.slice(0, 13) : 'Skill 3';
   row3.addComponents(
@@ -786,6 +787,31 @@ function buildCombatButtons(
       .setStyle(!isS3Unlocked || cd3 > 0 ? ButtonStyle.Secondary : ButtonStyle.Success)
       .setDisabled(!isS3Unlocked || cd3 > 0 || !s3)
   );
+
+  if (hasAlly) {
+    row3.addComponents(
+      new ButtonBuilder()
+        .setCustomId('card_alliance_assist')
+        .setLabel(
+          !allianceAssistAvailable
+            ? 'Assist (Used)'
+            : 'Tag Assist (+25% ATK)'
+        )
+        .setEmoji('🛡️')
+        .setStyle(!allianceAssistAvailable ? ButtonStyle.Secondary : ButtonStyle.Primary)
+        .setDisabled(!allianceAssistAvailable)
+    );
+  }
+
+  if (forceJoinAvailable) {
+    row3.addComponents(
+      new ButtonBuilder()
+        .setCustomId('card_forcejoin')
+        .setLabel('Force Join Arena')
+        .setEmoji('⚡')
+        .setStyle(ButtonStyle.Danger)
+    );
+  }
 
   const actionRows: ActionRowBuilder<ButtonBuilder>[] = [row1, row2, row3];
 
@@ -808,30 +834,6 @@ function buildCombatButtons(
     });
     actionRows.push(targetRow);
   }
-
-  // Row 4 or 5: Tactical Actions & Mid-Battle Intervention
-  const tacticalRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId('card_alliance_assist')
-      .setLabel(
-        !hasAlly
-          ? 'Alliance Assist (No Ally)'
-          : !allianceAssistAvailable
-          ? 'Alliance Assist (Used)'
-          : 'Alliance Tag Assist (+25% ATK)'
-      )
-      .setEmoji('🛡️')
-      .setStyle(!hasAlly || !allianceAssistAvailable ? ButtonStyle.Secondary : ButtonStyle.Primary)
-      .setDisabled(!hasAlly || !allianceAssistAvailable),
-    new ButtonBuilder()
-      .setCustomId('card_forcejoin')
-      .setLabel(forceJoinAvailable ? 'Force Join Arena' : 'Force Join (Locked)')
-      .setEmoji('⚡')
-      .setStyle(forceJoinAvailable ? ButtonStyle.Danger : ButtonStyle.Secondary)
-      .setDisabled(!forceJoinAvailable)
-  );
-
-  actionRows.push(tacticalRow);
 
   return actionRows;
 }
@@ -2836,8 +2838,8 @@ async function startInteractiveDuel(
         return;
       }
 
-      // CASE: FORCE JOIN MID-BATTLE INTERVENTION
-      if (i.customId === 'card_forcejoin' || i.customId === 'duel_prompt_forcejoin') {
+      // CASE: FORCE JOIN TEAM SELECTION (fj_join_team1 / fj_join_team2)
+      if (i.customId === 'fj_join_team1' || i.customId === 'fj_join_team2') {
         if (forceJoinCount > 0 || (team1.length + team2.length >= 4)) {
           await i.reply({
             content: '❌ Force Join is unavailable! Arena is at maximum capacity (4 combatants) or Force Join was already utilized.',
@@ -2880,8 +2882,106 @@ async function startInteractiveDuel(
           remainingTurns: 3
         });
 
-        // Add to team with fewer members
-        if (team1.length <= team2.length) {
+        const targetTeam1 = i.customId === 'fj_join_team1';
+        if (targetTeam1) {
+          p1Ally = joinCombatant;
+          p1AllyMaster = joinerMaster;
+          team1.push(joinCombatant);
+        } else {
+          p2Ally = joinCombatant;
+          p2AllyMaster = joinerMaster;
+          team2.push(joinCombatant);
+        }
+
+        turnOrder.push(joinCombatant);
+        forceJoinCount++;
+
+        const teamLeaderName = targetTeam1 ? p1.username : p2.username;
+        const forceJoinLog = `⚡ **3RD MASTER FORCE JOIN INTERVENTION!** <@${i.user.id}> entered the fray with **${joinName}** to assist **${teamLeaderName}**! Reinforced with **+30% ATK (3T)** & **+20 Critical Stars**!`;
+        combatLogs.push(forceJoinLog);
+        if (combatLogs.length > 4) combatLogs.shift();
+
+        const turnAttachment = await buildCurrentAttachment(forceJoinLog);
+        const updatedEmbed = buildCurrentEmbed();
+        const updatedButtons = buildCurrentButtons();
+
+        await i.deferUpdate();
+        await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+        return;
+      }
+
+      // CASE: FORCE JOIN MID-BATTLE INTERVENTION
+      if (i.customId === 'card_forcejoin' || i.customId === 'duel_prompt_forcejoin') {
+        if (forceJoinCount > 0 || (team1.length + team2.length >= 4)) {
+          await i.reply({
+            content: '❌ Force Join is unavailable! Arena is at maximum capacity (4 combatants) or Force Join was already utilized.',
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        if (team1.some(c => c.userId === i.user.id) || team2.some(c => c.userId === i.user.id)) {
+          await i.reply({
+            content: '❌ You are already an active participant in this Holy Grail duel!',
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        const joinerMaster = await getOrCreateMaster(i.user.id, i.user.username);
+        if (!joinerMaster.servants || joinerMaster.servants.length === 0) {
+          await i.reply({
+            content: '❌ You must summon a Servant before force-joining an active Holy Grail War battle! Invoke `/summon ritual` first.',
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        // If 1v1 battle, prompt 3rd Master to choose which team to reinforce!
+        if (team1.length === 1 && team2.length === 1) {
+          const p1Name = p1.username || p1.servant.nickname || p1.servant.template.name;
+          const p2Name = p2.username || p2.servant.nickname || p2.servant.template.name;
+
+          const fjRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+              .setCustomId('fj_join_team1')
+              .setLabel(`Ally with Team 1 (${p1Name.slice(0, 15)})`)
+              .setStyle(ButtonStyle.Primary)
+              .setEmoji('🛡️'),
+            new ButtonBuilder()
+              .setCustomId('fj_join_team2')
+              .setLabel(`Ally with Team 2 (${p2Name.slice(0, 15)})`)
+              .setStyle(ButtonStyle.Danger)
+              .setEmoji('⚔️')
+          );
+
+          await i.reply({
+            content: `⚡ **FORCE JOIN ARENA:** Select which Master/Team you wish to assist in combat:`,
+            components: [fjRow],
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        const joinServant = joinerMaster.servants.find(s => s.id === joinerMaster.activeServantId) || joinerMaster.servants[0];
+        const joinName = joinServant.nickname || joinServant.template?.name || 'Heroic Spirit';
+
+        const warSession = getOrInitWarSession(p1Master);
+        const joinPart = warSession.participants[joinerMaster.discordId];
+        const joinHp = joinPart ? calculateCurrentHp(joinPart) : undefined;
+        const joinCombatant = createCombatant(joinerMaster, joinServant, false, joinHp);
+
+        joinCombatant.critStars = 20;
+        joinCombatant.activeBuffs = joinCombatant.activeBuffs || [];
+        joinCombatant.activeBuffs.push({
+          name: '3rd Master Reinforcement',
+          type: 'buff_atk',
+          value: 30,
+          remainingTurns: 3
+        });
+
+        // Add to team with fewer members to balance 2v2
+        if (team1.length < team2.length) {
           p1Ally = joinCombatant;
           p1AllyMaster = joinerMaster;
           team1.push(joinCombatant);
@@ -3135,10 +3235,10 @@ async function startInteractiveDuel(
           if (combatLogs.length > 4) combatLogs.shift();
 
           if (fleeActor.currentHp <= 0) {
-            const target = getSelectedTarget(fleeActor) || (team1.includes(fleeActor) ? p2 : p1);
-            collector.stop('finished');
-            const finalAttachment = await buildCurrentAttachment(fleeFailLog);
-            await finishDuel(i, target, fleeActor, p1Master, p2Master, finalAttachment);
+            const killLog = `💀 **${fleeActor.servant.nickname || fleeActor.servant.template.name}** (Master: ${fleeActor.username}) was vanquished while attempting to flee!`;
+            combatLogs.push(killLog);
+            if (combatLogs.length > 4) combatLogs.shift();
+            await advanceTurn(i);
             return;
           }
 
