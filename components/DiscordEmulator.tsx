@@ -3074,6 +3074,8 @@ export default function DiscordEmulator({
             { id: 'duel_card_aaa', label: 'Arts Chain (NP +300%)', style: 'primary', emoji: '🔵' },
             { id: 'duel_card_qqq', label: 'Quick Chain (+20 Stars & Crits)', style: 'success', emoji: '🟢' },
             { id: 'duel_use_np', label: `Noble Phantasm (${Math.round(p1.npGauge)}%)`, style: 'danger', emoji: '💥', disabled: p1.npGauge < 100 },
+            { id: 'duel_act_alliance_assist', label: 'Alliance Assist (+25%)', style: 'primary', emoji: '🛡️' },
+            { id: 'duel_prompt_forcejoin', label: '⚡ Force Join', style: 'danger', emoji: '🚨' },
             { id: 'duel_flee', label: `Flee (${initialFlee.chancePercent}%)`, style: 'secondary', emoji: '🏃' }
           ]
         }
@@ -8669,6 +8671,29 @@ export default function DiscordEmulator({
         handleCommand('/duel 2v2');
       } else if (btnId === 'duel_act_1v2' || btnId === 'duel_act_raid') {
         handleCommand('/duel 1v2');
+      } else if (btnId === 'duel_act_alliance_assist') {
+        if (!activeDuel) return;
+        const p1 = activeDuel.battle.player1;
+        p1.critStars = Math.min(50, (p1.critStars || 0) + 15);
+        p1.activeBuffs = p1.activeBuffs || [];
+        p1.activeBuffs.push({
+          name: 'Alliance Tag Assist',
+          type: 'buff_atk',
+          value: 25,
+          remainingTurns: 2
+        });
+        setActiveDuel({ ...activeDuel, battle: { ...activeDuel.battle } });
+        addMessage({
+          id: getNextId('bot_alliance_assist'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '🛡️ ALLIANCE TAG-TEAM ASSIST ACTIVATED!',
+            description: `🤝 **Alliance Partner Assist!** Your teammate executes a coordinated flank strike!\n\n• **ATK Buff:** +25% DMG for 2 Turns\n• **Tactical Stars:** +15 Critical Stars gathered!`,
+            color: '#38bdf8'
+          }
+        });
+        return;
       } else if (btnId === 'duel_act_refresh') {
         postDuelHub(duelHubCategory, '🔄 Arena lobby refreshed.');
       } else if (btnId === 'duel_link_inventory') {
@@ -8909,6 +8934,8 @@ export default function DiscordEmulator({
                   emoji: '💥',
                   disabled: updatedState.player1.npGauge < 100
                 },
+                { id: 'duel_act_alliance_assist', label: 'Alliance Assist (+25%)', style: 'primary', emoji: '🛡️' },
+                { id: 'duel_prompt_forcejoin', label: '⚡ Force Join', style: 'danger', emoji: '🚨' },
                 {
                   id: 'duel_flee',
                   label: `Flee (${nextFleeCalc.chancePercent}%)`,
@@ -9620,6 +9647,8 @@ export default function DiscordEmulator({
                 emoji: '💥',
                 disabled: updatedState.player1.npGauge < 100
               },
+              { id: 'duel_act_alliance_assist', label: 'Alliance Assist (+25%)', style: 'primary', emoji: '🛡️' },
+              { id: 'duel_prompt_forcejoin', label: '⚡ Force Join', style: 'danger', emoji: '🚨' },
               {
                 id: 'duel_flee',
                 label: `Flee (${fleeTurnCalc.chancePercent}%)`,
