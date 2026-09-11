@@ -11,7 +11,8 @@ import {
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
   ComponentType,
-  MessageFlags
+  MessageFlags,
+  User
 } from 'discord.js';
 import { 
   getAllThroneServants,
@@ -23,6 +24,16 @@ import {
   matchServantSearch,
   getOrCreateMaster,
   saveMaster,
+  getAllMasters,
+  giveCurrencyToMaster,
+  removeCurrencyFromMaster,
+  setMasterStat,
+  giveCraftEssenceToMaster,
+  removeCraftEssenceFromMaster,
+  giveServantToMaster,
+  removeServantFromMaster,
+  getAllCraftEssences,
+  findServantInPool,
   resetAllMastersServants,
   resetSingleMasterServant,
   resetSingleMasterCurrency,
@@ -39,7 +50,7 @@ import {
   triggerAdminCataclysm,
   refillAllWarParticipantsSeals
 } from '../engine/grailwar';
-import { WarRules } from '../types';
+import { WarRules, MasterProfile } from '../types';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
 // ==========================================
@@ -47,7 +58,7 @@ import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedH
 // ==========================================
 export const data = new SlashCommandBuilder()
   .setName('admin')
-  .setDescription('Fate/Grand Order Admin Hub — War Rules, NP Animations & System Controls')
+  .setDescription('Fate/Grand Order Admin Hub — Master Management, Inventory, War Rules & Controls')
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
   .addSubcommand(sub =>
     sub
@@ -60,11 +71,200 @@ export const data = new SlashCommandBuilder()
           .setRequired(false)
           .addChoices(
             { name: '🏆 Holy Grail War Ritual & Rules', value: 'war' },
+            { name: '👤 Master Dossier & Inventory Overseer', value: 'masters' },
             { name: '🎬 NP Animations & Chant Registry', value: 'npanim' },
             { name: '⚙️ Duel NP Settings & Timing', value: 'npsettings' },
             { name: '📋 Registered Custom Animations', value: 'listnp' },
             { name: '💎 Economy & Saint Quartz Mint', value: 'economy' }
           )
+      )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('give')
+      .setDescription('Grant currency, items, Craft Essences, or Servants to any Master')
+      .addUserOption(opt =>
+        opt
+          .setName('user')
+          .setDescription('Target Master to receive items')
+          .setRequired(true)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('item')
+          .setDescription('Resource or item type to grant')
+          .setRequired(true)
+          .addChoices(
+            { name: '💎 Saint Quartz (SQ)', value: 'sq' },
+            { name: '🪙 QP (Quantum Pieces)', value: 'qp' },
+            { name: '🎫 Summon Tickets', value: 'tickets' },
+            { name: '🔱 Command Seals', value: 'seals' },
+            { name: '🧪 Mana Prisms', value: 'mana_prisms' },
+            { name: '🔮 Holy Grail Shards', value: 'grail_shards' },
+            { name: '⚡ Stat Points (for active Servant)', value: 'stat_points' },
+            { name: '🧬 Homunculus Helpers', value: 'homunculi' },
+            { name: '⚡ Action Points (AP)', value: 'ap' },
+            { name: '🃏 Craft Essence (Relic)', value: 'ce' },
+            { name: '⚔️ Heroic Spirit (Servant Contract)', value: 'servant' }
+          )
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('amount')
+          .setDescription('Quantity to give (default: 1; for SQ default: 30, QP: 1,000,000)')
+          .setMinValue(1)
+          .setRequired(false)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('name')
+          .setDescription('Name of the Craft Essence or Servant (required if item is CE or Servant)')
+          .setRequired(false)
+          .setAutocomplete(true)
+      )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('remove')
+      .setDescription('Deduct currency, remove Craft Essences, or sever Servants from any Master')
+      .addUserOption(opt =>
+        opt
+          .setName('user')
+          .setDescription('Target Master to modify')
+          .setRequired(true)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('item')
+          .setDescription('Resource or item type to remove')
+          .setRequired(true)
+          .addChoices(
+            { name: '💎 Saint Quartz (SQ)', value: 'sq' },
+            { name: '🪙 QP (Quantum Pieces)', value: 'qp' },
+            { name: '🎫 Summon Tickets', value: 'tickets' },
+            { name: '🔱 Command Seals', value: 'seals' },
+            { name: '🧪 Mana Prisms', value: 'mana_prisms' },
+            { name: '🔮 Holy Grail Shards', value: 'grail_shards' },
+            { name: '⚡ Stat Points', value: 'stat_points' },
+            { name: '🧬 Homunculus Helpers', value: 'homunculi' },
+            { name: '⚡ Action Points (AP)', value: 'ap' },
+            { name: '🃏 Craft Essence (Relic)', value: 'ce' },
+            { name: '⚔️ Heroic Spirit (Sever Contract)', value: 'servant' },
+            { name: '🎒 Wipe ALL Craft Essences', value: 'all_ces' }
+          )
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('amount')
+          .setDescription('Quantity to remove (default: 1)')
+          .setMinValue(1)
+          .setRequired(false)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('name')
+          .setDescription('Name of the Craft Essence or Servant to remove')
+          .setRequired(false)
+          .setAutocomplete(true)
+      )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('set')
+      .setDescription('Set an exact numerical balance or stat value for any Master or active Servant')
+      .addUserOption(opt =>
+        opt
+          .setName('user')
+          .setDescription('Target Master')
+          .setRequired(true)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('attribute')
+          .setDescription('Attribute to set')
+          .setRequired(true)
+          .addChoices(
+            { name: '💎 Saint Quartz', value: 'sq' },
+            { name: '🪙 QP', value: 'qp' },
+            { name: '🎫 Summon Tickets', value: 'tickets' },
+            { name: '🔱 Command Seals (0-3)', value: 'seals' },
+            { name: '🧪 Mana Prisms', value: 'mana_prisms' },
+            { name: '🔮 Grail Shards', value: 'grail_shards' },
+            { name: '🧬 Homunculi', value: 'homunculi' },
+            { name: '⚡ Action Points', value: 'ap' },
+            { name: '⚔️ Servant Level (1-100)', value: 'servant_level' },
+            { name: '💖 Servant Bond Level (0-10)', value: 'servant_bond' },
+            { name: '⚡ Available Stat Points', value: 'stat_points' },
+            { name: '💪 Allocated STR Points', value: 'servant_str' },
+            { name: '🛡️ Allocated END Points', value: 'servant_end' },
+            { name: '💨 Allocated AGI Points', value: 'servant_agi' },
+            { name: '🔮 Allocated MANA Points', value: 'servant_mana' },
+            { name: '🍀 Allocated LUCK Points', value: 'servant_lck' }
+          )
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('value')
+          .setDescription('New integer value')
+          .setMinValue(0)
+          .setRequired(true)
+      )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('inspect')
+      .setDescription('View complete dossier, currencies, inventory, and stats of any Master')
+      .addUserOption(opt =>
+        opt
+          .setName('user')
+          .setDescription('Master to inspect')
+          .setRequired(true)
+      )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('master')
+      .setDescription('Execute targeted management actions on any Master')
+      .addStringOption(opt =>
+        opt
+          .setName('action')
+          .setDescription('Administrative action to perform')
+          .setRequired(true)
+          .addChoices(
+            { name: '🔍 Inspect Dossier & Inventory', value: 'inspect' },
+            { name: '💎 Mint +30 Saint Quartz', value: 'give_30sq' },
+            { name: '💎 Mint +100 Saint Quartz', value: 'give_100sq' },
+            { name: '🪙 Mint +1,000,000 QP', value: 'give_1mqp' },
+            { name: '🔱 Refill Command Seals (3/3)', value: 'refill_seals' },
+            { name: '⚡ Grant +10 Stat Points', value: 'give_stat_points' },
+            { name: '🃏 Grant Craft Essence (uses name)', value: 'give_ce' },
+            { name: '⚔️ Contract Heroic Spirit (uses name)', value: 'give_servant' },
+            { name: '🗡️ Sever Active Servant Contract', value: 'sever_servant' },
+            { name: '🎒 Wipe All Craft Essences', value: 'reset_inventory' },
+            { name: '🧹 Reset Currency (SQ: 30, QP/Tickets: 0)', value: 'reset_currency' },
+            { name: '🔄 Full Vault Reset (Items & Currency)', value: 'reset_vault' },
+            { name: '🌱 Reset Servant to Level 1', value: 'reset_servant_stats' }
+          )
+      )
+      .addUserOption(opt =>
+        opt
+          .setName('user')
+          .setDescription('Target Master')
+          .setRequired(true)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('name')
+          .setDescription('Craft Essence or Servant name (when granting CE/Servant)')
+          .setRequired(false)
+          .setAutocomplete(true)
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('amount')
+          .setDescription('Quantity (default: 1)')
+          .setMinValue(1)
+          .setRequired(false)
       )
   )
   .addSubcommand(sub =>
@@ -177,6 +377,12 @@ export const data = new SlashCommandBuilder()
             { name: '⚠️ Server-Wide Wipe (All Masters Items & Currency)', value: 'server_wipe' }
           )
       )
+      .addUserOption(opt =>
+        opt
+          .setName('user')
+          .setDescription('Optional target Master (defaults to you if omitted)')
+          .setRequired(false)
+      )
   );
 
 // ==========================================
@@ -187,6 +393,7 @@ export async function autocomplete(interaction: AutocompleteInteraction) {
     const focusedOption = interaction.options.getFocused(true);
     const query = focusedOption.value.toLowerCase().trim();
     const allServants = getAllThroneServants();
+    const allCes = getAllCraftEssences();
 
     if (focusedOption.name === 'servant') {
       const matches = allServants
@@ -199,6 +406,56 @@ export async function autocomplete(interaction: AutocompleteInteraction) {
           value: s.name
         }))
       );
+      return;
+    }
+
+    if (focusedOption.name === 'name') {
+      const itemType = interaction.options.getString('item') || interaction.options.getString('action');
+
+      if (itemType === 'ce' || itemType === 'give_ce' || itemType === 'remove_ce') {
+        const ceMatches = allCes
+          .filter(c => c.name.toLowerCase().includes(query) || c.id.toLowerCase().includes(query))
+          .slice(0, 25);
+
+        await interaction.respond(
+          ceMatches.map(c => ({
+            name: `🃏 [${c.rarity}★ CE] ${c.name}`,
+            value: c.name
+          }))
+        );
+        return;
+      }
+
+      if (itemType === 'servant' || itemType === 'give_servant') {
+        const sMatches = allServants
+          .filter(s => matchServantSearch(s, query))
+          .slice(0, 25);
+
+        await interaction.respond(
+          sMatches.map(s => ({
+            name: `⚔️ [${s.rarity}★ ${s.servantClass}] ${s.name}`,
+            value: s.name
+          }))
+        );
+        return;
+      }
+
+      // Default combined autocomplete (search both CEs and Servants)
+      const combined: { name: string; value: string }[] = [];
+      for (const s of allServants) {
+        if (matchServantSearch(s, query)) {
+          combined.push({ name: `⚔️ [${s.rarity}★ ${s.servantClass}] ${s.name}`, value: s.name });
+        }
+        if (combined.length >= 13) break;
+      }
+      for (const c of allCes) {
+        if (c.name.toLowerCase().includes(query) || c.id.toLowerCase().includes(query)) {
+          combined.push({ name: `🃏 [${c.rarity}★ CE] ${c.name}`, value: c.name });
+        }
+        if (combined.length >= 25) break;
+      }
+
+      await interaction.respond(combined.slice(0, 25));
     }
   } catch (err: any) {
     if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) {
@@ -220,6 +477,235 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 
   const category = (subcommand as any) || (interaction.options.getString('category') as any) || 'war';
+
+  // --- /admin give ---
+  if (subcommand === 'give') {
+    const targetUser = interaction.options.getUser('user', true);
+    const itemType = interaction.options.getString('item', true);
+    const rawAmount = interaction.options.getInteger('amount');
+    const itemName = interaction.options.getString('name')?.trim();
+
+    await getOrCreateMaster(targetUser.id, targetUser.username);
+
+    if (itemType === 'ce') {
+      if (!itemName) {
+        await interaction.reply({
+          content: '⚠️ Please specify the Craft Essence `name` to grant.',
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+      const res = await giveCraftEssenceToMaster(targetUser.id, itemName, rawAmount || 1);
+      const embed = new EmbedBuilder()
+        .setTitle('🃏 CRAFT ESSENCE BESTOWAL')
+        .setDescription(res.message)
+        .setColor(res.success ? 0x10b981 : 0xef4444)
+        .setFooter({ text: `Authorized by Overseer ${interaction.user.username}` });
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
+    if (itemType === 'servant') {
+      if (!itemName) {
+        await interaction.reply({
+          content: '⚠️ Please specify the Heroic Spirit `name` to contract.',
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+      const res = await giveServantToMaster(targetUser.id, itemName, { level: rawAmount || 1 });
+      const embed = new EmbedBuilder()
+        .setTitle('⚔️ HEROIC SPIRIT COVENANT GRANTED')
+        .setDescription(res.message)
+        .setColor(res.success ? 0xd4af37 : 0xef4444)
+        .setFooter({ text: `Authorized by Overseer ${interaction.user.username}` });
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
+    // Currencies and consumables
+    const defaultAmount = itemType === 'sq' ? 30 : itemType === 'qp' ? 1000000 : 1;
+    const amount = rawAmount !== null ? rawAmount : defaultAmount;
+    const res = await giveCurrencyToMaster(targetUser.id, itemType, amount);
+
+    const embed = new EmbedBuilder()
+      .setTitle('💎 OVERSEER RESOURCE GRANT')
+      .setDescription(res.message)
+      .setColor(res.success ? 0x10b981 : 0xef4444)
+      .setFooter({ text: `Overseer Action by ${interaction.user.username}` });
+
+    await interaction.reply({ embeds: [embed] });
+    return;
+  }
+
+  // --- /admin remove ---
+  if (subcommand === 'remove') {
+    const targetUser = interaction.options.getUser('user', true);
+    const itemType = interaction.options.getString('item', true);
+    const rawAmount = interaction.options.getInteger('amount');
+    const itemName = interaction.options.getString('name')?.trim();
+
+    await getOrCreateMaster(targetUser.id, targetUser.username);
+
+    if (itemType === 'all_ces') {
+      const res = await removeCraftEssenceFromMaster(targetUser.id, 'all', 1, true);
+      const embed = new EmbedBuilder()
+        .setTitle('🎒 INVENTORY PURGE')
+        .setDescription(res.message)
+        .setColor(0xef4444)
+        .setFooter({ text: `Authorized by Overseer ${interaction.user.username}` });
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
+    if (itemType === 'ce') {
+      if (!itemName) {
+        await interaction.reply({
+          content: '⚠️ Please specify the Craft Essence `name` to remove.',
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+      const res = await removeCraftEssenceFromMaster(targetUser.id, itemName, rawAmount || 1);
+      const embed = new EmbedBuilder()
+        .setTitle('🃏 CRAFT ESSENCE REMOVAL')
+        .setDescription(res.message)
+        .setColor(res.success ? 0xf59e0b : 0xef4444)
+        .setFooter({ text: `Authorized by Overseer ${interaction.user.username}` });
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
+    if (itemType === 'servant') {
+      const res = await removeServantFromMaster(targetUser.id, itemName);
+      const embed = new EmbedBuilder()
+        .setTitle('🗡️ SERVANT CONTRACT SEVERED')
+        .setDescription(res.message)
+        .setColor(res.success ? 0xef4444 : 0xef4444)
+        .setFooter({ text: `Authorized by Overseer ${interaction.user.username}` });
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
+    // Currency deduction
+    const res = await removeCurrencyFromMaster(targetUser.id, itemType, rawAmount || 1);
+    const embed = new EmbedBuilder()
+      .setTitle('🪙 OVERSEER RESOURCE DEDUCTION')
+      .setDescription(res.message)
+      .setColor(res.success ? 0xf59e0b : 0xef4444)
+      .setFooter({ text: `Overseer Action by ${interaction.user.username}` });
+
+    await interaction.reply({ embeds: [embed] });
+    return;
+  }
+
+  // --- /admin set ---
+  if (subcommand === 'set') {
+    const targetUser = interaction.options.getUser('user', true);
+    const attribute = interaction.options.getString('attribute', true);
+    const value = interaction.options.getInteger('value', true);
+
+    await getOrCreateMaster(targetUser.id, targetUser.username);
+    const res = await setMasterStat(targetUser.id, attribute, value);
+
+    const embed = new EmbedBuilder()
+      .setTitle('⚙️ MASTER PARAMETER CALIBRATION')
+      .setDescription(res.message)
+      .setColor(res.success ? 0x3b82f6 : 0xef4444)
+      .setFooter({ text: `Authorized by Overseer ${interaction.user.username}` });
+
+    await interaction.reply({ embeds: [embed] });
+    return;
+  }
+
+  // --- /admin inspect ---
+  if (subcommand === 'inspect') {
+    const targetUser = interaction.options.getUser('user', true);
+    const master = await getOrCreateMaster(targetUser.id, targetUser.username);
+    const { embed, components } = buildMasterDossier(master);
+
+    await interaction.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  // --- /admin master ---
+  if (subcommand === 'master') {
+    const action = interaction.options.getString('action', true);
+    const targetUser = interaction.options.getUser('user', true);
+    const itemName = interaction.options.getString('name')?.trim();
+    const amount = interaction.options.getInteger('amount') || 1;
+
+    const master = await getOrCreateMaster(targetUser.id, targetUser.username);
+    let outcome = '';
+
+    if (action === 'inspect') {
+      const { embed, components } = buildMasterDossier(master);
+      await interaction.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
+      return;
+    } else if (action === 'give_30sq') {
+      master.saintQuartz = (master.saintQuartz || 0) + 30;
+      await saveMaster(master);
+      outcome = `✨ Minted **+30 Saint Quartz** for **${master.username}**! Total SQ: **${master.saintQuartz}**`;
+    } else if (action === 'give_100sq') {
+      master.saintQuartz = (master.saintQuartz || 0) + 100;
+      await saveMaster(master);
+      outcome = `✨ Minted **+100 Saint Quartz** for **${master.username}**! Total SQ: **${master.saintQuartz}**`;
+    } else if (action === 'give_1mqp') {
+      master.qp = (master.qp || 0) + 1000000;
+      await saveMaster(master);
+      outcome = `🪙 Minted **+1,000,000 QP** for **${master.username}**! Total QP: **${master.qp.toLocaleString()}**`;
+    } else if (action === 'refill_seals') {
+      master.commandSeals = 3;
+      await saveMaster(master);
+      outcome = `🔱 Refilled Command Seals to **3/3** for **${master.username}**!`;
+    } else if (action === 'give_stat_points') {
+      const res = await giveCurrencyToMaster(targetUser.id, 'stat_points', amount * 10);
+      outcome = res.message;
+    } else if (action === 'give_ce') {
+      if (!itemName) {
+        await interaction.reply({ content: '⚠️ Please specify the Craft Essence `name`.', flags: MessageFlags.Ephemeral });
+        return;
+      }
+      const res = await giveCraftEssenceToMaster(targetUser.id, itemName, amount);
+      outcome = res.message;
+    } else if (action === 'give_servant') {
+      if (!itemName) {
+        await interaction.reply({ content: '⚠️ Please specify the Heroic Spirit `name`.', flags: MessageFlags.Ephemeral });
+        return;
+      }
+      const res = await giveServantToMaster(targetUser.id, itemName);
+      outcome = res.message;
+    } else if (action === 'sever_servant') {
+      const res = await removeServantFromMaster(targetUser.id, itemName);
+      outcome = res.message;
+    } else if (action === 'reset_inventory') {
+      await resetSingleMasterInventory(targetUser.id);
+      outcome = `🎒 **Inventory Wiped for ${master.username}!** All Craft Essences dissolved & unequipped.`;
+    } else if (action === 'reset_currency') {
+      const res = await resetSingleMasterCurrency(targetUser.id, { startingSq: 30, startingQp: 0, startingTickets: 0 });
+      outcome = `🧹 **Currency Balances Reset for ${master.username}!** Saint Quartz: **${res?.saintQuartz || 30} SQ**, QP: **0**, Tickets: **0**.`;
+    } else if (action === 'reset_vault') {
+      await resetSingleMasterVault(targetUser.id, { startingSq: 30, startingQp: 0, startingTickets: 0 });
+      outcome = `🔄 **Full Vault Reset for ${master.username}!** Items cleared, SQ: **30**, QP/Tickets/Shards: **0**.`;
+    } else if (action === 'reset_servant_stats') {
+      await resetSingleMasterServant(targetUser.id, { resetStatsOnly: true });
+      outcome = `🌱 **Servant Level Reset for ${master.username}!** Active Servant reverted to Level 1 with 0 bonus stat points.`;
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle('👤 MASTER MANAGEMENT OVERSEER')
+      .setDescription(outcome)
+      .setColor(0xd4af37)
+      .setFooter({ text: `Authorized by Overseer ${interaction.user.username}` });
+
+    await interaction.reply({ embeds: [embed] });
+    return;
+  }
 
   if (subcommand === 'war') {
     const action = interaction.options.getString('action', true);
@@ -351,67 +837,72 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  if (subcommand === 'economy') {
-    const action = interaction.options.getString('action', true);
-    let outcome = '';
-
-    if (action === 'mint_30sq') {
-      const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
-      master.saintQuartz = (master.saintQuartz || 0) + 30;
-      await saveMaster(master);
-      outcome = `✨ Minted **+30 Saint Quartz**! Total SQ: **${master.saintQuartz}**`;
-    } else if (action === 'mint_100sq') {
-      const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
-      master.saintQuartz = (master.saintQuartz || 0) + 100;
-      await saveMaster(master);
-      outcome = `✨ Minted **+100 Saint Quartz**! Total SQ: **${master.saintQuartz}**`;
-    } else if (action === 'mint_qp') {
-      const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
-      master.qp = (master.qp || 0) + 1000000;
-      await saveMaster(master);
-      outcome = `🪙 Minted **+1,000,000 QP**! Total QP: **${master.qp.toLocaleString()}**`;
-    } else if (action === 'refill_seals') {
-      const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
-      master.commandSeals = 3;
-      await saveMaster(master);
-      outcome = `🔱 Refilled Command Seals to **3/3**!`;
-    } else if (action === 'reset_currency') {
-      const master = await resetSingleMasterCurrency(interaction.user.id, { startingSq: 30, startingQp: 0, startingTickets: 0 });
-      outcome = `🧹 **Currency Balances Reset!**\n• Saint Quartz: **${master?.saintQuartz || 30} SQ**\n• QP: **0**\n• Summon Tickets: **0**\n• Grail Shards & Mana Prisms: **0**`;
-    } else if (action === 'reset_inventory') {
-      await resetSingleMasterInventory(interaction.user.id);
-      outcome = `🎒 **Inventory Reset!**\n• All Craft Essences wiped (**0 CEs**)\n• All Servants un-equipped from Craft Essences\n• Homunculi count reset to **0**`;
-    } else if (action === 'reset_vault') {
-      const master = await resetSingleMasterVault(interaction.user.id, { startingSq: 30, startingQp: 0, startingTickets: 0 });
-      outcome = `🔄 **Full Vault Reset (Items & Currency)!**\n• Craft Essences & Items: **Wiped**\n• Saint Quartz: **30 SQ** (Default)\n• QP, Tickets, Prisms, Shards: **0**`;
-    } else if (action === 'server_wipe') {
-      const res = await resetAllMastersInventoryAndCurrency({ startingSq: 30, startingQp: 0, startingTickets: 0 });
-      outcome = `⚠️ **SERVER-WIDE INVENTORY & CURRENCY WIPE!**\n\n` +
-        `• **${res.count} Master(s)** updated.\n` +
-        `• All Craft Essences dissolved and unequipped.\n` +
-        `• All currency balances reset (30 SQ starting pool, 0 QP, 0 Tickets, 0 Shards).`;
-    }
-
-    const embed = new EmbedBuilder()
-      .setTitle('💎 ECONOMY & VAULT ADMINISTRATION')
-      .setDescription(outcome)
-      .setColor(0x06b6d4)
-      .setFooter({ text: `Overseer Action by ${interaction.user.username}` });
-
-    await interaction.reply({ embeds: [embed] });
-    return;
-  }
-
   // Open the interactive Admin Hub
   const { embeds, components } = buildAdminHub(category);
   await interaction.reply({ embeds, components, flags: MessageFlags.Ephemeral });
 }
 
 // ==========================================
+// 3.5. MASTER DOSSIER BUILDER
+// ==========================================
+export function buildMasterDossier(
+  master: any,
+  actionOutcomeMsg?: string
+): { embed: EmbedBuilder; components: ActionRowBuilder<ButtonBuilder>[] } {
+  const active = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+  const ceCount = master.craftEssences?.length || 0;
+  const targetId = master.discordId || master.id?.replace('master_', '') || master.id;
+
+  let servantSummary = '❌ *No Contracted Servant*';
+  if (active && active.template) {
+    const ceInfo = active.equippedCe ? `\n> 🃏 **Equipped CE:** ${active.equippedCe.rarity}★ ${active.equippedCe.name}` : '';
+    servantSummary = 
+      `⚔️ **${active.template.rarity}★ ${active.template.name}** (\`${active.template.servantClass}\`)\n` +
+      `> 🌟 **Level:** \`${active.level || 1}/100\` | 💥 **NP Level:** \`NP${active.npLevel || 1}\` | 💖 **Bond:** \`Lv.${active.bondLevel || 0}\`\n` +
+      `> 📊 **Points:** \`${active.availableStatPoints || 0} AP\` | ⚔️ **Allocated:** STR +${active.allocatedStats?.strength || 0}, END +${active.allocatedStats?.endurance || 0}, AGI +${active.allocatedStats?.agility || 0}, MNA +${active.allocatedStats?.mana || 0}, LCK +${active.allocatedStats?.luck || 0}` +
+      ceInfo;
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle(`📜 OVERSEER MASTER DOSSIER: ${master.username}`)
+    .setDescription(
+      (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+      `Detailed parameters, assets, and active contract registry for Master **${master.username}** (\`${master.id}\`).\n\n` +
+      `💎 **Treasury & Currencies:**\n` +
+      `• 💎 **Saint Quartz:** \`${master.saintQuartz || 0} SQ\` | 🎫 **Tickets:** \`${master.summonTickets || 0}\`\n` +
+      `• 🪙 **QP:** \`${(master.qp || 0).toLocaleString()} QP\` | ⚱️ **Grail Shards:** \`${master.grailShards || 0}\` | 🟢 **Mana Prisms:** \`${master.manaPrisms || 0}\`\n` +
+      `• 🔱 **Command Seals:** \`${master.commandSeals ?? 3}/3\` | ⚡ **Action Points:** \`${master.actionPoints || 100}/${master.maxActionPoints || 100}\`\n\n` +
+      `⚔️ **Heroic Spirit Covenant:**\n${servantSummary}\n\n` +
+      `🎒 **Relic Inventory:** \`${ceCount} Craft Essence(s)\` | 🧬 **Homunculi:** \`${master.homunculusCount || 0}\`\n` +
+      `🏆 **Combat Record:** \`${master.grailWarWins || 0} War Wins\` | \`${master.duelsWon || 0}W - ${master.duelsLost || 0}L\` | 🛡️ **Rank:** \`${master.reputationRank || 'Honorable Magus'}\``
+    )
+    .setColor(0xd4af37)
+    .setFooter({ text: `Master ID: ${master.id} • Overseer Master Panel` });
+
+  const grantRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`admin_m_give_30sq_${targetId}`).setLabel('+30 SQ').setEmoji('💎').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`admin_m_give_100sq_${targetId}`).setLabel('+100 SQ').setEmoji('💎').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`admin_m_give_qp_${targetId}`).setLabel('+1M QP').setEmoji('🪙').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`admin_m_refill_seals_${targetId}`).setLabel('Refill 3 Seals').setEmoji('🔱').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`admin_m_give_stats_${targetId}`).setLabel('+50 Stat Pts').setEmoji('🌟').setStyle(ButtonStyle.Secondary)
+  );
+
+  const manageRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`admin_m_sever_${targetId}`).setLabel('Release Servant').setEmoji('🗡️').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(`admin_m_wipe_ces_${targetId}`).setLabel('Wipe CEs').setEmoji('🎒').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`admin_m_reset_vault_${targetId}`).setLabel('Full Reset').setEmoji('🔄').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(`admin_m_refresh_${targetId}`).setLabel('Refresh').setEmoji('🔄').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('admin_tab_masters').setLabel('Back to Hub').setEmoji('👤').setStyle(ButtonStyle.Primary)
+  );
+
+  return { embed, components: [grantRow, manageRow] };
+}
+
+// ==========================================
 // 4. ADMIN HUB BUILDER
 // ==========================================
 export function buildAdminHub(
-  category: 'war' | 'war_rules' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war',
+  category: 'war' | 'war_rules' | 'masters' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war',
   actionOutcomeMsg?: string
 ) {
   let embeds: EmbedBuilder[] = [];
@@ -449,6 +940,36 @@ export function buildAdminHub(
       )
       .setColor(0xd4af37)
       .setFooter({ text: 'Admin Suite • FGO Holy Grail War Overseer Engine' });
+
+    embeds = [embed];
+
+  } else if (category === 'masters') {
+    const allMasters = getAllMasters();
+    const war = getOrInitWarSession();
+    const participants = war.participants || {};
+
+    let masterListDesc = '';
+    if (allMasters.length === 0) {
+      masterListDesc = '❌ *No registered Masters found in memory or disk database.*';
+    } else {
+      masterListDesc = allMasters.slice(0, 10).map((m, idx) => {
+        const active = m.servants?.find(s => s.id === m.activeServantId) || m.servants?.[0];
+        const sName = active ? `${active.template?.rarity}★ ${active.template?.name} (Lv.${active.level || 1})` : 'No Servant';
+        const inWar = participants[m.id] || participants[m.id.replace('master_', '')] ? '⚔️ In War' : '🌱 Free';
+        return `**${idx + 1}. ${m.username}** (\`${m.id}\`)\n• 💎 **SQ:** \`${m.saintQuartz || 0}\` | 🪙 **QP:** \`${(m.qp || 0).toLocaleString()}\` | 🔱 **Seals:** \`${m.commandSeals ?? 3}/3\`\n• ⚔️ **Servant:** ${sName} | 🎴 **CEs:** \`${m.craftEssences?.length || 0}\` | [${inWar}]`;
+      }).join('\n\n');
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle(`👤 Admin Control: Master Records & Dossiers (${allMasters.length} Registered)`)
+      .setDescription(
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `Inspect, grant resources, equip/unequip relics, or sever contracts for any Master across the server.\n\n` +
+        `${masterListDesc}\n\n` +
+        `*Select a Master from the dropdown below to open their full interactive Dossier & action suite:*`
+      )
+      .setColor(0xd4af37)
+      .setFooter({ text: 'Admin Suite • Master Profile & Inventory Inspector' });
 
     embeds = [embed];
 
@@ -559,6 +1080,7 @@ export function buildAdminHub(
   // --- UI BUTTON ROWS ---
   const categoryNavRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId('admin_tab_war').setLabel('War Hub').setEmoji('🏆').setStyle(category === 'war' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('admin_tab_masters').setLabel('Masters').setEmoji('👤').setStyle(category === 'masters' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('admin_tab_war_rules').setLabel('Customize Rules').setEmoji('⚙️').setStyle(category === 'war_rules' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('admin_tab_npanim').setLabel('NP Animations').setEmoji('🎬').setStyle(category === 'npanim' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('admin_tab_economy').setLabel('Economy Mint').setEmoji('💎').setStyle(category === 'economy' ? ButtonStyle.Primary : ButtonStyle.Secondary)
@@ -601,7 +1123,28 @@ export function buildAdminHub(
       .addOptions(rawOptions.slice(0, 25));
   };
 
-  if (category === 'war') {
+  if (category === 'masters') {
+    const allMasters = getAllMasters();
+    if (allMasters.length > 0) {
+      const options = allMasters.slice(0, 25).map(m => {
+        const active = m.servants?.find(s => s.id === m.activeServantId) || m.servants?.[0];
+        const sInfo = active ? `${active.template?.rarity}★ ${active.template?.name}` : 'No Servant';
+        return new StringSelectMenuOptionBuilder()
+          .setLabel(m.username.slice(0, 25))
+          .setValue(`master_dossier_${m.discordId || m.id.replace('master_', '')}`)
+          .setDescription(`SQ: ${m.saintQuartz || 0} | QP: ${(m.qp || 0).toLocaleString()} | ${sInfo}`.slice(0, 50))
+          .setEmoji('👤');
+      });
+
+      const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId('admin_select_master_dossier')
+          .setPlaceholder('🔍 Select a Master to inspect full dossier...')
+          .addOptions(options)
+      );
+      components.push(selectRow);
+    }
+  } else if (category === 'war') {
     // Presets Row
     const presetsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('admin_war_preset_fuyuki_7').setLabel('5th Fuyuki (7P)').setEmoji('🏆').setStyle(ButtonStyle.Primary),
@@ -701,12 +1244,14 @@ export function buildAdminHub(
 export async function handleAdminGlobalInteraction(interaction: any) {
   try {
     const customId = interaction.customId;
-    let currentCategory: 'war' | 'war_rules' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war';
+    let currentCategory: 'war' | 'war_rules' | 'masters' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war';
     let actionOutcome: string | undefined = undefined;
 
     // Detect category
     if (customId === 'admin_tab_war' || customId.startsWith('admin_war_') || customId.startsWith('admin_cata_')) {
       currentCategory = 'war';
+    } else if (customId === 'admin_tab_masters' || customId === 'admin_select_master_dossier') {
+      currentCategory = 'masters';
     } else if (customId === 'admin_tab_war_rules' || customId.startsWith('admin_set_') || customId.startsWith('admin_toggle_')) {
       currentCategory = 'war_rules';
     } else if (customId === 'admin_tab_npanim') {
@@ -719,9 +1264,78 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       currentCategory = 'economy';
     }
 
+    // MASTER DOSSIER DROPDOWN SELECTION
+    if (customId === 'admin_select_master_dossier') {
+      const selectedVal = interaction.values?.[0] || '';
+      const targetId = selectedVal.replace('master_dossier_', '');
+      const master = await getOrCreateMaster(targetId);
+      const dossier = buildMasterDossier(master);
+      await interaction.update({
+        embeds: [dossier.embed],
+        components: dossier.components
+      });
+      return;
+    }
+
+    // MASTER DOSSIER DIRECT BUTTON ACTIONS
+    if (customId.startsWith('admin_m_')) {
+      const parts = customId.split('_'); // e.g. ['admin', 'm', 'give', '30sq', '<targetId>'] or ['admin', 'm', 'sever', '<targetId>']
+      let targetId = parts[parts.length - 1];
+      let subAction = parts.slice(2, parts.length - 1).join('_');
+
+      if (!targetId || targetId === 'undefined') {
+        targetId = interaction.user.id;
+      }
+
+      const master = await getOrCreateMaster(targetId);
+      let outcomeMsg = '';
+
+      if (subAction === 'give_30sq') {
+        master.saintQuartz = (master.saintQuartz || 0) + 30;
+        await saveMaster(master);
+        outcomeMsg = `✨ Bestowed **+30 Saint Quartz** upon **${master.username}**! (Total: **${master.saintQuartz} SQ**)`;
+      } else if (subAction === 'give_100sq') {
+        master.saintQuartz = (master.saintQuartz || 0) + 100;
+        await saveMaster(master);
+        outcomeMsg = `✨ Bestowed **+100 Saint Quartz** upon **${master.username}**! (Total: **${master.saintQuartz} SQ**)`;
+      } else if (subAction === 'give_qp') {
+        master.qp = (master.qp || 0) + 1000000;
+        await saveMaster(master);
+        outcomeMsg = `🪙 Bestowed **+1,000,000 QP** upon **${master.username}**! (Total: **${master.qp.toLocaleString()} QP**)`;
+      } else if (subAction === 'refill_seals') {
+        master.commandSeals = 3;
+        await saveMaster(master);
+        outcomeMsg = `🔱 Restored **3/3 Command Seals** for **${master.username}**!`;
+      } else if (subAction === 'give_stats') {
+        const res = await giveCurrencyToMaster(targetId, 'stat_points', 50);
+        outcomeMsg = res.message;
+      } else if (subAction === 'sever') {
+        const res = await removeServantFromMaster(targetId);
+        outcomeMsg = res.message;
+      } else if (subAction === 'wipe_ces') {
+        const res = await removeCraftEssenceFromMaster(targetId, 'all', 1, true);
+        outcomeMsg = res.message;
+      } else if (subAction === 'reset_vault') {
+        await resetSingleMasterVault(targetId, { startingSq: 30, startingQp: 0, startingTickets: 0 });
+        outcomeMsg = `🔄 **Full Vault Reset Executed!** All items cleared, SQ set to 30, QP/Tickets to 0.`;
+      } else if (subAction === 'refresh') {
+        outcomeMsg = `🔄 Dossier refreshed from persistent database.`;
+      }
+
+      const updatedMaster = await getOrCreateMaster(targetId);
+      const dossier = buildMasterDossier(updatedMaster, outcomeMsg);
+      await interaction.update({
+        embeds: [dossier.embed],
+        components: dossier.components
+      });
+      return;
+    }
+
     // TAB NAVIGATION
     if (customId === 'admin_tab_war') {
       currentCategory = 'war';
+    } else if (customId === 'admin_tab_masters') {
+      currentCategory = 'masters';
     } else if (customId === 'admin_tab_war_rules') {
       currentCategory = 'war_rules';
     } else if (customId === 'admin_tab_npanim') {

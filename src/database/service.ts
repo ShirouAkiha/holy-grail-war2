@@ -1136,6 +1136,13 @@ export function getMaster(discordId: string): MasterProfile | undefined {
 }
 
 /**
+ * Retrieves all registered Masters from the in-memory store.
+ */
+export function getAllMasters(): MasterProfile[] {
+  return Array.from(masterStore.values());
+}
+
+/**
  * Updates selective properties on a Master's profile.
  */
 export async function updateMasterProfile(discordId: string, data: Partial<MasterProfile>): Promise<MasterProfile> {
@@ -1432,10 +1439,480 @@ export async function resetAllMastersInventoryAndCurrency(
 }
 
 /**
- * Gets all registered masters across the server.
+ * Gives currency or consumable items to any specified Master.
  */
-export async function getAllMasters(): Promise<MasterProfile[]> {
-  return Array.from(masterStore.values());
+export async function giveCurrencyToMaster(
+  discordId: string,
+  type: string,
+  amount: number
+): Promise<{ success: boolean; message: string; master: MasterProfile | null; newAmount: number }> {
+  const master = masterStore.get(discordId);
+  if (!master) {
+    return { success: false, message: `Master with Discord ID \`${discordId}\` not found in database.`, master: null, newAmount: 0 };
+  }
+
+  const safeAmount = Math.max(1, Math.floor(amount || 1));
+  const t = type.toLowerCase().trim();
+
+  let newAmount = 0;
+  let label = '';
+
+  if (t === 'sq' || t === 'saintquartz' || t === 'saint_quartz') {
+    master.saintQuartz = (master.saintQuartz || 0) + safeAmount;
+    newAmount = master.saintQuartz;
+    label = `${safeAmount} Saint Quartz (💎 Total: ${newAmount})`;
+  } else if (t === 'qp' || t === 'quantum_pieces') {
+    master.qp = (master.qp || 0) + safeAmount;
+    newAmount = master.qp;
+    label = `${safeAmount.toLocaleString()} QP (🪙 Total: ${newAmount.toLocaleString()})`;
+  } else if (t === 'tickets' || t === 'summontickets' || t === 'ticket' || t === 'summon_tickets') {
+    master.summonTickets = (master.summonTickets || 0) + safeAmount;
+    newAmount = master.summonTickets;
+    label = `${safeAmount} Summon Tickets (🎫 Total: ${newAmount})`;
+  } else if (t === 'seals' || t === 'commandseals' || t === 'command_seals' || t === 'seal') {
+    master.commandSeals = Math.min(3, (master.commandSeals || 0) + safeAmount);
+    newAmount = master.commandSeals;
+    label = `${safeAmount} Command Seals (🔱 Total: ${newAmount}/3)`;
+  } else if (t === 'mana_prisms' || t === 'prisms' || t === 'manaprisms') {
+    master.manaPrisms = (master.manaPrisms || 0) + safeAmount;
+    newAmount = master.manaPrisms;
+    label = `${safeAmount} Mana Prisms (🧪 Total: ${newAmount})`;
+  } else if (t === 'grail_shards' || t === 'shards' || t === 'grailshards') {
+    master.grailShards = (master.grailShards || 0) + safeAmount;
+    newAmount = master.grailShards;
+    label = `${safeAmount} Holy Grail Shards (🔮 Total: ${newAmount})`;
+  } else if (t === 'stat_points' || t === 'statpoints' || t === 'points' || t === 'stats') {
+    const active = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
+    if (!active) {
+      return { success: false, message: `Master **${master.username}** does not have a contracted Servant to give stat points to!`, master, newAmount: 0 };
+    }
+    active.availableStatPoints = (active.availableStatPoints || 0) + safeAmount;
+    newAmount = active.availableStatPoints;
+    label = `${safeAmount} Stat Points for ${active.template.name} (⚡ Available: ${newAmount})`;
+  } else if (t === 'homunculi' || t === 'homunculus' || t === 'homunculus_count') {
+    master.homunculusCount = (master.homunculusCount || 0) + safeAmount;
+    newAmount = master.homunculusCount;
+    label = `${safeAmount} Homunculus Helpers (🧬 Total: ${newAmount})`;
+  } else if (t === 'ap' || t === 'action_points' || t === 'actionpoints') {
+    master.actionPoints = Math.min(master.maxActionPoints || 100, (master.actionPoints || 0) + safeAmount);
+    newAmount = master.actionPoints;
+    label = `${safeAmount} Action Points (⚡ Total: ${newAmount}/${master.maxActionPoints || 100})`;
+  } else {
+    return { success: false, message: `Unknown currency/item type: \`${type}\`. Supported: \`sq\`, \`qp\`, \`tickets\`, \`seals\`, \`mana_prisms\`, \`grail_shards\`, \`stat_points\`, \`homunculi\`, \`ap\`.`, master, newAmount: 0 };
+  }
+
+  await saveMaster(master);
+  return {
+    success: true,
+    message: `Successfully granted **${label}** to **${master.username}**!`,
+    master,
+    newAmount
+  };
+}
+
+/**
+ * Removes currency or consumable items from any specified Master.
+ */
+export async function removeCurrencyFromMaster(
+  discordId: string,
+  type: string,
+  amount: number
+): Promise<{ success: boolean; message: string; master: MasterProfile | null; newAmount: number }> {
+  const master = masterStore.get(discordId);
+  if (!master) {
+    return { success: false, message: `Master with Discord ID \`${discordId}\` not found in database.`, master: null, newAmount: 0 };
+  }
+
+  const safeAmount = Math.max(1, Math.floor(amount || 1));
+  const t = type.toLowerCase().trim();
+
+  let newAmount = 0;
+  let label = '';
+
+  if (t === 'sq' || t === 'saintquartz' || t === 'saint_quartz') {
+    master.saintQuartz = Math.max(0, (master.saintQuartz || 0) - safeAmount);
+    newAmount = master.saintQuartz;
+    label = `${safeAmount} Saint Quartz (💎 Remaining: ${newAmount})`;
+  } else if (t === 'qp' || t === 'quantum_pieces') {
+    master.qp = Math.max(0, (master.qp || 0) - safeAmount);
+    newAmount = master.qp;
+    label = `${safeAmount.toLocaleString()} QP (🪙 Remaining: ${newAmount.toLocaleString()})`;
+  } else if (t === 'tickets' || t === 'summontickets' || t === 'ticket' || t === 'summon_tickets') {
+    master.summonTickets = Math.max(0, (master.summonTickets || 0) - safeAmount);
+    newAmount = master.summonTickets;
+    label = `${safeAmount} Summon Tickets (🎫 Remaining: ${newAmount})`;
+  } else if (t === 'seals' || t === 'commandseals' || t === 'command_seals' || t === 'seal') {
+    master.commandSeals = Math.max(0, (master.commandSeals || 0) - safeAmount);
+    newAmount = master.commandSeals;
+    label = `${safeAmount} Command Seals (🔱 Remaining: ${newAmount}/3)`;
+  } else if (t === 'mana_prisms' || t === 'prisms' || t === 'manaprisms') {
+    master.manaPrisms = Math.max(0, (master.manaPrisms || 0) - safeAmount);
+    newAmount = master.manaPrisms;
+    label = `${safeAmount} Mana Prisms (🧪 Remaining: ${newAmount})`;
+  } else if (t === 'grail_shards' || t === 'shards' || t === 'grailshards') {
+    master.grailShards = Math.max(0, (master.grailShards || 0) - safeAmount);
+    newAmount = master.grailShards;
+    label = `${safeAmount} Holy Grail Shards (🔮 Remaining: ${newAmount})`;
+  } else if (t === 'stat_points' || t === 'statpoints' || t === 'points' || t === 'stats') {
+    const active = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
+    if (!active) {
+      return { success: false, message: `Master **${master.username}** does not have a contracted Servant!`, master, newAmount: 0 };
+    }
+    active.availableStatPoints = Math.max(0, (active.availableStatPoints || 0) - safeAmount);
+    newAmount = active.availableStatPoints;
+    label = `${safeAmount} Stat Points from ${active.template.name} (⚡ Remaining: ${newAmount})`;
+  } else if (t === 'homunculi' || t === 'homunculus' || t === 'homunculus_count') {
+    master.homunculusCount = Math.max(0, (master.homunculusCount || 0) - safeAmount);
+    newAmount = master.homunculusCount;
+    label = `${safeAmount} Homunculus Helpers (🧬 Remaining: ${newAmount})`;
+  } else if (t === 'ap' || t === 'action_points' || t === 'actionpoints') {
+    master.actionPoints = Math.max(0, (master.actionPoints || 0) - safeAmount);
+    newAmount = master.actionPoints;
+    label = `${safeAmount} Action Points (⚡ Remaining: ${newAmount}/${master.maxActionPoints || 100})`;
+  } else {
+    return { success: false, message: `Unknown currency/item type: \`${type}\`. Supported: \`sq\`, \`qp\`, \`tickets\`, \`seals\`, \`mana_prisms\`, \`grail_shards\`, \`stat_points\`, \`homunculi\`, \`ap\`.`, master, newAmount: 0 };
+  }
+
+  await saveMaster(master);
+  return {
+    success: true,
+    message: `Successfully deducted **${label}** from **${master.username}**!`,
+    master,
+    newAmount
+  };
+}
+
+/**
+ * Sets an exact value on any Master or their active Servant.
+ */
+export async function setMasterStat(
+  discordId: string,
+  field: string,
+  value: number
+): Promise<{ success: boolean; message: string; master: MasterProfile | null; prevValue: number; newValue: number }> {
+  const master = masterStore.get(discordId);
+  if (!master) {
+    return { success: false, message: `Master with Discord ID \`${discordId}\` not found.`, master: null, prevValue: 0, newValue: 0 };
+  }
+
+  const f = field.toLowerCase().trim();
+  const v = Math.max(0, Math.floor(value));
+  let prevValue = 0;
+  let fieldLabel = '';
+
+  const active = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
+
+  if (f === 'sq' || f === 'saintquartz' || f === 'saint_quartz') {
+    prevValue = master.saintQuartz || 0;
+    master.saintQuartz = v;
+    fieldLabel = '💎 Saint Quartz';
+  } else if (f === 'qp' || f === 'quantum_pieces') {
+    prevValue = master.qp || 0;
+    master.qp = v;
+    fieldLabel = '🪙 QP';
+  } else if (f === 'tickets' || f === 'summontickets' || f === 'summon_tickets') {
+    prevValue = master.summonTickets || 0;
+    master.summonTickets = v;
+    fieldLabel = '🎫 Summon Tickets';
+  } else if (f === 'seals' || f === 'commandseals' || f === 'command_seals') {
+    prevValue = master.commandSeals || 0;
+    master.commandSeals = Math.min(3, v);
+    fieldLabel = '🔱 Command Seals';
+  } else if (f === 'mana_prisms' || f === 'prisms') {
+    prevValue = master.manaPrisms || 0;
+    master.manaPrisms = v;
+    fieldLabel = '🧪 Mana Prisms';
+  } else if (f === 'grail_shards' || f === 'shards') {
+    prevValue = master.grailShards || 0;
+    master.grailShards = v;
+    fieldLabel = '🔮 Grail Shards';
+  } else if (f === 'homunculi' || f === 'homunculus') {
+    prevValue = master.homunculusCount || 0;
+    master.homunculusCount = v;
+    fieldLabel = '🧬 Homunculi';
+  } else if (f === 'ap' || f === 'action_points') {
+    prevValue = master.actionPoints || 0;
+    master.actionPoints = Math.min(master.maxActionPoints || 100, v);
+    fieldLabel = '⚡ Action Points';
+  } else if (f === 'servant_level' || f === 'level' || f === 'lvl') {
+    if (!active) return { success: false, message: `Master **${master.username}** has no active Servant!`, master, prevValue: 0, newValue: 0 };
+    prevValue = active.level || 1;
+    active.level = Math.max(1, Math.min(100, v));
+    fieldLabel = `⚔️ ${active.template.name} Level`;
+  } else if (f === 'servant_bond' || f === 'bond' || f === 'bond_level') {
+    if (!active) return { success: false, message: `Master **${master.username}** has no active Servant!`, master, prevValue: 0, newValue: 0 };
+    prevValue = active.bondLevel || 0;
+    active.bondLevel = Math.max(0, Math.min(10, v));
+    fieldLabel = `💖 ${active.template.name} Bond Level`;
+  } else if (f === 'stat_points' || f === 'statpoints' || f === 'points') {
+    if (!active) return { success: false, message: `Master **${master.username}** has no active Servant!`, master, prevValue: 0, newValue: 0 };
+    prevValue = active.availableStatPoints || 0;
+    active.availableStatPoints = v;
+    fieldLabel = `⚡ ${active.template.name} Available Stat Points`;
+  } else if (f === 'servant_str' || f === 'strength' || f === 'str') {
+    if (!active) return { success: false, message: `Master **${master.username}** has no active Servant!`, master, prevValue: 0, newValue: 0 };
+    prevValue = active.allocatedStats?.strength || 0;
+    if (!active.allocatedStats) active.allocatedStats = { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
+    active.allocatedStats.strength = v;
+    fieldLabel = `💪 ${active.template.name} Allocated STR`;
+  } else if (f === 'servant_end' || f === 'endurance' || f === 'end') {
+    if (!active) return { success: false, message: `Master **${master.username}** has no active Servant!`, master, prevValue: 0, newValue: 0 };
+    prevValue = active.allocatedStats?.endurance || 0;
+    if (!active.allocatedStats) active.allocatedStats = { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
+    active.allocatedStats.endurance = v;
+    fieldLabel = `🛡️ ${active.template.name} Allocated END`;
+  } else if (f === 'servant_agi' || f === 'agility' || f === 'agi') {
+    if (!active) return { success: false, message: `Master **${master.username}** has no active Servant!`, master, prevValue: 0, newValue: 0 };
+    prevValue = active.allocatedStats?.agility || 0;
+    if (!active.allocatedStats) active.allocatedStats = { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
+    active.allocatedStats.agility = v;
+    fieldLabel = `💨 ${active.template.name} Allocated AGI`;
+  } else if (f === 'servant_mana' || f === 'mana' || f === 'mp') {
+    if (!active) return { success: false, message: `Master **${master.username}** has no active Servant!`, master, prevValue: 0, newValue: 0 };
+    prevValue = active.allocatedStats?.mana || 0;
+    if (!active.allocatedStats) active.allocatedStats = { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
+    active.allocatedStats.mana = v;
+    fieldLabel = `🔮 ${active.template.name} Allocated MANA`;
+  } else if (f === 'servant_lck' || f === 'luck' || f === 'lck') {
+    if (!active) return { success: false, message: `Master **${master.username}** has no active Servant!`, master, prevValue: 0, newValue: 0 };
+    prevValue = active.allocatedStats?.luck || 0;
+    if (!active.allocatedStats) active.allocatedStats = { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
+    active.allocatedStats.luck = v;
+    fieldLabel = `🍀 ${active.template.name} Allocated LUCK`;
+  } else {
+    return { success: false, message: `Unknown attribute: \`${field}\`. Supported: \`sq\`, \`qp\`, \`tickets\`, \`seals\`, \`mana_prisms\`, \`grail_shards\`, \`stat_points\`, \`homunculi\`, \`ap\`, \`servant_level\`, \`servant_bond\`, \`servant_str\`, \`servant_end\`, \`servant_agi\`, \`servant_mana\`, \`servant_lck\`.`, master, prevValue: 0, newValue: 0 };
+  }
+
+  await saveMaster(master);
+  return {
+    success: true,
+    message: `Updated **${fieldLabel}** for **${master.username}**: \`${prevValue}\` ➔ \`${v}\``,
+    master,
+    prevValue,
+    newValue: v
+  };
+}
+
+/**
+ * Force gives any Craft Essence (canon or custom) to any Master's inventory.
+ */
+export async function giveCraftEssenceToMaster(
+  discordId: string,
+  ceQuery: string,
+  count: number = 1
+): Promise<{ success: boolean; message: string; ce?: CraftEssence; countAdded: number; master: MasterProfile | null }> {
+  const master = masterStore.get(discordId);
+  if (!master) {
+    return { success: false, message: `Master with Discord ID \`${discordId}\` not found.`, countAdded: 0, master: null };
+  }
+
+  const allCes = getAllCraftEssences();
+  const q = ceQuery.toLowerCase().trim();
+  const foundCe = allCes.find(c => c.id.toLowerCase() === q || c.name.toLowerCase() === q || c.name.toLowerCase().includes(q));
+
+  if (!foundCe) {
+    return { success: false, message: `Craft Essence matching \`${ceQuery}\` not found in database.`, countAdded: 0, master };
+  }
+
+  const safeCount = Math.max(1, Math.floor(count || 1));
+  if (!master.craftEssences) {
+    master.craftEssences = [];
+  }
+
+  for (let i = 0; i < safeCount; i++) {
+    // Generate unique instance ID for each granted CE
+    master.craftEssences.push({
+      ...foundCe,
+      id: foundCe.id
+    });
+  }
+
+  await saveMaster(master);
+
+  return {
+    success: true,
+    message: `Granted **${safeCount}x ${foundCe.rarity}★ ${foundCe.name}** to **${master.username}**'s inventory! (Total CEs owned: ${master.craftEssences.length})`,
+    ce: foundCe,
+    countAdded: safeCount,
+    master
+  };
+}
+
+/**
+ * Removes Craft Essence(s) from any Master's inventory (and un-equips if needed).
+ */
+export async function removeCraftEssenceFromMaster(
+  discordId: string,
+  ceQuery: string,
+  count: number = 1,
+  removeAll: boolean = false
+): Promise<{ success: boolean; message: string; countRemoved: number; master: MasterProfile | null }> {
+  const master = masterStore.get(discordId);
+  if (!master) {
+    return { success: false, message: `Master with Discord ID \`${discordId}\` not found.`, countRemoved: 0, master: null };
+  }
+
+  if (!master.craftEssences || master.craftEssences.length === 0) {
+    return { success: false, message: `Master **${master.username}** does not have any Craft Essences in their inventory.`, countRemoved: 0, master };
+  }
+
+  if (removeAll || ceQuery.toLowerCase().trim() === 'all') {
+    const totalWiped = master.craftEssences.length;
+    master.craftEssences = [];
+    if (master.servants) {
+      for (const s of master.servants) {
+        s.equippedCe = undefined;
+        s.equippedCeId = undefined;
+      }
+    }
+    await saveMaster(master);
+    return {
+      success: true,
+      message: `Removed all **${totalWiped}** Craft Essences from **${master.username}**'s inventory and unequipped all relics.`,
+      countRemoved: totalWiped,
+      master
+    };
+  }
+
+  const q = ceQuery.toLowerCase().trim();
+  const matchingIndices: number[] = [];
+
+  master.craftEssences.forEach((c, idx) => {
+    if (c.id.toLowerCase() === q || c.name.toLowerCase() === q || c.name.toLowerCase().includes(q)) {
+      matchingIndices.push(idx);
+    }
+  });
+
+  if (matchingIndices.length === 0) {
+    return { success: false, message: `No Craft Essence matching \`${ceQuery}\` found in **${master.username}**'s inventory.`, countRemoved: 0, master };
+  }
+
+  const safeCount = Math.max(1, Math.floor(count || 1));
+  const indicesToRemove = new Set(matchingIndices.slice(0, safeCount));
+  const removedName = master.craftEssences[matchingIndices[0]].name;
+
+  master.craftEssences = master.craftEssences.filter((_, idx) => !indicesToRemove.has(idx));
+
+  // If active servant had this CE equipped and none left, unequip
+  if (master.servants) {
+    for (const s of master.servants) {
+      if (s.equippedCe && (s.equippedCe.id.toLowerCase() === q || s.equippedCe.name.toLowerCase().includes(q))) {
+        const stillHas = master.craftEssences.some(c => c.id === s.equippedCeId);
+        if (!stillHas) {
+          s.equippedCe = undefined;
+          s.equippedCeId = undefined;
+        }
+      }
+    }
+  }
+
+  await saveMaster(master);
+
+  return {
+    success: true,
+    message: `Removed **${indicesToRemove.size}x ${removedName}** from **${master.username}**'s inventory. (Remaining CEs: ${master.craftEssences.length})`,
+    countRemoved: indicesToRemove.size,
+    master
+  };
+}
+
+/**
+ * Force assigns / contracts any Servant (canon or custom) from the Throne to any Master.
+ */
+export async function giveServantToMaster(
+  discordId: string,
+  servantQuery: string,
+  options: { level?: number; bond?: number; statPoints?: number; forceActive?: boolean } = {}
+): Promise<{ success: boolean; message: string; servant?: MasterServantInstance; master: MasterProfile | null }> {
+  const master = masterStore.get(discordId);
+  if (!master) {
+    return { success: false, message: `Master with Discord ID \`${discordId}\` not found.`, master: null };
+  }
+
+  const foundTemplate = findServantInPool(servantQuery);
+  if (!foundTemplate) {
+    return { success: false, message: `Heroic Spirit matching \`${servantQuery}\` not found in the Throne of Heroes.`, master };
+  }
+
+  const newServantInstance: MasterServantInstance = {
+    id: `contract_${foundTemplate.id}_${Date.now()}`,
+    masterId: master.id,
+    templateId: foundTemplate.id,
+    level: Math.max(1, Math.min(100, options.level || 1)),
+    experience: 0,
+    allocatedStats: { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 },
+    availableStatPoints: options.statPoints !== undefined ? options.statPoints : 10,
+    skillLevels: [1, 1, 1],
+    customQuotes: {
+      summon: foundTemplate.summonQuote,
+      battleStart: foundTemplate.battleStartQuote,
+      noblePhantasm: foundTemplate.noblePhantasm.chant,
+      victory: foundTemplate.victoryQuote,
+      defeat: foundTemplate.defeatQuote
+    },
+    bondLevel: options.bond !== undefined ? options.bond : 1,
+    template: foundTemplate
+  };
+
+  master.servants = [newServantInstance];
+  master.activeServantId = newServantInstance.id;
+  master.commandSeals = 3;
+
+  await saveMaster(master);
+
+  return {
+    success: true,
+    message: `Formed a sacred pact! Bestowed **${foundTemplate.rarity}★ ${foundTemplate.name}** (${foundTemplate.servantClass}) to **${master.username}** with 3 Command Seals!`,
+    servant: newServantInstance,
+    master
+  };
+}
+
+/**
+ * Force severs / removes a Servant from any Master.
+ */
+export async function removeServantFromMaster(
+  discordId: string,
+  servantQuery?: string
+): Promise<{ success: boolean; message: string; master: MasterProfile | null; removedName?: string }> {
+  const master = masterStore.get(discordId);
+  if (!master) {
+    return { success: false, message: `Master with Discord ID \`${discordId}\` not found.`, master: null };
+  }
+
+  if (!master.servants || master.servants.length === 0) {
+    return { success: false, message: `Master **${master.username}** has no contracted Servants.`, master };
+  }
+
+  let removedName = master.servants[0].template.name;
+
+  if (servantQuery) {
+    const q = servantQuery.toLowerCase().trim();
+    const idx = master.servants.findIndex(s => s.template.id.toLowerCase() === q || s.template.name.toLowerCase().includes(q));
+    if (idx >= 0) {
+      removedName = master.servants[idx].template.name;
+      master.servants.splice(idx, 1);
+    } else {
+      return { success: false, message: `Servant matching \`${servantQuery}\` not contracted to **${master.username}**.`, master };
+    }
+  } else {
+    master.servants = [];
+  }
+
+  if (master.servants.length === 0) {
+    master.activeServantId = undefined;
+  } else {
+    master.activeServantId = master.servants[0].id;
+  }
+
+  await saveMaster(master);
+
+  return {
+    success: true,
+    message: `Severed command contract over **${removedName}** from **${master.username}**. Returned to the Throne of Heroes.`,
+    master,
+    removedName
+  };
 }
 
 /**
