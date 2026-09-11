@@ -13,7 +13,7 @@ import { getOrCreateMaster, saveMaster, getDuelNpSettings } from '../database/se
 import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog, PassiveSkill } from '../types';
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives, getServantAvatarAndCardArt } from '../data/servants';
 import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp, getReputationInfo } from '../engine/grailwar';
-import { renderBattleTurnSummary, renderDialogueCard, renderDefeatDialogueCard, renderMasterCommandSealDialogueCard } from '../canvas/renderer';
+import { renderBattleTurnSummary, renderDialogueCard, renderDefeatDialogueCard, renderMasterCommandSealDialogueCard, renderSkillDialogueCard } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER, calculateFleeChance, rollFleeSuccess } from '../engine/battle';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
@@ -766,7 +766,7 @@ function activateCombatantSkill(
   combatant: DuelCombatant,
   skillIdx: number,
   opponent?: DuelCombatant
-): { success: boolean; log: string; quote?: string; skillName?: string } {
+): { success: boolean; log: string; quote?: string; skillName?: string; skillType?: string; skillDescription?: string } {
   const bondLevel = combatant.servant.bondLevel || 1;
   if (skillIdx === 2 && bondLevel < 5) {
     return { success: false, log: '🔒 **Skill 3 is Locked!** Reach Bond Level 5 to unlock this skill.' };
@@ -874,7 +874,14 @@ function activateCombatantSkill(
     logText = `✨ **${sName}** activated **${skill.name}**!${quoteLine}`;
   }
 
-  return { success: true, log: logText, quote: skillQuote, skillName: skill.name };
+  return {
+    success: true,
+    log: logText,
+    quote: skillQuote,
+    skillName: skill.name,
+    skillType: skill.effectType || 'buff',
+    skillDescription: skill.description || ''
+  };
 }
 
 // Helper to invoke a command seal without spending a turn
@@ -2320,17 +2327,16 @@ async function startInteractiveDuel(
           const skillName = res.skillName || 'TACTICAL SKILL';
           const skillQuote = res.quote || 'My power answers the command!';
 
-          const skillDiaBuffer = await renderDialogueCard(
+          const skillDiaBuffer = await renderSkillDialogueCard(
             sName,
+            skillName,
             skillQuote,
-            `SKILL: ${skillName.toUpperCase()}`,
             sClass,
             avatarUrl,
             bondLvl,
-            oppName,
-            oppAvatarUrl,
-            oppClass,
-            ['Arts']
+            res.skillType || 'buff',
+            res.skillDescription ? [res.skillDescription] : [],
+            'fuyuki'
           );
 
           if (skillDiaBuffer && skillDiaBuffer.length > 500) {

@@ -1576,6 +1576,373 @@ function drawCenterCommandHUD(
 }
 
 /**
+ * Helper to draw Tactical Skill Activation HUD in Center
+ */
+function drawSkillCenterHUD(
+  ctx: CanvasRenderingContext2D,
+  skillName: string,
+  servantClass: string = 'Saber',
+  frameIdx: number = 0,
+  customEffects?: string[],
+  skillTypeCategory?: string
+) {
+  ctx.save();
+
+  const cleanSkillName = (skillName || 'TACTICAL SKILL')
+    .replace(/^\[?\s*SKILL:\s*/i, '')
+    .replace(/\s*\]?$/, '')
+    .trim();
+
+  const lowerName = cleanSkillName.toLowerCase();
+
+  // Dynamic Skill Theme Colors
+  let headerGrad1 = '#0369a1';
+  let headerGrad2 = '#082f49';
+  let headerBorder = '#38bdf8';
+  let runeTheme = '#38bdf8';
+  let crestCategory = skillTypeCategory || 'ACTIVE SKILL • REINFORCEMENT';
+
+  if (lowerName.includes('buster') || lowerName.includes('mana burst') || lowerName.includes('flame') || lowerName.includes('nine lives')) {
+    headerGrad1 = '#991b1b';
+    headerGrad2 = '#450a0a';
+    headerBorder = '#f87171';
+    runeTheme = '#f87171';
+    crestCategory = skillTypeCategory || 'MANA BURST • BUSTER UP';
+  } else if (lowerName.includes('arts') || lowerName.includes('fox') || lowerName.includes('territory') || lowerName.includes('rule')) {
+    headerGrad1 = '#1e40af';
+    headerGrad2 = '#172554';
+    headerBorder = '#60a5fa';
+    runeTheme = '#60a5fa';
+    crestCategory = skillTypeCategory || 'TACTICAL ARTS • NP CATALYST';
+  } else if (lowerName.includes('quick') || lowerName.includes('rune') || lowerName.includes('unseen hand') || lowerName.includes('arrow') || lowerName.includes('wind')) {
+    headerGrad1 = '#065f46';
+    headerGrad2 = '#022c22';
+    headerBorder = '#34d399';
+    runeTheme = '#34d399';
+    crestCategory = skillTypeCategory || 'SPEED REINFORCE • QUICK SURGE';
+  } else if (lowerName.includes('charisma') || lowerName.includes('tactics') || lowerName.includes('command') || lowerName.includes('star')) {
+    headerGrad1 = '#854d0e';
+    headerGrad2 = '#422006';
+    headerBorder = '#facc15';
+    runeTheme = '#facc15';
+    crestCategory = skillTypeCategory || 'IMPERIAL DOMINION • CHARISMA';
+  }
+
+  // 1. Top Skill Header Banner
+  const bannerW = 530;
+  const bannerH = 40;
+  const bannerX = 236;
+  const bannerY = 18;
+
+  const bGrad = ctx.createLinearGradient(bannerX, bannerY, bannerX, bannerY + bannerH);
+  bGrad.addColorStop(0, headerGrad1);
+  bGrad.addColorStop(1, headerGrad2);
+  ctx.fillStyle = bGrad;
+  drawRoundRect(ctx, bannerX, bannerY, bannerW, bannerH, 4);
+  ctx.fill();
+
+  ctx.strokeStyle = headerBorder;
+  ctx.lineWidth = 1.8;
+  drawRoundRect(ctx, bannerX, bannerY, bannerW, bannerH, 4);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(254, 240, 138, 0.4)';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, bannerX + 2, bannerY + 2, bannerW - 4, bannerH - 4, 3);
+  ctx.stroke();
+
+  // Corner Gold Sparkles
+  drawSparkDiamond(ctx, bannerX + 16, bannerY + bannerH / 2, 4.5, '#fbbf24');
+  drawSparkDiamond(ctx, bannerX + bannerW - 16, bannerY + bannerH / 2, 4.5, '#fbbf24');
+
+  // Eyebrow Tag
+  ctx.fillStyle = '#fef08a';
+  ctx.font = 'bold 9px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('✦ HEROIC SPIRIT ACTIVE SKILL ✦', bannerX + bannerW / 2, bannerY + 13);
+
+  // Skill Name
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 14px sans-serif';
+  ctx.fillText(`[ SKILL: ${cleanSkillName.toUpperCase()} ]`, bannerX + bannerW / 2, bannerY + 30);
+
+  // 2. Center Arcane Enhancement Container Box
+  const coreX = 236;
+  const coreY = 66;
+  const coreW = 530;
+  const coreH = 170;
+
+  ctx.fillStyle = 'rgba(6, 11, 25, 0.94)';
+  drawRoundRect(ctx, coreX, coreY, coreW, coreH, 4);
+  ctx.fill();
+
+  ctx.strokeStyle = headerBorder;
+  ctx.lineWidth = 1.8;
+  drawRoundRect(ctx, coreX, coreY, coreW, coreH, 4);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(254, 240, 138, 0.3)';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, coreX + 3, coreY + 3, coreW - 6, coreH - 6, 3);
+  ctx.stroke();
+
+  // Corner Filigree Brackets
+  const cbLen = 10;
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(coreX + 4, coreY + 4 + cbLen);
+  ctx.lineTo(coreX + 4, coreY + 4);
+  ctx.lineTo(coreX + 4 + cbLen, coreY + 4);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(coreX + coreW - 4 - cbLen, coreY + 4);
+  ctx.lineTo(coreX + coreW - 4, coreY + 4);
+  ctx.lineTo(coreX + coreW - 4, coreY + 4 + cbLen);
+  ctx.stroke();
+
+  // 3. Left Section: Spinning Runic Magic Circle (cx: 295, cy: 145)
+  const circleX = 295;
+  const circleY = 145;
+  const baseR = 44;
+  const pulseR = baseR + Math.sin(frameIdx * Math.PI / 4) * 3;
+
+  // Glowing Leyline Core
+  const coreGlow = ctx.createRadialGradient(circleX, circleY, 5, circleX, circleY, pulseR + 15);
+  coreGlow.addColorStop(0, `${runeTheme}66`);
+  coreGlow.addColorStop(0.6, `${runeTheme}22`);
+  coreGlow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = coreGlow;
+  ctx.beginPath();
+  ctx.arc(circleX, circleY, pulseR + 15, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Outer Rotating Rune Ring
+  ctx.save();
+  ctx.translate(circleX, circleY);
+  ctx.rotate((frameIdx * Math.PI) / 8);
+  ctx.strokeStyle = runeTheme;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.arc(0, 0, pulseR, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Orbital Celestial Rune Nodes
+  for (let n = 0; n < 8; n++) {
+    const angle = (n * Math.PI) / 4;
+    const nx = Math.cos(angle) * pulseR;
+    const ny = Math.sin(angle) * pulseR;
+    drawSparkDiamond(ctx, nx, ny, n % 2 === 0 ? 3.5 : 2.5, '#fbbf24');
+  }
+  ctx.restore();
+
+  // Inner Concentric Ring
+  ctx.strokeStyle = 'rgba(254, 240, 138, 0.7)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.arc(circleX, circleY, pulseR - 12, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Central Glowing Vector Rune Icon
+  drawSparkDiamond(ctx, circleX, circleY, 12, '#ffffff');
+  drawSparkDiamond(ctx, circleX, circleY, 7, runeTheme);
+
+  // Magic Circle Category Label Pill underneath
+  const pillW = 104;
+  const pillH = 18;
+  const pillX = circleX - pillW / 2;
+  const pillY = circleY + pulseR + 8;
+  ctx.fillStyle = 'rgba(2, 6, 23, 0.9)';
+  drawRoundRect(ctx, pillX, pillY, pillW, pillH, 3);
+  ctx.fill();
+  ctx.strokeStyle = runeTheme;
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, pillX, pillY, pillW, pillH, 3);
+  ctx.stroke();
+
+  ctx.fillStyle = '#fef08a';
+  ctx.font = 'bold 8px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(crestCategory.slice(0, 20), circleX, pillY + 12);
+
+  // 4. Right Section: 3 Tactical Effect Panels (x: 362, y: 74, w: 388)
+  let effList = customEffects && customEffects.length > 0 ? customEffects : [];
+  if (effList.length === 0) {
+    if (lowerName.includes('unseen hand')) {
+      effList = [
+        '⚡ Quick & Arts Perf +30% (3T)',
+        '🌟 Critical Stars +20 • Target Lock',
+        '⏳ Cooldown: 5 Turns • Card Resonance'
+      ];
+    } else if (lowerName.includes('mana burst')) {
+      effList = [
+        '🔴 Buster Card Performance +50% (1T)',
+        '⚔️ Attack Power Surge +20% (1T)',
+        '⏳ Cooldown: 5 Turns • Overwhelming Strike'
+      ];
+    } else if (lowerName.includes('arrows') || lowerName.includes('evade') || lowerName.includes('wisdom')) {
+      effList = [
+        '💨 Evasion Granted (3 Hits / 3 Turns)',
+        '🛡️ Defense Up +25% • Survival Active',
+        '⏳ Cooldown: 5 Turns • Unshakable Stance'
+      ];
+    } else if (lowerName.includes('charisma') || lowerName.includes('tactics')) {
+      effList = [
+        '⚔️ Party Attack Power +20% (3T)',
+        '🌟 Morale Resonance • Star Drop +15%',
+        '⏳ Cooldown: 5 Turns • Strategic Command'
+      ];
+    } else if (lowerName.includes('fox') || lowerName.includes('territory') || lowerName.includes('golden rule')) {
+      effList = [
+        '🔵 Arts Card Performance +50% (3T)',
+        '💎 NP Gauge Charge +30% • Battery Boost',
+        '⏳ Cooldown: 6 Turns • Magecraft Mastery'
+      ];
+    } else if (lowerName.includes('guts') || lowerName.includes('continuation')) {
+      effList = [
+        '🩸 Guts Revive Granted (1 Time / 5T)',
+        '❤️ Revives with +2,500 HP on Defeat',
+        '⏳ Cooldown: 7 Turns • Indomitable Will'
+      ];
+    } else {
+      effList = [
+        `⚡ ${cleanSkillName} Primary Surge Active`,
+        '🌟 Tactical Combat Buffs Imbued',
+        '⏳ Cooldown: 5 Turns • Immediate Cast'
+      ];
+    }
+  }
+
+  const tileW = 388;
+  const tileH = 46;
+  const startTileY = 74;
+  const tileSpacing = 7;
+
+  const tileIcons = ['⚡', '🌟', '⏳'];
+  const tileHeaders = ['PRIMARY ENHANCEMENT', 'TACTICAL RESONANCE', 'MASTERY COOLDOWN'];
+  const tileGrads = [
+    ['rgba(15, 23, 42, 0.9)', 'rgba(30, 58, 138, 0.5)'],
+    ['rgba(15, 23, 42, 0.9)', 'rgba(88, 28, 135, 0.5)'],
+    ['rgba(15, 23, 42, 0.9)', 'rgba(120, 53, 15, 0.5)']
+  ];
+
+  for (let t = 0; t < 3; t++) {
+    const tileX = 362;
+    const tileY = startTileY + t * (tileH + tileSpacing);
+    const effText = effList[t] || (t === 2 ? '⏳ Cooldown: 5 Turns' : '✨ Tactical Resonance Active');
+
+    // Tile Box
+    const tGrad = ctx.createLinearGradient(tileX, tileY, tileX + tileW, tileY);
+    tGrad.addColorStop(0, tileGrads[t % 3][0]);
+    tGrad.addColorStop(1, tileGrads[t % 3][1]);
+    ctx.fillStyle = tGrad;
+    drawRoundRect(ctx, tileX, tileY, tileW, tileH, 3);
+    ctx.fill();
+
+    ctx.strokeStyle = t === 0 ? headerBorder : t === 1 ? '#c084fc' : '#fbbf24';
+    ctx.lineWidth = 1.2;
+    drawRoundRect(ctx, tileX, tileY, tileW, tileH, 3);
+    ctx.stroke();
+
+    // Left Icon Square
+    const iconSqW = 32;
+    const iconSqH = 34;
+    const iconSqX = tileX + 6;
+    const iconSqY = tileY + 6;
+    ctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
+    drawRoundRect(ctx, iconSqX, iconSqY, iconSqW, iconSqH, 3);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.5)';
+    ctx.lineWidth = 0.8;
+    drawRoundRect(ctx, iconSqX, iconSqY, iconSqW, iconSqH, 3);
+    ctx.stroke();
+
+    ctx.font = '16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(tileIcons[t % 3], iconSqX + iconSqW / 2, iconSqY + 23);
+
+    // Header Mini Label
+    ctx.fillStyle = t === 0 ? '#7dd3fc' : t === 1 ? '#e9d5ff' : '#fde047';
+    ctx.font = 'bold 8.5px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(tileHeaders[t % 3], tileX + 46, tileY + 16);
+
+    // Value Text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 12.5px sans-serif';
+    const cleanEff = effText.replace(/^[⚡🌟⏳⚔️🛡️💎💚🩸✨]\s*/, '');
+    ctx.fillText(cleanEff.slice(0, 42), tileX + 46, tileY + 34);
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Animated Skill Mana Burst & Leyline Aura Shockwave (Replaces diagonal sword slash)
+ */
+function drawSkillAuraAnimation(ctx: CanvasRenderingContext2D, frameIdx: number, servantClass: string = 'Saber') {
+  ctx.save();
+  const cx = 295;
+  const cy = 145;
+
+  if (frameIdx === 0) {
+    // Focus Tension: converging radiant sparkles
+    drawSparkDiamond(ctx, cx, cy, 14, '#38bdf8');
+    drawSparkDiamond(ctx, cx - 40, cy - 30, 6, '#facc15');
+    drawSparkDiamond(ctx, cx + 40, cy + 30, 6, '#facc15');
+  } else if (frameIdx === 1) {
+    // Wave 1: expanding radiant ring
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.8)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 70, 0, Math.PI * 2);
+    ctx.stroke();
+    drawSparkDiamond(ctx, cx - 70, cy, 7, '#ffffff');
+    drawSparkDiamond(ctx, cx + 70, cy, 7, '#ffffff');
+  } else if (frameIdx === 2) {
+    // Climax Mana Burst: Brilliant concentric shockwaves & diamond spark storm
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 95, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = 'rgba(250, 204, 21, 0.85)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 120, 0, Math.PI * 2);
+    ctx.stroke();
+
+    drawSparkDiamond(ctx, 150, 60, 9, '#ffffff');
+    drawSparkDiamond(ctx, 210, 110, 7, '#38bdf8');
+    drawSparkDiamond(ctx, 450, 60, 8, '#facc15');
+    drawSparkDiamond(ctx, 620, 110, 9, '#ffffff');
+    drawSparkDiamond(ctx, 720, 70, 7, '#38bdf8');
+    drawSparkDiamond(ctx, 180, 220, 8, '#facc15');
+    drawSparkDiamond(ctx, 580, 220, 7, '#ffffff');
+  } else if (frameIdx === 3) {
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.6)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 140, 0, Math.PI * 2);
+    ctx.stroke();
+    drawSparkDiamond(ctx, 350, 50, 6, '#facc15');
+    drawSparkDiamond(ctx, 650, 160, 6, '#38bdf8');
+  } else if (frameIdx >= 4 && frameIdx <= 6) {
+    const alpha = (7 - frameIdx) * 0.18;
+    ctx.strokeStyle = `rgba(250, 204, 21, ${alpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 160 + (frameIdx - 4) * 20, 0, Math.PI * 2);
+    ctx.stroke();
+    drawSparkDiamond(ctx, 480, 90 + frameIdx * 10, 5, '#fef08a');
+  }
+
+  ctx.restore();
+}
+
+/**
  * Render a single frame of the Visual Novel Dialogue Cut-In
  */
 function renderDialogueSingleFrame(
@@ -1599,14 +1966,22 @@ function renderDialogueSingleFrame(
   // 1. Stage / Battlefield Background
   drawBattlefieldStage(ctx, width, height, bgImg, stagePreset, frameIdx);
 
+  const isSkillTag = (chainTagOrTitle || '').toUpperCase().startsWith('SKILL:') || (chainTagOrTitle || '').toUpperCase().includes('SKILL');
+
   // 2. Attacker Hovering Sprite (Left Side)
   drawHoveringAttacker(ctx, portraitImg, speakerName, servantClass, bondOrLevel, frameIdx, true);
 
-  // 3. Defender Hovering Sprite (Right Side)
-  drawHoveringDefender(ctx, defenderImg, defenderName, defenderClass, frameIdx, true);
+  // 3. Defender Hovering Sprite (Right Side) - only during combat clashes
+  if (!isSkillTag) {
+    drawHoveringDefender(ctx, defenderImg, defenderName, defenderClass, frameIdx, true);
+  }
 
-  // 4. Center Tactical Command Cards & Active Chain HUD
-  if (chainTagOrTitle !== 'VICTORY INVOCATION' && chainTagOrTitle !== 'DIALOGUE' && chainTagOrTitle !== 'SUMMON INVOCATION') {
+  // 4. Center Tactical Command Cards & Active Chain HUD or Arcane Skill HUD
+  if (isSkillTag) {
+    const extractedSkillName = (chainTagOrTitle || '').replace(/^\[?\s*SKILL:\s*/i, '').replace(/\s*\]?$/, '').trim();
+    drawSkillCenterHUD(ctx, extractedSkillName, servantClass, frameIdx);
+    drawSkillAuraAnimation(ctx, frameIdx, servantClass);
+  } else if (chainTagOrTitle !== 'VICTORY INVOCATION' && chainTagOrTitle !== 'DIALOGUE' && chainTagOrTitle !== 'SUMMON INVOCATION') {
     drawCenterCommandHUD(ctx, chainTagOrTitle, sequence, frameIdx);
 
     // 5. Full-Screen Screen-Splitting Slash Cut-In Animation
@@ -1782,6 +2157,208 @@ export async function renderDialogueCard(
       defenderImg,
       defenderClass,
       sequence,
+      bgImg,
+      stagePreset
+    );
+  }, 120);
+
+  (canvas as any).__animTimer = timer;
+}
+
+/**
+ * Render a single frame of the Dedicated Arcane Skill Visual Novel Cut-In (800x420)
+ */
+function renderSkillSingleFrame(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  frameIdx: number,
+  speakerName: string,
+  skillName: string,
+  skillQuote: string,
+  servantClass: string = 'Saber',
+  portraitImg: HTMLImageElement | null = null,
+  bondOrLevel: number | string = 10,
+  skillType: string = 'buff',
+  skillEffects: string[] = [],
+  bgImg: HTMLImageElement | null = null,
+  stagePreset: string = 'fuyuki'
+) {
+  // 1. Stage / Battlefield Background
+  drawBattlefieldStage(ctx, width, height, bgImg, stagePreset, frameIdx);
+
+  // Deep Arcane Leyline Vignette
+  const vig = ctx.createRadialGradient(width / 2, height / 2, 60, width / 2, height / 2, 440);
+  vig.addColorStop(0, 'rgba(15, 23, 42, 0.25)');
+  vig.addColorStop(0.7, 'rgba(2, 6, 23, 0.60)');
+  vig.addColorStop(1, 'rgba(2, 6, 23, 0.85)');
+  ctx.fillStyle = vig;
+  ctx.fillRect(0, 0, width, height);
+
+  // 2. Casting Servant Hovering Sprite (Left Side)
+  drawHoveringAttacker(ctx, portraitImg, speakerName, servantClass, bondOrLevel, frameIdx, true);
+
+  // 3. Center Tactical Skill Activation HUD & Rune Core
+  drawSkillCenterHUD(ctx, skillName, servantClass, frameIdx, skillEffects, skillType);
+
+  // 4. Animated Skill Mana Burst & Leyline Aura Shockwave
+  drawSkillAuraAnimation(ctx, frameIdx, servantClass);
+
+  // 5. Visual Novel Dialogue Ribbon (Lower Section)
+  const boxX = 22;
+  const boxY = 248;
+  const boxW = 756;
+  const boxH = 154;
+
+  ctx.fillStyle = 'rgba(10, 5, 3, 0.90)';
+  drawRoundRect(ctx, boxX, boxY, boxW, boxH, 4);
+  ctx.fill();
+
+  ctx.strokeStyle = '#d97706';
+  ctx.lineWidth = 2;
+  drawRoundRect(ctx, boxX, boxY, boxW, boxH, 4);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(254, 240, 138, 0.35)';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, boxX + 3, boxY + 3, boxW - 6, boxH - 6, 3);
+  ctx.stroke();
+
+  // Corner Filigree Brackets
+  const boxCbLen = 12;
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(boxX + 3, boxY + 3 + boxCbLen);
+  ctx.lineTo(boxX + 3, boxY + 3);
+  ctx.lineTo(boxX + 3 + boxCbLen, boxY + 3);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(boxX + boxW - 3 - boxCbLen, boxY + 3);
+  ctx.lineTo(boxX + boxW - 3, boxY + 3);
+  ctx.lineTo(boxX + boxW - 3, boxY + 3 + boxCbLen);
+  ctx.stroke();
+
+  // Speaker Nameplate Tab
+  ctx.font = 'bold 15px sans-serif';
+  const nameLabel = `${speakerName} [${servantClass || 'Servant'}]`;
+  const nameMetrics = ctx.measureText(nameLabel);
+  const nameW = Math.max(180, Math.min(360, nameMetrics.width + 36));
+  const nameH = 30;
+  const nameX = boxX + 20;
+  const nameY = boxY - 16;
+
+  ctx.fillStyle = '#0d0704';
+  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
+  ctx.fill();
+
+  ctx.strokeStyle = '#f59e0b';
+  ctx.lineWidth = 2;
+  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(254, 240, 138, 0.4)';
+  ctx.lineWidth = 0.8;
+  drawRoundRect(ctx, nameX + 2, nameY + 2, nameW - 4, nameH - 4, 3);
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 14px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${speakerName} [${(servantClass || 'Servant').toUpperCase()}]`, nameX + nameW / 2, nameY + 20);
+
+  // Dialogue Quote Text (24px Serif)
+  const textX = boxX + 28;
+  const textY = boxY + 42;
+  const maxTextW = boxW - 56;
+  const lineHeight = 32;
+
+  ctx.fillStyle = '#fffbeb';
+  ctx.font = 'bold 24px Georgia, "Times New Roman", serif';
+  ctx.textAlign = 'left';
+
+  const cleanQuote = (skillQuote || `Witness the true power of ${skillName}!`).replace(/^["“]/, '').replace(/["”]$/, '').trim();
+  drawWrappedText(ctx, `“${cleanQuote}”`, textX, textY, maxTextW, lineHeight, 3);
+
+  // Continuation Prompt Indicator
+  const promptScale = frameIdx % 2 === 0 ? 6 : 5;
+  drawSparkDiamond(ctx, boxX + boxW - 24, boxY + boxH - 20, promptScale, '#38bdf8');
+}
+
+/**
+ * Dedicated Skill Activation Live Animated Cut-In for Browser Canvas
+ */
+export async function renderSkillDialogueCard(
+  canvas: HTMLCanvasElement,
+  speakerName: string,
+  skillName: string,
+  skillQuote: string,
+  servantClass: string = 'Saber',
+  avatarUrl?: string,
+  bondOrLevel: number | string = 10,
+  skillType: string = 'buff',
+  skillEffects: string[] = [],
+  bgUrlOrPreset: string = 'fuyuki'
+): Promise<void> {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  canvas.width = 800;
+  canvas.height = 420;
+
+  if ((canvas as any).__animTimer) {
+    clearInterval((canvas as any).__animTimer);
+    (canvas as any).__animTimer = null;
+  }
+
+  const isCustomBgUrl = bgUrlOrPreset && (bgUrlOrPreset.startsWith('http') || bgUrlOrPreset.startsWith('data:image'));
+  const [portraitImg, bgImg] = await Promise.all([
+    avatarUrl ? loadBrowserImage(avatarUrl) : Promise.resolve(null),
+    isCustomBgUrl ? loadBrowserImage(bgUrlOrPreset) : Promise.resolve(null)
+  ]);
+
+  const stagePreset = isCustomBgUrl ? 'custom' : (bgUrlOrPreset || 'fuyuki');
+
+  renderSkillSingleFrame(
+    ctx,
+    800,
+    420,
+    2,
+    speakerName,
+    skillName,
+    skillQuote,
+    servantClass,
+    portraitImg,
+    bondOrLevel,
+    skillType,
+    skillEffects,
+    bgImg,
+    stagePreset
+  );
+
+  let frame = 2;
+  const timer = setInterval(() => {
+    if (!canvas.isConnected) {
+      clearInterval(timer);
+      (canvas as any).__animTimer = null;
+      return;
+    }
+    frame = (frame + 1) % 8;
+    ctx.clearRect(0, 0, 800, 420);
+    renderSkillSingleFrame(
+      ctx,
+      800,
+      420,
+      frame,
+      speakerName,
+      skillName,
+      skillQuote,
+      servantClass,
+      portraitImg,
+      bondOrLevel,
+      skillType,
+      skillEffects,
       bgImg,
       stagePreset
     );

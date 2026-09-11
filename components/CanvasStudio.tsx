@@ -5,6 +5,7 @@ import { MasterProfile, GachaResultItem } from '../lib/types';
 import {
   renderServantProfileCard,
   renderDialogueCard,
+  renderSkillDialogueCard,
   renderBattleTurnSummary,
   renderGachaSummonBanner
 } from '../lib/canvas/browserCanvas';
@@ -71,10 +72,73 @@ const SAMPLE_QUOTES = [
   'Trace on. Trigger off. Nine Lives Blade Works!'
 ];
 
+const SKILL_PRESETS = [
+  {
+    name: 'Mana Burst A',
+    quote: "Let crimson prana surge to the blade's edge!",
+    category: 'MANA BURST • BUSTER UP',
+    effects: [
+      '🔴 Buster Card Performance +50% (1T)',
+      '⚔️ Attack Power Surge +20% (1T)',
+      '⏳ Cooldown: 5 Turns • Overwhelming Strike'
+    ]
+  },
+  {
+    name: "Sovereign's Unseen Hand C",
+    quote: 'Feel the phantom grasp that governs all fate!',
+    category: 'TACTICAL ARTS • NP CATALYST',
+    effects: [
+      '⚡ Quick & Arts Perf +30% (3T)',
+      '🌟 Critical Stars +20 • Target Lock',
+      '⏳ Cooldown: 5 Turns • Card Resonance'
+    ]
+  },
+  {
+    name: 'Protection from Arrows B',
+    quote: 'As long as I can see it, no projectile shall touch me!',
+    category: 'SPEED REINFORCE • EVADE',
+    effects: [
+      '💨 Evasion Granted (3 Hits / 3 Turns)',
+      '🛡️ Defense Up +25% • Survival Active',
+      '⏳ Cooldown: 5 Turns • Unshakable Stance'
+    ]
+  },
+  {
+    name: 'Charisma B',
+    quote: 'Follow my lead, warriors of humanity!',
+    category: 'IMPERIAL DOMINION • CHARISMA',
+    effects: [
+      '⚔️ Party Attack Power +20% (3T)',
+      '🌟 Morale Resonance • Star Drop +15%',
+      '⏳ Cooldown: 5 Turns • Strategic Command'
+    ]
+  },
+  {
+    name: "Fox's Wedding A",
+    quote: 'Mikoon! A divine blessing for my dearest Master!',
+    category: 'TACTICAL ARTS • HEAL & NP',
+    effects: [
+      '🔵 Arts Card Performance +50% (3T)',
+      '💎 NP Gauge Charge +30% • Battery Boost',
+      '⏳ Cooldown: 6 Turns • Magecraft Mastery'
+    ]
+  },
+  {
+    name: 'Battle Continuation A',
+    quote: 'Even if my spirit origin shatters, I shall stand!',
+    category: 'SURVIVAL • GUTS REVIVE',
+    effects: [
+      '🩸 Guts Revive Granted (1 Time / 5T)',
+      '❤️ Revives with +2,500 HP on Defeat',
+      '⏳ Cooldown: 7 Turns • Indomitable Will'
+    ]
+  }
+];
+
 export default function CanvasStudio({ master }: CanvasStudioProps) {
   const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
 
-  const [activeTab, setActiveTab] = useState<'dialogue' | 'profile' | 'battle' | 'gacha'>('dialogue');
+  const [activeTab, setActiveTab] = useState<'dialogue' | 'skill' | 'profile' | 'battle' | 'gacha'>('dialogue');
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Dialogue & Cut-in State
@@ -85,6 +149,14 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
   const [dialogueText, setDialogueText] = useState(
     activeServant?.customQuotes.summon || 'I ask of you: Are you my Master?'
   );
+
+  // Skill Cut-In State
+  const [skillName, setSkillName] = useState('Mana Burst A');
+  const [skillQuote, setSkillQuote] = useState("Let crimson prana surge to the blade's edge!");
+  const [skillCategory, setSkillCategory] = useState('MANA BURST • BUSTER UP');
+  const [skillEffect1, setSkillEffect1] = useState('🔴 Buster Card Performance +50% (1T)');
+  const [skillEffect2, setSkillEffect2] = useState('⚔️ Attack Power Surge +20% (1T)');
+  const [skillEffect3, setSkillEffect3] = useState('⏳ Cooldown: 5 Turns • Overwhelming Strike');
 
   // Opponent / Defender state
   const [defenderName, setDefenderName] = useState('Gilgamesh');
@@ -146,6 +218,21 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
         cardSeq,
         effectiveBg
       );
+    } else if (activeTab === 'skill') {
+      const effectiveBg = bgMode === 'custom' && customBgUrl ? customBgUrl : bgPreset;
+      const effList = [skillEffect1, skillEffect2, skillEffect3].filter(Boolean);
+      renderSkillDialogueCard(
+        canvas,
+        dialogueSpeaker,
+        skillName,
+        skillQuote,
+        dialogueClass,
+        dialogueAvatarUrl || undefined,
+        dialogueBond,
+        'buff',
+        effList,
+        effectiveBg
+      );
     } else if (activeTab === 'battle') {
       const mockLog = {
         turnNumber: 3,
@@ -198,6 +285,12 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
     dialogueAvatarUrl,
     dialogueBond,
     dialogueText,
+    skillName,
+    skillQuote,
+    skillCategory,
+    skillEffect1,
+    skillEffect2,
+    skillEffect3,
     defenderName,
     defenderClass,
     defenderAvatarUrl,
@@ -256,6 +349,18 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
             </button>
           )}
 
+          {activeTab === 'skill' && (
+            <button
+              id="btn_replay_skill_burst"
+              onClick={handleReplaySlash}
+              className="px-3.5 py-2 rounded-sm bg-[#0369a1] hover:bg-[#0284c7] text-white font-bold font-mono text-xs uppercase tracking-wider flex items-center gap-2 border border-sky-400/40 shadow-lg transition"
+              title="Re-trigger spinning runic mana burst animation"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-sky-200" />
+              <span>Replay Mana Burst</span>
+            </button>
+          )}
+
           <button
             id="btn_export_canvas_png"
             onClick={handleDownloadImage}
@@ -270,7 +375,8 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 border-b border-[#1a1a1a] pb-3" id="canvas_studio_tabs">
         {[
-          { id: 'dialogue' as const, label: 'Visual Novel Cut-In (800x420 Cinematic Slash)' },
+          { id: 'dialogue' as const, label: 'Chain Combo Cut-In (800x420 Slash Cleave)' },
+          { id: 'skill' as const, label: 'Skill Activation Cut-In (800x420 Arcane Rune & Mana Burst)' },
           { id: 'profile' as const, label: 'Servant Status Card (850x390)' },
           { id: 'battle' as const, label: 'Battle Clash (640x700 Tarot)' },
           { id: 'gacha' as const, label: 'Summon Banner (900x420)' }
@@ -310,6 +416,21 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
             <span>Center: Command Deck Resonance</span>
             <span>•</span>
             <span>Right: Targeted Opponent</span>
+          </div>
+        )}
+
+        {activeTab === 'skill' && (
+          <div className="mt-3 flex items-center gap-4 text-xs font-mono text-white/40">
+            <span className="flex items-center gap-1.5 text-[#38bdf8]">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Arcane Leyline Magic Circle & Mana Burst</span>
+            </span>
+            <span>•</span>
+            <span>Left: Casting Heroic Spirit</span>
+            <span>•</span>
+            <span>Center: Spinning Runic Core & Dynamic Effect Breakdown</span>
+            <span>•</span>
+            <span>Self-Buff Specialization (Defender Suppressed)</span>
           </div>
         )}
       </div>
@@ -665,6 +786,255 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
                 value={dialogueText}
                 onChange={e => setDialogueText(e.target.value)}
                 className="w-full bg-[#111] text-[#fffbeb] font-serif text-sm italic px-3.5 py-2.5 rounded-sm border border-[#222] outline-none focus:border-[#d4af37] resize-none"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Comprehensive Customization Panel for Dedicated Skill Cut-In */}
+      {activeTab === 'skill' && (
+        <div className="space-y-5" id="skill_customization_panel">
+          {/* Section 1: Skill Archetype Presets */}
+          <div className="p-4 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] space-y-3">
+            <div className="flex items-center gap-2 border-b border-[#1a1a1a] pb-2">
+              <Sparkles className="w-4 h-4 text-sky-400" />
+              <h3 className="text-xs font-mono uppercase tracking-wider text-white font-bold">
+                Arcane Skill Archetype Presets (Dynamic Theme & Rune Core)
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+              {SKILL_PRESETS.map((preset, pIdx) => {
+                const isSelected = skillName === preset.name;
+                return (
+                  <button
+                    key={pIdx}
+                    id={`btn_preset_skill_${pIdx}`}
+                    onClick={() => {
+                      setSkillName(preset.name);
+                      setSkillQuote(preset.quote);
+                      setSkillCategory(preset.category);
+                      setSkillEffect1(preset.effects[0] || '');
+                      setSkillEffect2(preset.effects[1] || '');
+                      setSkillEffect3(preset.effects[2] || '');
+                    }}
+                    className={`p-2.5 rounded-sm text-left transition border ${
+                      isSelected
+                        ? 'bg-sky-950/40 border-sky-400 text-white shadow-lg'
+                        : 'bg-[#111] border-[#222] text-white/60 hover:text-white hover:border-[#333]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-mono text-sky-400 font-bold">Skill #{pIdx + 1}</span>
+                      {isSelected && <Check className="w-3 h-3 text-sky-400" />}
+                    </div>
+                    <div className="text-xs font-serif font-bold text-white truncate">{preset.name}</div>
+                    <div className="text-[9px] font-mono text-white/40 truncate mt-0.5">{preset.category}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Section 2: Casting Heroic Spirit & Battlefield Background */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Casting Servant Profile */}
+            <div className="p-4 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] space-y-3">
+              <div className="flex items-center gap-2 border-b border-[#1a1a1a] pb-2">
+                <Shield className="w-4 h-4 text-sky-400" />
+                <h3 className="text-xs font-mono uppercase tracking-wider text-white font-bold">
+                  Casting Heroic Spirit (Left Persona Frame)
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-mono uppercase tracking-wider text-white/40 block mb-1">
+                    Servant Name
+                  </label>
+                  <input
+                    type="text"
+                    value={dialogueSpeaker}
+                    onChange={e => setDialogueSpeaker(e.target.value)}
+                    className="w-full bg-[#111] text-white font-mono text-xs px-3 py-2 rounded-sm border border-[#222] outline-none focus:border-sky-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-mono uppercase tracking-wider text-white/40 block mb-1">
+                    Class & Bond Level
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={dialogueClass}
+                      onChange={e => setDialogueClass(e.target.value)}
+                      className="bg-[#111] text-white font-mono text-xs px-2 py-2 rounded-sm border border-[#222] outline-none focus:border-sky-400"
+                    >
+                      {['Saber', 'Archer', 'Lancer', 'Rider', 'Caster', 'Assassin', 'Berserker', 'Ruler', 'Avenger', 'Foreigner'].map(
+                        cls => (
+                          <option key={cls} value={cls}>
+                            {cls}
+                          </option>
+                        )
+                      )}
+                    </select>
+                    <input
+                      type="number"
+                      min={1}
+                      max={15}
+                      value={dialogueBond}
+                      onChange={e => setDialogueBond(parseInt(e.target.value, 10) || 10)}
+                      className="w-full bg-[#111] text-white font-mono text-xs px-2 py-2 rounded-sm border border-[#222] outline-none focus:border-sky-400"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-mono uppercase tracking-wider text-white/40 block mb-1">
+                  Portrait Sprite Image URL
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  value={dialogueAvatarUrl}
+                  onChange={e => setDialogueAvatarUrl(e.target.value)}
+                  className="w-full bg-[#111] text-white font-mono text-xs px-3 py-2 rounded-sm border border-[#222] outline-none focus:border-sky-400"
+                />
+              </div>
+            </div>
+
+            {/* Battlefield Background Selection */}
+            <div className="p-4 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] space-y-3">
+              <div className="flex items-center gap-2 border-b border-[#1a1a1a] pb-2">
+                <Flame className="w-4 h-4 text-sky-400" />
+                <h3 className="text-xs font-mono uppercase tracking-wider text-white font-bold">
+                  Battlefield Stage & Leyline Backdrop
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {BATTLEFIELD_PRESETS.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setBgPreset(p.id);
+                      setBgMode('preset');
+                    }}
+                    className={`p-2 rounded-sm text-left transition border text-xs font-mono ${
+                      bgMode === 'preset' && bgPreset === p.id
+                        ? 'bg-sky-950/40 border-sky-400 text-sky-300'
+                        : 'bg-[#111] border-[#222] text-white/60 hover:text-white'
+                    }`}
+                  >
+                    <div className="font-bold flex items-center gap-1">
+                      <span>{p.icon}</span>
+                      <span className="truncate">{p.name.split(' ')[0]}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="text"
+                  placeholder="Or paste custom background URL..."
+                  value={customBgUrl}
+                  onChange={e => {
+                    setCustomBgUrl(e.target.value);
+                    if (e.target.value) setBgMode('custom');
+                  }}
+                  className="w-full bg-[#111] text-white font-mono text-xs px-3 py-2 rounded-sm border border-[#222] outline-none focus:border-sky-400"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Arcane Skill Parameters & Effect Breakdown */}
+          <div className="p-4 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] space-y-4">
+            <div className="flex items-center gap-2 border-b border-[#1a1a1a] pb-2">
+              <Layers className="w-4 h-4 text-sky-400" />
+              <h3 className="text-xs font-mono uppercase tracking-wider text-white font-bold">
+                Arcane Rune Core & 3-Slot Skill Effect Breakdown
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] font-mono uppercase tracking-wider text-white/40 block mb-1">
+                  Active Skill Name (Triggers Custom Theme & Particle FX)
+                </label>
+                <input
+                  type="text"
+                  value={skillName}
+                  onChange={e => setSkillName(e.target.value)}
+                  placeholder="e.g. Mana Burst A, Protection from Arrows, Fox's Wedding..."
+                  className="w-full bg-[#111] text-white font-mono text-xs px-3 py-2 rounded-sm border border-[#222] outline-none focus:border-sky-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-mono uppercase tracking-wider text-white/40 block mb-1">
+                  Skill Crest Subtitle / Category
+                </label>
+                <input
+                  type="text"
+                  value={skillCategory}
+                  onChange={e => setSkillCategory(e.target.value)}
+                  placeholder="e.g. MANA BURST • BUSTER UP, TACTICAL ARTS..."
+                  className="w-full bg-[#111] text-white font-mono text-xs px-3 py-2 rounded-sm border border-[#222] outline-none focus:border-sky-400"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="text-[10px] font-mono uppercase tracking-wider text-white/40 block mb-1">
+                  Effect Slot #1 (Primary Buff)
+                </label>
+                <input
+                  type="text"
+                  value={skillEffect1}
+                  onChange={e => setSkillEffect1(e.target.value)}
+                  className="w-full bg-[#111] text-white font-mono text-xs px-3 py-2 rounded-sm border border-[#222] outline-none focus:border-sky-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-mono uppercase tracking-wider text-white/40 block mb-1">
+                  Effect Slot #2 (Secondary Surge)
+                </label>
+                <input
+                  type="text"
+                  value={skillEffect2}
+                  onChange={e => setSkillEffect2(e.target.value)}
+                  className="w-full bg-[#111] text-white font-mono text-xs px-3 py-2 rounded-sm border border-[#222] outline-none focus:border-sky-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-mono uppercase tracking-wider text-white/40 block mb-1">
+                  Effect Slot #3 (Cooldown / Active Time)
+                </label>
+                <input
+                  type="text"
+                  value={skillEffect3}
+                  onChange={e => setSkillEffect3(e.target.value)}
+                  className="w-full bg-[#111] text-white font-mono text-xs px-3 py-2 rounded-sm border border-[#222] outline-none focus:border-sky-400"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-mono uppercase tracking-wider text-white/40 block mb-1">
+                Skill Incantation / Spoken Dialogue Quote (Rendered in 24px Georgia Serif)
+              </label>
+              <textarea
+                rows={2}
+                value={skillQuote}
+                onChange={e => setSkillQuote(e.target.value)}
+                className="w-full bg-[#111] text-[#fffbeb] font-serif text-sm italic px-3.5 py-2.5 rounded-sm border border-[#222] outline-none focus:border-sky-400 resize-none"
               />
             </div>
           </div>
