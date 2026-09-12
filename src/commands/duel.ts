@@ -1042,10 +1042,13 @@ function activateCombatantSkill(
   return {
     success: true,
     log: logText,
-    quote: skillQuote,
+    quote: isTransformation ? 'Fifth Magic—Circuits ignition! Time to kick this into maximum gear!' : skillQuote,
     skillName: skill.name,
     skillType: skill.effectType || 'buff',
-    skillDescription: skill.description || ''
+    skillDescription: skill.description || '',
+    isTransformation,
+    transformationGif,
+    transformationAvatarUrl: (skill as any).transformationAvatarUrl || 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp'
   };
 }
 
@@ -3415,29 +3418,50 @@ async function startInteractiveDuel(
           const skillName = res.skillName || 'TACTICAL SKILL';
           const skillQuote = res.quote || 'My power answers the command!';
 
-          const skillDiaBuffer = await renderSkillDialogueCard(
-            sName,
-            skillName,
-            skillQuote,
-            sClass,
-            avatarUrl,
-            bondLvl,
-            res.skillType || 'buff',
-            res.skillDescription ? [res.skillDescription] : [],
-            'fuyuki'
-          );
+          if (res.isTransformation && res.transformationGif) {
+            // Transformation Cinematic Sequence: Display Super Aoko Transformation GIF
+            const transEmbed = new EmbedBuilder()
+              .setTitle(`🔴 TRANSFORMATION AWAKENED: SUPER AOKO!`)
+              .setDescription(
+                `✨ **${sName}** ignited **${skillName}**!\n\n` +
+                `> 💬 ❝ ***${skillQuote}*** ❞\n\n` +
+                `⚡ **Fifth Magic True Output:** ATK +30%, Crit DMG +40%, +15 Critical Stars generated!`
+              )
+              .setImage(res.transformationGif)
+              .setColor(0xef4444)
+              .setFooter({ text: 'True Magic Ignition • Super Aoko Form Engaged' });
 
-          if (skillDiaBuffer && skillDiaBuffer.length > 500) {
-            const attachment = new AttachmentBuilder(skillDiaBuffer, { name: 'vn_dialogue.gif' });
-            const skillDialogueObj = {
-              quote: skillQuote,
-              tag: `SKILL: ${skillName.toUpperCase()}`,
-              color: 0x38bdf8
-            };
-            const cutInEmbed = buildDialogueCutInEmbed(actor, opponent, ['Arts'], skillDialogueObj, true);
-            await i.editReply({ embeds: [cutInEmbed], files: [attachment], components: [] });
+            if (res.transformationAvatarUrl) {
+              transEmbed.setThumbnail(res.transformationAvatarUrl);
+            }
 
-            await new Promise(r => setTimeout(r, 2500));
+            await i.editReply({ embeds: [transEmbed], files: [], components: [] });
+            await new Promise(r => setTimeout(r, 2800));
+          } else {
+            const skillDiaBuffer = await renderSkillDialogueCard(
+              sName,
+              skillName,
+              skillQuote,
+              sClass,
+              avatarUrl,
+              bondLvl,
+              res.skillType || 'buff',
+              res.skillDescription ? [res.skillDescription] : [],
+              'fuyuki'
+            );
+
+            if (skillDiaBuffer && skillDiaBuffer.length > 500) {
+              const attachment = new AttachmentBuilder(skillDiaBuffer, { name: 'vn_dialogue.gif' });
+              const skillDialogueObj = {
+                quote: skillQuote,
+                tag: `SKILL: ${skillName.toUpperCase()}`,
+                color: 0x38bdf8
+              };
+              const cutInEmbed = buildDialogueCutInEmbed(actor, opponent, ['Arts'], skillDialogueObj, true);
+              await i.editReply({ embeds: [cutInEmbed], files: [attachment], components: [] });
+
+              await new Promise(r => setTimeout(r, 2500));
+            }
           }
         } catch (err) {
           console.warn('Failed to render Skill visual novel dialogue cut-in:', err);

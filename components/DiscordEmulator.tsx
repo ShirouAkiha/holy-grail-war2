@@ -3116,11 +3116,17 @@ export default function DiscordEmulator({
               id: getNextId('bot_transformation_gif'),
               sender: 'bot',
               timestamp: 'Just now',
-              content:
-                `## 🔴 TRANSFORMATION UNLEASHED: **SUPER AOKO AWAKENED!**\n` +
-                `✨ **${activeDuel.battle.player1.name}** ignited the **Fifth Magic: Red Hair Ignition**!\n` +
-                `> 💬 ❝ ***${res.quote || 'Fifth Magic—Circuits ignition! Time to kick this into maximum gear!'}*** ❞\n\n` +
-                `${res.transformationGif}`
+              embed: {
+                title: '🔴 TRANSFORMATION AWAKENED: SUPER AOKO!',
+                description:
+                  `✨ **${activeDuel.battle.player1.name}** ignited the **Fifth Magic: Red Hair Ignition**!\n\n` +
+                  `> 💬 ❝ ***${res.quote || 'Fifth Magic—Circuits ignition! Time to kick this into maximum gear!'}*** ❞\n\n` +
+                  `⚡ **Fifth Magic True Output:** ATK +30%, Crit DMG +40%, +15 Stars generated!`,
+                color: '#ef4444',
+                imageUrl: res.transformationGif,
+                thumbnailUrl: res.transformedAvatarUrl || 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp',
+                footer: 'True Magic Ignition • Super Aoko Form Engaged'
+              }
             });
           }
           addMessage({

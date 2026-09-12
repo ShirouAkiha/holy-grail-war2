@@ -439,11 +439,15 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
 
     if (selectedSkillIdx !== undefined && p1.skills[selectedSkillIdx]) {
       const sk = p1.skills[selectedSkillIdx];
-      const isTransformation = Boolean(sk.transformationGifUrl || sk.id === 'fifth_magic_red_hair');
+      const isTransformation = Boolean(
+        sk.transformationGifUrl ||
+        sk.id === 'fifth_magic_red_hair' ||
+        (sk.name && sk.name.toLowerCase().includes('red hair ignition'))
+      );
       const skAvatar = isTransformation
         ? (sk.transformationAvatarUrl || 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp')
         : (p1.avatarUrl || activeTemplate?.avatarUrl);
-      const skGif = sk.transformationGifUrl;
+      const skGif = sk.transformationGifUrl || (isTransformation ? 'https://ella.janitorai.com/media-approved/gR8x0bMk-pHc95lo5mhAL.gif' : undefined);
 
       return {
         speakerName: isTransformation ? `${servantName} (Super Aoko)` : servantName,
