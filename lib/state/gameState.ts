@@ -98,6 +98,9 @@ export function getInitialMasterProfile(): MasterProfile {
       defeat: 'My resolve... was not enough...'
     },
     bondLevel: 4,
+    bondExp: 0,
+    completedBondEvents: [],
+    unlockedDialogueIds: ['artoria_summon', 'artoria_bond_1', 'artoria_bond_2', 'artoria_bond_3', 'artoria_bond_4'],
     template: defaultServantTemplate
   };
 
@@ -162,6 +165,10 @@ export function loadMasterProfile(): MasterProfile {
 
         return {
           ...s,
+          bondLevel: typeof s.bondLevel === 'number' ? s.bondLevel : 1,
+          bondExp: typeof s.bondExp === 'number' ? s.bondExp : 0,
+          completedBondEvents: Array.isArray(s.completedBondEvents) ? s.completedBondEvents : [],
+          unlockedDialogueIds: Array.isArray(s.unlockedDialogueIds) ? s.unlockedDialogueIds : [],
           equippedCeId,
           equippedCe,
           template: fresh ? { ...fresh, ...(s.template?.isCustomOrMeme ? s.template : {}) } : s.template

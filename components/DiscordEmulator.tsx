@@ -38,6 +38,7 @@ import {
   getTotalExpForLevel
 } from '../lib/engine/customization';
 import { executeCraftEssenceGachaRoll } from '../lib/engine/ceGacha';
+import { getBondExpProgress, getBondEventsForServant } from '../lib/engine/bondEvents';
 import { CRAFT_ESSENCE_DATABASE } from '../lib/data/craftEssences';
 import MASTERS_DATABASE from '../data/masters.json';
 import {
@@ -2465,6 +2466,59 @@ export default function DiscordEmulator({
       setServantsPage(1);
 
       postServantsList(allThrone, undefined, undefined, 1, initialOrigin, 'all');
+      return;
+    }
+
+    // ----------------------------------------------------
+    // COMMAND 3.5: /bond
+    // ----------------------------------------------------
+    if (trimmed.startsWith('/bond')) {
+      const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
+
+      if (!activeServant) {
+        addMessage({
+          id: getNextId('bot_bond_no_servant'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '❌ No Active Servant Contract',
+            description: 'You do not hold an active Servant contract. Use `/summon` or `/gacha` to form a pact first!',
+            color: '#ef4444'
+          }
+        });
+        return;
+      }
+
+      const template = activeServant.template;
+      const bondProgress = getBondExpProgress(activeServant.bondExp || 0);
+      const availableEvents = getBondEventsForServant(activeServant);
+
+      const eventsSummary = availableEvents.map(evt => {
+        const isCompleted = activeServant.completedBondEvents?.includes(evt.id);
+        const isUnlocked = (activeServant.bondLevel || 1) >= evt.requiredBondLevel;
+        const statusIcon = isCompleted ? '✅ Completed' : isUnlocked ? '✨ Ready to Play' : '🔒 Locked';
+        return `• **${evt.title}** (Bond Lv. ${evt.requiredBondLevel}): ${statusIcon}`;
+      }).join('\n');
+
+      addMessage({
+        id: getNextId('bot_bond_status'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: `💖 SERVANT BOND STATUS — ${template.name.toUpperCase()}`,
+          description:
+            `**Master:** ${master.username}\n` +
+            `**Servant Class:** ${template.servantClass} (★${template.rarity})\n\n` +
+            `• **Current Bond Level:** **Bond Lv. ${activeServant.bondLevel || 1} / 10**\n` +
+            `• **Total Bond EXP:** \`${activeServant.bondExp || 0} EXP\`\n` +
+            `• **Level Progress:** \`${bondProgress.expInCurrentLevel} / ${bondProgress.neededForNextLevel} EXP\` (${bondProgress.progressPercent}%)\n\n` +
+            `📖 **Visual Novel Interludes:**\n${eventsSummary}\n\n` +
+            `*To play Visual Novel events and unlock voice/text lines, open the **Bond Sanctum** tab in the top menu!*`,
+          color: '#f59e0b',
+          thumbnailUrl: activeServant.avatarUrl || template.avatarUrl,
+          footer: 'Bond increases exclusively through Visual Novel Interludes'
+        }
+      });
       return;
     }
 
@@ -5093,10 +5147,10 @@ export default function DiscordEmulator({
       introQuote = introMatch[1].trim();
     } else {
       const parts = clean.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
-      if (parts.length >= 2) {
+      if (parts.length >= 2 && parts[0] && parts[1]) {
         rivalQuery = parts[0].replace(/^["“']|["”']$/g, '').toLowerCase();
         introQuote = parts[1].replace(/^["“']|["”']$/g, '').trim();
-        if (parts.length >= 3) {
+        if (parts.length >= 3 && parts[2]) {
           retortQuote = parts[2].replace(/^["“']|["”']$/g, '').trim();
         }
       }

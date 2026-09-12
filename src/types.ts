@@ -122,6 +122,7 @@ export interface ServantTemplate {
   defeatQuote: string;
   avatarUrl: string;
   cardArtUrl: string;
+  aliases?: string[];
   isCustomOrMeme?: boolean;
   matchupDialogues?: Record<string, MatchupQuoteEntry>;
 }
@@ -158,8 +159,53 @@ export interface MasterServantInstance {
     matchups?: Record<string, MatchupQuoteEntry>;
   };
   bondLevel: number;
+  bondExp?: number;
+  completedBondEvents?: string[];
+  unlockedDialogueIds?: string[];
   npLevel?: number;
   template: ServantTemplate;
+}
+
+// Bond System & Visual Novel Types
+export interface BondChoice {
+  id: string;
+  text: string;
+  response: string;
+  bondExpGain: number;
+  reactionEmotion?: 'happy' | 'thoughtful' | 'surprised' | 'flustered' | 'determined' | 'amused' | 'stern' | 'smug';
+  nextSceneId?: string;
+}
+
+export interface BondScene {
+  id: string;
+  speakerName?: string;
+  speakerAvatarUrl?: string;
+  backgroundTheme?: 'chaldea_room' | 'fuyuki_moonlight' | 'ebonwatch_realm' | 'dun_scaith' | 'camelot_court' | 'babylon_vault' | 'misaki_town' | string;
+  dialogueText: string;
+  choices?: BondChoice[];
+}
+
+export interface BondEvent {
+  id: string;
+  servantTemplateId: string; // servant template ID or 'generic'
+  requiredBondLevel: number; // Level needed to unlock this event (e.g. 1, 2, 3... 10)
+  title: string;
+  subtitle: string;
+  description: string;
+  rewardBondExp: number;
+  rewardSaintQuartz?: number;
+  unlockedQuoteId?: string;
+  unlockedCeId?: string;
+  scenes: BondScene[];
+}
+
+export interface BondDialogueLine {
+  id: string;
+  title: string;
+  category: 'summon' | 'bond_1' | 'bond_2' | 'bond_3' | 'bond_4' | 'bond_5' | 'bond_6' | 'bond_7' | 'bond_8' | 'bond_9' | 'bond_10' | 'battle' | 'special' | 'lore';
+  requiredBondLevel: number;
+  quoteText: string;
+  audioPrompt?: string;
 }
 
 export interface MasterProfile {

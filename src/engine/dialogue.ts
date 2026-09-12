@@ -588,7 +588,8 @@ export function getServantChainDialogue(
   },
   currentHp?: number,
   maxHp?: number,
-  roundOrTurnSeed: number = 0
+  roundOrTurnSeed: number = 0,
+  bondLevel: number = 1
 ): ChainDialogueResult {
   const profile = getServantProfile(servantName);
   const isNP = cards.includes('NP');
