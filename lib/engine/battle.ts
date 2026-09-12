@@ -218,7 +218,15 @@ export function applyCombatantSkill(
   actor: ActiveCombatant,
   target: ActiveCombatant,
   skillIndex: number
-): { success: boolean; log: string; quote?: string; skillName?: string } {
+): {
+  success: boolean;
+  log: string;
+  quote?: string;
+  skillName?: string;
+  isTransformation?: boolean;
+  transformationGif?: string;
+  transformedAvatarUrl?: string;
+} {
   if (skillIndex === 2 && (actor.bondLevel || 1) < 5) {
     return { success: false, log: '🔒 Skill 3 is locked! Reach Bond Level 5 to unlock.' };
   }
@@ -236,6 +244,32 @@ export function applyCombatantSkill(
   const skillQuote = actor.customQuotes?.skill || `My power answers the command! Witness ${skill.name}!`;
   const quoteLine = `\n> 💬 ❝ ***${skillQuote}*** ❞`;
   let logText = `✨ **${actor.name}** activated **${skill.name}**!${quoteLine}`;
+
+  let isTransformation = false;
+  let transformationGif: string | undefined;
+  let transformedAvatarUrl: string | undefined;
+
+  // Handle Servant Transformation skill (e.g. Aoko's Fifth Magic: Red Hair Ignition)
+  if (skill.transformationAvatarUrl || skill.id === 'fifth_magic_red_hair') {
+    isTransformation = true;
+    actor.isTransformed = true;
+    actor.transformationTurns = skill.duration || 3;
+    if (!actor.baseAvatarUrl) {
+      actor.baseAvatarUrl = actor.avatarUrl;
+    }
+    const newAvatar = skill.transformationAvatarUrl || 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp';
+    actor.avatarUrl = newAvatar;
+    transformedAvatarUrl = newAvatar;
+    transformationGif = skill.transformationGifUrl || 'https://ella.janitorai.com/media-approved/gR8x0bMk-pHc95lo5mhAL.gif';
+
+    actor.activeBuffs.push({
+      name: 'Super Aoko (Crit DMG Up)',
+      type: 'crit_dmg',
+      value: 40,
+      remainingTurns: skill.duration || 3
+    });
+    actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
+  }
 
   switch (skill.effectType) {
     case 'buff_atk': {
@@ -372,7 +406,15 @@ export function applyCombatantSkill(
       break;
   }
 
-  return { success: true, log: logText, quote: skillQuote, skillName: skill.name };
+  return {
+    success: true,
+    log: logText,
+    quote: skillQuote,
+    skillName: skill.name,
+    isTransformation,
+    transformationGif,
+    transformedAvatarUrl
+  };
 }
 
 export function initializeBattle(
@@ -722,6 +764,17 @@ export function executeNoblePhantasmLogic(
       const hasInherentRecharge = np.description.toLowerCase().includes('recharg') || np.description.toLowerCase().includes('refund');
       npCharged = (overchargeLevel >= 2 ? 20 : 0) + (hasInherentRecharge ? 20 : 0);
       starsGenerated = scope === 'aoe' ? 8 : 5;
+
+      // Apply DEF down if NP effect specifies (e.g. Aoko's Fifth Magic)
+      if (np.description.toLowerCase().includes('def') && (np.description.toLowerCase().includes('reduce') || np.description.toLowerCase().includes('down'))) {
+        target.activeBuffs.push({
+          name: `${np.name} (DEF Down)`,
+          type: 'buff_def',
+          value: -20,
+          remainingTurns: 3
+        });
+      }
+
       actionSummary = isInvincible
         ? `💥 **${actor.name}** unleashed Buster Noble Phantasm [${np.name}] (${scope === 'single' ? 'ST' : 'AoE'}), but **${target.name}** was shielded by Invincibility!`
         : isEvaded
@@ -977,6 +1030,23 @@ export function executeBattleTurn(
         skill.currentCooldown = skill.cooldown;
         usedSkillNames.push(skill.name);
 
+        // Handle Servant Transformation skill (e.g. Aoko's Fifth Magic: Red Hair Ignition)
+        if (skill.transformationAvatarUrl || skill.id === 'fifth_magic_red_hair') {
+          actor.isTransformed = true;
+          actor.transformationTurns = skill.duration || 3;
+          if (!actor.baseAvatarUrl) {
+            actor.baseAvatarUrl = actor.avatarUrl;
+          }
+          actor.avatarUrl = skill.transformationAvatarUrl || 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp';
+          actor.activeBuffs.push({
+            name: 'Super Aoko (Crit DMG Up)',
+            type: 'crit_dmg',
+            value: 40,
+            remainingTurns: skill.duration || 3
+          });
+          actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
+        }
+
         switch (skill.effectType) {
           case 'buff_atk': {
             const descLower = (skill.description || '').toLowerCase();
@@ -1145,6 +1215,7 @@ export function executeBattleTurn(
     const critPassiveBonus = actorPassives.filter(p => p.type === 'independent_action' || p.type === 'oblivion_correction').reduce((s, p) => s + p.value, 0);
     const divinityBonus = actorPassives.filter(p => p.type === 'divinity').reduce((s, p) => s + p.value, 0);
     const presenceConcealBonus = actorPassives.filter(p => p.type === 'presence_concealment').reduce((s, p) => s + p.value, 0);
+    const magicGunnerBonus = actorPassives.filter(p => p.type === 'magic_gunner' || (p.name && p.name.includes('Magic Gunner'))).reduce((s, p) => s + p.value, 0);
     const flatDivinity = Math.round(divinityBonus * PVP_DAMAGE_MODIFIER);
     const avengerBonus = targetPassives.filter(p => p.type === 'avenger').reduce((s, p) => s + p.value, 0);
 
@@ -1164,13 +1235,15 @@ export function executeBattleTurn(
       .filter(b => b.type === 'buster_up' || /mana burst|buster/i.test(b.name))
       .reduce((sum, b) => sum + b.value, 0) +
       (actor.equippedCe?.passiveType === 'buster_up' && actor.equippedCe.id !== 'ce_black_grail' ? (actor.equippedCe.passiveValue || 0) : 0) +
-      madnessBonus;
+      madnessBonus +
+      magicGunnerBonus;
 
     const artsBuff = actor.activeBuffs
       .filter(b => b.type === 'arts_up' || /arts|fox/i.test(b.name))
       .reduce((sum, b) => sum + b.value, 0) +
       (actor.equippedCe?.passiveType === 'arts_up' ? (actor.equippedCe.passiveValue || 0) : 0) +
-      territoryBonus;
+      territoryBonus +
+      magicGunnerBonus;
 
     const quickBuff = actor.activeBuffs
       .filter(b => b.type === 'quick_up' || /quick|primordial rune/i.test(b.name))
@@ -1418,6 +1491,24 @@ export function executeBattleTurn(
       const avengerRefund = Math.round(12 * (1.0 + avengerBonus / 100));
       target.npGauge = Math.min(300, target.npGauge + avengerRefund);
       actionText += `\n🖤 **[Avenger]** ${target.name} gained +${avengerRefund}% NP from suffering damage!`;
+    }
+
+    // Fifth Succession A passive (+4% NP gauge per turn)
+    const fifthSuccession = actorPassives.find(p => p.type === 'fifth_succession' || (p.name && p.name.includes('Fifth Succession')));
+    if (fifthSuccession) {
+      const npRefill = fifthSuccession.value || 4;
+      actor.npGauge = Math.min(300, actor.npGauge + npRefill);
+      actionText += `\n🔵 **[Fifth Succession A]** Circuit flow replenished +${npRefill}% NP gauge!`;
+    }
+
+    // Decrement transformation duration and revert if expired
+    if (actor.isTransformed && actor.transformationTurns !== undefined) {
+      actor.transformationTurns -= 1;
+      if (actor.transformationTurns <= 0) {
+        actor.isTransformed = false;
+        actor.avatarUrl = actor.baseAvatarUrl || 'https://ella.janitorai.com/media-approved/cqdhAGa5DTTAG7S9umM8k.webp';
+        actionText += `\n✨ **[Fifth Magic: Cooldown]** Transformation ended — ${actor.name} returned to base form.`;
+      }
     }
 
     // Generate Turn Dialogue Quote

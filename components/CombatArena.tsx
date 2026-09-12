@@ -30,6 +30,7 @@ import {
 } from '../lib/engine/combatHistory';
 import CombatLogHistory from './CombatLogHistory';
 import { SERVANT_DATABASE } from '../lib/data/servants';
+import { getNoblePhantasmGif } from '../lib/data/noblePhantasmGifs';
 import { getServantChainDialogue } from '@/src/engine/dialogue';
 import { renderDefeatDialogueCard } from '../lib/canvas/browserCanvas';
 import VsClashScreen from './VsClashScreen';
@@ -64,6 +65,7 @@ interface BattleDialogueCutIn {
   speakerName: string;
   speakerTitle: string;
   avatarUrl?: string;
+  gifUrl?: string;
   servantClass: string;
   rarity?: number;
   tag: string;
@@ -437,24 +439,33 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
 
     if (selectedSkillIdx !== undefined && p1.skills[selectedSkillIdx]) {
       const sk = p1.skills[selectedSkillIdx];
+      const isTransformation = Boolean(sk.transformationGifUrl || sk.id === 'fifth_magic_red_hair');
+      const skAvatar = isTransformation
+        ? (sk.transformationAvatarUrl || 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp')
+        : (p1.avatarUrl || activeTemplate?.avatarUrl);
+      const skGif = sk.transformationGifUrl;
+
       return {
-        speakerName: servantName,
+        speakerName: isTransformation ? `${servantName} (Super Aoko)` : servantName,
         speakerTitle: `${servantClass} • Skill: ${sk.name}`,
-        avatarUrl: p1.avatarUrl || activeTemplate?.avatarUrl,
+        avatarUrl: skAvatar,
+        gifUrl: skGif,
         servantClass,
         rarity: activeTemplate?.rarity || 5,
-        tag: 'SKILL RELEASE',
-        dialogueText: customQuotes?.skill || `Activating ${sk.name}! ${sk.description}`,
+        tag: isTransformation ? 'TRANSFORMATION AWAKENED' : 'SKILL RELEASE',
+        dialogueText: customQuotes?.skill || (isTransformation ? 'Fifth Magic—Circuits ignition! Time to kick this into maximum gear!' : `Activating ${sk.name}! ${sk.description}`),
         badgeType: 'skill',
         isPlayerMove: true
       };
     }
 
     if (useNp && p1.npGauge >= 100) {
+      const npGif = getNoblePhantasmGif(p1);
       return {
         speakerName: servantName,
         speakerTitle: `${servantClass} • ${p1.noblePhantasm.name}`,
         avatarUrl: p1.avatarUrl || activeTemplate?.avatarUrl,
+        gifUrl: npGif,
         servantClass,
         rarity: activeTemplate?.rarity || 5,
         tag: 'NOBLE PHANTASM CHANT',
@@ -1754,6 +1765,17 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
 
                   <span className="absolute bottom-2 right-2 text-2xl font-serif text-[#d4af37]/20 select-none">”</span>
                 </div>
+
+                {/* Cinematic Animation Sequence GIF (Transformation / NP) */}
+                {dialogueCutIn.gifUrl && (
+                  <div className="w-full rounded-md overflow-hidden border border-[#d4af37]/60 shadow-[0_0_15px_rgba(212,175,55,0.25)] max-h-48 sm:max-h-56 bg-black flex items-center justify-center">
+                    <img
+                      src={dialogueCutIn.gifUrl}
+                      alt="Cinematic Sequence"
+                      className="w-full h-full object-contain max-h-48 sm:max-h-56"
+                    />
+                  </div>
+                )}
 
                 {/* Countdown & Damage Preview Footer */}
                 <div className="flex items-center justify-between text-[11px] font-mono text-white/50 pt-1">

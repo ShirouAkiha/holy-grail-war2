@@ -437,6 +437,39 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "⟨ Zar Rok Aeth'ra! ⟩ Breath of pure power! The corruption of this world will NOT claim the Envoy!",
       "⟨ Krag Zol, Ghul Voth zul Throk! ⟩ Earth broken, but I am absolute! The Black Glass shall remember..."
     ]
+  },
+
+  // Aoko Aozaki - Caster (The Fifth Magician • Magic Gunner)
+  aoko_aozaki: {
+    buster: [
+      "Heavy thermodynamic blast, fire! Eat this straight right!",
+      "Maximum prana compression into my knuckles! Blast right through them!",
+      "I don't need fancy incantations—pure kinetic destruction will do!",
+      "Magic Bullet: Burst Mode! Don't blink or you'll miss your own defeat!"
+    ],
+    arts: [
+      "Circuits synchronizing... Setting time acceleration to factor four.",
+      "Magic Blue hums through my veins. Calculating entropy divergence.",
+      "Accelerating prana flow! Every millisecond is an eternity in this state.",
+      "Fifth Magic deployment sequence online. All systems green, Master!"
+    ],
+    quick: [
+      "Too slow! I'm already behind you!",
+      "High-velocity sprint! At this speed, not even your shadow can keep up!",
+      "Aozaki style close-quarters burst! Left hook, roundhouse, and blast!",
+      "Accelerating time locally! Watch me shatter the sound barrier!"
+    ],
+    mixed: [
+      "Magic Gunner rhythm locked in! Keeping the pressure on without pause!",
+      "You think a magician only fights from distance? Think again!",
+      "Magic circuits firing at 120%! Let's see how much punishment you can take!",
+      "Straight, hook, blast! That's how we resolve disputes in Misaki Town!"
+    ],
+    desperation: [
+      "Ugh... circuits overheating... but I haven't even deployed the core fifth yet!",
+      "Alice is going to lecture me forever if I lose here! Ignition, damn it!",
+      "Master, hang on! Even if I have to burn through tomorrow's time, I won't lose!"
+    ]
   }
 };
 
@@ -518,6 +551,9 @@ export function getServantProfile(servantName?: string): ServantDialogueProfile 
   }
   if (n.includes('adiosa') || n.includes('world-pruner') || n.includes('world pruner') || n.includes('dragon envoy') || n.includes('aethelian') || n.includes('ixenor')) {
     return SERVANT_COMBAT_DIALOGUES.adiosa;
+  }
+  if (n.includes('aoko') || n.includes('fifth magician') || n.includes('magic gunner') || n.includes('super aoko')) {
+    return SERVANT_COMBAT_DIALOGUES.aoko_aozaki;
   }
 
   return GENERIC_PROFILE;

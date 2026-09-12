@@ -1214,5 +1214,84 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     avatarUrl: 'https://ella.janitorai.com/media-approved/LLAGPFOtuFFMfvpwnlcar.webp',
     cardArtUrl: 'https://ella.janitorai.com/media-approved/LLAGPFOtuFFMfvpwnlcar.webp',
     isCustomOrMeme: false
+  },
+  {
+    id: 'aoko_aozaki',
+    name: 'Aoko Aozaki',
+    title: 'The Fifth Magician • Magic Gunner',
+    servantClass: 'Caster',
+    rarity: 5,
+    baseHp: 28000,
+    baseAtk: 11200,
+    baseStats: { strength: 14, endurance: 14, agility: 18, mana: 20, luck: 12 },
+    commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
+    skills: [
+      {
+        id: 'fifth_magic_red_hair',
+        name: 'Fifth Magic: Red Hair Ignition',
+        cooldown: 6,
+        description: 'Awakens the Fifth Magic, igniting her crimson hair into Super Aoko. Increases own ATK by 30% and Critical Damage by 40% for 3 turns, generating +15 Critical Stars.',
+        effectType: 'buff_atk',
+        value: 30,
+        duration: 3,
+        icon: '🔴',
+        transformationAvatarUrl: 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp',
+        transformationGifUrl: 'https://ella.janitorai.com/media-approved/gR8x0bMk-pHc95lo5mhAL.gif'
+      },
+      {
+        id: 'magic_circuit_acceleration',
+        name: 'Magic Circuit Acceleration A+',
+        cooldown: 6,
+        description: 'Overdrives magic circuits to accelerate mana flow. Charges own NP gauge by 30%, grants Evade for 1 turn, and increases NP Gain by 30% for 3 turns.',
+        effectType: 'np_charge',
+        value: 30,
+        duration: 3,
+        icon: '⚡'
+      },
+      {
+        id: 'magic_bullet_blast_stream',
+        name: 'Magic Bullet: Blast Stream EX',
+        cooldown: 7,
+        description: 'Fires a maximum-output thermodynamic blast. Increases Buster Card effectiveness by 30% for 3 turns and restores 2,500 HP through localized time regression.',
+        effectType: 'heal',
+        value: 2500,
+        duration: 3,
+        icon: '💥'
+      }
+    ],
+    passives: [
+      {
+        name: 'Magic Gunner EX',
+        type: 'magic_gunner',
+        value: 10,
+        rank: 'EX',
+        description: 'Increases Arts and Buster card effectiveness by 10% and increases Critical Star drop rate.'
+      },
+      {
+        name: 'Fifth Succession A',
+        type: 'fifth_succession',
+        value: 20,
+        rank: 'A',
+        description: 'Wielder of the Fifth Magic. Increases debuff resistance by 20% and passively charges 4% NP gauge every turn.'
+      }
+    ],
+    noblePhantasm: {
+      name: 'Fifth Magic: Magic Blue — First Star of the Morning',
+      cardType: 'Buster',
+      chant: 'Circuits connected. Spatial coordinates aligned... Fifth Magic, commence playback! Everything returns to where it was—MAGIC BLUE!',
+      description: 'Unleashes the Fifth Magic to alter entropy and time, firing an overwhelming thermodynamic beam. Deals heavy damage to a single enemy, reduces target DEF by 20% for 3 turns, and refuels 20% NP gauge.',
+      target: 'single',
+      multiplier: 600,
+      overchargeEffect: 'Reduces target DEF by 20% for 3 turns + 20% NP refund',
+      gifUrl: 'https://ella.janitorai.com/media-approved/ZxX2LIW5slaIJemYnnxJf.gif'
+    },
+    lore: 'Aoko Aozaki, the Fifth Magician and wielder of Magic Blue. Unlike traditional magi who spend lifetimes in secluded research, Aoko specializes in high-velocity destructive spells, physical martial arts, and thermodynamic acceleration. Inheritor of the Fifth Magic from the Aozaki grandfather in Misaki Town, she can manipulate time, entropy, and spatial trajectories to alter reality itself.',
+    summonQuote: 'Servant Caster, Aoko Aozaki. The Fifth Magician... though honestly, just call me Aoko. Let\'s get to work, Master!',
+    battleStartQuote: 'Don\'t blink! At this speed, human eyes won\'t even catch the afterimage!',
+    victoryQuote: 'Clean finish. No need to overcomplicate things when a high-speed right straight gets the job done.',
+    defeatQuote: 'Ugh... pushed the circuits too far... Alice is going to give me an earful for this...',
+    avatarUrl: 'https://ella.janitorai.com/media-approved/cqdhAGa5DTTAG7S9umM8k.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/cqdhAGa5DTTAG7S9umM8k.webp',
+    isCustomOrMeme: false
   }
 ];

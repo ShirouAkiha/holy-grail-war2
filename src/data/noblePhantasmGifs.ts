@@ -90,6 +90,11 @@ export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: 
     gifUrl: '/api/media/np_adiosa_dragon_envoy.webp',
     fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
     chant: '⟨ Kz\'vohl aethren... Ground to glass, sky to ash. Ruin of Ixenor... AZURE-MAGENTA RUIN! ⟩'
+  },
+  'Aoko Aozaki': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/ZxX2LIW5slaIJemYnnxJf.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/ZxX2LIW5slaIJemYnnxJf.gif',
+    chant: 'Circuits connected. Spatial coordinates aligned... Fifth Magic, commence playback! Everything returns to where it was—MAGIC BLUE!'
   }
 };
 
@@ -151,6 +156,9 @@ export function getNoblePhantasmGif(servantOrTemplate: any): string {
     }
     if (lowerNp.includes('azure-magenta') || lowerNp.includes('ruin of ixenor') || lowerNp.includes('incineration of aethel')) {
       return NOBLE_PHANTASM_GIFS['Adiosa'].gifUrl;
+    }
+    if (lowerNp.includes('magic blue') || lowerNp.includes('first star of the morning') || lowerNp.includes('fifth magic')) {
+      return NOBLE_PHANTASM_GIFS['Aoko Aozaki'].gifUrl;
     }
   }
 

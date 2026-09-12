@@ -41,6 +41,8 @@ export interface ServantSkill {
   value: number;
   duration: number;
   icon: string;
+  transformationAvatarUrl?: string;
+  transformationGifUrl?: string;
 }
 
 export type PassiveSkillType =
@@ -54,7 +56,9 @@ export type PassiveSkillType =
   | 'divinity'
   | 'avenger'
   | 'oblivion_correction'
-  | 'the_weight_of_heaven';
+  | 'the_weight_of_heaven'
+  | 'fifth_succession'
+  | 'magic_gunner';
 
 export interface PassiveSkill {
   name: string;
@@ -227,6 +231,9 @@ export interface ActiveCombatant {
   masterName: string;
   servantClass: ServantClass;
   avatarUrl: string;
+  baseAvatarUrl?: string;
+  isTransformed?: boolean;
+  transformationTurns?: number;
   maxHp: number;
   currentHp: number;
   atk: number;

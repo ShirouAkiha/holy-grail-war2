@@ -3110,6 +3110,18 @@ export default function DiscordEmulator({
             ...activeDuel,
             battle: { ...activeDuel.battle }
           });
+          if (res.isTransformation && res.transformationGif) {
+            addMessage({
+              id: getNextId('bot_transformation_gif'),
+              sender: 'bot',
+              timestamp: 'Just now',
+              content:
+                `## 🔴 TRANSFORMATION UNLEASHED: **SUPER AOKO AWAKENED!**\n` +
+                `✨ **${activeDuel.battle.player1.name}** ignited the **Fifth Magic: Red Hair Ignition**!\n` +
+                `> 💬 ❝ ***${res.quote || 'Fifth Magic—Circuits ignition! Time to kick this into maximum gear!'}*** ❞\n\n` +
+                `${res.transformationGif}`
+            });
+          }
           addMessage({
             id: getNextId('bot_skill_use'),
             sender: 'bot',

@@ -938,6 +938,42 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       retort: "⟨ Ruk'thar Krav'nok! ⟩ A fracture in space-time! Let our Azure-Magenta Ruin incinerate the dimensional mirror!",
       tag: "PRIMORDIAL CATACLYSM: FRACTURED DRAGON"
     }
+  },
+
+  // =========================================================================
+  // 14. AOKO AOZAKI (CASTER / THE FIFTH MAGICIAN)
+  // =========================================================================
+  aoko_aozaki: {
+    artoria_pendragon: {
+      intro: "The King of Knights? Pretty formal, aren't we? Let's skip the chivalric ceremony—show me if that Holy Sword can outspeed the Fifth Magic!",
+      retort: "A magician who charges straight into melee combat? Your resolve is fierce, Miss Aoko. Excalibur shall answer your challenge!",
+      tag: "THE FIFTH MAGICIAN & KING OF KNIGHTS"
+    },
+    gilgamesh_archer: {
+      intro: "The oldest King, huh? Collecting all those treasures just to fling them around like oversized darts? Let's see how they hold up against localized thermodynamic acceleration!",
+      retort: "A modern magus daring to lecture the King of Heroes on the use of treasures?! Know your place, mongrel! Gate of Babylon!",
+      tag: "MAGIC BLUE VS TREASURY OF BABYLON"
+    },
+    emiya_archer: {
+      intro: "A nameless guardian who traces blades? You've got that perpetually overworked look. Don't think about dodging—my magic bullets track trajectory in real time!",
+      retort: "The Fifth Magician of Misaki Town... To encounter a wielder of True Magic here of all places. I'll have to reinforce my defenses to the absolute limit.",
+      tag: "PROJECTED PHANTASMS VS THERMODYNAMIC MAGIC"
+    },
+    cu_chulainn_lancer: {
+      intro: "Fast footwork, Hound of Culann! But I've spent plenty of time dealing with beasts and monsters. Let's see whose straight punch reaches first!",
+      retort: "Gahaha! Now that's the kind of energetic spirit I love to see from a Caster! Put 'em up, girl, let's have ourselves a proper brawl!",
+      tag: "RUNE LANCER VS BRAWLING MAGICIAN"
+    },
+    scathach_lancer: {
+      intro: "The Queen of the Land of Shadows? Your spear technique is insane, but the Fifth Magic governs time and entropy itself. Don't expect me to hold back!",
+      retort: "True Magic... An authority that rewires the causal laws of the world. Splendid! Show me if your Magic Blue can pierce the boundary between life and death!",
+      tag: "GATE OF SKYE & THE FIFTH MAGIC"
+    },
+    adiosa_dragon_envoy: {
+      intro: "Whoa, that cosmic draconic presence is suffocating! Altering gravity and space? Perfect—just the kind of impossible physics the Fifth Magic was meant to rewrite!",
+      retort: "⟨ Vur Aeth'ra... ⟩ A mortal woman manipulating the flow of planetary entropy? Irritatingly noisy creature... I will prune your timeline into black glass!",
+      tag: "THE FIFTH MAGIC VS INCINERATION OF AETHEL"
+    }
   }
 };
 
