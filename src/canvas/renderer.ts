@@ -706,6 +706,265 @@ function drawTarotCommandCard(
 }
 
 /**
+ * Draw Compact Command Card for 2v2 / 1v2 Multi-Combat Grid (76x124)
+ */
+function drawCompactCommandCard(
+  ctx: any,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  card: 'Buster' | 'Arts' | 'Quick' | 'NP' | string,
+  orderIdx: number,
+  critStars: number,
+  isQuickLead: boolean = false,
+  ownerName?: string
+) {
+  ctx.save();
+  // Shadow
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  drawRoundRect(ctx, x + 2, y + 2, w, h, 6);
+  ctx.fill();
+
+  let gradTop = '#5c1414';
+  let gradBottom = '#140404';
+  let borderColor = '#ef4444';
+  let accentColor = '#fca5a5';
+  let ringColor = 'rgba(239, 68, 68, 0.45)';
+  let cardTitle = 'BUSTER';
+  let letter = 'B';
+  let stepMult = orderIdx === 0 ? '1st (+50%)' : orderIdx === 1 ? '2nd (1.2x)' : '3rd (1.4x)';
+
+  if (card === 'Arts') {
+    gradTop = '#0f2942';
+    gradBottom = '#040d16';
+    borderColor = '#3b82f6';
+    accentColor = '#93c5fd';
+    ringColor = 'rgba(59, 130, 246, 0.45)';
+    cardTitle = 'ARTS';
+    letter = 'A';
+    stepMult = orderIdx === 0 ? '1st (+100%)' : orderIdx === 1 ? '2nd (1.2x)' : '3rd (1.4x)';
+  } else if (card === 'Quick') {
+    gradTop = '#064e3b';
+    gradBottom = '#02150e';
+    borderColor = '#10b981';
+    accentColor = '#6ee7b7';
+    ringColor = 'rgba(16, 185, 129, 0.45)';
+    cardTitle = 'QUICK';
+    letter = 'Q';
+    stepMult = orderIdx === 0 ? '1st (+STAR)' : orderIdx === 1 ? '2nd (1.2x)' : '3rd (1.4x)';
+  } else if (card === 'NP' || card === 'Phantasm') {
+    gradTop = '#5c3d05';
+    gradBottom = '#160d02';
+    borderColor = '#f59e0b';
+    accentColor = '#fde047';
+    ringColor = 'rgba(245, 158, 11, 0.5)';
+    cardTitle = 'NP';
+    letter = 'NP';
+    stepMult = 'MAX CHG';
+  }
+
+  // Card Background
+  const cGrad = ctx.createLinearGradient(x, y, x, y + h);
+  cGrad.addColorStop(0, gradTop);
+  cGrad.addColorStop(1, gradBottom);
+  ctx.fillStyle = cGrad;
+  drawRoundRect(ctx, x, y, w, h, 6);
+  ctx.fill();
+
+  // Border & Inset Hairline
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 1.4;
+  drawRoundRect(ctx, x, y, w, h, 6);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.lineWidth = 0.8;
+  drawRoundRect(ctx, x + 2, y + 2, w - 4, h - 4, 4);
+  ctx.stroke();
+
+  // Top header: Roman Numeral + Card Type Title
+  const romanNumeral = orderIdx === 0 ? 'I' : orderIdx === 1 ? 'II' : 'III';
+  ctx.fillStyle = '#facc15';
+  ctx.font = 'bold 9.5px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(romanNumeral, x + 5, y + 13);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 8.5px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(cardTitle, x + w - 5, y + 13);
+
+  // Divider
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(x + 4, y + 18);
+  ctx.lineTo(x + w - 4, y + 18);
+  ctx.stroke();
+
+  // Center Emblem with Concentric Rings
+  const emblemCx = x + w / 2;
+  const emblemCy = y + 54;
+
+  // Outer ring
+  ctx.strokeStyle = ringColor;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.arc(emblemCx, emblemCy, 19, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Inner ring
+  ctx.beginPath();
+  ctx.arc(emblemCx, emblemCy, 15, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Glowing center letter
+  ctx.fillStyle = '#ffffff';
+  ctx.font = letter === 'NP' ? 'bold 13px sans-serif' : 'bold 20px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(letter, emblemCx, emblemCy + (letter === 'NP' ? 5 : 7));
+
+  // Step Multiplier Text
+  ctx.fillStyle = accentColor;
+  ctx.font = 'bold 8px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(stepMult, emblemCx, y + 87);
+
+  // Bottom Pill: Crit %
+  const footerH = 17;
+  const footerY = y + h - footerH - 4;
+  const footerW = w - 8;
+  const footerX = x + 4;
+
+  ctx.fillStyle = 'rgba(10, 15, 26, 0.88)';
+  drawRoundRect(ctx, footerX, footerY, footerW, footerH, 3);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.lineWidth = 0.6;
+  drawRoundRect(ctx, footerX, footerY, footerW, footerH, 3);
+  ctx.stroke();
+
+  if (card === 'NP') {
+    ctx.fillStyle = '#fde047';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('NOBLE NP', footerX + footerW / 2, footerY + 12);
+  } else {
+    const critPercent = Math.min(100, Math.max(0, (critStars || 0) * 2));
+    drawVectorStar(ctx, footerX + 9, footerY + 8.5, 5, 3.5, 1.8, '#fbbf24');
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`CRIT ${critPercent}%`, footerX + footerW / 2 + 4, footerY + 12);
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Draw Compact Crit Star Reservoir Card for 2v2 / 1v2 Grid (68x124)
+ */
+function drawCompactCritStarCard(
+  ctx: any,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  starsCount: number,
+  isOpponent: boolean = false,
+  unitLabel: string = 'UNIT'
+) {
+  ctx.save();
+  // Shadow
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  drawRoundRect(ctx, x + 2, y + 2, w, h, 6);
+  ctx.fill();
+
+  const starColor = '#fbbf24';
+  const glowColor = isOpponent ? 'rgba(244, 63, 94, 0.35)' : 'rgba(56, 189, 248, 0.35)';
+  const borderColor = isOpponent ? '#f43f5e' : '#38bdf8';
+  const textColor = isOpponent ? '#fda4af' : '#7dd3fc';
+
+  // Card Background
+  const grad = ctx.createLinearGradient(x, y, x, y + h);
+  grad.addColorStop(0, '#090d16');
+  grad.addColorStop(0.5, '#05070e');
+  grad.addColorStop(1, '#0c101d');
+  ctx.fillStyle = grad;
+  drawRoundRect(ctx, x, y, w, h, 6);
+  ctx.fill();
+
+  // Border
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 1.3;
+  drawRoundRect(ctx, x, y, w, h, 6);
+  ctx.stroke();
+
+  // Inset hairline
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+  ctx.lineWidth = 0.8;
+  drawRoundRect(ctx, x + 2, y + 2, w - 4, h - 4, 4);
+  ctx.stroke();
+
+  // Top header label: STARS
+  ctx.fillStyle = textColor;
+  ctx.font = 'bold 8.5px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('CRIT STARS', x + w / 2, y + 14);
+
+  // Top divider
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(x + 4, y + 20);
+  ctx.lineTo(x + w - 4, y + 20);
+  ctx.stroke();
+
+  // Center Glowing Star Vector
+  const starCx = x + w / 2;
+  const starCy = y + 48;
+
+  const starGlow = ctx.createRadialGradient(starCx, starCy, 2, starCx, starCy, 16);
+  starGlow.addColorStop(0, glowColor);
+  starGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = starGlow;
+  ctx.beginPath();
+  ctx.arc(starCx, starCy, 16, 0, Math.PI * 2);
+  ctx.fill();
+
+  drawVectorStar(ctx, starCx, starCy, 5, 9, 4.5, starColor, isOpponent ? '#fecaca' : '#bae6fd');
+
+  // Large Bold Numeric Star Count
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 22px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${starsCount || 0}`, starCx, y + 86);
+
+  // Bottom Unit Identifier Pill
+  const footerH = 17;
+  const footerY = y + h - footerH - 4;
+  const footerW = w - 8;
+  const footerX = x + 4;
+
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+  drawRoundRect(ctx, footerX, footerY, footerW, footerH, 3);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.lineWidth = 0.6;
+  drawRoundRect(ctx, footerX, footerY, footerW, footerH, 3);
+  ctx.stroke();
+
+  ctx.fillStyle = textColor;
+  ctx.font = 'bold 7.5px sans-serif';
+  ctx.textAlign = 'center';
+  const cleanLabel = unitLabel.length > 8 ? unitLabel.slice(0, 7) + '…' : unitLabel;
+  ctx.fillText(cleanLabel.toUpperCase(), footerX + footerW / 2, footerY + 12);
+
+  ctx.restore();
+}
+
+/**
  * Draw Servant Portrait Frame with Ornate Heraldic Fallback (zero unicode emojis).
  */
 function drawServantPortraitCard(
@@ -5161,28 +5420,25 @@ export async function renderBattleTurnSummary(
       drawTarotCommandCard(ctx, 308 + idx * 108, 92, 100, 180, card, idx, activeP1.critStars || 0, isP1QuickLead);
     });
   } else {
-    // Multi-Combatant Team A: Staggered Unit HUD Plates (Vanguard + Flanker/Ally)
+    // Multi-Combatant Team A: 2 Avatars on Left, 2-Row Card Grid on Right
     drawUnitHudPlate(ctx, 16, 16, 138, 256, p1Img, activeP1, 'VANGUARD', '#38bdf8', isP1LeadTargeted);
     if (activeP1Ally) {
-      drawUnitHudPlate(ctx, 160, 16, 138, 256, p1AllyImg, activeP1Ally, 'ALLIED FLANK', '#818cf8', isP1AllyTargeted);
+      drawUnitHudPlate(ctx, 158, 16, 138, 256, p1AllyImg, activeP1Ally, 'ALLIED FLANK', '#818cf8', isP1AllyTargeted);
     }
 
-    // Right Side: Crit Star Box + 3 Attributed Cards
-    drawCritStarBox(ctx, 306, 16, 74, 256, activeP1.critStars || 0, false);
+    // Right Side: 2-Row Grid with 4 Columns [Star, Card1, Card2, Card3]
+    // Row 1 (Avatar 1 / Vanguard)
+    drawCompactCritStarCard(ctx, 304, 16, 68, 124, activeP1.critStars || 0, false, activeP1.name || 'Vanguard');
     p1Cards.slice(0, 3).forEach((card, idx) => {
-      const cardAttribution = idx === 1 && activeP1Ally ? activeP1Ally.name : activeP1.name;
-      drawAttributedCommandCard(
-        ctx,
-        386 + idx * 78,
-        16,
-        74,
-        256,
-        card,
-        idx,
-        activeP1.critStars || 0,
-        isP1QuickLead,
-        cardAttribution
-      );
+      drawCompactCommandCard(ctx, 378 + idx * 82, 16, 76, 124, card, idx, activeP1.critStars || 0, isP1QuickLead, activeP1.name);
+    });
+
+    // Row 2 (Avatar 2 / Allied Flank)
+    const p1AllyCards = (log.p1AllyCards || (activeP1Ally?.commandDeck && activeP1Ally.commandDeck.length >= 3 ? activeP1Ally.commandDeck.slice(0, 3) : ['Quick', 'Arts', 'Buster'])) as ('Buster' | 'Arts' | 'Quick' | 'NP')[];
+    const isP1AllyQuickLead = p1AllyCards[0] === 'Quick';
+    drawCompactCritStarCard(ctx, 304, 148, 68, 124, activeP1Ally?.critStars || 0, false, activeP1Ally?.name || 'Flank');
+    p1AllyCards.slice(0, 3).forEach((card, idx) => {
+      drawCompactCommandCard(ctx, 378 + idx * 82, 148, 76, 124, card, idx, activeP1Ally?.critStars || 0, isP1AllyQuickLead, activeP1Ally?.name);
     });
   }
 
@@ -5358,28 +5614,26 @@ export async function renderBattleTurnSummary(
     ctx.textAlign = 'left';
     ctx.fillText(`HP  ${activeP2.currentHp.toLocaleString()} / ${activeP2.maxHp.toLocaleString()} (${Math.round(p2HpRatio * 100)}%)`, 26, 602);
   } else {
-    // Multi-Combatant Team B: Staggered Unit HUD Plates (Vanguard + Flanker)
-    drawCritStarBox(ctx, 16, 350, 74, 256, activeP2.critStars || 0, true);
+    // Multi-Combatant Team B: 2-Row Card Grid on Left, 2 Avatars on Right
+    // Left Side: 2-Row Grid with 4 Columns [Star, Card1, Card2, Card3]
+    // Row 1 (Enemy Vanguard)
+    drawCompactCritStarCard(ctx, 16, 350, 68, 124, activeP2.critStars || 0, true, activeP2.name || 'Enemy 1');
     p2Cards.slice(0, 3).forEach((card, idx) => {
-      const cardAttribution = idx === 1 && activeP2Ally ? activeP2Ally.name : activeP2.name;
-      drawAttributedCommandCard(
-        ctx,
-        96 + idx * 78,
-        350,
-        74,
-        256,
-        card,
-        idx,
-        activeP2.critStars || 0,
-        isP2QuickLead,
-        cardAttribution
-      );
+      drawCompactCommandCard(ctx, 90 + idx * 82, 350, 76, 124, card, idx, activeP2.critStars || 0, isP2QuickLead, activeP2.name);
     });
 
-    // Dual Enemy Unit HUD Plates on Right
+    // Row 2 (Enemy Ally / Flank)
+    const p2AllyCards = (log.p2AllyCards || (activeP2Ally?.commandDeck && activeP2Ally.commandDeck.length >= 3 ? activeP2Ally.commandDeck.slice(0, 3) : ['Arts', 'Buster', 'Buster'])) as ('Buster' | 'Arts' | 'Quick' | 'NP')[];
+    const isP2AllyQuickLead = p2AllyCards[0] === 'Quick';
+    drawCompactCritStarCard(ctx, 16, 482, 68, 124, activeP2Ally?.critStars || 0, true, activeP2Ally?.name || 'Enemy 2');
+    p2AllyCards.slice(0, 3).forEach((card, idx) => {
+      drawCompactCommandCard(ctx, 90 + idx * 82, 482, 76, 124, card, idx, activeP2Ally?.critStars || 0, isP2AllyQuickLead, activeP2Ally?.name);
+    });
+
+    // Right Side: 2 Avatars (Enemy Vanguard + Enemy Flank)
     drawUnitHudPlate(ctx, 338, 350, 138, 256, p2Img, activeP2, 'ENEMY VANGUARD', '#ef4444', isP2LeadTargeted);
     if (activeP2Ally) {
-      drawUnitHudPlate(ctx, 484, 350, 138, 256, p2AllyImg, activeP2Ally, 'ENEMY FLANK', '#f43f5e', isP2AllyTargeted);
+      drawUnitHudPlate(ctx, 480, 350, 138, 256, p2AllyImg, activeP2Ally, 'ENEMY FLANK', '#f43f5e', isP2AllyTargeted);
     }
   }
 

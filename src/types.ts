@@ -290,7 +290,9 @@ export interface CombatTurnLog {
   cardChainType?: 'Buster Brave' | 'Arts Chain' | 'Quick Chain' | 'Normal';
   cardsUsed: ('Buster' | 'Arts' | 'Quick' | 'NP')[];
   p1Cards?: ('Buster' | 'Arts' | 'Quick' | 'NP')[];
+  p1AllyCards?: ('Buster' | 'Arts' | 'Quick' | 'NP')[];
   p2Cards?: ('Buster' | 'Arts' | 'Quick' | 'NP')[];
+  p2AllyCards?: ('Buster' | 'Arts' | 'Quick' | 'NP')[];
   skillsUsed: string[];
   npTriggered?: boolean;
   isNoblePhantasm?: boolean;
