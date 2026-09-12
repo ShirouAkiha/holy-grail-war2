@@ -251,45 +251,45 @@ export const BondVisualNovelModal: React.FC<BondVisualNovelModalProps> = ({
               </div>
             )}
 
-            {/* DIALOGUE TEXT BOX */}
+            {/* DIALOGUE TEXT OVERLAY - CLASSIC FSN STYLE */}
             <div
               onClick={handleDialogueBoxClick}
-              className="relative z-20 w-full bg-slate-950/90 border border-slate-700/80 hover:border-amber-500/40 rounded-xl p-4 sm:p-5 backdrop-blur-md cursor-pointer shadow-2xl transition-colors"
+              className="relative z-20 w-full bg-slate-950/70 border-t border-slate-400/30 p-4 sm:p-6 backdrop-blur-sm cursor-pointer shadow-2xl transition-colors rounded-b-xl"
             >
-              {/* Speaker Badge */}
-              <div className="flex items-center justify-between mb-2">
+              {/* Speaker Name & Meta */}
+              <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-amber-400 bg-amber-950/60 border border-amber-500/30 px-3 py-0.5 rounded-md">
-                    {currentScene.speakerName || template.name}
-                  </span>
-                  <span className="text-xs text-slate-400 font-mono">
-                    {template.servantClass} • ★★★★★
+                  <span className="text-lg sm:text-xl font-bold font-serif text-white tracking-wide drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                    ◆ {(currentScene.speakerName || template.name).toUpperCase()}
                   </span>
                 </div>
-                <div className="flex items-center gap-1 text-slate-400 text-xs">
-                  <Volume2 className="w-3.5 h-3.5" />
-                  <span>Scene {currentSceneIndex + 1} of {event.scenes.length}</span>
+                <div className="flex items-center gap-3 text-slate-300/80 text-xs font-mono">
+                  <span>◆ BOND LVL {servant.bondLevel || 1}/10</span>
+                  <div className="flex items-center gap-1 text-slate-400 text-xs">
+                    <Volume2 className="w-3.5 h-3.5" />
+                    <span>Scene {currentSceneIndex + 1}/{event.scenes.length}</span>
+                  </div>
                 </div>
               </div>
 
               {/* Text */}
-              <p className="text-sm sm:text-base text-slate-100 font-sans leading-relaxed min-h-[60px]">
-                {displayedText}
-                {isTyping && <span className="inline-block w-2 h-4 ml-1 bg-amber-400 animate-pulse" />}
+              <p className="text-base sm:text-lg text-white font-serif leading-relaxed drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] min-h-[60px] tracking-wide">
+                “{displayedText}”
+                {isTyping && <span className="inline-block w-2 h-4 ml-1 bg-amber-300 animate-pulse" />}
               </p>
 
               {/* Next Prompt Indicator */}
               {(!currentScene.choices || selectedChoice || currentScene.choices.length === 0) && (
-                <div className="flex justify-end mt-2">
+                <div className="flex justify-end mt-3">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleNextScene();
                     }}
                     disabled={isTyping}
-                    className="flex items-center gap-2 text-xs font-semibold px-4 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-slate-950 shadow-md disabled:opacity-50 transition-all"
+                    className="flex items-center gap-2 text-xs font-semibold px-4 py-1.5 rounded-lg bg-amber-500/20 border border-amber-400/40 hover:bg-amber-500/30 text-amber-200 shadow-md disabled:opacity-50 transition-all"
                   >
-                    <span>{currentSceneIndex < event.scenes.length - 1 ? 'Next' : 'Conclude Event'}</span>
+                    <span>{currentSceneIndex < event.scenes.length - 1 ? 'Next Scene' : 'Conclude Event'}</span>
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
