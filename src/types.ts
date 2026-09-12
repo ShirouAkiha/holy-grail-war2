@@ -273,6 +273,7 @@ export interface CombatTurnLog {
   actorName: string;
   targetId: string;
   targetName: string;
+  targetIndex?: number;
   targetIds?: string[];
   targetNames?: string[];
   isAoE?: boolean;
@@ -318,6 +319,8 @@ export interface BattleState {
   teamB: ActiveCombatant[];
   player1: ActiveCombatant;
   player2: ActiveCombatant;
+  player1Ally?: ActiveCombatant;
+  player2Ally?: ActiveCombatant;
   currentTurn: number;
   turnPhase: 'card_selection' | 'action_resolution' | 'victory' | 'defeat' | 'fled' | 'evacuated';
   turnHistory: CombatTurnLog[];

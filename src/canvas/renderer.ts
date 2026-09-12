@@ -827,7 +827,8 @@ function drawMinimalClashBanner(
   x: number = 16,
   y: number = 290,
   w: number = 608,
-  h: number = 54
+  h: number = 54,
+  formatBadge: string = 'CLASH'
 ) {
   ctx.save();
   // 1. Sleek Dark Obsidian Glass Banner
@@ -867,7 +868,7 @@ function drawMinimalClashBanner(
   ctx.fillStyle = '#fbbf24';
   ctx.font = 'bold 12px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`TURN ${log.turnNumber || 1}`, turnX + turnW / 2, turnY + 19);
+  ctx.fillText(`T${log.turnNumber || 1} • ${formatBadge}`, turnX + turnW / 2, turnY + 19);
 
   // 3. Center Damage Text & Cinematic Dialogue (High-contrast, bold and prominent)
   const dmg = log.damageDealt > 0 ? log.damageDealt.toLocaleString() : '0';
@@ -4639,7 +4640,8 @@ function drawUnitHudPlate(
   servant: ActiveCombatant,
   roleLabel: string,
   accentColor: string,
-  isTargeted: boolean = false
+  isTargeted: boolean = false,
+  showBars: boolean = true
 ) {
   const isDefeated = servant.currentHp <= 0;
   ctx.save();
@@ -4662,7 +4664,7 @@ function drawUnitHudPlate(
   ctx.stroke();
 
   // 2. Portrait Area
-  const portraitH = h - 68;
+  const portraitH = showBars ? (h - 68) : (h - 6);
   const pX = x + 3;
   const pY = y + 3;
   const pW = w - 6;
@@ -4731,84 +4733,86 @@ function drawUnitHudPlate(
   ctx.textAlign = 'left';
   ctx.fillText(sCleanName.length > 15 ? sCleanName.slice(0, 14) + '…' : sCleanName, pX + 6, pY + portraitH - 8);
 
-  // 3. Integrated HP Bar (Height: 18px)
-  const hpY = pY + portraitH + 4;
-  const barW = w - 10;
-  const barX = x + 5;
-  const hpRatio = Math.max(0, Math.min(1, servant.currentHp / (servant.maxHp || 1)));
+  if (showBars) {
+    // 3. Integrated HP Bar (Height: 18px)
+    const hpY = pY + portraitH + 4;
+    const barW = w - 10;
+    const barX = x + 5;
+    const hpRatio = Math.max(0, Math.min(1, servant.currentHp / (servant.maxHp || 1)));
 
-  ctx.fillStyle = '#090d16';
-  drawRoundRect(ctx, barX, hpY, barW, 18, 4);
-  ctx.fill();
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, barX, hpY, barW, 18, 4);
-  ctx.stroke();
+    ctx.fillStyle = '#090d16';
+    drawRoundRect(ctx, barX, hpY, barW, 18, 4);
+    ctx.fill();
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1;
+    drawRoundRect(ctx, barX, hpY, barW, 18, 4);
+    ctx.stroke();
 
-  if (hpRatio > 0) {
-    const hpGrad = ctx.createLinearGradient(barX, hpY, barX, hpY + 18);
-    if (hpRatio > 0.35) {
-      hpGrad.addColorStop(0, '#22c55e');
-      hpGrad.addColorStop(1, '#15803d');
-    } else {
-      hpGrad.addColorStop(0, '#ef4444');
-      hpGrad.addColorStop(1, '#991b1b');
+    if (hpRatio > 0) {
+      const hpGrad = ctx.createLinearGradient(barX, hpY, barX, hpY + 18);
+      if (hpRatio > 0.35) {
+        hpGrad.addColorStop(0, '#22c55e');
+        hpGrad.addColorStop(1, '#15803d');
+      } else {
+        hpGrad.addColorStop(0, '#ef4444');
+        hpGrad.addColorStop(1, '#991b1b');
+      }
+      ctx.fillStyle = hpGrad;
+      drawRoundRect(ctx, barX, hpY, Math.max(6, barW * hpRatio), 18, 4);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+      drawRoundRect(ctx, barX, hpY, Math.max(6, barW * hpRatio), 8, 4);
+      ctx.fill();
     }
-    ctx.fillStyle = hpGrad;
-    drawRoundRect(ctx, barX, hpY, Math.max(6, barW * hpRatio), 18, 4);
-    ctx.fill();
 
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
-    drawRoundRect(ctx, barX, hpY, Math.max(6, barW * hpRatio), 8, 4);
-    ctx.fill();
-  }
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 9.5px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(`HP ${Math.round(hpRatio * 100)}%`, barX + 6, hpY + 13);
-  ctx.textAlign = 'right';
-  ctx.fillText(`${servant.currentHp.toLocaleString()}`, barX + barW - 6, hpY + 13);
-
-  // 4. Integrated NP Bar (Height: 16px)
-  const npY = hpY + 22;
-  const npRatio = Math.max(0, Math.min(1, (servant.npGauge || 0) / 100));
-
-  ctx.fillStyle = '#090d16';
-  drawRoundRect(ctx, barX, npY, barW, 16, 4);
-  ctx.fill();
-  ctx.strokeStyle = '#92400e';
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, barX, npY, barW, 16, 4);
-  ctx.stroke();
-
-  if (npRatio > 0) {
-    const npGrad = ctx.createLinearGradient(barX, npY, barX, npY + 16);
-    if ((servant.npGauge || 0) >= 100) {
-      npGrad.addColorStop(0, '#fde047');
-      npGrad.addColorStop(1, '#d97706');
-    } else {
-      npGrad.addColorStop(0, '#facc15');
-      npGrad.addColorStop(1, '#ca8a04');
-    }
-    ctx.fillStyle = npGrad;
-    drawRoundRect(ctx, barX, npY, Math.max(6, barW * npRatio), 16, 4);
-    ctx.fill();
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-    drawRoundRect(ctx, barX, npY, Math.max(6, barW * npRatio), 7, 4);
-    ctx.fill();
-  }
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 9px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(`NP ${Math.round(servant.npGauge || 0)}%`, barX + 6, npY + 12);
-
-  if ((servant.npGauge || 0) >= 100) {
-    ctx.fillStyle = '#fde047';
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 9.5px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`HP ${Math.round(hpRatio * 100)}%`, barX + 6, hpY + 13);
     ctx.textAlign = 'right';
-    ctx.fillText('MAX RDY', barX + barW - 6, npY + 12);
+    ctx.fillText(`${servant.currentHp.toLocaleString()}`, barX + barW - 6, hpY + 13);
+
+    // 4. Integrated NP Bar (Height: 16px)
+    const npY = hpY + 22;
+    const npRatio = Math.max(0, Math.min(1, (servant.npGauge || 0) / 100));
+
+    ctx.fillStyle = '#090d16';
+    drawRoundRect(ctx, barX, npY, barW, 16, 4);
+    ctx.fill();
+    ctx.strokeStyle = '#92400e';
+    ctx.lineWidth = 1;
+    drawRoundRect(ctx, barX, npY, barW, 16, 4);
+    ctx.stroke();
+
+    if (npRatio > 0) {
+      const npGrad = ctx.createLinearGradient(barX, npY, barX, npY + 16);
+      if ((servant.npGauge || 0) >= 100) {
+        npGrad.addColorStop(0, '#fde047');
+        npGrad.addColorStop(1, '#d97706');
+      } else {
+        npGrad.addColorStop(0, '#facc15');
+        npGrad.addColorStop(1, '#ca8a04');
+      }
+      ctx.fillStyle = npGrad;
+      drawRoundRect(ctx, barX, npY, Math.max(6, barW * npRatio), 16, 4);
+      ctx.fill();
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+      drawRoundRect(ctx, barX, npY, Math.max(6, barW * npRatio), 7, 4);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(`NP ${Math.round(servant.npGauge || 0)}%`, barX + 6, npY + 12);
+
+    if ((servant.npGauge || 0) >= 100) {
+      ctx.fillStyle = '#fde047';
+      ctx.textAlign = 'right';
+      ctx.fillText('MAX RDY', barX + barW - 6, npY + 12);
+    }
   }
 
   // 5. Defeated Overlay
@@ -4996,7 +5000,7 @@ export async function renderBattleTurnSummary(
 
   if (!isMultiTeamA) {
     // Standard Single Vanguard Layout
-    drawUnitHudPlate(ctx, 16, 16, 172, 256, p1Img, activeP1, 'CHAMPION', '#38bdf8', isP1LeadTargeted);
+    drawUnitHudPlate(ctx, 16, 16, 172, 256, p1Img, activeP1, 'CHAMPION', '#38bdf8', isP1LeadTargeted, false);
 
     // P1 Header Title & Class Pill
     const p1DisplayName = (activeP1.masterName || 'Master 1').replace(/[^\x00-\x7F]/g, '');
@@ -5200,7 +5204,7 @@ export async function renderBattleTurnSummary(
       drawTarotCommandCard(ctx, 124 + idx * 108, 350, 100, 180, card, idx, activeP2.critStars || 0, isP2QuickLead);
     });
 
-    drawUnitHudPlate(ctx, 452, 350, 172, 256, p2Img, activeP2, 'RIVAL', '#ef4444', isP2LeadTargeted);
+    drawUnitHudPlate(ctx, 452, 350, 172, 256, p2Img, activeP2, 'RIVAL', '#ef4444', isP2LeadTargeted, false);
 
     // Skills
     const p2Skills = activeP2.skills || [];

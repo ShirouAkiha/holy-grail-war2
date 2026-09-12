@@ -9646,8 +9646,8 @@ export default function DiscordEmulator({
             log: lastLog,
             p1: updatedState.player1,
             p2: updatedState.player2,
-            p1Ally: updatedState.player1Ally,
-            p2Ally: updatedState.player2Ally,
+            p1Ally: updatedState.teamA?.[1],
+            p2Ally: updatedState.teamB?.[1],
             teamA: updatedState.teamA,
             teamB: updatedState.teamB
           },
