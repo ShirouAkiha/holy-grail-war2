@@ -5931,6 +5931,7 @@ export interface VisualNovelCardOptions {
   servantName: string;
   servantClass: string;
   servantAvatarUrl?: string;
+  backgroundImageUrl?: string;
   backgroundTheme?: string;
   speakerName: string;
   dialogueText: string;
@@ -5945,7 +5946,7 @@ export interface VisualNovelCardOptions {
 }
 
 /**
- * 6. Render Fate Visual Novel Dialogue Screen
+ * 6. Render Fate Visual Novel Dialogue Screen (Classic FSN Style, Mobile & Desktop Optimized)
  */
 export async function renderVisualNovelCard(
   opts: VisualNovelCardOptions
@@ -5955,31 +5956,61 @@ export async function renderVisualNovelCard(
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  // 1. Dark FSN Atmospheric Background & Subtle Grid Texture
-  const bgGrad = ctx.createLinearGradient(0, 0, width, height);
-  bgGrad.addColorStop(0, '#090b14');
-  bgGrad.addColorStop(0.5, '#101426');
-  bgGrad.addColorStop(1, '#060812');
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, width, height);
+  // 1. Fuyuki Night / Leyline Scene Background Rendering
+  let bgDrawn = false;
+  if (opts.backgroundImageUrl) {
+    const customBg = await loadImage(opts.backgroundImageUrl);
+    if (customBg) {
+      ctx.drawImage(customBg, 0, 0, width, height);
+      bgDrawn = true;
+    }
+  }
 
-  // Subtle FSN magic grid texture embedded in background
-  ctx.save();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.035)';
-  ctx.lineWidth = 1;
-  for (let x = 0; x < width; x += 35) {
+  if (!bgDrawn) {
+    // Fuyuki Leyline Night Sky Gradient
+    const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+    bgGrad.addColorStop(0, '#0a0d1d');
+    bgGrad.addColorStop(0.4, '#12172f');
+    bgGrad.addColorStop(0.8, '#0d1124');
+    bgGrad.addColorStop(1, '#070914');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, width, height);
+
+    // Glowing Moon & Celestial Halo
+    ctx.save();
+    const moonGrad = ctx.createRadialGradient(820, 100, 10, 820, 100, 220);
+    moonGrad.addColorStop(0, 'rgba(224, 231, 255, 0.25)');
+    moonGrad.addColorStop(0.5, 'rgba(165, 180, 252, 0.08)');
+    moonGrad.addColorStop(1, 'rgba(165, 180, 252, 0)');
+    ctx.fillStyle = moonGrad;
     ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, height);
-    ctx.stroke();
+    ctx.arc(820, 100, 220, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Distant Fuyuki City Silhouette / Leyline Horizon Glow
+    const horizGrad = ctx.createLinearGradient(0, 200, 0, 340);
+    horizGrad.addColorStop(0, 'rgba(139, 92, 246, 0.12)');
+    horizGrad.addColorStop(1, 'rgba(15, 23, 42, 0)');
+    ctx.fillStyle = horizGrad;
+    ctx.fillRect(0, 200, width, 140);
+
+    // Faint FSN Leyline Grid Lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < width; x += 32) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+    for (let y = 0; y < height; y += 32) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
-  for (let y = 0; y < height; y += 35) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(width, y);
-    ctx.stroke();
-  }
-  ctx.restore();
 
   // 2. Character Sprite (Full figure positioning with smooth bottom gradient fade)
   if (opts.servantAvatarUrl) {
@@ -5987,89 +6018,91 @@ export async function renderVisualNovelCard(
     if (portraitImg) {
       ctx.save();
       // Drop Shadow for character figure
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-      ctx.shadowBlur = 25;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+      ctx.shadowBlur = 30;
 
-      const px = 500;
+      const px = 460;
       const py = 10;
-      const pw = 480;
+      const pw = 520;
       const ph = 540;
       ctx.drawImage(portraitImg, px, py, pw, ph);
 
-      // Smooth vertical gradient mask fading sprite bottom into dialogue overlay
-      const fadeGrad = ctx.createLinearGradient(0, 280, 0, height);
-      fadeGrad.addColorStop(0, 'rgba(9, 11, 20, 0)');
-      fadeGrad.addColorStop(0.7, 'rgba(9, 11, 20, 0.75)');
-      fadeGrad.addColorStop(1, 'rgba(6, 8, 18, 0.95)');
+      // Vertical gradient mask fading sprite bottom into dialogue overlay
+      const fadeGrad = ctx.createLinearGradient(0, 260, 0, height);
+      fadeGrad.addColorStop(0, 'rgba(8, 12, 24, 0)');
+      fadeGrad.addColorStop(0.65, 'rgba(8, 12, 24, 0.78)');
+      fadeGrad.addColorStop(1, 'rgba(4, 7, 16, 0.95)');
       ctx.fillStyle = fadeGrad;
-      ctx.fillRect(px - 40, 280, pw + 80, 280);
+      ctx.fillRect(px - 40, 260, pw + 80, 300);
       ctx.restore();
     }
   }
 
-  // 3. Classic FSN Full-Width Semi-Transparent Overlay
-  // Fills 100% canvas width starting ~35% up from bottom edge (y: 340 to y: 560)
-  const overlayY = 340;
-  const overlayH = 220;
+  // 3. Classic FSN Full-Width Semi-Transparent Overlay (Covers lower ~45%)
+  const overlayY = 290;
+  const overlayH = 270;
 
   ctx.save();
   const overlayGrad = ctx.createLinearGradient(0, overlayY, 0, height);
-  overlayGrad.addColorStop(0, 'rgba(10, 14, 28, 0.65)');  // 65% opacity dark charcoal-blue
-  overlayGrad.addColorStop(1, 'rgba(6, 9, 20, 0.72)');    // 72% opacity at bottom
+  overlayGrad.addColorStop(0, 'rgba(8, 12, 24, 0.68)');   // ~68% opacity dark charcoal-blue
+  overlayGrad.addColorStop(1, 'rgba(4, 7, 16, 0.78)');    // ~78% opacity at bottom edge
 
   ctx.fillStyle = overlayGrad;
   ctx.fillRect(0, overlayY, width, overlayH);
 
-  // Subtle 1px translucent hairline border across top of overlay lens
-  ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
-  ctx.lineWidth = 1;
+  // Subtle translucent top hairline border across dialogue lens
+  ctx.strokeStyle = 'rgba(226, 232, 240, 0.38)';
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(0, overlayY);
   ctx.lineTo(width, overlayY);
   ctx.stroke();
   ctx.restore();
 
-  // 4. Character Name (Top-left of dialogue overlay, white bold text with diamond ◆, no box/badge)
+  // 4. Character Name (Top-left of overlay, large white bold text with diamond ◆)
   const speakerNameText = `◆ ${(opts.speakerName || opts.servantName).toUpperCase()}`;
   ctx.save();
-  ctx.shadowColor = '#000000';
-  ctx.shadowOffsetX = 2;
-  ctx.shadowOffsetY = 2;
-  ctx.shadowBlur = 4;
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 22px Georgia, "Times New Roman", serif';
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.95)';
+  ctx.lineWidth = 4;
+  ctx.font = 'bold 34px Georgia, "Times New Roman", serif';
   ctx.textAlign = 'left';
-  ctx.fillText(speakerNameText, 40, overlayY + 36);
+  ctx.strokeText(speakerNameText, 35, overlayY + 45);
+
+  ctx.shadowColor = '#000000';
+  ctx.shadowOffsetX = 3;
+  ctx.shadowOffsetY = 3;
+  ctx.shadowBlur = 5;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(speakerNameText, 35, overlayY + 45);
   ctx.restore();
 
-  // Choice Made Text (If player selected a choice)
+  // Choice Made Badge (If player selected a choice)
   if (opts.choiceMadeText) {
     ctx.save();
-    ctx.shadowColor = '#000000';
-    ctx.shadowOffsetX = 1;
-    ctx.shadowOffsetY = 1;
-    ctx.shadowBlur = 3;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+    ctx.lineWidth = 3;
+    ctx.font = 'italic bold 17px sans-serif';
+    ctx.textAlign = 'left';
+
+    const rawChoice = opts.choiceMadeText;
+    const choiceStr = `👉 YOUR CHOICE: "${rawChoice.length > 50 ? rawChoice.slice(0, 47) + '...' : rawChoice}"`;
+    ctx.strokeText(choiceStr, 420, overlayY + 42);
 
     ctx.fillStyle = '#f472b6';
-    ctx.font = 'italic 14px sans-serif';
-    ctx.textAlign = 'left';
-    const choiceStr = `👉 YOUR CHOICE: "${opts.choiceMadeText.length > 55 ? opts.choiceMadeText.slice(0, 52) + '...' : opts.choiceMadeText}"`;
-    ctx.fillText(choiceStr, 340, overlayY + 34);
+    ctx.fillText(choiceStr, 420, overlayY + 42);
     ctx.restore();
   }
 
-  // 5. Dialogue Text (Larger clean serif text with 2px black outline & drop shadow)
+  // 5. Dialogue Text (Mobile & Desktop optimized, large 28px Georgia font with 3.5px black stroke outline)
   ctx.save();
-  const textMarginX = 40;
-  const textStartY = overlayY + 76;
-  const maxTextWidth = 920;
-  const lineHeight = 34;
+  const textMarginX = 35;
+  const textStartY = overlayY + 95;
+  const maxTextWidth = 930;
+  const lineHeight = 42;
 
-  ctx.font = '22px Georgia, "Times New Roman", serif';
+  ctx.font = '28px Georgia, "Times New Roman", serif';
   ctx.textAlign = 'left';
 
-  // Words wrapping
   const words = opts.dialogueText.split(' ');
   let currentLine = '"';
   let lineY = textStartY;
@@ -6079,15 +6112,15 @@ export async function renderVisualNovelCard(
     const testLine = currentLine + words[i] + ' ';
     const metrics = ctx.measureText(testLine);
     if (metrics.width > maxTextWidth && i > 0) {
-      // 2px Black outline & drop shadow for perfect contrast against sprite/background
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
-      ctx.lineWidth = 3;
+      // High-contrast 3.5px dark outline for razor-sharp legibility on mobile Discord
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.95)';
+      ctx.lineWidth = 4;
       ctx.strokeText(currentLine, textMarginX, lineY);
 
       ctx.shadowColor = '#000000';
       ctx.shadowOffsetX = 2;
       ctx.shadowOffsetY = 2;
-      ctx.shadowBlur = 4;
+      ctx.shadowBlur = 6;
       ctx.fillStyle = '#ffffff';
       ctx.fillText(currentLine, textMarginX, lineY);
 
@@ -6102,31 +6135,32 @@ export async function renderVisualNovelCard(
 
   if (linesDrawn < 3 && currentLine.trim().length > 0) {
     const finalLine = currentLine.trim() + '"';
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.95)';
+    ctx.lineWidth = 4;
     ctx.strokeText(finalLine, textMarginX, lineY);
 
     ctx.shadowColor = '#000000';
     ctx.shadowOffsetX = 2;
     ctx.shadowOffsetY = 2;
-    ctx.shadowBlur = 4;
+    ctx.shadowBlur = 6;
     ctx.fillStyle = '#ffffff';
     ctx.fillText(finalLine, textMarginX, lineY);
   }
   ctx.restore();
 
-  // 6. Title and Bond Status (Bottom-right of dialogue overlay, small & subtle)
+  // 6. Title and Bond Status Footer (Bottom-right of dialogue overlay)
   ctx.save();
   ctx.shadowColor = '#000000';
-  ctx.shadowOffsetX = 1;
-  ctx.shadowOffsetY = 1;
-  ctx.shadowBlur = 3;
+  ctx.shadowOffsetX = 2;
+  ctx.shadowOffsetY = 2;
+  ctx.shadowBlur = 4;
 
-  ctx.fillStyle = 'rgba(226, 232, 240, 0.65)';
-  ctx.font = '13px sans-serif';
+  ctx.fillStyle = 'rgba(226, 232, 240, 0.75)';
+  ctx.font = 'bold 15px sans-serif';
   ctx.textAlign = 'right';
 
-  let statusStr = `${opts.title.toUpperCase()}`;
+  const cleanTitle = opts.title.replace(/^Bond Interlude:\s*/i, '');
+  let statusStr = `${cleanTitle.toUpperCase()}`;
   if (opts.currentBondLevel) {
     statusStr += `  |  ◆ BOND LVL ${opts.currentBondLevel}/10`;
   }
@@ -6134,7 +6168,7 @@ export async function renderVisualNovelCard(
     statusStr += ` (+${opts.expGained} EXP)`;
   }
 
-  ctx.fillText(statusStr, width - 40, height - 20);
+  ctx.fillText(statusStr, width - 35, height - 18);
   ctx.restore();
 
   try {

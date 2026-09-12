@@ -152,8 +152,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel.png' });
 
+      const cleanTitle = firstEvent.title.replace(/^Bond Interlude:\s*/i, '');
       const vnEmbed = new EmbedBuilder()
-        .setTitle(`📖 Visual Novel Interlude: ${firstEvent.title}`)
+        .setTitle(`📖 Bond Interlude: ${cleanTitle}`)
         .setDescription(
           `*${firstEvent.subtitle}*\n\n` +
           `👇 **Make your dialogue choice below to deepen your Bond:**`
@@ -237,8 +238,9 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel.png' });
 
+      const cleanTitle = availableEvent.title.replace(/^Bond Interlude:\s*/i, '');
       const vnEmbed = new EmbedBuilder()
-        .setTitle(`📖 Bond Interlude: ${availableEvent.title}`)
+        .setTitle(`📖 Bond Interlude: ${cleanTitle}`)
         .setDescription(
           `*${availableEvent.subtitle}*\n\n` +
           `👇 **Choose your response to deepen your Bond:**`
