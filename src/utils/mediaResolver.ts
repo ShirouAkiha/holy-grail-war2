@@ -18,7 +18,11 @@ export const CANON_MEDIA_FALLBACKS: Record<string, string> = {
   'np_heracles_berserker.jpg': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
   'np_mhx_alter.gif': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
   'np_karna_lancer.gif': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
-  'np_adiosa_dragon_envoy.webp': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif'
+  'np_adiosa_dragon_envoy.webp': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+  'super_aoko_trans.gif': 'https://ella.janitorai.com/media-approved/gR8x0bMk-pHc95lo5mhAL.gif',
+  'super_aoko_avatar.webp': 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp',
+  'gR8x0bMk-pHc95lo5mhAL.gif': 'https://ella.janitorai.com/media-approved/gR8x0bMk-pHc95lo5mhAL.gif',
+  'zUtP5PQLU7fMKVyin9H-f.webp': 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp'
 };
 
 export function normalizeMediaUrl(rawUrl: string): string {
