@@ -206,6 +206,7 @@ export function getServantAvatarAndCardArt(
     if (clean.includes('unsplash.com')) return true;
     if (npGif && clean === npGif.trim().toLowerCase()) return true;
     if (clean.includes('banaaizq4gi91.gif') || clean.includes('cu_chulain_np')) return true;
+    if (clean.includes('zutp5pqlu7fmkvyin9h-f') || clean.includes('super_aoko') || clean.includes('gr8x0bmk-phc95lo5mhal')) return true;
     return false;
   };
 

@@ -130,12 +130,17 @@ export function createCombatantFromMasterServant(
     ? Math.min(maxHp, Math.round(overrideCurrentHp))
     : maxHp;
 
+  const baseAvatar = getServantAvatarAndCardArt(servantInstance).avatarUrl;
+
   return {
     id: servantInstance.id,
     name: servantInstance.nickname || t.name,
     masterName,
     servantClass: t.servantClass,
-    avatarUrl: getServantAvatarAndCardArt(servantInstance).avatarUrl,
+    avatarUrl: baseAvatar,
+    baseAvatarUrl: baseAvatar,
+    isTransformed: false,
+    transformationTurns: 0,
     maxHp,
     currentHp: startingHp,
     atk: rawAtk,

@@ -76,6 +76,10 @@ export interface DuelCombatant {
   username: string;
   isAi: boolean;
   servant: MasterServantInstance;
+  avatarUrl?: string;
+  baseAvatarUrl?: string;
+  isTransformed?: boolean;
+  transformationTurns?: number;
   currentHp: number;
   maxHp: number;
   baseAtk: number;
@@ -94,10 +98,6 @@ export interface DuelCombatant {
   drawPile?: ('Buster' | 'Arts' | 'Quick')[];
   masterAvatarUrl?: string;
   selectedTargetId?: string;
-  avatarUrl?: string;
-  baseAvatarUrl?: string;
-  isTransformed?: boolean;
-  transformationTurns?: number;
 }
 
 // ==========================================
@@ -297,11 +297,17 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
     }
   }
 
+  const baseAvatar = getServantAvatarAndCardArt(servant).avatarUrl;
+
   const combatant: DuelCombatant = {
     userId: master.discordId,
     username: master.username,
     isAi,
     servant,
+    avatarUrl: baseAvatar,
+    baseAvatarUrl: baseAvatar,
+    isTransformed: false,
+    transformationTurns: 0,
     currentHp: startingHp,
     maxHp,
     baseAtk,
@@ -316,11 +322,7 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
     gutsCount: 0,
     commandSeals: isAi ? 0 : (master.commandSeals ?? 3),
     drawPile: [],
-    masterAvatarUrl: master.avatarUrl,
-    avatarUrl: getServantAvatarAndCardArt(servant).avatarUrl,
-    baseAvatarUrl: getServantAvatarAndCardArt(servant).avatarUrl,
-    isTransformed: false,
-    transformationTurns: 0
+    masterAvatarUrl: master.avatarUrl
   };
   refreshCombatantHand(combatant);
   return combatant;
@@ -392,7 +394,7 @@ function buildDialogueCutInEmbed(
   if (hasImageAttachment) {
     embed.setImage('attachment://vn_dialogue.gif');
   } else {
-    const avatar = attacker.avatarUrl || attacker.servant.avatarUrl || attacker.servant.template?.avatarUrl;
+    const avatar = attacker.servant.template?.avatarUrl;
     if (avatar) {
       embed.setThumbnail(avatar);
     }
@@ -446,14 +448,15 @@ async function createTurnSummaryAttachment(
   combatLogsHistory: string[] = []
 ): Promise<AttachmentBuilder> {
   const mapToActive = (c: DuelCombatant): ActiveCombatant => {
-    const avatar = c.avatarUrl || c.servant.avatarUrl || getServantAvatarAndCardArt(c.servant).avatarUrl;
+    const baseAvatar = c.baseAvatarUrl || getServantAvatarAndCardArt(c.servant).avatarUrl;
+    const currentAvatar = c.isTransformed ? (c.avatarUrl || 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp') : baseAvatar;
     return {
       id: c.userId,
       name: c.isTransformed ? `${c.servant.nickname || c.servant.template.name} (Super Aoko)` : (c.servant.nickname || c.servant.template.name),
       masterName: c.username,
       servantClass: c.servant.template.servantClass,
-      avatarUrl: avatar,
-      baseAvatarUrl: c.baseAvatarUrl || avatar,
+      avatarUrl: currentAvatar,
+      baseAvatarUrl: baseAvatar,
       isTransformed: c.isTransformed,
       transformationTurns: c.transformationTurns,
       maxHp: c.maxHp,
@@ -896,16 +899,7 @@ function activateCombatantSkill(
   combatant: DuelCombatant,
   skillIdx: number,
   opponent?: DuelCombatant
-): {
-  success: boolean;
-  log: string;
-  quote?: string;
-  skillName?: string;
-  skillType?: string;
-  skillDescription?: string;
-  isTransformation?: boolean;
-  transformationGif?: string;
-} {
+): { success: boolean; log: string; quote?: string; skillName?: string; skillType?: string; skillDescription?: string } {
   const bondLevel = combatant.servant.bondLevel || 1;
   if (skillIdx === 2 && bondLevel < 5) {
     return { success: false, log: '🔒 **Skill 3 is Locked!** Reach Bond Level 5 to unlock this skill.' };
@@ -924,12 +918,15 @@ function activateCombatantSkill(
   combatant.skillCooldowns[skillIdx] = skill.cooldown || 5;
   const sName = combatant.servant.nickname || combatant.servant.template.name;
   const customSkillQuote = combatant.servant.customQuotes?.skill;
+  const skillQuote = customSkillQuote || `My power answers the command! Witness ${skill.name}!`;
+  const quoteLine = `\n> 💬 ❝ ***${skillQuote}*** ❞`;
+  let logText = `✨ **${sName}** activated **${skill.name}**!${quoteLine}`;
 
   // Check for transformation skill (e.g. Aoko's Fifth Magic: Red Hair Ignition)
   const isTransformation = Boolean(
     (skill as any).transformationAvatarUrl ||
     skill.id === 'fifth_magic_red_hair' ||
-    skill.name.toLowerCase().includes('red hair ignition')
+    (skill.name && skill.name.toLowerCase().includes('red hair ignition'))
   );
 
   let transformationGif: string | undefined;
@@ -937,17 +934,12 @@ function activateCombatantSkill(
     combatant.isTransformed = true;
     combatant.transformationTurns = skill.duration || 3;
     if (!combatant.baseAvatarUrl) {
-      combatant.baseAvatarUrl = combatant.avatarUrl || combatant.servant.avatarUrl || getServantAvatarAndCardArt(combatant.servant).avatarUrl;
+      combatant.baseAvatarUrl = getServantAvatarAndCardArt(combatant.servant).avatarUrl;
     }
     const transformedAvatar = (skill as any).transformationAvatarUrl || 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp';
     combatant.avatarUrl = transformedAvatar;
-    combatant.servant.avatarUrl = transformedAvatar;
-    if (combatant.servant.template) {
-      combatant.servant.template = { ...combatant.servant.template, avatarUrl: transformedAvatar };
-    }
     transformationGif = (skill as any).transformationGifUrl || 'https://ella.janitorai.com/media-approved/gR8x0bMk-pHc95lo5mhAL.gif';
 
-    // Apply Super Aoko transformation enhancements
     combatant.activeBuffs.push({
       name: 'Super Aoko (ATK Up)',
       type: 'buff_atk',
@@ -961,113 +953,99 @@ function activateCombatantSkill(
       remainingTurns: skill.duration || 3
     });
     combatant.critStars = Math.min(50, (combatant.critStars || 0) + 15);
-  }
-
-  const skillQuote = customSkillQuote || (isTransformation
-    ? 'Fifth Magic—Circuits ignition! Time to kick this into maximum gear!'
-    : `My power answers the command! Witness ${skill.name}!`);
-  const quoteLine = `\n> 💬 ❝ ***${skillQuote}*** ❞`;
-
-  let logText = isTransformation
-    ? `✨ **${sName}** ignited **${skill.name}** and awakened into **Super Aoko**!${quoteLine}\n🔥 *Critical Stars +15 • ATK +30% & Crit DMG +40% (3 Turns) • Crimson Hair Super Aoko Awakened!*`
-    : `✨ **${sName}** activated **${skill.name}**!${quoteLine}`;
-
-  if (!isTransformation) {
-    if (skill.effectType === 'buff_atk') {
-      const val = skill.value || 35;
-      const desc = (skill.description || '').toLowerCase();
-      const nameLower = (skill.name || '').toLowerCase();
-      if (desc.includes('buster') || nameLower.includes('buster') || nameLower.includes('mana burst')) {
-        combatant.activeBuffs.push({ name: skill.name, type: 'buster_up', value: val, remainingTurns: skill.duration || 1 });
-      } else if (desc.includes('arts') || nameLower.includes('arts') || nameLower.includes('fox')) {
-        combatant.activeBuffs.push({ name: skill.name, type: 'arts_up', value: val, remainingTurns: skill.duration || 1 });
-      } else if (desc.includes('quick') || nameLower.includes('quick') || nameLower.includes('primordial rune')) {
-        combatant.activeBuffs.push({ name: skill.name, type: 'quick_up', value: val, remainingTurns: skill.duration || 1 });
-      } else {
-        combatant.activeBuffs.push({ name: skill.name, type: 'buff_atk', value: val, remainingTurns: skill.duration || 2 });
-        combatant.critStars = Math.min(50, combatant.critStars + 10);
-      }
-      logText = `⚔️ **${sName}** activated **${skill.name}**!${quoteLine}`;
-    } else if (skill.effectType === 'buff_def') {
-      const val = skill.value || 30;
-      combatant.activeBuffs.push({ name: skill.name, type: 'buff_def', value: val, remainingTurns: skill.duration || 2 });
-      logText = `🛡️ **${sName}** activated **${skill.name}**!${quoteLine}`;
-    } else if (skill.effectType === 'evade' || skill.effectType === 'invincible') {
-      const bType: 'evade' | 'invincible' = skill.effectType === 'invincible' ? 'invincible' : 'evade';
-      const isHitBased = skill.name.toLowerCase().includes('protection from arrows') || (skill.description || '').toLowerCase().includes('attacks') || (skill.description || '').toLowerCase().includes('hits');
-      combatant.activeBuffs.push({
-        name: skill.name,
-        type: bType,
-        value: 100,
-        remainingTurns: isHitBased ? 3 : (skill.duration || 1),
-        remainingHits: isHitBased ? 3 : undefined,
-        isHitCount: isHitBased
-      });
-      if (skill.id === 'wisdom_dun_scaith') {
-        combatant.critStars = Math.min(50, combatant.critStars + 15);
-      }
-      logText = bType === 'invincible'
-        ? `🛡️ **${sName}** activated **${skill.name}** (Invincible)!${quoteLine}`
-        : `💨 **${sName}** activated **${skill.name}** (Evade)!${quoteLine}`;
-    } else if (skill.effectType === 'guts' || skill.id?.includes('guts') || skill.id?.includes('battle_continuation') || skill.id?.includes('thrice')) {
-      const reviveAmt = skill.value || Math.round(combatant.maxHp * 0.20);
-      combatant.gutsCount = (combatant.gutsCount || 0) + 1;
-      combatant.activeBuffs.push({
-        name: skill.name,
-        type: 'guts',
-        value: reviveAmt,
-        remainingTurns: skill.duration || 5
-      });
-      if (skill.id?.includes('thrice')) {
-        combatant.activeBuffs.push({
-          name: `${skill.name} (DEF Up)`,
-          type: 'buff_def',
-          value: 100,
-          remainingTurns: 1
-        });
-      }
-      logText = `🩸 **${sName}** activated **${skill.name}**!${quoteLine}`;
-    } else if (skill.effectType === 'heal') {
-      const healVal = skill.value || Math.round(combatant.maxHp * 0.25);
-      combatant.currentHp = Math.min(combatant.maxHp, combatant.currentHp + healVal);
-      logText = `💚 **${sName}** activated **${skill.name}**!${quoteLine}`;
-    } else if (skill.effectType === 'np_charge') {
-      const npVal = skill.value || 30;
-      combatant.npGauge = Math.min(300, combatant.npGauge + npVal);
-      combatant.critStars = Math.min(50, combatant.critStars + 15);
-      logText = `⚡ **${sName}** activated **${skill.name}**!${quoteLine}`;
-    } else if (skill.effectType === 'crit_stars') {
-      const starVal = skill.value || 25;
-      combatant.critStars = Math.min(50, combatant.critStars + starVal);
-      combatant.activeBuffs.push({ name: skill.name, type: 'crit_dmg', value: 40, remainingTurns: skill.duration || 2 });
-      logText = `🌟 **${sName}** activated **${skill.name}**!${quoteLine}`;
-    } else if (skill.effectType === 'stun' || skill.effectType === 'debuff' || skill.id?.includes('discernment')) {
-      if (opponent) {
-        opponent.isStunned = true;
-        opponent.npGauge = Math.max(0, opponent.npGauge - 20);
-        opponent.activeBuffs.push({
-          name: `${skill.name} (ATK Down)`,
-          type: 'debuff_atk',
-          value: skill.value || 20,
-          remainingTurns: skill.duration || 1
-        });
-      }
-      logText = `👁️ **${sName}** activated **${skill.name}**!${quoteLine}`;
+    logText = `🔴 **TRANSFORMATION AWAKENED!** **${sName}** ignited **${skill.name}** and entered **Super Aoko** form!${quoteLine}`;
+  } else if (skill.effectType === 'buff_atk') {
+    const val = skill.value || 35;
+    const desc = (skill.description || '').toLowerCase();
+    const nameLower = (skill.name || '').toLowerCase();
+    if (desc.includes('buster') || nameLower.includes('buster') || nameLower.includes('mana burst')) {
+      combatant.activeBuffs.push({ name: skill.name, type: 'buster_up', value: val, remainingTurns: skill.duration || 1 });
+    } else if (desc.includes('arts') || nameLower.includes('arts') || nameLower.includes('fox')) {
+      combatant.activeBuffs.push({ name: skill.name, type: 'arts_up', value: val, remainingTurns: skill.duration || 1 });
+    } else if (desc.includes('quick') || nameLower.includes('quick') || nameLower.includes('primordial rune')) {
+      combatant.activeBuffs.push({ name: skill.name, type: 'quick_up', value: val, remainingTurns: skill.duration || 1 });
     } else {
-      combatant.activeBuffs.push({ name: skill.name, type: 'buff_atk', value: 25, remainingTurns: 2 });
-      logText = `✨ **${sName}** activated **${skill.name}**!${quoteLine}`;
+      combatant.activeBuffs.push({ name: skill.name, type: 'buff_atk', value: val, remainingTurns: skill.duration || 2 });
+      combatant.critStars = Math.min(50, combatant.critStars + 10);
     }
+    logText = `⚔️ **${sName}** activated **${skill.name}**!${quoteLine}`;
+  } else if (skill.effectType === 'buff_def') {
+    const val = skill.value || 30;
+    combatant.activeBuffs.push({ name: skill.name, type: 'buff_def', value: val, remainingTurns: skill.duration || 2 });
+    logText = `🛡️ **${sName}** activated **${skill.name}**!${quoteLine}`;
+  } else if (skill.effectType === 'evade' || skill.effectType === 'invincible') {
+    const bType: 'evade' | 'invincible' = skill.effectType === 'invincible' ? 'invincible' : 'evade';
+    const isHitBased = skill.name.toLowerCase().includes('protection from arrows') || (skill.description || '').toLowerCase().includes('attacks') || (skill.description || '').toLowerCase().includes('hits');
+    combatant.activeBuffs.push({
+      name: skill.name,
+      type: bType,
+      value: 100,
+      remainingTurns: isHitBased ? 3 : (skill.duration || 1),
+      remainingHits: isHitBased ? 3 : undefined,
+      isHitCount: isHitBased
+    });
+    if (skill.id === 'wisdom_dun_scaith') {
+      combatant.critStars = Math.min(50, combatant.critStars + 15);
+    }
+    logText = bType === 'invincible'
+      ? `🛡️ **${sName}** activated **${skill.name}** (Invincible)!${quoteLine}`
+      : `💨 **${sName}** activated **${skill.name}** (Evade)!${quoteLine}`;
+  } else if (skill.effectType === 'guts' || skill.id?.includes('guts') || skill.id?.includes('battle_continuation') || skill.id?.includes('thrice')) {
+    const reviveAmt = skill.value || Math.round(combatant.maxHp * 0.20);
+    combatant.gutsCount = (combatant.gutsCount || 0) + 1;
+    combatant.activeBuffs.push({
+      name: skill.name,
+      type: 'guts',
+      value: reviveAmt,
+      remainingTurns: skill.duration || 5
+    });
+    if (skill.id?.includes('thrice')) {
+      combatant.activeBuffs.push({
+        name: `${skill.name} (DEF Up)`,
+        type: 'buff_def',
+        value: 100,
+        remainingTurns: 1
+      });
+    }
+    logText = `🩸 **${sName}** activated **${skill.name}**!${quoteLine}`;
+  } else if (skill.effectType === 'heal') {
+    const healVal = skill.value || Math.round(combatant.maxHp * 0.25);
+    combatant.currentHp = Math.min(combatant.maxHp, combatant.currentHp + healVal);
+    logText = `💚 **${sName}** activated **${skill.name}**!${quoteLine}`;
+  } else if (skill.effectType === 'np_charge') {
+    const npVal = skill.value || 30;
+    combatant.npGauge = Math.min(300, combatant.npGauge + npVal);
+    combatant.critStars = Math.min(50, combatant.critStars + 15);
+    logText = `⚡ **${sName}** activated **${skill.name}**!${quoteLine}`;
+  } else if (skill.effectType === 'crit_stars') {
+    const starVal = skill.value || 25;
+    combatant.critStars = Math.min(50, combatant.critStars + starVal);
+    combatant.activeBuffs.push({ name: skill.name, type: 'crit_dmg', value: 40, remainingTurns: skill.duration || 2 });
+    logText = `🌟 **${sName}** activated **${skill.name}**!${quoteLine}`;
+  } else if (skill.effectType === 'stun' || skill.effectType === 'debuff' || skill.id?.includes('discernment')) {
+    if (opponent) {
+      opponent.isStunned = true;
+      opponent.npGauge = Math.max(0, opponent.npGauge - 20);
+      opponent.activeBuffs.push({
+        name: `${skill.name} (ATK Down)`,
+        type: 'debuff_atk',
+        value: skill.value || 20,
+        remainingTurns: skill.duration || 1
+      });
+    }
+    logText = `👁️ **${sName}** activated **${skill.name}**!${quoteLine}`;
+  } else {
+    combatant.activeBuffs.push({ name: skill.name, type: 'buff_atk', value: 25, remainingTurns: 2 });
+    logText = `✨ **${sName}** activated **${skill.name}**!${quoteLine}`;
   }
 
   return {
     success: true,
     log: logText,
     quote: skillQuote,
-    skillName: isTransformation ? `${skill.name} [SUPER AOKO]` : skill.name,
+    skillName: skill.name,
     skillType: skill.effectType || 'buff',
-    skillDescription: skill.description || '',
-    isTransformation,
-    transformationGif
+    skillDescription: skill.description || ''
   };
 }
 
@@ -1143,22 +1121,6 @@ function resolveStrike(
     const idx = parseInt(idxStr, 10);
     if (attacker.skillCooldowns[idx] > 0) {
       attacker.skillCooldowns[idx]--;
-    }
-  }
-
-  // Decrement transformation duration and revert when expired
-  if (attacker.isTransformed && attacker.transformationTurns !== undefined) {
-    attacker.transformationTurns--;
-    if (attacker.transformationTurns <= 0) {
-      attacker.isTransformed = false;
-      attacker.transformationTurns = 0;
-      if (attacker.baseAvatarUrl) {
-        attacker.avatarUrl = attacker.baseAvatarUrl;
-        attacker.servant.avatarUrl = attacker.baseAvatarUrl;
-        if (attacker.servant.template) {
-          attacker.servant.template = { ...attacker.servant.template, avatarUrl: attacker.baseAvatarUrl };
-        }
-      }
     }
   }
 
@@ -1624,6 +1586,27 @@ function resolveStrike(
     return true;
   });
 
+  // Decrement attacker offensive buffs
+  attacker.activeBuffs = attacker.activeBuffs.filter(b => {
+    if (b.type === 'buff_atk' || b.type === 'crit_dmg' || b.type === 'buster_up' || b.type === 'arts_up' || b.type === 'quick_up') {
+      b.remainingTurns--;
+      return b.remainingTurns > 0;
+    }
+    return true;
+  });
+
+  // Decrement transformation duration and revert if expired
+  let revertText = '';
+  if (attacker.isTransformed && attacker.transformationTurns !== undefined) {
+    attacker.transformationTurns--;
+    if (attacker.transformationTurns <= 0) {
+      attacker.isTransformed = false;
+      attacker.transformationTurns = 0;
+      attacker.avatarUrl = attacker.baseAvatarUrl || getServantAvatarAndCardArt(attacker.servant).avatarUrl;
+      revertText = `\n✨ **[Fifth Magic: Cooldown]** Transformation ended — ${attacker.servant.template.name} returned to base form.`;
+    }
+  }
+
   // Defender Avenger Passive: NP refund on taking damage
   let avengerLog = '';
   if (avengerBonus > 0 && totalSeqDmg > 0) {
@@ -1666,7 +1649,7 @@ function resolveStrike(
 
   const logText = `⚔️ **${attacker.servant.template.name}** executed sequence **[${seqNames}]**${npHeader}${critTag}${evadeTag}:${quoteLine}\n` +
     `• Dealt **${totalSeqDmg.toLocaleString()} DMG** to ${defender.servant.template.name}\n` +
-    `• Gained **+${totalNpGained}% NP** & **+${totalStarsGained} Critical Stars**${chainStr}${gutsText}${avengerLog}`;
+    `• Gained **+${totalNpGained}% NP** & **+${totalStarsGained} Critical Stars**${chainStr}${gutsText}${avengerLog}${revertText}`;
 
   return logText;
 }
@@ -3002,70 +2985,6 @@ async function startInteractiveDuel(
     }
   };
 
-  const dispatchTransformationGif = async (
-    actor: DuelCombatant,
-    interaction: any,
-    gifUrl: string,
-    skillName: string,
-    quote?: string
-  ) => {
-    await cleanupNpGif();
-    const servant = actor.servant;
-    const servantDisplayName = servant.nickname || servant.template?.name || 'Aoko Aozaki';
-    const normalizedGif = normalizeMediaUrl(gifUrl);
-    const { autoDelete, afkTimeoutSeconds } = getDuelNpSettings();
-
-    const quoteBlock = quote ? `\n> *“${quote}”*` : '\n> *“Fifth Magic—Circuits ignition! Time to kick this into maximum gear!”*';
-    const transFiles: AttachmentBuilder[] = [];
-    const transEmbed = new EmbedBuilder()
-      .setTitle(`🔴 TRANSFORMATION UNLEASHED: SUPER AOKO AWAKENED!`)
-      .setDescription(`✨ **${servantDisplayName}** (Master: <@${actor.userId}>) ignites **${skillName}**!\n*Super Aoko awakens with overwhelming thermodynamic magical energy!*${quoteBlock}`)
-      .setColor(0xef4444)
-      .setFooter({ text: 'Holy Grail War • Fifth Magic Awakening' });
-
-    try {
-      const resp = await fetch(normalizedGif, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-      if (resp.ok) {
-        const arrayBuf = await resp.arrayBuffer();
-        transFiles.push(new AttachmentBuilder(Buffer.from(arrayBuf), { name: 'super_aoko.gif' }));
-        transEmbed.setImage('attachment://super_aoko.gif');
-      } else {
-        safeSetEmbedImage(transEmbed, normalizedGif, transFiles);
-      }
-    } catch {
-      safeSetEmbedImage(transEmbed, normalizedGif, transFiles);
-    }
-
-    try {
-      let sentMsg: any = null;
-      if (interaction.channel && typeof interaction.channel.send === 'function') {
-        sentMsg = await interaction.channel.send({
-          embeds: [transEmbed],
-          files: transFiles
-        });
-      } else if (interaction.followUp) {
-        sentMsg = await interaction.followUp({
-          embeds: [transEmbed],
-          files: transFiles,
-          withResponse: true
-        });
-      }
-
-      if (sentMsg) {
-        activeNpGifMessage = sentMsg;
-        if (autoDelete) {
-          activeNpGifTimeout = setTimeout(async () => {
-            if (activeNpGifMessage === sentMsg) {
-              await cleanupNpGif();
-            }
-          }, Math.max(10, afkTimeoutSeconds || 10) * 1000);
-        }
-      }
-    } catch (err) {
-      console.warn('Could not post Transformation GIF cinematic message:', err);
-    }
-  };
-
   // Component Collector for turn choices - resets idle timer on every valid player action
   const collector = battleMsg.createMessageComponentCollector({
     componentType: ComponentType.Button,
@@ -3483,20 +3402,15 @@ async function startInteractiveDuel(
           return;
         }
 
-        // Trigger Transformation GIF cinematic if applicable
-        if (res.isTransformation && res.transformationGif) {
-          await dispatchTransformationGif(actor, i, res.transformationGif, res.skillName || 'Fifth Magic: Red Hair Ignition', res.quote);
-        }
-
         try {
-          const sName = actor.isTransformed ? `${actor.servant.nickname || actor.servant.template?.name || 'Heroic Spirit'} (Super Aoko)` : (actor.servant.nickname || actor.servant.template?.name || 'Heroic Spirit');
+          const sName = actor.servant.nickname || actor.servant.template?.name || 'Heroic Spirit';
           const sClass = actor.servant.template?.servantClass || 'Servant';
-          const avatarUrl = actor.avatarUrl || actor.servant.avatarUrl || actor.servant.template?.avatarUrl;
+          const avatarUrl = actor.servant.template?.avatarUrl;
           const bondLvl = actor.servant.bondLevel || 8;
 
           const oppName = opponent.servant.nickname || opponent.servant.template?.name || 'Opponent Servant';
           const oppClass = opponent.servant.template?.servantClass || 'Servant';
-          const oppAvatarUrl = opponent.avatarUrl || opponent.servant.avatarUrl || opponent.servant.template?.avatarUrl;
+          const oppAvatarUrl = opponent.servant.template?.avatarUrl;
 
           const skillName = res.skillName || 'TACTICAL SKILL';
           const skillQuote = res.quote || 'My power answers the command!';
@@ -3518,7 +3432,7 @@ async function startInteractiveDuel(
             const skillDialogueObj = {
               quote: skillQuote,
               tag: `SKILL: ${skillName.toUpperCase()}`,
-              color: res.isTransformation ? 0xef4444 : 0x38bdf8
+              color: 0x38bdf8
             };
             const cutInEmbed = buildDialogueCutInEmbed(actor, opponent, ['Arts'], skillDialogueObj, true);
             await i.editReply({ embeds: [cutInEmbed], files: [attachment], components: [] });
@@ -3752,14 +3666,14 @@ async function startInteractiveDuel(
         await dispatchNpGif(attacker, i);
       } else if (shouldCutIn) {
         try {
-          const sName = attacker.isTransformed ? `${attacker.servant.nickname || attacker.servant.template?.name || 'Heroic Spirit'} (Super Aoko)` : (attacker.servant.nickname || attacker.servant.template?.name || 'Heroic Spirit');
+          const sName = attacker.servant.nickname || attacker.servant.template?.name || 'Heroic Spirit';
           const sClass = attacker.servant.template?.servantClass || 'Servant';
-          const avatarUrl = attacker.avatarUrl || attacker.servant.avatarUrl || attacker.servant.template?.avatarUrl;
+          const avatarUrl = attacker.servant.template?.avatarUrl;
           const bondLvl = attacker.servant.bondLevel || 8;
 
-          const dName = defender.isTransformed ? `${defender.servant.nickname || defender.servant.template?.name || 'Opponent Servant'} (Super Aoko)` : (defender.servant.nickname || defender.servant.template?.name || 'Opponent Servant');
+          const dName = defender.servant.nickname || defender.servant.template?.name || 'Opponent Servant';
           const dClass = defender.servant.template?.servantClass || 'Servant';
-          const dAvatarUrl = defender.avatarUrl || defender.servant.avatarUrl || defender.servant.template?.avatarUrl;
+          const dAvatarUrl = defender.servant.template?.avatarUrl;
 
           const diaBuffer = await renderDialogueCard(
             sName,

@@ -181,12 +181,17 @@ export function createCombatantFromMasterServant(
     }
   }
 
+  const baseAvatar = getServantAvatarAndCardArt(servantInstance).avatarUrl;
+
   return {
     id: servantInstance.id,
     name: servantInstance.nickname || t.name,
     masterName,
     servantClass: t.servantClass,
-    avatarUrl: getServantAvatarAndCardArt(servantInstance).avatarUrl,
+    avatarUrl: baseAvatar,
+    baseAvatarUrl: baseAvatar,
+    isTransformed: false,
+    transformationTurns: 0,
     maxHp,
     currentHp: startingHp,
     atk: rawAtk,
@@ -254,8 +259,10 @@ export function applyCombatantSkill(
     isTransformation = true;
     actor.isTransformed = true;
     actor.transformationTurns = skill.duration || 3;
-    if (!actor.baseAvatarUrl) {
-      actor.baseAvatarUrl = actor.avatarUrl;
+    if (!actor.baseAvatarUrl || actor.baseAvatarUrl.includes('zUtP5PQLU7fMKVyin9H-f')) {
+      actor.baseAvatarUrl = (actor.avatarUrl && !actor.avatarUrl.includes('zUtP5PQLU7fMKVyin9H-f'))
+        ? actor.avatarUrl
+        : 'https://ella.janitorai.com/media-approved/cqdhAGa5DTTAG7S9umM8k.webp';
     }
     const newAvatar = skill.transformationAvatarUrl || 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp';
     actor.avatarUrl = newAvatar;
@@ -1034,8 +1041,10 @@ export function executeBattleTurn(
         if (skill.transformationAvatarUrl || skill.id === 'fifth_magic_red_hair') {
           actor.isTransformed = true;
           actor.transformationTurns = skill.duration || 3;
-          if (!actor.baseAvatarUrl) {
-            actor.baseAvatarUrl = actor.avatarUrl;
+          if (!actor.baseAvatarUrl || actor.baseAvatarUrl.includes('zUtP5PQLU7fMKVyin9H-f')) {
+            actor.baseAvatarUrl = (actor.avatarUrl && !actor.avatarUrl.includes('zUtP5PQLU7fMKVyin9H-f'))
+              ? actor.avatarUrl
+              : 'https://ella.janitorai.com/media-approved/cqdhAGa5DTTAG7S9umM8k.webp';
           }
           actor.avatarUrl = skill.transformationAvatarUrl || 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp';
           actor.activeBuffs.push({
@@ -1506,7 +1515,10 @@ export function executeBattleTurn(
       actor.transformationTurns -= 1;
       if (actor.transformationTurns <= 0) {
         actor.isTransformed = false;
-        actor.avatarUrl = actor.baseAvatarUrl || 'https://ella.janitorai.com/media-approved/cqdhAGa5DTTAG7S9umM8k.webp';
+        actor.transformationTurns = 0;
+        actor.avatarUrl = (actor.baseAvatarUrl && !actor.baseAvatarUrl.includes('zUtP5PQLU7fMKVyin9H-f'))
+          ? actor.baseAvatarUrl
+          : 'https://ella.janitorai.com/media-approved/cqdhAGa5DTTAG7S9umM8k.webp';
         actionText += `\n✨ **[Fifth Magic: Cooldown]** Transformation ended — ${actor.name} returned to base form.`;
       }
     }

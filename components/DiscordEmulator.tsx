@@ -2895,8 +2895,9 @@ export default function DiscordEmulator({
       }
 
       if (!targetParticipant) {
-        const civilianMaster = MASTERS_DATABASE.find(
+        const civilianMaster: any = (MASTERS_DATABASE as any[] || []).find(
           (m: any) =>
+            m && m.username &&
             m.username.toLowerCase().includes(targetQuery) &&
             (!m.servants || m.servants.length === 0)
         );
