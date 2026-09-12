@@ -42,6 +42,7 @@ import * as boastCommand from './commands/boast';
 import * as dailyCommand from './commands/daily';
 import * as feedCommand from './commands/feed';
 import * as gachaCommand from './commands/gacha';
+import * as bondCommand from './commands/bond';
 import { SERVANT_DATABASE } from './data/servants';
 import { getOrCreateMaster, getMaster, saveMaster, getAllThroneServants, findServantInPool, searchAndRankServants, claimDailySaintQuartz } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
@@ -160,9 +161,11 @@ commands.set(petrolCommand.data.name, petrolCommand);
 commands.set(equipCommand.data.name, equipCommand);
 commands.set(grailCommand.data.name, grailCommand);
 commands.set(boardCommand.data.name, boardCommand);
+commands.set(bondCommand.data.name, bondCommand);
 
 // Alias mapping for backward-compatible text shortcuts and interactions
 export const commandAliasMap: Record<string, any> = {
+  bond: bondCommand,
   claim: dailyCommand,
   sanctuary: churchCommand,
   bounty: bountyCommand,
@@ -373,7 +376,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const isStealthOrMaint = [
           'trap', 'traps', 'patrol', 'petrol', 'defenses', 'profile', 'heal', 
           'church', 'sanctuary', 'servant', 'servants', 'inventory', 'gacha', 
-          'summon', 'daily', 'customise', 'cegacha', 'addce', 'addsq'
+          'summon', 'daily', 'customise', 'cegacha', 'addce', 'addsq', 'bond'
         ].includes(cmd);
         
         if (!isStealthOrMaint) {
@@ -692,6 +695,12 @@ client.on(Events.InteractionCreate, async interaction => {
       // Admin Hub Control Suite
       if (btnId.startsWith('admin_')) {
         await adminCommand.handleAdminGlobalInteraction(interaction);
+        return;
+      }
+
+      // Visual Novel / Bond System Buttons
+      if (btnId.startsWith('vn_')) {
+        await bondCommand.handleBondButtonInteraction(interaction);
         return;
       }
 
