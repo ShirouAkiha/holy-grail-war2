@@ -398,6 +398,16 @@ export async function buildServantHub(
     const artsDef = profile.arts[0] || "With pure heart and steadfast oath... Prana circulation stable!";
     const quickDef = profile.quick[0] || "Invisible Air, release! Wind of the King, sweep the field!";
 
+    const matchupsCount = Object.keys(quotes.matchups || {}).length;
+    let matchupsSection = '';
+    if (matchupsCount > 0) {
+      const sampleMatchups = Object.entries(quotes.matchups || {}).slice(0, 4).map(([rId, entry]: [string, any]) => {
+        const rName = SERVANT_DATABASE.find(s => s.id === rId)?.name || rId;
+        return `• ⚔️ **vs ${rName}:** *" ${entry.intro || '...'} "*${entry.retort ? `\n  ↳ *Retort:* *" ${entry.retort} "*` : ''}`;
+      }).join('\n');
+      matchupsSection = `\n🔥 **ACTIVE RIVAL BANTER (${matchupsCount}):**\n${sampleMatchups}\n`;
+    }
+
     const embed = new EmbedBuilder()
       .setTitle(`💬 Master Dialogue Studio: ${sName}`)
       .setDescription(
@@ -415,8 +425,9 @@ export async function buildServantHub(
         `• ⚔️ **Battle Start:** *" ${quotes.battleStart || t.battleStartQuote} "*\n` +
         `• 🏆 **Victory:** *" ${quotes.victory || t.victoryQuote} "*\n` +
         `• 💀 **Defeat:** *" ${quotes.defeat || t.defeatQuote || 'Forgive me, Master... My duty... remains unfulfilled...'} "*\n` +
-        `• 🕯️ **Summon:** *" ${quotes.summon || t.summonQuote} "*\n\n` +
-        `💡 *Set lines with \`/customise quote <type> "<text>"\`, click the Studio buttons below, or choose a Preset!*`
+        `• 🕯️ **Summon:** *" ${quotes.summon || t.summonQuote} "*\n` +
+        matchupsSection +
+        `\n💡 *Set lines with \`/customise quote\`, \`/customise faceoff\`, click the Studio buttons below, or choose a Preset!*`
       )
       .setColor(0xd4af37)
       .setFooter({ text: `Contracted to Master ${master.username} • Bond Lv. ${bondLevel}` });
@@ -558,6 +569,7 @@ export async function buildServantHub(
     actionButtonsRow.addComponents(
       new ButtonBuilder().setCustomId('servant_act_open_dialogue_modal_combat').setLabel('Combat & NP Studio').setEmoji('⚔️').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('servant_act_open_dialogue_modal_tactical').setLabel('Skills & Stances Studio').setEmoji('🔮').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('servant_act_open_dialogue_modal_faceoff').setLabel('Rival Face-Off Studio').setEmoji('🔥').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('servant_act_reset_dialogue').setLabel('Reset Defaults').setEmoji('✨').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('servant_act_hear_voice').setLabel('Replay Cut-In').setEmoji('🎬').setStyle(ButtonStyle.Success)
     );
@@ -938,6 +950,59 @@ export function attachServantCollector(
           new ActionRowBuilder<any>().addComponents(startInput),
           new ActionRowBuilder<any>().addComponents(victoryInput),
           new ActionRowBuilder<any>().addComponents(defeatInput)
+        );
+
+        await i.showModal(modal);
+        return;
+      }
+      else if (i.customId === 'servant_act_open_dialogue_modal_faceoff') {
+        const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = await import('discord.js');
+        const modal = new ModalBuilder()
+          .setCustomId(`modal_quotes_faceoff:${targetServant.id}`)
+          .setTitle(`Rival Face-Off: ${sName.slice(0, 18)}`);
+
+        const quotes = targetServant.customQuotes || {};
+        const firstMatchupKey = Object.keys(quotes.matchups || {})[0];
+        const firstMatchup = firstMatchupKey ? quotes.matchups![firstMatchupKey] : undefined;
+        const defaultRivalName = firstMatchupKey ? (SERVANT_DATABASE.find(s => s.id === firstMatchupKey)?.name || firstMatchupKey) : 'Artoria Pendragon';
+
+        const rivalInput = new TextInputBuilder()
+          .setCustomId('faceoff_rival')
+          .setLabel('⚔️ Target Rival Servant Name / ID')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('e.g. Artoria, Gilgamesh, EMIYA, Aoko, Scathach')
+          .setValue(firstMatchupKey ? defaultRivalName : '')
+          .setRequired(true);
+
+        const introInput = new TextInputBuilder()
+          .setCustomId('faceoff_intro')
+          .setLabel('🔥 Opening Clash Quote (Challenger)')
+          .setStyle(TextInputStyle.Paragraph)
+          .setPlaceholder('e.g. Face me, King of Knights! Let our ideals collide!')
+          .setValue(firstMatchup?.intro || '')
+          .setRequired(true);
+
+        const retortInput = new TextInputBuilder()
+          .setCustomId('faceoff_retort')
+          .setLabel('🛡️ Defender Retort Line (Counter-Banter)')
+          .setStyle(TextInputStyle.Paragraph)
+          .setPlaceholder('e.g. I accept your challenge with all the honor of my blade!')
+          .setValue(firstMatchup?.retort || '')
+          .setRequired(false);
+
+        const tagInput = new TextInputBuilder()
+          .setCustomId('faceoff_tag')
+          .setLabel('🏷️ Clash Tag Title (Optional)')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('e.g. DESTINED DUEL, KINGS\' SUMMIT, HOLY GRAIL RIVALRY')
+          .setValue(firstMatchup?.tag || '')
+          .setRequired(false);
+
+        modal.addComponents(
+          new ActionRowBuilder<any>().addComponents(rivalInput),
+          new ActionRowBuilder<any>().addComponents(introInput),
+          new ActionRowBuilder<any>().addComponents(retortInput),
+          new ActionRowBuilder<any>().addComponents(tagInput)
         );
 
         await i.showModal(modal);

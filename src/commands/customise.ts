@@ -6,10 +6,12 @@ import {
   EmbedBuilder,
   ButtonBuilder,
   ButtonStyle,
-  ComponentType
-, MessageFlags } from 'discord.js';
+  ComponentType, 
+  MessageFlags 
+} from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
+import { SERVANT_DATABASE } from '../data/servants';
 import { feedCraftEssences, getCeExpValue, calculateLevelFromExp, getTotalExpForLevel } from '../engine/customization';
 import { 
   getOrInitWarSession, 
@@ -661,6 +663,41 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand(sub =>
     sub
+      .setName('faceoff')
+      .setDescription('Set custom face-off clash dialogue against a specific rival Servant')
+      .addStringOption(opt =>
+        opt
+          .setName('rival')
+          .setDescription('Rival Servant name or ID (e.g. artoria, gilgamesh, aoko, emiya, scathach)')
+          .setRequired(true)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('intro')
+          .setDescription('Custom opening clash line when engaging this rival')
+          .setRequired(true)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('retort')
+          .setDescription('Custom retort line when challenged by this rival (optional)')
+          .setRequired(false)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('tag')
+          .setDescription('Custom clash tag title (e.g. DESTINED CLASH, KINGS SUMMIT)')
+          .setRequired(false)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('servant')
+          .setDescription('Servant name (defaults to your active Servant)')
+          .setRequired(false)
+      )
+  )
+  .addSubcommand(sub =>
+    sub
       .setName('nickname')
       .setDescription('Set a custom nickname for your Servant')
       .addStringOption(opt =>
@@ -907,6 +944,74 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         )
         .setColor(0x22c55e)
         .setFooter({ text: `Contracted to Master ${master.username} • Use /dialogue or /duel to hear it live!` });
+
+      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+      return;
+    }
+
+    // ==========================================
+    // SUBCOMMAND C2: CUSTOM RIVAL FACE-OFF DIALOGUE
+    // ==========================================
+    if (subcommand === 'faceoff' || subcommand === 'matchup') {
+      const rivalQuery = interaction.options.getString('rival', true).trim().toLowerCase();
+      const intro = interaction.options.getString('intro', true).trim();
+      const retort = interaction.options.getString('retort', false)?.trim();
+      const tag = interaction.options.getString('tag', false)?.trim();
+      const servantQuery = interaction.options.getString('servant', false);
+
+      let targetServant = activeServant;
+      if (servantQuery) {
+        const query = servantQuery.toLowerCase();
+        const found = master.servants.find((s: any) =>
+          (s.nickname && s.nickname.toLowerCase().includes(query)) ||
+          s.template?.name?.toLowerCase().includes(query) ||
+          s.name?.toLowerCase().includes(query) ||
+          s.id.toLowerCase() === query ||
+          s.templateId?.toLowerCase() === query
+        );
+        if (found) targetServant = found;
+      }
+
+      // Look up target rival in servant database
+      const matchedRival = SERVANT_DATABASE.find(s =>
+        s.id.toLowerCase() === rivalQuery ||
+        s.name.toLowerCase().includes(rivalQuery) ||
+        s.servantClass.toLowerCase() === rivalQuery ||
+        (s.aliases && s.aliases.some((a: string) => a.toLowerCase().includes(rivalQuery)))
+      ) || SERVANT_DATABASE[0];
+
+      if (!targetServant.customQuotes) {
+        targetServant.customQuotes = {};
+      }
+      if (!targetServant.customQuotes.matchups) {
+        targetServant.customQuotes.matchups = {};
+      }
+
+      // Save custom matchup record
+      targetServant.customQuotes.matchups[matchedRival.id] = {
+        intro,
+        ...(retort ? { retort } : {}),
+        ...(tag ? { tag } : {})
+      };
+
+      master.servants = master.servants.map((s: any) => s.id === targetServant.id ? targetServant : s);
+      await saveMaster(master);
+
+      const targetName = targetServant.nickname || targetServant.template?.name || 'Servant';
+      const clashTagTitle = tag || 'FATEFUL RIVALRY';
+
+      const embed = new EmbedBuilder()
+        .setTitle(`⚔️ Rival Face-Off Dialogue Registered!`)
+        .setDescription(
+          `Configured custom clash banter for **${targetName}** vs **${matchedRival.name}** [${matchedRival.servantClass}]!\n\n` +
+          `🏷️ **Clash Tag:** \`${clashTagTitle}\`\n\n` +
+          `🔥 **Challenger Opening (${targetName}):**\n` +
+          `*" ${intro} "*\n\n` +
+          (retort ? `🛡️ **Defender Counter-Retort (${matchedRival.name}):**\n*" ${retort} "*\n\n` : '') +
+          `✨ *When duel arena battles begin or visual novel cut-ins engage against ${matchedRival.name}, this dedicated face-off dialogue will trigger automatically!*`
+        )
+        .setColor(0xd4af37)
+        .setFooter({ text: `Contracted to Master ${master.username} • Use /duel to challenge rival spirits!` });
 
       await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
       return;

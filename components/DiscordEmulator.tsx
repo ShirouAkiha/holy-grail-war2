@@ -1869,8 +1869,19 @@ export default function DiscordEmulator({
     }
 
     // ----------------------------------------------------
-    // COMMAND 2.75: /customise quote, /customise dialogue, /dialogue set (Custom Dialogues & Chain Shouts)
+    // COMMAND 2.75: /customise quote, /customise faceoff, /customise matchup, /dialogue set
     // ----------------------------------------------------
+    if (
+      trimmed.startsWith('/customise faceoff') ||
+      trimmed.startsWith('/customise matchup') ||
+      trimmed.startsWith('/dialogue faceoff') ||
+      trimmed.startsWith('/dialogue matchup') ||
+      trimmed.startsWith('/customise rival')
+    ) {
+      handleCustomFaceoffCommand(trimmed);
+      return;
+    }
+
     if (
       trimmed.startsWith('/customise quote') ||
       trimmed.startsWith('/customise dialogue') ||
@@ -3116,17 +3127,11 @@ export default function DiscordEmulator({
               id: getNextId('bot_transformation_gif'),
               sender: 'bot',
               timestamp: 'Just now',
-              embed: {
-                title: '🔴 TRANSFORMATION AWAKENED: SUPER AOKO!',
-                description:
-                  `✨ **${activeDuel.battle.player1.name}** ignited the **Fifth Magic: Red Hair Ignition**!\n\n` +
-                  `> 💬 ❝ ***${res.quote || 'Fifth Magic—Circuits ignition! Time to kick this into maximum gear!'}*** ❞\n\n` +
-                  `⚡ **Fifth Magic True Output:** ATK +30%, Crit DMG +40%, +15 Stars generated!`,
-                color: '#ef4444',
-                imageUrl: res.transformationGif,
-                thumbnailUrl: res.transformedAvatarUrl || 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp',
-                footer: 'True Magic Ignition • Super Aoko Form Engaged'
-              }
+              content:
+                `## 🔴 TRANSFORMATION UNLEASHED: **SUPER AOKO AWAKENED!**\n` +
+                `✨ **${activeDuel.battle.player1.name}** ignited the **Fifth Magic: Red Hair Ignition**!\n` +
+                `> 💬 ❝ ***${res.quote || 'Fifth Magic—Circuits ignition! Time to kick this into maximum gear!'}*** ❞\n\n` +
+                `${res.transformationGif}`
             });
           }
           addMessage({
@@ -4986,6 +4991,178 @@ export default function DiscordEmulator({
     });
   };
 
+  // Helper: Post Face-Off Studio Hub
+  const postFaceoffStudioHub = (servantId?: string) => {
+    const targetServant = servantId
+      ? master.servants?.find(s => s.id === servantId) || master.servants?.[0]
+      : (master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0]);
+    if (!targetServant) return;
+
+    const sName = targetServant.nickname || targetServant.template?.name || 'Heroic Spirit';
+    const quotes = targetServant.customQuotes || {};
+    const matchups = quotes.matchups || {};
+    const configuredList = Object.entries(matchups).map(([rId, entry]: [string, any]) => {
+      const r = SERVANT_DATABASE.find(s => s.id === rId);
+      return `• ⚔️ **vs ${r?.name || rId}:** *" ${entry.intro} "*${entry.retort ? `\n  ↳ *Retort:* *" ${entry.retort} "*` : ''}`;
+    }).join('\n');
+
+    addMessage({
+      id: getNextId('bot_faceoff_hub'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title: `🔥 Master Dialogue Studio — Rival Face-Offs: ${sName}`,
+        description:
+          `*Configure dedicated clash introductions and retorts when **${sName}** battles specific rivals in duels and Grail Wars!*\n\n` +
+          (configuredList ? `🔥 **Currently Configured Face-Offs (${Object.keys(matchups).length}):**\n${configuredList}\n\n` : `*No custom rival face-off dialogues configured yet for ${sName}.*\n\n`) +
+          `⚡ **HOW TO SET CUSTOM FACE-OFF LINES:**\n` +
+          `• \`/customise faceoff rival:Artoria intro:"Let's see if that Holy Sword can outspeed my True Magic!" retort:"I will meet your resolve with all my might!" tag:"DESTINED CLASH"\`\n` +
+          `• \`/customise faceoff rival:Gilgamesh intro:"King of Heroes, your treasury has met its match!"\`\n` +
+          `• \`/customise faceoff rival:EMIYA intro:"Show me the limits of your Unlimited Blade Works!"\`\n\n` +
+          `*Or click a Rival Preset button below to instantly author or preview custom banter!*`,
+        color: '#d4af37'
+      },
+      components: {
+        type: 'buttons',
+        items: [
+          { id: `faceoff_quick_set_artoria_${targetServant.id}`, label: 'vs Artoria 👑', style: 'primary', emoji: '👑' },
+          { id: `faceoff_quick_set_gilgamesh_${targetServant.id}`, label: 'vs Gilgamesh 🔥', style: 'primary', emoji: '🔥' },
+          { id: `faceoff_quick_set_emiya_${targetServant.id}`, label: 'vs EMIYA 🗡️', style: 'primary', emoji: '🗡️' },
+          { id: `faceoff_quick_set_scathach_${targetServant.id}`, label: 'vs Scáthach 🔱', style: 'primary', emoji: '🔱' },
+          { id: `faceoff_quick_set_aoko_${targetServant.id}`, label: 'vs Aoko 💥', style: 'primary', emoji: '💥' }
+        ]
+      }
+    });
+  };
+
+  // Helper: Handle /customise faceoff / matchup slash commands
+  const handleCustomFaceoffCommand = (trimmed: string) => {
+    const ownedServants = master.servants || [];
+    if (ownedServants.length === 0) {
+      addMessage({
+        id: getNextId('bot_dialogue_err'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '❌ No Servants Summoned',
+          description: 'You must contract a Heroic Spirit via `/summon` before configuring rival face-off lines!',
+          color: '#ef4444'
+        }
+      });
+      return;
+    }
+
+    let clean = trimmed
+      .replace('/customise faceoff', '')
+      .replace('/customise matchup', '')
+      .replace('/dialogue faceoff', '')
+      .replace('/dialogue matchup', '')
+      .replace('/customise rival', '')
+      .trim();
+
+    let targetServant = master.servants?.find(s => s.id === master.activeServantId) || master.servants[0];
+
+    if (!clean) {
+      postFaceoffStudioHub(targetServant.id);
+      return;
+    }
+
+    const rivalMatch = clean.match(/rival:\s*["“']?([^"”':,]+)["”']?/i);
+    const introMatch = clean.match(/intro:\s*["“']?([^"”']+)["”']?/i);
+    const retortMatch = clean.match(/retort:\s*["“']?([^"”']+)["”']?/i);
+    const tagMatch = clean.match(/tag:\s*["“']?([^"”']+)["”']?/i);
+    const servantMatch = clean.match(/servant:\s*["“']?([^"”']+)["”']?/i);
+
+    if (servantMatch) {
+      const q = servantMatch[1].toLowerCase();
+      const found = ownedServants.find(s =>
+        s.template.name.toLowerCase().includes(q) ||
+        (s.nickname && s.nickname.toLowerCase().includes(q)) ||
+        s.id.toLowerCase() === q
+      );
+      if (found) targetServant = found;
+    }
+
+    let rivalQuery = '';
+    let introQuote = '';
+    let retortQuote = retortMatch ? retortMatch[1].trim() : '';
+    let tagTitle = tagMatch ? tagMatch[1].trim() : '';
+
+    if (rivalMatch && introMatch) {
+      rivalQuery = rivalMatch[1].trim().toLowerCase();
+      introQuote = introMatch[1].trim();
+    } else {
+      const parts = clean.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+      if (parts.length >= 2) {
+        rivalQuery = parts[0].replace(/^["“']|["”']$/g, '').toLowerCase();
+        introQuote = parts[1].replace(/^["“']|["”']$/g, '').trim();
+        if (parts.length >= 3) {
+          retortQuote = parts[2].replace(/^["“']|["”']$/g, '').trim();
+        }
+      }
+    }
+
+    if (!rivalQuery || !introQuote) {
+      postFaceoffStudioHub(targetServant.id);
+      return;
+    }
+
+    const matchedRival = SERVANT_DATABASE.find(s =>
+      s.id.toLowerCase() === rivalQuery ||
+      s.name.toLowerCase().includes(rivalQuery) ||
+      s.servantClass.toLowerCase() === rivalQuery ||
+      (s.aliases && s.aliases.some((a: string) => a.toLowerCase().includes(rivalQuery)))
+    ) || SERVANT_DATABASE[0];
+
+    const updatedServants = master.servants.map(s => {
+      if (s.id === targetServant.id) {
+        const nextQuotes = { ...(s.customQuotes || {}) };
+        const nextMatchups = { ...(nextQuotes.matchups || {}) };
+        nextMatchups[matchedRival.id] = {
+          intro: introQuote,
+          ...(retortQuote ? { retort: retortQuote } : {}),
+          ...(tagTitle ? { tag: tagTitle } : {})
+        };
+        return {
+          ...s,
+          customQuotes: {
+            ...nextQuotes,
+            matchups: nextMatchups
+          }
+        };
+      }
+      return s;
+    });
+
+    onUpdateMaster({ ...master, servants: updatedServants });
+
+    const sName = targetServant.nickname || targetServant.template?.name || 'Heroic Spirit';
+    addMessage({
+      id: getNextId('bot_faceoff_saved'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: {
+        title: `⚔️ Rival Face-Off Banter Registered!`,
+        description:
+          `Configured custom clash dialogue for **${sName}** vs **${matchedRival.name}** [${matchedRival.servantClass}]!\n\n` +
+          `🏷️ **Clash Tag:** \`${tagTitle || 'FATEFUL RIVALRY'}\`\n\n` +
+          `🔥 **Challenger Opening (${sName}):**\n` +
+          `*" ${introQuote} "*\n\n` +
+          (retortQuote ? `🛡️ **Defender Retort (${matchedRival.name}):**\n*" ${retortQuote} "*\n\n` : '') +
+          `✨ *During duel arena battles and cut-ins against ${matchedRival.name}, this dedicated face-off dialogue will trigger dynamically!*`,
+        color: '#d4af37'
+      },
+      components: {
+        type: 'buttons',
+        items: [
+          { id: `dlg_open_modal_faceoff_${targetServant.id}`, label: 'Face-Off Studio 🔥', style: 'primary', emoji: '🔥' },
+          { id: 'servant_tab_dialogue', label: 'Back to Voice Lines 💬', style: 'secondary', emoji: '💬' },
+          { id: 'quick_start_duel', label: 'Enter Duel Arena ⚔️', style: 'danger', emoji: '⚔️' }
+        ]
+      }
+    });
+  };
+
   // Helper: Post Stat Allocation Menu for Active Servant
   const postStatAllocationHub = (targetServantId?: string) => {
     const sId = targetServantId || master.activeServantId || master.servants?.[0]?.id;
@@ -5690,6 +5867,16 @@ export default function DiscordEmulator({
       }
 
       title = `💬 Master Dialogue Studio: ${sName}`;
+      const matchupsCount = Object.keys(quotes.matchups || {}).length;
+      let matchupsSection = '';
+      if (matchupsCount > 0) {
+        const sampleMatchups = Object.entries(quotes.matchups || {}).slice(0, 4).map(([rId, entry]: [string, any]) => {
+          const rName = SERVANT_DATABASE.find(s => s.id === rId)?.name || rId;
+          return `• ⚔️ **vs ${rName}:** *" ${entry.intro || '...'} "*${entry.retort ? `\n  ↳ *Retort:* *" ${entry.retort} "*` : ''}`;
+        }).join('\n');
+        matchupsSection = `\n🔥 **ACTIVE RIVAL BANTER (${matchupsCount}):**\n${sampleMatchups}\n`;
+      }
+
       description =
         `*Author custom combat chants and voice lines for **${sName}**!*\n\n` +
         `⚡ **COMBAT BRAVE CHAINS & NP:**\n` +
@@ -5705,8 +5892,9 @@ export default function DiscordEmulator({
         `• ⚔️ **Battle Start:** *" ${quotes.battleStart || t.battleStartQuote} "*\n` +
         `• 🏆 **Victory:** *" ${quotes.victory || t.victoryQuote} "*\n` +
         `• 💀 **Defeat:** *" ${quotes.defeat || t.defeatQuote || 'Forgive me, Master... My duty... remains unfulfilled...'} "*\n` +
-        `• 🕯️ **Summon:** *" ${quotes.summon || t.summonQuote} "*\n\n` +
-        `💡 *Set lines with \`/customise quote <type> "<text>"\`, click the Studio buttons below, or choose a Preset!*`;
+        `• 🕯️ **Summon:** *" ${quotes.summon || t.summonQuote} "*\n` +
+        matchupsSection +
+        `\n💡 *Set lines with \`/customise quote\`, \`/customise faceoff\`, click the Studio buttons below, or choose a Preset!*`;
       color = '#d4af37';
     } else if (category === ('equip_ce' as any)) {
       title = `👔 Equip Craft Essence — ${sName}`;
@@ -5777,6 +5965,7 @@ export default function DiscordEmulator({
       actionButtons = [
         { id: `dlg_open_modal_combat_${targetServant.id}`, label: 'Combat & NP Studio ⚔️', style: 'primary', emoji: '⚔️' },
         { id: `dlg_open_modal_tactical_${targetServant.id}`, label: 'Tactical & Seals 🔮', style: 'primary', emoji: '🔮' },
+        { id: `dlg_open_modal_faceoff_${targetServant.id}`, label: 'Rival Face-Off 🔥', style: 'primary', emoji: '🔥' },
         { id: `dlg_reset_lore_${targetServant.id}`, label: 'Reset Defaults ✨', style: 'secondary', emoji: '✨' },
         { id: 'btn_hear_quote', label: 'Replay Cut-In 🎬', style: 'success', emoji: '🎬' }
       ];
@@ -5811,6 +6000,7 @@ export default function DiscordEmulator({
     } else if (category === 'dialogue') {
       selectPlaceholder = '💬 Apply Voice Line Chants & Dialogue Preset...';
       selectOptions = [
+        { value: 'servant_sel_voice_preset_rival_showcase', label: '🔥 Rival Face-Off Banter Pack', description: 'Curated clashes vs Artoria, Gilgamesh, EMIYA, Aoko & Scáthach' },
         { value: 'servant_sel_voice_preset_artoria_canon', label: '👑 Artoria Pendragon (Fate Canon)', description: 'True lore-accurate Fate/stay night & FGO voice lines' },
         { value: 'servant_sel_voice_preset_emiya_ubw', label: '🗡️ EMIYA (Unlimited Blade Works)', description: 'Tracing projection incantation and combat quotes' },
         { value: 'servant_sel_voice_preset_gilgamesh_king', label: '🔥 Gilgamesh (King of Heroes)', description: 'Vault of Babylon & Gate of Heaven quotes' },
@@ -7742,6 +7932,36 @@ export default function DiscordEmulator({
             quickChain: 'Too slow! The Hound leaves no tracks in the bloodied grass!',
             summon: 'Servant Lancer! The Hound of Culann answers your summons!'
           };
+        } else if (val === 'rival_showcase') {
+          presetQuotes = {
+            matchups: {
+              artoria: {
+                intro: "Let's see if that Holy Sword can pierce the boundary of my resolve!",
+                retort: "I accept your challenge! By the pride of the Round Table, en garde!",
+                tag: "DESTINED DUEL"
+              },
+              gilgamesh: {
+                intro: "King of Heroes, your treasury has finally met its match!",
+                retort: "Hahaha! An insect dares gaze upon the Vault of Heaven?! Perish!",
+                tag: "KINGS' SUMMIT"
+              },
+              emiya: {
+                intro: "Show me the full depth of your infinite projection!",
+                retort: "Very well. Let us test if your steel can withstand my forgery.",
+                tag: "BLADE CLASH"
+              },
+              scathach: {
+                intro: "Teacher of heroes, test my blade with all the wisdom of the Land of Shadows!",
+                retort: "Good. Show me if you possess the spirit to pierce immortality!",
+                tag: "DUN SCAITH TRIAL"
+              },
+              aoko: {
+                intro: "Magic Gunner... Let us see the Fifth Magic in all its glory!",
+                retort: "Don't blink then—because I'm not holding back for a single millisecond!",
+                tag: "FIFTH MAGIC CLASH"
+              }
+            }
+          };
         } else if (val === 'jalter_avenger' || val === 'dark_avenger') {
           presetQuotes = {
             noblePhantasm: 'La Grondement du Haine! Burn to cinders!',
@@ -7796,6 +8016,10 @@ export default function DiscordEmulator({
         }
       }
       else if (btnId.startsWith('dlg_open_modal_')) {
+        if (btnId.includes('faceoff')) {
+          postFaceoffStudioHub(targetServant.id);
+          return;
+        }
         const isTactical = btnId.includes('tactical');
         addMessage({
           id: getNextId('bot_dlg_studio_prompt'),
@@ -7820,6 +8044,93 @@ export default function DiscordEmulator({
                 `• \`/customise quote summon "<text>"\` — Set Summon line\n\n` +
                 `*Or use the **Servant Workshop -> Combat & NP** tab in the web app to author quotes with live interactive textareas!*`,
             color: isTactical ? '#a855f7' : '#d4af37'
+          }
+        });
+      }
+      else if (btnId.startsWith('faceoff_quick_set_')) {
+        const parts = btnId.replace('faceoff_quick_set_', '').split('_');
+        const rivalKey = parts[0];
+        const sId = parts.slice(1).join('_') || targetServant.id;
+        const cur = ownedServants.find(s => s.id === sId) || targetServant;
+
+        const rivalMatchupData: Record<string, { intro: string; retort: string; tag: string }> = {
+          artoria: {
+            intro: "Let's see if that Holy Sword can pierce the boundary of my resolve!",
+            retort: "I accept your challenge! By the pride of the Round Table, en garde!",
+            tag: "DESTINED DUEL"
+          },
+          gilgamesh: {
+            intro: "King of Heroes, your treasury has finally met its match!",
+            retort: "Hahaha! An insect dares gaze upon the Vault of Heaven?! Perish!",
+            tag: "KINGS' SUMMIT"
+          },
+          emiya: {
+            intro: "Show me the full depth of your infinite projection!",
+            retort: "Very well. Let us test if your steel can withstand my forgery.",
+            tag: "BLADE CLASH"
+          },
+          scathach: {
+            intro: "Teacher of heroes, test my blade with all the wisdom of the Land of Shadows!",
+            retort: "Good. Show me if you possess the spirit to pierce immortality!",
+            tag: "DUN SCAITH TRIAL"
+          },
+          aoko: {
+            intro: "Magic Gunner... Let us see the Fifth Magic in all its glory!",
+            retort: "Don't blink then—because I'm not holding back for a single millisecond!",
+            tag: "FIFTH MAGIC CLASH"
+          }
+        };
+
+        const chosenData = rivalMatchupData[rivalKey] || {
+          intro: "Prepare yourself! This clash shall determine the path of destiny!",
+          retort: "I accept your challenge with all the honor of my blade!",
+          tag: "RIVAL CLASH"
+        };
+
+        const targetRival = SERVANT_DATABASE.find(s => s.id.toLowerCase() === rivalKey) || SERVANT_DATABASE[0];
+
+        const updatedServants = ownedServants.map(s => {
+          if (s.id === cur.id) {
+            const nextQuotes = { ...(s.customQuotes || {}) };
+            const nextMatchups = { ...(nextQuotes.matchups || {}) };
+            nextMatchups[targetRival.id] = chosenData;
+            return {
+              ...s,
+              customQuotes: {
+                ...nextQuotes,
+                matchups: nextMatchups
+              }
+            };
+          }
+          return s;
+        });
+
+        onUpdateMaster({ ...master, servants: updatedServants });
+
+        const sName = cur.nickname || cur.template?.name || 'Servant';
+        addMessage({
+          id: getNextId('bot_faceoff_preset_saved'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `⚔️ Rival Face-Off Banter Applied!`,
+            description:
+              `Applied clash dialogue preset for **${sName}** vs **${targetRival.name}** [${targetRival.servantClass}]!\n\n` +
+              `🏷️ **Clash Tag:** \`${chosenData.tag}\`\n\n` +
+              `🔥 **Challenger Opening (${sName}):**\n` +
+              `*" ${chosenData.intro} "*\n\n` +
+              `🛡️ **Defender Retort (${targetRival.name}):**\n` +
+              `*" ${chosenData.retort} "*\n\n` +
+              `✨ *During duel arena battles and cut-ins against ${targetRival.name}, this dedicated face-off dialogue will trigger dynamically!*`,
+            color: '#d4af37'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: `dlg_open_modal_faceoff_${cur.id}`, label: 'View All Face-Offs 🔥', style: 'primary', emoji: '🔥' },
+              { id: 'servant_tab_dialogue', label: 'Back to Voice Lines 💬', style: 'secondary', emoji: '💬' },
+              { id: 'quick_start_duel', label: 'Enter Duel Arena ⚔️', style: 'danger', emoji: '⚔️' }
+            ]
           }
         });
       }

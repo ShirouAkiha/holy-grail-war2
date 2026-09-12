@@ -42,6 +42,7 @@ import * as boastCommand from './commands/boast';
 import * as dailyCommand from './commands/daily';
 import * as feedCommand from './commands/feed';
 import * as gachaCommand from './commands/gacha';
+import { SERVANT_DATABASE } from './data/servants';
 import { getOrCreateMaster, getMaster, saveMaster, getAllThroneServants, findServantInPool, searchAndRankServants, claimDailySaintQuartz } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
 import { allocateStatPoints } from './engine/statSystem';
@@ -459,6 +460,51 @@ client.on(Events.InteractionCreate, async interaction => {
           await interaction.reply({
             flags: MessageFlags.Ephemeral,
             content: `💬 Custom voice lines and combat chants saved for **${servant.nickname || servant.template.name}**!`
+          });
+        }
+      }
+      else if (interaction.customId.startsWith('modal_quotes_faceoff:')) {
+        const servantId = interaction.customId.replace('modal_quotes_faceoff:', '');
+        const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+        const servant = master.servants?.find((s: any) => s.id === servantId);
+
+        if (servant) {
+          const getVal = (id: string) => {
+            try { return interaction.fields.getTextInputValue(id); } catch { return ''; }
+          };
+
+          const rivalRaw = getVal('faceoff_rival').trim().toLowerCase();
+          const intro = getVal('faceoff_intro').trim();
+          const retort = getVal('faceoff_retort').trim();
+          const tag = getVal('faceoff_tag').trim();
+
+          const matchedRival = SERVANT_DATABASE.find(s =>
+            s.id.toLowerCase() === rivalRaw ||
+            s.name.toLowerCase().includes(rivalRaw) ||
+            s.servantClass.toLowerCase() === rivalRaw ||
+            (s.aliases && s.aliases.some((a: string) => a.toLowerCase().includes(rivalRaw)))
+          ) || SERVANT_DATABASE[0];
+
+          if (!servant.customQuotes) servant.customQuotes = {};
+          if (!servant.customQuotes.matchups) servant.customQuotes.matchups = {};
+
+          if (intro) {
+            servant.customQuotes.matchups[matchedRival.id] = {
+              intro,
+              ...(retort ? { retort } : {}),
+              ...(tag ? { tag } : {})
+            };
+          }
+
+          await saveMaster(master);
+
+          await interaction.reply({
+            flags: MessageFlags.Ephemeral,
+            content: `⚔️ Custom face-off clash banter registered for **${servant.nickname || servant.template.name}** vs **${matchedRival.name}**!\n\n` +
+              `🔥 **Challenger Quote:** *" ${intro} "*\n` +
+              (retort ? `🛡️ **Defender Retort:** *" ${retort} "*\n` : '') +
+              (tag ? `🏷️ **Clash Tag:** \`${tag}\`\n` : '') +
+              `✨ *This dialogue triggers automatically in /duel arena combat and cut-in clashes!*`
           });
         }
       }

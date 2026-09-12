@@ -899,7 +899,17 @@ function activateCombatantSkill(
   combatant: DuelCombatant,
   skillIdx: number,
   opponent?: DuelCombatant
-): { success: boolean; log: string; quote?: string; skillName?: string; skillType?: string; skillDescription?: string } {
+): {
+  success: boolean;
+  log: string;
+  quote?: string;
+  skillName?: string;
+  skillType?: string;
+  skillDescription?: string;
+  isTransformation?: boolean;
+  transformationGif?: string;
+  transformationAvatarUrl?: string;
+} {
   const bondLevel = combatant.servant.bondLevel || 1;
   if (skillIdx === 2 && bondLevel < 5) {
     return { success: false, log: '🔒 **Skill 3 is Locked!** Reach Bond Level 5 to unlock this skill.' };
