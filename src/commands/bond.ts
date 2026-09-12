@@ -6,7 +6,8 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ButtonInteraction,
-  MessageFlags
+  MessageFlags,
+  AttachmentBuilder
 } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { 
@@ -18,6 +19,7 @@ import {
   BOND_EXP_TABLE
 } from '../../lib/engine/bondEvents';
 import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
+import { renderVisualNovelCard } from '../canvas/renderer';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -136,27 +138,36 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const sTemplate = activeServant.template || activeServant;
       const servantName = activeServant.nickname || sTemplate.name || 'Heroic Spirit';
 
+      // Generate VN Canvas Image
+      const imageBuffer = await renderVisualNovelCard({
+        servantName,
+        servantClass: sTemplate.servantClass || 'Saber',
+        servantAvatarUrl: sTemplate.avatarUrl,
+        speakerName: scene1.speakerName || servantName,
+        dialogueText: scene1.dialogueText,
+        title: firstEvent.title,
+        subtitle: firstEvent.subtitle,
+        currentBondLevel: activeServant.bondLevel || 1
+      });
+
+      const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel.png' });
+
       const vnEmbed = new EmbedBuilder()
         .setTitle(`📖 Visual Novel Interlude: ${firstEvent.title}`)
         .setDescription(
           `*${firstEvent.subtitle}*\n\n` +
-          `**${scene1.speakerName || servantName}**:\n` +
-          `*"${scene1.dialogueText}"*\n\n` +
-          `👇 **Make your dialogue choice below to increase Bond EXP:**`
+          `👇 **Make your dialogue choice below to deepen your Bond:**`
         )
+        .setImage('attachment://visual_novel.png')
         .setColor(0xec4899)
         .setFooter({ text: `Reward: +${firstEvent.rewardBondExp} Bond EXP & 💎 ${firstEvent.rewardSaintQuartz || 3} SQ` });
-
-      if (sTemplate.avatarUrl) {
-        safeSetEmbedThumbnail(vnEmbed, sTemplate.avatarUrl);
-      }
 
       const choicesRow = new ActionRowBuilder<ButtonBuilder>();
       if (scene1.choices && scene1.choices.length > 0) {
         scene1.choices.forEach((c, idx) => {
           choicesRow.addComponents(
             new ButtonBuilder()
-              .setCustomId(`vn_choice_${firstEvent.id}_${c.id}`)
+              .setCustomId(`vn_choice:${firstEvent.id}:${c.id}`)
               .setLabel(`${idx + 1}. ${c.text.slice(0, 70)}`)
               .setStyle(ButtonStyle.Primary)
           );
@@ -172,6 +183,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       return interaction.editReply({
         embeds: [vnEmbed],
+        files: [attachment],
         components: [choicesRow]
       });
     }
@@ -204,31 +216,43 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
     const servantName = activeServant.nickname || sTemplate.name || 'Heroic Spirit';
 
     if (btnId === 'vn_play_event') {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
       const events = getBondEventsForServant(activeServant);
       const bondLvl = activeServant.bondLevel || 1;
       const availableEvent = events.find(e => e.requiredBondLevel <= bondLvl) || events[0];
       const scene1 = availableEvent.scenes[0];
 
+      // Generate VN Canvas Image
+      const imageBuffer = await renderVisualNovelCard({
+        servantName,
+        servantClass: sTemplate.servantClass || 'Saber',
+        servantAvatarUrl: sTemplate.avatarUrl,
+        speakerName: scene1.speakerName || servantName,
+        dialogueText: scene1.dialogueText,
+        title: availableEvent.title,
+        subtitle: availableEvent.subtitle,
+        currentBondLevel: activeServant.bondLevel || 1
+      });
+
+      const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel.png' });
+
       const vnEmbed = new EmbedBuilder()
         .setTitle(`📖 Bond Interlude: ${availableEvent.title}`)
         .setDescription(
-          `**${scene1.speakerName || servantName}**:\n` +
-          `*"${scene1.dialogueText}"*\n\n` +
+          `*${availableEvent.subtitle}*\n\n` +
           `👇 **Choose your response to deepen your Bond:**`
         )
+        .setImage('attachment://visual_novel.png')
         .setColor(0xec4899)
         .setFooter({ text: `Reward: +${availableEvent.rewardBondExp} Bond EXP & 💎 ${availableEvent.rewardSaintQuartz || 3} SQ` });
-
-      if (sTemplate.avatarUrl) {
-        safeSetEmbedThumbnail(vnEmbed, sTemplate.avatarUrl);
-      }
 
       const choicesRow = new ActionRowBuilder<ButtonBuilder>();
       if (scene1.choices && scene1.choices.length > 0) {
         scene1.choices.forEach((c, idx) => {
           choicesRow.addComponents(
             new ButtonBuilder()
-              .setCustomId(`vn_choice_${availableEvent.id}_${c.id}`)
+              .setCustomId(`vn_choice:${availableEvent.id}:${c.id}`)
               .setLabel(`${idx + 1}. ${c.text.slice(0, 70)}`)
               .setStyle(ButtonStyle.Primary)
           );
@@ -242,9 +266,9 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         );
       }
 
-      await interaction.reply({
-        flags: MessageFlags.Ephemeral,
+      await interaction.editReply({
         embeds: [vnEmbed],
+        files: [attachment],
         components: [choicesRow]
       });
       return;
@@ -276,15 +300,30 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       return;
     }
 
-    if (btnId.startsWith('vn_choice_')) {
+    if (btnId.startsWith('vn_choice:') || btnId.startsWith('vn_choice_')) {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
       const events = getBondEventsForServant(activeServant);
-      const event = events[0];
+      
+      // Parse colon or underscore format safely
+      let eventId = '';
+      let choiceId = '';
+      if (btnId.includes(':')) {
+        const parts = btnId.split(':');
+        eventId = parts[1];
+        choiceId = parts[2];
+      } else {
+        // Fallback parsing for legacy buttons
+        choiceId = btnId.replace(/vn_choice_[^_]+_/, '');
+      }
+
+      const event = events.find(e => e.id === eventId) || events[0];
       const scene1 = event.scenes[0];
 
-      // Parse choice
-      const choiceId = btnId.replace(/vn_choice_[^_]+_/, '');
+      // Accurately find picked choice
       const pickedChoice = scene1.choices?.find(c => c.id === choiceId);
-      const expGain = pickedChoice ? pickedChoice.bondExpGain : 100;
+      const expGain = pickedChoice ? pickedChoice.bondExpGain : 150;
+      const servantResponse = pickedChoice ? pickedChoice.response : scene1.dialogueText;
 
       // Add bond exp to servant
       const { updatedServant } = addBondExpToServant(activeServant, expGain);
@@ -304,31 +343,51 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const reactionEmoji = pickedChoice?.reactionEmotion === 'happy' ? '💖' : pickedChoice?.reactionEmotion === 'flustered' ? '😳' : pickedChoice?.reactionEmotion === 'amused' ? '😄' : '✨';
 
+      // Render Visual Novel Reaction Card Canvas Image
+      const imageBuffer = await renderVisualNovelCard({
+        servantName,
+        servantClass: sTemplate.servantClass || 'Saber',
+        servantAvatarUrl: sTemplate.avatarUrl,
+        speakerName: scene1.speakerName || servantName,
+        dialogueText: servantResponse,
+        title: `${event.title} (Complete)`,
+        subtitle: event.subtitle,
+        choiceMadeText: pickedChoice?.text,
+        reactionEmotion: pickedChoice?.reactionEmotion,
+        expGained: expGain,
+        sqGained: sqReward,
+        currentBondLevel: updatedServant.bondLevel || 1,
+        isComplete: true
+      });
+
+      const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel_reaction.png' });
+
       const resultEmbed = new EmbedBuilder()
         .setTitle(`🌸 Interlude Complete: ${event.title}`)
         .setDescription(
           `**${servantName}**:\n` +
-          `*"${pickedChoice ? pickedChoice.response : scene1.dialogueText}"*\n\n` +
+          `*"${servantResponse}"*\n\n` +
           `🎉 **REWARDS EARNED:**\n` +
           `• **Bond EXP:** +${expGain} EXP ${reactionEmoji}\n` +
           `• **Saint Quartz:** +💎 ${sqReward} SQ\n` +
           `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\``
         )
+        .setImage('attachment://visual_novel_reaction.png')
         .setColor(0xec4899);
 
-      if (sTemplate.avatarUrl) {
-        safeSetEmbedThumbnail(resultEmbed, sTemplate.avatarUrl);
-      }
-
-      await interaction.reply({
-        flags: MessageFlags.Ephemeral,
-        embeds: [resultEmbed]
+      await interaction.editReply({
+        embeds: [resultEmbed],
+        files: [attachment]
       });
       return;
     }
 
   } catch (error: any) {
     console.error('Error in handleBondButtonInteraction:', error);
-    await interaction.reply({ flags: MessageFlags.Ephemeral, content: `❌ Error: ${error.message}` });
+    if (interaction.deferred || interaction.replied) {
+      await interaction.editReply({ content: `❌ Error: ${error.message}` });
+    } else {
+      await interaction.reply({ flags: MessageFlags.Ephemeral, content: `❌ Error: ${error.message}` });
+    }
   }
 }
