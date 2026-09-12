@@ -1,7 +1,7 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['canvas', 'discord.js', '@discordjs/ws', '@discordjs/rest', 'zlib-sync'],
+  serverExternalPackages: ['canvas', '@napi-rs/canvas', 'gifenc', 'discord.js', '@discordjs/ws', '@discordjs/rest', 'zlib-sync'],
   reactStrictMode: true,
   eslint: {
     ignoreDuringBuilds: true,

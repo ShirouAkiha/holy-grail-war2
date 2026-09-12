@@ -8673,16 +8673,25 @@ export default function DiscordEmulator({
         handleCommand('/duel 1v2');
       } else if (btnId === 'duel_act_alliance_assist') {
         if (!activeDuel) return;
-        const p1 = activeDuel.battle.player1;
-        p1.critStars = Math.min(50, (p1.critStars || 0) + 15);
-        p1.activeBuffs = p1.activeBuffs || [];
-        p1.activeBuffs.push({
+        const currentP1 = activeDuel.battle.player1;
+        const updatedBuffs = [...(currentP1.activeBuffs || []), {
           name: 'Alliance Tag Assist',
           type: 'buff_atk',
           value: 25,
           remainingTurns: 2
+        }];
+        const updatedP1 = {
+          ...currentP1,
+          critStars: Math.min(50, (currentP1.critStars || 0) + 15),
+          activeBuffs: updatedBuffs
+        };
+        setActiveDuel({
+          ...activeDuel,
+          battle: {
+            ...activeDuel.battle,
+            player1: updatedP1
+          }
         });
-        setActiveDuel({ ...activeDuel, battle: { ...activeDuel.battle } });
         addMessage({
           id: getNextId('bot_alliance_assist'),
           sender: 'bot',
@@ -9633,7 +9642,15 @@ export default function DiscordEmulator({
             footer: 'Holy Grail War • Turn-based RPG Combat Engine'
           },
           canvasType: 'battle',
-          canvasPayload: { log: lastLog, p1: updatedState.player1, p2: updatedState.player2 },
+          canvasPayload: {
+            log: lastLog,
+            p1: updatedState.player1,
+            p2: updatedState.player2,
+            p1Ally: updatedState.player1Ally,
+            p2Ally: updatedState.player2Ally,
+            teamA: updatedState.teamA,
+            teamB: updatedState.teamB
+          },
           components: {
             type: 'buttons',
             items: [

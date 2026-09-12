@@ -49,7 +49,16 @@ export function CanvasRenderer({ canvasType, payload }: { canvasType: string; pa
         payload.bgUrlOrPreset || 'fuyuki'
       );
     } else if (canvasType === 'battle') {
-      renderBattleTurnSummary(canvas, payload.log, payload.p1, payload.p2);
+      renderBattleTurnSummary(
+        canvas,
+        payload.log,
+        payload.p1,
+        payload.p2,
+        payload.p1Ally,
+        payload.p2Ally,
+        payload.teamA,
+        payload.teamB
+      );
     } else if (canvasType === 'gacha') {
       renderGachaSummonBanner(canvas, payload.results || [], payload.bannerTitle || 'Craft Essence Forge');
     }
