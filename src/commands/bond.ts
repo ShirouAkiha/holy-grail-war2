@@ -256,10 +256,11 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const choicesRow = new ActionRowBuilder<ButtonBuilder>();
       if (scene1.choices && scene1.choices.length > 0) {
         scene1.choices.forEach((c, idx) => {
+          const labelText = `${idx + 1}. ${c.text.length > 74 ? c.text.slice(0, 71) + '...' : c.text}`;
           choicesRow.addComponents(
             new ButtonBuilder()
               .setCustomId(`vn_choice:${event.id}:0:${c.id}`)
-              .setLabel(`${idx + 1}. ${c.text.length > 77 ? c.text.slice(0, 74) + '...' : c.text}`)
+              .setLabel(labelText)
               .setStyle(ButtonStyle.Primary)
           );
         });
@@ -532,10 +533,11 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const choicesRow = new ActionRowBuilder<ButtonBuilder>();
       if (scene.choices && scene.choices.length > 0) {
         scene.choices.forEach((c, idx) => {
+          const labelText = `${idx + 1}. ${c.text.length > 74 ? c.text.slice(0, 71) + '...' : c.text}`;
           choicesRow.addComponents(
             new ButtonBuilder()
               .setCustomId(`vn_choice:${event.id}:${nextSceneIdx}:${c.id}`)
-              .setLabel(`${idx + 1}. ${c.text.length > 77 ? c.text.slice(0, 74) + '...' : c.text}`)
+              .setLabel(labelText)
               .setStyle(ButtonStyle.Primary)
           );
         });
