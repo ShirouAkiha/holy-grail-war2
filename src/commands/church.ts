@@ -20,6 +20,7 @@ import {
   generateFuyuki2hNewsBulletin
 } from '../engine/churchNewsService';
 import { renderKireiVisualNovelCard } from '../canvas/renderer';
+import { extractCleanSentenceSummary } from './grailwar';
 
 export const data = new SlashCommandBuilder()
   .setName('church')
@@ -48,12 +49,21 @@ export function buildHomilyEmbed(homily: any): EmbedBuilder {
     .map((e: string) => `• ${e.replace(/\*\*/g, '')}`)
     .join('\n');
 
+  // Format paragraphs cleanly with Discord blockquotes on every line
+  const formattedMonologue = (homily.monologue || '')
+    .split('\n')
+    .map((p: string) => p.trim())
+    .filter(Boolean)
+    .map((p: string) => `> *“${p.replace(/^["“']|["”']$/g, '')}”*`)
+    .join('\n>\n');
+
   return new EmbedBuilder()
     .setTitle(homily.title || '🕯️ The Overseer’s 24-Hour Homily | Father Kotomine')
     .setDescription(
       `*“${homily.subtitle || 'A Theological Reflection on the Carnage & Desires of Fuyuki’s Masters'}”*\n\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-      `${homily.monologue}\n\n` +
+      `📜 **THE OVERSEER'S HOMILY TRANSCRIPT:**\n` +
+      `${formattedMonologue}\n\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `${statsLine}\n\n` +
       (highlights ? `🕯️ **The Overseer's Noted Events:**\n${highlights}\n\n` : '') +
@@ -137,7 +147,7 @@ export function buildChurchEmbed(userParticipant: any, war?: any, lastMsg?: stri
       `• **Truce Binding:** Masters in sanctuary cannot launch ambushes or attack rivals until they formally depart.` +
       bountyNotice +
       (war?.latestChurchHomily?.monologue
-        ? `\n\n📜 **Overseer's Sermon Soliloquy (Father Kotomine):**\n> *“${war.latestChurchHomily.monologue}”*`
+        ? `\n\n📜 **Overseer's Homily Excerpt:**\n> *“${extractCleanSentenceSummary(war.latestChurchHomily.monologue, 210)}”*`
         : '') +
       `\n\n*Use the interactive buttons below or run \`/church action:homily\` and \`/church action:news\`:*`
     )

@@ -312,20 +312,22 @@ export async function buildGrailWarHub(
     const homily = war.latestChurchHomily;
     const news = war.latestNewsBulletin;
     const monologueText = homily?.monologue || 'Rejoice, Masters. The leylines await your blood. Carve each other apart with haste.';
-    const newsStory = extractCleanSentenceSummary(news?.gasLeakCoverStory, 400) ||
+    const sermonSummary = extractCleanSentenceSummary(monologueText, 210) || 'Rejoice, Masters. The leylines await your blood.';
+    const newsStory = extractCleanSentenceSummary(news?.gasLeakCoverStory, 230) ||
       (news?.headline || 'Miyama District gas line inspection in progress. Citizens advised to remain indoors.');
 
     const churchIntelEmbed = new EmbedBuilder()
       .setTitle('🕯️ Fuyuki Church Overseer & Municipal Intelligence Relay')
       .setColor(0x991b1b)
-      .setFooter({ text: 'Holy Church Neutral Sanctuary • Use /church for asylum & bounties' });
+      .setFooter({ text: 'Holy Church Neutral Sanctuary • Click [Church] or use /church' });
 
     safeSetDescription(
       churchIntelEmbed,
-      `🕯️ **Overseer's 24h Sermon Soliloquy (Father Kotomine):**\n` +
-      `> *“${monologueText}”*\n\n` +
+      `🕯️ **Overseer's 24h Soliloquy (Father Kotomine):**\n` +
+      `> *“${sermonSummary}”*\n\n` +
       `📰 **2h Fuyuki Breaking News (Gas Leak Cover-Up):**\n` +
-      `> *“${newsStory}”*`
+      `> *“${newsStory}”*\n\n` +
+      `💡 *Read Father Kotomine’s full transcript and municipal dispatches via the Church menu.*`
     );
 
     try {
@@ -602,6 +604,7 @@ export async function buildGrailWarHub(
     const isUnderSanctuary = !!(userParticipant?.inSanctuary || userParticipant?.inChurchSanctuary);
     const homily = war.latestChurchHomily;
     const monologueText = homily?.monologue || 'Welcome to the sanctuary of the Holy Church, Masters. Yield your Command Seals, or prepare to bathe in the holy spice of destiny.';
+    const sermonSummary = extractCleanSentenceSummary(monologueText, 210) || monologueText;
 
     const embed = new EmbedBuilder()
       .setTitle('⛪ Fuyuki Church Sanctuary (Father Kotomine)')
@@ -612,8 +615,8 @@ export async function buildGrailWarHub(
         `• **Your Status:** ${isUnderSanctuary ? '🕊️ **UNDER CHURCH ASYLUM** *(Immune to ambushes & unable to attack)*' : '⚔️ **ACTIVE COMBATANT** *(Can engage in skirmishes)*'}\n` +
         `• **Immunity:** Masters residing within the Church cannot be ambushed or tracked by familiars.\n` +
         `• **Restriction:** While under sanctuary, you cannot launch ambushes, leak intel, or duel rivals.\n\n` +
-        `🕯️ **OVERSEER’S HOMILY TRANSCRIPT:**\n` +
-        `> *“${monologueText}”*\n\n` +
+        `🕯️ **OVERSEER’S HOMILY EXCERPT:**\n` +
+        `> *“${sermonSummary}”*\n\n` +
         `*Click the buttons below to claim sanctuary, or read Father Kotomine’s 24h Homily and the 2h Breaking News Bulletin:*`
       )
       .setColor(isUnderSanctuary ? 0x22c55e : 0xd4af37)
