@@ -198,6 +198,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       equippedCeName,
       recentChronicleEvents,
       recentBattleEvents,
+      latestBattleEvent: recentBattleEvents[0],
       interceptedLeaks,
       casualtyDossier,
       playerMessage,

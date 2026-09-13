@@ -774,6 +774,7 @@ client.on(Events.InteractionCreate, async interaction => {
             equippedCeName,
             recentChronicleEvents,
             recentBattleEvents,
+            latestBattleEvent: recentBattleEvents[0],
             interceptedLeaks,
             casualtyDossier,
             playerMessage,

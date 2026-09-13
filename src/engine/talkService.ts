@@ -21,6 +21,8 @@ export interface ServantTalkContext {
   equippedCeName?: string;
   recentChronicleEvents?: string[];
   recentBattleEvents?: string[];
+  latestBattleEvent?: string;
+  latestFatalityEvent?: string;
   interceptedLeaks?: {
     informant: string;
     intel: string;
@@ -287,6 +289,22 @@ export async function generateServantTalkResponse(context: ServantTalkContext): 
   }
 
   // Tactical Battle & Skirmish Logs
+  let latestBattleAnchor = '';
+  const topBattle = context.latestBattleEvent || (context.recentBattleEvents && context.recentBattleEvents[0]);
+  if (topBattle) {
+    const rawBattle = topBattle.replace(/\*\*/g, '').trim();
+    let outcomeNote = '';
+    const lowerB = rawBattle.toLowerCase();
+    if (lowerB.includes('mercy bestowed') || lowerB.includes('spare') || lowerB.includes('spared')) {
+      outcomeNote = ' [COMBAT OUTCOME: You and Master won the duel and deliberately SPARED the defeated Master/Servant!]';
+    } else if (lowerB.includes('eliminated') || lowerB.includes('struck down') || lowerB.includes('execution')) {
+      outcomeNote = ' [COMBAT OUTCOME: Lethal victory / rival was eliminated.]';
+    } else if (lowerB.includes('ambush')) {
+      outcomeNote = ' [COMBAT OUTCOME: Ambush skirmish.]';
+    }
+    latestBattleAnchor = `\n*** IMMEDIATE COMBAT HIGHLIGHT (MOST RECENT DUEL / EVENT) ***\n• ${rawBattle}${outcomeNote}\n`;
+  }
+
   let battleIntel = '  • No direct Master ambushes, duels, or lethal clashes have occurred recently.';
   if (context.recentBattleEvents && context.recentBattleEvents.length > 0) {
     battleIntel = context.recentBattleEvents
@@ -391,6 +409,7 @@ ${warBoardIntel}
 - Command Seals Remaining: ${seals}/3
 - Master Concealment Status: ${context.isExposed ? 'Exposed to public War Board (dangerous)' : 'Concealed in shadows (safe)'}
 - Equipped Craft Essence: ${context.equippedCeName || 'None equipped'}
+${latestBattleAnchor}
 - Tactical Battle & Duel Logs (Recent Clashes in Fuyuki):
 ${battleIntel}
 - Intercepted Intelligence Leaks & Surveillance:
@@ -409,6 +428,11 @@ VOICE & ROLEPLAY INSTRUCTIONS:
 - BANNED CLICHES & ROBOTIC NPC PHRASES (STRICTLY FORBIDDEN):
   * NEVER use generic assistant sign-offs or cliché combat filler such as: ${allBanned.map(b => `"${b}"`).join(', ')}.
   * NEVER recite raw numbers, percentages, or status sheet labels (do NOT say "my spiritual origin is at 100%").
+- CONTEXTUAL COMBAT REACTIONS (CRITICAL):
+  * If Master makes an exclamation, boast, victory remark, or comment about combat (e.g., "that was easy!", "we won!", "good job", "nice fight", "did you see that?", "why did we spare them?", "are you okay?"), IMMEDIATELY anchor your reaction to the IMMEDIATE COMBAT HIGHLIGHT above!
+  * If you and Master just fought and SPARED a rival (e.g. Master fou.chii / Nero Claudius), acknowledge that duel and Master's decision to show mercy or spare them.
+  * If you just executed or ambushed an opponent, react in character to that specific clash and opponent.
+  * Do NOT hallucinate vague or fictitious fights when a real duel or skirmish is right there in the combat highlight above.
 - Conversational Variety: Directly react to what Master said. If they tell you to rest, tease them, argue, complain about being tired or stubborn, or make an aggressive joke—do NOT immediately pivot into an AI battle-advisor warning!
 - War Intelligence, Battle Logs, Leaks & Casualty Inquiries:
   You have direct spiritual and telepathic access to the battlefield intelligence dossiers above!
