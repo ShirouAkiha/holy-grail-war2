@@ -147,7 +147,7 @@ export function buildChurchEmbed(userParticipant: any, war?: any, lastMsg?: stri
       `• **Truce Binding:** Masters in sanctuary cannot launch ambushes or attack rivals until they formally depart.` +
       bountyNotice +
       (war?.latestChurchHomily?.monologue
-        ? `\n\n📜 **Overseer's Homily Excerpt:**\n> *“${extractCleanSentenceSummary(war.latestChurchHomily.monologue, 210)}”*`
+        ? `\n\n📜 **Overseer's Homily (Father Kotomine):**\n> *“${war.latestChurchHomily.monologue}”*`
         : '') +
       `\n\n*Use the interactive buttons below or run \`/church action:homily\` and \`/church action:news\`:*`
     )

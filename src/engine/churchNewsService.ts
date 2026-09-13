@@ -38,7 +38,7 @@ export function generateCanonicalKotomineHomily(war: HolyGrailWarSession): Churc
     (l.text && (l.text.includes('clash') || l.text.includes('ambush') || l.text.includes('eliminated') || l.text.includes('casualty')))
   );
 
-  const monologue = `Rejoice, Masters of Fuyuki. Another day ends with ${totalCasualties} soul(s) offered to the leylines. ${fallenMasters.length > 0 ? `Those who fell (${fallenMasters.map(f => f.username).join(', ')}) have returned their cores to the Grail.` : `All ${livingMasters.length} of you miraculously still cling to your mortal shells.`} ${asylumMasters.length > 0 ? `To those cowering in my sanctuary (${asylumMasters.map(a => a.username).join(', ')}): enjoy your fleeting peace.` : `None have yet knelt for sanctuary.`} Carve each other apart with haste—I shall be watching from the bell tower, savoring every drop of your despair.`;
+  const monologue = `Rejoice, Masters. Another 24 hours have passed, and ${totalCasualties} soul(s) have fed the leylines. ${fallenMasters.length > 0 ? `${fallenMasters.map(f => f.username).join(', ')} have returned their cores to the Grail.` : `All ${livingMasters.length} of you miraculously still cling to life.`} ${asylumMasters.length > 0 ? `${asylumMasters.map(a => a.username).join(', ')} seek shelter in my church.` : `None yet seek sanctuary.`} Carve each other apart with haste—I shall watch from the bell tower.`;
 
   const keyEvents = battleLogs.slice(0, 3).map(l => typeof l === 'string' ? l : l.text);
   if (keyEvents.length === 0) {
@@ -124,17 +124,17 @@ CONTEXT OF THE LAST 24 HOURS IN FUYUKI:
 ${battleSummaries || 'Quiet shadows across Fuyuki leylines.'}
 
 KOTOMINE KIREI ROLEPLAY GUIDELINES:
-- Deliver a concise, biting, theatrical, and darkly humorous monologue in 1 to 2 short paragraphs (under 80 words total).
+- CRITICAL LENGTH RULE: Deliver a short, biting, theatrical soliloquy of EXACTLY 2 TO 3 SENTENCES (under 45 words total / ~250 characters). DO NOT write multiple paragraphs or a wall of text.
 - Tone: Cold, liturgical, deeply articulate, philosophical schadenfreude. You relish the absurdity of human ambition and the spectacle of their suffering.
-- Iconic traits: Use phrases like "Rejoice, Master" or "Yorokobe, shounen", reference spicy Mapo tofu, the scent of consecrated incense, and your role as arbitrator.
-- Keep it punchy and quick to read. DO NOT write a wall of text.
+- Iconic traits: Use phrases like "Rejoice, Master" or "Yorokobe, shounen", reference Mapo tofu, consecrated incense, or your role as arbitrator.
+- MUST BE SHORT AND COMPLETE so it can be displayed in full without getting cut off or becoming a wall of text.
 - Return a valid JSON object matching the exact schema below.
 
 JSON Output Schema:
 {
   "title": "A short, evocative homily title (under 8 words)",
   "subtitle": "A concise theological subtitle (under 12 words)",
-  "monologue": "The concise 1-2 paragraph monologue from Kotomine Kirei (under 80 words).",
+  "monologue": "The complete 2-3 sentence monologue from Kotomine Kirei (under 45 words total).",
   "keyEvents": ["2 to 3 very brief bullet points (under 15 words each) with Kotomine's cynical remarks"]
 }`;
 
