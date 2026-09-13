@@ -6085,57 +6085,57 @@ export async function renderVisualNovelCard(
   ctx.save();
   const hudX = 40;
   const hudY = 30;
-  const hudW = 220;
-  const hudH = 65;
+  const hudW = 260;
+  const hudH = 80;
 
   // Semi-transparent dark slate panel
-  ctx.fillStyle = 'rgba(35, 45, 60, 0.78)';
+  ctx.fillStyle = 'rgba(35, 45, 60, 0.85)';
   ctx.beginPath();
-  ctx.roundRect(hudX, hudY, hudW, hudH, 3);
+  ctx.roundRect(hudX, hudY, hudW, hudH, 4);
   ctx.fill();
 
   // Sleek subtle border highlight
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.roundRect(hudX, hudY, hudW, hudH, 3);
+  ctx.roundRect(hudX, hudY, hudW, hudH, 4);
   ctx.stroke();
 
   // Battery & Signal Indicator Icons (Top Right of Widget)
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-  ctx.font = '12px sans-serif';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+  ctx.font = 'bold 16px sans-serif';
   ctx.textAlign = 'right';
-  ctx.fillText('🔋 📶', hudX + hudW - 12, hudY + 20);
+  ctx.fillText('🔋 📶', hudX + hudW - 14, hudY + 26);
 
   // Digital Date Text e.g. "8/13 (FRI)"
-  ctx.font = 'bold 30px "Courier New", monospace';
+  ctx.font = 'bold 38px "Courier New", monospace';
   ctx.textAlign = 'left';
   ctx.fillStyle = '#ffffff';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-  ctx.shadowBlur = 4;
-  ctx.fillText('8/13', hudX + 16, hudY + 44);
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+  ctx.shadowBlur = 6;
+  ctx.fillText('8/13', hudX + 18, hudY + 54);
 
-  ctx.font = 'bold 16px sans-serif';
-  ctx.fillStyle = 'rgba(225, 235, 245, 0.85)';
-  ctx.fillText('(FRI)', hudX + 105, hudY + 44);
+  ctx.font = 'bold 22px sans-serif';
+  ctx.fillStyle = 'rgba(225, 235, 245, 0.9)';
+  ctx.fillText('(FRI)', hudX + 130, hudY + 54);
   ctx.restore();
 
   // ==========================================
   // LAYER 4: DIALOGUE BOX / HUD LAYER (TOP)
   // ==========================================
   const boxX = 40;
-  const boxY = 490;
+  const boxY = 430;
   const boxW = 1200;
-  const boxH = 185;
+  const boxH = 245;
 
   ctx.save();
-  // Semi-transparent dark overlay (covering bottom ~25% of canvas)
-  ctx.fillStyle = 'rgba(12, 16, 25, 0.68)';
+  // Semi-transparent dark overlay
+  ctx.fillStyle = 'rgba(10, 14, 23, 0.78)';
   ctx.fillRect(boxX, boxY, boxW, boxH);
 
-  // Minimalist top highlight line across the top edge of dialogue box
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-  ctx.lineWidth = 1.5;
+  // Minimalist top highlight line across top edge of dialogue box
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(boxX, boxY);
   ctx.lineTo(boxX + boxW, boxY);
@@ -6145,38 +6145,38 @@ export async function renderVisualNovelCard(
   // --- Speaker Name Bracket Tag (Centered at Bottom Edge of Dialogue Box) ---
   const speakerNameText = (opts.speakerName || opts.servantName || 'Heroic Spirit').toUpperCase();
   ctx.save();
-  ctx.font = 'bold 18px Georgia, "Times New Roman", serif';
+  ctx.font = 'bold 26px Georgia, "Times New Roman", serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#ffffff';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-  ctx.shadowBlur = 6;
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+  ctx.shadowBlur = 8;
 
   const bracketStr = `──────────   ${speakerNameText}   ──────────`;
-  ctx.fillText(bracketStr, width / 2, boxY + boxH + 8);
+  ctx.fillText(bracketStr, width / 2, boxY + boxH + 12);
   ctx.restore();
 
   // --- Choice Selected Badge (If choice was made) ---
   if (opts.choiceMadeText) {
     ctx.save();
-    ctx.font = 'italic bold 15px sans-serif';
+    ctx.font = 'bold 22px sans-serif';
     ctx.textAlign = 'right';
     ctx.fillStyle = '#fbbf24';
     ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 4;
+    ctx.shadowBlur = 6;
 
-    const choiceStr = `✨ CHOICE: “${opts.choiceMadeText.length > 40 ? opts.choiceMadeText.slice(0, 37) + '...' : opts.choiceMadeText}”`;
-    ctx.fillText(choiceStr, boxX + boxW - 20, boxY + 30);
+    const choiceStr = `✨ CHOICE: “${opts.choiceMadeText.length > 45 ? opts.choiceMadeText.slice(0, 42) + '...' : opts.choiceMadeText}”`;
+    ctx.fillText(choiceStr, boxX + boxW - 25, boxY + 36);
     ctx.restore();
   }
 
-  // --- Dialogue Text (Clean White Serif with Steins;Gate Gear Indicator) ---
+  // --- Dialogue Text (Large Bold White Serif for Desktop Legibility) ---
   ctx.save();
   const textX = boxX + 45;
-  const textY = boxY + 55;
+  const textY = opts.choiceMadeText ? boxY + 80 : boxY + 65;
   const maxTextW = boxW - 90;
-  const lineHeight = 42;
+  const lineHeight = 52;
 
-  ctx.font = '26px Georgia, "Times New Roman", serif';
+  ctx.font = 'bold 36px Georgia, "Times New Roman", serif';
   ctx.textAlign = 'left';
 
   const cleanText = (opts.dialogueText || '').replace(/^["“]/, '').replace(/["”]$/, '').trim();
@@ -6191,11 +6191,11 @@ export async function renderVisualNovelCard(
     const metrics = ctx.measureText(testLine);
     if (metrics.width > maxTextW && i > 0) {
       // High contrast text shadow
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
-      ctx.shadowOffsetX = 2;
-      ctx.shadowOffsetY = 2;
-      ctx.shadowBlur = 4;
-      ctx.fillStyle = '#f8fafc';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.98)';
+      ctx.shadowOffsetX = 3;
+      ctx.shadowOffsetY = 3;
+      ctx.shadowBlur = 6;
+      ctx.fillStyle = '#ffffff';
       ctx.fillText(currentLine, textX, lineY);
 
       currentLine = words[i];
@@ -6208,11 +6208,11 @@ export async function renderVisualNovelCard(
   }
 
   if (linesDrawn < 3 && currentLine.trim().length > 0) {
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
-    ctx.shadowBlur = 4;
-    ctx.fillStyle = '#f8fafc';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.98)';
+    ctx.shadowOffsetX = 3;
+    ctx.shadowOffsetY = 3;
+    ctx.shadowBlur = 6;
+    ctx.fillStyle = '#ffffff';
     ctx.fillText(currentLine, textX, lineY);
   }
   ctx.restore();
@@ -6225,40 +6225,42 @@ export async function renderVisualNovelCard(
   // Key badge 1: [F3]
   ctx.fillStyle = '#1e293b';
   ctx.beginPath();
-  ctx.roundRect(ctrlX, ctrlY - 14, 28, 18, 2);
+  ctx.roundRect(ctrlX, ctrlY - 18, 36, 24, 3);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  ctx.font = 'bold 11px monospace';
+  ctx.font = 'bold 15px monospace';
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'center';
-  ctx.fillText('F3', ctrlX + 14, ctrlY);
+  ctx.fillText('F3', ctrlX + 18, ctrlY);
 
   // Label: AUTO
+  ctx.font = 'bold 15px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('AUTO', ctrlX + 34, ctrlY);
+  ctx.fillText('AUTO', ctrlX + 44, ctrlY);
 
   // Divider
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText('|', ctrlX + 76, ctrlY);
+  ctx.fillText('|', ctrlX + 96, ctrlY);
 
   // Key badge 2: [E]
   ctx.fillStyle = '#1e293b';
   ctx.beginPath();
-  ctx.roundRect(ctrlX + 88, ctrlY - 14, 20, 18, 2);
+  ctx.roundRect(ctrlX + 110, ctrlY - 18, 28, 24, 3);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.stroke();
 
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'center';
-  ctx.fillText('E', ctrlX + 98, ctrlY);
+  ctx.fillText('E', ctrlX + 124, ctrlY);
 
   // Label: SKIP
+  ctx.font = 'bold 15px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('SKIP', ctrlX + 114, ctrlY);
+  ctx.fillText('SKIP', ctrlX + 146, ctrlY);
   ctx.restore();
 
   try {

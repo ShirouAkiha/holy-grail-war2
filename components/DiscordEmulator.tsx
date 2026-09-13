@@ -272,43 +272,43 @@ function DiscordVNCard({
       )}
 
       {/* LAYER 3: Top-Left HUD (Phone / Date Widget e.g. "8/13 (FRI)") */}
-      <div className="relative z-20 m-4 sm:m-5 px-3.5 py-2 w-48 sm:w-56 bg-slate-900/80 backdrop-blur-sm border border-slate-400/30 rounded-xs shadow-lg">
-        <div className="flex items-center justify-between text-[11px] text-slate-300 font-sans">
-          <span>8/13 <strong className="text-slate-200">(FRI)</strong></span>
-          <span className="text-xs">🔋 📶</span>
+      <div className="relative z-20 m-4 sm:m-5 px-4 py-2.5 w-56 sm:w-64 bg-slate-900/85 backdrop-blur-sm border border-slate-400/40 rounded shadow-lg">
+        <div className="flex items-center justify-between text-xs sm:text-sm text-slate-200 font-sans font-bold">
+          <span className="tracking-wider">8/13 <strong className="text-white">(FRI)</strong></span>
+          <span className="text-sm">🔋 📶</span>
         </div>
       </div>
 
       {/* LAYER 4: Dialogue Box / HUD Layer (Top) */}
-      <div className="relative z-20 w-full bg-[#0c1019]/75 backdrop-blur-md border-t border-slate-200/40 px-5 py-4 sm:px-8 sm:py-5 flex flex-col justify-between min-h-[30%]">
+      <div className="relative z-20 w-full bg-[#0c1019]/80 backdrop-blur-md border-t border-slate-200/50 px-5 py-4 sm:px-8 sm:py-6 flex flex-col justify-between min-h-[35%]">
         {/* Choice Notification Badge */}
         {masterChoiceText && (
-          <div className="mb-2 text-xs font-mono text-amber-300 flex items-center justify-between">
+          <div className="mb-2 text-xs sm:text-sm font-bold font-mono text-amber-300 flex items-center justify-between">
             <span className="truncate">✨ Choice: “{masterChoiceText}”</span>
             {bondExpGain && <span className="text-emerald-400 font-bold ml-2">+{bondExpGain} EXP</span>}
           </div>
         )}
 
         {/* Dialogue Text with End-of-line Gear Indicator */}
-        <p className="text-sm sm:text-base md:text-lg text-slate-100 font-serif leading-relaxed drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)]">
+        <p className="text-base sm:text-lg md:text-xl text-white font-serif font-semibold leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.98)]">
           “{cleanQuote}” <span className="inline-block text-slate-300 font-sans opacity-90 animate-spin-slow">⚙</span>
         </p>
 
         {/* Bottom Control Prompts & Speaker Name Bracket Tag */}
-        <div className="mt-3 pt-2 border-t border-slate-700/50 flex items-center justify-between text-[11px] font-mono text-slate-400">
+        <div className="mt-3 pt-2.5 border-t border-slate-700/60 flex items-center justify-between text-xs sm:text-sm font-mono text-slate-300">
           <div className="flex items-center gap-2">
-            <span className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-[10px] text-white font-bold">F3</span>
-            <span className="text-slate-300">AUTO</span>
-            <span className="text-slate-600">|</span>
-            <span className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-[10px] text-white font-bold">E</span>
-            <span className="text-slate-300">SKIP</span>
+            <span className="px-2 py-0.5 bg-slate-800 border border-slate-500 rounded text-xs text-white font-bold">F3</span>
+            <span className="text-slate-200 font-bold">AUTO</span>
+            <span className="text-slate-500">|</span>
+            <span className="px-2 py-0.5 bg-slate-800 border border-slate-500 rounded text-xs text-white font-bold">E</span>
+            <span className="text-slate-200 font-bold">SKIP</span>
           </div>
 
-          <div className="text-center font-serif text-slate-200 text-xs sm:text-sm tracking-widest font-bold">
+          <div className="text-center font-serif text-white text-sm sm:text-base md:text-lg tracking-widest font-bold drop-shadow">
             ────────── {speakerName.toUpperCase()} ──────────
           </div>
 
-          <div className="text-right text-[10px] text-slate-400 hidden sm:block">
+          <div className="text-right text-xs text-slate-300 font-bold hidden sm:block">
             LVL {bondLevel}/10 {isConcluded ? '✨ CONCLUDED' : ''}
           </div>
         </div>
