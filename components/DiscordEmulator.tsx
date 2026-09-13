@@ -7293,10 +7293,15 @@ export default function DiscordEmulator({
         const scene = evt.scenes[sceneIdx] || evt.scenes[0];
         const hasChoices = scene.choices && scene.choices.length > 0;
 
+        const choiceTextList = hasChoices
+          ? `\n\n👇 **Choose your response to deepen your Bond:**\n` +
+            scene.choices!.map((c, idx) => `**${idx + 1}.** “*${c.text}*”`).join('\n')
+          : '';
+
         const actionButtons = hasChoices
           ? scene.choices!.map((c, idx) => ({
               id: `vn_choice:${evt.id}:${sceneIdx}:${c.id}`,
-              label: `${idx + 1}. “${c.text.slice(0, 70)}”`,
+              label: `${idx + 1}. “${c.text}”`,
               style: 'primary' as const,
               emoji: '💬'
             }))
@@ -7319,7 +7324,8 @@ export default function DiscordEmulator({
             title: `📖 VISUAL NOVEL INTERLUDE — ${evt.title.toUpperCase()}`,
             description:
               `💬 **[BOND INTERLUDE] ${scene.speakerName || activeServant.template.name}:**\n> ❝ ***${scene.dialogueText}*** ❞\n\n` +
-              `*Scene ${sceneIdx + 1}/${evt.scenes.length} • Servant Bond Lv. ${activeServant.bondLevel || 1}*`,
+              `*Scene ${sceneIdx + 1}/${evt.scenes.length} • Servant Bond Lv. ${activeServant.bondLevel || 1}*` +
+              choiceTextList,
             color: '#f59e0b',
             thumbnailUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
             footer: 'Visual Novel Bond Interlude Stage'
@@ -7505,10 +7511,15 @@ export default function DiscordEmulator({
         if (!scene) return;
 
         const hasChoices = scene.choices && scene.choices.length > 0;
+        const choiceTextList = hasChoices
+          ? `\n\n👇 **Choose your response to deepen your Bond:**\n` +
+            scene.choices!.map((c, idx) => `**${idx + 1}.** “*${c.text}*”`).join('\n')
+          : '';
+
         const actionButtons = hasChoices
           ? scene.choices!.map((c, idx) => ({
               id: `vn_choice:${evt.id}:${nextSceneIdx}:${c.id}`,
-              label: `${idx + 1}. “${c.text.slice(0, 24)}”`,
+              label: `${idx + 1}. “${c.text}”`,
               style: 'primary' as const,
               emoji: '💬'
             }))
@@ -7531,7 +7542,8 @@ export default function DiscordEmulator({
             title: `📖 VISUAL NOVEL INTERLUDE — ${evt.title.toUpperCase()}`,
             description:
               `💬 **[BOND INTERLUDE] ${scene.speakerName || activeServant.template.name}:**\n> ❝ ***${scene.dialogueText}*** ❞\n\n` +
-              `*Scene ${nextSceneIdx + 1}/${evt.scenes.length} • Servant Bond Lv. ${activeServant.bondLevel || 1}*`,
+              `*Scene ${nextSceneIdx + 1}/${evt.scenes.length} • Servant Bond Lv. ${activeServant.bondLevel || 1}*` +
+              choiceTextList,
             color: '#f59e0b',
             thumbnailUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
             footer: 'Visual Novel Bond Interlude Stage'
@@ -11545,28 +11557,52 @@ export default function DiscordEmulator({
                   })()}
 
                   {/* Button Actions */}
-                  {msg.components.items && msg.components.items.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {msg.components.items.map(btn => {
-                        let bg = 'bg-[#161616] hover:bg-[#222] text-white/80 border border-[#222]';
-                        if (btn.style === 'primary') bg = 'bg-[#111] hover:bg-[#161616] text-[#d4af37] border border-[#d4af37]/40';
-                        if (btn.style === 'success') bg = 'bg-[#111] hover:bg-[#161616] text-[#22c55e] border border-[#22c55e]/40';
-                        if (btn.style === 'danger') bg = 'bg-[#220000] hover:bg-[#330000] text-[#ef4444] border border-[#ef4444]/40';
+                  {msg.components.items && msg.components.items.length > 0 && (() => {
+                    const isChoiceButtons = msg.components.items.some(btn => btn.id.startsWith('vn_choice'));
 
-                        return (
-                          <button
-                            key={btn.id}
-                            disabled={btn.disabled}
-                            onClick={() => handleButtonClick(btn.id, msg.id)}
-                            className={`px-3 py-1.5 rounded-sm text-xs font-mono uppercase tracking-wider font-semibold flex items-center gap-1.5 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${bg}`}
-                          >
-                            {btn.emoji && <span>{btn.emoji}</span>}
-                            <span>{btn.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                    if (isChoiceButtons) {
+                      return (
+                        <div className="flex flex-col gap-2 w-full mt-2">
+                          {msg.components.items.map(btn => (
+                            <button
+                              key={btn.id}
+                              disabled={btn.disabled}
+                              onClick={() => handleButtonClick(btn.id, msg.id)}
+                              className="w-full text-left p-3 rounded-lg text-xs sm:text-sm font-sans normal-case leading-relaxed font-medium flex items-start gap-2.5 transition-all cursor-pointer border bg-indigo-950/70 hover:bg-indigo-900/90 text-indigo-100 border-indigo-500/50 hover:border-indigo-400 shadow-md hover:shadow-indigo-500/20 disabled:opacity-40 disabled:cursor-not-allowed group"
+                            >
+                              {btn.emoji && <span className="shrink-0 text-sm mt-0.5">{btn.emoji}</span>}
+                              <span className="flex-1 min-w-0 break-words whitespace-normal font-serif text-slate-100 group-hover:text-amber-200">
+                                {btn.label}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="flex flex-wrap gap-2">
+                        {msg.components.items.map(btn => {
+                          let bg = 'bg-[#161616] hover:bg-[#222] text-white/80 border border-[#222]';
+                          if (btn.style === 'primary') bg = 'bg-[#111] hover:bg-[#161616] text-[#d4af37] border border-[#d4af37]/40';
+                          if (btn.style === 'success') bg = 'bg-[#111] hover:bg-[#161616] text-[#22c55e] border border-[#22c55e]/40';
+                          if (btn.style === 'danger') bg = 'bg-[#220000] hover:bg-[#330000] text-[#ef4444] border border-[#ef4444]/40';
+
+                          return (
+                            <button
+                              key={btn.id}
+                              disabled={btn.disabled}
+                              onClick={() => handleButtonClick(btn.id, msg.id)}
+                              className={`px-3 py-1.5 rounded-sm text-xs font-mono uppercase tracking-wider font-semibold flex items-center gap-1.5 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${bg}`}
+                            >
+                              {btn.emoji && <span>{btn.emoji}</span>}
+                              <span>{btn.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>

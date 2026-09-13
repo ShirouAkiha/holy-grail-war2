@@ -151,11 +151,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel.png' });
 
       const cleanTitle = event.title.replace(/^Bond Interlude:\s*/i, '');
+      const choiceTextList = scene1.choices && scene1.choices.length > 0
+        ? `\n\n👇 **Choose your response to deepen your Bond:**\n` +
+          scene1.choices.map((c, idx) => `**${idx + 1}.** “*${c.text}*”`).join('\n')
+        : '';
+
       const vnEmbed = new EmbedBuilder()
         .setTitle(`📖 Bond Interlude: ${cleanTitle}`)
         .setDescription(
-          `*${event.subtitle}* ${statusNote ? `\n\n*${statusNote}*` : ''}\n\n` +
-          `👇 **Make your dialogue choice below to deepen your Bond:**`
+          `*${event.subtitle}* ${statusNote ? `\n\n*${statusNote}*` : ''}` +
+          choiceTextList
         )
         .setImage('attachment://visual_novel.png')
         .setColor(0xec4899)
@@ -171,7 +176,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           choicesRow.addComponents(
             new ButtonBuilder()
               .setCustomId(`vn_choice:${event.id}:${c.id}`)
-              .setLabel(`${idx + 1}. ${c.text.slice(0, 70)}`)
+              .setLabel(`${idx + 1}. ${c.text.length > 75 ? c.text.slice(0, 72) + '...' : c.text}`)
               .setStyle(ButtonStyle.Primary)
           );
         });
@@ -239,11 +244,16 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel.png' });
 
       const cleanTitle = event.title.replace(/^Bond Interlude:\s*/i, '');
+      const choiceTextList = scene1.choices && scene1.choices.length > 0
+        ? `\n\n👇 **Choose your response to deepen your Bond:**\n` +
+          scene1.choices.map((c, idx) => `**${idx + 1}.** “*${c.text}*”`).join('\n')
+        : '';
+
       const vnEmbed = new EmbedBuilder()
         .setTitle(`📖 Bond Interlude: ${cleanTitle}`)
         .setDescription(
-          `*${event.subtitle}* ${statusNote ? `\n\n*${statusNote}*` : ''}\n\n` +
-          `👇 **Choose your response to deepen your Bond:**`
+          `*${event.subtitle}* ${statusNote ? `\n\n*${statusNote}*` : ''}` +
+          choiceTextList
         )
         .setImage('attachment://visual_novel.png')
         .setColor(0xec4899)
@@ -259,7 +269,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           choicesRow.addComponents(
             new ButtonBuilder()
               .setCustomId(`vn_choice:${event.id}:0:${c.id}`)
-              .setLabel(`${idx + 1}. ${c.text.slice(0, 70)}`)
+              .setLabel(`${idx + 1}. ${c.text.length > 75 ? c.text.slice(0, 72) + '...' : c.text}`)
               .setStyle(ButtonStyle.Primary)
           );
         });
@@ -529,13 +539,18 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel.png' });
 
+      const choiceTextList = scene.choices && scene.choices.length > 0
+        ? `\n\n👇 **Choose your response to deepen your Bond:**\n` +
+          scene.choices.map((c, idx) => `**${idx + 1}.** “*${c.text}*”`).join('\n')
+        : '';
+
       const choicesRow = new ActionRowBuilder<ButtonBuilder>();
       if (scene.choices && scene.choices.length > 0) {
         scene.choices.forEach((c, idx) => {
           choicesRow.addComponents(
             new ButtonBuilder()
               .setCustomId(`vn_choice:${event.id}:${nextSceneIdx}:${c.id}`)
-              .setLabel(`${idx + 1}. ${c.text.slice(0, 70)}`)
+              .setLabel(`${idx + 1}. ${c.text.length > 75 ? c.text.slice(0, 72) + '...' : c.text}`)
               .setStyle(ButtonStyle.Primary)
           );
         });
@@ -552,8 +567,8 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         .setTitle(`📖 Bond Interlude: ${event.title}`)
         .setDescription(
           `💬 **[BOND INTERLUDE] ${scene.speakerName || servantName}:**\n> ❝ ***${scene.dialogueText}*** ❞\n\n` +
-          `*Scene ${nextSceneIdx + 1}/${event.scenes.length} • Servant Bond Lv. ${activeServant.bondLevel || 1}*\n\n` +
-          `👇 **Choose your response to deepen your Bond:**`
+          `*Scene ${nextSceneIdx + 1}/${event.scenes.length} • Servant Bond Lv. ${activeServant.bondLevel || 1}*` +
+          choiceTextList
         )
         .setImage('attachment://visual_novel.png')
         .setColor(0xec4899);
