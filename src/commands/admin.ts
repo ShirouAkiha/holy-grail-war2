@@ -1104,7 +1104,7 @@ export function buildPersonaModal(profile?: ServantCharacterProfile): ModalBuild
 
   const loreInput = new TextInputBuilder()
     .setCustomId('persona_lore')
-    .setLabel('Persona Lore & Visual Novel Description')
+    .setLabel('Persona Lore & Personality')
     .setStyle(TextInputStyle.Paragraph)
     .setPlaceholder('Describe personality, background, dynamic with Master, speech tone...')
     .setMaxLength(3900)
@@ -1113,7 +1113,7 @@ export function buildPersonaModal(profile?: ServantCharacterProfile): ModalBuild
 
   const quotesInput = new TextInputBuilder()
     .setCustomId('persona_quotes')
-    .setLabel('Authentic Quotes (Separate with ; or newline)')
+    .setLabel('Quotes (Separate with ; or newline)')
     .setStyle(TextInputStyle.Paragraph)
     .setPlaceholder('e.g. "Grrr... This is frustrating!"; "Oi, idiot! Pay attention."')
     .setMaxLength(1000)
@@ -1122,7 +1122,7 @@ export function buildPersonaModal(profile?: ServantCharacterProfile): ModalBuild
 
   const mannerismsInput = new TextInputBuilder()
     .setCustomId('persona_mannerisms')
-    .setLabel('Mannerisms & Quirks (Separate with ; or newline)')
+    .setLabel('Mannerisms (Separate with ; or newline)')
     .setStyle(TextInputStyle.Paragraph)
     .setPlaceholder('e.g. Slams fists on table; Lightens heavy mood with aggressive jokes')
     .setMaxLength(500)
