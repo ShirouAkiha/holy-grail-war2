@@ -7296,7 +7296,7 @@ export default function DiscordEmulator({
         const actionButtons = hasChoices
           ? scene.choices!.map((c, idx) => ({
               id: `vn_choice:${evt.id}:${sceneIdx}:${c.id}`,
-              label: `${idx + 1}. ${c.text}`,
+              label: `${idx + 1}. “${c.text.slice(0, 24)}”`,
               style: 'primary' as const,
               emoji: '💬'
             }))
@@ -7508,7 +7508,7 @@ export default function DiscordEmulator({
         const actionButtons = hasChoices
           ? scene.choices!.map((c, idx) => ({
               id: `vn_choice:${evt.id}:${nextSceneIdx}:${c.id}`,
-              label: `${idx + 1}. ${c.text}`,
+              label: `${idx + 1}. “${c.text.slice(0, 24)}”`,
               style: 'primary' as const,
               emoji: '💬'
             }))
@@ -11558,9 +11558,9 @@ export default function DiscordEmulator({
                             key={btn.id}
                             disabled={btn.disabled}
                             onClick={() => handleButtonClick(btn.id, msg.id)}
-                            className={`px-3 py-1.5 rounded text-xs sm:text-sm font-sans normal-case text-left font-medium leading-snug flex items-center gap-1.5 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${bg}`}
+                            className={`px-3 py-1.5 rounded-sm text-xs font-mono uppercase tracking-wider font-semibold flex items-center gap-1.5 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${bg}`}
                           >
-                            {btn.emoji && <span className="flex-shrink-0">{btn.emoji}</span>}
+                            {btn.emoji && <span>{btn.emoji}</span>}
                             <span>{btn.label}</span>
                           </button>
                         );
