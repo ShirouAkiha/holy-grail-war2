@@ -6,6 +6,19 @@ export function getDailyUtcDateKey(date: Date = new Date()): string {
 }
 
 /**
+ * Checks whether the Master has an active custom BYOK (Bring Your Own Key) setup.
+ */
+export function isMasterByokActive(master: MasterProfile): boolean {
+  const cfg = master.customApiConfig;
+  if (!cfg || !cfg.enabled) return false;
+  if (cfg.activeProvider === 'gemini' && !!cfg.geminiKey) return true;
+  if (cfg.activeProvider === 'openrouter' && !!cfg.openrouterKey) return true;
+  if (cfg.activeProvider === 'nanogpt' && !!cfg.nanogptKey) return true;
+  if (cfg.activeProvider === 'custom' && !!cfg.customKey) return true;
+  return false;
+}
+
+/**
  * Returns the daily maximum telepathic chats allowed based on War scale:
  * - 25 chats per day for standard 7-Master Grail Wars (or fewer)
  * - 20 chats per day for expanded Wars (> 7 Masters)
@@ -21,6 +34,7 @@ export interface MasterTalkQuotaStatus {
   maxToday: number;
   cooldownRemainingSeconds?: number;
   currentDay: string;
+  isByok?: boolean;
 }
 
 /**
@@ -30,6 +44,7 @@ export function checkMasterTalkQuota(master: MasterProfile, totalMastersCount: n
   const maxToday = calculateMaxDailyTalks(totalMastersCount);
   const todayKey = getDailyUtcDateKey();
   const now = Date.now();
+  const byok = isMasterByokActive(master);
 
   // 1. Anti-Spam Burst Cooldown: 5 seconds between consecutive /talk messages
   if (master.lastTalkTimestamp && (now - master.lastTalkTimestamp) < 5000) {
@@ -39,10 +54,22 @@ export function checkMasterTalkQuota(master: MasterProfile, totalMastersCount: n
     return {
       allowed: false,
       reason: 'burst_cooldown',
-      remainingToday: Math.max(0, maxToday - usedToday),
-      maxToday,
+      remainingToday: byok ? 9999 : Math.max(0, maxToday - usedToday),
+      maxToday: byok ? 9999 : maxToday,
       cooldownRemainingSeconds: cooldownRemaining,
-      currentDay: todayKey
+      currentDay: todayKey,
+      isByok: byok
+    };
+  }
+
+  // If BYOK is active, the Master bypasses server daily quota limits
+  if (byok) {
+    return {
+      allowed: true,
+      remainingToday: 9999,
+      maxToday: 9999,
+      currentDay: todayKey,
+      isByok: true
     };
   }
 
@@ -56,7 +83,8 @@ export function checkMasterTalkQuota(master: MasterProfile, totalMastersCount: n
       reason: 'daily_limit_reached',
       remainingToday: 0,
       maxToday,
-      currentDay: todayKey
+      currentDay: todayKey,
+      isByok: false
     };
   }
 
@@ -64,7 +92,8 @@ export function checkMasterTalkQuota(master: MasterProfile, totalMastersCount: n
     allowed: true,
     remainingToday,
     maxToday,
-    currentDay: todayKey
+    currentDay: todayKey,
+    isByok: false
   };
 }
 
@@ -74,10 +103,11 @@ export function checkMasterTalkQuota(master: MasterProfile, totalMastersCount: n
 export async function consumeMasterTalkQuota(
   master: MasterProfile,
   totalMastersCount: number
-): Promise<{ remainingToday: number; maxToday: number }> {
+): Promise<{ remainingToday: number; maxToday: number; isByok: boolean }> {
   const todayKey = getDailyUtcDateKey();
   const maxToday = calculateMaxDailyTalks(totalMastersCount);
   const now = Date.now();
+  const byok = isMasterByokActive(master);
 
   if (master.lastTalkDay !== todayKey) {
     master.lastTalkDay = todayKey;
@@ -89,10 +119,11 @@ export async function consumeMasterTalkQuota(
 
   await saveMaster(master);
 
-  const remaining = Math.max(0, maxToday - (master.dailyTalkCount || 0));
+  const remaining = byok ? 9999 : Math.max(0, maxToday - (master.dailyTalkCount || 0));
   return {
     remainingToday: remaining,
-    maxToday
+    maxToday: byok ? 9999 : maxToday,
+    isByok: byok
   };
 }
 

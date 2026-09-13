@@ -8,6 +8,8 @@ import {
   TalkMessageTurn
 } from './servantMemoryService';
 import { getServantCharacterProfile } from '../data/characterProfiles';
+import { generateWithCustomProvider } from './byokService';
+import { UserCustomApiConfig } from '../types';
 
 export interface ServantTalkContext {
   servantName: string;
@@ -21,6 +23,7 @@ export interface ServantTalkContext {
   commandSeals?: number;
   isExposed?: boolean;
   equippedCeName?: string;
+  customApiConfig?: UserCustomApiConfig;
   recentChronicleEvents?: string[];
   recentBattleEvents?: string[];
   latestBattleEvent?: string;
@@ -578,6 +581,21 @@ VOICE & ROLEPLAY INSTRUCTIONS:
 - Address ${context.masterName} naturally based on the character's personality and bond level.
 - Do NOT break character, do NOT provide meta explanations, and do NOT use asterisks for actions (*sighs*). Return ONLY the spoken dialogue.`;
 
+  // STEP 2A: CUSTOM USER API KEY (BYOK) PROVIDER EXECUTION
+  if (context.customApiConfig && context.customApiConfig.enabled) {
+    try {
+      const customRes = await generateWithCustomProvider(context.customApiConfig, prompt);
+      const text = customRes.reply?.trim();
+      if (text) {
+        const cleaned = text.replace(/^["'“](.*)["'”]$/, '$1').trim();
+        appendServantChatTurn(masterId, servantId, context.servantName, context.playerMessage, cleaned, warId);
+        return { reply: cleaned, source: 'gemini' };
+      }
+    } catch (byokErr: any) {
+      console.warn('[talkService] Custom BYOK generation failed, falling back to server pool:', byokErr?.message || byokErr);
+    }
+  }
+
   const CANDIDATE_MODELS = [
     'gemini-3.1-flash-lite',
     'gemini-2.5-flash',
@@ -634,6 +652,7 @@ export async function renderServantTalkVisualOutput(params: {
   quotaInfo?: {
     remainingToday: number;
     maxToday: number;
+    isByok?: boolean;
   };
 }): Promise<{
   optionUsed: 'Option A (Canvas Card)' | 'Option B (Embed Fallback)';
@@ -660,13 +679,19 @@ export async function renderServantTalkVisualOutput(params: {
     quotaInfo
   } = params;
 
-  const quotaLine = quotaInfo
-    ? ` • 💬 Mana: **${quotaInfo.remainingToday}/${quotaInfo.maxToday}**`
-    : '';
+  let quotaLine = '';
+  if (quotaInfo) {
+    quotaLine = quotaInfo.isByok
+      ? ' • 🔑 **BYOK (Unlimited)**'
+      : ` • 💬 Mana: **${quotaInfo.remainingToday}/${quotaInfo.maxToday}**`;
+  }
 
-  const footerText = quotaInfo
-    ? `Bond Rank ${bondLevel}/10 • Telepathic Mana: ${quotaInfo.remainingToday}/${quotaInfo.maxToday} today (Resets 00:00 UTC)`
-    : `Bond Rank ${bondLevel}/10 • Holy Grail War Telepathic Resonance`;
+  let footerText = `Bond Rank ${bondLevel}/10 • Holy Grail War Telepathic Resonance`;
+  if (quotaInfo) {
+    footerText = quotaInfo.isByok
+      ? `Bond Rank ${bondLevel}/10 • Custom API Key Active (Unlimited Resonance)`
+      : `Bond Rank ${bondLevel}/10 • Telepathic Mana: ${quotaInfo.remainingToday}/${quotaInfo.maxToday} today (Resets 00:00 UTC)`;
+  }
 
   // Base embed data used for both Option A and Option B
   const embedData = {

@@ -51,6 +51,7 @@ import * as feedCommand from './commands/feed';
 import * as gachaCommand from './commands/gacha';
 import * as bondCommand from './commands/bond';
 import * as talkCommand from './commands/talk';
+import * as apikeyCommand from './commands/apikey';
 import { SERVANT_DATABASE } from './data/servants';
 import { getOrCreateMaster, getMaster, saveMaster, getAllThroneServants, findServantInPool, searchAndRankServants, claimDailySaintQuartz } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
@@ -172,9 +173,15 @@ commands.set(grailCommand.data.name, grailCommand);
 commands.set(boardCommand.data.name, boardCommand);
 commands.set(bondCommand.data.name, bondCommand);
 commands.set(talkCommand.data.name, talkCommand);
+commands.set(apikeyCommand.data.name, apikeyCommand);
 
 // Alias mapping for backward-compatible text shortcuts and interactions
 export const commandAliasMap: Record<string, any> = {
+  apikey: apikeyCommand,
+  api: apikeyCommand,
+  byok: apikeyCommand,
+  key: apikeyCommand,
+  keys: apikeyCommand,
   talk: talkCommand,
   speak: talkCommand,
   ask: talkCommand,
@@ -631,6 +638,10 @@ client.on(Events.InteractionCreate, async interaction => {
           components: card.components
         });
       }
+      else if (interaction.customId.startsWith('modal_set_api_key:')) {
+        const provider = interaction.customId.split(':')[1] as any;
+        await apikeyCommand.handleApiKeyModalSubmit(interaction, provider);
+      }
       else if (interaction.customId.startsWith('modal_talk_servant:')) {
         const servantId = interaction.customId.replace('modal_talk_servant:', '');
         const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
@@ -656,15 +667,24 @@ client.on(Events.InteractionCreate, async interaction => {
               return;
             }
 
-            const sealRefillButton = (master.commandSeals ?? 0) > 0
-              ? new ActionRowBuilder<ButtonBuilder>().addComponents(
-                  new ButtonBuilder()
-                    .setCustomId(`btn_refill_talk_seal:${servant.id}`)
-                    .setLabel(`Spend 1 Command Seal (+5 Chats) [${master.commandSeals}/3 Seals]`)
-                    .setStyle(ButtonStyle.Danger)
-                    .setEmoji('🔱')
-                )
-              : undefined;
+            const sealButtons: ButtonBuilder[] = [];
+            if ((master.commandSeals ?? 0) > 0) {
+              sealButtons.push(
+                new ButtonBuilder()
+                  .setCustomId(`btn_refill_talk_seal:${servant.id}`)
+                  .setLabel(`Spend 1 Command Seal (+5 Chats) [${master.commandSeals}/3 Seals]`)
+                  .setStyle(ButtonStyle.Danger)
+                  .setEmoji('🔱')
+              );
+            }
+            sealButtons.push(
+              new ButtonBuilder()
+                .setCustomId('btn_apikey_dashboard')
+                .setLabel('Connect BYOK API Key (Unlimited) 🔑')
+                .setStyle(ButtonStyle.Primary)
+            );
+
+            const sealRefillButton = new ActionRowBuilder<ButtonBuilder>().addComponents(sealButtons);
 
             await interaction.reply({
               flags: MessageFlags.Ephemeral,
@@ -676,18 +696,20 @@ client.on(Events.InteractionCreate, async interaction => {
                     `• **Daily Allowance:** \`${quotaStatus.maxToday} chats / day\` (${totalMastersCount <= 7 ? '7-Master standard war limit: 25' : `Expanded ${totalMastersCount}-Master war limit: 20`})\n` +
                     `• **Used Today:** \`${quotaStatus.maxToday}/${quotaStatus.maxToday}\`\n` +
                     `• **Replenishment:** Resets daily at **00:00 UTC** (Midnight Leyline Renewal).\n\n` +
-                    `${(master.commandSeals ?? 0) > 0 ? '💡 *You may channel **1 Command Seal** to restore +5 emergency telepathic transmissions.*' : '*No Command Seals remaining to restore telepathic mana.*'}`
+                    `💡 **Need more chats?**\n` +
+                    `1. **Command Seal:** Channel 1 Command Seal to restore **+5 chats**.\n` +
+                    `2. **BYOK (Bring Your Own Key):** Connect your own **Gemini**, **OpenRouter**, or **NanoGPT** API key with \`/apikey\` for **unlimited chats**!`
                   )
                   .setColor(0xef4444)
                   .setFooter({ text: `Daily Telepathic Cap: ${quotaStatus.maxToday} chats • Resets at 00:00 UTC` })
               ],
-              components: sealRefillButton ? [sealRefillButton] : []
+              components: [sealRefillButton]
             });
             return;
           }
 
           // Consume 1 daily chat
-          const { remainingToday, maxToday } = await consumeMasterTalkQuota(master, totalMastersCount);
+          const { remainingToday, maxToday, isByok } = await consumeMasterTalkQuota(master, totalMastersCount);
 
           await interaction.deferReply({ flags: MessageFlags.Ephemeral });
           const playerMessage = interaction.fields.getTextInputValue('talk_input_message')?.trim() || 'What is our combat plan for tonight?';
@@ -824,6 +846,7 @@ client.on(Events.InteractionCreate, async interaction => {
             commandSeals,
             isExposed,
             equippedCeName,
+            customApiConfig: master.customApiConfig,
             recentChronicleEvents,
             recentBattleEvents,
             latestBattleEvent: recentBattleEvents[0],
@@ -860,7 +883,8 @@ client.on(Events.InteractionCreate, async interaction => {
             commandSeals,
             quotaInfo: {
               remainingToday,
-              maxToday
+              maxToday,
+              isByok
             }
           });
 
@@ -1066,15 +1090,24 @@ client.on(Events.InteractionCreate, async interaction => {
         const quotaStatus = checkMasterTalkQuota(master, totalMastersCount);
 
         if (!quotaStatus.allowed && quotaStatus.reason === 'daily_limit_reached') {
-          const sealRefillButton = (master.commandSeals ?? 0) > 0
-            ? new ActionRowBuilder<ButtonBuilder>().addComponents(
-                new ButtonBuilder()
-                  .setCustomId(`btn_refill_talk_seal:${targetServant.id}`)
-                  .setLabel(`Spend 1 Command Seal (+5 Chats) [${master.commandSeals}/3 Seals]`)
-                  .setStyle(ButtonStyle.Danger)
-                  .setEmoji('🔱')
-              )
-            : undefined;
+          const sealButtons: ButtonBuilder[] = [];
+          if ((master.commandSeals ?? 0) > 0) {
+            sealButtons.push(
+              new ButtonBuilder()
+                .setCustomId(`btn_refill_talk_seal:${targetServant.id}`)
+                .setLabel(`Spend 1 Command Seal (+5 Chats) [${master.commandSeals}/3 Seals]`)
+                .setStyle(ButtonStyle.Danger)
+                .setEmoji('🔱')
+            );
+          }
+          sealButtons.push(
+            new ButtonBuilder()
+              .setCustomId('btn_apikey_dashboard')
+              .setLabel('Connect BYOK API Key (Unlimited) 🔑')
+              .setStyle(ButtonStyle.Primary)
+          );
+
+          const sealRefillButton = new ActionRowBuilder<ButtonBuilder>().addComponents(sealButtons);
 
           await interaction.reply({
             flags: MessageFlags.Ephemeral,
@@ -1086,12 +1119,14 @@ client.on(Events.InteractionCreate, async interaction => {
                   `• **Daily Allowance:** \`${quotaStatus.maxToday} chats / day\` (${totalMastersCount <= 7 ? '7-Master standard war limit: 25' : `Expanded ${totalMastersCount}-Master war limit: 20`})\n` +
                   `• **Used Today:** \`${quotaStatus.maxToday}/${quotaStatus.maxToday}\`\n` +
                   `• **Replenishment:** Resets daily at **00:00 UTC** (Midnight Leyline Renewal).\n\n` +
-                  `${(master.commandSeals ?? 0) > 0 ? '💡 *You may channel **1 Command Seal** to restore +5 emergency telepathic transmissions.*' : '*No Command Seals remaining to restore telepathic mana.*'}`
+                  `💡 **Need more chats?**\n` +
+                  `1. **Command Seal:** Channel 1 Command Seal to restore **+5 chats**.\n` +
+                  `2. **BYOK (Bring Your Own Key):** Connect your own **Gemini**, **OpenRouter**, or **NanoGPT** API key with \`/apikey\` for **unlimited chats**!`
                 )
                 .setColor(0xef4444)
                 .setFooter({ text: `Daily Telepathic Cap: ${quotaStatus.maxToday} chats • Resets at 00:00 UTC` })
             ],
-            components: sealRefillButton ? [sealRefillButton] : []
+            components: [sealRefillButton]
           });
           return;
         }
@@ -1152,6 +1187,12 @@ client.on(Events.InteractionCreate, async interaction => {
       // Admin Hub Control Suite
       if (btnId.startsWith('admin_')) {
         await adminCommand.handleAdminGlobalInteraction(interaction);
+        return;
+      }
+
+      // BYOK API Key Suite Controls
+      if (btnId.startsWith('btn_apikey_')) {
+        await apikeyCommand.handleApiKeyButtonInteraction(interaction, btnId);
         return;
       }
 

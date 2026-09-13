@@ -108,7 +108,8 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
       `• **War Standing:** ${standingTag} [${isExposed ? '⚠️ **EXPOSED TO PUBLIC WAR BOARD**' : '🕶️ **Concealed in Shadows**'}]\n` +
       `• **Servant Kills:** 💀 **${kills}** Dissolved\n` +
       `• **Duel Record:** ⚔️ **${duelsWon}W - ${duelsLost}L** (${winRate}% Win Rate)\n` +
-      `• **Church Standing:** ${churchStanding}\n\n` +
+      `• **Church Standing:** ${churchStanding}\n` +
+      `• **AI BYOK Key:** ${master.customApiConfig?.enabled ? '🟢 **Active (Unlimited Chats)**' : '⚪ **Standard Server Leyline (25/day)**'}\n\n` +
       `🗡️ **ACTIVE CONTRACTED SERVANT:**\n` +
       `• **Servant:** **${servantName}** (${servantClass})\n` +
       `• **Vitality:** ❤️ [${hpBar}] \`${healInfo.currentHp.toLocaleString()} / ${healInfo.maxHp.toLocaleString()}\` (${healInfo.percent}%) — ${healInfo.statusTag}\n` +
@@ -255,6 +256,11 @@ export function buildProfileButtons(userParticipant: any) {
       .setCustomId('disarm_all_traps')
       .setLabel('Disarm Traps')
       .setEmoji('🧹')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('btn_apikey_dashboard')
+      .setLabel('BYOK API Key')
+      .setEmoji('🔑')
       .setStyle(ButtonStyle.Secondary)
   );
 
