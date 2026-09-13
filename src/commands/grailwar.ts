@@ -8,10 +8,13 @@ import {
   StringSelectMenuBuilder,
   ChannelSelectMenuBuilder,
   ChannelType,
-  ComponentType
-, MessageFlags } from 'discord.js';
+  ComponentType,
+  MessageFlags,
+  AttachmentBuilder
+} from 'discord.js';
 import { getOrCreateMaster, saveMaster, getMaster } from '../database/service';
 import { HolyGrailWarSession } from '../types';
+import { renderKireiVisualNovelCard } from '../canvas/renderer';
 
 /**
  * Resolves a raw Discord ID, mention string, or username to a clean human username.
@@ -138,11 +141,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const category = (interaction.options.getString('category') as any) || 'board';
 
     const war = getOrInitWarSession(master);
-    const { embeds, components } = buildGrailWarHub(war, master, category, undefined, interaction.client);
+    const { embeds, components, files } = await buildGrailWarHub(war, master, category, undefined, interaction.client);
 
     const msg = await interaction.editReply({
       embeds,
-      components
+      components,
+      files
     });
 
     attachGrailWarCollector(msg, interaction.user.id, master, category);
@@ -168,15 +172,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 // ==========================================
 // 3. GRAIL WAR HUB BUILDER
 // ==========================================
-export function buildGrailWarHub(
+export async function buildGrailWarHub(
   war: HolyGrailWarSession,
   master: any,
   category: 'board' | 'casualties' | 'leaks' | 'battles' | 'defenses' | 'familiars' | 'traps' | 'church' = 'board',
   actionOutcomeMsg?: string,
   client?: any
-) {
+): Promise<{ embeds: EmbedBuilder[]; components: any[]; files: AttachmentBuilder[] }> {
   const userParticipant = war.participants[master.discordId];
   let embeds: EmbedBuilder[] = [];
+  let files: AttachmentBuilder[] = [];
 
   const participants = Object.values(war.participants || {});
   const aliveParticipants = participants.filter(p => p.isAlive);
@@ -306,8 +311,7 @@ export function buildGrailWarHub(
     // 🕯️ EMBED 1: FUYUKI CHURCH OVERSEER & MUNICIPAL NEWS RELAY
     const homily = war.latestChurchHomily;
     const news = war.latestNewsBulletin;
-    const homilyQuote = extractCleanSentenceSummary(homily?.monologue, 500) ||
-      'Rejoice, Masters. The leylines await your blood. Carve each other apart with haste.';
+    const monologueText = homily?.monologue || 'Rejoice, Masters. The leylines await your blood. Carve each other apart with haste.';
     const newsStory = extractCleanSentenceSummary(news?.gasLeakCoverStory, 400) ||
       (news?.headline || 'Miyama District gas line inspection in progress. Citizens advised to remain indoors.');
 
@@ -318,11 +322,23 @@ export function buildGrailWarHub(
 
     safeSetDescription(
       churchIntelEmbed,
-      `🕯️ **Overseer's 24h Word (Father Kotomine):**\n` +
-      `*“${homilyQuote}”*\n\n` +
       `📰 **2h Fuyuki News (Gas Leak Cover-Up):**\n` +
-      `*“${newsStory}”*`
+      `*“${newsStory}”*\n\n` +
+      `🕯️ *Father Kotomine's 24h sermon soliloquy rendered in the Sanctuary Visual Novel below:*`
     );
+
+    try {
+      const vnBuffer = await renderKireiVisualNovelCard({
+        monologueText: monologueText,
+        title: homily?.title || 'Overseer’s 24h Soliloquy',
+        subtitle: homily?.subtitle || 'Father Kotomine’s Sermon on the Carnage of Fuyuki'
+      });
+      const attachment = new AttachmentBuilder(vnBuffer, { name: 'kirei_homily_vn.png' });
+      churchIntelEmbed.setImage('attachment://kirei_homily_vn.png');
+      files.push(attachment);
+    } catch (err) {
+      console.error('Error rendering Kirei VN card for board embed:', err);
+    }
 
     // 🏆 EMBED 2: MAIN HOLY GRAIL WAR OPERATIONS & INTELLIGENCE BOARD
     const boardEmbed = new EmbedBuilder()
@@ -583,8 +599,9 @@ export function buildGrailWarHub(
 
   } else if (category === 'church') {
     const isUnderSanctuary = !!(userParticipant?.inSanctuary || userParticipant?.inChurchSanctuary);
-    const hasHomily = !!war.latestChurchHomily;
-    const hasNews = !!war.latestNewsBulletin;
+    const homily = war.latestChurchHomily;
+    const monologueText = homily?.monologue || 'Welcome to the sanctuary of the Holy Church, Masters. Yield your Command Seals, or prepare to bathe in the holy spice of destiny.';
+
     const embed = new EmbedBuilder()
       .setTitle('⛪ Fuyuki Church Sanctuary (Father Kotomine)')
       .setDescription(
@@ -601,6 +618,19 @@ export function buildGrailWarHub(
       )
       .setColor(isUnderSanctuary ? 0x22c55e : 0xd4af37)
       .setFooter({ text: 'Fuyuki Church Neutral Grounds • Holy Grail War Supervisor' });
+
+    try {
+      const vnBuffer = await renderKireiVisualNovelCard({
+        monologueText: monologueText,
+        title: homily?.title || 'Fuyuki Church Sanctuary',
+        subtitle: homily?.subtitle || 'Neutral Grounds & Overseer Arbitration'
+      });
+      const attachment = new AttachmentBuilder(vnBuffer, { name: 'kirei_church_vn.png' });
+      embed.setImage('attachment://kirei_church_vn.png');
+      files.push(attachment);
+    } catch (err) {
+      console.error('Error rendering Kirei VN card for church category:', err);
+    }
 
     embeds = [embed];
   }
@@ -687,7 +717,7 @@ export function buildGrailWarHub(
   );
 
   components.push(crossHubShortcutsRow);
-  return { embeds, components };
+  return { embeds, components, files };
 }
 
 // ==========================================
@@ -891,10 +921,24 @@ export function attachGrailWarCollector(
       } else if (i.customId === 'church_action_homily') {
         const homily = await generateKotomine24hHomily(war, false);
         const embed = buildHomilyEmbed(homily);
+        let homilyFiles: AttachmentBuilder[] = [];
+        try {
+          const imageBuffer = await renderKireiVisualNovelCard({
+            monologueText: homily.monologue,
+            title: homily.title || 'Overseer’s 24h Soliloquy',
+            subtitle: homily.subtitle
+          });
+          const attachment = new AttachmentBuilder(imageBuffer, { name: 'kirei_homily_vn.png' });
+          embed.setImage('attachment://kirei_homily_vn.png');
+          homilyFiles.push(attachment);
+        } catch (err) {
+          console.error('Error rendering Kirei VN Card:', err);
+        }
         const churchComps = buildChurchButtons(war.participants[i.user.id]);
         await i.update({
           embeds: [embed],
-          components: churchComps
+          components: churchComps,
+          files: homilyFiles
         });
         return;
       } else if (i.customId === 'church_action_news') {
@@ -903,7 +947,8 @@ export function attachGrailWarCollector(
         const churchComps = buildChurchButtons(war.participants[i.user.id]);
         await i.update({
           embeds: [embed],
-          components: churchComps
+          components: churchComps,
+          files: []
         });
         return;
       }
@@ -922,10 +967,11 @@ export function attachGrailWarCollector(
         return;
       }
 
-      const hub = buildGrailWarHub(war, master, currentCategory, actionOutcome, i.client);
+      const hub = await buildGrailWarHub(war, master, currentCategory, actionOutcome, i.client);
       await i.update({
         embeds: hub.embeds,
-        components: hub.components
+        components: hub.components,
+        files: hub.files
       });
 
     } catch (err: any) {
@@ -944,14 +990,19 @@ export function attachGrailWarCollector(
 }
 
 // Legacy export compatibility
-export function buildWarEmbed(war: HolyGrailWarSession, master: any, actionOutcomeMsg?: string) {
-  const hub = buildGrailWarHub(war, master, 'board', actionOutcomeMsg);
+export async function buildWarEmbed(war: HolyGrailWarSession, master: any, actionOutcomeMsg?: string) {
+  const hub = await buildGrailWarHub(war, master, 'board', actionOutcomeMsg);
   return hub.embeds[0];
 }
 
 export function buildWarButtons(category: string = 'board') {
-  const dummyWar = { participants: {} } as any;
-  const dummyMaster = { discordId: '' };
-  const hub = buildGrailWarHub(dummyWar, dummyMaster, category as any);
-  return hub.components;
+  const isBoardSection = ['board', 'casualties', 'leaks', 'battles'].includes(category);
+  const categoryNavRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId('war_tab_board').setLabel('War Board').setEmoji('🏆').setStyle(isBoardSection ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('war_tab_defenses').setLabel('Defenses').setEmoji('🏰').setStyle(category === 'defenses' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('war_tab_familiars').setLabel('Familiars').setEmoji('🦅').setStyle(category === 'familiars' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('war_tab_traps').setLabel('Traps').setEmoji('🕸️').setStyle(category === 'traps' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('war_tab_church').setLabel('Church').setEmoji('⛪').setStyle(category === 'church' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+  );
+  return [categoryNavRow];
 }

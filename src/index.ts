@@ -1131,7 +1131,7 @@ client.on(Events.InteractionCreate, async interaction => {
       }
       if (btnId === 'war_status_board') {
         const uP = war.participants[interaction.user.id];
-        const embed = buildWarEmbed(war, uP, '🏰 Welcome to the Holy Grail War Board!');
+        const embed = await buildWarEmbed(war, uP, '🏰 Welcome to the Holy Grail War Board!');
         const btns = buildWarButtons();
         await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
         return;
@@ -1258,7 +1258,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
       if (btnId === 'btn_enter_war') {
         const uP = war.participants[interaction.user.id];
-        const embed = buildWarEmbed(war, uP, '🏰 Welcome to the Holy Grail War Board!');
+        const embed = await buildWarEmbed(war, uP, '🏰 Welcome to the Holy Grail War Board!');
         const btns = buildWarButtons();
         await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
         return;
@@ -1490,13 +1490,14 @@ client.on(Events.InteractionCreate, async interaction => {
         const chanTag = interaction.channel && 'name' in interaction.channel ? `#${(interaction.channel as any).name}` : '#general';
         const res = patrolCityInWar(war, interaction.user.id, interaction.user.username, chanTag);
         const uP = res.updatedWar.participants[interaction.user.id];
-        await interaction.update({ embeds: [buildWarEmbed(res.updatedWar, uP, res.message)], components: buildWarButtons() });
+        const embed = await buildWarEmbed(res.updatedWar, uP, res.message);
+        await interaction.update({ embeds: [embed], components: buildWarButtons() });
         return;
       }
 
       if (btnId === 'war_refresh' || btnId === 'war_status_board' || btnId === 'quick_war_status') {
         const uP = war.participants[interaction.user.id];
-        const embed = buildWarEmbed(war, uP, '🔄 Intelligence Board refreshed.');
+        const embed = await buildWarEmbed(war, uP, '🔄 Intelligence Board refreshed.');
         const btns = buildWarButtons();
         if (btnId === 'quick_war_status') {
           await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
@@ -2047,8 +2048,8 @@ client.on(Events.MessageCreate, async message => {
         category = 'church';
       }
 
-      const { embeds, components } = buildGrailWarHub(war, master, category);
-      const msg = await message.reply({ embeds, components });
+      const { embeds, components, files } = await buildGrailWarHub(war, master, category);
+      const msg = await message.reply({ embeds, components, files });
       attachGrailWarCollector(msg, message.author.id, master, category);
       return;
     }

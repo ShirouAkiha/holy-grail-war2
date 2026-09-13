@@ -6473,24 +6473,36 @@ export async function renderKireiVisualNovelCard(
   ctx.stroke();
   ctx.restore();
 
-  // Speaker Name Bracket Tag
+  // Speaker Name Badge at Top-Left of Dialogue Box
   const speakerName = (opts.speakerName || 'Father Kirei Kotomine').toUpperCase();
   ctx.save();
-  ctx.font = 'bold 22px Georgia, "Times New Roman", serif';
+  const nameBadgeX = boxX + 20;
+  const nameBadgeY = boxY - 20;
+  const nameBadgeW = 340;
+  const nameBadgeH = 36;
+
+  ctx.fillStyle = '#1c0a0a';
+  drawRoundRect(ctx, nameBadgeX, nameBadgeY, nameBadgeW, nameBadgeH, 4);
+  ctx.fill();
+
+  ctx.strokeStyle = '#d4af37';
+  ctx.lineWidth = 2;
+  drawRoundRect(ctx, nameBadgeX, nameBadgeY, nameBadgeW, nameBadgeH, 4);
+  ctx.stroke();
+
+  ctx.font = 'bold 15px Georgia, "Times New Roman", serif';
   ctx.textAlign = 'center';
   ctx.fillStyle = '#fbbf24';
   ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
-  ctx.shadowBlur = 8;
-
-  const bracketStr = `──────────   ⛪ ${speakerName}   ──────────`;
-  ctx.fillText(bracketStr, width / 2, boxY + boxH + 10);
+  ctx.shadowBlur = 6;
+  ctx.fillText(`⛪  ${speakerName}`, nameBadgeX + nameBadgeW / 2, nameBadgeY + 24);
   ctx.restore();
 
   // 5. DYNAMIC MONOLOGUE TEXT SCALER & WRAPPER (GUARANTEED NO CUTOFF)
   ctx.save();
   const textX = boxX + 45;
   const maxTextW = boxW - 90; // 1110px
-  const maxTextH = boxH - 65; // 200px max height for text lines
+  const maxTextH = boxH - 55; // 210px max height for text lines
 
   const rawText = (opts.monologueText || 'Rejoice, Masters. The leylines await your blood.')
     .trim()
@@ -6542,7 +6554,7 @@ export async function renderKireiVisualNovelCard(
   ctx.font = `italic bold ${fontSize}px Georgia, "Times New Roman", serif`;
   ctx.textAlign = 'left';
 
-  const startY = boxY + 44;
+  const startY = boxY + 38;
   let currentY = startY;
 
   for (let i = 0; i < wrappedLines.length; i++) {
@@ -6562,11 +6574,11 @@ export async function renderKireiVisualNovelCard(
   const ctrlY = 708;
 
   ctx.fillStyle = '#1e293b';
-  ctx.beginPath();
-  ctx.roundRect(ctrlX, ctrlY - 18, 36, 24, 3);
+  drawRoundRect(ctx, ctrlX, ctrlY - 18, 36, 24, 3);
   ctx.fill();
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.lineWidth = 1.5;
+  drawRoundRect(ctx, ctrlX, ctrlY - 18, 36, 24, 3);
   ctx.stroke();
 
   ctx.font = 'bold 15px monospace';
@@ -6582,10 +6594,10 @@ export async function renderKireiVisualNovelCard(
   ctx.fillText('|', ctrlX + 96, ctrlY);
 
   ctx.fillStyle = '#1e293b';
-  ctx.beginPath();
-  ctx.roundRect(ctrlX + 110, ctrlY - 18, 28, 24, 3);
+  drawRoundRect(ctx, ctrlX + 110, ctrlY - 18, 28, 24, 3);
   ctx.fill();
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+  drawRoundRect(ctx, ctrlX + 110, ctrlY - 18, 28, 24, 3);
   ctx.stroke();
 
   ctx.fillStyle = '#ffffff';

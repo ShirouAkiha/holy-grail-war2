@@ -219,6 +219,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
     }
 
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
     let lastMsg: string | undefined = undefined;
 
     if (action === 'enter') {
@@ -237,10 +239,26 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const churchEmbed = buildChurchEmbed(userParticipant, war, lastMsg);
     const churchButtons = buildChurchButtons(userParticipant);
 
-    await interaction.reply({
+    let files: AttachmentBuilder[] = [];
+    try {
+      const homily = war.latestChurchHomily;
+      const monologueText = homily?.monologue || 'Welcome to the neutral sanctuary of the Fuyuki Church. Yield your Command Seals, or prepare to face judgment.';
+      const imageBuffer = await renderKireiVisualNovelCard({
+        monologueText: monologueText,
+        title: homily?.title || 'Fuyuki Church Sanctuary',
+        subtitle: homily?.subtitle || 'Neutral Grounds & Overseer Arbitration'
+      });
+      const attachment = new AttachmentBuilder(imageBuffer, { name: 'kirei_church_vn.png' });
+      churchEmbed.setImage('attachment://kirei_church_vn.png');
+      files.push(attachment);
+    } catch (err) {
+      console.error('Error rendering Kirei VN Card for /church:', err);
+    }
+
+    await interaction.editReply({
       embeds: [churchEmbed],
       components: churchButtons,
-      flags: MessageFlags.Ephemeral
+      files
     });
   } catch (error: any) {
     console.error('Error executing /church:', error);
