@@ -644,6 +644,22 @@ client.on(Events.InteractionCreate, async interaction => {
               .map((id: string) => war.participants?.[id]?.username || id);
           }
 
+          // War Board & Rival Master statistics
+          const otherParticipants = Object.values(war.participants || {}).filter((p: any) => p.discordId !== master.discordId);
+          const exposedRivals = otherParticipants
+            .filter((p: any) => p.isExposed)
+            .map((p: any) => ({
+              username: p.username || 'Unknown Master',
+              servantClass: p.servantClass || 'Unknown Class',
+              servantName: p.servantName,
+              isAlive: p.isAlive !== false,
+              inSanctuary: !!p.inChurchSanctuary,
+              kills: p.kills || 0
+            }));
+          const totalAliveMasters = Object.values(war.participants || {}).filter((p: any) => p.isAlive !== false).length;
+          const concealedMastersCount = otherParticipants.filter((p: any) => !p.isExposed && p.isAlive !== false).length;
+          const eliminatedMastersCount = otherParticipants.filter((p: any) => p.isAlive === false).length;
+
           const { reply } = await generateServantTalkResponse({
             servantName,
             servantClass,
@@ -669,7 +685,11 @@ client.on(Events.InteractionCreate, async interaction => {
             hasOwnFamiliarInChannel,
             enemyTrapInChannel,
             alliedMasters,
-            activeBoundedFieldType
+            activeBoundedFieldType,
+            totalAliveMasters,
+            exposedRivals,
+            concealedMastersCount,
+            eliminatedMastersCount
           });
 
           // STEP 3: Render the Output

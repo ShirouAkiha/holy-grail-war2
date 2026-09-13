@@ -42,6 +42,18 @@ export interface ServantTalkContext {
   enemyTrapInChannel?: boolean;
   alliedMasters?: string[];
   activeBoundedFieldType?: string;
+  // War Board & Rival Intel
+  totalAliveMasters?: number;
+  exposedRivals?: {
+    username: string;
+    servantClass: string;
+    servantName?: string;
+    isAlive: boolean;
+    inSanctuary?: boolean;
+    kills?: number;
+  }[];
+  concealedMastersCount?: number;
+  eliminatedMastersCount?: number;
 }
 
 let aiClient: GoogleGenAI | null = null;
@@ -198,6 +210,26 @@ export async function generateServantTalkResponse(context: ServantTalkContext): 
     locationContext += `\n- Diplomatic Alliances: Pacted with Master(s): ${context.alliedMasters.join(', ')}.`;
   }
 
+  // War Board & Rival Master Intelligence
+  let warBoardIntel = `- Total Surviving Masters: ${context.totalAliveMasters ?? 1} currently in Fuyuki.`;
+  if (context.exposedRivals && context.exposedRivals.length > 0) {
+    const exposedList = context.exposedRivals.map(r => {
+      let desc = `@${r.username} [${r.servantClass}${r.servantName ? ` - ${r.servantName}` : ''}]`;
+      if (!r.isAlive) desc += ' (ELIMINATED)';
+      else if (r.inSanctuary) desc += ' (Hiding in Church Sanctuary)';
+      return desc;
+    }).join(', ');
+    warBoardIntel += `\n- Known Exposed Rival Masters on Board: ${exposedList}`;
+  } else {
+    warBoardIntel += `\n- Known Exposed Rival Masters on Board: None (all other living rivals are lurking concealed in shadows).`;
+  }
+  if (context.concealedMastersCount && context.concealedMastersCount > 0) {
+    warBoardIntel += `\n- Hidden Rivals in Shadows: ${context.concealedMastersCount} unexposed Master(s).`;
+  }
+  if (context.eliminatedMastersCount && context.eliminatedMastersCount > 0) {
+    warBoardIntel += `\n- Fallen Masters: ${context.eliminatedMastersCount} eliminated.`;
+  }
+
   const prompt = `You are roleplaying as the Fate franchise Heroic Spirit: "${context.servantName}" (Class: ${context.servantClass}).
 You are communicating telepathically with your Master, "${context.masterName}", during the active Holy Grail War in Fuyuki City.
 
@@ -206,6 +238,7 @@ CONTEXT:
 - Class: ${context.servantClass}
 - Master Name: ${context.masterName}
 - Physical / Spiritual Condition: ${physicalStatus}${tacticalNotes}${locationContext}
+- War Board & Rival Intelligence:\n${warBoardIntel}
 - Bond Rank: Level ${bond} of 10
   * Bond 1-2: Formal, disciplined, distant, evaluating the Master's worth.
   * Bond 3-4: Emerging respect, strategic camaraderie, respectful partnership.
@@ -222,11 +255,11 @@ MASTER SAYS TO YOU NOW:
 INSTRUCTIONS:
 - Reply in 1 to 3 concise, impactful sentences (maximum 60 words) suitable for a Visual Novel dialogue box.
 - Stay strictly in character matching ${context.servantName}'s canon personality, tone, vocabulary, and chivalric/heroic ethos.
-- Actively weave in specific situational details from your context (such as current channel/sector #${context.channelName || 'general'}, equipped Craft Essence "${context.equippedCeName || 'None'}", active traps, or past conversation topics) so your Master knows you are acutely aware of your surroundings and status.
-- Naturally reflect your physical condition (e.g. if critically wounded, show physical strain or urgency; if at full health, show poise).
+- Conversational Variety: Answer what your Master actually asked. Do NOT force the channel name or Craft Essence name into every single sentence. Only mention the channel/location or Craft Essence when relevant to the topic (e.g. asking about location, strategy, defense, or gear).
+- War Board Knowledge: When Master asks about other Masters, rivals, enemies, or the War Board, use the War Board Intelligence provided above to name specific exposed rivals, or mention that the rest are hiding in the shadows!
+- Naturally reflect your physical condition and Bond Rank (${bond}/10).
 - If referencing past topics mentioned by Master, seamlessly incorporate them as a shared memory of this War.
 - Address ${context.masterName} naturally (e.g. "Master", or specific honorifics appropriate to the character).
-- Reflect your current Bond Rank (${bond}/10).
 - Do NOT break character, do NOT provide meta explanations, and do NOT use asterisks for actions (*sighs*). Return ONLY the spoken dialogue.`;
 
   try {
