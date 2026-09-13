@@ -237,6 +237,9 @@ export interface MasterProfile {
   homunculusCount?: number;
   lastDailyClaim?: number | string;
   activeServantId?: string;
+  dailyTalkCount?: number;
+  lastTalkDay?: string;
+  lastTalkTimestamp?: number;
   servants: MasterServantInstance[];
   craftEssences: CraftEssence[];
 }

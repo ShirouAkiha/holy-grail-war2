@@ -16,6 +16,7 @@ import {
   MessageFlags 
 } from 'discord.js';
 import { generateServantTalkResponse, renderServantTalkVisualOutput } from './engine/talkService';
+import { checkMasterTalkQuota, consumeMasterTalkQuota, refillTalkQuotaWithCommandSeal } from './engine/talkQuotaService';
 import { safeSetEmbedThumbnail } from './utils/discordEmbedHelper';
 import * as summonCommand from './commands/summon';
 import * as servantCommand from './commands/servant';
@@ -636,6 +637,58 @@ client.on(Events.InteractionCreate, async interaction => {
         let servant = master.servants?.find((s: any) => s.id === servantId) || master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
 
         if (servant) {
+          const war = getOrInitWarSession(master);
+          const totalMastersCount = Object.keys(war.participants || {}).length || 7;
+          const quotaStatus = checkMasterTalkQuota(master, totalMastersCount);
+
+          if (!quotaStatus.allowed) {
+            if (quotaStatus.reason === 'burst_cooldown') {
+              await interaction.reply({
+                flags: MessageFlags.Ephemeral,
+                embeds: [
+                  new EmbedBuilder()
+                    .setTitle('⏳ Telepathic Link Stabilizing')
+                    .setDescription(`Your telepathic link is recharging. Please wait **${quotaStatus.cooldownRemainingSeconds} second(s)** before transmitting another thought.`)
+                    .setColor(0xf59e0b)
+                    .setFooter({ text: `Anti-Spam Leyline Guard • Remaining today: ${quotaStatus.remainingToday}/${quotaStatus.maxToday}` })
+                ]
+              });
+              return;
+            }
+
+            const sealRefillButton = (master.commandSeals ?? 0) > 0
+              ? new ActionRowBuilder<ButtonBuilder>().addComponents(
+                  new ButtonBuilder()
+                    .setCustomId(`btn_refill_talk_seal:${servant.id}`)
+                    .setLabel(`Spend 1 Command Seal (+5 Chats) [${master.commandSeals}/3 Seals]`)
+                    .setStyle(ButtonStyle.Danger)
+                    .setEmoji('🔱')
+                )
+              : undefined;
+
+            await interaction.reply({
+              flags: MessageFlags.Ephemeral,
+              embeds: [
+                new EmbedBuilder()
+                  .setTitle('⚠️ Telepathic Mana Exhausted for Today')
+                  .setDescription(
+                    `Master **${master.username}**, your personal Magical Energy (Od) for telepathic communion has been exhausted for today.\n\n` +
+                    `• **Daily Allowance:** \`${quotaStatus.maxToday} chats / day\` (${totalMastersCount <= 7 ? '7-Master standard war limit: 25' : `Expanded ${totalMastersCount}-Master war limit: 20`})\n` +
+                    `• **Used Today:** \`${quotaStatus.maxToday}/${quotaStatus.maxToday}\`\n` +
+                    `• **Replenishment:** Resets daily at **00:00 UTC** (Midnight Leyline Renewal).\n\n` +
+                    `${(master.commandSeals ?? 0) > 0 ? '💡 *You may channel **1 Command Seal** to restore +5 emergency telepathic transmissions.*' : '*No Command Seals remaining to restore telepathic mana.*'}`
+                  )
+                  .setColor(0xef4444)
+                  .setFooter({ text: `Daily Telepathic Cap: ${quotaStatus.maxToday} chats • Resets at 00:00 UTC` })
+              ],
+              components: sealRefillButton ? [sealRefillButton] : []
+            });
+            return;
+          }
+
+          // Consume 1 daily chat
+          const { remainingToday, maxToday } = await consumeMasterTalkQuota(master, totalMastersCount);
+
           await interaction.deferReply({ flags: MessageFlags.Ephemeral });
           const playerMessage = interaction.fields.getTextInputValue('talk_input_message')?.trim() || 'What is our combat plan for tonight?';
 
@@ -646,7 +699,6 @@ client.on(Events.InteractionCreate, async interaction => {
           const avatarUrl = servant.avatarUrl || t.avatarUrl;
           const commandSeals = master.commandSeals ?? 3;
 
-          const war = getOrInitWarSession(master);
           const userParticipant = war.participants?.[master.discordId];
           const isExposed = !!userParticipant?.isExposed;
           const equippedCeName = servant.equippedCe?.name;
@@ -805,7 +857,11 @@ client.on(Events.InteractionCreate, async interaction => {
             playerMessage,
             masterName: master.username || 'Master',
             bondLevel,
-            commandSeals
+            commandSeals,
+            quotaInfo: {
+              remainingToday,
+              maxToday
+            }
           });
 
           const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -852,12 +908,13 @@ client.on(Events.InteractionCreate, async interaction => {
                 `⚔️ **${servantName}:**\n> ❝ ***${reply}*** ❞\n\n` +
                 `━━━━━━━━━━━━━━━━━━━━━━\n` +
                 `💖 **Bond Rank:** Level \`${bondLevel} / 10\`\n` +
+                `💬 **Telepathic Mana:** \`${remainingToday}/${maxToday}\` *daily chats remaining*\n` +
                 `🔱 **Command Seals:** \`${'✦ '.repeat(commandSeals)}${'✧ '.repeat(Math.max(0, 3 - commandSeals))}\` (**${commandSeals}/3**)\n` +
                 `🛡️ **Equipped CE:** *${equippedCeName || 'None'}*\n` +
                 `⚠️ **War Position:** *${isExposed ? 'Exposed on Public War Board' : 'Concealed in Shadows'}*`
               )
               .setColor(visual.embedData.color)
-              .setFooter({ text: `Bond Rank ${bondLevel}/10 • Holy Grail War Telepathic Resonance` });
+              .setFooter({ text: visual.embedData.footer });
 
             if (avatarUrl) {
               safeSetEmbedThumbnail(fallbackEmbed, avatarUrl);
@@ -1004,6 +1061,41 @@ client.on(Events.InteractionCreate, async interaction => {
           return;
         }
 
+        const war = getOrInitWarSession(master);
+        const totalMastersCount = Object.keys(war.participants || {}).length || 7;
+        const quotaStatus = checkMasterTalkQuota(master, totalMastersCount);
+
+        if (!quotaStatus.allowed && quotaStatus.reason === 'daily_limit_reached') {
+          const sealRefillButton = (master.commandSeals ?? 0) > 0
+            ? new ActionRowBuilder<ButtonBuilder>().addComponents(
+                new ButtonBuilder()
+                  .setCustomId(`btn_refill_talk_seal:${targetServant.id}`)
+                  .setLabel(`Spend 1 Command Seal (+5 Chats) [${master.commandSeals}/3 Seals]`)
+                  .setStyle(ButtonStyle.Danger)
+                  .setEmoji('🔱')
+              )
+            : undefined;
+
+          await interaction.reply({
+            flags: MessageFlags.Ephemeral,
+            embeds: [
+              new EmbedBuilder()
+                .setTitle('⚠️ Telepathic Mana Exhausted for Today')
+                .setDescription(
+                  `Master **${master.username}**, your personal Magical Energy (Od) for telepathic communion has been exhausted for today.\n\n` +
+                  `• **Daily Allowance:** \`${quotaStatus.maxToday} chats / day\` (${totalMastersCount <= 7 ? '7-Master standard war limit: 25' : `Expanded ${totalMastersCount}-Master war limit: 20`})\n` +
+                  `• **Used Today:** \`${quotaStatus.maxToday}/${quotaStatus.maxToday}\`\n` +
+                  `• **Replenishment:** Resets daily at **00:00 UTC** (Midnight Leyline Renewal).\n\n` +
+                  `${(master.commandSeals ?? 0) > 0 ? '💡 *You may channel **1 Command Seal** to restore +5 emergency telepathic transmissions.*' : '*No Command Seals remaining to restore telepathic mana.*'}`
+                )
+                .setColor(0xef4444)
+                .setFooter({ text: `Daily Telepathic Cap: ${quotaStatus.maxToday} chats • Resets at 00:00 UTC` })
+            ],
+            components: sealRefillButton ? [sealRefillButton] : []
+          });
+          return;
+        }
+
         const t = targetServant.template || targetServant;
         const sName = (targetServant.nickname || t.name || 'Servant').slice(0, 30);
 
@@ -1021,6 +1113,39 @@ client.on(Events.InteractionCreate, async interaction => {
 
         modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(msgInput));
         await interaction.showModal(modal);
+        return;
+      }
+
+      // Restore Telepathic Mana using Command Seal
+      if (btnId.startsWith('btn_refill_talk_seal')) {
+        const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+        const war = getOrInitWarSession(master);
+        const totalMastersCount = Object.keys(war.participants || {}).length || 7;
+        const result = await refillTalkQuotaWithCommandSeal(master, totalMastersCount);
+
+        if (!result.success) {
+          await interaction.reply({
+            content: `❌ ${result.message}`,
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        const sId = btnId.includes(':') ? btnId.split(':')[1] : undefined;
+        const s = sId ? master.servants?.find((sv: any) => sv.id === sId) : master.servants?.[0];
+
+        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`btn_talk_servant:${s?.id || master.activeServantId || 'active'}`)
+            .setLabel('Speak with Servant Now 💬')
+            .setStyle(ButtonStyle.Primary)
+        );
+
+        await interaction.reply({
+          content: `${result.message}\nCommand Seals remaining: **${result.sealsRemaining}/3**`,
+          components: [row],
+          flags: MessageFlags.Ephemeral
+        });
         return;
       }
 

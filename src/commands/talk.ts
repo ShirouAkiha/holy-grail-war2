@@ -11,6 +11,7 @@ import {
 import { getOrCreateMaster } from '../database/service';
 import { getOrInitWarSession } from '../engine/grailwar';
 import { generateServantTalkResponse, renderServantTalkVisualOutput } from '../engine/talkService';
+import { checkMasterTalkQuota, consumeMasterTalkQuota } from '../engine/talkQuotaService';
 import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
 export const data = new SlashCommandBuilder()
@@ -59,6 +60,54 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       );
       if (match) targetServant = match;
     }
+
+    const totalMastersCount = Object.keys(war.participants || {}).length || 7;
+    const quotaStatus = checkMasterTalkQuota(master, totalMastersCount);
+
+    if (!quotaStatus.allowed) {
+      if (quotaStatus.reason === 'burst_cooldown') {
+        return interaction.editReply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle('⏳ Telepathic Link Stabilizing')
+              .setDescription(`Your telepathic link is recharging. Please wait **${quotaStatus.cooldownRemainingSeconds} second(s)** before transmitting another thought.`)
+              .setColor(0xf59e0b)
+              .setFooter({ text: `Anti-Spam Leyline Guard • Remaining today: ${quotaStatus.remainingToday}/${quotaStatus.maxToday}` })
+          ]
+        });
+      }
+
+      // Daily limit reached (25 for <= 7 Masters, 20 for > 7 Masters)
+      const sealRefillButton = (master.commandSeals ?? 0) > 0
+        ? new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`btn_refill_talk_seal:${targetServant.id}`)
+              .setLabel(`Spend 1 Command Seal (+5 Chats) [${master.commandSeals}/3 Seals]`)
+              .setStyle(ButtonStyle.Danger)
+              .setEmoji('🔱')
+          )
+        : undefined;
+
+      return interaction.editReply({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle('⚠️ Telepathic Mana Exhausted for Today')
+            .setDescription(
+              `Master **${master.username}**, your personal Magical Energy (Od) for telepathic communion has been exhausted for today.\n\n` +
+              `• **Daily Allowance:** \`${quotaStatus.maxToday} chats / day\` (${totalMastersCount <= 7 ? '7-Master standard war limit: 25' : `Expanded ${totalMastersCount}-Master war limit: 20`})\n` +
+              `• **Used Today:** \`${quotaStatus.maxToday}/${quotaStatus.maxToday}\`\n` +
+              `• **Replenishment:** Resets daily at **00:00 UTC** (Midnight Leyline Renewal).\n\n` +
+              `${(master.commandSeals ?? 0) > 0 ? '💡 *You may channel **1 Command Seal** to restore +5 emergency telepathic transmissions.*' : '*No Command Seals remaining to restore telepathic mana.*'}`
+            )
+            .setColor(0xef4444)
+            .setFooter({ text: `Daily Telepathic Cap: ${quotaStatus.maxToday} chats • Resets at 00:00 UTC` })
+        ],
+        components: sealRefillButton ? [sealRefillButton] : []
+      });
+    }
+
+    // Consume 1 daily chat quota
+    const { remainingToday, maxToday } = await consumeMasterTalkQuota(master, totalMastersCount);
 
     const t = targetServant.template || targetServant;
     const servantName = targetServant.nickname || t.name || 'Heroic Spirit';
@@ -231,7 +280,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       playerMessage,
       masterName: master.username || 'Master',
       bondLevel,
-      commandSeals
+      commandSeals,
+      quotaInfo: {
+        remainingToday,
+        maxToday
+      }
     });
 
     const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -281,12 +334,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `⚔️ **${servantName}:**\n> ❝ ***${reply}*** ❞\n\n` +
         `━━━━━━━━━━━━━━━━━━━━━━\n` +
         `💖 **Bond Rank:** Level \`${bondLevel} / 10\`\n` +
+        `💬 **Telepathic Mana:** \`${remainingToday}/${maxToday}\` *daily chats remaining*\n` +
         `🔱 **Command Seals:** \`${'✦ '.repeat(commandSeals)}${'✧ '.repeat(Math.max(0, 3 - commandSeals))}\` (**${commandSeals}/3**)\n` +
         `🛡️ **Equipped CE:** *${equippedCeName || 'None'}*\n` +
         `⚠️ **War Position:** *${isExposed ? 'Exposed on Public War Board' : 'Concealed in Shadows'}*`
       )
       .setColor(visual.embedData.color)
-      .setFooter({ text: `Bond Rank ${bondLevel}/10 • Holy Grail War Telepathic Resonance` });
+      .setFooter({ text: visual.embedData.footer });
 
     if (avatarUrl) {
       safeSetEmbedThumbnail(fallbackEmbed, avatarUrl);

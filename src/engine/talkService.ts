@@ -578,39 +578,34 @@ VOICE & ROLEPLAY INSTRUCTIONS:
 - Address ${context.masterName} naturally based on the character's personality and bond level.
 - Do NOT break character, do NOT provide meta explanations, and do NOT use asterisks for actions (*sighs*). Return ONLY the spoken dialogue.`;
 
-  try {
-    let response;
-    try {
-      response = await client.models.generateContent({
-        model: 'gemini-3.1-flash-lite',
-        contents: prompt,
-        config: {
-          temperature: 0.9,
-          topP: 0.95
-        }
-      });
-    } catch (primaryErr) {
-      console.warn('[talkService] gemini-3.1-flash-lite attempt error, falling back to gemini-3.6-flash:', primaryErr);
-      response = await client.models.generateContent({
-        model: 'gemini-3.6-flash',
-        contents: prompt,
-        config: {
-          temperature: 0.9,
-          topP: 0.95
-        }
-      });
-    }
+  const CANDIDATE_MODELS = [
+    'gemini-3.1-flash-lite',
+    'gemini-2.5-flash',
+    'gemini-3.6-flash'
+  ];
 
-    const text = response.text?.trim();
-    if (text) {
-      // Strip any extra quotes wrapping the entire response if present
-      const cleaned = text.replace(/^["'“](.*)["'”]$/, '$1').trim();
-      // Save this turn to persistent memory
-      appendServantChatTurn(masterId, servantId, context.servantName, context.playerMessage, cleaned, warId);
-      return { reply: cleaned, source: 'gemini' };
+  for (const modelName of CANDIDATE_MODELS) {
+    try {
+      const response = await client.models.generateContent({
+        model: modelName,
+        contents: prompt,
+        config: {
+          temperature: 0.9,
+          topP: 0.95
+        }
+      });
+
+      const text = response.text?.trim();
+      if (text) {
+        // Strip any extra quotes wrapping the entire response if present
+        const cleaned = text.replace(/^["'“](.*)["'”]$/, '$1').trim();
+        // Save this turn to persistent memory
+        appendServantChatTurn(masterId, servantId, context.servantName, context.playerMessage, cleaned, warId);
+        return { reply: cleaned, source: 'gemini' };
+      }
+    } catch (err: any) {
+      console.warn(`[talkService] Model ${modelName} unavailable/rate-limited, cascading to next fallback:`, err?.message || err);
     }
-  } catch (err) {
-    console.warn('[talkService] Gemini generation fallback:', err);
   }
 
   const fallback = generateCanonicalFallbackReply(context);
@@ -636,6 +631,10 @@ export async function renderServantTalkVisualOutput(params: {
   masterName: string;
   bondLevel: number;
   commandSeals?: number;
+  quotaInfo?: {
+    remainingToday: number;
+    maxToday: number;
+  };
 }): Promise<{
   optionUsed: 'Option A (Canvas Card)' | 'Option B (Embed Fallback)';
   canvasBuffer: Buffer | null;
@@ -657,8 +656,17 @@ export async function renderServantTalkVisualOutput(params: {
     playerMessage,
     masterName,
     bondLevel,
-    commandSeals = 3
+    commandSeals = 3,
+    quotaInfo
   } = params;
+
+  const quotaLine = quotaInfo
+    ? ` • 💬 Mana: **${quotaInfo.remainingToday}/${quotaInfo.maxToday}**`
+    : '';
+
+  const footerText = quotaInfo
+    ? `Bond Rank ${bondLevel}/10 • Telepathic Mana: ${quotaInfo.remainingToday}/${quotaInfo.maxToday} today (Resets 00:00 UTC)`
+    : `Bond Rank ${bondLevel}/10 • Holy Grail War Telepathic Resonance`;
 
   // Base embed data used for both Option A and Option B
   const embedData = {
@@ -667,9 +675,9 @@ export async function renderServantTalkVisualOutput(params: {
     description:
       `👤 **Master ${masterName}:**\n> *“${playerMessage}”*\n\n` +
       `⚔️ **${servantName}:**\n> ❝ ***${replyText}*** ❞\n\n` +
-      `*💖 Bond Rank: Lv. ${bondLevel}/10 • 🔱 Command Seals: ${commandSeals}/3 • Fuyuki Leyline Link*`,
+      `*💖 Bond Rank: Lv. ${bondLevel}/10 • 🔱 Seals: ${commandSeals}/3${quotaLine}*`,
     color: servantClass.toLowerCase() === 'saber' ? 0x38bdf8 : (servantClass.toLowerCase() === 'archer' ? 0xef4444 : 0xd4af37),
-    footer: `Bond Rank ${bondLevel}/10 • Holy Grail War Telepathic Resonance`,
+    footer: footerText,
     bondRank: bondLevel
   };
 
