@@ -4,7 +4,9 @@ import React, { useState } from 'react';
 import {
   HolyGrailWarSession,
   MasterProfile,
-  WarMasterParticipant
+  WarMasterParticipant,
+  ChurchOverseerHomily,
+  FuyukiNewsBulletin
 } from '../lib/types';
 import {
   executeWarAction,
@@ -42,7 +44,12 @@ import {
   Trash2,
   CheckCircle2,
   AlertOctagon,
-  Radar
+  Radar,
+  Church,
+  Newspaper,
+  BookOpen,
+  Megaphone,
+  RefreshCw
 } from 'lucide-react';
 
 interface GrailWarSimProps {
@@ -91,10 +98,52 @@ export default function GrailWarSim({
 
   const [selectedTargetMasterId, setSelectedTargetMasterId] = useState<string | null>(null);
   const [actionFeedback, setActionFeedback] = useState<string | null>(null);
-  const [activeBoardTab, setActiveBoardTab] = useState<'roster' | 'leaks' | 'casualties' | 'traps'>('roster');
+  const [activeBoardTab, setActiveBoardTab] = useState<'roster' | 'leaks' | 'casualties' | 'traps' | 'church_news'>('roster');
+  const [churchSubTab, setChurchSubTab] = useState<'homily' | 'news'>('homily');
+  const [churchHomily, setChurchHomily] = useState<ChurchOverseerHomily | null>(grailWar.latestChurchHomily || null);
+  const [churchNews, setChurchNews] = useState<FuyukiNewsBulletin | null>(grailWar.latestNewsBulletin || null);
+  const [isGeneratingChurchIntel, setIsGeneratingChurchIntel] = useState<boolean>(false);
   const [boardTrapChannel, setBoardTrapChannel] = useState<string>('#holy-grail-war');
   const [boardTrapType, setBoardTrapType] = useState<'alarm' | 'bloodfort'>('alarm');
   const [customChannelInput, setCustomChannelInput] = useState<string>('');
+
+  // Fetch or Refresh Church Homily & News
+  const handleFetchOrRefreshChurchIntel = async (action: 'refresh_homily' | 'refresh_news' | 'refresh_all' = 'refresh_all') => {
+    setIsGeneratingChurchIntel(true);
+    try {
+      const res = await fetch('/api/grail/church', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (data.homily) setChurchHomily(data.homily);
+        if (data.news) setChurchNews(data.news);
+        setActionFeedback(data.message || 'Church Intel successfully synchronized via Gemini.');
+        setTimeout(() => setActionFeedback(null), 5000);
+      }
+    } catch (err) {
+      console.error('Failed to refresh church intel:', err);
+    } finally {
+      setIsGeneratingChurchIntel(false);
+    }
+  };
+
+  // Auto-fetch if opened and empty
+  React.useEffect(() => {
+    if (activeBoardTab === 'church_news' && (!churchHomily || !churchNews)) {
+      fetch('/api/grail/church')
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            if (data.homily) setChurchHomily(data.homily);
+            if (data.news) setChurchNews(data.news);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [activeBoardTab, churchHomily, churchNews]);
 
   // Real-time ticking clock for pure render of cooldown counters
   const [currentTime, setCurrentTime] = useState<number>(0);
@@ -553,6 +602,19 @@ export default function GrailWarSim({
               >
                 <span>🕸️</span>
                 <span>Territorial Wards &amp; Radar ({(grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId).length}/3)</span>
+              </button>
+
+              <button
+                id="grailwar_board_church_news_tab_btn"
+                onClick={() => setActiveBoardTab('church_news')}
+                className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider rounded-sm transition flex items-center gap-1.5 ${
+                  activeBoardTab === 'church_news'
+                    ? 'bg-[#220a0d] text-amber-300 border border-amber-500/50 font-bold shadow-sm'
+                    : 'text-white/50 hover:text-white'
+                }`}
+              >
+                <Church className="w-3.5 h-3.5 text-amber-400" />
+                <span>Church Homily &amp; 2h News 📡</span>
               </button>
             </div>
 
@@ -1117,6 +1179,274 @@ export default function GrailWarSim({
               </div>
             );
           })()}
+
+          {/* TAB 5: CHURCH SANCTUARY, 24H KOTOMINE HOMILY & 2H FUYUKI NEWS BROADCAST */}
+          {activeBoardTab === 'church_news' && (
+            <div className="space-y-6 animate-in fade-in">
+              {/* Top Selector & Gemini AI Trigger Banner */}
+              <div className="p-5 rounded-xl bg-gradient-to-r from-[#1f0d10] via-[#14080a] to-[#0a0a0c] border border-amber-500/40 flex flex-wrap items-center justify-between gap-4 shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-lg bg-amber-950/60 text-amber-300 border border-amber-500/40 shadow-inner">
+                    <Church className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-serif italic text-white flex items-center gap-2">
+                      <span>Fuyuki Church Overseer &amp; Municipal Information Relay</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-900/60 text-amber-200 border border-amber-500/30">
+                        Gemini AI Grounded
+                      </span>
+                    </h4>
+                    <p className="text-xs font-mono text-white/60 mt-0.5">
+                      Father Kotomine&apos;s 24-hour philosophical soliloquy and Fuyuki City&apos;s 2-hour gas leak cover stories.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  {/* Sub-tab switcher */}
+                  <div className="flex items-center bg-black/60 p-1 rounded-lg border border-white/10">
+                    <button
+                      onClick={() => setChurchSubTab('homily')}
+                      className={`px-3 py-1.5 rounded-md text-xs font-mono transition flex items-center gap-1.5 ${
+                        churchSubTab === 'homily'
+                          ? 'bg-[#3b1216] text-amber-200 border border-amber-500/40 font-bold shadow-sm'
+                          : 'text-white/50 hover:text-white'
+                      }`}
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>24h Kotomine Homily</span>
+                    </button>
+                    <button
+                      onClick={() => setChurchSubTab('news')}
+                      className={`px-3 py-1.5 rounded-md text-xs font-mono transition flex items-center gap-1.5 ${
+                        churchSubTab === 'news'
+                          ? 'bg-[#1e1329] text-purple-200 border border-purple-500/40 font-bold shadow-sm'
+                          : 'text-white/50 hover:text-white'
+                      }`}
+                    >
+                      <Newspaper className="w-3.5 h-3.5" />
+                      <span>2h City Breaking News</span>
+                    </button>
+                  </div>
+
+                  {/* Refresh with Gemini Button */}
+                  <button
+                    disabled={isGeneratingChurchIntel}
+                    onClick={() => handleFetchOrRefreshChurchIntel(churchSubTab === 'homily' ? 'refresh_homily' : 'refresh_news')}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-amber-700 to-amber-900 hover:from-amber-600 hover:to-amber-800 text-white font-mono text-xs font-semibold flex items-center gap-2 border border-amber-500/40 shadow-md transition disabled:opacity-50 cursor-pointer"
+                    title="Generate fresh in-character monologue or news bulletin using Gemini LLM"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingChurchIntel ? 'animate-spin text-amber-300' : ''}`} />
+                    <span>{isGeneratingChurchIntel ? 'Composing...' : 'Re-generate via Gemini'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* VIEW 1: 24-HOUR KOTOMINE HOMILY */}
+              {churchSubTab === 'homily' && (
+                <div className="space-y-5 animate-in fade-in">
+                  {churchHomily ? (
+                    <div className="p-6 rounded-xl bg-gradient-to-b from-[#14080a] to-[#0a0a0c] border border-amber-900/60 space-y-5 shadow-2xl relative overflow-hidden">
+                      {/* Header info */}
+                      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-amber-900/40 pb-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider bg-amber-950 text-amber-300 border border-amber-600/40">
+                              Holy Church Overseer Soliloquy
+                            </span>
+                            <span className="text-[11px] font-mono text-white/40">
+                              Window: Past 24 Hours • {new Date(churchHomily.timestamp).toLocaleTimeString()}
+                            </span>
+                          </div>
+                          <h3 className="text-xl font-serif italic text-white tracking-wide">
+                            {churchHomily.title || 'The Overseer’s 24-Hour Homily'}
+                          </h3>
+                          <p className="text-xs font-mono text-amber-300/80 italic mt-0.5">
+                            “{churchHomily.subtitle || 'A Theological Reflection on the Carnage & Desires of Fuyuki’s Masters'}”
+                          </p>
+                        </div>
+
+                        {/* Sanctuary Status Box */}
+                        <div className="p-3 rounded-lg bg-black/40 border border-white/10 text-right space-y-1">
+                          <span className="text-[10px] font-mono text-white/50 block">Your Sanctuary State:</span>
+                          <span className={`text-xs font-mono font-bold ${userParticipant?.inSanctuary ? 'text-emerald-400' : 'text-amber-400'}`}>
+                            {userParticipant?.inSanctuary ? '🕊️ In Holy Asylum' : '⚔️ Active Combatant'}
+                          </span>
+                          <button
+                            onClick={() => handleAction(userParticipant?.inSanctuary ? 'leave_church' : 'enter_church')}
+                            className="mt-1 text-[10px] font-mono px-2 py-1 rounded bg-[#221014] hover:bg-[#33181e] text-amber-200 border border-amber-500/30 transition block w-full text-center"
+                          >
+                            {userParticipant?.inSanctuary ? 'Leave Sanctuary' : 'Claim Church Asylum'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Kotomine Monologue Body */}
+                      <div className="p-5 rounded-lg bg-[#0e0709]/80 border border-amber-900/30 relative">
+                        <div className="text-amber-500 text-3xl font-serif select-none absolute left-3 top-2 opacity-30">“</div>
+                        <div className="pl-6 pr-2 space-y-3">
+                          {churchHomily.monologue.split('\n\n').map((paragraph, pIdx) => (
+                            <p key={pIdx} className="text-sm font-serif text-white/90 leading-relaxed italic">
+                              {paragraph}
+                            </p>
+                          ))}
+                        </div>
+                        <div className="text-right text-xs font-serif text-amber-400/70 italic mt-3 pr-2">
+                          — Father Kirei Kotomine, 8th Overseer of Fuyuki
+                        </div>
+                      </div>
+
+                      {/* 24-Hour Grail War Statistics Summary */}
+                      {churchHomily.statsSummary && (
+                        <div className="space-y-2">
+                          <span className="text-xs font-mono uppercase tracking-wider text-white/50 flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                            <span>24-Hour Battlefield Audit</span>
+                          </span>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                            <div className="p-3 rounded-lg bg-black/40 border border-white/10 text-center">
+                              <span className="text-[10px] font-mono text-white/40 block">Living Masters</span>
+                              <span className="text-lg font-mono font-bold text-emerald-400">{churchHomily.statsSummary.survivingMastersCount ?? '-'}</span>
+                            </div>
+                            <div className="p-3 rounded-lg bg-black/40 border border-white/10 text-center">
+                              <span className="text-[10px] font-mono text-white/40 block">Fallen Masters</span>
+                              <span className="text-lg font-mono font-bold text-rose-400">{churchHomily.statsSummary.fallenMastersCount ?? 0}</span>
+                            </div>
+                            <div className="p-3 rounded-lg bg-black/40 border border-white/10 text-center">
+                              <span className="text-[10px] font-mono text-white/40 block">Civilian Toll</span>
+                              <span className="text-lg font-mono font-bold text-amber-400">{churchHomily.statsSummary.totalCasualties ?? 0}</span>
+                            </div>
+                            <div className="p-3 rounded-lg bg-black/40 border border-white/10 text-center">
+                              <span className="text-[10px] font-mono text-white/40 block">In Sanctuary</span>
+                              <span className="text-lg font-mono font-bold text-blue-400">{churchHomily.statsSummary.asylumCount ?? 0}</span>
+                            </div>
+                            <div className="p-3 rounded-lg bg-black/40 border border-white/10 text-center">
+                              <span className="text-[10px] font-mono text-white/40 block">Wanted Heretics</span>
+                              <span className="text-lg font-mono font-bold text-purple-400">{churchHomily.statsSummary.rogueHereticsCount ?? 0}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Noted Incidents */}
+                      {churchHomily.keyEvents && churchHomily.keyEvents.length > 0 && (
+                        <div className="space-y-2">
+                          <span className="text-xs font-mono uppercase tracking-wider text-white/50">
+                            🕯️ Key Events Documented in the Church Annals
+                          </span>
+                          <div className="space-y-1.5">
+                            {churchHomily.keyEvents.map((evt, eIdx) => (
+                              <div key={eIdx} className="p-2.5 rounded bg-black/30 border border-white/5 text-xs font-mono text-white/70 flex items-start gap-2">
+                                <span className="text-amber-500">•</span>
+                                <span>{evt}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-8 rounded-xl bg-black/40 border border-white/10 text-center space-y-3">
+                      <p className="text-sm font-mono text-white/60">No Father Kotomine Homily generated yet.</p>
+                      <button
+                        onClick={() => handleFetchOrRefreshChurchIntel('refresh_homily')}
+                        className="px-4 py-2 rounded bg-amber-700 hover:bg-amber-600 text-white font-mono text-xs font-bold transition"
+                      >
+                        Generate 24-Hour Homily via Gemini
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* VIEW 2: 2-HOUR FUYUKI BREAKING NEWS BULLETIN */}
+              {churchSubTab === 'news' && (
+                <div className="space-y-5 animate-in fade-in">
+                  {churchNews ? (
+                    <div className="p-6 rounded-xl bg-gradient-to-b from-[#160c22] to-[#0a0a0f] border border-purple-900/60 space-y-5 shadow-2xl relative">
+                      {/* Header bar */}
+                      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-purple-900/40 pb-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase font-bold tracking-wider ${
+                              churchNews.threatLevel === 'Catastrophic' ? 'bg-rose-950 text-rose-300 border border-rose-500' :
+                              churchNews.threatLevel === 'Severe' ? 'bg-red-950 text-red-300 border border-red-500' :
+                              churchNews.threatLevel === 'Moderate' ? 'bg-amber-950 text-amber-300 border border-amber-500' :
+                              'bg-emerald-950 text-emerald-300 border border-emerald-500'
+                            }`}>
+                              ⚠️ Threat Level: {churchNews.threatLevel}
+                            </span>
+                            <span className="text-[11px] font-mono text-white/40">
+                              Relay: {churchNews.broadcastChannel || 'Fuyuki Emergency Radio (FM 84.7)'} • {new Date(churchNews.timestamp).toLocaleTimeString()}
+                            </span>
+                          </div>
+                          <h3 className="text-xl font-serif italic text-white tracking-wide">
+                            {churchNews.headline}
+                          </h3>
+                        </div>
+
+                        <div className="p-2.5 rounded-lg bg-black/40 border border-white/10 text-right">
+                          <span className="text-[10px] font-mono text-white/40 block">Extermination Bounties:</span>
+                          <span className="text-sm font-mono font-bold text-rose-400">
+                            {churchNews.activeBountiesCount} Wanted Rogue(s)
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Official Gas Leak Disinformation Cover Story */}
+                      <div className="p-4 rounded-lg bg-[#240a12]/70 border border-rose-500/30 space-y-1">
+                        <div className="flex items-center gap-2 text-rose-300 font-mono text-xs font-bold">
+                          <Megaphone className="w-4 h-4" />
+                          <span>OFFICIAL MUNICIPAL GAS LEAK COVER STORY:</span>
+                        </div>
+                        <p className="text-xs font-mono text-rose-200/90 italic leading-relaxed pl-6">
+                          “{churchNews.gasLeakCoverStory}”
+                        </p>
+                      </div>
+
+                      {/* Public Emergency Broadcast Content */}
+                      <div className="p-5 rounded-lg bg-black/40 border border-purple-900/30 space-y-2">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-purple-300 block">
+                          📻 Emergency Advisory Transcript
+                        </span>
+                        <p className="text-xs font-mono text-white/90 leading-relaxed whitespace-pre-wrap">
+                          {churchNews.content}
+                        </p>
+                      </div>
+
+                      {/* 2-Hour Tactical Incident Dispatches */}
+                      {churchNews.bulletinPoints && churchNews.bulletinPoints.length > 0 && (
+                        <div className="space-y-2">
+                          <span className="text-xs font-mono uppercase tracking-wider text-white/50">
+                            📋 Sector Incidents (Past 2 Hours)
+                          </span>
+                          <div className="space-y-1.5">
+                            {churchNews.bulletinPoints.map((pt, ptIdx) => (
+                              <div key={ptIdx} className="p-2.5 rounded bg-black/30 border border-white/5 text-xs font-mono text-white/80 flex items-start gap-2">
+                                <span className="text-purple-400">🚨</span>
+                                <span>{pt}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-8 rounded-xl bg-black/40 border border-white/10 text-center space-y-3">
+                      <p className="text-sm font-mono text-white/60">No Fuyuki Breaking News Bulletin recorded yet.</p>
+                      <button
+                        onClick={() => handleFetchOrRefreshChurchIntel('refresh_news')}
+                        className="px-4 py-2 rounded bg-purple-700 hover:bg-purple-600 text-white font-mono text-xs font-bold transition"
+                      >
+                        Broadcast 2-Hour Bulletin via Gemini
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Selected Rival Engagement Box */}
           {selectedTargetMasterId && selectedTargetMasterId !== master.discordId && (

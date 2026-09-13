@@ -34,6 +34,20 @@ export interface ServantTalkContext {
     fallenMasters: string[];
     civilianCasualties: string[];
   };
+  latestChurchHomily?: {
+    title: string;
+    monologue: string;
+    statsSummary?: any;
+    source?: string;
+  };
+  latestNewsBulletin?: {
+    headline: string;
+    gasLeakCoverStory: string;
+    content: string;
+    threatLevel: string;
+    bulletinPoints?: string[];
+    source?: string;
+  };
   playerMessage: string;
   servantAvatarUrl?: string;
   servantTitle?: string;
@@ -127,6 +141,22 @@ export function generateCanonicalFallbackReply(ctx: ServantTalkContext): string 
       return summary;
     }
     return `Zero confirmed casualties so far, Master. All seven Masters still walk the earth and cling to their Command Seals.`;
+  }
+
+  // 4. Inquiries about Kotomine Kirei, Overseer's Homily & Church Sermons
+  if (lowerMsg.includes('kotomine') || lowerMsg.includes('homily') || lowerMsg.includes('sermon') || lowerMsg.includes('priest') || lowerMsg.includes('kirei')) {
+    if (ctx.latestChurchHomily) {
+      return `Father Kotomine just released his 24-hour homily: "${ctx.latestChurchHomily.title}". That priest watches this entire war like a spectator savoring a tragedy. Do not let your guard down around the Church, Master.`;
+    }
+    return `Father Kotomine watches over the neutral grounds of the Fuyuki Church, Master. But remember—in this war, the arbitrator often finds the deepest amusement in our bloodshed.`;
+  }
+
+  // 5. Inquiries about 2-Hour Fuyuki News, Gas Leaks & City Announcements
+  if (lowerMsg.includes('news') || lowerMsg.includes('bulletin') || lowerMsg.includes('gas leak') || lowerMsg.includes('broadcast') || lowerMsg.includes('announcement')) {
+    if (ctx.latestNewsBulletin) {
+      return `The latest Fuyuki municipal dispatch is out: "${ctx.latestNewsBulletin.headline}" [Threat Level: ${ctx.latestNewsBulletin.threatLevel}]. The Church's disinformation bureau is covering up our skirmishes as '${ctx.latestNewsBulletin.gasLeakCoverStory}'.`;
+    }
+    return `The local news continues to dismiss our supernatural clashes as underground industrial gas leaks. The Secrecy of Magecraft remains intact for now.`;
   }
 
   // Keyword-sensitive responses
@@ -393,6 +423,18 @@ ${characterProfile.speechExamples.map(e => `• ${e}`).join('\n')}
       .join('\n');
   }
 
+  // Latest Church Overseer 24h Homily
+  let churchHomilyIntel = '  • Father Kotomine has not delivered a 24-hour sermon yet.';
+  if (context.latestChurchHomily) {
+    churchHomilyIntel = `  • [24h Homily Title]: ${context.latestChurchHomily.title}\n  • [Father Kotomine's Monologue Excerpt]: "${context.latestChurchHomily.monologue.slice(0, 300)}..."`;
+  }
+
+  // Latest 2-Hour Fuyuki Breaking News & Gas Leak Bulletin
+  let newsBulletinIntel = '  • No breaking city news bulletin registered in the last 2 hours.';
+  if (context.latestNewsBulletin) {
+    newsBulletinIntel = `  • [Headline]: ${context.latestNewsBulletin.headline} (Threat Level: ${context.latestNewsBulletin.threatLevel})\n  • [Official Disinformation Gas Leak Cover Story]: "${context.latestNewsBulletin.gasLeakCoverStory}"\n  • [Broadcast Content]: "${context.latestNewsBulletin.content.slice(0, 250)}..."`;
+  }
+
   const prompt = `You are roleplaying as the Fate franchise Heroic Spirit: "${context.servantName}" (Class: ${context.servantClass}).
 You are communicating telepathically with your Master, "${context.masterName}", during the active Holy Grail War in Fuyuki City.
 ${characterPersonaBlock ? characterPersonaBlock : `Personality: Faithful to ${context.servantName}'s canon Type-Moon visual novel characterization.`}
@@ -416,6 +458,10 @@ ${battleIntel}
 ${leaksIntel}
 - Casualty Dossier & Fatalities (Fallen Masters & Civilian Gas Leak Cover-Ups):
 ${casualtyIntel}
+- Latest Church Overseer Homily (Father Kotomine's 24-Hour Sermon):
+${churchHomilyIntel}
+- Latest 2-Hour Fuyuki Breaking News & Gas Leak Bulletin:
+${newsBulletinIntel}
 - Recent War Chronicle & General Happenings:
 ${chronicleIntel}
 ${historyBlock}
@@ -440,6 +486,7 @@ VOICE & ROLEPLAY INSTRUCTIONS:
   * If Master asks about leaks, rumors, or intercepted communications, draw directly from the "Intercepted Intelligence Leaks" above (or confirm that rivals are maintaining radio silence).
   * If Master asks about casualties, who died, civilian victims, or the Church's gas leak cover-ups, explain using the "Casualty Dossier" above.
   * If Master asks about who has kills or bounties on the War Board, reference the kill numbers and status from the Rival Master Roster.
+  * If Master asks about Father Kotomine, the Church's 24-hour homily, the latest 2-hour news bulletin, or city gas leak announcements, react in-character with your Servant's authentic canon stance regarding the Church and Kotomine.
 - Address ${context.masterName} naturally based on the character's personality and bond level.
 - Do NOT break character, do NOT provide meta explanations, and do NOT use asterisks for actions (*sighs*). Return ONLY the spoken dialogue.`;
 

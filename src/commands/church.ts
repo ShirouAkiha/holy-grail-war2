@@ -4,8 +4,7 @@ import {
   ActionRowBuilder, 
   ButtonBuilder, 
   ButtonStyle, 
-  EmbedBuilder,
-  ComponentType,
+  EmbedBuilder, 
   MessageFlags 
 } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
@@ -15,23 +14,78 @@ import {
   leaveChurchSanctuary,
   getReputationInfo
 } from '../engine/grailwar';
+import {
+  generateKotomine24hHomily,
+  generateFuyuki2hNewsBulletin
+} from '../engine/churchNewsService';
 
 export const data = new SlashCommandBuilder()
   .setName('church')
-  .setDescription('⛪ Fuyuki Church — Neutral asylum, reputation & bounties under Father Kotomine')
+  .setDescription('⛪ Fuyuki Church — Neutral asylum, Father Kotomine’s Homily & 2-Hour Breaking News')
   .addStringOption(opt =>
     opt
       .setName('action')
-      .setDescription('Action: status (rules), enter (asylum), leave (re-enter war), bounties, reputation')
+      .setDescription('Action: status, enter (asylum), leave, homily (24h sermon), news (2h bulletin), bounties')
       .setRequired(false)
       .addChoices(
         { name: '⛪ View Sanctuary & Church Status', value: 'status' },
+        { name: '📜 Father Kotomine’s 24h Homily', value: 'homily' },
+        { name: '📰 Fuyuki 2-Hour Breaking News Bulletin', value: 'news' },
         { name: '🕊️ Enter Church Sanctuary (Claim Asylum)', value: 'enter' },
         { name: '🚪 Leave Church Sanctuary (Re-enter War)', value: 'leave' },
         { name: '🎯 View Extermination Bounties', value: 'bounties' },
         { name: '📜 View Reputation Dossier', value: 'reputation' }
       )
   );
+
+export function buildHomilyEmbed(homily: any): EmbedBuilder {
+  const stats = homily.statsSummary || {};
+  const statsLine = `📊 **24h War Status:** \`${stats.survivingMastersCount ?? '?'}\` Living Masters • \`${stats.fallenMastersCount ?? 0}\` Fallen • \`${stats.totalCasualties ?? 0}\` Total Casualties • \`${stats.asylumCount ?? 0}\` in Sanctuary • \`${stats.rogueHereticsCount ?? 0}\` Wanted Heretics`;
+
+  const highlights = (homily.keyEvents || [])
+    .map((e: string) => `• ${e.replace(/\*\*/g, '')}`)
+    .join('\n');
+
+  return new EmbedBuilder()
+    .setTitle(homily.title || '🕯️ The Overseer’s 24-Hour Homily | Father Kotomine')
+    .setDescription(
+      `*“${homily.subtitle || 'A Theological Reflection on the Carnage & Desires of Fuyuki’s Masters'}”*\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+      `${homily.monologue}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `${statsLine}\n\n` +
+      (highlights ? `🕯️ **The Overseer's Noted Events:**\n${highlights}\n\n` : '') +
+      `*“Rejoice, Master. For your struggles are the greatest entertainment under heaven.”*`
+    )
+    .setColor(0x991b1b)
+    .setFooter({ text: `Holy Church Overseer Protocol • 24-Hour Soliloquy [Source: ${homily.source || 'gemini'}]` });
+}
+
+export function buildNewsEmbed(news: any): EmbedBuilder {
+  const threatColors: Record<string, number> = {
+    Low: 0x10b981,
+    Moderate: 0xf59e0b,
+    Severe: 0xef4444,
+    Catastrophic: 0x7f1d1d
+  };
+
+  const points = (news.bulletinPoints || [])
+    .map((p: string) => typeof p === 'string' ? (p.startsWith('•') ? p : `• ${p}`) : '• Tactical notice')
+    .join('\n');
+
+  return new EmbedBuilder()
+    .setTitle(news.headline || '🚨 FUYUKI BREAKING NEWS BULLETIN')
+    .setDescription(
+      `📡 **Broadcast Relay:** \`${news.broadcastChannel || 'Fuyuki Emergency Radio'}\` • ⚠️ **Threat Level:** **[${news.threatLevel || 'Moderate'}]**\n\n` +
+      `📰 **OFFICIAL MUNICIPAL COVER STORY:**\n> *“${news.gasLeakCoverStory}”*\n\n` +
+      `📢 **PUBLIC BROADCAST TRANSCRIPT:**\n${news.content}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `📋 **SECTOR INCIDENT DISPATCHES (PAST 2 HOURS):**\n${points}\n\n` +
+      `*Active Extermination Bounties: \`${news.activeBountiesCount || 0}\` Wanted Heretic(s)*`
+    )
+    .setColor(threatColors[news.threatLevel] || 0xf59e0b)
+    .setFooter({ text: `Fuyuki Public Information & Church Disinformation Bureau • 2-Hour Dispatch [Source: ${news.source || 'gemini'}]` });
+}
 
 export function buildChurchEmbed(userParticipant: any, war?: any, lastMsg?: string) {
   if (!userParticipant) {
@@ -80,7 +134,7 @@ export function buildChurchEmbed(userParticipant: any, war?: any, lastMsg?: stri
       `• **Asylum Inviolability:** No Master may target, ambush, or skirmish against anyone sheltered within the church.\n` +
       `• **Truce Binding:** Masters in sanctuary cannot launch ambushes or attack rivals until they formally depart.` +
       bountyNotice +
-      `\n\n*Use the interactive buttons below or run \`/church action:enter\` and \`/church action:leave\`:*`
+      `\n\n*Use the interactive buttons below or run \`/church action:homily\` and \`/church action:news\`:*`
     )
     .setColor(rep.isRogue ? 0xef4444 : inSanctuary ? 0x10b981 : 0x6366f1)
     .setFooter({ text: 'Holy Church Overseer Protocol • Fuyuki City Neutral Zone' });
@@ -97,12 +151,16 @@ export function buildChurchButtons(userParticipant: any) {
       .setStyle(inSanctuary ? ButtonStyle.Danger : ButtonStyle.Primary)
       .setDisabled(isRogue && !inSanctuary),
     new ButtonBuilder()
-      .setCustomId('war_tab_bounties')
-      .setLabel('Bounty Registry 🎯')
+      .setCustomId('church_action_homily')
+      .setLabel('24h Kotomine Homily 📜')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
-      .setCustomId('war_tab_board')
-      .setLabel('War Board 📋')
+      .setCustomId('church_action_news')
+      .setLabel('2h Fuyuki News 📰')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('war_tab_bounties')
+      .setLabel('Bounties 🎯')
       .setStyle(ButtonStyle.Secondary)
   );
   return [row];
@@ -121,9 +179,29 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     let war = getOrInitWarSession(master);
-    let lastMsg: string | undefined = undefined;
-
     const action = interaction.options.getString('action') || 'status';
+
+    if (action === 'homily') {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      const homily = await generateKotomine24hHomily(war, false);
+      const embed = buildHomilyEmbed(homily);
+      return interaction.editReply({
+        embeds: [embed],
+        components: buildChurchButtons(war.participants[interaction.user.id])
+      });
+    }
+
+    if (action === 'news') {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      const news = await generateFuyuki2hNewsBulletin(war, false);
+      const embed = buildNewsEmbed(news);
+      return interaction.editReply({
+        embeds: [embed],
+        components: buildChurchButtons(war.participants[interaction.user.id])
+      });
+    }
+
+    let lastMsg: string | undefined = undefined;
 
     if (action === 'enter') {
       const res = enterChurchSanctuary(war, interaction.user.id);
@@ -153,3 +231,4 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
   }
 }
+

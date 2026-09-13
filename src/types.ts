@@ -550,6 +550,39 @@ export interface WarHistoryRecord {
   rulesSummary: string;
 }
 
+export interface ChurchOverseerHomily {
+  id: string;
+  timestamp: number;
+  periodHours: number; // e.g. 24
+  title: string;
+  subtitle: string;
+  monologue: string;
+  source: 'gemini' | 'canon_heuristic';
+  statsSummary: {
+    totalCasualties: number;
+    fallenMastersCount: number;
+    survivingMastersCount: number;
+    rogueHereticsCount: number;
+    asylumCount: number;
+    totalDuelsAndAmbushes: number;
+  };
+  keyEvents: string[];
+}
+
+export interface FuyukiNewsBulletin {
+  id: string;
+  timestamp: number;
+  periodHours: number; // e.g. 2
+  headline: string;
+  broadcastChannel: string;
+  content: string;
+  gasLeakCoverStory: string;
+  bulletinPoints: string[];
+  threatLevel: 'Low' | 'Moderate' | 'Severe' | 'Catastrophic';
+  activeBountiesCount: number;
+  source: 'gemini' | 'canon_heuristic';
+}
+
 export interface HolyGrailWarSession {
   id: string;
   title: string;
@@ -559,6 +592,10 @@ export interface HolyGrailWarSession {
   alliances: Record<string, WarAlliance>;
   channelTraps?: ChannelBoundedTrap[];
   familiars?: ActiveFamiliar[];
+  latestChurchHomily?: ChurchOverseerHomily;
+  latestNewsBulletin?: FuyukiNewsBulletin;
+  homilyHistory?: ChurchOverseerHomily[];
+  newsHistory?: FuyukiNewsBulletin[];
   civilianCasualties?: Array<{
     id: string;
     name: string;
