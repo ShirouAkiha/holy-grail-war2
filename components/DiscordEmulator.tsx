@@ -2617,7 +2617,7 @@ export default function DiscordEmulator({
         const isUnlocked = (activeServant.bondLevel || 1) >= evt.requiredBondLevel;
         return {
           id: `vn_start_${evt.id}_0`,
-          label: isCompleted ? `Replay: ${evt.title.slice(0, 18)}` : `Play: ${evt.title.slice(0, 18)}`,
+          label: isCompleted ? `Replay: ${evt.title.slice(0, 48)}` : `Play: ${evt.title.slice(0, 48)}`,
           style: (isCompleted ? 'secondary' : 'primary') as any,
           emoji: '📖',
           disabled: !isUnlocked
@@ -7296,7 +7296,7 @@ export default function DiscordEmulator({
         const actionButtons = hasChoices
           ? scene.choices!.map((c, idx) => ({
               id: `vn_choice:${evt.id}:${sceneIdx}:${c.id}`,
-              label: `${idx + 1}. “${c.text.slice(0, 24)}”`,
+              label: `${idx + 1}. “${c.text.slice(0, 70)}”`,
               style: 'primary' as const,
               emoji: '💬'
             }))

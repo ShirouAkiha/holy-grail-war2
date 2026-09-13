@@ -234,26 +234,40 @@ export const BondVisualNovelModal: React.FC<BondVisualNovelModalProps> = ({
             </div>
           </div>
 
-          {/* CHOICE SELECTION OVERLAY (Centered Left above dialogue bar) */}
+          {/* CHOICE SELECTION OVERLAY (Spacious, Centered Fate/Steins;Gate Visual Novel Choice Cards) */}
           {currentScene.choices && currentScene.choices.length > 0 && !selectedChoice && (
-            <div className="absolute inset-x-6 bottom-[260px] sm:bottom-[280px] z-30 flex flex-col gap-3 max-w-xl mx-auto sm:ml-12 md:ml-20 bg-slate-950/90 border border-slate-400/40 p-5 rounded-sm backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.9)]">
-              <div className="text-xs font-bold text-amber-400 uppercase tracking-widest text-center flex items-center justify-center gap-2 mb-1">
-                <Heart className="w-4 h-4 fill-amber-400" /> Choose Master Response
+            <div className="absolute inset-x-4 sm:inset-x-8 top-[16%] sm:top-[20%] max-w-3xl mx-auto z-40 flex flex-col gap-3.5 max-h-[62vh] overflow-y-auto p-5 sm:p-7 bg-slate-950/95 border-2 border-amber-400/50 rounded-2xl backdrop-blur-xl shadow-[0_0_60px_rgba(245,158,11,0.25)] animate-fadeIn scrollbar-thin scrollbar-thumb-amber-500/40">
+              <div className="flex items-center justify-between border-b border-amber-500/30 pb-3 mb-1">
+                <div className="text-xs font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2">
+                  <Heart className="w-4 h-4 fill-amber-400" /> Choose Master Response
+                </div>
+                <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+                  Fate/Interlude Dialogue Branch
+                </div>
               </div>
-              {currentScene.choices.map(choice => (
-                <button
-                  key={choice.id}
-                  onClick={() => handleSelectChoice(choice)}
-                  className="w-full p-3.5 text-left rounded-sm border border-slate-700 hover:border-amber-400 bg-slate-900/90 hover:bg-slate-800/90 transition-all group flex items-start justify-between gap-3 shadow-md"
-                >
-                  <span className="text-sm sm:text-base text-slate-100 group-hover:text-amber-200 font-serif">
-                    “{choice.text}”
-                  </span>
-                  <span className="text-xs px-2.5 py-1 rounded bg-amber-500/15 border border-amber-500/40 text-amber-300 font-mono whitespace-nowrap">
-                    +{choice.bondExpGain} EXP
-                  </span>
-                </button>
-              ))}
+              
+              <div className="flex flex-col gap-3">
+                {currentScene.choices.map((choice, idx) => (
+                  <button
+                    key={choice.id}
+                    onClick={() => handleSelectChoice(choice)}
+                    className="w-full p-4 sm:p-5 text-left rounded-xl border-2 border-slate-700/80 hover:border-amber-400 bg-gradient-to-r from-slate-900/95 via-slate-900/90 to-amber-950/30 hover:from-amber-950/50 hover:to-slate-900/95 transition-all duration-200 group flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl hover:shadow-amber-500/20 hover:scale-[1.01] cursor-pointer"
+                  >
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <span className="text-amber-400/80 font-mono font-bold text-sm shrink-0 pt-0.5">
+                        [{idx + 1}]
+                      </span>
+                      <span className="text-base sm:text-lg text-slate-100 group-hover:text-amber-200 font-serif leading-relaxed break-words">
+                        “{choice.text}”
+                      </span>
+                    </div>
+                    
+                    <span className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full bg-amber-500/20 border border-amber-400/50 text-amber-300 font-mono font-bold whitespace-nowrap shrink-0 self-end sm:self-center shadow-sm">
+                      <Heart className="w-3.5 h-3.5 fill-amber-400" /> +{choice.bondExpGain} EXP
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -261,13 +275,21 @@ export const BondVisualNovelModal: React.FC<BondVisualNovelModalProps> = ({
           <div className="relative z-20 w-full bg-gradient-to-t from-black via-slate-950/95 to-slate-950/80 border-t border-slate-400/40 pt-6 pb-6 px-6 sm:px-12 md:px-20 backdrop-blur-md shadow-[0_-15px_50px_rgba(0,0,0,0.95)]">
             
             {/* Speaker Nameplate Pill (Centered on top border line) */}
-            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-8 py-0.5 bg-slate-950 border border-slate-400/60 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.8)] flex items-center gap-3">
-              <div className="h-px w-6 bg-slate-500/60" />
-              <span className="text-xs sm:text-sm font-serif font-bold tracking-widest text-slate-100 uppercase">
+            <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-8 py-0.5 bg-slate-950 border border-slate-400/60 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.8)] flex items-center gap-3 max-w-[90vw] overflow-hidden">
+              <div className="h-px w-6 bg-slate-500/60 shrink-0" />
+              <span className="text-xs sm:text-sm font-serif font-bold tracking-widest text-slate-100 uppercase truncate">
                 {currentScene.speakerName || template.name}
               </span>
-              <div className="h-px w-6 bg-slate-500/60" />
+              <div className="h-px w-6 bg-slate-500/60 shrink-0" />
             </div>
+
+            {/* Selected Choice Pill (if a choice was picked) */}
+            {selectedChoice && (
+              <div className="absolute -top-10 left-6 sm:left-12 px-3 py-1 bg-amber-950/90 border border-amber-400/60 rounded-md text-amber-300 text-xs font-serif flex items-center gap-2 shadow-lg max-w-[80vw] truncate">
+                <Heart className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                <span className="truncate">Selected: “{selectedChoice.text}”</span>
+              </div>
+            )}
 
             <div className="max-w-6xl mx-auto flex flex-col justify-between min-h-[110px] cursor-pointer" onClick={handleDialogueBoxClick}>
               

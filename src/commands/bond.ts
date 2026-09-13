@@ -104,7 +104,7 @@ export function buildBondActionRow(master: any) {
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId('vn_play_event')
-      .setLabel(event ? `📖 Play Interlude: ${event.title.slice(0, 28)}${isReplay ? ' (Replay)' : ''}` : '📖 Play Generic Interlude')
+      .setLabel(event ? `📖 Play Interlude: ${event.title.slice(0, 50)}${isReplay ? ' (Replay)' : ''}` : '📖 Play Generic Interlude')
       .setStyle(isReplay ? ButtonStyle.Secondary : ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('vn_view_quotes')
