@@ -1488,7 +1488,7 @@ export async function giveCurrencyToMaster(
     }
     active.availableStatPoints = (active.availableStatPoints || 0) + safeAmount;
     newAmount = active.availableStatPoints;
-    label = `${safeAmount} Stat Points for ${active.template.name} (⚡ Available: ${newAmount})`;
+    label = `${safeAmount} Stat Points for ${active.nickname || active.template?.name || (active as any).name || 'Heroic Spirit'} (⚡ Available: ${newAmount})`;
   } else if (t === 'homunculi' || t === 'homunculus' || t === 'homunculus_count') {
     master.homunculusCount = (master.homunculusCount || 0) + safeAmount;
     newAmount = master.homunculusCount;
@@ -1560,7 +1560,7 @@ export async function removeCurrencyFromMaster(
     }
     active.availableStatPoints = Math.max(0, (active.availableStatPoints || 0) - safeAmount);
     newAmount = active.availableStatPoints;
-    label = `${safeAmount} Stat Points from ${active.template.name} (⚡ Remaining: ${newAmount})`;
+    label = `${safeAmount} Stat Points from ${active.nickname || active.template?.name || (active as any).name || 'Heroic Spirit'} (⚡ Remaining: ${newAmount})`;
   } else if (t === 'homunculi' || t === 'homunculus' || t === 'homunculus_count') {
     master.homunculusCount = Math.max(0, (master.homunculusCount || 0) - safeAmount);
     newAmount = master.homunculusCount;
@@ -1637,48 +1637,56 @@ export async function setMasterStat(
   } else if (f === 'servant_level' || f === 'level' || f === 'lvl') {
     if (!active) return { success: false, message: `Master **${master.username}** has no active Servant!`, master, prevValue: 0, newValue: 0 };
     prevValue = active.level || 1;
+    const sName = active ? (active.nickname || active.template?.name || (active as any).name || 'Servant') : 'Servant';
     active.level = Math.max(1, Math.min(100, v));
-    fieldLabel = `⚔️ ${active.template.name} Level`;
+    fieldLabel = `⚔️ ${sName} Level`;
   } else if (f === 'servant_bond' || f === 'bond' || f === 'bond_level') {
     if (!active) return { success: false, message: `Master **${master.username}** has no active Servant!`, master, prevValue: 0, newValue: 0 };
+    const sName = active.nickname || active.template?.name || (active as any).name || 'Servant';
     prevValue = active.bondLevel || 0;
     active.bondLevel = Math.max(0, Math.min(10, v));
-    fieldLabel = `💖 ${active.template.name} Bond Level`;
+    fieldLabel = `💖 ${sName} Bond Level`;
   } else if (f === 'stat_points' || f === 'statpoints' || f === 'points') {
     if (!active) return { success: false, message: `Master **${master.username}** has no active Servant!`, master, prevValue: 0, newValue: 0 };
+    const sName = active.nickname || active.template?.name || (active as any).name || 'Servant';
     prevValue = active.availableStatPoints || 0;
     active.availableStatPoints = v;
-    fieldLabel = `⚡ ${active.template.name} Available Stat Points`;
+    fieldLabel = `⚡ ${sName} Available Stat Points`;
   } else if (f === 'servant_str' || f === 'strength' || f === 'str') {
     if (!active) return { success: false, message: `Master **${master.username}** has no active Servant!`, master, prevValue: 0, newValue: 0 };
+    const sName = active.nickname || active.template?.name || (active as any).name || 'Servant';
     prevValue = active.allocatedStats?.strength || 0;
     if (!active.allocatedStats) active.allocatedStats = { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
     active.allocatedStats.strength = v;
-    fieldLabel = `💪 ${active.template.name} Allocated STR`;
+    fieldLabel = `💪 ${sName} Allocated STR`;
   } else if (f === 'servant_end' || f === 'endurance' || f === 'end') {
     if (!active) return { success: false, message: `Master **${master.username}** has no active Servant!`, master, prevValue: 0, newValue: 0 };
+    const sName = active.nickname || active.template?.name || (active as any).name || 'Servant';
     prevValue = active.allocatedStats?.endurance || 0;
     if (!active.allocatedStats) active.allocatedStats = { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
     active.allocatedStats.endurance = v;
-    fieldLabel = `🛡️ ${active.template.name} Allocated END`;
+    fieldLabel = `🛡️ ${sName} Allocated END`;
   } else if (f === 'servant_agi' || f === 'agility' || f === 'agi') {
     if (!active) return { success: false, message: `Master **${master.username}** has no active Servant!`, master, prevValue: 0, newValue: 0 };
+    const sName = active.nickname || active.template?.name || (active as any).name || 'Servant';
     prevValue = active.allocatedStats?.agility || 0;
     if (!active.allocatedStats) active.allocatedStats = { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
     active.allocatedStats.agility = v;
-    fieldLabel = `💨 ${active.template.name} Allocated AGI`;
+    fieldLabel = `💨 ${sName} Allocated AGI`;
   } else if (f === 'servant_mana' || f === 'mana' || f === 'mp') {
     if (!active) return { success: false, message: `Master **${master.username}** has no active Servant!`, master, prevValue: 0, newValue: 0 };
+    const sName = active.nickname || active.template?.name || (active as any).name || 'Servant';
     prevValue = active.allocatedStats?.mana || 0;
     if (!active.allocatedStats) active.allocatedStats = { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
     active.allocatedStats.mana = v;
-    fieldLabel = `🔮 ${active.template.name} Allocated MANA`;
+    fieldLabel = `🔮 ${sName} Allocated MANA`;
   } else if (f === 'servant_lck' || f === 'luck' || f === 'lck') {
     if (!active) return { success: false, message: `Master **${master.username}** has no active Servant!`, master, prevValue: 0, newValue: 0 };
+    const sName = active.nickname || active.template?.name || (active as any).name || 'Servant';
     prevValue = active.allocatedStats?.luck || 0;
     if (!active.allocatedStats) active.allocatedStats = { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
     active.allocatedStats.luck = v;
-    fieldLabel = `🍀 ${active.template.name} Allocated LUCK`;
+    fieldLabel = `🍀 ${sName} Allocated LUCK`;
   } else {
     return { success: false, message: `Unknown attribute: \`${field}\`. Supported: \`sq\`, \`qp\`, \`tickets\`, \`seals\`, \`mana_prisms\`, \`grail_shards\`, \`stat_points\`, \`homunculi\`, \`ap\`, \`servant_level\`, \`servant_bond\`, \`servant_str\`, \`servant_end\`, \`servant_agi\`, \`servant_mana\`, \`servant_lck\`.`, master, prevValue: 0, newValue: 0 };
   }
@@ -1884,13 +1892,17 @@ export async function removeServantFromMaster(
     return { success: false, message: `Master **${master.username}** has no contracted Servants.`, master };
   }
 
-  let removedName = master.servants[0].template.name;
+  let removedName = master.servants[0].nickname || master.servants[0].template?.name || (master.servants[0] as any).name || 'Servant';
 
   if (servantQuery) {
     const q = servantQuery.toLowerCase().trim();
-    const idx = master.servants.findIndex(s => s.template.id.toLowerCase() === q || s.template.name.toLowerCase().includes(q));
+    const idx = master.servants.findIndex(s => {
+      const id = s.templateId || s.template?.id || s.id || '';
+      const name = s.nickname || s.template?.name || (s as any).name || '';
+      return id.toLowerCase() === q || name.toLowerCase().includes(q);
+    });
     if (idx >= 0) {
-      removedName = master.servants[idx].template.name;
+      removedName = master.servants[idx].nickname || master.servants[idx].template?.name || (master.servants[idx] as any).name || 'Servant';
       master.servants.splice(idx, 1);
     } else {
       return { success: false, message: `Servant matching \`${servantQuery}\` not contracted to **${master.username}**.`, master };

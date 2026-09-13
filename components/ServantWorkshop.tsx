@@ -2075,7 +2075,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
             <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-[11px] font-mono text-white/40">
               <span>Admin Discord Command equivalent:</span>
               <code className="text-[#d4af37] bg-black/50 px-2 py-0.5 rounded text-[10px]">
-                /admin npanim servant:&quot;{currentServant.template.name}&quot;
+                /admin npanim servant:&quot;{currentServant.nickname || currentServant.template?.name || (currentServant as any).name || 'Heroic Spirit'}&quot;
               </code>
             </div>
           </div>
@@ -2085,18 +2085,19 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
       {/* Interactive VS Clash Screen Live Preview Modal */}
       {showMatchupClashPreview && (() => {
         const previewTargetRival = SERVANT_DATABASE.find(s => s.id === selectedRivalId) || SERVANT_DATABASE[0];
-        const canonMatchup = SERVANT_MATCHUP_DATABASE[currentServant.template.id]?.[selectedRivalId];
+        const servantTempId = currentServant.template?.id || currentServant.templateId || currentServant.id;
+        const canonMatchup = SERVANT_MATCHUP_DATABASE[servantTempId]?.[selectedRivalId];
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
             <div className="w-full max-w-4xl relative">
               <VsClashScreen
                 challenger={{
-                  name: currentServant.nickname || currentServant.template.name,
-                  title: currentServant.template.title,
-                  servantClass: currentServant.template.servantClass,
-                  avatarUrl: currentServant.template.avatarUrl,
+                  name: currentServant.nickname || currentServant.template?.name || (currentServant as any).name || 'Heroic Spirit',
+                  title: currentServant.template?.title || 'Heroic Spirit',
+                  servantClass: currentServant.template?.servantClass || 'Saber',
+                  avatarUrl: currentServant.template?.avatarUrl || '',
                   masterName: master.username,
-                  rarity: currentServant.template.rarity
+                  rarity: currentServant.template?.rarity || 5
                 }}
                 defender={{
                   name: previewTargetRival.name,

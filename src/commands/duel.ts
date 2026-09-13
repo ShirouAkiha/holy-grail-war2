@@ -3863,7 +3863,7 @@ async function finishDuel(
       const interventionEmbed = new EmbedBuilder()
         .setTitle('🔴 COMMAND SEAL AUTOMATIC EVACUATION')
         .setDescription(
-          `**${winner.servant.template.name}** (Master: ${winner.username}) dealt a mortal blow to **${loser.servant.template.name}** (Master: ${loser.username})!\n\n` +
+          `**${winnerName}** (Master: ${winner.username}) dealt a mortal blow to **${loserName}** (Master: ${loser.username})!\n\n` +
           `🔮 **Auto-Consume Enabled:** Defeated Master possessed **${availableSeals}/3 Command Seals**.\n` +
           `1 Command Seal was automatically expended (Remaining: **${availableSeals - 1}/3**).\n\n` +
           `✨ **Emergency Sanctuary:** Your Command Seal flared with crimson light, relocating your Servant from fatal annihilation preserved at **1 HP**!\n` +
@@ -3872,8 +3872,8 @@ async function finishDuel(
         .setColor(0xf59e0b)
         .setFooter({ text: 'Holy Grail War Survival Protocol • Command Seal Sanctuary' });
 
-      if (loser.servant.template.avatarUrl) {
-        safeSetEmbedThumbnail(interventionEmbed, loser.servant.template.avatarUrl);
+      if (loserAvatarUrl) {
+        safeSetEmbedThumbnail(interventionEmbed, loserAvatarUrl);
       }
 
       // Render custom sanctuary/evac card
@@ -3927,7 +3927,7 @@ async function finishDuel(
     const decisionEmbed = new EmbedBuilder()
       .setTitle('⚠️ CRITICAL DEFEAT — COMMAND SEAL DECISION')
       .setDescription(
-        `**${winner.servant.template.name}** (Master: ${winner.username}) dealt a mortal blow to **${loser.servant.template.name}** (Master: ${loser.username})!\n\n` +
+        `**${winnerName}** (Master: ${winner.username}) dealt a mortal blow to **${loserName}** (Master: ${loser.username})!\n\n` +
         `🔮 **Command Seal Evacuation Available:** Defeated Master **${loser.username}** possesses **${availableSeals}/3 Command Seals**.\n` +
         `When a Master loses, they get a last chance to expend **1 Command Seal** to run and emergency-teleport their Servant to safety preserved at **1 HP**, preventing contract severance and Holy Grail War elimination.\n\n` +
         `⏱️ **Time Limit:** You have **1 minute (60 seconds)** to decide. If time expires or defeat is taken, the victor will decide your fate.\n` +
@@ -3936,8 +3936,8 @@ async function finishDuel(
       .setColor(0xf59e0b)
       .setFooter({ text: 'Holy Grail War Survival Protocol • 1-Minute Decision Window (Auto-consume: OFF)' });
 
-    if (loser.servant.template.avatarUrl) {
-      safeSetEmbedThumbnail(decisionEmbed, loser.servant.template.avatarUrl);
+    if (loserAvatarUrl) {
+      safeSetEmbedThumbnail(decisionEmbed, loserAvatarUrl);
     }
 
     if (defeatCardAttachment) {
@@ -4083,15 +4083,15 @@ async function finishDuel(
     const defeatEmbed = new EmbedBuilder()
       .setTitle('☠️ FATAL DUEL DEFEAT — MASTER ELIMINATED')
       .setDescription(
-        `**${winner.servant.template.name}** (Master: ${winner.username}) has dealt a mortal blow to **${loser.servant.template.name}** (Master: ${loser.username})!\n\n` +
-        `💬 *"${loser.servant.customQuotes?.defeat || loser.servant.template.defeatQuote}"*\n\n` +
+        `**${winnerName}** (Master: ${winner.username}) has dealt a mortal blow to **${loserName}** (Master: ${loser.username})!\n\n` +
+        `💬 *"${loserDefeatQuote}"*\n\n` +
         `💀 **You have been PERMANENTLY ELIMINATED from the Holy Grail War.**\n` +
         `Your status on the Intelligence Board (/grailwar) is now **💀 DECEASED** (HP: 0).`
       )
       .setColor(0xef4444);
 
-    if (loser.servant.template.avatarUrl) {
-      defeatEmbed.setThumbnail(loser.servant.template.avatarUrl);
+    if (loserAvatarUrl) {
+      defeatEmbed.setThumbnail(loserAvatarUrl);
     }
 
     if (defeatCardAttachment) {
@@ -4100,7 +4100,7 @@ async function finishDuel(
 
     const summaryEmbed = new EmbedBuilder()
       .setTitle('⚔️ FINAL COMBAT ROUND SUMMARY')
-      .setDescription(`**${winner.servant.template.name}** dealt the final blow to **${loser.servant.template.name}**!`)
+      .setDescription(`**${winnerName}** dealt the final blow to **${loserName}**!`)
       .setImage('attachment://turn_summary.png')
       .setColor(0x0f172a);
 
@@ -4137,7 +4137,7 @@ async function finishDuel(
   }
 
   const victoryQuote =
-    winner.servant.customQuotes?.victory || winner.servant.template.victoryQuote || "A decisive triumph. The Holy Grail draws closer.";
+    winner.servant.customQuotes?.victory || winner.servant.template?.victoryQuote || "A decisive triumph. The Holy Grail draws closer.";
 
   const victoryCardBuffer = await renderDialogueCard(
     winnerName,
@@ -4163,13 +4163,13 @@ async function finishDuel(
   const victoryEmbed = new EmbedBuilder()
     .setTitle('🏆 DUEL VICTORY — VICTORY INVOCATION')
     .setDescription(
-      `**${winner.servant.template.name}** (Master: ${winner.username}) has triumphed over **${loser.servant.template.name}** (Master: ${loser.username}) in the Holy Grail duel!\n\n` +
-      `💬 **[VICTORY INVOCATION] ${winner.servant.template.name}:**\n> ❝ ***${victoryQuote}*** ❞`
+      `**${winnerName}** (Master: ${winner.username}) has triumphed over **${loserName}** (Master: ${loser.username}) in the Holy Grail duel!\n\n` +
+      `💬 **[VICTORY INVOCATION] ${winnerName}:**\n> ❝ ***${victoryQuote}*** ❞`
     )
     .setColor(0x22c55e);
 
-  if (winner.servant.template.avatarUrl) {
-    safeSetEmbedThumbnail(victoryEmbed, winner.servant.template.avatarUrl);
+  if (winnerAvatarUrl) {
+    safeSetEmbedThumbnail(victoryEmbed, winnerAvatarUrl);
   }
 
   if (victoryCardAttachment) {
@@ -4181,12 +4181,12 @@ async function finishDuel(
     .setDescription(
       `⚖️ **The Fate of Master ${loser.username} rests in your hands:**\n` +
       `Choose whether to **Execute** the defeated Master to permanently eliminate them from the Holy Grail War, or show mercy and **Spare** their life.\n\n` +
-      `💬 **[DEFEAT MONOLOGUE] ${loser.servant.template.name}:**\n> ❝ ***${loserDefeatQuote}*** ❞`
+      `💬 **[DEFEAT MONOLOGUE] ${loserName}:**\n> ❝ ***${loserDefeatQuote}*** ❞`
     )
     .setColor(0xef4444);
 
-  if (loser.servant.template.avatarUrl) {
-    safeSetEmbedThumbnail(fateEmbed, loser.servant.template.avatarUrl);
+  if (loserAvatarUrl) {
+    safeSetEmbedThumbnail(fateEmbed, loserAvatarUrl);
   }
 
   if (defeatCardAttachment) {
@@ -4195,7 +4195,7 @@ async function finishDuel(
 
   const summaryEmbed = new EmbedBuilder()
     .setTitle('⚔️ FINAL COMBAT ROUND SUMMARY')
-    .setDescription(`**${winner.servant.template.name}** dealt the final blow to **${loser.servant.template.name}**!`)
+    .setDescription(`**${winnerName}** dealt the final blow to **${loserName}**!`)
     .setImage('attachment://turn_summary.png')
     .setColor(0x0f172a);
 

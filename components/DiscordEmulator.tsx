@@ -38,7 +38,7 @@ import {
   getTotalExpForLevel
 } from '../lib/engine/customization';
 import { executeCraftEssenceGachaRoll } from '../lib/engine/ceGacha';
-import { getBondExpProgress, getBondEventsForServant } from '../lib/engine/bondEvents';
+import { getBondExpProgress, getBondEventsForServant, addBondExpToServant } from '../lib/engine/bondEvents';
 import { CRAFT_ESSENCE_DATABASE } from '../lib/data/craftEssences';
 import MASTERS_DATABASE from '../data/masters.json';
 import {
@@ -647,6 +647,16 @@ export default function DiscordEmulator({
     setMessages(prev => [...prev, msg]);
   };
 
+  const updateMessage = (id: string, updated: Partial<DiscordMessage> | ((prevMsg: DiscordMessage) => DiscordMessage)) => {
+    setMessages(prev => prev.map(m => {
+      if (m.id !== id) return m;
+      if (typeof updated === 'function') {
+        return updated(m);
+      }
+      return { ...m, ...updated };
+    }));
+  };
+
   function postTrapsRadarOverview(actionOutcomeMsg?: string) {
     const userTraps = (grailWar.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
     
@@ -959,7 +969,7 @@ export default function DiscordEmulator({
                 description:
                   `⚠️ **Magecraft Detected in Public Channel!**\n\n` +
                   `Master **${master.username}** has invoked commands in **#holy-grail-war**.\n` +
-                  `Your true identity and contracted Servant (**${activeServant.template.name}** - ${activeServant.template.servantClass}) are now officially exposed on the Holy Grail War Intelligence Board!`,
+                  `Your true identity and contracted Servant (**${activeServant.nickname || activeServant.template?.name || (activeServant as any).name || 'Heroic Spirit'}** - ${activeServant.template?.servantClass || 'Saber'}) are now officially exposed on the Holy Grail War Intelligence Board!`,
                 color: '#f59e0b',
                 footer: 'Exposure Trigger: Public Channel Command Invocation'
               }
@@ -1090,13 +1100,13 @@ export default function DiscordEmulator({
           embed: {
             title: '⚠️ Sacred Contract Already Bound',
             description:
-              `You are already bound to **${s.template.name}** (\`${s.template.servantClass}\`) for this Holy Grail War!\n\n` +
+              `You are already bound to **${s.nickname || s.template?.name || (s as any).name || 'Heroic Spirit'}** (\`${s.template?.servantClass || 'Saber'}\`) for this Holy Grail War!\n\n` +
               `• **Command Seals:** 🔴🔴🔴 **${master.commandSeals}/3**\n` +
-              `• **Level:** **${s.level}** | **HP:** ${s.template.baseHp.toLocaleString()} | **ATK:** ${s.template.baseAtk.toLocaleString()}\n` +
-              `• **Noble Phantasm:** **${s.template.noblePhantasm.name}**\n\n` +
+              `• **Level:** **${s.level}** | **HP:** ${(s.template?.baseHp || 28000).toLocaleString()} | **ATK:** ${(s.template?.baseAtk || 10000).toLocaleString()}\n` +
+              `• **Noble Phantasm:** **${s.template?.noblePhantasm?.name || 'Noble Phantasm'}**\n\n` +
               `*In an authentic Holy Grail War, each Master is bound to a single Heroic Spirit. Use \`/summon release\` if you wish to sever your pact.*`,
             color: '#f59e0b',
-            thumbnailUrl: s.template.avatarUrl
+            thumbnailUrl: s.template?.avatarUrl || ''
           },
           components: {
             type: 'buttons',
@@ -2254,9 +2264,9 @@ export default function DiscordEmulator({
       }
 
       const isDefeatMode = trimmed.includes('defeat') || trimmed.includes('dissolve') || trimmed.includes('death');
-      const speaker = activeServant.nickname || activeServant.template.name;
-      const servantClass = activeServant.template.servantClass;
-      const avatarUrl = activeServant.template.cardArtUrl || activeServant.template.avatarUrl;
+      const speaker = activeServant.nickname || activeServant.template?.name || (activeServant as any).name || 'Heroic Spirit';
+      const servantClass = activeServant.template?.servantClass || 'Saber';
+      const avatarUrl = activeServant.template?.cardArtUrl || activeServant.template?.avatarUrl || '';
 
       if (isDefeatMode) {
         const defeatDia = getServantDefeatDialogue(speaker, activeServant.customQuotes);
@@ -2500,6 +2510,18 @@ export default function DiscordEmulator({
         return `• **${evt.title}** (Bond Lv. ${evt.requiredBondLevel}): ${statusIcon}`;
       }).join('\n');
 
+      const playButtons = availableEvents.map((evt) => {
+        const isCompleted = activeServant.completedBondEvents?.includes(evt.id);
+        const isUnlocked = (activeServant.bondLevel || 1) >= evt.requiredBondLevel;
+        return {
+          id: `vn_start_${evt.id}_0`,
+          label: isCompleted ? `Replay: ${evt.title.slice(0, 18)}` : `Play: ${evt.title.slice(0, 18)}`,
+          style: (isCompleted ? 'secondary' : 'primary') as any,
+          emoji: '📖',
+          disabled: !isUnlocked
+        };
+      });
+
       addMessage({
         id: getNextId('bot_bond_status'),
         sender: 'bot',
@@ -2513,10 +2535,18 @@ export default function DiscordEmulator({
             `• **Total Bond EXP:** \`${activeServant.bondExp || 0} EXP\`\n` +
             `• **Level Progress:** \`${bondProgress.expInCurrentLevel} / ${bondProgress.neededForNextLevel} EXP\` (${bondProgress.progressPercent}%)\n\n` +
             `📖 **Visual Novel Interludes:**\n${eventsSummary}\n\n` +
-            `*To play Visual Novel events and unlock voice/text lines, open the **Bond Sanctum** tab in the top menu!*`,
+            `*Click an interlude button below to start the Visual Novel story in-place!*`,
           color: '#f59e0b',
           thumbnailUrl: activeServant.avatarUrl || template.avatarUrl,
           footer: 'Bond increases exclusively through Visual Novel Interludes'
+        },
+        artworkEmbed: {
+          imageUrl: 'https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp',
+          color: '#f59e0b'
+        },
+        components: {
+          type: 'buttons',
+          items: playButtons
         }
       });
       return;
@@ -2562,7 +2592,7 @@ export default function DiscordEmulator({
             title: '💀 You Are Deceased in the Holy Grail War',
             description:
               `**${master.username}**, you have been slain and permanently eliminated from this Holy Grail War!\n\n` +
-              `Your contract with **${activeServant.template.name}** has been severed. You can inspect the Intelligence Board with \`/grailwar status\` or restart the Holy Grail War tournament.`,
+              `Your contract with **${activeServant.nickname || activeServant.template?.name || (activeServant as any).name || 'Heroic Spirit'}** has been severed. You can inspect the Intelligence Board with \`/grailwar status\` or restart the Holy Grail War tournament.`,
             color: '#ef4444',
             footer: 'Deceased Masters are permanently removed from combat'
           },
@@ -2629,7 +2659,7 @@ export default function DiscordEmulator({
                 title: '⚡ 3RD MASTER INTERVENTION — CHOOSE ALLEGIANCE',
                 description:
                   `An active duel is underway between **${activeDuel.battle.player1.name}** and **${activeDuel.battle.player2.name}**!\n\n` +
-                  `Master **${master.username}** and **${activeServant.nickname || activeServant.template.name}**, choose which side to reinforce with your Spiritron mana:`,
+                  `Master **${master.username}** and **${activeServant.nickname || activeServant.template?.name || (activeServant as any).name || 'Heroic Spirit'}**, choose which side to reinforce with your Spiritron mana:`,
                 color: '#d4af37',
                 footer: 'Holy Grail War Multi-Combatant Intervention Engine'
               },
@@ -3093,12 +3123,12 @@ export default function DiscordEmulator({
       const initialBattle = initializeBattle(p1, p2);
       setActiveDuel({ battle: initialBattle });
 
-      const p1BattleQuote = activeServant.customQuotes?.battleStart || activeServant.template.battleStartQuote || "My blade is drawn. Let the battle commence!";
+      const p1BattleQuote = activeServant.customQuotes?.battleStart || activeServant.template?.battleStartQuote || "My blade is drawn. Let the battle commence!";
       const initialFlee = calculateFleeChance(
         p1.currentHp,
         p1.maxHp,
         p1.servantClass,
-        activeServant.template.baseStats?.agility || 10
+        activeServant.template?.baseStats?.agility || 10
       );
 
       // Battle Start Visual Novel Dialogue Cut-In Card & Command Card Clash Prompt
@@ -3124,8 +3154,8 @@ export default function DiscordEmulator({
           speaker: p1.name,
           quote: p1BattleQuote,
           title: 'BATTLE ENGAGEMENT',
-          servantClass: activeServant.template.servantClass,
-          avatarUrl: activeServant.template.cardArtUrl || activeServant.template.avatarUrl,
+          servantClass: activeServant.template?.servantClass || 'Saber',
+          avatarUrl: activeServant.template?.cardArtUrl || activeServant.template?.avatarUrl || '',
           bondOrLevel: activeServant.bondLevel || 10,
           defenderName: p2.name,
           defenderClass: p2.servantClass,
@@ -3210,7 +3240,7 @@ export default function DiscordEmulator({
       }
 
       // Display Servant Skills status
-      const skills = activeDuel ? activeDuel.battle.player1.skills : activeServant.template.skills;
+      const skills = activeDuel ? activeDuel.battle.player1.skills : (activeServant.template?.skills || []);
       const skillsDesc = skills && skills.length > 0
         ? skills.map((s, idx) => {
             const cd = (s as any).currentCooldown > 0 ? ` (Cooldown: ${(s as any).currentCooldown}t)` : ' (Ready)';
@@ -3223,7 +3253,7 @@ export default function DiscordEmulator({
         sender: 'bot',
         timestamp: 'Just now',
         embed: {
-          title: `⚡ ${activeServant.template.name} — Personal Skills`,
+          title: `⚡ ${activeServant.nickname || activeServant.template?.name || (activeServant as any).name || 'Heroic Spirit'} — Personal Skills`,
           description: `${skillsDesc}\n\n*Combat command:* Type \`/skill 1\`, \`/skill 2\`, or \`/skill 3\` during an active duel to trigger!`,
           color: '#d4af37'
         }
@@ -4132,9 +4162,9 @@ export default function DiscordEmulator({
           currentWar = createHolyGrailWarSession({
             discordId: master.discordId,
             username: master.username,
-            servantId: activeServant.templateId,
-            servantName: activeServant.template.name,
-            servantClass: activeServant.template.servantClass,
+            servantId: activeServant.templateId || activeServant.id,
+            servantName: activeServant.nickname || activeServant.template?.name || (activeServant as any).name || 'Heroic Spirit',
+            servantClass: activeServant.template?.servantClass || 'Saber',
             avatarUrl: master.avatarUrl,
             maxHp: calculateServantMaxHp(activeServant)
           });
@@ -5020,7 +5050,7 @@ export default function DiscordEmulator({
       defeat: 'Defeat Quote'
     };
 
-    const sName = targetServant.nickname || targetServant.template.name;
+    const sName = targetServant.nickname || targetServant.template?.name || (targetServant as any).name || 'Heroic Spirit';
     addMessage({
       id: getNextId('bot_dialogue_saved'),
       sender: 'bot',
@@ -7035,7 +7065,242 @@ export default function DiscordEmulator({
   };
 
   // Button interaction handler
-  const handleButtonClick = (btnId: string) => {
+  const handleButtonClick = (btnId: string, msgId?: string) => {
+    // Visual Novel Interlude In-Place Interactive Handlers
+    if (btnId.startsWith('vn_start_') || btnId.startsWith('vn_choice_') || btnId.startsWith('vn_next_') || btnId.startsWith('vn_conclude_') || btnId === 'quick_bond_status') {
+      if (btnId === 'quick_bond_status') {
+        handleCommand('/bond');
+        return;
+      }
+
+      const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
+      if (!activeServant) return;
+
+      const availableEvents = getBondEventsForServant(activeServant);
+
+      if (btnId.startsWith('vn_start_')) {
+        const parts = btnId.split('_');
+        const evtId = parts.slice(2, parts.length - 1).join('_');
+        const sceneIdx = parseInt(parts[parts.length - 1] || '0', 10) || 0;
+        const evt = availableEvents.find(e => e.id === evtId) || availableEvents[0];
+
+        if (!evt) return;
+
+        const scene = evt.scenes[sceneIdx] || evt.scenes[0];
+        const hasChoices = scene.choices && scene.choices.length > 0;
+
+        const actionButtons = hasChoices
+          ? scene.choices!.map((c, idx) => ({
+              id: `vn_choice_${evt.id}_${sceneIdx}_${idx}`,
+              label: `“${c.text.slice(0, 24)}”`,
+              style: 'primary' as const,
+              emoji: '💬'
+            }))
+          : sceneIdx < evt.scenes.length - 1
+          ? [{ id: `vn_next_${evt.id}_${sceneIdx + 1}_0`, label: 'Next Scene ➔', style: 'success' as const, emoji: '⏩' }]
+          : [{ id: `vn_conclude_${evt.id}_150`, label: 'Conclude Interlude ✨', style: 'success' as const, emoji: '🎁' }];
+
+        const vnMsgData: DiscordMessage = {
+          id: msgId || getNextId('bot_vn_interlude'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `📖 VISUAL NOVEL INTERLUDE — ${evt.title.toUpperCase()}`,
+            description:
+              `💬 **[BOND INTERLUDE] ${scene.speakerName || activeServant.template.name}:**\n> ❝ ***${scene.dialogueText}*** ❞\n\n` +
+              `*Scene ${sceneIdx + 1}/${evt.scenes.length} • Servant Bond Lv. ${activeServant.bondLevel || 1}*`,
+            color: '#f59e0b',
+            thumbnailUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
+            footer: 'Visual Novel Bond Interlude Stage'
+          },
+          artworkEmbed: {
+            imageUrl: 'https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp',
+            color: '#f59e0b'
+          },
+          components: {
+            type: 'buttons',
+            items: actionButtons
+          }
+        };
+
+        if (msgId) {
+          updateMessage(msgId, vnMsgData);
+        } else {
+          addMessage(vnMsgData);
+        }
+        return;
+      }
+
+      if (btnId.startsWith('vn_choice_')) {
+        const parts = btnId.split('_');
+        const choiceIdx = parseInt(parts.pop() || '0', 10);
+        const sceneIdx = parseInt(parts.pop() || '0', 10);
+        const evtId = parts.slice(2).join('_');
+
+        const evt = availableEvents.find(e => e.id === evtId) || availableEvents[0];
+        if (!evt) return;
+
+        const scene = evt.scenes[sceneIdx];
+        const choice = scene?.choices?.[choiceIdx];
+
+        if (!scene || !choice) return;
+
+        const expGained = choice.bondExpGain || 100;
+        const nextSceneIdx = sceneIdx + 1;
+        const hasMoreScenes = nextSceneIdx < evt.scenes.length;
+
+        const nextButtons = hasMoreScenes
+          ? [{ id: `vn_next_${evt.id}_${nextSceneIdx}_${expGained}`, label: 'Next Scene ➔', style: 'success' as const, emoji: '⏩' }]
+          : [{ id: `vn_conclude_${evt.id}_${expGained}`, label: 'Conclude Interlude & Claim Rewards ✨', style: 'success' as const, emoji: '🎁' }];
+
+        const updatedMsgData: DiscordMessage = {
+          id: msgId || getNextId('bot_vn_interlude'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `📖 VISUAL NOVEL INTERLUDE — ${evt.title.toUpperCase()}`,
+            description:
+              `💬 **[BOND INTERLUDE] ${scene.speakerName || activeServant.template.name}:**\n> ❝ ***${choice.response}*** ❞\n\n` +
+              `✨ **Master Choice Selected:** “${choice.text}” *(+${expGained} Bond EXP)*\n` +
+              `*Scene ${sceneIdx + 1}/${evt.scenes.length} • Servant Bond Lv. ${activeServant.bondLevel || 1}*`,
+            color: '#f59e0b',
+            thumbnailUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
+            footer: 'Visual Novel Bond Interlude Stage'
+          },
+          artworkEmbed: {
+            imageUrl: 'https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp',
+            color: '#f59e0b'
+          },
+          components: {
+            type: 'buttons',
+            items: nextButtons
+          }
+        };
+
+        if (msgId) {
+          updateMessage(msgId, updatedMsgData);
+        } else {
+          addMessage(updatedMsgData);
+        }
+        return;
+      }
+
+      if (btnId.startsWith('vn_next_')) {
+        const parts = btnId.split('_');
+        const accumExp = parseInt(parts.pop() || '0', 10);
+        const nextSceneIdx = parseInt(parts.pop() || '0', 10);
+        const evtId = parts.slice(2).join('_');
+
+        const evt = availableEvents.find(e => e.id === evtId) || availableEvents[0];
+        if (!evt) return;
+
+        const scene = evt.scenes[nextSceneIdx];
+        if (!scene) return;
+
+        const hasChoices = scene.choices && scene.choices.length > 0;
+        const actionButtons = hasChoices
+          ? scene.choices!.map((c, idx) => ({
+              id: `vn_choice_${evt.id}_${nextSceneIdx}_${idx}`,
+              label: `“${c.text.slice(0, 24)}”`,
+              style: 'primary' as const,
+              emoji: '💬'
+            }))
+          : nextSceneIdx < evt.scenes.length - 1
+          ? [{ id: `vn_next_${evt.id}_${nextSceneIdx + 1}_${accumExp}`, label: 'Next Scene ➔', style: 'success' as const, emoji: '⏩' }]
+          : [{ id: `vn_conclude_${evt.id}_${accumExp || 150}`, label: 'Conclude Interlude ✨', style: 'success' as const, emoji: '🎁' }];
+
+        const updatedMsgData: DiscordMessage = {
+          id: msgId || getNextId('bot_vn_interlude'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `📖 VISUAL NOVEL INTERLUDE — ${evt.title.toUpperCase()}`,
+            description:
+              `💬 **[BOND INTERLUDE] ${scene.speakerName || activeServant.template.name}:**\n> ❝ ***${scene.dialogueText}*** ❞\n\n` +
+              `*Scene ${nextSceneIdx + 1}/${evt.scenes.length} • Servant Bond Lv. ${activeServant.bondLevel || 1}*`,
+            color: '#f59e0b',
+            thumbnailUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
+            footer: 'Visual Novel Bond Interlude Stage'
+          },
+          artworkEmbed: {
+            imageUrl: 'https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp',
+            color: '#f59e0b'
+          },
+          components: {
+            type: 'buttons',
+            items: actionButtons
+          }
+        };
+
+        if (msgId) {
+          updateMessage(msgId, updatedMsgData);
+        } else {
+          addMessage(updatedMsgData);
+        }
+        return;
+      }
+
+      if (btnId.startsWith('vn_conclude_')) {
+        const parts = btnId.split('_');
+        const gainedExp = parseInt(parts.pop() || '150', 10) || 150;
+        const evtId = parts.slice(2).join('_');
+
+        const evt = availableEvents.find(e => e.id === evtId) || availableEvents[0];
+        const totalRewardExp = (evt?.rewardBondExp || 150) + gainedExp;
+        const rewardSq = evt?.rewardSaintQuartz || 3;
+
+        const { updatedServant, didLevelUp, newLevel } = addBondExpToServant(activeServant, totalRewardExp);
+
+        const prevCompleted = activeServant.completedBondEvents || [];
+        if (evt && !prevCompleted.includes(evt.id)) {
+          updatedServant.completedBondEvents = [...prevCompleted, evt.id];
+        }
+
+        const updatedServants = master.servants.map(s => s.id === activeServant.id ? updatedServant : s);
+        onUpdateMaster({
+          ...master,
+          saintQuartz: (master.saintQuartz || 0) + rewardSq,
+          servants: updatedServants
+        });
+
+        const concludeMsgData: DiscordMessage = {
+          id: msgId || getNextId('bot_vn_interlude'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `🏆 INTERLUDE COMPLETED — ${(evt?.title || 'Bond Interlude').toUpperCase()}`,
+            description:
+              `✨ **Bond Interlude Concluded Successfully!**\n\n` +
+              `Your covenant with **${activeServant.template.name}** grows ever stronger.\n` +
+              `• **Bond EXP Gained:** \`+${totalRewardExp} EXP\` ${didLevelUp ? `🎉 **[BOND LEVEL UP ➔ Lv. ${newLevel}!]**` : ''}\n` +
+              `• **Saint Quartz Reward:** \`+${rewardSq} SQ\` 💎\n` +
+              `• **Current Bond Level:** **Bond Lv. ${updatedServant.bondLevel || 1}**\n\n` +
+              `*All associated My Room dialogue quotes and battle lines for this bond level are now unlocked!*`,
+            color: '#22c55e',
+            thumbnailUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
+            footer: 'Chaldea Bond Sanctum System'
+          },
+          artworkEmbed: {
+            imageUrl: 'https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp',
+            color: '#22c55e'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'quick_bond_status', label: 'View Servant Bond Status (/bond)', style: 'primary', emoji: '💖' }
+            ]
+          }
+        };
+
+        if (msgId) {
+          updateMessage(msgId, concludeMsgData);
+        } else {
+          addMessage(concludeMsgData);
+        }
+        return;
+      }
+    }
+
     if (btnId.startsWith('accept_civilian_duel_')) {
       const civilianName = btnId.replace('accept_civilian_duel_', '');
       const activeS = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
@@ -8860,9 +9125,11 @@ export default function DiscordEmulator({
         const randomCard = chainTypes[messages.length % chainTypes.length];
         const sequence: ('Buster' | 'Arts' | 'Quick')[] = [randomCard, randomCard, randomCard];
 
+        const sSpeaker = activeServant.nickname || activeServant.template?.name || (activeServant as any).name || 'Heroic Spirit';
+        const sClass = activeServant.template?.servantClass || 'Saber';
         const diaResult = getServantChainDialogue(
-          activeServant.template.name,
-          activeServant.template.servantClass,
+          sSpeaker,
+          sClass,
           sequence,
           activeServant.customQuotes
         );
@@ -8872,18 +9139,18 @@ export default function DiscordEmulator({
           sender: 'bot',
           timestamp: 'Just now',
           embed: {
-            title: `💬 ${activeServant.template.name} — [${diaResult.tag}]`,
+            title: `💬 ${sSpeaker} — [${diaResult.tag}]`,
             description: `*"${diaResult.quote}"*`,
             color: '#f59e0b',
             footer: 'Dynamic Animated Visual Novel Dialogue Card attachment'
           },
           canvasType: 'dialogue',
           canvasPayload: {
-            speaker: activeServant.template.name,
+            speaker: sSpeaker,
             quote: diaResult.quote,
             title: diaResult.tag,
-            servantClass: activeServant.template.servantClass,
-            avatarUrl: activeServant.template.avatarUrl,
+            servantClass: sClass,
+            avatarUrl: activeServant.template?.avatarUrl || '',
             bondOrLevel: activeServant.bondLevel || 8,
             defenderName: 'Opponent Servant',
             defenderClass: 'Archer',
@@ -8917,7 +9184,7 @@ export default function DiscordEmulator({
           embed: {
             title: `✍️ Author Custom ${label} Line`,
             description:
-              `To set a custom **${label}** quote for **${targetServant?.template.name}**, run:\n\n` +
+              `To set a custom **${label}** quote for **${targetServant?.nickname || targetServant?.template?.name || (targetServant as any)?.name || 'Heroic Spirit'}**, run:\n\n` +
               `\`\`\`\n/customise quote ${key} "Your custom quote here"\n\`\`\`\n` +
               `*Or use the **Servant Workshop** tab at any time to edit and save directly!*`,
             color: '#d4af37'
@@ -8926,9 +9193,11 @@ export default function DiscordEmulator({
       } else if (action === 'test') {
         if (targetServant) {
           const sequence: ('Buster' | 'Arts' | 'Quick')[] = ['Buster', 'Buster', 'Buster'];
+          const tSpeaker = targetServant.nickname || targetServant.template?.name || (targetServant as any).name || 'Heroic Spirit';
+          const tClass = targetServant.template?.servantClass || 'Saber';
           const diaResult = getServantChainDialogue(
-            targetServant.template.name,
-            targetServant.template.servantClass,
+            tSpeaker,
+            tClass,
             sequence,
             targetServant.customQuotes
           );
@@ -8937,18 +9206,18 @@ export default function DiscordEmulator({
             sender: 'bot',
             timestamp: 'Just now',
             embed: {
-              title: `🎬 Visual Novel Cut-In: ${targetServant.template.name} — [${diaResult.tag}]`,
+              title: `🎬 Visual Novel Cut-In: ${tSpeaker} — [${diaResult.tag}]`,
               description: `*"${diaResult.quote}"*`,
               color: '#ef4444',
               footer: `Brave Chain Resonance • Master ${master.username}`
             },
             canvasType: 'dialogue',
             canvasPayload: {
-              speaker: targetServant.nickname || targetServant.template.name,
+              speaker: tSpeaker,
               quote: diaResult.quote,
               title: diaResult.tag,
-              servantClass: targetServant.template.servantClass,
-              avatarUrl: targetServant.template.avatarUrl,
+              servantClass: tClass,
+              avatarUrl: targetServant.template?.avatarUrl || '',
               bondOrLevel: targetServant.bondLevel || 10,
               defenderName: 'Enemy Combatant',
               defenderClass: 'Archer',
@@ -9006,7 +9275,7 @@ export default function DiscordEmulator({
 
       setActiveDuel(null);
 
-      const p1Name = activeServant?.nickname || activeServant?.template.name || 'Your Servant';
+      const p1Name = activeServant?.nickname || activeServant?.template?.name || (activeServant as any)?.name || 'Your Servant';
       const sealQuote = activeServant?.customQuotes?.commandSeal || "By my Command Seal, withdraw from this battlefield and survive!";
       addMessage({
         id: getNextId('bot_duel_seal_evac'),
@@ -9460,7 +9729,7 @@ export default function DiscordEmulator({
             quote: p1VictoryQuote,
             title: 'VICTORY INVOCATION',
             servantClass: activeDuel?.battle.player1.servantClass || 'Saber',
-            avatarUrl: activeDuel?.battle.player1.avatarUrl || activeServant?.template.cardArtUrl || activeServant?.template.avatarUrl,
+            avatarUrl: activeDuel?.battle.player1.avatarUrl || activeServant?.template?.cardArtUrl || activeServant?.template?.avatarUrl || '',
             bondOrLevel: activeServant?.bondLevel || 10,
             defenderName: rivalServantName,
             defenderClass: activeDuel?.battle.player2.servantClass || 'Enemy',
@@ -9506,7 +9775,7 @@ export default function DiscordEmulator({
             title: '☠️ DEFEAT ACCEPTED — MASTER ELIMINATED',
             description:
               `Master **${master.username}** chose to accept defeat in the Holy Grail War.\n\n` +
-              `💬 **[CONTRACT DISSOLVED] ${activeServant?.template.name}:**\n> ❝ ***${p1DefeatQuote}*** ❞\n\n` +
+              `💬 **[CONTRACT DISSOLVED] ${activeServant?.nickname || activeServant?.template?.name || (activeServant as any)?.name || 'Heroic Spirit'}:**\n> ❝ ***${p1DefeatQuote}*** ❞\n\n` +
               `💀 Master **${rivalMaster}** (${rivalServantName}) has claimed victory. Your spiritual core has been absorbed into the Lesser Grail.\n\n` +
               `🔮 **Command Seals:** Kept intact (0 consumed).\n` +
               `👥 **Surviving Masters:** **${aliveMastersCount}/7** alive in Fuyuki City.`,
@@ -9810,7 +10079,7 @@ export default function DiscordEmulator({
             });
           } else {
             // 0 Command Seals remaining: Winner immediately decides fate!
-            const p1VictoryQuote = activeServant?.customQuotes?.victory || activeServant?.template.victoryQuote || "A decisive triumph. The Holy Grail draws closer.";
+            const p1VictoryQuote = activeServant?.customQuotes?.victory || activeServant?.template?.victoryQuote || "A decisive triumph. The Holy Grail draws closer.";
 
             addMessage({
               id: getNextId('bot_duel_fate_prompt'),
@@ -9832,7 +10101,7 @@ export default function DiscordEmulator({
                 quote: p1VictoryQuote,
                 title: 'VICTORY INVOCATION',
                 servantClass: updatedState.player1.servantClass,
-                avatarUrl: updatedState.player1.avatarUrl || activeServant?.template.cardArtUrl || activeServant?.template.avatarUrl,
+                avatarUrl: updatedState.player1.avatarUrl || activeServant?.template?.cardArtUrl || activeServant?.template?.avatarUrl || '',
                 bondOrLevel: activeServant?.bondLevel || 10,
                 defenderName: updatedState.player2.name,
                 defenderClass: updatedState.player2.servantClass,
@@ -9852,7 +10121,7 @@ export default function DiscordEmulator({
         } else {
           // Player defeated by opponent (e.g. itsderpo)
           const seals = master.commandSeals ?? 3;
-          const p1DefeatQuote = activeServant?.customQuotes?.defeat || activeServant?.template.defeatQuote || "Master... I have failed you in this Holy Grail War...";
+          const p1DefeatQuote = activeServant?.customQuotes?.defeat || activeServant?.template?.defeatQuote || "Master... I have failed you in this Holy Grail War...";
           const autoConsume = grailWar.participants[master.discordId]?.autoEvadeEnabled === true || master.autoConsumeCommandSeal === true;
 
           if (seals >= 1 && autoConsume) {
@@ -9893,7 +10162,7 @@ export default function DiscordEmulator({
                 quote: p1DefeatQuote,
                 title: 'COMMAND SEAL EVACUATION',
                 servantClass: updatedState.player1.servantClass,
-                avatarUrl: updatedState.player1.avatarUrl || activeServant?.template.cardArtUrl || activeServant?.template.avatarUrl,
+                avatarUrl: updatedState.player1.avatarUrl || activeServant?.template?.cardArtUrl || activeServant?.template?.avatarUrl || '',
                 bondOrLevel: activeServant?.bondLevel || 10,
                 defenderName: updatedState.player2.name,
                 defenderClass: updatedState.player2.servantClass,
@@ -9933,7 +10202,7 @@ export default function DiscordEmulator({
                 quote: p1DefeatQuote,
                 title: 'CRITICAL DEFEAT DECISION',
                 servantClass: updatedState.player1.servantClass,
-                avatarUrl: updatedState.player1.avatarUrl || activeServant?.template.cardArtUrl || activeServant?.template.avatarUrl,
+                avatarUrl: updatedState.player1.avatarUrl || activeServant?.template?.cardArtUrl || activeServant?.template?.avatarUrl || '',
                 bondOrLevel: activeServant?.bondLevel || 10,
                 defenderName: updatedState.player2.name,
                 defenderClass: updatedState.player2.servantClass,
@@ -9986,7 +10255,7 @@ export default function DiscordEmulator({
                 quote: p1DefeatQuote,
                 title: 'DEFEAT & CONTRACT SEVERED',
                 servantClass: updatedState.player1.servantClass,
-                avatarUrl: updatedState.player1.avatarUrl || activeServant?.template.cardArtUrl || activeServant?.template.avatarUrl,
+                avatarUrl: updatedState.player1.avatarUrl || activeServant?.template?.cardArtUrl || activeServant?.template?.avatarUrl || '',
                 bondOrLevel: activeServant?.bondLevel || 10,
                 defenderName: updatedState.player2.name,
                 defenderClass: updatedState.player2.servantClass,
@@ -10012,7 +10281,7 @@ export default function DiscordEmulator({
           updatedState.player1.currentHp,
           updatedState.player1.maxHp,
           updatedState.player1.servantClass,
-          activeServant?.template.baseStats?.agility || 10
+          activeServant?.template?.baseStats?.agility || 10
         );
 
         addMessage({
@@ -10925,7 +11194,7 @@ export default function DiscordEmulator({
                           defaultValue=""
                           onChange={(e) => {
                             if (e.target.value) {
-                              handleButtonClick(e.target.value);
+                              handleButtonClick(e.target.value, msg.id);
                               e.target.value = '';
                             }
                           }}
@@ -10960,7 +11229,7 @@ export default function DiscordEmulator({
                           <button
                             key={btn.id}
                             disabled={btn.disabled}
-                            onClick={() => handleButtonClick(btn.id)}
+                            onClick={() => handleButtonClick(btn.id, msg.id)}
                             className={`px-3 py-1.5 rounded-sm text-xs font-mono uppercase tracking-wider font-semibold flex items-center gap-1.5 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${bg}`}
                           >
                             {btn.emoji && <span>{btn.emoji}</span>}

@@ -108,7 +108,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         const elapsed = Math.max(0, Date.now() - activeServant.lastDamageTime);
         const REGEN_DURATION = 300000;
         const baseHp = activeServant.baseHpAtDamage !== undefined ? Math.min(servantHp, activeServant.baseHpAtDamage) : servantHp;
-        const maxHp = mode === 'flat' ? 28000 : (activeServant.template.baseHp || 29000);
+        const maxHp = mode === 'flat' ? 28000 : (activeServant.template?.baseHp || 29000);
         if (elapsed >= REGEN_DURATION) {
           servantHp = maxHp;
         } else {
@@ -250,7 +250,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
     if (canvas && battle && (battle.turnPhase === 'defeat' || battle.turnPhase === 'evacuated')) {
       const p1 = battle.player1;
       const p2 = battle.player2;
-      const quote = activeServant.customQuotes?.defeat || activeServant.template.defeatQuote || "Master... I have failed you in battle...";
+      const quote = activeServant.customQuotes?.defeat || activeServant.template?.defeatQuote || "Master... I have failed you in battle...";
       const title = battle.turnPhase === 'evacuated' ? 'EMERGENCY EVACUATION' : 'SPIRIT ORIGIN DISSOLVED';
       renderDefeatDialogueCard(
         canvas,
@@ -266,15 +266,15 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         'fuyuki'
       ).catch(err => console.warn('Failed rendering live defeat VN card:', err));
     }
-  }, [battle, activeServant?.id, activeServant?.level, activeServant?.customQuotes?.defeat, activeServant?.template.defeatQuote]);
+  }, [battle, activeServant?.id, activeServant?.level, activeServant?.customQuotes?.defeat, activeServant?.template?.defeatQuote]);
 
   // Trigger Battle Start Dialogue Cut-In on Initial Engagement
   useEffect(() => {
     if (activeServant && battle && battle.currentTurn === 1 && battle.turnPhase === 'card_selection') {
-      const activeTemplate = activeServant.template;
-      const servantName = activeServant.nickname || activeTemplate.name;
-      const servantClass = activeTemplate.servantClass;
-      const quote = resolvedMatchup?.challengerLine || activeServant.customQuotes?.battleStart || activeTemplate.battleStartQuote || "My blade is drawn. Let the battle commence!";
+      const activeTemplate = activeServant.template || SERVANT_DATABASE.find(s => s.id === (activeServant.templateId || activeServant.id));
+      const servantName = activeServant.nickname || activeTemplate?.name || (activeServant as any).name || 'Heroic Spirit';
+      const servantClass = activeTemplate?.servantClass || 'Saber';
+      const quote = resolvedMatchup?.challengerLine || activeServant.customQuotes?.battleStart || activeTemplate?.battleStartQuote || "My blade is drawn. Let the battle commence!";
       const clashTag = resolvedMatchup?.tag || 'BATTLE ENGAGEMENT';
 
       const timer = setTimeout(() => {
@@ -1049,7 +1049,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         <CombatLogHistory
           history={battleHistory}
           initialSelectedBattleId={lastCompletedBattleId}
-          activeServantName={activeServant.template.name}
+          activeServantName={activeServant.nickname || activeServant.template?.name || (activeServant as any).name || 'Heroic Spirit'}
           onSelectRematch={enemyTemplateId => {
             const opp = SERVANT_DATABASE.find(s => s.id === enemyTemplateId);
             if (opp) {
@@ -1183,7 +1183,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                       }}
                       className="w-full bg-[#181818] text-white px-2 py-1.5 rounded border border-[#333] outline-none"
                     >
-                      {SERVANT_DATABASE.filter(s => s.id !== activeServant.template.id).map(s => (
+                      {SERVANT_DATABASE.filter(s => s.id !== (activeServant.template?.id || activeServant.templateId || activeServant.id)).map(s => (
                         <option key={s.id} value={s.id}>
                           {s.name} ({s.servantClass})
                         </option>
@@ -1207,7 +1207,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                     }}
                     className="w-full bg-[#181818] text-white px-2 py-1.5 rounded border border-[#333] outline-none"
                   >
-                    {SERVANT_DATABASE.filter(s => s.id !== activeServant.template.id && s.id !== selectedEnemy2Id).map(s => (
+                    {SERVANT_DATABASE.filter(s => s.id !== (activeServant.template?.id || activeServant.templateId || activeServant.id) && s.id !== selectedEnemy2Id).map(s => (
                       <option key={s.id} value={s.id}>
                         {s.name} ({s.servantClass})
                       </option>
@@ -1227,7 +1227,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                     }}
                     className="w-full bg-[#181818] text-white px-2 py-1.5 rounded border border-[#333] outline-none"
                   >
-                    {SERVANT_DATABASE.filter(s => s.id !== activeServant.template.id && s.id !== selectedEnemyId).map(s => (
+                    {SERVANT_DATABASE.filter(s => s.id !== (activeServant.template?.id || activeServant.templateId || activeServant.id) && s.id !== selectedEnemyId).map(s => (
                       <option key={s.id} value={s.id}>
                         {s.name} ({s.servantClass})
                       </option>
@@ -1499,12 +1499,12 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
       {showVsClash && resolvedMatchup && (
         <VsClashScreen
           challenger={{
-            name: activeServant.nickname || activeServant.template.name,
-            title: activeServant.template.title,
-            servantClass: activeServant.template.servantClass,
-            avatarUrl: activeServant.template.avatarUrl,
+            name: activeServant.nickname || activeServant.template?.name || (activeServant as any).name || 'Heroic Spirit',
+            title: activeServant.template?.title || 'Heroic Spirit',
+            servantClass: activeServant.template?.servantClass || 'Saber',
+            avatarUrl: activeServant.template?.avatarUrl || '',
             masterName: master.username,
-            rarity: activeServant.template.rarity
+            rarity: activeServant.template?.rarity || 5
           }}
           defender={{
             name: enemyTemplate.name,
@@ -1958,7 +1958,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                   <div className="shrink-0 flex flex-col items-center">
                     <div className="relative w-28 h-28 md:w-32 md:h-32 rounded-lg bg-[#0c0806] border-2 border-[#d4af37] p-1 shadow-[0_0_18px_rgba(212,175,55,0.25)] flex items-center justify-center overflow-hidden">
                       <img
-                        src={activeServant.template.cardArtUrl || activeServant.template.avatarUrl}
+                        src={activeServant.template?.cardArtUrl || activeServant.template?.avatarUrl || ''}
                         alt={p1.name}
                         className="w-full h-full object-cover rounded-sm filter brightness-95 contrast-105"
                       />
@@ -2000,12 +2000,12 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                       <span className="absolute top-2 left-2 text-2xl font-serif text-[#d4af37]/20 select-none">“</span>
                       <p className="font-serif italic text-sm md:text-base text-[#f5e6d3] leading-relaxed tracking-wide px-3">
                         &quot;{battle.turnPhase === 'victory'
-                          ? (activeServant.customQuotes?.victory || activeServant.template.victoryQuote || "A decisive triumph. The Holy Grail draws closer.")
+                          ? (activeServant.customQuotes?.victory || activeServant.template?.victoryQuote || "A decisive triumph. The Holy Grail draws closer.")
                           : battle.turnPhase === 'fled'
                           ? "A strategic retreat today ensures our victory tomorrow, Master. Returning to safety!"
                           : battle.turnPhase === 'evacuated'
                           ? "Understood, Master! Spatial extraction initiated through the Command Seal's authority!"
-                          : (activeServant.customQuotes?.defeat || activeServant.template.defeatQuote || "Master... I have failed you in battle...")}&quot;
+                          : (activeServant.customQuotes?.defeat || activeServant.template?.defeatQuote || "Master... I have failed you in battle...")}&quot;
                       </p>
                       <span className="absolute bottom-2 right-2 text-2xl font-serif text-[#d4af37]/20 select-none">”</span>
                     </div>

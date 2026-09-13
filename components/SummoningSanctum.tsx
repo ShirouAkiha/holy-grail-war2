@@ -103,9 +103,11 @@ export default function SummoningSanctum({
   // Perform Holy Grail War Summoning Ritual (One Servant, Randomly from Throne)
   const handlePerformRitual = () => {
     if (activeContract) {
+      const sName = activeContract.template?.name || activeContract.nickname || 'Servant';
+      const sClass = activeContract.template?.servantClass || 'Saber';
       setStatusNotice({
         type: 'error',
-        message: `You are already bound to ${activeContract.template.name} (${activeContract.template.servantClass}). Sever your current contract first if you wish to summon anew.`
+        message: `You are already bound to ${sName} (${sClass}). Sever your current contract first if you wish to summon anew.`
       });
       return;
     }
@@ -158,7 +160,7 @@ export default function SummoningSanctum({
   // Sever Contract
   const handleSeverContract = () => {
     if (!activeContract) return;
-    const name = activeContract.template.name;
+    const name = activeContract.template?.name || activeContract.nickname || 'Servant';
     onUpdateMaster({
       ...master,
       servants: [],
@@ -588,10 +590,10 @@ export default function SummoningSanctum({
                       <UserCheck className="w-5 h-5 text-[#d4af37]" />
                       <div>
                         <p className="text-xs font-bold text-white">
-                          Bound Contract: {activeContract.template.name}
+                          Bound Contract: {activeContract.template?.name || activeContract.nickname || 'Heroic Spirit'}
                         </p>
                         <p className="text-[11px] font-mono text-[#d4af37]">
-                          Class: [{activeContract.template.servantClass}] • Seals: 3/3 • Bond Lv.{activeContract.bondLevel}
+                          Class: [{activeContract.template?.servantClass || 'Saber'}] • Seals: 3/3 • Bond Lv.{activeContract.bondLevel}
                         </p>
                       </div>
                     </div>
@@ -642,25 +644,25 @@ export default function SummoningSanctum({
                 <div className="flex items-center justify-between border-b border-[#1a1a1a] pb-3">
                   <div>
                     <span className="text-[10px] font-mono uppercase tracking-widest text-[#d4af37]">Contracted Servant</span>
-                    <h4 className="text-base font-serif italic text-white">{activeContract.template.name}</h4>
+                    <h4 className="text-base font-serif italic text-white">{activeContract.template?.name || activeContract.nickname || 'Heroic Spirit'}</h4>
                   </div>
                   <span className="px-2.5 py-1 text-xs font-mono uppercase rounded-sm bg-[#161616] text-[#d4af37] border border-[#d4af37]/30">
-                    {activeContract.template.servantClass}
+                    {activeContract.template?.servantClass || 'Saber'}
                   </span>
                 </div>
 
                 {/* Picture Container */}
                 <div className="relative h-64 rounded-sm overflow-hidden border border-[#222] bg-[#050505]">
                   <img
-                    src={activeContract.template.cardArtUrl || activeContract.template.avatarUrl}
-                    alt={activeContract.template.name}
+                    src={activeContract.template?.cardArtUrl || activeContract.template?.avatarUrl || ''}
+                    alt={activeContract.template?.name || 'Servant'}
                     className="w-full h-full object-cover object-top"
                     referrerPolicy="no-referrer"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
                   <div className="absolute bottom-3 left-3 right-3">
                     <p className="text-[11px] font-serif italic text-white/90">
-                      &ldquo;{activeContract.customQuotes?.summon || activeContract.template.summonQuote}&rdquo;
+                      &ldquo;{activeContract.customQuotes?.summon || activeContract.template?.summonQuote || 'I answer your call.'}&rdquo;
                     </p>
                   </div>
                 </div>
@@ -670,15 +672,15 @@ export default function SummoningSanctum({
                   const templateId = activeContract.templateId || activeContract.template?.id || activeContract.id;
                   const canonical = SERVANT_DATABASE.find(s => s.id === templateId) || activeContract.template;
                   const sTemplate = { ...canonical, ...(activeContract.template?.isCustomOrMeme ? activeContract.template : {}) };
-                  const baseStats = sTemplate.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
+                  const baseStats = sTemplate?.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
                   const alloc = activeContract.allocatedStats || {};
                   const totalStr = (baseStats.strength || 10) + (alloc.strength || 0);
                   const totalEnd = (baseStats.endurance || 10) + (alloc.endurance || 0);
                   const ceAtk = activeContract.equippedCe?.atkBonus || 0;
                   const ceHp = activeContract.equippedCe?.hpBonus || 0;
                   const lvl = activeContract.level || 1;
-                  const activeMaxHp = Math.round((sTemplate.baseHp || 28000) + totalEnd * 150 + ceHp);
-                  const activeTotalAtk = Math.round((sTemplate.baseAtk || 10000) + totalStr * 80 + ceAtk);
+                  const activeMaxHp = Math.round((sTemplate?.baseHp || 28000) + totalEnd * 150 + ceHp);
+                  const activeTotalAtk = Math.round((sTemplate?.baseAtk || 10000) + totalStr * 80 + ceAtk);
 
                   return (
                     <div className="grid grid-cols-2 gap-2 text-xs font-mono">
@@ -696,9 +698,9 @@ export default function SummoningSanctum({
 
                 <div className="p-3 bg-[#0f0f0f] rounded border border-[#1a1a1a] text-xs">
                   <span className="text-[#d4af37] font-mono text-[10px] uppercase tracking-wider block">Noble Phantasm</span>
-                  <strong className="text-white">{activeContract.template.noblePhantasm.name}</strong>
+                  <strong className="text-white">{activeContract.template?.noblePhantasm?.name || 'Noble Phantasm'}</strong>
                   <p className="text-[11px] text-white/60 font-serif italic mt-1">
-                    &ldquo;{activeContract.template.noblePhantasm.chant}&rdquo;
+                    &ldquo;{activeContract.template?.noblePhantasm?.chant || 'Unleashing Noble Phantasm!'}&rdquo;
                   </p>
                 </div>
               </div>

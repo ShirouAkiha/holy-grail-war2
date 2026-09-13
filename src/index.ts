@@ -462,7 +462,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
           await interaction.reply({
             flags: MessageFlags.Ephemeral,
-            content: `💬 Custom voice lines and combat chants saved for **${servant.nickname || servant.template.name}**!`
+            content: `💬 Custom voice lines and combat chants saved for **${servant.nickname || servant.template?.name || (servant as any).name || 'Heroic Spirit'}**!`
           });
         }
       }
@@ -503,7 +503,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
           await interaction.reply({
             flags: MessageFlags.Ephemeral,
-            content: `⚔️ Custom face-off clash banter registered for **${servant.nickname || servant.template.name}** vs **${matchedRival.name}**!\n\n` +
+            content: `⚔️ Custom face-off clash banter registered for **${servant.nickname || servant.template?.name || (servant as any).name || 'Heroic Spirit'}** vs **${matchedRival.name}**!\n\n` +
               `🔥 **Challenger Quote:** *" ${intro} "*\n` +
               (retort ? `🛡️ **Defender Retort:** *" ${retort} "*\n` : '') +
               (tag ? `🏷️ **Clash Tag:** \`${tag}\`\n` : '') +
@@ -620,7 +620,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
             await interaction.reply({
               flags: MessageFlags.Ephemeral,
-              content: `🛡️ Equipped **${pickedCe.name}** to **${servant.template.name}**!`
+              content: `🛡️ Equipped **${pickedCe.name}** to **${servant.nickname || servant.template?.name || (servant as any).name || 'Heroic Spirit'}**!`
             });
           }
         }
@@ -1371,23 +1371,28 @@ client.on(Events.InteractionCreate, async interaction => {
         const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
         if (activeServant) {
           await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+          const t = activeServant.template || activeServant;
+          const sName = activeServant.nickname || t.name || 'Heroic Spirit';
+          const sTitle = t.title || 'Servant';
+          const sClass = t.servantClass || 'Saber';
+
           const quotes = [
-            { label: 'Summon Quote', text: activeServant.customQuotes?.summon || activeServant.template.summonQuote },
-            { label: 'Battle Start', text: activeServant.customQuotes?.battleStart || activeServant.template.battleStartQuote },
-            { label: 'Noble Phantasm Chant', text: activeServant.customQuotes?.noblePhantasm || activeServant.template.noblePhantasm.chant },
-            { label: 'Victory Quote', text: activeServant.customQuotes?.victory || activeServant.template.victoryQuote }
+            { label: 'Summon Quote', text: activeServant.customQuotes?.summon || t.summonQuote || 'I answer your summons, Master.' },
+            { label: 'Battle Start', text: activeServant.customQuotes?.battleStart || t.battleStartQuote || 'Commencing engagement.' },
+            { label: 'Noble Phantasm Chant', text: activeServant.customQuotes?.noblePhantasm || t.noblePhantasm?.chant || 'Unleashing Noble Phantasm!' },
+            { label: 'Victory Quote', text: activeServant.customQuotes?.victory || t.victoryQuote || 'A decisive triumph.' }
           ];
           const picked = quotes[Math.floor(Math.random() * quotes.length)];
           let files: AttachmentBuilder[] = [];
           try {
-            const diaBuffer = await renderDialogueCard(activeServant.template.name, picked.text, activeServant.template.title, activeServant.template.servantClass);
+            const diaBuffer = await renderDialogueCard(sName, picked.text, sTitle, sClass);
             if (diaBuffer && diaBuffer.length > 500) {
               files.push(new AttachmentBuilder(diaBuffer, { name: 'dialogue_card.png' }));
             }
           } catch {}
 
           const diaEmbed = new EmbedBuilder()
-            .setTitle(`💬 ${activeServant.template.name} — [${picked.label}]`)
+            .setTitle(`💬 ${sName} — [${picked.label}]`)
             .setDescription(`*"${picked.text}"*`)
             .setColor(0xd4af37);
 
@@ -1850,7 +1855,7 @@ client.on(Events.MessageCreate, async message => {
       } catch {}
 
       const boastEmbed = new EmbedBuilder()
-        .setTitle(`📢 MASTER DECLARATION: ${message.author.username} & ${activeServant.template.name}`)
+        .setTitle(`📢 MASTER DECLARATION: ${message.author.username} & ${activeServant.nickname || activeServant.template?.name || (activeServant as any).name || 'Heroic Spirit'}`)
         .setDescription(`*"Behold my contracted Heroic Spirit in this Holy Grail War!"*`)
         .setColor(0xd4af37);
 

@@ -91,11 +91,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       try {
         if (i.replied || i.deferred) return;
         if (i.customId.startsWith('dialogue_quote:')) {
+        const sTemplate = activeServant.template || activeServant;
         const dialogueBuffer = await renderDialogueCard(
-          activeServant.template.name,
-          activeServant.customQuotes.summon || activeServant.template.summonQuote,
-          activeServant.template.title,
-          activeServant.template.servantClass
+          sTemplate.name || activeServant.name || 'Heroic Spirit',
+          activeServant.customQuotes?.summon || sTemplate.summonQuote || 'I answer your call.',
+          sTemplate.title || 'Servant',
+          sTemplate.servantClass || 'Saber'
         );
         const dialogueAttachment = new AttachmentBuilder(dialogueBuffer, { name: 'dialogue_card.png' });
 

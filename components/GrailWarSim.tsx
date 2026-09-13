@@ -216,9 +216,9 @@ export default function GrailWarSim({
       discordId: master.discordId,
       username: master.username,
       servantId: activeServant.id,
-      servantName: activeServant.template.name,
-      avatarUrl: activeServant.template.avatarUrl,
-      maxHp: activeServant.template.baseHp
+      servantName: activeServant.nickname || activeServant.template?.name || (activeServant as any).name || 'Heroic Spirit',
+      avatarUrl: activeServant.template?.avatarUrl || '',
+      maxHp: activeServant.template?.baseHp || 28000
     });
     onUpdateGrailWar(newSession);
     setActionFeedback('New 7-Master Holy Grail War tournament initialized in strict secrecy!');

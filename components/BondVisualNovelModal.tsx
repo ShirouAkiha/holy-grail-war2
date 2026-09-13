@@ -124,15 +124,8 @@ export const BondVisualNovelModal: React.FC<BondVisualNovelModalProps> = ({
 
   // Finalize event rewards & update master servant instance
   const handleClaimRewards = () => {
-    const isFirstTime = !servant.completedBondEvents?.includes(event.id);
-    const sqReward = isFirstTime ? (event.rewardSaintQuartz || 3) : 0;
-    const expGain = isFirstTime ? totalBondExpGained : 0;
-
-    let updatedServant = { ...servant };
-    if (isFirstTime && expGain > 0) {
-      const res = addBondExpToServant(servant, expGain);
-      updatedServant = res.updatedServant;
-    }
+    const sqReward = event.rewardSaintQuartz || 3;
+    const { updatedServant } = addBondExpToServant(servant, totalBondExpGained);
 
     // Track completed event ID
     if (!updatedServant.completedBondEvents) {
@@ -209,8 +202,12 @@ export const BondVisualNovelModal: React.FC<BondVisualNovelModalProps> = ({
         {!isEventFinished ? (
           <div className="relative flex-1 flex flex-col justify-between overflow-hidden p-4 sm:p-6">
             
-            {/* ATMOSPHERIC BACKGROUND EFFECTS */}
-            <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-400/20 via-transparent to-transparent" />
+            {/* RICH ATMOSPHERIC BACKGROUND IMAGE */}
+            <div 
+              className="absolute inset-0 bg-cover bg-center opacity-45 mix-blend-luminosity scale-105 transition-all duration-700 pointer-events-none"
+              style={{ backgroundImage: `url('https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp')` }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-slate-950/30 pointer-events-none" />
 
             {/* SERVANT CHARACTER PORTRAIT / CUT-IN */}
             <div className="relative flex-1 flex items-end justify-center mb-4 z-10">

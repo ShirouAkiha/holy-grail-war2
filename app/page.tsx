@@ -134,9 +134,9 @@ export default function Home() {
             {activeServant ? (
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-sm bg-[#0f0f0f] border border-[#1a1a1a] text-xs">
                 <span className="text-white/40 text-[10px] uppercase tracking-wider font-mono">Contract:</span>
-                <strong className="text-white font-medium">{activeServant.template.name}</strong>
+                <strong className="text-white font-medium">{activeServant.nickname || activeServant.template?.name || (activeServant as any).name || 'Heroic Spirit'}</strong>
                 <span className="text-[#d4af37] text-[11px] font-mono">
-                  [{activeServant.template.servantClass}]
+                  [{activeServant.template?.servantClass || (activeServant as any).servantClass || 'Saber'}]
                 </span>
               </div>
             ) : (

@@ -471,7 +471,7 @@ export function generateGenericBondEvent(
 export function getBondEventsForServant(
   servant: MasterServantInstance
 ): BondEvent[] {
-  const templateId = servant.templateId || servant.template?.id;
+  const templateId = servant.templateId || servant.template?.id || servant.id;
   const curated = SERVANT_BOND_EVENT_DATABASE[templateId];
 
   if (curated && curated.length > 0) {
@@ -481,39 +481,6 @@ export function getBondEventsForServant(
   // Fallback generic bond event for testing & custom servants
   const currentBond = servant.bondLevel || 1;
   return [generateGenericBondEvent(servant.template || servant, Math.max(1, currentBond))];
-}
-
-/**
- * Selects the active uncompleted Interlude for a Servant, preventing infinite reward loops.
- */
-export function selectActiveInterludeForServant(servant: MasterServantInstance): {
-  event: BondEvent;
-  isReplay: boolean;
-  statusNote?: string;
-} {
-  const events = getBondEventsForServant(servant);
-  const bondLvl = servant.bondLevel || 1;
-  const completedIds: string[] = servant.completedBondEvents || [];
-
-  // 1. First priority: find an uncompleted event that is unlocked at current bond level
-  const uncompleted = events.find(e => e.requiredBondLevel <= bondLvl && !completedIds.includes(e.id));
-  if (uncompleted) {
-    return { event: uncompleted, isReplay: false };
-  }
-
-  // 2. Check if a generic event for current bond level hasn't been completed yet
-  const genericForLvl = generateGenericBondEvent(servant.template || servant, bondLvl);
-  if (!completedIds.includes(genericForLvl.id)) {
-    return { event: genericForLvl, isReplay: false };
-  }
-
-  // 3. Fallback: if all events at current level are completed, pick the highest unlocked event in Replay mode
-  const latestUnlocked = [...events].reverse().find(e => e.requiredBondLevel <= bondLvl) || events[0] || genericForLvl;
-  return {
-    event: latestUnlocked,
-    isReplay: true,
-    statusNote: `(Replay Mode - Rewards already claimed for this Interlude)`
-  };
 }
 
 /**
@@ -664,7 +631,7 @@ export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
 export function getUnlockedDialogueLinesForServant(
   servant: MasterServantInstance
 ): BondDialogueLine[] {
-  const templateId = servant.templateId || servant.template.id;
+  const templateId = servant.templateId || servant.template?.id || servant.id;
   const curated = SERVANT_BOND_DIALOGUE_LINES[templateId];
   const bondLevel = servant.bondLevel || 1;
 
@@ -673,14 +640,14 @@ export function getUnlockedDialogueLinesForServant(
   }
 
   // Fallback lines for custom / unscripted servants
-  const template = servant.template;
+  const template = servant.template || servant;
   const fallbackLines: BondDialogueLine[] = [
     {
       id: `${templateId}_summon`,
       title: 'Summoning Quote',
       category: 'summon',
       requiredBondLevel: 1,
-      quoteText: servant.customQuotes?.summon || template.summonQuote || `I answer your summons, Master!`
+      quoteText: servant.customQuotes?.summon || template?.summonQuote || `I answer your summons, Master!`
     },
     {
       id: `${templateId}_bond_1`,
