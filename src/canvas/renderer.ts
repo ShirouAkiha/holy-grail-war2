@@ -5956,84 +5956,102 @@ export async function renderVisualNovelCard(
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  // 1. Scene Background Rendering (Default to rich atmospheric anime background)
-  const defaultBgUrl = 'https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp';
-  const bgUrlToUse = opts.backgroundImageUrl || defaultBgUrl;
+  // 1. Unified Steins;Gate Dark Obsidian Canvas Base (0 to 1000 width, 0 to 560 height)
+  const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+  bgGrad.addColorStop(0, '#050813');
+  bgGrad.addColorStop(0.35, '#0a1022');
+  bgGrad.addColorStop(0.75, '#0d152a');
+  bgGrad.addColorStop(1, '#060914');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, width, height);
 
-  let bgDrawn = false;
-  if (bgUrlToUse) {
+  // Optional background texture (rendered subtly full-bleed if provided)
+  if (opts.backgroundImageUrl && opts.backgroundImageUrl !== opts.servantAvatarUrl) {
     try {
-      const customBg = await loadImage(bgUrlToUse);
+      const customBg = await loadImage(opts.backgroundImageUrl);
       if (customBg) {
+        ctx.save();
+        ctx.globalAlpha = 0.22;
         ctx.drawImage(customBg, 0, 0, width, height);
-        bgDrawn = true;
+        ctx.restore();
       }
     } catch {
-      bgDrawn = false;
+      // Ignore background texture failure
     }
   }
 
-  if (!bgDrawn) {
-    // Rich Steins;Gate Fuyuki Leyline Sky Gradient
-    const bgGrad = ctx.createLinearGradient(0, 0, width, height);
-    bgGrad.addColorStop(0, '#060a16');
-    bgGrad.addColorStop(0.3, '#0d152a');
-    bgGrad.addColorStop(0.7, '#111827');
-    bgGrad.addColorStop(1, '#080c14');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, width, height);
+  // Glowing Celestial Halo & Ambient Radial Light (Top Right)
+  ctx.save();
+  const moonGrad = ctx.createRadialGradient(780, 110, 10, 780, 110, 320);
+  moonGrad.addColorStop(0, 'rgba(245, 158, 11, 0.22)');
+  moonGrad.addColorStop(0.5, 'rgba(139, 92, 246, 0.12)');
+  moonGrad.addColorStop(1, 'rgba(6, 9, 20, 0)');
+  ctx.fillStyle = moonGrad;
+  ctx.beginPath();
+  ctx.arc(780, 110, 320, 0, Math.PI * 2);
+  ctx.fill();
 
-    // Glowing Celestial Halo & Ambient Radial Light
-    ctx.save();
-    const moonGrad = ctx.createRadialGradient(750, 120, 10, 750, 120, 300);
-    moonGrad.addColorStop(0, 'rgba(245, 158, 11, 0.22)');
-    moonGrad.addColorStop(0.5, 'rgba(139, 92, 246, 0.12)');
-    moonGrad.addColorStop(1, 'rgba(15, 23, 42, 0)');
-    ctx.fillStyle = moonGrad;
+  // Fine Crosshatch Grid Pattern Overlay
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.045)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < width; x += 24) {
     ctx.beginPath();
-    ctx.arc(750, 120, 300, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Leyline Grid Pattern Overlay
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < width; x += 30) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-    }
-    for (let y = 0; y < height; y += 30) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
-    }
-    ctx.restore();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, height);
+    ctx.stroke();
   }
+  for (let y = 0; y < height; y += 24) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y);
+    ctx.stroke();
+  }
+  ctx.restore();
 
-  // 2. Character Sprite (Right-Aligned Figure with Atmospheric Aura)
+  // 2. Character Artwork (Proportional scaling preserving natural aspect ratio)
   if (opts.servantAvatarUrl) {
     try {
       const portraitImg = await loadImage(opts.servantAvatarUrl);
       if (portraitImg) {
+        const imgW = portraitImg.width || 1;
+        const imgH = portraitImg.height || 1;
+        const aspect = imgW / imgH;
+
+        // Bounding limits in top stage region (y: 10..310, x: 420..980)
+        const maxW = 540;
+        const maxH = 290;
+
+        let targetW = maxW;
+        let targetH = targetW / aspect;
+
+        if (targetH > maxH) {
+          targetH = maxH;
+          targetW = targetH * aspect;
+        }
+
+        const px = width - targetW - 20;
+        const py = 12 + (maxH - targetH) / 2;
+
         ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-        ctx.shadowBlur = 35;
+        // Atmospheric drop shadow behind artwork card
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+        ctx.shadowBlur = 25;
 
-        const px = 450;
-        const py = 10;
-        const pw = 520;
-        const ph = 540;
-        ctx.drawImage(portraitImg, px, py, pw, ph);
+        // Clip to rounded frame to prevent hard block edges
+        ctx.beginPath();
+        ctx.roundRect(px, py, targetW, targetH, 6);
+        ctx.clip();
 
-        // Smooth bottom gradient mask blending character sprite into the lower dialogue lens
-        const fadeGrad = ctx.createLinearGradient(0, 240, 0, height);
-        fadeGrad.addColorStop(0, 'rgba(8, 12, 22, 0)');
-        fadeGrad.addColorStop(0.65, 'rgba(8, 12, 22, 0.75)');
-        fadeGrad.addColorStop(1, 'rgba(5, 8, 16, 0.95)');
-        ctx.fillStyle = fadeGrad;
-        ctx.fillRect(px - 40, 240, pw + 80, 320);
+        ctx.drawImage(portraitImg, px, py, targetW, targetH);
+        ctx.restore();
+
+        // Metallic Amber Border around character artwork
+        ctx.save();
+        ctx.strokeStyle = 'rgba(217, 119, 6, 0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(px, py, targetW, targetH, 6);
+        ctx.stroke();
         ctx.restore();
       }
     } catch {
