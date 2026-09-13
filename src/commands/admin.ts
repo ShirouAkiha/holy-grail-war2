@@ -1474,8 +1474,7 @@ export function buildAdminHub(
 
     const personaActionsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('admin_persona_btn_add').setLabel('Create / Add Persona (Modal)').setEmoji('➕').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('admin_tab_personas').setLabel('Refresh Persona List').setEmoji('🔄').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_tab_war').setLabel('War Dashboard').setEmoji('🏆').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('admin_persona_btn_refresh').setLabel('Refresh List').setEmoji('🔄').setStyle(ButtonStyle.Secondary)
     );
     components.push(personaActionsRow);
 
