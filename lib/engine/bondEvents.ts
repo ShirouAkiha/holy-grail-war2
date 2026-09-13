@@ -484,6 +484,50 @@ export function getBondEventsForServant(
 }
 
 /**
+ * Selects the active (unlocked & uncompleted, or highest available for replay) Bond Interlude event for a Servant.
+ */
+export function selectActiveInterludeForServant(servant: MasterServantInstance | any): {
+  event: BondEvent;
+  isReplay: boolean;
+  statusNote: string;
+} {
+  const events = getBondEventsForServant(servant);
+  const completedIds = servant.completedBondEvents || [];
+  const bondLevel = servant.bondLevel || 1;
+
+  // 1. Find the first unlocked event that has NOT been completed yet
+  const uncompleted = events.find(e => e.requiredBondLevel <= bondLevel && !completedIds.includes(e.id));
+  if (uncompleted) {
+    return {
+      event: uncompleted,
+      isReplay: false,
+      statusNote: `Ready to Play (Bond Lv. ${uncompleted.requiredBondLevel} Required)`
+    };
+  }
+
+  // 2. If all unlocked events are completed, find the highest unlocked completed event for replay
+  const completedUnlocked = events.filter(e => e.requiredBondLevel <= bondLevel && completedIds.includes(e.id));
+  if (completedUnlocked.length > 0) {
+    const highestCompleted = completedUnlocked[completedUnlocked.length - 1];
+    return {
+      event: highestCompleted,
+      isReplay: true,
+      statusNote: `Replay Mode (Completed)`
+    };
+  }
+
+  // 3. Fallback to the first available event or generic fallback
+  const firstEvent = events[0] || generateGenericBondEvent(servant?.template || servant, Math.max(1, bondLevel));
+  const isUnlocked = firstEvent.requiredBondLevel <= bondLevel;
+
+  return {
+    event: firstEvent,
+    isReplay: completedIds.includes(firstEvent.id),
+    statusNote: isUnlocked ? 'Ready to Play' : `Locked (Requires Bond Lv. ${firstEvent.requiredBondLevel})`
+  };
+}
+
+/**
  * Unlocked dialogue quotes database associated with Bond levels.
  */
 export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
