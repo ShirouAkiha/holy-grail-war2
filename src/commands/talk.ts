@@ -74,8 +74,64 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const recentChronicleEvents = (war.eventLogs || []).slice(0, 6).map((l: any) =>
       typeof l === 'string' ? l : (l.text || l.message || 'War active in Fuyuki.')
     );
+
+    // Actual combat skirmishes and ambushes (excluding trap siphons and maintenance)
+    const recentBattleEvents = (war.eventLogs || [])
+      .filter((evt: any) => {
+        const t = evt.type;
+        const txt = (evt.text || '').toLowerCase();
+        if (
+          txt.includes('bounded field') ||
+          txt.includes('mana drain') ||
+          txt.includes('alarm ward') ||
+          txt.includes('sensory alarm') ||
+          txt.includes('channeled workshop') ||
+          txt.includes('mana reconstitution') ||
+          txt.includes('workshop defense') ||
+          txt.includes('familiar')
+        ) {
+          return false;
+        }
+        return (
+          t === 'clash' ||
+          t === 'ambush' ||
+          t === 'elimination' ||
+          t === 'casualty' ||
+          t === 'duel' ||
+          txt.includes('ambush') ||
+          txt.includes('duel') ||
+          txt.includes('eliminated') ||
+          txt.includes('counter-struck') ||
+          txt.includes('struck down') ||
+          txt.includes('mercy') ||
+          txt.includes('execution')
+        );
+      })
+      .slice(0, 8)
+      .map((l: any) => typeof l === 'string' ? l : (l.text || l.message || 'Combat clash recorded.'));
+
+    // Intercepted intelligence leaks from surveillance & familiars
+    const interceptedLeaks = (war.leakedIntel || []).slice(0, 6).map((lk: any) => ({
+      informant: lk.informantMasterId ? (war.participants?.[lk.informantMasterId]?.username || lk.informantMasterId) : 'Scout Operative',
+      intel: lk.intel || 'Unknown dispatch',
+      target: lk.targetMasterId ? (war.participants?.[lk.targetMasterId]?.username || lk.targetMasterId) : undefined
+    }));
+
+    // Casualty breakdown: Fallen Masters and civilian collateral crossfire
+    const fallenMasters = Object.values(war.participants || {})
+      .filter((p: any) => p.isAlive === false)
+      .map((p: any) => `${p.username} (${p.servantName || p.servantClass})`);
+    const civilianCasualties = (war.civilianCasualties || []).slice(0, 6).map((c: any) =>
+      `${c.name} (struck down by Master ${c.slainByMasterId || 'Unknown'}; Church gas leak cover-up)`
+    );
+    const totalCasualties = fallenMasters.length + (war.civilianCasualties?.length || 0);
+    const casualtyDossier = {
+      totalCasualties,
+      fallenMasters,
+      civilianCasualties
+    };
     
-    // Also include recent civilian casualties or exposed leaks if relevant
+    // Also include recent civilian casualties or exposed leaks in general chronicle if relevant
     if (war.civilianCasualties && war.civilianCasualties.length > 0) {
       const recentCas = war.civilianCasualties[0];
       if (recentCas) {
@@ -119,7 +175,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         servantName: p.servantName,
         isAlive: p.isAlive !== false,
         inSanctuary: !!p.inChurchSanctuary,
-        kills: p.kills || 0
+        kills: p.kills || 0,
+        innocentKills: p.innocentKills || 0,
+        isRogueHeretic: (p.innocentKills || 0) >= 10 || !!p.bountyActive
       }));
     const totalAliveMasters = Object.values(war.participants || {}).filter((p: any) => p.isAlive !== false).length;
     const concealedMastersCount = otherParticipants.filter((p: any) => !p.isExposed && p.isAlive !== false).length;
@@ -139,6 +197,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       isExposed,
       equippedCeName,
       recentChronicleEvents,
+      recentBattleEvents,
+      interceptedLeaks,
+      casualtyDossier,
       playerMessage,
       servantAvatarUrl: avatarUrl,
       currentHp,

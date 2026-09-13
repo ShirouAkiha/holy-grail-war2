@@ -1361,6 +1361,7 @@ export function attackSuspectUserInWar(
   const finalName = bystanderName || `Citizen (${cleanBystander.slice(-4)})`;
   const bystanderDisplay = `@${finalName.replace(/^@+/, '')}`;
 
+  attacker.innocentKills = (attacker.innocentKills || 0) + 1;
   targetWar.civilianCasualties.unshift({
     id: `victim_${Date.now()}`,
     name: bystanderDisplay,
@@ -1767,7 +1768,7 @@ export function checkAndTriggerChannelTraps(
       id: `evt_trap_drain_${Date.now()}`,
       timestamp: Date.now(),
       text: `🩸 Mana Drain Field in ${chanTag}: A predatory Bounded Field siphoned ${drainDmg.toLocaleString()} HP from Master **${intruder.username}**!`,
-      type: 'clash'
+      type: 'trap'
     });
   }
 
@@ -2376,22 +2377,48 @@ export function recordDuelOutcome(
   const victor = findTargetMaster(targetWar, winnerQuery) || Object.values(targetWar.participants)[0];
   let defeated = findTargetMaster(targetWar, loserQuery);
 
-  if (!defeated) {
-    defeated = Object.values(targetWar.participants).find(
-      p => p.discordId !== victor.discordId && p.isAlive
-    );
-  }
+  const now = Date.now();
 
+  // If the loser is an AI opponent or Shadow Servant not in the 7 human Master roster
   if (!defeated) {
+    victor.isExposed = true;
+    victor.exposureReason = 'direct_combat';
+    if (winnerRemainingHp !== undefined && winnerRemainingHp > 0) {
+      victor.currentHp = Math.min(victor.maxHp, Math.round(winnerRemainingHp));
+    }
+    if (victor.currentHp < victor.maxHp) {
+      victor.baseHpAtDamage = victor.currentHp;
+      victor.lastDamageTime = now;
+    }
+
+    let npcOutcomeLog = '';
+    if (decision === 'kill') {
+      victor.kills = (victor.kills || 0) + 1;
+      npcOutcomeLog = `⚔️ DUEL EXECUTION in ${chanTag}: Master **${victor.username}** (${victor.servantName}) defeated and struck down rival **${loserQuery}** in tactical combat!`;
+      targetWar.eventLogs.unshift({
+        id: `evt_duel_npc_${Date.now()}`,
+        timestamp: now,
+        text: npcOutcomeLog,
+        type: 'elimination'
+      });
+    } else {
+      npcOutcomeLog = `🕊️ DUEL MERCY in ${chanTag}: Master **${victor.username}** (${victor.servantName}) defeated rival **${loserQuery}** in a duel and spared their life!`;
+      targetWar.eventLogs.unshift({
+        id: `evt_duel_npc_mercy_${Date.now()}`,
+        timestamp: now,
+        text: npcOutcomeLog,
+        type: 'clash'
+      });
+    }
+
+    saveWarToDisk();
     return {
       updatedWar: targetWar,
-      message: 'Defeated Master was not found in the Holy Grail War roster.',
-      eliminated: false,
+      message: npcOutcomeLog,
+      eliminated: decision === 'kill',
       victorMaster: victor
     };
   }
-
-  const now = Date.now();
 
   // Both identities become exposed due to the decisive duel
   victor.isExposed = true;
@@ -2462,7 +2489,7 @@ export function recordDuelOutcome(
       id: `evt_mercy_${Date.now()}`,
       timestamp: now,
       text: outcomeLog,
-      type: 'heal'
+      type: 'clash'
     });
 
     evaluateWarState(targetWar);

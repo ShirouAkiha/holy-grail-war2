@@ -158,8 +158,35 @@ export function buildGrailWarHub(
   const battleEventsList = (war.eventLogs || []).filter(evt => {
     const t = evt.type;
     const txt = (evt.text || '').toLowerCase();
-    return t === 'clash' || t === 'ambush' || t === 'elimination' || t === 'casualty' || t === 'betrayal' ||
-           txt.includes('dmg') || txt.includes('ambush') || txt.includes('attack') || txt.includes('skirmish') || txt.includes('clash') || txt.includes('struck');
+    // Strictly exclude passive traps, bounded fields, sensory alarms, leylines, and workshop maintenance
+    if (
+      txt.includes('bounded field') ||
+      txt.includes('mana drain') ||
+      txt.includes('alarm ward') ||
+      txt.includes('sensory alarm') ||
+      txt.includes('channeled workshop') ||
+      txt.includes('mana reconstitution') ||
+      txt.includes('workshop defense') ||
+      txt.includes('familiar')
+    ) {
+      return false;
+    }
+    return (
+      t === 'clash' ||
+      t === 'ambush' ||
+      t === 'elimination' ||
+      t === 'casualty' ||
+      t === 'betrayal' ||
+      t === 'duel' ||
+      txt.includes('ambush') ||
+      txt.includes('duel') ||
+      txt.includes('skirmish') ||
+      txt.includes('eliminated') ||
+      txt.includes('counter-struck') ||
+      txt.includes('struck down') ||
+      txt.includes('mercy') ||
+      txt.includes('execution')
+    );
   });
 
   if (category === 'board') {
@@ -173,7 +200,8 @@ export function buildGrailWarHub(
         const servantLabel = isRevealed ? `${m.servantName} (${m.servantClass})` : '[Classified in Shadows]';
         const exposureTag = m.isExposed ? ' `[EXPOSED]`' : (!m.isAlive ? ' `[FALLEN]`' : '');
         const curHp = calculateCurrentHp(m);
-        rosterLines.push(`${statusIcon} **${nameLabel}**${exposureTag} — Servant: *${servantLabel}* | HP: \`${curHp.toLocaleString()}/${m.maxHp.toLocaleString()}\` | Kills: ${m.kills}`);
+        const killInfo = `Kills: **${m.kills || 0}**${m.innocentKills ? ` (${m.innocentKills} Civilians ☠️)` : ''}`;
+        rosterLines.push(`${statusIcon} **${nameLabel}**${exposureTag} — Servant: *${servantLabel}* | HP: \`${curHp.toLocaleString()}/${m.maxHp.toLocaleString()}\` | ${killInfo}`);
       } else {
         rosterLines.push(`⏳ **Slot #${slotIdx + 1}** — *[Unsummoned Heroic Spirit — Awaiting Master Covenant]*`);
       }
@@ -184,6 +212,8 @@ export function buildGrailWarHub(
       return !txt.includes('workshop defense') && 
              !txt.includes('auto-evacuation') && 
              !txt.includes('channeled mana') &&
+             !txt.includes('channeled workshop') &&
+             !txt.includes('mana reconstitution') &&
              !txt.includes('bounded field');
     });
 
@@ -233,13 +263,25 @@ export function buildGrailWarHub(
       statusHeader = `**Status:** ⚔️ ACTIVE ELIMINATION PHASE (**${aliveParticipants.length}/7** Alive | **${deadCount}/6** Cores Absorbed) | **Total Casualties:** **${totalCasualties}**`;
     }
 
+    const latestBattle = battleEventsList[0];
+    const latestCasualty = war.civilianCasualties?.[0];
+    const latestBattleText = latestBattle
+      ? latestBattle.text.replace(/@(\d{16,21})/g, (_, uid) => resolveDisplayName(uid, client))
+      : '*No direct clashes logged yet.*';
+    const latestCasualtyText = latestCasualty
+      ? `${resolveDisplayName(latestCasualty.name, client)} struck down by Master ${resolveDisplayName(latestCasualty.slainByMasterId || 'Unknown', client).replace(/^@/, '')} (Cover-up: gas leak explosion)`
+      : (deadCount > 0 ? `${deadCount} Master(s) permanently eliminated` : '*Zero casualties reported.*');
+
     const embed = new EmbedBuilder()
       .setTitle(`🏆 ${war.title}`)
       .setDescription(
         `${statusHeader}\n\n` +
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `⚔️ **7 Masters Intelligence Roster:**\n${rosterLines.join('\n')}\n\n` +
-        `📜 **War Chronicle & Skirmishes (${(war.eventLogs || []).length} Events | ${leaksCount} Leaks):**\n${recentEvents || '*The war has begun. No city skirmishes recorded yet.*'}\n\n` +
+        `💥 **Recent Combat & Casualty Highlights:**\n` +
+        `• ⚔️ **Latest Battle:** ${latestBattleText}\n` +
+        `• ☠️ **Latest Fatality:** ${latestCasualtyText}\n\n` +
+        `📜 **War Chronicle & Skirmishes (${battleEventsList.length} Battles | ${totalCasualties} Casualties | ${leaksCount} Leaks):**\n${recentEvents || '*The war has begun. No city skirmishes recorded yet.*'}\n\n` +
         `💡 *Click the buttons below to view detailed records of Casualties, Intercepted Leaks, or Battles.*`
       )
       .setColor(0xd4af37)
@@ -326,30 +368,57 @@ export function buildGrailWarHub(
 
   } else if (category === 'battles') {
     const battleLines = battleEventsList.length > 0
-      ? battleEventsList.slice(0, 12).map(evt => {
+      ? battleEventsList.slice(0, 15).map(evt => {
           let icon = '⚔️';
           if (evt.type === 'elimination') icon = '💀';
           else if (evt.type === 'casualty') icon = '☠️';
           else if (evt.type === 'ambush') icon = '🗡️';
           else if (evt.type === 'betrayal') icon = '💔';
-          const timeStr = new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          return `• ${icon} \`${timeStr}\` **${evt.text}**`;
-        }).join('\n\n')
-      : '• *No active clashes recorded in Fuyuki City yet. Tension mounts in the dark.*';
+          else if (evt.type === 'duel') icon = '⚔️';
 
-    const fatalCount = battleEventsList.filter(b => b.type === 'elimination').length;
-    const ambushCount = battleEventsList.filter(b => b.type === 'ambush').length;
+          let text = evt.text;
+          // Resolve any raw Discord snowflake user IDs like @123456789
+          text = text.replace(/@(\d{16,21})/g, (_, uid) => resolveDisplayName(uid, client));
+
+          participants.forEach((m, idx) => {
+            if (!m.isExposed && m.isAlive) {
+              if (m.username && text.includes(m.username)) {
+                text = text.replace(new RegExp(`Master \\*\\*${m.username}\\*\\*`, 'g'), 'A Shadow Master');
+                text = text.replace(new RegExp(`\\*\\*${m.username}\\*\\*`, 'g'), `Shadow Master #${idx + 1}`);
+                text = text.replace(new RegExp(m.username, 'g'), `Shadow Master #${idx + 1}`);
+              }
+            }
+          });
+
+          const timeStr = new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          return `• ${icon} \`${timeStr}\` **${text}**`;
+        }).join('\n\n')
+      : '• *🛡️ No direct Master ambushes or duels have broken out yet. Rivals are scouting from the shadows.*';
+
+    const fatalCount = battleEventsList.filter(b => b.type === 'elimination' || (b.text || '').toLowerCase().includes('eliminated')).length;
+    const ambushCount = battleEventsList.filter(b => b.type === 'ambush' || (b.text || '').toLowerCase().includes('ambush')).length;
+    const duelCount = battleEventsList.filter(b => b.type === 'duel' || (b.text || '').toLowerCase().includes('duel')).length;
+
+    const slayers = participants.filter(p => (p.kills || 0) > 0 || (p.innocentKills || 0) > 0);
+    const slayersLines = slayers.length > 0
+      ? slayers.map(s => {
+          const name = s.isExposed || !s.isAlive ? s.username : 'A Shadow Master';
+          return `• **${name}**: **${s.kills || 0}** Master Eliminations${s.innocentKills ? `, **${s.innocentKills}** Civilian Collateral ☠️` : ''}`;
+        }).join('\n')
+      : '• *Zero combat kills registered across all active Masters.*';
 
     const embed = new EmbedBuilder()
-      .setTitle(`🏆 ${war.title} — ⚔️ Battle & Skirmish Chronicle`)
+      .setTitle(`🏆 ${war.title} — ⚔️ Battle & Combat Skirmish Chronicle`)
       .setDescription(
         `⚔️ **Combat Operations Overview:**\n` +
         `• 💥 **Total Recorded Engagements:** **${battleEventsList.length}** skirmishes\n` +
         `• 💀 **Fatal Eliminations:** **${fatalCount}** Servant Saint Graphs dissolved\n` +
-        `• 🗡️ **Surprise Ambushes:** **${ambushCount}** ambush strikes launched\n\n` +
+        `• 🗡️ **Surprise Ambushes:** **${ambushCount}** strikes launched\n` +
+        `• 🤺 **Tactical Duels:** **${duelCount}** duels waged\n\n` +
+        `🏆 **Combat Leaderboard & Slayers:**\n${slayersLines}\n\n` +
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
-        `📜 **CHRONICLE OF RECORDED ENGAGEMENTS:**\n${battleLines}\n\n` +
-        `💡 *Tip: Use \`/attack\` to ambush suspects or \`/patrol\` to uncover traps and enemy positions.*`
+        `📜 **CHRONICLE OF RECORDED ENGAGEMENTS (${battleEventsList.length}):**\n${battleLines}\n\n` +
+        `💡 *Tip: Use \`/attack\` to ambush suspect Masters or \`/duel\` to challenge rivals in tactical combat.*`
       )
       .setColor(0xf97316)
       .setFooter({ text: 'Holy Grail War Battle Chronicle • Use options below to switch views' });

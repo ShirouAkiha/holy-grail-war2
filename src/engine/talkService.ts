@@ -20,6 +20,18 @@ export interface ServantTalkContext {
   isExposed?: boolean;
   equippedCeName?: string;
   recentChronicleEvents?: string[];
+  recentBattleEvents?: string[];
+  interceptedLeaks?: {
+    informant: string;
+    intel: string;
+    target?: string;
+    timeAgo?: string;
+  }[];
+  casualtyDossier?: {
+    totalCasualties: number;
+    fallenMasters: string[];
+    civilianCasualties: string[];
+  };
   playerMessage: string;
   servantAvatarUrl?: string;
   servantTitle?: string;
@@ -52,6 +64,8 @@ export interface ServantTalkContext {
     isAlive: boolean;
     inSanctuary?: boolean;
     kills?: number;
+    innocentKills?: number;
+    isRogueHeretic?: boolean;
   }[];
   concealedMastersCount?: number;
   eliminatedMastersCount?: number;
@@ -78,6 +92,40 @@ function getAiClient(): GoogleGenAI | null {
 export function generateCanonicalFallbackReply(ctx: ServantTalkContext): string {
   const { servantName, servantClass, bondLevel, playerMessage, commandSeals = 3 } = ctx;
   const lowerMsg = playerMessage.toLowerCase();
+
+  // 1. Inquiries about Leaks / Rumors / Intelligence
+  if (lowerMsg.includes('leak') || lowerMsg.includes('rumor') || lowerMsg.includes('intercept') || lowerMsg.includes('intel')) {
+    if (ctx.interceptedLeaks && ctx.interceptedLeaks.length > 0) {
+      const topLeak = ctx.interceptedLeaks[0];
+      return `Our surveillance picked up an intercepted transmission, Master: "${topLeak.intel}" (source: ${topLeak.informant || 'Scout Operative'}). Watch your perimeter.`;
+    }
+    return `No leaks have surfaced from the rivals yet, Master. The other Masters are maintaining strict radio silence behind their bounded fields.`;
+  }
+
+  // 2. Inquiries about Battles / Clashes / Duels / Ambushes
+  if (lowerMsg.includes('battle') || lowerMsg.includes('fight') || lowerMsg.includes('clash') || lowerMsg.includes('ambush') || lowerMsg.includes('duel') || lowerMsg.includes('skirmish')) {
+    if (ctx.recentBattleEvents && ctx.recentBattleEvents.length > 0) {
+      const topBattle = ctx.recentBattleEvents[0].replace(/\*\*/g, '');
+      return `Regarding the recent clashes across Fuyuki, Master: ${topBattle}. The Holy Grail War is actively escalating.`;
+    }
+    return `The city streets remain quiet for now, Master. No open clashes or ambushes have erupted recently, but our enemies are circling in the dark.`;
+  }
+
+  // 3. Inquiries about Casualties / Deaths / Who Died / Kills
+  if (lowerMsg.includes('casualt') || lowerMsg.includes('who died') || lowerMsg.includes('kill') || lowerMsg.includes('fatal') || lowerMsg.includes('dead') || lowerMsg.includes('eliminated')) {
+    if (ctx.casualtyDossier && ctx.casualtyDossier.totalCasualties > 0) {
+      const { totalCasualties, fallenMasters, civilianCasualties } = ctx.casualtyDossier;
+      let summary = `We have ${totalCasualties} confirmed casualties in Fuyuki. `;
+      if (fallenMasters.length > 0) {
+        summary += `Fallen Master(s): ${fallenMasters.join(', ')}. `;
+      }
+      if (civilianCasualties.length > 0) {
+        summary += `Civilian crossfire has also been registered, which the Church is covering up as 'gas leak explosions.'`;
+      }
+      return summary;
+    }
+    return `Zero confirmed casualties so far, Master. All seven Masters still walk the earth and cling to their Command Seals.`;
+  }
 
   // Keyword-sensitive responses
   if (lowerMsg.includes('grail') || lowerMsg.includes('wish')) {
@@ -216,11 +264,18 @@ export async function generateServantTalkResponse(context: ServantTalkContext): 
   if (context.exposedRivals && context.exposedRivals.length > 0) {
     const exposedList = context.exposedRivals.map(r => {
       let desc = `@${r.username} [${r.servantClass}${r.servantName ? ` - ${r.servantName}` : ''}]`;
-      if (!r.isAlive) desc += ' (ELIMINATED)';
+      if (!r.isAlive) desc += ' (ELIMINATED/DEAD)';
       else if (r.inSanctuary) desc += ' (Hiding in Church Sanctuary)';
+      desc += ` | Kills: ${r.kills || 0}`;
+      if (r.innocentKills && r.innocentKills > 0) {
+        desc += ` (${r.innocentKills} Civilian Collateral ☠️)`;
+      }
+      if (r.isRogueHeretic) {
+        desc += ' ⚠️ [CHURCH BOUNTY: ROGUE HERETIC]';
+      }
       return desc;
-    }).join(', ');
-    warBoardIntel += `\n- Known Exposed Rival Masters on Board: ${exposedList}`;
+    }).join('\n  • ');
+    warBoardIntel += `\n- Known Exposed Rival Masters on Board:\n  • ${exposedList}`;
   } else {
     warBoardIntel += `\n- Known Exposed Rival Masters on Board: None (all other living rivals are lurking concealed in shadows).`;
   }
@@ -229,6 +284,40 @@ export async function generateServantTalkResponse(context: ServantTalkContext): 
   }
   if (context.eliminatedMastersCount && context.eliminatedMastersCount > 0) {
     warBoardIntel += `\n- Fallen Masters: ${context.eliminatedMastersCount} eliminated.`;
+  }
+
+  // Tactical Battle & Skirmish Logs
+  let battleIntel = '  • No direct Master ambushes, duels, or lethal clashes have occurred recently.';
+  if (context.recentBattleEvents && context.recentBattleEvents.length > 0) {
+    battleIntel = context.recentBattleEvents
+      .filter(Boolean)
+      .map((evt, idx) => `  • [Battle ${idx + 1}]: ${evt.replace(/\*\*/g, '').trim()}`)
+      .join('\n');
+  }
+
+  // Intercepted Intelligence Leaks
+  let leaksIntel = '  • No enemy transmissions intercepted yet. Rivals are maintaining strict radio silence behind bounded fields.';
+  if (context.interceptedLeaks && context.interceptedLeaks.length > 0) {
+    leaksIntel = context.interceptedLeaks
+      .map((lk, idx) => `  • [Intercept ${idx + 1}]: Source: ${lk.informant || 'Scout Operative'}${lk.target ? ` | Target: Master ${lk.target}` : ''} | Intel: "${lk.intel}"`)
+      .join('\n');
+  }
+
+  // Casualty & Fatality Ledger
+  let casualtyIntel = '  • Zero confirmed casualties in Fuyuki so far. All seven Masters remain active.';
+  if (context.casualtyDossier) {
+    const { totalCasualties, fallenMasters, civilianCasualties } = context.casualtyDossier;
+    const parts: string[] = [];
+    parts.push(`Total Confirmed Fatalities: ${totalCasualties}`);
+    if (fallenMasters && fallenMasters.length > 0) {
+      parts.push(`Fallen Masters (Spiritual Cores Dissolved): ${fallenMasters.join(', ')}`);
+    } else {
+      parts.push(`Fallen Masters: None (all 7 Masters still alive)`);
+    }
+    if (civilianCasualties && civilianCasualties.length > 0) {
+      parts.push(`Civilian Crossfire Fatalities (Fuyuki Church 'Gas Leak Explosion' Cover-ups): ${civilianCasualties.join('; ')}`);
+    }
+    casualtyIntel = parts.map(p => `  • ${p}`).join('\n');
   }
 
   // Load specialized character profile card if available
@@ -295,13 +384,20 @@ CURRENT TACTICAL CONTEXT:
 - Class: ${context.servantClass}
 - Master Name: ${context.masterName}
 - Physical / Spiritual Condition: ${physicalStatus}${tacticalNotes}${locationContext}
-- War Board & Rival Intelligence:
+- War Board & Rival Master Roster (With Kills & Bounty Status):
 ${warBoardIntel}
+- Master's Own Registered Kills: ${context.killsCount || 0}
 - Bond Rank: Level ${bond} of 10
 - Command Seals Remaining: ${seals}/3
 - Master Concealment Status: ${context.isExposed ? 'Exposed to public War Board (dangerous)' : 'Concealed in shadows (safe)'}
 - Equipped Craft Essence: ${context.equippedCeName || 'None equipped'}
-- Recent War Chronicle & Battlefield Events (Witnessed in Fuyuki):
+- Tactical Battle & Duel Logs (Recent Clashes in Fuyuki):
+${battleIntel}
+- Intercepted Intelligence Leaks & Surveillance:
+${leaksIntel}
+- Casualty Dossier & Fatalities (Fallen Masters & Civilian Gas Leak Cover-Ups):
+${casualtyIntel}
+- Recent War Chronicle & General Happenings:
 ${chronicleIntel}
 ${historyBlock}
 MASTER SAYS TO YOU NOW:
@@ -314,8 +410,12 @@ VOICE & ROLEPLAY INSTRUCTIONS:
   * NEVER use generic assistant sign-offs or cliché combat filler such as: ${allBanned.map(b => `"${b}"`).join(', ')}.
   * NEVER recite raw numbers, percentages, or status sheet labels (do NOT say "my spiritual origin is at 100%").
 - Conversational Variety: Directly react to what Master said. If they tell you to rest, tease them, argue, complain about being tired or stubborn, or make an aggressive joke—do NOT immediately pivot into an AI battle-advisor warning!
-- War Chronicles & Battlefield Awareness: You are actively witnessing and living through this Holy Grail War. If Master brings up recent events, asks what just happened in Fuyuki, mentions ambushes, church asylum, eliminations, civilian deaths, or leaks, reference the specific happenings from the Recent War Chronicle above in-character!
-- War Board Knowledge: When Master asks about other Masters, rivals, enemies, or the War Board, reference known exposed rivals or the hidden enemies in shadows naturally.
+- War Intelligence, Battle Logs, Leaks & Casualty Inquiries:
+  You have direct spiritual and telepathic access to the battlefield intelligence dossiers above!
+  * If Master asks about recent battles, clashes, duels, ambushes, damage numbers, or who fought whom, draw directly from the "Tactical Battle & Duel Logs" above.
+  * If Master asks about leaks, rumors, or intercepted communications, draw directly from the "Intercepted Intelligence Leaks" above (or confirm that rivals are maintaining radio silence).
+  * If Master asks about casualties, who died, civilian victims, or the Church's gas leak cover-ups, explain using the "Casualty Dossier" above.
+  * If Master asks about who has kills or bounties on the War Board, reference the kill numbers and status from the Rival Master Roster.
 - Address ${context.masterName} naturally based on the character's personality and bond level.
 - Do NOT break character, do NOT provide meta explanations, and do NOT use asterisks for actions (*sighs*). Return ONLY the spoken dialogue.`;
 
