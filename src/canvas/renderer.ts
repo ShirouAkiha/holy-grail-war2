@@ -6307,8 +6307,51 @@ export interface KireiVisualNovelCardOptions {
 }
 
 /**
- * Render a Father Kirei Kotomine Visual Novel 16:9 Canvas Image with dynamic text scaling.
- * Guarantees monologue text is never cut off inside the UI box.
+ * Extracts a concise, punchy, high-impact dialogue passage for the Visual Novel frame.
+ * Ensures the text fits with large, highly readable 24px-30px typography in 2-4 lines.
+ */
+function formatVNDialogueExcerpt(raw: string): string {
+  const clean = (raw || 'Rejoice, Masters. The leylines await your blood.')
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/^["“'«]|["”'»]$/g, '')
+    .trim();
+
+  if (clean.length <= 260) {
+    return clean;
+  }
+
+  // Extract first 1-3 complete sentences up to ~250 chars
+  const sentences = clean.match(/[^.!?]+[.!?]+/g);
+  if (sentences && sentences.length > 0) {
+    let acc = '';
+    for (const s of sentences) {
+      if ((acc + ' ' + s).trim().length <= 260) {
+        acc = (acc + ' ' + s).trim();
+      } else {
+        break;
+      }
+    }
+    if (acc.length >= 60) {
+      return acc + (acc.length < clean.length ? '..' : '');
+    }
+  }
+
+  // Fallback word truncation
+  const words = clean.split(' ');
+  let cur = '';
+  for (const w of words) {
+    if ((cur + ' ' + w).length <= 245) {
+      cur = (cur + ' ' + w).trim();
+    } else {
+      break;
+    }
+  }
+  return cur + '...';
+}
+
+/**
+ * Render a Father Kirei Kotomine Visual Novel 16:9 Canvas Image with Type-Moon aesthetic,
+ * large readable typography, custom vector badges, and zero missing glyph boxes.
  */
 export async function renderKireiVisualNovelCard(
   opts: KireiVisualNovelCardOptions
@@ -6362,12 +6405,12 @@ export async function renderKireiVisualNovelCard(
   // Sanctuary Dark Atmospheric Vignette
   ctx.save();
   const vignetteGrad = ctx.createRadialGradient(
-    width / 2, height / 2, Math.min(width, height) * 0.35,
+    width / 2, height / 2, Math.min(width, height) * 0.3,
     width / 2, height / 2, Math.max(width, height) * 0.75
   );
   vignetteGrad.addColorStop(0, 'rgba(0, 0, 0, 0.1)');
-  vignetteGrad.addColorStop(0.7, 'rgba(15, 2, 2, 0.55)');
-  vignetteGrad.addColorStop(1, 'rgba(5, 0, 0, 0.88)');
+  vignetteGrad.addColorStop(0.65, 'rgba(15, 2, 2, 0.6)');
+  vignetteGrad.addColorStop(1, 'rgba(4, 0, 2, 0.92)');
   ctx.fillStyle = vignetteGrad;
   ctx.fillRect(0, 0, width, height);
   ctx.restore();
@@ -6378,8 +6421,8 @@ export async function renderKireiVisualNovelCard(
       const spriteImg = await loadImage(avatarUrl);
       if (spriteImg && spriteImg.width && spriteImg.height) {
         const aspect = spriteImg.width / spriteImg.height;
-        const maxSpriteH = Math.floor(height * 0.88); // 633px
-        const maxSpriteW = Math.floor(width * 0.52);  // 665px
+        const maxSpriteH = Math.floor(height * 0.90); // 648px
+        const maxSpriteW = Math.floor(width * 0.48);  // 614px
 
         let spriteH = maxSpriteH;
         let spriteW = spriteH * aspect;
@@ -6389,13 +6432,23 @@ export async function renderKireiVisualNovelCard(
           spriteH = spriteW / aspect;
         }
 
-        const spriteX = width * 0.54 + (maxSpriteW - spriteW) / 2;
-        const spriteY = height - spriteH;
+        const spriteX = width * 0.58 + (maxSpriteW - spriteW) / 2;
+        const spriteY = height - spriteH - 10;
 
+        // Ambient Dark Silhouette Backlight behind Sprite
         ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.88)';
-        ctx.shadowBlur = 32;
-        ctx.shadowOffsetY = 12;
+        const spriteGlow = ctx.createRadialGradient(
+          spriteX + spriteW * 0.5, spriteY + spriteH * 0.4, 60,
+          spriteX + spriteW * 0.5, spriteY + spriteH * 0.4, spriteW * 0.8
+        );
+        spriteGlow.addColorStop(0, 'rgba(0, 0, 0, 0.5)');
+        spriteGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = spriteGlow;
+        ctx.fillRect(spriteX - 40, spriteY - 40, spriteW + 80, spriteH + 80);
+
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+        ctx.shadowBlur = 30;
+        ctx.shadowOffsetY = 14;
 
         ctx.drawImage(spriteImg, spriteX, spriteY, spriteW, spriteH);
         ctx.restore();
@@ -6405,214 +6458,286 @@ export async function renderKireiVisualNovelCard(
     }
   }
 
-  // 3. TOP-LEFT HUD (Church Sanctuary & Date Widget)
-  ctx.save();
-  const hudX = 40;
-  const hudY = 30;
-  const hudW = 320;
-  const hudH = 72;
+  // 3. TOP CINEMATIC HEADER HUD (Clean, No Broken Glyphs)
+  const topHudX = 48;
+  const topHudY = 24;
+  const topHudW = 1184;
+  const topHudH = 56;
 
-  ctx.fillStyle = 'rgba(20, 5, 5, 0.88)';
-  drawRoundRect(ctx, hudX, hudY, hudW, hudH, 6);
+  ctx.save();
+  // Glass bar background
+  const topGrad = ctx.createLinearGradient(topHudX, topHudY, topHudX, topHudY + topHudH);
+  topGrad.addColorStop(0, 'rgba(22, 10, 16, 0.92)');
+  topGrad.addColorStop(1, 'rgba(10, 4, 8, 0.95)');
+  ctx.fillStyle = topGrad;
+  drawRoundRect(ctx, topHudX, topHudY, topHudW, topHudH, 6);
   ctx.fill();
 
+  // Subtle metallic border
   ctx.strokeStyle = '#991b1b';
-  ctx.lineWidth = 1.8;
-  drawRoundRect(ctx, hudX, hudY, hudW, hudH, 6);
+  ctx.lineWidth = 1.5;
+  drawRoundRect(ctx, topHudX, topHudY, topHudW, topHudH, 6);
   ctx.stroke();
 
+  // Left Section: Sanctuary Badge + Title
+  ctx.font = 'bold 11px sans-serif';
   ctx.fillStyle = '#f59e0b';
-  ctx.font = 'bold 12px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('🕯️ FUYUKI CHURCH SANCTUARY', hudX + 16, hudY + 24);
+  ctx.fillText('✝  FUYUKI CHURCH SANCTUARY', topHudX + 18, topHudY + 22);
 
-  ctx.font = 'bold 18px Georgia, serif';
+  const mainTitle = opts.title || "The Overseer's 24-Hour Homily";
+  const subTitle = opts.subtitle ? ` | ${opts.subtitle}` : '';
+
+  ctx.font = 'bold 17px Georgia, "Times New Roman", serif';
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(opts.title || 'Overseer’s 24h Soliloquy', hudX + 16, hudY + 52);
-  ctx.restore();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+  ctx.shadowBlur = 4;
+  ctx.fillText(mainTitle, topHudX + 18, topHudY + 44);
 
-  // Top-Right Status Tag
-  ctx.save();
-  ctx.fillStyle = 'rgba(20, 5, 5, 0.88)';
-  drawRoundRect(ctx, width - 280, 30, 240, 36, 6);
+  if (subTitle) {
+    const mainTitleW = ctx.measureText(mainTitle).width;
+    ctx.font = 'italic 15px Georgia, "Times New Roman", serif';
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillText(subTitle, topHudX + 18 + mainTitleW, topHudY + 44);
+  }
+
+  // Right Section: Sanctuary Neutral Tag
+  const rightTagW = 230;
+  const rightTagH = 32;
+  const rightTagX = topHudX + topHudW - rightTagW - 14;
+  const rightTagY = topHudY + 12;
+
+  ctx.fillStyle = 'rgba(35, 10, 15, 0.85)';
+  drawRoundRect(ctx, rightTagX, rightTagY, rightTagW, rightTagH, 4);
   ctx.fill();
+
   ctx.strokeStyle = '#d4af37';
-  ctx.lineWidth = 1.5;
-  drawRoundRect(ctx, width - 280, 30, 240, 36, 6);
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, rightTagX, rightTagY, rightTagW, rightTagH, 4);
   ctx.stroke();
 
-  ctx.fillStyle = '#d4af37';
+  // Active Green Beacon
+  ctx.fillStyle = '#22c55e';
+  ctx.beginPath();
+  ctx.arc(rightTagX + 18, rightTagY + 16, 4.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowColor = '#22c55e';
+  ctx.shadowBlur = 8;
+  ctx.stroke();
+
   ctx.font = 'bold 12px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('⛪ HOLY CHURCH NEUTRAL ZONE', width - 160, 53);
+  ctx.fillStyle = '#fbbf24';
+  ctx.textAlign = 'left';
+  ctx.shadowBlur = 0;
+  ctx.fillText('CHURCH NEUTRAL ZONE', rightTagX + 30, rightTagY + 20);
   ctx.restore();
 
-  // 4. DIALOGUE / MONOLOGUE BOX (BOTTOM HUD)
-  const boxX = 40;
-  const boxY = 410;
-  const boxW = 1200;
-  const boxH = 265;
+  // 4. DIALOGUE / MONOLOGUE BOX (Type-Moon Visual Novel Style)
+  const boxX = 48;
+  const boxY = 430;
+  const boxW = 1184;
+  const boxH = 236;
 
   ctx.save();
-  ctx.fillStyle = 'rgba(12, 10, 18, 0.88)';
-  ctx.fillRect(boxX, boxY, boxW, boxH);
-
-  // Top filigree border line (Gold & Crimson)
-  ctx.strokeStyle = '#d4af37';
-  ctx.lineWidth = 2.5;
-  ctx.beginPath();
-  ctx.moveTo(boxX, boxY);
-  ctx.lineTo(boxX + boxW, boxY);
-  ctx.stroke();
-
-  ctx.strokeStyle = '#991b1b';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(boxX, boxY + 3);
-  ctx.lineTo(boxX + boxW, boxY + 3);
-  ctx.stroke();
-  ctx.restore();
-
-  // Speaker Name Badge at Top-Left of Dialogue Box
-  const speakerName = (opts.speakerName || 'Father Kirei Kotomine').toUpperCase();
-  ctx.save();
-  const nameBadgeX = boxX + 20;
-  const nameBadgeY = boxY - 20;
-  const nameBadgeW = 340;
-  const nameBadgeH = 36;
-
-  ctx.fillStyle = '#1c0a0a';
-  drawRoundRect(ctx, nameBadgeX, nameBadgeY, nameBadgeW, nameBadgeH, 4);
+  // Deep obsidian/wine glass gradient
+  const boxGrad = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxH);
+  boxGrad.addColorStop(0, 'rgba(16, 9, 20, 0.94)');
+  boxGrad.addColorStop(1, 'rgba(6, 3, 8, 0.98)');
+  ctx.fillStyle = boxGrad;
+  drawRoundRect(ctx, boxX, boxY, boxW, boxH, 8);
   ctx.fill();
 
+  // Polished Gold Outer Frame
   ctx.strokeStyle = '#d4af37';
   ctx.lineWidth = 2;
+  drawRoundRect(ctx, boxX, boxY, boxW, boxH, 8);
+  ctx.stroke();
+
+  // Crimson Inset Line
+  ctx.strokeStyle = '#7f1d1d';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, boxX + 4, boxY + 4, boxW - 8, boxH - 8, 6);
+  ctx.stroke();
+
+  // 4 Ornate Corner Filigree Brackets
+  const cornerSize = 14;
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 2.5;
+
+  // Top-Left
+  ctx.beginPath();
+  ctx.moveTo(boxX + 2, boxY + cornerSize);
+  ctx.lineTo(boxX + 2, boxY + 2);
+  ctx.lineTo(boxX + cornerSize, boxY + 2);
+  ctx.stroke();
+
+  // Top-Right
+  ctx.beginPath();
+  ctx.moveTo(boxX + boxW - cornerSize, boxY + 2);
+  ctx.lineTo(boxX + boxW - 2, boxY + 2);
+  ctx.lineTo(boxX + boxW - 2, boxY + cornerSize);
+  ctx.stroke();
+
+  // Bottom-Left
+  ctx.beginPath();
+  ctx.moveTo(boxX + 2, boxY + boxH - cornerSize);
+  ctx.lineTo(boxX + 2, boxY + boxH - 2);
+  ctx.lineTo(boxX + cornerSize, boxY + boxH - 2);
+  ctx.stroke();
+
+  // Bottom-Right
+  ctx.beginPath();
+  ctx.moveTo(boxX + boxW - cornerSize, boxY + boxH - 2);
+  ctx.lineTo(boxX + boxW - 2, boxY + boxH - 2);
+  ctx.lineTo(boxX + boxW - 2, boxY + boxH - cornerSize);
+  ctx.stroke();
+  ctx.restore();
+
+  // 5. SPEAKER NAME PLATE (Authentic VN Tab on Top Edge)
+  const speakerName = (opts.speakerName || 'Father Kirei Kotomine').toUpperCase();
+  ctx.save();
+  const nameBadgeX = boxX + 28;
+  const nameBadgeY = boxY - 20;
+  const nameBadgeW = 340;
+  const nameBadgeH = 40;
+
+  // Badge background
+  const badgeGrad = ctx.createLinearGradient(nameBadgeX, nameBadgeY, nameBadgeX, nameBadgeY + nameBadgeH);
+  badgeGrad.addColorStop(0, '#2d0a10');
+  badgeGrad.addColorStop(1, '#180407');
+  ctx.fillStyle = badgeGrad;
+  drawRoundRect(ctx, nameBadgeX, nameBadgeY, nameBadgeW, nameBadgeH, 4);
+  ctx.fill();
+
+  // Badge Gold Border
+  ctx.strokeStyle = '#d4af37';
+  ctx.lineWidth = 1.8;
   drawRoundRect(ctx, nameBadgeX, nameBadgeY, nameBadgeW, nameBadgeH, 4);
   ctx.stroke();
 
+  // Speaker Cross & Name Text
   ctx.font = 'bold 15px Georgia, "Times New Roman", serif';
-  ctx.textAlign = 'center';
+  ctx.textAlign = 'left';
   ctx.fillStyle = '#fbbf24';
   ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
   ctx.shadowBlur = 6;
-  ctx.fillText(`⛪  ${speakerName}`, nameBadgeX + nameBadgeW / 2, nameBadgeY + 24);
+  ctx.fillText(`✝  ${speakerName}`, nameBadgeX + 16, nameBadgeY + 25);
+
+  // Overseer Role Tag
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#fca5a5';
+  ctx.fillText('[ OVERSEER ]', nameBadgeX + nameBadgeW - 14, nameBadgeY + 25);
   ctx.restore();
 
-  // 5. DYNAMIC MONOLOGUE TEXT SCALER & WRAPPER (GUARANTEED NO CUTOFF)
+  // 6. LARGE, CRISP, HIGH-CONTRAST MONOLOGUE TEXT (PROPER VN SCALE)
   ctx.save();
-  const textX = boxX + 45;
-  const maxTextW = boxW - 90; // 1110px
-  const maxTextH = boxH - 55; // 210px max height for text lines
+  const textX = boxX + 44;
+  const maxTextW = boxW - 120; // 1064px width for spacious margin
+  const maxTextH = boxH - 65;   // 171px vertical text area
 
-  const rawText = (opts.monologueText || 'Rejoice, Masters. The leylines await your blood.')
-    .trim()
-    .replace(/^["“']|["”']$/g, '');
+  // Formats text into a punchy, dramatic excerpt so font size is ALWAYS 25px - 30px
+  const dialogueText = formatVNDialogueExcerpt(opts.monologueText);
+  const cleanQuote = `“${dialogueText}”`;
 
-  const cleanText = `“${rawText}”`;
-
-  // Dynamic Font Size Auto-Scaler Loop
+  // Auto-size with guaranteed minimum 24px
   let fontSize = 28;
-  let lineHeight = Math.round(fontSize * 1.38);
+  let lineHeight = 40;
   let wrappedLines: string[] = [];
 
-  const getWrappedLinesForSize = (pxSize: number) => {
+  const calculateLines = (pxSize: number) => {
     ctx.font = `italic bold ${pxSize}px Georgia, "Times New Roman", serif`;
-    const paragraphs = cleanText.split('\n');
+    const words = cleanQuote.split(' ');
     const lines: string[] = [];
+    let curLine = '';
 
-    for (const para of paragraphs) {
-      if (!para.trim()) continue;
-      const words = para.trim().split(' ');
-      let curLine = '';
-
-      for (let i = 0; i < words.length; i++) {
-        const testLine = curLine ? `${curLine} ${words[i]}` : words[i];
-        if (ctx.measureText(testLine).width > maxTextW && i > 0) {
-          lines.push(curLine);
-          curLine = words[i];
-        } else {
-          curLine = testLine;
-        }
+    for (let i = 0; i < words.length; i++) {
+      const testLine = curLine ? `${curLine} ${words[i]}` : words[i];
+      if (ctx.measureText(testLine).width > maxTextW && i > 0) {
+        lines.push(curLine);
+        curLine = words[i];
+      } else {
+        curLine = testLine;
       }
-      if (curLine) lines.push(curLine);
     }
+    if (curLine) lines.push(curLine);
     return lines;
   };
 
-  // Iteratively decrease font size until ALL monologue lines fit inside maxTextH
-  while (fontSize >= 12) {
-    lineHeight = Math.round(fontSize * 1.38);
-    wrappedLines = getWrappedLinesForSize(fontSize);
-    const totalHeight = wrappedLines.length * lineHeight;
-    if (totalHeight <= maxTextH) {
-      break; // Fits cleanly inside dialogue box without any cutoff!
-    }
+  while (fontSize >= 23) {
+    lineHeight = Math.round(fontSize * 1.44);
+    wrappedLines = calculateLines(fontSize);
+    const totalH = wrappedLines.length * lineHeight;
+    if (totalH <= maxTextH) break;
     fontSize -= 1;
   }
 
-  // Render wrapped monologue lines cleanly with high contrast drop shadows
+  // Render text with large, high-readability ivory glow
   ctx.font = `italic bold ${fontSize}px Georgia, "Times New Roman", serif`;
   ctx.textAlign = 'left';
 
-  const startY = boxY + 38;
+  const startY = boxY + 54;
   let currentY = startY;
 
   for (let i = 0; i < wrappedLines.length; i++) {
+    // Deep double shadow for crystal clarity against any background
     ctx.shadowColor = 'rgba(0, 0, 0, 0.98)';
     ctx.shadowOffsetX = 2;
     ctx.shadowOffsetY = 2;
-    ctx.shadowBlur = 6;
-    ctx.fillStyle = '#fffbeb'; // Warm ivory sermon gold
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = '#ffffff';
     ctx.fillText(wrappedLines[i], textX, currentY);
     currentY += lineHeight;
   }
+
+  // Visual Novel Pulsing Next Dialogue Prompt Glyph (▼)
+  ctx.fillStyle = '#eab308';
+  ctx.shadowColor = 'rgba(234, 179, 8, 0.8)';
+  ctx.shadowBlur = 10;
+  ctx.font = 'bold 18px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('▼', boxX + boxW - 32, boxY + boxH - 22);
   ctx.restore();
 
-  // 6. BOTTOM CONTROL HINTS
+  // 7. BOTTOM CONTROL BAR HUD
   ctx.save();
-  const ctrlX = 40;
-  const ctrlY = 708;
+  const ctrlX = 48;
+  const ctrlY = 696;
 
-  ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, ctrlX, ctrlY - 18, 36, 24, 3);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.lineWidth = 1.5;
-  drawRoundRect(ctx, ctrlX, ctrlY - 18, 36, 24, 3);
-  ctx.stroke();
+  const renderKeyPill = (x: number, key: string, label: string): number => {
+    ctx.fillStyle = 'rgba(30, 41, 59, 0.85)';
+    drawRoundRect(ctx, x, ctrlY - 16, 28, 22, 3);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 1;
+    drawRoundRect(ctx, x, ctrlY - 16, 28, 22, 3);
+    ctx.stroke();
 
-  ctx.font = 'bold 15px monospace';
-  ctx.fillStyle = '#ffffff';
-  ctx.textAlign = 'center';
-  ctx.fillText('F3', ctrlX + 18, ctrlY);
+    ctx.font = 'bold 12px monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText(key, x + 14, ctrlY);
 
-  ctx.font = 'bold 15px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('AUTO', ctrlX + 44, ctrlY);
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillStyle = '#cbd5e1';
+    ctx.textAlign = 'left';
+    ctx.fillText(label, x + 34, ctrlY);
 
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.fillText('|', ctrlX + 96, ctrlY);
+    const labelW = ctx.measureText(label).width;
+    return x + 34 + labelW + 16;
+  };
 
-  ctx.fillStyle = '#1e293b';
-  drawRoundRect(ctx, ctrlX + 110, ctrlY - 18, 28, 24, 3);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-  drawRoundRect(ctx, ctrlX + 110, ctrlY - 18, 28, 24, 3);
-  ctx.stroke();
+  let curCtrlX = ctrlX;
+  curCtrlX = renderKeyPill(curCtrlX, 'F3', 'AUTO');
+  curCtrlX = renderKeyPill(curCtrlX, 'E', 'SKIP');
+  curCtrlX = renderKeyPill(curCtrlX, 'L', 'LOG');
+  curCtrlX = renderKeyPill(curCtrlX, 'S', 'SAVE');
 
-  ctx.fillStyle = '#ffffff';
-  ctx.textAlign = 'center';
-  ctx.fillText('E', ctrlX + 124, ctrlY);
-
-  ctx.font = 'bold 15px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText('SKIP', ctrlX + 146, ctrlY);
-
-  // Right Overseer Motto
+  // Right Side: Overseer Motto & Protocol
   ctx.textAlign = 'right';
   ctx.fillStyle = '#d4af37';
   ctx.font = 'bold 13px Georgia, serif';
-  ctx.fillText('⛪ HOLY CHURCH OVERSEER PROTOCOL • FUYUKI Neutral Asylum', width - 40, ctrlY);
+  ctx.fillText('✝ HOLY CHURCH OVERSEER PROTOCOL • FUYUKI Neutral Asylum', width - 48, ctrlY);
   ctx.restore();
 
   try {
