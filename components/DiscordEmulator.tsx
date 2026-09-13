@@ -225,6 +225,105 @@ function EmbedVisual({ url }: { url: string }) {
   );
 }
 
+/**
+ * Visual Novel Card Component rendered directly in Discord Chat (Matching Picture 1 layout)
+ */
+function DiscordVNCard({
+  speakerName,
+  dialogueText,
+  eventTitle,
+  bondLevel,
+  avatarUrl,
+  masterChoiceText,
+  bondExpGain,
+  isConcluded
+}: {
+  speakerName: string;
+  dialogueText: string;
+  eventTitle: string;
+  bondLevel: number;
+  avatarUrl?: string;
+  masterChoiceText?: string;
+  bondExpGain?: number;
+  isConcluded?: boolean;
+}) {
+  const cleanQuote = (dialogueText || '').replace(/^["“]/, '').replace(/["”]$/, '').trim();
+
+  return (
+    <div className="mt-2.5 relative w-full max-w-2xl rounded-sm overflow-hidden border border-slate-800 bg-[#080c16] text-slate-100 shadow-2xl font-sans">
+      {/* Dark Grid Background Effect (Exact matching Picture 1) */}
+      <div
+        className="absolute inset-0 opacity-20 pointer-events-none"
+        style={{
+          backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px)`,
+          backgroundSize: '24px 24px'
+        }}
+      />
+
+      {/* Top Banner Area with Stage Artwork Image & Character Sprite */}
+      <div className="relative w-full h-44 sm:h-52 overflow-hidden flex justify-end items-end bg-gradient-to-br from-[#060a12] via-[#091020] to-[#0d162d]">
+        {/* Stage background texture */}
+        <img
+          src="https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp"
+          alt="Stage Background"
+          className="absolute inset-0 w-full h-full object-cover opacity-35 mix-blend-luminosity filter contrast-125"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#080c16] via-transparent to-black/40" />
+
+        {/* Character Portrait Right-Aligned (Matching Picture 1) */}
+        {avatarUrl && (
+          <div className="relative h-[95%] z-10 mr-6 sm:mr-10 flex items-end">
+            <div className="absolute inset-0 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+            <img
+              src={avatarUrl}
+              alt={speakerName}
+              className="relative h-full w-auto object-contain object-bottom filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.95)]"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Choice Notification Row if choice was selected */}
+      {masterChoiceText && (
+        <div className="relative z-10 px-5 py-2 bg-slate-900/95 border-t border-b border-amber-500/30 flex items-center justify-between text-xs font-mono">
+          <span className="text-amber-300 font-semibold truncate">✨ Master Choice: “{masterChoiceText}”</span>
+          {bondExpGain && <span className="text-emerald-400 font-bold whitespace-nowrap">+{bondExpGain} EXP</span>}
+        </div>
+      )}
+
+      {/* Lower Dialogue Section (Exact Picture 1 Layout) */}
+      <div className="relative z-10 p-5 sm:p-6 border-t border-slate-800 bg-[#080c16]/95 backdrop-blur-md space-y-3">
+        {/* Speaker Name Header with Box Symbol: ☐ SPEAKER NAME */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-white text-base sm:text-lg font-bold font-serif tracking-wider">
+              ☐ {speakerName.toUpperCase()}
+            </span>
+          </div>
+          {isConcluded && (
+            <span className="text-xs px-2.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-mono font-bold">
+              CONCLUDED ✨
+            </span>
+          )}
+        </div>
+
+        {/* Dialogue Quote in Clean White Serif Font */}
+        <p className="text-sm sm:text-base text-slate-100 font-serif leading-relaxed drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+          “{cleanQuote}”
+        </p>
+
+        {/* Bottom Right Subtitle Footer: SPEAKER'S RESOLVE | ☐ BOND LVL X/10 */}
+        <div className="pt-2 flex justify-end items-center border-t border-slate-800/80 text-[11px] font-mono tracking-widest text-slate-400">
+          <span className="uppercase">
+            {eventTitle ? eventTitle.toUpperCase() : `${speakerName.toUpperCase()}'S RESOLVE`} | ☐ BOND LVL {bondLevel}/10
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NativeMediaVisual({ url }: { url: string }) {
   const [imgError, setImgError] = useState(false);
   const [useSecondaryFallback, setUseSecondaryFallback] = useState(false);
@@ -378,6 +477,16 @@ interface DiscordMessage {
     footer?: string;
     imageUrl?: string;
     thumbnailUrl?: string;
+  };
+  vnCardData?: {
+    speakerName: string;
+    dialogueText: string;
+    eventTitle: string;
+    bondLevel: number;
+    avatarUrl?: string;
+    masterChoiceText?: string;
+    bondExpGain?: number;
+    isConcluded?: boolean;
   };
   canvasType?: 'servant' | 'dialogue' | 'battle' | 'defeat_dialogue' | 'gacha';
   canvasPayload?: any;
@@ -7104,6 +7213,13 @@ export default function DiscordEmulator({
           id: msgId || getNextId('bot_vn_interlude'),
           sender: 'bot',
           timestamp: 'Just now',
+          vnCardData: {
+            speakerName: scene.speakerName || activeServant.template.name,
+            dialogueText: scene.dialogueText,
+            eventTitle: evt.title,
+            bondLevel: activeServant.bondLevel || 1,
+            avatarUrl: activeServant.avatarUrl || activeServant.template.avatarUrl
+          },
           embed: {
             title: `📖 VISUAL NOVEL INTERLUDE — ${evt.title.toUpperCase()}`,
             description:
@@ -7112,10 +7228,6 @@ export default function DiscordEmulator({
             color: '#f59e0b',
             thumbnailUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
             footer: 'Visual Novel Bond Interlude Stage'
-          },
-          artworkEmbed: {
-            imageUrl: 'https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp',
-            color: '#f59e0b'
           },
           components: {
             type: 'buttons',
@@ -7157,6 +7269,15 @@ export default function DiscordEmulator({
           id: msgId || getNextId('bot_vn_interlude'),
           sender: 'bot',
           timestamp: 'Just now',
+          vnCardData: {
+            speakerName: scene.speakerName || activeServant.template.name,
+            dialogueText: choice.response,
+            eventTitle: evt.title,
+            bondLevel: activeServant.bondLevel || 1,
+            avatarUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
+            masterChoiceText: choice.text,
+            bondExpGain: expGained
+          },
           embed: {
             title: `📖 VISUAL NOVEL INTERLUDE — ${evt.title.toUpperCase()}`,
             description:
@@ -7166,10 +7287,6 @@ export default function DiscordEmulator({
             color: '#f59e0b',
             thumbnailUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
             footer: 'Visual Novel Bond Interlude Stage'
-          },
-          artworkEmbed: {
-            imageUrl: 'https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp',
-            color: '#f59e0b'
           },
           components: {
             type: 'buttons',
@@ -7213,6 +7330,13 @@ export default function DiscordEmulator({
           id: msgId || getNextId('bot_vn_interlude'),
           sender: 'bot',
           timestamp: 'Just now',
+          vnCardData: {
+            speakerName: scene.speakerName || activeServant.template.name,
+            dialogueText: scene.dialogueText,
+            eventTitle: evt.title,
+            bondLevel: activeServant.bondLevel || 1,
+            avatarUrl: activeServant.avatarUrl || activeServant.template.avatarUrl
+          },
           embed: {
             title: `📖 VISUAL NOVEL INTERLUDE — ${evt.title.toUpperCase()}`,
             description:
@@ -7221,10 +7345,6 @@ export default function DiscordEmulator({
             color: '#f59e0b',
             thumbnailUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
             footer: 'Visual Novel Bond Interlude Stage'
-          },
-          artworkEmbed: {
-            imageUrl: 'https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp',
-            color: '#f59e0b'
           },
           components: {
             type: 'buttons',
@@ -7267,6 +7387,14 @@ export default function DiscordEmulator({
           id: msgId || getNextId('bot_vn_interlude'),
           sender: 'bot',
           timestamp: 'Just now',
+          vnCardData: {
+            speakerName: activeServant.template.name,
+            dialogueText: `Bond Interlude concluded! Your covenant with ${activeServant.template.name} grows ever stronger. (+${totalRewardExp} Bond EXP, +${rewardSq} Saint Quartz)`,
+            eventTitle: `${evt?.title || 'BOND INTERLUDE'}`,
+            bondLevel: updatedServant.bondLevel || 1,
+            avatarUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
+            isConcluded: true
+          },
           embed: {
             title: `🏆 INTERLUDE COMPLETED — ${(evt?.title || 'Bond Interlude').toUpperCase()}`,
             description:
@@ -7279,10 +7407,6 @@ export default function DiscordEmulator({
             color: '#22c55e',
             thumbnailUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
             footer: 'Chaldea Bond Sanctum System'
-          },
-          artworkEmbed: {
-            imageUrl: 'https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp',
-            color: '#22c55e'
           },
           components: {
             type: 'buttons',
@@ -10975,8 +11099,22 @@ export default function DiscordEmulator({
                 );
               })()}
 
+              {/* Discord Visual Novel Card Attachment (Picture 1 Layout) */}
+              {msg.vnCardData && (
+                <DiscordVNCard
+                  speakerName={msg.vnCardData.speakerName}
+                  dialogueText={msg.vnCardData.dialogueText}
+                  eventTitle={msg.vnCardData.eventTitle}
+                  bondLevel={msg.vnCardData.bondLevel}
+                  avatarUrl={msg.vnCardData.avatarUrl}
+                  masterChoiceText={msg.vnCardData.masterChoiceText}
+                  bondExpGain={msg.vnCardData.bondExpGain}
+                  isConcluded={msg.vnCardData.isConcluded}
+                />
+              )}
+
               {/* Discord Embed */}
-              {msg.embed && (
+              {msg.embed && !msg.vnCardData && (
                 <div
                   className="mt-2.5 p-4 rounded-sm bg-[#111] border-l-2 text-[#dbdee1] max-w-3xl border border-y-[#1a1a1a] border-r-[#1a1a1a]"
                   style={{ borderLeftColor: msg.embed.color || '#d4af37' }}
