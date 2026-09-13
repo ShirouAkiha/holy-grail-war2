@@ -17,7 +17,8 @@ import {
 } from '../engine/grailwar';
 import {
   generateKotomine24hHomily,
-  generateFuyuki2hNewsBulletin
+  generateFuyuki2hNewsBulletin,
+  formatCleanShortMonologue
 } from '../engine/churchNewsService';
 import { renderKireiVisualNovelCard } from '../canvas/renderer';
 import { extractCleanSentenceSummary } from './grailwar';
@@ -49,13 +50,9 @@ export function buildHomilyEmbed(homily: any): EmbedBuilder {
     .map((e: string) => `• ${e.replace(/\*\*/g, '')}`)
     .join('\n');
 
-  // Format paragraphs cleanly with Discord blockquotes on every line
-  const formattedMonologue = (homily.monologue || '')
-    .split('\n')
-    .map((p: string) => p.trim())
-    .filter(Boolean)
-    .map((p: string) => `> *“${p.replace(/^["“']|["”']$/g, '')}”*`)
-    .join('\n>\n');
+  // Format monologue cleanly as a concise quote
+  const cleanMono = formatCleanShortMonologue(homily.monologue, 240);
+  const formattedMonologue = `> *“${cleanMono.replace(/^["“']|["”']$/g, '')}”*`;
 
   return new EmbedBuilder()
     .setTitle(homily.title || '🕯️ The Overseer’s 24-Hour Homily | Father Kotomine')
@@ -147,7 +144,7 @@ export function buildChurchEmbed(userParticipant: any, war?: any, lastMsg?: stri
       `• **Truce Binding:** Masters in sanctuary cannot launch ambushes or attack rivals until they formally depart.` +
       bountyNotice +
       (war?.latestChurchHomily?.monologue
-        ? `\n\n📜 **Overseer's Homily (Father Kotomine):**\n> *“${war.latestChurchHomily.monologue}”*`
+        ? `\n\n📜 **Overseer's Homily (Father Kotomine):**\n> *“${formatCleanShortMonologue(war.latestChurchHomily.monologue, 240)}”*`
         : '') +
       `\n\n*Use the interactive buttons below or run \`/church action:homily\` and \`/church action:news\`:*`
     )

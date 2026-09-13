@@ -15,6 +15,7 @@ import {
 import { getOrCreateMaster, saveMaster, getMaster } from '../database/service';
 import { HolyGrailWarSession } from '../types';
 import { renderKireiVisualNovelCard } from '../canvas/renderer';
+import { formatCleanShortMonologue } from '../engine/churchNewsService';
 
 /**
  * Resolves a raw Discord ID, mention string, or username to a clean human username.
@@ -311,7 +312,7 @@ export async function buildGrailWarHub(
     // 🕯️ EMBED 1: FUYUKI CHURCH OVERSEER & MUNICIPAL NEWS RELAY
     const homily = war.latestChurchHomily;
     const news = war.latestNewsBulletin;
-    const monologueText = homily?.monologue || 'Rejoice, Masters. The leylines await your blood. Carve each other apart with haste.';
+    const monologueText = formatCleanShortMonologue(homily?.monologue, 240);
     const newsStory = extractCleanSentenceSummary(news?.gasLeakCoverStory, 230) ||
       (news?.headline || 'Miyama District gas line inspection in progress. Citizens advised to remain indoors.');
 
@@ -601,7 +602,7 @@ export async function buildGrailWarHub(
   } else if (category === 'church') {
     const isUnderSanctuary = !!(userParticipant?.inSanctuary || userParticipant?.inChurchSanctuary);
     const homily = war.latestChurchHomily;
-    const monologueText = homily?.monologue || 'Welcome to the sanctuary of the Holy Church, Masters. Yield your Command Seals, or prepare to bathe in the holy spice of destiny.';
+    const monologueText = formatCleanShortMonologue(homily?.monologue, 240);
 
     const embed = new EmbedBuilder()
       .setTitle('⛪ Fuyuki Church Sanctuary (Father Kotomine)')

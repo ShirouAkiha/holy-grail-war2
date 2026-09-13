@@ -23,6 +23,36 @@ function getAiClient(): GoogleGenAI | null {
 // 1. KOTOMINE KIREI 24-HOUR HOMILY & SERMON GENERATOR
 // =========================================================================
 
+export function formatCleanShortMonologue(raw: string | undefined, maxChars: number = 240): string {
+  if (!raw) return 'Rejoice, Masters. The leylines await your blood.';
+  const clean = raw.replace(/\s+/g, ' ').trim();
+  if (clean.length <= maxChars) return clean;
+
+  const sentences = clean.match(/[^.!?]+[.!?]+/g);
+  if (sentences && sentences.length > 0) {
+    let acc = '';
+    for (const s of sentences) {
+      if ((acc + ' ' + s).trim().length <= maxChars) {
+        acc = (acc + ' ' + s).trim();
+      } else {
+        break;
+      }
+    }
+    if (acc.length >= 25) return acc;
+  }
+
+  const words = clean.split(' ');
+  let cur = '';
+  for (const w of words) {
+    if ((cur + ' ' + w).length <= maxChars - 4) {
+      cur = (cur + ' ' + w).trim();
+    } else {
+      break;
+    }
+  }
+  return cur ? `${cur}...` : clean.slice(0, maxChars - 3) + '...';
+}
+
 export function generateCanonicalKotomineHomily(war: HolyGrailWarSession): ChurchOverseerHomily {
   const participants = Object.values(war.participants || {});
   const livingMasters = participants.filter(p => p.isAlive);
@@ -38,7 +68,8 @@ export function generateCanonicalKotomineHomily(war: HolyGrailWarSession): Churc
     (l.text && (l.text.includes('clash') || l.text.includes('ambush') || l.text.includes('eliminated') || l.text.includes('casualty')))
   );
 
-  const monologue = `Rejoice, Masters. Another 24 hours have passed, and ${totalCasualties} soul(s) have fed the leylines. ${fallenMasters.length > 0 ? `${fallenMasters.map(f => f.username).join(', ')} have returned their cores to the Grail.` : `All ${livingMasters.length} of you miraculously still cling to life.`} ${asylumMasters.length > 0 ? `${asylumMasters.map(a => a.username).join(', ')} seek shelter in my church.` : `None yet seek sanctuary.`} Carve each other apart with haste—I shall watch from the bell tower.`;
+  const rawMonologue = `Rejoice, Masters. Another 24 hours have passed, and ${totalCasualties} soul(s) have fed the leylines. ${fallenMasters.length > 0 ? `${fallenMasters.map(f => f.username).join(', ')} have returned their cores to the Grail.` : `All ${livingMasters.length} of you miraculously still cling to life.`} ${asylumMasters.length > 0 ? `${asylumMasters.map(a => a.username).join(', ')} seek shelter in my church.` : `None yet seek sanctuary.`} Carve each other apart with haste—I shall watch from the bell tower.`;
+  const monologue = formatCleanShortMonologue(rawMonologue, 240);
 
   const keyEvents = battleLogs.slice(0, 3).map(l => typeof l === 'string' ? l : l.text);
   if (keyEvents.length === 0) {
@@ -73,6 +104,11 @@ export async function generateKotomine24hHomily(
   
   // Return cached homily if not expired (less than 24h old) and not forcing refresh
   if (!forceRefresh && war.latestChurchHomily && (Date.now() - war.latestChurchHomily.timestamp < TWENTY_FOUR_HOURS_MS)) {
+    // If stored homily monologue is a wall of text (> 260 chars), format/clean it in place
+    if (war.latestChurchHomily.monologue && war.latestChurchHomily.monologue.length > 260) {
+      war.latestChurchHomily.monologue = formatCleanShortMonologue(war.latestChurchHomily.monologue, 240);
+      saveWarToDisk();
+    }
     return war.latestChurchHomily;
   }
 
@@ -170,7 +206,7 @@ JSON Output Schema:
         periodHours: 24,
         title: parsed.title || '🕯️ The Overseer’s 24-Hour Homily | Father Kotomine’s Soliloquy',
         subtitle: parsed.subtitle || 'Father Kotomine’s Sermon on the Carnage of Fuyuki',
-        monologue: parsed.monologue || generateCanonicalKotomineHomily(war).monologue,
+        monologue: formatCleanShortMonologue(parsed.monologue || generateCanonicalKotomineHomily(war).monologue, 240),
         source: 'gemini',
         statsSummary: {
           totalCasualties,
