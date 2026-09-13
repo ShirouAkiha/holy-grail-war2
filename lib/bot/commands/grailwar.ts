@@ -178,32 +178,34 @@ function buildWarEmbed(war: HolyGrailWarSession, userParticipant?: any, lastMsg?
 
   const homily = war.latestChurchHomily;
   const news = war.latestNewsBulletin;
-  const homilyQuote = homily?.monologue
-    ? homily.monologue.trim().replace(/^["“']|["”']$/g, '')
-    : 'Rejoice, Masters. The leylines await your blood. Carve each other apart with haste.';
-  const newsStory = news?.gasLeakCoverStory
-    ? news.gasLeakCoverStory.trim().replace(/^["“']|["”']$/g, '')
-    : (news?.headline || 'Miyama District gas line inspection in progress. Citizens advised to remain indoors.');
+  const homilyRaw = homily?.monologue ? homily.monologue.trim().replace(/^["“']|["”']$/g, '') : 'Rejoice, Masters. The leylines await your blood. Carve each other apart with haste.';
+  const newsRaw = news?.gasLeakCoverStory ? news.gasLeakCoverStory.trim().replace(/^["“']|["”']$/g, '') : (news?.headline || 'Miyama District gas line inspection in progress. Citizens advised to remain indoors.');
 
-  const churchNewsTopBlock =
-    '🕯️ **Overseer\'s 24h Word (Father Kotomine):**\n' +
-    '*“' + homilyQuote + '”*\n\n' +
-    '📰 **2h Fuyuki News (Gas Leak Cover-Up):**\n' +
-    '*“' + newsStory + '”*\n\n';
-
-  const embed = new EmbedBuilder()
-    .setTitle('🏆 ' + war.title)
+  const churchIntelEmbed = new EmbedBuilder()
+    .setTitle('🕯️ Fuyuki Church Overseer & Municipal Intelligence Relay')
+    .setColor(0x991b1b)
     .setDescription(
-      '**Status:** ' + war.status.toUpperCase() + ' | **Alive Masters:** **' + aliveParticipants.length + '/7** | **Civilian Casualties:** **' + casualtiesCount + '**\n\n' +
-      (lastMsg ? '📢 **Action Outcome:**\n' + lastMsg + '\n\n' : '') +
-      churchNewsTopBlock +
-      '⚔️ **7 Masters Intelligence Roster:**\n' + rosterList + '\n\n' +
-      '📜 **War Chronicle & Skirmishes (' + (war.eventLogs || []).length + ' Events | ' + leaksCount + ' Leaks):**\n' + (recentEvents || '*The war has begun. No city skirmishes recorded yet.*') + '\n\n' +
-      '*Tactical notice: To inspect your private Master stats, Servant parameters, and workshop defenses confidentially, use /profile or click "Secret Profile" below.*'
+      '🕯️ **Overseer\'s 24h Word (Father Kotomine):**\n' +
+      '*“' + (homilyRaw.length > 500 ? homilyRaw.slice(0, 495) + '…' : homilyRaw) + '”*\n\n' +
+      '📰 **2h Fuyuki News (Gas Leak Cover-Up):**\n' +
+      '*“' + (newsRaw.length > 400 ? newsRaw.slice(0, 395) + '…' : newsRaw) + '”*'
     )
-    .setColor(0xd4af37);
+    .setFooter({ text: 'Holy Church Neutral Sanctuary • Use /church for asylum & bounties' });
 
-  return embed;
+  const fullDesc =
+    '**Status:** ' + war.status.toUpperCase() + ' | **Alive Masters:** **' + aliveParticipants.length + '/7** | **Civilian Casualties:** **' + casualtiesCount + '**\n\n' +
+    (lastMsg ? '📢 **Action Outcome:**\n' + lastMsg + '\n\n' : '') +
+    '⚔️ **7 Masters Intelligence Roster:**\n' + rosterList + '\n\n' +
+    '📜 **War Chronicle & Skirmishes (' + (war.eventLogs || []).length + ' Events | ' + leaksCount + ' Leaks):**\n' + (recentEvents || '*The war has begun. No city skirmishes recorded yet.*') + '\n\n' +
+    '*Tactical notice: To inspect your private Master stats, Servant parameters, and workshop defenses confidentially, use /profile or click "Secret Profile" below.*';
+
+  const mainBoardEmbed = new EmbedBuilder()
+    .setTitle('🏆 ' + war.title)
+    .setDescription(fullDesc.length > 3900 ? fullDesc.slice(0, 3890) + '…' : fullDesc)
+    .setColor(0xd4af37)
+    .setFooter({ text: 'Holy Grail War Operations Board • Click options below to view lists' });
+
+  return [churchIntelEmbed, mainBoardEmbed];
 }
 
 function buildDefensesEmbed(userParticipant: any, lastMsg?: string) {
@@ -439,11 +441,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       war = res.updatedWar;
     }
 
-    const embed = buildWarEmbed(war, userParticipant, initialMsg);
+    const warEmbeds = buildWarEmbed(war, userParticipant, initialMsg);
     const row = buildWarButtons();
 
     await interaction.reply({
-      embeds: [embed],
+      embeds: warEmbeds,
       components: [row]
     });
 

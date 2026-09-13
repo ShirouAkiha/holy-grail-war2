@@ -54,6 +54,33 @@ export function resolveDisplayName(raw: string | undefined, client?: any): strin
   }
   return clean.length > 0 ? (clean.startsWith('@') ? clean : `@${clean}`) : raw;
 }
+
+export function extractCleanSentenceSummary(text: string | undefined, maxChars: number = 240): string {
+  if (!text) return '';
+  const clean = text.trim().replace(/^["“']|["”']$/g, '');
+  if (clean.length <= maxChars) return clean;
+  const firstPara = clean.split('\n')[0].trim();
+  if (firstPara.length <= maxChars) return firstPara;
+  
+  // Find sentence end within maxChars
+  const match = firstPara.slice(0, maxChars).match(/^(.*?[.!?])(?:\s|$)/);
+  if (match && match[1] && match[1].length >= 30) {
+    return match[1];
+  }
+  // Fall back to nearest word boundary
+  const lastSpace = firstPara.lastIndexOf(' ', maxChars);
+  if (lastSpace > 30) {
+    return firstPara.slice(0, lastSpace) + '…';
+  }
+  return firstPara.slice(0, maxChars);
+}
+
+export function safeSetDescription(embed: EmbedBuilder, text: string, maxLen: number = 3900): EmbedBuilder {
+  if (text.length <= maxLen) {
+    return embed.setDescription(text);
+  }
+  return embed.setDescription(text.slice(0, maxLen - 1) + '…');
+}
 import { 
   getOrInitWarSession,
   calculateCurrentHp,
@@ -276,39 +303,46 @@ export function buildGrailWarHub(
       ? `${resolveDisplayName(latestCasualty.name, client)} struck down by Master ${resolveDisplayName(latestCasualty.slainByMasterId || 'Unknown', client).replace(/^@/, '')} (Cover-up: gas leak explosion)`
       : (deadCount > 0 ? `${deadCount} Master(s) permanently eliminated` : '*Zero casualties reported.*');
 
-    // 🕯️ 24H KOTOMINE HOMILY & 2H BREAKING NEWS AT THE TOP OF THE BOARD
+    // 🕯️ EMBED 1: FUYUKI CHURCH OVERSEER & MUNICIPAL NEWS RELAY
     const homily = war.latestChurchHomily;
     const news = war.latestNewsBulletin;
-    const homilyQuote = homily?.monologue
-      ? homily.monologue.trim().replace(/^["“']|["”']$/g, '')
-      : 'Rejoice, Masters. The leylines await your blood. Carve each other apart with haste.';
-    const newsStory = news?.gasLeakCoverStory
-      ? news.gasLeakCoverStory.trim().replace(/^["“']|["”']$/g, '')
-      : (news?.headline || 'Miyama District gas line inspection in progress. Citizens advised to remain indoors.');
+    const homilyQuote = extractCleanSentenceSummary(homily?.monologue, 500) ||
+      'Rejoice, Masters. The leylines await your blood. Carve each other apart with haste.';
+    const newsStory = extractCleanSentenceSummary(news?.gasLeakCoverStory, 400) ||
+      (news?.headline || 'Miyama District gas line inspection in progress. Citizens advised to remain indoors.');
 
-    const churchNewsTopBlock =
+    const churchIntelEmbed = new EmbedBuilder()
+      .setTitle('🕯️ Fuyuki Church Overseer & Municipal Intelligence Relay')
+      .setColor(0x991b1b)
+      .setFooter({ text: 'Holy Church Neutral Sanctuary • Use /church for asylum & bounties' });
+
+    safeSetDescription(
+      churchIntelEmbed,
       `🕯️ **Overseer's 24h Word (Father Kotomine):**\n` +
       `*“${homilyQuote}”*\n\n` +
       `📰 **2h Fuyuki News (Gas Leak Cover-Up):**\n` +
-      `*“${newsStory}”*\n\n`;
+      `*“${newsStory}”*`
+    );
 
-    const embed = new EmbedBuilder()
+    // 🏆 EMBED 2: MAIN HOLY GRAIL WAR OPERATIONS & INTELLIGENCE BOARD
+    const boardEmbed = new EmbedBuilder()
       .setTitle(`🏆 ${war.title}`)
-      .setDescription(
-        `${statusHeader}\n\n` +
-        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
-        churchNewsTopBlock +
-        `⚔️ **7 Masters Intelligence Roster:**\n${rosterLines.join('\n')}\n\n` +
-        `💥 **Recent Combat & Casualty Highlights:**\n` +
-        `• ⚔️ **Latest Battle:** ${latestBattleText}\n` +
-        `• ☠️ **Latest Fatality:** ${latestCasualtyText}\n\n` +
-        `📜 **War Chronicle & Skirmishes (${battleEventsList.length} Battles | ${totalCasualties} Casualties | ${leaksCount} Leaks):**\n${recentEvents || '*The war has begun. No city skirmishes recorded yet.*'}\n\n` +
-        `💡 *Click the buttons below to view detailed records of Casualties, Intercepted Leaks, or Battles.*`
-      )
       .setColor(0xd4af37)
       .setFooter({ text: 'Holy Grail War Operations Board • Click options below to view lists' });
 
-    embeds = [embed];
+    safeSetDescription(
+      boardEmbed,
+      `${statusHeader}\n\n` +
+      (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+      `⚔️ **7 Masters Intelligence Roster:**\n${rosterLines.join('\n')}\n\n` +
+      `💥 **Recent Combat & Casualty Highlights:**\n` +
+      `• ⚔️ **Latest Battle:** ${latestBattleText}\n` +
+      `• ☠️ **Latest Fatality:** ${latestCasualtyText}\n\n` +
+      `📜 **War Chronicle & Skirmishes (${battleEventsList.length} Battles | ${totalCasualties} Casualties | ${leaksCount} Leaks):**\n${recentEvents || '*The war has begun. No city skirmishes recorded yet.*'}\n\n` +
+      `💡 *Click the buttons below to view detailed records of Casualties, Intercepted Leaks, or Battles.*`
+    );
+
+    embeds = [churchIntelEmbed, boardEmbed];
 
   } else if (category === 'casualties') {
     const fallenMasters = participants.filter(p => !p.isAlive);
@@ -332,18 +366,20 @@ export function buildGrailWarHub(
 
     const embed = new EmbedBuilder()
       .setTitle(`🏆 ${war.title} — ☠️ Casualty Ledger`)
-      .setDescription(
-        `📊 **Casualty Ledger Summary:**\n` +
-        `• 💀 **Fallen Masters:** **${fallenMasters.length}/7** eliminated\n` +
-        `• ☠️ **Civilian Casualties:** **${civilianCasualties.length}** collateral casualties\n` +
-        `• 🏺 **Servant Cores Absorbed:** **${deadCount}/6** required for Greater Grail descent\n\n` +
-        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
-        `💀 **FALLEN MASTERS RECORD (${fallenMasters.length}):**\n${fallenLines}\n\n` +
-        `☠️ **CIVILIAN COLLATERAL CASUALTIES RECORD (${civilianCasualties.length}):**\n${civilianLines}\n\n` +
-        `⚠️ *Warning: Striking non-combatant citizens exposes the attacker's true identity to the Holy Church and incurs penalty.*`
-      )
       .setColor(0xe11d48)
       .setFooter({ text: 'Holy Grail War Casualty Dossier • Use options below to switch views' });
+
+    safeSetDescription(
+      embed,
+      `📊 **Casualty Ledger Summary:**\n` +
+      `• 💀 **Fallen Masters:** **${fallenMasters.length}/7** eliminated\n` +
+      `• ☠️ **Civilian Casualties:** **${civilianCasualties.length}** collateral casualties\n` +
+      `• 🏺 **Servant Cores Absorbed:** **${deadCount}/6** required for Greater Grail descent\n\n` +
+      (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+      `💀 **FALLEN MASTERS RECORD (${fallenMasters.length}):**\n${fallenLines}\n\n` +
+      `☠️ **CIVILIAN COLLATERAL CASUALTIES RECORD (${civilianCasualties.length}):**\n${civilianLines}\n\n` +
+      `⚠️ *Warning: Striking non-combatant citizens exposes the attacker's true identity to the Holy Church and incurs penalty.*`
+    );
 
     embeds = [embed];
 
@@ -372,18 +408,20 @@ export function buildGrailWarHub(
 
     const embed = new EmbedBuilder()
       .setTitle(`🏆 ${war.title} — 🕵️ Intercepted Intelligence & Leaks`)
-      .setDescription(
-        `📡 **Surveillance & Intel Overview:**\n` +
-        `• 🕵️ **Total Leaks Intercepted:** **${leaks.length}** dispatches\n` +
-        `• 📡 **Compromised Masters:** **${exposedMasters.length}/${totalSummoned}** publicly exposed\n` +
-        `• 🦅 **Active Familiar Scouts:** **${(war.familiars || []).length}** units stationed\n\n` +
-        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
-        `📜 **INTERCEPTED TRANSMISSIONS & DISPATCHES (${leaks.length}):**\n${leakLines}\n\n` +
-        `👁️ **RECENT RECON & EXPOSURE LOGS:**\n${exposureLines}\n\n` +
-        `💡 *Tip: Deploy familiars or use \`/patrol\` in sectors to eavesdrop on rivals and intercept new intel.*`
-      )
       .setColor(0x8b5cf6)
       .setFooter({ text: 'Holy Grail War Intelligence Dossier • Use options below to switch views' });
+
+    safeSetDescription(
+      embed,
+      `📡 **Surveillance & Intel Overview:**\n` +
+      `• 🕵️ **Total Leaks Intercepted:** **${leaks.length}** dispatches\n` +
+      `• 📡 **Compromised Masters:** **${exposedMasters.length}/${totalSummoned}** publicly exposed\n` +
+      `• 🦅 **Active Familiar Scouts:** **${(war.familiars || []).length}** units stationed\n\n` +
+      (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+      `📜 **INTERCEPTED TRANSMISSIONS & DISPATCHES (${leaks.length}):**\n${leakLines}\n\n` +
+      `👁️ **RECENT RECON & EXPOSURE LOGS:**\n${exposureLines}\n\n` +
+      `💡 *Tip: Deploy familiars or use \`/patrol\` in sectors to eavesdrop on rivals and intercept new intel.*`
+    );
 
     embeds = [embed];
 
@@ -430,19 +468,21 @@ export function buildGrailWarHub(
 
     const embed = new EmbedBuilder()
       .setTitle(`🏆 ${war.title} — ⚔️ Battle & Combat Skirmish Chronicle`)
-      .setDescription(
-        `⚔️ **Combat Operations Overview:**\n` +
-        `• 💥 **Total Recorded Engagements:** **${battleEventsList.length}** skirmishes\n` +
-        `• 💀 **Fatal Eliminations:** **${fatalCount}** Servant Saint Graphs dissolved\n` +
-        `• 🗡️ **Surprise Ambushes:** **${ambushCount}** strikes launched\n` +
-        `• 🤺 **Tactical Duels:** **${duelCount}** duels waged\n\n` +
-        `🏆 **Combat Leaderboard & Slayers:**\n${slayersLines}\n\n` +
-        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
-        `📜 **CHRONICLE OF RECORDED ENGAGEMENTS (${battleEventsList.length}):**\n${battleLines}\n\n` +
-        `💡 *Tip: Use \`/attack\` to ambush suspect Masters or \`/duel\` to challenge rivals in tactical combat.*`
-      )
       .setColor(0xf97316)
       .setFooter({ text: 'Holy Grail War Battle Chronicle • Use options below to switch views' });
+
+    safeSetDescription(
+      embed,
+      `⚔️ **Combat Operations Overview:**\n` +
+      `• 💥 **Total Recorded Engagements:** **${battleEventsList.length}** skirmishes\n` +
+      `• 💀 **Fatal Eliminations:** **${fatalCount}** Servant Saint Graphs dissolved\n` +
+      `• 🗡️ **Surprise Ambushes:** **${ambushCount}** strikes launched\n` +
+      `• 🤺 **Tactical Duels:** **${duelCount}** duels waged\n\n` +
+      `🏆 **Combat Leaderboard & Slayers:**\n${slayersLines}\n\n` +
+      (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+      `📜 **CHRONICLE OF RECORDED ENGAGEMENTS (${battleEventsList.length}):**\n${battleLines}\n\n` +
+      `💡 *Tip: Use \`/attack\` to ambush suspect Masters or \`/duel\` to challenge rivals in tactical combat.*`
+    );
 
     embeds = [embed];
 
