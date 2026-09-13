@@ -5,6 +5,7 @@ import {
   ButtonBuilder, 
   ButtonStyle, 
   EmbedBuilder, 
+  AttachmentBuilder,
   MessageFlags 
 } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
@@ -18,6 +19,7 @@ import {
   generateKotomine24hHomily,
   generateFuyuki2hNewsBulletin
 } from '../engine/churchNewsService';
+import { renderKireiVisualNovelCard } from '../canvas/renderer';
 
 export const data = new SlashCommandBuilder()
   .setName('church')
@@ -185,8 +187,24 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const homily = await generateKotomine24hHomily(war, false);
       const embed = buildHomilyEmbed(homily);
+
+      let files: AttachmentBuilder[] = [];
+      try {
+        const imageBuffer = await renderKireiVisualNovelCard({
+          monologueText: homily.monologue,
+          title: homily.title || 'Overseer’s 24h Soliloquy',
+          subtitle: homily.subtitle
+        });
+        const attachment = new AttachmentBuilder(imageBuffer, { name: 'kirei_homily_vn.png' });
+        embed.setImage('attachment://kirei_homily_vn.png');
+        files.push(attachment);
+      } catch (err) {
+        console.error('Error rendering Kirei VN Card:', err);
+      }
+
       return interaction.editReply({
         embeds: [embed],
+        files,
         components: buildChurchButtons(war.participants[interaction.user.id])
       });
     }

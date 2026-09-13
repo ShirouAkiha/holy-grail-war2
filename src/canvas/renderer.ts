@@ -6291,3 +6291,322 @@ export async function renderVisualNovelCard(
     return MINIMAL_VALID_PNG;
   }
 }
+
+export const KIREI_CHURCH_BG_URL = 'https://ella.janitorai.com/media-approved/k32PIik7yL_h7F6WYmbJU.webp';
+export const KIREI_AVATAR_URL = 'https://ella.janitorai.com/media-approved/9t8HPdoTr86yMrhw4vKUF.webp';
+
+export interface KireiVisualNovelCardOptions {
+  monologueText: string;
+  title?: string;
+  subtitle?: string;
+  backgroundImageUrl?: string;
+  kireiAvatarUrl?: string;
+  speakerName?: string;
+  dateText?: string;
+  threatLevel?: string;
+}
+
+/**
+ * Render a Father Kirei Kotomine Visual Novel 16:9 Canvas Image with dynamic text scaling.
+ * Guarantees monologue text is never cut off inside the UI box.
+ */
+export async function renderKireiVisualNovelCard(
+  opts: KireiVisualNovelCardOptions
+): Promise<Buffer> {
+  const width = 1280;
+  const height = 720;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+
+  const bgUrl = opts.backgroundImageUrl || KIREI_CHURCH_BG_URL;
+  const avatarUrl = opts.kireiAvatarUrl || KIREI_AVATAR_URL;
+
+  // 1. BACKGROUND LAYER (Church Interior Backdrop)
+  let bgDrawn = false;
+  if (bgUrl) {
+    try {
+      const bgImg = await loadImage(bgUrl);
+      if (bgImg && bgImg.width && bgImg.height) {
+        const imgRatio = bgImg.width / bgImg.height;
+        const canvasRatio = width / height;
+        let drawW = width;
+        let drawH = height;
+        let drawX = 0;
+        let drawY = 0;
+
+        if (imgRatio > canvasRatio) {
+          drawW = height * imgRatio;
+          drawX = (width - drawW) / 2;
+        } else {
+          drawH = width / imgRatio;
+          drawY = (height - drawH) / 2;
+        }
+
+        ctx.drawImage(bgImg, drawX, drawY, drawW, drawH);
+        bgDrawn = true;
+      }
+    } catch {
+      bgDrawn = false;
+    }
+  }
+
+  if (!bgDrawn) {
+    const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+    bgGrad.addColorStop(0, '#1a0505');
+    bgGrad.addColorStop(0.5, '#2a0a0a');
+    bgGrad.addColorStop(1, '#0f0202');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  // Sanctuary Dark Atmospheric Vignette
+  ctx.save();
+  const vignetteGrad = ctx.createRadialGradient(
+    width / 2, height / 2, Math.min(width, height) * 0.35,
+    width / 2, height / 2, Math.max(width, height) * 0.75
+  );
+  vignetteGrad.addColorStop(0, 'rgba(0, 0, 0, 0.1)');
+  vignetteGrad.addColorStop(0.7, 'rgba(15, 2, 2, 0.55)');
+  vignetteGrad.addColorStop(1, 'rgba(5, 0, 0, 0.88)');
+  ctx.fillStyle = vignetteGrad;
+  ctx.fillRect(0, 0, width, height);
+  ctx.restore();
+
+  // 2. CHARACTER SPRITE LAYER (Father Kirei Kotomine)
+  if (avatarUrl) {
+    try {
+      const spriteImg = await loadImage(avatarUrl);
+      if (spriteImg && spriteImg.width && spriteImg.height) {
+        const aspect = spriteImg.width / spriteImg.height;
+        const maxSpriteH = Math.floor(height * 0.88); // 633px
+        const maxSpriteW = Math.floor(width * 0.52);  // 665px
+
+        let spriteH = maxSpriteH;
+        let spriteW = spriteH * aspect;
+
+        if (spriteW > maxSpriteW) {
+          spriteW = maxSpriteW;
+          spriteH = spriteW / aspect;
+        }
+
+        const spriteX = width * 0.54 + (maxSpriteW - spriteW) / 2;
+        const spriteY = height - spriteH;
+
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.88)';
+        ctx.shadowBlur = 32;
+        ctx.shadowOffsetY = 12;
+
+        ctx.drawImage(spriteImg, spriteX, spriteY, spriteW, spriteH);
+        ctx.restore();
+      }
+    } catch {
+      // Ignore sprite load errors
+    }
+  }
+
+  // 3. TOP-LEFT HUD (Church Sanctuary & Date Widget)
+  ctx.save();
+  const hudX = 40;
+  const hudY = 30;
+  const hudW = 320;
+  const hudH = 72;
+
+  ctx.fillStyle = 'rgba(20, 5, 5, 0.88)';
+  drawRoundRect(ctx, hudX, hudY, hudW, hudH, 6);
+  ctx.fill();
+
+  ctx.strokeStyle = '#991b1b';
+  ctx.lineWidth = 1.8;
+  drawRoundRect(ctx, hudX, hudY, hudW, hudH, 6);
+  ctx.stroke();
+
+  ctx.fillStyle = '#f59e0b';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('🕯️ FUYUKI CHURCH SANCTUARY', hudX + 16, hudY + 24);
+
+  ctx.font = 'bold 18px Georgia, serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(opts.title || 'Overseer’s 24h Soliloquy', hudX + 16, hudY + 52);
+  ctx.restore();
+
+  // Top-Right Status Tag
+  ctx.save();
+  ctx.fillStyle = 'rgba(20, 5, 5, 0.88)';
+  drawRoundRect(ctx, width - 280, 30, 240, 36, 6);
+  ctx.fill();
+  ctx.strokeStyle = '#d4af37';
+  ctx.lineWidth = 1.5;
+  drawRoundRect(ctx, width - 280, 30, 240, 36, 6);
+  ctx.stroke();
+
+  ctx.fillStyle = '#d4af37';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('⛪ HOLY CHURCH NEUTRAL ZONE', width - 160, 53);
+  ctx.restore();
+
+  // 4. DIALOGUE / MONOLOGUE BOX (BOTTOM HUD)
+  const boxX = 40;
+  const boxY = 410;
+  const boxW = 1200;
+  const boxH = 265;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(12, 10, 18, 0.88)';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+
+  // Top filigree border line (Gold & Crimson)
+  ctx.strokeStyle = '#d4af37';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(boxX, boxY);
+  ctx.lineTo(boxX + boxW, boxY);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#991b1b';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(boxX, boxY + 3);
+  ctx.lineTo(boxX + boxW, boxY + 3);
+  ctx.stroke();
+  ctx.restore();
+
+  // Speaker Name Bracket Tag
+  const speakerName = (opts.speakerName || 'Father Kirei Kotomine').toUpperCase();
+  ctx.save();
+  ctx.font = 'bold 22px Georgia, "Times New Roman", serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#fbbf24';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+  ctx.shadowBlur = 8;
+
+  const bracketStr = `──────────   ⛪ ${speakerName}   ──────────`;
+  ctx.fillText(bracketStr, width / 2, boxY + boxH + 10);
+  ctx.restore();
+
+  // 5. DYNAMIC MONOLOGUE TEXT SCALER & WRAPPER (GUARANTEED NO CUTOFF)
+  ctx.save();
+  const textX = boxX + 45;
+  const maxTextW = boxW - 90; // 1110px
+  const maxTextH = boxH - 65; // 200px max height for text lines
+
+  const rawText = (opts.monologueText || 'Rejoice, Masters. The leylines await your blood.')
+    .trim()
+    .replace(/^["“']|["”']$/g, '');
+
+  const cleanText = `“${rawText}”`;
+
+  // Dynamic Font Size Auto-Scaler Loop
+  let fontSize = 28;
+  let lineHeight = Math.round(fontSize * 1.38);
+  let wrappedLines: string[] = [];
+
+  const getWrappedLinesForSize = (pxSize: number) => {
+    ctx.font = `italic bold ${pxSize}px Georgia, "Times New Roman", serif`;
+    const paragraphs = cleanText.split('\n');
+    const lines: string[] = [];
+
+    for (const para of paragraphs) {
+      if (!para.trim()) continue;
+      const words = para.trim().split(' ');
+      let curLine = '';
+
+      for (let i = 0; i < words.length; i++) {
+        const testLine = curLine ? `${curLine} ${words[i]}` : words[i];
+        if (ctx.measureText(testLine).width > maxTextW && i > 0) {
+          lines.push(curLine);
+          curLine = words[i];
+        } else {
+          curLine = testLine;
+        }
+      }
+      if (curLine) lines.push(curLine);
+    }
+    return lines;
+  };
+
+  // Iteratively decrease font size until ALL monologue lines fit inside maxTextH
+  while (fontSize >= 12) {
+    lineHeight = Math.round(fontSize * 1.38);
+    wrappedLines = getWrappedLinesForSize(fontSize);
+    const totalHeight = wrappedLines.length * lineHeight;
+    if (totalHeight <= maxTextH) {
+      break; // Fits cleanly inside dialogue box without any cutoff!
+    }
+    fontSize -= 1;
+  }
+
+  // Render wrapped monologue lines cleanly with high contrast drop shadows
+  ctx.font = `italic bold ${fontSize}px Georgia, "Times New Roman", serif`;
+  ctx.textAlign = 'left';
+
+  const startY = boxY + 44;
+  let currentY = startY;
+
+  for (let i = 0; i < wrappedLines.length; i++) {
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.98)';
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+    ctx.shadowBlur = 6;
+    ctx.fillStyle = '#fffbeb'; // Warm ivory sermon gold
+    ctx.fillText(wrappedLines[i], textX, currentY);
+    currentY += lineHeight;
+  }
+  ctx.restore();
+
+  // 6. BOTTOM CONTROL HINTS
+  ctx.save();
+  const ctrlX = 40;
+  const ctrlY = 708;
+
+  ctx.fillStyle = '#1e293b';
+  ctx.beginPath();
+  ctx.roundRect(ctrlX, ctrlY - 18, 36, 24, 3);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.font = 'bold 15px monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.fillText('F3', ctrlX + 18, ctrlY);
+
+  ctx.font = 'bold 15px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('AUTO', ctrlX + 44, ctrlY);
+
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.fillText('|', ctrlX + 96, ctrlY);
+
+  ctx.fillStyle = '#1e293b';
+  ctx.beginPath();
+  ctx.roundRect(ctrlX + 110, ctrlY - 18, 28, 24, 3);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.fillText('E', ctrlX + 124, ctrlY);
+
+  ctx.font = 'bold 15px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('SKIP', ctrlX + 146, ctrlY);
+
+  // Right Overseer Motto
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#d4af37';
+  ctx.font = 'bold 13px Georgia, serif';
+  ctx.fillText('⛪ HOLY CHURCH OVERSEER PROTOCOL • FUYUKI Neutral Asylum', width - 40, ctrlY);
+  ctx.restore();
+
+  try {
+    return canvas.toBuffer('image/png');
+  } catch {
+    return MINIMAL_VALID_PNG;
+  }
+}
+

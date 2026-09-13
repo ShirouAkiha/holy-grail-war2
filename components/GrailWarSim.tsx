@@ -51,6 +51,7 @@ import {
   Megaphone,
   RefreshCw
 } from 'lucide-react';
+import { CanvasRenderer } from './CanvasRenderer';
 
 interface GrailWarSimProps {
   master: MasterProfile;
@@ -1315,18 +1316,32 @@ export default function GrailWarSim({
                         </div>
                       </div>
 
-                      {/* Kotomine Monologue Body */}
-                      <div className="p-5 rounded-lg bg-[#0e0709]/80 border border-amber-900/30 relative">
-                        <div className="text-amber-500 text-3xl font-serif select-none absolute left-3 top-2 opacity-30">“</div>
-                        <div className="pl-6 pr-2 space-y-3">
-                          {churchHomily.monologue.split('\n\n').map((paragraph, pIdx) => (
-                            <p key={pIdx} className="text-sm font-serif text-white/90 leading-relaxed italic">
-                              {paragraph}
-                            </p>
-                          ))}
+                      {/* Kotomine Monologue Body & Visual Novel Canvas Card */}
+                      <div className="space-y-4">
+                        <div className="rounded-xl overflow-hidden shadow-2xl border border-amber-800/50">
+                          <CanvasRenderer
+                            canvasType="kirei_vn"
+                            payload={{
+                              monologueText: churchHomily.monologue,
+                              title: churchHomily.title || 'The Overseer’s 24-Hour Homily',
+                              subtitle: churchHomily.subtitle,
+                              speakerName: 'Father Kirei Kotomine'
+                            }}
+                          />
                         </div>
-                        <div className="text-right text-xs font-serif text-amber-400/70 italic mt-3 pr-2">
-                          — Father Kirei Kotomine, 8th Overseer of Fuyuki
+
+                        <div className="p-5 rounded-lg bg-[#0e0709]/80 border border-amber-900/30 relative">
+                          <div className="text-amber-500 text-3xl font-serif select-none absolute left-3 top-2 opacity-30">“</div>
+                          <div className="pl-6 pr-2 space-y-3">
+                            {churchHomily.monologue.split('\n\n').map((paragraph, pIdx) => (
+                              <p key={pIdx} className="text-sm font-serif text-white/90 leading-relaxed italic">
+                                {paragraph}
+                              </p>
+                            ))}
+                          </div>
+                          <div className="text-right text-xs font-serif text-amber-400/70 italic mt-3 pr-2">
+                            — Father Kirei Kotomine, 8th Overseer of Fuyuki
+                          </div>
                         </div>
                       </div>
 

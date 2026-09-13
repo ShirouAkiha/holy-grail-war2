@@ -5127,3 +5127,276 @@ export function renderGachaSummonBanner(
     });
   }
 }
+
+export const KIREI_CHURCH_BG_URL = 'https://ella.janitorai.com/media-approved/k32PIik7yL_h7F6WYmbJU.webp';
+export const KIREI_AVATAR_URL = 'https://ella.janitorai.com/media-approved/9t8HPdoTr86yMrhw4vKUF.webp';
+
+/**
+ * Render a Father Kirei Kotomine Visual Novel 16:9 Canvas Image in Browser HTML5 Canvas.
+ * Automatically wraps and auto-scales text so monologues are never cut off.
+ */
+export function renderKireiVisualNovelCard(
+  canvas: HTMLCanvasElement,
+  monologueText: string,
+  title?: string,
+  subtitle?: string,
+  speakerName?: string
+): void {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  canvas.width = 1280;
+  canvas.height = 720;
+  const width = 1280;
+  const height = 720;
+
+  // Background fallback
+  const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+  bgGrad.addColorStop(0, '#1a0505');
+  bgGrad.addColorStop(0.5, '#2a0a0a');
+  bgGrad.addColorStop(1, '#0f0202');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, width, height);
+
+  // Load BG & Sprite
+  const bgImg = new Image();
+  bgImg.crossOrigin = 'anonymous';
+  bgImg.src = KIREI_CHURCH_BG_URL;
+
+  const spriteImg = new Image();
+  spriteImg.crossOrigin = 'anonymous';
+  spriteImg.src = KIREI_AVATAR_URL;
+
+  const drawScene = () => {
+    // 1. BG
+    if (bgImg.complete && bgImg.naturalWidth) {
+      drawImageCover(ctx, bgImg, 0, 0, width, height);
+    }
+
+    // Vignette
+    ctx.save();
+    const vignetteGrad = ctx.createRadialGradient(
+      width / 2, height / 2, Math.min(width, height) * 0.35,
+      width / 2, height / 2, Math.max(width, height) * 0.75
+    );
+    vignetteGrad.addColorStop(0, 'rgba(0, 0, 0, 0.1)');
+    vignetteGrad.addColorStop(0.7, 'rgba(15, 2, 2, 0.55)');
+    vignetteGrad.addColorStop(1, 'rgba(5, 0, 0, 0.88)');
+    ctx.fillStyle = vignetteGrad;
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+
+    // 2. Sprite
+    if (spriteImg.complete && spriteImg.naturalWidth) {
+      const aspect = spriteImg.naturalWidth / spriteImg.naturalHeight;
+      const maxSpriteH = Math.floor(height * 0.88);
+      const maxSpriteW = Math.floor(width * 0.52);
+
+      let spriteH = maxSpriteH;
+      let spriteW = spriteH * aspect;
+
+      if (spriteW > maxSpriteW) {
+        spriteW = maxSpriteW;
+        spriteH = spriteW / aspect;
+      }
+
+      const spriteX = width * 0.54 + (maxSpriteW - spriteW) / 2;
+      const spriteY = height - spriteH;
+
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.88)';
+      ctx.shadowBlur = 32;
+      ctx.shadowOffsetY = 12;
+      ctx.drawImage(spriteImg, spriteX, spriteY, spriteW, spriteH);
+      ctx.restore();
+    }
+
+    // 3. Top Left HUD
+    ctx.save();
+    const hudX = 40;
+    const hudY = 30;
+    const hudW = 320;
+    const hudH = 72;
+
+    ctx.fillStyle = 'rgba(20, 5, 5, 0.88)';
+    drawRoundRect(ctx, hudX, hudY, hudW, hudH, 6);
+    ctx.fill();
+
+    ctx.strokeStyle = '#991b1b';
+    ctx.lineWidth = 1.8;
+    drawRoundRect(ctx, hudX, hudY, hudW, hudH, 6);
+    ctx.stroke();
+
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('🕯️ FUYUKI CHURCH SANCTUARY', hudX + 16, hudY + 24);
+
+    ctx.font = 'bold 18px Georgia, serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(title || 'Overseer’s 24h Soliloquy', hudX + 16, hudY + 52);
+    ctx.restore();
+
+    // Top Right Status Tag
+    ctx.save();
+    ctx.fillStyle = 'rgba(20, 5, 5, 0.88)';
+    drawRoundRect(ctx, width - 280, 30, 240, 36, 6);
+    ctx.fill();
+    ctx.strokeStyle = '#d4af37';
+    ctx.lineWidth = 1.5;
+    drawRoundRect(ctx, width - 280, 30, 240, 36, 6);
+    ctx.stroke();
+
+    ctx.fillStyle = '#d4af37';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('⛪ HOLY CHURCH NEUTRAL ZONE', width - 160, 53);
+    ctx.restore();
+
+    // 4. Dialogue Box
+    const boxX = 40;
+    const boxY = 410;
+    const boxW = 1200;
+    const boxH = 265;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(12, 10, 18, 0.88)';
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+
+    ctx.strokeStyle = '#d4af37';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(boxX, boxY);
+    ctx.lineTo(boxX + boxW, boxY);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#991b1b';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(boxX, boxY + 3);
+    ctx.lineTo(boxX + boxW, boxY + 3);
+    ctx.stroke();
+    ctx.restore();
+
+    // Speaker Name Tag
+    const spk = (speakerName || 'Father Kirei Kotomine').toUpperCase();
+    ctx.save();
+    ctx.font = 'bold 22px Georgia, "Times New Roman", serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fbbf24';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+    ctx.shadowBlur = 8;
+    ctx.fillText(`──────────   ⛪ ${spk}   ──────────`, width / 2, boxY + boxH + 10);
+    ctx.restore();
+
+    // 5. Dynamic Text Auto-Scaler & Line Wrapper (NO CUTOFF)
+    ctx.save();
+    const textX = boxX + 45;
+    const maxTextW = boxW - 90;
+    const maxTextH = boxH - 65;
+
+    const rawText = (monologueText || 'Rejoice, Masters. The leylines await your blood.').trim().replace(/^["“']|["”']$/g, '');
+    const cleanText = `“${rawText}”`;
+
+    let fontSize = 28;
+    let lineHeight = Math.round(fontSize * 1.38);
+    let wrappedLines: string[] = [];
+
+    const getWrappedLinesForSize = (pxSize: number) => {
+      ctx.font = `italic bold ${pxSize}px Georgia, "Times New Roman", serif`;
+      const paragraphs = cleanText.split('\n');
+      const lines: string[] = [];
+
+      for (const para of paragraphs) {
+        if (!para.trim()) continue;
+        const words = para.trim().split(' ');
+        let curLine = '';
+
+        for (let i = 0; i < words.length; i++) {
+          const testLine = curLine ? `${curLine} ${words[i]}` : words[i];
+          if (ctx.measureText(testLine).width > maxTextW && i > 0) {
+            lines.push(curLine);
+            curLine = words[i];
+          } else {
+            curLine = testLine;
+          }
+        }
+        if (curLine) lines.push(curLine);
+      }
+      return lines;
+    };
+
+    while (fontSize >= 12) {
+      lineHeight = Math.round(fontSize * 1.38);
+      wrappedLines = getWrappedLinesForSize(fontSize);
+      const totalHeight = wrappedLines.length * lineHeight;
+      if (totalHeight <= maxTextH) break;
+      fontSize -= 1;
+    }
+
+    ctx.font = `italic bold ${fontSize}px Georgia, "Times New Roman", serif`;
+    ctx.textAlign = 'left';
+
+    const startY = boxY + 44;
+    let currentY = startY;
+
+    for (let i = 0; i < wrappedLines.length; i++) {
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.98)';
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
+      ctx.shadowBlur = 6;
+      ctx.fillStyle = '#fffbeb';
+      ctx.fillText(wrappedLines[i], textX, currentY);
+      currentY += lineHeight;
+    }
+    ctx.restore();
+
+    // 6. Bottom Control Bar
+    ctx.save();
+    const ctrlX = 40;
+    const ctrlY = 708;
+
+    ctx.fillStyle = '#1e293b';
+    drawRoundRect(ctx, ctrlX, ctrlY - 18, 36, 24, 3);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.font = 'bold 15px monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText('F3', ctrlX + 18, ctrlY);
+
+    ctx.font = 'bold 15px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('AUTO', ctrlX + 44, ctrlY);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.fillText('|', ctrlX + 96, ctrlY);
+
+    ctx.fillStyle = '#1e293b';
+    drawRoundRect(ctx, ctrlX + 110, ctrlY - 18, 28, 24, 3);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText('E', ctrlX + 124, ctrlY);
+
+    ctx.font = 'bold 15px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('SKIP', ctrlX + 146, ctrlY);
+
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#d4af37';
+    ctx.font = 'bold 13px Georgia, serif';
+    ctx.fillText('⛪ HOLY CHURCH OVERSEER PROTOCOL • FUYUKI Neutral Asylum', width - 40, ctrlY);
+    ctx.restore();
+  };
+
+  drawScene();
+  bgImg.onload = drawScene;
+  spriteImg.onload = drawScene;
+}

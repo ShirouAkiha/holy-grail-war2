@@ -6,7 +6,8 @@ import {
   renderDialogueCard,
   renderDefeatDialogueCard,
   renderBattleTurnSummary,
-  renderGachaSummonBanner
+  renderGachaSummonBanner,
+  renderKireiVisualNovelCard
 } from '../lib/canvas/browserCanvas';
 
 export function CanvasRenderer({ canvasType, payload }: { canvasType: string; payload: any }) {
@@ -19,6 +20,14 @@ export function CanvasRenderer({ canvasType, payload }: { canvasType: string; pa
 
     if (canvasType === 'servant') {
       renderServantProfileCard(canvas, payload.servant, payload.masterName);
+    } else if (canvasType === 'kirei_vn') {
+      renderKireiVisualNovelCard(
+        canvas,
+        payload.monologueText || payload.quote || payload.content || '',
+        payload.title || 'Overseer’s 24h Soliloquy',
+        payload.subtitle,
+        payload.speakerName || 'Father Kirei Kotomine'
+      );
     } else if (canvasType === 'dialogue') {
       renderDialogueCard(
         canvas,
