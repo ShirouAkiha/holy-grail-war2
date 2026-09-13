@@ -6169,51 +6169,73 @@ export async function renderVisualNovelCard(
     ctx.restore();
   }
 
-  // --- Dialogue Text (Large Bold White Serif for Desktop Legibility) ---
+  // --- Dialogue Text (Dynamic Font Scaling & Auto-Wrapping so no text is cut off) ---
   ctx.save();
   const textX = boxX + 45;
-  const textY = opts.choiceMadeText ? boxY + 80 : boxY + 65;
   const maxTextW = boxW - 90;
-  const lineHeight = 52;
-
-  ctx.font = 'bold 36px Georgia, "Times New Roman", serif';
-  ctx.textAlign = 'left';
 
   const cleanText = (opts.dialogueText || '').replace(/^["“]/, '').replace(/["”]$/, '').trim();
   const fullText = `“${cleanText}” ⚙`;
-  const words = fullText.split(' ');
-  let currentLine = '';
-  let lineY = textY;
-  let linesDrawn = 0;
 
-  for (let i = 0; i < words.length; i++) {
-    const testLine = currentLine ? `${currentLine} ${words[i]}` : words[i];
-    const metrics = ctx.measureText(testLine);
-    if (metrics.width > maxTextW && i > 0) {
-      // High contrast text shadow
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.98)';
-      ctx.shadowOffsetX = 3;
-      ctx.shadowOffsetY = 3;
-      ctx.shadowBlur = 6;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(currentLine, textX, lineY);
-
-      currentLine = words[i];
-      lineY += lineHeight;
-      linesDrawn++;
-      if (linesDrawn >= 3) break;
-    } else {
-      currentLine = testLine;
-    }
+  // Dynamic font size and line height based on character count
+  let fontSize = 36;
+  let lineHeight = 52;
+  if (cleanText.length > 220) {
+    fontSize = 24;
+    lineHeight = 35;
+  } else if (cleanText.length > 140) {
+    fontSize = 28;
+    lineHeight = 40;
+  } else if (cleanText.length > 80) {
+    fontSize = 32;
+    lineHeight = 45;
   }
 
-  if (linesDrawn < 3 && currentLine.trim().length > 0) {
+  let startY = opts.choiceMadeText ? boxY + 68 : boxY + 52;
+
+  // Function to wrap text into lines at a specific font size
+  const getWrappedLines = (pxSize: number) => {
+    ctx.font = `bold ${pxSize}px Georgia, "Times New Roman", serif`;
+    const words = fullText.split(' ');
+    const lines: string[] = [];
+    let curLine = '';
+
+    for (let i = 0; i < words.length; i++) {
+      const testLine = curLine ? `${curLine} ${words[i]}` : words[i];
+      if (ctx.measureText(testLine).width > maxTextW && i > 0) {
+        lines.push(curLine);
+        curLine = words[i];
+      } else {
+        curLine = testLine;
+      }
+    }
+    if (curLine) lines.push(curLine);
+    return lines;
+  };
+
+  let wrappedLines = getWrappedLines(fontSize);
+
+  // If wrapped text still exceeds 4 lines at initial font size, scale down to 22px to fit perfectly
+  if (wrappedLines.length > 4 && fontSize > 22) {
+    fontSize = 22;
+    lineHeight = 32;
+    startY = opts.choiceMadeText ? boxY + 64 : boxY + 48;
+    wrappedLines = getWrappedLines(fontSize);
+  }
+
+  // Draw all wrapped lines cleanly without truncation
+  ctx.font = `bold ${fontSize}px Georgia, "Times New Roman", serif`;
+  ctx.textAlign = 'left';
+
+  let currentLineY = startY;
+  for (let i = 0; i < wrappedLines.length; i++) {
     ctx.shadowColor = 'rgba(0, 0, 0, 0.98)';
     ctx.shadowOffsetX = 3;
     ctx.shadowOffsetY = 3;
     ctx.shadowBlur = 6;
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(currentLine, textX, lineY);
+    ctx.fillText(wrappedLines[i], textX, currentLineY);
+    currentLineY += lineHeight;
   }
   ctx.restore();
 
