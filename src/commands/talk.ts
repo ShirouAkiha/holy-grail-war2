@@ -84,14 +84,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     // Tactical Channel & Bounded Field Context
     const channelName = (interaction.channel as any)?.name || 'general';
-    const channelTraps = (war.boundedTraps || []).filter((tr: any) => tr.channelName === channelName && !tr.triggered);
+    const channelTraps = ((war as any).boundedTraps || []).filter((tr: any) => tr.channelName === channelName && !tr.triggered);
     const hasOwnTrapInChannel = channelTraps.some((tr: any) => tr.setterMasterId === master.discordId);
     const enemyTrapInChannel = channelTraps.some((tr: any) => tr.setterMasterId !== master.discordId);
 
-    const channelFamiliars = (war.familiars || []).filter((f: any) => f.channelName === channelName && f.expiresAt > Date.now());
+    const channelFamiliars = ((war as any).familiars || []).filter((f: any) => f.channelName === channelName && f.expiresAt > Date.now());
     const hasOwnFamiliarInChannel = channelFamiliars.some((f: any) => f.masterId === master.discordId);
 
-    const activeBoundedFieldType = userParticipant?.boundedField || master.workshop?.boundedField || 'none';
+    const activeBoundedFieldType = userParticipant?.boundedField || (master as any).workshop?.boundedField || 'none';
 
     let alliedMasters: string[] = [];
     if (userParticipant?.allianceId && war.alliances?.[userParticipant.allianceId]) {

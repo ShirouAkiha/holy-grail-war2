@@ -619,7 +619,6 @@ client.on(Events.InteractionCreate, async interaction => {
             typeof l === 'string' ? l : (l.text || l.message || 'War active in Fuyuki.')
           );
 
-          const t = servant.template || servant;
           const currentHp = userParticipant?.currentHp ?? servant.currentHp ?? t.baseHp;
           const maxHp = userParticipant?.maxHp ?? t.baseHp;
           const isInChurchAsylum = !!userParticipant?.inChurchSanctuary;
@@ -627,15 +626,15 @@ client.on(Events.InteractionCreate, async interaction => {
           const noblePhantasmName = t.noblePhantasm?.name;
 
           // Tactical Channel & Bounded Field Context
-          const channelName = (modalInteraction.channel as any)?.name || 'general';
-          const channelTraps = (war.boundedTraps || []).filter((tr: any) => tr.channelName === channelName && !tr.triggered);
+          const channelName = (interaction.channel as any)?.name || 'general';
+          const channelTraps = ((war as any).boundedTraps || []).filter((tr: any) => tr.channelName === channelName && !tr.triggered);
           const hasOwnTrapInChannel = channelTraps.some((tr: any) => tr.setterMasterId === master.discordId);
           const enemyTrapInChannel = channelTraps.some((tr: any) => tr.setterMasterId !== master.discordId);
 
-          const channelFamiliars = (war.familiars || []).filter((f: any) => f.channelName === channelName && f.expiresAt > Date.now());
+          const channelFamiliars = ((war as any).familiars || []).filter((f: any) => f.channelName === channelName && f.expiresAt > Date.now());
           const hasOwnFamiliarInChannel = channelFamiliars.some((f: any) => f.masterId === master.discordId);
 
-          const activeBoundedFieldType = userParticipant?.boundedField || master.workshop?.boundedField || 'none';
+          const activeBoundedFieldType = userParticipant?.boundedField || (master as any).workshop?.boundedField || 'none';
 
           let alliedMasters: string[] = [];
           if (userParticipant?.allianceId && war.alliances?.[userParticipant.allianceId]) {
@@ -651,7 +650,7 @@ client.on(Events.InteractionCreate, async interaction => {
             bondLevel,
             maxBond: 10,
             masterName: master.username || 'Master',
-            masterId: master.discordId || modalInteraction.user.id,
+            masterId: master.discordId || interaction.user.id,
             servantId: servant.id || servant.templateId || servantName.toLowerCase().replace(/\s+/g, '_'),
             warId: war.id || 'default_fuyuki',
             commandSeals,
