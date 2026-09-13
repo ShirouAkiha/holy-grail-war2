@@ -1,5 +1,10 @@
 import { GoogleGenAI } from '@google/genai';
 import { renderVisualNovelCard } from '../canvas/renderer';
+import {
+  getServantChatHistory,
+  appendServantChatTurn,
+  TalkMessageTurn
+} from './servantMemoryService';
 
 export interface ServantTalkContext {
   servantName: string;
@@ -7,6 +12,9 @@ export interface ServantTalkContext {
   bondLevel: number;
   maxBond?: number;
   masterName: string;
+  masterId?: string;
+  servantId?: string;
+  warId?: string;
   commandSeals?: number;
   isExposed?: boolean;
   equippedCeName?: string;
@@ -15,6 +23,7 @@ export interface ServantTalkContext {
   servantAvatarUrl?: string;
   servantTitle?: string;
   servantLore?: string;
+  conversationHistory?: TalkMessageTurn[];
 }
 
 let aiClient: GoogleGenAI | null = null;
@@ -93,18 +102,37 @@ export function generateCanonicalFallbackReply(ctx: ServantTalkContext): string 
 }
 
 /**
- * Generate in-character Servant reply using Gemini (with fallback)
+ * Generate in-character Servant reply using Gemini (with fallback and persistent multi-turn memory)
  */
 export async function generateServantTalkResponse(context: ServantTalkContext): Promise<{ reply: string; source: 'gemini' | 'canon_heuristic' }> {
   const client = getAiClient();
   const bond = context.bondLevel || 1;
   const seals = context.commandSeals ?? 3;
 
+  // Retrieve past conversation history if masterId and servantId are provided
+  const masterId = context.masterId || 'default_master';
+  const servantId = context.servantId || context.servantName.toLowerCase().replace(/\s+/g, '_');
+  const warId = context.warId || 'default';
+
+  const priorTurns = context.conversationHistory ?? getServantChatHistory(masterId, servantId, warId, 16);
+
   if (!client) {
+    const fallback = generateCanonicalFallbackReply(context);
+    if (context.masterId && context.servantId) {
+      appendServantChatTurn(masterId, servantId, context.servantName, context.playerMessage, fallback, warId);
+    }
     return {
-      reply: generateCanonicalFallbackReply(context),
+      reply: fallback,
       source: 'canon_heuristic'
     };
+  }
+
+  // Format past turns for context injection
+  let historyBlock = '';
+  if (priorTurns.length > 0) {
+    historyBlock = `\nPREVIOUS CONVERSATIONS BETWEEN YOU AND MASTER IN THIS GRAIL WAR (Remember these naturally!):\n` +
+      priorTurns.map(t => `${t.role === 'user' ? `Master ${context.masterName}` : context.servantName}: "${t.content}"`).join('\n') +
+      `\n(Maintain continuous conversational awareness with what you both discussed earlier.)\n`;
   }
 
   const prompt = `You are roleplaying as the Fate franchise Heroic Spirit: "${context.servantName}" (Class: ${context.servantClass}).
@@ -123,13 +151,14 @@ CONTEXT:
 - Master Concealment Status: ${context.isExposed ? 'Exposed to public War Board (dangerous)' : 'Concealed in shadows (safe)'}
 - Equipped Craft Essence: ${context.equippedCeName || 'None equipped'}
 - Recent War Chronicle: ${(context.recentChronicleEvents || ['War raging across Fuyuki.']).slice(-2).join('; ')}
-
-MASTER SAYS TO YOU:
+${historyBlock}
+MASTER SAYS TO YOU NOW:
 "${context.playerMessage}"
 
 INSTRUCTIONS:
 - Reply in 1 to 3 concise, impactful sentences (maximum 60 words) suitable for a Visual Novel dialogue box.
 - Stay strictly in character matching ${context.servantName}'s canon personality, tone, vocabulary, and chivalric/heroic ethos.
+- If referencing past topics mentioned by Master, seamlessly incorporate them as a shared memory of this War.
 - Address ${context.masterName} naturally (e.g. "Master", or specific honorifics appropriate to the character).
 - Reflect your current Bond Rank (${bond}/10).
 - Do NOT break character, do NOT provide meta explanations, and do NOT use asterisks for actions (*sighs*). Return ONLY the spoken dialogue.`;
@@ -153,14 +182,18 @@ INSTRUCTIONS:
     if (text) {
       // Strip any extra quotes wrapping the entire response if present
       const cleaned = text.replace(/^["'“](.*)["'”]$/, '$1').trim();
+      // Save this turn to persistent memory
+      appendServantChatTurn(masterId, servantId, context.servantName, context.playerMessage, cleaned, warId);
       return { reply: cleaned, source: 'gemini' };
     }
   } catch (err) {
     console.warn('[talkService] Gemini generation fallback:', err);
   }
 
+  const fallback = generateCanonicalFallbackReply(context);
+  appendServantChatTurn(masterId, servantId, context.servantName, context.playerMessage, fallback, warId);
   return {
-    reply: generateCanonicalFallbackReply(context),
+    reply: fallback,
     source: 'canon_heuristic'
   };
 }

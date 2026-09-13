@@ -9,6 +9,7 @@ import {
   WarHistoryRecord
 } from '../types';
 import { SERVANT_DATABASE } from '../data/servants';
+import { clearServantWarMemories } from './servantMemoryService';
 import fs from 'fs';
 import path from 'path';
 
@@ -536,6 +537,17 @@ export function getActiveWarSession(): HolyGrailWarSession | null {
 }
 
 export function resetWarSession(): HolyGrailWarSession {
+  // Clear all past Servant telepathic memories for the new Holy Grail War cycle
+  try {
+    if (globalWarSession?.id) {
+      clearServantWarMemories(globalWarSession.id);
+    } else {
+      clearServantWarMemories();
+    }
+  } catch (err) {
+    console.error('[grailwar] Error clearing servant war memories on reset:', err);
+  }
+
   globalWarSession = {
     id: `grail_war_${Date.now()}`,
     title: 'Fuyuki Holy Grail War',

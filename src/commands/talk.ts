@@ -75,13 +75,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       typeof l === 'string' ? l : (l.text || l.message || 'War active in Fuyuki.')
     );
 
-    // 1. Generate the dynamic in-character reply
+    // 1. Generate the dynamic in-character reply with Holy Grail War chat memory
     const { reply } = await generateServantTalkResponse({
       servantName,
       servantClass,
       bondLevel,
       maxBond: 10,
       masterName: master.username || 'Master',
+      masterId: master.discordId || interaction.user.id,
+      servantId: targetServant.id || targetServant.templateId || servantName.toLowerCase().replace(/\s+/g, '_'),
+      warId: war.id || 'default_fuyuki',
       commandSeals,
       isExposed,
       equippedCeName,
