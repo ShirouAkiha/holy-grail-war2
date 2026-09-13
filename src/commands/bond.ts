@@ -219,7 +219,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
     const servantName = activeServant.nickname || sTemplate.name || 'Heroic Spirit';
 
     if (btnId === 'vn_play_event') {
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      await interaction.deferUpdate();
 
       const { event, isReplay, statusNote } = selectActiveInterludeForServant(activeServant);
       const scene1 = event.scenes[0];
@@ -281,6 +281,8 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
     }
 
     if (btnId === 'vn_view_quotes') {
+      await interaction.deferUpdate();
+
       const unlockedQuotes = getUnlockedDialogueLinesForServant(activeServant);
       const quotesList = unlockedQuotes.map(q => 
         `• **${q.title}** (Bond ${q.requiredBondLevel}):\n  *"${q.quoteText}"*`
@@ -299,15 +301,40 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         safeSetEmbedThumbnail(quotesEmbed, sTemplate.avatarUrl);
       }
 
-      await interaction.reply({
-        flags: MessageFlags.Ephemeral,
-        embeds: [quotesEmbed]
+      const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId('vn_play_event')
+          .setLabel('📖 Play Interlude')
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId('vn_back_status')
+          .setLabel('📊 Bond Status')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+      await interaction.editReply({
+        embeds: [quotesEmbed],
+        files: [],
+        components: [backRow]
+      });
+      return;
+    }
+
+    if (btnId === 'vn_back_status') {
+      await interaction.deferUpdate();
+      const embed = buildBondStatusEmbed(master);
+      const rows = buildBondActionRow(master);
+
+      await interaction.editReply({
+        embeds: [embed],
+        files: [],
+        components: rows
       });
       return;
     }
 
     if (btnId.startsWith('vn_choice:') || btnId.startsWith('vn_choice_')) {
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      await interaction.deferUpdate();
 
       const events = getBondEventsForServant(activeServant);
       
@@ -402,9 +429,21 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         .setImage('attachment://visual_novel_reaction.png')
         .setColor(isFirstCompletion ? 0xec4899 : 0x64748b);
 
+      const completionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId('vn_play_event')
+          .setLabel('📖 Play Interlude Again')
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId('vn_back_status')
+          .setLabel('📊 Bond Sanctum Status')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
       await interaction.editReply({
         embeds: [resultEmbed],
-        files: [attachment]
+        files: [attachment],
+        components: [completionRow]
       });
       return;
     }

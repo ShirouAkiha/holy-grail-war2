@@ -38,7 +38,7 @@ import {
   getTotalExpForLevel
 } from '../lib/engine/customization';
 import { executeCraftEssenceGachaRoll } from '../lib/engine/ceGacha';
-import { getBondExpProgress, getBondEventsForServant, addBondExpToServant } from '../lib/engine/bondEvents';
+import { getBondExpProgress, getBondEventsForServant, addBondExpToServant, getUnlockedDialogueLinesForServant, selectActiveInterludeForServant } from '../lib/engine/bondEvents';
 import { CRAFT_ESSENCE_DATABASE } from '../lib/data/craftEssences';
 import MASTERS_DATABASE from '../data/masters.json';
 import {
@@ -7169,8 +7169,66 @@ export default function DiscordEmulator({
   // Button interaction handler
   const handleButtonClick = (btnId: string, msgId?: string) => {
     // Visual Novel Interlude In-Place Interactive Handlers
-    if (btnId.startsWith('vn_start_') || btnId.startsWith('vn_choice_') || btnId.startsWith('vn_next_') || btnId.startsWith('vn_conclude_') || btnId === 'quick_bond_status') {
-      if (btnId === 'quick_bond_status') {
+    if (btnId.startsWith('vn_') || btnId === 'quick_bond_status') {
+      if (btnId === 'quick_bond_status' || btnId === 'vn_back_status') {
+        if (msgId) {
+          const activeS = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
+          if (!activeS) return;
+          const template = activeS.template;
+          const bondProgress = getBondExpProgress(activeS.bondExp || 0);
+          const availableEvents = getBondEventsForServant(activeS);
+
+          const eventsSummary = availableEvents.map(evt => {
+            const isCompleted = activeS.completedBondEvents?.includes(evt.id);
+            const isUnlocked = (activeS.bondLevel || 1) >= evt.requiredBondLevel;
+            const statusIcon = isCompleted ? '✅ Completed' : isUnlocked ? '✨ Ready to Play' : '🔒 Locked';
+            return `• **${evt.title}** (Bond Lv. ${evt.requiredBondLevel}): ${statusIcon}`;
+          }).join('\n');
+
+          const playButtons = availableEvents.map((evt) => {
+            const isCompleted = activeS.completedBondEvents?.includes(evt.id);
+            const isUnlocked = (activeS.bondLevel || 1) >= evt.requiredBondLevel;
+            return {
+              id: `vn_start_${evt.id}_0`,
+              label: isCompleted ? `Replay: ${evt.title.slice(0, 18)}` : `Play: ${evt.title.slice(0, 18)}`,
+              style: (isCompleted ? 'secondary' : 'primary') as any,
+              emoji: '📖',
+              disabled: !isUnlocked
+            };
+          });
+
+          updateMessage(msgId, {
+            id: msgId,
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `💖 SERVANT BOND STATUS — ${template.name.toUpperCase()}`,
+              description:
+                `**Master:** ${master.username}\n` +
+                `**Servant Class:** ${template.servantClass} (★${template.rarity})\n\n` +
+                `• **Current Bond Level:** **Bond Lv. ${activeS.bondLevel || 1} / 10**\n` +
+                `• **Total Bond EXP:** \`${activeS.bondExp || 0} EXP\`\n` +
+                `• **Level Progress:** \`${bondProgress.expInCurrentLevel} / ${bondProgress.neededForNextLevel} EXP\` (${bondProgress.progressPercent}%)\n\n` +
+                `📖 **Visual Novel Interludes:**\n${eventsSummary}\n\n` +
+                `*Click an interlude button below to start the Visual Novel story in-place!*`,
+              color: '#f59e0b',
+              thumbnailUrl: activeS.avatarUrl || template.avatarUrl,
+              footer: 'Bond increases exclusively through Visual Novel Interludes'
+            },
+            artworkEmbed: {
+              imageUrl: 'https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp',
+              color: '#f59e0b'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                ...playButtons,
+                { id: 'vn_view_quotes', label: '🎙️ View Voice Lines', style: 'secondary', emoji: '🎙️' }
+              ]
+            }
+          });
+          return;
+        }
         handleCommand('/bond');
         return;
       }
@@ -7180,11 +7238,55 @@ export default function DiscordEmulator({
 
       const availableEvents = getBondEventsForServant(activeServant);
 
-      if (btnId.startsWith('vn_start_')) {
-        const parts = btnId.split('_');
-        const evtId = parts.slice(2, parts.length - 1).join('_');
-        const sceneIdx = parseInt(parts[parts.length - 1] || '0', 10) || 0;
-        const evt = availableEvents.find(e => e.id === evtId) || availableEvents[0];
+      if (btnId === 'vn_view_quotes') {
+        const unlockedQuotes = getUnlockedDialogueLinesForServant(activeServant);
+        const quotesList = unlockedQuotes.map(q => 
+          `• **${q.title}** (Bond ${q.requiredBondLevel}):\n  *"${q.quoteText}"*`
+        ).join('\n\n');
+
+        const quotesMsgData: DiscordMessage = {
+          id: msgId || getNextId('bot_vn_quotes'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `🎙️ My Room Voice Quotes | ${activeServant.template.name}`,
+            description:
+              `*Here are the unlocked quotes based on your current Bond Level (${activeServant.bondLevel || 1}/10):*\n\n` +
+              (quotesList || 'No quotes unlocked yet.'),
+            color: '#a855f7',
+            thumbnailUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
+            footer: 'Increase Bond Level to unlock more My Room dialogue lines!'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'vn_play_event', label: '📖 Play Interlude', style: 'primary' as const, emoji: '📖' },
+              { id: 'vn_back_status', label: '📊 Bond Status', style: 'secondary' as const, emoji: '🌸' }
+            ]
+          }
+        };
+
+        if (msgId) {
+          updateMessage(msgId, quotesMsgData);
+        } else {
+          addMessage(quotesMsgData);
+        }
+        return;
+      }
+
+      if (btnId === 'vn_play_event' || btnId.startsWith('vn_start_')) {
+        let evt = availableEvents[0];
+        let sceneIdx = 0;
+
+        if (btnId.startsWith('vn_start_')) {
+          const parts = btnId.split('_');
+          const evtId = parts.slice(2, parts.length - 1).join('_');
+          sceneIdx = parseInt(parts[parts.length - 1] || '0', 10) || 0;
+          evt = availableEvents.find(e => e.id === evtId) || availableEvents[0];
+        } else {
+          const { event } = selectActiveInterludeForServant(activeServant);
+          if (event) evt = event;
+        }
 
         if (!evt) return;
 
@@ -7193,8 +7295,8 @@ export default function DiscordEmulator({
 
         const actionButtons = hasChoices
           ? scene.choices!.map((c, idx) => ({
-              id: `vn_choice_${evt.id}_${sceneIdx}_${idx}`,
-              label: `“${c.text.slice(0, 24)}”`,
+              id: `vn_choice:${evt.id}:${c.id}`,
+              label: `${idx + 1}. “${c.text.slice(0, 24)}”`,
               style: 'primary' as const,
               emoji: '💬'
             }))
@@ -7236,27 +7338,60 @@ export default function DiscordEmulator({
         return;
       }
 
-      if (btnId.startsWith('vn_choice_')) {
-        const parts = btnId.split('_');
-        const choiceIdx = parseInt(parts.pop() || '0', 10);
-        const sceneIdx = parseInt(parts.pop() || '0', 10);
-        const evtId = parts.slice(2).join('_');
+      if (btnId.startsWith('vn_choice:') || btnId.startsWith('vn_choice_') || btnId === 'vn_choice_complete') {
+        let eventId = '';
+        let choiceId = '';
 
-        const evt = availableEvents.find(e => e.id === evtId) || availableEvents[0];
+        if (btnId.includes(':')) {
+          const parts = btnId.split(':');
+          eventId = parts[1];
+          choiceId = parts[2];
+        } else if (btnId.startsWith('vn_choice_')) {
+          const parts = btnId.split('_');
+          const choiceIdx = parseInt(parts.pop() || '0', 10);
+          const sceneIdx = parseInt(parts.pop() || '0', 10);
+          eventId = parts.slice(2).join('_');
+          const evt = availableEvents.find(e => e.id === eventId) || availableEvents[0];
+          const scene = evt?.scenes[sceneIdx];
+          const choice = scene?.choices?.[choiceIdx];
+          if (choice) choiceId = choice.id;
+        }
+
+        const evt = availableEvents.find(e => e.id === eventId) || availableEvents[0];
         if (!evt) return;
 
-        const scene = evt.scenes[sceneIdx];
-        const choice = scene?.choices?.[choiceIdx];
+        const scene = evt.scenes[0];
+        const pickedChoice = scene.choices?.find(c => c.id === choiceId);
+        const servantResponse = pickedChoice ? pickedChoice.response : scene.dialogueText;
 
-        if (!scene || !choice) return;
+        const completedIds: string[] = activeServant.completedBondEvents || [];
+        const isFirstCompletion = !completedIds.includes(evt.id);
 
-        const expGained = choice.bondExpGain || 100;
-        const nextSceneIdx = sceneIdx + 1;
-        const hasMoreScenes = nextSceneIdx < evt.scenes.length;
+        const expGain = isFirstCompletion ? (pickedChoice?.bondExpGain || 150) : 0;
+        const sqReward = isFirstCompletion ? (evt.rewardSaintQuartz || 3) : 0;
 
-        const nextButtons = hasMoreScenes
-          ? [{ id: `vn_next_${evt.id}_${nextSceneIdx}_${expGained}`, label: 'Next Scene ➔', style: 'success' as const, emoji: '⏩' }]
-          : [{ id: `vn_conclude_${evt.id}_${expGained}`, label: 'Conclude Interlude & Claim Rewards ✨', style: 'success' as const, emoji: '🎁' }];
+        let updatedServant = { ...activeServant };
+        if (isFirstCompletion) {
+          if (!updatedServant.completedBondEvents) updatedServant.completedBondEvents = [];
+          updatedServant.completedBondEvents.push(evt.id);
+
+          if (expGain > 0) {
+            const res = addBondExpToServant(updatedServant, expGain);
+            updatedServant = res.updatedServant;
+          }
+
+          const updatedServants = master.servants.map(s => s.id === updatedServant.id ? updatedServant : s);
+          onUpdateMaster({
+            ...master,
+            saintQuartz: (master.saintQuartz || 0) + sqReward,
+            servants: updatedServants
+          });
+        }
+
+        const nextButtons = [
+          { id: 'vn_play_event', label: '📖 Play Interlude Again', style: 'primary' as const, emoji: '⏩' },
+          { id: 'vn_back_status', label: '📊 Bond Status', style: 'secondary' as const, emoji: '🌸' }
+        ];
 
         const updatedMsgData: DiscordMessage = {
           id: msgId || getNextId('bot_vn_interlude'),
@@ -7264,22 +7399,25 @@ export default function DiscordEmulator({
           timestamp: 'Just now',
           vnCardData: {
             speakerName: scene.speakerName || activeServant.template.name,
-            dialogueText: choice.response,
+            dialogueText: servantResponse,
             eventTitle: evt.title,
-            bondLevel: activeServant.bondLevel || 1,
+            bondLevel: updatedServant.bondLevel || 1,
             avatarUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
-            masterChoiceText: choice.text,
-            bondExpGain: expGained
+            masterChoiceText: pickedChoice?.text,
+            bondExpGain: expGain,
+            isConcluded: true
           },
           embed: {
-            title: `📖 VISUAL NOVEL INTERLUDE — ${evt.title.toUpperCase()}`,
+            title: `🌸 INTERLUDE COMPLETE — ${evt.title.toUpperCase()}`,
             description:
-              `💬 **[BOND INTERLUDE] ${scene.speakerName || activeServant.template.name}:**\n> ❝ ***${choice.response}*** ❞\n\n` +
-              `✨ **Master Choice Selected:** “${choice.text}” *(+${expGained} Bond EXP)*\n` +
-              `*Scene ${sceneIdx + 1}/${evt.scenes.length} • Servant Bond Lv. ${activeServant.bondLevel || 1}*`,
-            color: '#f59e0b',
+              `💬 **[BOND INTERLUDE] ${scene.speakerName || activeServant.template.name}:**\n> ❝ ***${servantResponse}*** ❞\n\n` +
+              (pickedChoice ? `✨ **Master Choice Selected:** “${pickedChoice.text}”\n\n` : '') +
+              (isFirstCompletion
+                ? `🎉 **REWARDS EARNED:**\n• **Bond EXP:** +${expGain} EXP\n• **Saint Quartz:** +💎 ${sqReward} SQ\n• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\``
+                : `ℹ️ **REPLAY MODE:** Rewards already claimed for this Interlude.\n• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\``),
+            color: isFirstCompletion ? '#ec4899' : '#64748b',
             thumbnailUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
-            footer: 'Visual Novel Bond Interlude Stage'
+            footer: 'Chaldea Visual Novel Interlude System'
           },
           components: {
             type: 'buttons',
