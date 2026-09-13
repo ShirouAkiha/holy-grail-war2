@@ -420,7 +420,7 @@ export function createApiKeyModal(provider: ApiProviderType) {
 
   const modelInput = new TextInputBuilder()
     .setCustomId('model_name_input')
-    .setLabel('Model Name (Optional - leave blank for default)')
+    .setLabel('Model (Optional - blank for default)')
     .setStyle(TextInputStyle.Short)
     .setPlaceholder(`Default: ${DEFAULT_PROVIDER_MODELS[provider]}`)
     .setRequired(false);
