@@ -259,7 +259,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           choicesRow.addComponents(
             new ButtonBuilder()
               .setCustomId(`vn_choice:${event.id}:0:${c.id}`)
-              .setLabel(`${idx + 1}. ${c.text.slice(0, 70)}`)
+              .setLabel(`${idx + 1}. ${c.text.length > 77 ? c.text.slice(0, 74) + '...' : c.text}`)
               .setStyle(ButtonStyle.Primary)
           );
         });
@@ -535,7 +535,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           choicesRow.addComponents(
             new ButtonBuilder()
               .setCustomId(`vn_choice:${event.id}:${nextSceneIdx}:${c.id}`)
-              .setLabel(`${idx + 1}. ${c.text.slice(0, 70)}`)
+              .setLabel(`${idx + 1}. ${c.text.length > 77 ? c.text.slice(0, 74) + '...' : c.text}`)
               .setStyle(ButtonStyle.Primary)
           );
         });

@@ -7296,7 +7296,7 @@ export default function DiscordEmulator({
         const actionButtons = hasChoices
           ? scene.choices!.map((c, idx) => ({
               id: `vn_choice:${evt.id}:${sceneIdx}:${c.id}`,
-              label: `${idx + 1}. “${c.text.slice(0, 24)}”`,
+              label: `${idx + 1}. ${c.text.length > 77 ? c.text.slice(0, 74) + '...' : c.text}`,
               style: 'primary' as const,
               emoji: '💬'
             }))
@@ -11546,22 +11546,27 @@ export default function DiscordEmulator({
 
                   {/* Button Actions */}
                   {msg.components.items && msg.components.items.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 w-full max-w-2xl mt-1">
                       {msg.components.items.map(btn => {
-                        let bg = 'bg-[#161616] hover:bg-[#222] text-white/80 border border-[#222]';
-                        if (btn.style === 'primary') bg = 'bg-[#111] hover:bg-[#161616] text-[#d4af37] border border-[#d4af37]/40';
-                        if (btn.style === 'success') bg = 'bg-[#111] hover:bg-[#161616] text-[#22c55e] border border-[#22c55e]/40';
-                        if (btn.style === 'danger') bg = 'bg-[#220000] hover:bg-[#330000] text-[#ef4444] border border-[#ef4444]/40';
+                        const isChoice = btn.id.startsWith('vn_choice') || btn.label.length > 28;
+                        let bg = 'bg-[#161616] hover:bg-[#222] text-white/90 border border-[#333]';
+                        if (btn.style === 'primary') bg = 'bg-[#1e1b4b]/90 hover:bg-[#2e2a72] text-[#38bdf8] border border-[#38bdf8]/50';
+                        if (btn.style === 'success') bg = 'bg-[#064e3b]/90 hover:bg-[#047857] text-[#34d399] border border-[#34d399]/50';
+                        if (btn.style === 'danger') bg = 'bg-[#450a0a]/90 hover:bg-[#7f1d1d] text-[#f87171] border border-[#f87171]/50';
 
                         return (
                           <button
                             key={btn.id}
                             disabled={btn.disabled}
                             onClick={() => handleButtonClick(btn.id, msg.id)}
-                            className={`px-3 py-1.5 rounded-sm text-xs font-mono uppercase tracking-wider font-semibold flex items-center gap-1.5 transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed ${bg}`}
+                            className={`rounded-md text-xs sm:text-sm text-left flex items-start gap-2 transition-all shadow-md active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed ${
+                              isChoice
+                                ? 'w-full py-2.5 px-3.5 whitespace-normal break-words leading-relaxed font-sans font-medium'
+                                : 'px-3.5 py-2 whitespace-nowrap font-mono uppercase tracking-wider font-semibold'
+                            } ${bg}`}
                           >
-                            {btn.emoji && <span>{btn.emoji}</span>}
-                            <span>{btn.label}</span>
+                            {btn.emoji && <span className="flex-shrink-0 text-sm mt-0.5">{btn.emoji}</span>}
+                            <span className="flex-1 min-w-0 break-words">{btn.label}</span>
                           </button>
                         );
                       })}
