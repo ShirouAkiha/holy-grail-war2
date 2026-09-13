@@ -625,7 +625,40 @@ export default function GrailWarSim({
 
           {/* TAB 1: PARTICIPANTS ROSTER */}
           {activeBoardTab === 'roster' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+            <div className="space-y-4">
+              {/* 🕯️ Top Church Overseer & 2h News Dispatches */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3.5 rounded-lg bg-gradient-to-r from-[#14080a] via-[#0f090d] to-[#0a0a0c] border border-amber-500/30 text-xs shadow-md">
+                <div className="flex items-start gap-2.5">
+                  <span className="text-base leading-none mt-0.5">🕯️</span>
+                  <div className="space-y-0.5">
+                    <div className="font-serif italic font-semibold text-amber-300 flex items-center gap-1.5">
+                      <span>Overseer&apos;s 24h Word (Father Kotomine)</span>
+                    </div>
+                    <p className="text-white/80 font-mono leading-relaxed line-clamp-2">
+                      &ldquo;{churchHomily?.monologue 
+                        ? (churchHomily.monologue.split('\n')[0].replace(/^[“"']|[”"']$/g, ''))
+                        : 'Rejoice, Masters. The leylines await your blood. Carve each other apart with haste.'}&rdquo;
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5 border-t md:border-t-0 md:border-l border-white/10 pt-2 md:pt-0 md:pl-3">
+                  <span className="text-base leading-none mt-0.5">📰</span>
+                  <div className="space-y-0.5">
+                    <div className="font-serif italic font-semibold text-purple-300 flex items-center gap-1.5">
+                      <span>2h Fuyuki News (Gas Leak Cover-Up)</span>
+                      <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-950 text-purple-200 border border-purple-500/30">
+                        {churchNews?.threatLevel || 'Moderate'} Threat
+                      </span>
+                    </div>
+                    <p className="text-white/80 font-mono leading-relaxed line-clamp-2">
+                      &ldquo;{churchNews?.gasLeakCoverStory || 'Fuyuki Public Safety Bureau reports ongoing underground industrial gas main inspections across Miyama District.'}&rdquo;
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
               {Object.values(grailWar.participants).map((p, idx) => {
                 const isUser = p.discordId === master.discordId;
                 const isSelected = selectedTargetMasterId === p.discordId;
@@ -762,6 +795,7 @@ export default function GrailWarSim({
                   </div>
                 );
               })}
+              </div>
             </div>
           )}
 

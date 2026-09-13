@@ -276,11 +276,28 @@ export function buildGrailWarHub(
       ? `${resolveDisplayName(latestCasualty.name, client)} struck down by Master ${resolveDisplayName(latestCasualty.slainByMasterId || 'Unknown', client).replace(/^@/, '')} (Cover-up: gas leak explosion)`
       : (deadCount > 0 ? `${deadCount} Master(s) permanently eliminated` : '*Zero casualties reported.*');
 
+    // 🕯️ 24H KOTOMINE HOMILY & 2H BREAKING NEWS AT THE TOP OF THE BOARD
+    const homily = war.latestChurchHomily;
+    const news = war.latestNewsBulletin;
+    const homilyQuote = homily?.monologue
+      ? (homily.monologue.split('\n')[0].replace(/^“|”$/g, '').slice(0, 150) + (homily.monologue.length > 150 ? '…' : ''))
+      : 'Rejoice, Masters. The leylines await your blood. Carve each other apart with haste.';
+    const newsStory = news?.gasLeakCoverStory
+      ? (news.gasLeakCoverStory.replace(/^“|”$/g, '').slice(0, 150) + (news.gasLeakCoverStory.length > 150 ? '…' : ''))
+      : (news?.headline || 'Miyama District gas line inspection in progress. Citizens advised to remain indoors.');
+
+    const churchNewsTopBlock =
+      `🕯️ **Overseer's 24h Word (Father Kotomine):**\n` +
+      `*“${homilyQuote}”*\n\n` +
+      `📰 **2h Fuyuki News (Gas Leak Cover-Up):**\n` +
+      `*“${newsStory}”*\n\n`;
+
     const embed = new EmbedBuilder()
       .setTitle(`🏆 ${war.title}`)
       .setDescription(
         `${statusHeader}\n\n` +
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        churchNewsTopBlock +
         `⚔️ **7 Masters Intelligence Roster:**\n${rosterLines.join('\n')}\n\n` +
         `💥 **Recent Combat & Casualty Highlights:**\n` +
         `• ⚔️ **Latest Battle:** ${latestBattleText}\n` +

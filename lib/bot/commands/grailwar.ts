@@ -176,13 +176,29 @@ function buildWarEmbed(war: HolyGrailWarSession, userParticipant?: any, lastMsg?
   const casualtiesCount = war.civilianCasualties?.length || 0;
   const leaksCount = war.leakedIntel?.length || 0;
 
+  const homily = war.latestChurchHomily;
+  const news = war.latestNewsBulletin;
+  const homilyQuote = homily?.monologue
+    ? (homily.monologue.split('\n')[0].replace(/^“|”$/g, '').slice(0, 150) + (homily.monologue.length > 150 ? '…' : ''))
+    : 'Rejoice, Masters. The leylines await your blood. Carve each other apart with haste.';
+  const newsStory = news?.gasLeakCoverStory
+    ? (news.gasLeakCoverStory.replace(/^“|”$/g, '').slice(0, 150) + (news.gasLeakCoverStory.length > 150 ? '…' : ''))
+    : (news?.headline || 'Miyama District gas line inspection in progress. Citizens advised to remain indoors.');
+
+  const churchNewsTopBlock =
+    '🕯️ **Overseer\'s 24h Word (Father Kotomine):**\n' +
+    '*“' + homilyQuote + '”*\n\n' +
+    '📰 **2h Fuyuki News (Gas Leak Cover-Up):**\n' +
+    '*“' + newsStory + '”*\n\n';
+
   const embed = new EmbedBuilder()
     .setTitle('🏆 ' + war.title)
     .setDescription(
-      '**Status:** ' + war.status.toUpperCase() + ' | **Alive Masters:** **' + aliveParticipants.length + '/7** | **Civilian Casualties:** **' + casualtiesCount + '**\\n\\n' +
-      (lastMsg ? '📢 **Action Outcome:**\\n' + lastMsg + '\\n\\n' : '') +
-      '⚔️ **7 Masters Intelligence Roster:**\\n' + rosterList + '\\n\\n' +
-      '📜 **War Chronicle & Skirmishes (' + (war.eventLogs || []).length + ' Events | ' + leaksCount + ' Leaks):**\\n' + (recentEvents || '*The war has begun. No city skirmishes recorded yet.*') + '\\n\\n' +
+      '**Status:** ' + war.status.toUpperCase() + ' | **Alive Masters:** **' + aliveParticipants.length + '/7** | **Civilian Casualties:** **' + casualtiesCount + '**\n\n' +
+      (lastMsg ? '📢 **Action Outcome:**\n' + lastMsg + '\n\n' : '') +
+      churchNewsTopBlock +
+      '⚔️ **7 Masters Intelligence Roster:**\n' + rosterList + '\n\n' +
+      '📜 **War Chronicle & Skirmishes (' + (war.eventLogs || []).length + ' Events | ' + leaksCount + ' Leaks):**\n' + (recentEvents || '*The war has begun. No city skirmishes recorded yet.*') + '\n\n' +
       '*Tactical notice: To inspect your private Master stats, Servant parameters, and workshop defenses confidentially, use /profile or click "Secret Profile" below.*'
     )
     .setColor(0xd4af37);

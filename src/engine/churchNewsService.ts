@@ -38,17 +38,9 @@ export function generateCanonicalKotomineHomily(war: HolyGrailWarSession): Churc
     (l.text && (l.text.includes('clash') || l.text.includes('ambush') || l.text.includes('eliminated') || l.text.includes('casualty')))
   );
 
-  const monologue = `Rejoice, boys and girls. Another twenty-four hours have passed over our beloved Fuyuki City, and once more, the leylines are soaked in the sweet, fragrant tears of human ambition.
+  const monologue = `Rejoice, Masters of Fuyuki. Another day ends with ${totalCasualties} soul(s) offered to the leylines. ${fallenMasters.length > 0 ? `Those who fell (${fallenMasters.map(f => f.username).join(', ')}) have returned their cores to the Grail.` : `All ${livingMasters.length} of you miraculously still cling to your mortal shells.`} ${asylumMasters.length > 0 ? `To those cowering in my sanctuary (${asylumMasters.map(a => a.username).join(', ')}): enjoy your fleeting peace.` : `None have yet knelt for sanctuary.`} Carve each other apart with haste—I shall be watching from the bell tower, savoring every drop of your despair.`;
 
-Look upon yourselves. Seven souls entered this ritual with grand vows and sanctimonious prayers, yet what has your struggle yielded? We count ${totalCasualties} soul${totalCasualties === 1 ? '' : 's'} dissolved into the ether. ${fallenMasters.length > 0 ? `Those who have fallen—${fallenMasters.map(f => f.username).join(', ')}—have returned their spiritual cores to the Greater Grail.` : `Miraculously, all seven of you still cling to your fragile mortal shells, scurrying through the shadows like frightened mice.`}
-
-${asylumMasters.length > 0 ? `Some among you (${asylumMasters.map(a => a.username).join(', ')}) have sought sanctuary within the cold stone walls of this Holy Church. How touching it is that those who wield weapons of myth would run to the altar of God to plead for peace. I shall grant you your shelter, of course... for even cowardice has its own tragic charm.` : `None have yet dared to kneel before this altar for sanctuary. Your pride is commendable, if utterly foolish.`}
-
-${rogueHeretics.length > 0 ? `And to our dear rogue heretics—know that the Church watches with great amusement. Spilling innocent blood under the night sky only accelerates your own demise.` : `The secrecy of our craft barely endures the weight of your reckless duels.`}
-
-Fight on, Masters of Fuyuki. Carve each other apart in the pursuit of a cup that offers no salvation. I, Father Kotomine, shall be watching from the bell tower, savoring every exquisite drop of your despair.`;
-
-  const keyEvents = battleLogs.slice(0, 4).map(l => typeof l === 'string' ? l : l.text);
+  const keyEvents = battleLogs.slice(0, 3).map(l => typeof l === 'string' ? l : l.text);
   if (keyEvents.length === 0) {
     keyEvents.push('The leylines remain quiet under the watchful eye of the Holy Church.');
   }
@@ -57,8 +49,8 @@ Fight on, Masters of Fuyuki. Carve each other apart in the pursuit of a cup that
     id: `homily_${Date.now()}`,
     timestamp: Date.now(),
     periodHours: 24,
-    title: '🕯️ The Overseer’s 24-Hour Homily | Father Kotomine’s Soliloquy',
-    subtitle: 'A Theological Reflection on the Carnage & Desires of Fuyuki’s Masters',
+    title: '🕯️ Overseer’s 24h Word | Father Kotomine',
+    subtitle: 'Theological Reflection on the Desires of Fuyuki’s Masters',
     monologue,
     source: 'canon_heuristic',
     statsSummary: {
@@ -132,18 +124,18 @@ CONTEXT OF THE LAST 24 HOURS IN FUYUKI:
 ${battleSummaries || 'Quiet shadows across Fuyuki leylines.'}
 
 KOTOMINE KIREI ROLEPLAY GUIDELINES:
-- Deliver a theatrical, profound, chilling, and darkly humorous monologue in 3 to 4 paragraphs.
-- Tone: Cold, liturgical, deeply articulate, philosophical schadenfreude. You relish the absurdity of human ambition and the exquisite spectacle of their suffering.
-- Iconic traits: Use phrases like "Rejoice, Master" or "Yorokobe, shounen", reference eating spicy Mapo tofu in the church pews, the scent of consecrated incense, the futility of human wishes, and your sacred duty as neutral arbitrator.
-- Directly mock or acknowledge the specific events, who fell, who is hiding in your church for sanctuary, and the recklessness of the rogue heretics.
-- DO NOT break character. Return a valid JSON object matching the exact schema below.
+- Deliver a concise, biting, theatrical, and darkly humorous monologue in 1 to 2 short paragraphs (under 80 words total).
+- Tone: Cold, liturgical, deeply articulate, philosophical schadenfreude. You relish the absurdity of human ambition and the spectacle of their suffering.
+- Iconic traits: Use phrases like "Rejoice, Master" or "Yorokobe, shounen", reference spicy Mapo tofu, the scent of consecrated incense, and your role as arbitrator.
+- Keep it punchy and quick to read. DO NOT write a wall of text.
+- Return a valid JSON object matching the exact schema below.
 
 JSON Output Schema:
 {
-  "title": "A chilling, evocative homily title (e.g., 'The Overseer\\'s 24-Hour Homily | On the Vanity of Covenants')",
-  "subtitle": "A theological subtitle framing the day\\'s events",
-  "monologue": "The complete, multi-paragraph in-character monologue from Kotomine Kirei.",
-  "keyEvents": ["3 to 5 concise bullet point summaries of notable 24h events with Father Kotomine\\'s wry commentary"]
+  "title": "A short, evocative homily title (under 8 words)",
+  "subtitle": "A concise theological subtitle (under 12 words)",
+  "monologue": "The concise 1-2 paragraph monologue from Kotomine Kirei (under 80 words).",
+  "keyEvents": ["2 to 3 very brief bullet points (under 15 words each) with Kotomine's cynical remarks"]
 }`;
 
   try {
@@ -219,16 +211,14 @@ JSON Output Schema:
 export function generateCanonicalNewsBulletin(war: HolyGrailWarSession): FuyukiNewsBulletin {
   const participants = Object.values(war.participants || {});
   const rogueHeretics = participants.filter(p => (p.innocentKills || 0) >= 10 || p.bountyActive);
-  const recentLogs = (war.eventLogs || []).slice(0, 5);
+  const recentLogs = (war.eventLogs || []).slice(0, 3);
 
-  const headline = '🚨 FUYUKI MUNICIPAL DISPATCH: Substation Surge & Pressurized Gas Line Fracture in Miyama Town';
-  const gasLeakCoverStory = 'Fuyuki City Public Safety Bureau attributes localized seismic tremors, thunderous blue flashes, and shattered asphalt to an unexpected underground industrial gas main resonance and aging electrical transformer failure. Citizens are advised to stay indoors.';
+  const headline = '🚨 MUNICIPAL ALERT: Substation Surge & Pressurized Gas Line Fracture';
+  const gasLeakCoverStory = 'Fuyuki Public Safety Bureau attributes localized tremors and blue sparks in Miyama District to an underground gas pipe rupture and aged electrical transformer surge. Citizens are advised to stay indoors.';
   
-  const content = `Emergency service sirens echoed across the Miyama commercial district following what authorities describe as an unprecedented sequence of underground utility ruptures. Eyewitness reports claiming to have seen "armored specters" or "golden arrows cleaving the night sky" have been officially dismissed by municipal representatives as mass optical illusions caused by concentrated vaporized hydrocarbon gas fumes.
+  const content = `Emergency crews have contained the localized pressure spike. Reports of armored apparitions or sonic booms are confirmed to be mass optical illusions from concentrated vapor fumes.`;
 
-The Holy Church Public Liaison Office reiterates that the city leylines remain fully stabilized, and all residents should ignore superstitious rumors. Meanwhile, civil defense patrols are monitoring key intersections.`;
-
-  const bulletinPoints = recentLogs.map(l => `• [Tactical Dispatch]: ${l.text.replace(/\*\*/g, '')}`);
+  const bulletinPoints = recentLogs.map(l => `• [Tactical Dispatch]: ${l.text.replace(/\*\*/g, '').slice(0, 70)}`);
   if (bulletinPoints.length === 0) {
     bulletinPoints.push('• [Municipal Status]: Low ambient mana fluctuations detected across Fuyuki sectors.');
   }
@@ -243,7 +233,7 @@ The Holy Church Public Liaison Office reiterates that the city leylines remain f
     timestamp: Date.now(),
     periodHours: 2,
     headline,
-    broadcastChannel: '📻 Fuyuki Emergency Radio & Church Leyline Relay',
+    broadcastChannel: '📻 Fuyuki Emergency Radio (FM 84.7)',
     content,
     gasLeakCoverStory,
     bulletinPoints,
@@ -305,19 +295,19 @@ ${logContext || 'Quiet night across the city sectors.'}
 - Active Church Extermination Bounties: ${rogueHeretics.length} Wanted Rogue Heretics
 
 ROLEPLAY GUIDELINES:
-- Output a dramatic, satirical, and immersive news bulletin report.
+- Output a dramatic, concise, and satirical news bulletin report (under 60 words total).
 - Assign an appropriate Threat Level ('Low', 'Moderate', 'Severe', or 'Catastrophic').
-- Give an outrageous yet deadpan "Official Gas Leak Cover Story".
-- Write a 2-paragraph news story detailing the cover-up and advising "citizens" on what safety measures to take.
+- Give an outrageous yet deadpan 1-2 sentence "Official Gas Leak Cover Story" (under 35 words).
+- Write a short 1-paragraph news report (under 40 words) advising "citizens" on safety measures.
 - Output valid JSON matching the exact schema below.
 
 JSON Output Schema:
 {
-  "headline": "Punchy all-caps breaking headline (e.g., '🚨 BREAKING: Shinto Industrial District Gas Pressure Spike & Transit Halt')",
-  "broadcastChannel": "📻 Fuyuki Municipal Radio & Church Leyline Relay",
-  "gasLeakCoverStory": "The specific mundane cover story explaining the recent magical clashes.",
-  "content": "A 2-paragraph official city news report covering up the skirmishes and advising residents.",
-  "bulletinPoints": ["3 to 4 bullet points detailing recent sector events disguised as city updates"],
+  "headline": "Punchy all-caps breaking headline (under 8 words)",
+  "broadcastChannel": "📻 Fuyuki Emergency Radio (FM 84.7)",
+  "gasLeakCoverStory": "A concise 1-2 sentence mundane gas leak cover story explaining recent magical clashes.",
+  "content": "A short 1-paragraph city advisory covering up the skirmishes (under 40 words).",
+  "bulletinPoints": ["2 to 3 very brief bullet points (under 12 words each) disguised as city updates"],
   "threatLevel": "Low" | "Moderate" | "Severe" | "Catastrophic"
 }`;
 
