@@ -71,7 +71,11 @@ import {
   leaveChurchSanctuary
 } from '../engine/grailwar';
 import { buildProfileEmbed, buildProfileButtons } from './profile';
-import { buildChurchEmbed, buildChurchButtons } from './church';
+import { buildChurchEmbed, buildChurchButtons, buildHomilyEmbed, buildNewsEmbed } from './church';
+import { 
+  generateKotomine24hHomily, 
+  generateFuyuki2hNewsBulletin 
+} from '../engine/churchNewsService';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -92,7 +96,7 @@ export const data = new SlashCommandBuilder()
         { name: '🏰 Workshop Defenses & Wards', value: 'defenses' },
         { name: '🦅 Familiar Recon Network', value: 'familiars' },
         { name: '🕸️ Bounded Field Traps', value: 'traps' },
-        { name: '⛪ Fuyuki Church Sanctuary', value: 'church' }
+        { name: '⛪ Fuyuki Church Sanctuary & Homily', value: 'church' }
       )
   );
 
@@ -522,6 +526,8 @@ export function buildGrailWarHub(
 
   } else if (category === 'church') {
     const isUnderSanctuary = !!(userParticipant?.inSanctuary || userParticipant?.inChurchSanctuary);
+    const hasHomily = !!war.latestChurchHomily;
+    const hasNews = !!war.latestNewsBulletin;
     const embed = new EmbedBuilder()
       .setTitle('⛪ Fuyuki Church Sanctuary (Father Kotomine)')
       .setDescription(
@@ -531,7 +537,10 @@ export function buildGrailWarHub(
         `• **Your Status:** ${isUnderSanctuary ? '🕊️ **UNDER CHURCH ASYLUM** *(Immune to ambushes & unable to attack)*' : '⚔️ **ACTIVE COMBATANT** *(Can engage in skirmishes)*'}\n` +
         `• **Immunity:** Masters residing within the Church cannot be ambushed or tracked by familiars.\n` +
         `• **Restriction:** While under sanctuary, you cannot launch ambushes, leak intel, or duel rivals.\n\n` +
-        `*Choose an action below to claim or renounce church asylum.*`
+        `🕯️ **CHURCH & MUNICIPAL INTELLIGENCE RELAY:**\n` +
+        `• 📜 **24h Kotomine Homily:** ${war.latestChurchHomily?.title ? `*“${war.latestChurchHomily.title}”* (Cached)` : '*(Ready to deliver via Gemini AI)*'}\n` +
+        `• 📰 **2h Fuyuki Breaking News:** ${war.latestNewsBulletin?.headline ? `*“${war.latestNewsBulletin.headline}”* (Cached)` : '*(Ready to broadcast via Gemini AI)*'}\n\n` +
+        `*Click the buttons below to claim sanctuary, or read Father Kotomine’s 24h Homily and the 2h Breaking News Bulletin:*`
       )
       .setColor(isUnderSanctuary ? 0x22c55e : 0xd4af37)
       .setFooter({ text: 'Fuyuki Church Neutral Grounds • Holy Grail War Supervisor' });
@@ -606,7 +615,9 @@ export function buildGrailWarHub(
     const isUnderSanctuary = !!(userParticipant?.inSanctuary || userParticipant?.inChurchSanctuary);
     const actionButtonsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('church_claim_asylum').setLabel('Enter Sanctuary').setEmoji('🕊️').setStyle(ButtonStyle.Success).setDisabled(!!isUnderSanctuary),
-      new ButtonBuilder().setCustomId('church_leave_asylum').setLabel('Depart Sanctuary').setEmoji('🚪').setStyle(ButtonStyle.Danger).setDisabled(!isUnderSanctuary)
+      new ButtonBuilder().setCustomId('church_leave_asylum').setLabel('Depart Sanctuary').setEmoji('🚪').setStyle(ButtonStyle.Danger).setDisabled(!isUnderSanctuary),
+      new ButtonBuilder().setCustomId('church_action_homily').setLabel('24h Homily 📜').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('church_action_news').setLabel('2h Fuyuki News 📰').setStyle(ButtonStyle.Secondary)
     );
     components.push(actionButtonsRow);
   }
@@ -820,6 +831,24 @@ export function attachGrailWarCollector(
         war = res.updatedWar;
         actionOutcome = res.message;
         await saveMaster(master);
+      } else if (i.customId === 'church_action_homily') {
+        const homily = await generateKotomine24hHomily(war, false);
+        const embed = buildHomilyEmbed(homily);
+        const churchComps = buildChurchButtons(war.participants[i.user.id]);
+        await i.update({
+          embeds: [embed],
+          components: churchComps
+        });
+        return;
+      } else if (i.customId === 'church_action_news') {
+        const news = await generateFuyuki2hNewsBulletin(war, false);
+        const embed = buildNewsEmbed(news);
+        const churchComps = buildChurchButtons(war.participants[i.user.id]);
+        await i.update({
+          embeds: [embed],
+          components: churchComps
+        });
+        return;
       }
       // CROSS-HUB SHORTCUTS
       else if (i.customId === 'war_link_inventory') {
