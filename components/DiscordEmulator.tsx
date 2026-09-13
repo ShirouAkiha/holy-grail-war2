@@ -250,74 +250,67 @@ function DiscordVNCard({
   const cleanQuote = (dialogueText || '').replace(/^["“]/, '').replace(/["”]$/, '').trim();
 
   return (
-    <div className="mt-2.5 relative w-full max-w-2xl rounded-sm overflow-hidden border border-slate-800 bg-[#080c16] text-slate-100 shadow-2xl font-sans">
-      {/* Dark Grid Background Effect (Exact matching Picture 1) */}
-      <div
-        className="absolute inset-0 opacity-20 pointer-events-none"
-        style={{
-          backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px)`,
-          backgroundSize: '24px 24px'
-        }}
+    <div className="mt-2.5 relative w-full max-w-2xl aspect-[16/9] rounded-sm overflow-hidden border border-slate-800 bg-[#0c1019] text-slate-100 shadow-2xl font-sans flex flex-col justify-between">
+      {/* LAYER 1: Full-Bleed Background Layer */}
+      <img
+        src="https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp"
+        alt="Visual Novel Scene Background"
+        className="absolute inset-0 w-full h-full object-cover filter contrast-105"
       />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
 
-      {/* Top Banner Area with Stage Artwork Image & Character Sprite */}
-      <div className="relative w-full h-44 sm:h-52 overflow-hidden flex justify-end items-end bg-gradient-to-br from-[#060a12] via-[#091020] to-[#0d162d]">
-        {/* Stage background texture */}
-        <img
-          src="https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp"
-          alt="Stage Background"
-          className="absolute inset-0 w-full h-full object-cover opacity-35 mix-blend-luminosity filter contrast-125"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#080c16] via-transparent to-black/40" />
-
-        {/* Character Portrait Right-Aligned (Matching Picture 1) */}
-        {avatarUrl && (
-          <div className="relative h-[95%] z-10 mr-6 sm:mr-10 flex items-end">
-            <div className="absolute inset-0 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
-            <img
-              src={avatarUrl}
-              alt={speakerName}
-              className="relative h-full w-auto object-contain object-bottom filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.95)]"
-              referrerPolicy="no-referrer"
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Choice Notification Row if choice was selected */}
-      {masterChoiceText && (
-        <div className="relative z-10 px-5 py-2 bg-slate-900/95 border-t border-b border-amber-500/30 flex items-center justify-between text-xs font-mono">
-          <span className="text-amber-300 font-semibold truncate">✨ Master Choice: “{masterChoiceText}”</span>
-          {bondExpGain && <span className="text-emerald-400 font-bold whitespace-nowrap">+{bondExpGain} EXP</span>}
+      {/* LAYER 2: Character Sprite Layer (Right-aligned, 85% height, anchored to bottom) */}
+      {avatarUrl && (
+        <div className="absolute right-6 sm:right-12 bottom-0 h-[85%] max-w-[45%] z-10 flex items-end">
+          <img
+            src={avatarUrl}
+            alt={speakerName}
+            className="h-full w-auto object-contain object-bottom filter drop-shadow-[0_16px_32px_rgba(0,0,0,0.95)]"
+            referrerPolicy="no-referrer"
+          />
         </div>
       )}
 
-      {/* Lower Dialogue Section (Exact Picture 1 Layout) */}
-      <div className="relative z-10 p-5 sm:p-6 border-t border-slate-800 bg-[#080c16]/95 backdrop-blur-md space-y-3">
-        {/* Speaker Name Header with Box Symbol: ☐ SPEAKER NAME */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-white text-base sm:text-lg font-bold font-serif tracking-wider">
-              ☐ {speakerName.toUpperCase()}
-            </span>
-          </div>
-          {isConcluded && (
-            <span className="text-xs px-2.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-mono font-bold">
-              CONCLUDED ✨
-            </span>
-          )}
+      {/* LAYER 3: Top-Left HUD (Phone / Date Widget e.g. "8/13 (FRI)") */}
+      <div className="relative z-20 m-4 sm:m-5 px-3.5 py-2 w-48 sm:w-56 bg-slate-900/80 backdrop-blur-sm border border-slate-400/30 rounded-xs shadow-lg">
+        <div className="flex items-center justify-between text-[11px] text-slate-300 font-sans">
+          <span>8/13 <strong className="text-slate-200">(FRI)</strong></span>
+          <span className="text-xs">🔋 📶</span>
         </div>
+      </div>
 
-        {/* Dialogue Quote in Clean White Serif Font */}
-        <p className="text-sm sm:text-base text-slate-100 font-serif leading-relaxed drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-          “{cleanQuote}”
+      {/* LAYER 4: Dialogue Box / HUD Layer (Top) */}
+      <div className="relative z-20 w-full bg-[#0c1019]/75 backdrop-blur-md border-t border-slate-200/40 px-5 py-4 sm:px-8 sm:py-5 flex flex-col justify-between min-h-[30%]">
+        {/* Choice Notification Badge */}
+        {masterChoiceText && (
+          <div className="mb-2 text-xs font-mono text-amber-300 flex items-center justify-between">
+            <span className="truncate">✨ Choice: “{masterChoiceText}”</span>
+            {bondExpGain && <span className="text-emerald-400 font-bold ml-2">+{bondExpGain} EXP</span>}
+          </div>
+        )}
+
+        {/* Dialogue Text with End-of-line Gear Indicator */}
+        <p className="text-sm sm:text-base md:text-lg text-slate-100 font-serif leading-relaxed drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)]">
+          “{cleanQuote}” <span className="inline-block text-slate-300 font-sans opacity-90 animate-spin-slow">⚙</span>
         </p>
 
-        {/* Bottom Right Subtitle Footer: SPEAKER'S RESOLVE | ☐ BOND LVL X/10 */}
-        <div className="pt-2 flex justify-end items-center border-t border-slate-800/80 text-[11px] font-mono tracking-widest text-slate-400">
-          <span className="uppercase">
-            {eventTitle ? eventTitle.toUpperCase() : `${speakerName.toUpperCase()}'S RESOLVE`} | ☐ BOND LVL {bondLevel}/10
-          </span>
+        {/* Bottom Control Prompts & Speaker Name Bracket Tag */}
+        <div className="mt-3 pt-2 border-t border-slate-700/50 flex items-center justify-between text-[11px] font-mono text-slate-400">
+          <div className="flex items-center gap-2">
+            <span className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-[10px] text-white font-bold">F3</span>
+            <span className="text-slate-300">AUTO</span>
+            <span className="text-slate-600">|</span>
+            <span className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-[10px] text-white font-bold">E</span>
+            <span className="text-slate-300">SKIP</span>
+          </div>
+
+          <div className="text-center font-serif text-slate-200 text-xs sm:text-sm tracking-widest font-bold">
+            ────────── {speakerName.toUpperCase()} ──────────
+          </div>
+
+          <div className="text-right text-[10px] text-slate-400 hidden sm:block">
+            LVL {bondLevel}/10 {isConcluded ? '✨ CONCLUDED' : ''}
+          </div>
         </div>
       </div>
     </div>

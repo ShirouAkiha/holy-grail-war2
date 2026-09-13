@@ -5948,230 +5948,240 @@ export interface VisualNovelCardOptions {
 /**
  * 6. Render Fate Visual Novel Dialogue Screen (Classic FSN Style, Mobile & Desktop Optimized)
  */
+/**
+ * Render a production-grade 16:9 Visual Novel Stage Canvas Image matching Steins;Gate HUD standards.
+ * Layering Architecture (Bottom to Top):
+ * 1. Background Layer (Base 1280x720 object-fit: cover)
+ * 2. Character Sprite Layer (Middle - Prominent 85% height figure anchored to bottom right y = 720)
+ * 3. Top-Left HUD (Phone / Date Widget e.g. "8/13 (FRI)")
+ * 4. Dialogue Box / HUD Layer (Top - Semi-transparent glass overlay, bottom-centered name bracket, Steins;Gate gear indicator, [F3] AUTO | [E] SKIP control hints)
+ */
 export async function renderVisualNovelCard(
   opts: VisualNovelCardOptions
 ): Promise<Buffer> {
-  const width = 1000;
-  const height = 560;
+  const width = 1280;
+  const height = 720;
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  // 1. Unified Steins;Gate Dark Obsidian Canvas Base (0 to 1000 width, 0 to 560 height)
-  const bgGrad = ctx.createLinearGradient(0, 0, width, height);
-  bgGrad.addColorStop(0, '#050813');
-  bgGrad.addColorStop(0.35, '#0a1022');
-  bgGrad.addColorStop(0.75, '#0d152a');
-  bgGrad.addColorStop(1, '#060914');
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, width, height);
+  // ==========================================
+  // LAYER 1: BACKGROUND LAYER (BASE)
+  // ==========================================
+  const defaultBgUrl = 'https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp';
+  const bgUrlToUse = (opts.backgroundImageUrl && opts.backgroundImageUrl !== opts.servantAvatarUrl)
+    ? opts.backgroundImageUrl
+    : defaultBgUrl;
 
-  // Optional background texture (rendered subtly full-bleed if provided)
-  if (opts.backgroundImageUrl && opts.backgroundImageUrl !== opts.servantAvatarUrl) {
+  let bgDrawn = false;
+  if (bgUrlToUse) {
     try {
-      const customBg = await loadImage(opts.backgroundImageUrl);
-      if (customBg) {
-        ctx.save();
-        ctx.globalAlpha = 0.22;
-        ctx.drawImage(customBg, 0, 0, width, height);
-        ctx.restore();
-      }
-    } catch {
-      // Ignore background texture failure
-    }
-  }
+      const bgImg = await loadImage(bgUrlToUse);
+      if (bgImg && bgImg.width && bgImg.height) {
+        // Full-bleed object-fit: cover logic
+        const imgRatio = bgImg.width / bgImg.height;
+        const canvasRatio = width / height;
+        let drawW = width;
+        let drawH = height;
+        let drawX = 0;
+        let drawY = 0;
 
-  // Glowing Celestial Halo & Ambient Radial Light (Top Right)
-  ctx.save();
-  const moonGrad = ctx.createRadialGradient(780, 110, 10, 780, 110, 320);
-  moonGrad.addColorStop(0, 'rgba(245, 158, 11, 0.22)');
-  moonGrad.addColorStop(0.5, 'rgba(139, 92, 246, 0.12)');
-  moonGrad.addColorStop(1, 'rgba(6, 9, 20, 0)');
-  ctx.fillStyle = moonGrad;
-  ctx.beginPath();
-  ctx.arc(780, 110, 320, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Fine Crosshatch Grid Pattern Overlay
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.045)';
-  ctx.lineWidth = 1;
-  for (let x = 0; x < width; x += 24) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, height);
-    ctx.stroke();
-  }
-  for (let y = 0; y < height; y += 24) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(width, y);
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // 2. Character Artwork (Proportional scaling preserving natural aspect ratio)
-  if (opts.servantAvatarUrl) {
-    try {
-      const portraitImg = await loadImage(opts.servantAvatarUrl);
-      if (portraitImg) {
-        const imgW = portraitImg.width || 1;
-        const imgH = portraitImg.height || 1;
-        const aspect = imgW / imgH;
-
-        // Bounding limits in top stage region (y: 10..310, x: 420..980)
-        const maxW = 540;
-        const maxH = 290;
-
-        let targetW = maxW;
-        let targetH = targetW / aspect;
-
-        if (targetH > maxH) {
-          targetH = maxH;
-          targetW = targetH * aspect;
+        if (imgRatio > canvasRatio) {
+          drawW = height * imgRatio;
+          drawX = (width - drawW) / 2;
+        } else {
+          drawH = width / imgRatio;
+          drawY = (height - drawH) / 2;
         }
 
-        const px = width - targetW - 20;
-        const py = 12 + (maxH - targetH) / 2;
-
-        ctx.save();
-        // Atmospheric drop shadow behind artwork card
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
-        ctx.shadowBlur = 25;
-
-        // Clip to rounded frame to prevent hard block edges
-        ctx.beginPath();
-        ctx.roundRect(px, py, targetW, targetH, 6);
-        ctx.clip();
-
-        ctx.drawImage(portraitImg, px, py, targetW, targetH);
-        ctx.restore();
-
-        // Metallic Amber Border around character artwork
-        ctx.save();
-        ctx.strokeStyle = 'rgba(217, 119, 6, 0.55)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.roundRect(px, py, targetW, targetH, 6);
-        ctx.stroke();
-        ctx.restore();
+        ctx.drawImage(bgImg, drawX, drawY, drawW, drawH);
+        bgDrawn = true;
       }
     } catch {
-      // Ignore sprite load error gracefully
+      bgDrawn = false;
     }
   }
 
-  // 3. Steins;Gate Visual Novel Dialogue Box (Lower ~40% Lens)
-  const overlayX = 20;
-  const overlayY = 320;
-  const overlayW = 960;
-  const overlayH = 220;
+  if (!bgDrawn) {
+    // Steins;Gate City Skyline Sepia-Golden Gradient Fallback
+    const bgGrad = ctx.createLinearGradient(0, 0, width, height);
+    bgGrad.addColorStop(0, '#1c150e');
+    bgGrad.addColorStop(0.4, '#36281b');
+    bgGrad.addColorStop(0.8, '#211810');
+    bgGrad.addColorStop(1, '#0e0b07');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, width, height);
 
+    // Subtle atmospheric grid lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < width; x += 32) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+    for (let y = 0; y < height; y += 32) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+    }
+  }
+
+  // Subtle atmospheric edge vignette
   ctx.save();
-  // Obsidian Glass Lens Base
-  const overlayGrad = ctx.createLinearGradient(0, overlayY, 0, overlayY + overlayH);
-  overlayGrad.addColorStop(0, 'rgba(6, 10, 18, 0.92)');
-  overlayGrad.addColorStop(1, 'rgba(10, 14, 26, 0.97)');
-  ctx.fillStyle = overlayGrad;
+  const vignetteGrad = ctx.createRadialGradient(
+    width / 2, height / 2, Math.min(width, height) * 0.4,
+    width / 2, height / 2, Math.max(width, height) * 0.7
+  );
+  vignetteGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vignetteGrad.addColorStop(1, 'rgba(0, 0, 0, 0.38)');
+  ctx.fillStyle = vignetteGrad;
+  ctx.fillRect(0, 0, width, height);
+  ctx.restore();
+
+  // ==========================================
+  // LAYER 2: CHARACTER SPRITE LAYER (MIDDLE)
+  // ==========================================
+  if (opts.servantAvatarUrl) {
+    try {
+      const spriteImg = await loadImage(opts.servantAvatarUrl);
+      if (spriteImg && spriteImg.width && spriteImg.height) {
+        const aspect = spriteImg.width / spriteImg.height;
+
+        // Target Scale: Prominent half-body / 3/4-body sprite, roughly 85% of total canvas height (~612px)
+        const maxSpriteH = Math.floor(height * 0.85); // 612px
+        const maxSpriteW = Math.floor(width * 0.48);  // 614px
+
+        let spriteH = maxSpriteH;
+        let spriteW = spriteH * aspect;
+
+        if (spriteW > maxSpriteW) {
+          spriteW = maxSpriteW;
+          spriteH = spriteW / aspect;
+        }
+
+        // Anchor sprite to the bottom right of the canvas (x ≈ 0.58 to 0.65, resting at bottom edge y = 720)
+        const spriteX = width * 0.58 + (maxSpriteW - spriteW) / 2;
+        const spriteY = height - spriteH;
+
+        ctx.save();
+        // Drop shadow for sprite figure
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+        ctx.shadowBlur = 30;
+        ctx.shadowOffsetY = 10;
+
+        ctx.drawImage(spriteImg, spriteX, spriteY, spriteW, spriteH);
+        ctx.restore();
+      }
+    } catch {
+      // Ignore sprite load failure
+    }
+  }
+
+  // ==========================================
+  // LAYER 3: TOP-LEFT HUD (PHONE / DATE WIDGET)
+  // ==========================================
+  ctx.save();
+  const hudX = 40;
+  const hudY = 30;
+  const hudW = 220;
+  const hudH = 65;
+
+  // Semi-transparent dark slate panel
+  ctx.fillStyle = 'rgba(35, 45, 60, 0.78)';
   ctx.beginPath();
-  ctx.roundRect(overlayX, overlayY, overlayW, overlayH, 4);
+  ctx.roundRect(hudX, hudY, hudW, hudH, 3);
   ctx.fill();
 
-  // Golden / Amber Metallic Double Border Frame
-  ctx.strokeStyle = '#d97706';
-  ctx.lineWidth = 2.5;
+  // Sleek subtle border highlight
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.roundRect(overlayX, overlayY, overlayW, overlayH, 4);
+  ctx.roundRect(hudX, hudY, hudW, hudH, 3);
   ctx.stroke();
 
-  ctx.strokeStyle = 'rgba(254, 240, 138, 0.4)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.roundRect(overlayX + 3, overlayY + 3, overlayW - 6, overlayH - 6, 3);
-  ctx.stroke();
+  // Battery & Signal Indicator Icons (Top Right of Widget)
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.font = '12px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('🔋 📶', hudX + hudW - 12, hudY + 20);
 
-  // Corner Filigree Brackets (Steins;Gate UI aesthetic)
-  const cornerLen = 14;
-  ctx.strokeStyle = '#fbbf24';
-  ctx.lineWidth = 2;
-
-  // Top-Left Corner Bracket
-  ctx.beginPath();
-  ctx.moveTo(overlayX + 4, overlayY + 4 + cornerLen);
-  ctx.lineTo(overlayX + 4, overlayY + 4);
-  ctx.lineTo(overlayX + 4 + cornerLen, overlayY + 4);
-  ctx.stroke();
-
-  // Top-Right Corner Bracket
-  ctx.beginPath();
-  ctx.moveTo(overlayX + overlayW - 4 - cornerLen, overlayY + 4);
-  ctx.lineTo(overlayX + overlayW - 4, overlayY + 4);
-  ctx.lineTo(overlayX + overlayW - 4, overlayY + 4 + cornerLen);
-  ctx.stroke();
-
-  // Bottom-Left Corner Bracket
-  ctx.beginPath();
-  ctx.moveTo(overlayX + 4, overlayY + overlayH - 4 - cornerLen);
-  ctx.lineTo(overlayX + 4, overlayY + overlayH - 4);
-  ctx.lineTo(overlayX + 4 + cornerLen, overlayY + overlayH - 4);
-  ctx.stroke();
-
-  // Bottom-Right Corner Bracket
-  ctx.beginPath();
-  ctx.moveTo(overlayX + overlayW - 4 - cornerLen, overlayY + overlayH - 4);
-  ctx.lineTo(overlayX + overlayW - 4, overlayY + overlayH - 4);
-  ctx.lineTo(overlayX + overlayW - 4, overlayY + overlayH - 4 - cornerLen);
-  ctx.stroke();
-  ctx.restore();
-
-  // 4. Speaker Name Header: ☐ SPEAKER NAME (Steins;Gate Typography)
-  const speakerNameText = `☐ ${(opts.speakerName || opts.servantName).toUpperCase()}`;
-  ctx.save();
-  ctx.font = 'bold 26px Georgia, "Times New Roman", serif';
+  // Digital Date Text e.g. "8/13 (FRI)"
+  ctx.font = 'bold 30px "Courier New", monospace';
   ctx.textAlign = 'left';
-
-  // High contrast drop shadow & stroke outline
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.95)';
-  ctx.lineWidth = 5;
-  ctx.strokeText(speakerNameText, overlayX + 25, overlayY + 40);
-
-  ctx.shadowColor = '#000000';
-  ctx.shadowOffsetX = 2;
-  ctx.shadowOffsetY = 2;
-  ctx.shadowBlur = 6;
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(speakerNameText, overlayX + 25, overlayY + 40);
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+  ctx.shadowBlur = 4;
+  ctx.fillText('8/13', hudX + 16, hudY + 44);
+
+  ctx.font = 'bold 16px sans-serif';
+  ctx.fillStyle = 'rgba(225, 235, 245, 0.85)';
+  ctx.fillText('(FRI)', hudX + 105, hudY + 44);
   ctx.restore();
 
-  // Choice Made Badge (If player selected a response)
+  // ==========================================
+  // LAYER 4: DIALOGUE BOX / HUD LAYER (TOP)
+  // ==========================================
+  const boxX = 40;
+  const boxY = 490;
+  const boxW = 1200;
+  const boxH = 185;
+
+  ctx.save();
+  // Semi-transparent dark overlay (covering bottom ~25% of canvas)
+  ctx.fillStyle = 'rgba(12, 16, 25, 0.68)';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+
+  // Minimalist top highlight line across the top edge of dialogue box
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(boxX, boxY);
+  ctx.lineTo(boxX + boxW, boxY);
+  ctx.stroke();
+  ctx.restore();
+
+  // --- Speaker Name Bracket Tag (Centered at Bottom Edge of Dialogue Box) ---
+  const speakerNameText = (opts.speakerName || opts.servantName || 'Heroic Spirit').toUpperCase();
+  ctx.save();
+  ctx.font = 'bold 18px Georgia, "Times New Roman", serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+  ctx.shadowBlur = 6;
+
+  const bracketStr = `──────────   ${speakerNameText}   ──────────`;
+  ctx.fillText(bracketStr, width / 2, boxY + boxH + 8);
+  ctx.restore();
+
+  // --- Choice Selected Badge (If choice was made) ---
   if (opts.choiceMadeText) {
     ctx.save();
     ctx.font = 'italic bold 15px sans-serif';
-    ctx.textAlign = 'left';
-
-    const rawChoice = opts.choiceMadeText;
-    const choiceStr = `✨ CHOICE SELECTED: "${rawChoice.length > 45 ? rawChoice.slice(0, 42) + '...' : rawChoice}"`;
-
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
-    ctx.lineWidth = 3;
-    ctx.strokeText(choiceStr, overlayX + 420, overlayY + 38);
-
+    ctx.textAlign = 'right';
     ctx.fillStyle = '#fbbf24';
-    ctx.fillText(choiceStr, overlayX + 420, overlayY + 38);
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 4;
+
+    const choiceStr = `✨ CHOICE: “${opts.choiceMadeText.length > 40 ? opts.choiceMadeText.slice(0, 37) + '...' : opts.choiceMadeText}”`;
+    ctx.fillText(choiceStr, boxX + boxW - 20, boxY + 30);
     ctx.restore();
   }
 
-  // 5. Dialogue Text (Georgia Serif font with Steins;Gate gear indicator ⚙)
+  // --- Dialogue Text (Clean White Serif with Steins;Gate Gear Indicator) ---
   ctx.save();
-  const textX = overlayX + 25;
-  const textY = overlayY + 85;
-  const maxTextW = overlayW - 50;
-  const lineHeight = 38;
+  const textX = boxX + 45;
+  const textY = boxY + 55;
+  const maxTextW = boxW - 90;
+  const lineHeight = 42;
 
-  ctx.font = '24px Georgia, "Times New Roman", serif';
+  ctx.font = '26px Georgia, "Times New Roman", serif';
   ctx.textAlign = 'left';
 
   const cleanText = (opts.dialogueText || '').replace(/^["“]/, '').replace(/["”]$/, '').trim();
-  const fullDialogue = `“${cleanText}” ⚙`;
-  const words = fullDialogue.split(' ');
+  const fullText = `“${cleanText}” ⚙`;
+  const words = fullText.split(' ');
   let currentLine = '';
   let lineY = textY;
   let linesDrawn = 0;
@@ -6180,12 +6190,8 @@ export async function renderVisualNovelCard(
     const testLine = currentLine ? `${currentLine} ${words[i]}` : words[i];
     const metrics = ctx.measureText(testLine);
     if (metrics.width > maxTextW && i > 0) {
-      // Stroke for dark outline
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.95)';
-      ctx.lineWidth = 4;
-      ctx.strokeText(currentLine, textX, lineY);
-
-      ctx.shadowColor = '#000000';
+      // High contrast text shadow
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
       ctx.shadowOffsetX = 2;
       ctx.shadowOffsetY = 2;
       ctx.shadowBlur = 4;
@@ -6202,11 +6208,7 @@ export async function renderVisualNovelCard(
   }
 
   if (linesDrawn < 3 && currentLine.trim().length > 0) {
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.95)';
-    ctx.lineWidth = 4;
-    ctx.strokeText(currentLine, textX, lineY);
-
-    ctx.shadowColor = '#000000';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
     ctx.shadowOffsetX = 2;
     ctx.shadowOffsetY = 2;
     ctx.shadowBlur = 4;
@@ -6215,23 +6217,48 @@ export async function renderVisualNovelCard(
   }
   ctx.restore();
 
-  // 6. Steins;Gate Status Bar & Control Hints (Bottom edge of lens)
+  // --- Bottom-Left Control Hints: [F3] AUTO | [E] SKIP ---
   ctx.save();
-  ctx.font = 'bold 12px monospace';
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+  const ctrlX = 40;
+  const ctrlY = 708;
 
-  // Left side control hints
+  // Key badge 1: [F3]
+  ctx.fillStyle = '#1e293b';
+  ctx.beginPath();
+  ctx.roundRect(ctrlX, ctrlY - 14, 28, 18, 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.font = 'bold 11px monospace';
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.fillText('F3', ctrlX + 14, ctrlY);
+
+  // Label: AUTO
   ctx.textAlign = 'left';
-  ctx.fillText('[F3] AUTO  |  [E] SKIP', overlayX + 25, overlayY + overlayH - 15);
+  ctx.fillText('AUTO', ctrlX + 34, ctrlY);
 
-  // Right side event title & bond status
-  ctx.textAlign = 'right';
-  const cleanTitle = opts.title.replace(/^Bond Interlude:\s*/i, '').replace(/\s*\(Complete\)$/i, '');
-  let statusStr = `${cleanTitle.toUpperCase()}  |  ☐ BOND LVL ${opts.currentBondLevel || 1}/10`;
-  if (opts.expGained) {
-    statusStr += ` (+${opts.expGained} EXP)`;
-  }
-  ctx.fillText(statusStr, overlayX + overlayW - 25, overlayY + overlayH - 15);
+  // Divider
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.fillText('|', ctrlX + 76, ctrlY);
+
+  // Key badge 2: [E]
+  ctx.fillStyle = '#1e293b';
+  ctx.beginPath();
+  ctx.roundRect(ctrlX + 88, ctrlY - 14, 20, 18, 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.fillText('E', ctrlX + 98, ctrlY);
+
+  // Label: SKIP
+  ctx.textAlign = 'left';
+  ctx.fillText('SKIP', ctrlX + 114, ctrlY);
   ctx.restore();
 
   try {
