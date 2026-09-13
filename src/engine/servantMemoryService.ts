@@ -61,6 +61,61 @@ function saveMemoryToDisk() {
 }
 
 /**
+ * Get the timestamp of the last interaction between Master and Servant, or null if never spoken.
+ */
+export function getLastInteractionTime(
+  masterId: string,
+  servantId: string,
+  warId: string = 'default'
+): number | null {
+  loadMemoryFromDisk();
+  const key = `${warId}:${masterId}:${servantId}`;
+  const record = memoryCache.get(key);
+  if (!record || !record.turns || record.turns.length === 0) return null;
+  const lastTurn = record.turns[record.turns.length - 1];
+  return lastTurn.timestamp || record.updatedAt || null;
+}
+
+/**
+ * Format milliseconds into human-readable duration description for AI awareness.
+ */
+export function formatTimeDelta(diffMs: number): string {
+  if (diffMs < 45_000) {
+    return 'Less than a minute ago (Immediate ongoing conversation)';
+  }
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 5) {
+    return `${minutes} minute(s) ago (Active continuous conversation)`;
+  }
+  if (minutes < 60) {
+    return `${minutes} minutes ago (Short break / paused earlier this hour)`;
+  }
+  const hours = Math.floor(diffMs / 3600_000);
+  const remMinutes = Math.floor((diffMs % 3600_000) / 60_000);
+  if (hours < 24) {
+    return `${hours} hour(s)${remMinutes > 0 ? ` and ${remMinutes} min` : ''} ago (Noticeable absence — hours passed earlier today)`;
+  }
+  const days = Math.floor(diffMs / 86400_000);
+  const remHours = Math.floor((diffMs % 86400_000) / 3600_000);
+  return `${days} day(s)${remHours > 0 ? ` and ${remHours} hour(s)` : ''} ago (Long absence — days have passed since Master last telepathically reached out)`;
+}
+
+/**
+ * Format a turn's timestamp relative to the current time.
+ */
+export function formatRelativeTurnTime(turnTimestamp: number, now: number): string {
+  const diffMs = Math.max(0, now - turnTimestamp);
+  if (diffMs < 60_000) return 'Just moments ago';
+  if (diffMs < 3600_000) return `${Math.floor(diffMs / 60_000)}m ago`;
+  if (diffMs < 86400_000) {
+    const hrs = Math.floor(diffMs / 3600_000);
+    return `${hrs}h ago`;
+  }
+  const days = Math.floor(diffMs / 86400_000);
+  return `${days}d ago`;
+}
+
+/**
  * Get the history of previous conversation turns for a Master and Servant in a specific Grail War.
  * Limits to the most recent maxTurns (default: 20 turns) to maintain fast generation speed.
  */

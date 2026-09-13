@@ -6107,17 +6107,23 @@ export async function renderVisualNovelCard(
   ctx.textAlign = 'right';
   ctx.fillText('🔋 📶', hudX + hudW - 14, hudY + 26);
 
-  // Digital Date Text e.g. "8/13 (FRI)"
-  ctx.font = 'bold 38px "Courier New", monospace';
+  // Digital Date Text e.g. "9/13 (SUN)"
+  const nowDate = new Date();
+  const dateNumStr = `${nowDate.getMonth() + 1}/${nowDate.getDate()}`;
+  const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  const dayNameStr = `(${dayNames[nowDate.getDay()]})`;
+
+  ctx.font = 'bold 36px "Courier New", monospace';
   ctx.textAlign = 'left';
   ctx.fillStyle = '#ffffff';
   ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
   ctx.shadowBlur = 6;
-  ctx.fillText('8/13', hudX + 18, hudY + 54);
+  ctx.fillText(dateNumStr, hudX + 18, hudY + 54);
 
-  ctx.font = 'bold 22px sans-serif';
+  const numWidth = ctx.measureText(dateNumStr).width;
+  ctx.font = 'bold 20px sans-serif';
   ctx.fillStyle = 'rgba(225, 235, 245, 0.9)';
-  ctx.fillText('(FRI)', hudX + 130, hudY + 54);
+  ctx.fillText(dayNameStr, hudX + 26 + numWidth, hudY + 54);
   ctx.restore();
 
   // ==========================================

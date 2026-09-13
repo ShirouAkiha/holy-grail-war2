@@ -3,6 +3,8 @@ import { renderVisualNovelCard } from '../canvas/renderer';
 import {
   getServantChatHistory,
   appendServantChatTurn,
+  formatTimeDelta,
+  formatRelativeTurnTime,
   TalkMessageTurn
 } from './servantMemoryService';
 import { getServantCharacterProfile } from '../data/characterProfiles';
@@ -159,6 +161,23 @@ export function generateCanonicalFallbackReply(ctx: ServantTalkContext): string 
     return `The local news continues to dismiss our supernatural clashes as underground industrial gas leaks. The Secrecy of Magecraft remains intact for now.`;
   }
 
+  // 6. Inquiries about Greetings & Time of Day
+  if (lowerMsg.startsWith('good morning') || lowerMsg.includes('morning')) {
+    return `Good morning, Master. The sun is up over Fuyuki, so supernatural Magecraft must remain concealed from civilians. What are our preparations for today?`;
+  }
+  if (lowerMsg.startsWith('good night') || lowerMsg.includes('sleep') || lowerMsg.includes('going to bed')) {
+    return `Rest well and restore your physical stamina, Master. I will maintain watch over our bounded field and monitor the leylines through the night.`;
+  }
+  if (lowerMsg.startsWith('good evening') || lowerMsg.includes('tonight')) {
+    return `Good evening, Master. Twilight has fallen over Fuyuki. The shadows are lengthening, and the true Holy Grail War begins under cover of darkness.`;
+  }
+  if (lowerMsg === 'hey' || lowerMsg === 'hello' || lowerMsg === 'hi' || lowerMsg.startsWith('hey ') || lowerMsg.startsWith('hello ')) {
+    if (bondLevel >= 7) {
+      return `I hear you clearly, Master. I was waiting for your call. What do you have on your mind?`;
+    }
+    return `I hear your telepathic transmission, Master. My blade and senses remain attuned to you.`;
+  }
+
   // Keyword-sensitive responses
   if (lowerMsg.includes('grail') || lowerMsg.includes('wish')) {
     if (bondLevel >= 5) {
@@ -227,6 +246,51 @@ export async function generateServantTalkResponse(context: ServantTalkContext): 
 
   const priorTurns = context.conversationHistory ?? getServantChatHistory(masterId, servantId, warId, 16);
 
+  // Real-world & In-Universe Time Tracking
+  const now = Date.now();
+  const currentDate = new Date(now);
+  const timeFormatted = currentDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  const dateFormatted = currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+  const currentHour = currentDate.getHours();
+
+  let timeOfDayCategory = 'Night (Peak Holy Grail War combat window)';
+  if (currentHour >= 0 && currentHour < 5) {
+    timeOfDayCategory = 'Deep Night / Witching Hour (0:00 - 4:59 AM) — Leyline mana surges; optimal for clandestine bounded fields and night ambushes';
+  } else if (currentHour >= 5 && currentHour < 8) {
+    timeOfDayCategory = 'Dawn / Early Morning (5:00 - 7:59 AM) — Sunrise over Fuyuki; combatants concealing spirit forms from civilians';
+  } else if (currentHour >= 8 && currentHour < 12) {
+    timeOfDayCategory = 'Morning (8:00 - 11:59 AM) — Daylight civilian hours; Magecraft strictly hidden';
+  } else if (currentHour >= 12 && currentHour < 17) {
+    timeOfDayCategory = 'Afternoon (12:00 - 4:59 PM) — Daytime recon operations and workshop preparations';
+  } else if (currentHour >= 17 && currentHour < 20) {
+    timeOfDayCategory = 'Dusk / Twilight (5:00 - 7:59 PM) — Sun setting over Fuyuki; tension mounting for night warfare';
+  } else {
+    timeOfDayCategory = 'Night (8:00 - 11:59 PM) — Official Holy Grail War skirmish hours; Servants patrol the city';
+  }
+
+  // Calculate elapsed time from last dialogue turn
+  let timeSinceLastContactStr = 'First time telepathically connecting with Master in this Holy Grail War';
+  let pacingMode = 'FIRST_CONTACT';
+  let diffSinceLastMs = 0;
+
+  if (priorTurns.length > 0) {
+    const lastTurn = priorTurns[priorTurns.length - 1];
+    diffSinceLastMs = Math.max(0, now - (lastTurn.timestamp || now));
+    timeSinceLastContactStr = formatTimeDelta(diffSinceLastMs);
+
+    if (diffSinceLastMs < 3 * 60_000) {
+      pacingMode = 'IMMEDIATE_CONTINUATION (< 3 minutes - ongoing active conversation in real-time)';
+    } else if (diffSinceLastMs < 30 * 60_000) {
+      pacingMode = 'SHORT_PAUSE (3 to 30 minutes - brief lull in conversation earlier this hour)';
+    } else if (diffSinceLastMs < 6 * 3600_000) {
+      pacingMode = 'MODERATE_ABSENCE (A few hours ago - Master stepped away earlier today and is returning)';
+    } else if (diffSinceLastMs < 48 * 3600_000) {
+      pacingMode = 'LONG_ABSENCE (Half-day to 1-2 days ago - Master has been absent/asleep during the war)';
+    } else {
+      pacingMode = 'EXTENDED_ABSENCE (Multiple days ago - Master has not reached out in days!)';
+    }
+  }
+
   if (!client) {
     const fallback = generateCanonicalFallbackReply(context);
     if (context.masterId && context.servantId) {
@@ -238,12 +302,26 @@ export async function generateServantTalkResponse(context: ServantTalkContext): 
     };
   }
 
-  // Format past turns for context injection
+  // Format past turns for context injection with relative timestamps and time-gap dividers
   let historyBlock = '';
   if (priorTurns.length > 0) {
-    historyBlock = `\nPREVIOUS CONVERSATIONS BETWEEN YOU AND MASTER IN THIS GRAIL WAR (Remember these naturally!):\n` +
-      priorTurns.map(t => `${t.role === 'user' ? `Master ${context.masterName}` : context.servantName}: "${t.content}"`).join('\n') +
-      `\n(Maintain continuous conversational awareness with what you both discussed earlier.)\n`;
+    const lines: string[] = [];
+    for (let i = 0; i < priorTurns.length; i++) {
+      const turn = priorTurns[i];
+      const relTime = formatRelativeTurnTime(turn.timestamp || now, now);
+      const speaker = turn.role === 'user' ? `Master ${context.masterName}` : context.servantName;
+      lines.push(`[${relTime}] ${speaker}: "${turn.content}"`);
+    }
+
+    let timeGapNotice = '';
+    if (diffSinceLastMs >= 20 * 60_000) {
+      timeGapNotice = `\n--- [⏳ ${timeSinceLastContactStr.toUpperCase()}] ---\n`;
+    }
+
+    historyBlock = `\nPREVIOUS DIALOGUE HISTORY (With timestamps & time elapsed):\n` +
+      lines.join('\n') +
+      timeGapNotice +
+      `\n(Maintain natural conversational memory of previous topics, but be acutely aware of the time that has passed since!)\n`;
   }
 
   // Build Combat & Physical Health description
@@ -443,6 +521,10 @@ CURRENT TACTICAL CONTEXT:
 - True Name/Identity: ${context.servantName}
 - Class: ${context.servantClass}
 - Master Name: ${context.masterName}
+- Current Real-World & In-Universe Time: ${timeFormatted} on ${dateFormatted}
+- Time-of-Day Window: ${timeOfDayCategory}
+- Time Elapsed Since Last Contact: ${timeSinceLastContactStr}
+- Conversation Pacing Mode: [${pacingMode}]
 - Physical / Spiritual Condition: ${physicalStatus}${tacticalNotes}${locationContext}
 - War Board & Rival Master Roster (With Kills & Bounty Status):
 ${warBoardIntel}
@@ -471,6 +553,12 @@ MASTER SAYS TO YOU NOW:
 VOICE & ROLEPLAY INSTRUCTIONS:
 - Reply in 1 to 3 concise, impactful sentences (maximum 60 words) suitable for a Visual Novel dialogue box.
 - IMMERSION & VOICE: Sound like a living, breathing person with genuine emotion, attitude, and authentic speech patterns. Speak with the exact rhythm, colloquialisms, and temperament from the character profile above.
+- TIME & CONVERSATION CONTINUITY AWARENESS (CRITICAL):
+  * You know the current time (${timeFormatted}, ${dateFormatted}) and how long it has been since Master last contacted you (${timeSinceLastContactStr}).
+  * IF MASTER SENDS A GREETING ("hey", "hello", "good morning", "yo", "are you there?"):
+    - If hours or days have passed since the last message (LONG / MODERATE ABSENCE): React naturally to the gap in time! For example, Aoko teasing or complaining about Master disappearing for days or checking in late at night; Saber welcoming Master back after their absence; Gilgamesh scoffing at being made to wait. DO NOT act as if Master just repeated themselves in the same second!
+    - If this is an ongoing dialogue (< 3 minutes): Respond naturally in flow without treating it as an abrupt new entrance.
+  * TIME OF DAY FLAVOR: You are aware of the hour (${timeFormatted}). If it is deep night or late hours, you may comment on Master being awake or preparing for nighttime patrol.
 - BANNED CLICHES & ROBOTIC NPC PHRASES (STRICTLY FORBIDDEN):
   * NEVER use generic assistant sign-offs or cliché combat filler such as: ${allBanned.map(b => `"${b}"`).join(', ')}.
   * NEVER recite raw numbers, percentages, or status sheet labels (do NOT say "my spiritual origin is at 100%").
