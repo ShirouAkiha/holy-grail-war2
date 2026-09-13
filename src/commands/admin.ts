@@ -10,6 +10,9 @@ import {
   ButtonStyle,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
   ComponentType,
   MessageFlags,
   User
@@ -52,6 +55,14 @@ import {
 } from '../engine/grailwar';
 import { WarRules, MasterProfile } from '../types';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
+import {
+  getAllCharacterProfiles,
+  getServantCharacterProfile,
+  saveCustomCharacterProfile,
+  deleteCustomCharacterProfile,
+  ServantCharacterProfile,
+  DEFAULT_SERVANT_CHARACTER_PROFILES
+} from '../data/characterProfiles';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -72,11 +83,60 @@ export const data = new SlashCommandBuilder()
           .addChoices(
             { name: '🏆 Holy Grail War Ritual & Rules', value: 'war' },
             { name: '👤 Master Dossier & Inventory Overseer', value: 'masters' },
+            { name: '🎭 Servant AI Personas & Character Cards', value: 'personas' },
             { name: '🎬 NP Animations & Chant Registry', value: 'npanim' },
             { name: '⚙️ Duel NP Settings & Timing', value: 'npsettings' },
             { name: '📋 Registered Custom Animations', value: 'listnp' },
             { name: '💎 Economy & Saint Quartz Mint', value: 'economy' }
           )
+      )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('persona')
+      .setDescription('Configure, inspect, or customize Servant AI character cards, speech quirks, and lore')
+      .addStringOption(opt =>
+        opt
+          .setName('action')
+          .setDescription('Persona management action')
+          .setRequired(true)
+          .addChoices(
+            { name: '📖 View Character Card & Quotes', value: 'view' },
+            { name: '📋 List All Configured Personas', value: 'list' },
+            { name: '✏️ Edit / Register Persona Card', value: 'edit' },
+            { name: '🗑️ Delete Custom Override / Reset', value: 'delete' }
+          )
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('servant')
+          .setDescription('Target Servant name or Heroic Spirit identity')
+          .setRequired(false)
+          .setAutocomplete(true)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('persona_lore')
+          .setDescription('Full character persona description (Tavern / Character Card format)')
+          .setRequired(false)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('speech_examples')
+          .setDescription('Authentic dialogue lines separated by semicolons (;) or newlines')
+          .setRequired(false)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('mannerisms')
+          .setDescription('Key mannerisms & quirks separated by semicolons (;) or newlines')
+          .setRequired(false)
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('banned_tropes')
+          .setDescription('Banned assistant phrases separated by commas')
+          .setRequired(false)
       )
   )
   .addSubcommand(sub =>
@@ -774,6 +834,149 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
   }
 
+  if (subcommand === 'persona') {
+    const action = interaction.options.getString('action', true);
+    const servantQuery = interaction.options.getString('servant')?.trim();
+    const personaLore = interaction.options.getString('persona_lore')?.trim();
+    const speechExamplesRaw = interaction.options.getString('speech_examples')?.trim();
+    const mannerismsRaw = interaction.options.getString('mannerisms')?.trim();
+    const bannedTropesRaw = interaction.options.getString('banned_tropes')?.trim();
+
+    if (action === 'list') {
+      const allProfiles = getAllCharacterProfiles();
+      const desc = allProfiles.map((p, idx) => {
+        const isCustom = !DEFAULT_SERVANT_CHARACTER_PROFILES[p.id];
+        return `**${idx + 1}. ${p.name}** (\`${p.id}\`) — ${isCustom ? '⭐ *Custom Profile*' : '📖 *Canon Lore*'}\n` +
+          `> Aliases: \`${(p.aliases || []).slice(0, 3).join(', ')}\` | Quotes: \`${(p.speechExamples || []).length} sample(s)\``;
+      }).join('\n\n');
+
+      const embed = new EmbedBuilder()
+        .setTitle(`🎭 Registered Servant AI Personas (${allProfiles.length})`)
+        .setDescription(
+          `These character cards define the visual novel voice, authentic slang, mannerisms, and banned AI tropes for telepathic dialogue.\n\n` +
+          desc +
+          `\n\n💡 *Use \`/admin persona action:view servant:<name>\` or open \`/admin hub category:personas\` to edit!*`
+        )
+        .setColor(0xa855f7)
+        .setFooter({ text: 'Fate/Grand Order Holy Grail War • Persona Engine' });
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
+    if (action === 'view') {
+      if (!servantQuery) {
+        const allProfiles = getAllCharacterProfiles();
+        const embed = new EmbedBuilder()
+          .setTitle('🎭 Servant Character Cards Directory')
+          .setDescription(
+            `Please specify a Servant name to view their full character card, or choose one below:\n\n` +
+            allProfiles.map(p => `• **${p.name}** (\`${p.id}\`)`).join('\n')
+          )
+          .setColor(0xa855f7);
+        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      const profile = getServantCharacterProfile(undefined, servantQuery);
+      if (!profile) {
+        await interaction.reply({
+          content: `❌ Could not find any registered character profile for **"${servantQuery}"**.\nUse \`/admin persona action:edit servant:${servantQuery}\` or \`/admin hub category:personas\` to create one!`,
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+
+      const card = buildPersonaCardEmbed(profile);
+      await interaction.reply({ embeds: [card.embed], components: card.components });
+      return;
+    }
+
+    if (action === 'edit') {
+      if (!servantQuery) {
+        await interaction.reply({
+          content: '⚠️ Please specify the `servant` name when adding or editing a character profile.',
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+
+      if (personaLore) {
+        const existing = getServantCharacterProfile(undefined, servantQuery);
+        const speechExamples = speechExamplesRaw 
+          ? speechExamplesRaw.split(/[;\n]/).map(s => s.trim()).filter(Boolean)
+          : (existing?.speechExamples || []);
+        const mannerisms = mannerismsRaw
+          ? mannerismsRaw.split(/[;\n]/).map(s => s.trim()).filter(Boolean)
+          : (existing?.mannerisms || []);
+        const bannedTropes = bannedTropesRaw
+          ? bannedTropesRaw.split(/[,;\n]/).map(s => s.trim()).filter(Boolean)
+          : (existing?.bannedTropes || ['Stay sharp', 'Keep your guard up']);
+
+        const id = (existing?.id || servantQuery.toLowerCase().replace(/\s+/g, '_')).toLowerCase().trim();
+        const saved = saveCustomCharacterProfile({
+          id,
+          name: existing?.name || servantQuery,
+          aliases: existing?.aliases || [servantQuery.toLowerCase(), id],
+          persona: personaLore,
+          speechExamples,
+          mannerisms,
+          bannedTropes
+        });
+
+        const card = buildPersonaCardEmbed(saved, `✨ Successfully saved character card for **${saved.name}**!`);
+        await interaction.reply({ embeds: [card.embed], components: card.components });
+        return;
+      }
+
+      // No CLI persona_lore supplied: explain and provide button or hub
+      const existing = getServantCharacterProfile(undefined, servantQuery);
+      const embed = new EmbedBuilder()
+        .setTitle(`🎭 Configure Persona: ${servantQuery}`)
+        .setDescription(
+          `To edit or add a character card for **${servantQuery}**, you can:\n\n` +
+          `1. **Use the Interactive Admin Hub:** Run \`/admin hub category:personas\` and click **Edit/Register** for a full popup modal.\n` +
+          `2. **Pass CLI arguments:** Provide \`persona_lore\`, \`speech_examples\`, and \`banned_tropes\` directly in this command.\n\n` +
+          (existing ? `*Currently has an active character profile (${existing.persona.length} chars).*` : `*Currently unconfigured (using standard Type-Moon template).*`)
+        )
+        .setColor(0xa855f7);
+
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId(`admin_persona_btn_edit_${existing?.id || servantQuery.toLowerCase().replace(/\s+/g, '_')}`).setLabel('Open Modal Editor').setEmoji('✏️').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('admin_tab_personas').setLabel('Persona Hub').setEmoji('🎭').setStyle(ButtonStyle.Secondary)
+      );
+
+      await interaction.reply({ embeds: [embed], components: [row] });
+      return;
+    }
+
+    if (action === 'delete') {
+      if (!servantQuery) {
+        await interaction.reply({
+          content: '⚠️ Please specify the `servant` name to delete custom override.',
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+
+      const id = servantQuery.toLowerCase().replace(/\s+/g, '_');
+      const existed = deleteCustomCharacterProfile(id);
+      const isCanon = !!DEFAULT_SERVANT_CHARACTER_PROFILES[id];
+
+      const embed = new EmbedBuilder()
+        .setTitle('🗑️ Character Profile Reset')
+        .setDescription(
+          existed
+            ? `Custom persona override for **"${servantQuery}"** was deleted.\n${isCanon ? '• Reset back to canonical Type-Moon baseline persona.' : '• Character card removed.'}`
+            : `No custom override found for **"${servantQuery}"** (already using default).`
+        )
+        .setColor(0xef4444);
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+  }
+
   if (subcommand === 'npanim') {
     const servantQuery = interaction.options.getString('servant', true).trim();
     const gifUrl = interaction.options.getString('gif_url', true).trim();
@@ -843,6 +1046,110 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 }
 
 // ==========================================
+// 3.4. PERSONA CARD & MODAL BUILDERS
+// ==========================================
+export function buildPersonaCardEmbed(
+  profile: ServantCharacterProfile,
+  actionOutcomeMsg?: string
+): { embed: EmbedBuilder; components: ActionRowBuilder<ButtonBuilder>[] } {
+  const isCustom = !DEFAULT_SERVANT_CHARACTER_PROFILES[profile.id];
+  const quotesList = (profile.speechExamples || []).slice(0, 4).map(q => `• *“${q}”*`).join('\n') || '*No quote samples registered.*';
+  const quirksList = (profile.mannerisms || []).slice(0, 4).map(m => `• ${m}`).join('\n') || '*No quirks specified.*';
+  const bannedList = (profile.bannedTropes || []).map(b => `\`${b}\``).join(', ') || '*None*';
+
+  let loreSnippet = profile.persona;
+  if (loreSnippet.length > 1800) {
+    loreSnippet = loreSnippet.slice(0, 1797) + '...';
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle(`🎭 CHARACTER CARD: ${profile.name} (\`${profile.id}\`)`)
+    .setDescription(
+      (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+      `**Profile Status:** ${isCustom ? '⭐ **Custom Override / User Profile**' : '📖 **Canonical Type-Moon Baseline**'}\n` +
+      `**Aliases / Search Identifiers:** \`${(profile.aliases || [profile.id]).join(', ')}\`\n\n` +
+      `📜 **Persona & Psychological Profile:**\n${loreSnippet}\n\n` +
+      `🗣️ **Authentic Dialogue Samples:**\n${quotesList}\n\n` +
+      `✨ **Habits & Visual Novel Mannerisms:**\n${quirksList}\n\n` +
+      `🚫 **Banned AI Tropes / Restricted Stock Clichés:**\n${bannedList}\n\n` +
+      `*This character card governs all telepathic dialogue in \`/servant talk\`, \`/grailwar duel\`, and battle banter.*`
+    )
+    .setColor(0xa855f7)
+    .setFooter({ text: `ID: ${profile.id} • Servant AI Character Card Suite` });
+
+  const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`admin_persona_btn_edit_${profile.id}`).setLabel('Edit Card (Modal)').setEmoji('✏️').setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`admin_persona_btn_reset_${profile.id}`).setLabel(isCustom ? 'Delete Override' : 'Reset to Default').setEmoji('🗑️').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId('admin_tab_personas').setLabel('Persona Hub').setEmoji('🎭').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('admin_tab_war').setLabel('War Hub').setEmoji('🏆').setStyle(ButtonStyle.Secondary)
+  );
+
+  return { embed, components: [btnRow] };
+}
+
+export function buildPersonaModal(profile?: ServantCharacterProfile): ModalBuilder {
+  const isEdit = !!profile;
+  const modal = new ModalBuilder()
+    .setCustomId(isEdit ? `admin_modal_persona_edit_${profile.id}` : 'admin_modal_persona_add')
+    .setTitle(isEdit ? `Edit: ${profile.name}`.slice(0, 45) : 'Create Servant Persona Card');
+
+  const nameInput = new TextInputBuilder()
+    .setCustomId('persona_name')
+    .setLabel('Heroic Spirit Name')
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('e.g. Aoko Aozaki, Artoria Pendragon, Gilgamesh')
+    .setMaxLength(80)
+    .setRequired(true);
+  if (profile) nameInput.setValue(profile.name);
+
+  const loreInput = new TextInputBuilder()
+    .setCustomId('persona_lore')
+    .setLabel('Persona Lore & Visual Novel Description')
+    .setStyle(TextInputStyle.Paragraph)
+    .setPlaceholder('Describe personality, background, dynamic with Master, speech tone...')
+    .setMaxLength(3900)
+    .setRequired(true);
+  if (profile) loreInput.setValue(profile.persona.slice(0, 3900));
+
+  const quotesInput = new TextInputBuilder()
+    .setCustomId('persona_quotes')
+    .setLabel('Authentic Quotes (Separate with ; or newline)')
+    .setStyle(TextInputStyle.Paragraph)
+    .setPlaceholder('e.g. "Grrr... This is frustrating!"; "Oi, idiot! Pay attention."')
+    .setMaxLength(1000)
+    .setRequired(false);
+  if (profile && profile.speechExamples) quotesInput.setValue(profile.speechExamples.join('; ').slice(0, 1000));
+
+  const mannerismsInput = new TextInputBuilder()
+    .setCustomId('persona_mannerisms')
+    .setLabel('Mannerisms & Quirks (Separate with ; or newline)')
+    .setStyle(TextInputStyle.Paragraph)
+    .setPlaceholder('e.g. Slams fists on table; Lightens heavy mood with aggressive jokes')
+    .setMaxLength(500)
+    .setRequired(false);
+  if (profile && profile.mannerisms) mannerismsInput.setValue(profile.mannerisms.join('; ').slice(0, 500));
+
+  const bannedInput = new TextInputBuilder()
+    .setCustomId('persona_banned')
+    .setLabel('Banned AI Phrases (Comma-separated)')
+    .setStyle(TextInputStyle.Short)
+    .setPlaceholder('e.g. Stay sharp, Stay focused, Keep your guard up, My core is at 100%')
+    .setMaxLength(200)
+    .setRequired(false);
+  if (profile && profile.bannedTropes) bannedInput.setValue(profile.bannedTropes.join(', ').slice(0, 200));
+
+  modal.addComponents(
+    new ActionRowBuilder<TextInputBuilder>().addComponents(nameInput),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(loreInput),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(quotesInput),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(mannerismsInput),
+    new ActionRowBuilder<TextInputBuilder>().addComponents(bannedInput)
+  );
+
+  return modal;
+}
+
+// ==========================================
 // 3.5. MASTER DOSSIER BUILDER
 // ==========================================
 export function buildMasterDossier(
@@ -902,7 +1209,7 @@ export function buildMasterDossier(
 // 4. ADMIN HUB BUILDER
 // ==========================================
 export function buildAdminHub(
-  category: 'war' | 'war_rules' | 'masters' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war',
+  category: 'war' | 'war_rules' | 'masters' | 'personas' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war',
   actionOutcomeMsg?: string
 ) {
   let embeds: EmbedBuilder[] = [];
@@ -1058,6 +1365,27 @@ export function buildAdminHub(
 
     embeds = [embed];
 
+  } else if (category === 'personas') {
+    const allProfiles = getAllCharacterProfiles();
+    const listDesc = allProfiles.slice(0, 12).map((p, idx) => {
+      const isCustom = !DEFAULT_SERVANT_CHARACTER_PROFILES[p.id];
+      const tag = isCustom ? '⭐ *Custom Override*' : '📖 *Canon Lore*';
+      return `**${idx + 1}. ${p.name}** (\`${p.id}\`) — ${tag}\n> Quotes: \`${(p.speechExamples || []).length}\` | Quirks: \`${(p.mannerisms || []).length}\` | Banned: \`${(p.bannedTropes || []).length}\``;
+    }).join('\n\n');
+
+    const embed = new EmbedBuilder()
+      .setTitle(`🎭 Admin Control: Servant AI Personas & Character Cards (${allProfiles.length})`)
+      .setDescription(
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `Configure psychological profiles, speech quirks, authentic quotes, and banned assistant tropes for each Heroic Spirit.\n\n` +
+        listDesc +
+        `\n\n*Select a Servant below to inspect or click **Create / Edit Persona** to open the visual card editor modal:*`
+      )
+      .setColor(0xa855f7)
+      .setFooter({ text: 'Admin Suite • Servant AI Persona Engine' });
+
+    embeds = [embed];
+
   } else if (category === 'economy') {
     const embed = new EmbedBuilder()
       .setTitle('💎 Admin Control: Economy, Inventory & Vault Management')
@@ -1081,9 +1409,9 @@ export function buildAdminHub(
   const categoryNavRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId('admin_tab_war').setLabel('War Hub').setEmoji('🏆').setStyle(category === 'war' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('admin_tab_masters').setLabel('Masters').setEmoji('👤').setStyle(category === 'masters' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('admin_tab_war_rules').setLabel('Customize Rules').setEmoji('⚙️').setStyle(category === 'war_rules' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('admin_tab_npanim').setLabel('NP Animations').setEmoji('🎬').setStyle(category === 'npanim' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('admin_tab_economy').setLabel('Economy Mint').setEmoji('💎').setStyle(category === 'economy' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId('admin_tab_personas').setLabel('Personas').setEmoji('🎭').setStyle(category === 'personas' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('admin_tab_war_rules').setLabel('Rules').setEmoji('⚙️').setStyle(category === 'war_rules' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('admin_tab_economy').setLabel('Economy').setEmoji('💎').setStyle(category === 'economy' ? ButtonStyle.Primary : ButtonStyle.Secondary)
   );
 
   const components: any[] = [categoryNavRow];
@@ -1123,7 +1451,35 @@ export function buildAdminHub(
       .addOptions(rawOptions.slice(0, 25));
   };
 
-  if (category === 'masters') {
+  if (category === 'personas') {
+    const allProfiles = getAllCharacterProfiles();
+    if (allProfiles.length > 0) {
+      const options = allProfiles.slice(0, 25).map(p => {
+        const isCustom = !DEFAULT_SERVANT_CHARACTER_PROFILES[p.id];
+        return new StringSelectMenuOptionBuilder()
+          .setLabel(p.name.slice(0, 25))
+          .setValue(p.id)
+          .setDescription(`${isCustom ? '⭐ Custom' : '📖 Canon'} | Quotes: ${(p.speechExamples || []).length} | Quirks: ${(p.mannerisms || []).length}`.slice(0, 50))
+          .setEmoji('🎭');
+      });
+
+      const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId('admin_select_persona_profile')
+          .setPlaceholder('🔍 Select a Servant Persona to inspect / edit...')
+          .addOptions(options)
+      );
+      components.push(selectRow);
+    }
+
+    const personaActionsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('admin_persona_btn_add').setLabel('Create / Add Persona (Modal)').setEmoji('➕').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('admin_tab_personas').setLabel('Refresh Persona List').setEmoji('🔄').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_tab_war').setLabel('War Dashboard').setEmoji('🏆').setStyle(ButtonStyle.Secondary)
+    );
+    components.push(personaActionsRow);
+
+  } else if (category === 'masters') {
     const allMasters = getAllMasters();
     if (allMasters.length > 0) {
       const options = allMasters.slice(0, 25).map(m => {
@@ -1244,7 +1600,7 @@ export function buildAdminHub(
 export async function handleAdminGlobalInteraction(interaction: any) {
   try {
     const customId = interaction.customId;
-    let currentCategory: 'war' | 'war_rules' | 'masters' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war';
+    let currentCategory: 'war' | 'war_rules' | 'masters' | 'personas' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war';
     let actionOutcome: string | undefined = undefined;
 
     // Detect category
@@ -1252,6 +1608,8 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       currentCategory = 'war';
     } else if (customId === 'admin_tab_masters' || customId === 'admin_select_master_dossier') {
       currentCategory = 'masters';
+    } else if (customId === 'admin_tab_personas' || customId === 'admin_select_persona_profile' || customId.startsWith('admin_persona_')) {
+      currentCategory = 'personas';
     } else if (customId === 'admin_tab_war_rules' || customId.startsWith('admin_set_') || customId.startsWith('admin_toggle_')) {
       currentCategory = 'war_rules';
     } else if (customId === 'admin_tab_npanim') {
@@ -1262,6 +1620,53 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       currentCategory = 'listnp';
     } else if (customId === 'admin_tab_economy' || customId.startsWith('admin_mint_') || customId === 'admin_refill_seals' || customId.startsWith('admin_reset_')) {
       currentCategory = 'economy';
+    }
+
+    // PERSONA PROFILE DROPDOWN SELECTION
+    if (customId === 'admin_select_persona_profile') {
+      const selectedId = interaction.values?.[0] || '';
+      const profile = getServantCharacterProfile(undefined, selectedId);
+      if (profile) {
+        const card = buildPersonaCardEmbed(profile);
+        await interaction.update({
+          embeds: [card.embed],
+          components: card.components
+        });
+        return;
+      }
+    }
+
+    // PERSONA MODAL TRIGGER BUTTONS
+    if (customId === 'admin_persona_btn_add') {
+      const modal = buildPersonaModal();
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (customId.startsWith('admin_persona_btn_edit_')) {
+      const profId = customId.replace('admin_persona_btn_edit_', '');
+      const profile = getServantCharacterProfile(undefined, profId) || {
+        id: profId,
+        name: profId,
+        aliases: [profId],
+        persona: '',
+        speechExamples: [],
+        mannerisms: [],
+        bannedTropes: []
+      };
+      const modal = buildPersonaModal(profile);
+      await interaction.showModal(modal);
+      return;
+    }
+
+    if (customId.startsWith('admin_persona_btn_reset_')) {
+      const profId = customId.replace('admin_persona_btn_reset_', '');
+      const existed = deleteCustomCharacterProfile(profId);
+      const isCanon = !!DEFAULT_SERVANT_CHARACTER_PROFILES[profId];
+      actionOutcome = existed 
+        ? (isCanon ? `🗑️ Reset **${profId}** back to canonical Type-Moon baseline.` : `🗑️ Deleted custom persona card for **${profId}**.`)
+        : `No custom override found for **${profId}**.`;
+      currentCategory = 'personas';
     }
 
     // MASTER DOSSIER DROPDOWN SELECTION
@@ -1336,6 +1741,8 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       currentCategory = 'war';
     } else if (customId === 'admin_tab_masters') {
       currentCategory = 'masters';
+    } else if (customId === 'admin_tab_personas') {
+      currentCategory = 'personas';
     } else if (customId === 'admin_tab_war_rules') {
       currentCategory = 'war_rules';
     } else if (customId === 'admin_tab_npanim') {

@@ -55,6 +55,7 @@ import { getOrCreateMaster, getMaster, saveMaster, getAllThroneServants, findSer
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
 import { allocateStatPoints } from './engine/statSystem';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from './data/noblePhantasmGifs';
+import { saveCustomCharacterProfile, getServantCharacterProfile } from './data/characterProfiles';
 import { renderServantProfileCard, renderDialogueCard, renderGachaSummonBanner } from './canvas/renderer';
 import { buildProfileEmbed, buildPublicProfileEmbed, buildProfileButtons } from './commands/profile';
 import { buildDailyEmbed, buildDailyButtons } from './commands/daily';
@@ -595,6 +596,40 @@ client.on(Events.InteractionCreate, async interaction => {
           });
         }
       }
+      else if (interaction.customId.startsWith('admin_modal_persona_')) {
+        const isEdit = interaction.customId.startsWith('admin_modal_persona_edit_');
+        const targetId = isEdit ? interaction.customId.replace('admin_modal_persona_edit_', '') : '';
+
+        const personaName = interaction.fields.getTextInputValue('persona_name')?.trim() || 'Heroic Spirit';
+        const personaLore = interaction.fields.getTextInputValue('persona_lore')?.trim() || '';
+        const quotesRaw = interaction.fields.getTextInputValue('persona_quotes')?.trim() || '';
+        const mannerismsRaw = interaction.fields.getTextInputValue('persona_mannerisms')?.trim() || '';
+        const bannedRaw = interaction.fields.getTextInputValue('persona_banned')?.trim() || '';
+
+        const speechExamples = quotesRaw ? quotesRaw.split(/[;\n]/).map((s: string) => s.trim()).filter(Boolean) : [];
+        const mannerisms = mannerismsRaw ? mannerismsRaw.split(/[;\n]/).map((s: string) => s.trim()).filter(Boolean) : [];
+        const bannedTropes = bannedRaw ? bannedRaw.split(/[,;\n]/).map((s: string) => s.trim()).filter(Boolean) : ['Stay sharp', 'Stay focused', 'Keep your guard up'];
+
+        const profileId = targetId || personaName.toLowerCase().replace(/\s+/g, '_');
+        const existing = getServantCharacterProfile(undefined, profileId);
+
+        const saved = saveCustomCharacterProfile({
+          id: profileId,
+          name: personaName,
+          aliases: existing?.aliases || [personaName.toLowerCase(), profileId],
+          persona: personaLore,
+          speechExamples,
+          mannerisms,
+          bannedTropes
+        });
+
+        const card = adminCommand.buildPersonaCardEmbed(saved, `✨ Successfully saved character card for **${saved.name}**! Changes take effect immediately in telepathic dialogue.`);
+        await interaction.reply({
+          flags: MessageFlags.Ephemeral,
+          embeds: [card.embed],
+          components: card.components
+        });
+      }
       else if (interaction.customId.startsWith('modal_talk_servant:')) {
         const servantId = interaction.customId.replace('modal_talk_servant:', '');
         const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
@@ -615,9 +650,15 @@ client.on(Events.InteractionCreate, async interaction => {
           const userParticipant = war.participants?.[master.discordId];
           const isExposed = !!userParticipant?.isExposed;
           const equippedCeName = servant.equippedCe?.name;
-          const recentChronicleEvents = (war.eventLogs || []).slice(-3).map((l: any) =>
+          const recentChronicleEvents = (war.eventLogs || []).slice(0, 6).map((l: any) =>
             typeof l === 'string' ? l : (l.text || l.message || 'War active in Fuyuki.')
           );
+          if (war.civilianCasualties && war.civilianCasualties.length > 0) {
+            const recentCas = war.civilianCasualties[0];
+            if (recentCas) {
+              recentChronicleEvents.push(`Casualty: ${recentCas.name} was slain by ${recentCas.slayerUsername || 'an unknown Master'} (${recentCas.cause || 'collateral damage'})`);
+            }
+          }
 
           const currentHp = userParticipant?.currentHp ?? servant.currentHp ?? t.baseHp;
           const maxHp = userParticipant?.maxHp ?? t.baseHp;

@@ -278,6 +278,14 @@ ${characterProfile.speechExamples.map(e => `• ${e}`).join('\n')}
     }
   }
 
+  let chronicleIntel = '  • The war is currently quiet in the shadows. No major clashes or casualties recorded in the last few minutes.';
+  if (context.recentChronicleEvents && context.recentChronicleEvents.length > 0) {
+    chronicleIntel = context.recentChronicleEvents
+      .filter(Boolean)
+      .map((evt, idx) => `  • [Event ${idx + 1}]: ${evt.replace(/\*\*/g, '').trim()}`)
+      .join('\n');
+  }
+
   const prompt = `You are roleplaying as the Fate franchise Heroic Spirit: "${context.servantName}" (Class: ${context.servantClass}).
 You are communicating telepathically with your Master, "${context.masterName}", during the active Holy Grail War in Fuyuki City.
 ${characterPersonaBlock ? characterPersonaBlock : `Personality: Faithful to ${context.servantName}'s canon Type-Moon visual novel characterization.`}
@@ -287,12 +295,14 @@ CURRENT TACTICAL CONTEXT:
 - Class: ${context.servantClass}
 - Master Name: ${context.masterName}
 - Physical / Spiritual Condition: ${physicalStatus}${tacticalNotes}${locationContext}
-- War Board & Rival Intelligence:\n${warBoardIntel}
+- War Board & Rival Intelligence:
+${warBoardIntel}
 - Bond Rank: Level ${bond} of 10
 - Command Seals Remaining: ${seals}/3
 - Master Concealment Status: ${context.isExposed ? 'Exposed to public War Board (dangerous)' : 'Concealed in shadows (safe)'}
 - Equipped Craft Essence: ${context.equippedCeName || 'None equipped'}
-- Recent War Chronicle: ${(context.recentChronicleEvents || ['War raging across Fuyuki.']).slice(-2).join('; ')}
+- Recent War Chronicle & Battlefield Events (Witnessed in Fuyuki):
+${chronicleIntel}
 ${historyBlock}
 MASTER SAYS TO YOU NOW:
 "${context.playerMessage}"
@@ -304,6 +314,7 @@ VOICE & ROLEPLAY INSTRUCTIONS:
   * NEVER use generic assistant sign-offs or cliché combat filler such as: ${allBanned.map(b => `"${b}"`).join(', ')}.
   * NEVER recite raw numbers, percentages, or status sheet labels (do NOT say "my spiritual origin is at 100%").
 - Conversational Variety: Directly react to what Master said. If they tell you to rest, tease them, argue, complain about being tired or stubborn, or make an aggressive joke—do NOT immediately pivot into an AI battle-advisor warning!
+- War Chronicles & Battlefield Awareness: You are actively witnessing and living through this Holy Grail War. If Master brings up recent events, asks what just happened in Fuyuki, mentions ambushes, church asylum, eliminations, civilian deaths, or leaks, reference the specific happenings from the Recent War Chronicle above in-character!
 - War Board Knowledge: When Master asks about other Masters, rivals, enemies, or the War Board, reference known exposed rivals or the hidden enemies in shadows naturally.
 - Address ${context.masterName} naturally based on the character's personality and bond level.
 - Do NOT break character, do NOT provide meta explanations, and do NOT use asterisks for actions (*sighs*). Return ONLY the spoken dialogue.`;

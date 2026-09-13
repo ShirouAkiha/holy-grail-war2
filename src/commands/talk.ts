@@ -71,9 +71,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const userParticipant = war.participants?.[master.discordId];
     const isExposed = !!userParticipant?.isExposed;
     const equippedCeName = targetServant.equippedCe?.name;
-    const recentChronicleEvents = (war.eventLogs || []).slice(-3).map((l: any) =>
+    const recentChronicleEvents = (war.eventLogs || []).slice(0, 6).map((l: any) =>
       typeof l === 'string' ? l : (l.text || l.message || 'War active in Fuyuki.')
     );
+    
+    // Also include recent civilian casualties or exposed leaks if relevant
+    if (war.civilianCasualties && war.civilianCasualties.length > 0) {
+      const recentCas = war.civilianCasualties[0];
+      if (recentCas) {
+        recentChronicleEvents.push(`Casualty: ${recentCas.name} was slain by ${recentCas.slayerUsername || 'an unknown Master'} (${recentCas.cause || 'collateral damage'})`);
+      }
+    }
 
     // Dynamic combat condition calculation
     const currentHp = userParticipant?.currentHp ?? targetServant.currentHp ?? t.baseHp;
