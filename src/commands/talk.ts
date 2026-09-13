@@ -75,7 +75,33 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       typeof l === 'string' ? l : (l.text || l.message || 'War active in Fuyuki.')
     );
 
-    // 1. Generate the dynamic in-character reply with Holy Grail War chat memory
+    // Dynamic combat condition calculation
+    const currentHp = userParticipant?.currentHp ?? targetServant.currentHp ?? t.baseHp;
+    const maxHp = userParticipant?.maxHp ?? t.baseHp;
+    const isInChurchAsylum = !!userParticipant?.inChurchSanctuary;
+    const killsCount = userParticipant?.kills ?? 0;
+    const noblePhantasmName = t.noblePhantasm?.name;
+
+    // Tactical Channel & Bounded Field Context
+    const channelName = (interaction.channel as any)?.name || 'general';
+    const channelTraps = (war.boundedTraps || []).filter((tr: any) => tr.channelName === channelName && !tr.triggered);
+    const hasOwnTrapInChannel = channelTraps.some((tr: any) => tr.setterMasterId === master.discordId);
+    const enemyTrapInChannel = channelTraps.some((tr: any) => tr.setterMasterId !== master.discordId);
+
+    const channelFamiliars = (war.familiars || []).filter((f: any) => f.channelName === channelName && f.expiresAt > Date.now());
+    const hasOwnFamiliarInChannel = channelFamiliars.some((f: any) => f.masterId === master.discordId);
+
+    const activeBoundedFieldType = userParticipant?.boundedField || master.workshop?.boundedField || 'none';
+
+    let alliedMasters: string[] = [];
+    if (userParticipant?.allianceId && war.alliances?.[userParticipant.allianceId]) {
+      const alliance = war.alliances[userParticipant.allianceId];
+      alliedMasters = (alliance.memberMasterIds || [])
+        .filter((id: string) => id !== master.discordId)
+        .map((id: string) => war.participants?.[id]?.username || id);
+    }
+
+    // 1. Generate the dynamic in-character reply with Holy Grail War chat memory and combat awareness
     const { reply } = await generateServantTalkResponse({
       servantName,
       servantClass,
@@ -90,7 +116,18 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       equippedCeName,
       recentChronicleEvents,
       playerMessage,
-      servantAvatarUrl: avatarUrl
+      servantAvatarUrl: avatarUrl,
+      currentHp,
+      maxHp,
+      isInChurchAsylum,
+      killsCount,
+      noblePhantasmName,
+      channelName,
+      hasOwnTrapInChannel,
+      hasOwnFamiliarInChannel,
+      enemyTrapInChannel,
+      alliedMasters,
+      activeBoundedFieldType
     });
 
     // 2. STEP 3: Render the Output

@@ -24,6 +24,24 @@ export interface ServantTalkContext {
   servantTitle?: string;
   servantLore?: string;
   conversationHistory?: TalkMessageTurn[];
+  // Combat Status & Physical Condition
+  currentHp?: number;
+  maxHp?: number;
+  hpPercent?: number;
+  isInjured?: boolean;
+  isCritical?: boolean;
+  isInChurchAsylum?: boolean;
+  killsCount?: number;
+  activeBuffNames?: string[];
+  lastCombatAction?: string;
+  noblePhantasmName?: string;
+  // Discord Channel, Sector & Tactical Field Awareness
+  channelName?: string;
+  hasOwnTrapInChannel?: boolean;
+  hasOwnFamiliarInChannel?: boolean;
+  enemyTrapInChannel?: boolean;
+  alliedMasters?: string[];
+  activeBoundedFieldType?: string;
 }
 
 let aiClient: GoogleGenAI | null = null;
@@ -135,6 +153,51 @@ export async function generateServantTalkResponse(context: ServantTalkContext): 
       `\n(Maintain continuous conversational awareness with what you both discussed earlier.)\n`;
   }
 
+  // Build Combat & Physical Health description
+  let physicalStatus = 'Spiritual origin is uninjured and at peak combat readiness (100% HP).';
+  if (context.currentHp !== undefined && context.maxHp !== undefined && context.maxHp > 0) {
+    const pct = Math.round((context.currentHp / context.maxHp) * 100);
+    if (pct <= 25) {
+      physicalStatus = `CRITICALLY WOUNDED! Spiritual core is fractured (${context.currentHp}/${context.maxHp} HP - ${pct}%). Heavy breathing, severe exhaustion, needs urgent healing or retreat!`;
+    } else if (pct <= 60) {
+      physicalStatus = `Moderately injured from battle (${context.currentHp}/${context.maxHp} HP - ${pct}%). Bearing combat wounds, mana output strained but fighting through the pain.`;
+    } else if (pct < 100) {
+      physicalStatus = `Minor battle scrapes (${context.currentHp}/${context.maxHp} HP - ${pct}%). Spiritual core stable and battle-ready.`;
+    }
+  }
+
+  let tacticalNotes = '';
+  if (context.isInChurchAsylum) {
+    tacticalNotes += '\n- Sanctuary: Currently seeking holy asylum inside the Fuyuki Church neutral ground.';
+  }
+  if (context.killsCount && context.killsCount > 0) {
+    tacticalNotes += `\n- Trophies of War: You and your Master have eliminated ${context.killsCount} rival Servant(s) in this Holy Grail War!`;
+  }
+  if (context.noblePhantasmName) {
+    tacticalNotes += `\n- Noble Phantasm: ${context.noblePhantasmName}`;
+  }
+
+  // Location / Channel & Sector Environment
+  let locationContext = '';
+  if (context.channelName) {
+    locationContext += `\n- Current Discord Sector/Channel: #${context.channelName}`;
+    if (context.hasOwnTrapInChannel) {
+      locationContext += ` (You and Master have an armed Bounded Field / Ward active here!)`;
+    }
+    if (context.hasOwnFamiliarInChannel) {
+      locationContext += ` (Your scout familiar is perched in this channel relaying telemetry.)`;
+    }
+    if (context.enemyTrapInChannel) {
+      locationContext += ` (⚠️ Enemy mana residue detected! This channel may contain a rival trap.)`;
+    }
+  }
+  if (context.activeBoundedFieldType && context.activeBoundedFieldType !== 'none') {
+    locationContext += `\n- Master's Defensive Workshop: ${context.activeBoundedFieldType.toUpperCase()} Bounded Field active.`;
+  }
+  if (context.alliedMasters && context.alliedMasters.length > 0) {
+    locationContext += `\n- Diplomatic Alliances: Pacted with Master(s): ${context.alliedMasters.join(', ')}.`;
+  }
+
   const prompt = `You are roleplaying as the Fate franchise Heroic Spirit: "${context.servantName}" (Class: ${context.servantClass}).
 You are communicating telepathically with your Master, "${context.masterName}", during the active Holy Grail War in Fuyuki City.
 
@@ -142,6 +205,7 @@ CONTEXT:
 - True Name/Identity: ${context.servantName}
 - Class: ${context.servantClass}
 - Master Name: ${context.masterName}
+- Physical / Spiritual Condition: ${physicalStatus}${tacticalNotes}${locationContext}
 - Bond Rank: Level ${bond} of 10
   * Bond 1-2: Formal, disciplined, distant, evaluating the Master's worth.
   * Bond 3-4: Emerging respect, strategic camaraderie, respectful partnership.
@@ -158,6 +222,7 @@ MASTER SAYS TO YOU NOW:
 INSTRUCTIONS:
 - Reply in 1 to 3 concise, impactful sentences (maximum 60 words) suitable for a Visual Novel dialogue box.
 - Stay strictly in character matching ${context.servantName}'s canon personality, tone, vocabulary, and chivalric/heroic ethos.
+- Naturally reflect your physical condition (e.g. if critically wounded, show physical strain or urgency; if at full health, show poise).
 - If referencing past topics mentioned by Master, seamlessly incorporate them as a shared memory of this War.
 - Address ${context.masterName} naturally (e.g. "Master", or specific honorifics appropriate to the character).
 - Reflect your current Bond Rank (${bond}/10).
