@@ -124,8 +124,15 @@ export const BondVisualNovelModal: React.FC<BondVisualNovelModalProps> = ({
 
   // Finalize event rewards & update master servant instance
   const handleClaimRewards = () => {
-    const sqReward = event.rewardSaintQuartz || 3;
-    const { updatedServant } = addBondExpToServant(servant, totalBondExpGained);
+    const isFirstTime = !servant.completedBondEvents?.includes(event.id);
+    const sqReward = isFirstTime ? (event.rewardSaintQuartz || 3) : 0;
+    const expGain = isFirstTime ? totalBondExpGained : 0;
+
+    let updatedServant = { ...servant };
+    if (isFirstTime && expGain > 0) {
+      const res = addBondExpToServant(servant, expGain);
+      updatedServant = res.updatedServant;
+    }
 
     // Track completed event ID
     if (!updatedServant.completedBondEvents) {

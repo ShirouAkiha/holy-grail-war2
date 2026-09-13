@@ -14,6 +14,7 @@ import {
   getBondExpProgress, 
   getBondLevelFromExp, 
   getBondEventsForServant, 
+  selectActiveInterludeForServant,
   getUnlockedDialogueLinesForServant,
   addBondExpToServant,
   BOND_EXP_TABLE
@@ -98,15 +99,13 @@ export function buildBondActionRow(master: any) {
   const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
   if (!activeServant) return [];
 
-  const events = getBondEventsForServant(activeServant);
-  const bondLvl = activeServant.bondLevel || 1;
-  const availableEvent = events.find(e => e.requiredBondLevel <= bondLvl);
+  const { event, isReplay } = selectActiveInterludeForServant(activeServant);
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId('vn_play_event')
-      .setLabel(availableEvent ? `📖 Play Interlude: ${availableEvent.title.slice(0, 30)}` : '📖 Play Generic Interlude')
-      .setStyle(ButtonStyle.Primary),
+      .setLabel(event ? `📖 Play Interlude: ${event.title.slice(0, 28)}${isReplay ? ' (Replay)' : ''}` : '📖 Play Generic Interlude')
+      .setStyle(isReplay ? ButtonStyle.Secondary : ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('vn_view_quotes')
       .setLabel('🎙️ View Voice Lines')
@@ -132,9 +131,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         return interaction.editReply({ content: '❌ You do not have an active Servant contracted.' });
       }
 
-      const events = getBondEventsForServant(activeServant);
-      const firstEvent = events[0];
-      const scene1 = firstEvent.scenes[0];
+      const { event, isReplay, statusNote } = selectActiveInterludeForServant(activeServant);
+      const scene1 = event.scenes[0];
       const sTemplate = activeServant.template || activeServant;
       const servantName = activeServant.nickname || sTemplate.name || 'Heroic Spirit';
 
@@ -145,30 +143,34 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         servantAvatarUrl: sTemplate.avatarUrl,
         speakerName: scene1.speakerName || servantName,
         dialogueText: scene1.dialogueText,
-        title: firstEvent.title,
-        subtitle: firstEvent.subtitle,
+        title: event.title,
+        subtitle: event.subtitle,
         currentBondLevel: activeServant.bondLevel || 1
       });
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel.png' });
 
-      const cleanTitle = firstEvent.title.replace(/^Bond Interlude:\s*/i, '');
+      const cleanTitle = event.title.replace(/^Bond Interlude:\s*/i, '');
       const vnEmbed = new EmbedBuilder()
         .setTitle(`📖 Bond Interlude: ${cleanTitle}`)
         .setDescription(
-          `*${firstEvent.subtitle}*\n\n` +
+          `*${event.subtitle}* ${statusNote ? `\n\n*${statusNote}*` : ''}\n\n` +
           `👇 **Make your dialogue choice below to deepen your Bond:**`
         )
         .setImage('attachment://visual_novel.png')
         .setColor(0xec4899)
-        .setFooter({ text: `Reward: +${firstEvent.rewardBondExp} Bond EXP & 💎 ${firstEvent.rewardSaintQuartz || 3} SQ` });
+        .setFooter({
+          text: isReplay
+            ? 'Replay Mode: Rewards already claimed for this Interlude.'
+            : `Reward: +${event.rewardBondExp} Bond EXP & 💎 ${event.rewardSaintQuartz || 3} SQ`
+        });
 
       const choicesRow = new ActionRowBuilder<ButtonBuilder>();
       if (scene1.choices && scene1.choices.length > 0) {
         scene1.choices.forEach((c, idx) => {
           choicesRow.addComponents(
             new ButtonBuilder()
-              .setCustomId(`vn_choice:${firstEvent.id}:${c.id}`)
+              .setCustomId(`vn_choice:${event.id}:${c.id}`)
               .setLabel(`${idx + 1}. ${c.text.slice(0, 70)}`)
               .setStyle(ButtonStyle.Primary)
           );
@@ -219,10 +221,8 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
     if (btnId === 'vn_play_event') {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-      const events = getBondEventsForServant(activeServant);
-      const bondLvl = activeServant.bondLevel || 1;
-      const availableEvent = events.find(e => e.requiredBondLevel <= bondLvl) || events[0];
-      const scene1 = availableEvent.scenes[0];
+      const { event, isReplay, statusNote } = selectActiveInterludeForServant(activeServant);
+      const scene1 = event.scenes[0];
 
       // Generate VN Canvas Image
       const imageBuffer = await renderVisualNovelCard({
@@ -231,30 +231,34 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         servantAvatarUrl: sTemplate.avatarUrl,
         speakerName: scene1.speakerName || servantName,
         dialogueText: scene1.dialogueText,
-        title: availableEvent.title,
-        subtitle: availableEvent.subtitle,
+        title: event.title,
+        subtitle: event.subtitle,
         currentBondLevel: activeServant.bondLevel || 1
       });
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel.png' });
 
-      const cleanTitle = availableEvent.title.replace(/^Bond Interlude:\s*/i, '');
+      const cleanTitle = event.title.replace(/^Bond Interlude:\s*/i, '');
       const vnEmbed = new EmbedBuilder()
         .setTitle(`📖 Bond Interlude: ${cleanTitle}`)
         .setDescription(
-          `*${availableEvent.subtitle}*\n\n` +
+          `*${event.subtitle}* ${statusNote ? `\n\n*${statusNote}*` : ''}\n\n` +
           `👇 **Choose your response to deepen your Bond:**`
         )
         .setImage('attachment://visual_novel.png')
         .setColor(0xec4899)
-        .setFooter({ text: `Reward: +${availableEvent.rewardBondExp} Bond EXP & 💎 ${availableEvent.rewardSaintQuartz || 3} SQ` });
+        .setFooter({
+          text: isReplay
+            ? 'Replay Mode: Rewards already claimed for this Interlude.'
+            : `Reward: +${event.rewardBondExp} Bond EXP & 💎 ${event.rewardSaintQuartz || 3} SQ`
+        });
 
       const choicesRow = new ActionRowBuilder<ButtonBuilder>();
       if (scene1.choices && scene1.choices.length > 0) {
         scene1.choices.forEach((c, idx) => {
           choicesRow.addComponents(
             new ButtonBuilder()
-              .setCustomId(`vn_choice:${availableEvent.id}:${c.id}`)
+              .setCustomId(`vn_choice:${event.id}:${c.id}`)
               .setLabel(`${idx + 1}. ${c.text.slice(0, 70)}`)
               .setStyle(ButtonStyle.Primary)
           );
@@ -324,24 +328,39 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       // Accurately find picked choice
       const pickedChoice = scene1.choices?.find(c => c.id === choiceId);
-      const expGain = pickedChoice ? pickedChoice.bondExpGain : 150;
       const servantResponse = pickedChoice ? pickedChoice.response : scene1.dialogueText;
 
-      // Add bond exp to servant
-      const { updatedServant } = addBondExpToServant(activeServant, expGain);
+      // Check if event was ALREADY completed to prevent duplicate rewards glitch!
+      const completedIds: string[] = activeServant.completedBondEvents || [];
+      const isFirstCompletion = !completedIds.includes(event.id);
 
-      // Award SQ
-      const sqReward = event.rewardSaintQuartz || 3;
-      master.saintQuartz = (master.saintQuartz || 0) + sqReward;
+      const baseExpGain = pickedChoice ? pickedChoice.bondExpGain : 150;
+      const baseSqReward = event.rewardSaintQuartz || 3;
 
-      // Track completed event
-      if (!updatedServant.completedBondEvents) updatedServant.completedBondEvents = [];
-      if (!updatedServant.completedBondEvents.includes(event.id)) {
+      const expGain = isFirstCompletion ? baseExpGain : 0;
+      const sqReward = isFirstCompletion ? baseSqReward : 0;
+
+      let updatedServant = { ...activeServant };
+
+      if (isFirstCompletion) {
+        // Track completed event
+        if (!updatedServant.completedBondEvents) updatedServant.completedBondEvents = [];
         updatedServant.completedBondEvents.push(event.id);
-      }
 
-      master.servants = master.servants.map((s: any) => s.id === updatedServant.id ? updatedServant : s);
-      await saveMaster(master);
+        // Add bond exp to servant
+        if (expGain > 0) {
+          const res = addBondExpToServant(updatedServant, expGain);
+          updatedServant = res.updatedServant;
+        }
+
+        // Award SQ
+        if (sqReward > 0) {
+          master.saintQuartz = (master.saintQuartz || 0) + sqReward;
+        }
+
+        master.servants = master.servants.map((s: any) => s.id === updatedServant.id ? updatedServant : s);
+        await saveMaster(master);
+      }
 
       const reactionEmoji = pickedChoice?.reactionEmotion === 'happy' ? '💖' : pickedChoice?.reactionEmotion === 'flustered' ? '😳' : pickedChoice?.reactionEmotion === 'amused' ? '😄' : '✨';
 
@@ -364,18 +383,24 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel_reaction.png' });
 
+      const rewardsText = isFirstCompletion
+        ? `🎉 **REWARDS EARNED:**\n` +
+          `• **Bond EXP:** +${expGain} EXP ${reactionEmoji}\n` +
+          `• **Saint Quartz:** +💎 ${sqReward} SQ\n` +
+          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\``
+        : `ℹ️ **REPLAY MODE:**\n` +
+          `• *Rewards already claimed for this Interlude.*\n` +
+          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\``;
+
       const resultEmbed = new EmbedBuilder()
         .setTitle(`🌸 Interlude Complete: ${event.title}`)
         .setDescription(
           `**${servantName}**:\n` +
           `*"${servantResponse}"*\n\n` +
-          `🎉 **REWARDS EARNED:**\n` +
-          `• **Bond EXP:** +${expGain} EXP ${reactionEmoji}\n` +
-          `• **Saint Quartz:** +💎 ${sqReward} SQ\n` +
-          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\``
+          rewardsText
         )
         .setImage('attachment://visual_novel_reaction.png')
-        .setColor(0xec4899);
+        .setColor(isFirstCompletion ? 0xec4899 : 0x64748b);
 
       await interaction.editReply({
         embeds: [resultEmbed],
