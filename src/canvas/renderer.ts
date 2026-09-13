@@ -5956,54 +5956,54 @@ export async function renderVisualNovelCard(
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  // 1. Fuyuki Night / Leyline Scene Background Rendering
+  // 1. Scene Background Rendering (Default to rich atmospheric anime background)
+  const defaultBgUrl = 'https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp';
+  const bgUrlToUse = opts.backgroundImageUrl || defaultBgUrl;
+
   let bgDrawn = false;
-  if (opts.backgroundImageUrl) {
-    const customBg = await loadImage(opts.backgroundImageUrl);
-    if (customBg) {
-      ctx.drawImage(customBg, 0, 0, width, height);
-      bgDrawn = true;
+  if (bgUrlToUse) {
+    try {
+      const customBg = await loadImage(bgUrlToUse);
+      if (customBg) {
+        ctx.drawImage(customBg, 0, 0, width, height);
+        bgDrawn = true;
+      }
+    } catch {
+      bgDrawn = false;
     }
   }
 
   if (!bgDrawn) {
-    // Fuyuki Leyline Night Sky Gradient
+    // Rich Steins;Gate Fuyuki Leyline Sky Gradient
     const bgGrad = ctx.createLinearGradient(0, 0, width, height);
-    bgGrad.addColorStop(0, '#0a0d1d');
-    bgGrad.addColorStop(0.4, '#12172f');
-    bgGrad.addColorStop(0.8, '#0d1124');
-    bgGrad.addColorStop(1, '#070914');
+    bgGrad.addColorStop(0, '#060a16');
+    bgGrad.addColorStop(0.3, '#0d152a');
+    bgGrad.addColorStop(0.7, '#111827');
+    bgGrad.addColorStop(1, '#080c14');
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, width, height);
 
-    // Glowing Moon & Celestial Halo
+    // Glowing Celestial Halo & Ambient Radial Light
     ctx.save();
-    const moonGrad = ctx.createRadialGradient(820, 100, 10, 820, 100, 220);
-    moonGrad.addColorStop(0, 'rgba(224, 231, 255, 0.25)');
-    moonGrad.addColorStop(0.5, 'rgba(165, 180, 252, 0.08)');
-    moonGrad.addColorStop(1, 'rgba(165, 180, 252, 0)');
+    const moonGrad = ctx.createRadialGradient(750, 120, 10, 750, 120, 300);
+    moonGrad.addColorStop(0, 'rgba(245, 158, 11, 0.22)');
+    moonGrad.addColorStop(0.5, 'rgba(139, 92, 246, 0.12)');
+    moonGrad.addColorStop(1, 'rgba(15, 23, 42, 0)');
     ctx.fillStyle = moonGrad;
     ctx.beginPath();
-    ctx.arc(820, 100, 220, 0, Math.PI * 2);
+    ctx.arc(750, 120, 300, 0, Math.PI * 2);
     ctx.fill();
 
-    // Distant Fuyuki City Silhouette / Leyline Horizon Glow
-    const horizGrad = ctx.createLinearGradient(0, 200, 0, 340);
-    horizGrad.addColorStop(0, 'rgba(139, 92, 246, 0.12)');
-    horizGrad.addColorStop(1, 'rgba(15, 23, 42, 0)');
-    ctx.fillStyle = horizGrad;
-    ctx.fillRect(0, 200, width, 140);
-
-    // Faint FSN Leyline Grid Lines
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+    // Leyline Grid Pattern Overlay
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
-    for (let x = 0; x < width; x += 32) {
+    for (let x = 0; x < width; x += 30) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, height);
       ctx.stroke();
     }
-    for (let y = 0; y < height; y += 32) {
+    for (let y = 0; y < height; y += 30) {
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(width, y);
@@ -6012,119 +6012,169 @@ export async function renderVisualNovelCard(
     ctx.restore();
   }
 
-  // 2. Character Sprite (Full figure positioning with smooth bottom gradient fade)
+  // 2. Character Sprite (Right-Aligned Figure with Atmospheric Aura)
   if (opts.servantAvatarUrl) {
-    const portraitImg = await loadImage(opts.servantAvatarUrl);
-    if (portraitImg) {
-      ctx.save();
-      // Drop Shadow for character figure
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
-      ctx.shadowBlur = 30;
+    try {
+      const portraitImg = await loadImage(opts.servantAvatarUrl);
+      if (portraitImg) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+        ctx.shadowBlur = 35;
 
-      const px = 460;
-      const py = 10;
-      const pw = 520;
-      const ph = 540;
-      ctx.drawImage(portraitImg, px, py, pw, ph);
+        const px = 450;
+        const py = 10;
+        const pw = 520;
+        const ph = 540;
+        ctx.drawImage(portraitImg, px, py, pw, ph);
 
-      // Vertical gradient mask fading sprite bottom into dialogue overlay
-      const fadeGrad = ctx.createLinearGradient(0, 260, 0, height);
-      fadeGrad.addColorStop(0, 'rgba(8, 12, 24, 0)');
-      fadeGrad.addColorStop(0.65, 'rgba(8, 12, 24, 0.78)');
-      fadeGrad.addColorStop(1, 'rgba(4, 7, 16, 0.95)');
-      ctx.fillStyle = fadeGrad;
-      ctx.fillRect(px - 40, 260, pw + 80, 300);
-      ctx.restore();
+        // Smooth bottom gradient mask blending character sprite into the lower dialogue lens
+        const fadeGrad = ctx.createLinearGradient(0, 240, 0, height);
+        fadeGrad.addColorStop(0, 'rgba(8, 12, 22, 0)');
+        fadeGrad.addColorStop(0.65, 'rgba(8, 12, 22, 0.75)');
+        fadeGrad.addColorStop(1, 'rgba(5, 8, 16, 0.95)');
+        ctx.fillStyle = fadeGrad;
+        ctx.fillRect(px - 40, 240, pw + 80, 320);
+        ctx.restore();
+      }
+    } catch {
+      // Ignore sprite load error gracefully
     }
   }
 
-  // 3. Classic FSN Full-Width Semi-Transparent Overlay (Covers lower ~45%)
-  const overlayY = 290;
-  const overlayH = 270;
+  // 3. Steins;Gate Visual Novel Dialogue Box (Lower ~40% Lens)
+  const overlayX = 20;
+  const overlayY = 320;
+  const overlayW = 960;
+  const overlayH = 220;
 
   ctx.save();
-  const overlayGrad = ctx.createLinearGradient(0, overlayY, 0, height);
-  overlayGrad.addColorStop(0, 'rgba(8, 12, 24, 0.68)');   // ~68% opacity dark charcoal-blue
-  overlayGrad.addColorStop(1, 'rgba(4, 7, 16, 0.78)');    // ~78% opacity at bottom edge
-
+  // Obsidian Glass Lens Base
+  const overlayGrad = ctx.createLinearGradient(0, overlayY, 0, overlayY + overlayH);
+  overlayGrad.addColorStop(0, 'rgba(6, 10, 18, 0.92)');
+  overlayGrad.addColorStop(1, 'rgba(10, 14, 26, 0.97)');
   ctx.fillStyle = overlayGrad;
-  ctx.fillRect(0, overlayY, width, overlayH);
-
-  // Subtle translucent top hairline border across dialogue lens
-  ctx.strokeStyle = 'rgba(226, 232, 240, 0.38)';
-  ctx.lineWidth = 1.5;
   ctx.beginPath();
-  ctx.moveTo(0, overlayY);
-  ctx.lineTo(width, overlayY);
+  ctx.roundRect(overlayX, overlayY, overlayW, overlayH, 4);
+  ctx.fill();
+
+  // Golden / Amber Metallic Double Border Frame
+  ctx.strokeStyle = '#d97706';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.roundRect(overlayX, overlayY, overlayW, overlayH, 4);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(254, 240, 138, 0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(overlayX + 3, overlayY + 3, overlayW - 6, overlayH - 6, 3);
+  ctx.stroke();
+
+  // Corner Filigree Brackets (Steins;Gate UI aesthetic)
+  const cornerLen = 14;
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 2;
+
+  // Top-Left Corner Bracket
+  ctx.beginPath();
+  ctx.moveTo(overlayX + 4, overlayY + 4 + cornerLen);
+  ctx.lineTo(overlayX + 4, overlayY + 4);
+  ctx.lineTo(overlayX + 4 + cornerLen, overlayY + 4);
+  ctx.stroke();
+
+  // Top-Right Corner Bracket
+  ctx.beginPath();
+  ctx.moveTo(overlayX + overlayW - 4 - cornerLen, overlayY + 4);
+  ctx.lineTo(overlayX + overlayW - 4, overlayY + 4);
+  ctx.lineTo(overlayX + overlayW - 4, overlayY + 4 + cornerLen);
+  ctx.stroke();
+
+  // Bottom-Left Corner Bracket
+  ctx.beginPath();
+  ctx.moveTo(overlayX + 4, overlayY + overlayH - 4 - cornerLen);
+  ctx.lineTo(overlayX + 4, overlayY + overlayH - 4);
+  ctx.lineTo(overlayX + 4 + cornerLen, overlayY + overlayH - 4);
+  ctx.stroke();
+
+  // Bottom-Right Corner Bracket
+  ctx.beginPath();
+  ctx.moveTo(overlayX + overlayW - 4 - cornerLen, overlayY + overlayH - 4);
+  ctx.lineTo(overlayX + overlayW - 4, overlayY + overlayH - 4);
+  ctx.lineTo(overlayX + overlayW - 4, overlayY + overlayH - 4 - cornerLen);
   ctx.stroke();
   ctx.restore();
 
-  // 4. Character Name (Top-left of overlay, large white bold text with diamond ◆)
-  const speakerNameText = `◆ ${(opts.speakerName || opts.servantName).toUpperCase()}`;
+  // 4. Speaker Name Header: ☐ SPEAKER NAME (Steins;Gate Typography)
+  const speakerNameText = `☐ ${(opts.speakerName || opts.servantName).toUpperCase()}`;
   ctx.save();
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.95)';
-  ctx.lineWidth = 4;
-  ctx.font = 'bold 34px Georgia, "Times New Roman", serif';
+  ctx.font = 'bold 26px Georgia, "Times New Roman", serif';
   ctx.textAlign = 'left';
-  ctx.strokeText(speakerNameText, 35, overlayY + 45);
+
+  // High contrast drop shadow & stroke outline
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.95)';
+  ctx.lineWidth = 5;
+  ctx.strokeText(speakerNameText, overlayX + 25, overlayY + 40);
 
   ctx.shadowColor = '#000000';
-  ctx.shadowOffsetX = 3;
-  ctx.shadowOffsetY = 3;
-  ctx.shadowBlur = 5;
+  ctx.shadowOffsetX = 2;
+  ctx.shadowOffsetY = 2;
+  ctx.shadowBlur = 6;
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(speakerNameText, 35, overlayY + 45);
+  ctx.fillText(speakerNameText, overlayX + 25, overlayY + 40);
   ctx.restore();
 
-  // Choice Made Badge (If player selected a choice)
+  // Choice Made Badge (If player selected a response)
   if (opts.choiceMadeText) {
     ctx.save();
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
-    ctx.lineWidth = 3;
-    ctx.font = 'italic bold 17px sans-serif';
+    ctx.font = 'italic bold 15px sans-serif';
     ctx.textAlign = 'left';
 
     const rawChoice = opts.choiceMadeText;
-    const choiceStr = `👉 YOUR CHOICE: "${rawChoice.length > 50 ? rawChoice.slice(0, 47) + '...' : rawChoice}"`;
-    ctx.strokeText(choiceStr, 420, overlayY + 42);
+    const choiceStr = `✨ CHOICE SELECTED: "${rawChoice.length > 45 ? rawChoice.slice(0, 42) + '...' : rawChoice}"`;
 
-    ctx.fillStyle = '#f472b6';
-    ctx.fillText(choiceStr, 420, overlayY + 42);
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+    ctx.lineWidth = 3;
+    ctx.strokeText(choiceStr, overlayX + 420, overlayY + 38);
+
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillText(choiceStr, overlayX + 420, overlayY + 38);
     ctx.restore();
   }
 
-  // 5. Dialogue Text (Mobile & Desktop optimized, large 28px Georgia font with 3.5px black stroke outline)
+  // 5. Dialogue Text (Georgia Serif font with Steins;Gate gear indicator ⚙)
   ctx.save();
-  const textMarginX = 35;
-  const textStartY = overlayY + 95;
-  const maxTextWidth = 930;
-  const lineHeight = 42;
+  const textX = overlayX + 25;
+  const textY = overlayY + 85;
+  const maxTextW = overlayW - 50;
+  const lineHeight = 38;
 
-  ctx.font = '28px Georgia, "Times New Roman", serif';
+  ctx.font = '24px Georgia, "Times New Roman", serif';
   ctx.textAlign = 'left';
 
-  const words = opts.dialogueText.split(' ');
-  let currentLine = '"';
-  let lineY = textStartY;
+  const cleanText = (opts.dialogueText || '').replace(/^["“]/, '').replace(/["”]$/, '').trim();
+  const fullDialogue = `“${cleanText}” ⚙`;
+  const words = fullDialogue.split(' ');
+  let currentLine = '';
+  let lineY = textY;
   let linesDrawn = 0;
 
   for (let i = 0; i < words.length; i++) {
-    const testLine = currentLine + words[i] + ' ';
+    const testLine = currentLine ? `${currentLine} ${words[i]}` : words[i];
     const metrics = ctx.measureText(testLine);
-    if (metrics.width > maxTextWidth && i > 0) {
-      // High-contrast 3.5px dark outline for razor-sharp legibility on mobile Discord
+    if (metrics.width > maxTextW && i > 0) {
+      // Stroke for dark outline
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.95)';
       ctx.lineWidth = 4;
-      ctx.strokeText(currentLine, textMarginX, lineY);
+      ctx.strokeText(currentLine, textX, lineY);
 
       ctx.shadowColor = '#000000';
       ctx.shadowOffsetX = 2;
       ctx.shadowOffsetY = 2;
-      ctx.shadowBlur = 6;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(currentLine, textMarginX, lineY);
+      ctx.shadowBlur = 4;
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillText(currentLine, textX, lineY);
 
-      currentLine = words[i] + ' ';
+      currentLine = words[i];
       lineY += lineHeight;
       linesDrawn++;
       if (linesDrawn >= 3) break;
@@ -6134,41 +6184,36 @@ export async function renderVisualNovelCard(
   }
 
   if (linesDrawn < 3 && currentLine.trim().length > 0) {
-    const finalLine = currentLine.trim() + '"';
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.95)';
     ctx.lineWidth = 4;
-    ctx.strokeText(finalLine, textMarginX, lineY);
+    ctx.strokeText(currentLine, textX, lineY);
 
     ctx.shadowColor = '#000000';
     ctx.shadowOffsetX = 2;
     ctx.shadowOffsetY = 2;
-    ctx.shadowBlur = 6;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(finalLine, textMarginX, lineY);
+    ctx.shadowBlur = 4;
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillText(currentLine, textX, lineY);
   }
   ctx.restore();
 
-  // 6. Title and Bond Status Footer (Bottom-right of dialogue overlay)
+  // 6. Steins;Gate Status Bar & Control Hints (Bottom edge of lens)
   ctx.save();
-  ctx.shadowColor = '#000000';
-  ctx.shadowOffsetX = 2;
-  ctx.shadowOffsetY = 2;
-  ctx.shadowBlur = 4;
+  ctx.font = 'bold 12px monospace';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
 
-  ctx.fillStyle = 'rgba(226, 232, 240, 0.75)';
-  ctx.font = 'bold 15px sans-serif';
+  // Left side control hints
+  ctx.textAlign = 'left';
+  ctx.fillText('[F3] AUTO  |  [E] SKIP', overlayX + 25, overlayY + overlayH - 15);
+
+  // Right side event title & bond status
   ctx.textAlign = 'right';
-
-  const cleanTitle = opts.title.replace(/^Bond Interlude:\s*/i, '');
-  let statusStr = `${cleanTitle.toUpperCase()}`;
-  if (opts.currentBondLevel) {
-    statusStr += `  |  ◆ BOND LVL ${opts.currentBondLevel}/10`;
-  }
+  const cleanTitle = opts.title.replace(/^Bond Interlude:\s*/i, '').replace(/\s*\(Complete\)$/i, '');
+  let statusStr = `${cleanTitle.toUpperCase()}  |  ☐ BOND LVL ${opts.currentBondLevel || 1}/10`;
   if (opts.expGained) {
     statusStr += ` (+${opts.expGained} EXP)`;
   }
-
-  ctx.fillText(statusStr, width - 35, height - 18);
+  ctx.fillText(statusStr, overlayX + overlayW - 25, overlayY + overlayH - 15);
   ctx.restore();
 
   try {
