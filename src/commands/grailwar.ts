@@ -280,10 +280,10 @@ export function buildGrailWarHub(
     const homily = war.latestChurchHomily;
     const news = war.latestNewsBulletin;
     const homilyQuote = homily?.monologue
-      ? (homily.monologue.split('\n')[0].replace(/^“|”$/g, '').slice(0, 150) + (homily.monologue.length > 150 ? '…' : ''))
+      ? homily.monologue.trim().replace(/^["“']|["”']$/g, '')
       : 'Rejoice, Masters. The leylines await your blood. Carve each other apart with haste.';
     const newsStory = news?.gasLeakCoverStory
-      ? (news.gasLeakCoverStory.replace(/^“|”$/g, '').slice(0, 150) + (news.gasLeakCoverStory.length > 150 ? '…' : ''))
+      ? news.gasLeakCoverStory.trim().replace(/^["“']|["”']$/g, '')
       : (news?.headline || 'Miyama District gas line inspection in progress. Citizens advised to remain indoors.');
 
     const churchNewsTopBlock =

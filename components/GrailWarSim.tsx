@@ -634,9 +634,9 @@ export default function GrailWarSim({
                     <div className="font-serif italic font-semibold text-amber-300 flex items-center gap-1.5">
                       <span>Overseer&apos;s 24h Word (Father Kotomine)</span>
                     </div>
-                    <p className="text-white/80 font-mono leading-relaxed line-clamp-2">
+                    <p className="text-white/80 font-mono leading-relaxed">
                       &ldquo;{churchHomily?.monologue 
-                        ? (churchHomily.monologue.split('\n')[0].replace(/^[“"']|[”"']$/g, ''))
+                        ? (churchHomily.monologue.trim().replace(/^[“"']|[”"']$/g, ''))
                         : 'Rejoice, Masters. The leylines await your blood. Carve each other apart with haste.'}&rdquo;
                     </p>
                   </div>
@@ -651,7 +651,7 @@ export default function GrailWarSim({
                         {churchNews?.threatLevel || 'Moderate'} Threat
                       </span>
                     </div>
-                    <p className="text-white/80 font-mono leading-relaxed line-clamp-2">
+                    <p className="text-white/80 font-mono leading-relaxed">
                       &ldquo;{churchNews?.gasLeakCoverStory || 'Fuyuki Public Safety Bureau reports ongoing underground industrial gas main inspections across Miyama District.'}&rdquo;
                     </p>
                   </div>
