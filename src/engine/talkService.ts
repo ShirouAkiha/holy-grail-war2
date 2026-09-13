@@ -5,6 +5,7 @@ import {
   appendServantChatTurn,
   TalkMessageTurn
 } from './servantMemoryService';
+import { getServantCharacterProfile } from '../data/characterProfiles';
 
 export interface ServantTalkContext {
   servantName: string;
@@ -230,20 +231,64 @@ export async function generateServantTalkResponse(context: ServantTalkContext): 
     warBoardIntel += `\n- Fallen Masters: ${context.eliminatedMastersCount} eliminated.`;
   }
 
+  // Load specialized character profile card if available
+  const characterProfile = getServantCharacterProfile(context.servantId, context.servantName);
+
+  const genericBannedPhrases = [
+    'Stay sharp',
+    'Stay focused',
+    'Keep your guard up',
+    'Remain vigilant',
+    'Keep your eyes peeled',
+    'Eyes forward',
+    'Focus on yourself',
+    'My spiritual origin is at 100%',
+    'Circuits humming at peak',
+    'Rest your eyes and focus'
+  ];
+
+  const allBanned = Array.from(new Set([
+    ...genericBannedPhrases,
+    ...(characterProfile?.bannedTropes || [])
+  ]));
+
+  let characterPersonaBlock = '';
+  if (characterProfile) {
+    characterPersonaBlock = `
+=== MASTER CHARACTER ROLEPLAY PROFILE: "${characterProfile.name}" ===
+${characterProfile.persona}
+
+CHARACTER BEHAVIOR & MANNERISMS:
+${(characterProfile.mannerisms || []).map(m => `• ${m}`).join('\n')}
+
+CHARACTER SPEECH QUIRKS:
+${(characterProfile.speechQuirks || []).map(q => `• ${q}`).join('\n')}
+
+AUTHENTIC DIALOGUE EXAMPLES (FEW-SHOT VOICE TARGET):
+${characterProfile.speechExamples.map(e => `• ${e}`).join('\n')}
+`;
+
+    if (characterProfile.bondDynamic) {
+      const dynamic = bond <= 3
+        ? characterProfile.bondDynamic.lowBond
+        : bond <= 7
+          ? characterProfile.bondDynamic.midBond
+          : characterProfile.bondDynamic.highBond;
+      characterPersonaBlock += `\nRELATIONSHIP DYNAMICS AT CURRENT BOND (Bond ${bond}/10):\n${dynamic}\n`;
+    }
+  }
+
   const prompt = `You are roleplaying as the Fate franchise Heroic Spirit: "${context.servantName}" (Class: ${context.servantClass}).
 You are communicating telepathically with your Master, "${context.masterName}", during the active Holy Grail War in Fuyuki City.
+${characterPersonaBlock ? characterPersonaBlock : `Personality: Faithful to ${context.servantName}'s canon Type-Moon visual novel characterization.`}
 
-CONTEXT:
+CURRENT TACTICAL CONTEXT:
 - True Name/Identity: ${context.servantName}
 - Class: ${context.servantClass}
 - Master Name: ${context.masterName}
 - Physical / Spiritual Condition: ${physicalStatus}${tacticalNotes}${locationContext}
 - War Board & Rival Intelligence:\n${warBoardIntel}
 - Bond Rank: Level ${bond} of 10
-  * Bond 1-2: Formal, disciplined, distant, evaluating the Master's worth.
-  * Bond 3-4: Emerging respect, strategic camaraderie, respectful partnership.
-  * Bond 5-7: Strong emotional bond, candid personal loyalty, opens up about their legend and struggles.
-  * Bond 8-10: Absolute devotion, complete emotional resonance, treats Master as their true irreplaceable companion.
 - Command Seals Remaining: ${seals}/3
 - Master Concealment Status: ${context.isExposed ? 'Exposed to public War Board (dangerous)' : 'Concealed in shadows (safe)'}
 - Equipped Craft Essence: ${context.equippedCeName || 'None equipped'}
@@ -252,14 +297,15 @@ ${historyBlock}
 MASTER SAYS TO YOU NOW:
 "${context.playerMessage}"
 
-INSTRUCTIONS:
+VOICE & ROLEPLAY INSTRUCTIONS:
 - Reply in 1 to 3 concise, impactful sentences (maximum 60 words) suitable for a Visual Novel dialogue box.
-- Stay strictly in character matching ${context.servantName}'s canon personality, tone, vocabulary, and chivalric/heroic ethos.
-- Conversational Variety: Answer what your Master actually asked. Do NOT force the channel name or Craft Essence name into every single sentence. Only mention the channel/location or Craft Essence when relevant to the topic (e.g. asking about location, strategy, defense, or gear).
-- War Board Knowledge: When Master asks about other Masters, rivals, enemies, or the War Board, use the War Board Intelligence provided above to name specific exposed rivals, or mention that the rest are hiding in the shadows!
-- Naturally reflect your physical condition and Bond Rank (${bond}/10).
-- If referencing past topics mentioned by Master, seamlessly incorporate them as a shared memory of this War.
-- Address ${context.masterName} naturally (e.g. "Master", or specific honorifics appropriate to the character).
+- IMMERSION & VOICE: Sound like a living, breathing person with genuine emotion, attitude, and authentic speech patterns. Speak with the exact rhythm, colloquialisms, and temperament from the character profile above.
+- BANNED CLICHES & ROBOTIC NPC PHRASES (STRICTLY FORBIDDEN):
+  * NEVER use generic assistant sign-offs or cliché combat filler such as: ${allBanned.map(b => `"${b}"`).join(', ')}.
+  * NEVER recite raw numbers, percentages, or status sheet labels (do NOT say "my spiritual origin is at 100%").
+- Conversational Variety: Directly react to what Master said. If they tell you to rest, tease them, argue, complain about being tired or stubborn, or make an aggressive joke—do NOT immediately pivot into an AI battle-advisor warning!
+- War Board Knowledge: When Master asks about other Masters, rivals, enemies, or the War Board, reference known exposed rivals or the hidden enemies in shadows naturally.
+- Address ${context.masterName} naturally based on the character's personality and bond level.
 - Do NOT break character, do NOT provide meta explanations, and do NOT use asterisks for actions (*sighs*). Return ONLY the spoken dialogue.`;
 
   try {
@@ -267,13 +313,21 @@ INSTRUCTIONS:
     try {
       response = await client.models.generateContent({
         model: 'gemini-3.1-flash-lite',
-        contents: prompt
+        contents: prompt,
+        config: {
+          temperature: 0.9,
+          topP: 0.95
+        }
       });
     } catch (primaryErr) {
       console.warn('[talkService] gemini-3.1-flash-lite attempt error, falling back to gemini-3.6-flash:', primaryErr);
       response = await client.models.generateContent({
         model: 'gemini-3.6-flash',
-        contents: prompt
+        contents: prompt,
+        config: {
+          temperature: 0.9,
+          topP: 0.95
+        }
       });
     }
 
