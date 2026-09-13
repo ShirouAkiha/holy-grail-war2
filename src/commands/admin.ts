@@ -60,6 +60,7 @@ import {
   getServantCharacterProfile,
   saveCustomCharacterProfile,
   deleteCustomCharacterProfile,
+  hasCustomCharacterProfile,
   ServantCharacterProfile,
   DEFAULT_SERVANT_CHARACTER_PROFILES
 } from '../data/characterProfiles';
@@ -878,7 +879,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         return;
       }
 
-      const profile = getServantCharacterProfile(undefined, servantQuery);
+      const profile = getServantCharacterProfile(servantQuery, servantQuery) ||
+        getAllCharacterProfiles().find(p => p.id.toLowerCase() === servantQuery.toLowerCase() || p.name.toLowerCase() === servantQuery.toLowerCase());
       if (!profile) {
         await interaction.reply({
           content: `❌ Could not find any registered character profile for **"${servantQuery}"**.\nUse \`/admin persona action:edit servant:${servantQuery}\` or \`/admin hub category:personas\` to create one!`,
@@ -902,7 +904,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
 
       if (personaLore) {
-        const existing = getServantCharacterProfile(undefined, servantQuery);
+        const existing = getServantCharacterProfile(servantQuery, servantQuery);
         const speechExamples = speechExamplesRaw 
           ? speechExamplesRaw.split(/[;\n]/).map(s => s.trim()).filter(Boolean)
           : (existing?.speechExamples || []);
@@ -930,7 +932,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
 
       // No CLI persona_lore supplied: explain and provide button or hub
-      const existing = getServantCharacterProfile(undefined, servantQuery);
+      const existing = getServantCharacterProfile(servantQuery, servantQuery);
       const embed = new EmbedBuilder()
         .setTitle(`🎭 Configure Persona: ${servantQuery}`)
         .setDescription(
@@ -1052,7 +1054,8 @@ export function buildPersonaCardEmbed(
   profile: ServantCharacterProfile,
   actionOutcomeMsg?: string
 ): { embed: EmbedBuilder; components: ActionRowBuilder<ButtonBuilder>[] } {
-  const isCustom = !DEFAULT_SERVANT_CHARACTER_PROFILES[profile.id];
+  const isCustomOverride = hasCustomCharacterProfile(profile.id);
+  const isCanon = !!DEFAULT_SERVANT_CHARACTER_PROFILES[profile.id];
   const quotesList = (profile.speechExamples || []).slice(0, 4).map(q => `• *“${q}”*`).join('\n') || '*No quote samples registered.*';
   const quirksList = (profile.mannerisms || []).slice(0, 4).map(m => `• ${m}`).join('\n') || '*No quirks specified.*';
   const bannedList = (profile.bannedTropes || []).map(b => `\`${b}\``).join(', ') || '*None*';
@@ -1062,11 +1065,15 @@ export function buildPersonaCardEmbed(
     loreSnippet = loreSnippet.slice(0, 1797) + '...';
   }
 
+  const statusDisplay = isCustomOverride
+    ? (isCanon ? '⭐ **Custom Override (Canon Baseline Available)**' : '✨ **Custom Servant Persona**')
+    : '📖 **Canonical Type-Moon Baseline**';
+
   const embed = new EmbedBuilder()
     .setTitle(`🎭 CHARACTER CARD: ${profile.name} (\`${profile.id}\`)`)
     .setDescription(
       (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
-      `**Profile Status:** ${isCustom ? '⭐ **Custom Override / User Profile**' : '📖 **Canonical Type-Moon Baseline**'}\n` +
+      `**Profile Status:** ${statusDisplay}\n` +
       `**Aliases / Search Identifiers:** \`${(profile.aliases || [profile.id]).join(', ')}\`\n\n` +
       `📜 **Persona & Psychological Profile:**\n${loreSnippet}\n\n` +
       `🗣️ **Authentic Dialogue Samples:**\n${quotesList}\n\n` +
@@ -1079,7 +1086,7 @@ export function buildPersonaCardEmbed(
 
   const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(`admin_persona_btn_edit_${profile.id}`).setLabel('Edit Card (Modal)').setEmoji('✏️').setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId(`admin_persona_btn_reset_${profile.id}`).setLabel(isCustom ? 'Delete Override' : 'Reset to Default').setEmoji('🗑️').setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(`admin_persona_btn_reset_${profile.id}`).setLabel(isCustomOverride ? (isCanon ? 'Reset to Canon' : 'Delete Override') : 'Customize Card').setEmoji(isCustomOverride ? '🗑️' : '✨').setStyle(isCustomOverride ? ButtonStyle.Danger : ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('admin_tab_personas').setLabel('Persona Hub').setEmoji('🎭').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('admin_tab_war').setLabel('War Hub').setEmoji('🏆').setStyle(ButtonStyle.Secondary)
   );
@@ -1367,11 +1374,20 @@ export function buildAdminHub(
 
   } else if (category === 'personas') {
     const allProfiles = getAllCharacterProfiles();
-    const listDesc = allProfiles.slice(0, 12).map((p, idx) => {
-      const isCustom = !DEFAULT_SERVANT_CHARACTER_PROFILES[p.id];
-      const tag = isCustom ? '⭐ *Custom Override*' : '📖 *Canon Lore*';
+    const maxListed = 25;
+    const displayedProfiles = allProfiles.slice(0, maxListed);
+    const listDesc = displayedProfiles.map((p, idx) => {
+      const isCustomOverride = hasCustomCharacterProfile(p.id);
+      const isCanon = !!DEFAULT_SERVANT_CHARACTER_PROFILES[p.id];
+      const tag = isCustomOverride 
+        ? (isCanon ? '⭐ *Custom Override*' : '✨ *Custom Servant*') 
+        : '📖 *Canon Lore*';
       return `**${idx + 1}. ${p.name}** (\`${p.id}\`) — ${tag}\n> Quotes: \`${(p.speechExamples || []).length}\` | Quirks: \`${(p.mannerisms || []).length}\` | Banned: \`${(p.bannedTropes || []).length}\``;
     }).join('\n\n');
+
+    const overflowNote = allProfiles.length > maxListed 
+      ? `\n\n*...and ${allProfiles.length - maxListed} more Heroic Spirits (accessible via search and dropdown).*` 
+      : '';
 
     const embed = new EmbedBuilder()
       .setTitle(`🎭 Admin Control: Servant AI Personas & Character Cards (${allProfiles.length})`)
@@ -1379,6 +1395,7 @@ export function buildAdminHub(
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `Configure psychological profiles, speech quirks, authentic quotes, and banned assistant tropes for each Heroic Spirit.\n\n` +
         listDesc +
+        overflowNote +
         `\n\n*Select a Servant below to inspect or click **Create / Edit Persona** to open the visual card editor modal:*`
       )
       .setColor(0xa855f7)
@@ -1455,18 +1472,20 @@ export function buildAdminHub(
     const allProfiles = getAllCharacterProfiles();
     if (allProfiles.length > 0) {
       const options = allProfiles.slice(0, 25).map(p => {
-        const isCustom = !DEFAULT_SERVANT_CHARACTER_PROFILES[p.id];
+        const isCustomOverride = hasCustomCharacterProfile(p.id);
+        const isCanon = !!DEFAULT_SERVANT_CHARACTER_PROFILES[p.id];
+        const statusLabel = isCustomOverride ? (isCanon ? '⭐ Custom' : '✨ Custom') : '📖 Canon';
         return new StringSelectMenuOptionBuilder()
           .setLabel(p.name.slice(0, 25))
           .setValue(p.id)
-          .setDescription(`${isCustom ? '⭐ Custom' : '📖 Canon'} | Quotes: ${(p.speechExamples || []).length} | Quirks: ${(p.mannerisms || []).length}`.slice(0, 50))
+          .setDescription(`${statusLabel} | Quotes: ${(p.speechExamples || []).length} | Quirks: ${(p.mannerisms || []).length}`.slice(0, 50))
           .setEmoji('🎭');
       });
 
       const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId('admin_select_persona_profile')
-          .setPlaceholder('🔍 Select a Servant Persona to inspect / edit...')
+          .setPlaceholder(`🔍 Select a Servant Persona (${allProfiles.length} available)...`)
           .addOptions(options)
       );
       components.push(selectRow);
@@ -1624,7 +1643,8 @@ export async function handleAdminGlobalInteraction(interaction: any) {
     // PERSONA PROFILE DROPDOWN SELECTION
     if (customId === 'admin_select_persona_profile') {
       const selectedId = interaction.values?.[0] || '';
-      const profile = getServantCharacterProfile(undefined, selectedId);
+      const profile = getServantCharacterProfile(selectedId, selectedId) ||
+        getAllCharacterProfiles().find(p => p.id === selectedId || p.name.toLowerCase() === selectedId.toLowerCase());
       if (profile) {
         const card = buildPersonaCardEmbed(profile);
         await interaction.update({
@@ -1644,7 +1664,8 @@ export async function handleAdminGlobalInteraction(interaction: any) {
 
     if (customId.startsWith('admin_persona_btn_edit_')) {
       const profId = customId.replace('admin_persona_btn_edit_', '');
-      const profile = getServantCharacterProfile(undefined, profId) || {
+      const profile = getServantCharacterProfile(profId, profId) ||
+        getAllCharacterProfiles().find(p => p.id === profId || p.name.toLowerCase() === profId.toLowerCase()) || {
         id: profId,
         name: profId,
         aliases: [profId],
