@@ -62,23 +62,34 @@ export function generateCanonicalFallbackReply(ctx: ServantTalkContext): string 
     return `I am summoned as your ${servantClass}. My past is recorded in the Throne, but my loyalty is bound to your command.`;
   }
 
-  if (lowerMsg.includes('how are you') || lowerMsg.includes('feeling') || lowerMsg.includes('tired')) {
+  if (lowerMsg.includes('how are you') || lowerMsg.includes('feeling') || lowerMsg.includes('tired') || lowerMsg.includes('holding up') || lowerMsg.includes('doing')) {
     if (bondLevel >= 7) {
       return `Being at your side restores my spirit faster than any leyline. Let us press forward without hesitation, Master.`;
     }
-    return `My spirit origin is stable and attuned to your mana. I stand ready for combat at a moment's notice.`;
+    return `My spirit origin is stable and attuned to your mana, Master. I stand ready for combat at a moment's notice.`;
   }
 
-  // Bond-tier based default lines
-  if (bondLevel >= 8) {
-    return `No matter what adversity falls upon us, Master, my soul is tethered to yours. Command me, and I shall pierce the heavens for your sake.`;
-  } else if (bondLevel >= 5) {
-    return `I hear you clearly through our pact, Master. Your trust strengthens my spiritual core—I will not permit defeat to touch our banner.`;
-  } else if (bondLevel >= 3) {
-    return `I acknowledge your words, Master. Our covenant grows stronger with every passing skirmish. Tell me your next command.`;
-  } else {
-    return `I acknowledge your voice, Master. My duty as ${servantClass} is to protect you and claim victory in this Holy Grail War.`;
-  }
+  // Dynamic variations for fallback
+  const variationsBondHigh = [
+    `No matter what adversity falls upon us, Master, my soul is tethered to yours. Command me, and I shall pierce the heavens for your sake.`,
+    `I feel our mental resonance deepening. Stay close to me, Master—no enemy Noble Phantasm shall break our link.`,
+    `Your resolve shines brighter than any Command Seal. Whatever you ask of me, I shall grant.`
+  ];
+
+  const variationsBondMid = [
+    `I hear you clearly through our pact, Master. Your trust strengthens my spiritual core—I will not permit defeat to touch our banner.`,
+    `Our bond holds firm against the tides of battle. What are your instructions for our next move, Master?`,
+    `My mana reserves are steady. Together as Master and ${servantClass}, we shall claim victory in Fuyuki.`
+  ];
+
+  const variationsBondLow = [
+    `I acknowledge your words, Master. Our covenant grows stronger with every passing skirmish. Tell me your next command.`,
+    `My duty as ${servantClass} is to protect you and claim victory in this Holy Grail War. State your intentions.`,
+    `I hear you, Master. Maintain vigilance—other Servants may be scanning the leylines for our signature.`
+  ];
+
+  const pool = bondLevel >= 8 ? variationsBondHigh : (bondLevel >= 4 ? variationsBondMid : variationsBondLow);
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 /**
