@@ -9,8 +9,14 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  AttachmentBuilder
-, MessageFlags } from 'discord.js';
+  AttachmentBuilder,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  MessageFlags 
+} from 'discord.js';
+import { generateServantTalkResponse, renderServantTalkVisualOutput } from './engine/talkService';
+import { safeSetEmbedThumbnail } from './utils/discordEmbedHelper';
 import * as summonCommand from './commands/summon';
 import * as servantCommand from './commands/servant';
 import * as servantsCommand from './commands/servants';
@@ -43,6 +49,7 @@ import * as dailyCommand from './commands/daily';
 import * as feedCommand from './commands/feed';
 import * as gachaCommand from './commands/gacha';
 import * as bondCommand from './commands/bond';
+import * as talkCommand from './commands/talk';
 import { SERVANT_DATABASE } from './data/servants';
 import { getOrCreateMaster, getMaster, saveMaster, getAllThroneServants, findServantInPool, searchAndRankServants, claimDailySaintQuartz } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
@@ -162,9 +169,13 @@ commands.set(equipCommand.data.name, equipCommand);
 commands.set(grailCommand.data.name, grailCommand);
 commands.set(boardCommand.data.name, boardCommand);
 commands.set(bondCommand.data.name, bondCommand);
+commands.set(talkCommand.data.name, talkCommand);
 
 // Alias mapping for backward-compatible text shortcuts and interactions
 export const commandAliasMap: Record<string, any> = {
+  talk: talkCommand,
+  speak: talkCommand,
+  ask: talkCommand,
   bond: bondCommand,
   claim: dailyCommand,
   sanctuary: churchCommand,
@@ -584,6 +595,118 @@ client.on(Events.InteractionCreate, async interaction => {
           });
         }
       }
+      else if (interaction.customId.startsWith('modal_talk_servant:')) {
+        const servantId = interaction.customId.replace('modal_talk_servant:', '');
+        const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+        let servant = master.servants?.find((s: any) => s.id === servantId) || master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+
+        if (servant) {
+          await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+          const playerMessage = interaction.fields.getTextInputValue('talk_input_message')?.trim() || 'What is our combat plan for tonight?';
+
+          const t = servant.template || servant;
+          const servantName = servant.nickname || t.name || 'Heroic Spirit';
+          const servantClass = t.servantClass || 'Saber';
+          const bondLevel = servant.bondLevel || 1;
+          const avatarUrl = servant.avatarUrl || t.avatarUrl;
+          const commandSeals = master.commandSeals ?? 3;
+
+          const war = getOrInitWarSession(master);
+          const userParticipant = war.participants?.[master.discordId];
+          const isExposed = !!userParticipant?.isExposed;
+          const equippedCeName = servant.equippedCe?.name;
+          const recentChronicleEvents = (war.eventLogs || []).slice(-3).map((l: any) =>
+            typeof l === 'string' ? l : (l.text || l.message || 'War active in Fuyuki.')
+          );
+
+          const { reply } = await generateServantTalkResponse({
+            servantName,
+            servantClass,
+            bondLevel,
+            maxBond: 10,
+            masterName: master.username || 'Master',
+            commandSeals,
+            isExposed,
+            equippedCeName,
+            recentChronicleEvents,
+            playerMessage,
+            servantAvatarUrl: avatarUrl
+          });
+
+          // STEP 3: Render the Output
+          const visual = await renderServantTalkVisualOutput({
+            servantName,
+            servantClass,
+            servantAvatarUrl: avatarUrl,
+            replyText: reply,
+            playerMessage,
+            masterName: master.username || 'Master',
+            bondLevel,
+            commandSeals
+          });
+
+          const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`btn_talk_servant:${servant.id}`)
+              .setLabel('Speak Again 💬')
+              .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+              .setCustomId('quick_servant_card')
+              .setLabel('Servant Profile 📜')
+              .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+              .setCustomId('vn_open_sanctum')
+              .setLabel('Bond Sanctum 💖')
+              .setStyle(ButtonStyle.Secondary)
+          );
+
+          if (visual.canvasBuffer) {
+            const attachment = new AttachmentBuilder(visual.canvasBuffer, { name: 'talk_card.png' });
+            const embed = new EmbedBuilder()
+              .setTitle(visual.embedData.title)
+              .setDescription(
+                `👤 **Master ${master.username}:**\n> *“${playerMessage}”*\n\n` +
+                `⚔️ **${servantName}:**\n> ❝ ***${reply}*** ❞`
+              )
+              .setColor(visual.embedData.color)
+              .setImage('attachment://talk_card.png')
+              .setFooter({ text: visual.embedData.footer });
+
+            if (avatarUrl) {
+              safeSetEmbedThumbnail(embed, avatarUrl);
+            }
+
+            await interaction.editReply({
+              embeds: [embed],
+              files: [attachment],
+              components: [actionRow]
+            });
+          } else {
+            const fallbackEmbed = new EmbedBuilder()
+              .setTitle(`💬 Telepathic Link | ${servantName} [Bond Rank: Lv. ${bondLevel}/10]`)
+              .setDescription(
+                `👤 **Master ${master.username}:**\n> *“${playerMessage}”*\n\n` +
+                `⚔️ **${servantName}:**\n> ❝ ***${reply}*** ❞\n\n` +
+                `━━━━━━━━━━━━━━━━━━━━━━\n` +
+                `💖 **Bond Rank:** Level \`${bondLevel} / 10\`\n` +
+                `🔱 **Command Seals:** \`${'✦ '.repeat(commandSeals)}${'✧ '.repeat(Math.max(0, 3 - commandSeals))}\` (**${commandSeals}/3**)\n` +
+                `🛡️ **Equipped CE:** *${equippedCeName || 'None'}*\n` +
+                `⚠️ **War Position:** *${isExposed ? 'Exposed on Public War Board' : 'Concealed in Shadows'}*`
+              )
+              .setColor(visual.embedData.color)
+              .setFooter({ text: `Bond Rank ${bondLevel}/10 • Holy Grail War Telepathic Resonance` });
+
+            if (avatarUrl) {
+              safeSetEmbedThumbnail(fallbackEmbed, avatarUrl);
+            }
+
+            await interaction.editReply({
+              embeds: [fallbackEmbed],
+              components: [actionRow]
+            });
+          }
+        }
+      }
       return;
     }
 
@@ -691,6 +814,52 @@ client.on(Events.InteractionCreate, async interaction => {
       if (interaction.replied || interaction.deferred) return;
 
       const btnId = interaction.customId;
+
+      // Talk to Servant Telepathic Resonance Link
+      if (
+        btnId.startsWith('btn_talk_servant') ||
+        btnId.startsWith('dlg_talk_servant') ||
+        btnId === 'servant_act_talk' ||
+        btnId === 'vn_talk_servant' ||
+        btnId === 'profile_talk_servant'
+      ) {
+        const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+        let targetServant = null;
+        if (btnId.includes(':')) {
+          const sId = btnId.split(':')[1];
+          targetServant = master.servants?.find((s: any) => s.id === sId);
+        }
+        if (!targetServant) {
+          targetServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+        }
+
+        if (!targetServant) {
+          await interaction.reply({
+            flags: MessageFlags.Ephemeral,
+            content: '❌ You do not have an active contracted Servant. Use `/summon ritual` to summon a Heroic Spirit into your service.'
+          });
+          return;
+        }
+
+        const t = targetServant.template || targetServant;
+        const sName = (targetServant.nickname || t.name || 'Servant').slice(0, 30);
+
+        const modal = new ModalBuilder()
+          .setCustomId(`modal_talk_servant:${targetServant.id}`)
+          .setTitle(`💬 Speak with ${sName}`.slice(0, 45));
+
+        const msgInput = new TextInputBuilder()
+          .setCustomId('talk_input_message')
+          .setLabel(`Transmit to ${sName} (Bond Lv.${targetServant.bondLevel || 1})`.slice(0, 45))
+          .setStyle(TextInputStyle.Paragraph)
+          .setPlaceholder(`Speak directly to ${sName}... (e.g. "What is our tactical plan for tonight's skirmish?")`)
+          .setMaxLength(500)
+          .setRequired(true);
+
+        modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(msgInput));
+        await interaction.showModal(modal);
+        return;
+      }
 
       // Admin Hub Control Suite
       if (btnId.startsWith('admin_')) {

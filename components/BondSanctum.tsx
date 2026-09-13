@@ -8,7 +8,7 @@ import {
   getUnlockedDialogueLinesForServant
 } from '../lib/engine/bondEvents';
 import { BondVisualNovelModal } from './BondVisualNovelModal';
-import { Heart, Sparkles, BookOpen, Volume2, Award, Shield, ChevronRight, Lock, CheckCircle2, Play, Users } from 'lucide-react';
+import { Heart, Sparkles, BookOpen, Volume2, Award, Shield, ChevronRight, Lock, CheckCircle2, Play, Users, MessageSquare, Send, X, Loader2 } from 'lucide-react';
 
 interface BondSanctumProps {
   master: MasterProfile;
@@ -29,6 +29,13 @@ export const BondSanctum: React.FC<BondSanctumProps> = ({
 
   // Active playing dialogue line preview
   const [playingQuoteId, setPlayingQuoteId] = useState<string | null>(null);
+
+  // Dynamic LLM Dialogue Modal State
+  const [isTalkModalOpen, setIsTalkModalOpen] = useState(false);
+  const [talkInput, setTalkInput] = useState('');
+  const [isSubmittingTalk, setIsSubmittingTalk] = useState(false);
+  const [talkResponse, setTalkResponse] = useState<string | null>(null);
+  const [lastAskedQuestion, setLastAskedQuestion] = useState<string>('');
 
   const selectedServant = master.servants.find(s => s.id === selectedServantId) || master.servants[0];
 
@@ -59,6 +66,47 @@ export const BondSanctum: React.FC<BondSanctumProps> = ({
 
     onUpdateMasterProfile(updatedProfile);
     setPlayingEvent(null);
+  };
+
+  // Handle LLM telepathic chat submission
+  const handleSendTalk = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanMsg = talkInput.trim();
+    if (!cleanMsg || isSubmittingTalk) return;
+
+    setIsSubmittingTalk(true);
+    setLastAskedQuestion(cleanMsg);
+
+    try {
+      const res = await fetch('/api/servants/talk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          context: {
+            servantName: selectedServant.nickname || template.name,
+            servantClass: template.servantClass,
+            bondLevel: selectedServant.bondLevel || 1,
+            maxBond: 10,
+            masterName: master.username || 'Master',
+            commandSeals: master.commandSeals ?? 3,
+            isExposed: false,
+            equippedCeName: selectedServant.equippedCe?.name,
+            recentChronicleEvents: [
+              "Fuyuki Leylines surge under the crimson moon.",
+              "Rival Masters patrol Shinto District in concealment."
+            ],
+            playerMessage: cleanMsg
+          }
+        })
+      });
+
+      const data = await res.json();
+      setTalkResponse(data.reply || `${template.name} looks at you attentively and nods.`);
+    } catch {
+      setTalkResponse("The telepathic leylines fluctuate... I stand with you, Master.");
+    } finally {
+      setIsSubmittingTalk(false);
+    }
   };
 
   return (
@@ -158,6 +206,21 @@ export const BondSanctum: React.FC<BondSanctumProps> = ({
                 <span>Total Bond EXP: {selectedServant.bondExp || 0}</span>
                 <span>{bondProgress.isMaxBond ? 'MAX BOND REACHED' : `${bondProgress.neededForNextLevel - bondProgress.expInCurrentLevel} EXP to Lv. ${(selectedServant.bondLevel || 1) + 1}`}</span>
               </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="pt-2 flex flex-wrap gap-2.5">
+              <button
+                onClick={() => {
+                  setIsTalkModalOpen(true);
+                  setTalkResponse(null);
+                  setTalkInput('');
+                }}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-bold text-xs uppercase tracking-wider shadow-lg shadow-amber-500/20 transition active:scale-95"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Talk to Servant
+              </button>
             </div>
           </div>
         </div>
@@ -373,6 +436,149 @@ export const BondSanctum: React.FC<BondSanctumProps> = ({
         onClose={() => setPlayingEvent(null)}
         onComplete={handleCompleteEvent}
       />
+
+      {/* DYNAMIC SERVANT DIALOGUE MODAL */}
+      {isTalkModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-xl bg-slate-900 border border-amber-500/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            
+            {/* Header */}
+            <div className="p-4 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full border border-amber-500/50 overflow-hidden bg-slate-800 shrink-0">
+                  <img
+                    src={selectedServant.avatarUrl || template.avatarUrl}
+                    alt={template.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                    {selectedServant.nickname || template.name}
+                    <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                      {template.servantClass}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Telepathic Link • Bond Level {selectedServant.bondLevel || 1}/10
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsTalkModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
+              {talkResponse && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  {/* Master's message bubble */}
+                  {lastAskedQuestion && (
+                    <div className="flex justify-end">
+                      <div className="bg-amber-500/20 border border-amber-500/40 text-amber-200 px-4 py-2.5 rounded-2xl rounded-tr-none text-xs sm:text-sm max-w-[85%]">
+                        <p className="text-[10px] text-amber-400 font-semibold mb-0.5 uppercase tracking-wider">
+                          Master {master.username || 'Master'}
+                        </p>
+                        <p className="italic">“{lastAskedQuestion}”</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Servant's reply bubble */}
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 rounded-full border border-amber-400/40 overflow-hidden shrink-0 mt-1">
+                      <img
+                        src={selectedServant.avatarUrl || template.avatarUrl}
+                        alt={template.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="bg-slate-800/90 border border-slate-700 text-slate-100 px-4 py-3 rounded-2xl rounded-tl-none text-xs sm:text-sm shadow-md flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-amber-300">
+                          {selectedServant.nickname || template.name}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          In-Character Response
+                        </span>
+                      </div>
+                      <p className="leading-relaxed font-serif text-slate-200">
+                        ❝ {talkResponse} ❞
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Input Form */}
+              <form onSubmit={handleSendTalk} className="space-y-3 pt-2">
+                <label className="block text-xs font-semibold text-slate-300">
+                  {talkResponse ? 'Speak Again to Your Servant:' : 'Address Your Heroic Spirit:'}
+                </label>
+                <div className="relative">
+                  <textarea
+                    value={talkInput}
+                    onChange={(e) => setTalkInput(e.target.value)}
+                    placeholder={`Speak to ${selectedServant.nickname || template.name} about your battle tactics, the Holy Grail War, or personal thoughts...`}
+                    rows={3}
+                    disabled={isSubmittingTalk}
+                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs sm:text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition resize-none disabled:opacity-50"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendTalk();
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[11px] text-slate-500">
+                    Press <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-[10px] text-slate-400">Enter</kbd> to transmit
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {talkResponse && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTalkResponse(null);
+                          setTalkInput('');
+                        }}
+                        className="px-3 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-slate-300 text-xs font-medium transition"
+                      >
+                        Clear
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={!talkInput.trim() || isSubmittingTalk}
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs uppercase tracking-wider shadow-md transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {isSubmittingTalk ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          Channeling...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-3.5 h-3.5" />
+                          Send
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 };

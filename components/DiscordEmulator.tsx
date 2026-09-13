@@ -599,6 +599,12 @@ export default function DiscordEmulator({
   const [modalTrapType, setModalTrapType] = useState<'alarm' | 'bloodfort'>('alarm');
   const [modalCustomChannel, setModalCustomChannel] = useState<string>('');
 
+  // Talk to Servant Telepathic Resonance State
+  const [showTalkModal, setShowTalkModal] = useState(false);
+  const [talkTargetServantId, setTalkTargetServantId] = useState<string | null>(null);
+  const [talkMessageInput, setTalkMessageInput] = useState('');
+  const [isTalkSubmitting, setIsTalkSubmitting] = useState(false);
+
   const effectiveChannels = useMemo(() => {
     const list = [...serverChannels];
     (grailWar.channelTraps || []).forEach(t => {
@@ -1033,6 +1039,132 @@ export default function DiscordEmulator({
     }
   };
 
+  const handleOpenTalkModal = (servantId?: string) => {
+    const sId = servantId || master.activeServantId || master.servants?.[0]?.id || null;
+    setTalkTargetServantId(sId);
+    setTalkMessageInput('');
+    setShowTalkModal(true);
+  };
+
+  const handleSendTalkMessage = async (targetServant: MasterServantInstance, userMessage: string) => {
+    if (!userMessage.trim() || isTalkSubmitting) return;
+    setIsTalkSubmitting(true);
+    try {
+      const servantName = targetServant.nickname || targetServant.template?.name || 'Heroic Spirit';
+      const servantClass = targetServant.template?.servantClass || 'Saber';
+      const bondLevel = targetServant.bondLevel || 1;
+      const avatarUrl = targetServant.avatarUrl || targetServant.template?.avatarUrl;
+      const commandSeals = master.commandSeals ?? 3;
+
+      // Add user message to stream
+      addMessage({
+        id: getNextId('user_talk_msg'),
+        sender: 'user',
+        timestamp: 'Just now',
+        content: `/talk message:${userMessage}`
+      });
+
+      // Call talk API route
+      const res = await fetch('/api/servants/talk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          context: {
+            servantName,
+            servantClass,
+            bondLevel,
+            maxBond: 10,
+            masterName: master.username,
+            commandSeals,
+            isExposed: grailWar.participants[master.discordId]?.isExposed || false,
+            equippedCeName: targetServant.equippedCe?.name,
+            recentChronicleEvents: grailWar.eventLogs?.slice(-3).map((l: any) => typeof l === 'string' ? l : l.message || 'War ongoing in Fuyuki.'),
+            playerMessage: userMessage,
+            servantAvatarUrl: avatarUrl
+          },
+          renderCanvas: true
+        })
+      });
+
+      const data = await res.json();
+      const reply = data.reply || 'I hear your call through our pact, Master. My blade shall secure our victory.';
+
+      const actionButtons = [
+        { id: `btn_talk_servant:${targetServant.id}`, label: 'Speak Again 💬', style: 'primary' as const, emoji: '💬' },
+        { id: 'quick_servant_card', label: 'Servant Profile 📜', style: 'secondary' as const, emoji: '📜' },
+        { id: 'quick_bond_status', label: 'Bond Sanctum 💖', style: 'secondary' as const, emoji: '💖' }
+      ];
+
+      // Option A: Visual Novel Canvas Card
+      if (data.cardImageUrl) {
+        addMessage({
+          id: getNextId('bot_talk_reply'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          vnCardData: {
+            speakerName: servantName,
+            dialogueText: reply,
+            eventTitle: `Telepathic Link • Bond Lv. ${bondLevel}`,
+            bondLevel,
+            avatarUrl,
+            masterChoiceText: userMessage,
+            isConcluded: true
+          },
+          artworkEmbed: {
+            imageUrl: data.cardImageUrl,
+            title: `💬 Telepathic Link | ${servantName} [${servantClass}]`,
+            description: `👤 **Master ${master.username}:**\n> *“${userMessage}”*\n\n⚔️ **${servantName}:**\n> ❝ ***${reply}*** ❞`,
+            color: '#d4af37'
+          },
+          components: {
+            type: 'buttons',
+            items: actionButtons
+          }
+        });
+      } else {
+        // Option B: Formatted Embed Fallback with Portrait icon and Bond Rank
+        addMessage({
+          id: getNextId('bot_talk_reply'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `💬 Telepathic Link | ${servantName} [Bond Rank: Lv. ${bondLevel}/10]`,
+            description:
+              `👤 **Master ${master.username}:**\n> *“${userMessage}”*\n\n` +
+              `⚔️ **${servantName}:**\n> ❝ ***${reply}*** ❞\n\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━\n` +
+              `💖 **Bond Rank:** Level \`${bondLevel} / 10\`\n` +
+              `🔱 **Command Seals:** \`${'✦ '.repeat(commandSeals)}${'✧ '.repeat(Math.max(0, 3 - commandSeals))}\` (**${commandSeals}/3**)\n` +
+              `🛡️ **Equipped CE:** *${targetServant.equippedCe?.name || 'None'}*`,
+            color: '#d4af37',
+            thumbnailUrl: avatarUrl,
+            footer: `Bond Rank ${bondLevel}/10 • Holy Grail War Telepathic Resonance`
+          },
+          components: {
+            type: 'buttons',
+            items: actionButtons
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Failed to communicate with servant:', err);
+      addMessage({
+        id: getNextId('bot_talk_error'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '⚠️ Telepathic Link Disrupted',
+          description: 'The spiritron frequency encountered interference. Please attempt telepathic contact again shortly.',
+          color: '#ef4444'
+        }
+      });
+    } finally {
+      setIsTalkSubmitting(false);
+      setShowTalkModal(false);
+      setTalkMessageInput('');
+    }
+  };
+
   const handleCommand = (cmd: string) => {
     const rawCmd = cmd.trim();
     // Normalize exclamation mark prefix `!command` to `/command` or detect command keywords without slash
@@ -1045,7 +1177,8 @@ export default function DiscordEmulator({
         'attack', 'ambush', 'duel', 'summon', 'servant', 'servants', 'grailwar', 'grail', 'board', 'war',
         'daily', 'claim', 'church', 'sanctuary', 'bounty', 'bounties', 'reputation', 'rep', 'defenses', 'profile', 'inventory',
         'equip', 'dialogue', 'heal', 'feed', 'cegacha', 'gacha', 'patrol', 'leak',
-        'trap', 'traps', 'familiar', 'familiars', 'help', 'boast', 'art', 'artwork', 'np'
+        'trap', 'traps', 'familiar', 'familiars', 'help', 'boast', 'art', 'artwork', 'np',
+        'talk', 'speak'
       ];
       if (knownCommands.includes(firstWord)) {
         normalizedRawCmd = '/' + rawCmd;
@@ -2648,9 +2781,48 @@ export default function DiscordEmulator({
         },
         components: {
           type: 'buttons',
-          items: playButtons
+          items: [
+            { id: `btn_talk_servant:${activeServant.id}`, label: 'Talk to Servant 💬', style: 'success' as const, emoji: '💬' },
+            ...playButtons
+          ]
         }
       });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // COMMAND 3.6: /talk, /speak (Telepathic Resonance Dialogue)
+    // ----------------------------------------------------
+    if (trimmed.startsWith('/talk') || trimmed.startsWith('!talk') || trimmed.startsWith('/speak') || trimmed.startsWith('!speak')) {
+      const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
+
+      if (!activeServant) {
+        addMessage({
+          id: getNextId('bot_talk_no_servant'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '❌ No Active Servant Contract',
+            description: 'You do not hold an active Servant contract. Use `/summon` or `/gacha` to contract a Heroic Spirit first!',
+            color: '#ef4444'
+          }
+        });
+        return;
+      }
+
+      let talkMsg = rawCmd
+        .replace(/^(\/|!)talk/i, '')
+        .replace(/^(\/|!)speak/i, '')
+        .trim();
+
+      // If user typed format like "/talk message:Hello" or "/talk 'Hello'"
+      talkMsg = talkMsg.replace(/^message:\s*/i, '').replace(/^["'](.*)["']$/, '$1').trim();
+
+      if (talkMsg) {
+        handleSendTalkMessage(activeServant, talkMsg);
+      } else {
+        handleOpenTalkModal(activeServant.id);
+      }
       return;
     }
 
@@ -4714,6 +4886,7 @@ export default function DiscordEmulator({
       components: {
         type: 'buttons',
         items: [
+          { id: `btn_talk_servant:${template.id}`, label: 'Talk to Servant', style: 'success', emoji: '💬' },
           { id: `view_np_${template.id}`, label: 'View Noble Phantasm', style: 'danger', emoji: '🎬' },
           { id: `view_art_${template.id}`, label: 'View Card Artwork', style: 'secondary', emoji: '🖼️' },
           { id: `quote_servant_${template.id}`, label: 'Hear Dialogue Card', style: 'primary', emoji: '💬' },
@@ -4920,6 +5093,12 @@ export default function DiscordEmulator({
             label: 'Alarm Trap (3k DMG)',
             style: ward === 'alarm' ? 'danger' : 'secondary',
             emoji: '🚨'
+          },
+          {
+            id: `btn_talk_servant:${curServant.id}`,
+            label: 'Talk to Servant',
+            style: 'success',
+            emoji: '💬'
           },
           {
             id: 'profile_share_public',
@@ -6149,6 +6328,7 @@ export default function DiscordEmulator({
       ];
     } else if (category === 'dialogue') {
       actionButtons = [
+        { id: `btn_talk_servant:${targetServant.id}`, label: 'Talk to Servant 💬', style: 'success', emoji: '💬' },
         { id: `dlg_open_modal_combat_${targetServant.id}`, label: 'Combat & NP Studio ⚔️', style: 'primary', emoji: '⚔️' },
         { id: `dlg_open_modal_tactical_${targetServant.id}`, label: 'Tactical & Seals 🔮', style: 'primary', emoji: '🔮' },
         { id: `dlg_open_modal_faceoff_${targetServant.id}`, label: 'Rival Face-Off 🔥', style: 'primary', emoji: '🔥' },
@@ -6157,9 +6337,10 @@ export default function DiscordEmulator({
       ];
     } else {
       actionButtons = [
+        { id: `btn_talk_servant:${targetServant.id}`, label: 'Talk to Servant', style: 'success', emoji: '💬' },
         { id: `servant_act_set_active_${targetServant.id}`, label: 'Set as Active', style: 'success', emoji: '👑', disabled: master.activeServantId === targetServant.id },
         { id: 'view_active_np', label: 'View NP Animation', style: 'danger', emoji: '🎬' },
-        { id: 'btn_hear_quote', label: 'Hear Dialogue', style: 'primary', emoji: '💬' },
+        { id: 'btn_hear_quote', label: 'Hear Dialogue', style: 'primary', emoji: '🔊' },
         { id: 'boast_servant_profile', label: 'Boast to Server', style: 'danger', emoji: '📢' }
       ];
     }
@@ -7168,6 +7349,14 @@ export default function DiscordEmulator({
 
   // Button interaction handler
   const handleButtonClick = (btnId: string, msgId?: string) => {
+    // Talk to Servant telepathic resonance button
+    if (btnId.startsWith('btn_talk_servant') || btnId.startsWith('talk_servant_') || btnId === 'servant_act_talk') {
+      const parts = btnId.split(':');
+      const servantId = parts.length > 1 ? parts[1] : (btnId.startsWith('talk_servant_') ? btnId.replace('talk_servant_', '') : undefined);
+      handleOpenTalkModal(servantId);
+      return;
+    }
+
     // Visual Novel Interlude In-Place Interactive Handlers
     if (btnId.startsWith('vn_') || btnId === 'quick_bond_status') {
       if (btnId === 'quick_bond_status' || btnId === 'vn_back_status') {
@@ -7222,6 +7411,7 @@ export default function DiscordEmulator({
             components: {
               type: 'buttons',
               items: [
+                { id: `btn_talk_servant:${activeS.id}`, label: 'Talk to Servant 💬', style: 'success' as const, emoji: '💬' },
                 ...playButtons,
                 { id: 'vn_view_quotes', label: '🎙️ View Voice Lines', style: 'secondary', emoji: '🎙️' }
               ]
@@ -7260,6 +7450,7 @@ export default function DiscordEmulator({
           components: {
             type: 'buttons',
             items: [
+              { id: `btn_talk_servant:${activeServant.id}`, label: 'Talk to Servant 💬', style: 'success' as const, emoji: '💬' },
               { id: 'vn_play_event', label: '📖 Play Interlude', style: 'primary' as const, emoji: '📖' },
               { id: 'vn_back_status', label: '📊 Bond Status', style: 'secondary' as const, emoji: '🌸' }
             ]
@@ -7445,6 +7636,7 @@ export default function DiscordEmulator({
         }
 
         const nextButtons = [
+          { id: `btn_talk_servant:${updatedServant.id}`, label: 'Talk to Servant 💬', style: 'success' as const, emoji: '💬' },
           { id: 'vn_play_event', label: '📖 Play Interlude Again', style: 'primary' as const, emoji: '⏩' },
           { id: 'vn_back_status', label: '📊 Bond Status', style: 'secondary' as const, emoji: '🌸' }
         ];
@@ -12441,6 +12633,182 @@ export default function DiscordEmulator({
           </div>
         </div>
       )}
+
+      {/* Telepathic Resonance Talk Modal */}
+      {showTalkModal && (() => {
+        const talkServant = (talkTargetServantId ? master.servants?.find(s => s.id === talkTargetServantId) : null) || master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
+        const servantName = talkServant ? (talkServant.nickname || talkServant.template?.name || 'Heroic Spirit') : 'No Contracted Servant';
+        const servantClass = talkServant?.template?.servantClass || 'Saber';
+        const bondLevel = talkServant?.bondLevel || 1;
+        const avatarUrl = talkServant?.avatarUrl || talkServant?.template?.avatarUrl;
+        const commandSeals = master.commandSeals ?? 3;
+
+        const quickSuggestions = [
+          'What is our tactical plan for tonight?',
+          'How do you feel about our bond and covenant?',
+          'What is your wish for the Holy Grail?',
+          'Tell me about your legend and heroic past.',
+          'Are you ready for the next battle, partner?'
+        ];
+
+        return (
+          <div
+            id="modal_talk_servant_backdrop"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+            onClick={(e) => {
+              if (e.target === e.currentTarget && !isTalkSubmitting) {
+                setShowTalkModal(false);
+              }
+            }}
+          >
+            <div
+              id="modal_talk_servant_container"
+              className="w-full max-w-lg bg-[#0e0e14] border border-[#d4af37]/40 rounded-xl shadow-2xl overflow-hidden flex flex-col text-[#dbdee1] relative"
+            >
+              {/* Modal Header */}
+              <div className="p-4 bg-gradient-to-r from-[#181824] via-[#12121b] to-[#181824] border-b border-white/10 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt={servantName}
+                      className="w-12 h-12 rounded-full object-cover border-2 border-[#d4af37] shadow-md"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-amber-950/80 border-2 border-[#d4af37] flex items-center justify-center text-xl">
+                      ⚔️
+                    </div>
+                  )}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-serif font-bold text-white text-base tracking-wide">
+                        {servantName}
+                      </h3>
+                      <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                        {servantClass}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-white/60 mt-0.5">
+                      <span className="text-amber-400 font-semibold">💖 Bond Lv. {bondLevel}/10</span>
+                      <span>•</span>
+                      <span className="text-rose-400 font-semibold">🔱 Seals: {commandSeals}/3</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => !isTalkSubmitting && setShowTalkModal(false)}
+                  disabled={isTalkSubmitting}
+                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-white flex items-center justify-center text-sm transition cursor-pointer disabled:opacity-30"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                <div className="p-2.5 rounded-lg bg-[#14141d] border border-white/5 text-xs text-white/70 leading-relaxed">
+                  <p className="flex items-center gap-1.5 font-medium text-amber-200 mb-1">
+                    <span>📡</span>
+                    <span>Telepathic Resonance Link Active</span>
+                  </p>
+                  <span>
+                    Speak directly into the mind of your Heroic Spirit. Your servant will respond in character, reflecting their lore, class nature, and current Bond Rank with you.
+                  </span>
+                </div>
+
+                {/* Quick Suggestion Chips */}
+                <div>
+                  <label className="text-[11px] font-bold text-white/60 uppercase tracking-wider block mb-1.5">
+                    💡 Suggested Invocations & Questions
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {quickSuggestions.map((promptText, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setTalkMessageInput(promptText)}
+                        disabled={isTalkSubmitting}
+                        className="text-[11px] px-2.5 py-1 rounded-full bg-[#1b1b26] hover:bg-[#282838] text-white/80 hover:text-white border border-white/10 hover:border-amber-500/40 transition cursor-pointer disabled:opacity-50 text-left"
+                      >
+                        {promptText}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Message Input Box */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-[11px] font-bold text-white/60 uppercase tracking-wider">
+                      💬 Your Message to {servantName}
+                    </label>
+                    <span className="text-[10px] text-white/40 font-mono">
+                      {talkMessageInput.length}/500
+                    </span>
+                  </div>
+                  <textarea
+                    id="talk_input_message"
+                    value={talkMessageInput}
+                    onChange={(e) => setTalkMessageInput(e.target.value.slice(0, 500))}
+                    placeholder={`Speak into the leylines... e.g. "What should our next move be?"`}
+                    rows={4}
+                    disabled={isTalkSubmitting}
+                    className="w-full bg-[#0a0a0f] text-white placeholder-white/30 border border-white/20 focus:border-[#d4af37] rounded-lg p-3 text-xs outline-none transition disabled:opacity-50 resize-none font-sans"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                        e.preventDefault();
+                        if (talkServant && talkMessageInput.trim() && !isTalkSubmitting) {
+                          handleSendTalkMessage(talkServant, talkMessageInput);
+                        }
+                      }
+                    }}
+                  />
+                  <span className="text-[10px] text-white/40 block mt-1">
+                    Press Ctrl+Enter to transmit immediately.
+                  </span>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-3 bg-[#0a0a0e] border-t border-white/10 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setShowTalkModal(false)}
+                  disabled={isTalkSubmitting}
+                  className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-semibold transition cursor-pointer disabled:opacity-30"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  id="btn_talk_submit_send"
+                  type="button"
+                  onClick={() => {
+                    if (talkServant && talkMessageInput.trim() && !isTalkSubmitting) {
+                      handleSendTalkMessage(talkServant, talkMessageInput);
+                    }
+                  }}
+                  disabled={!talkMessageInput.trim() || isTalkSubmitting || !talkServant}
+                  className="px-5 py-2 rounded-lg bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {isTalkSubmitting ? (
+                    <>
+                      <span className="animate-spin text-sm">🔮</span>
+                      <span>Resonating Leylines...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Transmit Telepathic Link</span>
+                      <span>⚡</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

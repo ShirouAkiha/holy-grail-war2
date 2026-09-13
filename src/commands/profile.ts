@@ -215,6 +215,11 @@ export function buildProfileButtons(userParticipant: any) {
 
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
+      .setCustomId('btn_talk_servant')
+      .setLabel('Talk to Servant')
+      .setEmoji('💬')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
       .setCustomId('profile_share_public')
       .setLabel('Share Public Card')
       .setEmoji('📢')

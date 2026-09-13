@@ -549,7 +549,8 @@ export async function buildServantHub(
     components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(titleSelect));
 
     actionButtonsRow.addComponents(
-      new ButtonBuilder().setCustomId('servant_act_hear_voice').setLabel('Hear Voice Line').setEmoji('💬').setStyle(ButtonStyle.Primary)
+      new ButtonBuilder().setCustomId(`btn_talk_servant:${targetServant.id}`).setLabel('Talk to Servant').setEmoji('💬').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('servant_act_hear_voice').setLabel('Hear Voice Line').setEmoji('🔊').setStyle(ButtonStyle.Primary)
     );
     components.push(actionButtonsRow);
   } else if (category === 'dialogue') {

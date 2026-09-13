@@ -103,8 +103,12 @@ export function buildBondActionRow(master: any) {
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
+      .setCustomId(`btn_talk_servant:${activeServant.id}`)
+      .setLabel('Talk to Servant 💬')
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
       .setCustomId('vn_play_event')
-      .setLabel(event ? `📖 Play Interlude: ${event.title.slice(0, 50)}${isReplay ? ' (Replay)' : ''}` : '📖 Play Generic Interlude')
+      .setLabel(event ? `📖 Play Interlude: ${event.title.slice(0, 45)}${isReplay ? ' (Replay)' : ''}` : '📖 Play Interlude')
       .setStyle(isReplay ? ButtonStyle.Secondary : ButtonStyle.Primary),
     new ButtonBuilder()
       .setCustomId('vn_view_quotes')
