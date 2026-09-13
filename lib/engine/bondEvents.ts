@@ -529,6 +529,172 @@ export const AOKO_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const HERACLES_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'heracles_bond_event_1',
+    servantTemplateId: 'heracles_berserker',
+    requiredBondLevel: 1,
+    title: 'The Great Hero & Morning Roars',
+    subtitle: 'Bond Level 1 Interlude • Fuyuki Residence',
+    description: 'A chaotic morning in Chaldea with Heracles navigating domestic life, teacups, butterflies, and grocery flyers under Mad Enhancement.',
+    rewardBondExp: 150,
+    rewardSaintQuartz: 3,
+    unlockedQuoteId: 'heracles_bond_line_1',
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: 'Heracles',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: '■■■■■■■■■■ーーー！！',
+        choices: [
+          {
+            id: 'c1a',
+            text: 'Good morning to you too, big guy! Did you sleep well?',
+            response: '───GUUUUUUUUUUUURRRRRRGH.',
+            bondExpGain: 125,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1b',
+            text: 'Whoa, lower the volume! The landlord is already threatening to evict us!',
+            response: '───Grr...? *Grumble.*',
+            bondExpGain: 100,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1c',
+            text: 'Put the refrigerator down. We talked about this.',
+            response: '*THUD.* ───GRAAAAH!',
+            bondExpGain: 150,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_2'
+          }
+        ]
+      },
+      {
+        id: 'scene_2',
+        speakerName: 'Heracles',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: '■■■■■■ーーーッ！',
+        choices: [
+          {
+            id: 'c2a',
+            text: 'Wait, why are you holding a tiny pink teacup?',
+            response: '*CRUNCH.* ───Gwooooh...',
+            bondExpGain: 125,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2b',
+            text: "Is that... battery acid you're drinking out of the kettle?",
+            response: '───GURRRRGH! *Gulp.* ■■■■■■ッ！',
+            bondExpGain: 100,
+            reactionEmotion: 'angry',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2c',
+            text: 'Look at you, participating in high society tea time!',
+            response: '───Hmph. *Grrr-grunt.*',
+            bondExpGain: 150,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_3'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Heracles',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: '───GWAAAARGH?! ■■■■■■■■■■ーーーッ！！',
+        choices: [
+          {
+            id: 'c3a',
+            text: "Don't panic! It’s just a butterfly! You killed the Nemean Lion, you can handle a bug!",
+            response: '───GROOOOOGH... *Snort.*',
+            bondExpGain: 125,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3b',
+            text: "NO, DON'T USE NINE LIVES ON A MOTH!",
+            response: '■■■■■■■■■■■■■■■■ーーーーーッッッ！！！',
+            bondExpGain: 100,
+            reactionEmotion: 'angry',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3c',
+            text: 'Quick, hide behind me! I will protect you from the winged terror!',
+            response: '...Guh? ───Gwa-ha-ha-ha-ha!',
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_4'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Heracles',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: '───Grrrr. *Rumble.*',
+        choices: [
+          {
+            id: 'c4a',
+            text: "Are you trying to pat my head? Please don't shatter my skull.",
+            response: '*Pat... pat.* ───Gwooh.',
+            bondExpGain: 125,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4b',
+            text: "You're pointing at the grocery store flyer. Do you want the discounted meat?",
+            response: '■■■■■■！！ *NOD.* ───GRAAAA!',
+            bondExpGain: 150,
+            reactionEmotion: 'excited',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4c',
+            text: "You're actually a big softie underneath all that Mad Enhancement, aren't you?",
+            response: '───TSK. *GROOOOOAR!*',
+            bondExpGain: 125,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_5'
+          }
+        ]
+      },
+      {
+        id: 'scene_5',
+        speakerName: 'Heracles',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: '■■■■■■■■■■ーーー！！',
+        choices: [
+          {
+            id: 'c5a',
+            text: 'Alright! Meat buffet it is! Charge!',
+            response: '───UOOOOOOOOHHHH! ■■■■■■■■■■ーーーッ！！',
+            bondExpGain: 150,
+            reactionEmotion: 'excited'
+          },
+          {
+            id: 'c5b',
+            text: "Let's go win this Grail War, buddy. Right after lunch.",
+            response: '───GURRGH!',
+            bondExpGain: 150,
+            reactionEmotion: 'determined'
+          }
+        ]
+      }
+    ]
+  }
+];
+
 /**
  * Registry of all available curated bond events by servant template ID.
  */
@@ -538,7 +704,9 @@ export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
   emiya: EMIYA_BOND_EVENTS,
   cu_chulainn: CU_CHULAINN_BOND_EVENTS,
   adiosa_dragon_envoy: ADIOSA_BOND_EVENTS,
-  aoko_aozaki: AOKO_BOND_EVENTS
+  aoko_aozaki: AOKO_BOND_EVENTS,
+  heracles_berserker: HERACLES_BOND_EVENTS,
+  heracles: HERACLES_BOND_EVENTS
 };
 
 /**
@@ -830,6 +998,66 @@ export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
       category: 'bond_5',
       requiredBondLevel: 5,
       quoteText: "Share the debt of True Magic? You'd evaporate on the spot, idiot... But I appreciate the sentiment. Really."
+    }
+  ],
+  heracles_berserker: [
+    {
+      id: 'heracles_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: '■■■■■■■■■■! (The giant nods respectfully as the earth trembles beneath his feet).'
+    },
+    {
+      id: 'heracles_bond_1',
+      title: 'Bond 1: Morning Roars',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: '■■■■■■！！ *NOD.* ───GRAAAA! (Do you want the discounted meat?)'
+    },
+    {
+      id: 'heracles_bond_3',
+      title: 'Bond 3: Softie Underneath',
+      category: 'bond_3',
+      requiredBondLevel: 3,
+      quoteText: '*Pat... pat.* ───Gwooh. (The Great Hero gently pats your head).'
+    },
+    {
+      id: 'heracles_bond_5',
+      title: 'Bond 5: Unyielding Loyalty',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: '───UOOOOOOOOHHHH! ■■■■■■■■■■ーーーッ！！'
+    }
+  ],
+  heracles: [
+    {
+      id: 'heracles_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: '■■■■■■■■■■! (The giant nods respectfully as the earth trembles beneath his feet).'
+    },
+    {
+      id: 'heracles_bond_1',
+      title: 'Bond 1: Morning Roars',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: '■■■■■■！！ *NOD.* ───GRAAAA! (Do you want the discounted meat?)'
+    },
+    {
+      id: 'heracles_bond_3',
+      title: 'Bond 3: Softie Underneath',
+      category: 'bond_3',
+      requiredBondLevel: 3,
+      quoteText: '*Pat... pat.* ───Gwooh. (The Great Hero gently pats your head).'
+    },
+    {
+      id: 'heracles_bond_5',
+      title: 'Bond 5: Unyielding Loyalty',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: '───UOOOOOOOOHHHH! ■■■■■■■■■■ーーーッ！！'
     }
   ]
 };

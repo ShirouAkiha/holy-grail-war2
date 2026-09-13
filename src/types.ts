@@ -172,7 +172,7 @@ export interface BondChoice {
   text: string;
   response: string;
   bondExpGain: number;
-  reactionEmotion?: 'happy' | 'thoughtful' | 'surprised' | 'flustered' | 'determined' | 'amused' | 'stern' | 'smug';
+  reactionEmotion?: 'happy' | 'thoughtful' | 'surprised' | 'flustered' | 'determined' | 'amused' | 'stern' | 'smug' | 'angry' | 'excited';
   nextSceneId?: string;
 }
 
