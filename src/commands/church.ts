@@ -136,6 +136,9 @@ export function buildChurchEmbed(userParticipant: any, war?: any, lastMsg?: stri
       `• **Asylum Inviolability:** No Master may target, ambush, or skirmish against anyone sheltered within the church.\n` +
       `• **Truce Binding:** Masters in sanctuary cannot launch ambushes or attack rivals until they formally depart.` +
       bountyNotice +
+      (war?.latestChurchHomily?.monologue
+        ? `\n\n📜 **Overseer's Sermon Soliloquy (Father Kotomine):**\n> *“${war.latestChurchHomily.monologue}”*`
+        : '') +
       `\n\n*Use the interactive buttons below or run \`/church action:homily\` and \`/church action:news\`:*`
     )
     .setColor(rep.isRogue ? 0xef4444 : inSanctuary ? 0x10b981 : 0x6366f1)

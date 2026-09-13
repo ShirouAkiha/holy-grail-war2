@@ -6306,9 +6306,36 @@ export interface KireiVisualNovelCardOptions {
   threatLevel?: string;
 }
 
+function drawVectorCross(ctx: any, cx: number, cy: number, size: number, color: string) {
+  ctx.save();
+  ctx.fillStyle = color;
+  const barW = Math.max(2, Math.round(size * 0.26));
+  const barH = size;
+  const crossW = Math.round(size * 0.76);
+  const crossH = Math.max(2, Math.round(size * 0.26));
+  const crossYOffset = Math.round(size * 0.22);
+  // Vertical beam
+  ctx.fillRect(cx - barW / 2, cy - barH / 2, barW, barH);
+  // Horizontal arm
+  ctx.fillRect(cx - crossW / 2, cy - barH / 2 + crossYOffset, crossW, crossH);
+  ctx.restore();
+}
+
+function drawVectorDownArrow(ctx: any, cx: number, cy: number, size: number, color: string) {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(cx - size, cy - size * 0.6);
+  ctx.lineTo(cx + size, cy - size * 0.6);
+  ctx.lineTo(cx, cy + size * 0.8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
 /**
  * Extracts a concise, punchy, high-impact dialogue passage for the Visual Novel frame.
- * Ensures the text fits with large, highly readable 24px-30px typography in 2-4 lines.
+ * Ensures the text fits with large, highly readable 24px-28px typography in 2-4 lines.
  */
 function formatVNDialogueExcerpt(raw: string): string {
   const clean = (raw || 'Rejoice, Masters. The leylines await your blood.')
@@ -6320,12 +6347,12 @@ function formatVNDialogueExcerpt(raw: string): string {
     return clean;
   }
 
-  // Extract first 1-3 complete sentences up to ~250 chars
+  // Extract first 1-2 complete sentences up to ~240 chars
   const sentences = clean.match(/[^.!?]+[.!?]+/g);
   if (sentences && sentences.length > 0) {
     let acc = '';
     for (const s of sentences) {
-      if ((acc + ' ' + s).trim().length <= 260) {
+      if ((acc + ' ' + s).trim().length <= 240) {
         acc = (acc + ' ' + s).trim();
       } else {
         break;
@@ -6340,7 +6367,7 @@ function formatVNDialogueExcerpt(raw: string): string {
   const words = clean.split(' ');
   let cur = '';
   for (const w of words) {
-    if ((cur + ' ' + w).length <= 245) {
+    if ((cur + ' ' + w).length <= 230) {
       cur = (cur + ' ' + w).trim();
     } else {
       break;
@@ -6458,7 +6485,7 @@ export async function renderKireiVisualNovelCard(
     }
   }
 
-  // 3. TOP CINEMATIC HEADER HUD (Clean, No Broken Glyphs)
+  // 3. TOP CINEMATIC HEADER HUD (Clean, No Overlap, No Broken Glyphs)
   const topHudX = 48;
   const topHudY = 24;
   const topHudW = 1184;
@@ -6479,30 +6506,15 @@ export async function renderKireiVisualNovelCard(
   drawRoundRect(ctx, topHudX, topHudY, topHudW, topHudH, 6);
   ctx.stroke();
 
-  // Left Section: Sanctuary Badge + Title
+  // Left Section: Vector Cross + Sanctuary Sub-Badge
+  drawVectorCross(ctx, topHudX + 24, topHudY + 18, 12, '#f59e0b');
   ctx.font = 'bold 11px sans-serif';
   ctx.fillStyle = '#f59e0b';
   ctx.textAlign = 'left';
-  ctx.fillText('✝  FUYUKI CHURCH SANCTUARY', topHudX + 18, topHudY + 22);
+  ctx.fillText('FUYUKI CHURCH SANCTUARY', topHudX + 34, topHudY + 22);
 
-  const mainTitle = opts.title || "The Overseer's 24-Hour Homily";
-  const subTitle = opts.subtitle ? ` | ${opts.subtitle}` : '';
-
-  ctx.font = 'bold 17px Georgia, "Times New Roman", serif';
-  ctx.fillStyle = '#ffffff';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-  ctx.shadowBlur = 4;
-  ctx.fillText(mainTitle, topHudX + 18, topHudY + 44);
-
-  if (subTitle) {
-    const mainTitleW = ctx.measureText(mainTitle).width;
-    ctx.font = 'italic 15px Georgia, "Times New Roman", serif';
-    ctx.fillStyle = '#cbd5e1';
-    ctx.fillText(subTitle, topHudX + 18 + mainTitleW, topHudY + 44);
-  }
-
-  // Right Section: Sanctuary Neutral Tag
-  const rightTagW = 230;
+  // Right Section: Sanctuary Neutral Tag (Width: 220px)
+  const rightTagW = 220;
   const rightTagH = 32;
   const rightTagX = topHudX + topHudW - rightTagW - 14;
   const rightTagY = topHudY + 12;
@@ -6525,11 +6537,27 @@ export async function renderKireiVisualNovelCard(
   ctx.shadowBlur = 8;
   ctx.stroke();
 
-  ctx.font = 'bold 12px sans-serif';
+  ctx.font = 'bold 11px sans-serif';
   ctx.fillStyle = '#fbbf24';
   ctx.textAlign = 'left';
   ctx.shadowBlur = 0;
   ctx.fillText('CHURCH NEUTRAL ZONE', rightTagX + 30, rightTagY + 20);
+
+  // Center/Left Title with Strict Max Width Truncation (Zero Overlap!)
+  const maxTitleW = rightTagX - (topHudX + 18) - 24; // ~890px
+  const mainTitle = opts.title || "The Overseer's 24-Hour Homily";
+  const subTitle = opts.subtitle ? ` | ${opts.subtitle}` : '';
+
+  ctx.font = 'bold 16px Georgia, "Times New Roman", serif';
+  let fullTitleStr = `${mainTitle}${subTitle}`;
+  while (ctx.measureText(fullTitleStr).width > maxTitleW && fullTitleStr.length > 20) {
+    fullTitleStr = fullTitleStr.slice(0, -4) + '...';
+  }
+
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+  ctx.shadowBlur = 4;
+  ctx.fillText(fullTitleStr, topHudX + 18, topHudY + 44);
   ctx.restore();
 
   // 4. DIALOGUE / MONOLOGUE BOX (Type-Moon Visual Novel Style)
@@ -6597,9 +6625,9 @@ export async function renderKireiVisualNovelCard(
   const speakerName = (opts.speakerName || 'Father Kirei Kotomine').toUpperCase();
   ctx.save();
   const nameBadgeX = boxX + 28;
-  const nameBadgeY = boxY - 20;
+  const nameBadgeY = boxY - 22;
   const nameBadgeW = 340;
-  const nameBadgeH = 40;
+  const nameBadgeH = 42;
 
   // Badge background
   const badgeGrad = ctx.createLinearGradient(nameBadgeX, nameBadgeY, nameBadgeX, nameBadgeY + nameBadgeH);
@@ -6615,19 +6643,21 @@ export async function renderKireiVisualNovelCard(
   drawRoundRect(ctx, nameBadgeX, nameBadgeY, nameBadgeW, nameBadgeH, 4);
   ctx.stroke();
 
-  // Speaker Cross & Name Text
+  // Vector Cross + Speaker Name
+  drawVectorCross(ctx, nameBadgeX + 22, nameBadgeY + 21, 14, '#fbbf24');
+
   ctx.font = 'bold 15px Georgia, "Times New Roman", serif';
   ctx.textAlign = 'left';
   ctx.fillStyle = '#fbbf24';
   ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
   ctx.shadowBlur = 6;
-  ctx.fillText(`✝  ${speakerName}`, nameBadgeX + 16, nameBadgeY + 25);
+  ctx.fillText(speakerName, nameBadgeX + 36, nameBadgeY + 26);
 
   // Overseer Role Tag
   ctx.font = 'bold 11px sans-serif';
   ctx.textAlign = 'right';
   ctx.fillStyle = '#fca5a5';
-  ctx.fillText('[ OVERSEER ]', nameBadgeX + nameBadgeW - 14, nameBadgeY + 25);
+  ctx.fillText('[ OVERSEER ]', nameBadgeX + nameBadgeW - 14, nameBadgeY + 26);
   ctx.restore();
 
   // 6. LARGE, CRISP, HIGH-CONTRAST MONOLOGUE TEXT (PROPER VN SCALE)
@@ -6636,7 +6666,7 @@ export async function renderKireiVisualNovelCard(
   const maxTextW = boxW - 120; // 1064px width for spacious margin
   const maxTextH = boxH - 65;   // 171px vertical text area
 
-  // Formats text into a punchy, dramatic excerpt so font size is ALWAYS 25px - 30px
+  // Formats text into a punchy, dramatic excerpt
   const dialogueText = formatVNDialogueExcerpt(opts.monologueText);
   const cleanQuote = `“${dialogueText}”`;
 
@@ -6690,13 +6720,8 @@ export async function renderKireiVisualNovelCard(
     currentY += lineHeight;
   }
 
-  // Visual Novel Pulsing Next Dialogue Prompt Glyph (▼)
-  ctx.fillStyle = '#eab308';
-  ctx.shadowColor = 'rgba(234, 179, 8, 0.8)';
-  ctx.shadowBlur = 10;
-  ctx.font = 'bold 18px sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillText('▼', boxX + boxW - 32, boxY + boxH - 22);
+  // Visual Novel Next Dialogue Prompt Vector Triangle
+  drawVectorDownArrow(ctx, boxX + boxW - 28, boxY + boxH - 24, 7, '#fbbf24');
   ctx.restore();
 
   // 7. BOTTOM CONTROL BAR HUD
@@ -6733,11 +6758,15 @@ export async function renderKireiVisualNovelCard(
   curCtrlX = renderKeyPill(curCtrlX, 'L', 'LOG');
   curCtrlX = renderKeyPill(curCtrlX, 'S', 'SAVE');
 
-  // Right Side: Overseer Motto & Protocol
+  // Right Side: Vector Cross + Overseer Motto
+  const rightText = 'HOLY CHURCH OVERSEER PROTOCOL • FUYUKI Neutral Asylum';
+  ctx.font = 'bold 12px Georgia, serif';
+  const rightTextW = ctx.measureText(rightText).width;
+  drawVectorCross(ctx, width - 48 - rightTextW - 14, ctrlY - 4, 10, '#d4af37');
+
   ctx.textAlign = 'right';
   ctx.fillStyle = '#d4af37';
-  ctx.font = 'bold 13px Georgia, serif';
-  ctx.fillText('✝ HOLY CHURCH OVERSEER PROTOCOL • FUYUKI Neutral Asylum', width - 48, ctrlY);
+  ctx.fillText(rightText, width - 48, ctrlY);
   ctx.restore();
 
   try {

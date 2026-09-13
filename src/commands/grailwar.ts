@@ -322,9 +322,10 @@ export async function buildGrailWarHub(
 
     safeSetDescription(
       churchIntelEmbed,
-      `📰 **2h Fuyuki News (Gas Leak Cover-Up):**\n` +
-      `*“${newsStory}”*\n\n` +
-      `🕯️ *Father Kotomine's 24h sermon soliloquy rendered in the Sanctuary Visual Novel below:*`
+      `🕯️ **Overseer's 24h Sermon Soliloquy (Father Kotomine):**\n` +
+      `> *“${monologueText}”*\n\n` +
+      `📰 **2h Fuyuki Breaking News (Gas Leak Cover-Up):**\n` +
+      `> *“${newsStory}”*`
     );
 
     try {
@@ -611,9 +612,8 @@ export async function buildGrailWarHub(
         `• **Your Status:** ${isUnderSanctuary ? '🕊️ **UNDER CHURCH ASYLUM** *(Immune to ambushes & unable to attack)*' : '⚔️ **ACTIVE COMBATANT** *(Can engage in skirmishes)*'}\n` +
         `• **Immunity:** Masters residing within the Church cannot be ambushed or tracked by familiars.\n` +
         `• **Restriction:** While under sanctuary, you cannot launch ambushes, leak intel, or duel rivals.\n\n` +
-        `🕯️ **CHURCH & MUNICIPAL INTELLIGENCE RELAY:**\n` +
-        `• 📜 **24h Kotomine Homily:** ${war.latestChurchHomily?.title ? `*“${war.latestChurchHomily.title}”* (Cached)` : '*(Ready to deliver via Gemini AI)*'}\n` +
-        `• 📰 **2h Fuyuki Breaking News:** ${war.latestNewsBulletin?.headline ? `*“${war.latestNewsBulletin.headline}”* (Cached)` : '*(Ready to broadcast via Gemini AI)*'}\n\n` +
+        `🕯️ **OVERSEER’S HOMILY TRANSCRIPT:**\n` +
+        `> *“${monologueText}”*\n\n` +
         `*Click the buttons below to claim sanctuary, or read Father Kotomine’s 24h Homily and the 2h Breaking News Bulletin:*`
       )
       .setColor(isUnderSanctuary ? 0x22c55e : 0xd4af37)
