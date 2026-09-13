@@ -395,6 +395,140 @@ export const ADIOSA_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const AOKO_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'aoko_bond_event_1',
+    servantTemplateId: 'aoko_aozaki',
+    requiredBondLevel: 1,
+    title: 'The Fifth Magician & The Late Night Patrol',
+    subtitle: 'Bond Level 1 Interlude • Misaki Night Wards',
+    description: 'A late-night conversation with Aoko Aozaki regarding her past in Misaki Town, the nature of the Fifth Magic, and your partnership.',
+    rewardBondExp: 150,
+    rewardSaintQuartz: 3,
+    unlockedQuoteId: 'aoko_bond_line_1',
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: 'Aoko Aozaki',
+        backgroundTheme: 'misaki_town',
+        dialogueText: "You’re up late. What, can’t sleep because the magical wards around here are humming, or did the idea of tomorrow's patrol finally get through that thick skull of yours?",
+        choices: [
+          {
+            id: 'c1a',
+            text: 'I came to check on you.',
+            response: "Check on me? Give me a break. I’m a Servant, Master, not a delicate flower you need to water every three hours. Still... I guess having someone acknowledge I'm alive isn't the worst feeling in the world.",
+            bondExpGain: 100,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1b',
+            text: 'Just wanted some fresh air. And maybe an explanation about your magic.',
+            response: "Fresh air, sure. As for my magic? Don't go digging into a magician's secrets unless you're ready to pay the tuition fee. Though, I suppose if we're partnering up in this mess, you deserve to know what kind of gun you're holding.",
+            bondExpGain: 100,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1c',
+            text: "You look like you're brooding. It doesn't suit you.",
+            response: "Ha! Brooding? Me? Watch your mouth before I blast you into next week. I don't brood. I scheme. There's a massive difference, and one of them involves significantly more collateral damage.",
+            bondExpGain: 125,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_2'
+          }
+        ]
+      },
+      {
+        id: 'scene_2',
+        speakerName: 'Aoko Aozaki',
+        backgroundTheme: 'misaki_town',
+        dialogueText: "Look, ever since you summoned me into this Grail War, I’ve been thinking. You’re green. Painfully green. The Clock Tower snobs would eat you alive in five minutes, and an actual killer would take about five seconds. Yet here you are, barking orders and dragging me through alleyways like we’re partners in crime.",
+        choices: [
+          {
+            id: 'c2a',
+            text: "We *are* partners in crime. That's the whole point.",
+            response: '"Partners in crime." Don\'t make me laugh. Back in Misaki, the only partner I had was a stubborn idiot and a bird that talked too much. But... fine. If we\'re partners, that means you pull your own weight. No hiding behind me when the spells start flying.',
+            bondExpGain: 125,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2b',
+            text: "You're the one who keeps blowing up the scenery!",
+            response: "Hey! Destruction is an art form, and I happen to be a master artist! Besides, if the enemy didn't want their hideout leveled, they shouldn't have set up shop in front of my firing line. That’s basic urban planning.",
+            bondExpGain: 100,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2c',
+            text: "I'm trying my best to keep us both alive.",
+            response: "...Yeah. I know you are. Don't look so defensive. If I actually thought you were useless, I would’ve cut the contract on night one and hunted the Grail myself. The fact that I'm still standing here listening to you complain should tell you something.",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_3'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Aoko Aozaki',
+        backgroundTheme: 'misaki_town',
+        dialogueText: "You know, people always get terrified when they hear about the Fifth Magic. They whisper about it like it's some divine catastrophe waiting to wipe out the timeline. But to me? It’s just work. It’s borrowing from tomorrow to fix the mess we made today. It means every time I pull a miracle out of thin air, somewhere down the line, the bill comes due.",
+        choices: [
+          {
+            id: 'c3a',
+            text: 'Does it ever scare you? Carrying that kind of debt?',
+            response: "Terrified? Maybe once, a long time ago in a snowfield. Now? It’s just life. If you freeze up because you’re scared of the consequences, you die before the consequences even catch up to you. You run forward, you kick down the door, and you deal with the fire afterward.",
+            bondExpGain: 125,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3b',
+            text: 'Then let me help share the bill.',
+            response: "You? Share the debt of True Magic? You'd evaporate on the spot, idiot. ...But I appreciate the sentiment. Really. Just keep your Command Spells handy and make sure my magical energy doesn't bottom out mid-fight. That's more than enough.",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3c',
+            text: 'Sounds like standard credit card logic to me.',
+            response: "Pfft! Hahaha! Wow. Comparing the pinnacle of mystery to bad financial habits. You really don't have a filter, do you? I like that. Maguses spend their whole lives acting like uptight corpses; it's refreshing to hear someone talk like an actual human being for once.",
+            bondExpGain: 150,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_4'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Aoko Aozaki',
+        backgroundTheme: 'misaki_town',
+        dialogueText: "Alright, break time's over. The barrier on the west side just flickered. We’ve got company inbound, and by the feel of the prana, they didn't come to negotiate.",
+        choices: [
+          {
+            id: 'c4a',
+            text: "Right behind you. Let's show them what we can do.",
+            response: "That's what I like to hear! Stick to my flank, Master. I'll blow open the path—you just make sure nobody sneaks up behind us!",
+            bondExpGain: 150,
+            reactionEmotion: 'determined'
+          },
+          {
+            id: 'c4b',
+            text: "Don't blow up the entire block this time, please!",
+            response: "No promises! If they didn't want the block leveled, they should've stayed in their own territory! Let's go!",
+            bondExpGain: 125,
+            reactionEmotion: 'amused'
+          }
+        ]
+      }
+    ]
+  }
+];
+
 /**
  * Registry of all available curated bond events by servant template ID.
  */
@@ -403,7 +537,8 @@ export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
   gilgamesh: GILGAMESH_BOND_EVENTS,
   emiya: EMIYA_BOND_EVENTS,
   cu_chulainn: CU_CHULAINN_BOND_EVENTS,
-  adiosa_dragon_envoy: ADIOSA_BOND_EVENTS
+  adiosa_dragon_envoy: ADIOSA_BOND_EVENTS,
+  aoko_aozaki: AOKO_BOND_EVENTS
 };
 
 /**
@@ -665,6 +800,36 @@ export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
       category: 'bond_5',
       requiredBondLevel: 5,
       quoteText: 'You have earned the eternal devotion of the Dragon Realm. Where you fly, I shall follow!'
+    }
+  ],
+  aoko_aozaki: [
+    {
+      id: 'aoko_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: "Servant Caster, Aoko Aozaki. The Fifth Magician... though honestly, just call me Aoko. Let's get to work, Master!"
+    },
+    {
+      id: 'aoko_bond_1',
+      title: 'Bond 1: Late Night Patrol',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: "Check on me? Give me a break. I’m a Servant, Master, not a delicate flower you need to water every three hours. Still... I guess having someone acknowledge I'm alive isn't the worst feeling in the world."
+    },
+    {
+      id: 'aoko_bond_3',
+      title: 'Bond 3: Partners in Crime',
+      category: 'bond_3',
+      requiredBondLevel: 3,
+      quoteText: "If we're partners, that means you pull your own weight. No hiding behind me when the spells start flying!"
+    },
+    {
+      id: 'aoko_bond_5',
+      title: 'Bond 5: True Magic Debt',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: "Share the debt of True Magic? You'd evaporate on the spot, idiot... But I appreciate the sentiment. Really."
     }
   ]
 };

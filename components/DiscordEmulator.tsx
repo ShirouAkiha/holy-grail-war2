@@ -7295,7 +7295,7 @@ export default function DiscordEmulator({
 
         const actionButtons = hasChoices
           ? scene.choices!.map((c, idx) => ({
-              id: `vn_choice:${evt.id}:${c.id}`,
+              id: `vn_choice:${evt.id}:${sceneIdx}:${c.id}`,
               label: `${idx + 1}. “${c.text.slice(0, 24)}”`,
               style: 'primary' as const,
               emoji: '💬'
@@ -7341,15 +7341,21 @@ export default function DiscordEmulator({
       if (btnId.startsWith('vn_choice:') || btnId.startsWith('vn_choice_') || btnId === 'vn_choice_complete') {
         let eventId = '';
         let choiceId = '';
+        let sceneIdx = 0;
 
         if (btnId.includes(':')) {
           const parts = btnId.split(':');
           eventId = parts[1];
-          choiceId = parts[2];
+          if (parts.length >= 4) {
+            sceneIdx = parseInt(parts[2], 10) || 0;
+            choiceId = parts[3];
+          } else {
+            choiceId = parts[2];
+          }
         } else if (btnId.startsWith('vn_choice_')) {
           const parts = btnId.split('_');
           const choiceIdx = parseInt(parts.pop() || '0', 10);
-          const sceneIdx = parseInt(parts.pop() || '0', 10);
+          sceneIdx = parseInt(parts.pop() || '0', 10);
           eventId = parts.slice(2).join('_');
           const evt = availableEvents.find(e => e.id === eventId) || availableEvents[0];
           const scene = evt?.scenes[sceneIdx];
@@ -7360,10 +7366,54 @@ export default function DiscordEmulator({
         const evt = availableEvents.find(e => e.id === eventId) || availableEvents[0];
         if (!evt) return;
 
-        const scene = evt.scenes[0];
+        const scene = evt.scenes[sceneIdx] || evt.scenes[0];
         const pickedChoice = scene.choices?.find(c => c.id === choiceId);
         const servantResponse = pickedChoice ? pickedChoice.response : scene.dialogueText;
 
+        const hasNextScene = sceneIdx < evt.scenes.length - 1;
+
+        if (hasNextScene) {
+          const nextSceneButtons = [
+            { id: `vn_next_${evt.id}_${sceneIdx + 1}_0`, label: 'Next Scene ➔', style: 'success' as const, emoji: '⏩' }
+          ];
+
+          const stepMsgData: DiscordMessage = {
+            id: msgId || getNextId('bot_vn_interlude'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            vnCardData: {
+              speakerName: scene.speakerName || activeServant.template.name,
+              dialogueText: servantResponse,
+              eventTitle: evt.title,
+              bondLevel: activeServant.bondLevel || 1,
+              avatarUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
+              masterChoiceText: pickedChoice?.text
+            },
+            embed: {
+              title: `📖 INTERLUDE — ${evt.title.toUpperCase()} (Scene ${sceneIdx + 1}/${evt.scenes.length})`,
+              description:
+                `💬 **[BOND INTERLUDE] ${scene.speakerName || activeServant.template.name}:**\n> ❝ ***${servantResponse}*** ❞\n\n` +
+                (pickedChoice ? `✨ **Master Choice Selected:** “${pickedChoice.text}”\n\n` : '') +
+                `*Click **Next Scene ➔** below to continue the story!*`,
+              color: '#f59e0b',
+              thumbnailUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
+              footer: `Scene ${sceneIdx + 1} of ${evt.scenes.length} • Chaldea Visual Novel System`
+            },
+            components: {
+              type: 'buttons',
+              items: nextSceneButtons
+            }
+          };
+
+          if (msgId) {
+            updateMessage(msgId, stepMsgData);
+          } else {
+            addMessage(stepMsgData);
+          }
+          return;
+        }
+
+        // Final scene choice - conclude interlude and award rewards
         const completedIds: string[] = activeServant.completedBondEvents || [];
         const isFirstCompletion = !completedIds.includes(evt.id);
 
@@ -7433,11 +7483,20 @@ export default function DiscordEmulator({
         return;
       }
 
-      if (btnId.startsWith('vn_next_')) {
-        const parts = btnId.split('_');
-        const accumExp = parseInt(parts.pop() || '0', 10);
-        const nextSceneIdx = parseInt(parts.pop() || '0', 10);
-        const evtId = parts.slice(2).join('_');
+      if (btnId.startsWith('vn_next_') || btnId.startsWith('vn_next:')) {
+        let evtId = '';
+        let nextSceneIdx = 0;
+
+        if (btnId.includes(':')) {
+          const parts = btnId.split(':');
+          evtId = parts[1];
+          nextSceneIdx = parseInt(parts[2], 10) || 0;
+        } else {
+          const parts = btnId.split('_');
+          const accumExp = parseInt(parts.pop() || '0', 10);
+          nextSceneIdx = parseInt(parts.pop() || '0', 10);
+          evtId = parts.slice(2).join('_');
+        }
 
         const evt = availableEvents.find(e => e.id === evtId) || availableEvents[0];
         if (!evt) return;
@@ -7448,14 +7507,14 @@ export default function DiscordEmulator({
         const hasChoices = scene.choices && scene.choices.length > 0;
         const actionButtons = hasChoices
           ? scene.choices!.map((c, idx) => ({
-              id: `vn_choice_${evt.id}_${nextSceneIdx}_${idx}`,
-              label: `“${c.text.slice(0, 24)}”`,
+              id: `vn_choice:${evt.id}:${nextSceneIdx}:${c.id}`,
+              label: `${idx + 1}. “${c.text.slice(0, 24)}”`,
               style: 'primary' as const,
               emoji: '💬'
             }))
           : nextSceneIdx < evt.scenes.length - 1
-          ? [{ id: `vn_next_${evt.id}_${nextSceneIdx + 1}_${accumExp}`, label: 'Next Scene ➔', style: 'success' as const, emoji: '⏩' }]
-          : [{ id: `vn_conclude_${evt.id}_${accumExp || 150}`, label: 'Conclude Interlude ✨', style: 'success' as const, emoji: '🎁' }];
+          ? [{ id: `vn_next_${evt.id}_${nextSceneIdx + 1}_0`, label: 'Next Scene ➔', style: 'success' as const, emoji: '⏩' }]
+          : [{ id: `vn_conclude_${evt.id}_150`, label: 'Conclude Interlude ✨', style: 'success' as const, emoji: '🎁' }];
 
         const updatedMsgData: DiscordMessage = {
           id: msgId || getNextId('bot_vn_interlude'),
