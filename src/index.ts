@@ -911,7 +911,7 @@ client.on(Events.InteractionCreate, async interaction => {
           .setCustomId('talk_input_message')
           .setLabel(`Transmit to ${sName} (Bond Lv.${targetServant.bondLevel || 1})`.slice(0, 45))
           .setStyle(TextInputStyle.Paragraph)
-          .setPlaceholder(`Speak directly to ${sName}... (e.g. "What is our tactical plan for tonight's skirmish?")`)
+          .setPlaceholder(`Speak directly to ${sName}... (e.g. "What is our plan?")`.slice(0, 100))
           .setMaxLength(500)
           .setRequired(true);
 
