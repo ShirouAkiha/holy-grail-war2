@@ -2779,32 +2779,7 @@ async function startInteractiveDuel(
 
   const buildCurrentEmbeds = (): EmbedBuilder[] => {
     const mainEmbed = buildCurrentEmbed();
-    const embeds: EmbedBuilder[] = [mainEmbed];
-
-    const transformedUnit = [p1, p2, p1Ally, p2Ally].find(c => c && c.isTransformed);
-    if (transformedUnit) {
-      const tName = transformedUnit.servant.nickname || transformedUnit.servant.template?.name || 'Heroic Spirit';
-      const transGif = (transformedUnit.servant.template as any)?.skills?.[0]?.transformationGifUrl || 'https://ella.janitorai.com/media-approved/gR8x0bMk-pHc95lo5mhAL.gif';
-      const transAvatar = transformedUnit.avatarUrl || 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp';
-      const turnsLeft = transformedUnit.transformationTurns !== undefined ? transformedUnit.transformationTurns : 3;
-
-      const transEmbed = new EmbedBuilder()
-        .setTitle(`🔴 TRANSFORMATION AWAKENED: ${tName.toUpperCase()} (SUPER AOKO)`)
-        .setDescription(
-          `⚡ **Fifth Magic True Output:** ATK +30%, Crit DMG +40% (${turnsLeft} Turn${turnsLeft === 1 ? '' : 's'} Remaining)\n` +
-          `> 💬 ❝ ***Fifth Magic—Circuits ignition! Time to kick this into maximum gear!*** ❞`
-        )
-        .setImage(transGif)
-        .setColor(0xef4444)
-        .setFooter({ text: 'True Magic Ignition • Super Aoko Form Engaged' });
-
-      if (transAvatar) {
-        transEmbed.setThumbnail(transAvatar);
-      }
-      embeds.push(transEmbed);
-    }
-
-    return embeds;
+    return [mainEmbed];
   };
 
   const buildCurrentAttachment = async (logText?: string) => {
