@@ -782,8 +782,8 @@ export default function DiscordEmulator({
     const isOldHomily = !grailWar.latestChurchHomily || (Date.now() - (grailWar.latestChurchHomily.timestamp || 0) > 24 * 60 * 60 * 1000);
     const isHeuristic = grailWar.latestChurchHomily?.source === 'canon_heuristic' || grailWar.latestNewsBulletin?.source === 'canon_heuristic';
 
-    if (isOldNews || isOldHomily || isHeuristic) {
-      fetchAndSyncChurchIntel(true);
+    if (isOldNews || isOldHomily) {
+      fetchAndSyncChurchIntel(false);
     }
 
     const interval = setInterval(() => {
@@ -9260,7 +9260,11 @@ export default function DiscordEmulator({
         handleCommand('/grailwar skirmish');
       } else if (btnId === 'war_act_heal') {
         handleCommand('/grailwar heal');
-      } else if (btnId === 'war_act_refresh' || btnId === 'church_refresh_intel') {
+      } else if (btnId === 'war_act_refresh') {
+        fetchAndSyncChurchIntel(false).then(() => {
+          postGrailWarHub(grailWarHubCategory, '🔄 War board & intelligence refreshed.');
+        });
+      } else if (btnId === 'church_refresh_intel') {
         fetchAndSyncChurchIntel(true).then((intel) => {
           const freshMsg = intel?.homily 
             ? '🔄 Re-generated Father Kotomine Homily & 2-Hour Breaking News via Gemini.'

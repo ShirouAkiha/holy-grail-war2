@@ -24,8 +24,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, news });
     }
 
-    // Default: fetch / ensure both
-    const { homily, news } = await getOrInitChurchIntel(war);
+    // Default: fetch / ensure both (respecting 2h news and 24h homily cache windows)
+    const { homily, news } = await getOrInitChurchIntel(war, forceRefresh);
     return NextResponse.json({
       success: true,
       homily,

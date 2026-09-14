@@ -413,13 +413,16 @@ JSON Output Schema:
 /**
  * Ensures both 24h Kotomine Homily and 2h News Bulletin are initialized in the war session.
  */
-export async function getOrInitChurchIntel(war: HolyGrailWarSession): Promise<{
+export async function getOrInitChurchIntel(
+  war: HolyGrailWarSession,
+  forceRefresh: boolean = false
+): Promise<{
   homily: ChurchOverseerHomily;
   news: FuyukiNewsBulletin;
 }> {
   const [homily, news] = await Promise.all([
-    generateKotomine24hHomily(war, false),
-    generateFuyuki2hNewsBulletin(war, false)
+    generateKotomine24hHomily(war, forceRefresh),
+    generateFuyuki2hNewsBulletin(war, forceRefresh)
   ]);
   return { homily, news };
 }
