@@ -484,16 +484,34 @@ export function forceJoinBattle(
   const updated = { ...battle };
   const joined = { ...newCombatant };
   if (team === 'teamA') {
-    updated.teamA = [...(updated.teamA || [updated.player1]), joined];
+    const listA = updated.teamA || [updated.player1];
+    const deadIdx = listA.findIndex(c => c.currentHp <= 0);
+    if (deadIdx !== -1) {
+      const nextA = [...listA];
+      nextA[deadIdx] = joined;
+      updated.teamA = nextA;
+      if (deadIdx === 0) updated.player1 = joined;
+    } else {
+      updated.teamA = [...listA, joined];
+    }
   } else {
-    updated.teamB = [...(updated.teamB || [updated.player2]), joined];
+    const listB = updated.teamB || [updated.player2];
+    const deadIdx = listB.findIndex(c => c.currentHp <= 0);
+    if (deadIdx !== -1) {
+      const nextB = [...listB];
+      nextB[deadIdx] = joined;
+      updated.teamB = nextB;
+      if (deadIdx === 0) updated.player2 = joined;
+    } else {
+      updated.teamB = [...listB, joined];
+    }
   }
   updated.forceJoinedCombatants = [...(updated.forceJoinedCombatants || []), joined.id];
-  const countA = updated.teamA.length;
-  const countB = updated.teamB.length;
-  if (countA >= 2 && countB >= 2) {
+  const livingA = updated.teamA.filter(c => c.currentHp > 0).length;
+  const livingB = updated.teamB.filter(c => c.currentHp > 0).length;
+  if (livingA >= 2 && livingB >= 2) {
     updated.battleMode = '2v2';
-  } else if (countA >= 2 || countB >= 2) {
+  } else if (livingA >= 2 || livingB >= 2) {
     updated.battleMode = '1v2';
   }
   return updated;

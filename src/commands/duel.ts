@@ -2749,7 +2749,10 @@ async function startInteractiveDuel(
     const hasAlly = myTeam.length > 1;
     const isT1 = team1.includes(activeCombatant);
     const assistAvail = isT1 ? (!team1AssistUsed && hasAlly) : (!team2AssistUsed && hasAlly);
-    const forceJoinAvail = (team1.length + team2.length < 4);
+    const livingT1 = getLivingTeam1();
+    const livingT2 = getLivingTeam2();
+    const totalLiving = livingT1.length + livingT2.length;
+    const forceJoinAvail = totalLiving < 4 && (livingT1.length < 2 || livingT2.length < 2);
 
     return buildCombatButtons(
       activeCombatant,
@@ -3098,10 +3101,11 @@ async function startInteractiveDuel(
     if (getLivingTeam1().length === 0 || getLivingTeam2().length === 0) {
       collector.stop('finished');
       const isTeam1Winner = getLivingTeam1().length > 0;
-      const winner = isTeam1Winner ? (team1.find(c => c.currentHp > 0) || p1) : (team2.find(c => c.currentHp > 0) || p2);
-      const loser = isTeam1Winner ? (team2[0] || p2) : (team1[0] || p1);
+      const winningTeam = isTeam1Winner ? team1 : team2;
+      const losingTeam = isTeam1Winner ? team2 : team1;
+      const winner = winningTeam.find(c => c.currentHp > 0) || (isTeam1Winner ? p1 : p2);
       const finalAttachment = await buildCurrentAttachment();
-      await finishDuel(interactionToEdit || contextInteraction, winner, loser, p1Master, p2Master, finalAttachment);
+      await finishDuel(interactionToEdit || contextInteraction, winner, losingTeam, p1Master, p2Master, finalAttachment);
       return;
     }
 
@@ -3179,10 +3183,11 @@ async function startInteractiveDuel(
       if (getLivingTeam1().length === 0 || getLivingTeam2().length === 0) {
         collector.stop('finished');
         const isTeam1Winner = getLivingTeam1().length > 0;
-        const winner = isTeam1Winner ? (team1.find(c => c.currentHp > 0) || p1) : (team2.find(c => c.currentHp > 0) || p2);
-        const loser = isTeam1Winner ? (team2[0] || p2) : (team1[0] || p1);
+        const winningTeam = isTeam1Winner ? team1 : team2;
+        const losingTeam = isTeam1Winner ? team2 : team1;
+        const winner = winningTeam.find(c => c.currentHp > 0) || (isTeam1Winner ? p1 : p2);
         const finalAttachment = await buildCurrentAttachment();
-        await finishDuel(interactionToEdit || contextInteraction, winner, loser, p1Master, p2Master, finalAttachment);
+        await finishDuel(interactionToEdit || contextInteraction, winner, losingTeam, p1Master, p2Master, finalAttachment);
         return;
       }
 
@@ -3351,17 +3356,19 @@ async function startInteractiveDuel(
 
       // CASE: FORCE JOIN MID-BATTLE INTERVENTION
       if (i.customId === 'card_forcejoin' || i.customId === 'duel_prompt_forcejoin') {
-        if (team1.length + team2.length >= 4) {
+        const livingT1 = getLivingTeam1();
+        const livingT2 = getLivingTeam2();
+        if (livingT1.length >= 2 && livingT2.length >= 2) {
           await i.reply({
-            content: '❌ Force Join is unavailable! Arena is at maximum capacity (4 combatants).',
+            content: '❌ Force Join is unavailable! Arena is at maximum capacity (2v2 with 4 living combatants). Wait for a Servant to fall.',
             flags: MessageFlags.Ephemeral
           });
           return;
         }
 
-        if (team1.some(c => c.userId === i.user.id) || team2.some(c => c.userId === i.user.id)) {
+        if (livingT1.some(c => c.userId === i.user.id) || livingT2.some(c => c.userId === i.user.id)) {
           await i.reply({
-            content: '❌ You are already an active participant in this Holy Grail duel!',
+            content: '❌ You already have an active Servant standing in this Holy Grail duel!',
             flags: MessageFlags.Ephemeral
           });
           return;
@@ -3379,10 +3386,12 @@ async function startInteractiveDuel(
         let targetTeam1 = true;
         let actionInteraction: any = i;
 
-        // If 1v1 battle, prompt 3rd Master to choose which team to reinforce!
-        if (team1.length === 1 && team2.length === 1) {
-          const p1Name = p1.username || p1.servant.nickname || p1.servant.template.name;
-          const p2Name = p2.username || p2.servant.nickname || p2.servant.template.name;
+        // If both teams have open slots (< 2 living combatants each), prompt which team to join!
+        if (livingT1.length < 2 && livingT2.length < 2) {
+          const p1Leader = livingT1[0] || team1[0] || p1;
+          const p2Leader = livingT2[0] || team2[0] || p2;
+          const p1Name = p1Leader.username || p1Leader.servant.nickname || p1Leader.servant.template.name;
+          const p2Name = p2Leader.username || p2Leader.servant.nickname || p2Leader.servant.template.name;
 
           const fjRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
@@ -3435,7 +3444,8 @@ async function startInteractiveDuel(
           actionInteraction = selectionInteraction;
           targetTeam1 = selectionInteraction.customId === 'fj_join_team1';
         } else {
-          targetTeam1 = team1.length <= team2.length;
+          // One team is already full (has 2 living), assign to the team with an open slot!
+          targetTeam1 = livingT1.length < 2;
         }
 
         const joinServant = joinerMaster.servants.find(s => s.id === joinerMaster.activeServantId) || joinerMaster.servants[0];
@@ -3455,22 +3465,63 @@ async function startInteractiveDuel(
           remainingTurns: 3
         });
 
-        if (targetTeam1) {
-          p1Ally = joinCombatant;
-          p1AllyMaster = joinerMaster;
-          team1.push(joinCombatant);
+        const targetTeam = targetTeam1 ? team1 : team2;
+        const deadIndex = targetTeam.findIndex(c => c.currentHp <= 0);
+        let replacedCombatant: DuelCombatant | null = null;
+
+        if (deadIndex !== -1) {
+          // Replace the fallen combatant in this team!
+          replacedCombatant = targetTeam[deadIndex];
+          targetTeam[deadIndex] = joinCombatant;
+
+          // Replace in turnOrder
+          const tIdx = turnOrder.findIndex(c => c === replacedCombatant || (c.userId === replacedCombatant?.userId && c.servant?.id === replacedCombatant?.servant?.id));
+          if (tIdx !== -1) {
+            turnOrder[tIdx] = joinCombatant;
+          } else {
+            turnOrder.push(joinCombatant);
+          }
+
+          if (targetTeam1) {
+            if (deadIndex === 0) {
+              p1 = joinCombatant;
+              p1Master = joinerMaster;
+            } else {
+              p1Ally = joinCombatant;
+              p1AllyMaster = joinerMaster;
+            }
+          } else {
+            if (deadIndex === 0) {
+              p2 = joinCombatant;
+              p2Master = joinerMaster;
+            } else {
+              p2Ally = joinCombatant;
+              p2AllyMaster = joinerMaster;
+            }
+          }
         } else {
-          p2Ally = joinCombatant;
-          p2AllyMaster = joinerMaster;
-          team2.push(joinCombatant);
+          // Normal append when team was not full
+          if (targetTeam1) {
+            p1Ally = joinCombatant;
+            p1AllyMaster = joinerMaster;
+            team1.push(joinCombatant);
+          } else {
+            p2Ally = joinCombatant;
+            p2AllyMaster = joinerMaster;
+            team2.push(joinCombatant);
+          }
+          turnOrder.push(joinCombatant);
         }
 
-        turnOrder.push(joinCombatant);
-
-        const totalParticipants = team1.length + team2.length;
-        const joinOrdinal = totalParticipants === 3 ? '3RD' : totalParticipants === 4 ? '4TH' : `${totalParticipants}TH`;
         const teamLeaderName = targetTeam1 ? p1.username : p2.username;
-        const forceJoinLog = `⚡ **${joinOrdinal} MASTER FORCE JOIN INTERVENTION!** <@${i.user.id}> entered the fray with **${joinName}** to assist **${teamLeaderName}**! Reinforced with **+30% ATK (3T)** & **+20 Critical Stars**!`;
+        let forceJoinLog = '';
+        if (replacedCombatant) {
+          forceJoinLog = `⚡ **FORCE JOIN REPLACEMENT!** <@${i.user.id}> entered the fray with **${joinName}** to REPLACE fallen Master **${replacedCombatant.username}** on Team ${targetTeam1 ? '1' : '2'}! Reinforced with **+30% ATK (3T)** & **+20 Critical Stars**!`;
+        } else {
+          const totalLivingNow = getLivingTeam1().length + getLivingTeam2().length;
+          const joinOrdinal = totalLivingNow === 3 ? '3RD' : totalLivingNow === 4 ? '4TH' : `${totalLivingNow}TH`;
+          forceJoinLog = `⚡ **${joinOrdinal} MASTER FORCE JOIN INTERVENTION!** <@${i.user.id}> entered the fray with **${joinName}** to assist **${teamLeaderName}**! Reinforced with **+30% ATK (3T)** & **+20 Critical Stars**!`;
+        }
         combatLogs.push(forceJoinLog);
         if (combatLogs.length > 4) combatLogs.shift();
 
@@ -3900,18 +3951,37 @@ async function startInteractiveDuel(
 async function finishDuel(
   i: any,
   winner: DuelCombatant,
-  loser: DuelCombatant,
+  loserOrTeam: DuelCombatant | DuelCombatant[],
   p1Master: MasterProfile,
   p2Master: MasterProfile | null,
   finalAttachment: AttachmentBuilder
 ) {
+  const losingTeam = Array.isArray(loserOrTeam) ? loserOrTeam : [loserOrTeam];
+  const loser = losingTeam.find(c => c.currentHp <= 0) || losingTeam[0];
   const warSession = getOrInitWarSession(p1Master);
 
   const chanTag = i.channel && 'name' in i.channel ? `#${(i.channel as any).name}` : '#general';
 
+  // Synchronize any fallen allies on the losing team
+  for (const fallen of losingTeam) {
+    if (fallen.userId !== loser.userId && fallen.currentHp <= 0) {
+      const allyPart = warSession?.participants[fallen.userId] ||
+        Object.values(warSession?.participants || {}).find(p => p.username.toLowerCase() === fallen.username.toLowerCase());
+      if (allyPart) {
+        allyPart.currentHp = 0;
+        allyPart.baseHpAtDamage = 0;
+        allyPart.lastDamageTime = Date.now();
+      }
+    }
+  }
+
   // Check if defeated Master has Command Seals to run or take defeat
-  const loserMaster = loser.userId === p1Master.discordId ? p1Master : (p2Master || null);
-  const winnerMaster = winner.userId === p1Master.discordId ? p1Master : (p2Master || null);
+  const loserMaster = loser.userId === p1Master.discordId 
+    ? p1Master 
+    : (p2Master && loser.userId === p2Master.discordId ? p2Master : await getOrCreateMaster(loser.userId, loser.username));
+  const winnerMaster = winner.userId === p1Master.discordId 
+    ? p1Master 
+    : (p2Master && winner.userId === p2Master.discordId ? p2Master : await getOrCreateMaster(winner.userId, winner.username));
   const loserParticipant = warSession?.participants[loser.userId] ||
     Object.values(warSession?.participants || {}).find(p => p.username.toLowerCase() === loser.username.toLowerCase() || p.servantName.toLowerCase() === loser.servant.template.name.toLowerCase());
   const winnerParticipant = warSession?.participants[winner.userId] ||
@@ -4366,7 +4436,9 @@ async function presentFateDecision(
   }
 
   // Player Master won: Grant initial rewards and prompt for Kill vs Spare decision
-  const winningMaster = winner.userId === p1Master.discordId ? p1Master : p2Master;
+  const winningMaster = winner.userId === p1Master.discordId 
+    ? p1Master 
+    : (p2Master && winner.userId === p2Master.discordId ? p2Master : await getOrCreateMaster(winner.userId, winner.username));
   if (winningMaster) {
     winningMaster.saintQuartz += 3;
     winningMaster.grailWarWins = (winningMaster.grailWarWins || 0) + 1;
