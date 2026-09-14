@@ -494,18 +494,6 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         quotes: ['This, yes.', "I'll use this, then."]
       },
       {
-        id: 'true_name_revelation_b',
-        name: 'True Name Revelation B',
-        cooldown: 5,
-        description: 'Decreases NP Strength for a single enemy by 30% for 1 turn.',
-        effectType: 'debuff',
-        value: 30,
-        duration: 1,
-        icon: '👁️',
-        quote: 'Light my way, lest I stray from the path.',
-        quotes: ['Light my way, lest I stray from the path.', 'I shall take care of this.']
-      },
-      {
         id: 'restoration_radiant_light',
         name: 'Restoration of the Radiant Holy Light A',
         cooldown: 5,
@@ -514,8 +502,20 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         value: 30,
         duration: 3,
         icon: '✨',
+        quote: 'Light my way, lest I stray from the path.',
+        quotes: ['Light my way, lest I stray from the path.', 'I shall take care of this.']
+      },
+      {
+        id: 'divine_judgement_a',
+        name: 'Divine Judgement A',
+        cooldown: 6,
+        description: 'Inflicts Bound (Stun) on a single Servant enemy (1 turn).',
+        effectType: 'stun',
+        value: 100,
+        duration: 1,
+        icon: '⚖️',
         quote: 'Lord, grant me strength.',
-        quotes: ['Lord, grant me strength.', 'I shall take care of this.']
+        quotes: ['Lord, grant me strength.', 'I shall pass judgement in the Lord\'s name.']
       }
     ],
     passives: [

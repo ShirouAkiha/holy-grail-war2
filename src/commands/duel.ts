@@ -65,7 +65,7 @@ export const data = new SlashCommandBuilder()
 // ==========================================
 export interface CombatantBuff {
   name: string;
-  type: 'buff_atk' | 'buff_def' | 'crit_dmg' | 'evade' | 'guts' | 'np_gen' | 'np_gain' | 'buster_up' | 'arts_up' | 'quick_up' | 'invincible' | 'stun' | 'debuff_atk' | 'debuff_def' | 'ignore_invincible';
+  type: 'buff_atk' | 'buff_def' | 'crit_dmg' | 'evade' | 'guts' | 'np_gen' | 'np_gain' | 'buster_up' | 'arts_up' | 'quick_up' | 'invincible' | 'stun' | 'debuff_atk' | 'debuff_def' | 'ignore_invincible' | 'stars_per_turn' | 'debuff_np_strength' | 'debuff_np_dmg';
   value: number;
   remainingTurns: number;
   remainingHits?: number;
@@ -1073,6 +1073,15 @@ function activateCombatantSkill(
         remainingTurns: 3
       });
     }
+    if (descLower.includes('stars') || idLower === 'after_pure_prayer_ex' || skill.name.includes('Pure Prayer')) {
+      combatant.activeBuffs.push({
+        name: `${skill.name} (Stars Per Turn)`,
+        type: 'stars_per_turn',
+        value: 15,
+        remainingTurns: 3
+      });
+      combatant.critStars = Math.min(50, (combatant.critStars || 0) + 15);
+    }
     if (descLower.includes('evade') || idLower.includes('magic_circuit_acceleration')) {
       combatant.activeBuffs.push({
         name: `${skill.name} (Evade)`,
@@ -1098,42 +1107,44 @@ function activateCombatantSkill(
       });
     }
 
-    logText = `⚡ **${sName}** activated **${skill.name}**! (+${npVal}% NP Gauge, +15 Stars/turn${descLower.includes('arts') || idLower === 'after_pure_prayer_ex' ? ', +20% Arts Up (3T)' : ''}${descLower.includes('evade') || idLower.includes('magic_circuit') ? ', Evade granted for 1 turn' : ''})${quoteLine}`;
+    logText = `⚡ **${sName}** activated **${skill.name}**! (+${npVal}% NP Gauge, +15 Stars/turn (3T)${descLower.includes('arts') || idLower === 'after_pure_prayer_ex' ? ', +20% Arts Up (3T)' : ''}${descLower.includes('evade') || idLower.includes('magic_circuit') ? ', Evade granted for 1 turn' : ''})${quoteLine}`;
   } else if (skill.effectType === 'crit_stars') {
     const starVal = skill.value || 25;
     combatant.critStars = Math.min(50, combatant.critStars + starVal);
     combatant.activeBuffs.push({ name: skill.name, type: 'crit_dmg', value: 40, remainingTurns: skill.duration || 2 });
     logText = `🌟 **${sName}** activated **${skill.name}**!${quoteLine}`;
-  } else if (skill.effectType === 'stun' || skill.effectType === 'debuff' || skill.id?.includes('discernment') || skill.id === 'restoration_radiant_light' || skill.id === 'true_name_revelation_b' || skill.name.includes('True Name Revelation')) {
+  } else if (skill.effectType === 'stun' || skill.effectType === 'debuff' || skill.id?.includes('discernment') || skill.id === 'restoration_radiant_light' || skill.id === 'divine_judgement_a') {
     if (opponent) {
       if (skill.id === 'restoration_radiant_light' || skill.name.includes('Radiant Holy Light') || skill.name.includes('Restoration')) {
+        opponent.npGauge = Math.max(0, opponent.npGauge - 20);
         opponent.activeBuffs.push({
-          name: `${skill.name} (NP Strength -30%)`,
-          type: 'debuff_atk',
+          name: `${skill.name} (NP Strength Down)`,
+          type: 'debuff_np_strength',
           value: 30,
           remainingTurns: 1
         });
         opponent.activeBuffs.push({
-          name: `${skill.name} (DEF -20%)`,
+          name: `${skill.name} (DEF Down 1T)`,
           type: 'debuff_def',
           value: 20,
           remainingTurns: 1
         });
         opponent.activeBuffs.push({
-          name: `${skill.name} (DEF -30%)`,
+          name: `${skill.name} (DEF Down 3T)`,
           type: 'debuff_def',
           value: 30,
           remainingTurns: 3
         });
-        logText = `✨ **${sName}** activated **${skill.name}**! (Inflicted -30% NP Strength [1T], -20% DEF [1T], and -30% DEF [3T] on **${opponent.name}**)${quoteLine}`;
-      } else if (skill.id === 'true_name_revelation_b' || skill.id?.includes('true_name') || skill.name.includes('True Name Revelation')) {
+        logText = `✨ **${sName}** activated **${skill.name}**! (-30% Enemy NP Strength (1T), -50% Enemy DEF Down, -20% NP Drain)${quoteLine}`;
+      } else if (skill.effectType === 'stun' || skill.id === 'divine_judgement_a' || skill.name.includes('Divine Judgement')) {
+        opponent.isStunned = true;
         opponent.activeBuffs.push({
-          name: `${skill.name} (NP Strength -30%)`,
-          type: 'debuff_atk',
-          value: 30,
-          remainingTurns: 1
+          name: `${skill.name} (Stun)`,
+          type: 'stun',
+          value: 100,
+          remainingTurns: skill.duration || 1
         });
-        logText = `👁️ **${sName}** activated **${skill.name}**! (Decreased **${opponent.name}**'s NP Strength by -30% for 1 turn)${quoteLine}`;
+        logText = `⚖️ **${sName}** activated **${skill.name}**! (Inflicted **Stun** on enemy for 1 turn!)${quoteLine}`;
       } else {
         opponent.isStunned = true;
         opponent.npGauge = Math.max(0, opponent.npGauge - 20);
@@ -1256,6 +1267,13 @@ function resolveStrike(
     if (attackerCe.id === 'ce_black_grail') {
       attacker.currentHp = Math.max(1, attacker.currentHp - 500);
     }
+  }
+
+  // Turn-Start Skill Buffs (e.g. After Pure Prayer EX stars per turn)
+  const starBuffs = attacker.activeBuffs.filter(b => b.type === 'stars_per_turn');
+  const starsFromTurnBuffs = starBuffs.reduce((s, b) => s + b.value, 0);
+  if (starsFromTurnBuffs > 0) {
+    attacker.critStars = Math.min(50, (attacker.critStars || 0) + starsFromTurnBuffs);
   }
 
   // Handle Stun status
@@ -1506,8 +1524,13 @@ function resolveStrike(
             ceNpDmgMult += (attackerCe.passiveValue || 30) / 100;
           }
         }
-        const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * classMult * cardPerfMult * ceNpDmgMult * variance);
-        npDmg = Math.round(Math.max(1200, rawNpDmg) * PVP_DAMAGE_MODIFIER) + flatDivinity;
+        const npDmgDebuff = attacker.activeBuffs
+          .filter(b => b.type === 'debuff_np_strength' || b.type === 'debuff_np_dmg' || /np strength|radiant holy light|true name/i.test(b.name))
+          .reduce((s, b) => s + b.value, 0);
+        const npStrengthScale = Math.max(0.05, 1.0 - (npDmgDebuff / 100));
+
+        const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * classMult * cardPerfMult * ceNpDmgMult * npStrengthScale * variance);
+        npDmg = Math.round(Math.max(600, rawNpDmg) * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
         const hitProt = processHitProtection();
         if (hitProt.isProtected) {
@@ -1685,8 +1708,14 @@ function resolveStrike(
     totalStarsGained += extraStars;
   }
 
-  // Set the combatant's critical star pool for the upcoming turn based on what was gathered
-  attacker.critStars = Math.min(50, totalStarsGained);
+  // Set the combatant's critical star pool for the upcoming turn based on hits + active turn-start star buffs
+  const upcomingStarBuffs = attacker.activeBuffs.filter(b => b.type === 'stars_per_turn');
+  const futureStarGen = upcomingStarBuffs.reduce((s, b) => s + b.value, 0);
+  let nextTurnStars = totalStarsGained + futureStarGen;
+  if (attackerCe && (attackerCe.id === 'ce_fragment_2030' || attackerCe.passiveType === 'stars_per_turn')) {
+    nextTurnStars += (attackerCe.passiveValue || 10);
+  }
+  attacker.critStars = Math.min(50, nextTurnStars);
 
   // Apply total damage to defender
   defender.currentHp = Math.max(0, defender.currentHp - totalSeqDmg);
@@ -1701,16 +1730,26 @@ function resolveStrike(
       b.remainingTurns--;
       return b.remainingTurns > 0;
     }
-    if (b.type === 'buff_def' && b.remainingTurns < 90) {
+    if ((b.type === 'buff_def' || b.type === 'debuff_def') && b.remainingTurns < 90) {
       b.remainingTurns--;
       return b.remainingTurns > 0;
     }
     return true;
   });
 
-  // Decrement attacker offensive buffs
+  // Decrement attacker offensive & turn-based buffs
   attacker.activeBuffs = attacker.activeBuffs.filter(b => {
-    if (b.type === 'buff_atk' || b.type === 'crit_dmg' || b.type === 'buster_up' || b.type === 'arts_up' || b.type === 'quick_up') {
+    if (
+      b.type === 'buff_atk' ||
+      b.type === 'debuff_atk' ||
+      b.type === 'crit_dmg' ||
+      b.type === 'buster_up' ||
+      b.type === 'arts_up' ||
+      b.type === 'quick_up' ||
+      b.type === 'stars_per_turn' ||
+      b.type === 'debuff_np_strength' ||
+      b.type === 'debuff_np_dmg'
+    ) {
       b.remainingTurns--;
       return b.remainingTurns > 0;
     }
