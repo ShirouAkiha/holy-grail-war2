@@ -489,7 +489,9 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'np_charge',
         value: 20,
         duration: 3,
-        icon: '🕊️'
+        icon: '🕊️',
+        quote: 'This, yes.',
+        quotes: ['This, yes.', "I'll use this, then."]
       },
       {
         id: 'restoration_radiant_light',
@@ -499,7 +501,9 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'debuff',
         value: 30,
         duration: 3,
-        icon: '✨'
+        icon: '✨',
+        quote: 'Light my way, lest I stray from the path.',
+        quotes: ['Light my way, lest I stray from the path.', 'I shall take care of this.']
       },
       {
         id: 'divine_blessing',
@@ -509,7 +513,9 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'heal',
         value: 4000,
         duration: 2,
-        icon: '💖'
+        icon: '💖',
+        quote: 'Lord, grant me strength.',
+        quotes: ['Lord, grant me strength.', 'I will go up front!']
       }
     ],
     passives: [
@@ -524,7 +530,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     noblePhantasm: {
       name: 'Luminosité Eternelle: God is Here With Me',
       cardType: 'Arts',
-      chant: 'My Lord... I entrust this flag to you! Luminosité Eternelle!',
+      chant: 'Let me handle this. Get behind me! So long as I fly this banner, we shall never fall! Luminosité Eternelle!',
       description: 'Unfurls the sacred banner, granting Invincibility for 1 turn, +30% DEF boost for 3 turns, +3,000 HP recovery, debuff removal, and +25% Arts NP refund.',
       target: 'support',
       multiplier: 0,
@@ -532,7 +538,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     },
     lore: 'The saint of France who received the voice of the Lord and liberated Orleans during the Hundred Years\' War.',
     summonQuote: 'Servant Ruler, Jeanne d\'Arc. The Holy Grail War requires an arbiter; I shall safeguard this pact.',
-    battleStartQuote: 'The Lord protects the righteous. Raise your banners!',
+    battleStartQuote: 'May victory be upon this banner!',
     victoryQuote: 'Let us offer our prayers of gratitude for this blessed triumph.',
     defeatQuote: 'Even if my light fades, the holy flag will never fall...',
     avatarUrl: 'https://ella.janitorai.com/media-approved/LfnkdoCSDCJ8i40QetNmZ.webp',

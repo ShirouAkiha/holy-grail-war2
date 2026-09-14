@@ -276,6 +276,51 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
     ]
   },
 
+  // Jeanne d'Arc (Ruler) - Ruler
+  jeanne_darc_ruler: {
+    buster: [
+      "I'll mow them down!",
+      "I will rout them!",
+      "I'll send them flying!",
+      "Begone!"
+    ],
+    arts: [
+      "I'm not finished yet!",
+      "Ready...!",
+      "Light my way, lest I stray from the path.",
+      "So long as I fly this banner, we shall never fall!"
+    ],
+    quick: [
+      "This, yes.",
+      "I will go up front!",
+      "I'll use this, then.",
+      "I shall take care of this."
+    ],
+    mixed: [
+      "May victory be upon this banner!",
+      "Let me handle this. Get behind me!",
+      "Lord, grant me strength.",
+      "So long as I fly this banner, we shall never fall!"
+    ],
+    desperation: [
+      "The light of the Lord shall never fade...",
+      "Master, please... get behind me!",
+      "So long as I fly this banner, we shall never fall!"
+    ],
+    skills: [
+      "This, yes.",
+      "I'll use this, then.",
+      "Lord, grant me strength.",
+      "Light my way, lest I stray from the path.",
+      "I shall take care of this.",
+      "I will go up front!"
+    ],
+    victory: [
+      "May victory be upon this banner!",
+      "The Lord has granted us strength."
+    ]
+  },
+
   // Jeanne d'Arc (Alter) - Avenger
   jeanne_alter: {
     buster: [
@@ -599,8 +644,11 @@ export function getServantProfile(servantName?: string): ServantDialogueProfile 
   if (n.includes('emiya') || n.includes('archer') || n.includes('nameless')) {
     return SERVANT_COMBAT_DIALOGUES.emiya;
   }
-  if (n.includes('jeanne') && n.includes('alter') || n.includes('jalter')) {
+  if ((n.includes('jeanne') && n.includes('alter')) || n.includes('jalter')) {
     return SERVANT_COMBAT_DIALOGUES.jeanne_alter;
+  }
+  if (n.includes('jeanne') || n.includes('ruler')) {
+    return SERVANT_COMBAT_DIALOGUES.jeanne_darc_ruler;
   }
   if (n.includes('mordred')) {
     return SERVANT_COMBAT_DIALOGUES.mordred;
