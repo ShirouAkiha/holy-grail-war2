@@ -211,6 +211,23 @@ export function getReputationInfo(innocentKills: number = 0): {
 }
 
 /**
+ * Check if a Discord user was slain as an innocent civilian casualty earlier in this Holy Grail War.
+ */
+export function isUserSlainCivilianInWar(war: HolyGrailWarSession, discordId: string, username?: string): boolean {
+  if (!war || !war.civilianCasualties || war.civilianCasualties.length === 0) return false;
+  const dId = (discordId || '').replace(/[<@!>]/g, '').toLowerCase().trim();
+  const uName = (username || '').replace(/^@/, '').toLowerCase().trim();
+  return war.civilianCasualties.some(c => {
+    const cId = (c.id || '').replace(/[<@!>]/g, '').toLowerCase().trim();
+    const cName = (c.name || '').replace(/^@/, '').toLowerCase().trim();
+    if (dId && cId && (cId === dId || cId.includes(dId) || dId.includes(cId))) return true;
+    if (uName && cName && (cName === uName || cName.includes(uName) || uName.includes(cName))) return true;
+    if (dId && cName && cName.includes(dId)) return true;
+    return false;
+  });
+}
+
+/**
  * Ensures all participants in the active Holy Grail War are synchronized to canonical Servant stats and balanced HP pools.
  */
 export function synchronizeWarParticipants(war: HolyGrailWarSession): HolyGrailWarSession {
@@ -218,6 +235,17 @@ export function synchronizeWarParticipants(war: HolyGrailWarSession): HolyGrailW
 
   let modified = false;
   for (const p of Object.values(war.participants)) {
+    // CRITICAL: Any participant listed in civilianCasualties is permanently deceased!
+    if (isUserSlainCivilianInWar(war, p.discordId, p.username)) {
+      if (p.isAlive || p.currentHp > 0) {
+        p.isAlive = false;
+        p.currentHp = 0;
+        p.isExposed = true;
+        p.eliminatedReason = 'slain_civilian';
+        modified = true;
+      }
+    }
+
     // If maxHp is already set, don't overwrite it to prevent resetting level/CE stats!
     if (p.maxHp && p.maxHp > 0) continue;
 
@@ -453,6 +481,9 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
   const avatarUrl = sTemplate?.avatarUrl || sAny?.avatarUrl || '';
   const maxHp = calculateServantMaxHp(activeServant);
 
+  // Check if this user was slain as an innocent civilian casualty earlier
+  const isSlainCiv = isUserSlainCivilianInWar(globalWarSession, master.discordId, master.username);
+
   // Check if this real player already occupies a slot
   const existingKey = Object.keys(globalWarSession.participants).find(
     k => k === master.discordId || 
@@ -471,10 +502,12 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
 
     existing.username = master.username;
 
-    // CRITICAL: If the Master was slain/eliminated, NEVER resurrect them or alter their deceased status!
-    if (!existing.isAlive) {
+    // CRITICAL: If the Master or civilian was slain/eliminated, NEVER resurrect them or alter their deceased status!
+    if (isSlainCiv || !existing.isAlive) {
       existing.currentHp = 0;
       existing.isAlive = false;
+      existing.isExposed = true;
+      if (isSlainCiv) existing.eliminatedReason = 'slain_civilian';
       return globalWarSession;
     }
 
@@ -499,6 +532,28 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
       calculateCurrentHp(p);
     });
 
+    return globalWarSession;
+  }
+
+  // If the user was slain as a civilian, they enter the registry strictly as DECEASED (cannot be alive or active)
+  if (isSlainCiv) {
+    globalWarSession.participants[master.discordId] = {
+      discordId: master.discordId,
+      username: master.username,
+      servantId: activeServant?.id || 'servant_contract',
+      servantName,
+      servantClass,
+      avatarUrl,
+      currentHp: 0,
+      maxHp,
+      commandSeals: 0,
+      isAlive: false,
+      isExposed: true,
+      kills: 0,
+      innocentKills: 0,
+      eliminatedReason: 'slain_civilian'
+    };
+    saveWarToDisk();
     return globalWarSession;
   }
 
@@ -1015,8 +1070,22 @@ export function attackSuspectUserInWar(
   if (!attacker) {
     return { success: false, message: 'You are not active in the Holy Grail War! Summon a Servant first using `/summon ritual`.', updatedWar: targetWar };
   }
+
+  // Check if attacker was slain as an innocent civilian earlier
+  if (isUserSlainCivilianInWar(targetWar, attackerId, attacker?.username)) {
+    attacker.isAlive = false;
+    attacker.currentHp = 0;
+    attacker.isExposed = true;
+    attacker.eliminatedReason = 'slain_civilian';
+    return {
+      success: false,
+      message: '☠️ **ACTION REJECTED — DECEASED CIVILIAN**\n\nYou were slain as an innocent civilian earlier in this Holy Grail War! Deceased souls cannot launch ambushes or strike from beyond the grave. Wait for the war to reset (`/grailwar reset`).',
+      updatedWar: targetWar
+    };
+  }
+
   if (!attacker.isAlive) {
-    return { success: false, message: '☠️ You were slain and permanently eliminated from the Holy Grail War! Deceased Masters cannot launch ambushes.', updatedWar: targetWar };
+    return { success: false, message: '☠️ **ACTION REJECTED — ELIMINATED MASTER**\n\nYou were slain and permanently eliminated from the Holy Grail War! Deceased Masters cannot launch ambushes.', updatedWar: targetWar };
   }
 
   const chanTag = channelName 
@@ -1114,7 +1183,7 @@ export function attackSuspectUserInWar(
         `• The Assassin detected the intrusion, nullifying the surprise strike.\n` +
         `• The Assassin counter-struck from the shadows, dealing **${pcDamage.toLocaleString()} DMG** to Master **${attacker.username}**'s Servant (**${attacker.servantName}**)! (HP: ${attacker.currentHp}/${attacker.maxHp})\n` +
         `• Master **${attacker.username}**'s identity is now **EXPOSED** to the server!\n\n` +
-        `⛪ **Fuyuki Church Overseer Gas Leak Bulletin:**\n> *"The Fuyuki Church reports a sudden high-pressure 'gas leak explosion' in **${chanTag}** following abnormal seismic signatures. Citizens advised to stay indoors."*`;
+        `📰 **Fuyuki Municipal News (Overseer 'Gas Leak' Cover-up for ${chanTag}):**\n> *"The Fuyuki Church and municipal police report a sudden high-pressure 'gas leak explosion' in **${chanTag}** following abnormal seismic signatures. Citizens advised to stay indoors."*`;
 
       if (attacker.currentHp <= 0) {
         attacker.isAlive = false;
@@ -1215,7 +1284,7 @@ export function attackSuspectUserInWar(
       `${attackerLabel} launched a surprise assault on ${targetLabel} in **${chanTag}**!\n\n` +
       `• **Final Ambush Result:** **${targetMaster.username}**'s Servant (**${targetMaster.servantName}**) took **${ambushDamage.toLocaleString()} DMG**! (HP: ${targetMaster.currentHp}/${targetMaster.maxHp})\n` +
       (defenseText ? `• **Defensive Countermeasures:**\n${defenseText}` : '') +
-      `\n⛪ **Fuyuki Church Overseer Gas Leak Bulletin:**\n> *"The Fuyuki Church and municipal police report a severe structural **'gas leak explosion'** in **${chanTag}** following abnormal seismic and thermal readings. Residents advised to stay indoors."*`;
+      `\n📰 **Fuyuki Municipal News (Overseer 'Gas Leak' Cover-up for ${chanTag}):**\n> *"The Fuyuki Church and municipal police report a severe structural **'gas leak explosion'** in **${chanTag}** following abnormal seismic and thermal readings. Residents advised to stay indoors."*`;
 
     let eliminatedId: string | undefined;
 
@@ -1302,11 +1371,12 @@ export function attackSuspectUserInWar(
   let bystanderName = resolvedTargetUsername ? resolvedTargetUsername.replace(/^@+/, '') : '';
 
   // Check if this innocent bystander was already slain earlier
-  const alreadySlainCivilian = (targetWar.civilianCasualties || []).find(
-    c => c.id === cleanBystander || 
-         c.name.toLowerCase().includes(cleanBystander.toLowerCase()) ||
-         (bystanderName && c.name.toLowerCase().includes(bystanderName.toLowerCase()))
-  );
+  const alreadySlainCivilian = isUserSlainCivilianInWar(targetWar, cleanBystander, bystanderName) ||
+    (targetWar.civilianCasualties || []).some(
+      c => c.id === cleanBystander || 
+           c.name.toLowerCase().includes(cleanBystander.toLowerCase()) ||
+           (bystanderName && c.name.toLowerCase().includes(bystanderName.toLowerCase()))
+    );
   if (alreadySlainCivilian) {
     return {
       success: false,
@@ -1385,13 +1455,34 @@ export function attackSuspectUserInWar(
   const finalName = bystanderName || `Citizen (${cleanBystander.slice(-4)})`;
   const bystanderDisplay = `@${finalName.replace(/^@+/, '')}`;
 
-  attacker.innocentKills = (attacker.innocentKills || 0) + 1;
+  // Store the true user ID or clean mention so they are uniquely recognized and can never attack or be attacked twice
+  const victimId = idMatch ? idMatch[0] : cleanBystander;
   targetWar.civilianCasualties.unshift({
-    id: `victim_${Date.now()}`,
+    id: victimId,
     name: bystanderDisplay,
     slainByMasterId: attacker.username,
-    timestamp: now
+    slayerUsername: attacker.username,
+    slayerServant: attacker.servantName,
+    slayerServantClass: attacker.servantClass,
+    slayerDiscordId: attacker.discordId,
+    timestamp: now,
+    channelName: chanTag
   });
+
+  // If this bystander was registered as a participant, permanently kill their participant record
+  const matchingParticipant = Object.values(targetWar.participants).find(
+    p => p.discordId === victimId || 
+         p.discordId === cleanBystander || 
+         (bystanderName && p.username.toLowerCase() === bystanderName.toLowerCase()) ||
+         p.username.toLowerCase() === cleanBystander.toLowerCase()
+  );
+  if (matchingParticipant) {
+    matchingParticipant.isAlive = false;
+    matchingParticipant.currentHp = 0;
+    matchingParticipant.isExposed = true;
+    matchingParticipant.eliminatedReason = 'slain_civilian';
+    matchingParticipant.eliminatedBy = attacker.username;
+  }
 
   const exposureNote = wasAlreadyExposed
     ? `• Master **${attacker.username}** was **already publicly exposed** on the War Board, and this civilian casualty further stains their Master record!\n`
@@ -1401,7 +1492,7 @@ export function attackSuspectUserInWar(
     `Master **${attacker.username}**'s Servant (${attacker.servantName}) struck down innocent server bystander **${bystanderDisplay}** in **${chanTag}**!\n` +
     `• The victim was killed instantly in the magical crossfire.\n` +
     exposureNote + `\n` +
-    `⛪ **Fuyuki Church Overseer Gas Leak Bulletin:**\n` +
+    `📰 **Fuyuki Municipal News (Overseer 'Gas Leak' Cover-up for ${chanTag}):**\n` +
     `> *"The Fuyuki Church and municipal police report a severe structural **'gas leak explosion'** in **${chanTag}** involving civilian ${bystanderDisplay}. Cause classified as faulty underground utility piping. Public is advised to stay indoors."*`;
 
   targetWar.eventLogs.unshift({
@@ -1447,6 +1538,20 @@ export function leakIntelInWar(
   if (!targetWar.eventLogs) targetWar.eventLogs = [];
 
   const leaker = targetWar.participants[leakerDiscordId];
+  if (isUserSlainCivilianInWar(targetWar, leakerDiscordId, leaker?.username)) {
+    return {
+      success: false,
+      message: '☠️ You were slain as an innocent civilian earlier in this Holy Grail War! Deceased souls cannot leak intelligence.',
+      updatedWar: targetWar
+    };
+  }
+  if (leaker && !leaker.isAlive) {
+    return {
+      success: false,
+      message: '☠️ You were slain and permanently eliminated from the Holy Grail War! Deceased Masters cannot leak intelligence.',
+      updatedWar: targetWar
+    };
+  }
   const leakerName = leaker?.username || 'Civilian Informant';
 
   let exposedMaster: WarMasterParticipant | undefined;
@@ -1503,6 +1608,10 @@ export function setChannelTrapInWar(
   const targetWar = war || globalWarSession;
   if (!targetWar) {
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
+  }
+
+  if (isUserSlainCivilianInWar(targetWar, setterId, setterUsername)) {
+    return { success: false, message: '☠️ You were slain as an innocent civilian earlier in this Holy Grail War! Deceased souls cannot weave Bounded Field traps.', updatedWar: targetWar };
   }
 
   const setter = targetWar.participants[setterId];
@@ -1837,6 +1946,10 @@ export function dispatchFamiliarInWar(
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
 
+  if (isUserSlainCivilianInWar(targetWar, masterId, masterUsername)) {
+    return { success: false, message: '☠️ You were slain as an innocent civilian earlier in this Holy Grail War! Deceased souls cannot dispatch familiars.', updatedWar: targetWar };
+  }
+
   const master = targetWar.participants[masterId];
   if (!master || !master.isAlive) {
     return { success: false, message: 'You must have an active Heroic Spirit contract to dispatch familiars!', updatedWar: targetWar };
@@ -2005,7 +2118,24 @@ export function patrolCityInWar(
 
   const actorParticipant = targetWar.participants[actorDiscordId];
 
-  if (!actorParticipant || !actorParticipant.isAlive) {
+  // Block dead participants and slain civilians from patrolling
+  if (isUserSlainCivilianInWar(targetWar, actorDiscordId, actorUsername)) {
+    return {
+      success: false,
+      message: '☠️ You were slain as an innocent civilian earlier in this Holy Grail War! Deceased souls cannot patrol the city streets.',
+      updatedWar: targetWar
+    };
+  }
+
+  if (actorParticipant && !actorParticipant.isAlive) {
+    return {
+      success: false,
+      message: '☠️ You were slain and permanently eliminated from the Holy Grail War! Deceased Masters cannot patrol the city.',
+      updatedWar: targetWar
+    };
+  }
+
+  if (!actorParticipant) {
     // CIVILIAN PATROL / INVESTIGATION
     const civilianReports = [
       `👁️ **Civilian Patrol in ${chanTag}:** While investigating **${chanTag}**, you noticed strange glowing runes etched into an alley wall and overheard chanting! You gathered a tip-off: *"Faint Arts/Buster mana signature detected near ${chanTag}."* Use \`/grailwar leak\` or \`/leak\` to broadcast this rumor!`,

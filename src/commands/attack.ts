@@ -6,7 +6,8 @@ import {
 import { getOrCreateMaster, saveMaster, getMaster } from '../database/service';
 import { 
   getOrInitWarSession, 
-  attackSuspectUserInWar 
+  attackSuspectUserInWar,
+  isUserSlainCivilianInWar 
 } from '../engine/grailwar';
 import { generateServantBattleReaction } from '../engine/talkService';
 
@@ -35,6 +36,24 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     const war = getOrInitWarSession(master);
+
+    // CRITICAL: Prevent dead civilians or eliminated Masters from attacking
+    const isSlainCiv = isUserSlainCivilianInWar(war, interaction.user.id, interaction.user.username);
+    const attackerPart = war.participants[interaction.user.id] ||
+      Object.values(war.participants).find(p => p.discordId === interaction.user.id);
+
+    if (isSlainCiv || (attackerPart && !attackerPart.isAlive)) {
+      const deadEmbed = new EmbedBuilder()
+        .setTitle('☠️ DECEASED SOULS CANNOT AMBUSH')
+        .setDescription(
+          isSlainCiv
+            ? `Civilian <@${interaction.user.id}>, you were slain as an innocent casualty earlier in this Holy Grail War.\n\nDeceased individuals cannot launch surprise ambushes or attack from beyond the grave. Wait for the active war to conclude or reset (\`/grailwar reset\`).`
+            : `Master <@${interaction.user.id}>, you and your Servant were already defeated and permanently eliminated from this Holy Grail War.\n\nDeceased Masters cannot launch ambushes. Wait for the active war to conclude or reset (\`/grailwar reset\`).`
+        )
+        .setColor(0xef4444);
+      await interaction.editReply({ embeds: [deadEmbed] });
+      return;
+    }
     const targetQuery = interaction.options.getString('target', true);
     const channelName = interaction.channel && 'name' in interaction.channel 
       ? `#${(interaction.channel as any).name}`

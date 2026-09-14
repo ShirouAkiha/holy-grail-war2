@@ -19,7 +19,8 @@ import {
   getOrInitWarSession, 
   registerMasterSummonInWar, 
   handleMasterReleaseInWar,
-  exposeMasterInWar 
+  exposeMasterInWar,
+  isUserSlainCivilianInWar 
 } from '../engine/grailwar';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
@@ -152,20 +153,26 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
     const subcommand = interaction.options.getSubcommand(false) || 'ritual';
 
-    // Check if the Master is deceased/eliminated in the active Holy Grail War
+    // Check if the user is a deceased civilian or eliminated Master in the active Holy Grail War
     const warSession = getOrInitWarSession(master);
+    const isSlainCiv = isUserSlainCivilianInWar(warSession, master.discordId, master.username);
     const participant = warSession.participants[master.discordId] || 
       Object.values(warSession.participants).find(p => p.username.toLowerCase() === master.username.toLowerCase());
 
-    if (participant && !participant.isAlive && subcommand !== 'status') {
+    if ((isSlainCiv || (participant && !participant.isAlive)) && subcommand !== 'status') {
       const deceasedEmbed = new EmbedBuilder()
-        .setTitle('☠️ SACRED SUMMONING REJECTED — MASTER IS DECEASED')
+        .setTitle(isSlainCiv ? '☠️ SACRED SUMMONING REJECTED — SLAIN CIVILIAN' : '☠️ SACRED SUMMONING REJECTED — MASTER IS DECEASED')
         .setDescription(
-          `**The Greater Grail rejects your invocation.**\n\n` +
-          `Master **${master.username}**, you were dealt a fatal strike and **PERMANENTLY ELIMINATED** from the Holy Grail War.\n\n` +
-          `• **Command Seals:** 💀 **0 / 3** (Extinguished)\n` +
-          `• **Status:** **💀 Deceased / Eliminated**\n\n` +
-          `*In the Fuyuki Holy Grail War, fallen Masters cannot summon a new Servant or re-enter the ongoing tournament. You must wait for the war to conclude or restart the tournament session.*`
+          isSlainCiv
+            ? `**The Greater Grail rejects your invocation.**\n\n` +
+              `Civilian <@${interaction.user.id}>, you were slain as an innocent casualty earlier in this Holy Grail War.\n\n` +
+              `• **Status:** **💀 Slain Civilian Casualty**\n\n` +
+              `*Deceased souls cannot form covenants with Heroic Spirits. You must wait for the war to conclude or restart the tournament session.*`
+            : `**The Greater Grail rejects your invocation.**\n\n` +
+              `Master **${master.username}**, you were dealt a fatal strike and **PERMANENTLY ELIMINATED** from the Holy Grail War.\n\n` +
+              `• **Command Seals:** 💀 **0 / 3** (Extinguished)\n` +
+              `• **Status:** **💀 Deceased / Eliminated**\n\n` +
+              `*In the Fuyuki Holy Grail War, fallen Masters cannot summon a new Servant or re-enter the ongoing tournament. You must wait for the war to conclude or restart the tournament session.*`
         )
         .setColor(0xef4444);
 

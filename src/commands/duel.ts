@@ -12,7 +12,7 @@ import {
 import { getOrCreateMaster, saveMaster, getDuelNpSettings } from '../database/service';
 import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog, PassiveSkill } from '../types';
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives, getServantAvatarAndCardArt } from '../data/servants';
-import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp, getReputationInfo } from '../engine/grailwar';
+import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp, getReputationInfo, isUserSlainCivilianInWar } from '../engine/grailwar';
 import { renderBattleTurnSummary, renderDialogueCard, renderDefeatDialogueCard, renderMasterCommandSealDialogueCard, renderSkillDialogueCard } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER, calculateFleeChance, rollFleeSuccess } from '../engine/battle';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
@@ -65,7 +65,7 @@ export const data = new SlashCommandBuilder()
 // ==========================================
 export interface CombatantBuff {
   name: string;
-  type: 'buff_atk' | 'buff_def' | 'crit_dmg' | 'evade' | 'guts' | 'np_gen' | 'buster_up' | 'arts_up' | 'quick_up' | 'invincible' | 'stun' | 'debuff_atk' | 'ignore_invincible';
+  type: 'buff_atk' | 'buff_def' | 'crit_dmg' | 'evade' | 'guts' | 'np_gen' | 'np_gain' | 'buster_up' | 'arts_up' | 'quick_up' | 'invincible' | 'stun' | 'debuff_atk' | 'ignore_invincible';
   value: number;
   remainingTurns: number;
   remainingHits?: number;
@@ -1022,12 +1022,67 @@ function activateCombatantSkill(
   } else if (skill.effectType === 'heal') {
     const healVal = skill.value || Math.round(combatant.maxHp * 0.25);
     combatant.currentHp = Math.min(combatant.maxHp, combatant.currentHp + healVal);
-    logText = `💚 **${sName}** activated **${skill.name}**!${quoteLine}`;
+    const descLower = (skill.description || '').toLowerCase();
+    const idLower = (skill.id || '').toLowerCase();
+
+    if (descLower.includes('buster') || idLower.includes('blast_stream')) {
+      combatant.activeBuffs.push({
+        name: `${skill.name} (Buster Up)`,
+        type: 'buster_up',
+        value: 30,
+        remainingTurns: skill.duration || 3
+      });
+    }
+    if (descLower.includes('arts')) {
+      combatant.activeBuffs.push({
+        name: `${skill.name} (Arts Up)`,
+        type: 'arts_up',
+        value: 30,
+        remainingTurns: skill.duration || 3
+      });
+    }
+    if (descLower.includes('quick')) {
+      combatant.activeBuffs.push({
+        name: `${skill.name} (Quick Up)`,
+        type: 'quick_up',
+        value: 30,
+        remainingTurns: skill.duration || 3
+      });
+    }
+    logText = `💚 **${sName}** activated **${skill.name}**! (+${healVal.toLocaleString()} HP restored${descLower.includes('buster') || idLower.includes('blast_stream') ? ', +30% Buster Up' : ''})${quoteLine}`;
   } else if (skill.effectType === 'np_charge') {
     const npVal = skill.value || 30;
     combatant.npGauge = Math.min(300, combatant.npGauge + npVal);
     combatant.critStars = Math.min(50, combatant.critStars + 15);
-    logText = `⚡ **${sName}** activated **${skill.name}**!${quoteLine}`;
+    const descLower = (skill.description || '').toLowerCase();
+    const idLower = (skill.id || '').toLowerCase();
+
+    if (descLower.includes('evade') || idLower.includes('magic_circuit_acceleration')) {
+      combatant.activeBuffs.push({
+        name: `${skill.name} (Evade)`,
+        type: 'evade',
+        value: 100,
+        remainingTurns: 1
+      });
+    }
+    if (descLower.includes('invincible') || descLower.includes('invulnerability')) {
+      combatant.activeBuffs.push({
+        name: `${skill.name} (Invincible)`,
+        type: 'invincible',
+        value: 100,
+        remainingTurns: 1
+      });
+    }
+    if (descLower.includes('np gain') || idLower.includes('magic_circuit_acceleration')) {
+      combatant.activeBuffs.push({
+        name: `${skill.name} (NP Gain Up)`,
+        type: 'np_gain',
+        value: 30,
+        remainingTurns: skill.duration || 3
+      });
+    }
+
+    logText = `⚡ **${sName}** activated **${skill.name}**! (+${npVal}% NP Gauge${descLower.includes('evade') || idLower.includes('magic_circuit') ? ', Evade granted for 1 turn, +30% NP Gain' : ''})${quoteLine}`;
   } else if (skill.effectType === 'crit_stars') {
     const starVal = skill.value || 25;
     combatant.critStars = Math.min(50, combatant.critStars + starVal);
@@ -1196,6 +1251,7 @@ function resolveStrike(
       b.type === 'debuff_atk' ||
       b.type === 'crit_dmg' ||
       b.type === 'np_gen' ||
+      b.type === 'np_gain' ||
       b.type === 'buster_up' ||
       b.type === 'arts_up' ||
       b.type === 'quick_up'
@@ -1205,7 +1261,7 @@ function resolveStrike(
     if (b.type === 'buff_atk') atkBuff += b.value / 100;
     if (b.type === 'debuff_atk') atkBuff -= b.value / 100;
     if (b.type === 'crit_dmg') critDmgBonus += b.value / 100;
-    if (b.type === 'np_gen') npGenBonus += b.value / 100;
+    if (b.type === 'np_gen' || b.type === 'np_gain') npGenBonus += b.value / 100;
     return b.remainingTurns > 0;
   });
 
@@ -1690,14 +1746,18 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const challengerParticipant = warSession.participants[challengerMaster.discordId] ||
       Object.values(warSession.participants).find(p => p.username.toLowerCase() === challengerMaster.username.toLowerCase());
 
-    if (challengerParticipant && !challengerParticipant.isAlive) {
+    const isChallengerSlainCivilian = isUserSlainCivilianInWar(warSession, challengerMaster.discordId, challengerMaster.username);
+
+    if (isChallengerSlainCivilian || (challengerParticipant && !challengerParticipant.isAlive)) {
       const deadEmbed = new EmbedBuilder()
-        .setTitle('☠️ DECEASED MASTERS CANNOT DUEL')
+        .setTitle('☠️ DECEASED CANNOT DUEL')
         .setDescription(
-          `Master **${challengerMaster.username}**, you were slain and permanently eliminated from the active Holy Grail War.\n\n` +
-          `• **Status:** 💀 Deceased (HP: 0/${challengerParticipant.maxHp})\n` +
-          `• **Command Seals:** 0 / 3 (Extinguished)\n\n` +
-          `You cannot initiate duels while deceased. Inspect the battle status with \`/grailwar status\` or restart the tournament.`
+          isChallengerSlainCivilian
+            ? `Civilian <@${challengerMaster.discordId}>, you were slain as an innocent casualty earlier in this Holy Grail War.\n\nDeceased individuals cannot challenge Masters to duels. Wait for the active war to conclude or reset (\`/grailwar reset\`).`
+            : `Master **${challengerMaster.username}**, you were slain and permanently eliminated from the active Holy Grail War.\n\n` +
+              `• **Status:** 💀 Deceased (HP: 0/${challengerParticipant?.maxHp || 0})\n` +
+              `• **Command Seals:** 0 / 3 (Extinguished)\n\n` +
+              `You cannot initiate duels while deceased. Inspect the battle status with \`/grailwar status\` or restart the tournament.`
         )
         .setColor(0xef4444);
 
@@ -2717,6 +2777,36 @@ async function startInteractiveDuel(
     );
   };
 
+  const buildCurrentEmbeds = (): EmbedBuilder[] => {
+    const mainEmbed = buildCurrentEmbed();
+    const embeds: EmbedBuilder[] = [mainEmbed];
+
+    const transformedUnit = [p1, p2, p1Ally, p2Ally].find(c => c && c.isTransformed);
+    if (transformedUnit) {
+      const tName = transformedUnit.servant.nickname || transformedUnit.servant.template?.name || 'Heroic Spirit';
+      const transGif = (transformedUnit.servant.template as any)?.skills?.[0]?.transformationGifUrl || 'https://ella.janitorai.com/media-approved/gR8x0bMk-pHc95lo5mhAL.gif';
+      const transAvatar = transformedUnit.avatarUrl || 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp';
+      const turnsLeft = transformedUnit.transformationTurns !== undefined ? transformedUnit.transformationTurns : 3;
+
+      const transEmbed = new EmbedBuilder()
+        .setTitle(`🔴 TRANSFORMATION AWAKENED: ${tName.toUpperCase()} (SUPER AOKO)`)
+        .setDescription(
+          `⚡ **Fifth Magic True Output:** ATK +30%, Crit DMG +40% (${turnsLeft} Turn${turnsLeft === 1 ? '' : 's'} Remaining)\n` +
+          `> 💬 ❝ ***Fifth Magic—Circuits ignition! Time to kick this into maximum gear!*** ❞`
+        )
+        .setImage(transGif)
+        .setColor(0xef4444)
+        .setFooter({ text: 'True Magic Ignition • Super Aoko Form Engaged' });
+
+      if (transAvatar) {
+        transEmbed.setThumbnail(transAvatar);
+      }
+      embeds.push(transEmbed);
+    }
+
+    return embeds;
+  };
+
   const buildCurrentAttachment = async (logText?: string) => {
     return createTurnSummaryAttachment(
       p1,
@@ -3114,11 +3204,11 @@ async function startInteractiveDuel(
 
     // Human player turn reached: update message
     const turnAttachment = await buildCurrentAttachment();
-    const updatedEmbed = buildCurrentEmbed();
+    const updatedEmbeds = buildCurrentEmbeds();
     const updatedButtons = buildCurrentButtons();
 
     if (interactionToEdit) {
-      await interactionToEdit.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+      await interactionToEdit.editReply({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
     }
   };
 
@@ -3168,11 +3258,11 @@ async function startInteractiveDuel(
         combatLogs.push(`🎯 **Target Locked:** <@${activeUserId}> set focus on **${targetName}**!`);
         if (combatLogs.length > 4) combatLogs.shift();
 
-        const updatedEmbed = buildCurrentEmbed();
+        const updatedEmbeds = buildCurrentEmbeds();
         const updatedButtons = buildCurrentButtons();
 
         await i.deferUpdate();
-        await i.editReply({ embeds: [updatedEmbed], components: updatedButtons });
+        await i.editReply({ embeds: updatedEmbeds, components: updatedButtons });
         return;
       }
 
@@ -3237,11 +3327,11 @@ async function startInteractiveDuel(
         if (combatLogs.length > 4) combatLogs.shift();
 
         const turnAttachment = await buildCurrentAttachment(assistLog);
-        const updatedEmbed = buildCurrentEmbed();
+        const updatedEmbeds = buildCurrentEmbeds();
         const updatedButtons = buildCurrentButtons();
 
         await i.deferUpdate();
-        await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+        await i.editReply({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
         return;
       }
 
@@ -3371,7 +3461,7 @@ async function startInteractiveDuel(
         if (combatLogs.length > 4) combatLogs.shift();
 
         const turnAttachment = await buildCurrentAttachment(forceJoinLog);
-        const updatedEmbed = buildCurrentEmbed();
+        const updatedEmbeds = buildCurrentEmbeds();
         const updatedButtons = buildCurrentButtons();
 
         if (actionInteraction !== i) {
@@ -3387,9 +3477,9 @@ async function startInteractiveDuel(
         }
 
         if (battleMsg) {
-          await battleMsg.edit({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+          await battleMsg.edit({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
         } else if (contextInteraction) {
-          await contextInteraction.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+          await contextInteraction.editReply({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
         }
         return;
       }
@@ -3437,50 +3527,48 @@ async function startInteractiveDuel(
           const skillName = res.skillName || 'TACTICAL SKILL';
           const skillQuote = res.quote || 'My power answers the command!';
 
-          if (res.isTransformation && res.transformationGif) {
-            // Transformation Cinematic Sequence: Display Super Aoko Transformation GIF
-            const transEmbed = new EmbedBuilder()
-              .setTitle(`🔴 TRANSFORMATION AWAKENED: SUPER AOKO!`)
-              .setDescription(
-                `✨ **${sName}** ignited **${skillName}**!\n\n` +
-                `> 💬 ❝ ***${skillQuote}*** ❞\n\n` +
-                `⚡ **Fifth Magic True Output:** ATK +30%, Crit DMG +40%, +15 Critical Stars generated!`
-              )
-              .setImage(res.transformationGif)
-              .setColor(0xef4444)
-              .setFooter({ text: 'True Magic Ignition • Super Aoko Form Engaged' });
+          const skillDiaBuffer = await renderSkillDialogueCard(
+            sName,
+            skillName,
+            skillQuote,
+            sClass,
+            avatarUrl,
+            bondLvl,
+            res.skillType || 'buff',
+            res.skillDescription ? [res.skillDescription] : [],
+            'fuyuki'
+          );
 
-            if (res.transformationAvatarUrl) {
-              transEmbed.setThumbnail(res.transformationAvatarUrl);
+          if (skillDiaBuffer && skillDiaBuffer.length > 500) {
+            const attachment = new AttachmentBuilder(skillDiaBuffer, { name: 'vn_dialogue.gif' });
+            const skillDialogueObj = {
+              quote: skillQuote,
+              tag: `SKILL: ${skillName.toUpperCase()}`,
+              color: 0x38bdf8
+            };
+            const cutInEmbed = buildDialogueCutInEmbed(actor, opponent, ['Arts'], skillDialogueObj, true);
+
+            const activeEmbeds: EmbedBuilder[] = [cutInEmbed];
+            if (res.isTransformation && res.transformationGif) {
+              const transEmbed = new EmbedBuilder()
+                .setTitle(`🔴 TRANSFORMATION AWAKENED: SUPER AOKO!`)
+                .setDescription(
+                  `✨ **${sName}** ignited **${skillName}**!\n\n` +
+                  `> 💬 ❝ ***${skillQuote}*** ❞\n\n` +
+                  `⚡ **Fifth Magic True Output:** ATK +30%, Crit DMG +40%, +15 Critical Stars generated!`
+                )
+                .setImage(res.transformationGif)
+                .setColor(0xef4444)
+                .setFooter({ text: 'True Magic Ignition • Super Aoko Form Engaged' });
+
+              if (res.transformationAvatarUrl) {
+                transEmbed.setThumbnail(res.transformationAvatarUrl);
+              }
+              activeEmbeds.push(transEmbed);
             }
 
-            await i.editReply({ embeds: [transEmbed], files: [], components: [] });
-            await new Promise(r => setTimeout(r, 2800));
-          } else {
-            const skillDiaBuffer = await renderSkillDialogueCard(
-              sName,
-              skillName,
-              skillQuote,
-              sClass,
-              avatarUrl,
-              bondLvl,
-              res.skillType || 'buff',
-              res.skillDescription ? [res.skillDescription] : [],
-              'fuyuki'
-            );
-
-            if (skillDiaBuffer && skillDiaBuffer.length > 500) {
-              const attachment = new AttachmentBuilder(skillDiaBuffer, { name: 'vn_dialogue.gif' });
-              const skillDialogueObj = {
-                quote: skillQuote,
-                tag: `SKILL: ${skillName.toUpperCase()}`,
-                color: 0x38bdf8
-              };
-              const cutInEmbed = buildDialogueCutInEmbed(actor, opponent, ['Arts'], skillDialogueObj, true);
-              await i.editReply({ embeds: [cutInEmbed], files: [attachment], components: [] });
-
-              await new Promise(r => setTimeout(r, 2500));
-            }
+            await i.editReply({ embeds: activeEmbeds, files: [attachment], components: [] });
+            await new Promise(r => setTimeout(r, 2500));
           }
         } catch (err) {
           console.warn('Failed to render Skill visual novel dialogue cut-in:', err);
@@ -3490,9 +3578,9 @@ async function startInteractiveDuel(
         if (combatLogs.length > 4) combatLogs.shift();
 
         const turnAttachment = await buildCurrentAttachment(res.log);
-        const updatedEmbed = buildCurrentEmbed();
+        const updatedEmbeds = buildCurrentEmbeds();
         const updatedButtons = buildCurrentButtons();
-        await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+        await i.editReply({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
         return;
       }
 
@@ -3557,9 +3645,9 @@ async function startInteractiveDuel(
         if (combatLogs.length > 4) combatLogs.shift();
 
         const turnAttachment = await buildCurrentAttachment(res.log);
-        const updatedEmbed = buildCurrentEmbed();
+        const updatedEmbeds = buildCurrentEmbeds();
         const updatedButtons = buildCurrentButtons();
-        await i.editReply({ embeds: [updatedEmbed], files: [turnAttachment], components: updatedButtons });
+        await i.editReply({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
         return;
       }
 
@@ -3567,9 +3655,9 @@ async function startInteractiveDuel(
       if (i.customId === 'card_reset') {
         activePendingCards = [];
         activePendingIndices = [];
-        const updatedEmbed = buildCurrentEmbed();
+        const updatedEmbeds = buildCurrentEmbeds();
         const updatedButtons = buildCurrentButtons();
-        await i.editReply({ embeds: [updatedEmbed], components: updatedButtons });
+        await i.editReply({ embeds: updatedEmbeds, components: updatedButtons });
         return;
       }
 
@@ -3685,9 +3773,9 @@ async function startInteractiveDuel(
       }
 
       if (activePendingCards.length < 3) {
-        const updatedEmbed = buildCurrentEmbed();
+        const updatedEmbeds = buildCurrentEmbeds();
         const updatedButtons = buildCurrentButtons();
-        await i.editReply({ embeds: [updatedEmbed], components: updatedButtons });
+        await i.editReply({ embeds: updatedEmbeds, components: updatedButtons });
         return;
       }
 

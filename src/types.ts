@@ -508,8 +508,10 @@ export interface WarMasterParticipant {
   sanctuaryEnteredAt?: number;
   deathTimestamp?: number;
   killedByMaster?: string;
+  eliminatedBy?: string;
   fatalSkillUsed?: string;
   deathChannel?: string;
+  eliminatedReason?: string;
 }
 
 export interface WarAlliance {
@@ -627,6 +629,9 @@ export interface HolyGrailWarSession {
     slainByMasterId: string;
     slayerUsername?: string;
     servantName?: string;
+    slayerServant?: string;
+    slayerServantClass?: string;
+    slayerDiscordId?: string;
     channelName?: string;
     cause?: string;
   }>;
