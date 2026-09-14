@@ -190,7 +190,7 @@ export function buildPublicProfileEmbed(master: any, war: any) {
   return embed;
 }
 
-export function buildProfileButtons(userParticipant: any) {
+export function buildProfileButtons(userParticipant: any, activeServantId?: string) {
   if (!userParticipant) return [];
   const currentWard = userParticipant?.boundedField || 'none';
   const autoEvade = userParticipant?.autoEvadeEnabled !== false;
@@ -216,7 +216,7 @@ export function buildProfileButtons(userParticipant: any) {
 
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId('btn_talk_servant')
+      .setCustomId(activeServantId ? `btn_talk_servant:${activeServantId}` : 'btn_talk_servant')
       .setLabel('Talk to Servant')
       .setEmoji('💬')
       .setStyle(ButtonStyle.Success),
@@ -298,8 +298,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
+    const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
     const embed = buildProfileEmbed(master, war);
-    const buttons = buildProfileButtons(userParticipant);
+    const buttons = buildProfileButtons(userParticipant, activeServant?.id);
 
     await interaction.reply({
       embeds: [embed],

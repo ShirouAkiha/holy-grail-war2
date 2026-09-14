@@ -711,7 +711,25 @@ export function attachServantCollector(
       let actionOutcomeMsg = '';
 
       // TAB NAVIGATION
-      if (i.customId === 'servant_tab_profile') {
+      if (i.customId.startsWith('btn_talk_servant') || i.customId === 'servant_act_talk') {
+        const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = await import('discord.js');
+        const modal = new ModalBuilder()
+          .setCustomId(`modal_talk_servant:${targetServant.id}`)
+          .setTitle(`💬 Speak with ${sName.slice(0, 20)}`);
+
+        const msgInput = new TextInputBuilder()
+          .setCustomId('talk_input_message')
+          .setLabel(`Transmit to ${sName} (Bond Lv.${targetServant.bondLevel || 1})`.slice(0, 45))
+          .setStyle(TextInputStyle.Paragraph)
+          .setPlaceholder(`Speak directly to ${sName}... (e.g. "What is our plan?")`.slice(0, 100))
+          .setMaxLength(500)
+          .setRequired(true);
+
+        modal.addComponents(new ActionRowBuilder<any>().addComponents(msgInput));
+        await i.showModal(modal);
+        return;
+      }
+      else if (i.customId === 'servant_tab_profile') {
         currentCategory = 'profile';
       } else if (i.customId === 'servant_tab_stats') {
         currentCategory = 'stats';
