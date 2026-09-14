@@ -10,7 +10,11 @@ import {
 } from 'discord.js';
 import { getOrCreateMaster } from '../database/service';
 import { getOrInitWarSession } from '../engine/grailwar';
-import { generateServantTalkResponse, renderServantTalkVisualOutput } from '../engine/talkService';
+import {
+  generateServantTalkResponse,
+  renderServantTalkVisualOutput,
+  ServantSceneContext
+} from '../engine/talkService';
 import { checkMasterTalkQuota, consumeMasterTalkQuota } from '../engine/talkQuotaService';
 import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
@@ -23,6 +27,18 @@ export const data = new SlashCommandBuilder()
       .setDescription('What do you wish to say to your Servant?')
       .setRequired(true)
       .setMaxLength(500)
+  )
+  .addStringOption(opt =>
+    opt
+      .setName('context')
+      .setDescription('Atmosphere & scene of dialogue (defaults to Workshop / Casual Downtime)')
+      .setRequired(false)
+      .addChoices(
+        { name: '🏠 Workshop (Casual Downtime)', value: 'workshop' },
+        { name: '💖 Bond Covenant (Personal / Deep)', value: 'bond' },
+        { name: '⛪ Church Sanctuary (Neutral Peace)', value: 'church' },
+        { name: '⚔️ Active Patrol (Tactical / Warzone)', value: 'patrol' }
+      )
   )
   .addStringOption(opt =>
     opt
@@ -242,6 +258,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const concealedMastersCount = otherParticipants.filter((p: any) => !p.isExposed && p.isAlive !== false).length;
     const eliminatedMastersCount = otherParticipants.filter((p: any) => p.isAlive === false).length;
 
+    const explicitContext = interaction.options.getString('context') as ServantSceneContext | null;
+    const sceneContext: ServantSceneContext = explicitContext || (isInChurchAsylum ? 'church' : 'workshop');
+
     // 1. Generate the dynamic in-character reply with Holy Grail War chat memory and combat awareness
     const { reply } = await generateServantTalkResponse({
       servantName,
@@ -252,6 +271,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       masterId: master.discordId || interaction.user.id,
       servantId: targetServant.id || targetServant.templateId || servantName.toLowerCase().replace(/\s+/g, '_'),
       warId: war.id || 'default_fuyuki',
+      sceneContext,
       commandSeals,
       isExposed,
       equippedCeName,
@@ -291,6 +311,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       playerMessage,
       masterName: master.username || 'Master',
       bondLevel,
+      sceneContext,
       commandSeals,
       quotaInfo: {
         remainingToday,
@@ -301,7 +322,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
-        .setCustomId(`btn_talk_servant:${targetServant.id}`)
+        .setCustomId(`btn_talk_servant:${targetServant.id}:${sceneContext}`)
         .setLabel('Speak Again 💬')
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()

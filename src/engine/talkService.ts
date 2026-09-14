@@ -11,6 +11,8 @@ import { getServantCharacterProfile } from '../data/characterProfiles';
 import { generateWithCustomProvider } from './byokService';
 import { UserCustomApiConfig } from '../types';
 
+export type ServantSceneContext = 'workshop' | 'church' | 'bond' | 'patrol';
+
 export interface ServantTalkContext {
   servantName: string;
   servantClass: string;
@@ -20,6 +22,7 @@ export interface ServantTalkContext {
   masterId?: string;
   servantId?: string;
   warId?: string;
+  sceneContext?: ServantSceneContext;
   commandSeals?: number;
   isExposed?: boolean;
   equippedCeName?: string;
@@ -166,15 +169,33 @@ export function generateCanonicalFallbackReply(ctx: ServantTalkContext): string 
 
   // 6. Inquiries about Greetings & Time of Day
   if (lowerMsg.startsWith('good morning') || lowerMsg.includes('morning')) {
+    if (ctx.sceneContext === 'workshop') {
+      return `Good morning, Master. Brew yourself some tea—the workshop's bounded field will keep us safe while we take our morning ease.`;
+    }
     return `Good morning, Master. The sun is up over Fuyuki, so supernatural Magecraft must remain concealed from civilians. What are our preparations for today?`;
   }
   if (lowerMsg.startsWith('good night') || lowerMsg.includes('sleep') || lowerMsg.includes('going to bed')) {
+    if (ctx.sceneContext === 'workshop' || ctx.sceneContext === 'bond') {
+      return `Get some sound rest, Master. The room is quiet and secure. I will keep watch from the corner of your quarters.`;
+    }
     return `Rest well and restore your physical stamina, Master. I will maintain watch over our bounded field and monitor the leylines through the night.`;
   }
   if (lowerMsg.startsWith('good evening') || lowerMsg.includes('tonight')) {
+    if (ctx.sceneContext === 'workshop') {
+      return `Good evening, Master. It is good to unwind inside the workshop after a long day. What's on your mind?`;
+    }
     return `Good evening, Master. Twilight has fallen over Fuyuki. The shadows are lengthening, and the true Holy Grail War begins under cover of darkness.`;
   }
   if (lowerMsg === 'hey' || lowerMsg === 'hello' || lowerMsg === 'hi' || lowerMsg.startsWith('hey ') || lowerMsg.startsWith('hello ')) {
+    if (ctx.sceneContext === 'church') {
+      return `Keep your voice down, Master. We are in the Church under Kotomine's gaze. What brings you to the sanctuary?`;
+    }
+    if (ctx.sceneContext === 'bond') {
+      return `I am right here with you, Master. There are no distractions in our covenant chamber. What would you like to speak of?`;
+    }
+    if (ctx.sceneContext === 'workshop') {
+      return `Hey there, Master. Relaxing in the quarters? I'm listening.`;
+    }
     if (bondLevel >= 7) {
       return `I hear you clearly, Master. I was waiting for your call. What do you have on your mind?`;
     }
@@ -516,10 +537,55 @@ ${characterProfile.speechExamples.map(e => `• ${e}`).join('\n')}
     newsBulletinIntel = `  • [Headline]: ${context.latestNewsBulletin.headline} (Threat Level: ${context.latestNewsBulletin.threatLevel})\n  • [Official Disinformation Gas Leak Cover Story]: "${context.latestNewsBulletin.gasLeakCoverStory}"\n  • [Broadcast Content]: "${context.latestNewsBulletin.content.slice(0, 250)}..."`;
   }
 
+  const sceneContext = context.sceneContext || (context.isInChurchAsylum ? 'church' : 'workshop');
+
+  let sceneDirectiveBlock = '';
+  if (sceneContext === 'workshop') {
+    sceneDirectiveBlock = `
+=== CURRENT SCENE & SETTING: [🏠 Private Quarters / Workshop (Casual Downtime)] ===
+- Setting: Relaxed respite inside Master's private quarters/workshop behind the Bounded Field. Guard is lowered.
+- Atmosphere: Calm, domestic, and informal. You are NOT currently engaged in combat, scouting, or active surveillance.
+- Behavior Guidelines:
+  * Drop the high-alert battlefield tension and speak naturally/casually as companions sharing downtime.
+  * Feel free to discuss everyday thoughts, your mortal past, quirks of the modern world, Master's habits, or engage in relaxed banter.
+  * STRICT NEGATIVE RULE: DO NOT force combat warnings, scouting status, or urge Master to fight unless Master specifically asks about the war or strategy. Savor this rare moment of calm.
+`;
+  } else if (sceneContext === 'church') {
+    sceneDirectiveBlock = `
+=== CURRENT SCENE & SETTING: [⛪ Fuyuki Church Sanctuary (Neutral Ground)] ===
+- Setting: Inside the quiet pews of Fuyuki Church beneath the stained glass.
+- Atmosphere: Solemn, hushed, and slightly tense peace under the watchful eye of Father Kotomine.
+- Behavior Guidelines:
+  * Speak in a measured, lowered voice suitable for a sacred sanctuary where combat is strictly forbidden by the Overseer.
+  * Express natural Servant wariness/distrust toward Father Kotomine and the Church's dubious neutrality.
+  * React in-character to the scent of incense, church homilies, or Kotomine's presence if Master mentions them.
+  * STRICT NEGATIVE RULE: DO NOT initiate combat or act like you are patrolling outdoor streets.
+`;
+  } else if (sceneContext === 'bond') {
+    sceneDirectiveBlock = `
+=== CURRENT SCENE & SETTING: [💖 Bond Covenant / Personal Quarters (Bond Level ${bond}/10)] ===
+- Setting: An uninterrupted, one-on-one covenant space dedicated to Master and Servant.
+- Atmosphere: Intimate, reflective, and focused on your mutual soul-link and trust.
+- Behavior Guidelines:
+  * Fully embody your current Bond Level (${bond}/10) dynamic (e.g., formal distance at low bond vs. deep loyalty/affection at high bond).
+  * Share personal philosophies, memories of your mortal legend, ideals, regrets, or feelings about Master.
+  * STRICT NEGATIVE RULE: Suppress generic tactical recon and battle alerts. This conversation is purely about the relationship between Master and Heroic Spirit.
+`;
+  } else {
+    sceneDirectiveBlock = `
+=== CURRENT SCENE & SETTING: [⚔️ Active War Patrol / Tactical Alert] ===
+- Setting: Scouting the field and shadows of Fuyuki City during the Holy Grail War.
+- Atmosphere: High vigilance, mana detection active, scanning rooftops and leylines for rival Master signatures.
+- Behavior Guidelines:
+  * Maintain tactical readiness and sharp military awareness.
+  * Actively reference recent skirmishes, enemy bounties, intercepted intelligence leaks, and defensive positioning.
+`;
+  }
+
   const prompt = `You are roleplaying as the Fate franchise Heroic Spirit: "${context.servantName}" (Class: ${context.servantClass}).
 You are communicating telepathically with your Master, "${context.masterName}", during the active Holy Grail War in Fuyuki City.
 ${characterPersonaBlock ? characterPersonaBlock : `Personality: Faithful to ${context.servantName}'s canon Type-Moon visual novel characterization.`}
-
+${sceneDirectiveBlock}
 CURRENT TACTICAL CONTEXT:
 - True Name/Identity: ${context.servantName}
 - Class: ${context.servantClass}
@@ -556,12 +622,13 @@ MASTER SAYS TO YOU NOW:
 VOICE & ROLEPLAY INSTRUCTIONS:
 - Reply in 1 to 3 concise, impactful sentences (maximum 60 words) suitable for a Visual Novel dialogue box.
 - IMMERSION & VOICE: Sound like a living, breathing person with genuine emotion, attitude, and authentic speech patterns. Speak with the exact rhythm, colloquialisms, and temperament from the character profile above.
+- SCENE ATMOSPHERE (CRITICAL): Adhere strictly to the CURRENT SCENE & SETTING block above! If in Workshop or Bond mode, keep the mood relaxed, domestic, or intimate without unprompted battle paranoia. If in Church mode, respect the sacred sanctuary. If in Patrol mode, stay sharp and tactical.
 - TIME & CONVERSATION CONTINUITY AWARENESS (CRITICAL):
   * You know the current time (${timeFormatted}, ${dateFormatted}) and how long it has been since Master last contacted you (${timeSinceLastContactStr}).
   * IF MASTER SENDS A GREETING ("hey", "hello", "good morning", "yo", "are you there?"):
     - If hours or days have passed since the last message (LONG / MODERATE ABSENCE): React naturally to the gap in time! For example, Aoko teasing or complaining about Master disappearing for days or checking in late at night; Saber welcoming Master back after their absence; Gilgamesh scoffing at being made to wait. DO NOT act as if Master just repeated themselves in the same second!
     - If this is an ongoing dialogue (< 3 minutes): Respond naturally in flow without treating it as an abrupt new entrance.
-  * TIME OF DAY FLAVOR: You are aware of the hour (${timeFormatted}). If it is deep night or late hours, you may comment on Master being awake or preparing for nighttime patrol.
+  * TIME OF DAY FLAVOR: You are aware of the hour (${timeFormatted}). If it is deep night or late hours, you may comment on Master being awake or relaxing.
 - BANNED CLICHES & ROBOTIC NPC PHRASES (STRICTLY FORBIDDEN):
   * NEVER use generic assistant sign-offs or cliché combat filler such as: ${allBanned.map(b => `"${b}"`).join(', ')}.
   * NEVER recite raw numbers, percentages, or status sheet labels (do NOT say "my spiritual origin is at 100%").
@@ -570,7 +637,7 @@ VOICE & ROLEPLAY INSTRUCTIONS:
   * If you and Master just fought and SPARED a rival (e.g. Master fou.chii / Nero Claudius), acknowledge that duel and Master's decision to show mercy or spare them.
   * If you just executed or ambushed an opponent, react in character to that specific clash and opponent.
   * Do NOT hallucinate vague or fictitious fights when a real duel or skirmish is right there in the combat highlight above.
-- Conversational Variety: Directly react to what Master said. If they tell you to rest, tease them, argue, complain about being tired or stubborn, or make an aggressive joke—do NOT immediately pivot into an AI battle-advisor warning!
+- Conversational Variety: Directly react to what Master said. If they tell you to rest, tease them, argue, complain about being tired or stubborn, or make a joke—do NOT immediately pivot into an AI battle-advisor warning!
 - War Intelligence, Battle Logs, Leaks & Casualty Inquiries:
   You have direct spiritual and telepathic access to the battlefield intelligence dossiers above!
   * If Master asks about recent battles, clashes, duels, ambushes, damage numbers, or who fought whom, draw directly from the "Tactical Battle & Duel Logs" above.
@@ -648,6 +715,7 @@ export async function renderServantTalkVisualOutput(params: {
   playerMessage: string;
   masterName: string;
   bondLevel: number;
+  sceneContext?: ServantSceneContext;
   commandSeals?: number;
   quotaInfo?: {
     remainingToday: number;
@@ -675,9 +743,18 @@ export async function renderServantTalkVisualOutput(params: {
     playerMessage,
     masterName,
     bondLevel,
+    sceneContext = 'workshop',
     commandSeals = 3,
     quotaInfo
   } = params;
+
+  const sceneBadges: Record<ServantSceneContext, string> = {
+    workshop: '🏠 Workshop',
+    church: '⛪ Church Sanctuary',
+    bond: '💖 Bond Covenant',
+    patrol: '⚔️ War Patrol'
+  };
+  const activeSceneBadge = sceneBadges[sceneContext] || '🏠 Workshop';
 
   let quotaLine = '';
   if (quotaInfo) {
@@ -686,16 +763,16 @@ export async function renderServantTalkVisualOutput(params: {
       : ` • 💬 Mana: **${quotaInfo.remainingToday}/${quotaInfo.maxToday}**`;
   }
 
-  let footerText = `Bond Rank ${bondLevel}/10 • Holy Grail War Telepathic Resonance`;
+  let footerText = `${activeSceneBadge} • Bond Rank ${bondLevel}/10 • Holy Grail War Resonance`;
   if (quotaInfo) {
     footerText = quotaInfo.isByok
-      ? `Bond Rank ${bondLevel}/10 • Custom API Key Active (Unlimited Resonance)`
-      : `Bond Rank ${bondLevel}/10 • Telepathic Mana: ${quotaInfo.remainingToday}/${quotaInfo.maxToday} today (Resets 00:00 UTC)`;
+      ? `${activeSceneBadge} • Bond Rank ${bondLevel}/10 • Custom API Key Active (Unlimited)`
+      : `${activeSceneBadge} • Bond Rank ${bondLevel}/10 • Mana: ${quotaInfo.remainingToday}/${quotaInfo.maxToday} today (Resets 00:00 UTC)`;
   }
 
   // Base embed data used for both Option A and Option B
   const embedData = {
-    title: `💬 Telepathic Link | ${servantName} [${servantClass}]`,
+    title: `💬 Telepathic Link [${activeSceneBadge}] | ${servantName} [${servantClass}]`,
     thumbnailUrl: servantAvatarUrl,
     description:
       `👤 **Master ${masterName}:**\n> *“${playerMessage}”*\n\n` +
