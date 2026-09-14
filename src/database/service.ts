@@ -1191,9 +1191,45 @@ export async function addSaintQuartzToUser(
 }
 
 /**
- * Daily Login / Leyline Harvest Claim Function
- * Grants 30 Saint Quartz once every 24 hours (86,400,000 ms).
+ * Calculates Universal Daily Reset timings (00:00:00 UTC).
  */
+export function getUniversalDailyResetTiming(lastDailyClaim?: number | string | Date): {
+  currentResetUtc: number;
+  nextResetUtc: number;
+  hasClaimedToday: boolean;
+  remainingMs: number;
+  formattedCooldown: string;
+  nextClaimTimestamp: number;
+} {
+  const now = new Date();
+  const nowTs = now.getTime();
+  const currentResetUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0);
+  const nextResetUtc = currentResetUtc + 24 * 60 * 60 * 1000;
+
+  const lastClaim = typeof lastDailyClaim === 'number'
+    ? lastDailyClaim
+    : typeof lastDailyClaim === 'string'
+      ? new Date(lastDailyClaim).getTime()
+      : 0;
+
+  const hasClaimedToday = lastClaim >= currentResetUtc;
+  const remainingMs = hasClaimedToday ? Math.max(0, nextResetUtc - nowTs) : 0;
+  const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+  const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
+  const formattedCooldown = hours + 'h ' + minutes + 'm ' + seconds + 's';
+  const nextClaimTimestamp = nextResetUtc;
+
+  return {
+    currentResetUtc,
+    nextResetUtc,
+    hasClaimedToday,
+    remainingMs,
+    formattedCooldown,
+    nextClaimTimestamp
+  };
+}
+
 export async function claimDailySaintQuartz(
   discordId: string,
   username?: string
@@ -1206,37 +1242,25 @@ export async function claimDailySaintQuartz(
   cooldownRemainingMs?: number;
   formattedCooldown?: string;
   nextClaimTimestamp?: number;
+  universalResetUtc?: number;
   master: MasterProfile;
 }> {
   const master = await getOrCreateMaster(discordId, username);
   const now = Date.now();
-  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+  const resetTiming = getUniversalDailyResetTiming(master.lastDailyClaim);
 
-  const lastClaim = typeof master.lastDailyClaim === 'number'
-    ? master.lastDailyClaim
-    : typeof master.lastDailyClaim === 'string'
-      ? new Date(master.lastDailyClaim).getTime()
-      : 0;
-
-  const timeSinceLastClaim = now - lastClaim;
-
-  if (lastClaim > 0 && timeSinceLastClaim < ONE_DAY_MS) {
-    const remainingMs = ONE_DAY_MS - timeSinceLastClaim;
-    const hours = Math.floor(remainingMs / (1000 * 60 * 60));
-    const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
-    const formattedCooldown = `${hours}h ${minutes}m ${seconds}s`;
-    const nextClaimTimestamp = now + remainingMs;
-
+  if (resetTiming.hasClaimedToday) {
+    const nextClaimSeconds = Math.floor(resetTiming.nextResetUtc / 1000);
     return {
       success: false,
       saintQuartzClaimed: 0,
       previousSq: master.saintQuartz || 0,
       newTotalSq: master.saintQuartz || 0,
-      message: `You have already claimed your daily Saint Quartz for today! Return in **${formattedCooldown}** (<t:${Math.floor(nextClaimTimestamp / 1000)}:R>).`,
-      cooldownRemainingMs: remainingMs,
-      formattedCooldown,
-      nextClaimTimestamp,
+      message: 'You have already claimed your daily 30 Saint Quartz for this cycle! Universal daily reset occurs at **00:00 UTC** (<t:' + nextClaimSeconds + ':R> • in **' + resetTiming.formattedCooldown + '**).',
+      cooldownRemainingMs: resetTiming.remainingMs,
+      formattedCooldown: resetTiming.formattedCooldown,
+      nextClaimTimestamp: resetTiming.nextResetUtc,
+      universalResetUtc: resetTiming.nextResetUtc,
       master
     };
   }
@@ -1252,7 +1276,9 @@ export async function claimDailySaintQuartz(
     saintQuartzClaimed,
     previousSq,
     newTotalSq: master.saintQuartz,
-    message: `Successfully harvested **30 Saint Quartz** (💎) from the Fuyuki Leyline Sanctuary!`,
+    message: 'Successfully harvested **30 Saint Quartz** (💎) from the Fuyuki Leyline Sanctuary! Next universal reset: **00:00 UTC** (<t:' + Math.floor(resetTiming.nextResetUtc / 1000) + ':R>).',
+    nextClaimTimestamp: resetTiming.nextResetUtc,
+    universalResetUtc: resetTiming.nextResetUtc,
     master
   };
 }

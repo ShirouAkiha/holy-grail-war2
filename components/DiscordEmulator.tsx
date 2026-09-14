@@ -481,7 +481,7 @@ interface DiscordMessage {
     bondExpGain?: number;
     isConcluded?: boolean;
   };
-  canvasType?: 'servant' | 'dialogue' | 'battle' | 'defeat_dialogue' | 'gacha';
+  canvasType?: 'servant' | 'dialogue' | 'battle' | 'defeat_dialogue' | 'gacha' | 'kirei_vn';
   canvasPayload?: any;
   artworkEmbed?: {
     title?: string;
@@ -518,22 +518,26 @@ interface DiscordEmulatorProps {
 }
 
 function calculateDailyClaimCooldown(lastDailyClaim?: number | string | Date, currentSq: number = 0) {
-  const now = Date.now();
-  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+  const now = new Date();
+  const nowTs = now.getTime();
+  const currentResetUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0);
+  const nextResetUtc = currentResetUtc + 24 * 60 * 60 * 1000;
+
   const lastClaim = typeof lastDailyClaim === 'number'
     ? lastDailyClaim
     : typeof lastDailyClaim === 'string'
       ? new Date(lastDailyClaim).getTime()
       : 0;
 
-  const timeSinceLastClaim = now - lastClaim;
-  if (lastClaim > 0 && timeSinceLastClaim < ONE_DAY_MS) {
-    const remainingMs = ONE_DAY_MS - timeSinceLastClaim;
+  const hasClaimedToday = lastClaim >= currentResetUtc;
+
+  if (hasClaimedToday) {
+    const remainingMs = Math.max(0, nextResetUtc - nowTs);
     const hours = Math.floor(remainingMs / (1000 * 60 * 60));
     const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((remainingMs % (1000 * 60)) / 1000);
     const formattedCooldown = `${hours}h ${minutes}m ${seconds}s`;
-    const nextClaimTs = Math.floor((now + remainingMs) / 1000);
+    const nextClaimTs = Math.floor(nextResetUtc / 1000);
     return {
       canClaim: false as const,
       formattedCooldown,
@@ -545,8 +549,8 @@ function calculateDailyClaimCooldown(lastDailyClaim?: number | string | Date, cu
 
   return {
     canClaim: true as const,
-    now,
-    nextClaimTs: Math.floor((now + ONE_DAY_MS) / 1000),
+    now: nowTs,
+    nextClaimTs: Math.floor(nextResetUtc / 1000),
     prevSq: currentSq,
     newSq: currentSq + 30
   };
@@ -3578,14 +3582,14 @@ export default function DiscordEmulator({
           embed: {
             title: '⏳ DAILY HARVEST ON COOLDOWN',
             description:
-              `**You have already claimed your daily 30 Saint Quartz today.**\n\n` +
+              `**You have already claimed your daily 30 Saint Quartz for this cycle.**\n\n` +
               `👤 **Master:** **${master.username}**\n` +
               `💎 **Current Balance:** 💎 \`${claimStatus.currentSq.toLocaleString()} SQ\`\n\n` +
-              `⏱️ **Time Remaining:** \`${claimStatus.formattedCooldown}\`\n` +
-              `🔮 **Next Reset:** <t:${claimStatus.nextClaimTs}:R>\n\n` +
-              `*The Fuyuki Leyline mana reservoirs recharge once every 24 hours. Check back tomorrow!*`,
+              `⏱️ **Time Until Universal Reset:** \`${claimStatus.formattedCooldown}\`\n` +
+              `🌐 **Universal Reset Time:** **00:00 UTC** (<t:${claimStatus.nextClaimTs}:R>)\n\n` +
+              `*The Fuyuki Leyline mana reservoirs reset universally for all Masters at 00:00 UTC every day.*`,
             color: '#f59e0b',
-            footer: '24-Hour Leyline Cooldown Active'
+            footer: 'Universal Reset: 00:00 UTC'
           },
           components: {
             type: 'buttons',
@@ -3616,10 +3620,10 @@ export default function DiscordEmulator({
             `👤 **Master:** **${master.username}**\n` +
             `💎 **Harvested:** \`+30 Saint Quartz\` *(Full 10x Pull Value)*\n` +
             `📊 **New Total Balance:** 💎 \`${claimStatus.newSq.toLocaleString()} SQ\` (Previous: ${claimStatus.prevSq.toLocaleString()} SQ)\n\n` +
-            `⏳ **Next Daily Claim:** Available in **24 Hours** (<t:${claimStatus.nextClaimTs}:R>)\n\n` +
+            `🌐 **Universal Daily Reset:** **00:00 UTC** (<t:${claimStatus.nextClaimTs}:R>)\n\n` +
             `*Tip: You now have enough Saint Quartz to perform a 10x Craft Essence banner roll with \`/cegacha\`!*`,
           color: '#38bdf8',
-          footer: 'Holy Grail War Daily Allowance • Leyline Sanctuary Protocol'
+          footer: 'Holy Grail War Daily Allowance • Universal Reset: 00:00 UTC'
         },
         components: {
           type: 'buttons',
@@ -6025,7 +6029,8 @@ export default function DiscordEmulator({
         `💎 **Current Vault Balance:** \`${sq} Saint Quartz\`\n` +
         `🏆 **Grail Shards:** \`${(master as any).grailShards || 1} Shards\`\n` +
         `🔵 **Mana Prisms:** \`${(master as any).manaPrisms || 50} Prisms\`\n\n` +
-        `🎁 **Daily Login Bonus:** Claim **+30 Saint Quartz (10x Multi-Summon)** every 24 hours!\n` +
+        `🎁 **Daily Login Bonus:** Claim **+30 Saint Quartz (10x Multi-Summon)** every cycle!\n` +
+        `🌐 **Universal Reset Time:** Resets universally for all Masters at **00:00 UTC** every day.\n` +
         `💰 **Battle Rewards:** Earn bonus Saint Quartz by participating in Fuyuki Patrols and Duels.\n\n` +
         `*Press the **Claim Daily Quartz** button below to collect your reward!*`;
     } else if (category === 'rates') {
@@ -6564,11 +6569,11 @@ export default function DiscordEmulator({
         const winner = grailWar.grailWinnerId && grailWar.participants[grailWar.grailWinnerId] 
           ? grailWar.participants[grailWar.grailWinnerId].username 
           : (aliveParticipants[0]?.username || 'Victor');
-        statusHeader = `**Status:** 🏆 CONCLUDED | **Victor:** **${winner}** | **Civilian Casualties:** **${civilianCasualtiesList.length}**`;
+        statusHeader = `**Status:** 🏆 CONCLUDED | **Victor:** **${winner}** | **Total Casualties:** **${civilianCasualtiesList.length + deadCount}**`;
       } else if (totalSummoned < 7) {
-        statusHeader = `**Status:** 🕯️ GATHERING MASTERS (**${totalSummoned}/7** Summoned | **${aliveParticipants.length}** Alive | **${deadCount}/6** Cores Absorbed) | **Civilian Casualties:** **${civilianCasualtiesList.length}**`;
+        statusHeader = `**Status:** 🕯️ GATHERING MASTERS (**${totalSummoned}/7** Summoned | **${aliveParticipants.length}** Alive | **${deadCount}/6** Cores Absorbed) | **Total Casualties:** **${civilianCasualtiesList.length + deadCount}**`;
       } else {
-        statusHeader = `**Status:** ⚔️ ACTIVE ELIMINATION PHASE (**${aliveParticipants.length}/7** Alive | **${deadCount}/6** Cores Absorbed) | **Civilian Casualties:** **${civilianCasualtiesList.length}**`;
+        statusHeader = `**Status:** ⚔️ ACTIVE ELIMINATION PHASE (**${aliveParticipants.length}/7** Alive | **${deadCount}/6** Cores Absorbed) | **Total Casualties:** **${civilianCasualtiesList.length + deadCount}**`;
       }
 
       const rogueMasters = participants.filter(p => p.isAlive && (((p.innocentKills || 0) >= 10) || p.bountyActive));
@@ -6576,6 +6581,40 @@ export default function DiscordEmulator({
         ? `\n\n🎯 **CHURCH EXTERMINATION BOUNTY ACTIVE:**\n` +
           rogueMasters.map(r => `• ☠️ **${r.username}** (${r.servantName} [${r.servantClass}]) — **${r.innocentKills} Civilian Kills**\n  ↳ **Bounty Reward:** **+1 Extra Command Seal** 💠 & **+15 Saint Quartz** 💎 for the Master who slays them!`).join('\n') + '\n'
         : '';
+
+      const rawHomily = grailWar.latestChurchHomily?.monologue;
+      const homilyMonologue = rawHomily
+        ? rawHomily.trim().replace(/^["“']|["”']$/g, '')
+        : `Rejoice, Masters. The incense burns low in the sanctuary, yet the air in Fuyuki is thick with the scent of wasted potential and the metallic tang of blood.`;
+
+      const rawNews = grailWar.latestNewsBulletin?.gasLeakCoverStory;
+      const newsStory = rawNews
+        ? rawNews.trim().replace(/^["“']|["”']$/g, '')
+        : `A localized subterranean pressure surge resulting in a series of pressurized steam vent ruptures and a synchronized failure of high-voltage decorative signage.`;
+
+      // 🕯️ Extra Canvas Embed for Father Kotomine's Church Relay & Visual Novel Card
+      addMessage({
+        id: getNextId('bot_church_relay'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '🕯️ Fuyuki Church Overseer & Municipal Intelligence Relay',
+          description:
+            `🕯️ **Overseer's 24h Soliloquy (Father Kotomine):**\n` +
+            `*“${homilyMonologue}”*\n\n` +
+            `📰 **2h Fuyuki Breaking News (Gas Leak Cover-Up):**\n` +
+            `*“${newsStory}”*`,
+          color: '#991b1b',
+          footer: 'Holy Church Neutral Sanctuary • Click [Church] or use /church'
+        },
+        canvasType: 'kirei_vn',
+        canvasPayload: {
+          monologueText: homilyMonologue,
+          title: grailWar.latestChurchHomily?.title || "The Overseer's 24-Hour Homily | On the Vanity of Covenants",
+          subtitle: grailWar.latestChurchHomily?.subtitle || 'A liturgy of mercy, folly, and the sweet rot of human ambition',
+          speakerName: 'Father Kirei Kotomine'
+        }
+      });
 
       description =
         `${statusHeader}\n\n` +

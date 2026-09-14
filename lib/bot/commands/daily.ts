@@ -24,7 +24,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const avatarUrl = interaction.user.displayAvatarURL({ size: 256 });
 
     if (result.success) {
-      const nextClaimTime = Math.floor((Date.now() + 24 * 60 * 60 * 1000) / 1000);
+      const nextClaimTime = result.nextClaimTimestamp 
+        ? Math.floor(result.nextClaimTimestamp / 1000) 
+        : Math.floor((Date.now() + 24 * 60 * 60 * 1000) / 1000);
       const embed = new EmbedBuilder()
         .setTitle('💎 DAILY LEYLINE HARVEST: +30 SAINT QUARTZ CLAIMED!')
         .setDescription(
@@ -32,12 +34,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           \`👤 **Master:** <@\${interaction.user.id}> (\`\${interaction.user.username}\`)\\n\` +
           \`💎 **Harvested:** \`+30 Saint Quartz\` *(Full 10x Pull Value)*\\n\` +
           \`📊 **New Total Balance:** 💎 \`\${result.newTotalSq.toLocaleString()} SQ\` (Previous: \${result.previousSq.toLocaleString()} SQ)\\n\\n\` +
-          \`⏳ **Next Daily Claim:** Available in **24 Hours** (<t:\${nextClaimTime}:R>)\\n\\n\` +
+          \`🌐 **Universal Daily Reset:** **00:00 UTC** (<t:\${nextClaimTime}:R>)\\n\\n\` +
           \`*Tip: You now have enough Saint Quartz to perform a 10x Craft Essence banner roll with \`/cegacha\`!*\`
         )
         .setColor(0x38bdf8)
         .setThumbnail(avatarUrl)
-        .setFooter({ text: 'Holy Grail War Daily Allowance • Leyline Sanctuary Protocol' })
+        .setFooter({ text: 'Holy Grail War Daily Allowance • Universal Reset: 00:00 UTC' })
         .setTimestamp();
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -62,16 +64,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const embed = new EmbedBuilder()
         .setTitle('⏳ DAILY HARVEST ON COOLDOWN')
         .setDescription(
-          \`**You have already claimed your daily 30 Saint Quartz today.**\\n\\n\` +
+          \`**You have already claimed your daily 30 Saint Quartz for this cycle.**\\n\\n\` +
           \`👤 **Master:** <@\${interaction.user.id}> (\`\${interaction.user.username}\`)\\n\` +
           \`💎 **Current Balance:** 💎 \`\${result.newTotalSq.toLocaleString()} SQ\`\\n\\n\` +
-          \`⏱️ **Time Remaining:** \`\${result.formattedCooldown || 'A few hours'}\`\\n\` +
-          \`🔮 **Next Reset:** <t:\${nextTs}:R> (<t:\${nextTs}:t>)\\n\\n\` +
-          \`*The Fuyuki Leyline mana reservoirs recharge once every 24 hours. Check back tomorrow!*\`
+          \`⏱️ **Time Until Universal Reset:** \`\${result.formattedCooldown || 'A few hours'}\`\\n\` +
+          \`🌐 **Universal Reset Time:** **00:00 UTC** (<t:\${nextTs}:R> • <t:\${nextTs}:t>)\\n\\n\` +
+          \`*The Fuyuki Leyline mana reservoirs reset universally for all Masters at 00:00 UTC every day.*\`
         )
         .setColor(0xf59e0b)
         .setThumbnail(avatarUrl)
-        .setFooter({ text: '24-Hour Leyline Cooldown Active' })
+        .setFooter({ text: 'Universal Reset: 00:00 UTC' })
         .setTimestamp();
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
