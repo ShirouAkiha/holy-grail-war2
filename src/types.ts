@@ -41,6 +41,8 @@ export interface ServantSkill {
   value: number;
   duration: number;
   icon: string;
+  quote?: string;
+  quotes?: string[];
   transformationAvatarUrl?: string;
   transformationGifUrl?: string;
 }

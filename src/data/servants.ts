@@ -408,7 +408,9 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'evade',
         value: 100,
         duration: 1,
-        icon: '🛡️'
+        icon: '🛡️',
+        quote: "Wisdom of the Abyss, Dún Scáith.",
+        quotes: ["Wisdom of the Abyss, Dún Scáith.", "There's nothing that I cannot kill."]
       },
       {
         id: 'primordial_rune',
@@ -418,7 +420,9 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'buff_atk',
         value: 20,
         duration: 1,
-        icon: '⚡'
+        icon: '⚡',
+        quote: "O runes, bring your strength here!",
+        quotes: ["O runes, bring your strength here!"]
       },
       {
         id: 'god_slayer_a',
@@ -428,7 +432,9 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'buff_atk',
         value: 25,
         duration: 1,
-        icon: '🔱'
+        icon: '🔱',
+        quote: "There's nothing that I cannot kill.",
+        quotes: ["There's nothing that I cannot kill.", "How should I dredge out this win?"]
       }
     ],
     passives: [

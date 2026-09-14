@@ -7,6 +7,9 @@ export interface ServantDialogueProfile {
   quick: string[];
   mixed: string[];
   desperation: string[];
+  skills?: string[];
+  defeat?: string[];
+  victory?: string[];
 }
 
 export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = {
@@ -115,30 +118,47 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "Gáe Bolg Alternative! Piercing through mortality itself! Shatter!",
       "Feel the crushing weight of the Land of Shadows! Dual crimson spears, obliterate!",
       "No mortal armor withstands the thrust of Dún Scáith! Face your end!",
-      "Wisdom of Dún Scáith! Strike true, crimson lances!"
+      "Ha! Dual crimson spears, pierce them cleanly!"
     ],
     arts: [
-      "Primordial Runes awaken. Observe the true martial art of the Land of Shadows.",
-      "Patience, precision, lethality. A warrior reads the flow of life and death.",
+      "Patience, precision, lethality. Observe the true martial art of the Land of Shadows.",
+      "A warrior reads the flow of life and death. Take this!",
       "...No, I am not your teacher. Forget it. Yet observe how the spear aligns.",
       "Channeling the leyline. The red spears strike where destiny dictates."
     ],
     quick: [
       "A mortal's reflex cannot outspeed dual crimson spears! Fall!",
       "Too slow! The gap between heaven and earth is crossed in an instant!",
-      "Critical puncture! Blood follows the path of my spear tip!",
-      "Whirling red lances! Even lightning cannot outpace this thrust!"
+      "Critical puncture! Blood follows the path of my spear tip! Hyah!",
+      "Whirling red lances! Even lightning cannot outpace this thrust! Heh!"
     ],
     mixed: [
       "I am neither your teacher, mother, sister, nor lover, Master. Keep pace with my spears!",
       "Setanta learned this lesson in blood. Ensure your stance does not waver.",
-      "A disciplined strike is the foundation of survival. Forward!",
-      "My red spears answer your resolve. Do not lose your composure."
+      "Take this! A disciplined strike is the foundation of survival.",
+      "Hah! My red spears answer your resolve. Do not lose your composure."
     ],
     desperation: [
       "An admirable strike... Show me if you have what it takes to end my immortality!",
       "Pain is the forge of a warrior! Stand and face the Gate of Dún Scáith!",
       "I stepped past mortality itself... I will not falter until a true warrior strikes my core!"
+    ],
+    skills: [
+      "There's nothing that I cannot kill.",
+      "Wisdom of the Abyss, Dún Scáith.",
+      "O runes, bring your strength here!",
+      "How should I dredge out this win?"
+    ],
+    defeat: [
+      "My mistake...",
+      "Pain. It's been a while...",
+      "Not bad...",
+      "I'm going to sleep for a bit."
+    ],
+    victory: [
+      "Is there anyone who can kill me? Hehe, I doubt it...",
+      "...Huh. I was so busy with training that I never imagined it would end like this.",
+      "Too bad... You were just unlucky to have me as your opponent."
     ]
   },
   scathach_lancer: {
@@ -146,30 +166,47 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "Gáe Bolg Alternative! Piercing through mortality itself! Shatter!",
       "Feel the crushing weight of the Land of Shadows! Dual crimson spears, obliterate!",
       "No mortal armor withstands the thrust of Dún Scáith! Face your end!",
-      "Wisdom of Dún Scáith! Strike true, crimson lances!"
+      "Ha! Dual crimson spears, pierce them cleanly!"
     ],
     arts: [
-      "Primordial Runes awaken. Observe the true martial art of the Land of Shadows.",
-      "Patience, precision, lethality. A warrior reads the flow of life and death.",
+      "Patience, precision, lethality. Observe the true martial art of the Land of Shadows.",
+      "A warrior reads the flow of life and death. Take this!",
       "...No, I am not your teacher. Forget it. Yet observe how the spear aligns.",
       "Channeling the leyline. The red spears strike where destiny dictates."
     ],
     quick: [
       "A mortal's reflex cannot outspeed dual crimson spears! Fall!",
       "Too slow! The gap between heaven and earth is crossed in an instant!",
-      "Critical puncture! Blood follows the path of my spear tip!",
-      "Whirling red lances! Even lightning cannot outpace this thrust!"
+      "Critical puncture! Blood follows the path of my spear tip! Hyah!",
+      "Whirling red lances! Even lightning cannot outpace this thrust! Heh!"
     ],
     mixed: [
       "I am neither your teacher, mother, sister, nor lover, Master. Keep pace with my spears!",
       "Setanta learned this lesson in blood. Ensure your stance does not waver.",
-      "A disciplined strike is the foundation of survival. Forward!",
-      "My red spears answer your resolve. Do not lose your composure."
+      "Take this! A disciplined strike is the foundation of survival.",
+      "Hah! My red spears answer your resolve. Do not lose your composure."
     ],
     desperation: [
       "An admirable strike... Show me if you have what it takes to end my immortality!",
       "Pain is the forge of a warrior! Stand and face the Gate of Dún Scáith!",
       "I stepped past mortality itself... I will not falter until a true warrior strikes my core!"
+    ],
+    skills: [
+      "There's nothing that I cannot kill.",
+      "Wisdom of the Abyss, Dún Scáith.",
+      "O runes, bring your strength here!",
+      "How should I dredge out this win?"
+    ],
+    defeat: [
+      "My mistake...",
+      "Pain. It's been a while...",
+      "Not bad...",
+      "I'm going to sleep for a bit."
+    ],
+    victory: [
+      "Is there anyone who can kill me? Hehe, I doubt it...",
+      "...Huh. I was so busy with training that I never imagined it would end like this.",
+      "Too bad... You were just unlucky to have me as your opponent."
     ]
   },
 
@@ -741,9 +778,45 @@ export function getServantDefeatDialogue(
   }
 
   const profile = getServantProfile(servantName);
-  const quote = profile.desperation?.[0] || customQuotes?.desperation || "Master... Forgive me... My spirit origin is dissolving...";
+  const defeatList = profile.defeat || profile.desperation;
+  const quote = (defeatList && defeatList.length > 0)
+    ? defeatList[Math.floor(Math.random() * defeatList.length)]
+    : customQuotes?.desperation || "Master... Forgive me... My spirit origin is dissolving...";
+
   return {
     quote,
     tag: 'SPIRIT ORIGIN DISSOLVED'
   };
+}
+
+/**
+ * Resolves a canon skill quote for a servant activating a skill.
+ */
+export function getServantSkillQuote(
+  servantTemplateOrName: any,
+  skillIdx: number,
+  skillObj?: any
+): string {
+  // 1. If skill object has quotes array, pick one
+  if (skillObj?.quotes && Array.isArray(skillObj.quotes) && skillObj.quotes.length > 0) {
+    const idx = Math.abs(Math.floor(Date.now() / 200) + skillIdx) % skillObj.quotes.length;
+    return skillObj.quotes[idx];
+  }
+  // 2. If skill object has a single quote string
+  if (skillObj?.quote) {
+    return skillObj.quote;
+  }
+
+  // 3. Fallback to profile skills list
+  const name = typeof servantTemplateOrName === 'string'
+    ? servantTemplateOrName
+    : (servantTemplateOrName?.name || servantTemplateOrName?.id || '');
+
+  const profile = getServantProfile(name);
+  if (profile.skills && profile.skills.length > 0) {
+    return profile.skills[skillIdx % profile.skills.length] || profile.skills[0];
+  }
+
+  // 4. Default clean fallback
+  return skillObj?.name ? `Activating tactical skill: ${skillObj.name}!` : "My power answers the command!";
 }

@@ -18,7 +18,7 @@ import { PVP_DAMAGE_MODIFIER, calculateFleeChance, rollFleeSuccess } from '../en
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
-import { getServantChainDialogue, shouldTriggerDialogueCutIn } from '../engine/dialogue';
+import { getServantChainDialogue, shouldTriggerDialogueCutIn, getServantSkillQuote } from '../engine/dialogue';
 import { getServantMatchupDialogue } from '../data/servantMatchups';
 
 // ==========================================
@@ -928,7 +928,7 @@ function activateCombatantSkill(
   combatant.skillCooldowns[skillIdx] = skill.cooldown || 5;
   const sName = combatant.servant.nickname || combatant.servant.template.name;
   const customSkillQuote = combatant.servant.customQuotes?.skill;
-  const skillQuote = customSkillQuote || `My power answers the command! Witness ${skill.name}!`;
+  const skillQuote = customSkillQuote || getServantSkillQuote(combatant.servant.template, skillIdx, skill);
   const quoteLine = `\n> 💬 ❝ ***${skillQuote}*** ❞`;
   let logText = `✨ **${sName}** activated **${skill.name}**!${quoteLine}`;
 
