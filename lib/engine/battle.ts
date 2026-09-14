@@ -1119,9 +1119,27 @@ export function executeBattleTurn(
             break;
           case 'heal':
             actor.currentHp = Math.min(actor.maxHp, actor.currentHp + skill.value);
+            if (skill.id === 'divine_blessing' || (skill.description || '').toLowerCase().includes('debuff')) {
+              actor.activeBuffs = actor.activeBuffs.filter(b => !b.type.startsWith('debuff'));
+              actor.activeBuffs.push({
+                name: `${skill.name} (DEF Up)`,
+                type: 'buff_def',
+                value: 15,
+                remainingTurns: 2
+              });
+            }
             break;
           case 'np_charge':
             actor.npGauge = Math.min(300, actor.npGauge + skill.value);
+            if (skill.id === 'after_pure_prayer_ex' || (skill.description || '').toLowerCase().includes('arts')) {
+              actor.activeBuffs.push({
+                name: `${skill.name} (Arts Up)`,
+                type: 'arts_up',
+                value: 20,
+                remainingTurns: 3
+              });
+              actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
+            }
             break;
           case 'crit_stars':
             actor.critStars += skill.value;
@@ -1161,15 +1179,24 @@ export function executeBattleTurn(
             const itemConstruct = actorPassives.filter(p => p.type === 'item_construction').reduce((s, p) => s + p.value, 0);
             const effectiveResist = Math.max(0, magicResist - itemConstruct);
 
-            // Drain target NP gauge & apply ATK debuff (Discernment of the Poor / debuff skills)
-            const drainAmount = skill.value || 20;
+            // Drain target NP gauge & apply debuffs
+            const drainAmount = 20;
             target.npGauge = Math.max(0, target.npGauge - drainAmount);
-            target.activeBuffs.push({
-              name: `${skill.name} (ATK Down)`,
-              type: 'debuff_atk',
-              value: skill.value || 20,
-              remainingTurns: skill.duration || 1
-            });
+            if (skill.id === 'restoration_radiant_light' || skill.name.includes('Radiant Holy Light') || skill.name.includes('Restoration')) {
+              target.activeBuffs.push({
+                name: `${skill.name} (DEF Down)`,
+                type: 'debuff_def',
+                value: 30,
+                remainingTurns: 3
+              });
+            } else {
+              target.activeBuffs.push({
+                name: `${skill.name} (ATK Down)`,
+                type: 'debuff_atk',
+                value: skill.value || 20,
+                remainingTurns: skill.duration || 1
+              });
+            }
 
             if (effectiveResist <= 0 || Math.random() * 100 >= effectiveResist) {
               target.isStunned = true;

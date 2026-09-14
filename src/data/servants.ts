@@ -482,33 +482,33 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     commandDeck: ['Arts', 'Arts', 'Arts', 'Buster', 'Quick'],
     skills: [
       {
-        id: 'revelation_a',
-        name: 'Revelation A',
+        id: 'after_pure_prayer_ex',
+        name: 'After Pure Prayer EX',
         cooldown: 6,
-        description: 'Gains 10 Critical Stars per turn for 3 turns through divine intuition.',
-        effectType: 'crit_stars',
-        value: 10,
+        description: 'Increases Arts performance (+20%) for 3 turns, grants +20% NP Gauge to team, and gains 15 Critical Stars per turn for 3 turns.',
+        effectType: 'np_charge',
+        value: 20,
         duration: 3,
         icon: '🕊️'
       },
       {
-        id: 'true_name_discernment',
-        name: 'True Name Discernment B',
+        id: 'restoration_radiant_light',
+        name: 'Restoration of the Radiant Holy Light A',
         cooldown: 5,
-        description: 'Greatly reduces enemy damage with +25% DEF for 1 turn.',
-        effectType: 'buff_def',
-        value: 25,
-        duration: 1,
-        icon: '📜'
+        description: 'Drains target NP gauge by -20% and inflicts -30% DEF Down for 3 turns.',
+        effectType: 'debuff',
+        value: 30,
+        duration: 3,
+        icon: '✨'
       },
       {
         id: 'divine_blessing',
         name: 'Divine Grace A+',
         cooldown: 5,
-        description: 'Heals self and allies for 3,500 HP and clears debuffs.',
+        description: 'Heals self and allies for 4,000 HP, clears all debuffs, and grants +15% DEF Up for 2 turns.',
         effectType: 'heal',
-        value: 3500,
-        duration: 1,
+        value: 4000,
+        duration: 2,
         icon: '💖'
       }
     ],
@@ -525,10 +525,10 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       name: 'Luminosité Eternelle: God is Here With Me',
       cardType: 'Arts',
       chant: 'My Lord... I entrust this flag to you! Luminosité Eternelle!',
-      description: 'Unfurls the sacred banner, granting Invincibility to allies for 1 turn, massive DEF boost, HP recovery, and Arts NP refund.',
+      description: 'Unfurls the sacred banner, granting Invincibility for 1 turn, +30% DEF boost for 3 turns, +3,000 HP recovery, debuff removal, and +25% Arts NP refund.',
       target: 'support',
       multiplier: 0,
-      overchargeEffect: 'Team Invincibility (1 turn) + 30% DEF + 2500 HP Regen + 25% Arts NP refund'
+      overchargeEffect: 'Team Invincibility (1 turn) + 30% DEF (3T) + 3000 HP Regen + Debuff Cleanse + 25% Arts NP refund'
     },
     lore: 'The saint of France who received the voice of the Lord and liberated Orleans during the Hundred Years\' War.',
     summonQuote: 'Servant Ruler, Jeanne d\'Arc. The Holy Grail War requires an arbiter; I shall safeguard this pact.',

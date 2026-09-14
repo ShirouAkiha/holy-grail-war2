@@ -65,7 +65,7 @@ export const data = new SlashCommandBuilder()
 // ==========================================
 export interface CombatantBuff {
   name: string;
-  type: 'buff_atk' | 'buff_def' | 'crit_dmg' | 'evade' | 'guts' | 'np_gen' | 'np_gain' | 'buster_up' | 'arts_up' | 'quick_up' | 'invincible' | 'stun' | 'debuff_atk' | 'ignore_invincible';
+  type: 'buff_atk' | 'buff_def' | 'crit_dmg' | 'evade' | 'guts' | 'np_gen' | 'np_gain' | 'buster_up' | 'arts_up' | 'quick_up' | 'invincible' | 'stun' | 'debuff_atk' | 'debuff_def' | 'ignore_invincible';
   value: number;
   remainingTurns: number;
   remainingHits?: number;
@@ -1048,7 +1048,16 @@ function activateCombatantSkill(
         remainingTurns: skill.duration || 3
       });
     }
-    logText = `💚 **${sName}** activated **${skill.name}**! (+${healVal.toLocaleString()} HP restored${descLower.includes('buster') || idLower.includes('blast_stream') ? ', +30% Buster Up' : ''})${quoteLine}`;
+    if (descLower.includes('clears debuffs') || descLower.includes('debuff') || idLower === 'divine_blessing') {
+      combatant.activeBuffs = combatant.activeBuffs.filter(b => !b.type.startsWith('debuff'));
+      combatant.activeBuffs.push({
+        name: `${skill.name} (DEF Up)`,
+        type: 'buff_def',
+        value: 15,
+        remainingTurns: 2
+      });
+    }
+    logText = `💖 **${sName}** activated **${skill.name}**! (+${healVal.toLocaleString()} HP restored${descLower.includes('buster') || idLower.includes('blast_stream') ? ', +30% Buster Up' : ''}${idLower === 'divine_blessing' ? ', debuffs cleansed, +15% DEF Up' : ''})${quoteLine}`;
   } else if (skill.effectType === 'np_charge') {
     const npVal = skill.value || 30;
     combatant.npGauge = Math.min(300, combatant.npGauge + npVal);
@@ -1056,6 +1065,14 @@ function activateCombatantSkill(
     const descLower = (skill.description || '').toLowerCase();
     const idLower = (skill.id || '').toLowerCase();
 
+    if (descLower.includes('arts') || idLower === 'after_pure_prayer_ex' || skill.name.includes('Pure Prayer')) {
+      combatant.activeBuffs.push({
+        name: `${skill.name} (Arts Up)`,
+        type: 'arts_up',
+        value: 20,
+        remainingTurns: 3
+      });
+    }
     if (descLower.includes('evade') || idLower.includes('magic_circuit_acceleration')) {
       combatant.activeBuffs.push({
         name: `${skill.name} (Evade)`,
@@ -1081,24 +1098,34 @@ function activateCombatantSkill(
       });
     }
 
-    logText = `⚡ **${sName}** activated **${skill.name}**! (+${npVal}% NP Gauge${descLower.includes('evade') || idLower.includes('magic_circuit') ? ', Evade granted for 1 turn, +30% NP Gain' : ''})${quoteLine}`;
+    logText = `⚡ **${sName}** activated **${skill.name}**! (+${npVal}% NP Gauge, +15 Stars/turn${descLower.includes('arts') || idLower === 'after_pure_prayer_ex' ? ', +20% Arts Up (3T)' : ''}${descLower.includes('evade') || idLower.includes('magic_circuit') ? ', Evade granted for 1 turn' : ''})${quoteLine}`;
   } else if (skill.effectType === 'crit_stars') {
     const starVal = skill.value || 25;
     combatant.critStars = Math.min(50, combatant.critStars + starVal);
     combatant.activeBuffs.push({ name: skill.name, type: 'crit_dmg', value: 40, remainingTurns: skill.duration || 2 });
     logText = `🌟 **${sName}** activated **${skill.name}**!${quoteLine}`;
-  } else if (skill.effectType === 'stun' || skill.effectType === 'debuff' || skill.id?.includes('discernment')) {
+  } else if (skill.effectType === 'stun' || skill.effectType === 'debuff' || skill.id?.includes('discernment') || skill.id === 'restoration_radiant_light') {
     if (opponent) {
-      opponent.isStunned = true;
-      opponent.npGauge = Math.max(0, opponent.npGauge - 20);
-      opponent.activeBuffs.push({
-        name: `${skill.name} (ATK Down)`,
-        type: 'debuff_atk',
-        value: skill.value || 20,
-        remainingTurns: skill.duration || 1
-      });
+      if (skill.id === 'restoration_radiant_light' || skill.name.includes('Radiant Holy Light') || skill.name.includes('Restoration')) {
+        opponent.npGauge = Math.max(0, opponent.npGauge - 20);
+        opponent.activeBuffs.push({
+          name: `${skill.name} (DEF Down)`,
+          type: 'debuff_def',
+          value: 30,
+          remainingTurns: 3
+        });
+      } else {
+        opponent.isStunned = true;
+        opponent.npGauge = Math.max(0, opponent.npGauge - 20);
+        opponent.activeBuffs.push({
+          name: `${skill.name} (ATK Down)`,
+          type: 'debuff_atk',
+          value: skill.value || 20,
+          remainingTurns: skill.duration || 1
+        });
+      }
     }
-    logText = `👁️ **${sName}** activated **${skill.name}**!${quoteLine}`;
+    logText = `✨ **${sName}** activated **${skill.name}**!${quoteLine}`;
   } else {
     combatant.activeBuffs.push({ name: skill.name, type: 'buff_atk', value: 25, remainingTurns: 2 });
     logText = `✨ **${sName}** activated **${skill.name}**!${quoteLine}`;
@@ -1267,6 +1294,7 @@ function resolveStrike(
   let defBuff = 1.0;
   defender.activeBuffs.forEach(b => {
     if (b.type === 'buff_def') defBuff += b.value / 100;
+    if (b.type === 'debuff_def') defBuff -= b.value / 100;
   });
 
   const effectiveAtk = attacker.baseAtk * (atkBuff + attackerAvengerAtk);

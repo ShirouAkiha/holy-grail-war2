@@ -909,6 +909,243 @@ export const SCATHACH_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const JEANNE_RULER_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'jeanne_ruler_bond_event_1',
+    servantTemplateId: 'jeanne_darc_ruler',
+    requiredBondLevel: 1,
+    title: "Saint's Vigil & Gentle Night Air",
+    subtitle: "Bond Level 1 Interlude • Rooftop Vigil over Fuyuki",
+    description: "A quiet midnight conversation with Jeanne d'Arc atop a high vantage point, reflecting on life, faith, and your pact as Master and Servant.",
+    rewardBondExp: 150,
+    rewardSaintQuartz: 3,
+    unlockedQuoteId: 'jeanne_ruler_bond_line_1',
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: "Jeanne d'Arc",
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "The night air here is surprisingly gentle, Master. Even in the middle of a conflict like this, the town feels so peaceful when looking at it from up here. Are you holding up all right? You still looked quite pale after we established the contract earlier.",
+        choices: [
+          {
+            id: 'c1_option1',
+            text: "I'm still trying to process all of this. Magic, Servants, fighting for a relic... it's overwhelming.",
+            response: "That is completely natural. To be pulled from an ordinary life into a battle of ideals and survival is a terrible shock. You do not need to force yourself to accept everything overnight. I will be your shield while you find your footing.",
+            bondExpGain: 125,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_option2',
+            text: "I’m fine, honestly. Just a little tired from running around all evening.",
+            response: "You say that, but your shoulders are stiff as stone. You do not have to hide your exhaustion from me. Endurance is admirable, but ignoring your limits will only cost you when danger truly strikes.",
+            bondExpGain: 125,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_option3',
+            text: "Pale? I thought I looked pretty heroic standing next to a legendary saint.",
+            response: "Heroic, is it? You certainly had resolve in your eyes, but vanity will not deflect an enemy's blade, Master. Still... having lighthearted courage is better than trembling in despair.",
+            bondExpGain: 150,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_2'
+          }
+        ]
+      },
+      {
+        id: 'scene_2',
+        speakerName: "Jeanne d'Arc",
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Tell me, before the Command Seals appeared on your hand, what kind of life did you lead in this city? A Holy Grail War demands so much, yet I still know almost nothing about the person walking beside me.",
+        choices: [
+          {
+            id: 'c2_option1',
+            text: "Just average. School, part-time shifts, walking through convenience stores at midnight. Completely mundane.",
+            response: "A mundane life is a profound blessing, Master. In my own era, peace of that scale was a distant dream for most peasants. Waking up knowing tomorrow will likely come without ruin... that quiet routine is precisely what deserves protection.",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_option2',
+            text: "Quiet, maybe a bit lonely. I mostly kept to myself and watched the days slip by.",
+            response: "Solitude can weigh heavily on a person. But even in a quiet existence, you were carrying yourself forward every single day. That quiet endurance requires its own quiet kind of faith.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_option3',
+            text: "I always felt like something was missing, like I was waiting for a spark or purpose.",
+            response: "Be careful wishing for a spark. Often, when the world answers that longing, it does so through fire and trial. But now that you stand in the flame, I pray you find the resolve to shape it into something noble rather than destructive.",
+            bondExpGain: 150,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_3'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: "Jeanne d'Arc",
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Which brings a question to mind. When you look at me as your Servant, what do you see? Most magi call upon spirits seeking legendary weapons or devastating sorcery. But I am neither a conqueror nor a mage.",
+        choices: [
+          {
+            id: 'c3_option1',
+            text: "I see a protector. Someone who stands firm no matter how terrifying the odds are.",
+            response: "A protector... Yes. That is the calling I swore myself to. A banner cannot kill, but it can grant people the heart to stand firm against fear. Knowing you place that trust in my defense gives me immense strength.",
+            bondExpGain: 150,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_option2',
+            text: "Honestly? Just an eighteen-year-old girl bearing an impossible weight on her back.",
+            response: "You... you see through the armor quite easily, don't you? Most people only look at the banner or the miracles. Hearing someone recognize simply the person underneath... it catches me off guard, but I am grateful.",
+            bondExpGain: 175,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_option3',
+            text: "A living legend. A holy figure from the history books who led armies.",
+            response: "The history books tend to polish the rough edges of reality. I was an illiterate country girl who answered a call she barely understood. If history remembers me as glorious, it is only because ordinary people fought bravely beside me.",
+            bondExpGain: 125,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_4'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: "Jeanne d'Arc",
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Speaking of the banner... Master, since you are not from a lineage of magi, you must have doubts about this ritual. Do you truly believe the Holy Grail will grant whatever wish you hold in your heart?",
+        choices: [
+          {
+            id: 'c4_option1',
+            text: "I haven't even thought about a wish. I'm just focused on surviving this.",
+            response: "Survival is an honest, pure instinct. There is no shame in making that your priority. A wish means nothing if your soul is lost in the pursuit of it.",
+            bondExpGain: 125,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_option2',
+            text: "If it has limitless power, there must be a catch. Miracles usually come with a steep price.",
+            response: "That is remarkably perceptive of you. The allure of an omnipotent wish frequently blinds both Master and Servant to the cost. Remaining wary of easy miracles will keep your spirit grounded.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_option3',
+            text: "I do want something meaningful out of this, even if I haven't figured out what yet.",
+            response: "To seek purpose through trial is human nature. Just promise me you will reflect carefully upon that desire. When blood is spilled in the name of a wish, the heart can easily forget why it began searching in the first place.",
+            bondExpGain: 125,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_5'
+          }
+        ]
+      },
+      {
+        id: 'scene_5',
+        speakerName: "Jeanne d'Arc",
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "For myself, as a Ruler summoned into this war, I possess no personal wish for the Holy Grail. My only duty is to ensure the boundary of the ritual is kept, and now, to guide and preserve your life through it. Does having a Servant without an ambition disappoint you?",
+        choices: [
+          {
+            id: 'c5_option1',
+            text: "Not at all. It means your judgment won't be blinded by greed.",
+            response: "Clarity of mind is essential, especially when others lose themselves to ambition. If I remain unswayed by the prize, I can evaluate threats without hesitation or deceit.",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c5_option2',
+            text: "A little bit. Won't a lack of desire make it hard to fight against ruthless enemies?",
+            response: "A fair concern. But righteous conviction can be far stronger than personal greed. A warrior driven by hunger may break when the prize seems out of reach; one driven by duty will stand until the final breath.",
+            bondExpGain: 125,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c5_option3',
+            text: "It doesn't disappoint me, but it makes me wonder: what keeps you going then?",
+            response: "What keeps me going? The simple desire to see goodness endure. To know that after the smoke clears, innocent people will wake to another quiet morning. That is reward enough for my spirit.",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_6'
+          }
+        ]
+      },
+      {
+        id: 'scene_6',
+        speakerName: "Jeanne d'Arc",
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "You have seen the other Servants prowling the city borders tonight. The shadows are full of dangerous intent. When the moment comes where we must confront them directly, how do you wish for us to proceed as Master and Servant?",
+        choices: [
+          {
+            id: 'c6_option1',
+            text: "We take the defensive. We observe, gather information, and only strike if forced.",
+            response: "A patient and wise strategy. In an unfamiliar war, recklessness is the swiftest path to defeat. We will study the lay of the land and protect the civilians first.",
+            bondExpGain: 125,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'c6_option2',
+            text: "We fight openly and honorably. No underhanded tricks or collateral damage.",
+            response: "Spoken like a true knight at heart. Holding to honor in the midst of blood and sorcery is a painful path, but one I will proudly walk at your side.",
+            bondExpGain: 150,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'c6_option3',
+            text: "I trust your tactical instincts completely, Jeanne. Lead the way in combat.",
+            response: "Thank you for your confidence, Master. I will bear the tactical burden gladly, but do not forget: your command and your safety remain the core of every decision I make on the field.",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_7'
+          }
+        ]
+      },
+      {
+        id: 'scene_7',
+        speakerName: "Jeanne d'Arc",
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "We have spoken long enough while standing in this cold wind. Look at you, your breath is turning to mist and your hands are shaking slightly. We should head back inside our hideout and prepare for the morning. What is the first thing you want to do once we step inside?",
+        choices: [
+          {
+            id: 'c7_option1',
+            text: "Let’s share a hot meal and go over the map of the city one more time.",
+            response: "That sounds wonderful. Breaking bread together brings warmth back to weary bodies, and studying the district roads will give us an edge. I will help with the food if you show me how these modern stoves work!",
+            bondExpGain: 150,
+            reactionEmotion: 'happy'
+          },
+          {
+            id: 'c7_option2',
+            text: "Teach me something basic about command tactics so I’m not useless tomorrow.",
+            response: "You are far from useless, but your desire to learn is commendable. I will teach you how to read enemy formations and how to pace your mana. A prepared Master is a surviving Master.",
+            bondExpGain: 150,
+            reactionEmotion: 'determined'
+          },
+          {
+            id: 'c7_option3',
+            text: "You should rest first, Jeanne. You’ve been standing watch for hours.",
+            response: "Always looking out for me before yourself... Even as a Servant made of spiritual energy, your kindness reaches me. Let us return inside together, then. The war continues tomorrow, but tonight, we rest as comrades.",
+            bondExpGain: 150,
+            reactionEmotion: 'flustered'
+          }
+        ]
+      }
+    ]
+  }
+];
+
 /**
  * Registry of all available curated bond events by servant template ID.
  */
@@ -922,7 +1159,11 @@ export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
   heracles_berserker: HERACLES_BOND_EVENTS,
   heracles: HERACLES_BOND_EVENTS,
   scathach_lancer: SCATHACH_BOND_EVENTS,
-  scathach: SCATHACH_BOND_EVENTS
+  scathach: SCATHACH_BOND_EVENTS,
+  jeanne_darc_ruler: JEANNE_RULER_BOND_EVENTS,
+  jeanne_ruler: JEANNE_RULER_BOND_EVENTS,
+  jeanne_d_arc: JEANNE_RULER_BOND_EVENTS,
+  jeanne: JEANNE_RULER_BOND_EVENTS
 };
 
 /**
@@ -1320,6 +1561,77 @@ export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
       category: 'bond_5',
       requiredBondLevel: 5,
       quoteText: 'A mentor’s pride is a stubborn poison that lingers long after the pupils have turned to dust.'
+    }
+  ],
+  jeanne_darc_ruler: [
+    {
+      id: 'jeanne_ruler_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: 'Servant Ruler, Jeanne d\'Arc. The Holy Grail War requires an arbiter; I shall safeguard this pact.'
+    },
+    {
+      id: 'jeanne_ruler_bond_line_1',
+      title: 'Bond 1: Saint\'s Vigil',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: 'Even in the middle of a conflict like this, the town feels so peaceful when looking at it from up here. I will be your shield while you find your footing.'
+    },
+    {
+      id: 'jeanne_ruler_bond_5',
+      title: 'Bond 5: Holy Shield',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: 'Knowing you place that trust in my defense gives me immense strength. Together, we shall protect the innocent.'
+    }
+  ],
+  jeanne_ruler: [
+    {
+      id: 'jeanne_ruler_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: 'Servant Ruler, Jeanne d\'Arc. The Holy Grail War requires an arbiter; I shall safeguard this pact.'
+    },
+    {
+      id: 'jeanne_ruler_bond_line_1',
+      title: 'Bond 1: Saint\'s Vigil',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: 'Even in the middle of a conflict like this, the town feels so peaceful when looking at it from up here. I will be your shield while you find your footing.'
+    }
+  ],
+  jeanne_d_arc: [
+    {
+      id: 'jeanne_ruler_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: 'Servant Ruler, Jeanne d\'Arc. The Holy Grail War requires an arbiter; I shall safeguard this pact.'
+    },
+    {
+      id: 'jeanne_ruler_bond_line_1',
+      title: 'Bond 1: Saint\'s Vigil',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: 'Even in the middle of a conflict like this, the town feels so peaceful when looking at it from up here. I will be your shield while you find your footing.'
+    }
+  ],
+  jeanne: [
+    {
+      id: 'jeanne_ruler_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: 'Servant Ruler, Jeanne d\'Arc. The Holy Grail War requires an arbiter; I shall safeguard this pact.'
+    },
+    {
+      id: 'jeanne_ruler_bond_line_1',
+      title: 'Bond 1: Saint\'s Vigil',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: 'Even in the middle of a conflict like this, the town feels so peaceful when looking at it from up here. I will be your shield while you find your footing.'
     }
   ]
 };
