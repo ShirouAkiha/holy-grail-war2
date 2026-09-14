@@ -105,7 +105,8 @@ import { buildProfileEmbed, buildProfileButtons } from './profile';
 import { buildChurchEmbed, buildChurchButtons, buildHomilyEmbed, buildNewsEmbed } from './church';
 import { 
   generateKotomine24hHomily, 
-  generateFuyuki2hNewsBulletin 
+  generateFuyuki2hNewsBulletin,
+  getOrInitChurchIntel 
 } from '../engine/churchNewsService';
 
 // ==========================================
@@ -227,6 +228,11 @@ export async function buildGrailWarHub(
   });
 
   if (category === 'board') {
+    try {
+      await getOrInitChurchIntel(war);
+    } catch (err) {
+      console.error('Error fetching church intelligence in buildGrailWarHub:', err);
+    }
     const rosterLines: string[] = [];
     for (let slotIdx = 0; slotIdx < 7; slotIdx++) {
       const m = participants[slotIdx];

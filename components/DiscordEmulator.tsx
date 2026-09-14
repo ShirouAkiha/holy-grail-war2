@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { CanvasRenderer } from './CanvasRenderer';
 import {
   MasterProfile,
@@ -746,6 +746,51 @@ export default function DiscordEmulator({
         }
       })
       .catch(() => {});
+  }, []);
+
+  const isSyncingChurchRef = useRef(false);
+  const fetchAndSyncChurchIntel = useCallback(async (forceRefresh: boolean = false): Promise<{ homily?: any; news?: any } | null> => {
+    if (isSyncingChurchRef.current && !forceRefresh) return null;
+    isSyncingChurchRef.current = true;
+    try {
+      const res = await fetch(`/api/grail/church?type=all${forceRefresh ? '&refresh=true' : ''}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && (data.homily || data.news)) {
+          onUpdateGrailWar({
+            ...grailWar,
+            latestChurchHomily: data.homily || grailWar.latestChurchHomily,
+            latestNewsBulletin: data.news || grailWar.latestNewsBulletin,
+            homilyHistory: data.homilyHistory || grailWar.homilyHistory,
+            newsHistory: data.newsHistory || grailWar.newsHistory
+          });
+          return { homily: data.homily, news: data.news };
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to sync church intel from server:', e);
+    } finally {
+      isSyncingChurchRef.current = false;
+    }
+    return null;
+  }, [grailWar, onUpdateGrailWar]);
+
+  // Initial and periodic LLM check for Church Homily (24h) and Breaking News (2h)
+  useEffect(() => {
+    const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+    const isOldNews = !grailWar.latestNewsBulletin || (Date.now() - (grailWar.latestNewsBulletin.timestamp || 0) > TWO_HOURS_MS);
+    const isOldHomily = !grailWar.latestChurchHomily || (Date.now() - (grailWar.latestChurchHomily.timestamp || 0) > 24 * 60 * 60 * 1000);
+    const isHeuristic = grailWar.latestChurchHomily?.source === 'canon_heuristic' || grailWar.latestNewsBulletin?.source === 'canon_heuristic';
+
+    if (isOldNews || isOldHomily || isHeuristic) {
+      fetchAndSyncChurchIntel(true);
+    }
+
+    const interval = setInterval(() => {
+      fetchAndSyncChurchIntel(false);
+    }, 15 * 60 * 1000); // Check every 15 minutes
+
+    return () => clearInterval(interval);
   }, []);
 
   const allThrone = getAllThroneServants(customServants);
@@ -9215,8 +9260,13 @@ export default function DiscordEmulator({
         handleCommand('/grailwar skirmish');
       } else if (btnId === 'war_act_heal') {
         handleCommand('/grailwar heal');
-      } else if (btnId === 'war_act_refresh') {
-        postGrailWarHub(grailWarHubCategory, '🔄 War board refreshed.');
+      } else if (btnId === 'war_act_refresh' || btnId === 'church_refresh_intel') {
+        fetchAndSyncChurchIntel(true).then((intel) => {
+          const freshMsg = intel?.homily 
+            ? '🔄 Re-generated Father Kotomine Homily & 2-Hour Breaking News via Gemini.'
+            : '🔄 War board & intelligence refreshed.';
+          postGrailWarHub(grailWarHubCategory, freshMsg);
+        });
       } else if (btnId === 'war_deploy_raven') {
         handleCommand('/grailwar familiar raven');
       } else if (btnId === 'war_deploy_homunculus') {

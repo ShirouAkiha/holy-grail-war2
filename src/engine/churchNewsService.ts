@@ -178,7 +178,7 @@ JSON Output Schema:
     let response;
     try {
       response = await client.models.generateContent({
-        model: 'gemini-3.1-flash-lite',
+        model: 'gemini-3.6-flash',
         contents: prompt,
         config: {
           temperature: 0.9,
@@ -186,9 +186,9 @@ JSON Output Schema:
         }
       });
     } catch (primaryErr) {
-      console.warn('[churchNewsService] gemini-3.1-flash-lite homily failed, trying gemini-3.6-flash:', primaryErr);
+      console.warn('[churchNewsService] gemini-3.6-flash homily failed, trying gemini-3.1-flash-lite:', primaryErr);
       response = await client.models.generateContent({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-3.1-flash-lite',
         contents: prompt,
         config: {
           temperature: 0.9,
@@ -197,8 +197,9 @@ JSON Output Schema:
       });
     }
 
-    const text = response.text?.trim();
+    let text = response.text?.trim();
     if (text) {
+      text = text.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```$/g, '').trim();
       const parsed = JSON.parse(text);
       const homily: ChurchOverseerHomily = {
         id: `homily_${Date.now()}`,
@@ -351,7 +352,7 @@ JSON Output Schema:
     let response;
     try {
       response = await client.models.generateContent({
-        model: 'gemini-3.1-flash-lite',
+        model: 'gemini-3.6-flash',
         contents: prompt,
         config: {
           temperature: 0.85,
@@ -359,9 +360,9 @@ JSON Output Schema:
         }
       });
     } catch (primaryErr) {
-      console.warn('[churchNewsService] gemini-3.1-flash-lite news failed, trying gemini-3.6-flash:', primaryErr);
+      console.warn('[churchNewsService] gemini-3.6-flash news failed, trying gemini-3.1-flash-lite:', primaryErr);
       response = await client.models.generateContent({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-3.1-flash-lite',
         contents: prompt,
         config: {
           temperature: 0.85,
@@ -370,8 +371,9 @@ JSON Output Schema:
       });
     }
 
-    const text = response.text?.trim();
+    let text = response.text?.trim();
     if (text) {
+      text = text.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```$/g, '').trim();
       const parsed = JSON.parse(text);
       const news: FuyukiNewsBulletin = {
         id: `news_${Date.now()}`,
