@@ -3083,7 +3083,6 @@ async function startInteractiveDuel(
         time: 3600000, // 1 hour absolute safety ceiling
         filter: (btn: any) =>
           btn.customId.startsWith('card_') ||
-          btn.customId.startsWith('duel_') ||
           btn.customId.startsWith('target_') ||
           btn.customId.startsWith('skill_') ||
           btn.customId.startsWith('fj_')
@@ -3955,7 +3954,8 @@ async function finishDuel(
     ? new AttachmentBuilder(defeatCardBuffer, { name: 'defeat_dialogue.png' })
     : null;
 
-  if (availableSeals >= 1) {
+  // 1. Check if defeated Master can and wants to evacuate using a Command Seal
+  if (availableSeals >= 1 && !loser.isAi) {
     if (autoConsume === true) {
       if (loserMaster) {
         loserMaster.commandSeals = Math.max(0, availableSeals - 1);
@@ -4017,7 +4017,6 @@ async function finishDuel(
         safeSetEmbedThumbnail(interventionEmbed, loserAvatarUrl);
       }
 
-      // Render custom sanctuary/evac card
       const autoEvacCardBuffer = await renderDefeatDialogueCard(
         loserName,
         loserDefeatQuote,
@@ -4148,14 +4147,27 @@ async function finishDuel(
     }
 
     const targetMsg = responseMsg || (i.fetchReply ? await i.fetchReply().catch(() => null) : null);
+    const allowedLoserId = loserMaster?.discordId || loser.userId;
 
-    if (targetMsg && targetMsg.awaitMessageComponent) {
-      try {
-        const decision = await targetMsg.awaitMessageComponent({
-          filter: (btnInt: any) => btnInt.user.id === (loserMaster?.discordId || loser.userId),
-          componentType: ComponentType.Button,
-          time: 60000 // 1-minute time limit
-        });
+    if (targetMsg && typeof targetMsg.createMessageComponentCollector === 'function') {
+      const evacCollector = targetMsg.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        time: 60000
+      });
+
+      let handled = false;
+
+      evacCollector.on('collect', async (decision: any) => {
+        if (decision.user.id !== allowedLoserId) {
+          await decision.reply({
+            content: `⏳ Only the defeated Master (<@${allowedLoserId}>) can choose whether to use a Command Seal or take defeat!`,
+            flags: MessageFlags.Ephemeral
+          }).catch(() => {});
+          return;
+        }
+
+        handled = true;
+        evacCollector.stop('resolved');
 
         if (decision.customId === 'duel_evacuate_seal') {
           if (loserMaster) {
@@ -4214,7 +4226,7 @@ async function finishDuel(
             .setFooter({ text: 'Holy Grail War Survival Protocol • Command Seal Sanctuary' });
 
           if (loser.servant.template.avatarUrl) {
-            interventionEmbed.setThumbnail(loser.servant.template.avatarUrl);
+            safeSetEmbedThumbnail(interventionEmbed, loser.servant.template.avatarUrl);
           }
 
           const manualEvacCardBuffer = await renderDefeatDialogueCard(
@@ -4244,16 +4256,52 @@ async function finishDuel(
             components: []
           });
           return;
-        } else {
-          await decision.deferUpdate().catch(() => {});
         }
-      } catch {
-        // 1 minute expired without choice -> Defeat is accepted!
-      }
+
+        // Defeat accepted manually: Proceed to victor's Fate Decision or elimination
+        await decision.deferUpdate().catch(() => {});
+        await presentFateDecision(decision, winner, loser, p1Master, p2Master, finalAttachment, defeatCardAttachment, defeatCardBuffer);
+      });
+
+      evacCollector.on('end', async (_collected: any, reason: string) => {
+        if (!handled && reason === 'time') {
+          // 1 minute expired without choice -> Defeat is accepted!
+          await presentFateDecision(i, winner, loser, p1Master, p2Master, finalAttachment, defeatCardAttachment, defeatCardBuffer);
+        }
+      });
+      return;
     }
   }
 
-  // If AI opponent won and defeat is accepted (or no seals left): Eliminate player
+  // Defeat accepted immediately or 0 seals remaining
+  await presentFateDecision(i, winner, loser, p1Master, p2Master, finalAttachment, defeatCardAttachment, defeatCardBuffer);
+}
+
+// ==========================================
+// 12. FATE DECISION OR FINAL ELIMINATION
+// ==========================================
+async function presentFateDecision(
+  i: any,
+  winner: DuelCombatant,
+  loser: DuelCombatant,
+  p1Master: MasterProfile,
+  p2Master: MasterProfile | null,
+  finalAttachment: AttachmentBuilder,
+  defeatCardAttachment: AttachmentBuilder | null,
+  defeatCardBuffer: Buffer | null
+) {
+  const warSession = getOrInitWarSession(p1Master);
+  const chanTag = i.channel && 'name' in i.channel ? `#${(i.channel as any).name}` : '#general';
+
+  const loserName = loser.servant.nickname || loser.servant.template?.name || 'Heroic Spirit';
+  const loserDefeatQuote = loser.servant.customQuotes?.defeat || loser.servant.template?.defeatQuote || "Master... I have failed you in battle...";
+  const loserAvatarUrl = loser.servant.template?.avatarUrl;
+
+  const winnerName = winner.servant.nickname || winner.servant.template?.name || 'Heroic Spirit';
+  const winnerClass = winner.servant.template?.servantClass || 'Saber';
+  const winnerAvatarUrl = winner.servant.template?.avatarUrl;
+
+  // If AI opponent won: Eliminate player directly
   if (winner.isAi) {
     const outcome = recordDuelOutcome(
       warSession,
@@ -4276,7 +4324,7 @@ async function finishDuel(
       .setColor(0xef4444);
 
     if (loserAvatarUrl) {
-      defeatEmbed.setThumbnail(loserAvatarUrl);
+      safeSetEmbedThumbnail(defeatEmbed, loserAvatarUrl);
     }
 
     if (defeatCardAttachment) {
@@ -4333,7 +4381,7 @@ async function finishDuel(
     winner.servant.bondLevel || 5,
     loserName,
     loserAvatarUrl,
-    loserClass,
+    loser.servant.template?.servantClass || 'Lancer',
     ['Buster', 'Buster', 'Buster'],
     'fuyuki'
   ).catch((err) => {
@@ -4442,136 +4490,158 @@ async function finishDuel(
     }
   }
 
-  try {
-    const confirmation = await response.awaitMessageComponent({
-      filter: (btnInteraction: any) => btnInteraction.user.id === winner.userId,
-      time: 60000,
-      componentType: ComponentType.Button
+  const fateTargetMsg = response || (i.fetchReply ? await i.fetchReply().catch(() => null) : null);
+
+  if (fateTargetMsg && typeof fateTargetMsg.createMessageComponentCollector === 'function') {
+    const fateCollector = fateTargetMsg.createMessageComponentCollector({
+      componentType: ComponentType.Button,
+      time: 60000
     });
 
-    const decision = confirmation.customId === 'duel_fate_kill' ? 'kill' : 'spare';
-    const outcome = recordDuelOutcome(
-      warSession,
-      winner.username,
-      loser.username,
-      decision,
-      chanTag,
-      winner.currentHp,
-      loser.currentHp
-    );
+    let fateResolved = false;
 
-    if (decision === 'kill') {
-      const loserMaster = await getOrCreateMaster(loser.userId, loser.username);
-      const winnerMaster = await getOrCreateMaster(winner.userId, winner.username);
-      
-      let bountyRewardText = '';
-      if (loserMaster.bountyActive || (loserMaster.innocentKills || 0) >= 10 || loserMaster.isRogueHeretic) {
-        winnerMaster.saintQuartz = (winnerMaster.saintQuartz || 0) + 15;
-        winnerMaster.commandSeals = Math.min(3, (winnerMaster.commandSeals || 0) + 1);
-        loserMaster.bountyActive = false;
-        loserMaster.isRogueHeretic = false;
-        await saveMaster(winnerMaster);
-        await saveMaster(loserMaster);
-
-        bountyRewardText = `\n\n🏆 **CHURCH EXTERMINATION BOUNTY CLAIMED!**\n` +
-          `Father Kotomine has awarded Master **${winner.username}** the Extermination Bounty for slaying the Rogue Heretic:\n` +
-          `• **+1 Command Seal** 💠 (Consecrated Sigil Restored)\n` +
-          `• **+15 Saint Quartz** 💎 (Church Treasury Bounty)\n` +
-          `The Blight of Fuyuki has been purged!`;
+    fateCollector.on('collect', async (confirmation: any) => {
+      if (confirmation.user.id !== winner.userId) {
+        await confirmation.reply({
+          content: `⏳ Only the victorious Master (<@${winner.userId}>) can decide the defeated Master's fate!`,
+          flags: MessageFlags.Ephemeral
+        }).catch(() => {});
+        return;
       }
 
-      let winnerReaction = '';
-      try {
-        winnerReaction = await generateServantBattleReaction({
-          servant: winner.servant,
-          masterName: winner.username,
-          masterId: winner.userId,
-          role: 'victor',
-          outcomeDecision: 'kill',
-          opponentName: loser.servant.template.name,
-          opponentMaster: loser.username,
-          currentHp: winner.currentHp,
-          maxHp: winner.maxHp,
-          warId: warSession?.id
-        });
-      } catch (err) {
-        console.warn('[duel] Winner kill reaction error:', err);
-      }
+      fateResolved = true;
+      fateCollector.stop('resolved');
 
-      const execEmbed = new EmbedBuilder()
-        .setTitle('☠️ FATE SEALED — MASTER EXECUTED')
-        .setDescription(
-          `Master **${winner.username}** has chosen to **EXECUTE** Master **${loser.username}**!\n\n` +
-          `☠️ Master **${loser.username}** (${loser.servant.template.name}) was slain and **PERMANENTLY ELIMINATED** from the Holy Grail War.\n\n` +
-          (winnerReaction ? `💬 **[AFTERMATH REFLECTION] ${winner.servant.template.name}:**\n> ❝ ***${winnerReaction}*** ❞\n\n` : '') +
-          `💰 **Master Rewards:** +3 Saint Quartz 💎 | +300 Bond EXP 💖 | +2 Parameter Points 📊` +
-          bountyRewardText
-        )
-        .setColor(0xef4444);
+      const decision = confirmation.customId === 'duel_fate_kill' ? 'kill' : 'spare';
+      const outcome = recordDuelOutcome(
+        warSession,
+        winner.username,
+        loser.username,
+        decision,
+        chanTag,
+        winner.currentHp,
+        loser.currentHp
+      );
 
-      await confirmation.update({
-        embeds: [execEmbed],
-        components: []
-      });
-    } else {
-      let winnerReaction = '';
-      let loserReaction = '';
-      try {
-        const [wRes, lRes] = await Promise.allSettled([
-          generateServantBattleReaction({
+      if (decision === 'kill') {
+        const loserMaster = await getOrCreateMaster(loser.userId, loser.username);
+        const winnerMaster = await getOrCreateMaster(winner.userId, winner.username);
+        
+        let bountyRewardText = '';
+        if (loserMaster.bountyActive || (loserMaster.innocentKills || 0) >= 10 || loserMaster.isRogueHeretic) {
+          winnerMaster.saintQuartz = (winnerMaster.saintQuartz || 0) + 15;
+          winnerMaster.commandSeals = Math.min(3, (winnerMaster.commandSeals || 0) + 1);
+          loserMaster.bountyActive = false;
+          loserMaster.isRogueHeretic = false;
+          await saveMaster(winnerMaster);
+          await saveMaster(loserMaster);
+
+          bountyRewardText = `\n\n🏆 **CHURCH EXTERMINATION BOUNTY CLAIMED!**\n` +
+            `Father Kotomine has awarded Master **${winner.username}** the Extermination Bounty for slaying the Rogue Heretic:\n` +
+            `• **+1 Command Seal** 💠 (Consecrated Sigil Restored)\n` +
+            `• **+15 Saint Quartz** 💎 (Church Treasury Bounty)\n` +
+            `The Blight of Fuyuki has been purged!`;
+        }
+
+        let winnerReaction = '';
+        try {
+          winnerReaction = await generateServantBattleReaction({
             servant: winner.servant,
             masterName: winner.username,
             masterId: winner.userId,
             role: 'victor',
-            outcomeDecision: 'spare',
+            outcomeDecision: 'kill',
             opponentName: loser.servant.template.name,
             opponentMaster: loser.username,
             currentHp: winner.currentHp,
             maxHp: winner.maxHp,
             warId: warSession?.id
-          }),
-          generateServantBattleReaction({
-            servant: loser.servant,
-            masterName: loser.username,
-            masterId: loser.userId,
-            role: 'spared',
-            outcomeDecision: 'spare',
-            opponentName: winner.servant.template.name,
-            opponentMaster: winner.username,
-            currentHp: outcome.defeatedMaster?.currentHp || 1000,
-            maxHp: outcome.defeatedMaster?.maxHp || 15000,
-            warId: warSession?.id
-          })
-        ]);
-        if (wRes.status === 'fulfilled') winnerReaction = wRes.value;
-        if (lRes.status === 'fulfilled') loserReaction = lRes.value;
-      } catch (err) {
-        console.warn('[duel] Spare reactions error:', err);
+          });
+        } catch (err) {
+          console.warn('[duel] Winner kill reaction error:', err);
+        }
+
+        const execEmbed = new EmbedBuilder()
+          .setTitle('☠️ FATE SEALED — MASTER EXECUTED')
+          .setDescription(
+            `Master **${winner.username}** has chosen to **EXECUTE** Master **${loser.username}**!\n\n` +
+            `☠️ Master **${loser.username}** (${loser.servant.template.name}) was slain and **PERMANENTLY ELIMINATED** from the Holy Grail War.\n\n` +
+            (winnerReaction ? `💬 **[AFTERMATH REFLECTION] ${winner.servant.template.name}:**\n> ❝ ***${winnerReaction}*** ❞\n\n` : '') +
+            `💰 **Master Rewards:** +3 Saint Quartz 💎 | +300 Bond EXP 💖 | +2 Parameter Points 📊` +
+            bountyRewardText
+          )
+          .setColor(0xef4444);
+
+        await confirmation.update({
+          embeds: [execEmbed],
+          components: []
+        });
+      } else {
+        let winnerReaction = '';
+        let loserReaction = '';
+        try {
+          const [wRes, lRes] = await Promise.allSettled([
+            generateServantBattleReaction({
+              servant: winner.servant,
+              masterName: winner.username,
+              masterId: winner.userId,
+              role: 'victor',
+              outcomeDecision: 'spare',
+              opponentName: loser.servant.template.name,
+              opponentMaster: loser.username,
+              currentHp: winner.currentHp,
+              maxHp: winner.maxHp,
+              warId: warSession?.id
+            }),
+            generateServantBattleReaction({
+              servant: loser.servant,
+              masterName: loser.username,
+              masterId: loser.userId,
+              role: 'spared',
+              outcomeDecision: 'spare',
+              opponentName: winner.servant.template.name,
+              opponentMaster: winner.username,
+              currentHp: outcome.defeatedMaster?.currentHp || 1000,
+              maxHp: outcome.defeatedMaster?.maxHp || 15000,
+              warId: warSession?.id
+            })
+          ]);
+          if (wRes.status === 'fulfilled') winnerReaction = wRes.value;
+          if (lRes.status === 'fulfilled') loserReaction = lRes.value;
+        } catch (err) {
+          console.warn('[duel] Spare reactions error:', err);
+        }
+
+        const spareEmbed = new EmbedBuilder()
+          .setTitle('🕊️ MERCY BESTOWED — MASTER SPARED')
+          .setDescription(
+            `Master **${winner.username}** has chosen to **SPARE** Master **${loser.username}**!\n\n` +
+            `🕊️ Mercy was shown. Master **${loser.username}** survives on critical HP (${outcome.defeatedMaster?.currentHp || 1000}/${outcome.defeatedMaster?.maxHp || 15000}), but remains in the war.\n\n` +
+            (winnerReaction ? `💬 **[AFTERMATH REFLECTION] ${winner.servant.template.name}:**\n> ❝ ***${winnerReaction}*** ❞\n\n` : '') +
+            (loserReaction ? `💬 **[CRITICAL SURVIVOR'S BREATH] ${loser.servant.template.name}:**\n> ❝ ***${loserReaction}*** ❞\n\n` : '') +
+            `💰 **Master Rewards:** +3 Saint Quartz 💎 | +300 Bond EXP 💖 | +2 Parameter Points 📊`
+          )
+          .setColor(0x22c55e);
+
+        await confirmation.update({
+          embeds: [spareEmbed],
+          components: []
+        });
       }
+    });
 
-      const spareEmbed = new EmbedBuilder()
-        .setTitle('🕊️ MERCY BESTOWED — MASTER SPARED')
-        .setDescription(
-          `Master **${winner.username}** has chosen to **SPARE** Master **${loser.username}**!\n\n` +
-          `🕊️ Mercy was shown. Master **${loser.username}** survives on critical HP (${outcome.defeatedMaster?.currentHp || 1000}/${outcome.defeatedMaster?.maxHp || 15000}), but remains in the war.\n\n` +
-          (winnerReaction ? `💬 **[AFTERMATH REFLECTION] ${winner.servant.template.name}:**\n> ❝ ***${winnerReaction}*** ❞\n\n` : '') +
-          (loserReaction ? `💬 **[CRITICAL SURVIVOR'S BREATH] ${loser.servant.template.name}:**\n> ❝ ***${loserReaction}*** ❞\n\n` : '') +
-          `💰 **Master Rewards:** +3 Saint Quartz 💎 | +300 Bond EXP 💖 | +2 Parameter Points 📊`
-        )
-        .setColor(0x22c55e);
-
-      await confirmation.update({
-        embeds: [spareEmbed],
-        components: []
-      });
-    }
-  } catch {
-    // Timeout default: spare
-    recordDuelOutcome(warSession, winner.username, loser.username, 'spare', chanTag);
-    try {
-      await i.editReply({
-        components: []
-      });
-    } catch {}
+    fateCollector.on('end', async (_collected: any, reason: string) => {
+      if (!fateResolved && reason === 'time') {
+        // Timeout default: spare
+        recordDuelOutcome(warSession, winner.username, loser.username, 'spare', chanTag);
+        try {
+          if (fateTargetMsg && typeof fateTargetMsg.edit === 'function') {
+            await fateTargetMsg.edit({ components: [] }).catch(() => {});
+          } else if (i.editReply) {
+            await i.editReply({ components: [] }).catch(() => {});
+          }
+        } catch {}
+      }
+    });
   }
 }
