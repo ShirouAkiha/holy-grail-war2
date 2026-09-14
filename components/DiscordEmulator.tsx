@@ -801,7 +801,14 @@ export default function DiscordEmulator({
   }, [messages]);
 
   const addMessage = (msg: DiscordMessage) => {
-    setMessages(prev => [...prev, msg]);
+    setMessages(prev => {
+      // If posting a new duel turn or active duel frame, delete previous duel battle messages so it acts as Delete & Repost
+      if (msg.id.startsWith('bot_duel_turn') || (msg.id.startsWith('bot_duel_hub') && msg.embed?.title?.includes('Active Duel'))) {
+        const filtered = prev.filter(m => !m.id.startsWith('bot_duel_turn') && !(m.id.startsWith('bot_duel_hub') && m.embed?.title?.includes('Active Duel')));
+        return [...filtered, msg];
+      }
+      return [...prev, msg];
+    });
   };
 
   const updateMessage = (id: string, updated: Partial<DiscordMessage> | ((prevMsg: DiscordMessage) => DiscordMessage)) => {

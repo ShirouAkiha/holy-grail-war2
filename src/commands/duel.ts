@@ -3084,7 +3084,9 @@ async function startInteractiveDuel(
         filter: (btn: any) =>
           btn.customId.startsWith('card_') ||
           btn.customId.startsWith('duel_') ||
-          btn.customId.startsWith('target_')
+          btn.customId.startsWith('target_') ||
+          btn.customId.startsWith('skill_') ||
+          btn.customId.startsWith('fj_')
       })
     : battleMsg.createMessageComponentCollector({
         componentType: ComponentType.Button,
@@ -3198,12 +3200,16 @@ async function startInteractiveDuel(
     try {
       const channelToSend = interactionToEdit?.channel || contextInteraction?.channel;
       if (channelToSend && typeof channelToSend.send === 'function') {
-        // Clear previous buttons to prevent stale clicks
-        if (battleMsg && typeof battleMsg.edit === 'function') {
-          await battleMsg.edit({ components: [] }).catch(() => {});
-        } else if (interactionToEdit && (interactionToEdit.deferred || interactionToEdit.replied)) {
-          await interactionToEdit.editReply({ components: [] }).catch(() => {});
+        // Delete previous battle embed message so only the latest remains at the bottom
+        if (battleMsg && typeof battleMsg.delete === 'function') {
+          await battleMsg.delete().catch(() => {});
         }
+        if (interactionToEdit && typeof interactionToEdit.deleteReply === 'function') {
+          await interactionToEdit.deleteReply().catch(() => {});
+        } else if (contextInteraction && typeof contextInteraction.deleteReply === 'function') {
+          await contextInteraction.deleteReply().catch(() => {});
+        }
+
         battleMsg = await channelToSend.send({
           content: activePingsContent,
           embeds: updatedEmbeds,
@@ -4102,18 +4108,43 @@ async function finishDuel(
     if (defeatCardAttachment) responseFiles.push(defeatCardAttachment);
 
     let responseMsg: any;
-    if (i.deferred || i.replied) {
-      responseMsg = await i.editReply({
-        embeds: [summaryEmbed, decisionEmbed],
-        files: responseFiles,
-        components: [decisionRow]
-      });
-    } else {
-      responseMsg = await i.update({
-        embeds: [summaryEmbed, decisionEmbed],
-        files: responseFiles,
-        components: [decisionRow]
-      });
+    try {
+      if (i.channel && typeof i.channel.send === 'function') {
+        if (i.deleteReply) {
+          await i.deleteReply().catch(() => {});
+        }
+        responseMsg = await i.channel.send({
+          embeds: [summaryEmbed, decisionEmbed],
+          files: responseFiles,
+          components: [decisionRow]
+        });
+      } else if (i.deferred || i.replied) {
+        responseMsg = await i.editReply({
+          embeds: [summaryEmbed, decisionEmbed],
+          files: responseFiles,
+          components: [decisionRow]
+        });
+      } else {
+        responseMsg = await i.update({
+          embeds: [summaryEmbed, decisionEmbed],
+          files: responseFiles,
+          components: [decisionRow]
+        });
+      }
+    } catch {
+      if (i.deferred || i.replied) {
+        responseMsg = await i.editReply({
+          embeds: [summaryEmbed, decisionEmbed],
+          files: responseFiles,
+          components: [decisionRow]
+        });
+      } else {
+        responseMsg = await i.update({
+          embeds: [summaryEmbed, decisionEmbed],
+          files: responseFiles,
+          components: [decisionRow]
+        });
+      }
     }
 
     const targetMsg = responseMsg || (i.fetchReply ? await i.fetchReply().catch(() => null) : null);
@@ -4372,8 +4403,8 @@ async function finishDuel(
   let response: any;
   try {
     if (i.channel && typeof i.channel.send === 'function') {
-      if (i.deferred || i.replied) {
-        await i.editReply({ components: [] }).catch(() => {});
+      if (i.deleteReply) {
+        await i.deleteReply().catch(() => {});
       }
       response = await i.channel.send({
         embeds: responseEmbeds,
