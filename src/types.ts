@@ -215,9 +215,9 @@ export type ApiProviderType = 'gemini' | 'openrouter' | 'nanogpt' | 'custom';
 export interface UserCustomApiConfig {
   activeProvider: ApiProviderType;
   geminiKey?: string;
-  geminiModel?: string; // e.g. "gemini-2.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-pro"
+  geminiModel?: string; // e.g. "gemini-3.6-flash", "gemini-3.1-flash-lite", "gemini-3-flash-preview"
   openrouterKey?: string;
-  openrouterModel?: string; // e.g. "google/gemini-2.5-flash", "anthropic/claude-3.5-haiku", "meta-llama/llama-3.3-70b-instruct"
+  openrouterModel?: string; // e.g. "google/gemini-3.6-flash", "anthropic/claude-3.5-haiku", "meta-llama/llama-3.3-70b-instruct"
   nanogptKey?: string;
   nanogptModel?: string; // e.g. "gpt-4o-mini", "chatgpt-4o-latest", "claude-3-5-haiku-20241022"
   customEndpoint?: string;

@@ -9,7 +9,7 @@ export function maskApiKey(key?: string): string {
 
 export const DEFAULT_PROVIDER_MODELS: Record<ApiProviderType, string> = {
   gemini: 'gemini-3.1-flash-lite',
-  openrouter: 'google/gemini-2.5-flash',
+  openrouter: 'google/gemini-3.6-flash',
   nanogpt: 'gpt-4o-mini',
   custom: 'default'
 };
