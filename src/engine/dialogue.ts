@@ -112,33 +112,64 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
   // Scáthach - Lancer
   scathach: {
     buster: [
-      "Stand firm if you dare! A true warrior never flinches before the spear!",
-      "Piercing through armor and flesh alike! Crimson lance, obliterate!",
-      "Feel the crushing weight of the Land of Shadows! Shatter!",
-      "Let the blood-stained spear drink its fill! Face me!"
+      "Gáe Bolg Alternative! Piercing through mortality itself! Shatter!",
+      "Feel the crushing weight of the Land of Shadows! Dual crimson spears, obliterate!",
+      "No mortal armor withstands the thrust of Dún Scáith! Face your end!",
+      "Wisdom of Dún Scáith! Strike true, crimson lances!"
     ],
     arts: [
-      "Patience, precision, lethality. Observe the true martial art of Dun Scaith.",
-      "Primordial runes awaken. Let the battlefield become our domain.",
-      "Draw upon the leyline... The spear strikes where destiny dictates.",
-      "A warrior must read the flow of life and death. You are already pierced."
+      "Primordial Runes awaken. Observe the true martial art of the Land of Shadows.",
+      "Patience, precision, lethality. A warrior reads the flow of life and death.",
+      "...No, I am not your teacher. Forget it. Yet observe how the spear aligns.",
+      "Channeling the leyline. The red spears strike where destiny dictates."
     ],
     quick: [
-      "A mortal's reflex cannot outspeed divine spear mastery! Fall!",
-      "Dual crimson spears dancing in the wind! Vanish!",
+      "A mortal's reflex cannot outspeed dual crimson spears! Fall!",
       "Too slow! The gap between heaven and earth is crossed in an instant!",
-      "Critical puncture! Blood follows the path of my spear tip!"
+      "Critical puncture! Blood follows the path of my spear tip!",
+      "Whirling red lances! Even lightning cannot outpace this thrust!"
     ],
     mixed: [
-      "Show me your technique, young one. Let us see if you are worthy.",
+      "I am neither your teacher, mother, sister, nor lover, Master. Keep pace with my spears!",
+      "Setanta learned this lesson in blood. Ensure your stance does not waver.",
       "A disciplined strike is the foundation of survival. Forward!",
-      "My spear obeys my Master's resolve. Do not lose your composure.",
-      "Good form. Now let us see if your spirit matches your blade."
+      "My red spears answer your resolve. Do not lose your composure."
     ],
     desperation: [
-      "An admirable strike... Now, show me if you have what it takes to kill me!",
-      "Pain is the forge of a warrior! Stand and face the Gate of Dun Scaith!",
-      "Not yet... The Land of Shadows still calls for more blood!"
+      "An admirable strike... Show me if you have what it takes to end my immortality!",
+      "Pain is the forge of a warrior! Stand and face the Gate of Dún Scáith!",
+      "I stepped past mortality itself... I will not falter until a true warrior strikes my core!"
+    ]
+  },
+  scathach_lancer: {
+    buster: [
+      "Gáe Bolg Alternative! Piercing through mortality itself! Shatter!",
+      "Feel the crushing weight of the Land of Shadows! Dual crimson spears, obliterate!",
+      "No mortal armor withstands the thrust of Dún Scáith! Face your end!",
+      "Wisdom of Dún Scáith! Strike true, crimson lances!"
+    ],
+    arts: [
+      "Primordial Runes awaken. Observe the true martial art of the Land of Shadows.",
+      "Patience, precision, lethality. A warrior reads the flow of life and death.",
+      "...No, I am not your teacher. Forget it. Yet observe how the spear aligns.",
+      "Channeling the leyline. The red spears strike where destiny dictates."
+    ],
+    quick: [
+      "A mortal's reflex cannot outspeed dual crimson spears! Fall!",
+      "Too slow! The gap between heaven and earth is crossed in an instant!",
+      "Critical puncture! Blood follows the path of my spear tip!",
+      "Whirling red lances! Even lightning cannot outpace this thrust!"
+    ],
+    mixed: [
+      "I am neither your teacher, mother, sister, nor lover, Master. Keep pace with my spears!",
+      "Setanta learned this lesson in blood. Ensure your stance does not waver.",
+      "A disciplined strike is the foundation of survival. Forward!",
+      "My red spears answer your resolve. Do not lose your composure."
+    ],
+    desperation: [
+      "An admirable strike... Show me if you have what it takes to end my immortality!",
+      "Pain is the forge of a warrior! Stand and face the Gate of Dún Scáith!",
+      "I stepped past mortality itself... I will not falter until a true warrior strikes my core!"
     ]
   },
 

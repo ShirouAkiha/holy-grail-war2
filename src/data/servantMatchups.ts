@@ -164,68 +164,68 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // =========================================================================
   scathach_lancer: {
     artoria_pendragon: {
-      intro: "King of Knights, your holy sword has guided nations. Come, show me if your swordsmanship can overcome the spear of Dún Scáith!",
+      intro: "King of Knights, your holy sword has guided nations. Come, show me if your swordsmanship can overcome the dual crimson spears of Dún Scáith!",
       retort: "Gatekeeper of the Land of Shadows, I accept your challenge! Excalibur shall meet your deadly runes!",
-      tag: "HOLY SWORD & SHADOW SPEAR"
+      tag: "HOLY SWORD & SHADOW SPEARS"
     },
     gilgamesh_archer: {
-      intro: "King of Babylon. You boast countless noble armaments, yet a spear is only as lethal as the will behind it. Draw!",
-      retort: "Arrogant woman! You shall drown beneath a rain of primordial divine weapons!",
+      intro: "King of Babylon. You boast countless Noble Phantasms, yet a spear is only as lethal as the will behind its thrust. Draw!",
+      retort: "Arrogant woman! You shall drown beneath a rain of primordial divine armaments!",
       tag: "WARRIOR'S DISCIPLINE VS RAIN OF ARMS"
     },
     scathach_lancer: {
-      intro: "Another keeper of the Land of Shadows? Could you be the one destined to grant me the death I seek?",
-      retort: "A mirror of myself... If one of us must fall today, let it be an end worthy of our immortal craft!",
+      intro: "Another existence that has lost Death? Tell me... could you be the one destined to grant me the end I seek?",
+      retort: "A mirror of the Land of Shadows... If one of us must fall today, let it be an end worthy of our immortal craft!",
       tag: "DEATH-SEEKER'S MIRROR"
     },
     jeanne_darc_ruler: {
-      intro: "Saint of Orleans. Your heart is pure, but a battlefield asks for resolve, not prayers. Defend yourself!",
+      intro: "Saint of Orleans. Your heart is pure, but a battlefield asks for resolve and discipline, not prayers. Defend yourself!",
       retort: "Lady Scáthach, my banner does not waver. The Lord grants strength to those who protect!",
       tag: "PRAYER VS PRIMORDIAL RUNE"
     },
     jeanne_alter: {
-      intro: "Such unrefined, raging flame... Hatred may fuel your spirit, girl, but it makes your strikes predictable.",
+      intro: "Such unrefined, raging flame... Hatred may fuel your spirit, girl, but sloppy footwork makes your strikes predictable.",
       retort: "Old hag from the Land of Shadows! I don't need technique to burn you down to a pile of cinder!",
       tag: "DISCIPLINE VS WILDFIRE"
     },
     mhx_alter: {
-      intro: "A warrior from the void wielding twin sabers of dark matter... Fascinating. Let me test your strange arts!",
+      intro: "A space raider wielding twin sabers of dark matter... Fascinating. Let me test if your cosmic energy can withstand Primordial Runes!",
       retort: "Target classification: Lancer entity with abnormal combat proficiency. Consuming sweet bean energy for evasion.",
       tag: "PRIMORDIAL RUNES VS DARK MATTER"
     },
     artoria_pendragon_alter: {
-      intro: "The King of Knights dyed in black... Your strikes are heavier now, but heaviness alone cannot catch my red spear.",
+      intro: "The King of Knights dyed in black... Your strikes are heavier now, but heaviness alone cannot catch my red spears.",
       retort: "Spearwoman of shadows. Your endless lifespan ends here beneath Excalibur Morgan's dark blade.",
       tag: "DARK KING VS SHADOW QUEEN"
     },
     nero_claudius_saber: {
-      intro: "Emperor of Rome. You have passion and flair, but your footwork leaves openings. Shall I instruct you?",
+      intro: "Emperor of Rome. You have passion and flair, but your posture leaves fatal openings. ...No, I am not your teacher. Forget it. Draw!",
       retort: "Umu! A master spearwoman wishing to critique Rome's divine form? Very well, witness my supreme artistry!",
-      tag: "TUTOR'S TRIAL: EMPEROR & SPEAR"
+      tag: "EMPEROR'S STAGE VS SHADOW SPEARS"
     },
     emiya_archer: {
-      intro: "A nameless warrior who projects weapons with his soul... Your technique has reached the realm of mastery, swordsman.",
+      intro: "A nameless warrior who traces weapons with his soul... Your technique has reached the realm of mastery, swordsman.",
       retort: "Praised by the Queen of the Land of Shadows herself? I'm honored, but I have no intention of holding back.",
       tag: "WROUGHT IRON & SHADOW CRAFT"
     },
     heracles_berserker: {
-      intro: "Heracles! Great hero who conquered twelve impossible labors! Can your God Hand endure the God Slayer spear?!",
-      retort: "■■■■■■■■■■■■---!! (The hero roars defiantly, brandishing his blade to test his twelve lives against the death spear!)",
+      intro: "Heracles! Great hero who conquered twelve impossible labors! Can your God Hand endure Gáe Bolg Alternative?!",
+      retort: "■■■■■■■■■■■■---!! (The hero roars defiantly, brandishing his blade to test his twelve lives against the death-slaying spear!)",
       tag: "GOD SLAYER VS GOD HAND"
     },
     cu_chulainn_lancer: {
-      intro: "Cú Chulainn! Have you been slacking off since leaving Dún Scáith?! Raise your spear, pupil—let us see your growth!",
+      intro: "Setanta! Have you been slacking off since leaving Dún Scáith?! Raise your spear... ...No, I am not your teacher. Forget it. Show me your growth!",
       retort: "Guh—! Shishou?! Why did it have to be you?! Fine! Don't blame me if my Gáe Bolg actually catches you this time!",
-      tag: "MASTER & PUPIL: SPARRING OF DEATH"
+      tag: "QUEEN OF DÚN SCÁITH & THE HOUND"
     },
     karna_lancer: {
-      intro: "Hero of Charity! You who surrendered your armor and wield the spear of Indra... A duel against you is a rare blessing.",
+      intro: "Hero of Charity! You who surrendered your golden armor to wield the sun god's spear... A duel against you is a rare blessing.",
       retort: "Queen of Shadows. Your reputation precedes you across the ages. Let us ignite this field with our sacred weapons.",
-      tag: "CLASH OF THE SUPREME SPEARS"
+      tag: "CLASH OF SUPREME SPEARS"
     },
     adiosa_dragon_envoy: {
-      intro: "A primordial cosmic dragon... Even in the Land of Shadows, I have rarely sensed a presence so ancient and immense.",
-      retort: "⟨ Voth Krav'nok. ⟩ You smell like dried bones and old magic. Stand still so my ruin beam can petrify you cleanly.",
+      intro: "A primordial cosmic dragon envoy... Even in the Land of Shadows, I have rarely sensed an entity so ancient. Face my dual spears!",
+      retort: "⟨ Voth Krav'nok. ⟩ You smell like dried bones and ancient runes. Stand still so my ruin beam can petrify you cleanly.",
       tag: "IMMORTAL HUNTER VS DRAGON ENVOY"
     }
   },

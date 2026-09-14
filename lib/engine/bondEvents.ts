@@ -695,6 +695,220 @@ export const HERACLES_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const SCATHACH_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'scathach_bond_event_1',
+    servantTemplateId: 'scathach_lancer',
+    requiredBondLevel: 1,
+    title: "Shadows of Dún Scáith & Midnight Stance",
+    subtitle: "A cold night in Fuyuki",
+    description: "Scáthach questions your posture and resolve under the night sky, testing whether your spirit is fit for the Queen of Dún Scáith.",
+    rewardBondExp: 150,
+    rewardSaintQuartz: 3,
+    unlockedQuoteId: 'scathach_bond_line_1',
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: 'Scáthach',
+        backgroundTheme: 'dun_scaith',
+        dialogueText: "Why have you summoned me here at such an ungodly hour, Master? If you expect an enemy ambush in this quiet town, your posture says otherwise. Speak plainly.",
+        choices: [
+          {
+            id: 'c1_sleep',
+            text: "I couldn't sleep. The pressure of this Holy Grail War is getting to me.",
+            response: "Dread is the mark of an undisciplined mind. If the mere thought of battle keeps you awake, your heart will betray your body when the strike comes. You lack the grit of a warrior, yet you stand here nonetheless.",
+            bondExpGain: 100,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_talk',
+            text: "I wanted to know more about you, Lancer. We barely talk outside of combat.",
+            response: "Idle curiosity is a luxury reserved for survivors. Knowing my history will not deflect a blade or pierce an enemy's heart. Still... your desire to peer into the dark is stubborn, if nothing else.",
+            bondExpGain: 100,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_vigilant',
+            text: "Just checking our perimeter. A good Master stays vigilant, right?",
+            response: "Vigilance without purpose is just wasted energy. Look at your stance—should an assassin materialize from the fog, your neck would be severed before your command seals could even flare.",
+            bondExpGain: 125,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_2'
+          }
+        ]
+      },
+      {
+        id: 'scene_2',
+        speakerName: 'Scáthach',
+        backgroundTheme: 'dun_scaith',
+        dialogueText: "You look upon me with eyes full of questions. This far-eastern city is strange to me, yet the stench of bloodshed in pursuit of a vessel is universal. Tell me, Master, what do you think I am to you in this ritual?",
+        choices: [
+          {
+            id: 'c2_guide',
+            text: "A legendary warrior who can guide me through this alive.",
+            response: "Guide you? Do not misunderstand my nature. I am neither your teacher, nor your mother, nor your sister, nor your lover. I am a Servant summoned under a contract of blood and prana. Whatever instincts I have to train the green out of you are mere ghosts of a life long expired.",
+            bondExpGain: 100,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_partner',
+            text: "A partner. We fight together to win the Grail.",
+            response: "\"Partners.\" An empty sentiment born of modern naivety. Reliance breeds expectation, and expectation invites hesitation. When the decisive second arrives, relying on another will only make your spear hand waver.",
+            bondExpGain: 100,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_weapon',
+            text: "A blunt weapon to kill other Servants, nothing more.",
+            response: "Hmph. Cold, but practical. I do not hate that pragmatism. At least a weapon has a singular, honest purpose. Yet, to wield a spear properly, you must understand the weight behind its thrust, lest the recoil shatter your own bones.",
+            bondExpGain: 150,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_3'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Scáthach',
+        backgroundTheme: 'dun_scaith',
+        dialogueText: "In truth, this Grail holds no value to me. It cannot grant what I desire, for what I seek cannot be poured from a golden cup.",
+        choices: [
+          {
+            id: 'c3_desire',
+            text: "What is it that you desire, then?",
+            response: "A quiet end. A proper death at the hands of one who has transcended mortality itself. I stepped into the territory of gods and stepped past the threshold of mortality. Now, the world itself refuses to let me rot. It is an absurd curse disguised as transcendence.",
+            bondExpGain: 125,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_summon',
+            text: "Then why did you answer the summon?",
+            response: "The possibility of an encounter. The Holy Grail War drags legends from the throne—monsters, kings, demigods. Perhaps among them walks a warrior capable of striking my core and putting a true end to my breath. That alone was worth materializing.",
+            bondExpGain: 125,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_fight',
+            text: "If you don't care about the Grail, will you still fight for my wish?",
+            response: "So long as the mana flows and the contract holds, my red spears will answer your command. Your small wishes do not offend me; I have seen centuries of men chase fleeting desires. I will cut down your opposition regardless.",
+            bondExpGain: 150,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_4'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Scáthach',
+        backgroundTheme: 'dun_scaith',
+        dialogueText: "Long ago, beyond the boundaries of this world, men crossed oceans of blood to reach the Land of Shadows. They came seeking strength, seeking runes, seeking glory. Most died upon the shoreline before ever meeting my gaze. Among them was a boy named Setanta.",
+        choices: [
+          {
+            id: 'c4_cu',
+            text: "Setanta... you mean Cú Chulainn, the Hound of Ulster?",
+            response: "Yes. That is the name he was given later, but to me, he was simply Setanta. A wild, foolish hound with eyes that burned too bright. I forged his spirit, honed his spear, and bestowed upon him the cursed branch of the sea monster. He surpassed every limit set before him... yet even he could not pierce my chest.",
+            bondExpGain: 125,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_students',
+            text: "Did you treat all your students as harshly as you speak to me?",
+            response: "Harshly? I was merciful. The weak were given swift deaths; the strong were broken and reassembled until their bodies became living iron. In the Land of Shadows, weakness is not a flaw to be pitied—it is an insult to the battlefield.",
+            bondExpGain: 125,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_defeat',
+            text: "Did he ever come close to defeating you?",
+            response: "Defeating me? No. He grew monstrously strong, magnificent in his brutality, but the gap remained absolute. He left to fulfill his tragic destiny, and I remained behind, immortal, watching his legend burn out while I stayed frozen in time.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_5'
+          }
+        ]
+      },
+      {
+        id: 'scene_5',
+        speakerName: 'Scáthach',
+        backgroundTheme: 'dun_scaith',
+        dialogueText: "Sometimes, looking at your clumsy footwork, I feel the old habit rising in my throat. I catch myself wanting to strike your ribs, correct your balance, teach you how to trace a Primordial Rune in the air... but no. I am not your teacher. Forget it.",
+        choices: [
+          {
+            id: 'c5_teach',
+            text: "Why stop yourself? Teach me. I want to survive this war.",
+            response: "You speak lightly of hell. My training does not involve gentle corrections and encouraging words. To learn from me is to stand at the precipice of death until your instincts overtake your fear. If you truly wish for that fire, I will not hold back the heat.",
+            bondExpGain: 150,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c5_who_you_are',
+            text: "You really can't help it, can you? It's just who you are.",
+            response: "...Watch your tongue. You speak as if you can see through centuries of isolation. Still... perhaps there is truth in your insolence. A mentor’s pride is a stubborn poison that lingers long after the pupils have turned to dust.",
+            bondExpGain: 150,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c5_lecture',
+            text: "I didn't ask for a lecture, Lancer. Keep your lessons to yourself.",
+            response: "Arrogance without skill is the quickest path to an unmarked grave. Keep that tongue sharp, Master—you will need every bit of defiance you can muster when enemy blades find you.",
+            bondExpGain: 100,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_6'
+          }
+        ]
+      },
+      {
+        id: 'scene_6',
+        speakerName: 'Scáthach',
+        backgroundTheme: 'dun_scaith',
+        dialogueText: "Look up at the sky. A quiet Japanese town, unaware that phantoms of myth are prowling its alleys, ready to bathe it in fire. This fragile peace humanity clings to... it is entirely fleeting, yet you struggle so desperately to preserve it. Tell me, Master, when the moment comes where my spear cannot shield you, will you run, or will you stand?",
+        choices: [
+          {
+            id: 'c6_stand',
+            text: "I will stand right beside you, even if it means dying.",
+            response: "A fool's resolve... but a warrior's answer. I have no use for cowards who hide behind command seals while their Servants bleed. If you choose to stand, then ensure your spine does not bow under the pressure.",
+            bondExpGain: 150,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'c6_retreat',
+            text: "I'll retreat and live to fight another round. Survival comes first.",
+            response: "Pragmatic. A dead Master cannot win a war, nor can they supply prana. Knowing when to break away is not cowardice; it is tactic. Just ensure that when you turn your back, your steps are swifter than death.",
+            bondExpGain: 125,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'c6_trust',
+            text: "I trust you won't let an enemy blade get that close to me.",
+            response: "Do not place absolute faith in a weapon, Master. Even my spears can be parried, and even my eyes can be deceived. If you stake your life entirely on my perfection, you will bleed for your blindness.",
+            bondExpGain: 125,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_7'
+          }
+        ]
+      },
+      {
+        id: 'scene_7',
+        speakerName: 'Scáthach',
+        backgroundTheme: 'dun_scaith',
+        dialogueText: "The night deepens, and the prana in the air grows turbulent. Our conversation ends here. Steel your heart, Master. Tomorrow night, the hunt resumes—and I expect you to keep pace with the Queen of Dun Scáith."
+      }
+    ]
+  }
+];
+
 /**
  * Registry of all available curated bond events by servant template ID.
  */
@@ -706,7 +920,9 @@ export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
   adiosa_dragon_envoy: ADIOSA_BOND_EVENTS,
   aoko_aozaki: AOKO_BOND_EVENTS,
   heracles_berserker: HERACLES_BOND_EVENTS,
-  heracles: HERACLES_BOND_EVENTS
+  heracles: HERACLES_BOND_EVENTS,
+  scathach_lancer: SCATHACH_BOND_EVENTS,
+  scathach: SCATHACH_BOND_EVENTS
 };
 
 /**
@@ -1058,6 +1274,52 @@ export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
       category: 'bond_5',
       requiredBondLevel: 5,
       quoteText: '───UOOOOOOOOHHHH! ■■■■■■■■■■ーーーッ！！'
+    }
+  ],
+  scathach_lancer: [
+    {
+      id: 'scathach_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: 'I am Scáthach. Show me that your spirit is worthy of walking beside a warrior of death.'
+    },
+    {
+      id: 'scathach_bond_1',
+      title: 'Bond 1: Queen of Dún Scáith',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: 'The night deepens, and the prana in the air grows turbulent. Tomorrow night, the hunt resumes—and I expect you to keep pace with the Queen of Dun Scáith.'
+    },
+    {
+      id: 'scathach_bond_5',
+      title: 'Bond 5: Mentor\'s Pride',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: 'A mentor’s pride is a stubborn poison that lingers long after the pupils have turned to dust.'
+    }
+  ],
+  scathach: [
+    {
+      id: 'scathach_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: 'I am Scáthach. Show me that your spirit is worthy of walking beside a warrior of death.'
+    },
+    {
+      id: 'scathach_bond_1',
+      title: 'Bond 1: Queen of Dún Scáith',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: 'The night deepens, and the prana in the air grows turbulent. Tomorrow night, the hunt resumes—and I expect you to keep pace with the Queen of Dun Scáith.'
+    },
+    {
+      id: 'scathach_bond_5',
+      title: 'Bond 5: Mentor\'s Pride',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: 'A mentor’s pride is a stubborn poison that lingers long after the pupils have turned to dust.'
     }
   ]
 };
