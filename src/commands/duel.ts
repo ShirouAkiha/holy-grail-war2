@@ -4169,6 +4169,9 @@ async function finishDuel(
         handled = true;
         evacCollector.stop('resolved');
 
+        // Defer immediately to satisfy Discord's 3-second interaction window!
+        await decision.deferUpdate().catch(() => {});
+
         if (decision.customId === 'duel_evacuate_seal') {
           if (loserMaster) {
             loserMaster.commandSeals = Math.max(0, availableSeals - 1);
@@ -4250,10 +4253,16 @@ async function finishDuel(
             interventionEmbed.setImage('attachment://evac_dialogue.png');
           }
 
-          await decision.update({
+          await decision.editReply({
             embeds: [interventionEmbed],
             files: manualEvacAttachment ? [manualEvacAttachment] : [],
             components: []
+          }).catch(async () => {
+            await targetMsg?.edit({
+              embeds: [interventionEmbed],
+              files: manualEvacAttachment ? [manualEvacAttachment] : [],
+              components: []
+            }).catch(() => {});
           });
           return;
         }
@@ -4450,43 +4459,36 @@ async function presentFateDecision(
 
   let response: any;
   try {
-    if (i.channel && typeof i.channel.send === 'function') {
-      if (i.deleteReply) {
-        await i.deleteReply().catch(() => {});
-      }
+    if (i && !i.deferred && !i.replied && typeof i.deferUpdate === 'function') {
+      await i.deferUpdate().catch(() => {});
+    }
+    if (i && (i.deferred || i.replied) && typeof i.editReply === 'function') {
+      response = await i.editReply({
+        embeds: responseEmbeds,
+        files: responseFiles,
+        components: [fateRow]
+      });
+    } else if (i && typeof i.update === 'function') {
+      response = await i.update({
+        embeds: responseEmbeds,
+        files: responseFiles,
+        components: [fateRow],
+        withResponse: true
+      }).then((r: any) => r?.resource?.message || (i.fetchReply ? i.fetchReply() : null));
+    } else if (i && i.channel && typeof i.channel.send === 'function') {
       response = await i.channel.send({
         embeds: responseEmbeds,
         files: responseFiles,
         components: [fateRow]
       });
-    } else if (i.deferred || i.replied) {
-      response = await i.editReply({
-        embeds: responseEmbeds,
-        files: responseFiles,
-        components: [fateRow]
-      });
-    } else {
-      response = await i.update({
-        embeds: responseEmbeds,
-        files: responseFiles,
-        components: [fateRow],
-        withResponse: true
-      }).then((r: any) => r?.resource?.message || i.fetchReply());
     }
   } catch {
-    if (i.deferred || i.replied) {
-      response = await i.editReply({
+    if (i && i.channel && typeof i.channel.send === 'function') {
+      response = await i.channel.send({
         embeds: responseEmbeds,
         files: responseFiles,
         components: [fateRow]
-      });
-    } else {
-      response = await i.update({
-        embeds: responseEmbeds,
-        files: responseFiles,
-        components: [fateRow],
-        withResponse: true
-      }).then((r: any) => r?.resource?.message || i.fetchReply());
+      }).catch(() => null);
     }
   }
 
@@ -4511,6 +4513,9 @@ async function presentFateDecision(
 
       fateResolved = true;
       fateCollector.stop('resolved');
+
+      // Defer immediately to satisfy Discord's 3-second interaction window!
+      await confirmation.deferUpdate().catch(() => {});
 
       const decision = confirmation.customId === 'duel_fate_kill' ? 'kill' : 'spare';
       const outcome = recordDuelOutcome(
@@ -4572,9 +4577,14 @@ async function presentFateDecision(
           )
           .setColor(0xef4444);
 
-        await confirmation.update({
+        await confirmation.editReply({
           embeds: [execEmbed],
           components: []
+        }).catch(async () => {
+          await fateTargetMsg?.edit({
+            embeds: [execEmbed],
+            components: []
+          }).catch(() => {});
         });
       } else {
         let winnerReaction = '';
@@ -4623,9 +4633,14 @@ async function presentFateDecision(
           )
           .setColor(0x22c55e);
 
-        await confirmation.update({
+        await confirmation.editReply({
           embeds: [spareEmbed],
           components: []
+        }).catch(async () => {
+          await fateTargetMsg?.edit({
+            embeds: [spareEmbed],
+            components: []
+          }).catch(() => {});
         });
       }
     });
