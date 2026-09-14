@@ -12233,6 +12233,42 @@ export default function DiscordEmulator({
           </div>
         )}
 
+        {/* Active Battle Floating Relay Anchor */}
+        {activeDuel && (
+          <div className="mb-2 p-2 rounded bg-gradient-to-r from-red-950/90 via-black to-red-950/90 border border-red-500/50 flex flex-wrap items-center justify-between gap-2 shadow-lg text-xs font-mono">
+            <div className="flex items-center gap-2 text-white">
+              <span className="text-red-400 animate-pulse text-sm">⚔️</span>
+              <span className="font-bold text-red-300">ACTIVE BATTLE IN PROGRESS:</span>
+              <span className="text-white font-semibold">{activeDuel.battle.player1.name} vs {activeDuel.battle.player2.name}</span>
+              <span className="text-white/50 text-[11px]">(Turn {activeDuel.battle.currentTurn})</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white font-bold rounded text-[11px] flex items-center gap-1 transition cursor-pointer shadow"
+              >
+                <span>⬇️</span>
+                <span>Jump to Controls</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  postDuelHub('active', '🔄 Relayed active combat frame to bottom of channel.');
+                  setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+                }}
+                className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white/90 hover:text-white rounded text-[11px] flex items-center gap-1 transition cursor-pointer border border-white/20"
+                title="Represents the Auto-Relay to Bottom action"
+              >
+                <span>🔄</span>
+                <span>Relay to Bottom</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Input Bar Row */}
         <div className="flex items-center gap-2 bg-[#0a0a0a] rounded-sm px-3 py-2 border border-[#1a1a1a] focus-within:border-[#d4af37]">
           <div className="text-white/40 font-mono text-xs">/</div>

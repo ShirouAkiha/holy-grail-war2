@@ -3074,12 +3074,23 @@ async function startInteractiveDuel(
     }
   };
 
-  // Component Collector for turn choices - resets idle timer on every valid player action
-  const collector = battleMsg.createMessageComponentCollector({
-    componentType: ComponentType.Button,
-    idle: 300000, // 5 minutes per player turn
-    time: 3600000 // 1 hour absolute safety ceiling
-  });
+  // Component Collector for turn choices - channel-level or message-level auto-relay collector
+  const targetChannel = contextInteraction.channel;
+  const collector = targetChannel && typeof targetChannel.createMessageComponentCollector === 'function'
+    ? targetChannel.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        idle: 300000, // 5 minutes per player turn
+        time: 3600000, // 1 hour absolute safety ceiling
+        filter: (btn: any) =>
+          btn.customId.startsWith('card_') ||
+          btn.customId.startsWith('duel_') ||
+          btn.customId.startsWith('target_')
+      })
+    : battleMsg.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        idle: 300000, // 5 minutes per player turn
+        time: 3600000 // 1 hour absolute safety ceiling
+      });
 
   const advanceTurn = async (interactionToEdit?: any) => {
     // If either team is completely eliminated, conclude duel!
@@ -3179,13 +3190,34 @@ async function startInteractiveDuel(
       return;
     }
 
-    // Human player turn reached: update message
+    // Human player turn reached: update message (Auto-Relay to bottom of channel)
     const turnAttachment = await buildCurrentAttachment();
     const updatedEmbeds = buildCurrentEmbeds();
     const updatedButtons = buildCurrentButtons();
 
-    if (interactionToEdit) {
-      await interactionToEdit.editReply({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
+    try {
+      const channelToSend = interactionToEdit?.channel || contextInteraction?.channel;
+      if (channelToSend && typeof channelToSend.send === 'function') {
+        // Clear previous buttons to prevent stale clicks
+        if (battleMsg && typeof battleMsg.edit === 'function') {
+          await battleMsg.edit({ components: [] }).catch(() => {});
+        } else if (interactionToEdit && (interactionToEdit.deferred || interactionToEdit.replied)) {
+          await interactionToEdit.editReply({ components: [] }).catch(() => {});
+        }
+        battleMsg = await channelToSend.send({
+          content: activePingsContent,
+          embeds: updatedEmbeds,
+          files: [turnAttachment],
+          components: updatedButtons
+        });
+      } else if (interactionToEdit) {
+        await interactionToEdit.editReply({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
+      }
+    } catch (relayErr) {
+      console.warn('[duel] Auto-relay message failed, fallback to editReply:', relayErr);
+      if (interactionToEdit) {
+        await interactionToEdit.editReply({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
+      }
     }
   };
 
@@ -4338,19 +4370,45 @@ async function finishDuel(
   );
 
   let response: any;
-  if (i.deferred || i.replied) {
-    response = await i.editReply({
-      embeds: responseEmbeds,
-      files: responseFiles,
-      components: [fateRow]
-    });
-  } else {
-    response = await i.update({
-      embeds: responseEmbeds,
-      files: responseFiles,
-      components: [fateRow],
-      withResponse: true
-    }).then((r: any) => r?.resource?.message || i.fetchReply());
+  try {
+    if (i.channel && typeof i.channel.send === 'function') {
+      if (i.deferred || i.replied) {
+        await i.editReply({ components: [] }).catch(() => {});
+      }
+      response = await i.channel.send({
+        embeds: responseEmbeds,
+        files: responseFiles,
+        components: [fateRow]
+      });
+    } else if (i.deferred || i.replied) {
+      response = await i.editReply({
+        embeds: responseEmbeds,
+        files: responseFiles,
+        components: [fateRow]
+      });
+    } else {
+      response = await i.update({
+        embeds: responseEmbeds,
+        files: responseFiles,
+        components: [fateRow],
+        withResponse: true
+      }).then((r: any) => r?.resource?.message || i.fetchReply());
+    }
+  } catch {
+    if (i.deferred || i.replied) {
+      response = await i.editReply({
+        embeds: responseEmbeds,
+        files: responseFiles,
+        components: [fateRow]
+      });
+    } else {
+      response = await i.update({
+        embeds: responseEmbeds,
+        files: responseFiles,
+        components: [fateRow],
+        withResponse: true
+      }).then((r: any) => r?.resource?.message || i.fetchReply());
+    }
   }
 
   try {
