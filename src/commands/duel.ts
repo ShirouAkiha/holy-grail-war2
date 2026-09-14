@@ -20,6 +20,7 @@ import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 import { getServantChainDialogue, shouldTriggerDialogueCutIn, getServantSkillQuote } from '../engine/dialogue';
 import { getServantMatchupDialogue } from '../data/servantMatchups';
+import { generateServantBattleReaction } from '../engine/talkService';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -3860,6 +3861,24 @@ async function finishDuel(
         await saveMaster(winnerMaster);
       }
 
+      let autoEvacLine = '';
+      try {
+        autoEvacLine = await generateServantBattleReaction({
+          servant: loser.servant,
+          masterName: loser.username,
+          masterId: loser.userId,
+          role: 'evacuated',
+          outcomeDecision: 'evacuate',
+          opponentName: winnerName,
+          opponentMaster: winner.username,
+          currentHp: 1,
+          maxHp: loser.maxHp,
+          warId: warSession?.id
+        });
+      } catch (err) {
+        console.warn('[duel] Auto evac reaction error:', err);
+      }
+
       const interventionEmbed = new EmbedBuilder()
         .setTitle('🔴 COMMAND SEAL AUTOMATIC EVACUATION')
         .setDescription(
@@ -3867,7 +3886,8 @@ async function finishDuel(
           `🔮 **Auto-Consume Enabled:** Defeated Master possessed **${availableSeals}/3 Command Seals**.\n` +
           `1 Command Seal was automatically expended (Remaining: **${availableSeals - 1}/3**).\n\n` +
           `✨ **Emergency Sanctuary:** Your Command Seal flared with crimson light, relocating your Servant from fatal annihilation preserved at **1 HP**!\n` +
-          `Contract preserved. Permanent elimination has been averted.`
+          `Contract preserved. Permanent elimination has been averted.` +
+          (autoEvacLine ? `\n\n💬 **[SURVIVOR'S BREATH] ${loserName}:**\n> ❝ ***${autoEvacLine}*** ❞` : '')
         )
         .setColor(0xf59e0b)
         .setFooter({ text: 'Holy Grail War Survival Protocol • Command Seal Sanctuary' });
@@ -4017,13 +4037,32 @@ async function finishDuel(
             await saveMaster(winnerMaster);
           }
 
+          let manualEvacLine = '';
+          try {
+            manualEvacLine = await generateServantBattleReaction({
+              servant: loser.servant,
+              masterName: loser.username,
+              masterId: loser.userId,
+              role: 'evacuated',
+              outcomeDecision: 'evacuate',
+              opponentName: winnerName,
+              opponentMaster: winner.username,
+              currentHp: 1,
+              maxHp: loser.maxHp,
+              warId: warSession?.id
+            });
+          } catch (err) {
+            console.warn('[duel] Manual evac reaction error:', err);
+          }
+
           const interventionEmbed = new EmbedBuilder()
             .setTitle('🔴 COMMAND SEAL EMERGENCY EVACUATION')
             .setDescription(
               `**${loser.servant.template.name}** was saved from mortal annihilation!\n\n` +
               `🔮 **Command Seal Invoked:** 1 Command Seal expended by Master **${loser.username}** (Remaining: **${availableSeals - 1}/3**).\n\n` +
               `✨ **Emergency Sanctuary:** Preserved at **1 HP** and evacuated to sanctuary.\n` +
-              `Contract preserved. Permanent elimination has been averted.`
+              `Contract preserved. Permanent elimination has been averted.` +
+              (manualEvacLine ? `\n\n💬 **[SURVIVOR'S BREATH] ${loser.servant.template.name}:**\n> ❝ ***${manualEvacLine}*** ❞` : '')
             )
             .setColor(0xf59e0b)
             .setFooter({ text: 'Holy Grail War Survival Protocol • Command Seal Sanctuary' });
@@ -4269,11 +4308,30 @@ async function finishDuel(
           `The Blight of Fuyuki has been purged!`;
       }
 
+      let winnerReaction = '';
+      try {
+        winnerReaction = await generateServantBattleReaction({
+          servant: winner.servant,
+          masterName: winner.username,
+          masterId: winner.userId,
+          role: 'victor',
+          outcomeDecision: 'kill',
+          opponentName: loser.servant.template.name,
+          opponentMaster: loser.username,
+          currentHp: winner.currentHp,
+          maxHp: winner.maxHp,
+          warId: warSession?.id
+        });
+      } catch (err) {
+        console.warn('[duel] Winner kill reaction error:', err);
+      }
+
       const execEmbed = new EmbedBuilder()
         .setTitle('☠️ FATE SEALED — MASTER EXECUTED')
         .setDescription(
           `Master **${winner.username}** has chosen to **EXECUTE** Master **${loser.username}**!\n\n` +
           `☠️ Master **${loser.username}** (${loser.servant.template.name}) was slain and **PERMANENTLY ELIMINATED** from the Holy Grail War.\n\n` +
+          (winnerReaction ? `💬 **[AFTERMATH REFLECTION] ${winner.servant.template.name}:**\n> ❝ ***${winnerReaction}*** ❞\n\n` : '') +
           `💰 **Master Rewards:** +3 Saint Quartz 💎 | +300 Bond EXP 💖 | +2 Parameter Points 📊` +
           bountyRewardText
         )
@@ -4284,11 +4342,48 @@ async function finishDuel(
         components: []
       });
     } else {
+      let winnerReaction = '';
+      let loserReaction = '';
+      try {
+        const [wRes, lRes] = await Promise.allSettled([
+          generateServantBattleReaction({
+            servant: winner.servant,
+            masterName: winner.username,
+            masterId: winner.userId,
+            role: 'victor',
+            outcomeDecision: 'spare',
+            opponentName: loser.servant.template.name,
+            opponentMaster: loser.username,
+            currentHp: winner.currentHp,
+            maxHp: winner.maxHp,
+            warId: warSession?.id
+          }),
+          generateServantBattleReaction({
+            servant: loser.servant,
+            masterName: loser.username,
+            masterId: loser.userId,
+            role: 'spared',
+            outcomeDecision: 'spare',
+            opponentName: winner.servant.template.name,
+            opponentMaster: winner.username,
+            currentHp: outcome.defeatedMaster?.currentHp || 1000,
+            maxHp: outcome.defeatedMaster?.maxHp || 15000,
+            warId: warSession?.id
+          })
+        ]);
+        if (wRes.status === 'fulfilled') winnerReaction = wRes.value;
+        if (lRes.status === 'fulfilled') loserReaction = lRes.value;
+      } catch (err) {
+        console.warn('[duel] Spare reactions error:', err);
+      }
+
       const spareEmbed = new EmbedBuilder()
         .setTitle('🕊️ MERCY BESTOWED — MASTER SPARED')
         .setDescription(
           `Master **${winner.username}** has chosen to **SPARE** Master **${loser.username}**!\n\n` +
           `🕊️ Mercy was shown. Master **${loser.username}** survives on critical HP (${outcome.defeatedMaster?.currentHp || 1000}/${outcome.defeatedMaster?.maxHp || 15000}), but remains in the war.\n\n` +
+          (winnerReaction ? `💬 **[AFTERMATH REFLECTION] ${winner.servant.template.name}:**\n> ❝ ***${winnerReaction}*** ❞\n\n` : '') +
+          (loserReaction ? `💬 **[CRITICAL SURVIVOR'S BREATH] ${loser.servant.template.name}:**\n> ❝ ***${loserReaction}*** ❞\n\n` : '') +
           `💰 **Master Rewards:** +3 Saint Quartz 💎 | +300 Bond EXP 💖 | +2 Parameter Points 📊`
         )
         .setColor(0x22c55e);

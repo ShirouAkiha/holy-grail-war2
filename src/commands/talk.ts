@@ -9,7 +9,7 @@ import {
   MessageFlags
 } from 'discord.js';
 import { getOrCreateMaster } from '../database/service';
-import { getOrInitWarSession } from '../engine/grailwar';
+import { getOrInitWarSession, calculateCurrentHp } from '../engine/grailwar';
 import {
   generateServantTalkResponse,
   renderServantTalkVisualOutput,
@@ -214,8 +214,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
     }
 
-    // Dynamic combat condition calculation
-    const currentHp = userParticipant?.currentHp ?? targetServant.currentHp ?? t.baseHp;
+    // Dynamic combat condition calculation with real-time leyline regeneration / recent damage
+    const currentHp = userParticipant ? calculateCurrentHp(userParticipant) : (targetServant.currentHp ?? t.baseHp);
     const maxHp = userParticipant?.maxHp ?? t.baseHp;
     const isInChurchAsylum = !!userParticipant?.inChurchSanctuary;
     const killsCount = userParticipant?.kills ?? 0;

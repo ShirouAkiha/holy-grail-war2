@@ -8,6 +8,7 @@ import {
   getOrInitWarSession, 
   attackSuspectUserInWar 
 } from '../engine/grailwar';
+import { generateServantBattleReaction } from '../engine/talkService';
 
 export const data = new SlashCommandBuilder()
   .setName('attack')
@@ -90,9 +91,33 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       footerText = 'Target Master identity is now EXPOSED! You remain concealed in the shadows (/grailwar status)';
     }
 
+    let servantAmbushLine = '';
+    if (res.targetWasMaster && activeServant) {
+      const oppMaster = res.targetMasterUsername || resolvedTargetUsername || 'Rival Master';
+      try {
+        servantAmbushLine = await generateServantBattleReaction({
+          servant: activeServant,
+          masterName: interaction.user.username,
+          masterId: interaction.user.id,
+          role: 'ambush_attacker',
+          outcomeDecision: 'ambush',
+          opponentName: `Master ${oppMaster}`,
+          opponentMaster: oppMaster,
+          currentHp: activeServant.currentHp || 25000,
+          maxHp: 30000,
+          warId: war.id
+        });
+      } catch (err) {
+        console.warn('[attack] Ambush reaction error:', err);
+      }
+    }
+
     const embed = new EmbedBuilder()
       .setTitle(res.targetWasMaster ? '⚔️ TACTICAL AMBUSH: RIVAL MASTER ENGAGED!' : '☠️ COLLATERAL CASUALTY: CIVILIAN SLAIN!')
-      .setDescription(res.message)
+      .setDescription(
+        res.message +
+        (servantAmbushLine ? `\n\n💬 **[STRIKE DEBRIEF] ${activeServant.nickname || activeServant.template?.name || 'Servant'}:**\n> ❝ ***${servantAmbushLine}*** ❞` : '')
+      )
       .setColor(res.targetWasMaster ? 0xef4444 : 0x7f1d1d)
       .setFooter({ text: footerText });
 

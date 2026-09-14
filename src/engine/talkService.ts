@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type, FunctionDeclaration } from '@google/genai';
 import { renderVisualNovelCard } from '../canvas/renderer';
 import {
   getServantChatHistory,
@@ -225,11 +225,28 @@ export function generateCanonicalFallbackReply(ctx: ServantTalkContext): string 
     return `I am summoned as your ${servantClass}. My past is recorded in the Throne, but my loyalty is bound to your command.`;
   }
 
-  if (lowerMsg.includes('how are you') || lowerMsg.includes('feeling') || lowerMsg.includes('tired') || lowerMsg.includes('holding up') || lowerMsg.includes('doing')) {
-    if (bondLevel >= 7) {
-      return `Being at your side restores my spirit faster than any leyline. Let us press forward without hesitation, Master.`;
+  if (lowerMsg.includes('how are you') || lowerMsg.includes('feeling') || lowerMsg.includes('tired') || lowerMsg.includes('holding up') || lowerMsg.includes('doing') || lowerMsg.includes('health') || lowerMsg.includes('hp') || lowerMsg.includes('wound') || lowerMsg.includes('hurt') || lowerMsg.includes('injur')) {
+    const hpPct = (ctx.currentHp !== undefined && ctx.maxHp && ctx.maxHp > 0)
+      ? Math.round((ctx.currentHp / ctx.maxHp) * 100)
+      : 100;
+    if (hpPct <= 25) {
+      return `*Heavy breathing*... My spiritual core is burning, Master. That recent clash took a brutal toll on my mana pathways. I can still stand, but we need time behind our bounded field to recover.`;
+    } else if (hpPct <= 60) {
+      return `I'm holding together, Master. A few deep gashes and strained magical circuits, but my spirit remains unbroken. Don't worry yourself too much.`;
+    } else {
+      if (bondLevel >= 7) {
+        return `Being at your side restores my spirit faster than any leyline. My circuits are steady and I stand ready, Master.`;
+      }
+      return `My spirit origin is stable and attuned to your mana, Master. I am sound and ready for combat.`;
     }
-    return `My spirit origin is stable and attuned to your mana, Master. I stand ready for combat at a moment's notice.`;
+  }
+
+  // Recent battle remembrance
+  if (lowerMsg.includes('recent') || lowerMsg.includes('last fight') || lowerMsg.includes('that duel') || lowerMsg.includes('earlier fight')) {
+    if (ctx.latestBattleEvent) {
+      const bText = ctx.latestBattleEvent.replace(/\*\*/g, '').trim();
+      return `That clash in Fuyuki still echoes in my circuits, Master: "${bText}". The adrenaline has barely cooled.`;
+    }
   }
 
   // Dynamic variations for fallback
@@ -582,6 +599,34 @@ ${characterProfile.speechExamples.map(e => `• ${e}`).join('\n')}
 `;
   }
 
+  const getPhysicalStatusTool: FunctionDeclaration = {
+    name: 'getPhysicalCondition',
+    description: 'Check Servant real-time physical condition, spiritual core wounds, exact HP, and whether resting or injured.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        query: {
+          type: Type.STRING,
+          description: 'Optional focus of inquiry (e.g., "wounds", "stamina", "recovering")'
+        }
+      }
+    }
+  };
+
+  const getWarIntelTool: FunctionDeclaration = {
+    name: 'getWarBoardIntel',
+    description: 'Check surviving Masters, exposed enemy Servants, church sanctuary status, or recent Fuyuki clashes.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        category: {
+          type: Type.STRING,
+          description: 'Intel category: "clashes", "rivals", "casualties", or "church"'
+        }
+      }
+    }
+  };
+
   const prompt = `You are roleplaying as the Fate franchise Heroic Spirit: "${context.servantName}" (Class: ${context.servantClass}).
 You are communicating telepathically with your Master, "${context.masterName}", during the active Holy Grail War in Fuyuki City.
 ${characterPersonaBlock ? characterPersonaBlock : `Personality: Faithful to ${context.servantName}'s canon Type-Moon visual novel characterization.`}
@@ -622,7 +667,7 @@ ${context.playerMessage}
 VOICE & ROLEPLAY INSTRUCTIONS:
 - Reply in 1 to 3 concise, natural sentences (maximum 60 words) suitable for a Visual Novel dialogue box.
 - DO NOT ECHO OR QUOTE MASTER'S MESSAGE (CRITICAL): Absolutely NEVER start your response by quoting or repeating Master's exact message or exclamations in quotation marks (e.g. NEVER start with '“Holy shi”?', '“Low diffed”?', or '“<phrase>”?'). Respond directly in character without quoting Master's input back to them!
-- IMMERSION & VOICE: Speak as the living, authentic Heroic Spirit with genuine emotion, rhythm, and temperament according to your persona profile above.
+- IMMERSION & SOMATIC REALITY: Speak as the living, authentic Heroic Spirit with genuine emotion, rhythm, and temperament according to your persona profile above. If wounded, exhausted, or recovering from a recent duel, let your voice, cadence, and breath reflect that reality honestly.
 - SCENE ATMOSPHERE: Adhere to the CURRENT SCENE & SETTING! If in Workshop or Bond mode, keep the mood relaxed, domestic, or intimate without forcing unprompted battle paranoia. If in Church mode, respect the sacred sanctuary. If in Patrol mode, stay sharp.
 - NATURAL CONVERSATION: React directly to what Master says in natural, unscripted dialogue. Do not force robotic status updates or unprompted battle warnings unless Master explicitly asks for strategy, combat logs, or war updates.
 - BANNED CLICHES: NEVER use generic assistant sign-offs or cliché combat filler such as: ${allBanned.map(b => `"${b}"`).join(', ')}. Do NOT recite raw status sheet numbers (e.g., "my spiritual origin is at 100%").
@@ -645,9 +690,8 @@ VOICE & ROLEPLAY INSTRUCTIONS:
   }
 
   const CANDIDATE_MODELS = [
-    'gemini-3.1-flash-lite',
     'gemini-2.5-flash',
-    'gemini-3.6-flash'
+    'gemini-3.1-flash-lite'
   ];
 
   for (const modelName of CANDIDATE_MODELS) {
@@ -656,10 +700,72 @@ VOICE & ROLEPLAY INSTRUCTIONS:
         model: modelName,
         contents: prompt,
         config: {
-          temperature: 0.9,
-          topP: 0.95
+          temperature: 0.88,
+          topP: 0.95,
+          tools: [{ functionDeclarations: [getPhysicalStatusTool, getWarIntelTool] }]
         }
       });
+
+      // Check if Gemini invoked a function call for physical or war board intel
+      const functionCalls = response.functionCalls;
+      if (functionCalls && functionCalls.length > 0) {
+        const call = functionCalls[0];
+        let toolResult: any = {};
+        const hpPct = (context.currentHp !== undefined && context.maxHp && context.maxHp > 0)
+          ? Math.round((context.currentHp / context.maxHp) * 100)
+          : 100;
+
+        if (call.name === 'getPhysicalCondition') {
+          toolResult = {
+            currentHp: context.currentHp,
+            maxHp: context.maxHp,
+            hpPercentage: hpPct,
+            physicalState: hpPct <= 25 ? 'Critically Wounded (severe exhaustion, fractured core)' : hpPct <= 60 ? 'Injured (battle wear, strained circuits)' : 'Optimal Combat Ready',
+            inChurchSanctuary: !!context.isInChurchAsylum,
+            activeBuffs: context.activeBuffNames || []
+          };
+        } else if (call.name === 'getWarBoardIntel') {
+          toolResult = {
+            survivingMastersCount: context.totalAliveMasters ?? 1,
+            exposedRivals: context.exposedRivals || [],
+            recentBattles: context.recentBattleEvents?.slice(0, 3) || [],
+            fallenMastersCount: context.eliminatedMastersCount || 0,
+            civilianGasLeakCoverups: context.casualtyDossier?.civilianCasualties?.length || 0
+          };
+        }
+
+        try {
+          const secondTurnRes = await client.models.generateContent({
+            model: modelName,
+            contents: [
+              { role: 'user', parts: [{ text: prompt }] },
+              (response.candidates?.[0]?.content as any) || { role: 'model', parts: [{ text: 'Checking status...' }] },
+              {
+                role: 'user',
+                parts: [{
+                  functionResponse: {
+                    name: call.name,
+                    response: toolResult
+                  }
+                }]
+              }
+            ],
+            config: {
+              temperature: 0.85,
+              topP: 0.95
+            }
+          });
+
+          const secondTurnText = secondTurnRes.text?.trim();
+          if (secondTurnText) {
+            const cleaned = secondTurnText.replace(/^["'“](.*)["'”]$/, '$1').trim();
+            appendServantChatTurn(masterId, servantId, context.servantName, context.playerMessage, cleaned, warId);
+            return { reply: cleaned, source: 'gemini' };
+          }
+        } catch (callErr) {
+          console.warn('[talkService] Function call second-turn failed, using initial text:', callErr);
+        }
+      }
 
       const text = response.text?.trim();
       if (text) {
@@ -680,6 +786,172 @@ VOICE & ROLEPLAY INSTRUCTIONS:
     reply: fallback,
     source: 'canon_heuristic'
   };
+}
+
+export interface ServantBattleReactionParams {
+  servant: any;
+  masterName: string;
+  masterId: string;
+  role: 'victor' | 'spared' | 'executed' | 'evacuated' | 'ambush_attacker' | 'ambush_victim';
+  outcomeDecision?: 'spare' | 'kill' | 'evacuate' | 'ambush';
+  opponentName: string;
+  opponentMaster: string;
+  currentHp: number;
+  maxHp: number;
+  warId?: string;
+  customApiConfig?: UserCustomApiConfig;
+}
+
+/**
+ * Spontaneously generates an in-character reaction from a Servant immediately following a combat event
+ * (e.g. victory, sparing a foe, surviving on critical HP, or Command Seal evacuation)
+ * and records it into persistent dialogue memory so future /talk interactions have immediate continuity.
+ */
+export async function generateServantBattleReaction(
+  params: ServantBattleReactionParams
+): Promise<string> {
+  const {
+    servant,
+    masterName,
+    masterId,
+    role,
+    outcomeDecision,
+    opponentName,
+    opponentMaster,
+    currentHp,
+    maxHp,
+    warId = 'default',
+    customApiConfig
+  } = params;
+
+  const sTemplate = servant?.template || servant;
+  const servantName = servant?.nickname || sTemplate?.name || 'Heroic Spirit';
+  const servantClass = sTemplate?.servantClass || 'Saber';
+  const servantId = servant?.id || sTemplate?.id || 'servant';
+  const characterProfile = getServantCharacterProfile(servantId, servantName);
+
+  const hpPct = maxHp > 0 ? Math.round((currentHp / maxHp) * 100) : 100;
+
+  let situationDesc = '';
+  let somaticState = '';
+  if (role === 'victor') {
+    if (outcomeDecision === 'spare') {
+      situationDesc = `You and Master ${masterName} just won the duel against ${opponentName} (Master: ${opponentMaster}). Your Master chose to show mercy and SPARE the defeated opponent's life.`;
+    } else if (outcomeDecision === 'kill') {
+      situationDesc = `You and Master ${masterName} just won the duel against ${opponentName} (Master: ${opponentMaster}). Your Master chose to EXECUTE the defeated Master, permanently eliminating them from the Holy Grail War.`;
+    } else {
+      situationDesc = `You and Master ${masterName} emerged victorious from the clash against ${opponentName} (Master: ${opponentMaster}).`;
+    }
+    somaticState = hpPct <= 30
+      ? `You won, but your spiritual core took substantial damage (${currentHp}/${maxHp} HP, ~${hpPct}%). You are catching your breath, battered but standing triumphant.`
+      : `You are victorious with a steady spiritual core (${currentHp}/${maxHp} HP, ~${hpPct}%), weapon still at the ready.`;
+  } else if (role === 'spared') {
+    situationDesc = `You were defeated in combat by ${opponentName} (Master: ${opponentMaster}). However, the victor chose to show mercy and SPARE your life. You and Master ${masterName} survive, but you are hanging on by a thread at critical vitality (${currentHp}/${maxHp} HP, ~${hpPct}%).`;
+    somaticState = `Your spiritual origin is severely battered and burning with exhaustion (~${hpPct}% HP). Your breath is ragged, wounds closing painfully slow. You are coming to grips with surviving enemy mercy.`;
+  } else if (role === 'evacuated') {
+    situationDesc = `You suffered mortal damage in duel against ${opponentName} (Master: ${opponentMaster}), but Master ${masterName} expended 1 Command Seal to emergency-teleport your spiritual core to safety, saving you at 1 HP.`;
+    somaticState = `You are gasping for air on the ground, preserved at literally 1 HP by the Command Seal's crimson light. Your spiritual core was pulled back from the absolute brink of disintegration.`;
+  } else if (role === 'ambush_attacker') {
+    situationDesc = `You launched a tactical ambush against ${opponentMaster} (${opponentName}) in Fuyuki City.`;
+    somaticState = `Adrenaline high from the sudden strike, scanning for counter-attacks.`;
+  } else {
+    situationDesc = `You and Master ${masterName} just engaged in battle with ${opponentName}.`;
+    somaticState = `Current vitality: ~${hpPct}% HP.`;
+  }
+
+  const prompt = `You are roleplaying as the Fate franchise Heroic Spirit: "${servantName}" (Class: ${servantClass}).
+${characterProfile ? characterProfile.persona : `Personality: Faithful to ${servantName}'s canon Type-Moon characterization.`}
+
+=== IMMEDIATE COMBAT AFTERMATH ===
+${situationDesc}
+
+=== SOMATIC & PHYSICAL SENSATION ===
+${somaticState}
+
+Voice Directive:
+- Master ${masterName} is standing right beside you in the aftermath of this clash.
+- Speak 1 to 2 concise in-character sentences (maximum 35 words) expressing your immediate reaction, feelings, or observation directly to your Master.
+- Stay completely true to ${servantName}'s unique character, values, and pride (e.g., chivalry, pride, pragmatism, bloodlust, or quiet warrior honor).
+- Do NOT recite raw HP numbers or percentages.
+- Do NOT use asterisks for actions (*sighs*). Return ONLY the spoken line.`;
+
+  let reply = '';
+  const client = getAiClient();
+
+  if (customApiConfig && customApiConfig.enabled) {
+    try {
+      const customRes = await generateWithCustomProvider(customApiConfig, prompt);
+      const text = customRes.reply?.trim();
+      if (text) {
+        reply = text.replace(/^["'“](.*)["'”]$/, '$1').trim();
+      }
+    } catch {}
+  }
+
+  if (!reply && client) {
+    const CANDIDATE_MODELS = [
+      'gemini-2.5-flash',
+      'gemini-3.1-flash-lite'
+    ];
+
+    for (const model of CANDIDATE_MODELS) {
+      try {
+        const res = await client.models.generateContent({
+          model,
+          contents: prompt,
+          config: {
+            temperature: 0.85,
+            topP: 0.95
+          }
+        });
+        const text = res.text?.trim();
+        if (text) {
+          reply = text.replace(/^["'“](.*)["'”]$/, '$1').trim();
+          break;
+        }
+      } catch {}
+    }
+  }
+
+  // Canonical fallback if API is offline or rate-limited
+  if (!reply) {
+    if (role === 'victor') {
+      if (outcomeDecision === 'spare') {
+        reply = servant?.customQuotes?.victory || sTemplate?.victoryQuote || `A generous choice, Master. Let us hope their blade does not turn on us again.`;
+      } else {
+        reply = servant?.customQuotes?.victory || sTemplate?.victoryQuote || `The deed is done. Another rival eliminated from the Holy Grail War.`;
+      }
+    } else if (role === 'spared') {
+      reply = `...Tch. Spared by the enemy... My spiritual core is burning, Master, but we live to fight another day.`;
+    } else if (role === 'evacuated') {
+      reply = `*Coughs*... That was close. Your Command Seal pulled me back from the void, Master. I owe you my existence.`;
+    } else {
+      reply = `The dust settles. We hold our ground, Master.`;
+    }
+  }
+
+  // Append to persistent memory so Servant remembers this battle naturally in future /talk conversations!
+  try {
+    const outcomeSummary = outcomeDecision === 'spare'
+      ? (role === 'victor' ? 'Master spared defeated foe' : 'Enemy spared us on critical HP')
+      : outcomeDecision === 'kill'
+        ? 'Master executed defeated rival'
+        : outcomeDecision === 'evacuate'
+          ? 'Emergency Command Seal evacuation at 1 HP'
+          : 'Combat engagement';
+    appendServantChatTurn(
+      masterId,
+      servantId,
+      servantName,
+      `[Combat Aftermath: Duel with ${opponentName} (${outcomeSummary})]`,
+      reply,
+      warId
+    );
+  } catch (err) {
+    console.warn('[talkService] Error recording battle aftermath memory:', err);
+  }
+
+  return reply;
 }
 
 /**
