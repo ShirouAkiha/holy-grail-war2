@@ -258,12 +258,11 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
   if (ce) {
     if (ce.id === 'ce_volumen_hydragyrum' || ce.passiveType === 'invincible_hits') {
       const hits = 3;
-      const turns = 3;
       initialBuffs.push({
         name: 'Volumen Hydragyrum (Invincibility)',
         type: 'invincible',
         value: 100,
-        remainingTurns: turns,
+        remainingTurns: 99,
         remainingHits: hits,
         isHitCount: true
       });
@@ -991,7 +990,7 @@ function activateCombatantSkill(
       name: skill.name,
       type: bType,
       value: 100,
-      remainingTurns: isHitBased ? 3 : (skill.duration || 1),
+      remainingTurns: isHitBased ? 99 : (skill.duration || 1),
       remainingHits: isHitBased ? 3 : undefined,
       isHitCount: isHitBased
     });
@@ -1289,25 +1288,26 @@ function resolveStrike(
     const invIdx = defender.activeBuffs.findIndex(b => b.type === 'invincible');
     if (invIdx !== -1) {
       const buff = defender.activeBuffs[invIdx];
-      if (buff.remainingTurns <= 0 || (buff.remainingHits !== undefined && buff.remainingHits <= 0)) {
-        defender.activeBuffs.splice(invIdx, 1);
-      } else {
-        turnBlockedByInvincible = true;
-        const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /volumen/i.test(buff.name);
-        if (isHitBased) {
-          if (buff.remainingHits !== undefined) {
-            buff.remainingHits--;
-            if (buff.remainingHits <= 0) {
-              defender.activeBuffs.splice(invIdx, 1);
-            }
-          } else {
-            buff.remainingTurns--;
-            if (buff.remainingTurns <= 0) {
-              defender.activeBuffs.splice(invIdx, 1);
-            }
+      const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /volumen/i.test(buff.name);
+      if (isHitBased) {
+        if (buff.remainingHits === undefined) buff.remainingHits = 3;
+        if (buff.remainingHits <= 0) {
+          defender.activeBuffs.splice(invIdx, 1);
+        } else {
+          turnBlockedByInvincible = true;
+          buff.remainingHits--;
+          if (buff.remainingHits <= 0) {
+            defender.activeBuffs.splice(invIdx, 1);
           }
+          return { isProtected: true, type: 'invincible' };
         }
-        return { isProtected: true, type: 'invincible' };
+      } else {
+        if (buff.remainingTurns > 0) {
+          turnBlockedByInvincible = true;
+          return { isProtected: true, type: 'invincible' };
+        } else {
+          defender.activeBuffs.splice(invIdx, 1);
+        }
       }
     }
 
@@ -1315,25 +1315,26 @@ function resolveStrike(
     const evaIdx = defender.activeBuffs.findIndex(b => b.type === 'evade');
     if (evaIdx !== -1) {
       const buff = defender.activeBuffs[evaIdx];
-      if (buff.remainingTurns <= 0 || (buff.remainingHits !== undefined && buff.remainingHits <= 0)) {
-        defender.activeBuffs.splice(evaIdx, 1);
-      } else {
-        turnBlockedByEvade = true;
-        const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /protection from arrows/i.test(buff.name);
-        if (isHitBased) {
-          if (buff.remainingHits !== undefined) {
-            buff.remainingHits--;
-            if (buff.remainingHits <= 0) {
-              defender.activeBuffs.splice(evaIdx, 1);
-            }
-          } else {
-            buff.remainingTurns--;
-            if (buff.remainingTurns <= 0) {
-              defender.activeBuffs.splice(evaIdx, 1);
-            }
+      const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /protection from arrows/i.test(buff.name);
+      if (isHitBased) {
+        if (buff.remainingHits === undefined) buff.remainingHits = 3;
+        if (buff.remainingHits <= 0) {
+          defender.activeBuffs.splice(evaIdx, 1);
+        } else {
+          turnBlockedByEvade = true;
+          buff.remainingHits--;
+          if (buff.remainingHits <= 0) {
+            defender.activeBuffs.splice(evaIdx, 1);
           }
+          return { isProtected: true, type: 'evade' };
         }
-        return { isProtected: true, type: 'evade' };
+      } else {
+        if (buff.remainingTurns > 0) {
+          turnBlockedByEvade = true;
+          return { isProtected: true, type: 'evade' };
+        } else {
+          defender.activeBuffs.splice(evaIdx, 1);
+        }
       }
     }
 
@@ -1644,10 +1645,11 @@ function resolveStrike(
   defender.activeBuffs = defender.activeBuffs.filter(b => {
     const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
     if (b.type === 'evade' || b.type === 'invincible') {
+      if (isHitBased) {
+        return b.remainingHits === undefined || b.remainingHits > 0;
+      }
       b.remainingTurns--;
-      if (b.remainingTurns <= 0) return false;
-      if (isHitBased && b.remainingHits !== undefined && b.remainingHits <= 0) return false;
-      return true;
+      return b.remainingTurns > 0;
     }
     if (b.type === 'buff_def' && b.remainingTurns < 90) {
       b.remainingTurns--;
@@ -3489,15 +3491,47 @@ async function startInteractiveDuel(
           return;
         }
 
+        combatLogs.push(res.log);
+        if (combatLogs.length > 4) combatLogs.shift();
+
+        // Check if this is a transformation skill (e.g. Aoko's Fifth Magic)
+        if (res.isTransformation && res.transformationGif) {
+          const sName = actor.servant.nickname || actor.servant.template?.name || 'Heroic Spirit';
+          const skillName = res.skillName || 'TACTICAL SKILL';
+          const skillQuote = res.quote || 'Fifth Magic—Circuits ignition! Time to kick this into maximum gear!';
+
+          const turnAttachment = await buildCurrentAttachment(res.log);
+          const mainEmbed = buildCurrentEmbed();
+          const updatedButtons = buildCurrentButtons();
+
+          const transEmbed = new EmbedBuilder()
+            .setTitle(`🔴 TRANSFORMATION AWAKENED: ${sName.toUpperCase()} (SUPER AOKO)`)
+            .setDescription(
+              `✨ **${sName}** ignited **${skillName}**!\n\n` +
+              `> 💬 ❝ ***${skillQuote}*** ❞\n\n` +
+              `⚡ **Fifth Magic True Output:** ATK +30%, Crit DMG +40%, +15 Critical Stars generated!`
+            )
+            .setImage(res.transformationGif)
+            .setColor(0xef4444)
+            .setFooter({ text: 'True Magic Ignition • Super Aoko Form Engaged' });
+
+          if (res.transformationAvatarUrl) {
+            transEmbed.setThumbnail(res.transformationAvatarUrl);
+          }
+
+          await i.editReply({
+            embeds: [mainEmbed, transEmbed],
+            files: [turnAttachment],
+            components: updatedButtons
+          });
+          return;
+        }
+
         try {
           const sName = actor.servant.nickname || actor.servant.template?.name || 'Heroic Spirit';
           const sClass = actor.servant.template?.servantClass || 'Servant';
           const avatarUrl = actor.servant.template?.avatarUrl;
           const bondLvl = actor.servant.bondLevel || 8;
-
-          const oppName = opponent.servant.nickname || opponent.servant.template?.name || 'Opponent Servant';
-          const oppClass = opponent.servant.template?.servantClass || 'Servant';
-          const oppAvatarUrl = opponent.servant.template?.avatarUrl;
 
           const skillName = res.skillName || 'TACTICAL SKILL';
           const skillQuote = res.quote || 'My power answers the command!';
@@ -3523,34 +3557,12 @@ async function startInteractiveDuel(
             };
             const cutInEmbed = buildDialogueCutInEmbed(actor, opponent, ['Arts'], skillDialogueObj, true);
 
-            const activeEmbeds: EmbedBuilder[] = [cutInEmbed];
-            if (res.isTransformation && res.transformationGif) {
-              const transEmbed = new EmbedBuilder()
-                .setTitle(`🔴 TRANSFORMATION AWAKENED: SUPER AOKO!`)
-                .setDescription(
-                  `✨ **${sName}** ignited **${skillName}**!\n\n` +
-                  `> 💬 ❝ ***${skillQuote}*** ❞\n\n` +
-                  `⚡ **Fifth Magic True Output:** ATK +30%, Crit DMG +40%, +15 Critical Stars generated!`
-                )
-                .setImage(res.transformationGif)
-                .setColor(0xef4444)
-                .setFooter({ text: 'True Magic Ignition • Super Aoko Form Engaged' });
-
-              if (res.transformationAvatarUrl) {
-                transEmbed.setThumbnail(res.transformationAvatarUrl);
-              }
-              activeEmbeds.push(transEmbed);
-            }
-
-            await i.editReply({ embeds: activeEmbeds, files: [attachment], components: [] });
+            await i.editReply({ embeds: [cutInEmbed], files: [attachment], components: [] });
             await new Promise(r => setTimeout(r, 2500));
           }
         } catch (err) {
           console.warn('Failed to render Skill visual novel dialogue cut-in:', err);
         }
-
-        combatLogs.push(res.log);
-        if (combatLogs.length > 4) combatLogs.shift();
 
         const turnAttachment = await buildCurrentAttachment(res.log);
         const updatedEmbeds = buildCurrentEmbeds();
