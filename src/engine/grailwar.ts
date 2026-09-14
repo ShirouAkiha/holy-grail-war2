@@ -842,7 +842,20 @@ export function executeHealRitual(
  * Evaluates the Holy Grail War status and checks if the Greater Grail can manifest.
  * The Holy Grail War requires all 7 Heroic Spirits to be summoned and 6 eliminated before victory.
  */
+export function cleanupDeadParticipantsTraps(targetWar: HolyGrailWarSession): void {
+  if (!targetWar || !targetWar.channelTraps) return;
+  const deadIds = new Set(
+    Object.values(targetWar.participants || {})
+      .filter(p => !p.isAlive)
+      .map(p => p.discordId)
+  );
+  if (deadIds.size > 0) {
+    targetWar.channelTraps = targetWar.channelTraps.filter(t => !deadIds.has(t.setterMasterId));
+  }
+}
+
 export function evaluateWarState(targetWar: HolyGrailWarSession): void {
+  cleanupDeadParticipantsTraps(targetWar);
   const participantsList = Object.values(targetWar.participants || {});
   const totalSummoned = participantsList.length;
   const aliveList = participantsList.filter(p => p.isAlive);
@@ -999,8 +1012,11 @@ export function attackSuspectUserInWar(
       p => p.discordId === attackerId || p.username.toLowerCase() === attackerId.toLowerCase()
     );
   }
-  if (!attacker || !attacker.isAlive) {
+  if (!attacker) {
     return { success: false, message: 'You are not active in the Holy Grail War! Summon a Servant first using `/summon ritual`.', updatedWar: targetWar };
+  }
+  if (!attacker.isAlive) {
+    return { success: false, message: '☠️ You were slain and permanently eliminated from the Holy Grail War! Deceased Masters cannot launch ambushes.', updatedWar: targetWar };
   }
 
   const chanTag = channelName 
@@ -1027,6 +1043,14 @@ export function attackSuspectUserInWar(
   }
 
   const targetMaster = findTargetMaster(targetWar, suspectQuery);
+
+  if (targetMaster && !targetMaster.isAlive) {
+    return {
+      success: false,
+      message: `☠️ Master **${targetMaster.username}** has already been slain and eliminated from the Holy Grail War! You cannot ambush a fallen Master.`,
+      updatedWar: targetWar
+    };
+  }
 
   if (targetMaster && targetMaster.discordId === attacker.discordId) {
     return { success: false, message: 'You cannot target yourself with an ambush!', updatedWar: targetWar };
@@ -1482,8 +1506,11 @@ export function setChannelTrapInWar(
   }
 
   const setter = targetWar.participants[setterId];
-  if (!setter || !setter.isAlive) {
+  if (!setter) {
     return { success: false, message: 'You must have an active Heroic Spirit contract to weave Bounded Field traps!', updatedWar: targetWar };
+  }
+  if (!setter.isAlive) {
+    return { success: false, message: '☠️ You were slain and eliminated from the Holy Grail War! Deceased Masters cannot weave Bounded Field traps.', updatedWar: targetWar };
   }
 
   const chanTag = channelName.startsWith('#') ? channelName : `#${channelName}`;
@@ -1581,7 +1608,10 @@ export function disarmChannelTrapsInWar(
   }
 
   const disarmer = targetWar.participants[setterId];
-  const disarmerName = disarmer?.username || 'Master';
+  if (!disarmer || !disarmer.isAlive) {
+    return { success: false, message: '☠️ You were slain and eliminated from the Holy Grail War! Deceased Masters cannot disarm Bounded Fields.', updatedWar: targetWar };
+  }
+  const disarmerName = disarmer.username || 'Master';
 
   // Case 1: Specific Channel targeted
   if (channelName) {
@@ -2691,8 +2721,11 @@ export function setWorkshopWardInWar(
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
   const actor = targetWar.participants[actorDiscordId];
-  if (!actor || !actor.isAlive) {
+  if (!actor) {
     return { success: false, message: 'You have no active Servant contract in the Holy Grail War!', updatedWar: targetWar };
+  }
+  if (!actor.isAlive) {
+    return { success: false, message: '☠️ You were slain and eliminated from the Holy Grail War! Deceased Masters cannot establish Workshop Wards.', updatedWar: targetWar };
   }
 
   const previousWard = actor.boundedField || 'none';

@@ -91,6 +91,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     let war = getOrInitWarSession(master);
+    const userParticipant = war.participants[interaction.user.id];
+    if (userParticipant && !userParticipant.isAlive) {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: '☠️ You were slain and permanently eliminated from the Holy Grail War! Deceased Masters cannot set Bounded Field traps, anchor Sanctuaries, or invoke Command Seals.'
+      });
+      return;
+    }
+
     const sub = interaction.options.getSubcommand(false) || 'list';
     const currentChannelName = interaction.channel && 'name' in interaction.channel 
       ? `#${(interaction.channel as any).name}`
@@ -122,6 +131,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       if (trapType === 'sanctuary') {
         const res = setWorkshopWardInWar(war, interaction.user.id, 'ward', targetChan);
+        if (!res.success) {
+          await interaction.reply({ content: res.message, flags: MessageFlags.Ephemeral });
+          return;
+        }
         war = res.updatedWar;
         master.boundedField = 'ward';
         master.sanctuaryChannelName = targetChan;
@@ -143,6 +156,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         return;
       } else if (trapType === 'decoy') {
         const res = setWorkshopWardInWar(war, interaction.user.id, 'decoy');
+        if (!res.success) {
+          await interaction.reply({ content: res.message, flags: MessageFlags.Ephemeral });
+          return;
+        }
         war = res.updatedWar;
         master.boundedField = 'decoy';
         await saveMaster(master);
@@ -369,10 +386,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       if (i.customId === 'trap_set_sanctuary') {
         const res = setWorkshopWardInWar(war, i.user.id, 'ward', currentChannelName);
-        war = res.updatedWar;
-        master.boundedField = 'ward';
-        master.sanctuaryChannelName = currentChannelName;
-        await saveMaster(master);
+        if (res.success) {
+          war = res.updatedWar;
+          master.boundedField = 'ward';
+          master.sanctuaryChannelName = currentChannelName;
+          await saveMaster(master);
+        }
         await i.reply({ content: res.message, flags: MessageFlags.Ephemeral });
         return;
       }
@@ -382,19 +401,23 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         const chan = i.guild?.channels.cache.get(chanId);
         const chanName = chan ? `#${chan.name}` : `#${chanId}`;
         const res = setWorkshopWardInWar(war, i.user.id, 'ward', chanName);
-        war = res.updatedWar;
-        master.boundedField = 'ward';
-        master.sanctuaryChannelName = chanName;
-        await saveMaster(master);
+        if (res.success) {
+          war = res.updatedWar;
+          master.boundedField = 'ward';
+          master.sanctuaryChannelName = chanName;
+          await saveMaster(master);
+        }
         await i.reply({ content: res.message, flags: MessageFlags.Ephemeral });
         return;
       }
 
       if (i.customId === 'trap_set_decoy') {
         const res = setWorkshopWardInWar(war, i.user.id, 'decoy');
-        war = res.updatedWar;
-        master.boundedField = 'decoy';
-        await saveMaster(master);
+        if (res.success) {
+          war = res.updatedWar;
+          master.boundedField = 'decoy';
+          await saveMaster(master);
+        }
         await i.reply({ content: res.message, flags: MessageFlags.Ephemeral });
         return;
       }

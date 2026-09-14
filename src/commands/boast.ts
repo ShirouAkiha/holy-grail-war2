@@ -22,6 +22,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     let war = getOrInitWarSession(master);
     const uP = war.participants[interaction.user.id];
+    if (uP && !uP.isAlive) {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: '☠️ You were slain and permanently eliminated from the Holy Grail War! Deceased Masters cannot boast.'
+      });
+      return;
+    }
     if (uP) {
       uP.isExposed = true;
       uP.exposureReason = 'public_command';

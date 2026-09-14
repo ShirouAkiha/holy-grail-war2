@@ -2085,7 +2085,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         c => c.id === opponentUser.id || c.name.toLowerCase().includes(opponentUser.username.toLowerCase())
       );
 
-      if ((opponentParticipant && !opponentParticipant.isAlive) || (isOpponentCivilian && alreadySlainCivilian)) {
+      if (opponentParticipant && !opponentParticipant.isAlive) {
+        await interaction.reply({
+          content: `☠️ Master <@${opponentUser.id}> was already slain and eliminated from this Holy Grail War!`,
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+
+      if (isOpponentCivilian && alreadySlainCivilian) {
         await interaction.reply({
           content: `☠️ Civilian <@${opponentUser.id}> was already slain earlier in this Holy Grail War! A civilian cannot be killed twice.`,
           flags: MessageFlags.Ephemeral
