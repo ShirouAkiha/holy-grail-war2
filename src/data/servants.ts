@@ -485,7 +485,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         id: 'after_pure_prayer_ex',
         name: 'After Pure Prayer EX',
         cooldown: 6,
-        description: 'Increases Arts performance (+20%) for 3 turns, grants +20% NP Gauge to team, and gains 15 Critical Stars per turn for 3 turns.',
+        description: 'Increases Arts Card effectiveness for all allies by 20% (3 turns), increases NP Gauge for all allies by 20%, and gains 15 Critical Stars every turn (3 turns).',
         effectType: 'np_charge',
         value: 20,
         duration: 3,
@@ -494,28 +494,28 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         quotes: ['This, yes.', "I'll use this, then."]
       },
       {
-        id: 'restoration_radiant_light',
-        name: 'Restoration of the Radiant Holy Light A',
+        id: 'true_name_revelation_b',
+        name: 'True Name Revelation B',
         cooldown: 5,
-        description: 'Drains target NP gauge by -20% and inflicts -30% DEF Down for 3 turns.',
+        description: 'Decreases NP Strength for a single enemy by 30% for 1 turn.',
         effectType: 'debuff',
         value: 30,
-        duration: 3,
-        icon: '✨',
+        duration: 1,
+        icon: '👁️',
         quote: 'Light my way, lest I stray from the path.',
         quotes: ['Light my way, lest I stray from the path.', 'I shall take care of this.']
       },
       {
-        id: 'divine_blessing',
-        name: 'Divine Grace A+',
+        id: 'restoration_radiant_light',
+        name: 'Restoration of the Radiant Holy Light A',
         cooldown: 5,
-        description: 'Heals self and allies for 4,000 HP, clears all debuffs, and grants +15% DEF Up for 2 turns.',
-        effectType: 'heal',
-        value: 4000,
-        duration: 2,
-        icon: '💖',
+        description: 'Decreases single enemy NP Strength by 30% (1 turn), decreases enemy DEF by 20% (1 turn), and decreases enemy DEF further by 30% (3 turns).',
+        effectType: 'debuff',
+        value: 30,
+        duration: 3,
+        icon: '✨',
         quote: 'Lord, grant me strength.',
-        quotes: ['Lord, grant me strength.', 'I will go up front!']
+        quotes: ['Lord, grant me strength.', 'I shall take care of this.']
       }
     ],
     passives: [

@@ -1104,16 +1104,36 @@ function activateCombatantSkill(
     combatant.critStars = Math.min(50, combatant.critStars + starVal);
     combatant.activeBuffs.push({ name: skill.name, type: 'crit_dmg', value: 40, remainingTurns: skill.duration || 2 });
     logText = `🌟 **${sName}** activated **${skill.name}**!${quoteLine}`;
-  } else if (skill.effectType === 'stun' || skill.effectType === 'debuff' || skill.id?.includes('discernment') || skill.id === 'restoration_radiant_light') {
+  } else if (skill.effectType === 'stun' || skill.effectType === 'debuff' || skill.id?.includes('discernment') || skill.id === 'restoration_radiant_light' || skill.id === 'true_name_revelation_b' || skill.name.includes('True Name Revelation')) {
     if (opponent) {
       if (skill.id === 'restoration_radiant_light' || skill.name.includes('Radiant Holy Light') || skill.name.includes('Restoration')) {
-        opponent.npGauge = Math.max(0, opponent.npGauge - 20);
         opponent.activeBuffs.push({
-          name: `${skill.name} (DEF Down)`,
+          name: `${skill.name} (NP Strength -30%)`,
+          type: 'debuff_atk',
+          value: 30,
+          remainingTurns: 1
+        });
+        opponent.activeBuffs.push({
+          name: `${skill.name} (DEF -20%)`,
+          type: 'debuff_def',
+          value: 20,
+          remainingTurns: 1
+        });
+        opponent.activeBuffs.push({
+          name: `${skill.name} (DEF -30%)`,
           type: 'debuff_def',
           value: 30,
           remainingTurns: 3
         });
+        logText = `✨ **${sName}** activated **${skill.name}**! (Inflicted -30% NP Strength [1T], -20% DEF [1T], and -30% DEF [3T] on **${opponent.name}**)${quoteLine}`;
+      } else if (skill.id === 'true_name_revelation_b' || skill.id?.includes('true_name') || skill.name.includes('True Name Revelation')) {
+        opponent.activeBuffs.push({
+          name: `${skill.name} (NP Strength -30%)`,
+          type: 'debuff_atk',
+          value: 30,
+          remainingTurns: 1
+        });
+        logText = `👁️ **${sName}** activated **${skill.name}**! (Decreased **${opponent.name}**'s NP Strength by -30% for 1 turn)${quoteLine}`;
       } else {
         opponent.isStunned = true;
         opponent.npGauge = Math.max(0, opponent.npGauge - 20);
@@ -1123,9 +1143,11 @@ function activateCombatantSkill(
           value: skill.value || 20,
           remainingTurns: skill.duration || 1
         });
+        logText = `✨ **${sName}** activated **${skill.name}**!${quoteLine}`;
       }
+    } else {
+      logText = `✨ **${sName}** activated **${skill.name}**!${quoteLine}`;
     }
-    logText = `✨ **${sName}** activated **${skill.name}**!${quoteLine}`;
   } else {
     combatant.activeBuffs.push({ name: skill.name, type: 'buff_atk', value: 25, remainingTurns: 2 });
     logText = `✨ **${sName}** activated **${skill.name}**!${quoteLine}`;

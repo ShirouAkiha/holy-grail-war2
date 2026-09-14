@@ -379,25 +379,63 @@ export function applyCombatantSkill(
       const itemConstruct = actorPassives.filter(p => p.type === 'item_construction').reduce((s, p) => s + p.value, 0);
       const effectiveResist = Math.max(0, magicResist - itemConstruct);
 
-      target.npGauge = Math.max(0, target.npGauge - 20);
-      target.activeBuffs.push({
-        name: `${skill.name} (ATK Down)`,
-        type: 'debuff_atk',
-        value: skill.value || 20,
-        remainingTurns: skill.duration || 1
-      });
-
-      if (effectiveResist > 0 && Math.random() * 100 < effectiveResist) {
-        logText = `🛡️ **${target.name}** partially resisted **${actor.name}'s ${skill.name}** via Magic Resistance!${quoteLine}`;
-      } else {
-        target.isStunned = true;
+      if (skill.id === 'restoration_radiant_light' || skill.name.includes('Radiant Holy Light') || skill.name.includes('Restoration')) {
+        // Restoration of the Radiant Holy Light A: -30% NP Strength (1T), -20% DEF (1T), -30% DEF (3T)
         target.activeBuffs.push({
-          name: 'Stunned',
-          type: 'stun',
-          value: 100,
+          name: `${skill.name} (NP Strength -30%)`,
+          type: 'debuff_np_dmg',
+          value: 30,
+          remainingTurns: 1
+        });
+        target.activeBuffs.push({
+          name: `${skill.name} (DEF -20%)`,
+          type: 'debuff_def',
+          value: 20,
+          remainingTurns: 1
+        });
+        target.activeBuffs.push({
+          name: `${skill.name} (DEF -30%)`,
+          type: 'debuff_def',
+          value: 30,
+          remainingTurns: 3
+        });
+        logText = `✨ **${actor.name}** activated **${skill.name}**! (Inflicted -30% NP Strength [1T], -20% DEF [1T], and -30% DEF [3T] on **${target.name}**)${quoteLine}`;
+      } else if (skill.id === 'true_name_revelation_b' || skill.id?.includes('true_name') || skill.name.includes('True Name Revelation')) {
+        // True Name Revelation B: -30% NP Strength for 1 turn
+        target.activeBuffs.push({
+          name: `${skill.name} (NP Strength -30%)`,
+          type: 'debuff_np_dmg',
+          value: 30,
+          remainingTurns: 1
+        });
+        target.activeBuffs.push({
+          name: `${skill.name} (ATK Down)`,
+          type: 'debuff_atk',
+          value: 15,
+          remainingTurns: 1
+        });
+        logText = `👁️ **${actor.name}** activated **${skill.name}**! (Decreased **${target.name}**'s NP Strength by -30% for 1 turn)${quoteLine}`;
+      } else {
+        target.npGauge = Math.max(0, target.npGauge - 20);
+        target.activeBuffs.push({
+          name: `${skill.name} (ATK Down)`,
+          type: 'debuff_atk',
+          value: skill.value || 20,
           remainingTurns: skill.duration || 1
         });
-        logText = `👁️ **${actor.name}** activated **${skill.name}**!${quoteLine}`;
+
+        if (effectiveResist > 0 && Math.random() * 100 < effectiveResist) {
+          logText = `🛡️ **${target.name}** partially resisted **${actor.name}'s ${skill.name}** via Magic Resistance!${quoteLine}`;
+        } else {
+          target.isStunned = true;
+          target.activeBuffs.push({
+            name: 'Stunned',
+            type: 'stun',
+            value: 100,
+            remainingTurns: skill.duration || 1
+          });
+          logText = `👁️ **${actor.name}** activated **${skill.name}**!${quoteLine}`;
+        }
       }
       break;
     }
@@ -633,7 +671,10 @@ export function executeNoblePhantasmLogic(
   const npBuffVal = actor.activeBuffs
     .filter(b => b.type === 'buff_np_dmg')
     .reduce((s, b) => s + b.value, 0);
-  npDmgBonus += (npBuffVal / 100);
+  const npDebuffVal = actor.activeBuffs
+    .filter(b => b.type === 'debuff_np_dmg' || b.type === 'debuff_np_strength')
+    .reduce((s, b) => s + b.value, 0);
+  npDmgBonus += Math.max(-0.90, (npBuffVal - npDebuffVal) / 100);
 
   // Target defense & debuffs
   const defBuff = target.activeBuffs
@@ -1179,17 +1220,40 @@ export function executeBattleTurn(
             const itemConstruct = actorPassives.filter(p => p.type === 'item_construction').reduce((s, p) => s + p.value, 0);
             const effectiveResist = Math.max(0, magicResist - itemConstruct);
 
-            // Drain target NP gauge & apply debuffs
-            const drainAmount = 20;
-            target.npGauge = Math.max(0, target.npGauge - drainAmount);
             if (skill.id === 'restoration_radiant_light' || skill.name.includes('Radiant Holy Light') || skill.name.includes('Restoration')) {
               target.activeBuffs.push({
-                name: `${skill.name} (DEF Down)`,
+                name: `${skill.name} (NP Strength -30%)`,
+                type: 'debuff_np_dmg',
+                value: 30,
+                remainingTurns: 1
+              });
+              target.activeBuffs.push({
+                name: `${skill.name} (DEF -20%)`,
+                type: 'debuff_def',
+                value: 20,
+                remainingTurns: 1
+              });
+              target.activeBuffs.push({
+                name: `${skill.name} (DEF -30%)`,
                 type: 'debuff_def',
                 value: 30,
                 remainingTurns: 3
               });
+            } else if (skill.id === 'true_name_revelation_b' || skill.id?.includes('true_name') || skill.name.includes('True Name Revelation')) {
+              target.activeBuffs.push({
+                name: `${skill.name} (NP Strength -30%)`,
+                type: 'debuff_np_dmg',
+                value: 30,
+                remainingTurns: 1
+              });
+              target.activeBuffs.push({
+                name: `${skill.name} (ATK Down)`,
+                type: 'debuff_atk',
+                value: 15,
+                remainingTurns: 1
+              });
             } else {
+              target.npGauge = Math.max(0, target.npGauge - 20);
               target.activeBuffs.push({
                 name: `${skill.name} (ATK Down)`,
                 type: 'debuff_atk',
@@ -1199,13 +1263,15 @@ export function executeBattleTurn(
             }
 
             if (effectiveResist <= 0 || Math.random() * 100 >= effectiveResist) {
-              target.isStunned = true;
-              target.activeBuffs.push({
-                name: `${skill.name} (NP Seal / Stun)`,
-                type: 'stun',
-                value: 100,
-                remainingTurns: skill.duration || 1
-              });
+              if (skill.effectType === 'stun' || skill.id?.includes('discernment')) {
+                target.isStunned = true;
+                target.activeBuffs.push({
+                  name: `${skill.name} (NP Seal / Stun)`,
+                  type: 'stun',
+                  value: 100,
+                  remainingTurns: skill.duration || 1
+                });
+              }
             }
             break;
           }
