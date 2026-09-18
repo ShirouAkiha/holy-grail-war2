@@ -1124,7 +1124,15 @@ function activateCombatantSkill(
     logText = `🌟 **${sName}** activated **${skill.name}**!${quoteLine}`;
   } else if (skill.effectType === 'stun' || skill.effectType === 'debuff' || skill.id?.includes('discernment') || skill.id === 'restoration_radiant_light' || skill.id === 'divine_judgement_a') {
     if (opponent) {
-      if (skill.id === 'restoration_radiant_light' || skill.name.includes('Radiant Holy Light') || skill.name.includes('Restoration')) {
+      // Check Debuff Resistance (Magic Resistance, Fifth Succession, etc.)
+      const oppPassives = opponent.passives || getUnlockedPassives(opponent.servant.template?.passives?.length ? opponent.servant.template.passives : opponent.servant.template?.servantClass, opponent.servant.bondLevel || 1);
+      const debuffResist = oppPassives.filter(p => p.type === 'magic_resistance' || p.type === 'fifth_succession').reduce((s, p) => s + p.value, 0);
+      const didResist = Math.random() * 100 < debuffResist;
+      const oppServantName = opponent.servant.nickname || opponent.servant.template?.name || 'Opponent';
+
+      if (didResist) {
+        logText = `🛡️ **${sName}** activated **${skill.name}**, but **${oppServantName}** nullified the debuff with **Debuff Resistance (${debuffResist}%)**!${quoteLine}`;
+      } else if (skill.id === 'restoration_radiant_light' || skill.name.includes('Radiant Holy Light') || skill.name.includes('Restoration')) {
         opponent.npGauge = Math.max(0, opponent.npGauge - 20);
         opponent.activeBuffs.push({
           name: `${skill.name} (NP Strength Down)`,
@@ -1285,6 +1293,27 @@ function resolveStrike(
     attacker.critStars = Math.min(50, (attacker.critStars || 0) + starsFromTurnBuffs);
   }
 
+  // 1. Resolve Attacker & Defender Passives (Max 2, 2nd unlocked after Bond 5)
+  const attackerPassives = attacker.passives || getUnlockedPassives(attacker.servant.template?.passives?.length ? attacker.servant.template.passives : attacker.servant.template?.servantClass, attacker.servant.bondLevel || 1);
+  const defenderPassives = defender.passives || getUnlockedPassives(defender.servant.template?.passives?.length ? defender.servant.template.passives : defender.servant.template?.servantClass, defender.servant.bondLevel || 1);
+
+  // Turn-Start Servant Passives (e.g. Fifth Succession A grants +4% NP Gauge every turn)
+  const fifthSuccessionBonus = attackerPassives.filter(p => p.type === 'fifth_succession').length > 0 ? 4 : 0;
+  if (fifthSuccessionBonus > 0) {
+    attacker.npGauge = Math.min(300, attacker.npGauge + fifthSuccessionBonus);
+  }
+
+  // The Weight of Heaven (Adiosa) gravitational field
+  const weightOfHeaven = attackerPassives.find(p => p.type === 'the_weight_of_heaven');
+  if (weightOfHeaven) {
+    const atkMana = (attacker.servant.template?.baseStats?.mana || 10) + (attacker.servant.allocatedStats?.mana || 0);
+    const defMana = (defender.servant.template?.baseStats?.mana || 10) + (defender.servant.allocatedStats?.mana || 0);
+    if (atkMana > defMana) {
+      const gravDmg = Math.round(weightOfHeaven.value * PVP_DAMAGE_MODIFIER);
+      defender.currentHp = Math.max(0, defender.currentHp - gravDmg);
+    }
+  }
+
   // Handle Stun status
   if (attacker.isStunned) {
     attacker.isStunned = false;
@@ -1300,16 +1329,13 @@ function resolveStrike(
   let critDmgBonus = 1.0;
   let npGenBonus = 1.0;
 
-  // 1. Resolve Attacker & Defender Passives (Max 2, 2nd unlocked after Bond 5)
-  const attackerPassives = attacker.passives || getUnlockedPassives(attacker.servant.template?.passives?.length ? attacker.servant.template.passives : attacker.servant.template?.servantClass, attacker.servant.bondLevel || 1);
-  const defenderPassives = defender.passives || getUnlockedPassives(defender.servant.template?.passives?.length ? defender.servant.template.passives : defender.servant.template?.servantClass, defender.servant.bondLevel || 1);
-
-  const madnessBonus = attackerPassives.filter(p => p.type === 'madness_enhancement').reduce((s, p) => s + p.value, 0);
+  const magicGunnerBonus = attackerPassives.filter(p => p.type === 'magic_gunner').reduce((s, p) => s + p.value, 0);
+  const madnessBonus = attackerPassives.filter(p => p.type === 'madness_enhancement').reduce((s, p) => s + p.value, 0) + magicGunnerBonus;
   const ridingBonus = attackerPassives.filter(p => p.type === 'riding').reduce((s, p) => s + p.value, 0);
-  const territoryBonus = attackerPassives.filter(p => p.type === 'territory_creation').reduce((s, p) => s + p.value, 0);
+  const territoryBonus = attackerPassives.filter(p => p.type === 'territory_creation').reduce((s, p) => s + p.value, 0) + magicGunnerBonus;
   const critPassiveBonus = attackerPassives.filter(p => p.type === 'independent_action' || p.type === 'oblivion_correction').reduce((s, p) => s + p.value, 0);
   const divinityBonus = attackerPassives.filter(p => p.type === 'divinity').reduce((s, p) => s + p.value, 0);
-  const presenceConcealBonus = attackerPassives.filter(p => p.type === 'presence_concealment').reduce((s, p) => s + p.value, 0);
+  const presenceConcealBonus = attackerPassives.filter(p => p.type === 'presence_concealment').reduce((s, p) => s + p.value, 0) + (magicGunnerBonus > 0 ? 5 : 0);
   const avengerBonus = defenderPassives.filter(p => p.type === 'avenger').reduce((s, p) => s + p.value, 0);
   const attackerAvengerAtk = attackerPassives.filter(p => p.type === 'avenger').length > 0 ? 0.04 : 0;
   const flatDivinity = Math.round(divinityBonus * PVP_DAMAGE_MODIFIER);
