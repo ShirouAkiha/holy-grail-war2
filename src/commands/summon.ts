@@ -48,11 +48,6 @@ export const data = new SlashCommandBuilder()
     sub
       .setName('status')
       .setDescription('Inspect your active Holy Grail War Servant contract and Command Seals')
-  )
-  .addSubcommand(sub =>
-    sub
-      .setName('release')
-      .setDescription('Sever your contract with your current Servant to allow a new summoning')
   );
 
 // ==========================================
@@ -214,45 +209,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setColor(0xd4af37);
       safeSetEmbedImage(statusEmbed, t.cardArtUrl || t.avatarUrl || sAny.cardArtUrl || sAny.avatarUrl);
 
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId('btn_release_contract')
-          .setLabel('Sever Contract')
-          .setEmoji('⛓️')
-          .setStyle(ButtonStyle.Danger)
-      );
-
-      await interaction.reply({ embeds: [statusEmbed], components: [row], flags: MessageFlags.Ephemeral });
-      return;
-    }
-
-    // ------------------------------------------
-    // SUBCOMMAND: RELEASE CONTRACT
-    // ------------------------------------------
-    if (subcommand === 'release') {
-      if (!master.servants || master.servants.length === 0) {
-        await interaction.reply({
-          flags: MessageFlags.Ephemeral,
-          content: '❌ You do not have an active Servant contract to release.'
-        });
-        return;
-      }
-
-      const releasedServantName = master.servants[0].template.name;
-      master.servants = [];
-      master.activeServantId = undefined;
-      await saveMaster(master);
-      handleMasterReleaseInWar(master.discordId);
-
-      const releaseEmbed = new EmbedBuilder()
-        .setTitle('⛓️ Contract Severed')
-        .setDescription(
-          `You have released your command over **${releasedServantName}**.\n\n` +
-          `The Heroic Spirit has returned to the Throne of Heroes. You are now free to invoke a new summoning ritual using \`/summon ritual\`.`
-        )
-        .setColor(0xef4444);
-
-      await interaction.reply({ embeds: [releaseEmbed], flags: MessageFlags.Ephemeral });
+      await interaction.reply({ embeds: [statusEmbed], flags: MessageFlags.Ephemeral });
       return;
     }
 
@@ -269,10 +226,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setDescription(
           `You have already formed a Holy Grail War contract with **${s.template.name}** (\`${s.template.servantClass}\`)!\n\n` +
           `In an authentic Holy Grail War, each Master is bound to a single Heroic Spirit.\n\n` +
-          `• Use \`/servant\` to view their full status and parameters.\n` +
+          `• Use \`/servant\` to view their full status, allocate stats, or switch companions.\n` +
+          `• Use \`/gacha servant\` to summon additional Heroic Spirits into your permanent roster.\n` +
           `• Use \`/duel\` to engage in turn-based combat.\n` +
-          `• Use \`/grailwar\` to enter the 7-Master battle royale tournament.\n` +
-          `• If you wish to release your Servant and summon anew, use \`/summon release\`.`
+          `• Use \`/grailwar\` to enter the battle royale tournament.`
         )
         .setColor(0xf59e0b);
       safeSetEmbedThumbnail(embed, s.template.avatarUrl);

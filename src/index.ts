@@ -1469,28 +1469,10 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       if (btnId === 'btn_release_contract') {
-        if (!master.servants || master.servants.length === 0) {
-          await interaction.reply({
-            flags: MessageFlags.Ephemeral,
-            content: '⚠️ You do not have an active Servant contract to release.'
-          });
-          return;
-        }
-        const releasedServantName = master.servants[0].template?.name || 'your Heroic Spirit';
-        master.servants = [];
-        master.activeServantId = undefined;
-        await saveMaster(master);
-        handleMasterReleaseInWar(master.discordId);
-
-        const releaseEmbed = new EmbedBuilder()
-          .setTitle('⛓️ Contract Severed')
-          .setDescription(
-            `You have released your command over **${releasedServantName}**.\n\n` +
-            `The Heroic Spirit has returned to the Throne of Heroes. You are now free to invoke a new summoning ritual using \`/summon ritual\`.`
-          )
-          .setColor(0xef4444);
-
-        await interaction.reply({ embeds: [releaseEmbed], flags: MessageFlags.Ephemeral });
+        await interaction.reply({
+          flags: MessageFlags.Ephemeral,
+          content: 'ℹ️ **Permanent Roster:** Heroic Spirits are permanently bound to your Chaldea collection. Use `/servant` to view your roster and switch active companions, or `/gacha servant` to summon more spirits!'
+        });
         return;
       }
 

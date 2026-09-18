@@ -1256,11 +1256,8 @@ export function buildMasterDossier(
   );
 
   const manageRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`admin_m_sever_${targetId}`).setLabel('Release Servant').setEmoji('🗡️').setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId(`admin_m_wipe_ces_${targetId}`).setLabel('Wipe CEs').setEmoji('🎒').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`admin_m_reset_vault_${targetId}`).setLabel('Full Reset').setEmoji('🔄').setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId(`admin_m_refresh_${targetId}`).setLabel('Refresh').setEmoji('🔄').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('admin_tab_masters').setLabel('Back to Hub').setEmoji('👤').setStyle(ButtonStyle.Primary)
+    new ButtonBuilder().setCustomId(`admin_m_refresh_${targetId}`).setLabel('Refresh Dossier').setEmoji('🔄').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('admin_tab_masters').setLabel('Back to Master Roster').setEmoji('👤').setStyle(ButtonStyle.Primary)
   );
 
   return { embed, components: [grantRow, manageRow] };
@@ -1590,16 +1587,9 @@ export function buildAdminHub(
       new ButtonBuilder().setCustomId('admin_war_history_view').setLabel('Hall of Fame').setEmoji('📜').setStyle(ButtonStyle.Secondary)
     );
 
-    // Contract & Servant Management Row (Fresh War & Reset)
-    const contractRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId('admin_war_fresh_slate').setLabel('Fresh Season (Wipe All Contracts)').setEmoji('🧹').setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId('admin_war_reset_my_servant').setLabel('Release My Servant').setEmoji('🗡️').setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId('admin_war_reset_my_stats').setLabel('Reset My Servant to Lv.1').setEmoji('🌱').setStyle(ButtonStyle.Secondary)
-    );
-
     const ruleSelectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(createRuleSelectMenu());
 
-    components.push(presetsRow, lifecycleRow, contractRow, ruleSelectRow);
+    components.push(presetsRow, lifecycleRow, ruleSelectRow);
 
   } else if (category === 'war_rules') {
     const war = getOrInitWarSession();
@@ -1653,14 +1643,7 @@ export function buildAdminHub(
       new ButtonBuilder().setCustomId('admin_refill_seals').setLabel('Refill 3 Seals').setEmoji('🔱').setStyle(ButtonStyle.Primary)
     );
 
-    const resetRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId('admin_reset_my_currency').setLabel('Reset My Currency').setEmoji('🧹').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_reset_my_inventory').setLabel('Reset My Inventory (CEs)').setEmoji('🎒').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_reset_my_all_vault').setLabel('Reset All My Items & SQ').setEmoji('🔄').setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId('admin_reset_server_economy').setLabel('Server Wipe (All Items & SQ)').setEmoji('⚠️').setStyle(ButtonStyle.Danger)
-    );
-
-    components.push(mintRow, resetRow);
+    components.push(mintRow);
   }
 
   return { embeds, components };
