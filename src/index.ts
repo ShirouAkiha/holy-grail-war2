@@ -216,9 +216,9 @@ export const commandAliasMap: Record<string, any> = {
 // Sends our command definitions (/summon, /duel, etc.) to Discord's servers so Discord
 // displays them in the user's slash command autocomplete menu.
 export async function registerSlashCommands() {
-  const token = process.env.DISCORD_BOT_TOKEN;
-  const clientId = process.env.DISCORD_CLIENT_ID;
-  const guildId = process.env.DISCORD_GUILD_ID;
+  const token = (process.env.DISCORD_BOT_TOKEN || process.env.DISCORD_TOKEN || '').trim().replace(/^["']|["']$/g, '');
+  const clientId = (process.env.DISCORD_CLIENT_ID || process.env.CLIENT_ID || '').trim().replace(/^["']|["']$/g, '');
+  const guildId = (process.env.DISCORD_GUILD_ID || process.env.GUILD_ID || '').trim().replace(/^["']|["']$/g, '');
 
   // If credentials are not set, stop gracefully without crashing the app.
   if (!token || !clientId) {
@@ -2375,7 +2375,7 @@ client.on(Events.MessageCreate, async message => {
 // 7. BOT STARTUP WRAPPER
 // ==========================================
 export async function startBot() {
-  const token = process.env.DISCORD_BOT_TOKEN;
+  const token = (process.env.DISCORD_BOT_TOKEN || process.env.DISCORD_TOKEN || '').trim().replace(/^["']|["']$/g, '');
   if (!token) {
     console.warn('⚠️ DISCORD_BOT_TOKEN not provided. Bot cannot connect to Discord Gateway.');
     return;
@@ -2386,6 +2386,6 @@ export async function startBot() {
 }
 
 // Auto-start if running in Node environment with DISCORD_BOT_TOKEN defined
-if (process.env.DISCORD_BOT_TOKEN) {
+if (process.env.DISCORD_BOT_TOKEN || process.env.DISCORD_TOKEN) {
   startBot();
 }

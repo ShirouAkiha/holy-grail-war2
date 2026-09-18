@@ -997,8 +997,16 @@ function activateCombatantSkill(
     if (skill.id === 'wisdom_dun_scaith') {
       combatant.critStars = Math.min(50, combatant.critStars + 15);
     }
+    if (skill.id === 'ephemeral_dream_a' || (skill.description || '').toLowerCase().includes('attack')) {
+      combatant.activeBuffs.push({
+        name: `${skill.name} (ATK Up)`,
+        type: 'buff_atk',
+        value: skill.value || 40,
+        remainingTurns: skill.duration || 1
+      });
+    }
     logText = bType === 'invincible'
-      ? `🛡️ **${sName}** activated **${skill.name}** (Invincible)!${quoteLine}`
+      ? `🛡️ **${sName}** activated **${skill.name}** (Invincible${skill.id === 'ephemeral_dream_a' || (skill.description || '').toLowerCase().includes('attack') ? ` & +${skill.value || 40}% ATK` : ''})!${quoteLine}`
       : `💨 **${sName}** activated **${skill.name}** (Evade)!${quoteLine}`;
   } else if (skill.effectType === 'guts' || skill.id?.includes('guts') || skill.id?.includes('battle_continuation') || skill.id?.includes('thrice')) {
     const reviveAmt = skill.value || Math.round(combatant.maxHp * 0.20);

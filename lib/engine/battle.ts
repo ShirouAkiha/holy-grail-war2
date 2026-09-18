@@ -1129,36 +1129,81 @@ export function executeBattleTurn(
             break;
           case 'heal':
             actor.currentHp = Math.min(actor.maxHp, actor.currentHp + skill.value);
-            if (skill.id === 'divine_blessing' || (skill.description || '').toLowerCase().includes('debuff')) {
-              actor.activeBuffs = actor.activeBuffs.filter(b => !b.type.startsWith('debuff'));
-              actor.activeBuffs.push({
-                name: `${skill.name} (DEF Up)`,
-                type: 'buff_def',
-                value: 15,
-                remainingTurns: 2
-              });
+            {
+              const healDesc = (skill.description || '').toLowerCase();
+              if (healDesc.includes('buster') || skill.id === 'magic_bullet_blast_stream') {
+                actor.activeBuffs.push({
+                  name: `${skill.name} (Buster Up)`,
+                  type: 'buster_up',
+                  value: 30,
+                  remainingTurns: skill.duration || 3
+                });
+              }
+              if (healDesc.includes('quick')) {
+                actor.activeBuffs.push({
+                  name: `${skill.name} (Quick Up)`,
+                  type: 'quick_up',
+                  value: 30,
+                  remainingTurns: skill.duration || 3
+                });
+              }
+              if (skill.id === 'divine_blessing' || healDesc.includes('debuff') || skill.id === 'disengage_c') {
+                actor.activeBuffs = actor.activeBuffs.filter(b => !b.type.startsWith('debuff'));
+                actor.activeBuffs.push({
+                  name: `${skill.name} (DEF Up)`,
+                  type: 'buff_def',
+                  value: 15,
+                  remainingTurns: 2
+                });
+              }
             }
             break;
           case 'np_charge':
             actor.npGauge = Math.min(300, actor.npGauge + skill.value);
-            if (skill.id === 'after_pure_prayer_ex' || (skill.description || '').toLowerCase().includes('arts')) {
-              actor.activeBuffs.push({
-                name: `${skill.name} (Arts Up)`,
-                type: 'arts_up',
-                value: 20,
-                remainingTurns: 3
-              });
-              actor.activeBuffs.push({
-                name: `${skill.name} (Stars Per Turn)`,
-                type: 'stars_per_turn',
-                value: 15,
-                remainingTurns: 3
-              });
-              actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
+            {
+              const npDesc = (skill.description || '').toLowerCase();
+              if (skill.id === 'after_pure_prayer_ex' || npDesc.includes('arts')) {
+                actor.activeBuffs.push({
+                  name: `${skill.name} (Arts Up)`,
+                  type: 'arts_up',
+                  value: 20,
+                  remainingTurns: 3
+                });
+                actor.activeBuffs.push({
+                  name: `${skill.name} (Stars Per Turn)`,
+                  type: 'stars_per_turn',
+                  value: 15,
+                  remainingTurns: 3
+                });
+                actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
+              }
+              if (skill.id === 'magic_circuit_acceleration' || npDesc.includes('evade')) {
+                actor.isEvading = true;
+                actor.activeBuffs.push({
+                  name: `${skill.name} (Evade)`,
+                  type: 'evade',
+                  value: 100,
+                  remainingTurns: 1
+                });
+              }
+              if (skill.id === 'magic_circuit_acceleration' || npDesc.includes('np gain')) {
+                actor.activeBuffs.push({
+                  name: `${skill.name} (NP Gain Up)`,
+                  type: 'np_gain',
+                  value: 30,
+                  remainingTurns: skill.duration || 3
+                });
+              }
             }
             break;
           case 'crit_stars':
-            actor.critStars += skill.value;
+            actor.critStars = Math.min(50, (actor.critStars || 0) + skill.value);
+            actor.activeBuffs.push({
+              name: `${skill.name} (Crit DMG Up)`,
+              type: 'crit_dmg',
+              value: 40,
+              remainingTurns: skill.duration || 2
+            });
             break;
           case 'evade':
             actor.isEvading = true;
@@ -1170,6 +1215,23 @@ export function executeBattleTurn(
             });
             if (skill.id === 'wisdom_dun_scaith') {
               actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
+            }
+            break;
+          case 'invincible':
+            actor.isInvincible = true;
+            actor.activeBuffs.push({
+              name: skill.name || 'Invincible',
+              type: 'invincible',
+              value: 100,
+              remainingTurns: skill.duration || 1
+            });
+            if (skill.id === 'ephemeral_dream_a' || (skill.description || '').toLowerCase().includes('attack')) {
+              actor.activeBuffs.push({
+                name: `${skill.name} (ATK Up)`,
+                type: 'buff_atk',
+                value: skill.value || 40,
+                remainingTurns: skill.duration || 1
+              });
             }
             break;
           case 'guts': {
