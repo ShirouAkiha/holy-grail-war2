@@ -37,18 +37,94 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
   const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
   const userParticipant = war.participants?.[master.discordId];
 
-  if (!activeServant || !userParticipant) {
+  if (!activeServant) {
     return new EmbedBuilder()
       .setTitle('👤 Master Dossier | No Servant Contracted')
-      .setDescription('❌ You have not entered the Holy Grail War yet. Use `/summon` to summon a Heroic Spirit and establish your contract.')
+      .setDescription('❌ You do not have a contracted Servant. Use `/summon` to summon a Heroic Spirit and establish your covenant.')
       .setColor(0x71717a);
   }
 
-  const ward = userParticipant.boundedField || 'none';
-  const autoEvade = userParticipant.autoEvadeEnabled !== false;
-  const seals = userParticipant.commandSeals ?? master.commandSeals ?? 3;
-  const isExposed = userParticipant.isExposed;
-  const isUnderSanctuary = userParticipant.inSanctuary || userParticipant.inChurchSanctuary;
+  const isSafe = master.environmentMode === 'safe' || !master.environmentMode;
+  const sTemplate = activeServant.template || activeServant;
+  const servantName = activeServant.nickname || sTemplate.name || activeServant.name || 'Heroic Spirit';
+  const servantClass = sTemplate.servantClass || activeServant.servantClass || activeServant.class || userParticipant?.servantClass || 'Saber';
+
+  let classPassive = 'None (Specializes in standard tactical combat)';
+  if (servantClass === 'Saber' || servantClass === 'Archer' || servantClass === 'Lancer') {
+    classPassive = '👁️ **Instinct / Clairvoyance:** 35% chance to predict ambushes, parrying 80% damage and dealing 1,500 counter DMG.';
+  } else if (servantClass === 'Assassin') {
+    classPassive = '🕶️ **Presence Concealment:** Completely immune to surprise ambushes. Nullifies strike & counters for 2,500 DMG!';
+  } else if (servantClass === 'Berserker') {
+    classPassive = '❤️ **Battle Continuation (Guts):** Revives once with 25% Max HP if dealt a fatal blow.';
+  }
+
+  const seals = userParticipant?.commandSeals ?? master.commandSeals ?? 3;
+  const kills = userParticipant?.kills ?? master.servantKills ?? 0;
+  const duelsWon = master.duelsWon || 0;
+  const duelsLost = master.duelsLost || 0;
+  const totalDuels = duelsWon + duelsLost;
+  const winRate = totalDuels > 0 ? Math.round((duelsWon / totalDuels) * 100) : 0;
+
+  let churchStanding = master.reputationRank || '🕊️ Honorable Neutral';
+  if (master.bountyActive && master.bountyRewardSq) {
+    churchStanding += ` *(⚠️ 💎 ${master.bountyRewardSq} SQ Bounty Active)*`;
+  }
+
+  // ==========================================
+  // SAFE MODE EMBED (Chaldea Protected Sanctuary)
+  // ==========================================
+  if (isSafe) {
+    let standingTag = '🛡️ Chaldea Safe Mode';
+    if (userParticipant && !userParticipant.isAlive && userParticipant.eliminatedReason === 'forfeited') {
+      standingTag = '🏳️ Forfeited (Safe Mode)';
+    } else if (userParticipant && !userParticipant.isAlive) {
+      standingTag = '💀 Eliminated (Safe Mode)';
+    }
+
+    const calcMaxHp = userParticipant ? (userParticipant.maxHp || 50000) : 50000;
+    const hpBar = renderHpBar(100);
+
+    const embed = new EmbedBuilder()
+      .setTitle(`👤 Master Dossier | ${master.username} [${standingTag}]`)
+      .setDescription(
+        `*(🔒 Confidential Private Dossier — only visible to you)*\n\n` +
+        `💠 **Command Seals:** \`${'✦ '.repeat(seals)}${'✧ '.repeat(Math.max(0, 3 - seals))}\` (**${seals}/3**) | 💎 **${master.saintQuartz || 0} SQ** | 🎴 **${master.servants?.length || 1}** Servant(s)\n\n` +
+        (lastMsg ? `📢 **Action Outcome:**\n${lastMsg}\n\n` : '') +
+        `🛡️ **CHALDEA MASTER RECORD & SANCTUARY STATUS:**\n` +
+        `• **Environment Mode:** 🛡️ **Safe Mode** *(Zero war elimination risks — full peaceful features active)*\n` +
+        `• **Sanctuary Standing:** ${standingTag} *(Protected from Holy Grail War ambushes & death)*\n` +
+        `• **Duel Record:** ⚔️ **${duelsWon}W - ${duelsLost}L** (${winRate}% Win Rate)\n` +
+        `• **Servant Dissolutions:** 💀 **${kills}** Defeated\n` +
+        `• **Church Standing:** ${churchStanding}\n` +
+        `• **AI BYOK Key:** ${master.customApiConfig?.enabled ? '🟢 **Active (Unlimited Chats)**' : '⚪ **Standard Server Leyline (25/day)**'}\n\n` +
+        `🗡️ **ACTIVE CONTRACTED SERVANT:**\n` +
+        `• **Servant:** **${servantName}** (${servantClass})\n` +
+        `• **Vitality:** ❤️ [${hpBar}] \`${calcMaxHp.toLocaleString()} / ${calcMaxHp.toLocaleString()}\` (100%) — 🟢 **Full Health (Chaldea Ready)**\n` +
+        `• **Chaldea Leylines:** ✨ \`Optimal Mana Link (Instant Recovery in Free Duels)\`\n` +
+        `• **Class Passive:** ${classPassive}\n\n` +
+        `🏰 **CHALDEA SANCTUARY FACILITIES:**\n` +
+        `• **Sanctuary Barrier:** 🛡️ **Active (100% Protected)** *(Immune to war ambushes, traps & elimination)*\n` +
+        `• **Free Battle Arena:** ⚔️ **Ready** *(Friendly duels & sparring via \`/duel mode:free\` with full Bond EXP & SQ rewards)*\n` +
+        `• **Summoning Gate:** 💎 **Open** *(Summon Heroic Spirits & Craft Essences safely)*\n` +
+        `• **Holy Grail War:** 📜 **Spectator / Inactive** *(Tournament entries locked during ongoing war)*\n\n` +
+        `*Enjoy peaceful Chaldea activities or click **[Share Public Card]** below to broadcast your profile to the server:*`
+      )
+      .setColor(0x0ea5e9)
+      .setFooter({ text: 'Private Master Dossier • Chaldea Sanctuary Protocol' });
+
+    if (activeServant.template?.avatarUrl) {
+      safeSetEmbedThumbnail(embed, activeServant.template.avatarUrl);
+    }
+    return embed;
+  }
+
+  // ==========================================
+  // WAR MODE EMBED (Active Holy Grail War)
+  // ==========================================
+  const ward = userParticipant?.boundedField || 'none';
+  const autoEvade = userParticipant?.autoEvadeEnabled !== false;
+  const isExposed = userParticipant?.isExposed;
+  const isUnderSanctuary = userParticipant?.inSanctuary || userParticipant?.inChurchSanctuary;
 
   let wardLabel = '🚫 **No Wards Active** *(No perimeter defenses)*';
   if (ward === 'ward') {
@@ -64,39 +140,11 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
     ? myChannelTraps.map((t: any) => `\`${t.channelName}\` (${t.trapType === 'alarm' ? '🚨 Alarm' : '🩸 Bloodfort'})`).join(', ')
     : 'None *(Select a channel below to anchor)*';
 
-  const sTemplate = activeServant.template || activeServant;
-  const servantName = activeServant.nickname || sTemplate.name || activeServant.name || 'Heroic Spirit';
-  const servantClass = sTemplate.servantClass || activeServant.servantClass || activeServant.class || userParticipant?.servantClass || 'Saber';
-
-  let classPassive = 'None (Specializes in standard tactical combat)';
-  if (servantClass === 'Saber' || servantClass === 'Archer' || servantClass === 'Lancer') {
-    classPassive = '👁️ **Instinct / Clairvoyance:** 35% chance to predict ambushes, parrying 80% damage and dealing 1,500 counter DMG.';
-  } else if (servantClass === 'Assassin') {
-    classPassive = '🕶️ **Presence Concealment:** Completely immune to surprise ambushes. Nullifies strike & counters for 2,500 DMG!';
-  } else if (servantClass === 'Berserker') {
-    classPassive = '❤️ **Battle Continuation (Guts):** Revives once with 25% Max HP if dealt a fatal blow.';
-  }
-
   const healInfo = getHealingStatus(userParticipant);
   const hpBar = renderHpBar(healInfo.percent);
 
-  const kills = userParticipant.kills ?? master.servantKills ?? 0;
-  const duelsWon = master.duelsWon || 0;
-  const duelsLost = master.duelsLost || 0;
-  const totalDuels = duelsWon + duelsLost;
-  const winRate = totalDuels > 0 ? Math.round((duelsWon / totalDuels) * 100) : 0;
-
-  const isSafe = master.environmentMode === 'safe';
   let standingTag = '🟢 Active Competitor';
-  if (isSafe) {
-    if (userParticipant && !userParticipant.isAlive && userParticipant.eliminatedReason === 'forfeited') {
-      standingTag = '🏳️ Forfeited / Safe Mode';
-    } else if (userParticipant && !userParticipant.isAlive) {
-      standingTag = '💀 Eliminated / Safe Mode';
-    } else {
-      standingTag = '🛡️ Safe Mode (Outside War)';
-    }
-  } else if (!userParticipant?.isAlive) {
+  if (!userParticipant?.isAlive) {
     standingTag = userParticipant?.eliminatedReason === 'forfeited'
       ? '🏳️ Forfeited Competitor (Eliminated)'
       : '💀 Dissolved Saint Graph (Eliminated)';
@@ -104,14 +152,7 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
     standingTag = '🕊️ Under Church Asylum';
   }
 
-  let churchStanding = master.reputationRank || '🕊️ Honorable Neutral';
-  if (master.bountyActive && master.bountyRewardSq) {
-    churchStanding += ` *(⚠️ 💎 ${master.bountyRewardSq} SQ Bounty Active)*`;
-  }
-
-  const envTag = isSafe
-    ? '🛡️ **Safe Mode** *(Protected: free battles, daily rewards, and summoning active — zero war elimination risks)*'
-    : '⚔️ **War Mode** *(Active Holy Grail War competitor — tournament elimination active)*';
+  const envTag = '⚔️ **War Mode** *(Active Holy Grail War competitor — tournament elimination active)*';
 
   const embed = new EmbedBuilder()
     .setTitle(`👤 Master Dossier | ${master.username} [${standingTag}]`)
@@ -151,36 +192,74 @@ export function buildPublicProfileEmbed(master: any, war: any) {
   const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
   const userParticipant = war.participants?.[master.discordId];
 
-  if (!activeServant || !userParticipant) {
+  if (!activeServant) {
     return new EmbedBuilder()
       .setTitle(`📜 Civilian Dossier | ${master.username}`)
       .setDescription(`Citizen **${master.username}** is an uncontracted observer in Fuyuki City.`)
       .setColor(0x71717a);
   }
 
-  const seals = userParticipant.commandSeals ?? master.commandSeals ?? 3;
-  const isExposed = userParticipant.isExposed;
-  const isUnderSanctuary = userParticipant.inSanctuary || userParticipant.inChurchSanctuary;
+  const isSafe = master.environmentMode === 'safe' || !master.environmentMode;
+  const seals = userParticipant?.commandSeals ?? master.commandSeals ?? 3;
+  const isExposed = userParticipant?.isExposed;
+  const isUnderSanctuary = userParticipant?.inSanctuary || userParticipant?.inChurchSanctuary;
 
   const sTemplate = activeServant.template || activeServant;
-  const servantName = isExposed ? (activeServant.nickname || sTemplate.name || 'Heroic Spirit') : '[Classified in Shadows]';
+  const servantName = isExposed || isSafe ? (activeServant.nickname || sTemplate.name || 'Heroic Spirit') : '[Classified in Shadows]';
   const servantClass = sTemplate.servantClass || activeServant.servantClass || activeServant.class || userParticipant?.servantClass || 'Saber';
 
   const healInfo = getHealingStatus(userParticipant);
-  const hpBar = renderHpBar(healInfo.percent);
-
-  const kills = userParticipant.kills ?? master.servantKills ?? 0;
+  const kills = userParticipant?.kills ?? master.servantKills ?? 0;
   const duelsWon = master.duelsWon || 0;
   const duelsLost = master.duelsLost || 0;
   const totalDuels = duelsWon + duelsLost;
   const winRate = totalDuels > 0 ? Math.round((duelsWon / totalDuels) * 100) : 0;
 
+  if (isSafe) {
+    let standingTag = '🛡️ Safe Mode (Protected)';
+    if (userParticipant && !userParticipant.isAlive && userParticipant.eliminatedReason === 'forfeited') {
+      standingTag = '🏳️ Forfeited (Safe Mode)';
+    } else if (userParticipant && !userParticipant.isAlive) {
+      standingTag = '💀 Eliminated (Safe Mode)';
+    }
+
+    const calcMaxHp = userParticipant ? (userParticipant.maxHp || 50000) : 50000;
+    const hpBar = renderHpBar(100);
+
+    const embed = new EmbedBuilder()
+      .setTitle(`📢 CHALDEA MASTER DOSSIER | ${master.username.toUpperCase()}`)
+      .setDescription(
+        `Master **${master.username}** has broadcast their Chaldea Master credentials to the server!\n\n` +
+        `💠 **Command Seals:** \`${'✦ '.repeat(seals)}${'✧ '.repeat(Math.max(0, 3 - seals))}\` (${seals}/3) | 🎴 **${master.servants?.length || 1}** Contracted Spirit(s)\n\n` +
+        `🛡️ **CHALDEA RECORD & SANCTUARY STANDING:**\n` +
+        `• **Environment:** 🛡️ **Safe Mode** *(Immune to war elimination & ambushes)*\n` +
+        `• **Sanctuary Standing:** ${standingTag}\n` +
+        `• **Duel Record:** ⚔️ **${duelsWon}W - ${duelsLost}L** (${winRate}% Win Rate)\n` +
+        `• **Servants Dissolved:** 💀 **${kills}** Defeated\n` +
+        `• **Church Standing:** ${master.reputationRank || '🕊️ Honorable Neutral'}\n\n` +
+        `🗡️ **CONTRACTED HEROIC SPIRIT:**\n` +
+        `• **Heroic Spirit:** **${servantName}** (\`${servantClass}\`)\n` +
+        `• **Vitality:** ❤️ [${hpBar}] \`${calcMaxHp.toLocaleString()} / ${calcMaxHp.toLocaleString()}\` (100%) — 🟢 **Full Health (Chaldea Ready)**`
+      )
+      .setColor(0x0ea5e9)
+      .setFooter({ text: 'Public Master Dossier • Chaldea Sanctuary Protocol' });
+
+    if (activeServant.template?.avatarUrl) {
+      safeSetEmbedThumbnail(embed, activeServant.template.avatarUrl);
+    }
+    return embed;
+  }
+
   let standingTag = '🟢 Active Competitor';
-  if (!userParticipant.isAlive) {
-    standingTag = '💀 Dissolved Saint Graph';
+  if (!userParticipant?.isAlive) {
+    standingTag = userParticipant?.eliminatedReason === 'forfeited'
+      ? '🏳️ Forfeited Competitor (Eliminated)'
+      : '💀 Dissolved Saint Graph (Eliminated)';
   } else if (isUnderSanctuary) {
     standingTag = '🕊️ Under Church Asylum';
   }
+
+  const hpBar = renderHpBar(healInfo.percent);
 
   const embed = new EmbedBuilder()
     .setTitle(`📢 MASTER DOSSIER | ${master.username.toUpperCase()}`)
@@ -197,7 +276,7 @@ export function buildPublicProfileEmbed(master: any, war: any) {
       `• **Vitality:** ❤️ [${hpBar}] \`${healInfo.currentHp.toLocaleString()} / ${healInfo.maxHp.toLocaleString()}\` (${healInfo.percent}%) — ${healInfo.statusTag}`
     )
     .setColor(0x3b82f6)
-    .setFooter({ text: 'Public Master Dossier • Holy Grail War' });
+    .setFooter({ text: 'Public Master Dossier • Holy Grail War Protocol' });
 
   if (isExposed && activeServant.template?.avatarUrl) {
     safeSetEmbedThumbnail(embed, activeServant.template.avatarUrl);
@@ -207,12 +286,67 @@ export function buildPublicProfileEmbed(master: any, war: any) {
 }
 
 export function buildProfileButtons(userParticipant: any, activeServantId?: string, master?: any) {
-  if (!userParticipant) return [];
+  const isSafe = master?.environmentMode === 'safe' || !master?.environmentMode;
+
+  // ==========================================
+  // SAFE MODE BUTTONS: Clean & Focused
+  // ==========================================
+  if (isSafe) {
+    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(activeServantId ? `btn_talk_servant:${activeServantId}` : 'btn_talk_servant')
+        .setLabel('Talk to Servant')
+        .setEmoji('💬')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('profile_share_public')
+        .setLabel('Share Public Card')
+        .setEmoji('📢')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('profile_safe_duel_info')
+        .setLabel('Free Duels (/duel)')
+        .setEmoji('⚔️')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('profile_safe_summon_info')
+        .setLabel('Summon (/summon)')
+        .setEmoji('💎')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('profile_refresh')
+        .setLabel('Refresh')
+        .setEmoji('🔄')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('war_status_board')
+        .setLabel('Grail War Board')
+        .setEmoji('📜')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('btn_apikey_dashboard')
+        .setLabel('BYOK API Key')
+        .setEmoji('🔑')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('profile_toggle_mode')
+        .setLabel('Mode: Safe 🛡️ (Active)')
+        .setStyle(ButtonStyle.Success)
+    );
+
+    return [row1, row2];
+  }
+
+  // ==========================================
+  // WAR MODE BUTTONS: Full Tactical War Control
+  // ==========================================
   const currentWard = userParticipant?.boundedField || 'none';
   const autoEvade = userParticipant?.autoEvadeEnabled !== false;
   const healInfo = getHealingStatus(userParticipant);
-  const isSafe = master?.environmentMode === 'safe';
-  const isAliveInWar = !isSafe && userParticipant && userParticipant.isAlive;
+  const isAliveInWar = userParticipant && userParticipant.isAlive;
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -282,7 +416,7 @@ export function buildProfileButtons(userParticipant: any, activeServantId?: stri
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('profile_toggle_mode')
-      .setLabel(isAliveInWar ? 'Quit War (Forfeit) 🏳️' : (isSafe ? 'Mode: Safe 🛡️ (Locked)' : 'Mode: Safe 🛡️'))
+      .setLabel(isAliveInWar ? 'Quit War (Forfeit) 🏳️' : 'Mode: War ⚔️')
       .setStyle(isAliveInWar ? ButtonStyle.Danger : ButtonStyle.Secondary)
   );
 

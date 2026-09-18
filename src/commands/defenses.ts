@@ -186,6 +186,25 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
+    if (master.environmentMode === 'safe') {
+      const safeEmbed = new EmbedBuilder()
+        .setTitle('🛡️ Chaldea Sanctuary | Safe Mode Active')
+        .setDescription(
+          `Master **${interaction.user.username}** is currently protected within **Safe Mode**.\n\n` +
+          `• 🏰 **Automatic Divine Sanctuary:** Chaldea's barrier provides 100% immunity to Holy Grail War ambushes, territorial traps, and tournament elimination.\n` +
+          `• ⚔️ **Combat & Sparring:** You can freely duel via \`/duel mode:free\` with instant recovery and rewards after battle.\n` +
+          `• ⚙️ **Workshop Defenses:** Bounded field wards and emergency evacuation seals are tactical systems exclusive to active competitors in **War Mode**.`
+        )
+        .setColor(0x0ea5e9)
+        .setFooter({ text: 'Chaldea Sanctuary Protocol • Safe Mode Active' });
+
+      await interaction.reply({
+        embeds: [safeEmbed],
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
+
     let war = getOrInitWarSession(master);
     let lastMsg: string | undefined = undefined;
 

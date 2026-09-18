@@ -1316,7 +1316,7 @@ client.on(Events.InteractionCreate, async interaction => {
         }
         const uP = war.participants[interaction.user.id];
         const embed = buildProfileEmbed(master, war);
-        const btns = buildProfileButtons(uP);
+        const btns = buildProfileButtons(uP, master.activeServantId || master.servants?.[0]?.id, master);
         await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
         return;
       }
@@ -1488,12 +1488,40 @@ client.on(Events.InteractionCreate, async interaction => {
         }
         const uP = war.participants[interaction.user.id];
         const embed = buildProfileEmbed(master, war, btnId === 'profile_refresh' ? '🔄 Profile refreshed.' : undefined);
-        const btns = buildProfileButtons(uP);
+        const btns = buildProfileButtons(uP, master.activeServantId || master.servants?.[0]?.id, master);
         if (btnId === 'war_my_profile') {
           await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
         } else {
           await interaction.update({ embeds: [embed], components: btns });
         }
+        return;
+      }
+
+      if (btnId === 'profile_safe_duel_info') {
+        const duelEmbed = new EmbedBuilder()
+          .setTitle('⚔️ Chaldea Free Battle Arena (/duel)')
+          .setDescription(
+            `In **Safe Mode**, you can challenge any Master or AI Servant to tactical duels with **zero risk** of Holy Grail War elimination or Saint Graph death!\n\n` +
+            `• 🤝 **Peaceful Sparring:** Full combat animations, Noble Phantasms, and Command Seal abilities without tournament stakes.\n` +
+            `• 💎 **Rewards:** Earn **Bond EXP**, **Saint Quartz**, and **Master XP** on victory.\n` +
+            `• 🎮 **How to Duel:** Run \`/duel mode:free\` or \`/duel target:@User mode:free\` to spar anytime!`
+          )
+          .setColor(0x38bdf8);
+        await interaction.reply({ embeds: [duelEmbed], flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      if (btnId === 'profile_safe_summon_info') {
+        const summonEmbed = new EmbedBuilder()
+          .setTitle('💎 Heroic Spirit Summoning Chamber (/summon)')
+          .setDescription(
+            `Invoke legendary Heroic Spirits and Craft Essences to strengthen your Chaldea covenant!\n\n` +
+            `• 🎴 **Summon Banners:** Rate-Up Banners, Class Banners & Story Summons.\n` +
+            `• 📜 **Summon Rituals:** Single Summon (3 SQ), Multi-Summon (30 SQ), or Daily Free FP Summon.\n` +
+            `• 🎮 **How to Summon:** Run \`/summon\` or \`/gacha\` to enter the summoning altar!`
+          )
+          .setColor(0xa855f7);
+        await interaction.reply({ embeds: [summonEmbed], flags: MessageFlags.Ephemeral });
         return;
       }
 
@@ -1584,7 +1612,7 @@ client.on(Events.InteractionCreate, async interaction => {
         }
 
         const uP = war.participants[interaction.user.id];
-        await interaction.update({ embeds: [buildProfileEmbed(master, war, msg)], components: buildProfileButtons(uP, undefined, master) });
+        await interaction.update({ embeds: [buildProfileEmbed(master, war, msg)], components: buildProfileButtons(uP, master.activeServantId || master.servants?.[0]?.id, master) });
         return;
       }
 
@@ -2249,7 +2277,7 @@ client.on(Events.MessageCreate, async message => {
       }
       const uP = war.participants[message.author.id];
       const embed = buildProfileEmbed(master, war);
-      const btns = buildProfileButtons(uP);
+      const btns = buildProfileButtons(uP, master.activeServantId || master.servants?.[0]?.id, master);
       await message.reply({ embeds: [embed], components: btns });
       return;
     }
