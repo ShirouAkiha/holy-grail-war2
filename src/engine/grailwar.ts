@@ -635,6 +635,7 @@ export function forfeitWar(
       text: `🏳️ Master **${master.username}** has voluntarily surrendered and forfeited from the Holy Grail War into Safe Mode! (Master Permanently Eliminated)`,
       type: 'clash'
     });
+    evaluateWarState(targetWar);
     saveWarToDisk();
   }
 
@@ -1026,24 +1027,51 @@ export function evaluateWarState(targetWar: HolyGrailWarSession): void {
   const totalSummoned = participantsList.length;
   const aliveList = participantsList.filter(p => p.isAlive);
   const deadCount = participantsList.filter(p => !p.isAlive).length;
+  const maxMasters = targetWar.rules?.maxMasters || 7;
 
   if (targetWar.status === 'concluded') {
     saveWarToDisk();
     return;
   }
 
-  // True Holy Grail Climax: All 7 standard Servant slots summoned AND 6 eliminated!
-  if (totalSummoned >= 7 && aliveList.length === 1) {
+  // 1. If no participants are enrolled
+  if (totalSummoned === 0) {
+    targetWar.status = 'gathering';
+    saveWarToDisk();
+    return;
+  }
+
+  // 2. All registered participants are dead or forfeited (0 survivors)
+  if (aliveList.length === 0) {
+    targetWar.status = 'concluded';
+    targetWar.grailWinnerId = undefined;
+    targetWar.eventLogs.unshift({
+      id: `evt_grail_collapse_${Date.now()}`,
+      timestamp: Date.now(),
+      text: `⚱️ THE GREATER GRAIL HAS COLLAPSED! All participating Masters have fallen or surrendered into Safe Mode. The Holy Grail War has concluded with no victor.`,
+      type: 'clash'
+    });
+    saveWarToDisk();
+    return;
+  }
+
+  // 3. Climax: Only 1 Master remains alive in an active tournament or multi-master war!
+  if (aliveList.length === 1 && (totalSummoned >= 2 || targetWar.status === 'active' || totalSummoned >= maxMasters)) {
     targetWar.status = 'concluded';
     targetWar.grailWinnerId = aliveList[0].discordId;
     aliveList[0].isExposed = true;
     targetWar.eventLogs.unshift({
       id: `evt_grail_win_${Date.now()}`,
       timestamp: Date.now(),
-      text: `🏆 THE GREATER GRAIL HAS MANIFESTED! With all 6 rival Heroic Spirits eliminated, Master **${aliveList[0].username}** (${aliveList[0].servantName}) is the sole survivor and has won the Fuyuki Holy Grail War!`,
+      text: `🏆 THE GREATER GRAIL HAS MANIFESTED! With all rival Heroic Spirits eliminated (${deadCount} fallen), Master **${aliveList[0].username}** (${aliveList[0].servantName}) is the sole survivor and has won the Holy Grail War!`,
       type: 'clash'
     });
-  } else if (totalSummoned >= 7) {
+    saveWarToDisk();
+    return;
+  }
+
+  // 4. Multiple living participants
+  if (totalSummoned >= maxMasters || targetWar.status === 'active') {
     targetWar.status = 'active';
   } else {
     targetWar.status = 'gathering';
@@ -2534,6 +2562,7 @@ export function executeWarAction(
       actor.isExposed = true;
       eliminatedId = actor.discordId;
       resultMsg = `🏳️ Master **${actor.username}** has voluntarily surrendered and forfeited from the Holy Grail War! (Eliminated into Safe Mode)`;
+      evaluateWarState(targetWar);
       break;
     }
   }
@@ -3089,6 +3118,7 @@ export function startOrRestartWar(
   war.leakedIntel = [];
   war.alliances = {};
   war.grailWinnerId = undefined;
+  war.recruitmentCall = undefined;
   war.status = 'active';
   war.id = `grail_war_${Date.now()}`;
   war.title = newRules.formatName;

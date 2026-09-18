@@ -297,18 +297,21 @@ export async function buildGrailWarHub(
       .join('\n');
 
     let statusHeader = '';
-    if (war.recruitmentCall && war.recruitmentCall.active) {
-      const timerStr = war.recruitmentCall.expiresAt > 0 ? `<t:${Math.floor(war.recruitmentCall.expiresAt / 1000)}:R>` : 'Pending Start';
-      statusHeader = `**Status:** 📢 RECRUITMENT ACTIVE (**${war.recruitmentCall.applicantIds.length}** Inscribed | **${war.recruitmentCall.maxSlots}** Master Slots) | **Ignition:** ${timerStr}`;
-    } else if (war.status === 'concluded') {
+    const maxMasters = war.rules?.maxMasters || 7;
+    if (war.status === 'concluded') {
       const winner = war.grailWinnerId && war.participants[war.grailWinnerId] 
         ? war.participants[war.grailWinnerId].username 
-        : (aliveParticipants[0]?.username || 'Victor');
+        : (aliveParticipants.length === 1 ? aliveParticipants[0]?.username : 'None (All Masters Fallen / Forfeited — Ritual Collapsed)');
       statusHeader = `**Status:** 🏆 CONCLUDED | **Victor:** **${winner}** | **Total Casualties:** **${totalCasualties}** (${deadCount} Masters, ${casualtiesCount} Civilians)`;
-    } else if (totalSummoned < 7) {
-      statusHeader = `**Status:** 🕯️ GATHERING MASTERS (**${totalSummoned}/7** Summoned | **${aliveParticipants.length}** Alive | **${deadCount}/6** Cores Absorbed) | **Total Casualties:** **${totalCasualties}**`;
+    } else if (war.recruitmentCall && war.recruitmentCall.active) {
+      const timerStr = war.recruitmentCall.expiresAt > 0 ? `<t:${Math.floor(war.recruitmentCall.expiresAt / 1000)}:R>` : 'Pending Start';
+      statusHeader = `**Status:** 📢 RECRUITMENT ACTIVE (**${war.recruitmentCall.applicantIds.length}** Inscribed | **${war.recruitmentCall.maxSlots}** Master Slots) | **Ignition:** ${timerStr}`;
+    } else if (aliveParticipants.length === 0 && totalSummoned > 0) {
+      statusHeader = `**Status:** 🏆 CONCLUDED (No Victor — All Masters Fallen / Forfeited) | **Total Casualties:** **${totalCasualties}** (${deadCount} Masters, ${casualtiesCount} Civilians)`;
+    } else if (totalSummoned < maxMasters && war.status === 'gathering') {
+      statusHeader = `**Status:** 🕯️ GATHERING MASTERS (**${totalSummoned}/${maxMasters}** Summoned | **${aliveParticipants.length}** Alive | **${deadCount}** Fallen) | **Total Casualties:** **${totalCasualties}**`;
     } else {
-      statusHeader = `**Status:** ⚔️ ACTIVE ELIMINATION PHASE (**${aliveParticipants.length}/7** Alive | **${deadCount}/6** Cores Absorbed) | **Total Casualties:** **${totalCasualties}**`;
+      statusHeader = `**Status:** ⚔️ ACTIVE ELIMINATION PHASE (**${aliveParticipants.length}/${totalSummoned || maxMasters}** Alive | **${deadCount}** Fallen) | **Total Casualties:** **${totalCasualties}**`;
     }
 
     const latestBattle = battleEventsList[0];
