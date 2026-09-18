@@ -23,6 +23,11 @@ import {
   isUserSlainCivilianInWar 
 } from '../engine/grailwar';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
+import { 
+  getAvailableProjectionServants, 
+  createProjectedServantInstance,
+  ENABLE_PROJECTED_SAINT_GRAPHS 
+} from '../engine/saintGraphProjection';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -100,8 +105,11 @@ function performSummoningRitual(master: any) {
     };
   }
 
-  // Guard 2: Get available unclaimed Heroic Spirits
-  const availablePool = getAvailableThroneServants();
+  // Guard 2: Get available Heroic Spirits pool
+  // Under Saint Graph Projection: all Throne templates are summonable as long as this Master does not already have it.
+  const allTemplates = getAllThroneServants();
+  const serverWideContracted = getContractedServantTemplateIds();
+  const availablePool = getAvailableProjectionServants(master, allTemplates, serverWideContracted);
 
   if (availablePool.length === 0) {
     return {
@@ -109,29 +117,11 @@ function performSummoningRitual(master: any) {
     };
   }
 
-  // Pick ONE random unclaimed Heroic Spirit from the Throne of Heroes
+  // Pick ONE random Heroic Spirit from the Throne of Heroes
   const selectedTemplate: ServantTemplate = availablePool[Math.floor(Math.random() * availablePool.length)];
 
-  // Form the sacred contract
-  const newServantInstance: MasterServantInstance = {
-    id: `contract_${selectedTemplate.id}_${Date.now()}`,
-    masterId: master.id,
-    templateId: selectedTemplate.id,
-    level: 1,
-    experience: 0,
-    allocatedStats: { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 },
-    availableStatPoints: 10,
-    skillLevels: [1, 1, 1],
-    customQuotes: {
-      summon: selectedTemplate.summonQuote,
-      battleStart: selectedTemplate.battleStartQuote,
-      noblePhantasm: selectedTemplate.noblePhantasm.chant,
-      victory: selectedTemplate.victoryQuote,
-      defeat: selectedTemplate.defeatQuote
-    },
-    bondLevel: 1,
-    template: selectedTemplate
-  };
+  // Form the sacred contract via projected saint graph
+  const newServantInstance: MasterServantInstance = createProjectedServantInstance(master, selectedTemplate);
 
   // Bind contract to Master
   master.servants = [newServantInstance];
@@ -330,8 +320,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const embed = new EmbedBuilder()
         .setTitle('🚫 The Throne of Heroes is Fully Manifested')
         .setDescription(
-          `All **${allThrone.length} Heroic Spirits** in the Throne of Heroes are currently contracted to other Masters across Fuyuki City!\n\n` +
-          `No more Servants can be summoned until a contracted Servant is defeated or released.\n\n` +
+          `All **${allThrone.length} Heroic Spirits** in the Throne of Heroes are already projected in your Master roster!\n\n` +
+          `No uncontracted Heroic Spirits remain for you to manifest.\n\n` +
           `*(Admins can add new custom Heroic Spirits using \`/addservant create\`)*`
         )
         .setColor(0xef4444);
