@@ -1638,7 +1638,7 @@ export function buildAdminHub(
 
     // Lifecycle Actions Row
     const lifecycleRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId('admin_tab_war_announce').setLabel('Announce War (Choose Channel)').setEmoji('📢').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('admin_quick_open_announce').setLabel('Announce War (Choose Channel)').setEmoji('📢').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('admin_war_action_restart').setLabel('Restart War').setEmoji('🚀').setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId('admin_war_action_reset').setLabel('Quick Refresh').setEmoji('🔄').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('admin_war_refill_all_seals').setLabel('Refill All Seals').setEmoji('🔱').setStyle(ButtonStyle.Secondary),
@@ -1691,7 +1691,7 @@ export function buildAdminHub(
     }
 
     executionButtons.push(
-      new ButtonBuilder().setCustomId('admin_tab_war').setLabel('Back to War Hub').setEmoji('◀️').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('admin_back_to_war').setLabel('Back to War Hub').setEmoji('◀️').setStyle(ButtonStyle.Secondary)
     );
 
     const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(executionButtons);
@@ -1903,9 +1903,9 @@ export async function handleAdminGlobalInteraction(interaction: any) {
     }
 
     // TAB NAVIGATION
-    if (customId === 'admin_tab_war') {
+    if (customId === 'admin_tab_war' || customId === 'admin_back_to_war') {
       currentCategory = 'war';
-    } else if (customId === 'admin_tab_war_announce') {
+    } else if (customId === 'admin_tab_war_announce' || customId === 'admin_quick_open_announce') {
       currentCategory = 'war_announce';
     } else if (customId === 'admin_tab_masters') {
       currentCategory = 'masters';
