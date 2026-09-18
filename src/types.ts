@@ -264,6 +264,7 @@ export interface MasterProfile {
   lastSparDay?: string;
   lastSparTimestamp?: number;
   customApiConfig?: UserCustomApiConfig;
+  environmentMode?: 'safe' | 'war';
   servants: MasterServantInstance[];
   craftEssences: CraftEssence[];
 }

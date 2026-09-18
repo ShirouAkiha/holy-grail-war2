@@ -1517,7 +1517,7 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
-      if (btnId.startsWith('profile_ward_') || btnId === 'profile_toggle_evade' || btnId === 'profile_heal') {
+      if (btnId.startsWith('profile_ward_') || btnId === 'profile_toggle_evade' || btnId === 'profile_heal' || btnId === 'profile_toggle_mode') {
         if (isCivilian) {
           await interaction.reply({
             flags: MessageFlags.Ephemeral,
@@ -1553,6 +1553,13 @@ client.on(Events.InteractionCreate, async interaction => {
           msg = res.message;
           master.autoConsumeCommandSeal = newMode === 'on';
           await saveMaster(master);
+        } else if (btnId === 'profile_toggle_mode') {
+          const newEnv = master.environmentMode === 'safe' ? 'war' : 'safe';
+          master.environmentMode = newEnv;
+          await saveMaster(master);
+          msg = newEnv === 'safe'
+            ? '🛡️ **Environment Mode: SAFE MODE ACTIVATED!** You are now protected outside active war elimination risks (daily rewards, summons, and free battles enabled).'
+            : '⚔️ **Environment Mode: WAR MODE ACTIVATED!** You are now an active Holy Grail War competitor!';
         } else if (btnId === 'profile_heal') {
           const res = executeWarAction(war, interaction.user.id, 'rest_and_heal');
           war = res.updatedWar;
@@ -1569,7 +1576,7 @@ client.on(Events.InteractionCreate, async interaction => {
         }
 
         const uP = war.participants[interaction.user.id];
-        await interaction.update({ embeds: [buildProfileEmbed(master, war, msg)], components: buildProfileButtons(uP) });
+        await interaction.update({ embeds: [buildProfileEmbed(master, war, msg)], components: buildProfileButtons(uP, undefined, master) });
         return;
       }
 

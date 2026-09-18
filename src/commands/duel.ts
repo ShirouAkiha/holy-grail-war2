@@ -36,6 +36,7 @@ export const data = new SlashCommandBuilder()
       .setDescription('Battle Format: 1v1 Solo, 2v2 Alliance Tag-Team, 1v2 Raid, or Force Join')
       .setRequired(false)
       .addChoices(
+        { name: '🕊️ Free Battle / Sparring (No War Elimination)', value: 'free' },
         { name: '⚔️ 1v1 Solo Duel', value: '1v1' },
         { name: '🛡️ 2v2 Alliance Tag-Team', value: '2v2' },
         { name: '⚔️ 1v2 Raid Survival', value: '1v2' },
@@ -1867,23 +1868,20 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     const warSession = getOrInitWarSession(challengerMaster);
+    const mode = interaction.options.getString('mode') || '1v1';
+    const isFreeBattle = mode === 'free' || challengerMaster.environmentMode === 'safe';
 
-    // Check if challenger is eliminated from the Holy Grail War
+    // Check if challenger is eliminated from the Holy Grail War tournament
     const challengerParticipant = warSession.participants[challengerMaster.discordId] ||
       Object.values(warSession.participants).find(p => p.username.toLowerCase() === challengerMaster.username.toLowerCase());
 
-    const isChallengerSlainCivilian = isUserSlainCivilianInWar(warSession, challengerMaster.discordId, challengerMaster.username);
-
-    if (isChallengerSlainCivilian || (challengerParticipant && !challengerParticipant.isAlive)) {
+    if (!isFreeBattle && challengerParticipant && !challengerParticipant.isAlive) {
       const deadEmbed = new EmbedBuilder()
-        .setTitle('☠️ DECEASED CANNOT DUEL')
+        .setTitle('☠️ ELIMINATED FROM WAR BRACKET')
         .setDescription(
-          isChallengerSlainCivilian
-            ? `Civilian <@${challengerMaster.discordId}>, you were slain as an innocent casualty earlier in this Holy Grail War.\n\nDeceased individuals cannot challenge Masters to duels. Wait for the active war to conclude or reset (\`/grailwar reset\`).`
-            : `Master **${challengerMaster.username}**, you were slain and permanently eliminated from the active Holy Grail War.\n\n` +
-              `• **Status:** 💀 Deceased (HP: 0/${challengerParticipant?.maxHp || 0})\n` +
-              `• **Command Seals:** 0 / 3 (Extinguished)\n\n` +
-              `You cannot initiate duels while deceased. Inspect the battle status with \`/grailwar status\` or restart the tournament.`
+          `Master **${challengerMaster.username}**, you were defeated in this Holy Grail War season.\n\n` +
+          `• **🕊️ Free Battles Available:** You can still engage in friendly duels without elimination risks using \`/duel mode:free\`!\n` +
+          `• **🔄 Restart Tournament:** Or start a fresh war tournament with \`/grailwar reset\` to fight for the Grail anew.`
         )
         .setColor(0xef4444);
 
@@ -1895,7 +1893,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       challengerMaster.servants.find(s => s.id === challengerMaster.activeServantId) ||
       challengerMaster.servants[0];
 
-    const mode = interaction.options.getString('mode') || '1v1';
     const opponentUser = interaction.options.getUser('opponent');
     const allyUser = interaction.options.getUser('ally');
     const opponent2User = interaction.options.getUser('opponent2');
@@ -2179,7 +2176,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
                 p1Ally,
                 p2Ally,
                 p1AllyMaster,
-                p2AllyMaster
+                p2AllyMaster,
+                isFreeBattle
               );
             }
           }
@@ -2223,24 +2221,25 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const opponentParticipant = warSession.participants[opponentUser.id] ||
         Object.values(warSession.participants).find(p => p.username.toLowerCase() === opponentUser.username.toLowerCase());
 
-      const alreadySlainCivilian = (warSession.civilianCasualties || []).find(
-        c => c.id === opponentUser.id || c.name.toLowerCase().includes(opponentUser.username.toLowerCase())
-      );
-
-      if (opponentParticipant && !opponentParticipant.isAlive) {
+      if (!isFreeBattle && opponentParticipant && !opponentParticipant.isAlive) {
         await interaction.reply({
-          content: `☠️ Master <@${opponentUser.id}> was already slain and eliminated from this Holy Grail War!`,
+          content: `☠️ Master <@${opponentUser.id}> was eliminated from this Holy Grail War season! You can battle them in Free Battle mode using \`/duel mode:free opponent:@${opponentUser.username}\`.`,
           flags: MessageFlags.Ephemeral
         });
         return;
       }
 
-      if (isOpponentCivilian && alreadySlainCivilian) {
-        await interaction.reply({
-          content: `☠️ Civilian <@${opponentUser.id}> was already slain earlier in this Holy Grail War! A civilian cannot be killed twice.`,
-          flags: MessageFlags.Ephemeral
-        });
-        return;
+      if (isOpponentCivilian && !isFreeBattle) {
+        const alreadySlainCivilian = (warSession.civilianCasualties || []).find(
+          c => c.id === opponentUser.id || c.name.toLowerCase().includes(opponentUser.username.toLowerCase())
+        );
+        if (alreadySlainCivilian) {
+          await interaction.reply({
+            content: `☠️ Civilian <@${opponentUser.id}> was already slain earlier in this Holy Grail War! A civilian cannot be killed twice in the tournament.`,
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
       }
 
       const opponentServant = isOpponentCivilian
@@ -2432,7 +2431,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
                 Object.values(warSession.participants).find(p => p.username.toLowerCase() === opponentUser.username.toLowerCase());
               const p2Hp = p2Part ? calculateCurrentHp(p2Part) : undefined;
               const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp);
-              await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster);
+              await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster, undefined, undefined, undefined, undefined, isFreeBattle);
             } catch (duelErr: any) {
               console.error('Error starting duel after accept:', duelErr);
               await i.followUp({
@@ -2683,7 +2682,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
               Object.values(warSession.participants).find(p => p.username.toLowerCase() === targetRival.username.toLowerCase());
             const p2Hp = p2Part ? calculateCurrentHp(p2Part) : undefined;
             const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp);
-            await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster);
+            await startInteractiveDuel(i, p1, p2, challengerMaster, opponentMaster, undefined, undefined, undefined, undefined, isFreeBattle);
           } catch (duelErr: any) {
             console.error('Error starting duel after accept (rival):', duelErr);
             await i.followUp({
@@ -2736,7 +2735,8 @@ async function startInteractiveDuel(
   p1Ally?: DuelCombatant,
   p2Ally?: DuelCombatant,
   p1AllyMaster?: MasterProfile | null,
-  p2AllyMaster?: MasterProfile | null
+  p2AllyMaster?: MasterProfile | null,
+  isFreeBattle?: boolean
 ) {
   let round = 1;
   const t1 = p1.servant.template;
@@ -3206,7 +3206,7 @@ async function startInteractiveDuel(
       const losingTeam = isTeam1Winner ? team2 : team1;
       const winner = winningTeam.find(c => c.currentHp > 0) || (isTeam1Winner ? p1 : p2);
       const finalAttachment = await buildCurrentAttachment();
-      await finishDuel(interactionToEdit || contextInteraction, winningTeam, losingTeam, p1Master, p2Master, finalAttachment);
+      await finishDuel(interactionToEdit || contextInteraction, winningTeam, losingTeam, p1Master, p2Master, finalAttachment, isFreeBattle);
       return;
     }
 
@@ -3290,7 +3290,7 @@ async function startInteractiveDuel(
         const losingTeam = isTeam1Winner ? team2 : team1;
         const winner = winningTeam.find(c => c.currentHp > 0) || (isTeam1Winner ? p1 : p2);
         const finalAttachment = await buildCurrentAttachment();
-        await finishDuel(interactionToEdit || contextInteraction, winningTeam, losingTeam, p1Master, p2Master, finalAttachment);
+        await finishDuel(interactionToEdit || contextInteraction, winningTeam, losingTeam, p1Master, p2Master, finalAttachment, isFreeBattle);
         return;
       }
 
@@ -4101,7 +4101,8 @@ async function finishDuel(
   loserOrTeam: DuelCombatant | DuelCombatant[],
   p1Master: MasterProfile,
   p2Master: MasterProfile | null,
-  finalAttachment: AttachmentBuilder
+  finalAttachment: AttachmentBuilder,
+  isFreeBattle?: boolean
 ) {
   const winningTeam = Array.isArray(winnerOrTeam) ? winnerOrTeam : [winnerOrTeam];
   const primaryWinner = winningTeam.find(c => c.currentHp > 0) || winningTeam[0];
@@ -4223,10 +4224,40 @@ async function finishDuel(
     .setImage('attachment://turn_summary.png')
     .setColor(0x0f172a);
 
+  let targetMsg: any = null;
+
+  // If this is a Free Battle / Sparring match (Outside active war elimination)
+  if (isFreeBattle) {
+    for (const state of defeatedStates) {
+      state.evacuated = true;
+      state.fate = 'spare';
+    }
+    const freeBattleEmbed = new EmbedBuilder()
+      .setTitle('🕊️ FREE BATTLE CONCLUDED — FRIENDLY SPARRING')
+      .setDescription(
+        `**${winnerName}** (Master: ${primaryWinner.username}) emerged victorious in this friendly sparring match!\n\n` +
+        `• **Format:** 🕊️ Free Battle / Safe Mode\n` +
+        `• **Stakes:** Zero tournament elimination — Servants, Command Seals, and Master standing remain completely intact.\n` +
+        `• **Rewards Granted:** +3 Saint Quartz, Bond EXP (+150 Winner / +60 Participant), and Master stat points!`
+      )
+      .setColor(0x38bdf8)
+      .setFooter({ text: 'Holy Grail War • Safe Mode Free Battle' });
+
+    await finalizeDuelRewardsAndSync(winningTeam, defeatedStates, warSession, chanTag, primaryWinner);
+
+    const files = [finalAttachment];
+    if (defeatCardAttachment) files.push(defeatCardAttachment);
+
+    await (targetMsg ? targetMsg.edit({ embeds: [summaryEmbed, freeBattleEmbed], files, components: [] }) : i.editReply({ embeds: [summaryEmbed, freeBattleEmbed], files, components: [] })).catch(async () => {
+      if (i.channel && typeof i.channel.send === 'function') {
+        await i.channel.send({ embeds: [summaryEmbed, freeBattleEmbed], files, components: [] }).catch(() => {});
+      }
+    });
+    return;
+  }
+
   // 2. Identify defeated Masters needing manual Command Seal decision
   const pendingEvacStates = defeatedStates.filter(s => !s.evacuated && !s.combatant.isAi && s.availableSeals >= 1);
-
-  let targetMsg: any = null;
 
   if (pendingEvacStates.length > 0) {
     const isMulti = pendingEvacStates.length > 1;

@@ -143,45 +143,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
     const subcommand = interaction.options.getSubcommand(false) || 'ritual';
 
-    // Check if the user is a deceased civilian or eliminated Master in the active Holy Grail War
+    // Chaldea Summoning Sanctuary is outside the Fuyuki Holy Grail War conflict.
+    // Safe-mode players, civilians, and active Masters can all summon into their Chaldea vault.
     const warSession = getOrInitWarSession(master);
-    const isSlainCiv = isUserSlainCivilianInWar(warSession, master.discordId, master.username);
     const participant = warSession.participants[master.discordId] || 
       Object.values(warSession.participants).find(p => p.username.toLowerCase() === master.username.toLowerCase());
-
-    if ((isSlainCiv || (participant && !participant.isAlive)) && subcommand !== 'status') {
-      const deceasedEmbed = new EmbedBuilder()
-        .setTitle(isSlainCiv ? '☠️ SACRED SUMMONING REJECTED — SLAIN CIVILIAN' : '☠️ SACRED SUMMONING REJECTED — MASTER IS DECEASED')
-        .setDescription(
-          isSlainCiv
-            ? `**The Greater Grail rejects your invocation.**\n\n` +
-              `Civilian <@${interaction.user.id}>, you were slain as an innocent casualty earlier in this Holy Grail War.\n\n` +
-              `• **Status:** **💀 Slain Civilian Casualty**\n\n` +
-              `*Deceased souls cannot form covenants with Heroic Spirits. You must wait for the war to conclude or restart the tournament session.*`
-            : `**The Greater Grail rejects your invocation.**\n\n` +
-              `Master **${master.username}**, you were dealt a fatal strike and **PERMANENTLY ELIMINATED** from the Holy Grail War.\n\n` +
-              `• **Command Seals:** 💀 **0 / 3** (Extinguished)\n` +
-              `• **Status:** **💀 Deceased / Eliminated**\n\n` +
-              `*In the Fuyuki Holy Grail War, fallen Masters cannot summon a new Servant or re-enter the ongoing tournament. You must wait for the war to conclude or restart the tournament session.*`
-        )
-        .setColor(0xef4444);
-
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId('quick_war_status')
-          .setLabel('View Intelligence Board (/grailwar)')
-          .setEmoji('📋')
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('war_reset_tournament')
-          .setLabel('Restart Tournament (/grailwar reset)')
-          .setEmoji('🔄')
-          .setStyle(ButtonStyle.Secondary)
-      );
-
-      await interaction.reply({ embeds: [deceasedEmbed], components: [row] });
-      return;
-    }
+    const isEliminatedInWar = participant && !participant.isAlive;
 
     // ------------------------------------------
     // SUBCOMMAND: STATUS

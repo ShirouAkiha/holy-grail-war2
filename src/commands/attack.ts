@@ -37,6 +37,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const war = getOrInitWarSession(master);
 
+    // If an attacker in Safe Mode initiates an attack, they are intentionally entering the Holy Grail War
+    if (master.environmentMode === 'safe') {
+      master.environmentMode = 'war';
+      await saveMaster(master);
+    }
+
     // CRITICAL: Prevent dead civilians or eliminated Masters from attacking
     const isSlainCiv = isUserSlainCivilianInWar(war, interaction.user.id, interaction.user.username);
     const attackerPart = war.participants[interaction.user.id] ||
@@ -47,8 +53,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setTitle('☠️ DECEASED SOULS CANNOT AMBUSH')
         .setDescription(
           isSlainCiv
-            ? `Civilian <@${interaction.user.id}>, you were slain as an innocent casualty earlier in this Holy Grail War.\n\nDeceased individuals cannot launch surprise ambushes or attack from beyond the grave. Wait for the active war to conclude or reset (\`/grailwar reset\`).`
-            : `Master <@${interaction.user.id}>, you and your Servant were already defeated and permanently eliminated from this Holy Grail War.\n\nDeceased Masters cannot launch ambushes. Wait for the active war to conclude or reset (\`/grailwar reset\`).`
+            ? `Civilian <@${interaction.user.id}>, you were slain as an innocent casualty earlier in this Holy Grail War.\n\nDeceased individuals cannot launch surprise ambushes or attack from beyond the grave. Wait for the active war to conclude or reset (\`/grailwar reset\`).\n\n🕊️ *Peaceful Chaldea activities (/daily, /summon, and /duel mode:free) remain open to you!*`
+            : `Master <@${interaction.user.id}>, you and your Servant were already defeated and permanently eliminated from this Holy Grail War.\n\nDeceased Masters cannot launch ambushes. Wait for the active war to conclude or reset (\`/grailwar reset\`).\n\n🕊️ *Peaceful Chaldea activities (/daily, /summon, and /duel mode:free) remain open to you!*`
         )
         .setColor(0xef4444);
       await interaction.editReply({ embeds: [deadEmbed] });
@@ -152,7 +158,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         ? res.targetMasterDiscordId 
         : (targetQuery.startsWith('<@') ? targetQuery.replace(/[<@!>]/g, '') : undefined);
       if (pingId) {
-        pingContent = `☠️ <@${pingId}> 💥 **COLLATERAL CASUALTY ALERT! You were caught in magecraft crossfire!**`;
+        pingContent = `☠️ <@${pingId}> 💥 **COLLATERAL CASUALTY ALERT! You were caught in magecraft crossfire!**\n> 🕊️ *Note: Casualties outside the war are recorded as in-war lore events. Your Chaldea profile, /daily, /summon, and /duel (free mode) remain completely unaffected!*`;
       }
     }
 

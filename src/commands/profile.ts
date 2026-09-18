@@ -98,6 +98,11 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
     churchStanding += ` *(⚠️ 💎 ${master.bountyRewardSq} SQ Bounty Active)*`;
   }
 
+  const isSafe = master.environmentMode === 'safe';
+  const envTag = isSafe
+    ? '🛡️ **Safe Mode** *(Protected: free battles, daily rewards, and gacha summoning active outside war elimination)*'
+    : '⚔️ **War Mode** *(Active Holy Grail War competitor)*';
+
   const embed = new EmbedBuilder()
     .setTitle(`👤 Master Dossier | ${master.username} [${standingTag}]`)
     .setDescription(
@@ -105,6 +110,7 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
       `💠 **Command Seals:** \`${'✦ '.repeat(seals)}${'✧ '.repeat(Math.max(0, 3 - seals))}\` (**${seals}/3**) | 💎 **${master.saintQuartz || 0} SQ** | 🎴 **${master.servants?.length || 1}** Servant(s)\n\n` +
       (lastMsg ? `📢 **Action Outcome:**\n${lastMsg}\n\n` : '') +
       `⚔️ **MASTER COMBAT RECORD & WAR STATUS:**\n` +
+      `• **Environment Mode:** ${envTag}\n` +
       `• **War Standing:** ${standingTag} [${isExposed ? '⚠️ **EXPOSED TO PUBLIC WAR BOARD**' : '🕶️ **Concealed in Shadows**'}]\n` +
       `• **Servant Kills:** 💀 **${kills}** Dissolved\n` +
       `• **Duel Record:** ⚔️ **${duelsWon}W - ${duelsLost}L** (${winRate}% Win Rate)\n` +
@@ -190,11 +196,12 @@ export function buildPublicProfileEmbed(master: any, war: any) {
   return embed;
 }
 
-export function buildProfileButtons(userParticipant: any, activeServantId?: string) {
+export function buildProfileButtons(userParticipant: any, activeServantId?: string, master?: any) {
   if (!userParticipant) return [];
   const currentWard = userParticipant?.boundedField || 'none';
   const autoEvade = userParticipant?.autoEvadeEnabled !== false;
   const healInfo = getHealingStatus(userParticipant);
+  const isSafe = master?.environmentMode === 'safe';
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -261,7 +268,11 @@ export function buildProfileButtons(userParticipant: any, activeServantId?: stri
       .setCustomId('btn_apikey_dashboard')
       .setLabel('BYOK API Key')
       .setEmoji('🔑')
-      .setStyle(ButtonStyle.Secondary)
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('profile_toggle_mode')
+      .setLabel(isSafe ? 'Mode: Safe 🛡️' : 'Mode: War ⚔️')
+      .setStyle(isSafe ? ButtonStyle.Success : ButtonStyle.Primary)
   );
 
   const channelSelectRow = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
@@ -300,7 +311,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
     const embed = buildProfileEmbed(master, war);
-    const buttons = buildProfileButtons(userParticipant, activeServant?.id);
+    const buttons = buildProfileButtons(userParticipant, activeServant?.id, master);
 
     await interaction.reply({
       embeds: [embed],
