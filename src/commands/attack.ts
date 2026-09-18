@@ -37,26 +37,22 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const war = getOrInitWarSession(master);
 
-    // If an attacker in Safe Mode initiates an attack, they are intentionally entering the Holy Grail War
-    if (master.environmentMode === 'safe') {
-      master.environmentMode = 'war';
-      await saveMaster(master);
-    }
-
-    // CRITICAL: Prevent dead civilians or eliminated Masters from attacking
-    const isSlainCiv = isUserSlainCivilianInWar(war, interaction.user.id, interaction.user.username);
     const attackerPart = war.participants[interaction.user.id] ||
       Object.values(war.participants).find(p => p.discordId === interaction.user.id);
 
-    if (isSlainCiv || (attackerPart && !attackerPart.isAlive)) {
+    // CRITICAL: Prevent players in Safe Mode from launching ambushes into an ongoing war
+    if (master.environmentMode === 'safe' || !attackerPart || !attackerPart.isAlive) {
+      const isSlainCiv = isUserSlainCivilianInWar(war, interaction.user.id, interaction.user.username);
       const deadEmbed = new EmbedBuilder()
-        .setTitle('☠️ DECEASED SOULS CANNOT AMBUSH')
+        .setTitle('🚫 CANNOT ATTACK — SAFE MODE ACTIVE')
         .setDescription(
           isSlainCiv
-            ? `Civilian <@${interaction.user.id}>, you were slain as an innocent casualty earlier in this Holy Grail War.\n\nDeceased individuals cannot launch surprise ambushes or attack from beyond the grave. Wait for the active war to conclude or reset (\`/grailwar reset\`).\n\n🕊️ *Peaceful Chaldea activities (/daily, /summon, and /duel mode:free) remain open to you!*`
-            : `Master <@${interaction.user.id}>, you and your Servant were already defeated and permanently eliminated from this Holy Grail War.\n\nDeceased Masters cannot launch ambushes. Wait for the active war to conclude or reset (\`/grailwar reset\`).\n\n🕊️ *Peaceful Chaldea activities (/daily, /summon, and /duel mode:free) remain open to you!*`
+            ? `Civilian <@${interaction.user.id}>, you were slain as an innocent casualty earlier in this Holy Grail War.\n\nDeceased individuals cannot launch surprise ambushes. Wait for the active war to conclude or reset (\`/grailwar reset\`).\n\n🕊️ *Peaceful Chaldea activities (/daily, /summon, and /duel mode:free) remain open to you!*`
+            : attackerPart && !attackerPart.isAlive
+              ? `Master <@${interaction.user.id}>, you were permanently eliminated (or voluntarily forfeited) from this Holy Grail War.\n\nEliminated Masters cannot launch ambushes into an ongoing war. Wait for the active war to conclude or reset (\`/grailwar reset\`).\n\n🕊️ *Peaceful Chaldea activities (/daily, /summon, and /duel mode:free) remain open to you!*`
+              : `Master <@${interaction.user.id}>, you are currently in **Safe Mode** outside the Holy Grail War.\n\n• 🚫 **Ongoing War Entry Locked:** You cannot join an ongoing Holy Grail War midway to launch ambushes.\n• 🕊️ **Safe Mode Active:** Use \`/duel mode:free\` to spar and duel any Master or AI safely without elimination risks!\n• ⏳ **Next Tournament:** To compete in the war bracket, enter when a new war cycle begins or upon an Overseer reset (\`/grailwar reset\`).`
         )
-        .setColor(0xef4444);
+        .setColor(0x38bdf8);
       await interaction.editReply({ embeds: [deadEmbed] });
       return;
     }

@@ -92,6 +92,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     let war = getOrInitWarSession(master);
     const userParticipant = war.participants[interaction.user.id];
+    if (master.environmentMode === 'safe') {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: '🛡️ You are currently in **Safe Mode** outside the Holy Grail War. Bounded Field traps and territorial magecraft are restricted to active war competitors.'
+      });
+      return;
+    }
     if (userParticipant && !userParticipant.isAlive) {
       await interaction.reply({
         flags: MessageFlags.Ephemeral,

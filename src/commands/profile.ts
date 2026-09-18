@@ -86,9 +86,20 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
   const totalDuels = duelsWon + duelsLost;
   const winRate = totalDuels > 0 ? Math.round((duelsWon / totalDuels) * 100) : 0;
 
+  const isSafe = master.environmentMode === 'safe';
   let standingTag = '🟢 Active Competitor';
-  if (!userParticipant.isAlive) {
-    standingTag = '💀 Dissolved Saint Graph';
+  if (isSafe) {
+    if (userParticipant && !userParticipant.isAlive && userParticipant.eliminatedReason === 'forfeited') {
+      standingTag = '🏳️ Forfeited / Safe Mode';
+    } else if (userParticipant && !userParticipant.isAlive) {
+      standingTag = '💀 Eliminated / Safe Mode';
+    } else {
+      standingTag = '🛡️ Safe Mode (Outside War)';
+    }
+  } else if (!userParticipant?.isAlive) {
+    standingTag = userParticipant?.eliminatedReason === 'forfeited'
+      ? '🏳️ Forfeited Competitor (Eliminated)'
+      : '💀 Dissolved Saint Graph (Eliminated)';
   } else if (isUnderSanctuary) {
     standingTag = '🕊️ Under Church Asylum';
   }
@@ -98,10 +109,9 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
     churchStanding += ` *(⚠️ 💎 ${master.bountyRewardSq} SQ Bounty Active)*`;
   }
 
-  const isSafe = master.environmentMode === 'safe';
   const envTag = isSafe
-    ? '🛡️ **Safe Mode** *(Protected: free battles, daily rewards, and gacha summoning active outside war elimination)*'
-    : '⚔️ **War Mode** *(Active Holy Grail War competitor)*';
+    ? '🛡️ **Safe Mode** *(Protected: free battles, daily rewards, and summoning active — zero war elimination risks)*'
+    : '⚔️ **War Mode** *(Active Holy Grail War competitor — tournament elimination active)*';
 
   const embed = new EmbedBuilder()
     .setTitle(`👤 Master Dossier | ${master.username} [${standingTag}]`)
@@ -202,6 +212,7 @@ export function buildProfileButtons(userParticipant: any, activeServantId?: stri
   const autoEvade = userParticipant?.autoEvadeEnabled !== false;
   const healInfo = getHealingStatus(userParticipant);
   const isSafe = master?.environmentMode === 'safe';
+  const isAliveInWar = !isSafe && userParticipant && userParticipant.isAlive;
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -271,8 +282,8 @@ export function buildProfileButtons(userParticipant: any, activeServantId?: stri
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('profile_toggle_mode')
-      .setLabel(isSafe ? 'Mode: Safe 🛡️' : 'Mode: War ⚔️')
-      .setStyle(isSafe ? ButtonStyle.Success : ButtonStyle.Primary)
+      .setLabel(isAliveInWar ? 'Quit War (Forfeit) 🏳️' : (isSafe ? 'Mode: Safe 🛡️ (Locked)' : 'Mode: Safe 🛡️'))
+      .setStyle(isAliveInWar ? ButtonStyle.Danger : ButtonStyle.Secondary)
   );
 
   const channelSelectRow = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(

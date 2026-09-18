@@ -557,7 +557,22 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
     return globalWarSession;
   }
 
-  // Player is a NEW real Master entering the war: Add them directly to participants!
+  // If Master is in Safe Mode (or uninitialized), DO NOT enroll them into an active Holy Grail War!
+  if (master.environmentMode === 'safe' || !master.environmentMode) {
+    return globalWarSession;
+  }
+
+  // Master is in War Mode: check if an ongoing war prohibits late entry
+  const participantCount = Object.keys(globalWarSession.participants).length;
+  const isOngoing = participantCount >= 7 || (globalWarSession.eventLogs || []).some(e => e.type === 'clash');
+
+  if (isOngoing) {
+    // Cannot join an ongoing war
+    master.environmentMode = 'safe';
+    return globalWarSession;
+  }
+
+  // Open tournament registration: Enroll new Master
   globalWarSession.participants[master.discordId] = {
     discordId: master.discordId,
     username: master.username,
@@ -585,6 +600,82 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
 
   saveWarToDisk();
   return globalWarSession;
+}
+
+/**
+ * Voluntarily surrenders and forfeits standing in the Holy Grail War.
+ * Permanently eliminates the Master from the active war cycle and places them in Safe Mode.
+ */
+export function forfeitWar(
+  master: MasterProfile,
+  war?: HolyGrailWarSession
+): { success: boolean; message: string; war: HolyGrailWarSession } {
+  const targetWar = war || globalWarSession || getOrInitWarSession(master);
+  master.environmentMode = 'safe';
+
+  const p = targetWar.participants[master.discordId] ||
+    Object.values(targetWar.participants).find(x => x.discordId === master.discordId);
+
+  if (p && p.isAlive) {
+    p.isAlive = false;
+    p.currentHp = 0;
+    p.eliminatedReason = 'forfeited';
+    p.isExposed = true;
+
+    targetWar.eventLogs.unshift({
+      id: `evt_forfeit_${Date.now()}`,
+      timestamp: Date.now(),
+      text: `🏳️ Master **${master.username}** has voluntarily surrendered and forfeited from the Holy Grail War into Safe Mode! (Master Permanently Eliminated)`,
+      type: 'clash'
+    });
+    saveWarToDisk();
+  }
+
+  return {
+    success: true,
+    message: `🏳️ **WAR FORFEITED — SAFE MODE ACTIVATED!**\n\nYou have voluntarily surrendered and withdrawn from the Holy Grail War. You are now permanently eliminated from the current tournament and placed in **Safe Mode**.\n\n• 🚫 **Cannot Rejoin Ongoing War:** Entry into the current war is now closed to you until the next tournament begins.\n• 🕊️ **Safe Mode Active:** Daily rewards (\`/daily\`), summoning (\`/summon\`), and friendly free duels (\`/duel mode:free\`) remain completely open without elimination risks!`,
+    war: targetWar
+  };
+}
+
+/**
+ * Attempts to join an active Holy Grail War.
+ * Prohibits late entry if an active war tournament is currently ongoing.
+ */
+export function attemptJoinWar(
+  master: MasterProfile,
+  war?: HolyGrailWarSession
+): { success: boolean; message: string; war: HolyGrailWarSession } {
+  const targetWar = war || globalWarSession || getOrInitWarSession(master);
+
+  const existingP = targetWar.participants[master.discordId] ||
+    Object.values(targetWar.participants).find(x => x.discordId === master.discordId);
+
+  // If previously eliminated or forfeited in this war
+  if (existingP && !existingP.isAlive) {
+    return {
+      success: false,
+      message: `🚫 **CANNOT REJOIN ONGOING WAR — ELIMINATED**\n\nYou were previously eliminated from this Holy Grail War cycle (or voluntarily forfeited). Church regulations strictly prohibit re-entering an active war.\n\n• ⏳ **Next Tournament:** You must wait for the current war to conclude or be reset by an Overseer (\`/grailwar reset\`) to compete again.\n• 🕊️ **Safe Mode Active:** Peaceful Chaldea features (\`/daily\`, \`/summon\`, \`/duel mode:free\`) remain fully open!`,
+      war: targetWar
+    };
+  }
+
+  // Check if war is active and ongoing with participants
+  const isWarOngoing = targetWar && targetWar.status === 'active' && Object.keys(targetWar.participants).length > 0;
+  if (isWarOngoing && (!existingP || !existingP.isAlive)) {
+    return {
+      success: false,
+      message: `🚫 **CANNOT JOIN ONGOING HOLY GRAIL WAR**\n\nAn active Holy Grail War is currently underway with active competitors. Church rules strictly prohibit joining an ongoing war midway to preserve tournament integrity.\n\n• ⏳ **Next Tournament:** Wait for the active war to conclude or be reset by an Overseer (\`/grailwar reset\`) to participate in the next war cycle.\n• 🕊️ **Safe Mode Active:** You remain in **Safe Mode**, where your Servants, daily login bonuses, and free battle duels are always available!`,
+      war: targetWar
+    };
+  }
+
+  master.environmentMode = 'war';
+  return {
+    success: true,
+    message: `⚔️ **WAR MODE ACTIVATED!** You are an active competitor in the Holy Grail War!`,
+    war: targetWar
+  };
 }
 
 export function getActiveWarSession(): HolyGrailWarSession | null {
@@ -635,7 +726,8 @@ export type WarActionType =
   | 'patrol_city'
   | 'expose_master'
   | 'set_ward'
-  | 'toggle_evade';
+  | 'toggle_evade'
+  | 'forfeit';
 
 export interface WarActionResult {
   success: boolean;
@@ -2414,6 +2506,16 @@ export function executeWarAction(
 
     case 'simulate_skirmish': {
       return simulateWarSkirmish(targetWar);
+    }
+
+    case 'forfeit': {
+      actor.isAlive = false;
+      actor.currentHp = 0;
+      actor.eliminatedReason = 'forfeited';
+      actor.isExposed = true;
+      eliminatedId = actor.discordId;
+      resultMsg = `🏳️ Master **${actor.username}** has voluntarily surrendered and forfeited from the Holy Grail War! (Eliminated into Safe Mode)`;
+      break;
     }
   }
 

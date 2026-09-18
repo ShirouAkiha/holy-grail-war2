@@ -96,7 +96,9 @@ import {
   checkAndTriggerChannelTraps,
   calculateServantMaxHp,
   exposeMasterInWar,
-  handleMasterReleaseInWar
+  handleMasterReleaseInWar,
+  forfeitWar,
+  attemptJoinWar
 } from './engine/grailwar';
 
 // ==========================================
@@ -1554,12 +1556,18 @@ client.on(Events.InteractionCreate, async interaction => {
           master.autoConsumeCommandSeal = newMode === 'on';
           await saveMaster(master);
         } else if (btnId === 'profile_toggle_mode') {
-          const newEnv = master.environmentMode === 'safe' ? 'war' : 'safe';
-          master.environmentMode = newEnv;
-          await saveMaster(master);
-          msg = newEnv === 'safe'
-            ? '🛡️ **Environment Mode: SAFE MODE ACTIVATED!** You are now protected outside active war elimination risks (daily rewards, summons, and free battles enabled).'
-            : '⚔️ **Environment Mode: WAR MODE ACTIVATED!** You are now an active Holy Grail War competitor!';
+          const curP = war.participants[interaction.user.id];
+          if (master.environmentMode === 'war' && curP && curP.isAlive) {
+            const forfeitRes = forfeitWar(master, war);
+            war = forfeitRes.war;
+            msg = forfeitRes.message;
+            await saveMaster(master);
+          } else {
+            const joinRes = attemptJoinWar(master, war);
+            war = joinRes.war;
+            msg = joinRes.message;
+            await saveMaster(master);
+          }
         } else if (btnId === 'profile_heal') {
           const res = executeWarAction(war, interaction.user.id, 'rest_and_heal');
           war = res.updatedWar;

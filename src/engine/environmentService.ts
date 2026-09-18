@@ -111,3 +111,5 @@ export function isLoreVictimOnly(
     return matchId || matchName;
   });
 }
+
+export { forfeitWar, attemptJoinWar } from './grailwar';

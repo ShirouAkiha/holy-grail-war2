@@ -241,7 +241,9 @@ export async function buildGrailWarHub(
         const statusIcon = m.isAlive ? (isRevealed ? '🟢' : '🕶️') : '💀';
         const nameLabel = isRevealed ? m.username : `Shadow Master #${slotIdx + 1}`;
         const servantLabel = isRevealed ? `${m.servantName} (${m.servantClass})` : '[Classified in Shadows]';
-        const exposureTag = m.isExposed ? ' `[EXPOSED]`' : (!m.isAlive ? ' `[FALLEN]`' : '');
+        const exposureTag = m.eliminatedReason === 'forfeited'
+          ? ' `[FORFEITED]`'
+          : (m.isExposed ? ' `[EXPOSED]`' : (!m.isAlive ? ' `[FALLEN]`' : ''));
         const curHp = calculateCurrentHp(m);
         const killInfo = `Kills: **${m.kills || 0}**${m.innocentKills ? ` (${m.innocentKills} Civilians ☠️)` : ''}`;
         rosterLines.push(`${statusIcon} **${nameLabel}**${exposureTag} — Servant: *${servantLabel}* | HP: \`${curHp.toLocaleString()}/${m.maxHp.toLocaleString()}\` | ${killInfo}`);
