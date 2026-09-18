@@ -56,7 +56,7 @@ import {
   triggerAdminCataclysm,
   refillAllWarParticipantsSeals
 } from '../engine/grailwar';
-import { startWarRecruitment, igniteWarFromRecruitment } from '../engine/warRecruitmentService';
+import { startWarRecruitment, igniteWarFromRecruitment, cancelRecruitmentCall } from '../engine/warRecruitmentService';
 import { WarRules, MasterProfile } from '../types';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
@@ -1357,9 +1357,9 @@ export function buildAdminHub(
         (isCallActive 
           ? `🟢 **CURRENT ACTIVE RECRUITMENT CALL:**\n` +
             `• Channel: ${activeCh} | Applicants: **${war.recruitmentCall?.applicantIds.length || 0} Magi**\n` +
-            `• Deadline: ${activeTime}\n\n`
-          : `⚪ **Status:** No proclamation currently active.\n\n`) +
-        `*Select a channel below to immediately post the Holy Grail War announcement:*`
+            `• Deadline: ${activeTime}\n\n` +
+            `⚠️ *An announcement card is already active in ${activeCh}. To prevent duplicate cards, use **Ignite**, **Cancel**, or **Replace & Broadcast** below.*\n`
+          : `⚪ **Status:** No proclamation currently active.\n\n*Select a channel or click [Post] below to issue the proclamation:*`)
       )
       .setColor(0xb91c1c)
       .setFooter({ text: 'Admin Suite • Holy Grail War Proclamation Dispatcher' });
@@ -1679,14 +1679,17 @@ export function buildAdminHub(
     );
 
     // 4. Action & Navigation Buttons
-    const executionButtons: ButtonBuilder[] = [
-      new ButtonBuilder().setCustomId('admin_war_announce_post_current').setLabel('Post in Current Channel').setEmoji('📢').setStyle(ButtonStyle.Success)
-    ];
+    const executionButtons: ButtonBuilder[] = [];
 
     if (isCallActive) {
       executionButtons.push(
         new ButtonBuilder().setCustomId('admin_war_announce_force_ignite').setLabel('Ignite War Now').setEmoji('⚡').setStyle(ButtonStyle.Danger),
-        new ButtonBuilder().setCustomId('admin_war_announce_cancel').setLabel('Cancel Call').setEmoji('❌').setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId('admin_war_announce_cancel').setLabel('Cancel Call').setEmoji('❌').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('admin_war_announce_force_replace').setLabel('Replace & Broadcast').setEmoji('🔄').setStyle(ButtonStyle.Primary)
+      );
+    } else {
+      executionButtons.push(
+        new ButtonBuilder().setCustomId('admin_war_announce_post_current').setLabel('Post Proclamation').setEmoji('📢').setStyle(ButtonStyle.Success)
       );
     }
 
@@ -1929,31 +1932,39 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       const selectedChanId = (interaction as any).values?.[0];
       if (selectedChanId) {
         adminAnnounceDraft.targetChannelId = selectedChanId;
-        let targetChan: any = null;
-        try {
-          targetChan = interaction.guild?.channels.cache.get(selectedChanId) || await interaction.client.channels.fetch(selectedChanId);
-        } catch {
-          targetChan = null;
-        }
-
-        if (targetChan && typeof targetChan.send === 'function') {
-          const res = await startWarRecruitment(interaction.client, targetChan, interaction.user, {
-            durationMinutes: adminAnnounceDraft.durationMinutes,
-            maxSlots: adminAnnounceDraft.maxSlots,
-            presetKey: adminAnnounceDraft.presetKey
-          });
-
-          if (res.success) {
-            actionOutcome = `✅ **Holy Grail War Recruitment Broadcasted to <#${selectedChanId}>!**\n\n` +
-              `• **Target Channel:** <#${selectedChanId}>\n` +
-              `• **Format:** \`${WAR_PRESETS[adminAnnounceDraft.presetKey]?.formatName || 'Fuyuki 7'}\` (${adminAnnounceDraft.maxSlots} Max Masters)\n` +
-              `• **Timer:** ${adminAnnounceDraft.durationMinutes > 0 ? `\`${adminAnnounceDraft.durationMinutes} Minutes\`` : '`Manual Start`'}\n` +
-              `• **Secrecy:** Magi can now safely click to enroll with complete anonymity!`;
-          } else {
-            actionOutcome = `❌ **Recruitment Dispatch Failed:** ${res.message}`;
-          }
+        const war = getOrInitWarSession();
+        if (war.recruitmentCall && war.recruitmentCall.active) {
+          const activeCh = war.recruitmentCall.channelId ? `<#${war.recruitmentCall.channelId}>` : 'another channel';
+          actionOutcome = `🎯 Target channel set to <#${selectedChanId}>.\n\n` +
+            `⚠️ **An active recruitment drive is already ongoing in ${activeCh} (${war.recruitmentCall.applicantIds.length} applicants).**\n` +
+            `Click **[Replace & Broadcast]** below if you wish to cancel the old proclamation and dispatch the new one to <#${selectedChanId}>.`;
         } else {
-          actionOutcome = `❌ Selected channel <#${selectedChanId}> is not accessible or lacks send permissions.`;
+          let targetChan: any = null;
+          try {
+            targetChan = interaction.guild?.channels.cache.get(selectedChanId) || await interaction.client.channels.fetch(selectedChanId);
+          } catch {
+            targetChan = null;
+          }
+
+          if (targetChan && typeof targetChan.send === 'function') {
+            const res = await startWarRecruitment(interaction.client, targetChan, interaction.user, {
+              durationMinutes: adminAnnounceDraft.durationMinutes,
+              maxSlots: adminAnnounceDraft.maxSlots,
+              presetKey: adminAnnounceDraft.presetKey
+            });
+
+            if (res.success) {
+              actionOutcome = `✅ **Holy Grail War Recruitment Broadcasted to <#${selectedChanId}>!**\n\n` +
+                `• **Target Channel:** <#${selectedChanId}>\n` +
+                `• **Format:** \`${WAR_PRESETS[adminAnnounceDraft.presetKey]?.formatName || 'Fuyuki 7'}\` (${adminAnnounceDraft.maxSlots} Max Masters)\n` +
+                `• **Timer:** ${adminAnnounceDraft.durationMinutes > 0 ? `\`${adminAnnounceDraft.durationMinutes} Minutes\`` : '`Manual Start`'}\n` +
+                `• **Secrecy:** Magi can now safely click to enroll with complete anonymity!`;
+            } else {
+              actionOutcome = `❌ **Recruitment Dispatch Failed:** ${res.message}`;
+            }
+          } else {
+            actionOutcome = `❌ Selected channel <#${selectedChanId}> is not accessible or lacks send permissions.`;
+          }
         }
       }
     } else if (customId === 'admin_war_announce_post_current') {
@@ -1980,10 +1991,40 @@ export async function handleAdminGlobalInteraction(interaction: any) {
             `• **Capacity:** ${adminAnnounceDraft.maxSlots} Masters\n` +
             `• **Secrecy:** Magi enrollment is completely anonymous.`;
         } else {
-          actionOutcome = `❌ **Recruitment Dispatch Failed:** ${res.message}`;
+          actionOutcome = `❌ **Recruitment Dispatch Blocked:** ${res.message}`;
         }
       } else {
         actionOutcome = `❌ Current channel cannot receive messages.`;
+      }
+    } else if (customId === 'admin_war_announce_force_replace') {
+      currentCategory = 'war_announce';
+      const targetChanId = adminAnnounceDraft.targetChannelId || interaction.channelId;
+      let targetChan: any = null;
+      try {
+        targetChan = interaction.guild?.channels.cache.get(targetChanId) || await interaction.client.channels.fetch(targetChanId) || interaction.channel;
+      } catch {
+        targetChan = interaction.channel;
+      }
+
+      if (targetChan && typeof targetChan.send === 'function') {
+        const res = await startWarRecruitment(interaction.client, targetChan, interaction.user, {
+          durationMinutes: adminAnnounceDraft.durationMinutes,
+          maxSlots: adminAnnounceDraft.maxSlots,
+          presetKey: adminAnnounceDraft.presetKey,
+          forceRestart: true
+        });
+
+        if (res.success) {
+          actionOutcome = `✅ **Previous Call Cancelled & New Proclamation Broadcasted to <#${targetChan.id}>!**\n\n` +
+            `• **Channel:** <#${targetChan.id}>\n` +
+            `• **Timer:** ${adminAnnounceDraft.durationMinutes > 0 ? `${adminAnnounceDraft.durationMinutes} Minutes` : 'Manual Start'}\n` +
+            `• **Capacity:** ${adminAnnounceDraft.maxSlots} Masters\n` +
+            `• **Clean Transition:** The previous proclamation card was safely cancelled.`;
+        } else {
+          actionOutcome = `❌ **Recruitment Dispatch Failed:** ${res.message}`;
+        }
+      } else {
+        actionOutcome = `❌ Target channel is not accessible or lacks permissions.`;
       }
     } else if (customId.startsWith('admin_war_timer_')) {
       currentCategory = 'war_announce';
@@ -2004,12 +2045,8 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       currentCategory = 'war';
     } else if (customId === 'admin_war_announce_cancel') {
       currentCategory = 'war_announce';
-      const war = getOrInitWarSession();
-      if (war.recruitmentCall) {
-        war.recruitmentCall.active = false;
-      }
-      saveWarToDisk();
-      actionOutcome = `❌ **Holy Grail War recruitment proclamation cancelled.**`;
+      const res = await cancelRecruitmentCall(interaction.client, interaction.user.username);
+      actionOutcome = res.message;
     }
 
     // WAR PRESETS

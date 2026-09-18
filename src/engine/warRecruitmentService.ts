@@ -126,9 +126,25 @@ export async function startWarRecruitment(
     durationMinutes: number;
     maxSlots: number;
     presetKey?: string;
+    forceRestart?: boolean;
   }
 ): Promise<{ success: boolean; message: string; recruitment?: WarRecruitmentCall }> {
   const war = getOrInitWarSession();
+
+  // Check if an existing recruitment is already active
+  if (war.recruitmentCall && war.recruitmentCall.active) {
+    if (!options.forceRestart) {
+      const activeCh = war.recruitmentCall.channelId ? `<#${war.recruitmentCall.channelId}>` : 'another channel';
+      return {
+        success: false,
+        message: `An active Holy Grail War recruitment is already underway in ${activeCh} with **${war.recruitmentCall.applicantIds.length} Magi** registered.\nPlease cancel or ignite the current recruitment first, or select 'Replace & Broadcast' to supersede it.`
+      };
+    }
+
+    // Cleanly cancel and strip components from the old announcement message before creating a new one
+    await cancelRecruitmentCall(client, adminUser.username);
+  }
+
   const presetKey = options.presetKey || 'fuyuki_7';
   const durationMs = options.durationMinutes > 0 ? options.durationMinutes * 60 * 1000 : 0;
   const startedAt = Date.now();
@@ -190,6 +206,57 @@ export async function startWarRecruitment(
     message: `📢 **Holy Grail War Recruitment Proclamation Issued!**\n\n• **Duration:** ${options.durationMinutes > 0 ? `${options.durationMinutes} minutes` : 'Indefinite (Manual Start)'}\n• **Capacity Limit:** **${recruitment.maxSlots} Masters**\n• **Format:** ${WAR_PRESETS[presetKey]?.formatName || 'Canonical 5th Fuyuki War'}\n• **Channel:** <#${channel.id}>`,
     recruitment
   };
+}
+
+/**
+ * Cleanly cancels any active Holy Grail War recruitment call and strips interactive components from the message.
+ */
+export async function cancelRecruitmentCall(
+  client: Client,
+  cancelledBy?: string
+): Promise<{ success: boolean; message: string }> {
+  const war = getOrInitWarSession();
+  const recruitment = war.recruitmentCall;
+
+  if (!recruitment || !recruitment.active) {
+    return { success: false, message: 'No active Holy Grail War recruitment call found.' };
+  }
+
+  const oldChannelId = recruitment.channelId;
+  const oldMessageId = recruitment.messageId;
+
+  recruitment.active = false;
+  war.recruitmentCall = undefined;
+  saveWarToDisk();
+
+  if (activeRecruitmentTimer) {
+    clearTimeout(activeRecruitmentTimer);
+    activeRecruitmentTimer = null;
+  }
+
+  // Update previous announcement embed to CANCELLED and remove all buttons
+  if (oldMessageId && oldChannelId && client) {
+    try {
+      const channel: any = await client.channels.fetch(oldChannelId).catch(() => null);
+      if (channel && typeof channel.messages?.fetch === 'function') {
+        const msg = await channel.messages.fetch(oldMessageId).catch(() => null);
+        if (msg) {
+          const cancelEmbed = new EmbedBuilder()
+            .setTitle('❌ FUYUKI CHURCH: GRAIL RECRUITMENT CANCELLED')
+            .setDescription(
+              `The Holy Grail War recruitment call has been cancelled by Overseer ${cancelledBy ? `**${cancelledBy}**` : 'Father Kotomine'}.\nAll inscribed magi remain in Sanctuary Safe Mode.`
+            )
+            .setColor(0x64748b)
+            .setTimestamp();
+          await msg.edit({ embeds: [cancelEmbed], components: [] }).catch(() => null);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to clean up cancelled recruitment message:', err);
+    }
+  }
+
+  return { success: true, message: '🛑 Holy Grail War recruitment proclamation successfully cancelled.' };
 }
 
 /**
