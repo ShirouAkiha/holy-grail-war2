@@ -26,7 +26,7 @@ import { addBondExpToServant } from '../../lib/engine/bondEvents';
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
 // ==========================================
-// Allows a Master to challenge either a human player via `@Master` or an AI Shadow Servant.
+// Allows a Master to challenge real human players via @Master in 1v1, 2v2 Tag-Team, or 1v2 Raid.
 export const data = new SlashCommandBuilder()
   .setName('duel')
   .setDescription('Engage in a turn-based tactical Fate battle (1v1, 2v2 Alliance, 1v2 Raid, or Force Join)')
@@ -45,19 +45,19 @@ export const data = new SlashCommandBuilder()
   .addUserOption(option =>
     option
       .setName('opponent')
-      .setDescription('Primary target Master to duel (leave empty to challenge AI Shadow Master)')
+      .setDescription('Primary target Master to duel (or leave empty in 1v1 to duel an available living Master)')
       .setRequired(false)
   )
   .addUserOption(option =>
     option
       .setName('ally')
-      .setDescription('Allied Master for 2v2 Alliance Tag-Team (leave empty for Shadow Ally)')
+      .setDescription('Allied Master for 2v2 Alliance Tag-Team')
       .setRequired(false)
   )
   .addUserOption(option =>
     option
       .setName('opponent2')
-      .setDescription('Second Opponent Master for 2v2 or 1v2 Raid (leave empty for Shadow Rival)')
+      .setDescription('Second Opponent Master for 2v2 or 1v2 Raid')
       .setRequired(false)
   );
 
@@ -1911,162 +1911,129 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     // BRANCH 0: 2v2 ALLIANCE TAG-TEAM OR 1v2 RAID MODE
     if (mode === '2v2' || mode === '1v2') {
       const is2v2 = mode === '2v2';
-      let opponentMaster: MasterProfile;
-      let opponentServant: any;
 
-      if (opponentUser && !opponentUser.bot && opponentUser.id !== interaction.user.id) {
-        opponentMaster = await getOrCreateMaster(opponentUser.id, opponentUser.username);
-        opponentServant = opponentMaster.servants?.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants?.[0];
+      if (is2v2) {
+        if (!allyUser || !opponentUser || !opponent2User) {
+          await interaction.reply({
+            content: '❌ **2v2 Alliance Tag-Team requires 4 real Masters!**\nPlease specify all participants using the command options:\n• `ally`: your allied partner (@Master)\n• `opponent`: 1st rival Master (@Master)\n• `opponent2`: 2nd rival Master (@Master)',
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        if (allyUser.bot || opponentUser.bot || opponent2User.bot) {
+          await interaction.reply({
+            content: '❌ **Bots cannot participate in Holy Grail War duels!** All combatants must be real Discord Masters.',
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        const distinctUsers = new Set([interaction.user.id, allyUser.id, opponentUser.id, opponent2User.id]);
+        if (distinctUsers.size !== 4) {
+          await interaction.reply({
+            content: '❌ **All 4 participants in a 2v2 Tag-Team duel must be distinct Masters!** You cannot invite yourself or select the same Master more than once.',
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
       } else {
-        opponentMaster = {
-          id: 'master_ai_shadow_kirei',
-          discordId: 'ai_shadow_kirei',
-          username: 'Shadow Magus Kirei',
-          avatarUrl: '',
-          commandSeals: 3,
-          saintQuartz: 0,
-          summonTickets: 0,
-          actionPoints: 100,
-          maxActionPoints: 100,
-          pityCount: 0,
-          grailWarWins: 0,
-          reputationRank: 'Honorable Magus',
-          servants: [],
-          craftEssences: []
-        };
-        const oppTemplate = SERVANT_DATABASE.find(s => s.id === 'servant_lancer_cuchulainn') || SERVANT_DATABASE[1] || SERVANT_DATABASE[0];
-        opponentServant = {
-          id: 'shadow_cu',
-          masterId: opponentMaster.id,
-          templateId: oppTemplate.id,
-          template: oppTemplate,
-          level: 70,
-          experience: 0,
-          bondLevel: 5,
-          currentHp: oppTemplate.baseHp || 28000,
-          allocatedStats: { strength: 15, endurance: 15, agility: 20, mana: 10, luck: 10 },
-          availableStatPoints: 0,
-          skillLevels: [6, 6, 6],
-          customQuotes: {}
-        };
+        // 1v2 Raid Survival: 1 solo Challenger vs 2 Opponents
+        if (!opponentUser || !opponent2User) {
+          await interaction.reply({
+            content: '❌ **1v2 Raid Survival requires 2 real rival Masters to face!**\nPlease specify both opponents using the command options:\n• `opponent`: 1st rival Master (@Master)\n• `opponent2`: 2nd rival Master (@Master)',
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        if (opponentUser.bot || opponent2User.bot) {
+          await interaction.reply({
+            content: '❌ **Bots cannot participate in Holy Grail War duels!** All combatants must be real Discord Masters.',
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        if (opponentUser.id === interaction.user.id || opponent2User.id === interaction.user.id || opponentUser.id === opponent2User.id) {
+          await interaction.reply({
+            content: '❌ **All 3 participants in a 1v2 Raid duel must be distinct Masters!** You cannot duel yourself or select the same opponent twice.',
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
       }
 
+      // Check participants' deceased status in current Grail War session
+      const checkDeceased = (uid: string) => {
+        const part = warSession.participants[uid];
+        return part && !part.isAlive;
+      };
+
+      if (checkDeceased(opponentUser.id)) {
+        await interaction.reply({ content: `☠️ Master <@${opponentUser.id}> has already been slain in this Holy Grail War!`, flags: MessageFlags.Ephemeral });
+        return;
+      }
+      if (checkDeceased(opponent2User.id)) {
+        await interaction.reply({ content: `☠️ Master <@${opponent2User.id}> has already been slain in this Holy Grail War!`, flags: MessageFlags.Ephemeral });
+        return;
+      }
+      if (is2v2 && allyUser && checkDeceased(allyUser.id)) {
+        await interaction.reply({ content: `☠️ Master <@${allyUser.id}> has already been slain in this Holy Grail War!`, flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      // Resolve profiles and servants
+      const opponentMaster = await getOrCreateMaster(opponentUser.id, opponentUser.username);
+      const opponentServant = opponentMaster.servants?.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants?.[0];
       if (!opponentServant) {
-        const oppTemplate = SERVANT_DATABASE.find(s => s.id === 'servant_lancer_cuchulainn') || SERVANT_DATABASE[0];
-        opponentServant = {
-          id: 'shadow_servant',
-          masterId: opponentMaster.id,
-          templateId: oppTemplate.id,
-          template: oppTemplate,
-          level: 70,
-          experience: 0,
-          bondLevel: 5,
-          currentHp: oppTemplate.baseHp || 28000,
-          allocatedStats: { strength: 15, endurance: 15, agility: 20, mana: 10, luck: 10 },
-          availableStatPoints: 0,
-          skillLevels: [6, 6, 6],
-          customQuotes: {}
-        };
+        await interaction.reply({
+          content: `❌ Rival Master <@${opponentUser.id}> has not summoned a Servant yet! All participants must have an active Servant.`,
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+
+      const p2AllyMaster = await getOrCreateMaster(opponent2User.id, opponent2User.username);
+      const opp2Servant = p2AllyMaster.servants?.find(s => s.id === p2AllyMaster.activeServantId) || p2AllyMaster.servants?.[0];
+      if (!opp2Servant) {
+        await interaction.reply({
+          content: `❌ Rival Master <@${opponent2User.id}> has not summoned a Servant yet! All participants must have an active Servant.`,
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+
+      let p1AllyMaster: MasterProfile | null = null;
+      let p1Ally: DuelCombatant | undefined = undefined;
+
+      if (is2v2 && allyUser) {
+        const allyMaster = await getOrCreateMaster(allyUser.id, allyUser.username);
+        p1AllyMaster = allyMaster;
+        const allyServant = allyMaster.servants?.find(s => s.id === allyMaster.activeServantId) || allyMaster.servants?.[0];
+        if (!allyServant) {
+          await interaction.reply({
+            content: `❌ Allied Master <@${allyUser.id}> has not summoned a Servant yet! All participants must have an active Servant.`,
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+        const allyPart = warSession.participants[allyMaster.discordId];
+        const allyHp = allyPart ? calculateCurrentHp(allyPart) : undefined;
+        p1Ally = createCombatant(allyMaster, allyServant, false, allyHp);
       }
 
       const p1Part = warSession.participants[challengerMaster.discordId];
       const p1Hp = p1Part ? calculateCurrentHp(p1Part) : undefined;
       const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp);
 
-      const p2Part = opponentMaster.discordId.startsWith('ai_') ? null : warSession.participants[opponentMaster.discordId];
+      const p2Part = warSession.participants[opponentMaster.discordId];
       const p2Hp = p2Part ? calculateCurrentHp(p2Part) : undefined;
-      const p2 = createCombatant(opponentMaster, opponentServant, opponentMaster.discordId.startsWith('ai_'), p2Hp);
+      const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp);
 
-      let p1Ally: DuelCombatant | undefined;
-      let p1AllyMaster: MasterProfile | null = null;
-      let p2Ally: DuelCombatant | undefined;
-      let p2AllyMaster: MasterProfile | null = null;
-
-      if (allyUser && !allyUser.bot && allyUser.id !== interaction.user.id) {
-        p1AllyMaster = await getOrCreateMaster(allyUser.id, allyUser.username);
-        const allyServant = p1AllyMaster.servants?.find(s => s.id === p1AllyMaster!.activeServantId) || p1AllyMaster.servants?.[0];
-        if (allyServant) {
-          const allyPart = warSession.participants[p1AllyMaster.discordId];
-          const allyHp = allyPart ? calculateCurrentHp(allyPart) : undefined;
-          p1Ally = createCombatant(p1AllyMaster, allyServant, false, allyHp);
-        }
-      } else if (is2v2) {
-        p1AllyMaster = {
-          id: 'master_ai_shadow_rin',
-          discordId: 'ai_shadow_rin',
-          username: 'Shadow Magus Rin',
-          avatarUrl: '',
-          commandSeals: 3,
-          saintQuartz: 0,
-          summonTickets: 0,
-          actionPoints: 100,
-          maxActionPoints: 100,
-          pityCount: 0,
-          grailWarWins: 0,
-          reputationRank: 'Honorable Magus',
-          servants: [],
-          craftEssences: []
-        };
-        const allyTpl = SERVANT_DATABASE.find(s => s.id === 'servant_archer_emiya') || SERVANT_DATABASE[0];
-        const allySrv: MasterServantInstance = {
-          id: 'shadow_archer',
-          masterId: p1AllyMaster.id,
-          templateId: allyTpl.id,
-          template: allyTpl,
-          level: 70,
-          experience: 0,
-          bondLevel: 5,
-          currentHp: allyTpl.baseHp || 26000,
-          allocatedStats: { strength: 15, endurance: 15, agility: 15, mana: 15, luck: 10 },
-          availableStatPoints: 0,
-          skillLevels: [6, 6, 6],
-          customQuotes: {}
-        };
-        p1Ally = createCombatant(p1AllyMaster, allySrv, true);
-      }
-
-      if (opponent2User && !opponent2User.bot && opponent2User.id !== interaction.user.id) {
-        p2AllyMaster = await getOrCreateMaster(opponent2User.id, opponent2User.username);
-        const opp2Servant = p2AllyMaster.servants?.find(s => s.id === p2AllyMaster!.activeServantId) || p2AllyMaster.servants?.[0];
-        if (opp2Servant) {
-          const opp2Part = warSession.participants[p2AllyMaster.discordId];
-          const opp2Hp = opp2Part ? calculateCurrentHp(opp2Part) : undefined;
-          p2Ally = createCombatant(p2AllyMaster, opp2Servant, false, opp2Hp);
-        }
-      } else {
-        p2AllyMaster = {
-          id: 'master_ai_shadow_sakura',
-          discordId: 'ai_shadow_sakura',
-          username: 'Shadow Magus Sakura',
-          avatarUrl: '',
-          commandSeals: 3,
-          saintQuartz: 0,
-          summonTickets: 0,
-          actionPoints: 100,
-          maxActionPoints: 100,
-          pityCount: 0,
-          grailWarWins: 0,
-          reputationRank: 'Honorable Magus',
-          servants: [],
-          craftEssences: []
-        };
-        const opp2Tpl = SERVANT_DATABASE.find(s => s.id === 'servant_rider_medusa') || SERVANT_DATABASE[2] || SERVANT_DATABASE[0];
-        const opp2Srv: MasterServantInstance = {
-          id: 'shadow_rider',
-          masterId: p2AllyMaster.id,
-          templateId: opp2Tpl.id,
-          template: opp2Tpl,
-          level: 70,
-          experience: 0,
-          bondLevel: 5,
-          currentHp: opp2Tpl.baseHp || 25000,
-          allocatedStats: { strength: 15, endurance: 15, agility: 20, mana: 10, luck: 10 },
-          availableStatPoints: 0,
-          skillLevels: [6, 6, 6],
-          customQuotes: {}
-        };
-        p2Ally = createCombatant(p2AllyMaster, opp2Srv, true);
-      }
+      const opp2Part = warSession.participants[p2AllyMaster.discordId];
+      const opp2Hp = opp2Part ? calculateCurrentHp(opp2Part) : undefined;
+      const p2Ally = createCombatant(p2AllyMaster, opp2Servant, false, opp2Hp);
 
       if (is2v2) {
         p1.critStars = 25;
@@ -2077,35 +2044,24 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           value: 15,
           remainingTurns: 3
         });
+      } else {
+        // 1v2 Raid Survival solo challenger bonus
+        p1.critStars = 30;
+        p1.activeBuffs = p1.activeBuffs || [];
+        p1.activeBuffs.push({
+          name: '1v2 Raid Fortitude',
+          type: 'buff_atk',
+          value: 20,
+          remainingTurns: 3
+        });
       }
 
       // Collect required human confirmations
       const invitedHumans = new Map<string, { user: User; role: string; accepted: boolean }>();
-      if (opponentUser && !opponentUser.bot && opponentUser.id !== interaction.user.id) {
-        invitedHumans.set(opponentUser.id, { user: opponentUser, role: 'Opponent Master', accepted: false });
-      }
-      if (allyUser && !allyUser.bot && allyUser.id !== interaction.user.id && !invitedHumans.has(allyUser.id)) {
-        invitedHumans.set(allyUser.id, { user: allyUser, role: 'Ally Master', accepted: false });
-      }
-      if (opponent2User && !opponent2User.bot && opponent2User.id !== interaction.user.id && !invitedHumans.has(opponent2User.id)) {
-        invitedHumans.set(opponent2User.id, { user: opponent2User, role: 'Secondary Opponent', accepted: false });
-      }
-
-      // If no human masters need confirmation, start immediately!
-      if (invitedHumans.size === 0) {
-        await interaction.deferReply();
-        await startInteractiveDuel(
-          interaction,
-          p1,
-          p2,
-          challengerMaster,
-          opponentMaster,
-          p1Ally,
-          p2Ally,
-          p1AllyMaster,
-          p2AllyMaster
-        );
-        return;
+      invitedHumans.set(opponentUser.id, { user: opponentUser, role: is2v2 ? 'Primary Opponent (Team 2)' : '1st Rival Master', accepted: false });
+      invitedHumans.set(opponent2User.id, { user: opponent2User, role: is2v2 ? 'Secondary Opponent (Team 2)' : '2nd Rival Master', accepted: false });
+      if (is2v2 && allyUser) {
+        invitedHumans.set(allyUser.id, { user: allyUser, role: 'Allied Master (Team 1)', accepted: false });
       }
 
       // Send multi-master invitation prompt requiring confirmation from all challenged human masters
@@ -2113,8 +2069,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setTitle(`⚔️ HOLY GRAIL WAR: ${is2v2 ? '2v2 TAG-TEAM' : '1v2 RAID'} DUEL CHALLENGE`)
         .setDescription(
           `Master <@${interaction.user.id}> has issued a **${is2v2 ? '2v2 Tag-Team' : '1v2 Raid'}** challenge!\n\n` +
-          `🛡️ **Team 1:** <@${interaction.user.id}> (**${p1.servant.template?.name || 'Servant'}**) ${p1AllyMaster ? `& <@${p1AllyMaster.discordId}> (**${p1Ally?.servant.template?.name || 'Servant'}**)` : ''}\n` +
-          `⚔️ **Team 2:** <@${opponentMaster.discordId}> (**${p2.servant.template?.name || 'Servant'}**) ${p2AllyMaster ? `& <@${p2AllyMaster.discordId}> (**${p2Ally?.servant.template?.name || 'Servant'}**)` : ''}\n\n` +
+          `🛡️ **Team 1:** <@${interaction.user.id}> (**${p1.servant.template?.name || 'Servant'}**) ${p1AllyMaster && p1Ally ? `& <@${p1AllyMaster.discordId}> (**${p1Ally.servant.template?.name || 'Servant'}**)` : ''}\n` +
+          `⚔️ **Team 2:** <@${opponentMaster.discordId}> (**${p2.servant.template?.name || 'Servant'}**) & <@${p2AllyMaster.discordId}> (**${p2Ally.servant.template?.name || 'Servant'}**)\n\n` +
           `📜 **Challenge Confirmation Status:**\n` +
           `• <@${interaction.user.id}> (Challenger): ✅ **Initiator**\n` +
           `• ${[...invitedHumans.values()].map(h => `<@${h.user.id}> (${h.role}): ⏳ **Pending Confirmation**`).join('\n• ')}\n\n` +
@@ -2194,8 +2150,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
               const updatedEmbed = EmbedBuilder.from(inviteEmbed)
                 .setDescription(
                   `Master <@${interaction.user.id}> has issued a **${is2v2 ? '2v2 Tag-Team' : '1v2 Raid'}** challenge!\n\n` +
-                  `🛡️ **Team 1:** <@${interaction.user.id}> (**${p1.servant.template?.name || 'Servant'}**) ${p1AllyMaster ? `& <@${p1AllyMaster.discordId}> (**${p1Ally?.servant.template?.name || 'Servant'}**)` : ''}\n` +
-                  `⚔️ **Team 2:** <@${opponentMaster.discordId}> (**${p2.servant.template?.name || 'Servant'}**) ${p2AllyMaster ? `& <@${p2AllyMaster.discordId}> (**${p2Ally?.servant.template?.name || 'Servant'}**)` : ''}\n\n` +
+                  `🛡️ **Team 1:** <@${interaction.user.id}> (**${p1.servant.template?.name || 'Servant'}**) ${p1AllyMaster && p1Ally ? `& <@${p1AllyMaster.discordId}> (**${p1Ally.servant.template?.name || 'Servant'}**)` : ''}\n` +
+                  `⚔️ **Team 2:** <@${opponentMaster.discordId}> (**${p2.servant.template?.name || 'Servant'}**) & <@${p2AllyMaster.discordId}> (**${p2Ally.servant.template?.name || 'Servant'}**)\n\n` +
                   `📜 **Challenge Confirmation Status:**\n` +
                   `• <@${interaction.user.id}> (Challenger): ✅ **Initiator**\n` +
                   `• ${updatedStatusText}\n\n` +
