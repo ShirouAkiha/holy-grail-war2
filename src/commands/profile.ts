@@ -58,7 +58,7 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
     classPassive = '❤️ **Battle Continuation (Guts):** Revives once with 25% Max HP if dealt a fatal blow.';
   }
 
-  const seals = userParticipant?.commandSeals ?? master.commandSeals ?? 3;
+  const seals = isSafe ? 3 : (userParticipant?.commandSeals ?? master.commandSeals ?? 3);
   const kills = userParticipant?.kills ?? master.servantKills ?? 0;
   const duelsWon = master.duelsWon || 0;
   const duelsLost = master.duelsLost || 0;
@@ -200,7 +200,7 @@ export function buildPublicProfileEmbed(master: any, war: any) {
   }
 
   const isSafe = master.environmentMode === 'safe' || !master.environmentMode;
-  const seals = userParticipant?.commandSeals ?? master.commandSeals ?? 3;
+  const seals = isSafe ? 3 : (userParticipant?.commandSeals ?? master.commandSeals ?? 3);
   const isExposed = userParticipant?.isExposed;
   const isUnderSanctuary = userParticipant?.inSanctuary || userParticipant?.inChurchSanctuary;
 

@@ -331,7 +331,7 @@ function createCombatant(
     activeBuffs: initialBuffs,
     skillCooldowns: {},
     gutsCount: 0,
-    commandSeals: isAi ? 0 : (master.commandSeals ?? 3),
+    commandSeals: isAi ? 0 : (isFreeBattle || master.environmentMode === 'safe' ? 3 : (master.commandSeals ?? 3)),
     drawPile: [],
     masterAvatarUrl: master.avatarUrl
   };
@@ -3467,7 +3467,7 @@ async function startInteractiveDuel(
         return;
       }
 
-      // CASE: FORCE JOIN MID-BATTLE INTERVENTION
+      // CASE: FORCE JOIN BUTTON CLICK
       if (i.customId === 'card_forcejoin' || i.customId === 'duel_prompt_forcejoin') {
         recordFallenCombatants();
         const livingT1 = getLivingTeam1();
@@ -3487,7 +3487,7 @@ async function startInteractiveDuel(
 
         if (isFallenInThisBattle) {
           await i.reply({
-            content: '❌ **Eliminated Master:** Your Servant has already fallen in this Holy Grail War duel! Fallen combatants cannot re-enter or respawn in the same battle.',
+            content: '❌ **Eliminated Master:** Your Servant has already fallen in this duel! Fallen combatants cannot re-enter or respawn in the same battle.',
             flags: MessageFlags.Ephemeral
           });
           return;
@@ -3500,7 +3500,7 @@ async function startInteractiveDuel(
 
         if (isAlreadyInBattle) {
           await i.reply({
-            content: '❌ You already have an active Servant standing in this Holy Grail duel!',
+            content: '❌ You already have an active Servant standing in this duel!',
             flags: MessageFlags.Ephemeral
           });
           return;
@@ -3509,14 +3509,20 @@ async function startInteractiveDuel(
         const joinerMaster = await getOrCreateMaster(i.user.id, i.user.username);
         if (!joinerMaster.servants || joinerMaster.servants.length === 0) {
           await i.reply({
-            content: '❌ You must summon a Servant before force-joining an active Holy Grail War battle! Invoke `/summon ritual` first.',
+            content: '❌ You must summon a Servant before force-joining an active battle! Invoke `/summon ritual` first.',
             flags: MessageFlags.Ephemeral
           });
           return;
         }
 
-        let targetTeam1 = true;
-        let actionInteraction: any = i;
+        // Safe mode masters cannot intervene in an ongoing war battle, but can freely join Free Battles
+        if (!isFreeBattle && joinerMaster.environmentMode === 'safe') {
+          await i.reply({
+            content: '❌ **Safe Mode Protected:** You are currently in Safe Mode outside of the Holy Grail War. You cannot intervene in an ongoing tournament war battle.\n\n🕊️ You can freely Force Join any **Free Battle** (`/duel mode:free`) sparring match!',
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
 
         // If both teams have open slots (< 2 living combatants each), prompt which team to join!
         if (livingT1.length < 2 && livingT2.length < 2) {
@@ -3538,48 +3544,16 @@ async function startInteractiveDuel(
               .setEmoji('⚔️')
           );
 
-          const ephemeralReply = await i.reply({
+          await i.reply({
             content: `⚡ **FORCE JOIN ARENA:** Select which Master/Team you wish to assist in combat:`,
             components: [fjRow],
-            flags: MessageFlags.Ephemeral,
-            withResponse: true,
-            fetchReply: true
+            flags: MessageFlags.Ephemeral
           });
-
-          const promptMsg = (ephemeralReply as any)?.resource?.message || ephemeralReply || (await i.fetchReply().catch(() => null));
-
-          let selectionInteraction: any = null;
-          try {
-            if (promptMsg && typeof promptMsg.awaitMessageComponent === 'function') {
-              selectionInteraction = await promptMsg.awaitMessageComponent({
-                filter: (btn: any) => btn.user.id === i.user.id && (btn.customId === 'fj_join_team1' || btn.customId === 'fj_join_team2'),
-                time: 30000
-              });
-            } else if (i.channel && typeof i.channel.awaitMessageComponent === 'function') {
-              selectionInteraction = await i.channel.awaitMessageComponent({
-                filter: (btn: any) => btn.user.id === i.user.id && (btn.customId === 'fj_join_team1' || btn.customId === 'fj_join_team2'),
-                time: 30000
-              });
-            }
-          } catch {
-            await i.editReply({
-              content: '⏱️ Force Join team selection timed out.',
-              components: []
-            }).catch(() => {});
-            return;
-          }
-
-          if (!selectionInteraction) {
-            return;
-          }
-
-          actionInteraction = selectionInteraction;
-          targetTeam1 = selectionInteraction.customId === 'fj_join_team1';
-        } else {
-          // One team is already full (has 2 living), assign to the team with an open slot!
-          targetTeam1 = livingT1.length < 2;
+          return;
         }
 
+        // One team is full (has 2 living), assign directly to the team with an open slot
+        const targetTeam1 = livingT1.length < 2;
         const joinServant = joinerMaster.servants.find(s => s.id === joinerMaster.activeServantId) || joinerMaster.servants[0];
         const joinName = joinServant.nickname || joinServant.template?.name || 'Heroic Spirit';
 
@@ -3587,25 +3561,15 @@ async function startInteractiveDuel(
         const joinPart = warSession.participants[joinerMaster.discordId];
         const joinHp = (isFreeBattle || joinerMaster.environmentMode === 'safe') ? undefined : (joinPart ? calculateCurrentHp(joinPart) : undefined);
 
-        // Block incapacitated servants (0 HP) from force joining (only in active War mode)
         if (!isFreeBattle && joinerMaster.environmentMode !== 'safe' && ((joinServant.currentHp !== undefined && joinServant.currentHp <= 0) || (joinHp !== undefined && joinHp <= 0))) {
-          if (actionInteraction !== i) {
-            await actionInteraction.update({
-              content: `❌ **Incapacitated Servant:** Your Servant **${joinName}** currently has 0 HP and is incapacitated! Restore your Servant before entering combat.`,
-              components: []
-            });
-          } else {
-            await i.reply({
-              content: `❌ **Incapacitated Servant:** Your Servant **${joinName}** currently has 0 HP and is incapacitated! Restore your Servant before entering combat.`,
-              flags: MessageFlags.Ephemeral
-            });
-          }
+          await i.reply({
+            content: `❌ **Incapacitated Servant:** Your Servant **${joinName}** currently has 0 HP and is incapacitated! Restore your Servant before entering combat.`,
+            flags: MessageFlags.Ephemeral
+          });
           return;
         }
 
         const joinCombatant = createCombatant(joinerMaster, joinServant, false, joinHp, isFreeBattle);
-
-        // Register new participant in this duel match
         duelParticipantIds.add(i.user.id);
 
         joinCombatant.critStars = 20;
@@ -3622,12 +3586,10 @@ async function startInteractiveDuel(
         let replacedCombatant: DuelCombatant | null = null;
 
         if (deadIndex !== -1) {
-          // Replace the fallen combatant in this team!
           replacedCombatant = targetTeam[deadIndex];
           fallenMasterIds.add(replacedCombatant.userId);
           targetTeam[deadIndex] = joinCombatant;
 
-          // Replace in turnOrder
           const tIdx = turnOrder.findIndex(c => c === replacedCombatant || (c.userId === replacedCombatant?.userId && c.servant?.id === replacedCombatant?.servant?.id));
           if (tIdx !== -1) {
             turnOrder[tIdx] = joinCombatant;
@@ -3653,7 +3615,6 @@ async function startInteractiveDuel(
             }
           }
         } else {
-          // Normal append when team was not full
           if (targetTeam1) {
             p1Ally = joinCombatant;
             p1AllyMaster = joinerMaster;
@@ -3682,17 +3643,175 @@ async function startInteractiveDuel(
         const updatedEmbeds = buildCurrentEmbeds();
         const updatedButtons = buildCurrentButtons();
 
-        if (actionInteraction !== i) {
-          await actionInteraction.update({
-            content: `⚡ **FORCE JOIN SUCCESSFUL!** You have allied with **${teamLeaderName}** as a 3rd Master reinforcement! Entering combat...`,
+        await i.reply({
+          content: `⚡ **FORCE JOIN SUCCESSFUL!** You entered the fray to assist **${teamLeaderName}**!`,
+          flags: MessageFlags.Ephemeral
+        });
+
+        if (battleMsg) {
+          await battleMsg.edit({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
+        } else if (contextInteraction) {
+          await contextInteraction.editReply({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
+        }
+        return;
+      }
+
+      // CASE: FORCE JOIN SELECTION RESPONSE (From ephemeral prompt buttons)
+      if (i.customId === 'fj_join_team1' || i.customId === 'fj_join_team2') {
+        recordFallenCombatants();
+        const livingT1 = getLivingTeam1();
+        const livingT2 = getLivingTeam2();
+        const targetTeam1 = i.customId === 'fj_join_team1';
+
+        if (targetTeam1 && livingT1.length >= 2) {
+          await i.update({
+            content: '❌ Team 1 already has 2 living Servants! Select Team 2 or wait for a slot to open.',
             components: []
           });
-        } else {
-          await i.reply({
-            content: `⚡ **FORCE JOIN SUCCESSFUL!** You entered the fray to assist **${teamLeaderName}**!`,
-            flags: MessageFlags.Ephemeral
-          });
+          return;
         }
+        if (!targetTeam1 && livingT2.length >= 2) {
+          await i.update({
+            content: '❌ Team 2 already has 2 living Servants! Select Team 1 or wait for a slot to open.',
+            components: []
+          });
+          return;
+        }
+
+        const isFallenInThisBattle = fallenMasterIds.has(i.user.id) ||
+          team1.some(c => c.userId === i.user.id && c.currentHp <= 0) ||
+          team2.some(c => c.userId === i.user.id && c.currentHp <= 0);
+
+        if (isFallenInThisBattle) {
+          await i.update({
+            content: '❌ **Eliminated Master:** Your Servant has already fallen in this duel! Fallen combatants cannot re-enter or respawn in the same battle.',
+            components: []
+          });
+          return;
+        }
+
+        const isAlreadyInBattle = duelParticipantIds.has(i.user.id) ||
+          team1.some(c => c.userId === i.user.id) ||
+          team2.some(c => c.userId === i.user.id);
+
+        if (isAlreadyInBattle) {
+          await i.update({
+            content: '❌ You already have an active Servant standing in this duel!',
+            components: []
+          });
+          return;
+        }
+
+        const joinerMaster = await getOrCreateMaster(i.user.id, i.user.username);
+        if (!joinerMaster.servants || joinerMaster.servants.length === 0) {
+          await i.update({
+            content: '❌ You must summon a Servant before force-joining an active battle! Invoke `/summon ritual` first.',
+            components: []
+          });
+          return;
+        }
+
+        if (!isFreeBattle && joinerMaster.environmentMode === 'safe') {
+          await i.update({
+            content: '❌ **Safe Mode Protected:** You are currently in Safe Mode outside of the Holy Grail War. You cannot intervene in an ongoing tournament war battle.\n\n🕊️ You can freely Force Join any **Free Battle** (`/duel mode:free`) sparring match!',
+            components: []
+          });
+          return;
+        }
+
+        const joinServant = joinerMaster.servants.find(s => s.id === joinerMaster.activeServantId) || joinerMaster.servants[0];
+        const joinName = joinServant.nickname || joinServant.template?.name || 'Heroic Spirit';
+
+        const warSession = getOrInitWarSession(p1Master);
+        const joinPart = warSession.participants[joinerMaster.discordId];
+        const joinHp = (isFreeBattle || joinerMaster.environmentMode === 'safe') ? undefined : (joinPart ? calculateCurrentHp(joinPart) : undefined);
+
+        if (!isFreeBattle && joinerMaster.environmentMode !== 'safe' && ((joinServant.currentHp !== undefined && joinServant.currentHp <= 0) || (joinHp !== undefined && joinHp <= 0))) {
+          await i.update({
+            content: `❌ **Incapacitated Servant:** Your Servant **${joinName}** currently has 0 HP and is incapacitated! Restore your Servant before entering combat.`,
+            components: []
+          });
+          return;
+        }
+
+        const joinCombatant = createCombatant(joinerMaster, joinServant, false, joinHp, isFreeBattle);
+        duelParticipantIds.add(i.user.id);
+
+        joinCombatant.critStars = 20;
+        joinCombatant.activeBuffs = joinCombatant.activeBuffs || [];
+        joinCombatant.activeBuffs.push({
+          name: '3rd Master Reinforcement',
+          type: 'buff_atk',
+          value: 30,
+          remainingTurns: 3
+        });
+
+        const targetTeam = targetTeam1 ? team1 : team2;
+        const deadIndex = targetTeam.findIndex(c => c.currentHp <= 0);
+        let replacedCombatant: DuelCombatant | null = null;
+
+        if (deadIndex !== -1) {
+          replacedCombatant = targetTeam[deadIndex];
+          fallenMasterIds.add(replacedCombatant.userId);
+          targetTeam[deadIndex] = joinCombatant;
+
+          const tIdx = turnOrder.findIndex(c => c === replacedCombatant || (c.userId === replacedCombatant?.userId && c.servant?.id === replacedCombatant?.servant?.id));
+          if (tIdx !== -1) {
+            turnOrder[tIdx] = joinCombatant;
+          } else {
+            turnOrder.push(joinCombatant);
+          }
+
+          if (targetTeam1) {
+            if (deadIndex === 0) {
+              p1 = joinCombatant;
+              p1Master = joinerMaster;
+            } else {
+              p1Ally = joinCombatant;
+              p1AllyMaster = joinerMaster;
+            }
+          } else {
+            if (deadIndex === 0) {
+              p2 = joinCombatant;
+              p2Master = joinerMaster;
+            } else {
+              p2Ally = joinCombatant;
+              p2AllyMaster = joinerMaster;
+            }
+          }
+        } else {
+          if (targetTeam1) {
+            p1Ally = joinCombatant;
+            p1AllyMaster = joinerMaster;
+            team1.push(joinCombatant);
+          } else {
+            p2Ally = joinCombatant;
+            p2AllyMaster = joinerMaster;
+            team2.push(joinCombatant);
+          }
+          turnOrder.push(joinCombatant);
+        }
+
+        const teamLeaderName = targetTeam1 ? p1.username : p2.username;
+        let forceJoinLog = '';
+        if (replacedCombatant) {
+          forceJoinLog = `⚡ **FORCE JOIN REPLACEMENT!** <@${i.user.id}> entered the fray with **${joinName}** to REPLACE fallen Master **${replacedCombatant.username}** on Team ${targetTeam1 ? '1' : '2'}! Reinforced with **+30% ATK (3T)** & **+20 Critical Stars**!`;
+        } else {
+          const totalLivingNow = getLivingTeam1().length + getLivingTeam2().length;
+          const joinOrdinal = totalLivingNow === 3 ? '3RD' : totalLivingNow === 4 ? '4TH' : `${totalLivingNow}TH`;
+          forceJoinLog = `⚡ **${joinOrdinal} MASTER FORCE JOIN INTERVENTION!** <@${i.user.id}> entered the fray with **${joinName}** to assist **${teamLeaderName}**! Reinforced with **+30% ATK (3T)** & **+20 Critical Stars**!`;
+        }
+        combatLogs.push(forceJoinLog);
+        if (combatLogs.length > 4) combatLogs.shift();
+
+        const turnAttachment = await buildCurrentAttachment(forceJoinLog);
+        const updatedEmbeds = buildCurrentEmbeds();
+        const updatedButtons = buildCurrentButtons();
+
+        await i.update({
+          content: `⚡ **FORCE JOIN SUCCESSFUL!** You entered the fray to assist **${teamLeaderName}**!`,
+          components: []
+        });
 
         if (battleMsg) {
           await battleMsg.edit({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
@@ -3824,8 +3943,10 @@ async function startInteractiveDuel(
         }
 
         if (actingMaster) {
-          actingMaster.commandSeals = actor.commandSeals;
-          await saveMaster(actingMaster);
+          if (!isFreeBattle && actingMaster.environmentMode !== 'safe') {
+            actingMaster.commandSeals = actor.commandSeals;
+            await saveMaster(actingMaster);
+          }
         }
 
         try {
@@ -4895,6 +5016,7 @@ async function finalizeDuelRewardsAndSync(
         if (isWinnerSafe) {
           const sMaxHp = (updatedS as any).maxHp || updatedS.template?.baseHp || 50000;
           updatedS.currentHp = sMaxHp;
+          wMaster.commandSeals = 3;
         } else {
           const sMaxHp = (updatedS as any).maxHp || updatedS.template?.baseHp || 50000;
           updatedS.currentHp = Math.min(sMaxHp, Math.max(1, winner.currentHp));
@@ -4930,6 +5052,7 @@ async function finalizeDuelRewardsAndSync(
         if (isLoserSafe) {
           const loserMaxHp = (updatedLoser as any).maxHp || updatedLoser.template?.baseHp || 50000;
           updatedLoser.currentHp = loserMaxHp;
+          s.master.commandSeals = 3;
         } else if (s.evacuated) {
           updatedLoser.currentHp = 1;
         }

@@ -23,6 +23,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       for (const s of master.servants) {
         s.currentHp = (s as any).maxHp || s.template?.baseHp || 50000;
       }
+      master.commandSeals = 3;
       await saveMaster(master);
 
       const maxHp = (activeServant as any).maxHp || activeServant.template?.baseHp || 50000;

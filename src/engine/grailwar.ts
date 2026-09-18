@@ -612,6 +612,7 @@ export function forfeitWar(
 ): { success: boolean; message: string; war: HolyGrailWarSession } {
   const targetWar = war || globalWarSession || getOrInitWarSession(master);
   master.environmentMode = 'safe';
+  master.commandSeals = 3;
 
   if (master.servants) {
     for (const s of master.servants) {
