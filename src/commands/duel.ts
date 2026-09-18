@@ -248,8 +248,8 @@ function createCombatant(master: MasterProfile, servant: MasterServantInstance, 
   const pcBonus = passives.some(p => p.type === 'presence_concealment') ? 6 : 0;
   const initialStars = Math.min(40, Math.max(5, Math.round(totalAgi * 0.8) + pcBonus));
 
-  const startingHp = overrideCurrentHp !== undefined && overrideCurrentHp > 0
-    ? Math.min(maxHp, Math.round(overrideCurrentHp))
+  const startingHp = overrideCurrentHp !== undefined
+    ? Math.max(0, Math.min(maxHp, Math.round(overrideCurrentHp)))
     : (servant.currentHp !== undefined && servant.currentHp > 0
       ? Math.min(maxHp, Math.round(servant.currentHp))
       : maxHp);
@@ -2819,6 +2819,27 @@ async function startInteractiveDuel(
   let team2AssistUsed = false;
   let forceJoinCount = (team1.length + team2.length >= 4 ? 1 : 0);
 
+  // Track all Masters who have participated in this duel match (initial combatants + mid-battle joiners)
+  // to prevent fallen combatants from re-joining / infinite respawning.
+  const duelParticipantIds = new Set<string>([
+    p1.userId,
+    p2.userId,
+    ...(p1Ally ? [p1Ally.userId] : []),
+    ...(p2Ally ? [p2Ally.userId] : [])
+  ]);
+
+  // Track all Master IDs whose Servant has fallen in this duel
+  const fallenMasterIds = new Set<string>();
+
+  const recordFallenCombatants = () => {
+    team1.forEach(c => {
+      if (c.currentHp <= 0) fallenMasterIds.add(c.userId);
+    });
+    team2.forEach(c => {
+      if (c.currentHp <= 0) fallenMasterIds.add(c.userId);
+    });
+  };
+
   const getLivingTeam1 = () => team1.filter(c => c.currentHp > 0);
   const getLivingTeam2 = () => team2.filter(c => c.currentHp > 0);
   const getTargetsFor = (combatant: DuelCombatant) => {
@@ -3298,6 +3319,8 @@ async function startInteractiveDuel(
 
       // Check if target was slain
       if (target.currentHp <= 0) {
+        fallenMasterIds.add(target.userId);
+        recordFallenCombatants();
         const killLog = `💀 **${target.servant.nickname || target.servant.template.name}** (Master: ${target.username}) has fallen in battle!`;
         combatLogs.push(killLog);
         if (combatLogs.length > 4) combatLogs.shift();
@@ -3480,6 +3503,7 @@ async function startInteractiveDuel(
 
       // CASE: FORCE JOIN MID-BATTLE INTERVENTION
       if (i.customId === 'card_forcejoin' || i.customId === 'duel_prompt_forcejoin') {
+        recordFallenCombatants();
         const livingT1 = getLivingTeam1();
         const livingT2 = getLivingTeam2();
         if (livingT1.length >= 2 && livingT2.length >= 2) {
@@ -3490,7 +3514,25 @@ async function startInteractiveDuel(
           return;
         }
 
-        if (livingT1.some(c => c.userId === i.user.id) || livingT2.some(c => c.userId === i.user.id)) {
+        // Loophole fix: Prevent fallen combatants from re-entering or infinite respawning
+        const isFallenInThisBattle = fallenMasterIds.has(i.user.id) ||
+          team1.some(c => c.userId === i.user.id && c.currentHp <= 0) ||
+          team2.some(c => c.userId === i.user.id && c.currentHp <= 0);
+
+        if (isFallenInThisBattle) {
+          await i.reply({
+            content: '❌ **Eliminated Master:** Your Servant has already fallen in this Holy Grail War duel! Fallen combatants cannot re-enter or respawn in the same battle.',
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        // Prevent existing participants from force-joining multiple times or taking other slots
+        const isAlreadyInBattle = duelParticipantIds.has(i.user.id) ||
+          team1.some(c => c.userId === i.user.id) ||
+          team2.some(c => c.userId === i.user.id);
+
+        if (isAlreadyInBattle) {
           await i.reply({
             content: '❌ You already have an active Servant standing in this Holy Grail duel!',
             flags: MessageFlags.Ephemeral
@@ -3578,7 +3620,27 @@ async function startInteractiveDuel(
         const warSession = getOrInitWarSession(p1Master);
         const joinPart = warSession.participants[joinerMaster.discordId];
         const joinHp = joinPart ? calculateCurrentHp(joinPart) : undefined;
+
+        // Block incapacitated servants (0 HP) from force joining
+        if ((joinServant.currentHp !== undefined && joinServant.currentHp <= 0) || (joinHp !== undefined && joinHp <= 0)) {
+          if (actionInteraction !== i) {
+            await actionInteraction.update({
+              content: `❌ **Incapacitated Servant:** Your Servant **${joinName}** currently has 0 HP and is incapacitated! Restore your Servant before entering combat.`,
+              components: []
+            });
+          } else {
+            await i.reply({
+              content: `❌ **Incapacitated Servant:** Your Servant **${joinName}** currently has 0 HP and is incapacitated! Restore your Servant before entering combat.`,
+              flags: MessageFlags.Ephemeral
+            });
+          }
+          return;
+        }
+
         const joinCombatant = createCombatant(joinerMaster, joinServant, false, joinHp);
+
+        // Register new participant in this duel match
+        duelParticipantIds.add(i.user.id);
 
         joinCombatant.critStars = 20;
         joinCombatant.activeBuffs = joinCombatant.activeBuffs || [];
@@ -3596,6 +3658,7 @@ async function startInteractiveDuel(
         if (deadIndex !== -1) {
           // Replace the fallen combatant in this team!
           replacedCombatant = targetTeam[deadIndex];
+          fallenMasterIds.add(replacedCombatant.userId);
           targetTeam[deadIndex] = joinCombatant;
 
           // Replace in turnOrder
@@ -3930,6 +3993,8 @@ async function startInteractiveDuel(
           if (combatLogs.length > 4) combatLogs.shift();
 
           if (fleeActor.currentHp <= 0) {
+            fallenMasterIds.add(fleeActor.userId);
+            recordFallenCombatants();
             const killLog = `💀 **${fleeActor.servant.nickname || fleeActor.servant.template.name}** (Master: ${fleeActor.username}) was vanquished while attempting to flee!`;
             combatLogs.push(killLog);
             if (combatLogs.length > 4) combatLogs.shift();
@@ -4043,6 +4108,8 @@ async function startInteractiveDuel(
 
       // Check if Defender was slain
       if (defender.currentHp <= 0) {
+        fallenMasterIds.add(defender.userId);
+        recordFallenCombatants();
         const killLog = `💀 **${defender.servant.nickname || defender.servant.template.name}** (Master: ${defender.username}) was vanquished!`;
         combatLogs.push(killLog);
         if (combatLogs.length > 4) combatLogs.shift();
