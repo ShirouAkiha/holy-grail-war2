@@ -35,7 +35,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       bountyListText = rogueMasters.map((r, idx) => {
         return `**${idx + 1}. ☠️ Master ${r.username}** (${r.servantName || 'Unknown Servant'} [${r.servantClass || 'Class Concealed'}])\n` +
           `   • **Civilian Casualties:** \`${r.innocentKills || 10} Kills\` (Excommunicated)\n` +
-          `   • 🎯 **Bounty Reward:** **+1 Extra Command Seal** 💠 & **+15 Saint Quartz** 💎\n` +
+          `   • 🎯 **Bounty Reward:** **+1 Extra Command Seal** 💠, **+15 Saint Quartz** 💎 & **+150 Bond EXP** 💖\n` +
           `   • **Status:** Permanently Barred from Church Sanctuary • Curse of Heresy Active`;
       }).join('\n\n');
     }
@@ -46,7 +46,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `*Father Kirei Kotomine maintains this public bounty ledger at the Fuyuki Church altar.*\n\n` +
         `📜 **CHURCH EXTERMINATION BOUNTY PROTOCOL:**\n` +
         `• Any Master who slays **10+ innocent bystanders** is declared a **Rogue Heretic**.\n` +
-        `• An open **+1 Command Seal & +15 Saint Quartz** bounty is placed on their head.\n` +
+        `• An open **+1 Command Seal, +15 Saint Quartz & +150 Bond EXP** bounty is placed on their head.\n` +
         `• Defeating or executing a wanted Rogue Heretic in battle or duel immediately awards the bounty to the victor!\n\n` +
         `🎯 **CURRENT WANTED LIST (${rogueMasters.length} Active):**\n` +
         bountyListText + '\n\n' +

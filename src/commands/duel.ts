@@ -21,6 +21,7 @@ import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedH
 import { getServantChainDialogue, shouldTriggerDialogueCutIn, getServantSkillQuote } from '../engine/dialogue';
 import { getServantMatchupDialogue } from '../data/servantMatchups';
 import { generateServantBattleReaction } from '../engine/talkService';
+import { addBondExpToServant } from '../../lib/engine/bondEvents';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -4533,6 +4534,9 @@ async function presentFateDecision(
   }
 
   // Player Master won: Grant initial rewards and prompt for Kill vs Spare decision
+  let victoryBondGain = 150;
+  let didBondLevelUp = false;
+  let newBondLevel = 1;
   const winningMaster = winner.userId === p1Master.discordId 
     ? p1Master 
     : (p2Master && winner.userId === p2Master.discordId ? p2Master : await getOrCreateMaster(winner.userId, winner.username));
@@ -4541,10 +4545,30 @@ async function presentFateDecision(
     winningMaster.grailWarWins = (winningMaster.grailWarWins || 0) + 1;
     const s = winningMaster.servants.find(srv => srv.id === winner.servant.id);
     if (s) {
-      s.bondLevel = Math.min(10, (s.bondLevel || 1) + 1);
-      s.availableStatPoints = (s.availableStatPoints || 0) + 2;
+      const bondRes = addBondExpToServant(s, victoryBondGain);
+      const updatedS = bondRes.updatedServant;
+      updatedS.availableStatPoints = (updatedS.availableStatPoints || 0) + 2;
+      const sIdx = winningMaster.servants.findIndex(srv => srv.id === winner.servant.id);
+      if (sIdx !== -1) winningMaster.servants[sIdx] = updatedS;
+      didBondLevelUp = bondRes.didLevelUp;
+      newBondLevel = bondRes.newLevel;
     }
     await saveMaster(winningMaster);
+  }
+
+  // Also award participation Bond EXP to the defending master's servant
+  const losingMaster = loser.userId === p1Master.discordId
+    ? p1Master
+    : (p2Master && loser.userId === p2Master.discordId ? p2Master : (!loser.isAi ? await getOrCreateMaster(loser.userId, loser.username) : null));
+
+  if (losingMaster) {
+    const sLoser = losingMaster.servants?.find((srv: any) => srv.id === loser.servant.id);
+    if (sLoser) {
+      const loserBondRes = addBondExpToServant(sLoser, 60);
+      const sIdx = losingMaster.servants.findIndex((srv: any) => srv.id === loser.servant.id);
+      if (sIdx !== -1) losingMaster.servants[sIdx] = loserBondRes.updatedServant;
+      await saveMaster(losingMaster);
+    }
   }
 
   const victoryQuote =
@@ -4575,6 +4599,7 @@ async function presentFateDecision(
     .setTitle('🏆 DUEL VICTORY — VICTORY INVOCATION')
     .setDescription(
       `**${winnerName}** (Master: ${winner.username}) has triumphed over **${loserName}** (Master: ${loser.username}) in the Holy Grail duel!\n\n` +
+      `💖 **Bond Synergy:** \`+${victoryBondGain} Bond EXP\` & \`+2 Stat Points\` gained!${didBondLevelUp ? `\n🎉 **[BOND LEVEL UP!]** **${winnerName}** reached **Bond Lv. ${newBondLevel}**!` : ''}\n\n` +
       `💬 **[VICTORY INVOCATION] ${winnerName}:**\n> ❝ ***${victoryQuote}*** ❞`
     )
     .setColor(0x22c55e);
@@ -4705,6 +4730,14 @@ async function presentFateDecision(
         if (loserMaster.bountyActive || (loserMaster.innocentKills || 0) >= 10 || loserMaster.isRogueHeretic) {
           winnerMaster.saintQuartz = (winnerMaster.saintQuartz || 0) + 15;
           winnerMaster.commandSeals = Math.min(3, (winnerMaster.commandSeals || 0) + 1);
+          
+          const winnerServant = winnerMaster.servants?.find((srv: any) => srv.id === winner.servant.id);
+          if (winnerServant) {
+            const bRes = addBondExpToServant(winnerServant, 150);
+            const sIdx = winnerMaster.servants.findIndex((srv: any) => srv.id === winner.servant.id);
+            if (sIdx !== -1) winnerMaster.servants[sIdx] = bRes.updatedServant;
+          }
+
           loserMaster.bountyActive = false;
           loserMaster.isRogueHeretic = false;
           await saveMaster(winnerMaster);
@@ -4714,6 +4747,7 @@ async function presentFateDecision(
             `Father Kotomine has awarded Master **${winner.username}** the Extermination Bounty for slaying the Rogue Heretic:\n` +
             `• **+1 Command Seal** 💠 (Consecrated Sigil Restored)\n` +
             `• **+15 Saint Quartz** 💎 (Church Treasury Bounty)\n` +
+            `• **+150 Bond EXP** 💖 (Church Extermination Devotion)\n` +
             `The Blight of Fuyuki has been purged!`;
         }
 

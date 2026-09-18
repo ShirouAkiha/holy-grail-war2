@@ -8,7 +8,7 @@ import {
   AttachmentBuilder,
   MessageFlags
 } from 'discord.js';
-import { getOrCreateMaster } from '../database/service';
+import { getOrCreateMaster, saveMaster } from '../database/service';
 import { getOrInitWarSession, calculateCurrentHp } from '../engine/grailwar';
 import {
   generateServantTalkResponse,
@@ -17,6 +17,7 @@ import {
 } from '../engine/talkService';
 import { checkMasterTalkQuota, consumeMasterTalkQuota } from '../engine/talkQuotaService';
 import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
+import { addBondExpToServant } from '../../lib/engine/bondEvents';
 
 export const data = new SlashCommandBuilder()
   .setName('talk')
@@ -302,6 +303,19 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       eliminatedMastersCount
     });
 
+    // Award Bond EXP for dialogue interaction
+    const bondExpGain = sceneContext === 'bond' ? 50 : 35;
+    const bondRes = addBondExpToServant(targetServant, bondExpGain);
+    const updatedTargetServant = bondRes.updatedServant;
+    const sIdx = master.servants.findIndex((s: any) => s.id === targetServant.id);
+    if (sIdx !== -1) {
+      master.servants[sIdx] = updatedTargetServant;
+    }
+    await saveMaster(master);
+
+    const activeBondLevel = updatedTargetServant.bondLevel || bondLevel;
+    const bondNotice = bondRes.didLevelUp ? ` • 🎉 **Bond Lv. ${bondRes.newLevel} Reached!**` : '';
+
     // 2. STEP 3: Render the Output
     const visual = await renderServantTalkVisualOutput({
       servantName,
@@ -310,7 +324,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       replyText: reply,
       playerMessage,
       masterName: master.username || 'Master',
-      bondLevel,
+      bondLevel: activeBondLevel,
       sceneContext,
       commandSeals,
       quotaInfo: {
@@ -342,7 +356,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setTitle(visual.embedData.title)
         .setDescription(
           `👤 **Master ${master.username}:**\n> *“${playerMessage}”*\n\n` +
-          `⚔️ **${servantName}:**\n> ❝ ***${reply}*** ❞`
+          `⚔️ **${servantName}:**\n> ❝ ***${reply}*** ❞\n\n` +
+          `💖 **Bond Resonance:** \`+${bondExpGain} Bond EXP\` (Lv. ${activeBondLevel}/10)${bondNotice}`
         )
         .setColor(visual.embedData.color)
         .setImage('attachment://talk_card.png')
@@ -361,12 +376,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     // OPTION B: Embed Fallback (Formatted with Servant's portrait icon & current Bond rank)
     const fallbackEmbed = new EmbedBuilder()
-      .setTitle(`💬 Telepathic Link | ${servantName} [Bond Rank: Lv. ${bondLevel}/10]`)
+      .setTitle(`💬 Telepathic Link | ${servantName} [Bond Rank: Lv. ${activeBondLevel}/10]`)
       .setDescription(
         `👤 **Master ${master.username}:**\n> *“${playerMessage}”*\n\n` +
         `⚔️ **${servantName}:**\n> ❝ ***${reply}*** ❞\n\n` +
         `━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `💖 **Bond Rank:** Level \`${bondLevel} / 10\`\n` +
+        `💖 **Bond Rank:** Level \`${activeBondLevel} / 10\` (+${bondExpGain} EXP)${bondNotice}\n` +
         `💬 **Telepathic Mana:** \`${remainingToday}/${maxToday}\` *daily chats remaining*\n` +
         `🔱 **Command Seals:** \`${'✦ '.repeat(commandSeals)}${'✧ '.repeat(Math.max(0, 3 - commandSeals))}\` (**${commandSeals}/3**)\n` +
         `🛡️ **Equipped CE:** *${equippedCeName || 'None'}*\n` +

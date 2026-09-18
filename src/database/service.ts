@@ -1,6 +1,7 @@
 import { MasterProfile, MasterServantInstance, CraftEssence, ServantTemplate, GachaBanner } from '../types';
 import { SERVANT_DATABASE, getServantAvatarAndCardArt } from '../data/servants';
 import { CRAFT_ESSENCE_DATABASE, CE_GACHA_BANNERS } from '../data/craftEssences';
+import { addBondExpToServant } from '../../lib/engine/bondEvents';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { downloadMediaToLocal } from '../utils/localMedia';
 import fs from 'fs';
@@ -1269,14 +1270,43 @@ export async function claimDailySaintQuartz(
   const saintQuartzClaimed = 30;
   master.saintQuartz = previousSq + saintQuartzClaimed;
   master.lastDailyClaim = now;
+
+  let bondGained = 0;
+  let didBondLevelUp = false;
+  let activeServantName = '';
+  let newBondLevel = 1;
+
+  if (master.servants && master.servants.length > 0) {
+    const activeServant = master.servants.find((s: any) => s.id === master.activeServantId) || master.servants[0];
+    if (activeServant) {
+      bondGained = 100;
+      const res = addBondExpToServant(activeServant, bondGained);
+      const sIdx = master.servants.findIndex((s: any) => s.id === activeServant.id);
+      if (sIdx !== -1) {
+        master.servants[sIdx] = res.updatedServant;
+      }
+      didBondLevelUp = res.didLevelUp;
+      newBondLevel = res.newLevel;
+      activeServantName = activeServant.nickname || activeServant.template?.name || 'Contracted Servant';
+    }
+  }
+
   await saveMaster(master);
+
+  let bondMsg = '';
+  if (bondGained > 0) {
+    bondMsg = `\n💖 **Daily Bond Bonus:** **+${bondGained} Bond EXP** awarded to **${activeServantName}**!`;
+    if (didBondLevelUp) {
+      bondMsg += ` 🎉 **[BOND LEVEL UP!]** Reached **Bond Lv. ${newBondLevel}**!`;
+    }
+  }
 
   return {
     success: true,
     saintQuartzClaimed,
     previousSq,
     newTotalSq: master.saintQuartz,
-    message: 'Successfully harvested **30 Saint Quartz** (💎) from the Fuyuki Leyline Sanctuary! Next universal reset: **00:00 UTC** (<t:' + Math.floor(resetTiming.nextResetUtc / 1000) + ':R>).',
+    message: 'Successfully harvested **30 Saint Quartz** (💎) from the Fuyuki Leyline Sanctuary!' + bondMsg + ' Next universal reset: **00:00 UTC** (<t:' + Math.floor(resetTiming.nextResetUtc / 1000) + ':R>).',
     nextClaimTimestamp: resetTiming.nextResetUtc,
     universalResetUtc: resetTiming.nextResetUtc,
     master

@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder , MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { getOrInitWarSession, patrolCityInWar } from '../engine/grailwar';
+import { addBondExpToServant } from '../../lib/engine/bondEvents';
 
 export const data = new SlashCommandBuilder()
   .setName('patrol')
@@ -35,11 +36,25 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const res = patrolCityInWar(war, interaction.user.id, interaction.user.username, currentChannelName);
     war = res.updatedWar;
+
+    // Award patrol Bond EXP
+    const bondGain = 60;
+    const bondResult = addBondExpToServant(activeServant, bondGain);
+    const sIdx = master.servants.findIndex((s: any) => s.id === activeServant.id);
+    if (sIdx !== -1) {
+      master.servants[sIdx] = bondResult.updatedServant;
+    }
     await saveMaster(master);
+
+    const sName = activeServant.nickname || activeServant.template?.name || 'Servant';
+    const bondLvlNotice = bondResult.didLevelUp ? `\n🎉 **[BOND LEVEL UP]** **${sName}** reached **Bond Lv. ${bondResult.newLevel}**!` : '';
 
     const embed = new EmbedBuilder()
       .setTitle('👁️ CITY PATROL RECONNAISSANCE REPORT')
-      .setDescription(res.message)
+      .setDescription(
+        `${res.message}\n\n` +
+        `💖 **Bond Synergy:** **+${bondGain} Bond EXP** earned with **${sName}** through field reconnaissance! (Current: Lv. ${bondResult.newLevel})${bondLvlNotice}`
+      )
       .setColor(0x0284c7)
       .setFooter({ text: 'Stealth Reconnaissance • Wards & Traps Detected Safely (No Trigger)' });
 

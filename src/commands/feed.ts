@@ -10,6 +10,7 @@ import {
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { feedCraftEssences, getCeExpValue, calculateLevelFromExp, getTotalExpForLevel } from '../engine/customization';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
+import { addBondExpToServant } from '../../lib/engine/bondEvents';
 
 export const data = new SlashCommandBuilder()
   .setName('feed')
@@ -183,19 +184,27 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
           const result = feedCraftEssences(activeServant, targetsToFeed, master.craftEssences);
           master.craftEssences = result.remainingCraftEssences;
+
+          // Award Bond EXP for devotion to Servant (25 EXP per CE fed)
+          const bondExpGain = result.fedEssences.length * 25;
+          const bondRes = addBondExpToServant(result.updatedServant, bondExpGain);
+          const finalServant = bondRes.updatedServant;
+
           const sIdx = master.servants.findIndex((s: any) => s.id === activeServant.id);
           if (sIdx !== -1) {
-            master.servants[sIdx] = result.updatedServant;
+            master.servants[sIdx] = finalServant;
           }
-          activeServant = result.updatedServant;
+          activeServant = finalServant;
           await saveMaster(master);
 
           const lvlMsg = result.levelsGained > 0
             ? `🌟 **LEVEL UP!** \`Lv. ${result.oldLevel} ➔ Lv. ${result.newLevel}\` (+${result.levelsGained} Levels!)\n` +
               `📈 **Stat Points Gained:** \`+${result.statPointsGained} Available Points\` (+10 pts per level!)\n` +
-              `✨ **Total Available Points:** \`${result.updatedServant.availableStatPoints} pts\``
+              `✨ **Total Available Points:** \`${finalServant.availableStatPoints} pts\``
             : `📊 **Level:** \`Lv. ${result.newLevel}\` (Progressed towards next level)\n` +
-              `✨ **Available Stat Points:** \`${result.updatedServant.availableStatPoints} pts\``;
+              `✨ **Available Stat Points:** \`${finalServant.availableStatPoints} pts\``;
+
+          const bondMsg = `💖 **Bond Devotion:** \`+${bondExpGain} Bond EXP\` (Bond Lv. ${finalServant.bondLevel || 1}/10)${bondRes.didLevelUp ? ` 🎉 **[BOND LEVEL UP!]** Reached **Bond Lv. ${bondRes.newLevel}**!` : ''}`;
 
           const fedNames = result.fedEssences.map((c: any) => `• **${c.name}** (★${c.rarity || 3}) — +${getCeExpValue(c).toLocaleString()} EXP`).slice(0, 8).join('\n');
 
@@ -204,6 +213,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             .setDescription(
               `Synthesized **${result.fedEssences.length} Craft Essence(s)** into **${sName}**!\n\n` +
               `🔮 **EXP Gained:** \`+${result.expGained.toLocaleString()} EXP\`\n` +
+              `${bondMsg}\n\n` +
               `${lvlMsg}\n\n` +
               `**Consolidated Essences:**\n${fedNames}${result.fedEssences.length > 8 ? `\n*...and ${result.fedEssences.length - 8} more*` : ''}\n\n` +
               `*Use \`/customise stats\` or Servant Workshop to allocate your points!*`
@@ -258,18 +268,26 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const result = feedCraftEssences(activeServant, targetsToFeed, master.craftEssences);
     master.craftEssences = result.remainingCraftEssences;
+
+    // Award Bond EXP for devotion to Servant (25 EXP per CE fed)
+    const bondExpGain = result.fedEssences.length * 25;
+    const bondRes = addBondExpToServant(result.updatedServant, bondExpGain);
+    const finalServant = bondRes.updatedServant;
+
     const sIdx = master.servants.findIndex((s: any) => s.id === activeServant.id);
     if (sIdx !== -1) {
-      master.servants[sIdx] = result.updatedServant;
+      master.servants[sIdx] = finalServant;
     }
     await saveMaster(master);
 
     const lvlMsg = result.levelsGained > 0
       ? `🌟 **LEVEL UP!** \`Lv. ${result.oldLevel} ➔ Lv. ${result.newLevel}\` (+${result.levelsGained} Levels!)\n` +
         `📈 **Stat Points Gained:** \`+${result.statPointsGained} Available Points\` (+10 pts per level!)\n` +
-        `✨ **Total Available Points:** \`${result.updatedServant.availableStatPoints} pts\``
+        `✨ **Total Available Points:** \`${finalServant.availableStatPoints} pts\``
       : `📊 **Level:** \`Lv. ${result.newLevel}\` (Progressed towards next level)\n` +
-        `✨ **Available Stat Points:** \`${result.updatedServant.availableStatPoints} pts\``;
+        `✨ **Available Stat Points:** \`${finalServant.availableStatPoints} pts\``;
+
+    const bondMsg = `💖 **Bond Devotion:** \`+${bondExpGain} Bond EXP\` (Bond Lv. ${finalServant.bondLevel || 1}/10)${bondRes.didLevelUp ? ` 🎉 **[BOND LEVEL UP!]** Reached **Bond Lv. ${bondRes.newLevel}**!` : ''}`;
 
     const fedList = result.fedEssences.map((c: any) => `• **${c.name}** (★${c.rarity || 3}) — +${getCeExpValue(c).toLocaleString()} EXP`).slice(0, 8).join('\n');
 
@@ -278,6 +296,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .setDescription(
         `Synthesized **${result.fedEssences.length} Craft Essence(s)** into **${sName}**!\n\n` +
         `🔮 **EXP Gained:** \`+${result.expGained.toLocaleString()} EXP\`\n` +
+        `${bondMsg}\n\n` +
         `${lvlMsg}\n\n` +
         `**Consolidated Essences:**\n${fedList}${result.fedEssences.length > 8 ? `\n*...and ${result.fedEssences.length - 8} more*` : ''}\n\n` +
         `*To allocate your newly gained stat points, use:*\n\`/customise stats strength:5 endurance:5\``
