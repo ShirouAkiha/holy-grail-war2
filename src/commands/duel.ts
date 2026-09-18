@@ -3207,7 +3207,7 @@ async function startInteractiveDuel(
         time: 3600000 // 1 hour absolute safety ceiling
       });
 
-  const advanceTurn = async (interactionToEdit?: any) => {
+  const advanceTurn = async (interactionToEdit?: any, pendingNpActors: DuelCombatant[] = []) => {
     // If either team is completely eliminated, conclude duel!
     if (getLivingTeam1().length === 0 || getLivingTeam2().length === 0) {
       collector.stop('finished');
@@ -3216,6 +3216,11 @@ async function startInteractiveDuel(
       const losingTeam = isTeam1Winner ? team2 : team1;
       const winner = winningTeam.find(c => c.currentHp > 0) || (isTeam1Winner ? p1 : p2);
       const finalAttachment = await buildCurrentAttachment();
+      if (pendingNpActors.length > 0) {
+        for (const npActor of pendingNpActors) {
+          await dispatchNpGif(npActor, interactionToEdit || contextInteraction);
+        }
+      }
       await finishDuel(interactionToEdit || contextInteraction, winningTeam, losingTeam, p1Master, p2Master, finalAttachment, isFreeBattle);
       return;
     }
@@ -3243,7 +3248,7 @@ async function startInteractiveDuel(
     if (activeCombatant.isAi) {
       const opps = getTargetsFor(activeCombatant);
       if (opps.length === 0) {
-        await advanceTurn(interactionToEdit);
+        await advanceTurn(interactionToEdit, pendingNpActors);
         return;
       }
       // AI chooses target (prefer lowest HP or random)
@@ -3275,7 +3280,7 @@ async function startInteractiveDuel(
       const aiDialogue = getCombatantChainDialogue(activeCombatant, aiSequence);
 
       if (aiSequence.includes('NP')) {
-        await dispatchNpGif(activeCombatant, interactionToEdit || contextInteraction);
+        pendingNpActors.push(activeCombatant);
       }
 
       const aiLog = resolveStrike(activeCombatant, target, aiSequence, aiDialogue);
@@ -3300,12 +3305,17 @@ async function startInteractiveDuel(
         const losingTeam = isTeam1Winner ? team2 : team1;
         const winner = winningTeam.find(c => c.currentHp > 0) || (isTeam1Winner ? p1 : p2);
         const finalAttachment = await buildCurrentAttachment();
+        if (pendingNpActors.length > 0) {
+          for (const npActor of pendingNpActors) {
+            await dispatchNpGif(npActor, interactionToEdit || contextInteraction);
+          }
+        }
         await finishDuel(interactionToEdit || contextInteraction, winningTeam, losingTeam, p1Master, p2Master, finalAttachment, isFreeBattle);
         return;
       }
 
       // Recursively advance until a human player turn is reached
-      await advanceTurn(interactionToEdit);
+      await advanceTurn(interactionToEdit, pendingNpActors);
       return;
     }
 
@@ -3336,10 +3346,22 @@ async function startInteractiveDuel(
       } else if (interactionToEdit) {
         await interactionToEdit.editReply({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
       }
+
+      // Dispatch any pending Noble Phantasm GIFs BELOW the newly relayed Battle Canvas!
+      if (pendingNpActors.length > 0) {
+        for (const npActor of pendingNpActors) {
+          await dispatchNpGif(npActor, interactionToEdit || contextInteraction);
+        }
+      }
     } catch (relayErr) {
       console.warn('[duel] Auto-relay message failed, fallback to editReply:', relayErr);
       if (interactionToEdit) {
         await interactionToEdit.editReply({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
+      }
+      if (pendingNpActors.length > 0) {
+        for (const npActor of pendingNpActors) {
+          await dispatchNpGif(npActor, interactionToEdit || contextInteraction);
+        }
       }
     }
   };
@@ -4144,8 +4166,9 @@ async function startInteractiveDuel(
         attacker.maxHp
       );
 
+      const pendingNpList: DuelCombatant[] = [];
       if (isNoblePhantasm) {
-        await dispatchNpGif(attacker, i);
+        pendingNpList.push(attacker);
       } else if (shouldCutIn) {
         try {
           const sName = attacker.servant.nickname || attacker.servant.template?.name || 'Heroic Spirit';
@@ -4203,7 +4226,7 @@ async function startInteractiveDuel(
       }
 
       // Advance to the next player's / servant's turn!
-      await advanceTurn(i);
+      await advanceTurn(i, pendingNpList);
     } catch (err: any) {
       if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) return;
       console.error('Error in duel battle collector:', err);
