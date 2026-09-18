@@ -53,13 +53,13 @@ Master says: "${ctx.playerMessage}"
     let response;
     try {
       response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite',
+        model: 'gemini-3.5-flash',
         contents: prompt,
       });
     } catch (primaryErr) {
-      console.warn('gemini-3.1-flash-lite attempt failed, trying gemini-3.6-flash:', primaryErr);
+      console.warn('gemini-3.5-flash attempt failed, trying gemini-3.1-flash-lite:', primaryErr);
       response = await ai.models.generateContent({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-3.1-flash-lite',
         contents: prompt,
       });
     }

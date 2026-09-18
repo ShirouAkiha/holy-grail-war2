@@ -178,7 +178,7 @@ JSON Output Schema:
     let response;
     try {
       response = await client.models.generateContent({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-3.5-flash',
         contents: prompt,
         config: {
           temperature: 0.9,
@@ -186,7 +186,7 @@ JSON Output Schema:
         }
       });
     } catch (primaryErr) {
-      console.warn('[churchNewsService] gemini-3.6-flash homily failed, trying gemini-3.1-flash-lite:', primaryErr);
+      console.warn('[churchNewsService] gemini-3.5-flash homily failed, trying gemini-3.1-flash-lite:', primaryErr);
       response = await client.models.generateContent({
         model: 'gemini-3.1-flash-lite',
         contents: prompt,
@@ -352,7 +352,7 @@ JSON Output Schema:
     let response;
     try {
       response = await client.models.generateContent({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-3.5-flash',
         contents: prompt,
         config: {
           temperature: 0.85,
@@ -360,7 +360,7 @@ JSON Output Schema:
         }
       });
     } catch (primaryErr) {
-      console.warn('[churchNewsService] gemini-3.6-flash news failed, trying gemini-3.1-flash-lite:', primaryErr);
+      console.warn('[churchNewsService] gemini-3.5-flash news failed, trying gemini-3.1-flash-lite:', primaryErr);
       response = await client.models.generateContent({
         model: 'gemini-3.1-flash-lite',
         contents: prompt,
