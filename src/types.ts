@@ -260,6 +260,9 @@ export interface MasterProfile {
   dailyTalkCount?: number;
   lastTalkDay?: string;
   lastTalkTimestamp?: number;
+  dailySparCount?: number;
+  lastSparDay?: string;
+  lastSparTimestamp?: number;
   customApiConfig?: UserCustomApiConfig;
   servants: MasterServantInstance[];
   craftEssences: CraftEssence[];

@@ -107,6 +107,9 @@ export function buildBondActionRow(master: any): ActionRowBuilder<ButtonBuilder>
   if (!activeServant) return [];
 
   const { event, isReplay } = selectActiveInterludeForServant(activeServant);
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const usedToday = master.lastSparDay === todayKey ? (master.dailySparCount || 0) : 0;
+  const sparsLeft = Math.max(0, MAX_DAILY_SPARS - usedToday);
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -126,8 +129,9 @@ export function buildBondActionRow(master: any): ActionRowBuilder<ButtonBuilder>
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId('vn_spar')
-      .setLabel('Spar & Train ⚔️')
-      .setStyle(ButtonStyle.Secondary),
+      .setLabel(sparsLeft > 0 ? `Spar & Train ⚔️ (${sparsLeft}/3)` : `Spar & Train ⚔️ (0/3)`)
+      .setStyle(sparsLeft > 0 ? ButtonStyle.Secondary : ButtonStyle.Secondary)
+      .setDisabled(sparsLeft <= 0),
     new ButtonBuilder()
       .setCustomId('vn_view_quotes')
       .setLabel('Voice Quotes 🎙️')
@@ -214,6 +218,42 @@ export function buildBondGiftsActionRows(master: any): ActionRowBuilder<ButtonBu
   return [row1, row2];
 }
 
+export const MAX_DAILY_SPARS = 3;
+
+export function checkSparLimit(master: any): { allowed: boolean; reason?: string; isCooldown?: boolean; remaining: number; max: number } {
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const usedToday = master.lastSparDay === todayKey ? (master.dailySparCount || 0) : 0;
+  const now = Date.now();
+
+  // Burst cooldown: 5 seconds
+  if (master.lastSparTimestamp && (now - master.lastSparTimestamp) < 5000) {
+    const waitSec = Math.ceil((5000 - (now - master.lastSparTimestamp)) / 1000);
+    return {
+      allowed: false,
+      reason: `⏳ Please catch your breath for **${waitSec}s** before initiating the next tactical sparring drill!`,
+      isCooldown: true,
+      remaining: Math.max(0, MAX_DAILY_SPARS - usedToday),
+      max: MAX_DAILY_SPARS
+    };
+  }
+
+  if (usedToday >= MAX_DAILY_SPARS) {
+    return {
+      allowed: false,
+      reason: 'limit_reached',
+      isCooldown: false,
+      remaining: 0,
+      max: MAX_DAILY_SPARS
+    };
+  }
+
+  return {
+    allowed: true,
+    remaining: MAX_DAILY_SPARS - usedToday,
+    max: MAX_DAILY_SPARS
+  };
+}
+
 export function buildBondGuideEmbed() {
   return new EmbedBuilder()
     .setTitle('🌸 Ways to Increase Servant Bond | Complete Master Guide')
@@ -224,19 +264,17 @@ export function buildBondGuideEmbed() {
       `• Converse with your Servant to earn **+35 to +50 Bond EXP** per interaction.\n\n` +
       `⚔️ **2. Holy Grail Duels (\`/duel\`)**\n` +
       `• Victory in battle awards **+150 Bond EXP** & **+2 Stat Points**.\n` +
-      `• Fighting bravely together (defeat/survival) still awards **+60 Bond EXP**.\n\n` +
+      `• Fighting bravely together (defeat/survival) still awards **+60 Bond EXP**.\n` +
+      `• Purging Rogue Heretics with open Church bounties awards an extra **+150 Bond EXP**.\n\n` +
       `📖 **3. Visual Novel Interludes (\`/bond view:interlude\`)**\n` +
       `• Experience story quests and dialogues to earn **+150 to +300 Bond EXP** and **Saint Quartz**.\n\n` +
       `🎁 **4. Present Gifts & Tea Time (\`/bond view:gift\`)**\n` +
       `• Offer Afternoon Tea (**FREE**, +150 EXP), Feasts (+250 EXP), Golden Apples (+350 EXP), or Sacred Relics (+500 EXP).\n\n` +
       `⚔️ **5. Master-Servant Sparring (\`/bond view:spar\`)**\n` +
-      `• Run tactical combat simulations together in the Sanctum for **+120 Bond EXP**.\n\n` +
-      `✨ **6. Craft Essence Synthesis (\`/feed\`)**\n` +
-      `• Enhancing your Servant with Craft Essences grants **+25 Bond EXP per CE fed**.\n\n` +
-      `💎 **7. Daily Leyline Harvest (\`/daily\`)**\n` +
-      `• Checking in daily awards **+100 Bond EXP** directly to your active partner Servant.\n\n` +
-      `👁️ **8. City Reconnaissance Patrol (\`/patrol\`)**\n` +
-      `• Scouting Fuyuki sectors together earns **+60 Bond EXP** per patrol.`
+      `• Run tactical combat simulations together in the Sanctum for **+120 Bond EXP**.\n` +
+      `• **Daily Limit:** **3 Sparring Sessions per day** (resets at 00:00 UTC).\n\n` +
+      `💎 **6. Daily Leyline Harvest (\`/daily\`)**\n` +
+      `• Checking in daily awards **+100 Bond EXP** directly to your active partner Servant.`
     )
     .setColor(0xec4899)
     .setFooter({ text: 'Reach Bond Lv. 5 for +10% Card Potency & Bond Lv. 10 for Exclusive CE!' });
@@ -270,10 +308,52 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     if (viewOption === 'spar') {
+      const sparStatus = checkSparLimit(master);
       const sTemplate = activeServant.template || activeServant;
       const servantName = activeServant.nickname || sTemplate.name || 'Heroic Spirit';
-      const debrief = getServantSparringDebrief(activeServant);
 
+      if (!sparStatus.allowed) {
+        if (sparStatus.isCooldown) {
+          return interaction.editReply({ content: sparStatus.reason || '⏳ Please wait before sparring again!' });
+        }
+
+        const limitEmbed = new EmbedBuilder()
+          .setTitle(`⚔️ Daily Sparring Limit Reached (${MAX_DAILY_SPARS}/${MAX_DAILY_SPARS} Drills)`)
+          .setDescription(
+            `**${servantName}** lowers their weapon to rest:\n` +
+            `> ❝ *We have pushed our limits in today's combat simulations, Master. Pushing further without proper rest risks overtaxing our spiritual core. Let us resume tactical drills after tomorrow's mana refresh!* ❞\n\n` +
+            `📊 **Daily Sparring Limit:** \`${MAX_DAILY_SPARS} / ${MAX_DAILY_SPARS} Drills Completed Today\`\n` +
+            `🔄 **Daily Reset:** 00:00 UTC\n\n` +
+            `💡 **Other Ways to Deepen Your Bond Today:**\n` +
+            `• 💬 **Telepathic Dialogue (\`/talk\`)** — Converse with your Servant (+35 to +50 EXP)\n` +
+            `• 🎁 **Present Gifts (\`/bond view:gift\`)** — Enjoy Free Afternoon Tea (+150 EXP) or Feasts\n` +
+            `• ⚔️ **Holy Grail Duels (\`/duel\`)** — Battle in official Grail War duels (+150 EXP win / +60 EXP defense)\n` +
+            `• 📖 **Visual Novel Interludes (\`/bond view:interlude\`)** — Experience story quests`
+          )
+          .setColor(0xf59e0b)
+          .setFooter({ text: `Daily Sparring Limit: ${MAX_DAILY_SPARS} Sessions per Day (Resets 00:00 UTC)` });
+
+        const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId('vn_gift_menu')
+            .setLabel('Present Gifts 🎁')
+            .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+            .setCustomId('vn_back_status')
+            .setLabel('📊 Bond Sanctum')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        return interaction.editReply({ embeds: [limitEmbed], components: [backRow] });
+      }
+
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const usedToday = master.lastSparDay === todayKey ? (master.dailySparCount || 0) : 0;
+      master.dailySparCount = usedToday + 1;
+      master.lastSparDay = todayKey;
+      master.lastSparTimestamp = Date.now();
+
+      const debrief = getServantSparringDebrief(activeServant);
       const bondGain = 120;
       const bondRes = addBondExpToServant(activeServant, bondGain);
       const updatedServant = bondRes.updatedServant;
@@ -300,6 +380,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'sparring_drill.png' });
       const bondLvlMsg = bondRes.didLevelUp ? `\n🎉 **[BOND LEVEL UP!]** Reached **Bond Lv. ${bondRes.newLevel}**!` : '';
+      const remainingSpars = MAX_DAILY_SPARS - master.dailySparCount;
 
       const sparEmbed = new EmbedBuilder()
         .setTitle(`⚔️ Tactical Sparring Complete: ${servantName}`)
@@ -307,7 +388,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           `**${servantName}:**\n> ❝ ***${debrief.responseText}*** ❞\n\n` +
           `💖 **Sparring Rewards:**\n` +
           `• **Bond EXP:** \`+${bondGain} Bond EXP\`\n` +
-          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bondLvlMsg}`
+          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bondLvlMsg}\n` +
+          `• **Daily Spar Drills:** \`${master.dailySparCount} / ${MAX_DAILY_SPARS} Completed Today\` (${remainingSpars > 0 ? `${remainingSpars} drill(s) left` : 'Daily limit reached'})`
         )
         .setImage('attachment://sparring_drill.png')
         .setColor(0x38bdf8);
@@ -315,8 +397,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
           .setCustomId('vn_spar')
-          .setLabel('Spar Again ⚔️')
-          .setStyle(ButtonStyle.Primary),
+          .setLabel(remainingSpars > 0 ? `Spar Again ⚔️ (${remainingSpars} left)` : 'Spar Limit Reached ⚔️')
+          .setStyle(remainingSpars > 0 ? ButtonStyle.Primary : ButtonStyle.Secondary)
+          .setDisabled(remainingSpars <= 0),
         new ButtonBuilder()
           .setCustomId('vn_back_status')
           .setLabel('📊 Bond Sanctum')
@@ -550,6 +633,49 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
     if (btnId === 'vn_spar') {
       await interaction.deferUpdate();
+
+      const sparStatus = checkSparLimit(master);
+      if (!sparStatus.allowed) {
+        if (sparStatus.isCooldown) {
+          return interaction.followUp({ flags: MessageFlags.Ephemeral, content: sparStatus.reason || '⏳ Please wait before sparring again!' });
+        }
+
+        const limitEmbed = new EmbedBuilder()
+          .setTitle(`⚔️ Daily Sparring Limit Reached (${MAX_DAILY_SPARS}/${MAX_DAILY_SPARS} Drills)`)
+          .setDescription(
+            `**${servantName}** lowers their weapon to rest:\n` +
+            `> ❝ *We have pushed our limits in today's combat simulations, Master. Pushing further without proper rest risks overtaxing our spiritual core. Let us resume tactical drills after tomorrow's mana refresh!* ❞\n\n` +
+            `📊 **Daily Sparring Limit:** \`${MAX_DAILY_SPARS} / ${MAX_DAILY_SPARS} Drills Completed Today\`\n` +
+            `🔄 **Daily Reset:** 00:00 UTC\n\n` +
+            `💡 **Other Ways to Deepen Your Bond Today:**\n` +
+            `• 💬 **Telepathic Dialogue (\`/talk\`)** — Converse with your Servant (+35 to +50 EXP)\n` +
+            `• 🎁 **Present Gifts (\`/bond view:gift\`)** — Enjoy Free Afternoon Tea (+150 EXP) or Feasts\n` +
+            `• ⚔️ **Holy Grail Duels (\`/duel\`)** — Battle in official Grail War duels (+150 EXP win / +60 EXP defense)\n` +
+            `• 📖 **Visual Novel Interludes (\`/bond view:interlude\`)** — Experience story quests`
+          )
+          .setColor(0xf59e0b)
+          .setFooter({ text: `Daily Sparring Limit: ${MAX_DAILY_SPARS} Sessions per Day (Resets 00:00 UTC)` });
+
+        const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId('vn_gift_menu')
+            .setLabel('Present Gifts 🎁')
+            .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+            .setCustomId('vn_back_status')
+            .setLabel('📊 Bond Sanctum')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        return interaction.editReply({ embeds: [limitEmbed], files: [], components: [backRow] });
+      }
+
+      const todayKey = new Date().toISOString().slice(0, 10);
+      const usedToday = master.lastSparDay === todayKey ? (master.dailySparCount || 0) : 0;
+      master.dailySparCount = usedToday + 1;
+      master.lastSparDay = todayKey;
+      master.lastSparTimestamp = Date.now();
+
       const debrief = getServantSparringDebrief(activeServant);
 
       const bondGain = 120;
@@ -578,6 +704,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'sparring_drill.png' });
       const bondLvlMsg = bondRes.didLevelUp ? `\n🎉 **[BOND LEVEL UP!]** Reached **Bond Lv. ${bondRes.newLevel}**!` : '';
+      const remainingSpars = MAX_DAILY_SPARS - master.dailySparCount;
 
       const sparEmbed = new EmbedBuilder()
         .setTitle(`⚔️ Tactical Sparring Complete: ${servantName}`)
@@ -585,7 +712,8 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           `**${servantName}:**\n> ❝ ***${debrief.responseText}*** ❞\n\n` +
           `💖 **Sparring Rewards:**\n` +
           `• **Bond EXP:** \`+${bondGain} Bond EXP\`\n` +
-          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bondLvlMsg}`
+          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bondLvlMsg}\n` +
+          `• **Daily Spar Drills:** \`${master.dailySparCount} / ${MAX_DAILY_SPARS} Completed Today\` (${remainingSpars > 0 ? `${remainingSpars} drill(s) left` : 'Daily limit reached'})`
         )
         .setImage('attachment://sparring_drill.png')
         .setColor(0x38bdf8);
@@ -593,8 +721,9 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
           .setCustomId('vn_spar')
-          .setLabel('Spar Again ⚔️')
-          .setStyle(ButtonStyle.Primary),
+          .setLabel(remainingSpars > 0 ? `Spar Again ⚔️ (${remainingSpars} left)` : 'Spar Limit Reached ⚔️')
+          .setStyle(remainingSpars > 0 ? ButtonStyle.Primary : ButtonStyle.Secondary)
+          .setDisabled(remainingSpars <= 0),
         new ButtonBuilder()
           .setCustomId('vn_back_status')
           .setLabel('📊 Bond Sanctum')
