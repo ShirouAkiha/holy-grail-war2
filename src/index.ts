@@ -1008,8 +1008,13 @@ client.on(Events.InteractionCreate, async interaction => {
       return;
     }
 
-    // ROUTE C.2: Channel Select Menus (e.g. choosing channel sector for Bounded Field traps)
+    // ROUTE C.2: Channel Select Menus (e.g. choosing channel sector for Bounded Field traps or admin war announcement channel)
     if (interaction.isChannelSelectMenu()) {
+      if (interaction.customId.startsWith('admin_')) {
+        await adminCommand.handleAdminGlobalInteraction(interaction);
+        return;
+      }
+
       if (interaction.customId === 'war_trap_channel_select') {
         const selectedChanId = interaction.values[0];
         const selectedChan = interaction.guild?.channels.cache.get(selectedChanId);

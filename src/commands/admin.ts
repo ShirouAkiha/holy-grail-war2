@@ -10,6 +10,8 @@ import {
   ButtonStyle,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
+  ChannelSelectMenuBuilder,
+  ChannelType,
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
@@ -46,6 +48,7 @@ import {
 } from '../database/service';
 import {
   getOrInitWarSession,
+  saveWarToDisk,
   WAR_PRESETS,
   startOrRestartWar,
   resetHolyGrailWar,
@@ -56,6 +59,19 @@ import {
 import { startWarRecruitment, igniteWarFromRecruitment } from '../engine/warRecruitmentService';
 import { WarRules, MasterProfile } from '../types';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
+
+interface AnnounceDraft {
+  presetKey: string;
+  durationMinutes: number;
+  maxSlots: number;
+  targetChannelId?: string;
+}
+
+let adminAnnounceDraft: AnnounceDraft = {
+  presetKey: 'fuyuki_7',
+  durationMinutes: 15,
+  maxSlots: 7
+};
 import {
   getAllCharacterProfiles,
   getServantCharacterProfile,
@@ -1267,7 +1283,7 @@ export function buildMasterDossier(
 // 4. ADMIN HUB BUILDER
 // ==========================================
 export function buildAdminHub(
-  category: 'war' | 'war_rules' | 'masters' | 'personas' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war',
+  category: 'war' | 'war_announce' | 'war_rules' | 'masters' | 'personas' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war',
   actionOutcomeMsg?: string
 ) {
   let embeds: EmbedBuilder[] = [];
@@ -1285,11 +1301,22 @@ export function buildAdminHub(
         ? '🎨 Custom Community Only' 
         : '✨ Canon + Custom Servants';
 
+    const isCallActive = !!(war.recruitmentCall && war.recruitmentCall.active);
+    let recruitText = '⚪ **No Active Recruitment Proclamation** (Click **📢 Announce War** below to select a channel and broadcast)';
+    if (isCallActive) {
+      const chMention = war.recruitmentCall?.channelId ? `<#${war.recruitmentCall.channelId}>` : 'Selected Channel';
+      const deadline = war.recruitmentCall?.expiresAt && war.recruitmentCall.expiresAt > 0 
+        ? `<t:${Math.floor(war.recruitmentCall.expiresAt / 1000)}:R>` 
+        : 'Manual Overseer Ignition';
+      recruitText = `🟢 **ACTIVE IN ${chMention}** • **${war.recruitmentCall?.applicantIds.length || 0} Applicants** (Ends: ${deadline})`;
+    }
+
     const embed = new EmbedBuilder()
       .setTitle('🏆 Overseer Control: Holy Grail War Master Dashboard')
       .setDescription(
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
-        `Configure rituals, adjust lethality & servant pools, or trigger leyline cataclysms across the server.\n\n` +
+        `Configure rituals, adjust lethality & servant pools, or broadcast Holy Grail War recruitment to any channel.\n\n` +
+        `📢 **Recruitment Proclamation:** ${recruitText}\n\n` +
         `🏰 **Active War Format:** **${rules.formatName}**\n` +
         `👥 **Roster Status:** **${aliveCount} Alive** / **${participants.length} Total** (Max Cap: **${rules.maxMasters} Masters**)\n` +
         `☠️ **Eliminations:** **${deadCount} Fallen** | ⚱️ **Status:** \`${war.status.toUpperCase()}\`\n\n` +
@@ -1301,10 +1328,41 @@ export function buildAdminHub(
         `• 💧 **Leyline Density:** \`${rules.leylineDensity === 'fast' ? '⚡ High Surge (2x Fast Recovery)' : rules.leylineDensity === 'desolate' ? '🏜️ Desolate (No Auto-Regen)' : 'Balanced Standard (5 min full)'}\`\n` +
         `• ⛪ **Church Sanctuary:** \`${rules.churchAsylum ? '🟢 Active Asylum under Father Kotomine' : '🔴 Desecrated (No Asylum)'}\`\n` +
         `• 🕸️ **Trap Limit:** \`Max ${rules.trapLimitPerMaster || 3} per Master\` | 🚩 **Factions:** \`${rules.factionMode ? 'Red vs Black (Apocrypha)' : 'Free-For-All'}\`\n\n` +
-        `*Click **⚙️ Customize Rules** to adjust Command Seals & settings with 1-click buttons, or use presets & dropdown below!*`
+        `*Click **📢 Announce War** to choose a broadcast channel, or adjust settings with the buttons below!*`
       )
       .setColor(0xd4af37)
       .setFooter({ text: 'Admin Suite • FGO Holy Grail War Overseer Engine' });
+
+    embeds = [embed];
+
+  } else if (category === 'war_announce') {
+    const war = getOrInitWarSession();
+    const isCallActive = !!(war.recruitmentCall && war.recruitmentCall.active);
+    const activeCh = isCallActive && war.recruitmentCall?.channelId ? `<#${war.recruitmentCall.channelId}>` : 'None';
+    const activeTime = isCallActive && war.recruitmentCall?.expiresAt 
+      ? (war.recruitmentCall.expiresAt > 0 ? `<t:${Math.floor(war.recruitmentCall.expiresAt / 1000)}:R>` : 'Manual Ignition')
+      : 'N/A';
+    const targetChTag = adminAnnounceDraft.targetChannelId ? `<#${adminAnnounceDraft.targetChannelId}>` : '*Current / Select from menu below*';
+    const presetName = WAR_PRESETS[adminAnnounceDraft.presetKey]?.formatName || '5th Fuyuki Holy Grail War';
+
+    const embed = new EmbedBuilder()
+      .setTitle('📢 Overseer Dispatch: Holy Grail War Proclamation & Channel Broadcast')
+      .setDescription(
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `Broadcast the official Holy Grail War Proclamation into a chosen channel on this server.\n` +
+        `Magi will be able to privately inscribe their Command Seals with complete anonymity and receive battle orders in their DMs upon war ignition.\n\n` +
+        `📡 **Target Broadcast Channel:** ${targetChTag}\n` +
+        `⏱️ **Recruitment Countdown:** \`${adminAnnounceDraft.durationMinutes > 0 ? `${adminAnnounceDraft.durationMinutes} Minutes` : 'Manual Start (No Timer)'}\`\n` +
+        `🏆 **Format & Capacity:** \`${adminAnnounceDraft.maxSlots} Masters\` (*${presetName}*)\n\n` +
+        (isCallActive 
+          ? `🟢 **CURRENT ACTIVE RECRUITMENT CALL:**\n` +
+            `• Channel: ${activeCh} | Applicants: **${war.recruitmentCall?.applicantIds.length || 0} Magi**\n` +
+            `• Deadline: ${activeTime}\n\n`
+          : `⚪ **Status:** No proclamation currently active.\n\n`) +
+        `*Select a channel below to immediately post the Holy Grail War announcement:*`
+      )
+      .setColor(0xb91c1c)
+      .setFooter({ text: 'Admin Suite • Holy Grail War Proclamation Dispatcher' });
 
     embeds = [embed];
 
@@ -1476,10 +1534,10 @@ export function buildAdminHub(
   // --- UI BUTTON ROWS ---
   const categoryNavRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId('admin_tab_war').setLabel('War Hub').setEmoji('🏆').setStyle(category === 'war' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId('admin_tab_war_announce').setLabel('Announce War').setEmoji('📢').setStyle(category === 'war_announce' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('admin_tab_masters').setLabel('Masters').setEmoji('👤').setStyle(category === 'masters' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('admin_tab_personas').setLabel('Personas').setEmoji('🎭').setStyle(category === 'personas' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('admin_tab_war_rules').setLabel('Rules').setEmoji('⚙️').setStyle(category === 'war_rules' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('admin_tab_economy').setLabel('Economy').setEmoji('💎').setStyle(category === 'economy' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId('admin_tab_war_rules').setLabel('Rules').setEmoji('⚙️').setStyle(category === 'war_rules' ? ButtonStyle.Primary : ButtonStyle.Secondary)
   );
 
   const components: any[] = [categoryNavRow];
@@ -1580,16 +1638,65 @@ export function buildAdminHub(
 
     // Lifecycle Actions Row
     const lifecycleRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('admin_tab_war_announce').setLabel('Announce War (Choose Channel)').setEmoji('📢').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('admin_war_action_restart').setLabel('Restart War').setEmoji('🚀').setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId('admin_war_action_reset').setLabel('Quick Refresh').setEmoji('🔄').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_war_refill_all_seals').setLabel('Refill All Seals').setEmoji('🔱').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('admin_war_cataclysm_hub').setLabel('Cataclysm').setEmoji('⚡').setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId('admin_war_history_view').setLabel('Hall of Fame').setEmoji('📜').setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('admin_war_refill_all_seals').setLabel('Refill All Seals').setEmoji('🔱').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_war_cataclysm_hub').setLabel('Cataclysm').setEmoji('⚡').setStyle(ButtonStyle.Danger)
     );
 
     const ruleSelectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(createRuleSelectMenu());
 
     components.push(presetsRow, lifecycleRow, ruleSelectRow);
+
+  } else if (category === 'war_announce') {
+    const war = getOrInitWarSession();
+    const isCallActive = !!(war.recruitmentCall && war.recruitmentCall.active);
+
+    // 1. Channel Selector Row
+    const channelSelectRow = new ActionRowBuilder<ChannelSelectMenuBuilder>().addComponents(
+      new ChannelSelectMenuBuilder()
+        .setCustomId('admin_war_announce_channel_select')
+        .setPlaceholder('📢 Select Discord channel to post Holy Grail War Proclamation...')
+        .setChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+    );
+
+    // 2. Timer Presets Row
+    const timerRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('admin_war_timer_0').setLabel('Manual (No Timer)').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 0 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_war_timer_5').setLabel('5 Mins').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 5 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_war_timer_15').setLabel('15 Mins').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 15 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_war_timer_30').setLabel('30 Mins').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 30 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_war_timer_60').setLabel('1 Hour').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 60 ? ButtonStyle.Primary : ButtonStyle.Secondary)
+    );
+
+    // 3. Format Presets Row
+    const presetRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('admin_war_ann_preset_fuyuki_7').setLabel('Fuyuki (7P)').setEmoji('🏆').setStyle(adminAnnounceDraft.presetKey === 'fuyuki_7' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_war_ann_preset_apocrypha_14').setLabel('Apocrypha (14P)').setEmoji('⚔️').setStyle(adminAnnounceDraft.presetKey === 'apocrypha_14' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_war_ann_preset_singularity_chaos').setLabel('Singularity (30P)').setEmoji('🌌').setStyle(adminAnnounceDraft.presetKey === 'singularity_chaos' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_war_ann_preset_desolate_hardcore').setLabel('Desolate (1-Seal)').setEmoji('💀').setStyle(adminAnnounceDraft.presetKey === 'desolate_hardcore' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+    );
+
+    // 4. Action & Navigation Buttons
+    const executionButtons: ButtonBuilder[] = [
+      new ButtonBuilder().setCustomId('admin_war_announce_post_current').setLabel('Post in Current Channel').setEmoji('📢').setStyle(ButtonStyle.Success)
+    ];
+
+    if (isCallActive) {
+      executionButtons.push(
+        new ButtonBuilder().setCustomId('admin_war_announce_force_ignite').setLabel('Ignite War Now').setEmoji('⚡').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('admin_war_announce_cancel').setLabel('Cancel Call').setEmoji('❌').setStyle(ButtonStyle.Secondary)
+      );
+    }
+
+    executionButtons.push(
+      new ButtonBuilder().setCustomId('admin_tab_war').setLabel('Back to War Hub').setEmoji('◀️').setStyle(ButtonStyle.Secondary)
+    );
+
+    const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(executionButtons);
+
+    components.push(channelSelectRow, timerRow, presetRow, actionRow);
 
   } else if (category === 'war_rules') {
     const war = getOrInitWarSession();
@@ -1655,11 +1762,13 @@ export function buildAdminHub(
 export async function handleAdminGlobalInteraction(interaction: any) {
   try {
     const customId = interaction.customId;
-    let currentCategory: 'war' | 'war_rules' | 'masters' | 'personas' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war';
+    let currentCategory: 'war' | 'war_announce' | 'war_rules' | 'masters' | 'personas' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war';
     let actionOutcome: string | undefined = undefined;
 
     // Detect category
-    if (customId === 'admin_tab_war' || customId.startsWith('admin_war_') || customId.startsWith('admin_cata_')) {
+    if (customId === 'admin_tab_war_announce' || customId.startsWith('admin_war_announce') || customId.startsWith('admin_war_timer_') || customId.startsWith('admin_war_ann_preset_')) {
+      currentCategory = 'war_announce';
+    } else if (customId === 'admin_tab_war' || customId.startsWith('admin_war_') || customId.startsWith('admin_cata_')) {
       currentCategory = 'war';
     } else if (customId === 'admin_tab_masters' || customId === 'admin_select_master_dossier') {
       currentCategory = 'masters';
@@ -1796,6 +1905,8 @@ export async function handleAdminGlobalInteraction(interaction: any) {
     // TAB NAVIGATION
     if (customId === 'admin_tab_war') {
       currentCategory = 'war';
+    } else if (customId === 'admin_tab_war_announce') {
+      currentCategory = 'war_announce';
     } else if (customId === 'admin_tab_masters') {
       currentCategory = 'masters';
     } else if (customId === 'admin_tab_personas') {
@@ -1810,6 +1921,95 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       currentCategory = 'listnp';
     } else if (customId === 'admin_tab_economy') {
       currentCategory = 'economy';
+    }
+
+    // WAR ANNOUNCEMENT & CHANNEL SELECTOR HANDLERS
+    else if (customId === 'admin_war_announce_channel_select') {
+      currentCategory = 'war_announce';
+      const selectedChanId = (interaction as any).values?.[0];
+      if (selectedChanId) {
+        adminAnnounceDraft.targetChannelId = selectedChanId;
+        let targetChan: any = null;
+        try {
+          targetChan = interaction.guild?.channels.cache.get(selectedChanId) || await interaction.client.channels.fetch(selectedChanId);
+        } catch {
+          targetChan = null;
+        }
+
+        if (targetChan && typeof targetChan.send === 'function') {
+          const res = await startWarRecruitment(interaction.client, targetChan, interaction.user, {
+            durationMinutes: adminAnnounceDraft.durationMinutes,
+            maxSlots: adminAnnounceDraft.maxSlots,
+            presetKey: adminAnnounceDraft.presetKey
+          });
+
+          if (res.success) {
+            actionOutcome = `✅ **Holy Grail War Recruitment Broadcasted to <#${selectedChanId}>!**\n\n` +
+              `• **Target Channel:** <#${selectedChanId}>\n` +
+              `• **Format:** \`${WAR_PRESETS[adminAnnounceDraft.presetKey]?.formatName || 'Fuyuki 7'}\` (${adminAnnounceDraft.maxSlots} Max Masters)\n` +
+              `• **Timer:** ${adminAnnounceDraft.durationMinutes > 0 ? `\`${adminAnnounceDraft.durationMinutes} Minutes\`` : '`Manual Start`'}\n` +
+              `• **Secrecy:** Magi can now safely click to enroll with complete anonymity!`;
+          } else {
+            actionOutcome = `❌ **Recruitment Dispatch Failed:** ${res.message}`;
+          }
+        } else {
+          actionOutcome = `❌ Selected channel <#${selectedChanId}> is not accessible or lacks send permissions.`;
+        }
+      }
+    } else if (customId === 'admin_war_announce_post_current') {
+      currentCategory = 'war_announce';
+      const targetChanId = adminAnnounceDraft.targetChannelId || interaction.channelId;
+      let targetChan: any = null;
+      try {
+        targetChan = interaction.guild?.channels.cache.get(targetChanId) || await interaction.client.channels.fetch(targetChanId) || interaction.channel;
+      } catch {
+        targetChan = interaction.channel;
+      }
+
+      if (targetChan && typeof targetChan.send === 'function') {
+        const res = await startWarRecruitment(interaction.client, targetChan, interaction.user, {
+          durationMinutes: adminAnnounceDraft.durationMinutes,
+          maxSlots: adminAnnounceDraft.maxSlots,
+          presetKey: adminAnnounceDraft.presetKey
+        });
+
+        if (res.success) {
+          actionOutcome = `✅ **Holy Grail War Recruitment Broadcasted to <#${targetChan.id}>!**\n\n` +
+            `• **Channel:** <#${targetChan.id}>\n` +
+            `• **Timer:** ${adminAnnounceDraft.durationMinutes > 0 ? `${adminAnnounceDraft.durationMinutes} Minutes` : 'Manual Start'}\n` +
+            `• **Capacity:** ${adminAnnounceDraft.maxSlots} Masters\n` +
+            `• **Secrecy:** Magi enrollment is completely anonymous.`;
+        } else {
+          actionOutcome = `❌ **Recruitment Dispatch Failed:** ${res.message}`;
+        }
+      } else {
+        actionOutcome = `❌ Current channel cannot receive messages.`;
+      }
+    } else if (customId.startsWith('admin_war_timer_')) {
+      currentCategory = 'war_announce';
+      const minutes = parseInt(customId.replace('admin_war_timer_', ''), 10);
+      adminAnnounceDraft.durationMinutes = minutes;
+      actionOutcome = minutes === 0 
+        ? '⏱️ **Recruitment Timer:** Set to **Manual Start** (no automatic countdown timer).'
+        : `⏱️ **Recruitment Timer:** Set to **${minutes} minutes** countdown!`;
+    } else if (customId.startsWith('admin_war_ann_preset_')) {
+      currentCategory = 'war_announce';
+      const pKey = customId.replace('admin_war_ann_preset_', '');
+      adminAnnounceDraft.presetKey = pKey;
+      adminAnnounceDraft.maxSlots = WAR_PRESETS[pKey]?.maxMasters || 7;
+      actionOutcome = `🏆 **Recruitment Format:** Set to **${WAR_PRESETS[pKey]?.formatName || pKey}** (${adminAnnounceDraft.maxSlots} Max Masters)!`;
+    } else if (customId === 'admin_war_announce_force_ignite') {
+      const res = await igniteWarFromRecruitment(interaction.client, interaction.user);
+      actionOutcome = `⚡ **${res.success ? 'WAR IGNITED' : 'Ignition Failed'}:**\n${res.message}`;
+      currentCategory = 'war';
+    } else if (customId === 'admin_war_announce_cancel') {
+      currentCategory = 'war_announce';
+      const war = getOrInitWarSession();
+      if (war.recruitmentCall) {
+        war.recruitmentCall.active = false;
+      }
+      saveWarToDisk();
+      actionOutcome = `❌ **Holy Grail War recruitment proclamation cancelled.**`;
     }
 
     // WAR PRESETS
