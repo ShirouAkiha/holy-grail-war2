@@ -81,7 +81,7 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
       standingTag = '💀 Eliminated (Safe Mode)';
     }
 
-    const calcMaxHp = userParticipant ? (userParticipant.maxHp || 50000) : 50000;
+    const calcMaxHp = activeServant?.maxHp || (activeServant?.template as any)?.baseHp || userParticipant?.maxHp || 50000;
     const hpBar = renderHpBar(100);
 
     const embed = new EmbedBuilder()
@@ -223,7 +223,7 @@ export function buildPublicProfileEmbed(master: any, war: any) {
       standingTag = '💀 Eliminated (Safe Mode)';
     }
 
-    const calcMaxHp = userParticipant ? (userParticipant.maxHp || 50000) : 50000;
+    const calcMaxHp = activeServant?.maxHp || (activeServant?.template as any)?.baseHp || userParticipant?.maxHp || 50000;
     const hpBar = renderHpBar(100);
 
     const embed = new EmbedBuilder()

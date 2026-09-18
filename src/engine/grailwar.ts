@@ -613,6 +613,12 @@ export function forfeitWar(
   const targetWar = war || globalWarSession || getOrInitWarSession(master);
   master.environmentMode = 'safe';
 
+  if (master.servants) {
+    for (const s of master.servants) {
+      s.currentHp = (s as any).maxHp || s.template?.baseHp || 50000;
+    }
+  }
+
   const p = targetWar.participants[master.discordId] ||
     Object.values(targetWar.participants).find(x => x.discordId === master.discordId);
 
@@ -839,6 +845,18 @@ export function getHealingStatus(participant: WarMasterParticipant, now: number 
 } {
   const maxHp = participant?.maxHp || 15000;
   if (!participant || !participant.isAlive) {
+    if (participant?.eliminatedReason === 'forfeited') {
+      return {
+        currentHp: maxHp,
+        maxHp,
+        percent: 100,
+        isFullyHealed: true,
+        remainingSecs: 0,
+        statusTag: '🛡️ Chaldea Safe Mode (100% Full Health)',
+        canRitualHeal: false,
+        ritualCooldownSecs: 0
+      };
+    }
     return {
       currentHp: 0,
       maxHp,

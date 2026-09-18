@@ -17,6 +17,30 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
+    // Safe Mode Masters have infinite continuous sanctuary healing
+    if (master.environmentMode === 'safe') {
+      const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
+      for (const s of master.servants) {
+        s.currentHp = (s as any).maxHp || s.template?.baseHp || 50000;
+      }
+      await saveMaster(master);
+
+      const maxHp = (activeServant as any).maxHp || activeServant.template?.baseHp || 50000;
+      const safeEmbed = new EmbedBuilder()
+        .setTitle('✨ CHALDEA LEYLINE SANCTUARY')
+        .setDescription(
+          `Your Servant (**${activeServant.nickname || activeServant.template?.name}**) is safeguarded under Chaldea's continuous spiritual leylines and restored to **100% Full Health** (\`${maxHp.toLocaleString()} / ${maxHp.toLocaleString()} HP\`)!\n\n` +
+          `• **Mode:** 🛡️ Safe Mode\n` +
+          `• **Status:** Spiritual core is fully intact with zero attrition.\n` +
+          `• **Free Battles:** All friendly sparring matches automatically reset your Servant to 100% HP upon completion.`
+        )
+        .setColor(0x38bdf8)
+        .setFooter({ text: 'Chaldea Virtual Simulator • Safe Mode Protection' });
+
+      await interaction.reply({ embeds: [safeEmbed], flags: MessageFlags.Ephemeral });
+      return;
+    }
+
     let war = getOrInitWarSession(master);
     const res = executeWarAction(war, interaction.user.id, 'heal_ritual');
     war = res.updatedWar;
