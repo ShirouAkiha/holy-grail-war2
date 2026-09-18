@@ -22,7 +22,9 @@ export const CANON_MEDIA_FALLBACKS: Record<string, string> = {
   'super_aoko_trans.gif': 'https://ella.janitorai.com/media-approved/gR8x0bMk-pHc95lo5mhAL.gif',
   'super_aoko_avatar.webp': 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp',
   'gR8x0bMk-pHc95lo5mhAL.gif': 'https://ella.janitorai.com/media-approved/gR8x0bMk-pHc95lo5mhAL.gif',
-  'zUtP5PQLU7fMKVyin9H-f.webp': 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp'
+  'zUtP5PQLU7fMKVyin9H-f.webp': 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp',
+  'holy_grail_ritual.webp': 'https://ella.janitorai.com/media-approved/mK-ekdLeM4n1Wb-_vRN4L.webp',
+  'mK-ekdLeM4n1Wb-_vRN4L.webp': 'https://ella.janitorai.com/media-approved/mK-ekdLeM4n1Wb-_vRN4L.webp'
 };
 
 export function normalizeMediaUrl(rawUrl: string): string {

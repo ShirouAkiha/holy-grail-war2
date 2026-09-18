@@ -28,6 +28,8 @@ import { getOrCreateMaster, saveMaster } from '../database/service';
 // In-memory active timer handle
 let activeRecruitmentTimer: NodeJS.Timeout | null = null;
 
+const GRAIL_ANNOUNCEMENT_IMAGE = 'https://ella.janitorai.com/media-approved/mK-ekdLeM4n1Wb-_vRN4L.webp';
+
 /**
  * Builds the public Church announcement embed for the Holy Grail War recruitment call.
  * CRITICAL RULE: Absolutely NO Master or Servant identities are displayed!
@@ -38,50 +40,81 @@ export function buildRecruitmentEmbed(
 ): { embed: EmbedBuilder; row: ActionRowBuilder<ButtonBuilder> } {
   const preset = WAR_PRESETS[recruitment.presetKey] || WAR_PRESETS.fuyuki_7;
   const applicantCount = recruitment.applicantIds.length;
-  const maxSlots = recruitment.maxSlots;
+  const maxSlots = recruitment.maxSlots || 7;
 
   const now = Date.now();
-  let timerText = '⚡ **Continuous Inscription:** Until Overseer invokes ritual start.';
+  let timerText = 
+    '⚡ **Continuous Inscription Active:** Open until the Church Overseer commands ritual ignition.\n' +
+    '🕯️ **Sanctuary State:** Fuyuki leyline circuits are primed and receptive for Command Seals.';
+  
   if (recruitment.expiresAt > 0) {
     const unixSec = Math.floor(recruitment.expiresAt / 1000);
     if (recruitment.expiresAt > now) {
-      timerText = `⏳ **Ignition Deadline:** <t:${unixSec}:R> (<t:${unixSec}:f>)`;
+      timerText = 
+        `⏳ **Ignition Window:** <t:${unixSec}:R> (<t:${unixSec}:f>)\n` +
+        `⚡ **Leyline Resonance:** Approaching critical saturation point. The veil between reality and the Throne of Heroes thins.`;
     } else {
-      timerText = `⏱️ **Time Concluded:** Awaiting final ritual seal...`;
+      timerText = `⏱️ **Leylines Saturated:** Countdown concluded. The Church Overseer is invoking the final seal...`;
     }
   }
 
+  // Visual capacity progress bar
+  const ratio = Math.min(1, Math.max(0, maxSlots > 0 ? applicantCount / maxSlots : 0));
+  const filledBars = Math.round(ratio * 8);
+  const emptyBars = 8 - filledBars;
+  const progressBar = '`[' + '▓'.repeat(filledBars) + '░'.repeat(emptyBars) + ']`';
+
+  let capacityNotice = '';
+  if (applicantCount >= maxSlots) {
+    capacityNotice = `🔴 **CAPACITY SATURATED** — *The Greater Grail shall invoke the Arbitrament Draw upon ignition!*`;
+  } else if (applicantCount === 0) {
+    capacityNotice = `⚪ **VACANT THRONES** — *Awaiting the first soul to step forward into covenant.*`;
+  } else {
+    const remaining = maxSlots - applicantCount;
+    capacityNotice = `🟡 **${remaining} Seat${remaining === 1 ? '' : 's'} Remaining** before selection draw threshold.`;
+  }
+
   const embed = new EmbedBuilder()
-    .setTitle('🕯️ FUYUKI CHURCH: PROCLAMATION OF THE GREATER GRAIL RITUAL')
+    .setAuthor({
+      name: '⛪ FUYUKI CHURCH • EIGHTH SACRAMENT OVERSEER OFFICE',
+      iconURL: GRAIL_ANNOUNCEMENT_IMAGE
+    })
+    .setTitle('🩸 HEAVEN\'S FEEL: RITUAL PROCLAMATION OF THE GREATER GRAIL')
     .setDescription(
-      `*"The spiritual leylines of Fuyuki reach critical resonance. The Greater Grail prepares to bestow seven sacred Command Seals upon worthy Magi.\n\n` +
-      `Offer your soul in secret, summon your Heroic Spirit, and fight for the omnipotent Wish-Granting Chalice."*\n\n` +
-      `— **Father Kirei Kotomine**, Church Overseer`
+      `*"Rejoice, Magi of this era. The sixty-year slumber dissolves beneath Mount Enzo. The Great Leylines of Fuyuki convulse with untamed ether, and the Root of All Creation beckons once more.*\n\n` +
+      `*Seven Thrones of legend descend from the Throne of Heroes. Seven Heroic Spirits shall answer the summoner's call. Inscribe your Command Seals in shadow, cast your ambitions into the crucible of Heaven's Feel, and claim the omnipotent Wish-Granting Chalice.*\n\n` +
+      `*Only one wish shall be granted. Only one shall survive the crucible."*\n\n` +
+      `— **Father Kirei Kotomine**, Arbitrator & Overseer of the Fuyuki Holy Grail War`
     )
-    .setColor(0xb91c1c) // Deep crimson
+    .setColor(0x991b1b) // Ominous Deep Crimson
     .addFields(
       {
-        name: '⏱️ RITUAL COUNTDOWN',
+        name: '⏳ RITUAL COUNTDOWN & IGNITION HORIZON',
         value: timerText,
         inline: false
       },
       {
-        name: '👥 ENLISTED APPLICANTS',
-        value: `📜 **${applicantCount} Magi** have inscribed their Command Seals\n🎯 **Grail Capacity:** **${maxSlots} Master Seats** (${preset.formatName})`,
+        name: '📜 THE SACRED ROSTER OF COVENANT',
+        value: 
+          `👥 **Inscribed Aspirants:** **${applicantCount} Magi** have etched their souls onto the roster\n` +
+          `🎯 **Ritual Architecture:** **${maxSlots} Master Seats** (${preset.formatName})\n` +
+          `📊 **Leyline Saturation:** ${progressBar} **${applicantCount}/${maxSlots}**\n` +
+          `🩸 **Threshold State:** ${capacityNotice}`,
         inline: false
       },
       {
-        name: '🛡️ SOVEREIGN DECREE OF SECRECY',
+        name: '🛡️ SOVEREIGN DECREE OF SECRECY & SACRED EDICTS',
         value: 
-          `• **Absolute Secrecy:** True names of participating Masters and Servants remain **STRICTLY CONCEALED**.\n` +
-          `• **Selection Draw:** If more than **${maxSlots} Magi** inscribe, the Greater Grail will randomly select **${maxSlots} Masters** upon ignition.\n` +
-          `• **Confidential Orders:** Chosen Masters will receive their battle orders and Command Seal activation via **Private Telepathic Dispatch (DM)**.\n` +
-          `• **Safe Sanctuary:** Magi not selected will remain unharmed under Church protection in Safe Mode.`,
+          `• 🕶️ **Absolute Anonymity:** Master and Servant identities remain strictly cloaked under Holy Church thaumaturgical seals. No public registry shall be unveiled.\n` +
+          `• 🎲 **The Chalice's Arbitrament:** Should inscriptions exceed **${maxSlots} Candidates**, the Greater Grail itself impartially selects the **${maxSlots} Destined Masters** upon ignition.\n` +
+          `• 📬 **Telepathic Dispatch (DM):** Anointed Masters receive their confidential war codex, combat interface, and awakened Command Seals via private message directly.\n` +
+          `• 🕊️ **Inviolable Sanctuary:** Those unchosen or choosing to withdraw dwell safely under Church protection in **Safe Mode**, free from all Holy Grail War combat.`,
         inline: false
       }
     )
+    .setImage(GRAIL_ANNOUNCEMENT_IMAGE)
     .setFooter({ 
-      text: `Overseer: ${recruitment.initiatedBy} • Click [Inscribe Command Seals] below to register` 
+      text: `Overseer: ${recruitment.initiatedBy} • Inscribe below to answer the summons • Sanctuary guaranteed to the peaceful` 
     })
     .setTimestamp();
 
@@ -692,17 +725,22 @@ export async function igniteWarFromRecruitment(
 
   // Update original recruitment card to grand War Ignition announcement
   const ignitedEmbed = new EmbedBuilder()
-    .setTitle('🔔 THE FUYUKI HOLY GRAIL WAR HAS COMMENCED!')
+    .setAuthor({
+      name: '⛪ FUYUKI CHURCH • EIGHTH SACRAMENT OVERSEER OFFICE',
+      iconURL: GRAIL_ANNOUNCEMENT_IMAGE
+    })
+    .setTitle('🔔 HEAVEN\'S FEEL: THE GREATER GRAIL RITUAL HAS IGNITED!')
     .setDescription(
-      `*"The seventh bell has tolled. The Greater Grail has chosen its **${chosenApplicants.length} Masters** from among the applicant pool in absolute secrecy."*\n\n` +
-      `⚔️ **Active Format:** ${freshWar.title}\n` +
-      `👥 **Combatants:** **${chosenApplicants.length} Shadow Masters** (Concealed)\n` +
-      `📬 **Dispatches:** All chosen Masters have received their secret battle orders via **Private Telepathic Dispatch (DM)**.\n\n` +
-      `🛡️ **City Operations:** Bounded fields, familiars, ambushes, and tournament duels are now active across Fuyuki City.\n\n` +
-      `Use \`/grailwar\` to open the War Intelligence Operations Center!`
+      `*"The seventh bell tolls through the burning night. The spiritual leylines of Fuyuki have reached total resonance, and the Greater Grail has anointed its **${chosenApplicants.length} Masters** in sacred secrecy."*\n\n` +
+      `⚔️ **Active Crucible:** **${freshWar.title}**\n` +
+      `👥 **Chosen Contenders:** **${chosenApplicants.length} Shadow Masters** (Concealed by the Grail)\n` +
+      `📬 **Confidential Dispatches:** Battle codices, strategic interfaces, and awakened Command Seals have been transmitted via **Private Telepathic Dispatch (DM)**.\n\n` +
+      `🩸 **Citywide Thaumaturgy Live:** Bounded fields, familiars, ambushes, and tournament duels are now active across Fuyuki City.\n\n` +
+      `*Claim the Wish-Granting Chalice or return to ash. Access \`/grailwar\` for tactical operations.*`
     )
-    .setColor(0x22c55e) // Emerald victory glow
-    .setFooter({ text: 'Holy Grail War Active • Check /grailwar for status' })
+    .setImage(GRAIL_ANNOUNCEMENT_IMAGE)
+    .setColor(0xd97706) // Golden Grail / Fire Amber
+    .setFooter({ text: 'Holy Grail War Active • Command Seals Awakened • Check /grailwar' })
     .setTimestamp();
 
   const warRoomBtn = new ButtonBuilder()
