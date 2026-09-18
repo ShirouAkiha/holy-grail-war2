@@ -613,11 +613,29 @@ export interface FuyukiNewsBulletin {
   source: 'gemini' | 'canon_heuristic';
 }
 
+export interface WarRecruitmentCall {
+  id: string;
+  active: boolean;
+  channelId: string;
+  messageId?: string;
+  guildId?: string;
+  startedAt: number;
+  expiresAt: number; // Unix timestamp in ms; 0 if open indefinitely until manually triggered
+  durationMinutes: number;
+  maxSlots: number;
+  presetKey: string;
+  applicantIds: string[]; // List of Discord User IDs who inscribed their seals
+  applicantServantChoices?: Record<string, string>; // Maps userId -> servantId chosen for the war
+  initiatedBy: string; // Admin username
+  initiatedById: string; // Admin discord ID
+}
+
 export interface HolyGrailWarSession {
   id: string;
   title: string;
   status: 'gathering' | 'active' | 'concluded';
   rules?: WarRules;
+  recruitmentCall?: WarRecruitmentCall;
   participants: Record<string, WarMasterParticipant>;
   alliances: Record<string, WarAlliance>;
   channelTraps?: ChannelBoundedTrap[];

@@ -297,7 +297,10 @@ export async function buildGrailWarHub(
       .join('\n');
 
     let statusHeader = '';
-    if (war.status === 'concluded') {
+    if (war.recruitmentCall && war.recruitmentCall.active) {
+      const timerStr = war.recruitmentCall.expiresAt > 0 ? `<t:${Math.floor(war.recruitmentCall.expiresAt / 1000)}:R>` : 'Pending Start';
+      statusHeader = `**Status:** 📢 RECRUITMENT ACTIVE (**${war.recruitmentCall.applicantIds.length}** Inscribed | **${war.recruitmentCall.maxSlots}** Master Slots) | **Ignition:** ${timerStr}`;
+    } else if (war.status === 'concluded') {
       const winner = war.grailWinnerId && war.participants[war.grailWinnerId] 
         ? war.participants[war.grailWinnerId].username 
         : (aliveParticipants[0]?.username || 'Victor');

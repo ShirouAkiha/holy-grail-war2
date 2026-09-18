@@ -53,6 +53,7 @@ import {
   triggerAdminCataclysm,
   refillAllWarParticipantsSeals
 } from '../engine/grailwar';
+import { startWarRecruitment, igniteWarFromRecruitment } from '../engine/warRecruitmentService';
 import { WarRules, MasterProfile } from '../types';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 import {
@@ -338,12 +339,35 @@ export const data = new SlashCommandBuilder()
           .setDescription('War administration action')
           .setRequired(true)
           .addChoices(
+            { name: '📢 Announce Holy Grail War (Timer & Anonymous Recruitment)', value: 'call' },
             { name: '📊 Open War Rules Dashboard', value: 'dashboard' },
             { name: '🚀 Launch / Restart War with Preset', value: 'restart' },
             { name: '🔄 Quick Reset (Restore HP & Seals)', value: 'reset' },
             { name: '⚡ Trigger Leyline Cataclysm Event', value: 'cataclysm' },
             { name: '📜 View War History & Hall of Fame', value: 'history' }
           )
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('timer')
+          .setDescription('Recruitment countdown timer in minutes (e.g. 5, 15, 30, 60; 0 for manual start)')
+          .setMinValue(0)
+          .setMaxValue(1440)
+          .setRequired(false)
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('max_slots')
+          .setDescription('Maximum Master slots to randomly choose (e.g. 7 for Fuyuki, 14 for Apocrypha, default: 7)')
+          .setMinValue(2)
+          .setMaxValue(30)
+          .setRequired(false)
+      )
+      .addChannelOption(opt =>
+        opt
+          .setName('channel')
+          .setDescription('Channel to broadcast the recruitment proclamation in (default: current channel)')
+          .setRequired(false)
       )
       .addStringOption(opt =>
         opt
@@ -772,6 +796,36 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const action = interaction.options.getString('action', true);
     const preset = interaction.options.getString('preset') || 'fuyuki_7';
     const cataclysm = interaction.options.getString('cataclysm') as any;
+    const timerMinutes = interaction.options.getInteger('timer') ?? 15;
+    const maxSlots = interaction.options.getInteger('max_slots') ?? 7;
+    const targetChannel = (interaction.options.getChannel('channel') as any) || interaction.channel;
+
+    if (action === 'call') {
+      if (!targetChannel || typeof targetChannel.send !== 'function') {
+        await interaction.reply({
+          content: '❌ Invalid channel selected for Holy Grail War recruitment proclamation.',
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      const res = await startWarRecruitment(interaction.client, targetChannel, interaction.user, {
+        durationMinutes: timerMinutes,
+        maxSlots,
+        presetKey: preset
+      });
+
+      if (!res.success) {
+        await interaction.editReply({ content: `❌ Error initiating recruitment: ${res.message}` });
+        return;
+      }
+
+      await interaction.editReply({
+        content: `✅ **Holy Grail War Recruitment Proclamation Issued!**\n\n• **Target Channel:** <#${targetChannel.id}>\n• **Timer:** ${timerMinutes > 0 ? `${timerMinutes} minutes` : 'Until manual Overseer start'}\n• **Capacity:** **${maxSlots} Masters** (Random selection if more apply)\n• **Secrecy:** True names & Servants will remain anonymous!\n• **DMs:** Chosen combatants will receive private battle orders via DM.`
+      });
+      return;
+    }
 
     if (action === 'restart') {
       const res = startOrRestartWar(preset, undefined, interaction.user.username);

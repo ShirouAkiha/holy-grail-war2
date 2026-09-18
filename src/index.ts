@@ -100,6 +100,7 @@ import {
   forfeitWar,
   attemptJoinWar
 } from './engine/grailwar';
+import { handleRecruitmentInteraction, resumePendingRecruitment } from './engine/warRecruitmentService';
 
 // ==========================================
 // PROCESS SAFETY: UNHANDLED REJECTIONS & DISCORD TIMEOUT ERRORS
@@ -259,6 +260,11 @@ client.once(Events.ClientReady, c => {
   console.log(`🔥 Holy Grail War Discord Bot online as ${c.user.tag}!`);
   // Set Discord presence/status message
   c.user.setActivity('Fuyuki Holy Grail War | /summon', { type: 0 });
+  try {
+    resumePendingRecruitment(client);
+  } catch (err) {
+    console.error('Error in resumePendingRecruitment on ready:', err);
+  }
 });
 
 /**
@@ -958,6 +964,11 @@ client.on(Events.InteractionCreate, async interaction => {
 
     // ROUTE C: Select Dropdown Menus (e.g. equipping Craft Essence from /customise equip or /inventory)
     if (interaction.isStringSelectMenu()) {
+      if (interaction.customId.startsWith('war_call_')) {
+        await handleRecruitmentInteraction(interaction, client);
+        return;
+      }
+
       if (interaction.customId.startsWith('admin_')) {
         await adminCommand.handleAdminGlobalInteraction(interaction);
         return;
@@ -1060,6 +1071,12 @@ client.on(Events.InteractionCreate, async interaction => {
       if (interaction.replied || interaction.deferred) return;
 
       const btnId = interaction.customId;
+
+      // Holy Grail War Recruitment Proclamation Buttons
+      if (btnId.startsWith('war_call_')) {
+        await handleRecruitmentInteraction(interaction, client);
+        return;
+      }
 
       // Talk to Servant Telepathic Resonance Link
       if (

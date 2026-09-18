@@ -1,10 +1,98 @@
-import { CraftEssence, GachaBanner, GachaResultItem, MasterProfile, Rarity } from '../types';
-import { getAllCraftEssences, getActiveGachaBanner } from '../database/service';
+import { CraftEssence, GachaBanner, GachaResultItem, MasterProfile, Rarity, ServantTemplate, MasterServantInstance } from '../types';
+import { getAllCraftEssences, getActiveGachaBanner, getAllThroneServants } from '../database/service';
+import { createProjectedServantInstance } from './saintGraphProjection';
 
 export interface RollCeGachaOptions {
   count: 1 | 10;
   master: MasterProfile;
   bannerId?: string;
+}
+
+export interface ServantGachaPullResult {
+  servant: ServantTemplate;
+  isNew: boolean;
+  manaPrismsAwarded: number;
+}
+
+export interface ServantGachaPullResponse {
+  results: ServantGachaPullResult[];
+  spentQuartz: number;
+  updatedMaster: MasterProfile;
+  newServantsCount: number;
+  totalManaPrismsAwarded: number;
+}
+
+/**
+ * Executes a Heroic Spirit Gacha roll from the Throne of Heroes.
+ * All Servants are balanced equally for competitive multiplayer combat (no star rarities).
+ * Pulling an unowned Servant adds them permanently to the Master's roster.
+ * Pulling a duplicate Servant awards +50 Mana Prisms.
+ */
+export function executeServantGachaRoll({
+  count,
+  master
+}: {
+  count: 1 | 10;
+  master: MasterProfile;
+}): ServantGachaPullResponse {
+  const cost = count === 10 ? 30 : 3;
+
+  if ((master.saintQuartz || 0) < cost) {
+    throw new Error(`Insufficient Saint Quartz! You need ${cost} SQ 💎, but only have ${master.saintQuartz || 0} SQ.`);
+  }
+
+  const allServants = getAllThroneServants();
+  if (!allServants || allServants.length === 0) {
+    throw new Error('The Throne of Heroes is currently silent. No Heroic Spirits available.');
+  }
+
+  const ownedTemplateIds = new Set((master.servants || []).map(s => s.templateId || s.id));
+  const newServantsList: MasterServantInstance[] = [...(master.servants || [])];
+  const results: ServantGachaPullResult[] = [];
+
+  let newServantsCount = 0;
+  let totalManaPrismsAwarded = 0;
+
+  for (let i = 0; i < count; i++) {
+    const randomTemplate = allServants[Math.floor(Math.random() * allServants.length)];
+    const isAlreadyOwned = ownedTemplateIds.has(randomTemplate.id);
+
+    if (!isAlreadyOwned) {
+      const newInstance = createProjectedServantInstance(master, randomTemplate);
+      newServantsList.push(newInstance);
+      ownedTemplateIds.add(randomTemplate.id);
+      newServantsCount++;
+
+      results.push({
+        servant: randomTemplate,
+        isNew: true,
+        manaPrismsAwarded: 0
+      });
+    } else {
+      totalManaPrismsAwarded += 50;
+      results.push({
+        servant: randomTemplate,
+        isNew: false,
+        manaPrismsAwarded: 50
+      });
+    }
+  }
+
+  const updatedMaster: MasterProfile = {
+    ...master,
+    saintQuartz: Math.max(0, (master.saintQuartz || 0) - cost),
+    manaPrisms: (master.manaPrisms || 0) + totalManaPrismsAwarded,
+    servants: newServantsList,
+    activeServantId: master.activeServantId || (newServantsList[0] ? newServantsList[0].id : undefined)
+  };
+
+  return {
+    results,
+    spentQuartz: cost,
+    updatedMaster,
+    newServantsCount,
+    totalManaPrismsAwarded
+  };
 }
 
 export interface CeGachaPullResponse {
