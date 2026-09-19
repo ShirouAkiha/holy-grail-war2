@@ -74,6 +74,8 @@ export const data = new SlashCommandBuilder()
       .setDescription('📜 View summoning rates and balance mechanics')
   );
 
+export const SERVANT_SUMMONING_BANNER = 'https://ella.janitorai.com/media-approved/4eou5BGEGK91VbIpEukgO.webp';
+
 export function buildGachaHub(
   master: any,
   category: 'servants' | 'ces' | 'daily' | 'rates' = 'servants',
@@ -81,55 +83,74 @@ export function buildGachaHub(
 ) {
   const sq = master.saintQuartz || 0;
   const ownedServantCount = master.servants?.length || 0;
-  let title = '👑 Throne of Heroes — Heroic Spirit Invocation';
+  let title = '👑 THRONE OF HEROES — HEROIC SPIRIT INVOCATION';
   let description = '';
-  let color = 0xeab308;
-  let bannerImage = 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800&auto=format&fit=crop&q=80';
+  let color = 0x38bdf8;
+  let bannerImage = SERVANT_SUMMONING_BANNER;
 
   if (category === 'servants') {
-    title = '👑 Throne of Heroes — Heroic Spirit Invocation';
-    color = 0xeab308;
-    bannerImage = 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800&auto=format&fit=crop&q=80';
+    title = '👑 THRONE OF HEROES — HEROIC SPIRIT INVOCATION';
+    color = 0x38bdf8; // Ethereal moonlight azure matching summoning illumination
+    bannerImage = SERVANT_SUMMONING_BANNER;
+
+    const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+    const sName = activeServant?.nickname || activeServant?.template?.name || activeServant?.name || 'No Contract Active';
+    const sClass = activeServant?.template?.servantClass || activeServant?.servantClass || 'Unknown';
+    const sBond = activeServant?.bondLevel || 1;
+    const sQuote = activeServant?.customQuotes?.summon || activeServant?.template?.summonQuote || 'I ask of you, are you my Master?';
+
+    const companionBlock = activeServant
+      ? `🛡️ **Current Guardian:** **${sName}** \`[${sClass}]\` • Bond Lv.${sBond}\n` +
+        `💬 *“${sQuote.slice(0, 110)}”*`
+      : `🕯️ **Current Guardian:** *No active companion contracted yet. Draw the magic circle below to summon your first Servant!*`;
+
     description =
-      `💎 **Master Balance:** \`${sq} Saint Quartz\`\n` +
-      `👥 **Contracted Roster:** \`${ownedServantCount} Heroic Spirits\`\n` +
-      `🔵 **Mana Prisms:** \`${master.manaPrisms || 0} Prisms\`\n\n` +
-      `⚔️ **Featured Banner:** **Throne of Heroes Summoning Gate**\n` +
-      `🌟 **Available Classes:** Saber, Archer, Lancer, Rider, Caster, Assassin, Berserker, Extra\n\n` +
-      `⚖️ **Balanced Multiplayer Design:** *Every Servant is balanced with unique strategic identity, class affinities, and tactical Noble Phantasms.*\n` +
-      `🎁 **Duplicate Covenant:** *Summoning a Servant you already own awards **+50 Mana Prisms**.*\n\n` +
-      `*Use the buttons below to summon new Heroic Spirits to represent you in the Holy Grail War!*`;
+      `*“– I shall declare here. Your body shall serve under me. My fate shall be with your sword. Submit to the beckoning of the Holy Grail!”*\n\n` +
+      `🔮 **Master Mana Reserves & Telemetry:**\n` +
+      `💎 **Saint Quartz:** \`${sq} SQ\`  •  🔵 **Mana Prisms:** \`${master.manaPrisms || 0} Prisms\`\n` +
+      `👥 **Contracted Roster:** \`${ownedServantCount} Servants\`  •  🔴 **Command Seals:** \`${master.commandSeals ?? 3}/3 Active\`\n\n` +
+      `${companionBlock}\n\n` +
+      `═══════════════════════════════════════════════\n` +
+      `⚔️ **Active Gate:** **Throne of Heroes Summoning Array**\n` +
+      `🌟 **Manifesting Classes:** Saber, Archer, Lancer, Rider, Caster, Assassin, Berserker, Extra\n\n` +
+      `✨ **Summoning Protocols & Rates:**\n` +
+      `• **1x Single Summon:** \`3 Saint Quartz\` ➔ Manifests 1 Heroic Spirit into your roster\n` +
+      `• **10x Multi-Summon:** \`30 Saint Quartz\` ➔ High-speed invocation of 10 Heroic Spirits\n` +
+      `• **Duplicate Covenant:** Pulling an owned Servant automatically yields **+50 Mana Prisms 🔵**\n` +
+      `• **Equalized Multiplayer Balance:** Strategic victory relies on class advantage, tactical skill timing, and Command Seal mastercraft!\n\n` +
+      `⚡ *Channel your magical energy into the summoning array using the action buttons below!*`;
   } else if (category === 'ces') {
-    title = '🛡️ Invocation Sanctum — Craft Essence Forge';
+    title = '🛡️ INVOCATION SANCTUM — CRAFT ESSENCE FORGE';
     color = 0x38bdf8;
     bannerImage = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80';
     description =
-      `💎 **Master Balance:** \`${sq} Saint Quartz\`\n\n` +
+      `*“Let silver and steel be the essence. Forge the armaments of antiquity!”*\n\n` +
+      `💎 **Master Balance:** \`${sq} Saint Quartz\`  •  🔵 **Prisms:** \`${master.manaPrisms || 0}\`\n\n` +
       `🛡️ **Featured Essence Banner:** **Mystic Code Armory**\n` +
-      `🌟 **Featured Essences:** The Black Grail, Kaleidoscope, Formal Craft, Limited/Zero Over\n` +
+      `🌟 **Featured Relics:** The Black Grail, Kaleidoscope, Formal Craft, Limited/Zero Over\n` +
       `🎁 **Multi-Summon Guarantee:** Every 10x roll guarantees at least one **★4 SR or higher** Craft Essence!\n\n` +
-      `Forge and equip powerful Mystic Codes to empower your Servants with ATK, HP, and passive buffs!`;
+      `Forge and equip powerful Mystic Codes to bestow massive ATK, HP, and passive combat passives onto your Servants!`;
   } else if (category === 'daily') {
-    title = '💎 Saint Quartz Treasury & Daily Claim';
+    title = '💎 SAINT QUARTZ TREASURY & DAILY VAULT';
     color = 0x10b981;
     bannerImage = 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80';
     description =
+      `*“Mana accumulates within the Greater Grail over time. Claim your allotment!”*\n\n` +
       `💎 **Current Vault Balance:** \`${sq} Saint Quartz\`\n` +
-      `🏆 **Grail Shards:** \`${master.grailShards || 1} Shards\`\n` +
-      `🔵 **Mana Prisms:** \`${master.manaPrisms || 50} Prisms\`\n\n` +
-      `🎁 **Daily Login Bonus:** Claim **+30 Saint Quartz (10x Multi-Summon)** every 24 hours!\n` +
-      `💰 **Battle Rewards:** Earn bonus Saint Quartz by participating in Fuyuki Patrols and Duels.\n\n` +
-      `*Press the **Claim Daily Quartz** button below to collect your reward!*`;
+      `🏆 **Grail Shards:** \`${master.grailShards || 1} Shards\`  •  🔵 **Mana Prisms:** \`${master.manaPrisms || 50} Prisms\`\n\n` +
+      `🎁 **Daily Login Bonus:** Claim **+30 Saint Quartz (Free 10x Multi-Summon)** every 24 hours!\n` +
+      `💰 **Combat Inflow:** Earn additional Quartz by participating in Fuyuki Patrols, Boss Raids, and Arena Duels.\n\n` +
+      `*Click the **Claim Daily Quartz (+30)** button below to collect today's bounty!*`;
   } else if (category === 'rates') {
-    title = '📜 Greater Grail Summoning Rates & Balance System';
-    color = 0x64748b;
+    title = '📜 GREATER GRAIL SUMMONING RATES & BALANCE MATRIX';
+    color = 0x818cf8;
     description =
-      `📊 **Equalized Multiplayer Balance:**\n\n` +
+      `📊 **Equalized Multiplayer Balance System:**\n\n` +
       `👑 **Heroic Spirits (Servants):**\n` +
-      `• All Servants are equally balanced for multiplayer RPG combat.\n` +
-      `• No star rarity gaps or arbitrary pay-to-win stat tiers.\n` +
+      `• All Servants possess equalized base stat potential for balanced multiplayer combat.\n` +
+      `• No star-rarity gaps or predatory stat tiers.\n` +
       `• Tactical victory is determined by **Class Advantage**, **Skill Timing**, **Command Seals**, and **Craft Essence synergies**.\n` +
-      `• Duplicate Heroic Spirits are converted into **+50 Mana Prisms**.\n\n` +
+      `• Duplicate Heroic Spirits are converted into **+50 Mana Prisms 🔵**.\n\n` +
       `🛡️ **Craft Essences (Mystic Codes):**\n` +
       `• ★5 SSR Craft Essence: **4.0%**\n` +
       `• ★4 SR Craft Essence: **12.0%**\n` +
@@ -142,7 +163,19 @@ export function buildGachaHub(
     .setDescription(description)
     .setColor(color)
     .setFooter({ text: `Greater Grail Sanctum • Master: ${master.username} • Balance: ${sq} SQ` });
-  safeSetEmbedImage(embed, bannerImage);
+  
+  if (category !== 'rates') {
+    embed.setImage(bannerImage);
+    safeSetEmbedImage(embed, bannerImage);
+  }
+
+  const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+  if (activeServant) {
+    const avatar = activeServant.template?.avatarUrl || activeServant.avatarUrl || 'https://i.imgur.com/hyNsgc1.jpeg';
+    safeSetEmbedThumbnail(embed, avatar);
+  } else {
+    safeSetEmbedThumbnail(embed, 'https://i.imgur.com/hyNsgc1.jpeg');
+  }
 
   // Row 1: Category Navigation Tabs
   const catRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -202,13 +235,13 @@ export function buildGachaHub(
   const actRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId('gacha_act_single')
-      .setLabel('1x Single Summon (3 SQ)')
+      .setLabel(category === 'servants' ? '1x Summon Servant (3 SQ)' : '1x Single Summon (3 SQ)')
       .setEmoji('✨')
       .setStyle(ButtonStyle.Success)
       .setDisabled(sq < 3),
     new ButtonBuilder()
       .setCustomId('gacha_act_multi')
-      .setLabel('10x Multi-Summon (30 SQ)')
+      .setLabel(category === 'servants' ? '10x Multi-Summon (30 SQ)' : '10x Multi-Summon (30 SQ)')
       .setEmoji('🌟')
       .setStyle(ButtonStyle.Primary)
       .setDisabled(sq < 30),
@@ -222,14 +255,14 @@ export function buildGachaHub(
   // Row 4: Cross-Hub Jump Shortcuts
   const linkRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId('gacha_link_inventory')
-      .setLabel('Master Inventory (/inventory)')
-      .setEmoji('👔')
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
       .setCustomId('gacha_link_servant')
       .setLabel('Servant Workshop (/servant)')
       .setEmoji('👑')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('gacha_link_inventory')
+      .setLabel('Master Inventory (/inventory)')
+      .setEmoji('👔')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('gacha_link_grailwar')

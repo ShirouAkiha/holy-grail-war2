@@ -696,8 +696,8 @@ export default function DiscordEmulator({
   const [invPage, setInvPage] = useState<number>(1);
   const [invSelectedCeId, setInvSelectedCeId] = useState<string | null>(null);
   const [invSelectedServantId, setInvSelectedServantId] = useState<string | null>(null);
-  const [gachaCategory, setGachaCategory] = useState<'ces' | 'daily' | 'rates'>('ces');
-  const [gachaBanner, setGachaBanner] = useState<string>('standard_ce');
+  const [gachaCategory, setGachaCategory] = useState<'servants' | 'ces' | 'daily' | 'rates'>('servants');
+  const [gachaBanner, setGachaBanner] = useState<string>('throne_servants');
   const [servantHubCategory, setServantHubCategory] = useState<'profile' | 'stats' | 'np' | 'dialogue' | 'roster'>('profile');
   const [servantHubSelectedId, setServantHubSelectedId] = useState<string | null>(null);
   const [grailWarHubCategory, setGrailWarHubCategory] = useState<'board' | 'casualties' | 'leaks' | 'battles' | 'defenses' | 'familiars' | 'traps' | 'church'>('board');
@@ -1307,6 +1307,26 @@ export default function DiscordEmulator({
     // COMMAND 1: /summon
     // ----------------------------------------------------
     if (trimmed.startsWith('/summon')) {
+      if (trimmed === '/summon' || trimmed.startsWith('/summon menu') || trimmed.startsWith('/summon gacha')) {
+        setGachaCategory('servants');
+        setGachaBanner('throne_servants');
+        postGachaHub('servants', 'throne_servants');
+        return;
+      }
+      if (trimmed.startsWith('/summon daily')) {
+        handleCommand('/daily');
+        return;
+      }
+      if (trimmed.startsWith('/summon ce')) {
+        handleCommand('/gacha ce ' + trimmed.replace('/summon ce', '').trim());
+        return;
+      }
+      if (trimmed.startsWith('/summon rates')) {
+        setGachaCategory('rates');
+        postGachaHub('rates', gachaBanner);
+        return;
+      }
+
       const userParticipant = grailWar.participants[master.discordId] ||
         Object.values(grailWar.participants).find(p => p.username.toLowerCase() === master.username.toLowerCase());
 
@@ -2271,17 +2291,20 @@ export default function DiscordEmulator({
         return;
       }
 
-      let category: 'ces' | 'daily' | 'rates' = 'ces';
-      let banner = 'standard_ce';
+      let category: 'servants' | 'ces' | 'daily' | 'rates' = 'servants';
+      let banner = 'throne_servants';
 
       if (trimmed.includes('daily') || trimmed.includes('vault') || trimmed.includes('claim')) {
         category = 'daily';
         banner = 'daily_vault';
       } else if (trimmed.includes('rates') || trimmed.includes('pool') || trimmed.includes('pity')) {
         category = 'rates';
-      } else {
+      } else if (trimmed.includes('ce') || trimmed.includes('essence') || trimmed.includes('mystic')) {
         category = 'ces';
         banner = 'standard_ce';
+      } else {
+        category = 'servants';
+        banner = 'throne_servants';
       }
 
       setGachaCategory(category);
@@ -6054,59 +6077,100 @@ export default function DiscordEmulator({
 
   // Helper: Post Greater Grail Gacha & Invocation Sanctum Hub
   const postGachaHub = (
-    category: 'ces' | 'daily' | 'rates' = 'ces',
-    banner: string = 'standard_ce'
+    category: 'servants' | 'ces' | 'daily' | 'rates' = 'servants',
+    banner: string = 'throne_servants'
   ) => {
     const sq = master.saintQuartz || 0;
-    let title = '🛡️ Invocation Sanctum — Craft Essence Forge';
+    const ownedServants = master.servants || [];
+    const ownedServantCount = ownedServants.length;
+    let title = '👑 THRONE OF HEROES — HEROIC SPIRIT INVOCATION';
     let description = '';
     let color = '#38bdf8';
-    let imageUrl = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80';
+    let imageUrl = 'https://ella.janitorai.com/media-approved/4eou5BGEGK91VbIpEukgO.webp';
 
-    if (category === 'ces') {
-      title = '🛡️ Invocation Sanctum — Craft Essence Forge';
+    const activeServant = ownedServants.find((s: any) => s.id === master.activeServantId) || ownedServants[0];
+    const sName = activeServant?.nickname || activeServant?.template?.name || (activeServant as any)?.name || 'No Contract Active';
+    const sClass = activeServant?.template?.servantClass || (activeServant as any)?.servantClass || 'Unknown';
+    const sBond = activeServant?.bondLevel || 1;
+    const sQuote = activeServant?.customQuotes?.summon || activeServant?.template?.summonQuote || 'I ask of you, are you my Master?';
+
+    if (category === 'servants') {
+      title = '👑 THRONE OF HEROES — HEROIC SPIRIT INVOCATION';
+      color = '#38bdf8';
+      imageUrl = 'https://ella.janitorai.com/media-approved/4eou5BGEGK91VbIpEukgO.webp';
+
+      const companionBlock = activeServant
+        ? `🛡️ **Current Guardian:** **${sName}** \`[${sClass}]\` • Bond Lv.${sBond}\n💬 *“${sQuote.slice(0, 110)}”*`
+        : `🕯️ **Current Guardian:** *No active companion contracted yet. Draw the magic circle below to summon your first Servant!*`;
+
+      description =
+        `*“– I shall declare here. Your body shall serve under me. My fate shall be with your sword. Submit to the beckoning of the Holy Grail!”*\n\n` +
+        `🔮 **Master Mana Reserves & Telemetry:**\n` +
+        `💎 **Saint Quartz:** \`${sq} SQ\`  •  🔵 **Mana Prisms:** \`${(master as any).manaPrisms || 0} Prisms\`\n` +
+        `👥 **Contracted Roster:** \`${ownedServantCount} Servants\`  •  🔴 **Command Seals:** \`${master.commandSeals ?? 3}/3 Active\`\n\n` +
+        `${companionBlock}\n\n` +
+        `═══════════════════════════════════════════════\n` +
+        `⚔️ **Active Gate:** **Throne of Heroes Summoning Array**\n` +
+        `🌟 **Manifesting Classes:** Saber, Archer, Lancer, Rider, Caster, Assassin, Berserker, Extra\n\n` +
+        `✨ **Summoning Protocols & Rates:**\n` +
+        `• **1x Single Summon:** \`3 Saint Quartz\` ➔ Manifests 1 Heroic Spirit into your roster\n` +
+        `• **10x Multi-Summon:** \`30 Saint Quartz\` ➔ High-speed invocation of 10 Heroic Spirits\n` +
+        `• **Duplicate Covenant:** Pulling an owned Servant automatically yields **+50 Mana Prisms 🔵**\n` +
+        `• **Equalized Multiplayer Balance:** Strategic victory relies on class advantage, tactical skill timing, and Command Seal mastercraft!\n\n` +
+        `⚡ *Channel your magical energy into the summoning array using the action buttons below!*`;
+    } else if (category === 'ces') {
+      title = '🛡️ INVOCATION SANCTUM — CRAFT ESSENCE FORGE';
       color = '#38bdf8';
       imageUrl = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80';
       description =
-        `💎 **Master Balance:** \`${sq} Saint Quartz\`\n\n` +
+        `*“Let silver and steel be the essence. Forge the armaments of antiquity!”*\n\n` +
+        `💎 **Master Balance:** \`${sq} Saint Quartz\`  •  🔵 **Prisms:** \`${(master as any).manaPrisms || 0}\`\n\n` +
         `🛡️ **Featured Essence Banner:** **Mystic Code Armory**\n` +
-        `🌟 **Featured Essences:** The Black Grail, Kaleidoscope, Formal Craft, Limited/Zero Over\n` +
+        `🌟 **Featured Relics:** The Black Grail, Kaleidoscope, Formal Craft, Limited/Zero Over\n` +
         `🎁 **Multi-Summon Guarantee:** Every 10x roll guarantees at least one **★4 SR or higher** Craft Essence!\n\n` +
-        `⚔️ **Holy Grail War Covenant:** *Heroic Spirits are contracted once per Master via \`/summon ritual\`. Forge and equip powerful Mystic Codes below to empower your Servant!*`;
+        `Forge and equip powerful Mystic Codes to bestow massive ATK, HP, and passive combat passives onto your Servants!`;
     } else if (category === 'daily') {
-      title = '💎 Saint Quartz Treasury & Daily Claim';
+      title = '💎 SAINT QUARTZ TREASURY & DAILY VAULT';
       color = '#10b981';
       imageUrl = 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80';
       description =
+        `*“Mana accumulates within the Greater Grail over time. Claim your allotment!”*\n\n` +
         `💎 **Current Vault Balance:** \`${sq} Saint Quartz\`\n` +
-        `🏆 **Grail Shards:** \`${(master as any).grailShards || 1} Shards\`\n` +
-        `🔵 **Mana Prisms:** \`${(master as any).manaPrisms || 50} Prisms\`\n\n` +
-        `🎁 **Daily Login Bonus:** Claim **+30 Saint Quartz (10x Multi-Summon)** every cycle!\n` +
-        `🌐 **Universal Reset Time:** Resets universally for all Masters at **00:00 UTC** every day.\n` +
-        `💰 **Battle Rewards:** Earn bonus Saint Quartz by participating in Fuyuki Patrols and Duels.\n\n` +
-        `*Press the **Claim Daily Quartz** button below to collect your reward!*`;
+        `🏆 **Grail Shards:** \`${(master as any).grailShards || 1} Shards\`  •  🔵 **Mana Prisms:** \`${(master as any).manaPrisms || 50} Prisms\`\n\n` +
+        `🎁 **Daily Login Bonus:** Claim **+30 Saint Quartz (Free 10x Multi-Summon)** every 24 hours!\n` +
+        `💰 **Combat Inflow:** Earn additional Quartz by participating in Fuyuki Patrols, Boss Raids, and Arena Duels.\n\n` +
+        `*Click the **Claim Daily Quartz (+30)** button below to collect today's bounty!*`;
     } else if (category === 'rates') {
-      title = '📜 Greater Grail Summoning Rates & Crafting Guarantees';
-      color = '#64748b';
+      title = '📜 GREATER GRAIL SUMMONING RATES & BALANCE MATRIX';
+      color = '#818cf8';
       description =
-        `📊 **Official Mystic Code Forge Probability Table:**\n\n` +
-        `**Craft Essences (Mystic Codes):**\n` +
+        `📊 **Equalized Multiplayer Balance System:**\n\n` +
+        `👑 **Heroic Spirits (Servants):**\n` +
+        `• All Servants possess equalized base stat potential for balanced multiplayer combat.\n` +
+        `• No star-rarity gaps or predatory stat tiers.\n` +
+        `• Tactical victory is determined by **Class Advantage**, **Skill Timing**, **Command Seals**, and **Craft Essence synergies**.\n` +
+        `• Duplicate Heroic Spirits are converted into **+50 Mana Prisms 🔵**.\n\n` +
+        `🛡️ **Craft Essences (Mystic Codes):**\n` +
         `• ★5 SSR Craft Essence: **4.0%**\n` +
         `• ★4 SR Craft Essence: **12.0%**\n` +
-        `• ★3 R Craft Essence: **84.0%**\n\n` +
-        `💎 **Guaranteed Multi-Roll Pity:**\n` +
-        `• 10x Multi-Summon guarantees at least one **★4 SR or higher** Craft Essence.\n\n` +
-        `⚔️ **Heroic Spirit Covenant:**\n` +
-        `• Servants cannot be summoned via Gacha. In an authentic Holy Grail War, each Master establishes a singular bond with a Heroic Spirit via \`/summon ritual\`.`;
+        `• ★3 R Craft Essence: **84.0%**\n` +
+        `• 10x Multi-Summon guarantees at least one **★4 SR or higher** Craft Essence.`;
     }
 
     const categoryNavButtons = [
+      { id: 'gacha_tab_servants', label: 'Heroic Spirits', style: (category === 'servants' ? 'primary' : 'secondary') as any, emoji: '👑' },
       { id: 'gacha_tab_ces', label: 'Craft Essences', style: (category === 'ces' ? 'primary' : 'secondary') as any, emoji: '🛡️' },
       { id: 'gacha_tab_daily', label: 'Daily & Vault', style: (category === 'daily' ? 'primary' : 'secondary') as any, emoji: '💎' },
       { id: 'gacha_tab_rates', label: 'Drop Rates', style: (category === 'rates' ? 'primary' : 'secondary') as any, emoji: '📜' }
     ];
 
     const bannerSelectOptions = [
+      {
+        value: 'gacha_sel_throne_servants',
+        label: '👑 Throne of Heroes (Heroic Spirits)',
+        description: 'Summon Sabers, Archers, Lancers, Riders, Casters, Assassins, Berserkers',
+        emoji: '👑'
+      },
       {
         value: 'gacha_sel_standard_ce',
         label: '★5 Mystic Code Armory (Craft Essences)',
@@ -6122,13 +6186,12 @@ export default function DiscordEmulator({
     ];
 
     const actionButtons = [
-      { id: 'gacha_act_single', label: '1x Single Summon (3 SQ)', style: 'success' as const, emoji: '✨', disabled: sq < 3 },
-      { id: 'gacha_act_multi', label: '10x Multi-Summon (30 SQ)', style: 'primary' as const, emoji: '🌟', disabled: sq < 30 },
+      { id: 'gacha_act_single', label: category === 'servants' ? '1x Summon Servant (3 SQ)' : '1x Single Summon (3 SQ)', style: 'success' as const, emoji: '✨', disabled: sq < 3 },
+      { id: 'gacha_act_multi', label: category === 'servants' ? '10x Multi-Summon (30 SQ)' : '10x Multi-Summon (30 SQ)', style: 'primary' as const, emoji: '🌟', disabled: sq < 30 },
       { id: 'gacha_act_claim_daily', label: 'Claim Daily SQ (+30)', style: 'success' as const, emoji: '💎' },
-      { id: 'gacha_link_inventory', label: 'Master Inventory (/inventory)', style: 'secondary' as const, emoji: '👔' },
       { id: 'gacha_link_servant', label: 'Servant Workshop (/servant)', style: 'secondary' as const, emoji: '👑' },
-      { id: 'gacha_link_grailwar', label: 'Holy Grail War (/grailwar)', style: 'secondary' as const, emoji: '🏰' },
-      { id: 'gacha_link_duel', label: 'Combat Arena (/duel)', style: 'secondary' as const, emoji: '⚔️' }
+      { id: 'gacha_link_inventory', label: 'Master Inventory (/inventory)', style: 'secondary' as const, emoji: '👔' },
+      { id: 'gacha_link_grailwar', label: 'Holy Grail War (/grailwar)', style: 'secondary' as const, emoji: '🏰' }
     ];
 
     addMessage({
@@ -6140,6 +6203,7 @@ export default function DiscordEmulator({
         description,
         color,
         imageUrl: category !== 'rates' ? imageUrl : undefined,
+        thumbnailUrl: activeServant?.template?.avatarUrl || (activeServant as any)?.avatarUrl || 'https://i.imgur.com/hyNsgc1.jpeg',
         footer: `Greater Grail Sanctum • Master: ${master.username} • Balance: ${sq} SQ`
       },
       components: {
@@ -8543,7 +8607,11 @@ export default function DiscordEmulator({
       return;
     } else if (btnId.startsWith('gacha_')) {
       // 1. Navigation tabs
-      if (btnId === 'gacha_tab_ces') {
+      if (btnId === 'gacha_tab_servants') {
+        setGachaCategory('servants');
+        setGachaBanner('throne_servants');
+        postGachaHub('servants', 'throne_servants');
+      } else if (btnId === 'gacha_tab_ces') {
         setGachaCategory('ces');
         setGachaBanner('standard_ce');
         postGachaHub('ces', 'standard_ce');
@@ -8556,7 +8624,11 @@ export default function DiscordEmulator({
         postGachaHub('rates', gachaBanner);
       }
       // 2. Banner select dropdown actions
-      else if (btnId === 'gacha_sel_standard_ce') {
+      else if (btnId === 'gacha_sel_throne_servants') {
+        setGachaCategory('servants');
+        setGachaBanner('throne_servants');
+        postGachaHub('servants', 'throne_servants');
+      } else if (btnId === 'gacha_sel_standard_ce') {
         setGachaCategory('ces');
         setGachaBanner('standard_ce');
         postGachaHub('ces', 'standard_ce');
@@ -8576,13 +8648,79 @@ export default function DiscordEmulator({
             timestamp: 'Just now',
             embed: {
               title: '⚠️ Insufficient Saint Quartz',
-              description: 'You need at least 3 Saint Quartz for a single Craft Essence summon. Claim your daily allowance or win duels to earn more!',
+              description: 'You need at least 3 Saint Quartz for a single summon. Claim your daily allowance or win duels to earn more!',
               color: '#ef4444'
             }
           });
           return;
         }
-        handleButtonClick('inv_act_roll_1x_ce');
+
+        if (gachaCategory === 'servants' || gachaBanner === 'throne_servants') {
+          // 1x Servant Summon
+          const randomTemplate = allThrone[Math.floor(Math.random() * allThrone.length)];
+          const curServants = master.servants || [];
+          const isOwned = curServants.some((s: any) => (s.template?.id || s.id) === randomTemplate.id);
+
+          let updatedServants = [...curServants];
+          let manaPrismsAwarded = 0;
+
+          if (!isOwned) {
+            const newInst = createContractFromPool(allThrone, master.id);
+            // Replace template with chosen one
+            newInst.template = randomTemplate;
+            newInst.templateId = randomTemplate.id;
+            newInst.nickname = randomTemplate.name;
+            updatedServants.push(newInst);
+          } else {
+            manaPrismsAwarded = 50;
+          }
+
+          const newSq = (master.saintQuartz || 0) - 3;
+          const newPrisms = ((master as any).manaPrisms || 0) + manaPrismsAwarded;
+
+          const updatedMaster = {
+            ...master,
+            saintQuartz: newSq,
+            manaPrisms: newPrisms,
+            servants: updatedServants,
+            activeServantId: master.activeServantId || (updatedServants[0] ? updatedServants[0].id : undefined)
+          };
+          onUpdateMaster(updatedMaster);
+
+          const embed = {
+            title: `👑 1x Heroic Spirit Summon: ${randomTemplate.name} (${randomTemplate.servantClass})!`,
+            description:
+              `🗣️ *" ${randomTemplate.summonQuote || 'I ask of you, are you my Master?'} "*\n\n` +
+              `🗡️ **Class:** \`${randomTemplate.servantClass}\`\n` +
+              `📜 **Noble Phantasm:** **${randomTemplate.noblePhantasm?.name || 'Secret Phantasm'}**\n` +
+              `💥 **NP Card:** *${randomTemplate.noblePhantasm?.cardType || 'Buster'}* (${randomTemplate.noblePhantasm?.target || 'single'}-target)\n\n` +
+              (!isOwned
+                ? `🌟 **[NEW CONTRACT ESTABLISHED!]** Formed a sacred covenant with this Heroic Spirit!`
+                : `🔄 **[DUPLICATE SPIRIT ORIGIN]** You already hold a contract with this Servant. Awarded **+50 Mana Prisms 🔵**!`) +
+              `\n\n💎 **Remaining Saint Quartz:** \`${newSq} SQ\` | 🔵 **Prisms:** \`${newPrisms}\``,
+            color: !isOwned ? '#eab308' : '#38bdf8',
+            imageUrl: randomTemplate.cardArtUrl || randomTemplate.avatarUrl,
+            thumbnailUrl: randomTemplate.avatarUrl
+          };
+
+          addMessage({
+            id: getNextId('bot_servant_single_res'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed,
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'gacha_act_single', label: 'Summon 1x Again (3 SQ)', style: 'success', emoji: '✨' },
+                { id: 'gacha_act_multi', label: '10x Multi-Summon (30 SQ)', style: 'primary', emoji: '🌟' },
+                { id: 'gacha_tab_servants', label: 'Summoning Gate', style: 'secondary', emoji: '👑' },
+                { id: 'gacha_link_servant', label: 'Servant Workshop', style: 'secondary', emoji: '👥' }
+              ]
+            }
+          });
+        } else {
+          handleButtonClick('inv_act_roll_1x_ce');
+        }
       } else if (btnId === 'gacha_act_multi') {
         if ((master.saintQuartz || 0) < 30) {
           addMessage({
@@ -8597,7 +8735,74 @@ export default function DiscordEmulator({
           });
           return;
         }
-        handleButtonClick('inv_act_roll_10x_ce');
+
+        if (gachaCategory === 'servants' || gachaBanner === 'throne_servants') {
+          // 10x Servant Summon
+          let curServants = [...(master.servants || [])];
+          let totalPrisms = 0;
+          let newCount = 0;
+          const lines: string[] = [];
+
+          for (let i = 0; i < 10; i++) {
+            const randomTemplate = allThrone[Math.floor(Math.random() * allThrone.length)];
+            const isOwned = curServants.some((s: any) => (s.template?.id || s.id) === randomTemplate.id);
+
+            if (!isOwned) {
+              const newInst = createContractFromPool(allThrone, master.id);
+              newInst.template = randomTemplate;
+              newInst.templateId = randomTemplate.id;
+              newInst.nickname = randomTemplate.name;
+              curServants.push(newInst);
+              newCount++;
+              lines.push(`${i + 1}. **${randomTemplate.name}** (\`${randomTemplate.servantClass}\`) 🌟 **[NEW!]**`);
+            } else {
+              totalPrisms += 50;
+              lines.push(`${i + 1}. **${randomTemplate.name}** (\`${randomTemplate.servantClass}\`) 🔵 *(+50 Prisms)*`);
+            }
+          }
+
+          const newSq = (master.saintQuartz || 0) - 30;
+          const newPrisms = ((master as any).manaPrisms || 0) + totalPrisms;
+
+          const updatedMaster = {
+            ...master,
+            saintQuartz: newSq,
+            manaPrisms: newPrisms,
+            servants: curServants,
+            activeServantId: master.activeServantId || (curServants[0] ? curServants[0].id : undefined)
+          };
+          onUpdateMaster(updatedMaster);
+
+          const embed = {
+            title: `👑 10x Heroic Spirit Multi-Summon Results!`,
+            description:
+              `**Throne of Heroes Gate Awakened:**\n\n` +
+              lines.join('\n') +
+              `\n\n` +
+              `🌟 **New Servants Contracted:** **+${newCount}**\n` +
+              `🔵 **Mana Prisms Earned (Duplicates):** **+${totalPrisms}**\n` +
+              `💎 **Remaining Saint Quartz:** \`${newSq} SQ\` | 🔵 **Total Prisms:** \`${newPrisms}\`\n\n` +
+              `Use \`/servant\` to view your full roster, allocate stats, and select your active companion!`,
+            color: '#eab308'
+          };
+
+          addMessage({
+            id: getNextId('bot_servant_multi_res'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed,
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'gacha_act_multi', label: '10x Multi-Summon Again (30 SQ)', style: 'primary', emoji: '🌟' },
+                { id: 'gacha_tab_servants', label: 'Summoning Gate', style: 'secondary', emoji: '👑' },
+                { id: 'gacha_link_servant', label: 'Servant Workshop', style: 'secondary', emoji: '👥' }
+              ]
+            }
+          });
+        } else {
+          handleButtonClick('inv_act_roll_10x_ce');
+        }
       }
       // 4. Cross-hub navigation shortcuts
       else if (btnId === 'gacha_link_inventory') {
