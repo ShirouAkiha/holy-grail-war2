@@ -984,6 +984,11 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
+      if (interaction.customId === 'vn_select_servant' || interaction.customId.startsWith('vn_select_')) {
+        await bondCommand.handleBondSelectInteraction(interaction);
+        return;
+      }
+
       if (interaction.customId.startsWith('select_ce:')) {
         const servantId = interaction.customId.replace('select_ce:', '');
         const selectedCeId = interaction.values[0]; // The ID of the chosen Craft Essence

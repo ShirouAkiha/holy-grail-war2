@@ -529,6 +529,316 @@ export const AOKO_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const AMAMIYA_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'amamiya_bond_event_1',
+    servantTemplateId: 'amamiya_no_chihaya_tenkohime',
+    requiredBondLevel: 1,
+    title: 'The Pink Divinity Demands Tofu',
+    subtitle: 'Bond Level 1 Interlude • Ama-no-Miya Shrine & Tatami Residence',
+    description: "Amamiya demands proper reverence for her divine name, frets over modern technology, panics over a tiny house spider, inspects a Roomba familiar, and enjoys fried tofu with Master.",
+    rewardBondExp: 200,
+    rewardSaintQuartz: 3,
+    unlockedQuoteId: 'amamiya_bond_line_1',
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: 'Amamiya',
+        speakerAvatarUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Halt! State your business, Master. And do not dare shorten washi's divine name again! It is Amamiya no Chihaya Tenkohime! Say it properly or washi shall place a minor, inconvenient hex upon your left shoe!",
+        choices: [
+          {
+            id: 'amamiya_b1_c1_a',
+            text: "Good morning, Amamichi.",
+            response: "Ignored! Completely ignored! The sheer insolence... though your polite greeting softens the blow slightly. Hmph!",
+            bondExpGain: 100,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'amamiya_b1_c1_b',
+            text: "That name is way too long for Discord, Fox Girl.",
+            response: "Dis-koodo? What foul abyssal spell is that?! Do not rebrand a divine fox spirit like a cheap tavern stray!",
+            bondExpGain: 100,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'amamiya_b1_c1_c',
+            text: "All hail Lady Amamiya no Chihaya Tenkohime!",
+            response: "Fufu~! Now that is the proper reverence! Continue stroking washi's celestial ego and you might just survive this war!",
+            bondExpGain: 150,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_2'
+          }
+        ]
+      },
+      {
+        id: 'scene_2',
+        speakerName: 'Amamiya',
+        speakerAvatarUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Regardless... this land is utterly baffling. The wooden shrines and tatami mats look just like home, yet you have giant glowing glass rectangles on the walls and magic horseless iron carriages everywhere. Tell washi the truth. Is this realm just Vargath with excessive electricity?",
+        choices: [
+          {
+            id: 'amamiya_b1_c2_a',
+            text: "It's just modern Japan. We don't have magic, just Wi-Fi.",
+            response: "Wai-fai? Is that an invisible wind spirit? Can washi eat it? Does it taste like fried batter?",
+            bondExpGain: 100,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'amamiya_b1_c2_b',
+            text: "Actually, those metal carriages run on the souls of dead demons.",
+            response: "Washi knew it! Those roaring metal beasts reek of black iron and suffering! Master, you summon washi into a nest of mad sorcerers!",
+            bondExpGain: 125,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'amamiya_b1_c2_c',
+            text: "You fit right in with the local Shinto aesthetic, honestly.",
+            response: "Naturally! True elegance transcends dimensions! The mortals of this world clearly recognized perfection and copied washi's style.",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_3'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Amamiya',
+        speakerAvatarUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "So, this 'Holy Grail' we are fighting over... the Grail War information baked into washi's brain claims it grants any wish. Master, tell me straight: is the Grail just a massive, golden sake cup filled with infinite fried tofu?",
+        choices: [
+          {
+            id: 'amamiya_b1_c3_a',
+            text: "It's an omnipotent wishing cup made of pure mana.",
+            response: "A wishing cup that doesn't default to food is a monumental waste of ancient metallurgy! Mortals always overcomplicate divine relics.",
+            bondExpGain: 100,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'amamiya_b1_c3_b',
+            text: "If you win, I will personally buy you a swimming pool of fried tofu.",
+            response: "A... a whole pool?! S-Such extravagance! You aren't lying to washi, are you?! If you break this vow, washi will bite your kneecaps!",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'amamiya_b1_c3_c',
+            text: "No, it's a cursed relic that usually explodes in fire.",
+            response: "Exploding cups?! Why must every legendary artifact in every universe be a ticking disaster?! Who is manufacturing these hazardous dishes?!",
+            bondExpGain: 125,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_4'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Amamiya',
+        speakerAvatarUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Speaking of funds for fried tofu... Master, your local currency is strange paper and tiny silver discs. Since washi is low on mortal coins, should washi brew a fresh batch of Kuchikamizake to sell to your wealthy nobles?",
+        choices: [
+          {
+            id: 'amamiya_b1_c4_a',
+            text: "Wait... you chew rice and spit it into a jar to make alcohol?!",
+            response: "Of course! It is a sacred, ancient tradition! Washi hates the texture of raw mush, but rich eccentrics pay ridiculous sums for 'divine saliva vintage'!",
+            bondExpGain: 100,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'amamiya_b1_c4_b',
+            text: "That's actually a real ancient Japanese ritual, but please don't do that here.",
+            response: "Hmph! Fine! Washi didn't want to chew cold grain anyway! My jaw cramps after the third bottle!",
+            bondExpGain: 125,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'amamiya_b1_c4_c',
+            text: "How much can we sell a jar for? Asking for tactical funding.",
+            response: "Fufu~! An ambitious Master! Back in the mountains, desperate collectors traded entire chests of tea for a single jug! We could be rich!",
+            bondExpGain: 150,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_5'
+          }
+        ]
+      },
+      {
+        id: 'scene_5',
+        speakerName: 'Amamiya',
+        speakerAvatarUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "E-EEEEK! MASTER! BEHIND YOU! ON THE WALL! A MULTI-LEGGED ABOMINATION FROM THE CRACKED ABYSS! PURGE IT! CAST THE STRONGEST COMMAND SEAL IMMEDIATELY!",
+        choices: [
+          {
+            id: 'amamiya_b1_c5_a',
+            text: "That's literally just a tiny house spider.",
+            response: "A 'tiny' nightmare with too many eyes and zero manners! Washi does not negotiate with arachnid invaders! Slay it or washi is burning the house down!",
+            bondExpGain: 100,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'amamiya_b1_c5_b',
+            text: "Calm down, you're an ancient divine fox spirit!",
+            response: "A divine spirit who despises dirt, venom, and creepy crawling things! Rank has nothing to do with basic sanitation! Slay it now!",
+            bondExpGain: 125,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'amamiya_b1_c5_c',
+            text: "TACTICAL RETREAT! ABANDON THE ROOM!",
+            response: "A wise strategist! Evacuate! Seal the door with talismans and salt! We shall sleep on the roof until dawn!",
+            bondExpGain: 150,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_6'
+          }
+        ]
+      },
+      {
+        id: 'scene_6',
+        speakerName: 'Amamiya',
+        speakerAvatarUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Haaaah... haaaah... crisis averted. Washi's divine heart nearly stopped. Now... explain that flat, round metal beast crawling slowly across your floor. It is humming with sinister intent. Is it an enemy familiar sent by an Assassin Servant?!",
+        choices: [
+          {
+            id: 'amamiya_b1_c6_a',
+            text: "That is a Roomba. It's an automated vacuum cleaner.",
+            response: "Room-ba...? A mechanical homunculus dedicated entirely to swallowing floor crumbs? Mortals in this world are terrifyingly lazy geniuses.",
+            bondExpGain: 100,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'amamiya_b1_c6_b',
+            text: "Don't move, it hunts through vibrations in the tatami.",
+            response: "Eeee?! Master, pick washi up! My geta are touching the ground! Do not let the floor-demon ingest washi's pristine white tabi socks!",
+            bondExpGain: 150,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'amamiya_b1_c6_c',
+            text: "It cleans the dust off the floor so you don't have to sweep.",
+            response: "It sweeps automatically?! Incredible! Back at the shrine, washi spent centuries sweeping pine needles! Can washi ride atop its armored shell?!",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_7'
+          }
+        ]
+      },
+      {
+        id: 'scene_7',
+        speakerName: 'Amamiya',
+        speakerAvatarUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Fumu... Master, you brought back a plastic sack from that glowing roadside fortress called 'Seven-Eleven'. What is inside? If it is not food, washi will be profoundly sullen for the next three days.",
+        choices: [
+          {
+            id: 'amamiya_b1_c7_a',
+            text: "I bought you warm canned green tea and three packs of sweet Aburaage.",
+            response: "*GASP!* T-The legendary fried golden sheets! And pure green tea without that repulsive cow milk?! Master... you are a genius among mortals! Give it here! Hand it over this instant!",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_8'
+          },
+          {
+            id: 'amamiya_b1_c7_b',
+            text: "Just instant cup noodles and a bottle of iced milk tea.",
+            response: "M-Milk tea?! Blasphemy! Cow juice belongs nowhere near sacred leaves! But... these curly dried noodles look intriguing. Teach washi the boiling ritual.",
+            bondExpGain: 100,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_8'
+          },
+          {
+            id: 'amamiya_b1_c7_c',
+            text: "Energy drinks to prepare for our midnight scouting mission.",
+            response: "Sour fizzy water?! Are you trying to corrode washi's stomach lining before we even encounter the Saber class?! Unacceptable!",
+            bondExpGain: 100,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_8'
+          }
+        ]
+      },
+      {
+        id: 'scene_8',
+        speakerName: 'Amamiya',
+        speakerAvatarUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "*Nom nom nom... gulp.* Aaaah... divine bliss. This strange, metal-box world has its merits after all. Listen closely, Master. Washi has made an executive decision regarding our Holy Grail War strategy.",
+        choices: [
+          {
+            id: 'amamiya_b1_c8_a',
+            text: "What's the plan? Ambush enemy Masters at night?",
+            response: "Far too loud! Too much running through mud! If washi gets dirt on this silk Chihaya robe, someone is losing a limb!",
+            bondExpGain: 100,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_9'
+          },
+          {
+            id: 'amamiya_b1_c8_b',
+            text: "Secure ley lines around the city shrines?",
+            response: "Hmph, ley lines are useful, but washi can barely find the way back from your local convenience market!",
+            bondExpGain: 125,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_9'
+          },
+          {
+            id: 'amamiya_b1_c8_c',
+            text: "Let me guess: more fried tofu expeditions.",
+            response: "Precisely! You read washi's brilliant strategic mind like an open scroll!",
+            bondExpGain: 150,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_9'
+          }
+        ]
+      },
+      {
+        id: 'scene_9',
+        speakerName: 'Amamiya',
+        speakerAvatarUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "The contract stands firm: you provide this divine fox princess with daily fried tofu, zero spiders, and hot green tea. In exchange, washi will slice through any Servant who dares disturb our peaceful afternoon naps. Deal, Master?",
+        choices: [
+          {
+            id: 'amamiya_b1_c9_a',
+            text: "Deal. Welcome to the team, Amamiya.",
+            response: "You dropped the title again... but the tofu was delicious, so washi shall forgive you just this once. Ehehe~!",
+            bondExpGain: 125,
+            reactionEmotion: 'happy'
+          },
+          {
+            id: 'amamiya_b1_c9_b',
+            text: "Deal, Lady Amamiya no Chihaya Tenkohime.",
+            response: "Fufu~! Excellent! Your training as a proper royal retainer is coming along splendidly!",
+            bondExpGain: 150,
+            reactionEmotion: 'smug'
+          },
+          {
+            id: 'amamiya_b1_c9_c',
+            text: "Only if you promise not to spit rice wine in my living room.",
+            response: "M-Mou! Washi already promised! Stop bringing up the sacred spit brew, you insufferable mortal!",
+            bondExpGain: 125,
+            reactionEmotion: 'flustered'
+          }
+        ]
+      }
+    ]
+  }
+];
+
 export const HERACLES_BOND_EVENTS: BondEvent[] = [
   {
     id: 'heracles_bond_event_1',
@@ -1402,6 +1712,10 @@ export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
   cu_chulainn: CU_CHULAINN_BOND_EVENTS,
   adiosa_dragon_envoy: ADIOSA_BOND_EVENTS,
   aoko_aozaki: AOKO_BOND_EVENTS,
+  amamiya_no_chihaya_tenkohime: AMAMIYA_BOND_EVENTS,
+  amamiya: AMAMIYA_BOND_EVENTS,
+  chihaya: AMAMIYA_BOND_EVENTS,
+  tenkohime: AMAMIYA_BOND_EVENTS,
   heracles_berserker: HERACLES_BOND_EVENTS,
   heracles: HERACLES_BOND_EVENTS,
   scathach_lancer: SCATHACH_BOND_EVENTS,
@@ -1707,6 +2021,94 @@ export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
       category: 'bond_5',
       requiredBondLevel: 5,
       quoteText: "Share the debt of True Magic? You'd evaporate on the spot, idiot... But I appreciate the sentiment. Really."
+    }
+  ],
+  amamiya_no_chihaya_tenkohime: [
+    {
+      id: 'amamiya_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: '"Washi has been called upon. Time to sweep out the fallen leaves."'
+    },
+    {
+      id: 'amamiya_bond_1',
+      title: 'Bond 1: Divine Name',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: '"Amamiya ja nee! Washi no namae wa Amamiya no Chihaya Tenkohime! Remember it properly! Hmpf!"'
+    },
+    {
+      id: 'amamiya_bond_2',
+      title: 'Bond 2: Sacred Kuchikamizake',
+      category: 'bond_2',
+      requiredBondLevel: 2,
+      quoteText: '"Washi would never chew and spit rice into a jar for you! ...Unless... it is for a truly grand ritual... and you shall promise to buy washi fried tofu afterward... Hmph!"'
+    },
+    {
+      id: 'amamiya_bond_3',
+      title: 'Bond 3: Afternoon Affection',
+      category: 'bond_3',
+      requiredBondLevel: 3,
+      quoteText: '"*poke poke* Ne ne... Master, washi is bored. Pay attention to washi, or washi shall take a nap right on thy lap."'
+    },
+    {
+      id: 'amamiya_bond_4',
+      title: 'Bond 4: Arachnid Terror',
+      category: 'bond_4',
+      requiredBondLevel: 4,
+      quoteText: '"K-Kyuuuu! A BUG! Master, smite it! Smite it this instant! Do not let it touch washi\'s tail!"'
+    },
+    {
+      id: 'amamiya_bond_5',
+      title: 'Bond 5: Nine Tails Awakening',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: '"Amazakura yo! Washi o mamore! Whatever darkness descends upon this world, washi\'s Nine Tails shall shield you from all harm!"'
+    }
+  ],
+  amamiya: [
+    {
+      id: 'amamiya_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: '"Washi has been called upon. Time to sweep out the fallen leaves."'
+    },
+    {
+      id: 'amamiya_bond_1',
+      title: 'Bond 1: Divine Name',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: '"Amamiya ja nee! Washi no namae wa Amamiya no Chihaya Tenkohime! Remember it properly! Hmpf!"'
+    },
+    {
+      id: 'amamiya_bond_2',
+      title: 'Bond 2: Sacred Kuchikamizake',
+      category: 'bond_2',
+      requiredBondLevel: 2,
+      quoteText: '"Washi would never chew and spit rice into a jar for you! ...Unless... it is for a truly grand ritual... and you shall promise to buy washi fried tofu afterward... Hmph!"'
+    },
+    {
+      id: 'amamiya_bond_3',
+      title: 'Bond 3: Afternoon Affection',
+      category: 'bond_3',
+      requiredBondLevel: 3,
+      quoteText: '"*poke poke* Ne ne... Master, washi is bored. Pay attention to washi, or washi shall take a nap right on thy lap."'
+    },
+    {
+      id: 'amamiya_bond_4',
+      title: 'Bond 4: Arachnid Terror',
+      category: 'bond_4',
+      requiredBondLevel: 4,
+      quoteText: '"K-Kyuuuu! A BUG! Master, smite it! Smite it this instant! Do not let it touch washi\'s tail!"'
+    },
+    {
+      id: 'amamiya_bond_5',
+      title: 'Bond 5: Nine Tails Awakening',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: '"Amazakura yo! Washi o mamore! Whatever darkness descends upon this world, washi\'s Nine Tails shall shield you from all harm!"'
     }
   ],
   heracles_berserker: [
@@ -2164,6 +2566,42 @@ export function getServantGiftReaction(
         responseText: "An exquisite treasure! The Domus Aurea herself welcomes such splendor! Master, your devotion is truly peerless!",
         emotion: 'amused'
       }
+    },
+    amamiya_no_chihaya_tenkohime: {
+      chaldea_tea: {
+        responseText: "Pure green tea without that repulsive cow milk?! Master, you truly understand divine hospitality! Ehehe~!",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "A-Aburaage?! Golden, crispy sheets of fried tofu piled high like Mount Fuji?! Master... washi shall fight with everything for you!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "Such divine, concentrated mana... It feels just like the Aethel overflow beneath the sacred cherry blossom tree. Washi's tails are tingling!",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "An ancient consecrated talisman! This will cleanse the shrine and keep every spider away from our sanctuary! A brilliant tribute, Master!",
+        emotion: 'thoughtful'
+      }
+    },
+    amamiya: {
+      chaldea_tea: {
+        responseText: "Pure green tea without that repulsive cow milk?! Master, you truly understand divine hospitality! Ehehe~!",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "A-Aburaage?! Golden, crispy sheets of fried tofu piled high like Mount Fuji?! Master... washi shall fight with everything for you!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "Such divine, concentrated mana... It feels just like the Aethel overflow beneath the sacred cherry blossom tree. Washi's tails are tingling!",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "An ancient consecrated talisman! This will cleanse the shrine and keep every spider away from our sanctuary! A brilliant tribute, Master!",
+        emotion: 'thoughtful'
+      }
     }
   };
 
@@ -2236,6 +2674,14 @@ export function getServantSparringDebrief(
     },
     nero_claudius: {
       responseText: "Splendid form, Praetor! Such theatrical grace in your footwork! With my crimson blade and your tactical command, no stage shall ever deny us victory!",
+      emotion: 'happy'
+    },
+    amamiya_no_chihaya_tenkohime: {
+      responseText: "*Nine tails swaying swiftly.* Splendid reflex, Master! Amazakura moves purely on instinct, but your commanding rhythm balances washi's footwork perfectly! Now, where is that fried tofu you promised?",
+      emotion: 'happy'
+    },
+    amamiya: {
+      responseText: "*Nine tails swaying swiftly.* Splendid reflex, Master! Amazakura moves purely on instinct, but your commanding rhythm balances washi's footwork perfectly! Now, where is that fried tofu you promised?",
       emotion: 'happy'
     }
   };

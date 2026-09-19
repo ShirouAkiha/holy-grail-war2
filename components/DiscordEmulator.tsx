@@ -2797,36 +2797,98 @@ export default function DiscordEmulator({
     // COMMAND 3.5: /bond
     // ----------------------------------------------------
     if (trimmed.startsWith('/bond')) {
-      const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
+      const args = trimmed.replace(/^\/bond\s*/i, '').trim();
+      const isRosterView = args.toLowerCase() === 'roster' || args.toLowerCase().includes('view: roster') || args.toLowerCase().includes('view:roster');
 
-      if (!activeServant) {
+      if (!master.servants || master.servants.length === 0) {
         addMessage({
           id: getNextId('bot_bond_no_servant'),
           sender: 'bot',
           timestamp: 'Just now',
           embed: {
-            title: '❌ No Active Servant Contract',
-            description: 'You do not hold an active Servant contract. Use `/summon` or `/gacha` to form a pact first!',
+            title: '❌ No Contracted Servants',
+            description: 'You do not hold any contracted Servants. Use `/summon` or `/gacha` to form a pact first!',
             color: '#ef4444'
           }
         });
         return;
       }
 
-      const template = activeServant.template;
-      const bondProgress = getBondExpProgress(activeServant.bondExp || 0);
-      const availableEvents = getBondEventsForServant(activeServant);
+      if (isRosterView) {
+        const rosterLines = master.servants.map((s, idx) => {
+          const sTemplate = s.template;
+          const sName = s.nickname || sTemplate.name || 'Heroic Spirit';
+          const sClass = sTemplate.servantClass || 'Saber';
+          const bondLvl = s.bondLevel || 1;
+          const bondExp = s.bondExp || 0;
+          const prog = getBondExpProgress(bondExp);
+          const isAct = s.id === master.activeServantId;
+          const actBadge = isAct ? ' ⭐ **[ACTIVE]**' : '';
+          const evts = getBondEventsForServant(s);
+          const completed = s.completedBondEvents || [];
+
+          return `**${idx + 1}. [${sClass}] ${sName}**${actBadge}\n` +
+            `   💖 **Bond Lv. ${bondLvl} / 10** • \`${prog.expInCurrentLevel}/${prog.neededForNextLevel} EXP\` (${prog.progressPercent}%)\n` +
+            `   📖 Interludes: \`${completed.length} / ${evts.length} Completed\``;
+        });
+
+        const rosterButtons = master.servants.slice(0, 5).map(s => ({
+          id: `vn_inspect_servant:${s.id}`,
+          label: `${s.nickname || s.template.name} (Lv.${s.bondLevel || 1})`,
+          style: (s.id === master.activeServantId ? 'primary' : 'secondary') as any,
+          emoji: '🌸'
+        }));
+
+        addMessage({
+          id: getNextId('bot_bond_roster'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `🌸 MASTER BOND ROSTER — ${master.username.toUpperCase()}`,
+            description:
+              `*Overview of all **${master.servants.length}** contracted Heroic Spirits in your Chaldea Sanctuary.*\n\n` +
+              rosterLines.join('\n\n') +
+              `\n\n👇 *Click any button below to open that Servant's Bond Sanctum & Interludes!*`,
+            color: '#ec4899',
+            footer: 'Fate Bond System • Multi-Servant Sanctum'
+          },
+          components: {
+            type: 'buttons',
+            items: rosterButtons
+          }
+        });
+        return;
+      }
+
+      // Check if user targeted a specific servant like "/bond amamiya" or "/bond servant: aoko"
+      let targetServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
+      if (args && !isRosterView) {
+        const cleanQuery = args.replace(/^servant:\s*/i, '').trim().toLowerCase();
+        const found = master.servants.find(s => 
+          s.id === cleanQuery ||
+          (s.template.id && s.template.id.toLowerCase() === cleanQuery) ||
+          (s.nickname && s.nickname.toLowerCase().includes(cleanQuery)) ||
+          (s.template.name && s.template.name.toLowerCase().includes(cleanQuery)) ||
+          (s.template.servantClass && s.template.servantClass.toLowerCase() === cleanQuery)
+        );
+        if (found) targetServant = found;
+      }
+
+      const template = targetServant.template;
+      const bondProgress = getBondExpProgress(targetServant.bondExp || 0);
+      const availableEvents = getBondEventsForServant(targetServant);
+      const isActive = targetServant.id === master.activeServantId;
 
       const eventsSummary = availableEvents.map(evt => {
-        const isCompleted = activeServant.completedBondEvents?.includes(evt.id);
-        const isUnlocked = (activeServant.bondLevel || 1) >= evt.requiredBondLevel;
+        const isCompleted = targetServant.completedBondEvents?.includes(evt.id);
+        const isUnlocked = (targetServant.bondLevel || 1) >= evt.requiredBondLevel;
         const statusIcon = isCompleted ? '✅ Completed' : isUnlocked ? '✨ Ready to Play' : '🔒 Locked';
         return `• **${evt.title}** (Bond Lv. ${evt.requiredBondLevel}): ${statusIcon}`;
       }).join('\n');
 
       const playButtons = availableEvents.map((evt) => {
-        const isCompleted = activeServant.completedBondEvents?.includes(evt.id);
-        const isUnlocked = (activeServant.bondLevel || 1) >= evt.requiredBondLevel;
+        const isCompleted = targetServant.completedBondEvents?.includes(evt.id);
+        const isUnlocked = (targetServant.bondLevel || 1) >= evt.requiredBondLevel;
         return {
           id: `vn_start_${evt.id}_0`,
           label: isCompleted ? `Replay: ${evt.title.slice(0, 48)}` : `Play: ${evt.title.slice(0, 48)}`,
@@ -2836,6 +2898,10 @@ export default function DiscordEmulator({
         };
       });
 
+      const multiNote = master.servants.length > 1
+        ? `\n\n👥 *Contracted Servants: **${master.servants.length}**. Use \`/bond roster\` to view all.*`
+        : '';
+
       addMessage({
         id: getNextId('bot_bond_status'),
         sender: 'bot',
@@ -2843,16 +2909,16 @@ export default function DiscordEmulator({
         embed: {
           title: `💖 SERVANT BOND STATUS — ${template.name.toUpperCase()}`,
           description:
-            `**Master:** ${master.username}\n` +
-            `**Servant Class:** ${template.servantClass} (★${template.rarity})\n\n` +
-            `• **Current Bond Level:** **Bond Lv. ${activeServant.bondLevel || 1} / 10**\n` +
-            `• **Total Bond EXP:** \`${activeServant.bondExp || 0} EXP\`\n` +
+            `**Master:** ${master.username} • ${isActive ? '⭐ **[Active Partner]**' : '📜 **[Contracted Reserve]**'}\n` +
+            `**Servant Class:** ${template.servantClass}\n\n` +
+            `• **Current Bond Level:** **Bond Lv. ${targetServant.bondLevel || 1} / 10**\n` +
+            `• **Total Bond EXP:** \`${targetServant.bondExp || 0} EXP\`\n` +
             `• **Level Progress:** \`${bondProgress.expInCurrentLevel} / ${bondProgress.neededForNextLevel} EXP\` (${bondProgress.progressPercent}%)\n\n` +
-            `📖 **Visual Novel Interludes:**\n${eventsSummary}\n\n` +
+            `📖 **Visual Novel Interludes:**\n${eventsSummary}${multiNote}\n\n` +
             `*Click an interlude button below to start the Visual Novel story in-place!*`,
           color: '#f59e0b',
-          thumbnailUrl: activeServant.avatarUrl || template.avatarUrl,
-          footer: 'Bond increases exclusively through Visual Novel Interludes'
+          thumbnailUrl: targetServant.avatarUrl || template.avatarUrl,
+          footer: 'Bond increases through Interludes, Sparring, Dialogue & Gifts'
         },
         artworkEmbed: {
           imageUrl: 'https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp',
@@ -2861,8 +2927,9 @@ export default function DiscordEmulator({
         components: {
           type: 'buttons',
           items: [
-            { id: `btn_talk_servant:${activeServant.id}`, label: 'Talk to Servant 💬', style: 'success' as const, emoji: '💬' },
-            ...playButtons
+            { id: `btn_talk_servant:${targetServant.id}`, label: 'Talk to Servant 💬', style: 'success' as const, emoji: '💬' },
+            ...playButtons,
+            ...(master.servants.length > 1 ? [{ id: 'vn_view_roster', label: 'All Bonds 👥', style: 'secondary' as const, emoji: '👥' }] : [])
           ]
         }
       });
@@ -7514,7 +7581,23 @@ export default function DiscordEmulator({
 
     // Visual Novel Interlude In-Place Interactive Handlers
     if (btnId.startsWith('vn_') || btnId === 'quick_bond_status') {
-      if (btnId === 'quick_bond_status' || btnId === 'vn_back_status') {
+      if (btnId === 'vn_view_roster') {
+        handleCommand('/bond roster');
+        return;
+      }
+
+      if (btnId.startsWith('vn_inspect_servant:')) {
+        const targetId = btnId.split(':')[1];
+        handleCommand(`/bond servant: ${targetId}`);
+        return;
+      }
+
+      if (btnId === 'quick_bond_status' || btnId.startsWith('vn_back_status')) {
+        const targetId = btnId.includes(':') ? btnId.split(':')[1] : undefined;
+        if (targetId) {
+          handleCommand(`/bond servant: ${targetId}`);
+          return;
+        }
         if (msgId) {
           const activeS = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
           if (!activeS) return;
@@ -7549,7 +7632,7 @@ export default function DiscordEmulator({
               title: `💖 SERVANT BOND STATUS — ${template.name.toUpperCase()}`,
               description:
                 `**Master:** ${master.username}\n` +
-                `**Servant Class:** ${template.servantClass} (★${template.rarity})\n\n` +
+                `**Servant Class:** ${template.servantClass}\n\n` +
                 `• **Current Bond Level:** **Bond Lv. ${activeS.bondLevel || 1} / 10**\n` +
                 `• **Total Bond EXP:** \`${activeS.bondExp || 0} EXP\`\n` +
                 `• **Level Progress:** \`${bondProgress.expInCurrentLevel} / ${bondProgress.neededForNextLevel} EXP\` (${bondProgress.progressPercent}%)\n\n` +
@@ -7557,7 +7640,7 @@ export default function DiscordEmulator({
                 `*Click an interlude button below to start the Visual Novel story in-place!*`,
               color: '#f59e0b',
               thumbnailUrl: activeS.avatarUrl || template.avatarUrl,
-              footer: 'Bond increases exclusively through Visual Novel Interludes'
+              footer: 'Bond increases through Interludes, Sparring, Dialogue & Gifts'
             },
             artworkEmbed: {
               imageUrl: 'https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp',
@@ -7568,7 +7651,8 @@ export default function DiscordEmulator({
               items: [
                 { id: `btn_talk_servant:${activeS.id}`, label: 'Talk to Servant 💬', style: 'success' as const, emoji: '💬' },
                 ...playButtons,
-                { id: 'vn_view_quotes', label: '🎙️ View Voice Lines', style: 'secondary', emoji: '🎙️' }
+                { id: 'vn_view_quotes', label: '🎙️ View Voice Lines', style: 'secondary', emoji: '🎙️' },
+                ...(master.servants.length > 1 ? [{ id: 'vn_view_roster', label: 'All Bonds 👥', style: 'secondary' as const, emoji: '👥' }] : [])
               ]
             }
           });

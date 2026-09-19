@@ -276,6 +276,21 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     passiveValue: 4,
     artworkUrl: 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=500&auto=format&fit=crop&q=80'
   },
+  {
+    id: 'ce_amazakura',
+    name: 'Amazakura',
+    rarity: 4,
+    description: 'Uchigatana forged for Amamiya. Relatively short for everyone else (even the dwarves) but perfectly balanced for her.',
+    bonusAtk: 450,
+    bonusDef: 100,
+    bonusHp: 200,
+    atkBonus: 450,
+    hpBonus: 200,
+    effectText: 'Increases Quick Card effectiveness by 15% and Critical Star generation by 15%.',
+    passiveType: 'quick_up',
+    passiveValue: 15,
+    artworkUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp'
+  },
 
   // --- 3★ R CRAFT ESSENCES ---
   {

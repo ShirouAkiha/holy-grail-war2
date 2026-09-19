@@ -6,6 +6,8 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ButtonInteraction,
+  StringSelectMenuBuilder,
+  StringSelectMenuInteraction,
   MessageFlags,
   AttachmentBuilder
 } from 'discord.js';
@@ -38,12 +40,19 @@ export const data = new SlashCommandBuilder()
       .setRequired(false)
       .addChoices(
         { name: '📊 Bond Status & Progress (View EXP & unlocked perks)', value: 'status' },
+        { name: '👥 Bond Roster (View all contracted Servants & Bond Levels)', value: 'roster' },
         { name: '📖 Play Bond Interlude (Visual Novel Event)', value: 'interlude' },
         { name: '🎁 Present Gifts & Afternoon Tea (Boost Bond EXP)', value: 'gift' },
         { name: '⚔️ Master-Servant Sparring & Drills (+120 Bond EXP)', value: 'spar' },
         { name: '🎙️ Voice Quotes & My Room Lines', value: 'quotes' },
         { name: '❓ Ways to Gain Bond Guide', value: 'guide' }
       )
+  )
+  .addStringOption(opt =>
+    opt
+      .setName('servant')
+      .setDescription('Target specific Servant (name, class, or ID) to view or interact with their Bond Sanctum')
+      .setRequired(false)
   );
 
 function renderProgressBar(percent: number): string {
@@ -52,34 +61,76 @@ function renderProgressBar(percent: number): string {
   return '🌸'.repeat(filled) + '░'.repeat(total - filled);
 }
 
+export function resolveTargetServant(master: any, servantQuery?: string | null, targetServantId?: string | null): any {
+  if (!master.servants || master.servants.length === 0) return null;
+
+  if (targetServantId) {
+    const found = master.servants.find((s: any) => s.id === targetServantId);
+    if (found) return found;
+  }
+
+  if (servantQuery && servantQuery.trim()) {
+    const q = servantQuery.trim().toLowerCase();
+    // 1. Exact ID
+    const byId = master.servants.find((s: any) => s.id === q);
+    if (byId) return byId;
+
+    // 2. Template ID
+    const byTemplateId = master.servants.find((s: any) => (s.template?.id || '').toLowerCase() === q);
+    if (byTemplateId) return byTemplateId;
+
+    // 3. Name or Nickname contains
+    const byName = master.servants.find((s: any) => {
+      const name = (s.nickname || s.template?.name || s.name || '').toLowerCase();
+      return name.includes(q);
+    });
+    if (byName) return byName;
+
+    // 4. Class matches
+    const byClass = master.servants.find((s: any) => (s.template?.servantClass || s.servantClass || '').toLowerCase() === q);
+    if (byClass) return byClass;
+  }
+
+  // Fallback to active servant or first in roster
+  return master.servants.find((s: any) => s.id === master.activeServantId) || master.servants[0];
+}
+
 // ==========================================
 // 2. EMBED BUILDERS
 // ==========================================
-export function buildBondStatusEmbed(master: any) {
-  const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+export function buildBondStatusEmbed(master: any, targetServantId?: string) {
+  const targetServant = resolveTargetServant(master, null, targetServantId);
 
-  if (!activeServant) {
+  if (!targetServant) {
     return new EmbedBuilder()
       .setTitle('🌸 Servant Bond Sanctum | No Contracted Servant')
       .setDescription('❌ You have no active Servant contracted. Use `/summon` first to establish a pact!')
       .setColor(0xef4444);
   }
 
-  const sTemplate = activeServant.template || activeServant;
-  const servantName = activeServant.nickname || sTemplate.name || 'Heroic Spirit';
+  const sTemplate = targetServant.template || targetServant;
+  const servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
   const servantClass = sTemplate.servantClass || 'Saber';
-  const bondLvl = activeServant.bondLevel || 1;
-  const bondExp = activeServant.bondExp || 0;
+  const bondLvl = targetServant.bondLevel || 1;
+  const bondExp = targetServant.bondExp || 0;
+  const isActive = targetServant.id === master.activeServantId;
 
   const progress = getBondExpProgress(bondExp);
   const progressBar = renderProgressBar(progress.progressPercent);
-  const events = getBondEventsForServant(activeServant);
-  const unlockedQuotes = getUnlockedDialogueLinesForServant(activeServant);
-  const completedEvents = activeServant.completedBondEvents || [];
+  const events = getBondEventsForServant(targetServant);
+  const unlockedQuotes = getUnlockedDialogueLinesForServant(targetServant);
+  const completedEvents = targetServant.completedBondEvents || [];
+
+  const statusBadge = isActive ? '⭐ **[ACTIVE CONTRACT]**' : '📜 **[CONTRACTED RESERVE]**';
+  const otherServantsCount = (master.servants?.length || 1) - 1;
+  const multiServantNote = otherServantsCount > 0
+    ? `\n\n💡 *You have **${master.servants.length} contracted Servants**. Use the dropdown below or \`/bond view:roster\` to switch Servants!*`
+    : '';
 
   const embed = new EmbedBuilder()
     .setTitle(`🌸 Bond Sanctum | ${servantName} (${servantClass})`)
     .setDescription(
+      `${statusBadge}\n` +
       `*Deepen your covenant with ${servantName} through Interludes, Gifts, Conversations, and Battle to unlock voice lines and combat bonuses!*\n\n` +
       `💖 **BOND LEVEL:** Level \`${bondLvl} / 10\`\n` +
       `[${progressBar}] \`${progress.expInCurrentLevel} / ${progress.neededForNextLevel} EXP\` (**${progress.progressPercent}%**)\n\n` +
@@ -90,7 +141,7 @@ export function buildBondStatusEmbed(master: any) {
       `• **Bond Level 10:** ${bondLvl >= 10 ? '✅ **UNLOCKED!** Exclusive Max Bond Craft Essence & Master Resonance!' : '🔒 Unlocks Master\'s Heroic Essence & Max Bond Craft Essence.'}\n\n` +
       `📖 **BOND INTERLUDES:** ${events.length} Event(s) (${completedEvents.length} Completed)\n` +
       `🎙️ **UNLOCKED VOICE LINES:** ${unlockedQuotes.length} Quote(s)\n` +
-      `💎 **SAINT QUARTZ:** \`${master.saintQuartz || 0} SQ\``
+      `💎 **SAINT QUARTZ:** \`${master.saintQuartz || 0} SQ\`${multiServantNote}`
     )
     .setColor(0xec4899)
     .setFooter({ text: 'Fate Bond Engine • Visual Novel Interludes & Sanctuary' });
@@ -102,55 +153,197 @@ export function buildBondStatusEmbed(master: any) {
   return embed;
 }
 
-export function buildBondActionRow(master: any): ActionRowBuilder<ButtonBuilder>[] {
-  const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
-  if (!activeServant) return [];
+export function buildBondActionRow(master: any, targetServantId?: string): ActionRowBuilder<any>[] {
+  const targetServant = resolveTargetServant(master, null, targetServantId);
+  if (!targetServant) return [];
 
-  const { event, isReplay } = selectActiveInterludeForServant(activeServant);
+  const { event, isReplay } = selectActiveInterludeForServant(targetServant);
   const todayKey = new Date().toISOString().slice(0, 10);
   const usedToday = master.lastSparDay === todayKey ? (master.dailySparCount || 0) : 0;
   const sparsLeft = Math.max(0, MAX_DAILY_SPARS - usedToday);
+  const isActive = targetServant.id === master.activeServantId;
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(`btn_talk_servant:${activeServant.id}`)
+      .setCustomId(`btn_talk_servant:${targetServant.id}`)
       .setLabel('Talk to Servant 💬')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
-      .setCustomId('vn_play_event')
-      .setLabel(event ? `📖 Play Interlude: ${event.title.slice(0, 30)}${isReplay ? ' (Replay)' : ''}` : '📖 Play Interlude')
+      .setCustomId(`vn_play_event:${targetServant.id}`)
+      .setLabel(event ? `📖 Play Interlude: ${event.title.slice(0, 26)}${isReplay ? ' (Replay)' : ''}` : '📖 Play Interlude')
       .setStyle(isReplay ? ButtonStyle.Secondary : ButtonStyle.Primary),
     new ButtonBuilder()
-      .setCustomId('vn_gift_menu')
+      .setCustomId(`vn_gift_menu:${targetServant.id}`)
       .setLabel('Present Gifts 🎁')
       .setStyle(ButtonStyle.Secondary)
   );
 
-  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+  const row2Components: ButtonBuilder[] = [
     new ButtonBuilder()
-      .setCustomId('vn_spar')
+      .setCustomId(`vn_spar:${targetServant.id}`)
       .setLabel(sparsLeft > 0 ? `Spar & Train ⚔️ (${sparsLeft}/3)` : `Spar & Train ⚔️ (0/3)`)
       .setStyle(sparsLeft > 0 ? ButtonStyle.Secondary : ButtonStyle.Secondary)
       .setDisabled(sparsLeft <= 0),
     new ButtonBuilder()
-      .setCustomId('vn_view_quotes')
+      .setCustomId(`vn_view_quotes:${targetServant.id}`)
       .setLabel('Voice Quotes 🎙️')
-      .setStyle(ButtonStyle.Secondary),
+      .setStyle(ButtonStyle.Secondary)
+  ];
+
+  if (!isActive) {
+    row2Components.push(
+      new ButtonBuilder()
+        .setCustomId(`vn_set_active:${targetServant.id}`)
+        .setLabel('Set as Active ⭐')
+        .setStyle(ButtonStyle.Primary)
+    );
+  } else {
+    row2Components.push(
+      new ButtonBuilder()
+        .setCustomId('vn_view_roster')
+        .setLabel('Bond Roster 👥')
+        .setStyle(ButtonStyle.Secondary)
+    );
+  }
+
+  row2Components.push(
     new ButtonBuilder()
       .setCustomId('vn_ways_to_bond')
       .setLabel('Bond Guide ❓')
       .setStyle(ButtonStyle.Secondary)
   );
 
-  return [row1, row2];
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(row2Components);
+
+  const rows: ActionRowBuilder<any>[] = [row1, row2];
+
+  // If the Master owns multiple servants, include an interactive select dropdown to switch instantly!
+  if (master.servants && master.servants.length > 1) {
+    const servantOptions = master.servants.slice(0, 25).map((s: any) => {
+      const sTemp = s.template || s;
+      const sN = s.nickname || sTemp.name || 'Heroic Spirit';
+      const sCls = sTemp.servantClass || 'Saber';
+      const sLvl = s.bondLevel || 1;
+      const isAct = s.id === master.activeServantId;
+      const prog = getBondExpProgress(s.bondExp || 0);
+
+      return {
+        label: `${sN} (${sCls})`,
+        value: s.id,
+        description: `Bond Lv.${sLvl}/10 (${prog.progressPercent}%) • ${isAct ? '⭐ Active Partner' : 'Contracted'}`,
+        emoji: isAct ? '⭐' : '🌸',
+        default: s.id === targetServant.id
+      };
+    });
+
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId('vn_select_servant')
+      .setPlaceholder('🔄 Switch to another contracted Servant...')
+      .addOptions(servantOptions);
+
+    const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
+    rows.push(selectRow);
+  }
+
+  return rows;
 }
 
-export function buildBondGiftsEmbed(master: any) {
+export function buildBondRosterEmbed(master: any) {
+  if (!master.servants || master.servants.length === 0) {
+    return new EmbedBuilder()
+      .setTitle('🌸 Master Bond Roster | No Contracted Servants')
+      .setDescription('❌ You have no Servants contracted yet. Use `/summon` to establish covenants with Heroic Spirits!')
+      .setColor(0xef4444);
+  }
+
+  const lines = master.servants.map((s: any, idx: number) => {
+    const sTemp = s.template || s;
+    const sN = s.nickname || sTemp.name || 'Heroic Spirit';
+    const sCls = sTemp.servantClass || 'Saber';
+    const bondLvl = s.bondLevel || 1;
+    const bondExp = s.bondExp || 0;
+    const progress = getBondExpProgress(bondExp);
+    const progressBar = renderProgressBar(progress.progressPercent);
+    const isAct = s.id === master.activeServantId;
+    const actBadge = isAct ? ' ⭐ **[ACTIVE]**' : '';
+    const events = getBondEventsForServant(s);
+    const completed = s.completedBondEvents || [];
+
+    const perks: string[] = [];
+    if (bondLvl >= 5) perks.push('✅ Bond 5 Passive');
+    if (bondLvl >= 10) perks.push('✅ Bond 10 CE');
+
+    const perkText = perks.length > 0 ? ` • ${perks.join(' • ')}` : '';
+
+    return `**${idx + 1}. [${sCls}] ${sN}**${actBadge}\n` +
+      `   💖 **Bond Lv. ${bondLvl} / 10** [${progressBar}] \`${progress.expInCurrentLevel}/${progress.neededForNextLevel} EXP\` (**${progress.progressPercent}%**)\n` +
+      `   📖 Interludes: \`${completed.length} / ${events.length} Completed\`${perkText}`;
+  });
+
+  const embed = new EmbedBuilder()
+    .setTitle(`🌸 Master ${master.username}'s Servant Bond Roster`)
+    .setDescription(
+      `*Overview of all **${master.servants.length}** contracted Heroic Spirits in your Chaldea Sanctuary.*\n\n` +
+      lines.join('\n\n') +
+      `\n\n👇 **Select any Servant from the menu below to open their Bond Sanctum, play Interludes, or give Gifts!**`
+    )
+    .setColor(0xec4899)
+    .setFooter({ text: 'Fate Bond Engine • Select a Servant below to interact' });
+
+  return embed;
+}
+
+export function buildBondRosterActionRows(master: any): ActionRowBuilder<any>[] {
+  const rows: ActionRowBuilder<any>[] = [];
+
+  if (master.servants && master.servants.length > 0) {
+    const servantOptions = master.servants.slice(0, 25).map((s: any) => {
+      const sTemp = s.template || s;
+      const sN = s.nickname || sTemp.name || 'Heroic Spirit';
+      const sCls = sTemp.servantClass || 'Saber';
+      const sLvl = s.bondLevel || 1;
+      const isAct = s.id === master.activeServantId;
+      const prog = getBondExpProgress(s.bondExp || 0);
+
+      return {
+        label: `${sN} (${sCls})`,
+        value: s.id,
+        description: `Bond Lv.${sLvl}/10 (${prog.progressPercent}%) • ${isAct ? '⭐ Active Partner' : 'Contracted'}`,
+        emoji: isAct ? '⭐' : '🌸',
+        default: isAct
+      };
+    });
+
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId('vn_select_servant')
+      .setPlaceholder('👉 Choose a Servant to open their Bond Sanctum...')
+      .addOptions(servantOptions);
+
+    rows.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu));
+  }
+
   const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
-  const sTemplate = activeServant.template || activeServant;
-  const servantName = activeServant.nickname || sTemplate.name || 'Heroic Spirit';
+  const navRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(activeServant ? `vn_back_status:${activeServant.id}` : 'vn_back_status')
+      .setLabel('📊 Active Servant Sanctum')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId('vn_ways_to_bond')
+      .setLabel('Bond Guide ❓')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  rows.push(navRow);
+  return rows;
+}
+
+export function buildBondGiftsEmbed(master: any, targetServantId?: string) {
+  const targetServant = resolveTargetServant(master, null, targetServantId);
+  const sTemplate = targetServant?.template || targetServant;
+  const servantName = targetServant?.nickname || sTemplate?.name || 'Heroic Spirit';
   const currentSq = master.saintQuartz || 0;
-  const bondLvl = activeServant.bondLevel || 1;
+  const bondLvl = targetServant?.bondLevel || 1;
 
   const embed = new EmbedBuilder()
     .setTitle(`🎁 Present Gifts & Treats | ${servantName}`)
@@ -179,39 +372,45 @@ export function buildBondGiftsEmbed(master: any) {
     .setColor(0xf59e0b)
     .setFooter({ text: 'Choose a gift below to present to your Servant!' });
 
-  if (sTemplate.avatarUrl) {
+  if (sTemplate?.avatarUrl) {
     safeSetEmbedThumbnail(embed, sTemplate.avatarUrl);
   }
 
   return embed;
 }
 
-export function buildBondGiftsActionRows(master: any): ActionRowBuilder<ButtonBuilder>[] {
+export function buildBondGiftsActionRows(master: any, targetServantId?: string): ActionRowBuilder<ButtonBuilder>[] {
+  const targetServant = resolveTargetServant(master, null, targetServantId);
+  const sId = targetServant?.id || master.activeServantId || 'active';
   const currentSq = master.saintQuartz || 0;
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId('vn_give_gift:chaldea_tea')
+      .setCustomId(`vn_give_gift:${sId}:chaldea_tea`)
       .setLabel('☕ Afternoon Tea (Free)')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
-      .setCustomId('vn_give_gift:heroic_feast')
+      .setCustomId(`vn_give_gift:${sId}:heroic_feast`)
       .setLabel('🍱 Heroic Feast (5 SQ)')
       .setStyle(currentSq >= 5 ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
-      .setCustomId('vn_give_gift:golden_apple')
+      .setCustomId(`vn_give_gift:${sId}:golden_apple`)
       .setLabel('🍏 Golden Apple (10 SQ)')
       .setStyle(currentSq >= 10 ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
-      .setCustomId('vn_give_gift:sacred_relic')
+      .setCustomId(`vn_give_gift:${sId}:sacred_relic`)
       .setLabel('💠 Sacred Relic (15 SQ)')
       .setStyle(currentSq >= 15 ? ButtonStyle.Primary : ButtonStyle.Secondary)
   );
 
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId('vn_back_status')
+      .setCustomId(`vn_back_status:${sId}`)
       .setLabel('📊 Back to Bond Sanctum')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId('vn_view_roster')
+      .setLabel('Bond Roster 👥')
       .setStyle(ButtonStyle.Secondary)
   );
 
@@ -289,10 +488,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
     const viewOption = interaction.options.getString('view') || 'status';
+    const servantParam = interaction.options.getString('servant');
 
-    const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
-    if (!activeServant && viewOption !== 'guide') {
-      return interaction.editReply({ content: '❌ You do not have an active Servant contracted. Use `/summon` first!' });
+    if (viewOption === 'roster') {
+      const rosterEmbed = buildBondRosterEmbed(master);
+      const rows = buildBondRosterActionRows(master);
+      return interaction.editReply({ embeds: [rosterEmbed], components: rows });
     }
 
     if (viewOption === 'guide') {
@@ -301,16 +502,21 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return interaction.editReply({ embeds: [guideEmbed], components: rows });
     }
 
+    const targetServant = resolveTargetServant(master, servantParam);
+    if (!targetServant) {
+      return interaction.editReply({ content: '❌ You do not have any contracted Servants. Use `/summon` first!' });
+    }
+
     if (viewOption === 'gift') {
-      const giftEmbed = buildBondGiftsEmbed(master);
-      const rows = buildBondGiftsActionRows(master);
+      const giftEmbed = buildBondGiftsEmbed(master, targetServant.id);
+      const rows = buildBondGiftsActionRows(master, targetServant.id);
       return interaction.editReply({ embeds: [giftEmbed], components: rows });
     }
 
     if (viewOption === 'spar') {
       const sparStatus = checkSparLimit(master);
-      const sTemplate = activeServant.template || activeServant;
-      const servantName = activeServant.nickname || sTemplate.name || 'Heroic Spirit';
+      const sTemplate = targetServant.template || targetServant;
+      const servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
 
       if (!sparStatus.allowed) {
         if (sparStatus.isCooldown) {
@@ -335,11 +541,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
         const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setCustomId('vn_gift_menu')
+            .setCustomId(`vn_gift_menu:${targetServant.id}`)
             .setLabel('Present Gifts 🎁')
             .setStyle(ButtonStyle.Primary),
           new ButtonBuilder()
-            .setCustomId('vn_back_status')
+            .setCustomId(`vn_back_status:${targetServant.id}`)
             .setLabel('📊 Bond Sanctum')
             .setStyle(ButtonStyle.Secondary)
         );
@@ -353,12 +559,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       master.lastSparDay = todayKey;
       master.lastSparTimestamp = Date.now();
 
-      const debrief = getServantSparringDebrief(activeServant);
+      const debrief = getServantSparringDebrief(targetServant);
       const bondGain = 120;
-      const bondRes = addBondExpToServant(activeServant, bondGain);
+      const bondRes = addBondExpToServant(targetServant, bondGain);
       const updatedServant = bondRes.updatedServant;
 
-      const sIdx = master.servants.findIndex((s: any) => s.id === activeServant.id);
+      const sIdx = master.servants.findIndex((s: any) => s.id === targetServant.id);
       if (sIdx !== -1) {
         master.servants[sIdx] = updatedServant;
       }
@@ -396,12 +602,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId('vn_spar')
+          .setCustomId(`vn_spar:${targetServant.id}`)
           .setLabel(remainingSpars > 0 ? `Spar Again ⚔️ (${remainingSpars} left)` : 'Spar Limit Reached ⚔️')
           .setStyle(remainingSpars > 0 ? ButtonStyle.Primary : ButtonStyle.Secondary)
           .setDisabled(remainingSpars <= 0),
         new ButtonBuilder()
-          .setCustomId('vn_back_status')
+          .setCustomId(`vn_back_status:${targetServant.id}`)
           .setLabel('📊 Bond Sanctum')
           .setStyle(ButtonStyle.Secondary)
       );
@@ -414,9 +620,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     if (viewOption === 'quotes') {
-      const sTemplate = activeServant.template || activeServant;
-      const servantName = activeServant.nickname || sTemplate.name || 'Heroic Spirit';
-      const unlockedQuotes = getUnlockedDialogueLinesForServant(activeServant);
+      const sTemplate = targetServant.template || targetServant;
+      const servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
+      const unlockedQuotes = getUnlockedDialogueLinesForServant(targetServant);
       const quotesList = unlockedQuotes.map(q => 
         `• **${q.title}** (Bond ${q.requiredBondLevel}):\n  *"${q.quoteText}"*`
       ).join('\n\n');
@@ -424,7 +630,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const quotesEmbed = new EmbedBuilder()
         .setTitle(`🎙️ My Room Voice Quotes | ${servantName}`)
         .setDescription(
-          `*Here are the unlocked quotes based on your current Bond Level (${activeServant.bondLevel || 1}/10):*\n\n` +
+          `*Here are the unlocked quotes based on your current Bond Level (${targetServant.bondLevel || 1}/10):*\n\n` +
           (quotesList || 'No quotes unlocked yet.')
         )
         .setColor(0xa855f7)
@@ -436,11 +642,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId('vn_play_event')
+          .setCustomId(`vn_play_event:${targetServant.id}`)
           .setLabel('📖 Play Interlude')
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
-          .setCustomId('vn_back_status')
+          .setCustomId(`vn_back_status:${targetServant.id}`)
           .setLabel('📊 Bond Status')
           .setStyle(ButtonStyle.Secondary)
       );
@@ -452,10 +658,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     if (viewOption === 'interlude') {
-      const { event, isReplay, statusNote } = selectActiveInterludeForServant(activeServant);
+      const { event, isReplay, statusNote } = selectActiveInterludeForServant(targetServant);
       const scene1 = event.scenes[0];
-      const sTemplate = activeServant.template || activeServant;
-      const servantName = activeServant.nickname || sTemplate.name || 'Heroic Spirit';
+      const sTemplate = targetServant.template || targetServant;
+      const servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
 
       // Generate VN Canvas Image
       const imageBuffer = await renderVisualNovelCard({
@@ -466,11 +672,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         dialogueText: scene1.dialogueText,
         title: event.title,
         subtitle: event.subtitle,
-        currentBondLevel: activeServant.bondLevel || 1
+        currentBondLevel: targetServant.bondLevel || 1
       });
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel.png' });
-
       const cleanTitle = event.title.replace(/^Bond Interlude:\s*/i, '');
       const choiceTextList = scene1.choices && scene1.choices.length > 0
         ? `\n\n👇 **Choose your response to deepen your Bond:**\n` +
@@ -496,7 +701,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         scene1.choices.forEach((c, idx) => {
           choicesRow.addComponents(
             new ButtonBuilder()
-              .setCustomId(`vn_choice:${event.id}:${c.id}`)
+              .setCustomId(`vn_choice:${targetServant.id}:${event.id}:0:${c.id}`)
               .setLabel(`${idx + 1}. ${c.text.length > 75 ? c.text.slice(0, 72) + '...' : c.text}`)
               .setStyle(ButtonStyle.Primary)
           );
@@ -504,7 +709,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       } else {
         choicesRow.addComponents(
           new ButtonBuilder()
-            .setCustomId('vn_choice_complete')
+            .setCustomId(`vn_choice_complete:${targetServant.id}`)
             .setLabel('✨ Complete Interlude')
             .setStyle(ButtonStyle.Success)
         );
@@ -517,8 +722,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
     }
 
-    const embed = buildBondStatusEmbed(master);
-    const rows = buildBondActionRow(master);
+    const embed = buildBondStatusEmbed(master, targetServant.id);
+    const rows = buildBondActionRow(master, targetServant.id);
 
     await interaction.editReply({
       embeds: [embed],
@@ -531,11 +736,40 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 }
 
+// ==========================================
+// 4. SELECT MENU INTERACTION HANDLER
+// ==========================================
+export async function handleBondSelectInteraction(interaction: StringSelectMenuInteraction) {
+  try {
+    await interaction.deferUpdate();
+    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+    const selectedServantId = interaction.values[0];
+
+    const targetServant = resolveTargetServant(master, null, selectedServantId);
+    if (!targetServant) {
+      return interaction.followUp({ flags: MessageFlags.Ephemeral, content: '❌ Servant not found in your contracted roster.' });
+    }
+
+    const embed = buildBondStatusEmbed(master, targetServant.id);
+    const rows = buildBondActionRow(master, targetServant.id);
+
+    await interaction.editReply({
+      embeds: [embed],
+      files: [],
+      components: rows
+    });
+  } catch (error: any) {
+    console.error('Error handling bond select menu:', error);
+  }
+}
+
+// ==========================================
+// 5. BUTTON INTERACTION HANDLER
+// ==========================================
 export async function handleBondButtonInteraction(interaction: ButtonInteraction) {
   try {
     const btnId = interaction.customId;
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
-    const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
 
     if (btnId === 'vn_ways_to_bond') {
       await interaction.deferUpdate();
@@ -544,23 +778,85 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       return interaction.editReply({ embeds: [guideEmbed], files: [], components: rows });
     }
 
-    if (!activeServant) {
+    if (btnId === 'vn_view_roster') {
+      await interaction.deferUpdate();
+      const rosterEmbed = buildBondRosterEmbed(master);
+      const rows = buildBondRosterActionRows(master);
+      return interaction.editReply({ embeds: [rosterEmbed], files: [], components: rows });
+    }
+
+    if (btnId.startsWith('vn_set_active:')) {
+      await interaction.deferUpdate();
+      const servantId = btnId.split(':')[1];
+      const chosen = master.servants?.find((s: any) => s.id === servantId);
+      if (!chosen) {
+        return interaction.followUp({ flags: MessageFlags.Ephemeral, content: '❌ Selected Servant is not contracted.' });
+      }
+
+      master.activeServantId = chosen.id;
+      await saveMaster(master);
+
+      const sTemp = chosen.template || chosen;
+      const sName = chosen.nickname || sTemp.name || 'Heroic Spirit';
+
+      const embed = buildBondStatusEmbed(master, chosen.id);
+      const rows = buildBondActionRow(master, chosen.id);
+
+      await interaction.editReply({
+        embeds: [embed],
+        files: [],
+        components: rows
+      });
+
+      return interaction.followUp({
+        flags: MessageFlags.Ephemeral,
+        content: `⭐ Set **${sName}** (${sTemp.servantClass}) as your active Holy Grail War partner!`
+      });
+    }
+
+    // Determine target servant from button ID if present
+    let targetServantId: string | undefined = undefined;
+    if (btnId.startsWith('vn_gift_menu:')) targetServantId = btnId.split(':')[1];
+    else if (btnId.startsWith('vn_give_gift:')) targetServantId = btnId.split(':')[1];
+    else if (btnId.startsWith('vn_spar:')) targetServantId = btnId.split(':')[1];
+    else if (btnId.startsWith('vn_play_event:')) targetServantId = btnId.split(':')[1];
+    else if (btnId.startsWith('vn_view_quotes:')) targetServantId = btnId.split(':')[1];
+    else if (btnId.startsWith('vn_back_status:')) targetServantId = btnId.split(':')[1];
+    else if (btnId.startsWith('vn_choice:')) {
+      const parts = btnId.split(':');
+      // Format: vn_choice:servantId:eventId:sceneIdx:choiceId OR legacy vn_choice:eventId:sceneIdx:choiceId
+      if (parts.length >= 5) {
+        targetServantId = parts[1];
+      }
+    } else if (btnId.startsWith('vn_next:')) {
+      const parts = btnId.split(':');
+      // Format: vn_next:servantId:eventId:nextSceneIdx OR legacy vn_next:eventId:nextSceneIdx
+      if (parts.length >= 4) {
+        targetServantId = parts[1];
+      }
+    }
+
+    const targetServant = resolveTargetServant(master, null, targetServantId);
+
+    if (!targetServant) {
       return interaction.reply({ flags: MessageFlags.Ephemeral, content: '❌ You do not have an active Servant contracted.' });
     }
 
-    const sTemplate = activeServant.template || activeServant;
-    const servantName = activeServant.nickname || sTemplate.name || 'Heroic Spirit';
+    const sTemplate = targetServant.template || targetServant;
+    const servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
 
-    if (btnId === 'vn_gift_menu') {
+    if (btnId.startsWith('vn_gift_menu')) {
       await interaction.deferUpdate();
-      const giftEmbed = buildBondGiftsEmbed(master);
-      const rows = buildBondGiftsActionRows(master);
+      const giftEmbed = buildBondGiftsEmbed(master, targetServant.id);
+      const rows = buildBondGiftsActionRows(master, targetServant.id);
       return interaction.editReply({ embeds: [giftEmbed], files: [], components: rows });
     }
 
     if (btnId.startsWith('vn_give_gift:')) {
       await interaction.deferUpdate();
-      const giftId = btnId.split(':')[1];
+      const parts = btnId.split(':');
+      // format: vn_give_gift:servantId:giftId OR legacy vn_give_gift:giftId
+      const giftId = parts.length >= 3 ? parts[2] : parts[1];
       const gift = BOND_GIFTS[giftId] || BOND_GIFTS.chaldea_tea;
 
       if (gift.sqCost > 0 && (master.saintQuartz || 0) < gift.sqCost) {
@@ -574,11 +870,11 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         master.saintQuartz = (master.saintQuartz || 0) - gift.sqCost;
       }
 
-      const reaction = getServantGiftReaction(activeServant, giftId);
-      const bondRes = addBondExpToServant(activeServant, gift.bondExp);
+      const reaction = getServantGiftReaction(targetServant, giftId);
+      const bondRes = addBondExpToServant(targetServant, gift.bondExp);
       const updatedServant = bondRes.updatedServant;
 
-      const sIdx = master.servants.findIndex((s: any) => s.id === activeServant.id);
+      const sIdx = master.servants.findIndex((s: any) => s.id === targetServant.id);
       if (sIdx !== -1) {
         master.servants[sIdx] = updatedServant;
       }
@@ -615,12 +911,16 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const giftNavRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId('vn_gift_menu')
+          .setCustomId(`vn_gift_menu:${targetServant.id}`)
           .setLabel('Give Another Gift 🎁')
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
-          .setCustomId('vn_back_status')
+          .setCustomId(`vn_back_status:${targetServant.id}`)
           .setLabel('📊 Bond Sanctum')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId('vn_view_roster')
+          .setLabel('Bond Roster 👥')
           .setStyle(ButtonStyle.Secondary)
       );
 
@@ -631,7 +931,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       });
     }
 
-    if (btnId === 'vn_spar') {
+    if (btnId.startsWith('vn_spar')) {
       await interaction.deferUpdate();
 
       const sparStatus = checkSparLimit(master);
@@ -658,11 +958,11 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
         const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setCustomId('vn_gift_menu')
+            .setCustomId(`vn_gift_menu:${targetServant.id}`)
             .setLabel('Present Gifts 🎁')
             .setStyle(ButtonStyle.Primary),
           new ButtonBuilder()
-            .setCustomId('vn_back_status')
+            .setCustomId(`vn_back_status:${targetServant.id}`)
             .setLabel('📊 Bond Sanctum')
             .setStyle(ButtonStyle.Secondary)
         );
@@ -676,13 +976,12 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       master.lastSparDay = todayKey;
       master.lastSparTimestamp = Date.now();
 
-      const debrief = getServantSparringDebrief(activeServant);
-
+      const debrief = getServantSparringDebrief(targetServant);
       const bondGain = 120;
-      const bondRes = addBondExpToServant(activeServant, bondGain);
+      const bondRes = addBondExpToServant(targetServant, bondGain);
       const updatedServant = bondRes.updatedServant;
 
-      const sIdx = master.servants.findIndex((s: any) => s.id === activeServant.id);
+      const sIdx = master.servants.findIndex((s: any) => s.id === targetServant.id);
       if (sIdx !== -1) {
         master.servants[sIdx] = updatedServant;
       }
@@ -720,12 +1019,12 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId('vn_spar')
+          .setCustomId(`vn_spar:${targetServant.id}`)
           .setLabel(remainingSpars > 0 ? `Spar Again ⚔️ (${remainingSpars} left)` : 'Spar Limit Reached ⚔️')
           .setStyle(remainingSpars > 0 ? ButtonStyle.Primary : ButtonStyle.Secondary)
           .setDisabled(remainingSpars <= 0),
         new ButtonBuilder()
-          .setCustomId('vn_back_status')
+          .setCustomId(`vn_back_status:${targetServant.id}`)
           .setLabel('📊 Bond Sanctum')
           .setStyle(ButtonStyle.Secondary)
       );
@@ -737,10 +1036,10 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       });
     }
 
-    if (btnId === 'vn_play_event') {
+    if (btnId.startsWith('vn_play_event')) {
       await interaction.deferUpdate();
 
-      const { event, isReplay, statusNote } = selectActiveInterludeForServant(activeServant);
+      const { event, isReplay, statusNote } = selectActiveInterludeForServant(targetServant);
       const scene1 = event.scenes[0];
 
       // Generate VN Canvas Image
@@ -752,11 +1051,10 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         dialogueText: scene1.dialogueText,
         title: event.title,
         subtitle: event.subtitle,
-        currentBondLevel: activeServant.bondLevel || 1
+        currentBondLevel: targetServant.bondLevel || 1
       });
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel.png' });
-
       const cleanTitle = event.title.replace(/^Bond Interlude:\s*/i, '');
       const choiceTextList = scene1.choices && scene1.choices.length > 0
         ? `\n\n👇 **Choose your response to deepen your Bond:**\n` +
@@ -782,7 +1080,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         scene1.choices.forEach((c, idx) => {
           choicesRow.addComponents(
             new ButtonBuilder()
-              .setCustomId(`vn_choice:${event.id}:0:${c.id}`)
+              .setCustomId(`vn_choice:${targetServant.id}:${event.id}:0:${c.id}`)
               .setLabel(`${idx + 1}. ${c.text.length > 75 ? c.text.slice(0, 72) + '...' : c.text}`)
               .setStyle(ButtonStyle.Primary)
           );
@@ -790,7 +1088,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       } else {
         choicesRow.addComponents(
           new ButtonBuilder()
-            .setCustomId('vn_choice_complete')
+            .setCustomId(`vn_choice_complete:${targetServant.id}`)
             .setLabel('✨ Complete Interlude')
             .setStyle(ButtonStyle.Success)
         );
@@ -804,10 +1102,10 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       return;
     }
 
-    if (btnId === 'vn_view_quotes') {
+    if (btnId.startsWith('vn_view_quotes')) {
       await interaction.deferUpdate();
 
-      const unlockedQuotes = getUnlockedDialogueLinesForServant(activeServant);
+      const unlockedQuotes = getUnlockedDialogueLinesForServant(targetServant);
       const quotesList = unlockedQuotes.map(q => 
         `• **${q.title}** (Bond ${q.requiredBondLevel}):\n  *"${q.quoteText}"*`
       ).join('\n\n');
@@ -815,7 +1113,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const quotesEmbed = new EmbedBuilder()
         .setTitle(`🎙️ My Room Voice Quotes | ${servantName}`)
         .setDescription(
-          `*Here are the unlocked quotes based on your current Bond Level (${activeServant.bondLevel || 1}/10):*\n\n` +
+          `*Here are the unlocked quotes based on your current Bond Level (${targetServant.bondLevel || 1}/10):*\n\n` +
           (quotesList || 'No quotes unlocked yet.')
         )
         .setColor(0xa855f7)
@@ -827,11 +1125,11 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId('vn_play_event')
+          .setCustomId(`vn_play_event:${targetServant.id}`)
           .setLabel('📖 Play Interlude')
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
-          .setCustomId('vn_back_status')
+          .setCustomId(`vn_back_status:${targetServant.id}`)
           .setLabel('📊 Bond Status')
           .setStyle(ButtonStyle.Secondary)
       );
@@ -844,10 +1142,10 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       return;
     }
 
-    if (btnId === 'vn_back_status') {
+    if (btnId.startsWith('vn_back_status')) {
       await interaction.deferUpdate();
-      const embed = buildBondStatusEmbed(master);
-      const rows = buildBondActionRow(master);
+      const embed = buildBondStatusEmbed(master, targetServant.id);
+      const rows = buildBondActionRow(master, targetServant.id);
 
       await interaction.editReply({
         embeds: [embed],
@@ -860,19 +1158,25 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
     if (btnId.startsWith('vn_choice:') || btnId.startsWith('vn_choice_')) {
       await interaction.deferUpdate();
 
-      const events = getBondEventsForServant(activeServant);
+      const events = getBondEventsForServant(targetServant);
       
-      // Parse colon or underscore format safely
       let eventId = '';
       let choiceId = '';
       let sceneIdx = 0;
+
       if (btnId.includes(':')) {
         const parts = btnId.split(':');
-        eventId = parts[1];
-        if (parts.length >= 4) {
+        // Check if 5 parts: vn_choice:servantId:eventId:sceneIdx:choiceId
+        if (parts.length >= 5) {
+          eventId = parts[2];
+          sceneIdx = parseInt(parts[3], 10) || 0;
+          choiceId = parts[4];
+        } else if (parts.length >= 4) {
+          eventId = parts[1];
           sceneIdx = parseInt(parts[2], 10) || 0;
           choiceId = parts[3];
         } else {
+          eventId = parts[1];
           choiceId = parts[2];
         }
       } else {
@@ -885,11 +1189,9 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       // Accurately find picked choice
       const pickedChoice = scene.choices?.find(c => c.id === choiceId);
       const servantResponse = pickedChoice ? pickedChoice.response : scene.dialogueText;
-
       const hasNextScene = sceneIdx < event.scenes.length - 1;
 
       if (hasNextScene) {
-        // Show Servant's response card + Next Scene button
         const imageBuffer = await renderVisualNovelCard({
           servantName,
           servantClass: sTemplate.servantClass || 'Saber',
@@ -900,7 +1202,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           subtitle: `${event.subtitle} • Scene ${sceneIdx + 1}/${event.scenes.length}`,
           choiceMadeText: pickedChoice?.text,
           reactionEmotion: pickedChoice?.reactionEmotion,
-          currentBondLevel: activeServant.bondLevel || 1
+          currentBondLevel: targetServant.bondLevel || 1
         });
 
         const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel_step.png' });
@@ -917,7 +1219,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
         const nextRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setCustomId(`vn_next:${event.id}:${sceneIdx + 1}`)
+            .setCustomId(`vn_next:${targetServant.id}:${event.id}:${sceneIdx + 1}`)
             .setLabel('Next Scene ➔')
             .setStyle(ButtonStyle.Success)
         );
@@ -930,8 +1232,8 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         return;
       }
 
-      // Check if event was ALREADY completed to prevent duplicate rewards glitch!
-      const completedIds: string[] = activeServant.completedBondEvents || [];
+      // Final scene completion
+      const completedIds: string[] = targetServant.completedBondEvents || [];
       const isFirstCompletion = !completedIds.includes(event.id);
 
       const baseExpGain = pickedChoice ? pickedChoice.bondExpGain : 150;
@@ -940,20 +1242,17 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const expGain = isFirstCompletion ? baseExpGain : 0;
       const sqReward = isFirstCompletion ? baseSqReward : 0;
 
-      let updatedServant = { ...activeServant };
+      let updatedServant = { ...targetServant };
 
       if (isFirstCompletion) {
-        // Track completed event
         if (!updatedServant.completedBondEvents) updatedServant.completedBondEvents = [];
         updatedServant.completedBondEvents.push(event.id);
 
-        // Add bond exp to servant
         if (expGain > 0) {
           const res = addBondExpToServant(updatedServant, expGain);
           updatedServant = res.updatedServant;
         }
 
-        // Award SQ
         if (sqReward > 0) {
           master.saintQuartz = (master.saintQuartz || 0) + sqReward;
         }
@@ -964,7 +1263,6 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const reactionEmoji = pickedChoice?.reactionEmotion === 'happy' ? '💖' : pickedChoice?.reactionEmotion === 'flustered' ? '😳' : pickedChoice?.reactionEmotion === 'amused' ? '😄' : '✨';
 
-      // Render Visual Novel Reaction Card Canvas Image
       const imageBuffer = await renderVisualNovelCard({
         servantName,
         servantClass: sTemplate.servantClass || 'Saber',
@@ -1004,15 +1302,15 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const completionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId('vn_play_event')
+          .setCustomId(`vn_play_event:${targetServant.id}`)
           .setLabel('📖 Play Interlude Again')
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
-          .setCustomId('vn_gift_menu')
+          .setCustomId(`vn_gift_menu:${targetServant.id}`)
           .setLabel('Present Gifts 🎁')
           .setStyle(ButtonStyle.Secondary),
         new ButtonBuilder()
-          .setCustomId('vn_back_status')
+          .setCustomId(`vn_back_status:${targetServant.id}`)
           .setLabel('📊 Bond Sanctum Status')
           .setStyle(ButtonStyle.Secondary)
       );
@@ -1030,17 +1328,24 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       let eventId = '';
       let nextSceneIdx = 0;
+
       if (btnId.includes(':')) {
         const parts = btnId.split(':');
-        eventId = parts[1];
-        nextSceneIdx = parseInt(parts[2], 10) || 0;
+        // Format: vn_next:servantId:eventId:nextSceneIdx OR legacy vn_next:eventId:nextSceneIdx
+        if (parts.length >= 4) {
+          eventId = parts[2];
+          nextSceneIdx = parseInt(parts[3], 10) || 0;
+        } else {
+          eventId = parts[1];
+          nextSceneIdx = parseInt(parts[2], 10) || 0;
+        }
       } else {
         const parts = btnId.split('_');
         nextSceneIdx = parseInt(parts.pop() || '0', 10);
         eventId = parts.slice(2).join('_');
       }
 
-      const events = getBondEventsForServant(activeServant);
+      const events = getBondEventsForServant(targetServant);
       const event = events.find(e => e.id === eventId) || events[0];
       const scene = event.scenes[nextSceneIdx] || event.scenes[0];
 
@@ -1052,7 +1357,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         dialogueText: scene.dialogueText,
         title: event.title,
         subtitle: `${event.subtitle} • Scene ${nextSceneIdx + 1}/${event.scenes.length}`,
-        currentBondLevel: activeServant.bondLevel || 1
+        currentBondLevel: targetServant.bondLevel || 1
       });
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel.png' });
@@ -1067,7 +1372,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         scene.choices.forEach((c, idx) => {
           choicesRow.addComponents(
             new ButtonBuilder()
-              .setCustomId(`vn_choice:${event.id}:${nextSceneIdx}:${c.id}`)
+              .setCustomId(`vn_choice:${targetServant.id}:${event.id}:${nextSceneIdx}:${c.id}`)
               .setLabel(`${idx + 1}. ${c.text.length > 75 ? c.text.slice(0, 72) + '...' : c.text}`)
               .setStyle(ButtonStyle.Primary)
           );
@@ -1075,7 +1380,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       } else {
         choicesRow.addComponents(
           new ButtonBuilder()
-            .setCustomId(`vn_next:${event.id}:${nextSceneIdx + 1}`)
+            .setCustomId(`vn_next:${targetServant.id}:${event.id}:${nextSceneIdx + 1}`)
             .setLabel('Next Scene ➔')
             .setStyle(ButtonStyle.Success)
         );
@@ -1085,7 +1390,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         .setTitle(`📖 Bond Interlude: ${event.title}`)
         .setDescription(
           `💬 **[BOND INTERLUDE] ${scene.speakerName || servantName}:**\n> ❝ ***${scene.dialogueText}*** ❞\n\n` +
-          `*Scene ${nextSceneIdx + 1}/${event.scenes.length} • Servant Bond Lv. ${activeServant.bondLevel || 1}*` +
+          `*Scene ${nextSceneIdx + 1}/${event.scenes.length} • Servant Bond Lv. ${targetServant.bondLevel || 1}*` +
           choiceTextList
         )
         .setImage('attachment://visual_novel.png')

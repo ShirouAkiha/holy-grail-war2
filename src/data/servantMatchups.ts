@@ -974,6 +974,37 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       retort: "⟨ Vur Aeth'ra... ⟩ A mortal woman manipulating the flow of planetary entropy? Irritatingly noisy creature... I will prune your timeline into black glass!",
       tag: "THE FIFTH MAGIC VS INCINERATION OF AETHEL"
     }
+  },
+
+  // =========================================================================
+  // 15. AMAMIYA NO CHIHAYA TENKOHIME (SABER / ANCIENT KYUBI GUARDIAN)
+  // =========================================================================
+  amamiya_no_chihaya_tenkohime: {
+    artoria_pendragon: {
+      intro: "King of Knights! Washi's Amazakura shall test thy chivalry! ...A-And keep those muddy boots away from washi's shrine tatami!",
+      retort: "A kitsune swordswoman of divine lineage? Your instincts are remarkable. Let our blades cross with honor!",
+      tag: "HOLY SWORD & DIVINE FOX KATANA"
+    },
+    gilgamesh_archer: {
+      intro: "Arrogant gold king! Washi's name is Amamiya no Chihaya Tenkohime! Don't thee dare call washi a mere mongrel or washi shall bite thy fingers off!",
+      retort: "Fuhahaha! A little pink fox baring its fangs at the King of Heroes? Entertaining! Become an ornament in my vault, beast!",
+      tag: "ANCIENT KYUBI VS KING OF HEROES"
+    },
+    adiosa_dragon_envoy: {
+      intro: "W-Whoa! That huge dragon presence from Lyozes! Did Akira send thee to scold washi again?! Washi didn't do anything wrong, washi promises!",
+      retort: "⟨ Vur Aeth'ra... ⟩ The sealed Kyubi from Ossuaron's Spine... So tiny and fluffy. The urge to squish you until your tails squeak is immense.",
+      tag: "GUARDIAN OF OSSUARON VS WORLD-PRUNER"
+    },
+    aoko_aozaki: {
+      intro: "The Fifth Magician! Thy loud mana blasts will dirty washi's shrine robes! Leave the swordsmanship to washi's instincts!",
+      retort: "Whoa, an ancient Kyubi shrine maiden! Try not to trip over those cute tails when my thermodynamic magic kicks in!",
+      tag: "SHRINE GUARDIAN VS THE FIFTH MAGIC"
+    },
+    amamiya_no_chihaya_tenkohime: {
+      intro: "Another washi?! Amamiya ja nee! Washi no namae wa Amamiya no Chihaya Tenkohime! There is only one true ancient guardian!",
+      retort: "Kyuuu?! An imposter trying to steal washi's fried tofu?! Amazakura yo, purge the false reflection!",
+      tag: "MIRROR OF OSSUARON: KYUBI DUEL"
+    }
   }
 };
 

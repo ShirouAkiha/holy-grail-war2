@@ -1306,5 +1306,82 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     avatarUrl: 'https://ella.janitorai.com/media-approved/cqdhAGa5DTTAG7S9umM8k.webp',
     cardArtUrl: 'https://ella.janitorai.com/media-approved/cqdhAGa5DTTAG7S9umM8k.webp',
     isCustomOrMeme: false
+  },
+  {
+    id: 'amamiya_no_chihaya_tenkohime',
+    name: 'Amamiya no Chihaya Tenkohime',
+    title: 'Ancient Kyubi guardian',
+    servantClass: 'Saber',
+    rarity: 5,
+    baseHp: 29500,
+    baseAtk: 11100,
+    baseStats: { strength: 14, endurance: 13, agility: 18, mana: 18, luck: 13 },
+    commandDeck: ['Quick', 'Quick', 'Arts', 'Arts', 'Buster'],
+    skills: [
+      {
+        id: 'nine_tails_kyubi',
+        name: 'Nine Tails EX',
+        cooldown: 6,
+        description: 'Breaks the mental seal deep in her chest, regaining her S-Rank Divergent power and manifesting eight additional tails for 3 turns. Increases Quick & Arts Card effectiveness by 30%, boosts ATK by 25%, and increases Critical Damage by 35%.',
+        effectType: 'buff_atk',
+        value: 25,
+        duration: 3,
+        icon: '🦊'
+      },
+      {
+        id: 'kekkai_creation',
+        name: 'Kekkai Creation A',
+        cooldown: 6,
+        description: 'Erects a sacred shrine boundary barrier. Grants Invincibility for 1 turn, increases Defense by 30% for 3 turns, and cleanses all debuffs.',
+        effectType: 'buff_def',
+        value: 30,
+        duration: 3,
+        icon: '⛩️'
+      },
+      {
+        id: 'tenko_shinka',
+        name: 'Tenko Shinka (Divine Flame of the Heavenly Fox) A+',
+        cooldown: 5,
+        description: 'Amamiya unleashes holy foxfire. Charges own NP gauge by 25%, gains 15 Critical Stars, and increases Critical Strike Damage by 25% for 3 turns.',
+        effectType: 'np_charge',
+        value: 25,
+        duration: 3,
+        icon: '🔥'
+      }
+    ],
+    passives: [
+      {
+        name: 'Follow Your Heart A',
+        type: 'independent_action',
+        value: 12,
+        rank: 'A',
+        description: 'Amamiya senses her surroundings clearly when she closes her eyes. Wind, sound, movement, everything slows down. Increases Critical Star drop rate and Critical Damage by 12%.'
+      },
+      {
+        name: 'Perfect Coordination EX',
+        type: 'riding',
+        value: 10,
+        rank: 'EX',
+        description: 'Amamiya\'s tails move as extensions of her own will, canceling extra momentum and balancing her perfectly. Increases Quick Card effectiveness by 10%.'
+      }
+    ],
+    noblePhantasm: {
+      name: 'Amazakura no Kago (Blessing of Amazakura)',
+      cardType: 'Quick',
+      chant: 'Amazakura yo! Washi o mamore!',
+      description: 'Channels Aethel into Amazakura to create a sakura storm that cuts through anything except herself, followed by an instantaneous high-speed Iaijutsu strike. Ignores enemy DEF and deals massive Quick damage.',
+      target: 'single',
+      multiplier: 600,
+      overchargeEffect: 'Increases Quick performance by 20% for 3 turns & ignores DEF',
+      gifUrl: 'https://ella.janitorai.com/media-approved/Sfp4i7TL2cXu0LS-QZxxX.webp'
+    },
+    lore: 'Born as a nameless white fox 1800 years ago, she mutated after absorbing an Aethel overflow beneath a cherry blossom tree, turning her fur pink. Following 900 years of training, she awakened as a Kyūbi and swore an oath to protect the local populace from Ossuaron\'s Spine. In 1307, she unintentionally caused mortal casualties with her overflowing power; consumed by guilt, she placed a seal in her mind, locking away eight of her tails, her memories, and the majority of her power. Sustaining herself alone at the decaying shrine by selling mouth-chewed sake, she wields the ancient katana Amazakura operating purely on instinct.',
+    summonQuote: '"Washi has been called upon. Time to sweep out the fallen leaves."',
+    battleStartQuote: '"Leave this to washi. Washi shall bring the victory to you."',
+    victoryQuote: '*Nine tails wagging slowly.* "Wish you has extra fried tofu prepared for washi."',
+    defeatQuote: '"K-Kyuu... Washi\'s tail got dirty... Master, forgive washi..."',
+    avatarUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+    isCustomOrMeme: false
   }
 ];

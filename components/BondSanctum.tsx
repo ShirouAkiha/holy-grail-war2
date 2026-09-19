@@ -163,7 +163,7 @@ export const BondSanctum: React.FC<BondSanctumProps> = ({
               referrerPolicy="no-referrer"
             />
             <div className="absolute bottom-2 right-2 px-2.5 py-0.5 rounded-full bg-slate-950/90 border border-amber-400 text-amber-300 text-xs font-mono font-bold">
-              ★ {template.rarity}
+              Bond Lv. {selectedServant.bondLevel || 1}
             </div>
           </div>
 
@@ -420,9 +420,9 @@ export const BondSanctum: React.FC<BondSanctumProps> = ({
                 <Lock className="w-4 h-4 text-slate-500" />
               )}
             </div>
-            <h4 className="text-sm font-bold text-slate-100">Max Bond 5★ Craft Essence</h4>
+            <h4 className="text-sm font-bold text-slate-100">Max Bond Craft Essence</h4>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Grants an exclusive, unique 5★ Craft Essence forged from the Servant&apos;s legend!
+              Grants an exclusive, unique Craft Essence forged from the Servant&apos;s legend!
             </p>
           </div>
         </div>
