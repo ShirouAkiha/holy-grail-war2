@@ -1146,6 +1146,252 @@ export const JEANNE_RULER_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const NERO_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'nero_bond_event_1',
+    servantTemplateId: 'nero_claudius_saber',
+    requiredBondLevel: 1,
+    title: 'The Emperor of Roses & The Golden Theater',
+    subtitle: 'Bond Level 1 Interlude • Domus Aurea Prelude',
+    description: 'An evening audience with Nero Claudius regarding Roman grandeur, the Far Eastern skyline, her legendary singing, and your blooming contract.',
+    rewardBondExp: 150,
+    rewardSaintQuartz: 3,
+    unlockedQuoteId: 'nero_bond_line_1',
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: 'Nero Claudius',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Umu! Tell me, Praetor. How fares the view from your side of the room? Splendid, is it not?",
+        choices: [
+          {
+            id: 'c1a',
+            text: "It's nice, but aren't you a bit cold in that dress?",
+            response: "Cold? An Emperor of Rome feels only the blazing warmth of passion! Besides, concealing such perfection from you would be the true crime.",
+            bondExpGain: 100,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1b',
+            text: "The view of the Japanese skyline is great, yeah.",
+            response: "The skyline? Hmph, these eastern towers of steel and glass are fine, but they lack the glorious soul of marble! Still, your appreciation shows taste.",
+            bondExpGain: 100,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1c',
+            text: "I can barely look away from you, honestly.",
+            response: "Umu, umu! Naturally! A truthful subject is a joy to behold. You possess an exquisite eye for art, Master!",
+            bondExpGain: 150,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_2'
+          }
+        ]
+      },
+      {
+        id: 'scene_2',
+        speakerName: 'Nero Claudius',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Still, this Far Eastern land is peculiar. No grand colosseums, no triumphant parades in the streets... Tell me, how do the people here celebrate greatness?",
+        choices: [
+          {
+            id: 'c2a',
+            text: "Usually festivals, fireworks, and good food.",
+            response: "Fireworks and banquets! Now that sounds worthy of an empire. We must partake in one at once!",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2b',
+            text: "Quietly. People here tend to avoid drawing attention to themselves.",
+            response: "Avoid attention?! Madness! What is the purpose of existing if you do not shine bright enough to blind the heavens?",
+            bondExpGain: 100,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2c',
+            text: "Through concerts and stage plays, mostly.",
+            response: "The stage! Ah, the muse sings to me! A culture of performers is a culture that can truly grasp my brilliance.",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_3'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Nero Claudius',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Which brings me to a vital matter. Since fate has bound our contracts together in this conflict, what do you think of my singing?",
+        choices: [
+          {
+            id: 'c3a',
+            text: "I haven't heard it yet, but I'm sure it's powerful.",
+            response: "Powerful? It is a tempest! A divine chorus that brings entire arenas to their knees with tears of awe!",
+            bondExpGain: 125,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3b',
+            text: "I've heard... rumors that your singing can level buildings.",
+            response: "Slander spread by the jealous Senate! The deaf cannot comprehend high art, Master!",
+            bondExpGain: 100,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3c',
+            text: "Only if you promise not to shatter every window in the city.",
+            response: "Glass? Glass is fragile, but art is eternal! Though, for your sake, I shall restrain my grandest crescendo to an indoor hum.",
+            bondExpGain: 150,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_4'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Nero Claudius',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Umu... Tch. Ah, forgive me. A minor nuisance. Just a dull ache behind my eyes. Pay it no mind.",
+        choices: [
+          {
+            id: 'c4a',
+            text: "Are you alright? Do you need magical energy?",
+            response: "Your mana is warm and welcome, but this is merely an old acquaintance of mine. A stubborn guest from my mortal days.",
+            bondExpGain: 125,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4b',
+            text: "Sit down for a moment. You look pale.",
+            response: "Pale? An empress does not look pale! But... if my Master insists with such concern, I shall rest upon this chair.",
+            bondExpGain: 125,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4c',
+            text: "Is it a curse from an enemy Servant?",
+            response: "No coward of an assassin could slip past my blade! It is simply a lingering poison of the past. A persistent headache.",
+            bondExpGain: 100,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_5'
+          }
+        ]
+      },
+      {
+        id: 'scene_5',
+        speakerName: 'Nero Claudius',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "In Rome, my own mother favored belladonna in my tea. Treachery everywhere I turned. Even Seneca... ah, but why sour our evening with old ghosts?",
+        choices: [
+          {
+            id: 'c5a',
+            text: "You don't have to carry that alone anymore. I'm here.",
+            response: "...You say such things with an earnest face. Take care, Praetor, or I might actually rely on your kindness.",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c5b',
+            text: "Must have been exhausting, never being able to trust anyone.",
+            response: "It was suffocating. I gave them love, triumphs, and gold... yet they responded with venom and whispers.",
+            bondExpGain: 100,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c5c',
+            text: "You survived it all, though. That takes incredible strength.",
+            response: "Umu! Of course! I am the Emperor of Roses! Even the grave could not keep me quiet for long.",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_6'
+          }
+        ]
+      },
+      {
+        id: 'scene_6',
+        speakerName: 'Nero Claudius',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Tell me, Master. In this Holy Grail War, with death lurking behind every shadow... what drives you forward?",
+        choices: [
+          {
+            id: 'c6a',
+            text: "I just want to survive and make it home in one piece.",
+            response: "An honest, humble wish! Fear not, for my crimson blade shall carve our path out of the mire.",
+            bondExpGain: 100,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'c6b',
+            text: "I want to see you claim victory on the greatest stage.",
+            response: "Hahaha! Splendid! An answer truly worthy of my retainer! Together, our curtain call will be magnificent!",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'c6c',
+            text: "I have a wish I can't give up on.",
+            response: "A burning ambition! That is the spark of a true hero. Keep that flame fed, and I shall provide the winds to make it roar.",
+            bondExpGain: 125,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_7'
+          }
+        ]
+      },
+      {
+        id: 'scene_7',
+        speakerName: 'Nero Claudius',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Whatever the reason, we are a pair now. Tell me, Praetor—do you feel our bond growing stronger?",
+        choices: [
+          {
+            id: 'c7a',
+            text: "Definitely. I trust you completely.",
+            response: "Then my theater shall never fall! When you believe in me, my sword knows no limits.",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_8'
+          },
+          {
+            id: 'c7b',
+            text: "We're getting there, step by step.",
+            response: "A steady march! Rome was not built in a day, after all!",
+            bondExpGain: 100,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_8'
+          },
+          {
+            id: 'c7c',
+            text: "As long as you let me hold the controller sometimes.",
+            response: "A bold jester, aren't you? Very well, you may steer our chariot, but the glory remains mine!",
+            bondExpGain: 125,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_8'
+          }
+        ]
+      },
+      {
+        id: 'scene_8',
+        speakerName: 'Nero Claudius',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Rest now, Praetor. Tomorrow the stage calls for blood and steel, but tonight, your Emperor watches over you."
+      }
+    ]
+  }
+];
+
 /**
  * Registry of all available curated bond events by servant template ID.
  */
@@ -1163,7 +1409,13 @@ export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
   jeanne_darc_ruler: JEANNE_RULER_BOND_EVENTS,
   jeanne_ruler: JEANNE_RULER_BOND_EVENTS,
   jeanne_d_arc: JEANNE_RULER_BOND_EVENTS,
-  jeanne: JEANNE_RULER_BOND_EVENTS
+  jeanne: JEANNE_RULER_BOND_EVENTS,
+  nero_claudius_saber: NERO_BOND_EVENTS,
+  nero_claudius: NERO_BOND_EVENTS,
+  nero: NERO_BOND_EVENTS,
+  saber_nero: NERO_BOND_EVENTS,
+  rose_saber: NERO_BOND_EVENTS,
+  umu: NERO_BOND_EVENTS
 };
 
 /**
@@ -1633,6 +1885,52 @@ export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
       requiredBondLevel: 1,
       quoteText: 'Even in the middle of a conflict like this, the town feels so peaceful when looking at it from up here. I will be your shield while you find your footing.'
     }
+  ],
+  nero_claudius_saber: [
+    {
+      id: 'nero_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: 'Servant Saber, Nero Claudius, has arrived upon your stage! Rejoice, Praetor, for your victory is now an absolute work of art!'
+    },
+    {
+      id: 'nero_bond_line_1',
+      title: 'Bond 1: Emperor\'s Solace',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: 'Rest now, Praetor. Tomorrow the stage calls for blood and steel, but tonight, your Emperor watches over you.'
+    },
+    {
+      id: 'nero_bond_5',
+      title: 'Bond 5: Golden Theater of the Heart',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: 'Umu! When you believe in me, my sword knows no limits! Together, our grand curtain call shall echo through eternity!'
+    }
+  ],
+  nero_claudius: [
+    {
+      id: 'nero_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: 'Servant Saber, Nero Claudius, has arrived upon your stage! Rejoice, Praetor, for your victory is now an absolute work of art!'
+    },
+    {
+      id: 'nero_bond_line_1',
+      title: 'Bond 1: Emperor\'s Solace',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: 'Rest now, Praetor. Tomorrow the stage calls for blood and steel, but tonight, your Emperor watches over you.'
+    },
+    {
+      id: 'nero_bond_5',
+      title: 'Bond 5: Golden Theater of the Heart',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: 'Umu! When you believe in me, my sword knows no limits! Together, our grand curtain call shall echo through eternity!'
+    }
   ]
 };
 
@@ -1830,6 +2128,42 @@ export function getServantGiftReaction(
         responseText: "A holy relic... I can feel the pure light within it. May our journey together remain pure and guided by grace.",
         emotion: 'thoughtful'
       }
+    },
+    nero_claudius_saber: {
+      chaldea_tea: {
+        responseText: "Umu! Fine tea poured in an emperor's honor! Sit beside me, Praetor, let us savor this refined moment together!",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "Magnificent! A banquet worthy of Rome's greatest artist! You truly know how to spoil your Emperor, Praetor!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A radiant Golden Apple! The flame of passion inside my Spirit Origin burns brighter than ever! Let the theater begin!",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "An exquisite treasure! The Domus Aurea herself welcomes such splendor! Master, your devotion is truly peerless!",
+        emotion: 'amused'
+      }
+    },
+    nero_claudius: {
+      chaldea_tea: {
+        responseText: "Umu! Fine tea poured in an emperor's honor! Sit beside me, Praetor, let us savor this refined moment together!",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "Magnificent! A banquet worthy of Rome's greatest artist! You truly know how to spoil your Emperor, Praetor!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A radiant Golden Apple! The flame of passion inside my Spirit Origin burns brighter than ever! Let the theater begin!",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "An exquisite treasure! The Domus Aurea herself welcomes such splendor! Master, your devotion is truly peerless!",
+        emotion: 'amused'
+      }
     }
   };
 
@@ -1895,6 +2229,14 @@ export function getServantSparringDebrief(
     medusa_rider: {
       responseText: "Your reaction speed is sharp, Master. When the chains strike, you anticipated the vector accurately. I am glad we sparred.",
       emotion: 'thoughtful'
+    },
+    nero_claudius_saber: {
+      responseText: "Splendid form, Praetor! Such theatrical grace in your footwork! With my crimson blade and your tactical command, no stage shall ever deny us victory!",
+      emotion: 'happy'
+    },
+    nero_claudius: {
+      responseText: "Splendid form, Praetor! Such theatrical grace in your footwork! With my crimson blade and your tactical command, no stage shall ever deny us victory!",
+      emotion: 'happy'
     }
   };
 
