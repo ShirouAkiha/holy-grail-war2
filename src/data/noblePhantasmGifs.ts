@@ -99,12 +99,12 @@ export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: 
   'Amamiya no Chihaya Tenkohime': {
     gifUrl: 'https://ella.janitorai.com/media-approved/Sfp4i7TL2cXu0LS-QZxxX.webp',
     fallbackGif: 'https://ella.janitorai.com/media-approved/Sfp4i7TL2cXu0LS-QZxxX.webp',
-    chant: 'Amazakura yo! Washi o mamore!'
+    chant: 'Ancient leylines of Ossuaron... Swirl, sacred cherry blossoms! Amazakura yo! Washi o mamore!'
   },
   'Amamiya': {
     gifUrl: 'https://ella.janitorai.com/media-approved/Sfp4i7TL2cXu0LS-QZxxX.webp',
     fallbackGif: 'https://ella.janitorai.com/media-approved/Sfp4i7TL2cXu0LS-QZxxX.webp',
-    chant: 'Amazakura yo! Washi o mamore!'
+    chant: 'Ancient leylines of Ossuaron... Swirl, sacred cherry blossoms! Amazakura yo! Washi o mamore!'
   }
 };
 

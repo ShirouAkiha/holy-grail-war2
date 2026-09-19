@@ -981,14 +981,64 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // =========================================================================
   amamiya_no_chihaya_tenkohime: {
     artoria_pendragon: {
-      intro: "King of Knights! Washi's Amazakura shall test thy chivalry! ...A-And keep those muddy boots away from washi's shrine tatami!",
-      retort: "A kitsune swordswoman of divine lineage? Your instincts are remarkable. Let our blades cross with honor!",
+      intro: "King of Knights! Washi's Amazakura shall test thy chivalry! ...A-And keep those muddy steel boots away from washi's clean shrine tatami!",
+      retort: "A kitsune swordswoman of divine lineage? Your instinctual draw is remarkably swift. Let our blades cross with honor!",
       tag: "HOLY SWORD & DIVINE FOX KATANA"
     },
     gilgamesh_archer: {
-      intro: "Arrogant gold king! Washi's name is Amamiya no Chihaya Tenkohime! Don't thee dare call washi a mere mongrel or washi shall bite thy fingers off!",
+      intro: "Arrogant gold king! Washi's divine name is Amamiya no Chihaya Tenkohime! Don't thee dare call washi a mere mongrel or washi shall bite thy golden fingers off!",
       retort: "Fuhahaha! A little pink fox baring its fangs at the King of Heroes? Entertaining! Become an ornament in my vault, beast!",
       tag: "ANCIENT KYUBI VS KING OF HEROES"
+    },
+    scathach_lancer: {
+      intro: "Queen of Dún Scáith... Washi senses the cold chill of the Land of Shadows upon thy spears! But washi's celestial foxfire never dims!",
+      retort: "An ancient nine-tailed guardian whose blade moves purely on instinct. Good... Show me if your fangs can grant me the release of death!",
+      tag: "PRIMORDIAL SPEAR VS CELESTIAL FOXFIRE"
+    },
+    jeanne_darc_ruler: {
+      intro: "A holy maiden of the Western God? Thy prayers carry genuine warmth, Saint... But in this arena, washi's sacred shrine barriers shall stand firm!",
+      retort: "Divine shrine guardian of the East, I sense profound purity in your spiritual core. Let us cross weapons in righteous accord.",
+      tag: "SAINT OF ORLEANS & SHRINE MAIDEN"
+    },
+    jeanne_alter: {
+      intro: "H-Hii! Thy dragon flames are going to scorch washi's fur and singe washi's tails! Cease thy reckless tantrums at once, foul witch!",
+      retort: "Haah?! What's with this noisy pink fur-ball squeaking like a toy? I'll roast your cute little tails into a charcoal bonfire!",
+      tag: "ROARING DRAGON FLAME VS SHRINE KEKKAI"
+    },
+    mhx_alter: {
+      intro: "W-Wait! Those red twin lightning sabers look dangerous! And why art thou staring at washi's shrine dango with such intense hunger?!",
+      retort: "Target confirmed: Pink Saber... with exceptional pastry potential. Surrender your sweet bean buns and fried snacks, and your tails may be spared...",
+      tag: "SWEETS REACTOR VS FOX SHRINE DANGO"
+    },
+    artoria_pendragon_alter: {
+      intro: "Such oppressive, tyrannical mana! Even if thy dark blade Excalibur Morgan casts a shadow over the leylines, washi's sacred Amazakura shall cleave through the dark!",
+      retort: "Hmph. A stubborn celestial fox wagging its tail against absolute tyranny. Kneel before the black king, or be crushed underfoot.",
+      tag: "TYRANT'S ECLIPSE & DIVINE CHERRY BLOSSOM"
+    },
+    nero_claudius_saber: {
+      intro: "W-What is with all this gaudy red theater shouting?! Thou art making far too much noise—washi's sensitive fox ears are ringing!",
+      retort: "UMU! What an extraordinarily fluffy and radiant maiden of the East! Stand beside my Golden Theater and let us celebrate beauty together, Fox Princess!",
+      tag: "IMPERIAL THEATER & CELESTIAL PRINCESS"
+    },
+    emiya_archer: {
+      intro: "A Nameless Archer who projects infinite blades? Fumu... washi's single Amazakura is guided by 1,800 years of divine instinct! And Master said thou makest delicious fried tofu—is that true?!",
+      retort: "A Kyubi Saber demanding culinary service mid-battle... *sigh* Very well. If you can parry my projections, I'll prepare a full banquet of sweet aburaage.",
+      tag: "UNLIMITED BLADES & THE SACRED KATANA"
+    },
+    heracles_berserker: {
+      intro: "Eeeek! H-Huge! A mountainous giant of pure rage! W-Washi isn't scared! Amazakura yo, unleash the divine cherry blossom storm before he squishes washi!",
+      retort: "■■■■■■■■ーーーッ！！ (The titan roars, earth-shaking footsteps rattling the shrine leylines with terrifying pressure!)",
+      tag: "TWELVE LABORS TRIAL VS KYUBI INSTINCT"
+    },
+    cu_chulainn_lancer: {
+      intro: "The Hound of Culann! Thou hadst better not try chasing washi's fluffy tails like a playful stray dog, or washi's foxfire will singe thy nose!",
+      retort: "Gaha! A feisty divine kitsune with a razor-sharp katana? Don't worry, Princess, let's see if your quick paws can dodge this crimson spear!",
+      tag: "HOUND OF ULSTER VS CELESTIAL FOX"
+    },
+    karna_lancer: {
+      intro: "Hero of Charity... Thy radiant solar aura blazes like the midday sun. It is warm, but washi's celestial shrine shall not yield to thy holy spear!",
+      retort: "Your sword contains no deceit, only pure instinct and an ancient vow to protect. It is an honor to cross weapons with you, Tenkohime.",
+      tag: "SUN GOD'S CHARITY & HEAVENLY FOXFIRE"
     },
     adiosa_dragon_envoy: {
       intro: "W-Whoa! That huge dragon presence from Lyozes! Did Akira send thee to scold washi again?! Washi didn't do anything wrong, washi promises!",
@@ -1001,12 +1051,20 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       tag: "SHRINE GUARDIAN VS THE FIFTH MAGIC"
     },
     amamiya_no_chihaya_tenkohime: {
-      intro: "Another washi?! Amamiya ja nee! Washi no namae wa Amamiya no Chihaya Tenkohime! There is only one true ancient guardian!",
-      retort: "Kyuuu?! An imposter trying to steal washi's fried tofu?! Amazakura yo, purge the false reflection!",
+      intro: "Another washi?! Amamiya ja nee! Washi no namae wa Amamiya no Chihaya Tenkohime! There is only one true ancient guardian of the shrine!",
+      retort: "Kyuuu?! An imposter trying to steal washi's fried tofu and Master's headpats?! Amazakura yo, purge the false reflection!",
+      tag: "MIRROR OF OSSUARON: KYUBI DUEL"
+    },
+    amamiya: {
+      intro: "Another washi?! Amamiya ja nee! Washi no namae wa Amamiya no Chihaya Tenkohime! There is only one true ancient guardian of the shrine!",
+      retort: "Kyuuu?! An imposter trying to steal washi's fried tofu and Master's headpats?! Amazakura yo, purge the false reflection!",
       tag: "MIRROR OF OSSUARON: KYUBI DUEL"
     }
   }
 };
+
+// Also alias amamiya to amamiya_no_chihaya_tenkohime in the database
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['amamiya'] = SERVANT_MATCHUP_DATABASE.amamiya_no_chihaya_tenkohime;
 
 /**
  * Fallback generator for custom servants, meme servants, or any servant pairs not explicitly defined.
@@ -1094,7 +1152,9 @@ export function getServantMatchupDialogue(
 
   const cId = cTemplate.id;
   const oId = oTemplate.id;
-  const isMirror = cId === oId;
+  const cAlt = cId === 'amamiya' ? 'amamiya_no_chihaya_tenkohime' : (cId === 'amamiya_no_chihaya_tenkohime' ? 'amamiya' : cId);
+  const oAlt = oId === 'amamiya' ? 'amamiya_no_chihaya_tenkohime' : (oId === 'amamiya_no_chihaya_tenkohime' ? 'amamiya' : oId);
+  const isMirror = cId === oId || cAlt === oId || cId === oAlt;
 
   // 1. Check if Challenger instance has a custom rival line configured via Servant Workshop
   const cCustomInstance = 'customQuotes' in challenger ? challenger.customQuotes : undefined;
@@ -1104,43 +1164,55 @@ export function getServantMatchupDialogue(
   let defenderLine = '';
   let tag = '';
 
-  if (cCustomInstance?.matchups?.[oId]?.intro) {
-    challengerLine = cCustomInstance.matchups[oId].intro!;
+  if (cCustomInstance?.matchups?.[oId]?.intro || cCustomInstance?.matchups?.[oAlt]?.intro) {
+    challengerLine = (cCustomInstance.matchups[oId]?.intro || cCustomInstance.matchups[oAlt]?.intro)!;
   }
-  if (cCustomInstance?.matchups?.[oId]?.tag) {
-    tag = cCustomInstance.matchups[oId].tag!;
+  if (cCustomInstance?.matchups?.[oId]?.tag || cCustomInstance?.matchups?.[oAlt]?.tag) {
+    tag = (cCustomInstance.matchups[oId]?.tag || cCustomInstance.matchups[oAlt]?.tag)!;
   }
 
   // 2. Check if Defender instance has a custom retort line configured
-  if (oCustomInstance?.matchups?.[cId]?.retort) {
-    defenderLine = oCustomInstance.matchups[cId].retort!;
+  if (oCustomInstance?.matchups?.[cId]?.retort || oCustomInstance?.matchups?.[cAlt]?.retort) {
+    defenderLine = (oCustomInstance.matchups[cId]?.retort || oCustomInstance.matchups[cAlt]?.retort)!;
   }
 
   // 3. Check Challenger's template matchupDialogues
-  if (!challengerLine && cTemplate.matchupDialogues?.[oId]?.intro) {
-    challengerLine = cTemplate.matchupDialogues[oId].intro!;
+  if (!challengerLine && (cTemplate.matchupDialogues?.[oId]?.intro || cTemplate.matchupDialogues?.[oAlt]?.intro)) {
+    challengerLine = (cTemplate.matchupDialogues?.[oId]?.intro || cTemplate.matchupDialogues?.[oAlt]?.intro)!;
   }
-  if (!defenderLine && cTemplate.matchupDialogues?.[oId]?.retort) {
-    defenderLine = cTemplate.matchupDialogues[oId].retort!;
+  if (!defenderLine && (cTemplate.matchupDialogues?.[oId]?.retort || cTemplate.matchupDialogues?.[oAlt]?.retort)) {
+    defenderLine = (cTemplate.matchupDialogues?.[oId]?.retort || cTemplate.matchupDialogues?.[oAlt]?.retort)!;
   }
-  if (!tag && cTemplate.matchupDialogues?.[oId]?.tag) {
-    tag = cTemplate.matchupDialogues[oId].tag!;
+  if (!tag && (cTemplate.matchupDialogues?.[oId]?.tag || cTemplate.matchupDialogues?.[oAlt]?.tag)) {
+    tag = (cTemplate.matchupDialogues?.[oId]?.tag || cTemplate.matchupDialogues?.[oAlt]?.tag)!;
   }
 
   // 4. Check canonical SERVANT_MATCHUP_DATABASE
-  if (!challengerLine && SERVANT_MATCHUP_DATABASE[cId]?.[oId]?.intro) {
-    challengerLine = SERVANT_MATCHUP_DATABASE[cId][oId].intro!;
+  const matchEntry =
+    SERVANT_MATCHUP_DATABASE[cId]?.[oId] ||
+    SERVANT_MATCHUP_DATABASE[cId]?.[oAlt] ||
+    SERVANT_MATCHUP_DATABASE[cAlt]?.[oId] ||
+    SERVANT_MATCHUP_DATABASE[cAlt]?.[oAlt];
+
+  if (!challengerLine && matchEntry?.intro) {
+    challengerLine = matchEntry.intro;
   }
-  if (!defenderLine && SERVANT_MATCHUP_DATABASE[cId]?.[oId]?.retort) {
-    defenderLine = SERVANT_MATCHUP_DATABASE[cId][oId].retort!;
+  if (!defenderLine && matchEntry?.retort) {
+    defenderLine = matchEntry.retort;
   }
-  if (!tag && SERVANT_MATCHUP_DATABASE[cId]?.[oId]?.tag) {
-    tag = SERVANT_MATCHUP_DATABASE[cId][oId].tag!;
+  if (!tag && matchEntry?.tag) {
+    tag = matchEntry.tag;
   }
 
   // If defenderLine still missing, check opponent's database entry facing challenger
-  if (!defenderLine && SERVANT_MATCHUP_DATABASE[oId]?.[cId]?.intro) {
-    defenderLine = SERVANT_MATCHUP_DATABASE[oId][cId].intro!;
+  const oppMatchEntry =
+    SERVANT_MATCHUP_DATABASE[oId]?.[cId] ||
+    SERVANT_MATCHUP_DATABASE[oId]?.[cAlt] ||
+    SERVANT_MATCHUP_DATABASE[oAlt]?.[cId] ||
+    SERVANT_MATCHUP_DATABASE[oAlt]?.[cAlt];
+
+  if (!defenderLine && oppMatchEntry?.intro) {
+    defenderLine = oppMatchEntry.intro;
   }
 
   // 5. Fallback heuristics if still empty

@@ -1368,7 +1368,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     noblePhantasm: {
       name: 'Amazakura no Kago (Blessing of Amazakura)',
       cardType: 'Quick',
-      chant: 'Amazakura yo! Washi o mamore!',
+      chant: 'Ancient leylines of Ossuaron... Swirl, sacred cherry blossoms! Amazakura yo! Washi o mamore!',
       description: 'Channels Aethel into Amazakura to create a sakura storm that cuts through anything except herself, followed by an instantaneous high-speed Iaijutsu strike. Ignores enemy DEF and deals massive Quick damage.',
       target: 'single',
       multiplier: 600,
@@ -1376,10 +1376,10 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       gifUrl: 'https://ella.janitorai.com/media-approved/Sfp4i7TL2cXu0LS-QZxxX.webp'
     },
     lore: 'Born as a nameless white fox 1800 years ago, she mutated after absorbing an Aethel overflow beneath a cherry blossom tree, turning her fur pink. Following 900 years of training, she awakened as a Kyūbi and swore an oath to protect the local populace from Ossuaron\'s Spine. In 1307, she unintentionally caused mortal casualties with her overflowing power; consumed by guilt, she placed a seal in her mind, locking away eight of her tails, her memories, and the majority of her power. Sustaining herself alone at the decaying shrine by selling mouth-chewed sake, she wields the ancient katana Amazakura operating purely on instinct.',
-    summonQuote: '"Washi has been called upon. Time to sweep out the fallen leaves."',
-    battleStartQuote: '"Leave this to washi. Washi shall bring the victory to you."',
-    victoryQuote: '*Nine tails wagging slowly.* "Wish you has extra fried tofu prepared for washi."',
-    defeatQuote: '"K-Kyuu... Washi\'s tail got dirty... Master, forgive washi..."',
+    summonQuote: '"Halt, Master! State thy business! Washi is the ancient guardian of Ossuaron, Amamiya no Chihaya Tenkohime! Say it properly without shortening it, and keep the fried tofu ready!"',
+    battleStartQuote: '*Fox ears upright, drawing Amazakura with a crisp ringing sound.* "Leave this to washi\'s instinct! Washi shall slice the enemy into cherry blossom petals!"',
+    victoryQuote: '*Nine fluffy pink tails swishing triumphantly.* "Fufu~! A flawless victory for washi! Now, Master, where is washi\'s promised feast of sweet fried tofu?!"',
+    defeatQuote: '"K-Kyuu... washi\'s tail got dirty in the dust... Master, don\'t look at washi like this..."',
     avatarUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
     cardArtUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
     isCustomOrMeme: false
