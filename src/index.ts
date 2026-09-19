@@ -1100,7 +1100,7 @@ client.on(Events.InteractionCreate, async interaction => {
         let targetServant = null;
         if (btnId.includes(':')) {
           const sId = btnId.split(':')[1];
-          targetServant = master.servants?.find((s: any) => s.id === sId);
+          targetServant = bondCommand.resolveTargetServant(master, null, sId);
         }
         if (!targetServant) {
           targetServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];

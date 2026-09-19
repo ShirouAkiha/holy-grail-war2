@@ -61,33 +61,71 @@ function renderProgressBar(percent: number): string {
   return '🌸'.repeat(filled) + '░'.repeat(total - filled);
 }
 
+/**
+ * Ensures any Discord customId stays strictly <= 100 chars (Discord API requirement).
+ */
+export function safeCustomId(id: string): string {
+  if (id.length <= 100) return id;
+  return id.slice(0, 100);
+}
+
+/**
+ * Returns a short, compact key for a servant (e.g. s_0, s_1) so combined button customIds
+ * stay well within Discord's 100-character limit even with long event/choice IDs.
+ */
+export function getServantCompactKey(servant: any, master: any): string {
+  if (!servant) return '0';
+  if (master && Array.isArray(master.servants)) {
+    const idx = master.servants.findIndex((s: any) => s.id === servant.id);
+    if (idx !== -1) return `s_${idx}`;
+  }
+  return servant.id && servant.id.length > 16 ? servant.id.slice(-12) : (servant.id || '0');
+}
+
 export function resolveTargetServant(master: any, servantQuery?: string | null, targetServantId?: string | null): any {
   if (!master.servants || master.servants.length === 0) return null;
 
-  if (targetServantId) {
-    const found = master.servants.find((s: any) => s.id === targetServantId);
-    if (found) return found;
-  }
+  const rawKey = targetServantId || servantQuery;
+  if (rawKey && typeof rawKey === 'string' && rawKey.trim()) {
+    const q = rawKey.trim();
+    const qLower = q.toLowerCase();
 
-  if (servantQuery && servantQuery.trim()) {
-    const q = servantQuery.trim().toLowerCase();
-    // 1. Exact ID
+    // 1. Check index format (e.g., s_0, s_1, idx_0, @0)
+    if (qLower.startsWith('s_') || qLower.startsWith('idx_')) {
+      const idxStr = qLower.replace(/^(s_|idx_)/, '');
+      const idx = parseInt(idxStr, 10);
+      if (!isNaN(idx) && master.servants[idx]) {
+        return master.servants[idx];
+      }
+    }
+    if (qLower.startsWith('@')) {
+      const idx = parseInt(qLower.slice(1), 10);
+      if (!isNaN(idx) && master.servants[idx]) {
+        return master.servants[idx];
+      }
+    }
+
+    // 2. Exact ID
     const byId = master.servants.find((s: any) => s.id === q);
     if (byId) return byId;
 
-    // 2. Template ID
-    const byTemplateId = master.servants.find((s: any) => (s.template?.id || '').toLowerCase() === q);
+    // 3. ID endsWith or contains (for shortened/hashed ID fragments)
+    const bySuffix = master.servants.find((s: any) => s.id && (s.id.endsWith(q) || s.id.includes(q)));
+    if (bySuffix) return bySuffix;
+
+    // 4. Template ID
+    const byTemplateId = master.servants.find((s: any) => (s.template?.id || '').toLowerCase() === qLower);
     if (byTemplateId) return byTemplateId;
 
-    // 3. Name or Nickname contains
+    // 5. Name or Nickname contains
     const byName = master.servants.find((s: any) => {
       const name = (s.nickname || s.template?.name || s.name || '').toLowerCase();
-      return name.includes(q);
+      return name.includes(qLower);
     });
     if (byName) return byName;
 
-    // 4. Class matches
-    const byClass = master.servants.find((s: any) => (s.template?.servantClass || s.servantClass || '').toLowerCase() === q);
+    // 6. Class matches
+    const byClass = master.servants.find((s: any) => (s.template?.servantClass || s.servantClass || '').toLowerCase() === qLower);
     if (byClass) return byClass;
   }
 
@@ -157,6 +195,7 @@ export function buildBondActionRow(master: any, targetServantId?: string): Actio
   const targetServant = resolveTargetServant(master, null, targetServantId);
   if (!targetServant) return [];
 
+  const sKey = getServantCompactKey(targetServant, master);
   const { event, isReplay } = selectActiveInterludeForServant(targetServant);
   const todayKey = new Date().toISOString().slice(0, 10);
   const usedToday = master.lastSparDay === todayKey ? (master.dailySparCount || 0) : 0;
@@ -165,27 +204,27 @@ export function buildBondActionRow(master: any, targetServantId?: string): Actio
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(`btn_talk_servant:${targetServant.id}`)
+      .setCustomId(safeCustomId(`btn_talk_servant:${sKey}`))
       .setLabel('Talk to Servant 💬')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
-      .setCustomId(`vn_play_event:${targetServant.id}`)
+      .setCustomId(safeCustomId(`vn_play_event:${sKey}`))
       .setLabel(event ? `📖 Play Interlude: ${event.title.slice(0, 26)}${isReplay ? ' (Replay)' : ''}` : '📖 Play Interlude')
       .setStyle(isReplay ? ButtonStyle.Secondary : ButtonStyle.Primary),
     new ButtonBuilder()
-      .setCustomId(`vn_gift_menu:${targetServant.id}`)
+      .setCustomId(safeCustomId(`vn_gift_menu:${sKey}`))
       .setLabel('Present Gifts 🎁')
       .setStyle(ButtonStyle.Secondary)
   );
 
   const row2Components: ButtonBuilder[] = [
     new ButtonBuilder()
-      .setCustomId(`vn_spar:${targetServant.id}`)
+      .setCustomId(safeCustomId(`vn_spar:${sKey}`))
       .setLabel(sparsLeft > 0 ? `Spar & Train ⚔️ (${sparsLeft}/3)` : `Spar & Train ⚔️ (0/3)`)
       .setStyle(sparsLeft > 0 ? ButtonStyle.Secondary : ButtonStyle.Secondary)
       .setDisabled(sparsLeft <= 0),
     new ButtonBuilder()
-      .setCustomId(`vn_view_quotes:${targetServant.id}`)
+      .setCustomId(safeCustomId(`vn_view_quotes:${sKey}`))
       .setLabel('Voice Quotes 🎙️')
       .setStyle(ButtonStyle.Secondary)
   ];
@@ -193,7 +232,7 @@ export function buildBondActionRow(master: any, targetServantId?: string): Actio
   if (!isActive) {
     row2Components.push(
       new ButtonBuilder()
-        .setCustomId(`vn_set_active:${targetServant.id}`)
+        .setCustomId(safeCustomId(`vn_set_active:${sKey}`))
         .setLabel('Set as Active ⭐')
         .setStyle(ButtonStyle.Primary)
     );
@@ -323,9 +362,10 @@ export function buildBondRosterActionRows(master: any): ActionRowBuilder<any>[] 
   }
 
   const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+  const actKey = getServantCompactKey(activeServant, master);
   const navRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(activeServant ? `vn_back_status:${activeServant.id}` : 'vn_back_status')
+      .setCustomId(activeServant ? safeCustomId(`vn_back_status:${actKey}`) : 'vn_back_status')
       .setLabel('📊 Active Servant Sanctum')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
@@ -381,31 +421,31 @@ export function buildBondGiftsEmbed(master: any, targetServantId?: string) {
 
 export function buildBondGiftsActionRows(master: any, targetServantId?: string): ActionRowBuilder<ButtonBuilder>[] {
   const targetServant = resolveTargetServant(master, null, targetServantId);
-  const sId = targetServant?.id || master.activeServantId || 'active';
+  const sKey = getServantCompactKey(targetServant, master);
   const currentSq = master.saintQuartz || 0;
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(`vn_give_gift:${sId}:chaldea_tea`)
+      .setCustomId(safeCustomId(`vn_give_gift:${sKey}:chaldea_tea`))
       .setLabel('☕ Afternoon Tea (Free)')
       .setStyle(ButtonStyle.Success),
     new ButtonBuilder()
-      .setCustomId(`vn_give_gift:${sId}:heroic_feast`)
+      .setCustomId(safeCustomId(`vn_give_gift:${sKey}:heroic_feast`))
       .setLabel('🍱 Heroic Feast (5 SQ)')
       .setStyle(currentSq >= 5 ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
-      .setCustomId(`vn_give_gift:${sId}:golden_apple`)
+      .setCustomId(safeCustomId(`vn_give_gift:${sKey}:golden_apple`))
       .setLabel('🍏 Golden Apple (10 SQ)')
       .setStyle(currentSq >= 10 ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
-      .setCustomId(`vn_give_gift:${sId}:sacred_relic`)
+      .setCustomId(safeCustomId(`vn_give_gift:${sKey}:sacred_relic`))
       .setLabel('💠 Sacred Relic (15 SQ)')
       .setStyle(currentSq >= 15 ? ButtonStyle.Primary : ButtonStyle.Secondary)
   );
 
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(`vn_back_status:${sId}`)
+      .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
       .setLabel('📊 Back to Bond Sanctum')
       .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
@@ -539,13 +579,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setColor(0xf59e0b)
           .setFooter({ text: `Daily Sparring Limit: ${MAX_DAILY_SPARS} Sessions per Day (Resets 00:00 UTC)` });
 
+        const sKey = getServantCompactKey(targetServant, master);
         const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setCustomId(`vn_gift_menu:${targetServant.id}`)
+            .setCustomId(safeCustomId(`vn_gift_menu:${sKey}`))
             .setLabel('Present Gifts 🎁')
             .setStyle(ButtonStyle.Primary),
           new ButtonBuilder()
-            .setCustomId(`vn_back_status:${targetServant.id}`)
+            .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
             .setLabel('📊 Bond Sanctum')
             .setStyle(ButtonStyle.Secondary)
         );
@@ -600,14 +641,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setImage('attachment://sparring_drill.png')
         .setColor(0x38bdf8);
 
+      const sKey = getServantCompactKey(targetServant, master);
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId(`vn_spar:${targetServant.id}`)
+          .setCustomId(safeCustomId(`vn_spar:${sKey}`))
           .setLabel(remainingSpars > 0 ? `Spar Again ⚔️ (${remainingSpars} left)` : 'Spar Limit Reached ⚔️')
           .setStyle(remainingSpars > 0 ? ButtonStyle.Primary : ButtonStyle.Secondary)
           .setDisabled(remainingSpars <= 0),
         new ButtonBuilder()
-          .setCustomId(`vn_back_status:${targetServant.id}`)
+          .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
           .setLabel('📊 Bond Sanctum')
           .setStyle(ButtonStyle.Secondary)
       );
@@ -640,13 +682,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         safeSetEmbedThumbnail(quotesEmbed, sTemplate.avatarUrl);
       }
 
+      const sKey = getServantCompactKey(targetServant, master);
       const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId(`vn_play_event:${targetServant.id}`)
+          .setCustomId(safeCustomId(`vn_play_event:${sKey}`))
           .setLabel('📖 Play Interlude')
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
-          .setCustomId(`vn_back_status:${targetServant.id}`)
+          .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
           .setLabel('📊 Bond Status')
           .setStyle(ButtonStyle.Secondary)
       );
@@ -696,12 +739,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             : `Reward: +${event.rewardBondExp} Bond EXP & 💎 ${event.rewardSaintQuartz || 3} SQ`
         });
 
+      const sKey = getServantCompactKey(targetServant, master);
       const choicesRow = new ActionRowBuilder<ButtonBuilder>();
       if (scene1.choices && scene1.choices.length > 0) {
         scene1.choices.forEach((c, idx) => {
           choicesRow.addComponents(
             new ButtonBuilder()
-              .setCustomId(`vn_choice:${targetServant.id}:${event.id}:0:${c.id}`)
+              .setCustomId(safeCustomId(`vn_choice:${sKey}:${event.id}:0:${c.id}`))
               .setLabel(`${idx + 1}. ${c.text.length > 75 ? c.text.slice(0, 72) + '...' : c.text}`)
               .setStyle(ButtonStyle.Primary)
           );
@@ -709,7 +753,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       } else {
         choicesRow.addComponents(
           new ButtonBuilder()
-            .setCustomId(`vn_choice_complete:${targetServant.id}`)
+            .setCustomId(safeCustomId(`vn_choice_complete:${sKey}`))
             .setLabel('✨ Complete Interlude')
             .setStyle(ButtonStyle.Success)
         );
@@ -822,6 +866,9 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
     else if (btnId.startsWith('vn_play_event:')) targetServantId = btnId.split(':')[1];
     else if (btnId.startsWith('vn_view_quotes:')) targetServantId = btnId.split(':')[1];
     else if (btnId.startsWith('vn_back_status:')) targetServantId = btnId.split(':')[1];
+    else if (btnId.startsWith('vn_choice_complete:')) targetServantId = btnId.split(':')[1];
+    else if (btnId.startsWith('btn_talk_servant:')) targetServantId = btnId.split(':')[1];
+    else if (btnId.startsWith('vn_set_active:')) targetServantId = btnId.split(':')[1];
     else if (btnId.startsWith('vn_choice:')) {
       const parts = btnId.split(':');
       // Format: vn_choice:servantId:eventId:sceneIdx:choiceId OR legacy vn_choice:eventId:sceneIdx:choiceId
@@ -844,6 +891,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
     const sTemplate = targetServant.template || targetServant;
     const servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
+    const sKey = getServantCompactKey(targetServant, master);
 
     if (btnId.startsWith('vn_gift_menu')) {
       await interaction.deferUpdate();
@@ -911,11 +959,11 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const giftNavRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId(`vn_gift_menu:${targetServant.id}`)
+          .setCustomId(safeCustomId(`vn_gift_menu:${sKey}`))
           .setLabel('Give Another Gift 🎁')
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
-          .setCustomId(`vn_back_status:${targetServant.id}`)
+          .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
           .setLabel('📊 Bond Sanctum')
           .setStyle(ButtonStyle.Secondary),
         new ButtonBuilder()
@@ -958,11 +1006,11 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
         const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setCustomId(`vn_gift_menu:${targetServant.id}`)
+            .setCustomId(safeCustomId(`vn_gift_menu:${sKey}`))
             .setLabel('Present Gifts 🎁')
             .setStyle(ButtonStyle.Primary),
           new ButtonBuilder()
-            .setCustomId(`vn_back_status:${targetServant.id}`)
+            .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
             .setLabel('📊 Bond Sanctum')
             .setStyle(ButtonStyle.Secondary)
         );
@@ -1019,12 +1067,12 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId(`vn_spar:${targetServant.id}`)
+          .setCustomId(safeCustomId(`vn_spar:${sKey}`))
           .setLabel(remainingSpars > 0 ? `Spar Again ⚔️ (${remainingSpars} left)` : 'Spar Limit Reached ⚔️')
           .setStyle(remainingSpars > 0 ? ButtonStyle.Primary : ButtonStyle.Secondary)
           .setDisabled(remainingSpars <= 0),
         new ButtonBuilder()
-          .setCustomId(`vn_back_status:${targetServant.id}`)
+          .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
           .setLabel('📊 Bond Sanctum')
           .setStyle(ButtonStyle.Secondary)
       );
@@ -1080,7 +1128,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         scene1.choices.forEach((c, idx) => {
           choicesRow.addComponents(
             new ButtonBuilder()
-              .setCustomId(`vn_choice:${targetServant.id}:${event.id}:0:${c.id}`)
+              .setCustomId(safeCustomId(`vn_choice:${sKey}:${event.id}:0:${c.id}`))
               .setLabel(`${idx + 1}. ${c.text.length > 75 ? c.text.slice(0, 72) + '...' : c.text}`)
               .setStyle(ButtonStyle.Primary)
           );
@@ -1088,7 +1136,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       } else {
         choicesRow.addComponents(
           new ButtonBuilder()
-            .setCustomId(`vn_choice_complete:${targetServant.id}`)
+            .setCustomId(safeCustomId(`vn_choice_complete:${sKey}`))
             .setLabel('✨ Complete Interlude')
             .setStyle(ButtonStyle.Success)
         );
@@ -1125,11 +1173,11 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const backRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId(`vn_play_event:${targetServant.id}`)
+          .setCustomId(safeCustomId(`vn_play_event:${sKey}`))
           .setLabel('📖 Play Interlude')
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
-          .setCustomId(`vn_back_status:${targetServant.id}`)
+          .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
           .setLabel('📊 Bond Status')
           .setStyle(ButtonStyle.Secondary)
       );
@@ -1219,7 +1267,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
         const nextRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setCustomId(`vn_next:${targetServant.id}:${event.id}:${sceneIdx + 1}`)
+            .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:${sceneIdx + 1}`))
             .setLabel('Next Scene ➔')
             .setStyle(ButtonStyle.Success)
         );
@@ -1302,15 +1350,15 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const completionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
-          .setCustomId(`vn_play_event:${targetServant.id}`)
+          .setCustomId(safeCustomId(`vn_play_event:${sKey}`))
           .setLabel('📖 Play Interlude Again')
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
-          .setCustomId(`vn_gift_menu:${targetServant.id}`)
+          .setCustomId(safeCustomId(`vn_gift_menu:${sKey}`))
           .setLabel('Present Gifts 🎁')
           .setStyle(ButtonStyle.Secondary),
         new ButtonBuilder()
-          .setCustomId(`vn_back_status:${targetServant.id}`)
+          .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
           .setLabel('📊 Bond Sanctum Status')
           .setStyle(ButtonStyle.Secondary)
       );
@@ -1372,7 +1420,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         scene.choices.forEach((c, idx) => {
           choicesRow.addComponents(
             new ButtonBuilder()
-              .setCustomId(`vn_choice:${targetServant.id}:${event.id}:${nextSceneIdx}:${c.id}`)
+              .setCustomId(safeCustomId(`vn_choice:${sKey}:${event.id}:${nextSceneIdx}:${c.id}`))
               .setLabel(`${idx + 1}. ${c.text.length > 75 ? c.text.slice(0, 72) + '...' : c.text}`)
               .setStyle(ButtonStyle.Primary)
           );
@@ -1380,7 +1428,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       } else {
         choicesRow.addComponents(
           new ButtonBuilder()
-            .setCustomId(`vn_next:${targetServant.id}:${event.id}:${nextSceneIdx + 1}`)
+            .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:${nextSceneIdx + 1}`))
             .setLabel('Next Scene ➔')
             .setStyle(ButtonStyle.Success)
         );
