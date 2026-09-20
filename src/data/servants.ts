@@ -186,14 +186,56 @@ export function getServantAvatarAndCardArt(
   }
 
   const template = servantInput.template || servantInput;
-  const templateId = servantInput.templateId || template.id || servantInput.id;
+  const templateId = (servantInput.templateId || template.id || servantInput.id || '').toString().toLowerCase();
+  const inputName = (template.name || servantInput.name || servantInput.nickname || '').toString().toLowerCase();
+
+  // Strict check for Lucia Lyozes
+  if (
+    templateId === 'lucia_lyozes' ||
+    templateId === 'lucia' ||
+    templateId.includes('lucia') ||
+    templateId.includes('lyozes') ||
+    inputName.includes('lucia') ||
+    inputName.includes('lucernalia') ||
+    inputName.includes('lyozes')
+  ) {
+    return {
+      avatarUrl: 'https://ella.janitorai.com/media-approved/2PMVd98BaN6Rc9lzVnWyn.webp',
+      cardArtUrl: 'https://ella.janitorai.com/media-approved/2PMVd98BaN6Rc9lzVnWyn.webp'
+    };
+  }
+
+  // Strict check for Amamiya no Chihaya Tenkohime
+  if (
+    templateId === 'amamiya_no_chihaya_tenkohime' ||
+    templateId === 'amamiya' ||
+    templateId.includes('amamiya') ||
+    templateId.includes('tenkohime') ||
+    inputName.includes('amamiya') ||
+    inputName.includes('chihaya') ||
+    inputName.includes('tenkohime') ||
+    inputName.includes('amazakura')
+  ) {
+    return {
+      avatarUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+      cardArtUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp'
+    };
+  }
+
   const canonical = SERVANT_DATABASE.find(
-    s => s.id === templateId || 
-         (s.name && template.name && s.name.toLowerCase() === template.name.toLowerCase())
+    s => s.id.toLowerCase() === templateId || 
+         (s.name && inputName && (s.name.toLowerCase() === inputName || inputName.includes(s.name.toLowerCase())))
   ) || (customServants && customServants.find(
-    s => s.id === templateId || 
-         (s.name && template.name && s.name.toLowerCase() === template.name.toLowerCase())
+    s => s.id.toLowerCase() === templateId || 
+         (s.name && inputName && (s.name.toLowerCase() === inputName || inputName.includes(s.name.toLowerCase())))
   ));
+
+  if (canonical && !canonical.isCustomOrMeme && canonical.avatarUrl) {
+    return {
+      avatarUrl: canonical.avatarUrl,
+      cardArtUrl: canonical.cardArtUrl || canonical.avatarUrl
+    };
+  }
 
   const npGif = template.noblePhantasm?.animationUrl ||
                 template.noblePhantasm?.gifUrl ||

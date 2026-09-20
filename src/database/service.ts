@@ -304,14 +304,27 @@ function loadFromDisk() {
                 ...(inst.template || {}),
                 avatarUrl,
                 cardArtUrl,
+                noblePhantasm: {
+                  ...canonical.noblePhantasm,
+                  ...(inst.template?.noblePhantasm || {}),
+                  gifUrl: canonical.noblePhantasm?.gifUrl || inst.template?.noblePhantasm?.gifUrl,
+                  animationUrl: canonical.noblePhantasm?.gifUrl || inst.template?.noblePhantasm?.animationUrl
+                },
                 baseHp: customSaved?.baseHp || canonical.baseHp,
                 baseAtk: customSaved?.baseAtk || canonical.baseAtk,
                 baseStats: customSaved?.baseStats || canonical.baseStats,
-                noblePhantasm: customSaved?.noblePhantasm || canonical.noblePhantasm,
                 skills: customSaved?.skills || canonical.skills
               };
               inst.avatarUrl = avatarUrl;
               inst.cardArtUrl = cardArtUrl;
+            } else {
+              const { avatarUrl, cardArtUrl } = getServantAvatarAndCardArt(inst, Array.from(savedServantsMap.values()));
+              inst.avatarUrl = avatarUrl;
+              inst.cardArtUrl = cardArtUrl;
+              if (inst.template) {
+                inst.template.avatarUrl = avatarUrl;
+                inst.template.cardArtUrl = cardArtUrl;
+              }
             }
           }
         }
