@@ -216,7 +216,7 @@ export function createCombatantFromMasterServant(
     statBalanceMode: balanceMode,
     customQuotes: servantInstance.customQuotes,
     templateId: t.id,
-    traits: t.traits || []
+    traits: (t as any).traits || []
   };
 }
 

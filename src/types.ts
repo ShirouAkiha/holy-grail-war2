@@ -125,6 +125,7 @@ export interface ServantTemplate {
   avatarUrl: string;
   cardArtUrl: string;
   aliases?: string[];
+  traits?: string[];
   isCustomOrMeme?: boolean;
   matchupDialogues?: Record<string, MatchupQuoteEntry>;
 }

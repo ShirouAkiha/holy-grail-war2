@@ -1072,6 +1072,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       retort: "Princess of Sylvanryth. I see the weight of fallen comrades in your eyes. I accept your vanguard challenge with Excalibur!",
       tag: "ROYAL SOVEREIGN CLASH"
     },
+    gilgamesh_archer: {
+      intro: "The King of Heroes. Flaunting countless treasures and calling yourself the sole arbiter of humanity? I have dealt with arrogant beings who played at being god before. Black Lance—Apocrypha Terminus!",
+      retort: "Hmph! An elf from an alien world daring to lecture the King? Your five seconds of foresight will only allow you to witness your demise with absolute clarity, mongrel!",
+      tag: "APOCRYPHA TERMINUS VS GATE OF BABYLON"
+    },
     gilgamesh: {
       intro: "The King of Heroes. Flaunting countless treasures and calling yourself the sole arbiter of humanity? I have dealt with arrogant beings who played at being god before. Black Lance—Apocrypha Terminus!",
       retort: "Hmph! An elf from an alien world daring to lecture the King? Your five seconds of foresight will only allow you to witness your demise with absolute clarity, mongrel!",
@@ -1107,10 +1112,30 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       retort: "I understand the burden you bear, Lucia. But faith is not a mere cheat—it is the light that guides humanity through darkness. Let us test our resolves!",
       tag: "LUMINOSITÉ ETERNELLE VS PRESCIENT FORESIGHT"
     },
+    jeanne_darc_ruler: {
+      intro: "Holy Maiden of Orleans. You carry the banner of faith, but divine miracles alone cannot prevent a calamity. You must harden your heart when disaster strikes.",
+      retort: "I understand the burden you bear, Lucia. But faith is not a mere cheat—it is the light that guides humanity through darkness. Let us test our resolves!",
+      tag: "LUMINOSITÉ ETERNELLE VS PRESCIENT FORESIGHT"
+    },
     jeanne_alter: {
       intro: "An Avenger born of vengeful dragon fire. You lash out because the world betrayed you. I have seen entire nations turn to ash—your hatred changes nothing.",
       retort: "Shut up, preachy elf princess! What do you know about burning?! I'll turn your high-and-mighty lance into blackened cinders!",
       tag: "DRAGON WITCH'S SPITE VS HIGH ELVEN VANGUARD"
+    },
+    mhx_alter: {
+      intro: "An extraterrestrial entity consuming dark matter sweets? Whatever outer realm you fell from, your reckless power ends at this perimeter. Ready yourself.",
+      retort: "Calorie readings spiked! A super-serious elven warrior blocking the bakery supply chain? Engaging dark saber protocol!",
+      tag: "VANGUARD DISCIPLINE VS COSMIC BERSERKER"
+    },
+    artoria_pendragon_alter: {
+      intro: "A tyrant wielding corrupted holy steel. You discard sentiment for tyrannical efficiency, but ruthlessness without tactical clarity is merely reckless violence.",
+      retort: "Hmph. A stubborn high elf clinging to dead comrades. Let your black lance test the weight of Excalibur Morgan, vanguard.",
+      tag: "BLACK IRON VS BLACK SUN"
+    },
+    nero_claudius_saber: {
+      intro: "Emperor of Rome. A battlefield is not an amphitheater for self-indulgent applause. Maintain your footing, or my lance will humble your theater.",
+      retort: "Umu! What a severe, beautiful elven maiden! But true artistry shines brightest when clashing against an unyielding wall! Behold my golden stage!",
+      tag: "IMPERIAL PASSION VS ELVEN PRAGMATISM"
     },
     adiosa_dragon_envoy: {
       intro: "The Dragon Envoy of Ixenor... You descend from Aethelian to purge the Ebonwatch Dungeon. But this world is not your disposable gameboard. Five seconds into the future, your path stops right here.",
@@ -1123,6 +1148,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       tag: "PREDETERMINED RUIN VS THE FIFTH MAGIC"
     },
     amamiya_no_chihaya_tenkohime: {
+      intro: "An ancient Kyubi from Ossuaron's Spine... Your blade relies on beastly instinct. But against five-second foresight and the Black Lance, instinct is merely a predictable vector.",
+      retort: "Uwah! Such a stern elf princess! Master, look at her spear, it is so long and sharp! Don't you dare poke washi's fluffy tails with that black lance, or washi will bite thee!",
+      tag: "SYLVAN VANGUARD VS GUARDIAN OF OSSUARON"
+    },
+    amamiya: {
       intro: "An ancient Kyubi from Ossuaron's Spine... Your blade relies on beastly instinct. But against five-second foresight and the Black Lance, instinct is merely a predictable vector.",
       retort: "Uwah! Such a stern elf princess! Master, look at her spear, it is so long and sharp! Don't you dare poke washi's fluffy tails with that black lance, or washi will bite thee!",
       tag: "SYLVAN VANGUARD VS GUARDIAN OF OSSUARON"

@@ -583,6 +583,104 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "Alice is going to lecture me forever if I lose here! Ignition, damn it!",
       "Master, hang on! Even if I have to burn through tomorrow's time, I won't lose!"
     ]
+  },
+
+  // Lucernalia "Lucia" Lyozes - Lancer (Vanguard of Sylvanryth)
+  lucia_lyozes: {
+    buster: [
+      "Hear the black iron toll! Your trajectory ends here!",
+      "Apocrypha Terminus! No false miracles will grant you sanctuary!",
+      "Full thrust! Through the sternum before you register the blow!",
+      "Calamity-Breaker! Sunder their defenses into dust!"
+    ],
+    arts: [
+      "Five seconds ahead... every vector of your guard is already mapped.",
+      "Calibrate breathing. Stride forward two paces. Strike true.",
+      "High-elf bio-reinforcement active. The vanguard line will not yield.",
+      "No wasted motion. A clean thrust requires neither arrogance nor flair."
+    ],
+    quick: [
+      "Too slow. I pivoted into your blind spot three seconds ago.",
+      "Black iron pierce! Before your synapses can trigger a retreat!",
+      "Vanguard skirmish pace. Severing the tendons before the blade falls.",
+      "Causality anticipated. Your shield is out of position!"
+    ],
+    mixed: [
+      "Stay behind the Black Lance. I didn't take vanguard to watch my Master get careless.",
+      "Formation maintained! Shift two paces left—intercepting the follow-up.",
+      "We endure this war together. Do not allow your hands to tremble.",
+      "Vanguard protocol active. I will carve a corridor through their ranks!"
+    ],
+    desperation: [
+      "A failure of calculation... Master, fall back! I will hold the choke point!",
+      "Even if my armor splinters, the vanguard does not abandon the rear!",
+      "I have buried enough comrades... I will NOT allow you to fall here!"
+    ],
+    skills: [
+      "Five seconds ahead... your trajectory is already laid bare.",
+      "High-elf biological reinforcement. My vessel will not yield.",
+      "Calamity-Breaker Edict. We strike to sever false miracles.",
+      "Perimeter scanned. Tactical adjustments confirmed."
+    ],
+    victory: [
+      "The perimeter is secure. Check your wounds, replenish your water, and prepare for the next engagement.",
+      "Objective achieved without casualties. Stand down, catch your breath, and stay alert.",
+      "Clean execution. A disciplined vanguard leaves no opening for counter-attacks."
+    ],
+    defeat: [
+      "A failure of calculation... Withdraw to the secondary line... I will hold the choke point...",
+      "Spirit Origin fracturing... Master, do not turn back... Run...",
+      "The black iron... falls... Forgive me... I could not be your wall..."
+    ]
+  },
+
+  // Amamiya no Chihaya Tenkohime - Saber (Ancient Kyubi Guardian)
+  amamiya_no_chihaya_tenkohime: {
+    buster: [
+      "Washi's blade carries the full weight of nine centuries! Cleave!",
+      "A heavy overhead strike! Feel the wrath of the Heavenly Fox!",
+      "Amazakura's blade shall not waver! Sunder this obstacle!",
+      "No fancy footwork needed—washi will smash through thy guard with raw power!"
+    ],
+    arts: [
+      "Aethel currents, converge upon the shrine... Sacred sakura, swirl!",
+      "Calm thy mind and breathe the incense of Ossuaron... Leyline, stabilize.",
+      "Nine hundred years of meditation... Washi discerns every spiritual ripple.",
+      "A refined slash guided by ancient instincts. Behold the fox's art!"
+    ],
+    quick: [
+      "Too slow! Washi's pink tails cancel all drag! High-speed Iaijutsu!",
+      "Sakura petals in the wind! Thou shalt not see where Amazakura strikes!",
+      "Blinding reflex! Slicing through thy defenses before a single petal falls!",
+      "Flurry of the Heavenly Fox! Washi is already behind thee!"
+    ],
+    mixed: [
+      "Leave this vanguard duty to washi's instincts! Stand firm, Master!",
+      "Master, watch closely! The ancient guardian of Ossuaron does not disappoint!",
+      "Keep the orders flowing! And don't forget washi's fried tofu after this!",
+      "Washi's nine tails guide the flow of battle. Advance with confidence!"
+    ],
+    desperation: [
+      "K-Kyuu... Washi's pride as the Tenkohime will not permit defeat here!",
+      "Even if washi's tails get covered in soot, washi will protect Master!",
+      "The mental seal trembles... Washi will NEVER surrender this ground!"
+    ],
+    skills: [
+      "Mental seal released... Nine Tails manifest!",
+      "Sacred shrine boundary... Kekkai Creation!",
+      "Holy foxfire of the heavens... Tenko Shinka!",
+      "Washi's instinct is absolute!"
+    ],
+    victory: [
+      "Fufu~! A flawless victory for washi! Now, Master, where is washi's promised feast of sweet fried tofu?!",
+      "Didst thou see washi's swordsmanship? Nine centuries of training speak for themselves!",
+      "The perimeter of Ossuaron is safe once more! Master, praise washi properly!"
+    ],
+    defeat: [
+      "K-Kyuu... washi's tail got dirty in the dust... Master, don't look at washi like this...",
+      "Washi's energy... ran dry... A piece of fried tofu would have saved washi...",
+      "Master... forgive washi... washi could not hold the shrine..."
+    ]
   }
 };
 
@@ -670,6 +768,12 @@ export function getServantProfile(servantName?: string): ServantDialogueProfile 
   }
   if (n.includes('aoko') || n.includes('fifth magician') || n.includes('magic gunner') || n.includes('super aoko')) {
     return SERVANT_COMBAT_DIALOGUES.aoko_aozaki;
+  }
+  if (n.includes('lucia') || n.includes('lucernalia') || n.includes('lyozes') || n.includes('high elf') || n.includes('black lance')) {
+    return SERVANT_COMBAT_DIALOGUES.lucia_lyozes;
+  }
+  if (n.includes('amamiya') || n.includes('chihaya') || n.includes('tenkohime') || n.includes('kyubi') || n.includes('kyūbi') || n.includes('amazakura')) {
+    return SERVANT_COMBAT_DIALOGUES.amamiya_no_chihaya_tenkohime;
   }
 
   return GENERIC_PROFILE;

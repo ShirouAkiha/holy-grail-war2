@@ -1403,7 +1403,12 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'evade',
         duration: 3,
         value: 2,
-        icon: '👁️'
+        icon: '👁️',
+        quote: '"Five seconds ahead... your trajectory is already laid bare."',
+        quotes: [
+          '"Five seconds ahead... your trajectory is already laid bare."',
+          '"I have already seen where your strike will land. Adjusting stance."'
+        ]
       },
       {
         id: 'strengthening_adaptation_a_plus',
@@ -1413,7 +1418,12 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'buff_def',
         duration: 3,
         value: 30,
-        icon: '🛡️'
+        icon: '🛡️',
+        quote: '"High-elf biological reinforcement. My vessel will not yield to mundane pressure."',
+        quotes: [
+          '"High-elf biological reinforcement. My vessel will not yield to mundane pressure."',
+          '"Spiritual circulation hardened. The vanguard line does not falter."'
+        ]
       },
       {
         id: 'calamity_breaker_edict_a',
@@ -1423,7 +1433,12 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'buff_atk',
         duration: 3,
         value: 20,
-        icon: '⚔️'
+        icon: '⚔️',
+        quote: '"Calamity-Breaker Edict. We strike to sever false miracles and protect what remains."',
+        quotes: [
+          '"Calamity-Breaker Edict. We strike to sever false miracles and protect what remains."',
+          '"By the blood spilled at the Wailing Tower: your cheats end here!"'
+        ]
       }
     ],
     passives: [
