@@ -299,21 +299,22 @@ function loadFromDisk() {
               const customSaved = savedServantsMap.get(canonical.id);
               const { avatarUrl, cardArtUrl } = getServantAvatarAndCardArt(inst, Array.from(savedServantsMap.values()));
               inst.template = {
+                ...(inst.template || {}),
                 ...canonical,
                 ...(customSaved || {}),
-                ...(inst.template || {}),
                 avatarUrl,
                 cardArtUrl,
-                noblePhantasm: {
-                  ...canonical.noblePhantasm,
-                  ...(inst.template?.noblePhantasm || {}),
-                  gifUrl: canonical.noblePhantasm?.gifUrl || inst.template?.noblePhantasm?.gifUrl,
-                  animationUrl: canonical.noblePhantasm?.gifUrl || inst.template?.noblePhantasm?.animationUrl
-                },
                 baseHp: customSaved?.baseHp || canonical.baseHp,
                 baseAtk: customSaved?.baseAtk || canonical.baseAtk,
                 baseStats: customSaved?.baseStats || canonical.baseStats,
-                skills: customSaved?.skills || canonical.skills
+                skills: customSaved?.skills || canonical.skills,
+                noblePhantasm: {
+                  ...(inst.template?.noblePhantasm || {}),
+                  ...canonical.noblePhantasm,
+                  ...(customSaved?.noblePhantasm || {}),
+                  gifUrl: canonical.noblePhantasm?.gifUrl || inst.template?.noblePhantasm?.gifUrl,
+                  animationUrl: canonical.noblePhantasm?.gifUrl || inst.template?.noblePhantasm?.animationUrl
+                }
               };
               inst.avatarUrl = avatarUrl;
               inst.cardArtUrl = cardArtUrl;

@@ -280,15 +280,13 @@ export function applyCombatantSkill(
   }
 
   // Handle Lucia Lyozes personal skills
-  if (skill.id === 'prescient_foresight') {
-    actor.isEvading = true;
+  if (skill.id.includes('prescient_foresight')) {
+    actor.isInvincible = true;
     actor.activeBuffs.push({
-      name: 'Prescient Foresight (Evade 2 Hits)',
-      type: 'evade',
+      name: 'Prescient Foresight (Invincibility 2T)',
+      type: 'invincible',
       value: 100,
-      remainingTurns: 3,
-      isHitCount: true,
-      remainingHits: 2
+      remainingTurns: 2
     });
     actor.activeBuffs.push({
       name: 'Prescient Foresight (Crit Star Gather)',
@@ -305,13 +303,13 @@ export function applyCombatantSkill(
     actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
     return {
       success: true,
-      log: `👁️ **${actor.name}** activated **${skill.name}**! Gained Evasion (2 hits, 3T), +50% Star Gather, and +30% Crit Damage!${quoteLine}`,
+      log: `⚡ **${actor.name}** activated **${skill.name}**! Granted self Invincibility (2T), +50% Star Gather, and +30% Crit Damage!${quoteLine}`,
       quote: skillQuote,
       skillName: skill.name
     };
   }
 
-  if (skill.id === 'strengthening_adaptation') {
+  if (skill.id.includes('strengthening_adaptation')) {
     actor.activeBuffs.push({
       name: 'Strengthening Adaptation (Buster Up)',
       type: 'buster_up',
@@ -344,7 +342,7 @@ export function applyCombatantSkill(
     };
   }
 
-  if (skill.id === 'calamity_breaker_edict') {
+  if (skill.id.includes('calamity_breaker_edict')) {
     actor.activeBuffs.push({
       name: 'Calamity-Breaker Edict (ATK Up)',
       type: 'buff_atk',
@@ -359,7 +357,7 @@ export function applyCombatantSkill(
     });
     return {
       success: true,
-      log: `👑 **${actor.name}** activated **${skill.name}**! Boosted ATK by +20% and granted +30% Special Damage against Calamities, Foreigners, Beasts, and Extra Classes!${quoteLine}`,
+      log: `👑 **${actor.name}** activated **${skill.name}**! Boosted ATK by +20% and granted +30% Special Damage against Threat to Humanity, Foreigners, Beasts, and Extra Classes!${quoteLine}`,
       quote: skillQuote,
       skillName: skill.name
     };
