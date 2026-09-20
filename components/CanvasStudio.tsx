@@ -174,6 +174,9 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
   const [customBgUrl, setCustomBgUrl] = useState('');
   const [bgMode, setBgMode] = useState<'preset' | 'custom'>('preset');
 
+  // Gacha Canvas Preview Mode
+  const [gachaPullType, setGachaPullType] = useState<'multi' | 'single'>('multi');
+
   // Animation Replay & Trigger state
   const [animTrigger, setAnimTrigger] = useState(0);
 
@@ -263,12 +266,28 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
       const p2 = { ...p1, id: 'p2', name: defenderName, servantClass: defenderClass, currentHp: 6800, maxHp: 15500 };
       renderBattleTurnSummary(canvas, mockLog as any, p1 as any, p2 as any);
     } else if (activeTab === 'gacha') {
-      const mockResults: GachaResultItem[] = [
-        { type: 'servant' as const, item: activeServant.template, rarity: 5, isNew: true, isRateUp: true },
-        { type: 'craft_essence' as const, item: master.craftEssences[0], rarity: 5, isNew: false, isRateUp: false },
-        { type: 'servant' as const, item: master.servants[1]?.template || activeServant.template, rarity: 4, isNew: false, isRateUp: false }
+      const mockSingleResult: GachaResultItem[] = [
+        { type: 'servant' as const, item: activeServant.template, rarity: activeServant.template.rarity || 5, isNew: true, isRateUp: true }
       ];
-      renderGachaSummonBanner(canvas, mockResults, 'Fuyuki Holy Grail War Banner');
+
+      const mockMultiResults: GachaResultItem[] = [
+        { type: 'servant' as const, item: activeServant.template, rarity: activeServant.template.rarity || 5, isNew: true, isRateUp: true },
+        { type: 'craft_essence' as const, item: master.craftEssences[0], rarity: 5, isNew: false, isRateUp: false },
+        { type: 'servant' as const, item: master.servants[1]?.template || activeServant.template, rarity: 4, isNew: false, isRateUp: false },
+        { type: 'craft_essence' as const, item: master.craftEssences[1] || master.craftEssences[0], rarity: 4, isNew: true, isRateUp: false },
+        { type: 'servant' as const, item: master.servants[2]?.template || activeServant.template, rarity: 3, isNew: false, isRateUp: false },
+        { type: 'craft_essence' as const, item: master.craftEssences[2] || master.craftEssences[0], rarity: 3, isNew: false, isRateUp: false },
+        { type: 'servant' as const, item: master.servants[0]?.template, rarity: 4, isNew: false, isRateUp: false },
+        { type: 'craft_essence' as const, item: master.craftEssences[0], rarity: 5, isNew: false, isRateUp: true },
+        { type: 'servant' as const, item: activeServant.template, rarity: 5, isNew: false, isRateUp: true },
+        { type: 'craft_essence' as const, item: master.craftEssences[1] || master.craftEssences[0], rarity: 3, isNew: false, isRateUp: false }
+      ];
+
+      renderGachaSummonBanner(
+        canvas,
+        gachaPullType === 'single' ? mockSingleResult : mockMultiResults,
+        'Fuyuki Holy Grail War Summon'
+      );
     }
 
     return () => {
@@ -300,6 +319,7 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
     customBgUrl,
     bgMode,
     animTrigger,
+    gachaPullType,
     master.craftEssences,
     master.servants,
     master.username
@@ -1036,6 +1056,59 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
                 onChange={e => setSkillQuote(e.target.value)}
                 className="w-full bg-[#111] text-[#fffbeb] font-serif text-sm italic px-3.5 py-2.5 rounded-sm border border-[#222] outline-none focus:border-sky-400 resize-none"
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Gacha Summon Banner Controls */}
+      {activeTab === 'gacha' && (
+        <div className="p-5 bg-[#0a0a0a] rounded-xl border border-[#1a1a1a] space-y-4">
+          <div className="flex items-center justify-between border-b border-[#1a1a1a] pb-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-[#d4af37]" />
+              <h3 className="text-xs font-mono uppercase tracking-wider text-white font-bold">
+                Summoning Canvas Mode & Layout Configuration
+              </h3>
+            </div>
+            <span className="text-[10px] font-mono text-[#d4af37] bg-[#161616] px-2.5 py-1 rounded border border-[#d4af37]/30">
+              Leyline Orbital Engine Active
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-mono uppercase tracking-wider text-white/40 block mb-2">
+                Pull Format & Layout
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setGachaPullType('multi')}
+                  className={`flex-1 py-2.5 px-4 rounded font-mono text-xs font-bold uppercase tracking-wider transition border ${
+                    gachaPullType === 'multi'
+                      ? 'bg-[#d4af37] text-black border-[#d4af37] shadow-lg'
+                      : 'bg-[#111] text-white/60 border-[#222] hover:text-white'
+                  }`}
+                >
+                  ✨ 10x Multi Pull Grid (10 Cards)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGachaPullType('single')}
+                  className={`flex-1 py-2.5 px-4 rounded font-mono text-xs font-bold uppercase tracking-wider transition border ${
+                    gachaPullType === 'single'
+                      ? 'bg-[#d4af37] text-black border-[#d4af37] shadow-lg'
+                      : 'bg-[#111] text-white/60 border-[#222] hover:text-white'
+                  }`}
+                >
+                  🌟 1x Single Pull Showcase (1 Card)
+                </button>
+              </div>
+            </div>
+
+            <div className="p-3 bg-[#111] rounded border border-[#222] flex items-center justify-between text-xs font-mono text-white/60">
+              <span>Previewing Heroic Spirits & Craft Essences with real artwork, stars, stats, and NEW badges on HD canvas.</span>
             </div>
           </div>
         </div>
