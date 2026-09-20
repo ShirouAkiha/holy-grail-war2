@@ -7,7 +7,7 @@ import {
   CardType
 } from '../types';
 import { calculateRadarCoordinates } from '../engine/customization';
-import { SERVANT_DATABASE } from '../data/servants';
+import { SERVANT_DATABASE, getServantAvatarAndCardArt } from '../data/servants';
 
 // Helper to draw a 5-pointed vector star
 function drawVectorStar(
@@ -4956,14 +4956,31 @@ function getLoadedGachaImage(url: string, onLoaded?: () => void): HTMLImageEleme
   if (globalGachaImageCache.has(url)) {
     const cached = globalGachaImageCache.get(url)!;
     if (cached.complete && cached.naturalWidth > 0) return cached;
+    if (cached.complete && cached.naturalWidth === 0 && !(cached as any).__corsFallbackTried) {
+      (cached as any).__corsFallbackTried = true;
+      const fallbackImg = new Image();
+      fallbackImg.onload = () => { if (onLoaded) onLoaded(); };
+      fallbackImg.src = url;
+      globalGachaImageCache.set(url, fallbackImg);
+      return fallbackImg;
+    }
     return cached;
   }
+
   const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.src = url;
   img.onload = () => {
     if (onLoaded) onLoaded();
   };
+  img.onerror = () => {
+    if (!(img as any).__corsFallbackTried) {
+      (img as any).__corsFallbackTried = true;
+      const fallbackImg = new Image();
+      fallbackImg.onload = () => { if (onLoaded) onLoaded(); };
+      fallbackImg.src = url;
+      globalGachaImageCache.set(url, fallbackImg);
+    }
+  };
+  img.src = url;
   globalGachaImageCache.set(url, img);
   return img;
 }
@@ -5132,9 +5149,10 @@ export function renderGachaSummonBanner(
     ctx.fillStyle = '#020617';
     ctx.fillRect(imgX, imgY, imgW, imgH);
 
+    const artInfo = isServant ? getServantAvatarAndCardArt(rawObj) : null;
     const imgUrl = isServant
-      ? (rawObj.cardArtUrl || rawObj.avatarUrl)
-      : rawObj.artworkUrl;
+      ? (artInfo?.cardArtUrl || artInfo?.avatarUrl || rawObj.cardArtUrl || rawObj.avatarUrl)
+      : (rawObj.artworkUrl || rawObj.imageUrl || rawObj.cardArtUrl);
 
     if (imgUrl) {
       const imgObj = getLoadedGachaImage(imgUrl, triggerRedraw);
@@ -5296,9 +5314,10 @@ export function renderGachaSummonBanner(
       ctx.fillStyle = '#020617';
       ctx.fillRect(imgX, imgY, imgW, imgH);
 
+      const artInfo = isServant ? getServantAvatarAndCardArt(rawObj) : null;
       const imgUrl = isServant
-        ? (rawObj.cardArtUrl || rawObj.avatarUrl)
-        : rawObj.artworkUrl;
+        ? (artInfo?.cardArtUrl || artInfo?.avatarUrl || rawObj.cardArtUrl || rawObj.avatarUrl)
+        : (rawObj.artworkUrl || rawObj.imageUrl || rawObj.cardArtUrl);
 
       if (imgUrl) {
         const imgObj = getLoadedGachaImage(imgUrl, triggerRedraw);

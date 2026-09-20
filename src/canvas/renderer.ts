@@ -7,7 +7,7 @@ import {
   CardType
 } from '../types';
 import { calculateRadarCoordinates, RadarPoint } from '../engine/customization';
-import { SERVANT_DATABASE } from '../data/servants';
+import { SERVANT_DATABASE, getServantAvatarAndCardArt } from '../data/servants';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { getLocalMediaDiskPath } from '../utils/localMedia';
 import fs from 'fs';
@@ -5659,12 +5659,24 @@ export async function renderGachaSummonBanner(
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  // Concurrently load artwork images for CEs
+  // Concurrently load artwork images for CEs & Servants
   const loadedArtworks = await Promise.all(
     results.map(async (item) => {
-      const ce = item.item as any;
-      if (ce && ce.artworkUrl) {
-        return await loadImage(ce.artworkUrl);
+      const rawObj = (item.item || (item as any).servant || item) as any;
+      const isServant = item.type === 'servant' || !!rawObj.servantClass;
+      let url = '';
+      if (isServant) {
+        const artInfo = getServantAvatarAndCardArt(rawObj);
+        url = artInfo?.cardArtUrl || artInfo?.avatarUrl || rawObj.cardArtUrl || rawObj.avatarUrl;
+      } else {
+        url = rawObj?.artworkUrl || rawObj?.imageUrl || rawObj?.cardArtUrl;
+      }
+      if (url) {
+        try {
+          return await loadImage(url);
+        } catch {
+          return null;
+        }
       }
       return null;
     })
@@ -5714,7 +5726,8 @@ export async function renderGachaSummonBanner(
 
   for (let i = 0; i < results.length; i++) {
     const item = results[i];
-    const ce = item.item as any;
+    const rawObj = (item.item || (item as any).servant || item) as any;
+    const isServant = item.type === 'servant' || !!rawObj.servantClass;
     const artImg = loadedArtworks[i];
     const row = isMultiRow ? Math.floor(i / 5) : 0;
     const col = isMultiRow ? (i % 5) : i;
@@ -5818,23 +5831,35 @@ export async function renderGachaSummonBanner(
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
-    const nameStr = ce.name || 'Craft Essence';
+    const nameStr = rawObj.name || rawObj.nickname || (isServant ? 'Heroic Spirit' : 'Craft Essence');
     const truncatedName = nameStr.length > 17 ? nameStr.substring(0, 15) + '..' : nameStr;
     ctx.fillText(truncatedName, x + cardWidth / 2, y + 128);
 
-    // Stats
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = 'bold 11px sans-serif';
-    const atk = ce.bonusAtk || ce.atkBonus || 0;
-    const hp = ce.bonusHp || ce.hpBonus || 0;
-    ctx.fillText(`+${atk} ATK  |  +${hp} HP`, x + cardWidth / 2, y + 152);
+    // Stats or Class
+    if (isServant) {
+      const sClass = (rawObj.servantClass || 'SABER').toUpperCase();
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillText(`[ ${sClass} ]`, x + cardWidth / 2, y + 152);
 
-    // Effect summary snippet
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '10px sans-serif';
-    const effStr = ce.effectText || '';
-    const effTrunc = effStr.length > 28 ? effStr.substring(0, 26) + '...' : effStr;
-    ctx.fillText(effTrunc, x + cardWidth / 2, y + 172);
+      const baseHp = rawObj.baseHp || 12000;
+      const baseAtk = rawObj.baseAtk || 11000;
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '10px sans-serif';
+      ctx.fillText(`${baseAtk} ATK | ${baseHp} HP`, x + cardWidth / 2, y + 172);
+    } else {
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 11px sans-serif';
+      const atk = rawObj.bonusAtk || rawObj.atkBonus || 0;
+      const hp = rawObj.bonusHp || rawObj.hpBonus || 0;
+      ctx.fillText(`+${atk} ATK  |  +${hp} HP`, x + cardWidth / 2, y + 152);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '10px sans-serif';
+      const effStr = rawObj.effectText || '';
+      const effTrunc = effStr.length > 28 ? effStr.substring(0, 26) + '...' : effStr;
+      ctx.fillText(effTrunc, x + cardWidth / 2, y + 172);
+    }
 
     // Rarity Badge at bottom
     ctx.fillStyle = rarityColor;
