@@ -178,7 +178,13 @@ export function createCombatantFromMasterServant(
         remainingTurns: 99
       });
     }
-    if (ce.id === 'ce_bond_heracles_berserker' || ce.name === 'Castle of Snow' || (ce.passiveType === 'guts' && (ce.passiveValue || 0) > 1)) {
+    if (
+      ce.id === 'ce_bond_heracles_berserker' ||
+      ce.id === 'ce_castle_of_snow' ||
+      ce.name === 'Castle of Snow' ||
+      /castle of snow/i.test(ce.name) ||
+      (ce.passiveType === 'guts' && (ce.passiveValue || 0) > 1)
+    ) {
       initialBuffs.push({
         name: 'Castle of Snow (Guts x3)',
         type: 'guts',
@@ -1485,7 +1491,8 @@ export function executeBattleTurn(
           }
           case 'guts': {
             const reviveVal = skill.value || Math.round(actor.maxHp * 0.20);
-            actor.activeBuffs.push({
+            // Place skill guts at the front so turn-limited skill Guts is consumed before permanent/hit-based CE Guts
+            actor.activeBuffs.unshift({
               name: skill.name,
               type: 'guts',
               value: reviveVal,
@@ -1497,6 +1504,12 @@ export function executeBattleTurn(
                 type: 'on_guts_buster',
                 value: 20,
                 remainingTurns: skill.duration || 5
+              });
+              actor.activeBuffs.push({
+                name: `${skill.name} (Buster Up)`,
+                type: 'buster_up',
+                value: 20,
+                remainingTurns: 3
               });
             }
             if (skill.id?.includes('thrice')) {
@@ -1894,17 +1907,47 @@ export function executeBattleTurn(
 
       if (gutsBuff.remainingHits !== undefined && gutsBuff.remainingHits > 1) {
         gutsBuff.remainingHits -= 1;
-        actionText += `\n✝️ **BATTLE CONTINUATION!** ${target.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.remainingHits} Guts charge(s) remaining)`;
+        actionText += `\n✝️ **BATTLE CONTINUATION!** ${target.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} - ${gutsBuff.remainingHits} charge(s) remaining)`;
       } else {
         target.activeBuffs.splice(gutsBuffIndex, 1);
-        actionText += `\n✝️ **BATTLE CONTINUATION!** ${target.name} revived with **${reviveHp.toLocaleString()} HP**!`;
+        actionText += `\n✝️ **BATTLE CONTINUATION!** ${target.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} consumed)`;
       }
 
       // Check On-Guts Buster Up buff (Indomitable A)
       const onGutsIndex = target.activeBuffs.findIndex(b => b.type === 'on_guts_buster');
       if (onGutsIndex !== -1) {
         const ogBuff = target.activeBuffs[onGutsIndex];
+        target.activeBuffs.splice(onGutsIndex, 1);
         target.activeBuffs.push({
+          name: 'Indomitable A: On-Guts Buster Up (+20%)',
+          type: 'buster_up',
+          value: ogBuff.value || 20,
+          remainingTurns: 5
+        });
+        actionText += `\n🔥 **[INDOMITABLE A]** On-Guts activated! Buster Performance increased by +20% for 5 turns!`;
+      }
+    }
+
+    // Guts Check for Actor (in case of aura/recoil lethal damage)
+    const actorGutsIndex = actor.activeBuffs.findIndex(b => b.type === 'guts');
+    if (actor.currentHp <= 0 && actorGutsIndex !== -1) {
+      const gutsBuff = actor.activeBuffs[actorGutsIndex];
+      const reviveHp = gutsBuff.value || Math.round(actor.maxHp * 0.20);
+      actor.currentHp = reviveHp;
+
+      if (gutsBuff.remainingHits !== undefined && gutsBuff.remainingHits > 1) {
+        gutsBuff.remainingHits -= 1;
+        actionText += `\n✝️ **BATTLE CONTINUATION!** ${actor.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} - ${gutsBuff.remainingHits} charge(s) remaining)`;
+      } else {
+        actor.activeBuffs.splice(actorGutsIndex, 1);
+        actionText += `\n✝️ **BATTLE CONTINUATION!** ${actor.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} consumed)`;
+      }
+
+      const onGutsIndex = actor.activeBuffs.findIndex(b => b.type === 'on_guts_buster');
+      if (onGutsIndex !== -1) {
+        const ogBuff = actor.activeBuffs[onGutsIndex];
+        actor.activeBuffs.splice(onGutsIndex, 1);
+        actor.activeBuffs.push({
           name: 'Indomitable A: On-Guts Buster Up (+20%)',
           type: 'buster_up',
           value: ogBuff.value || 20,

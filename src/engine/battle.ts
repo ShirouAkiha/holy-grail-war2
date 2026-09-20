@@ -132,7 +132,13 @@ export function createCombatantFromMasterServant(
 
   const initialBuffs: ActiveCombatant['activeBuffs'] = [];
   if (ce) {
-    if (ce.id === 'ce_bond_heracles_berserker' || ce.name === 'Castle of Snow' || (ce.passiveType === 'guts' && (ce.passiveValue || 0) > 1)) {
+    if (
+      ce.id === 'ce_bond_heracles_berserker' ||
+      ce.id === 'ce_castle_of_snow' ||
+      ce.name === 'Castle of Snow' ||
+      /castle of snow/i.test(ce.name) ||
+      (ce.passiveType === 'guts' && (ce.passiveValue || 0) > 1)
+    ) {
       initialBuffs.push({
         name: 'Castle of Snow (Guts x3)',
         type: 'guts',
@@ -428,6 +434,58 @@ export function resolveCombatTurn(
 
   attacker.critStars = Math.min(50, (attacker.critStars || 0) + starsGen);
   defender.currentHp = Math.max(0, defender.currentHp - totalDmg);
+
+  // Guts check for defender
+  const defGutsIndex = defender.activeBuffs.findIndex(b => b.type === 'guts');
+  if (defender.currentHp <= 0 && defGutsIndex !== -1) {
+    const gutsBuff = defender.activeBuffs[defGutsIndex];
+    const reviveHp = gutsBuff.value || Math.round(defender.maxHp * 0.20);
+    defender.currentHp = reviveHp;
+
+    if (gutsBuff.remainingHits !== undefined && gutsBuff.remainingHits > 1) {
+      gutsBuff.remainingHits -= 1;
+    } else {
+      defender.activeBuffs.splice(defGutsIndex, 1);
+    }
+
+    const onGutsIndex = defender.activeBuffs.findIndex(b => b.type === 'on_guts_buster');
+    if (onGutsIndex !== -1) {
+      const ogBuff = defender.activeBuffs[onGutsIndex];
+      defender.activeBuffs.splice(onGutsIndex, 1);
+      defender.activeBuffs.push({
+        name: 'Indomitable A: On-Guts Buster Up (+20%)',
+        type: 'buster_up',
+        value: ogBuff.value || 20,
+        remainingTurns: 5
+      });
+    }
+  }
+
+  // Guts check for attacker
+  const atkGutsIndex = attacker.activeBuffs.findIndex(b => b.type === 'guts');
+  if (attacker.currentHp <= 0 && atkGutsIndex !== -1) {
+    const gutsBuff = attacker.activeBuffs[atkGutsIndex];
+    const reviveHp = gutsBuff.value || Math.round(attacker.maxHp * 0.20);
+    attacker.currentHp = reviveHp;
+
+    if (gutsBuff.remainingHits !== undefined && gutsBuff.remainingHits > 1) {
+      gutsBuff.remainingHits -= 1;
+    } else {
+      attacker.activeBuffs.splice(atkGutsIndex, 1);
+    }
+
+    const onGutsIndex = attacker.activeBuffs.findIndex(b => b.type === 'on_guts_buster');
+    if (onGutsIndex !== -1) {
+      const ogBuff = attacker.activeBuffs[onGutsIndex];
+      attacker.activeBuffs.splice(onGutsIndex, 1);
+      attacker.activeBuffs.push({
+        name: 'Indomitable A: On-Guts Buster Up (+20%)',
+        type: 'buster_up',
+        value: ogBuff.value || 20,
+        remainingTurns: 5
+      });
+    }
+  }
 
   // Apply end-of-turn passive adjustments for attacker and defender
   const applyEndTurnPassives = (combatant: ActiveCombatant) => {

@@ -307,6 +307,31 @@ function createCombatant(
         remainingTurns: 99
       });
     }
+    if (
+      ce.id === 'ce_bond_heracles_berserker' ||
+      ce.id === 'ce_castle_of_snow' ||
+      ce.name === 'Castle of Snow' ||
+      /castle of snow/i.test(ce.name) ||
+      (ce.passiveType === 'guts' && (ce.passiveValue || 0) > 1)
+    ) {
+      initialBuffs.push({
+        name: 'Castle of Snow (Guts x3)',
+        type: 'guts',
+        value: 500,
+        remainingTurns: 99,
+        remainingHits: ce.passiveValue || 3,
+        isHitCount: true
+      });
+    } else if (ce.passiveType === 'guts') {
+      initialBuffs.push({
+        name: `${ce.name} (Guts)`,
+        type: 'guts',
+        value: ce.hpBonus || 1000,
+        remainingTurns: 99,
+        remainingHits: 1,
+        isHitCount: true
+      });
+    }
   }
 
   const baseAvatar = getServantAvatarAndCardArt(servant).avatarUrl;
@@ -1072,12 +1097,26 @@ function activateCombatantSkill(
   } else if (skill.effectType === 'guts' || skill.id?.includes('guts') || skill.id?.includes('battle_continuation') || skill.id?.includes('thrice')) {
     const reviveAmt = skill.value || Math.round(combatant.maxHp * 0.20);
     combatant.gutsCount = (combatant.gutsCount || 0) + 1;
-    combatant.activeBuffs.push({
+    combatant.activeBuffs.unshift({
       name: skill.name,
       type: 'guts',
       value: reviveAmt,
       remainingTurns: skill.duration || 5
     });
+    if (skill.id === 'indomitable_a' || skill.name.includes('Indomitable')) {
+      combatant.activeBuffs.push({
+        name: 'Indomitable A (On-Guts Buster Up)',
+        type: 'on_guts_buster' as any,
+        value: 20,
+        remainingTurns: skill.duration || 5
+      });
+      combatant.activeBuffs.push({
+        name: `${skill.name} (Buster Up)`,
+        type: 'buster_up',
+        value: 20,
+        remainingTurns: 3
+      });
+    }
     if (skill.id?.includes('thrice')) {
       combatant.activeBuffs.push({
         name: `${skill.name} (DEF Up)`,
@@ -1871,19 +1910,40 @@ function resolveStrike(
     avengerLog = `\n🖤 **[Avenger]** ${defender.servant.template.name} gained **+${avengerRefund}% NP** from suffering damage!`;
   }
 
-  // Check for Guts (Battle Continuation)
+  // Check for Guts (Battle Continuation / Castle of Snow / Indomitable A)
   let gutsText = '';
   const gutsBuffIndex = defender.activeBuffs.findIndex(b => b.type === 'guts');
   if (defender.currentHp <= 0 && (defender.gutsCount > 0 || gutsBuffIndex !== -1)) {
-    if (defender.gutsCount > 0) defender.gutsCount--;
     let reviveHp = Math.round(defender.maxHp * 0.20);
     if (gutsBuffIndex !== -1) {
       const gutsBuff = defender.activeBuffs[gutsBuffIndex];
       if (gutsBuff.value) reviveHp = gutsBuff.value;
-      defender.activeBuffs.splice(gutsBuffIndex, 1);
+      if (gutsBuff.remainingHits !== undefined && gutsBuff.remainingHits > 1) {
+        gutsBuff.remainingHits -= 1;
+        gutsText = `\n✝️ **BATTLE CONTINUATION!** ${defender.servant.template.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} - ${gutsBuff.remainingHits} charge(s) remaining)`;
+      } else {
+        defender.activeBuffs.splice(gutsBuffIndex, 1);
+        gutsText = `\n✝️ **BATTLE CONTINUATION!** ${defender.servant.template.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} consumed)`;
+      }
+    } else {
+      if (defender.gutsCount > 0) defender.gutsCount--;
+      gutsText = `\n✝️ **BATTLE CONTINUATION!** ${defender.servant.template.name} revived with **${reviveHp.toLocaleString()} HP**!`;
     }
     defender.currentHp = reviveHp;
-    gutsText = `\n✝️ **BATTLE CONTINUATION!** ${defender.servant.template.name} revived with **${reviveHp.toLocaleString()} HP**!`;
+
+    // Check On-Guts Buster Up buff (Indomitable A)
+    const onGutsIndex = defender.activeBuffs.findIndex(b => (b.type as any) === 'on_guts_buster');
+    if (onGutsIndex !== -1) {
+      const ogBuff = defender.activeBuffs[onGutsIndex];
+      defender.activeBuffs.splice(onGutsIndex, 1);
+      defender.activeBuffs.push({
+        name: 'Indomitable A: On-Guts Buster Up (+20%)',
+        type: 'buster_up',
+        value: ogBuff.value || 20,
+        remainingTurns: 5
+      });
+      gutsText += `\n🔥 **[INDOMITABLE A]** On-Guts activated! Buster Performance increased by +20% for 5 turns!`;
+    }
   }
 
   const critTag = isAnyCrit ? ' 💥 **CRITICAL HIT!**' : '';
