@@ -22,6 +22,7 @@ import { getServantChainDialogue, shouldTriggerDialogueCutIn, getServantSkillQuo
 import { getServantMatchupDialogue } from '../data/servantMatchups';
 import { generateServantBattleReaction } from '../engine/talkService';
 import { addBondExpToServant } from '../../lib/engine/bondEvents';
+import { checkAndGrantBond10Ce, getBondCraftEssenceForServant } from '../data/craftEssences';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -992,23 +993,46 @@ function activateCombatantSkill(
     logText = `⚔️ **${sName}** activated **${skill.name}**!${quoteLine}`;
   } else if (skill.effectType === 'buff_def') {
     const val = skill.value || 30;
+    const descLower = (skill.description || '').toLowerCase();
+    const idLower = (skill.id || '').toLowerCase();
     combatant.activeBuffs.push({ name: skill.name, type: 'buff_def', value: val, remainingTurns: skill.duration || 2 });
+
+    if (descLower.includes('invincible') || descLower.includes('invulnerability') || idLower === 'kekkai_creation') {
+      const invDuration = descLower.includes('2 turns') || descLower.includes('2t') ? 2 : 1;
+      combatant.activeBuffs.push({
+        name: `${skill.name} (Invincible)`,
+        type: 'invincible',
+        value: 100,
+        remainingTurns: invDuration
+      });
+    }
+    if (descLower.includes('cleanse') || descLower.includes('debuff') || idLower === 'kekkai_creation') {
+      combatant.activeBuffs = combatant.activeBuffs.filter(b => !b.type.startsWith('debuff'));
+    }
     logText = `🛡️ **${sName}** activated **${skill.name}**!${quoteLine}`;
   } else if (skill.effectType === 'evade' || skill.effectType === 'invincible') {
     const bType: 'evade' | 'invincible' = skill.effectType === 'invincible' ? 'invincible' : 'evade';
-    const isHitBased = skill.name.toLowerCase().includes('protection from arrows') || (skill.description || '').toLowerCase().includes('attacks') || (skill.description || '').toLowerCase().includes('hits');
+    const descLower = (skill.description || '').toLowerCase();
+    const idLower = (skill.id || '').toLowerCase();
+    const isSingleHit = descLower.includes('1 time') || descLower.includes('1 evade') || descLower.includes('1 hit') || idLower.includes('prescient_foresight');
+    const isHitBased = skill.name.toLowerCase().includes('protection from arrows') || descLower.includes('attacks') || descLower.includes('hits') || isSingleHit;
+    const hitCount = isSingleHit ? 1 : 3;
+    const invDuration = descLower.includes('2 turns') || descLower.includes('2t')
+      ? 2
+      : (descLower.includes('1 turn') || descLower.includes('1t') || idLower === 'kekkai_creation' ? 1 : (skill.duration || 1));
+
     combatant.activeBuffs.push({
       name: skill.name,
       type: bType,
       value: 100,
-      remainingTurns: isHitBased ? 99 : (skill.duration || 1),
-      remainingHits: isHitBased ? 3 : undefined,
+      remainingTurns: isHitBased ? (skill.duration || 3) : invDuration,
+      remainingHits: isHitBased ? hitCount : undefined,
       isHitCount: isHitBased
     });
-    if (skill.id === 'wisdom_dun_scaith') {
+    if (skill.id === 'wisdom_dun_scaith' || idLower.includes('prescient_foresight')) {
       combatant.critStars = Math.min(50, combatant.critStars + 15);
     }
-    if (skill.id === 'ephemeral_dream_a' || (skill.description || '').toLowerCase().includes('attack')) {
+    if (skill.id === 'ephemeral_dream_a' || (descLower.includes('attack') && !descLower.includes('attacks'))) {
       combatant.activeBuffs.push({
         name: `${skill.name} (ATK Up)`,
         type: 'buff_atk',
@@ -1016,9 +1040,35 @@ function activateCombatantSkill(
         remainingTurns: skill.duration || 1
       });
     }
+    if (idLower.includes('prescient_foresight') || descLower.includes('critical damage') || descLower.includes('crit damage')) {
+      combatant.activeBuffs.push({
+        name: `${skill.name} (Crit DMG Up)`,
+        type: 'crit_dmg',
+        value: 30,
+        remainingTurns: 3
+      });
+    }
+    if (idLower === 'kekkai_creation' || descLower.includes('defense') || descLower.includes('increases def')) {
+      combatant.activeBuffs.push({
+        name: `${skill.name} (DEF Up)`,
+        type: 'buff_def',
+        value: skill.value || 30,
+        remainingTurns: skill.duration || 3
+      });
+    }
+    if (idLower === 'kekkai_creation' || descLower.includes('cleanse') || descLower.includes('debuff')) {
+      combatant.activeBuffs = combatant.activeBuffs.filter(b => !b.type.startsWith('debuff'));
+    }
+    const bonusLabels: string[] = [];
+    if (idLower === 'ephemeral_dream_a' || (descLower.includes('attack') && !descLower.includes('attacks'))) bonusLabels.push(`+${skill.value || 40}% ATK`);
+    if (idLower === 'kekkai_creation' || descLower.includes('defense') || descLower.includes('increases def')) bonusLabels.push(`+${skill.value || 30}% DEF`);
+    if (idLower.includes('prescient_foresight')) bonusLabels.push('1-Time Evade', '+30% Crit DMG');
+    if (idLower === 'kekkai_creation' || descLower.includes('cleanse') || descLower.includes('debuff')) bonusLabels.push('Debuffs Cleansed');
+    const bonusSummary = bonusLabels.length > 0 ? ` & ${bonusLabels.join(', ')}` : '';
+
     logText = bType === 'invincible'
-      ? `🛡️ **${sName}** activated **${skill.name}** (Invincible${skill.id === 'ephemeral_dream_a' || (skill.description || '').toLowerCase().includes('attack') ? ` & +${skill.value || 40}% ATK` : ''})!${quoteLine}`
-      : `💨 **${sName}** activated **${skill.name}** (Evade)!${quoteLine}`;
+      ? `🛡️ **${sName}** activated **${skill.name}** (Invincible${bonusSummary})!${quoteLine}`
+      : `💨 **${sName}** activated **${skill.name}** (Evade${bonusSummary})!${quoteLine}`;
   } else if (skill.effectType === 'guts' || skill.id?.includes('guts') || skill.id?.includes('battle_continuation') || skill.id?.includes('thrice')) {
     const reviveAmt = skill.value || Math.round(combatant.maxHp * 0.20);
     combatant.gutsCount = (combatant.gutsCount || 0) + 1;
@@ -4922,7 +4972,7 @@ async function finishDuel(
   }
 
   // 5. Award victory rewards & sync Master HP
-  const { primaryBondLevelUp, primaryNewBondLevel } = await finalizeDuelRewardsAndSync(winningTeam, defeatedStates, warSession, chanTag, primaryWinner, isFreeBattle);
+  const { primaryBondLevelUp, primaryNewBondLevel, primaryUnlockedBondCe } = await finalizeDuelRewardsAndSync(winningTeam, defeatedStates, warSession, chanTag, primaryWinner, isFreeBattle);
 
   // 6. Build Victory & Final Outcome Embeds
   const victoryQuote = primaryWinner.servant.customQuotes?.victory || primaryWinner.servant.template?.victoryQuote || "A decisive triumph. The Holy Grail draws closer.";
@@ -4945,11 +4995,15 @@ async function finishDuel(
     ? new AttachmentBuilder(victoryCardBuffer, { name: 'victory_dialogue.png' })
     : null;
 
+  const bond10Celebration = primaryUnlockedBondCe
+    ? `\n🎖️ **[MAX BOND 10 REACHED!]** Bestowed Bond Craft Essence: ★4 **${primaryUnlockedBondCe.name}**!\n*Effect:* ${primaryUnlockedBondCe.effectText}\n*(Type \`/ce art ${primaryUnlockedBondCe.name}\` to view high-res card art!)*`
+    : '';
+
   const victoryEmbed = new EmbedBuilder()
     .setTitle('🏆 DUEL VICTORY — VICTORY INVOCATION')
     .setDescription(
       `**${winnerName}** (Master: ${primaryWinner.username}) has triumphed in the Holy Grail duel!\n\n` +
-      `💖 **Bond Synergy:** \`+150 Bond EXP\` & \`+2 Stat Points\` gained for victors!${primaryBondLevelUp ? `\n🎉 **[BOND LEVEL UP!]** **${winnerName}** reached **Bond Lv. ${primaryNewBondLevel}**!` : ''}\n\n` +
+      `💖 **Bond Synergy:** \`+150 Bond EXP\` & \`+2 Stat Points\` gained for victors!${primaryBondLevelUp ? `\n🎉 **[BOND LEVEL UP!]** **${winnerName}** reached **Bond Lv. ${primaryNewBondLevel}**!` : ''}${bond10Celebration}\n\n` +
       `💬 **[VICTORY INVOCATION] ${winnerName}:**\n> ❝ ***${victoryQuote}*** ❞`
     )
     .setColor(0x22c55e);
@@ -5023,6 +5077,7 @@ async function finalizeDuelRewardsAndSync(
 ) {
   let primaryBondLevelUp = false;
   let primaryNewBondLevel = 1;
+  let primaryUnlockedBondCe: any = undefined;
 
   for (const winner of winningTeam) {
     if (winner.isAi) continue;
@@ -5036,6 +5091,12 @@ async function finalizeDuelRewardsAndSync(
         const bondRes = addBondExpToServant(s, 150);
         const updatedS = bondRes.updatedServant;
         updatedS.availableStatPoints = (updatedS.availableStatPoints || 0) + 2;
+
+        const grantResult = checkAndGrantBond10Ce(wMaster, updatedS);
+        if (winner.userId === primaryWinner.userId && grantResult) {
+          primaryUnlockedBondCe = grantResult.ce;
+        }
+
         if (isWinnerSafe) {
           const sMaxHp = (updatedS as any).maxHp || updatedS.template?.baseHp || 50000;
           updatedS.currentHp = sMaxHp;
@@ -5072,6 +5133,7 @@ async function finalizeDuelRewardsAndSync(
       if (sLoser) {
         const loserBondRes = addBondExpToServant(sLoser, 60);
         const updatedLoser = loserBondRes.updatedServant;
+        checkAndGrantBond10Ce(s.master, updatedLoser);
         if (isLoserSafe) {
           const loserMaxHp = (updatedLoser as any).maxHp || updatedLoser.template?.baseHp || 50000;
           updatedLoser.currentHp = loserMaxHp;
@@ -5086,6 +5148,6 @@ async function finalizeDuelRewardsAndSync(
     }
   }
 
-  return { primaryBondLevelUp, primaryNewBondLevel };
+  return { primaryBondLevelUp, primaryNewBondLevel, primaryUnlockedBondCe };
 }
 

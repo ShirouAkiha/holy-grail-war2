@@ -96,6 +96,9 @@ export interface CraftEssence {
   passiveType: 'starting_np' | 'buster_up' | 'arts_up' | 'quick_up' | 'crit_dmg' | 'hp_regen' | string;
   passiveValue: number;
   artworkUrl?: string;
+  isBondCe?: boolean;
+  bondServantId?: string;
+  bondServantName?: string;
 }
 
 export interface MatchupQuoteEntry {
@@ -163,6 +166,7 @@ export interface MasterServantInstance {
   };
   bondLevel: number;
   bondExp?: number;
+  bondCeGranted?: boolean;
   completedBondEvents?: string[];
   unlockedDialogueIds?: string[];
   npLevel?: number;

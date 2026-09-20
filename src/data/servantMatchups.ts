@@ -1103,7 +1103,7 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       tag: "TACTICAL VANGUARD SCRUTINY"
     },
     heracles_berserker: {
-      intro: "Twelve lives of godlike resilience? My Black Lance's Apocrypha Terminus strips away false miracles and revive cheats. Rest now, great hero!",
+      intro: "Twelve lives of godlike resilience? My Black Lance's Apocrypha Terminus strips away defensive barriers and false miracles. Rest now, great hero!",
       retort: "■■■■■■■■ーーーッ！！ (The titan roars in defiance, lunging forward with primordial earth-shattering force!)",
       tag: "ANTI-CHEAT PROTOCOL VS GOD HAND"
     },

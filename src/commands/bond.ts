@@ -28,6 +28,7 @@ import {
 } from '../../lib/engine/bondEvents';
 import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 import { renderVisualNovelCard } from '../canvas/renderer';
+import { checkAndGrantBond10Ce, getBondCraftEssenceForServant } from '../data/craftEssences';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -167,23 +168,29 @@ export function buildBondStatusEmbed(master: any, targetServantId?: string) {
     ? `\n\n💡 *You have **${master.servants.length} contracted Servants**. Use the dropdown below or \`/bond view:roster\` to switch Servants!*`
     : '';
 
+  const isBond10 = bondLvl >= 10;
+  const bondCe = getBondCraftEssenceForServant(targetServant.templateId || sTemplate.id || targetServant.id, servantName);
+  const bond10Line = isBond10
+    ? `• **Bond Level 10:** ✅ **UNLOCKED!** Bestowed Bond Craft Essence: ★4 **${bondCe.name}**\n  *Effect:* ${bondCe.effectText}`
+    : `• **Bond Level 10:** 🔒 Unlocks exclusive Max Bond Craft Essence: **${bondCe.name}**`;
+
   const embed = new EmbedBuilder()
     .setTitle(`🌸 Bond Sanctum | ${servantName} (${servantClass})`)
     .setDescription(
       `${statusBadge}\n` +
       `*Deepen your covenant with ${servantName} through Interludes, Gifts, Conversations, and Battle to unlock voice lines and combat bonuses!*\n\n` +
-      `💖 **BOND LEVEL:** Level \`${bondLvl} / 10\`\n` +
+      `💖 **BOND LEVEL:** Level \`${bondLvl} / 10\` ${isBond10 ? '🎖️ **(MAX BOND)**' : ''}\n` +
       `[${progressBar}] \`${progress.expInCurrentLevel} / ${progress.neededForNextLevel} EXP\` (**${progress.progressPercent}%**)\n\n` +
       `✨ **BOND MILESTONES & PERKS:**\n` +
       `• **Bond Level 1:** Unlocks initial Summoning Quote & basic battle lines.\n` +
       `• **Bond Level 3:** Unlocks Chivalric Trust Interlude & special dialogue.\n` +
       `• **Bond Level 5:** ${bondLvl >= 5 ? '✅ **UNLOCKED!** +10% Command Card Effectiveness & 2nd Class Passive.' : '🔒 Unlocks 2nd Class Passive & +10% Command Card Effectiveness.'}\n` +
-      `• **Bond Level 10:** ${bondLvl >= 10 ? '✅ **UNLOCKED!** Exclusive Max Bond Craft Essence & Master Resonance!' : '🔒 Unlocks Master\'s Heroic Essence & Max Bond Craft Essence.'}\n\n` +
+      `${bond10Line}\n\n` +
       `📖 **BOND INTERLUDES:** ${events.length} Event(s) (${completedEvents.length} Completed)\n` +
       `🎙️ **UNLOCKED VOICE LINES:** ${unlockedQuotes.length} Quote(s)\n` +
       `💎 **SAINT QUARTZ:** \`${master.saintQuartz || 0} SQ\`${multiServantNote}`
     )
-    .setColor(0xec4899)
+    .setColor(isBond10 ? 0xd4af37 : 0xec4899)
     .setFooter({ text: 'Fate Bond Engine • Visual Novel Interludes & Sanctuary' });
 
   if (sTemplate.avatarUrl) {
@@ -203,8 +210,9 @@ export function buildBondActionRow(master: any, targetServantId?: string): Actio
   const usedToday = master.lastSparDay === todayKey ? (master.dailySparCount || 0) : 0;
   const sparsLeft = Math.max(0, MAX_DAILY_SPARS - usedToday);
   const isActive = targetServant.id === master.activeServantId;
+  const isBond10 = (targetServant.bondLevel || 1) >= 10;
 
-  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+  const row1Components: ButtonBuilder[] = [
     new ButtonBuilder()
       .setCustomId(safeCustomId(`btn_talk_servant:${sKey}`))
       .setLabel('Talk to Servant 💬')
@@ -217,7 +225,18 @@ export function buildBondActionRow(master: any, targetServantId?: string): Actio
       .setCustomId(safeCustomId(`vn_gift_menu:${sKey}`))
       .setLabel('Present Gifts 🎁')
       .setStyle(ButtonStyle.Secondary)
-  );
+  ];
+
+  if (isBond10) {
+    row1Components.push(
+      new ButtonBuilder()
+        .setCustomId(safeCustomId(`ce_art_bond:${sKey}`))
+        .setLabel('View Bond CE Art 🎖️')
+        .setStyle(ButtonStyle.Primary)
+    );
+  }
+
+  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(row1Components);
 
   const row2Components: ButtonBuilder[] = [
     new ButtonBuilder()
@@ -549,6 +568,32 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return interaction.editReply({ content: '❌ You do not have any contracted Servants. Use `/summon` first!' });
     }
 
+    if (viewOption === '10' || viewOption === 'max') {
+      targetServant.bondLevel = 10;
+      targetServant.bondExp = 4000;
+      const grant = checkAndGrantBond10Ce(master, targetServant);
+      const sIdx = master.servants.findIndex((s: any) => s.id === targetServant.id);
+      if (sIdx !== -1) master.servants[sIdx] = targetServant;
+      await saveMaster(master);
+
+      const statusEmbed = buildBondStatusEmbed(master, targetServant);
+      const rows = buildBondActionRow(master, targetServant.id);
+      return interaction.editReply({
+        content: `🎖️ **[MAX BOND GRANTED]** **${targetServant.nickname || targetServant.template?.name}** reached **Bond Level 10**!${grant ? `\nBestowed Bond CE: ★4 **${grant.ce.name}**!` : ''}`,
+        embeds: [statusEmbed],
+        components: rows
+      });
+    }
+
+    if (targetServant.bondLevel >= 10) {
+      const grant = checkAndGrantBond10Ce(master, targetServant);
+      if (grant) {
+        const sIdx = master.servants.findIndex((s: any) => s.id === targetServant.id);
+        if (sIdx !== -1) master.servants[sIdx] = targetServant;
+        await saveMaster(master);
+      }
+    }
+
     if (viewOption === 'gift') {
       const giftEmbed = buildBondGiftsEmbed(master, targetServant.id);
       const rows = buildBondGiftsActionRows(master, targetServant.id);
@@ -606,6 +651,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const bondGain = 120;
       const bondRes = addBondExpToServant(targetServant, bondGain);
       const updatedServant = bondRes.updatedServant;
+      const bond10Grant = checkAndGrantBond10Ce(master, updatedServant);
 
       const sIdx = master.servants.findIndex((s: any) => s.id === targetServant.id);
       if (sIdx !== -1) {
@@ -629,6 +675,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'sparring_drill.png' });
       const bondLvlMsg = bondRes.didLevelUp ? `\n🎉 **[BOND LEVEL UP!]** Reached **Bond Lv. ${bondRes.newLevel}**!` : '';
+      const bond10Msg = bond10Grant
+        ? `\n\n🎖️ **[MAX BOND 10 REACHED!]** Bestowed Bond Craft Essence: ★4 **${bond10Grant.ce.name}**!\n*Effect:* ${bond10Grant.ce.effectText}\n*(Type \`/ce art ${bond10Grant.ce.name}\` to view high-res card art!)*`
+        : '';
       const remainingSpars = MAX_DAILY_SPARS - master.dailySparCount;
 
       const sparEmbed = new EmbedBuilder()
@@ -637,14 +686,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           `**${servantName}:**\n> ❝ ***${debrief.responseText}*** ❞\n\n` +
           `💖 **Sparring Rewards:**\n` +
           `• **Bond EXP:** \`+${bondGain} Bond EXP\`\n` +
-          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bondLvlMsg}\n` +
+          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bondLvlMsg}${bond10Msg}\n` +
           `• **Daily Spar Drills:** \`${master.dailySparCount} / ${MAX_DAILY_SPARS} Completed Today\` (${remainingSpars > 0 ? `${remainingSpars} drill(s) left` : 'Daily limit reached'})`
         )
         .setImage('attachment://sparring_drill.png')
         .setColor(0x38bdf8);
 
       const sKey = getServantCompactKey(targetServant, master);
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      const sparRowComponents = [
         new ButtonBuilder()
           .setCustomId(safeCustomId(`vn_spar:${sKey}`))
           .setLabel(remainingSpars > 0 ? `Spar Again ⚔️ (${remainingSpars} left)` : 'Spar Limit Reached ⚔️')
@@ -654,7 +703,18 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
           .setLabel('📊 Bond Sanctum')
           .setStyle(ButtonStyle.Secondary)
-      );
+      ];
+
+      if (updatedServant.bondLevel >= 10) {
+        sparRowComponents.push(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`ce_art_bond:${sKey}`))
+            .setLabel('View Bond CE Art 🎖️')
+            .setStyle(ButtonStyle.Success)
+        );
+      }
+
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(sparRowComponents);
 
       return interaction.editReply({
         embeds: [sparEmbed],
@@ -872,6 +932,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
     else if (btnId.startsWith('vn_choice_complete:')) targetServantId = btnId.split(':')[1];
     else if (btnId.startsWith('btn_talk_servant:')) targetServantId = btnId.split(':')[1];
     else if (btnId.startsWith('vn_set_active:')) targetServantId = btnId.split(':')[1];
+    else if (btnId.startsWith('ce_art_bond:')) targetServantId = btnId.split(':')[1];
     else if (btnId.startsWith('vn_choice:')) {
       const parts = btnId.split(':');
       // Format: vn_choice:servantId:eventId:sceneIdx:choiceId OR legacy vn_choice:eventId:sceneIdx:choiceId
@@ -895,6 +956,27 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
     const sTemplate = targetServant.template || targetServant;
     const servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
     const sKey = getServantCompactKey(targetServant, master);
+
+    if (btnId.startsWith('ce_art_bond')) {
+      const bCe = getBondCraftEssenceForServant(targetServant.templateId || sTemplate.id || targetServant.id, servantName);
+      const artEmbed = new EmbedBuilder()
+        .setTitle(`🎖️ Max Bond 10 Relic: ${bCe.name}`)
+        .setDescription(
+          `★4 **${bCe.name}** • **[BOND 10 RELIC]**\n` +
+          `**Bond Partner:** **${bCe.bondServantName}**\n` +
+          `**Stats:** \`+${bCe.atkBonus || 100} ATK\` / \`+${bCe.hpBonus || 100} HP\`\n\n` +
+          `**Exclusive Bond Passive:**\n${bCe.effectText}\n\n` +
+          `*${bCe.description}*`
+        )
+        .setColor(0xd4af37)
+        .setFooter({ text: 'Awarded upon reaching Bond Level 10' });
+
+      if (bCe.artworkUrl) {
+        artEmbed.setImage(bCe.artworkUrl);
+      }
+
+      return interaction.reply({ embeds: [artEmbed], flags: MessageFlags.Ephemeral });
+    }
 
     if (btnId.startsWith('vn_gift_menu')) {
       await interaction.deferUpdate();
@@ -924,6 +1006,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const reaction = getServantGiftReaction(targetServant, giftId);
       const bondRes = addBondExpToServant(targetServant, gift.bondExp);
       const updatedServant = bondRes.updatedServant;
+      const bond10Grant = checkAndGrantBond10Ce(master, updatedServant);
 
       const sIdx = master.servants.findIndex((s: any) => s.id === targetServant.id);
       if (sIdx !== -1) {
@@ -947,6 +1030,9 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'gift_reaction.png' });
       const bondLvlMsg = bondRes.didLevelUp ? `\n🎉 **[BOND LEVEL UP!]** Reached **Bond Lv. ${bondRes.newLevel}**!` : '';
+      const bond10Msg = bond10Grant
+        ? `\n\n🎖️ **[MAX BOND 10 REACHED!]** Bestowed Bond Craft Essence: ★4 **${bond10Grant.ce.name}**!\n*Effect:* ${bond10Grant.ce.effectText}\n*(Type \`/ce art ${bond10Grant.ce.name}\` to view high-res card art!)*`
+        : '';
 
       const giftResultEmbed = new EmbedBuilder()
         .setTitle(`🎁 Gift Received: ${gift.emoji} ${gift.name}`)
@@ -955,12 +1041,12 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           `💖 **Gift Rewards:**\n` +
           `• **Bond EXP:** \`+${gift.bondExp} Bond EXP\`\n` +
           (gift.sqCost > 0 ? `• **Saint Quartz Spent:** \`-${gift.sqCost} SQ\` (Remaining: 💎 ${master.saintQuartz || 0} SQ)\n` : '') +
-          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bondLvlMsg}`
+          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bondLvlMsg}${bond10Msg}`
         )
         .setImage('attachment://gift_reaction.png')
         .setColor(0x22c55e);
 
-      const giftNavRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      const giftNavRowComponents = [
         new ButtonBuilder()
           .setCustomId(safeCustomId(`vn_gift_menu:${sKey}`))
           .setLabel('Give Another Gift 🎁')
@@ -968,12 +1054,26 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         new ButtonBuilder()
           .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
           .setLabel('📊 Bond Sanctum')
-          .setStyle(ButtonStyle.Secondary),
+          .setStyle(ButtonStyle.Secondary)
+      ];
+
+      if (updatedServant.bondLevel >= 10) {
+        giftNavRowComponents.push(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`ce_art_bond:${sKey}`))
+            .setLabel('View Bond CE Art 🎖️')
+            .setStyle(ButtonStyle.Success)
+        );
+      }
+
+      giftNavRowComponents.push(
         new ButtonBuilder()
           .setCustomId('vn_view_roster')
           .setLabel('Bond Roster 👥')
           .setStyle(ButtonStyle.Secondary)
       );
+
+      const giftNavRow = new ActionRowBuilder<ButtonBuilder>().addComponents(giftNavRowComponents);
 
       return interaction.editReply({
         embeds: [giftResultEmbed],
@@ -1031,6 +1131,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const bondGain = 120;
       const bondRes = addBondExpToServant(targetServant, bondGain);
       const updatedServant = bondRes.updatedServant;
+      const bond10Grant = checkAndGrantBond10Ce(master, updatedServant);
 
       const sIdx = master.servants.findIndex((s: any) => s.id === targetServant.id);
       if (sIdx !== -1) {
@@ -1054,6 +1155,9 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'sparring_drill.png' });
       const bondLvlMsg = bondRes.didLevelUp ? `\n🎉 **[BOND LEVEL UP!]** Reached **Bond Lv. ${bondRes.newLevel}**!` : '';
+      const bond10Msg = bond10Grant
+        ? `\n\n🎖️ **[MAX BOND 10 REACHED!]** Bestowed Bond Craft Essence: ★4 **${bond10Grant.ce.name}**!\n*Effect:* ${bond10Grant.ce.effectText}\n*(Type \`/ce art ${bond10Grant.ce.name}\` to view high-res card art!)*`
+        : '';
       const remainingSpars = MAX_DAILY_SPARS - master.dailySparCount;
 
       const sparEmbed = new EmbedBuilder()
@@ -1062,13 +1166,13 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           `**${servantName}:**\n> ❝ ***${debrief.responseText}*** ❞\n\n` +
           `💖 **Sparring Rewards:**\n` +
           `• **Bond EXP:** \`+${bondGain} Bond EXP\`\n` +
-          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bondLvlMsg}\n` +
+          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bondLvlMsg}${bond10Msg}\n` +
           `• **Daily Spar Drills:** \`${master.dailySparCount} / ${MAX_DAILY_SPARS} Completed Today\` (${remainingSpars > 0 ? `${remainingSpars} drill(s) left` : 'Daily limit reached'})`
         )
         .setImage('attachment://sparring_drill.png')
         .setColor(0x38bdf8);
 
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      const sparRowComponents = [
         new ButtonBuilder()
           .setCustomId(safeCustomId(`vn_spar:${sKey}`))
           .setLabel(remainingSpars > 0 ? `Spar Again ⚔️ (${remainingSpars} left)` : 'Spar Limit Reached ⚔️')
@@ -1078,7 +1182,18 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
           .setLabel('📊 Bond Sanctum')
           .setStyle(ButtonStyle.Secondary)
-      );
+      ];
+
+      if (updatedServant.bondLevel >= 10) {
+        sparRowComponents.push(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`ce_art_bond:${sKey}`))
+            .setLabel('View Bond CE Art 🎖️')
+            .setStyle(ButtonStyle.Success)
+        );
+      }
+
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(sparRowComponents);
 
       return interaction.editReply({
         embeds: [sparEmbed],
@@ -1250,9 +1365,11 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         if (!updatedServant.completedBondEvents) updatedServant.completedBondEvents = [];
         updatedServant.completedBondEvents.push(event.id);
 
+        let bond10Grant: any = undefined;
         if (expGain > 0) {
           const res = addBondExpToServant(updatedServant, expGain);
           updatedServant = res.updatedServant;
+          bond10Grant = checkAndGrantBond10Ce(master, updatedServant);
         }
 
         if (sqReward > 0) {
@@ -1283,14 +1400,18 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel_complete.png' });
 
+      const bond10RewardText = (updatedServant.bondLevel >= 10)
+        ? `\n\n🎖️ **[MAX BOND 10 REACHED!]** Bestowed Bond Craft Essence: ★4 **${getBondCraftEssenceForServant(updatedServant.templateId || sTemplate.id || updatedServant.id, servantName).name}**!\n*(Type \`/ce art\` or click the button below to view high-res card art!)*`
+        : '';
+
       const rewardsText = isFirstCompletion
         ? `🎉 **REWARDS EARNED:**\n` +
           `• **Bond EXP:** +${expGain} EXP ✨\n` +
           `• **Saint Quartz:** +💎 ${sqReward} SQ\n` +
-          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\``
+          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bond10RewardText}`
         : `ℹ️ **REPLAY MODE:**\n` +
           `• *Rewards already claimed for this Interlude.*\n` +
-          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\``;
+          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bond10RewardText}`;
 
       const nextChapterNotice = nextEvent
         ? `\n\n✨ **New Story Chapter Unlocked!** *${nextEvent.title}* (Bond Lv. ${nextEvent.requiredBondLevel}) is ready to play!`
@@ -1313,6 +1434,14 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           new ButtonBuilder()
             .setCustomId(safeCustomId(`vn_start_specific:${sKey}:${nextEvent.id}`))
             .setLabel(`📖 Play Chapter ${nextEvent.requiredBondLevel}: ${nextEvent.title.length > 25 ? nextEvent.title.slice(0, 22) + '...' : nextEvent.title} ➔`)
+            .setStyle(ButtonStyle.Success)
+        );
+      }
+      if (updatedServant.bondLevel >= 10) {
+        completionButtons.push(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`ce_art_bond:${sKey}`))
+            .setLabel('View Bond CE Art 🎖️')
             .setStyle(ButtonStyle.Success)
         );
       }
@@ -1439,9 +1568,11 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         if (!updatedServant.completedBondEvents) updatedServant.completedBondEvents = [];
         updatedServant.completedBondEvents.push(event.id);
 
+        let bond10Grant: any = undefined;
         if (expGain > 0) {
           const res = addBondExpToServant(updatedServant, expGain);
           updatedServant = res.updatedServant;
+          bond10Grant = checkAndGrantBond10Ce(master, updatedServant);
         }
 
         if (sqReward > 0) {
@@ -1476,14 +1607,18 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel_reaction.png' });
 
+      const bond10RewardText = (updatedServant.bondLevel >= 10)
+        ? `\n\n🎖️ **[MAX BOND 10 REACHED!]** Bestowed Bond Craft Essence: ★4 **${getBondCraftEssenceForServant(updatedServant.templateId || sTemplate.id || updatedServant.id, servantName).name}**!\n*(Type \`/ce art\` or click the button below to view high-res card art!)*`
+        : '';
+
       const rewardsText = isFirstCompletion
         ? `🎉 **REWARDS EARNED:**\n` +
           `• **Bond EXP:** +${expGain} EXP ${reactionEmoji}\n` +
           `• **Saint Quartz:** +💎 ${sqReward} SQ\n` +
-          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\``
+          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bond10RewardText}`
         : `ℹ️ **REPLAY MODE:**\n` +
           `• *Rewards already claimed for this Interlude.*\n` +
-          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\``;
+          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bond10RewardText}`;
 
       const nextChapterNotice = nextEvent
         ? `\n\n✨ **New Story Chapter Unlocked!** *${nextEvent.title}* (Bond Lv. ${nextEvent.requiredBondLevel}) is ready to play!`
@@ -1506,6 +1641,14 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           new ButtonBuilder()
             .setCustomId(safeCustomId(`vn_start_specific:${sKey}:${nextEvent.id}`))
             .setLabel(`📖 Play Chapter ${nextEvent.requiredBondLevel}: ${nextEvent.title.length > 25 ? nextEvent.title.slice(0, 22) + '...' : nextEvent.title} ➔`)
+            .setStyle(ButtonStyle.Success)
+        );
+      }
+      if (updatedServant.bondLevel >= 10) {
+        completionButtons.push(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`ce_art_bond:${sKey}`))
+            .setLabel('View Bond CE Art 🎖️')
             .setStyle(ButtonStyle.Success)
         );
       }
@@ -1576,9 +1719,11 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           if (!updatedServant.completedBondEvents) updatedServant.completedBondEvents = [];
           updatedServant.completedBondEvents.push(event.id);
 
+          let bond10Grant: any = undefined;
           if (expGain > 0) {
             const res = addBondExpToServant(updatedServant, expGain);
             updatedServant = res.updatedServant;
+            bond10Grant = checkAndGrantBond10Ce(master, updatedServant);
           }
 
           if (sqReward > 0) {
@@ -1609,14 +1754,18 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
         const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel_complete.png' });
 
+        const bond10RewardText = (updatedServant.bondLevel >= 10)
+          ? `\n\n🎖️ **[MAX BOND 10 REACHED!]** Bestowed Bond Craft Essence: ★4 **${getBondCraftEssenceForServant(updatedServant.templateId || sTemplate.id || updatedServant.id, servantName).name}**!\n*(Type \`/ce art\` or click the button below to view high-res card art!)*`
+          : '';
+
         const rewardsText = isFirstCompletion
           ? `🎉 **REWARDS EARNED:**\n` +
             `• **Bond EXP:** +${expGain} EXP ✨\n` +
             `• **Saint Quartz:** +💎 ${sqReward} SQ\n` +
-            `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\``
+            `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bond10RewardText}`
           : `ℹ️ **REPLAY MODE:**\n` +
             `• *Rewards already claimed for this Interlude.*\n` +
-            `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\``;
+            `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bond10RewardText}`;
 
         const nextChapterNotice = nextEvent
           ? `\n\n✨ **New Story Chapter Unlocked!** *${nextEvent.title}* (Bond Lv. ${nextEvent.requiredBondLevel}) is ready to play!`
@@ -1639,6 +1788,14 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
             new ButtonBuilder()
               .setCustomId(safeCustomId(`vn_start_specific:${sKey}:${nextEvent.id}`))
               .setLabel(`📖 Play Chapter ${nextEvent.requiredBondLevel}: ${nextEvent.title.length > 25 ? nextEvent.title.slice(0, 22) + '...' : nextEvent.title} ➔`)
+              .setStyle(ButtonStyle.Success)
+          );
+        }
+        if (updatedServant.bondLevel >= 10) {
+          completionButtons.push(
+            new ButtonBuilder()
+              .setCustomId(safeCustomId(`ce_art_bond:${sKey}`))
+              .setLabel('View Bond CE Art 🎖️')
               .setStyle(ButtonStyle.Success)
           );
         }

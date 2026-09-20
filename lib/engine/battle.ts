@@ -281,12 +281,14 @@ export function applyCombatantSkill(
 
   // Handle Lucia Lyozes personal skills
   if (skill.id.includes('prescient_foresight')) {
-    actor.isInvincible = true;
+    actor.isEvading = true;
     actor.activeBuffs.push({
-      name: 'Prescient Foresight (Invincibility 2T)',
-      type: 'invincible',
+      name: 'Prescient Foresight (Evade 1 Time)',
+      type: 'evade',
       value: 100,
-      remainingTurns: 2
+      remainingTurns: 3,
+      remainingHits: 1,
+      isHitCount: true
     });
     actor.activeBuffs.push({
       name: 'Prescient Foresight (Crit Star Gather)',
@@ -303,7 +305,7 @@ export function applyCombatantSkill(
     actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
     return {
       success: true,
-      log: `⚡ **${actor.name}** activated **${skill.name}**! Granted self Invincibility (2T), +50% Star Gather, and +30% Crit Damage!${quoteLine}`,
+      log: `⚡ **${actor.name}** activated **${skill.name}**! Granted self Evade (1 time), +50% Star Gather, and +30% Crit Damage!${quoteLine}`,
       quote: skillQuote,
       skillName: skill.name
     };
@@ -395,15 +397,31 @@ export function applyCombatantSkill(
       logText = `⚔️ **${actor.name}** activated **${skill.name}**!${quoteLine}`;
       break;
     }
-    case 'buff_def':
+    case 'buff_def': {
+      const descLower = (skill.description || '').toLowerCase();
+      const idLower = (skill.id || '').toLowerCase();
       actor.activeBuffs.push({
         name: skill.name,
         type: 'buff_def',
         value: skill.value || 30,
         remainingTurns: skill.duration || 2
       });
+      if (descLower.includes('invincible') || descLower.includes('invulnerability') || idLower === 'kekkai_creation') {
+        actor.isInvincible = true;
+        const invDuration = descLower.includes('2 turns') || descLower.includes('2t') ? 2 : 1;
+        actor.activeBuffs.push({
+          name: `${skill.name} (Invincible)`,
+          type: 'invincible',
+          value: 100,
+          remainingTurns: invDuration
+        });
+      }
+      if (descLower.includes('cleanse') || descLower.includes('debuff') || idLower === 'kekkai_creation') {
+        actor.activeBuffs = actor.activeBuffs.filter(b => !b.type.startsWith('debuff'));
+      }
       logText = `🛡️ **${actor.name}** activated **${skill.name}**!${quoteLine}`;
       break;
+    }
     case 'heal': {
       const healAmt = skill.value || Math.round(actor.maxHp * 0.25);
       actor.currentHp = Math.min(actor.maxHp, actor.currentHp + healAmt);
@@ -428,7 +446,6 @@ export function applyCombatantSkill(
       break;
     }
     case 'evade':
-    case 'invincible':
       actor.isEvading = true;
       actor.activeBuffs.push({
         name: skill.name,
@@ -438,6 +455,34 @@ export function applyCombatantSkill(
       });
       logText = `💨 **${actor.name}** activated **${skill.name}**!${quoteLine}`;
       break;
+    case 'invincible': {
+      actor.isInvincible = true;
+      const descLower = (skill.description || '').toLowerCase();
+      const idLower = (skill.id || '').toLowerCase();
+      const invDuration = descLower.includes('2 turns') || descLower.includes('2t')
+        ? 2
+        : (descLower.includes('1 turn') || descLower.includes('1t') || idLower === 'kekkai_creation' ? 1 : (skill.duration || 1));
+
+      actor.activeBuffs.push({
+        name: skill.name,
+        type: 'invincible',
+        value: 100,
+        remainingTurns: invDuration
+      });
+      if (idLower === 'kekkai_creation' || descLower.includes('defense') || descLower.includes('increases def')) {
+        actor.activeBuffs.push({
+          name: `${skill.name} (DEF Up)`,
+          type: 'buff_def',
+          value: skill.value || 30,
+          remainingTurns: skill.duration || 3
+        });
+      }
+      if (idLower === 'kekkai_creation' || descLower.includes('cleanse') || descLower.includes('debuff')) {
+        actor.activeBuffs = actor.activeBuffs.filter(b => !b.type.startsWith('debuff'));
+      }
+      logText = `🛡️ **${actor.name}** activated **${skill.name}** (Invincible)!${quoteLine}`;
+      break;
+    }
     case 'guts': {
       const reviveVal = skill.value || Math.round(actor.maxHp * 0.20);
       actor.activeBuffs.push({
@@ -809,7 +854,7 @@ export function executeNoblePhantasmLogic(
     const isApocryphaTerminus = np.name.includes('Apocrypha Terminus');
     if (isApocryphaTerminus) {
       // Anti-Cheat Protocol (Before Damage):
-      // Pierce all defenses, remove enemy defensive buffs and guts/revive states
+      // Pierce defense and ignore invincibility, remove enemy defensive buffs (does NOT bypass or remove Guts)
       actor.activeBuffs.push({
         name: 'Anti-Cheat: Ignore Invincible',
         type: 'ignore_invincible',
@@ -822,12 +867,11 @@ export function executeNoblePhantasmLogic(
           b.type !== 'evade' && 
           b.type !== 'buff_def' && 
           b.type !== 'damage_cut' && 
-          !/guts|revive|invincible|evade|def|protection/i.test(b.name)
+          !/invincible|evade|def|protection/i.test(b.name)
         );
       }
       target.isInvincible = false;
       target.isEvading = false;
-      if ('gutsCount' in target) (target as any).gutsCount = 0;
     }
 
     const baseDamage = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardDamageModifier * scopeModifier * overchargeDamageBonus * classMult);
@@ -1271,14 +1315,30 @@ export function executeBattleTurn(
             }
             break;
           }
-          case 'buff_def':
+          case 'buff_def': {
             actor.activeBuffs.push({
               name: skill.name,
               type: 'buff_def',
               value: skill.value,
               remainingTurns: skill.duration
             });
+            const defDesc = (skill.description || '').toLowerCase();
+            const defId = (skill.id || '').toLowerCase();
+            if (defDesc.includes('invincible') || defDesc.includes('invulnerability') || defId === 'kekkai_creation') {
+              actor.isInvincible = true;
+              const invDuration = defDesc.includes('2 turns') || defDesc.includes('2t') ? 2 : 1;
+              actor.activeBuffs.push({
+                name: `${skill.name} (Invincible)`,
+                type: 'invincible',
+                value: 100,
+                remainingTurns: invDuration
+              });
+            }
+            if (defDesc.includes('cleanse') || defDesc.includes('debuff') || defId === 'kekkai_creation') {
+              actor.activeBuffs = actor.activeBuffs.filter(b => !b.type.startsWith('debuff'));
+            }
             break;
+          }
           case 'heal':
             actor.currentHp = Math.min(actor.maxHp, actor.currentHp + skill.value);
             {
@@ -1369,15 +1429,21 @@ export function executeBattleTurn(
               actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
             }
             break;
-          case 'invincible':
+          case 'invincible': {
             actor.isInvincible = true;
+            const invDesc = (skill.description || '').toLowerCase();
+            const invId = (skill.id || '').toLowerCase();
+            const invDuration = invDesc.includes('2 turns') || invDesc.includes('2t')
+              ? 2
+              : (invDesc.includes('1 turn') || invDesc.includes('1t') || invId === 'kekkai_creation' ? 1 : (skill.duration || 1));
+
             actor.activeBuffs.push({
               name: skill.name || 'Invincible',
               type: 'invincible',
               value: 100,
-              remainingTurns: skill.duration || 1
+              remainingTurns: invDuration
             });
-            if (skill.id === 'ephemeral_dream_a' || (skill.description || '').toLowerCase().includes('attack')) {
+            if (skill.id === 'ephemeral_dream_a' || (invDesc.includes('attack') && !invDesc.includes('attacks'))) {
               actor.activeBuffs.push({
                 name: `${skill.name} (ATK Up)`,
                 type: 'buff_atk',
@@ -1385,7 +1451,19 @@ export function executeBattleTurn(
                 remainingTurns: skill.duration || 1
               });
             }
+            if (invId === 'kekkai_creation' || invDesc.includes('defense') || invDesc.includes('increases def')) {
+              actor.activeBuffs.push({
+                name: `${skill.name} (DEF Up)`,
+                type: 'buff_def',
+                value: skill.value || 30,
+                remainingTurns: skill.duration || 3
+              });
+            }
+            if (invId === 'kekkai_creation' || invDesc.includes('cleanse') || invDesc.includes('debuff')) {
+              actor.activeBuffs = actor.activeBuffs.filter(b => !b.type.startsWith('debuff'));
+            }
             break;
+          }
           case 'guts': {
             const reviveVal = skill.value || Math.round(actor.maxHp * 0.20);
             actor.activeBuffs.push({

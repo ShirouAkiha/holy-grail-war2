@@ -340,6 +340,418 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
   }
 ];
 
+// ============================================================================
+// CANONICAL BOND CRAFT ESSENCES (Awarded automatically upon reaching Bond 10)
+// ============================================================================
+export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
+  artoria_pendragon: {
+    id: 'ce_bond_artoria_pendragon',
+    name: 'Star of Artoria',
+    rarity: 4,
+    description: 'The crown and sapphire mantle worn by the King of Knights when the oath of Camelot was sealed. Gazing upon it, the King remembers the Master who fought beside her to the very end.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to Artoria Pendragon: Increases party Attack by 15% and Noble Phantasm Damage by 20%.',
+    passiveType: 'buster_up',
+    passiveValue: 20,
+    artworkUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=600&auto=format&fit=crop&q=80',
+    isBondCe: true,
+    bondServantId: 'artoria_pendragon',
+    bondServantName: 'Artoria Pendragon'
+  },
+  heracles_berserker: {
+    id: 'ce_bond_heracles_berserker',
+    name: 'Castle of Snow',
+    rarity: 4,
+    description: 'An unmelting castle of white snow nestled in the Einzbern forest. Even if broken a thousand times, the great hero rises again to defend his Master without fail.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to Heracles: Grants Guts to self (revives with 500 HP, 3 times).',
+    passiveType: 'guts',
+    passiveValue: 3,
+    artworkUrl: 'https://images.unsplash.com/photo-1517816743773-6e0fd518b4a6?w=600&auto=format&fit=crop&q=80',
+    isBondCe: true,
+    bondServantId: 'heracles_berserker',
+    bondServantName: 'Heracles'
+  },
+  gilgamesh_archer: {
+    id: 'ce_bond_gilgamesh_archer',
+    name: "The King's Law (Bab-ilu)",
+    rarity: 4,
+    description: "The golden key that unlocks the Vault of Babylon. Only a Master who has earned the King of Heroes' genuine esteem may behold its sacred gleam.",
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to Gilgamesh: Increases Noble Phantasm Damage by 30% and Critical Damage by 20%.',
+    passiveType: 'crit_dmg',
+    passiveValue: 20,
+    artworkUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
+    isBondCe: true,
+    bondServantId: 'gilgamesh_archer',
+    bondServantName: 'Gilgamesh'
+  },
+  scathach_lancer: {
+    id: 'ce_bond_scathach_lancer',
+    name: 'Gate of Skye',
+    rarity: 4,
+    description: 'The weathered stone threshold of Dún Scáith overlooking the misty Celtic sea. For centuries she waited in the Land of Shadows, until a Master crossed the threshold into her heart.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to Scáthach: Increases Quick Card effectiveness by 15% and Critical Damage by 25%.',
+    passiveType: 'quick_up',
+    passiveValue: 15,
+    artworkUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80',
+    isBondCe: true,
+    bondServantId: 'scathach_lancer',
+    bondServantName: 'Scáthach'
+  },
+  jeanne_darc_ruler: {
+    id: 'ce_bond_jeanne_darc_ruler',
+    name: "Luminosité Eternelle: Maiden's Standard",
+    rarity: 4,
+    description: 'The consecrated fleur-de-lis banner carried through flame and battle. Held aloft not to conquer, but to shield every soul marching under her righteous prayer.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: "When equipped to Jeanne d'Arc: Increases party Defense by 15% and recovers 500 HP each turn.",
+    passiveType: 'hp_regen',
+    passiveValue: 500,
+    artworkUrl: 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=600&auto=format&fit=crop&q=80',
+    isBondCe: true,
+    bondServantId: 'jeanne_darc_ruler',
+    bondServantName: "Jeanne d'Arc"
+  },
+  jeanne_alter: {
+    id: 'ce_bond_jeanne_alter',
+    name: "Cursed Dragon's Roar",
+    rarity: 4,
+    description: 'The ragged black standard steeped in vengeful dragonfire. Born of wrath and hatred, yet fiercely bound to the one Master who looked into her abyss and smiled.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: "When equipped to Jeanne d'Arc (Alter): Increases Buster Card effectiveness by 20% and Critical Damage by 25%.",
+    passiveType: 'buster_up',
+    passiveValue: 20,
+    artworkUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80',
+    isBondCe: true,
+    bondServantId: 'jeanne_alter',
+    bondServantName: "Jeanne d'Arc (Alter)"
+  },
+  mhx_alter: {
+    id: 'ce_bond_mhx_alter',
+    name: 'Darkness-Infused Anpan',
+    rarity: 4,
+    description: 'A confectionery snack filled with dark matter paste from the servant universe, secretly split in two and shared with Master late at night.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to Mysterious Heroine X Alter: Increases Quick & Buster effectiveness by 15% and Critical Damage by 20%.',
+    passiveType: 'quick_up',
+    passiveValue: 15,
+    artworkUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&auto=format&fit=crop&q=80',
+    isBondCe: true,
+    bondServantId: 'mhx_alter',
+    bondServantName: 'Mysterious Heroine X Alter'
+  },
+  artoria_pendragon_alter: {
+    id: 'ce_bond_artoria_pendragon_alter',
+    name: "Dragon's Memory",
+    rarity: 4,
+    description: 'An obsidian dragon scale forged into an emblem of tyrannical majesty. It hums with merciless crimson mana, yet stays warm against Master\'s chest.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to Artoria Alter: Increases Buster Card effectiveness by 20% and increases NP Gain by 15%.',
+    passiveType: 'buster_up',
+    passiveValue: 20,
+    artworkUrl: 'https://images.unsplash.com/photo-1514539079130-25950c84af65?w=600&auto=format&fit=crop&q=80',
+    isBondCe: true,
+    bondServantId: 'artoria_pendragon_alter',
+    bondServantName: 'Artoria Pendragon (Alter)'
+  },
+  nero_claudius_saber: {
+    id: 'ce_bond_nero_claudius_saber',
+    name: "Golden Maiden's Laurel",
+    rarity: 4,
+    description: 'A crown of golden laurel leaves plucked from the stage of Domus Aurea. Fashioned solely for the audience member whose applause she treasures above all Rome.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to Nero Claudius: Increases Arts Card effectiveness by 15% and restores 400 HP each turn.',
+    passiveType: 'arts_up',
+    passiveValue: 15,
+    artworkUrl: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=600&auto=format&fit=crop&q=80',
+    isBondCe: true,
+    bondServantId: 'nero_claudius_saber',
+    bondServantName: 'Nero Claudius'
+  },
+  emiya_archer: {
+    id: 'ce_bond_emiya_archer',
+    name: 'Faded Wrought Iron',
+    rarity: 4,
+    description: 'A tattered red mantle draped over Kanshou & Bakuya upon a hill of countless blades. A life spent as an ally of justice, finally finding peace in the bond with his Master.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to EMIYA: Increases Arts & Buster Card effectiveness by 15% and Critical Damage by 20%.',
+    passiveType: 'arts_up',
+    passiveValue: 15,
+    artworkUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&auto=format&fit=crop&q=80',
+    isBondCe: true,
+    bondServantId: 'emiya_archer',
+    bondServantName: 'EMIYA'
+  },
+  cu_chulainn_lancer: {
+    id: 'ce_bond_cu_chulainn_lancer',
+    name: 'Red Mead of Ulster',
+    rarity: 4,
+    description: 'An ancient carved horn filled with the crimson wine of Dun Scaith and Ulster. Poured only for brothers-in-arms after surviving impossible battles together.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to Cú Chulainn: Grants Guts to self (revives with 25% HP, 1 time) and increases Quick Card effectiveness by 15%.',
+    passiveType: 'guts',
+    passiveValue: 1,
+    artworkUrl: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=600&auto=format&fit=crop&q=80',
+    isBondCe: true,
+    bondServantId: 'cu_chulainn_lancer',
+    bondServantName: 'Cú Chulainn'
+  },
+  karna_lancer: {
+    id: 'ce_bond_karna_lancer',
+    name: "Kavacha and Kundala's Radiance",
+    rarity: 4,
+    description: 'The celestial golden earrings and armor gifted by the Sun God Surya, glowing with the boundless compassion of the Hero of Charity.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to Karna: Increases Buster Card effectiveness by 20% and Noble Phantasm Damage by 20%.',
+    passiveType: 'buster_up',
+    passiveValue: 20,
+    artworkUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80',
+    isBondCe: true,
+    bondServantId: 'karna_lancer',
+    bondServantName: 'Karna'
+  },
+  adiosa_dragon_envoy: {
+    id: 'ce_bond_adiosa_dragon_envoy',
+    name: 'Cosmic Dragon Fang',
+    rarity: 4,
+    description: 'A celestial fang shed by the Primordial Dragon across timelines. Pulsing with cosmic resonance, it binds Master and Envoy as eternal partners against universal entropy.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to Adiosa: Increases Buster Card effectiveness by 20% and generates 10 Critical Stars each turn.',
+    passiveType: 'buster_up',
+    passiveValue: 20,
+    artworkUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
+    isBondCe: true,
+    bondServantId: 'adiosa_dragon_envoy',
+    bondServantName: 'Adiosa'
+  },
+  aoko_aozaki: {
+    id: 'ce_bond_aoko_aozaki',
+    name: 'Magic Blueprint: The Fifth',
+    rarity: 4,
+    description: 'A worn leather journal filled with the forbidden formulas of the Fifth Magic, wrapped with a scarlet hair ribbon given to Master.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to Aoko Aozaki: Increases Arts & Buster effectiveness by 15% and starts battle with 30% NP Gauge.',
+    passiveType: 'starting_np',
+    passiveValue: 30,
+    artworkUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&auto=format&fit=crop&q=80',
+    isBondCe: true,
+    bondServantId: 'aoko_aozaki',
+    bondServantName: 'Aoko Aozaki'
+  },
+  amamiya_no_chihaya_tenkohime: {
+    id: 'ce_bond_amamiya_no_chihaya_tenkohime',
+    name: "Tenko's Divine Mirror (Yata no Tenko)",
+    rarity: 4,
+    description: 'A sacred bronze mirror framed by golden fox tails and Shinto purification shimenawa. Reflects the pure, unbroken bond between the Heavenly Fox and her beloved Master.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to Tenkohime: Increases Arts Card effectiveness by 20% and gains 10% NP Gauge each turn.',
+    passiveType: 'arts_up',
+    passiveValue: 20,
+    artworkUrl: 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=600&auto=format&fit=crop&q=80',
+    isBondCe: true,
+    bondServantId: 'amamiya_no_chihaya_tenkohime',
+    bondServantName: 'Amamiya no Chihaya (Tenkohime)'
+  },
+  lucia_lyozes: {
+    id: 'ce_bond_lucia_lyozes',
+    name: 'The Closed Door Insignia',
+    rarity: 4,
+    description: 'The Vanguard crest of Lyozes forged from black iron, etched with five concentric rings of prescient foresight. Given only to the commander she trusts to stand beside her beyond all Calamities.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to Lucia Lyozes: Increases Critical Damage by 25% and Critical Star Gather Rate by 30%.',
+    passiveType: 'crit_dmg',
+    passiveValue: 25,
+    artworkUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+    isBondCe: true,
+    bondServantId: 'lucia_lyozes',
+    bondServantName: 'Lucia Lyozes'
+  }
+};
+
+/**
+ * Retrieve the Bond Craft Essence corresponding to a Servant.
+ * If canonical, returns the curated Bond CE.
+ * For custom or unmapped servants, dynamically generates an authentic Bond CE.
+ */
+export function getBondCraftEssenceForServant(
+  servantIdentifier: string,
+  servantName?: string,
+  customArt?: string
+): CraftEssence {
+  const normId = (servantIdentifier || '').toLowerCase().trim();
+  
+  // 1. Direct match by templateId
+  if (BOND_CRAFT_ESSENCES[normId]) {
+    return BOND_CRAFT_ESSENCES[normId];
+  }
+
+  // 2. Fuzzy match against registered bond CEs
+  for (const [key, ce] of Object.entries(BOND_CRAFT_ESSENCES)) {
+    if (
+      normId.includes(key) ||
+      key.includes(normId) ||
+      (servantName && (ce.bondServantName?.toLowerCase().includes(servantName.toLowerCase()) || servantName.toLowerCase().includes(key)))
+    ) {
+      return ce;
+    }
+  }
+
+  // 3. Procedurally generate custom Bond CE for custom/community servants
+  const cleanName = servantName || servantIdentifier || 'Heroic Spirit';
+  const cleanId = normId.replace(/[^a-z0-9_]/g, '_') || 'custom';
+  
+  return {
+    id: `ce_bond_${cleanId}`,
+    name: `The Hero's Bond: ${cleanName}`,
+    rarity: 4,
+    description: `A sacred, untarnished relic crystallizing the absolute covenant forged between Master and ${cleanName} through ten tiers of trials.`,
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: `When equipped to ${cleanName}: Increases ATK by 15%, DEF by 15%, and starts battle with 20% NP Gauge.`,
+    passiveType: 'buster_up',
+    passiveValue: 15,
+    artworkUrl: customArt || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
+    isBondCe: true,
+    bondServantId: normId,
+    bondServantName: cleanName
+  };
+}
+
+/**
+ * Returns all predefined canonical Bond Craft Essences
+ */
+export function getAllBondCraftEssences(): CraftEssence[] {
+  return Object.values(BOND_CRAFT_ESSENCES);
+}
+
+/**
+ * Checks if a servant has achieved Bond Level 10 and automatically awards their Bond Craft Essence.
+ * Safe and idempotent: will not double-grant.
+ */
+export function checkAndGrantBond10Ce(
+  master: any,
+  servant: any
+): { granted: boolean; ce: CraftEssence; message: string } | null {
+  if (!master || !servant) return null;
+  const bondLevel = servant.bondLevel || 1;
+  if (bondLevel < 10) return null;
+
+  const servantId = servant.templateId || servant.template?.id || servant.id;
+  const servantName = servant.nickname || servant.template?.name || servant.name || 'Heroic Spirit';
+  const servantArt = servant.cardArtUrl || servant.avatarUrl || servant.template?.cardArtUrl;
+  const bondCe = getBondCraftEssenceForServant(servantId, servantName, servantArt);
+
+  if (!master.craftEssences) {
+    master.craftEssences = [];
+  }
+
+  // Check if Master already has this Bond CE in inventory or marked on servant
+  const alreadyInInventory = master.craftEssences.some(
+    (c: any) => c && (c.id === bondCe.id || (c.isBondCe && (c.bondServantId === servantId || c.name === bondCe.name)))
+  );
+
+  if (alreadyInInventory && servant.bondCeGranted) {
+    return null;
+  }
+
+  // Grant the Bond CE to the master's vault
+  servant.bondCeGranted = true;
+  if (!alreadyInInventory) {
+    master.craftEssences.push({
+      ...bondCe,
+      id: bondCe.id
+    });
+  }
+
+  const celebrationMsg = 
+    `🎖️ **MAX BOND 10 ATTAINED — BOND CRAFT ESSENCE UNLOCKED!**\n\n` +
+    `Through unshakeable devotion and countless shared battles across Fuyuki City, **${servantName}** has reached **Bond Level 10 (MAX BOND)**!\n\n` +
+    `As eternal testament to your unbroken covenant, you have been awarded their exclusive Bond Relic:\n` +
+    `★4 **${bondCe.name}**\n` +
+    `*${bondCe.description}*\n\n` +
+    `**Special Bond Effect:** ${bondCe.effectText}\n` +
+    `*(Stats: +${bondCe.atkBonus} ATK / +${bondCe.hpBonus} HP)*\n\n` +
+    `💡 *This Craft Essence has been added to your inventory! Equip it using \`/inventory\` or \`/equip\`.*`;
+
+  return {
+    granted: true,
+    ce: bondCe,
+    message: celebrationMsg
+  };
+}
+
+// Append all Bond CEs into the global database so they are recognized across the app
+CRAFT_ESSENCE_DATABASE.push(...Object.values(BOND_CRAFT_ESSENCES));
+
 export const CE_GACHA_BANNERS: GachaBanner[] = [
   {
     id: 'ce_banner_fuyuki_relics',

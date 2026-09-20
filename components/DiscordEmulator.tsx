@@ -39,7 +39,7 @@ import {
 } from '../lib/engine/customization';
 import { executeCraftEssenceGachaRoll } from '../lib/engine/ceGacha';
 import { getBondExpProgress, getBondEventsForServant, addBondExpToServant, getUnlockedDialogueLinesForServant, selectActiveInterludeForServant } from '../lib/engine/bondEvents';
-import { CRAFT_ESSENCE_DATABASE } from '../lib/data/craftEssences';
+import { CRAFT_ESSENCE_DATABASE, BOND_CRAFT_ESSENCES, getBondCraftEssenceForServant, checkAndGrantBond10Ce } from '../lib/data/craftEssences';
 import MASTERS_DATABASE from '../data/masters.json';
 import {
   renderServantProfileCard,
@@ -2314,6 +2314,63 @@ export default function DiscordEmulator({
     }
 
     // ----------------------------------------------------
+    // COMMAND 2.79: /ce, /ce art, /ce bond, /ce list
+    // ----------------------------------------------------
+    if (trimmed.startsWith('/ce ') || trimmed === '/ce' || trimmed.startsWith('/ceart') || trimmed.startsWith('/bondce')) {
+      const rest = trimmed.replace('/ce', '').replace('/ceart', '').replace('/bondce', '').trim();
+      const sub = rest.split(' ')[0]?.toLowerCase();
+      const query = rest.replace(sub, '').trim();
+
+      // View Bond CEs
+      if (sub === 'bond' || trimmed.startsWith('/bondce')) {
+        const bondCes = Object.values(BOND_CRAFT_ESSENCES);
+        addMessage({
+          id: getNextId('bot_ce_bond_catalog'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '🎖️ Canonical Bond 10 Craft Essences Catalog',
+            description:
+              `When a Servant reaches **Bond Level 10 (MAX BOND)** through duels, sparring, and interludes, they bestow their exclusive Bond Craft Essence upon their Master.\n\n` +
+              bondCes.map(ce => `• **${ce.name}** (★4)\n  *Partner:* **${ce.bondServantName}**\n  *Effect:* ${ce.effectText}`).join('\n\n') +
+              `\n\n💡 *Type \`/ce art <name>\` or select a CE in \`/inventory\` and click "View CE Art" to see high-res card art!*`,
+            color: '#ec4899'
+          }
+        });
+        return;
+      }
+
+      // View CE Artwork & Lore
+      const searchTarget = query || (sub && sub !== 'art' && sub !== 'view' && sub !== 'list' ? sub : '') || activeServant?.equippedCe?.name || 'Star of Artoria';
+      const allRelics = [...CRAFT_ESSENCE_DATABASE, ...Object.values(BOND_CRAFT_ESSENCES)];
+      const foundCe = allRelics.find(c => 
+        c.name.toLowerCase().includes(searchTarget.toLowerCase()) || 
+        c.id.toLowerCase().includes(searchTarget.toLowerCase()) ||
+        (c.bondServantName && c.bondServantName.toLowerCase().includes(searchTarget.toLowerCase()))
+      ) || allRelics[0];
+
+      if (foundCe) {
+        addMessage({
+          id: getNextId('bot_ce_art_display'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: `🖼️ Craft Essence Artwork: ${foundCe.name}`,
+            description:
+              `**Rarity:** ★${foundCe.rarity} ${foundCe.rarity >= 5 ? 'SSR' : foundCe.rarity >= 4 ? 'SR' : 'R'}${foundCe.isBondCe ? ' • **[BOND 10 RELIC]**' : ''}\n` +
+              (foundCe.bondServantName ? `**Bond Partner:** ${foundCe.bondServantName}\n` : '') +
+              `**Effect:** ${foundCe.effectText || foundCe.description}\n` +
+              `**Stats:** \`+${foundCe.atkBonus || 0} ATK\` / \`+${foundCe.hpBonus || 0} HP\`\n\n` +
+              `*${foundCe.description || 'An ancient conceptual weapon forged from heroic memories.'}*`,
+            color: '#d4af37'
+          },
+          artworkEmbed: foundCe.artworkUrl ? { imageUrl: foundCe.artworkUrl, color: '#d4af37' } : undefined
+        });
+      }
+      return;
+    }
+
+    // ----------------------------------------------------
     // COMMAND 2.8: /inventory, /equip, /feed, /enhance, /customise stats/equip/feed
     // ----------------------------------------------------
     if (
@@ -2874,10 +2931,52 @@ export default function DiscordEmulator({
         if (found) targetServant = found;
       }
 
+      // Check for quick bond 10 testing
+      if (args.toLowerCase() === '10' || args.toLowerCase() === 'max') {
+        targetServant.bondLevel = 10;
+        targetServant.bondExp = 4000;
+        const grant = checkAndGrantBond10Ce(master, targetServant);
+        const updatedServants = master.servants.map(s => s.id === targetServant.id ? targetServant : s);
+        onUpdateMaster({
+          ...master,
+          servants: updatedServants,
+          craftEssences: master.craftEssences || []
+        });
+        if (grant) {
+          addMessage({
+            id: getNextId('bot_bond_10_celebration'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `🎖️ MAX BOND 10 REACHED — BOND CRAFT ESSENCE UNLOCKED!`,
+              description: grant.message,
+              color: '#d4af37'
+            },
+            artworkEmbed: grant.ce.artworkUrl ? { imageUrl: grant.ce.artworkUrl, color: '#d4af37' } : undefined
+          });
+          return;
+        }
+      }
+
+      // Automatically grant Bond CE if servant is Bond 10 and not yet granted
+      if ((targetServant.bondLevel || 1) >= 10) {
+        const grant = checkAndGrantBond10Ce(master, targetServant);
+        if (grant) {
+          const updatedServants = master.servants.map(s => s.id === targetServant.id ? targetServant : s);
+          onUpdateMaster({
+            ...master,
+            servants: updatedServants,
+            craftEssences: master.craftEssences || []
+          });
+        }
+      }
+
       const template = targetServant.template;
       const bondProgress = getBondExpProgress(targetServant.bondExp || 0);
       const availableEvents = getBondEventsForServant(targetServant);
       const isActive = targetServant.id === master.activeServantId;
+      const isBond10 = (targetServant.bondLevel || 1) >= 10;
+      const bondCe = getBondCraftEssenceForServant(targetServant.templateId || template?.id || targetServant.id, targetServant.nickname || template?.name);
 
       const eventsSummary = availableEvents.map(evt => {
         const isCompleted = targetServant.completedBondEvents?.includes(evt.id);
@@ -2902,6 +3001,10 @@ export default function DiscordEmulator({
         ? `\n\n👥 *Contracted Servants: **${master.servants.length}**. Use \`/bond roster\` to view all.*`
         : '';
 
+      const bond10Note = isBond10
+        ? `\n\n🎖️ **BOND LEVEL 10 RELIC:** ★4 **${bondCe.name}** [UNLOCKED]\n*${bondCe.effectText}*`
+        : `\n\n🔒 **Bond Level 10 Milestone:** Unlocks exclusive Bond Craft Essence: **${bondCe.name}**`;
+
       addMessage({
         id: getNextId('bot_bond_status'),
         sender: 'bot',
@@ -2911,16 +3014,19 @@ export default function DiscordEmulator({
           description:
             `**Master:** ${master.username} • ${isActive ? '⭐ **[Active Partner]**' : '📜 **[Contracted Reserve]**'}\n` +
             `**Servant Class:** ${template.servantClass}\n\n` +
-            `• **Current Bond Level:** **Bond Lv. ${targetServant.bondLevel || 1} / 10**\n` +
+            `• **Current Bond Level:** **Bond Lv. ${targetServant.bondLevel || 1} / 10** ${isBond10 ? '🎖️ **(MAX BOND)**' : ''}\n` +
             `• **Total Bond EXP:** \`${targetServant.bondExp || 0} EXP\`\n` +
             `• **Level Progress:** \`${bondProgress.expInCurrentLevel} / ${bondProgress.neededForNextLevel} EXP\` (${bondProgress.progressPercent}%)\n\n` +
-            `📖 **Visual Novel Interludes:**\n${eventsSummary}${multiNote}\n\n` +
+            `📖 **Visual Novel Interludes:**\n${eventsSummary}${bond10Note}${multiNote}\n\n` +
             `*Click an interlude button below to start the Visual Novel story in-place!*`,
-          color: '#f59e0b',
+          color: isBond10 ? '#d4af37' : '#f59e0b',
           thumbnailUrl: targetServant.avatarUrl || template.avatarUrl,
           footer: 'Bond increases through Interludes, Sparring, Dialogue & Gifts'
         },
-        artworkEmbed: {
+        artworkEmbed: isBond10 && bondCe.artworkUrl ? {
+          imageUrl: bondCe.artworkUrl,
+          color: '#d4af37'
+        } : {
           imageUrl: 'https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp',
           color: '#f59e0b'
         },
@@ -2928,6 +3034,7 @@ export default function DiscordEmulator({
           type: 'buttons',
           items: [
             { id: `btn_talk_servant:${targetServant.id}`, label: 'Talk to Servant 💬', style: 'success' as const, emoji: '💬' },
+            ...(isBond10 ? [{ id: `inv_view_bond_ce:${targetServant.id}`, label: 'View Bond CE Art 🎖️', style: 'primary' as const, emoji: '🎖️' }] : []),
             ...playButtons,
             ...(master.servants.length > 1 ? [{ id: 'vn_view_roster', label: 'All Bonds 👥', style: 'secondary' as const, emoji: '👥' }] : [])
           ]
@@ -6080,6 +6187,7 @@ export default function DiscordEmulator({
         { id: 'inv_act_equip_selected', label: 'Equip Selected', style: 'success', emoji: '✅' },
         { id: 'inv_act_feed_selected', label: 'Feed Selected', style: 'primary', emoji: '✨' },
         { id: 'inv_act_inspect', label: 'Inspect Lore', style: 'secondary', emoji: '📖' },
+        { id: 'inv_act_view_art', label: 'View CE Art', style: 'primary', emoji: '🖼️' },
         { id: 'inv_act_unequip', label: 'Unequip', style: 'danger', emoji: '❌' },
         ...(ownedCes.length === 0 ? [{ id: 'inv_act_claim_practice_ces', label: 'Claim Practice CEs', style: 'primary' as const, emoji: '🎁' }] : []),
         { id: 'inv_quick_gacha', label: 'Gacha Vault', style: 'secondary', emoji: '🎲' }
@@ -8416,6 +8524,48 @@ export default function DiscordEmulator({
               title: '📖 Craft Essence Lore Archive',
               description: 'No Craft Essence is currently selected. Select an essence from your inventory and press **Inspect Lore**.',
               color: '#38bdf8'
+            }
+          });
+        }
+      } else if (btnId === 'inv_act_view_art' || btnId.startsWith('inv_view_bond_ce:')) {
+        let targetCe: any = null;
+        if (btnId.startsWith('inv_view_bond_ce:')) {
+          const sId = btnId.replace('inv_view_bond_ce:', '');
+          const srv = master.servants?.find(s => s.id === sId) || activeServant;
+          if (srv) {
+            targetCe = getBondCraftEssenceForServant(srv.templateId || srv.template?.id || srv.id, srv.nickname || srv.template?.name);
+          }
+        }
+        if (!targetCe) {
+          targetCe = ownedCes.find(c => c.id === (invSelectedCeId || activeServant?.equippedCeId || ownedCes[0]?.id)) || activeServant?.equippedCe;
+        }
+        if (targetCe) {
+          const artUrl = targetCe.artworkUrl || (targetCe as any).imageUrl || 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=600&auto=format&fit=crop&q=80';
+          addMessage({
+            id: getNextId('bot_ce_art_view'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: `🖼️ Craft Essence Artwork: ${targetCe.name}`,
+              description:
+                `**Rarity:** ★${targetCe.rarity} ${targetCe.rarity >= 5 ? 'SSR' : targetCe.rarity >= 4 ? 'SR' : 'R'}${targetCe.isBondCe ? ' • **[BOND 10 RELIC]**' : ''}\n` +
+                (targetCe.bondServantName ? `**Bond Partner:** ${targetCe.bondServantName}\n` : '') +
+                `**Passive Effect:** ${targetCe.effectText || targetCe.description}\n` +
+                `**Stat Boosts:** \`+${targetCe.atkBonus || 0} ATK\` / \`+${targetCe.hpBonus || 0} HP\`\n\n` +
+                `*${targetCe.description || 'An ancient conceptual weapon forged from heroic memories.'}*`,
+              color: '#d4af37'
+            },
+            artworkEmbed: { imageUrl: artUrl, color: '#d4af37' }
+          });
+        } else {
+          addMessage({
+            id: getNextId('bot_ce_art_none'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '🖼️ Craft Essence Art Gallery',
+              description: 'No Craft Essence is currently selected. Select an essence from your inventory and press **View CE Art**.',
+              color: '#d4af37'
             }
           });
         }

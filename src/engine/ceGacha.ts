@@ -122,7 +122,7 @@ export function executeCraftEssenceGachaRoll({
   const initialCeIds = new Set((master.craftEssences || []).map(c => c.id));
   const newMasterCraftEssences = [...(master.craftEssences || [])];
 
-  const allCes = getAllCraftEssences();
+  const allCes = getAllCraftEssences().filter(c => !c.isBondCe);
   const ssrCes = allCes.filter(c => c.rarity === 5);
   const srCes = allCes.filter(c => c.rarity === 4);
   const rCes = allCes.filter(c => c.rarity === 3);

@@ -53,6 +53,7 @@ import * as bondCommand from './commands/bond';
 import * as talkCommand from './commands/talk';
 import * as apikeyCommand from './commands/apikey';
 import * as switchCommand from './commands/switch';
+import * as ceCommand from './commands/ce';
 import { SERVANT_DATABASE } from './data/servants';
 import { getOrCreateMaster, getMaster, saveMaster, getAllThroneServants, findServantInPool, searchAndRankServants, claimDailySaintQuartz } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
@@ -179,9 +180,13 @@ commands.set(bondCommand.data.name, bondCommand);
 commands.set(talkCommand.data.name, talkCommand);
 commands.set(apikeyCommand.data.name, apikeyCommand);
 commands.set(switchCommand.data.name, switchCommand);
+commands.set(ceCommand.data.name, ceCommand);
 
 // Alias mapping for backward-compatible text shortcuts and interactions
 export const commandAliasMap: Record<string, any> = {
+  ce: ceCommand,
+  ceart: ceCommand,
+  bondce: ceCommand,
   switch: switchCommand,
   partner: switchCommand,
   active: switchCommand,

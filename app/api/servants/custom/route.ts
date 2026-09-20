@@ -3,6 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import { ServantTemplate } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 const DATA_DIR = path.join(process.cwd(), 'data');
 const FILE_PATH = path.join(DATA_DIR, 'custom_servants.json');
 

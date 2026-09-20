@@ -8,6 +8,8 @@ import {
   getAllThroneServants
 } from '@/src/database/service';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);

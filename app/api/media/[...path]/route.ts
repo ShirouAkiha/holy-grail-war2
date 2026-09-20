@@ -26,6 +26,8 @@ const MEDIA_DIRS = [
   path.join(process.cwd(), 'public', 'uploads'),
 ];
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ path?: string[] }> }

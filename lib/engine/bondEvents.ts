@@ -4,9 +4,12 @@ import {
   BondChoice,
   BondDialogueLine,
   MasterServantInstance,
-  ServantTemplate
+  ServantTemplate,
+  CraftEssence
 } from '../types';
+import { getBondCraftEssenceForServant, checkAndGrantBond10Ce, getAllBondCraftEssences } from '../../src/data/craftEssences';
 
+export { getBondCraftEssenceForServant, checkAndGrantBond10Ce, getAllBondCraftEssences };
 export type { BondEvent, BondScene, BondChoice, BondDialogueLine };
 
 /**
@@ -86,6 +89,7 @@ export function addBondExpToServant(
   previousLevel: number;
   newLevel: number;
   didLevelUp: boolean;
+  unlockedBondCe?: CraftEssence;
 } {
   const previousExp = servant.bondExp || 0;
   const newExp = previousExp + amount;
@@ -93,6 +97,14 @@ export function addBondExpToServant(
   const previousLevel = servant.bondLevel || getBondLevelFromExp(previousExp);
   const newLevel = getBondLevelFromExp(newExp);
   const didLevelUp = newLevel > previousLevel;
+
+  let unlockedBondCe: CraftEssence | undefined;
+  if (newLevel >= 10 && previousLevel < 10) {
+    unlockedBondCe = getBondCraftEssenceForServant(
+      servant.templateId || servant.template?.id || servant.id,
+      servant.nickname || servant.template?.name
+    );
+  }
 
   const updatedServant: MasterServantInstance = {
     ...servant,
@@ -104,7 +116,8 @@ export function addBondExpToServant(
     updatedServant,
     previousLevel,
     newLevel,
-    didLevelUp
+    didLevelUp,
+    unlockedBondCe
   };
 }
 
