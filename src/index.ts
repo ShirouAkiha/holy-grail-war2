@@ -1869,9 +1869,11 @@ client.on(Events.InteractionCreate, async interaction => {
         const allServants = getAllThroneServants();
         const target = allServants.find(s => s.id === servantId);
         if (target) {
-          const npEmbed = buildNoblePhantasmEmbed(target);
+          await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+          const files: AttachmentBuilder[] = [];
+          const npEmbed = buildNoblePhantasmEmbed(target, files);
           const actions = buildNoblePhantasmActions(target.id);
-          await interaction.reply({ embeds: [npEmbed], components: [actions] });
+          await interaction.editReply({ embeds: [npEmbed], files, components: [actions] });
         } else {
           await interaction.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
         }
@@ -1883,9 +1885,11 @@ client.on(Events.InteractionCreate, async interaction => {
         const allServants = getAllThroneServants();
         const target = allServants.find(s => s.id === servantId);
         if (target) {
-          const artEmbed = buildServantArtworkEmbed(target);
+          await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+          const files: AttachmentBuilder[] = [];
+          const artEmbed = buildServantArtworkEmbed(target, files);
           const actions = buildNoblePhantasmActions(target.id);
-          await interaction.reply({ embeds: [artEmbed], components: [actions] });
+          await interaction.editReply({ embeds: [artEmbed], files, components: [actions] });
         } else {
           await interaction.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
         }

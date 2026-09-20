@@ -722,10 +722,11 @@ export async function handleServantsListInteraction(i: any) {
       const id = customId.replace('view_np_', '');
       const target = allServants.find(s => s.id === id);
       if (target) {
+        await i.deferReply({ flags: MessageFlags.Ephemeral });
         const files: AttachmentBuilder[] = [];
         const npEmbed = buildNoblePhantasmEmbed(target, files);
         const actions = buildNoblePhantasmActions(target.id);
-        await i.reply({ embeds: [npEmbed], files, components: [actions], flags: MessageFlags.Ephemeral });
+        await i.editReply({ embeds: [npEmbed], files, components: [actions] });
       } else {
         await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
       }
@@ -736,10 +737,11 @@ export async function handleServantsListInteraction(i: any) {
       const id = customId.replace('view_art_', '');
       const target = allServants.find(s => s.id === id);
       if (target) {
+        await i.deferReply({ flags: MessageFlags.Ephemeral });
         const files: AttachmentBuilder[] = [];
         const artEmbed = buildServantArtworkEmbed(target, files);
         const actions = buildNoblePhantasmActions(target.id);
-        await i.reply({ embeds: [artEmbed], files, components: [actions], flags: MessageFlags.Ephemeral });
+        await i.editReply({ embeds: [artEmbed], files, components: [actions] });
       } else {
         await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
       }
