@@ -148,8 +148,17 @@ export function getNoblePhantasmGif(servantOrTemplate: any): string {
   }
 
   // 3. Match against known canon Servant registry
+  const rawNameLower = rawName.toLowerCase();
+
   for (const [key, data] of Object.entries(NOBLE_PHANTASM_GIFS)) {
-    if (rawName.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(rawName.toLowerCase())) {
+    if (rawNameLower === key.toLowerCase()) {
+      return normalizeMediaUrl(data.gifUrl || data.fallbackGif);
+    }
+  }
+
+  const sortedNpGifs = Object.entries(NOBLE_PHANTASM_GIFS).sort((a, b) => b[0].length - a[0].length);
+  for (const [key, data] of sortedNpGifs) {
+    if (rawNameLower.includes(key.toLowerCase()) || key.toLowerCase().includes(rawNameLower)) {
       return normalizeMediaUrl(data.gifUrl || data.fallbackGif);
     }
   }
@@ -211,8 +220,16 @@ export function getNoblePhantasmChant(servantOrTemplate: any): string {
   const np = servantOrTemplate.noblePhantasm || servantOrTemplate.template?.noblePhantasm;
   if (np?.chant) return np.chant;
 
+  const rawNameLower = rawName.toLowerCase();
   for (const [key, data] of Object.entries(NOBLE_PHANTASM_GIFS)) {
-    if (rawName.toLowerCase().includes(key.toLowerCase())) {
+    if (rawNameLower === key.toLowerCase()) {
+      return data.chant;
+    }
+  }
+
+  const sortedNpGifs = Object.entries(NOBLE_PHANTASM_GIFS).sort((a, b) => b[0].length - a[0].length);
+  for (const [key, data] of sortedNpGifs) {
+    if (rawNameLower.includes(key.toLowerCase())) {
       return data.chant;
     }
   }

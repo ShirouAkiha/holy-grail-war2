@@ -163,6 +163,10 @@ export function loadMasterProfile(): MasterProfile {
           if (freshCe) equippedCe = { ...freshCe };
         }
 
+        const freshTemplate = fresh ? { ...fresh, ...(s.template?.isCustomOrMeme ? s.template : {}) } : s.template;
+        const updatedAvatar = freshTemplate?.avatarUrl || s.avatarUrl;
+        const updatedCardArt = freshTemplate?.cardArtUrl || s.cardArtUrl;
+
         return {
           ...s,
           bondLevel: typeof s.bondLevel === 'number' ? s.bondLevel : 1,
@@ -171,7 +175,9 @@ export function loadMasterProfile(): MasterProfile {
           unlockedDialogueIds: Array.isArray(s.unlockedDialogueIds) ? s.unlockedDialogueIds : [],
           equippedCeId,
           equippedCe,
-          template: fresh ? { ...fresh, ...(s.template?.isCustomOrMeme ? s.template : {}) } : s.template
+          avatarUrl: updatedAvatar,
+          cardArtUrl: updatedCardArt,
+          template: freshTemplate
         };
       });
     }

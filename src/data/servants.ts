@@ -222,13 +222,18 @@ export function getServantAvatarAndCardArt(
     };
   }
 
-  const canonical = SERVANT_DATABASE.find(
-    s => s.id.toLowerCase() === templateId || 
-         (s.name && inputName && (s.name.toLowerCase() === inputName || inputName.includes(s.name.toLowerCase())))
-  ) || (customServants && customServants.find(
-    s => s.id.toLowerCase() === templateId || 
-         (s.name && inputName && (s.name.toLowerCase() === inputName || inputName.includes(s.name.toLowerCase())))
-  ));
+  const findCanonical = (pool: ServantTemplate[]) => {
+    let found = pool.find(s => s.id.toLowerCase() === templateId);
+    if (found) return found;
+
+    found = pool.find(s => s.name && s.name.toLowerCase() === inputName);
+    if (found) return found;
+
+    const sorted = [...pool].sort((a, b) => (b.name?.length || 0) - (a.name?.length || 0));
+    return sorted.find(s => s.name && inputName && inputName.includes(s.name.toLowerCase()));
+  };
+
+  const canonical = findCanonical(SERVANT_DATABASE) || (customServants ? findCanonical(customServants) : undefined);
 
   if (canonical && !canonical.isCustomOrMeme && canonical.avatarUrl) {
     return {
