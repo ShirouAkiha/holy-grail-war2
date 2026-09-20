@@ -1465,15 +1465,15 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       target: 'single',
       multiplier: 800,
       overchargeEffect: 'Increases Buster Card effectiveness by 30% for 1 turn (activates first) & strips defensive buffs',
-      gifUrl: 'https://ella.janitorai.com/media-approved/Sfp4i7TL2cXu0LS-QZxxX.webp'
+      gifUrl: 'https://ella.janitorai.com/media-approved/v4h_m7mQL9PwjTmQb_7fg.gif'
     },
     lore: 'Lucernalia "Lucia" Lyozes is a 322-year-old High Elf Vanguard Lancer and supreme tactician from the fantasy world of Lyozes. Having witnessed the devastation of her homeland during the Last Calamity caused by a rogue Otherworlder, she adopted a strict "Closed Door" policy to protect her party and world from unchecked planar interference. Stoic, hyper-disciplined, and deeply protective of mortals despite her stern exterior, she wields black-iron lances with razor-sharp tactical precision.',
     summonQuote: '"Do not move. Do not draw breath deeper than necessary. If your fingers twitch toward a focus, a catalyst, or a weapon, this black iron will pierce your throat before your mind registers the intent. I am Lucernalia Lyozes."',
     battleStartQuote: '"Vanguard formation established. Stand behind my lance, and do not break discipline."',
     victoryQuote: '"The perimeter is secure. Check your wounds, replenish your water, and prepare for the next engagement."',
     defeatQuote: '"A failure of calculation... Withdraw to the secondary line... I will hold the choke point..."',
-    avatarUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
-    cardArtUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+    avatarUrl: 'https://ella.janitorai.com/media-approved/2PMVd98BaN6Rc9lzVnWyn.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/2PMVd98BaN6Rc9lzVnWyn.webp',
     isCustomOrMeme: false
   }
 ];
