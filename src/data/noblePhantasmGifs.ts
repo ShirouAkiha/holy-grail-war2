@@ -32,8 +32,8 @@ export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: 
     chant: 'Gathered breath of the planet, torrential light of life... EX---CALIBUR!'
   },
   'Artoria Pendragon (Alter)': {
-    gifUrl: '/api/media/np_artoria_pendragon_alter.gif',
-    fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+    gifUrl: 'https://ella.janitorai.com/media-approved/Ym7LYYmkmCu9hVfPEVQo8.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/Ym7LYYmkmCu9hVfPEVQo8.gif',
     chant: 'Hammer of the vile king, shatter the aurora... Swallow the light! EXCALIBUR MORGAN!'
   },
   'Gilgamesh': {
@@ -47,8 +47,8 @@ export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: 
     chant: 'I am the bone of my sword. Steel is my body, and fire is my blood... UNLIMITED BLADE WORKS!'
   },
   'Cú Chulainn': {
-    gifUrl: '/api/media/np_cu_chulainn_lancer.gif',
-    fallbackGif: 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
+    gifUrl: 'https://ella.janitorai.com/media-approved/DBOTMhyn9kjdpSJW4xe98.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/DBOTMhyn9kjdpSJW4xe98.gif',
     chant: 'Your heart is mine! Soar and pierce through the fated heart... GÁE BOLG!'
   },
   'Scáthach': {
@@ -62,8 +62,8 @@ export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: 
     chant: 'My God is here with me! Holy banner, shield our faithful spirits! LUMINOSITÉ ETERNELLE!'
   },
   'Jeanne d\'Arc (Alter)': {
-    gifUrl: '/api/media/np_jeanne_alter.gif',
-    fallbackGif: 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+    gifUrl: 'https://ella.janitorai.com/media-approved/kNaIxcLG_DgaLC5YsThNf.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/kNaIxcLG_DgaLC5YsThNf.gif',
     chant: 'Burn away to charred ash! This is the scream of my soul turned to roaring wrath! LA GRONDEMENT DU HAINE!'
   },
   'Nero Claudius': {

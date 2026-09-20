@@ -7,13 +7,16 @@
 // Known reliable fallbacks for canon servants and assets
 export const CANON_MEDIA_FALLBACKS: Record<string, string> = {
   'np_artoria_pendragon.gif': 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
-  'np_artoria_pendragon_alter.gif': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+  'np_artoria_pendragon_alter.gif': 'https://ella.janitorai.com/media-approved/Ym7LYYmkmCu9hVfPEVQo8.gif',
+  'Ym7LYYmkmCu9hVfPEVQo8.gif': 'https://ella.janitorai.com/media-approved/Ym7LYYmkmCu9hVfPEVQo8.gif',
   'np_gilgamesh_archer.gif': 'https://i.giphy.com/media/13cACn6mlO56kU/giphy.gif',
   'np_emiya_archer.gif': 'https://i.giphy.com/media/eBGV4n8U8k3eg/giphy.gif',
-  'np_cu_chulainn_lancer.gif': 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
+  'np_cu_chulainn_lancer.gif': 'https://ella.janitorai.com/media-approved/DBOTMhyn9kjdpSJW4xe98.gif',
+  'DBOTMhyn9kjdpSJW4xe98.gif': 'https://ella.janitorai.com/media-approved/DBOTMhyn9kjdpSJW4xe98.gif',
   'np_scathach_lancer.gif': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
   'np_jeanne_darc_ruler.jpg': 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
-  'np_jeanne_alter.gif': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
+  'np_jeanne_alter.gif': 'https://ella.janitorai.com/media-approved/kNaIxcLG_DgaLC5YsThNf.gif',
+  'kNaIxcLG_DgaLC5YsThNf.gif': 'https://ella.janitorai.com/media-approved/kNaIxcLG_DgaLC5YsThNf.gif',
   'np_nero_claudius_saber.gif': 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
   'np_heracles_berserker.jpg': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
   'np_mhx_alter.gif': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif',
@@ -92,12 +95,12 @@ export function normalizeMediaUrl(rawUrl: string): string {
     
     const TENOR_FATE_MAP: Record<string, string> = {
       '18115682': 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif', // Saber Excalibur
-      '21175659': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif', // Saber Alter Excalibur Morgan
+      '21175659': 'https://ella.janitorai.com/media-approved/Ym7LYYmkmCu9hVfPEVQo8.gif', // Saber Alter Excalibur Morgan
       '18237937': 'https://i.giphy.com/media/eBGV4n8U8k3eg/giphy.gif', // EMIYA UBW
-      '19717144': 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif', // Cu Chulainn Gae Bolg
+      '19717144': 'https://ella.janitorai.com/media-approved/DBOTMhyn9kjdpSJW4xe98.gif', // Cu Chulainn Gae Bolg
       '18698126': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif', // Scathach Gae Bolg Alt
       '18921827': 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif', // Jeanne Luminosite
-      '17865181': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif', // Jalter Grondement
+      '17865181': 'https://ella.janitorai.com/media-approved/kNaIxcLG_DgaLC5YsThNf.gif', // Jalter Grondement
       '18238122': 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif', // Nero Laus Saint Claudius
       '20516422': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif', // Heracles Nine Lives
       '19283719': 'https://i.giphy.com/media/pUp9Nb1czvHMY/giphy.gif', // MHXA Cross-Calibur
@@ -152,6 +155,7 @@ export function isDirectEmbeddableMedia(url: string): boolean {
     lower.includes('c.tenor.com') ||
     lower.includes('i.imgur.com') ||
     lower.includes('files.catbox.moe') ||
-    lower.includes('wikia.nocookie.net')
+    lower.includes('wikia.nocookie.net') ||
+    lower.includes('janitorai.com')
   );
 }
