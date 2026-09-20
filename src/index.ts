@@ -52,6 +52,7 @@ import * as gachaCommand from './commands/gacha';
 import * as bondCommand from './commands/bond';
 import * as talkCommand from './commands/talk';
 import * as apikeyCommand from './commands/apikey';
+import * as switchCommand from './commands/switch';
 import { SERVANT_DATABASE } from './data/servants';
 import { getOrCreateMaster, getMaster, saveMaster, getAllThroneServants, findServantInPool, searchAndRankServants, claimDailySaintQuartz } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
@@ -177,9 +178,14 @@ commands.set(boardCommand.data.name, boardCommand);
 commands.set(bondCommand.data.name, bondCommand);
 commands.set(talkCommand.data.name, talkCommand);
 commands.set(apikeyCommand.data.name, apikeyCommand);
+commands.set(switchCommand.data.name, switchCommand);
 
 // Alias mapping for backward-compatible text shortcuts and interactions
 export const commandAliasMap: Record<string, any> = {
+  switch: switchCommand,
+  partner: switchCommand,
+  active: switchCommand,
+  activeservant: switchCommand,
   apikey: apikeyCommand,
   api: apikeyCommand,
   byok: apikeyCommand,
@@ -2119,6 +2125,52 @@ client.on(Events.MessageCreate, async message => {
       const hub = await servantCommand.buildServantHub(master, activeServant, category, activeServant.id);
       const replyMsg = await message.reply({ embeds: hub.embeds, files: hub.files, components: hub.components });
       servantCommand.attachServantCollector(replyMsg, message.author.id, master, activeServant, category);
+      return;
+    }
+
+    // ----------------------------------------------------
+    // !switch / !partner / !active
+    // ----------------------------------------------------
+    if (cmd === 'switch' || cmd === 'partner' || cmd === 'active' || cmd === 'activeservant') {
+      if (!master.servants || master.servants.length === 0) {
+        await message.reply({ content: '❌ You do not have any contracted Servants yet. Use `!summon` to summon a Heroic Spirit!' });
+        return;
+      }
+
+      if (query) {
+        const chosen = master.servants.find(
+          (s: any) =>
+            s.id === query ||
+            (s.nickname && s.nickname.toLowerCase() === query.toLowerCase()) ||
+            (s.template?.name && s.template.name.toLowerCase() === query.toLowerCase()) ||
+            (s.templateId && s.templateId.toLowerCase() === query.toLowerCase()) ||
+            (s.nickname && s.nickname.toLowerCase().includes(query.toLowerCase())) ||
+            (s.template?.name && s.template.name.toLowerCase().includes(query.toLowerCase()))
+        );
+
+        if (!chosen) {
+          await message.reply({ content: `❌ Could not find a contracted Servant matching \`${query}\`. Use \`!servant roster\` or \`/switch\` to see your roster.` });
+          return;
+        }
+
+        master.activeServantId = chosen.id;
+        await saveMaster(master);
+        getOrInitWarSession(master);
+
+        const sTemp = chosen.template || chosen;
+        const sName = chosen.nickname || sTemp.name || 'Heroic Spirit';
+        const sClass = sTemp.servantClass || 'Saber';
+
+        await message.reply({
+          content: `👑 Contract updated! **${sName}** (\`${sClass}\`) is now your active Holy Grail War partner!`
+        });
+        return;
+      }
+
+      const activeS = master.servants.find((s: any) => s.id === master.activeServantId) || master.servants[0];
+      const hub = await servantCommand.buildServantHub(master, activeS, 'roster', activeS.id);
+      const replyMsg = await message.reply({ embeds: hub.embeds, files: hub.files, components: hub.components });
+      servantCommand.attachServantCollector(replyMsg, message.author.id, master, activeS, 'roster');
       return;
     }
 

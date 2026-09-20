@@ -1,6 +1,7 @@
 import { 
   SlashCommandBuilder, 
   ChatInputCommandInteraction, 
+  AutocompleteInteraction,
   ActionRowBuilder, 
   ButtonBuilder, 
   ButtonStyle, 
@@ -27,6 +28,13 @@ export const data = new SlashCommandBuilder()
   .setDescription('Master Servant Workshop — parameters, stats, CE equipment, dialogues & roster')
   .addStringOption(opt =>
     opt
+      .setName('servant')
+      .setDescription('Target contracted servant by name or class (optional)')
+      .setAutocomplete(true)
+      .setRequired(false)
+  )
+  .addStringOption(opt =>
+    opt
       .setName('category')
       .setDescription('Select workshop section to open')
       .setRequired(false)
@@ -40,6 +48,36 @@ export const data = new SlashCommandBuilder()
         { name: '📜 Contracted Roster', value: 'roster' }
       )
   );
+
+export async function autocomplete(interaction: AutocompleteInteraction) {
+  try {
+    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+    if (!master.servants || master.servants.length === 0) {
+      await interaction.respond([]);
+      return;
+    }
+
+    const focusedValue = interaction.options.getFocused().toLowerCase();
+    const choices = master.servants
+      .map((s: any, idx: number) => {
+        const sName = s.nickname || s.template?.name || s.name || 'Heroic Spirit';
+        const sCls = s.template?.servantClass || s.servantClass || 'Saber';
+        const isAct = master.activeServantId === s.id;
+        return {
+          name: `${idx + 1}. [${sCls}] ${sName} (Lv.${s.level || 1})${isAct ? ' ⭐ [ACTIVE]' : ''}`.slice(0, 100),
+          value: s.id
+        };
+      })
+      .filter(c => c.name.toLowerCase().includes(focusedValue))
+      .slice(0, 25);
+
+    await interaction.respond(choices);
+  } catch {
+    try {
+      await interaction.respond([]);
+    } catch {}
+  }
+}
 
 // ==========================================
 // 2. MAIN EXECUTE HANDLER
@@ -95,7 +133,24 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const activeServant =
       master.servants.find((s: any) => s.id === master.activeServantId) || master.servants[0];
 
-    const { embeds, files, components } = await buildServantHub(master, activeServant, initialCategory);
+    const servantOption = interaction.options.getString('servant');
+    let targetServant = activeServant;
+    if (servantOption) {
+      const found = master.servants.find((s: any) => 
+        s.id === servantOption ||
+        (s.nickname && s.nickname.toLowerCase() === servantOption.toLowerCase()) ||
+        (s.template?.name && s.template.name.toLowerCase() === servantOption.toLowerCase()) ||
+        (s.templateId && s.templateId.toLowerCase() === servantOption.toLowerCase()) ||
+        (s.nickname && s.nickname.toLowerCase().includes(servantOption.toLowerCase())) ||
+        (s.template?.name && s.template.name.toLowerCase().includes(servantOption.toLowerCase())) ||
+        (s.template?.servantClass && s.template.servantClass.toLowerCase() === servantOption.toLowerCase())
+      );
+      if (found) {
+        targetServant = found;
+      }
+    }
+
+    const { embeds, files, components } = await buildServantHub(master, targetServant, initialCategory, targetServant.id);
 
     const msg = await interaction.editReply({
       embeds,
@@ -103,7 +158,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       components
     });
 
-    attachServantCollector(msg, interaction.user.id, master, activeServant, initialCategory);
+    attachServantCollector(msg, interaction.user.id, master, targetServant, initialCategory);
 
   } catch (error: any) {
     if (error?.code === 10062 || error?.code === 40060 || error?.code === 50027 || error?.code === 10008 || error?.message?.includes('Unknown interaction') || error?.message?.includes('acknowledged')) return;
@@ -747,7 +802,12 @@ export function attachServantCollector(
       // ROSTER DROPDOWN
       else if (i.customId === 'servant_sel_switch') {
         currentServantId = i.values[0];
-        targetServant = master.servants.find((s: any) => s.id === currentServantId) || targetServant;
+        const found = master.servants.find((s: any) => s.id === currentServantId) 
+          || master.servants.find((s: any, idx: number) => `servant_${idx}` === currentServantId || `s_${idx}` === currentServantId);
+        if (found) {
+          targetServant = found;
+          currentServantId = found.id;
+        }
       }
       // TITLE / NICKNAME PRESET DROPDOWN
       else if (i.customId === 'servant_sel_title_preset') {
@@ -1130,6 +1190,7 @@ export function attachServantCollector(
       else if (i.customId === 'servant_act_set_active') {
         master.activeServantId = targetServant.id;
         await saveMaster(master);
+        getOrInitWarSession(master);
         actionOutcomeMsg = `👑 Contract updated! **${targetServant.nickname || targetServant.template?.name || 'Servant'}** is now your Active Servant.`;
       }
       // STEP MULTIPLIER TOGGLES

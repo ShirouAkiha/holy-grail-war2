@@ -1932,8 +1932,19 @@ export async function giveServantToMaster(
     template: foundTemplate
   };
 
-  master.servants = [newServantInstance];
-  master.activeServantId = newServantInstance.id;
+  if (!master.servants) master.servants = [];
+  const existingIdx = master.servants.findIndex(
+    (s: any) => s.templateId === foundTemplate.id || s.id === foundTemplate.id || s.template?.id === foundTemplate.id
+  );
+  if (existingIdx !== -1) {
+    master.servants[existingIdx] = newServantInstance;
+  } else {
+    master.servants.push(newServantInstance);
+  }
+
+  if (!master.activeServantId || options.forceActive !== false) {
+    master.activeServantId = newServantInstance.id;
+  }
   master.commandSeals = 3;
 
   await saveMaster(master);

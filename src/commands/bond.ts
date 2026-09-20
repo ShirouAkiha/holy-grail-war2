@@ -12,6 +12,7 @@ import {
   AttachmentBuilder
 } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
+import { getOrInitWarSession } from '../engine/grailwar';
 import { 
   getBondExpProgress, 
   getBondLevelFromExp, 
@@ -833,13 +834,14 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
     if (btnId.startsWith('vn_set_active:')) {
       await interaction.deferUpdate();
       const servantId = btnId.split(':')[1];
-      const chosen = master.servants?.find((s: any) => s.id === servantId);
+      const chosen = resolveTargetServant(master, null, servantId);
       if (!chosen) {
         return interaction.followUp({ flags: MessageFlags.Ephemeral, content: '❌ Selected Servant is not contracted.' });
       }
 
       master.activeServantId = chosen.id;
       await saveMaster(master);
+      getOrInitWarSession(master);
 
       const sTemp = chosen.template || chosen;
       const sName = chosen.nickname || sTemp.name || 'Heroic Spirit';
