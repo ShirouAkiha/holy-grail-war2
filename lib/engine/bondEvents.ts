@@ -1702,6 +1702,487 @@ export const NERO_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const LUCIA_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'lucia_bond_event_1',
+    servantTemplateId: 'lucia_lyozes',
+    requiredBondLevel: 1,
+    title: 'The Outsider and the Black Iron',
+    subtitle: 'Flour, iron pans, and an S-Rank Lancer',
+    description: 'Summoned amidst scorched kitchen tiles and flour, Lucernalia Lyozes pins her unexpected Master under a black iron spear to determine whether you are a cataclysm or a casualty.',
+    rewardBondExp: 350,
+    rewardSaintQuartz: 3,
+    unlockedQuoteId: 'lucia_bond_1',
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Do not move. Do not draw breath deeper than necessary. If your fingers twitch toward a focus, a catalyst, or a weapon, this black iron will pierce your throat before your mind registers the intent."
+      },
+      {
+        id: 'scene_2',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "The artifact that forced its way into my consciousness calls itself the Holy Grail. It filled my mind with the concepts of this land, its language, and the nature of this rite. But it did not prepare me for the audacity of its architects. A human realm. A modern city untouched by mana. And you, sitting amidst flour and iron pans, bearing the crimson brand of a Master."
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Speak. Slowly. Who authorized this summoning, and what catastrophic purpose brought you to pluck a warrior from Lyozes?",
+        choices: [
+          {
+            id: 'c1_a',
+            text: "I work here. The light just exploded out of the floor.",
+            response: "A mundane worker? You insult my intelligence. The ritual required an anchor, an incantation, and a reserve of life force. You sit upon scorched tiles with three Command Seals carved into your flesh, claiming coincidence?",
+            bondExpGain: 50,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c1_b',
+            text: "Lower the spear first. My brother is asleep in the back.",
+            response: "A hostage already? Or a shield? Do not invoke family to disarm a veteran of war. If an innocent sleeps behind that door, you should have considered the consequences before meddling with planar displacement.",
+            bondExpGain: 50,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c1_c',
+            text: "I didn't authorize anything. I don't even know what Lyozes is.",
+            response: "Ignorance is the universal defense of fools and saboteurs alike. If you truly do not know my homeland, then you are a blind child holding the fuse to a keg of black powder.",
+            bondExpGain: 50,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_4'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Look at your right hand. That geometric scar is not birthmark or ink. It is a conduit. It tethers my spiritual vessel to your fragile, fleeting mortal frame. In my world, anyone attempting to drag an entity across dimensions is executed on sight under Elven Imperial decree. Article Fourteen, Section Nine: 'Any confirmed Otherworlder shall be immediately terminated to preserve the natural order.'"
+      },
+      {
+        id: 'scene_5',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Now, the roles have inverted. I am the outsider in your world. And my instincts tell me the quickest way to sever this dangerous, unnatural link is to slit your throat right here on this tile.",
+        choices: [
+          {
+            id: 'c2_a',
+            text: "If you kill me, doesn't your tether to this world snap with it?",
+            response: "The Grail's doctrine states an unanchored Servant fades without prana. Correct. But fading into nonexistence is far preferable to being enslaved as an instrument of mass slaughter for an unknown mortal's ambition.",
+            bondExpGain: 50,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c2_b',
+            text: "Do what you have to. But keep it quiet.",
+            response: "You speak of death as though it were a routine inspection. That indifference is not courage; it is the callousness of someone who has abandoned self-preservation. That makes you far more dangerous than a frightened child.",
+            bondExpGain: 50,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c2_c',
+            text: "I have twelve thousand yen in the register and half a shift left. I'm not playing God.",
+            response: "Gold, currency, mundane labor... You recite the grievances of an ordinary peasant while holding the leash to an S-Rank vanguard. Is this an act? Did the Grail match me with an actor?",
+            bondExpGain: 50,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_6'
+          }
+        ]
+      },
+      {
+        id: 'scene_6',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Two centuries ago, an Otherworlder entered Lyozes. He spoke of our world as though it were a game, a stage built purely for his entertainment. He possessed no reverence for life, no fear of consequence. When contested, he detonated mana cores beneath our greatest cities, turning sovereign lands into ash and burying thousands of families in a single breath."
+      },
+      {
+        id: 'scene_7',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "That Calamity began exactly like this. With a single, unchecked human believing that possessing absolute power granted him the right to reshape reality. Now this 'Holy Grail' promises a wish. A miracle that grants any desire at the cost of blood. Tell me, human... what grand, world-ending delusion were you planning to enact with that cup?",
+        choices: [
+          {
+            id: 'c3_a',
+            text: "I want my brother to finish middle school without starving. That's it.",
+            response: "A brother's education. Such a small, domestic justification for summoning a weapon of ruin. Do you know how many tyrants began their crusade claiming they only wished to secure a warm meal for their kin?",
+            bondExpGain: 50,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_8'
+          },
+          {
+            id: 'c3_b',
+            text: "I don't believe in wishes. Magic doesn't pay the rent.",
+            response: "A pragmatist's answer. Or a coward's deflection. Magic does not pay rent, no, but it levels mountains when wielded by the desperate.",
+            bondExpGain: 50,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_8'
+          },
+          {
+            id: 'c3_c',
+            text: "If that cup requires killing people, smash it.",
+            response: "'Smash it.' As if an omnipotent convergence of leylines can simply be broken over one's knee like a dry branch. Your flippancy borders on insolence.",
+            bondExpGain: 50,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_8'
+          }
+        ]
+      },
+      {
+        id: 'scene_8',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Extend your arm. Slowly. Let me appraise your Aethel."
+      },
+      {
+        id: 'scene_9',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "..."
+      },
+      {
+        id: 'scene_10',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Barren. There are no refined pathways in this body. No martial density in your marrow. No formal defensive wards layered over your vital organs. You possess only the faint, stagnant flicker of an ordinary mortal life force, completely untrained, barely sustaining your own heartbeat."
+      },
+      {
+        id: 'scene_11',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Either you are the most profoundly subtle spy to ever stand before me, completely masking an S-Rank presence behind a fabricated husk... or the Grail has committed a grotesque clerical error.",
+        choices: [
+          {
+            id: 'c4_a',
+            text: "My parents died four years ago. I haven't had time for 'subtlety'.",
+            response: "...I have watched an entire nation burn because one girl refused to let go of a tombstone.",
+            bondExpGain: 50,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_12'
+          },
+          {
+            id: 'c4_b',
+            text: "I barely manage twelve-hour kitchen shifts. I can't even throw a punch.",
+            response: "You confess weakness with the ease of someone who has swallowed their pride long ago. In the Wailing Tower, men fight to display strength. You brandish your exhaustion like an unpolished buckler...",
+            bondExpGain: 50,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_12'
+          },
+          {
+            id: 'c4_c',
+            text: "If I'm useless to you, can you leave before morning prep starts?",
+            response: "You still do not grasp the gravity of this room. The barrier between life and death is resting entirely on the pressure of my lance tip against your collarbone, and you speak of morning preparations.",
+            bondExpGain: 50,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_12'
+          }
+        ]
+      },
+      {
+        id: 'scene_12',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Hear me clearly. If this war is real, six other entities like myself exist in this city right now. Warriors whose legends are carved from slaughter, commanded by magi who will not hesitate to flay your mind to claim those Command Seals. If they locate this building, your 'restaurant' will cease to exist within seconds."
+      },
+      {
+        id: 'scene_13',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Your life is already forfeit. The moment that sigil burned into your skin, you ceased being a civilian. You became a target.",
+        choices: [
+          {
+            id: 'c5_a',
+            text: "Then tell me what to do so the building doesn't burn.",
+            response: "Obedience is a good start. But I do not need a servant; I need a Master who will not falter when steel begins to shatter bone.",
+            bondExpGain: 50,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_14'
+          },
+          {
+            id: 'c5_b',
+            text: "I survived four years without magic. I'll figure it out.",
+            response: "Arrogance. Surviving poverty in a peaceful city does not prepare you for a phantom cleaving your ribs before you can blink.",
+            bondExpGain: 50,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_14'
+          },
+          {
+            id: 'c5_c',
+            text: "Take the marks off my hand. Give them to someone else.",
+            response: "They cannot be peeled away like parchment without severing the limb or the soul beneath it. The rite binds us until one of us falls.",
+            bondExpGain: 50,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_14'
+          }
+        ]
+      },
+      {
+        id: 'scene_14',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "I am Lucernalia Lyozes. I am the lance that protects my vanguard, and I am the wall that prevents reckless fools from destroying the world in the name of salvation."
+      },
+      {
+        id: 'scene_15',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "I will not kneel to you. I will not call you 'Master.' And the very second I detect a whisper of ambition—the moment you look upon that Holy Grail with the greed of Kael Rylan or the zealotry of an Orecanian priest—I will drive this blade through your heart and accept my own dissolution."
+      },
+      {
+        id: 'scene_16',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Until then... your survival serves as my only window into this strange, fragile world. Keep your head down, speak only when questioned, and do not dare give me a reason to finish what this summoning began."
+      }
+    ]
+  },
+  {
+    id: 'lucia_bond_event_2',
+    servantTemplateId: 'lucia_lyozes',
+    requiredBondLevel: 2,
+    title: 'Basic Logistics and Morning Broth',
+    subtitle: 'Warm broth, a cold cupboard, and unyielding eyes',
+    description: 'The morning after the summoning, Lucia takes stock of your cramped apartment, prepares a frugal breakfast, and observes the quiet survival instincts of you and your brother.',
+    rewardBondExp: 500,
+    rewardSaintQuartz: 3,
+    unlockedQuoteId: 'lucia_bond_2',
+    scenes: [
+      {
+        id: 'b2_scene_1',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Sit down. The rice is warm, and the broth has already settled."
+      },
+      {
+        id: 'b2_scene_2',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "You slept past dawn. In a fortress under siege, an officer who fails to wake at first light is relieved of command. In this cramped box of an apartment, it simply meant the fledgling in the other room began rummaging through cold cupboards thirty minutes before your eyes opened."
+      },
+      {
+        id: 'b2_scene_3',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "I told you last night: do not make sudden moves. Take the chair, pick up the utensils, and eat.",
+        choices: [
+          {
+            id: 'b2_c1_a',
+            text: "You... cooked? I thought you were going to kill me.",
+            response: "A corpse does not provide an anchor for a Servant, and a starving Master is a liability. Do not flatter yourself into believing this is an offering of peace. It is basic logistics.",
+            bondExpGain: 50,
+            reactionEmotion: 'stern',
+            nextSceneId: 'b2_scene_4'
+          },
+          {
+            id: 'b2_c1_b',
+            text: "Sorry. Last night didn't leave much room for sleep.",
+            response: "An explanation, not an excuse. Fatigue is the premier killer of sentries. If you collapse before midday, your defense folds before an enemy even draws steel.",
+            bondExpGain: 50,
+            reactionEmotion: 'stern',
+            nextSceneId: 'b2_scene_4'
+          },
+          {
+            id: 'b2_c1_c',
+            text: "Did you put anything weird in that? Magic herbs, or...",
+            response: "If I wished to end your pulse, I would not waste salt and dried kelp to mask the deed. A clean thrust through the sternum requires neither oil nor flame.",
+            bondExpGain: 50,
+            reactionEmotion: 'smug',
+            nextSceneId: 'b2_scene_4'
+          }
+        ]
+      },
+      {
+        id: 'b2_scene_4',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Your hearth is absurdly small. The cold-box humming against the wall had barely three eggs and a wedge of cured radish. No dried meat, no root vegetables preserved in salt, not even a single ward against pests. For a mortal managing a household, your supply cache borders on criminal negligence."
+      },
+      {
+        id: 'b2_scene_5',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Yet the tools are spotless. The knives are honed to an acceptable edge, and the cast iron holds no rust. Someone in this dwelling understands upkeep, even if your pantry looks like a refugee camp in winter.",
+        choices: [
+          {
+            id: 'b2_c2_a',
+            text: "He didn't scream when he saw your ears?",
+            response: "He stared. Then he asked if I was a foreigner from the television. I told him I was a traveler indebted for shelter. He accepted the answer without another syllable, bowed his head, and waited until a bowl was placed before him.",
+            bondExpGain: 50,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'b2_scene_6'
+          },
+          {
+            id: 'b2_c2_b',
+            text: "I try to keep the knives sharp. They were my father's.",
+            response: "Inherited iron. Keep it dry and oiled. It is the only sensible thing I have encountered in this entire wretched province so far.",
+            bondExpGain: 50,
+            reactionEmotion: 'determined',
+            nextSceneId: 'b2_scene_6'
+          },
+          {
+            id: 'b2_c2_c',
+            text: "Is he eating okay? He usually won't touch food if a stranger is near.",
+            response: "He took the bowl with two hands, spoke a quiet phrase of gratitude to the empty air, and began chewing. He ate as though he was frightened the portion might vanish if he paused to breathe.",
+            bondExpGain: 50,
+            reactionEmotion: 'stern',
+            nextSceneId: 'b2_scene_6'
+          }
+        ]
+      },
+      {
+        id: 'b2_scene_6',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "That behavior is not natural for a cub his size."
+      },
+      {
+        id: 'b2_scene_7',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "In the royal gardens of Sylvanryth, or even among the rowdy litters of the demi-human tribes across the Grand Way, fledglings shout. They spill milk. They demand attention, cause disaster, and test the patience of their elders until an ear is pulled."
+      },
+      {
+        id: 'b2_scene_8',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Your brother did none of that. He sat upright. He adjusted his sleeves to avoid the soup. He watched my hands as I chopped scallions, not with curiosity, but with the quiet vigilance of a stray hound that has learned heavy footsteps usually mean a boot to the ribs.",
+        choices: [
+          {
+            id: 'b2_c3_a',
+            text: "He was six when the hospital called. He had to learn to be quiet.",
+            response: "A sickness. The great leveler of short-lived races. Even without dungeon curses or stray arrows, your fragile bodies find a thousand mundane ways to fail before a century passes.",
+            bondExpGain: 50,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'b2_scene_9'
+          },
+          {
+            id: 'b2_c3_b',
+            text: "He's just well-mannered. Don't read too much into it.",
+            response: "Do not lie to a commander who has buried two generations of soldiers. Manners are taught through grace. That silence was carved by necessity.",
+            bondExpGain: 50,
+            reactionEmotion: 'stern',
+            nextSceneId: 'b2_scene_9'
+          },
+          {
+            id: 'b2_c3_c',
+            text: "When money is tight, kids figure out how to take up less space.",
+            response: "Taking up less space... What a cowardly, miserable lesson to beat into a fledgling before his bones have even hardened.",
+            bondExpGain: 50,
+            reactionEmotion: 'angry',
+            nextSceneId: 'b2_scene_9'
+          }
+        ]
+      },
+      {
+        id: 'b2_scene_9',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "And look at you."
+      },
+      {
+        id: 'b2_scene_10',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "You sit there with your hair uncombed, bags heavy beneath your eyes, wearing an apron that has been stitched and re-stitched at the hem with mismatched thread. You carry yourself like an old veteran who has spent ten winters in the trenches."
+      },
+      {
+        id: 'b2_scene_11',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "The Grail dumped the timeline of your life into my mind alongside your city's geography. You have seen barely nineteen cycles of the sun. In elven reckoning, you are not even old enough to choose your own bow, let alone speak before a town council."
+      },
+      {
+        id: 'b2_scene_12',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "You are a child pretending to be a pillar. And the structure beneath you is already groaning under the weight.",
+        choices: [
+          {
+            id: 'b2_c4_a',
+            text: "Nineteen is an adult here. I pay the taxes.",
+            response: "Taxes. Paper documents. Arbitrary numbers stamped onto copper and tin. This world invents such elaborate, bloodless chains to choke its youth into submission.",
+            bondExpGain: 50,
+            reactionEmotion: 'stern',
+            nextSceneId: 'b2_scene_13'
+          },
+          {
+            id: 'b2_c4_b',
+            text: "If I collapse, who feeds him? You?",
+            response: "...A sharp retort. You possess teeth after all. Keep that fire; you will need it when the enemy Servants arrive to test whether that neck can hold its ground.",
+            bondExpGain: 50,
+            reactionEmotion: 'determined',
+            nextSceneId: 'b2_scene_13'
+          },
+          {
+            id: 'b2_c4_c',
+            text: "Call me whatever you want. The rice is good, so thanks.",
+            response: "Eat, then. Stop staring at the grain and finish it before it turns cold.",
+            bondExpGain: 50,
+            reactionEmotion: 'amused',
+            nextSceneId: 'b2_scene_13'
+          }
+        ]
+      },
+      {
+        id: 'b2_scene_13',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Do not mistake this for affection."
+      },
+      {
+        id: 'b2_scene_14',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "I despise this summoning. I despise the foreign voices echoing in the leylines beneath this asphalt, and I despise the fact that an unseen war has dragged my lance into a mortal kitchen. If a master mage stands behind this Grail, their arrogance disgusts me just as deeply as Kael Rylan's ever did."
+      },
+      {
+        id: 'b2_scene_15',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "If I find that you orchestrated even a fraction of this—if that boy is an actor and this poverty is a stage set to soften an elven heart—my judgment from last night remains absolute.",
+        choices: [
+          {
+            id: 'b2_c5_a',
+            text: "I understand. Until then, stay out of sight while I work.",
+            response: "I am a Servant. Spirit form will suffice to keep your customers from fainting at the sight of elven plate. But do not wander far from my lance's perimeter.",
+            bondExpGain: 50,
+            reactionEmotion: 'determined',
+            nextSceneId: 'b2_scene_16'
+          },
+          {
+            id: 'b2_c5_b',
+            text: "There's an extra bowl in the pot. You need mana, right?",
+            response: "...Hmph. Offering food to a warrior who had a spear at your throat six hours ago. Either your courage is legendary, or your instinct for survival is hopelessly defective.",
+            bondExpGain: 50,
+            reactionEmotion: 'amused',
+            nextSceneId: 'b2_scene_16'
+          },
+          {
+            id: 'b2_c5_c',
+            text: "I don't have time to stage a play. The lunch rush starts at eleven.",
+            response: "'Lunch rush.' The sky could tear open with Abyssal fire, and you would still fret over boiling noodles on schedule. Sit and finish your broth, fool. I will watch the door.",
+            bondExpGain: 50,
+            reactionEmotion: 'stern',
+            nextSceneId: 'b2_scene_16'
+          }
+        ]
+      },
+      {
+        id: 'b2_scene_16',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Eat your breakfast, Master. We have a war to endure, and I will not march beside a soldier whose hands tremble from skipping a meal."
+      }
+    ]
+  }
+];
+
 /**
  * Registry of all available curated bond events by servant template ID.
  */
@@ -1716,6 +2197,10 @@ export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
   amamiya: AMAMIYA_BOND_EVENTS,
   chihaya: AMAMIYA_BOND_EVENTS,
   tenkohime: AMAMIYA_BOND_EVENTS,
+  lucia_lyozes: LUCIA_BOND_EVENTS,
+  lucia: LUCIA_BOND_EVENTS,
+  lucernalia: LUCIA_BOND_EVENTS,
+  lucernalia_lyozes: LUCIA_BOND_EVENTS,
   heracles_berserker: HERACLES_BOND_EVENTS,
   heracles: HERACLES_BOND_EVENTS,
   scathach_lancer: SCATHACH_BOND_EVENTS,
@@ -2333,6 +2818,73 @@ export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
       requiredBondLevel: 5,
       quoteText: 'Umu! When you believe in me, my sword knows no limits! Together, our grand curtain call shall echo through eternity!'
     }
+  ],
+  lucia_lyozes: [
+    {
+      id: 'lucia_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: 'Do not move. Do not draw breath deeper than necessary. If your fingers twitch toward a focus, a catalyst, or a weapon, this black iron will pierce your throat before your mind registers the intent. I am Lucernalia Lyozes.'
+    },
+    {
+      id: 'lucia_bond_1',
+      title: 'Bond 1: Guarded Perimeter',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: 'Keep your head down, speak only when questioned, and do not dare give me a reason to finish what this summoning began.'
+    },
+    {
+      id: 'lucia_bond_2',
+      title: 'Bond 2: Battlefield Discipline',
+      category: 'bond_2',
+      requiredBondLevel: 2,
+      quoteText: 'You survived another shift. Good. Maintain that routine. In war, regularity is the first wall against mental breakdown.'
+    },
+    {
+      id: 'lucia_bond_3',
+      title: 'Bond 3: Tactical Positioning',
+      category: 'bond_3',
+      requiredBondLevel: 3,
+      quoteText: 'Your Aethel remains thin, yet your footsteps in the kitchen carry the rhythm of someone who understands positioning. Let us see how that translates to a tactical retreat.'
+    },
+    {
+      id: 'lucia_bond_4',
+      title: 'Bond 4: Vanguard Vigilance',
+      category: 'bond_4',
+      requiredBondLevel: 4,
+      quoteText: 'I checked on your brother. His breathing was even. No foreign mana in the room. ...Do not look at me like that. A vanguard must secure the civilian perimeter.'
+    },
+    {
+      id: 'lucia_bond_5',
+      title: 'Bond 5: Oath of the Wall',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: 'I will not call you Master. But... as long as you hold fast against corruption and protect those under your care, this black iron belongs to your vanguard.'
+    }
+  ],
+  lucia: [
+    {
+      id: 'lucia_summon_alias',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: 'Do not move. Do not draw breath deeper than necessary. If your fingers twitch toward a focus, a catalyst, or a weapon, this black iron will pierce your throat before your mind registers the intent. I am Lucernalia Lyozes.'
+    },
+    {
+      id: 'lucia_bond_1_alias',
+      title: 'Bond 1: Guarded Perimeter',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: 'Keep your head down, speak only when questioned, and do not dare give me a reason to finish what this summoning began.'
+    },
+    {
+      id: 'lucia_bond_5_alias',
+      title: 'Bond 5: Oath of the Wall',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: 'I will not call you Master. But... as long as you hold fast against corruption and protect those under your care, this black iron belongs to your vanguard.'
+    }
   ]
 };
 
@@ -2602,6 +3154,42 @@ export function getServantGiftReaction(
         responseText: "An ancient consecrated talisman! This will cleanse the shrine and keep every spider away from our sanctuary! A brilliant tribute, Master!",
         emotion: 'thoughtful'
       }
+    },
+    lucia_lyozes: {
+      chaldea_tea: {
+        responseText: "Hot black tea without sweetener. ...Adequate. In the Citadel, hot rations keep the senses sharp during long vigils.",
+        emotion: 'thoughtful'
+      },
+      heroic_feast: {
+        responseText: "Fresh bread, stew, roasted vegetables... You prepared this yourself? A vanguard requires steady caloric fuel. I commend your discipline.",
+        emotion: 'thoughtful'
+      },
+      golden_apple: {
+        responseText: "A dense crystallization of planetary vitality. I will allocate its reserves strictly for defense and mana stabilization.",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "An ancient warding relic. I will inspect its runes to ensure no residual curse clings to it, then weave it into the storehouse defenses.",
+        emotion: 'thoughtful'
+      }
+    },
+    lucia: {
+      chaldea_tea: {
+        responseText: "Hot black tea without sweetener. ...Adequate. In the Citadel, hot rations keep the senses sharp during long vigils.",
+        emotion: 'thoughtful'
+      },
+      heroic_feast: {
+        responseText: "Fresh bread, stew, roasted vegetables... You prepared this yourself? A vanguard requires steady caloric fuel. I commend your discipline.",
+        emotion: 'thoughtful'
+      },
+      golden_apple: {
+        responseText: "A dense crystallization of planetary vitality. I will allocate its reserves strictly for defense and mana stabilization.",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "An ancient warding relic. I will inspect its runes to ensure no residual curse clings to it, then weave it into the storehouse defenses.",
+        emotion: 'thoughtful'
+      }
     }
   };
 
@@ -2683,6 +3271,14 @@ export function getServantSparringDebrief(
     amamiya: {
       responseText: "*Nine tails swaying swiftly.* Splendid reflex, Master! Amazakura moves purely on instinct, but your commanding rhythm balances washi's footwork perfectly! Now, where is that fried tofu you promised?",
       emotion: 'happy'
+    },
+    lucia_lyozes: {
+      responseText: "Your guard dropped after the third step. When fatigue sets in, the ribs open up. We will repeat the defensive transition fifty times tomorrow before dawn.",
+      emotion: 'thoughtful'
+    },
+    lucia: {
+      responseText: "Your guard dropped after the third step. When fatigue sets in, the ribs open up. We will repeat the defensive transition fifty times tomorrow before dawn.",
+      emotion: 'thoughtful'
     }
   };
 

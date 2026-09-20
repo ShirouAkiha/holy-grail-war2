@@ -214,7 +214,9 @@ export function createCombatantFromMasterServant(
     bondLevel: servantInstance.bondLevel || 1,
     npLevel: servantInstance.npLevel || 1,
     statBalanceMode: balanceMode,
-    customQuotes: servantInstance.customQuotes
+    customQuotes: servantInstance.customQuotes,
+    templateId: t.id,
+    traits: t.traits || []
   };
 }
 
@@ -275,6 +277,92 @@ export function applyCombatantSkill(
       remainingTurns: skill.duration || 3
     });
     actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
+  }
+
+  // Handle Lucia Lyozes personal skills
+  if (skill.id === 'prescient_foresight') {
+    actor.isEvading = true;
+    actor.activeBuffs.push({
+      name: 'Prescient Foresight (Evade 2 Hits)',
+      type: 'evade',
+      value: 100,
+      remainingTurns: 3,
+      isHitCount: true,
+      remainingHits: 2
+    });
+    actor.activeBuffs.push({
+      name: 'Prescient Foresight (Crit Star Gather)',
+      type: 'star_gather_up',
+      value: 50,
+      remainingTurns: 3
+    });
+    actor.activeBuffs.push({
+      name: 'Prescient Foresight (Crit DMG Up)',
+      type: 'crit_dmg',
+      value: 30,
+      remainingTurns: 3
+    });
+    actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
+    return {
+      success: true,
+      log: `👁️ **${actor.name}** activated **${skill.name}**! Gained Evasion (2 hits, 3T), +50% Star Gather, and +30% Crit Damage!${quoteLine}`,
+      quote: skillQuote,
+      skillName: skill.name
+    };
+  }
+
+  if (skill.id === 'strengthening_adaptation') {
+    actor.activeBuffs.push({
+      name: 'Strengthening Adaptation (Buster Up)',
+      type: 'buster_up',
+      value: 30,
+      remainingTurns: 3
+    });
+    actor.activeBuffs.push({
+      name: 'Strengthening Adaptation (Arts Up)',
+      type: 'arts_up',
+      value: 30,
+      remainingTurns: 3
+    });
+    actor.activeBuffs.push({
+      name: 'Strengthening Adaptation (Damage Cut)',
+      type: 'damage_cut',
+      value: 1000,
+      remainingTurns: 1
+    });
+    actor.activeBuffs.push({
+      name: 'Strengthening Adaptation (Debuff Immunity)',
+      type: 'debuff_immunity',
+      value: 100,
+      remainingTurns: 1
+    });
+    return {
+      success: true,
+      log: `🛡️ **${actor.name}** activated **${skill.name}**! Granted +30% Buster & Arts (3T), 1,000 Damage Cut (1T), and Debuff Immunity!${quoteLine}`,
+      quote: skillQuote,
+      skillName: skill.name
+    };
+  }
+
+  if (skill.id === 'calamity_breaker_edict') {
+    actor.activeBuffs.push({
+      name: 'Calamity-Breaker Edict (ATK Up)',
+      type: 'buff_atk',
+      value: 20,
+      remainingTurns: 3
+    });
+    actor.activeBuffs.push({
+      name: 'Calamity-Breaker Edict (Anti-Calamity Special Attack)',
+      type: 'special_damage_up',
+      value: 30,
+      remainingTurns: 3
+    });
+    return {
+      success: true,
+      log: `👑 **${actor.name}** activated **${skill.name}**! Boosted ATK by +20% and granted +30% Special Damage against Calamities, Foreigners, Beasts, and Extra Classes!${quoteLine}`,
+      quote: skillQuote,
+      skillName: skill.name
+    };
   }
 
   switch (skill.effectType) {
@@ -720,9 +808,49 @@ export function executeNoblePhantasmLogic(
     }
   } else {
     // Damaging Noble Phantasm (ST or AoE)
+    const isApocryphaTerminus = np.name.includes('Apocrypha Terminus');
+    if (isApocryphaTerminus) {
+      // Anti-Cheat Protocol (Before Damage):
+      // Pierce all defenses, remove enemy defensive buffs and guts/revive states
+      actor.activeBuffs.push({
+        name: 'Anti-Cheat: Ignore Invincible',
+        type: 'ignore_invincible',
+        value: 100,
+        remainingTurns: 1
+      });
+      if (target.activeBuffs) {
+        target.activeBuffs = target.activeBuffs.filter(b => 
+          b.type !== 'invincible' && 
+          b.type !== 'evade' && 
+          b.type !== 'buff_def' && 
+          b.type !== 'damage_cut' && 
+          !/guts|revive|invincible|evade|def|protection/i.test(b.name)
+        );
+      }
+      target.isInvincible = false;
+      target.isEvading = false;
+      if ('gutsCount' in target) (target as any).gutsCount = 0;
+    }
+
     const baseDamage = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardDamageModifier * scopeModifier * overchargeDamageBonus * classMult);
-    let totalDmg = (baseDamage * cardPerformanceMultiplier * npDmgBonus) - (effectiveDef * 0.25);
+    const defValue = isApocryphaTerminus ? 0 : effectiveDef;
+    let totalDmg = (baseDamage * cardPerformanceMultiplier * npDmgBonus) - (defValue * 0.25);
     totalDmg = Math.max(1200, totalDmg);
+
+    // Apocrypha Terminus Target Scaling & Overcharge Buff Scaling
+    if (isApocryphaTerminus) {
+      const isExtraOrCalamity = 
+        ['Foreigner', 'Beast', 'Ruler', 'Avenger', 'MoonCancer', 'AlterEgo', 'Pretender', 'Shitposter'].includes(target.servantClass) ||
+        (target.traits && target.traits.some((t: string) => /foreigner|beast|divine|otherworlder|extra/i.test(t)));
+      if (isExtraOrCalamity) {
+        totalDmg = Math.round(totalDmg * 1.5);
+      }
+      if (target.activeBuffs && target.activeBuffs.length > 0) {
+        const buffBonus = Math.min(5.0, target.activeBuffs.length * 1.0);
+        totalDmg = Math.round(totalDmg * (1.0 + buffBonus));
+      }
+    }
+
     const variance = 0.96 + Math.random() * 0.08;
     totalDmg = Math.round(totalDmg * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
@@ -808,7 +936,33 @@ export function executeNoblePhantasmLogic(
         });
       }
 
-      actionSummary = isInvincible
+      if (isApocryphaTerminus) {
+        if (!target.activeBuffs) target.activeBuffs = [];
+        target.activeBuffs.push({
+          name: 'Apocrypha: Buff Block',
+          type: 'buff_block' as any,
+          value: 100,
+          remainingTurns: 3
+        });
+        target.activeBuffs.push({
+          name: 'Apocrypha: Skill Seal',
+          type: 'skill_seal' as any,
+          value: 100,
+          remainingTurns: 2
+        });
+        if (['Foreigner', 'Beast', 'Ruler', 'Avenger', 'MoonCancer', 'AlterEgo', 'Pretender', 'Shitposter'].includes(target.servantClass)) {
+          target.activeBuffs.push({
+            name: 'Apocrypha: NP Seal',
+            type: 'np_seal' as any,
+            value: 100,
+            remainingTurns: 2
+          });
+        }
+      }
+
+      actionSummary = isApocryphaTerminus
+        ? `💥 **${actor.name}** unleashed **[${np.name}]**! *Anti-Cheat Protocol:* stripped enemy defense, pierced invincibility, and struck for **${damageDealt.toLocaleString()} DMG**! Inflicted Buff Block (3T) & Skill Seal (2T)!`
+        : isInvincible
         ? `💥 **${actor.name}** unleashed Buster Noble Phantasm [${np.name}] (${scope === 'single' ? 'ST' : 'AoE'}), but **${target.name}** was shielded by Invincibility!`
         : isEvaded
         ? `💨 **${actor.name}** unleashed Buster Noble Phantasm [${np.name}] (${scope === 'single' ? 'ST' : 'AoE'}), but **${target.name}** Evaded!`

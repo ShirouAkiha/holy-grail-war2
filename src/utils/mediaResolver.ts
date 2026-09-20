@@ -27,6 +27,10 @@ export const CANON_MEDIA_FALLBACKS: Record<string, string> = {
   'np_amamiya_no_chihaya_tenkohime.webp': 'https://ella.janitorai.com/media-approved/Sfp4i7TL2cXu0LS-QZxxX.webp',
   'mskYeY2nC1pcPzEcW_nTK.webp': 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
   'Sfp4i7TL2cXu0LS-QZxxX.webp': 'https://ella.janitorai.com/media-approved/Sfp4i7TL2cXu0LS-QZxxX.webp',
+  'avatar_lucia_lyozes.webp': 'https://ella.janitorai.com/media-approved/2PMVd98BaN6Rc9lzVnWyn.webp',
+  '2PMVd98BaN6Rc9lzVnWyn.webp': 'https://ella.janitorai.com/media-approved/2PMVd98BaN6Rc9lzVnWyn.webp',
+  'np_lucia_lyozes.gif': 'https://ella.janitorai.com/media-approved/v4h_m7mQL9PwjTmQb_7fg.gif',
+  'v4h_m7mQL9PwjTmQb_7fg.gif': 'https://ella.janitorai.com/media-approved/v4h_m7mQL9PwjTmQb_7fg.gif',
   'holy_grail_ritual.webp': 'https://ella.janitorai.com/media-approved/mK-ekdLeM4n1Wb-_vRN4L.webp',
   'mK-ekdLeM4n1Wb-_vRN4L.webp': 'https://ella.janitorai.com/media-approved/mK-ekdLeM4n1Wb-_vRN4L.webp'
 };

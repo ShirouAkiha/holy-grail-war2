@@ -1059,12 +1059,85 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Another washi?! Amamiya ja nee! Washi no namae wa Amamiya no Chihaya Tenkohime! There is only one true ancient guardian of the shrine!",
       retort: "Kyuuu?! An imposter trying to steal washi's fried tofu and Master's headpats?! Amazakura yo, purge the false reflection!",
       tag: "MIRROR OF OSSUARON: KYUBI DUEL"
+    },
+    lucia_lyozes: {
+      intro: "Uwah! Such a stern elf princess! Master, look at her spear, it is so long and sharp! Don't you dare poke washi's fluffy tails with that black lance, or washi will bite thee!",
+      retort: "An ancient Kyubi from Ossuaron's Spine... Your blade relies on beastly instinct. But against five-second foresight and the Black Lance, instinct is merely a predictable vector.",
+      tag: "SYLVAN VANGUARD VS GUARDIAN OF OSSUARON"
+    }
+  },
+  lucia_lyozes: {
+    artoria_pendragon: {
+      intro: "King of Knights. Your chivalric ideals are noble, but on an apocalyptic battlefield, hesitation born of honor will get your comrades killed. Show me your conviction!",
+      retort: "Princess of Sylvanryth. I see the weight of fallen comrades in your eyes. I accept your vanguard challenge with Excalibur!",
+      tag: "ROYAL SOVEREIGN CLASH"
+    },
+    gilgamesh: {
+      intro: "The King of Heroes. Flaunting countless treasures and calling yourself the sole arbiter of humanity? I have dealt with arrogant beings who played at being god before. Black Lance—Apocrypha Terminus!",
+      retort: "Hmph! An elf from an alien world daring to lecture the King? Your five seconds of foresight will only allow you to witness your demise with absolute clarity, mongrel!",
+      tag: "APOCRYPHA TERMINUS VS GATE OF BABYLON"
+    },
+    scathach_lancer: {
+      intro: "The spearwoman who dwells outside the world. Your weapon reach is formidable, Scáthach... but I can already see where your crimson thrust lands five seconds from now.",
+      retort: "Foresight honed on the frontline of a calamity? Splendid, Lucia Lyozes! Pierce through my defenses if you have the will to slay a god!",
+      tag: "PINNACLE LANCER DUEL"
+    },
+    cu_chulainn_lancer: {
+      intro: "The Hound of Culann. Gáe Bolg rewrites causality to pierce the heart... but if I anticipate the cause five seconds prior, your barbed thrust will find only empty air.",
+      retort: "An elf with combat clairvoyance? Sounds like quite the headache! Let's see if your eyes can keep up when my spear goes full throttle!",
+      tag: "SPEAR OF CAUSALITY VS PRESCIENT FORESIGHT"
+    },
+    karna_lancer: {
+      intro: "Hero of Charity. The blinding radiance of your solar spear won't dazzle my clairvoyance. Prepare your stance!",
+      retort: "Your eyes do not gaze upon wealth or status, but upon the fragile lives behind you. A true vanguard. Come, Princess of Sylvanryth.",
+      tag: "FLAME OF CHARITY & THE BLACK LANCE"
+    },
+    emiya_archer: {
+      intro: "A nameless warrior fighting with projected blades... Your defensive stances are disciplined, but you're carrying the burden of sacrificing the few for the many. Stay behind my vanguard.",
+      retort: "A pragmatic vanguard commander who refuses to lose another comrade... Our paths may differ, Princess, but I respect a warrior who guards her rear.",
+      tag: "TACTICAL VANGUARD SCRUTINY"
+    },
+    heracles_berserker: {
+      intro: "Twelve lives of godlike resilience? My Black Lance's Apocrypha Terminus strips away false miracles and revive cheats. Rest now, great hero!",
+      retort: "■■■■■■■■ーーーッ！！ (The titan roars in defiance, lunging forward with primordial earth-shattering force!)",
+      tag: "ANTI-CHEAT PROTOCOL VS GOD HAND"
+    },
+    jeanne_d_arc_ruler: {
+      intro: "Holy Maiden of Orleans. You carry the banner of faith, but divine miracles alone cannot prevent a calamity. You must harden your heart when disaster strikes.",
+      retort: "I understand the burden you bear, Lucia. But faith is not a mere cheat—it is the light that guides humanity through darkness. Let us test our resolves!",
+      tag: "LUMINOSITÉ ETERNELLE VS PRESCIENT FORESIGHT"
+    },
+    jeanne_alter: {
+      intro: "An Avenger born of vengeful dragon fire. You lash out because the world betrayed you. I have seen entire nations turn to ash—your hatred changes nothing.",
+      retort: "Shut up, preachy elf princess! What do you know about burning?! I'll turn your high-and-mighty lance into blackened cinders!",
+      tag: "DRAGON WITCH'S SPITE VS HIGH ELVEN VANGUARD"
+    },
+    adiosa_dragon_envoy: {
+      intro: "The Dragon Envoy of Ixenor... You descend from Aethelian to purge the Ebonwatch Dungeon. But this world is not your disposable gameboard. Five seconds into the future, your path stops right here.",
+      retort: "⟨ Vur Aeth'ra... ⟩ The High Elf Vanguard of the Wailing Tower. Floor 34 diver. Your mortal struggle against the Calamity was quaint, Lucia Lyozes. Yield before the dragon's ruin.",
+      tag: "EBONWATCH CONVERGENCE: DRAGON ENVOY VS VANGUARD LANCER"
+    },
+    aoko_aozaki: {
+      intro: "The Fifth Magician... Consuming future energy to alter current reality. Unchecked magic that warps time and consequences is something I will never tolerate on my watch!",
+      retort: "Whoa, chill out! I don't plan on destroying the universe, elf lady! If you think you can read five seconds ahead of my Fifth Magic, let's see you try!",
+      tag: "PREDETERMINED RUIN VS THE FIFTH MAGIC"
+    },
+    amamiya_no_chihaya_tenkohime: {
+      intro: "An ancient Kyubi from Ossuaron's Spine... Your blade relies on beastly instinct. But against five-second foresight and the Black Lance, instinct is merely a predictable vector.",
+      retort: "Uwah! Such a stern elf princess! Master, look at her spear, it is so long and sharp! Don't you dare poke washi's fluffy tails with that black lance, or washi will bite thee!",
+      tag: "SYLVAN VANGUARD VS GUARDIAN OF OSSUARON"
+    },
+    lucia_lyozes: {
+      intro: "A duplicate of myself? If you carry the same scars of the Calamity and the weight of the Hero's Party... then prove your resolve is stronger than mine!",
+      retort: "There is only one vanguard who protects the Citadel Suburbs. Ground your spear—let us see whose foresight holds true!",
+      tag: "MIRROR OF PREDESTINED RUIN"
     }
   }
 };
 
-// Also alias amamiya to amamiya_no_chihaya_tenkohime in the database
+// Also alias amamiya and lucia in the database
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['amamiya'] = SERVANT_MATCHUP_DATABASE.amamiya_no_chihaya_tenkohime;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['lucia'] = SERVANT_MATCHUP_DATABASE.lucia_lyozes;
 
 /**
  * Fallback generator for custom servants, meme servants, or any servant pairs not explicitly defined.
@@ -1152,8 +1225,15 @@ export function getServantMatchupDialogue(
 
   const cId = cTemplate.id;
   const oId = oTemplate.id;
-  const cAlt = cId === 'amamiya' ? 'amamiya_no_chihaya_tenkohime' : (cId === 'amamiya_no_chihaya_tenkohime' ? 'amamiya' : cId);
-  const oAlt = oId === 'amamiya' ? 'amamiya_no_chihaya_tenkohime' : (oId === 'amamiya_no_chihaya_tenkohime' ? 'amamiya' : oId);
+  const getAltId = (id: string) => {
+    if (id === 'amamiya') return 'amamiya_no_chihaya_tenkohime';
+    if (id === 'amamiya_no_chihaya_tenkohime') return 'amamiya';
+    if (id === 'lucia') return 'lucia_lyozes';
+    if (id === 'lucia_lyozes') return 'lucia';
+    return id;
+  };
+  const cAlt = getAltId(cId);
+  const oAlt = getAltId(oId);
   const isMirror = cId === oId || cAlt === oId || cId === oAlt;
 
   // 1. Check if Challenger instance has a custom rival line configured via Servant Workshop

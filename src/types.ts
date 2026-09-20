@@ -335,6 +335,8 @@ export interface ActiveCombatant {
   equippedCe?: CraftEssence;
   statBalanceMode?: StatBalanceMode;
   customQuotes?: MasterServantInstance['customQuotes'];
+  templateId?: string;
+  traits?: string[];
 }
 
 export type BattleCombatMode = '1v1' | '1v2' | '2v2';

@@ -55,7 +55,8 @@ const ALIAS_MAP: Record<string, string[]> = {
   kama: ['goddess of love', 'mara', 'beast iii'],
   adiosa_dragon_envoy: ['adiosa', 'world pruner', 'world-pruner', 'dragon envoy', 'cataclysm dragon', 'cataclysm-class', 'ixenor', 'aethelian', 'lyozes', 'cataclysm', 'adiosa dragon envoy', 'envoy of ixenor', 'azure-magenta ruin'],
   aoko_aozaki: ['aoko', 'aoko aozaki', 'fifth magician', 'miss blue', 'magic blue', 'super aoko', 'magic gunner', 'aozaki'],
-  amamiya_no_chihaya_tenkohime: ['amamiya', 'chihaya', 'tenkohime', 'amamiya no chihaya tenkohime', 'ancient kyubi guardian', 'kyubi', 'kyuubi', 'nine tails', 'katana maiden', 'amazakura', 'ossuaron', 'kitsune saber', 'kitsune', 'amamiya saber']
+  amamiya_no_chihaya_tenkohime: ['amamiya', 'chihaya', 'tenkohime', 'amamiya no chihaya tenkohime', 'ancient kyubi guardian', 'kyubi', 'kyuubi', 'nine tails', 'katana maiden', 'amazakura', 'ossuaron', 'kitsune saber', 'kitsune', 'amamiya saber'],
+  lucia_lyozes: ['lucia', 'lucernalia', 'lucia lyozes', 'lucernalia lyozes', 'high elf', 'elf lancer', 'lyozes lancer', 'apocrypha terminus', 'hero\'s party']
 };
 
 /**

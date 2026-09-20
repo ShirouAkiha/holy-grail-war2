@@ -1383,5 +1383,82 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     avatarUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
     cardArtUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
     isCustomOrMeme: false
+  },
+  {
+    id: 'lucia_lyozes',
+    name: 'Lucernalia Lyozes',
+    title: 'High Elf Vanguard of the Hero\'s Party',
+    servantClass: 'Lancer',
+    rarity: 5,
+    baseHp: 15400,
+    baseAtk: 12450,
+    baseStats: { strength: 14, endurance: 15, agility: 17, mana: 16, luck: 12 },
+    commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
+    skills: [
+      {
+        id: 'prescient_foresight_ex',
+        name: 'Prescient Foresight EX',
+        cooldown: 6,
+        description: 'Reads the causality vectors of the incoming battlefield. Grants Evasion for 2 hits (3 turns), increases Critical Star Gather Rate by 50% for 3 turns, and increases Critical Damage by 30% for 3 turns.',
+        effectType: 'evade',
+        duration: 3,
+        value: 2,
+        icon: '👁️'
+      },
+      {
+        id: 'strengthening_adaptation_a_plus',
+        name: 'Strengthening Adaptation A+',
+        cooldown: 6,
+        description: 'Hardens the spiritual vessel through ancient high-elf biological refinement. Increases own Buster and Arts Card effectiveness by 30% for 3 turns, applies Damage Cut by 1,000 for 1 turn, and grants Debuff Immunity for 1 turn.',
+        effectType: 'buff_def',
+        duration: 3,
+        value: 30,
+        icon: '🛡️'
+      },
+      {
+        id: 'calamity_breaker_edict_a',
+        name: 'Calamity-Breaker Edict A',
+        cooldown: 7,
+        description: 'A tactical command forged during the Last Calamity to protect the vanguard. Increases ATK by 20% for 3 turns, and increases Special Attack Damage against Calamity, Foreigner, Beast, and Extra Class enemies by 30% for 3 turns.',
+        effectType: 'buff_atk',
+        duration: 3,
+        value: 20,
+        icon: '⚔️'
+      }
+    ],
+    passives: [
+      {
+        name: 'Magic Resistance A',
+        type: 'magic_resistance',
+        value: 20,
+        rank: 'A',
+        description: 'Increases debuff resistance by 20%.'
+      },
+      {
+        name: 'High Elf Biology EX',
+        type: 'independent_action',
+        value: 10,
+        rank: 'EX',
+        description: 'Ancient elven constitution granting superior biological durability and sensory acuity. Increases Arts & Buster card performance by 8% and generates 4 Critical Stars per turn.'
+      }
+    ],
+    noblePhantasm: {
+      name: 'Apocrypha Terminus: Five Seconds of Predestined Ruin',
+      cardType: 'Buster',
+      chant: 'Hear the black iron toll. Calamities that mock mortality shall find no shelter in false miracles. Five seconds to ruin... Apocrypha Terminus!',
+      description: 'Pierces invulnerability and defense, purges defensive buffs and guts states, dealing heavy Buster damage to a single enemy that scales against enemies with buffs and Extra/Calamity traits. Applies Buff Block (3 turns) and Skill Seal (2 turns).',
+      target: 'single',
+      multiplier: 800,
+      overchargeEffect: 'Increases Buster Card effectiveness by 30% for 1 turn (activates first) & strips defensive buffs',
+      gifUrl: 'https://ella.janitorai.com/media-approved/Sfp4i7TL2cXu0LS-QZxxX.webp'
+    },
+    lore: 'Lucernalia "Lucia" Lyozes is a 322-year-old High Elf Vanguard Lancer and supreme tactician from the fantasy world of Lyozes. Having witnessed the devastation of her homeland during the Last Calamity caused by a rogue Otherworlder, she adopted a strict "Closed Door" policy to protect her party and world from unchecked planar interference. Stoic, hyper-disciplined, and deeply protective of mortals despite her stern exterior, she wields black-iron lances with razor-sharp tactical precision.',
+    summonQuote: '"Do not move. Do not draw breath deeper than necessary. If your fingers twitch toward a focus, a catalyst, or a weapon, this black iron will pierce your throat before your mind registers the intent. I am Lucernalia Lyozes."',
+    battleStartQuote: '"Vanguard formation established. Stand behind my lance, and do not break discipline."',
+    victoryQuote: '"The perimeter is secure. Check your wounds, replenish your water, and prepare for the next engagement."',
+    defeatQuote: '"A failure of calculation... Withdraw to the secondary line... I will hold the choke point..."',
+    avatarUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+    isCustomOrMeme: false
   }
 ];

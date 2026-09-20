@@ -163,7 +163,9 @@ export function createCombatantFromMasterServant(
     npLevel: servantInstance.npLevel || 1,
     equippedCe: ce,
     statBalanceMode: balanceMode,
-    customQuotes: servantInstance.customQuotes
+    customQuotes: servantInstance.customQuotes,
+    templateId: t.id,
+    traits: t.traits || []
   };
 }
 
