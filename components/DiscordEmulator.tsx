@@ -696,6 +696,11 @@ export default function DiscordEmulator({
   const [invPage, setInvPage] = useState<number>(1);
   const [invSelectedCeId, setInvSelectedCeId] = useState<string | null>(null);
   const [invSelectedServantId, setInvSelectedServantId] = useState<string | null>(null);
+  const [invCeViewMode, setInvCeViewMode] = useState<'all' | 'owned'>('all');
+  const [invCeRarityFilter, setInvCeRarityFilter] = useState<'all' | 5 | 4 | 3 | 'bond'>('all');
+  const [invCeSearchQuery, setInvCeSearchQuery] = useState<string>('');
+  const [showInvSearchModal, setShowInvSearchModal] = useState<boolean>(false);
+  const [invSearchModalInput, setInvSearchModalInput] = useState<string>('');
   const [gachaCategory, setGachaCategory] = useState<'servants' | 'ces' | 'daily' | 'rates'>('servants');
   const [gachaBanner, setGachaBanner] = useState<string>('throne_servants');
   const [servantHubCategory, setServantHubCategory] = useState<'profile' | 'stats' | 'np' | 'dialogue' | 'roster'>('profile');
@@ -2389,6 +2394,16 @@ export default function DiscordEmulator({
       }
 
       let category: 'ces' | 'servants' | 'feed' | 'seals' | 'items' = 'ces';
+      let parsedSearch = '';
+      let parsedRarity: 'all' | 5 | 4 | 3 | 'bond' = 'all';
+      let parsedMode: 'all' | 'owned' = invCeViewMode;
+
+      const rawParams = trimmed
+        .replace('/inventory', '')
+        .replace('/customise equip', '')
+        .replace('/cegacha inventory', '')
+        .trim();
+
       if (trimmed.startsWith('/feed') || trimmed.startsWith('/enhance') || trimmed.includes('feed')) {
         const feedArg = trimmed.replace('/feed', '').replace('/enhance', '').replace('/customise feed', '').trim();
         if (feedArg) {
@@ -2396,17 +2411,45 @@ export default function DiscordEmulator({
           return;
         }
         category = 'feed';
-      } else if (trimmed.includes('servant')) {
+      } else if (rawParams.includes('servant') || rawParams === 'servants') {
         category = 'servants';
-      } else if (trimmed.includes('seal') || trimmed.includes('ward')) {
+      } else if (rawParams.includes('seal') || rawParams.includes('ward')) {
         category = 'seals';
-      } else if (trimmed.includes('item') || trimmed.includes('vault') || trimmed.includes('quartz') || trimmed.includes('gacha')) {
+      } else if (rawParams.includes('item') || rawParams.includes('vault') || rawParams.includes('quartz') || rawParams.includes('gacha')) {
         category = 'items';
+      } else if (rawParams) {
+        // Parse search/filter query in inventory (e.g. /inventory 5star, /inventory search kaleidoscope, /inventory bond, /inventory owned)
+        const pLower = rawParams.toLowerCase();
+        if (pLower === '5star' || pLower === '5' || pLower === 'ssr') {
+          parsedRarity = 5;
+        } else if (pLower === '4star' || pLower === '4' || pLower === 'sr') {
+          parsedRarity = 4;
+        } else if (pLower === '3star' || pLower === '3' || pLower === 'r') {
+          parsedRarity = 3;
+        } else if (pLower === 'bond' || pLower === 'bond10') {
+          parsedRarity = 'bond';
+        } else if (pLower === 'catalog' || pLower === 'all') {
+          parsedMode = 'all';
+        } else if (pLower === 'owned' || pLower === 'vault') {
+          parsedMode = 'owned';
+        } else {
+          // Search term
+          const cleanedSearch = rawParams.replace(/^search\s*[:=]?\s*/i, '').trim();
+          if (cleanedSearch) parsedSearch = cleanedSearch;
+        }
       }
 
       setInvCategory(category);
       setInvPage(1);
-      postInventoryHub(category, 1);
+      if (parsedSearch) setInvCeSearchQuery(parsedSearch);
+      if (parsedRarity !== 'all') setInvCeRarityFilter(parsedRarity);
+      if (parsedMode !== invCeViewMode) setInvCeViewMode(parsedMode);
+
+      postInventoryHub(category, 1, undefined, {
+        ceViewMode: parsedMode,
+        ceRarityFilter: parsedRarity,
+        ceSearchQuery: parsedSearch || invCeSearchQuery
+      });
       return;
     }
 
@@ -5984,11 +6027,16 @@ export default function DiscordEmulator({
     });
   };
 
-  // Helper: Post Hana Association Equipment & Inventory Hub
+  // Helper: Post Master Inventory & Craft Essence Vault/Catalog Hub
   const postInventoryHub = (
     category: 'ces' | 'servants' | 'feed' | 'seals' | 'items' = 'ces',
     page: number = 1,
-    selectedId?: string
+    selectedId?: string,
+    options?: {
+      ceViewMode?: 'all' | 'owned';
+      ceRarityFilter?: 'all' | 5 | 4 | 3 | 'bond';
+      ceSearchQuery?: string;
+    }
   ) => {
     const ownedCes = (master.craftEssences || []).filter(Boolean);
     const ownedServants = master.servants || [];
@@ -6002,6 +6050,10 @@ export default function DiscordEmulator({
     const expNeededForLevel = Math.max(1, nextExp - curLevelBaseExp);
     const progressPct = Math.min(100, Math.round((expIntoLevel / expNeededForLevel) * 100));
     const progressBar = '█'.repeat(Math.round(progressPct / 10)) + '░'.repeat(10 - Math.round(progressPct / 10));
+
+    const effectiveViewMode = options?.ceViewMode ?? invCeViewMode;
+    const effectiveRarity = options?.ceRarityFilter ?? invCeRarityFilter;
+    const effectiveSearch = (options?.ceSearchQuery !== undefined ? options.ceSearchQuery : invCeSearchQuery).trim();
 
     let title = `🛡️ ${master.username}'s Vault — Craft Essences`;
     let headerBanner = '';
@@ -6022,45 +6074,112 @@ export default function DiscordEmulator({
       `💎 **Saint Quartz Balance:** \`${master.saintQuartz || 0} SQ\``;
 
     if (category === 'ces') {
-      title = `🛡️ ${master.username}'s Vault — Craft Essences`;
-      headerBanner =
-        commonStatsHeader +
-        `\n\n*Select a Craft Essence below to **Equip**, **Feed for EXP**, or **Inspect Lore**.*`;
+      title = effectiveViewMode === 'all'
+        ? `🛡️ ${master.username}'s Inventory — Craft Essence Catalog & Vault`
+        : `🛡️ ${master.username}'s Vault — Owned Craft Essences`;
 
-      const ceCounts = new Map<string, { ce: any; count: number }>();
+      // Build pool of CEs
+      const ownedCeCountMap = new Map<string, number>();
       for (const c of ownedCes) {
         if (!c || !c.id) continue;
-        if (!ceCounts.has(c.id)) ceCounts.set(c.id, { ce: c, count: 1 });
-        else ceCounts.get(c.id)!.count++;
+        ownedCeCountMap.set(c.id, (ownedCeCountMap.get(c.id) || 0) + 1);
       }
 
-      const uniqueCes = Array.from(ceCounts.values());
-      totalItems = uniqueCes.length;
+      let candidateCes: { ce: any; count: number }[] = [];
+      if (effectiveViewMode === 'all') {
+        const seenIds = new Set<string>();
+        for (const ce of CRAFT_ESSENCE_DATABASE) {
+          if (!ce || !ce.id) continue;
+          seenIds.add(ce.id);
+          candidateCes.push({
+            ce,
+            count: ownedCeCountMap.get(ce.id) || 0
+          });
+        }
+        for (const ce of ownedCes) {
+          if (ce && ce.id && !seenIds.has(ce.id)) {
+            seenIds.add(ce.id);
+            candidateCes.push({
+              ce,
+              count: ownedCeCountMap.get(ce.id) || 1
+            });
+          }
+        }
+      } else {
+        const uniqueOwned: { ce: any; count: number }[] = [];
+        const seenIds = new Set<string>();
+        for (const c of ownedCes) {
+          if (!c || !c.id || seenIds.has(c.id)) continue;
+          seenIds.add(c.id);
+          uniqueOwned.push({ ce: c, count: ownedCeCountMap.get(c.id) || 1 });
+        }
+        candidateCes = uniqueOwned;
+      }
 
-      const selCe = uniqueCes.find(u => u.ce.id === (selectedId || invSelectedCeId))?.ce || (uniqueCes.length > 0 ? uniqueCes[0].ce : null);
+      // Apply Rarity Filter
+      if (effectiveRarity !== 'all') {
+        if (effectiveRarity === 'bond') {
+          candidateCes = candidateCes.filter(item => item.ce.isBondCe || (item.ce.rarity === 4 && item.ce.bondServantName));
+        } else {
+          candidateCes = candidateCes.filter(item => item.ce.rarity === effectiveRarity && !item.ce.isBondCe);
+        }
+      }
 
-      if (uniqueCes.length === 0) {
+      // Apply Search Query Filter
+      if (effectiveSearch) {
+        const q = effectiveSearch.toLowerCase();
+        candidateCes = candidateCes.filter(item => {
+          const nameMatch = item.ce.name?.toLowerCase().includes(q);
+          const effectMatch = item.ce.effectText?.toLowerCase().includes(q);
+          const descMatch = item.ce.description?.toLowerCase().includes(q);
+          const bondMatch = item.ce.bondServantName?.toLowerCase().includes(q);
+          return Boolean(nameMatch || effectMatch || descMatch || bondMatch);
+        });
+      }
+
+      totalItems = candidateCes.length;
+
+      const activeFilterTag = effectiveRarity === 'all'
+        ? 'All Tiers'
+        : effectiveRarity === 'bond'
+        ? '🎖️ Bond 10 Relics'
+        : `★${effectiveRarity} Tier`;
+
+      const searchTag = effectiveSearch ? ` • 🔍 Query: "${effectiveSearch}"` : '';
+      const modeTag = effectiveViewMode === 'all' ? '📚 Catalog Mode (All CEs)' : '💼 Vault Mode (Owned Only)';
+
+      headerBanner =
+        commonStatsHeader +
+        `\n\n📌 **Filter:** \`${modeTag}\` | \`${activeFilterTag}\`${searchTag}\n` +
+        `*Select any Craft Essence below to **Equip**, **View High-Res Art**, or **Inspect Lore**.*`;
+
+      const currentSelId = selectedId || invSelectedCeId || activeServant?.equippedCeId || candidateCes[0]?.ce?.id;
+      const selCe = candidateCes.find(u => u.ce.id === currentSelId)?.ce || (candidateCes.length > 0 ? candidateCes[0].ce : null);
+
+      if (candidateCes.length === 0) {
         itemLines = [
-          '• *No Craft Essences currently in inventory.*',
-          '• *Click **[Claim Practice CEs]** below to receive 5 starter essences, or roll in **[Gacha Vault]**!*'
+          '• *No Craft Essences match the selected filter or search query.*',
+          '• *Click **[Clear Filter / Search]** below to reset the view!*'
         ];
       } else {
         const startIndex = (page - 1) * itemsPerPage;
-        const paginated = uniqueCes.slice(startIndex, startIndex + itemsPerPage);
+        const paginated = candidateCes.slice(startIndex, startIndex + itemsPerPage);
 
         itemLines = paginated.map(({ ce, count }) => {
           const isEq = activeServant?.equippedCeId === ce.id;
-          const isSel = (selectedId || invSelectedCeId) === ce.id;
+          const isSel = currentSelId === ce.id;
           const rarityStars = '★'.repeat(ce.rarity || 3);
           const eqBadge = isEq ? ' **[EQUIPPED]**' : '';
+          const countBadge = count > 0 ? ` ×${count}` : ' *(Catalog)*';
+          const bondBadge = ce.isBondCe ? ' 🎖️' : '';
           const pointer = isSel ? '▶ ' : '• ';
-          return `${pointer}**[${rarityStars}]** **${ce.name}** ×${count} — +${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP${eqBadge}\n   ↳ *${ce.effectText || ce.description || 'Mystic Code'}*`;
+          return `${pointer}**[${rarityStars}]** **${ce.name}**${bondBadge}${countBadge} — +${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP${eqBadge}\n   ↳ *${ce.effectText || ce.description || 'Mystic Code'}*`;
         });
 
         selectPlaceholder = selCe ? `Selected: ${selCe.name} (★${selCe.rarity})` : '🔍 Select a Craft Essence...';
-        selectOptions = uniqueCes.slice(0, 25).map(({ ce, count }) => ({
+        selectOptions = candidateCes.slice(0, 25).map(({ ce, count }) => ({
           value: `inv_sel_ce_${ce.id}`,
-          label: `${ce.name} ×${count} (★${ce.rarity})`,
+          label: `${ce.name}${count > 0 ? ` ×${count}` : ' (Catalog)'} (★${ce.rarity})`,
           description: `+${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP • ${ce.effectText?.slice(0, 45) || 'Relic'}`
         }));
       }
@@ -6178,6 +6297,55 @@ export default function DiscordEmulator({
       { id: 'inv_cat_items', label: 'Vault & Gacha', style: category === 'items' ? 'primary' as const : 'secondary' as const, emoji: '💎' }
     ];
 
+    // Filter bar (only when looking at CEs)
+    let filterButtons: { id: string; label: string; style: 'primary' | 'secondary' | 'success' | 'danger'; emoji?: string }[] = [];
+    if (category === 'ces') {
+      filterButtons = [
+        {
+          id: 'inv_toggle_ce_mode',
+          label: effectiveViewMode === 'all' ? 'Mode: Catalog (All CEs)' : 'Mode: Vault (Owned)',
+          style: effectiveViewMode === 'all' ? 'primary' : 'secondary',
+          emoji: '📚'
+        },
+        {
+          id: 'inv_filter_ce_5star',
+          label: '★5 SSR',
+          style: effectiveRarity === 5 ? 'success' : 'secondary',
+          emoji: '⭐'
+        },
+        {
+          id: 'inv_filter_ce_4star',
+          label: '★4 SR',
+          style: effectiveRarity === 4 ? 'success' : 'secondary',
+          emoji: '⭐'
+        },
+        {
+          id: 'inv_filter_ce_3star',
+          label: '★3 R',
+          style: effectiveRarity === 3 ? 'success' : 'secondary',
+          emoji: '⭐'
+        },
+        {
+          id: 'inv_filter_ce_bond',
+          label: 'Bond 10',
+          style: effectiveRarity === 'bond' ? 'success' : 'secondary',
+          emoji: '🎖️'
+        },
+        {
+          id: 'inv_open_search_modal',
+          label: effectiveSearch ? `Search: "${effectiveSearch}"` : 'Search CEs',
+          style: effectiveSearch ? 'primary' : 'secondary',
+          emoji: '🔍'
+        },
+        ...(effectiveSearch || effectiveRarity !== 'all' ? [{
+          id: 'inv_clear_search',
+          label: 'Reset Filters',
+          style: 'danger' as const,
+          emoji: '❌'
+        }] : [])
+      ];
+    }
+
     let actionButtons: { id: string; label: string; style: 'primary' | 'secondary' | 'success' | 'danger'; emoji?: string }[] = [];
 
     if (category === 'ces') {
@@ -6185,12 +6353,11 @@ export default function DiscordEmulator({
         { id: 'inv_page_prev', label: 'Prev', style: 'secondary', emoji: '◀️' },
         { id: 'inv_page_next', label: 'Next', style: 'secondary', emoji: '▶️' },
         { id: 'inv_act_equip_selected', label: 'Equip Selected', style: 'success', emoji: '✅' },
-        { id: 'inv_act_feed_selected', label: 'Feed Selected', style: 'primary', emoji: '✨' },
-        { id: 'inv_act_inspect', label: 'Inspect Lore', style: 'secondary', emoji: '📖' },
         { id: 'inv_act_view_art', label: 'View CE Art', style: 'primary', emoji: '🖼️' },
+        { id: 'inv_act_inspect', label: 'Inspect Lore', style: 'secondary', emoji: '📖' },
+        { id: 'inv_act_feed_selected', label: 'Feed for EXP', style: 'primary', emoji: '✨' },
         { id: 'inv_act_unequip', label: 'Unequip', style: 'danger', emoji: '❌' },
-        ...(ownedCes.length === 0 ? [{ id: 'inv_act_claim_practice_ces', label: 'Claim Practice CEs', style: 'primary' as const, emoji: '🎁' }] : []),
-        { id: 'inv_quick_gacha', label: 'Gacha Vault', style: 'secondary', emoji: '🎲' }
+        { id: 'inv_quick_gacha', label: 'Gacha Sanctum', style: 'secondary', emoji: '🎲' }
       ];
     } else if (category === 'servants') {
       actionButtons = [
@@ -6239,13 +6406,13 @@ export default function DiscordEmulator({
         title,
         description: `${headerBanner}\n\n` + itemLines.join('\n'),
         color: category === 'feed' ? '#a855f7' : category === 'servants' ? '#d4af37' : '#38bdf8',
-        footer: `Page ${currentPage}/${totalPages} • Unified Master Inventory & Workshop • All interactive buttons operational`
+        footer: `Page ${currentPage}/${totalPages} • Unified Master Inventory & Catalog • ${totalItems} items matching`
       },
       components: {
         type: 'buttons',
         placeholder: selectOptions.length > 0 ? selectPlaceholder : undefined,
         selectOptions: selectOptions.length > 0 ? selectOptions : undefined,
-        items: [...categoryNavButtons, ...actionButtons]
+        items: [...categoryNavButtons, ...filterButtons, ...actionButtons]
       }
     });
   };
@@ -8347,6 +8514,44 @@ export default function DiscordEmulator({
         setInvPage(newPage);
         postInventoryHub(invCategory, newPage, invCategory === 'ces' ? (invSelectedCeId || undefined) : (invSelectedServantId || undefined));
       }
+      // 2b. Mode & Rarity Filters
+      else if (btnId === 'inv_toggle_ce_mode') {
+        const nextMode = invCeViewMode === 'all' ? 'owned' : 'all';
+        setInvCeViewMode(nextMode);
+        setInvPage(1);
+        postInventoryHub('ces', 1, invSelectedCeId || undefined, { ceViewMode: nextMode });
+      } else if (btnId === 'inv_filter_ce_5star') {
+        const nextRarity = invCeRarityFilter === 5 ? 'all' : 5;
+        setInvCeRarityFilter(nextRarity);
+        setInvPage(1);
+        postInventoryHub('ces', 1, invSelectedCeId || undefined, { ceRarityFilter: nextRarity });
+      } else if (btnId === 'inv_filter_ce_4star') {
+        const nextRarity = invCeRarityFilter === 4 ? 'all' : 4;
+        setInvCeRarityFilter(nextRarity);
+        setInvPage(1);
+        postInventoryHub('ces', 1, invSelectedCeId || undefined, { ceRarityFilter: nextRarity });
+      } else if (btnId === 'inv_filter_ce_3star') {
+        const nextRarity = invCeRarityFilter === 3 ? 'all' : 3;
+        setInvCeRarityFilter(nextRarity);
+        setInvPage(1);
+        postInventoryHub('ces', 1, invSelectedCeId || undefined, { ceRarityFilter: nextRarity });
+      } else if (btnId === 'inv_filter_ce_bond') {
+        const nextRarity = invCeRarityFilter === 'bond' ? 'all' : 'bond';
+        setInvCeRarityFilter(nextRarity);
+        setInvPage(1);
+        postInventoryHub('ces', 1, invSelectedCeId || undefined, { ceRarityFilter: nextRarity });
+      } else if (btnId === 'inv_open_search_modal') {
+        setInvSearchModalInput(invCeSearchQuery);
+        setShowInvSearchModal(true);
+      } else if (btnId === 'inv_clear_search') {
+        setInvCeSearchQuery('');
+        setInvCeRarityFilter('all');
+        setInvPage(1);
+        postInventoryHub('ces', 1, invSelectedCeId || undefined, {
+          ceSearchQuery: '',
+          ceRarityFilter: 'all'
+        });
+      }
       // 3. Select Dropdown Actions
       else if (btnId.startsWith('inv_sel_ce_')) {
         const ceId = btnId.replace('inv_sel_ce_', '');
@@ -8363,15 +8568,25 @@ export default function DiscordEmulator({
           addMessage({ id: getNextId('bot_err'), sender: 'bot', timestamp: 'Just now', embed: { title: '⚠️ No Servant', description: 'Contract a Servant first.', color: '#ef4444' } });
           return;
         }
-        const targetCe = ownedCes.find(c => c.id === (invSelectedCeId || ownedCes[0]?.id)) || ownedCes[0];
+        const targetCe = ownedCes.find(c => c.id === (invSelectedCeId || ownedCes[0]?.id)) ||
+          CRAFT_ESSENCE_DATABASE.find(c => c.id === invSelectedCeId) ||
+          ownedCes[0] ||
+          CRAFT_ESSENCE_DATABASE[0];
+
         if (!targetCe) {
-          addMessage({ id: getNextId('bot_err'), sender: 'bot', timestamp: 'Just now', embed: { title: '⚠️ No Craft Essence', description: 'No Craft Essence selected or owned to equip.', color: '#ef4444' } });
+          addMessage({ id: getNextId('bot_err'), sender: 'bot', timestamp: 'Just now', embed: { title: '⚠️ No Craft Essence', description: 'No Craft Essence selected or found to equip.', color: '#ef4444' } });
           return;
+        }
+
+        // Auto-add to owned if equipping from catalog
+        let newMasterCes = [...(master.craftEssences || [])];
+        if (!newMasterCes.some(c => c && c.id === targetCe.id)) {
+          newMasterCes.push(targetCe);
         }
 
         const updatedServant = equipCraftEssence(activeServant, targetCe.id);
         const updatedServants = master.servants.map(s => s.id === activeServant.id ? updatedServant : s);
-        const updatedMaster: MasterProfile = { ...master, servants: updatedServants };
+        const updatedMaster: MasterProfile = { ...master, craftEssences: newMasterCes, servants: updatedServants };
         onUpdateMaster(updatedMaster);
 
         addMessage({
@@ -8498,7 +8713,10 @@ export default function DiscordEmulator({
       }
       // 8. Inspect Lore & Dossiers
       else if (btnId === 'inv_act_inspect') {
-        const targetCe = ownedCes.find(c => c.id === (invSelectedCeId || activeServant?.equippedCeId || ownedCes[0]?.id)) || activeServant?.equippedCe;
+        const targetCe = ownedCes.find(c => c.id === (invSelectedCeId || activeServant?.equippedCeId || ownedCes[0]?.id)) ||
+          CRAFT_ESSENCE_DATABASE.find(c => c.id === invSelectedCeId) ||
+          activeServant?.equippedCe ||
+          CRAFT_ESSENCE_DATABASE[0];
         if (targetCe) {
           addMessage({
             id: getNextId('bot_ce_lore'),
@@ -8537,10 +8755,13 @@ export default function DiscordEmulator({
           }
         }
         if (!targetCe) {
-          targetCe = ownedCes.find(c => c.id === (invSelectedCeId || activeServant?.equippedCeId || ownedCes[0]?.id)) || activeServant?.equippedCe;
+          targetCe = ownedCes.find(c => c.id === (invSelectedCeId || activeServant?.equippedCeId || ownedCes[0]?.id)) ||
+            CRAFT_ESSENCE_DATABASE.find(c => c.id === invSelectedCeId) ||
+            activeServant?.equippedCe ||
+            CRAFT_ESSENCE_DATABASE[0];
         }
         if (targetCe) {
-          const artUrl = targetCe.artworkUrl || (targetCe as any).imageUrl || 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=600&auto=format&fit=crop&q=80';
+          const artUrl = targetCe.artworkUrl || (targetCe as any).imageUrl || 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp';
           addMessage({
             id: getNextId('bot_ce_art_view'),
             sender: 'bot',
@@ -13384,6 +13605,142 @@ export default function DiscordEmulator({
           </div>
         );
       })()}
+
+      {/* Craft Essence Search & Filter Modal */}
+      {showInvSearchModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-[#121216] border border-[#38bdf8]/40 rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🔍</span>
+                <h3 className="text-base font-bold text-white">Search Craft Essences</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInvSearchModal(false)}
+                className="text-white/40 hover:text-white text-sm px-2 py-1 rounded-md hover:bg-white/10 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-white/70 block mb-1">
+                  Search by Name, Effect, or Partner:
+                </label>
+                <input
+                  type="text"
+                  value={invSearchModalInput}
+                  onChange={(e) => setInvSearchModalInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const q = invSearchModalInput.trim();
+                      setInvCeSearchQuery(q);
+                      setShowInvSearchModal(false);
+                      setInvPage(1);
+                      postInventoryHub('ces', 1, undefined, { ceSearchQuery: q });
+                    }
+                  }}
+                  placeholder="e.g. Kaleidoscope, NP, Buster, Artoria..."
+                  className="w-full bg-[#0a0a0c] text-white border border-white/20 focus:border-[#38bdf8] rounded-lg px-3 py-2 text-sm outline-none placeholder-white/30"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-white/70 block mb-1">
+                  Filter by Rarity:
+                </label>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {(['all', 5, 4, 3, 'bond'] as const).map((r) => {
+                    const label = r === 'all' ? 'All' : r === 'bond' ? 'Bond 10' : `★${r}`;
+                    const isSel = invCeRarityFilter === r;
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setInvCeRarityFilter(r)}
+                        className={`py-1.5 rounded-md text-xs font-bold transition cursor-pointer border ${
+                          isSel
+                            ? 'bg-[#38bdf8]/20 border-[#38bdf8] text-[#38bdf8]'
+                            : 'bg-[#0a0a0c] border-white/10 text-white/60 hover:text-white'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-white/70 block mb-1">
+                  View Mode:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setInvCeViewMode('all')}
+                    className={`p-2 rounded-lg text-xs font-bold border transition text-center cursor-pointer ${
+                      invCeViewMode === 'all'
+                        ? 'bg-[#38bdf8]/20 border-[#38bdf8] text-[#38bdf8]'
+                        : 'bg-[#0a0a0c] border-white/10 text-white/60 hover:text-white'
+                    }`}
+                  >
+                    📚 Catalog (All CEs)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInvCeViewMode('owned')}
+                    className={`p-2 rounded-lg text-xs font-bold border transition text-center cursor-pointer ${
+                      invCeViewMode === 'owned'
+                        ? 'bg-[#38bdf8]/20 border-[#38bdf8] text-[#38bdf8]'
+                        : 'bg-[#0a0a0c] border-white/10 text-white/60 hover:text-white'
+                    }`}
+                  >
+                    💼 Vault (Owned Only)
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-white/10 pt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setInvSearchModalInput('');
+                  setInvCeSearchQuery('');
+                  setInvCeRarityFilter('all');
+                  setShowInvSearchModal(false);
+                  setInvPage(1);
+                  postInventoryHub('ces', 1, undefined, { ceSearchQuery: '', ceRarityFilter: 'all' });
+                }}
+                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white text-xs font-semibold transition cursor-pointer"
+              >
+                Reset All
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const q = invSearchModalInput.trim();
+                  setInvCeSearchQuery(q);
+                  setShowInvSearchModal(false);
+                  setInvPage(1);
+                  postInventoryHub('ces', 1, undefined, {
+                    ceSearchQuery: q,
+                    ceRarityFilter: invCeRarityFilter,
+                    ceViewMode: invCeViewMode
+                  });
+                }}
+                className="px-4 py-1.5 rounded-lg bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white text-xs font-bold shadow-md transition cursor-pointer"
+              >
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -20,6 +20,12 @@ import {
   setChannelTrapInWar 
 } from '../engine/grailwar';
 
+export interface InventoryHubOptions {
+  ceViewMode?: 'all' | 'owned';
+  ceRarityFilter?: 'all' | 5 | 4 | 3 | 'bond';
+  ceSearchQuery?: string;
+}
+
 // ==========================================
 // 0. INTERACTIVE INVENTORY HUB BUILDER & HANDLERS
 // ==========================================
@@ -28,11 +34,16 @@ export function buildInventoryHub(
   activeServant: any,
   category: 'ces' | 'servants' | 'seals' | 'items' = 'ces',
   page: number = 1,
-  selectedItemId?: string
+  selectedItemId?: string,
+  options: InventoryHubOptions = {}
 ) {
   const ownedCes = (master.craftEssences || []).filter(Boolean);
   const ownedServants = master.servants || [];
   const servantName = activeServant?.nickname || activeServant?.template?.name || 'Heroic Spirit';
+
+  const ceViewMode = options.ceViewMode || 'all';
+  const ceRarityFilter = options.ceRarityFilter || 'all';
+  const ceSearchQuery = (options.ceSearchQuery || '').trim().toLowerCase();
 
   let title = `👔 ${master.username}'s Inventory — Craft Essences`;
   let equippedBanner = '';
@@ -42,46 +53,105 @@ export function buildInventoryHub(
   const itemsPerPage = 8;
 
   if (category === 'ces') {
-    title = `🛡️ ${master.username}'s Inventory — Craft Essences`;
-    const activeCeName = activeServant?.equippedCe?.name;
-    equippedBanner = activeCeName
-      ? `✅ Equipped **${activeCeName}** (★${activeServant.equippedCe?.rarity || 5}).`
-      : `⚠️ **No Craft Essence equipped.** Select an item below and press **Equip**.`;
+    const isCatalog = ceViewMode === 'all';
+    title = isCatalog
+      ? `🛡️ Master Archive — All Craft Essences (Catalog & Inventory)`
+      : `🛡️ ${master.username}'s Vault — Owned Craft Essences`;
 
-    const ceCounts = new Map<string, { ce: any; count: number }>();
+    const activeCeName = activeServant?.equippedCe?.name;
+    const activeCeRarity = activeServant?.equippedCe?.rarity || 5;
+    equippedBanner = activeCeName
+      ? `✅ Active Equipped: **${activeCeName}** (★${activeCeRarity}) on **${servantName}**.\n*Mode: **${isCatalog ? '📖 All Catalog (Archive)' : '💼 Owned Vault'}** | Filter: **${ceRarityFilter === 'all' ? 'All Tiers' : ceRarityFilter === 'bond' ? '🎖️ Bond 10' : `★${ceRarityFilter}`}**${ceSearchQuery ? ` | Search: "${ceSearchQuery}"` : ''}*`
+      : `⚠️ **No Craft Essence equipped.** Select an item below and press **Equip**.\n*Mode: **${isCatalog ? '📖 All Catalog (Archive)' : '💼 Owned Vault'}** | Filter: **${ceRarityFilter === 'all' ? 'All Tiers' : ceRarityFilter === 'bond' ? '🎖️ Bond 10' : `★${ceRarityFilter}`}**${ceSearchQuery ? ` | Search: "${ceSearchQuery}"` : ''}*`;
+
+    // Map owned counts
+    const ownedCountMap = new Map<string, number>();
     for (const c of ownedCes) {
       if (!c || !c.id) continue;
-      if (!ceCounts.has(c.id)) ceCounts.set(c.id, { ce: c, count: 1 });
-      else ceCounts.get(c.id)!.count++;
+      ownedCountMap.set(c.id, (ownedCountMap.get(c.id) || 0) + 1);
     }
 
-    const uniqueCes = Array.from(ceCounts.values());
-    totalItems = uniqueCes.length;
+    // Build source list: combine CRAFT_ESSENCE_DATABASE + any custom owned CEs
+    const allKnownCesMap = new Map<string, any>();
+    for (const ce of CRAFT_ESSENCE_DATABASE) {
+      allKnownCesMap.set(ce.id, ce);
+    }
+    for (const c of ownedCes) {
+      if (c && c.id && !allKnownCesMap.has(c.id)) {
+        allKnownCesMap.set(c.id, c);
+      }
+    }
 
-    if (uniqueCes.length === 0) {
-      itemLines = ['• *No Craft Essences in inventory. Roll in `/cegacha` using Saint Quartz!*'];
-    } else {
-      const startIndex = (page - 1) * itemsPerPage;
-      const paginated = uniqueCes.slice(startIndex, startIndex + itemsPerPage);
+    let candidateCes = Array.from(allKnownCesMap.values());
 
-      itemLines = paginated.map(({ ce, count }) => {
-        const isEq = activeServant?.equippedCeId === ce.id;
-        const rarityTag = ce.rarity >= 5 ? '★5 Legendary' : ce.rarity >= 4 ? '★4 Rare' : '★3 Common';
-        const rankTag = ce.rarity >= 5 ? 'S Rank' : ce.rarity >= 4 ? 'A Rank' : 'B Rank';
-        const eqBadge = isEq ? ' **[EQUIPPED]**' : '';
-        const arrow = (selectedItemId && selectedItemId === ce.id) ? '➡️ ' : '• ';
-        return `${arrow}**${rarityTag}** — **${ce.name}** ×${count} — ${rankTag}${eqBadge}`;
+    // Filter by view mode (all catalog vs owned only)
+    if (ceViewMode === 'owned') {
+      candidateCes = candidateCes.filter(c => (ownedCountMap.get(c.id) || 0) > 0);
+    }
+
+    // Filter by rarity / bond
+    if (ceRarityFilter === 5) {
+      candidateCes = candidateCes.filter(c => c.rarity === 5 && !c.isBondCe);
+    } else if (ceRarityFilter === 4) {
+      candidateCes = candidateCes.filter(c => c.rarity === 4 && !c.isBondCe);
+    } else if (ceRarityFilter === 3) {
+      candidateCes = candidateCes.filter(c => c.rarity === 3 && !c.isBondCe);
+    } else if (ceRarityFilter === 'bond') {
+      candidateCes = candidateCes.filter(c => c.isBondCe === true || Boolean(c.bondServantId));
+    }
+
+    // Filter by search query
+    if (ceSearchQuery) {
+      candidateCes = candidateCes.filter(c => {
+        const n = (c.name || '').toLowerCase();
+        const e = (c.effectText || '').toLowerCase();
+        const d = (c.description || '').toLowerCase();
+        const p = (c.passiveType || '').toLowerCase();
+        const b = (c.bondServantName || '').toLowerCase();
+        return n.includes(ceSearchQuery) || e.includes(ceSearchQuery) || d.includes(ceSearchQuery) || p.includes(ceSearchQuery) || b.includes(ceSearchQuery);
       });
     }
 
+    totalItems = candidateCes.length;
+
+    if (totalItems === 0) {
+      itemLines = [
+        `• *No Craft Essences match your current filter (${ceSearchQuery ? `Search: "${ceSearchQuery}"` : ceRarityFilter}).*`,
+        `• *Try toggling to **[All CEs]** or clearing the search term!*`
+      ];
+    } else {
+      const startIndex = (page - 1) * itemsPerPage;
+      const paginated = candidateCes.slice(startIndex, startIndex + itemsPerPage);
+
+      itemLines = paginated.map((ce: any) => {
+        const count = ownedCountMap.get(ce.id) || 0;
+        const isEq = activeServant?.equippedCeId === ce.id;
+        const stars = '★'.repeat(ce.rarity || 5);
+        const eqBadge = isEq ? ' **[EQUIPPED]**' : '';
+        const ownBadge = count > 0 ? `\`[Owned ×${count}]\`` : `\`[Catalog]\``;
+        const bondTag = ce.isBondCe ? ` 🎖️[Bond: ${ce.bondServantName || 'Heroic Spirit'}]` : '';
+        const isSel = (selectedItemId && selectedItemId === ce.id);
+        const pointer = isSel ? '▶ ' : '• ';
+
+        return `${pointer}**[${stars}]** **${ce.name}** ${ownBadge}${bondTag} — +${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP${eqBadge}\n   ↳ *${ce.effectText || ce.description || 'Mystic Code'}*`;
+      });
+    }
+
+    const selCe = candidateCes.find(c => c.id === selectedItemId) || (candidateCes.length > 0 ? candidateCes[0] : null);
+
     selectOptions = [
-      { label: 'Unequip Current Essence', value: 'none', description: 'Remove active Craft Essence' },
-      ...uniqueCes.map(({ ce, count }) => ({
-        label: `${ce.rarity >= 5 ? '★5' : ce.rarity >= 4 ? '★4' : '★3'} ${ce.name}${count > 1 ? ` (x${count})` : ''}`,
-        value: ce.id,
-        description: (ce.effectText || 'Craft Essence').slice(0, 48),
-        default: selectedItemId === ce.id
-      }))
+      { label: 'Unequip Current Essence', value: 'none', description: 'Remove active Craft Essence from Servant' },
+      ...candidateCes.slice(0, 24).map((ce: any) => {
+        const count = ownedCountMap.get(ce.id) || 0;
+        const countStr = count > 0 ? ` (x${count})` : ' [Catalog]';
+        const stars = '★'.repeat(ce.rarity || 5);
+        return {
+          label: `${stars} ${ce.name}${countStr}`.slice(0, 100),
+          value: ce.id,
+          description: `+${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP • ${(ce.effectText || 'Craft Essence').slice(0, 40)}`,
+          default: selectedItemId === ce.id
+        };
+      })
     ];
   } else if (category === 'servants') {
     title = `⚔️ ${master.username}'s Inventory — Contracted Servants`;
@@ -160,10 +230,10 @@ export function buildInventoryHub(
   const embed = new EmbedBuilder()
     .setTitle(title)
     .setDescription(`${equippedBanner}\n\n` + itemLines.join('\n'))
-    .setColor(0x38bdf8)
-    .setFooter({ text: `Page ${currentPage}/${totalPages} • Select an item below, then press Equip or Read.` });
+    .setColor(category === 'ces' ? 0x38bdf8 : category === 'servants' ? 0xd4af37 : 0xa855f7)
+    .setFooter({ text: `Page ${currentPage}/${totalPages} • Total: ${totalItems} • Select an item below, then press Equip, View Art, or Inspect Lore.` });
 
-  // Row 1: Categories
+  // Row 1: Primary Categories
   const catRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId('inv_cat_ces').setLabel('Craft Essences').setStyle(category === 'ces' ? ButtonStyle.Primary : ButtonStyle.Secondary).setEmoji('🛡️'),
     new ButtonBuilder().setCustomId('inv_cat_servants').setLabel('Servants').setStyle(category === 'servants' ? ButtonStyle.Primary : ButtonStyle.Secondary).setEmoji('⚔️'),
@@ -171,34 +241,70 @@ export function buildInventoryHub(
     new ButtonBuilder().setCustomId('inv_cat_items').setLabel('Vault & Currency').setStyle(category === 'items' ? ButtonStyle.Primary : ButtonStyle.Secondary).setEmoji('💎')
   );
 
-  // Row 2: Select Menu
+  // Row 2: CE Filter Pills (only when in CE category)
+  let filterRow: ActionRowBuilder<ButtonBuilder> | null = null;
+  if (category === 'ces') {
+    filterRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('inv_toggle_ce_mode')
+        .setLabel(ceViewMode === 'all' ? 'Catalog (All CEs)' : 'Vault (Owned Only)')
+        .setStyle(ceViewMode === 'all' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+        .setEmoji('📚'),
+      new ButtonBuilder()
+        .setCustomId('inv_filter_ce_5star')
+        .setLabel('★5 SSR')
+        .setStyle(ceRarityFilter === 5 ? ButtonStyle.Success : ButtonStyle.Secondary)
+        .setEmoji('⭐'),
+      new ButtonBuilder()
+        .setCustomId('inv_filter_ce_4star')
+        .setLabel('★4 SR')
+        .setStyle(ceRarityFilter === 4 ? ButtonStyle.Success : ButtonStyle.Secondary)
+        .setEmoji('⭐'),
+      new ButtonBuilder()
+        .setCustomId('inv_filter_ce_3star')
+        .setLabel('★3 R')
+        .setStyle(ceRarityFilter === 3 ? ButtonStyle.Success : ButtonStyle.Secondary)
+        .setEmoji('⭐'),
+      new ButtonBuilder()
+        .setCustomId('inv_filter_ce_bond')
+        .setLabel('Bond 10')
+        .setStyle(ceRarityFilter === 'bond' ? ButtonStyle.Success : ButtonStyle.Secondary)
+        .setEmoji('🎖️')
+    );
+  }
+
+  // Row 3: Select Menu
   const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId('inv_select_item')
-      .setPlaceholder('Select an item from inventory...')
+      .setPlaceholder(category === 'ces' ? '🔍 Select a Craft Essence to equip or view...' : 'Select an item from inventory...')
       .addOptions(selectOptions.length > 0 ? selectOptions.slice(0, 25) : [{ label: 'No items', value: 'none' }])
   );
 
-  // Row 3: Action Buttons
+  // Row 4: Action Buttons
   const actRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId('inv_page_prev').setLabel('Previous').setStyle(ButtonStyle.Secondary).setEmoji('◀️').setDisabled(currentPage <= 1),
     new ButtonBuilder().setCustomId('inv_page_next').setLabel('Next').setStyle(ButtonStyle.Secondary).setEmoji('▶️').setDisabled(currentPage >= totalPages),
     new ButtonBuilder().setCustomId('inv_act_equip').setLabel('Equip / Set Active').setStyle(ButtonStyle.Success).setEmoji('✅'),
-    new ButtonBuilder().setCustomId('inv_act_inspect').setLabel('Inspect / Read Lore').setStyle(ButtonStyle.Primary).setEmoji('📖'),
-    new ButtonBuilder().setCustomId('inv_act_unequip').setLabel('Unequip').setStyle(ButtonStyle.Danger).setEmoji('❌')
+    new ButtonBuilder().setCustomId('inv_act_view_art').setLabel('View Artwork').setStyle(ButtonStyle.Primary).setEmoji('🖼️'),
+    new ButtonBuilder().setCustomId('inv_act_inspect').setLabel('Inspect Lore').setStyle(ButtonStyle.Secondary).setEmoji('📖')
   );
 
-  // Row 4: Quick Links & Cross-Hub Navigation
+  // Row 5: Secondary Actions / Quick Links
   const linkRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId('inv_act_unequip').setLabel('Unequip').setStyle(ButtonStyle.Danger).setEmoji('❌'),
     new ButtonBuilder().setCustomId('inv_quick_gacha').setLabel('Gacha Sanctum (/gacha)').setStyle(ButtonStyle.Secondary).setEmoji('🔮'),
     new ButtonBuilder().setCustomId('inv_quick_stats').setLabel('Servant Workshop (/servant)').setStyle(ButtonStyle.Secondary).setEmoji('👑'),
-    new ButtonBuilder().setCustomId('inv_quick_war').setLabel('Grail War Room (/grailwar)').setStyle(ButtonStyle.Secondary).setEmoji('🏰'),
-    new ButtonBuilder().setCustomId('inv_quick_duel').setLabel('Combat Arena (/duel)').setStyle(ButtonStyle.Secondary).setEmoji('⚔️')
+    new ButtonBuilder().setCustomId('inv_quick_war').setLabel('Grail War Room (/grailwar)').setStyle(ButtonStyle.Secondary).setEmoji('🏰')
   );
+
+  const components = filterRow
+    ? [catRow, filterRow, selectRow, actRow, linkRow]
+    : [catRow, selectRow, actRow, linkRow];
 
   return {
     embed,
-    components: [catRow, selectRow, actRow, linkRow]
+    components
   };
 }
 
@@ -209,6 +315,9 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
   let currentCategory: 'ces' | 'servants' | 'seals' | 'items' = 'ces';
   let currentPage = 1;
   let selectedItemId: string | undefined = activeServant?.equippedCeId;
+  let ceViewMode: 'all' | 'owned' = 'all';
+  let ceRarityFilter: 'all' | 5 | 4 | 3 | 'bond' = 'all';
+  let ceSearchQuery = '';
 
   const collector = replyMessage.createMessageComponentCollector({
     idle: 180000,
@@ -243,6 +352,27 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
         currentCategory = 'items';
         currentPage = 1;
         selectedItemId = 'item_sq';
+      }
+
+      // CE View Mode Toggle
+      else if (customId === 'inv_toggle_ce_mode') {
+        ceViewMode = ceViewMode === 'all' ? 'owned' : 'all';
+        currentPage = 1;
+      }
+
+      // CE Rarity Filters
+      else if (customId === 'inv_filter_ce_5star') {
+        ceRarityFilter = ceRarityFilter === 5 ? 'all' : 5;
+        currentPage = 1;
+      } else if (customId === 'inv_filter_ce_4star') {
+        ceRarityFilter = ceRarityFilter === 4 ? 'all' : 4;
+        currentPage = 1;
+      } else if (customId === 'inv_filter_ce_3star') {
+        ceRarityFilter = ceRarityFilter === 3 ? 'all' : 3;
+        currentPage = 1;
+      } else if (customId === 'inv_filter_ce_bond') {
+        ceRarityFilter = ceRarityFilter === 'bond' ? 'all' : 'bond';
+        currentPage = 1;
       }
 
       // Pagination
@@ -314,6 +444,34 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
           activeServant.equippedCe = undefined;
           selectedItemId = 'none';
           await saveMaster(master);
+        }
+      }
+
+      // Action: View Artwork
+      else if (customId === 'inv_act_view_art') {
+        if (currentCategory === 'ces') {
+          const targetCeId = (selectedItemId && selectedItemId !== 'none') ? selectedItemId : activeServant?.equippedCeId;
+          const ce = ownedCes.find((c: any) => c.id === targetCeId) || CRAFT_ESSENCE_DATABASE.find(c => c.id === targetCeId);
+          if (ce) {
+            const artUrl = ce.artworkUrl || 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp';
+            await i.reply({
+              flags: MessageFlags.Ephemeral,
+              embeds: [
+                new EmbedBuilder()
+                  .setTitle(`🖼️ Craft Essence Art: ${ce.name}`)
+                  .setDescription(
+                    `**Rarity:** ${'★'.repeat(ce.rarity || 5)} (${ce.rarity >= 5 ? 'SSR' : ce.rarity >= 4 ? 'SR' : 'R'})\n` +
+                    `**Stats:** \`+${ce.atkBonus || 0} ATK\` | \`+${ce.hpBonus || 0} HP\`\n` +
+                    `**Effect:** ${ce.effectText}\n\n` +
+                    `*${ce.description || 'A legendary conceptual armament crystallized with heroic memory.'}*`
+                  )
+                  .setImage(artUrl)
+                  .setColor(ce.rarity >= 5 ? 0xd4af37 : 0x38bdf8)
+                  .setFooter({ text: 'Craft Essence Visual Archive • Full High-Res Canvas' })
+              ]
+            });
+            return;
+          }
         }
       }
 
@@ -474,7 +632,14 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
         return;
       }
 
-      const refreshed = buildInventoryHub(master, activeServant, currentCategory, currentPage, selectedItemId);
+      const refreshed = buildInventoryHub(
+        master,
+        activeServant,
+        currentCategory,
+        currentPage,
+        selectedItemId,
+        { ceViewMode, ceRarityFilter, ceSearchQuery }
+      );
       await i.update({ embeds: [refreshed.embed], components: refreshed.components });
     } catch (err: any) {
       if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) return;

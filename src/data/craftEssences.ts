@@ -17,7 +17,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Starts battle with 80% NP Gauge filled.',
     passiveType: 'starting_np',
     passiveValue: 80,
-    artworkUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_black_grail',
@@ -32,7 +32,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Noble Phantasm Damage by 60%, but loses 500 HP each turn.',
     passiveType: 'np_damage',
     passiveValue: 60,
-    artworkUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_formal_craft',
@@ -47,7 +47,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Arts Card effectiveness and NP gain by 25%.',
     passiveType: 'arts_up',
     passiveValue: 25,
-    artworkUrl: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_limited_zero_over',
@@ -62,7 +62,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Buster Card effectiveness by 25%.',
     passiveType: 'buster_up',
     passiveValue: 25,
-    artworkUrl: 'https://images.unsplash.com/photo-1514539079130-25950c84af65?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_imaginary_around',
@@ -77,7 +77,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Quick Card effectiveness by 25% and Critical Star generation.',
     passiveType: 'quick_up',
     passiveValue: 25,
-    artworkUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_fragment_2030',
@@ -92,7 +92,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Gains 10 Critical Stars every turn automatically.',
     passiveType: 'stars_per_turn',
     passiveValue: 10,
-    artworkUrl: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_prisma_cosmos',
@@ -107,7 +107,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Regenerates 8% NP Gauge automatically at the start of each combat turn.',
     passiveType: 'np_per_turn',
     passiveValue: 8,
-    artworkUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_volumen_hydragyrum',
@@ -122,7 +122,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Grants Invincibility for 3 attacks & +15% Damage Cut.',
     passiveType: 'invincible_hits',
     passiveValue: 3,
-    artworkUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_heavens_feel',
@@ -137,7 +137,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Noble Phantasm Damage by 40%.',
     passiveType: 'np_damage',
     passiveValue: 40,
-    artworkUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_origin_bullet',
@@ -152,7 +152,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Ignores Invincibility & +35% Special Damage against Magic users.',
     passiveType: 'ignore_invincible',
     passiveValue: 35,
-    artworkUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
 
   // --- 4★ SR CRAFT ESSENCES ---
@@ -169,7 +169,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Starts battle with 50% NP Gauge filled.',
     passiveType: 'starting_np',
     passiveValue: 50,
-    artworkUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_gamer_fuel',
@@ -184,7 +184,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Critical Strike Damage by 30% and Speed initiative.',
     passiveType: 'crit_dmg',
     passiveValue: 30,
-    artworkUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_gandr',
@@ -199,7 +199,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Quick Card effectiveness by 15%.',
     passiveType: 'quick_up',
     passiveValue: 15,
-    artworkUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_projection',
@@ -214,7 +214,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Arts Card effectiveness and NP damage by 15%.',
     passiveType: 'arts_up',
     passiveValue: 15,
-    artworkUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_verdant_sound',
@@ -229,7 +229,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Buster Card effectiveness by 15%.',
     passiveType: 'buster_up',
     passiveValue: 15,
-    artworkUrl: 'https://images.unsplash.com/photo-1514539079130-25950c84af65?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_hollow_magic',
@@ -244,7 +244,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Starts battle with 60% NP Gauge filled.',
     passiveType: 'starting_np',
     passiveValue: 60,
-    artworkUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_code_cast',
@@ -259,7 +259,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases ATK and Defense by 10%.',
     passiveType: 'atk_up',
     passiveValue: 10,
-    artworkUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_when_the_flowers_fall',
@@ -274,7 +274,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Charges NP gauge by 4% every turn. Increases Quick performance by 4%. Increases NP damage by 5%.',
     passiveType: 'quick_up',
     passiveValue: 4,
-    artworkUrl: 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_amazakura',
@@ -289,7 +289,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Quick Card effectiveness by 15% and Critical Star generation by 15%.',
     passiveType: 'quick_up',
     passiveValue: 15,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
 
   // --- 3★ R CRAFT ESSENCES ---
@@ -306,7 +306,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Starts battle with 30% NP Gauge.',
     passiveType: 'starting_np',
     passiveValue: 30,
-    artworkUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_jeweled_sword',
@@ -321,7 +321,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Starts battle with 20% NP Gauge & increases NP gain by 15%.',
     passiveType: 'starting_np',
     passiveValue: 20,
-    artworkUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_hydra_dagger',
@@ -336,7 +336,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Critical Strike Damage by 15%.',
     passiveType: 'crit_dmg',
     passiveValue: 15,
-    artworkUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=500&auto=format&fit=crop&q=80'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   }
 ];
 
@@ -357,7 +357,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: 'When equipped to Artoria Pendragon: Increases party Attack by 15% and Noble Phantasm Damage by 20%.',
     passiveType: 'buster_up',
     passiveValue: 20,
-    artworkUrl: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=600&auto=format&fit=crop&q=80',
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
     isBondCe: true,
     bondServantId: 'artoria_pendragon',
     bondServantName: 'Artoria Pendragon'
@@ -375,7 +375,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: 'When equipped to Heracles: Grants Guts to self (revives with 500 HP, 3 times).',
     passiveType: 'guts',
     passiveValue: 3,
-    artworkUrl: 'https://images.unsplash.com/photo-1517816743773-6e0fd518b4a6?w=600&auto=format&fit=crop&q=80',
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
     isBondCe: true,
     bondServantId: 'heracles_berserker',
     bondServantName: 'Heracles'
@@ -393,7 +393,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: 'When equipped to Gilgamesh: Increases Noble Phantasm Damage by 30% and Critical Damage by 20%.',
     passiveType: 'crit_dmg',
     passiveValue: 20,
-    artworkUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
     isBondCe: true,
     bondServantId: 'gilgamesh_archer',
     bondServantName: 'Gilgamesh'
@@ -411,7 +411,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: 'When equipped to Scáthach: Increases Quick Card effectiveness by 15% and Critical Damage by 25%.',
     passiveType: 'quick_up',
     passiveValue: 15,
-    artworkUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80',
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
     isBondCe: true,
     bondServantId: 'scathach_lancer',
     bondServantName: 'Scáthach'
@@ -429,7 +429,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: "When equipped to Jeanne d'Arc: Increases party Defense by 15% and recovers 500 HP each turn.",
     passiveType: 'hp_regen',
     passiveValue: 500,
-    artworkUrl: 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=600&auto=format&fit=crop&q=80',
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
     isBondCe: true,
     bondServantId: 'jeanne_darc_ruler',
     bondServantName: "Jeanne d'Arc"
@@ -447,7 +447,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: "When equipped to Jeanne d'Arc (Alter): Increases Buster Card effectiveness by 20% and Critical Damage by 25%.",
     passiveType: 'buster_up',
     passiveValue: 20,
-    artworkUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80',
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
     isBondCe: true,
     bondServantId: 'jeanne_alter',
     bondServantName: "Jeanne d'Arc (Alter)"
@@ -465,7 +465,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: 'When equipped to Mysterious Heroine X Alter: Increases Quick & Buster effectiveness by 15% and Critical Damage by 20%.',
     passiveType: 'quick_up',
     passiveValue: 15,
-    artworkUrl: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&auto=format&fit=crop&q=80',
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
     isBondCe: true,
     bondServantId: 'mhx_alter',
     bondServantName: 'Mysterious Heroine X Alter'
@@ -483,7 +483,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: 'When equipped to Artoria Alter: Increases Buster Card effectiveness by 20% and increases NP Gain by 15%.',
     passiveType: 'buster_up',
     passiveValue: 20,
-    artworkUrl: 'https://images.unsplash.com/photo-1514539079130-25950c84af65?w=600&auto=format&fit=crop&q=80',
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
     isBondCe: true,
     bondServantId: 'artoria_pendragon_alter',
     bondServantName: 'Artoria Pendragon (Alter)'
@@ -501,7 +501,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: 'When equipped to Nero Claudius: Increases Arts Card effectiveness by 15% and restores 400 HP each turn.',
     passiveType: 'arts_up',
     passiveValue: 15,
-    artworkUrl: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=600&auto=format&fit=crop&q=80',
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
     isBondCe: true,
     bondServantId: 'nero_claudius_saber',
     bondServantName: 'Nero Claudius'
@@ -519,7 +519,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: 'When equipped to EMIYA: Increases Arts & Buster Card effectiveness by 15% and Critical Damage by 20%.',
     passiveType: 'arts_up',
     passiveValue: 15,
-    artworkUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&auto=format&fit=crop&q=80',
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
     isBondCe: true,
     bondServantId: 'emiya_archer',
     bondServantName: 'EMIYA'
@@ -537,7 +537,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: 'When equipped to Cú Chulainn: Grants Guts to self (revives with 25% HP, 1 time) and increases Quick Card effectiveness by 15%.',
     passiveType: 'guts',
     passiveValue: 1,
-    artworkUrl: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=600&auto=format&fit=crop&q=80',
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
     isBondCe: true,
     bondServantId: 'cu_chulainn_lancer',
     bondServantName: 'Cú Chulainn'
@@ -555,7 +555,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: 'When equipped to Karna: Increases Buster Card effectiveness by 20% and Noble Phantasm Damage by 20%.',
     passiveType: 'buster_up',
     passiveValue: 20,
-    artworkUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80',
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
     isBondCe: true,
     bondServantId: 'karna_lancer',
     bondServantName: 'Karna'
@@ -573,7 +573,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: 'When equipped to Adiosa: Increases Buster Card effectiveness by 20% and generates 10 Critical Stars each turn.',
     passiveType: 'buster_up',
     passiveValue: 20,
-    artworkUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
     isBondCe: true,
     bondServantId: 'adiosa_dragon_envoy',
     bondServantName: 'Adiosa'
@@ -591,7 +591,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: 'When equipped to Aoko Aozaki: Increases Arts & Buster effectiveness by 15% and starts battle with 30% NP Gauge.',
     passiveType: 'starting_np',
     passiveValue: 30,
-    artworkUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&auto=format&fit=crop&q=80',
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
     isBondCe: true,
     bondServantId: 'aoko_aozaki',
     bondServantName: 'Aoko Aozaki'
@@ -609,7 +609,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: 'When equipped to Tenkohime: Increases Arts Card effectiveness by 20% and gains 10% NP Gauge each turn.',
     passiveType: 'arts_up',
     passiveValue: 20,
-    artworkUrl: 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=600&auto=format&fit=crop&q=80',
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
     isBondCe: true,
     bondServantId: 'amamiya_no_chihaya_tenkohime',
     bondServantName: 'Amamiya no Chihaya (Tenkohime)'
@@ -627,12 +627,14 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: 'When equipped to Lucia Lyozes: Increases Critical Damage by 25% and Critical Star Gather Rate by 30%.',
     passiveType: 'crit_dmg',
     passiveValue: 25,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
     isBondCe: true,
     bondServantId: 'lucia_lyozes',
     bondServantName: 'Lucia Lyozes'
   }
 };
+
+export const CE_DEFAULT_ARTWORK = 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp';
 
 /**
  * Retrieve the Bond Craft Essence corresponding to a Servant.
@@ -679,7 +681,7 @@ export function getBondCraftEssenceForServant(
     effectText: `When equipped to ${cleanName}: Increases ATK by 15%, DEF by 15%, and starts battle with 20% NP Gauge.`,
     passiveType: 'buster_up',
     passiveValue: 15,
-    artworkUrl: customArt || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80',
+    artworkUrl: customArt || CE_DEFAULT_ARTWORK,
     isBondCe: true,
     bondServantId: normId,
     bondServantName: cleanName
@@ -763,7 +765,7 @@ export const CE_GACHA_BANNERS: GachaBanner[] = [
     bannerType: 'standard',
     costPerPull: 3,
     costTenPull: 30,
-    bannerArtUrl: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80',
+    bannerArtUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
     rates: {
       ssrServant: 0,
       srServant: 0,
@@ -777,4 +779,3 @@ export const CE_GACHA_BANNERS: GachaBanner[] = [
 
 export const craftEssences = CRAFT_ESSENCE_DATABASE;
 export default CRAFT_ESSENCE_DATABASE;
-
