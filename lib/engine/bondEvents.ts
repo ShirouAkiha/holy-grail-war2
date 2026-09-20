@@ -7,6 +7,8 @@ import {
   ServantTemplate
 } from '../types';
 
+export type { BondEvent, BondScene, BondChoice, BondDialogueLine };
+
 /**
  * Bond EXP thresholds required for each level (Levels 1 through 10).
  */
@@ -2178,6 +2180,239 @@ export const LUCIA_BOND_EVENTS: BondEvent[] = [
         speakerName: 'Lucia Lyozes',
         backgroundTheme: 'fuyuki_moonlight',
         dialogueText: "Eat your breakfast, Master. We have a war to endure, and I will not march beside a soldier whose hands tremble from skipping a meal."
+      }
+    ]
+  },
+  {
+    id: 'lucia_bond_event_3',
+    servantTemplateId: 'lucia_lyozes',
+    requiredBondLevel: 3,
+    title: 'Tactical Positioning on Asphalt',
+    subtitle: 'Narrow alleys, distant sirens, and five seconds of clairvoyance',
+    description: 'During a midnight patrol across the commercial district, Lucia analyzes the city\'s concrete layout and tests your battlefield footwork.',
+    rewardBondExp: 750,
+    rewardSaintQuartz: 3,
+    unlockedQuoteId: 'lucia_bond_3',
+    scenes: [
+      {
+        id: 'b3_scene_1',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Three meters behind me. Not two, not four. If an Archer releases from that rooftop, three meters gives me the arc to deflect the projectile without clipping your shoulder on the follow-through."
+      },
+      {
+        id: 'b3_scene_2',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "This city is an absurd maze of hard angles. In Sylvanryth, trees yield to momentum and earth muffles sound. Here, every step echoes against glass and brick, and your electrical cables hum loud enough to drown out subtle mana fluctuations."
+      },
+      {
+        id: 'b3_scene_3',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Tell me, Master: if two shadows emerge from that intersection ahead, where is your escape vector?",
+        choices: [
+          {
+            id: 'b3_c1_a',
+            text: "Back into the 24-hour convenience store to break line-of-sight.",
+            response: "Glass walls and a single rear exit. You would turn yourself into trapped game in a illuminated pen. Think with your terrain, not your comfort.",
+            bondExpGain: 75,
+            reactionEmotion: 'stern',
+            nextSceneId: 'b3_scene_4'
+          },
+          {
+            id: 'b3_c1_b',
+            text: "Up the steel fire escape to the adjacent low roof.",
+            response: "Elevation with multiple drop points into the alley network. Better. You are beginning to look beyond the ground beneath your boots.",
+            bondExpGain: 75,
+            reactionEmotion: 'determined',
+            nextSceneId: 'b3_scene_4'
+          },
+          {
+            id: 'b3_c1_c',
+            text: "I stay behind the Black Lance and let you spearhead.",
+            response: "...Pragmatic. But a vanguard requires an anchor that does not panic. If I push forward, your eyes must cover my flank.",
+            bondExpGain: 75,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'b3_scene_4'
+          }
+        ]
+      },
+      {
+        id: 'b3_scene_4',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "My eyes see five seconds into causality. When steel clashes, I know where the sparks will die before the blade leaves its scabbard."
+      },
+      {
+        id: 'b3_scene_5',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Yet foresight is worthless if the soldier beside me freezes in hesitation. When I shout 'left', you move left. No questioning, no turning your head to verify. Can you promise that discipline?",
+        choices: [
+          {
+            id: 'b3_c2_a',
+            text: "I trust your eyes. When you call the move, I execute.",
+            response: "Good. A vanguard that acts as one mind can hold against a thousand irregulars.",
+            bondExpGain: 75,
+            reactionEmotion: 'determined',
+            nextSceneId: 'b3_scene_6'
+          },
+          {
+            id: 'b3_c2_b',
+            text: "As long as you promise not to jump into suicide plays.",
+            response: "I do not seek martyrdom. I have a party waiting for my return, and a promise carved into black iron.",
+            bondExpGain: 75,
+            reactionEmotion: 'stern',
+            nextSceneId: 'b3_scene_6'
+          }
+        ]
+      },
+      {
+        id: 'b3_scene_6',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "The patrol is complete for tonight. Back to the apartment. You have three hours of sleep before your kitchen shift begins, and I will stand guard at the window."
+      }
+    ]
+  },
+  {
+    id: 'lucia_bond_event_4',
+    servantTemplateId: 'lucia_lyozes',
+    requiredBondLevel: 4,
+    title: 'Echoes of the Wailing Tower',
+    subtitle: 'The shadow of Kael Rylan and the weight of surviving',
+    description: 'Under the dim light of your kitchen counter, Lucia shares the truth of the Last Calamity that devastated her world.',
+    rewardBondExp: 1000,
+    rewardSaintQuartz: 3,
+    unlockedQuoteId: 'lucia_bond_4',
+    scenes: [
+      {
+        id: 'b4_scene_1',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Why are you still awake? The fledgling fell asleep two hours ago, and your ledgers are closed."
+      },
+      {
+        id: 'b4_scene_2',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "You asked earlier why I despise the word 'miracle.' Why I looked at your Command Seals with such venom when I first manifested on that worn rug."
+      },
+      {
+        id: 'b4_scene_3',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Two hundred years ago, a boy arrived in our world. He claimed he was chosen by higher beings, blessed with cheat skills, infinite mana, and an absolute mandate to 'save' us from hardship."
+      },
+      {
+        id: 'b4_scene_4',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "His name was Kael Rylan. Kings bowed to his power, sages praised his effortless magic, and an entire continent cheered as he dismantled ancient borders in the name of progress."
+      },
+      {
+        id: 'b4_scene_5',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "And when his cheat abilities ruptured the tectonic core of the Wailing Tower... half of Sylvanryth burned to ash in a single night. He vanished back to his own realm, untouched, leaving us to bury ten thousand children in the soot.",
+        choices: [
+          {
+            id: 'b4_c1_a',
+            text: "That wasn't a hero. That was an irresponsible child playing god.",
+            response: "Exactly. He treated our centuries of history as a game stage made for his personal gratification.",
+            bondExpGain: 100,
+            reactionEmotion: 'stern',
+            nextSceneId: 'b4_scene_6'
+          },
+          {
+            id: 'b4_c1_b',
+            text: "I'm sorry you had to carry that grief alone for two centuries.",
+            response: "...Do not pity me. Pity is useless. Vigilance is the only true monument to the fallen.",
+            bondExpGain: 100,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'b4_scene_6'
+          }
+        ]
+      },
+      {
+        id: 'b4_scene_6',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "That is why I enforce the Closed Door. That is why I do not allow unearned power near those I protect. And that is why this Black Lance is forged with the property to pierce through false miracles."
+      },
+      {
+        id: 'b4_scene_7',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "You are small. You have no cheat magic, no divine bloodline, no grand destiny. But you work with your own hands, and you shelter those who cannot fight for themselves. That... is an anchor worth holding."
+      }
+    ]
+  },
+  {
+    id: 'lucia_bond_event_5',
+    servantTemplateId: 'lucia_lyozes',
+    requiredBondLevel: 5,
+    title: 'Oath of the Vanguard Wall',
+    subtitle: 'Black iron grounded, unshakeable trust, and the frontline bond',
+    description: 'At the pinnacle of your shared trials, Lucia formally accepts you as her true Master and family.',
+    rewardBondExp: 1500,
+    rewardSaintQuartz: 5,
+    unlockedQuoteId: 'lucia_bond_5',
+    scenes: [
+      {
+        id: 'b5_scene_1',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Stand beside me, Master. Not behind me tonight. Beside me."
+      },
+      {
+        id: 'b5_scene_2',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "We have faced enemy spirits, endured the leylines of this war, and protected this fragile corner of your city through sheer resolve."
+      },
+      {
+        id: 'b5_scene_3',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "When I was summoned, I swore I would never call you Master. I swore I would sever your throat if you showed a hint of greed for that golden cup."
+      },
+      {
+        id: 'b5_scene_4',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Instead, I watched you tend to your brother's fever, scrub pots until your knuckles cracked, and command this frontline without once asking for a miracle shortcut.",
+        choices: [
+          {
+            id: 'b5_c1_a',
+            text: "Because we win this with our own strength. Together.",
+            response: "*A rare, genuine smile softens her golden-brown eyes.* Together. A word I have not shared with an outsider in two hundred years.",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'b5_scene_5'
+          },
+          {
+            id: 'b5_c1_b',
+            text: "You're part of this household now, Lucia. That's what family does.",
+            response: "...Family. To think an elven princess would find her sisterhood in a cramped mortal kitchen. *She chuckles softly.*",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'b5_scene_5'
+          }
+        ]
+      },
+      {
+        id: 'b5_scene_5',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "*Grounding the Black Lance firmly into the earth, placing her right hand over her armored chest.*"
+      },
+      {
+        id: 'b5_scene_6',
+        speakerName: 'Lucia Lyozes',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "I, Lucernalia Lyozes, Vanguard of Sylvanryth and guardian of the Closed Door, formally pledge my lance to your command. Let false gods and cheated destinies come: as long as my heart beats, the vanguard wall shall never fall!"
       }
     ]
   }

@@ -22,7 +22,8 @@ import {
   BOND_EXP_TABLE,
   BOND_GIFTS,
   getServantGiftReaction,
-  getServantSparringDebrief
+  getServantSparringDebrief,
+  type BondEvent
 } from '../../lib/engine/bondEvents';
 import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 import { renderVisualNovelCard } from '../canvas/renderer';
@@ -753,8 +754,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       } else {
         choicesRow.addComponents(
           new ButtonBuilder()
-            .setCustomId(safeCustomId(`vn_choice_complete:${sKey}`))
-            .setLabel('✨ Complete Interlude')
+            .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:1`))
+            .setLabel(event.scenes.length > 1 ? 'Next Scene ➔' : '🏁 Complete Interlude')
             .setStyle(ButtonStyle.Success)
         );
       }
@@ -1084,10 +1085,36 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       });
     }
 
-    if (btnId.startsWith('vn_play_event')) {
+    if (btnId.startsWith('vn_play_event') || btnId.startsWith('vn_start_specific')) {
       await interaction.deferUpdate();
 
-      const { event, isReplay, statusNote } = selectActiveInterludeForServant(targetServant);
+      const events = getBondEventsForServant(targetServant);
+      let event: BondEvent;
+      let isReplay = false;
+      let statusNote = '';
+
+      if (btnId.startsWith('vn_start_specific:')) {
+        const parts = btnId.split(':');
+        // Format: vn_start_specific:sKey:eventId
+        const specificEventId = parts[2];
+        const found = events.find(e => e.id === specificEventId);
+        if (found) {
+          event = found;
+          isReplay = (targetServant.completedBondEvents || []).includes(found.id);
+          statusNote = isReplay ? 'Replay Mode' : `Chapter ${found.requiredBondLevel}`;
+        } else {
+          const res = selectActiveInterludeForServant(targetServant);
+          event = res.event;
+          isReplay = res.isReplay;
+          statusNote = res.statusNote;
+        }
+      } else {
+        const res = selectActiveInterludeForServant(targetServant);
+        event = res.event;
+        isReplay = res.isReplay;
+        statusNote = res.statusNote;
+      }
+
       const scene1 = event.scenes[0];
 
       // Generate VN Canvas Image
@@ -1098,7 +1125,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         speakerName: scene1.speakerName || servantName,
         dialogueText: scene1.dialogueText,
         title: event.title,
-        subtitle: event.subtitle,
+        subtitle: `${event.subtitle} • Scene 1/${event.scenes.length}`,
         currentBondLevel: targetServant.bondLevel || 1
       });
 
@@ -1136,8 +1163,8 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       } else {
         choicesRow.addComponents(
           new ButtonBuilder()
-            .setCustomId(safeCustomId(`vn_choice_complete:${sKey}`))
-            .setLabel('✨ Complete Interlude')
+            .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:1`))
+            .setLabel(event.scenes.length > 1 ? 'Next Scene ➔' : '🏁 Complete Interlude')
             .setStyle(ButtonStyle.Success)
         );
       }
@@ -1203,6 +1230,115 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       return;
     }
 
+    if (btnId.startsWith('vn_choice_complete:') || btnId.startsWith('vn_choice_complete')) {
+      await interaction.deferUpdate();
+      const events = getBondEventsForServant(targetServant);
+      const { event } = selectActiveInterludeForServant(targetServant);
+      
+      const lastScene = event.scenes[event.scenes.length - 1] || event.scenes[0];
+      const completedIds: string[] = targetServant.completedBondEvents || [];
+      const isFirstCompletion = !completedIds.includes(event.id);
+
+      const expGain = isFirstCompletion ? (event.rewardBondExp || 500) : 0;
+      const sqReward = isFirstCompletion ? (event.rewardSaintQuartz || 3) : 0;
+
+      let updatedServant = { ...targetServant };
+
+      if (isFirstCompletion) {
+        if (!updatedServant.completedBondEvents) updatedServant.completedBondEvents = [];
+        updatedServant.completedBondEvents.push(event.id);
+
+        if (expGain > 0) {
+          const res = addBondExpToServant(updatedServant, expGain);
+          updatedServant = res.updatedServant;
+        }
+
+        if (sqReward > 0) {
+          master.saintQuartz = (master.saintQuartz || 0) + sqReward;
+        }
+
+        master.servants = master.servants.map((s: any) => s.id === updatedServant.id ? updatedServant : s);
+        await saveMaster(master);
+      }
+
+      const allServantEvents = getBondEventsForServant(updatedServant);
+      const currentBondLv = updatedServant.bondLevel || 1;
+      const nextEvent = allServantEvents.find(e => e.requiredBondLevel <= currentBondLv && !(updatedServant.completedBondEvents || []).includes(e.id) && e.id !== event.id);
+
+      const imageBuffer = await renderVisualNovelCard({
+        servantName,
+        servantClass: sTemplate.servantClass || 'Saber',
+        servantAvatarUrl: sTemplate.avatarUrl,
+        speakerName: lastScene.speakerName || servantName,
+        dialogueText: lastScene.dialogueText,
+        title: `${event.title} (Complete)`,
+        subtitle: event.subtitle,
+        expGained: expGain,
+        sqGained: sqReward,
+        currentBondLevel: updatedServant.bondLevel || 1,
+        isComplete: true
+      });
+
+      const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel_complete.png' });
+
+      const rewardsText = isFirstCompletion
+        ? `🎉 **REWARDS EARNED:**\n` +
+          `• **Bond EXP:** +${expGain} EXP ✨\n` +
+          `• **Saint Quartz:** +💎 ${sqReward} SQ\n` +
+          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\``
+        : `ℹ️ **REPLAY MODE:**\n` +
+          `• *Rewards already claimed for this Interlude.*\n` +
+          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\``;
+
+      const nextChapterNotice = nextEvent
+        ? `\n\n✨ **New Story Chapter Unlocked!** *${nextEvent.title}* (Bond Lv. ${nextEvent.requiredBondLevel}) is ready to play!`
+        : '';
+
+      const resultEmbed = new EmbedBuilder()
+        .setTitle(`🌸 Interlude Complete: ${event.title}`)
+        .setDescription(
+          `**${servantName}**:\n` +
+          `*"${lastScene.dialogueText}"*\n\n` +
+          rewardsText +
+          nextChapterNotice
+        )
+        .setImage('attachment://visual_novel_complete.png')
+        .setColor(isFirstCompletion ? 0xec4899 : 0x64748b);
+
+      const completionButtons: ButtonBuilder[] = [];
+      if (nextEvent) {
+        completionButtons.push(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`vn_start_specific:${sKey}:${nextEvent.id}`))
+            .setLabel(`📖 Play Chapter ${nextEvent.requiredBondLevel}: ${nextEvent.title.length > 25 ? nextEvent.title.slice(0, 22) + '...' : nextEvent.title} ➔`)
+            .setStyle(ButtonStyle.Success)
+        );
+      }
+      completionButtons.push(
+        new ButtonBuilder()
+          .setCustomId(safeCustomId(`vn_play_event:${sKey}`))
+          .setLabel('📖 Chapter List / Replay')
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId(safeCustomId(`vn_gift_menu:${sKey}`))
+          .setLabel('Present Gifts 🎁')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
+          .setLabel('📊 Bond Sanctum')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+      const completionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(completionButtons.slice(0, 5));
+
+      await interaction.editReply({
+        embeds: [resultEmbed],
+        files: [attachment],
+        components: [completionRow]
+      });
+      return;
+    }
+
     if (btnId.startsWith('vn_choice:') || btnId.startsWith('vn_choice_')) {
       await interaction.deferUpdate();
 
@@ -1237,7 +1373,12 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       // Accurately find picked choice
       const pickedChoice = scene.choices?.find(c => c.id === choiceId);
       const servantResponse = pickedChoice ? pickedChoice.response : scene.dialogueText;
-      const hasNextScene = sceneIdx < event.scenes.length - 1;
+
+      const targetNextIndex = pickedChoice?.nextSceneId
+        ? event.scenes.findIndex(s => s.id === pickedChoice.nextSceneId)
+        : sceneIdx + 1;
+      const effectiveNextIndex = targetNextIndex !== -1 ? targetNextIndex : sceneIdx + 1;
+      const hasNextScene = effectiveNextIndex < event.scenes.length;
 
       if (hasNextScene) {
         const imageBuffer = await renderVisualNovelCard({
@@ -1267,7 +1408,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
         const nextRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:${sceneIdx + 1}`))
+            .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:${effectiveNextIndex}`))
             .setLabel('Next Scene ➔')
             .setStyle(ButtonStyle.Success)
         );
@@ -1280,11 +1421,11 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         return;
       }
 
-      // Final scene completion
+      // Final scene completion from choice
       const completedIds: string[] = targetServant.completedBondEvents || [];
       const isFirstCompletion = !completedIds.includes(event.id);
 
-      const baseExpGain = pickedChoice ? pickedChoice.bondExpGain : 150;
+      const baseExpGain = pickedChoice ? pickedChoice.bondExpGain : (event.rewardBondExp || 500);
       const baseSqReward = event.rewardSaintQuartz || 3;
 
       const expGain = isFirstCompletion ? baseExpGain : 0;
@@ -1308,6 +1449,10 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         master.servants = master.servants.map((s: any) => s.id === updatedServant.id ? updatedServant : s);
         await saveMaster(master);
       }
+
+      const allServantEvents = getBondEventsForServant(updatedServant);
+      const currentBondLv = updatedServant.bondLevel || 1;
+      const nextEvent = allServantEvents.find(e => e.requiredBondLevel <= currentBondLv && !(updatedServant.completedBondEvents || []).includes(e.id) && e.id !== event.id);
 
       const reactionEmoji = pickedChoice?.reactionEmotion === 'happy' ? '💖' : pickedChoice?.reactionEmotion === 'flustered' ? '😳' : pickedChoice?.reactionEmotion === 'amused' ? '😄' : '✨';
 
@@ -1338,20 +1483,34 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           `• *Rewards already claimed for this Interlude.*\n` +
           `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\``;
 
+      const nextChapterNotice = nextEvent
+        ? `\n\n✨ **New Story Chapter Unlocked!** *${nextEvent.title}* (Bond Lv. ${nextEvent.requiredBondLevel}) is ready to play!`
+        : '';
+
       const resultEmbed = new EmbedBuilder()
         .setTitle(`🌸 Interlude Complete: ${event.title}`)
         .setDescription(
           `**${servantName}**:\n` +
           `*"${servantResponse}"*\n\n` +
-          rewardsText
+          rewardsText +
+          nextChapterNotice
         )
         .setImage('attachment://visual_novel_reaction.png')
         .setColor(isFirstCompletion ? 0xec4899 : 0x64748b);
 
-      const completionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      const completionButtons: ButtonBuilder[] = [];
+      if (nextEvent) {
+        completionButtons.push(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`vn_start_specific:${sKey}:${nextEvent.id}`))
+            .setLabel(`📖 Play Chapter ${nextEvent.requiredBondLevel}: ${nextEvent.title.length > 25 ? nextEvent.title.slice(0, 22) + '...' : nextEvent.title} ➔`)
+            .setStyle(ButtonStyle.Success)
+        );
+      }
+      completionButtons.push(
         new ButtonBuilder()
           .setCustomId(safeCustomId(`vn_play_event:${sKey}`))
-          .setLabel('📖 Play Interlude Again')
+          .setLabel('📖 Chapter List / Replay')
           .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
           .setCustomId(safeCustomId(`vn_gift_menu:${sKey}`))
@@ -1359,9 +1518,11 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           .setStyle(ButtonStyle.Secondary),
         new ButtonBuilder()
           .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
-          .setLabel('📊 Bond Sanctum Status')
+          .setLabel('📊 Bond Sanctum')
           .setStyle(ButtonStyle.Secondary)
       );
+
+      const completionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(completionButtons.slice(0, 5));
 
       await interaction.editReply({
         embeds: [resultEmbed],
@@ -1395,7 +1556,117 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const events = getBondEventsForServant(targetServant);
       const event = events.find(e => e.id === eventId) || events[0];
-      const scene = event.scenes[nextSceneIdx] || event.scenes[0];
+
+      // If nextSceneIdx is past the end, complete the interlude!
+      if (nextSceneIdx >= event.scenes.length) {
+        const lastScene = event.scenes[event.scenes.length - 1] || event.scenes[0];
+        const lastDialogue = lastScene.dialogueText || "The vanguard holds strong, Master.";
+
+        const completedIds: string[] = targetServant.completedBondEvents || [];
+        const isFirstCompletion = !completedIds.includes(event.id);
+
+        const expGain = isFirstCompletion ? (event.rewardBondExp || 500) : 0;
+        const sqReward = isFirstCompletion ? (event.rewardSaintQuartz || 3) : 0;
+
+        let updatedServant = { ...targetServant };
+
+        if (isFirstCompletion) {
+          if (!updatedServant.completedBondEvents) updatedServant.completedBondEvents = [];
+          updatedServant.completedBondEvents.push(event.id);
+
+          if (expGain > 0) {
+            const res = addBondExpToServant(updatedServant, expGain);
+            updatedServant = res.updatedServant;
+          }
+
+          if (sqReward > 0) {
+            master.saintQuartz = (master.saintQuartz || 0) + sqReward;
+          }
+
+          master.servants = master.servants.map((s: any) => s.id === updatedServant.id ? updatedServant : s);
+          await saveMaster(master);
+        }
+
+        const allServantEvents = getBondEventsForServant(updatedServant);
+        const currentBondLv = updatedServant.bondLevel || 1;
+        const nextEvent = allServantEvents.find(e => e.requiredBondLevel <= currentBondLv && !(updatedServant.completedBondEvents || []).includes(e.id) && e.id !== event.id);
+
+        const imageBuffer = await renderVisualNovelCard({
+          servantName,
+          servantClass: sTemplate.servantClass || 'Saber',
+          servantAvatarUrl: sTemplate.avatarUrl,
+          speakerName: lastScene.speakerName || servantName,
+          dialogueText: lastDialogue,
+          title: `${event.title} (Complete)`,
+          subtitle: event.subtitle,
+          expGained: expGain,
+          sqGained: sqReward,
+          currentBondLevel: updatedServant.bondLevel || 1,
+          isComplete: true
+        });
+
+        const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel_complete.png' });
+
+        const rewardsText = isFirstCompletion
+          ? `🎉 **REWARDS EARNED:**\n` +
+            `• **Bond EXP:** +${expGain} EXP ✨\n` +
+            `• **Saint Quartz:** +💎 ${sqReward} SQ\n` +
+            `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\``
+          : `ℹ️ **REPLAY MODE:**\n` +
+            `• *Rewards already claimed for this Interlude.*\n` +
+            `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\``;
+
+        const nextChapterNotice = nextEvent
+          ? `\n\n✨ **New Story Chapter Unlocked!** *${nextEvent.title}* (Bond Lv. ${nextEvent.requiredBondLevel}) is ready to play!`
+          : '';
+
+        const resultEmbed = new EmbedBuilder()
+          .setTitle(`🌸 Interlude Complete: ${event.title}`)
+          .setDescription(
+            `**${servantName}**:\n` +
+            `*"${lastDialogue}"*\n\n` +
+            rewardsText +
+            nextChapterNotice
+          )
+          .setImage('attachment://visual_novel_complete.png')
+          .setColor(isFirstCompletion ? 0xec4899 : 0x64748b);
+
+        const completionButtons: ButtonBuilder[] = [];
+        if (nextEvent) {
+          completionButtons.push(
+            new ButtonBuilder()
+              .setCustomId(safeCustomId(`vn_start_specific:${sKey}:${nextEvent.id}`))
+              .setLabel(`📖 Play Chapter ${nextEvent.requiredBondLevel}: ${nextEvent.title.length > 25 ? nextEvent.title.slice(0, 22) + '...' : nextEvent.title} ➔`)
+              .setStyle(ButtonStyle.Success)
+          );
+        }
+        completionButtons.push(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`vn_play_event:${sKey}`))
+            .setLabel('📖 Chapter List / Replay')
+            .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`vn_gift_menu:${sKey}`))
+            .setLabel('Present Gifts 🎁')
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
+            .setLabel('📊 Bond Sanctum')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        const completionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(completionButtons.slice(0, 5));
+
+        await interaction.editReply({
+          embeds: [resultEmbed],
+          files: [attachment],
+          components: [completionRow]
+        });
+        return;
+      }
+
+      const scene = event.scenes[nextSceneIdx];
+      const isLastScene = nextSceneIdx === event.scenes.length - 1;
 
       const imageBuffer = await renderVisualNovelCard({
         servantName,
@@ -1429,7 +1700,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         choicesRow.addComponents(
           new ButtonBuilder()
             .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:${nextSceneIdx + 1}`))
-            .setLabel('Next Scene ➔')
+            .setLabel(isLastScene ? '🏁 Finish Interlude' : 'Next Scene ➔')
             .setStyle(ButtonStyle.Success)
         );
       }
