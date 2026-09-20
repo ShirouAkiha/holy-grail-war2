@@ -987,12 +987,12 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         icon: '👁️'
       },
       {
-        id: 'battle_continuation_a',
-        name: 'Battle Continuation A',
+        id: 'indomitable_a',
+        name: 'Indomitable A',
         cooldown: 7,
-        description: 'Grants self Guts (Revive with 3,000 HP on lethal damage).',
+        description: 'Grants self Guts status for 1 time, 5 turns (revives with 500 HP, stackable with other Guts) & grants self On-Guts-Activate buff for 5 turns (+20% Buster performance when Guts activates).',
         effectType: 'guts',
-        value: 3000,
+        value: 500,
         duration: 5,
         icon: '🩸'
       }

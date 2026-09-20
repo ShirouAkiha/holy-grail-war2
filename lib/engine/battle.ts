@@ -178,6 +178,25 @@ export function createCombatantFromMasterServant(
         remainingTurns: 99
       });
     }
+    if (ce.id === 'ce_bond_heracles_berserker' || ce.name === 'Castle of Snow' || (ce.passiveType === 'guts' && (ce.passiveValue || 0) > 1)) {
+      initialBuffs.push({
+        name: 'Castle of Snow (Guts x3)',
+        type: 'guts',
+        value: 500,
+        remainingTurns: 99,
+        remainingHits: ce.passiveValue || 3,
+        isHitCount: true
+      });
+    } else if (ce.passiveType === 'guts') {
+      initialBuffs.push({
+        name: `${ce.name} (Guts)`,
+        type: 'guts',
+        value: ce.hpBonus || 1000,
+        remainingTurns: 99,
+        remainingHits: 1,
+        isHitCount: true
+      });
+    }
   }
 
   const baseAvatar = getServantAvatarAndCardArt(servantInstance).avatarUrl;
@@ -1472,6 +1491,14 @@ export function executeBattleTurn(
               value: reviveVal,
               remainingTurns: skill.duration || 5
             });
+            if (skill.id === 'indomitable_a' || skill.name.includes('Indomitable')) {
+              actor.activeBuffs.push({
+                name: 'Indomitable A (On-Guts Buster Up)',
+                type: 'on_guts_buster',
+                value: 20,
+                remainingTurns: skill.duration || 5
+              });
+            }
             if (skill.id?.includes('thrice')) {
               actor.activeBuffs.push({
                 name: `${skill.name} (DEF Up)`,
@@ -1858,14 +1885,33 @@ export function executeBattleTurn(
     actor.npGauge = Math.min(300, actor.npGauge + totalNpCharge);
     actor.critStars = Math.min(50, (actor.critStars || 0) + totalStars);
 
-    // Guts Check (Battle Continuation)
+    // Guts Check (Battle Continuation / Castle of Snow / Indomitable A)
     const gutsBuffIndex = target.activeBuffs.findIndex(b => b.type === 'guts');
     if (target.currentHp <= 0 && gutsBuffIndex !== -1) {
       const gutsBuff = target.activeBuffs[gutsBuffIndex];
       const reviveHp = gutsBuff.value || Math.round(target.maxHp * 0.20);
       target.currentHp = reviveHp;
-      target.activeBuffs.splice(gutsBuffIndex, 1);
-      actionText += `\n✝️ **BATTLE CONTINUATION!** ${target.name} revived with **${reviveHp.toLocaleString()} HP**!`;
+
+      if (gutsBuff.remainingHits !== undefined && gutsBuff.remainingHits > 1) {
+        gutsBuff.remainingHits -= 1;
+        actionText += `\n✝️ **BATTLE CONTINUATION!** ${target.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.remainingHits} Guts charge(s) remaining)`;
+      } else {
+        target.activeBuffs.splice(gutsBuffIndex, 1);
+        actionText += `\n✝️ **BATTLE CONTINUATION!** ${target.name} revived with **${reviveHp.toLocaleString()} HP**!`;
+      }
+
+      // Check On-Guts Buster Up buff (Indomitable A)
+      const onGutsIndex = target.activeBuffs.findIndex(b => b.type === 'on_guts_buster');
+      if (onGutsIndex !== -1) {
+        const ogBuff = target.activeBuffs[onGutsIndex];
+        target.activeBuffs.push({
+          name: 'Indomitable A: On-Guts Buster Up (+20%)',
+          type: 'buster_up',
+          value: ogBuff.value || 20,
+          remainingTurns: 5
+        });
+        actionText += `\n🔥 **[INDOMITABLE A]** On-Guts activated! Buster Performance increased by +20% for 5 turns!`;
+      }
     }
 
     // Defender Avenger Passive: NP refill when suffering damage

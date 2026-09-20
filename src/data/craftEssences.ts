@@ -375,7 +375,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: 'When equipped to Heracles: Grants Guts to self (revives with 500 HP, 3 times).',
     passiveType: 'guts',
     passiveValue: 3,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
+    artworkUrl: 'https://ella.janitorai.com/media-approved/QGsCqgq-eKYBH421MO6BR.webp',
     isBondCe: true,
     bondServantId: 'heracles_berserker',
     bondServantName: 'Heracles'

@@ -130,6 +130,29 @@ export function createCombatantFromMasterServant(
     ? Math.min(maxHp, Math.round(overrideCurrentHp))
     : maxHp;
 
+  const initialBuffs: ActiveCombatant['activeBuffs'] = [];
+  if (ce) {
+    if (ce.id === 'ce_bond_heracles_berserker' || ce.name === 'Castle of Snow' || (ce.passiveType === 'guts' && (ce.passiveValue || 0) > 1)) {
+      initialBuffs.push({
+        name: 'Castle of Snow (Guts x3)',
+        type: 'guts',
+        value: 500,
+        remainingTurns: 99,
+        remainingHits: ce.passiveValue || 3,
+        isHitCount: true
+      });
+    } else if (ce.passiveType === 'guts') {
+      initialBuffs.push({
+        name: `${ce.name} (Guts)`,
+        type: 'guts',
+        value: ce.hpBonus || 1000,
+        remainingTurns: 99,
+        remainingHits: 1,
+        isHitCount: true
+      });
+    }
+  }
+
   const baseAvatar = getServantAvatarAndCardArt(servantInstance).avatarUrl;
 
   return {
@@ -154,7 +177,7 @@ export function createCombatantFromMasterServant(
     },
     commandDeck: [...t.commandDeck],
     npGauge: initialNp,
-    activeBuffs: [],
+    activeBuffs: initialBuffs,
     skills: t.skills.map(s => ({ ...s, currentCooldown: 0 })),
     passives: t.passives,
     noblePhantasm: { ...t.noblePhantasm },
