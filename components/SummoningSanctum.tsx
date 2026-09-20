@@ -53,6 +53,8 @@ export default function SummoningSanctum({
   const [activeSubTab, setActiveSubTab] = useState<'ritual' | 'admin_forge' | 'throne_registry'>('ritual');
   const [isSummoning, setIsSummoning] = useState(false);
   const [summonSuccessServant, setSummonSuccessServant] = useState<ServantTemplate | null>(null);
+  const [summonResults, setSummonResults] = useState<any[] | null>(null);
+  const [summonTitle, setSummonTitle] = useState<string>('Holy Grail War Summon');
   const [statusNotice, setStatusNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [registrySearch, setRegistrySearch] = useState('');
   const [registryCategory, setRegistryCategory] = useState<'all' | 'canon' | 'custom'>('all');
@@ -101,53 +103,57 @@ export default function SummoningSanctum({
     });
   };
 
-  // Perform Holy Grail War Summoning Ritual (One Servant, Randomly from Throne)
-  const handlePerformRitual = () => {
-    if (activeContract) {
-      const sName = activeContract.template?.name || activeContract.nickname || 'Servant';
-      const sClass = activeContract.template?.servantClass || 'Saber';
-      setStatusNotice({
-        type: 'error',
-        message: `You are already bound to ${sName} (${sClass}). Sever your current contract first if you wish to summon anew.`
-      });
-      return;
-    }
-
+  // Perform Holy Grail War Single Summoning Ritual
+  const handlePerformSingleRitual = () => {
     setIsSummoning(true);
     setStatusNotice(null);
 
     setTimeout(() => {
-      // Pick random unclaimed Heroic Spirit
       const randomTemplate = allThrone[Math.floor(Math.random() * allThrone.length)];
+      let curServants = master.servants ? [...master.servants] : [];
+      const isOwned = curServants.some(s => (s.templateId || s.template?.id) === randomTemplate.id);
 
-      const newInstance: MasterServantInstance = {
-        id: `contract_${randomTemplate.id}_${Date.now()}`,
-        masterId: master.id,
-        templateId: randomTemplate.id,
-        level: 1,
-        experience: 0,
-        allocatedStats: { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 },
-        availableStatPoints: 10,
-        skillLevels: [1, 1, 1],
-        customQuotes: {
-          summon: randomTemplate.summonQuote,
-          battleStart: randomTemplate.battleStartQuote,
-          noblePhantasm: randomTemplate.noblePhantasm.chant,
-          victory: randomTemplate.victoryQuote,
-          defeat: randomTemplate.defeatQuote
-        },
-        bondLevel: 1,
-        template: randomTemplate
-      };
+      if (!isOwned) {
+        const newInstance: MasterServantInstance = {
+          id: `contract_${randomTemplate.id}_${Date.now()}`,
+          masterId: master.id,
+          templateId: randomTemplate.id,
+          level: 1,
+          experience: 0,
+          allocatedStats: { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 },
+          availableStatPoints: 10,
+          skillLevels: [1, 1, 1],
+          customQuotes: {
+            summon: randomTemplate.summonQuote,
+            battleStart: randomTemplate.battleStartQuote,
+            noblePhantasm: randomTemplate.noblePhantasm.chant,
+            victory: randomTemplate.victoryQuote,
+            defeat: randomTemplate.defeatQuote
+          },
+          bondLevel: 1,
+          template: randomTemplate
+        };
+        curServants.push(newInstance);
+      }
 
       onUpdateMaster({
         ...master,
-        servants: [newInstance],
-        activeServantId: newInstance.id,
+        servants: curServants,
+        activeServantId: master.activeServantId || (curServants[0] ? curServants[0].id : undefined),
         commandSeals: 3
       });
 
       setSummonSuccessServant(randomTemplate);
+      setSummonTitle(`1x Single Summon: ${randomTemplate.name}`);
+      setSummonResults([
+        {
+          type: 'servant',
+          item: randomTemplate,
+          rarity: randomTemplate.rarity || 5,
+          isNew: !isOwned,
+          isRateUp: true
+        }
+      ]);
       setIsSummoning(false);
 
       confetti({
@@ -155,8 +161,82 @@ export default function SummoningSanctum({
         spread: 100,
         origin: { y: 0.6 }
       });
+    }, 1000);
+  };
+
+  // Perform 10x Multi-Summon Ritual
+  const handlePerformMultiRitual = () => {
+    setIsSummoning(true);
+    setStatusNotice(null);
+
+    setTimeout(() => {
+      let curServants = master.servants ? [...master.servants] : [];
+      const resultsArr: any[] = [];
+      let primaryNew: ServantTemplate | null = null;
+      let totalPrisms = 0;
+
+      for (let i = 0; i < 10; i++) {
+        const randomTemplate = allThrone[Math.floor(Math.random() * allThrone.length)];
+        const isOwned = curServants.some(s => (s.templateId || s.template?.id) === randomTemplate.id);
+
+        resultsArr.push({
+          type: 'servant',
+          item: randomTemplate,
+          rarity: randomTemplate.rarity || 5,
+          isNew: !isOwned,
+          isRateUp: i === 0 || randomTemplate.rarity >= 5
+        });
+
+        if (!isOwned) {
+          if (!primaryNew) primaryNew = randomTemplate;
+          const newInstance: MasterServantInstance = {
+            id: `contract_${randomTemplate.id}_${Date.now()}_${i}`,
+            masterId: master.id,
+            templateId: randomTemplate.id,
+            level: 1,
+            experience: 0,
+            allocatedStats: { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 },
+            availableStatPoints: 10,
+            skillLevels: [1, 1, 1],
+            customQuotes: {
+              summon: randomTemplate.summonQuote,
+              battleStart: randomTemplate.battleStartQuote,
+              noblePhantasm: randomTemplate.noblePhantasm.chant,
+              victory: randomTemplate.victoryQuote,
+              defeat: randomTemplate.defeatQuote
+            },
+            bondLevel: 1,
+            template: randomTemplate
+          };
+          curServants.push(newInstance);
+        } else {
+          totalPrisms += 50;
+        }
+      }
+
+      onUpdateMaster({
+        ...master,
+        servants: curServants,
+        manaPrisms: ((master as any).manaPrisms || 0) + totalPrisms,
+        activeServantId: master.activeServantId || (curServants[0] ? curServants[0].id : undefined),
+        commandSeals: 3
+      });
+
+      const displayServant = primaryNew || resultsArr[0].item;
+      setSummonSuccessServant(displayServant);
+      setSummonTitle('10x Heroic Spirit Multi-Summon Results');
+      setSummonResults(resultsArr);
+      setIsSummoning(false);
+
+      confetti({
+        particleCount: 250,
+        spread: 120,
+        origin: { y: 0.5 }
+      });
     }, 1200);
   };
+
+  const handlePerformRitual = () => handlePerformSingleRitual();
 
   // Sever Contract
   const handleSeverContract = () => {
@@ -514,17 +594,32 @@ export default function SummoningSanctum({
                 <div className="flex items-center justify-between px-3 py-2 border-b border-[#162038] mb-2">
                   <div className="flex items-center gap-2 text-xs font-mono text-[#d4af37]">
                     <Sparkles className="w-4 h-4" />
-                    <span className="font-bold uppercase tracking-wider">Leyline Canvas Summon Card (1x Single Pull Layout)</span>
+                    <span className="font-bold uppercase tracking-wider">
+                      Leyline Canvas Summon Card ({summonResults && summonResults.length > 1 ? '10x Multi Pull Grid Layout' : '1x Single Pull Showcase Layout'})
+                    </span>
                   </div>
-                  <span className="text-[10px] font-mono text-sky-400 bg-sky-950/60 px-2 py-0.5 rounded border border-sky-500/30">
-                    HD Canvas Renderer
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handlePerformSingleRitual}
+                      disabled={isSummoning}
+                      className="text-[11px] font-mono font-bold text-emerald-300 bg-emerald-950/80 px-2.5 py-1 rounded border border-emerald-500/40 hover:bg-emerald-900 transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                    >
+                      ✨ 1x Single Pull
+                    </button>
+                    <button
+                      onClick={handlePerformMultiRitual}
+                      disabled={isSummoning}
+                      className="text-[11px] font-mono font-bold text-amber-300 bg-amber-950/80 px-2.5 py-1 rounded border border-amber-500/40 hover:bg-amber-900 transition flex items-center gap-1 shadow-md cursor-pointer disabled:opacity-50"
+                    >
+                      🌟 10x Multi Pull
+                    </button>
+                  </div>
                 </div>
                 <CanvasRenderer
                   canvasType="gacha"
                   payload={{
-                    bannerTitle: (summonSuccessServant || activeContract?.template)?.name || 'Holy Grail War Summon',
-                    results: [
+                    bannerTitle: summonTitle,
+                    results: summonResults || [
                       {
                         type: 'servant',
                         item: summonSuccessServant || activeContract?.template,
@@ -647,13 +742,22 @@ export default function SummoningSanctum({
                   <p className="text-xs font-mono text-white/60">
                     Throne Pool: <strong>{allThrone.length} Heroic Spirits available</strong>
                   </p>
-                  <button
-                    disabled={isSummoning}
-                    onClick={handlePerformRitual}
-                    className="px-8 py-3.5 rounded-sm bg-[#d4af37] hover:bg-[#c49f27] text-black font-serif italic text-base font-bold tracking-widest shadow-[0_0_20px_rgba(212,175,55,0.25)] transition duration-200 transform hover:scale-[1.02] disabled:opacity-50"
-                  >
-                    {isSummoning ? '⚡ Calling from the Throne...' : '✨ Invoke Summoning Ritual'}
-                  </button>
+                  <div className="flex flex-wrap items-center justify-center gap-3">
+                    <button
+                      disabled={isSummoning}
+                      onClick={handlePerformSingleRitual}
+                      className="px-6 py-3 rounded-sm bg-[#d4af37] hover:bg-[#c49f27] text-black font-serif italic text-sm font-bold tracking-wider shadow-[0_0_15px_rgba(212,175,55,0.25)] transition duration-200 transform hover:scale-[1.02] disabled:opacity-50 cursor-pointer"
+                    >
+                      {isSummoning ? '⚡ Calling from Throne...' : '✨ 1x Single Summon Ritual'}
+                    </button>
+                    <button
+                      disabled={isSummoning}
+                      onClick={handlePerformMultiRitual}
+                      className="px-6 py-3 rounded-sm bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 hover:brightness-110 text-black font-serif italic text-sm font-bold tracking-wider shadow-[0_0_20px_rgba(245,158,11,0.35)] transition duration-200 transform hover:scale-[1.02] disabled:opacity-50 cursor-pointer"
+                    >
+                      {isSummoning ? '⚡ Calling 10 Spirits...' : '🌟 10x Multi-Summon Ritual'}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

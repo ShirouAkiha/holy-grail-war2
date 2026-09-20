@@ -988,11 +988,11 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       },
       {
         id: 'indomitable_a',
-        name: 'Indomitable A',
+        name: 'Indomitable Will A',
         cooldown: 7,
-        description: 'Grants self Guts status for 1 time, 5 turns (revives with 500 HP, stackable with other Guts) & grants self On-Guts-Activate buff for 5 turns (+20% Buster performance when Guts activates).',
+        description: 'Grants self Guts status for 1 time, 5 turns (revives with 2,500 HP, stackable with Castle of Snow Guts) & increases own Buster performance by 20% for 3 turns.',
         effectType: 'guts',
-        value: 500,
+        value: 2500,
         duration: 5,
         icon: '🩸'
       }

@@ -452,9 +452,27 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
             )
             .setColor(0xeab308);
 
+          let files: AttachmentBuilder[] = [];
+          try {
+            const gachaItems = rollResult.results.map(r => ({
+              type: 'servant',
+              item: r.servant,
+              rarity: r.servant.rarity || 5,
+              isNew: r.isNew,
+              isRateUp: r.servant.rarity >= 5
+            }));
+            const canvasBuffer = await renderGachaSummonBanner(gachaItems as any, '10x Heroic Spirit Multi-Summon');
+            const attachment = new AttachmentBuilder(canvasBuffer, { name: 'servant_summon.png' });
+            files = [attachment];
+            embed.setImage('attachment://servant_summon.png');
+          } catch (canvasErr) {
+            console.error('Failed to render servant gacha canvas banner:', canvasErr);
+          }
+
           await i.reply({
             flags: MessageFlags.Ephemeral,
-            embeds: [embed]
+            embeds: [embed],
+            files
           });
         } else {
           // 10x CE Roll
@@ -623,7 +641,24 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           )
           .setColor(0xeab308);
 
-        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+        let files: AttachmentBuilder[] = [];
+        try {
+          const gachaItems = rollResult.results.map(r => ({
+            type: 'servant',
+            item: r.servant,
+            rarity: r.servant.rarity || 5,
+            isNew: r.isNew,
+            isRateUp: r.servant.rarity >= 5
+          }));
+          const canvasBuffer = await renderGachaSummonBanner(gachaItems as any, '10x Heroic Spirit Multi-Summon');
+          const attachment = new AttachmentBuilder(canvasBuffer, { name: 'servant_summon.png' });
+          files = [attachment];
+          embed.setImage('attachment://servant_summon.png');
+        } catch (canvasErr) {
+          console.error('Failed to render servant gacha canvas banner:', canvasErr);
+        }
+
+        await interaction.reply({ embeds: [embed], files, flags: MessageFlags.Ephemeral });
       }
       return;
     }

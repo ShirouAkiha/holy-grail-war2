@@ -5,6 +5,7 @@ import {
   ButtonBuilder, 
   ButtonStyle, 
   EmbedBuilder,
+  AttachmentBuilder,
   MessageFlags 
 } from 'discord.js';
 import { 
@@ -16,6 +17,7 @@ import { executeServantGachaRoll, executeCraftEssenceGachaRoll } from '../engine
 import { buildGachaHub, attachGachaCollector } from './gacha';
 import { registerMasterSummonInWar } from '../engine/grailwar';
 import { safeSetEmbedImage } from '../utils/discordEmbedHelper';
+import { renderGachaSummonBanner } from '../canvas/renderer';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION (GACHA UNIFIED SHORTCUT)
@@ -441,6 +443,23 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .setColor(0xeab308)
       .setFooter({ text: 'Throne of Heroes • Multi-Summon Protocol' });
 
+    let files: AttachmentBuilder[] = [];
+    try {
+      const gachaItems = rollResult.results.map(r => ({
+        type: 'servant',
+        item: r.servant,
+        rarity: r.servant.rarity || 5,
+        isNew: r.isNew,
+        isRateUp: r.servant.rarity >= 5
+      }));
+      const canvasBuffer = await renderGachaSummonBanner(gachaItems as any, '10x Heroic Spirit Multi-Summon');
+      const attachment = new AttachmentBuilder(canvasBuffer, { name: 'servant_summon.png' });
+      files = [attachment];
+      multiEmbed.setImage('attachment://servant_summon.png');
+    } catch (canvasErr) {
+      console.error('Failed to render servant gacha canvas banner:', canvasErr);
+    }
+
     const multiActionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setCustomId('gacha_act_multi')
@@ -463,6 +482,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     await interaction.reply({
       embeds: [multiEmbed],
       components: [multiActionRow],
+      files,
       flags: MessageFlags.Ephemeral
     });
 

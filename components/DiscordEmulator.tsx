@@ -1312,6 +1312,10 @@ export default function DiscordEmulator({
     // COMMAND 1: /summon
     // ----------------------------------------------------
     if (trimmed.startsWith('/summon')) {
+      if (trimmed.includes('10') || trimmed.includes('multi') || trimmed.includes('ten')) {
+        handleButtonClick('gacha_act_multi');
+        return;
+      }
       if (trimmed === '/summon' || trimmed.startsWith('/summon menu') || trimmed.startsWith('/summon gacha')) {
         setGachaCategory('servants');
         setGachaBanner('throne_servants');
@@ -2224,8 +2228,20 @@ export default function DiscordEmulator({
     // COMMAND 2.78: /gacha, /cegacha (Greater Grail Invocation Sanctum)
     // ----------------------------------------------------
     if (trimmed.startsWith('/gacha') || (trimmed.startsWith('/cegacha') && !trimmed.startsWith('/cegacha inventory'))) {
-      if (trimmed.includes('pull') || trimmed.includes('roll') || trimmed.includes('summon')) {
-        const isTen = trimmed.includes('10') || trimmed.includes('multi') || trimmed.includes('ten');
+      const isCE = trimmed.includes('ce') || trimmed.startsWith('/cegacha') || trimmed.includes('essence');
+      const isTen = trimmed.includes('10') || trimmed.includes('multi') || trimmed.includes('ten');
+      const isRoll = trimmed.includes('pull') || trimmed.includes('roll') || trimmed.includes('summon') || isTen;
+
+      if (isRoll) {
+        if (!isCE) {
+          if (isTen) {
+            handleButtonClick('gacha_act_multi');
+          } else {
+            handleButtonClick('gacha_act_single');
+          }
+          return;
+        }
+
         const rollCount = isTen ? 10 : 1;
         const requiredSq = isTen ? 30 : 3;
 
@@ -9142,6 +9158,16 @@ export default function DiscordEmulator({
           };
           onUpdateMaster(updatedMaster);
 
+          const singleResult = [
+            {
+              type: 'servant',
+              item: randomTemplate,
+              rarity: randomTemplate.rarity || 5,
+              isNew: !isOwned,
+              isRateUp: true
+            }
+          ];
+
           const embed = {
             title: `👑 1x Heroic Spirit Summon: ${randomTemplate.name} (${randomTemplate.servantClass})!`,
             description:
@@ -9162,6 +9188,11 @@ export default function DiscordEmulator({
             id: getNextId('bot_servant_single_res'),
             sender: 'bot',
             timestamp: 'Just now',
+            canvasType: 'gacha',
+            canvasPayload: {
+              bannerTitle: `1x Single Summon: ${randomTemplate.name}`,
+              results: singleResult
+            },
             embed,
             components: {
               type: 'buttons',
@@ -9197,10 +9228,19 @@ export default function DiscordEmulator({
           let totalPrisms = 0;
           let newCount = 0;
           const lines: string[] = [];
+          const multiResults: any[] = [];
 
           for (let i = 0; i < 10; i++) {
             const randomTemplate = allThrone[Math.floor(Math.random() * allThrone.length)];
             const isOwned = curServants.some((s: any) => (s.template?.id || s.id) === randomTemplate.id);
+
+            multiResults.push({
+              type: 'servant',
+              item: randomTemplate,
+              rarity: randomTemplate.rarity || 5,
+              isNew: !isOwned,
+              isRateUp: i === 0 || randomTemplate.rarity >= 5
+            });
 
             if (!isOwned) {
               const newInst = createContractFromPool(allThrone, master.id);
@@ -9245,6 +9285,11 @@ export default function DiscordEmulator({
             id: getNextId('bot_servant_multi_res'),
             sender: 'bot',
             timestamp: 'Just now',
+            canvasType: 'gacha',
+            canvasPayload: {
+              bannerTitle: '10x Heroic Spirit Multi-Summon Results',
+              results: multiResults
+            },
             embed,
             components: {
               type: 'buttons',

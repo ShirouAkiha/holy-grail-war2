@@ -291,6 +291,24 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     passiveValue: 15,
     artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
+  {
+    id: 'ce_castle_of_snow',
+    name: 'Castle of Snow',
+    rarity: 5,
+    description: 'An unmelting castle of white snow nestled in the Einzbern forest. Even if broken a thousand times, the great hero rises again to defend his Master without fail.',
+    bonusAtk: 500,
+    bonusDef: 200,
+    bonusHp: 500,
+    atkBonus: 500,
+    hpBonus: 500,
+    effectText: 'Grants Guts status to self (revives 3 times with 500 HP). Signature Bond CE of Heracles.',
+    passiveType: 'guts',
+    passiveValue: 3,
+    artworkUrl: 'https://ella.janitorai.com/media-approved/QGsCqgq-eKYBH421MO6BR.webp',
+    isBondCe: true,
+    bondServantId: 'heracles_berserker',
+    bondServantName: 'Heracles'
+  },
 
   // --- 3★ R CRAFT ESSENCES ---
   {
