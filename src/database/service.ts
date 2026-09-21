@@ -1211,7 +1211,7 @@ export async function addSaintQuartzToUser(
   };
 }
 
-export const PRISM_TICKET_PRICE = 20; // 20 Mana Prisms per 1 Summon Ticket
+export const PRISM_TICKET_PRICE = 1000; // 1000 Mana Prisms per 1 Summon Ticket
 
 /**
  * Exchanges Mana Prisms for Summon Tickets in the Da Vinci Workshop.

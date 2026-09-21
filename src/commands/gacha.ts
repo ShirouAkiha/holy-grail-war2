@@ -147,9 +147,9 @@ export function buildGachaHub(
       `🔵 **Mana Prisms:** \`${prisms} Prisms\`  •  🎫 **Summon Tickets:** \`${tickets} Tickets\`  •  💎 **Saint Quartz:** \`${sq} SQ\`\n\n` +
       `═══════════════════════════════════════════════\n` +
       `🛍️ **Available Exchange Catalog:**\n` +
-      `• 🎫 **1x Summon Ticket** ➔ **20 Mana Prisms 🔵** *(Grants 1 Single Summon on any banner)*\n` +
-      `• 🎟️ **5x Summon Tickets** ➔ **100 Mana Prisms 🔵** *(Grants 5 Summons)*\n` +
-      `• 🎟️ **10x Summon Tickets** ➔ **200 Mana Prisms 🔵** *(Grants 10 Multi-Summon)*\n\n` +
+      `• 🎫 **1x Summon Ticket** ➔ **1,000 Mana Prisms 🔵** *(Grants 1 Single Summon on any banner)*\n` +
+      `• 🎟️ **5x Summon Tickets** ➔ **5,000 Mana Prisms 🔵** *(Grants 5 Summons)*\n` +
+      `• 🎟️ **10x Summon Tickets** ➔ **10,000 Mana Prisms 🔵** *(Grants 10 Multi-Summon)*\n\n` +
       `💡 **How to Acquire Mana Prisms:**\n` +
       `• Every duplicate Heroic Spirit summoned from the Throne of Heroes yields **+50 Mana Prisms 🔵** automatically!\n` +
       `• Exchange your prisms for tickets below to keep summoning indefinitely!`;
@@ -273,22 +273,22 @@ export function buildGachaHub(
     actRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setCustomId('gacha_shop_buy_1')
-        .setLabel('Buy 1x Ticket (20 🔵)')
+        .setLabel('Buy 1x Ticket (1,000 🔵)')
         .setEmoji('🎫')
         .setStyle(ButtonStyle.Success)
-        .setDisabled(prisms < 20),
+        .setDisabled(prisms < 1000),
       new ButtonBuilder()
         .setCustomId('gacha_shop_buy_5')
-        .setLabel('Buy 5x Tickets (100 🔵)')
+        .setLabel('Buy 5x Tickets (5,000 🔵)')
         .setEmoji('🎟️')
         .setStyle(ButtonStyle.Primary)
-        .setDisabled(prisms < 100),
+        .setDisabled(prisms < 5000),
       new ButtonBuilder()
         .setCustomId('gacha_shop_buy_10')
-        .setLabel('Buy 10x Tickets (200 🔵)')
+        .setLabel('Buy 10x Tickets (10,000 🔵)')
         .setEmoji('🎟️')
         .setStyle(ButtonStyle.Primary)
-        .setDisabled(prisms < 200),
+        .setDisabled(prisms < 10000),
       new ButtonBuilder()
         .setCustomId('gacha_act_back_servants')
         .setLabel('Back to Gacha 👑')
