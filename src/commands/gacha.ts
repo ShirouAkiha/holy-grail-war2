@@ -290,7 +290,7 @@ export function buildGachaHub(
         .setStyle(ButtonStyle.Primary)
         .setDisabled(prisms < 200),
       new ButtonBuilder()
-        .setCustomId('gacha_tab_servants')
+        .setCustomId('gacha_act_back_servants')
         .setLabel('Back to Gacha 👑')
         .setStyle(ButtonStyle.Secondary)
     );
@@ -302,12 +302,12 @@ export function buildGachaHub(
         .setEmoji('💎')
         .setStyle(ButtonStyle.Success),
       new ButtonBuilder()
-        .setCustomId('gacha_tab_shop')
+        .setCustomId('gacha_act_goto_shop')
         .setLabel(`Open Shop (${prisms} 🔵)`)
         .setEmoji('🛍️')
         .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
-        .setCustomId('gacha_tab_servants')
+        .setCustomId('gacha_act_goto_servants')
         .setLabel('Summon Servants 👑')
         .setStyle(ButtonStyle.Secondary)
     );
@@ -333,7 +333,7 @@ export function buildGachaHub(
         .setStyle(ButtonStyle.Success)
         .setDisabled(tickets < 1),
       new ButtonBuilder()
-        .setCustomId('gacha_tab_shop')
+        .setCustomId('gacha_act_open_shop')
         .setLabel(`Shop (${prisms} 🔵)`)
         .setEmoji('🛍️')
         .setStyle(ButtonStyle.Secondary)
@@ -386,13 +386,13 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
       const customId = i.customId;
 
       // Tab switching
-      if (customId === 'gacha_tab_servants') {
+      if (customId === 'gacha_tab_servants' || customId === 'gacha_act_back_servants' || customId === 'gacha_act_goto_servants') {
         currentCategory = 'servants';
         currentBanner = 'throne_servants';
       } else if (customId === 'gacha_tab_ces') {
         currentCategory = 'ces';
         currentBanner = 'standard_ce';
-      } else if (customId === 'gacha_tab_shop') {
+      } else if (customId === 'gacha_tab_shop' || customId === 'gacha_act_goto_shop' || customId === 'gacha_act_open_shop') {
         currentCategory = 'shop';
         currentBanner = 'prism_shop';
       } else if (customId === 'gacha_tab_daily') {
