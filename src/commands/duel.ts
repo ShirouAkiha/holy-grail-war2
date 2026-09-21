@@ -9,7 +9,7 @@ import {
   User,
   ComponentType
 , MessageFlags } from 'discord.js';
-import { getOrCreateMaster, saveMaster, getDuelNpSettings } from '../database/service';
+import { getOrCreateMaster, saveMaster, getDuelNpSettings, getAllMasters } from '../database/service';
 import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog, PassiveSkill } from '../types';
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives, getServantAvatarAndCardArt } from '../data/servants';
 import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp, getReputationInfo, isUserSlainCivilianInWar } from '../engine/grailwar';
@@ -2002,13 +2002,56 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     const warSession = getOrInitWarSession(challengerMaster);
-    const mode = interaction.options.getString('mode') || '1v1';
-    const isFreeBattle = mode === 'free' || challengerMaster.environmentMode === 'safe';
+    const rawMode = interaction.options.getString('mode');
 
-    // Check if challenger is eliminated from the Holy Grail War tournament
+    // Check if challenger is enrolled and alive in the active Holy Grail War
     const challengerParticipant = warSession.participants[challengerMaster.discordId] ||
       Object.values(warSession.participants).find(p => p.username.toLowerCase() === challengerMaster.username.toLowerCase());
 
+    const isChallengerInWar = challengerMaster.environmentMode === 'war' && !!challengerParticipant && challengerParticipant.isAlive;
+    const isChallengerInSafeMode = !isChallengerInWar;
+
+    // RULE 1: Masters in Safe Mode (not in war) can ONLY use Free Battles
+    if (isChallengerInSafeMode) {
+      if (rawMode && rawMode !== 'free') {
+        const safeOnlyEmbed = new EmbedBuilder()
+          .setTitle('🕊️ SAFE MODE — FREE BATTLES ONLY')
+          .setDescription(
+            `Master **${challengerMaster.username}**, you are currently in **Safe Mode** outside of the Holy Grail War.\n\n` +
+            `• **🕊️ Free Battles Only:** Masters in Safe Mode can only participate in **Free Battles** (friendly sparring without tournament stakes or elimination).\n` +
+            `• **⚔️ How to Duel:** Run \`/duel mode:free\` (or \`/duel mode:free opponent:@Master\`) to spar!\n` +
+            `• **🏆 Want Tournament Action?** Join the active tournament with \`/grailwar join\` or wait for the next war cycle.`
+          )
+          .setColor(0x38bdf8);
+
+        await interaction.reply({ embeds: [safeOnlyEmbed], flags: MessageFlags.Ephemeral });
+        return;
+      }
+    }
+
+    // RULE 2: Masters in Holy Grail War CANNOT use Free Battles
+    if (isChallengerInWar) {
+      if (rawMode === 'free') {
+        const warNoFreeEmbed = new EmbedBuilder()
+          .setTitle('⚔️ HOLY GRAIL WAR CONTENDER — NO FREE BATTLES')
+          .setDescription(
+            `Master **${challengerMaster.username}**, you are currently an active contender in the **Holy Grail War**!\n\n` +
+            `• 🚫 **Free Battles Restricted:** Active war contenders cannot participate in casual Free Battles while fighting for the Grail.\n` +
+            `• ⚔️ **Tournament Combat:** Use \`/duel mode:1v1\`, \`/duel mode:2v2\`, \`/duel mode:1v2\`, or \`/attack\` to fight rivals!\n` +
+            `• 🕊️ **Safe Mode Functions Available:** You can still claim your daily SQ (\`/daily\`), roll Gacha (\`/gacha\`, \`/summon\`), and customize your Servants.\n` +
+            `• 🏳️ **Want to switch to Safe Mode?** Surrender your tournament position with \`/grailwar forfeit\` or at the Church.`
+          )
+          .setColor(0xf59e0b);
+
+        await interaction.reply({ embeds: [warNoFreeEmbed], flags: MessageFlags.Ephemeral });
+        return;
+      }
+    }
+
+    const mode = isChallengerInSafeMode ? 'free' : (rawMode || '1v1');
+    const isFreeBattle = isChallengerInSafeMode || mode === 'free';
+
+    // Check if challenger is eliminated from the Holy Grail War tournament
     if (!isFreeBattle && challengerParticipant && !challengerParticipant.isAlive) {
       const deadEmbed = new EmbedBuilder()
         .setTitle('☠️ ELIMINATED FROM WAR BRACKET')
@@ -2356,6 +2399,35 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const opponentParticipant = warSession.participants[opponentUser.id] ||
         Object.values(warSession.participants).find(p => p.username.toLowerCase() === opponentUser.username.toLowerCase());
 
+      const isOpponentInWar = opponentMaster.environmentMode === 'war' && !!opponentParticipant && opponentParticipant.isAlive;
+
+      // In Free Battle: Opponent must NOT be an active War contender & cannot be civilian
+      if (isFreeBattle) {
+        if (isOpponentCivilian) {
+          await interaction.reply({
+            content: `❌ <@${opponentUser.id}> is a civilian without a contracted Servant and cannot participate in Free Battles!`,
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+        if (isOpponentInWar) {
+          await interaction.reply({
+            content: `❌ Master <@${opponentUser.id}> is currently an active contender in the Holy Grail War and cannot participate in casual Free Battles!`,
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+      } else {
+        // In War Duel: Opponent cannot be in Safe Mode (unless civilian collateral)
+        if (!isOpponentInWar && !isOpponentCivilian) {
+          await interaction.reply({
+            content: `❌ Master <@${opponentUser.id}> is currently in Safe Mode outside of the Holy Grail War! Safe Mode Masters can only be dueled in Free Battle mode using \`/duel mode:free opponent:@${opponentUser.username}\`.`,
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+      }
+
       if (!isFreeBattle && opponentParticipant && !opponentParticipant.isAlive) {
         await interaction.reply({
           content: `☠️ Master <@${opponentUser.id}> was eliminated from this Holy Grail War season! You can battle them in Free Battle mode using \`/duel mode:free opponent:@${opponentUser.username}\`.`,
@@ -2598,24 +2670,45 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    // BRANCH 2: OPEN / QUICK DUEL AGAINST ANOTHER REAL LIVING MASTER
-    const livingRivalParticipants = Object.values(warSession.participants).filter(
-      p => p.discordId !== challengerMaster.discordId &&
-           p.username.toLowerCase() !== challengerMaster.username.toLowerCase() &&
-           (isFreeBattle ? true : p.isAlive)
-    );
+    // BRANCH 2: OPEN / QUICK DUEL AGAINST ANOTHER REAL MASTER
+    let livingRivalParticipants: Array<{ discordId: string; username: string }> = [];
+
+    if (isFreeBattle) {
+      // Safe Mode Free Battle: Match against any other Safe Mode Master with Servants
+      const allMasters = getAllMasters();
+      livingRivalParticipants = allMasters
+        .filter(m => {
+          if (m.discordId === challengerMaster.discordId) return false;
+          if (!m.servants || m.servants.length === 0) return false;
+          const p = warSession.participants[m.discordId];
+          const isEnrolledAndAliveInWar = m.environmentMode === 'war' && p && p.isAlive;
+          return !isEnrolledAndAliveInWar; // Safe mode or eliminated/withdrawn
+        })
+        .map(m => ({ discordId: m.discordId, username: m.username }));
+    } else {
+      // War Duel: Match against living active War participants
+      livingRivalParticipants = Object.values(warSession.participants).filter(
+        p => p.discordId !== challengerMaster.discordId &&
+             p.username.toLowerCase() !== challengerMaster.username.toLowerCase() &&
+             p.isAlive
+      );
+    }
 
     if (livingRivalParticipants.length === 0) {
       const noRivalsEmbed = new EmbedBuilder()
-        .setTitle('⚔️ NO RIVAL MASTERS AVAILABLE IN FUYUKI')
+        .setTitle(isFreeBattle ? '🕊️ NO SAFE MODE MASTERS AVAILABLE TO SPAR' : '⚔️ NO RIVAL MASTERS AVAILABLE IN FUYUKI')
         .setDescription(
-          `There are currently no other ${isFreeBattle ? '' : 'living '}Masters with contracted Servants in the server to duel.\n\n` +
-          `• **Pure Master vs Master:** The Holy Grail War is fought exclusively by actual server members — no NPCs or synthetic shadows.\n` +
-          `• **How to Join:** Invite other members of the server to invoke \`/summon ritual\` to contract a Heroic Spirit and enter the war!\n` +
-          `• Check currently active participants at any time with \`/grailwar status\`.`
+          isFreeBattle
+            ? `There are currently no other Safe Mode Masters with contracted Servants in the server to spar with.\n\n` +
+              `• **Direct Invite:** You can challenge a specific friend directly using \`/duel mode:free opponent:@Master\`.\n` +
+              `• **Invite Others:** Invite your friends to contract a Servant with \`/summon\`!`
+            : `There are currently no other living Masters participating in this Holy Grail War session to duel.\n\n` +
+              `• **Pure Master vs Master:** The Holy Grail War is fought exclusively by enrolled Masters — no NPCs or synthetic shadows.\n` +
+              `• **How to Join:** Invite other members of the server to invoke \`/grailwar join\` to enter the war!\n` +
+              `• Check currently active participants at any time with \`/grailwar status\`.`
         )
         .setColor(0x64748b)
-        .setFooter({ text: 'Holy Grail War • Real Masters Only' });
+        .setFooter({ text: isFreeBattle ? 'Holy Grail War • Safe Mode Free Battle' : 'Holy Grail War • Real Masters Only' });
 
       await interaction.reply({
         embeds: [noRivalsEmbed],
@@ -4532,7 +4625,7 @@ async function finishDuel(
         `**${winnerName}** (Master: ${primaryWinner.username}) emerged victorious in this friendly sparring match!\n\n` +
         `• **Format:** 🕊️ Free Battle / Safe Mode\n` +
         `• **Stakes:** Zero tournament elimination — Servants, Command Seals, and Master standing remain completely intact.\n` +
-        `• **Rewards Granted:** +3 Saint Quartz, Bond EXP (+150 Winner / +60 Participant), and Master stat points!`
+        `• **Rewards Granted:** +3 Saint Quartz 💎, Bond EXP (+150 Winner / +60 Participant). *(Free Battles do not award Parameter Stat Points)*`
       )
       .setColor(0x38bdf8)
       .setFooter({ text: 'Holy Grail War • Safe Mode Free Battle' });
@@ -5180,7 +5273,9 @@ async function finalizeDuelRewardsAndSync(
       if (s) {
         const bondRes = addBondExpToServant(s, 150);
         const updatedS = bondRes.updatedServant;
-        updatedS.availableStatPoints = (updatedS.availableStatPoints || 0) + 2;
+        if (!isFreeBattle) {
+          updatedS.availableStatPoints = (updatedS.availableStatPoints || 0) + 2;
+        }
 
         const grantResult = checkAndGrantBond10Ce(wMaster, updatedS);
         if (winner.userId === primaryWinner.userId && grantResult) {

@@ -86,9 +86,18 @@ export function canAccessSummon(_master: MasterProfile): boolean {
 
 /**
  * Verifies if a Master can participate in Free Battle / Friendly Sparring.
- * ALWAYS returns true: Casual duels and friendly matches carry zero tournament stakes.
+ * Safe Mode masters (and eliminated/withdrawn Masters) can access Free Battles.
+ * Active Holy Grail War contenders cannot access Free Battles.
  */
-export function canAccessFreeBattle(_master: MasterProfile): boolean {
+export function canAccessFreeBattle(master: MasterProfile, warSession?: HolyGrailWarSession | null): boolean {
+  if (master.environmentMode === 'war') {
+    if (warSession && warSession.participants) {
+      const part = warSession.participants[master.discordId];
+      if (part && part.isAlive) {
+        return false;
+      }
+    }
+  }
   return true;
 }
 
