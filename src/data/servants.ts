@@ -203,7 +203,7 @@ export function getServantAvatarAndCardArt(
     return {
       avatarUrl: 'https://ella.janitorai.com/media-approved/2PMVd98BaN6Rc9lzVnWyn.webp',
       cardArtUrl: 'https://ella.janitorai.com/media-approved/2PMVd98BaN6Rc9lzVnWyn.webp',
-      spriteUrl: servantInput.spriteUrl || template.spriteUrl
+      spriteUrl: servantInput.spriteUrl || template.spriteUrl || 'https://ella.janitorai.com/media-approved/yF_QPg5zHXgLbxeEfFd0Q.webp'
     };
   }
 
@@ -221,7 +221,7 @@ export function getServantAvatarAndCardArt(
     return {
       avatarUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
       cardArtUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
-      spriteUrl: servantInput.spriteUrl || template.spriteUrl
+      spriteUrl: servantInput.spriteUrl || template.spriteUrl || 'https://ella.janitorai.com/media-approved/WmgJlmDFeLEuOY8jYiQA6.webp'
     };
   }
 
@@ -384,7 +384,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     victoryQuote: 'The battle is decided. May honor guide our victory, Master.',
     defeatQuote: 'Forgive me, Master... My duty... remains unfulfilled...',
     avatarUrl: 'https://ella.janitorai.com/media-approved/B9sAHeFp8-jdUk8VB4Y_f.webp',
-    cardArtUrl: 'https://ella.janitorai.com/media-approved/B9sAHeFp8-jdUk8VB4Y_f.webp'
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/B9sAHeFp8-jdUk8VB4Y_f.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/Z9He7mkUzzf3BA9jPKUDH.webp'
   },
   {
     id: 'gilgamesh_archer',
@@ -459,7 +460,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     victoryQuote: 'A foregone conclusion. Even a worm could not expect to stand before Ea.',
     defeatQuote: 'Im-impossible... A mere mongrel defeated the King...?!',
     avatarUrl: 'https://ella.janitorai.com/media-approved/4f4Ohvjxoy5qWV9FuCIpV.webp',
-    cardArtUrl: 'https://ella.janitorai.com/media-approved/4f4Ohvjxoy5qWV9FuCIpV.webp'
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/4f4Ohvjxoy5qWV9FuCIpV.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/Bqa8FsnKeMENWHTL1WqtY.webp'
   },
   {
     id: 'scathach_lancer',
@@ -540,7 +542,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     victoryQuote: 'A good spar, but you still have centuries of training to undergo.',
     defeatQuote: 'Ah... is this the end I have long sought...?',
     avatarUrl: 'https://ella.janitorai.com/media-approved/LLAGPFOtuFFMfvpwnlcar.webp',
-    cardArtUrl: 'https://ella.janitorai.com/media-approved/LLAGPFOtuFFMfvpwnlcar.webp'
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/LLAGPFOtuFFMfvpwnlcar.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/giqs9yVplelWhqrW83O0o.webp'
   },
   {
     id: 'jeanne_darc_ruler',
@@ -614,7 +617,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     victoryQuote: 'Let us offer our prayers of gratitude for this blessed triumph.',
     defeatQuote: 'Even if my light fades, the holy flag will never fall...',
     avatarUrl: 'https://ella.janitorai.com/media-approved/LfnkdoCSDCJ8i40QetNmZ.webp',
-    cardArtUrl: 'https://ella.janitorai.com/media-approved/LfnkdoCSDCJ8i40QetNmZ.webp'
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/LfnkdoCSDCJ8i40QetNmZ.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/wUez_xlmpYwXX4XM5nv6L.webp'
   },
   {
     id: 'jeanne_alter',
@@ -689,7 +693,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     victoryQuote: 'A predictable outcome. Now, clean up this mess.',
     defeatQuote: 'To burn again... is this my only fate...?',
     avatarUrl: 'https://ella.janitorai.com/media-approved/LLgWFfDHOldSBezIlG2bE.webp',
-    cardArtUrl: 'https://ella.janitorai.com/media-approved/LLgWFfDHOldSBezIlG2bE.webp'
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/LLgWFfDHOldSBezIlG2bE.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/YMbl6kwoqjKu4rLue9_Gq.webp'
   },
   {
     id: 'mhx_alter',
@@ -764,7 +769,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     victoryQuote: 'Objective accomplished. Time for my tea break.',
     defeatQuote: 'Reactor core... overloaded... My sweets...',
     avatarUrl: 'https://ella.janitorai.com/media-approved/Syn9pbEhWP-Rh74E_yz2p.webp',
-    cardArtUrl: 'https://ella.janitorai.com/media-approved/Syn9pbEhWP-Rh74E_yz2p.webp'
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/Syn9pbEhWP-Rh74E_yz2p.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/b_nkM0IjxFR624oKEPuBV.webp'
   },
 
   {
@@ -833,7 +839,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     victoryQuote: 'A predictable outcome. Clean up the residue.',
     defeatQuote: 'The dark... is fading...',
     avatarUrl: 'https://ella.janitorai.com/media-approved/ZxbsnJvadU9f-ZGO_jgnW.webp',
-    cardArtUrl: 'https://ella.janitorai.com/media-approved/ZxbsnJvadU9f-ZGO_jgnW.webp'
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/ZxbsnJvadU9f-ZGO_jgnW.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/b_nkM0IjxFR624oKEPuBV.webp'
   },
   {
     id: 'nero_claudius_saber',
@@ -908,7 +915,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     victoryQuote: 'A splendid triumph! Raise the roses high and let the applause echo throughout the empire! Umu!',
     defeatQuote: 'The spotlight dims... But the glory of Rome shall never fade...',
     avatarUrl: 'https://ella.janitorai.com/media-approved/hnSI3iEdOGx6bIS1OFOm0.webp',
-    cardArtUrl: 'https://ella.janitorai.com/media-approved/hnSI3iEdOGx6bIS1OFOm0.webp'
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/hnSI3iEdOGx6bIS1OFOm0.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/6T4ofdMLiQXjUv0can6ZP.webp'
   },
   {
     id: 'emiya_archer',
@@ -983,7 +991,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     victoryQuote: 'Just another cleanup job. Don\'t get cocky, Master.',
     defeatQuote: 'My steel has cracked... A fitting end for a fake.',
     avatarUrl: 'https://ella.janitorai.com/media-approved/iA3boFrqm1VqSxH7GJPQL.webp',
-    cardArtUrl: 'https://ella.janitorai.com/media-approved/iA3boFrqm1VqSxH7GJPQL.webp'
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/iA3boFrqm1VqSxH7GJPQL.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/8asG22pYOXYVxYyHPrU2h.webp'
   },
   {
     id: 'heracles_berserker',
@@ -1058,7 +1067,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     victoryQuote: '■■■■■■... (Breathes heavily while standing atop the pulverized battlefield).',
     defeatQuote: '■■■■... (Crumbles into golden embers with unyielding dignity).',
     avatarUrl: 'https://ella.janitorai.com/media-approved/Uugg_5Y73rmtQsnPKYUBo.webp',
-    cardArtUrl: 'https://ella.janitorai.com/media-approved/Uugg_5Y73rmtQsnPKYUBo.webp'
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/Uugg_5Y73rmtQsnPKYUBo.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/o2bkWZQCH-nJWCeANG12g.webp'
   },
   {
     id: 'cu_chulainn_lancer',
@@ -1133,7 +1143,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     victoryQuote: 'Tch, over already? Barely broke a sweat.',
     defeatQuote: 'Damn it... pierced my own rule... Master, fall back...',
     avatarUrl: 'https://ella.janitorai.com/media-approved/t-BCAX4vdfQprQASUcMVO.webp',
-    cardArtUrl: 'https://ella.janitorai.com/media-approved/t-BCAX4vdfQprQASUcMVO.webp'
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/t-BCAX4vdfQprQASUcMVO.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/FXCsEZPDVOeONvnCBl1zk.webp'
   },
   {
     id: 'karna_lancer',
@@ -1215,7 +1226,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     victoryQuote: 'The sun sets on this battle. A duty fulfilled.',
     defeatQuote: 'Even if the sun sets... my honor remains untarnished...',
     avatarUrl: 'https://ella.janitorai.com/media-approved/uZTE4FVgCnWDCxDE9kUY4.webp',
-    cardArtUrl: 'https://ella.janitorai.com/media-approved/uZTE4FVgCnWDCxDE9kUY4.webp'
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/uZTE4FVgCnWDCxDE9kUY4.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/GhiOCyRHZLl2LpfDh2vZh.webp'
   },
   {
     id: 'adiosa_dragon_envoy',
@@ -1298,6 +1310,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     defeatQuote: '⟨ Vrak\'ix... Voth zul Vael\'drom Kor Lyozes! ⟩ (Void... I am bound for eternity to Lyozes!)',
     avatarUrl: 'https://ella.janitorai.com/media-approved/LLAGPFOtuFFMfvpwnlcar.webp',
     cardArtUrl: 'https://ella.janitorai.com/media-approved/LLAGPFOtuFFMfvpwnlcar.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/11GN2GY4MNqrvLeI7JGdE.webp',
     isCustomOrMeme: false
   },
   {
@@ -1455,6 +1468,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     defeatQuote: '"K-Kyuu... washi\'s tail got dirty in the dust... Master, don\'t look at washi like this..."',
     avatarUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
     cardArtUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/WmgJlmDFeLEuOY8jYiQA6.webp',
     isCustomOrMeme: false
   },
   {
@@ -1547,6 +1561,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     defeatQuote: '"A failure of calculation... Withdraw to the secondary line... I will hold the choke point..."',
     avatarUrl: 'https://ella.janitorai.com/media-approved/2PMVd98BaN6Rc9lzVnWyn.webp',
     cardArtUrl: 'https://ella.janitorai.com/media-approved/2PMVd98BaN6Rc9lzVnWyn.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/yF_QPg5zHXgLbxeEfFd0Q.webp',
     isCustomOrMeme: false
   }
 ];
