@@ -10,7 +10,8 @@ import {
   StringSelectMenuInteraction,
   MessageFlags, 
   User,
-  PermissionFlagsBits
+  PermissionFlagsBits,
+  AttachmentBuilder
 } from 'discord.js';
 import { 
   HolyGrailWarSession, 
@@ -24,6 +25,8 @@ import {
   startOrRestartWar
 } from './grailwar';
 import { getOrCreateMaster, saveMaster } from '../database/service';
+import { renderHolyGrailWarAwakeningCard } from '../canvas/renderer';
+import { SERVANT_DATABASE, getServantSprite, getServantAvatarAndCardArt } from '../data/servants';
 
 // In-memory active timer handle
 let activeRecruitmentTimer: NodeJS.Timeout | null = null;
@@ -527,6 +530,409 @@ export async function handleRecruitmentInteraction(interaction: any, client: Cli
 }
 
 /**
+ * Resolves the character summoning quote for a Servant.
+ */
+export function resolveServantSummonQuote(servant: any, sName: string, sClass: string): string {
+  if (servant?.template?.summonQuote && typeof servant.template.summonQuote === 'string') {
+    return servant.template.summonQuote;
+  }
+
+  const foundDb = SERVANT_DATABASE.find(
+    s => s.id === servant?.templateId || s.id === servant?.id || s.name.toLowerCase() === sName.toLowerCase()
+  );
+  if (foundDb?.summonQuote) {
+    return foundDb.summonQuote;
+  }
+
+  // Authentic Class-tailored summon quotes
+  const classUpper = (sClass || 'Saber').toUpperCase();
+  if (classUpper.includes('SABER')) {
+    return 'I ask of you, are you my Master? Upon your summon, I have come to fight by your side.';
+  } else if (classUpper.includes('ARCHER')) {
+    return 'Servant Archer, responding to your summons. Point me toward the enemy, Master.';
+  } else if (classUpper.includes('LANCER')) {
+    return 'Servant Lancer. My spear is yours—let us claim the Greater Grail together.';
+  } else if (classUpper.includes('CASTER')) {
+    return 'Servant Caster. The leyline is primed. Entrust your battlefield strategy to my magecraft.';
+  } else if (classUpper.includes('RIDER')) {
+    return 'Servant Rider has arrived! Hold on tight, Master, victory waits for no one!';
+  } else if (classUpper.includes('ASSASSIN')) {
+    return 'Servant Assassin. I dwell in the shadows of the ritual, awaiting your silent command.';
+  } else if (classUpper.includes('BERSERKER')) {
+    return 'Grrr... RRRRRAAAAGH! (The beast roars, acknowledging the sacred Master covenant.)';
+  } else if (classUpper.includes('RULER')) {
+    return 'Servant Ruler. I shall ensure this Holy Grail War adheres to sacred divine law.';
+  } else if (classUpper.includes('AVENGER')) {
+    return 'Servant Avenger. Let us burn down every pretender standing between us and the Grail.';
+  }
+  return 'I ask of you, are you my Master? Upon your summon, I have answered the call.';
+}
+
+/**
+ * Returns mode-tailored narrative, styling, directives, and starting territory.
+ */
+export function getModeDmConfig(presetKey: string, participantIndex: number, totalParticipants: number) {
+  switch (presetKey) {
+    case 'apocrypha_14': {
+      const isBlackFaction = participantIndex % 2 === 0;
+      const faction: 'red' | 'black' = isBlackFaction ? 'black' : 'red';
+      const factionTitle = isBlackFaction ? '⚫ BLACK FACTION (Yggdmillennia)' : '🔴 RED FACTION (Clock Tower)';
+      const startingDistrict = isBlackFaction
+        ? 'Trifas Fortress Inner Sanctum (Black Faction Base)'
+        : 'Hanging Gardens of Babylon (Red Faction Air Citadel)';
+      const startingBonus = isBlackFaction
+        ? '🏰 Shared Homunculus Mana Reservoir (+10% Workshop Traps)'
+        : '✨ Aerial Bombardment Supremacy (+10% Ambush Initiative)';
+
+      return {
+        presetKey,
+        title: `⚔️ GREAT HOLY GRAIL WAR: ${factionTitle}`,
+        embedColor: isBlackFaction ? 0x7c3aed : 0xd97706,
+        headerBadge: '🏛️ CLOCK TOWER & YGGDMILLENNIA • GREAT WAR DISPATCH',
+        faction,
+        startingDistrict,
+        startingBonus,
+        intro:
+          `You have been anointed as a Master in the **14-Master Great Holy Grail War** representing the **${factionTitle}**!\n\n` +
+          `Seven Masters of the Black Faction and seven Masters of the Red Faction clash across the ancient mist-shrouded forests of Trifas for possession of the Greater Grail.`,
+        directives: [
+          `🚩 **Faction Frontline (</grailwar:1>):** Coordinate with your allied 7 Masters. Shared territory vision and joint mana reservoirs are active.`,
+          `⚔️ **Legion Ambushes (</attack:1>):** Ambush enemy faction Magi. Allied Masters in the same district provide defensive interception.`,
+          `🏰 **Fortress Defense (</trap:1>):** Fortify your faction stronghold against enemy sieges and infiltration.`,
+          `⚖️ **Ruler Divine Mediation:** A neutral Ruler watches over the ritual—flagrant violations draw Divine Judgment.`,
+          `🔴 **Command Seal Overdrive:** Consume Command Seals to trigger emergency noble phantasm overcharge or tactical teleports.`
+        ],
+        footerNote: 'Confidential Great Grail War Dispatch • Coordinate with your Faction'
+      };
+    }
+
+    case 'singularity_chaos': {
+      const singularityDistricts = [
+        { name: 'Babylonian Ziggurat High Leylines', bonus: '⚡ +25% Noble Phantasm Gauge Surge' },
+        { name: 'Camelot Holy Citadel Outer Gates', bonus: '🛡️ +20% Invincibility Barrier' },
+        { name: 'Shinjuku Demonic Night Skyline', bonus: '✨ +15% Critical Star Burst' },
+        { name: 'Atlantis Submerged Titan Leyline', bonus: '🌊 Continuous Arts Card Acceleration' },
+        { name: 'Heian-Kyo Thunder Leyline Nexus', bonus: '⚡ High-Frequency Quick Surge' },
+        { name: 'Chaldea Rayshift Dropzone Alpha', bonus: '🔄 Rapid Emergency Recalibration' }
+      ];
+      const dist = singularityDistricts[participantIndex % singularityDistricts.length];
+
+      return {
+        presetKey,
+        title: '🌀 CHALDEA RAYSPILL ALERT: GRAND SINGULARITY COLLISION!',
+        embedColor: 0x0284c7,
+        headerBadge: '⏳ CHALDEA SECURITY ORGANIZATION • EMERGENCY RAYSPILL DECREE',
+        faction: 'none' as const,
+        startingDistrict: dist.name,
+        startingBonus: dist.bonus,
+        intro:
+          `Space-time distortion critical! You have been rayshifted into the **Grand Singularity Chaos (30 Masters FFA)**!\n\n` +
+          `All safety locks and class restrictions have dissolved in the singularity vortex. 30 Masters clash with supercharged mana leylines.`,
+        directives: [
+          `⚡ **Hyper-Resonant Leylines (</grailwar:1>):** Monitor unstable leylines that recharge Noble Phantasms and skills at double velocity.`,
+          `💥 **Unchecked Free-For-All (</attack:1> / </duel:1>):** 30 Masters clash simultaneously across all districts with zero class limits.`,
+          `🔴 **5 Supercharged Command Seals:** You start with **5 Command Seals** to force instant NP releases, mid-battle heals, or tactical blinks.`,
+          `🔄 **Rapid Revival Protocol:** Non-permadeath rules active! Defeated Masters reconstruct at Chaldea anchor points after recalibration.`,
+          `💎 **Singularity Shards:** Seize district leylines to trigger singularity overdrive buffs!`
+        ],
+        footerNote: 'Chaldea Emergency Rayshift Protocol • Master Identity Encrypted'
+      };
+    }
+
+    case 'desolate_hardcore': {
+      const desolateDistricts = [
+        { name: 'Ash-Choked Fuyuki Crater', bonus: '💀 Desolate Ether (Mana Depleted)' },
+        { name: 'Ruined Kotomine Church Spire', bonus: '☠️ Sanctum Desecrated (Zero Asylum)' },
+        { name: 'Subterranean Greater Grail Abyss', bonus: '🩸 Corruption (+10% ATK / -10% Max HP)' },
+        { name: 'Petrified Forest Perimeter', bonus: '🌲 Unforgiving Isolation' },
+        { name: 'Shattered Shinto Waterfront Bridge', bonus: '🎯 Exposed Killzone' }
+      ];
+      const dist = desolateDistricts[participantIndex % desolateDistricts.length];
+
+      return {
+        presetKey,
+        title: '💀 SACRIFICIAL SEALS IGNITED: DESOLATE HARDCORE RITUAL',
+        embedColor: 0xc2410c,
+        headerBadge: '💀 RUINED GRAIL SANCTUARY • SACRIFICIAL ANNOUNCEMENT',
+        faction: 'none' as const,
+        startingDistrict: dist.name,
+        startingBonus: dist.bonus,
+        intro:
+          `The Ruined Grail has claimed your soul in the **Desolate Hardcore Ritual**.\n\n` +
+          `Seven Masters enter the ashen wasteland. Only one shall survive. There are no second chances.`,
+        directives: [
+          `⚠️ **1 SINGLE COMMAND SEAL:** You hold only **1 Command Seal**. Once spent, it is gone forever.`,
+          `☠️ **NO CHURCH ASYLUM:** The Overseer is dead. The Church is in ruins. There is no sanctuary and no retreat.`,
+          `💀 **ABSOLUTE PERMADEATH:** Fatal damage results in **instant permanent elimination**. Your Servant will fade to ash immediately.`,
+          `🕸️ **Desolate Leylines:** Mana is scarce. Every trap (</trap:1>) and familiar (</familiar:1>) must be husbanded with care.`,
+          `🩸 **Ruthless Survival:** Hunt before you are hunted using </attack:1>. Trust no shadows.`
+        ],
+        footerNote: 'Ruined Grail Ritual • Permadeath Active • Trust No One'
+      };
+    }
+
+    case 'fuyuki_7':
+    default: {
+      const fuyukiDistricts = [
+        { name: 'Miyama Residential District (Tohsaka / Emiya Estate)', bonus: '🛡️ +10% Bounded Field Trap Defense' },
+        { name: 'Shinto Commercial Waterfront & Hyatt Tower', bonus: '🦅 +10% Familiar Scouting Precision' },
+        { name: 'Mount Enzo (Ryuudou Temple Grounds)', bonus: '⚡ +15% Ambient Leyline Mana Flow' },
+        { name: 'Einzbern Forest & Deep Castle', bonus: '🕶️ +10% Shadow Concealment Stealth' },
+        { name: 'Fuyuki Port & Industrial Docks', bonus: '🗡️ +10% Ambush Strike Critical Rate' },
+        { name: 'Fuyuki Central Park & Bridge', bonus: '✨ +10% Duel Star Generation' },
+        { name: 'Homurahara Academy Leyline Core', bonus: '🔮 +10% Command Card Effectiveness' }
+      ];
+      const dist = fuyukiDistricts[participantIndex % fuyukiDistricts.length];
+
+      return {
+        presetKey: 'fuyuki_7',
+        title: '🔱 THE COMMAND SEALS HAVE AWAKENED!',
+        embedColor: 0xbe123c,
+        headerBadge: '⛪ FUYUKI CHURCH OVERSEER COMMUNIQUE',
+        faction: 'none' as const,
+        startingDistrict: dist.name,
+        startingBonus: dist.bonus,
+        intro:
+          `The Greater Grail of Fuyuki has chosen you as one of the **${totalParticipants} Chosen Masters** for the **5th Fuyuki Holy Grail War**!\n\n` +
+          `Your Magic Circuits have ignited with the Command Seals of the Heaven's Feel ritual. You stand anointed as a Sacred Combatant.`,
+        directives: [
+          `🗺️ **War Command (</grailwar:1>):** Open the Fuyuki Leyline Map to monitor active districts, workshop traps, and contenders.`,
+          `🕶️ **Stealth Ambushes (</attack:1>):** Hunt rival Magi from the shadows. Your identity remains concealed until your first engagement.`,
+          `⚔️ **Direct Duels (</duel:1>):** Challenge identified contenders to open combat.`,
+          `🕸️ **Bounded Fields & Familiars (</trap:1> / </familiar:1>):** Fortify your territory and deploy scouting spirits to detect intruders.`,
+          `🔴 **Command Seal Evacuation:** If your Servant takes fatal damage, expend 1 Command Seal to emergency-teleport to safety preserved at **1 HP** under Church protection.`,
+          `⛪ **Church Sanctuary:** Yielding all Command Seals grants neutral asylum at Kotomine Church.`
+        ],
+        footerNote: 'Confidential Church Dispatch • Keep your Master identity secret'
+      };
+    }
+  }
+}
+
+/**
+ * Builds the interactive, visually stunning DM package for a chosen Master.
+ */
+export async function buildModeSpecificMasterDm(params: {
+  master: MasterProfile;
+  activeServant: any;
+  freshWar: HolyGrailWarSession;
+  participantIndex: number;
+  totalParticipants: number;
+  client: Client;
+}): Promise<{
+  embed: EmbedBuilder;
+  row: ActionRowBuilder<ButtonBuilder>;
+  attachment: AttachmentBuilder;
+}> {
+  const { master, activeServant, freshWar, participantIndex, totalParticipants, client } = params;
+  const presetKey = (freshWar.rules?.preset || (freshWar as any).presetKey || 'fuyuki_7') as string;
+  const modeConfig = getModeDmConfig(presetKey, participantIndex, totalParticipants);
+
+  const sName = activeServant.nickname || activeServant.template?.name || 'Heroic Spirit';
+  const sClass = activeServant.template?.servantClass || (activeServant as any).servantClass || 'Saber';
+  const sAvatar = activeServant.template?.avatarUrl || (activeServant as any).avatarUrl || master.avatarUrl;
+  const sSprite = getServantSprite(activeServant);
+  const summonQuote = resolveServantSummonQuote(activeServant, sName, sClass);
+  const commandSealsCount = master.commandSeals || freshWar.rules?.startingCommandSeals || 3;
+
+  // Render Canvas Awakening Banner
+  const canvasBuffer = await renderHolyGrailWarAwakeningCard({
+    masterName: master.username || 'Master',
+    masterAvatarUrl: master.avatarUrl,
+    servantName: sName,
+    servantClass: sClass,
+    servantAvatarUrl: sAvatar,
+    servantSpriteUrl: sSprite,
+    summonQuote,
+    modePreset: presetKey,
+    warTitle: freshWar.title || 'Holy Grail War',
+    startingDistrict: modeConfig.startingDistrict,
+    startingBonus: modeConfig.startingBonus,
+    commandSealsCount,
+    faction: modeConfig.faction
+  });
+
+  const attachment = new AttachmentBuilder(canvasBuffer, { name: 'command_seal_awakening.png' });
+
+  // Mode-Specific Seal Emojis
+  const sealEmojis = '🔴 '.repeat(Math.min(5, commandSealsCount)).trim();
+
+  const embed = new EmbedBuilder()
+    .setAuthor({
+      name: modeConfig.headerBadge,
+      iconURL: GRAIL_ANNOUNCEMENT_IMAGE
+    })
+    .setTitle(modeConfig.title)
+    .setDescription(
+      `${modeConfig.intro}\n\n` +
+      `═══════════════════════════════════\n` +
+      `📜 **ANOINTED MASTER COVENANT:**\n` +
+      `• **Contracted Servant:** **${sName}** (\`${sClass}\`)\n` +
+      `• **Command Seals:** ${sealEmojis} **(${commandSealsCount}/${commandSealsCount} Inscribed)**\n` +
+      `• **Starting Territory:** 📍 **${modeConfig.startingDistrict}**\n` +
+      `• **Territory Perk:** \`${modeConfig.startingBonus}\`\n` +
+      `• **Status:** 🕶️ **Shadow Master (Concealed in Shadows)**\n\n` +
+      `═══════════════════════════════════\n` +
+      `⚔️ **COMBAT DIRECTIVES:**\n` +
+      modeConfig.directives.map((d, i) => `${i + 1}. ${d}`).join('\n') +
+      `\n\n*“${summonQuote}”* — **${sName}**`
+    )
+    .setColor(modeConfig.embedColor)
+    .setImage('attachment://command_seal_awakening.png')
+    .setFooter({ text: modeConfig.footerNote })
+    .setTimestamp();
+
+  // Interactive Buttons Row
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`war_dm_servant:${master.discordId || master.id}`)
+      .setLabel('Servant Dossier')
+      .setEmoji('🗡️')
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(`war_dm_rules:${presetKey}`)
+      .setLabel('Mode Directives')
+      .setEmoji('📜')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`war_dm_district:${presetKey}`)
+      .setLabel('Territory & Traps')
+      .setEmoji('📍')
+      .setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId(`war_dm_church:${presetKey}`)
+      .setLabel('Church Sanctuary')
+      .setEmoji('⛪')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  return { embed, row, attachment };
+}
+
+/**
+ * Handles button interactions dispatched from private Master DMs.
+ */
+export async function handleWarDmInteraction(interaction: ButtonInteraction, client: Client): Promise<void> {
+  const btnId = interaction.customId;
+  const userId = interaction.user.id;
+  const username = interaction.user.username;
+
+  if (btnId.startsWith('war_dm_servant')) {
+    const master = await getOrCreateMaster(userId, username);
+    const activeServant = master.servants?.find(s => s.id === master.activeServantId) || master.servants?.[0];
+
+    if (!activeServant) {
+      await interaction.reply({
+        content: '❌ No active contracted Servant found on your profile.',
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
+
+    const sName = activeServant.nickname || activeServant.template?.name || 'Heroic Spirit';
+    const sClass = activeServant.template?.servantClass || (activeServant as any).servantClass || 'Saber';
+    const sHp = (activeServant as any).currentHp || activeServant.template?.baseHp || 50000;
+    const sMaxHp = (activeServant as any).maxHp || activeServant.template?.baseHp || 50000;
+    const sAtk = (activeServant as any).attack || activeServant.template?.baseAtk || 12000;
+    const np = activeServant.template?.noblePhantasm;
+    const skills = activeServant.template?.skills || [];
+    const deck = activeServant.template?.commandDeck || ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'];
+
+    const servantEmbed = new EmbedBuilder()
+      .setTitle(`🗡️ CONTRACTED SERVANT: ${sName.toUpperCase()}`)
+      .setDescription(
+        `• **Class:** \`${sClass}\`\n` +
+        `• **Spirit Graph HP:** ❤️ **${sHp.toLocaleString()} / ${sMaxHp.toLocaleString()}**\n` +
+        `• **Base Attack:** ⚔️ **${sAtk.toLocaleString()}**\n` +
+        `• **Command Deck:** 🃏 \`${deck.join(' - ')}\`\n\n` +
+        `═══════════════════════════════════\n` +
+        `✨ **NOBLE PHANTASM:**\n` +
+        `**${np?.name || 'Secret Noble Phantasm'}** (\`${np?.cardType || 'Buster'}\`)\n` +
+        `*${np?.description || 'Devastating ultimate phantasm strike.'}*\n\n` +
+        `⚡ **HEROIC SPIRIT SKILLS:**\n` +
+        (skills.length > 0
+          ? skills.map((sk: any) => `• **${sk.name}** (CD: ${sk.cooldown}T): ${sk.description}`).join('\n')
+          : '• *Standard Combat Intuition*')
+      )
+      .setColor(0x3b82f6)
+      .setThumbnail(activeServant.template?.avatarUrl || master.avatarUrl || null)
+      .setFooter({ text: 'Holy Grail War Servant Tactical Sheet' });
+
+    await interaction.reply({
+      embeds: [servantEmbed],
+      flags: MessageFlags.Ephemeral
+    });
+    return;
+  }
+
+  if (btnId.startsWith('war_dm_rules')) {
+    const presetKey = btnId.split(':')[1] || 'fuyuki_7';
+    const war = getOrInitWarSession();
+    const config = getModeDmConfig(presetKey, 0, 7);
+
+    const rulesEmbed = new EmbedBuilder()
+      .setTitle(`📜 RITUAL DIRECTIVES & RULES • ${presetKey.toUpperCase()}`)
+      .setDescription(
+        `**Active Game Mode:** \`${war.title || presetKey}\`\n\n` +
+        `1. **Stealth Concealment:** You are hidden as a *Shadow Master* until your first offensive action or duel.\n` +
+        `2. **Ambush Advantage:** Attacking an unsuspecting rival from the same district awards priority initiative and first-turn bonus damage.\n` +
+        `3. **Command Seal Powers:**\n` +
+        `   • 🔴 **Instant 100% NP Overcharge:** Trigger full Noble Phantasm release.\n` +
+        `   • 🔴 **Emergency Evacuation:** Preserve your life at 1 HP when facing lethal strikes.\n` +
+        `   • 🔴 **Full Vitality Restoration:** Restore Servant HP to 100%.\n` +
+        `4. **Victory Condition:** The last standing Master/Faction claims the omnipotent Greater Grail!`
+      )
+      .setColor(0xd97706)
+      .setFooter({ text: 'Holy Church Sacred War Guidelines' });
+
+    await interaction.reply({
+      embeds: [rulesEmbed],
+      flags: MessageFlags.Ephemeral
+    });
+    return;
+  }
+
+  if (btnId.startsWith('war_dm_district')) {
+    const districtEmbed = new EmbedBuilder()
+      .setTitle('📍 TERRITORY CONTROL & MUKYOKU BOUNDED FIELDS')
+      .setDescription(
+        `In the Holy Grail War, districts provide tactical advantages and defense leylines:\n\n` +
+        `• **Workshop Traps (</trap:1>):** Stake arcane bounded fields in your current district. Intruding rival Magi trigger explosive magical traps, suffering damage and exposing their identity.\n` +
+        `• **Scouting Familiars (</familiar:1>):** Dispatch avian or insect familiars to survey adjacent districts, uncovering rival Master locations and workshop preparations.\n` +
+        `• **Leyline Circulation:** Resting in your initial spawn district increases mana recovery and skill cooldown refresh rates.`
+      )
+      .setColor(0x10b981)
+      .setFooter({ text: 'Magecraft Territory & Defense Manual' });
+
+    await interaction.reply({
+      embeds: [districtEmbed],
+      flags: MessageFlags.Ephemeral
+    });
+    return;
+  }
+
+  if (btnId.startsWith('war_dm_church')) {
+    const churchEmbed = new EmbedBuilder()
+      .setTitle('⛪ FUYUKI CHURCH: NEUTRAL SANCTUARY PROTOCOLS')
+      .setDescription(
+        `Under the authority of the Eighth Sacrament and Holy Church Overseer:\n\n` +
+        `• **Neutral Ground:** Violence, bounded fields, and Servant combat are strictly forbidden within Church grounds.\n` +
+        `• **Surrender & Asylum:** Any Master who voluntarily yields all remaining Command Seals may claim permanent neutral sanctuary for the remainder of the war.\n` +
+        `• **Emergency Extraction:** When reduced to 0 HP, a surviving Command Seal will automatically teleport your spirit graph to the Church crypt preserved at 1 HP.`
+      )
+      .setColor(0xfbbf24)
+      .setFooter({ text: 'Overseer Neutrality Accord' });
+
+    await interaction.reply({
+      embeds: [churchEmbed],
+      flags: MessageFlags.Ephemeral
+    });
+    return;
+  }
+}
+
+
+/**
  * Updates the existing announcement card message with the latest applicant counts.
  */
 async function updateRecruitmentMessage(
@@ -661,32 +1067,26 @@ export async function igniteWarFromRecruitment(
 
     chosenSummaryList.push(`<@${discordId}>`);
 
-    // Send Confidential Direct Message (DM) to Chosen Master
+    // Send Confidential Mode-Tailored Direct Message (DM) to Chosen Master
     try {
       const userObj = await client.users.fetch(discordId).catch(() => null);
       if (userObj) {
-        const dmEmbed = new EmbedBuilder()
-          .setTitle('🔱 THE COMMAND SEALS HAVE AWAKENED!')
-          .setDescription(
-            `The Greater Grail of Fuyuki has chosen you as one of the **${chosenApplicants.length} Masters** in the **${freshWar.title}**!\n\n` +
-            `• **Contracted Servant:** **${sName}** (${sClass})\n` +
-            `• **Command Seals:** 🔴🔴🔴 **3/3**\n` +
-            `• **Status:** 🕶️ **Shadow Master (Concealed)**\n\n` +
-            `═══════════════════════════════════\n` +
-            `📜 **HOLY GRAIL WAR COMBAT DIRECTIVES:**\n` +
-            `1. **War Command:** Open \`/grailwar\` to view the War Board, workshop defenses, and Fuyuki leylines.\n` +
-            `2. **Stealth Ambushes:** Track rival Magi and launch surprise attacks using \`/attack @Master\`.\n` +
-            `3. **Direct Duels:** Challenge opponents in open duels with \`/duel\`.\n` +
-            `4. **Magecraft Traps:** Stake bounded fields with \`/trap\` and deploy scouting familiars with \`/familiar\`.\n` +
-            `5. **Command Seal Evacuation:** If your Servant takes fatal damage, you may expend 1 Command Seal to emergency-teleport to safety preserved at **1 HP**.\n\n` +
-            `*May victory belong to the swiftest blade. Let the Holy Grail War begin!*`
-          )
-          .setColor(0xb91c1c)
-          .setFooter({ text: 'Confidential Church Dispatch • Keep your identity secret' })
-          .setTimestamp();
+        const participantIdx = chosenApplicants.indexOf(item);
+        const { embed: dmEmbed, row: dmRow, attachment: dmFile } = await buildModeSpecificMasterDm({
+          master,
+          activeServant,
+          freshWar,
+          participantIndex: participantIdx,
+          totalParticipants: chosenApplicants.length,
+          client
+        });
 
-        await userObj.send({ embeds: [dmEmbed] }).catch(() => {
-          console.warn(`Could not send Grail War DM to user ${discordId} (DMs may be restricted).`);
+        await userObj.send({
+          embeds: [dmEmbed],
+          files: [dmFile],
+          components: [dmRow]
+        }).catch((sendErr) => {
+          console.warn(`Could not send Grail War DM to user ${discordId} (DMs may be restricted):`, sendErr);
         });
       }
     } catch (dmErr) {

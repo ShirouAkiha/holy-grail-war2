@@ -102,7 +102,7 @@ import {
   forfeitWar,
   attemptJoinWar
 } from './engine/grailwar';
-import { handleRecruitmentInteraction, resumePendingRecruitment } from './engine/warRecruitmentService';
+import { handleRecruitmentInteraction, resumePendingRecruitment, handleWarDmInteraction } from './engine/warRecruitmentService';
 
 // ==========================================
 // PROCESS SAFETY: UNHANDLED REJECTIONS & DISCORD TIMEOUT ERRORS
@@ -1100,6 +1100,12 @@ client.on(Events.InteractionCreate, async interaction => {
       // Holy Grail War Recruitment Proclamation Buttons
       if (btnId.startsWith('war_call_')) {
         await handleRecruitmentInteraction(interaction, client);
+        return;
+      }
+
+      // Holy Grail War Master DM Tactical Buttons
+      if (btnId.startsWith('war_dm_')) {
+        await handleWarDmInteraction(interaction, client);
         return;
       }
 

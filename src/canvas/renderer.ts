@@ -7,7 +7,7 @@ import {
   CardType
 } from '../types';
 import { calculateRadarCoordinates, RadarPoint } from '../engine/customization';
-import { SERVANT_DATABASE, getServantAvatarAndCardArt } from '../data/servants';
+import { SERVANT_DATABASE, getServantAvatarAndCardArt, getServantSprite } from '../data/servants';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { getLocalMediaDiskPath } from '../utils/localMedia';
 import { calculateCombatantBuffSummary } from '../utils/combatBuffHelper';
@@ -7010,4 +7010,716 @@ export async function renderKireiVisualNovelCard(
     return MINIMAL_VALID_PNG;
   }
 }
+
+export interface HolyGrailWarAwakeningOptions {
+  masterName: string;
+  masterAvatarUrl?: string;
+  servantName: string;
+  servantClass: string;
+  servantAvatarUrl?: string;
+  servantSpriteUrl?: string;
+  summonQuote?: string;
+  modePreset: string; // 'fuyuki_7' | 'apocrypha_14' | 'singularity_chaos' | 'desolate_hardcore' | string
+  warTitle: string;
+  startingDistrict: string;
+  startingBonus?: string;
+  commandSealsCount: number;
+  faction?: 'red' | 'black' | 'ruler' | 'none';
+}
+
+/**
+ * Dedicated Holy Grail War Master Selection & Command Seal Awakening Banner (960x520)
+ * Features dynamic game-mode backgrounds, glowing magic circuit leylines, dual Master & Servant
+ * portraits with class emblems, glowing Command Seal crest, assigned starting district territory,
+ * and servant summon covenant dialogue ribbon.
+ */
+export async function renderHolyGrailWarAwakeningCard(
+  options: HolyGrailWarAwakeningOptions
+): Promise<Buffer> {
+  const width = 960;
+  const height = 520;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+
+  const {
+    masterName = 'Master',
+    masterAvatarUrl,
+    servantName = 'Heroic Spirit',
+    servantClass = 'Saber',
+    servantAvatarUrl,
+    servantSpriteUrl,
+    summonQuote = 'I ask of you, are you my Master?',
+    modePreset = 'fuyuki_7',
+    warTitle = '5th Fuyuki Holy Grail War',
+    startingDistrict = 'Miyama Residential District',
+    startingBonus = '+10% Bounded Field Defense',
+    commandSealsCount = 3,
+    faction = 'none'
+  } = options;
+
+  // 1. Preload Images
+  let masterImg: any = null;
+  if (masterAvatarUrl) {
+    try {
+      masterImg = await loadImage(masterAvatarUrl);
+    } catch {
+      masterImg = null;
+    }
+  }
+
+  const resolvedServantArt = servantSpriteUrl || servantAvatarUrl;
+  let servantImg: any = null;
+  if (resolvedServantArt) {
+    try {
+      servantImg = await loadImage(resolvedServantArt);
+    } catch {
+      servantImg = null;
+    }
+  }
+
+  // 2. Dynamic Background & Mode-Themed Leyline Ambiance
+  const isApocrypha = modePreset === 'apocrypha_14';
+  const isSingularity = modePreset === 'singularity_chaos';
+  const isDesolate = modePreset === 'desolate_hardcore';
+
+  let bgGrad = ctx.createLinearGradient(0, 0, width, height);
+
+  if (isApocrypha) {
+    // Split Black Faction / Red Faction Gradient
+    bgGrad = ctx.createLinearGradient(0, 0, width, 0);
+    bgGrad.addColorStop(0, '#0a0618');
+    bgGrad.addColorStop(0.48, '#1e0838');
+    bgGrad.addColorStop(0.52, '#380812');
+    bgGrad.addColorStop(1, '#160205');
+  } else if (isSingularity) {
+    // Cosmic Nebula & Singularity Void
+    bgGrad.addColorStop(0, '#04081a');
+    bgGrad.addColorStop(0.5, '#190a36');
+    bgGrad.addColorStop(1, '#06132b');
+  } else if (isDesolate) {
+    // Ashen Desolation & Bleeding Obsidian
+    bgGrad.addColorStop(0, '#100402');
+    bgGrad.addColorStop(0.5, '#200804');
+    bgGrad.addColorStop(1, '#050201');
+  } else {
+    // Classic 5th Fuyuki Greater Grail Leyline (Deep Obsidian Crimson & Gold)
+    bgGrad.addColorStop(0, '#0e0205');
+    bgGrad.addColorStop(0.45, '#1e040a');
+    bgGrad.addColorStop(1, '#080103');
+  }
+
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, width, height);
+
+  // Radial leyline glow in center
+  const centerGlow = ctx.createRadialGradient(width / 2, 170, 20, width / 2, 170, 380);
+  if (isSingularity) {
+    centerGlow.addColorStop(0, 'rgba(147, 51, 234, 0.35)');
+    centerGlow.addColorStop(0.6, 'rgba(6, 182, 212, 0.15)');
+    centerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  } else if (isDesolate) {
+    centerGlow.addColorStop(0, 'rgba(234, 88, 12, 0.35)');
+    centerGlow.addColorStop(0.6, 'rgba(185, 28, 28, 0.15)');
+    centerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  } else if (isApocrypha) {
+    centerGlow.addColorStop(0, 'rgba(217, 119, 6, 0.30)');
+    centerGlow.addColorStop(0.6, 'rgba(147, 51, 234, 0.15)');
+    centerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  } else {
+    centerGlow.addColorStop(0, 'rgba(225, 29, 72, 0.35)');
+    centerGlow.addColorStop(0.5, 'rgba(217, 119, 6, 0.18)');
+    centerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  }
+  ctx.fillStyle = centerGlow;
+  ctx.fillRect(0, 0, width, height);
+
+  // 3. Draw Geometric Magic Circuits across background
+  ctx.save();
+  ctx.lineWidth = 1.2;
+  const circuitColor = isSingularity
+    ? 'rgba(56, 189, 248, 0.22)'
+    : isDesolate
+    ? 'rgba(249, 115, 22, 0.22)'
+    : isApocrypha
+    ? 'rgba(192, 132, 252, 0.20)'
+    : 'rgba(244, 63, 94, 0.22)';
+  ctx.strokeStyle = circuitColor;
+
+  // Circuit Grid Lines
+  const circuits = [
+    { x1: 60, y1: 70, x2: 180, y2: 70, x3: 210, y3: 100, x4: 260, y4: 100 },
+    { x1: 700, y1: 70, x2: 780, y2: 70, x3: 810, y3: 100, x4: 900, y4: 100 },
+    { x1: 140, y1: 300, x2: 240, y2: 300, x3: 270, y3: 270, x4: 340, y4: 270 },
+    { x1: 620, y1: 270, x2: 690, y2: 270, x3: 720, y3: 300, x4: 820, y4: 300 },
+    { x1: 380, y1: 50, x2: 480, y2: 50, x3: 480, y3: 110, x4: 580, y4: 110 }
+  ];
+
+  circuits.forEach(c => {
+    ctx.beginPath();
+    ctx.moveTo(c.x1, c.y1);
+    ctx.lineTo(c.x2, c.y2);
+    ctx.lineTo(c.x3, c.y3);
+    ctx.lineTo(c.x4, c.y4);
+    ctx.stroke();
+
+    // Circuit Nodes (Glowing diamond dots)
+    drawSparkDiamond(ctx, c.x1, c.y1, 3, isSingularity ? '#38bdf8' : isDesolate ? '#f97316' : '#f43f5e');
+    drawSparkDiamond(ctx, c.x4, c.y4, 3, '#fbbf24');
+  });
+
+  // Concentric Arcane Leyline Circles in Center Background
+  ctx.beginPath();
+  ctx.arc(width / 2, 175, 110, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(width / 2, 175, 125, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(251, 191, 36, 0.15)';
+  ctx.stroke();
+  ctx.restore();
+
+  // 4. TOP HEADER BANNER HUD
+  ctx.save();
+  const headerY = 16;
+  const headerH = 34;
+
+  // Header Background Bar
+  ctx.fillStyle = 'rgba(15, 6, 10, 0.85)';
+  drawRoundRect(ctx, 24, headerY, width - 48, headerH, 4);
+  ctx.fill();
+
+  ctx.strokeStyle = isDesolate ? '#ea580c' : isSingularity ? '#06b6d4' : '#d97706';
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, 24, headerY, width - 48, headerH, 4);
+  ctx.stroke();
+
+  // Header Left Title
+  ctx.font = 'bold 12px Georgia, serif';
+  ctx.fillStyle = isDesolate ? '#fed7aa' : isSingularity ? '#cffafe' : '#fef08a';
+  ctx.textAlign = 'left';
+  const headerTitle = isApocrypha
+    ? '🏛️ CLOCK TOWER & YGGDMILLENNIA • GREAT HOLY GRAIL WAR DISPATCH'
+    : isSingularity
+    ? '⏳ CHALDEA SECURITY ORGANIZATION • RAYSPILL EMERGENCY MASTER DECREE'
+    : isDesolate
+    ? '💀 RUINED GRAIL SANCTUARY • UNFORGIVING SACRIFICIAL ANNOUNCEMENT'
+    : '⛪ FUYUKI CHURCH OVERSEER OFFICE • SACRED MASTER COVENANT';
+  ctx.fillText(headerTitle, 38, headerY + 22);
+
+  // Header Right Pill: Format / Mode Badge
+  const modePillText = warTitle.toUpperCase();
+  ctx.font = 'bold 11px monospace';
+  const modePillW = ctx.measureText(modePillText).width + 24;
+  const modePillX = width - 36 - modePillW;
+
+  ctx.fillStyle = isDesolate ? '#7c2d12' : isSingularity ? '#1e1b4b' : '#450a0a';
+  drawRoundRect(ctx, modePillX, headerY + 4, modePillW, 24, 3);
+  ctx.fill();
+
+  ctx.strokeStyle = isDesolate ? '#f97316' : isSingularity ? '#38bdf8' : '#e11d48';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, modePillX, headerY + 4, modePillW, 24, 3);
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.fillText(modePillText, modePillX + modePillW / 2, headerY + 20);
+  ctx.restore();
+
+  // 5. LEFT CARD PANEL: MASTER ANOINTMENT & COMMAND SEALS
+  const leftX = 24;
+  const leftY = 60;
+  const leftW = 280;
+  const leftH = 255;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(12, 4, 8, 0.88)';
+  drawRoundRect(ctx, leftX, leftY, leftW, leftH, 6);
+  ctx.fill();
+
+  ctx.strokeStyle = isDesolate ? '#c2410c' : isSingularity ? '#0284c7' : '#be123c';
+  ctx.lineWidth = 1.6;
+  drawRoundRect(ctx, leftX, leftY, leftW, leftH, 6);
+  ctx.stroke();
+
+  // Inner Gold Filigree
+  ctx.strokeStyle = 'rgba(251, 191, 36, 0.25)';
+  ctx.lineWidth = 0.8;
+  drawRoundRect(ctx, leftX + 3, leftY + 3, leftW - 6, leftH - 6, 4);
+  ctx.stroke();
+
+  // Master Avatar (Circular Frame with Triple Glowing Ring)
+  const masterAvatarX = leftX + 54;
+  const masterAvatarY = leftY + 68;
+  const masterRadius = 38;
+
+  // Glowing Outer Ring
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(masterAvatarX, masterAvatarY, masterRadius + 4, 0, Math.PI * 2);
+  ctx.strokeStyle = isSingularity ? '#38bdf8' : isDesolate ? '#f97316' : '#f43f5e';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(masterAvatarX, masterAvatarY, masterRadius + 8, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(251, 191, 36, 0.35)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Draw Avatar or Fallback
+  ctx.beginPath();
+  ctx.arc(masterAvatarX, masterAvatarY, masterRadius, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+
+  if (masterImg) {
+    ctx.drawImage(
+      masterImg,
+      masterAvatarX - masterRadius,
+      masterAvatarY - masterRadius,
+      masterRadius * 2,
+      masterRadius * 2
+    );
+  } else {
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(masterAvatarX - masterRadius, masterAvatarY - masterRadius, masterRadius * 2, masterRadius * 2);
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = 'bold 24px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('M', masterAvatarX, masterAvatarY + 8);
+  }
+  ctx.restore();
+
+  // Master Details (Right of Avatar)
+  const mInfoX = leftX + 104;
+  ctx.textAlign = 'left';
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = 'bold 10px monospace';
+  ctx.fillText('ANOINTED COMBATANT', mInfoX, leftY + 45);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 15px sans-serif';
+  const displayMName = masterName.length > 14 ? masterName.substring(0, 12) + '...' : masterName;
+  ctx.fillText(displayMName, mInfoX, leftY + 67);
+
+  ctx.fillStyle = isDesolate ? '#fb923c' : isSingularity ? '#38bdf8' : '#fda4af';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillText('🕶️ Shadow Master (Concealed)', mInfoX, leftY + 86);
+
+  if (faction && faction !== 'none') {
+    const factionLabel = faction === 'red' ? '🔴 Red Faction' : faction === 'black' ? '⚫ Black Faction' : '⚖️ Ruler';
+    ctx.fillStyle = faction === 'red' ? '#f87171' : faction === 'black' ? '#c084fc' : '#fef08a';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(factionLabel, mInfoX, leftY + 104);
+  }
+
+  // Divider Line inside Left Panel
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(leftX + 16, leftY + 125);
+  ctx.lineTo(leftX + leftW - 16, leftY + 125);
+  ctx.stroke();
+
+  // Command Seal Status HUD
+  ctx.fillStyle = '#fbbf24';
+  ctx.font = 'bold 12px Georgia, serif';
+  ctx.fillText('🔱 COMMAND SEALS AWAKENED', leftX + 18, leftY + 148);
+
+  // Command Seals Graphic Dots & Count
+  const sealsY = leftY + 178;
+  const sealDots = '🔴 '.repeat(Math.min(5, commandSealsCount)).trim();
+  ctx.font = 'bold 18px sans-serif';
+  ctx.fillStyle = '#f43f5e';
+  ctx.fillText(sealDots, leftX + 18, sealsY);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 13px monospace';
+  ctx.fillText(`${commandSealsCount}/${commandSealsCount} Inscriptions`, leftX + 18, sealsY + 24);
+
+  // Status Pill
+  const statusPillY = leftY + 218;
+  ctx.fillStyle = 'rgba(30, 41, 59, 0.8)';
+  drawRoundRect(ctx, leftX + 16, statusPillY, leftW - 32, 24, 3);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, leftX + 16, statusPillY, leftW - 32, 24, 3);
+  ctx.stroke();
+
+  ctx.fillStyle = isDesolate ? '#f87171' : '#86efac';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'center';
+  const statusMsg = isDesolate ? '⚠️ Permadeath Active • 1 Seal Only' : '⚡ 100% Spiritual Synchrony';
+  ctx.fillText(statusMsg, leftX + leftW / 2, statusPillY + 16);
+  ctx.restore();
+
+  // 6. CENTER CARD PANEL: LEYLINE NEXUS & STARTING DISTRICT
+  const midX = 314;
+  const midY = 60;
+  const midW = 320;
+  const midH = 255;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(12, 4, 8, 0.88)';
+  drawRoundRect(ctx, midX, midY, midW, midH, 6);
+  ctx.fill();
+
+  ctx.strokeStyle = isDesolate ? '#c2410c' : isSingularity ? '#0284c7' : '#d97706';
+  ctx.lineWidth = 1.6;
+  drawRoundRect(ctx, midX, midY, midW, midH, 6);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(251, 191, 36, 0.25)';
+  ctx.lineWidth = 0.8;
+  drawRoundRect(ctx, midX + 3, midY + 3, midW - 6, midH - 6, 4);
+  ctx.stroke();
+
+  // Center Glowing Command Seal Emblem
+  const crestCenterX = midX + midW / 2;
+  const crestCenterY = midY + 68;
+
+  // Draw Glowing Command Seal Vector Wings
+  ctx.save();
+  ctx.shadowColor = isSingularity ? '#38bdf8' : isDesolate ? '#ea580c' : '#e11d48';
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = isSingularity ? '#38bdf8' : isDesolate ? '#f97316' : '#f43f5e';
+
+  // Center Diamond Core
+  drawSparkDiamond(ctx, crestCenterX, crestCenterY, 14, isSingularity ? '#7dd3fc' : isDesolate ? '#fdba74' : '#fda4af');
+
+  // Wing Left
+  ctx.beginPath();
+  ctx.moveTo(crestCenterX - 10, crestCenterY - 4);
+  ctx.quadraticCurveTo(crestCenterX - 42, crestCenterY - 26, crestCenterX - 52, crestCenterY - 2);
+  ctx.quadraticCurveTo(crestCenterX - 36, crestCenterY + 12, crestCenterX - 10, crestCenterY + 4);
+  ctx.closePath();
+  ctx.fill();
+
+  // Wing Right
+  ctx.beginPath();
+  ctx.moveTo(crestCenterX + 10, crestCenterY - 4);
+  ctx.quadraticCurveTo(crestCenterX + 42, crestCenterY - 26, crestCenterX + 52, crestCenterY - 2);
+  ctx.quadraticCurveTo(crestCenterX + 36, crestCenterY + 12, crestCenterX + 10, crestCenterY + 4);
+  ctx.closePath();
+  ctx.fill();
+
+  // Top Spire Rune
+  ctx.beginPath();
+  ctx.moveTo(crestCenterX - 6, crestCenterY - 14);
+  ctx.quadraticCurveTo(crestCenterX, crestCenterY - 42, crestCenterX, crestCenterY - 46);
+  ctx.quadraticCurveTo(crestCenterX, crestCenterY - 42, crestCenterX + 6, crestCenterY - 14);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // Center Panel Title
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#fef08a';
+  ctx.font = 'bold 12px Georgia, serif';
+  ctx.fillText('📍 INITIAL TERRITORY SPAWN', crestCenterX, midY + 138);
+
+  // District Name Box
+  const distBoxY = midY + 150;
+  ctx.fillStyle = 'rgba(20, 10, 15, 0.9)';
+  drawRoundRect(ctx, midX + 16, distBoxY, midW - 32, 54, 4);
+  ctx.fill();
+
+  ctx.strokeStyle = isDesolate ? '#7c2d12' : isSingularity ? '#0369a1' : '#b45309';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, midX + 16, distBoxY, midW - 32, 54, 4);
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 13px sans-serif';
+  const cleanDistrict = startingDistrict.length > 32 ? startingDistrict.substring(0, 30) + '...' : startingDistrict;
+  ctx.fillText(cleanDistrict, crestCenterX, distBoxY + 22);
+
+  ctx.fillStyle = isDesolate ? '#fed7aa' : isSingularity ? '#67e8f9' : '#86efac';
+  ctx.font = '11px monospace';
+  ctx.fillText(startingBonus, crestCenterX, distBoxY + 42);
+
+  // Bottom Center Status
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '10px sans-serif';
+  ctx.fillText('Use /grailwar to open the Fuyuki Leyline Board', crestCenterX, midY + midH - 14);
+  ctx.restore();
+
+  // 7. RIGHT CARD PANEL: CONTRACTED HEROIC SPIRIT
+  const rightX = 644;
+  const rightY = 60;
+  const rightW = 292;
+  const rightH = 255;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(12, 4, 8, 0.88)';
+  drawRoundRect(ctx, rightX, rightY, rightW, rightH, 6);
+  ctx.fill();
+
+  ctx.strokeStyle = isDesolate ? '#c2410c' : isSingularity ? '#0284c7' : '#be123c';
+  ctx.lineWidth = 1.6;
+  drawRoundRect(ctx, rightX, rightY, rightW, rightH, 6);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(251, 191, 36, 0.25)';
+  ctx.lineWidth = 0.8;
+  drawRoundRect(ctx, rightX + 3, rightY + 3, rightW - 6, rightH - 6, 4);
+  ctx.stroke();
+
+  // Servant Class Theme Color
+  const servantClassUpper = servantClass.toUpperCase();
+  let classColor = '#3b82f6'; // Saber blue
+  let classIcon = '⚔️';
+  if (servantClassUpper.includes('ARCHER')) {
+    classColor = '#10b981';
+    classIcon = '🏹';
+  } else if (servantClassUpper.includes('LANCER')) {
+    classColor = '#06b6d4';
+    classIcon = '⚡';
+  } else if (servantClassUpper.includes('CASTER')) {
+    classColor = '#8b5cf6';
+    classIcon = '🔮';
+  } else if (servantClassUpper.includes('RIDER')) {
+    classColor = '#ec4899';
+    classIcon = '🐎';
+  } else if (servantClassUpper.includes('ASSASSIN')) {
+    classColor = '#64748b';
+    classIcon = '🗡️';
+  } else if (servantClassUpper.includes('BERSERKER')) {
+    classColor = '#ef4444';
+    classIcon = '💥';
+  } else if (servantClassUpper.includes('RULER')) {
+    classColor = '#f59e0b';
+    classIcon = '⚖️';
+  } else if (servantClassUpper.includes('AVENGER')) {
+    classColor = '#9333ea';
+    classIcon = '🔥';
+  }
+
+  // Draw Servant Sprite / Cutout Frame
+  const sImgW = 100;
+  const sImgH = 135;
+  const sImgX = rightX + 16;
+  const sImgY = rightY + 38;
+
+  ctx.save();
+  ctx.fillStyle = '#1e101a';
+  drawRoundRect(ctx, sImgX, sImgY, sImgW, sImgH, 4);
+  ctx.fill();
+
+  ctx.strokeStyle = classColor;
+  ctx.lineWidth = 1.5;
+  drawRoundRect(ctx, sImgX, sImgY, sImgW, sImgH, 4);
+  ctx.stroke();
+
+  // Clip Servant Image
+  ctx.beginPath();
+  drawRoundRect(ctx, sImgX + 1, sImgY + 1, sImgW - 2, sImgH - 2, 3);
+  ctx.clip();
+
+  if (servantImg) {
+    ctx.drawImage(servantImg, sImgX, sImgY, sImgW, sImgH);
+  } else {
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(sImgX, sImgY, sImgW, sImgH);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 28px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(classIcon, sImgX + sImgW / 2, sImgY + sImgH / 2 + 10);
+  }
+  ctx.restore();
+
+  // Servant Details (Right of Sprite)
+  const sInfoX = rightX + 126;
+  ctx.textAlign = 'left';
+
+  // Class Badge Pill
+  ctx.fillStyle = classColor;
+  drawRoundRect(ctx, sInfoX, rightY + 38, rightW - 142, 22, 3);
+  ctx.fill();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillText(`${classIcon} ${servantClassUpper}`, sInfoX + 8, rightY + 53);
+
+  // Servant Name
+  ctx.fillStyle = '#fef08a';
+  ctx.font = 'bold 14px Georgia, serif';
+  const displaySName = servantName.length > 14 ? servantName.substring(0, 12) + '...' : servantName;
+  ctx.fillText(displaySName, sInfoX, rightY + 84);
+
+  // Stats / Vitals
+  ctx.fillStyle = '#cbd5e1';
+  ctx.font = '11px sans-serif';
+  ctx.fillText('❤️ 100% Spirit Graph', sInfoX, rightY + 106);
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = '10px monospace';
+  ctx.fillText('Deck: 5 Command Cards', sInfoX, rightY + 124);
+
+  ctx.fillStyle = '#fbbf24';
+  ctx.font = '10px monospace';
+  ctx.fillText('NP: 0% Ready', sInfoX, rightY + 142);
+
+  // Bottom Servant Status Strip
+  const sStripY = rightY + 192;
+  ctx.fillStyle = 'rgba(30, 41, 59, 0.8)';
+  drawRoundRect(ctx, rightX + 16, sStripY, rightW - 32, 48, 3);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, rightX + 16, sStripY, rightW - 32, 48, 3);
+  ctx.stroke();
+
+  ctx.fillStyle = '#f8fafc';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('🛡️ Contract Bound by Command Seals', rightX + rightW / 2, sStripY + 18);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '10px sans-serif';
+  ctx.fillText('Servant will heed your 3 divine mandates', rightX + rightW / 2, sStripY + 36);
+  ctx.restore();
+
+  // 8. BOTTOM SECTION: VISUAL NOVEL SUMMON COVENANT DIALOGUE BOX
+  const boxX = 24;
+  const boxY = 328;
+  const boxW = 912;
+  const boxH = 176;
+
+  ctx.save();
+  // Obsidian Base with glassmorphism
+  ctx.fillStyle = 'rgba(10, 3, 6, 0.95)';
+  drawRoundRect(ctx, boxX, boxY, boxW, boxH, 4);
+  ctx.fill();
+
+  // Double Metallic Border: Outer Crimson, Inner Gold Hairline
+  ctx.strokeStyle = isDesolate ? '#ea580c' : isSingularity ? '#0284c7' : '#e11d48';
+  ctx.lineWidth = 2;
+  drawRoundRect(ctx, boxX, boxY, boxW, boxH, 4);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(254, 240, 138, 0.40)';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, boxX + 3, boxY + 3, boxW - 6, boxH - 6, 3);
+  ctx.stroke();
+
+  // Corner Filigree Brackets
+  const boxCbLen = 14;
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(boxX + 3, boxY + 3 + boxCbLen);
+  ctx.lineTo(boxX + 3, boxY + 3);
+  ctx.lineTo(boxX + 3 + boxCbLen, boxY + 3);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(boxX + boxW - 3 - boxCbLen, boxY + 3);
+  ctx.lineTo(boxX + boxW - 3, boxY + 3);
+  ctx.lineTo(boxX + boxW - 3, boxY + 3 + boxCbLen);
+  ctx.stroke();
+
+  // Speaker Nameplate Tab (Overlapping top-left border of dialogue box)
+  ctx.font = 'bold 13px sans-serif';
+  const nameLabel = `🗣️ ${servantName.toUpperCase()} [${servantClass.toUpperCase()}] • SUMMON COVENANT`;
+  const nameMetrics = ctx.measureText(nameLabel);
+  const nameW = Math.max(260, Math.min(520, nameMetrics.width + 48));
+  const nameH = 30;
+  const nameX = boxX + 24;
+  const nameY = boxY - 15;
+
+  ctx.fillStyle = '#220409';
+  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
+  ctx.fill();
+
+  ctx.strokeStyle = isDesolate ? '#f97316' : isSingularity ? '#38bdf8' : '#f43f5e';
+  ctx.lineWidth = 2;
+  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(254, 240, 138, 0.45)';
+  ctx.lineWidth = 0.8;
+  drawRoundRect(ctx, nameX + 2, nameY + 2, nameW - 4, nameH - 4, 3);
+  ctx.stroke();
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(nameLabel, nameX + nameW / 2, nameY + 20);
+
+  // Dialogue Quote Text (Large, High Contrast, 22px Serif)
+  const textX = boxX + 32;
+  const textY = boxY + 44;
+  const maxTextW = boxW - 64;
+  const maxTextH = boxH - 72;
+
+  let fontSize = 21;
+  let lineHeight = 28;
+  let wrappedLines: string[] = [];
+
+  const cleanQuote = summonQuote.replace(/^["“]/, '').replace(/["”]$/, '').trim();
+  const fullQuoteText = `“${cleanQuote}”`;
+
+  const words = fullQuoteText.split(' ');
+  const calculateLines = (fSize: number) => {
+    ctx.font = `italic bold ${fSize}px Georgia, "Times New Roman", serif`;
+    const lines: string[] = [];
+    let curLine = '';
+    for (let i = 0; i < words.length; i++) {
+      const testLine = curLine ? `${curLine} ${words[i]}` : words[i];
+      if (ctx.measureText(testLine).width > maxTextW && i > 0) {
+        lines.push(curLine);
+        curLine = words[i];
+      } else {
+        curLine = testLine;
+      }
+    }
+    if (curLine) lines.push(curLine);
+    return lines;
+  };
+
+  while (fontSize >= 15) {
+    lineHeight = Math.round(fontSize * 1.35);
+    wrappedLines = calculateLines(fontSize);
+    const totalH = wrappedLines.length * lineHeight;
+    if (totalH <= maxTextH) break;
+    fontSize -= 1;
+  }
+
+  ctx.font = `italic bold ${fontSize}px Georgia, "Times New Roman", serif`;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#fff1f2';
+
+  let currentY = textY;
+  for (let i = 0; i < wrappedLines.length; i++) {
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+    ctx.shadowBlur = 6;
+    ctx.fillText(wrappedLines[i], textX, currentY);
+    currentY += lineHeight;
+  }
+  ctx.shadowColor = 'transparent';
+
+  // Bottom Footer Dispatch Bar Strip
+  ctx.fillStyle = isDesolate ? '#fdba74' : isSingularity ? '#7dd3fc' : '#fda4af';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillText('✦ CONFIDENTIAL CHURCH DISPATCH • KEEP IDENTITY SECRET • CONCEALED IN SHADOWS', textX, boxY + boxH - 14);
+
+  // Pulsing Continuation Diamond at Bottom-Right
+  drawSparkDiamond(ctx, boxX + boxW - 24, boxY + boxH - 18, 5, isSingularity ? '#38bdf8' : isDesolate ? '#f97316' : '#f43f5e');
+  ctx.restore();
+
+  try {
+    return canvas.toBuffer('image/png');
+  } catch {
+    return MINIMAL_VALID_PNG;
+  }
+}
+
 
