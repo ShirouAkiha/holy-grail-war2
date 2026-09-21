@@ -18,7 +18,7 @@ import { PVP_DAMAGE_MODIFIER, calculateFleeChance, rollFleeSuccess } from '../en
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
-import { calculateCombatantBuffSummary, formatCombatantBuffEmbedString, buildTacticalDossierEmbed } from '../utils/combatBuffHelper';
+import { calculateCombatantBuffSummary, buildTacticalDossierEmbed } from '../utils/combatBuffHelper';
 import { getServantChainDialogue, shouldTriggerDialogueCutIn, getServantSkillQuote } from '../engine/dialogue';
 import { getServantMatchupDialogue } from '../data/servantMatchups';
 import { generateServantBattleReaction } from '../engine/talkService';
@@ -708,14 +708,11 @@ function buildDuelEmbed(
     if (tSummary.isInvincible) tProtections.push('✨ Invincible');
     else if (tSummary.isEvading) tProtections.push(`💨 Evade (${tSummary.evadeHits || 1}H)`);
     if (tSummary.gutsCount > 0) tProtections.push(`🩸 Guts x${tSummary.gutsCount}`);
-    if (tSummary.totalDefPercent !== 0) tProtections.push(`🛡️ DEF ${tSummary.totalDefPercent > 0 ? '+' : ''}${tSummary.totalDefPercent}%`);
-    if (tSummary.totalAtkPercent !== 0) tProtections.push(`⚔️ ATK ${tSummary.totalAtkPercent > 0 ? '+' : ''}${tSummary.totalAtkPercent}%`);
     const tProtText = tProtections.length > 0 ? ` • [${tProtections.join(', ')}]` : '';
     targetSection = `\n🎯 **Target Locked:** **${tName}** (Master: <@${selectedTarget.userId}> • HP: **${Math.round(selectedTarget.currentHp).toLocaleString()} / ${selectedTarget.maxHp.toLocaleString()}**${tProtText})\n`;
   }
 
-  const buffStatusLine = formatCombatantBuffEmbedString(activeCombatant);
-  const slotDisplay = `${targetSection}🎴 **Dealt Command Hand (${sClass} Deck • Turn ${cycleTurn}/3):**\n${handDisplay}\n\n🛡️ **Active Class Passives (Max 2):** ${passivesText}${lockedNote}\n\n📊 **Net Stat Boosts & Status:**\n${buffStatusLine}\n\n⚔️ **Selected Chain (${pendingCards.length}/3):**\n\`[ 1: ${c1Text} ]\` ➔ \`[ 2: ${c2Text} ]\` ➔ \`[ 3: ${c3Text} ]\`${leadHelp}`;
+  const slotDisplay = `${targetSection}🎴 **Dealt Command Hand (${sClass} Deck • Turn ${cycleTurn}/3):**\n${handDisplay}\n\n🛡️ **Active Class Passives (Max 2):** ${passivesText}${lockedNote}\n\n⚔️ **Selected Chain (${pendingCards.length}/3):**\n\`[ 1: ${c1Text} ]\` ➔ \`[ 2: ${c2Text} ]\` ➔ \`[ 3: ${c3Text} ]\`${leadHelp}`;
 
   const combatantName = activeCombatant.servant.nickname || activeCombatant.servant.template?.name || 'Servant';
   const embed = new EmbedBuilder()
