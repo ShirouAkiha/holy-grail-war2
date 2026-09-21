@@ -7026,15 +7026,15 @@ export interface HolyGrailWarAwakeningOptions {
 }
 
 /**
- * Dedicated Holy Grail War Master Selection & Command Seal Awakening Banner (1024x600)
- * Features dynamic game-mode backgrounds, glowing magic circuits, prominent Master & Servant
- * portraits with class emblems, glowing Command Seal crest, and servant summon covenant dialogue.
+ * Dedicated Holy Grail War Master Selection & Command Seal Awakening Banner (1040x620)
+ * Classic Fate/stay night & TYPE-MOON dark gothic church aesthetic with antique gold filigree,
+ * large Master & Servant portrait cards, crisp vector Command Seals, and visual novel summon dialogue.
  */
 export async function renderHolyGrailWarAwakeningCard(
   options: HolyGrailWarAwakeningOptions
 ): Promise<Buffer> {
-  const width = 1024;
-  const height = 600;
+  const width = 1040;
+  const height = 620;
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
@@ -7072,478 +7072,489 @@ export async function renderHolyGrailWarAwakeningCard(
     }
   }
 
-  // 2. Dynamic Background & Mode-Themed Ambiance
+  // 2. Elegant Dark Gothic Church & Greater Grail Palette (No Neon)
   const isApocrypha = modePreset === 'apocrypha_14';
   const isSingularity = modePreset === 'singularity_chaos';
   const isDesolate = modePreset === 'desolate_hardcore';
 
-  let bgGrad = ctx.createLinearGradient(0, 0, width, height);
-
+  // Base Obsidian & Deep Velvet Gradient
+  const bgGrad = ctx.createLinearGradient(0, 0, width, height);
   if (isApocrypha) {
-    // Split Black Faction / Red Faction Gradient
-    bgGrad = ctx.createLinearGradient(0, 0, width, 0);
-    bgGrad.addColorStop(0, '#090414');
-    bgGrad.addColorStop(0.48, '#1b0730');
-    bgGrad.addColorStop(0.52, '#30060e');
-    bgGrad.addColorStop(1, '#120205');
+    bgGrad.addColorStop(0, '#0c0812');
+    bgGrad.addColorStop(0.5, '#160c18');
+    bgGrad.addColorStop(1, '#0e080f');
   } else if (isSingularity) {
-    // Cosmic Nebula & Singularity Void
-    bgGrad.addColorStop(0, '#030616');
-    bgGrad.addColorStop(0.5, '#14082e');
-    bgGrad.addColorStop(1, '#051026');
+    bgGrad.addColorStop(0, '#090b14');
+    bgGrad.addColorStop(0.5, '#121024');
+    bgGrad.addColorStop(1, '#080a12');
   } else if (isDesolate) {
-    // Ashen Desolation & Bleeding Obsidian
-    bgGrad.addColorStop(0, '#0d0302');
-    bgGrad.addColorStop(0.5, '#1c0603');
-    bgGrad.addColorStop(1, '#050201');
+    bgGrad.addColorStop(0, '#0d0705');
+    bgGrad.addColorStop(0.5, '#1a0d08');
+    bgGrad.addColorStop(1, '#080504');
   } else {
-    // Classic 5th Fuyuki Greater Grail Leyline (Deep Obsidian Crimson & Gold)
-    bgGrad.addColorStop(0, '#0a0204');
-    bgGrad.addColorStop(0.45, '#1a0409');
-    bgGrad.addColorStop(1, '#080103');
+    // Classic 5th Fuyuki Greater Grail (Deep Wine Obsidian & Burnished Antique Gold)
+    bgGrad.addColorStop(0, '#0c080b');
+    bgGrad.addColorStop(0.45, '#180a10');
+    bgGrad.addColorStop(1, '#090709');
   }
 
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, width, height);
 
-  // Radial leyline glow in center
-  const centerGlow = ctx.createRadialGradient(width / 2, 200, 30, width / 2, 200, 420);
+  // Subtle Antique Ambient Warmth (Deep subdued radial gradient)
+  const ambientGlow = ctx.createRadialGradient(width / 2, 220, 40, width / 2, 220, 480);
   if (isSingularity) {
-    centerGlow.addColorStop(0, 'rgba(147, 51, 234, 0.35)');
-    centerGlow.addColorStop(0.6, 'rgba(6, 182, 212, 0.15)');
-    centerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ambientGlow.addColorStop(0, 'rgba(99, 102, 241, 0.16)');
+    ambientGlow.addColorStop(0.7, 'rgba(30, 27, 75, 0.05)');
   } else if (isDesolate) {
-    centerGlow.addColorStop(0, 'rgba(234, 88, 12, 0.35)');
-    centerGlow.addColorStop(0.6, 'rgba(185, 28, 28, 0.15)');
-    centerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  } else if (isApocrypha) {
-    centerGlow.addColorStop(0, 'rgba(217, 119, 6, 0.30)');
-    centerGlow.addColorStop(0.6, 'rgba(147, 51, 234, 0.15)');
-    centerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ambientGlow.addColorStop(0, 'rgba(180, 83, 9, 0.16)');
+    ambientGlow.addColorStop(0.7, 'rgba(69, 26, 3, 0.05)');
   } else {
-    centerGlow.addColorStop(0, 'rgba(225, 29, 72, 0.35)');
-    centerGlow.addColorStop(0.5, 'rgba(217, 119, 6, 0.18)');
-    centerGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ambientGlow.addColorStop(0, 'rgba(159, 18, 57, 0.18)');
+    ambientGlow.addColorStop(0.5, 'rgba(180, 130, 60, 0.08)');
   }
-  ctx.fillStyle = centerGlow;
+  ambientGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = ambientGlow;
   ctx.fillRect(0, 0, width, height);
 
-  // 3. Draw Geometric Magic Circuits across background
+  // 3. Subtle Antique Sacred Geometry Watermark (Warm Bronze Filigree, No Laser Glow)
   ctx.save();
-  ctx.lineWidth = 1.2;
-  const circuitColor = isSingularity
-    ? 'rgba(56, 189, 248, 0.22)'
-    : isDesolate
-    ? 'rgba(249, 115, 22, 0.22)'
-    : isApocrypha
-    ? 'rgba(192, 132, 252, 0.20)'
-    : 'rgba(244, 63, 94, 0.22)';
-  ctx.strokeStyle = circuitColor;
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.08)';
+  ctx.lineWidth = 1;
 
-  // Circuit Grid Lines
-  const circuits = [
-    { x1: 50, y1: 75, x2: 200, y2: 75, x3: 240, y3: 110, x4: 310, y4: 110 },
-    { x1: 710, y1: 75, x2: 820, y2: 75, x3: 860, y3: 110, x4: 970, y4: 110 },
-    { x1: 100, y1: 340, x2: 220, y2: 340, x3: 260, y3: 300, x4: 360, y4: 300 },
-    { x1: 660, y1: 300, x2: 760, y2: 300, x3: 800, y3: 340, x4: 920, y4: 340 },
-    { x1: 420, y1: 60, x2: 512, y2: 60, x3: 512, y3: 130, x4: 600, y4: 130 }
-  ];
-
-  circuits.forEach(c => {
-    ctx.beginPath();
-    ctx.moveTo(c.x1, c.y1);
-    ctx.lineTo(c.x2, c.y2);
-    ctx.lineTo(c.x3, c.y3);
-    ctx.lineTo(c.x4, c.y4);
-    ctx.stroke();
-
-    drawSparkDiamond(ctx, c.x1, c.y1, 3.5, isSingularity ? '#38bdf8' : isDesolate ? '#f97316' : '#f43f5e');
-    drawSparkDiamond(ctx, c.x4, c.y4, 3.5, '#fbbf24');
-  });
-
-  // Concentric Arcane Leyline Circles in Center Background
+  // Arcane Center Concentric Circles
   ctx.beginPath();
-  ctx.arc(width / 2, 200, 140, 0, Math.PI * 2);
+  ctx.arc(width / 2, 200, 150, 0, Math.PI * 2);
   ctx.stroke();
 
   ctx.beginPath();
-  ctx.arc(width / 2, 200, 160, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(251, 191, 36, 0.15)';
+  ctx.arc(width / 2, 200, 175, 0, Math.PI * 2);
   ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(width / 2, 200, 80, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Subtle framing corner geometric flourishes
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.12)';
+  ctx.strokeRect(16, 16, width - 32, height - 32);
   ctx.restore();
 
-  // 4. TOP HEADER BANNER HUD
+  // 4. TOP HEADER BANNER HUD (Antique Church Dispatch Header)
   ctx.save();
   const headerY = 16;
   const headerH = 38;
 
-  ctx.fillStyle = 'rgba(15, 6, 10, 0.90)';
-  drawRoundRect(ctx, 24, headerY, width - 48, headerH, 6);
+  // Header Background Bar
+  ctx.fillStyle = 'rgba(18, 14, 19, 0.95)';
+  drawRoundRect(ctx, 24, headerY, width - 48, headerH, 4);
   ctx.fill();
 
-  ctx.strokeStyle = isDesolate ? '#ea580c' : isSingularity ? '#06b6d4' : '#d97706';
-  ctx.lineWidth = 1.4;
-  drawRoundRect(ctx, 24, headerY, width - 48, headerH, 6);
+  ctx.strokeStyle = '#8a6d3b';
+  ctx.lineWidth = 1.2;
+  drawRoundRect(ctx, 24, headerY, width - 48, headerH, 4);
   ctx.stroke();
 
-  ctx.font = 'bold 13px Georgia, serif';
-  ctx.fillStyle = isDesolate ? '#fed7aa' : isSingularity ? '#cffafe' : '#fef08a';
+  // Header Title
+  ctx.font = 'bold 13px Georgia, "Times New Roman", serif';
+  ctx.fillStyle = '#ecd8a5';
   ctx.textAlign = 'left';
   const headerTitle = isApocrypha
-    ? '🏛️ CLOCK TOWER & YGGDMILLENNIA • GREAT HOLY GRAIL WAR DISPATCH'
+    ? 'CLOCK TOWER & YGGDMILLENNIA • GREAT HOLY GRAIL WAR COVENANT'
     : isSingularity
-    ? '⏳ CHALDEA SECURITY ORGANIZATION • EMERGENCY MASTER RAYSPILL DECREE'
+    ? 'CHALDEA SECURITY ORGANIZATION • EMERGENCY MASTER RAYSPILL DECREE'
     : isDesolate
-    ? '💀 RUINED GRAIL SANCTUARY • SACRIFICIAL MASTER COVENANT'
-    : '⛪ FUYUKI CHURCH OVERSEER OFFICE • SACRED MASTER COVENANT';
+    ? 'RUINED GRAIL SANCTUARY • SACRIFICIAL MASTER COVENANT'
+    : 'FUYUKI CHURCH OVERSEER OFFICE • SACRED MASTER COVENANT';
   ctx.fillText(headerTitle, 40, headerY + 24);
 
   // Header Right Pill: Format / Mode Badge
   const modePillText = warTitle.toUpperCase();
-  ctx.font = 'bold 12px monospace';
-  const modePillW = ctx.measureText(modePillText).width + 28;
+  ctx.font = 'bold 11px monospace';
+  const modePillW = ctx.measureText(modePillText).width + 24;
   const modePillX = width - 36 - modePillW;
 
-  ctx.fillStyle = isDesolate ? '#7c2d12' : isSingularity ? '#1e1b4b' : '#450a0a';
-  drawRoundRect(ctx, modePillX, headerY + 5, modePillW, 28, 4);
+  ctx.fillStyle = '#26171b';
+  drawRoundRect(ctx, modePillX, headerY + 6, modePillW, 26, 3);
   ctx.fill();
 
-  ctx.strokeStyle = isDesolate ? '#f97316' : isSingularity ? '#38bdf8' : '#e11d48';
-  ctx.lineWidth = 1.2;
-  drawRoundRect(ctx, modePillX, headerY + 5, modePillW, 28, 4);
+  ctx.strokeStyle = '#c5a059';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, modePillX, headerY + 6, modePillW, 26, 3);
   ctx.stroke();
 
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = '#fef08a';
   ctx.textAlign = 'center';
   ctx.fillText(modePillText, modePillX + modePillW / 2, headerY + 23);
   ctx.restore();
 
-  // 5. LEFT CARD PANEL: MASTER ANOINTMENT (Width 450px)
-  const leftX = 24;
-  const leftY = 66;
-  const leftW = 460;
-  const leftH = 300;
+  // 5. MAIN SECTION: DUAL CARDS (MASTER CARD ON LEFT, SERVANT CARD ON RIGHT)
+  const cardY = 66;
+  const cardW = 480;
+  const cardH = 300;
 
+  // ----------------------------------------------------
+  // 5A. LEFT CARD PANEL: MASTER ANOINTMENT
+  // ----------------------------------------------------
+  const leftX = 24;
   ctx.save();
-  ctx.fillStyle = 'rgba(12, 4, 8, 0.90)';
-  drawRoundRect(ctx, leftX, leftY, leftW, leftH, 8);
+  ctx.fillStyle = 'rgba(16, 12, 18, 0.94)';
+  drawRoundRect(ctx, leftX, cardY, cardW, cardH, 6);
   ctx.fill();
 
-  ctx.strokeStyle = isDesolate ? '#c2410c' : isSingularity ? '#0284c7' : '#be123c';
-  ctx.lineWidth = 1.8;
-  drawRoundRect(ctx, leftX, leftY, leftW, leftH, 8);
+  ctx.strokeStyle = '#8a6d3b';
+  ctx.lineWidth = 1.4;
+  drawRoundRect(ctx, leftX, cardY, cardW, cardH, 6);
   ctx.stroke();
 
-  // Inner Gold Hairline
-  ctx.strokeStyle = 'rgba(251, 191, 36, 0.30)';
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, leftX + 4, leftY + 4, leftW - 8, leftH - 8, 6);
+  // Inner Subtle Gold Hairline
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.20)';
+  ctx.lineWidth = 0.8;
+  drawRoundRect(ctx, leftX + 4, cardY + 4, cardW - 8, cardH - 8, 4);
   ctx.stroke();
 
-  // Master Avatar (Prominent 104px circle)
-  const masterAvatarX = leftX + 72;
-  const masterAvatarY = leftY + 76;
-  const masterRadius = 52;
+  // Master Picture Frame: BIG PROMINENT PORTRAIT (170px x 225px)
+  const mFrameX = leftX + 16;
+  const mFrameY = cardY + 16;
+  const mFrameW = 170;
+  const mFrameH = 225;
 
-  // Outer Glowing Rings
+  ctx.fillStyle = '#110d14';
+  drawRoundRect(ctx, mFrameX, mFrameY, mFrameW, mFrameH, 4);
+  ctx.fill();
+
+  // Draw Avatar or Fallback inside Frame
   ctx.save();
   ctx.beginPath();
-  ctx.arc(masterAvatarX, masterAvatarY, masterRadius + 5, 0, Math.PI * 2);
-  ctx.strokeStyle = isSingularity ? '#38bdf8' : isDesolate ? '#f97316' : '#f43f5e';
-  ctx.lineWidth = 3;
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(masterAvatarX, masterAvatarY, masterRadius + 10, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(251, 191, 36, 0.45)';
-  ctx.lineWidth = 1.2;
-  ctx.stroke();
-
-  // Draw Avatar or High-Res Fallback
-  ctx.beginPath();
-  ctx.arc(masterAvatarX, masterAvatarY, masterRadius, 0, Math.PI * 2);
-  ctx.closePath();
+  drawRoundRect(ctx, mFrameX + 2, mFrameY + 2, mFrameW - 4, mFrameH - 4, 3);
   ctx.clip();
 
   if (masterImg) {
-    ctx.drawImage(
-      masterImg,
-      masterAvatarX - masterRadius,
-      masterAvatarY - masterRadius,
-      masterRadius * 2,
-      masterRadius * 2
-    );
+    // Fill background behind avatar in case of transparency
+    ctx.fillStyle = '#18121d';
+    ctx.fillRect(mFrameX, mFrameY, mFrameW, mFrameH);
+    ctx.drawImage(masterImg, mFrameX + 2, mFrameY + 2, mFrameW - 4, mFrameH - 4);
   } else {
-    const avatarGrad = ctx.createLinearGradient(
-      masterAvatarX - masterRadius,
-      masterAvatarY - masterRadius,
-      masterAvatarX + masterRadius,
-      masterAvatarY + masterRadius
-    );
-    avatarGrad.addColorStop(0, '#1e293b');
-    avatarGrad.addColorStop(1, '#0f172a');
+    const avatarGrad = ctx.createLinearGradient(mFrameX, mFrameY, mFrameX + mFrameW, mFrameY + mFrameH);
+    avatarGrad.addColorStop(0, '#1e1624');
+    avatarGrad.addColorStop(1, '#0e0a12');
     ctx.fillStyle = avatarGrad;
-    ctx.fillRect(masterAvatarX - masterRadius, masterAvatarY - masterRadius, masterRadius * 2, masterRadius * 2);
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = 'bold 36px sans-serif';
+    ctx.fillRect(mFrameX, mFrameY, mFrameW, mFrameH);
+
+    ctx.fillStyle = '#d4af37';
+    ctx.font = 'bold 48px Georgia, serif';
     ctx.textAlign = 'center';
-    ctx.fillText('M', masterAvatarX, masterAvatarY + 12);
+    ctx.fillText('M', mFrameX + mFrameW / 2, mFrameY + mFrameH / 2 + 16);
   }
   ctx.restore();
 
-  // Master Header & Name (Right of Avatar)
-  const mInfoX = leftX + 140;
+  // Master Portrait Frame Double Border (Antique Gold & Deep Crimson)
+  ctx.strokeStyle = '#c5a059';
+  ctx.lineWidth = 1.6;
+  drawRoundRect(ctx, mFrameX, mFrameY, mFrameW, mFrameH, 4);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(159, 18, 57, 0.45)';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, mFrameX + 3, mFrameY + 3, mFrameW - 6, mFrameH - 6, 2);
+  ctx.stroke();
+
+  // Master Details (Right of Avatar Frame)
+  const mInfoX = leftX + 200;
   ctx.textAlign = 'left';
 
-  ctx.fillStyle = isDesolate ? '#fed7aa' : isSingularity ? '#7dd3fc' : '#fbbf24';
-  ctx.font = 'bold 11px monospace';
-  ctx.fillText('🛡️ SACRED MASTER ANOINTMENT', mInfoX, leftY + 44);
+  // Category Tag
+  ctx.fillStyle = '#c5a059';
+  ctx.font = 'bold 11px Georgia, serif';
+  ctx.fillText('SACRED MASTER ANOINTMENT', mInfoX, cardY + 32);
 
+  // Master Name
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 20px sans-serif';
-  const displayMName = masterName.length > 18 ? masterName.substring(0, 16) + '...' : masterName;
-  ctx.fillText(displayMName, mInfoX, leftY + 70);
+  const displayMName = masterName.length > 17 ? masterName.substring(0, 15) + '...' : masterName;
+  ctx.fillText(displayMName, mInfoX, cardY + 58);
 
-  ctx.fillStyle = isDesolate ? '#fb923c' : isSingularity ? '#38bdf8' : '#fda4af';
-  ctx.font = 'bold 13px sans-serif';
-  ctx.fillText('🕶️ Shadow Master (Concealed)', mInfoX, leftY + 92);
+  // Master Status
+  ctx.fillStyle = '#e2c592';
+  ctx.font = '12px sans-serif';
+  ctx.fillText('Shadow Master (Concealed)', mInfoX, cardY + 78);
 
   if (faction && faction !== 'none') {
-    const factionLabel = faction === 'red' ? '🔴 Red Faction Contender' : faction === 'black' ? '⚫ Black Faction Contender' : '⚖️ Neutral Arbiter';
-    ctx.fillStyle = faction === 'red' ? '#f87171' : faction === 'black' ? '#c084fc' : '#fef08a';
-    ctx.font = 'bold 12px sans-serif';
-    ctx.fillText(factionLabel, mInfoX, leftY + 112);
+    const factionLabel = faction === 'red' ? 'Red Faction Contender' : faction === 'black' ? 'Black Faction Contender' : 'Neutral Arbiter';
+    ctx.fillStyle = faction === 'red' ? '#e17070' : faction === 'black' ? '#b692e0' : '#ecd8a5';
+    ctx.font = '11px sans-serif';
+    ctx.fillText(factionLabel, mInfoX, cardY + 96);
   }
 
   // Divider Line inside Left Panel
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+  const mDivY = cardY + 108;
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.25)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(leftX + 20, leftY + 140);
-  ctx.lineTo(leftX + leftW - 20, leftY + 140);
+  ctx.moveTo(mInfoX, mDivY);
+  ctx.lineTo(leftX + cardW - 16, mDivY);
   ctx.stroke();
 
   // Command Seals Section
-  ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 13px Georgia, serif';
-  ctx.fillText('🔱 COMMAND SEALS AWAKENED', leftX + 22, leftY + 168);
+  ctx.fillStyle = '#d4af37';
+  ctx.font = 'bold 12px Georgia, serif';
+  ctx.fillText('COMMAND SEALS AWAKENED', mInfoX, mDivY + 22);
 
-  const sealDots = '🔴 '.repeat(Math.min(5, commandSealsCount)).trim();
-  ctx.font = 'bold 22px sans-serif';
-  ctx.fillStyle = '#f43f5e';
-  ctx.fillText(sealDots, leftX + 22, leftY + 200);
+  // Draw 3/3 Vector Command Seals (Crimson wax seals with gold center diamond)
+  const sealStartX = mInfoX + 14;
+  const sealY = mDivY + 52;
+  const sealRadius = 14;
+  const maxSeals = Math.min(5, Math.max(1, commandSealsCount));
 
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 14px monospace';
-  ctx.fillText(`${commandSealsCount}/${commandSealsCount} Inscribed on Magic Circuits`, leftX + 22, leftY + 226);
+  for (let i = 0; i < maxSeals; i++) {
+    const sx = sealStartX + i * 36;
+    ctx.save();
+    // Dark crimson wax seal base
+    const sGrad = ctx.createRadialGradient(sx, sealY, 2, sx, sealY, sealRadius);
+    sGrad.addColorStop(0, '#be123c');
+    sGrad.addColorStop(0.7, '#881337');
+    sGrad.addColorStop(1, '#4c0519');
+    ctx.fillStyle = sGrad;
+    ctx.beginPath();
+    ctx.arc(sx, sealY, sealRadius, 0, Math.PI * 2);
+    ctx.fill();
 
-  // Master Privileges Box
-  const mBoxY = leftY + 242;
-  ctx.fillStyle = 'rgba(20, 10, 25, 0.85)';
-  drawRoundRect(ctx, leftX + 18, mBoxY, leftW - 36, 44, 4);
-  ctx.fill();
+    ctx.strokeStyle = '#c5a059';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
 
-  ctx.strokeStyle = 'rgba(251, 191, 36, 0.25)';
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, leftX + 18, mBoxY, leftW - 36, 44, 4);
-  ctx.stroke();
-
-  ctx.fillStyle = isDesolate ? '#f87171' : '#86efac';
-  ctx.font = 'bold 12px sans-serif';
-  ctx.textAlign = 'center';
-  const mPrivilegeText = isDesolate
-    ? '⚠️ Permadeath Active • 1 Single Command Seal'
-    : '✨ 100% NP Overdrive • 🛡️ 1 HP Emergency Teleport';
-  ctx.fillText(mPrivilegeText, leftX + leftW / 2, mBoxY + 26);
-  ctx.restore();
-
-  // 6. CENTER SEAL CONNECTOR (Floating between left and right)
-  ctx.save();
-  const centerCoreX = width / 2;
-  const centerCoreY = leftY + 150;
-
-  ctx.shadowColor = isSingularity ? '#38bdf8' : isDesolate ? '#ea580c' : '#e11d48';
-  ctx.shadowBlur = 24;
-  drawSparkDiamond(ctx, centerCoreX, centerCoreY, 18, isSingularity ? '#7dd3fc' : isDesolate ? '#fdba74' : '#fda4af');
-
-  // Center Seal Wings
-  ctx.fillStyle = isSingularity ? '#38bdf8' : isDesolate ? '#f97316' : '#f43f5e';
-  ctx.beginPath();
-  ctx.moveTo(centerCoreX - 8, centerCoreY - 4);
-  ctx.quadraticCurveTo(centerCoreX - 28, centerCoreY - 20, centerCoreX - 36, centerCoreY - 2);
-  ctx.quadraticCurveTo(centerCoreX - 24, centerCoreY + 10, centerCoreX - 8, centerCoreY + 4);
-  ctx.closePath();
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.moveTo(centerCoreX + 8, centerCoreY - 4);
-  ctx.quadraticCurveTo(centerCoreX + 28, centerCoreY - 20, centerCoreX + 36, centerCoreY - 2);
-  ctx.quadraticCurveTo(centerCoreX + 24, centerCoreY + 10, centerCoreX + 8, centerCoreY + 4);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-
-  // 7. RIGHT CARD PANEL: CONTRACTED HEROIC SPIRIT (Width 500px)
-  const rightX = 540;
-  const rightY = 66;
-  const rightW = 460;
-  const rightH = 300;
-
-  ctx.save();
-  ctx.fillStyle = 'rgba(12, 4, 8, 0.90)';
-  drawRoundRect(ctx, rightX, rightY, rightW, rightH, 8);
-  ctx.fill();
-
-  ctx.strokeStyle = isDesolate ? '#c2410c' : isSingularity ? '#0284c7' : '#be123c';
-  ctx.lineWidth = 1.8;
-  drawRoundRect(ctx, rightX, rightY, rightW, rightH, 8);
-  ctx.stroke();
-
-  ctx.strokeStyle = 'rgba(251, 191, 36, 0.30)';
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, rightX + 4, rightY + 4, rightW - 8, rightH - 8, 6);
-  ctx.stroke();
-
-  // Servant Class Color
-  const servantClassUpper = servantClass.toUpperCase();
-  let classColor = '#3b82f6';
-  let classIcon = '⚔️';
-  if (servantClassUpper.includes('ARCHER')) {
-    classColor = '#10b981';
-    classIcon = '🏹';
-  } else if (servantClassUpper.includes('LANCER')) {
-    classColor = '#06b6d4';
-    classIcon = '⚡';
-  } else if (servantClassUpper.includes('CASTER')) {
-    classColor = '#8b5cf6';
-    classIcon = '🔮';
-  } else if (servantClassUpper.includes('RIDER')) {
-    classColor = '#ec4899';
-    classIcon = '🐎';
-  } else if (servantClassUpper.includes('ASSASSIN')) {
-    classColor = '#64748b';
-    classIcon = '🗡️';
-  } else if (servantClassUpper.includes('BERSERKER')) {
-    classColor = '#ef4444';
-    classIcon = '💥';
-  } else if (servantClassUpper.includes('RULER')) {
-    classColor = '#f59e0b';
-    classIcon = '⚖️';
-  } else if (servantClassUpper.includes('AVENGER')) {
-    classColor = '#9333ea';
-    classIcon = '🔥';
+    // Inner gold spark diamond
+    ctx.fillStyle = '#fef08a';
+    ctx.beginPath();
+    ctx.moveTo(sx, sealY - 7);
+    ctx.lineTo(sx + 7, sealY);
+    ctx.lineTo(sx, sealY + 7);
+    ctx.lineTo(sx - 7, sealY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 
-  // Draw Servant Cutout / Portrait (130px x 190px)
-  const sImgW = 130;
-  const sImgH = 190;
-  const sImgX = rightX + 20;
-  const sImgY = rightY + 36;
+  ctx.fillStyle = '#dcd2be';
+  ctx.font = '12px monospace';
+  ctx.fillText(`${commandSealsCount}/${commandSealsCount} Inscribed on Magic Circuits`, mInfoX, mDivY + 84);
 
-  ctx.save();
-  ctx.fillStyle = '#180a14';
-  drawRoundRect(ctx, sImgX, sImgY, sImgW, sImgH, 6);
+  // Bottom Master Privilege Strip
+  const mStripY = cardY + cardH - 42;
+  ctx.fillStyle = 'rgba(28, 20, 26, 0.90)';
+  drawRoundRect(ctx, leftX + 16, mStripY, cardW - 32, 30, 3);
   ctx.fill();
 
-  ctx.strokeStyle = classColor;
-  ctx.lineWidth = 2;
-  drawRoundRect(ctx, sImgX, sImgY, sImgW, sImgH, 6);
+  ctx.strokeStyle = '#634e2c';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, leftX + 16, mStripY, cardW - 32, 30, 3);
   ctx.stroke();
 
+  ctx.fillStyle = '#e5d7ba';
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'center';
+  const mPrivilegeText = isDesolate
+    ? 'Permadeath Active • Single Command Seal Authority'
+    : '100% NP Overdrive • Emergency 1 HP Teleport';
+  ctx.fillText(mPrivilegeText, leftX + cardW / 2, mStripY + 19);
+  ctx.restore();
+
+  // ----------------------------------------------------
+  // 5B. RIGHT CARD PANEL: CONTRACTED HEROIC SPIRIT
+  // ----------------------------------------------------
+  const rightX = 536;
+  ctx.save();
+  ctx.fillStyle = 'rgba(16, 12, 18, 0.94)';
+  drawRoundRect(ctx, rightX, cardY, cardW, cardH, 6);
+  ctx.fill();
+
+  ctx.strokeStyle = '#8a6d3b';
+  ctx.lineWidth = 1.4;
+  drawRoundRect(ctx, rightX, cardY, cardW, cardH, 6);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.20)';
+  ctx.lineWidth = 0.8;
+  drawRoundRect(ctx, rightX + 4, cardY + 4, cardW - 8, cardH - 8, 4);
+  ctx.stroke();
+
+  // Servant Class Color Scheme (Muted elegant tones, not electric neon)
+  const servantClassUpper = servantClass.toUpperCase();
+  let classBadgeBg = '#1e293b';
+  let classBorderColor = '#64748b';
+  if (servantClassUpper.includes('SABER')) {
+    classBadgeBg = '#1e3a8a';
+    classBorderColor = '#3b82f6';
+  } else if (servantClassUpper.includes('ARCHER')) {
+    classBadgeBg = '#064e3b';
+    classBorderColor = '#10b981';
+  } else if (servantClassUpper.includes('LANCER')) {
+    classBadgeBg = '#155e75';
+    classBorderColor = '#06b6d4';
+  } else if (servantClassUpper.includes('CASTER')) {
+    classBadgeBg = '#3b185f';
+    classBorderColor = '#8b5cf6';
+  } else if (servantClassUpper.includes('RIDER')) {
+    classBadgeBg = '#4a044e';
+    classBorderColor = '#d946ef';
+  } else if (servantClassUpper.includes('ASSASSIN')) {
+    classBadgeBg = '#334155';
+    classBorderColor = '#94a3b8';
+  } else if (servantClassUpper.includes('BERSERKER')) {
+    classBadgeBg = '#450a0a';
+    classBorderColor = '#dc2626';
+  } else if (servantClassUpper.includes('RULER')) {
+    classBadgeBg = '#451a03';
+    classBorderColor = '#d97706';
+  } else if (servantClassUpper.includes('AVENGER')) {
+    classBadgeBg = '#2e1065';
+    classBorderColor = '#7c3aed';
+  }
+
+  // Servant Picture Frame: BIG PROMINENT PORTRAIT (170px x 225px)
+  const sFrameX = rightX + 16;
+  const sFrameY = cardY + 16;
+  const sFrameW = 170;
+  const sFrameH = 225;
+
+  ctx.fillStyle = '#110d14';
+  drawRoundRect(ctx, sFrameX, sFrameY, sFrameW, sFrameH, 4);
+  ctx.fill();
+
+  // Draw Servant Image or Fallback
+  ctx.save();
   ctx.beginPath();
-  drawRoundRect(ctx, sImgX + 1, sImgY + 1, sImgW - 2, sImgH - 2, 5);
+  drawRoundRect(ctx, sFrameX + 2, sFrameY + 2, sFrameW - 4, sFrameH - 4, 3);
   ctx.clip();
 
   if (servantImg) {
-    ctx.drawImage(servantImg, sImgX, sImgY, sImgW, sImgH);
+    ctx.fillStyle = '#18121d';
+    ctx.fillRect(sFrameX, sFrameY, sFrameW, sFrameH);
+    ctx.drawImage(servantImg, sFrameX + 2, sFrameY + 2, sFrameW - 4, sFrameH - 4);
   } else {
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(sImgX, sImgY, sImgW, sImgH);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 36px sans-serif';
+    ctx.fillStyle = '#1a1420';
+    ctx.fillRect(sFrameX, sFrameY, sFrameW, sFrameH);
+    ctx.fillStyle = '#c5a059';
+    ctx.font = 'bold 20px Georgia, serif';
     ctx.textAlign = 'center';
-    ctx.fillText(classIcon, sImgX + sImgW / 2, sImgY + sImgH / 2 + 12);
+    ctx.fillText(servantClassUpper, sFrameX + sFrameW / 2, sFrameY + sFrameH / 2 + 8);
   }
   ctx.restore();
 
-  // Servant Details (Right of Portrait)
-  const sInfoX = rightX + 168;
+  // Servant Portrait Frame Double Border (Antique Gold & Class Accent)
+  ctx.strokeStyle = '#c5a059';
+  ctx.lineWidth = 1.6;
+  drawRoundRect(ctx, sFrameX, sFrameY, sFrameW, sFrameH, 4);
+  ctx.stroke();
+
+  ctx.strokeStyle = classBorderColor;
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, sFrameX + 3, sFrameY + 3, sFrameW - 6, sFrameH - 6, 2);
+  ctx.stroke();
+
+  // Servant Details (Right of Servant Frame)
+  const sInfoX = rightX + 200;
   ctx.textAlign = 'left';
 
   // Class Badge Pill
-  ctx.fillStyle = classColor;
-  drawRoundRect(ctx, sInfoX, rightY + 36, rightW - 190, 26, 4);
+  ctx.fillStyle = classBadgeBg;
+  drawRoundRect(ctx, sInfoX, cardY + 18, 140, 24, 3);
   ctx.fill();
+
+  ctx.strokeStyle = classBorderColor;
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, sInfoX, cardY + 18, 140, 24, 3);
+  ctx.stroke();
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 12px sans-serif';
-  ctx.fillText(`${classIcon} ${servantClassUpper} CLASS`, sInfoX + 10, rightY + 54);
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${servantClassUpper} CLASS`, sInfoX + 70, cardY + 34);
 
   // Servant Name
-  ctx.fillStyle = '#fef08a';
-  ctx.font = 'bold 18px Georgia, serif';
-  const displaySName = servantName.length > 18 ? servantName.substring(0, 16) + '...' : servantName;
-  ctx.fillText(displaySName, sInfoX, rightY + 88);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#ecd8a5';
+  ctx.font = 'bold 20px Georgia, serif';
+  const displaySName = servantName.length > 17 ? servantName.substring(0, 15) + '...' : servantName;
+  ctx.fillText(displaySName, sInfoX, cardY + 68);
 
-  // Stats / Vitals
+  // Servant Attributes (Rendered with clean typographic bullet markers)
+  const bulletX = sInfoX + 6;
+  const textLeftX = sInfoX + 16;
+
+  // Row 1: Spirit Graph
+  ctx.fillStyle = '#d4af37';
+  drawSparkDiamond(ctx, bulletX, cardY + 95, 3, '#c5a059');
+  ctx.fillStyle = '#f1f5f9';
+  ctx.font = '12px sans-serif';
+  ctx.fillText('Spirit Graph HP: 100%', textLeftX, cardY + 99);
+
+  // Row 2: Base Attack
+  ctx.fillStyle = '#d4af37';
+  drawSparkDiamond(ctx, bulletX, cardY + 120, 3, '#c5a059');
   ctx.fillStyle = '#cbd5e1';
-  ctx.font = '13px sans-serif';
-  ctx.fillText('❤️ 100% Spirit Graph HP', sInfoX, rightY + 114);
+  ctx.font = '12px sans-serif';
+  ctx.fillText('Heroic Spirit Base ATK', textLeftX, cardY + 124);
 
-  ctx.fillStyle = '#38bdf8';
-  ctx.font = '12px monospace';
-  ctx.fillText('⚔️ Heroic Spirit Base ATK', sInfoX, rightY + 138);
+  // Row 3: Tactical Deck
+  ctx.fillStyle = '#d4af37';
+  drawSparkDiamond(ctx, bulletX, cardY + 145, 3, '#c5a059');
+  ctx.fillStyle = '#cbd5e1';
+  ctx.font = '12px sans-serif';
+  ctx.fillText('5-Card Tactical Deck', textLeftX, cardY + 149);
 
-  ctx.fillStyle = '#fbbf24';
-  ctx.font = '12px monospace';
-  ctx.fillText('🃏 5-Card Tactical Deck', sInfoX, rightY + 162);
-
-  ctx.fillStyle = '#fda4af';
-  ctx.font = '12px monospace';
-  ctx.fillText('✨ Noble Phantasm Armed', sInfoX, rightY + 186);
+  // Row 4: Noble Phantasm
+  ctx.fillStyle = '#d4af37';
+  drawSparkDiamond(ctx, bulletX, cardY + 170, 3, '#c5a059');
+  ctx.fillStyle = '#ecd8a5';
+  ctx.font = '12px sans-serif';
+  ctx.fillText('Noble Phantasm Armed', textLeftX, cardY + 174);
 
   // Bottom Servant Status Strip
-  const sStripY = rightY + 242;
-  ctx.fillStyle = 'rgba(20, 10, 25, 0.85)';
-  drawRoundRect(ctx, rightX + 18, sStripY, rightW - 36, 44, 4);
+  const sStripY = cardY + cardH - 42;
+  ctx.fillStyle = 'rgba(28, 20, 26, 0.90)';
+  drawRoundRect(ctx, rightX + 16, sStripY, cardW - 32, 30, 3);
   ctx.fill();
 
-  ctx.strokeStyle = 'rgba(251, 191, 36, 0.25)';
+  ctx.strokeStyle = '#634e2c';
   ctx.lineWidth = 1;
-  drawRoundRect(ctx, rightX + 18, sStripY, rightW - 36, 44, 4);
+  drawRoundRect(ctx, rightX + 16, sStripY, cardW - 32, 30, 3);
   ctx.stroke();
 
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 12px sans-serif';
+  ctx.fillStyle = '#e5d7ba';
+  ctx.font = '11px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('🛡️ Contract Bound by Command Seals', rightX + rightW / 2, sStripY + 26);
+  ctx.fillText('Contract Bound by Sacred Command Seals', rightX + cardW / 2, sStripY + 19);
   ctx.restore();
 
-  // 8. BOTTOM SECTION: VISUAL NOVEL SUMMON COVENANT DIALOGUE BOX (Width 976px, Height 200px)
+  // ----------------------------------------------------
+  // 6. BOTTOM SECTION: VISUAL NOVEL SUMMON COVENANT DIALOGUE BOX
+  // ----------------------------------------------------
   const boxX = 24;
-  const boxY = 380;
-  const boxW = 976;
-  const boxH = 200;
+  const boxY = 382;
+  const boxW = 992;
+  const boxH = 216;
 
   ctx.save();
-  ctx.fillStyle = 'rgba(10, 3, 6, 0.96)';
+  // Obsidian base
+  ctx.fillStyle = 'rgba(14, 10, 16, 0.96)';
   drawRoundRect(ctx, boxX, boxY, boxW, boxH, 6);
   ctx.fill();
 
-  // Metallic Borders
-  ctx.strokeStyle = isDesolate ? '#ea580c' : isSingularity ? '#0284c7' : '#e11d48';
-  ctx.lineWidth = 2.2;
+  // Metallic Double Border: Antique Gold & Subtle Wine
+  ctx.strokeStyle = '#8a6d3b';
+  ctx.lineWidth = 1.6;
   drawRoundRect(ctx, boxX, boxY, boxW, boxH, 6);
   ctx.stroke();
 
-  ctx.strokeStyle = 'rgba(254, 240, 138, 0.45)';
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.25)';
   ctx.lineWidth = 1;
   drawRoundRect(ctx, boxX + 4, boxY + 4, boxW - 8, boxH - 8, 4);
   ctx.stroke();
 
   // Corner Filigree Brackets
   const boxCbLen = 16;
-  ctx.strokeStyle = '#fbbf24';
+  ctx.strokeStyle = '#c5a059';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(boxX + 4, boxY + 4 + boxCbLen);
@@ -7557,42 +7568,49 @@ export async function renderHolyGrailWarAwakeningCard(
   ctx.lineTo(boxX + boxW - 4, boxY + 4 + boxCbLen);
   ctx.stroke();
 
-  // Speaker Nameplate Tab (Overlapping top-left border of dialogue box)
-  ctx.font = 'bold 14px sans-serif';
-  const nameLabel = `🗣️ ${servantName.toUpperCase()} [${servantClass.toUpperCase()}] • SUMMON COVENANT`;
-  const nameMetrics = ctx.measureText(nameLabel);
-  const nameW = Math.max(300, Math.min(600, nameMetrics.width + 54));
-  const nameH = 34;
-  const nameX = boxX + 28;
-  const nameY = boxY - 17;
+  ctx.beginPath();
+  ctx.moveTo(boxX + 4, boxY + boxH - 4 - boxCbLen);
+  ctx.lineTo(boxX + 4, boxY + boxH - 4);
+  ctx.lineTo(boxX + 4 + boxCbLen, boxY + boxH - 4);
+  ctx.stroke();
 
-  ctx.fillStyle = '#220409';
-  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 5);
+  ctx.beginPath();
+  ctx.moveTo(boxX + boxW - 4 - boxCbLen, boxY + boxH - 4);
+  ctx.lineTo(boxX + boxW - 4, boxY + boxH - 4);
+  ctx.lineTo(boxX + boxW - 4, boxY + boxH - 4 - boxCbLen);
+  ctx.stroke();
+
+  // Speaker Nameplate Tab (Overlapping top border)
+  ctx.font = 'bold 13px Georgia, serif';
+  const nameLabel = `${servantName.toUpperCase()} [${servantClass.toUpperCase()}] • SUMMON COVENANT`;
+  const nameMetrics = ctx.measureText(nameLabel);
+  const nameW = Math.max(280, Math.min(620, nameMetrics.width + 48));
+  const nameH = 32;
+  const nameX = boxX + 28;
+  const nameY = boxY - 16;
+
+  ctx.fillStyle = '#201219';
+  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
   ctx.fill();
 
-  ctx.strokeStyle = isDesolate ? '#f97316' : isSingularity ? '#38bdf8' : '#f43f5e';
-  ctx.lineWidth = 2;
-  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 5);
+  ctx.strokeStyle = '#c5a059';
+  ctx.lineWidth = 1.4;
+  drawRoundRect(ctx, nameX, nameY, nameW, nameH, 4);
   ctx.stroke();
 
-  ctx.strokeStyle = 'rgba(254, 240, 138, 0.50)';
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, nameX + 2, nameY + 2, nameW - 4, nameH - 4, 4);
-  ctx.stroke();
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 13px sans-serif';
+  ctx.fillStyle = '#fef08a';
+  ctx.font = 'bold 12px Georgia, serif';
   ctx.textAlign = 'center';
-  ctx.fillText(nameLabel, nameX + nameW / 2, nameY + 22);
+  ctx.fillText(nameLabel, nameX + nameW / 2, nameY + 21);
 
-  // Dialogue Quote Text (Large, High Contrast, 22px Serif)
+  // Dialogue Quote Text (Large, High Contrast, 22-24px Serif)
   const textX = boxX + 36;
-  const textY = boxY + 52;
+  const textY = boxY + 54;
   const maxTextW = boxW - 72;
-  const maxTextH = boxH - 85;
+  const maxTextH = boxH - 90;
 
   let fontSize = 23;
-  let lineHeight = 32;
+  let lineHeight = 33;
   let wrappedLines: string[] = [];
 
   const cleanQuote = summonQuote.replace(/^["“]/, '').replace(/["”]$/, '').trim();
@@ -7617,7 +7635,7 @@ export async function renderHolyGrailWarAwakeningCard(
   };
 
   while (fontSize >= 16) {
-    lineHeight = Math.round(fontSize * 1.38);
+    lineHeight = Math.round(fontSize * 1.4);
     wrappedLines = calculateLines(fontSize);
     const totalH = wrappedLines.length * lineHeight;
     if (totalH <= maxTextH) break;
@@ -7626,26 +7644,26 @@ export async function renderHolyGrailWarAwakeningCard(
 
   ctx.font = `italic bold ${fontSize}px Georgia, "Times New Roman", serif`;
   ctx.textAlign = 'left';
-  ctx.fillStyle = '#fff1f2';
+  ctx.fillStyle = '#fcf8f2';
 
   let currentY = textY;
   for (let i = 0; i < wrappedLines.length; i++) {
     ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
     ctx.shadowOffsetX = 1.5;
     ctx.shadowOffsetY = 1.5;
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = 4;
     ctx.fillText(wrappedLines[i], textX, currentY);
     currentY += lineHeight;
   }
   ctx.shadowColor = 'transparent';
 
   // Bottom Footer Dispatch Bar Strip
-  ctx.fillStyle = isDesolate ? '#fdba74' : isSingularity ? '#7dd3fc' : '#fda4af';
-  ctx.font = 'bold 12px sans-serif';
-  ctx.fillText('✦ CONFIDENTIAL DISPATCH • IDENTITY CONCEALED IN SHADOWS • OPEN /grailwar FOR BATTLE STATUS', textX, boxY + boxH - 16);
+  ctx.fillStyle = '#c5a059';
+  ctx.font = '11px sans-serif';
+  ctx.fillText('CONFIDENTIAL DISPATCH • IDENTITY CONCEALED IN SHADOWS • USE /grailwar FOR BATTLE STATUS', textX, boxY + boxH - 18);
 
-  // Pulsing Continuation Diamond at Bottom-Right
-  drawSparkDiamond(ctx, boxX + boxW - 28, boxY + boxH - 22, 6, isSingularity ? '#38bdf8' : isDesolate ? '#f97316' : '#f43f5e');
+  // Subtle Antique Gold Diamond at Bottom-Right
+  drawSparkDiamond(ctx, boxX + boxW - 28, boxY + boxH - 24, 5, '#c5a059');
   ctx.restore();
 
   try {
