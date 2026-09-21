@@ -82,6 +82,11 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand(sub =>
     sub
+      .setName('shop')
+      .setDescription('🛍️ Da Vinci Workshop — Exchange duplicate Mana Prisms for Summon Tickets')
+  )
+  .addSubcommand(sub =>
+    sub
       .setName('status')
       .setDescription('Inspect your active Servant contract, roster size, Command Seals & SQ balance')
   )
@@ -246,6 +251,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     // ------------------------------------------
+    // SUBCOMMAND: SHOP
+    // ------------------------------------------
+    if (subcommand === 'shop') {
+      const { embed, components } = buildGachaHub(master, 'shop');
+      await interaction.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
+      const reply = await interaction.fetchReply();
+      attachGachaCollector(interaction, master, reply);
+      return;
+    }
+
+    // ------------------------------------------
     // SUBCOMMAND: RATES
     // ------------------------------------------
     if (subcommand === 'rates') {
@@ -306,14 +322,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       await saveMaster(master);
     }
 
-    // Check balance
-    if ((master.saintQuartz || 0) < cost) {
+    // Check balance (Quartz or Tickets)
+    const canUseSq = (master.saintQuartz || 0) >= cost;
+    const canUseTickets = (master.summonTickets || 0) >= rolls;
+
+    if (!canUseSq && !canUseTickets) {
       const needSqEmbed = new EmbedBuilder()
-        .setTitle('💎 Insufficient Saint Quartz')
+        .setTitle('💎 Insufficient Summon Resources')
         .setDescription(
-          `You need **${cost} Saint Quartz** for a ${rolls}x Summon, but you currently have **${master.saintQuartz || 0} SQ**.\n\n` +
+          `You need **${cost} Saint Quartz** (or **${rolls} Summon Ticket(s) 🎫**) for a ${rolls}x Summon, but you currently have **${master.saintQuartz || 0} SQ** and **${master.summonTickets || 0} Tickets**.\n\n` +
           `• Click **Claim Daily (+30 SQ)** below to receive a free 10x Multi-Summon!\n` +
-          `• Or participate in \`/duel\` and \`/grailwar\` patrols to earn more Quartz.`
+          `• Or exchange duplicate Mana Prisms for tickets in the **Shop**.`
         )
         .setColor(0xef4444);
 
@@ -323,6 +342,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setLabel('Claim Daily SQ (+30 💎)')
           .setEmoji('🎁')
           .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+          .setCustomId('gacha_tab_shop')
+          .setLabel(`Prism Shop (${master.manaPrisms || 0} 🔵)`)
+          .setEmoji('🛍️')
+          .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
           .setCustomId('gacha_tab_daily')
           .setLabel('Open Sanctum Hub')
@@ -334,8 +358,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
+    const useTickets = !canUseSq && canUseTickets;
+
     // Execute Servant Gacha Roll
-    const rollResult = executeServantGachaRoll({ count: rolls, master });
+    const rollResult = executeServantGachaRoll({ count: rolls, master, useTickets });
     const updatedMaster = rollResult.updatedMaster;
 
     // Ensure active servant and command seals are set if this was the first summon

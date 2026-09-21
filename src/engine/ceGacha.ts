@@ -6,6 +6,7 @@ export interface RollCeGachaOptions {
   count: 1 | 10;
   master: MasterProfile;
   bannerId?: string;
+  useTickets?: boolean;
 }
 
 export interface ServantGachaPullResult {
@@ -17,6 +18,7 @@ export interface ServantGachaPullResult {
 export interface ServantGachaPullResponse {
   results: ServantGachaPullResult[];
   spentQuartz: number;
+  spentTickets: number;
   updatedMaster: MasterProfile;
   newServantsCount: number;
   totalManaPrismsAwarded: number;
@@ -30,15 +32,28 @@ export interface ServantGachaPullResponse {
  */
 export function executeServantGachaRoll({
   count,
-  master
+  master,
+  useTickets = false
 }: {
   count: 1 | 10;
   master: MasterProfile;
+  useTickets?: boolean;
 }): ServantGachaPullResponse {
-  const cost = count === 10 ? 30 : 3;
+  let spentQuartz = 0;
+  let spentTickets = 0;
 
-  if ((master.saintQuartz || 0) < cost) {
-    throw new Error(`Insufficient Saint Quartz! You need ${cost} SQ 💎, but only have ${master.saintQuartz || 0} SQ.`);
+  if (useTickets) {
+    const ticketCost = count;
+    if ((master.summonTickets || 0) < ticketCost) {
+      throw new Error(`Insufficient Summon Tickets! You need ${ticketCost} Ticket(s) 🎫, but only have ${master.summonTickets || 0} Tickets.`);
+    }
+    spentTickets = ticketCost;
+  } else {
+    const cost = count === 10 ? 30 : 3;
+    if ((master.saintQuartz || 0) < cost) {
+      throw new Error(`Insufficient Saint Quartz! You need ${cost} SQ 💎, but only have ${master.saintQuartz || 0} SQ.`);
+    }
+    spentQuartz = cost;
   }
 
   const allServants = getAllThroneServants();
@@ -80,7 +95,8 @@ export function executeServantGachaRoll({
 
   const updatedMaster: MasterProfile = {
     ...master,
-    saintQuartz: Math.max(0, (master.saintQuartz || 0) - cost),
+    saintQuartz: Math.max(0, (master.saintQuartz || 0) - spentQuartz),
+    summonTickets: Math.max(0, (master.summonTickets || 0) - spentTickets),
     manaPrisms: (master.manaPrisms || 0) + totalManaPrismsAwarded,
     servants: newServantsList,
     activeServantId: master.activeServantId || (newServantsList[0] ? newServantsList[0].id : undefined)
@@ -88,7 +104,8 @@ export function executeServantGachaRoll({
 
   return {
     results,
-    spentQuartz: cost,
+    spentQuartz,
+    spentTickets,
     updatedMaster,
     newServantsCount,
     totalManaPrismsAwarded
@@ -98,6 +115,7 @@ export function executeServantGachaRoll({
 export interface CeGachaPullResponse {
   results: GachaResultItem[];
   spentQuartz: number;
+  spentTickets: number;
   updatedMaster: MasterProfile;
   ssrsPulled: number;
   srsPulled: number;
@@ -105,17 +123,29 @@ export interface CeGachaPullResponse {
 }
 
 /**
- * Executes a Craft Essence Gacha roll using Saint Quartz.
+ * Executes a Craft Essence Gacha roll using Saint Quartz or Summon Tickets.
  */
 export function executeCraftEssenceGachaRoll({
   count,
-  master
+  master,
+  useTickets = false
 }: RollCeGachaOptions): CeGachaPullResponse {
   const banner = getActiveGachaBanner();
-  const cost = count === 10 ? banner.costTenPull : banner.costPerPull;
+  let spentQuartz = 0;
+  let spentTickets = 0;
 
-  if ((master.saintQuartz || 0) < cost) {
-    throw new Error(`Insufficient Saint Quartz! You need ${cost} SQ 💎, but only have ${master.saintQuartz || 0} SQ.`);
+  if (useTickets) {
+    const ticketCost = count;
+    if ((master.summonTickets || 0) < ticketCost) {
+      throw new Error(`Insufficient Summon Tickets! You need ${ticketCost} Ticket(s) 🎫, but only have ${master.summonTickets || 0} Tickets.`);
+    }
+    spentTickets = ticketCost;
+  } else {
+    const cost = count === 10 ? banner.costTenPull : banner.costPerPull;
+    if ((master.saintQuartz || 0) < cost) {
+      throw new Error(`Insufficient Saint Quartz! You need ${cost} SQ 💎, but only have ${master.saintQuartz || 0} SQ.`);
+    }
+    spentQuartz = cost;
   }
 
   const results: GachaResultItem[] = [];
@@ -199,13 +229,15 @@ export function executeCraftEssenceGachaRoll({
 
   const updatedMaster: MasterProfile = {
     ...master,
-    saintQuartz: Math.max(0, (master.saintQuartz || 0) - cost),
+    saintQuartz: Math.max(0, (master.saintQuartz || 0) - spentQuartz),
+    summonTickets: Math.max(0, (master.summonTickets || 0) - spentTickets),
     craftEssences: newMasterCraftEssences
   };
 
   return {
     results,
-    spentQuartz: cost,
+    spentQuartz,
+    spentTickets,
     updatedMaster,
     ssrsPulled,
     srsPulled,

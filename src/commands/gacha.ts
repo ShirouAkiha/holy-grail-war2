@@ -16,7 +16,8 @@ import {
   getAllCraftEssences, 
   getAllThroneServants,
   claimDailySaintQuartz,
-  addSaintQuartzToUser
+  addSaintQuartzToUser,
+  buySummonTicketsWithPrisms
 } from '../database/service';
 import { executeCraftEssenceGachaRoll, executeServantGachaRoll } from '../engine/ceGacha';
 import { renderGachaSummonBanner } from '../canvas/renderer';
@@ -32,6 +33,11 @@ export const data = new SlashCommandBuilder()
     sub
       .setName('menu')
       .setDescription('Open the interactive Gacha Invocation Sanctum Hub')
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('shop')
+      .setDescription('🛍️ Da Vinci Workshop — Exchange duplicate Mana Prisms for Summon Tickets')
   )
   .addSubcommand(sub =>
     sub
@@ -78,10 +84,12 @@ export const SERVANT_SUMMONING_BANNER = 'https://ella.janitorai.com/media-approv
 
 export function buildGachaHub(
   master: any,
-  category: 'servants' | 'ces' | 'daily' | 'rates' = 'servants',
+  category: 'servants' | 'ces' | 'shop' | 'daily' | 'rates' = 'servants',
   selectedBanner: string = 'throne_servants'
 ) {
   const sq = master.saintQuartz || 0;
+  const tickets = master.summonTickets || 0;
+  const prisms = master.manaPrisms || 0;
   const ownedServantCount = master.servants?.length || 0;
   let title = '👑 THRONE OF HEROES — HEROIC SPIRIT INVOCATION';
   let description = '';
@@ -107,17 +115,17 @@ export function buildGachaHub(
     description =
       `*“– I shall declare here. Your body shall serve under me. My fate shall be with your sword. Submit to the beckoning of the Holy Grail!”*\n\n` +
       `🔮 **Master Mana Reserves & Telemetry:**\n` +
-      `💎 **Saint Quartz:** \`${sq} SQ\`  •  🔵 **Mana Prisms:** \`${master.manaPrisms || 0} Prisms\`\n` +
+      `💎 **Saint Quartz:** \`${sq} SQ\`  •  🎫 **Summon Tickets:** \`${tickets} Tickets\`  •  🔵 **Mana Prisms:** \`${prisms} Prisms\`\n` +
       `👥 **Contracted Roster:** \`${ownedServantCount} Servants\`  •  🔴 **Command Seals:** \`${master.commandSeals ?? 3}/3 Active\`\n\n` +
       `${companionBlock}\n\n` +
       `═══════════════════════════════════════════════\n` +
       `⚔️ **Active Gate:** **Throne of Heroes Summoning Array**\n` +
       `🌟 **Manifesting Classes:** Saber, Archer, Lancer, Rider, Caster, Assassin, Berserker, Extra\n\n` +
       `✨ **Summoning Protocols & Rates:**\n` +
-      `• **1x Single Summon:** \`3 Saint Quartz\` ➔ Manifests 1 Heroic Spirit into your roster\n` +
+      `• **1x Single Summon:** \`3 Saint Quartz\` or \`1 Summon Ticket 🎫\` ➔ Manifests 1 Heroic Spirit\n` +
       `• **10x Multi-Summon:** \`30 Saint Quartz\` ➔ High-speed invocation of 10 Heroic Spirits\n` +
       `• **Duplicate Covenant:** Pulling an owned Servant automatically yields **+50 Mana Prisms 🔵**\n` +
-      `• **Equalized Multiplayer Balance:** Strategic victory relies on class advantage, tactical skill timing, and Command Seal mastercraft!\n\n` +
+      `• **Prism Exchange:** Spend Mana Prisms in the **🛍️ Da Vinci Workshop** to buy more Summon Tickets!\n\n` +
       `⚡ *Channel your magical energy into the summoning array using the action buttons below!*`;
   } else if (category === 'ces') {
     title = '🛡️ INVOCATION SANCTUM — CRAFT ESSENCE FORGE';
@@ -125,19 +133,34 @@ export function buildGachaHub(
     bannerImage = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80';
     description =
       `*“Let silver and steel be the essence. Forge the armaments of antiquity!”*\n\n` +
-      `💎 **Master Balance:** \`${sq} Saint Quartz\`  •  🔵 **Prisms:** \`${master.manaPrisms || 0}\`\n\n` +
+      `💎 **Master Balance:** \`${sq} Saint Quartz\`  •  🎫 **Tickets:** \`${tickets}\`  •  🔵 **Prisms:** \`${prisms}\`\n\n` +
       `🛡️ **Featured Essence Banner:** **Mystic Code Armory**\n` +
       `🌟 **Featured Relics:** The Black Grail, Kaleidoscope, Formal Craft, Limited/Zero Over\n` +
       `🎁 **Multi-Summon Guarantee:** Every 10x roll guarantees at least one **★4 SR or higher** Craft Essence!\n\n` +
       `Forge and equip powerful Mystic Codes to bestow massive ATK, HP, and passive combat passives onto your Servants!`;
+  } else if (category === 'shop') {
+    title = '🛍️ DA VINCI WORKSHOP — MANA PRISM EXCHANGE';
+    color = 0x06b6d4;
+    bannerImage = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=80';
+    description =
+      `*“Welcome to the Da Vinci Workshop! Bring me Mana Prisms harvested from duplicate Heroic Spirit summonings, and I’ll trade them for Summon Tickets!”*\n\n` +
+      `🔵 **Mana Prisms:** \`${prisms} Prisms\`  •  🎫 **Summon Tickets:** \`${tickets} Tickets\`  •  💎 **Saint Quartz:** \`${sq} SQ\`\n\n` +
+      `═══════════════════════════════════════════════\n` +
+      `🛍️ **Available Exchange Catalog:**\n` +
+      `• 🎫 **1x Summon Ticket** ➔ **20 Mana Prisms 🔵** *(Grants 1 Single Summon on any banner)*\n` +
+      `• 🎟️ **5x Summon Tickets** ➔ **100 Mana Prisms 🔵** *(Grants 5 Summons)*\n` +
+      `• 🎟️ **10x Summon Tickets** ➔ **200 Mana Prisms 🔵** *(Grants 10 Multi-Summon)*\n\n` +
+      `💡 **How to Acquire Mana Prisms:**\n` +
+      `• Every duplicate Heroic Spirit summoned from the Throne of Heroes yields **+50 Mana Prisms 🔵** automatically!\n` +
+      `• Exchange your prisms for tickets below to keep summoning indefinitely!`;
   } else if (category === 'daily') {
     title = '💎 SAINT QUARTZ TREASURY & DAILY VAULT';
     color = 0x10b981;
     bannerImage = 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80';
     description =
       `*“Mana accumulates within the Greater Grail over time. Claim your allotment!”*\n\n` +
-      `💎 **Current Vault Balance:** \`${sq} Saint Quartz\`\n` +
-      `🏆 **Grail Shards:** \`${master.grailShards || 1} Shards\`  •  🔵 **Mana Prisms:** \`${master.manaPrisms || 50} Prisms\`\n\n` +
+      `💎 **Current Vault Balance:** \`${sq} Saint Quartz\`  •  🎫 **Summon Tickets:** \`${tickets} Tickets\`\n` +
+      `🔵 **Mana Prisms:** \`${prisms} Prisms\`\n\n` +
       `🎁 **Daily Login Bonus:** Claim **+30 Saint Quartz (Free 10x Multi-Summon)** every 24 hours!\n` +
       `💰 **Combat Inflow:** Earn additional Quartz by participating in Fuyuki Patrols, Boss Raids, and Arena Duels.\n\n` +
       `*Click the **Claim Daily Quartz (+30)** button below to collect today's bounty!*`;
@@ -150,7 +173,7 @@ export function buildGachaHub(
       `• All Servants possess equalized base stat potential for balanced multiplayer combat.\n` +
       `• No star-rarity gaps or predatory stat tiers.\n` +
       `• Tactical victory is determined by **Class Advantage**, **Skill Timing**, **Command Seals**, and **Craft Essence synergies**.\n` +
-      `• Duplicate Heroic Spirits are converted into **+50 Mana Prisms 🔵**.\n\n` +
+      `• Duplicate Heroic Spirits are converted into **+50 Mana Prisms 🔵** (spendable in the Shop for Summon Tickets).\n\n` +
       `🛡️ **Craft Essences (Mystic Codes):**\n` +
       `• ★5 SSR Craft Essence: **4.0%**\n` +
       `• ★4 SR Craft Essence: **12.0%**\n` +
@@ -162,7 +185,7 @@ export function buildGachaHub(
     .setTitle(title)
     .setDescription(description)
     .setColor(color)
-    .setFooter({ text: `Greater Grail Sanctum • Master: ${master.username} • Balance: ${sq} SQ` });
+    .setFooter({ text: `Greater Grail Sanctum • Master: ${master.username} • Balance: ${sq} SQ • ${tickets} Tickets • ${prisms} Prisms` });
   
   if (category !== 'rates') {
     embed.setImage(bannerImage);
@@ -190,6 +213,11 @@ export function buildGachaHub(
       .setEmoji('🛡️')
       .setStyle(category === 'ces' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
+      .setCustomId('gacha_tab_shop')
+      .setLabel('Prism Shop')
+      .setEmoji('🛍️')
+      .setStyle(category === 'shop' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder()
       .setCustomId('gacha_tab_daily')
       .setLabel('Daily & Vault')
       .setEmoji('💎')
@@ -212,45 +240,105 @@ export function buildGachaHub(
           value: 'throne_servants',
           description: 'Summon Sabers, Archers, Lancers, Riders, Casters, Assassins, Berserkers',
           emoji: '👑',
-          default: selectedBanner === 'throne_servants'
+          default: category === 'servants' && selectedBanner === 'throne_servants'
         },
         {
           label: '★5 Mystic Code Armory (Craft Essences)',
           value: 'standard_ce',
           description: 'Summon Kaleidoscope, Black Grail, Limited/Zero Over',
           emoji: '🛡️',
-          default: selectedBanner === 'standard_ce'
+          default: category === 'ces' && selectedBanner === 'standard_ce'
+        },
+        {
+          label: '🛍️ Da Vinci Workshop (Mana Prism Shop)',
+          value: 'prism_shop',
+          description: 'Exchange duplicate Mana Prisms for Summon Tickets',
+          emoji: '🛍️',
+          default: category === 'shop'
         },
         {
           label: '💎 Daily Quartz Treasury & Rewards',
           value: 'daily_vault',
           description: 'Claim daily Saint Quartz and inspect currency',
           emoji: '💎',
-          default: selectedBanner === 'daily_vault'
+          default: category === 'daily' && selectedBanner === 'daily_vault'
         }
       ])
   );
 
-  // Row 3: Action Summon Buttons
-  const actRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId('gacha_act_single')
-      .setLabel(category === 'servants' ? '1x Summon Servant (3 SQ)' : '1x Single Summon (3 SQ)')
-      .setEmoji('✨')
-      .setStyle(ButtonStyle.Success)
-      .setDisabled(sq < 3),
-    new ButtonBuilder()
-      .setCustomId('gacha_act_multi')
-      .setLabel(category === 'servants' ? '10x Multi-Summon (30 SQ)' : '10x Multi-Summon (30 SQ)')
-      .setEmoji('🌟')
-      .setStyle(ButtonStyle.Primary)
-      .setDisabled(sq < 30),
-    new ButtonBuilder()
-      .setCustomId('gacha_act_claim_daily')
-      .setLabel('Claim Daily SQ (+30)')
-      .setEmoji('💎')
-      .setStyle(ButtonStyle.Success)
-  );
+  // Row 3: Action Summon / Shop Buttons
+  let actRow: ActionRowBuilder<ButtonBuilder>;
+
+  if (category === 'shop') {
+    actRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('gacha_shop_buy_1')
+        .setLabel('Buy 1x Ticket (20 🔵)')
+        .setEmoji('🎫')
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(prisms < 20),
+      new ButtonBuilder()
+        .setCustomId('gacha_shop_buy_5')
+        .setLabel('Buy 5x Tickets (100 🔵)')
+        .setEmoji('🎟️')
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(prisms < 100),
+      new ButtonBuilder()
+        .setCustomId('gacha_shop_buy_10')
+        .setLabel('Buy 10x Tickets (200 🔵)')
+        .setEmoji('🎟️')
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(prisms < 200),
+      new ButtonBuilder()
+        .setCustomId('gacha_tab_servants')
+        .setLabel('Back to Gacha 👑')
+        .setStyle(ButtonStyle.Secondary)
+    );
+  } else if (category === 'daily') {
+    actRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('gacha_act_claim_daily')
+        .setLabel('Claim Daily SQ (+30)')
+        .setEmoji('💎')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId('gacha_tab_shop')
+        .setLabel(`Open Shop (${prisms} 🔵)`)
+        .setEmoji('🛍️')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('gacha_tab_servants')
+        .setLabel('Summon Servants 👑')
+        .setStyle(ButtonStyle.Secondary)
+    );
+  } else {
+    // Servants / CEs
+    actRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('gacha_act_single')
+        .setLabel('1x Summon (3 SQ)')
+        .setEmoji('✨')
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(sq < 3),
+      new ButtonBuilder()
+        .setCustomId('gacha_act_multi')
+        .setLabel('10x Multi (30 SQ)')
+        .setEmoji('🌟')
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(sq < 30),
+      new ButtonBuilder()
+        .setCustomId('gacha_act_ticket')
+        .setLabel(`Use Ticket (${tickets} 🎫)`)
+        .setEmoji('🎫')
+        .setStyle(ButtonStyle.Success)
+        .setDisabled(tickets < 1),
+      new ButtonBuilder()
+        .setCustomId('gacha_tab_shop')
+        .setLabel(`Shop (${prisms} 🔵)`)
+        .setEmoji('🛍️')
+        .setStyle(ButtonStyle.Secondary)
+    );
+  }
 
   // Row 4: Cross-Hub Jump Shortcuts
   const linkRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -279,7 +367,7 @@ export function buildGachaHub(
 
 export function attachGachaCollector(interaction: any, initialMaster: any, replyMessage: any) {
   let master = initialMaster;
-  let currentCategory: 'servants' | 'ces' | 'daily' | 'rates' = 'servants';
+  let currentCategory: 'servants' | 'ces' | 'shop' | 'daily' | 'rates' = 'servants';
   let currentBanner = 'throne_servants';
 
   const collector = replyMessage.createMessageComponentCollector({
@@ -304,6 +392,9 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
       } else if (customId === 'gacha_tab_ces') {
         currentCategory = 'ces';
         currentBanner = 'standard_ce';
+      } else if (customId === 'gacha_tab_shop') {
+        currentCategory = 'shop';
+        currentBanner = 'prism_shop';
       } else if (customId === 'gacha_tab_daily') {
         currentCategory = 'daily';
         currentBanner = 'daily_vault';
@@ -316,7 +407,25 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
         currentBanner = i.values[0];
         if (currentBanner === 'throne_servants') currentCategory = 'servants';
         else if (currentBanner === 'standard_ce') currentCategory = 'ces';
+        else if (currentBanner === 'prism_shop') currentCategory = 'shop';
         else if (currentBanner === 'daily_vault') currentCategory = 'daily';
+      }
+
+      // Shop Purchase Actions
+      else if (customId === 'gacha_shop_buy_1' || customId === 'gacha_shop_buy_5' || customId === 'gacha_shop_buy_10') {
+        const count = customId === 'gacha_shop_buy_10' ? 10 : customId === 'gacha_shop_buy_5' ? 5 : 1;
+        const result = await buySummonTicketsWithPrisms(master.discordId || master.id, count, master.username);
+        master = result.master;
+
+        const shopEmbed = new EmbedBuilder()
+          .setTitle(result.success ? '🛍️ Da Vinci Workshop — Exchange Success!' : '❌ Da Vinci Workshop — Insufficient Prisms')
+          .setDescription(result.message)
+          .setColor(result.success ? 0x10b981 : 0xef4444);
+
+        await i.reply({
+          flags: MessageFlags.Ephemeral,
+          embeds: [shopEmbed]
+        });
       }
 
       // Daily Claim Action
@@ -337,7 +446,91 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
         }
       }
 
-      // 1x Single Summon Action
+      // 1x Ticket Summon Action
+      else if (customId === 'gacha_act_ticket') {
+        if ((master.summonTickets || 0) < 1) {
+          await i.reply({
+            flags: MessageFlags.Ephemeral,
+            content: '❌ You have no Summon Tickets 🎫! Exchange Mana Prisms from duplicate Servants in the **🛍️ Prism Shop** to obtain tickets.'
+          });
+          return;
+        }
+
+        if (currentCategory === 'ces' || currentBanner === 'standard_ce') {
+          // CRAFT ESSENCE TICKET SUMMON
+          const rollResult = executeCraftEssenceGachaRoll({ count: 1, master, useTickets: true });
+          master = rollResult.updatedMaster;
+          await saveMaster(master);
+
+          const pulled = rollResult.results[0].item as any;
+          const rarityStars = '★'.repeat(pulled.rarity);
+
+          let files: AttachmentBuilder[] = [];
+          let imageAttachmentName: string | undefined = undefined;
+
+          try {
+            const canvasBuffer = await renderGachaSummonBanner(rollResult.results, '1x Ticket Craft Essence Summon');
+            const attachment = new AttachmentBuilder(canvasBuffer, { name: 'ce_summon.png' });
+            files = [attachment];
+            imageAttachmentName = 'attachment://ce_summon.png';
+          } catch (canvasErr) {
+            console.error('Failed to render gacha canvas banner:', canvasErr);
+          }
+
+          const embed = new EmbedBuilder()
+            .setTitle(`🎫 1x Ticket Craft Essence Summon: ${pulled.name}!`)
+            .setDescription(
+              `Summoned **[${rarityStars}] ${pulled.name}** using **1 Summon Ticket 🎫**!\n\n` +
+              `🔮 **Effect:** *${pulled.effectText || pulled.description}*\n` +
+              `⚔️ **Stats:** +${pulled.bonusAtk || pulled.atkBonus || 0} ATK / +${pulled.bonusHp || pulled.hpBonus || 0} HP\n` +
+              `🎫 **Remaining Tickets:** \`${master.summonTickets || 0} Tickets\`  •  💎 **SQ:** \`${master.saintQuartz || 0} SQ\`\n\n` +
+              `Use \`/inventory\` to equip it to your Servant!`
+            )
+            .setColor(pulled.rarity >= 5 ? 0xf59e0b : pulled.rarity >= 4 ? 0xa855f7 : 0x38bdf8);
+
+          if (imageAttachmentName) {
+            embed.setImage(imageAttachmentName);
+          }
+
+          await i.reply({
+            flags: MessageFlags.Ephemeral,
+            embeds: [embed],
+            files
+          });
+        } else {
+          // HEROIC SPIRIT TICKET SUMMON
+          const rollResult = executeServantGachaRoll({ count: 1, master, useTickets: true });
+          master = rollResult.updatedMaster;
+          await saveMaster(master);
+
+          const pulled = rollResult.results[0];
+          const s = pulled.servant;
+
+          const embed = new EmbedBuilder()
+            .setTitle(`👑 1x Ticket Heroic Spirit Summon: ${s.name} (${s.servantClass})!`)
+            .setDescription(
+              `🗣️ *" ${s.summonQuote || 'I ask of you, are you my Master?'} "*\n\n` +
+              `🗡️ **Class:** \`${s.servantClass}\`\n` +
+              `📜 **Noble Phantasm:** **${s.noblePhantasm?.name || 'Secret Phantasm'}**\n` +
+              `💥 **NP Affinity:** *${s.noblePhantasm?.cardType || 'Buster'}* (${s.noblePhantasm?.target || 'single'}-target) — ${s.noblePhantasm?.description || ''}\n\n` +
+              (pulled.isNew 
+                ? `🌟 **[NEW CONTRACT ESTABLISHED!]** Formed a sacred covenant with this Heroic Spirit!` 
+                : `🔄 **[DUPLICATE SPIRIT ORIGIN]** You already hold a contract with this Servant. Awarded **+${pulled.manaPrismsAwarded} Mana Prisms 🔵**!`) +
+              `\n\n🎫 **Remaining Tickets:** \`${master.summonTickets || 0} Tickets\`  •  🔵 **Prisms:** \`${master.manaPrisms || 0}\``
+            )
+            .setColor(pulled.isNew ? 0xeab308 : 0x38bdf8);
+
+          safeSetEmbedImage(embed, s.cardArtUrl || s.avatarUrl);
+          safeSetEmbedThumbnail(embed, s.avatarUrl);
+
+          await i.reply({
+            flags: MessageFlags.Ephemeral,
+            embeds: [embed]
+          });
+        }
+      }
+
+      // 1x Single SQ Summon Action
       else if (customId === 'gacha_act_single') {
         if ((master.saintQuartz || 0) < 3) {
           await i.reply({ flags: MessageFlags.Ephemeral, content: '❌ You need at least 3 Saint Quartz to perform a summon! Claim daily SQ or earn quartz from battles.' });
@@ -593,18 +786,31 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
+    if (sub === 'shop') {
+      const { embed, components } = buildGachaHub(master, 'shop');
+      await interaction.reply({
+        embeds: [embed],
+        components,
+        flags: MessageFlags.Ephemeral
+      });
+      const reply = await interaction.fetchReply();
+      attachGachaCollector(interaction, master, reply);
+      return;
+    }
+
     if (sub === 'servant') {
       const rolls = (interaction.options.getInteger('rolls') as 1 | 10) || 1;
       const cost = rolls === 10 ? 30 : 3;
-      if ((master.saintQuartz || 0) < cost) {
+      if ((master.saintQuartz || 0) < cost && (master.summonTickets || 0) < rolls) {
         await interaction.reply({
           flags: MessageFlags.Ephemeral,
-          content: `❌ Insufficient Saint Quartz! You need **${cost} SQ**, but only have **${master.saintQuartz || 0} SQ**.`
+          content: `❌ Insufficient Saint Quartz! You need **${cost} SQ** (or **${rolls} Ticket(s)**), but only have **${master.saintQuartz || 0} SQ** and **${master.summonTickets || 0} Tickets**.`
         });
         return;
       }
 
-      const rollResult = executeServantGachaRoll({ count: rolls, master });
+      const useTickets = (master.saintQuartz || 0) < cost;
+      const rollResult = executeServantGachaRoll({ count: rolls, master, useTickets });
       await saveMaster(rollResult.updatedMaster);
 
       if (rolls === 1) {
@@ -619,7 +825,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             (isNew 
               ? `🌟 **[NEW CONTRACT ESTABLISHED!]** Formed a sacred covenant with this Heroic Spirit!` 
               : `🔄 **[DUPLICATE SPIRIT ORIGIN]** You already hold a contract with this Servant. Awarded **+50 Mana Prisms 🔵**!`) +
-            `\n\n💎 **Remaining Saint Quartz:** \`${rollResult.updatedMaster.saintQuartz} SQ\``
+            `\n\n💎 **Remaining Saint Quartz:** \`${rollResult.updatedMaster.saintQuartz} SQ\`  •  🔵 **Prisms:** \`${rollResult.updatedMaster.manaPrisms || 0}\``
           )
           .setColor(isNew ? 0xeab308 : 0x38bdf8);
 
@@ -637,7 +843,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             listSummary +
             `\n\n🌟 **New Servants Contracted:** **+${rollResult.newServantsCount}**\n` +
             `🔵 **Mana Prisms Earned:** **+${rollResult.totalManaPrismsAwarded}**\n` +
-            `💎 **Remaining Saint Quartz:** \`${rollResult.updatedMaster.saintQuartz} SQ\``
+            `💎 **Remaining Saint Quartz:** \`${rollResult.updatedMaster.saintQuartz} SQ\`  •  🔵 **Total Prisms:** \`${rollResult.updatedMaster.manaPrisms || 0}\``
           )
           .setColor(0xeab308);
 
@@ -663,9 +869,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    let initialCategory: 'servants' | 'ces' | 'daily' | 'rates' = 'servants';
+    let initialCategory: 'servants' | 'ces' | 'shop' | 'daily' | 'rates' = 'servants';
     if (sub === 'rates') initialCategory = 'rates';
     else if (sub === 'daily') initialCategory = 'daily';
+    else if (sub === 'shop') initialCategory = 'shop';
     else if (sub === 'ce') initialCategory = 'ces';
     else initialCategory = 'servants';
 

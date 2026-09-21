@@ -174,11 +174,8 @@ export const data = new SlashCommandBuilder()
           .setRequired(true)
           .addChoices(
             { name: '💎 Saint Quartz (SQ)', value: 'sq' },
-            { name: '🪙 QP (Quantum Pieces)', value: 'qp' },
             { name: '🎫 Summon Tickets', value: 'tickets' },
             { name: '🔱 Command Seals', value: 'seals' },
-            { name: '🧪 Mana Prisms', value: 'mana_prisms' },
-            { name: '🔮 Holy Grail Shards', value: 'grail_shards' },
             { name: '⚡ Stat Points (for active Servant)', value: 'stat_points' },
             { name: '🧬 Homunculus Helpers', value: 'homunculi' },
             { name: '⚡ Action Points (AP)', value: 'ap' },
@@ -189,7 +186,7 @@ export const data = new SlashCommandBuilder()
       .addIntegerOption(opt =>
         opt
           .setName('amount')
-          .setDescription('Quantity to give (default: 1; for SQ default: 30, QP: 1,000,000)')
+          .setDescription('Quantity to give (default: 1; for SQ default: 30)')
           .setMinValue(1)
           .setRequired(false)
       )
@@ -218,11 +215,8 @@ export const data = new SlashCommandBuilder()
           .setRequired(true)
           .addChoices(
             { name: '💎 Saint Quartz (SQ)', value: 'sq' },
-            { name: '🪙 QP (Quantum Pieces)', value: 'qp' },
             { name: '🎫 Summon Tickets', value: 'tickets' },
             { name: '🔱 Command Seals', value: 'seals' },
-            { name: '🧪 Mana Prisms', value: 'mana_prisms' },
-            { name: '🔮 Holy Grail Shards', value: 'grail_shards' },
             { name: '⚡ Stat Points', value: 'stat_points' },
             { name: '🧬 Homunculus Helpers', value: 'homunculi' },
             { name: '⚡ Action Points (AP)', value: 'ap' },
@@ -263,11 +257,8 @@ export const data = new SlashCommandBuilder()
           .setRequired(true)
           .addChoices(
             { name: '💎 Saint Quartz', value: 'sq' },
-            { name: '🪙 QP', value: 'qp' },
             { name: '🎫 Summon Tickets', value: 'tickets' },
             { name: '🔱 Command Seals (0-3)', value: 'seals' },
-            { name: '🧪 Mana Prisms', value: 'mana_prisms' },
-            { name: '🔮 Grail Shards', value: 'grail_shards' },
             { name: '🧬 Homunculi', value: 'homunculi' },
             { name: '⚡ Action Points', value: 'ap' },
             { name: '⚔️ Servant Level (1-100)', value: 'servant_level' },
@@ -627,7 +618,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     // Currencies and consumables
-    const defaultAmount = itemType === 'sq' ? 30 : itemType === 'qp' ? 1000000 : 1;
+    const defaultAmount = itemType === 'sq' ? 30 : 1;
     const amount = rawAmount !== null ? rawAmount : defaultAmount;
     const res = await giveCurrencyToMaster(targetUser.id, itemType, amount);
 
@@ -756,10 +747,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       master.saintQuartz = (master.saintQuartz || 0) + 100;
       await saveMaster(master);
       outcome = `✨ Minted **+100 Saint Quartz** for **${master.username}**! Total SQ: **${master.saintQuartz}**`;
-    } else if (action === 'give_1mqp') {
-      master.qp = (master.qp || 0) + 1000000;
-      await saveMaster(master);
-      outcome = `🪙 Minted **+1,000,000 QP** for **${master.username}**! Total QP: **${master.qp.toLocaleString()}**`;
     } else if (action === 'refill_seals') {
       master.commandSeals = 3;
       await saveMaster(master);
@@ -789,10 +776,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       outcome = `🎒 **Inventory Wiped for ${master.username}!** All Craft Essences dissolved & unequipped.`;
     } else if (action === 'reset_currency') {
       const res = await resetSingleMasterCurrency(targetUser.id, { startingSq: 30, startingQp: 0, startingTickets: 0 });
-      outcome = `🧹 **Currency Balances Reset for ${master.username}!** Saint Quartz: **${res?.saintQuartz || 30} SQ**, QP: **0**, Tickets: **0**.`;
+      outcome = `🧹 **Currency Balances Reset for ${master.username}!** Saint Quartz: **${res?.saintQuartz || 30} SQ**, Tickets: **0**.`;
     } else if (action === 'reset_vault') {
       await resetSingleMasterVault(targetUser.id, { startingSq: 30, startingQp: 0, startingTickets: 0 });
-      outcome = `🔄 **Full Vault Reset for ${master.username}!** Items cleared, SQ: **30**, QP/Tickets/Shards: **0**.`;
+      outcome = `🔄 **Full Vault Reset for ${master.username}!** Items cleared, SQ: **30**, Tickets: **0**.`;
     } else if (action === 'reset_servant_stats') {
       await resetSingleMasterServant(targetUser.id, { resetStatsOnly: true });
       outcome = `🌱 **Servant Level Reset for ${master.username}!** Active Servant reverted to Level 1 with 0 bonus stat points.`;
@@ -1254,7 +1241,6 @@ export function buildMasterDossier(
       `Detailed parameters, assets, and active contract registry for Master **${master.username}** (\`${master.id}\`).\n\n` +
       `💎 **Treasury & Currencies:**\n` +
       `• 💎 **Saint Quartz:** \`${master.saintQuartz || 0} SQ\` | 🎫 **Tickets:** \`${master.summonTickets || 0}\`\n` +
-      `• 🪙 **QP:** \`${(master.qp || 0).toLocaleString()} QP\` | ⚱️ **Grail Shards:** \`${master.grailShards || 0}\` | 🟢 **Mana Prisms:** \`${master.manaPrisms || 0}\`\n` +
       `• 🔱 **Command Seals:** \`${master.commandSeals ?? 3}/3\` | ⚡ **Action Points:** \`${master.actionPoints || 100}/${master.maxActionPoints || 100}\`\n\n` +
       `⚔️ **Heroic Spirit Covenant:**\n${servantSummary}\n\n` +
       `🎒 **Relic Inventory:** \`${ceCount} Craft Essence(s)\` | 🧬 **Homunculi:** \`${master.homunculusCount || 0}\`\n` +
@@ -1266,7 +1252,7 @@ export function buildMasterDossier(
   const grantRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId(`admin_m_give_30sq_${targetId}`).setLabel('+30 SQ').setEmoji('💎').setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(`admin_m_give_100sq_${targetId}`).setLabel('+100 SQ').setEmoji('💎').setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId(`admin_m_give_qp_${targetId}`).setLabel('+1M QP').setEmoji('🪙').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`admin_m_give_tickets_${targetId}`).setLabel('+5 Tickets').setEmoji('🎫').setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId(`admin_m_refill_seals_${targetId}`).setLabel('Refill 3 Seals').setEmoji('🔱').setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId(`admin_m_give_stats_${targetId}`).setLabel('+50 Stat Pts').setEmoji('🌟').setStyle(ButtonStyle.Secondary)
   );
@@ -1379,7 +1365,7 @@ export function buildAdminHub(
         const active = m.servants?.find(s => s.id === m.activeServantId) || m.servants?.[0];
         const sName = active ? `${active.template?.rarity}★ ${active.template?.name} (Lv.${active.level || 1})` : 'No Servant';
         const inWar = participants[m.id] || participants[m.id.replace('master_', '')] ? '⚔️ In War' : '🌱 Free';
-        return `**${idx + 1}. ${m.username}** (\`${m.id}\`)\n• 💎 **SQ:** \`${m.saintQuartz || 0}\` | 🪙 **QP:** \`${(m.qp || 0).toLocaleString()}\` | 🔱 **Seals:** \`${m.commandSeals ?? 3}/3\`\n• ⚔️ **Servant:** ${sName} | 🎴 **CEs:** \`${m.craftEssences?.length || 0}\` | [${inWar}]`;
+        return `**${idx + 1}. ${m.username}** (\`${m.id}\`)\n• 💎 **SQ:** \`${m.saintQuartz || 0}\` | 🎫 **Tickets:** \`${m.summonTickets || 0}\` | 🔱 **Seals:** \`${m.commandSeals ?? 3}/3\`\n• ⚔️ **Servant:** ${sName} | 🎴 **CEs:** \`${m.craftEssences?.length || 0}\` | [${inWar}]`;
       }).join('\n\n');
     }
 
@@ -1518,8 +1504,8 @@ export function buildAdminHub(
       .setDescription(
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `Administrative tools for currency minting, Craft Essence inventory resets, and complete vault wipes.\n\n` +
-        `• **Mint Resources:** Add Saint Quartz (SQ), QP, or refill Command Seals\n` +
-        `• **Reset Currency:** Zero out QP, Mana Prisms, Grail Shards & set SQ to starting 30\n` +
+        `• **Mint Resources:** Add Saint Quartz (SQ), Summon Tickets, or refill Command Seals\n` +
+        `• **Reset Currency:** Reset Summon Tickets & set SQ to starting 30\n` +
         `• **Reset Inventory:** Wipe all Craft Essences, un-equip active CEs, and reset Homunculi\n` +
         `• **Reset All Vault:** Full reset of inventory items and currencies to fresh defaults\n` +
         `• **Server Economy Wipe:** Complete vault & currency reset for all registered Masters\n\n` +
@@ -1615,7 +1601,7 @@ export function buildAdminHub(
         return new StringSelectMenuOptionBuilder()
           .setLabel(m.username.slice(0, 25))
           .setValue(`master_dossier_${m.discordId || m.id.replace('master_', '')}`)
-          .setDescription(`SQ: ${m.saintQuartz || 0} | QP: ${(m.qp || 0).toLocaleString()} | ${sInfo}`.slice(0, 50))
+          .setDescription(`SQ: ${m.saintQuartz || 0} | Tickets: ${m.summonTickets || 0} | ${sInfo}`.slice(0, 50))
           .setEmoji('👤');
       });
 
@@ -1749,7 +1735,7 @@ export function buildAdminHub(
     const mintRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('admin_mint_30sq').setLabel('+30 SQ (1 Multi)').setEmoji('💎').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('admin_mint_100sq').setLabel('+100 SQ').setEmoji('💎').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId('admin_mint_qp').setLabel('+1,000,000 QP').setEmoji('🪙').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_mint_5tickets').setLabel('+5 Tickets').setEmoji('🎫').setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('admin_refill_seals').setLabel('Refill 3 Seals').setEmoji('🔱').setStyle(ButtonStyle.Primary)
     );
 
@@ -1872,10 +1858,10 @@ export async function handleAdminGlobalInteraction(interaction: any) {
         master.saintQuartz = (master.saintQuartz || 0) + 100;
         await saveMaster(master);
         outcomeMsg = `✨ Bestowed **+100 Saint Quartz** upon **${master.username}**! (Total: **${master.saintQuartz} SQ**)`;
-      } else if (subAction === 'give_qp') {
-        master.qp = (master.qp || 0) + 1000000;
+      } else if (subAction === 'give_tickets') {
+        master.summonTickets = (master.summonTickets || 0) + 5;
         await saveMaster(master);
-        outcomeMsg = `🪙 Bestowed **+1,000,000 QP** upon **${master.username}**! (Total: **${master.qp.toLocaleString()} QP**)`;
+        outcomeMsg = `🎫 Bestowed **+5 Summon Tickets** upon **${master.username}**! (Total: **${master.summonTickets} Tickets**)`;
       } else if (subAction === 'refill_seals') {
         master.commandSeals = 3;
         await saveMaster(master);
@@ -1891,7 +1877,7 @@ export async function handleAdminGlobalInteraction(interaction: any) {
         outcomeMsg = res.message;
       } else if (subAction === 'reset_vault') {
         await resetSingleMasterVault(targetId, { startingSq: 30, startingQp: 0, startingTickets: 0 });
-        outcomeMsg = `🔄 **Full Vault Reset Executed!** All items cleared, SQ set to 30, QP/Tickets to 0.`;
+        outcomeMsg = `🔄 **Full Vault Reset Executed!** All items cleared, SQ set to 30, Tickets to 0.`;
       } else if (subAction === 'refresh') {
         outcomeMsg = `🔄 Dossier refreshed from persistent database.`;
       }
@@ -2280,11 +2266,11 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       await saveMaster(master);
       actionOutcome = `✨ Minted **+100 Saint Quartz**! Total SQ: **${master.saintQuartz}**`;
       currentCategory = 'economy';
-    } else if (customId === 'admin_mint_qp') {
+    } else if (customId === 'admin_mint_5tickets') {
       const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
-      master.qp = (master.qp || 0) + 1000000;
+      master.summonTickets = (master.summonTickets || 0) + 5;
       await saveMaster(master);
-      actionOutcome = `🪙 Minted **+1,000,000 QP**! Total QP: **${master.qp.toLocaleString()}**`;
+      actionOutcome = `🎫 Minted **+5 Summon Tickets**! Total Tickets: **${master.summonTickets}**`;
       currentCategory = 'economy';
     } else if (customId === 'admin_refill_seals') {
       const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
@@ -2297,7 +2283,7 @@ export async function handleAdminGlobalInteraction(interaction: any) {
     // ECONOMY & INVENTORY RESETS
     else if (customId === 'admin_reset_my_currency') {
       const master = await resetSingleMasterCurrency(interaction.user.id, { startingSq: 30, startingQp: 0, startingTickets: 0 });
-      actionOutcome = `🧹 **Currency Balances Reset!**\n• Saint Quartz: **${master?.saintQuartz || 30} SQ**\n• QP: **0**\n• Summon Tickets: **0**\n• Grail Shards & Mana Prisms: **0**`;
+      actionOutcome = `🧹 **Currency Balances Reset!**\n• Saint Quartz: **${master?.saintQuartz || 30} SQ**\n• Summon Tickets: **0**`;
       currentCategory = 'economy';
     } else if (customId === 'admin_reset_my_inventory') {
       const master = await resetSingleMasterInventory(interaction.user.id);
@@ -2305,14 +2291,14 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       currentCategory = 'economy';
     } else if (customId === 'admin_reset_my_all_vault') {
       const master = await resetSingleMasterVault(interaction.user.id, { startingSq: 30, startingQp: 0, startingTickets: 0 });
-      actionOutcome = `🔄 **Full Vault Reset (Items & Currency)!**\n• Craft Essences & Items: **Wiped**\n• Saint Quartz: **30 SQ** (Default)\n• QP, Tickets, Prisms, Shards: **0**`;
+      actionOutcome = `🔄 **Full Vault Reset (Items & Currency)!**\n• Craft Essences & Items: **Wiped**\n• Saint Quartz: **30 SQ** (Default)\n• Summon Tickets: **0**`;
       currentCategory = 'economy';
     } else if (customId === 'admin_reset_server_economy') {
       const res = await resetAllMastersInventoryAndCurrency({ startingSq: 30, startingQp: 0, startingTickets: 0 });
       actionOutcome = `⚠️ **SERVER-WIDE INVENTORY & CURRENCY WIPE!**\n\n` +
         `• **${res.count} Master(s)** updated.\n` +
         `• All Craft Essences dissolved and unequipped across all Masters.\n` +
-        `• All currency balances reset (30 SQ starting pool, 0 QP, 0 Tickets, 0 Shards).`;
+        `• All currency balances reset (30 SQ starting pool, 0 Tickets).`;
       currentCategory = 'economy';
     }
 

@@ -240,6 +240,9 @@ export interface MasterProfile {
   avatarUrl: string;
   saintQuartz: number;
   summonTickets: number;
+  manaPrisms?: number;
+  grailShards?: number;
+  qp?: number;
   commandSeals: number;
   autoConsumeCommandSeal?: boolean;
   boundedField?: 'none' | 'ward' | 'alarm' | 'decoy';
@@ -256,9 +259,6 @@ export interface MasterProfile {
   bountyActive?: boolean;
   bountyRewardSq?: number;
   isRogueHeretic?: boolean;
-  qp?: number;
-  grailShards?: number;
-  manaPrisms?: number;
   homunculusCount?: number;
   lastDailyClaim?: number | string;
   activeServantId?: string;

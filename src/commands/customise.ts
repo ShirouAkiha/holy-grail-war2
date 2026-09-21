@@ -208,19 +208,19 @@ export function buildInventoryHub(
     ];
   } else if (category === 'items') {
     title = `💎 ${master.username}'s Inventory — Vault & Currency`;
-    equippedBanner = `✅ Current Balance: **${master.saintQuartz || 0} Saint Quartz 💎**`;
+    equippedBanner = `✅ Current Balance: **${master.saintQuartz || 0} SQ 💎**  •  **${master.summonTickets || 0} Tickets 🎫**  •  **${master.manaPrisms || 0} Prisms 🔵**`;
 
     itemLines = [
       `• **Mythic** — **Saint Quartz** ×${master.saintQuartz || 0} — EX Rank [GACHA SUMMON CURRENCY]`,
-      `• **Legendary** — **Holy Grail Shards** ×${master.grailShards || 1} — S Rank [ASCENSION CATALYST]`,
-      `• **Rare** — **Mana Prisms** ×${master.manaPrisms || 50} — A Rank [DA VINCI WORKSHOP]`
+      `• **Rare** — **Summon Tickets** ×${master.summonTickets || 0} — S Rank [SINGLE SUMMON TICKET]`,
+      `• **Rare** — **Mana Prisms** ×${master.manaPrisms || 0} — A Rank [DA VINCI SHOP EXCHANGE]`
     ];
     totalItems = 3;
 
     selectOptions = [
       { label: `Saint Quartz (x${master.saintQuartz || 0})`, value: 'item_sq', description: 'Summon Heroic Spirits and Craft Essences', default: selectedItemId === 'item_sq' },
-      { label: `Holy Grail Shard (x${master.grailShards || 1})`, value: 'item_grail', description: 'Break Servant Level Caps beyond 90', default: selectedItemId === 'item_grail' },
-      { label: `Mana Prism (x${master.manaPrisms || 50})`, value: 'item_prism', description: 'Exchange for Fous and Tickets', default: selectedItemId === 'item_prism' }
+      { label: `Summon Ticket (x${master.summonTickets || 0})`, value: 'item_ticket', description: 'Perform single summons on any banner', default: selectedItemId === 'item_ticket' },
+      { label: `Mana Prism (x${master.manaPrisms || 0})`, value: 'item_prism', description: 'Exchange for Summon Tickets in /gacha shop', default: selectedItemId === 'item_prism' }
     ];
   }
 

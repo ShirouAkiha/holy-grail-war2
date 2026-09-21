@@ -1166,6 +1166,7 @@ export async function updateMasterProfile(discordId: string, data: Partial<Maste
   if (data.username !== undefined) master.username = data.username;
   if (data.saintQuartz !== undefined) master.saintQuartz = data.saintQuartz;
   if (data.summonTickets !== undefined) master.summonTickets = data.summonTickets;
+  if (data.manaPrisms !== undefined) master.manaPrisms = data.manaPrisms;
   if (data.actionPoints !== undefined) master.actionPoints = data.actionPoints;
   if (data.commandSeals !== undefined) master.commandSeals = data.commandSeals;
   if (data.grailWarWins !== undefined) master.grailWarWins = data.grailWarWins;
@@ -1180,20 +1181,24 @@ export async function updateMasterProfile(discordId: string, data: Partial<Maste
 }
 
 /**
- * Grants Saint Quartz and/or Summon Tickets to a user by Discord ID.
+ * Grants Saint Quartz, Summon Tickets, and/or Mana Prisms to a user by Discord ID.
  */
 export async function addSaintQuartzToUser(
   discordId: string,
   saintQuartzAmount: number,
   ticketsAmount: number = 0,
-  username?: string
-): Promise<{ master: MasterProfile; previousSq: number; newSq: number; previousTickets: number; newTickets: number }> {
+  username?: string,
+  manaPrismsAmount: number = 0
+): Promise<{ master: MasterProfile; previousSq: number; newSq: number; previousTickets: number; newTickets: number; newPrisms: number }> {
   const master = await getOrCreateMaster(discordId, username);
   const previousSq = master.saintQuartz || 0;
   const previousTickets = master.summonTickets || 0;
 
   master.saintQuartz = Math.max(0, previousSq + saintQuartzAmount);
   master.summonTickets = Math.max(0, previousTickets + ticketsAmount);
+  if (manaPrismsAmount > 0) {
+    master.manaPrisms = Math.max(0, (master.manaPrisms || 0) + manaPrismsAmount);
+  }
 
   saveMastersToDisk();
   return {
@@ -1201,7 +1206,57 @@ export async function addSaintQuartzToUser(
     previousSq,
     newSq: master.saintQuartz,
     previousTickets,
-    newTickets: master.summonTickets
+    newTickets: master.summonTickets,
+    newPrisms: master.manaPrisms || 0
+  };
+}
+
+export const PRISM_TICKET_PRICE = 20; // 20 Mana Prisms per 1 Summon Ticket
+
+/**
+ * Exchanges Mana Prisms for Summon Tickets in the Da Vinci Workshop.
+ */
+export async function buySummonTicketsWithPrisms(
+  discordId: string,
+  ticketCount: number,
+  username?: string
+): Promise<{
+  success: boolean;
+  message: string;
+  ticketsBought: number;
+  prismsSpent: number;
+  newTickets: number;
+  newPrisms: number;
+  master: MasterProfile;
+}> {
+  const master = await getOrCreateMaster(discordId, username);
+  const cost = ticketCount * PRISM_TICKET_PRICE;
+  const currentPrisms = master.manaPrisms || 0;
+
+  if (currentPrisms < cost) {
+    return {
+      success: false,
+      message: `❌ Insufficient Mana Prisms! You need **${cost} Mana Prisms 🔵**, but only have **${currentPrisms} 🔵**.\n(Pull duplicate Heroic Spirits in the Gacha to earn +50 Mana Prisms each!)`,
+      ticketsBought: 0,
+      prismsSpent: 0,
+      newTickets: master.summonTickets || 0,
+      newPrisms: currentPrisms,
+      master
+    };
+  }
+
+  master.manaPrisms = currentPrisms - cost;
+  master.summonTickets = (master.summonTickets || 0) + ticketCount;
+  saveMastersToDisk();
+
+  return {
+    success: true,
+    message: `🎉 **Da Vinci Workshop Exchange!** Purchased **+${ticketCount} Summon Ticket(s) 🎫** for **${cost} Mana Prisms 🔵**!\nNew Balance: **${master.summonTickets} Tickets**  •  **${master.manaPrisms} Prisms**`,
+    ticketsBought: ticketCount,
+    prismsSpent: cost,
+    newTickets: master.summonTickets,
+    newPrisms: master.manaPrisms,
+    master
   };
 }
 

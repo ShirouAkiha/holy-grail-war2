@@ -10234,10 +10234,10 @@ export default function DiscordEmulator({
         const newSq = (master.saintQuartz || 0) + 100;
         onUpdateMaster({ ...master, saintQuartz: newSq });
         postAdminHub('economy', `✨ Minted +100 Saint Quartz! New balance: ${newSq} SQ.`);
-      } else if (btnId === 'admin_mint_qp') {
-        const newQp = (master.qp || 0) + 1000000;
-        onUpdateMaster({ ...master, qp: newQp });
-        postAdminHub('economy', `🪙 Minted +1,000,000 QP! New balance: ${newQp.toLocaleString()} QP.`);
+      } else if (btnId === 'admin_mint_tickets') {
+        const newTickets = (master.summonTickets || 0) + 10;
+        onUpdateMaster({ ...master, summonTickets: newTickets });
+        postAdminHub('economy', `🎫 Minted +10 Summon Tickets! New balance: ${newTickets} Tickets.`);
       } else if (btnId === 'admin_refill_seals') {
         onUpdateMaster({ ...master, commandSeals: 3 });
         postAdminHub('economy', '🔱 Restored Command Seals to 3/3!');
@@ -10245,12 +10245,9 @@ export default function DiscordEmulator({
         onUpdateMaster({
           ...master,
           saintQuartz: 30,
-          qp: 0,
-          summonTickets: 0,
-          manaPrisms: 0,
-          saintShards: 0
+          summonTickets: 0
         } as any);
-        postAdminHub('economy', '🧹 **Currency Reset:** Reset your Saint Quartz to 30 SQ, and QP/Tickets/Shards to 0.');
+        postAdminHub('economy', '🧹 **Currency Reset:** Reset your Saint Quartz to 30 SQ, and Tickets to 0.');
       } else if (btnId === 'admin_reset_inventory') {
         const updatedServants = (master.servants || []).map(s => ({
           ...s,
@@ -10275,15 +10272,12 @@ export default function DiscordEmulator({
         onUpdateMaster({
           ...master,
           saintQuartz: 30,
-          qp: 0,
           summonTickets: 0,
-          manaPrisms: 0,
-          saintShards: 0,
           craftEssences: [],
           catalysts: [],
           servants: updatedServants
         } as any);
-        postAdminHub('economy', '🔄 **Full Vault Reset:** All inventory items wiped and currency restored to initial state (30 SQ, 0 QP).');
+        postAdminHub('economy', '🔄 **Full Vault Reset:** All inventory items wiped and currency restored to initial state (30 SQ).');
       } else if (btnId === 'admin_reset_all_economy') {
         const updatedServants = (master.servants || []).map(s => ({
           ...s,
@@ -10294,10 +10288,7 @@ export default function DiscordEmulator({
         onUpdateMaster({
           ...master,
           saintQuartz: 30,
-          qp: 0,
           summonTickets: 0,
-          manaPrisms: 0,
-          saintShards: 0,
           craftEssences: [],
           catalysts: [],
           servants: updatedServants
