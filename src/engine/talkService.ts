@@ -690,6 +690,9 @@ VOICE & ROLEPLAY INSTRUCTIONS:
   }
 
   const CANDIDATE_MODELS = [
+    'gemini-2.5-flash',
+    'gemini-2.5-lite',
+    'gemini-flash-latest',
     'gemini-3.5-flash',
     'gemini-3.1-flash-lite'
   ];
@@ -890,6 +893,9 @@ Voice Directive:
 
   if (!reply && client) {
     const CANDIDATE_MODELS = [
+      'gemini-2.5-flash',
+      'gemini-2.5-lite',
+      'gemini-flash-latest',
       'gemini-3.5-flash',
       'gemini-3.1-flash-lite'
     ];

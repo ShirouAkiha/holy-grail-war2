@@ -50,20 +50,27 @@ Master says: "${ctx.playerMessage}"
 `;
 
   try {
+    const CANDIDATE_MODELS = [
+      'gemini-2.5-flash',
+      'gemini-2.5-lite',
+      'gemini-flash-latest',
+      'gemini-3.5-flash',
+      'gemini-3.1-flash-lite'
+    ];
+
     let response;
-    try {
-      response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents: prompt,
-      });
-    } catch (primaryErr) {
-      console.warn('gemini-3.5-flash attempt failed, trying gemini-3.1-flash-lite:', primaryErr);
-      response = await ai.models.generateContent({
-        model: 'gemini-3.1-flash-lite',
-        contents: prompt,
-      });
+    for (const model of CANDIDATE_MODELS) {
+      try {
+        response = await ai.models.generateContent({
+          model,
+          contents: prompt,
+        });
+        if (response && response.text) break;
+      } catch (err: any) {
+        console.warn(`[servantDialogueService] model ${model} failed, trying next:`, err?.message || err);
+      }
     }
-    return response.text?.trim() || fallback;
+    return response?.text?.trim() || fallback;
   } catch (error) {
     console.error('Gemini dialogue generation error:', error);
     return fallback;

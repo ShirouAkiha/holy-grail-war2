@@ -175,29 +175,32 @@ JSON Output Schema:
 }`;
 
   try {
+    const CANDIDATE_MODELS = [
+      'gemini-2.5-flash',
+      'gemini-2.5-lite',
+      'gemini-flash-latest',
+      'gemini-3.5-flash',
+      'gemini-3.1-flash-lite'
+    ];
+
     let response;
-    try {
-      response = await client.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents: prompt,
-        config: {
-          temperature: 0.9,
-          responseMimeType: 'application/json'
-        }
-      });
-    } catch (primaryErr) {
-      console.warn('[churchNewsService] gemini-3.5-flash homily failed, trying gemini-3.1-flash-lite:', primaryErr);
-      response = await client.models.generateContent({
-        model: 'gemini-3.1-flash-lite',
-        contents: prompt,
-        config: {
-          temperature: 0.9,
-          responseMimeType: 'application/json'
-        }
-      });
+    for (const modelName of CANDIDATE_MODELS) {
+      try {
+        response = await client.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: {
+            temperature: 0.9,
+            responseMimeType: 'application/json'
+          }
+        });
+        if (response && response.text) break;
+      } catch (primaryErr: any) {
+        console.warn(`[churchNewsService] ${modelName} homily failed, trying next candidate:`, primaryErr?.message || primaryErr);
+      }
     }
 
-    let text = response.text?.trim();
+    let text = response?.text?.trim();
     if (text) {
       text = text.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```$/g, '').trim();
       const parsed = JSON.parse(text);
@@ -349,29 +352,32 @@ JSON Output Schema:
 }`;
 
   try {
+    const CANDIDATE_MODELS = [
+      'gemini-2.5-flash',
+      'gemini-2.5-lite',
+      'gemini-flash-latest',
+      'gemini-3.5-flash',
+      'gemini-3.1-flash-lite'
+    ];
+
     let response;
-    try {
-      response = await client.models.generateContent({
-        model: 'gemini-3.5-flash',
-        contents: prompt,
-        config: {
-          temperature: 0.85,
-          responseMimeType: 'application/json'
-        }
-      });
-    } catch (primaryErr) {
-      console.warn('[churchNewsService] gemini-3.5-flash news failed, trying gemini-3.1-flash-lite:', primaryErr);
-      response = await client.models.generateContent({
-        model: 'gemini-3.1-flash-lite',
-        contents: prompt,
-        config: {
-          temperature: 0.85,
-          responseMimeType: 'application/json'
-        }
-      });
+    for (const modelName of CANDIDATE_MODELS) {
+      try {
+        response = await client.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: {
+            temperature: 0.85,
+            responseMimeType: 'application/json'
+          }
+        });
+        if (response && response.text) break;
+      } catch (primaryErr: any) {
+        console.warn(`[churchNewsService] ${modelName} news failed, trying next candidate:`, primaryErr?.message || primaryErr);
+      }
     }
 
-    let text = response.text?.trim();
+    let text = response?.text?.trim();
     if (text) {
       text = text.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/```$/g, '').trim();
       const parsed = JSON.parse(text);
