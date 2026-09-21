@@ -334,6 +334,7 @@ export interface ActiveCombatant {
   isEvading?: boolean;
   isInvincible?: boolean;
   isStunned?: boolean;
+  gutsCount?: number;
   critStars: number;
   bondLevel?: number;
   npLevel?: number;

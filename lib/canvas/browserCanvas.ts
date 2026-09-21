@@ -8,6 +8,7 @@ import {
 } from '../types';
 import { calculateRadarCoordinates } from '../engine/customization';
 import { SERVANT_DATABASE, getServantAvatarAndCardArt } from '../data/servants';
+import { calculateCombatantBuffSummary } from '@/src/utils/combatBuffHelper';
 
 // Helper to draw a 5-pointed vector star
 function drawVectorStar(
@@ -527,6 +528,176 @@ function drawVectorLock(
   ctx.arc(cx, cy + 2, 1, 0, Math.PI * 2);
   ctx.fill();
 
+  ctx.restore();
+}
+
+/**
+ * Draw vector heart for Guts / Revive indicator
+ */
+function drawVectorHeart(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number, color: string) {
+  ctx.save();
+  ctx.beginPath();
+  const topH = size * 0.35;
+  ctx.moveTo(cx, cy + size * 0.5);
+  ctx.bezierCurveTo(cx - size * 0.8, cy - size * 0.2, cx - size * 0.6, cy - topH * 1.8, cx, cy - topH * 0.5);
+  ctx.bezierCurveTo(cx + size * 0.6, cy - topH * 1.8, cx + size * 0.8, cy - size * 0.2, cx, cy + size * 0.5);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * Draw Combatant Status & Buff Badges Tray (Canvas UI)
+ */
+function drawCombatantBuffPillTray(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  maxW: number,
+  servant: ActiveCombatant,
+  align: 'left' | 'right' = 'left'
+) {
+  if (!servant) return;
+  const summary = calculateCombatantBuffSummary(servant);
+  const badges = summary.badges;
+  if (!badges || badges.length === 0) return;
+
+  ctx.save();
+  ctx.font = 'bold 8px sans-serif';
+
+  const badgeH = 15;
+  const gap = 3;
+  const renderedBadges: { badge: any; width: number }[] = [];
+  let currentTotalW = 0;
+
+  for (let i = 0; i < badges.length; i++) {
+    const b = badges[i];
+    const textW = ctx.measureText(b.shortLabel || b.label).width;
+    const badgeW = Math.round(textW + 14);
+    if (currentTotalW + badgeW > maxW && renderedBadges.length > 0) {
+      const remainingCount = badges.length - renderedBadges.length;
+      if (remainingCount > 0) {
+        const ovText = `+${remainingCount}`;
+        const ovW = Math.round(ctx.measureText(ovText).width + 8);
+        while (renderedBadges.length > 0 && currentTotalW + ovW > maxW) {
+          const removed = renderedBadges.pop();
+          if (removed) currentTotalW -= (removed.width + gap);
+        }
+        renderedBadges.push({
+          badge: {
+            shortLabel: `+${badges.length - renderedBadges.length}`,
+            bgColor: 'rgba(30, 41, 59, 0.92)',
+            borderColor: '#94a3b8',
+            textColor: '#e2e8f0',
+            iconSymbol: null
+          },
+          width: ovW
+        });
+      }
+      break;
+    }
+    renderedBadges.push({ badge: b, width: badgeW });
+    currentTotalW += badgeW + gap;
+  }
+
+  let startX = align === 'right' ? (x + maxW - (currentTotalW - gap)) : x;
+
+  for (const item of renderedBadges) {
+    const b = item.badge;
+    const bW = item.width;
+
+    ctx.fillStyle = b.bgColor || 'rgba(15, 23, 42, 0.88)';
+    drawRoundRect(ctx, startX, y, bW, badgeH, 3);
+    ctx.fill();
+
+    ctx.strokeStyle = b.borderColor || '#475569';
+    ctx.lineWidth = 0.9;
+    drawRoundRect(ctx, startX, y, bW, badgeH, 3);
+    ctx.stroke();
+
+    const iconCx = startX + 6.5;
+    const iconCy = y + badgeH / 2;
+
+    if (b.iconSymbol === 'atk') {
+      drawVectorCrossedSwords(ctx, iconCx, iconCy, 3, b.borderColor || '#ef4444');
+    } else if (b.iconSymbol === 'def') {
+      drawVectorShield(ctx, iconCx, iconCy, 6, 8, 'transparent', b.borderColor || '#38bdf8');
+    } else if (b.iconSymbol === 'guts') {
+      drawVectorHeart(ctx, iconCx, iconCy, 3.5, b.borderColor || '#f43f5e');
+    } else if (b.iconSymbol === 'invincible') {
+      drawVectorStar(ctx, iconCx, iconCy, 5, 3.5, 1.8, '#fde047');
+    } else if (b.iconSymbol === 'evade') {
+      drawSparkDiamond(ctx, iconCx, iconCy, 3, '#06b6d4');
+    } else if (b.iconSymbol === 'buster' || b.iconSymbol === 'arts' || b.iconSymbol === 'quick') {
+      drawSparkDiamond(ctx, iconCx, iconCy, 3, b.borderColor);
+    } else if (b.iconSymbol === 'stun') {
+      drawSparkDiamond(ctx, iconCx, iconCy, 3, '#fbbf24');
+    }
+
+    ctx.fillStyle = b.textColor || '#ffffff';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = b.iconSymbol ? 'left' : 'center';
+    const textX = b.iconSymbol ? (startX + 12.5) : (startX + bW / 2);
+    ctx.fillText(b.shortLabel || b.label, textX, y + 10.5);
+
+    startX += bW + gap;
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Draw Combatant Net Stat Pill in HUD header
+ */
+function drawCombatantNetStatPill(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  combatant: ActiveCombatant,
+  align: 'left' | 'right' = 'left'
+) {
+  if (!combatant) return;
+  const summary = calculateCombatantBuffSummary(combatant);
+  const parts: string[] = [];
+
+  if (summary.totalAtkPercent !== 0) {
+    parts.push(`ATK ${summary.totalAtkPercent > 0 ? '+' : ''}${summary.totalAtkPercent}%`);
+  }
+  if (summary.totalDefPercent !== 0) {
+    parts.push(`DEF ${summary.totalDefPercent > 0 ? '+' : ''}${summary.totalDefPercent}%`);
+  }
+  if (summary.gutsCount > 0) {
+    parts.push(`GUTS x${summary.gutsCount}`);
+  }
+  if (summary.isInvincible) {
+    parts.push('INVINC');
+  } else if (summary.isEvading) {
+    parts.push(summary.evadeHits ? `EVD ${summary.evadeHits}H` : 'EVADE');
+  }
+
+  if (parts.length === 0) return;
+
+  const text = parts.join(' • ');
+  ctx.save();
+  ctx.font = 'bold 8.5px sans-serif';
+  const textW = ctx.measureText(text).width;
+  const pillW = Math.round(textW + 14);
+  const pillH = 18;
+  const pillX = align === 'right' ? (x - pillW) : x;
+
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+  drawRoundRect(ctx, pillX, y, pillW, pillH, 4);
+  ctx.fill();
+
+  ctx.strokeStyle = summary.totalAtkPercent > 0 ? '#ef4444' : summary.totalDefPercent > 0 ? '#38bdf8' : '#e2e8f0';
+  ctx.lineWidth = 1;
+  drawRoundRect(ctx, pillX, y, pillW, pillH, 4);
+  ctx.stroke();
+
+  ctx.fillStyle = '#f8fafc';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, pillX + pillW / 2, y + 12);
   ctx.restore();
 }
 
@@ -4124,12 +4295,13 @@ function drawUnitHudPlate(
     ctx.clip();
     drawImageCover(ctx, avatarImg, pX, pY, pW, portraitH);
 
-    // Vignette for name contrast
-    const vGrad = ctx.createLinearGradient(pX, pY + portraitH - 46, pX, pY + portraitH);
+    // Vignette for name & buff badges contrast
+    const vGrad = ctx.createLinearGradient(pX, pY + portraitH - 54, pX, pY + portraitH);
     vGrad.addColorStop(0, 'rgba(10, 15, 26, 0)');
-    vGrad.addColorStop(1, 'rgba(10, 15, 26, 0.95)');
+    vGrad.addColorStop(0.3, 'rgba(10, 15, 26, 0.7)');
+    vGrad.addColorStop(1, 'rgba(10, 15, 26, 0.96)');
     ctx.fillStyle = vGrad;
-    ctx.fillRect(pX, pY + portraitH - 46, pW, 46);
+    ctx.fillRect(pX, pY + portraitH - 54, pW, 54);
     ctx.restore();
   } else {
     // Heraldic Fallback
@@ -4176,12 +4348,15 @@ function drawUnitHudPlate(
   ctx.textAlign = 'center';
   ctx.fillText(sClass, pX + pW - classW / 2 - 4, pY + 15);
 
+  // Active Buff Micro-Chips Tray (Bottom of Portrait above name)
+  drawCombatantBuffPillTray(ctx, pX + 5, pY + portraitH - 27, pW - 10, servant, 'left');
+
   // Servant Name (Bottom of Portrait)
   const sCleanName = (servant.name || 'Heroic Spirit').replace(/[^\x00-\x7F]/g, '');
   ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 11px sans-serif';
+  ctx.font = 'bold 10.5px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(sCleanName.length > 15 ? sCleanName.slice(0, 14) + '…' : sCleanName, pX + 6, pY + portraitH - 8);
+  ctx.fillText(sCleanName.length > 15 ? sCleanName.slice(0, 14) + '…' : sCleanName, pX + 6, pY + portraitH - 7);
 
   if (showBars) {
     // 3. Integrated HP Bar (Height: 18px)
@@ -4603,6 +4778,13 @@ export async function renderBattleTurnSummary(
     ctx.textAlign = 'left';
     ctx.fillText(p1ServantClean, pillX + 72, 32);
 
+    // Render P1 Net Stat Boost Pill if active
+    const p1ServantW = ctx.measureText(p1ServantClean).width;
+    const p1NetPillX = pillX + 72 + p1ServantW + 10;
+    if (p1NetPillX < 425) {
+      drawCombatantNetStatPill(ctx, p1NetPillX, 18, activeP1, 'left');
+    }
+
     // 3 Active Skill Badges
     const p1Skills = activeP1.skills || [];
     const p1Bond = activeP1.bondLevel !== undefined ? activeP1.bondLevel : 5;
@@ -4860,6 +5042,13 @@ export async function renderBattleTurnSummary(
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText(p2ServantClean, p2PillX - 8, 551);
+
+    // Render P2 Net Stat Boost Pill if active
+    const p2ServantW = ctx.measureText(p2ServantClean).width;
+    const p2NetPillMaxX = p2PillX - 8 - p2ServantW - 10;
+    if (p2NetPillMaxX > 220) {
+      drawCombatantNetStatPill(ctx, p2NetPillMaxX, 537, activeP2, 'right');
+    }
 
     // P2 NP Bar
     const p2NpRatio = Math.max(0, Math.min(1, (activeP2.npGauge || 0) / 100));
