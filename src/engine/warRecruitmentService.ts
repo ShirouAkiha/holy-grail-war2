@@ -705,14 +705,13 @@ export async function buildModeSpecificMasterDm(params: {
   const summonQuote = resolveServantSummonQuote(activeServant, sName, sClass);
   const commandSealsCount = master.commandSeals || freshWar.rules?.startingCommandSeals || 3;
 
-  // Render Canvas Awakening Banner (1024x600)
+  // Render Canvas Awakening Banner (1040x620)
   const canvasBuffer = await renderHolyGrailWarAwakeningCard({
     masterName: master.username || 'Master',
     masterAvatarUrl: resolvedMasterAvatar,
     servantName: sName,
     servantClass: sClass,
     servantAvatarUrl: sAvatar,
-    servantSpriteUrl: sSprite,
     summonQuote,
     modePreset: presetKey,
     warTitle: freshWar.title || 'Holy Grail War',

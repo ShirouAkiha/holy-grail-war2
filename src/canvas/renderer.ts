@@ -7062,7 +7062,7 @@ export async function renderHolyGrailWarAwakeningCard(
     }
   }
 
-  const resolvedServantArt = servantSpriteUrl || servantAvatarUrl;
+  const resolvedServantArt = servantAvatarUrl || servantSpriteUrl;
   let servantImg: any = null;
   if (resolvedServantArt) {
     try {
