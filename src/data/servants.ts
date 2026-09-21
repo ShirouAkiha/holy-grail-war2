@@ -177,11 +177,12 @@ export function getUnlockedPassives(
 export function getServantAvatarAndCardArt(
   servantInput: any,
   customServants?: ServantTemplate[]
-): { avatarUrl: string; cardArtUrl: string } {
+): { avatarUrl: string; cardArtUrl: string; spriteUrl?: string } {
   if (!servantInput) {
     return {
       avatarUrl: 'https://ella.janitorai.com/media-approved/B9sAHeFp8-jdUk8VB4Y_f.webp',
-      cardArtUrl: 'https://ella.janitorai.com/media-approved/B9sAHeFp8-jdUk8VB4Y_f.webp'
+      cardArtUrl: 'https://ella.janitorai.com/media-approved/B9sAHeFp8-jdUk8VB4Y_f.webp',
+      spriteUrl: undefined
     };
   }
 
@@ -201,7 +202,8 @@ export function getServantAvatarAndCardArt(
   ) {
     return {
       avatarUrl: 'https://ella.janitorai.com/media-approved/2PMVd98BaN6Rc9lzVnWyn.webp',
-      cardArtUrl: 'https://ella.janitorai.com/media-approved/2PMVd98BaN6Rc9lzVnWyn.webp'
+      cardArtUrl: 'https://ella.janitorai.com/media-approved/2PMVd98BaN6Rc9lzVnWyn.webp',
+      spriteUrl: servantInput.spriteUrl || template.spriteUrl
     };
   }
 
@@ -218,7 +220,8 @@ export function getServantAvatarAndCardArt(
   ) {
     return {
       avatarUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
-      cardArtUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp'
+      cardArtUrl: 'https://ella.janitorai.com/media-approved/mskYeY2nC1pcPzEcW_nTK.webp',
+      spriteUrl: servantInput.spriteUrl || template.spriteUrl
     };
   }
 
@@ -238,7 +241,8 @@ export function getServantAvatarAndCardArt(
   if (canonical && !canonical.isCustomOrMeme && canonical.avatarUrl) {
     return {
       avatarUrl: canonical.avatarUrl,
-      cardArtUrl: canonical.cardArtUrl || canonical.avatarUrl
+      cardArtUrl: canonical.cardArtUrl || canonical.avatarUrl,
+      spriteUrl: servantInput.spriteUrl || template.spriteUrl || canonical.spriteUrl
     };
   }
 
@@ -279,7 +283,28 @@ export function getServantAvatarAndCardArt(
     cardArtUrl = avatarUrl;
   }
 
-  return { avatarUrl, cardArtUrl };
+  let spriteUrl: string | undefined = undefined;
+  if (!isInvalid(servantInput.spriteUrl)) {
+    spriteUrl = servantInput.spriteUrl;
+  } else if (!isInvalid(template.spriteUrl)) {
+    spriteUrl = template.spriteUrl;
+  } else if (canonical && !isInvalid(canonical.spriteUrl)) {
+    spriteUrl = canonical.spriteUrl;
+  }
+
+  return { avatarUrl, cardArtUrl, spriteUrl };
+}
+
+/**
+ * Returns the best character cutout sprite for dialogue and visual novel canvas rendering.
+ * Resolves with priority: spriteUrl -> cardArtUrl -> avatarUrl.
+ */
+export function getServantSprite(
+  servantInput: any,
+  customServants?: ServantTemplate[]
+): string {
+  const art = getServantAvatarAndCardArt(servantInput, customServants);
+  return art.spriteUrl || art.cardArtUrl || art.avatarUrl;
 }
 
 export const SERVANT_DATABASE: ServantTemplate[] = [
@@ -1352,6 +1377,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     defeatQuote: 'Ugh... pushed the circuits too far... Alice is going to give me an earful for this...',
     avatarUrl: 'https://ella.janitorai.com/media-approved/cqdhAGa5DTTAG7S9umM8k.webp',
     cardArtUrl: 'https://ella.janitorai.com/media-approved/cqdhAGa5DTTAG7S9umM8k.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/gx0RUlqexvmk103CJ7_iL.webp',
     isCustomOrMeme: false
   },
   {

@@ -970,6 +970,8 @@ export async function renderServantTalkVisualOutput(params: {
   servantName: string;
   servantClass: string;
   servantAvatarUrl?: string;
+  servantCardArtUrl?: string;
+  servantSpriteUrl?: string;
   replyText: string;
   playerMessage: string;
   masterName: string;
@@ -998,6 +1000,8 @@ export async function renderServantTalkVisualOutput(params: {
     servantName,
     servantClass,
     servantAvatarUrl,
+    servantCardArtUrl,
+    servantSpriteUrl,
     replyText,
     playerMessage,
     masterName,
@@ -1051,6 +1055,8 @@ export async function renderServantTalkVisualOutput(params: {
       servantName,
       servantClass,
       servantAvatarUrl,
+      servantCardArtUrl,
+      servantSpriteUrl,
       speakerName: servantName,
       dialogueText: replyText,
       title: `Telepathic Link • Bond Lv. ${bondLevel}`,

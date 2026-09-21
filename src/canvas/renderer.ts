@@ -6148,7 +6148,9 @@ export async function renderGrailWarMap(
 export interface VisualNovelCardOptions {
   servantName: string;
   servantClass: string;
-  servantAvatarUrl?: string;
+  servantSpriteUrl?: string; // High-priority character cutout sprite
+  servantCardArtUrl?: string; // Fallback 1: Card art
+  servantAvatarUrl?: string; // Fallback 2: Avatar portrait
   backgroundImageUrl?: string;
   backgroundTheme?: string;
   speakerName: string;
@@ -6182,11 +6184,17 @@ export async function renderVisualNovelCard(
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
+  // Determine character image candidates for fallback
+  const candidateSpriteUrls: string[] = [];
+  if (opts.servantSpriteUrl) candidateSpriteUrls.push(opts.servantSpriteUrl);
+  if (opts.servantCardArtUrl && !candidateSpriteUrls.includes(opts.servantCardArtUrl)) candidateSpriteUrls.push(opts.servantCardArtUrl);
+  if (opts.servantAvatarUrl && !candidateSpriteUrls.includes(opts.servantAvatarUrl)) candidateSpriteUrls.push(opts.servantAvatarUrl);
+
   // ==========================================
   // LAYER 1: BACKGROUND LAYER (BASE)
   // ==========================================
   const defaultBgUrl = 'https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp';
-  const bgUrlToUse = (opts.backgroundImageUrl && opts.backgroundImageUrl !== opts.servantAvatarUrl)
+  const bgUrlToUse = (opts.backgroundImageUrl && !candidateSpriteUrls.includes(opts.backgroundImageUrl))
     ? opts.backgroundImageUrl
     : defaultBgUrl;
 
@@ -6260,16 +6268,18 @@ export async function renderVisualNovelCard(
 
   // ==========================================
   // LAYER 2: CHARACTER SPRITE LAYER (MIDDLE)
+  // Priority: servantSpriteUrl -> servantCardArtUrl -> servantAvatarUrl
   // ==========================================
-  if (opts.servantAvatarUrl) {
+  for (const spriteUrl of candidateSpriteUrls) {
+    if (!spriteUrl) continue;
     try {
-      const spriteImg = await loadImage(opts.servantAvatarUrl);
+      const spriteImg = await loadImage(spriteUrl);
       if (spriteImg && spriteImg.width && spriteImg.height) {
         const aspect = spriteImg.width / spriteImg.height;
 
-        // Target Scale: Prominent half-body / 3/4-body sprite, roughly 85% of total canvas height (~612px)
-        const maxSpriteH = Math.floor(height * 0.85); // 612px
-        const maxSpriteW = Math.floor(width * 0.48);  // 614px
+        // Target Scale: Prominent half-body / 3/4-body sprite, roughly 86% of total canvas height (~620px)
+        const maxSpriteH = Math.floor(height * 0.86);
+        const maxSpriteW = Math.floor(width * 0.50);
 
         let spriteH = maxSpriteH;
         let spriteW = spriteH * aspect;
@@ -6279,7 +6289,7 @@ export async function renderVisualNovelCard(
           spriteH = spriteW / aspect;
         }
 
-        // Anchor sprite to the bottom right of the canvas (x ≈ 0.58 to 0.65, resting at bottom edge y = 720)
+        // Anchor sprite to the bottom right of the canvas (resting at bottom edge y = 720)
         const spriteX = width * 0.58 + (maxSpriteW - spriteW) / 2;
         const spriteY = height - spriteH;
 
@@ -6291,9 +6301,10 @@ export async function renderVisualNovelCard(
 
         ctx.drawImage(spriteImg, spriteX, spriteY, spriteW, spriteH);
         ctx.restore();
+        break; // Successfully rendered primary or fallback sprite
       }
     } catch {
-      // Ignore sprite load failure
+      // Continue to next fallback sprite candidate
     }
   }
 

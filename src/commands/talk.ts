@@ -141,6 +141,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const servantClass = t.servantClass || 'Saber';
     const bondLevel = targetServant.bondLevel || 1;
     const avatarUrl = targetServant.avatarUrl || t.avatarUrl;
+    const cardArtUrl = targetServant.cardArtUrl || t.cardArtUrl;
+    const spriteUrl = targetServant.spriteUrl || t.spriteUrl;
     const commandSeals = master.commandSeals ?? 3;
     const playerMessage = interaction.options.getString('message', true);
 
@@ -321,6 +323,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       servantName,
       servantClass,
       servantAvatarUrl: avatarUrl,
+      servantCardArtUrl: cardArtUrl,
+      servantSpriteUrl: spriteUrl,
       replyText: reply,
       playerMessage,
       masterName: master.username || 'Master',

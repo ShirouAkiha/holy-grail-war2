@@ -127,6 +127,7 @@ export interface ServantTemplate {
   defeatQuote: string;
   avatarUrl: string;
   cardArtUrl: string;
+  spriteUrl?: string; // High-res / dialogue character cutout sprite (used in VN dialogue and Bond scenes)
   aliases?: string[];
   traits?: string[];
   isCustomOrMeme?: boolean;
@@ -140,6 +141,7 @@ export interface MasterServantInstance {
   nickname?: string;
   avatarUrl?: string;
   cardArtUrl?: string;
+  spriteUrl?: string;
   level: number;
   experience: number;
   currentHp?: number;

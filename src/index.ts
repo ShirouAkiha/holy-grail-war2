@@ -738,6 +738,8 @@ client.on(Events.InteractionCreate, async interaction => {
           const servantClass = t.servantClass || 'Saber';
           const bondLevel = servant.bondLevel || 1;
           const avatarUrl = servant.avatarUrl || t.avatarUrl;
+          const cardArtUrl = servant.cardArtUrl || t.cardArtUrl;
+          const spriteUrl = servant.spriteUrl || t.spriteUrl;
           const commandSeals = master.commandSeals ?? 3;
 
           const userParticipant = war.participants?.[master.discordId];
@@ -895,6 +897,8 @@ client.on(Events.InteractionCreate, async interaction => {
             servantName,
             servantClass,
             servantAvatarUrl: avatarUrl,
+            servantCardArtUrl: cardArtUrl,
+            servantSpriteUrl: spriteUrl,
             replyText: reply,
             playerMessage,
             masterName: master.username || 'Master',
