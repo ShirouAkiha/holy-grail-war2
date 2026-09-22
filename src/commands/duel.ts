@@ -1068,7 +1068,7 @@ function activateCombatantSkill(
       strippedCount = initialLen - opponent.activeBuffs.length;
       opponent.activeBuffs.push({
         name: 'Law of Magic (Skill Seal)',
-        type: 'debuff_atk',
+        type: 'skill_seal',
         value: 100,
         remainingTurns: 1
       });
@@ -1341,15 +1341,13 @@ function activateCombatantSkill(
         });
         logText = `⚖️ **${sName}** activated **${skill.name}**! (Inflicted **Stun** on enemy for 1 turn!)${quoteLine}`;
       } else {
-        opponent.isStunned = true;
-        opponent.npGauge = Math.max(0, opponent.npGauge - 20);
         opponent.activeBuffs.push({
           name: `${skill.name} (ATK Down)`,
           type: 'debuff_atk',
           value: skill.value || 20,
           remainingTurns: skill.duration || 1
         });
-        logText = `✨ **${sName}** activated **${skill.name}**!${quoteLine}`;
+        logText = `✨ **${sName}** activated **${skill.name}**! (-${skill.value || 20}% ATK Down for ${skill.duration || 1} turns)${quoteLine}`;
       }
     } else {
       logText = `✨ **${sName}** activated **${skill.name}**!${quoteLine}`;
@@ -1510,13 +1508,35 @@ function resolveStrike(
   }
 
   // Handle Stun status
-  if (attacker.isStunned) {
+  const isStunnedActor = attacker.isStunned || (attacker.activeBuffs && attacker.activeBuffs.some(b => b.type === 'stun'));
+  if (isStunnedActor) {
     attacker.isStunned = false;
-    attacker.activeBuffs = attacker.activeBuffs.filter(b => {
-      b.remainingTurns--;
-      return b.remainingTurns > 0;
-    });
-    return `💫 **${attacker.servant.template.name}** was **Stunned / NP Sealed** and was unable to attack this turn!`;
+    attacker.activeBuffs = (attacker.activeBuffs || [])
+      .filter(b => b.type !== 'stun')
+      .map(b => {
+        if (
+          b.type === 'buff_atk' ||
+          b.type === 'debuff_atk' ||
+          b.type === 'crit_dmg' ||
+          b.type === 'np_gen' ||
+          b.type === 'np_gain' ||
+          b.type === 'buster_up' ||
+          b.type === 'arts_up' ||
+          b.type === 'quick_up' ||
+          b.type === 'ignore_invincible' ||
+          b.type === 'ignore_defense' ||
+          b.type === 'skill_seal' ||
+          b.type === 'stars_per_turn' ||
+          b.type === 'hp_regen' ||
+          b.type === 'debuff_np_strength' ||
+          b.type === 'debuff_np_dmg'
+        ) {
+          b.remainingTurns--;
+        }
+        return b;
+      })
+      .filter(b => b.remainingTurns > 0);
+    return `💫 **${attacker.servant.template.name}** was **Stunned** and was unable to attack this turn! (Stun has worn off)`;
   }
 
   // Calculate active buffs
@@ -1539,7 +1559,7 @@ function resolveStrike(
   critDmgBonus += critPassiveBonus / 100;
 
   attacker.activeBuffs = attacker.activeBuffs.filter(b => {
-    // Only decrement offensive / attack-phase buffs when executing an attack!
+    // Only decrement offensive / attack-phase / status buffs when executing an attack!
     // Defensive buffs (evade, invincible, buff_def, guts) must NOT decrement when attacking,
     // so they remain active to protect against enemy strikes.
     if (
@@ -1550,7 +1570,14 @@ function resolveStrike(
       b.type === 'np_gain' ||
       b.type === 'buster_up' ||
       b.type === 'arts_up' ||
-      b.type === 'quick_up'
+      b.type === 'quick_up' ||
+      b.type === 'ignore_invincible' ||
+      b.type === 'ignore_defense' ||
+      b.type === 'skill_seal' ||
+      b.type === 'stars_per_turn' ||
+      b.type === 'hp_regen' ||
+      b.type === 'debuff_np_strength' ||
+      b.type === 'debuff_np_dmg'
     ) {
       b.remainingTurns--;
     }
@@ -2045,6 +2072,7 @@ function resolveStrike(
     }
     return true;
   });
+  defender.isStunned = defender.activeBuffs.some(b => b.type === 'stun');
 
   // Decrement attacker offensive & turn-based buffs
   attacker.activeBuffs = attacker.activeBuffs.filter(b => {
@@ -2052,9 +2080,14 @@ function resolveStrike(
       b.type === 'buff_atk' ||
       b.type === 'debuff_atk' ||
       b.type === 'crit_dmg' ||
+      b.type === 'np_gen' ||
+      b.type === 'np_gain' ||
       b.type === 'buster_up' ||
       b.type === 'arts_up' ||
       b.type === 'quick_up' ||
+      b.type === 'ignore_invincible' ||
+      b.type === 'ignore_defense' ||
+      b.type === 'skill_seal' ||
       b.type === 'stars_per_turn' ||
       b.type === 'hp_regen' ||
       b.type === 'debuff_np_strength' ||

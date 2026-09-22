@@ -1400,7 +1400,8 @@ export function executeBattleTurn(
     }
 
     // Handle Active Skill trigger if chosen
-    if (choice.useSkillIndex !== undefined && choice.useSkillIndex >= 0) {
+    const isSkillSealed = actor.activeBuffs.some(b => b.type === 'skill_seal');
+    if (!isSkillSealed && choice.useSkillIndex !== undefined && choice.useSkillIndex >= 0) {
       const skill = actor.skills[choice.useSkillIndex];
       if (skill && skill.currentCooldown <= 0) {
         skill.currentCooldown = skill.cooldown;
@@ -1765,10 +1766,33 @@ export function executeBattleTurn(
     }
 
     // Check Stun state
-    if (actor.isStunned) {
-      actor.isStunned = false; // wears off
-      actor.activeBuffs = actor.activeBuffs
-        .map(b => ({ ...b, remainingTurns: b.remainingTurns - 1 }))
+    const hasStunBuff = actor.isStunned || (actor.activeBuffs && actor.activeBuffs.some(b => b.type === 'stun'));
+    if (hasStunBuff) {
+      actor.isStunned = false; // Stun wears off after this incapacitated turn
+      actor.activeBuffs = (actor.activeBuffs || [])
+        .filter(b => b.type !== 'stun') // explicitly remove the 1-turn stun buff so it cannot linger
+        .map(b => {
+          if (
+            b.type === 'buff_atk' ||
+            b.type === 'debuff_atk' ||
+            b.type === 'buster_up' ||
+            b.type === 'arts_up' ||
+            b.type === 'quick_up' ||
+            b.type === 'crit_dmg' ||
+            b.type === 'np_gen' ||
+            b.type === 'np_gain' ||
+            b.type === 'stars_per_turn' ||
+            b.type === 'hp_regen' ||
+            b.type === 'ignore_invincible' ||
+            b.type === 'ignore_defense' ||
+            b.type === 'skill_seal' ||
+            b.type === 'debuff_np_strength' ||
+            b.type === 'debuff_np_dmg'
+          ) {
+            return { ...b, remainingTurns: b.remainingTurns - 1 };
+          }
+          return b;
+        })
         .filter(b => b.remainingTurns > 0);
       if (!actor.activeBuffs.some(b => b.type === 'evade')) actor.isEvading = false;
       if (!actor.activeBuffs.some(b => b.type === 'invincible')) actor.isInvincible = false;
@@ -1778,7 +1802,7 @@ export function executeBattleTurn(
         actorName: actor.name,
         targetId: target.id,
         targetName: target.name,
-        actionSummary: `${actor.name} is Stunned and unable to act this turn!`,
+        actionSummary: `💫 ${actor.name} is Stunned and unable to act this turn! (Stun has worn off)`,
         cardsUsed: [],
         skillsUsed: usedSkillNames,
         damageDealt: 0,
@@ -1851,6 +1875,10 @@ export function executeBattleTurn(
       .reduce((sum, b) => sum + b.value, 0) +
       (actor.equippedCe?.passiveType === 'quick_up' ? (actor.equippedCe.passiveValue || 0) : 0) +
       ridingBonus;
+
+    const npGenBonus = actor.activeBuffs
+      .filter(b => b.type === 'np_gen' || b.type === 'np_gain')
+      .reduce((sum, b) => sum + b.value, 0);
 
     const classMult = calculateClassMultiplier(actor.servantClass, target.servantClass);
     const effectiveAtk = actor.atk * (1 + atkBuff / 100) * (1 + (actor.stats.strength * 0.01));
@@ -2010,7 +2038,8 @@ export function executeBattleTurn(
         }
 
         totalDamage += Math.round(hitDmg * PVP_DAMAGE_MODIFIER) + (hitDmg > 0 ? flatDivinity : 0);
-        totalNpCharge += Math.round(5 * cardNpMult * (actor.stats.mana / 15));
+        const npGainScale = 1.0 + (npGenBonus / 100);
+        totalNpCharge += Math.round(5 * cardNpMult * (actor.stats.mana / 15) * npGainScale);
         totalStars += Math.round(2 * cardStarMult);
       });
 
@@ -2025,7 +2054,7 @@ export function executeBattleTurn(
             b.remainingTurns--;
             return b.remainingTurns > 0;
           }
-          if (b.type === 'buff_def' && b.remainingTurns < 90) {
+          if ((b.type === 'buff_def' || b.type === 'debuff_def') && b.remainingTurns < 90) {
             b.remainingTurns--;
             return b.remainingTurns > 0;
           }
@@ -2033,6 +2062,7 @@ export function executeBattleTurn(
         });
         if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
         if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
+        if (!target.activeBuffs.some(b => b.type === 'stun')) target.isStunned = false;
       }
 
       const chainNotice = cardChainType === 'Quick Chain'
@@ -2195,7 +2225,7 @@ export function executeBattleTurn(
     const dialogueTag = dialogueInfo.tag;
     const dialogueTitle = dialogueInfo.speakerTitle;
 
-    // Decrement buff durations (offensive/attack-phase buffs only!)
+    // Decrement buff durations (offensive/attack-phase buffs, statuses, and utility buffs)
     // Defensive buffs (evade, invincible, buff_def, guts) must NOT decrement when attacking!
     actor.activeBuffs = actor.activeBuffs
       .map(b => {
@@ -2207,8 +2237,12 @@ export function executeBattleTurn(
           b.type === 'quick_up' ||
           b.type === 'crit_dmg' ||
           b.type === 'np_gen' ||
+          b.type === 'np_gain' ||
           b.type === 'stars_per_turn' ||
           b.type === 'hp_regen' ||
+          b.type === 'ignore_invincible' ||
+          b.type === 'ignore_defense' ||
+          b.type === 'skill_seal' ||
           b.type === 'debuff_np_strength' ||
           b.type === 'debuff_np_dmg'
         ) {
@@ -2219,6 +2253,7 @@ export function executeBattleTurn(
       .filter(b => b.remainingTurns > 0);
     if (!actor.activeBuffs.some(b => b.type === 'evade')) actor.isEvading = false;
     if (!actor.activeBuffs.some(b => b.type === 'invincible')) actor.isInvincible = false;
+    if (!actor.activeBuffs.some(b => b.type === 'stun')) actor.isStunned = false;
 
     turnLogs.push({
       turnNumber: state.currentTurn,
@@ -2303,13 +2338,14 @@ export function executeBattleTurn(
     }
   }
 
-  // Clean up expired buffs and sync defensive booleans for all team members
+  // Clean up expired buffs and sync status/defensive booleans for all team members
   [...teamA, ...teamB].forEach(combatant => {
     combatant.activeBuffs = combatant.activeBuffs.filter(
       b => b.remainingTurns > 0 && (!b.isHitCount || b.remainingHits === undefined || b.remainingHits > 0)
     );
     combatant.isInvincible = combatant.activeBuffs.some(b => b.type === 'invincible');
     combatant.isEvading = combatant.activeBuffs.some(b => b.type === 'evade');
+    combatant.isStunned = combatant.activeBuffs.some(b => b.type === 'stun');
   });
 
   // Check victory condition across full teams
