@@ -130,19 +130,47 @@ export function splitDialogueIntoChunks(text: string): string[] {
   const clean = text.trim();
   if (!clean) return [];
 
-  // Split by double newline first (\n\n+)
-  const paragraphs = clean.split(/\n\s*\n+/).map(p => p.trim()).filter(Boolean);
-  if (paragraphs.length > 1) {
-    return paragraphs;
+  // Split by double newline or single newline with indentation first
+  let initialChunks = clean.split(/\n\s*\n+/).map(p => p.trim()).filter(Boolean);
+  if (initialChunks.length === 1) {
+    const lineChunks = clean.split(/\n+/).map(l => l.trim()).filter(Boolean);
+    if (lineChunks.length > 1) {
+      initialChunks = lineChunks;
+    }
   }
 
-  // If there are single newlines and the text is reasonably long (>100 chars), split by line
-  const lines = clean.split(/\n+/).map(l => l.trim()).filter(Boolean);
-  if (lines.length > 1) {
-    return lines;
+  const finalChunks: string[] = [];
+
+  for (const chunk of initialChunks) {
+    if (chunk.length <= 260) {
+      finalChunks.push(chunk);
+      continue;
+    }
+
+    // Split overly long paragraphs at sentence boundaries (. ! ? …)
+    const sentences = chunk.match(/[^.!?…]+[.!?…]+["'”’]?|[^.!?…]+$/g);
+    if (!sentences || sentences.length <= 1) {
+      finalChunks.push(chunk);
+      continue;
+    }
+
+    let buffer = '';
+    for (const s of sentences) {
+      const trimmed = s.trim();
+      if (!trimmed) continue;
+      if (buffer && (buffer.length + trimmed.length + 1 > 220)) {
+        finalChunks.push(buffer.trim());
+        buffer = trimmed;
+      } else {
+        buffer = buffer ? `${buffer} ${trimmed}` : trimmed;
+      }
+    }
+    if (buffer) {
+      finalChunks.push(buffer.trim());
+    }
   }
 
-  return [clean];
+  return finalChunks.length > 0 ? finalChunks : [clean];
 }
 
 // ============================================================================

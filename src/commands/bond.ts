@@ -770,6 +770,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const scene1 = event.scenes[0];
       const sTemplate = targetServant.template || targetServant;
       const servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
+      const sKey = getServantCompactKey(targetServant, master);
+
+      const chunks = splitDialogueIntoChunks(scene1.dialogueText);
+      const currentChunk = chunks[0] || scene1.dialogueText;
+      const isLastChunk = chunks.length <= 1;
 
       // Generate VN Canvas Image
       const imageBuffer = await renderVisualNovelCard({
@@ -779,36 +784,30 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         servantCardArtUrl: sTemplate.cardArtUrl || targetServant?.cardArtUrl,
         servantSpriteUrl: sTemplate.spriteUrl || targetServant?.spriteUrl,
         speakerName: scene1.speakerName || servantName,
-        dialogueText: scene1.dialogueText,
+        dialogueText: currentChunk,
         title: event.title,
-        subtitle: event.subtitle,
+        subtitle: `${event.subtitle} • Scene 1/${event.scenes.length}`,
         currentBondLevel: targetServant.bondLevel || 1
       });
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel.png' });
       const cleanTitle = event.title.replace(/^Bond Interlude:\s*/i, '');
-      const choiceTextList = scene1.choices && scene1.choices.length > 0
-        ? `\n\n👇 **Choose your response to deepen your Bond:**\n` +
-          scene1.choices.map((c, idx) => `**${idx + 1}.** “*${c.text}*”`).join('\n')
-        : '';
+      const partIndicator = chunks.length > 1 ? ` (Part 1/${chunks.length})` : '';
 
-      const vnEmbed = new EmbedBuilder()
-        .setTitle(`📖 Bond Interlude: ${cleanTitle}`)
-        .setDescription(
-          `*${event.subtitle}* ${statusNote ? `\n\n*${statusNote}*` : ''}` +
-          choiceTextList
-        )
-        .setImage('attachment://visual_novel.png')
-        .setColor(0xec4899)
-        .setFooter({
-          text: isReplay
-            ? 'Replay Mode: Rewards already claimed for this Interlude.'
-            : `Reward: +${event.rewardBondExp} Bond EXP & 💎 ${event.rewardSaintQuartz || 3} SQ`
-        });
-
-      const sKey = getServantCompactKey(targetServant, master);
       const choicesRow = new ActionRowBuilder<ButtonBuilder>();
-      if (scene1.choices && scene1.choices.length > 0) {
+      let choiceTextList = '';
+
+      if (!isLastChunk) {
+        choicesRow.addComponents(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`vn_chunk:${sKey}:${event.id}:0:1`))
+            .setLabel(`Next (1/${chunks.length}) ➔`)
+            .setStyle(ButtonStyle.Primary)
+        );
+      } else if (scene1.choices && scene1.choices.length > 0) {
+        choiceTextList =
+          `\n\n👇 **Choose your response to deepen your Bond:**\n` +
+          scene1.choices.map((c, idx) => `**${idx + 1}.** “*${c.text}*”`).join('\n');
         scene1.choices.forEach((c, idx) => {
           choicesRow.addComponents(
             new ButtonBuilder()
@@ -825,6 +824,22 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             .setStyle(ButtonStyle.Success)
         );
       }
+
+      const vnEmbed = new EmbedBuilder()
+        .setTitle(`📖 Bond Interlude: ${cleanTitle}`)
+        .setDescription(
+          `💬 **[BOND INTERLUDE] ${scene1.speakerName || servantName}:**\n> ❝ ***${currentChunk}*** ❞\n\n` +
+          `*Scene 1/${event.scenes.length}${partIndicator} • Servant Bond Lv. ${targetServant.bondLevel || 1}*` +
+          (statusNote ? ` • *${statusNote}*` : '') +
+          choiceTextList
+        )
+        .setImage('attachment://visual_novel.png')
+        .setColor(0xec4899)
+        .setFooter({
+          text: isReplay
+            ? 'Replay Mode: Rewards already claimed for this Interlude.'
+            : `Reward: +${event.rewardBondExp} Bond EXP & 💎 ${event.rewardSaintQuartz || 3} SQ`
+        });
 
       return interaction.editReply({
         embeds: [vnEmbed],
@@ -1242,6 +1257,9 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       }
 
       const scene1 = event.scenes[0];
+      const chunks = splitDialogueIntoChunks(scene1.dialogueText);
+      const currentChunk = chunks[0] || scene1.dialogueText;
+      const isLastChunk = chunks.length <= 1;
 
       // Generate VN Canvas Image
       const imageBuffer = await renderVisualNovelCard({
@@ -1251,7 +1269,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         servantCardArtUrl: sTemplate.cardArtUrl || targetServant?.cardArtUrl,
         servantSpriteUrl: sTemplate.spriteUrl || targetServant?.spriteUrl,
         speakerName: scene1.speakerName || servantName,
-        dialogueText: scene1.dialogueText,
+        dialogueText: currentChunk,
         title: event.title,
         subtitle: `${event.subtitle} • Scene 1/${event.scenes.length}`,
         currentBondLevel: targetServant.bondLevel || 1
@@ -1259,27 +1277,22 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel.png' });
       const cleanTitle = event.title.replace(/^Bond Interlude:\s*/i, '');
-      const choiceTextList = scene1.choices && scene1.choices.length > 0
-        ? `\n\n👇 **Choose your response to deepen your Bond:**\n` +
-          scene1.choices.map((c, idx) => `**${idx + 1}.** “*${c.text}*”`).join('\n')
-        : '';
-
-      const vnEmbed = new EmbedBuilder()
-        .setTitle(`📖 Bond Interlude: ${cleanTitle}`)
-        .setDescription(
-          `*${event.subtitle}* ${statusNote ? `\n\n*${statusNote}*` : ''}` +
-          choiceTextList
-        )
-        .setImage('attachment://visual_novel.png')
-        .setColor(0xec4899)
-        .setFooter({
-          text: isReplay
-            ? 'Replay Mode: Rewards already claimed for this Interlude.'
-            : `Reward: +${event.rewardBondExp} Bond EXP & 💎 ${event.rewardSaintQuartz || 3} SQ`
-        });
+      const partIndicator = chunks.length > 1 ? ` (Part 1/${chunks.length})` : '';
 
       const choicesRow = new ActionRowBuilder<ButtonBuilder>();
-      if (scene1.choices && scene1.choices.length > 0) {
+      let choiceTextList = '';
+
+      if (!isLastChunk) {
+        choicesRow.addComponents(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`vn_chunk:${sKey}:${event.id}:0:1`))
+            .setLabel(`Next (1/${chunks.length}) ➔`)
+            .setStyle(ButtonStyle.Primary)
+        );
+      } else if (scene1.choices && scene1.choices.length > 0) {
+        choiceTextList =
+          `\n\n👇 **Choose your response to deepen your Bond:**\n` +
+          scene1.choices.map((c, idx) => `**${idx + 1}.** “*${c.text}*”`).join('\n');
         scene1.choices.forEach((c, idx) => {
           choicesRow.addComponents(
             new ButtonBuilder()
@@ -1297,10 +1310,384 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         );
       }
 
+      const vnEmbed = new EmbedBuilder()
+        .setTitle(`📖 Bond Interlude: ${cleanTitle}`)
+        .setDescription(
+          `💬 **[BOND INTERLUDE] ${scene1.speakerName || servantName}:**\n> ❝ ***${currentChunk}*** ❞\n\n` +
+          `*Scene 1/${event.scenes.length}${partIndicator} • Servant Bond Lv. ${targetServant.bondLevel || 1}*` +
+          (statusNote ? ` • *${statusNote}*` : '') +
+          choiceTextList
+        )
+        .setImage('attachment://visual_novel.png')
+        .setColor(0xec4899)
+        .setFooter({
+          text: isReplay
+            ? 'Replay Mode: Rewards already claimed for this Interlude.'
+            : `Reward: +${event.rewardBondExp} Bond EXP & 💎 ${event.rewardSaintQuartz || 3} SQ`
+        });
+
       await interaction.editReply({
         embeds: [vnEmbed],
         files: [attachment],
         components: [choicesRow]
+      });
+      return;
+    }
+
+    if (btnId.startsWith('vn_chunk:') || btnId.startsWith('vn_chunk_')) {
+      await interaction.deferUpdate();
+
+      let eventId = '';
+      let sceneIdx = 0;
+      let chunkIdx = 0;
+
+      if (btnId.includes(':')) {
+        const parts = btnId.split(':');
+        // vn_chunk:sKey:eventId:sceneIdx:chunkIdx
+        if (parts.length >= 5) {
+          eventId = parts[2];
+          sceneIdx = parseInt(parts[3], 10) || 0;
+          chunkIdx = parseInt(parts[4], 10) || 0;
+        } else if (parts.length >= 4) {
+          eventId = parts[1];
+          sceneIdx = parseInt(parts[2], 10) || 0;
+          chunkIdx = parseInt(parts[3], 10) || 0;
+        }
+      } else {
+        const parts = btnId.split('_');
+        chunkIdx = parseInt(parts.pop() || '0', 10);
+        sceneIdx = parseInt(parts.pop() || '0', 10);
+        eventId = parts.slice(2).join('_');
+      }
+
+      const events = getBondEventsForServant(targetServant);
+      const event = events.find(e => e.id === eventId) || events[0];
+      const scene = event.scenes[sceneIdx] || event.scenes[0];
+
+      const chunks = splitDialogueIntoChunks(scene.dialogueText);
+      const currentChunk = chunks[chunkIdx] || chunks[0] || scene.dialogueText;
+      const isLastChunk = chunkIdx >= chunks.length - 1;
+
+      const imageBuffer = await renderVisualNovelCard({
+        servantName,
+        servantClass: sTemplate.servantClass || 'Saber',
+        servantAvatarUrl: sTemplate.avatarUrl,
+        servantCardArtUrl: sTemplate.cardArtUrl || targetServant?.cardArtUrl,
+        servantSpriteUrl: sTemplate.spriteUrl || targetServant?.spriteUrl,
+        speakerName: scene.speakerName || servantName,
+        dialogueText: currentChunk,
+        title: event.title,
+        subtitle: `${event.subtitle} • Scene ${sceneIdx + 1}/${event.scenes.length}`,
+        currentBondLevel: targetServant.bondLevel || 1
+      });
+
+      const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel.png' });
+      const partIndicator = chunks.length > 1 ? ` (Part ${chunkIdx + 1}/${chunks.length})` : '';
+
+      const choicesRow = new ActionRowBuilder<ButtonBuilder>();
+      let choiceTextList = '';
+
+      if (!isLastChunk) {
+        choicesRow.addComponents(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`vn_chunk:${sKey}:${event.id}:${sceneIdx}:${chunkIdx + 1}`))
+            .setLabel(`Next (${chunkIdx + 1}/${chunks.length}) ➔`)
+            .setStyle(ButtonStyle.Primary)
+        );
+      } else if (scene.choices && scene.choices.length > 0) {
+        choiceTextList =
+          `\n\n👇 **Choose your response to deepen your Bond:**\n` +
+          scene.choices.map((c, idx) => `**${idx + 1}.** “*${c.text}*”`).join('\n');
+        scene.choices.forEach((c, idx) => {
+          choicesRow.addComponents(
+            new ButtonBuilder()
+              .setCustomId(safeCustomId(`vn_choice:${sKey}:${event.id}:${sceneIdx}:${c.id}`))
+              .setLabel(`${idx + 1}. ${c.text.length > 75 ? c.text.slice(0, 72) + '...' : c.text}`)
+              .setStyle(ButtonStyle.Primary)
+          );
+        });
+      } else {
+        const isLastScene = sceneIdx >= event.scenes.length - 1;
+        choicesRow.addComponents(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:${sceneIdx + 1}`))
+            .setLabel(isLastScene ? '🏁 Complete Interlude' : 'Next Scene ➔')
+            .setStyle(ButtonStyle.Success)
+        );
+      }
+
+      const vnEmbed = new EmbedBuilder()
+        .setTitle(`📖 Bond Interlude: ${event.title.replace(/^Bond Interlude:\s*/i, '')}`)
+        .setDescription(
+          `💬 **[BOND INTERLUDE] ${scene.speakerName || servantName}:**\n> ❝ ***${currentChunk}*** ❞\n\n` +
+          `*Scene ${sceneIdx + 1}/${event.scenes.length}${partIndicator} • Servant Bond Lv. ${targetServant.bondLevel || 1}*` +
+          choiceTextList
+        )
+        .setImage('attachment://visual_novel.png')
+        .setColor(0xec4899);
+
+      await interaction.editReply({
+        embeds: [vnEmbed],
+        files: [attachment],
+        components: [choicesRow]
+      });
+      return;
+    }
+
+    if (btnId.startsWith('vn_resp_chunk:') || btnId.startsWith('vn_resp_chunk_')) {
+      await interaction.deferUpdate();
+
+      let eventId = '';
+      let sceneIdx = 0;
+      let choiceId = '';
+      let respChunkIdx = 0;
+
+      if (btnId.includes(':')) {
+        const parts = btnId.split(':');
+        // vn_resp_chunk:sKey:eventId:sceneIdx:choiceId:respChunkIdx
+        if (parts.length >= 6) {
+          eventId = parts[2];
+          sceneIdx = parseInt(parts[3], 10) || 0;
+          choiceId = parts[4];
+          respChunkIdx = parseInt(parts[5], 10) || 0;
+        } else if (parts.length >= 5) {
+          eventId = parts[1];
+          sceneIdx = parseInt(parts[2], 10) || 0;
+          choiceId = parts[3];
+          respChunkIdx = parseInt(parts[4], 10) || 0;
+        }
+      } else {
+        const parts = btnId.split('_');
+        respChunkIdx = parseInt(parts.pop() || '0', 10);
+        choiceId = parts.pop() || '';
+        sceneIdx = parseInt(parts.pop() || '0', 10);
+        eventId = parts.slice(3).join('_');
+      }
+
+      const events = getBondEventsForServant(targetServant);
+      const event = events.find(e => e.id === eventId) || events[0];
+      const scene = event.scenes[sceneIdx] || event.scenes[0];
+      const pickedChoice = scene.choices?.find(c => c.id === choiceId);
+      const servantResponse = pickedChoice ? pickedChoice.response : scene.dialogueText;
+
+      const respChunks = splitDialogueIntoChunks(servantResponse);
+      const currentRespChunk = respChunks[respChunkIdx] || respChunks[0] || servantResponse;
+      const isLastRespChunk = respChunkIdx >= respChunks.length - 1;
+
+      const targetNextIndex = pickedChoice?.nextSceneId
+        ? event.scenes.findIndex(s => s.id === pickedChoice.nextSceneId)
+        : sceneIdx + 1;
+      const effectiveNextIndex = targetNextIndex !== -1 ? targetNextIndex : sceneIdx + 1;
+      const hasNextScene = effectiveNextIndex < event.scenes.length;
+
+      if (!isLastRespChunk) {
+        const imageBuffer = await renderVisualNovelCard({
+          servantName,
+          servantClass: sTemplate.servantClass || 'Saber',
+          servantAvatarUrl: sTemplate.avatarUrl,
+          servantCardArtUrl: sTemplate.cardArtUrl || targetServant?.cardArtUrl,
+          servantSpriteUrl: sTemplate.spriteUrl || targetServant?.spriteUrl,
+          speakerName: scene.speakerName || servantName,
+          dialogueText: currentRespChunk,
+          title: event.title,
+          subtitle: `${event.subtitle} • Scene ${sceneIdx + 1}/${event.scenes.length}`,
+          choiceMadeText: pickedChoice?.text,
+          reactionEmotion: pickedChoice?.reactionEmotion,
+          currentBondLevel: targetServant.bondLevel || 1
+        });
+
+        const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel_step.png' });
+        const stepEmbed = new EmbedBuilder()
+          .setTitle(`📖 ${event.title} — Scene ${sceneIdx + 1}/${event.scenes.length} (Part ${respChunkIdx + 1}/${respChunks.length})`)
+          .setDescription(
+            `💬 **[BOND INTERLUDE] ${scene.speakerName || servantName}:**\n> ❝ ***${currentRespChunk}*** ❞\n\n` +
+            (pickedChoice ? `✨ **Master Choice Selected:** “${pickedChoice.text}”\n\n` : '') +
+            `👉 *Click **Next ➔** below to continue reading!*`
+          )
+          .setImage('attachment://visual_novel_step.png')
+          .setColor(0xf59e0b);
+
+        const nextRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`vn_resp_chunk:${sKey}:${event.id}:${sceneIdx}:${pickedChoice?.id || '0'}:${respChunkIdx + 1}`))
+            .setLabel(`Next (${respChunkIdx + 1}/${respChunks.length}) ➔`)
+            .setStyle(ButtonStyle.Primary)
+        );
+
+        await interaction.editReply({
+          embeds: [stepEmbed],
+          files: [attachment],
+          components: [nextRow]
+        });
+        return;
+      }
+
+      // Last response chunk reached:
+      if (hasNextScene) {
+        const imageBuffer = await renderVisualNovelCard({
+          servantName,
+          servantClass: sTemplate.servantClass || 'Saber',
+          servantAvatarUrl: sTemplate.avatarUrl,
+          servantCardArtUrl: sTemplate.cardArtUrl || targetServant?.cardArtUrl,
+          servantSpriteUrl: sTemplate.spriteUrl || targetServant?.spriteUrl,
+          speakerName: scene.speakerName || servantName,
+          dialogueText: currentRespChunk,
+          title: event.title,
+          subtitle: `${event.subtitle} • Scene ${sceneIdx + 1}/${event.scenes.length}`,
+          choiceMadeText: pickedChoice?.text,
+          reactionEmotion: pickedChoice?.reactionEmotion,
+          currentBondLevel: targetServant.bondLevel || 1
+        });
+
+        const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel_step.png' });
+        const stepEmbed = new EmbedBuilder()
+          .setTitle(`📖 ${event.title} — Scene ${sceneIdx + 1}/${event.scenes.length}`)
+          .setDescription(
+            `💬 **[BOND INTERLUDE] ${scene.speakerName || servantName}:**\n> ❝ ***${currentRespChunk}*** ❞\n\n` +
+            (pickedChoice ? `✨ **Master Choice Selected:** “${pickedChoice.text}”\n\n` : '') +
+            `👉 *Click **Next Scene ➔** below to continue the story!*`
+          )
+          .setImage('attachment://visual_novel_step.png')
+          .setColor(0xf59e0b);
+
+        const nextRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:${effectiveNextIndex}`))
+            .setLabel('Next Scene ➔')
+            .setStyle(ButtonStyle.Success)
+        );
+
+        await interaction.editReply({
+          embeds: [stepEmbed],
+          files: [attachment],
+          components: [nextRow]
+        });
+        return;
+      }
+
+      // Final scene completion from choice
+      const completedIds: string[] = targetServant.completedBondEvents || [];
+      const isFirstCompletion = !completedIds.includes(event.id);
+
+      const baseExpGain = pickedChoice ? pickedChoice.bondExpGain : (event.rewardBondExp || 500);
+      const baseSqReward = event.rewardSaintQuartz || 3;
+
+      const expGain = isFirstCompletion ? baseExpGain : 0;
+      const sqReward = isFirstCompletion ? baseSqReward : 0;
+
+      let updatedServant = { ...targetServant };
+
+      if (isFirstCompletion) {
+        if (!updatedServant.completedBondEvents) updatedServant.completedBondEvents = [];
+        updatedServant.completedBondEvents.push(event.id);
+
+        let bond10Grant: any = undefined;
+        if (expGain > 0) {
+          const res = addBondExpToServant(updatedServant, expGain);
+          updatedServant = res.updatedServant;
+          bond10Grant = checkAndGrantBond10Ce(master, updatedServant);
+        }
+
+        if (sqReward > 0) {
+          master.saintQuartz = (master.saintQuartz || 0) + sqReward;
+        }
+
+        master.servants = master.servants.map((s: any) => s.id === updatedServant.id ? updatedServant : s);
+        await saveMaster(master);
+      }
+
+      const allServantEvents = getBondEventsForServant(updatedServant);
+      const currentBondLv = updatedServant.bondLevel || 1;
+      const nextEvent = allServantEvents.find(e => e.requiredBondLevel <= currentBondLv && !(updatedServant.completedBondEvents || []).includes(e.id) && e.id !== event.id);
+
+      const reactionEmoji = pickedChoice?.reactionEmotion === 'happy' ? '💖' : pickedChoice?.reactionEmotion === 'flustered' ? '😳' : pickedChoice?.reactionEmotion === 'amused' ? '😄' : '✨';
+
+      const imageBuffer = await renderVisualNovelCard({
+        servantName,
+        servantClass: sTemplate.servantClass || 'Saber',
+        servantAvatarUrl: sTemplate.avatarUrl,
+        servantCardArtUrl: sTemplate.cardArtUrl || targetServant?.cardArtUrl,
+        servantSpriteUrl: sTemplate.spriteUrl || targetServant?.spriteUrl,
+        speakerName: scene.speakerName || servantName,
+        dialogueText: currentRespChunk,
+        title: `${event.title} (Complete)`,
+        subtitle: event.subtitle,
+        choiceMadeText: pickedChoice?.text,
+        reactionEmotion: pickedChoice?.reactionEmotion,
+        expGained: expGain,
+        sqGained: sqReward,
+        currentBondLevel: updatedServant.bondLevel || 1,
+        isComplete: true
+      });
+
+      const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel_reaction.png' });
+
+      const bond10RewardText = (updatedServant.bondLevel >= 10)
+        ? `\n\n🎖️ **[MAX BOND 10 REACHED!]** Bestowed Bond Craft Essence: ★4 **${getBondCraftEssenceForServant(updatedServant.templateId || sTemplate.id || updatedServant.id, servantName).name}**!\n*(Type \`/ce art\` or click the button below to view high-res card art!)*`
+        : '';
+
+      const rewardsText = isFirstCompletion
+        ? `🎉 **REWARDS EARNED:**\n` +
+          `• **Bond EXP:** +${expGain} EXP ${reactionEmoji}\n` +
+          `• **Saint Quartz:** +💎 ${sqReward} SQ\n` +
+          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bond10RewardText}`
+        : `ℹ️ **REPLAY MODE:**\n` +
+          `• *Rewards already claimed for this Interlude.*\n` +
+          `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bond10RewardText}`;
+
+      const nextChapterNotice = nextEvent
+        ? `\n\n✨ **New Story Chapter Unlocked!** *${nextEvent.title}* (Bond Lv. ${nextEvent.requiredBondLevel}) is ready to play!`
+        : '';
+
+      const resultEmbed = new EmbedBuilder()
+        .setTitle(`🌸 Interlude Complete: ${event.title}`)
+        .setDescription(
+          `**${servantName}**:\n` +
+          `*"${currentRespChunk}"*\n\n` +
+          rewardsText +
+          nextChapterNotice
+        )
+        .setImage('attachment://visual_novel_reaction.png')
+        .setColor(isFirstCompletion ? 0xec4899 : 0x64748b);
+
+      const completionButtons: ButtonBuilder[] = [];
+      if (nextEvent) {
+        completionButtons.push(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`vn_start_specific:${sKey}:${nextEvent.id}`))
+            .setLabel(`📖 Play Chapter ${nextEvent.requiredBondLevel}: ${nextEvent.title.length > 25 ? nextEvent.title.slice(0, 22) + '...' : nextEvent.title} ➔`)
+            .setStyle(ButtonStyle.Success)
+        );
+      }
+      if (updatedServant.bondLevel >= 10) {
+        completionButtons.push(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`ce_art_bond:${sKey}`))
+            .setLabel('View Bond CE Art 🎖️')
+            .setStyle(ButtonStyle.Success)
+        );
+      }
+      completionButtons.push(
+        new ButtonBuilder()
+          .setCustomId(safeCustomId(`vn_play_event:${sKey}`))
+          .setLabel('📖 Chapter List / Replay')
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId(safeCustomId(`vn_gift_menu:${sKey}`))
+          .setLabel('Present Gifts 🎁')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
+          .setLabel('📊 Bond Sanctum')
+          .setStyle(ButtonStyle.Secondary)
+      );
+
+      const completionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(completionButtons.slice(0, 5));
+
+      await interaction.editReply({
+        embeds: [resultEmbed],
+        files: [attachment],
+        components: [completionRow]
       });
       return;
     }
@@ -1518,11 +1905,58 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const pickedChoice = scene.choices?.find(c => c.id === choiceId);
       const servantResponse = pickedChoice ? pickedChoice.response : scene.dialogueText;
 
+      const respChunks = splitDialogueIntoChunks(servantResponse);
+      const currentRespChunk = respChunks[0] || servantResponse;
+      const isLastRespChunk = respChunks.length <= 1;
+
       const targetNextIndex = pickedChoice?.nextSceneId
         ? event.scenes.findIndex(s => s.id === pickedChoice.nextSceneId)
         : sceneIdx + 1;
       const effectiveNextIndex = targetNextIndex !== -1 ? targetNextIndex : sceneIdx + 1;
       const hasNextScene = effectiveNextIndex < event.scenes.length;
+
+      if (!isLastRespChunk) {
+        const imageBuffer = await renderVisualNovelCard({
+          servantName,
+          servantClass: sTemplate.servantClass || 'Saber',
+          servantAvatarUrl: sTemplate.avatarUrl,
+          servantCardArtUrl: sTemplate.cardArtUrl || targetServant?.cardArtUrl,
+          servantSpriteUrl: sTemplate.spriteUrl || targetServant?.spriteUrl,
+          speakerName: scene.speakerName || servantName,
+          dialogueText: currentRespChunk,
+          title: event.title,
+          subtitle: `${event.subtitle} • Scene ${sceneIdx + 1}/${event.scenes.length}`,
+          choiceMadeText: pickedChoice?.text,
+          reactionEmotion: pickedChoice?.reactionEmotion,
+          currentBondLevel: targetServant.bondLevel || 1
+        });
+
+        const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel_step.png' });
+
+        const stepEmbed = new EmbedBuilder()
+          .setTitle(`📖 ${event.title} — Scene ${sceneIdx + 1}/${event.scenes.length} (Part 1/${respChunks.length})`)
+          .setDescription(
+            `💬 **[BOND INTERLUDE] ${scene.speakerName || servantName}:**\n> ❝ ***${currentRespChunk}*** ❞\n\n` +
+            (pickedChoice ? `✨ **Master Choice Selected:** “${pickedChoice.text}”\n\n` : '') +
+            `👉 *Click **Next ➔** below to continue reading!*`
+          )
+          .setImage('attachment://visual_novel_step.png')
+          .setColor(0xf59e0b);
+
+        const nextRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`vn_resp_chunk:${sKey}:${event.id}:${sceneIdx}:${pickedChoice?.id || '0'}:1`))
+            .setLabel(`Next (1/${respChunks.length}) ➔`)
+            .setStyle(ButtonStyle.Primary)
+        );
+
+        await interaction.editReply({
+          embeds: [stepEmbed],
+          files: [attachment],
+          components: [nextRow]
+        });
+        return;
+      }
 
       if (hasNextScene) {
         const imageBuffer = await renderVisualNovelCard({
@@ -1532,7 +1966,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           servantCardArtUrl: sTemplate.cardArtUrl || targetServant?.cardArtUrl,
           servantSpriteUrl: sTemplate.spriteUrl || targetServant?.spriteUrl,
           speakerName: scene.speakerName || servantName,
-          dialogueText: servantResponse,
+          dialogueText: currentRespChunk,
           title: event.title,
           subtitle: `${event.subtitle} • Scene ${sceneIdx + 1}/${event.scenes.length}`,
           choiceMadeText: pickedChoice?.text,
@@ -1545,7 +1979,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         const stepEmbed = new EmbedBuilder()
           .setTitle(`📖 ${event.title} — Scene ${sceneIdx + 1}/${event.scenes.length}`)
           .setDescription(
-            `💬 **[BOND INTERLUDE] ${scene.speakerName || servantName}:**\n> ❝ ***${servantResponse}*** ❞\n\n` +
+            `💬 **[BOND INTERLUDE] ${scene.speakerName || servantName}:**\n> ❝ ***${currentRespChunk}*** ❞\n\n` +
             (pickedChoice ? `✨ **Master Choice Selected:** “${pickedChoice.text}”\n\n` : '') +
             `👉 *Click **Next Scene ➔** below to continue the story!*`
           )
@@ -1782,7 +2216,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
             `• **Bond EXP:** +${expGain} EXP ✨\n` +
             `• **Saint Quartz:** +💎 ${sqReward} SQ\n` +
             `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bond10RewardText}`
-          : `ℹ️ **REPLAY MODE:**\n` +
+        : `ℹ️ **REPLAY MODE:**\n` +
             `• *Rewards already claimed for this Interlude.*\n` +
             `• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\`${bond10RewardText}`;
 
@@ -1845,6 +2279,9 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       const scene = event.scenes[nextSceneIdx];
       const isLastScene = nextSceneIdx === event.scenes.length - 1;
+      const chunks = splitDialogueIntoChunks(scene.dialogueText);
+      const currentChunk = chunks[0] || scene.dialogueText;
+      const isLastChunk = chunks.length <= 1;
 
       const imageBuffer = await renderVisualNovelCard({
         servantName,
@@ -1853,21 +2290,29 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         servantCardArtUrl: sTemplate.cardArtUrl || targetServant?.cardArtUrl,
         servantSpriteUrl: sTemplate.spriteUrl || targetServant?.spriteUrl,
         speakerName: scene.speakerName || servantName,
-        dialogueText: scene.dialogueText,
+        dialogueText: currentChunk,
         title: event.title,
         subtitle: `${event.subtitle} • Scene ${nextSceneIdx + 1}/${event.scenes.length}`,
         currentBondLevel: targetServant.bondLevel || 1
       });
 
       const attachment = new AttachmentBuilder(imageBuffer, { name: 'visual_novel.png' });
-
-      const choiceTextList = scene.choices && scene.choices.length > 0
-        ? `\n\n👇 **Choose your response to deepen your Bond:**\n` +
-          scene.choices.map((c, idx) => `**${idx + 1}.** “*${c.text}*”`).join('\n')
-        : '';
+      const partIndicator = chunks.length > 1 ? ` (Part 1/${chunks.length})` : '';
 
       const choicesRow = new ActionRowBuilder<ButtonBuilder>();
-      if (scene.choices && scene.choices.length > 0) {
+      let choiceTextList = '';
+
+      if (!isLastChunk) {
+        choicesRow.addComponents(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`vn_chunk:${sKey}:${event.id}:${nextSceneIdx}:1`))
+            .setLabel(`Next (1/${chunks.length}) ➔`)
+            .setStyle(ButtonStyle.Primary)
+        );
+      } else if (scene.choices && scene.choices.length > 0) {
+        choiceTextList =
+          `\n\n👇 **Choose your response to deepen your Bond:**\n` +
+          scene.choices.map((c, idx) => `**${idx + 1}.** “*${c.text}*”`).join('\n');
         scene.choices.forEach((c, idx) => {
           choicesRow.addComponents(
             new ButtonBuilder()
@@ -1886,10 +2331,10 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       }
 
       const vnEmbed = new EmbedBuilder()
-        .setTitle(`📖 Bond Interlude: ${event.title}`)
+        .setTitle(`📖 Bond Interlude: ${event.title.replace(/^Bond Interlude:\s*/i, '')}`)
         .setDescription(
-          `💬 **[BOND INTERLUDE] ${scene.speakerName || servantName}:**\n> ❝ ***${scene.dialogueText}*** ❞\n\n` +
-          `*Scene ${nextSceneIdx + 1}/${event.scenes.length} • Servant Bond Lv. ${targetServant.bondLevel || 1}*` +
+          `💬 **[BOND INTERLUDE] ${scene.speakerName || servantName}:**\n> ❝ ***${currentChunk}*** ❞\n\n` +
+          `*Scene ${nextSceneIdx + 1}/${event.scenes.length}${partIndicator} • Servant Bond Lv. ${targetServant.bondLevel || 1}*` +
           choiceTextList
         )
         .setImage('attachment://visual_novel.png')
