@@ -61,10 +61,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, news, message: 'Broadcasted fresh 2-hour Fuyuki News Bulletin via Gemini' });
     }
 
-    const [homily, news] = await Promise.all([
-      generateKotomine24hHomily(war, true),
-      generateFuyuki2hNewsBulletin(war, true)
-    ]);
+    const homily = await generateKotomine24hHomily(war, true);
+    const news = await generateFuyuki2hNewsBulletin(war, true);
 
     return NextResponse.json({
       success: true,

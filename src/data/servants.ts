@@ -225,6 +225,22 @@ export function getServantAvatarAndCardArt(
     };
   }
 
+  // Strict check for Luvria Greenharte
+  if (
+    templateId === 'luvria_greenharte' ||
+    templateId === 'luvria' ||
+    templateId.includes('luvria') ||
+    templateId.includes('greenharte') ||
+    inputName.includes('luvria') ||
+    inputName.includes('greenharte')
+  ) {
+    return {
+      avatarUrl: 'https://ella.janitorai.com/media-approved/II1DtB1YFFjXHKcs8gU7q.webp',
+      cardArtUrl: 'https://ella.janitorai.com/media-approved/II1DtB1YFFjXHKcs8gU7q.webp',
+      spriteUrl: servantInput.spriteUrl || template.spriteUrl || 'https://ella.janitorai.com/media-approved/k_aK4SaC3HJVRNxDuMU13.webp'
+    };
+  }
+
   const findCanonical = (pool: ServantTemplate[]) => {
     let found = pool.find(s => s.id.toLowerCase() === templateId);
     if (found) return found;
@@ -1562,6 +1578,99 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     avatarUrl: 'https://ella.janitorai.com/media-approved/2PMVd98BaN6Rc9lzVnWyn.webp',
     cardArtUrl: 'https://ella.janitorai.com/media-approved/2PMVd98BaN6Rc9lzVnWyn.webp',
     spriteUrl: 'https://ella.janitorai.com/media-approved/yF_QPg5zHXgLbxeEfFd0Q.webp',
+    isCustomOrMeme: false
+  },
+  {
+    id: 'luvria_greenharte',
+    name: 'Luvria Greenharte',
+    title: 'The "Hero," Strongest Mage of Sylvanryth',
+    servantClass: 'Caster',
+    rarity: 5,
+    baseHp: 30400,
+    baseAtk: 11400,
+    baseStats: { strength: 12, endurance: 14, agility: 15, mana: 20, luck: 16 },
+    commandDeck: ['Arts', 'Arts', 'Arts', 'Buster', 'Quick'],
+    skills: [
+      {
+        id: 'infinite_wellspring_a',
+        name: 'Infinite Wellspring A',
+        cooldown: 6,
+        description: 'Charges own NP Gauge by +30%. Increases own NP Gain by +20% for 3 turns. Recovers 1,000 HP per turn for 3 turns.',
+        effectType: 'buff_atk',
+        duration: 3,
+        value: 30,
+        icon: '💧',
+        quote: '"My wellspring is boundless. The concept of depletion does not apply to me."',
+        quotes: [
+          '"My wellspring is boundless. The concept of depletion does not apply to me."',
+          '"Mana without end. Let the weave of power surge forth."'
+        ]
+      },
+      {
+        id: 'concept_nullification_impact_space_a',
+        name: 'Concept Nullification (Impact & Space) A',
+        cooldown: 6,
+        description: 'Grants self Invincibility for 1 turn. Grants [Ignore Invincibility] to self for 1 turn. Increases own Arts Card effectiveness by +30% for 3 turns.',
+        effectType: 'invincible',
+        duration: 3,
+        value: 30,
+        icon: '🛡️',
+        quote: '"Distance and momentum are mere suggestions. Impact, collapse!"',
+        quotes: [
+          '"Distance and momentum are mere suggestions. Impact, collapse!"',
+          '"You cannot touch what has denied the very concept of collision."'
+        ]
+      },
+      {
+        id: 'nullify_the_law_of_magic_ex',
+        name: 'Nullify: The Law of Magic EX',
+        cooldown: 7,
+        description: 'Removes all Offensive Buffs (ATK, Crit, Damage buffs) from all enemies. Inflicts [Skill Seal] on all enemies for 1 turn. Increases Arts performance of all allies by +20% for 3 turns.',
+        effectType: 'buff_atk',
+        duration: 3,
+        value: 20,
+        icon: '👑',
+        quote: '"Under my authority, the laws of sorcery are rewritten. Cease your incantations."',
+        quotes: [
+          '"Under my authority, the laws of sorcery are rewritten. Cease your incantations."',
+          '"The concept of your magic is stripped away. Be silent."'
+        ]
+      }
+    ],
+    passives: [
+      {
+        name: 'Territory Creation A',
+        type: 'territory_creation',
+        value: 10,
+        rank: 'A',
+        description: 'Increases own Arts Card effectiveness by +10%.'
+      },
+      {
+        name: 'Absolute Permanence B',
+        type: 'absolute_permanence',
+        value: 3,
+        rank: 'B',
+        description: 'Charges own NP Gauge by +3% every turn and grants Immunity to Instant-Death. (Locked — Reaches Bond Lv. 5 to unlock)'
+      }
+    ],
+    noblePhantasm: {
+      name: 'Concept Nullification: Deny the Victory',
+      cardType: 'Arts',
+      chant: 'All natural laws answer my decree. Distance, momentum, the flow of power—render them void. Deny the concept of your triumph! Concept Nullification: Victory!',
+      description: '• Multiplier: 1000% (Arts • AoE)\n• Anti-World Effect: Deals massive defense-ignoring AoE damage to all enemies. Reduces all enemy NP gauges by 20% and has a 50% chance to inflict [Stun] for 1 turn.\n• Overcharge: Reduces all enemies\' Defense by 30% for 3 turns and Critical Rate by 20% for 3 turns.',
+      target: 'aoe',
+      multiplier: 1000,
+      overchargeEffect: 'Reduces all enemies\' Defense by 30% (3T) and Critical Rate by 20% (3T) • -20% NP Gauge & 50% Stun chance',
+      gifUrl: 'https://ella.janitorai.com/media-approved/eq0tPcLuV5PXGDg53sgS1.webp'
+    },
+    lore: 'Luvria Greenharte is a 140-year-old Elf S-Rank Adventurer and the Strongest Mage in the fantasy world of Lyozes, bearing the mantle of the "Hero." Wielding unprecedented Divergent Multi-Affinity across all elemental paths (Pyre, Fluvia, Terra, Gale), her defining power is Concept Nullification ("Anti-World Magic")—the terrifying authority to selectively negate distance, impact, magic, and even victory itself. Operates as the offensive core of Lucia Lyozes\' tight-knit S-Rank party out of the Citadel Suburbs alongside Edmond. Kind, brave, playful, and sarcastic, she conceals cataclysm-level magical output beneath lighthearted banter, protected and kept grounded by Lucia to avoid becoming a feared world pariah.',
+    summonQuote: '"Greetings, Master of this sanctuary! I am Luvria Greenharte—S-Rank adventurer, humble wielder of the staff, and the world\'s finest mage. Doth thy jaw hit the floor, or art thou merely spellbound? Fear not, thy back is safe with me!"',
+    battleStartQuote: '"All elemental paths converge at my fingertip. Shall we show them why concept nullification is the true art of victory?"',
+    victoryQuote: '"A splendid engagement! Verily, when one denies the very concept of defeat, the outcome was written before we took the field."',
+    defeatQuote: '"A minor miscalculation of the weave... fret not, Master, my life cannot be erased so easily. Live on... and keep that head high..."',
+    avatarUrl: 'https://ella.janitorai.com/media-approved/II1DtB1YFFjXHKcs8gU7q.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/II1DtB1YFFjXHKcs8gU7q.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/k_aK4SaC3HJVRNxDuMU13.webp',
     isCustomOrMeme: false
   }
 ];

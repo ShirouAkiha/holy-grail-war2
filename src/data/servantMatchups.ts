@@ -1161,13 +1161,64 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "A duplicate of myself? If you carry the same scars of the Calamity and the weight of the Hero's Party... then prove your resolve is stronger than mine!",
       retort: "There is only one vanguard who protects the Citadel Suburbs. Ground your spear—let us see whose foresight holds true!",
       tag: "MIRROR OF PREDESTINED RUIN"
+    },
+    luvria_greenharte: {
+      intro: "Luvria! Stop spinning that staff like a toy and put up your guard! If you try to nullify your way out of morning drills again, I'm doubling your chores!",
+      retort: "Aha! Lucia, must thou be so terribly serious? 'Tis merely a friendly duel! Besides, how canst thou poke me if I deny the concept of thy lance's tip?",
+      tag: "THE S-RANK VANGUARD & THE STRONGEST MAGE"
+    }
+  },
+
+  // 17. LUVRIA GREENHARTE (CASTER / THE "HERO", STRONGEST MAGE OF SYLVANRYTH)
+  // =========================================================================
+  luvria_greenharte: {
+    lucia_lyozes: {
+      intro: "Lucia! Mind thy posture! Just because thou art our party leader doth not mean thou canst block four elemental paths at once! Prepare thyself!",
+      retort: "Luvria... if you singe my cloak with that divergent magic, I am banning you from the tea shop in the Citadel Suburbs for a month. Stance ready!",
+      tag: "THE S-RANK VANGUARD & THE STRONGEST MAGE"
+    },
+    adiosa_dragon_envoy: {
+      intro: "The Cataclysm Dragon of Ixenor... Thy instant-death aura carries no weight before me. Concept Nullification: Death! Let us see if a dragon can withstand the Divergent Path!",
+      retort: "⟨ Vur Aeth'ra... ⟩ The Divergent anomaly of Sylvanryth. One of the few mortals capable of standing before my wings without turning to ash. Unleash your Anti-World magic, Elf.",
+      tag: "CATACLYSM CONVERGENCE: WORLD-PRUNER VS THE STRONGEST MAGE"
+    },
+    gilgamesh_archer: {
+      intro: "The King of Heroes with ten thousand treasures... Verily, a dazzling spectacle! But what good are all the blades in creation if I deny the concept of their distance?",
+      retort: "A mere elf daring to utter the word 'nullification' before the King? I shall impale your insolence with the truths of Babylon, mongrel!",
+      tag: "CONCEPT NULLIFICATION VS GATE OF BABYLON"
+    },
+    gilgamesh: {
+      intro: "The King of Heroes with ten thousand treasures... Verily, a dazzling spectacle! But what good are all the blades in creation if I deny the concept of their distance?",
+      retort: "A mere elf daring to utter the word 'nullification' before the King? I shall impale your insolence with the truths of Babylon, mongrel!",
+      tag: "CONCEPT NULLIFICATION VS GATE OF BABYLON"
+    },
+    artoria_pendragon: {
+      intro: "King of Knights! The sacred light of Excalibur shines brightly indeed. Shall we test whether the holy blade can overcome the weave of Sylvanryth?",
+      retort: "Hero of Lyozes, Luvria Greenharte. I feel the solemn duty you bear for your companions. With the sword of promised victory, I meet your challenge!",
+      tag: "SWORD OF VICTORY VS DENY THE VICTORY"
+    },
+    aoko_aozaki: {
+      intro: "The Fifth Magician! Bending time and consequences with brute force... Verily, a wild technique! Care to see how concept nullification handles raw entropy?",
+      retort: "A 140-year-old elf with multi-affinity who negates concepts? You sound like a walking migraine for the Clock Tower! Let's go, Mage Girl!",
+      tag: "THE FIFTH MAGIC VS CONCEPT NULLIFICATION"
+    },
+    amamiya_no_chihaya_tenkohime: {
+      intro: "An ancient celestial fox guardian! Such glorious fluffy tails and playful spirit! Dost thou fancy a race through the forest before we cast our spells?",
+      retort: "Kyuuu! What vibrant green hair and magical warmth! But don't think thy concept tricks can outrun washi's celestial kitsune gale!",
+      tag: "THE SACRED FOX & THE ELVEN SAGE"
+    },
+    luvria_greenharte: {
+      intro: "An optical illusion? Or did some foolish dungeon mirror replicate the world's finest mage? Thou art missing my golden eye's luster!",
+      retort: "Verily, there is only room in this realm for one S-Rank hero of Sylvanryth! Let us see whose concept nullification reigns supreme!",
+      tag: "MIRROR OF OMNIPOTENCE"
     }
   }
 };
 
-// Also alias amamiya and lucia in the database
+// Also alias amamiya, lucia, and luvria in the database
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['amamiya'] = SERVANT_MATCHUP_DATABASE.amamiya_no_chihaya_tenkohime;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['lucia'] = SERVANT_MATCHUP_DATABASE.lucia_lyozes;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['luvria'] = SERVANT_MATCHUP_DATABASE.luvria_greenharte;
 
 /**
  * Fallback generator for custom servants, meme servants, or any servant pairs not explicitly defined.

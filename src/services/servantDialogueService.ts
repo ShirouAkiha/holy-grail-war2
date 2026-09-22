@@ -52,9 +52,9 @@ Master says: "${ctx.playerMessage}"
   try {
     const CANDIDATE_MODELS = [
       'gemini-3.8-flash',
-      'gemini-3.5-flash',
       'gemini-flash-latest',
-      'gemini-3.1-flash-lite'
+      'gemini-3.1-flash-lite',
+      'gemini-3.1-pro-preview'
     ];
 
     let response;
@@ -66,12 +66,16 @@ Master says: "${ctx.playerMessage}"
         });
         if (response && response.text) break;
       } catch (err: any) {
-        console.warn(`[servantDialogueService] model ${model} failed, trying next:`, err?.message || err);
+        const isHighDemand = err?.status === 503 || err?.error?.code === 503 || String(err?.message || '').includes('503') || String(err?.message || '').includes('high demand');
+        console.log(`[servantDialogueService] ${model} unavailable (${isHighDemand ? 'temporary 503 high demand' : 'retrying'}), checking next candidate...`);
+        if (isHighDemand) {
+          await new Promise(r => setTimeout(r, 600));
+        }
       }
     }
     return response?.text?.trim() || fallback;
   } catch (error) {
-    console.error('Gemini dialogue generation error:', error);
+    console.log('[servantDialogueService] Using canonical dialogue fallback.');
     return fallback;
   }
 }

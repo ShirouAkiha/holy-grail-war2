@@ -1016,6 +1016,70 @@ function activateCombatantSkill(
     });
     combatant.critStars = Math.min(50, (combatant.critStars || 0) + 15);
     logText = `🔴 **TRANSFORMATION AWAKENED!** **${sName}** ignited **${skill.name}** and entered **Super Aoko** form!${quoteLine}`;
+  } else if (skill.id === 'infinite_wellspring_a') {
+    combatant.npGauge = Math.min(300, combatant.npGauge + 30);
+    combatant.activeBuffs.push({
+      name: 'Infinite Wellspring (NP Gain Up)',
+      type: 'np_gain',
+      value: 20,
+      remainingTurns: 3
+    });
+    combatant.currentHp = Math.min(combatant.maxHp, combatant.currentHp + 1000);
+    combatant.activeBuffs.push({
+      name: 'Infinite Wellspring (HP Regen)',
+      type: 'hp_regen',
+      value: 1000,
+      remainingTurns: 3
+    });
+    logText = `💧 **${sName}** activated **${skill.name}**! (+30% NP Gauge, +20% NP Gain (3T), +1,000 HP Regen/turn (3T))${quoteLine}`;
+  } else if (skill.id === 'concept_nullification_impact_space_a') {
+    combatant.activeBuffs.push({
+      name: 'Concept Nullification (Invincible)',
+      type: 'invincible',
+      value: 100,
+      remainingTurns: 1
+    });
+    combatant.activeBuffs.push({
+      name: 'Concept Nullification (Ignore Invincible)',
+      type: 'ignore_invincible',
+      value: 100,
+      remainingTurns: 1
+    });
+    combatant.activeBuffs.push({
+      name: 'Concept Nullification (Arts Up)',
+      type: 'arts_up',
+      value: 30,
+      remainingTurns: 3
+    });
+    logText = `🛡️ **${sName}** activated **${skill.name}**! (Invincible 1T, Ignore Invincible 1T, +30% Arts Up (3T))${quoteLine}`;
+  } else if (skill.id === 'nullify_the_law_of_magic_ex') {
+    let strippedCount = 0;
+    if (opponent && opponent.activeBuffs) {
+      const initialLen = opponent.activeBuffs.length;
+      opponent.activeBuffs = opponent.activeBuffs.filter(b => 
+        b.type !== 'buff_atk' &&
+        b.type !== 'crit_dmg' &&
+        b.type !== 'buster_up' &&
+        b.type !== 'arts_up' &&
+        b.type !== 'quick_up' &&
+        b.type !== 'ignore_invincible' &&
+        !/atk|crit|power|damage|buster|arts|quick|strength/i.test(b.name)
+      );
+      strippedCount = initialLen - opponent.activeBuffs.length;
+      opponent.activeBuffs.push({
+        name: 'Law of Magic (Skill Seal)',
+        type: 'debuff_atk',
+        value: 100,
+        remainingTurns: 1
+      });
+    }
+    combatant.activeBuffs.push({
+      name: 'Law of Magic (Arts Up)',
+      type: 'arts_up',
+      value: 20,
+      remainingTurns: 3
+    });
+    logText = `👑 **${sName}** activated **${skill.name}**! (Stripped ${strippedCount} offensive buffs, inflicted Skill Seal (1T), +20% Arts Up for party (3T))${quoteLine}`;
   } else if (skill.effectType === 'buff_atk') {
     const val = skill.value || 35;
     const desc = (skill.description || '').toLowerCase();
@@ -1428,6 +1492,12 @@ function resolveStrike(
     attacker.npGauge = Math.min(300, attacker.npGauge + fifthSuccessionBonus);
   }
 
+  // Absolute Permanence B (Luvria Greenharte) grants +3% NP Gauge every turn
+  const permanenceBonus = attackerPassives.filter(p => p.type === 'absolute_permanence').length > 0 ? 3 : 0;
+  if (permanenceBonus > 0) {
+    attacker.npGauge = Math.min(300, attacker.npGauge + permanenceBonus);
+  }
+
   // The Weight of Heaven (Adiosa) gravitational field
   const weightOfHeaven = attackerPassives.find(p => p.type === 'the_weight_of_heaven');
   if (weightOfHeaven) {
@@ -1745,6 +1815,35 @@ function resolveStrike(
         const hitProt = processHitProtection();
         if (hitProt.isProtected) {
           npDmg = 0; // Completely evade/nullify incoming NP damage
+        }
+
+        // Check Concept Nullification: Deny the Victory Anti-World effects
+        const isDenyTheVictory = (attacker.servant.template.noblePhantasm?.name || '').includes('Deny the Victory') || (attacker.servant.template.noblePhantasm?.name || '').includes('Concept Nullification');
+        if (isDenyTheVictory) {
+          defender.npGauge = Math.max(0, defender.npGauge - 20);
+          const stunRoll = Math.random() < 0.50;
+          if (stunRoll) {
+            defender.isStunned = true;
+            defender.activeBuffs.push({
+              name: 'Concept Nullification (Stun)',
+              type: 'stun' as any,
+              value: 100,
+              remainingTurns: 1
+            });
+          }
+          defender.activeBuffs.push({
+            name: 'Deny the Victory (DEF Down)',
+            type: 'debuff_def',
+            value: 30,
+            remainingTurns: 3
+          });
+          defender.activeBuffs.push({
+            name: 'Deny the Victory (Crit Rate Down)',
+            type: 'debuff_atk',
+            value: 20,
+            remainingTurns: 3
+          });
+          chainTags.push(`🌌 Concept Nullification (-20% NP Drain • -30% DEF 3T • -20% Crit 3T${stunRoll ? ' • 💫 STUNNED 1T' : ''})`);
         }
 
         // Refund properties dictated by card type (Balanced FGO tuning)

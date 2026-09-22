@@ -649,6 +649,24 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     isBondCe: true,
     bondServantId: 'lucia_lyozes',
     bondServantName: 'Lucia Lyozes'
+  },
+  luvria_greenharte: {
+    id: 'ce_bond_luvria_greenharte',
+    name: 'The Boundless Weave',
+    rarity: 4,
+    description: 'A wooden talisman carved from the ancient heartwood of Sylvanryth, pulsing with all four elemental paths. A keepsake reminding the Strongest Mage that true strength lies not in the nullification of reality, but in the warmth of the family she protects.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to Luvria Greenharte: Increases Arts Card effectiveness of all allies by 15% and increases own NP Damage by 20%.',
+    passiveType: 'arts_up',
+    passiveValue: 15,
+    artworkUrl: 'https://ella.janitorai.com/media-approved/II1DtB1YFFjXHKcs8gU7q.webp',
+    isBondCe: true,
+    bondServantId: 'luvria_greenharte',
+    bondServantName: 'Luvria Greenharte'
   }
 };
 

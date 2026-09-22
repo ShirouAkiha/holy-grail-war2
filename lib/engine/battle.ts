@@ -938,6 +938,8 @@ export function executeNoblePhantasmLogic(
   } else {
     // Damaging Noble Phantasm (ST or AoE)
     const isApocryphaTerminus = np.name.includes('Apocrypha Terminus');
+    const isDenyTheVictory = np.name.includes('Deny the Victory') || np.name.includes('Concept Nullification');
+
     if (isApocryphaTerminus) {
       // Anti-Cheat Protocol (Before Damage):
       // Pierce defense and ignore invincibility, remove enemy defensive buffs (does NOT bypass or remove Guts)
@@ -960,8 +962,19 @@ export function executeNoblePhantasmLogic(
       target.isEvading = false;
     }
 
+    if (isDenyTheVictory) {
+      // Anti-World Effect (Before Damage):
+      // Bypasses enemy defense
+      actor.activeBuffs.push({
+        name: 'Concept Nullification: Ignore Defense',
+        type: 'ignore_defense' as any,
+        value: 100,
+        remainingTurns: 1
+      });
+    }
+
     const baseDamage = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardDamageModifier * scopeModifier * overchargeDamageBonus * classMult);
-    const defValue = isApocryphaTerminus ? 0 : effectiveDef;
+    const defValue = (isApocryphaTerminus || isDenyTheVictory) ? 0 : effectiveDef;
     let totalDmg = (baseDamage * cardPerformanceMultiplier * npDmgBonus) - (defValue * 0.25);
     totalDmg = Math.max(1200, totalDmg);
 
@@ -1100,11 +1113,44 @@ export function executeNoblePhantasmLogic(
       const baseRefund = scope === 'aoe' ? 30 : 25;
       npCharged = Math.round(baseRefund * (1.0 + artsBuff / 100));
       starsGenerated = 5;
-      actionSummary = isInvincible
-        ? `🔵 **${actor.name}** unleashed Arts Noble Phantasm [${np.name}] (${scope === 'single' ? 'ST' : 'AoE'}), but **${target.name}** was shielded by Invincibility! (Arts Refund: +${npCharged}% NP)`
-        : isEvaded
-        ? `💨 **${actor.name}** unleashed Arts Noble Phantasm [${np.name}] (${scope === 'single' ? 'ST' : 'AoE'}), but **${target.name}** Evaded! (Arts Refund: +${npCharged}% NP)`
-        : `🔵 **${actor.name}** unleashed Arts Noble Phantasm [${np.name}] (${scope === 'single' ? 'Single Target ST' : 'AoE'}) for **${damageDealt.toLocaleString()} DMG** and refilled **+${npCharged}% NP Gauge** via Arts Refund!`;
+
+      if (isDenyTheVictory) {
+        if (!target.activeBuffs) target.activeBuffs = [];
+        // Reduces enemy NP gauge by 20%
+        target.npGauge = Math.max(0, (target.npGauge || 0) - 20);
+        // 50% chance to inflict Stun for 1 turn
+        const stunRoll = Math.random() < 0.50;
+        if (stunRoll) {
+          target.isStunned = true;
+          target.activeBuffs.push({
+            name: 'Concept Nullification (Stun)',
+            type: 'stun',
+            value: 100,
+            remainingTurns: 1
+          });
+        }
+        // Overcharge: -30% DEF for 3 turns, -20% Crit Rate for 3 turns
+        target.activeBuffs.push({
+          name: 'Deny the Victory (DEF Down)',
+          type: 'buff_def',
+          value: -30,
+          remainingTurns: 3
+        });
+        target.activeBuffs.push({
+          name: 'Deny the Victory (Crit Rate Down)',
+          type: 'debuff_atk' as any,
+          value: -20,
+          remainingTurns: 3
+        });
+
+        actionSummary = `🌌 **${actor.name}** unleashed Anti-World Noble Phantasm **[${np.name}]**! *Anti-World Authority:* pierced enemy defense for **${damageDealt.toLocaleString()} DMG**, drained **-20% NP Gauge**, inflicted **-30% DEF & -20% Crit (3T)**${stunRoll ? ', and stunned the target for 1 turn' : ''}! (Arts Refund: +${npCharged}% NP)`;
+      } else {
+        actionSummary = isInvincible
+          ? `🔵 **${actor.name}** unleashed Arts Noble Phantasm [${np.name}] (${scope === 'single' ? 'ST' : 'AoE'}), but **${target.name}** was shielded by Invincibility! (Arts Refund: +${npCharged}% NP)`
+          : isEvaded
+          ? `💨 **${actor.name}** unleashed Arts Noble Phantasm [${np.name}] (${scope === 'single' ? 'ST' : 'AoE'}), but **${target.name}** Evaded! (Arts Refund: +${npCharged}% NP)`
+          : `🔵 **${actor.name}** unleashed Arts Noble Phantasm [${np.name}] (${scope === 'single' ? 'Single Target ST' : 'AoE'}) for **${damageDealt.toLocaleString()} DMG** and refilled **+${npCharged}% NP Gauge** via Arts Refund!`;
+      }
     } else {
       // Quick: Generates massive Critical Stars and moderate NP refund, both boosted by Quick performance buffs!
       const baseStars = scope === 'aoe' ? 35 : 25;
@@ -1649,6 +1695,72 @@ export function executeBattleTurn(
             });
             break;
         }
+
+        // Custom Skill Enhancements for Luvria Greenharte
+        if (skill.id === 'infinite_wellspring_a') {
+          actor.npGauge = Math.min(300, actor.npGauge + 30);
+          actor.activeBuffs.push({
+            name: 'Infinite Wellspring (NP Gain Up)',
+            type: 'np_gain',
+            value: 20,
+            remainingTurns: 3
+          });
+          actor.currentHp = Math.min(actor.maxHp, actor.currentHp + 1000);
+          actor.activeBuffs.push({
+            name: 'Infinite Wellspring (HP Regen)',
+            type: 'hp_regen',
+            value: 1000,
+            remainingTurns: 3
+          });
+        }
+
+        if (skill.id === 'concept_nullification_impact_space_a') {
+          actor.isInvincible = true;
+          actor.activeBuffs.push({
+            name: 'Concept Nullification (Invincible)',
+            type: 'invincible',
+            value: 100,
+            remainingTurns: 1
+          });
+          actor.activeBuffs.push({
+            name: 'Concept Nullification (Ignore Invincible)',
+            type: 'ignore_invincible',
+            value: 100,
+            remainingTurns: 1
+          });
+          actor.activeBuffs.push({
+            name: 'Concept Nullification (Arts Up)',
+            type: 'arts_up',
+            value: 30,
+            remainingTurns: 3
+          });
+        }
+
+        if (skill.id === 'nullify_the_law_of_magic_ex') {
+          if (target.activeBuffs) {
+            target.activeBuffs = target.activeBuffs.filter(b => 
+              b.type !== 'buff_atk' &&
+              b.type !== 'crit_dmg' &&
+              b.type !== 'buster_up' &&
+              b.type !== 'arts_up' &&
+              b.type !== 'quick_up' &&
+              b.type !== 'ignore_invincible' &&
+              !/atk|crit|power|damage|buster|arts|quick|strength/i.test(b.name)
+            );
+          }
+          target.activeBuffs.push({
+            name: 'Law of Magic (Skill Seal)',
+            type: 'skill_seal' as any,
+            value: 100,
+            remainingTurns: 1
+          });
+          actor.activeBuffs.push({
+            name: 'Law of Magic (Arts Up)',
+            type: 'arts_up',
+            value: 20,
+            remainingTurns: 3
+          });
+        }
       }
     }
 
@@ -2054,6 +2166,14 @@ export function executeBattleTurn(
       const npRefill = fifthSuccession.value || 4;
       actor.npGauge = Math.min(300, actor.npGauge + npRefill);
       actionText += `\n🔵 **[Fifth Succession A]** Circuit flow replenished +${npRefill}% NP gauge!`;
+    }
+
+    // Absolute Permanence B passive (+3% NP gauge per turn & Instant-Death Immunity)
+    const absolutePermanence = actorPassives.find(p => p.type === 'absolute_permanence' || (p.name && p.name.includes('Absolute Permanence')));
+    if (absolutePermanence) {
+      const npRefill = absolutePermanence.value || 3;
+      actor.npGauge = Math.min(300, actor.npGauge + npRefill);
+      actionText += `\n✨ **[Absolute Permanence B]** Concept anchor refilled +${npRefill}% NP gauge!`;
     }
 
     // Decrement transformation duration and revert if expired

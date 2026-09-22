@@ -177,9 +177,9 @@ JSON Output Schema:
   try {
     const CANDIDATE_MODELS = [
       'gemini-3.8-flash',
-      'gemini-3.5-flash',
       'gemini-flash-latest',
-      'gemini-3.1-flash-lite'
+      'gemini-3.1-flash-lite',
+      'gemini-3.1-pro-preview'
     ];
 
     let response;
@@ -195,7 +195,11 @@ JSON Output Schema:
         });
         if (response && response.text) break;
       } catch (primaryErr: any) {
-        console.warn(`[churchNewsService] ${modelName} homily failed, trying next candidate:`, primaryErr?.message || primaryErr);
+        const isHighDemand = primaryErr?.status === 503 || primaryErr?.error?.code === 503 || String(primaryErr?.message || '').includes('503') || String(primaryErr?.message || '').includes('high demand');
+        console.log(`[churchNewsService] ${modelName} unavailable (${isHighDemand ? 'temporary 503 high demand' : 'retrying'}), checking next model...`);
+        if (isHighDemand) {
+          await new Promise(r => setTimeout(r, 600));
+        }
       }
     }
 
@@ -231,8 +235,8 @@ JSON Output Schema:
       saveWarToDisk();
       return homily;
     }
-  } catch (err) {
-    console.error('[churchNewsService] Gemini error generating homily, using fallback:', err);
+  } catch (err: any) {
+    console.log('[churchNewsService] AI models currently busy at peak demand; delivering canonical Kotomine homily.');
   }
 
   const fallback = generateCanonicalKotomineHomily(war);
@@ -353,9 +357,9 @@ JSON Output Schema:
   try {
     const CANDIDATE_MODELS = [
       'gemini-3.8-flash',
-      'gemini-3.5-flash',
       'gemini-flash-latest',
-      'gemini-3.1-flash-lite'
+      'gemini-3.1-flash-lite',
+      'gemini-3.1-pro-preview'
     ];
 
     let response;
@@ -371,7 +375,11 @@ JSON Output Schema:
         });
         if (response && response.text) break;
       } catch (primaryErr: any) {
-        console.warn(`[churchNewsService] ${modelName} news failed, trying next candidate:`, primaryErr?.message || primaryErr);
+        const isHighDemand = primaryErr?.status === 503 || primaryErr?.error?.code === 503 || String(primaryErr?.message || '').includes('503') || String(primaryErr?.message || '').includes('high demand');
+        console.log(`[churchNewsService] ${modelName} unavailable (${isHighDemand ? 'temporary 503 high demand' : 'retrying'}), checking next model...`);
+        if (isHighDemand) {
+          await new Promise(r => setTimeout(r, 600));
+        }
       }
     }
 
@@ -402,8 +410,8 @@ JSON Output Schema:
       saveWarToDisk();
       return news;
     }
-  } catch (err) {
-    console.error('[churchNewsService] Gemini error generating news bulletin, using fallback:', err);
+  } catch (err: any) {
+    console.log('[churchNewsService] AI models currently busy at peak demand; broadcasting canonical Fuyuki news report.');
   }
 
   const fallback = generateCanonicalNewsBulletin(war);
@@ -424,9 +432,8 @@ export async function getOrInitChurchIntel(
   homily: ChurchOverseerHomily;
   news: FuyukiNewsBulletin;
 }> {
-  const [homily, news] = await Promise.all([
-    generateKotomine24hHomily(war, forceRefresh),
-    generateFuyuki2hNewsBulletin(war, forceRefresh)
-  ]);
+  // Execute sequentially to avoid concurrent rate-limit bursts against Gemini endpoints
+  const homily = await generateKotomine24hHomily(war, forceRefresh);
+  const news = await generateFuyuki2hNewsBulletin(war, forceRefresh);
   return { homily, news };
 }

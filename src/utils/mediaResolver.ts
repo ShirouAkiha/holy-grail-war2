@@ -34,6 +34,12 @@ export const CANON_MEDIA_FALLBACKS: Record<string, string> = {
   '2PMVd98BaN6Rc9lzVnWyn.webp': 'https://ella.janitorai.com/media-approved/2PMVd98BaN6Rc9lzVnWyn.webp',
   'np_lucia_lyozes.gif': 'https://ella.janitorai.com/media-approved/v4h_m7mQL9PwjTmQb_7fg.gif',
   'v4h_m7mQL9PwjTmQb_7fg.gif': 'https://ella.janitorai.com/media-approved/v4h_m7mQL9PwjTmQb_7fg.gif',
+  'avatar_luvria_greenharte.webp': 'https://ella.janitorai.com/media-approved/II1DtB1YFFjXHKcs8gU7q.webp',
+  'II1DtB1YFFjXHKcs8gU7q.webp': 'https://ella.janitorai.com/media-approved/II1DtB1YFFjXHKcs8gU7q.webp',
+  'np_luvria_greenharte.webp': 'https://ella.janitorai.com/media-approved/eq0tPcLuV5PXGDg53sgS1.webp',
+  'eq0tPcLuV5PXGDg53sgS1.webp': 'https://ella.janitorai.com/media-approved/eq0tPcLuV5PXGDg53sgS1.webp',
+  'sprite_luvria_greenharte.webp': 'https://ella.janitorai.com/media-approved/k_aK4SaC3HJVRNxDuMU13.webp',
+  'k_aK4SaC3HJVRNxDuMU13.webp': 'https://ella.janitorai.com/media-approved/k_aK4SaC3HJVRNxDuMU13.webp',
   'holy_grail_ritual.webp': 'https://ella.janitorai.com/media-approved/mK-ekdLeM4n1Wb-_vRN4L.webp',
   'mK-ekdLeM4n1Wb-_vRN4L.webp': 'https://ella.janitorai.com/media-approved/mK-ekdLeM4n1Wb-_vRN4L.webp'
 };

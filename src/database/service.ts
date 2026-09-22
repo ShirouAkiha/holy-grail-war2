@@ -150,6 +150,11 @@ function readJsonWithBackupFallback<T>(filePath: string, backupPrefix: string, f
     }
   }
 
+  // If file doesn't exist at all, initialize it with fallbackDefault on disk
+  if (!fs.existsSync(filePath)) {
+    writeJsonAtomic(filePath, fallbackDefault, backupPrefix);
+  }
+
   return fallbackDefault;
 }
 

@@ -60,6 +60,7 @@ export type PassiveSkillType =
   | 'oblivion_correction'
   | 'the_weight_of_heaven'
   | 'fifth_succession'
+  | 'absolute_permanence'
   | 'magic_gunner';
 
 export interface PassiveSkill {

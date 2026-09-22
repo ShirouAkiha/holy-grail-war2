@@ -634,6 +634,55 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
     ]
   },
 
+  // Luvria Greenharte - Caster (Strongest Mage of Sylvanryth)
+  luvria_greenharte: {
+    buster: [
+      "Pyre and Gale collide! Let the primal inferno splay across the heavens!",
+      "Concept Nullification: Impact! All kinetic force translates directly to your core!",
+      "Staff strike imbued with the weight of the World! Scatter!",
+      "Divergent elemental rupture! Stand aside, I am setting this field ablaze!"
+    ],
+    arts: [
+      "All four elemental paths—Pyre, Fluvia, Terra, Gale—sing in perfect harmony.",
+      "Infinite Wellspring active. My mana is boundless; thy barrier is finite.",
+      "Concept Nullification: Distance! My incantation lands where thou standest instantaneously.",
+      "The weave answers my decree. Observe the true craft of Sylvanryth."
+    ],
+    quick: [
+      "Gale-step! A breeze upon the cheek before the spell manifests!",
+      "Too slow, friend! Fluvia's current already surrounds thy blind spot.",
+      "Light footwork of the forest. Didst thou think a mage could not dance?",
+      "Rapid-cast incantation! Three elemental circles in a single breath!"
+    ],
+    mixed: [
+      "Fret not, Master! Between Lucia's lance and my sorcery, victory was decided at sunrise.",
+      "Stand behind me! I shall render their offensive spells completely void!",
+      "A magnificent clash! Let us test if their barriers can survive the Divergent Path!",
+      "Concept Nullification: Magic! In this sphere, thy miracles cease to exist!"
+    ],
+    desperation: [
+      "Absolute Permanence will not crumble! Master, steady thy heart—I am thy hero!",
+      "Lethal wounds take no root in my vessel! Live on... keep that head high!",
+      "Lucia! Edmond! Master! I will not allow this family to be sundered!"
+    ],
+    skills: [
+      "My wellspring is boundless. The concept of depletion does not apply to me.",
+      "Distance and momentum are mere suggestions. Impact, collapse!",
+      "Under my authority, the laws of sorcery are rewritten. Cease your incantations.",
+      "The four elemental paths bow to my decree. Weave, awaken!"
+    ],
+    victory: [
+      "A splendid engagement! Verily, when one denies the very concept of defeat, the outcome was written before we took the field.",
+      "All threats neutralized and not a single hair out of place! Master, doth that warrant a cup of sweet tea?",
+      "Concept Nullification: Victory. Exactly as ordained."
+    ],
+    defeat: [
+      "A minor miscalculation of the weave... fret not, Master, my life cannot be erased so easily. Live on... and keep that head high...",
+      "My mana... scattering into the leyline... Lucia, forgive me... I played too recklessly...",
+      "The staff grows heavy... but remember my words, Master: keep that head held high..."
+    ]
+  },
+
   // Amamiya no Chihaya Tenkohime - Saber (Ancient Kyubi Guardian)
   amamiya_no_chihaya_tenkohime: {
     buster: [
@@ -771,6 +820,9 @@ export function getServantProfile(servantName?: string): ServantDialogueProfile 
   }
   if (n.includes('lucia') || n.includes('lucernalia') || n.includes('lyozes') || n.includes('high elf') || n.includes('black lance')) {
     return SERVANT_COMBAT_DIALOGUES.lucia_lyozes;
+  }
+  if (n.includes('luvria') || n.includes('greenharte') || n.includes('strongest mage') || n.includes('concept nullification')) {
+    return SERVANT_COMBAT_DIALOGUES.luvria_greenharte;
   }
   if (n.includes('amamiya') || n.includes('chihaya') || n.includes('tenkohime') || n.includes('kyubi') || n.includes('kyūbi') || n.includes('amazakura')) {
     return SERVANT_COMBAT_DIALOGUES.amamiya_no_chihaya_tenkohime;

@@ -691,9 +691,9 @@ VOICE & ROLEPLAY INSTRUCTIONS:
 
   const CANDIDATE_MODELS = [
     'gemini-3.8-flash',
-    'gemini-3.5-flash',
     'gemini-flash-latest',
-    'gemini-3.1-flash-lite'
+    'gemini-3.1-flash-lite',
+    'gemini-3.1-pro-preview'
   ];
 
   for (const modelName of CANDIDATE_MODELS) {
@@ -893,9 +893,9 @@ Voice Directive:
   if (!reply && client) {
     const CANDIDATE_MODELS = [
       'gemini-3.8-flash',
-      'gemini-3.5-flash',
       'gemini-flash-latest',
-      'gemini-3.1-flash-lite'
+      'gemini-3.1-flash-lite',
+      'gemini-3.1-pro-preview'
     ];
 
     for (const model of CANDIDATE_MODELS) {
