@@ -205,6 +205,20 @@ export function createCombatantFromMasterServant(
     }
   }
 
+  // Absolute Permanence Passive (Luvria Greenharte / Concept Anchor)
+  const hasAbsolutePermanence = passives.some(p => p.type === 'absolute_permanence' || (p.name && p.name.includes('Absolute Permanence'))) ||
+    (t.passives && t.passives.some(p => p.type === 'absolute_permanence' || (p.name && p.name.includes('Absolute Permanence'))));
+  if (hasAbsolutePermanence) {
+    initialBuffs.push({
+      name: 'Absolute Permanence (Concept Anchor)',
+      type: 'guts',
+      value: Math.round(maxHp * 0.25),
+      remainingTurns: 99,
+      remainingHits: 1,
+      isHitCount: true
+    });
+  }
+
   const baseAvatar = getServantAvatarAndCardArt(servantInstance).avatarUrl;
 
   return {
@@ -2111,11 +2125,15 @@ export function executeBattleTurn(
     actor.npGauge = Math.min(300, actor.npGauge + totalNpCharge);
     actor.critStars = Math.min(50, (actor.critStars || 0) + totalStars);
 
-    // Guts Check (Battle Continuation / Castle of Snow / Indomitable A)
+    // Guts Check (Battle Continuation / Castle of Snow / Absolute Permanence / Indomitable A)
     const gutsBuffIndex = target.activeBuffs.findIndex(b => b.type === 'guts');
-    if (target.currentHp <= 0 && (gutsBuffIndex !== -1 || (target.gutsCount && target.gutsCount > 0))) {
+    const hasTargetPermanence = (targetPassives.some(p => p.type === 'absolute_permanence' || p.name?.includes('Absolute Permanence')) ||
+      (target.passives && target.passives.some(p => p.type === 'absolute_permanence' || p.name?.includes('Absolute Permanence')))) &&
+      !(target as any).isPermanenceTriggered;
+
+    if (target.currentHp <= 0 && (gutsBuffIndex !== -1 || (target.gutsCount && target.gutsCount > 0) || hasTargetPermanence)) {
       const gutsBuff = gutsBuffIndex !== -1 ? target.activeBuffs[gutsBuffIndex] : undefined;
-      const reviveHp = gutsBuff?.value || Math.round(target.maxHp * 0.20);
+      const reviveHp = gutsBuff?.value || Math.round(target.maxHp * 0.25);
       target.currentHp = reviveHp;
 
       if (gutsBuff) {
@@ -2124,8 +2142,16 @@ export function executeBattleTurn(
           actionText += `\n✝️ **BATTLE CONTINUATION!** ${target.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} - ${gutsBuff.remainingHits} charge(s) remaining)`;
         } else {
           target.activeBuffs.splice(gutsBuffIndex, 1);
-          actionText += `\n✝️ **BATTLE CONTINUATION!** ${target.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} consumed)`;
+          if (gutsBuff.name?.includes('Absolute Permanence')) {
+            (target as any).isPermanenceTriggered = true;
+            actionText += `\n✨ **[ABSOLUTE PERMANENCE]** Concept Nullification rejected lethal erasure! ${target.name} revived with **${reviveHp.toLocaleString()} HP**!`;
+          } else {
+            actionText += `\n✝️ **BATTLE CONTINUATION!** ${target.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} consumed)`;
+          }
         }
+      } else if (hasTargetPermanence) {
+        (target as any).isPermanenceTriggered = true;
+        actionText += `\n✨ **[ABSOLUTE PERMANENCE]** Concept Nullification rejected lethal erasure! ${target.name} revived with **${reviveHp.toLocaleString()} HP**!`;
       } else {
         actionText += `\n✝️ **BATTLE CONTINUATION!** ${target.name} revived with **${reviveHp.toLocaleString()} HP**!`;
       }
@@ -2150,9 +2176,13 @@ export function executeBattleTurn(
 
     // Guts Check for Actor (in case of aura/recoil lethal damage)
     const actorGutsIndex = actor.activeBuffs.findIndex(b => b.type === 'guts');
-    if (actor.currentHp <= 0 && (actorGutsIndex !== -1 || (actor.gutsCount && actor.gutsCount > 0))) {
+    const hasActorPermanence = (actorPassives.some(p => p.type === 'absolute_permanence' || p.name?.includes('Absolute Permanence')) ||
+      (actor.passives && actor.passives.some(p => p.type === 'absolute_permanence' || p.name?.includes('Absolute Permanence')))) &&
+      !(actor as any).isPermanenceTriggered;
+
+    if (actor.currentHp <= 0 && (actorGutsIndex !== -1 || (actor.gutsCount && actor.gutsCount > 0) || hasActorPermanence)) {
       const gutsBuff = actorGutsIndex !== -1 ? actor.activeBuffs[actorGutsIndex] : undefined;
-      const reviveHp = gutsBuff?.value || Math.round(actor.maxHp * 0.20);
+      const reviveHp = gutsBuff?.value || Math.round(actor.maxHp * 0.25);
       actor.currentHp = reviveHp;
 
       if (gutsBuff) {
@@ -2161,8 +2191,16 @@ export function executeBattleTurn(
           actionText += `\n✝️ **BATTLE CONTINUATION!** ${actor.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} - ${gutsBuff.remainingHits} charge(s) remaining)`;
         } else {
           actor.activeBuffs.splice(actorGutsIndex, 1);
-          actionText += `\n✝️ **BATTLE CONTINUATION!** ${actor.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} consumed)`;
+          if (gutsBuff.name?.includes('Absolute Permanence')) {
+            (actor as any).isPermanenceTriggered = true;
+            actionText += `\n✨ **[ABSOLUTE PERMANENCE]** Concept Nullification rejected lethal erasure! ${actor.name} revived with **${reviveHp.toLocaleString()} HP**!`;
+          } else {
+            actionText += `\n✝️ **BATTLE CONTINUATION!** ${actor.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} consumed)`;
+          }
         }
+      } else if (hasActorPermanence) {
+        (actor as any).isPermanenceTriggered = true;
+        actionText += `\n✨ **[ABSOLUTE PERMANENCE]** Concept Nullification rejected lethal erasure! ${actor.name} revived with **${reviveHp.toLocaleString()} HP**!`;
       } else {
         actionText += `\n✝️ **BATTLE CONTINUATION!** ${actor.name} revived with **${reviveHp.toLocaleString()} HP**!`;
       }

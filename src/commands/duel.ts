@@ -335,6 +335,20 @@ function createCombatant(
     }
   }
 
+  // Absolute Permanence Passive (Luvria Greenharte / Concept Anchor)
+  const hasAbsolutePermanence = passives.some(p => p.type === 'absolute_permanence' || (p.name && p.name.includes('Absolute Permanence'))) ||
+    (t.passives && t.passives.some(p => p.type === 'absolute_permanence' || (p.name && p.name.includes('Absolute Permanence'))));
+  if (hasAbsolutePermanence) {
+    initialBuffs.push({
+      name: 'Absolute Permanence (Concept Anchor)',
+      type: 'guts',
+      value: Math.round(maxHp * 0.25),
+      remainingTurns: 99,
+      remainingHits: 1,
+      isHitCount: true
+    });
+  }
+
   const baseAvatar = getServantAvatarAndCardArt(servant).avatarUrl;
 
   const combatant: DuelCombatant = {
@@ -2122,11 +2136,15 @@ function resolveStrike(
     avengerLog = `\n🖤 **[Avenger]** ${defender.servant.template.name} gained **+${avengerRefund}% NP** from suffering damage!`;
   }
 
-  // Check for Guts (Battle Continuation / Castle of Snow / Indomitable A)
+  // Check for Guts (Battle Continuation / Castle of Snow / Absolute Permanence / Indomitable A)
   let gutsText = '';
   const gutsBuffIndex = defender.activeBuffs.findIndex(b => b.type === 'guts');
-  if (defender.currentHp <= 0 && (defender.gutsCount > 0 || gutsBuffIndex !== -1)) {
-    let reviveHp = Math.round(defender.maxHp * 0.20);
+  const hasDefPermanence = (defenderPassives.some(p => p.type === 'absolute_permanence' || (p.name && p.name.includes('Absolute Permanence'))) ||
+    (defender.passives && defender.passives.some(p => p.type === 'absolute_permanence' || (p.name && p.name.includes('Absolute Permanence'))))) &&
+    !(defender as any).isPermanenceTriggered;
+
+  if (defender.currentHp <= 0 && (defender.gutsCount > 0 || gutsBuffIndex !== -1 || hasDefPermanence)) {
+    let reviveHp = Math.round(defender.maxHp * 0.25);
     if (gutsBuffIndex !== -1) {
       const gutsBuff = defender.activeBuffs[gutsBuffIndex];
       if (gutsBuff.value) reviveHp = gutsBuff.value;
@@ -2135,11 +2153,19 @@ function resolveStrike(
         gutsText = `\n✝️ **BATTLE CONTINUATION!** ${defender.servant.template.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} - ${gutsBuff.remainingHits} charge(s) remaining)`;
       } else {
         defender.activeBuffs.splice(gutsBuffIndex, 1);
-        gutsText = `\n✝️ **BATTLE CONTINUATION!** ${defender.servant.template.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} consumed)`;
+        if (gutsBuff.name?.includes('Absolute Permanence')) {
+          (defender as any).isPermanenceTriggered = true;
+          gutsText = `\n✨ **[ABSOLUTE PERMANENCE]** Concept Nullification rejected lethal erasure! ${defender.servant.template.name} revived with **${reviveHp.toLocaleString()} HP**!`;
+        } else {
+          gutsText = `\n✝️ **BATTLE CONTINUATION!** ${defender.servant.template.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} consumed)`;
+        }
       }
       if (defender.gutsCount > 0) {
         defender.gutsCount--;
       }
+    } else if (hasDefPermanence) {
+      (defender as any).isPermanenceTriggered = true;
+      gutsText = `\n✨ **[ABSOLUTE PERMANENCE]** Concept Nullification rejected lethal erasure! ${defender.servant.template.name} revived with **${reviveHp.toLocaleString()} HP**!`;
     } else {
       if (defender.gutsCount > 0) defender.gutsCount--;
       gutsText = `\n✝️ **BATTLE CONTINUATION!** ${defender.servant.template.name} revived with **${reviveHp.toLocaleString()} HP**!`;

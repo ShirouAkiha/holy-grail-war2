@@ -1639,18 +1639,18 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     ],
     passives: [
       {
-        name: 'Territory Creation A',
-        type: 'territory_creation',
-        value: 10,
-        rank: 'A',
-        description: 'Increases own Arts Card effectiveness by +10%.'
-      },
-      {
         name: 'Absolute Permanence B',
         type: 'absolute_permanence',
         value: 3,
         rank: 'B',
-        description: 'Charges own NP Gauge by +3% every turn and grants Immunity to Instant-Death. (Locked — Reaches Bond Lv. 5 to unlock)'
+        description: 'Rejects lethal erasure and fatal wounds. Automatically grants Guts status (revives with 25% Max HP on lethal damage), charges own NP Gauge by +3% every turn, and grants Immunity to Instant-Death.'
+      },
+      {
+        name: 'Territory Creation A',
+        type: 'territory_creation',
+        value: 10,
+        rank: 'A',
+        description: 'Increases own Arts Card effectiveness by +10%. (Locked — Reaches Bond Lv. 5 to unlock)'
       }
     ],
     noblePhantasm: {
