@@ -606,10 +606,10 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       name: 'Luminosité Eternelle: God is Here With Me',
       cardType: 'Arts',
       chant: 'Let me handle this. Get behind me! So long as I fly this banner, we shall never fall! Luminosité Eternelle!',
-      description: 'Unfurls the sacred banner, granting Invincibility for 1 turn, +30% DEF boost for 3 turns, +3,000 HP recovery, debuff removal, and +25% Arts NP refund.',
+      description: "Grants party Invincibility for 1 turn. Increases party's defense for 3 turns. Removes party's debuffs.",
       target: 'support',
       multiplier: 0,
-      overchargeEffect: 'Team Invincibility (1 turn) + 30% DEF (3T) + 3000 HP Regen + Debuff Cleanse + 25% Arts NP refund'
+      overchargeEffect: "Recovers party's HP every turn for 2 turns (1,000 - 3,000 HP/turn based on Overcharge)."
     },
     lore: 'The saint of France who received the voice of the Lord and liberated Orleans during the Hundred Years\' War.',
     summonQuote: 'Servant Ruler, Jeanne d\'Arc. The Holy Grail War requires an arbiter; I shall safeguard this pact.',

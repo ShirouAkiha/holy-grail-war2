@@ -69,7 +69,7 @@ export const data = new SlashCommandBuilder()
 // ==========================================
 export interface CombatantBuff {
   name: string;
-  type: 'buff_atk' | 'buff_def' | 'crit_dmg' | 'evade' | 'guts' | 'np_gen' | 'np_gain' | 'buster_up' | 'arts_up' | 'quick_up' | 'invincible' | 'stun' | 'debuff_atk' | 'debuff_def' | 'ignore_invincible' | 'stars_per_turn' | 'debuff_np_strength' | 'debuff_np_dmg';
+  type: 'buff_atk' | 'buff_def' | 'crit_dmg' | 'evade' | 'guts' | 'np_gen' | 'np_gain' | 'buster_up' | 'arts_up' | 'quick_up' | 'invincible' | 'stun' | 'debuff_atk' | 'debuff_def' | 'ignore_invincible' | 'stars_per_turn' | 'hp_regen' | 'debuff_np_strength' | 'debuff_np_dmg' | string;
   value: number;
   remainingTurns: number;
   remainingHits?: number;
@@ -1407,6 +1407,17 @@ function resolveStrike(
     attacker.critStars = Math.min(50, (attacker.critStars || 0) + starsFromTurnBuffs);
   }
 
+  // Turn-Start HP Regen Buffs (e.g. Luminosité Eternelle Overcharge HP recovery every turn for 2 turns)
+  let turnRegenHealed = 0;
+  const duelRegenBuffs = attacker.activeBuffs.filter(b => b.type === 'hp_regen');
+  const duelHpRegenTotal = duelRegenBuffs.reduce((s, b) => s + b.value, 0);
+  const ceDuelRegen = (attackerCe?.passiveType === 'hp_regen' || attackerCe?.id === 'ce_bond_jeanne_darc_ruler') ? (attackerCe.passiveValue || 500) : 0;
+  const totalDuelRegen = duelHpRegenTotal + ceDuelRegen;
+  if (totalDuelRegen > 0 && attacker.currentHp < attacker.maxHp) {
+    turnRegenHealed = totalDuelRegen;
+    attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + totalDuelRegen);
+  }
+
   // 1. Resolve Attacker & Defender Passives (Max 2, 2nd unlocked after Bond 5)
   const attackerPassives = attacker.passives || getUnlockedPassives(attacker.servant.template?.passives?.length ? attacker.servant.template.passives : attacker.servant.template?.servantClass, attacker.servant.bondLevel || 1);
   const defenderPassives = defender.passives || getUnlockedPassives(defender.servant.template?.passives?.length ? defender.servant.template.passives : defender.servant.template?.servantClass, defender.servant.bondLevel || 1);
@@ -1582,6 +1593,7 @@ function resolveStrike(
   if (isBusterChain) chainTags.push('🔴 BUSTER CHAIN (+20% Base ATK Hit Bonus)');
   if (isArtsChain) chainTags.push('🔵 ARTS CHAIN (+20% NP Refund)');
   if (isQuickChain) chainTags.push('🟢 QUICK CHAIN (+20 Critical Stars)');
+  if (turnRegenHealed > 0) chainTags.push(`💖 Holy Regen (+${turnRegenHealed.toLocaleString()} HP)`);
 
   const positionMultipliers = [1.0, 1.2, 1.4];
   let totalSeqDmg = 0;
@@ -1651,12 +1663,61 @@ function resolveStrike(
         // Non-damaging Support NP
         npDmg = 0;
         if (npCardType === 'Arts') {
-          const healAmount = Math.round(attacker.maxHp * 0.20);
-          attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + healAmount);
-          attacker.activeBuffs.push({ name: 'Invincibility', type: 'invincible', value: 100, remainingTurns: 1 });
-          attacker.activeBuffs.push({ name: 'Divine Protection', type: 'buff_def', value: 30, remainingTurns: 3 });
-          npRefund = Math.round(15 * (1.0 + artsBuff / 100));
-          npStars = 3;
+          const isLuminosite = /luminosit|jeanne/i.test(npTemplate.name) || attacker.servant.template.id === 'jeanne_darc_ruler';
+          if (isLuminosite) {
+            // 1. Removes party's debuffs
+            const debuffsFound = attacker.activeBuffs.filter(b =>
+              b.type.startsWith('debuff') ||
+              b.type === 'stun' ||
+              b.type === 'burn' ||
+              b.type === 'poison' ||
+              b.type === 'curse' ||
+              b.type === 'np_dmg_down' ||
+              b.type === 'charm' ||
+              b.type === 'atk_down' ||
+              b.type === 'def_down' ||
+              (b.value < 0) ||
+              /debuff|down|curse|burn|poison|stun|bound/i.test(b.name)
+            );
+            const debuffCount = debuffsFound.length;
+
+            attacker.activeBuffs = attacker.activeBuffs.filter(b =>
+              !b.type.startsWith('debuff') &&
+              b.type !== 'stun' &&
+              b.type !== 'burn' &&
+              b.type !== 'poison' &&
+              b.type !== 'curse' &&
+              b.type !== 'np_dmg_down' &&
+              b.type !== 'charm' &&
+              b.type !== 'atk_down' &&
+              b.type !== 'def_down' &&
+              !(b.value < 0) &&
+              !/debuff|down|curse|burn|poison|stun|bound/i.test(b.name)
+            );
+            attacker.isStunned = false;
+
+            // 2. Grants party Invincibility for 1 turn
+            attacker.activeBuffs.push({ name: 'Luminosité Invincibility', type: 'invincible', value: 100, remainingTurns: 1 });
+
+            // 3. Increases party's defense for 3 turns (+30% DEF)
+            attacker.activeBuffs.push({ name: 'Divine Protection', type: 'buff_def', value: 30, remainingTurns: 3 });
+
+            // 4. Overcharge: Recovers party's HP every turn for 2 turns (1,000 - 3,000 HP/turn)
+            const regenPerTurn = 1000 + (overchargeLevel - 1) * 500;
+            attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + regenPerTurn);
+            attacker.activeBuffs.push({ name: 'Luminosité Holy Regen', type: 'hp_regen', value: regenPerTurn, remainingTurns: 2 });
+
+            chainTags.push(`🕊️ Luminosité Eternelle (Party Invincible 1T • +30% DEF 3T • Cleanse Debuffs${debuffCount > 0 ? ` [${debuffCount} removed]` : ''} • +${regenPerTurn.toLocaleString()} HP/turn for 2T)`);
+            npRefund = 0;
+            npStars = 0;
+          } else {
+            const healAmount = Math.round(attacker.maxHp * 0.20);
+            attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + healAmount);
+            attacker.activeBuffs.push({ name: 'Invincibility', type: 'invincible', value: 100, remainingTurns: 1 });
+            attacker.activeBuffs.push({ name: 'Divine Protection', type: 'buff_def', value: 30, remainingTurns: 3 });
+            npRefund = Math.round(15 * (1.0 + artsBuff / 100));
+            npStars = 3;
+          }
         } else if (npCardType === 'Quick') {
           npStars = Math.round(20 * (1.0 + quickBuff / 100));
           attacker.activeBuffs.push({ name: 'Evade', type: 'evade', value: 100, remainingTurns: 1 });
@@ -1896,6 +1957,7 @@ function resolveStrike(
       b.type === 'arts_up' ||
       b.type === 'quick_up' ||
       b.type === 'stars_per_turn' ||
+      b.type === 'hp_regen' ||
       b.type === 'debuff_np_strength' ||
       b.type === 'debuff_np_dmg'
     ) {

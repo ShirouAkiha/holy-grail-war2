@@ -835,10 +835,39 @@ export function executeNoblePhantasmLogic(
     // Non-damaging Support Noble Phantasm
     damageDealt = 0;
     if (cardType === 'Arts') {
-      // e.g. Jeanne d'Arc: Luminosité Eternelle
-      const manaBonus = actor.stats?.mana ? Math.round(actor.stats.mana * 50) : 0;
-      hpHealed = 2500 + manaBonus;
-      actor.currentHp = Math.min(actor.maxHp, actor.currentHp + hpHealed);
+      // Jeanne d'Arc (Ruler): Luminosité Eternelle - God is Here With Me
+      // 1. Cleanse party's debuffs
+      const debuffsFound = actor.activeBuffs.filter(b =>
+        b.type.startsWith('debuff') ||
+        b.type === 'stun' ||
+        b.type === 'burn' ||
+        b.type === 'poison' ||
+        b.type === 'curse' ||
+        b.type === 'np_dmg_down' ||
+        b.type === 'charm' ||
+        b.type === 'atk_down' ||
+        b.type === 'def_down' ||
+        (b.value < 0) ||
+        /debuff|down|curse|burn|poison|stun|bound/i.test(b.name)
+      );
+      const debuffCount = debuffsFound.length;
+
+      actor.activeBuffs = actor.activeBuffs.filter(b =>
+        !b.type.startsWith('debuff') &&
+        b.type !== 'stun' &&
+        b.type !== 'burn' &&
+        b.type !== 'poison' &&
+        b.type !== 'curse' &&
+        b.type !== 'np_dmg_down' &&
+        b.type !== 'charm' &&
+        b.type !== 'atk_down' &&
+        b.type !== 'def_down' &&
+        !(b.value < 0) &&
+        !/debuff|down|curse|burn|poison|stun|bound/i.test(b.name)
+      );
+      actor.isStunned = false;
+
+      // 2. Grants party Invincibility for 1 turn
       actor.isInvincible = true;
       actor.activeBuffs.push({
         name: 'Luminosité Invincibility',
@@ -846,15 +875,31 @@ export function executeNoblePhantasmLogic(
         value: 100,
         remainingTurns: 1
       });
+
+      // 3. Increases party's defense for 3 turns (+30% DEF)
       actor.activeBuffs.push({
         name: 'Divine Protection',
         type: 'buff_def',
         value: 30,
         remainingTurns: 3
       });
-      npCharged = Math.round(25 * (1.0 + artsBuff / 100));
-      starsGenerated = 5;
-      actionSummary = `🛡️ **${actor.name}** deployed Support Noble Phantasm [${np.name}] (Arts • Non-damaging)! Bestowed Invincibility (1T), +30% DEF, healed +${hpHealed.toLocaleString()} HP, and refilled +${npCharged}% NP Gauge!`;
+
+      // 4. Overcharge Effect: Recovers party's HP every turn for 2 turns (1,000 - 3,000 HP/turn)
+      const ocLevel = actor.npGauge >= 300 ? 3 : actor.npGauge >= 200 ? 2 : 1;
+      const regenPerTurn = 1000 + (ocLevel - 1) * 500;
+      hpHealed = regenPerTurn;
+      actor.currentHp = Math.min(actor.maxHp, actor.currentHp + hpHealed);
+
+      actor.activeBuffs.push({
+        name: 'Luminosité Holy Regen',
+        type: 'hp_regen',
+        value: regenPerTurn,
+        remainingTurns: 2
+      });
+
+      npCharged = 0;
+      starsGenerated = 0;
+      actionSummary = `🕊️ **${actor.name}** deployed Support Noble Phantasm [${np.name}]! Bestowed Party Invincibility (1T), +30% DEF (3T), Cleansed all debuffs${debuffCount > 0 ? ` (${debuffCount} removed)` : ''}, and activated HP Recovery (+${regenPerTurn.toLocaleString()} HP/turn for 2 turns)!`;
     } else if (cardType === 'Quick') {
       // Quick Support
       starsGenerated = Math.round(30 * (1.0 + quickBuff / 100));
@@ -1293,11 +1338,19 @@ export function executeBattleTurn(
       }
     }
 
-    // Turn-Start Skill Buffs (e.g. stars_per_turn)
+    // Turn-Start Skill Buffs (e.g. stars_per_turn & hp_regen)
     const starBuffs = actor.activeBuffs.filter(b => b.type === 'stars_per_turn');
     const starsFromTurnBuffs = starBuffs.reduce((s, b) => s + b.value, 0);
     if (starsFromTurnBuffs > 0) {
       actor.critStars = Math.min(50, (actor.critStars || 0) + starsFromTurnBuffs);
+    }
+
+    const regenBuffs = actor.activeBuffs.filter(b => b.type === 'hp_regen');
+    const hpRegenTotal = regenBuffs.reduce((s, b) => s + b.value, 0);
+    const ceRegen = (actor.equippedCe?.passiveType === 'hp_regen' || actor.equippedCe?.id === 'ce_bond_jeanne_darc_ruler') ? (actor.equippedCe.passiveValue || 500) : 0;
+    const totalRegen = hpRegenTotal + ceRegen;
+    if (totalRegen > 0 && actor.currentHp < actor.maxHp) {
+      actor.currentHp = Math.min(actor.maxHp, actor.currentHp + totalRegen);
     }
 
     // Handle Active Skill trigger if chosen
@@ -2035,6 +2088,7 @@ export function executeBattleTurn(
           b.type === 'crit_dmg' ||
           b.type === 'np_gen' ||
           b.type === 'stars_per_turn' ||
+          b.type === 'hp_regen' ||
           b.type === 'debuff_np_strength' ||
           b.type === 'debuff_np_dmg'
         ) {

@@ -506,7 +506,7 @@ export function buildNoblePhantasmEmbed(servant: ServantTemplate, files?: Attach
       `> *"${chant || np.chant || 'True Name Unleashed!'}"*\n\n` +
       `• **Heroic Spirit:** **${servant.name}** — *${servant.title}* [\`${servant.servantClass}\`]\n` +
       `• **Card Type & Target:** **${np.cardType}** • **${np.target.toUpperCase()}**\n` +
-      `• **Damage Multiplier:** \`${np.multiplier}%\` | **Overcharge:** ${np.overchargeEffect || 'Standard boost'}\n` +
+      `• **Damage Multiplier:** \`${np.multiplier === 0 ? 'Support (Non-damaging)' : `${np.multiplier}%`}\` | **Overcharge:** ${np.overchargeEffect || 'Standard boost'}\n` +
       `• **True Name Power:** ${np.description}\n\n` +
       `🎬 *Noble Phantasm Animated Cinematic Playback*`
     )

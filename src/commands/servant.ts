@@ -291,7 +291,7 @@ export async function buildServantHub(
     const npText = 
       `• **True Name:** **${np.name}** (${npCardEmoji} ${np.cardType} • ${np.target ? np.target.toUpperCase() : 'SINGLE'})\n` +
       `  > *"${npChant}"*\n` +
-      `• **Multiplier:** \`${np.multiplier || 600}%\` | **Overcharge:** ${np.overchargeEffect || 'Standard damage boost'}\n` +
+      `• **Multiplier:** \`${np.multiplier === 0 ? 'Support (Non-damaging)' : `${np.multiplier || 600}%`}\` | **Overcharge:** ${np.overchargeEffect || 'Standard damage boost'}\n` +
       `• **Effect:** ${np.description}`;
 
     // Craft Essence
