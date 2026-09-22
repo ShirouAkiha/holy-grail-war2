@@ -2431,6 +2431,179 @@ export const LUCIA_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const LUVRIA_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'luvria_bond_event_1',
+    servantTemplateId: 'luvria_greenharte',
+    requiredBondLevel: 1,
+    title: 'The "Hero" of Sylvanryth & The Paper-Door Abode',
+    subtitle: 'Bond Level 1 Interlude • Summoning Encounter',
+    description: 'An initial encounter with the strongest archmage of Sylvanryth, exploring her arrival as an Otherworlder, dimensional laws, and your mutual pact.',
+    rewardBondExp: 200,
+    rewardSaintQuartz: 3,
+    unlockedQuoteId: 'luvria_bond_line_1',
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: 'Luvria Greenharte',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "Hark, mortal of this foreign soil! Behold, for thy call hath pierced the veil of the stars, and... and... *Elu'vash... no, wait, elen'dorahn?* Ugh, whatever, what was the royal greeting again? *Ael'shir...* Ah, forget it. The elven elders would dock my allowance if they heard that butchery anyway.\n\nAhem. Let's just stick to common tongue. Servant, Caster. The greatest mage of my world, naturally. Now... are you going to stand there gawking at my ears all night, or are we going to establish why this strange golden cup just downloaded an entire encyclopedia of 'Japan' into my head?",
+        choices: [
+          {
+            id: 'c1_wifi',
+            text: "Are you okay? You sounded like you were trying to remember a forgotten WiFi password.",
+            response: "A 'WiFi password'? See, that is the exact kind of bizarre foreign jargon the Grail just crammed into my brain. For your information, that was ancient High Sylvan! Or... at least my very rough approximation of it. Language of grace, poetry, and profound wisdom. I just happen to think too fast for centuries-old grammar.",
+            bondExpGain: 100,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_summon',
+            text: "Servant Caster... I take it the summoning actually worked? Welcome.",
+            response: "Of course it worked. You think some petty magical circle could summon anyone less magnificent than me? Though, you are taking this awfully in stride. Most people who summon a legendary figure either drop to their knees weeping or start demanding miracles.",
+            bondExpGain: 100,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_living_room',
+            text: "Welcome to Japan! Please tell me you don't plan on blowing up my living room.",
+            response: "Blowing it up? Heavens, no. What kind of barbarian do you take me for? Though, judging by the ambient mana in this room, or rather the complete lack of it, a stray sneeze from me might shake the foundation. Don't worry, your little paper-door dwelling is safe for now.",
+            bondExpGain: 125,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_2'
+          }
+        ]
+      },
+      {
+        id: 'scene_2',
+        speakerName: 'Luvria Greenharte',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "Though... let us cut the pleasantries for a second, Master. Let me ask you something plainly. Do you have any idea what I am to your world right now?\n\nBack where I come from, when someone falls out of the sky from another dimension, we have a very specific name for them: *Otherworlders*. And do you know what the law says to do with them? Terminate on sight. No trial. No tea. Just a lance through the ribs before they accidentally detonate a continent.\n\nAnd now, thanks to this little Grail War... *I* am the Otherworlder. In your city. In your world. Funny how the cosmos works, isn't it? So tell me... should I be expecting a legion of your world's soldiers to kick down that wooden sliding door, or are you people considerably more hospitable than the elves?",
+        choices: [
+          {
+            id: 'c2_gentle',
+            text: "You don't look like a walking disaster to me. Just someone a very long way from home.",
+            response: "Ha! 'A long way from home.' That is a terribly gentle way of putting it. You short-lived folks have a peculiar habit of looking at a loaded ballista and calling it a decorative piece of wood. But... I suppose I appreciate the sentiment. It is certainly nicer than being greeted with drawn bows.",
+            bondExpGain: 125,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_commute',
+            text: "People here are way too busy with their morning commutes to hunt down dimensional wanderers.",
+            response: "A 'morning commute'? Ah, yes, the metal trains packed like salted herring barrels. Truly, modern human torment knows no bounds. If that is what consumes your world's wrath, then perhaps I overestimated your appetite for war.",
+            bondExpGain: 100,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_trouble',
+            text: "Back home, Otherworlders really caused that much trouble?",
+            response: "Trouble doesn't begin to cover it. Two centuries ago, one of them treated our entire world like a playground. Detonated weapons of light and fire beneath our cities. Made rivers run red. So yes, forgive me if I cast a ward or two around this room just to make sure you weren't planning on sacrificing me to some dark ritual.",
+            bondExpGain: 125,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_3'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Luvria Greenharte',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "Still... you're not tensing your shoulders. Your pulse isn't racing like a cornered rabbit's. You just look... calm. Mildly bewildered, but fundamentally at ease.\n\nI can sense those red marks on the back of your hand. The Command Seals. You hold three absolute orders over my existence. In theory, you could command me to prostrate myself, or force me to incinerate an entire city block against my will. Aren't you going to brandish them? Give a speech about destiny and bloodlines? That seems to be the customary greeting for mages in these Grail records.",
+        choices: [
+          {
+            id: 'c3_dinner',
+            text: "I'd rather earn your trust over dinner than force your hand with a tattoo.",
+            response: "Dinner over servitude? By the roots of Sylvanryth, what kind of hopeless idealist did this cup bind me to? ...Though, my Grail-imparted knowledge informs me that this island has something called 'tonkatsu'. If that is on the table, your odds of survival just increased dramatically.",
+            bondExpGain: 150,
+            reactionEmotion: 'excited',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_frog',
+            text: "If I tried commanding you like a pawn, I'm pretty sure you'd find a way to turn me into a frog.",
+            response: "A frog? Please. That is amateur transfiguration. If you offended me that gravely, I'd simply remove the concept of your shoelaces staying tied for the rest of your mortal life. Far more cruel, and considerably funnier.",
+            bondExpGain: 125,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_partner',
+            text: "I summoned a partner, not a weapon. Let's start with basic mutual respect.",
+            response: "Mutual respect... *Vael'en... dor?* Ugh, there's an elven proverb for that. Something about two travelers sharing the same shade without measuring each other's shadows. My father used to recite it when he was trying to sound terribly profound. It's rare to hear that sentiment from someone who actually holds a leash.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_4'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Luvria Greenharte',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "Very well, Master. You've passed the initial sanity check. You're neither a power-drunk zealot nor a sniveling coward. That puts you roughly thirty leagues ahead of the nobles I usually have to tolerate.\n\nSo, let's talk shop. This 'Holy Grail War.' Seven servants, seven masters, one wish-granting artifact that supposedly reaches the Root of all creation. To be frank, it sounds suspiciously like the kind of cursed relic someone digs out of the Ebonwatch Dungeon right before a floor boss wipes their entire raid party.\n\nDo you actually have a wish for this thing? Some grand, reality-altering desire? Or did you just trip over a summoning circle on your way to buy groceries?",
+        choices: [
+          {
+            id: 'c4_survive',
+            text: "I just want to survive this war and make sure nobody innocent gets hurt in our city.",
+            response: "A protector's mindset. Practical. Grounded. A bit boring, perhaps, but boring keeps people breathing. Lucia would probably approve of you. She's always droning on about collateral damage and tactical restraint while I'm trying to have a bit of fun.",
+            bondExpGain: 125,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_accident',
+            text: "Honestly? I got dragged into this by accident. I just wanted to do the right thing.",
+            response: "An accidental participant? Hah! The universe truly has an exquisite sense of humor. You stumble into an ancient death tournament, and your prize is the strongest, most high-maintenance archmage from an entirely different realm. Lucky you.",
+            bondExpGain: 125,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_her_wish',
+            text: "What about you, Luvria? If we win, is there something you want to wish for?",
+            response: "Me? A wish from a metal cup? Please. If I want a mountain moved, I don't pray to a relic; I simply tell reality to step aside until it complies. Though... if it could grant an endless supply of roasted pastries without me having to listen to palace lectures, I might reconsider.",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_5'
+          }
+        ]
+      },
+      {
+        id: 'scene_5',
+        speakerName: 'Luvria Greenharte',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "In any case, we have an agreement then. I will serve as your Caster. I'll ward this perimeter, sniff out the other six servants, and ensure nobody turns your quiet neighborhood into a smoldering crater.\n\nJust remember one golden rule when fighting alongside me: I don't cast standard fireballs or parlor tricks. When I say no to something—be it a blade, a spell, or the very laws of physics—the world obeys. So try not to faint if you see me breaking reality over my knee like dry firewood.",
+        choices: [
+          {
+            id: 'c5_breakfast',
+            text: "Sounds like I'm in good hands. Just promise you won't erase the concept of tomorrow's breakfast.",
+            response: "Perish the thought! Breakfast is sacred. If anything, I'll nullify the concept of burnt toast. Now, show me where you keep the tea. We have seven legendary heroes to outsmart, and I refuse to strategize on an empty stomach.",
+            bondExpGain: 150,
+            reactionEmotion: 'happy'
+          },
+          {
+            id: 'c5_japanese',
+            text: "Deal. But only if you let me teach you proper Japanese before you butcher that elven greeting again.",
+            response: "How dare you! My High Sylvan is majestic! ...Fine, it's terrible, but you didn't have to agree so quickly! You've got yourself a bargain, Master. You teach me your bizarre island dialect, and I'll keep the legendary spirits of Earth from turning you into mist.",
+            bondExpGain: 150,
+            reactionEmotion: 'flustered'
+          },
+          {
+            id: 'c5_team',
+            text: "Let's win this together, Caster. Welcome to the team.",
+            response: "'The team.' Listen to you, sounding like a proper leader already. Hold that head high, Master. With Luvria Greenharte at your side, this war won't even know what hit it.",
+            bondExpGain: 150,
+            reactionEmotion: 'determined'
+          }
+        ]
+      }
+    ]
+  }
+];
+
 /**
  * Registry of all available curated bond events by servant template ID.
  */
@@ -2449,6 +2622,9 @@ export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
   lucia: LUCIA_BOND_EVENTS,
   lucernalia: LUCIA_BOND_EVENTS,
   lucernalia_lyozes: LUCIA_BOND_EVENTS,
+  luvria_greenharte: LUVRIA_BOND_EVENTS,
+  luvria: LUVRIA_BOND_EVENTS,
+  greenharte: LUVRIA_BOND_EVENTS,
   heracles_berserker: HERACLES_BOND_EVENTS,
   heracles: HERACLES_BOND_EVENTS,
   scathach_lancer: SCATHACH_BOND_EVENTS,
@@ -3132,6 +3308,73 @@ export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
       category: 'bond_5',
       requiredBondLevel: 5,
       quoteText: 'I will not call you Master. But... as long as you hold fast against corruption and protect those under your care, this black iron belongs to your vanguard.'
+    }
+  ],
+  luvria_greenharte: [
+    {
+      id: 'luvria_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: 'Hark, mortal of this foreign soil! Behold, for thy call hath pierced the veil of the stars... Ah, forget it. Servant Caster, Luvria Greenharte! The greatest mage of my world, naturally.'
+    },
+    {
+      id: 'luvria_bond_line_1',
+      title: 'Bond 1: Otherworlder Pact',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: 'When I say no to something—be it a blade, a spell, or the very laws of physics—the world obeys. So try not to faint if you see me breaking reality over my knee like dry firewood.'
+    },
+    {
+      id: 'luvria_bond_2',
+      title: 'Bond 2: Morning Commute',
+      category: 'bond_2',
+      requiredBondLevel: 2,
+      quoteText: 'A "morning commute"? Ah, yes, metal trains packed like salted herring barrels. Truly, modern human torment knows no bounds.'
+    },
+    {
+      id: 'luvria_bond_3',
+      title: 'Bond 3: Sacred Breakfast',
+      category: 'bond_3',
+      requiredBondLevel: 3,
+      quoteText: 'Breakfast is sacred. If anything, I\'ll nullify the concept of burnt toast. Now, show me where you keep the tea. I refuse to strategize on an empty stomach.'
+    },
+    {
+      id: 'luvria_bond_4',
+      title: 'Bond 4: Tonkatsu Over Servitude',
+      category: 'bond_4',
+      requiredBondLevel: 4,
+      quoteText: 'Dinner over servitude? By the roots of Sylvanryth, what kind of hopeless idealist did this cup bind me to? ...Though if tonkatsu is on the table, your odds of survival just increased dramatically.'
+    },
+    {
+      id: 'luvria_bond_5',
+      title: 'Bond 5: Invincible Archmage',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: 'Hold that head high, Master. With Luvria Greenharte at your side, this war won\'t even know what hit it!'
+    }
+  ],
+  luvria: [
+    {
+      id: 'luvria_summon_alias',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: 'Hark, mortal of this foreign soil! Behold, for thy call hath pierced the veil of the stars... Ah, forget it. Servant Caster, Luvria Greenharte! The greatest mage of my world, naturally.'
+    },
+    {
+      id: 'luvria_bond_line_1_alias',
+      title: 'Bond 1: Otherworlder Pact',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: 'When I say no to something—be it a blade, a spell, or the very laws of physics—the world obeys. So try not to faint if you see me breaking reality over my knee like dry firewood.'
+    },
+    {
+      id: 'luvria_bond_5_alias',
+      title: 'Bond 5: Invincible Archmage',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: 'Hold that head high, Master. With Luvria Greenharte at your side, this war won\'t even know what hit it!'
     }
   ]
 };
