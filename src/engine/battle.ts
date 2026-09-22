@@ -447,6 +447,9 @@ export function resolveCombatTurn(
     } else {
       defender.activeBuffs.splice(defGutsIndex, 1);
     }
+    if (defender.gutsCount && defender.gutsCount > 0) {
+      defender.gutsCount -= 1;
+    }
 
     const onGutsIndex = defender.activeBuffs.findIndex(b => b.type === 'on_guts_buster');
     if (onGutsIndex !== -1) {
@@ -472,6 +475,9 @@ export function resolveCombatTurn(
       gutsBuff.remainingHits -= 1;
     } else {
       attacker.activeBuffs.splice(atkGutsIndex, 1);
+    }
+    if (attacker.gutsCount && attacker.gutsCount > 0) {
+      attacker.gutsCount -= 1;
     }
 
     const onGutsIndex = attacker.activeBuffs.findIndex(b => b.type === 'on_guts_buster');

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
-import { ServantTemplate } from '@/lib/types';
+import type { ServantTemplate } from '@/src/types';
 
 export const dynamic = 'force-dynamic';
 

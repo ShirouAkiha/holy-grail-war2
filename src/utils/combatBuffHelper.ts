@@ -82,7 +82,7 @@ export function calculateCombatantBuffSummary(
   let evadeHits = 0;
   let isInvincible = false;
   let invincibleHits = 0;
-  let gutsCount = combatant.gutsCount || 0;
+  let gutsCount = 0;
   let isStunned = Boolean(combatant.isStunned);
 
   const buffDescriptions: string[] = [];
@@ -142,14 +142,12 @@ export function calculateCombatantBuffSummary(
         if (hits) invincibleHits = Math.max(invincibleHits, hits);
         buffDescriptions.push(`• **${b.name || 'Invincibility'}**: Complete Invulnerability (${durationLabel})`);
         break;
-      case 'guts':
-        if (hits && hits > 1) {
-          gutsCount = Math.max(gutsCount, hits);
-        } else {
-          gutsCount = Math.max(gutsCount, 1);
-        }
+      case 'guts': {
+        const buffHits = (hits && hits > 0) ? hits : 1;
+        gutsCount += buffHits;
         buffDescriptions.push(`• **${b.name || 'Guts'}**: Revive from lethal defeat with ${val.toLocaleString()} HP (${durationLabel})`);
         break;
+      }
       case 'stun':
         isStunned = true;
         buffDescriptions.push(`• **${b.name || 'Stun'}**: Incapacitated (${durationLabel})`);
@@ -180,6 +178,11 @@ export function calculateCombatantBuffSummary(
         atkBoost += avengerBoost;
       }
     }
+  }
+
+  // Fallback to combatant.gutsCount if no guts buffs exist in activeBuffs
+  if (gutsCount === 0 && combatant.gutsCount) {
+    gutsCount = combatant.gutsCount;
   }
 
   // 3. Assemble Visual Badges

@@ -357,7 +357,7 @@ function createCombatant(
     passives,
     activeBuffs: initialBuffs,
     skillCooldowns: {},
-    gutsCount: 0,
+    gutsCount: initialBuffs.filter(b => b.type === 'guts').reduce((sum, b) => sum + (b.remainingHits && b.remainingHits > 0 ? b.remainingHits : 1), 0),
     commandSeals: isAi ? 0 : (isFreeBattle || master.environmentMode === 'safe' ? 3 : (master.commandSeals ?? 3)),
     drawPile: [],
     masterAvatarUrl: master.avatarUrl
@@ -1939,6 +1939,9 @@ function resolveStrike(
       } else {
         defender.activeBuffs.splice(gutsBuffIndex, 1);
         gutsText = `\n✝️ **BATTLE CONTINUATION!** ${defender.servant.template.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} consumed)`;
+      }
+      if (defender.gutsCount > 0) {
+        defender.gutsCount--;
       }
     } else {
       if (defender.gutsCount > 0) defender.gutsCount--;

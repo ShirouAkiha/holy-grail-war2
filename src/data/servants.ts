@@ -1457,7 +1457,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       chant: 'Ancient leylines of Ossuaron... Swirl, sacred cherry blossoms! Amazakura yo! Washi o mamore!',
       description: 'Channels Aethel into Amazakura to create a sakura storm that cuts through anything except herself, followed by an instantaneous high-speed Iaijutsu strike. Ignores enemy DEF and deals massive Quick damage.',
       target: 'single',
-      multiplier: 600,
+      multiplier: 1400,
       overchargeEffect: 'Increases Quick performance by 20% for 3 turns & ignores DEF',
       gifUrl: 'https://ella.janitorai.com/media-approved/Sfp4i7TL2cXu0LS-QZxxX.webp'
     },

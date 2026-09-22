@@ -231,6 +231,7 @@ export function createCombatantFromMasterServant(
     npGauge: initialNp,
     passives,
     activeBuffs: initialBuffs,
+    gutsCount: initialBuffs.filter(b => b.type === 'guts').reduce((sum, b) => sum + (b.remainingHits && b.remainingHits > 0 ? b.remainingHits : 1), 0),
     isInvincible,
     equippedCe: ce ? { ...ce } : undefined,
     skills: t.skills.map(s => ({ ...s, currentCooldown: 0 })),
@@ -510,12 +511,27 @@ export function applyCombatantSkill(
     }
     case 'guts': {
       const reviveVal = skill.value || Math.round(actor.maxHp * 0.20);
-      actor.activeBuffs.push({
+      actor.gutsCount = (actor.gutsCount || 0) + 1;
+      actor.activeBuffs.unshift({
         name: skill.name,
         type: 'guts',
         value: reviveVal,
         remainingTurns: skill.duration || 5
       });
+      if (skill.id === 'indomitable_a' || skill.name.includes('Indomitable')) {
+        actor.activeBuffs.push({
+          name: 'Indomitable A (On-Guts Buster Up)',
+          type: 'on_guts_buster',
+          value: 20,
+          remainingTurns: skill.duration || 5
+        });
+        actor.activeBuffs.push({
+          name: `${skill.name} (Buster Up)`,
+          type: 'buster_up',
+          value: 20,
+          remainingTurns: 3
+        });
+      }
       if (skill.id?.includes('thrice')) {
         actor.activeBuffs.push({
           name: `${skill.name} (DEF Up)`,
@@ -1491,6 +1507,7 @@ export function executeBattleTurn(
           }
           case 'guts': {
             const reviveVal = skill.value || Math.round(actor.maxHp * 0.20);
+            actor.gutsCount = (actor.gutsCount || 0) + 1;
             // Place skill guts at the front so turn-limited skill Guts is consumed before permanent/hit-based CE Guts
             actor.activeBuffs.unshift({
               name: skill.name,
@@ -1900,17 +1917,24 @@ export function executeBattleTurn(
 
     // Guts Check (Battle Continuation / Castle of Snow / Indomitable A)
     const gutsBuffIndex = target.activeBuffs.findIndex(b => b.type === 'guts');
-    if (target.currentHp <= 0 && gutsBuffIndex !== -1) {
-      const gutsBuff = target.activeBuffs[gutsBuffIndex];
-      const reviveHp = gutsBuff.value || Math.round(target.maxHp * 0.20);
+    if (target.currentHp <= 0 && (gutsBuffIndex !== -1 || (target.gutsCount && target.gutsCount > 0))) {
+      const gutsBuff = gutsBuffIndex !== -1 ? target.activeBuffs[gutsBuffIndex] : undefined;
+      const reviveHp = gutsBuff?.value || Math.round(target.maxHp * 0.20);
       target.currentHp = reviveHp;
 
-      if (gutsBuff.remainingHits !== undefined && gutsBuff.remainingHits > 1) {
-        gutsBuff.remainingHits -= 1;
-        actionText += `\n✝️ **BATTLE CONTINUATION!** ${target.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} - ${gutsBuff.remainingHits} charge(s) remaining)`;
+      if (gutsBuff) {
+        if (gutsBuff.remainingHits !== undefined && gutsBuff.remainingHits > 1) {
+          gutsBuff.remainingHits -= 1;
+          actionText += `\n✝️ **BATTLE CONTINUATION!** ${target.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} - ${gutsBuff.remainingHits} charge(s) remaining)`;
+        } else {
+          target.activeBuffs.splice(gutsBuffIndex, 1);
+          actionText += `\n✝️ **BATTLE CONTINUATION!** ${target.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} consumed)`;
+        }
       } else {
-        target.activeBuffs.splice(gutsBuffIndex, 1);
-        actionText += `\n✝️ **BATTLE CONTINUATION!** ${target.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} consumed)`;
+        actionText += `\n✝️ **BATTLE CONTINUATION!** ${target.name} revived with **${reviveHp.toLocaleString()} HP**!`;
+      }
+      if (target.gutsCount && target.gutsCount > 0) {
+        target.gutsCount -= 1;
       }
 
       // Check On-Guts Buster Up buff (Indomitable A)
@@ -1930,17 +1954,24 @@ export function executeBattleTurn(
 
     // Guts Check for Actor (in case of aura/recoil lethal damage)
     const actorGutsIndex = actor.activeBuffs.findIndex(b => b.type === 'guts');
-    if (actor.currentHp <= 0 && actorGutsIndex !== -1) {
-      const gutsBuff = actor.activeBuffs[actorGutsIndex];
-      const reviveHp = gutsBuff.value || Math.round(actor.maxHp * 0.20);
+    if (actor.currentHp <= 0 && (actorGutsIndex !== -1 || (actor.gutsCount && actor.gutsCount > 0))) {
+      const gutsBuff = actorGutsIndex !== -1 ? actor.activeBuffs[actorGutsIndex] : undefined;
+      const reviveHp = gutsBuff?.value || Math.round(actor.maxHp * 0.20);
       actor.currentHp = reviveHp;
 
-      if (gutsBuff.remainingHits !== undefined && gutsBuff.remainingHits > 1) {
-        gutsBuff.remainingHits -= 1;
-        actionText += `\n✝️ **BATTLE CONTINUATION!** ${actor.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} - ${gutsBuff.remainingHits} charge(s) remaining)`;
+      if (gutsBuff) {
+        if (gutsBuff.remainingHits !== undefined && gutsBuff.remainingHits > 1) {
+          gutsBuff.remainingHits -= 1;
+          actionText += `\n✝️ **BATTLE CONTINUATION!** ${actor.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} - ${gutsBuff.remainingHits} charge(s) remaining)`;
+        } else {
+          actor.activeBuffs.splice(actorGutsIndex, 1);
+          actionText += `\n✝️ **BATTLE CONTINUATION!** ${actor.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} consumed)`;
+        }
       } else {
-        actor.activeBuffs.splice(actorGutsIndex, 1);
-        actionText += `\n✝️ **BATTLE CONTINUATION!** ${actor.name} revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} consumed)`;
+        actionText += `\n✝️ **BATTLE CONTINUATION!** ${actor.name} revived with **${reviveHp.toLocaleString()} HP**!`;
+      }
+      if (actor.gutsCount && actor.gutsCount > 0) {
+        actor.gutsCount -= 1;
       }
 
       const onGutsIndex = actor.activeBuffs.findIndex(b => b.type === 'on_guts_buster');
