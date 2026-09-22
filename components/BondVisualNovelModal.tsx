@@ -9,7 +9,8 @@ import {
 } from '../lib/types';
 import {
   getBondExpProgress,
-  addBondExpToServant
+  addBondExpToServant,
+  splitDialogueIntoChunks
 } from '../lib/engine/bondEvents';
 import { Sparkles, Award, ChevronRight, Volume2, Shield, Heart, CheckCircle2, RotateCcw } from 'lucide-react';
 
@@ -29,6 +30,7 @@ export const BondVisualNovelModal: React.FC<BondVisualNovelModalProps> = ({
   onComplete
 }) => {
   const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
+  const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [selectedChoice, setSelectedChoice] = useState<BondChoice | null>(null);
@@ -42,6 +44,7 @@ export const BondVisualNovelModal: React.FC<BondVisualNovelModalProps> = ({
     if (isOpen && event) {
       const timer = setTimeout(() => {
         setCurrentSceneIndex(0);
+        setCurrentChunkIndex(0);
         setDisplayedText('');
         setSelectedChoice(null);
         setChoiceResponseText(null);
@@ -54,12 +57,15 @@ export const BondVisualNovelModal: React.FC<BondVisualNovelModalProps> = ({
   }, [isOpen, event]);
 
   const currentScene: BondScene | undefined = event?.scenes[currentSceneIndex];
+  const activeFullText = choiceResponseText || currentScene?.dialogueText || '';
+  const dialogueChunks = splitDialogueIntoChunks(activeFullText);
+  const currentChunkText = dialogueChunks[currentChunkIndex] || dialogueChunks[0] || '';
+  const isLastChunk = currentChunkIndex >= dialogueChunks.length - 1;
 
-  // Typewriter effect for dialogue text
+  // Typewriter effect for current dialogue chunk text
   useEffect(() => {
     if (!currentScene || isEventFinished) return;
 
-    const fullText = choiceResponseText || currentScene.dialogueText;
     let charIndex = 0;
     
     // Schedule state updates asynchronously inside timer
@@ -69,8 +75,8 @@ export const BondVisualNovelModal: React.FC<BondVisualNovelModalProps> = ({
     }, 0);
 
     const interval = setInterval(() => {
-      if (charIndex < fullText.length) {
-        setDisplayedText(fullText.slice(0, charIndex + 1));
+      if (charIndex < currentChunkText.length) {
+        setDisplayedText(currentChunkText.slice(0, charIndex + 1));
         charIndex++;
       } else {
         setIsTyping(false);
@@ -82,23 +88,43 @@ export const BondVisualNovelModal: React.FC<BondVisualNovelModalProps> = ({
       clearTimeout(timer);
       clearInterval(interval);
     };
-  }, [currentSceneIndex, choiceResponseText, currentScene, isEventFinished]);
+  }, [currentSceneIndex, currentChunkIndex, choiceResponseText, currentScene, isEventFinished, currentChunkText]);
 
   if (!isOpen || !event || !currentScene) return null;
 
-  // Handle clicking dialogue box to auto-complete typewriter
-  const handleDialogueBoxClick = () => {
-    const fullText = choiceResponseText || currentScene.dialogueText;
+  // Advance dialogue chunk or scene
+  const handleAdvanceDialogue = () => {
     if (isTyping) {
-      setDisplayedText(fullText);
+      setDisplayedText(currentChunkText);
       setIsTyping(false);
+      return;
     }
+
+    if (!isLastChunk) {
+      setCurrentChunkIndex(prev => prev + 1);
+      return;
+    }
+
+    if (choiceResponseText) {
+      handleNextScene();
+      return;
+    }
+
+    if (!currentScene.choices || currentScene.choices.length === 0) {
+      handleNextScene();
+    }
+  };
+
+  // Handle clicking dialogue box to auto-complete typewriter or advance chunk
+  const handleDialogueBoxClick = () => {
+    handleAdvanceDialogue();
   };
 
   // Handle player choice selection
   const handleSelectChoice = (choice: BondChoice) => {
     setSelectedChoice(choice);
     setChoiceResponseText(choice.response);
+    setCurrentChunkIndex(0);
     setTotalBondExpGained(prev => prev + choice.bondExpGain);
     if (choice.reactionEmotion) {
       setReactionEmotion(choice.reactionEmotion);
@@ -113,6 +139,7 @@ export const BondVisualNovelModal: React.FC<BondVisualNovelModalProps> = ({
       setSelectedChoice(null);
       setReactionEmotion(null);
     }
+    setCurrentChunkIndex(0);
 
     if (currentSceneIndex < event.scenes.length - 1) {
       setCurrentSceneIndex(prev => prev + 1);
@@ -235,7 +262,7 @@ export const BondVisualNovelModal: React.FC<BondVisualNovelModalProps> = ({
           </div>
 
           {/* CHOICE SELECTION OVERLAY (Spacious, Centered Fate/Steins;Gate Visual Novel Choice Cards) */}
-          {currentScene.choices && currentScene.choices.length > 0 && !selectedChoice && (
+          {currentScene.choices && currentScene.choices.length > 0 && !selectedChoice && isLastChunk && !choiceResponseText && (
             <div className="absolute inset-x-4 sm:inset-x-8 top-[16%] sm:top-[20%] max-w-3xl mx-auto z-40 flex flex-col gap-3.5 max-h-[62vh] overflow-y-auto p-5 sm:p-7 bg-slate-950/95 border-2 border-amber-400/50 rounded-2xl backdrop-blur-xl shadow-[0_0_60px_rgba(245,158,11,0.25)] animate-fadeIn scrollbar-thin scrollbar-thumb-amber-500/40">
               <div className="flex items-center justify-between border-b border-amber-500/30 pb-3 mb-1">
                 <div className="text-xs font-bold text-amber-400 uppercase tracking-widest flex items-center gap-2">
@@ -306,19 +333,26 @@ export const BondVisualNovelModal: React.FC<BondVisualNovelModalProps> = ({
                 <div className="flex items-center gap-4">
                   <span className="text-amber-400/90 font-semibold">◆ BOND LVL {servant.bondLevel || 1}/10</span>
                   <span>SCENE {currentSceneIndex + 1}/{event.scenes.length}</span>
+                  {dialogueChunks.length > 1 && (
+                    <span className="text-amber-300/80">PART {currentChunkIndex + 1}/{dialogueChunks.length}</span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-3">
-                  {(!currentScene.choices || selectedChoice || currentScene.choices.length === 0) && (
+                  {(!currentScene.choices || selectedChoice || currentScene.choices.length === 0 || !isLastChunk) && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleNextScene();
+                        handleAdvanceDialogue();
                       }}
                       disabled={isTyping}
                       className="flex items-center gap-2 px-4 py-1.5 rounded-sm bg-slate-900 hover:bg-slate-800 border border-slate-500/50 hover:border-amber-400 text-amber-300 font-mono text-xs font-bold transition-all disabled:opacity-50 shadow-md"
                     >
-                      <span>{currentSceneIndex < event.scenes.length - 1 ? 'NEXT' : 'CONCLUDE'}</span>
+                      <span>
+                        {!isLastChunk
+                          ? `NEXT (${currentChunkIndex + 1}/${dialogueChunks.length})`
+                          : (currentSceneIndex < event.scenes.length - 1 || choiceResponseText ? 'NEXT' : 'CONCLUDE')}
+                      </span>
                       <ChevronRight className="w-4 h-4" />
                     </button>
                   )}

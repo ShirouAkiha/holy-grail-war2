@@ -24,6 +24,7 @@ import {
   BOND_GIFTS,
   getServantGiftReaction,
   getServantSparringDebrief,
+  splitDialogueIntoChunks,
   type BondEvent
 } from '../../lib/engine/bondEvents';
 import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';

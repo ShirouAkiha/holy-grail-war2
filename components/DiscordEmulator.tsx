@@ -38,7 +38,14 @@ import {
   getTotalExpForLevel
 } from '../lib/engine/customization';
 import { executeCraftEssenceGachaRoll } from '../lib/engine/ceGacha';
-import { getBondExpProgress, getBondEventsForServant, addBondExpToServant, getUnlockedDialogueLinesForServant, selectActiveInterludeForServant } from '../lib/engine/bondEvents';
+import {
+  getBondExpProgress,
+  getBondEventsForServant,
+  addBondExpToServant,
+  getUnlockedDialogueLinesForServant,
+  selectActiveInterludeForServant,
+  splitDialogueIntoChunks
+} from '../lib/engine/bondEvents';
 import { CRAFT_ESSENCE_DATABASE, BOND_CRAFT_ESSENCES, getBondCraftEssenceForServant, checkAndGrantBond10Ce } from '../lib/data/craftEssences';
 import MASTERS_DATABASE from '../data/masters.json';
 import {
@@ -7995,15 +8002,29 @@ export default function DiscordEmulator({
         return;
       }
 
-      if (btnId === 'vn_play_event' || btnId.startsWith('vn_start_')) {
+      if (btnId === 'vn_play_event' || btnId.startsWith('vn_start_') || btnId.startsWith('vn_chunk_') || btnId.startsWith('vn_chunk:')) {
         let evt = availableEvents[0];
         let sceneIdx = 0;
+        let chunkIdx = 0;
 
         if (btnId.startsWith('vn_start_')) {
           const parts = btnId.split('_');
           const evtId = parts.slice(2, parts.length - 1).join('_');
           sceneIdx = parseInt(parts[parts.length - 1] || '0', 10) || 0;
           evt = availableEvents.find(e => e.id === evtId) || availableEvents[0];
+        } else if (btnId.startsWith('vn_chunk_') || btnId.startsWith('vn_chunk:')) {
+          const isColon = btnId.includes(':');
+          const parts = isColon ? btnId.split(':') : btnId.split('_');
+          if (isColon) {
+            evt = availableEvents.find(e => e.id === parts[1]) || availableEvents[0];
+            sceneIdx = parseInt(parts[2] || '0', 10) || 0;
+            chunkIdx = parseInt(parts[3] || '0', 10) || 0;
+          } else {
+            chunkIdx = parseInt(parts.pop() || '0', 10) || 0;
+            sceneIdx = parseInt(parts.pop() || '0', 10) || 0;
+            const evtId = parts.slice(2).join('_');
+            evt = availableEvents.find(e => e.id === evtId) || availableEvents[0];
+          }
         } else {
           const { event } = selectActiveInterludeForServant(activeServant);
           if (event) evt = event;
@@ -8012,23 +8033,36 @@ export default function DiscordEmulator({
         if (!evt) return;
 
         const scene = evt.scenes[sceneIdx] || evt.scenes[0];
+        const chunks = splitDialogueIntoChunks(scene.dialogueText);
+        const currentChunk = chunks[chunkIdx] || chunks[0] || scene.dialogueText;
+        const isLastChunk = chunkIdx >= chunks.length - 1;
+
         const hasChoices = scene.choices && scene.choices.length > 0;
 
-        const choiceTextList = hasChoices
-          ? `\n\n👇 **Choose your response to deepen your Bond:**\n` +
-            scene.choices!.map((c, idx) => `**${idx + 1}.** “*${c.text}*”`).join('\n')
-          : '';
+        let actionButtons: any[] = [];
+        let choiceTextList = '';
 
-        const actionButtons = hasChoices
-          ? scene.choices!.map((c, idx) => ({
-              id: `vn_choice:${evt.id}:${sceneIdx}:${c.id}`,
-              label: `${idx + 1}. “${c.text}”`,
-              style: 'primary' as const,
-              emoji: '💬'
-            }))
-          : sceneIdx < evt.scenes.length - 1
-          ? [{ id: `vn_next_${evt.id}_${sceneIdx + 1}_0`, label: 'Next Scene ➔', style: 'success' as const, emoji: '⏩' }]
-          : [{ id: `vn_conclude_${evt.id}_150`, label: 'Conclude Interlude ✨', style: 'success' as const, emoji: '🎁' }];
+        if (!isLastChunk) {
+          actionButtons = [
+            { id: `vn_chunk_${evt.id}_${sceneIdx}_${chunkIdx + 1}`, label: `Next (${chunkIdx + 1}/${chunks.length}) ➔`, style: 'primary' as const, emoji: '⏩' }
+          ];
+        } else if (hasChoices) {
+          choiceTextList =
+            `\n\n👇 **Choose your response to deepen your Bond:**\n` +
+            scene.choices!.map((c, idx) => `**${idx + 1}.** “*${c.text}*”`).join('\n');
+          actionButtons = scene.choices!.map((c, idx) => ({
+            id: `vn_choice:${evt.id}:${sceneIdx}:${c.id}`,
+            label: `${idx + 1}. “${c.text}”`,
+            style: 'primary' as const,
+            emoji: '💬'
+          }));
+        } else if (sceneIdx < evt.scenes.length - 1) {
+          actionButtons = [{ id: `vn_next_${evt.id}_${sceneIdx + 1}_0`, label: 'Next Scene ➔', style: 'success' as const, emoji: '⏩' }];
+        } else {
+          actionButtons = [{ id: `vn_conclude_${evt.id}_150`, label: 'Conclude Interlude ✨', style: 'success' as const, emoji: '🎁' }];
+        }
+
+        const partIndicator = chunks.length > 1 ? ` (Part ${chunkIdx + 1}/${chunks.length})` : '';
 
         const vnMsgData: DiscordMessage = {
           id: msgId || getNextId('bot_vn_interlude'),
@@ -8036,7 +8070,7 @@ export default function DiscordEmulator({
           timestamp: 'Just now',
           vnCardData: {
             speakerName: scene.speakerName || activeServant.template.name,
-            dialogueText: scene.dialogueText,
+            dialogueText: currentChunk,
             eventTitle: evt.title,
             bondLevel: activeServant.bondLevel || 1,
             avatarUrl: activeServant.avatarUrl || activeServant.template.avatarUrl
@@ -8044,8 +8078,8 @@ export default function DiscordEmulator({
           embed: {
             title: `📖 VISUAL NOVEL INTERLUDE — ${evt.title.toUpperCase()}`,
             description:
-              `💬 **[BOND INTERLUDE] ${scene.speakerName || activeServant.template.name}:**\n> ❝ ***${scene.dialogueText}*** ❞\n\n` +
-              `*Scene ${sceneIdx + 1}/${evt.scenes.length} • Servant Bond Lv. ${activeServant.bondLevel || 1}*` +
+              `💬 **[BOND INTERLUDE] ${scene.speakerName || activeServant.template.name}:**\n> ❝ ***${currentChunk}*** ❞\n\n` +
+              `*Scene ${sceneIdx + 1}/${evt.scenes.length}${partIndicator} • Servant Bond Lv. ${activeServant.bondLevel || 1}*` +
               choiceTextList,
             color: '#f59e0b',
             thumbnailUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
@@ -8065,12 +8099,19 @@ export default function DiscordEmulator({
         return;
       }
 
-      if (btnId.startsWith('vn_choice:') || btnId.startsWith('vn_choice_') || btnId === 'vn_choice_complete') {
+      if (btnId.startsWith('vn_choice:') || btnId.startsWith('vn_choice_') || btnId.startsWith('vn_resp_chunk_') || btnId === 'vn_choice_complete') {
         let eventId = '';
         let choiceId = '';
         let sceneIdx = 0;
+        let respChunkIdx = 0;
 
-        if (btnId.includes(':')) {
+        if (btnId.startsWith('vn_resp_chunk_')) {
+          const parts = btnId.split('_');
+          respChunkIdx = parseInt(parts.pop() || '0', 10) || 0;
+          choiceId = parts.pop() || '';
+          sceneIdx = parseInt(parts.pop() || '0', 10) || 0;
+          eventId = parts.slice(3).join('_');
+        } else if (btnId.includes(':')) {
           const parts = btnId.split(':');
           eventId = parts[1];
           if (parts.length >= 4) {
@@ -8097,7 +8138,52 @@ export default function DiscordEmulator({
         const pickedChoice = scene.choices?.find(c => c.id === choiceId);
         const servantResponse = pickedChoice ? pickedChoice.response : scene.dialogueText;
 
+        const respChunks = splitDialogueIntoChunks(servantResponse);
+        const currentRespChunk = respChunks[respChunkIdx] || respChunks[0] || servantResponse;
+        const isLastRespChunk = respChunkIdx >= respChunks.length - 1;
+
         const hasNextScene = sceneIdx < evt.scenes.length - 1;
+
+        if (!isLastRespChunk) {
+          const nextChunkButtons = [
+            { id: `vn_resp_chunk_${evt.id}_${sceneIdx}_${pickedChoice?.id || '0'}_${respChunkIdx + 1}`, label: `Next (${respChunkIdx + 1}/${respChunks.length}) ➔`, style: 'primary' as const, emoji: '⏩' }
+          ];
+
+          const stepMsgData: DiscordMessage = {
+            id: msgId || getNextId('bot_vn_interlude'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            vnCardData: {
+              speakerName: scene.speakerName || activeServant.template.name,
+              dialogueText: currentRespChunk,
+              eventTitle: evt.title,
+              bondLevel: activeServant.bondLevel || 1,
+              avatarUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
+              masterChoiceText: pickedChoice?.text
+            },
+            embed: {
+              title: `📖 INTERLUDE — ${evt.title.toUpperCase()} (Scene ${sceneIdx + 1}/${evt.scenes.length})`,
+              description:
+                `💬 **[BOND INTERLUDE] ${scene.speakerName || activeServant.template.name}:**\n> ❝ ***${currentRespChunk}*** ❞\n\n` +
+                (pickedChoice ? `✨ **Master Choice Selected:** “${pickedChoice.text}”\n\n` : '') +
+                `*Click **Next ➔** below to continue reading!*`,
+              color: '#f59e0b',
+              thumbnailUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
+              footer: `Scene ${sceneIdx + 1} of ${evt.scenes.length} (Part ${respChunkIdx + 1}/${respChunks.length}) • Chaldea Visual Novel System`
+            },
+            components: {
+              type: 'buttons',
+              items: nextChunkButtons
+            }
+          };
+
+          if (msgId) {
+            updateMessage(msgId, stepMsgData);
+          } else {
+            addMessage(stepMsgData);
+          }
+          return;
+        }
 
         if (hasNextScene) {
           const nextSceneButtons = [
@@ -8110,7 +8196,7 @@ export default function DiscordEmulator({
             timestamp: 'Just now',
             vnCardData: {
               speakerName: scene.speakerName || activeServant.template.name,
-              dialogueText: servantResponse,
+              dialogueText: currentRespChunk,
               eventTitle: evt.title,
               bondLevel: activeServant.bondLevel || 1,
               avatarUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
@@ -8119,7 +8205,7 @@ export default function DiscordEmulator({
             embed: {
               title: `📖 INTERLUDE — ${evt.title.toUpperCase()} (Scene ${sceneIdx + 1}/${evt.scenes.length})`,
               description:
-                `💬 **[BOND INTERLUDE] ${scene.speakerName || activeServant.template.name}:**\n> ❝ ***${servantResponse}*** ❞\n\n` +
+                `💬 **[BOND INTERLUDE] ${scene.speakerName || activeServant.template.name}:**\n> ❝ ***${currentRespChunk}*** ❞\n\n` +
                 (pickedChoice ? `✨ **Master Choice Selected:** “${pickedChoice.text}”\n\n` : '') +
                 `*Click **Next Scene ➔** below to continue the story!*`,
               color: '#f59e0b',
@@ -8177,7 +8263,7 @@ export default function DiscordEmulator({
           timestamp: 'Just now',
           vnCardData: {
             speakerName: scene.speakerName || activeServant.template.name,
-            dialogueText: servantResponse,
+            dialogueText: currentRespChunk,
             eventTitle: evt.title,
             bondLevel: updatedServant.bondLevel || 1,
             avatarUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,
@@ -8188,7 +8274,7 @@ export default function DiscordEmulator({
           embed: {
             title: `🌸 INTERLUDE COMPLETE — ${evt.title.toUpperCase()}`,
             description:
-              `💬 **[BOND INTERLUDE] ${scene.speakerName || activeServant.template.name}:**\n> ❝ ***${servantResponse}*** ❞\n\n` +
+              `💬 **[BOND INTERLUDE] ${scene.speakerName || activeServant.template.name}:**\n> ❝ ***${currentRespChunk}*** ❞\n\n` +
               (pickedChoice ? `✨ **Master Choice Selected:** “${pickedChoice.text}”\n\n` : '') +
               (isFirstCompletion
                 ? `🎉 **REWARDS EARNED:**\n• **Bond EXP:** +${expGain} EXP\n• **Saint Quartz:** +💎 ${sqReward} SQ\n• **Current Bond:** Level \`${updatedServant.bondLevel} / 10\``
@@ -8232,22 +8318,35 @@ export default function DiscordEmulator({
         const scene = evt.scenes[nextSceneIdx];
         if (!scene) return;
 
-        const hasChoices = scene.choices && scene.choices.length > 0;
-        const choiceTextList = hasChoices
-          ? `\n\n👇 **Choose your response to deepen your Bond:**\n` +
-            scene.choices!.map((c, idx) => `**${idx + 1}.** “*${c.text}*”`).join('\n')
-          : '';
+        const chunks = splitDialogueIntoChunks(scene.dialogueText);
+        const currentChunk = chunks[0] || scene.dialogueText;
+        const isLastChunk = chunks.length <= 1;
 
-        const actionButtons = hasChoices
-          ? scene.choices!.map((c, idx) => ({
-              id: `vn_choice:${evt.id}:${nextSceneIdx}:${c.id}`,
-              label: `${idx + 1}. “${c.text}”`,
-              style: 'primary' as const,
-              emoji: '💬'
-            }))
-          : nextSceneIdx < evt.scenes.length - 1
-          ? [{ id: `vn_next_${evt.id}_${nextSceneIdx + 1}_0`, label: 'Next Scene ➔', style: 'success' as const, emoji: '⏩' }]
-          : [{ id: `vn_conclude_${evt.id}_150`, label: 'Conclude Interlude ✨', style: 'success' as const, emoji: '🎁' }];
+        const hasChoices = scene.choices && scene.choices.length > 0;
+        let actionButtons: any[] = [];
+        let choiceTextList = '';
+
+        if (!isLastChunk) {
+          actionButtons = [
+            { id: `vn_chunk_${evt.id}_${nextSceneIdx}_1`, label: `Next (1/${chunks.length}) ➔`, style: 'primary' as const, emoji: '⏩' }
+          ];
+        } else if (hasChoices) {
+          choiceTextList =
+            `\n\n👇 **Choose your response to deepen your Bond:**\n` +
+            scene.choices!.map((c, idx) => `**${idx + 1}.** “*${c.text}*”`).join('\n');
+          actionButtons = scene.choices!.map((c, idx) => ({
+            id: `vn_choice:${evt.id}:${nextSceneIdx}:${c.id}`,
+            label: `${idx + 1}. “${c.text}”`,
+            style: 'primary' as const,
+            emoji: '💬'
+          }));
+        } else if (nextSceneIdx < evt.scenes.length - 1) {
+          actionButtons = [{ id: `vn_next_${evt.id}_${nextSceneIdx + 1}_0`, label: 'Next Scene ➔', style: 'success' as const, emoji: '⏩' }];
+        } else {
+          actionButtons = [{ id: `vn_conclude_${evt.id}_150`, label: 'Conclude Interlude ✨', style: 'success' as const, emoji: '🎁' }];
+        }
+
+        const partIndicator = chunks.length > 1 ? ` (Part 1/${chunks.length})` : '';
 
         const updatedMsgData: DiscordMessage = {
           id: msgId || getNextId('bot_vn_interlude'),
@@ -8255,7 +8354,7 @@ export default function DiscordEmulator({
           timestamp: 'Just now',
           vnCardData: {
             speakerName: scene.speakerName || activeServant.template.name,
-            dialogueText: scene.dialogueText,
+            dialogueText: currentChunk,
             eventTitle: evt.title,
             bondLevel: activeServant.bondLevel || 1,
             avatarUrl: activeServant.avatarUrl || activeServant.template.avatarUrl
@@ -8263,8 +8362,8 @@ export default function DiscordEmulator({
           embed: {
             title: `📖 VISUAL NOVEL INTERLUDE — ${evt.title.toUpperCase()}`,
             description:
-              `💬 **[BOND INTERLUDE] ${scene.speakerName || activeServant.template.name}:**\n> ❝ ***${scene.dialogueText}*** ❞\n\n` +
-              `*Scene ${nextSceneIdx + 1}/${evt.scenes.length} • Servant Bond Lv. ${activeServant.bondLevel || 1}*` +
+              `💬 **[BOND INTERLUDE] ${scene.speakerName || activeServant.template.name}:**\n> ❝ ***${currentChunk}*** ❞\n\n` +
+              `*Scene ${nextSceneIdx + 1}/${evt.scenes.length}${partIndicator} • Servant Bond Lv. ${activeServant.bondLevel || 1}*` +
               choiceTextList,
             color: '#f59e0b',
             thumbnailUrl: activeServant.avatarUrl || activeServant.template.avatarUrl,

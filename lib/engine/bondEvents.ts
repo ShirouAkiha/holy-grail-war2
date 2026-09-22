@@ -121,6 +121,30 @@ export function addBondExpToServant(
   };
 }
 
+/**
+ * Splits long dialogue paragraphs into bite-sized dialogue chunks so players
+ * can comfortably read visual novel interludes line-by-line using a Next button.
+ */
+export function splitDialogueIntoChunks(text: string): string[] {
+  if (!text) return [];
+  const clean = text.trim();
+  if (!clean) return [];
+
+  // Split by double newline first (\n\n+)
+  const paragraphs = clean.split(/\n\s*\n+/).map(p => p.trim()).filter(Boolean);
+  if (paragraphs.length > 1) {
+    return paragraphs;
+  }
+
+  // If there are single newlines and the text is reasonably long (>100 chars), split by line
+  const lines = clean.split(/\n+/).map(l => l.trim()).filter(Boolean);
+  if (lines.length > 1) {
+    return lines;
+  }
+
+  return [clean];
+}
+
 // ============================================================================
 // CANONICAL SERVANT BOND EVENT SCRIPTS
 // ============================================================================
