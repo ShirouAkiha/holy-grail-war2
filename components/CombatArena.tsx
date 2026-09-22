@@ -612,6 +612,13 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
     const shuffled = [...aiDeck].sort(() => 0.5 - Math.random());
     const aiCards = (shuffled.slice(0, 3) as CardType[]) || ['Buster', 'Arts', 'Quick'];
     const aiUseNp = p2.npGauge >= 100 && Math.random() > 0.3;
+    const isAiSkillSealed = p2.activeBuffs?.some(b => b.type === 'skill_seal');
+    const availableAiSkillIndices = isAiSkillSealed
+      ? []
+      : p2.skills.map((s, i) => (s.currentCooldown <= 0 ? i : -1)).filter(i => i >= 0);
+    const aiSkillIdx = availableAiSkillIndices.length > 0 && Math.random() > 0.5
+      ? availableAiSkillIndices[Math.floor(Math.random() * availableAiSkillIndices.length)]
+      : undefined;
 
     const { updatedState } = executeBattleTurn(
       battle,
@@ -626,7 +633,8 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
       {
         combatantId: p2.id,
         selectedCards: aiCards,
-        useNoblePhantasm: aiUseNp
+        useNoblePhantasm: aiUseNp,
+        useSkillIndex: aiSkillIdx
       }
     );
 
@@ -2197,26 +2205,41 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-[#1a1a1a]">
             {/* Active Skills */}
             <div className="space-y-2">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">Active Skills:</span>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">Active Skills:</span>
+                {p1.activeBuffs?.some(b => b.type === 'skill_seal') && (
+                  <span className="text-[10px] font-mono font-bold text-rose-400 bg-rose-950/60 px-1.5 py-0.5 rounded border border-rose-800/60">
+                    🚫 SKILLS SEALED (1T)
+                  </span>
+                )}
+              </div>
               <div className="flex flex-wrap gap-2">
-                {p1.skills.map((sk, idx) => (
-                  <button
-                    key={sk.id}
-                    disabled={sk.currentCooldown > 0}
-                    onClick={() => setSelectedSkillIdx(selectedSkillIdx === idx ? undefined : idx)}
-                    className={`px-3 py-1.5 rounded-sm text-xs font-mono transition border ${
-                      selectedSkillIdx === idx
-                        ? 'bg-[#d4af37] text-black border-[#d4af37] font-bold'
-                        : sk.currentCooldown > 0
-                        ? 'bg-[#111] text-white/20 border-[#1a1a1a] cursor-not-allowed'
-                        : 'bg-[#111] hover:bg-[#161616] text-white/80 border-[#222]'
-                    }`}
-                  >
-                    <span>{sk.icon} </span>
-                    <span>{sk.name}</span>
-                    {sk.currentCooldown > 0 && <span className="text-[10px] text-white/40"> ({sk.currentCooldown}t)</span>}
-                  </button>
-                ))}
+                {p1.skills.map((sk, idx) => {
+                  const isSealed = Boolean(p1.activeBuffs?.some(b => b.type === 'skill_seal'));
+                  const isDisabled = sk.currentCooldown > 0 || isSealed;
+                  return (
+                    <button
+                      key={sk.id}
+                      disabled={isDisabled}
+                      onClick={() => setSelectedSkillIdx(selectedSkillIdx === idx ? undefined : idx)}
+                      className={`px-3 py-1.5 rounded-sm text-xs font-mono transition border ${
+                        selectedSkillIdx === idx
+                          ? 'bg-[#d4af37] text-black border-[#d4af37] font-bold'
+                          : isDisabled
+                          ? 'bg-[#111] text-white/20 border-[#1a1a1a] cursor-not-allowed'
+                          : 'bg-[#111] hover:bg-[#161616] text-white/80 border-[#222]'
+                      }`}
+                    >
+                      <span>{sk.icon} </span>
+                      <span>{sk.name}</span>
+                      {sk.currentCooldown > 0 ? (
+                        <span className="text-[10px] text-white/40"> ({sk.currentCooldown}t)</span>
+                      ) : isSealed ? (
+                        <span className="text-[10px] text-rose-400"> (Sealed)</span>
+                      ) : null}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

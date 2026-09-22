@@ -922,7 +922,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       chant: 'Behold my talent, listen to the thunderous applause! Let the golden theater open! Laus Saint Claudius!',
       description: 'Deploys the Golden Theater Aestus Domus Aurea, raining blazing crimson rose strikes that ignore defense and shred enemy armor.',
       target: 'aoe',
-      multiplier: 380,
+      multiplier: 700,
       overchargeEffect: 'Reduces all enemies\' DEF by 20% for 3 turns + 20% NP refund'
     },
     lore: 'The Fifth Emperor of the Roman Empire, sovereign of the Golden Theater, and self-proclaimed supreme artist. Wielding her beloved crimson meteor blade Aestus Estus, she commands the battlefield with boundless passion.',
@@ -1610,10 +1610,10 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         id: 'concept_nullification_impact_space_a',
         name: 'Concept Nullification (Impact & Space) A',
         cooldown: 6,
-        description: 'Grants self Invincibility for 1 turn. Grants [Ignore Invincibility] to self for 1 turn. Increases own Arts Card effectiveness by +30% for 3 turns.',
+        description: 'Grants self Invincibility for 1 turn. Grants [Ignore Invincibility] to self for 1 turn.',
         effectType: 'invincible',
-        duration: 3,
-        value: 30,
+        duration: 1,
+        value: 100,
         icon: '🛡️',
         quote: '"Distance and momentum are mere suggestions. Impact, collapse!"',
         quotes: [

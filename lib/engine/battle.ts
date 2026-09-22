@@ -1729,31 +1729,32 @@ export function executeBattleTurn(
             value: 100,
             remainingTurns: 1
           });
-          actor.activeBuffs.push({
-            name: 'Concept Nullification (Arts Up)',
-            type: 'arts_up',
-            value: 30,
-            remainingTurns: 3
-          });
         }
 
         if (skill.id === 'nullify_the_law_of_magic_ex') {
-          if (target.activeBuffs) {
-            target.activeBuffs = target.activeBuffs.filter(b => 
-              b.type !== 'buff_atk' &&
-              b.type !== 'crit_dmg' &&
-              b.type !== 'buster_up' &&
-              b.type !== 'arts_up' &&
-              b.type !== 'quick_up' &&
-              b.type !== 'ignore_invincible' &&
-              !/atk|crit|power|damage|buster|arts|quick|strength/i.test(b.name)
-            );
-          }
-          target.activeBuffs.push({
-            name: 'Law of Magic (Skill Seal)',
-            type: 'skill_seal' as any,
-            value: 100,
-            remainingTurns: 1
+          const enemyTeam = teamA.includes(actor) ? teamB : teamA;
+          const targetCombatants = enemyTeam.filter(t => t.currentHp > 0);
+          const targetsToApply = targetCombatants.length > 0 ? targetCombatants : [target];
+          targetsToApply.forEach(t => {
+            if (t.activeBuffs) {
+              t.activeBuffs = t.activeBuffs.filter(b => 
+                b.type !== 'buff_atk' &&
+                b.type !== 'crit_dmg' &&
+                b.type !== 'buster_up' &&
+                b.type !== 'arts_up' &&
+                b.type !== 'quick_up' &&
+                b.type !== 'ignore_invincible' &&
+                !/atk|crit|power|damage|buster|arts|quick|strength/i.test(b.name)
+              );
+            } else {
+              t.activeBuffs = [];
+            }
+            t.activeBuffs.push({
+              name: 'Law of Magic (Skill Seal)',
+              type: 'skill_seal' as any,
+              value: 100,
+              remainingTurns: 1
+            });
           });
           actor.activeBuffs.push({
             name: 'Law of Magic (Arts Up)',

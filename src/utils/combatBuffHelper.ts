@@ -152,6 +152,12 @@ export function calculateCombatantBuffSummary(
         isStunned = true;
         buffDescriptions.push(`• **${b.name || 'Stun'}**: Incapacitated (${durationLabel})`);
         break;
+      case 'skill_seal':
+        buffDescriptions.push(`• **${b.name || 'Skill Seal'}**: Active Skills Sealed (${durationLabel})`);
+        break;
+      case 'ignore_invincible':
+        buffDescriptions.push(`• **${b.name || 'Ignore Invincibility'}**: Attacks Pierce Evade & Invincibility (${durationLabel})`);
+        break;
       default:
         if (b.name) {
           buffDescriptions.push(`• **${b.name}**: Active effect (${durationLabel})`);

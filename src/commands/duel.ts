@@ -857,6 +857,7 @@ function buildCombatButtons(
 
   // Row 3: 3 Active Skill Sets
   const row3 = new ActionRowBuilder<ButtonBuilder>();
+  const isSkillSealed = Boolean(combatant.activeBuffs && combatant.activeBuffs.some(b => b.type === 'skill_seal'));
 
   // Skill 1 (Unlocked by default)
   const s1 = skills[0];
@@ -865,9 +866,9 @@ function buildCombatButtons(
   row3.addComponents(
     new ButtonBuilder()
       .setCustomId('skill_0')
-      .setLabel(cd1 > 0 ? `S1: ${s1Name} (${cd1}T)` : `✨ S1: ${s1Name}`)
-      .setStyle(cd1 > 0 ? ButtonStyle.Secondary : ButtonStyle.Primary)
-      .setDisabled(cd1 > 0 || !s1)
+      .setLabel(isSkillSealed ? `🚫 S1: Sealed` : cd1 > 0 ? `S1: ${s1Name} (${cd1}T)` : `✨ S1: ${s1Name}`)
+      .setStyle(isSkillSealed || cd1 > 0 ? ButtonStyle.Secondary : ButtonStyle.Primary)
+      .setDisabled(isSkillSealed || cd1 > 0 || !s1)
   );
 
   // Skill 2 (Unlocked by default)
@@ -877,9 +878,9 @@ function buildCombatButtons(
   row3.addComponents(
     new ButtonBuilder()
       .setCustomId('skill_1')
-      .setLabel(cd2 > 0 ? `S2: ${s2Name} (${cd2}T)` : `🛡️ S2: ${s2Name}`)
-      .setStyle(cd2 > 0 ? ButtonStyle.Secondary : ButtonStyle.Primary)
-      .setDisabled(cd2 > 0 || !s2)
+      .setLabel(isSkillSealed ? `🚫 S2: Sealed` : cd2 > 0 ? `S2: ${s2Name} (${cd2}T)` : `🛡️ S2: ${s2Name}`)
+      .setStyle(isSkillSealed || cd2 > 0 ? ButtonStyle.Secondary : ButtonStyle.Primary)
+      .setDisabled(isSkillSealed || cd2 > 0 || !s2)
   );
 
   // Skill 3 (Unlocked at Bond Level 5)
@@ -891,9 +892,9 @@ function buildCombatButtons(
   row3.addComponents(
     new ButtonBuilder()
       .setCustomId('skill_2')
-      .setLabel(!isS3Unlocked ? '🔒 S3 (Bond Lv 5)' : cd3 > 0 ? `S3: ${s3Name} (${cd3}T)` : `🌟 S3: ${s3Name}`)
-      .setStyle(!isS3Unlocked || cd3 > 0 ? ButtonStyle.Secondary : ButtonStyle.Success)
-      .setDisabled(!isS3Unlocked || cd3 > 0 || !s3)
+      .setLabel(!isS3Unlocked ? '🔒 S3 (Bond Lv 5)' : isSkillSealed ? `🚫 S3: Sealed` : cd3 > 0 ? `S3: ${s3Name} (${cd3}T)` : `🌟 S3: ${s3Name}`)
+      .setStyle(!isS3Unlocked || isSkillSealed || cd3 > 0 ? ButtonStyle.Secondary : ButtonStyle.Success)
+      .setDisabled(!isS3Unlocked || isSkillSealed || cd3 > 0 || !s3)
   );
 
   if (hasAlly) {
@@ -963,6 +964,14 @@ function activateCombatantSkill(
   transformationAvatarUrl?: string;
 } {
   const bondLevel = combatant.servant.bondLevel || 1;
+  const isSkillSealed = Boolean(combatant.activeBuffs && combatant.activeBuffs.some(b => b.type === 'skill_seal'));
+  if (isSkillSealed) {
+    return {
+      success: false,
+      log: `🚫 **Skills Sealed!** **${combatant.servant.nickname || combatant.servant.template.name}** is under the effect of [Skill Seal] and cannot activate skills!`
+    };
+  }
+
   if (skillIdx === 2 && bondLevel < 5) {
     return { success: false, log: '🔒 **Skill 3 is Locked!** Reach Bond Level 5 to unlock this skill.' };
   }
@@ -1045,13 +1054,7 @@ function activateCombatantSkill(
       value: 100,
       remainingTurns: 1
     });
-    combatant.activeBuffs.push({
-      name: 'Concept Nullification (Arts Up)',
-      type: 'arts_up',
-      value: 30,
-      remainingTurns: 3
-    });
-    logText = `🛡️ **${sName}** activated **${skill.name}**! (Invincible 1T, Ignore Invincible 1T, +30% Arts Up (3T))${quoteLine}`;
+    logText = `🛡️ **${sName}** activated **${skill.name}**! (Gained **Invincibility (1T)** & **Ignore Invincible (1T)**)${quoteLine}`;
   } else if (skill.id === 'nullify_the_law_of_magic_ex') {
     let strippedCount = 0;
     if (opponent && opponent.activeBuffs) {
@@ -1079,7 +1082,7 @@ function activateCombatantSkill(
       value: 20,
       remainingTurns: 3
     });
-    logText = `👑 **${sName}** activated **${skill.name}**! (Stripped ${strippedCount} offensive buffs, inflicted Skill Seal (1T), +20% Arts Up for party (3T))${quoteLine}`;
+    logText = `👑 **${sName}** activated **${skill.name}**! (Stripped ${strippedCount} offensive buffs, inflicted **Skill Seal (1T)** on enemy, +20% Arts Up for 3T)${quoteLine}`;
   } else if (skill.effectType === 'buff_atk') {
     const val = skill.value || 35;
     const desc = (skill.description || '').toLowerCase();
