@@ -588,9 +588,9 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       tag: "DARK TYRANNY VS GOLDEN THEATER"
     },
     emiya_archer: {
-      intro: "Archer. You look as weary as ever. Are you still chasing that hollow dream of saving everyone?",
-      retort: "It may be a hollow dream, Saber Alter, but I won't let you trample over it with brute force. Trace on!",
-      tag: "CYNICAL IDEALIST VS RUTHLESS KING"
+      intro: "You reek of iron and foolish regrets. To think you still cling to such a naive delusion after everything it cost you... Your stubbornness is an insult to your own existence, Archer.",
+      retort: "Hah. And your pragmatism is just an excuse to throw a temper tantrum, Saber. I've already accepted how hollow my path is. The difference is, I didn't have to throw away my heart to keep fighting.",
+      tag: "HOLLOW PATHS & BROKEN IDEALS"
     },
     heracles_berserker: {
       intro: "Heracles... The greatest brute of Olympus. Let us see how many times Excalibur Morgan must kill you before you stay down!",
@@ -611,6 +611,31 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "A primordial cosmic dragon... You radiate an unnatural gravitational pull. Let us see if your scales can withstand Excalibur Morgan!",
       retort: "⟨ Voth Krav'nok. ⟩ Such heavy black mana from a small mortal container. An interesting snack, but still just dust.",
       tag: "DRAGON OF CAMELOT VS DRAGON OF LYONA"
+    },
+    aoko_aozaki: {
+      intro: "The Fifth Magician. Accelerating entropy to cheat causality... A parlor trick. No distortion of time can withstand the sheer crushing weight of Excalibur Morgan.",
+      retort: "Whoa, that black armor means serious business! If you think pure raw brute force can out-muscle the Fifth Magic, you've got a lot to learn, Gothic King!",
+      tag: "FIFTH MAGIC RETROGRADE VS EXCALIBUR MORGAN"
+    },
+    amamiya_no_chihaya_tenkohime: {
+      intro: "An ancient celestial fox guardian. Instinct alone will not save you when the ground beneath your paws is cleaved into the abyss.",
+      retort: "H-Hii! Such scary black armor and a giant dark sword! But washi's shrine barriers and Amazakura will not break before thy gloomy tyranny!",
+      tag: "BLACK DRAGON OF BRITAIN VS ANCIENT KYUBI"
+    },
+    lucia_lyozes: {
+      intro: "Hmph. A stubborn high elf clinging to dead comrades. Let your black lance test the weight of Excalibur Morgan, vanguard.",
+      retort: "A tyrant wielding corrupted holy steel. You discard sentiment for tyrannical efficiency, but ruthlessness without tactical clarity is merely reckless violence.",
+      tag: "BLACK IRON VS BLACK SUN"
+    },
+    luvria_greenharte: {
+      intro: "Hero of Lyozes? Flaunting infinite mana and claiming omnipotence? Let us see if your conceptual nullification can deny the crushing abyss of Morgan.",
+      retort: "My my, what a delightfully gloomy tyrant! A black dragon sword that seeks to crush all creation? How charmingly heavy! Let us see if it can crush a concept that has already been erased!",
+      tag: "EXCALIBUR MORGAN VS CONCEPT NULLIFICATION"
+    },
+    edmond: {
+      intro: "Insolent beast. No fortress of iron withstands the abyss of Morgan. Brace yourself, vanguard—I will cleave your bedrock in twain.",
+      retort: "Dark dragon mana radiating from that blackened blade... You've discarded the white armor, King of Knights, but your strike is heavier than ever. Bring it on—my shield doesn't care what color the sword is!",
+      tag: "TYRANT'S CALIBURN VS SCARRED REDOUBT"
     }
   },
 
