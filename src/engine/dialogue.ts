@@ -636,57 +636,60 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
 
   // Luvria Greenharte - Caster (The "Hero," Strongest Mage of Lyozes)
   luvria_greenharte: {
+    // --- BUSTER CARDS (Aggressive / heavy strike lines) ---
     buster: [
-      "Pyre and Gale collide! Let the primal inferno splay across the heavens! Scatter!",
-      "Concept Nullification: Impact! All kinetic force translates directly to your core—no recoil, no mercy!",
-      "Staff strike imbued with the weight of the World! Didst thou forget an S-Rank adventurer can fight up close?!",
-      "Divergent elemental rupture! Stand aside, I am setting this entire sector ablaze!",
-      "Terra and Pyre, erupt! Sunder the earth beneath their feet!"
+      "Let us delete the concept of your guard!",
+      "Heavy? That is merely gravity complaining!",
+      "Pyre, Terra—crush them into fine dust!",
+      "Brace yourself! This one is going to leave a crater!"
     ],
+
+    // --- ARTS CARDS (Spells / elemental weave / tactical lines) ---
     arts: [
-      "All four elemental paths—Pyre, Fluvia, Terra, Gale—sing in perfect harmony. Weave, awaken!",
-      "Automated Nullification: Infinite Mana active. My wellspring knows no bottom; thy barrier is finite.",
-      "Concept Nullification: Distance! My incantation lands where thou standest instantaneously!",
-      "The weave of Sylvanryth answers my decree. Observe the true craft of the Strongest Mage!",
-      "Fluvia's freezing tide and Terra's binding roots—bind them to the leyline!"
+      "Elements of the world, dance at my command~",
+      "Let us rewrite this little equation, shall we?",
+      "Fluvia, Gale—converge and pierce through!",
+      "A proper incantation requires a touch of elegance!"
     ],
+
+    // --- QUICK CARDS (Speed / agility / light evasion lines) ---
     quick: [
-      "Gale-step! A breeze upon thy cheek before my divergent spell detonates!",
-      "Too slow, friend! Fluvia's current already surrounds thy blind spot. Peek-a-boo!",
-      "Light footwork of the forest! Didst thou truly think a 140-year-old elf could not dance?",
-      "Rapid-cast incantation! Three elemental circles woven in a single breath!",
-      "Concept Nullification: Gravity! How doth it feel to weigh as light as a feather?"
+      "Distance is merely a polite suggestion!",
+      "Too slow! I'm already standing behind you~",
+      "Blink and you will miss the finale!",
+      "Step, skip, and an extra little tap for good measure!"
     ],
+
+    // --- MIXED CHAINS (General combat banter / encouraging Master) ---
     mixed: [
-      "Fret not, Master! Between my sorcery and thy command, our victory was decided at sunrise!",
-      "Stand behind me! I shall render their offensive spells completely and utterly void!",
-      "A magnificent clash! Let us test if their Spirit Origin can survive the Divergent Path!",
-      "Concept Nullification: Magic! In this sphere, thy little miracles cease to exist!",
-      "Lucia warned me not to erase entire city blocks, so I shall make this swift and tidy!"
+      "Keep your eyes on the Hero, Master! The tempo is picking up!",
+      "One, two, three—watch how effortlessly their reality frays!",
+      "Excellent timing, Master! Let us give them a grand show!",
+      "Do not look away now; this is where it gets truly wondrous~"
     ],
+
+    // --- DESPERATION (Low HP / critical danger lines) ---
     desperation: [
-      "Absolute Permanence will not crumble! Master, steady thy heart—I am thy hero!",
-      "Lethal wounds take no root in this vessel! Live on... and keep that head held high!",
-      "Lucia! Edmond! Master! I will not allow this family to be sundered by anyone!",
-      "Thou thinkest this is the end? The concept of my death was denied long ago!"
+      "Tch... what a nuisance. Playtime is officially over.",
+      "Lucia would lecture me for a century if I fell here... Stand firm!",
+      "You dared scratch the Hero? Let us see how you endure the unmaking of your rules."
     ],
+
+    // --- SKILL ACTIVATIONS (Casting / buff quotes) ---
     skills: [
-      "My wellspring is boundless. The concept of depletion does not apply to me—verily, thou art trying to drain an ocean with a tea strainer!",
-      "Distance and momentum are mere polite suggestions. Concept Nullification: Impact!",
-      "Under my authority, the laws of sorcery are rewritten. Cease thy incantations, for within this dome, magic itself hath ceased to exist!",
-      "Pyre, Fluvia, Terra, Gale—the four elemental paths bow to my decree. Divergent Weave, awaken!",
-      "Concept Nullification: Space! Let travel distance be rendered void!"
+      "A bottomless well... My mana shall never be bound by limits!",
+      "Inertia fades, space yields. You cannot touch what cannot register!",
+      "Your little enchantments? Denied. Back to square one with you!"
     ],
+
+    // --- VICTORY & DEFEAT ---
     victory: [
-      "A splendid engagement! Verily, when one denies the very concept of defeat, the outcome was written before we took the field.",
-      "All threats neutralized and not a single hair out of place! Master, doth that magnificent display warrant a pot of sweet tea in the workshop?",
-      "Concept Nullification: Victory. Exactly as ordained. Hold that head high, Master—we make a peerless team!",
-      "Aha! Another victory for the S-Rank hero of Sylvanryth! Lucia would still find a way to scold me, but I call that perfection."
+      "And that is why they call me the Hero! Master, where are those celebratory pastries you promised?",
+      "Concept of victory: firmly in our hands. Flawlessly executed, wouldn't you say?"
     ],
     defeat: [
-      "A minor miscalculation of the weave... fret not, Master, my life cannot be erased so easily. Live on... and keep that head high...",
-      "My mana... scattering into the leyline... Lucia, forgive me... I played too recklessly this time...",
-      "The staff grows heavy... but remember my words, Master: no matter what darkness falls, keep that head held high..."
+      "Ah... to think I was so careless... Lucia is going to have my head for this...",
+      "Is this... an end? I am sorry, Master... keep your head held high..."
     ]
   },
 
