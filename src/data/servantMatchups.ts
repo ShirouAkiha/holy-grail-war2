@@ -1427,7 +1427,149 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       tag: "GUARDIAN OF EBONWATCH VS SACRED SHRINE GUARDIAN"
     },
 
-    // 7. MIRROR MATCH
+    // 7. VS ARTORIA PENDRAGON ALTER
+    artoria_alter: {
+      intro: "Dark dragon mana radiating from that blackened blade... You've discarded the white armor, King of Knights, but your strike is heavier than ever. Bring it on—my shield doesn't care what color the sword is!",
+      retort: "Insolent beast. No fortress of iron withstands the abyss of Morgan. Brace yourself, vanguard—I will cleave your bedrock in twain.",
+      tag: "TYRANT'S CALIBURN VS SCARRED REDOUBT"
+    },
+    artoria_pendragon_alter: {
+      intro: "Dark dragon mana radiating from that blackened blade... You've discarded the white armor, King of Knights, but your strike is heavier than ever. Bring it on—my shield doesn't care what color the sword is!",
+      retort: "Insolent beast. No fortress of iron withstands the abyss of Morgan. Brace yourself, vanguard—I will cleave your bedrock in twain.",
+      tag: "TYRANT'S CALIBURN VS SCARRED REDOUBT"
+    },
+
+    // 8. VS EMIYA (ARCHER)
+    emiya: {
+      intro: "A red coat, twin blades, and cynical eyes. You look like a man who's survived too many lost causes, archer. How many projected blades will it take to scratch this tower shield?",
+      retort: "A frontline defender who fights with his body on the line... admirable, but reckless. Let's see if your shield holds against Caladbolg II!",
+      tag: "UNLIMITED BLADEWORKS VS BEDROCK VANGUARD"
+    },
+    emiya_archer: {
+      intro: "A red coat, twin blades, and cynical eyes. You look like a man who's survived too many lost causes, archer. How many projected blades will it take to scratch this tower shield?",
+      retort: "A frontline defender who fights with his body on the line... admirable, but reckless. Let's see if your shield holds against Caladbolg II!",
+      tag: "UNLIMITED BLADEWORKS VS BEDROCK VANGUARD"
+    },
+
+    // 9. VS CÚ CHULAINN (LANCER)
+    cu_chulainn: {
+      intro: "The Hound of Ulster! That crimson spear carries the scent of a thousand death-defying battles. Think you can pierce straight through my core before my shield bats you back?",
+      retort: "Gaha! Now that's the kind of thick-skinned monster I love hunting! Plant your feet, big guy—Gáe Bulg never misses its mark!",
+      tag: "PIERCING CRIMSON GÁE BULG VS TIGRIS WALL"
+    },
+    cu_chulainn_lancer: {
+      intro: "The Hound of Ulster! That crimson spear carries the scent of a thousand death-defying battles. Think you can pierce straight through my core before my shield bats you back?",
+      retort: "Gaha! Now that's the kind of thick-skinned monster I love hunting! Plant your feet, big guy—Gáe Bulg never misses its mark!",
+      tag: "PIERCING CRIMSON GÁE BULG VS TIGRIS WALL"
+    },
+
+    // 10. VS HERACLES (BERSERKER)
+    heracles: {
+      intro: "That primeval roar... Nine Lives, twelve trials, and raw Olympian fury! I survived the Floor 50 Abyss, giant—I'm not backing down from Hercules!",
+      retort: "▂▂▃▃▄▄▅▅! (The God Hand bellows with primeval fury, raising the stone axe-sword to test the mortal vanguard's indomitable shield!)",
+      tag: "TWELVE LABORS VS INDOMITABLE REDOUBT"
+    },
+    heracles_berserker: {
+      intro: "That primeval roar... Nine Lives, twelve trials, and raw Olympian fury! I survived the Floor 50 Abyss, giant—I'm not backing down from Hercules!",
+      retort: "▂▂▃▃▄▄▅▅! (The God Hand bellows with primeval fury, raising the stone axe-sword to test the mortal vanguard's indomitable shield!)",
+      tag: "TWELVE LABORS VS INDOMITABLE REDOUBT"
+    },
+
+    // 11. VS SCÁTHACH (LANCER)
+    scathach: {
+      intro: "Queen of the Land of Shadows... They say you've killed gods and trained the greatest warriors alive. Don't go easy on an old frontline beast, teacher!",
+      retort: "A warrior whose soul has been hammered upon the anvil of mortal struggle. Very well. Let us test if your shield can withstand the threshold of Dun Scaith!",
+      tag: "GATE OF SKYE VS FORTRESS OF EBONWATCH"
+    },
+    scathach_lancer: {
+      intro: "Queen of the Land of Shadows... They say you've killed gods and trained the greatest warriors alive. Don't go easy on an old frontline beast, teacher!",
+      retort: "A warrior whose soul has been hammered upon the anvil of mortal struggle. Very well. Let us test if your shield can withstand the threshold of Dun Scaith!",
+      tag: "GATE OF SKYE VS FORTRESS OF EBONWATCH"
+    },
+
+    // 12. VS KARNA (LANCER)
+    karna: {
+      intro: "Hero of Charity! Your spear burns with the heat of the sun itself. Let's see if solar fire can melt a shield forged in the coldest subterranean abyss!",
+      retort: "Your stance is pure and devoid of hesitation. A warrior who protects his brethren with his life deserves the fullest radiance of Vasavi Shakti.",
+      tag: "SUN GOD'S BRILLIANCE VS IMPREGNABLE BASTION"
+    },
+    karna_lancer: {
+      intro: "Hero of Charity! Your spear burns with the heat of the sun itself. Let's see if solar fire can melt a shield forged in the coldest subterranean abyss!",
+      retort: "Your stance is pure and devoid of hesitation. A warrior who protects his brethren with his life deserves the fullest radiance of Vasavi Shakti.",
+      tag: "SUN GOD'S BRILLIANCE VS IMPREGNABLE BASTION"
+    },
+
+    // 13. VS JEANNE D'ARC (RULER)
+    jeanne: {
+      intro: "Saint of Orleans! Your sacred banner inspires thousands, but out here on the frontline, a banner needs a solid wall in front of it. Let's trade defense tactics!",
+      retort: "The Lord is my light and my salvation! Master Edmond, your protective heart shines with true devotion. Luminosité Eternelle, shield our path!",
+      tag: "HOLY MAIDEN'S BANNER VS VANGUARD'S SHIELD"
+    },
+    jeanne_darc_ruler: {
+      intro: "Saint of Orleans! Your sacred banner inspires thousands, but out here on the frontline, a banner needs a solid wall in front of it. Let's trade defense tactics!",
+      retort: "The Lord is my light and my salvation! Master Edmond, your protective heart shines with true devotion. Luminosité Eternelle, shield our path!",
+      tag: "HOLY MAIDEN'S BANNER VS VANGUARD'S SHIELD"
+    },
+    jeanne_d_arc: {
+      intro: "Saint of Orleans! Your sacred banner inspires thousands, but out here on the frontline, a banner needs a solid wall in front of it. Let's trade defense tactics!",
+      retort: "The Lord is my light and my salvation! Master Edmond, your protective heart shines with true devotion. Luminosité Eternelle, shield our path!",
+      tag: "HOLY MAIDEN'S BANNER VS VANGUARD'S SHIELD"
+    },
+
+    // 14. VS JEANNE D'ARC ALTER (AVENGER)
+    jalter: {
+      intro: "Dragon Witch! Screaming about burning the world down won't work on me. I've babysat stubborn hotheads like Luvria for years—throw those flames right here!",
+      retort: "Who are you calling a stubborn hothead, you oversized slum cat?! I'll roast that rusty shield into slag and make you beg for mercy! La Grondement Du Haine!",
+      tag: "FLAMES OF VENGEANCE VS SCARRED BASTION"
+    },
+    jeanne_alter: {
+      intro: "Dragon Witch! Screaming about burning the world down won't work on me. I've babysat stubborn hotheads like Luvria for years—throw those flames right here!",
+      retort: "Who are you calling a stubborn hothead, you oversized slum cat?! I'll roast that rusty shield into slag and make you beg for mercy! La Grondement Du Haine!",
+      tag: "FLAMES OF VENGEANCE VS SCARRED BASTION"
+    },
+
+    // 15. VS NERO CLAUDIUS (SABER)
+    nero: {
+      intro: "Emperor of Rome! All that gold and rose petals... You fight like you're performing on a grand stage. Just try not to trip over my shield when you pirouette!",
+      retort: "Umu! What a magnificent, rugged gladiator! A true colosseum champion! Let the golden theater resound with our passionate clash, Praetor's loyal vanguard!",
+      tag: "GOLDEN THEATER VS RUGGED ARENA SHIELD"
+    },
+    nero_claudius_saber: {
+      intro: "Emperor of Rome! All that gold and rose petals... You fight like you're performing on a grand stage. Just try not to trip over my shield when you pirouette!",
+      retort: "Umu! What a magnificent, rugged gladiator! A true colosseum champion! Let the golden theater resound with our passionate clash, Praetor's loyal vanguard!",
+      tag: "GOLDEN THEATER VS RUGGED ARENA SHIELD"
+    },
+    nero_claudius: {
+      intro: "Emperor of Rome! All that gold and rose petals... You fight like you're performing on a grand stage. Just try not to trip over my shield when you pirouette!",
+      retort: "Umu! What a magnificent, rugged gladiator! A true colosseum champion! Let the golden theater resound with our passionate clash, Praetor's loyal vanguard!",
+      tag: "GOLDEN THEATER VS RUGGED ARENA SHIELD"
+    },
+
+    // 16. VS MYSTERIOUS HEROINE X ALTER (BERSERKER)
+    mhx_alter: {
+      intro: "A Sith Saber craving sweets? Hey, kid, put down that dual-bladed lightsaber and I might have a couple of chocolate wafers in my pouch for you.",
+      retort: "...Bribing the Dark Lord with high-calorie snacks? ...I accept the offering, but your shield still must be cleaved by the Cross-Calibur.",
+      tag: "DARK SIDE CALIBUR VS SWEETS-SEEKING SHIELD"
+    },
+    ecchan: {
+      intro: "A Sith Saber craving sweets? Hey, kid, put down that dual-bladed lightsaber and I might have a couple of chocolate wafers in my pouch for you.",
+      retort: "...Bribing the Dark Lord with high-calorie snacks? ...I accept the offering, but your shield still must be cleaved by the Cross-Calibur.",
+      tag: "DARK SIDE CALIBUR VS SWEETS-SEEKING SHIELD"
+    },
+
+    // 17. VS AOKO AOZAKI
+    aoko: {
+      intro: "Miss Fifth Magician! Accelerating magic circuits with martial arts? That's my kind of direct brawl! Let's see whose kinetic impact hits harder!",
+      retort: "Not bad, big guy! An old-school tank who isn't afraid to take a hit directly to the chest! Don't blink, or my Magic Bullet Stream will blow your stance wide open!",
+      tag: "FIFTH MAGIC RETROGRADE VS KINETIC SHIELD-BASH"
+    },
+    aoko_aozaki: {
+      intro: "Miss Fifth Magician! Accelerating magic circuits with martial arts? That's my kind of direct brawl! Let's see whose kinetic impact hits harder!",
+      retort: "Not bad, big guy! An old-school tank who isn't afraid to take a hit directly to the chest! Don't blink, or my Magic Bullet Stream will blow your stance wide open!",
+      tag: "FIFTH MAGIC RETROGRADE VS KINETIC SHIELD-BASH"
+    },
+
+    // 18. MIRROR MATCH
     edmond: {
       intro: "Another scarred tiger with a red scarf and a heavy shield? Guess there's two of us who refuse to let our family die!",
       retort: "Let's see who holds the true line, then. One shield stands, one shield falls!",
