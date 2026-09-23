@@ -186,6 +186,26 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "An eccentric elven mage claiming omnipotence and infinite mana? Hahaha! Know your place, wielder of wood! All miracles throughout creation were born from my treasury!",
       retort: "Doth thou ever tire of hearing thine own voice, Golden King? 'Tis a grand speech, but words cannot pierce an anti-world barrier. Shall I nullify the concept of thy vanity next?",
       tag: "TREASURY OF CREATION VS THE STRONGEST MAGE"
+    },
+    aoko_aozaki: {
+      intro: "A modern human meddling with the Fifth Magic? Hmph! You dare claim domain over time and entropy before the King of Heroes?! Gate of Babylon!",
+      retort: "Arrogant golden king! Keep talking from behind those floating portals—let's see how many treasures it takes to stop a Magic Bullet Stream!",
+      tag: "GATE OF BABYLON VS THE FIFTH MAGIC"
+    },
+    amamiya_no_chihaya_tenkohime: {
+      intro: "Fuhahaha! A little pink fox baring its fangs at the King of Heroes? Entertaining! Become an ornament in my vault, beast!",
+      retort: "Arrogant gold king! Washi's divine name is Amamiya no Chihaya Tenkohime! Don't thee dare call washi a mere mongrel or washi shall bite thy golden fingers off!",
+      tag: "ANCIENT KYUBI VS KING OF HEROES"
+    },
+    lucia_lyozes: {
+      intro: "Hmph! An elf from an alien world daring to lecture the King? Your five seconds of foresight will only allow you to witness your demise with absolute clarity, mongrel!",
+      retort: "The King of Heroes. Flaunting countless treasures and calling yourself the sole arbiter of humanity? I have dealt with arrogant beings who played at being god before. Black Lance—Apocrypha Terminus!",
+      tag: "APOCRYPHA TERMINUS VS GATE OF BABYLON"
+    },
+    edmond: {
+      intro: "A beast of the slums dares stand before the King of Heroes? Your insolence will be rewarded with a thousand divine blades, mongrel!",
+      retort: "King of Heroes, is it? You've got an awful lot of shiny swords in that vault. Mind if I see how many break against my shield?",
+      tag: "TOWER SHIELD VS GATE OF BABYLON"
     }
   },
 
