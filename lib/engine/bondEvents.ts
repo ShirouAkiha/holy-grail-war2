@@ -3115,6 +3115,47 @@ export function selectActiveInterludeForServant(servant: MasterServantInstance |
 }
 
 /**
+ * Global lookup for any Bond Event by its ID across all servants in the database.
+ */
+export function findBondEventById(eventId: string): BondEvent | undefined {
+  if (!eventId) return undefined;
+  for (const eventList of Object.values(SERVANT_BOND_EVENT_DATABASE)) {
+    const found = eventList.find(e => e.id === eventId);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+/**
+ * Finds the contracted servant instance in master.servants that matches a given bond event or eventId.
+ */
+export function findServantForBondEvent(master: any, eventOrId: BondEvent | string): MasterServantInstance | undefined {
+  if (!master || !Array.isArray(master.servants) || master.servants.length === 0) return undefined;
+  const evt = typeof eventOrId === 'string' ? findBondEventById(eventOrId) : eventOrId;
+  const eventId = typeof eventOrId === 'string' ? eventOrId : eventOrId?.id;
+
+  // 1. Check if any servant directly has this event in getBondEventsForServant
+  if (eventId) {
+    const directMatch = master.servants.find((s: any) => {
+      const sEvents = getBondEventsForServant(s);
+      return sEvents.some(e => e.id === eventId);
+    });
+    if (directMatch) return directMatch;
+  }
+
+  // 2. If event template ID is known, match template ID
+  if (evt && evt.servantTemplateId) {
+    const tMatch = master.servants.find((s: any) => {
+      const tid = s.templateId || s.template?.id || s.id;
+      return tid === evt.servantTemplateId;
+    });
+    if (tMatch) return tMatch;
+  }
+
+  return undefined;
+}
+
+/**
  * Unlocked dialogue quotes database associated with Bond levels.
  */
 export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {

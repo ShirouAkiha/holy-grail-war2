@@ -44,7 +44,10 @@ import {
   addBondExpToServant,
   getUnlockedDialogueLinesForServant,
   selectActiveInterludeForServant,
-  splitDialogueIntoChunks
+  splitDialogueIntoChunks,
+  findBondEventById,
+  findServantForBondEvent,
+  type BondEvent
 } from '../lib/engine/bondEvents';
 import { CRAFT_ESSENCE_DATABASE, BOND_CRAFT_ESSENCES, getBondCraftEssenceForServant, checkAndGrantBond10Ce } from '../lib/data/craftEssences';
 import MASTERS_DATABASE from '../data/masters.json';
@@ -3055,7 +3058,7 @@ export default function DiscordEmulator({
         const isCompleted = targetServant.completedBondEvents?.includes(evt.id);
         const isUnlocked = (targetServant.bondLevel || 1) >= evt.requiredBondLevel;
         return {
-          id: `vn_start_${evt.id}_0`,
+          id: `vn_start:${targetServant.id}:${evt.id}:0`,
           label: isCompleted ? `Replay: ${evt.title.slice(0, 48)}` : `Play: ${evt.title.slice(0, 48)}`,
           style: (isCompleted ? 'secondary' : 'primary') as any,
           emoji: '📖',
@@ -7960,7 +7963,96 @@ export default function DiscordEmulator({
         return;
       }
 
-      const activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
+      // Extract target event ID and servant key if present in the button ID
+      let requestedEventId = '';
+      let requestedServantKey = '';
+
+      if (btnId.includes(':')) {
+        const parts = btnId.split(':');
+        const prefix = parts[0];
+        if (prefix === 'vn_chunk') {
+          if (parts.length >= 5) {
+            requestedServantKey = parts[1];
+            requestedEventId = parts[2];
+          } else if (parts.length >= 4) {
+            requestedEventId = parts[1];
+          }
+        } else if (prefix === 'vn_choice') {
+          if (parts.length >= 5) {
+            requestedServantKey = parts[1];
+            requestedEventId = parts[2];
+          } else if (parts.length >= 4) {
+            requestedEventId = parts[1];
+          }
+        } else if (prefix === 'vn_resp_chunk') {
+          if (parts.length >= 6) {
+            requestedServantKey = parts[1];
+            requestedEventId = parts[2];
+          } else if (parts.length >= 5) {
+            requestedEventId = parts[1];
+          }
+        } else if (prefix === 'vn_next') {
+          if (parts.length >= 4) {
+            requestedServantKey = parts[1];
+            requestedEventId = parts[2];
+          } else if (parts.length >= 3) {
+            requestedEventId = parts[1];
+          }
+        } else if (prefix === 'vn_conclude') {
+          if (parts.length >= 4) {
+            requestedServantKey = parts[1];
+            requestedEventId = parts[2];
+          } else if (parts.length >= 3) {
+            requestedEventId = parts[1];
+          }
+        } else if (prefix === 'vn_start' || prefix === 'vn_start_specific') {
+          if (parts.length >= 3) {
+            requestedServantKey = parts[1];
+            requestedEventId = parts[2];
+          } else {
+            requestedEventId = parts[1];
+          }
+        } else if (parts[1]) {
+          requestedServantKey = parts[1];
+        }
+      } else if (btnId.startsWith('vn_start_')) {
+        const parts = btnId.split('_');
+        requestedEventId = parts.slice(2, parts.length - 1).join('_');
+      } else if (btnId.startsWith('vn_chunk_')) {
+        const parts = btnId.split('_');
+        parts.pop(); // chunkIdx
+        parts.pop(); // sceneIdx
+        requestedEventId = parts.slice(2).join('_');
+      } else if (btnId.startsWith('vn_next_')) {
+        const parts = btnId.split('_');
+        parts.pop(); // exp/0
+        parts.pop(); // sceneIdx
+        requestedEventId = parts.slice(2).join('_');
+      } else if (btnId.startsWith('vn_conclude_')) {
+        const parts = btnId.split('_');
+        parts.pop(); // exp
+        requestedEventId = parts.slice(2).join('_');
+      }
+
+      // Resolve servant instance: prioritize servant matching requestedEventId or requestedServantKey
+      let activeServant = master.servants.find(s => s.id === master.activeServantId) || master.servants[0];
+
+      if (requestedServantKey) {
+        const matchedByKey = master.servants.find(s => 
+          s.id === requestedServantKey ||
+          s.templateId === requestedServantKey ||
+          s.template?.id === requestedServantKey ||
+          (s.nickname && s.nickname.toLowerCase() === requestedServantKey.toLowerCase()) ||
+          (s.template?.name && s.template.name.toLowerCase() === requestedServantKey.toLowerCase())
+        );
+        if (matchedByKey) activeServant = matchedByKey;
+      }
+
+      if (requestedEventId) {
+        const matchedByEvent = findServantForBondEvent(master, requestedEventId);
+        if (matchedByEvent) activeServant = matchedByEvent;
+      }
+
       if (!activeServant) return;
 
       const availableEvents = getBondEventsForServant(activeServant);
@@ -7988,8 +8080,8 @@ export default function DiscordEmulator({
             type: 'buttons',
             items: [
               { id: `btn_talk_servant:${activeServant.id}`, label: 'Talk to Servant 💬', style: 'success' as const, emoji: '💬' },
-              { id: 'vn_play_event', label: '📖 Play Interlude', style: 'primary' as const, emoji: '📖' },
-              { id: 'vn_back_status', label: '📊 Bond Status', style: 'secondary' as const, emoji: '🌸' }
+              { id: `vn_start:${activeServant.id}:${availableEvents[0]?.id || 'event'}:0`, label: '📖 Play Interlude', style: 'primary' as const, emoji: '📖' },
+              { id: `vn_back_status:${activeServant.id}`, label: '📊 Bond Status', style: 'secondary' as const, emoji: '🌸' }
             ]
           }
         };
@@ -8002,35 +8094,56 @@ export default function DiscordEmulator({
         return;
       }
 
-      if (btnId === 'vn_play_event' || btnId.startsWith('vn_start_') || btnId.startsWith('vn_chunk_') || btnId.startsWith('vn_chunk:')) {
-        let evt = availableEvents[0];
+      if (btnId === 'vn_play_event' || btnId.startsWith('vn_start_') || btnId.startsWith('vn_start:') || btnId.startsWith('vn_start_specific:') || btnId.startsWith('vn_chunk_') || btnId.startsWith('vn_chunk:')) {
+        let evt: BondEvent | undefined = undefined;
         let sceneIdx = 0;
         let chunkIdx = 0;
 
-        if (btnId.startsWith('vn_start_')) {
+        if (btnId.startsWith('vn_start:') || btnId.startsWith('vn_start_specific:')) {
+          const parts = btnId.split(':');
+          const evtId = parts.length >= 3 ? parts[2] : parts[1];
+          sceneIdx = parseInt(parts[parts.length - 1] || '0', 10) || 0;
+          evt = availableEvents.find(e => e.id === evtId) || findBondEventById(evtId);
+        } else if (btnId.startsWith('vn_start_')) {
           const parts = btnId.split('_');
           const evtId = parts.slice(2, parts.length - 1).join('_');
           sceneIdx = parseInt(parts[parts.length - 1] || '0', 10) || 0;
-          evt = availableEvents.find(e => e.id === evtId) || availableEvents[0];
-        } else if (btnId.startsWith('vn_chunk_') || btnId.startsWith('vn_chunk:')) {
-          const isColon = btnId.includes(':');
-          const parts = isColon ? btnId.split(':') : btnId.split('_');
-          if (isColon) {
-            evt = availableEvents.find(e => e.id === parts[1]) || availableEvents[0];
-            sceneIdx = parseInt(parts[2] || '0', 10) || 0;
-            chunkIdx = parseInt(parts[3] || '0', 10) || 0;
+          evt = availableEvents.find(e => e.id === evtId) || findBondEventById(evtId);
+        } else if (btnId.startsWith('vn_chunk:') || btnId.startsWith('vn_chunk_')) {
+          if (btnId.includes(':')) {
+            const parts = btnId.split(':');
+            let evtId = parts[1];
+            if (parts.length >= 5) {
+              evtId = parts[2];
+              sceneIdx = parseInt(parts[3] || '0', 10) || 0;
+              chunkIdx = parseInt(parts[4] || '0', 10) || 0;
+            } else {
+              sceneIdx = parseInt(parts[2] || '0', 10) || 0;
+              chunkIdx = parseInt(parts[3] || '0', 10) || 0;
+            }
+            evt = availableEvents.find(e => e.id === evtId) || findBondEventById(evtId);
           } else {
+            const parts = btnId.split('_');
             chunkIdx = parseInt(parts.pop() || '0', 10) || 0;
             sceneIdx = parseInt(parts.pop() || '0', 10) || 0;
             const evtId = parts.slice(2).join('_');
-            evt = availableEvents.find(e => e.id === evtId) || availableEvents[0];
+            evt = availableEvents.find(e => e.id === evtId) || findBondEventById(evtId);
           }
         } else {
           const { event } = selectActiveInterludeForServant(activeServant);
           if (event) evt = event;
         }
 
+        if (!evt) {
+          evt = availableEvents[0];
+        }
         if (!evt) return;
+
+        // Ensure activeServant matches the event's servant template
+        if (evt.servantTemplateId && (activeServant.templateId !== evt.servantTemplateId && activeServant.template?.id !== evt.servantTemplateId)) {
+          const matched = findServantForBondEvent(master, evt);
+          if (matched) activeServant = matched;
+        }
 
         const scene = evt.scenes[sceneIdx] || evt.scenes[0];
         const chunks = splitDialogueIntoChunks(scene.dialogueText);
@@ -8044,22 +8157,22 @@ export default function DiscordEmulator({
 
         if (!isLastChunk) {
           actionButtons = [
-            { id: `vn_chunk_${evt.id}_${sceneIdx}_${chunkIdx + 1}`, label: `Next (${chunkIdx + 1}/${chunks.length}) ➔`, style: 'primary' as const, emoji: '⏩' }
+            { id: `vn_chunk:${activeServant.id}:${evt.id}:${sceneIdx}:${chunkIdx + 1}`, label: `Next (${chunkIdx + 1}/${chunks.length}) ➔`, style: 'primary' as const, emoji: '⏩' }
           ];
         } else if (hasChoices) {
           choiceTextList =
             `\n\n👇 **Choose your response to deepen your Bond:**\n` +
             scene.choices!.map((c, idx) => `**${idx + 1}.** “*${c.text}*”`).join('\n');
           actionButtons = scene.choices!.map((c, idx) => ({
-            id: `vn_choice:${evt.id}:${sceneIdx}:${c.id}`,
+            id: `vn_choice:${activeServant.id}:${evt.id}:${sceneIdx}:${c.id}`,
             label: `${idx + 1}. “${c.text}”`,
             style: 'primary' as const,
             emoji: '💬'
           }));
         } else if (sceneIdx < evt.scenes.length - 1) {
-          actionButtons = [{ id: `vn_next_${evt.id}_${sceneIdx + 1}_0`, label: 'Next Scene ➔', style: 'success' as const, emoji: '⏩' }];
+          actionButtons = [{ id: `vn_next:${activeServant.id}:${evt.id}:${sceneIdx + 1}`, label: 'Next Scene ➔', style: 'success' as const, emoji: '⏩' }];
         } else {
-          actionButtons = [{ id: `vn_conclude_${evt.id}_150`, label: 'Conclude Interlude ✨', style: 'success' as const, emoji: '🎁' }];
+          actionButtons = [{ id: `vn_conclude:${activeServant.id}:${evt.id}:150`, label: 'Conclude Interlude ✨', style: 'success' as const, emoji: '🎁' }];
         }
 
         const partIndicator = chunks.length > 1 ? ` (Part ${chunkIdx + 1}/${chunks.length})` : '';
@@ -8099,25 +8212,43 @@ export default function DiscordEmulator({
         return;
       }
 
-      if (btnId.startsWith('vn_choice:') || btnId.startsWith('vn_choice_') || btnId.startsWith('vn_resp_chunk_') || btnId === 'vn_choice_complete') {
+      if (btnId.startsWith('vn_choice:') || btnId.startsWith('vn_choice_') || btnId.startsWith('vn_resp_chunk:') || btnId.startsWith('vn_resp_chunk_') || btnId === 'vn_choice_complete') {
         let eventId = '';
         let choiceId = '';
         let sceneIdx = 0;
         let respChunkIdx = 0;
 
-        if (btnId.startsWith('vn_resp_chunk_')) {
+        if (btnId.startsWith('vn_resp_chunk:')) {
+          const parts = btnId.split(':');
+          if (parts.length >= 6) {
+            eventId = parts[2];
+            sceneIdx = parseInt(parts[3], 10) || 0;
+            choiceId = parts[4];
+            respChunkIdx = parseInt(parts[5], 10) || 0;
+          } else {
+            eventId = parts[1];
+            sceneIdx = parseInt(parts[2], 10) || 0;
+            choiceId = parts[3];
+            respChunkIdx = parseInt(parts[4], 10) || 0;
+          }
+        } else if (btnId.startsWith('vn_resp_chunk_')) {
           const parts = btnId.split('_');
           respChunkIdx = parseInt(parts.pop() || '0', 10) || 0;
           choiceId = parts.pop() || '';
           sceneIdx = parseInt(parts.pop() || '0', 10) || 0;
           eventId = parts.slice(3).join('_');
-        } else if (btnId.includes(':')) {
+        } else if (btnId.startsWith('vn_choice:')) {
           const parts = btnId.split(':');
-          eventId = parts[1];
-          if (parts.length >= 4) {
+          if (parts.length >= 5) {
+            eventId = parts[2];
+            sceneIdx = parseInt(parts[3], 10) || 0;
+            choiceId = parts[4];
+          } else if (parts.length >= 4) {
+            eventId = parts[1];
             sceneIdx = parseInt(parts[2], 10) || 0;
             choiceId = parts[3];
           } else {
+            eventId = parts[1];
             choiceId = parts[2];
           }
         } else if (btnId.startsWith('vn_choice_')) {
@@ -8125,14 +8256,20 @@ export default function DiscordEmulator({
           const choiceIdx = parseInt(parts.pop() || '0', 10);
           sceneIdx = parseInt(parts.pop() || '0', 10);
           eventId = parts.slice(2).join('_');
-          const evt = availableEvents.find(e => e.id === eventId) || availableEvents[0];
+          const evt = availableEvents.find(e => e.id === eventId) || findBondEventById(eventId) || availableEvents[0];
           const scene = evt?.scenes[sceneIdx];
           const choice = scene?.choices?.[choiceIdx];
           if (choice) choiceId = choice.id;
         }
 
-        const evt = availableEvents.find(e => e.id === eventId) || availableEvents[0];
+        const evt = availableEvents.find(e => e.id === eventId) || findBondEventById(eventId) || availableEvents[0];
         if (!evt) return;
+
+        // Ensure activeServant matches the event's servant template
+        if (evt.servantTemplateId && (activeServant.templateId !== evt.servantTemplateId && activeServant.template?.id !== evt.servantTemplateId)) {
+          const matched = findServantForBondEvent(master, evt);
+          if (matched) activeServant = matched;
+        }
 
         const scene = evt.scenes[sceneIdx] || evt.scenes[0];
         const pickedChoice = scene.choices?.find(c => c.id === choiceId);
@@ -8146,7 +8283,7 @@ export default function DiscordEmulator({
 
         if (!isLastRespChunk) {
           const nextChunkButtons = [
-            { id: `vn_resp_chunk_${evt.id}_${sceneIdx}_${pickedChoice?.id || '0'}_${respChunkIdx + 1}`, label: `Next (${respChunkIdx + 1}/${respChunks.length}) ➔`, style: 'primary' as const, emoji: '⏩' }
+            { id: `vn_resp_chunk:${activeServant.id}:${evt.id}:${sceneIdx}:${pickedChoice?.id || '0'}:${respChunkIdx + 1}`, label: `Next (${respChunkIdx + 1}/${respChunks.length}) ➔`, style: 'primary' as const, emoji: '⏩' }
           ];
 
           const stepMsgData: DiscordMessage = {
@@ -8187,7 +8324,7 @@ export default function DiscordEmulator({
 
         if (hasNextScene) {
           const nextSceneButtons = [
-            { id: `vn_next_${evt.id}_${sceneIdx + 1}_0`, label: 'Next Scene ➔', style: 'success' as const, emoji: '⏩' }
+            { id: `vn_next:${activeServant.id}:${evt.id}:${sceneIdx + 1}`, label: 'Next Scene ➔', style: 'success' as const, emoji: '⏩' }
           ];
 
           const stepMsgData: DiscordMessage = {
@@ -8253,8 +8390,8 @@ export default function DiscordEmulator({
 
         const nextButtons = [
           { id: `btn_talk_servant:${updatedServant.id}`, label: 'Talk to Servant 💬', style: 'success' as const, emoji: '💬' },
-          { id: 'vn_play_event', label: '📖 Play Interlude Again', style: 'primary' as const, emoji: '⏩' },
-          { id: 'vn_back_status', label: '📊 Bond Status', style: 'secondary' as const, emoji: '🌸' }
+          { id: `vn_start:${updatedServant.id}:${evt.id}:0`, label: '📖 Play Interlude Again', style: 'primary' as const, emoji: '⏩' },
+          { id: `vn_back_status:${updatedServant.id}`, label: '📊 Bond Status', style: 'secondary' as const, emoji: '🌸' }
         ];
 
         const updatedMsgData: DiscordMessage = {
@@ -8303,8 +8440,13 @@ export default function DiscordEmulator({
 
         if (btnId.includes(':')) {
           const parts = btnId.split(':');
-          evtId = parts[1];
-          nextSceneIdx = parseInt(parts[2], 10) || 0;
+          if (parts.length >= 4) {
+            evtId = parts[2];
+            nextSceneIdx = parseInt(parts[3], 10) || 0;
+          } else {
+            evtId = parts[1];
+            nextSceneIdx = parseInt(parts[2], 10) || 0;
+          }
         } else {
           const parts = btnId.split('_');
           const accumExp = parseInt(parts.pop() || '0', 10);
@@ -8312,8 +8454,14 @@ export default function DiscordEmulator({
           evtId = parts.slice(2).join('_');
         }
 
-        const evt = availableEvents.find(e => e.id === evtId) || availableEvents[0];
+        const evt = availableEvents.find(e => e.id === evtId) || findBondEventById(evtId) || availableEvents[0];
         if (!evt) return;
+
+        // Ensure activeServant matches the event's servant template
+        if (evt.servantTemplateId && (activeServant.templateId !== evt.servantTemplateId && activeServant.template?.id !== evt.servantTemplateId)) {
+          const matched = findServantForBondEvent(master, evt);
+          if (matched) activeServant = matched;
+        }
 
         const scene = evt.scenes[nextSceneIdx];
         if (!scene) return;
@@ -8328,22 +8476,22 @@ export default function DiscordEmulator({
 
         if (!isLastChunk) {
           actionButtons = [
-            { id: `vn_chunk_${evt.id}_${nextSceneIdx}_1`, label: `Next (1/${chunks.length}) ➔`, style: 'primary' as const, emoji: '⏩' }
+            { id: `vn_chunk:${activeServant.id}:${evt.id}:${nextSceneIdx}:1`, label: `Next (1/${chunks.length}) ➔`, style: 'primary' as const, emoji: '⏩' }
           ];
         } else if (hasChoices) {
           choiceTextList =
             `\n\n👇 **Choose your response to deepen your Bond:**\n` +
             scene.choices!.map((c, idx) => `**${idx + 1}.** “*${c.text}*”`).join('\n');
           actionButtons = scene.choices!.map((c, idx) => ({
-            id: `vn_choice:${evt.id}:${nextSceneIdx}:${c.id}`,
+            id: `vn_choice:${activeServant.id}:${evt.id}:${nextSceneIdx}:${c.id}`,
             label: `${idx + 1}. “${c.text}”`,
             style: 'primary' as const,
             emoji: '💬'
           }));
         } else if (nextSceneIdx < evt.scenes.length - 1) {
-          actionButtons = [{ id: `vn_next_${evt.id}_${nextSceneIdx + 1}_0`, label: 'Next Scene ➔', style: 'success' as const, emoji: '⏩' }];
+          actionButtons = [{ id: `vn_next:${activeServant.id}:${evt.id}:${nextSceneIdx + 1}`, label: 'Next Scene ➔', style: 'success' as const, emoji: '⏩' }];
         } else {
-          actionButtons = [{ id: `vn_conclude_${evt.id}_150`, label: 'Conclude Interlude ✨', style: 'success' as const, emoji: '🎁' }];
+          actionButtons = [{ id: `vn_conclude:${activeServant.id}:${evt.id}:150`, label: 'Conclude Interlude ✨', style: 'success' as const, emoji: '🎁' }];
         }
 
         const partIndicator = chunks.length > 1 ? ` (Part 1/${chunks.length})` : '';
@@ -8383,12 +8531,31 @@ export default function DiscordEmulator({
         return;
       }
 
-      if (btnId.startsWith('vn_conclude_')) {
-        const parts = btnId.split('_');
-        const gainedExp = parseInt(parts.pop() || '150', 10) || 150;
-        const evtId = parts.slice(2).join('_');
+      if (btnId.startsWith('vn_conclude_') || btnId.startsWith('vn_conclude:')) {
+        let gainedExp = 150;
+        let evtId = '';
 
-        const evt = availableEvents.find(e => e.id === evtId) || availableEvents[0];
+        if (btnId.includes(':')) {
+          const parts = btnId.split(':');
+          if (parts.length >= 4) {
+            evtId = parts[2];
+            gainedExp = parseInt(parts[3], 10) || 150;
+          } else {
+            evtId = parts[1];
+            gainedExp = parseInt(parts[2], 10) || 150;
+          }
+        } else {
+          const parts = btnId.split('_');
+          gainedExp = parseInt(parts.pop() || '150', 10) || 150;
+          evtId = parts.slice(2).join('_');
+        }
+
+        const evt = availableEvents.find(e => e.id === evtId) || findBondEventById(evtId) || availableEvents[0];
+        if (evt?.servantTemplateId && (activeServant.templateId !== evt.servantTemplateId && activeServant.template?.id !== evt.servantTemplateId)) {
+          const matched = findServantForBondEvent(master, evt);
+          if (matched) activeServant = matched;
+        }
+
         const totalRewardExp = (evt?.rewardBondExp || 150) + gainedExp;
         const rewardSq = evt?.rewardSaintQuartz || 3;
 
@@ -8434,7 +8601,9 @@ export default function DiscordEmulator({
           components: {
             type: 'buttons',
             items: [
-              { id: 'quick_bond_status', label: 'View Servant Bond Status (/bond)', style: 'primary', emoji: '💖' }
+              { id: `btn_talk_servant:${updatedServant.id}`, label: 'Talk to Servant 💬', style: 'success' as const, emoji: '💬' },
+              { id: `vn_start:${updatedServant.id}:${evt?.id || 'event'}:0`, label: '📖 Play Interlude Again', style: 'primary' as const, emoji: '⏩' },
+              { id: `vn_back_status:${updatedServant.id}`, label: '📊 Bond Status', style: 'secondary' as const, emoji: '🌸' }
             ]
           }
         };

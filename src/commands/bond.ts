@@ -25,6 +25,8 @@ import {
   getServantGiftReaction,
   getServantSparringDebrief,
   splitDialogueIntoChunks,
+  findBondEventById,
+  findServantForBondEvent,
   type BondEvent
 } from '../../lib/engine/bondEvents';
 import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
@@ -986,8 +988,10 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       });
     }
 
-    // Determine target servant from button ID if present
+    // Determine target servant & event from button ID if present
     let targetServantId: string | undefined = undefined;
+    let potentialEventId = '';
+
     if (btnId.startsWith('vn_gift_menu:')) targetServantId = btnId.split(':')[1];
     else if (btnId.startsWith('vn_give_gift:')) targetServantId = btnId.split(':')[1];
     else if (btnId.startsWith('vn_spar:')) targetServantId = btnId.split(':')[1];
@@ -998,29 +1002,75 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
     else if (btnId.startsWith('btn_talk_servant:')) targetServantId = btnId.split(':')[1];
     else if (btnId.startsWith('vn_set_active:')) targetServantId = btnId.split(':')[1];
     else if (btnId.startsWith('ce_art_bond:')) targetServantId = btnId.split(':')[1];
-    else if (btnId.startsWith('vn_choice:')) {
+    else if (btnId.startsWith('vn_start_specific:')) {
       const parts = btnId.split(':');
-      // Format: vn_choice:servantId:eventId:sceneIdx:choiceId OR legacy vn_choice:eventId:sceneIdx:choiceId
+      targetServantId = parts[1];
+      if (parts[2]) potentialEventId = parts[2];
+    } else if (btnId.startsWith('vn_chunk:')) {
+      const parts = btnId.split(':');
       if (parts.length >= 5) {
         targetServantId = parts[1];
+        potentialEventId = parts[2];
+      } else if (parts.length >= 4) {
+        potentialEventId = parts[1];
+      }
+    } else if (btnId.startsWith('vn_resp_chunk:')) {
+      const parts = btnId.split(':');
+      if (parts.length >= 6) {
+        targetServantId = parts[1];
+        potentialEventId = parts[2];
+      } else if (parts.length >= 5) {
+        potentialEventId = parts[1];
+      }
+    } else if (btnId.startsWith('vn_choice:')) {
+      const parts = btnId.split(':');
+      if (parts.length >= 5) {
+        targetServantId = parts[1];
+        potentialEventId = parts[2];
+      } else if (parts.length >= 4) {
+        potentialEventId = parts[1];
       }
     } else if (btnId.startsWith('vn_next:')) {
       const parts = btnId.split(':');
-      // Format: vn_next:servantId:eventId:nextSceneIdx OR legacy vn_next:eventId:nextSceneIdx
       if (parts.length >= 4) {
         targetServantId = parts[1];
+        potentialEventId = parts[2];
+      } else if (parts.length >= 3) {
+        potentialEventId = parts[1];
       }
+    } else if (btnId.startsWith('vn_conclude:')) {
+      const parts = btnId.split(':');
+      if (parts.length >= 4) {
+        targetServantId = parts[1];
+        potentialEventId = parts[2];
+      } else if (parts.length >= 3) {
+        potentialEventId = parts[1];
+      }
+    } else if (btnId.startsWith('vn_start_')) {
+      const parts = btnId.split('_');
+      potentialEventId = parts.slice(2, parts.length - 1).join('_');
+    } else if (btnId.startsWith('vn_chunk_')) {
+      const parts = btnId.split('_');
+      parts.pop();
+      parts.pop();
+      potentialEventId = parts.slice(2).join('_');
     }
 
-    const targetServant = resolveTargetServant(master, null, targetServantId);
+    let targetServant = resolveTargetServant(master, null, targetServantId);
+
+    // If an event is being targeted, ensure the servant instance matches that event's owner
+    if (potentialEventId) {
+      const matched = findServantForBondEvent(master, potentialEventId);
+      if (matched) targetServant = matched;
+    }
 
     if (!targetServant) {
       return interaction.reply({ flags: MessageFlags.Ephemeral, content: '❌ You do not have an active Servant contracted.' });
     }
 
-    const sTemplate = targetServant.template || targetServant;
-    const servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
-    const sKey = getServantCompactKey(targetServant, master);
+    let sTemplate = targetServant.template || targetServant;
+    let servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
+    let sKey = getServantCompactKey(targetServant, master);
 
     if (btnId.startsWith('ce_art_bond')) {
       const bCe = getBondCraftEssenceForServant(targetServant.templateId || sTemplate.id || targetServant.id, servantName);
@@ -1305,9 +1355,18 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         const parts = btnId.split(':');
         // Format: vn_start_specific:sKey:eventId
         const specificEventId = parts[2];
-        const found = events.find(e => e.id === specificEventId);
+        const found = events.find(e => e.id === specificEventId) || findBondEventById(specificEventId);
         if (found) {
           event = found;
+          if (found.servantTemplateId && (targetServant.templateId !== found.servantTemplateId && targetServant.template?.id !== found.servantTemplateId)) {
+            const matched = findServantForBondEvent(master, found);
+            if (matched) {
+              targetServant = matched;
+              sTemplate = targetServant.template || targetServant;
+              servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
+              sKey = getServantCompactKey(targetServant, master);
+            }
+          }
           isReplay = (targetServant.completedBondEvents || []).includes(found.id);
           statusNote = isReplay ? 'Replay Mode' : `Chapter ${found.requiredBondLevel}`;
         } else {
@@ -1428,7 +1487,16 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       }
 
       const events = getBondEventsForServant(targetServant);
-      const event = events.find(e => e.id === eventId) || events[0];
+      let event = events.find(e => e.id === eventId) || findBondEventById(eventId) || events[0];
+      if (event?.servantTemplateId && (targetServant.templateId !== event.servantTemplateId && targetServant.template?.id !== event.servantTemplateId)) {
+        const matched = findServantForBondEvent(master, event);
+        if (matched) {
+          targetServant = matched;
+          sTemplate = targetServant.template || targetServant;
+          servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
+          sKey = getServantCompactKey(targetServant, master);
+        }
+      }
       const scene = event.scenes[sceneIdx] || event.scenes[0];
 
       const chunks = splitDialogueIntoChunks(scene.dialogueText);
@@ -1532,7 +1600,16 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       }
 
       const events = getBondEventsForServant(targetServant);
-      const event = events.find(e => e.id === eventId) || events[0];
+      let event = events.find(e => e.id === eventId) || findBondEventById(eventId) || events[0];
+      if (event?.servantTemplateId && (targetServant.templateId !== event.servantTemplateId && targetServant.template?.id !== event.servantTemplateId)) {
+        const matched = findServantForBondEvent(master, event);
+        if (matched) {
+          targetServant = matched;
+          sTemplate = targetServant.template || targetServant;
+          servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
+          sKey = getServantCompactKey(targetServant, master);
+        }
+      }
       const scene = event.scenes[sceneIdx] || event.scenes[0];
       const pickedChoice = scene.choices?.find(c => c.id === choiceId);
       const servantResponse = pickedChoice ? pickedChoice.response : scene.dialogueText;
@@ -1965,7 +2042,16 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         choiceId = btnId.replace(/vn_choice_[^_]+_/, '');
       }
 
-      const event = events.find(e => e.id === eventId) || events[0];
+      let event = events.find(e => e.id === eventId) || findBondEventById(eventId) || events[0];
+      if (event?.servantTemplateId && (targetServant.templateId !== event.servantTemplateId && targetServant.template?.id !== event.servantTemplateId)) {
+        const matched = findServantForBondEvent(master, event);
+        if (matched) {
+          targetServant = matched;
+          sTemplate = targetServant.template || targetServant;
+          servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
+          sKey = getServantCompactKey(targetServant, master);
+        }
+      }
       const scene = event.scenes[sceneIdx] || event.scenes[0];
 
       // Accurately find picked choice
@@ -2218,7 +2304,16 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       }
 
       const events = getBondEventsForServant(targetServant);
-      const event = events.find(e => e.id === eventId) || events[0];
+      let event = events.find(e => e.id === eventId) || findBondEventById(eventId) || events[0];
+      if (event?.servantTemplateId && (targetServant.templateId !== event.servantTemplateId && targetServant.template?.id !== event.servantTemplateId)) {
+        const matched = findServantForBondEvent(master, event);
+        if (matched) {
+          targetServant = matched;
+          sTemplate = targetServant.template || targetServant;
+          servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
+          sKey = getServantCompactKey(targetServant, master);
+        }
+      }
 
       // If nextSceneIdx is past the end, complete the interlude!
       if (nextSceneIdx >= event.scenes.length) {
