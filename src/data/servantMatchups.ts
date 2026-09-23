@@ -237,6 +237,31 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "A primordial cosmic dragon envoy... Even in the Land of Shadows, I have rarely sensed an entity so ancient. Face my dual spears!",
       retort: "⟨ Voth Krav'nok. ⟩ You smell like dried bones and ancient runes. Stand still so my ruin beam can petrify you cleanly.",
       tag: "IMMORTAL HUNTER VS DRAGON ENVOY"
+    },
+    aoko_aozaki: {
+      intro: "Fifth Magician. Accelerating entropy and manipulating time itself... Show me if your Magic Blue can pierce the boundary of life and death!",
+      retort: "The Queen of the Land of Shadows herself? Don't expect me to hold back—Magic Bullet Stream, full throttle!",
+      tag: "GATE OF SKYE & THE FIFTH MAGIC"
+    },
+    amamiya_no_chihaya_tenkohime: {
+      intro: "An ancient nine-tailed celestial fox whose blade moves purely on instinct. Good... Show me if your divine fangs can grant me the release of death!",
+      retort: "Queen of Dún Scáith... Washi senses the cold chill of the Land of Shadows upon thy spears! But washi's celestial foxfire never dims!",
+      tag: "PRIMORDIAL SPEAR VS CELESTIAL FOXFIRE"
+    },
+    lucia_lyozes: {
+      intro: "Prescient foresight from a ruined realm... You see five seconds ahead, Princess, but can your lance parry a thrust that moves beyond human speed?",
+      retort: "Your weapon reach is formidable, Scáthach... but I can already see where your crimson thrust lands five seconds from now. Black Lance, engage!",
+      tag: "PINNACLE LANCER DUEL"
+    },
+    luvria_greenharte: {
+      intro: "Hero of Lyozes! An archmage who rewrites concepts and nullifies death itself... At last, an existence worthy of testing the limits of Primordial Runes!",
+      retort: "The Queen of Dún Scáith! How delightful! Let us see if your ancient runes can withstand an archmage who simply denies their causal authority!",
+      tag: "IMMORTAL TEACHER VS CONCEPT NULLIFIER"
+    },
+    edmond: {
+      intro: "A warrior whose soul has been hammered upon the anvil of mortal struggle. Very well. Let us test if your shield can withstand the threshold of Dún Scáith!",
+      retort: "Queen of the Land of Shadows... They say you've killed gods and trained the greatest warriors alive. Don't go easy on an old frontline beast, teacher!",
+      tag: "GATE OF SKYE VS FORTRESS OF EBONWATCH"
     }
   },
 
