@@ -306,7 +306,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     });
 
     // Award Bond EXP for dialogue interaction
-    const bondExpGain = sceneContext === 'bond' ? 50 : 35;
+    const bondExpGain = sceneContext === 'bond' ? 35 : 25;
     const bondRes = addBondExpToServant(targetServant, bondExpGain);
     const updatedTargetServant = bondRes.updatedServant;
     const sIdx = master.servants.findIndex((s: any) => s.id === targetServant.id);

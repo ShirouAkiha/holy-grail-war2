@@ -5404,7 +5404,7 @@ async function finishDuel(
 
         const winnerServant = winningMaster.servants?.find((srv: any) => srv.id === primaryWinner.servant.id);
         if (winnerServant) {
-          const bRes = addBondExpToServant(winnerServant, 150);
+          const bRes = addBondExpToServant(winnerServant, 100);
           const sIdx = winningMaster.servants.findIndex((srv: any) => srv.id === primaryWinner.servant.id);
           if (sIdx !== -1) winningMaster.servants[sIdx] = bRes.updatedServant;
         }
@@ -5592,7 +5592,7 @@ async function finalizeDuelRewardsAndSync(
       wMaster.grailWarWins = (wMaster.grailWarWins || 0) + 1;
       const s = wMaster.servants?.find(srv => srv.id === winner.servant.id);
       if (s) {
-        const bondRes = addBondExpToServant(s, 150);
+        const bondRes = addBondExpToServant(s, 100);
         const updatedS = bondRes.updatedServant;
         if (!isFreeBattle) {
           updatedS.availableStatPoints = (updatedS.availableStatPoints || 0) + 2;
@@ -5637,7 +5637,7 @@ async function finalizeDuelRewardsAndSync(
       const isLoserSafe = isFreeBattle || s.master.environmentMode === 'safe' || !s.master.environmentMode;
       const sLoser = s.master.servants?.find((srv: any) => srv.id === s.combatant.servant.id);
       if (sLoser) {
-        const loserBondRes = addBondExpToServant(sLoser, 60);
+        const loserBondRes = addBondExpToServant(sLoser, 50);
         const updatedLoser = loserBondRes.updatedServant;
         checkAndGrantBond10Ce(s.master, updatedLoser);
         if (isLoserSafe) {

@@ -49,7 +49,7 @@ export const data = new SlashCommandBuilder()
         { name: '👥 Bond Roster (View all contracted Servants & Bond Levels)', value: 'roster' },
         { name: '📖 Play Bond Interlude (Visual Novel Event)', value: 'interlude' },
         { name: '🎁 Present Gifts & Afternoon Tea (Boost Bond EXP)', value: 'gift' },
-        { name: '⚔️ Master-Servant Sparring & Drills (+120 Bond EXP)', value: 'spar' },
+        { name: '⚔️ Master-Servant Sparring & Drills (+80 Bond EXP)', value: 'spar' },
         { name: '🎙️ Voice Quotes & My Room Lines', value: 'quotes' },
         { name: '❓ Ways to Gain Bond Guide', value: 'guide' }
       )
@@ -422,11 +422,11 @@ export function buildBondGiftsEmbed(master: any, targetServantId?: string) {
       `━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `☕ **1. Chaldea Afternoon Tea** (${teaRemaining}/${MAX_DAILY_TEA} Daily)\n` +
       `   • **Cost:** **FREE** (Chaldea Kitchen Daily Service - 1x Daily)\n` +
-      `   • **Reward:** **+150 Bond EXP**\n` +
+      `   • **Reward:** **+100 Bond EXP**\n` +
       `   • *A warm cup of royal black tea and freshly baked pastries to enjoy together.*\n\n` +
       `🍱 **2. Heroic Feast & Delicacies**\n` +
       `   • **Cost:** 💎 **5 Saint Quartz**\n` +
-      `   • **Reward:** **+250 Bond EXP**\n` +
+      `   • **Reward:** **+200 Bond EXP**\n` +
       `   • *A lavish gourmet spread prepared with exquisite culinary care.*\n\n` +
       `🍏 **3. Golden Apple of Eden**\n` +
       `   • **Cost:** 💎 **10 Saint Quartz**\n` +
@@ -568,24 +568,24 @@ export function buildBondGuideEmbed() {
     .setDescription(
       `Your bond with your contracted Heroic Spirit represents trust, synchronicity, and shared resolve. ` +
       `Here are all the ways to earn **Bond EXP** in the Holy Grail War:\n\n` +
-      `💬 **1. Telepathic Dialogue (\`/talk\`)**\n` +
-      `• Converse with your Servant to earn **+35 to +50 Bond EXP** per interaction.\n\n` +
-      `⚔️ **2. Holy Grail Duels (\`/duel\`)**\n` +
-      `• Victory in battle awards **+150 Bond EXP** & **+2 Stat Points**.\n` +
-      `• Fighting bravely together (defeat/survival) still awards **+60 Bond EXP**.\n` +
-      `• Purging Rogue Heretics with open Church bounties awards an extra **+150 Bond EXP**.\n\n` +
-      `📖 **3. Visual Novel Interludes (\`/bond view:interlude\`)**\n` +
-      `• Experience story quests and dialogues to earn **+150 to +300 Bond EXP** and **Saint Quartz**.\n\n` +
-      `🎁 **4. Present Gifts & Tea Time (\`/bond view:gift\`)**\n` +
-      `• Offer Afternoon Tea (**FREE 1x Daily**, +150 EXP), Feasts (+250 EXP), Golden Apples (+350 EXP), or Sacred Relics (+500 EXP).\n\n` +
-      `⚔️ **5. Master-Servant Sparring (\`/bond view:spar\`)**\n` +
-      `• Run tactical combat simulations together in the Sanctum for **+120 Bond EXP**.\n` +
+      `📖 **1. Visual Novel Interludes (\`/bond view:interlude\`)**\n` +
+      `• Level 1 Interludes are **unlocked immediately upon summon**! Experience story quests to earn **+150 to +300 Bond EXP** and **Saint Quartz**.\n\n` +
+      `☕ **2. Present Gifts & Tea Time (\`/bond view:gift\`)**\n` +
+      `• Offer Afternoon Tea (**FREE 1x Daily**, +100 EXP), Feasts (+200 EXP), Golden Apples (+350 EXP), or Sacred Relics (+500 EXP).\n\n` +
+      `⚔️ **3. Master-Servant Sparring (\`/bond view:spar\`)**\n` +
+      `• Run tactical combat simulations together in the Sanctum for **+80 Bond EXP**.\n` +
       `• **Daily Limit:** **3 Sparring Sessions per day** (resets at 00:00 UTC).\n\n` +
+      `⚔️ **4. Holy Grail Duels (\`/duel\`)**\n` +
+      `• Victory in battle awards **+100 Bond EXP** & **+2 Stat Points**.\n` +
+      `• Fighting bravely together (defeat/survival) still awards **+50 Bond EXP**.\n` +
+      `• Purging Rogue Heretics with open Church bounties awards an extra **+100 Bond EXP**.\n\n` +
+      `💬 **5. Telepathic Dialogue (\`/talk\`)**\n` +
+      `• Converse with your Servant to earn **+25 to +35 Bond EXP** per interaction.\n\n` +
       `💎 **6. Daily Leyline Harvest (\`/daily\`)**\n` +
-      `• Checking in daily awards **+100 Bond EXP** directly to your active partner Servant.`
+      `• Checking in daily awards **+30 Saint Quartz** directly to your Master profile.`
     )
     .setColor(0xec4899)
-    .setFooter({ text: 'Reach Bond Lv. 5 for +10% Card Potency & Bond Lv. 10 for Exclusive CE!' });
+    .setFooter({ text: 'Reach Bond Lv. 5 (1,400 EXP) for +10% Card Potency & Bond Lv. 10 (6,800 EXP) for Exclusive CE!' });
 }
 
 // ==========================================
@@ -618,7 +618,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     if (viewOption === '10' || viewOption === 'max') {
       targetServant.bondLevel = 10;
-      targetServant.bondExp = 4000;
+      targetServant.bondExp = 6800;
       const grant = checkAndGrantBond10Ce(master, targetServant);
       const sIdx = master.servants.findIndex((s: any) => s.id === targetServant.id);
       if (sIdx !== -1) master.servants[sIdx] = targetServant;
@@ -696,7 +696,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       master.lastSparTimestamp = Date.now();
 
       const debrief = getServantSparringDebrief(targetServant);
-      const bondGain = 120;
+      const bondGain = 80;
       const bondRes = addBondExpToServant(targetServant, bondGain);
       const updatedServant = bondRes.updatedServant;
       const bond10Grant = checkAndGrantBond10Ce(master, updatedServant);
@@ -1267,7 +1267,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       master.lastSparTimestamp = Date.now();
 
       const debrief = getServantSparringDebrief(targetServant);
-      const bondGain = 120;
+      const bondGain = 80;
       const bondRes = addBondExpToServant(targetServant, bondGain);
       const updatedServant = bondRes.updatedServant;
       const bond10Grant = checkAndGrantBond10Ce(master, updatedServant);

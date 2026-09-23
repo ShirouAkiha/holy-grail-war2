@@ -14,18 +14,22 @@ export type { BondEvent, BondScene, BondChoice, BondDialogueLine };
 
 /**
  * Bond EXP thresholds required for each level (Levels 1 through 10).
+ * Tuned for a balanced low-grind curve where:
+ * - Level 1: Immediate on summon (0 EXP) - Level 1 Interlude always playable!
+ * - Level 5: 1,400 EXP (~2-3 days casual play, unlocks 2nd Class Passive & +10% card potency)
+ * - Level 10: 6,800 EXP (~8-10 days casual play, unlocks ★4 Bond Craft Essence)
  */
 export const BOND_EXP_TABLE: Record<number, number> = {
   1: 0,
-  2: 100,
-  3: 250,
-  4: 500,
-  5: 800,
-  6: 1200,
-  7: 1700,
-  8: 2300,
-  9: 3000,
-  10: 4000
+  2: 150,
+  3: 400,
+  4: 800,
+  5: 1400,
+  6: 2200,
+  7: 3100,
+  8: 4200,
+  9: 5400,
+  10: 6800
 };
 
 export const MAX_BOND_LEVEL = 10;
@@ -3065,9 +3069,11 @@ export function getBondEventsForServant(
     return curated;
   }
 
-  // Fallback generic bond event for testing & custom servants
-  const currentBond = servant.bondLevel || 1;
-  return [generateGenericBondEvent(servant.template || servant, Math.max(1, currentBond))];
+  // Fallback generic bond event for testing & custom servants (always level 1 so it is immediately playable!)
+  return [
+    generateGenericBondEvent(servant.template || servant, 1),
+    generateGenericBondEvent(servant.template || servant, 5)
+  ];
 }
 
 /**
@@ -3977,7 +3983,7 @@ export const BOND_GIFTS: Record<string, BondGiftItem> = {
     id: 'chaldea_tea',
     name: 'Chaldea Afternoon Tea',
     emoji: '☕',
-    bondExp: 150,
+    bondExp: 100,
     sqCost: 0,
     description: 'A steaming pot of royal black tea and pastries to share during downtime.'
   },
@@ -3985,7 +3991,7 @@ export const BOND_GIFTS: Record<string, BondGiftItem> = {
     id: 'heroic_feast',
     name: 'Heroic Feast & Delicacies',
     emoji: '🍱',
-    bondExp: 250,
+    bondExp: 200,
     sqCost: 5,
     description: 'A gourmet meal prepared with exquisite craftsmanship and flavors.'
   },
