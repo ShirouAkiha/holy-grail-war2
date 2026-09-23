@@ -444,6 +444,31 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Dragon Envoy?! That title belongs to ME and Fafnir! What right does a cosmic lizard have to strut around here?!",
       retort: "⟨ Shak zhal, Krav'nok. ⟩ A noisy human claiming dragons? Pathetic larva. I shall prune you along with this soil.",
       tag: "DRAGON WITCH VS PRIMORDIAL DRAGON"
+    },
+    aoko_aozaki: {
+      intro: "What's with this loud-mouthed high-schooler shooting red beams out of her fists?! Fifth Magic or whatever, I'll burn your causal retrogrades to ash!",
+      retort: "Talk about an explosive attitude! If you're going to throw a fiery tantrum, I've got a whole arsenal of Magic Bullets to cool you off!",
+      tag: "MAGIC BULLETS VS DRAGON WITCH PYRE"
+    },
+    amamiya_no_chihaya_tenkohime: {
+      intro: "What's with this noisy pink fur-ball squeaking like a toy?! I'll roast your cute little tails into a charcoal bonfire!",
+      retort: "H-Hii! Thy dragon flames are going to scorch washi's fur and singe washi's tails! Cease thy reckless tantrums at once, foul witch!",
+      tag: "AVENGER PYRE VS SACRED CELESTIAL FOX"
+    },
+    lucia_lyozes: {
+      intro: "Shut up, preachy elf princess! What do you know about burning?! I'll turn your high-and-mighty lance into blackened cinders!",
+      retort: "An Avenger born of vengeful dragon fire. You lash out because the world betrayed you. I have seen entire nations turn to ash—your hatred changes nothing.",
+      tag: "DRAGON WITCH'S SPITE VS HIGH ELVEN VANGUARD"
+    },
+    luvria_greenharte: {
+      intro: "You smiling little brat! Waving that stick around like you own the universe! Let's see you 'nullify' a tidal wave of cursed hellfire!",
+      retort: "Oh my, such magnificent theatrical rage! Very well, Miss Dragon Witch—let us see if your roaring flames can burn through a concept that simply refuses to exist!",
+      tag: "CONCEPT NULLIFICATION VS LA GRONDEMENT DU HAINE"
+    },
+    edmond: {
+      intro: "Who are you calling a stubborn hothead, you oversized slum cat?! I'll roast that rusty shield into slag and make you beg for mercy! La Grondement Du Haine!",
+      retort: "Dragon Witch! Screaming about burning the world down won't work on me. I've babysat stubborn hotheads like Luvria for years—throw those flames right here!",
+      tag: "FLAMES OF VENGEANCE VS SCARRED BASTION"
     }
   },
 
