@@ -90,6 +90,26 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Caster of Sylvanryth! Your presence defies the natural order of thaumaturgy. As King of Knights, I shall measure the true depth of your noble oath!",
       retort: "A solemn charge from the King herself! Steady thy stance, Artoria—my divergent spells will test both thy dragon core and thy footwork!",
       tag: "THE KING'S OATH & THE ELVEN HERO"
+    },
+    aoko_aozaki: {
+      intro: "Fifth Magician! Your modern thaumaturgy commands time and entropy itself. Show me if raw miracles can penetrate the holy radiance of Excalibur!",
+      retort: "The King of Knights in the flesh! Direct and chivalrous—just how I like it! Don't hold back, Saber; let's see whose blast cuts through the night!",
+      tag: "FIFTH MAGIC RETROGRADE VS EXCALIBUR"
+    },
+    amamiya_no_chihaya_tenkohime: {
+      intro: "A kitsune swordswoman of divine lineage? Your instinctual draw is remarkably swift. Let our blades cross with honor!",
+      retort: "King of Knights! Washi's Amazakura shall test thy chivalry! ...A-And keep those muddy steel boots away from washi's clean shrine tatami!",
+      tag: "HOLY SWORD & DIVINE FOX KATANA"
+    },
+    lucia_lyozes: {
+      intro: "Princess of Sylvanryth. I see the weight of fallen comrades in your eyes. I accept your vanguard challenge with Excalibur!",
+      retort: "King of Knights. Your chivalric ideals are noble, but on an apocalyptic battlefield, hesitation born of honor will get your comrades killed. Show me your conviction!",
+      tag: "ROYAL SOVEREIGN CLASH"
+    },
+    edmond: {
+      intro: "Immovable courage... Your shield carries the weight of your allies' lives. I shall meet your resolve with the full glory of Britain!",
+      retort: "King of Knights! Your Excalibur shines bright, but let's see how that holy light handles a frontline veteran who won't budge an inch!",
+      tag: "HOLY SWORD OF VICTORY VS TIGRIS REDOUBT"
     }
   },
 
