@@ -634,52 +634,59 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
     ]
   },
 
-  // Luvria Greenharte - Caster (Strongest Mage of Sylvanryth)
+  // Luvria Greenharte - Caster (The "Hero," Strongest Mage of Lyozes)
   luvria_greenharte: {
     buster: [
-      "Pyre and Gale collide! Let the primal inferno splay across the heavens!",
-      "Concept Nullification: Impact! All kinetic force translates directly to your core!",
-      "Staff strike imbued with the weight of the World! Scatter!",
-      "Divergent elemental rupture! Stand aside, I am setting this field ablaze!"
+      "Pyre and Gale collide! Let the primal inferno splay across the heavens! Scatter!",
+      "Concept Nullification: Impact! All kinetic force translates directly to your core—no recoil, no mercy!",
+      "Staff strike imbued with the weight of the World! Didst thou forget an S-Rank adventurer can fight up close?!",
+      "Divergent elemental rupture! Stand aside, I am setting this entire sector ablaze!",
+      "Terra and Pyre, erupt! Sunder the earth beneath their feet!"
     ],
     arts: [
-      "All four elemental paths—Pyre, Fluvia, Terra, Gale—sing in perfect harmony.",
-      "Infinite Wellspring active. My mana is boundless; thy barrier is finite.",
-      "Concept Nullification: Distance! My incantation lands where thou standest instantaneously.",
-      "The weave answers my decree. Observe the true craft of Sylvanryth."
+      "All four elemental paths—Pyre, Fluvia, Terra, Gale—sing in perfect harmony. Weave, awaken!",
+      "Automated Nullification: Infinite Mana active. My wellspring knows no bottom; thy barrier is finite.",
+      "Concept Nullification: Distance! My incantation lands where thou standest instantaneously!",
+      "The weave of Sylvanryth answers my decree. Observe the true craft of the Strongest Mage!",
+      "Fluvia's freezing tide and Terra's binding roots—bind them to the leyline!"
     ],
     quick: [
-      "Gale-step! A breeze upon the cheek before the spell manifests!",
-      "Too slow, friend! Fluvia's current already surrounds thy blind spot.",
-      "Light footwork of the forest. Didst thou think a mage could not dance?",
-      "Rapid-cast incantation! Three elemental circles in a single breath!"
+      "Gale-step! A breeze upon thy cheek before my divergent spell detonates!",
+      "Too slow, friend! Fluvia's current already surrounds thy blind spot. Peek-a-boo!",
+      "Light footwork of the forest! Didst thou truly think a 140-year-old elf could not dance?",
+      "Rapid-cast incantation! Three elemental circles woven in a single breath!",
+      "Concept Nullification: Gravity! How doth it feel to weigh as light as a feather?"
     ],
     mixed: [
-      "Fret not, Master! Between Lucia's lance and my sorcery, victory was decided at sunrise.",
-      "Stand behind me! I shall render their offensive spells completely void!",
-      "A magnificent clash! Let us test if their barriers can survive the Divergent Path!",
-      "Concept Nullification: Magic! In this sphere, thy miracles cease to exist!"
+      "Fret not, Master! Between my sorcery and thy command, our victory was decided at sunrise!",
+      "Stand behind me! I shall render their offensive spells completely and utterly void!",
+      "A magnificent clash! Let us test if their Spirit Origin can survive the Divergent Path!",
+      "Concept Nullification: Magic! In this sphere, thy little miracles cease to exist!",
+      "Lucia warned me not to erase entire city blocks, so I shall make this swift and tidy!"
     ],
     desperation: [
       "Absolute Permanence will not crumble! Master, steady thy heart—I am thy hero!",
-      "Lethal wounds take no root in my vessel! Live on... keep that head high!",
-      "Lucia! Edmond! Master! I will not allow this family to be sundered!"
+      "Lethal wounds take no root in this vessel! Live on... and keep that head held high!",
+      "Lucia! Edmond! Master! I will not allow this family to be sundered by anyone!",
+      "Thou thinkest this is the end? The concept of my death was denied long ago!"
     ],
     skills: [
-      "My wellspring is boundless. The concept of depletion does not apply to me.",
-      "Distance and momentum are mere suggestions. Impact, collapse!",
-      "Under my authority, the laws of sorcery are rewritten. Cease your incantations.",
-      "The four elemental paths bow to my decree. Weave, awaken!"
+      "My wellspring is boundless. The concept of depletion does not apply to me—verily, thou art trying to drain an ocean with a tea strainer!",
+      "Distance and momentum are mere polite suggestions. Concept Nullification: Impact!",
+      "Under my authority, the laws of sorcery are rewritten. Cease thy incantations, for within this dome, magic itself hath ceased to exist!",
+      "Pyre, Fluvia, Terra, Gale—the four elemental paths bow to my decree. Divergent Weave, awaken!",
+      "Concept Nullification: Space! Let travel distance be rendered void!"
     ],
     victory: [
       "A splendid engagement! Verily, when one denies the very concept of defeat, the outcome was written before we took the field.",
-      "All threats neutralized and not a single hair out of place! Master, doth that warrant a cup of sweet tea?",
-      "Concept Nullification: Victory. Exactly as ordained."
+      "All threats neutralized and not a single hair out of place! Master, doth that magnificent display warrant a pot of sweet tea in the workshop?",
+      "Concept Nullification: Victory. Exactly as ordained. Hold that head high, Master—we make a peerless team!",
+      "Aha! Another victory for the S-Rank hero of Sylvanryth! Lucia would still find a way to scold me, but I call that perfection."
     ],
     defeat: [
       "A minor miscalculation of the weave... fret not, Master, my life cannot be erased so easily. Live on... and keep that head high...",
-      "My mana... scattering into the leyline... Lucia, forgive me... I played too recklessly...",
-      "The staff grows heavy... but remember my words, Master: keep that head held high..."
+      "My mana... scattering into the leyline... Lucia, forgive me... I played too recklessly this time...",
+      "The staff grows heavy... but remember my words, Master: no matter what darkness falls, keep that head held high..."
     ]
   },
 

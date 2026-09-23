@@ -3733,6 +3733,42 @@ export function getServantGiftReaction(
         responseText: "An ancient warding relic. I will inspect its runes to ensure no residual curse clings to it, then weave it into the storehouse defenses.",
         emotion: 'thoughtful'
       }
+    },
+    luvria_greenharte: {
+      chaldea_tea: {
+        responseText: "Ah, freshly brewed tea! Verily, this is what keeps an S-Rank adventurer sane after surviving dungeon beast ambushes and Lucia's endless training lectures. ...Mmm, the bergamot aroma is delightful. Mind if I nullify the temperature if it scalds my tongue? Just teasing, Master! Sit beside me—let us savor this quiet afternoon while the other Masters tire themselves out.",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "A magnificent banquet prepared for me?! Roasted meats, fresh fruit, warm crusty bread... Oh, Edmond would shed a tear if he saw this spread! When I was a scruffy ward wandering the wilds with that old bandit, meals like this were pure fantasy. Thank you, Master! I promise not to nullify a single calorie today—let us feast like true champions!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple of divine origin! The sheer density of planetary mana is staggering. Now, between you and me, my Infinite Mana wellspring means I can never run dry... but the crisp, sweet elven flavor is simply sublime! Consuming this feels like walking through the deepest canopies of Sylvanryth again. A truly thoughtful tribute, Master!",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "...A sacred holy relic. *Runs fingers along the wooden talisman at her utility belt* An old rogue once pulled me from the jaws of a beast and told me: 'Live on... keep that head high.' Holding this consecrated artifact, I feel that same solemn vow burning in my chest. Master, as long as Luvria Greenharte holds this staff, betrayal and defeat shall never reach you. I swear it upon the hero's name.",
+        emotion: 'thoughtful'
+      }
+    },
+    luvria: {
+      chaldea_tea: {
+        responseText: "Ah, freshly brewed tea! Verily, this is what keeps an S-Rank adventurer sane after surviving dungeon beast ambushes and Lucia's endless training lectures. ...Mmm, the bergamot aroma is delightful. Mind if I nullify the temperature if it scalds my tongue? Just teasing, Master! Sit beside me—let us savor this quiet afternoon while the other Masters tire themselves out.",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "A magnificent banquet prepared for me?! Roasted meats, fresh fruit, warm crusty bread... Oh, Edmond would shed a tear if he saw this spread! When I was a scruffy ward wandering the wilds with that old bandit, meals like this were pure fantasy. Thank you, Master! I promise not to nullify a single calorie today—let us feast like true champions!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple of divine origin! The sheer density of planetary mana is staggering. Now, between you and me, my Infinite Mana wellspring means I can never run dry... but the crisp, sweet elven flavor is simply sublime! Consuming this feels like walking through the deepest canopies of Sylvanryth again. A truly thoughtful tribute, Master!",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "...A sacred holy relic. *Runs fingers along the wooden talisman at her utility belt* An old rogue once pulled me from the jaws of a beast and told me: 'Live on... keep that head high.' Holding this consecrated artifact, I feel that same solemn vow burning in my chest. Master, as long as Luvria Greenharte holds this staff, betrayal and defeat shall never reach you. I swear it upon the hero's name.",
+        emotion: 'thoughtful'
+      }
     }
   };
 
@@ -3822,6 +3858,14 @@ export function getServantSparringDebrief(
     lucia: {
       responseText: "Your guard dropped after the third step. When fatigue sets in, the ribs open up. We will repeat the defensive transition fifty times tomorrow before dawn.",
       emotion: 'thoughtful'
+    },
+    luvria_greenharte: {
+      responseText: "A marvelous sparring bout, Master! Didst thou see how easily I sidestepped that counter? 'Tis child's play when one can nullify inertia! Though Lucia would surely lecture me for showing off, thy tactical timing was genuinely inspiring. Come, hold that head high—we've earned our rest!",
+      emotion: 'happy'
+    },
+    luvria: {
+      responseText: "A marvelous sparring bout, Master! Didst thou see how easily I sidestepped that counter? 'Tis child's play when one can nullify inertia! Though Lucia would surely lecture me for showing off, thy tactical timing was genuinely inspiring. Come, hold that head high—we've earned our rest!",
+      emotion: 'happy'
     }
   };
 

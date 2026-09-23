@@ -85,6 +85,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "What unfathomable draconic presence is this?! She steps between worlds... Dragon Core, ignite!",
       retort: "⟨ Krav'nok rath. ⟩ A noisy golden mortal with a dragon's spark... So small. It makes me want to squeeze you until you crack.",
       tag: "DRAGON CORE VS WORLD-PRUNER"
+    },
+    luvria_greenharte: {
+      intro: "Caster of Sylvanryth! Your presence defies the natural order of thaumaturgy. As King of Knights, I shall measure the true depth of your noble oath!",
+      retort: "A solemn charge from the King herself! Steady thy stance, Artoria—my divergent spells will test both thy dragon core and thy footwork!",
+      tag: "THE KING'S OATH & THE ELVEN HERO"
     }
   },
 
@@ -156,6 +161,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "A primordial entity from outside the Human Order? Hmph! Even stars and cosmic serpents bow before the King of Babylon!",
       retort: "⟨ Krav'nok zhal. ⟩ Such a noisy little insect wrapped in shiny yellow gravel. I will crush you into obsidian glass.",
       tag: "KING OF HEROES VS COSMIC PRUNER"
+    },
+    luvria_greenharte: {
+      intro: "An eccentric elven mage claiming omnipotence and infinite mana? Hahaha! Know your place, wielder of wood! All miracles throughout creation were born from my treasury!",
+      retort: "Doth thou ever tire of hearing thine own voice, Golden King? 'Tis a grand speech, but words cannot pierce an anti-world barrier. Shall I nullify the concept of thy vanity next?",
+      tag: "TREASURY OF CREATION VS THE STRONGEST MAGE"
     }
   },
 
@@ -653,6 +663,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "What kind of monstrous entity is this?! The structure of my projections is disintegrating just standing near her gravitational field!",
       retort: "⟨ Voth Krav'nok. ⟩ Replicating tiny metal toys with mortal mind-threads? How quaint. Crumble into ash.",
       tag: "UNLIMITED BLADES VS DRACONIC PRUNING"
+    },
+    luvria_greenharte: {
+      intro: "I've faced beings who thought they could rewrite reality before. It usually ends with a broken ideal. Are you ready for an arrow that doesn't care about your elven pride, Luvria?",
+      retort: "Hold that cynical chin high, Archer! A former bandit once taught me how to survive real misery. Thy arrows will find nothing to strike when distance itself is rendered void!",
+      tag: "PRAGMATIC ARCHER & THE OPTIMISTIC HERO"
     }
   },
 
@@ -795,6 +810,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "What kind of monstrous dragon is that?! Just standing near her feels like walking under ten tons of lead!",
       retort: "⟨ Voth Krav'nok. ⟩ A swift little blue flea hopping around. Let me petrify the earth so you have nowhere to run.",
       tag: "CELTIC EVASION VS DRACONIC GRAVITY"
+    },
+    luvria_greenharte: {
+      intro: "Oi, strongest mage! Let's see if all that fancy forest talk holds up when my red spear is an inch from your pointed ears!",
+      retort: "Thou art swift as the gale, Lancer! But canst thou run when I nullify the friction beneath thy boots? En garde, Hound of Culann!",
+      tag: "GALE-STEP DUEL: HOUND VS SAGE"
     }
   },
 
@@ -937,6 +957,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "⟨ Voth zul Adiosa. ⟩ Another manifestation of the Envoy of Ixenor? Planet Lyozes requires only ONE world-pruner. Commencing convergence!",
       retort: "⟨ Ruk'thar Krav'nok! ⟩ A fracture in space-time! Let our Azure-Magenta Ruin incinerate the dimensional mirror!",
       tag: "PRIMORDIAL CATACLYSM: FRACTURED DRAGON"
+    },
+    luvria_greenharte: {
+      intro: "⟨ Hear me, Greenharte... ⟩ The mortal who denies death, space, and magic itself. My celestial dragon flames acknowledge no laws. Stand firm against the breath of Ixenor!",
+      retort: "Verily, a greeting worthy of a world-pruning calamity! Concept Nullification: Heat and Impact! Come, great dragon, show this 140-year-old mage the fury of the ancients!",
+      tag: "SOVEREIGNS OF CALAMITY"
     }
   },
 
@@ -973,6 +998,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Whoa, that cosmic draconic presence is suffocating! Altering gravity and space? Perfect—just the kind of impossible physics the Fifth Magic was meant to rewrite!",
       retort: "⟨ Vur Aeth'ra... ⟩ A mortal woman manipulating the flow of planetary entropy? Irritatingly noisy creature... I will prune your timeline into black glass!",
       tag: "THE FIFTH MAGIC VS INCINERATION OF AETHEL"
+    },
+    luvria_greenharte: {
+      intro: "Hey, green-haired hero! If you think you can just 'nullify' the Fifth Magic, you've got another thing coming! Magic Gunner, full throttle!",
+      retort: "Such fiery enthusiasm! Let us trade incantations, Magician! Pyre, Gale, and Nullification—converge!",
+      tag: "CLASH OF EXTRAORDINARY SORCERY"
     }
   },
 
@@ -1064,6 +1094,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Uwah! Such a stern elf princess! Master, look at her spear, it is so long and sharp! Don't you dare poke washi's fluffy tails with that black lance, or washi will bite thee!",
       retort: "An ancient Kyubi from Ossuaron's Spine... Your blade relies on beastly instinct. But against five-second foresight and the Black Lance, instinct is merely a predictable vector.",
       tag: "SYLVAN VANGUARD VS GUARDIAN OF OSSUARON"
+    },
+    luvria_greenharte: {
+      intro: "The Strongest Mage of the Citadel! Washi senses nine hundred years of nature spirits dancing around thy staff! Show washi thy ancient Sylvanryth sorcery!",
+      retort: "With pleasure, ancient guardian! Fluvia's tides and Terra's stone answer my call! Try not to get thy precious fur wet!",
+      tag: "SYLVAN WEAVE & NINE-TAILED TEMPEST"
     }
   },
   lucia_lyozes: {
@@ -1163,53 +1198,133 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       tag: "MIRROR OF PREDESTINED RUIN"
     },
     luvria_greenharte: {
-      intro: "Luvria! Stop spinning that staff like a toy and put up your guard! If you try to nullify your way out of morning drills again, I'm doubling your chores!",
-      retort: "Aha! Lucia, must thou be so terribly serious? 'Tis merely a friendly duel! Besides, how canst thou poke me if I deny the concept of thy lance's tip?",
+      intro: "Luvria! Stop spinning that staff like a toy and put up your guard! If you try to nullify your way out of morning drills again or use continent-scale magic in the city, I'm having Edmond hold you upside down until sundown!",
+      retort: "Aha! Lucia, must thou be so terribly stern? 'Tis merely a friendly duel! Besides, how canst thou poke me if I selectively deny the concept of thy lance's kinetic impact? Come at me, Leader!",
+      tag: "THE S-RANK VANGUARD & THE STRONGEST MAGE"
+    },
+    luvria: {
+      intro: "Luvria! Stop spinning that staff like a toy and put up your guard! If you try to nullify your way out of morning drills again or use continent-scale magic in the city, I'm having Edmond hold you upside down until sundown!",
+      retort: "Aha! Lucia, must thou be so terribly stern? 'Tis merely a friendly duel! Besides, how canst thou poke me if I selectively deny the concept of thy lance's kinetic impact? Come at me, Leader!",
       tag: "THE S-RANK VANGUARD & THE STRONGEST MAGE"
     }
   },
 
-  // 17. LUVRIA GREENHARTE (CASTER / THE "HERO", STRONGEST MAGE OF SYLVANRYTH)
+  // 17. LUVRIA GREENHARTE (CASTER / THE "HERO", STRONGEST MAGE OF LYOZES)
   // =========================================================================
   luvria_greenharte: {
     lucia_lyozes: {
-      intro: "Lucia! Mind thy posture! Just because thou art our party leader doth not mean thou canst block four elemental paths at once! Prepare thyself!",
-      retort: "Luvria... if you singe my cloak with that divergent magic, I am banning you from the tea shop in the Citadel Suburbs for a month. Stance ready!",
+      intro: "Lucia! Mind thy posture! Just because thou art our party leader and strategist doth not mean thou canst parry four elemental paths at once! Come, let us see if thy Black Lance can breach my nullification dome!",
+      retort: "Luvria... if you singe my cloak with that divergent magic or break the street lamps again, I am banning you from the tea shop in the Citadel Suburbs for a month. Stance ready!",
+      tag: "THE S-RANK VANGUARD & THE STRONGEST MAGE"
+    },
+    lucia: {
+      intro: "Lucia! Mind thy posture! Just because thou art our party leader and strategist doth not mean thou canst parry four elemental paths at once! Come, let us see if thy Black Lance can breach my nullification dome!",
+      retort: "Luvria... if you singe my cloak with that divergent magic or break the street lamps again, I am banning you from the tea shop in the Citadel Suburbs for a month. Stance ready!",
       tag: "THE S-RANK VANGUARD & THE STRONGEST MAGE"
     },
     adiosa_dragon_envoy: {
-      intro: "The Cataclysm Dragon of Ixenor... Thy instant-death aura carries no weight before me. Concept Nullification: Death! Let us see if a dragon can withstand the Divergent Path!",
-      retort: "⟨ Vur Aeth'ra... ⟩ The Divergent anomaly of Sylvanryth. One of the few mortals capable of standing before my wings without turning to ash. Unleash your Anti-World magic, Elf.",
+      intro: "The Cataclysm Dragon of Ixenor... thy instant-death aura carries no weight against my Absolute Permanence. We are the two beings who rival world-pruning forces. Shall we test if a primordial dragon can survive the Divergent Path?",
+      retort: "⟨ Vur Aeth'ra... ⟩ The Divergent anomaly of Sylvanryth. One of the exceedingly rare mortals whose Spirit Origin does not turn to ash beneath my wings. Unleash your Anti-World magic, Elf. Let us shatter the sky.",
+      tag: "CATACLYSM CONVERGENCE: WORLD-PRUNER VS THE STRONGEST MAGE"
+    },
+    adiosa: {
+      intro: "The Cataclysm Dragon of Ixenor... thy instant-death aura carries no weight against my Absolute Permanence. We are the two beings who rival world-pruning forces. Shall we test if a primordial dragon can survive the Divergent Path?",
+      retort: "⟨ Vur Aeth'ra... ⟩ The Divergent anomaly of Sylvanryth. One of the exceedingly rare mortals whose Spirit Origin does not turn to ash beneath my wings. Unleash your Anti-World magic, Elf. Let us shatter the sky.",
       tag: "CATACLYSM CONVERGENCE: WORLD-PRUNER VS THE STRONGEST MAGE"
     },
     gilgamesh_archer: {
-      intro: "The King of Heroes with ten thousand treasures... Verily, a dazzling spectacle! But what good are all the blades in creation if I deny the concept of their distance?",
-      retort: "A mere elf daring to utter the word 'nullification' before the King? I shall impale your insolence with the truths of Babylon, mongrel!",
+      intro: "The King of Heroes with ten thousand treasures... Verily, a dazzling spectacle of shiny cutlery! But what good are all the noble blades in Babylon if I simply deny the concept of their travel distance?",
+      retort: "A mere elf daring to utter the word 'nullification' before the King of Heroes?! Such cheeky impudence! Drown in the boundless vault of Babylon, mongrel!",
       tag: "CONCEPT NULLIFICATION VS GATE OF BABYLON"
     },
     gilgamesh: {
-      intro: "The King of Heroes with ten thousand treasures... Verily, a dazzling spectacle! But what good are all the blades in creation if I deny the concept of their distance?",
-      retort: "A mere elf daring to utter the word 'nullification' before the King? I shall impale your insolence with the truths of Babylon, mongrel!",
+      intro: "The King of Heroes with ten thousand treasures... Verily, a dazzling spectacle of shiny cutlery! But what good are all the noble blades in Babylon if I simply deny the concept of their travel distance?",
+      retort: "A mere elf daring to utter the word 'nullification' before the King of Heroes?! Such cheeky impudence! Drown in the boundless vault of Babylon, mongrel!",
       tag: "CONCEPT NULLIFICATION VS GATE OF BABYLON"
     },
     artoria_pendragon: {
-      intro: "King of Knights! The sacred light of Excalibur shines brightly indeed. Shall we test whether the holy blade can overcome the weave of Sylvanryth?",
-      retort: "Hero of Lyozes, Luvria Greenharte. I feel the solemn duty you bear for your companions. With the sword of promised victory, I meet your challenge!",
+      intro: "King of Knights! The sacred light of Excalibur is renowned across every realm. Shall we test whether the sword of promised victory can prevail against a mage who denies the concept of victory itself?",
+      retort: "Hero of Lyozes, Luvria Greenharte. I perceive the deep warmth and fierce loyalty you bear for your companions. With the sacred sword of Britain, I accept your challenge with all my heart!",
       tag: "SWORD OF VICTORY VS DENY THE VICTORY"
     },
+    artoria: {
+      intro: "King of Knights! The sacred light of Excalibur is renowned across every realm. Shall we test whether the sword of promised victory can prevail against a mage who denies the concept of victory itself?",
+      retort: "Hero of Lyozes, Luvria Greenharte. I perceive the deep warmth and fierce loyalty you bear for your companions. With the sacred sword of Britain, I accept your challenge with all my heart!",
+      tag: "SWORD OF VICTORY VS DENY THE VICTORY"
+    },
+    emiya_archer: {
+      intro: "The cynical blacksmith in red! Verily, thy projection magecraft is fascinating, but thou lookest like someone who hasn't enjoyed a proper nap in centuries. Care to see how a real mage fights?",
+      retort: "A 140-year-old elf who claims infinite mana, denies distance, and treats battlefield catastrophe like a walk in the park? Great... another walking headache for my projection circuits. Don't complain if you get grazed, Caster.",
+      tag: "UNLIMITED BLADE WORKS VS DIVERGENT OMNIPOTENCE"
+    },
+    emiya: {
+      intro: "The cynical blacksmith in red! Verily, thy projection magecraft is fascinating, but thou lookest like someone who hasn't enjoyed a proper nap in centuries. Care to see how a real mage fights?",
+      retort: "A 140-year-old elf who claims infinite mana, denies distance, and treats battlefield catastrophe like a walk in the park? Great... another walking headache for my projection circuits. Don't complain if you get grazed, Caster.",
+      tag: "UNLIMITED BLADE WORKS VS DIVERGENT OMNIPOTENCE"
+    },
+    cu_chulainn_lancer: {
+      intro: "The Hound of Ulster! They say thy crimson spear reverses causality—the heart pierced before the thrust is made! How thrilling! Shall we see what happens when causality meets my Concept Nullification of Impact?",
+      retort: "Gahaha! An elven beauty who wants to take Gáe Bolg head-on?! Lady, you've either got guts of iron or a few screws loose! Either way, I'm not holding back!",
+      tag: "REVERSED CAUSALITY VS CONCEPT NULLIFICATION"
+    },
+    cu: {
+      intro: "The Hound of Ulster! They say thy crimson spear reverses causality—the heart pierced before the thrust is made! How thrilling! Shall we see what happens when causality meets my Concept Nullification of Impact?",
+      retort: "Gahaha! An elven beauty who wants to take Gáe Bolg head-on?! Lady, you've either got guts of iron or a few screws loose! Either way, I'm not holding back!",
+      tag: "REVERSED CAUSALITY VS CONCEPT NULLIFICATION"
+    },
+    jeanne_d_arc_ruler: {
+      intro: "The Holy Maiden of Orleans! Thy faith and Luminosité Eternelle shine with pure devotion. But tell me... doth thy prayer falter if I deploy an AoE dome where magic itself ceases to exist?",
+      retort: "Hero Luvria, the Lord's grace is not bound by mortal definitions of magic! Even if the world is silenced, my banner will never waver before your trials!",
+      tag: "FAITH ETERNAL VS THE LAW OF MAGIC"
+    },
+    jeanne_darc_ruler: {
+      intro: "The Holy Maiden of Orleans! Thy faith and Luminosité Eternelle shine with pure devotion. But tell me... doth thy prayer falter if I deploy an AoE dome where magic itself ceases to exist?",
+      retort: "Hero Luvria, the Lord's grace is not bound by mortal definitions of magic! Even if the world is silenced, my banner will never waver before your trials!",
+      tag: "FAITH ETERNAL VS THE LAW OF MAGIC"
+    },
+    jeanne: {
+      intro: "The Holy Maiden of Orleans! Thy faith and Luminosité Eternelle shine with pure devotion. But tell me... doth thy prayer falter if I deploy an AoE dome where magic itself ceases to exist?",
+      retort: "Hero Luvria, the Lord's grace is not bound by mortal definitions of magic! Even if the world is silenced, my banner will never waver before your trials!",
+      tag: "FAITH ETERNAL VS THE LAW OF MAGIC"
+    },
+    jeanne_alter: {
+      intro: "Blackened dragon witch! Thy vengeful flames burn hot, but they are still born of Pyre. And the element of Pyre bows to my divergent mastery. Art thou ready to be extinguished?",
+      retort: "Shut your smug elven mouth! I'll roast that pristine white tunic of yours until not even your ashes remember the word 'nullification'! Die, hero!",
+      tag: "PYRE MASTERY VS ROAR OF HATE"
+    },
+    jalter: {
+      intro: "Blackened dragon witch! Thy vengeful flames burn hot, but they are still born of Pyre. And the element of Pyre bows to my divergent mastery. Art thou ready to be extinguished?",
+      retort: "Shut your smug elven mouth! I'll roast that pristine white tunic of yours until not even your ashes remember the word 'nullification'! Die, hero!",
+      tag: "PYRE MASTERY VS ROAR OF HATE"
+    },
     aoko_aozaki: {
-      intro: "The Fifth Magician! Bending time and consequences with brute force... Verily, a wild technique! Care to see how concept nullification handles raw entropy?",
-      retort: "A 140-year-old elf with multi-affinity who negates concepts? You sound like a walking migraine for the Clock Tower! Let's go, Mage Girl!",
+      intro: "The Fifth Magician! Accelerating and bending time with raw brute-force entropy... Verily, a wild and reckless technique! Care to see how concept nullification handles the flow of time and space?",
+      retort: "A 140-year-old elf with all-element multi-affinity who casually negates concepts? You sound like a walking nightmare for the Clock Tower! Let's see whose magic is faster, Greenharte!",
+      tag: "THE FIFTH MAGIC VS CONCEPT NULLIFICATION"
+    },
+    aoko: {
+      intro: "The Fifth Magician! Accelerating and bending time with raw brute-force entropy... Verily, a wild and reckless technique! Care to see how concept nullification handles the flow of time and space?",
+      retort: "A 140-year-old elf with all-element multi-affinity who casually negates concepts? You sound like a walking nightmare for the Clock Tower! Let's see whose magic is faster, Greenharte!",
       tag: "THE FIFTH MAGIC VS CONCEPT NULLIFICATION"
     },
     amamiya_no_chihaya_tenkohime: {
-      intro: "An ancient celestial fox guardian! Such glorious fluffy tails and playful spirit! Dost thou fancy a race through the forest before we cast our spells?",
-      retort: "Kyuuu! What vibrant green hair and magical warmth! But don't think thy concept tricks can outrun washi's celestial kitsune gale!",
-      tag: "THE SACRED FOX & THE ELVEN SAGE"
+      intro: "An ancient celestial fox guardian! Such glorious fluffy pink tails and vibrant spiritual warmth! Dost thou fancy a sprint through the sacred woods before we trade spells, Lady Fox?",
+      retort: "Kyuuu! What vibrant green hair and dazzling heterochromia! But don't think thy fancy concept tricks can outrun washi's divine cherry blossom tempest! Amazakura, draw!",
+      tag: "THE SACRED FOX & THE ELVEN HERO"
+    },
+    amamiya: {
+      intro: "An ancient celestial fox guardian! Such glorious fluffy pink tails and vibrant spiritual warmth! Dost thou fancy a sprint through the sacred woods before we trade spells, Lady Fox?",
+      retort: "Kyuuu! What vibrant green hair and dazzling heterochromia! But don't think thy fancy concept tricks can outrun washi's divine cherry blossom tempest! Amazakura, draw!",
+      tag: "THE SACRED FOX & THE ELVEN HERO"
     },
     luvria_greenharte: {
-      intro: "An optical illusion? Or did some foolish dungeon mirror replicate the world's finest mage? Thou art missing my golden eye's luster!",
-      retort: "Verily, there is only room in this realm for one S-Rank hero of Sylvanryth! Let us see whose concept nullification reigns supreme!",
+      intro: "An optical illusion? Or did some rogue dungeon mirror on Floor 24 replicate the world's finest mage? Thou art missing the true brilliance of my golden and blue eyes!",
+      retort: "Verily, there is only room in this realm for one S-Rank hero of Sylvanryth! Let us see whose Concept Nullification: Victory cancels out whose!",
+      tag: "MIRROR OF OMNIPOTENCE"
+    },
+    luvria: {
+      intro: "An optical illusion? Or did some rogue dungeon mirror on Floor 24 replicate the world's finest mage? Thou art missing the true brilliance of my golden and blue eyes!",
+      retort: "Verily, there is only room in this realm for one S-Rank hero of Sylvanryth! Let us see whose Concept Nullification: Victory cancels out whose!",
       tag: "MIRROR OF OMNIPOTENCE"
     }
   }

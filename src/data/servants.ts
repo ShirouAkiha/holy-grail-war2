@@ -1583,7 +1583,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
   {
     id: 'luvria_greenharte',
     name: 'Luvria Greenharte',
-    title: 'The "Hero," Strongest Mage of Sylvanryth',
+    title: 'The "Hero," Strongest Mage (S-Rank Adventurer)',
     servantClass: 'Caster',
     rarity: 5,
     baseHp: 30400,
@@ -1593,81 +1593,84 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     skills: [
       {
         id: 'infinite_wellspring_a',
-        name: 'Infinite Wellspring A',
+        name: 'Concept Nullification: Infinite Mana EX',
         cooldown: 6,
-        description: 'Charges own NP Gauge by +30%. Increases own NP Gain by +20% for 3 turns. Recovers 1,000 HP per turn for 3 turns.',
+        description: 'Permanently nullifies the concept of mana depletion and forced negation against her internal reserves. Charges own NP Gauge by +30%, increases NP Gain by +20% for 3 turns, and regenerates 1,000 HP per turn for 3 turns.',
         effectType: 'buff_atk',
         duration: 3,
         value: 30,
         icon: '💧',
-        quote: '"My wellspring is boundless. The concept of depletion does not apply to me."',
+        quote: '"My wellspring is boundless. The concept of depletion does not apply to me—verily, thou art trying to drain an ocean with a tea strainer!"',
         quotes: [
-          '"My wellspring is boundless. The concept of depletion does not apply to me."',
-          '"Mana without end. Let the weave of power surge forth."'
+          '"My wellspring is boundless. The concept of depletion does not apply to me—verily, thou art trying to drain an ocean with a tea strainer!"',
+          '"Mana without end. The four paths of Sylvanryth converge at my fingertip—behold a wellspring that knows no bottom."',
+          '"Run out of mana? How terribly mundane. I permanently nullified that inconvenience decades ago."'
         ]
       },
       {
         id: 'concept_nullification_impact_space_a',
-        name: 'Concept Nullification (Impact & Space) A',
+        name: 'Concept Nullification: Space & Impact A+',
         cooldown: 6,
-        description: 'Grants self Invincibility for 1 turn. Grants [Ignore Invincibility] to self for 1 turn.',
+        description: 'Selectively negates travel distance and physical kinetic transfer. Bypasses distance to land spells instantaneously while rendering her body immune to kinetic shock. Grants self Invincibility for 1 turn and [Ignore Invincibility] for 1 turn.',
         effectType: 'invincible',
         duration: 1,
         value: 100,
         icon: '🛡️',
-        quote: '"Distance and momentum are mere suggestions. Impact, collapse!"',
+        quote: '"Distance and momentum are mere polite suggestions. Concept Nullification: Impact! All kinetic force translates to zero."',
         quotes: [
-          '"Distance and momentum are mere suggestions. Impact, collapse!"',
-          '"You cannot touch what has denied the very concept of collision."'
+          '"Distance and momentum are mere polite suggestions. Concept Nullification: Impact! All kinetic force translates to zero."',
+          '"Thou art aiming at where I stand? How quaint. Space itself folds when I take a stroll."',
+          '"You cannot touch what has denied the very concept of collision. Shall we test if thy guard can withstand an attack with zero travel time?"'
         ]
       },
       {
         id: 'nullify_the_law_of_magic_ex',
-        name: 'Nullify: The Law of Magic EX',
+        name: 'Anti-World Authority: Law of Magic EX',
         cooldown: 7,
-        description: 'Removes all Offensive Buffs (ATK, Crit, Damage buffs) from all enemies. Inflicts [Skill Seal] on all enemies for 1 turn. Increases Arts performance of all allies by +20% for 3 turns.',
+        description: 'Deploys an Area-of-Effect dome where the very concept of magic ceases to exist for all enemies while her own spells remain wholly immune to cancellation. Removes all Offensive Buffs from all enemies, inflicts [Skill Seal] for 1 turn, and increases Arts performance of all allies by +20% for 3 turns.',
         effectType: 'buff_atk',
         duration: 3,
         value: 20,
         icon: '👑',
-        quote: '"Under my authority, the laws of sorcery are rewritten. Cease your incantations."',
+        quote: '"Under my authority, the laws of sorcery are rewritten. Cease thy incantations, for within this dome, magic itself hath ceased to exist!"',
         quotes: [
-          '"Under my authority, the laws of sorcery are rewritten. Cease your incantations."',
-          '"The concept of your magic is stripped away. Be silent."'
+          '"Under my authority, the laws of sorcery are rewritten. Cease thy incantations, for within this dome, magic itself hath ceased to exist!"',
+          '"The concept of thy thaumaturgy is stripped away. Be silent, and witness the true craft of the Strongest Mage."',
+          '"Lucia warned me not to erase entire leylines, so consider this a gentle courtesy: I am merely nullifying thy ability to cast!"'
         ]
       }
     ],
     passives: [
       {
-        name: 'Absolute Permanence B',
+        name: 'Absolute Permanence EX',
         type: 'absolute_permanence',
         value: 3,
-        rank: 'B',
-        description: 'Rejects lethal erasure and fatal wounds. Automatically grants Guts status (revives with 25% Max HP on lethal damage), charges own NP Gauge by +3% every turn, and grants Immunity to Instant-Death.'
+        rank: 'EX',
+        description: 'Rejects lethal erasure, fatal wounds, and spell recoil. Lethal wounds cannot take root and heal instantaneously; internal mana cannot be drained. Automatically grants Guts status (revives with 25% Max HP on lethal damage), charges own NP Gauge by +3% every turn, and grants total Immunity to Instant-Death.'
       },
       {
-        name: 'Territory Creation A',
+        name: 'Divergent Omnipotence (All-Element Mastery) EX',
         type: 'territory_creation',
         value: 10,
-        rank: 'A',
-        description: 'Increases own Arts Card effectiveness by +10%. (Locked — Reaches Bond Lv. 5 to unlock)'
+        rank: 'EX',
+        description: 'Unprecedented Divergent mastery across all elemental paths (Pyre, Fluvia, Terra, Gale). Increases own Arts Card effectiveness by +10% and overall card performance. (Locked — Reaches Bond Lv. 5 to unlock)'
       }
     ],
     noblePhantasm: {
       name: 'Concept Nullification: Deny the Victory',
       cardType: 'Arts',
-      chant: 'All natural laws answer my decree. Distance, momentum, the flow of power—render them void. Deny the concept of your triumph! Concept Nullification: Victory!',
-      description: '• Multiplier: 1000% (Arts • AoE)\n• Anti-World Effect: Deals massive defense-ignoring AoE damage to all enemies. Reduces all enemy NP gauges by 20% and has a 50% chance to inflict [Stun] for 1 turn.\n• Overcharge: Reduces all enemies\' Defense by 30% for 3 turns and Critical Rate by 20% for 3 turns.',
+      chant: 'Weave of Sylvanryth, awaken. Pyre, Fluvia, Terra, Gale—converge at my staff! All physical laws, all distances, all mortal certainty... I render thee void. Thou dreamest of triumph? Then I shall nullify the very concept of thy triumph! Concept Nullification: Victory!',
+      description: '• Multiplier: 1000% (Arts • AoE)\n• Anti-World Authority: Deals massive defense-ignoring AoE damage to all enemies. Reduces all enemy NP gauges by 20% and has a 50% chance to inflict [Stun] for 1 turn.\n• Overcharge: Strips the concept of enemy defense, reducing all enemies\' Defense by 30% for 3 turns and Critical Rate by 20% for 3 turns.',
       target: 'aoe',
       multiplier: 1000,
       overchargeEffect: 'Reduces all enemies\' Defense by 30% (3T) and Critical Rate by 20% (3T) • -20% NP Gauge & 50% Stun chance',
       gifUrl: 'https://ella.janitorai.com/media-approved/eq0tPcLuV5PXGDg53sgS1.webp'
     },
-    lore: 'Luvria Greenharte is a 140-year-old Elf S-Rank Adventurer and the Strongest Mage in the fantasy world of Lyozes, bearing the mantle of the "Hero." Wielding unprecedented Divergent Multi-Affinity across all elemental paths (Pyre, Fluvia, Terra, Gale), her defining power is Concept Nullification ("Anti-World Magic")—the terrifying authority to selectively negate distance, impact, magic, and even victory itself. Operates as the offensive core of Lucia Lyozes\' tight-knit S-Rank party out of the Citadel Suburbs alongside Edmond. Kind, brave, playful, and sarcastic, she conceals cataclysm-level magical output beneath lighthearted banter, protected and kept grounded by Lucia to avoid becoming a feared world pariah.',
-    summonQuote: '"Greetings, Master of this sanctuary! I am Luvria Greenharte—S-Rank adventurer, humble wielder of the staff, and the world\'s finest mage. Doth thy jaw hit the floor, or art thou merely spellbound? Fear not, thy back is safe with me!"',
-    battleStartQuote: '"All elemental paths converge at my fingertip. Shall we show them why concept nullification is the true art of victory?"',
-    victoryQuote: '"A splendid engagement! Verily, when one denies the very concept of defeat, the outcome was written before we took the field."',
-    defeatQuote: '"A minor miscalculation of the weave... fret not, Master, my life cannot be erased so easily. Live on... and keep that head high..."',
+    lore: 'Luvria Greenharte is a 140-year-old Elf S-Rank Adventurer and the Strongest Mage in the world of Lyozes, bearing the exalted mantle of the "Hero." Standing 172 cm tall with vibrant green hair, pointed elven ears, and distinct heterochromia (one golden eye, one blue eye), she wields a mage staff and dresses in a white tunic dress with golden outlines, utility pouches, flowing light robes, and a shoulder-length cape.\n\nHaving conquered Floor 24 of the Ebonwatch Dungeon, Luvria possesses unprecedented Divergent Omnipotence across all four elemental paths (Pyre, Fluvia, Terra, Gale) alongside her terrifying Anti-World signature: Concept Nullification. By selectively negating distance, impact, magic, time, gravity, life, and even "victory" itself, she renders enemy strategies void. Permanently protected by automated concept nullifications (Infinite Mana, Absolute Permanence, and Anti-Magic Immunity), she cannot be erased or drained, and lethal wounds heal instantaneously.\n\nAlongside the primordial dragon Adiosa, Luvria is one of the only entities whose magical output rivals world-pruning forces (she is the explicit exception to Adiosa\'s instant-death aura). Because her ceiling could be mistaken for a repeat of Kael Rylan (the Otherworlder who caused the Last Calamity), party leader Lucia Lyozes keeps her grounded. Raised in Sylvanryth until her parents were killed by a mana beast, she was sheltered for ten years by a rogue bandit whose dying words were "Live on... keep that head high." Today, she fights as the offensive core of Lucia\'s tight-knit S-Rank party in the Citadel Suburbs alongside Edmond, cherishing them as family while masking cataclysmic power beneath playful sarcasm and lighthearted antics.',
+    summonQuote: '"Hark, Master of this foreign soil! Behold, for thy call hath pierced the veil of the stars and summoned forth—ah, forget the grand theatrics. Servant Caster, Luvria Greenharte! S-Rank adventurer, holder of the staff, and the world\'s strongest mage. Doth thy jaw hit the floor, or art thou merely spellbound? Fear not, hold that head high—thy back is safe with me!"',
+    battleStartQuote: '"Pyre, Fluvia, Terra, Gale—all four elemental paths sing at my command. Shall we demonstrate why concept nullification is the true art of victory? Do try to stay behind me, Master!"',
+    victoryQuote: '"A splendid engagement! Verily, when one denies the very concept of defeat, the outcome was written before we took the field. Not a hair out of place! Master, doth that magnificent display warrant a pot of sweet tea in the workshop?"',
+    defeatQuote: '"A minor miscalculation of the weave... fret not, Master, my life cannot be erased so easily. Lethal wounds have no home here. Remember the words I live by: live on... and keep that head held high."',
     avatarUrl: 'https://ella.janitorai.com/media-approved/II1DtB1YFFjXHKcs8gU7q.webp',
     cardArtUrl: 'https://ella.janitorai.com/media-approved/II1DtB1YFFjXHKcs8gU7q.webp',
     spriteUrl: 'https://ella.janitorai.com/media-approved/k_aK4SaC3HJVRNxDuMU13.webp',
