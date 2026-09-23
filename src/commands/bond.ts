@@ -407,6 +407,10 @@ export function buildBondGiftsEmbed(master: any, targetServantId?: string) {
   const currentSq = master.saintQuartz || 0;
   const bondLvl = targetServant?.bondLevel || 1;
 
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const teaUsedToday = master.lastTeaDay === todayKey ? (master.dailyTeaCount || 0) : 0;
+  const teaRemaining = Math.max(0, MAX_DAILY_TEA - teaUsedToday);
+
   const embed = new EmbedBuilder()
     .setTitle(`🎁 Present Gifts & Treats | ${servantName}`)
     .setDescription(
@@ -414,8 +418,8 @@ export function buildBondGiftsEmbed(master: any, targetServantId?: string) {
       `💎 **Your Saint Quartz Balance:** \`${currentSq} SQ\`\n` +
       `💖 **Current Bond:** Level \`${bondLvl} / 10\`\n\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `☕ **1. Chaldea Afternoon Tea**\n` +
-      `   • **Cost:** **FREE** (Chaldea Kitchen Daily Service)\n` +
+      `☕ **1. Chaldea Afternoon Tea** (${teaRemaining}/${MAX_DAILY_TEA} Daily)\n` +
+      `   • **Cost:** **FREE** (Chaldea Kitchen Daily Service - 1x Daily)\n` +
       `   • **Reward:** **+150 Bond EXP**\n` +
       `   • *A warm cup of royal black tea and freshly baked pastries to enjoy together.*\n\n` +
       `🍱 **2. Heroic Feast & Delicacies**\n` +
@@ -441,16 +445,57 @@ export function buildBondGiftsEmbed(master: any, targetServantId?: string) {
   return embed;
 }
 
+export const MAX_DAILY_TEA = 1;
+
+export function checkTeaLimit(master: any): { allowed: boolean; reason?: string; isCooldown?: boolean; remaining: number; max: number } {
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const usedToday = master.lastTeaDay === todayKey ? (master.dailyTeaCount || 0) : 0;
+  const now = Date.now();
+
+  // Burst cooldown: 3 seconds
+  if (master.lastTeaTimestamp && (now - master.lastTeaTimestamp) < 3000) {
+    const waitSec = Math.ceil((3000 - (now - master.lastTeaTimestamp)) / 1000);
+    return {
+      allowed: false,
+      reason: `⏳ Please wait **${waitSec}s** before serving another cup of tea!`,
+      isCooldown: true,
+      remaining: Math.max(0, MAX_DAILY_TEA - usedToday),
+      max: MAX_DAILY_TEA
+    };
+  }
+
+  if (usedToday >= MAX_DAILY_TEA) {
+    return {
+      allowed: false,
+      reason: 'limit_reached',
+      isCooldown: false,
+      remaining: 0,
+      max: MAX_DAILY_TEA
+    };
+  }
+
+  return {
+    allowed: true,
+    remaining: MAX_DAILY_TEA - usedToday,
+    max: MAX_DAILY_TEA
+  };
+}
+
 export function buildBondGiftsActionRows(master: any, targetServantId?: string): ActionRowBuilder<ButtonBuilder>[] {
   const targetServant = resolveTargetServant(master, null, targetServantId);
   const sKey = getServantCompactKey(targetServant, master);
   const currentSq = master.saintQuartz || 0;
 
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const teaUsedToday = master.lastTeaDay === todayKey ? (master.dailyTeaCount || 0) : 0;
+  const teaAvailable = teaUsedToday < MAX_DAILY_TEA;
+
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId(safeCustomId(`vn_give_gift:${sKey}:chaldea_tea`))
-      .setLabel('☕ Afternoon Tea (Free)')
-      .setStyle(ButtonStyle.Success),
+      .setLabel(teaAvailable ? '☕ Afternoon Tea (1x Daily Free)' : '☕ Afternoon Tea (1/1 Used Today)')
+      .setStyle(teaAvailable ? ButtonStyle.Success : ButtonStyle.Secondary)
+      .setDisabled(!teaAvailable),
     new ButtonBuilder()
       .setCustomId(safeCustomId(`vn_give_gift:${sKey}:heroic_feast`))
       .setLabel('🍱 Heroic Feast (5 SQ)')
@@ -530,7 +575,7 @@ export function buildBondGuideEmbed() {
       `📖 **3. Visual Novel Interludes (\`/bond view:interlude\`)**\n` +
       `• Experience story quests and dialogues to earn **+150 to +300 Bond EXP** and **Saint Quartz**.\n\n` +
       `🎁 **4. Present Gifts & Tea Time (\`/bond view:gift\`)**\n` +
-      `• Offer Afternoon Tea (**FREE**, +150 EXP), Feasts (+250 EXP), Golden Apples (+350 EXP), or Sacred Relics (+500 EXP).\n\n` +
+      `• Offer Afternoon Tea (**FREE 1x Daily**, +150 EXP), Feasts (+250 EXP), Golden Apples (+350 EXP), or Sacred Relics (+500 EXP).\n\n` +
       `⚔️ **5. Master-Servant Sparring (\`/bond view:spar\`)**\n` +
       `• Run tactical combat simulations together in the Sanctum for **+120 Bond EXP**.\n` +
       `• **Daily Limit:** **3 Sparring Sessions per day** (resets at 00:00 UTC).\n\n` +
@@ -1012,6 +1057,22 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const giftId = parts.length >= 3 ? parts[2] : parts[1];
       const gift = BOND_GIFTS[giftId] || BOND_GIFTS.chaldea_tea;
 
+      if (giftId === 'chaldea_tea' || gift.sqCost === 0) {
+        const teaStatus = checkTeaLimit(master);
+        if (!teaStatus.allowed) {
+          if (teaStatus.isCooldown) {
+            return interaction.followUp({
+              flags: MessageFlags.Ephemeral,
+              content: teaStatus.reason || '⏳ Please wait a moment before serving tea again!'
+            });
+          }
+          return interaction.followUp({
+            flags: MessageFlags.Ephemeral,
+            content: `☕ **Daily Afternoon Tea Limit Reached (${MAX_DAILY_TEA}/${MAX_DAILY_TEA})!**\nThe Chaldea Kitchen has already served today's complimentary pot of royal tea. Service refreshes tomorrow at 00:00 UTC!\n\n💡 *Tip: You can offer a **Heroic Feast** (5 SQ), **Golden Apple** (10 SQ), or **Sacred Relic** (15 SQ) to continue bonding today!*`
+          });
+        }
+      }
+
       if (gift.sqCost > 0 && (master.saintQuartz || 0) < gift.sqCost) {
         return interaction.followUp({
           flags: MessageFlags.Ephemeral,
@@ -1021,6 +1082,12 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
       if (gift.sqCost > 0) {
         master.saintQuartz = (master.saintQuartz || 0) - gift.sqCost;
+      } else if (giftId === 'chaldea_tea' || gift.sqCost === 0) {
+        const todayKey = new Date().toISOString().slice(0, 10);
+        const usedToday = master.lastTeaDay === todayKey ? (master.dailyTeaCount || 0) : 0;
+        master.lastTeaDay = todayKey;
+        master.dailyTeaCount = usedToday + 1;
+        master.lastTeaTimestamp = Date.now();
       }
 
       const reaction = getServantGiftReaction(targetServant, giftId);

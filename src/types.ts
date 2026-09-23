@@ -271,6 +271,9 @@ export interface MasterProfile {
   dailySparCount?: number;
   lastSparDay?: string;
   lastSparTimestamp?: number;
+  dailyTeaCount?: number;
+  lastTeaDay?: string;
+  lastTeaTimestamp?: number;
   customApiConfig?: UserCustomApiConfig;
   environmentMode?: 'safe' | 'war';
   servants: MasterServantInstance[];
