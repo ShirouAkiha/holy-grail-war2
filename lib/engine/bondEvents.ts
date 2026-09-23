@@ -2735,6 +2735,220 @@ export const EDMOND_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const JEANNE_ALTER_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'jeanne_alter_bond_event_1',
+    servantTemplateId: 'jeanne_alter',
+    requiredBondLevel: 1,
+    title: "Dragon Witch's Ground Rules & Sweet Crepes",
+    subtitle: "Bond Level 1 Interlude • Cramped Safehouse with the Avenger",
+    description: "Trapped in a cramped safehouse with the Dragon Witch, Jeanne Alter lays down the law regarding Holy Grail War survival, bizarre Master habits, and sweet orders.",
+    rewardBondExp: 300,
+    rewardSaintQuartz: 3,
+    unlockedQuoteId: 'jalter_bond_line_1',
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: 'Jeanne Alter',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "So this is where you intend to hide out? A cramped wooden box in this absurd island nation. I am the Dragon Witch, born of vengeance, not some domesticated pet you can stuff into a tiny room!",
+        choices: [
+          {
+            id: 'c1_choice1',
+            text: "It's a strategic layover. We need to stay off the radar.",
+            response: "Tactical? Hah. Cowardice, you mean. But fine, I'll indulge your pathetic survival instincts for now.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_choice2',
+            text: "I thought the tight space would help us bond.",
+            response: "Bond?! I'm your servant, not your—ugh, whatever. Just stay on your side of the room.",
+            bondExpGain: 175,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_choice3',
+            text: "You can step on me if there isn't enough floor space.",
+            response: "Are you out of your mind?! I should incinerate you right now! What is wrong with your brain?!",
+            bondExpGain: 200,
+            reactionEmotion: 'angry',
+            nextSceneId: 'scene_2'
+          }
+        ]
+      },
+      {
+        id: 'scene_2',
+        speakerName: 'Jeanne Alter',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Anyway, since we're stuck here, we need to get our story straight. If enemy magi attack, I burn them. If a Servant approaches, I impale them. If you get in my way, I leave you to die. Understood?",
+        choices: [
+          {
+            id: 'c2_choice1',
+            text: "Understood. Let's prioritize survival.",
+            response: "Good. See that you don't slow me down.",
+            bondExpGain: 150,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_choice2',
+            text: "What if I get in your way on purpose so you have to notice me?",
+            response: "Stop saying things like that! Do you want to be burned alive?! My flames don't care about your bizarre attention-seeking!",
+            bondExpGain: 175,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_choice3',
+            text: "Please don't leave me, I already wrote our names together in my notebook.",
+            response: "You did WHAT?! Show me that notebook! Burn it! Burn it right now before I throw you out the window!",
+            bondExpGain: 200,
+            reactionEmotion: 'angry',
+            nextSceneId: 'scene_3'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Jeanne Alter',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Honestly, why was I summoned by a degenerate like you? Out of all the ruthless magi in this country seeking the Holy Grail, the artifact of ultimate desire, I get stuck with... this. Tell me, what is it you even want from the Grail? Money? Power? To conquer this miserable country?",
+        choices: [
+          {
+            id: 'c3_choice1',
+            text: "Just to survive this war and go back to a normal life.",
+            response: "Boring. Utterly, dreadfully boring. But I suppose a coward's wish suits you.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_choice2',
+            text: "Unlimited funds to finance my gacha addiction.",
+            response: "You would waste an omnipotent wish-granting device on digital gambling?! I am surrounded by idiocy!",
+            bondExpGain: 175,
+            reactionEmotion: 'angry',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_choice3',
+            text: "I'd wish for you to be my legally bound wife in the modern era.",
+            response: "W-w-wife?! Legally bound?! Are you insane?! I am an entity of pure hatred! I don't do taxes and I certainly don't do marriage!",
+            bondExpGain: 200,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_4'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Jeanne Alter',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "You are impossible! I cannot fathom your thought process. Normal humans tremble when they look at me. They beg for mercy. But you just sit there, staring at me like... like... stop looking at me like that!",
+        choices: [
+          {
+            id: 'c4_choice1',
+            text: "I'm just trying to read your expression. You're hard to figure out.",
+            response: "There is nothing to figure out! I am evil incarnate. End of story!",
+            bondExpGain: 150,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_choice2',
+            text: "I can't help it, your eyes are really pretty.",
+            response: "My... pretty? Shut up! Shut up! You don't know anything about me!",
+            bondExpGain: 200,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_choice3',
+            text: "Bark bark bark bark!",
+            response: "Did you just bark at me?! What are you, a dog?! Stop acting like an animal, you're supposed to be a Master!",
+            bondExpGain: 175,
+            reactionEmotion: 'angry',
+            nextSceneId: 'scene_5'
+          }
+        ]
+      },
+      {
+        id: 'scene_5',
+        speakerName: 'Jeanne Alter',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Whatever. I'm going to patrol the perimeter. Or maybe I'll just burn down the neighbor's house because they keep looking out their window. Don't try to stop me.",
+        choices: [
+          {
+            id: 'c5_choice1',
+            text: "I'll come with you. We need to stay together to be safe.",
+            response: "Fine. But walk ten paces behind me.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c5_choice2',
+            text: "Please don't, we'll get evicted and I actually like living with you.",
+            response: "You... you do? I mean—obviously! Who wouldn't want to live in the presence of my dark majesty! But we're still moving if they look at me again!",
+            bondExpGain: 200,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c5_choice3',
+            text: "Let me go outside and bark at the neighbors to scare them away for you!",
+            response: "Absolutely not! I am not explaining to the local authorities why my Master is outside harassing civilians on all fours!",
+            bondExpGain: 175,
+            reactionEmotion: 'angry',
+            nextSceneId: 'scene_6'
+          }
+        ]
+      },
+      {
+        id: 'scene_6',
+        speakerName: 'Jeanne Alter',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "That is it. I am establishing ground rules right now. First, no staring. Second, no weird comments about my appearance. Third, if you ever act like a rabid animal or say the word 'wife' again, I am feeding you to Fafnir. Are we clear?!",
+        choices: [
+          {
+            id: 'c6_choice1',
+            text: "Crystal clear, Jalter.",
+            response: "Finally, a normal response. Don't think this makes us friends.",
+            bondExpGain: 150,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'c6_choice2',
+            text: "Only if you hold my hand to seal the deal.",
+            response: "I am not holding your hand! The only thing I'll hold is your severed head if you keep this up!",
+            bondExpGain: 175,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'c6_choice3',
+            text: "Yes, honey.",
+            response: "I SAID DO NOT CALL ME THAT!",
+            bondExpGain: 200,
+            reactionEmotion: 'angry',
+            nextSceneId: 'scene_7'
+          }
+        ]
+      },
+      {
+        id: 'scene_7',
+        speakerName: 'Jeanne Alter',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Ugh, my head hurts. Being summoned into this era is a mistake. Being summoned by you is a catastrophe. Just... go make yourself useful and get me a crepe or something. And make it sweet! If you mess up the order, I'll roast you alive!"
+      }
+    ]
+  }
+];
+
 /**
  * Registry of all available curated bond events by servant template ID.
  */
@@ -2765,6 +2979,12 @@ export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
   jeanne_ruler: JEANNE_RULER_BOND_EVENTS,
   jeanne_d_arc: JEANNE_RULER_BOND_EVENTS,
   jeanne: JEANNE_RULER_BOND_EVENTS,
+  jeanne_alter: JEANNE_ALTER_BOND_EVENTS,
+  jalter: JEANNE_ALTER_BOND_EVENTS,
+  jeanne_darc_alter: JEANNE_ALTER_BOND_EVENTS,
+  jeanne_d_arc_alter: JEANNE_ALTER_BOND_EVENTS,
+  avenger_jeanne: JEANNE_ALTER_BOND_EVENTS,
+  dragon_witch: JEANNE_ALTER_BOND_EVENTS,
   nero_claudius_saber: NERO_BOND_EVENTS,
   nero_claudius: NERO_BOND_EVENTS,
   nero: NERO_BOND_EVENTS,
@@ -3327,6 +3547,103 @@ export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
       category: 'bond_1',
       requiredBondLevel: 1,
       quoteText: 'Even in the middle of a conflict like this, the town feels so peaceful when looking at it from up here. I will be your shield while you find your footing.'
+    }
+  ],
+  jeanne_alter: [
+    {
+      id: 'jalter_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: "Servant, Avenger. I have answered your summon. ...What's with that look? Come on, we have a world to burn."
+    },
+    {
+      id: 'jalter_bond_line_1',
+      title: 'Bond 1: Ground Rules',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: "No staring. No weird comments about my appearance. If you ever act like a rabid animal or say the word 'wife' again, I am feeding you to Fafnir. Are we clear?!"
+    },
+    {
+      id: 'jalter_bond_line_2',
+      title: 'Bond 2: Sweet Orders',
+      category: 'bond_2',
+      requiredBondLevel: 2,
+      quoteText: "Go make yourself useful and get me a crepe or something. And make it sweet! If you mess up the order, I'll roast you alive!"
+    },
+    {
+      id: 'jalter_bond_line_3',
+      title: 'Bond 3: Side of the Room',
+      category: 'bond_3',
+      requiredBondLevel: 3,
+      quoteText: "I'm your servant, not your—ugh, whatever. Just stay on your side of the room and don't slow me down."
+    },
+    {
+      id: 'jalter_bond_line_4',
+      title: 'Bond 4: Pitch Black Flames',
+      category: 'bond_4',
+      requiredBondLevel: 4,
+      quoteText: "These flames don't care about your bizarre attention-seeking! ...Though if anyone else dares to lay a finger on you, I'll turn their souls to cinders before they can scream."
+    },
+    {
+      id: 'jalter_bond_line_5',
+      title: 'Bond 5: Entwined Hate and Fate',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: "W-wife?! Don't be an idiot! But... fine. If this world burns to ashes, I suppose I'll drag you along into the fire. You're stuck with me now, Master."
+    }
+  ],
+  jalter: [
+    {
+      id: 'jalter_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: "Servant, Avenger. I have answered your summon. ...What's with that look? Come on, we have a world to burn."
+    },
+    {
+      id: 'jalter_bond_line_1',
+      title: 'Bond 1: Ground Rules',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: "No staring. No weird comments about my appearance. If you ever act like a rabid animal or say the word 'wife' again, I am feeding you to Fafnir. Are we clear?!"
+    },
+    {
+      id: 'jalter_bond_line_2',
+      title: 'Bond 2: Sweet Orders',
+      category: 'bond_2',
+      requiredBondLevel: 2,
+      quoteText: "Go make yourself useful and get me a crepe or something. And make it sweet! If you mess up the order, I'll roast you alive!"
+    },
+    {
+      id: 'jalter_bond_line_5',
+      title: 'Bond 5: Entwined Hate and Fate',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: "W-wife?! Don't be an idiot! But... fine. If this world burns to ashes, I suppose I'll drag you along into the fire. You're stuck with me now, Master."
+    }
+  ],
+  jeanne_darc_alter: [
+    {
+      id: 'jalter_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: "Servant, Avenger. I have answered your summon. ...What's with that look? Come on, we have a world to burn."
+    },
+    {
+      id: 'jalter_bond_line_1',
+      title: 'Bond 1: Ground Rules',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: "No staring. No weird comments about my appearance. If you ever act like a rabid animal or say the word 'wife' again, I am feeding you to Fafnir. Are we clear?!"
+    },
+    {
+      id: 'jalter_bond_line_5',
+      title: 'Bond 5: Entwined Hate and Fate',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: "W-wife?! Don't be an idiot! But... fine. If this world burns to ashes, I suppose I'll drag you along into the fire. You're stuck with me now, Master."
     }
   ],
   nero_claudius_saber: [
@@ -3911,6 +4228,42 @@ export function getServantGiftReaction(
         responseText: "An ancient warding relic... It's sturdy. I'll fix this onto the inner brace of my tower shield. Thanks for having my back, Master.",
         emotion: 'thoughtful'
       }
+    },
+    jeanne_alter: {
+      chaldea_tea: {
+        responseText: "Tea?! What is this lukewarm garbage?! ...Wait, is this imported French black tea with honey scones? ...Tch. It's not like I like it or anything! Leave the teapot and get lost!",
+        emotion: 'flustered'
+      },
+      heroic_feast: {
+        responseText: "A feast?! Ha! You think you can tame the Dragon Witch with culinary bribes?! ...Though that roasted meat smells decent. Sit down, Master. I won't let you starve, moron.",
+        emotion: 'amused'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple... Hmph, pure concentrated magical energy. My flames of vengeance are roaring to life. Good job, Master. You're actually proving useful.",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "A sacred relic?! Offering something holy to an Avenger of pure hatred?! Are you trying to kill me?! ...Wait, its mana resonates with my core without purifying it. You actually sought this out for me? Idiot...",
+        emotion: 'flustered'
+      }
+    },
+    jalter: {
+      chaldea_tea: {
+        responseText: "Tea?! What is this lukewarm garbage?! ...Wait, is this imported French black tea with honey scones? ...Tch. It's not like I like it or anything! Leave the teapot and get lost!",
+        emotion: 'flustered'
+      },
+      heroic_feast: {
+        responseText: "A feast?! Ha! You think you can tame the Dragon Witch with culinary bribes?! ...Though that roasted meat smells decent. Sit down, Master. I won't let you starve, moron.",
+        emotion: 'amused'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple... Hmph, pure concentrated magical energy. My flames of vengeance are roaring to life. Good job, Master. You're actually proving useful.",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "A sacred relic?! Offering something holy to an Avenger of pure hatred?! Are you trying to kill me?! ...Wait, its mana resonates with my core without purifying it. You actually sought this out for me? Idiot...",
+        emotion: 'flustered'
+      }
     }
   };
 
@@ -4012,6 +4365,18 @@ export function getServantSparringDebrief(
     edmond: {
       responseText: "Solid stance, Master! Your center of gravity held firm even when I leaned into that shield-bash. Keep that up and not even an abyssal minotaur will knock you over.",
       emotion: 'happy'
+    },
+    jeanne_alter: {
+      responseText: "Tch! You call that footwork?! You left your flank wide open! If I were an enemy Servant, you'd be a pile of smoking ashes by now! Tomorrow we're doing defensive drills until you drop!",
+      emotion: 'thoughtful'
+    },
+    jalter: {
+      responseText: "Tch! You call that footwork?! You left your flank wide open! If I were an enemy Servant, you'd be a pile of smoking ashes by now! Tomorrow we're doing defensive drills until you drop!",
+      emotion: 'thoughtful'
+    },
+    jeanne_darc_alter: {
+      responseText: "Tch! You call that footwork?! You left your flank wide open! If I were an enemy Servant, you'd be a pile of smoking ashes by now! Tomorrow we're doing defensive drills until you drop!",
+      emotion: 'thoughtful'
     }
   };
 
