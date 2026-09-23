@@ -446,14 +446,12 @@ export function applyCombatantSkill(
       name: 'Red Scarf Aegis (Invincible)',
       type: 'invincible',
       value: 100,
-      remainingTurns: 3,
-      remainingHits: 1,
-      isHitCount: true
+      remainingTurns: 1
     });
     actor.npGauge = Math.min(300, actor.npGauge + 20);
     return {
       success: true,
-      log: `🧣 **${actor.name}** activated **${skill.name}**! (+20% NP Gauge, +15% ATK (3T), Invincibility (1 hit, 3T))${quoteLine}`,
+      log: `🧣 **${actor.name}** activated **${skill.name}**! (+20% NP Gauge, +15% ATK (3T), Invincibility (1 turn))${quoteLine}`,
       quote: skillQuote,
       skillName: skill.name
     };
@@ -949,9 +947,7 @@ export function executeNoblePhantasmLogic(
           name: 'Tigris Bastion (Invincible)',
           type: 'invincible',
           value: 100,
-          remainingTurns: 3,
-          remainingHits: 1,
-          isHitCount: true
+          remainingTurns: 1
         });
         const damageCutVal = 1500 + (ocLevel - 1) * 750;
         actor.activeBuffs.push({
@@ -962,7 +958,7 @@ export function executeNoblePhantasmLogic(
         });
         npCharged = 0;
         starsGenerated = 5;
-        actionSummary = `⛰️ **${actor.name}** deployed Support Noble Phantasm [${np.name}]! Bestowed +${defBonus}% DEF (3T), Party Invincibility (1 hit, 3T), and +${damageCutVal.toLocaleString()} Damage Cut (3T)!`;
+        actionSummary = `⛰️ **${actor.name}** deployed Support Noble Phantasm [${np.name}]! Bestowed +${defBonus}% DEF (3T), Party Invincibility (1 turn), and +${damageCutVal.toLocaleString()} Damage Cut (3T)!`;
       } else {
         // Jeanne d'Arc (Ruler): Luminosité Eternelle - God is Here With Me
         // 1. Cleanse party's debuffs
@@ -2454,8 +2450,8 @@ export function executeBattleTurn(
       dialogueTitle,
       damageDealt: totalDamage,
       isCritical,
-      isEvaded: turnWasEvaded,
-      isInvincible: turnWasInvincible,
+      isEvaded: totalDamage === 0 && turnWasEvaded,
+      isInvincible: totalDamage === 0 && turnWasInvincible,
       starsGenerated: totalStars,
       npCharged: totalNpCharge,
       actorHpRemaining: actor.currentHp,

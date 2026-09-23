@@ -4584,11 +4584,11 @@ function drawMinimalClashBanner(
       ctx.fillText(`💬 “${quoteText}”`, centerX, y + 20);
     }
 
-    if (log.isEvaded || (log.damageDealt === 0 && (log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade')))) {
+    if (log.damageDealt === 0 && (log.isEvaded || log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade'))) {
       ctx.font = 'bold 13px sans-serif';
       ctx.fillStyle = '#38bdf8';
       ctx.fillText('💨 ATTACK EVADED! (0 DMG)', centerX, y + 38);
-    } else if (log.isInvincible || (log.damageDealt === 0 && log.actionSummary?.toLowerCase().includes('invincible'))) {
+    } else if (log.damageDealt === 0 && (log.isInvincible || log.actionSummary?.toLowerCase().includes('invincible'))) {
       ctx.font = 'bold 13px sans-serif';
       ctx.fillStyle = '#fde047';
       ctx.fillText('🛡️ INVINCIBLE! (0 DMG)', centerX, y + 38);
@@ -4610,11 +4610,11 @@ function drawMinimalClashBanner(
       ctx.fillText('TACTICAL MANEUVER EXECUTED', centerX, y + 38);
     }
   } else {
-    if (log.isEvaded || (log.damageDealt === 0 && (log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade')))) {
+    if (log.damageDealt === 0 && (log.isEvaded || log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade'))) {
       ctx.font = 'bold 17px sans-serif';
       ctx.fillStyle = '#38bdf8';
       ctx.fillText('💨 ATTACK EVADED! (0 DMG)', centerX, y + 33);
-    } else if (log.isInvincible || (log.damageDealt === 0 && log.actionSummary?.toLowerCase().includes('invincible'))) {
+    } else if (log.damageDealt === 0 && (log.isInvincible || log.actionSummary?.toLowerCase().includes('invincible'))) {
       ctx.font = 'bold 17px sans-serif';
       ctx.fillStyle = '#fde047';
       ctx.fillText('🛡️ INVINCIBLE! (0 DMG)', centerX, y + 33);

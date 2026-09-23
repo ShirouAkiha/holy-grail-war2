@@ -605,8 +605,8 @@ async function createTurnSummaryAttachment(
 
   const starMatch = strikeLogText.match(/\+(\d+)\s*Critical Stars/i) || strikeLogText.match(/\+(\d+)\s*Stars/i) || lastLogText.match(/\+(\d+)\s*Critical Stars/i);
   const starsGenerated = starMatch ? parseInt(starMatch[1], 10) : 0;
-  const isEvaded = /evaded/i.test(lastLogText) || /evaded/i.test(strikeLogText) || /evade/i.test(lastLogText);
-  const isInvincible = /invincible/i.test(lastLogText) || /invincible/i.test(strikeLogText);
+  const isEvaded = damageDealt === 0 && (/evaded/i.test(lastLogText) || /evaded/i.test(strikeLogText) || /evade/i.test(lastLogText));
+  const isInvincible = damageDealt === 0 && (/invincible/i.test(lastLogText) || /invincible/i.test(strikeLogText));
 
   const cleanActionSummary = lastLogText
     .replace(/[*_~`>#]/g, '')
@@ -1129,12 +1129,10 @@ function activateCombatantSkill(
       name: 'Red Scarf Aegis (Invincible)',
       type: 'invincible',
       value: 100,
-      remainingTurns: 3,
-      remainingHits: 1,
-      isHitCount: true
+      remainingTurns: 1
     });
     combatant.npGauge = Math.min(300, combatant.npGauge + 20);
-    logText = `🧣 **${sName}** activated **${skill.name}**! (+20% NP Gauge, +15% ATK (3T), Invincibility (1 hit, 3T))${quoteLine}`;
+    logText = `🧣 **${sName}** activated **${skill.name}**! (+20% NP Gauge, +15% ATK (3T), Invincibility (1 turn))${quoteLine}`;
   } else if (skill.id === 'earth_wrought_heart_ex' || skill.name.toLowerCase().includes('earth-wrought heart')) {
     combatant.activeBuffs.push({
       name: 'Earth-Wrought Heart (Buster Up)',
@@ -1843,10 +1841,10 @@ function resolveStrike(
           if (isTigris) {
             const defBonus = 30 + (overchargeLevel - 1) * 10;
             attacker.activeBuffs.push({ name: 'Tigris Bulwark (Defense Up)', type: 'buff_def', value: defBonus, remainingTurns: 3 });
-            attacker.activeBuffs.push({ name: 'Tigris Bastion (Invincible)', type: 'invincible', value: 100, remainingTurns: 3, remainingHits: 1, isHitCount: true });
+            attacker.activeBuffs.push({ name: 'Tigris Bastion (Invincible)', type: 'invincible', value: 100, remainingTurns: 1 });
             const damageCutVal = 1500 + (overchargeLevel - 1) * 750;
             attacker.activeBuffs.push({ name: 'Living Earth (Damage Cut)', type: 'damage_cut', value: damageCutVal, remainingTurns: 3 });
-            chainTags.push(`⛰️ Tigris Redoubt (+${defBonus}% DEF 3T • Invincibility 1 hit, 3T • +${damageCutVal.toLocaleString()} Damage Cut 3T)`);
+            chainTags.push(`⛰️ Tigris Redoubt (+${defBonus}% DEF 3T • Invincible 1T • +${damageCutVal.toLocaleString()} Damage Cut 3T)`);
             npRefund = 0;
             npStars = 5;
           } else if (isLuminosite) {

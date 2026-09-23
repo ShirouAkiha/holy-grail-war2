@@ -1099,6 +1099,16 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "The Strongest Mage of the Citadel! Washi senses nine hundred years of nature spirits dancing around thy staff! Show washi thy ancient Sylvanryth sorcery!",
       retort: "With pleasure, ancient guardian! Fluvia's tides and Terra's stone answer my call! Try not to get thy precious fur wet!",
       tag: "SYLVAN WEAVE & NINE-TAILED TEMPEST"
+    },
+    luvria: {
+      intro: "The Strongest Mage of the Citadel! Washi senses nine hundred years of nature spirits dancing around thy staff! Show washi thy ancient Sylvanryth sorcery!",
+      retort: "With pleasure, ancient guardian! Fluvia's tides and Terra's stone answer my call! Try not to get thy precious fur wet!",
+      tag: "SYLVAN WEAVE & NINE-TAILED TEMPEST"
+    },
+    edmond: {
+      intro: "Kyuuu?! What a giant tiger warrior! Thy shield looks like a boulder sliced straight from Mount Ossuaron! Washi will slice right around it!",
+      retort: "Hahaha! You're quick, kid, but the earth doesn't move so easily. Come on, show me what those nine tails can do!",
+      tag: "SACRED SHRINE GUARDIAN VS GUARDIAN OF EBONWATCH"
     }
   },
   lucia_lyozes: {
@@ -1309,12 +1319,12 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
     // 8. VS AMAMIYA NO CHIHAYA TENKOHIME (FOX GUARDIAN)
     amamiya: {
       intro: "Oh, what a remarkably fluffy divine guardian! Tell me, Tenkohime-sama, would you accept a peaceful ceasefire in exchange for a towering platter of sweet fried tofu?",
-      retort: "Such magnificent ancient spiritual pressure! Do not bristle that tail so fiercely, little fox—let the Hero witness the unsealed splendor of your nine-tailed divinity!",
+      retort: "Kyuuu?! Fried tofu?! Master, didst thou hear this cheeky elf mage?! Washi will not be bribed so easily by deep-fried treats... although, if thou addest sweet sake... wait, no! Amazakura, to my side! Washi shall show thee the might of an ancient guardian!",
       tag: "THE SACRED FOX & THE ELVEN HERO"
     },
     amamiya_no_chihaya_tenkohime: {
       intro: "Oh, what a remarkably fluffy divine guardian! Tell me, Tenkohime-sama, would you accept a peaceful ceasefire in exchange for a towering platter of sweet fried tofu?",
-      retort: "Such magnificent ancient spiritual pressure! Do not bristle that tail so fiercely, little fox—let the Hero witness the unsealed splendor of your nine-tailed divinity!",
+      retort: "Kyuuu?! Fried tofu?! Master, didst thou hear this cheeky elf mage?! Washi will not be bribed so easily by deep-fried treats... although, if thou addest sweet sake... wait, no! Amazakura, to my side! Washi shall show thee the might of an ancient guardian!",
       tag: "THE SACRED FOX & THE ELVEN HERO"
     },
 
@@ -1405,7 +1415,19 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       tag: "HOLY SWORD OF VICTORY VS TIGRIS REDOUBT"
     },
 
-    // 6. MIRROR MATCH
+    // 6. VS AMAMIYA NO CHIHAYA TENKOHIME (FOX GUARDIAN)
+    amamiya: {
+      intro: "Hey there, little fox! You're waving those tails around like you're itching for a fight. Stay behind my shield before someone steps on them!",
+      retort: "Kyuuu?! Who art thou calling a little fox?! Washi has lived for centuries! Respect thy elder, tiger warrior!",
+      tag: "GUARDIAN OF EBONWATCH VS SACRED SHRINE GUARDIAN"
+    },
+    amamiya_no_chihaya_tenkohime: {
+      intro: "Hey there, little fox! You're waving those tails around like you're itching for a fight. Stay behind my shield before someone steps on them!",
+      retort: "Kyuuu?! Who art thou calling a little fox?! Washi has lived for centuries! Respect thy elder, tiger warrior!",
+      tag: "GUARDIAN OF EBONWATCH VS SACRED SHRINE GUARDIAN"
+    },
+
+    // 7. MIRROR MATCH
     edmond: {
       intro: "Another scarred tiger with a red scarf and a heavy shield? Guess there's two of us who refuse to let our family die!",
       retort: "Let's see who holds the true line, then. One shield stands, one shield falls!",
@@ -1511,6 +1533,8 @@ export function getServantMatchupDialogue(
     if (id === 'amamiya_no_chihaya_tenkohime') return 'amamiya';
     if (id === 'lucia') return 'lucia_lyozes';
     if (id === 'lucia_lyozes') return 'lucia';
+    if (id === 'luvria') return 'luvria_greenharte';
+    if (id === 'luvria_greenharte') return 'luvria';
     return id;
   };
   const cAlt = getAltId(cId);
