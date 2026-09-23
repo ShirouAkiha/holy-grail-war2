@@ -24,6 +24,8 @@ export const PVP_DAMAGE_MODIFIER = 0.35;
 // - Ruler / Avenger / Foreigner special affinities.
 export function calculateClassMultiplier(attackerClass: ServantClass, defenderClass: ServantClass): number {
   if (attackerClass === defenderClass) return 1.0;
+  // Shielder is completely neutral to all classes
+  if (attackerClass === 'Shielder' || defenderClass === 'Shielder') return 1.0;
 
   // Knight Triangle: Saber > Lancer > Archer > Saber
   if (attackerClass === 'Saber' && defenderClass === 'Lancer') return 1.35;

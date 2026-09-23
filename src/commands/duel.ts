@@ -171,6 +171,7 @@ function refreshCombatantHand(combatant: DuelCombatant): ('Buster' | 'Arts' | 'Q
 // - Ruler resists standard 6, Avenger beats Ruler (2.0x)
 function getClassMultiplier(attacker: ServantClass, defender: ServantClass): number {
   if (attacker === defender) return 1.0;
+  if (attacker === 'Shielder' || defender === 'Shielder') return 1.0;
 
   const advantage: Record<string, string[]> = {
     Saber: ['Lancer'],
@@ -1097,6 +1098,64 @@ function activateCombatantSkill(
       remainingTurns: 3
     });
     logText = `👑 **${sName}** activated **${skill.name}**! (Stripped ${strippedCount} offensive buffs, inflicted **Skill Seal (1T)** on enemy, +20% Arts Up for 3T)${quoteLine}`;
+  } else if (skill.id === 'fortress_stance_terra_barrier_a' || skill.name.toLowerCase().includes('fortress stance')) {
+    combatant.activeBuffs.push({
+      name: 'Fortress Stance (DEF Up)',
+      type: 'buff_def',
+      value: 30,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: 'Terra Barrier (Damage Cut)',
+      type: 'damage_cut',
+      value: 1500,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: 'Fortress Stance (Target Focus)',
+      type: 'target_focus',
+      value: 100,
+      remainingTurns: 1
+    });
+    logText = `🛡️ **${sName}** activated **${skill.name}**! (+30% DEF (3T), 1,500 Damage Cut (3T), Target Focus (1T))${quoteLine}`;
+  } else if (skill.id === 'guardians_instinct_red_scarf_b' || skill.name.toLowerCase().includes("guardian's instinct")) {
+    combatant.activeBuffs.push({
+      name: "Guardian's Instinct (ATK Up)",
+      type: 'buff_atk',
+      value: 15,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: 'Red Scarf Aegis (Invincible)',
+      type: 'invincible',
+      value: 100,
+      remainingTurns: 3,
+      remainingHits: 1,
+      isHitCount: true
+    });
+    combatant.npGauge = Math.min(300, combatant.npGauge + 20);
+    logText = `🧣 **${sName}** activated **${skill.name}**! (+20% NP Gauge, +15% ATK (3T), Invincibility (1 hit, 3T))${quoteLine}`;
+  } else if (skill.id === 'earth_wrought_heart_ex' || skill.name.toLowerCase().includes('earth-wrought heart')) {
+    combatant.activeBuffs.push({
+      name: 'Earth-Wrought Heart (Buster Up)',
+      type: 'buster_up',
+      value: 30,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: 'Tectonic Plate (Damage Cut)',
+      type: 'damage_cut',
+      value: 2000,
+      remainingTurns: 1
+    });
+    combatant.activeBuffs.push({
+      name: 'Earth-Wrought Heart (Debuff Immunity)',
+      type: 'debuff_immunity',
+      value: 100,
+      remainingTurns: 1
+    });
+    combatant.activeBuffs = combatant.activeBuffs.filter(b => !b.type.startsWith('debuff') && b.type !== 'stun');
+    logText = `⛰️ **${sName}** activated **${skill.name}**! (+30% Buster (3T), 2,000 Damage Cut (1T), Debuff Immunity (1T))${quoteLine}`;
   } else if (skill.effectType === 'buff_atk') {
     const val = skill.value || 35;
     const desc = (skill.description || '').toLowerCase();
@@ -1610,6 +1669,8 @@ function resolveStrike(
     if (b.type === 'buff_def') defBuff += b.value / 100;
     if (b.type === 'debuff_def') defBuff -= b.value / 100;
   });
+  const defTerraPassive = defenderPassives.find(p => p.type === 'terra_affinity');
+  if (defTerraPassive) defBuff += (defTerraPassive.value || 8) / 100;
 
   const effectiveAtk = attacker.baseAtk * (atkBuff + attackerAvengerAtk);
   const effectiveDef = defender.baseDef * defBuff;
@@ -1778,7 +1839,17 @@ function resolveStrike(
         npDmg = 0;
         if (npCardType === 'Arts') {
           const isLuminosite = /luminosit|jeanne/i.test(npTemplate.name) || attacker.servant.template.id === 'jeanne_darc_ruler';
-          if (isLuminosite) {
+          const isTigris = /tigris|edmond/i.test(npTemplate.name) || attacker.servant.template.id === 'edmond';
+          if (isTigris) {
+            const defBonus = 30 + (overchargeLevel - 1) * 10;
+            attacker.activeBuffs.push({ name: 'Tigris Bulwark (Defense Up)', type: 'buff_def', value: defBonus, remainingTurns: 3 });
+            attacker.activeBuffs.push({ name: 'Tigris Bastion (Invincible)', type: 'invincible', value: 100, remainingTurns: 3, remainingHits: 1, isHitCount: true });
+            const damageCutVal = 1500 + (overchargeLevel - 1) * 750;
+            attacker.activeBuffs.push({ name: 'Living Earth (Damage Cut)', type: 'damage_cut', value: damageCutVal, remainingTurns: 3 });
+            chainTags.push(`⛰️ Tigris Redoubt (+${defBonus}% DEF 3T • Invincibility 1 hit, 3T • +${damageCutVal.toLocaleString()} Damage Cut 3T)`);
+            npRefund = 0;
+            npStars = 5;
+          } else if (isLuminosite) {
             // 1. Removes party's debuffs
             const debuffsFound = attacker.activeBuffs.filter(b =>
               b.type.startsWith('debuff') ||
@@ -2069,6 +2140,32 @@ function resolveStrike(
     nextTurnStars += (attackerCe.passiveValue || 10);
   }
   attacker.critStars = Math.min(50, nextTurnStars);
+
+  // Apply Damage Cut
+  const cutBuffs = defender.activeBuffs.filter(b => b.type === 'damage_cut');
+  const totalCut = cutBuffs.reduce((s, b) => s + b.value, 0);
+  if (totalCut > 0 && totalSeqDmg > 0) {
+    const actualCut = Math.min(totalSeqDmg, totalCut);
+    totalSeqDmg = Math.max(0, totalSeqDmg - actualCut);
+    chainTags.push(`🛡️ Damage Cut (-${actualCut.toLocaleString()} DMG)`);
+  }
+
+  // Veteran of the Slums EX Check (Bond 5 Passive)
+  const hasDefSlums = (defenderPassives.some(p => p.type === 'veteran_of_the_slums' || (p.name && p.name.includes('Veteran of the Slums'))) ||
+    (defender.passives && defender.passives.some(p => p.type === 'veteran_of_the_slums' || (p.name && p.name.includes('Veteran of the Slums'))))) &&
+    !(defender as any).isSlumVeteranTriggered;
+  if (hasDefSlums && (defender.currentHp <= Math.round(defender.maxHp * 0.25) || (defender.currentHp - totalSeqDmg) <= 0)) {
+    (defender as any).isSlumVeteranTriggered = true;
+    defender.activeBuffs.push({
+      name: 'Veteran of the Slums EX (Guts)',
+      type: 'guts',
+      value: 3000,
+      remainingTurns: 99,
+      remainingHits: 1,
+      isHitCount: true
+    });
+    chainTags.push(`🧣 Veteran of the Slums EX (Granted Guts 3,000 HP)`);
+  }
 
   // Apply total damage to defender
   defender.currentHp = Math.max(0, defender.currentHp - totalSeqDmg);

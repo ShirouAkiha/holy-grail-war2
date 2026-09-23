@@ -127,6 +127,23 @@ export function getDefaultClassPassives(servantClass: ServantClass): PassiveSkil
           description: 'Increases Critical Strike Damage by 8%.'
         }
       ];
+    case 'Shielder':
+      return [
+        {
+          name: 'Magic Resistance A',
+          type: 'magic_resistance',
+          value: 20,
+          rank: 'A',
+          description: 'Increases debuff resistance by 20%.'
+        },
+        {
+          name: 'Riding C',
+          type: 'riding',
+          value: 6,
+          rank: 'C',
+          description: 'Increases Quick Card damage and Star Generation by 6%.'
+        }
+      ];
     default:
       return [
         {
@@ -1674,6 +1691,108 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     avatarUrl: 'https://ella.janitorai.com/media-approved/II1DtB1YFFjXHKcs8gU7q.webp',
     cardArtUrl: 'https://ella.janitorai.com/media-approved/II1DtB1YFFjXHKcs8gU7q.webp',
     spriteUrl: 'https://ella.janitorai.com/media-approved/k_aK4SaC3HJVRNxDuMU13.webp',
+    isCustomOrMeme: false
+  },
+  {
+    id: 'edmond',
+    name: 'Edmond',
+    title: 'S-Rank Adventurer, Frontline Vanguard',
+    servantClass: 'Shielder',
+    rarity: 5,
+    baseHp: 32500,
+    baseAtk: 10800,
+    baseStats: {
+      strength: 16,
+      endurance: 20,
+      agility: 12,
+      mana: 13,
+      luck: 14
+    },
+    commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
+    skills: [
+      {
+        id: 'fortress_stance_terra_barrier_a',
+        name: 'Fortress Stance (Terra Barrier) A',
+        cooldown: 6,
+        description: 'Draws enemy attention to self [Target Focus] for 1 turn. Increases own Defense by +30% for 3 turns. Applies Damage Cut (1,500) to self for 3 turns.',
+        effectType: 'buff_def',
+        duration: 3,
+        value: 30,
+        icon: '🛡️',
+        quote: '"Eyes on the big tiger, you bastards!"',
+        quotes: [
+          '"Eyes on the big tiger, you bastards!"',
+          '"Let them try to dent this shield!"',
+          '"I\'m holding the line, don\'t worry about what\'s in front of you!"'
+        ]
+      },
+      {
+        id: 'guardians_instinct_red_scarf_b',
+        name: "Guardian's Instinct (Red Scarf) B+",
+        cooldown: 6,
+        description: 'Increases Attack of all allies by +15% for 3 turns. Grants all allies (except self) [Invincibility (1 hit, 3 turns)]. Increases own NP Gauge by +20%.',
+        effectType: 'buff_atk',
+        duration: 3,
+        value: 15,
+        icon: '🧣',
+        quote: '"Stay close! This red scarf doesn\'t fail!"',
+        quotes: [
+          '"Stay close! This red scarf doesn\'t fail!"',
+          '"Get behind me, kid! Not a single scratch on you today."',
+          '"I\'ve got your flanks covered. Keep pressing forward!"'
+        ]
+      },
+      {
+        id: 'earth_wrought_heart_ex',
+        name: 'Earth-Wrought Heart EX',
+        cooldown: 7,
+        description: 'Increases own Buster Card effectiveness by +30% for 3 turns. Grants self [Damage Cut (2,000)] and Debuff Immunity for 1 turn.',
+        effectType: 'buff_atk',
+        duration: 3,
+        value: 30,
+        icon: '⛰️',
+        quote: '"Turn to stone! Break your teeth on this!"',
+        quotes: [
+          '"Turn to stone! Break your teeth on this!"',
+          '"My heart was forged in the bedrock of Ebonwatch. You can\'t break what won\'t bend."',
+          '"Awakening—Earth-Wrought Heart! Let\'s see what you\'ve got!"'
+        ]
+      }
+    ],
+    passives: [
+      {
+        name: 'Terra Affinity A',
+        type: 'terra_affinity',
+        value: 8,
+        rank: 'A',
+        description: 'Deep harmonic attunement with elemental Terra Aethel. Increases own Defense by +8%. (Active • Bond 1)'
+      },
+      {
+        name: 'Veteran of the Slums EX',
+        type: 'veteran_of_the_slums',
+        value: 3000,
+        rank: 'EX',
+        description: 'Indomitable survivor instinct forged in the grimy slums of the Wailing Tower. When HP drops below 25%, automatically grants [Guts (1 time, 3,000 HP)] once per battle. (Locked — Reaches Bond Lv. 5 to unlock)'
+      }
+    ],
+    noblePhantasm: {
+      name: 'Tigris Redoubt: Roar of the Living Earth',
+      cardType: 'Arts',
+      chant: 'Bedrock of the world, heed my call! Through blood and iron, this line will not break! Roar through the earth—Tigris Redoubt!',
+      description: '• Multiplier: Support (Arts • Support)\n• True Name: Tigris Redoubt: Roar of the Living Earth (白虎城塞 / タイガーズ・リダウト)\n• Core Effects:\n  └─ Increases Defense of all allies by +30%–50% for 3 turns.\n  └─ Grants [Invincibility (1 attack, 3 turns)] to all allies.\n• Overcharge: Applies [Damage Cut] (1,500–3,000) to all allies for 3 turns based on Overcharge.',
+      target: 'support',
+      multiplier: 0,
+      overchargeEffect: 'Applies [Damage Cut] (1,500–3,000) to all allies for 3 turns based on Overcharge • +30%-50% Defense (3T) & Invincibility (1 attack, 3T)',
+      gifUrl: 'https://ella.janitorai.com/media-approved/mte6vxnp89S_bXEpoHS3R.webp'
+    },
+    lore: 'Edmond is a 45-year-old Demi-Human (Tiger-kin) S-Rank Adventurer, wielding a colossal heavy tower shield and a massive buster sword. He serves as the Frontline Vanguard and Heavy Tank of Lucia Lyozes\' party (The Unnamed S-Rank Hero Party), having conquered Floor 24 of the harrowing Ebonwatch Dungeon.\n\nTall, heavily muscular, and seasoned by a thousand battles, he carries long spiky white hair, a well-kept beard, sharp tiger ears, warm piercing blue eyes, and a prominent jagged scar over his right eye. Clad in a dark sleeveless top beneath a durable leather vest, heavy combat trousers, wrist bracers, and steel boots, he is rarely seen without his signature tattered red scarf wrapped around his neck.\n\nBorn and raised in the grimy slums of the Wailing Tower Capital (Outer Ring / Lament), he grew up in the shadow of Ebonwatch, forging his skills in blood and grime as a solo mercenary before his unmatched defensive instincts caught the eye of Lucia Lyozes. Unlike the formal, stiff expectations of legendary heroes, Edmond speaks with informal, gravelly warmth, acting as the grounded emotional anchor of the party. He balances Lucia\'s cold, stoic leadership with humor, treats prodigy mage Luvria Greenharte with doting fatherly affection (often cooking hearty campfire stews after grueling dungeon dives), and lives by an absolute vow: to ensure his chosen family never falls to the darkness of the dungeon.',
+    summonQuote: '"The name\'s Edmond. S-Rank vanguard, though you can drop the stiff titles, Master. Got a colossal shield, a buster sword, and this old red scarf that hasn\'t let me down yet. Stand behind me—as long as I\'m breathing, not a single scratch touches you."',
+    battleStartQuote: '"Shield up, feet planted. Everyone stay behind me and watch the flanks!"',
+    victoryQuote: '"Everyone in one piece? Good. Time for a round of ale."',
+    defeatQuote: '"Damn it... failed to hold the line... Run, kid..."',
+    avatarUrl: 'https://ella.janitorai.com/media-approved/6tOCZiZo0xbTRAFmf85h5.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/6tOCZiZo0xbTRAFmf85h5.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/jEqJEDF_voG7Yd2eUO7QO.webp',
     isCustomOrMeme: false
   }
 ];

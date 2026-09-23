@@ -12,7 +12,8 @@ export type ServantClass =
   | 'Avenger'
   | 'Foreigner'
   | 'MoonCancer'
-  | 'Shitposter';
+  | 'Shitposter'
+  | 'Shielder';
 
 export type Rarity = 1 | 2 | 3 | 4 | 5;
 
@@ -61,7 +62,9 @@ export type PassiveSkillType =
   | 'the_weight_of_heaven'
   | 'fifth_succession'
   | 'absolute_permanence'
-  | 'magic_gunner';
+  | 'magic_gunner'
+  | 'terra_affinity'
+  | 'veteran_of_the_slums';
 
 export interface PassiveSkill {
   name: string;

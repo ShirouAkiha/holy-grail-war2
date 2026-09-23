@@ -693,6 +693,65 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
     ]
   },
 
+  // Edmond - Shielder (S-Rank Adventurer, Frontline Vanguard)
+  edmond: {
+    // --- BUSTER CARDS (Aggressive / heavy strike lines) ---
+    buster: [
+      "Eat some bedrock!",
+      "Out of the way!",
+      "Shield first, questions later!",
+      "Let's see your armor take this!"
+    ],
+
+    // --- ARTS CARDS (Spells / elemental weave / tactical lines) ---
+    arts: [
+      "Ground yourselves!",
+      "Terra, hold the line!",
+      "Solid as the mountain.",
+      "Watch the flanks!"
+    ],
+
+    // --- QUICK CARDS (Speed / agility / light evasion lines) ---
+    quick: [
+      "I'm stepping in!",
+      "Not on my watch!",
+      "Too slow to hit me!",
+      "Closing the gap!"
+    ],
+
+    // --- MIXED CHAINS (General combat banter / encouraging Master) ---
+    mixed: [
+      "Good call, Master! Keep 'em coming!",
+      "Stay behind me, we've got the tempo!",
+      "That's how the Wailing Tower does it!",
+      "Hold your ground, I've got your back!"
+    ],
+
+    // --- DESPERATION (Low HP / critical danger lines) ---
+    desperation: [
+      "Just a scratch... I don't go down that easy.",
+      "I made a promise... not one step back!",
+      "Bring it on! I can take ten times this!"
+    ],
+
+    // --- SKILL ACTIVATIONS (Casting / buff quotes) ---
+    skills: [
+      "Eyes on the big tiger, you bastards!",
+      "Stay close! This red scarf doesn't fail!",
+      "Turn to stone! Break your teeth on this!"
+    ],
+
+    // --- VICTORY & DEFEAT ---
+    victory: [
+      "Everyone in one piece? Good. Time for a round of ale.",
+      "Clean fight. Lucia and the kid would be proud."
+    ],
+    defeat: [
+      "Damn it... failed to hold the line... Run, kid...",
+      "Sorry, Lucia... looks like the old tiger's out of breath..."
+    ]
+  },
+
   // Amamiya no Chihaya Tenkohime - Saber (Ancient Kyubi Guardian)
   amamiya_no_chihaya_tenkohime: {
     buster: [
@@ -833,6 +892,9 @@ export function getServantProfile(servantName?: string): ServantDialogueProfile 
   }
   if (n.includes('luvria') || n.includes('greenharte') || n.includes('strongest mage') || n.includes('concept nullification')) {
     return SERVANT_COMBAT_DIALOGUES.luvria_greenharte;
+  }
+  if (n.includes('edmond') || n.includes('tiger-kin') || n.includes('tigris redoubt') || n.includes('red scarf') || n.includes('earth-wrought')) {
+    return SERVANT_COMBAT_DIALOGUES.edmond;
   }
   if (n.includes('amamiya') || n.includes('chihaya') || n.includes('tenkohime') || n.includes('kyubi') || n.includes('kyūbi') || n.includes('amazakura')) {
     return SERVANT_COMBAT_DIALOGUES.amamiya_no_chihaya_tenkohime;

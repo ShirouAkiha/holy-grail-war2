@@ -1206,6 +1206,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Luvria! Stop spinning that staff like a toy and put up your guard! If you try to nullify your way out of morning drills again or use continent-scale magic in the city, I'm having Edmond hold you upside down until sundown!",
       retort: "Aha! Lucia, must thou be so terribly stern? 'Tis merely a friendly duel! Besides, how canst thou poke me if I selectively deny the concept of thy lance's kinetic impact? Come at me, Leader!",
       tag: "THE S-RANK VANGUARD & THE STRONGEST MAGE"
+    },
+    edmond: {
+      intro: "Edmond. You know I don't hold back, even against my own shield. Plant your stance, or I'll spear right through your guard.",
+      retort: "Lucia! You're really going to make the vanguard spar against the leader? Alright, but don't blame me if this tower shield knocks you off balance!",
+      tag: "THE UNNAMED HERO PARTY: SHIELD & SPEAR"
     }
   },
 
@@ -1328,6 +1333,83 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "My, what an exceptionally gorgeous, prodigiously talented archmage! Are you here to challenge my title, or did the universe simply decide one Hero wasn't enough to carry all these sweets?",
       retort: "Nullifying my own nullifications? How delightfully absurd! Let us see which of us is the genuine Hero of Lyozes and which is merely an unruly reflection!",
       tag: "MIRROR OF OMNIPOTENCE"
+    },
+    edmond: {
+      intro: "Edmond! You promised extra honey pastries if I behaved today! Don't make me erase the ground under that giant shield!",
+      retort: "Luvria! Playtime's over, kid! Put that staff down before you blow up the camp kitchen again!",
+      tag: "FAMILY OF EBONWATCH: FATHERLY SHIELD VS THE HERO"
+    }
+  },
+
+  // =========================================================================
+  // 18. EDMOND (SHIELDER / S-RANK VANGUARD)
+  // =========================================================================
+  edmond: {
+    // 1. VS LUCIA LYOZES
+    lucia: {
+      intro: "Lucia! You're really going to make the vanguard spar against the leader? Alright, but don't blame me if this tower shield knocks you off balance!",
+      retort: "Edmond. You know I don't hold back, even against my own shield. Plant your stance, or I'll spear right through your guard.",
+      tag: "THE UNNAMED HERO PARTY: SHIELD & SPEAR"
+    },
+    lucia_lyozes: {
+      intro: "Lucia! You're really going to make the vanguard spar against the leader? Alright, but don't blame me if this tower shield knocks you off balance!",
+      retort: "Edmond. You know I don't hold back, even against my own shield. Plant your stance, or I'll spear right through your guard.",
+      tag: "THE UNNAMED HERO PARTY: SHIELD & SPEAR"
+    },
+
+    // 2. VS LUVRIA GREENHARTE
+    luvria: {
+      intro: "Luvria! Playtime's over, kid! Put that staff down before you blow up the camp kitchen again!",
+      retort: "Edmond! You promised extra honey pastries if I behaved today! Don't make me erase the ground under that giant shield!",
+      tag: "FAMILY OF EBONWATCH: FATHERLY SHIELD VS THE HERO"
+    },
+    luvria_greenharte: {
+      intro: "Luvria! Playtime's over, kid! Put that staff down before you blow up the camp kitchen again!",
+      retort: "Edmond! You promised extra honey pastries if I behaved today! Don't make me erase the ground under that giant shield!",
+      tag: "FAMILY OF EBONWATCH: FATHERLY SHIELD VS THE HERO"
+    },
+
+    // 3. VS ADIOSA DRAGON ENVOY
+    adiosa: {
+      intro: "That ancient dragon presence... The Weight of Heaven, huh? I've carried the weight of the Wailing Tower on my back for forty-five years. Let's see whose earth is heavier!",
+      retort: "A mortal beast clad in scarred resolve... Commendable. But can your bedrock withstand the pruning of a dying star?",
+      tag: "TITANIC DEFENSE VS WORLD-PRUNING GRAVITY"
+    },
+    adiosa_dragon_envoy: {
+      intro: "That ancient dragon presence... The Weight of Heaven, huh? I've carried the weight of the Wailing Tower on my back for forty-five years. Let's see whose earth is heavier!",
+      retort: "A mortal beast clad in scarred resolve... Commendable. But can your bedrock withstand the pruning of a dying star?",
+      tag: "TITANIC DEFENSE VS WORLD-PRUNING GRAVITY"
+    },
+
+    // 4. VS GILGAMESH
+    gilgamesh: {
+      intro: "King of Heroes, is it? You've got an awful lot of shiny swords in that vault. Mind if I see how many break against my shield?",
+      retort: "A beast of the slums dares stand before the King of Heroes? Your insolence will be rewarded with a thousand divine blades, mongrel!",
+      tag: "TOWER SHIELD VS GATE OF BABYLON"
+    },
+    gilgamesh_archer: {
+      intro: "King of Heroes, is it? You've got an awful lot of shiny swords in that vault. Mind if I see how many break against my shield?",
+      retort: "A beast of the slums dares stand before the King of Heroes? Your insolence will be rewarded with a thousand divine blades, mongrel!",
+      tag: "TOWER SHIELD VS GATE OF BABYLON"
+    },
+
+    // 5. VS ARTORIA PENDRAGON
+    artoria: {
+      intro: "King of Knights! Your Excalibur shines bright, but let's see how that holy light handles a frontline veteran who won't budge an inch!",
+      retort: "Immovable courage... Your shield carries the weight of your allies' lives. I shall meet your resolve with the full glory of Britain!",
+      tag: "HOLY SWORD OF VICTORY VS TIGRIS REDOUBT"
+    },
+    artoria_pendragon: {
+      intro: "King of Knights! Your Excalibur shines bright, but let's see how that holy light handles a frontline veteran who won't budge an inch!",
+      retort: "Immovable courage... Your shield carries the weight of your allies' lives. I shall meet your resolve with the full glory of Britain!",
+      tag: "HOLY SWORD OF VICTORY VS TIGRIS REDOUBT"
+    },
+
+    // 6. MIRROR MATCH
+    edmond: {
+      intro: "Another scarred tiger with a red scarf and a heavy shield? Guess there's two of us who refuse to let our family die!",
+      retort: "Let's see who holds the true line, then. One shield stands, one shield falls!",
+      tag: "REDOUBT OF THE DUAL TIGERS"
     }
   }
 };
@@ -1336,6 +1418,7 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['amamiya'] = SERVANT_MATCHUP_DATABASE.amamiya_no_chihaya_tenkohime;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['lucia'] = SERVANT_MATCHUP_DATABASE.lucia_lyozes;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['luvria'] = SERVANT_MATCHUP_DATABASE.luvria_greenharte;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['edmond'] = SERVANT_MATCHUP_DATABASE.edmond;
 
 /**
  * Fallback generator for custom servants, meme servants, or any servant pairs not explicitly defined.

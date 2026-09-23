@@ -2656,6 +2656,85 @@ export const LUVRIA_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const EDMOND_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'edmond_bond_event_1',
+    servantTemplateId: 'edmond',
+    requiredBondLevel: 1,
+    title: 'The Vanguard of the Wailing Tower',
+    subtitle: 'Bond Level 1 Interlude • Slum Veteran',
+    description: 'A quiet evening with Edmond over hot tea, discussing his scarred past in the Wailing Tower slums and his vow to shield his chosen family.',
+    rewardBondExp: 200,
+    rewardSaintQuartz: 3,
+    unlockedQuoteId: 'edmond_bond_line_1',
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: 'Edmond',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "Hey there, Master. Catch your breath yet? I saw you reviewing battle logs until your eyes went red. You push yourself too hard. Here—take this cup. Just black tea, but I tossed a cinnamon stick in it like we used to do back in the Lament district.",
+        choices: [
+          {
+            id: 'c1_tea',
+            text: "Thanks, Edmond. It's surprisingly good. You're quite the cook, aren't you?",
+            response: "Hah! You survive twenty-five years in the Wailing Tower slums and four years diving Floor 24 of Ebonwatch, you learn that good food is the only thing keeping your sanity bolted to your ribs. Even that brat Luvria stops complaining about life when I dish up a pot of stew.",
+            bondExpGain: 125,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_scarf',
+            text: "That red scarf around your neck... it looks like it's seen a hundred battles.",
+            response: "This old rag? Yeah. Frayed around the edges, stained with monster blood and dungeon ash. Reminds me where I came from, and more importantly, what happens if I ever drop this shield. In the slums, you only get one mistake.",
+            bondExpGain: 100,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_2'
+          }
+        ]
+      },
+      {
+        id: 'scene_2',
+        speakerName: 'Edmond',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "People see S-Rank adventurers and think of glory, gold, and fancy banners. But when Lucia recruited me out of the gutter, she didn't care about titles. She just needed a vanguard who wouldn't flinch when a titan's fist comes crashing down.\n\nI made a promise to her and to the kid: as long as this heart beats, nobody in our circle dies on my watch. And that goes for you now too, Master. So sleep easy tonight. The big tiger's on watch.",
+        choices: [
+          {
+            id: 'c2_trust',
+            text: "I couldn't ask for a more reliable vanguard, Edmond.",
+            response: "Heh. Save the praise for when we've claimed the Grail and had our round of victory ale. Now go get some shut-eye, kid.",
+            bondExpGain: 125,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_family',
+            text: "You really care about Lucia and Luvria like real family.",
+            response: "They ARE my family. The only one I've got. And now that you've summoned me into this mess, you're under that roof too. Don't you forget it.",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_3'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Edmond',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "Tomorrow's training starts at dawn. Footwork, shield bracing, and maybe I'll teach you how to make a proper campfire broth. Rest well, Master.",
+        choices: [
+          {
+            id: 'c3_end',
+            text: "Goodnight, Edmond. Thanks for watching over us.",
+            response: "Anytime, kid. Always.",
+            bondExpGain: 100,
+            reactionEmotion: 'happy'
+          }
+        ]
+      }
+    ]
+  }
+];
+
 /**
  * Registry of all available curated bond events by servant template ID.
  */
@@ -2677,6 +2756,7 @@ export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
   luvria_greenharte: LUVRIA_BOND_EVENTS,
   luvria: LUVRIA_BOND_EVENTS,
   greenharte: LUVRIA_BOND_EVENTS,
+  edmond: EDMOND_BOND_EVENTS,
   heracles_berserker: HERACLES_BOND_EVENTS,
   heracles: HERACLES_BOND_EVENTS,
   scathach_lancer: SCATHACH_BOND_EVENTS,
@@ -3428,6 +3508,50 @@ export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
       requiredBondLevel: 5,
       quoteText: 'Hold that head high, Master. With Luvria Greenharte at your side, this war won\'t even know what hit it!'
     }
+  ],
+  edmond: [
+    {
+      id: 'edmond_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: "Servant, Shielder. Name's Edmond. Just an old mercenary with a thick shield and a tattered red scarf. As long as you don't expect fancy royal speeches from me, I'll make sure nothing gets past this line."
+    },
+    {
+      id: 'edmond_bond_line_1',
+      title: 'Bond 1: The Vanguard',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: "Grew up in the slums of the Wailing Tower. Dirt, blood, hunger—that was everyday life. Fighting isn't about glory to me; it's about making sure the people at your back wake up to see tomorrow."
+    },
+    {
+      id: 'edmond_bond_2',
+      title: 'Bond 2: Campfire Stew',
+      category: 'bond_2',
+      requiredBondLevel: 2,
+      quoteText: "If you're ever stressed out, come find me near the mess hall. A hot bowl of slum-stew and a quiet campfire work wonders better than any potion."
+    },
+    {
+      id: 'edmond_bond_3',
+      title: 'Bond 3: Ebonwatch Floor 24',
+      category: 'bond_3',
+      requiredBondLevel: 3,
+      quoteText: "Twenty-four floors deep into Ebonwatch, darkness plays tricks on your mind. You learn real fast who you can count on when the abyssal beasts swarm. Lucia, Luvria, and now you. I trust you, Master."
+    },
+    {
+      id: 'edmond_bond_4',
+      title: 'Bond 4: Red Scarf Vow',
+      category: 'bond_4',
+      requiredBondLevel: 4,
+      quoteText: "Rubra called me a coward for refusing to lead an armed revolt. Maybe he's right that I'm simple-minded. But my heart isn't built to burn cities down; it's built to keep the hearth warm and shield the ones I love."
+    },
+    {
+      id: 'edmond_bond_5',
+      title: 'Bond 5: Slum Veteran EX',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: "Stand firm behind my shield, Master! As long as Terra flows through my veins, this bastion shall not fall! Roar of the Living Earth!"
+    }
   ]
 };
 
@@ -3769,6 +3893,24 @@ export function getServantGiftReaction(
         responseText: "Entrusting this to me? Keep your head held high, Master. As long as I stand, no harm touches you.",
         emotion: 'thoughtful'
       }
+    },
+    edmond: {
+      chaldea_tea: {
+        responseText: "Warm tea? Appreciate it, Master. Reminds me of brewing hot drinks by the campfire after a rough dive on Floor 20.",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "Now THAT'S what I'm talking about! Thick cuts of meat, hearty broth—almost rivals my slum-stew recipe. Dig in, kid, plenty for both of us!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A golden apple? Solid nutrition. I'll slice this up and share it with Luvria and Lucia when we get back.",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "An ancient warding relic... It's sturdy. I'll fix this onto the inner brace of my tower shield. Thanks for having my back, Master.",
+        emotion: 'thoughtful'
+      }
     }
   };
 
@@ -3865,6 +4007,10 @@ export function getServantSparringDebrief(
     },
     luvria: {
       responseText: "Good footwork today! Keep that focus up and I might actually have to try next time~",
+      emotion: 'happy'
+    },
+    edmond: {
+      responseText: "Solid stance, Master! Your center of gravity held firm even when I leaned into that shield-bash. Keep that up and not even an abyssal minotaur will knock you over.",
       emotion: 'happy'
     }
   };

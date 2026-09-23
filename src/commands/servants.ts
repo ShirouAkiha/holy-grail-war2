@@ -19,7 +19,7 @@ import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantas
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
 export const CLASS_CYCLE: Array<'all' | ServantClass> = [
-  'all', 'Saber', 'Archer', 'Lancer', 'Rider', 'Caster', 'Assassin', 'Berserker', 'Ruler', 'Avenger'
+  'all', 'Saber', 'Archer', 'Lancer', 'Rider', 'Caster', 'Assassin', 'Berserker', 'Ruler', 'Avenger', 'Shielder'
 ];
 
 export function getClassEmoji(servantClass: string): string {
@@ -35,6 +35,7 @@ export function getClassEmoji(servantClass: string): string {
     case 'avenger': return '🌑';
     case 'foreigner': return '🌌';
     case 'pretender': return '🎭';
+    case 'shielder': return '🛡️';
     default: return '⚔️';
   }
 }

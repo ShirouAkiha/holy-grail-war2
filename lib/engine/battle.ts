@@ -16,6 +16,7 @@ export const PVP_DAMAGE_MODIFIER = 0.35;
 
 export function calculateClassMultiplier(attackerClass: ServantClass, defenderClass: ServantClass): number {
   if (attackerClass === defenderClass) return 1.0;
+  if (attackerClass === 'Shielder' || defenderClass === 'Shielder') return 1.0;
 
   // Knight Triangle: Saber > Lancer > Archer > Saber
   if (attackerClass === 'Saber' && defenderClass === 'Lancer') return 1.35;
@@ -400,6 +401,89 @@ export function applyCombatantSkill(
     return {
       success: true,
       log: `👑 **${actor.name}** activated **${skill.name}**! Boosted ATK by +20% and granted +30% Special Damage against Threat to Humanity, Foreigners, Beasts, and Extra Classes!${quoteLine}`,
+      quote: skillQuote,
+      skillName: skill.name
+    };
+  }
+
+  // Handle Edmond (Shielder) personal skills
+  if (skill.id.includes('fortress_stance_terra_barrier')) {
+    actor.activeBuffs.push({
+      name: 'Fortress Stance (DEF Up)',
+      type: 'buff_def',
+      value: 30,
+      remainingTurns: 3
+    });
+    actor.activeBuffs.push({
+      name: 'Terra Barrier (Damage Cut)',
+      type: 'damage_cut',
+      value: 1500,
+      remainingTurns: 3
+    });
+    actor.activeBuffs.push({
+      name: 'Fortress Stance (Target Focus)',
+      type: 'target_focus',
+      value: 100,
+      remainingTurns: 1
+    });
+    return {
+      success: true,
+      log: `🛡️ **${actor.name}** activated **${skill.name}**! (+30% DEF (3T), 1,500 Damage Cut (3T), Target Focus (1T))${quoteLine}`,
+      quote: skillQuote,
+      skillName: skill.name
+    };
+  }
+
+  if (skill.id.includes('guardians_instinct_red_scarf')) {
+    actor.activeBuffs.push({
+      name: "Guardian's Instinct (ATK Up)",
+      type: 'buff_atk',
+      value: 15,
+      remainingTurns: 3
+    });
+    actor.isInvincible = true;
+    actor.activeBuffs.push({
+      name: 'Red Scarf Aegis (Invincible)',
+      type: 'invincible',
+      value: 100,
+      remainingTurns: 3,
+      remainingHits: 1,
+      isHitCount: true
+    });
+    actor.npGauge = Math.min(300, actor.npGauge + 20);
+    return {
+      success: true,
+      log: `🧣 **${actor.name}** activated **${skill.name}**! (+20% NP Gauge, +15% ATK (3T), Invincibility (1 hit, 3T))${quoteLine}`,
+      quote: skillQuote,
+      skillName: skill.name
+    };
+  }
+
+  if (skill.id.includes('earth_wrought_heart')) {
+    actor.activeBuffs.push({
+      name: 'Earth-Wrought Heart (Buster Up)',
+      type: 'buster_up',
+      value: 30,
+      remainingTurns: 3
+    });
+    actor.activeBuffs.push({
+      name: 'Tectonic Plate (Damage Cut)',
+      type: 'damage_cut',
+      value: 2000,
+      remainingTurns: 1
+    });
+    actor.activeBuffs.push({
+      name: 'Earth-Wrought Heart (Debuff Immunity)',
+      type: 'debuff_immunity',
+      value: 100,
+      remainingTurns: 1
+    });
+    // Cleanse debuffs
+    actor.activeBuffs = actor.activeBuffs.filter(b => !b.type.startsWith('debuff') && b.type !== 'stun');
+    actor.isStunned = false;
+    return {
+      success: true,
+      log: `⛰️ **${actor.name}** activated **${skill.name}**! (+30% Buster (3T), 2,000 Damage Cut (1T), Debuff Immunity (1T))${quoteLine}`,
       quote: skillQuote,
       skillName: skill.name
     };
@@ -849,71 +933,103 @@ export function executeNoblePhantasmLogic(
     // Non-damaging Support Noble Phantasm
     damageDealt = 0;
     if (cardType === 'Arts') {
-      // Jeanne d'Arc (Ruler): Luminosité Eternelle - God is Here With Me
-      // 1. Cleanse party's debuffs
-      const debuffsFound = actor.activeBuffs.filter(b =>
-        b.type.startsWith('debuff') ||
-        b.type === 'stun' ||
-        b.type === 'burn' ||
-        b.type === 'poison' ||
-        b.type === 'curse' ||
-        b.type === 'np_dmg_down' ||
-        b.type === 'charm' ||
-        b.type === 'atk_down' ||
-        b.type === 'def_down' ||
-        (b.value < 0) ||
-        /debuff|down|curse|burn|poison|stun|bound/i.test(b.name)
-      );
-      const debuffCount = debuffsFound.length;
+      const isTigris = /tigris|edmond/i.test(np.name) || actor.id === 'edmond';
+      if (isTigris) {
+        // Tigris Redoubt: Roar of the Living Earth
+        const ocLevel = actor.npGauge >= 300 ? 3 : actor.npGauge >= 200 ? 2 : 1;
+        const defBonus = 30 + (ocLevel - 1) * 10;
+        actor.activeBuffs.push({
+          name: 'Tigris Bulwark (Defense Up)',
+          type: 'buff_def',
+          value: defBonus,
+          remainingTurns: 3
+        });
+        actor.isInvincible = true;
+        actor.activeBuffs.push({
+          name: 'Tigris Bastion (Invincible)',
+          type: 'invincible',
+          value: 100,
+          remainingTurns: 3,
+          remainingHits: 1,
+          isHitCount: true
+        });
+        const damageCutVal = 1500 + (ocLevel - 1) * 750;
+        actor.activeBuffs.push({
+          name: 'Living Earth (Damage Cut)',
+          type: 'damage_cut',
+          value: damageCutVal,
+          remainingTurns: 3
+        });
+        npCharged = 0;
+        starsGenerated = 5;
+        actionSummary = `⛰️ **${actor.name}** deployed Support Noble Phantasm [${np.name}]! Bestowed +${defBonus}% DEF (3T), Party Invincibility (1 hit, 3T), and +${damageCutVal.toLocaleString()} Damage Cut (3T)!`;
+      } else {
+        // Jeanne d'Arc (Ruler): Luminosité Eternelle - God is Here With Me
+        // 1. Cleanse party's debuffs
+        const debuffsFound = actor.activeBuffs.filter(b =>
+          b.type.startsWith('debuff') ||
+          b.type === 'stun' ||
+          b.type === 'burn' ||
+          b.type === 'poison' ||
+          b.type === 'curse' ||
+          b.type === 'np_dmg_down' ||
+          b.type === 'charm' ||
+          b.type === 'atk_down' ||
+          b.type === 'def_down' ||
+          (b.value < 0) ||
+          /debuff|down|curse|burn|poison|stun|bound/i.test(b.name)
+        );
+        const debuffCount = debuffsFound.length;
 
-      actor.activeBuffs = actor.activeBuffs.filter(b =>
-        !b.type.startsWith('debuff') &&
-        b.type !== 'stun' &&
-        b.type !== 'burn' &&
-        b.type !== 'poison' &&
-        b.type !== 'curse' &&
-        b.type !== 'np_dmg_down' &&
-        b.type !== 'charm' &&
-        b.type !== 'atk_down' &&
-        b.type !== 'def_down' &&
-        !(b.value < 0) &&
-        !/debuff|down|curse|burn|poison|stun|bound/i.test(b.name)
-      );
-      actor.isStunned = false;
+        actor.activeBuffs = actor.activeBuffs.filter(b =>
+          !b.type.startsWith('debuff') &&
+          b.type !== 'stun' &&
+          b.type !== 'burn' &&
+          b.type !== 'poison' &&
+          b.type !== 'curse' &&
+          b.type !== 'np_dmg_down' &&
+          b.type !== 'charm' &&
+          b.type !== 'atk_down' &&
+          b.type !== 'def_down' &&
+          !(b.value < 0) &&
+          !/debuff|down|curse|burn|poison|stun|bound/i.test(b.name)
+        );
+        actor.isStunned = false;
 
-      // 2. Grants party Invincibility for 1 turn
-      actor.isInvincible = true;
-      actor.activeBuffs.push({
-        name: 'Luminosité Invincibility',
-        type: 'invincible',
-        value: 100,
-        remainingTurns: 1
-      });
+        // 2. Grants party Invincibility for 1 turn
+        actor.isInvincible = true;
+        actor.activeBuffs.push({
+          name: 'Luminosité Invincibility',
+          type: 'invincible',
+          value: 100,
+          remainingTurns: 1
+        });
 
-      // 3. Increases party's defense for 3 turns (+30% DEF)
-      actor.activeBuffs.push({
-        name: 'Divine Protection',
-        type: 'buff_def',
-        value: 30,
-        remainingTurns: 3
-      });
+        // 3. Increases party's defense for 3 turns (+30% DEF)
+        actor.activeBuffs.push({
+          name: 'Divine Protection',
+          type: 'buff_def',
+          value: 30,
+          remainingTurns: 3
+        });
 
-      // 4. Overcharge Effect: Recovers party's HP every turn for 2 turns (1,000 - 3,000 HP/turn)
-      const ocLevel = actor.npGauge >= 300 ? 3 : actor.npGauge >= 200 ? 2 : 1;
-      const regenPerTurn = 1000 + (ocLevel - 1) * 500;
-      hpHealed = regenPerTurn;
-      actor.currentHp = Math.min(actor.maxHp, actor.currentHp + hpHealed);
+        // 4. Overcharge Effect: Recovers party's HP every turn for 2 turns (1,000 - 3,000 HP/turn)
+        const ocLevel = actor.npGauge >= 300 ? 3 : actor.npGauge >= 200 ? 2 : 1;
+        const regenPerTurn = 1000 + (ocLevel - 1) * 500;
+        hpHealed = regenPerTurn;
+        actor.currentHp = Math.min(actor.maxHp, actor.currentHp + hpHealed);
 
-      actor.activeBuffs.push({
-        name: 'Luminosité Holy Regen',
-        type: 'hp_regen',
-        value: regenPerTurn,
-        remainingTurns: 2
-      });
+        actor.activeBuffs.push({
+          name: 'Luminosité Holy Regen',
+          type: 'hp_regen',
+          value: regenPerTurn,
+          remainingTurns: 2
+        });
 
-      npCharged = 0;
-      starsGenerated = 0;
-      actionSummary = `🕊️ **${actor.name}** deployed Support Noble Phantasm [${np.name}]! Bestowed Party Invincibility (1T), +30% DEF (3T), Cleansed all debuffs${debuffCount > 0 ? ` (${debuffCount} removed)` : ''}, and activated HP Recovery (+${regenPerTurn.toLocaleString()} HP/turn for 2 turns)!`;
+        npCharged = 0;
+        starsGenerated = 0;
+        actionSummary = `🕊️ **${actor.name}** deployed Support Noble Phantasm [${np.name}]! Bestowed Party Invincibility (1T), +30% DEF (3T), Cleansed all debuffs${debuffCount > 0 ? ` (${debuffCount} removed)` : ''}, and activated HP Recovery (+${regenPerTurn.toLocaleString()} HP/turn for 2 turns)!`;
+      }
     } else if (cardType === 'Quick') {
       // Quick Support
       starsGenerated = Math.round(30 * (1.0 + quickBuff / 100));
@@ -1866,9 +1982,10 @@ export function executeBattleTurn(
       actor.activeBuffs
       .filter(b => b.type === 'debuff_atk')
       .reduce((sum, b) => sum + b.value, 0);
+    const terraBonus = targetPassives.filter(p => p.type === 'terra_affinity').reduce((sum, p) => sum + p.value, 0);
     const defBuff = target.activeBuffs
       .filter(b => b.type === 'buff_def')
-      .reduce((sum, b) => sum + b.value, 0);
+      .reduce((sum, b) => sum + b.value, 0) + terraBonus;
 
     // Card performance buffs (Active Buffs + Passives)
     const busterBuff = actor.activeBuffs
@@ -2118,6 +2235,32 @@ export function executeBattleTurn(
       const auraDmg = targetWeight.value || 2000;
       actor.currentHp = Math.max(0, actor.currentHp - auraDmg);
       actionText += `\n🌌 **[Enemy Weight of Heaven EX]** ${target.name}'s dense aura crushed ${actor.name} for ${auraDmg.toLocaleString()} true HP damage! (Mana: ${actor.stats.mana} < ${target.stats.mana})`;
+    }
+
+    // Apply Damage Cut
+    const cutBuffs = target.activeBuffs ? target.activeBuffs.filter(b => b.type === 'damage_cut') : [];
+    const totalCut = cutBuffs.reduce((s, b) => s + b.value, 0);
+    if (totalCut > 0 && totalDamage > 0) {
+      const actualCut = Math.min(totalDamage, totalCut);
+      totalDamage = Math.max(0, totalDamage - actualCut);
+      actionText += `\n🛡️ **[Damage Cut]** Absorbed ${actualCut.toLocaleString()} incoming damage!`;
+    }
+
+    // Veteran of the Slums EX Check (Bond 5 Passive)
+    const hasVeteranSlums = (targetPassives.some(p => p.type === 'veteran_of_the_slums' || p.name?.includes('Veteran of the Slums')) ||
+      (target.passives && target.passives.some(p => p.type === 'veteran_of_the_slums' || p.name?.includes('Veteran of the Slums')))) &&
+      !(target as any).isSlumVeteranTriggered;
+    if (hasVeteranSlums && (target.currentHp <= Math.round(target.maxHp * 0.25) || (target.currentHp - totalDamage) <= 0)) {
+      (target as any).isSlumVeteranTriggered = true;
+      target.activeBuffs.push({
+        name: 'Veteran of the Slums EX (Guts)',
+        type: 'guts',
+        value: 3000,
+        remainingTurns: 99,
+        remainingHits: 1,
+        isHitCount: true
+      });
+      actionText += `\n🧣 **[VETERAN OF THE SLUMS EX]** Edmond's survivor instinct ignited! Granted Guts (1 time, 3,000 HP)!`;
     }
 
     // Apply damage to target
