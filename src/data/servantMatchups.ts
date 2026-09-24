@@ -381,93 +381,93 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // =========================================================================
   jeanne_alter: {
     artoria_pendragon: {
-      intro: "Oh, look! The celebrated King of Knights! Let's see how noble you look when your shiny armor is charred black!",
-      retort: "Your anger is immense, Avenger, but fury without discipline will only dull your blade. Face me!",
+      intro: "Oh, look at the spotless, shining King of Knights. How utterly nauseating. Let’s see how pretty that chivalry looks after I roast you alive.",
+      retort: "Spite is not conviction, Avenger. Swing your hatred all you want, but an undisciplined flame will never pierce my armor.",
       tag: "DRAGON WITCH VS KING OF KNIGHTS"
     },
     gilgamesh_archer: {
-      intro: "King of Babylon! All that gleaming gold makes for the perfect pyre! I'm going to roast you alive in that flashy suit!",
-      retort: "Insolent wench! A mongrel drenched in counterfeit vengeance dares raise her torch against the King?! Perish!",
+      intro: "All that shiny gold is just begging to be melted down into slag. Let’s see how smug you look once that gaudy armor turns red-hot.",
+      retort: "A mongrel forged from delusions dares to brandish her counterfeit torch before me? Know your place and burn to dust, gutter-born witch.",
       tag: "HELLFIRE VS BABYLONIAN GOLD"
     },
     scathach_lancer: {
-      intro: "Land of Shadows Queen, huh? Think you can teach me a lesson, old woman? I'll burn your spooky land to cinder!",
-      retort: "Fierce words, little witch. But passion alone cannot deflect a strike aimed with two millennia of precision.",
+      intro: "Queen of the Dead or whatever you call yourself... Don't stand there looking down on me like I'm a child, old hag!",
+      retort: "An amusing amount of venom, little dragon. But swinging a flag in blind rage won't pierce a heart honed by two thousand years of slaughter.",
       tag: "WILD WITCH VS ANCIENT SPEAR"
     },
     jeanne_darc_ruler: {
-      intro: "There you are, you disgusting goody-two-shoes! How dare you walk around smiling after what France did to us?! BURN!",
-      retort: "Jeanne... I will not raise my sword out of malice, but I will defend this world from your hatred with all my heart!",
+      intro: "Wipe that sickening, forgiving smile off your face. Looking at you makes me want to burn every single stone in France to ash.",
+      retort: "I know how deep your hurt goes, Jeanne. But screaming your hatred at the world won't make you real. Put the flag down.",
       tag: "THE BURNING STAKE OF ORLEANS"
     },
     jeanne_alter: {
-      intro: "What kind of cheap joke is this?! Another me?! There's only room for ONE Dragon Witch in this wretched world!",
-      retort: "Ha! Who are you calling a copy, you pale imitator?! I'll incinerate you until there's no trace left!",
+      intro: "Who the hell pulled another one of me out of the mud?! There’s only room for one real Dragon Witch here!",
+      retort: "Real? You're just a pale, pathetic echo holding a match. Die and let the true Avenger finish the job!",
       tag: "MIRROR OF THE DRAGON WITCH"
     },
     mhx_alter: {
-      intro: "Hey! What's with that getup?! And why are you staring at me while munching on Japanese pastries?! Stop that!",
-      retort: "Avenger entity detected: High emotional temperature, flammable temperament. Commencing chilling countermeasures.",
+      intro: "What is your deal?! Why are you standing there glaring at me while shoveling bean paste down your throat?! Put the sweets down!",
+      retort: "Target evaluated: High-temperature, low-tact Avenger. Deploying low-temperature sugar defense before she scorches my emergency rations.",
       tag: "BLACK FLAMES & DARK MATTER"
     },
     artoria_pendragon_alter: {
-      intro: "Saber Alter! Finally someone with decent taste in black armor! But don't think for a second I'm going to follow your orders!",
-      retort: "Tch. A noisy, shrieking witch. Stand down before Excalibur Morgan cuts your complaints short.",
+      intro: "Get that superior smirk off your face, you overgrown goth! One more word about my fashion sense and I'm incinerating your fast-food stash!",
+      retort: "Quiet, stray dog. The only thing louder than your mouth is your total lack of finesse. Fall back before I cleave that flag in two.",
       tag: "RIVALRY OF THE BLACK SHADOWS"
     },
     nero_claudius_saber: {
-      intro: "Red Saber! Your loud voice and obnoxious theatrics are giving me a headache! Time to set your theater on fire!",
-      retort: "Umu! What a passionate and fiery maiden! But true artistry cannot be consumed by mere flame! En garde!",
+      intro: "Keep screeching and prancing like that and I'll turn your precious theater into a mass grave, red runt!",
+      retort: "What savage vulgarity! A true maiden should bloom with passion, not bitter envy! Rome shall teach your dark flames what true beauty looks like!",
       tag: "BURNING THEATER: ROSES VS FLAME"
     },
     emiya_archer: {
-      intro: "Look at this cynical jerk pretending to be so cool and detached. Let's see you keep that poker face while turning to ash!",
-      retort: "I've dealt with moody teenagers with fire magic before. Try not to embarrass yourself, Dragon Witch.",
+      intro: "You look like someone who desperately needs to have that smug, cynical look wiped clean off his face. Mind if I use hellfire?",
+      retort: "I've cleaned up after plenty of rebellious brats with a penchant for fire. Try not to singe yourself, fake saint.",
       tag: "CYNICAL GUARDIAN VS FIERY AVENGER"
     },
     heracles_berserker: {
-      intro: "A giant mountain of muscle?! Fine by me! Even Greek demigods burn when La Grondement Du Haine roars!",
-      retort: "■■■■■■■■■■■■---!! (Heracles swings his massive stone sword, creating a sonic shockwave that scatters her initial sparks!)",
+      intro: "A towering wall of muscle? Perfect. You're just a giant target for me to cremate over, and over, and over again!",
+      retort: "■■■■■■■■■■■■---!!",
       tag: "TITAN'S CLASH: RAGE VS MUSCLE"
     },
     cu_chulainn_lancer: {
-      intro: "Oh, the Hound of Culann. Aren't you usually dead in the first five minutes? Let me speed up the process!",
-      retort: "Whoa, vicious tongue on this one! You're gonna have to catch me first if you want to burn this dog!",
+      intro: "Prancing around like an annoying stray mutt... Stay still for three seconds so I can turn you into charcoal!",
+      retort: "Feisty little witch, aren't ya? Hate to break it to you, girl, but you’ll have to move a whole lot faster if you want to catch this hound.",
       tag: "HOUND EVASION VS DRAGON WITCH"
     },
     karna_lancer: {
-      intro: "You think your holy sun flames are hotter than my burning hatred?! Let's see whose fire consumes who!",
-      retort: "Flame born of hatred only consumes the one who kindles it. If you wish to test the Sun, I shall answer.",
+      intro: "The glorious Hero of Charity... God, you blinding do-gooders disgust me. Let's see if your holy light survives real, burning spite.",
+      retort: "Your flame is hot, but it carries only the cold emptiness of self-destruction. If you truly wish to challenge the Sun, come.",
       tag: "SOLAR HEAT VS DRAGON PYRE"
     },
     adiosa_dragon_envoy: {
-      intro: "Dragon Envoy?! That title belongs to ME and Fafnir! What right does a cosmic lizard have to strut around here?!",
-      retort: "⟨ Shak zhal, Krav'nok. ⟩ A noisy human claiming dragons? Pathetic larva. I shall prune you along with this soil.",
+      intro: "A primordial dragon? Ha! I drag dragons by the collar and burn whole armies to ash. You're just an oversized lizard stepping on my territory!",
+      retort: "⟨ Shak zhal, Krav'nok. ⟩ An artificial vessel shrieking under the weight of stolen embers. You are no dragon-master, little insect—only ash waiting to settle.",
       tag: "DRAGON WITCH VS PRIMORDIAL DRAGON"
     },
     aoko_aozaki: {
-      intro: "What's with this loud-mouthed high-schooler shooting red beams out of her fists?! Fifth Magic or whatever, I'll burn your causal retrogrades to ash!",
-      retort: "Talk about an explosive attitude! If you're going to throw a fiery tantrum, I've got a whole arsenal of Magic Bullets to cool you off!",
+      intro: "What's with this arrogant high-schooler shooting red beams everywhere?! Fifth Magic or not, let’s see you dodge when the entire ground catches fire!",
+      retort: "Talk about a short fuse. If you think screaming your lungs out makes your fire any hotter, I’ve got a dozen heavy rounds here to set you straight!",
       tag: "MAGIC BULLETS VS DRAGON WITCH PYRE"
     },
     amamiya_no_chihaya_tenkohime: {
-      intro: "What's with this noisy pink fur-ball squeaking like a toy?! I'll roast your cute little tails into a charcoal bonfire!",
-      retort: "H-Hii! Thy dragon flames are going to scorch washi's fur and singe washi's tails! Cease thy reckless tantrums at once, foul witch!",
+      intro: "What’s with this squeaking bundle of fur?! Flapping paper charms around won't stop you from turning into a roasted fox pelt!",
+      retort: "H-Hii! Such foul, unholy dragon breath! Keep those smoky boots away from the shrine steps, thou rude and quarrelsome witch!",
       tag: "AVENGER PYRE VS SACRED CELESTIAL FOX"
     },
     lucia_lyozes: {
-      intro: "Shut up, preachy elf princess! What do you know about burning?! I'll turn your high-and-mighty lance into blackened cinders!",
-      retort: "An Avenger born of vengeful dragon fire. You lash out because the world betrayed you. I have seen entire nations turn to ash—your hatred changes nothing.",
+      intro: "Don't lecture me from atop that ivory tower, elf. You know nothing about being burned alive while the world watches and cheers!",
+      retort: "I know what it means to stand amidst the ash of everything you loved. But lashing out like a cornered beast will only leave you emptier than before.",
       tag: "DRAGON WITCH'S SPITE VS HIGH ELVEN VANGUARD"
     },
     luvria_greenharte: {
-      intro: "You smiling little brat! Waving that stick around like you own the universe! Let's see you 'nullify' a tidal wave of cursed hellfire!",
-      retort: "Oh my, such magnificent theatrical rage! Very well, Miss Dragon Witch—let us see if your roaring flames can burn through a concept that simply refuses to exist!",
+      intro: "Waving that staff around and smiling like you own the world... Let's see your 'nullification' swallow a storm of pure, unadulterated hellfire!",
+      retort: "My, what delightful fury! A curse that seeks to consume the earth? How wonderfully tragic! Let's see if that flame can burn through a concept that simply ceases to exist!",
       tag: "CONCEPT NULLIFICATION VS LA GRONDEMENT DU HAINE"
     },
     edmond: {
-      intro: "Who are you calling a stubborn hothead, you oversized slum cat?! I'll roast that rusty shield into slag and make you beg for mercy! La Grondement Du Haine!",
-      retort: "Dragon Witch! Screaming about burning the world down won't work on me. I've babysat stubborn hotheads like Luvria for years—throw those flames right here!",
+      intro: "Out of my way, iron wall! If you stand between me and my quarry, I'll melt that rusty slab right into your chest!",
+      retort: "Heh, I've spent years dealing with reckless, stubborn brats throwing magical fits. Plant your boots and roar all you want, witch—this wall isn't moving.",
       tag: "FLAMES OF VENGEANCE VS SCARRED BASTION"
     }
   },
@@ -548,93 +548,93 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // =========================================================================
   artoria_pendragon_alter: {
     artoria_pendragon: {
-      intro: "Look at yourself, King of Knights. Blinded by chivalric fairy tales while Britain crumbled. I shall bury your weakness once and for all.",
-      retort: "I carried the weight of my people with honor! A kingdom built upon terror is no kingdom at all! Excalibur, ignite!",
+      intro: "A king who starves her own heart to feed her people will only leave them with ashes. Let me show you the weight of the reality you ignored.",
+      retort: "You abandoned the oath we swore to the very end! I will not let a tyrant wear my face and mock the knights who fell for Britain!",
       tag: "THRONE OF SHADOWS: LIGHT VS DARK"
     },
     gilgamesh_archer: {
-      intro: "King of Babylon. Still flaunting your golden treasures like a pampered prince? Let us see if your vault can stop Excalibur Morgan!",
-      retort: "Fuhahaha! What insolence from a corrupted doll! I shall pin you to the earth with celestial blades, black knight!",
+      intro: "Your endless prattling is a waste of oxygen, King of Heroes. If you won't draw your sword, I'll turn you and your trinkets to dust.",
+      retort: "Hah! A corrupted mongrel dares to bare its fangs at the king? Let us see how long that blackened armor can withstand the weight of the heavens!",
       tag: "BLACK SWORD VS HEAVEN'S VAULT"
     },
     scathach_lancer: {
-      intro: "Queen of the Land of Shadows. If you seek death so desperately, step forward. My black blade grants no mercy.",
-      retort: "Cold, heavy, and ruthless. A magnificent stroke, Black King. Show me if it has the power to reach my heart!",
+      intro: "You seek to die, yet you guard your life with a master's spear. Make up your mind, or I will cleave through both your hesitation and your heart.",
+      retort: "A tyrant's heavy strikes lack finesse, but possess undeniable power. Show me if that dark light can reach the Abyss I reside in.",
       tag: "SHADOW SOVEREIGNS CLASH"
     },
     jeanne_darc_ruler: {
-      intro: "Ruler. Your gentle prayers are useless on a battlefield of blood and iron. Disappear before I cut your banner down.",
-      retort: "Artoria... The darkness around your heart cannot extinguish the oath you once swore. I will not yield!",
+      intro: "Still clinging to that tattered flag, saint? Your prayers won't generate mana, and they certainly won't stop this sword.",
+      retort: "I do not fight with prayers alone, Artoria! As long as there are people to protect, this banner will not fall to your tyranny!",
       tag: "IRON RULE VS SAINT'S BANNER"
     },
     jeanne_alter: {
-      intro: "A screeching dragon witch... How noisy. If you think screaming makes you strong, prepare for a harsh awakening.",
-      retort: "What did you say, you stuck-up goth king?! I'll burn that arrogant expression right off your face!",
+      intro: "Loud, petty, and unrefined as always. Try not to trip over your own excessive edge, fake saint.",
+      retort: "Oh, shut up, you junk-food-obsessed goth! I'm going to roast you inside that tin can you call armor!",
       tag: "BLACK MAJESTY VS DRAGON WITCH"
     },
     mhx_alter: {
-      intro: "Another version of me from space with a sweet tooth? Ridiculous. Go back to your pastries before I crush your reactor.",
-      retort: "Fast-food consumer detected. Eliminating inferior culinary influence. Engaging Cross-Calibur.",
+      intro: "A galactic assassin who wastes her budget on sweets instead of proper maintenance. Hand over the junk food, and I might make this quick.",
+      retort: "Target designated: Burger-consuming Saber variant. Commencing extermination to secure the universal sugar supply. Cross-Calibur...",
       tag: "FAST FOOD VS WAGASHI: ALTER RIVALRY"
     },
     artoria_pendragon_alter: {
-      intro: "An exact copy of my corrupted Spirit Origin? Hmph. There is only room for one tyrant at the head of this army.",
-      retort: "A mirror? Then prove your right to command. Only the strongest black sword shall rule.",
+      intro: "An illusion born of stagnant mana? How irritating. I don't have the patience to look at my own face.",
+      retort: "Then close your eyes permanently. There's only room for one tyrant to devour this world's resources.",
       tag: "MIRROR OF THE BLACK DRAGON"
     },
     nero_claudius_saber: {
-      intro: "Emperor of Rome. Your theatrical posturing disgusts me. War is not art—it is absolute submission.",
-      retort: "Umu! What a grim and sour expression! Rome shall teach you that even in battle, passion and beauty reign supreme!",
+      intro: "A battlefield is no place for a concert. Silence that obnoxious voice of yours, or I will permanently ruin your vocal cords.",
+      retort: "How incredibly drab! An emperor must shine even in the darkest mud! I shall teach you the brilliant colors of Rome, Black King!",
       tag: "DARK TYRANNY VS GOLDEN THEATER"
     },
     emiya_archer: {
-      intro: "You reek of iron and foolish regrets. To think you still cling to such a naive delusion after everything it cost you... Your stubbornness is an insult to your own existence, Archer.",
-      retort: "Hah. And your pragmatism is just an excuse to throw a temper tantrum, Saber. I've already accepted how hollow my path is. The difference is, I didn't have to throw away my heart to keep fighting.",
-      tag: "HOLLOW PATHS & BROKEN IDEALS"
+      intro: "A nameless hero swinging borrowed blades. You cannot save anything in this state, Archer. Step aside, or be swept away with the rest of the trash.",
+      retort: "I'll pass. I might be a fake who only cleans up messes, but watching the King of Knights reduce herself to a mindless storm of destruction is where I draw the line.",
+      tag: "HOLLOW PATHS & BORROWED BLADES"
     },
     heracles_berserker: {
-      intro: "Heracles... The greatest brute of Olympus. Let us see how many times Excalibur Morgan must kill you before you stay down!",
-      retort: "■■■■■■■■■■■■---!! (Heracles roars with titanic ferocity, determined to shatter the dark blade that threatens him!)",
+      intro: "A mindless beast is just a large target. Stand still and let me burn away all twelve of your lives at once.",
+      retort: "■■■■■■■■■■■■---!!",
       tag: "NINE LIVES VS CORRUPTED EXCALIBUR"
     },
     cu_chulainn_lancer: {
-      intro: "Hound of Culann. Try dodging a wave of dark dragon breath with your cheap parlor tricks.",
-      retort: "Tch! You're a lot scarier in black, Saber! Guess I'll have to pierce your heart before that mega-blast goes off!",
+      intro: "Your footwork is irritating. I will simply obliterate the ground you stand on, hound.",
+      retort: "Tch. You're a lot less fun to spar with in black, Saber. Guess I'll have to take your heart before you can swing that oversized club.",
       tag: "DEADLY THRUST VS BLACK BURST"
     },
     karna_lancer: {
-      intro: "Hero of Charity. Your golden radiance is blinding. I shall drown your sacred fire beneath the black mud of the Grail.",
-      retort: "Black King. No darkness can extinguish the sun while Surya watches over this field. On guard.",
+      intro: "The sun is an eyesore. I will swallow your charity and your flames in the abyss of my mana.",
+      retort: "Your armor is heavy with corrupted duty, Black King. But my flames will not yield to mere shadows.",
       tag: "SOLAR FLAME VS GRAIL CORRUPTION"
     },
     adiosa_dragon_envoy: {
-      intro: "A primordial cosmic dragon... You radiate an unnatural gravitational pull. Let us see if your scales can withstand Excalibur Morgan!",
-      retort: "⟨ Voth Krav'nok. ⟩ Such heavy black mana from a small mortal container. An interesting snack, but still just dust.",
+      intro: "You reek of unfamiliar stars and overwhelming mass. But a dragon is still a dragon, and my sword was forged to slay them.",
+      retort: "⟨ Voth Krav'nok. ⟩ Such dense, violent mana from a fragile human shell. You may prove to be a more entertaining meal than the rest.",
       tag: "DRAGON OF CAMELOT VS DRAGON OF LYONA"
     },
     aoko_aozaki: {
-      intro: "The Fifth Magician. Accelerating entropy to cheat causality... A parlor trick. No distortion of time can withstand the sheer crushing weight of Excalibur Morgan.",
-      retort: "Whoa, that black armor means serious business! If you think pure raw brute force can out-muscle the Fifth Magic, you've got a lot to learn, Gothic King!",
+      intro: "Manipulating time to dodge a strike you cannot block? A coward's magecraft. I will simply crush the space you attempt to flee to.",
+      retort: "Hey, who said anything about dodging? If you think you can just brute-force your way through the Fifth Magic, you’re in for a very painful physics lesson!",
       tag: "FIFTH MAGIC RETROGRADE VS EXCALIBUR MORGAN"
     },
     amamiya_no_chihaya_tenkohime: {
-      intro: "An ancient celestial fox guardian. Instinct alone will not save you when the ground beneath your paws is cleaved into the abyss.",
-      retort: "H-Hii! Such scary black armor and a giant dark sword! But washi's shrine barriers and Amazakura will not break before thy gloomy tyranny!",
+      intro: "An antique spirit trying to hold back a storm with paper talismans. Burn with your shrine, fox.",
+      retort: "H-Hii! Such scary black armor! But this great fox guardian will not let her sacred grounds be bulldozed by a gloomy tyrant!",
       tag: "BLACK DRAGON OF BRITAIN VS ANCIENT KYUBI"
     },
     lucia_lyozes: {
-      intro: "Hmph. A stubborn high elf clinging to dead comrades. Let your black lance test the weight of Excalibur Morgan, vanguard.",
-      retort: "A tyrant wielding corrupted holy steel. You discard sentiment for tyrannical efficiency, but ruthlessness without tactical clarity is merely reckless violence.",
+      intro: "A vanguard who relies on sentiment will eventually break her own shield. Let us see if your black iron can withstand a true tyrant's blow.",
+      retort: "You've discarded your heart for the sake of efficiency, King of Knights. But a blade swung without purpose is just reckless violence. I will stop you here.",
       tag: "BLACK IRON VS BLACK SUN"
     },
     luvria_greenharte: {
-      intro: "Hero of Lyozes? Flaunting infinite mana and claiming omnipotence? Let us see if your conceptual nullification can deny the crushing abyss of Morgan.",
-      retort: "My my, what a delightfully gloomy tyrant! A black dragon sword that seeks to crush all creation? How charmingly heavy! Let us see if it can crush a concept that has already been erased!",
+      intro: "Erasing concepts is a parlor trick for those who lack the physical strength to end their enemies. I will crush your nullification with sheer, overwhelming mass.",
+      retort: "My, what a delightfully gloomy tyrant! You think pure magical density can crush an erasure? How charmingly stubborn! Let's put that to the test!",
       tag: "EXCALIBUR MORGAN VS CONCEPT NULLIFICATION"
     },
     edmond: {
-      intro: "Insolent beast. No fortress of iron withstands the abyss of Morgan. Brace yourself, vanguard—I will cleave your bedrock in twain.",
-      retort: "Dark dragon mana radiating from that blackened blade... You've discarded the white armor, King of Knights, but your strike is heavier than ever. Bring it on—my shield doesn't care what color the sword is!",
+      intro: "No fortress holds against Excalibur. If you insist on playing the unyielding wall, I will shatter you into the bedrock.",
+      retort: "That blackened blade carries a ridiculous amount of mana... but I've held off worse. Bring it on! This shield doesn't care how heavy your resentment is!",
       tag: "TYRANT'S CALIBURN VS SCARRED REDOUBT"
     }
   },
