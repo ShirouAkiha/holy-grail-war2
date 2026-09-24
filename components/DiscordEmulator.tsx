@@ -50,13 +50,20 @@ import {
   type BondEvent
 } from '../lib/engine/bondEvents';
 import { CRAFT_ESSENCE_DATABASE, BOND_CRAFT_ESSENCES, getBondCraftEssenceForServant, checkAndGrantBond10Ce } from '../lib/data/craftEssences';
-import MASTERS_DATABASE from '../data/masters.json';
+const DEFAULT_CIVILIAN_MASTERS: any[] = [];
 import {
   renderServantProfileCard,
   renderDialogueCard,
   renderDefeatDialogueCard,
   renderBattleTurnSummary
 } from '../lib/canvas/browserCanvas';
+import {
+  PROVIDER_ALL_MODELS_CATALOG,
+  getModelsForProvider,
+  PROVIDER_DISPLAY_NAMES,
+  DEFAULT_PROVIDER_MODELS,
+  ApiProviderType
+} from '../src/engine/byokService';
 import { getServantChainDialogue, getServantDefeatDialogue } from '@/src/engine/dialogue';
 import {
   calculateCurrentHp,
@@ -3318,7 +3325,7 @@ export default function DiscordEmulator({
     }
 
     // ----------------------------------------------------
-    // COMMAND 3.7: /apikey, /byok, /api (AI Providers & Free Models Hub)
+    // COMMAND 3.7: /apikey, /byok, /api (AI Providers & Full Model Explorer)
     // ----------------------------------------------------
     if (trimmed.startsWith('/apikey') || trimmed.startsWith('!apikey') || trimmed.startsWith('/byok') || trimmed.startsWith('!byok') || trimmed.startsWith('/api') || trimmed.startsWith('!api')) {
       const args = trimmed.split(/\s+/).slice(1);
@@ -3340,33 +3347,31 @@ export default function DiscordEmulator({
           embed: {
             title: '📖 How to Get 100% Free AI Keys in 1 Minute',
             description:
-              `Master **${master.username}**, you have multiple completely **100% FREE options** with no credit card required!\n\n` +
+              `Master **${master.username}**, you have complete freedom to choose any provider and model with zero cost!\n\n` +
               `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-              `### ⚡ Option A: Groq Cloud (Recommended — Ultra-Fast 300+ tok/s)\n` +
-              `1️⃣ Open **[console.groq.com/keys](https://console.groq.com/keys)** & sign in with GitHub or Google.\n` +
-              `2️⃣ Click **"Create API Key"** and copy your \`gsk_...\` key.\n` +
+              `### ⚡ Option A: Groq Cloud (Ultra-Fast 300+ tok/s — 100% Free)\n` +
+              `1️⃣ Open **[console.groq.com/keys](https://console.groq.com/keys)** & sign in.\n` +
+              `2️⃣ Create an API key and copy your \`gsk_...\` string.\n` +
               `3️⃣ Run \`/apikey set provider:groq key:<your_key>\`.\n` +
-              `*Benefits: 100% Free tier, 14,400 requests/day, blistering fast Llama 3.3 70B!*\n\n` +
-              `### 🔷 Option B: Google AI Studio (Gemini — Top Visual Novel Nuance)\n` +
+              `*Benefits: 100% Free tier, 14,400 daily requests, Llama 3.3 70B & DeepSeek R1 Distill!*\n\n` +
+              `### 🔷 Option B: Google AI Studio (Gemini — Free Visual Novel Fidelity)\n` +
               `1️⃣ Open **[aistudio.google.com/apikey](https://aistudio.google.com/apikey)** & sign in with Google.\n` +
-              `2️⃣ Click **"Create API Key"** and copy your \`AIzaSy...\` key.\n` +
-              `3️⃣ Run \`/apikey set provider:gemini key:<your_key>\`.\n` +
-              `*Benefits: Free forever tier (15 requests/minute), superb authentic dialogue!*\n\n` +
-              `### 🌐 Option C: OpenRouter.ai (Access 20+ Free Models)\n` +
+              `2️⃣ Create an API key (\`AIzaSy...\`) and connect it.\n` +
+              `*Benefits: Free forever tier, 1M+ context window, rich Fate dialogue nuance!*\n\n` +
+              `### 🌐 Option C: OpenRouter.ai (Access 200+ Models)\n` +
               `1️⃣ Open **[openrouter.ai/keys](https://openrouter.ai/keys)** & generate a key.\n` +
-              `2️⃣ Models ending with \`:free\` (such as \`meta-llama/llama-3.3-70b-instruct:free\`) cost $0.00!\n\n` +
-              `### 💻 Option D: Ollama / Local AI (100% Offline & Private)\n` +
-              `1️⃣ Run \`ollama run llama3.2\` on your computer.\n` +
-              `2️⃣ Connect via \`/apikey set provider:ollama model:llama3.2\` (Zero cost, runs offline)!`,
+              `2️⃣ Choose any model (or 20+ \`:free\` models) for zero-cost or paid premium dialogue!\n\n` +
+              `### 💻 Option D: Ollama / Local AI (100% Free & Offline)\n` +
+              `1️⃣ Install [Ollama](https://ollama.ai) and run \`ollama run llama3.2\`.\n` +
+              `2️⃣ Zero API keys needed — runs privately on your hardware.`,
             color: '#10b981',
             footer: 'Fate Holy Grail War • Zero Cost AI Providers Guide'
           },
           components: {
             type: 'buttons',
             items: [
-              { id: 'btn_apikey_select_groq_70b', label: 'Use Groq Free 70B', style: 'primary', emoji: '⚡' },
-              { id: 'btn_apikey_select_gemini_flash', label: 'Use Gemini Free', style: 'primary', emoji: '🔷' },
-              { id: 'btn_apikey_freepresets', label: 'Browse Free Models', style: 'success', emoji: '🎁' },
+              { id: 'btn_apikey_models_menu', label: 'Explore All Models', style: 'primary', emoji: '🤖' },
+              { id: 'btn_apikey_switch_provider', label: 'Switch Provider', style: 'secondary', emoji: '🔄' },
               { id: 'btn_apikey_dashboard', label: 'Back to Hub', style: 'secondary', emoji: '↩️' }
             ]
           }
@@ -3374,31 +3379,55 @@ export default function DiscordEmulator({
         return;
       }
 
-      if (sub === 'freemodels' || sub === 'free' || sub === 'models') {
+      if (sub === 'models' || sub === 'freemodels' || sub === 'free') {
+        const targetProvider = (args[1]?.toLowerCase() as ApiProviderType) || cfg.activeProvider || 'gemini';
+        const providerName = PROVIDER_DISPLAY_NAMES[targetProvider] || targetProvider;
+        const models = getModelsForProvider(targetProvider);
+
+        const currentActiveModel =
+          targetProvider === 'gemini' ? (cfg.geminiModel || DEFAULT_PROVIDER_MODELS.gemini) :
+          targetProvider === 'groq' ? (cfg.groqModel || DEFAULT_PROVIDER_MODELS.groq) :
+          targetProvider === 'openrouter' ? (cfg.openrouterModel || DEFAULT_PROVIDER_MODELS.openrouter) :
+          targetProvider === 'deepseek' ? (cfg.deepseekModel || DEFAULT_PROVIDER_MODELS.deepseek) :
+          targetProvider === 'mistral' ? (cfg.mistralModel || DEFAULT_PROVIDER_MODELS.mistral) :
+          targetProvider === 'nanogpt' ? (cfg.nanogptModel || DEFAULT_PROVIDER_MODELS.nanogpt) :
+          targetProvider === 'ollama' ? (cfg.ollamaModel || DEFAULT_PROVIDER_MODELS.ollama) :
+          (cfg.customModel || 'default');
+
+        const modelListText = models.map(m =>
+          `• **\`${m.id}\`** — ${m.name} ${m.isFreeTier ? '🎁 *(Free)*' : ''}\n  *${m.description}*`
+        ).join('\n\n');
+
+        // Create quick select buttons for top models
+        const topModelButtons = models.slice(0, 4).map(m => ({
+          id: `btn_apikey_set_model:${targetProvider}:${m.id}`,
+          label: `${m.name.length > 22 ? m.name.slice(0, 20) + '...' : m.name}`,
+          style: (m.id === currentActiveModel ? 'primary' : 'secondary') as any,
+          emoji: m.isFreeTier ? '🎁' : '🤖'
+        }));
+
         addMessage({
-          id: getNextId('bot_apikey_free_models'),
+          id: getNextId('bot_apikey_models_list'),
           sender: 'bot',
           timestamp: 'Just now',
           embed: {
-            title: '🌟 100% Free AI Model Selector',
+            title: `🤖 ${providerName} — All Available Models`,
             description:
-              `Master **${master.username}**, choose any curated **100% Free Model** below to apply it instantly to your account with zero cost!\n\n` +
-              `• ⚡ **Groq Llama 3.3 70B Versatile:** Flagship 70B model running at 300+ tok/s on Groq LPUs. Completely free!\n` +
-              `• 🔷 **Google Gemini 3.5 Flash:** Superb Fate roleplay nuance & personality on Google AI Studio free tier.\n` +
-              `• 🌐 **OpenRouter Llama 3.3 70B (:free):** Meta 70B instruct model hosted at $0.00.\n` +
-              `• 💻 **Ollama Local AI:** 100% Free offline execution on your own machine.\n\n` +
-              `*Click any button below to activate the model instantly:*`,
-            color: '#10b981',
-            footer: 'Select a free model below for 1-click activation'
+              `Master **${master.username}**, here are all models available for **${providerName}**.\n\n` +
+              `• **Active Selected Model:** \`${currentActiveModel}\`\n` +
+              `• **Total Catalog Models:** \`${models.length} available\`\n\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+              modelListText + `\n\n` +
+              `💡 *You can also type any custom/new model ID with \`/apikey model <any_model_id>\`!*`,
+            color: '#3b82f6',
+            footer: 'Click a model below to activate or switch providers'
           },
           components: {
             type: 'buttons',
             items: [
-              { id: 'btn_apikey_select_groq_70b', label: '⚡ Groq: Llama 3.3 70B (Free & Fast)', style: 'primary', emoji: '⚡' },
-              { id: 'btn_apikey_select_gemini_flash', label: '🔷 Gemini: 3.5 Flash (Free Tier)', style: 'primary', emoji: '🔷' },
-              { id: 'btn_apikey_select_openrouter_free', label: '🌐 OpenRouter: Llama 3.3 70B (:free)', style: 'secondary', emoji: '🌐' },
-              { id: 'btn_apikey_select_ollama_local', label: '💻 Ollama: Llama 3.2 (Local Free)', style: 'secondary', emoji: '💻' },
-              { id: 'btn_apikey_dashboard', label: 'Hub Dashboard', style: 'secondary', emoji: '↩️' }
+              ...topModelButtons,
+              { id: 'btn_apikey_switch_provider', label: 'Other Providers', style: 'secondary', emoji: '🌐' },
+              { id: 'btn_apikey_dashboard', label: 'Dashboard', style: 'secondary', emoji: '↩️' }
             ]
           }
         });
@@ -3406,7 +3435,8 @@ export default function DiscordEmulator({
       }
 
       if (sub === 'provider' && args[1]) {
-        const targetProvider = args[1].toLowerCase() as any;
+        const targetProvider = args[1].toLowerCase() as ApiProviderType;
+        const providerName = PROVIDER_DISPLAY_NAMES[targetProvider] || targetProvider;
         const updatedCfg = {
           ...cfg,
           activeProvider: targetProvider,
@@ -3416,20 +3446,80 @@ export default function DiscordEmulator({
           ...master,
           customApiConfig: updatedCfg
         });
+
+        const models = getModelsForProvider(targetProvider);
+        const topModelButtons = models.slice(0, 3).map(m => ({
+          id: `btn_apikey_set_model:${targetProvider}:${m.id}`,
+          label: m.name.slice(0, 20),
+          style: 'primary' as any,
+          emoji: '🤖'
+        }));
+
         addMessage({
           id: getNextId('bot_apikey_provider_switched'),
           sender: 'bot',
           timestamp: 'Just now',
           embed: {
-            title: '🔄 AI Provider Switched',
-            description: `Active AI provider switched to **${targetProvider.toUpperCase()}**!\nUnlimited telepathic dialogue is active.`,
+            title: `🔄 Active AI Provider: ${providerName}`,
+            description:
+              `Master **${master.username}**, your active AI provider has been switched to **${providerName}**!\n\n` +
+              `• **Total Models in Catalog:** \`${models.length}\`\n` +
+              `• **Default Model:** \`${DEFAULT_PROVIDER_MODELS[targetProvider] || 'default'}\`\n\n` +
+              `Choose any model below or use \`/apikey model <name>\` to select any specific model!`,
             color: '#3b82f6'
           },
           components: {
             type: 'buttons',
             items: [
-              { id: 'btn_apikey_freepresets', label: 'Choose Free Model', style: 'primary', emoji: '🎁' },
-              { id: 'btn_apikey_dashboard', label: 'Open Hub', style: 'secondary', emoji: '🔑' }
+              ...topModelButtons,
+              { id: 'btn_apikey_models_menu', label: 'Browse All Models', style: 'secondary', emoji: '📋' },
+              { id: 'btn_apikey_dashboard', label: 'Hub Dashboard', style: 'secondary', emoji: '🔑' }
+            ]
+          }
+        });
+        return;
+      }
+
+      if (sub === 'model' && args[1]) {
+        const targetModel = args.slice(1).join(' ').replace(/^custom_model_id:/i, '').trim();
+        const activeProvider = cfg.activeProvider || 'gemini';
+        const updatedCfg = {
+          ...cfg,
+          enabled: true
+        };
+
+        if (activeProvider === 'gemini') updatedCfg.geminiModel = targetModel;
+        else if (activeProvider === 'groq') updatedCfg.groqModel = targetModel;
+        else if (activeProvider === 'openrouter') updatedCfg.openrouterModel = targetModel;
+        else if (activeProvider === 'deepseek') updatedCfg.deepseekModel = targetModel;
+        else if (activeProvider === 'mistral') updatedCfg.mistralModel = targetModel;
+        else if (activeProvider === 'nanogpt') updatedCfg.nanogptModel = targetModel;
+        else if (activeProvider === 'ollama') updatedCfg.ollamaModel = targetModel;
+        else updatedCfg.customModel = targetModel;
+
+        onUpdateMaster({
+          ...master,
+          customApiConfig: updatedCfg
+        });
+
+        addMessage({
+          id: getNextId('bot_apikey_model_custom_set'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '✅ AI Model Updated',
+            description:
+              `Master **${master.username}**, your model for **${PROVIDER_DISPLAY_NAMES[activeProvider]}** has been updated to:\n\n` +
+              `\`${targetModel}\`\n\n` +
+              `Telepathic Servant dialogue will now use this exact model!`,
+            color: '#10b981',
+            footer: 'Fate AI Engine • Model Customized'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'btn_apikey_dashboard', label: 'Hub Dashboard', style: 'primary', emoji: '🔑' },
+              { id: 'btn_apikey_models_menu', label: 'All Models', style: 'secondary', emoji: '📋' }
             ]
           }
         });
@@ -3439,9 +3529,13 @@ export default function DiscordEmulator({
       // Default: Dashboard
       const activeProvider = cfg.activeProvider || 'gemini';
       const activeModel =
-        activeProvider === 'gemini' ? (cfg.geminiModel || 'gemini-3.5-flash') :
-        activeProvider === 'groq' ? (cfg.groqModel || 'llama-3.3-70b-versatile') :
-        activeProvider === 'openrouter' ? (cfg.openrouterModel || 'meta-llama/llama-3.3-70b-instruct:free') :
+        activeProvider === 'gemini' ? (cfg.geminiModel || DEFAULT_PROVIDER_MODELS.gemini) :
+        activeProvider === 'groq' ? (cfg.groqModel || DEFAULT_PROVIDER_MODELS.groq) :
+        activeProvider === 'openrouter' ? (cfg.openrouterModel || DEFAULT_PROVIDER_MODELS.openrouter) :
+        activeProvider === 'deepseek' ? (cfg.deepseekModel || DEFAULT_PROVIDER_MODELS.deepseek) :
+        activeProvider === 'mistral' ? (cfg.mistralModel || DEFAULT_PROVIDER_MODELS.mistral) :
+        activeProvider === 'nanogpt' ? (cfg.nanogptModel || DEFAULT_PROVIDER_MODELS.nanogpt) :
+        activeProvider === 'ollama' ? (cfg.ollamaModel || DEFAULT_PROVIDER_MODELS.ollama) :
         (cfg.customModel || 'default');
 
       addMessage({
@@ -3449,30 +3543,25 @@ export default function DiscordEmulator({
         sender: 'bot',
         timestamp: 'Just now',
         embed: {
-          title: '🔑 Personal AI Provider & Free Models Hub (BYOK)',
+          title: '🔑 AI Provider & Model Management Hub',
           description:
-            `Master **${master.username}**, connect your personal API key or choose from **100% Free AI Models** (Groq Ultra-Fast, Google AI Studio, OpenRouter :free, or Local Ollama) to unlock **unlimited telepathic dialogue** with your Servants!\n\n` +
-            `🛡️ *All API keys are strictly confidential, AES-256-GCM encrypted, and accessible only to your account.*\n\n` +
+            `Master **${master.username}**, you have complete freedom to choose any AI provider and select any model (Flagship, Instant, Reasoning, Creative, or Local Offline) for **unlimited telepathic Servant dialogue**!\n\n` +
+            `🛡️ *All API keys are strictly confidential, AES-256-GCM encrypted, and stored privately.*\n\n` +
             `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
             `### ⚙️ Active AI Configuration\n` +
-            `• **Current Provider:** \`${activeProvider.toUpperCase()}\`\n` +
-            `• **Selected Model:** \`${activeModel}\` 🎁 *(100% Free Tier)*\n` +
+            `• **Current Provider:** \`${PROVIDER_DISPLAY_NAMES[activeProvider]}\`\n` +
+            `• **Active Selected Model:** \`${activeModel}\`\n` +
             `• **Status:** 🟢 **Active & Enabled** (Unlimited Chats)\n\n` +
-            `### ⚡ Free Models Available\n` +
-            `• **Groq Cloud:** \`llama-3.3-70b-versatile\` (100% Free, 300+ tok/s, 128k context)\n` +
-            `• **Google Gemini:** \`gemini-3.5-flash\` & \`gemini-3.5-flash-lite\` (Free on AI Studio)\n` +
-            `• **OpenRouter:** \`meta-llama/llama-3.3-70b-instruct:free\`, \`gemini-2.0-flash-exp:free\`\n` +
-            `• **Ollama:** \`llama3.2\`, \`mistral\` (100% Local Free Offline)`,
+            `### 🌟 Model Freedom & Flexibility\n` +
+            `Click **"Browse All Models"** below to view every model from ${PROVIDER_DISPLAY_NAMES[activeProvider]}, or switch to any other provider!`,
           color: '#10b981',
-          footer: 'Fate Vault Security Engine • Freedom of Choice & Zero Cost'
+          footer: 'Fate Vault Security Engine • Total Provider & Model Freedom'
         },
         components: {
           type: 'buttons',
           items: [
-            { id: 'btn_apikey_freepresets', label: 'Free Models Menu', style: 'primary', emoji: '🎁' },
+            { id: 'btn_apikey_models_menu', label: 'Browse All Models', style: 'primary', emoji: '🤖' },
             { id: 'btn_apikey_switch_provider', label: 'Switch Provider', style: 'secondary', emoji: '🔄' },
-            { id: 'btn_apikey_select_groq_70b', label: 'Use Groq Free 70B', style: 'secondary', emoji: '⚡' },
-            { id: 'btn_apikey_select_gemini_flash', label: 'Use Gemini Free', style: 'secondary', emoji: '🔷' },
             { id: 'btn_apikey_tutorial', label: 'Free Key Guide', style: 'secondary', emoji: '📖' }
           ]
         }
@@ -3918,7 +4007,7 @@ export default function DiscordEmulator({
       }
 
       if (!targetParticipant) {
-        const civilianMaster: any = (MASTERS_DATABASE as any[] || []).find(
+        const civilianMaster: any = (DEFAULT_CIVILIAN_MASTERS || []).find(
           (m: any) =>
             m && m.username &&
             m.username.toLowerCase().includes(targetQuery) &&
@@ -11024,16 +11113,60 @@ export default function DiscordEmulator({
       handleCommand('/daily');
     } else if (btnId === 'btn_apikey_dashboard') {
       handleCommand('/apikey dashboard');
-    } else if (btnId === 'btn_apikey_freepresets') {
-      handleCommand('/apikey freemodels');
+    } else if (btnId === 'btn_apikey_models_menu' || btnId === 'btn_apikey_freepresets') {
+      handleCommand('/apikey models');
     } else if (btnId === 'btn_apikey_tutorial') {
       handleCommand('/apikey tutorial');
     } else if (btnId === 'btn_apikey_switch_provider') {
-      const providers = ['gemini', 'groq', 'openrouter', 'ollama'];
-      const current = master.customApiConfig?.activeProvider || 'gemini';
+      const providers: ApiProviderType[] = ['gemini', 'groq', 'openrouter', 'deepseek', 'mistral', 'ollama', 'nanogpt', 'custom'];
+      const current = (master.customApiConfig?.activeProvider || 'gemini') as ApiProviderType;
       const nextIdx = (providers.indexOf(current) + 1) % providers.length;
       const nextProvider = providers[nextIdx];
       handleCommand(`/apikey provider ${nextProvider}`);
+    } else if (btnId.startsWith('btn_apikey_set_model:')) {
+      const parts = btnId.split(':');
+      const provider = parts[1] as ApiProviderType;
+      const modelId = parts.slice(2).join(':');
+
+      const updatedCfg = {
+        ...(master.customApiConfig || {}),
+        activeProvider: provider,
+        enabled: true
+      };
+
+      if (provider === 'gemini') updatedCfg.geminiModel = modelId;
+      else if (provider === 'groq') updatedCfg.groqModel = modelId;
+      else if (provider === 'openrouter') updatedCfg.openrouterModel = modelId;
+      else if (provider === 'deepseek') updatedCfg.deepseekModel = modelId;
+      else if (provider === 'mistral') updatedCfg.mistralModel = modelId;
+      else if (provider === 'nanogpt') updatedCfg.nanogptModel = modelId;
+      else if (provider === 'ollama') updatedCfg.ollamaModel = modelId;
+      else updatedCfg.customModel = modelId;
+
+      onUpdateMaster({ ...master, customApiConfig: updatedCfg });
+      addMessage({
+        id: getNextId('bot_model_selected'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: `🤖 Model Activated: ${modelId}`,
+          description:
+            `Master **${master.username}**, your active AI model is now **\`${modelId}\`** on **${PROVIDER_DISPLAY_NAMES[provider] || provider}**!\n\n` +
+            `• **Provider:** \`${PROVIDER_DISPLAY_NAMES[provider] || provider}\`\n` +
+            `• **Model:** \`${modelId}\`\n` +
+            `• **Status:** 🟢 **Active & Enabled**\n\n` +
+            `Unlimited telepathic dialogue is now active. Speak with your Servant anytime via \`/talk\`!`,
+          color: '#10b981',
+          footer: `${PROVIDER_DISPLAY_NAMES[provider] || provider} • Model Selected`
+        },
+        components: {
+          type: 'buttons',
+          items: [
+            { id: 'btn_apikey_dashboard', label: 'View Hub', style: 'primary', emoji: '🔑' },
+            { id: 'btn_apikey_models_menu', label: 'All Models', style: 'secondary', emoji: '📋' }
+          ]
+        }
+      });
     } else if (btnId === 'btn_apikey_select_groq_70b') {
       const updatedCfg = {
         ...(master.customApiConfig || {}),
@@ -11047,7 +11180,7 @@ export default function DiscordEmulator({
         sender: 'bot',
         timestamp: 'Just now',
         embed: {
-          title: '⚡ Free Model Activated: Groq Llama 3.3 70B',
+          title: '⚡ Model Activated: Groq Llama 3.3 70B',
           description:
             `Master **${master.username}**, your active AI model is now **Llama 3.3 70B Versatile** on **Groq Cloud**!\n\n` +
             `• **Speed:** Blistering 300+ tokens/sec on Groq LPUs\n` +
@@ -11055,13 +11188,13 @@ export default function DiscordEmulator({
             `• **Context:** 128k context for deep Servant memory & lore\n\n` +
             `Unlimited telepathic dialogue is now active. Speak with your Servant anytime via \`/talk\`!`,
           color: '#10b981',
-          footer: 'Groq Cloud • Free Ultra-Fast LPUs'
+          footer: 'Groq Cloud • Ultra-Fast LPUs'
         },
         components: {
           type: 'buttons',
           items: [
             { id: 'btn_apikey_dashboard', label: 'View Hub', style: 'primary', emoji: '🔑' },
-            { id: 'btn_apikey_freepresets', label: 'More Free Models', style: 'secondary', emoji: '🎁' }
+            { id: 'btn_apikey_models_menu', label: 'All Models', style: 'secondary', emoji: '📋' }
           ]
         }
       });
@@ -11078,21 +11211,21 @@ export default function DiscordEmulator({
         sender: 'bot',
         timestamp: 'Just now',
         embed: {
-          title: '🔷 Free Model Activated: Gemini 3.5 Flash',
+          title: '🔷 Model Activated: Gemini 3.5 Flash',
           description:
             `Master **${master.username}**, your active AI model is now **Gemini 3.5 Flash** on **Google AI Studio**!\n\n` +
             `• **Quality:** Exceptional visual novel roleplay nuance & lore fidelity\n` +
-            `• **Cost:** 100% Free forever tier\n` +
+            `• **Cost:** Free forever tier on Google AI Studio\n` +
             `• **Latency:** Instant telepathic response\n\n` +
             `Speak with your Servant anytime via \`/talk\`!`,
           color: '#3b82f6',
-          footer: 'Google AI Studio • Free Forever Tier'
+          footer: 'Google AI Studio • Flagship VN Model'
         },
         components: {
           type: 'buttons',
           items: [
             { id: 'btn_apikey_dashboard', label: 'View Hub', style: 'primary', emoji: '🔑' },
-            { id: 'btn_apikey_freepresets', label: 'More Free Models', style: 'secondary', emoji: '🎁' }
+            { id: 'btn_apikey_models_menu', label: 'All Models', style: 'secondary', emoji: '📋' }
           ]
         }
       });
@@ -11109,7 +11242,7 @@ export default function DiscordEmulator({
         sender: 'bot',
         timestamp: 'Just now',
         embed: {
-          title: '🌐 Free Model Activated: OpenRouter Llama 3.3 70B (:free)',
+          title: '🌐 Model Activated: OpenRouter Llama 3.3 70B (:free)',
           description:
             `Master **${master.username}**, your active AI model is now **meta-llama/llama-3.3-70b-instruct:free**!\n\n` +
             `• **Cost:** 100% Free on OpenRouter ($0.00/M tokens)\n` +
@@ -11122,7 +11255,7 @@ export default function DiscordEmulator({
           type: 'buttons',
           items: [
             { id: 'btn_apikey_dashboard', label: 'View Hub', style: 'primary', emoji: '🔑' },
-            { id: 'btn_apikey_freepresets', label: 'More Free Models', style: 'secondary', emoji: '🎁' }
+            { id: 'btn_apikey_models_menu', label: 'All Models', style: 'secondary', emoji: '📋' }
           ]
         }
       });
@@ -11140,7 +11273,7 @@ export default function DiscordEmulator({
         sender: 'bot',
         timestamp: 'Just now',
         embed: {
-          title: '💻 Free Model Activated: Ollama Local (Llama 3.2)',
+          title: '💻 Model Activated: Ollama Local (Llama 3.2)',
           description:
             `Master **${master.username}**, your active AI model is now **Ollama Local (llama3.2)**!\n\n` +
             `• **Execution:** 100% Local on your machine (\`localhost:11434\`)\n` +
@@ -11154,7 +11287,7 @@ export default function DiscordEmulator({
           type: 'buttons',
           items: [
             { id: 'btn_apikey_dashboard', label: 'View Hub', style: 'primary', emoji: '🔑' },
-            { id: 'btn_apikey_freepresets', label: 'More Free Models', style: 'secondary', emoji: '🎁' }
+            { id: 'btn_apikey_models_menu', label: 'All Models', style: 'secondary', emoji: '📋' }
           ]
         }
       });
