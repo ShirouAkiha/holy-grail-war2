@@ -3858,50 +3858,59 @@ async function startInteractiveDuel(
       return;
     }
 
-    // Human player turn reached: update message (Auto-Relay to bottom of channel)
+    // Human player turn reached: update message in-place cleanly and reliably
     const turnAttachment = await buildCurrentAttachment();
     const updatedEmbeds = buildCurrentEmbeds();
     const updatedButtons = buildCurrentButtons();
 
     try {
-      const channelToSend = interactionToEdit?.channel || contextInteraction?.channel;
-      if (channelToSend && typeof channelToSend.send === 'function') {
-        // Delete previous battle embed message so only the latest remains at the bottom
-        if (battleMsg && typeof battleMsg.delete === 'function') {
-          await battleMsg.delete().catch(() => {});
-        }
-        if (interactionToEdit && typeof interactionToEdit.deleteReply === 'function') {
-          await interactionToEdit.deleteReply().catch(() => {});
-        } else if (contextInteraction && typeof contextInteraction.deleteReply === 'function') {
-          await contextInteraction.deleteReply().catch(() => {});
-        }
-
-        battleMsg = await channelToSend.send({
+      if (battleMsg && typeof battleMsg.edit === 'function') {
+        await battleMsg.edit({
           content: activePingsContent,
           embeds: updatedEmbeds,
           files: [turnAttachment],
           components: updatedButtons
+        }).catch(async () => {
+          if (interactionToEdit && (interactionToEdit.deferred || interactionToEdit.replied)) {
+            await interactionToEdit.editReply({
+              content: activePingsContent,
+              embeds: updatedEmbeds,
+              files: [turnAttachment],
+              components: updatedButtons
+            }).catch(() => {});
+          } else if (contextInteraction && (contextInteraction.deferred || contextInteraction.replied)) {
+            await contextInteraction.editReply({
+              content: activePingsContent,
+              embeds: updatedEmbeds,
+              files: [turnAttachment],
+              components: updatedButtons
+            }).catch(() => {});
+          }
         });
-      } else if (interactionToEdit) {
-        await interactionToEdit.editReply({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
+      } else if (interactionToEdit && (interactionToEdit.deferred || interactionToEdit.replied)) {
+        await interactionToEdit.editReply({
+          content: activePingsContent,
+          embeds: updatedEmbeds,
+          files: [turnAttachment],
+          components: updatedButtons
+        }).catch(() => {});
+      } else if (contextInteraction && (contextInteraction.deferred || contextInteraction.replied)) {
+        await contextInteraction.editReply({
+          content: activePingsContent,
+          embeds: updatedEmbeds,
+          files: [turnAttachment],
+          components: updatedButtons
+        }).catch(() => {});
       }
 
-      // Dispatch any pending Noble Phantasm GIFs BELOW the newly relayed Battle Canvas!
+      // Dispatch any pending Noble Phantasm GIFs BELOW the Battle Canvas!
       if (pendingNpActors.length > 0) {
         for (const npActor of pendingNpActors) {
           await dispatchNpGif(npActor, interactionToEdit || contextInteraction);
         }
       }
     } catch (relayErr) {
-      console.warn('[duel] Auto-relay message failed, fallback to editReply:', relayErr);
-      if (interactionToEdit) {
-        await interactionToEdit.editReply({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
-      }
-      if (pendingNpActors.length > 0) {
-        for (const npActor of pendingNpActors) {
-          await dispatchNpGif(npActor, interactionToEdit || contextInteraction);
-        }
-      }
+      console.warn('[duel] Battle message update fallback:', relayErr);
     }
   };
 
@@ -4782,7 +4791,18 @@ async function startInteractiveDuel(
       // Advance to the next player's / servant's turn!
       await advanceTurn(i, pendingNpList);
     } catch (err: any) {
-      if (err.code === 10062 || err.code === 40060 || err.message?.includes('Unknown interaction')) return;
+      if (
+        err.code === 10062 || 
+        err.code === 40060 || 
+        err.code === 50027 || 
+        err.code === 10008 ||
+        err.code === 50001 ||
+        err.status === 403 ||
+        err.status === 404 ||
+        err.message?.includes('Unknown interaction') || 
+        err.message?.includes('Unknown Message') || 
+        err.message?.includes('already been acknowledged')
+      ) return;
       console.error('Error in duel battle collector:', err);
     }
   });
