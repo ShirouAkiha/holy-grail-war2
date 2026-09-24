@@ -24,6 +24,7 @@ import ServantWorkshop from '../components/ServantWorkshop';
 import CanvasStudio from '../components/CanvasStudio';
 import CodeExportHub from '../components/CodeExportHub';
 import { BondSanctum } from '../components/BondSanctum';
+import AnnouncementHub from '../components/AnnouncementHub';
 import {
   Terminal,
   Swords,
@@ -36,7 +37,8 @@ import {
   Zap,
   RotateCcw,
   BookOpen,
-  Heart
+  Heart,
+  Megaphone
 } from 'lucide-react';
 
 export default function Home() {
@@ -44,7 +46,7 @@ export default function Home() {
   const [grailWar, setGrailWar] = useState<HolyGrailWarSession>(() => loadGrailWarSession(getInitialMasterProfile()));
   const [customServants, setCustomServants] = useState<ServantTemplate[]>([]);
   const [activeTab, setActiveTab] = useState<
-    'discord' | 'bond' | 'combat' | 'grailwar' | 'summoning' | 'workshop' | 'canvas' | 'code'
+    'discord' | 'bond' | 'combat' | 'grailwar' | 'summoning' | 'workshop' | 'canvas' | 'code' | 'announcements'
   >('discord');
 
   useEffect(() => {
@@ -167,6 +169,7 @@ export default function Home() {
             { id: 'grailwar' as const, label: 'Holy Grail War Tournament', icon: Castle },
             { id: 'workshop' as const, label: 'Servant Workshop & Stats', icon: User },
             { id: 'canvas' as const, label: 'Canvas 2D Studio', icon: ImageIcon },
+            { id: 'announcements' as const, label: 'Server Release & Announcement', icon: Megaphone, badge: 'Launch' },
             { id: 'code' as const, label: 'Codebase & Architecture Export', icon: Code }
           ].map(tab => {
             const Icon = tab.icon;
@@ -244,6 +247,8 @@ export default function Home() {
         )}
 
         {activeTab === 'canvas' && <CanvasStudio master={master} />}
+
+        {activeTab === 'announcements' && <AnnouncementHub />}
 
         {activeTab === 'code' && <CodeExportHub />}
       </div>

@@ -1236,6 +1236,139 @@ export default function DiscordEmulator({
     }
   };
 
+  const HELP_PAGES = [
+    {
+      title: '🌟 Quick-Start & Essentials',
+      color: '#d4af37',
+      desc: 'The fundamental commands every Master needs to begin their Holy Grail War journey.',
+      commands: [
+        { cmd: '/daily', desc: 'Claim your daily allowance of +30 Saint Quartz (SQ). Resets universally at 00:00 UTC.', usage: '/daily' },
+        { cmd: '/profile', desc: 'Inspect your Master status, active Servant, and Command Seals (3/3).', usage: '/profile [@user]' },
+        { cmd: '/inventory', desc: 'Open your Master vault to manage Craft Essences, items, and tickets.', usage: '/inventory' },
+        { cmd: '/help', desc: 'Open this interactive command codex to explore all gameplay systems.', usage: '/help [category]' }
+      ]
+    },
+    {
+      title: '🎲 Summoning & Gacha Gate',
+      color: '#38bdf8',
+      desc: 'Summon legendary Heroic Spirits and tactical Craft Essences.',
+      commands: [
+        { cmd: '/summon', desc: 'Perform the Holy Grail summoning ritual to manifest 3★ to 5★ SSR Servants.', usage: '/summon [single|multi]' },
+        { cmd: '/gacha', desc: 'Enter the Chaldea Summoning Gate (Heroic Spirits & Craft Essences).', usage: '/gacha' },
+        { cmd: '/cegacha', desc: 'Summon tactical Craft Essences (CEs) to boost stats and combat passives.', usage: '/cegacha [1|10]' },
+        { cmd: '/ce', desc: 'Browse the Craft Essence Archive, preview artwork and Bond 10 CEs.', usage: '/ce [name]' }
+      ]
+    },
+    {
+      title: '⚔️ Servants & Customization',
+      color: '#a855f7',
+      desc: 'Manage your contracted heroes, allocate parameter stats, and equip gear.',
+      commands: [
+        { cmd: '/servants', desc: 'View your summoned Servant roster with interactive inspection buttons.', usage: '/servants' },
+        { cmd: '/servant <name>', desc: 'Pull up full Saint Graph parameters, animated NP card, and lore.', usage: '/servant <name>' },
+        { cmd: '/switch <name>', desc: 'Swap your primary battle partner and showcase Servant.', usage: '/switch <name>' },
+        { cmd: '/equip <ce>', desc: 'Equip a Craft Essence to boost ATK, HP, and tactical skills.', usage: '/equip <ce_name>' },
+        { cmd: '/customise', desc: 'Distribute stat points into ATK, HP, NP Charge, and Crit Rate.', usage: '/customise' },
+        { cmd: '/feed', desc: 'Fuse duplicate or spare CEs to level up your equipped Craft Essence.', usage: '/feed' }
+      ]
+    },
+    {
+      title: '🥊 Combat & Dueling Arena',
+      color: '#ef4444',
+      desc: 'Turn-based tactical battles with Buster, Arts, Quick cards & Noble Phantasms.',
+      commands: [
+        { cmd: '/duel @user', desc: 'Challenge another Master to a real-time card duel with animated NPs.', usage: '/duel @user' },
+        { cmd: '/heal', desc: 'Spend Command Seals or holy water to restore your Servant to full HP.', usage: '/heal' },
+        { cmd: '/boast', desc: 'Proclaim your combat achievements on the Holy Church notice board.', usage: '/boast' }
+      ]
+    },
+    {
+      title: '🗺️ Grail War & Espionage',
+      color: '#10b981',
+      desc: '7-Master battle royale, stealth scouting, familiars, and territorial wards.',
+      commands: [
+        { cmd: '/grailwar', desc: 'View the 7-Master war room, leaked intel, and war chronicle.', usage: '/grailwar status' },
+        { cmd: '/patrol', desc: 'Stealth patrol Fuyuki sectors to uncover intel and detect enemy traps.', usage: '/patrol' },
+        { cmd: '/familiar', desc: 'Deploy scout familiars to spy on suspected Masters and find their True Names.', usage: '/familiar [deploy|recall]' },
+        { cmd: '/ambush @user', desc: 'Launch a surprise assault against a suspected Master (or /attack).', usage: '/ambush @user' },
+        { cmd: '/trap', desc: 'Conceal Bounded Field traps (Alarm or Bloodfort Mana Drain) in channels.', usage: '/trap [type]' },
+        { cmd: '/defenses', desc: 'Manage your workshop wards and Command Seal emergency auto-evacuation.', usage: '/defenses' },
+        { cmd: '/leak <intel>', desc: 'Broadcast anonymous intel or deception to the surveillance network.', usage: '/leak <intel>' },
+        { cmd: '/church', desc: 'Seek sanctuary at Fuyuki Church under Father Kotomine’s protection.', usage: '/church' }
+      ]
+    },
+    {
+      title: '💖 Bond, Dialogue & Interludes',
+      color: '#ec4899',
+      desc: 'Deepen your connection with your Servant and unlock Visual Novel story scenes.',
+      commands: [
+        { cmd: '/talk', desc: 'Speak telepathically with your Servant with dynamic in-character responses.', usage: '/talk [message]' },
+        { cmd: '/bond', desc: 'Check your Bond Level progress, unlocked lore, and Bond 10 CE rewards.', usage: '/bond' },
+        { cmd: '/dialogue', desc: 'Trigger Visual Novel cut-in sequences, rival face-offs, and interludes.', usage: '/dialogue' }
+      ]
+    },
+    {
+      title: '⚙️ Workshop & Admin Tools',
+      color: '#64748b',
+      desc: 'Custom Servant creator, NP GIF animations, and AI key management.',
+      commands: [
+        { cmd: '/addservant', desc: 'Register a custom original Heroic Spirit or edit existing stats.', usage: '/addservant create' },
+        { cmd: '/admin npsettings', desc: 'Configure NP battle animations and battle round timers.', usage: '/admin npsettings' },
+        { cmd: '/apikey', desc: 'Connect your own Gemini or OpenRouter API key for unlimited AI chat.', usage: '/apikey set <key>' }
+      ]
+    }
+  ];
+
+  const postHelpMessage = (pageIndex: number = 0, msgIdToEdit?: string) => {
+    const validPage = Math.max(0, Math.min(HELP_PAGES.length - 1, pageIndex));
+    const pageData = HELP_PAGES[validPage];
+
+    const description = `**Category: ${pageData.title}**\n*${pageData.desc}*\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+      pageData.commands.map(c => 
+        `• **\`${c.cmd}\`**\n  ${c.desc}\n  ↳ *Usage:* \`${c.usage}\``
+      ).join('\n\n');
+
+    const helpEmbed = {
+      title: `${pageData.title.split(' ')[0]} FATE: PLEXVERSE RPG — COMMAND CODEX`,
+      description,
+      color: pageData.color,
+      footer: `Page ${validPage + 1} of ${HELP_PAGES.length} • Use buttons below to switch categories or navigate`
+    };
+
+    const isFirst = validPage <= 0;
+    const isLast = validPage >= HELP_PAGES.length - 1;
+
+    const components = {
+      type: 'buttons' as const,
+      items: [
+        { id: `help_page_${validPage - 1}`, label: '◀ Prev', style: 'secondary' as const, disabled: isFirst },
+        { id: 'help_page_0', label: '🌟 Quickstart', style: (validPage === 0 ? 'primary' : 'secondary') as any },
+        { id: 'help_page_1', label: '🎲 Gacha', style: (validPage === 1 ? 'primary' : 'secondary') as any },
+        { id: 'help_page_2', label: '⚔️ Servants', style: (validPage === 2 ? 'primary' : 'secondary') as any },
+        { id: 'help_page_3', label: '🥊 Combat', style: (validPage === 3 ? 'primary' : 'secondary') as any },
+        { id: 'help_page_4', label: '🗺️ Grail War', style: (validPage === 4 ? 'primary' : 'secondary') as any },
+        { id: 'help_page_5', label: '💖 Bond', style: (validPage === 5 ? 'primary' : 'secondary') as any },
+        { id: `help_page_${validPage + 1}`, label: 'Next ▶', style: 'secondary' as const, disabled: isLast }
+      ]
+    };
+
+    if (msgIdToEdit) {
+      setMessages(prev => prev.map(m => m.id === msgIdToEdit ? {
+        ...m,
+        embed: helpEmbed,
+        components
+      } : m));
+    } else {
+      addMessage({
+        id: getNextId('bot_help'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: helpEmbed,
+        components
+      });
+    }
+  };
+
   const handleCommand = (cmd: string) => {
     const rawCmd = cmd.trim();
     // Normalize exclamation mark prefix `!command` to `/command` or detect command keywords without slash
@@ -1248,7 +1381,7 @@ export default function DiscordEmulator({
         'attack', 'ambush', 'duel', 'summon', 'servant', 'servants', 'grailwar', 'grail', 'board', 'war',
         'daily', 'claim', 'church', 'sanctuary', 'bounty', 'bounties', 'reputation', 'rep', 'defenses', 'profile', 'inventory',
         'equip', 'dialogue', 'heal', 'feed', 'cegacha', 'gacha', 'patrol', 'leak',
-        'trap', 'traps', 'familiar', 'familiars', 'help', 'boast', 'art', 'artwork', 'np',
+        'trap', 'traps', 'familiar', 'familiars', 'help', 'commands', 'codex', 'guide', 'boast', 'art', 'artwork', 'np',
         'talk', 'speak'
       ];
       if (knownCommands.includes(firstWord)) {
@@ -1317,6 +1450,41 @@ export default function DiscordEmulator({
       commandText: rawCmd,
       timestamp: 'Just now'
     });
+
+    // ----------------------------------------------------
+    // COMMAND 0: /help, /commands, /codex, /guide
+    // ----------------------------------------------------
+    if (
+      trimmed === '/help' ||
+      trimmed.startsWith('/help ') ||
+      trimmed === '/commands' ||
+      trimmed.startsWith('/commands ') ||
+      trimmed === '/codex' ||
+      trimmed.startsWith('/codex ') ||
+      trimmed === '/guide' ||
+      trimmed.startsWith('/guide ')
+    ) {
+      let catIndex = 0;
+      const lower = trimmed.toLowerCase();
+      if (lower.includes('gacha') || lower.includes('summon') || lower.includes('ce') || lower.includes('banner')) {
+        catIndex = 1;
+      } else if (lower.includes('servant') || lower.includes('custom') || lower.includes('equip') || lower.includes('feed')) {
+        catIndex = 2;
+      } else if (lower.includes('duel') || lower.includes('combat') || lower.includes('pvp') || lower.includes('battle') || lower.includes('heal')) {
+        catIndex = 3;
+      } else if (lower.includes('war') || lower.includes('grail') || lower.includes('patrol') || lower.includes('trap') || lower.includes('familiar') || lower.includes('ambush') || lower.includes('church')) {
+        catIndex = 4;
+      } else if (lower.includes('bond') || lower.includes('talk') || lower.includes('dialogue') || lower.includes('interlude')) {
+        catIndex = 5;
+      } else if (lower.includes('admin') || lower.includes('mod') || lower.includes('setting') || lower.includes('key')) {
+        catIndex = 6;
+      } else if (lower.includes('quick') || lower.includes('daily') || lower.includes('start')) {
+        catIndex = 0;
+      }
+
+      postHelpMessage(catIndex);
+      return;
+    }
 
     // ----------------------------------------------------
     // COMMAND 1: /summon
@@ -7872,6 +8040,13 @@ export default function DiscordEmulator({
 
   // Button interaction handler
   const handleButtonClick = (btnId: string, msgId?: string) => {
+    // Help Codex category navigation buttons
+    if (btnId.startsWith('help_page_')) {
+      const pageNum = parseInt(btnId.replace('help_page_', ''), 10);
+      postHelpMessage(isNaN(pageNum) ? 0 : pageNum, msgId);
+      return;
+    }
+
     // Talk to Servant telepathic resonance button
     if (btnId.startsWith('btn_talk_servant') || btnId.startsWith('talk_servant_') || btnId === 'servant_act_talk') {
       const parts = btnId.split(':');
@@ -13034,6 +13209,8 @@ export default function DiscordEmulator({
               const q = inputCommand.toLowerCase().trim();
               const isEditing = q.startsWith('/addservant edit') || q.startsWith('/addservant');
               const slashCommands = [
+                { cmd: '/help', desc: '📖 Master Command Codex: Browse all Fate RPG commands & interactive guides' },
+                { cmd: '/commands', desc: '📖 Directory of all available bot slash commands' },
                 { cmd: '/patrol', desc: '👁️ Stealth patrol Fuyuki sectors to detect concealed traps & Bounded Fields safely' },
                 { cmd: '/petrol', desc: '👁️ Stealth patrol Fuyuki sectors to detect concealed traps & Bounded Fields safely' },
                 { cmd: '/trap', desc: '🕸️ Conceal Bounded Field traps in specific channels' },
