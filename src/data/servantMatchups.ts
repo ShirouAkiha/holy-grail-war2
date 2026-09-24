@@ -713,76 +713,98 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // =========================================================================
   // 9. EMIYA (ARCHER)
   // =========================================================================
+  // 9. EMIYA (ARCHER)
+  // =========================================================================
   emiya_archer: {
     artoria_pendragon: {
-      intro: "Facing you as an opponent, Saber... I suppose fate has a cruel sense of humor. Show me if your holy sword still cuts through hesitation.",
-      retort: "Archer... I do not know why your eyes carry such sorrow, but as a knight, I will meet your swords with everything I have!",
-      tag: "SWORN BLADES & DISTANT MEMORIES"
+      intro: "Still swinging that sword for a dream that will never answer back, Saber? You haven't changed in the slightest.",
+      retort: "My path was chosen without deceit, Archer. If you have abandoned your pride as a hero, then fall before Excalibur!",
+      tag: "IDEAL AND REGRET"
     },
     gilgamesh_archer: {
-      intro: "King of Heroes. You have infinite treasures in your vault, but you're not a wielder—just an owner. My projections will outmatch your arrogance!",
-      retort: "Insolent insect! A lowly faker dare preach to the King about mastery?! I shall nail your corpse to the ground with your own counterfeits!",
-      tag: "FAKER VS KING: UNLIMITED BLADE WORKS"
-    },
-    scathach_lancer: {
-      intro: "The legendary teacher of heroes... To cross blades with Scáthach herself is a true trial. Let's see if my projected armaments can endure your runes.",
-      retort: "Your projections carry the soul of their original makers. A fascinating craft, blacksmith hero. Let me test their temper!",
-      tag: "FORGED IN STEEL & SHADOWS"
-    },
-    jeanne_darc_ruler: {
-      intro: "Ruler. You arbitrate this war with pure intentions, but ideals alone won't protect you from those who desire the Grail's corruption.",
-      retort: "Archer, I understand your cynicism, but hope is never meaningless. Let us contest our beliefs with honor.",
-      tag: "CYNIC'S REALITY & SAINT'S HOPE"
-    },
-    jeanne_alter: {
-      intro: "Dragon Witch. Anger is a poor substitute for technique. If all you have is a burning tantrum, you won't last long against projected steel.",
-      retort: "Tantrum?! You smirking faker, I'll turn you and your knockoff junk swords into molten slag!",
-      tag: "PROJECTED STEEL VS WRATHFUL FLAME"
-    },
-    mhx_alter: {
-      intro: "Hold on... Another Artoria, but wielding dark energy sabers and extorting sweets? Why do I always end up babysitting Sabers?!",
-      retort: "Target identified: Skilled projection chef. Hand over your top-tier confectionery formulas immediately.",
-      tag: "EXASPERATED GUARDIAN & SWEETS HUNTER"
+      intro: "Hmph...Do you have enough weapons in stock, king of heroes?",
+      retort: "Insolent imitation! A thief of legends dare present his cheap reproductions before the King? I shall impale you where you stand!",
+      tag: "FAKER VS ORIGINAL SOVEREIGN"
     },
     artoria_pendragon_alter: {
-      intro: "Saber Alter. Seeing you like this... It's proof that absolute power without ideals is just an executioner's axe. I won't let you pass.",
-      retort: "Hypocrite. You sacrificed your own soul to become an executioner of the Counter Force. Don't lecture me about ideals.",
-      tag: "COUNTER FORCE EXECUTIONERS"
-    },
-    nero_claudius_saber: {
-      intro: "Emperor of Rome. Your confidence is enviable, but keeping your guard wide open for theatrical applause is going to cost you.",
-      retort: "Umu! A sharp tongue for an archer! But Rome's swordsmanship is as lethal as it is gorgeous! Trace whatever you like!",
-      tag: "PRACTICAL GUARDIAN & DRAMATIC EMPEROR"
-    },
-    emiya_archer: {
-      intro: "Another nameless guardian forged in steel? If you share my regrets, then you already know how this fight ends.",
-      retort: "A mirror of my own foolish ideals... Let's see whose Unlimited Blade Works has forged the sharper conviction.",
-      tag: "MIRROR OF THE WROUGHT IRON HERO"
-    },
-    heracles_berserker: {
-      intro: "Heracles... Taking all twelve of your lives in one battle is an impossible task for ordinary men. Good thing I'm just a faker. Trace on!",
-      retort: "■■■■■■■■■■■■---!! (The hero roars, remembering the bowman who once carved through six of his lives in the Fuyuki forest!)",
-      tag: "TWELVE LIVES: REMATCH IN STEEL"
+      intro: "Throwing away your doubts just to become an unthinking machine of slaughter... That's a rather lazy way to run a kingdom, Saber.",
+      retort: "Silence, stray cleaner. A fake who scurries through the mud has no right to lecture the King of Knights.",
+      tag: "BROKEN IDEALS"
     },
     cu_chulainn_lancer: {
-      intro: "Lancer. Still running around stabbing people with that cursed red spear? Let's settle the score from that school courtyard.",
-      retort: "Haha! The red archer who thinks he's a swordsman! Let's see if your Rho Aias can stop my Gáe Bolg this time!",
-      tag: "FUYUKI RIVALRY: HOUND & ARCHER"
+      intro: "Still rushing in headfirst with that spear, Lancer? One would think you'd learn some caution after all these Grail Wars.",
+      retort: "Tch! Can't you ever shut up and just fight, Archer? Let's see if those counterfeit blades can keep your heart inside your ribcage!",
+      tag: "RED AND BLUE RIVALRY"
+    },
+    heracles_berserker: {
+      intro: "A living fortress wrapped in the madness of Olympus... Taking six of your lives was exhausting enough the first time. Let's finish the rest.",
+      retort: "■■■■■■■■■■■■---!!",
+      tag: "THE LABORS OF IRON"
     },
     karna_lancer: {
-      intro: "Hero of Charity... Even with infinite projected weapons, facing the Son of Surya is a terrifying prospect. I'll need everything I have.",
-      retort: "Nameless hero. I sense the weight of countless battles in your spirit origin. Draw your steel, and let us not hold back.",
-      tag: "STEEL PROJECTION & SACRED SUN"
+      intro: "The supreme Hero of Charity... Facing an opponent whose spear burns away even deceit is truly the worst kind of matchup for a faker.",
+      retort: "Your armor is forged from quiet resolve, Archer. A heart that has weathered betrayal and slaughter still answers the call to battle. Come.",
+      tag: "HERO OF CHARITY & THE COUNTER GUARDIAN"
+    },
+    scathach_lancer: {
+      intro: "The gatekeeper of Dún Scáith herself. I suppose a mundane swordsman like me will have to exhaust every trick in the book to survive.",
+      retort: "You call yourself a fake, yet every edge you forge carries the weight of a lifetime of blood. Show me that unyielding craft, nameless warrior.",
+      tag: "WROUGHT STEEL & SHADOW SPEARS"
+    },
+    jeanne_darc_ruler: {
+      intro: "A maiden who walked straight into the flames with a smile... People like you are terrifying, saint. You never realize the cost until it's too late.",
+      retort: "I know the sorrow this world holds, Archer. But if we discard our prayers out of despair, who will stand for those who cannot fight?",
+      tag: "SAINT'S FAITH & GUARDIAN'S DESPAIR"
+    },
+    jeanne_alter: {
+      intro: "Screaming at the world because it didn't treat you fairly? Take some advice from a veteran of regret, girl: tantrums won't fill the void.",
+      retort: "You smug, condescending bastard! Wipe that know-it-all smirk off your face before I turn your rusty blades into ash!",
+      tag: "BITTER PHANTOMS"
+    },
+    nero_claudius_saber: {
+      intro: "Must you turn every skirmish into an opera, Emperor? A battlefield is a place for killing, not a stage for applause.",
+      retort: "Umu! How utterly dreary! A true hero must strike with flair and passion! Rome shall paint some color over that somber coat of yours!",
+      tag: "MIDNIGHT FORGE VS GOLDEN THEATER"
+    },
+    mhx_alter: {
+      intro: "Saberfaces falling out of deep space now? Good grief... Put down the pastries and step aside before I have to clean up this mess.",
+      retort: "Analysis: Red-coated archer entity exhibiting maternal culinary tendencies. Suppress hostility if nutrient rations are provided... Otherwise, engaging.",
+      tag: "HIGH REPRODUCTIONS VS JUNK FOOD REACTOR"
     },
     adiosa_dragon_envoy: {
-      intro: "What kind of monstrous entity is this?! The structure of my projections is disintegrating just standing near her gravitational field!",
-      retort: "⟨ Voth Krav'nok. ⟩ Replicating tiny metal toys with mortal mind-threads? How quaint. Crumble into ash.",
-      tag: "UNLIMITED BLADES VS DRACONIC PRUNING"
+      intro: "An unnatural mass distorting the local causal baseline... The Counter Force really loves dumping the most absurd anomalies right into my lap.",
+      retort: "⟨ Krav'nok rath. ⟩ A small, burnt soul bound to an endless wheel of cleanups. You smell of recycled iron, mortal. Break and be forgotten.",
+      tag: "COUNTER FORCE VS COSMIC ENTROPY"
+    },
+    aoko_aozaki: {
+      intro: "Shifting the universe's thermodynamic debt into the future just to throw heavy punches... You always did have the most reckless methods, Magician.",
+      retort: "Hey, as long as it gets the job done, right? Don't start lecturing me like an old man, Archer—let's see if those projection tricks can take a heavy round!",
+      tag: "PROJECTION MAGE-CRAFT VS FIFTH MAGIC"
+    },
+    amamiya_no_chihaya_tenkohime: {
+      intro: "An ancient nine-tailed divine beast... I'd rather not turn this shrine into a war zone, fox. How about we settle this without leveling the mountain?",
+      retort: "H-Hmph! Thou talkest smoothly for someone bristling with forged swords! Washi shall guard this sanctuary from thy gloomy, sharp-edged tricks!",
+      tag: "MODERN STEEL VS CELESTIAL BEAST"
+    },
+    lucia_lyozes: {
+      intro: "Seeing five seconds into the future is a deadly edge, vanguard. But what happens when the battlefield fills with thousands of blades all falling at once?",
+      retort: "You carry the hollow stride of a soldier who has outlived his cause, Archer. Even if a thousand swords fall, my lance only needs to find one opening.",
+      tag: "FIVE SECONDS OF FORESIGHT VS UNLIMITED BLADES"
     },
     luvria_greenharte: {
-      intro: "I've faced beings who thought they could rewrite reality before. It usually ends with a broken ideal. Are you ready for an arrow that doesn't care about your elven pride, Luvria?",
-      retort: "Hold that cynical chin high, Archer! A former bandit once taught me how to survive real misery. Thy arrows will find nothing to strike when distance itself is rendered void!",
-      tag: "PRAGMATIC ARCHER & THE OPTIMISTIC HERO"
+      intro: "Nullifying concepts on a whim? What a headache. Magic that rewrites common sense is precisely why I prefer cold, reliable steel.",
+      retort: "My, what an exhaustingly practical gentleman! You forge hollow copies out of sheer stubbornness? How delightful! Let us see if your iron can exist once its concept is stripped away!",
+      tag: "RECORDED ORIGINS VS CONCEPTUAL NULLIFICATION"
+    },
+    edmond: {
+      intro: "A tower shield held by a man who knows the weight of holding the line. Respectable... but every wall has a structural flaw if you know where to strike.",
+      retort: "Heh, you've got the eyes of an old veteran who's seen too many bad days. Come on then, Archer—let's see if your arrows have enough weight to crack this slab.",
+      tag: "THE COUNTER ARSENAL VS THE UNBROKEN WALL"
+    },
+    emiya_archer: {
+      intro: "Looking at my own face never gets any easier. Tell me... how many more people did you kill before you realized it was all meaningless?",
+      retort: "I stopped counting a long time ago. If you want to put an end to this pathetic existence, you'd better make sure your projection doesn't shatter first.",
+      tag: "MIRROR OF THE WROUGHT IRON"
     }
   },
 
