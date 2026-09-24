@@ -22,93 +22,93 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // =========================================================================
   artoria_pendragon: {
     artoria_pendragon: {
-      intro: "Another bearer of the Holy Sword Caliburn? Show me if your resolve matches the burden of Britain!",
-      retort: "A mirror of myself... The weight of the kingdom cannot be shared. Let our blades determine who stands!",
+      intro: "An exact reflection of myself? Britain's fate is a burden meant for one king alone. Draw Excalibur!",
+      retort: "If you truly carry the will of the King of Knights, you know this path permits no hesitation. Show me your resolve!",
       tag: "MIRROR OF CAMELOT"
     },
     gilgamesh_archer: {
-      intro: "Gilgamesh! Cease your haughty insolence! I rejected your proposals in life, and I reject your arrogance now!",
-      retort: "Fuhahaha! Still as defiant as ever, Saber! A king is meant to be adorned, and you shall submit to my treasury!",
+      intro: "Cease your shameless insolence, King of Heroes. Neither in this war nor any other shall Britain's honor be laid at the feet of your vanity!",
+      retort: "Still drowning in your stubborn delusions, Saber? A king is meant to be claimed, and you shall soon learn your place within my garden.",
       tag: "REJECTION OF THE GOLDEN KING"
     },
     scathach_lancer: {
-      intro: "Queen of the Land of Shadows... The legendary immortal warrior. My holy sword shall test your spear!",
-      retort: "The King of Knights herself. Let us see if your sacred blade can pierce the armor of death!",
+      intro: "The sovereign of Dún Scáith... I sense the cold boundary between life and death upon your spears. Let us test our resolve.",
+      retort: "A king who bears the sorrow of an entire kingdom without wavering. Let us see if your sacred edge can pierce an existence that cannot die.",
       tag: "CROWN VS LAND OF SHADOWS"
     },
     jeanne_darc_ruler: {
-      intro: "Maiden of Orleans, ruler of the Holy Grail War. If our paths must cross in combat, I shall fight with absolute honor.",
-      retort: "King of Britain, your righteous heart is known to heaven. Let this spar be governed by divine grace.",
+      intro: "Holy Maiden of Orleans. You who held a banner without malice amidst the flames... It is an honor to cross paths with such pure devotion.",
+      retort: "King of Knights. The light of your sword has given hope to countless souls. Let this duel be governed by righteousness and mutual respect.",
       tag: "RIGHTEOUS KINGS & SAINTS"
     },
     jeanne_alter: {
-      intro: "Dragon Witch... Your soul is blackened by vengeance. Lay down your cursed banner before Excalibur purges it!",
-      retort: "Shut your sanctimonious mouth, little king! Your holy light makes me want to vomit! Burn in black flame!",
+      intro: "A hollow phantom driven purely by spite... You brandish hatred like a torch, but an undisciplined flame will never reach my heart.",
+      retort: "Spare me the righteous sermon, you shining hypocrite! I’m going to scorch that pristine armor until you're nothing but black ash!",
       tag: "LIGHT OF CAMELOT VS DRAGON WITCH"
     },
     mhx_alter: {
-      intro: "Who are you?! You wield twin dark blades and claim to hunt Sabers... and why are you eating bean paste?!",
-      retort: "Target verified: Saber-class prime entity. Deploying dark matter reactor... Do not interrupt my tea break.",
+      intro: "Who are you? You bear my exact countenance, yet wield twin blades of cosmic darkness... and why are you casually dining on sweets?!",
+      retort: "Target confirmed: Original Saber-type entity. Engaging dark matter reactor... Please yield your rations quietly so I may return to my tea.",
       tag: "SABER HUNT: SPACE INTRUDER"
     },
     artoria_pendragon_alter: {
-      intro: "My blackened shadow... A king must never rule by terror and tyranny! I shall reclaim what was lost!",
-      retort: "Naive fool. Your soft-hearted ideals starved Britain to death. Pure, unyielding force is the only true kingship.",
+      intro: "A king who rules by dread alone has already abandoned her people. I will not allow a tyrant to defile the oath we swore!",
+      retort: "Still reciting fairy tales while the country turns to dust? How pathetic. I shall crush that fragile softness once and for all.",
       tag: "DUEL OF SOULS: LIGHT VS SHADOW"
     },
     nero_claudius_saber: {
-      intro: "Emperor of Rome, your theater is grand, but a battlefield is not a stage for vanity. Draw your blade!",
-      retort: "Umu! What a magnificent golden knight! But Rome's fiery passion shall outshine Britain's quiet stoicism!",
+      intro: "Emperor of Rome. The battlefield is an altar of sacrifice, not a stage for self-indulgence. Ready your blade.",
+      retort: "Umu! What a delightfully stern and stoic sovereign! But Rome's burning passion shall show you that glory must always bloom with beauty!",
       tag: "RED SABER VS BLUE SABER"
     },
     emiya_archer: {
-      intro: "Archer... There is an odd familiarity in the way you hold those dual swords. Let us see if your steel holds true!",
-      retort: "Facing you again, Saber... My projections may be fakes, but I won't hold back against the King of Knights.",
+      intro: "Archer... There is a strange, aching sorrow in the way you take your stance. Who are you to wield such quiet regret?",
+      retort: "Just a nameless fake who took a few wrong turns, Saber. Don't look at me like that—raise your sword.",
       tag: "FAMILIAR STEEL"
     },
     heracles_berserker: {
-      intro: "The great Heracles! Even madness cannot conceal your mythical glory. Prepare yourself, giant of Olympus!",
-      retort: "■■■■■■■■■■■■---!! (The Berserker roars with colossal respect, swinging his stone slab with earth-shattering power!)",
+      intro: "Great Heracles. Even stripped of reason by the madness of your class, your mythical stature remains unblemished. Come!",
+      retort: "■■■■■■■■■■■■---!!",
       tag: "TWELVE LABORS TRIAL"
     },
     cu_chulainn_lancer: {
-      intro: "Lancer of Ulster! Your crimson spear is renowned, but Invisible Air shall not yield an inch of ground!",
-      retort: "Haha! You're as stubborn as ever, King of Knights! Let's see if your holy sword can parry my cursed thrust!",
+      intro: "Hound of Culann. Your spear is deadly, but as long as this wind conceals my blade, you shall not gain a single step.",
+      retort: "Hah! You never give an inch, do you, King of Knights? Let’s see if that invisible steel can deflect a thrust aimed straight for the heart!",
       tag: "CELTIC SPEAR VS BRITISH SWORD"
     },
     karna_lancer: {
-      intro: "Hero of Charity, son of Surya. The brilliance of your divine flame is unmatched. Let us clash with full valor!",
-      retort: "King of Knights. Your chivalric spirit burns pure. It is an honor to offer my spear against your sword of promised victory.",
+      intro: "Hero of Charity, son of Surya. The unblemished purity of your spear demands everything I have. Face me with full honor!",
+      retort: "King of Knights. Your chivalric spirit burns without a speck of deceit. It is a privilege to cross weapons with the Sword of Promised Victory.",
       tag: "NOBLE VOWS: SUN & SWORD"
     },
     adiosa_dragon_envoy: {
-      intro: "What unfathomable draconic presence is this?! She steps between worlds... Dragon Core, ignite!",
-      retort: "⟨ Krav'nok rath. ⟩ A noisy golden mortal with a dragon's spark... So small. It makes me want to squeeze you until you crack.",
+      intro: "What an immense, primordial presence... You carry the breath of an ancient cosmic dragon. As the Red Dragon of Britain, I shall not yield!",
+      retort: "⟨ Krav'nok rath. ⟩ A small mortal container flickering with the ember of a dragon... How fragile. Let us see if your tiny star breaks under true mass.",
       tag: "DRAGON CORE VS WORLD-PRUNER"
     },
     luvria_greenharte: {
-      intro: "Caster of Sylvanryth! Your presence defies the natural order of thaumaturgy. As King of Knights, I shall measure the true depth of your noble oath!",
-      retort: "A solemn charge from the King herself! Steady thy stance, Artoria—my divergent spells will test both thy dragon core and thy footwork!",
+      intro: "Hero of Lyozes. Your spells unravel the very principles of thaumaturgy. Stand firm, for my blade carries the hopes of an entire nation!",
+      retort: "What an earnest and noble proclamation, Artoria! Let us see if the promised light of your holy sword can outshine a concept that simply ceases to exist!",
       tag: "THE KING'S OATH & THE ELVEN HERO"
     },
     aoko_aozaki: {
-      intro: "Fifth Magician! Your modern thaumaturgy commands time and entropy itself. Show me if raw miracles can penetrate the holy radiance of Excalibur!",
-      retort: "The King of Knights in the flesh! Direct and chivalrous—just how I like it! Don't hold back, Saber; let's see whose blast cuts through the night!",
+      intro: "The Fifth Magician. You borrow tomorrow's light to overturn the laws of the present... Show me if that miracle can outshine the sacred light of the planet!",
+      retort: "The King of Knights herself! Direct, dignified, and no nonsense—just my type of fight! Don't hold back, Saber; let's see which of us blows the field wide open!",
       tag: "FIFTH MAGIC RETROGRADE VS EXCALIBUR"
     },
     amamiya_no_chihaya_tenkohime: {
-      intro: "A kitsune swordswoman of divine lineage? Your instinctual draw is remarkably swift. Let our blades cross with honor!",
-      retort: "King of Knights! Washi's Amazakura shall test thy chivalry! ...A-And keep those muddy steel boots away from washi's clean shrine tatami!",
+      intro: "A celestial guardian of the shrine. Your blade is drawn purely on sacred instinct. Let us cross steel with mutual respect.",
+      retort: "King of Knights! Washi's sacred katana shall measure thy chivalry! ...A-And prithee wipe the mud off thy boots before treading upon the shrine grounds!",
       tag: "HOLY SWORD & DIVINE FOX KATANA"
     },
     lucia_lyozes: {
-      intro: "Princess of Sylvanryth. I see the weight of fallen comrades in your eyes. I accept your vanguard challenge with Excalibur!",
-      retort: "King of Knights. Your chivalric ideals are noble, but on an apocalyptic battlefield, hesitation born of honor will get your comrades killed. Show me your conviction!",
+      intro: "Vanguard of the elves. I see in your eyes the quiet resolve of one who carries the memory of fallen companions. I accept your challenge!",
+      retort: "King of Knights. Your chivalry is admirable, but on a merciless front, unbending honor can cost lives. Show me the strength behind your conviction.",
       tag: "ROYAL SOVEREIGN CLASH"
     },
     edmond: {
-      intro: "Immovable courage... Your shield carries the weight of your allies' lives. I shall meet your resolve with the full glory of Britain!",
-      retort: "King of Knights! Your Excalibur shines bright, but let's see how that holy light handles a frontline veteran who won't budge an inch!",
+      intro: "A fortress of unyielding will... Your shield stands not for glory, but to shelter those behind you. I shall meet your bastion with full honor!",
+      retort: "King of Knights, huh? That blade carries a hell of a reputation. Step forward, your Majesty—let's see if your holy light can crack this wall!",
       tag: "HOLY SWORD OF VICTORY VS TIGRIS REDOUBT"
     }
   },
@@ -118,93 +118,93 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // =========================================================================
   gilgamesh_archer: {
     artoria_pendragon: {
-      intro: "Saber! At last you grace my presence once more! Surrender your petty holy war and become the finest jewel in my vault!",
-      retort: "King of Heroes, I would rather see Excalibur shattered than suffer your arrogant possessiveness! On guard!",
+      intro: "Still drowning in your hopeless ideals, Saber? Cease this futile struggle. Lay down your blade and accept your place as the finest jewel in my garden.",
+      retort: "I would rather see Excalibur shattered than allow Britain's pride to be locked away in your vault. Draw your sword, King of Heroes!",
       tag: "CLAIM OF THE GOLDEN KING"
     },
     gilgamesh_archer: {
-      intro: "An imposter dare wear the golden armor of Uruk?! Mongrel, there can be only one King beneath the heavens!",
-      retort: "Fuhahaha! Look upon your own reflection, fool! Ea shall judge which of us is the true sovereign!",
+      intro: "An imposter dare stand beneath the heavens wearing the countenance of the King?! Mongrel, there can be only one sovereign upon this earth!",
+      retort: "Fuhahaha! What amusing insolence from a wandering phantom! Let Ea decide which of us is the true master of the world!",
       tag: "CLASH OF THE TWO KINGS"
     },
     scathach_lancer: {
-      intro: "The immortal witch of the Land of Shadows... You seek death? Rejoice! My treasury holds weapons forged to slay immortals!",
-      retort: "Golden King of Babylon. Many gods have tried to extinguish my life. Do not disappoint me with mere trinkets.",
+      intro: "The immortal shade of the Dun Scaith... You wander the earth begging for death? Rejoice, witch. The King's treasury lacks no tool to sever eternity.",
+      retort: "Golden King of Babylon. Gods and phantoms have tried and failed to pierce my chest. Do not bore me with mere trinkets.",
       tag: "IMMORTALITY VS INFINITE TREASURY"
     },
     jeanne_darc_ruler: {
-      intro: "Ruler? A naive farm girl pretending to mediate the war of kings? Do not presume to arbitrate over my will, saint!",
-      retort: "King of Babylon, your pride blinds you to the sanctity of life. Even kings are bound by divine providence.",
+      intro: "A peasant girl playing arbiter over the affairs of kings? How laughably absurd. Keep your prayers to yourself, saint; my will is the only law this world requires.",
+      retort: "Your vanity blinds you, King of Babylon. No throne stands above the will of the heavens. I will not allow your tyranny to go unchallenged.",
       tag: "DIVINE ARBITER VS VAIN SOVEREIGN"
     },
     jeanne_alter: {
-      intro: "A resentful phantom birthed from a counterfeit Grail? You are nothing more than a rabid cur barking at the stars!",
-      retort: "Gold-plated peacock! I'll melt that gaudy armor down and drown you in your own precious treasures!",
+      intro: "A rabid cur born from a counterfeit wish, howling at the stars... Begone, phantom. Your noisy tantrums are an insult to my hearing.",
+      retort: "Call me a cur all you want, gold-plated peacock! I'm going to melt down that arrogant smirk along with every shiny trinket in your vault!",
       tag: "PEACOCK VS DRAGON WITCH"
     },
     mhx_alter: {
-      intro: "What insolent creature from the cosmic void dares aim crimson light at the King?! Know your place, interloper!",
-      retort: "Target spiritual density: off the charts. High-calorie golden entity detected. Commencing extermination sequence.",
+      intro: "What manner of cosmic absurdity is this? Aiming crimson light at the King while chewing on rations... Disappear from my sight, nuisance!",
+      retort: "Target evaluation: Extreme spiritual density. High-calorie golden entity detected. Commencing standard anti-Saber extermination protocol.",
       tag: "ANCIENT BABYLON VS SERVANT UNIVERSE"
     },
     artoria_pendragon_alter: {
-      intro: "Hmph. Corrupted by the Grail's black mud, are you, Saber? You look far more fierce, but your defiance remains irritating!",
-      retort: "Noisy golden archer. Keep barking from behind your vault before Excalibur Morgan cuts your throat.",
+      intro: "Soiled by the dregs of the Grail, yet as stubborn as ever. A tyrant's crown does not suit you, Saber. Must I break you entirely?",
+      retort: "Silence, golden archer. Keep barking from behind your treasury before Excalibur Morgan cleaves your head from your shoulders.",
       tag: "DARK MAJESTY VS GOLDEN ARROGANCE"
     },
     nero_claudius_saber: {
-      intro: "An emperor who turns war into a cabaret? How ridiculous! Rome was merely a province compared to ancient Uruk!",
-      retort: "Umu! What a boastful golden fellow! But the beauty of the Roman stage shall humble even your ancient treasury!",
+      intro: "An emperor who turns the battlefield into a vulgar cabaret? Insolent child. Rome was barely a barren hill when Uruk ruled the cradle of civilization.",
+      retort: "Umu! What a needlessly sour disposition for someone wrapped in so much gold! Rome shall teach your dusty vault what true beauty and passion look like!",
       tag: "GOLDEN THEATER VS BABYLONIAN VAULT"
     },
     emiya_archer: {
-      intro: "You... Faker! A thief of legends dare present his cheap reproductions before the King?! I shall tear you to shreds!",
-      retort: "Do you have enough weapons in stock, King of Heroes? Here I come—Infinite Creation of Swords!",
+      intro: "You... You wretched fake. A mere thief of human history dares stand before the King? I shall scatter your counterfeit remnants across the dirt!",
+      retort: "Still hoarding what you never learned to master, King of Heroes? Let's see if you have enough weapons in stock.",
       tag: "FAKER VS ORIGINAL SOVEREIGN"
     },
     heracles_berserker: {
-      intro: "The mighty Heracles reduced to a maddened beast... A tragic sight, demigod. I shall chain you with Enkidu once more!",
-      retort: "■■■■■■■■■■■■---!! (The titan pounds his chest in fury, remembering ancient divine chains and charging with murderous wrath!)",
+      intro: "A demigod of your caliber reduced to a mindless hound... A sorrowful sight, Heracles. Allow the chains of my friend to grant you an honorable rest.",
+      retort: "■■■■■■■■■■■■---!!",
       tag: "DIVINE CHAINS OF ENKIDU"
     },
     cu_chulainn_lancer: {
-      intro: "Hound of Culann! Have you come to be put on a leash, or shall I impale you upon a thousand ancestral spears?",
-      retort: "Tch! You talk too much, goldie. All those flying swords won't save you if my Gáe Bolg reaches your chest first!",
+      intro: "Still barking in the courtyard, hound of Culann? Know your place, or I shall pin you to the earth with a thousand ancestral spears.",
+      retort: "Tch. All that shiny junk floating around you and not an ounce of spine to hold a blade. Let's see if that armor can turn aside Gáe Bolg, goldie!",
       tag: "HOUND OF ULSTER VS KING OF HEROES"
     },
     karna_lancer: {
-      intro: "Son of Surya... Karna. You alone among these mongrels possess a radiance worthy of looking upon. Let us see your divine spear!",
-      retort: "King of Heroes. I appreciate your high regard. Prepare yourself, for the heat of the Sun knows no master.",
+      intro: "Son of Surya. You alone among these rabble carry a brilliance worthy of the King's gaze. Show me the majesty of the heavens, hero of charity.",
+      retort: "King of Heroes. I appreciate your high regard. Yet the sun yields to no monarch—prepare yourself.",
       tag: "MEETING OF SUPREME DEMIGODS"
     },
     adiosa_dragon_envoy: {
-      intro: "A primordial entity from outside the Human Order? Hmph! Even stars and cosmic serpents bow before the King of Babylon!",
-      retort: "⟨ Krav'nok zhal. ⟩ Such a noisy little insect wrapped in shiny yellow gravel. I will crush you into obsidian glass.",
+      intro: "A primordial calamity from beyond the stars? Fuhahaha! Even the celestial dragons of ancient heaven bowed their necks before the King of Uruk!",
+      retort: "⟨ Krav'nok zhal. ⟩ Such a noisy insect wrapped in polished yellow gravel. Pruning your civilization will be no more difficult than crushing dust.",
       tag: "KING OF HEROES VS COSMIC PRUNER"
     },
     luvria_greenharte: {
-      intro: "An eccentric elven mage claiming omnipotence and infinite mana? Hahaha! Know your place, wielder of wood! All miracles throughout creation were born from my treasury!",
-      retort: "Doth thou ever tire of hearing thine own voice, Golden King? 'Tis a grand speech, but words cannot pierce an anti-world barrier. Shall I nullify the concept of thy vanity next?",
+      intro: "An eccentric wielder of woodland miracles who dares profess omnipotence? Foolish girl! Every concept, every miracle known to man was born and cataloged within my vault!",
+      retort: "My, what a wonderfully deafening lecture! But boasting of what you own cannot pierce an anti-world barrier, Golden King. Shall I erase the concept of your vanity next?",
       tag: "TREASURY OF CREATION VS THE STRONGEST MAGE"
     },
     aoko_aozaki: {
-      intro: "A modern human meddling with the Fifth Magic? Hmph! You dare claim domain over time and entropy before the King of Heroes?! Gate of Babylon!",
-      retort: "Arrogant golden king! Keep talking from behind those floating portals—let's see how many treasures it takes to stop a Magic Bullet Stream!",
+      intro: "A modern magus meddling with the Fifth domain, brazenly borrowing the future's debt? You overstep your bounds, girl. Let the weight of antiquity crush your fragile tricks.",
+      retort: "Antiquity, huh? Keep posturing behind those floating portals, King of Heroes—let's see if your ancient relics can outrun a stream of Magic Bullets!",
       tag: "GATE OF BABYLON VS THE FIFTH MAGIC"
     },
     amamiya_no_chihaya_tenkohime: {
-      intro: "Fuhahaha! A little pink fox baring its fangs at the King of Heroes? Entertaining! Become an ornament in my vault, beast!",
-      retort: "Arrogant gold king! Washi's divine name is Amamiya no Chihaya Tenkohime! Don't thee dare call washi a mere mongrel or washi shall bite thy golden fingers off!",
+      intro: "A divine beast baring its fangs at its master? Entertaining. You might make a decent fur lining for my winter cloak, fox.",
+      retort: "A-Arrogant gold king! Washi is the sacred guardian of the imperial mountains! Dare address washi as a mongrel and washi shall bite thy golden fingers off!",
       tag: "ANCIENT KYUBI VS KING OF HEROES"
     },
     lucia_lyozes: {
-      intro: "Hmph! An elf from an alien world daring to lecture the King? Your five seconds of foresight will only allow you to witness your demise with absolute clarity, mongrel!",
-      retort: "The King of Heroes. Flaunting countless treasures and calling yourself the sole arbiter of humanity? I have dealt with arrogant beings who played at being god before. Black Lance—Apocrypha Terminus!",
+      intro: "An elven vanguard daring to lecture the King on duty? Your meager seconds of foresight will only grant you the luxury of watching your own ruin in vivid detail, mongrel.",
+      retort: "I have brought down tyrants who declared themselves gods long before standing here. Count your treasures while you can, King of Heroes—my lance will find your heart.",
       tag: "APOCRYPHA TERMINUS VS GATE OF BABYLON"
     },
     edmond: {
-      intro: "A beast of the slums dares stand before the King of Heroes? Your insolence will be rewarded with a thousand divine blades, mongrel!",
-      retort: "King of Heroes, is it? You've got an awful lot of shiny swords in that vault. Mind if I see how many break against my shield?",
+      intro: "A scoundrel from the slums raising a slab of iron against the sovereign of mankind? Your insolence shall be repaid with a thousand divine blades, mongrel.",
+      retort: "King of Heroes, huh? You've got an awful lot of shiny cutlery floating in the air. Step up and see how many shatter against this wall.",
       tag: "TOWER SHIELD VS GATE OF BABYLON"
     }
   },
@@ -214,93 +214,93 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // =========================================================================
   scathach_lancer: {
     artoria_pendragon: {
-      intro: "King of Knights, your holy sword has guided nations. Come, show me if your swordsmanship can overcome the dual crimson spears of Dún Scáith!",
-      retort: "Gatekeeper of the Land of Shadows, I accept your challenge! Excalibur shall meet your deadly runes!",
+      intro: "A king who carries the weight of a dying star upon her shoulders. Let us see if that pure, unyielding resolve can withstand two spears born in shadow.",
+      retort: "Gatekeeper of Dún Scáith. The oaths I swore to Britain will not bend before the cold stillness of your realm. Prepare yourself!",
       tag: "HOLY SWORD & SHADOW SPEARS"
     },
     gilgamesh_archer: {
-      intro: "King of Babylon. You boast countless Noble Phantasms, yet a spear is only as lethal as the will behind its thrust. Draw!",
-      retort: "Arrogant woman! You shall drown beneath a rain of primordial divine armaments!",
+      intro: "You store countless armaments, King of Babylon, yet you wield none of them with a warrior's heart. A weapon without will cannot reach me.",
+      retort: "Insolent shade! You wander the earth begging for an honorable end, yet dare mock the King's armory? You shall be pinned beneath a storm of divine steel!",
       tag: "WARRIOR'S DISCIPLINE VS RAIN OF ARMS"
     },
     scathach_lancer: {
-      intro: "Another existence that has lost Death? Tell me... could you be the one destined to grant me the end I seek?",
-      retort: "A mirror of the Land of Shadows... If one of us must fall today, let it be an end worthy of our immortal craft!",
+      intro: "Another shadow stranded between life and death. Tell me... does your spear possess the edge required to finally end this weary vigil?",
+      retort: "Only one of us needs to walk out of this mist. Strike with everything you have, and let the grave claim whichever shadow falls short.",
       tag: "DEATH-SEEKER'S MIRROR"
     },
     jeanne_darc_ruler: {
-      intro: "Saint of Orleans. Your heart is pure, but a battlefield asks for resolve and discipline, not prayers. Defend yourself!",
-      retort: "Lady Scáthach, my banner does not waver. The Lord grants strength to those who protect!",
+      intro: "Your heart is untouched by malice, saint. But on a field of blood, piety alone will not turn aside a spear aimed at your vitals. Defend yourself.",
+      retort: "I know the reality of war, Lady Scáthach. This banner was not raised merely to pray—it stands so others do not have to fall.",
       tag: "PRAYER VS PRIMORDIAL RUNE"
     },
     jeanne_alter: {
-      intro: "Such unrefined, raging flame... Hatred may fuel your spirit, girl, but sloppy footwork makes your strikes predictable.",
-      retort: "Old hag from the Land of Shadows! I don't need technique to burn you down to a pile of cinder!",
+      intro: "A wild flame fueled entirely by spite. Hatred can sharpen a blade, girl, but your undisciplined footing leaves your throat wide open.",
+      retort: "Save the lecture for your disciples, old hag! I don't need your fancy martial arts to turn your gloomy castle into a bonfire!",
       tag: "DISCIPLINE VS WILDFIRE"
     },
     mhx_alter: {
-      intro: "A space raider wielding twin sabers of dark matter... Fascinating. Let me test if your cosmic energy can withstand Primordial Runes!",
-      retort: "Target classification: Lancer entity with abnormal combat proficiency. Consuming sweet bean energy for evasion.",
+      intro: "Twin blades of condensed darkness from the cosmic void... An unusual martial style. Let me test if your strange arts hold true under pressure.",
+      retort: "Target evaluation: Ancient instructor entity with extreme combat parameters. Ingesting sugar units to stabilize reflexes. Engaging.",
       tag: "PRIMORDIAL RUNES VS DARK MATTER"
     },
     artoria_pendragon_alter: {
-      intro: "The King of Knights dyed in black... Your strikes are heavier now, but heaviness alone cannot catch my red spears.",
-      retort: "Spearwoman of shadows. Your endless lifespan ends here beneath Excalibur Morgan's dark blade.",
+      intro: "The King of Knights stripped of hesitation. Your strikes are devastatingly heavy now, Black King, but raw power alone will never catch my spears.",
+      retort: "You speak too much, gatekeeper. If you desire an end to your eternity so badly, stay still and let Excalibur Morgan grant it.",
       tag: "DARK KING VS SHADOW QUEEN"
     },
     nero_claudius_saber: {
-      intro: "Emperor of Rome. You have passion and flair, but your posture leaves fatal openings. ...No, I am not your teacher. Forget it. Draw!",
-      retort: "Umu! A master spearwoman wishing to critique Rome's divine form? Very well, witness my supreme artistry!",
+      intro: "An emperor who dances upon the blade's edge. Your theatrics have flair, but your guard drops every third step. ...No, you are not my student. En garde.",
+      retort: "Umu! A legendary sovereign offering critique to Rome? How wonderful! But do not blink, master of shadows—my supreme artistry shines brightest under pressure!",
       tag: "EMPEROR'S STAGE VS SHADOW SPEARS"
     },
     emiya_archer: {
-      intro: "A nameless warrior who traces weapons with his soul... Your technique has reached the realm of mastery, swordsman.",
-      retort: "Praised by the Queen of the Land of Shadows herself? I'm honored, but I have no intention of holding back.",
+      intro: "A nameless warrior who hammers out cold steel from the marrow of his own soul. Your form is unorthodox, yet honed to razor precision. Let us trade blows.",
+      retort: "To receive praise from the master of Dún Scáith is higher honors than a fake deserves. Forgive me, but I have no intention of going easy.",
       tag: "WROUGHT IRON & SHADOW CRAFT"
     },
     heracles_berserker: {
-      intro: "Heracles! Great hero who conquered twelve impossible labors! Can your God Hand endure Gáe Bolg Alternative?!",
-      retort: "■■■■■■■■■■■■---!! (The hero roars defiantly, brandishing his blade to test his twelve lives against the death-slaying spear!)",
+      intro: "The greatest hero of Greece, swallowed by madness yet still unyielding. Twelve lives... Let us find out if each one can fall to a different thrust.",
+      retort: "■■■■■■■■■■■■---!!",
       tag: "GOD SLAYER VS GOD HAND"
     },
     cu_chulainn_lancer: {
-      intro: "Setanta! Have you been slacking off since leaving Dún Scáith?! Raise your spear... ...No, I am not your teacher. Forget it. Show me your growth!",
-      retort: "Guh—! Shishou?! Why did it have to be you?! Fine! Don't blame me if my Gáe Bolg actually catches you this time!",
+      intro: "Your stance has widened, Setanta. Have you grown careless since leaving my halls? ...No, you are a hero grown. Show me how far your spear has traveled.",
+      retort: "Guh... Of all the people to run into. Don't look at me like that, Shishou—I didn't come all this way just to get lectured again. Let's see who strikes first!",
       tag: "QUEEN OF DÚN SCÁITH & THE HOUND"
     },
     karna_lancer: {
-      intro: "Hero of Charity! You who surrendered your golden armor to wield the sun god's spear... A duel against you is a rare blessing.",
-      retort: "Queen of Shadows. Your reputation precedes you across the ages. Let us ignite this field with our sacred weapons.",
+      intro: "A peerless spear bathed in the brilliance of the sun god. To cross weapons with such pristine technique... this old soul could not ask for better.",
+      retort: "Queen of Shadows. Your reputation precedes you across the ages. It is an honor to test the heat of Surya against the threshold of your realm.",
       tag: "CLASH OF SUPREME SPEARS"
     },
     adiosa_dragon_envoy: {
-      intro: "A primordial cosmic dragon envoy... Even in the Land of Shadows, I have rarely sensed an entity so ancient. Face my dual spears!",
-      retort: "⟨ Voth Krav'nok. ⟩ You smell like dried bones and ancient runes. Stand still so my ruin beam can petrify you cleanly.",
+      intro: "A primordial calamity born from outside the sky. Even in the depths of the Land of Shadows, such ancient mass is rare. Come—show me if your scales can be pierced.",
+      retort: "⟨ Voth Krav'nok. ⟩ You reek of the boundary between breath and decay. A brittle mortal core wrapped in old runes... I shall reduce your shadows to ash.",
       tag: "IMMORTAL HUNTER VS DRAGON ENVOY"
     },
     aoko_aozaki: {
-      intro: "Fifth Magician. Accelerating entropy and manipulating time itself... Show me if your Magic Blue can pierce the boundary of life and death!",
-      retort: "The Queen of the Land of Shadows herself? Don't expect me to hold back—Magic Bullet Stream, full throttle!",
+      intro: "Borrowing time from tomorrow to burn today... A reckless method of magecraft, girl. Let us see if your Magic Blue can slip past a spear that transcends mortality.",
+      retort: "Talk about intimidating. If you're looking for someone to break your immortality, you picked the right opponent—don't blink, or these heavy rounds will blow right past you!",
       tag: "GATE OF SKYE & THE FIFTH MAGIC"
     },
     amamiya_no_chihaya_tenkohime: {
-      intro: "An ancient nine-tailed celestial fox whose blade moves purely on instinct. Good... Show me if your divine fangs can grant me the release of death!",
-      retort: "Queen of Dún Scáith... Washi senses the cold chill of the Land of Shadows upon thy spears! But washi's celestial foxfire never dims!",
+      intro: "An ancient divine beast moving on pure sacred instinct. Good. Let your fangs bare themselves without restraint—test whether your divine light can extinguish my breath.",
+      retort: "Queen of Dún Scáith! Washi can feel the deathly chill clinging to thy red spears! But the sacred foxfire of this shrine will never be smothered by thy gloom!",
       tag: "PRIMORDIAL SPEAR VS CELESTIAL FOXFIRE"
     },
     lucia_lyozes: {
-      intro: "Prescient foresight from a ruined realm... You see five seconds ahead, Princess, but can your lance parry a thrust that moves beyond human speed?",
-      retort: "Your weapon reach is formidable, Scáthach... but I can already see where your crimson thrust lands five seconds from now. Black Lance, engage!",
+      intro: "You read the flow five seconds before it arrives. A formidable gift, high elf, but foresight is meaningless if your body cannot outpace a strike that has already pierced you.",
+      retort: "Your spear movements have discarded all unnecessary motion across millennia. Even knowing where your thrust lands, parrying it will demand everything I have. On guard, Scáthach.",
       tag: "PINNACLE LANCER DUEL"
     },
     luvria_greenharte: {
-      intro: "Hero of Lyozes! An archmage who rewrites concepts and nullifies death itself... At last, an existence worthy of testing the limits of Primordial Runes!",
-      retort: "The Queen of Dún Scáith! How delightful! Let us see if your ancient runes can withstand an archmage who simply denies their causal authority!",
+      intro: "An archmage who commands the erasure of concepts. Tell me, Hero of Lyozes... can your boundless authority deny the concept of an immortal's death?",
+      retort: "My, what a sorrowful wish wrapped in such deadly steel! An existence that cannot perish, seeking the one blow to end it all? Let us see if my nullification can reach the root of your eternity!",
       tag: "IMMORTAL TEACHER VS CONCEPT NULLIFIER"
     },
     edmond: {
-      intro: "A warrior whose soul has been hammered upon the anvil of mortal struggle. Very well. Let us test if your shield can withstand the threshold of Dún Scáith!",
-      retort: "Queen of the Land of Shadows... They say you've killed gods and trained the greatest warriors alive. Don't go easy on an old frontline beast, teacher!",
+      intro: "The stance of a man who has held the line through countless meat grinders. Your shield has weathered ruin, vanguard—let us see if it can withstand the gate of the dead.",
+      retort: "They say you've killed gods and forged the finest warriors of the age. Don't hold back, teacher—let's see if those red spears can dent this wall.",
       tag: "GATE OF SKYE VS FORTRESS OF EBONWATCH"
     }
   },
