@@ -1370,19 +1370,18 @@ export function attachServantCollector(
         await i.editReply({
           embeds: hub.embeds,
           components: hub.components
-        }).catch(console.error);
+        }).catch(() => {});
       } else {
         await i.update({
           embeds: hub.embeds,
           components: hub.components
         }).catch(async () => {
-          if (!i.replied && !i.deferred) {
-            await i.deferUpdate().catch(() => {});
+          if (i.deferred || i.replied) {
+            await i.editReply({
+              embeds: hub.embeds,
+              components: hub.components
+            }).catch(() => {});
           }
-          await i.editReply({
-            embeds: hub.embeds,
-            components: hub.components
-          }).catch(console.error);
         });
       }
 
@@ -1392,9 +1391,12 @@ export function attachServantCollector(
         err.code === 40060 || 
         err.code === 50027 || 
         err.code === 10008 ||
+        err.code === 'InteractionNotReplied' ||
+        err.name === 'DiscordjsError' ||
         err.status === 500 ||
         err.message?.includes('Unknown interaction') || 
-        err.message?.includes('already been acknowledged')
+        err.message?.includes('already been acknowledged') ||
+        err.message?.includes('not been sent or deferred')
       ) {
         return;
       }
