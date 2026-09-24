@@ -2163,9 +2163,21 @@ client.on(Events.MessageCreate, async message => {
       else if (sub === 'dialogue' || sub === 'voice' || sub === 'quote') category = 'dialogue';
       else if (sub === 'roster' || sub === 'list') category = 'roster';
 
-      const hub = await servantCommand.buildServantHub(master, activeServant, category, activeServant.id);
-      const replyMsg = await message.reply({ embeds: hub.embeds, files: hub.files, components: hub.components });
-      servantCommand.attachServantCollector(replyMsg, message.author.id, master, activeServant, category);
+      try {
+        const hub = await servantCommand.buildServantHub(master, activeServant, category, activeServant.id);
+        const replyMsg = await message.reply({ embeds: hub.embeds, files: hub.files, components: hub.components });
+        servantCommand.attachServantCollector(replyMsg, message.author.id, master, activeServant, category);
+      } catch (err: any) {
+        if (err?.code === 50001 || err?.status === 403) {
+          const hubNoFiles = await servantCommand.buildServantHub(master, activeServant, category, activeServant.id, undefined, 1, true);
+          const replyMsg = await message.reply({ embeds: hubNoFiles.embeds, components: hubNoFiles.components }).catch(() => {});
+          if (replyMsg) {
+            servantCommand.attachServantCollector(replyMsg, message.author.id, master, activeServant, category);
+          }
+        } else {
+          throw err;
+        }
+      }
       return;
     }
 

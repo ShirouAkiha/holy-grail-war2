@@ -1313,31 +1313,58 @@ export function attachServantCollector(
       // BOAST TO SERVER
       else if (i.customId === 'servant_act_boast') {
         const war = getOrInitWarSession(master);
-        exposeMasterInWar(war, master.discordId, 'public_command');
-        await saveMaster(master);
+        const uP = war.participants[master.discordId];
+        const isActivelyInWar = !!(uP && uP.isAlive && war.status === 'in_progress');
+
+        if (isActivelyInWar) {
+          exposeMasterInWar(war, master.discordId, 'public_command');
+          await saveMaster(master);
+        }
 
         const template = targetServant.template;
         const announceFiles: AttachmentBuilder[] = [];
-        const announceEmbed = new EmbedBuilder()
-          .setTitle(`📢 MASTER CHALLENGE: ${master.username.toUpperCase()} REVEALS SERVANT!`)
-          .setDescription(
+
+        let description = '';
+        if (isActivelyInWar) {
+          description =
             `Master **${master.username}** has openly unveiled their contracted Heroic Spirit to all Masters in Fuyuki City!\n\n` +
             `⚔️ **True Name:** **${template.name}**\n` +
             `🗡️ **Class:** \`${template.servantClass}\` [Balanced Parity] | **Title:** *${template.title}*\n` +
             `💥 **Noble Phantasm:** *${template.noblePhantasm.name}* [${template.noblePhantasm.cardType.toUpperCase()}]\n` +
             `🗣️ *" ${targetServant.customQuotes?.summon || template.summonQuote || template.battleStartQuote} "*\n\n` +
-            `⚠️ *By boasting openly, Master **${master.username}** is now permanently **EXPOSED** on the Holy Grail War board (\`/grailwar\`)!*`
-          )
-          .setColor(0xd4af37);
+            `⚠️ *By boasting openly, Master **${master.username}** is now permanently **EXPOSED** on the Holy Grail War board (\`/grailwar\`)!*`;
+        } else {
+          description =
+            `Master **${master.username}** proudly displays their contracted Heroic Spirit to the server!\n\n` +
+            `⚔️ **True Name:** **${template.name}**\n` +
+            `🗡️ **Class:** \`${template.servantClass}\` | **Title:** *${template.title}*\n` +
+            `💥 **Noble Phantasm:** *${template.noblePhantasm.name}* [${template.noblePhantasm.cardType.toUpperCase()}]\n` +
+            `⭐ **Bond Level:** ${'⭐'.repeat(Math.min(5, targetServant.bondLevel || 1))} (Bond ${targetServant.bondLevel || 1})\n\n` +
+            `🗣️ *" ${targetServant.customQuotes?.summon || template.summonQuote || template.battleStartQuote} "*`;
+        }
+
+        const announceEmbed = new EmbedBuilder()
+          .setTitle(`📢 MASTER DECLARATION: ${master.username.toUpperCase()} DISPLAYS SERVANT!`)
+          .setDescription(description)
+          .setColor(isActivelyInWar ? 0xef4444 : 0xd4af37)
+          .setFooter({ 
+            text: isActivelyInWar 
+              ? 'Public Identity Broadcast • Master Permanently Exposed in Holy Grail War' 
+              : 'Heroic Spirit Declaration • Throne of Heroes' 
+          });
         safeSetEmbedImage(announceEmbed, template.cardArtUrl || template.avatarUrl, announceFiles);
 
         if (i.channel && 'send' in i.channel) {
-          await (i.channel as any).send({ embeds: [announceEmbed], files: announceFiles });
+          await (i.channel as any).send({ embeds: [announceEmbed], files: announceFiles }).catch((err: any) => {
+            console.warn('Could not post boast message in channel (Missing Access/Permissions):', err?.message || err);
+          });
         }
         await i.reply({
-          content: '📢 You have revealed your Servant to the server! Your identity is now permanently exposed on the War Board.',
+          content: isActivelyInWar 
+            ? '📢 You have revealed your Servant to the server! Your identity is now permanently exposed on the War Board.'
+            : '📢 You have proudly displayed your Servant to the server!',
           flags: MessageFlags.Ephemeral
-        });
+        }).catch(() => {});
         return;
       }
       // CROSS-HUB SHORTCUTS
@@ -1391,11 +1418,14 @@ export function attachServantCollector(
         err.code === 40060 || 
         err.code === 50027 || 
         err.code === 10008 ||
+        err.code === 50001 ||
+        err.status === 403 ||
         err.code === 'InteractionNotReplied' ||
         err.name === 'DiscordjsError' ||
         err.status === 500 ||
         err.message?.includes('Unknown interaction') || 
         err.message?.includes('already been acknowledged') ||
+        err.message?.includes('Missing Access') ||
         err.message?.includes('not been sent or deferred')
       ) {
         return;

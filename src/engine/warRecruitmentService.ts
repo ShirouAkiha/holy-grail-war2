@@ -206,9 +206,24 @@ export async function startWarRecruitment(
 
   const { embed, row } = buildRecruitmentEmbed(recruitment, war);
 
+  // Auto-detect "Master" role in the server to ping
+  let pingContent: string | undefined = undefined;
+  const envRoleId = (process.env.MASTER_ROLE_ID || process.env.GRAILWAR_PING_ROLE_ID || '').trim();
+  if (envRoleId) {
+    pingContent = `<@&${envRoleId}>`;
+  } else if ('guild' in channel && channel.guild) {
+    const masterRole = channel.guild.roles.cache.find(
+      r => r.name.toLowerCase() === 'master' || r.name.toLowerCase() === 'masters'
+    );
+    if (masterRole) {
+      pingContent = `<@&${masterRole.id}>`;
+    }
+  }
+
   let sentMsg: any = null;
   try {
     sentMsg = await channel.send({
+      content: pingContent,
       embeds: [embed],
       components: [row]
     });
