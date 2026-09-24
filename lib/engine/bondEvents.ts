@@ -337,42 +337,188 @@ export const GILGAMESH_BOND_EVENTS: BondEvent[] = [
 export const EMIYA_BOND_EVENTS: BondEvent[] = [
   {
     id: 'emiya_bond_event_1',
-    servantTemplateId: 'emiya',
+    servantTemplateId: 'emiya_archer',
     requiredBondLevel: 1,
-    title: "Iron and Glass: Midnight Forge",
-    subtitle: "The Shed of Projections",
-    description: "EMIYA polishes forged blades while discussing the burden of heroism and tactical survival.",
+    title: "Bond Event 1: Night Watch",
+    subtitle: "Night Watch with Archer",
+    description: "Late at night in Fuyuki, Archer stands watch and probes your resolve, questioning your motives for entering the Holy Grail War.",
     rewardBondExp: 150,
     rewardSaintQuartz: 3,
     unlockedQuoteId: 'emiya_bond_line_1',
     scenes: [
       {
         id: 'scene_1',
-        speakerName: 'EMIYA',
+        speakerName: 'Archer',
         backgroundTheme: 'fuyuki_moonlight',
-        dialogueText: "Master. You're up late. I was just reinforcing Kanshou and Bakuya. In a War like this, idealism won't keep you alive—only cold, calculated preparation.",
+        dialogueText: "You are up unusually late, Master. The magical energy required to sustain my manifestation should be taking a toll on your stamina. You should be resting.",
         choices: [
           {
-            id: 'emiya_c1',
-            text: "I fight for those I care about. Is that wrong, Archer?",
-            response: "Sigh... That naive gaze. It reminds me of someone I used to know. Fine... if you're determined to be an idealist, I'll make sure my bow shields your back.",
+            id: 'emiya_s1_c1',
+            text: "I couldn't sleep. The reality of this war is finally hitting me.",
+            response: "A rational response. Fear keeps you alive. Complacency in this war will only guarantee your death.",
             bondExpGain: 150,
             reactionEmotion: 'thoughtful'
           },
           {
-            id: 'emiya_c2',
-            text: "Can you project a weapon for me to practice with?",
-            response: "Trace, on. Here—a sturdy practice blade. Hold the grip firm. Don't make me carry you out of the battlefield!",
-            bondExpGain: 120,
+            id: 'emiya_s1_c2',
+            text: "I was going to ask you the same thing. Don't Servants need rest?",
+            response: "Servants are familiars. We do not require sleep in the human sense, only magical energy. My time is better spent keeping watch.",
+            bondExpGain: 130,
+            reactionEmotion: 'stern'
+          },
+          {
+            id: 'emiya_s1_c3',
+            text: "Just plotting our next move. We need to be prepared.",
+            response: "Admirable, but premature. You lack the necessary intelligence on enemy Servants to form a cohesive strategy tonight.",
+            bondExpGain: 140,
             reactionEmotion: 'amused'
           }
         ]
       },
       {
         id: 'scene_2',
-        speakerName: 'EMIYA',
+        speakerName: 'Archer',
         backgroundTheme: 'fuyuki_moonlight',
-        dialogueText: "My body is made of swords. As long as I stand, no blade shall pierce my Master!"
+        dialogueText: "Tell me. Why did you summon me? What is it you actually hope to achieve by fighting in this ritual? I need to understand the psychological baseline of the person supplying my mana.",
+        choices: [
+          {
+            id: 'emiya_s2_c1',
+            text: "I want the Holy Grail to grant my wish.",
+            response: "A wish. How predictable. Be careful what you ask for, Master. Miracles always demand a price equal to their scale.",
+            bondExpGain: 130,
+            reactionEmotion: 'stern'
+          },
+          {
+            id: 'emiya_s2_c2',
+            text: "I just want to survive this and go back to my normal life.",
+            response: "Survival. A simple, pragmatic goal. It is far better than a foolish ideal, but survival alone won't give you the edge to kill other Masters.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful'
+          },
+          {
+            id: 'emiya_s2_c3',
+            text: "I don't really have a grand reason. I was just dragged into this.",
+            response: "Being dragged into a death game without a cause is a tragedy. But now that you are here, ignorance is no longer an excuse. You must adapt.",
+            bondExpGain: 140,
+            reactionEmotion: 'stern'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Archer',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Regardless of your motives, we are bound by contract. I am a tool for your use. However, my fighting style is strictly pragmatic. I do not subscribe to the chivalric nonsense of knights or heroes. If an enemy Master is vulnerable, I will eliminate them. Can your conscience handle that?",
+        choices: [
+          {
+            id: 'emiya_s3_c1',
+            text: "If it means we survive, do what you have to do.",
+            response: "Good. Hypocrisy on the battlefield only leads to hesitation, and hesitation leads to a swift death.",
+            bondExpGain: 150,
+            reactionEmotion: 'determined'
+          },
+          {
+            id: 'emiya_s3_c2',
+            text: "I'd prefer we only fight Servants, not people.",
+            response: "That is a naive sentiment. The Servants are the weapons, but the Masters are the ones wielding them. You cannot fight a war while refusing to strike the commander.",
+            bondExpGain: 120,
+            reactionEmotion: 'stern'
+          },
+          {
+            id: 'emiya_s3_c3',
+            text: "I am the Master. You will follow my orders, no matter what they are.",
+            response: "A bold statement. I will follow your orders, Master, provided they do not lead us to unnecessary destruction. I am not a mindless weapon.",
+            bondExpGain: 140,
+            reactionEmotion: 'amused'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Archer',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "This country. Japan. It is somewhat familiar, yet entirely foreign to me. The ley lines here are dense. It makes for an excellent battleground, but the civilian casualties will be catastrophic if we are not careful. Does the thought of this city burning bother you?",
+        choices: [
+          {
+            id: 'emiya_s4_c1',
+            text: "Of course it does. We have to protect the people here.",
+            response: "Trying to save everyone is a mathematical impossibility. If you try to carry the weight of this entire city, it will crush you.",
+            bondExpGain: 130,
+            reactionEmotion: 'thoughtful'
+          },
+          {
+            id: 'emiya_s4_c2',
+            text: "It's not our responsibility. We just need to win.",
+            response: "Cold, but tactically sound. Still, unnecessary slaughter attracts the attention of the Church and the Mage's Association. We will avoid it for practical reasons.",
+            bondExpGain: 140,
+            reactionEmotion: 'stern'
+          },
+          {
+            id: 'emiya_s4_c3',
+            text: "We can't save everyone, but we should minimize the damage.",
+            response: "A reasonable compromise. Knowing your limits is the first step to surviving. Do not throw your life away for a stranger.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful'
+          }
+        ]
+      },
+      {
+        id: 'scene_5',
+        speakerName: 'Archer',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "You are surprisingly calm for a modern magus. Or perhaps you simply haven't grasped the sheer weight of what a Servant is. We are ghosts of the past, dragged into the present to murder each other. Doesn't that unnerve you?",
+        choices: [
+          {
+            id: 'emiya_s5_c1',
+            text: "It does. I'm terrified of what you're all capable of.",
+            response: "Then hold onto that terror. Let it remind you of your own fragility. It will keep you out of my line of fire.",
+            bondExpGain: 140,
+            reactionEmotion: 'thoughtful'
+          },
+          {
+            id: 'emiya_s5_c2',
+            text: "You're standing right in front of me. You feel human enough.",
+            response: "Human? Do not project your own humanity onto me. I am a concept given temporary mass. Forgetting that will cost you dearly.",
+            bondExpGain: 130,
+            reactionEmotion: 'stern'
+          },
+          {
+            id: 'emiya_s5_c3',
+            text: "It doesn't matter what you were. Right now, you're my partner.",
+            response: "Partner. A dangerous word. Do not confuse a tactical alliance of convenience with genuine camaraderie.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful'
+          }
+        ]
+      },
+      {
+        id: 'scene_6',
+        speakerName: 'Archer',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "We will see if your mindset holds when the fighting actually begins. Until then, conserve your mana. I will secure the perimeter of this location. If you sense any hostile bounded fields being deployed, use a Command Spell to summon me instantly. Am I understood?",
+        choices: [
+          {
+            id: 'emiya_s6_c1',
+            text: "Understood. Good night, Archer.",
+            response: "Rest well, Master. Tomorrow will not be forgiving.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful'
+          },
+          {
+            id: 'emiya_s6_c2',
+            text: "Wait, can't we talk a little longer?",
+            response: "We have exhausted the necessary tactical discussion. Idle chatter wastes time. Go to sleep.",
+            bondExpGain: 130,
+            reactionEmotion: 'amused'
+          },
+          {
+            id: 'emiya_s6_c3',
+            text: "Just don't go picking any fights without me.",
+            response: "I am a sniper and a scout. My entire purpose is to pick fights from where they cannot see me. But I will keep you informed. Sleep.",
+            bondExpGain: 140,
+            reactionEmotion: 'amused'
+          }
+        ]
       }
     ]
   }
@@ -2960,6 +3106,8 @@ export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
   artoria_pendragon: ARTORIA_BOND_EVENTS,
   gilgamesh: GILGAMESH_BOND_EVENTS,
   emiya: EMIYA_BOND_EVENTS,
+  emiya_archer: EMIYA_BOND_EVENTS,
+  archer_emiya: EMIYA_BOND_EVENTS,
   cu_chulainn: CU_CHULAINN_BOND_EVENTS,
   adiosa_dragon_envoy: ADIOSA_BOND_EVENTS,
   aoko_aozaki: AOKO_BOND_EVENTS,
