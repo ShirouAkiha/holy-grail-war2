@@ -39,7 +39,6 @@ export function buildDailyEmbed(
         `*Tip: You now have enough Saint Quartz to perform a 10x Craft Essence banner roll with \`/cegacha\`!*`
       )
       .setColor(0x38bdf8)
-      .setThumbnail(avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400')
       .setFooter({ text: 'Holy Grail War Daily Allowance • Universal Reset: 00:00 UTC' })
       .setTimestamp();
   }
@@ -56,7 +55,6 @@ export function buildDailyEmbed(
       `*The Fuyuki Leyline mana reservoirs reset universally for all Masters at 00:00 UTC every day.*`
     )
     .setColor(0xf59e0b)
-    .setThumbnail(avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400')
     .setFooter({ text: 'Universal Reset: 00:00 UTC' })
     .setTimestamp();
 }

@@ -55,7 +55,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         \`✨ **Available Stat Points:** \${activeServant.availableStatPoints} pts\`
       )
       .setColor(activeServant.template.rarity === 5 ? 0xf59e0b : 0x38bdf8)
-      .setThumbnail(activeServant.template.avatarUrl || activeServant.template.cardArtUrl)
       .setImage('attachment://servant_card.png');
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(

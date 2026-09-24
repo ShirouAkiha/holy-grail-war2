@@ -72,10 +72,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       )
       .setColor(0x22c55e);
 
-    if (targetCe.artworkUrl) {
-      embed.setThumbnail(targetCe.artworkUrl);
-    }
-
     await interaction.reply({ embeds: [embed] });
   } catch (error: any) {
     console.error('Error executing /equip:', error);

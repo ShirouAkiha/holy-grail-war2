@@ -13191,8 +13191,8 @@ export default function DiscordEmulator({
                   </div>
 
                   {/* Embed Image / GIF */}
-                  {(msg.embed.imageUrl || msg.embed.thumbnailUrl) && (
-                    <EmbedVisual url={msg.embed.imageUrl || msg.embed.thumbnailUrl || ''} />
+                  {msg.embed.imageUrl && (
+                    <EmbedVisual url={msg.embed.imageUrl} />
                   )}
 
                   {msg.embed.footer && (

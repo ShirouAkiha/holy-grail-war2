@@ -38,7 +38,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           \`*Tip: You now have enough Saint Quartz to perform a 10x Craft Essence banner roll with \`/cegacha\`!*\`
         )
         .setColor(0x38bdf8)
-        .setThumbnail(avatarUrl)
         .setFooter({ text: 'Holy Grail War Daily Allowance • Universal Reset: 00:00 UTC' })
         .setTimestamp();
 
@@ -72,7 +71,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           \`*The Fuyuki Leyline mana reservoirs reset universally for all Masters at 00:00 UTC every day.*\`
         )
         .setColor(0xf59e0b)
-        .setThumbnail(avatarUrl)
         .setFooter({ text: 'Universal Reset: 00:00 UTC' })
         .setTimestamp();
 

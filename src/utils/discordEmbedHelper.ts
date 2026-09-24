@@ -73,50 +73,14 @@ export function safeSetEmbedImage(
 
 /**
  * Safely resolves a thumbnail URL or disk path for Discord Embeds.
+ * Permanently disabled: Discord top-right thumbnails severely squish description/lore text on mobile.
+ * By keeping safeSetEmbedThumbnail a complete no-op, all embeds remain 100% full-width.
  */
 export function safeSetEmbedThumbnail(
   embed: EmbedBuilder,
   mediaUrl?: string | null,
   files?: (AttachmentBuilder | any)[]
 ): void {
-  if (!mediaUrl || typeof mediaUrl !== 'string' || !embed) return;
-  const trimmed = mediaUrl.trim();
-  if (!trimmed) return;
-
-  // 1. Direct valid absolute URL or existing attachment reference
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('attachment://')) {
-    try {
-      embed.setThumbnail(trimmed);
-    } catch {}
-    return;
-  }
-
-  // 2. Local relative media URL
-  const diskPath = getLocalMediaDiskPath(trimmed);
-  if (diskPath && fs.existsSync(diskPath)) {
-    const filename = path.basename(diskPath);
-    if (Array.isArray(files)) {
-      const alreadyAttached = files.some(f => (f && f.name === filename) || (f && f.attachment === diskPath));
-      if (!alreadyAttached) {
-        files.push(new AttachmentBuilder(diskPath, { name: filename }));
-      }
-      try {
-        embed.setThumbnail(`attachment://${filename}`);
-        return;
-      } catch {}
-    }
-  }
-
-  const appBase = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.DEV_URL;
-  if (appBase && (appBase.startsWith('http://') || appBase.startsWith('https://'))) {
-    try {
-      embed.setThumbnail(`${appBase.replace(/\/$/, '')}/${trimmed.replace(/^\//, '')}`);
-      return;
-    } catch {}
-  }
-
-  // Safe avatar fallback thumbnail
-  try {
-    embed.setThumbnail('https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=400');
-  } catch {}
+  // Permanently disabled: No-op to keep Discord embeds full-width without text squishing.
+  return;
 }

@@ -446,11 +446,6 @@ function buildDialogueCutInEmbed(
 
   if (hasImageAttachment) {
     embed.setImage('attachment://vn_dialogue.gif');
-  } else {
-    const avatar = attacker.servant.template?.avatarUrl;
-    if (avatar) {
-      embed.setThumbnail(avatar);
-    }
   }
 
   return embed;
@@ -482,8 +477,6 @@ function buildMasterCommandSealDialogueCutInEmbed(
 
   if (hasImageAttachment) {
     embed.setImage('attachment://vn_dialogue.gif');
-  } else if (masterAvatarUrl) {
-    embed.setThumbnail(masterAvatarUrl);
   }
 
   return embed;
@@ -4473,10 +4466,6 @@ async function startInteractiveDuel(
             .setColor(0xef4444)
             .setFooter({ text: 'True Magic Ignition • Super Aoko Form Engaged' });
 
-          if (res.transformationAvatarUrl) {
-            transEmbed.setThumbnail(res.transformationAvatarUrl);
-          }
-
           await i.editReply({
             embeds: [mainEmbed, transEmbed],
             files: [turnAttachment],
@@ -4658,10 +4647,6 @@ async function startInteractiveDuel(
             )
             .setColor(0xf59e0b)
             .setFooter({ text: `Holy Grail War Engine • Round ${round} • Retreat Success Rate: ${fleeInfo.chancePercent}%` });
-
-          if (fleeActor.servant.template?.avatarUrl) {
-            retreatEmbed.setThumbnail(fleeActor.servant.template.avatarUrl);
-          }
 
           await i.editReply({ embeds: [retreatEmbed], components: [] });
           return;

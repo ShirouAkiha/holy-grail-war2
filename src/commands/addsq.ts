@@ -89,7 +89,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `• **Summon Tickets:** 🎫 \`${result.newTickets.toLocaleString()}\` (Was: ${result.previousTickets.toLocaleString()})`
       )
       .setColor(isAddition ? 0x38bdf8 : 0xf59e0b)
-      .setThumbnail(targetUser.displayAvatarURL({ size: 256 }))
       .setFooter({ text: `Granted by Admin ${interaction.user.username} • Holy Grail War Protocol` })
       .setTimestamp();
 

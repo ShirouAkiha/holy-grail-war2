@@ -48,10 +48,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .setColor(0xef4444)
       .setFooter({ text: 'Public Identity Broadcast • Master Permanently Exposed' });
 
-    if (s.template?.avatarUrl) {
-      embed.setThumbnail(s.template.avatarUrl);
-    }
-
     await interaction.reply({ embeds: [embed] });
   } catch (error: any) {
     console.error('Error executing /boast:', error);

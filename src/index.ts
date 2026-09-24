@@ -1516,7 +1516,6 @@ client.on(Events.InteractionCreate, async interaction => {
           .setTitle(`📢 MASTER DECLARATION | Covenant Established!`)
           .setDescription(`Master **${interaction.user.username}** boasts a covenant with **${template.name}** (${template.servantClass})!\n\n*"${activeServant.customQuotes?.summon || template.summonQuote || 'I answer your call, Master.'}"*`)
           .setColor(0xd4af37);
-        if (avatarUrl) boastEmbed.setThumbnail(avatarUrl);
         await interaction.reply({ embeds: [boastEmbed] });
         return;
       }
