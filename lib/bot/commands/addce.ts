@@ -66,8 +66,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         )
         .setColor(0xd4af37);
 
-      if (artworkUrl) embed.setThumbnail(artworkUrl);
-
       await interaction.reply({ embeds: [embed] });
     }
   } catch (error: any) {

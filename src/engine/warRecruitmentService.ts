@@ -836,7 +836,6 @@ export async function handleWarDmInteraction(interaction: ButtonInteraction, cli
           : '• *Standard Combat Intuition*')
       )
       .setColor(0x3b82f6)
-      .setThumbnail(activeServant.template?.avatarUrl || master.avatarUrl || null)
       .setFooter({ text: 'Holy Grail War Servant Tactical Sheet' });
 
     await interaction.reply({
