@@ -1282,7 +1282,8 @@ export async function handleApiKeySelectInteraction(interaction: StringSelectMen
       };
     } else {
       master.customApiConfig.activeProvider = provider;
-    master.customApiConfig.enabled = true;
+      master.customApiConfig.enabled = true;
+    }
     setProviderModel(master.customApiConfig, provider, modelId);
 
     await saveMaster(master);
