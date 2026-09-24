@@ -174,8 +174,18 @@ export function redactSensitiveKeysFromText(text?: string | null, extraKeys: str
   // Groq Cloud keys (gsk_...)
   sanitized = sanitized.replace(/gsk_[a-zA-Z0-9_\-\.]{20,}/g, '[REDACTED_GROQ_KEY]');
 
-  // OpenAI / OpenRouter / NanoGPT keys
-  sanitized = sanitized.replace(/sk-(?:or-v1-)?[a-zA-Z0-9_\-\.]{20,}/g, '[REDACTED_API_KEY]');
+  // OpenAI / OpenRouter / NanoGPT / Anthropic keys
+  sanitized = sanitized.replace(/sk-(?:or-v1-|ant-[a-zA-Z0-9_\-\.]+)[a-zA-Z0-9_\-\.]{15,}/g, '[REDACTED_API_KEY]');
+  sanitized = sanitized.replace(/sk-[a-zA-Z0-9_\-\.]{20,}/g, '[REDACTED_API_KEY]');
+
+  // xAI keys (xai-...)
+  sanitized = sanitized.replace(/xai-[a-zA-Z0-9_\-\.]{20,}/g, '[REDACTED_XAI_KEY]');
+
+  // Perplexity keys (pplx-...)
+  sanitized = sanitized.replace(/pplx-[a-zA-Z0-9_\-\.]{20,}/g, '[REDACTED_PERPLEXITY_KEY]');
+
+  // Cerebras keys (csk-...)
+  sanitized = sanitized.replace(/csk-[a-zA-Z0-9_\-\.]{20,}/g, '[REDACTED_CEREBRAS_KEY]');
 
   // Bearer tokens in headers or URLs
   sanitized = sanitized.replace(/Bearer\s+[a-zA-Z0-9_\-\.]{15,}/gi, 'Bearer [REDACTED_TOKEN]');

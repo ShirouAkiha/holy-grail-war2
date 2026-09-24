@@ -222,17 +222,28 @@ export interface BondDialogueLine {
 }
 
 export type ApiProviderType =
+  | 'openai'
+  | 'anthropic'
   | 'gemini'
   | 'groq'
   | 'openrouter'
   | 'deepseek'
+  | 'xai'
   | 'mistral'
+  | 'together'
+  | 'perplexity'
+  | 'cerebras'
+  | 'cohere'
   | 'nanogpt'
   | 'ollama'
   | 'custom';
 
 export interface UserCustomApiConfig {
   activeProvider: ApiProviderType;
+  openaiKey?: string;
+  openaiModel?: string; // e.g. "gpt-4o", "gpt-4o-mini", "o3-mini", "o1", "gpt-4.5-preview"
+  anthropicKey?: string;
+  anthropicModel?: string; // e.g. "claude-3-7-sonnet-20250219", "claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"
   geminiKey?: string;
   geminiModel?: string; // e.g. "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"
   groqKey?: string;
@@ -241,8 +252,18 @@ export interface UserCustomApiConfig {
   openrouterModel?: string; // e.g. "google/gemini-2.0-flash-exp:free", "meta-llama/llama-3.3-70b-instruct:free", "deepseek/deepseek-r1:free"
   deepseekKey?: string;
   deepseekModel?: string; // e.g. "deepseek-chat", "deepseek-reasoner"
+  xaiKey?: string;
+  xaiModel?: string; // e.g. "grok-2-1212", "grok-2-vision-1212", "grok-beta"
   mistralKey?: string;
   mistralModel?: string; // e.g. "mistral-small-latest", "open-mistral-7b"
+  togetherKey?: string;
+  togetherModel?: string; // e.g. "meta-llama/Llama-3.3-70B-Instruct-Turbo", "deepseek-ai/DeepSeek-R1"
+  perplexityKey?: string;
+  perplexityModel?: string; // e.g. "sonar-reasoning", "sonar-pro", "sonar"
+  cerebrasKey?: string;
+  cerebrasModel?: string; // e.g. "llama-3.3-70b", "llama3.1-8b"
+  cohereKey?: string;
+  cohereModel?: string; // e.g. "command-r-plus-08-2024", "command-r-08-2024"
   nanogptKey?: string;
   nanogptModel?: string; // e.g. "gpt-4o-mini", "chatgpt-4o-latest"
   ollamaEndpoint?: string; // default "http://localhost:11434/v1/chat/completions"

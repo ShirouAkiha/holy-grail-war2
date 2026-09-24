@@ -32,7 +32,7 @@ import { encryptSecret, redactSensitiveKeysFromText } from '../utils/cryptoSecur
 
 export const data = new SlashCommandBuilder()
   .setName('apikey')
-  .setDescription('Freedom of AI: Choose providers & any model (Groq, Gemini, OpenRouter, DeepSeek, Ollama, Custom)')
+  .setDescription('Freedom of AI: Choose providers & any model (OpenAI, Claude, Grok, Gemini, Groq, DeepSeek, etc.)')
   .addSubcommand(sub =>
     sub
       .setName('dashboard')
@@ -48,13 +48,20 @@ export const data = new SlashCommandBuilder()
           .setDescription('Optional: Choose which provider to browse models for')
           .setRequired(false)
           .addChoices(
+            { name: 'OpenAI (GPT-4o / o1 / o3)', value: 'openai' },
+            { name: 'Anthropic Claude (3.7 / 3.5 Sonnet)', value: 'anthropic' },
             { name: 'Google Gemini (AI Studio)', value: 'gemini' },
-            { name: 'Groq Cloud (Ultra-Fast LPUs)', value: 'groq' },
-            { name: 'OpenRouter.ai (All Models & :free Tier)', value: 'openrouter' },
+            { name: 'Groq Cloud (Free Ultra-Fast LPUs)', value: 'groq' },
+            { name: 'OpenRouter.ai (200+ Models)', value: 'openrouter' },
             { name: 'DeepSeek Direct API (V3 & R1)', value: 'deepseek' },
+            { name: 'xAI (Grok 2 / Grok 3)', value: 'xai' },
             { name: 'Mistral AI (La Plateforme)', value: 'mistral' },
-            { name: 'Ollama / Local AI (Offline)', value: 'ollama' },
-            { name: 'NanoGPT', value: 'nanogpt' },
+            { name: 'Together AI (Open Weights)', value: 'together' },
+            { name: 'Perplexity AI (Search & Reasoning)', value: 'perplexity' },
+            { name: 'Cerebras (Fastest 2000 tok/s)', value: 'cerebras' },
+            { name: 'Cohere (Command R+)', value: 'cohere' },
+            { name: 'Ollama / Local AI (Offline Free)', value: 'ollama' },
+            { name: 'NanoGPT (Micro-Credits)', value: 'nanogpt' },
             { name: 'Custom OpenAI-Compatible Endpoint', value: 'custom' }
           )
       )
@@ -74,13 +81,20 @@ export const data = new SlashCommandBuilder()
           .setDescription('Select the AI provider to activate')
           .setRequired(true)
           .addChoices(
+            { name: 'OpenAI (GPT-4o / o1 / o3)', value: 'openai' },
+            { name: 'Anthropic Claude (3.7 / 3.5 Sonnet)', value: 'anthropic' },
             { name: 'Google Gemini (AI Studio - Free)', value: 'gemini' },
             { name: 'Groq Cloud (Free Ultra-Fast LPUs)', value: 'groq' },
-            { name: 'OpenRouter.ai (All Models & Free Tier)', value: 'openrouter' },
+            { name: 'OpenRouter.ai (200+ Models)', value: 'openrouter' },
             { name: 'DeepSeek Direct API', value: 'deepseek' },
+            { name: 'xAI (Grok 2 / Grok 3)', value: 'xai' },
             { name: 'Mistral AI (La Plateforme)', value: 'mistral' },
+            { name: 'Together AI (Open Weights)', value: 'together' },
+            { name: 'Perplexity AI (Search & Reasoning)', value: 'perplexity' },
+            { name: 'Cerebras (Fastest 2000 tok/s)', value: 'cerebras' },
+            { name: 'Cohere (Command R+)', value: 'cohere' },
             { name: 'Ollama / Local AI (Offline Free)', value: 'ollama' },
-            { name: 'NanoGPT', value: 'nanogpt' },
+            { name: 'NanoGPT (Micro-Credits)', value: 'nanogpt' },
             { name: 'Custom OpenAI-Compatible API', value: 'custom' }
           )
       )
@@ -95,22 +109,27 @@ export const data = new SlashCommandBuilder()
           .setDescription('Preset model or leave empty to open the full interactive Model Explorer')
           .setRequired(false)
           .addChoices(
+            { name: 'OpenAI: GPT-4o (Flagship Omni)', value: 'gpt-4o' },
+            { name: 'OpenAI: o3-mini (High-Speed Reasoning)', value: 'o3-mini' },
+            { name: 'Anthropic: Claude 3.7 Sonnet (Hybrid CoT)', value: 'claude-3-7-sonnet-20250219' },
+            { name: 'Anthropic: Claude 3.5 Haiku (Ultra-Fast)', value: 'claude-3-5-haiku-20241022' },
             { name: 'Groq: Llama 3.3 70B Versatile (Flagship 300+ tok/s)', value: 'llama-3.3-70b-versatile' },
-            { name: 'Groq: Llama 3.1 8B Instant (Sub-150ms)', value: 'llama-3.1-8b-instant' },
             { name: 'Groq: DeepSeek R1 Distill 70B (Reasoning)', value: 'deepseek-r1-distill-llama-70b' },
             { name: 'Gemini: 3.5 Flash (Flagship Roleplay & Free Tier)', value: 'gemini-3.5-flash' },
             { name: 'Gemini: 3.5 Flash-Lite (Fastest Low-Latency)', value: 'gemini-3.5-flash-lite' },
             { name: 'Gemini: 3.5 Pro (Deep Reasoning & Lore)', value: 'gemini-3.5-pro' },
             { name: 'OpenRouter: meta-llama/llama-3.3-70b-instruct:free', value: 'meta-llama/llama-3.3-70b-instruct:free' },
-            { name: 'OpenRouter: anthropic/claude-3.5-sonnet', value: 'anthropic/claude-3.5-sonnet' },
-            { name: 'OpenRouter: deepseek/deepseek-r1:free', value: 'deepseek/deepseek-r1:free' },
             { name: 'DeepSeek: deepseek-chat (V3 671B)', value: 'deepseek-chat' },
             { name: 'DeepSeek: deepseek-reasoner (R1 Reasoning)', value: 'deepseek-reasoner' },
+            { name: 'xAI: grok-2-1212 (Flagship Witty & Sharp)', value: 'grok-2-1212' },
             { name: 'Mistral: mistral-large-latest (Flagship)', value: 'mistral-large-latest' },
             { name: 'Mistral: mistral-small-latest (Fast & Free)', value: 'mistral-small-latest' },
+            { name: 'Together: meta-llama/Llama-3.3-70B-Instruct-Turbo', value: 'meta-llama/Llama-3.3-70B-Instruct-Turbo' },
+            { name: 'Perplexity: sonar-reasoning (Search CoT)', value: 'sonar-reasoning' },
+            { name: 'Cerebras: llama-3.3-70b (World Record 1800 tok/s)', value: 'llama-3.3-70b' },
+            { name: 'Cohere: command-r-plus-08-2024 (Enterprise)', value: 'command-r-plus-08-2024' },
             { name: 'Ollama: llama3.3 (Local 70B Offline)', value: 'llama3.3' },
-            { name: 'Ollama: llama3.2 (Local Fast)', value: 'llama3.2' },
-            { name: 'Ollama: deepseek-r1:7b (Local Reasoning)', value: 'deepseek-r1:7b' }
+            { name: 'Ollama: llama3.2 (Local Fast)', value: 'llama3.2' }
           )
       )
       .addStringOption(opt =>
@@ -130,11 +149,18 @@ export const data = new SlashCommandBuilder()
           .setDescription('Select the AI provider')
           .setRequired(true)
           .addChoices(
+            { name: 'OpenAI (GPT-4o / o1 / o3)', value: 'openai' },
+            { name: 'Anthropic Claude (3.7 / 3.5 Sonnet)', value: 'anthropic' },
             { name: 'Google Gemini (AI Studio)', value: 'gemini' },
             { name: 'Groq Cloud (Free Ultra-Fast LPUs)', value: 'groq' },
             { name: 'OpenRouter.ai', value: 'openrouter' },
             { name: 'DeepSeek Direct API', value: 'deepseek' },
+            { name: 'xAI (Grok 2 / Grok 3)', value: 'xai' },
             { name: 'Mistral AI', value: 'mistral' },
+            { name: 'Together AI (Open Weights)', value: 'together' },
+            { name: 'Perplexity AI', value: 'perplexity' },
+            { name: 'Cerebras (Fastest 2000 tok/s)', value: 'cerebras' },
+            { name: 'Cohere (Command R+)', value: 'cohere' },
             { name: 'Ollama / Local AI', value: 'ollama' },
             { name: 'NanoGPT', value: 'nanogpt' },
             { name: 'Custom OpenAI-Compatible API', value: 'custom' }
@@ -181,6 +207,100 @@ export const data = new SlashCommandBuilder()
   );
 
 /**
+ * Helper to get the API key configured for any provider.
+ */
+export function getProviderKey(cfg: UserCustomApiConfig, provider: ApiProviderType): string | undefined {
+  switch (provider) {
+    case 'openai': return cfg.openaiKey;
+    case 'anthropic': return cfg.anthropicKey;
+    case 'gemini': return cfg.geminiKey;
+    case 'groq': return cfg.groqKey;
+    case 'openrouter': return cfg.openrouterKey;
+    case 'deepseek': return cfg.deepseekKey;
+    case 'xai': return cfg.xaiKey;
+    case 'mistral': return cfg.mistralKey;
+    case 'together': return cfg.togetherKey;
+    case 'perplexity': return cfg.perplexityKey;
+    case 'cerebras': return cfg.cerebrasKey;
+    case 'cohere': return cfg.cohereKey;
+    case 'nanogpt': return cfg.nanogptKey;
+    case 'ollama': return cfg.customKey;
+    case 'custom': return cfg.customKey;
+    default: return undefined;
+  }
+}
+
+/**
+ * Helper to get the active model configured for any provider.
+ */
+export function getProviderModel(cfg: UserCustomApiConfig, provider: ApiProviderType): string {
+  switch (provider) {
+    case 'openai': return cfg.openaiModel || DEFAULT_PROVIDER_MODELS.openai;
+    case 'anthropic': return cfg.anthropicModel || DEFAULT_PROVIDER_MODELS.anthropic;
+    case 'gemini': return cfg.geminiModel || DEFAULT_PROVIDER_MODELS.gemini;
+    case 'groq': return cfg.groqModel || DEFAULT_PROVIDER_MODELS.groq;
+    case 'openrouter': return cfg.openrouterModel || DEFAULT_PROVIDER_MODELS.openrouter;
+    case 'deepseek': return cfg.deepseekModel || DEFAULT_PROVIDER_MODELS.deepseek;
+    case 'xai': return cfg.xaiModel || DEFAULT_PROVIDER_MODELS.xai;
+    case 'mistral': return cfg.mistralModel || DEFAULT_PROVIDER_MODELS.mistral;
+    case 'together': return cfg.togetherModel || DEFAULT_PROVIDER_MODELS.together;
+    case 'perplexity': return cfg.perplexityModel || DEFAULT_PROVIDER_MODELS.perplexity;
+    case 'cerebras': return cfg.cerebrasModel || DEFAULT_PROVIDER_MODELS.cerebras;
+    case 'cohere': return cfg.cohereModel || DEFAULT_PROVIDER_MODELS.cohere;
+    case 'nanogpt': return cfg.nanogptModel || DEFAULT_PROVIDER_MODELS.nanogpt;
+    case 'ollama': return cfg.ollamaModel || DEFAULT_PROVIDER_MODELS.ollama;
+    case 'custom': return cfg.customModel || 'default';
+    default: return 'default';
+  }
+}
+
+/**
+ * Helper to set the model configured for any provider.
+ */
+export function setProviderModel(cfg: UserCustomApiConfig, provider: ApiProviderType, model: string): void {
+  switch (provider) {
+    case 'openai': cfg.openaiModel = model; break;
+    case 'anthropic': cfg.anthropicModel = model; break;
+    case 'gemini': cfg.geminiModel = model; break;
+    case 'groq': cfg.groqModel = model; break;
+    case 'openrouter': cfg.openrouterModel = model; break;
+    case 'deepseek': cfg.deepseekModel = model; break;
+    case 'xai': cfg.xaiModel = model; break;
+    case 'mistral': cfg.mistralModel = model; break;
+    case 'together': cfg.togetherModel = model; break;
+    case 'perplexity': cfg.perplexityModel = model; break;
+    case 'cerebras': cfg.cerebrasModel = model; break;
+    case 'cohere': cfg.cohereModel = model; break;
+    case 'nanogpt': cfg.nanogptModel = model; break;
+    case 'ollama': cfg.ollamaModel = model; break;
+    case 'custom': cfg.customModel = model; break;
+  }
+}
+
+/**
+ * Helper to set the encrypted key configured for any provider.
+ */
+export function setProviderKey(cfg: UserCustomApiConfig, provider: ApiProviderType, key: string): void {
+  switch (provider) {
+    case 'openai': cfg.openaiKey = key; break;
+    case 'anthropic': cfg.anthropicKey = key; break;
+    case 'gemini': cfg.geminiKey = key; break;
+    case 'groq': cfg.groqKey = key; break;
+    case 'openrouter': cfg.openrouterKey = key; break;
+    case 'deepseek': cfg.deepseekKey = key; break;
+    case 'xai': cfg.xaiKey = key; break;
+    case 'mistral': cfg.mistralKey = key; break;
+    case 'together': cfg.togetherKey = key; break;
+    case 'perplexity': cfg.perplexityKey = key; break;
+    case 'cerebras': cfg.cerebrasKey = key; break;
+    case 'cohere': cfg.cohereKey = key; break;
+    case 'nanogpt': cfg.nanogptKey = key; break;
+    case 'ollama': cfg.customKey = key; break;
+    case 'custom': cfg.customKey = key; break;
+  }
+}
+
+/**
  * Builds the private BYOK dashboard embed and control buttons.
  */
 export function buildApiKeyDashboard(master: any) {
@@ -192,31 +312,52 @@ export function buildApiKeyDashboard(master: any) {
   const activeProvider = cfg.activeProvider || 'gemini';
   const isEnabled = !!cfg.enabled;
 
+  const openaiMasked = maskApiKey(cfg.openaiKey);
+  const anthropicMasked = maskApiKey(cfg.anthropicKey);
   const geminiMasked = maskApiKey(cfg.geminiKey);
   const groqMasked = maskApiKey(cfg.groqKey);
   const openrouterMasked = maskApiKey(cfg.openrouterKey);
   const deepseekMasked = maskApiKey(cfg.deepseekKey);
+  const xaiMasked = maskApiKey(cfg.xaiKey);
   const mistralMasked = maskApiKey(cfg.mistralKey);
+  const togetherMasked = maskApiKey(cfg.togetherKey);
+  const perplexityMasked = maskApiKey(cfg.perplexityKey);
+  const cerebrasMasked = maskApiKey(cfg.cerebrasKey);
+  const cohereMasked = maskApiKey(cfg.cohereKey);
   const nanogptMasked = maskApiKey(cfg.nanogptKey);
   const customMasked = maskApiKey(cfg.customKey);
   const ollamaStatus = cfg.ollamaEndpoint ? `Custom (${cfg.ollamaEndpoint})` : 'Default (localhost:11434)';
 
   const activeModel =
+    activeProvider === 'openai' ? (cfg.openaiModel || DEFAULT_PROVIDER_MODELS.openai) :
+    activeProvider === 'anthropic' ? (cfg.anthropicModel || DEFAULT_PROVIDER_MODELS.anthropic) :
     activeProvider === 'gemini' ? (cfg.geminiModel || DEFAULT_PROVIDER_MODELS.gemini) :
     activeProvider === 'groq' ? (cfg.groqModel || DEFAULT_PROVIDER_MODELS.groq) :
     activeProvider === 'openrouter' ? (cfg.openrouterModel || DEFAULT_PROVIDER_MODELS.openrouter) :
     activeProvider === 'deepseek' ? (cfg.deepseekModel || DEFAULT_PROVIDER_MODELS.deepseek) :
+    activeProvider === 'xai' ? (cfg.xaiModel || DEFAULT_PROVIDER_MODELS.xai) :
     activeProvider === 'mistral' ? (cfg.mistralModel || DEFAULT_PROVIDER_MODELS.mistral) :
+    activeProvider === 'together' ? (cfg.togetherModel || DEFAULT_PROVIDER_MODELS.together) :
+    activeProvider === 'perplexity' ? (cfg.perplexityModel || DEFAULT_PROVIDER_MODELS.perplexity) :
+    activeProvider === 'cerebras' ? (cfg.cerebrasModel || DEFAULT_PROVIDER_MODELS.cerebras) :
+    activeProvider === 'cohere' ? (cfg.cohereModel || DEFAULT_PROVIDER_MODELS.cohere) :
     activeProvider === 'nanogpt' ? (cfg.nanogptModel || DEFAULT_PROVIDER_MODELS.nanogpt) :
     activeProvider === 'ollama' ? (cfg.ollamaModel || DEFAULT_PROVIDER_MODELS.ollama) :
     (cfg.customModel || 'default');
 
   const hasAnyKey = !!(
+    cfg.openaiKey ||
+    cfg.anthropicKey ||
     cfg.geminiKey ||
     cfg.groqKey ||
     cfg.openrouterKey ||
     cfg.deepseekKey ||
+    cfg.xaiKey ||
     cfg.mistralKey ||
+    cfg.togetherKey ||
+    cfg.perplexityKey ||
+    cfg.cerebrasKey ||
+    cfg.cohereKey ||
     cfg.nanogptKey ||
     cfg.customKey ||
     cfg.activeProvider === 'ollama'
@@ -241,13 +382,14 @@ export function buildApiKeyDashboard(master: any) {
       {
         name: '🤖 Configured Credentials & Status',
         value:
-          `• **Google Gemini:** \`${geminiMasked}\` ${activeProvider === 'gemini' ? '◀ *(Active)*' : ''}\n` +
-          `• **Groq Cloud:** \`${groqMasked}\` ${activeProvider === 'groq' ? '◀ *(Active)*' : ''}\n` +
-          `• **OpenRouter.ai:** \`${openrouterMasked}\` ${activeProvider === 'openrouter' ? '◀ *(Active)*' : ''}\n` +
-          `• **DeepSeek Direct:** \`${deepseekMasked}\` ${activeProvider === 'deepseek' ? '◀ *(Active)*' : ''}\n` +
-          `• **Mistral AI:** \`${mistralMasked}\` ${activeProvider === 'mistral' ? '◀ *(Active)*' : ''}\n` +
-          `• **Ollama Local AI:** \`${ollamaStatus}\` ${activeProvider === 'ollama' ? '◀ *(Active)*' : ''}\n` +
-          `• **NanoGPT / Custom:** \`${nanogptMasked || customMasked}\` ${(activeProvider === 'nanogpt' || activeProvider === 'custom') ? '◀ *(Active)*' : ''}`,
+          `• **Active:** **${PROVIDER_DISPLAY_NAMES[activeProvider]}** \`[${activeModel}]\` ◀\n` +
+          `• **OpenAI:** \`${openaiMasked}\` | **Anthropic:** \`${anthropicMasked}\`\n` +
+          `• **Gemini:** \`${geminiMasked}\` | **Groq:** \`${groqMasked}\`\n` +
+          `• **OpenRouter:** \`${openrouterMasked}\` | **DeepSeek:** \`${deepseekMasked}\`\n` +
+          `• **xAI:** \`${xaiMasked}\` | **Mistral:** \`${mistralMasked}\`\n` +
+          `• **Together:** \`${togetherMasked}\` | **Perplexity:** \`${perplexityMasked}\`\n` +
+          `• **Cerebras:** \`${cerebrasMasked}\` | **Cohere:** \`${cohereMasked}\`\n` +
+          `• **Ollama Local AI:** \`${ollamaStatus}\` | **Custom:** \`${customMasked || nanogptMasked}\``,
         inline: false
       },
       {
@@ -332,13 +474,14 @@ export function buildApiKeyDashboard(master: any) {
 /**
  * Builds the interactive Provider Model Explorer.
  * Shows ALL models available for the selected provider with categories, descriptions,
- * dynamic select menus, live API refresh, and custom model ID support.
+ * dynamic select menus (with pagination for >25 models), live API refresh, and custom model ID support.
  */
 export function buildProviderModelExplorer(
   master: any,
   targetProvider?: ApiProviderType,
   overrideModels?: ProviderModelSpec[],
-  sourceType: 'live_api' | 'catalog' = 'catalog'
+  sourceType: 'live_api' | 'catalog' = 'catalog',
+  page: number = 0
 ) {
   const cfg: UserCustomApiConfig = master.customApiConfig || {
     activeProvider: 'gemini',
@@ -347,73 +490,84 @@ export function buildProviderModelExplorer(
 
   const provider = targetProvider || cfg.activeProvider || 'gemini';
   const models = overrideModels || getModelsForProvider(provider);
+  const currentActiveModel = getProviderModel(cfg, provider);
 
-  const currentActiveModel =
-    provider === 'gemini' ? (cfg.geminiModel || DEFAULT_PROVIDER_MODELS.gemini) :
-    provider === 'groq' ? (cfg.groqModel || DEFAULT_PROVIDER_MODELS.groq) :
-    provider === 'openrouter' ? (cfg.openrouterModel || DEFAULT_PROVIDER_MODELS.openrouter) :
-    provider === 'deepseek' ? (cfg.deepseekModel || DEFAULT_PROVIDER_MODELS.deepseek) :
-    provider === 'mistral' ? (cfg.mistralModel || DEFAULT_PROVIDER_MODELS.mistral) :
-    provider === 'nanogpt' ? (cfg.nanogptModel || DEFAULT_PROVIDER_MODELS.nanogpt) :
-    provider === 'ollama' ? (cfg.ollamaModel || DEFAULT_PROVIDER_MODELS.ollama) :
-    (cfg.customModel || 'default');
+  // Pagination calculation
+  const totalModels = models.length;
+  const pageSize = 25;
+  const totalPages = Math.max(1, Math.ceil(totalModels / pageSize));
+  const currentPage = Math.max(0, Math.min(page, totalPages - 1));
+  const pageModels = models.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
 
-  // Categorize models
+  // Categorize models for display in embed
   const flagships = models.filter(m => m.category === 'Flagship');
   const fast = models.filter(m => m.category === 'Fast & Instant');
   const reasoning = models.filter(m => m.category === 'Reasoning & CoT');
   const creative = models.filter(m => m.category === 'Creative & Lore' || m.category === 'Open Weights' || m.category === 'Local Offline');
+
+  const pageRangeStr = totalPages > 1
+    ? `\n• **Page Navigation:** Page \`${currentPage + 1}\` of \`${totalPages}\` (Models ${currentPage * pageSize + 1}–${Math.min((currentPage + 1) * pageSize, totalModels)} of ${totalModels})`
+    : `\n• **Total Available:** \`${totalModels} models\``;
 
   const embed = new EmbedBuilder()
     .setTitle(`🤖 ${PROVIDER_DISPLAY_NAMES[provider]} — Model Explorer`)
     .setDescription(
       `Master **${master.username}**, select any model from the list below to use with **${PROVIDER_DISPLAY_NAMES[provider]}**.\n\n` +
       `• **Active Selected Model:** \`${currentActiveModel}\`\n` +
-      `• **Catalog Source:** ${sourceType === 'live_api' ? '⚡ **Live Provider Endpoint** (Real-time)' : '📦 **Comprehensive Provider Catalog**'}\n` +
-      `• **Total Available:** \`${models.length} models listed\`\n\n` +
+      `• **Catalog Source:** ${sourceType === 'live_api' ? '⚡ **Live Provider Endpoint** (Real-time)' : '📦 **Comprehensive Provider Catalog**'}${pageRangeStr}\n\n` +
       `*Choose a model from the dropdown below or click "Type Custom Model ID" to enter any new unlisted model identifier.*`
     )
     .setColor(0x3b82f6)
-    .setFooter({ text: 'Select a model from the menu below • Instant activation' });
+    .setFooter({ text: `Page ${currentPage + 1} of ${totalPages} • Select a model to activate immediately` });
 
-  if (flagships.length > 0) {
+  if (currentPage === 0) {
+    if (flagships.length > 0) {
+      embed.addFields({
+        name: '👑 Flagship Models',
+        value: flagships.slice(0, 4).map(m => `• **\`${m.id}\`** — ${m.name}${m.isFreeTier ? ' *(Free)*' : ''}\n  *${m.description.slice(0, 90)}*`).join('\n'),
+        inline: false
+      });
+    }
+
+    if (fast.length > 0) {
+      embed.addFields({
+        name: '⚡ Fast & Low Latency',
+        value: fast.slice(0, 3).map(m => `• **\`${m.id}\`** — ${m.name}${m.isFreeTier ? ' *(Free)*' : ''}\n  *${m.description.slice(0, 90)}*`).join('\n'),
+        inline: false
+      });
+    }
+
+    if (reasoning.length > 0) {
+      embed.addFields({
+        name: '🧠 Chain-of-Thought & Reasoning',
+        value: reasoning.slice(0, 3).map(m => `• **\`${m.id}\`** — ${m.name}${m.isFreeTier ? ' *(Free)*' : ''}\n  *${m.description.slice(0, 90)}*`).join('\n'),
+        inline: false
+      });
+    }
+
+    if (creative.length > 0 && embed.data.fields && embed.data.fields.length < 5) {
+      embed.addFields({
+        name: '🎨 Creative & Lore / Open Weights',
+        value: creative.slice(0, 3).map(m => `• **\`${m.id}\`** — ${m.name}${m.isFreeTier ? ' *(Free)*' : ''}`).join('\n'),
+        inline: false
+      });
+    }
+  } else {
+    // For later pages, list the models on this page
     embed.addFields({
-      name: '👑 Flagship Models',
-      value: flagships.slice(0, 5).map(m => `• **\`${m.id}\`** — ${m.name}${m.isFreeTier ? ' *(Free)*' : ''}\n  *${m.description.slice(0, 90)}*`).join('\n'),
+      name: `📋 Models on Page ${currentPage + 1} (${pageModels.length} models)`,
+      value: pageModels.slice(0, 10).map(m => `• **\`${m.id}\`** — ${m.name}${m.isFreeTier ? ' *(Free)*' : ''}`).join('\n') +
+        (pageModels.length > 10 ? `\n*...and ${pageModels.length - 10} more in the dropdown below*` : ''),
       inline: false
     });
   }
 
-  if (fast.length > 0) {
-    embed.addFields({
-      name: '⚡ Fast & Low Latency',
-      value: fast.slice(0, 4).map(m => `• **\`${m.id}\`** — ${m.name}${m.isFreeTier ? ' *(Free)*' : ''}\n  *${m.description.slice(0, 90)}*`).join('\n'),
-      inline: false
-    });
-  }
-
-  if (reasoning.length > 0) {
-    embed.addFields({
-      name: '🧠 Chain-of-Thought & Reasoning',
-      value: reasoning.slice(0, 4).map(m => `• **\`${m.id}\`** — ${m.name}${m.isFreeTier ? ' *(Free)*' : ''}\n  *${m.description.slice(0, 90)}*`).join('\n'),
-      inline: false
-    });
-  }
-
-  if (creative.length > 0 && embed.data.fields && embed.data.fields.length < 5) {
-    embed.addFields({
-      name: '🎨 Creative & Lore / Open Weights',
-      value: creative.slice(0, 4).map(m => `• **\`${m.id}\`** — ${m.name}${m.isFreeTier ? ' *(Free)*' : ''}`).join('\n'),
-      inline: false
-    });
-  }
-
-  // Build Select Menu (up to 25 items limit of Discord select menu)
+  // Build Select Menu (up to 25 items for current page)
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId(`select_apikey_provider_model:${provider}`)
-    .setPlaceholder(`👉 Select a model for ${PROVIDER_DISPLAY_NAMES[provider].split(' ')[0]}...`);
+    .setPlaceholder(`👉 Select a model (${currentPage + 1}/${totalPages}) for ${PROVIDER_DISPLAY_NAMES[provider].split(' ')[0]}...`);
 
-  const selectOptions = models.slice(0, 25).map(m => {
+  const selectOptions = pageModels.map(m => {
     let emoji = '🤖';
     if (m.category === 'Flagship') emoji = '👑';
     else if (m.category === 'Fast & Instant') emoji = '⚡';
@@ -435,7 +589,31 @@ export function buildProviderModelExplorer(
 
   selectMenu.addOptions(selectOptions);
 
-  const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
+  const components: any[] = [
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu)
+  ];
+
+  // If more than 1 page, add pagination controls
+  if (totalPages > 1) {
+    const navRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`btn_apikey_model_page:${provider}:${currentPage - 1}`)
+        .setLabel('◀ Prev 25')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(currentPage <= 0),
+      new ButtonBuilder()
+        .setCustomId(`btn_apikey_page_indicator:${currentPage}`)
+        .setLabel(`Page ${currentPage + 1} / ${totalPages}`)
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(true),
+      new ButtonBuilder()
+        .setCustomId(`btn_apikey_model_page:${provider}:${currentPage + 1}`)
+        .setLabel('Next 25 ▶')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(currentPage >= totalPages - 1)
+    );
+    components.push(navRow);
+  }
 
   // Button Row: Custom Model ID, Refresh Live, Switch Provider, Dashboard
   const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -460,8 +638,9 @@ export function buildProviderModelExplorer(
       .setStyle(ButtonStyle.Secondary)
       .setEmoji('↩️')
   );
+  components.push(btnRow);
 
-  return { embed, components: [selectRow, btnRow] };
+  return { embed, components };
 }
 
 /**
@@ -498,14 +677,21 @@ export function buildProviderSwitchMenu(master: any) {
     .setPlaceholder('Select an AI Provider to view its models...');
 
   const providers: { value: ApiProviderType; label: string; desc: string; emoji: string }[] = [
-    { value: 'gemini', label: 'Google Gemini (AI Studio)', desc: 'Gemini 3.5 Flash, 3.5 Pro, 2.5 Flash, 1.5 Pro', emoji: '🔷' },
+    { value: 'openai', label: 'OpenAI Direct (GPT-4o, o1, o3)', desc: 'Official GPT-4o, o1, o3-mini models', emoji: '✨' },
+    { value: 'anthropic', label: 'Anthropic Claude (3.7 / 3.5)', desc: 'Claude 3.7 Sonnet hybrid reasoning & 3.5 Haiku', emoji: '🎭' },
+    { value: 'gemini', label: 'Google Gemini (AI Studio)', desc: 'Gemini 3.5 Flash, 3.5 Pro, 2.5 Flash (Free Tier)', emoji: '🔷' },
     { value: 'groq', label: 'Groq Cloud (Ultra-Fast LPUs)', desc: 'Llama 3.3 70B, Llama 3.1 8B, DeepSeek R1 Distill', emoji: '⚡' },
     { value: 'openrouter', label: 'OpenRouter.ai', desc: 'Claude 3.5/3.7, GPT-4o, DeepSeek R1, 20+ Free Models', emoji: '🌐' },
     { value: 'deepseek', label: 'DeepSeek Direct API', desc: 'DeepSeek V3 (671B MoE) & DeepSeek R1 Reasoning', emoji: '🌟' },
+    { value: 'xai', label: 'xAI (Grok 2 / Grok 3)', desc: 'Grok 2, Grok 2 Vision, witty & sharp dialogue', emoji: '🚀' },
     { value: 'mistral', label: 'Mistral AI (La Plateforme)', desc: 'Mistral Large, Mistral Small, Codestral, Pixtral', emoji: '🦊' },
+    { value: 'together', label: 'Together AI (Open Weights)', desc: 'Llama 3.3 70B Turbo, DeepSeek R1, Qwen 2.5', emoji: '🤝' },
+    { value: 'perplexity', label: 'Perplexity AI', desc: 'Sonar reasoning & online real-time grounding', emoji: '🔍' },
+    { value: 'cerebras', label: 'Cerebras (Fastest 2000 tok/s)', desc: 'World fastest LPU inference for Llama 3.3 70B', emoji: '⚡' },
+    { value: 'cohere', label: 'Cohere (Command R+)', desc: 'Command R+ 08-2024 enterprise multi-turn CoT', emoji: '🎯' },
     { value: 'ollama', label: 'Ollama / Local AI', desc: 'Llama 3.3, DeepSeek R1, Mistral, Qwen (100% Offline)', emoji: '💻' },
     { value: 'nanogpt', label: 'NanoGPT', desc: 'GPT-4o, Claude 3.5, DeepSeek paid with Nano micro-credits', emoji: '⚡' },
-    { value: 'custom', label: 'Custom OpenAI Endpoint', desc: 'vLLM, LM Studio, Together, or any self-hosted LLM', emoji: '🛠️' }
+    { value: 'custom', label: 'Custom OpenAI Endpoint', desc: 'vLLM, LM Studio, or any self-hosted LLM', emoji: '🛠️' }
   ];
 
   for (const p of providers) {
@@ -541,72 +727,52 @@ export function buildProviderSwitchMenu(master: any) {
  */
 export function buildMoreProvidersMenu() {
   const embed = new EmbedBuilder()
-    .setTitle('⚙️ All Supported AI Providers')
+    .setTitle('⚙️ All Supported AI Providers (15 Available)')
     .setDescription(
       `Configure credentials and models for any provider:\n\n` +
-      `• **Google Gemini:** [aistudio.google.com/apikey](https://aistudio.google.com/apikey)\n` +
-      `• **Groq Cloud:** [console.groq.com/keys](https://console.groq.com/keys)\n` +
-      `• **OpenRouter:** [openrouter.ai/keys](https://openrouter.ai/keys)\n` +
+      `• **OpenAI:** [platform.openai.com](https://platform.openai.com)\n` +
+      `• **Anthropic:** [console.anthropic.com](https://console.anthropic.com)\n` +
+      `• **Google Gemini:** [aistudio.google.com/apikey](https://aistudio.google.com/apikey) *(Free tier)*\n` +
+      `• **Groq Cloud:** [console.groq.com/keys](https://console.groq.com/keys) *(100% Free 300+ tok/s)*\n` +
+      `• **OpenRouter:** [openrouter.ai/keys](https://openrouter.ai/keys) *(All models + Free models)*\n` +
       `• **DeepSeek:** [platform.deepseek.com](https://platform.deepseek.com)\n` +
+      `• **xAI:** [console.x.ai](https://console.x.ai)\n` +
       `• **Mistral AI:** [console.mistral.ai](https://console.mistral.ai)\n` +
-      `• **Ollama:** [ollama.ai](https://ollama.ai) (Runs locally on localhost:11434 with 0 keys)\n` +
-      `• **Custom Endpoint:** Any self-hosted vLLM, LM Studio, or OpenAI-compatible gateway.`
+      `• **Together AI:** [together.ai](https://together.ai)\n` +
+      `• **Perplexity AI:** [perplexity.ai](https://perplexity.ai)\n` +
+      `• **Cerebras:** [cloud.cerebras.ai](https://cloud.cerebras.ai)\n` +
+      `• **Cohere:** [dashboard.cohere.com](https://dashboard.cohere.com)\n` +
+      `• **Ollama:** [ollama.ai](https://ollama.ai) *(100% Free & Offline, zero keys needed)*\n` +
+      `• **NanoGPT / Custom:** Any self-hosted vLLM, LM Studio, or OpenAI-compatible gateway.`
     )
     .setColor(0x8b5cf6)
-    .setFooter({ text: 'Select a provider button below to configure' });
+    .setFooter({ text: 'Select a provider button below to configure credentials' });
 
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId('btn_apikey_modal:gemini')
-      .setLabel('Gemini')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('🔷'),
-    new ButtonBuilder()
-      .setCustomId('btn_apikey_modal:groq')
-      .setLabel('Groq (Free)')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('⚡'),
-    new ButtonBuilder()
-      .setCustomId('btn_apikey_modal:openrouter')
-      .setLabel('OpenRouter')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('🌐'),
-    new ButtonBuilder()
-      .setCustomId('btn_apikey_modal:deepseek')
-      .setLabel('DeepSeek')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('🌟'),
-    new ButtonBuilder()
-      .setCustomId('btn_apikey_modal:mistral')
-      .setLabel('Mistral')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('🦊')
+    new ButtonBuilder().setCustomId('btn_apikey_modal:openai').setLabel('OpenAI').setStyle(ButtonStyle.Secondary).setEmoji('✨'),
+    new ButtonBuilder().setCustomId('btn_apikey_modal:anthropic').setLabel('Anthropic').setStyle(ButtonStyle.Secondary).setEmoji('🎭'),
+    new ButtonBuilder().setCustomId('btn_apikey_modal:gemini').setLabel('Gemini (Free)').setStyle(ButtonStyle.Secondary).setEmoji('🔷'),
+    new ButtonBuilder().setCustomId('btn_apikey_modal:groq').setLabel('Groq (Free)').setStyle(ButtonStyle.Secondary).setEmoji('⚡'),
+    new ButtonBuilder().setCustomId('btn_apikey_modal:openrouter').setLabel('OpenRouter').setStyle(ButtonStyle.Secondary).setEmoji('🌐')
   );
 
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId('btn_apikey_modal:ollama')
-      .setLabel('Ollama (Local Offline)')
-      .setStyle(ButtonStyle.Primary)
-      .setEmoji('💻'),
-    new ButtonBuilder()
-      .setCustomId('btn_apikey_modal:custom')
-      .setLabel('Custom Endpoint')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('🛠️'),
-    new ButtonBuilder()
-      .setCustomId('btn_apikey_models_menu')
-      .setLabel('Browse Models')
-      .setStyle(ButtonStyle.Success)
-      .setEmoji('📋'),
-    new ButtonBuilder()
-      .setCustomId('btn_apikey_dashboard')
-      .setLabel('Dashboard')
-      .setStyle(ButtonStyle.Secondary)
-      .setEmoji('↩️')
+    new ButtonBuilder().setCustomId('btn_apikey_modal:deepseek').setLabel('DeepSeek').setStyle(ButtonStyle.Secondary).setEmoji('🌟'),
+    new ButtonBuilder().setCustomId('btn_apikey_modal:xai').setLabel('xAI (Grok)').setStyle(ButtonStyle.Secondary).setEmoji('🚀'),
+    new ButtonBuilder().setCustomId('btn_apikey_modal:mistral').setLabel('Mistral').setStyle(ButtonStyle.Secondary).setEmoji('🦊'),
+    new ButtonBuilder().setCustomId('btn_apikey_modal:together').setLabel('Together').setStyle(ButtonStyle.Secondary).setEmoji('🤝'),
+    new ButtonBuilder().setCustomId('btn_apikey_modal:perplexity').setLabel('Perplexity').setStyle(ButtonStyle.Secondary).setEmoji('🔍')
   );
 
-  return { embed, components: [row1, row2] };
+  const row3 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId('btn_apikey_modal:cerebras').setLabel('Cerebras').setStyle(ButtonStyle.Secondary).setEmoji('⚡'),
+    new ButtonBuilder().setCustomId('btn_apikey_modal:cohere').setLabel('Cohere').setStyle(ButtonStyle.Secondary).setEmoji('🎯'),
+    new ButtonBuilder().setCustomId('btn_apikey_modal:ollama').setLabel('Ollama (Offline)').setStyle(ButtonStyle.Primary).setEmoji('💻'),
+    new ButtonBuilder().setCustomId('btn_apikey_modal:custom').setLabel('Custom Endpoint').setStyle(ButtonStyle.Secondary).setEmoji('🛠️'),
+    new ButtonBuilder().setCustomId('btn_apikey_dashboard').setLabel('Dashboard').setStyle(ButtonStyle.Secondary).setEmoji('↩️')
+  );
+
+  return { embed, components: [row1, row2, row3] };
 }
 
 /**
@@ -680,11 +846,18 @@ export function createCustomModelModal(provider: ApiProviderType, currentModel?:
     .setTitle(`Set Custom Model for ${PROVIDER_DISPLAY_NAMES[provider].split(' ')[0]}`);
 
   const placeholder =
+    provider === 'openai' ? 'e.g. gpt-4o, gpt-4o-mini, o1, o3-mini' :
+    provider === 'anthropic' ? 'e.g. claude-3-7-sonnet-20250219, claude-3-5-haiku-20241022' :
     provider === 'openrouter' ? 'e.g. meta-llama/llama-3.3-70b-instruct, anthropic/claude-3.7-sonnet' :
     provider === 'groq' ? 'e.g. llama-3.3-70b-versatile, deepseek-r1-distill-llama-70b' :
     provider === 'gemini' ? 'e.g. gemini-3.5-flash, gemini-3.5-pro' :
     provider === 'deepseek' ? 'e.g. deepseek-chat, deepseek-reasoner' :
+    provider === 'xai' ? 'e.g. grok-2-1212, grok-2-vision-1212' :
     provider === 'mistral' ? 'e.g. mistral-large-latest, mistral-small-latest' :
+    provider === 'together' ? 'e.g. meta-llama/Llama-3.3-70B-Instruct-Turbo' :
+    provider === 'perplexity' ? 'e.g. sonar-reasoning, sonar' :
+    provider === 'cerebras' ? 'e.g. llama-3.3-70b, llama3.1-8b' :
+    provider === 'cohere' ? 'e.g. command-r-plus-08-2024' :
     provider === 'ollama' ? 'e.g. llama3.3, deepseek-r1:14b, mistral' :
     'Enter exact model identifier string';
 
@@ -709,11 +882,18 @@ export function createApiKeyModal(provider: ApiProviderType) {
     .setTitle(`Configure ${PROVIDER_DISPLAY_NAMES[provider]}`);
 
   const keyPlaceholder =
+    provider === 'openai' ? 'sk-proj-... (platform.openai.com)' :
+    provider === 'anthropic' ? 'sk-ant-api03-... (console.anthropic.com)' :
     provider === 'gemini' ? 'AIzaSy... (Free on Google AI Studio)' :
     provider === 'groq' ? 'gsk_... (Free on console.groq.com)' :
     provider === 'openrouter' ? 'sk-or-v1-... (openrouter.ai)' :
     provider === 'deepseek' ? 'sk-... (platform.deepseek.com)' :
-    provider === 'mistral' ? 'Your Mistral API Key' :
+    provider === 'xai' ? 'xai-... (console.x.ai)' :
+    provider === 'mistral' ? 'Your Mistral API Key (console.mistral.ai)' :
+    provider === 'together' ? 'Your Together API Key (together.ai)' :
+    provider === 'perplexity' ? 'pplx-... (perplexity.ai)' :
+    provider === 'cerebras' ? 'csk-... (cloud.cerebras.ai)' :
+    provider === 'cohere' ? 'Your Cohere API Key (dashboard.cohere.com)' :
     provider === 'ollama' ? 'Optional Authorization token if using reverse proxy' :
     'Your private API key';
 
@@ -840,14 +1020,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     const provider = master.customApiConfig.activeProvider || 'gemini';
-    if (provider === 'gemini') master.customApiConfig.geminiModel = targetModel;
-    else if (provider === 'groq') master.customApiConfig.groqModel = targetModel;
-    else if (provider === 'openrouter') master.customApiConfig.openrouterModel = targetModel;
-    else if (provider === 'deepseek') master.customApiConfig.deepseekModel = targetModel;
-    else if (provider === 'mistral') master.customApiConfig.mistralModel = targetModel;
-    else if (provider === 'nanogpt') master.customApiConfig.nanogptModel = targetModel;
-    else if (provider === 'ollama') master.customApiConfig.ollamaModel = targetModel;
-    else if (provider === 'custom') master.customApiConfig.customModel = targetModel;
+    setProviderModel(master.customApiConfig, provider, targetModel);
 
     master.customApiConfig.enabled = true;
     await saveMaster(master);
@@ -891,32 +1064,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     master.customApiConfig.lastTestedAt = Date.now();
     master.customApiConfig.lastTestStatus = testResult.success ? 'success' : 'failed';
 
-    if (provider === 'gemini') {
-      if (encryptedKey) master.customApiConfig.geminiKey = encryptedKey;
-      if (model) master.customApiConfig.geminiModel = model;
-    } else if (provider === 'groq') {
-      if (encryptedKey) master.customApiConfig.groqKey = encryptedKey;
-      if (model) master.customApiConfig.groqModel = model;
-    } else if (provider === 'openrouter') {
-      if (encryptedKey) master.customApiConfig.openrouterKey = encryptedKey;
-      if (model) master.customApiConfig.openrouterModel = model;
-    } else if (provider === 'deepseek') {
-      if (encryptedKey) master.customApiConfig.deepseekKey = encryptedKey;
-      if (model) master.customApiConfig.deepseekModel = model;
-    } else if (provider === 'mistral') {
-      if (encryptedKey) master.customApiConfig.mistralKey = encryptedKey;
-      if (model) master.customApiConfig.mistralModel = model;
-    } else if (provider === 'ollama') {
-      if (model) master.customApiConfig.ollamaModel = model;
-      if (endpoint) master.customApiConfig.ollamaEndpoint = endpoint;
-      if (encryptedKey) master.customApiConfig.customKey = encryptedKey;
-    } else if (provider === 'nanogpt') {
-      if (encryptedKey) master.customApiConfig.nanogptKey = encryptedKey;
-      if (model) master.customApiConfig.nanogptModel = model;
-    } else if (provider === 'custom') {
-      if (encryptedKey) master.customApiConfig.customKey = encryptedKey;
-      if (model) master.customApiConfig.customModel = model;
-      if (endpoint) master.customApiConfig.customEndpoint = endpoint;
+    if (encryptedKey) setProviderKey(master.customApiConfig, provider, encryptedKey);
+    if (model) setProviderModel(master.customApiConfig, provider, model);
+    if (endpoint) {
+      if (provider === 'ollama') master.customApiConfig.ollamaEndpoint = endpoint;
+      else if (provider === 'custom') master.customApiConfig.customEndpoint = endpoint;
     }
 
     await saveMaster(master);
@@ -946,14 +1098,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     const provider = cfg.activeProvider || 'gemini';
-    const key =
-      provider === 'gemini' ? cfg.geminiKey :
-      provider === 'groq' ? cfg.groqKey :
-      provider === 'openrouter' ? cfg.openrouterKey :
-      provider === 'deepseek' ? cfg.deepseekKey :
-      provider === 'mistral' ? cfg.mistralKey :
-      provider === 'nanogpt' ? cfg.nanogptKey :
-      cfg.customKey;
+    const key = getProviderKey(cfg, provider);
 
     if (!key && provider !== 'ollama') {
       await interaction.editReply({
@@ -962,16 +1107,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    const model =
-      provider === 'gemini' ? cfg.geminiModel :
-      provider === 'groq' ? cfg.groqModel :
-      provider === 'openrouter' ? cfg.openrouterModel :
-      provider === 'deepseek' ? cfg.deepseekModel :
-      provider === 'mistral' ? cfg.mistralModel :
-      provider === 'nanogpt' ? cfg.nanogptModel :
-      provider === 'ollama' ? cfg.ollamaModel :
-      cfg.customModel;
-
+    const model = getProviderModel(cfg, provider);
     const endpoint = provider === 'ollama' ? cfg.ollamaEndpoint : cfg.customEndpoint;
     const testRes = await testProviderConnection(provider, key || '', model, endpoint);
     cfg.lastTestedAt = Date.now();
@@ -1054,14 +1190,7 @@ export async function handleApiKeyModalSubmit(interaction: ModalSubmitInteractio
     }
 
     master.customApiConfig.activeProvider = provider;
-    if (provider === 'gemini') master.customApiConfig.geminiModel = customModel;
-    else if (provider === 'groq') master.customApiConfig.groqModel = customModel;
-    else if (provider === 'openrouter') master.customApiConfig.openrouterModel = customModel;
-    else if (provider === 'deepseek') master.customApiConfig.deepseekModel = customModel;
-    else if (provider === 'mistral') master.customApiConfig.mistralModel = customModel;
-    else if (provider === 'nanogpt') master.customApiConfig.nanogptModel = customModel;
-    else if (provider === 'ollama') master.customApiConfig.ollamaModel = customModel;
-    else if (provider === 'custom') master.customApiConfig.customModel = customModel;
+    setProviderModel(master.customApiConfig, provider, customModel);
 
     master.customApiConfig.enabled = true;
     await saveMaster(master);
@@ -1111,32 +1240,11 @@ export async function handleApiKeyModalSubmit(interaction: ModalSubmitInteractio
     master.customApiConfig.lastTestedAt = Date.now();
     master.customApiConfig.lastTestStatus = testRes.success ? 'success' : 'failed';
 
-    if (provider === 'gemini') {
-      if (encryptedKey) master.customApiConfig.geminiKey = encryptedKey;
-      if (model) master.customApiConfig.geminiModel = model;
-    } else if (provider === 'groq') {
-      if (encryptedKey) master.customApiConfig.groqKey = encryptedKey;
-      if (model) master.customApiConfig.groqModel = model;
-    } else if (provider === 'openrouter') {
-      if (encryptedKey) master.customApiConfig.openrouterKey = encryptedKey;
-      if (model) master.customApiConfig.openrouterModel = model;
-    } else if (provider === 'deepseek') {
-      if (encryptedKey) master.customApiConfig.deepseekKey = encryptedKey;
-      if (model) master.customApiConfig.deepseekModel = model;
-    } else if (provider === 'mistral') {
-      if (encryptedKey) master.customApiConfig.mistralKey = encryptedKey;
-      if (model) master.customApiConfig.mistralModel = model;
-    } else if (provider === 'ollama') {
-      if (model) master.customApiConfig.ollamaModel = model;
-      if (endpoint) master.customApiConfig.ollamaEndpoint = endpoint;
-      if (encryptedKey) master.customApiConfig.customKey = encryptedKey;
-    } else if (provider === 'nanogpt') {
-      if (encryptedKey) master.customApiConfig.nanogptKey = encryptedKey;
-      if (model) master.customApiConfig.nanogptModel = model;
-    } else if (provider === 'custom') {
-      if (encryptedKey) master.customApiConfig.customKey = encryptedKey;
-      if (model) master.customApiConfig.customModel = model;
-      if (endpoint) master.customApiConfig.customEndpoint = endpoint;
+    if (encryptedKey) setProviderKey(master.customApiConfig, provider, encryptedKey);
+    if (model) setProviderModel(master.customApiConfig, provider, model);
+    if (endpoint) {
+      if (provider === 'ollama') master.customApiConfig.ollamaEndpoint = endpoint;
+      else if (provider === 'custom') master.customApiConfig.customEndpoint = endpoint;
     }
 
     await saveMaster(master);
@@ -1174,17 +1282,8 @@ export async function handleApiKeySelectInteraction(interaction: StringSelectMen
       };
     } else {
       master.customApiConfig.activeProvider = provider;
-      master.customApiConfig.enabled = true;
-    }
-
-    if (provider === 'gemini') master.customApiConfig.geminiModel = modelId;
-    else if (provider === 'groq') master.customApiConfig.groqModel = modelId;
-    else if (provider === 'openrouter') master.customApiConfig.openrouterModel = modelId;
-    else if (provider === 'deepseek') master.customApiConfig.deepseekModel = modelId;
-    else if (provider === 'mistral') master.customApiConfig.mistralModel = modelId;
-    else if (provider === 'nanogpt') master.customApiConfig.nanogptModel = modelId;
-    else if (provider === 'ollama') master.customApiConfig.ollamaModel = modelId;
-    else if (provider === 'custom') master.customApiConfig.customModel = modelId;
+    master.customApiConfig.enabled = true;
+    setProviderModel(master.customApiConfig, provider, modelId);
 
     await saveMaster(master);
 
@@ -1212,12 +1311,7 @@ export async function handleApiKeySelectInteraction(interaction: StringSelectMen
       master.customApiConfig.enabled = true;
     }
 
-    if (provider === 'gemini') master.customApiConfig.geminiModel = modelId;
-    else if (provider === 'groq') master.customApiConfig.groqModel = modelId;
-    else if (provider === 'openrouter') master.customApiConfig.openrouterModel = modelId;
-    else if (provider === 'mistral') master.customApiConfig.mistralModel = modelId;
-    else if (provider === 'ollama') master.customApiConfig.ollamaModel = modelId;
-
+    setProviderModel(master.customApiConfig, provider, modelId);
     await saveMaster(master);
 
     const { embed, components } = buildApiKeyDashboard(master);
@@ -1258,6 +1352,16 @@ export async function handleApiKeyButtonInteraction(interaction: ButtonInteracti
   const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
   const isParentEphemeral = interaction.message.flags?.has(MessageFlags.Ephemeral);
 
+  // Pagination navigation for Model Explorer
+  if (btnId.startsWith('btn_apikey_model_page:')) {
+    const [, providerStr, pageStr] = btnId.split(':');
+    const provider = providerStr as ApiProviderType;
+    const pageNum = parseInt(pageStr, 10) || 0;
+    const { embed, components } = buildProviderModelExplorer(master, provider, undefined, 'catalog', pageNum);
+    await interaction.update({ embeds: [embed], components });
+    return;
+  }
+
   if (btnId.startsWith('btn_apikey_modal:')) {
     const provider = btnId.split(':')[1] as ApiProviderType;
     const modal = createApiKeyModal(provider);
@@ -1268,14 +1372,7 @@ export async function handleApiKeyButtonInteraction(interaction: ButtonInteracti
   if (btnId.startsWith('btn_apikey_custom_model_modal')) {
     const providerPart = btnId.split(':')[1] as ApiProviderType | undefined;
     const provider = providerPart || master.customApiConfig?.activeProvider || 'gemini';
-    const currentModel =
-      provider === 'gemini' ? master.customApiConfig?.geminiModel :
-      provider === 'groq' ? master.customApiConfig?.groqModel :
-      provider === 'openrouter' ? master.customApiConfig?.openrouterModel :
-      provider === 'deepseek' ? master.customApiConfig?.deepseekModel :
-      provider === 'mistral' ? master.customApiConfig?.mistralModel :
-      provider === 'ollama' ? master.customApiConfig?.ollamaModel :
-      master.customApiConfig?.customModel;
+    const currentModel = getProviderModel(master.customApiConfig || {}, provider);
 
     const modal = createCustomModelModal(provider, currentModel);
     await interaction.showModal(modal);
@@ -1287,13 +1384,7 @@ export async function handleApiKeyButtonInteraction(interaction: ButtonInteracti
     await interaction.deferUpdate();
 
     const cfg = master.customApiConfig;
-    const key =
-      provider === 'gemini' ? cfg?.geminiKey :
-      provider === 'groq' ? cfg?.groqKey :
-      provider === 'openrouter' ? cfg?.openrouterKey :
-      provider === 'mistral' ? cfg?.mistralKey :
-      cfg?.customKey;
-
+    const key = cfg ? getProviderKey(cfg, provider) : undefined;
     const endpoint = provider === 'ollama' ? cfg?.ollamaEndpoint : cfg?.customEndpoint;
     const liveResult = await fetchLiveProviderModels(provider, key, endpoint);
 
@@ -1344,30 +1435,14 @@ export async function handleApiKeyButtonInteraction(interaction: ButtonInteracti
       return;
     }
     const provider = cfg.activeProvider || 'gemini';
-    const key =
-      provider === 'gemini' ? cfg.geminiKey :
-      provider === 'groq' ? cfg.groqKey :
-      provider === 'openrouter' ? cfg.openrouterKey :
-      provider === 'deepseek' ? cfg.deepseekKey :
-      provider === 'mistral' ? cfg.mistralKey :
-      provider === 'nanogpt' ? cfg.nanogptKey :
-      cfg.customKey;
+    const key = getProviderKey(cfg, provider);
 
     if (!key && provider !== 'ollama') {
       await interaction.followUp({ content: `❌ No key found for ${PROVIDER_DISPLAY_NAMES[provider]}.`, flags: MessageFlags.Ephemeral });
       return;
     }
 
-    const model =
-      provider === 'gemini' ? cfg.geminiModel :
-      provider === 'groq' ? cfg.groqModel :
-      provider === 'openrouter' ? cfg.openrouterModel :
-      provider === 'deepseek' ? cfg.deepseekModel :
-      provider === 'mistral' ? cfg.mistralModel :
-      provider === 'nanogpt' ? cfg.nanogptModel :
-      provider === 'ollama' ? cfg.ollamaModel :
-      cfg.customModel;
-
+    const model = getProviderModel(cfg, provider);
     const endpoint = provider === 'ollama' ? cfg.ollamaEndpoint : cfg.customEndpoint;
 
     const testRes = await testProviderConnection(provider, key || '', model, endpoint);
