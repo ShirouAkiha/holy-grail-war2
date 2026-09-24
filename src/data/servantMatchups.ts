@@ -884,74 +884,94 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // =========================================================================
   cu_chulainn_lancer: {
     artoria_pendragon: {
-      intro: "Yo, King of Knights! It's been a while since we traded blows. Let's see if your sword can keep up with my red spear!",
-      retort: "Lancer of Ulster! Your agility is renowned, but Invisible Air will guide Excalibur true! En garde!",
-      tag: "CELTIC ROVER & BRITISH CROWN"
+      intro: "Still keeping that invisible blade tucked under your cloak, King of Knights? Come on, let's skip the small talk and see if you can parry my thrust this time!",
+      retort: "Hound of Culann. Your spear is deadly, but as long as this wind conceals my blade, you shall not gain a single step.",
+      tag: "BLUE COAT & PROMISED STEEL"
     },
     gilgamesh_archer: {
-      intro: "Hey, King of Babylon! Still hiding behind that vault of flying butter knives? Come down here and fight like a real warrior!",
-      retort: "Impudent dog! You bark boldly for a mongrel whose heart is destined to be pierced by ancient armaments!",
-      tag: "HOUND'S TAUNT & GOLDEN WRATH"
-    },
-    scathach_lancer: {
-      intro: "Sh-Shishou?! What kind of rotten luck is this?! Look, can't we just pretend we didn't see each other today?!",
-      retort: "Hahaha! Still terrified of a little training session, Cú Chulainn? Raise your spear—or I shall impale you where you stand!",
-      tag: "PUPIL'S TERROR: SPAR OF DÚN SCÁITH"
-    },
-    jeanne_darc_ruler: {
-      intro: "Holy maiden from France! Don't look at me so sternly, I'm just here for a good scrap! Try to keep up!",
-      retort: "Hound of Ulster, I hold no grudge, but as an arbiter, I must ensure this duel remains just!",
-      tag: "HOUND OF WAR & MAIDEN OF PEACE"
-    },
-    jeanne_alter: {
-      intro: "Yikes, what a cranky dragon witch. You look like you need to blow off some steam! Care to spar with this old dog?",
-      retort: "Old dog?! I'll turn you into roasted mutt, you insolent spearman! Gáe Bolg won't save you from dragon fire!",
-      tag: "ROASTED MUTT VS FIERY WITCH"
-    },
-    mhx_alter: {
-      intro: "A space knight who likes Japanese snacks? Lady, you're the strangest Berserker I've seen yet!",
-      retort: "Target: High-speed Lancer entity. Red spear trajectory dangerous to snack integrity. Neutralizing with Cross-Calibur.",
-      tag: "SPACE RAIDER & EARTHLY HOUND"
-    },
-    artoria_pendragon_alter: {
-      intro: "Whoa, Saber, what happened to the shiny blue armor? You look ready to execute half the city! Guess I gotta watch my back!",
-      retort: "Tch. A noisy hound from Ireland. Keep yapping before Excalibur Morgan cuts your tongue out.",
-      tag: "LIGHTNING SPEAR & BLACK DRAGON"
-    },
-    nero_claudius_saber: {
-      intro: "An emperor who fights in a ball gown? Haha! Rome sure knows how to put on a flashy show! Let's see your footwork!",
-      retort: "Umu! A spirited and roguish hound! Rome's stage welcomes all heroic spirits! Dance with me, Lancer!",
-      tag: "ROGUISH HOUND & RADIANT EMPEROR"
+      intro: "You sure love looking down on people from that high horse, goldie. Floating all those shiny swords won't save you if my red spear reaches your throat first!",
+      retort: "Still barking in the courtyard, hound of Culann? Know your place, or I shall pin you to the earth with a thousand ancestral spears.",
+      tag: "HOUND OF ULSTER VS KING OF HEROES"
     },
     emiya_archer: {
-      intro: "Hey there, red archer. Time to finish what we started in the Fuyuki schoolyard! Don't run away this time!",
-      retort: "Run away? I was just giving you a head start, Lancer. Let's see if that red spear can break through my Rho Aias!",
-      tag: "FUYUKI REMATCH: SPEAR & SHIELD"
+      intro: "Look at that, a guy carrying two swords! What's your True Name, 'Saber'—or should I introduce myself first? Name's Mario. First name Mario, last name Mario. Mario Mario.",
+      retort: "Funny, I took you for the legendary Italian spearman 'Cú chu-lame'.",
+      tag: "MARIO MARIO VS CU CHU-LAME"
+    },
+    artoria_pendragon_alter: {
+      intro: "Whoa, look at that grim face. You're a hell of a lot more terrifying in black, Saber! Mind if I test how heavy that dark blade really swings?",
+      retort: "Your footwork is irritating. I will simply obliterate the ground you stand on, hound.",
+      tag: "CRIMSON SPEAR VS CORRUPTED SWORD"
     },
     heracles_berserker: {
-      intro: "Heracles... Taking you on head-to-head is pure suicide, but hey—a warrior doesn't back down from a good death!",
-      retort: "■■■■■■■■■■■■---!! (The giant roars, swinging his slab blade to swat the nimble Celtic hound like an insect!)",
-      tag: "SUICIDE CHARGE: HOUND VS TITAN"
-    },
-    cu_chulainn_lancer: {
-      intro: "Another Hound of Culann?! What, did the Grail conjure a shadow of my Ulster days?! May the fastest spear win!",
-      retort: "Haha! You took the words right out of my mouth! Let's see whose Gáe Bolg reverses causality first!",
-      tag: "DUEL OF THE TWO HOUNDS"
+      intro: "A giant mountain of muscle that won't go down easy... Now that's what I call a proper warm-up! Let's see how many of those lives can take a cursed spear to the heart!",
+      retort: "■■■■■■■■■■■■---!!",
+      tag: "BEAST OF IRELAND VS TITAN OF GREECE"
     },
     karna_lancer: {
-      intro: "Hero of Charity! Wielding the divine spear of the King of Gods... Now THIS is a matchup worthy of the Ulster cycle!",
-      retort: "Cú Chulainn. The famed hero of Ireland. Your spear is renowned for its swift lethality. Let us test our crafts.",
-      tag: "RED SPEAR & SOLAR LANCE"
+      intro: "The supreme Hero of Charity wielding Surya's divine flame... Heh, crossing tips with a spearman of your caliber is the kind of fight a guy lives for!",
+      retort: "Child of light, blessed by the sun god Lugh. Your spear possesses the purity of an unbroken warrior. Step forward, Hound of Ulster.",
+      tag: "SPEARS OF THE SUN AND SEA"
+    },
+    scathach_lancer: {
+      intro: "Guh... Of all the people to run into today, it just had to be Shishou. Don't look at me like that—I'm not the green kid from Dún Scáith anymore! On guard!",
+      retort: "Your stance has widened, Setanta. Have you grown careless since leaving my halls? ...No, you are a hero grown. Show me how far your spear has traveled.",
+      tag: "DISCIPLE'S CHALLENGE"
+    },
+    jeanne_darc_ruler: {
+      intro: "A pretty saint marching onto a muddy battlefield with nothing but a flag? You've got guts, girl, but don't expect this hound to pull his punches!",
+      retort: "I know the valor of Ulster's greatest warrior, Sir Cú Chulainn. I ask for no mercy—only an honorable contest under heaven.",
+      tag: "WARRIOR'S CODE & HOLY BANNER"
+    },
+    jeanne_alter: {
+      intro: "Feisty little witch, aren't you? Flapping that cursed banner and screaming your lungs out won't do you any good if you can't even catch my shadow!",
+      retort: "Prancing around like an annoying stray mutt... Stay still for three seconds so I can turn you into charcoal!",
+      tag: "HOUND HUNT VS DRAGON PYRE"
+    },
+    nero_claudius_saber: {
+      intro: "An emperor turning a bloody scrap into a theater performance? You're certainly flashy, Red Saber, but let's see how you dance when the spear closes in!",
+      retort: "Umu! A swift and spirited hound from the wild northern lands! Rome welcomes your vigor—let us compose a masterpiece upon this stage!",
+      tag: "CELTIC STORM & ROMAN BLOOM"
+    },
+    mhx_alter: {
+      intro: "Twin dark-matter blades from outer space? I've fought plenty of strange monsters in my time, but a space assassin munching sweets takes the cake!",
+      retort: "Target evaluated: High-mobility Lancer entity. Engaging dark reactor... Cease distracting me from my sugar intake, hound.",
+      tag: "ANCIENT SPEAR VS COSMIC TWIN-BLADES"
     },
     adiosa_dragon_envoy: {
-      intro: "What kind of monstrous dragon is that?! Just standing near her feels like walking under ten tons of lead!",
-      retort: "⟨ Voth Krav'nok. ⟩ A swift little blue flea hopping around. Let me petrify the earth so you have nowhere to run.",
-      tag: "CELTIC EVASION VS DRACONIC GRAVITY"
+      intro: "That's an absurd amount of pressure radiating off a dragon. I've pierced sea monsters and divine beasts before—let's see if these scales can turn aside Gáe Bolg!",
+      retort: "⟨ Krav'nok rath. ⟩ A noisy flesh-beast darting around with a barbed twig. You will make a brittle crunch beneath my talons, mortal.",
+      tag: "HOUND OF WAR VS PRIMORDIAL STAR-DRAGON"
+    },
+    aoko_aozaki: {
+      intro: "Throwing around pure destruction with bare fists and high-heels? You've got an awful lot of nerve for a modern magus, girl! Let's see whose blast is faster!",
+      retort: "Fast footwork and a cursed red spear? Now this looks like fun! Don't blink, Lancer—my heavy rounds don't wait for anyone!",
+      tag: "BEAST-LIKE REFLEXES VS MAGIC BULLET BARRAGE"
+    },
+    amamiya_no_chihaya_tenkohime: {
+      intro: "A celestial fox guardian brandishing a sacred blade? Don't worry, little lady, I don't usually hunt foxes—unless you're itching for a real duel!",
+      retort: "H-Hii! Such sharp canine fangs and a bloodthirsty spear! Washi is a sacred divine kitsune, not some woodland critter for thee to chase!",
+      tag: "HOUND'S SCENT & CELESTIAL FOXFIRE"
+    },
+    lucia_lyozes: {
+      intro: "Seeing five seconds into the future, huh? That's a nasty trick, princess. But even if you see the strike coming, can your body move fast enough to dodge a reversal of cause and effect?!",
+      retort: "Your spear technique is pure, untamed instinct honed by divine slaughter, Cú Chulainn. Knowing the trajectory won't make parrying it any easier—on guard!",
+      tag: "THE PIERCING HOUND VS FIVE-SECOND FORESIGHT"
     },
     luvria_greenharte: {
-      intro: "Oi, strongest mage! Let's see if all that fancy forest talk holds up when my red spear is an inch from your pointed ears!",
-      retort: "Thou art swift as the gale, Lancer! But canst thou run when I nullify the friction beneath thy boots? En garde, Hound of Culann!",
-      tag: "GALE-STEP DUEL: HOUND VS SAGE"
+      intro: "Erasing concepts on the fly? Man, Casters and their absurd cheat codes never cease to give me a headache! Guess I'll just have to pierce your chest before you finish reciting the spell!",
+      retort: "My, what delightful confidence from the famed Hound of Ulster! A spear that strikes before it is even thrust? How wonderfully paradoxical! Let us see if your curse survives when its concept simply ceases to be!",
+      tag: "CURSED HEART-PIERCER VS CONCEPT ERASURE"
+    },
+    edmond: {
+      intro: "Now that's a proper frontline vanguard! Plant those boots and brace yourself, big guy—let's find out what happens when the spear that always pierces meets a wall that never falls!",
+      retort: "Heh, heard plenty of legends about the Hound of Ulster. Don't hold back, Lancer—let's see if that red needle can punch through the pride of the frontline!",
+      tag: "THE IRRESISTIBLE SPEAR VS THE IMMOVABLE WALL"
+    },
+    cu_chulainn_lancer: {
+      intro: "Ha! Staring down my own ugly mug? Well, there's only room for one blue hound on this battlefield. Let's see who's got the sharper fangs!",
+      retort: "Tch, don't get cocky just because you wear the same face! May the fastest thrust win, brother—don't die on the first pass!",
+      tag: "DOG EAT DOG"
     }
   },
 
