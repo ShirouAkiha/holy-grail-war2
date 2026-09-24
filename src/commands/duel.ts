@@ -3858,59 +3858,72 @@ async function startInteractiveDuel(
       return;
     }
 
-    // Human player turn reached: update message in-place cleanly and reliably
+    // Human player turn reached: auto-relay fresh battle message to bottom of channel
     const turnAttachment = await buildCurrentAttachment();
     const updatedEmbeds = buildCurrentEmbeds();
     const updatedButtons = buildCurrentButtons();
 
     try {
-      if (battleMsg && typeof battleMsg.edit === 'function') {
-        await battleMsg.edit({
+      const channelToSend = interactionToEdit?.channel || contextInteraction?.channel;
+      let newBattleMsg: any = null;
+
+      if (channelToSend && typeof channelToSend.send === 'function') {
+        newBattleMsg = await channelToSend.send({
           content: activePingsContent,
           embeds: updatedEmbeds,
           files: [turnAttachment],
           components: updatedButtons
-        }).catch(async () => {
-          if (interactionToEdit && (interactionToEdit.deferred || interactionToEdit.replied)) {
-            await interactionToEdit.editReply({
-              content: activePingsContent,
-              embeds: updatedEmbeds,
-              files: [turnAttachment],
-              components: updatedButtons
-            }).catch(() => {});
-          } else if (contextInteraction && (contextInteraction.deferred || contextInteraction.replied)) {
-            await contextInteraction.editReply({
-              content: activePingsContent,
-              embeds: updatedEmbeds,
-              files: [turnAttachment],
-              components: updatedButtons
-            }).catch(() => {});
-          }
+        }).catch((err: any) => {
+          console.warn('[duel] Auto-relay send to channel failed, falling back to in-place edit:', err?.message || err);
+          return null;
         });
-      } else if (interactionToEdit && (interactionToEdit.deferred || interactionToEdit.replied)) {
-        await interactionToEdit.editReply({
-          content: activePingsContent,
-          embeds: updatedEmbeds,
-          files: [turnAttachment],
-          components: updatedButtons
-        }).catch(() => {});
-      } else if (contextInteraction && (contextInteraction.deferred || contextInteraction.replied)) {
-        await contextInteraction.editReply({
-          content: activePingsContent,
-          embeds: updatedEmbeds,
-          files: [turnAttachment],
-          components: updatedButtons
-        }).catch(() => {});
       }
 
-      // Dispatch any pending Noble Phantasm GIFs BELOW the Battle Canvas!
+      if (newBattleMsg) {
+        // Successfully sent fresh message at bottom: safely clean up previous battle message
+        const prevMsg = battleMsg;
+        battleMsg = newBattleMsg;
+
+        if (prevMsg && typeof prevMsg.delete === 'function') {
+          await prevMsg.delete().catch(() => {});
+        }
+        if (contextInteraction && typeof contextInteraction.deleteReply === 'function') {
+          await contextInteraction.deleteReply().catch(() => {});
+        }
+      } else {
+        // Fallback: If channel.send failed (e.g. Missing Access / thread), edit existing message in-place
+        if (battleMsg && typeof battleMsg.edit === 'function') {
+          await battleMsg.edit({
+            content: activePingsContent,
+            embeds: updatedEmbeds,
+            files: [turnAttachment],
+            components: updatedButtons
+          }).catch(() => {});
+        } else if (interactionToEdit && (interactionToEdit.deferred || interactionToEdit.replied)) {
+          await interactionToEdit.editReply({
+            content: activePingsContent,
+            embeds: updatedEmbeds,
+            files: [turnAttachment],
+            components: updatedButtons
+          }).catch(() => {});
+        } else if (contextInteraction && (contextInteraction.deferred || contextInteraction.replied)) {
+          await contextInteraction.editReply({
+            content: activePingsContent,
+            embeds: updatedEmbeds,
+            files: [turnAttachment],
+            components: updatedButtons
+          }).catch(() => {});
+        }
+      }
+
+      // Dispatch any pending Noble Phantasm GIFs BELOW the newly relayed Battle Canvas!
       if (pendingNpActors.length > 0) {
         for (const npActor of pendingNpActors) {
           await dispatchNpGif(npActor, interactionToEdit || contextInteraction);
         }
       }
     } catch (relayErr) {
-      console.warn('[duel] Battle message update fallback:', relayErr);
+      console.warn('[duel] Battle auto-relay error:', relayErr);
     }
   };
 
