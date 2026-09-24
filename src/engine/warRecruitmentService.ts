@@ -213,7 +213,7 @@ export async function startWarRecruitment(
     pingContent = `<@&${envRoleId}>`;
   } else if ('guild' in channel && channel.guild) {
     const masterRole = channel.guild.roles.cache.find(
-      r => r.name.toLowerCase() === 'master' || r.name.toLowerCase() === 'masters'
+      (r: any) => r.name.toLowerCase() === 'master' || r.name.toLowerCase() === 'masters'
     );
     if (masterRole) {
       pingContent = `<@&${masterRole.id}>`;

@@ -233,7 +233,8 @@ export function getProviderKey(cfg: UserCustomApiConfig, provider: ApiProviderTy
 /**
  * Helper to get the active model configured for any provider.
  */
-export function getProviderModel(cfg: UserCustomApiConfig, provider: ApiProviderType): string {
+export function getProviderModel(cfg: Partial<UserCustomApiConfig> | undefined | null, provider: ApiProviderType): string {
+  if (!cfg) return DEFAULT_PROVIDER_MODELS[provider] || '';
   switch (provider) {
     case 'openai': return cfg.openaiModel || DEFAULT_PROVIDER_MODELS.openai;
     case 'anthropic': return cfg.anthropicModel || DEFAULT_PROVIDER_MODELS.anthropic;

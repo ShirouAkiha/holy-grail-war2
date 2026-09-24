@@ -448,7 +448,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setColor(0xf59e0b)
         .setFooter({ text: 'Authentic Fate Holy Grail War System' });
 
-      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+      await interaction.reply({ embeds: [embed] });
       return;
     }
 
@@ -493,7 +493,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setStyle(ButtonStyle.Secondary)
       );
 
-      await interaction.reply({ embeds: [embed], components: [row], flags: MessageFlags.Ephemeral });
+      await interaction.reply({ embeds: [embed], components: [row] });
       const reply = await interaction.fetchReply();
 
       // Handle button interactions
@@ -604,11 +604,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           )
           .setColor(0xef4444);
 
-        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+        await interaction.reply({ embeds: [embed] });
         return;
       }
 
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      await interaction.deferReply();
 
       const pullResult = executeCraftEssenceGachaRoll({
         count: rolls,

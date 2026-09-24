@@ -1314,7 +1314,7 @@ export function attachServantCollector(
       else if (i.customId === 'servant_act_boast') {
         const war = getOrInitWarSession(master);
         const uP = war.participants[master.discordId];
-        const isActivelyInWar = !!(uP && uP.isAlive && war.status === 'in_progress');
+        const isActivelyInWar = !!(uP && uP.isAlive && (war.status === 'active' || war.status === 'gathering'));
 
         if (isActivelyInWar) {
           exposeMasterInWar(war, master.discordId, 'public_command');

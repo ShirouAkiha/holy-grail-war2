@@ -22,7 +22,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     let war = getOrInitWarSession(master);
     const uP = war.participants[interaction.user.id];
-    const isActivelyInWar = !!(uP && uP.isAlive && war.status === 'in_progress');
+    const isActivelyInWar = !!(uP && uP.isAlive && (war.status === 'active' || war.status === 'gathering'));
 
     if (uP && !uP.isAlive) {
       await interaction.reply({

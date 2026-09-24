@@ -1612,7 +1612,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         id: 'infinite_wellspring_a',
         name: 'Concept Nullification: Infinite Mana EX',
         cooldown: 6,
-        description: 'Permanently nullifies the concept of mana depletion and forced negation against her internal reserves. Charges own NP Gauge by +30%, increases NP Gain by +20% for 3 turns, and regenerates 1,000 HP per turn for 3 turns.',
+        description: 'Charges own NP Gauge by +30%, increases NP Gain by +20% for 3 turns, and regenerates 1,000 HP per turn for 3 turns.',
         effectType: 'buff_atk',
         duration: 3,
         value: 30,
@@ -1628,7 +1628,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         id: 'concept_nullification_impact_space_a',
         name: 'Concept Nullification: Space & Impact A+',
         cooldown: 6,
-        description: 'Selectively negates travel distance and physical kinetic transfer. Bypasses distance to land spells instantaneously while rendering her body immune to kinetic shock. Grants self Invincibility for 1 turn and [Ignore Invincibility] for 1 turn.',
+        description: 'Grants self Invincibility for 1 turn and [Ignore Invincibility] for 1 turn.',
         effectType: 'invincible',
         duration: 1,
         value: 100,
@@ -1644,7 +1644,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         id: 'nullify_the_law_of_magic_ex',
         name: 'Anti-World Authority: Law of Magic EX',
         cooldown: 7,
-        description: 'Deploys an Area-of-Effect dome where the very concept of magic ceases to exist for all enemies while her own spells remain wholly immune to cancellation. Removes all Offensive Buffs from all enemies, inflicts [Skill Seal] for 1 turn, and increases Arts performance of all allies by +20% for 3 turns.',
+        description: 'Removes all Offensive Buffs from all enemies, inflicts [Skill Seal] for 1 turn, and increases Arts Card effectiveness of all allies by +20% for 3 turns.',
         effectType: 'buff_atk',
         duration: 3,
         value: 20,
@@ -1663,21 +1663,21 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         type: 'absolute_permanence',
         value: 3,
         rank: 'EX',
-        description: 'Rejects lethal erasure, fatal wounds, and spell recoil. Lethal wounds cannot take root and heal instantaneously; internal mana cannot be drained. Automatically grants Guts status (revives with 25% Max HP on lethal damage), charges own NP Gauge by +3% every turn, and grants total Immunity to Instant-Death.'
+        description: 'Automatically grants Guts status (revives with 25% Max HP on lethal damage), charges own NP Gauge by +3% every turn, and grants Immunity to Instant-Death.'
       },
       {
         name: 'Divergent Omnipotence (All-Element Mastery) EX',
         type: 'territory_creation',
         value: 10,
         rank: 'EX',
-        description: 'Unprecedented Divergent mastery across all elemental paths (Pyre, Fluvia, Terra, Gale). Increases own Arts Card effectiveness by +10% and overall card performance. (Locked — Reaches Bond Lv. 5 to unlock)'
+        description: 'Increases own Arts Card effectiveness by +10% and overall card performance.'
       }
     ],
     noblePhantasm: {
       name: 'Concept Nullification: Deny the Victory',
       cardType: 'Arts',
       chant: 'Weave of Sylvanryth, awaken. Pyre, Fluvia, Terra, Gale—converge at my staff! All physical laws, all distances, all mortal certainty... I render thee void. Thou dreamest of triumph? Then I shall nullify the very concept of thy triumph! Concept Nullification: Victory!',
-      description: '• Multiplier: 1000% (Arts • AoE)\n• Anti-World Authority: Deals massive defense-ignoring AoE damage to all enemies. Reduces all enemy NP gauges by 20% and has a 50% chance to inflict [Stun] for 1 turn.\n• Overcharge: Strips the concept of enemy defense, reducing all enemies\' Defense by 30% for 3 turns and Critical Rate by 20% for 3 turns.',
+      description: '• Multiplier: 1000% (Arts • AoE)\n• Deals massive defense-ignoring AoE damage to all enemies. Reduces all enemy NP gauges by 20% and has a 50% chance to inflict [Stun] for 1 turn.\n• Overcharge: Reduces all enemies\' Defense by 30% for 3 turns and Critical Rate by 20% for 3 turns.',
       target: 'aoe',
       multiplier: 1000,
       overchargeEffect: 'Reduces all enemies\' Defense by 30% (3T) and Critical Rate by 20% (3T) • -20% NP Gauge & 50% Stun chance',

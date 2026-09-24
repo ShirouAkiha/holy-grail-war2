@@ -246,7 +246,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setStyle(ButtonStyle.Primary)
       );
 
-      await interaction.reply({ embeds: [statusEmbed], components: [row], flags: MessageFlags.Ephemeral });
+      await interaction.reply({ embeds: [statusEmbed], components: [row] });
       return;
     }
 
@@ -255,7 +255,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     // ------------------------------------------
     if (subcommand === 'shop') {
       const { embed, components } = buildGachaHub(master, 'shop');
-      await interaction.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
+      await interaction.reply({ embeds: [embed], components });
       const reply = await interaction.fetchReply();
       attachGachaCollector(interaction, master, reply);
       return;
@@ -266,7 +266,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     // ------------------------------------------
     if (subcommand === 'rates') {
       const { embed, components } = buildGachaHub(master, 'rates');
-      await interaction.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
+      await interaction.reply({ embeds: [embed], components });
       const reply = await interaction.fetchReply();
       attachGachaCollector(interaction, master, reply);
       return;
@@ -293,7 +293,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       await saveMaster(master);
 
       const { embed, components } = buildGachaHub(master, 'ces');
-      await interaction.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
+      await interaction.reply({ embeds: [embed], components });
       const reply = await interaction.fetchReply();
       attachGachaCollector(interaction, master, reply);
       return;
@@ -304,7 +304,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     // ------------------------------------------
     if (subcommand === 'menu') {
       const { embed, components } = buildGachaHub(master, 'servants');
-      await interaction.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
+      await interaction.reply({ embeds: [embed], components });
       const reply = await interaction.fetchReply();
       attachGachaCollector(interaction, master, reply);
       return;
@@ -444,8 +444,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       await interaction.reply({
         embeds: [ritualEmbed, summonEmbed],
-        components: [actionRow],
-        flags: MessageFlags.Ephemeral
+        components: [actionRow]
       });
       return;
     }
@@ -508,8 +507,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     await interaction.reply({
       embeds: [multiEmbed],
       components: [multiActionRow],
-      files,
-      flags: MessageFlags.Ephemeral
+      files
     });
 
   } catch (error: any) {

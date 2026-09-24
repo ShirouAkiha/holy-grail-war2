@@ -493,7 +493,6 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
           }
 
           await i.reply({
-            flags: MessageFlags.Ephemeral,
             embeds: [embed],
             files
           });
@@ -524,7 +523,6 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
           safeSetEmbedThumbnail(embed, s.avatarUrl);
 
           await i.reply({
-            flags: MessageFlags.Ephemeral,
             embeds: [embed]
           });
         }
@@ -564,7 +562,6 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
           safeSetEmbedThumbnail(embed, s.avatarUrl);
 
           await i.reply({
-            flags: MessageFlags.Ephemeral,
             embeds: [embed]
           });
         } else {
@@ -605,7 +602,6 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
           }
 
           await i.reply({
-            flags: MessageFlags.Ephemeral,
             embeds: [embed],
             files
           });
@@ -663,7 +659,6 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
           }
 
           await i.reply({
-            flags: MessageFlags.Ephemeral,
             embeds: [embed],
             files
           });
@@ -707,7 +702,6 @@ export function attachGachaCollector(interaction: any, initialMaster: any, reply
           }
 
           await i.reply({
-            flags: MessageFlags.Ephemeral,
             embeds: [embed],
             files
           });
@@ -830,7 +824,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setColor(isNew ? 0xeab308 : 0x38bdf8);
 
         safeSetEmbedImage(embed, s.cardArtUrl || s.avatarUrl);
-        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+        await interaction.reply({ embeds: [embed] });
       } else {
         const listSummary = rollResult.results
           .map((r, idx) => `${idx + 1}. **${r.servant.name}** (\`${r.servant.servantClass}\`) ${r.isNew ? '🌟 **[NEW!]**' : '🔵 *(+50 Prisms)*'}`)
@@ -864,7 +858,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           console.error('Failed to render servant gacha canvas banner:', canvasErr);
         }
 
-        await interaction.reply({ embeds: [embed], files, flags: MessageFlags.Ephemeral });
+        await interaction.reply({ embeds: [embed], files });
       }
       return;
     }
@@ -879,8 +873,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const { embed, components } = buildGachaHub(master, initialCategory);
     await interaction.reply({
       embeds: [embed],
-      components,
-      flags: MessageFlags.Ephemeral
+      components
     });
     const reply = await interaction.fetchReply();
 
