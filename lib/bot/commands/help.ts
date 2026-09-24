@@ -133,21 +133,28 @@ export function buildHelpButtons(currentPage = 0) {
   const isFirst = currentPage <= 0;
   const isLast = currentPage >= HELP_CATEGORIES.length - 1;
 
-  const row1 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(\`help_page_\${currentPage - 1}\`).setLabel('◀ Prev').setStyle(ButtonStyle.Secondary).setDisabled(isFirst),
-    new ButtonBuilder().setCustomId('help_page_0').setLabel('🌟 Quickstart').setStyle(currentPage === 0 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(\`help_page_\${currentPage + 1}\`).setLabel('Next ▶').setStyle(ButtonStyle.Secondary).setDisabled(isLast)
+  const menuRow = new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('help_select_category')
+      .setPlaceholder('📖 Jump to Command Category...')
+      .addOptions(
+        HELP_CATEGORIES.map((cat, idx) => ({
+          label: cat.name,
+          description: cat.shortDesc.slice(0, 100),
+          value: \`help_cat_\${idx}\`,
+          emoji: cat.emoji,
+          default: idx === currentPage
+        }))
+      )
   );
 
-  const row2 = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('help_page_1').setLabel('🎲 Gacha').setStyle(currentPage === 1 ? ButtonStyle.Success : ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('help_page_2').setLabel('⚔️ Servants').setStyle(currentPage === 2 ? ButtonStyle.Success : ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('help_page_3').setLabel('🥊 Combat').setStyle(currentPage === 3 ? ButtonStyle.Success : ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('help_page_4').setLabel('🗺️ Grail War').setStyle(currentPage === 4 ? ButtonStyle.Success : ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('help_page_5').setLabel('💖 Bond').setStyle(currentPage === 5 ? ButtonStyle.Success : ButtonStyle.Secondary)
+  const navRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(\`help_btn_prev_\${Math.max(0, currentPage - 1)}\`).setLabel('◀ Prev').setStyle(ButtonStyle.Secondary).setDisabled(isFirst),
+    new ButtonBuilder().setCustomId('help_btn_quickstart').setLabel('🌟 Quickstart').setStyle(currentPage === 0 ? ButtonStyle.Primary : ButtonStyle.Secondary).setDisabled(currentPage === 0),
+    new ButtonBuilder().setCustomId(\`help_btn_next_\${Math.min(HELP_CATEGORIES.length - 1, currentPage + 1)}\`).setLabel('Next ▶').setStyle(ButtonStyle.Secondary).setDisabled(isLast)
   );
 
-  return [row1, row2];
+  return [menuRow, navRow];
 }
 
 export const data = new SlashCommandBuilder()

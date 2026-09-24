@@ -985,6 +985,11 @@ client.on(Events.InteractionCreate, async interaction => {
 
     // ROUTE C: Select Dropdown Menus (e.g. equipping Craft Essence from /customise equip or /inventory)
     if (interaction.isStringSelectMenu()) {
+      if (interaction.customId === 'help_select_category' || interaction.customId.startsWith('help_')) {
+        await helpCommand.handleHelpInteraction(interaction);
+        return;
+      }
+
       if (interaction.customId.startsWith('war_call_')) {
         await handleRecruitmentInteraction(interaction, client);
         return;
@@ -1241,8 +1246,8 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       // Help Codex Pagination & Category Buttons
-      if (btnId.startsWith('help_page_')) {
-        await helpCommand.handleHelpButton(interaction);
+      if (btnId.startsWith('help_')) {
+        await helpCommand.handleHelpInteraction(interaction);
         return;
       }
 

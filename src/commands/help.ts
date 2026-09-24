@@ -6,6 +6,8 @@ import {
   ButtonBuilder, 
   ButtonStyle, 
   ButtonInteraction,
+  StringSelectMenuBuilder,
+  StringSelectMenuInteraction,
   MessageFlags 
 } from 'discord.js';
 
@@ -326,56 +328,51 @@ export function buildHelpEmbed(categoryIndexOrId: number | string = 0): EmbedBui
 }
 
 // ==========================================
-// BUILD INTERACTIVE BUTTONS
+// BUILD INTERACTIVE BUTTONS & SELECT MENU
 // ==========================================
-export function buildHelpButtons(currentPage: number): ActionRowBuilder<ButtonBuilder>[] {
+export function buildHelpButtons(currentPage: number): ActionRowBuilder<any>[] {
   const totalPages = HELP_CATEGORIES.length;
   const isFirst = currentPage <= 0;
   const isLast = currentPage >= totalPages - 1;
 
-  // Row 1: Pagination Nav
+  // Row 1: Interactive Category Select Menu
+  const selectMenu = new StringSelectMenuBuilder()
+    .setCustomId('help_select_category')
+    .setPlaceholder('📖 Jump to Command Category...')
+    .addOptions(
+      HELP_CATEGORIES.map((cat, idx) => ({
+        label: cat.name,
+        description: cat.shortDesc.slice(0, 100),
+        value: `help_cat_${idx}`,
+        emoji: cat.emoji,
+        default: idx === currentPage
+      }))
+    );
+
+  const menuRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
+
+  // Row 2: Navigation & Quick-Jump Buttons (Guaranteed 100% unique custom_ids)
   const navRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(`help_page_${currentPage - 1}`)
+      .setCustomId(`help_btn_prev_${Math.max(0, currentPage - 1)}`)
       .setLabel('◀ Previous')
+      .setEmoji('⬅️')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(isFirst),
     new ButtonBuilder()
-      .setCustomId('help_page_0')
+      .setCustomId('help_btn_quickstart')
       .setLabel('🌟 Quickstart')
-      .setStyle(currentPage === 0 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      .setStyle(currentPage === 0 ? ButtonStyle.Primary : ButtonStyle.Secondary)
+      .setDisabled(currentPage === 0),
     new ButtonBuilder()
-      .setCustomId(`help_page_${currentPage + 1}`)
+      .setCustomId(`help_btn_next_${Math.min(totalPages - 1, currentPage + 1)}`)
       .setLabel('Next ▶')
+      .setEmoji('➡️')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(isLast)
   );
 
-  // Row 2: Category Quick-Jumps
-  const categoryRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId('help_page_1')
-      .setLabel('🎲 Gacha')
-      .setStyle(currentPage === 1 ? ButtonStyle.Success : ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('help_page_2')
-      .setLabel('⚔️ Servants')
-      .setStyle(currentPage === 2 ? ButtonStyle.Success : ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('help_page_3')
-      .setLabel('🥊 Combat')
-      .setStyle(currentPage === 3 ? ButtonStyle.Success : ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('help_page_4')
-      .setLabel('🗺️ Grail War')
-      .setStyle(currentPage === 4 ? ButtonStyle.Success : ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId('help_page_5')
-      .setLabel('💖 Bond')
-      .setStyle(currentPage === 5 ? ButtonStyle.Success : ButtonStyle.Secondary)
-  );
-
-  return [navRow, categoryRow];
+  return [menuRow, navRow];
 }
 
 // ==========================================
@@ -443,15 +440,31 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 }
 
 // ==========================================
-// BUTTON INTERACTION HANDLER
+// INTERACTION HANDLER (Buttons & Select Menu)
 // ==========================================
-export async function handleHelpButton(interaction: ButtonInteraction) {
+export async function handleHelpInteraction(interaction: ButtonInteraction | StringSelectMenuInteraction | any) {
   try {
     const customId = interaction.customId;
-    if (!customId.startsWith('help_page_')) return false;
+    let targetPage = 0;
 
-    const pageNum = parseInt(customId.replace('help_page_', ''), 10);
-    const validPage = isNaN(pageNum) ? 0 : Math.max(0, Math.min(HELP_CATEGORIES.length - 1, pageNum));
+    if (interaction.isStringSelectMenu() && customId === 'help_select_category') {
+      const selectedVal = interaction.values?.[0] || '';
+      if (selectedVal.startsWith('help_cat_')) {
+        targetPage = parseInt(selectedVal.replace('help_cat_', ''), 10);
+      }
+    } else if (customId === 'help_btn_quickstart' || customId === 'help_page_0') {
+      targetPage = 0;
+    } else if (customId.startsWith('help_btn_prev_')) {
+      targetPage = parseInt(customId.replace('help_btn_prev_', ''), 10);
+    } else if (customId.startsWith('help_btn_next_')) {
+      targetPage = parseInt(customId.replace('help_btn_next_', ''), 10);
+    } else if (customId.startsWith('help_page_')) {
+      targetPage = parseInt(customId.replace('help_page_', ''), 10);
+    } else if (customId.startsWith('help_cat_')) {
+      targetPage = parseInt(customId.replace('help_cat_', ''), 10);
+    }
+
+    const validPage = isNaN(targetPage) ? 0 : Math.max(0, Math.min(HELP_CATEGORIES.length - 1, targetPage));
 
     const embed = buildHelpEmbed(validPage);
     const components = buildHelpButtons(validPage);
@@ -463,7 +476,10 @@ export async function handleHelpButton(interaction: ButtonInteraction) {
     return true;
   } catch (err: any) {
     if (err?.code === 10062 || err?.code === 40060 || err?.code === 50027 || err?.code === 10008) return false;
-    console.error('Error handling help button:', err);
+    console.error('Error handling help interaction:', err);
     return false;
   }
 }
+
+// Backward compatibility alias
+export const handleHelpButton = handleHelpInteraction;
