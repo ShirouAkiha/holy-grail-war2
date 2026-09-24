@@ -11,7 +11,6 @@ import {
   ComponentType
 , MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
-import { renderServantProfileCard, renderDialogueCard } from '../canvas/renderer';
 import { SERVANT_DATABASE, getDefaultClassPassives, getServantAvatarAndCardArt } from '../data/servants';
 import { getServantProfile } from '../engine/dialogue';
 import { getOrInitWarSession, exposeMasterInWar, getHealingStatus } from '../engine/grailwar';
@@ -187,7 +186,8 @@ export async function buildServantHub(
   category: 'profile' | 'stats' | 'equip_ce' | 'feed_ce' | 'np' | 'dialogue' | 'roster' = 'profile',
   selectedServantId?: string,
   actionOutcomeMsg?: string,
-  currentStep: number = 1
+  currentStep: number = 1,
+  isUpdate: boolean = false
 ) {
   const targetServant = (selectedServantId ? master.servants.find((s: any) => s.id === selectedServantId) : null) || activeServant;
   const templateId = targetServant.templateId || targetServant.template?.id || targetServant.id;
@@ -332,24 +332,15 @@ export async function buildServantHub(
     const { avatarUrl, cardArtUrl } = getServantAvatarAndCardArt(targetServant);
 
     if (avatarUrl) {
-      safeSetEmbedThumbnail(embed, avatarUrl, files);
+      safeSetEmbedThumbnail(embed, avatarUrl, isUpdate ? undefined : files);
     }
 
     const artworkEmbed = new EmbedBuilder()
       .setTitle(`🖼️ Servant Character Portrait: ${sName}`)
       .setColor(t.rarity === 5 ? 0xd4af37 : 0x38bdf8);
-    safeSetEmbedImage(artworkEmbed, cardArtUrl || avatarUrl, files);
+    safeSetEmbedImage(artworkEmbed, cardArtUrl || avatarUrl, isUpdate ? undefined : files);
 
     embeds = [embed, artworkEmbed];
-
-    try {
-      const cardBuffer = await renderServantProfileCard(targetServant, master.username);
-      if (cardBuffer && cardBuffer.length > 500) {
-        files.push(new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' }));
-      }
-    } catch (e) {
-      console.warn('Canvas render profile error:', e);
-    }
 
   } else if (category === 'stats') {
     const availPoints = targetServant.availableStatPoints || 0;
@@ -441,8 +432,8 @@ export async function buildServantHub(
       .setColor(color)
       .setFooter({ text: `Contracted to Master ${master.username} • Holy Grail War Registry` });
 
-    if (gifUrl) safeSetEmbedImage(npEmbed, gifUrl, files);
-    if (t.avatarUrl) safeSetEmbedThumbnail(npEmbed, t.avatarUrl, files);
+    if (gifUrl) safeSetEmbedImage(npEmbed, gifUrl, isUpdate ? undefined : files);
+    if (t.avatarUrl) safeSetEmbedThumbnail(npEmbed, t.avatarUrl, isUpdate ? undefined : files);
 
     embeds = [npEmbed];
 
@@ -1365,24 +1356,33 @@ export function attachServantCollector(
       }
 
       // Modals and ephemeral replies are handled above with immediate return
-      // For hub updates that involve canvas rendering, defer update to avoid 3000ms Discord timeout
-      if (!i.deferred && !i.replied) {
-        await i.deferUpdate().catch(() => {});
-      }
+      const hub = await buildServantHub(
+        master,
+        targetServant,
+        currentCategory,
+        currentServantId,
+        actionOutcomeMsg,
+        currentStep,
+        true // isUpdate = true prevents sending file attachments on updates which causes Discord 500 Internal Server Error
+      );
 
-      const hub = await buildServantHub(master, targetServant, currentCategory, currentServantId, actionOutcomeMsg, currentStep);
-      
       if (i.deferred || i.replied) {
         await i.editReply({
           embeds: hub.embeds,
-          files: hub.files,
           components: hub.components
-        });
+        }).catch(console.error);
       } else {
         await i.update({
           embeds: hub.embeds,
-          files: hub.files,
           components: hub.components
+        }).catch(async () => {
+          if (!i.replied && !i.deferred) {
+            await i.deferUpdate().catch(() => {});
+          }
+          await i.editReply({
+            embeds: hub.embeds,
+            components: hub.components
+          }).catch(console.error);
         });
       }
 
@@ -1391,6 +1391,8 @@ export function attachServantCollector(
         err.code === 10062 || 
         err.code === 40060 || 
         err.code === 50027 || 
+        err.code === 10008 ||
+        err.status === 500 ||
         err.message?.includes('Unknown interaction') || 
         err.message?.includes('already been acknowledged')
       ) {

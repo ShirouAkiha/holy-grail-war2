@@ -14,7 +14,6 @@ import {
 import { getAllThroneServants, findServantInPool, matchServantSearch } from '../database/service';
 import { getDefaultClassPassives } from '../data/servants';
 import { ServantTemplate, MasterServantInstance, ServantClass } from '../types';
-import { renderServantProfileCard } from '../canvas/renderer';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
@@ -194,21 +193,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const profileEmbed = buildServantFullProfileEmbed(match);
       const artworkEmbed = buildServantArtworkEmbed(match);
       const actionRow = buildProfileActions(match.id);
-      
-      const files: AttachmentBuilder[] = [];
-      try {
-        const tempInstance = createServantTempInstance(match);
-        const cardBuffer = await renderServantProfileCard(tempInstance, 'Throne of Heroes');
-        if (cardBuffer && cardBuffer.length > 500) {
-          files.push(new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' }));
-        }
-      } catch (e) {
-        console.warn('Canvas render error in /servants view:', e);
-      }
 
       await interaction.editReply({ 
         embeds: [profileEmbed, artworkEmbed], 
-        files,
         components: [actionRow] 
       });
       return;
@@ -628,20 +615,8 @@ export async function handleServantsListInteraction(i: any) {
         const artworkEmbed = buildServantArtworkEmbed(target);
         const actions = buildProfileActions(target.id);
 
-        const files: AttachmentBuilder[] = [];
-        try {
-          const tempInstance = createServantTempInstance(target);
-          const cardBuffer = await renderServantProfileCard(tempInstance, 'Throne of Heroes');
-          if (cardBuffer && cardBuffer.length > 500) {
-            files.push(new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' }));
-          }
-        } catch (e) {
-          console.warn('Canvas render error in servants list dropdown:', e);
-        }
-
         await i.editReply({ 
           embeds: [profileEmbed, artworkEmbed], 
-          files,
           components: [actions] 
         });
       } else {
@@ -697,20 +672,8 @@ export async function handleServantsListInteraction(i: any) {
         const artworkEmbed = buildServantArtworkEmbed(target);
         const actions = buildProfileActions(target.id);
 
-        const files: AttachmentBuilder[] = [];
-        try {
-          const tempInstance = createServantTempInstance(target);
-          const cardBuffer = await renderServantProfileCard(tempInstance, 'Throne of Heroes');
-          if (cardBuffer && cardBuffer.length > 500) {
-            files.push(new AttachmentBuilder(cardBuffer, { name: 'servant_profile.png' }));
-          }
-        } catch (e) {
-          console.warn('Canvas render error in servants list button:', e);
-        }
-
         await i.editReply({ 
           embeds: [profileEmbed, artworkEmbed], 
-          files,
           components: [actions] 
         });
       } else {
