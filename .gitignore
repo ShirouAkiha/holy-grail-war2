@@ -10,6 +10,8 @@ coverage/
 /data/*.json
 /data/backups/
 /data/media_cache/
+/data/.vault*
+/data/*.key
 !/data/.gitkeep
 !/data/seeds/
 

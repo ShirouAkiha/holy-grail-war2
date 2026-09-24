@@ -4,6 +4,7 @@ import { CRAFT_ESSENCE_DATABASE, CE_GACHA_BANNERS } from '../data/craftEssences'
 import { addBondExpToServant } from '../../lib/engine/bondEvents';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { downloadMediaToLocal } from '../utils/localMedia';
+import { encryptSecret } from '../utils/cryptoSecurity';
 import fs from 'fs';
 import path from 'path';
 
@@ -334,6 +335,15 @@ function loadFromDisk() {
             }
           }
         }
+        if (m.customApiConfig) {
+          if (m.customApiConfig.geminiKey) m.customApiConfig.geminiKey = encryptSecret(m.customApiConfig.geminiKey);
+          if (m.customApiConfig.groqKey) m.customApiConfig.groqKey = encryptSecret(m.customApiConfig.groqKey);
+          if (m.customApiConfig.openrouterKey) m.customApiConfig.openrouterKey = encryptSecret(m.customApiConfig.openrouterKey);
+          if (m.customApiConfig.deepseekKey) m.customApiConfig.deepseekKey = encryptSecret(m.customApiConfig.deepseekKey);
+          if (m.customApiConfig.mistralKey) m.customApiConfig.mistralKey = encryptSecret(m.customApiConfig.mistralKey);
+          if (m.customApiConfig.nanogptKey) m.customApiConfig.nanogptKey = encryptSecret(m.customApiConfig.nanogptKey);
+          if (m.customApiConfig.customKey) m.customApiConfig.customKey = encryptSecret(m.customApiConfig.customKey);
+        }
         masterStore.set(m.discordId, m);
       }
       // Save upgraded master profiles atomically
@@ -485,7 +495,22 @@ export function updateGachaBanner(updates: Partial<GachaBanner>): GachaBanner {
 function saveMastersToDisk() {
   try {
     ensureDataDirectory();
-    const mastersList = Array.from(masterStore.values());
+    const mastersList = Array.from(masterStore.values()).map(m => {
+      if (!m.customApiConfig) return m;
+      return {
+        ...m,
+        customApiConfig: {
+          ...m.customApiConfig,
+          geminiKey: m.customApiConfig.geminiKey ? encryptSecret(m.customApiConfig.geminiKey) : undefined,
+          groqKey: m.customApiConfig.groqKey ? encryptSecret(m.customApiConfig.groqKey) : undefined,
+          openrouterKey: m.customApiConfig.openrouterKey ? encryptSecret(m.customApiConfig.openrouterKey) : undefined,
+          deepseekKey: m.customApiConfig.deepseekKey ? encryptSecret(m.customApiConfig.deepseekKey) : undefined,
+          mistralKey: m.customApiConfig.mistralKey ? encryptSecret(m.customApiConfig.mistralKey) : undefined,
+          nanogptKey: m.customApiConfig.nanogptKey ? encryptSecret(m.customApiConfig.nanogptKey) : undefined,
+          customKey: m.customApiConfig.customKey ? encryptSecret(m.customApiConfig.customKey) : undefined,
+        }
+      };
+    });
     writeJsonAtomic(MASTERS_FILE, mastersList, 'masters');
   } catch (err) {
     console.error('[Database] Failed to write masters.json to disk:', err);
@@ -1391,6 +1416,15 @@ export async function claimDailySaintQuartz(
  * Saves a complete modified master profile back to the persistent store.
  */
 export async function saveMaster(master: MasterProfile): Promise<MasterProfile> {
+  if (master.customApiConfig) {
+    if (master.customApiConfig.geminiKey) master.customApiConfig.geminiKey = encryptSecret(master.customApiConfig.geminiKey);
+    if (master.customApiConfig.groqKey) master.customApiConfig.groqKey = encryptSecret(master.customApiConfig.groqKey);
+    if (master.customApiConfig.openrouterKey) master.customApiConfig.openrouterKey = encryptSecret(master.customApiConfig.openrouterKey);
+    if (master.customApiConfig.deepseekKey) master.customApiConfig.deepseekKey = encryptSecret(master.customApiConfig.deepseekKey);
+    if (master.customApiConfig.mistralKey) master.customApiConfig.mistralKey = encryptSecret(master.customApiConfig.mistralKey);
+    if (master.customApiConfig.nanogptKey) master.customApiConfig.nanogptKey = encryptSecret(master.customApiConfig.nanogptKey);
+    if (master.customApiConfig.customKey) master.customApiConfig.customKey = encryptSecret(master.customApiConfig.customKey);
+  }
   masterStore.set(master.discordId, master);
   saveMastersToDisk();
   return master;

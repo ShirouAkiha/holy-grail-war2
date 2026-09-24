@@ -1151,7 +1151,8 @@ export default function DiscordEmulator({
             equippedCeName: targetServant.equippedCe?.name,
             recentChronicleEvents: grailWar.eventLogs?.slice(-3).map((l: any) => typeof l === 'string' ? l : l.message || 'War ongoing in Fuyuki.'),
             playerMessage: userMessage,
-            servantAvatarUrl: avatarUrl
+            servantAvatarUrl: avatarUrl,
+            customApiConfig: master.customApiConfig
           },
           renderCanvas: true
         })
@@ -1314,7 +1315,7 @@ export default function DiscordEmulator({
       commands: [
         { cmd: '/addservant', desc: 'Register a custom original Heroic Spirit or edit existing stats.', usage: '/addservant create' },
         { cmd: '/admin npsettings', desc: 'Configure NP battle animations and battle round timers.', usage: '/admin npsettings' },
-        { cmd: '/apikey', desc: 'Connect your own Gemini or OpenRouter API key for unlimited AI chat.', usage: '/apikey set <key>' }
+        { cmd: '/apikey', desc: 'Choose AI providers & 100% free models (Groq, Gemini, OpenRouter, Ollama) for unlimited chat.', usage: '/apikey dashboard | /apikey freemodels' }
       ]
     }
   ];
@@ -3313,6 +3314,169 @@ export default function DiscordEmulator({
       } else {
         handleOpenTalkModal(activeServant.id);
       }
+      return;
+    }
+
+    // ----------------------------------------------------
+    // COMMAND 3.7: /apikey, /byok, /api (AI Providers & Free Models Hub)
+    // ----------------------------------------------------
+    if (trimmed.startsWith('/apikey') || trimmed.startsWith('!apikey') || trimmed.startsWith('/byok') || trimmed.startsWith('!byok') || trimmed.startsWith('/api') || trimmed.startsWith('!api')) {
+      const args = trimmed.split(/\s+/).slice(1);
+      const sub = (args[0] || '').toLowerCase();
+
+      const cfg = master.customApiConfig || {
+        activeProvider: 'gemini',
+        geminiModel: 'gemini-3.5-flash',
+        groqModel: 'llama-3.3-70b-versatile',
+        openrouterModel: 'meta-llama/llama-3.3-70b-instruct:free',
+        enabled: true
+      };
+
+      if (sub === 'tutorial' || sub === 'guide' || sub === 'help') {
+        addMessage({
+          id: getNextId('bot_apikey_guide'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '📖 How to Get 100% Free AI Keys in 1 Minute',
+            description:
+              `Master **${master.username}**, you have multiple completely **100% FREE options** with no credit card required!\n\n` +
+              `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+              `### ⚡ Option A: Groq Cloud (Recommended — Ultra-Fast 300+ tok/s)\n` +
+              `1️⃣ Open **[console.groq.com/keys](https://console.groq.com/keys)** & sign in with GitHub or Google.\n` +
+              `2️⃣ Click **"Create API Key"** and copy your \`gsk_...\` key.\n` +
+              `3️⃣ Run \`/apikey set provider:groq key:<your_key>\`.\n` +
+              `*Benefits: 100% Free tier, 14,400 requests/day, blistering fast Llama 3.3 70B!*\n\n` +
+              `### 🔷 Option B: Google AI Studio (Gemini — Top Visual Novel Nuance)\n` +
+              `1️⃣ Open **[aistudio.google.com/apikey](https://aistudio.google.com/apikey)** & sign in with Google.\n` +
+              `2️⃣ Click **"Create API Key"** and copy your \`AIzaSy...\` key.\n` +
+              `3️⃣ Run \`/apikey set provider:gemini key:<your_key>\`.\n` +
+              `*Benefits: Free forever tier (15 requests/minute), superb authentic dialogue!*\n\n` +
+              `### 🌐 Option C: OpenRouter.ai (Access 20+ Free Models)\n` +
+              `1️⃣ Open **[openrouter.ai/keys](https://openrouter.ai/keys)** & generate a key.\n` +
+              `2️⃣ Models ending with \`:free\` (such as \`meta-llama/llama-3.3-70b-instruct:free\`) cost $0.00!\n\n` +
+              `### 💻 Option D: Ollama / Local AI (100% Offline & Private)\n` +
+              `1️⃣ Run \`ollama run llama3.2\` on your computer.\n` +
+              `2️⃣ Connect via \`/apikey set provider:ollama model:llama3.2\` (Zero cost, runs offline)!`,
+            color: '#10b981',
+            footer: 'Fate Holy Grail War • Zero Cost AI Providers Guide'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'btn_apikey_select_groq_70b', label: 'Use Groq Free 70B', style: 'primary', emoji: '⚡' },
+              { id: 'btn_apikey_select_gemini_flash', label: 'Use Gemini Free', style: 'primary', emoji: '🔷' },
+              { id: 'btn_apikey_freepresets', label: 'Browse Free Models', style: 'success', emoji: '🎁' },
+              { id: 'btn_apikey_dashboard', label: 'Back to Hub', style: 'secondary', emoji: '↩️' }
+            ]
+          }
+        });
+        return;
+      }
+
+      if (sub === 'freemodels' || sub === 'free' || sub === 'models') {
+        addMessage({
+          id: getNextId('bot_apikey_free_models'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '🌟 100% Free AI Model Selector',
+            description:
+              `Master **${master.username}**, choose any curated **100% Free Model** below to apply it instantly to your account with zero cost!\n\n` +
+              `• ⚡ **Groq Llama 3.3 70B Versatile:** Flagship 70B model running at 300+ tok/s on Groq LPUs. Completely free!\n` +
+              `• 🔷 **Google Gemini 3.5 Flash:** Superb Fate roleplay nuance & personality on Google AI Studio free tier.\n` +
+              `• 🌐 **OpenRouter Llama 3.3 70B (:free):** Meta 70B instruct model hosted at $0.00.\n` +
+              `• 💻 **Ollama Local AI:** 100% Free offline execution on your own machine.\n\n` +
+              `*Click any button below to activate the model instantly:*`,
+            color: '#10b981',
+            footer: 'Select a free model below for 1-click activation'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'btn_apikey_select_groq_70b', label: '⚡ Groq: Llama 3.3 70B (Free & Fast)', style: 'primary', emoji: '⚡' },
+              { id: 'btn_apikey_select_gemini_flash', label: '🔷 Gemini: 3.5 Flash (Free Tier)', style: 'primary', emoji: '🔷' },
+              { id: 'btn_apikey_select_openrouter_free', label: '🌐 OpenRouter: Llama 3.3 70B (:free)', style: 'secondary', emoji: '🌐' },
+              { id: 'btn_apikey_select_ollama_local', label: '💻 Ollama: Llama 3.2 (Local Free)', style: 'secondary', emoji: '💻' },
+              { id: 'btn_apikey_dashboard', label: 'Hub Dashboard', style: 'secondary', emoji: '↩️' }
+            ]
+          }
+        });
+        return;
+      }
+
+      if (sub === 'provider' && args[1]) {
+        const targetProvider = args[1].toLowerCase() as any;
+        const updatedCfg = {
+          ...cfg,
+          activeProvider: targetProvider,
+          enabled: true
+        };
+        onUpdateMaster({
+          ...master,
+          customApiConfig: updatedCfg
+        });
+        addMessage({
+          id: getNextId('bot_apikey_provider_switched'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '🔄 AI Provider Switched',
+            description: `Active AI provider switched to **${targetProvider.toUpperCase()}**!\nUnlimited telepathic dialogue is active.`,
+            color: '#3b82f6'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'btn_apikey_freepresets', label: 'Choose Free Model', style: 'primary', emoji: '🎁' },
+              { id: 'btn_apikey_dashboard', label: 'Open Hub', style: 'secondary', emoji: '🔑' }
+            ]
+          }
+        });
+        return;
+      }
+
+      // Default: Dashboard
+      const activeProvider = cfg.activeProvider || 'gemini';
+      const activeModel =
+        activeProvider === 'gemini' ? (cfg.geminiModel || 'gemini-3.5-flash') :
+        activeProvider === 'groq' ? (cfg.groqModel || 'llama-3.3-70b-versatile') :
+        activeProvider === 'openrouter' ? (cfg.openrouterModel || 'meta-llama/llama-3.3-70b-instruct:free') :
+        (cfg.customModel || 'default');
+
+      addMessage({
+        id: getNextId('bot_apikey_dashboard'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '🔑 Personal AI Provider & Free Models Hub (BYOK)',
+          description:
+            `Master **${master.username}**, connect your personal API key or choose from **100% Free AI Models** (Groq Ultra-Fast, Google AI Studio, OpenRouter :free, or Local Ollama) to unlock **unlimited telepathic dialogue** with your Servants!\n\n` +
+            `🛡️ *All API keys are strictly confidential, AES-256-GCM encrypted, and accessible only to your account.*\n\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+            `### ⚙️ Active AI Configuration\n` +
+            `• **Current Provider:** \`${activeProvider.toUpperCase()}\`\n` +
+            `• **Selected Model:** \`${activeModel}\` 🎁 *(100% Free Tier)*\n` +
+            `• **Status:** 🟢 **Active & Enabled** (Unlimited Chats)\n\n` +
+            `### ⚡ Free Models Available\n` +
+            `• **Groq Cloud:** \`llama-3.3-70b-versatile\` (100% Free, 300+ tok/s, 128k context)\n` +
+            `• **Google Gemini:** \`gemini-3.5-flash\` & \`gemini-3.5-flash-lite\` (Free on AI Studio)\n` +
+            `• **OpenRouter:** \`meta-llama/llama-3.3-70b-instruct:free\`, \`gemini-2.0-flash-exp:free\`\n` +
+            `• **Ollama:** \`llama3.2\`, \`mistral\` (100% Local Free Offline)`,
+          color: '#10b981',
+          footer: 'Fate Vault Security Engine • Freedom of Choice & Zero Cost'
+        },
+        components: {
+          type: 'buttons',
+          items: [
+            { id: 'btn_apikey_freepresets', label: 'Free Models Menu', style: 'primary', emoji: '🎁' },
+            { id: 'btn_apikey_switch_provider', label: 'Switch Provider', style: 'secondary', emoji: '🔄' },
+            { id: 'btn_apikey_select_groq_70b', label: 'Use Groq Free 70B', style: 'secondary', emoji: '⚡' },
+            { id: 'btn_apikey_select_gemini_flash', label: 'Use Gemini Free', style: 'secondary', emoji: '🔷' },
+            { id: 'btn_apikey_tutorial', label: 'Free Key Guide', style: 'secondary', emoji: '📖' }
+          ]
+        }
+      });
       return;
     }
 
@@ -10858,6 +11022,142 @@ export default function DiscordEmulator({
       }
     } else if (btnId === 'quick_daily_claim' || btnId === 'daily_claim') {
       handleCommand('/daily');
+    } else if (btnId === 'btn_apikey_dashboard') {
+      handleCommand('/apikey dashboard');
+    } else if (btnId === 'btn_apikey_freepresets') {
+      handleCommand('/apikey freemodels');
+    } else if (btnId === 'btn_apikey_tutorial') {
+      handleCommand('/apikey tutorial');
+    } else if (btnId === 'btn_apikey_switch_provider') {
+      const providers = ['gemini', 'groq', 'openrouter', 'ollama'];
+      const current = master.customApiConfig?.activeProvider || 'gemini';
+      const nextIdx = (providers.indexOf(current) + 1) % providers.length;
+      const nextProvider = providers[nextIdx];
+      handleCommand(`/apikey provider ${nextProvider}`);
+    } else if (btnId === 'btn_apikey_select_groq_70b') {
+      const updatedCfg = {
+        ...(master.customApiConfig || {}),
+        activeProvider: 'groq' as const,
+        groqModel: 'llama-3.3-70b-versatile',
+        enabled: true
+      };
+      onUpdateMaster({ ...master, customApiConfig: updatedCfg });
+      addMessage({
+        id: getNextId('bot_model_selected'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '⚡ Free Model Activated: Groq Llama 3.3 70B',
+          description:
+            `Master **${master.username}**, your active AI model is now **Llama 3.3 70B Versatile** on **Groq Cloud**!\n\n` +
+            `• **Speed:** Blistering 300+ tokens/sec on Groq LPUs\n` +
+            `• **Cost:** 100% Free tier (14,400 daily requests)\n` +
+            `• **Context:** 128k context for deep Servant memory & lore\n\n` +
+            `Unlimited telepathic dialogue is now active. Speak with your Servant anytime via \`/talk\`!`,
+          color: '#10b981',
+          footer: 'Groq Cloud • Free Ultra-Fast LPUs'
+        },
+        components: {
+          type: 'buttons',
+          items: [
+            { id: 'btn_apikey_dashboard', label: 'View Hub', style: 'primary', emoji: '🔑' },
+            { id: 'btn_apikey_freepresets', label: 'More Free Models', style: 'secondary', emoji: '🎁' }
+          ]
+        }
+      });
+    } else if (btnId === 'btn_apikey_select_gemini_flash') {
+      const updatedCfg = {
+        ...(master.customApiConfig || {}),
+        activeProvider: 'gemini' as const,
+        geminiModel: 'gemini-3.5-flash',
+        enabled: true
+      };
+      onUpdateMaster({ ...master, customApiConfig: updatedCfg });
+      addMessage({
+        id: getNextId('bot_model_selected'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '🔷 Free Model Activated: Gemini 3.5 Flash',
+          description:
+            `Master **${master.username}**, your active AI model is now **Gemini 3.5 Flash** on **Google AI Studio**!\n\n` +
+            `• **Quality:** Exceptional visual novel roleplay nuance & lore fidelity\n` +
+            `• **Cost:** 100% Free forever tier\n` +
+            `• **Latency:** Instant telepathic response\n\n` +
+            `Speak with your Servant anytime via \`/talk\`!`,
+          color: '#3b82f6',
+          footer: 'Google AI Studio • Free Forever Tier'
+        },
+        components: {
+          type: 'buttons',
+          items: [
+            { id: 'btn_apikey_dashboard', label: 'View Hub', style: 'primary', emoji: '🔑' },
+            { id: 'btn_apikey_freepresets', label: 'More Free Models', style: 'secondary', emoji: '🎁' }
+          ]
+        }
+      });
+    } else if (btnId === 'btn_apikey_select_openrouter_free') {
+      const updatedCfg = {
+        ...(master.customApiConfig || {}),
+        activeProvider: 'openrouter' as const,
+        openrouterModel: 'meta-llama/llama-3.3-70b-instruct:free',
+        enabled: true
+      };
+      onUpdateMaster({ ...master, customApiConfig: updatedCfg });
+      addMessage({
+        id: getNextId('bot_model_selected'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '🌐 Free Model Activated: OpenRouter Llama 3.3 70B (:free)',
+          description:
+            `Master **${master.username}**, your active AI model is now **meta-llama/llama-3.3-70b-instruct:free**!\n\n` +
+            `• **Cost:** 100% Free on OpenRouter ($0.00/M tokens)\n` +
+            `• **Roleplay:** Full 70B instruct parameters for authentic Servant personas\n\n` +
+            `Speak with your Servant anytime via \`/talk\`!`,
+          color: '#8b5cf6',
+          footer: 'OpenRouter.ai • Free Tier Model'
+        },
+        components: {
+          type: 'buttons',
+          items: [
+            { id: 'btn_apikey_dashboard', label: 'View Hub', style: 'primary', emoji: '🔑' },
+            { id: 'btn_apikey_freepresets', label: 'More Free Models', style: 'secondary', emoji: '🎁' }
+          ]
+        }
+      });
+    } else if (btnId === 'btn_apikey_select_ollama_local') {
+      const updatedCfg = {
+        ...(master.customApiConfig || {}),
+        activeProvider: 'ollama' as const,
+        ollamaModel: 'llama3.2',
+        ollamaEndpoint: 'http://localhost:11434/v1/chat/completions',
+        enabled: true
+      };
+      onUpdateMaster({ ...master, customApiConfig: updatedCfg });
+      addMessage({
+        id: getNextId('bot_model_selected'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed: {
+          title: '💻 Free Model Activated: Ollama Local (Llama 3.2)',
+          description:
+            `Master **${master.username}**, your active AI model is now **Ollama Local (llama3.2)**!\n\n` +
+            `• **Execution:** 100% Local on your machine (\`localhost:11434\`)\n` +
+            `• **Cost:** 100% Free & Unlimited forever\n` +
+            `• **Privacy:** Zero cloud tracking, completely offline\n\n` +
+            `Make sure \`ollama run llama3.2\` is running on your system!`,
+          color: '#10b981',
+          footer: 'Ollama • 100% Private Offline AI'
+        },
+        components: {
+          type: 'buttons',
+          items: [
+            { id: 'btn_apikey_dashboard', label: 'View Hub', style: 'primary', emoji: '🔑' },
+            { id: 'btn_apikey_freepresets', label: 'More Free Models', style: 'secondary', emoji: '🎁' }
+          ]
+        }
+      });
     } else if (btnId === 'quick_profile_view') {
       postProfileEmbed();
     } else if (btnId === 'quick_ce_gacha_ten') {

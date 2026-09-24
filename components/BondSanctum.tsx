@@ -95,7 +95,8 @@ export const BondSanctum: React.FC<BondSanctumProps> = ({
               "Fuyuki Leylines surge under the crimson moon.",
               "Rival Masters patrol Shinto District in concealment."
             ],
-            playerMessage: cleanMsg
+            playerMessage: cleanMsg,
+            customApiConfig: master.customApiConfig
           }
         })
       });

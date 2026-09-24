@@ -723,7 +723,7 @@ client.on(Events.InteractionCreate, async interaction => {
                     `• **Replenishment:** Resets daily at **00:00 UTC** (Midnight Leyline Renewal).\n\n` +
                     `💡 **Need more chats?**\n` +
                     `1. **Command Seal:** Channel 1 Command Seal to restore **+5 chats**.\n` +
-                    `2. **BYOK (Bring Your Own Key):** Connect your own **Gemini**, **OpenRouter**, or **NanoGPT** API key with \`/apikey\` for **unlimited chats**!`
+                    `2. **Free AI Models & BYOK:** Choose **Groq (Free 70B)**, **Google Gemini (Free)**, **OpenRouter (:free)**, or **Ollama** with \`/apikey\` for **unlimited chats**!`
                   )
                   .setColor(0xef4444)
                   .setFooter({ text: `Daily Telepathic Cap: ${quotaStatus.maxToday} chats • Resets at 00:00 UTC` })
@@ -990,6 +990,11 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
+      if (interaction.customId.startsWith('select_apikey_')) {
+        await apikeyCommand.handleApiKeySelectInteraction(interaction);
+        return;
+      }
+
       if (interaction.customId.startsWith('war_call_')) {
         await handleRecruitmentInteraction(interaction, client);
         return;
@@ -1182,7 +1187,7 @@ client.on(Events.InteractionCreate, async interaction => {
                   `• **Replenishment:** Resets daily at **00:00 UTC** (Midnight Leyline Renewal).\n\n` +
                   `💡 **Need more chats?**\n` +
                   `1. **Command Seal:** Channel 1 Command Seal to restore **+5 chats**.\n` +
-                  `2. **BYOK (Bring Your Own Key):** Connect your own **Gemini**, **OpenRouter**, or **NanoGPT** API key with \`/apikey\` for **unlimited chats**!`
+                  `2. **Free AI Models & BYOK:** Choose **Groq (Free 70B)**, **Google Gemini (Free)**, **OpenRouter (:free)**, or **Ollama** with \`/apikey\` for **unlimited chats**!`
                 )
                 .setColor(0xef4444)
                 .setFooter({ text: `Daily Telepathic Cap: ${quotaStatus.maxToday} chats • Resets at 00:00 UTC` })

@@ -9,6 +9,7 @@ import {
 } from './servantMemoryService';
 import { getServantCharacterProfile } from '../data/characterProfiles';
 import { generateWithCustomProvider } from './byokService';
+import { redactSensitiveKeysFromText } from '../utils/cryptoSecurity';
 import { UserCustomApiConfig } from '../types';
 
 export type ServantSceneContext = 'workshop' | 'church' | 'bond' | 'patrol';
@@ -685,7 +686,7 @@ VOICE & ROLEPLAY INSTRUCTIONS:
         return { reply: cleaned, source: 'gemini' };
       }
     } catch (byokErr: any) {
-      console.warn('[talkService] Custom BYOK generation failed, falling back to server pool:', byokErr?.message || byokErr);
+      console.warn('[talkService] Custom BYOK generation failed, falling back to server pool:', redactSensitiveKeysFromText(byokErr?.message || String(byokErr)));
     }
   }
 

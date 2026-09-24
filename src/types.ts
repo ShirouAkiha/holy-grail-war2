@@ -221,16 +221,32 @@ export interface BondDialogueLine {
   audioPrompt?: string;
 }
 
-export type ApiProviderType = 'gemini' | 'openrouter' | 'nanogpt' | 'custom';
+export type ApiProviderType =
+  | 'gemini'
+  | 'groq'
+  | 'openrouter'
+  | 'deepseek'
+  | 'mistral'
+  | 'nanogpt'
+  | 'ollama'
+  | 'custom';
 
 export interface UserCustomApiConfig {
   activeProvider: ApiProviderType;
   geminiKey?: string;
-  geminiModel?: string; // e.g. "gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-3-flash-preview"
+  geminiModel?: string; // e.g. "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"
+  groqKey?: string;
+  groqModel?: string; // e.g. "llama-3.3-70b-versatile", "llama-3.1-8b-instant", "gemma2-9b-it"
   openrouterKey?: string;
-  openrouterModel?: string; // e.g. "google/gemini-3.5-flash", "anthropic/claude-3.5-haiku", "meta-llama/llama-3.3-70b-instruct"
+  openrouterModel?: string; // e.g. "google/gemini-2.0-flash-exp:free", "meta-llama/llama-3.3-70b-instruct:free", "deepseek/deepseek-r1:free"
+  deepseekKey?: string;
+  deepseekModel?: string; // e.g. "deepseek-chat", "deepseek-reasoner"
+  mistralKey?: string;
+  mistralModel?: string; // e.g. "mistral-small-latest", "open-mistral-7b"
   nanogptKey?: string;
-  nanogptModel?: string; // e.g. "gpt-4o-mini", "chatgpt-4o-latest", "claude-3-5-haiku-20241022"
+  nanogptModel?: string; // e.g. "gpt-4o-mini", "chatgpt-4o-latest"
+  ollamaEndpoint?: string; // default "http://localhost:11434/v1/chat/completions"
+  ollamaModel?: string; // e.g. "llama3.2", "mistral", "qwen2.5:7b"
   customEndpoint?: string;
   customKey?: string;
   customModel?: string;
