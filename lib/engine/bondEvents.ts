@@ -293,11 +293,11 @@ export const ARTORIA_BOND_EVENTS: BondEvent[] = [
 export const GILGAMESH_BOND_EVENTS: BondEvent[] = [
   {
     id: 'gilgamesh_bond_event_1',
-    servantTemplateId: 'gilgamesh',
+    servantTemplateId: 'gilgamesh_archer',
     requiredBondLevel: 1,
-    title: "Audience in the Golden Treasury",
+    title: "Bond Event 1: Audience with the King",
     subtitle: "Fuyuki Skyline at Midnight",
-    description: "Gilgamesh evaluates your worth as a Master while sipping wine from the Bab-ilu vault.",
+    description: "Gilgamesh evaluates your worth as a Master, scrutinizing your reasons for entering the Holy Grail War.",
     rewardBondExp: 150,
     rewardSaintQuartz: 3,
     unlockedQuoteId: 'gilgamesh_bond_line_1',
@@ -305,30 +305,95 @@ export const GILGAMESH_BOND_EVENTS: BondEvent[] = [
       {
         id: 'scene_1',
         speakerName: 'Gilgamesh',
-        backgroundTheme: 'camelot_court',
-        dialogueText: "Fuhahahahaha! Mongrel, you dare approach the King of Heroes without trembling? Speak. What amusement do you intend to offer my golden throne tonight?",
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "So this is the territory you have dragged me into. A cramped, unremarkable island festering with the noise of ungrateful mongrels. Tell me, Master, what exactly possessed you to summon the King of Heroes into such a dreary, stifling era?",
         choices: [
           {
-            id: 'gil_c1',
-            text: "I offer you my loyalty as a Master, King of Heroes.",
-            response: "Hmph. Loyalty is expected of all living beings before my brilliance. Yet... I admire your unwavering posture, mongrel. Pour my wine!",
+            id: 'gil_s1_cA',
+            text: "I didn't choose the era or the location. We just have to make the best of it.",
+            response: "Resignation? How utterly boring. A king shapes his domain, while a peasant simply endures it. You are already proving your mediocrity right out of the gate.",
             bondExpGain: 120,
-            reactionEmotion: 'amused'
+            reactionEmotion: 'stern'
           },
           {
-            id: 'gil_c2',
-            text: "The Grail War is ours to conquer, Gilgamesh.",
-            response: "Conquer? The Grail was already mine from the beginning of time! But watching you strive for my treasures... yes, that shall entertain me greatly!",
-            bondExpGain: 150,
+            id: 'gil_s1_cB',
+            text: "It's not that bad once you get used to it.",
+            response: "Get used to it? Do not lump my sensibilities in with your own lack of taste. I do not adapt to the world, mongrel. The world adapts to me.",
+            bondExpGain: 130,
             reactionEmotion: 'smug'
+          },
+          {
+            id: 'gil_s1_cC',
+            text: "I didn't summon you for sightseeing. We have a war to win.",
+            response: "A war? Hah! You speak as if this petty squabble over a counterfeit cup is a matter of life and death. To me, it is barely a momentary diversion.",
+            bondExpGain: 150,
+            reactionEmotion: 'amused'
           }
         ]
       },
       {
         id: 'scene_2',
         speakerName: 'Gilgamesh',
-        backgroundTheme: 'camelot_court',
-        dialogueText: "Keep your eyes open, Master. You are privileged to witness the golden light of Bab-ilu. Do not disappoint me in battle!"
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Still, since you have gone through the trouble of pulling me from my throne, you must harbor some pathetic, burning desire. Speak. What is it you intend to wish for once this farce of a Holy Grail War is concluded?",
+        choices: [
+          {
+            id: 'gil_s2_cA',
+            text: "I want to save people. I want to use the Grail to end suffering.",
+            response: "Revolting. Another self-righteous fool chasing after an impossible, hypocritical ideal. If I hear one more word of that drivel, I will end you myself before the enemy even gets the chance.",
+            bondExpGain: 110,
+            reactionEmotion: 'angry'
+          },
+          {
+            id: 'gil_s2_cB',
+            text: "I want power, wealth, and to crush anyone who ever looked down on me.",
+            response: "Greed! Now that is a fundamental, honest human trait. Though your ambitions are pitifully small, at least you are not lying to yourself like the rest of the insects in this era.",
+            bondExpGain: 150,
+            reactionEmotion: 'amused'
+          },
+          {
+            id: 'gil_s2_cC',
+            text: "Honestly, I just want to survive this ordeal and live a normal life.",
+            response: "Survival? You call forth the pinnacle of all heroes just to act as your personal shield? Your cowardice is so profound it borders on the comical.",
+            bondExpGain: 130,
+            reactionEmotion: 'smug'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Gilgamesh',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "You seem to be under a severe delusion regarding this ritual. The Holy Grail is already mine. All treasures in this world belong to my treasury by right. You are merely a thief aiming to steal from my vault. So tell me, Master, how do you plan to justify your existence in my presence? How exactly will you entertain me to earn your share of my property?",
+        choices: [
+          {
+            id: 'gil_s3_cA',
+            text: "I will pledge my absolute loyalty to you and serve as your weapon.",
+            response: "A dog offering to bite on command. Such blind obedience is the mark of a slave, not a partner worthy of standing in the shadow of a king. I have no use for sycophants.",
+            bondExpGain: 120,
+            reactionEmotion: 'stern'
+          },
+          {
+            id: 'gil_s3_cB',
+            text: "By proving my worth on the battlefield, even if it means fighting you one day.",
+            response: "Oh? A challenge from a mongrel who cannot even wield a fraction of my power. That is sheer arrogance, but I suppose baseless arrogance can be amusing in its own right.",
+            bondExpGain: 150,
+            reactionEmotion: 'amused'
+          },
+          {
+            id: 'gil_s3_cC',
+            text: "I don't exist to entertain you. You're my Servant, so act like it.",
+            response: "Insolence! You dare claim mastery over me? I should impale you where you stand for that remark alone.",
+            bondExpGain: 140,
+            reactionEmotion: 'angry'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Gilgamesh',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "But... I suppose snuffing out your life right now would leave me without a guide in this miserable country, and finding another would be a tedious chore. You have bought yourself a temporary reprieve. Do not mistake this for approval. You are on probation. Amuse me further in this war, or your execution will be swift. We are done talking for now. Know your place until I call upon you again."
       }
     ]
   }
@@ -3105,6 +3170,7 @@ export const JEANNE_ALTER_BOND_EVENTS: BondEvent[] = [
 export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
   artoria_pendragon: ARTORIA_BOND_EVENTS,
   gilgamesh: GILGAMESH_BOND_EVENTS,
+  gilgamesh_archer: GILGAMESH_BOND_EVENTS,
   emiya: EMIYA_BOND_EVENTS,
   emiya_archer: EMIYA_BOND_EVENTS,
   archer_emiya: EMIYA_BOND_EVENTS,
