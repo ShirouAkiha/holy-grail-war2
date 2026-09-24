@@ -813,69 +813,94 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
   // =========================================================================
   heracles_berserker: {
     artoria_pendragon: {
-      intro: "■■■■■■■■■■■■---!! (The Great Hero of Olympus roars, raising his stone slab to test the King of Britain's holy blade!)",
-      retort: "Heracles! Even with your mind lost to Madness Enhancement, your warrior's pride burns bright! Come!",
-      tag: "HERCULEAN TEST OF CAMELOT"
+      intro: "■■■■■■■■■■■■———!!",
+      retort: "Great Heracles. Even stripped of reason by the madness of your class, your mythical stature remains unblemished. Come!",
+      tag: "THE PROMISED BLADE AND THE TWELVE LABORS"
     },
     gilgamesh_archer: {
-      intro: "■■■■■■■■■■■■---!! (Heracles bellows with incandescent rage, remembering the Golden King's chains and surging forward with unstoppable fury!)",
-      retort: "Fuhahaha! Still struggling against your fate, beast?! Enkidu's chains await your neck once more!",
-      tag: "CHAINS OF FATE: TITAN VS BABYLON"
-    },
-    scathach_lancer: {
-      intro: "■■■■■■■■■■■■---!! (The titan pounds his chest, recognizing a peerless warrior capable of challenging his God Hand!)",
-      retort: "Magnificent! That is the roar of a true demigod! Let my God Slayer spear pierce all twelve of your lives!",
-      tag: "GOD SLAYER VS THE TWELVE LABORS"
-    },
-    jeanne_darc_ruler: {
-      intro: "■■■■■■■■■■■■---!! (The Berserker charges forward like an avalanche, shaking the earth with seismic footsteps!)",
-      retort: "Great hero! Let Luminosité Eternelle protect against your overwhelming fury! God is here with me!",
-      tag: "SHIELD OF FAITH VS OLYMPIAN ROAR"
-    },
-    jeanne_alter: {
-      intro: "■■■■■■■■■■■■---!! (The titan ignores the dragon flames licking at his skin and swings his colossal slab blade!)",
-      retort: "Guh—! You giant musclebound monster! How can you run right through my hellfire without slowing down?!",
-      tag: "TITAN'S ENDURANCE VS HELLFIRE"
-    },
-    mhx_alter: {
-      intro: "■■■■■■■■■■■■---!! (Heracles swings his stone blade, creating sonic booms that buffet the space raider!)",
-      retort: "Kinetic displacement exceeding safety margins! Dark Matter thrusters engaging emergency evasive maneuvers!",
-      tag: "MYTHICAL FORCE VS COSMIC HYPERDRIVE"
-    },
-    artoria_pendragon_alter: {
-      intro: "■■■■■■■■■■■■---!! (The giant roars against the dark mana radiating from Excalibur Morgan, meeting brute force with mythic strength!)",
-      retort: "Roar all you want, giant. Your God Hand is merely twelve targets for my black blade to incinerate.",
-      tag: "NINE LIVES VS EXCALIBUR MORGAN"
-    },
-    nero_claudius_saber: {
-      intro: "■■■■■■■■■■■■---!! (Heracles crushes the earth beneath his feet, lunging toward the theatrical Roman emperor!)",
-      retort: "Umu! What incredible, untamed raw power! The Golden Theater trembles with the might of Olympus!",
-      tag: "THE TWELVE LABORS ON THE ROMAN STAGE"
+      intro: "■■■■■■■■■■■■———!! (A roar thick with ancient recognition and pure, visceral fury.)",
+      retort: "A demigod of your caliber reduced to a mindless hound... A sorrowful sight, Heracles. Allow the chains of my friend to grant you an honorable rest.",
+      tag: "FETTERS OF HEAVEN & THE TITAN"
     },
     emiya_archer: {
-      intro: "■■■■■■■■■■■■---!! (Heracles glares at the twin projected blades of the archer, remembering their desperate Fuyuki duel!)",
-      retort: "I know that look. You remember our last spar. Here I come, Heracles—Nine Lives Blade Works!",
-      tag: "THE REMATCH OF NINE LIVES"
+      intro: "■■■■■■■■■■■■———!!",
+      retort: "A living fortress wrapped in the madness of Olympus... Taking six of your lives was exhausting enough the first time. Let's see if we can finish the rest.",
+      tag: "THE LABORS OF IRON"
     },
-    heracles_berserker: {
-      intro: "■■■■■■■■■■■■---!! (Heracles roars at his twin reflection, a clash of two identical Olympian titans shaking the foundation of the world!)",
-      retort: "■■■■■■■■■■■■---!! (The mirror giant roars back with equal seismic intensity, stone blade meeting stone blade!)",
-      tag: "TITANIC CATACLYSM: DUAL LABORS"
+    artoria_pendragon_alter: {
+      intro: "■■■■■■■■■■■■———!!",
+      retort: "A mindless beast is just an oversized target. Stand still and let me burn away all twelve of your lives at once.",
+      tag: "NINE LIVES VS CORRUPTED EXCALIBUR"
     },
     cu_chulainn_lancer: {
-      intro: "■■■■■■■■■■■■---!! (The giant swings his massive slab, forcing the agile Celtic hound into frantic acrobatic evasions!)",
-      retort: "Whoa, easy there, big guy! One hit from that rock and I'm pancake mix! Time to see if Gáe Bolg can pierce that thick hide!",
-      tag: "HOUND EVASION VS TITAN'S CRUSH"
+      intro: "■■■■■■■■■■■■———!!",
+      retort: "A giant mountain of muscle that won't go down easy... Now that's what I call a proper warm-up! Let's see how many of those lives can take a cursed spear to the heart!",
+      tag: "BEAST OF IRELAND VS TITAN OF GREECE"
     },
     karna_lancer: {
-      intro: "■■■■■■■■■■■■---!! (Heracles braces against the searing divine heat of the Indian sun god, unyielding in his charge!)",
-      retort: "Great son of Zeus. Your fortitude is legendary across all mythologies. I shall honor your strength with Vasavi Shakti!",
-      tag: "SON OF ZEUS VS SON OF SURYA"
+      intro: "■■■■■■■■■■■■———!!",
+      retort: "Great son of Zeus. Though madness consumes your mind, your martial spirit remains unbroken. I shall face your twelve lives with Surya's sacred flame.",
+      tag: "COLLISION OF SUPREME DEMIGODS"
+    },
+    scathach_lancer: {
+      intro: "■■■■■■■■■■■■———!!",
+      retort: "The greatest hero of Greece, swallowed by madness yet still unyielding. Twelve lives... Let us find out if each one can fall to a different thrust.",
+      tag: "GOD SLAYER VS GOD HAND"
+    },
+    jeanne_darc_ruler: {
+      intro: "■■■■■■■■■■■■———!!",
+      retort: "Even beneath such terrifying wrath, I can see the soul of a hero who protected humanity. Stand down, Heracles—I will not let your sorrow tear this world apart!",
+      tag: "SAINT'S RESOLVE VS UNBRIDLED MIGHT"
+    },
+    jeanne_alter: {
+      intro: "■■■■■■■■■■■■———!!",
+      retort: "A towering wall of muscle? Perfect. You're just a giant target for me to cremate over, and over, and over again!",
+      tag: "SPITEFUL PYRE VS MOUNTAIN OF STONE"
+    },
+    nero_claudius_saber: {
+      intro: "■■■■■■■■■■■■———!!",
+      retort: "Umu! What a terrifying, earth-shaking roar! Such raw power belongs in the greatest arenas of Rome! Prepare yourself, great titan!",
+      tag: "GOLDEN THEATER VS COLOSSAL MIGHT"
+    },
+    mhx_alter: {
+      intro: "■■■■■■■■■■■■———!!",
+      retort: "Target evaluation: Extreme physical mass. High kinetic impact warning. Diverting sugar reserves to emergency defense barrier.",
+      tag: "PRIMORDIAL MUSCLE VS COSMIC CALORIES"
     },
     adiosa_dragon_envoy: {
-      intro: "■■■■■■■■■■■■---!! (Heracles roars against the draconic gravitational field, his muscles tearing as he defies cosmic weight!)",
-      retort: "⟨ Shak zhal, Krav'nok! ⟩ Oh? A mortal brute defying the Weight of Heaven with pure muscle? How adorable. Die now.",
-      tag: "MYTHIC FORTITUDE VS GRAVITATIONAL FIELD"
+      intro: "■■■■■■■■■■■■———!!",
+      retort: "⟨ Krav'nok rath. ⟩ A bipedal beast roaring against the void. You possess admirable mass for a mortal, but stone still shatters under gravity.",
+      tag: "DIVINE TITAN VS PRIMORDIAL STAR-DRAGON"
+    },
+    aoko_aozaki: {
+      intro: "■■■■■■■■■■■■———!!",
+      retort: "Talk about a wall! Physical attacks below Rank A won't even scratch him, huh? Guess I'll just have to put everything into a direct point-blank blast!",
+      tag: "FIFTH MAGIC HEAVY ROUNDS VS GOD HAND"
+    },
+    amamiya_no_chihaya_tenkohime: {
+      intro: "■■■■■■■■■■■■———!!",
+      retort: "H-HIIII! What a monstrous, giant ogre! W-Washi's nine tails are standing straight up! Stay back, thou giant brute, or washi shall blast thee with sacred foxfire!",
+      tag: "MOUNTAIN BREAKER VS CELESTIAL FOX"
+    },
+    lucia_lyozes: {
+      intro: "■■■■■■■■■■■■———!!",
+      retort: "A swing so heavy it tears the atmosphere apart... Even knowing where that blade lands five seconds ahead, a single glancing blow will shatter my bones. Hold your ground, Lucia...!",
+      tag: "FIVE-SECOND FORESIGHT VS TITANIC SWINGS"
+    },
+    luvria_greenharte: {
+      intro: "■■■■■■■■■■■■———!!",
+      retort: "My, what an overwhelming tempest of pure physical fury! Twelve blessings of immortality? How magnificent! Let us see if your lives return once the concept of resurrection is erased!",
+      tag: "GOD HAND RESURRECTION VS CONCEPT NULLIFICATION"
+    },
+    edmond: {
+      intro: "■■■■■■■■■■■■———!!",
+      retort: "God of strength... That roar alone rattles my teeth right out of my skull. Dig your boots into the dirt, old man—this is going to hit like an avalanche!",
+      tag: "THE UNSTOPPABLE FORCE VS THE UNBREAKABLE WALL"
+    },
+    heracles_berserker: {
+      intro: "■■■■■■■■■■■■———!!",
+      retort: "■■■■■■■■■■■■———!! (An identical shockwave of sound and bloodlust that splits the earth beneath their feet.)",
+      tag: "COLLISION OF TWO TITANS"
     }
   },
 
