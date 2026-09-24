@@ -4020,11 +4020,29 @@ export function getServantGiftReaction(
   servant: MasterServantInstance,
   giftId: string
 ): { responseText: string; emotion: 'happy' | 'flustered' | 'amused' | 'thoughtful' } {
-  const templateId = servant.templateId || servant.template?.id || servant.id;
-  const sName = servant.nickname || servant.template?.name || 'Servant';
+  const rawId = servant.templateId || servant.template?.id || servant.id || '';
+  const cleanId = rawId.toLowerCase().replace(/[^a-z0-9_]/g, '');
 
   const reactions: Record<string, Record<string, { responseText: string; emotion: 'happy' | 'flustered' | 'amused' | 'thoughtful' }>> = {
     artoria_pendragon: {
+      chaldea_tea: {
+        responseText: "Tea with Master? ...Ah, the aroma is wonderful. Taking a brief respite with you reminds me of peaceful afternoons in Britain.",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "A feast prepared for me?! ...I shall accept with deep gratitude, Master! I will make sure not a single morsel goes to waste!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "Such dense vitality... Master, consuming this allows my Mana Core to burn brighter. Thank you for your care.",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "A sacred holy relic... I feel the solemn resonance with the Round Table. As long as I hold Excalibur, I will protect you.",
+        emotion: 'thoughtful'
+      }
+    },
+    saber: {
       chaldea_tea: {
         responseText: "Tea with Master? ...Ah, the aroma is wonderful. Taking a brief respite with you reminds me of peaceful afternoons in Britain.",
         emotion: 'happy'
@@ -4060,57 +4078,273 @@ export function getServantGiftReaction(
         emotion: 'happy'
       }
     },
-    emiya_archer: {
+    gilgamesh: {
       chaldea_tea: {
-        responseText: "Afternoon tea? Well, you have good timing. I was just about to bake a batch of scones. Sit down, Master, I'll pour for both of us.",
-        emotion: 'happy'
-      },
-      heroic_feast: {
-        responseText: "A feast? Hey now, who taught you to prepare all this? Not bad at all... sharing a table like this isn't so bad after all.",
-        emotion: 'happy'
-      },
-      golden_apple: {
-        responseText: "A Golden Apple... It’s packed with an absurd amount of mana. Don't worry, Master, I'll make sure none of it goes to waste in battle.",
-        emotion: 'thoughtful'
-      },
-      sacred_relic: {
-        responseText: "A consecrated relic... tracing the structural concept reveals intricate mysteries. Thank you, Master. I will reinforce our arms with this.",
-        emotion: 'thoughtful'
-      }
-    },
-    cu_chulainn_lancer: {
-      chaldea_tea: {
-        responseText: "Tea? Haha, I'm more of an ale and roasted boar guy, but sitting down with you is always a good time, Master!",
+        responseText: "Hmph. Offering tea to the King of Heroes? Well, your boldness is not entirely displeasing. Let us see if your taste satisfies me, mongrel.",
         emotion: 'amused'
       },
       heroic_feast: {
-        responseText: "Now THAT'S what I'm talking about! A warrior's feast! Let's dig in, Master, before the war calls us back to the battlefield!",
+        responseText: "A feast? Though it pales before the cellars of Babylon, your effort to entertain your King earns you my praise.",
+        emotion: 'amused'
+      },
+      golden_apple: {
+        responseText: "The fruit of youth and vigor... Know that everything precious in this world belongs in my treasury, Master. But I accept your tribute.",
+        emotion: 'amused'
+      },
+      sacred_relic: {
+        responseText: "Hahaha! Offering a treasure to the King who owns all treasures? Very well, I shall acknowledge your devotion!",
+        emotion: 'happy'
+      }
+    },
+    scathach_lancer: {
+      chaldea_tea: {
+        responseText: "Hot tea in a quiet room... A stillness reminiscent of the ramparts of Dún Scáith. Sit, Master. Solitude is a habit of mine, but I do not mind your company.",
+        emotion: 'thoughtful'
+      },
+      heroic_feast: {
+        responseText: "A warrior needs iron sustenance, not delicate frivolities. Still, this is prepared with genuine dedication. Eat alongside me, Master—you will need the strength tomorrow.",
         emotion: 'happy'
       },
       golden_apple: {
-        responseText: "Whoa, that's some potent magical fruit! My spear arm feels lighter already! Thanks, Master!",
-        emotion: 'happy'
+        responseText: "Dense planetary mana... An interesting fruit. Absorbing this revitalizes the ancient runes etched into my spirit origin. You have done well.",
+        emotion: 'thoughtful'
       },
       sacred_relic: {
-        responseText: "An ancient artifact? Runes are reacting to it like wildfire. Leave the enemy Vanguard to me, Master!",
+        responseText: "A consecrated relic vibrating with ancient mystery. Entrusting this to a dweller of the abyss shows either supreme trust or sheer recklessness. I accept it.",
+        emotion: 'thoughtful'
+      }
+    },
+    scathach: {
+      chaldea_tea: {
+        responseText: "Hot tea in a quiet room... A stillness reminiscent of the ramparts of Dún Scáith. Sit, Master. Solitude is a habit of mine, but I do not mind your company.",
+        emotion: 'thoughtful'
+      },
+      heroic_feast: {
+        responseText: "A warrior needs iron sustenance, not delicate frivolities. Still, this is prepared with genuine dedication. Eat alongside me, Master—you will need the strength tomorrow.",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "Dense planetary mana... An interesting fruit. Absorbing this revitalizes the ancient runes etched into my spirit origin. You have done well.",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "A consecrated relic vibrating with ancient mystery. Entrusting this to a dweller of the abyss shows either supreme trust or sheer recklessness. I accept it.",
+        emotion: 'thoughtful'
+      }
+    },
+    jeanne_darc_ruler: {
+      chaldea_tea: {
+        responseText: "A warm cup of tea... Master, sharing this quiet moment with you brings such peaceful warmth to my heart. Thank you for your gentleness.",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "Master, you prepared such a magnificent meal for us? The Lord's blessings upon your generosity! Let us give thanks together before we partake.",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "Such pure radiant mana... I will channel this sacred vitality to ensure our Luminosité Eternelle shields you from every catastrophe.",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "A holy relic... The light dwelling within it resonates deeply with my prayer. As long as heaven grants me breath, this banner shall never abandon your side.",
         emotion: 'thoughtful'
       }
     },
     jeanne_d_arc: {
       chaldea_tea: {
-        responseText: "A warm cup of tea... Master, sharing this quiet moment with you brings such warmth to my prayer. Thank you.",
+        responseText: "A warm cup of tea... Master, sharing this quiet moment with you brings such peaceful warmth to my heart. Thank you for your gentleness.",
         emotion: 'happy'
       },
       heroic_feast: {
-        responseText: "Master, you prepared so much for us? The Lord's blessings upon your kindness! Let us give thanks together before eating.",
+        responseText: "Master, you prepared such a magnificent meal for us? The Lord's blessings upon your generosity! Let us give thanks together before we partake.",
         emotion: 'happy'
       },
       golden_apple: {
-        responseText: "Such pure radiant mana... I will channel this energy to ensure our Luminosité Eternelle protects you from every harm.",
+        responseText: "Such pure radiant mana... I will channel this sacred vitality to ensure our Luminosité Eternelle shields you from every catastrophe.",
         emotion: 'thoughtful'
       },
       sacred_relic: {
-        responseText: "A holy relic... I can feel the pure light within it. May our journey together remain pure and guided by grace.",
+        responseText: "A holy relic... The light dwelling within it resonates deeply with my prayer. As long as heaven grants me breath, this banner shall never abandon your side.",
+        emotion: 'thoughtful'
+      }
+    },
+    jeanne_ruler: {
+      chaldea_tea: {
+        responseText: "A warm cup of tea... Master, sharing this quiet moment with you brings such peaceful warmth to my heart. Thank you for your gentleness.",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "Master, you prepared such a magnificent meal for us? The Lord's blessings upon your generosity! Let us give thanks together before we partake.",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "Such pure radiant mana... I will channel this sacred vitality to ensure our Luminosité Eternelle shields you from every catastrophe.",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "A holy relic... The light dwelling within it resonates deeply with my prayer. As long as heaven grants me breath, this banner shall never abandon your side.",
+        emotion: 'thoughtful'
+      }
+    },
+    jeanne_alter: {
+      chaldea_tea: {
+        responseText: "Tea?! What is this lukewarm garbage?! ...Wait, is this imported French black tea with honey scones? ...Tch. It's not like I like it or anything! Leave the teapot and get lost!",
+        emotion: 'flustered'
+      },
+      heroic_feast: {
+        responseText: "A feast?! Ha! You think you can tame the Dragon Witch with culinary bribes?! ...Though that roasted meat smells decent. Sit down, Master. I won't let you starve, moron.",
+        emotion: 'amused'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple... Hmph, pure concentrated magical energy. My flames of vengeance are roaring to life. Good job, Master. You're actually proving useful.",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "A sacred relic?! Offering something holy to an Avenger of pure hatred?! Are you trying to kill me?! ...Wait, its mana resonates with my core without purifying it. You actually sought this out for me? Idiot...",
+        emotion: 'flustered'
+      }
+    },
+    jalter: {
+      chaldea_tea: {
+        responseText: "Tea?! What is this lukewarm garbage?! ...Wait, is this imported French black tea with honey scones? ...Tch. It's not like I like it or anything! Leave the teapot and get lost!",
+        emotion: 'flustered'
+      },
+      heroic_feast: {
+        responseText: "A feast?! Ha! You think you can tame the Dragon Witch with culinary bribes?! ...Though that roasted meat smells decent. Sit down, Master. I won't let you starve, moron.",
+        emotion: 'amused'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple... Hmph, pure concentrated magical energy. My flames of vengeance are roaring to life. Good job, Master. You're actually proving useful.",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "A sacred relic?! Offering something holy to an Avenger of pure hatred?! Are you trying to kill me?! ...Wait, its mana resonates with my core without purifying it. You actually sought this out for me? Idiot...",
+        emotion: 'flustered'
+      }
+    },
+    jeanne_darc_alter: {
+      chaldea_tea: {
+        responseText: "Tea?! What is this lukewarm garbage?! ...Wait, is this imported French black tea with honey scones? ...Tch. It's not like I like it or anything! Leave the teapot and get lost!",
+        emotion: 'flustered'
+      },
+      heroic_feast: {
+        responseText: "A feast?! Ha! You think you can tame the Dragon Witch with culinary bribes?! ...Though that roasted meat smells decent. Sit down, Master. I won't let you starve, moron.",
+        emotion: 'amused'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple... Hmph, pure concentrated magical energy. My flames of vengeance are roaring to life. Good job, Master. You're actually proving useful.",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "A sacred relic?! Offering something holy to an Avenger of pure hatred?! Are you trying to kill me?! ...Wait, its mana resonates with my core without purifying it. You actually sought this out for me? Idiot...",
+        emotion: 'flustered'
+      }
+    },
+    mhx_alter: {
+      chaldea_tea: {
+        responseText: "Dark green tea... Optimal pairing for red bean buns confirmed. Sit down, Master. Together, we shall eliminate these confections with extreme prejudice.",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "A multi-course gourmet spread... Caloric intake calculated at maximum efficiency. Converting nutrients directly into Dark Matter propulsion. My thanks, Master.",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "Golden apple detected. Sugar density and mana concentration... exceptional. Stashing half in emergency pocket for midway through battle.",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "Ancient relic... Spiritual frequency synchronized with the Altro Reactor. The Twin-blade Cross-Calibur is operating at 120% output. Target enemies will be bisected promptly.",
+        emotion: 'thoughtful'
+      }
+    },
+    mysterious_heroine_x_alter: {
+      chaldea_tea: {
+        responseText: "Dark green tea... Optimal pairing for red bean buns confirmed. Sit down, Master. Together, we shall eliminate these confections with extreme prejudice.",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "A multi-course gourmet spread... Caloric intake calculated at maximum efficiency. Converting nutrients directly into Dark Matter propulsion. My thanks, Master.",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "Golden apple detected. Sugar density and mana concentration... exceptional. Stashing half in emergency pocket for midway through battle.",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "Ancient relic... Spiritual frequency synchronized with the Altro Reactor. The Twin-blade Cross-Calibur is operating at 120% output. Target enemies will be bisected promptly.",
+        emotion: 'thoughtful'
+      }
+    },
+    mhxa: {
+      chaldea_tea: {
+        responseText: "Dark green tea... Optimal pairing for red bean buns confirmed. Sit down, Master. Together, we shall eliminate these confections with extreme prejudice.",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "A multi-course gourmet spread... Caloric intake calculated at maximum efficiency. Converting nutrients directly into Dark Matter propulsion. My thanks, Master.",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "Golden apple detected. Sugar density and mana concentration... exceptional. Stashing half in emergency pocket for midway through battle.",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "Ancient relic... Spiritual frequency synchronized with the Altro Reactor. The Twin-blade Cross-Calibur is operating at 120% output. Target enemies will be bisected promptly.",
+        emotion: 'thoughtful'
+      }
+    },
+    artoria_pendragon_alter: {
+      chaldea_tea: {
+        responseText: "Dainty tea? Don't insult me with fragile porcelain unless there's a side of greasy meat to go with it. ...Though, the temperature is acceptable. Sit, Master. Don't fidget.",
+        emotion: 'thoughtful'
+      },
+      heroic_feast: {
+        responseText: "Now this is an offering worthy of a sovereign. High-calorie fuel, thick cutlets, rich gravy. Stand aside and bring another platter once this one is empty, Master.",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "Dense, unrefined magical energy. My blackened Dragon Core consumes it greedily. Keep supplying me like this, Master, and I will raze whatever stands in your way.",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "A relic of pure power. In the hands of an idealist it would be wasted on prayers, but I will grind its resonance into pure destructive weight for Excalibur Morgan.",
+        emotion: 'thoughtful'
+      }
+    },
+    artoria_alter: {
+      chaldea_tea: {
+        responseText: "Dainty tea? Don't insult me with fragile porcelain unless there's a side of greasy meat to go with it. ...Though, the temperature is acceptable. Sit, Master. Don't fidget.",
+        emotion: 'thoughtful'
+      },
+      heroic_feast: {
+        responseText: "Now this is an offering worthy of a sovereign. High-calorie fuel, thick cutlets, rich gravy. Stand aside and bring another platter once this one is empty, Master.",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "Dense, unrefined magical energy. My blackened Dragon Core consumes it greedily. Keep supplying me like this, Master, and I will raze whatever stands in your way.",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "A relic of pure power. In the hands of an idealist it would be wasted on prayers, but I will grind its resonance into pure destructive weight for Excalibur Morgan.",
+        emotion: 'thoughtful'
+      }
+    },
+    salter: {
+      chaldea_tea: {
+        responseText: "Dainty tea? Don't insult me with fragile porcelain unless there's a side of greasy meat to go with it. ...Though, the temperature is acceptable. Sit, Master. Don't fidget.",
+        emotion: 'thoughtful'
+      },
+      heroic_feast: {
+        responseText: "Now this is an offering worthy of a sovereign. High-calorie fuel, thick cutlets, rich gravy. Stand aside and bring another platter once this one is empty, Master.",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "Dense, unrefined magical energy. My blackened Dragon Core consumes it greedily. Keep supplying me like this, Master, and I will raze whatever stands in your way.",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "A relic of pure power. In the hands of an idealist it would be wasted on prayers, but I will grind its resonance into pure destructive weight for Excalibur Morgan.",
         emotion: 'thoughtful'
       }
     },
@@ -4148,6 +4382,258 @@ export function getServantGiftReaction(
       sacred_relic: {
         responseText: "An exquisite treasure! The Domus Aurea herself welcomes such splendor! Master, your devotion is truly peerless!",
         emotion: 'amused'
+      }
+    },
+    nero: {
+      chaldea_tea: {
+        responseText: "Umu! Fine tea poured in an emperor's honor! Sit beside me, Praetor, let us savor this refined moment together!",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "Magnificent! A banquet worthy of Rome's greatest artist! You truly know how to spoil your Emperor, Praetor!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A radiant Golden Apple! The flame of passion inside my Spirit Origin burns brighter than ever! Let the theater begin!",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "An exquisite treasure! The Domus Aurea herself welcomes such splendor! Master, your devotion is truly peerless!",
+        emotion: 'amused'
+      }
+    },
+    emiya_archer: {
+      chaldea_tea: {
+        responseText: "Afternoon tea? Well, you have good timing. I was just about to bake a batch of scones. Sit down, Master, I'll pour for both of us.",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "A feast? Hey now, who taught you to prepare all this? Not bad at all... sharing a table like this isn't so bad after all.",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple... It's packed with an absurd amount of mana. Don't worry, Master, I'll make sure none of it goes to waste in battle.",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "A consecrated relic... tracing the structural concept reveals intricate mysteries. Thank you, Master. I will reinforce our arms with this.",
+        emotion: 'thoughtful'
+      }
+    },
+    emiya: {
+      chaldea_tea: {
+        responseText: "Afternoon tea? Well, you have good timing. I was just about to bake a batch of scones. Sit down, Master, I'll pour for both of us.",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "A feast? Hey now, who taught you to prepare all this? Not bad at all... sharing a table like this isn't so bad after all.",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple... It's packed with an absurd amount of mana. Don't worry, Master, I'll make sure none of it goes to waste in battle.",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "A consecrated relic... tracing the structural concept reveals intricate mysteries. Thank you, Master. I will reinforce our arms with this.",
+        emotion: 'thoughtful'
+      }
+    },
+    archer_emiya: {
+      chaldea_tea: {
+        responseText: "Afternoon tea? Well, you have good timing. I was just about to bake a batch of scones. Sit down, Master, I'll pour for both of us.",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "A feast? Hey now, who taught you to prepare all this? Not bad at all... sharing a table like this isn't so bad after all.",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple... It's packed with an absurd amount of mana. Don't worry, Master, I'll make sure none of it goes to waste in battle.",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "A consecrated relic... tracing the structural concept reveals intricate mysteries. Thank you, Master. I will reinforce our arms with this.",
+        emotion: 'thoughtful'
+      }
+    },
+    heracles_berserker: {
+      chaldea_tea: {
+        responseText: "■■■■... (The towering demigod lowers his colossal frame, delicately lifting the porcelain teacup with giant stone-carved fingers without cracking the glaze, letting out a soft, satisfied rumble.)",
+        emotion: 'thoughtful'
+      },
+      heroic_feast: {
+        responseText: "■■■■■■■■■■■■———!! (An earth-shaking bellow of primitive joy! The Olympian titan tears into the roasted meat with insatiable demigod vigor, thumping his chest in warrior appreciation.)",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "■■■■■■———! (His crimson eyes flare with ancient recognition—the Golden Apples of the Hesperides from his Eleventh Labor. He crushes the divine fruit, absorbing its immortal nectar directly into his God Hand.)",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "■■■■... (The sacred relic pulses with consecrated antiquity, pacifying his burning Madness Enhancement for a fleeting second. Heracles rests a massive, stone-clad palm over your shoulder in silent, absolute protection.)",
+        emotion: 'thoughtful'
+      }
+    },
+    heracles: {
+      chaldea_tea: {
+        responseText: "■■■■... (The towering demigod lowers his colossal frame, delicately lifting the porcelain teacup with giant stone-carved fingers without cracking the glaze, letting out a soft, satisfied rumble.)",
+        emotion: 'thoughtful'
+      },
+      heroic_feast: {
+        responseText: "■■■■■■■■■■■■———!! (An earth-shaking bellow of primitive joy! The Olympian titan tears into the roasted meat with insatiable demigod vigor, thumping his chest in warrior appreciation.)",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "■■■■■■———! (His crimson eyes flare with ancient recognition—the Golden Apples of the Hesperides from his Eleventh Labor. He crushes the divine fruit, absorbing its immortal nectar directly into his God Hand.)",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "■■■■... (The sacred relic pulses with consecrated antiquity, pacifying his burning Madness Enhancement for a fleeting second. Heracles rests a massive, stone-clad palm over your shoulder in silent, absolute protection.)",
+        emotion: 'thoughtful'
+      }
+    },
+    cu_chulainn_lancer: {
+      chaldea_tea: {
+        responseText: "Tea? Haha, I'm more of an ale and roasted boar guy, but sitting down with you is always a good time, Master!",
+        emotion: 'amused'
+      },
+      heroic_feast: {
+        responseText: "Now THAT'S what I'm talking about! A warrior's feast! Let's dig in, Master, before the war calls us back to the battlefield!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "Whoa, that's some potent magical fruit! My spear arm feels lighter already! Thanks, Master!",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "An ancient artifact? Runes are reacting to it like wildfire. Leave the enemy Vanguard to me, Master!",
+        emotion: 'thoughtful'
+      }
+    },
+    cu_chulainn: {
+      chaldea_tea: {
+        responseText: "Tea? Haha, I'm more of an ale and roasted boar guy, but sitting down with you is always a good time, Master!",
+        emotion: 'amused'
+      },
+      heroic_feast: {
+        responseText: "Now THAT'S what I'm talking about! A warrior's feast! Let's dig in, Master, before the war calls us back to the battlefield!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "Whoa, that's some potent magical fruit! My spear arm feels lighter already! Thanks, Master!",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "An ancient artifact? Runes are reacting to it like wildfire. Leave the enemy Vanguard to me, Master!",
+        emotion: 'thoughtful'
+      }
+    },
+    karna_lancer: {
+      chaldea_tea: {
+        responseText: "Warm tea... In life, I was accustomed to offering gifts, not receiving them. To sit in peace and share this simple cup with you... it is a kindness that deeply touches me, Master.",
+        emotion: 'thoughtful'
+      },
+      heroic_feast: {
+        responseText: "A lavish feast prepared in my name. I require little nourishment as a Heroic Spirit, but to turn aside your heartfelt hospitality would be an insult. I shall partake with utmost reverence.",
+        emotion: 'thoughtful'
+      },
+      golden_apple: {
+        responseText: "Surya's brilliance shines even within this mystic fruit. The mana within it burns clean and pure. I shall dedicate every spark of this flame to ensuring your survival.",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "A sacred relic of immense purity... Master, you entrust such an invaluable treasure to me without hesitation. I swear upon my armor and my spear: your trust shall never be betrayed.",
+        emotion: 'thoughtful'
+      }
+    },
+    karna: {
+      chaldea_tea: {
+        responseText: "Warm tea... In life, I was accustomed to offering gifts, not receiving them. To sit in peace and share this simple cup with you... it is a kindness that deeply touches me, Master.",
+        emotion: 'thoughtful'
+      },
+      heroic_feast: {
+        responseText: "A lavish feast prepared in my name. I require little nourishment as a Heroic Spirit, but to turn aside your heartfelt hospitality would be an insult. I shall partake with utmost reverence.",
+        emotion: 'thoughtful'
+      },
+      golden_apple: {
+        responseText: "Surya's brilliance shines even within this mystic fruit. The mana within it burns clean and pure. I shall dedicate every spark of this flame to ensuring your survival.",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "A sacred relic of immense purity... Master, you entrust such an invaluable treasure to me without hesitation. I swear upon my armor and my spear: your trust shall never be betrayed.",
+        emotion: 'thoughtful'
+      }
+    },
+    adiosa_dragon_envoy: {
+      chaldea_tea: {
+        responseText: "⟨ Shak zhal... ⟩ Hot leaf-water in a fragile ceramic vessel? You mortals engage in quaint, fragile rituals. ...Yet the thermal profile is soothing. You may pour another cup, little one.",
+        emotion: 'thoughtful'
+      },
+      heroic_feast: {
+        responseText: "A mountain of roasted beasts! Ha! A tribute worthy of a star-dragon's maw! Step back, Master, unless you wish to be swallowed along with the feast!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A celestial fruit dense with primordial planetary mana. It crackles between my fangs like a dying supernova. Your offering pleases me, mortal.",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "An ancient consecrated ward. Curiously, its metaphysical signature does not reject my foreign draconic nature. You chose this specifically for me, didn't you? How intriguing you are.",
+        emotion: 'amused'
+      }
+    },
+    adiosa: {
+      chaldea_tea: {
+        responseText: "⟨ Shak zhal... ⟩ Hot leaf-water in a fragile ceramic vessel? You mortals engage in quaint, fragile rituals. ...Yet the thermal profile is soothing. You may pour another cup, little one.",
+        emotion: 'thoughtful'
+      },
+      heroic_feast: {
+        responseText: "A mountain of roasted beasts! Ha! A tribute worthy of a star-dragon's maw! Step back, Master, unless you wish to be swallowed along with the feast!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A celestial fruit dense with primordial planetary mana. It crackles between my fangs like a dying supernova. Your offering pleases me, mortal.",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "An ancient consecrated ward. Curiously, its metaphysical signature does not reject my foreign draconic nature. You chose this specifically for me, didn't you? How intriguing you are.",
+        emotion: 'amused'
+      }
+    },
+    aoko_aozaki: {
+      chaldea_tea: {
+        responseText: "Ah, a hot drink! Just what I needed after running laps around the leyline. Black tea or coffee, having someone hand you a fresh cup during a break is the best feeling. Thanks, Master!",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "Whoa, look at this spread! Meat, carbs, dessert—you really went all out! Blowing up terrain with heavy magic burns an absurd number of calories, so I'm not holding back. Let's eat!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple?! That's basically a cheat-code battery! My Magic Circuits are buzzing just holding it. Don't worry, Master, I'll turn this into some high-grade fireworks in our next fight.",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "A high-ranking consecrated relic... As a modern Magician, I usually just brute-force things with pure mana, but the structural composition on this is gorgeous. I'll weave it into our barrier array.",
+        emotion: 'thoughtful'
+      }
+    },
+    aoko: {
+      chaldea_tea: {
+        responseText: "Ah, a hot drink! Just what I needed after running laps around the leyline. Black tea or coffee, having someone hand you a fresh cup during a break is the best feeling. Thanks, Master!",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "Whoa, look at this spread! Meat, carbs, dessert—you really went all out! Blowing up terrain with heavy magic burns an absurd number of calories, so I'm not holding back. Let's eat!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple?! That's basically a cheat-code battery! My Magic Circuits are buzzing just holding it. Don't worry, Master, I'll turn this into some high-grade fireworks in our next fight.",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "A high-ranking consecrated relic... As a modern Magician, I usually just brute-force things with pure mana, but the structural composition on this is gorgeous. I'll weave it into our barrier array.",
+        emotion: 'thoughtful'
       }
     },
     amamiya_no_chihaya_tenkohime: {
@@ -4275,46 +4761,10 @@ export function getServantGiftReaction(
         responseText: "An ancient warding relic... It's sturdy. I'll fix this onto the inner brace of my tower shield. Thanks for having my back, Master.",
         emotion: 'thoughtful'
       }
-    },
-    jeanne_alter: {
-      chaldea_tea: {
-        responseText: "Tea?! What is this lukewarm garbage?! ...Wait, is this imported French black tea with honey scones? ...Tch. It's not like I like it or anything! Leave the teapot and get lost!",
-        emotion: 'flustered'
-      },
-      heroic_feast: {
-        responseText: "A feast?! Ha! You think you can tame the Dragon Witch with culinary bribes?! ...Though that roasted meat smells decent. Sit down, Master. I won't let you starve, moron.",
-        emotion: 'amused'
-      },
-      golden_apple: {
-        responseText: "A Golden Apple... Hmph, pure concentrated magical energy. My flames of vengeance are roaring to life. Good job, Master. You're actually proving useful.",
-        emotion: 'happy'
-      },
-      sacred_relic: {
-        responseText: "A sacred relic?! Offering something holy to an Avenger of pure hatred?! Are you trying to kill me?! ...Wait, its mana resonates with my core without purifying it. You actually sought this out for me? Idiot...",
-        emotion: 'flustered'
-      }
-    },
-    jalter: {
-      chaldea_tea: {
-        responseText: "Tea?! What is this lukewarm garbage?! ...Wait, is this imported French black tea with honey scones? ...Tch. It's not like I like it or anything! Leave the teapot and get lost!",
-        emotion: 'flustered'
-      },
-      heroic_feast: {
-        responseText: "A feast?! Ha! You think you can tame the Dragon Witch with culinary bribes?! ...Though that roasted meat smells decent. Sit down, Master. I won't let you starve, moron.",
-        emotion: 'amused'
-      },
-      golden_apple: {
-        responseText: "A Golden Apple... Hmph, pure concentrated magical energy. My flames of vengeance are roaring to life. Good job, Master. You're actually proving useful.",
-        emotion: 'happy'
-      },
-      sacred_relic: {
-        responseText: "A sacred relic?! Offering something holy to an Avenger of pure hatred?! Are you trying to kill me?! ...Wait, its mana resonates with my core without purifying it. You actually sought this out for me? Idiot...",
-        emotion: 'flustered'
-      }
     }
   };
 
-  const servantReactions = reactions[templateId];
+  const servantReactions = reactions[cleanId] || reactions[rawId];
   if (servantReactions && servantReactions[giftId]) {
     return servantReactions[giftId];
   }
@@ -4349,11 +4799,15 @@ export function getServantGiftReaction(
 export function getServantSparringDebrief(
   servant: MasterServantInstance
 ): { responseText: string; emotion: 'happy' | 'amused' | 'thoughtful' } {
-  const templateId = servant.templateId || servant.template?.id || servant.id;
-  const sName = servant.nickname || servant.template?.name || 'Servant';
+  const rawId = servant.templateId || servant.template?.id || servant.id || '';
+  const cleanId = rawId.toLowerCase().replace(/[^a-z0-9_]/g, '');
 
   const drills: Record<string, { responseText: string; emotion: 'happy' | 'amused' | 'thoughtful' }> = {
     artoria_pendragon: {
+      responseText: "Good stance, Master! Your footwork has improved considerably. When we face enemy Servants, trust my blade and stay behind my shield.",
+      emotion: 'thoughtful'
+    },
+    saber: {
       responseText: "Good stance, Master! Your footwork has improved considerably. When we face enemy Servants, trust my blade and stay behind my shield.",
       emotion: 'thoughtful'
     },
@@ -4361,20 +4815,64 @@ export function getServantSparringDebrief(
       responseText: "Hmph. To raise a weapon against a King requires either madness or commendable courage. You didn't flinch, Master. Keep that resolve.",
       emotion: 'amused'
     },
-    emiya_archer: {
-      responseText: "Keep your breathing steady. Don't look at the tip of the blade, watch the opponent's center of balance. You're catching on fast, Master.",
-      emotion: 'thoughtful'
-    },
-    cu_chulainn_lancer: {
-      responseText: "Haha! Nice feint! If you were a Celtic warrior, Scáthach might even crack a half-smile. Let's do another round!",
+    gilgamesh: {
+      responseText: "Hmph. To raise a weapon against a King requires either madness or commendable courage. You didn't flinch, Master. Keep that resolve.",
       emotion: 'amused'
     },
-    jeanne_d_arc: {
-      responseText: "Excellent focus, Master. Even without casting high thaumaturgy, your commanding timing gives me immense strength on the frontline.",
+    scathach_lancer: {
+      responseText: "Your guard was loose on the initial feint, yet you recovered your center before my thrust struck home. Not bad, Master. But until you can parry with closed eyes, do not expect me to lower the pace.",
+      emotion: 'thoughtful'
+    },
+    scathach: {
+      responseText: "Your guard was loose on the initial feint, yet you recovered your center before my thrust struck home. Not bad, Master. But until you can parry with closed eyes, do not expect me to lower the pace.",
+      emotion: 'thoughtful'
+    },
+    jeanne_darc_ruler: {
+      responseText: "Excellent focus, Master. Even without casting high thaumaturgy, your commanding timing and calm breathing give me immense strength on the frontline.",
       emotion: 'happy'
     },
-    medusa_rider: {
-      responseText: "Your reaction speed is sharp, Master. When the chains strike, you anticipated the vector accurately. I am glad we sparred.",
+    jeanne_d_arc: {
+      responseText: "Excellent focus, Master. Even without casting high thaumaturgy, your commanding timing and calm breathing give me immense strength on the frontline.",
+      emotion: 'happy'
+    },
+    jeanne_ruler: {
+      responseText: "Excellent focus, Master. Even without casting high thaumaturgy, your commanding timing and calm breathing give me immense strength on the frontline.",
+      emotion: 'happy'
+    },
+    jeanne_alter: {
+      responseText: "Tch! You call that footwork?! You left your flank wide open! If I were an enemy Servant, you'd be a pile of smoking ashes by now! Tomorrow we're doing defensive drills until you drop!",
+      emotion: 'thoughtful'
+    },
+    jalter: {
+      responseText: "Tch! You call that footwork?! You left your flank wide open! If I were an enemy Servant, you'd be a pile of smoking ashes by now! Tomorrow we're doing defensive drills until you drop!",
+      emotion: 'thoughtful'
+    },
+    jeanne_darc_alter: {
+      responseText: "Tch! You call that footwork?! You left your flank wide open! If I were an enemy Servant, you'd be a pile of smoking ashes by now! Tomorrow we're doing defensive drills until you drop!",
+      emotion: 'thoughtful'
+    },
+    mhx_alter: {
+      responseText: "Kinetic output logged. Master's tactical response time has accelerated by 14.8%. Recommendation: Consume a sweet bean bun immediately post-exercise to stabilize blood sugar.",
+      emotion: 'thoughtful'
+    },
+    mysterious_heroine_x_alter: {
+      responseText: "Kinetic output logged. Master's tactical response time has accelerated by 14.8%. Recommendation: Consume a sweet bean bun immediately post-exercise to stabilize blood sugar.",
+      emotion: 'thoughtful'
+    },
+    mhxa: {
+      responseText: "Kinetic output logged. Master's tactical response time has accelerated by 14.8%. Recommendation: Consume a sweet bean bun immediately post-exercise to stabilize blood sugar.",
+      emotion: 'thoughtful'
+    },
+    artoria_pendragon_alter: {
+      responseText: "A single hesitating step and your head rolls. You survived my opening swing only because I dialed back the shockwave. Keep your center low and strike before you think, Master.",
+      emotion: 'thoughtful'
+    },
+    artoria_alter: {
+      responseText: "A single hesitating step and your head rolls. You survived my opening swing only because I dialed back the shockwave. Keep your center low and strike before you think, Master.",
+      emotion: 'thoughtful'
+    },
+    salter: {
+      responseText: "A single hesitating step and your head rolls. You survived my opening swing only because I dialed back the shockwave. Keep your center low and strike before you think, Master.",
       emotion: 'thoughtful'
     },
     nero_claudius_saber: {
@@ -4383,6 +4881,62 @@ export function getServantSparringDebrief(
     },
     nero_claudius: {
       responseText: "Splendid form, Praetor! Such theatrical grace in your footwork! With my crimson blade and your tactical command, no stage shall ever deny us victory!",
+      emotion: 'happy'
+    },
+    nero: {
+      responseText: "Splendid form, Praetor! Such theatrical grace in your footwork! With my crimson blade and your tactical command, no stage shall ever deny us victory!",
+      emotion: 'happy'
+    },
+    emiya_archer: {
+      responseText: "Keep your breathing steady. Don't look at the tip of the blade, watch the opponent's center of balance. You're catching on fast, Master.",
+      emotion: 'thoughtful'
+    },
+    emiya: {
+      responseText: "Keep your breathing steady. Don't look at the tip of the blade, watch the opponent's center of balance. You're catching on fast, Master.",
+      emotion: 'thoughtful'
+    },
+    archer_emiya: {
+      responseText: "Keep your breathing steady. Don't look at the tip of the blade, watch the opponent's center of balance. You're catching on fast, Master.",
+      emotion: 'thoughtful'
+    },
+    heracles_berserker: {
+      responseText: "■■■■■■■■■■■■———!! (Heracles slams his massive stone slab into the earth, shaking the entire chamber. Looking down at you through blood-red eyes, the legendary demigod gives a slow, solemn nod of Olympian respect—you did not flinch before death.)",
+      emotion: 'thoughtful'
+    },
+    heracles: {
+      responseText: "■■■■■■■■■■■■———!! (Heracles slams his massive stone slab into the earth, shaking the entire chamber. Looking down at you through blood-red eyes, the legendary demigod gives a slow, solemn nod of Olympian respect—you did not flinch before death.)",
+      emotion: 'thoughtful'
+    },
+    cu_chulainn_lancer: {
+      responseText: "Haha! Nice feint! If you were a Celtic warrior, Scáthach might even crack a half-smile. Let's do another round!",
+      emotion: 'amused'
+    },
+    cu_chulainn: {
+      responseText: "Haha! Nice feint! If you were a Celtic warrior, Scáthach might even crack a half-smile. Let's do another round!",
+      emotion: 'amused'
+    },
+    karna_lancer: {
+      responseText: "Your eyes remained steady even when the heat of my spear grazed your cloak. A warrior whose spirit does not waver will never be truly defeated. Keep your heart as still as a lamp in a windless place, Master.",
+      emotion: 'thoughtful'
+    },
+    karna: {
+      responseText: "Your eyes remained steady even when the heat of my spear grazed your cloak. A warrior whose spirit does not waver will never be truly defeated. Keep your heart as still as a lamp in a windless place, Master.",
+      emotion: 'thoughtful'
+    },
+    adiosa_dragon_envoy: {
+      responseText: "⟨ Krav'nok. ⟩ Your physical shell is alarmingly brittle, yet your evasion within my gravitational distortion field was surprisingly agile. Do not grow complacent—a cosmic anomaly will not hold back its weight as I did.",
+      emotion: 'thoughtful'
+    },
+    adiosa: {
+      responseText: "⟨ Krav'nok. ⟩ Your physical shell is alarmingly brittle, yet your evasion within my gravitational distortion field was surprisingly agile. Do not grow complacent—a cosmic anomaly will not hold back its weight as I did.",
+      emotion: 'thoughtful'
+    },
+    aoko_aozaki: {
+      responseText: "Nice slip! You anticipated the heavy round trajectory and stepped inside my reach! That's the modern combat instinct I like to see. Keep that chin tucked and stay light on your toes, Master!",
+      emotion: 'happy'
+    },
+    aoko: {
+      responseText: "Nice slip! You anticipated the heavy round trajectory and stepped inside my reach! That's the modern combat instinct I like to see. Keep that chin tucked and stay light on your toes, Master!",
       emotion: 'happy'
     },
     amamiya_no_chihaya_tenkohime: {
@@ -4412,23 +4966,12 @@ export function getServantSparringDebrief(
     edmond: {
       responseText: "Solid stance, Master! Your center of gravity held firm even when I leaned into that shield-bash. Keep that up and not even an abyssal minotaur will knock you over.",
       emotion: 'happy'
-    },
-    jeanne_alter: {
-      responseText: "Tch! You call that footwork?! You left your flank wide open! If I were an enemy Servant, you'd be a pile of smoking ashes by now! Tomorrow we're doing defensive drills until you drop!",
-      emotion: 'thoughtful'
-    },
-    jalter: {
-      responseText: "Tch! You call that footwork?! You left your flank wide open! If I were an enemy Servant, you'd be a pile of smoking ashes by now! Tomorrow we're doing defensive drills until you drop!",
-      emotion: 'thoughtful'
-    },
-    jeanne_darc_alter: {
-      responseText: "Tch! You call that footwork?! You left your flank wide open! If I were an enemy Servant, you'd be a pile of smoking ashes by now! Tomorrow we're doing defensive drills until you drop!",
-      emotion: 'thoughtful'
     }
   };
 
-  if (drills[templateId]) {
-    return drills[templateId];
+  const drill = drills[cleanId] || drills[rawId];
+  if (drill) {
+    return drill;
   }
 
   return {
