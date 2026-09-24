@@ -806,9 +806,9 @@ export const CE_GACHA_BANNERS: GachaBanner[] = [
       ssrServant: 0,
       srServant: 0,
       rServant: 0,
-      ssrCe: 5.0,
-      srCe: 25.0,
-      rCe: 70.0
+      ssrCe: 1.0,
+      srCe: 19.0,
+      rCe: 80.0
     }
   }
 ];

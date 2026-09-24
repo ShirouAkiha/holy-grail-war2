@@ -20,9 +20,9 @@ export interface CeGachaPullResponse {
  * Executes a Craft Essence Gacha roll using Saint Quartz.
  * 
  * Rates:
- * - 5★ SSR Craft Essence: 5% (e.g. Kaleidoscope, The Black Grail, Formal Craft, Limited/Zero Over)
- * - 4★ SR Craft Essence: 25% (e.g. The Imaginary Element, Gamer Fuel, Gandr)
- * - 3★ R Craft Essence: 70% (e.g. Dragon's Meridian, Jeweled Sword Zelretch)
+ * - 5★ SSR Craft Essence: 1% (e.g. Kaleidoscope, The Black Grail, Formal Craft, Limited/Zero Over)
+ * - 4★ SR Craft Essence: 19% (e.g. The Imaginary Element, Gamer Fuel, Gandr)
+ * - 3★ R Craft Essence: 80% (e.g. Dragon's Meridian, Jeweled Sword Zelretch)
  * 
  * 10-Pull Guarantee: At least one 4★ SR or higher Craft Essence guaranteed!
  */

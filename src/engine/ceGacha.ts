@@ -165,9 +165,9 @@ export function executeCraftEssenceGachaRoll({
     let targetRarity: Rarity = 3;
 
     if (guaranteeFourStar) {
-      // 10-pull guarantee: 4★ (80%) or 5★ (20%)
+      // 10-pull guarantee: 4★ (95%) or 5★ (5%)
       const roll = Math.random() * 100;
-      targetRarity = roll < 20 ? 5 : 4;
+      targetRarity = roll < 5 ? 5 : 4;
     } else {
       const roll = Math.random() * 100;
       if (roll < banner.rates.ssrCe) {
