@@ -747,11 +747,14 @@ export function initializeMultiBattle(
 export function forceJoinBattle(
   battle: BattleState,
   newCombatant: ActiveCombatant,
-  team: 'teamA' | 'teamB'
+  team: 'teamA' | 'teamB' | 'none' | 'solo'
 ): BattleState {
   const updated = { ...battle };
   const joined = { ...newCombatant };
-  if (team === 'teamA') {
+  if (team === 'none' || team === 'solo') {
+    updated.teamSolo = [...(updated.teamSolo || []), joined];
+    updated.battleMode = '1v1v1';
+  } else if (team === 'teamA') {
     const listA = updated.teamA || [updated.player1];
     const deadIdx = listA.findIndex(c => c.currentHp <= 0);
     if (deadIdx !== -1) {
@@ -775,9 +778,12 @@ export function forceJoinBattle(
     }
   }
   updated.forceJoinedCombatants = [...(updated.forceJoinedCombatants || []), joined.id];
-  const livingA = updated.teamA.filter(c => c.currentHp > 0).length;
-  const livingB = updated.teamB.filter(c => c.currentHp > 0).length;
-  if (livingA >= 2 && livingB >= 2) {
+  const livingA = (updated.teamA || []).filter(c => c.currentHp > 0).length;
+  const livingB = (updated.teamB || []).filter(c => c.currentHp > 0).length;
+  const livingSolo = (updated.teamSolo || []).filter(c => c.currentHp > 0).length;
+  if (livingSolo > 0) {
+    updated.battleMode = '1v1v1';
+  } else if (livingA >= 2 && livingB >= 2) {
     updated.battleMode = '2v2';
   } else if (livingA >= 2 || livingB >= 2) {
     updated.battleMode = '1v2';

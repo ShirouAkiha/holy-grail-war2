@@ -235,7 +235,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
   const [showForceJoinModal, setShowForceJoinModal] = useState(false);
   const [forceJoinMasterName, setForceJoinMasterName] = useState('Rin Tohsaka');
   const [forceJoinServantId, setForceJoinServantId] = useState('archer_emiya');
-  const [forceJoinSide, setForceJoinSide] = useState<'teamA' | 'teamB'>('teamA');
+  const [forceJoinSide, setForceJoinSide] = useState<'teamA' | 'teamB' | 'none'>('teamA');
   const [selectedTargetEnemyId, setSelectedTargetEnemyId] = useState<string | undefined>(undefined);
   const [forceJoinSuccessMessage, setForceJoinSuccessMessage] = useState<string | null>(null);
 
@@ -395,7 +395,11 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
     const updated = forceJoinBattle(battle, newCombatant, forceJoinSide);
     setBattle(updated);
     setShowForceJoinModal(false);
-    setForceJoinSuccessMessage(`⚡ ${newCombatant.masterName} & ${newCombatant.name} have force-joined backing ${forceJoinSide === 'teamA' ? 'Team A' : 'Team B'}! (${updated.battleMode} Multi-Combat)`);
+    setForceJoinSuccessMessage(
+      forceJoinSide === 'none'
+        ? `⚡ ${newCombatant.masterName} & ${newCombatant.name} have force-joined as a SOLO ROGUE (No Team)! (${updated.battleMode} Free-For-All)`
+        : `⚡ ${newCombatant.masterName} & ${newCombatant.name} have force-joined backing ${forceJoinSide === 'teamA' ? 'Team A' : 'Team B'}! (${updated.battleMode} Multi-Combat)`
+    );
     setTimeout(() => setForceJoinSuccessMessage(null), 6000);
   };
 
@@ -653,19 +657,12 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
     setIsSimulating(false);
 
     if (updatedState.turnPhase === 'victory') {
-      const is1v2 = battleFormat === '1v2';
-      const is2v2 = battleFormat === '2v2';
-      const sqGain = is1v2 ? 8 : (is2v2 ? 5 : 4);
-      const statGain = is1v2 ? 5 : (is2v2 ? 3 : 2);
-      const prismGain = is1v2 ? 60 : (is2v2 ? 35 : 20);
-
       const updatedServants = master.servants.map(s => {
         if (s.id === activeServant.id) {
           return {
             ...s,
             currentHp: updatedState.player1.currentHp,
             baseHpAtDamage: updatedState.player1.currentHp,
-            availableStatPoints: (s.availableStatPoints || 0) + statGain,
             lastDamageTime: Date.now()
           };
         }
@@ -673,9 +670,8 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
       });
       onUpdateMaster({
         ...master,
-        saintQuartz: master.saintQuartz + sqGain,
-        manaPrisms: (master.manaPrisms || 0) + prismGain,
-        grailWarWins: master.grailWarWins + (is1v2 ? 2 : 1),
+        saintQuartz: master.saintQuartz + 3,
+        grailWarWins: master.grailWarWins + 1,
         servants: updatedServants
       });
       const record = createRecordFromFinishedBattle(updatedState, 'victory');
@@ -1427,19 +1423,19 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                 <label className="text-[11px] font-mono text-white/60 block mb-1.5 uppercase tracking-wider">
                   Team Allegiance:
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <button
                     type="button"
                     onClick={() => setForceJoinSide('teamA')}
-                    className={`p-3 rounded border text-left transition flex items-center gap-2.5 ${
+                    className={`p-2.5 rounded border text-left transition flex items-center gap-2 ${
                       forceJoinSide === 'teamA'
                         ? 'bg-[#001c4d] border-[#3b82f6] text-[#3b82f6] shadow-[0_0_12px_rgba(59,130,246,0.3)]'
                         : 'bg-[#141414] border-[#262626] text-white/70 hover:border-white/30'
                     }`}
                   >
-                    <Shield className="w-4 h-4 text-[#3b82f6]" />
-                    <div>
-                      <div className="text-xs font-bold font-mono">Join Team A</div>
+                    <Shield className="w-4 h-4 text-[#3b82f6] shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold font-mono truncate">Join Team A</div>
                       <div className="text-[10px] text-white/50 truncate">Back {p1.name}</div>
                     </div>
                   </button>
@@ -1447,16 +1443,32 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                   <button
                     type="button"
                     onClick={() => setForceJoinSide('teamB')}
-                    className={`p-3 rounded border text-left transition flex items-center gap-2.5 ${
+                    className={`p-2.5 rounded border text-left transition flex items-center gap-2 ${
                       forceJoinSide === 'teamB'
                         ? 'bg-[#330000] border-[#ef4444] text-[#ef4444] shadow-[0_0_12px_rgba(239,68,68,0.3)]'
                         : 'bg-[#141414] border-[#262626] text-white/70 hover:border-white/30'
                     }`}
                   >
-                    <Swords className="w-4 h-4 text-[#ef4444]" />
-                    <div>
-                      <div className="text-xs font-bold font-mono">Join Team B</div>
+                    <Swords className="w-4 h-4 text-[#ef4444] shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold font-mono truncate">Join Team B</div>
                       <div className="text-[10px] text-white/50 truncate">Back {p2.name}</div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setForceJoinSide('none')}
+                    className={`p-2.5 rounded border text-left transition flex items-center gap-2 ${
+                      forceJoinSide === 'none'
+                        ? 'bg-[#291e03] border-[#f59e0b] text-[#f59e0b] shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+                        : 'bg-[#141414] border-[#262626] text-white/70 hover:border-white/30'
+                    }`}
+                  >
+                    <Zap className="w-4 h-4 text-[#f59e0b] shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold font-mono truncate">Solo / No Team</div>
+                      <div className="text-[10px] text-white/50 truncate">Free-For-All</div>
                     </div>
                   </button>
                 </div>

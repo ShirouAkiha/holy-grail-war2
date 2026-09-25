@@ -36,16 +36,14 @@ export const data = new SlashCommandBuilder()
   .addStringOption(option =>
     option
       .setName('mode')
-      .setDescription('Battle Format: 1v1 Solo, 2v2 Alliance, 1v2 Raid, Free Sparring, or Force Join')
+      .setDescription('Battle Format')
       .setRequired(false)
       .addChoices(
-        { name: '🕊️ 1v1 Free Battle / Sparring (Safe Mode)', value: 'free' },
-        { name: '🕊️ 1v2 Free Sparring (Safe Mode Raid)', value: 'free_1v2' },
-        { name: '🕊️ 2v2 Free Sparring (Safe Mode Alliance)', value: 'free_2v2' },
+        { name: '🕊️ Free Battle / Sparring', value: 'free' },
         { name: '⚔️ 1v1 Holy Grail Duel', value: '1v1' },
         { name: '🛡️ 2v2 Alliance Tag-Team', value: '2v2' },
         { name: '⚔️ 1v2 Raid Survival', value: '1v2' },
-        { name: '⚡ Force Join Ongoing Battle', value: 'forcejoin' }
+        { name: '⚡ Force Join Arena', value: 'forcejoin' }
       )
   )
   .addBooleanOption(option =>
@@ -57,7 +55,7 @@ export const data = new SlashCommandBuilder()
   .addUserOption(option =>
     option
       .setName('opponent')
-      .setDescription('Primary target Master to duel (or leave empty in 1v1 to duel an available living Master)')
+      .setDescription('Primary target Master to duel')
       .setRequired(false)
   )
   .addUserOption(option =>
@@ -3306,6 +3304,7 @@ async function startInteractiveDuel(
 
   const team1: DuelCombatant[] = [p1, ...(p1Ally ? [p1Ally] : [])];
   const team2: DuelCombatant[] = [p2, ...(p2Ally ? [p2Ally] : [])];
+  const teamSolo: DuelCombatant[] = [];
   let team1AssistUsed = false;
   let team2AssistUsed = false;
   let forceJoinCount = (team1.length + team2.length >= 4 ? 1 : 0);
@@ -3329,15 +3328,25 @@ async function startInteractiveDuel(
     team2.forEach(c => {
       if (c.currentHp <= 0) fallenMasterIds.add(c.userId);
     });
+    teamSolo.forEach(c => {
+      if (c.currentHp <= 0) fallenMasterIds.add(c.userId);
+    });
   };
 
   const getLivingTeam1 = () => team1.filter(c => c.currentHp > 0);
   const getLivingTeam2 = () => team2.filter(c => c.currentHp > 0);
+  const getLivingTeamSolo = () => teamSolo.filter(c => c.currentHp > 0);
   const getTargetsFor = (combatant: DuelCombatant) => {
-    if (team1.includes(combatant)) return getLivingTeam2();
-    return getLivingTeam1();
+    if (teamSolo.includes(combatant)) {
+      return [...getLivingTeam1(), ...getLivingTeam2()];
+    }
+    if (team1.includes(combatant)) {
+      return [...getLivingTeam2(), ...getLivingTeamSolo()];
+    }
+    return [...getLivingTeam1(), ...getLivingTeamSolo()];
   };
   const getMyTeamFor = (combatant: DuelCombatant) => {
+    if (teamSolo.includes(combatant)) return [combatant];
     if (team1.includes(combatant)) return team1;
     return team2;
   };
@@ -3387,8 +3396,9 @@ async function startInteractiveDuel(
     const assistAvail = isT1 ? (!team1AssistUsed && hasAlly) : (!team2AssistUsed && hasAlly);
     const livingT1 = getLivingTeam1();
     const livingT2 = getLivingTeam2();
-    const totalLiving = livingT1.length + livingT2.length;
-    const forceJoinAvail = totalLiving < 4 && (livingT1.length < 2 || livingT2.length < 2);
+    const livingTS = getLivingTeamSolo();
+    const totalLiving = livingT1.length + livingT2.length + livingTS.length;
+    const forceJoinAvail = totalLiving < 4;
 
     return buildCombatButtons(
       activeCombatant,
@@ -3733,13 +3743,20 @@ async function startInteractiveDuel(
       });
 
   const advanceTurn = async (interactionToEdit?: any, pendingNpActors: DuelCombatant[] = []) => {
-    // If either team is completely eliminated, conclude duel!
-    if (getLivingTeam1().length === 0 || getLivingTeam2().length === 0) {
+    const livingT1 = getLivingTeam1();
+    const livingT2 = getLivingTeam2();
+    const livingTS = getLivingTeamSolo();
+    const activeFactionsCount = (livingT1.length > 0 ? 1 : 0) + (livingT2.length > 0 ? 1 : 0) + (livingTS.length > 0 ? 1 : 0);
+
+    // If 1 or fewer factions remain standing, conclude duel!
+    if (activeFactionsCount <= 1) {
       collector.stop('finished');
-      const isTeam1Winner = getLivingTeam1().length > 0;
-      const winningTeam = isTeam1Winner ? team1 : team2;
-      const losingTeam = isTeam1Winner ? team2 : team1;
-      const winner = winningTeam.find(c => c.currentHp > 0) || (isTeam1Winner ? p1 : p2);
+      const winningTeam = livingT1.length > 0 ? team1 : livingT2.length > 0 ? team2 : teamSolo;
+      const losingTeam = [
+        ...(livingT1.length === 0 ? team1 : []),
+        ...(livingT2.length === 0 ? team2 : []),
+        ...(livingTS.length === 0 ? teamSolo : [])
+      ];
       const finalAttachment = await buildCurrentAttachment();
       if (pendingNpActors.length > 0) {
         for (const npActor of pendingNpActors) {
@@ -3823,12 +3840,19 @@ async function startInteractiveDuel(
       }
 
       // Check if duel is over
-      if (getLivingTeam1().length === 0 || getLivingTeam2().length === 0) {
+      const livingT1End = getLivingTeam1();
+      const livingT2End = getLivingTeam2();
+      const livingTSEnd = getLivingTeamSolo();
+      const endFactionsCount = (livingT1End.length > 0 ? 1 : 0) + (livingT2End.length > 0 ? 1 : 0) + (livingTSEnd.length > 0 ? 1 : 0);
+
+      if (endFactionsCount <= 1) {
         collector.stop('finished');
-        const isTeam1Winner = getLivingTeam1().length > 0;
-        const winningTeam = isTeam1Winner ? team1 : team2;
-        const losingTeam = isTeam1Winner ? team2 : team1;
-        const winner = winningTeam.find(c => c.currentHp > 0) || (isTeam1Winner ? p1 : p2);
+        const winningTeam = livingT1End.length > 0 ? team1 : livingT2End.length > 0 ? team2 : teamSolo;
+        const losingTeam = [
+          ...(livingT1End.length === 0 ? team1 : []),
+          ...(livingT2End.length === 0 ? team2 : []),
+          ...(livingTSEnd.length === 0 ? teamSolo : [])
+        ];
         const finalAttachment = await buildCurrentAttachment();
         if (pendingNpActors.length > 0) {
           for (const npActor of pendingNpActors) {
@@ -4056,9 +4080,10 @@ async function startInteractiveDuel(
         recordFallenCombatants();
         const livingT1 = getLivingTeam1();
         const livingT2 = getLivingTeam2();
-        if (livingT1.length >= 2 && livingT2.length >= 2) {
+        const livingTS = getLivingTeamSolo();
+        if (livingT1.length + livingT2.length + livingTS.length >= 4) {
           await i.reply({
-            content: '❌ Force Join is unavailable! Arena is at maximum capacity (2v2 with 4 living combatants). Wait for a Servant to fall.',
+            content: '❌ Force Join is unavailable! Arena is at maximum capacity (4 living combatants). Wait for a Servant to fall.',
             flags: MessageFlags.Ephemeral
           });
           return;
@@ -4067,7 +4092,8 @@ async function startInteractiveDuel(
         // Loophole fix: Prevent fallen combatants from re-entering or infinite respawning
         const isFallenInThisBattle = fallenMasterIds.has(i.user.id) ||
           team1.some(c => c.userId === i.user.id && c.currentHp <= 0) ||
-          team2.some(c => c.userId === i.user.id && c.currentHp <= 0);
+          team2.some(c => c.userId === i.user.id && c.currentHp <= 0) ||
+          teamSolo.some(c => c.userId === i.user.id && c.currentHp <= 0);
 
         if (isFallenInThisBattle) {
           await i.reply({
@@ -4080,7 +4106,8 @@ async function startInteractiveDuel(
         // Prevent existing participants from force-joining multiple times or taking other slots
         const isAlreadyInBattle = duelParticipantIds.has(i.user.id) ||
           team1.some(c => c.userId === i.user.id) ||
-          team2.some(c => c.userId === i.user.id);
+          team2.some(c => c.userId === i.user.id) ||
+          teamSolo.some(c => c.userId === i.user.id);
 
         if (isAlreadyInBattle) {
           await i.reply({
@@ -4108,36 +4135,117 @@ async function startInteractiveDuel(
           return;
         }
 
-        // If both teams have open slots (< 2 living combatants each), prompt which team to join!
-        if (livingT1.length < 2 && livingT2.length < 2) {
-          const p1Leader = livingT1[0] || team1[0] || p1;
-          const p2Leader = livingT2[0] || team2[0] || p2;
-          const p1Name = p1Leader.username || p1Leader.servant.nickname || p1Leader.servant.template.name;
-          const p2Name = p2Leader.username || p2Leader.servant.nickname || p2Leader.servant.template.name;
+        // Always show options: Ally with Team 1, Ally with Team 2, or Solo Rogue (No Team)
+        const p1Leader = livingT1[0] || team1[0] || p1;
+        const p2Leader = livingT2[0] || team2[0] || p2;
+        const p1Name = p1Leader.username || p1Leader.servant.nickname || p1Leader.servant.template.name;
+        const p2Name = p2Leader.username || p2Leader.servant.nickname || p2Leader.servant.template.name;
 
-          const fjRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        const fjButtons: ButtonBuilder[] = [];
+        if (livingT1.length < 2) {
+          fjButtons.push(
             new ButtonBuilder()
               .setCustomId('fj_join_team1')
               .setLabel(`Ally with Team 1 (${p1Name.slice(0, 15)})`)
               .setStyle(ButtonStyle.Primary)
-              .setEmoji('🛡️'),
+              .setEmoji('🛡️')
+          );
+        }
+        if (livingT2.length < 2) {
+          fjButtons.push(
             new ButtonBuilder()
               .setCustomId('fj_join_team2')
               .setLabel(`Ally with Team 2 (${p2Name.slice(0, 15)})`)
               .setStyle(ButtonStyle.Danger)
               .setEmoji('⚔️')
           );
+        }
+        fjButtons.push(
+          new ButtonBuilder()
+            .setCustomId('fj_join_solo')
+            .setLabel('👑 Solo Rogue Intervention (No Team)')
+            .setStyle(ButtonStyle.Success)
+            .setEmoji('⚡')
+        );
 
-          await i.reply({
-            content: `⚡ **FORCE JOIN ARENA:** Select which Master/Team you wish to assist in combat:`,
-            components: [fjRow],
-            flags: MessageFlags.Ephemeral
+        const fjRow = new ActionRowBuilder<ButtonBuilder>().addComponents(fjButtons);
+
+        await i.reply({
+          content: `⚡ **FORCE JOIN ARENA:** Select how you wish to intervene in combat (Alliance vs Solo Rogue / No Team):`,
+          components: [fjRow],
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+
+      // CASE: FORCE JOIN SELECTION RESPONSE (From ephemeral prompt buttons)
+      if (i.customId === 'fj_join_team1' || i.customId === 'fj_join_team2' || i.customId === 'fj_join_solo') {
+        recordFallenCombatants();
+        const livingT1 = getLivingTeam1();
+        const livingT2 = getLivingTeam2();
+        const livingTS = getLivingTeamSolo();
+        const targetTeam1 = i.customId === 'fj_join_team1';
+        const targetTeam2 = i.customId === 'fj_join_team2';
+        const targetSolo = i.customId === 'fj_join_solo';
+
+        if (targetTeam1 && livingT1.length >= 2) {
+          await i.update({
+            content: '❌ Team 1 already has 2 living Servants! Select Team 2 or Solo Rogue.',
+            components: []
+          });
+          return;
+        }
+        if (targetTeam2 && livingT2.length >= 2) {
+          await i.update({
+            content: '❌ Team 2 already has 2 living Servants! Select Team 1 or Solo Rogue.',
+            components: []
           });
           return;
         }
 
-        // One team is full (has 2 living), assign directly to the team with an open slot
-        const targetTeam1 = livingT1.length < 2;
+        const isFallenInThisBattle = fallenMasterIds.has(i.user.id) ||
+          team1.some(c => c.userId === i.user.id && c.currentHp <= 0) ||
+          team2.some(c => c.userId === i.user.id && c.currentHp <= 0) ||
+          teamSolo.some(c => c.userId === i.user.id && c.currentHp <= 0);
+
+        if (isFallenInThisBattle) {
+          await i.update({
+            content: '❌ **Eliminated Master:** Your Servant has already fallen in this duel! Fallen combatants cannot re-enter or respawn in the same battle.',
+            components: []
+          });
+          return;
+        }
+
+        const isAlreadyInBattle = duelParticipantIds.has(i.user.id) ||
+          team1.some(c => c.userId === i.user.id) ||
+          team2.some(c => c.userId === i.user.id) ||
+          teamSolo.some(c => c.userId === i.user.id);
+
+        if (isAlreadyInBattle) {
+          await i.update({
+            content: '❌ You already have an active Servant standing in this duel!',
+            components: []
+          });
+          return;
+        }
+
+        const joinerMaster = await getOrCreateMaster(i.user.id, i.user.username);
+        if (!joinerMaster.servants || joinerMaster.servants.length === 0) {
+          await i.update({
+            content: '❌ You must summon a Servant before force-joining an active battle! Invoke `/summon ritual` first.',
+            components: []
+          });
+          return;
+        }
+
+        if (!isFreeBattle && joinerMaster.environmentMode === 'safe') {
+          await i.update({
+            content: '❌ **Safe Mode Protected:** You are currently in Safe Mode outside of the Holy Grail War. You cannot intervene in an ongoing tournament war battle.\n\n🕊️ You can freely Force Join any **Free Battle** (`/duel mode:free`) sparring match!',
+            components: []
+          });
+          return;
+        }
+
         const joinServant = joinerMaster.servants.find(s => s.id === joinerMaster.activeServantId) || joinerMaster.servants[0];
         const joinName = joinServant.nickname || joinServant.template?.name || 'Heroic Spirit';
 
@@ -4146,9 +4254,9 @@ async function startInteractiveDuel(
         const joinHp = (isFreeBattle || joinerMaster.environmentMode === 'safe') ? undefined : (joinPart ? calculateCurrentHp(joinPart) : undefined);
 
         if (!isFreeBattle && joinerMaster.environmentMode !== 'safe' && ((joinServant.currentHp !== undefined && joinServant.currentHp <= 0) || (joinHp !== undefined && joinHp <= 0))) {
-          await i.reply({
+          await i.update({
             content: `❌ **Incapacitated Servant:** Your Servant **${joinName}** currently has 0 HP and is incapacitated! Restore your Servant before entering combat.`,
-            flags: MessageFlags.Ephemeral
+            components: []
           });
           return;
         }
@@ -4159,66 +4267,72 @@ async function startInteractiveDuel(
         joinCombatant.critStars = 20;
         joinCombatant.activeBuffs = joinCombatant.activeBuffs || [];
         joinCombatant.activeBuffs.push({
-          name: '3rd Master Reinforcement',
+          name: targetSolo ? 'Rogue Fortitude' : '3rd Master Reinforcement',
           type: 'buff_atk',
           value: 30,
           remainingTurns: 3
         });
 
-        const targetTeam = targetTeam1 ? team1 : team2;
-        const deadIndex = targetTeam.findIndex(c => c.currentHp <= 0);
-        let replacedCombatant: DuelCombatant | null = null;
+        let forceJoinLog = '';
+        if (targetSolo) {
+          teamSolo.push(joinCombatant);
+          turnOrder.push(joinCombatant);
+          forceJoinLog = `⚡ **SOLO ROGUE FORCE JOIN INTERVENTION!** <@${i.user.id}> entered the fray with **${joinName}** as a Rogue Contender (NO TEAM - Hostile to All)! Reinforced with **+30% ATK (3T)** & **+20 Critical Stars**!`;
+        } else {
+          const targetTeam = targetTeam1 ? team1 : team2;
+          const deadIndex = targetTeam.findIndex(c => c.currentHp <= 0);
+          let replacedCombatant: DuelCombatant | null = null;
 
-        if (deadIndex !== -1) {
-          replacedCombatant = targetTeam[deadIndex];
-          fallenMasterIds.add(replacedCombatant.userId);
-          targetTeam[deadIndex] = joinCombatant;
+          if (deadIndex !== -1) {
+            replacedCombatant = targetTeam[deadIndex];
+            fallenMasterIds.add(replacedCombatant.userId);
+            targetTeam[deadIndex] = joinCombatant;
 
-          const tIdx = turnOrder.findIndex(c => c === replacedCombatant || (c.userId === replacedCombatant?.userId && c.servant?.id === replacedCombatant?.servant?.id));
-          if (tIdx !== -1) {
-            turnOrder[tIdx] = joinCombatant;
-          } else {
-            turnOrder.push(joinCombatant);
-          }
-
-          if (targetTeam1) {
-            if (deadIndex === 0) {
-              p1 = joinCombatant;
-              p1Master = joinerMaster;
+            const tIdx = turnOrder.findIndex(c => c === replacedCombatant || (c.userId === replacedCombatant?.userId && c.servant?.id === replacedCombatant?.servant?.id));
+            if (tIdx !== -1) {
+              turnOrder[tIdx] = joinCombatant;
             } else {
-              p1Ally = joinCombatant;
-              p1AllyMaster = joinerMaster;
+              turnOrder.push(joinCombatant);
+            }
+
+            if (targetTeam1) {
+              if (deadIndex === 0) {
+                p1 = joinCombatant;
+                p1Master = joinerMaster;
+              } else {
+                p1Ally = joinCombatant;
+                p1AllyMaster = joinerMaster;
+              }
+            } else {
+              if (deadIndex === 0) {
+                p2 = joinCombatant;
+                p2Master = joinerMaster;
+              } else {
+                p2Ally = joinCombatant;
+                p2AllyMaster = joinerMaster;
+              }
             }
           } else {
-            if (deadIndex === 0) {
-              p2 = joinCombatant;
-              p2Master = joinerMaster;
+            if (targetTeam1) {
+              p1Ally = joinCombatant;
+              p1AllyMaster = joinerMaster;
+              team1.push(joinCombatant);
             } else {
               p2Ally = joinCombatant;
               p2AllyMaster = joinerMaster;
+              team2.push(joinCombatant);
             }
+            turnOrder.push(joinCombatant);
           }
-        } else {
-          if (targetTeam1) {
-            p1Ally = joinCombatant;
-            p1AllyMaster = joinerMaster;
-            team1.push(joinCombatant);
-          } else {
-            p2Ally = joinCombatant;
-            p2AllyMaster = joinerMaster;
-            team2.push(joinCombatant);
-          }
-          turnOrder.push(joinCombatant);
-        }
 
-        const teamLeaderName = targetTeam1 ? p1.username : p2.username;
-        let forceJoinLog = '';
-        if (replacedCombatant) {
-          forceJoinLog = `⚡ **FORCE JOIN REPLACEMENT!** <@${i.user.id}> entered the fray with **${joinName}** to REPLACE fallen Master **${replacedCombatant.username}** on Team ${targetTeam1 ? '1' : '2'}! Reinforced with **+30% ATK (3T)** & **+20 Critical Stars**!`;
-        } else {
-          const totalLivingNow = getLivingTeam1().length + getLivingTeam2().length;
-          const joinOrdinal = totalLivingNow === 3 ? '3RD' : totalLivingNow === 4 ? '4TH' : `${totalLivingNow}TH`;
-          forceJoinLog = `⚡ **${joinOrdinal} MASTER FORCE JOIN INTERVENTION!** <@${i.user.id}> entered the fray with **${joinName}** to assist **${teamLeaderName}**! Reinforced with **+30% ATK (3T)** & **+20 Critical Stars**!`;
+          const teamLeaderName = targetTeam1 ? p1.username : p2.username;
+          if (replacedCombatant) {
+            forceJoinLog = `⚡ **FORCE JOIN REPLACEMENT!** <@${i.user.id}> entered the fray with **${joinName}** to REPLACE fallen Master **${replacedCombatant.username}** on Team ${targetTeam1 ? '1' : '2'}! Reinforced with **+30% ATK (3T)** & **+20 Critical Stars**!`;
+          } else {
+            const totalLivingNow = getLivingTeam1().length + getLivingTeam2().length + getLivingTeamSolo().length;
+            const joinOrdinal = totalLivingNow === 3 ? '3RD' : totalLivingNow === 4 ? '4TH' : `${totalLivingNow}TH`;
+            forceJoinLog = `⚡ **${joinOrdinal} MASTER FORCE JOIN INTERVENTION!** <@${i.user.id}> entered the fray with **${joinName}** to assist **${teamLeaderName}**! Reinforced with **+30% ATK (3T)** & **+20 Critical Stars**!`;
+          }
         }
         combatLogs.push(forceJoinLog);
         if (combatLogs.length > 4) combatLogs.shift();
@@ -4227,9 +4341,13 @@ async function startInteractiveDuel(
         const updatedEmbeds = buildCurrentEmbeds();
         const updatedButtons = buildCurrentButtons();
 
-        await i.reply({
-          content: `⚡ **FORCE JOIN SUCCESSFUL!** You entered the fray to assist **${teamLeaderName}**!`,
-          flags: MessageFlags.Ephemeral
+        const joinSuccessMsg = targetSolo
+          ? `⚡ **FORCE JOIN SUCCESSFUL!** You entered the fray as a Solo Rogue Contender (No Team)!`
+          : `⚡ **FORCE JOIN SUCCESSFUL!** You entered the fray to assist **${targetTeam1 ? p1.username : p2.username}**!`;
+
+        await i.update({
+          content: joinSuccessMsg,
+          components: []
         });
 
         if (battleMsg) {

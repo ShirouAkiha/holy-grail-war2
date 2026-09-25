@@ -3662,11 +3662,13 @@ export default function DiscordEmulator({
           .trim()
           .toLowerCase();
 
-        let chosenSide: 'teamA' | 'teamB' | null = null;
+        let chosenSide: 'teamA' | 'teamB' | 'none' | null = null;
         if (rawSideArg === 'teama' || rawSideArg === 'team_a' || rawSideArg === 'a' || rawSideArg === '1' || rawSideArg === 'sidea' || rawSideArg === 'p1') {
           chosenSide = 'teamA';
         } else if (rawSideArg === 'teamb' || rawSideArg === 'team_b' || rawSideArg === 'b' || rawSideArg === '2' || rawSideArg === 'sideb' || rawSideArg === 'p2') {
           chosenSide = 'teamB';
+        } else if (rawSideArg === 'none' || rawSideArg === 'noteam' || rawSideArg === 'no_team' || rawSideArg === 'solo' || rawSideArg === 'rogue' || rawSideArg === 'ffa' || rawSideArg === 'free') {
+          chosenSide = 'none';
         }
 
         // If an active duel exists, force join it
@@ -3681,7 +3683,9 @@ export default function DiscordEmulator({
                 title: '⚡ 3RD MASTER INTERVENTION — CHOOSE ALLEGIANCE',
                 description:
                   `An active duel is underway between **${activeDuel.battle.player1.name}** and **${activeDuel.battle.player2.name}**!\n\n` +
-                  `Master **${master.username}** and **${activeServant.nickname || activeServant.template?.name || (activeServant as any).name || 'Heroic Spirit'}**, choose which side to reinforce with your Spiritron mana:`,
+                  `Master **${master.username}** and **${activeServant.nickname || activeServant.template?.name || (activeServant as any).name || 'Heroic Spirit'}**, choose your path:\n` +
+                  `• Join an existing alliance to reinforce them, OR\n` +
+                  `• **Force join as a Solo Rogue (No Team)** to fight everyone independently!`,
                 color: '#d4af37',
                 footer: 'Holy Grail War Multi-Combatant Intervention Engine'
               },
@@ -3690,6 +3694,7 @@ export default function DiscordEmulator({
                 items: [
                   { id: 'duel_forcejoin_side_teama', label: `Reinforce Team A (${activeDuel.battle.player1.name})`, style: 'primary', emoji: '🛡️' },
                   { id: 'duel_forcejoin_side_teamb', label: `Reinforce Team B (${activeDuel.battle.player2.name})`, style: 'danger', emoji: '⚔️' },
+                  { id: 'duel_forcejoin_side_noteam', label: '👑 Solo Rogue (No Team / FFA)', style: 'success', emoji: '⚡' },
                   { id: 'duel_tab_active', label: 'View Active Clash', style: 'secondary', emoji: '🥊' }
                 ]
               }
@@ -3701,6 +3706,35 @@ export default function DiscordEmulator({
           const thirdCombatant = createCombatantFromMasterServant(activeServant, master.username, intervenorHp);
           const updatedBattle = forceJoinBattle(activeDuel.battle, thirdCombatant, chosenSide);
           setActiveDuel({ battle: updatedBattle });
+
+          if (chosenSide === 'none') {
+            addMessage({
+              id: getNextId('bot_forcejoin_success'),
+              sender: 'bot',
+              timestamp: 'Just now',
+              embed: {
+                title: `🚨 ROGUE MASTER FORCE JOINED WITHOUT A TEAM!`,
+                description:
+                  `💥 **BOUNDED FIELD SHATTERED BY 3RD PARTY!**\n\n` +
+                  `Master **${master.username}** breached the duel arena with **${thirdCombatant.name}** as an **INDEPENDENT ROGUE (NO TEAM)**!\n\n` +
+                  `⚔️ **Free-For-All Chaos:** You have refused all alliances! Both **${updatedBattle.player1.name}** and **${updatedBattle.player2.name}** are now hostile targets!\n\n` +
+                  `❤️ **${thirdCombatant.name} HP:** \`${thirdCombatant.currentHp.toLocaleString()}/${thirdCombatant.maxHp.toLocaleString()}\`\n` +
+                  `✨ **Solo Rogue Fortitude:** Granted **+25% ATK (4T)** & **+25 Critical Stars** upon entering the arena!`,
+                color: '#d4af37',
+                footer: 'Holy Grail War • Independent Contender Free-For-All'
+              },
+              components: {
+                type: 'buttons',
+                items: [
+                  { id: 'duel_card_bbb', label: 'Buster Brave', style: 'danger', emoji: '🔴' },
+                  { id: 'duel_card_aaa', label: 'Arts Chain', style: 'primary', emoji: '🔵' },
+                  { id: 'duel_card_qqq', label: 'Quick Chain', style: 'success', emoji: '🟢' },
+                  { id: 'duel_tab_active', label: 'Open Battle Stage', style: 'secondary', emoji: '🥊' }
+                ]
+              }
+            });
+            return;
+          }
 
           const allyTarget = chosenSide === 'teamA' ? updatedBattle.player1.name : updatedBattle.player2.name;
           const enemyTarget = chosenSide === 'teamA' ? updatedBattle.player2.name : updatedBattle.player1.name;
@@ -11581,6 +11615,10 @@ export default function DiscordEmulator({
       }
       if (btnId === 'duel_forcejoin_side_teamb') {
         handleCommand('/duel forcejoin teamb');
+        return;
+      }
+      if (btnId === 'duel_forcejoin_side_noteam') {
+        handleCommand('/duel forcejoin noteam');
         return;
       }
 

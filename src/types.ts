@@ -391,7 +391,7 @@ export interface ActiveCombatant {
   traits?: string[];
 }
 
-export type BattleCombatMode = '1v1' | '1v2' | '2v2';
+export type BattleCombatMode = '1v1' | '1v2' | '2v2' | '1v1v1' | 'ffa';
 
 export interface TurnActionChoice {
   combatantId: string;
@@ -467,6 +467,7 @@ export interface BattleState {
   statBalanceMode?: StatBalanceMode;
   balanceMode?: StatBalanceMode;
   forceJoinedCombatants?: string[];
+  teamSolo?: ActiveCombatant[];
 }
 
 export interface CombatBattleRecord {
