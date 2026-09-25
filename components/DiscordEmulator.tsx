@@ -1498,6 +1498,15 @@ export default function DiscordEmulator({
     // COMMAND 1: /summon
     // ----------------------------------------------------
     if (trimmed.startsWith('/summon')) {
+      if (trimmed.startsWith('/summon ce') || trimmed.includes(' ce ') || trimmed.endsWith(' ce')) {
+        const isTen = trimmed.includes('10') || trimmed.includes('multi') || trimmed.includes('ten');
+        if (isTen) {
+          handleButtonClick('inv_act_roll_10x_ce');
+        } else {
+          handleButtonClick('inv_act_roll_1x_ce');
+        }
+        return;
+      }
       if (trimmed.includes('10') || trimmed.includes('multi') || trimmed.includes('ten')) {
         handleButtonClick('gacha_act_multi');
         return;
@@ -1510,10 +1519,6 @@ export default function DiscordEmulator({
       }
       if (trimmed.startsWith('/summon daily')) {
         handleCommand('/daily');
-        return;
-      }
-      if (trimmed.startsWith('/summon ce')) {
-        handleCommand('/gacha ce ' + trimmed.replace('/summon ce', '').trim());
         return;
       }
       if (trimmed.startsWith('/summon rates')) {
@@ -11295,10 +11300,14 @@ export default function DiscordEmulator({
       });
     } else if (btnId === 'quick_profile_view') {
       postProfileEmbed();
-    } else if (btnId === 'quick_ce_gacha_ten') {
-      handleCommand('/cegacha 10');
+    } else if (btnId === 'quick_ce_gacha_ten' || btnId === 'cegacha_btn_pull10') {
+      handleButtonClick('inv_act_roll_10x_ce');
     } else if (btnId === 'quick_ce_gacha_view') {
       handleCommand('/cegacha');
+    } else if (btnId === 'cegacha_btn_pull1') {
+      handleButtonClick('inv_act_roll_1x_ce');
+    } else if (btnId === 'cegacha_btn_inventory') {
+      handleCommand('/inventory');
     } else if (btnId === 'quick_summon_ritual') {
       handleCommand('/summon ritual');
     } else if (btnId === 'quick_release_contract') {

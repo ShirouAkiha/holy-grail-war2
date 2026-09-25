@@ -2479,6 +2479,150 @@ client.on(Events.MessageCreate, async message => {
     }
 
     // ----------------------------------------------------
+    // !cegacha / !ce / !forge
+    // ----------------------------------------------------
+    if (cmd === 'cegacha' || cmd === 'ce' || cmd === 'forge' || (cmd === 'summon' && (args[0] === 'ce' || args[0] === 'essence'))) {
+      const isTen = args.includes('10') || args.includes('multi') || args.includes('ten');
+      const rolls = isTen ? 10 : (args.includes('1') ? 1 : 10);
+      const cost = rolls === 10 ? 30 : 3;
+
+      if ((master.saintQuartz || 0) < cost) {
+        await message.reply({
+          content: `❌ Insufficient Saint Quartz! You need **${cost} SQ** 💎 for a ${rolls}x Craft Essence summon, but only have **${master.saintQuartz || 0} SQ**.\nClaim your daily allowance with \`!daily\` (+30 SQ)!`
+        });
+        return;
+      }
+
+      const rollResult = executeCraftEssenceGachaRoll({ count: rolls, master });
+      master.saintQuartz = rollResult.updatedMaster.saintQuartz;
+      master.craftEssences = rollResult.updatedMaster.craftEssences;
+      await saveMaster(master);
+
+      if (rolls === 1) {
+        const pulled = rollResult.results[0].item as any;
+        const rarityStars = '★'.repeat(pulled.rarity);
+
+        let files: AttachmentBuilder[] = [];
+        try {
+          const canvasBuffer = await renderGachaSummonBanner(rollResult.results, '1x Craft Essence Single Summon');
+          files = [new AttachmentBuilder(canvasBuffer, { name: 'ce_summon.png' })];
+        } catch (canvasErr) {
+          console.error('Failed to render gacha canvas banner:', canvasErr);
+        }
+
+        const embed = new EmbedBuilder()
+          .setTitle(`✨ 1x Craft Essence Summon: ${pulled.name}!`)
+          .setDescription(
+            `Summoned **[${rarityStars}] ${pulled.name}**!\n\n` +
+            `🔮 **Effect:** *${pulled.effectText || pulled.description}*\n` +
+            `⚔️ **Stats:** +${pulled.bonusAtk || pulled.atkBonus || 0} ATK / +${pulled.bonusHp || pulled.hpBonus || 0} HP\n` +
+            `💎 **Remaining Saint Quartz:** \`${master.saintQuartz} SQ\`\n\n` +
+            `Use \`/inventory\` or \`/customise equip\` to equip it to your Servant!`
+          )
+          .setColor(pulled.rarity >= 5 ? 0xf59e0b : pulled.rarity >= 4 ? 0xa855f7 : 0x38bdf8);
+
+        if (files.length > 0) embed.setImage('attachment://ce_summon.png');
+
+        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder().setCustomId('quick_ce_gacha_ten').setLabel('Forge 10x (30 SQ)').setEmoji('💎').setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId('btn_view_inventory').setLabel('View Inventory').setEmoji('📦').setStyle(ButtonStyle.Secondary)
+        );
+
+        await message.reply({ embeds: [embed], files, components: [row] });
+        return;
+      }
+
+      // 10x CE Multi-Summon
+      const cardSummary = rollResult.results.map((r: any, idx: number) => {
+        const ce = r.item;
+        const star = '⭐'.repeat(r.rarity || ce.rarity || 3);
+        const newTag = r.isNew ? ' 🌟 **[NEW!]**' : '';
+        const atk = ce.bonusAtk || ce.atkBonus || 0;
+        const hp = ce.bonusHp || ce.hpBonus || 0;
+        const effect = ce.effectText || ce.description || '';
+        return `**${idx + 1}.** ${star} **${ce.name}**${newTag}\n   ↳ *${effect}* (+${atk} ATK / +${hp} HP)`;
+      }).join('\n');
+
+      let files: AttachmentBuilder[] = [];
+      try {
+        const canvasBuffer = await renderGachaSummonBanner(rollResult.results, '10x Craft Essence Multi-Summon');
+        files = [new AttachmentBuilder(canvasBuffer, { name: 'ce_summon.png' })];
+      } catch (canvasErr) {
+        console.error('Failed to render gacha canvas banner:', canvasErr);
+      }
+
+      const embedColor = rollResult.ssrsPulled > 0 ? 0xf59e0b : rollResult.srsPulled > 0 ? 0xa855f7 : 0x38bdf8;
+      const embed = new EmbedBuilder()
+        .setTitle('🎁 10x Craft Essence Multi-Summon Results!')
+        .setDescription(
+          `**10x Craft Essence Invocations Complete!**\n\n` +
+          `💎 **Remaining Balance:** \`${master.saintQuartz} SQ\` *(Spent 30 SQ)*\n` +
+          `📦 **Total Essences in Vault:** \`${master.craftEssences?.length || 0}\`\n\n` +
+          `### 🔮 Relics Summoned:\n` +
+          cardSummary +
+          `\n\n*Use \`/inventory\` or \`/customise equip\` to bind these Mystic Codes to your Servant!*`
+        )
+        .setColor(embedColor)
+        .setFooter({ text: 'Craft Essence Forge • 4★+ Guarantee Applied' });
+
+      if (files.length > 0) embed.setImage('attachment://ce_summon.png');
+
+      const actionButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('quick_ce_gacha_ten').setLabel('Roll 10x Again (30 SQ)').setEmoji('💎').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('btn_view_inventory').setLabel('View Inventory').setEmoji('📦').setStyle(ButtonStyle.Secondary)
+      );
+
+      await message.reply({ embeds: [embed], files, components: [actionButtons] });
+      return;
+    }
+
+    // ----------------------------------------------------
+    // !gacha
+    // ----------------------------------------------------
+    if (cmd === 'gacha') {
+      const gachaSub = args[0]?.toLowerCase();
+      if (gachaSub === 'ce' || gachaSub === 'essence') {
+        const isTen = args.includes('10') || args.includes('multi');
+        const rolls = isTen ? 10 : 1;
+        const cost = rolls === 10 ? 30 : 3;
+
+        if ((master.saintQuartz || 0) < cost) {
+          await message.reply({ content: `❌ Insufficient Saint Quartz! You need **${cost} SQ** 💎 for a ${rolls}x CE summon, but only have **${master.saintQuartz || 0} SQ**.` });
+          return;
+        }
+
+        const rollResult = executeCraftEssenceGachaRoll({ count: rolls, master });
+        master.saintQuartz = rollResult.updatedMaster.saintQuartz;
+        master.craftEssences = rollResult.updatedMaster.craftEssences;
+        await saveMaster(master);
+
+        let files: AttachmentBuilder[] = [];
+        try {
+          const canvasBuffer = await renderGachaSummonBanner(rollResult.results, rolls === 10 ? '10x Craft Essence Multi-Summon' : '1x Craft Essence Single Summon');
+          files = [new AttachmentBuilder(canvasBuffer, { name: 'ce_summon.png' })];
+        } catch {}
+
+        const cardSummary = rollResult.results.map((r: any, idx: number) => {
+          const ce = r.item;
+          return `• **[★${r.rarity || ce.rarity}] ${ce.name}**${r.isNew ? ' 🌟' : ''} — *${ce.effectText || ce.description}*`;
+        }).join('\n');
+
+        const embed = new EmbedBuilder()
+          .setTitle(`💎 ${rolls}x Craft Essence Summon Results!`)
+          .setDescription(`**Relics Forged:**\n\n${cardSummary}\n\n💎 **Remaining SQ:** \`${master.saintQuartz} SQ\``)
+          .setColor(0x38bdf8);
+
+        if (files.length > 0) embed.setImage('attachment://ce_summon.png');
+        await message.reply({ embeds: [embed], files });
+        return;
+      }
+
+      const { embed, components } = buildGachaHub(master, 'servants');
+      await message.reply({ embeds: [embed], components });
+      return;
+    }
+
+    // ----------------------------------------------------
     // !summon
     // ----------------------------------------------------
     if (cmd === 'summon') {
