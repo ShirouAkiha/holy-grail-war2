@@ -5736,7 +5736,6 @@ async function finalizeDuelRewardsAndSync(
   let winBondExp = 160;
   let winStatPoints = isFreeBattle ? 0 : 2;
   let winManaPrisms = 20;
-  let winGrailWins = 1;
 
   let loseSq = 1;
   let loseBondExp = 60;
@@ -5750,7 +5749,6 @@ async function finalizeDuelRewardsAndSync(
       winBondExp = 250;
       winStatPoints = 0;
       winManaPrisms = 40;
-      winGrailWins = 1;
       loseSq = 1;
       loseBondExp = 60;
       loseManaPrisms = 5;
@@ -5760,7 +5758,6 @@ async function finalizeDuelRewardsAndSync(
       winBondExp = 160;
       winStatPoints = 0;
       winManaPrisms = 25;
-      winGrailWins = 1;
       loseSq = 2;
       loseBondExp = 80;
       loseManaPrisms = 10;
@@ -5770,7 +5767,6 @@ async function finalizeDuelRewardsAndSync(
       winBondExp = 100;
       winStatPoints = 0;
       winManaPrisms = 15;
-      winGrailWins = 1;
       loseSq = 2;
       loseBondExp = 90; // Courage bonus for solo defender
       loseManaPrisms = 15;
@@ -5780,7 +5776,6 @@ async function finalizeDuelRewardsAndSync(
       winBondExp = 120;
       winStatPoints = 0;
       winManaPrisms = 15;
-      winGrailWins = 1;
       loseSq = 1;
       loseBondExp = 60;
       loseManaPrisms = 5;
@@ -5793,7 +5788,6 @@ async function finalizeDuelRewardsAndSync(
       winBondExp = 350;
       winStatPoints = 5; // Legendary Underdog Stat Boost!
       winManaPrisms = 60;
-      winGrailWins = loserCount; // Full credit for all defeated rivals
       loseSq = 1;
       loseBondExp = 60;
       loseManaPrisms = 10;
@@ -5803,7 +5797,6 @@ async function finalizeDuelRewardsAndSync(
       winBondExp = 200;
       winStatPoints = 3; // Team coordination stat point bonus
       winManaPrisms = 35;
-      winGrailWins = 1;
       loseSq = 1;
       loseBondExp = 80;
       loseManaPrisms = 10;
@@ -5813,7 +5806,6 @@ async function finalizeDuelRewardsAndSync(
       winBondExp = 140;
       winStatPoints = 2;
       winManaPrisms = 20;
-      winGrailWins = 1;
       loseSq = 2;
       loseBondExp = 120;
       loseStatPoints = 1; // Solo Defender courage under fire bonus
@@ -5824,7 +5816,6 @@ async function finalizeDuelRewardsAndSync(
       winBondExp = 160;
       winStatPoints = 2;
       winManaPrisms = 20;
-      winGrailWins = 1;
       loseSq = 1;
       loseBondExp = 60;
       loseManaPrisms = 5;
@@ -5851,7 +5842,8 @@ async function finalizeDuelRewardsAndSync(
     if (wMaster) {
       wMaster.saintQuartz = (wMaster.saintQuartz || 0) + winSq;
       wMaster.manaPrisms = (wMaster.manaPrisms || 0) + winManaPrisms;
-      wMaster.grailWarWins = (wMaster.grailWarWins || 0) + winGrailWins;
+      wMaster.duelsWon = (wMaster.duelsWon || 0) + 1;
+      wMaster.totalBattleWins = (wMaster.duelsWon || 0) + (wMaster.servantKills || 0);
 
       const s = wMaster.servants?.find(srv => srv.id === winner.servant.id);
       let bondDidLvl = false;
@@ -5922,6 +5914,7 @@ async function finalizeDuelRewardsAndSync(
       const isLoserSafe = isFreeBattle || s.master.environmentMode === 'safe' || !s.master.environmentMode;
       s.master.saintQuartz = (s.master.saintQuartz || 0) + loseSq;
       s.master.manaPrisms = (s.master.manaPrisms || 0) + loseManaPrisms;
+      s.master.duelsLost = (s.master.duelsLost || 0) + 1;
 
       const sLoser = s.master.servants?.find((srv: any) => srv.id === s.combatant.servant.id);
       let loserLvlUp = false;

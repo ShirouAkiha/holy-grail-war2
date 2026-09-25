@@ -1066,6 +1066,13 @@ export function evaluateWarState(targetWar: HolyGrailWarSession): void {
       text: `🏆 THE GREATER GRAIL HAS MANIFESTED! With all rival Heroic Spirits eliminated (${deadCount} fallen), Master **${aliveList[0].username}** (${aliveList[0].servantName}) is the sole survivor and has won the Holy Grail War!`,
       type: 'clash'
     });
+    try {
+      // Lazy require to avoid circular import issues
+      const { recordGrailWarVictory } = require('../database/service');
+      if (typeof recordGrailWarVictory === 'function') {
+        recordGrailWarVictory(aliveList[0].discordId);
+      }
+    } catch (_) {}
     saveWarToDisk();
     return;
   }

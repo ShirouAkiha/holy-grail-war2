@@ -344,6 +344,19 @@ function loadFromDisk() {
           if (m.customApiConfig.nanogptKey) m.customApiConfig.nanogptKey = encryptSecret(m.customApiConfig.nanogptKey);
           if (m.customApiConfig.customKey) m.customApiConfig.customKey = encryptSecret(m.customApiConfig.customKey);
         }
+
+        // Data hygiene: Safe mode battles and duels were previously incrementing grailWarWins instead of duelsWon.
+        // Migrate battle wins from inflated grailWarWins to duelsWon for real server players.
+        if (m.grailWarWins && m.grailWarWins > 0) {
+          const isLoreSeed = m.id?.startsWith('master_master_') || m.discordId?.startsWith('master_');
+          if (!isLoreSeed) {
+            // Real Discord player: transfer all battle victories to duelsWon and reset grailWarWins to 0
+            m.duelsWon = Math.max(m.duelsWon || 0, m.grailWarWins);
+            m.grailWarWins = 0;
+          }
+        }
+        m.totalBattleWins = (m.duelsWon || 0) + (m.servantKills || 0);
+
         masterStore.set(m.discordId, m);
       }
       // Save upgraded master profiles atomically
@@ -2488,6 +2501,17 @@ export async function getServantById(servantId: string): Promise<MasterServantIn
     if (s) return s;
   }
   return null;
+}
+
+/**
+ * Records an official Holy Grail War championship victory for a sole surviving Master.
+ */
+export async function recordGrailWarVictory(discordId: string): Promise<void> {
+  const master = masterStore.get(discordId);
+  if (master) {
+    master.grailWarWins = (master.grailWarWins || 0) + 1;
+    await saveMaster(master);
+  }
 }
 
 // Fallback compatibility proxy if standard ORM methods are invoked
