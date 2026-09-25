@@ -101,10 +101,33 @@ export function buildRankingEmbed(res: any, requestedUser?: { id: string; userna
       }
     });
 
-    embed.addFields({
-      name: '🏅 TOP MASTERS ROSTER',
-      value: lines.join('\\n\\n')
-    });
+    // Split lines into chunks of at most 5 entries or 850 characters each to strictly conform to Discord's 1024-character field limit
+    let currentChunk: string[] = [];
+    let currentLen = 0;
+    let chunkIndex = 1;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lineLen = line.length + 2;
+      if ((currentChunk.length >= 5 || currentLen + lineLen > 850) && currentChunk.length > 0) {
+        embed.addFields({
+          name: chunkIndex === 1 ? '🏅 TOP MASTERS ROSTER' : \`🏅 TOP MASTERS (Cont. #\${(chunkIndex - 1) * 5 + 1}+)\`,
+          value: currentChunk.join('\\n\\n')
+        });
+        currentChunk = [];
+        currentLen = 0;
+        chunkIndex++;
+      }
+      currentChunk.push(line);
+      currentLen += lineLen;
+    }
+
+    if (currentChunk.length > 0) {
+      embed.addFields({
+        name: chunkIndex === 1 ? '🏅 TOP MASTERS ROSTER' : \`🏅 TOP MASTERS (Cont. #\${(chunkIndex - 1) * 5 + 1}+)\`,
+        value: currentChunk.join('\\n\\n')
+      });
+    }
   }
 
   if (res.userRank) {
