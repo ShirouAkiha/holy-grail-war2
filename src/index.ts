@@ -2348,6 +2348,14 @@ client.on(Events.MessageCreate, async message => {
     }
 
     // ----------------------------------------------------
+    // !duel / !spar / !fight / !battle
+    // ----------------------------------------------------
+    if (cmd === 'duel' || cmd === 'spar' || cmd === 'fight' || cmd === 'battle') {
+      await duelCommand.handlePrefixDuel(message, args);
+      return;
+    }
+
+    // ----------------------------------------------------
     // !grailwar / !grail / !board / !war / !tourney
     // ----------------------------------------------------
     if (cmd === 'grailwar' || cmd === 'grail' || cmd === 'board' || cmd === 'war' || cmd === 'tourney' || cmd === 'tournament') {

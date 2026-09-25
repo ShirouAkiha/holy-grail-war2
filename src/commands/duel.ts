@@ -7,9 +7,10 @@ import {
   EmbedBuilder,
   AttachmentBuilder,
   User,
-  ComponentType
-, MessageFlags } from 'discord.js';
-import { getOrCreateMaster, saveMaster, getDuelNpSettings, getAllMasters } from '../database/service';
+  ComponentType,
+  Message,
+  MessageFlags } from 'discord.js';
+import { getOrCreateMaster, saveMaster, getDuelNpSettings, getAllMasters, getAllThroneServants } from '../database/service';
 import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog, PassiveSkill } from '../types';
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives, getServantAvatarAndCardArt } from '../data/servants';
 import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp, getReputationInfo, isUserSlainCivilianInWar } from '../engine/grailwar';
@@ -35,15 +36,23 @@ export const data = new SlashCommandBuilder()
   .addStringOption(option =>
     option
       .setName('mode')
-      .setDescription('Battle Format: 1v1 Solo, 2v2 Alliance Tag-Team, 1v2 Raid, or Force Join')
+      .setDescription('Battle Format: 1v1 Solo, 2v2 Alliance, 1v2 Raid, Free Sparring, or Force Join')
       .setRequired(false)
       .addChoices(
-        { name: '🕊️ Free Battle / Sparring (No War Elimination)', value: 'free' },
-        { name: '⚔️ 1v1 Solo Duel', value: '1v1' },
+        { name: '🕊️ 1v1 Free Battle / Sparring (Safe Mode)', value: 'free' },
+        { name: '🕊️ 1v2 Free Sparring (Safe Mode Raid)', value: 'free_1v2' },
+        { name: '🕊️ 2v2 Free Sparring (Safe Mode Alliance)', value: 'free_2v2' },
+        { name: '⚔️ 1v1 Holy Grail Duel', value: '1v1' },
         { name: '🛡️ 2v2 Alliance Tag-Team', value: '2v2' },
         { name: '⚔️ 1v2 Raid Survival', value: '1v2' },
         { name: '⚡ Force Join Ongoing Battle', value: 'forcejoin' }
       )
+  )
+  .addBooleanOption(option =>
+    option
+      .setName('free')
+      .setDescription('Enable Free Battle / Friendly Sparring (Zero elimination risk, full rewards)')
+      .setRequired(false)
   )
   .addUserOption(option =>
     option
@@ -2317,6 +2326,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const warSession = getOrInitWarSession(challengerMaster);
     const rawMode = interaction.options.getString('mode');
+    const isExplicitFree = interaction.options.getBoolean('free') === true;
+
+    const opponentUser = interaction.options.getUser('opponent');
+    const allyUser = interaction.options.getUser('ally');
+    const opponent2User = interaction.options.getUser('opponent2');
 
     // Check if challenger is enrolled and alive in the active Holy Grail War
     const challengerParticipant = warSession.participants[challengerMaster.discordId] ||
@@ -2325,53 +2339,33 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const isChallengerInWar = challengerMaster.environmentMode === 'war' && !!challengerParticipant && challengerParticipant.isAlive;
     const isChallengerInSafeMode = !isChallengerInWar;
 
-    // RULE 1: Masters in Safe Mode (not in war) can ONLY use Free Battles
-    if (isChallengerInSafeMode) {
-      if (rawMode && rawMode !== 'free') {
-        const safeOnlyEmbed = new EmbedBuilder()
-          .setTitle('🕊️ SAFE MODE — FREE BATTLES ONLY')
-          .setDescription(
-            `Master **${challengerMaster.username}**, you are currently in **Safe Mode** outside of the Holy Grail War.\n\n` +
-            `• **🕊️ Free Battles Only:** Masters in Safe Mode can only participate in **Free Battles** (friendly sparring without tournament stakes or elimination).\n` +
-            `• **⚔️ How to Duel:** Run \`/duel mode:free\` (or \`/duel mode:free opponent:@Master\`) to spar!\n` +
-            `• **🏆 Want Tournament Action?** Join the active tournament with \`/grailwar join\` or wait for the next war cycle.`
-          )
-          .setColor(0x38bdf8);
+    // Determine if this is a Free Battle (Safe Mode / Sparring)
+    const isFreeBattle =
+      isExplicitFree ||
+      rawMode === 'free' ||
+      rawMode === 'free_1v2' ||
+      rawMode === 'free_2v2' ||
+      isChallengerInSafeMode;
 
-        await interaction.reply({ embeds: [safeOnlyEmbed], flags: MessageFlags.Ephemeral });
-        return;
-      }
+    // Determine combat mode (1v1, 1v2, 2v2, forcejoin)
+    let mode: '1v1' | '1v2' | '2v2' | 'forcejoin' = '1v1';
+    if (rawMode === 'forcejoin') {
+      mode = 'forcejoin';
+    } else if (rawMode === '1v2' || rawMode === 'free_1v2' || (opponent2User && !allyUser)) {
+      mode = '1v2';
+    } else if (rawMode === '2v2' || rawMode === 'free_2v2' || (opponent2User && allyUser)) {
+      mode = '2v2';
+    } else {
+      mode = '1v1';
     }
 
-    // RULE 2: Masters in Holy Grail War CANNOT use Free Battles
-    if (isChallengerInWar) {
-      if (rawMode === 'free') {
-        const warNoFreeEmbed = new EmbedBuilder()
-          .setTitle('⚔️ HOLY GRAIL WAR CONTENDER — NO FREE BATTLES')
-          .setDescription(
-            `Master **${challengerMaster.username}**, you are currently an active contender in the **Holy Grail War**!\n\n` +
-            `• 🚫 **Free Battles Restricted:** Active war contenders cannot participate in casual Free Battles while fighting for the Grail.\n` +
-            `• ⚔️ **Tournament Combat:** Use \`/duel mode:1v1\`, \`/duel mode:2v2\`, \`/duel mode:1v2\`, or \`/attack\` to fight rivals!\n` +
-            `• 🕊️ **Safe Mode Functions Available:** You can still claim your daily SQ (\`/daily\`), roll Gacha (\`/gacha\`, \`/summon\`), and customize your Servants.\n` +
-            `• 🏳️ **Want to switch to Safe Mode?** Surrender your tournament position with \`/grailwar forfeit\` or at the Church.`
-          )
-          .setColor(0xf59e0b);
-
-        await interaction.reply({ embeds: [warNoFreeEmbed], flags: MessageFlags.Ephemeral });
-        return;
-      }
-    }
-
-    const mode = isChallengerInSafeMode ? 'free' : (rawMode || '1v1');
-    const isFreeBattle = isChallengerInSafeMode || mode === 'free';
-
-    // Check if challenger is eliminated from the Holy Grail War tournament
+    // Check if challenger is eliminated from the Holy Grail War tournament (only relevant in War battles)
     if (!isFreeBattle && challengerParticipant && !challengerParticipant.isAlive) {
       const deadEmbed = new EmbedBuilder()
         .setTitle('☠️ ELIMINATED FROM WAR BRACKET')
         .setDescription(
           `Master **${challengerMaster.username}**, you were defeated in this Holy Grail War season.\n\n` +
-          `• **🕊️ Free Battles Available:** You can still engage in friendly duels without elimination risks using \`/duel mode:free\`!\n` +
+          `• **🕊️ Free Battles Available:** You can still engage in friendly duels without elimination risks using \`/duel mode:free\` or \`/duel mode:free_1v2\`!\n` +
           `• **🔄 Restart Tournament:** Or start a fresh war tournament with \`/grailwar reset\` to fight for the Grail anew.`
         )
         .setColor(0xef4444);
@@ -2383,10 +2377,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const challengerServant =
       challengerMaster.servants.find(s => s.id === challengerMaster.activeServantId) ||
       challengerMaster.servants[0];
-
-    const opponentUser = interaction.options.getUser('opponent');
-    const allyUser = interaction.options.getUser('ally');
-    const opponent2User = interaction.options.getUser('opponent2');
 
     if (mode === 'forcejoin') {
       await interaction.reply({
@@ -2460,15 +2450,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       };
 
       if (checkDeceased(opponentUser.id)) {
-        await interaction.reply({ content: `☠️ Master <@${opponentUser.id}> has already been slain in this Holy Grail War! You can duel them in Free Battle mode using \`/duel mode:free\`.`, flags: MessageFlags.Ephemeral });
+        await interaction.reply({ content: `☠️ Master <@${opponentUser.id}> has already been slain in this Holy Grail War! You can duel them in Free Battle mode using \`/duel mode:free_1v2\`.`, flags: MessageFlags.Ephemeral });
         return;
       }
       if (checkDeceased(opponent2User.id)) {
-        await interaction.reply({ content: `☠️ Master <@${opponent2User.id}> has already been slain in this Holy Grail War! You can duel them in Free Battle mode using \`/duel mode:free\`.`, flags: MessageFlags.Ephemeral });
+        await interaction.reply({ content: `☠️ Master <@${opponent2User.id}> has already been slain in this Holy Grail War! You can duel them in Free Battle mode using \`/duel mode:free_1v2\`.`, flags: MessageFlags.Ephemeral });
         return;
       }
       if (is2v2 && allyUser && checkDeceased(allyUser.id)) {
-        await interaction.reply({ content: `☠️ Master <@${allyUser.id}> has already been slain in this Holy Grail War! You can duel in Free Battle mode using \`/duel mode:free\`.`, flags: MessageFlags.Ephemeral });
+        await interaction.reply({ content: `☠️ Master <@${allyUser.id}> has already been slain in this Holy Grail War! You can duel in Free Battle mode using \`/duel mode:free_2v2\`.`, flags: MessageFlags.Ephemeral });
         return;
       }
 
@@ -2553,19 +2543,29 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         invitedHumans.set(allyUser.id, { user: allyUser, role: 'Allied Master (Team 1)', accepted: false });
       }
 
+      const matchHeading = isFreeBattle
+        ? (is2v2 ? '🕊️ FREE BATTLE: 2v2 ALLIANCE SPARRING' : '🕊️ FREE BATTLE: 1v2 RAID SPARRING')
+        : (is2v2 ? '⚔️ HOLY GRAIL WAR: 2v2 TAG-TEAM CLASH' : '⚔️ HOLY GRAIL WAR: 1v2 RAID SURVIVAL');
+
+      const matchFormatDesc = isFreeBattle
+        ? `• **Format:** 🕊️ Free Battle / Safe Mode *(Zero elimination risk, intact Command Seals & friendly sparring rewards)*`
+        : `• **Format:** ⚔️ Holy Grail War Tournament *(Ranked stakes, Command Seal survival & full War rewards)*`;
+
       // Send multi-master invitation prompt requiring confirmation from all challenged human masters
       const inviteEmbed = new EmbedBuilder()
-        .setTitle(`⚔️ HOLY GRAIL WAR: ${is2v2 ? '2v2 TAG-TEAM' : '1v2 RAID'} DUEL CHALLENGE`)
+        .setTitle(matchHeading)
         .setDescription(
           `Master <@${interaction.user.id}> has issued a **${is2v2 ? '2v2 Tag-Team' : '1v2 Raid'}** challenge!\n\n` +
           `🛡️ **Team 1:** <@${interaction.user.id}> (**${p1.servant.template?.name || 'Servant'}**) ${p1AllyMaster && p1Ally ? `& <@${p1AllyMaster.discordId}> (**${p1Ally.servant.template?.name || 'Servant'}**)` : ''}\n` +
           `⚔️ **Team 2:** <@${opponentMaster.discordId}> (**${p2.servant.template?.name || 'Servant'}**) & <@${p2AllyMaster.discordId}> (**${p2Ally.servant.template?.name || 'Servant'}**)\n\n` +
+          `${matchFormatDesc}\n\n` +
           `📜 **Challenge Confirmation Status:**\n` +
           `• <@${interaction.user.id}> (Challenger): ✅ **Initiator**\n` +
           `• ${[...invitedHumans.values()].map(h => `<@${h.user.id}> (${h.role}): ⏳ **Pending Confirmation**`).join('\n• ')}\n\n` +
-          `*All challenged Masters must accept to enter the Holy Grail War arena!*`
+          `*All challenged Masters must accept to enter the arena!*`
         )
-        .setColor(0xd4af37);
+        .setColor(isFreeBattle ? 0x38bdf8 : 0xd4af37)
+        .setFooter({ text: `Holy Grail War • ${isFreeBattle ? 'Friendly Sparring Arena' : 'Ranked Tournament Match'}` });
 
       const inviteRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
@@ -2715,18 +2715,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       const isOpponentInWar = opponentMaster.environmentMode === 'war' && !!opponentParticipant && opponentParticipant.isAlive;
 
-      // In Free Battle: Opponent must NOT be an active War contender & cannot be civilian
+      // In Free Battle: Opponent must have a contracted Servant
       if (isFreeBattle) {
         if (isOpponentCivilian) {
           await interaction.reply({
             content: `❌ <@${opponentUser.id}> is a civilian without a contracted Servant and cannot participate in Free Battles!`,
-            flags: MessageFlags.Ephemeral
-          });
-          return;
-        }
-        if (isOpponentInWar) {
-          await interaction.reply({
-            content: `❌ Master <@${opponentUser.id}> is currently an active contender in the Holy Grail War and cannot participate in casual Free Battles!`,
             flags: MessageFlags.Ephemeral
           });
           return;
@@ -5865,5 +5858,392 @@ async function finalizeDuelRewardsAndSync(
     primaryNewBondLevel,
     primaryUnlockedBondCe
   };
+}
+
+/**
+ * Prefix Command Handler for !duel / !spar / !fight
+ * Supports:
+ * - `!duel 1v2 @user1 @user2` or `!duel free 1v2 @user1 @user2`
+ * - `!duel 2v2 @ally @opp1 @opp2` or `!duel free 2v2 @ally @opp1 @opp2`
+ * - `!duel @user` or `!duel free @user`
+ * - `!duel` (Solo vs AI or Living Master)
+ */
+export async function handlePrefixDuel(message: Message, args: string[]) {
+  try {
+    const challengerMaster = await getOrCreateMaster(message.author.id, message.author.username);
+    if (!challengerMaster.servants || challengerMaster.servants.length === 0) {
+      await message.reply({ content: '❌ You have no contracted Servant to duel with! Use `!summon` to enter the Holy Grail War first.' });
+      return;
+    }
+
+    const warSession = getOrInitWarSession(challengerMaster);
+    const text = args.join(' ').toLowerCase();
+
+    const isChallengerInWar = challengerMaster.environmentMode === 'war';
+    const isChallengerInSafeMode = !isChallengerInWar;
+
+    const isExplicitFree = text.includes('free') || text.includes('spar') || text.includes('safe');
+    const isFreeBattle = isExplicitFree || isChallengerInSafeMode;
+
+    const is1v2Requested = text.includes('1v2') || text.includes('raid');
+    const is2v2Requested = text.includes('2v2') || text.includes('alliance') || text.includes('tag');
+
+    // Extract mentioned users
+    const mentionedUsers = Array.from(message.mentions.users.values()).filter(u => u.id !== message.author.id && !u.bot);
+
+    let mode: '1v1' | '1v2' | '2v2' = '1v1';
+    if (is1v2Requested || (!is2v2Requested && mentionedUsers.length === 2)) {
+      mode = '1v2';
+    } else if (is2v2Requested || mentionedUsers.length >= 3) {
+      mode = '2v2';
+    }
+
+    const challengerServant = challengerMaster.servants.find(s => s.id === challengerMaster.activeServantId) || challengerMaster.servants[0];
+
+    // ==========================================
+    // 1v2 or 2v2 Multi-Master Prefix Duel
+    // ==========================================
+    if (mode === '1v2' || mode === '2v2') {
+      const is2v2 = mode === '2v2';
+
+      let allyUser: User | undefined;
+      let opponentUser: User | undefined;
+      let opponent2User: User | undefined;
+
+      if (is2v2) {
+        if (mentionedUsers.length < 3) {
+          await message.reply({
+            content: '❌ **2v2 Alliance Duel requires 3 mentioned Masters!**\nUsage: `!duel 2v2 @Ally @Opponent1 @Opponent2` (or `!duel free 2v2 @Ally @Opponent1 @Opponent2`)'
+          });
+          return;
+        }
+        allyUser = mentionedUsers[0];
+        opponentUser = mentionedUsers[1];
+        opponent2User = mentionedUsers[2];
+      } else {
+        if (mentionedUsers.length < 2) {
+          await message.reply({
+            content: '❌ **1v2 Raid Duel requires 2 mentioned rival Masters!**\nUsage: `!duel 1v2 @Opponent1 @Opponent2` (or `!duel free 1v2 @Opponent1 @Opponent2`)'
+          });
+          return;
+        }
+        opponentUser = mentionedUsers[0];
+        opponent2User = mentionedUsers[1];
+      }
+
+      const opponentMaster = await getOrCreateMaster(opponentUser.id, opponentUser.username);
+      const opp2Master = await getOrCreateMaster(opponent2User.id, opponent2User.username);
+
+      const opponentServant = opponentMaster.servants?.find(s => s.id === opponentMaster.activeServantId) || opponentMaster.servants?.[0];
+      const opp2Servant = opp2Master.servants?.find(s => s.id === opp2Master.activeServantId) || opp2Master.servants?.[0];
+
+      if (!opponentServant) {
+        await message.reply({ content: `❌ Rival Master <@${opponentUser.id}> has not summoned a Servant yet!` });
+        return;
+      }
+      if (!opp2Servant) {
+        await message.reply({ content: `❌ Rival Master <@${opponent2User.id}> has not summoned a Servant yet!` });
+        return;
+      }
+
+      let p1AllyMaster: MasterProfile | null = null;
+      let p1Ally: DuelCombatant | undefined = undefined;
+
+      if (is2v2 && allyUser) {
+        const allyMaster = await getOrCreateMaster(allyUser.id, allyUser.username);
+        p1AllyMaster = allyMaster;
+        const allyServant = allyMaster.servants?.find(s => s.id === allyMaster.activeServantId) || allyMaster.servants?.[0];
+        if (!allyServant) {
+          await message.reply({ content: `❌ Allied Master <@${allyUser.id}> has not summoned a Servant yet!` });
+          return;
+        }
+        const allyPart = warSession.participants[allyMaster.discordId];
+        const allyHp = (isFreeBattle || allyMaster.environmentMode === 'safe') ? undefined : (allyPart ? calculateCurrentHp(allyPart) : undefined);
+        p1Ally = createCombatant(allyMaster, allyServant, false, allyHp, isFreeBattle);
+      }
+
+      const p1Part = warSession.participants[challengerMaster.discordId];
+      const p1Hp = (isFreeBattle || challengerMaster.environmentMode === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
+      const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle);
+
+      const p2Part = warSession.participants[opponentMaster.discordId];
+      const p2Hp = (isFreeBattle || opponentMaster.environmentMode === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
+      const p2 = createCombatant(opponentMaster, opponentServant, false, p2Hp, isFreeBattle);
+
+      const opp2Part = warSession.participants[opp2Master.discordId];
+      const opp2Hp = (isFreeBattle || opp2Master.environmentMode === 'safe') ? undefined : (opp2Part ? calculateCurrentHp(opp2Part) : undefined);
+      const p2Ally = createCombatant(opp2Master, opp2Servant, false, opp2Hp, isFreeBattle);
+
+      if (is2v2) {
+        p1.critStars = 25;
+        p1.activeBuffs = [{ name: '2v2 Alliance Formation', type: 'buff_atk', value: 15, remainingTurns: 3 }];
+      } else {
+        p1.critStars = 30;
+        p1.activeBuffs = [{ name: '1v2 Raid Fortitude', type: 'buff_atk', value: 20, remainingTurns: 3 }];
+      }
+
+      const invitedHumans = new Map<string, { user: User; role: string; accepted: boolean }>();
+      invitedHumans.set(opponentUser.id, { user: opponentUser, role: is2v2 ? 'Primary Opponent (Team 2)' : '1st Rival Master', accepted: false });
+      invitedHumans.set(opponent2User.id, { user: opponent2User, role: is2v2 ? 'Secondary Opponent (Team 2)' : '2nd Rival Master', accepted: false });
+      if (is2v2 && allyUser) {
+        invitedHumans.set(allyUser.id, { user: allyUser, role: 'Allied Master (Team 1)', accepted: false });
+      }
+
+      const matchHeading = isFreeBattle
+        ? (is2v2 ? '🕊️ FREE BATTLE: 2v2 ALLIANCE SPARRING' : '🕊️ FREE BATTLE: 1v2 RAID SPARRING')
+        : (is2v2 ? '⚔️ HOLY GRAIL WAR: 2v2 TAG-TEAM CLASH' : '⚔️ HOLY GRAIL WAR: 1v2 RAID SURVIVAL');
+
+      const matchFormatDesc = isFreeBattle
+        ? `• **Format:** 🕊️ Free Battle / Safe Mode *(Zero elimination risk, intact Command Seals & friendly sparring rewards)*`
+        : `• **Format:** ⚔️ Holy Grail War Tournament *(Ranked stakes, Command Seal survival & full War rewards)*`;
+
+      const inviteEmbed = new EmbedBuilder()
+        .setTitle(matchHeading)
+        .setDescription(
+          `Master <@${message.author.id}> has issued a **${is2v2 ? '2v2 Tag-Team' : '1v2 Raid'}** challenge!\n\n` +
+          `🛡️ **Team 1:** <@${message.author.id}> (**${p1.servant.template?.name || 'Servant'}**) ${p1AllyMaster && p1Ally ? `& <@${p1AllyMaster.discordId}> (**${p1Ally.servant.template?.name || 'Servant'}**)` : ''}\n` +
+          `⚔️ **Team 2:** <@${opponentMaster.discordId}> (**${p2.servant.template?.name || 'Servant'}**) & <@${opp2Master.discordId}> (**${p2Ally.servant.template?.name || 'Servant'}**)\n\n` +
+          `${matchFormatDesc}\n\n` +
+          `📜 **Challenge Confirmation Status:**\n` +
+          `• <@${message.author.id}> (Challenger): ✅ **Initiator**\n` +
+          `• ${[...invitedHumans.values()].map(h => `<@${h.user.id}> (${h.role}): ⏳ **Pending Confirmation**`).join('\n• ')}\n\n` +
+          `*All challenged Masters must accept to enter the arena!*`
+        )
+        .setColor(isFreeBattle ? 0x38bdf8 : 0xd4af37)
+        .setFooter({ text: `Holy Grail War • ${isFreeBattle ? 'Friendly Sparring Arena' : 'Ranked Tournament Match'}` });
+
+      const inviteRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('accept_2v2_duel').setLabel('Accept Challenge').setEmoji('⚔️').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('decline_2v2_duel').setLabel('Decline').setEmoji('🏳️').setStyle(ButtonStyle.Danger)
+      );
+
+      const pingContent = [...invitedHumans.keys()].map(id => `<@${id}>`).join(' ');
+      const inviteMsg = await message.reply({
+        content: `⚔️ **Attention Masters:** ${pingContent}`,
+        embeds: [inviteEmbed],
+        components: [inviteRow]
+      });
+
+      const inviteCollector = inviteMsg.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        time: 300000
+      });
+
+      inviteCollector.on('collect', async i => {
+        try {
+          if (i.replied || i.deferred) return;
+          if (i.customId === 'decline_2v2_duel') {
+            if (!invitedHumans.has(i.user.id) && i.user.id !== message.author.id) {
+              await i.reply({ content: '❌ You are not involved in this duel challenge.', flags: MessageFlags.Ephemeral });
+              return;
+            }
+            inviteCollector.stop('declined');
+            await i.update({ content: `🏳️ Duel challenge declined by <@${i.user.id}>.`, embeds: [], components: [] });
+            return;
+          }
+
+          if (i.customId === 'accept_2v2_duel') {
+            if (!invitedHumans.has(i.user.id)) {
+              await i.reply({ content: '❌ You are not one of the challenged Masters.', flags: MessageFlags.Ephemeral });
+              return;
+            }
+            const humanEntry = invitedHumans.get(i.user.id)!;
+            if (humanEntry.accepted) {
+              await i.reply({ content: '✅ You have already accepted this challenge!', flags: MessageFlags.Ephemeral });
+              return;
+            }
+            humanEntry.accepted = true;
+            const allAccepted = [...invitedHumans.values()].every(h => h.accepted);
+
+            if (!allAccepted) {
+              await i.deferUpdate();
+              const updatedStatusText = [...invitedHumans.values()]
+                .map(h => `<@${h.user.id}> (${h.role}): ${h.accepted ? '✅ **Accepted**' : '⏳ **Pending Confirmation**'}`)
+                .join('\n• ');
+              const updatedEmbed = EmbedBuilder.from(inviteEmbed)
+                .setDescription(
+                  `Master <@${message.author.id}> has issued a **${is2v2 ? '2v2 Tag-Team' : '1v2 Raid'}** challenge!\n\n` +
+                  `🛡️ **Team 1:** <@${message.author.id}> (**${p1.servant.template?.name || 'Servant'}**) ${p1AllyMaster && p1Ally ? `& <@${p1AllyMaster.discordId}> (**${p1Ally.servant.template?.name || 'Servant'}**)` : ''}\n` +
+                  `⚔️ **Team 2:** <@${opponentMaster.discordId}> (**${p2.servant.template?.name || 'Servant'}**) & <@${opp2Master.discordId}> (**${p2Ally.servant.template?.name || 'Servant'}**)\n\n` +
+                  `${matchFormatDesc}\n\n` +
+                  `📜 **Challenge Confirmation Status:**\n` +
+                  `• <@${message.author.id}> (Challenger): ✅ **Initiator**\n` +
+                  `• ${updatedStatusText}\n\n` +
+                  `*Awaiting remaining challenged Masters...*`
+                );
+              await inviteMsg.edit({ embeds: [updatedEmbed] });
+            } else {
+              inviteCollector.stop('accepted');
+              await i.deferUpdate();
+              const startingEmbed = EmbedBuilder.from(inviteEmbed)
+                .setTitle(`⚔️ ALL MASTERS ACCEPTED — ENTERING ARENA...`)
+                .setDescription(`⚔️ All challenged Masters have accepted the duel! Preparing battle arena canvas...`)
+                .setColor(0x22c55e);
+              await inviteMsg.edit({ embeds: [startingEmbed], components: [] });
+
+              await startInteractiveDuel(
+                i,
+                p1,
+                p2,
+                challengerMaster,
+                opponentMaster,
+                p1Ally,
+                p2Ally,
+                p1AllyMaster,
+                opp2Master,
+                isFreeBattle
+              );
+            }
+          }
+        } catch (err: any) {
+          console.error('Error in prefix 2v2 inviteCollector:', err);
+        }
+      });
+      return;
+    }
+
+    // ==========================================
+    // 1v1 Prefix Duel
+    // ==========================================
+    const targetUser = mentionedUsers[0];
+    if (targetUser) {
+      const targetMaster = await getOrCreateMaster(targetUser.id, targetUser.username);
+      const targetServant = targetMaster.servants?.find(s => s.id === targetMaster.activeServantId) || targetMaster.servants?.[0];
+      if (!targetServant) {
+        await message.reply({ content: `❌ Rival Master <@${targetUser.id}> has not summoned a Servant yet!` });
+        return;
+      }
+
+      const p1Part = warSession.participants[challengerMaster.discordId];
+      const p1Hp = (isFreeBattle || challengerMaster.environmentMode === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
+      const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle);
+
+      const p2Part = warSession.participants[targetMaster.discordId];
+      const p2Hp = (isFreeBattle || targetMaster.environmentMode === 'safe') ? undefined : (p2Part ? calculateCurrentHp(p2Part) : undefined);
+      const p2 = createCombatant(targetMaster, targetServant, false, p2Hp, isFreeBattle);
+
+      const matchHeading = isFreeBattle ? '🕊️ FREE BATTLE: 1v1 SPARRING' : '⚔️ HOLY GRAIL WAR: 1v1 DUEL CHALLENGE';
+      const inviteEmbed = new EmbedBuilder()
+        .setTitle(matchHeading)
+        .setDescription(
+          `Master <@${message.author.id}> (**${challengerServant.template?.name || 'Servant'}**) challenges <@${targetUser.id}> (**${targetServant.template?.name || 'Servant'}**) to a ${isFreeBattle ? 'friendly sparring match' : 'Holy Grail War duel'}!\n\n` +
+          `• **Format:** ${isFreeBattle ? '🕊️ Free Battle / Safe Mode (Zero elimination risk, intact seals)' : '⚔️ Holy Grail War (Ranked stakes)'}\n\n` +
+          `<@${targetUser.id}>, do you accept this challenge?`
+        )
+        .setColor(isFreeBattle ? 0x38bdf8 : 0xd4af37);
+
+      const inviteRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('accept_1v1_duel').setLabel('Accept Duel').setEmoji('⚔️').setStyle(ButtonStyle.Success),
+        new ButtonBuilder().setCustomId('decline_1v1_duel').setLabel('Decline').setEmoji('🏳️').setStyle(ButtonStyle.Danger)
+      );
+
+      const inviteMsg = await message.reply({
+        content: `⚔️ **Duel Challenge:** <@${targetUser.id}>`,
+        embeds: [inviteEmbed],
+        components: [inviteRow]
+      });
+
+      const inviteCollector = inviteMsg.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        time: 180000
+      });
+
+      inviteCollector.on('collect', async i => {
+        try {
+          if (i.user.id !== targetUser.id && i.user.id !== message.author.id) {
+            await i.reply({ content: '❌ You are not involved in this duel challenge.', flags: MessageFlags.Ephemeral });
+            return;
+          }
+          if (i.customId === 'decline_1v1_duel') {
+            inviteCollector.stop('declined');
+            await i.update({ content: `🏳️ Duel challenge declined by <@${i.user.id}>.`, embeds: [], components: [] });
+            return;
+          }
+          if (i.customId === 'accept_1v1_duel') {
+            if (i.user.id !== targetUser.id) {
+              await i.reply({ content: '❌ Only the challenged Master can accept!', flags: MessageFlags.Ephemeral });
+              return;
+            }
+            inviteCollector.stop('accepted');
+            await i.deferUpdate();
+            await inviteMsg.edit({
+              content: '⚔️ **Challenge Accepted! Entering Arena...**',
+              embeds: [],
+              components: []
+            });
+            await startInteractiveDuel(i, p1, p2, challengerMaster, targetMaster, undefined, undefined, null, null, isFreeBattle);
+          }
+        } catch (err) {
+          console.error('Error in prefix 1v1 inviteCollector:', err);
+        }
+      });
+      return;
+    }
+
+    // Solo 1v1 vs AI or Available Master
+    const p1Part = warSession.participants[challengerMaster.discordId];
+    const p1Hp = (isFreeBattle || challengerMaster.environmentMode === 'safe') ? undefined : (p1Part ? calculateCurrentHp(p1Part) : undefined);
+    const p1 = createCombatant(challengerMaster, challengerServant, false, p1Hp, isFreeBattle);
+
+    const allSpirits = getAllThroneServants();
+    const otherSpirits = allSpirits.filter((s: any) => s.id !== challengerServant.templateId);
+    const randomEnemyTemplate = otherSpirits[Math.floor(Math.random() * otherSpirits.length)] || allSpirits[0];
+
+    const aiMasterMock: MasterProfile = {
+      id: 'ai_vanguard_master',
+      discordId: 'ai_vanguard_master',
+      username: 'Shadow Magus (AI Vanguard)',
+      avatarUrl: randomEnemyTemplate.avatarUrl,
+      saintQuartz: 0,
+      summonTickets: 0,
+      commandSeals: 3,
+      actionPoints: 100,
+      maxActionPoints: 100,
+      pityCount: 0,
+      grailWarWins: 0,
+      duelsWon: 0,
+      duelsLost: 0,
+      activeServantId: randomEnemyTemplate.id,
+      servants: [{
+        id: randomEnemyTemplate.id,
+        masterId: 'ai_vanguard_master',
+        templateId: randomEnemyTemplate.id,
+        template: randomEnemyTemplate,
+        level: 1,
+        experience: 0,
+        bondLevel: 5,
+        bondExp: 0,
+        currentHp: randomEnemyTemplate.baseHp,
+        allocatedStats: { strength: 0, agility: 0, endurance: 0, mana: 0, luck: 0 },
+        availableStatPoints: 0,
+        skillLevels: [1, 1, 1],
+        customQuotes: {}
+      }],
+      craftEssences: [],
+      environmentMode: isFreeBattle ? 'safe' : 'war'
+    };
+
+    const p2 = createCombatant(aiMasterMock, aiMasterMock.servants[0], true, undefined, isFreeBattle);
+
+    // Initial message dispatch and start duel
+    const startMsg = await message.reply({ content: `⚔️ **Challenging Arena... Preparing Combat Grid!**` });
+
+    // Build trigger adapter that implements editReply and reply
+    const fakeTrigger: any = {
+      deferred: true,
+      replied: true,
+      user: message.author,
+      channel: message.channel,
+      editReply: async (opts: any) => startMsg.edit(opts),
+      reply: async (opts: any) => message.reply(opts),
+      fetchReply: async () => startMsg,
+      isButton: () => false
+    };
+
+    await startInteractiveDuel(fakeTrigger, p1, p2, challengerMaster, aiMasterMock, undefined, undefined, null, null, isFreeBattle);
+  } catch (err: any) {
+    console.error('Error in handlePrefixDuel:', err);
+    await message.reply({ content: `❌ Error starting duel: ${err?.message || 'Unknown error'}` }).catch(() => {});
+  }
 }
 

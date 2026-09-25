@@ -3894,12 +3894,14 @@ export default function DiscordEmulator({
         return;
       }
 
-      // Handle /duel 1v2 or /duel raid
+      // Handle /duel 1v2 or /duel raid or /duel free 1v2
       if (
         targetQuery === '1v2' ||
         targetQuery.startsWith('1v2') ||
+        targetQuery.includes('1v2') ||
         targetQuery === 'raid' ||
-        targetQuery.startsWith('raid')
+        targetQuery.startsWith('raid') ||
+        targetQuery.includes('raid')
       ) {
         const otherServants = allThrone.filter(s => s.id !== activeServant.templateId);
         const enemy1Template = otherServants[0] || allThrone[0];
