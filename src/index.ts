@@ -55,6 +55,7 @@ import * as apikeyCommand from './commands/apikey';
 import * as switchCommand from './commands/switch';
 import * as ceCommand from './commands/ce';
 import * as helpCommand from './commands/help';
+import * as rankingCommand from './commands/ranking';
 import { SERVANT_DATABASE } from './data/servants';
 import { getOrCreateMaster, getMaster, saveMaster, getAllThroneServants, findServantInPool, searchAndRankServants, claimDailySaintQuartz } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
@@ -183,9 +184,16 @@ commands.set(apikeyCommand.data.name, apikeyCommand);
 commands.set(switchCommand.data.name, switchCommand);
 commands.set(ceCommand.data.name, ceCommand);
 commands.set(helpCommand.data.name, helpCommand);
+commands.set(rankingCommand.data.name, rankingCommand);
 
 // Alias mapping for backward-compatible text shortcuts and interactions
 export const commandAliasMap: Record<string, any> = {
+  ranking: rankingCommand,
+  rankings: rankingCommand,
+  top: rankingCommand,
+  leaderboard: rankingCommand,
+  leaderboards: rankingCommand,
+  halloffame: rankingCommand,
   help: helpCommand,
   commands: helpCommand,
   codex: helpCommand,

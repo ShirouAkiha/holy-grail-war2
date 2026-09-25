@@ -24,6 +24,7 @@ import ServantWorkshop from '../components/ServantWorkshop';
 import CanvasStudio from '../components/CanvasStudio';
 import CodeExportHub from '../components/CodeExportHub';
 import { BondSanctum } from '../components/BondSanctum';
+import MastersRanking from '../components/MastersRanking';
 import {
   Terminal,
   Swords,
@@ -36,7 +37,8 @@ import {
   Zap,
   RotateCcw,
   BookOpen,
-  Heart
+  Heart,
+  Trophy
 } from 'lucide-react';
 
 export default function Home() {
@@ -44,7 +46,7 @@ export default function Home() {
   const [grailWar, setGrailWar] = useState<HolyGrailWarSession>(() => loadGrailWarSession(getInitialMasterProfile()));
   const [customServants, setCustomServants] = useState<ServantTemplate[]>([]);
   const [activeTab, setActiveTab] = useState<
-    'discord' | 'bond' | 'combat' | 'grailwar' | 'summoning' | 'workshop' | 'canvas' | 'code'
+    'discord' | 'rankings' | 'bond' | 'combat' | 'grailwar' | 'summoning' | 'workshop' | 'canvas' | 'code'
   >('discord');
 
   useEffect(() => {
@@ -161,6 +163,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-1.5 overflow-x-auto border-t border-[#1a1a1a] pt-1.5 pb-1.5 scrollbar-none">
           {[
             { id: 'discord' as const, label: 'Discord Bot Live Simulator', icon: Terminal, badge: 'Online' },
+            { id: 'rankings' as const, label: 'Masters Leaderboards (Server & Global)', icon: Trophy, badge: 'Ranking' },
             { id: 'bond' as const, label: 'Bond Sanctum & VN Events', icon: Heart, badge: 'New' },
             { id: 'summoning' as const, label: 'Throne Summoning & Admin Forge', icon: Sparkles },
             { id: 'combat' as const, label: 'Combat Arena (Turn-Based)', icon: Swords },
@@ -211,6 +214,14 @@ export default function Home() {
               onUpdateCustomServants={handleUpdateCustomServants}
             />
           </div>
+        )}
+
+        {activeTab === 'rankings' && (
+          <MastersRanking
+            master={master}
+            onOpenDuel={() => setActiveTab('combat')}
+            onOpenGrailWar={() => setActiveTab('grailwar')}
+          />
         )}
 
         {activeTab === 'bond' && (

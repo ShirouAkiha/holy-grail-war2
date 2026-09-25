@@ -41,6 +41,7 @@ import * as equipCommand from './commands/equip';
 import * as boastCommand from './commands/boast';
 import * as dailyCommand from './commands/daily';
 import * as feedCommand from './commands/feed';
+import * as rankingCommand from './commands/ranking';
 import { updateCustomDialogueQuotes, equipCraftEssence } from './engine/customization';
 import { getOrCreateMaster, updateMasterProfile } from './database/service';
 import { buildProfileEmbed, buildProfileButtons } from './commands/profile';
@@ -87,8 +88,13 @@ commands.set(boastCommand.data.name, boastCommand);
 commands.set(addceCommand.data.name, addceCommand);
 commands.set(addsqCommand.data.name, addsqCommand);
 commands.set(feedCommand.data.name, feedCommand);
+commands.set(rankingCommand.data.name, rankingCommand);
 
 export const commandAliasMap: Record<string, any> = {
+  ranking: rankingCommand,
+  rankings: rankingCommand,
+  top: rankingCommand,
+  leaderboard: rankingCommand,
   claim: dailyCommand,
   sanctuary: churchCommand,
   attack: attackCommand,

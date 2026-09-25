@@ -297,6 +297,9 @@ export interface MasterProfile {
   duelsWon?: number;
   duelsLost?: number;
   servantKills?: number;
+  totalBattleWins?: number;
+  guildId?: string;
+  guildIds?: string[];
   innocentKills?: number;
   reputationRank?: 'Honorable Magus' | 'Suspect Magus' | 'Notorious Magus' | 'Rogue Heretic';
   bountyActive?: boolean;
@@ -768,4 +771,39 @@ export interface MasterData {
   saintQuartz: number;
   actionPoints: number;
   commandSeals: number;
+}
+
+// Master Leaderboards & Rankings
+export interface MasterRankingEntry {
+  rank: number;
+  master: MasterProfile;
+  grailWarWins: number;
+  battleWins: number; // Duels won + Grail War skirmish/execution kills
+  duelsWon: number;
+  duelsLost: number;
+  servantKills: number;
+  winRate: number;
+  commandSeals: number;
+  activeServantName: string;
+  activeServantClass: string;
+  activeServantAvatar: string;
+  activeServantLevel: number;
+  guildId?: string;
+  guildName?: string;
+}
+
+export interface MasterRankingResult {
+  scope: 'server' | 'global';
+  category: 'grail_war_wins' | 'all_battle_wins' | 'overall';
+  serverName?: string;
+  rankings: MasterRankingEntry[];
+  totalMasters: number;
+  userRank?: {
+    rank: number;
+    percentile: number;
+    grailWarWins: number;
+    battleWins: number;
+    duelsWon: number;
+    servantKills: number;
+  };
 }

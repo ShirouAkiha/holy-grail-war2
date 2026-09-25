@@ -50,6 +50,7 @@ import {
   type BondEvent
 } from '../lib/engine/bondEvents';
 import { CRAFT_ESSENCE_DATABASE, BOND_CRAFT_ESSENCES, getBondCraftEssenceForServant, checkAndGrantBond10Ce } from '../lib/data/craftEssences';
+import { getMasterRankings } from '../lib/engine/rankings';
 const DEFAULT_CIVILIAN_MASTERS: any[] = [];
 import {
   renderServantProfileCard,
@@ -1377,6 +1378,108 @@ export default function DiscordEmulator({
     }
   };
 
+  const postRankingHub = (
+    currentScope: 'server' | 'global' = 'server',
+    currentCategory: 'grail_war_wins' | 'all_battle_wins' | 'overall' = 'grail_war_wins',
+    msgIdToUpdate?: string
+  ) => {
+    const res = getMasterRankings({
+      scope: currentScope,
+      guildId: currentScope === 'server' ? 'guild-fuyuki' : undefined,
+      category: currentCategory,
+      limit: 10,
+      targetUserId: master.discordId || master.id,
+      currentMaster: master
+    });
+
+    const isServer = res.scope === 'server';
+    const categoryLabel =
+      res.category === 'grail_war_wins'
+        ? '🏆 Holy Grail War Victories'
+        : res.category === 'all_battle_wins'
+        ? '⚔️ Total Battle Wins (All Modes)'
+        : '👑 Grand Magus Overall Index';
+
+    const lines = res.rankings.map(e => {
+      const medal =
+        e.rank === 1 ? '🥇' : e.rank === 2 ? '🥈' : e.rank === 3 ? '🥉' : `\`#${e.rank.toString().padStart(2, ' ')}\``;
+      const servantSnippet = e.activeServantName
+        ? ` • *${e.activeServantName}* [${e.activeServantClass} Lv.${e.activeServantLevel}]`
+        : '';
+      const winrateSnippet = e.winRate > 0 ? ` (${e.winRate}% WR)` : '';
+
+      if (res.category === 'grail_war_wins') {
+        return (
+          `${medal} **${e.master.username}**${servantSnippet}\n` +
+          `   └ 🏆 **${e.grailWarWins} Grail Wins** • ⚔️ ${e.battleWins} Battle Wins${winrateSnippet} • 🔴 ${e.commandSeals}/3 Seals`
+        );
+      } else if (res.category === 'all_battle_wins') {
+        return (
+          `${medal} **${e.master.username}**${servantSnippet}\n` +
+          `   └ ⚔️ **${e.battleWins} Total Battle Wins** (🤺 ${e.duelsWon} Duels, 💀 ${e.servantKills} Kills) • 🏆 ${e.grailWarWins} Grail Wins`
+        );
+      } else {
+        const score = (e.grailWarWins * 1000) + (e.battleWins * 100) + (e.duelsWon * 10);
+        return (
+          `${medal} **${e.master.username}**${servantSnippet}\n` +
+          `   └ 👑 **${score.toLocaleString()} PTS** • 🏆 ${e.grailWarWins} Grail Wins • ⚔️ ${e.battleWins} Battle Wins${winrateSnippet}`
+        );
+      }
+    });
+
+    const userStandingText = res.userRank ? (
+      `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `📍 **Your Standing (${master.username}):**\n` +
+      `• **Rank:** **#${res.userRank.rank}** of ${res.totalMasters} (${isServer ? 'Server' : 'Global'})\n` +
+      `• **Percentile:** Top **${100 - res.userRank.percentile + 1}%** of all Masters\n` +
+      `• **Record:** 🏆 **${res.userRank.grailWarWins} Grail Wins** | ⚔️ **${res.userRank.battleWins} Battle Wins** (🤺 ${res.userRank.duelsWon}W, 💀 ${res.userRank.servantKills} Kills)`
+    ) : '';
+
+    const embed = {
+      title: isServer ? `🏰 SERVER MASTERS LEADERBOARD` : `🌐 GLOBAL MASTERS LEADERBOARD`,
+      description:
+        `**Scope:** ${isServer ? `🏰 ${res.serverName || 'Fuyuki Holy Grail War Server'}` : '🌐 Throne of Heroes (Global Chaldea Network)'}\n` +
+        `**Category:** ${categoryLabel}\n` +
+        `**Total Registered Masters:** ${res.totalMasters}\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `🏅 **TOP MASTERS ROSTER:**\n` +
+        (lines.join('\n\n') || '• *No records logged yet.*') +
+        userStandingText,
+      color: isServer ? '#d4af37' : '#38bdf8',
+      footer: 'FATE: PLEXVERSE • Use buttons below to switch Scope (Server/Global) & Category'
+    };
+
+    const components = {
+      type: 'buttons' as const,
+      items: [
+        { id: `rank_scope_server:${currentCategory}`, label: '🏰 Server Ranking', style: (currentScope === 'server' ? 'primary' : 'secondary') as any },
+        { id: `rank_scope_global:${currentCategory}`, label: '🌐 Global Ranking', style: (currentScope === 'global' ? 'primary' : 'secondary') as any },
+        { id: `rank_cat_grail:${currentScope}`, label: '🏆 Grail War Wins', style: (currentCategory === 'grail_war_wins' ? 'primary' : 'secondary') as any },
+        { id: `rank_cat_battle:${currentScope}`, label: '⚔️ Battle Wins (All)', style: (currentCategory === 'all_battle_wins' ? 'primary' : 'secondary') as any },
+        { id: `rank_cat_overall:${currentScope}`, label: '👑 Grand Magus Score', style: (currentCategory === 'overall' ? 'primary' : 'secondary') as any },
+        { id: `rank_me:${currentScope}:${currentCategory}`, label: '👤 My Standing', style: 'success' as const }
+      ]
+    };
+
+    if (msgIdToUpdate) {
+      updateMessage(msgIdToUpdate, {
+        id: msgIdToUpdate,
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed,
+        components
+      });
+    } else {
+      addMessage({
+        id: getNextId('bot_ranking_hub'),
+        sender: 'bot',
+        timestamp: 'Just now',
+        embed,
+        components
+      });
+    }
+  };
+
   const handleCommand = (cmd: string) => {
     const rawCmd = cmd.trim();
     // Normalize exclamation mark prefix `!command` to `/command` or detect command keywords without slash
@@ -1390,7 +1493,7 @@ export default function DiscordEmulator({
         'daily', 'claim', 'church', 'sanctuary', 'bounty', 'bounties', 'reputation', 'rep', 'defenses', 'profile', 'inventory',
         'equip', 'dialogue', 'heal', 'feed', 'cegacha', 'gacha', 'patrol', 'leak',
         'trap', 'traps', 'familiar', 'familiars', 'help', 'commands', 'codex', 'guide', 'boast', 'art', 'artwork', 'np',
-        'talk', 'speak'
+        'talk', 'speak', 'ranking', 'rankings', 'top', 'leaderboard', 'leaderboards', 'halloffame'
       ];
       if (knownCommands.includes(firstWord)) {
         normalizedRawCmd = '/' + rawCmd;
@@ -5485,6 +5588,41 @@ export default function DiscordEmulator({
       return;
     }
 
+    // ----------------------------------------------------
+    // COMMAND 6: /ranking, /rankings, /top, /leaderboard, /halloffame
+    // ----------------------------------------------------
+    if (
+      trimmed.startsWith('/ranking') ||
+      trimmed.startsWith('/rankings') ||
+      trimmed.startsWith('/top') ||
+      trimmed.startsWith('/leaderboard') ||
+      trimmed.startsWith('/halloffame') ||
+      trimmed.startsWith('!ranking') ||
+      trimmed.startsWith('!rankings') ||
+      trimmed.startsWith('!top') ||
+      trimmed.startsWith('!leaderboard')
+    ) {
+      let reqScope: 'server' | 'global' = 'server';
+      let reqCat: 'grail_war_wins' | 'all_battle_wins' | 'overall' = 'grail_war_wins';
+
+      if (trimmed.includes('global') || trimmed.includes('world') || trimmed.includes('all') || trimmed.includes('chaldea')) {
+        reqScope = 'global';
+      } else if (trimmed.includes('server') || trimmed.includes('local') || trimmed.includes('guild')) {
+        reqScope = 'server';
+      }
+
+      if (trimmed.includes('battle') || trimmed.includes('duel') || trimmed.includes('pvp') || trimmed.includes('kill') || trimmed.includes('combat')) {
+        reqCat = 'all_battle_wins';
+      } else if (trimmed.includes('overall') || trimmed.includes('grand') || trimmed.includes('score') || trimmed.includes('magus')) {
+        reqCat = 'overall';
+      } else if (trimmed.includes('grail') || trimmed.includes('war') || trimmed.includes('win')) {
+        reqCat = 'grail_war_wins';
+      }
+
+      postRankingHub(reqScope, reqCat);
+      return;
+    }
+
     // Default help
     addMessage({
       id: getNextId('bot_help'),
@@ -8334,6 +8472,37 @@ export default function DiscordEmulator({
 
   // Button interaction handler
   const handleButtonClick = (btnId: string, msgId?: string) => {
+    // Masters Leaderboard & Ranking button interactions
+    if (btnId.startsWith('rank_scope_') || btnId.startsWith('rank_cat_') || btnId.startsWith('rank_me:')) {
+      const parts = btnId.split(':');
+      const action = parts[0];
+      let targetScope: 'server' | 'global' = 'server';
+      let targetCategory: 'grail_war_wins' | 'all_battle_wins' | 'overall' = 'grail_war_wins';
+
+      if (action === 'rank_scope_server') {
+        targetScope = 'server';
+        if (parts[1]) targetCategory = parts[1] as any;
+      } else if (action === 'rank_scope_global') {
+        targetScope = 'global';
+        if (parts[1]) targetCategory = parts[1] as any;
+      } else if (action === 'rank_cat_grail') {
+        targetCategory = 'grail_war_wins';
+        if (parts[1]) targetScope = parts[1] as any;
+      } else if (action === 'rank_cat_battle') {
+        targetCategory = 'all_battle_wins';
+        if (parts[1]) targetScope = parts[1] as any;
+      } else if (action === 'rank_cat_overall') {
+        targetCategory = 'overall';
+        if (parts[1]) targetScope = parts[1] as any;
+      } else if (action === 'rank_me') {
+        if (parts[1]) targetScope = parts[1] as any;
+        if (parts[2]) targetCategory = parts[2] as any;
+      }
+
+      postRankingHub(targetScope, targetCategory, msgId);
+      return;
+    }
+
     // Help Codex category navigation buttons
     if (btnId.startsWith('help_page_')) {
       const pageNum = parseInt(btnId.replace('help_page_', ''), 10);
