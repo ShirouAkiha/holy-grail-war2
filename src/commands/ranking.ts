@@ -89,7 +89,7 @@ export function buildRankingEmbed(
       if (res.category === 'grail_war_wins') {
         return (
           `${medal} **${e.master.username}**${servantSnippet}\n` +
-          `   └ 🏆 **${e.grailWarWins} Grail Wins** • ⚔️ ${e.battleWins} Battle Wins${winrateSnippet} • 🔴 ${e.commandSeals}/3 Seals`
+          `   └ 🏆 **${e.grailWarWins} Grail Wins** • ⚔️ ${e.battleWins} Battle Wins${winrateSnippet}`
         );
       } else if (res.category === 'all_battle_wins') {
         return (

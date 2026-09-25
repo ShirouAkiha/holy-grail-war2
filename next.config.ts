@@ -3,12 +3,10 @@ import type {NextConfig} from 'next';
 const nextConfig: NextConfig = {
   serverExternalPackages: ['canvas', '@napi-rs/canvas', 'gifenc', 'discord.js', '@discordjs/ws', '@discordjs/rest', 'zlib-sync'],
   reactStrictMode: true,
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: false,
   },
+  turbopack: {},
   // Allow access to remote image placeholder.
   images: {
     remotePatterns: [
