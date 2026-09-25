@@ -5193,20 +5193,22 @@ async function finishDuel(
 
   // If all defeated masters evacuated using Command Seals, conclude with Sanctuary!
   if (pendingFateStates.length === 0) {
+    const rewardReport = await finalizeDuelRewardsAndSync(winningTeam, defeatedStates, warSession, chanTag, primaryWinner, isFreeBattle);
+
     const sanctuaryEmbed = new EmbedBuilder()
-      .setTitle('🔴 COMMAND SEAL EMERGENCY SANCTUARY')
+      .setTitle(`🔴 COMMAND SEAL EMERGENCY SANCTUARY — ${rewardReport.matchFormatTitle.toUpperCase()}`)
       .setDescription(
-        `**${winnerName}** (Master: ${primaryWinner.username}) dealt decisive strikes to the opposing team!\n\n` +
+        `**${winnerName}** (Master: ${primaryWinner.username}) dealt decisive strikes to the opposing team in this **${rewardReport.matchFormatTitle}**!\n\n` +
         defeatedStates.map(s =>
           `✨ **Master ${s.combatant.username}:** Expended 1 Command Seal (${s.availableSeals}/3 remaining). Servant preserved at **1 HP** and evacuated to sanctuary!\n` +
           (s.evacQuote ? `> 💬 ❝ ***${s.evacQuote}*** ❞\n` : '')
         ).join('\n') +
-        `\nContract preserved. Permanent elimination has been averted for all defeated Masters.`
+        `\nContract preserved. Permanent elimination has been averted for all defeated Masters.\n\n` +
+        `💰 **Combat Rewards Distributed:**\n` +
+        rewardReport.rewardsSummaryText
       )
       .setColor(0xf59e0b)
       .setFooter({ text: 'Holy Grail War Survival Protocol • Sanctuary Activated' });
-
-    await finalizeDuelRewardsAndSync(winningTeam, defeatedStates, warSession, chanTag, primaryWinner, isFreeBattle);
 
     const evacFiles = [finalAttachment];
     if (defeatCardAttachment) evacFiles.push(defeatCardAttachment);
@@ -5588,7 +5590,7 @@ async function finishDuel(
   });
 }
 
-// Helper to award victor rewards and sync participant HP
+// Helper to award victor rewards and sync participant HP with full 1v1, 1v2, 2v1, 2v2 support
 async function finalizeDuelRewardsAndSync(
   winningTeam: DuelCombatant[],
   defeatedStates: any[],
@@ -5597,23 +5599,158 @@ async function finalizeDuelRewardsAndSync(
   primaryWinner: DuelCombatant,
   isFreeBattle: boolean = false
 ) {
+  const winnerCount = winningTeam.length;
+  const loserCount = defeatedStates.length;
+
+  let matchFormatTitle = '⚔️ 1v1 Duel';
+  let isSoloClutch1v2 = false;
+  let isAlliance2v2 = false;
+  let isGank2v1 = false;
+
+  if (winnerCount === 1 && loserCount >= 2) {
+    isSoloClutch1v2 = true;
+    matchFormatTitle = isFreeBattle ? '👑 1v2 Solo Clutch Sparring' : '👑 1v2 Solo Clutch War Triumph';
+  } else if (winnerCount >= 2 && loserCount >= 2) {
+    isAlliance2v2 = true;
+    matchFormatTitle = isFreeBattle ? '🛡️ 2v2 Alliance Sparring' : '🛡️ 2v2 Alliance War Clash';
+  } else if (winnerCount >= 2 && loserCount === 1) {
+    isGank2v1 = true;
+    matchFormatTitle = isFreeBattle ? '⚔️ 2v1 Alliance Sparring' : '⚔️ 2v1 Alliance War Engagement';
+  } else {
+    matchFormatTitle = isFreeBattle ? '🕊️ 1v1 Friendly Sparring' : '⚔️ 1v1 Holy Grail Duel';
+  }
+
+  // Base rewards determination
+  let winSq = 4;
+  let winBondExp = 160;
+  let winStatPoints = isFreeBattle ? 0 : 2;
+  let winManaPrisms = 20;
+  let winGrailWins = 1;
+
+  let loseSq = 1;
+  let loseBondExp = 60;
+  let loseStatPoints = 0;
+  let loseManaPrisms = 5;
+
+  if (isFreeBattle) {
+    if (isSoloClutch1v2) {
+      // 1 Solo Master overcomes 2 sparring opponents
+      winSq = 6;
+      winBondExp = 250;
+      winStatPoints = 0;
+      winManaPrisms = 40;
+      winGrailWins = 1;
+      loseSq = 1;
+      loseBondExp = 60;
+      loseManaPrisms = 5;
+    } else if (isAlliance2v2) {
+      // 2v2 Team sparring
+      winSq = 4;
+      winBondExp = 160;
+      winStatPoints = 0;
+      winManaPrisms = 25;
+      winGrailWins = 1;
+      loseSq = 2;
+      loseBondExp = 80;
+      loseManaPrisms = 10;
+    } else if (isGank2v1) {
+      // 2 winners beat 1 solo sparring defender
+      winSq = 3;
+      winBondExp = 100;
+      winStatPoints = 0;
+      winManaPrisms = 15;
+      winGrailWins = 1;
+      loseSq = 2;
+      loseBondExp = 90; // Courage bonus for solo defender
+      loseManaPrisms = 15;
+    } else {
+      // 1v1 Standard free battle
+      winSq = 3;
+      winBondExp = 120;
+      winStatPoints = 0;
+      winManaPrisms = 15;
+      winGrailWins = 1;
+      loseSq = 1;
+      loseBondExp = 60;
+      loseManaPrisms = 5;
+    }
+  } else {
+    // Holy Grail War (Ranked / Deathmatch with permadeath risk)
+    if (isSoloClutch1v2) {
+      // 1 Solo Master overcomes 2 Tournament Contenders! Legendary achievement!
+      winSq = 8;
+      winBondExp = 350;
+      winStatPoints = 5; // Legendary Underdog Stat Boost!
+      winManaPrisms = 60;
+      winGrailWins = loserCount; // Full credit for all defeated rivals
+      loseSq = 1;
+      loseBondExp = 60;
+      loseManaPrisms = 10;
+    } else if (isAlliance2v2) {
+      // 2v2 Team Tournament Victory
+      winSq = 5;
+      winBondExp = 200;
+      winStatPoints = 3; // Team coordination stat point bonus
+      winManaPrisms = 35;
+      winGrailWins = 1;
+      loseSq = 1;
+      loseBondExp = 80;
+      loseManaPrisms = 10;
+    } else if (isGank2v1) {
+      // 2 Allies overcome 1 Tournament Contender
+      winSq = 4;
+      winBondExp = 140;
+      winStatPoints = 2;
+      winManaPrisms = 20;
+      winGrailWins = 1;
+      loseSq = 2;
+      loseBondExp = 120;
+      loseStatPoints = 1; // Solo Defender courage under fire bonus
+      loseManaPrisms = 20;
+    } else {
+      // 1v1 Standard Holy Grail War Duel
+      winSq = 4;
+      winBondExp = 160;
+      winStatPoints = 2;
+      winManaPrisms = 20;
+      winGrailWins = 1;
+      loseSq = 1;
+      loseBondExp = 60;
+      loseManaPrisms = 5;
+    }
+  }
+
   let primaryBondLevelUp = false;
   let primaryNewBondLevel = 1;
   let primaryUnlockedBondCe: any = undefined;
 
+  const winnerRewardLines: string[] = [];
+  const loserRewardLines: string[] = [];
+
+  // Process and award each winner
   for (const winner of winningTeam) {
-    if (winner.isAi) continue;
+    const sName = winner.servant.nickname || winner.servant.template?.name || 'Servant';
+    if (winner.isAi) {
+      winnerRewardLines.push(`• 🤖 **${winner.username}** (${sName}): *[AI Vanguard Triumph]*`);
+      continue;
+    }
+
     const wMaster = await getOrCreateMaster(winner.userId, winner.username);
     const isWinnerSafe = isFreeBattle || wMaster?.environmentMode === 'safe' || !wMaster?.environmentMode;
     if (wMaster) {
-      wMaster.saintQuartz += 3;
-      wMaster.grailWarWins = (wMaster.grailWarWins || 0) + 1;
+      wMaster.saintQuartz = (wMaster.saintQuartz || 0) + winSq;
+      wMaster.manaPrisms = (wMaster.manaPrisms || 0) + winManaPrisms;
+      wMaster.grailWarWins = (wMaster.grailWarWins || 0) + winGrailWins;
+
       const s = wMaster.servants?.find(srv => srv.id === winner.servant.id);
+      let bondDidLvl = false;
+      let bondNewLvl = 1;
+
       if (s) {
-        const bondRes = addBondExpToServant(s, 100);
+        const bondRes = addBondExpToServant(s, winBondExp);
         const updatedS = bondRes.updatedServant;
-        if (!isFreeBattle) {
-          updatedS.availableStatPoints = (updatedS.availableStatPoints || 0) + 2;
+        if (!isFreeBattle && winStatPoints > 0) {
+          updatedS.availableStatPoints = (updatedS.availableStatPoints || 0) + winStatPoints;
         }
 
         const grantResult = checkAndGrantBond10Ce(wMaster, updatedS);
@@ -5629,14 +5766,27 @@ async function finalizeDuelRewardsAndSync(
           const sMaxHp = (updatedS as any).maxHp || updatedS.template?.baseHp || 50000;
           updatedS.currentHp = Math.min(sMaxHp, Math.max(1, winner.currentHp));
         }
+
         const sIdx = wMaster.servants.findIndex(srv => srv.id === winner.servant.id);
         if (sIdx !== -1) wMaster.servants[sIdx] = updatedS;
+
+        bondDidLvl = bondRes.didLevelUp;
+        bondNewLvl = bondRes.newLevel;
+
         if (winner.userId === primaryWinner.userId) {
           primaryBondLevelUp = bondRes.didLevelUp;
           primaryNewBondLevel = bondRes.newLevel;
         }
       }
+
       await saveMaster(wMaster);
+
+      const statStr = (!isFreeBattle && winStatPoints > 0) ? ` | 📊 +${winStatPoints} Stat Pts` : '';
+      const lvlStr = bondDidLvl ? ` 🌟 **[Bond Lv.${bondNewLvl}!]**` : '';
+      const roleStr = (isSoloClutch1v2) ? ' 👑 **[1v2 Solo Clutch]**' : (isAlliance2v2 ? ' 🛡️ **[Alliance Partner]**' : '');
+      winnerRewardLines.push(
+        `• 🏆 **Master ${winner.username}** (${sName})${roleStr}: +${winSq} SQ 💎 | +${winBondExp} Bond EXP 💖 | +${winManaPrisms} Prisms 🔵${statStr}${lvlStr}`
+      );
     }
 
     if (!isWinnerSafe) {
@@ -5649,14 +5799,30 @@ async function finalizeDuelRewardsAndSync(
     }
   }
 
-  // Defeated combatants active servant participation bond EXP
+  // Process and award each defeated participant
   for (const s of defeatedStates) {
-    if (s.master && !s.combatant.isAi) {
+    const sLoserName = s.combatant.servant.nickname || s.combatant.servant.template?.name || 'Servant';
+    if (s.combatant.isAi) {
+      loserRewardLines.push(`• 🤖 **${s.combatant.username}** (${sLoserName}): *[AI Combatant Concluded]*`);
+      continue;
+    }
+
+    if (s.master) {
       const isLoserSafe = isFreeBattle || s.master.environmentMode === 'safe' || !s.master.environmentMode;
+      s.master.saintQuartz = (s.master.saintQuartz || 0) + loseSq;
+      s.master.manaPrisms = (s.master.manaPrisms || 0) + loseManaPrisms;
+
       const sLoser = s.master.servants?.find((srv: any) => srv.id === s.combatant.servant.id);
+      let loserLvlUp = false;
+      let loserNewLvl = 1;
+
       if (sLoser) {
-        const loserBondRes = addBondExpToServant(sLoser, 50);
+        const loserBondRes = addBondExpToServant(sLoser, loseBondExp);
         const updatedLoser = loserBondRes.updatedServant;
+        if (!isFreeBattle && loseStatPoints > 0) {
+          updatedLoser.availableStatPoints = (updatedLoser.availableStatPoints || 0) + loseStatPoints;
+        }
+
         checkAndGrantBond10Ce(s.master, updatedLoser);
         if (isLoserSafe) {
           const loserMaxHp = (updatedLoser as any).maxHp || updatedLoser.template?.baseHp || 50000;
@@ -5665,13 +5831,39 @@ async function finalizeDuelRewardsAndSync(
         } else if (s.evacuated) {
           updatedLoser.currentHp = 1;
         }
+
         const sIdx = s.master.servants.findIndex((srv: any) => srv.id === s.combatant.servant.id);
         if (sIdx !== -1) s.master.servants[sIdx] = updatedLoser;
-        await saveMaster(s.master);
+
+        loserLvlUp = loserBondRes.didLevelUp;
+        loserNewLvl = loserBondRes.newLevel;
       }
+
+      await saveMaster(s.master);
+
+      const statStr = (!isFreeBattle && loseStatPoints > 0) ? ` | 📊 +${loseStatPoints} Stat Pt` : '';
+      const lvlStr = loserLvlUp ? ` 🌟 **[Bond Lv.${loserNewLvl}!]**` : '';
+      const roleStr = (isGank2v1) ? ' 🛡️ **[Courageous Stand]**' : '';
+      loserRewardLines.push(
+        `• 🎗️ **Master ${s.combatant.username}** (${sLoserName})${roleStr}: +${loseSq} SQ 💎 | +${loseBondExp} Bond EXP 💖 | +${loseManaPrisms} Prisms 🔵${statStr}${lvlStr}`
+      );
     }
   }
 
-  return { primaryBondLevelUp, primaryNewBondLevel, primaryUnlockedBondCe };
+  const rewardsSummaryText =
+    `**🏆 Victor(s):**\n` +
+    winnerRewardLines.join('\n') +
+    `\n\n**🎗️ Defeated Participant(s):**\n` +
+    loserRewardLines.join('\n');
+
+  return {
+    matchFormatTitle,
+    winnerRewardLines,
+    loserRewardLines,
+    rewardsSummaryText,
+    primaryBondLevelUp,
+    primaryNewBondLevel,
+    primaryUnlockedBondCe
+  };
 }
 

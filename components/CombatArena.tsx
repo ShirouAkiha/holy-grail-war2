@@ -653,12 +653,19 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
     setIsSimulating(false);
 
     if (updatedState.turnPhase === 'victory') {
+      const is1v2 = battleFormat === '1v2';
+      const is2v2 = battleFormat === '2v2';
+      const sqGain = is1v2 ? 8 : (is2v2 ? 5 : 4);
+      const statGain = is1v2 ? 5 : (is2v2 ? 3 : 2);
+      const prismGain = is1v2 ? 60 : (is2v2 ? 35 : 20);
+
       const updatedServants = master.servants.map(s => {
         if (s.id === activeServant.id) {
           return {
             ...s,
             currentHp: updatedState.player1.currentHp,
             baseHpAtDamage: updatedState.player1.currentHp,
+            availableStatPoints: (s.availableStatPoints || 0) + statGain,
             lastDamageTime: Date.now()
           };
         }
@@ -666,8 +673,9 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
       });
       onUpdateMaster({
         ...master,
-        saintQuartz: master.saintQuartz + 3,
-        grailWarWins: master.grailWarWins + 1,
+        saintQuartz: master.saintQuartz + sqGain,
+        manaPrisms: (master.manaPrisms || 0) + prismGain,
+        grailWarWins: master.grailWarWins + (is1v2 ? 2 : 1),
         servants: updatedServants
       });
       const record = createRecordFromFinishedBattle(updatedState, 'victory');
