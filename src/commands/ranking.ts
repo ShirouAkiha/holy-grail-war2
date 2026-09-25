@@ -83,7 +83,8 @@ export function buildRankingEmbed(
         ? ` • *${e.activeServantName}* [${e.activeServantClass} Lv.${e.activeServantLevel}]`
         : '';
 
-      const winrateSnippet = e.winRate > 0 ? ` (${e.winRate}% WR)` : '';
+      const totalFights = e.duelsWon + e.duelsLost;
+      const winrateSnippet = totalFights > 0 ? ` (${e.winRate}% WR • ${e.duelsWon}W-${e.duelsLost}L)` : '';
 
       if (res.category === 'grail_war_wins') {
         return (
