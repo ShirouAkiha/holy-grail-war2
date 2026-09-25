@@ -1478,6 +1478,10 @@ export function executeBattleTurn(
     ...c,
     activeBuffs: [...c.activeBuffs]
   }));
+  const teamSolo: ActiveCombatant[] = (state.teamSolo || []).map(c => ({
+    ...c,
+    activeBuffs: [...c.activeBuffs]
+  }));
 
   const p1 = teamA.find(c => c.id === state.player1.id) || teamA[0];
   const p2 = teamB.find(c => c.id === state.player2.id) || teamB[0];
@@ -2470,13 +2474,20 @@ export function executeBattleTurn(
   };
 
   // Determine primary targets based on choices or living opponents
-  const getEnemyTarget = (actorTeam: 'teamA' | 'teamB', requestedTargetId?: string): ActiveCombatant | undefined => {
-    const opposingTeam = actorTeam === 'teamA' ? teamB : teamA;
+  const getEnemyTarget = (actorTeam: 'teamA' | 'teamB' | 'teamSolo', requestedTargetId?: string): ActiveCombatant | undefined => {
+    let opposingCombatants: ActiveCombatant[] = [];
+    if (actorTeam === 'teamA') {
+      opposingCombatants = [...teamB, ...teamSolo];
+    } else if (actorTeam === 'teamB') {
+      opposingCombatants = [...teamA, ...teamSolo];
+    } else {
+      opposingCombatants = [...teamA, ...teamB];
+    }
     if (requestedTargetId) {
-      const match = opposingTeam.find(c => c.id === requestedTargetId && c.currentHp > 0);
+      const match = opposingCombatants.find(c => c.id === requestedTargetId && c.currentHp > 0);
       if (match) return match;
     }
-    return opposingTeam.find(c => c.currentHp > 0);
+    return opposingCombatants.find(c => c.currentHp > 0);
   };
 
   // Determine initiative order based on Agility + variance
@@ -2522,8 +2533,29 @@ export function executeBattleTurn(
     }
   }
 
-  // Clean up expired buffs and sync status/defensive booleans for all team members
-  [...teamA, ...teamB].forEach(combatant => {
+  // Autonomous combat turns for Solo Rogues / 3rd Master (Hostile to both Team A & Team B)
+  for (const rogue of teamSolo) {
+    if (rogue.currentHp > 0) {
+      const rogueTarget = getEnemyTarget('teamSolo');
+      if (rogueTarget && rogueTarget.currentHp > 0) {
+        const rogueDeck = rogue.commandDeck || ['Buster', 'Buster', 'Arts', 'Quick', 'Quick'];
+        const shuffled = [...rogueDeck].sort(() => 0.5 - Math.random());
+        const rogueCards = (shuffled.slice(0, 3) as CardType[]) || ['Buster', 'Arts', 'Quick'];
+        const rogueUseNp = rogue.npGauge >= 100;
+        const availableSkill = rogue.skills.findIndex(s => s.currentCooldown <= 0);
+        const rogueChoice: TurnActionChoice = {
+          combatantId: rogue.id,
+          selectedCards: rogueCards,
+          useNoblePhantasm: rogueUseNp,
+          useSkillIndex: availableSkill >= 0 ? availableSkill : undefined
+        };
+        resolveActorTurn(rogue, rogueTarget, rogueChoice);
+      }
+    }
+  }
+
+  // Clean up expired buffs and sync status/defensive booleans for all team & solo members
+  [...teamA, ...teamB, ...teamSolo].forEach(combatant => {
     combatant.activeBuffs = combatant.activeBuffs.filter(
       b => b.remainingTurns > 0 && (!b.isHitCount || b.remainingHits === undefined || b.remainingHits > 0)
     );
@@ -2532,22 +2564,28 @@ export function executeBattleTurn(
     combatant.isStunned = combatant.activeBuffs.some(b => b.type === 'stun');
   });
 
-  // Check victory condition across full teams
+  // Check victory condition across full teams and solo contenders
   const teamADefeated = teamA.every(c => c.currentHp <= 0);
   const teamBDefeated = teamB.every(c => c.currentHp <= 0);
+  const teamSoloDefeated = teamSolo.length === 0 || teamSolo.every(c => c.currentHp <= 0);
 
   let winnerId: string | undefined;
   let winnerTeam: 'teamA' | 'teamB' | undefined;
   let nextPhase: BattleState['turnPhase'] = 'card_selection';
 
-  if (teamADefeated && teamBDefeated) {
+  if (teamADefeated && teamBDefeated && teamSoloDefeated) {
     nextPhase = 'victory';
     winnerId = p1Speed >= p2Speed ? p1.id : p2.id;
     winnerTeam = p1Speed >= p2Speed ? 'teamA' : 'teamB';
-  } else if (teamBDefeated) {
+  } else if (teamBDefeated && teamSoloDefeated) {
     nextPhase = 'victory';
     winnerId = p1.id;
     winnerTeam = 'teamA';
+  } else if (teamADefeated && (teamBDefeated || teamSoloDefeated)) {
+    nextPhase = 'defeat';
+    const livingWinner = [...teamB, ...teamSolo].find(c => c.currentHp > 0);
+    winnerId = livingWinner?.id || p2.id;
+    winnerTeam = 'teamB';
   } else if (teamADefeated) {
     nextPhase = 'defeat';
     winnerId = p2.id;
@@ -2560,6 +2598,7 @@ export function executeBattleTurn(
     player2: p2,
     teamA,
     teamB,
+    teamSolo,
     currentTurn: state.currentTurn + 1,
     turnPhase: nextPhase,
     turnHistory: [...state.turnHistory, ...turnLogs],

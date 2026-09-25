@@ -498,7 +498,8 @@ async function createTurnSummaryAttachment(
   p2Cards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Arts', 'Buster', 'Quick'],
   p1Ally?: DuelCombatant,
   p2Ally?: DuelCombatant,
-  combatLogsHistory: string[] = []
+  combatLogsHistory: string[] = [],
+  teamSoloList: DuelCombatant[] = []
 ): Promise<AttachmentBuilder> {
   const mapToActive = (c: DuelCombatant): ActiveCombatant => {
     const baseAvatar = c.baseAvatarUrl || getServantAvatarAndCardArt(c.servant).avatarUrl;
@@ -551,7 +552,7 @@ async function createTurnSummaryAttachment(
   const isNP = lastLogText.includes('NOBLE PHANTASM') || strikeLogText.includes('NOBLE PHANTASM');
 
   // Identify who was the attacker in the most recent combat log entry
-  const allCombatants = [p1, p2, p1Ally, p2Ally].filter((c): c is DuelCombatant => !!c);
+  const allCombatants = [p1, p2, p1Ally, p2Ally, ...teamSoloList].filter((c): c is DuelCombatant => !!c);
   const foundAttacker = allCombatants.find(c =>
     strikeLogText.includes(`**${c.servant.template.name}**`) ||
     strikeLogText.includes(`**${c.servant.nickname || c.servant.template.name}**`) ||
@@ -661,11 +662,13 @@ function buildDuelEmbed(
   pendingIndices: number[] = [],
   p1Ally?: DuelCombatant,
   p2Ally?: DuelCombatant,
-  selectedTarget?: DuelCombatant
+  selectedTarget?: DuelCombatant,
+  teamSoloList: DuelCombatant[] = []
 ) {
-  const allCombatants = [p1, p2, p1Ally, p2Ally].filter((c): c is DuelCombatant => !!c);
+  const allCombatants = [p1, p2, p1Ally, p2Ally, ...teamSoloList].filter((c): c is DuelCombatant => !!c);
   const activeCombatant = allCombatants.find(c => c.userId === activeUserId) || p1;
   const isP1Team = activeCombatant === p1 || activeCombatant === p1Ally;
+  const isSoloRogue = teamSoloList.some(c => c.userId === activeCombatant.userId);
 
   if (!activeCombatant.currentHand || activeCombatant.currentHand.length !== 5) {
     refreshCombatantHand(activeCombatant);
@@ -736,18 +739,23 @@ function buildDuelEmbed(
     .setDescription(
       `👉 **Current Turn:** ${activeCombatant.isAi ? `🤖 Shadow AI (${combatantName}) is calculating...` : `<@${activeCombatant.userId}> (**${combatantName}**), pick **3 Cards** from your dealt hand:`}\n\n${slotDisplay}`
     )
-    .setColor(isP1Team ? 0xef4444 : 0x38bdf8);
+    .setColor(isSoloRogue ? 0xf59e0b : isP1Team ? 0xef4444 : 0x38bdf8);
 
   const team1List = [p1, p1Ally].filter((c): c is DuelCombatant => !!c);
   const team2List = [p2, p2Ally].filter((c): c is DuelCombatant => !!c);
 
-  if (p1Ally || p2Ally) {
+  if (p1Ally || p2Ally || teamSoloList.length > 0) {
     const team1Str = team1List.map(c => `• <@${c.userId}> (**${c.servant.nickname || c.servant.template?.name || 'Servant'}** • ${Math.round(c.currentHp).toLocaleString()} HP)`).join('\n');
     const team2Str = team2List.map(c => `• <@${c.userId}> (**${c.servant.nickname || c.servant.template?.name || 'Servant'}** • ${Math.round(c.currentHp).toLocaleString()} HP)`).join('\n');
-    embed.addFields(
-      { name: '🛡️ Team 1', value: team1Str, inline: true },
-      { name: '⚔️ Team 2', value: team2Str, inline: true }
-    );
+    const fields = [
+      { name: '🛡️ Team 1', value: team1Str || 'None', inline: true },
+      { name: '⚔️ Team 2', value: team2Str || 'None', inline: true }
+    ];
+    if (teamSoloList.length > 0) {
+      const soloStr = teamSoloList.map(c => `• <@${c.userId}> (**${c.servant.nickname || c.servant.template?.name || 'Servant'}** • ${Math.round(c.currentHp).toLocaleString()} HP)`).join('\n');
+      fields.push({ name: '⚡ Solo Rogue (3rd Master)', value: soloStr, inline: true });
+    }
+    embed.addFields(fields);
   }
 
   if (lastLogs && lastLogs.length > 0) {
@@ -3424,7 +3432,8 @@ async function startInteractiveDuel(
       activePendingIndices,
       p1Ally,
       p2Ally,
-      target
+      target,
+      teamSolo
     );
   };
 
@@ -3443,7 +3452,8 @@ async function startInteractiveDuel(
       p2LastCards,
       p1Ally,
       p2Ally,
-      combatLogs
+      combatLogs,
+      teamSolo
     );
   };
 
@@ -3993,7 +4003,7 @@ async function startInteractiveDuel(
 
       // CASE: COMBAT STATUS & BUFF INSPECTION DOSSIER
       if (i.customId === 'card_inspect_buffs') {
-        const allParticipants: DuelCombatant[] = [...team1, ...team2];
+        const allParticipants: DuelCombatant[] = [...team1, ...team2, ...teamSolo];
         const viewer: DuelCombatant = allParticipants.find((c: DuelCombatant) => c.userId === i.user.id) || activeCombatant;
         const opponent: DuelCombatant | undefined = getSelectedTarget(viewer) || (team1.includes(viewer) ? p2 : p1);
         const allies: DuelCombatant[] = team1.includes(viewer) ? team1 : team2;

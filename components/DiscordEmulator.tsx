@@ -8355,8 +8355,15 @@ export default function DiscordEmulator({
         const battle = activeDuel.battle;
         const p1 = battle.player1;
         const p2 = battle.player2;
-        title = `🥊 Active Duel — Turn ${battle.currentTurn}: ${p1.name} vs ${p2.name}`;
-        color = '#ef4444';
+        const soloRogues = battle.teamSolo || [];
+        const soloStr = soloRogues.length > 0
+          ? `\n\n**⚡ 3RD MASTER SOLO ROGUE (FREE-FOR-ALL)**\n\n` +
+            soloRogues.map(s => `**${s.name}** (Master: ${s.masterName})\n❤️ HP: \`${s.currentHp.toLocaleString()}/${s.maxHp.toLocaleString()}\` | ⚡ NP Gauge: \`${Math.round(s.npGauge)}%\``).join('\n\n')
+          : '';
+        title = soloRogues.length > 0
+          ? `🥊 Active 3-Way Duel — Turn ${battle.currentTurn}: ${p1.name} vs ${p2.name} vs ${soloRogues[0].name}`
+          : `🥊 Active Duel — Turn ${battle.currentTurn}: ${p1.name} vs ${p2.name}`;
+        color = soloRogues.length > 0 ? '#f59e0b' : '#ef4444';
         const fleeInfo = calculateFleeChance(p1.currentHp, p1.maxHp, p1.servantClass, activeServant?.template?.baseStats?.agility || 10);
         description =
           (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
@@ -8364,8 +8371,9 @@ export default function DiscordEmulator({
           `❤️ HP: \`${p1.currentHp.toLocaleString()}/${p1.maxHp.toLocaleString()}\` | ⚡ NP Gauge: \`${Math.round(p1.npGauge)}%\`\n\n` +
           `**VS**\n\n` +
           `**${p2.name}** (Master: ${p2.masterName})\n` +
-          `❤️ HP: \`${p2.currentHp.toLocaleString()}/${p2.maxHp.toLocaleString()}\` | ⚡ NP Gauge: \`${Math.round(p2.npGauge)}%\`\n\n` +
-          `👉 **Command Sequence:** Select your 3-card attack chain or unleash your Noble Phantasm:`;
+          `❤️ HP: \`${p2.currentHp.toLocaleString()}/${p2.maxHp.toLocaleString()}\` | ⚡ NP Gauge: \`${Math.round(p2.npGauge)}%\`` +
+          soloStr +
+          `\n\n👉 **Command Sequence:** Select your 3-card attack chain or unleash your Noble Phantasm:`;
       }
 
     } else if (category === 'history') {

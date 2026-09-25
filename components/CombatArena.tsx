@@ -366,6 +366,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
   const p2 = battle.player2;
   const teamA = battle.teamA && battle.teamA.length > 0 ? battle.teamA : [p1];
   const teamB = battle.teamB && battle.teamB.length > 0 ? battle.teamB : [p2];
+  const teamSolo = battle.teamSolo || [];
   const classMultiplier = calculateClassMultiplier(p1.servantClass, p2.servantClass);
 
   const handleExecuteForceJoin = () => {
@@ -392,12 +393,23 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
 
     const newCombatant = createCombatantFromMasterServant(mockServant, forceJoinMasterName.trim() || 'Third Master');
     newCombatant.id = `third_${Date.now()}`;
+    if (forceJoinSide === 'none') {
+      newCombatant.critStars = 20;
+      newCombatant.activeBuffs = newCombatant.activeBuffs || [];
+      newCombatant.activeBuffs.push({
+        name: 'Rogue Fortitude',
+        type: 'buff_atk',
+        value: 30,
+        remainingTurns: 3
+      });
+    }
     const updated = forceJoinBattle(battle, newCombatant, forceJoinSide);
     setBattle(updated);
     setShowForceJoinModal(false);
+    setSelectedTargetEnemyId(newCombatant.id);
     setForceJoinSuccessMessage(
       forceJoinSide === 'none'
-        ? `⚡ ${newCombatant.masterName} & ${newCombatant.name} have force-joined as a SOLO ROGUE (No Team)! (${updated.battleMode} Free-For-All)`
+        ? `⚡ ${newCombatant.masterName} & ${newCombatant.name} have force-joined as a SOLO ROGUE (No Team)! (${updated.battleMode} Free-For-All) — Now targetable in Arena!`
         : `⚡ ${newCombatant.masterName} & ${newCombatant.name} have force-joined backing ${forceJoinSide === 'teamA' ? 'Team A' : 'Team B'}! (${updated.battleMode} Multi-Combat)`
     );
     setTimeout(() => setForceJoinSuccessMessage(null), 6000);
@@ -1519,6 +1531,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
           </div>
           <div className="text-[11px] font-mono text-white/50">
             Team A: {teamA.filter(c => c.currentHp > 0).length}/{teamA.length} Living • Team B: {teamB.filter(c => c.currentHp > 0).length}/{teamB.length} Living
+            {teamSolo.length > 0 && ` • Solo Rogues: ${teamSolo.filter(c => c.currentHp > 0).length}/${teamSolo.length} Living`}
           </div>
         </div>
       )}
@@ -1548,8 +1561,8 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
         />
       )}
 
-      {/* Battle Stage Split Screen (Supports 1v1, 1v2, 2v2) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Battle Stage Split Screen (Supports 1v1, 1v2, 2v2, 1v1v1 FFA) */}
+      <div className={`grid grid-cols-1 ${teamSolo.length > 0 ? 'lg:grid-cols-3' : 'md:grid-cols-2'} gap-6`}>
         {/* Team A Column */}
         <div className="space-y-4">
           <div className="flex items-center justify-between px-1">
@@ -1640,33 +1653,34 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
             <span className="text-xs font-mono uppercase tracking-wider text-[#ef4444] font-bold flex items-center gap-1.5">
               <Swords className="w-3.5 h-3.5 text-[#ef4444]" /> TEAM B ({teamB.length} {teamB.length === 1 ? 'Opponent' : 'Opponents'})
             </span>
-            {teamB.length > 1 && (
+            {(teamB.length + teamSolo.length) > 1 && (
               <span className="text-[10px] font-mono text-white/50">Click an opponent to target</span>
             )}
           </div>
 
           {teamB.map((member, idx) => {
-            const isTargeted = selectedTargetEnemyId === member.id || (!selectedTargetEnemyId && idx === 0);
+            const hasMultipleEnemies = (teamB.length + teamSolo.length) > 1;
+            const isTargeted = selectedTargetEnemyId === member.id || (!selectedTargetEnemyId && idx === 0 && teamSolo.length === 0);
             return (
               <div
                 key={member.id || idx}
                 onClick={() => {
-                  if (member.currentHp > 0 && teamB.length > 1) {
+                  if (member.currentHp > 0 && hasMultipleEnemies) {
                     setSelectedTargetEnemyId(member.id);
                   }
                 }}
                 className={`p-6 rounded-xl bg-[#0a0a0a] border ${
-                  isTargeted && teamB.length > 1
+                  isTargeted && hasMultipleEnemies
                     ? 'border-[#ef4444] ring-2 ring-[#ef4444]/40 shadow-[0_0_20px_rgba(239,68,68,0.25)] cursor-pointer'
                     : member.currentHp <= 0
                     ? 'border-[#331111] opacity-50'
-                    : teamB.length > 1
+                    : hasMultipleEnemies
                     ? 'border-[#1a1a1a] hover:border-white/30 cursor-pointer'
                     : 'border-[#1a1a1a]'
                 } relative overflow-hidden shadow-2xl transition-all`}
               >
                 <div className="absolute top-0 right-0 px-3 py-1 bg-[#161616] text-[#ef4444] text-[10px] font-mono uppercase tracking-widest border-l border-b border-[#1a1a1a] flex items-center gap-1.5">
-                  {isTargeted && teamB.length > 1 && (
+                  {isTargeted && hasMultipleEnemies && (
                     <span className="text-[#ef4444] font-bold flex items-center gap-1">
                       <Crosshair className="w-3 h-3" /> TARGETED
                     </span>
@@ -1734,6 +1748,108 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
             );
           })}
         </div>
+
+        {/* Solo Rogue / 3rd Master Column (Hostile to All) */}
+        {teamSolo.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-mono uppercase tracking-wider text-[#f59e0b] font-bold flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-[#f59e0b]" /> SOLO ROGUES ({teamSolo.length} {teamSolo.length === 1 ? 'Contender' : 'Contenders'})
+              </span>
+              <span className="text-[10px] font-mono text-amber-400/80">Click to target • Hostile to All</span>
+            </div>
+
+            {teamSolo.map((member, idx) => {
+              const isTargeted = selectedTargetEnemyId === member.id;
+              return (
+                <div
+                  key={member.id || idx}
+                  onClick={() => {
+                    if (member.currentHp > 0) {
+                      setSelectedTargetEnemyId(member.id);
+                    }
+                  }}
+                  className={`p-6 rounded-xl bg-[#0e0a03] border ${
+                    isTargeted
+                      ? 'border-[#f59e0b] ring-2 ring-[#f59e0b]/40 shadow-[0_0_20px_rgba(245,158,11,0.35)] cursor-pointer'
+                      : member.currentHp <= 0
+                      ? 'border-[#332205] opacity-50'
+                      : 'border-[#2d1e04] hover:border-[#f59e0b]/50 cursor-pointer'
+                  } relative overflow-hidden shadow-2xl transition-all`}
+                >
+                  <div className="absolute top-0 right-0 px-3 py-1 bg-[#1c1200] text-[#f59e0b] text-[10px] font-mono uppercase tracking-widest border-l border-b border-[#2d1e04] flex items-center gap-1.5">
+                    {isTargeted && (
+                      <span className="text-[#f59e0b] font-bold flex items-center gap-1">
+                        <Crosshair className="w-3 h-3" /> TARGETED
+                      </span>
+                    )}
+                    <span>3RD MASTER • {member.servantClass}</span>
+                  </div>
+
+                  <div className="flex items-center gap-4 mb-5 mt-2">
+                    <div className="w-14 h-14 rounded-sm bg-[#1c1200] border border-[#f59e0b]/40 flex items-center justify-center text-xl text-[#f59e0b]">
+                      {member.currentHp <= 0 ? '💀' : '⚡'}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-serif italic text-white flex items-center gap-2">
+                        {member.name}
+                        {member.currentHp <= 0 && (
+                          <span className="text-[10px] font-mono text-red-500 uppercase font-bold">[Dissolved]</span>
+                        )}
+                      </h3>
+                      <p className="text-xs text-white/40 font-mono">Master: {member.masterName}</p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-[#111] text-[#f59e0b] border border-[#f59e0b]/30">
+                          ATK: {member.atk.toLocaleString()}
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-[#111] text-[#22c55e] border border-[#22c55e]/30">
+                          DEF: {member.def.toLocaleString()}
+                        </span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-[#f59e0b]/10 text-[#f59e0b] border border-[#f59e0b]/40">
+                          FFA Rogue
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* HP Bar */}
+                  <div className="space-y-1.5 mb-4">
+                    <div className="flex justify-between text-[11px] font-mono">
+                      <span className="text-white/40 uppercase tracking-wider">HP</span>
+                      <span className="text-white font-bold">
+                        {Math.max(0, member.currentHp).toLocaleString()} / {member.maxHp.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${
+                          member.currentHp / member.maxHp > 0.3 ? 'bg-[#22c55e]' : 'bg-[#ef4444]'
+                        }`}
+                        style={{ width: `${Math.max(0, (member.currentHp / member.maxHp) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* NP Gauge */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-[11px] font-mono">
+                      <span className="text-[#f59e0b] flex items-center gap-1 uppercase tracking-wider">
+                        <Sparkles className="w-3 h-3" /> NP Gauge
+                      </span>
+                      <span className="text-[#f59e0b] font-bold">{Math.round(member.npGauge)}%</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-[#f59e0b] shadow-[0_0_8px_#f59e0b] transition-all duration-300"
+                        style={{ width: `${Math.min(100, (member.npGauge / 100) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Mid-Battle Dialogue Embed Box Cut-In (Reference Image Match) */}
@@ -2100,12 +2216,15 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
             </div>
 
             {/* Multi-Combat Target Enemy Selector */}
-            {teamB.length > 1 && (
-              <div className="flex items-center gap-2 bg-[#140000] p-1.5 rounded-md border border-[#ef4444]/40">
+            {(teamB.length + teamSolo.length) > 1 && (
+              <div className="flex flex-wrap items-center gap-2 bg-[#140000] p-1.5 rounded-md border border-[#ef4444]/40">
                 <span className="text-[10px] font-mono text-[#ef4444] font-bold flex items-center gap-1 uppercase tracking-wider pl-1">
                   <Crosshair className="w-3 h-3 text-[#ef4444]" /> Target:
                 </span>
-                {teamB.map((enemy, eIdx) => {
+                {[
+                  ...teamB.map(enemy => ({ ...enemy, isSolo: false })),
+                  ...teamSolo.map(enemy => ({ ...enemy, isSolo: true }))
+                ].map((enemy, eIdx) => {
                   const isSelected = selectedTargetEnemyId === enemy.id || (!selectedTargetEnemyId && eIdx === 0);
                   const isDead = enemy.currentHp <= 0;
                   return (
@@ -2118,10 +2237,15 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                         isDead
                           ? 'opacity-30 line-through cursor-not-allowed bg-transparent text-white/40'
                           : isSelected
-                          ? 'bg-[#ef4444] text-black font-bold shadow'
+                          ? enemy.isSolo
+                            ? 'bg-[#f59e0b] text-black font-bold shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                            : 'bg-[#ef4444] text-black font-bold shadow'
+                          : enemy.isSolo
+                          ? 'bg-[#291e03] text-[#f59e0b] border border-[#f59e0b]/40 hover:bg-[#3d2c05]'
                           : 'bg-[#220000] text-[#ef4444] hover:bg-[#330000]'
                       }`}
                     >
+                      {enemy.isSolo && <span className="text-[8px] bg-black/40 px-1 rounded text-amber-300 font-bold">⚡ SOLO</span>}
                       <span>{enemy.name}</span>
                       <span className="text-[9px] opacity-80">({Math.max(0, enemy.currentHp).toLocaleString()} HP)</span>
                     </button>
