@@ -5111,18 +5111,27 @@ async function finishDuel(
       state.evacuated = true;
       state.fate = 'spare';
     }
+
+    const rewardReport = await finalizeDuelRewardsAndSync(winningTeam, defeatedStates, warSession, chanTag, primaryWinner, isFreeBattle);
+
+    const multBanner = rewardReport.enemyBeatenMultiplier > 1
+      ? ` 🔥 **[${rewardReport.enemyBeatenMultiplier}x Enemy Defeat Multiplier Active!]** *(Scaled for defeating ${defeatedStates.length} enemy Servants)*\n\n`
+      : '\n\n';
+
     const freeBattleEmbed = new EmbedBuilder()
-      .setTitle('🕊️ FREE BATTLE CONCLUDED — FRIENDLY SPARRING')
+      .setTitle(`🕊️ FREE BATTLE CONCLUDED — ${rewardReport.matchFormatTitle.toUpperCase()}`)
       .setDescription(
-        `**${winnerName}** (Master: ${primaryWinner.username}) emerged victorious in this friendly sparring match!\n\n` +
-        `• **Format:** 🕊️ Free Battle / Safe Mode\n` +
-        `• **Stakes:** Zero tournament elimination — Servants, Command Seals, and Master standing remain completely intact.\n` +
-        `• **Rewards Granted:** +3 Saint Quartz 💎, Bond EXP (+150 Winner / +60 Participant). *(Free Battles do not award Parameter Stat Points)*`
+        `**${winnerName}** (Master: ${primaryWinner.username}) emerged victorious in this friendly sparring match!${multBanner}` +
+        `• **Format:** 🕊️ Free Battle / Safe Mode (${winningTeam.length}v${defeatedStates.length})\n` +
+        `• **Stakes:** Zero tournament elimination — Servants, Command Seals, and Master standing remain completely intact.\n\n` +
+        `🏆 **Victorious Team Rewards:**\n` +
+        rewardReport.winnerRewardLines.join('\n') +
+        `\n\n🎗️ **Sparring Participant Rewards:**\n` +
+        rewardReport.loserRewardLines.join('\n') +
+        `\n\n💡 *Level EXP increases Servant Level & grants **+10 Unspent Stat Points** per Level Up! Allocate via \`/servant\` or \`/customise stats\`.*`
       )
       .setColor(0x38bdf8)
-      .setFooter({ text: 'Holy Grail War • Safe Mode Free Battle' });
-
-    await finalizeDuelRewardsAndSync(winningTeam, defeatedStates, warSession, chanTag, primaryWinner, isFreeBattle);
+      .setFooter({ text: `Holy Grail War • Safe Mode Free Battle • ${rewardReport.enemyBeatenMultiplier}x Multiplier Active` });
 
     const files = [finalAttachment];
     if (defeatCardAttachment) files.push(defeatCardAttachment);
@@ -5649,7 +5658,8 @@ async function finishDuel(
   }
 
   // 5. Award victory rewards & sync Master HP
-  const { primaryBondLevelUp, primaryNewBondLevel, primaryUnlockedBondCe } = await finalizeDuelRewardsAndSync(winningTeam, defeatedStates, warSession, chanTag, primaryWinner, isFreeBattle);
+  const rewardReport = await finalizeDuelRewardsAndSync(winningTeam, defeatedStates, warSession, chanTag, primaryWinner, isFreeBattle);
+  const { primaryBondLevelUp, primaryNewBondLevel, primaryUnlockedBondCe, enemyBeatenMultiplier } = rewardReport;
 
   // 6. Build Victory & Final Outcome Embeds
   const victoryQuote = primaryWinner.servant.customQuotes?.victory || primaryWinner.servant.template?.victoryQuote || "A decisive triumph. The Holy Grail draws closer.";
@@ -5676,11 +5686,17 @@ async function finishDuel(
     ? `\n🎖️ **[MAX BOND 10 REACHED!]** Bestowed Bond Craft Essence: ★4 **${primaryUnlockedBondCe.name}**!\n*Effect:* ${primaryUnlockedBondCe.effectText}\n*(Type \`/ce art ${primaryUnlockedBondCe.name}\` to view high-res card art!)*`
     : '';
 
+  const multText = enemyBeatenMultiplier > 1
+    ? ` 🔥 **[${enemyBeatenMultiplier}x Enemy Defeat Multiplier Active!]** *(Scaled for defeating ${defeatedStates.length} enemy Servants)*\n\n`
+    : '\n\n';
+
   const victoryEmbed = new EmbedBuilder()
     .setTitle('🏆 DUEL VICTORY — VICTORY INVOCATION')
     .setDescription(
-      `**${winnerName}** (Master: ${primaryWinner.username}) has triumphed in the Holy Grail duel!\n\n` +
-      `💖 **Bond Synergy:** \`+150 Bond EXP\` & \`+2 Stat Points\` gained for victors!${primaryBondLevelUp ? `\n🎉 **[BOND LEVEL UP!]** **${winnerName}** reached **Bond Lv. ${primaryNewBondLevel}**!` : ''}${bond10Celebration}\n\n` +
+      `**${winnerName}** (Master: ${primaryWinner.username}) has triumphed in the Holy Grail duel!${multText}` +
+      `🏆 **Victor & Ally Rewards:**\n` +
+      rewardReport.winnerRewardLines.join('\n') +
+      `${primaryBondLevelUp ? `\n\n🎉 **[BOND LEVEL UP!]** **${winnerName}** reached **Bond Lv. ${primaryNewBondLevel}**!` : ''}${bond10Celebration}\n\n` +
       `💬 **[VICTORY INVOCATION] ${winnerName}:**\n> ❝ ***${victoryQuote}*** ❞`
     )
     .setColor(0x22c55e);
@@ -5720,7 +5736,8 @@ async function finishDuel(
     .setDescription(
       `⚖️ **Holy Grail War Fate Resolution (${defeatedStates.length} Master${defeatedStates.length > 1 ? 's' : ''}):**\n\n` +
       outcomeLines.join('\n\n') +
-      `\n\n💰 **Participation & Battle Rewards:** +3 Saint Quartz 💎 | +150 Bond EXP 💖 | +2 Parameter Points 📊`
+      `\n\n💰 **Participation & Consolation Rewards:**\n` +
+      rewardReport.loserRewardLines.join('\n')
     )
     .setColor(anyExecuted ? 0xef4444 : 0x22c55e)
     .setFooter({ text: 'Holy Grail War Fate Protocol • All Combatants Fully Resolved' });
@@ -5754,6 +5771,7 @@ async function finalizeDuelRewardsAndSync(
 ) {
   const winnerCount = winningTeam.length;
   const loserCount = defeatedStates.length;
+  const enemyBeatenMultiplier = Math.max(1, loserCount);
 
   let matchFormatTitle = '⚔️ 1v1 Duel';
   let isSoloClutch1v2 = false;
@@ -5773,114 +5791,35 @@ async function finalizeDuelRewardsAndSync(
     matchFormatTitle = isFreeBattle ? '🕊️ 1v1 Friendly Sparring' : '⚔️ 1v1 Holy Grail Duel';
   }
 
-  // Base rewards determination
-  let winSq = 4;
-  let winLevelExp = 1800;
-  let winBondExp = 160;
-  let winStatPoints = isFreeBattle ? 0 : 2;
-  let winManaPrisms = 20;
+  // Base rewards determination (Scaled and multiplied per enemy servant beaten)
+  let baseWinSq = isFreeBattle ? 3 : 4;
+  let baseWinLevelExp = isFreeBattle ? 1500 : 2000;
+  let baseWinBondExp = isFreeBattle ? 150 : 200;
+  let baseWinStatPoints = isFreeBattle ? 0 : 2;
+  let baseWinManaPrisms = isFreeBattle ? 20 : 25;
 
-  let loseSq = 1;
-  let loseLevelExp = 700;
-  let loseBondExp = 60;
-  let loseStatPoints = 0;
-  let loseManaPrisms = 5;
+  let winSq = baseWinSq * enemyBeatenMultiplier;
+  let winLevelExp = baseWinLevelExp * enemyBeatenMultiplier;
+  let winBondExp = baseWinBondExp * enemyBeatenMultiplier;
+  let winStatPoints = baseWinStatPoints * enemyBeatenMultiplier;
+  let winManaPrisms = baseWinManaPrisms * enemyBeatenMultiplier;
 
-  if (isFreeBattle) {
-    if (isSoloClutch1v2) {
-      // 1 Solo Master overcomes 2 sparring opponents
-      winSq = 6;
-      winLevelExp = 2500;
-      winBondExp = 250;
-      winStatPoints = 0;
-      winManaPrisms = 40;
-      loseSq = 1;
-      loseLevelExp = 500;
-      loseBondExp = 60;
-      loseManaPrisms = 5;
-    } else if (isAlliance2v2) {
-      // 2v2 Team sparring
-      winSq = 4;
-      winLevelExp = 1500;
-      winBondExp = 160;
-      winStatPoints = 0;
-      winManaPrisms = 25;
-      loseSq = 2;
-      loseLevelExp = 650;
-      loseBondExp = 80;
-      loseManaPrisms = 10;
-    } else if (isGank2v1) {
-      // 2 winners beat 1 solo sparring defender
-      winSq = 3;
-      winLevelExp = 1000;
-      winBondExp = 100;
-      winStatPoints = 0;
-      winManaPrisms = 15;
-      loseSq = 2;
-      loseLevelExp = 800; // Courage bonus for solo defender
-      loseBondExp = 90;
-      loseManaPrisms = 15;
-    } else {
-      // 1v1 Standard free battle
-      winSq = 3;
-      winLevelExp = 1200;
-      winBondExp = 120;
-      winStatPoints = 0;
-      winManaPrisms = 15;
-      loseSq = 1;
-      loseLevelExp = 500;
-      loseBondExp = 60;
-      loseManaPrisms = 5;
-    }
-  } else {
-    // Holy Grail War (Ranked / Deathmatch with permadeath risk)
-    if (isSoloClutch1v2) {
-      // 1 Solo Master overcomes 2 Tournament Contenders! Legendary achievement!
-      winSq = 8;
-      winLevelExp = 3500;
-      winBondExp = 350;
-      winStatPoints = 5; // Legendary Underdog Stat Boost!
-      winManaPrisms = 60;
-      loseSq = 1;
-      loseLevelExp = 700;
-      loseBondExp = 60;
-      loseManaPrisms = 10;
-    } else if (isAlliance2v2) {
-      // 2v2 Team Tournament Victory
-      winSq = 5;
-      winLevelExp = 2200;
-      winBondExp = 200;
-      winStatPoints = 3; // Team coordination stat point bonus
-      winManaPrisms = 35;
-      loseSq = 1;
-      loseLevelExp = 850;
-      loseBondExp = 80;
-      loseManaPrisms = 10;
-    } else if (isGank2v1) {
-      // 2 Allies overcome 1 Tournament Contender
-      winSq = 4;
-      winLevelExp = 1400;
-      winBondExp = 140;
-      winStatPoints = 2;
-      winManaPrisms = 20;
-      loseSq = 2;
-      loseLevelExp = 1000; // Solo Defender courage under fire bonus
-      loseBondExp = 120;
-      loseStatPoints = 1;
-      loseManaPrisms = 20;
-    } else {
-      // 1v1 Standard Holy Grail War Duel
-      winSq = 4;
-      winLevelExp = 1800;
-      winBondExp = 160;
-      winStatPoints = 2;
-      winManaPrisms = 20;
-      loseSq = 1;
-      loseLevelExp = 700;
-      loseBondExp = 60;
-      loseManaPrisms = 5;
-    }
+  // Solo clutch underdog bonus (1 Player defeating 2+ enemies alone!)
+  if (isSoloClutch1v2) {
+    winSq += isFreeBattle ? 2 : 4;
+    winLevelExp += isFreeBattle ? 1000 : 1800;
+    winBondExp += isFreeBattle ? 60 : 120;
+    winManaPrisms += isFreeBattle ? 20 : 30;
+    if (!isFreeBattle) winStatPoints += 2;
   }
+
+  // Consolation loser rewards
+  let loseScale = loserCount >= 2 ? 1.5 : 1.0;
+  let loseSq = Math.max(1, Math.round((isFreeBattle ? 1 : 1) * loseScale));
+  let loseLevelExp = Math.round((isFreeBattle ? 600 : 800) * loseScale);
+  let loseBondExp = Math.round((isFreeBattle ? 60 : 80) * loseScale);
+  let loseStatPoints = (!isFreeBattle && isGank2v1) ? 1 : 0;
+  let loseManaPrisms = Math.round((isFreeBattle ? 8 : 12) * loseScale);
 
   let primaryBondLevelUp = false;
   let primaryNewBondLevel = 1;
@@ -5889,9 +5828,11 @@ async function finalizeDuelRewardsAndSync(
   const winnerRewardLines: string[] = [];
   const loserRewardLines: string[] = [];
 
-  // Process and award each winner
+  // Process and award each winner (INCLUDING fallen teammates who helped win the match!)
   for (const winner of winningTeam) {
     const sName = winner.servant.nickname || winner.servant.template?.name || 'Servant';
+    const isFallenTeammate = (winner.currentHp || 0) <= 0;
+
     if (winner.isAi) {
       winnerRewardLines.push(`• 🤖 **${winner.username}** (${sName}): *[AI Vanguard Triumph]*`);
       continue;
@@ -5905,7 +5846,11 @@ async function finalizeDuelRewardsAndSync(
       wMaster.duelsWon = (wMaster.duelsWon || 0) + 1;
       wMaster.totalBattleWins = (wMaster.duelsWon || 0) + (wMaster.servantKills || 0);
 
-      const s = wMaster.servants?.find(srv => srv.id === winner.servant.id);
+      const s = wMaster.servants?.find(srv => srv.id === winner.servant.id) ||
+                wMaster.servants?.find(srv => srv.id === wMaster.activeServantId) ||
+                wMaster.servants?.find(srv => srv.template?.name === winner.servant.template?.name) ||
+                wMaster.servants?.[0];
+
       let bondDidLvl = false;
       let bondNewLvl = 1;
       let battleDidLvl = false;
@@ -5940,11 +5885,16 @@ async function finalizeDuelRewardsAndSync(
           wMaster.commandSeals = 3;
         } else {
           const sMaxHp = (updatedS as any).maxHp || updatedS.template?.baseHp || 50000;
-          updatedS.currentHp = Math.min(sMaxHp, Math.max(1, winner.currentHp));
+          // If fallen teammate in ranked, revive safely at 1 HP Sanctuary rather than perishing
+          updatedS.currentHp = Math.min(sMaxHp, Math.max(1, isFallenTeammate ? 1 : winner.currentHp));
         }
 
-        const sIdx = wMaster.servants.findIndex(srv => srv.id === winner.servant.id);
-        if (sIdx !== -1) wMaster.servants[sIdx] = updatedS;
+        const sIdx = wMaster.servants.findIndex(srv => srv.id === (s?.id || winner.servant.id));
+        if (sIdx !== -1) {
+          wMaster.servants[sIdx] = updatedS;
+        } else {
+          wMaster.servants[0] = updatedS;
+        }
 
         bondDidLvl = bondRes.didLevelUp;
         bondNewLvl = bondRes.newLevel;
@@ -5961,7 +5911,12 @@ async function finalizeDuelRewardsAndSync(
       const statStr = totalWinBonusPts > 0 ? ` | 📊 +${totalWinBonusPts} Stat Pts` : '';
       const battleLvlStr = battleDidLvl ? ` 🌟 **[LEVEL UP! Lv.${battleNewLvl}]**` : '';
       const bondLvlStr = bondDidLvl ? ` 💖 **[Bond Lv.${bondNewLvl}!]**` : '';
-      const roleStr = (isSoloClutch1v2) ? ' 👑 **[1v2 Solo Clutch]**' : (isAlliance2v2 ? ' 🛡️ **[Alliance Partner]**' : '');
+      const roleStr = isFallenTeammate
+        ? ' 🛡️ **[Fallen Ally — Victory Honored & Revived!]**'
+        : (isSoloClutch1v2
+          ? ' 👑 **[1v2 Solo Clutch]**'
+          : (isAlliance2v2 ? ' 🏆 **[Alliance Victor]**' : ' 🏆 **[Victor]**'));
+
       winnerRewardLines.push(
         `• 🏆 **Master ${winner.username}** (${sName})${roleStr}: +${winSq} SQ 💎 | +${winLevelExp.toLocaleString()} Level EXP ⚔️ | +${winBondExp} Bond EXP 💖 | +${winManaPrisms} Prisms 🔵${statStr}${battleLvlStr}${bondLvlStr}`
       );
@@ -5970,9 +5925,10 @@ async function finalizeDuelRewardsAndSync(
     if (!isWinnerSafe) {
       const wPart = warSession?.participants[winner.userId];
       if (wPart) {
-        wPart.currentHp = Math.min(wPart.maxHp, Math.max(1, winner.currentHp));
+        wPart.currentHp = Math.min(wPart.maxHp, Math.max(1, isFallenTeammate ? 1 : winner.currentHp));
         wPart.baseHpAtDamage = wPart.currentHp;
         wPart.lastDamageTime = Date.now();
+        wPart.isAlive = true;
       }
     }
   }
@@ -5991,7 +5947,11 @@ async function finalizeDuelRewardsAndSync(
       s.master.manaPrisms = (s.master.manaPrisms || 0) + loseManaPrisms;
       s.master.duelsLost = (s.master.duelsLost || 0) + 1;
 
-      const sLoser = s.master.servants?.find((srv: any) => srv.id === s.combatant.servant.id);
+      const sLoser = s.master.servants?.find((srv: any) => srv.id === s.combatant.servant.id) ||
+                     s.master.servants?.find((srv: any) => srv.id === s.master.activeServantId) ||
+                     s.master.servants?.find((srv: any) => srv.template?.name === s.combatant.servant.template?.name) ||
+                     s.master.servants?.[0];
+
       let loserBondLvlUp = false;
       let loserNewBondLvl = 1;
       let loserBattleLvlUp = false;
@@ -6024,8 +5984,12 @@ async function finalizeDuelRewardsAndSync(
           updatedLoser.currentHp = 1;
         }
 
-        const sIdx = s.master.servants.findIndex((srv: any) => srv.id === s.combatant.servant.id);
-        if (sIdx !== -1) s.master.servants[sIdx] = updatedLoser;
+        const sIdx = s.master.servants.findIndex((srv: any) => srv.id === (sLoser?.id || s.combatant.servant.id));
+        if (sIdx !== -1) {
+          s.master.servants[sIdx] = updatedLoser;
+        } else {
+          s.master.servants[0] = updatedLoser;
+        }
 
         loserBondLvlUp = loserBondRes.didLevelUp;
         loserNewBondLvl = loserBondRes.newLevel;
@@ -6057,7 +6021,8 @@ async function finalizeDuelRewardsAndSync(
     rewardsSummaryText,
     primaryBondLevelUp,
     primaryNewBondLevel,
-    primaryUnlockedBondCe
+    primaryUnlockedBondCe,
+    enemyBeatenMultiplier
   };
 }
 
