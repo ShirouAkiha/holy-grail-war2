@@ -29,7 +29,7 @@ import {
 
 export interface InventoryHubOptions {
   ceViewMode?: 'all' | 'owned';
-  ceRarityFilter?: 'all' | 5 | 4 | 3 | 'bond';
+  ceRarityFilter?: 'all' | 5 | 4 | 3 | 'bond' | 'embers';
   ceSearchQuery?: string;
 }
 
@@ -67,9 +67,10 @@ export function buildInventoryHub(
 
     const activeCeName = activeServant?.equippedCe?.name;
     const activeCeRarity = activeServant?.equippedCe?.rarity || 5;
+    const filterText = ceRarityFilter === 'all' ? 'All Tiers' : ceRarityFilter === 'bond' ? '🎖️ Bond 10' : ceRarityFilter === 'embers' ? '✨ EXP Embers' : `★${ceRarityFilter}`;
     equippedBanner = activeCeName
-      ? `✅ Active Equipped: **${activeCeName}** (★${activeCeRarity}) on **${servantName}**.\n*Mode: **${isCatalog ? '📖 All Catalog (Archive)' : '💼 Owned Vault'}** | Filter: **${ceRarityFilter === 'all' ? 'All Tiers' : ceRarityFilter === 'bond' ? '🎖️ Bond 10' : `★${ceRarityFilter}`}**${ceSearchQuery ? ` | Search: "${ceSearchQuery}"` : ''}*`
-      : `⚠️ **No Craft Essence equipped.** Select an item below and press **Equip**.\n*Mode: **${isCatalog ? '📖 All Catalog (Archive)' : '💼 Owned Vault'}** | Filter: **${ceRarityFilter === 'all' ? 'All Tiers' : ceRarityFilter === 'bond' ? '🎖️ Bond 10' : `★${ceRarityFilter}`}**${ceSearchQuery ? ` | Search: "${ceSearchQuery}"` : ''}*`;
+      ? `✅ Active Equipped: **${activeCeName}** (★${activeCeRarity}) on **${servantName}**.\n*Mode: **${isCatalog ? '📖 All Catalog (Archive)' : '💼 Owned Vault'}** | Filter: **${filterText}**${ceSearchQuery ? ` | Search: "${ceSearchQuery}"` : ''}*`
+      : `⚠️ **No Craft Essence equipped.** Select an item below and press **Equip**.\n*Mode: **${isCatalog ? '📖 All Catalog (Archive)' : '💼 Owned Vault'}** | Filter: **${filterText}**${ceSearchQuery ? ` | Search: "${ceSearchQuery}"` : ''}*`;
 
     // Map owned counts
     const ownedCountMap = new Map<string, number>();
@@ -96,15 +97,17 @@ export function buildInventoryHub(
       candidateCes = candidateCes.filter(c => (ownedCountMap.get(c.id) || 0) > 0);
     }
 
-    // Filter by rarity / bond
+    // Filter by rarity / bond / embers
     if (ceRarityFilter === 5) {
-      candidateCes = candidateCes.filter(c => c.rarity === 5 && !c.isBondCe);
+      candidateCes = candidateCes.filter(c => c.rarity === 5 && !c.isBondCe && !c.isEmber);
     } else if (ceRarityFilter === 4) {
-      candidateCes = candidateCes.filter(c => c.rarity === 4 && !c.isBondCe);
+      candidateCes = candidateCes.filter(c => c.rarity === 4 && !c.isBondCe && !c.isEmber);
     } else if (ceRarityFilter === 3) {
-      candidateCes = candidateCes.filter(c => c.rarity === 3 && !c.isBondCe);
+      candidateCes = candidateCes.filter(c => c.rarity === 3 && !c.isBondCe && !c.isEmber);
     } else if (ceRarityFilter === 'bond') {
       candidateCes = candidateCes.filter(c => c.isBondCe === true || Boolean(c.bondServantId));
+    } else if (ceRarityFilter === 'embers') {
+      candidateCes = candidateCes.filter(c => c.isEmber === true || Boolean(c.expValue && c.expValue > 0 && !c.atkBonus));
     }
 
     // Filter by search query
@@ -137,10 +140,11 @@ export function buildInventoryHub(
         const eqBadge = isEq ? ' **[EQUIPPED]**' : '';
         const ownBadge = count > 0 ? `\`[Owned ×${count}]\`` : `\`[Catalog]\``;
         const bondTag = ce.isBondCe ? ` 🎖️[Bond: ${ce.bondServantName || 'Heroic Spirit'}]` : '';
+        const emberTag = ce.isEmber ? ` ✨[EXP Ember: +${(ce.expValue || 1000).toLocaleString()} XP]` : '';
         const isSel = (selectedItemId && selectedItemId === ce.id);
         const pointer = isSel ? '▶ ' : '• ';
 
-        return `${pointer}**[${stars}]** **${ce.name}** ${ownBadge}${bondTag} — +${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP${eqBadge}\n   ↳ *${ce.effectText || ce.description || 'Mystic Code'}*`;
+        return `${pointer}**[${stars}]** **${ce.name}** ${ownBadge}${bondTag}${emberTag} — +${ce.atkBonus || 0} ATK / +${ce.hpBonus || 0} HP${eqBadge}\n   ↳ *${ce.effectText || ce.description || 'Mystic Code'}*`;
       });
     }
 
@@ -215,20 +219,44 @@ export function buildInventoryHub(
     ];
   } else if (category === 'items') {
     title = `💎 ${master.username}'s Inventory — Vault & Currency`;
-    equippedBanner = `✅ Current Balance: **${master.saintQuartz || 0} SQ 💎**  •  **${master.summonTickets || 0} Tickets 🎫**  •  **${master.manaPrisms || 0} Prisms 🔵**`;
+
+    const ssrEmbers = ownedCes.filter((c: any) => c.isEmber && c.rarity === 5).length;
+    const srEmbers = ownedCes.filter((c: any) => c.isEmber && c.rarity === 4).length;
+    const rEmbers = ownedCes.filter((c: any) => c.isEmber && c.rarity === 3).length;
+    const totalEmbers = ssrEmbers + srEmbers + rEmbers;
+
+    equippedBanner = `✅ Current Balance: **${master.saintQuartz || 0} SQ 💎**  •  **${master.summonTickets || 0} Tickets 🎫**  •  **${master.manaPrisms || 0} Prisms 🔵**` +
+      (totalEmbers > 0 ? `  •  **${totalEmbers} EXP Embers ✨**` : '');
 
     itemLines = [
       `• **Mythic** — **Saint Quartz** ×${master.saintQuartz || 0} — EX Rank [GACHA SUMMON CURRENCY]`,
       `• **Rare** — **Summon Tickets** ×${master.summonTickets || 0} — S Rank [SINGLE SUMMON TICKET]`,
       `• **Rare** — **Mana Prisms** ×${master.manaPrisms || 0} — A Rank [DA VINCI SHOP EXCHANGE]`
     ];
-    totalItems = 3;
+
+    if (totalEmbers > 0) {
+      itemLines.push(
+        `• **Synthesis Relics** — **Universal EXP Embers** ×${totalEmbers} — A Rank [SYNTHESIS RELIC: +10k / +3k / +1k XP]\n` +
+        `   ↳ *Blaze of Wisdom (★5 SSR): ×${ssrEmbers} | Blaze of Wisdom (★4 SR): ×${srEmbers} | Spark of Wisdom (★3 R): ×${rEmbers}*`
+      );
+    }
+
+    totalItems = itemLines.length;
 
     selectOptions = [
       { label: `Saint Quartz (x${master.saintQuartz || 0})`, value: 'item_sq', description: 'Summon Heroic Spirits and Craft Essences', default: selectedItemId === 'item_sq' },
       { label: `Summon Ticket (x${master.summonTickets || 0})`, value: 'item_ticket', description: 'Perform single summons on any banner', default: selectedItemId === 'item_ticket' },
       { label: `Mana Prism (x${master.manaPrisms || 0})`, value: 'item_prism', description: 'Exchange for Summon Tickets in /gacha shop', default: selectedItemId === 'item_prism' }
     ];
+
+    if (totalEmbers > 0) {
+      selectOptions.push({
+        label: `Universal EXP Embers (x${totalEmbers})`,
+        value: 'item_embers',
+        description: `Synthesize into Servants in /servant Workshop (+${(ssrEmbers * 10000 + srEmbers * 3000 + rEmbers * 1000).toLocaleString()} Total XP)`,
+        default: selectedItemId === 'item_embers'
+      });
+    }
   }
 
   const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
@@ -273,10 +301,10 @@ export function buildInventoryHub(
         .setStyle(ceRarityFilter === 3 ? ButtonStyle.Success : ButtonStyle.Secondary)
         .setEmoji('⭐'),
       new ButtonBuilder()
-        .setCustomId('inv_filter_ce_bond')
-        .setLabel('Bond 10')
-        .setStyle(ceRarityFilter === 'bond' ? ButtonStyle.Success : ButtonStyle.Secondary)
-        .setEmoji('🎖️')
+        .setCustomId('inv_filter_ce_embers')
+        .setLabel('EXP Embers')
+        .setStyle(ceRarityFilter === 'embers' ? ButtonStyle.Success : ButtonStyle.Secondary)
+        .setEmoji('✨')
     );
   }
 
@@ -379,6 +407,9 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
         currentPage = 1;
       } else if (customId === 'inv_filter_ce_bond') {
         ceRarityFilter = ceRarityFilter === 'bond' ? 'all' : 'bond';
+        currentPage = 1;
+      } else if (customId === 'inv_filter_ce_embers') {
+        ceRarityFilter = ceRarityFilter === 'embers' ? 'all' : 'embers';
         currentPage = 1;
       }
 
@@ -1266,6 +1297,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             `📦 **Inventory Essences (${ownedCes.length} total):**\n` +
             `${ceSummary}\n\n` +
             `*Quick Commands to Feed:*\n` +
+            `• \`/customise feed craft_essence:embers\` — Feed all Universal EXP Embers\n` +
             `• \`/customise feed craft_essence:all_3star\` — Feed all 3★ Essences\n` +
             `• \`/customise feed craft_essence:duplicates\` — Feed all duplicate copies\n` +
             `• \`/customise feed craft_essence:<name>\` — Feed a specific Essence\n` +
@@ -1280,7 +1312,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       let targetsToFeed: string[] = [];
       const lowQuery = query.toLowerCase();
 
-      if (lowQuery === 'all_3star' || lowQuery === '3star' || lowQuery === '3*') {
+      if (lowQuery === 'embers' || lowQuery === 'ember' || lowQuery === 'exp' || lowQuery === 'exp_embers') {
+        targetsToFeed = ownedCes
+          .map((c: any, idx: number) => (c && (c.isEmber || (c.expValue && c.expValue > 0 && !c.atkBonus)) ? String(idx) : null))
+          .filter(Boolean) as string[];
+      } else if (lowQuery === 'all_3star' || lowQuery === '3star' || lowQuery === '3*') {
         targetsToFeed = ownedCes
           .map((c: any, idx: number) => (c && (c.rarity || 3) <= 3 ? String(idx) : null))
           .filter(Boolean) as string[];

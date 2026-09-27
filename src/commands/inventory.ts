@@ -30,6 +30,7 @@ export const data = new SlashCommandBuilder()
       .setRequired(false)
       .addChoices(
         { name: 'All Tiers', value: 'all' },
+        { name: '✨ Universal EXP Embers', value: 'embers' },
         { name: '★5 SSR Legendary', value: '5' },
         { name: '★4 SR Rare', value: '4' },
         { name: '★3 R Common', value: '3' },
@@ -65,11 +66,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const filterOpt = interaction.options.getString('filter') || 'all';
     const modeOpt = (interaction.options.getString('mode') || 'all') as 'all' | 'owned';
 
-    const rarityFilter: 'all' | 5 | 4 | 3 | 'bond' =
+    const rarityFilter: 'all' | 5 | 4 | 3 | 'bond' | 'embers' =
       filterOpt === '5' ? 5 :
       filterOpt === '4' ? 4 :
       filterOpt === '3' ? 3 :
-      filterOpt === 'bond' ? 'bond' : 'all';
+      filterOpt === 'bond' ? 'bond' :
+      filterOpt === 'embers' ? 'embers' : 'all';
 
     const { embed, components } = buildInventoryHub(
       master,

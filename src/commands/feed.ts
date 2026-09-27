@@ -53,7 +53,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    const ownedCes = (master.craftEssences || []).filter(Boolean);
+    const ownedCes = [...((master.craftEssences || []).filter(Boolean))].sort((a: any, b: any) => {
+      const aEmber = a.isEmber ? 1 : 0;
+      const bEmber = b.isEmber ? 1 : 0;
+      return bEmber - aEmber;
+    });
+
     if (ownedCes.length === 0) {
       await interaction.reply({
         flags: MessageFlags.Ephemeral,
@@ -69,16 +74,18 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     if (!query) {
       const currentExp = activeServant.experience ?? getTotalExpForLevel(activeServant.level || 1);
       const expStatus = calculateLevelFromExp(currentExp);
+      const emberCount = ownedCes.filter((c: any) => c.isEmber).length;
 
       const ceSummary = ownedCes.map((ce: any, idx: number) => {
         const exp = getCeExpValue(ce);
         const star = '★'.repeat(ce.rarity || 3);
         const isEq = activeServant.equippedCeId === ce.id ? ' `[EQUIPPED]`' : '';
-        return `\`#${idx + 1}\` **${ce.name}** [${star}] — **+${exp.toLocaleString()} EXP**${isEq}`;
+        const emberTag = ce.isEmber ? ' ✨ [EXP Ember]' : '';
+        return `\`#${idx + 1}\` **${ce.name}** [${star}]${emberTag} — **+${exp.toLocaleString()} EXP**${isEq}`;
       }).slice(0, 10).join('\n');
 
       const selectOptions = ownedCes.slice(0, 25).map((ce: any, idx: number) => ({
-        label: `${idx + 1}. ${ce.name} (★${ce.rarity || 3})`,
+        label: `${idx + 1}. ${ce.isEmber ? '✨ ' : ''}${ce.name} (★${ce.rarity || 3})`,
         value: `feed_ce_${idx}`,
         description: `+${getCeExpValue(ce).toLocaleString()} EXP • +10 Stat Pts/Lv`
       }));
@@ -93,7 +100,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           `• **Total EXP:** \`${currentExp.toLocaleString()} EXP\`\n` +
           `• **Next Level:** \`${expStatus.currentLevelExp.toLocaleString()} / ${expStatus.nextLevelExp.toLocaleString()} EXP\` (${expStatus.progressPercent}%)\n` +
           `• **Unspent Stat Points:** \`${activeServant.availableStatPoints || 0} pts\`\n\n` +
-          `📦 **Available Essences to Feed (${ownedCes.length} total):**\n` +
+          `📦 **Available Essences to Feed (${ownedCes.length} total, ${emberCount} Embers):**\n` +
           `${ceSummary}\n\n` +
           `*Select an essence below or use quick batch feed buttons:*`
         )
@@ -103,7 +110,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
         new StringSelectMenuBuilder()
           .setCustomId('feed_select_ce')
-          .setPlaceholder('Select Craft Essence(s) to feed for EXP...')
+          .setPlaceholder('Select Craft Essence(s) or EXP Embers to feed for EXP...')
           .setMinValues(1)
           .setMaxValues(Math.min(selectOptions.length, 25))
           .addOptions(selectOptions)
@@ -111,19 +118,24 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
+          .setCustomId('feed_quick_embers')
+          .setLabel(`✨ Feed All Embers (${emberCount})`)
+          .setStyle(ButtonStyle.Success)
+          .setDisabled(emberCount === 0),
+        new ButtonBuilder()
           .setCustomId('feed_quick_3star')
           .setLabel('Feed All 3★ CEs')
           .setStyle(ButtonStyle.Primary)
           .setEmoji('⚡'),
         new ButtonBuilder()
           .setCustomId('feed_quick_duplicates')
-          .setLabel('Feed All Duplicates')
+          .setLabel('Feed Duplicates')
           .setStyle(ButtonStyle.Secondary)
           .setEmoji('🔄'),
         new ButtonBuilder()
           .setCustomId('feed_quick_stats')
           .setLabel('Allocate Stats')
-          .setStyle(ButtonStyle.Success)
+          .setStyle(ButtonStyle.Secondary)
           .setEmoji('📊')
       );
 
@@ -145,7 +157,22 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
           let targetsToFeed: string[] = [];
           if (i.customId === 'feed_select_ce') {
-            targetsToFeed = i.values.map((v: string) => v.replace('feed_ce_', ''));
+            targetsToFeed = i.values.map((v: string) => {
+              const idxStr = v.replace('feed_ce_', '');
+              const num = Number(idxStr);
+              if (!isNaN(num) && ownedCes[num]) {
+                return ownedCes[num].id || idxStr;
+              }
+              return idxStr;
+            });
+          } else if (i.customId === 'feed_quick_embers') {
+            targetsToFeed = master.craftEssences
+              .map((c: any, idx: number) => (c && (c.isEmber || (c.expValue && c.expValue > 0 && !c.atkBonus)) ? String(idx) : null))
+              .filter(Boolean) as string[];
+            if (targetsToFeed.length === 0) {
+              await i.reply({ flags: MessageFlags.Ephemeral, content: 'ℹ️ No Universal EXP Embers found in inventory.' });
+              return;
+            }
           } else if (i.customId === 'feed_quick_3star') {
             targetsToFeed = master.craftEssences
               .map((c: any, idx: number) => (c && (c.rarity || 3) <= 3 ? String(idx) : null))
@@ -224,7 +251,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     let targetsToFeed: string[] = [];
     const lowQuery = query.toLowerCase();
 
-    if (lowQuery === 'all_3star' || lowQuery === '3star' || lowQuery === '3*') {
+    if (lowQuery === 'embers' || lowQuery === 'ember' || lowQuery === 'exp' || lowQuery === 'exp_embers') {
+      targetsToFeed = ownedCes
+        .map((c: any, idx: number) => (c && (c.isEmber || (c.expValue && c.expValue > 0 && !c.atkBonus)) ? String(idx) : null))
+        .filter(Boolean) as string[];
+    } else if (lowQuery === 'all_3star' || lowQuery === '3star' || lowQuery === '3*') {
       targetsToFeed = ownedCes
         .map((c: any, idx: number) => (c && c.rarity <= 3 ? String(idx) : null))
         .filter(Boolean) as string[];

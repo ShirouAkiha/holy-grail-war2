@@ -396,13 +396,18 @@ export async function buildServantHub(
     embeds = [embed];
 
   } else if (category === 'feed_ce') {
-    const ownedCes = (master.craftEssences || []).filter(Boolean);
+    const ownedCes = [...((master.craftEssences || []).filter(Boolean))].sort((a: any, b: any) => {
+      const aEmber = a.isEmber ? 1 : 0;
+      const bEmber = b.isEmber ? 1 : 0;
+      return bEmber - aEmber;
+    });
     const availPts = targetServant.availableStatPoints || 0;
     const currentTotalExp = targetServant.experience ?? getTotalExpForLevel(lvl);
 
-    const ceSummaryLines = ownedCes.slice(0, 6).map((c: any) => {
+    const ceSummaryLines = ownedCes.slice(0, 8).map((c: any) => {
       const expVal = getCeExpValue(c);
-      return `• **★${c.rarity || 3} ${c.name}** — Grants \`+${expVal.toLocaleString()} EXP\``;
+      const emberTag = c.isEmber ? ' ✨ [Universal EXP Ember]' : '';
+      return `• **★${c.rarity || 3} ${c.name}**${emberTag} — Grants \`+${expVal.toLocaleString()} EXP\``;
     }).join('\n');
 
     const embed = new EmbedBuilder()
@@ -688,16 +693,22 @@ export async function buildServantHub(
     );
     components.push(actionButtonsRow);
   } else if (category === 'feed_ce') {
-    const ownedCes = (master.craftEssences || []).filter(Boolean);
+    const ownedCes = [...((master.craftEssences || []).filter(Boolean))].sort((a: any, b: any) => {
+      const aEmber = a.isEmber ? 1 : 0;
+      const bEmber = b.isEmber ? 1 : 0;
+      return bEmber - aEmber;
+    });
+    const emberCount = ownedCes.filter((c: any) => c.isEmber).length;
+
     const ceOptions = ownedCes.slice(0, 25).map((c: any, idx: number) => ({
-      label: `★${c.rarity || 3} ${c.name} (+${getCeExpValue(c)} XP)`.slice(0, 100),
-      description: (c.effectText || 'Craft Essence').slice(0, 100),
-      value: String(idx)
+      label: `${c.isEmber ? '✨ ' : ''}★${c.rarity || 3} ${c.name} (+${getCeExpValue(c).toLocaleString()} XP)`.slice(0, 100),
+      description: (c.effectText || c.description || 'Craft Essence').slice(0, 100),
+      value: c.id || String(idx)
     }));
     if (ceOptions.length > 0) {
       const feedSelect = new StringSelectMenuBuilder()
         .setCustomId('servant_sel_feed_ce')
-        .setPlaceholder('🧪 Select Craft Essence(s) to synthesize (+EXP)...')
+        .setPlaceholder('🧪 Select Craft Essence(s) or EXP Embers to synthesize (+EXP)...')
         .setMinValues(1)
         .setMaxValues(Math.min(ceOptions.length, 25))
         .addOptions(ceOptions);
@@ -705,10 +716,11 @@ export async function buildServantHub(
     }
     const canReclaim = (targetServant.level || 1) > 1 || (targetServant.experience || 0) > 0;
     actionButtonsRow.addComponents(
-      new ButtonBuilder().setCustomId('servant_act_feed_3star').setLabel('Feed 1-3★ CEs').setEmoji('⚡').setStyle(ButtonStyle.Success).setDisabled(ownedCes.length === 0),
-      new ButtonBuilder().setCustomId('servant_act_feed_dupes').setLabel('Feed Dupes').setEmoji('🔥').setStyle(ButtonStyle.Primary).setDisabled(ownedCes.length === 0),
+      new ButtonBuilder().setCustomId('servant_act_feed_embers').setLabel(`✨ Feed Embers (${emberCount})`).setStyle(ButtonStyle.Success).setDisabled(emberCount === 0),
+      new ButtonBuilder().setCustomId('servant_act_feed_3star').setLabel('Feed 1-3★ CEs').setEmoji('⚡').setStyle(ButtonStyle.Primary).setDisabled(ownedCes.length === 0),
+      new ButtonBuilder().setCustomId('servant_act_feed_dupes').setLabel('Feed Dupes').setEmoji('🔥').setStyle(ButtonStyle.Secondary).setDisabled(ownedCes.length === 0),
       new ButtonBuilder().setCustomId('servant_act_feed_all').setLabel('Feed All CEs').setEmoji('☣️').setStyle(ButtonStyle.Danger).setDisabled(ownedCes.length === 0),
-      new ButtonBuilder().setCustomId('servant_act_reclaim_exp').setLabel('De-level & Reclaim EXP').setEmoji('⚗️').setStyle(ButtonStyle.Danger).setDisabled(!canReclaim)
+      new ButtonBuilder().setCustomId('servant_act_reclaim_exp').setLabel('De-level & Reclaim').setEmoji('⚗️').setStyle(ButtonStyle.Danger).setDisabled(!canReclaim)
     );
     components.push(actionButtonsRow);
   } else {
@@ -1093,6 +1105,25 @@ export function attachServantCollector(
         return;
       }
       // QUICK FEED BUTTONS
+      else if (i.customId === 'servant_act_feed_embers') {
+        const owned = (master.craftEssences || []).filter(Boolean);
+        const emberIndexes = owned
+          .map((c: any, idx: number) => (c.isEmber || (c.expValue && c.expValue > 0 && !c.atkBonus) ? String(idx) : null))
+          .filter((v: any) => v !== null) as string[];
+        if (emberIndexes.length === 0) {
+          actionOutcomeMsg = `⚠️ No Universal EXP Embers found in your inventory. De-level a Servant or earn Embers to get them!`;
+        } else {
+          const result = feedCraftEssences(targetServant, emberIndexes, owned);
+          master.craftEssences = result.remainingCraftEssences;
+          master.servants = master.servants.map((s: any) => s.id === targetServant.id ? result.updatedServant : s);
+          await saveMaster(master);
+          targetServant = result.updatedServant;
+          const levelDiff = result.newLevel - result.oldLevel;
+          actionOutcomeMsg = `✨ Synthesized ${result.fedEssences.length} Universal EXP Embers!\n` +
+            `• Gained \`+${result.expGained.toLocaleString()} XP\`\n` +
+            (levelDiff > 0 ? `• **LEVEL UP!** Lv.${result.oldLevel} ➔ **Lv.${result.newLevel}**!\n• Gained **+${result.statPointsGained} Stat Points**!` : '');
+        }
+      }
       else if (i.customId === 'servant_act_feed_3star') {
         const owned = (master.craftEssences || []).filter(Boolean);
         const lowRarityIndexes = owned
