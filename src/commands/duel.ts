@@ -1821,6 +1821,9 @@ function resolveStrike(
   // Available stars collected from previous turn (or active skills) used to determine this turn's crit rates
   const starsForCrits = attacker.critStars || 0;
 
+  let totalNpDmgVal = 0;
+  let npLogBlock = '';
+
   // Process 3-card sequence
   for (let i = 0; i < cardsSequence.length; i++) {
     const card = cardsSequence[i];
@@ -1927,6 +1930,24 @@ function resolveStrike(
           npStars = 5;
           npRefund = 0;
         }
+
+        const allyNames = targetAllies.map(a => `**${(a.servant.nickname || a.servant.template?.name || 'Ally').toUpperCase()}**`).join(' & ');
+        let effectDesc = 'Applied War Cry (+30% ATK for 3 Turns)';
+        if (npCardType === 'Arts') {
+          effectDesc = 'Applied Party Invincibility (1T), DEF Up +30% (3T), Debuff Cleanse & Holy HP Regen!';
+        } else if (npCardType === 'Quick') {
+          effectDesc = 'Applied Party Evade (1T)';
+        }
+
+        npLogBlock = 
+          `\n> ════════════════════════════════════\n` +
+          `> 🔱 **NOBLE PHANTASM ACTIVATED** 🔱\n` +
+          `> 🌌 **[ ${npTemplate.name.toUpperCase()} ]**\n` +
+          `> ────────────────────────────────────\n` +
+          `> ◆ **TYPE:** PARTY SUPPORT (${npCardType.toUpperCase()})\n` +
+          `> ◆ **TARGETS:** ${allyNames}\n` +
+          `> ◆ **EFFECTS:** ${effectDesc}\n` +
+          `> ════════════════════════════════════`;
       } else {
         const variance = 0.96 + Math.random() * 0.08;
         let ceNpDmgMult = 1.0;
@@ -1946,6 +1967,8 @@ function resolveStrike(
           : [defender];
 
         const damageDetails: string[] = [];
+        const damageLines: string[] = [];
+        totalNpDmgVal = 0;
 
         targetEnemies.forEach(targetOpp => {
           const targetClassMult = getClassMultiplier(
@@ -1964,7 +1987,8 @@ function resolveStrike(
           let oppDmg = Math.round(Math.max(600, rawNpDmg) * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
           const hitProt = processTargetHitProtection(targetOpp);
-          if (hitProt.isProtected) {
+          const wasProtected = hitProt.isProtected;
+          if (wasProtected) {
             oppDmg = 0;
           }
 
@@ -1979,6 +2003,7 @@ function resolveStrike(
 
           const oppName = targetOpp.servant.nickname || targetOpp.servant.template?.name || 'Enemy';
           damageDetails.push(`${oppName} (took ${oppDmg.toLocaleString()} DMG)`);
+          totalNpDmgVal += oppDmg;
 
           // Slum Veteran Guts check
           const oppPassives = targetOpp.passives || getUnlockedPassives(targetOpp.servant.template?.passives?.length ? targetOpp.servant.template.passives : targetOpp.servant.template?.servantClass, targetOpp.servant.bondLevel || 1);
@@ -1989,11 +2014,13 @@ function resolveStrike(
           }
 
           // Secondary Concept Nullification / Anti-World debuffs
+          let isStunnedThisTurn = false;
           const isDenyTheVictory = (attacker.servant.template.noblePhantasm?.name || '').includes('Deny the Victory') || (attacker.servant.template.noblePhantasm?.name || '').includes('Concept Nullification');
           if (isDenyTheVictory) {
             targetOpp.npGauge = Math.max(0, targetOpp.npGauge - 20);
             if (Math.random() < 0.50) {
               targetOpp.isStunned = true;
+              isStunnedThisTurn = true;
               targetOpp.activeBuffs.push({ name: 'Concept Nullification (Stun)', type: 'stun' as any, value: 100, remainingTurns: 1 });
             }
             targetOpp.activeBuffs.push({ name: 'Deny the Victory (DEF Down)', type: 'debuff_def', value: 30, remainingTurns: 3 });
@@ -2003,11 +2030,40 @@ function resolveStrike(
           if (targetOpp === defender) {
             npDmg = oppDmg;
           }
+
+          // Format status notifications without emojis
+          const statuses: string[] = [];
+          if (wasProtected) {
+            statuses.push(hitProt.type === 'invincible' ? 'ABSORBED BY INVINCIBILITY' : 'EVADED');
+          } else if (targetOpp.currentHp <= 0) {
+            statuses.push('DEFEATED');
+          } else {
+            if (isStunnedThisTurn) statuses.push('STUNNED');
+            if (isDenyTheVictory) statuses.push('DEF DOWN -30%', 'NP GAUGE -20%');
+            if ((targetOpp as any).isSlumVeteranTriggered) statuses.push('SLUMS GUTS REVIVED');
+          }
+
+          const statusSuffix = statuses.length > 0 ? ` [ ${statuses.join(' • ')} ]` : '';
+          damageLines.push(`> • **${oppName.toUpperCase()}** ➔ __**${oppDmg.toLocaleString()} DMG**__${statusSuffix}`);
         });
 
         if (npScope === 'aoe') {
           chainTags.push(`💥 AOE Strike: Hit ${damageDetails.join(', ')}`);
         }
+
+        const typeLabel = npScope === 'aoe' ? 'AREA-OF-EFFECT' : 'SINGLE TARGET';
+        npLogBlock = 
+          `\n> ════════════════════════════════════\n` +
+          `> 🔱 **NOBLE PHANTASM ACTIVATED** 🔱\n` +
+          `> 🌌 **[ ${npTemplate.name.toUpperCase()} ]**\n` +
+          `> ────────────────────────────────────\n` +
+          `> ◆ **TYPE:** ${typeLabel} (${npCardType.toUpperCase()})\n` +
+          `> ◆ **OVERCHARGE:** Lv.${overchargeLevel} (${Math.round(overchargeScale * 100)}% Power)\n` +
+          `> ────────────────────────────────────\n` +
+          damageLines.join('\n') + `\n` +
+          `> ────────────────────────────────────\n` +
+          `> ◆ **TOTAL NP DAMAGE DEALT:** __**${totalNpDmgVal.toLocaleString()} DMG**__\n` +
+          `> ════════════════════════════════════`;
 
         // Refund properties dictated by card type
         if (npCardType === 'Buster') {
@@ -2033,9 +2089,7 @@ function resolveStrike(
       attacker.npGauge = npRefund;
       totalNpGained += npRefund;
       totalStarsGained += npStars;
-      if (npScope === 'single') {
-        totalSeqDmg += npDmg;
-      }
+      // NP damage is handled separately in the flashy NP block.
     } else if (card === 'Buster') {
       const ceBuster = attackerCe?.passiveType === 'buster_up' && attackerCe.id !== 'ce_black_grail' ? (attackerCe.passiveValue || 0) : 0;
       let cardMult = 1.4 * posMult * (1.0 + (madnessBonus + ceBuster) / 100);
@@ -2351,8 +2405,15 @@ function resolveStrike(
   const dInfo = dialogue || getCombatantChainDialogue(attacker, cardsSequence);
   const quoteLine = dInfo.quote ? `\n💬 *“${dInfo.quote}”*` : '';
 
+  const grandTotalDamage = totalSeqDmg + (hasNpHit ? totalNpDmgVal : 0);
+
+  const dmgLine = hasNpHit
+    ? `• Dealt **${grandTotalDamage.toLocaleString()} DMG** to target team *(Breakdown: ${totalNpDmgVal.toLocaleString()} NP DMG • ${totalSeqDmg.toLocaleString()} Chain Cards DMG)*\n`
+    : `• Dealt **${grandTotalDamage.toLocaleString()} DMG** to ${defender.servant.template.name}\n`;
+
   const logText = `⚔️ **${attacker.servant.template.name}** executed sequence **[${seqNames}]**${npHeader}${critTag}${evadeTag}:${quoteLine}\n` +
-    `• Dealt **${totalSeqDmg.toLocaleString()} DMG** to ${defender.servant.template.name}\n` +
+    npLogBlock + (npLogBlock ? '\n' : '') +
+    dmgLine +
     `• Gained **+${totalNpGained}% NP** & **+${totalStarsGained} Critical Stars**${chainStr}${gutsText}${avengerLog}${revertText}`;
 
   return logText;
