@@ -1543,7 +1543,9 @@ function resolveStrike(
   attacker: DuelCombatant,
   defender: DuelCombatant,
   cardsSequence: ('Buster' | 'Arts' | 'Quick' | 'NP')[],
-  dialogue?: { quote: string; tag: string }
+  dialogue?: { quote: string; tag: string },
+  livingOpponents?: DuelCombatant[],
+  livingAllies?: DuelCombatant[]
 ): string {
   // Decrement attacker skill cooldowns
   for (const idxStr of Object.keys(attacker.skillCooldowns)) {
@@ -1715,66 +1717,64 @@ function resolveStrike(
   let turnBlockedByInvincible = false;
   let turnBlockedByEvade = false;
 
-  const processHitProtection = (): { isProtected: boolean; type?: 'invincible' | 'evade' } => {
+  const processTargetHitProtection = (targetDefender: DuelCombatant): { isProtected: boolean; type?: 'invincible' | 'evade' } => {
     const actorIgnores = attackerCe?.id === 'ce_origin_bullet' || attackerCe?.passiveType === 'ignore_invincible' || attacker.activeBuffs.some(b => b.type === 'ignore_invincible');
     if (actorIgnores) return { isProtected: false };
 
     // 1. Invincible has priority over Evade
-    const invIdx = defender.activeBuffs.findIndex(b => b.type === 'invincible');
+    const invIdx = targetDefender.activeBuffs.findIndex(b => b.type === 'invincible');
     if (invIdx !== -1) {
-      const buff = defender.activeBuffs[invIdx];
+      const buff = targetDefender.activeBuffs[invIdx];
       const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /volumen/i.test(buff.name);
       if (isHitBased) {
         if (buff.remainingHits === undefined) buff.remainingHits = 3;
         if (buff.remainingHits <= 0) {
-          defender.activeBuffs.splice(invIdx, 1);
+          targetDefender.activeBuffs.splice(invIdx, 1);
         } else {
-          turnBlockedByInvincible = true;
           buff.remainingHits--;
           if (buff.remainingHits <= 0) {
-            defender.activeBuffs.splice(invIdx, 1);
+            targetDefender.activeBuffs.splice(invIdx, 1);
           }
           return { isProtected: true, type: 'invincible' };
         }
       } else {
         if (buff.remainingTurns > 0) {
-          turnBlockedByInvincible = true;
           return { isProtected: true, type: 'invincible' };
         } else {
-          defender.activeBuffs.splice(invIdx, 1);
+          targetDefender.activeBuffs.splice(invIdx, 1);
         }
       }
     }
 
     // 2. Evade check
-    const evaIdx = defender.activeBuffs.findIndex(b => b.type === 'evade');
+    const evaIdx = targetDefender.activeBuffs.findIndex(b => b.type === 'evade');
     if (evaIdx !== -1) {
-      const buff = defender.activeBuffs[evaIdx];
+      const buff = targetDefender.activeBuffs[evaIdx];
       const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /protection from arrows/i.test(buff.name);
       if (isHitBased) {
         if (buff.remainingHits === undefined) buff.remainingHits = 3;
         if (buff.remainingHits <= 0) {
-          defender.activeBuffs.splice(evaIdx, 1);
+          targetDefender.activeBuffs.splice(evaIdx, 1);
         } else {
-          turnBlockedByEvade = true;
           buff.remainingHits--;
           if (buff.remainingHits <= 0) {
-            defender.activeBuffs.splice(evaIdx, 1);
+            targetDefender.activeBuffs.splice(evaIdx, 1);
           }
           return { isProtected: true, type: 'evade' };
         }
       } else {
         if (buff.remainingTurns > 0) {
-          turnBlockedByEvade = true;
           return { isProtected: true, type: 'evade' };
         } else {
-          defender.activeBuffs.splice(evaIdx, 1);
+          targetDefender.activeBuffs.splice(evaIdx, 1);
         }
       }
     }
 
     return { isProtected: false };
   };
+
+  const processHitProtection = () => processTargetHitProtection(defender);
 
   // 1st Card Lead Bonus Evaluation (NP card uses its permanently mapped Card Type)
   const npEffectiveCard = attacker.servant.template.noblePhantasm?.cardType || 'Buster';
@@ -1867,81 +1867,65 @@ function resolveStrike(
       let npStars = 0;
 
       if (npScope === 'support') {
-        // Non-damaging Support NP
-        npDmg = 0;
-        if (npCardType === 'Arts') {
-          const isLuminosite = /luminosit|jeanne/i.test(npTemplate.name) || attacker.servant.template.id === 'jeanne_darc_ruler';
-          const isTigris = /tigris|edmond/i.test(npTemplate.name) || attacker.servant.template.id === 'edmond';
-          if (isTigris) {
-            const defBonus = 30 + (overchargeLevel - 1) * 10;
-            attacker.activeBuffs.push({ name: 'Tigris Bulwark (Defense Up)', type: 'buff_def', value: defBonus, remainingTurns: 3 });
-            attacker.activeBuffs.push({ name: 'Tigris Bastion (Invincible)', type: 'invincible', value: 100, remainingTurns: 1 });
-            const damageCutVal = 1500 + (overchargeLevel - 1) * 750;
-            attacker.activeBuffs.push({ name: 'Living Earth (Damage Cut)', type: 'damage_cut', value: damageCutVal, remainingTurns: 3 });
-            chainTags.push(`⛰️ Tigris Redoubt (+${defBonus}% DEF 3T • Invincible 1T • +${damageCutVal.toLocaleString()} Damage Cut 3T)`);
-            npRefund = 0;
-            npStars = 5;
-          } else if (isLuminosite) {
-            // 1. Removes party's debuffs
-            const debuffsFound = attacker.activeBuffs.filter(b =>
-              b.type.startsWith('debuff') ||
-              b.type === 'stun' ||
-              b.type === 'burn' ||
-              b.type === 'poison' ||
-              b.type === 'curse' ||
-              b.type === 'np_dmg_down' ||
-              b.type === 'charm' ||
-              b.type === 'atk_down' ||
-              b.type === 'def_down' ||
-              (b.value < 0) ||
-              /debuff|down|curse|burn|poison|stun|bound/i.test(b.name)
-            );
-            const debuffCount = debuffsFound.length;
+        // Non-damaging Support NP applies EXCLUSIVELY to living allies (NEVER enemies)
+        const targetAllies = (livingAllies && livingAllies.length > 0) ? livingAllies.filter(a => a.currentHp > 0) : [attacker];
 
-            attacker.activeBuffs = attacker.activeBuffs.filter(b =>
-              !b.type.startsWith('debuff') &&
-              b.type !== 'stun' &&
-              b.type !== 'burn' &&
-              b.type !== 'poison' &&
-              b.type !== 'curse' &&
-              b.type !== 'np_dmg_down' &&
-              b.type !== 'charm' &&
-              b.type !== 'atk_down' &&
-              b.type !== 'def_down' &&
-              !(b.value < 0) &&
-              !/debuff|down|curse|burn|poison|stun|bound/i.test(b.name)
-            );
-            attacker.isStunned = false;
+        targetAllies.forEach(allyCombatant => {
+          if (npCardType === 'Arts') {
+            const isLuminosite = /luminosit|jeanne/i.test(npTemplate.name) || attacker.servant.template.id === 'jeanne_darc_ruler';
+            const isTigris = /tigris|edmond/i.test(npTemplate.name) || attacker.servant.template.id === 'edmond';
+            if (isTigris) {
+              const defBonus = 30 + (overchargeLevel - 1) * 10;
+              allyCombatant.activeBuffs.push({ name: 'Tigris Bulwark (Defense Up)', type: 'buff_def', value: defBonus, remainingTurns: 3 });
+              allyCombatant.activeBuffs.push({ name: 'Tigris Bastion (Invincible)', type: 'invincible', value: 100, remainingTurns: 1 });
+              const damageCutVal = 1500 + (overchargeLevel - 1) * 750;
+              allyCombatant.activeBuffs.push({ name: 'Living Earth (Damage Cut)', type: 'damage_cut', value: damageCutVal, remainingTurns: 3 });
+            } else if (isLuminosite) {
+              // Removes party debuffs
+              allyCombatant.activeBuffs = allyCombatant.activeBuffs.filter(b =>
+                !b.type.startsWith('debuff') &&
+                b.type !== 'stun' &&
+                b.type !== 'burn' &&
+                b.type !== 'poison' &&
+                b.type !== 'curse' &&
+                b.type !== 'np_dmg_down' &&
+                b.type !== 'charm' &&
+                b.type !== 'atk_down' &&
+                b.type !== 'def_down' &&
+                !(b.value < 0) &&
+                !/debuff|down|curse|burn|poison|stun|bound/i.test(b.name)
+              );
+              allyCombatant.isStunned = false;
 
-            // 2. Grants party Invincibility for 1 turn
-            attacker.activeBuffs.push({ name: 'Luminosité Invincibility', type: 'invincible', value: 100, remainingTurns: 1 });
-
-            // 3. Increases party's defense for 3 turns (+30% DEF)
-            attacker.activeBuffs.push({ name: 'Divine Protection', type: 'buff_def', value: 30, remainingTurns: 3 });
-
-            // 4. Overcharge: Recovers party's HP every turn for 2 turns (1,000 - 3,000 HP/turn)
-            const regenPerTurn = 1000 + (overchargeLevel - 1) * 500;
-            attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + regenPerTurn);
-            attacker.activeBuffs.push({ name: 'Luminosité Holy Regen', type: 'hp_regen', value: regenPerTurn, remainingTurns: 2 });
-
-            chainTags.push(`🕊️ Luminosité Eternelle (Party Invincible 1T • +30% DEF 3T • Cleanse Debuffs${debuffCount > 0 ? ` [${debuffCount} removed]` : ''} • +${regenPerTurn.toLocaleString()} HP/turn for 2T)`);
-            npRefund = 0;
-            npStars = 0;
+              // Party Invincibility 1T, DEF Up +30% 3T, Holy Regen
+              allyCombatant.activeBuffs.push({ name: 'Luminosité Invincibility', type: 'invincible', value: 100, remainingTurns: 1 });
+              allyCombatant.activeBuffs.push({ name: 'Divine Protection', type: 'buff_def', value: 30, remainingTurns: 3 });
+              const regenPerTurn = 1000 + (overchargeLevel - 1) * 500;
+              allyCombatant.currentHp = Math.min(allyCombatant.maxHp, allyCombatant.currentHp + regenPerTurn);
+              allyCombatant.activeBuffs.push({ name: 'Luminosité Holy Regen', type: 'hp_regen', value: regenPerTurn, remainingTurns: 2 });
+            } else {
+              const healAmount = Math.round(allyCombatant.maxHp * 0.20);
+              allyCombatant.currentHp = Math.min(allyCombatant.maxHp, allyCombatant.currentHp + healAmount);
+              allyCombatant.activeBuffs.push({ name: 'Invincibility', type: 'invincible', value: 100, remainingTurns: 1 });
+              allyCombatant.activeBuffs.push({ name: 'Divine Protection', type: 'buff_def', value: 30, remainingTurns: 3 });
+            }
+          } else if (npCardType === 'Quick') {
+            allyCombatant.activeBuffs.push({ name: 'Evade', type: 'evade', value: 100, remainingTurns: 1 });
           } else {
-            const healAmount = Math.round(attacker.maxHp * 0.20);
-            attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + healAmount);
-            attacker.activeBuffs.push({ name: 'Invincibility', type: 'invincible', value: 100, remainingTurns: 1 });
-            attacker.activeBuffs.push({ name: 'Divine Protection', type: 'buff_def', value: 30, remainingTurns: 3 });
-            npRefund = Math.round(15 * (1.0 + artsBuff / 100));
-            npStars = 3;
+            allyCombatant.activeBuffs.push({ name: 'War Cry', type: 'buff_atk', value: 30, remainingTurns: 3 });
           }
+        });
+
+        if (npCardType === 'Arts') {
+          chainTags.push(`🕊️ Party Support NP Unleashed (Invincible 1T • DEF Up 3T • Debuff Cleanse • HP Regen)`);
+          npRefund = 15;
+          npStars = 3;
         } else if (npCardType === 'Quick') {
           npStars = Math.round(20 * (1.0 + quickBuff / 100));
-          attacker.activeBuffs.push({ name: 'Evade', type: 'evade', value: 100, remainingTurns: 1 });
           npRefund = Math.round(8 * (1.0 + quickBuff / 100));
         } else {
-          attacker.activeBuffs.push({ name: 'War Cry', type: 'buff_atk', value: 30, remainingTurns: 3 });
           npStars = 5;
+          npRefund = 0;
         }
       } else {
         const variance = 0.96 + Math.random() * 0.08;
@@ -1956,44 +1940,76 @@ function resolveStrike(
           .reduce((s, b) => s + b.value, 0);
         const npStrengthScale = Math.max(0.05, 1.0 - (npDmgDebuff / 100));
 
-        const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * classMult * cardPerfMult * ceNpDmgMult * npStrengthScale * variance);
-        npDmg = Math.round(Math.max(600, rawNpDmg) * PVP_DAMAGE_MODIFIER) + flatDivinity;
+        // Offense Noble Phantasms: ST hits locked defender, AoE hits EXCLUSIVELY living opponents (NEVER allies)
+        const targetEnemies = (npScope === 'aoe')
+          ? ((livingOpponents && livingOpponents.length > 0) ? livingOpponents.filter(o => o.currentHp > 0) : [defender])
+          : [defender];
 
-        const hitProt = processHitProtection();
-        if (hitProt.isProtected) {
-          npDmg = 0; // Completely evade/nullify incoming NP damage
-        }
+        const damageDetails: string[] = [];
 
-        // Check Concept Nullification: Deny the Victory Anti-World effects
-        const isDenyTheVictory = (attacker.servant.template.noblePhantasm?.name || '').includes('Deny the Victory') || (attacker.servant.template.noblePhantasm?.name || '').includes('Concept Nullification');
-        if (isDenyTheVictory) {
-          defender.npGauge = Math.max(0, defender.npGauge - 20);
-          const stunRoll = Math.random() < 0.50;
-          if (stunRoll) {
-            defender.isStunned = true;
-            defender.activeBuffs.push({
-              name: 'Concept Nullification (Stun)',
-              type: 'stun' as any,
-              value: 100,
-              remainingTurns: 1
-            });
+        targetEnemies.forEach(targetOpp => {
+          const targetClassMult = getClassMultiplier(
+            attacker.servant.template.servantClass,
+            targetOpp.servant.template.servantClass
+          );
+
+          let oppDefBuff = 1.0;
+          targetOpp.activeBuffs.forEach(b => {
+            if (b.type === 'buff_def') oppDefBuff += b.value / 100;
+            if (b.type === 'debuff_def') oppDefBuff -= b.value / 100;
+          });
+          const targetEffectiveDef = targetOpp.baseDef * oppDefBuff;
+
+          const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * targetClassMult * cardPerfMult * ceNpDmgMult * npStrengthScale * variance);
+          let oppDmg = Math.round(Math.max(600, rawNpDmg) * PVP_DAMAGE_MODIFIER) + flatDivinity;
+
+          const hitProt = processTargetHitProtection(targetOpp);
+          if (hitProt.isProtected) {
+            oppDmg = 0;
           }
-          defender.activeBuffs.push({
-            name: 'Deny the Victory (DEF Down)',
-            type: 'debuff_def',
-            value: 30,
-            remainingTurns: 3
-          });
-          defender.activeBuffs.push({
-            name: 'Deny the Victory (Crit Rate Down)',
-            type: 'debuff_atk',
-            value: 20,
-            remainingTurns: 3
-          });
-          chainTags.push(`🌌 Concept Nullification (-20% NP Drain • -30% DEF 3T • -20% Crit 3T${stunRoll ? ' • 💫 STUNNED 1T' : ''})`);
+
+          // Damage cut calculation
+          const targetCut = targetOpp.activeBuffs.filter(b => b.type === 'damage_cut').reduce((s, b) => s + b.value, 0);
+          if (targetCut > 0 && oppDmg > 0) {
+            oppDmg = Math.max(0, oppDmg - targetCut);
+          }
+
+          // Directly apply AoE NP damage to this enemy
+          targetOpp.currentHp = Math.max(0, targetOpp.currentHp - oppDmg);
+
+          const oppName = targetOpp.servant.nickname || targetOpp.servant.template?.name || 'Enemy';
+          damageDetails.push(`${oppName} (took ${oppDmg.toLocaleString()} DMG)`);
+
+          // Slum Veteran Guts check
+          const oppPassives = targetOpp.passives || getUnlockedPassives(targetOpp.servant.template?.passives?.length ? targetOpp.servant.template.passives : targetOpp.servant.template?.servantClass, targetOpp.servant.bondLevel || 1);
+          const hasDefSlums = oppPassives.some(p => p.type === 'veteran_of_the_slums' || (p.name && p.name.includes('Veteran of the Slums'))) && !(targetOpp as any).isSlumVeteranTriggered;
+          if (hasDefSlums && targetOpp.currentHp <= 0) {
+            (targetOpp as any).isSlumVeteranTriggered = true;
+            targetOpp.currentHp = 3000;
+          }
+
+          // Secondary Concept Nullification / Anti-World debuffs
+          const isDenyTheVictory = (attacker.servant.template.noblePhantasm?.name || '').includes('Deny the Victory') || (attacker.servant.template.noblePhantasm?.name || '').includes('Concept Nullification');
+          if (isDenyTheVictory) {
+            targetOpp.npGauge = Math.max(0, targetOpp.npGauge - 20);
+            if (Math.random() < 0.50) {
+              targetOpp.isStunned = true;
+              targetOpp.activeBuffs.push({ name: 'Concept Nullification (Stun)', type: 'stun' as any, value: 100, remainingTurns: 1 });
+            }
+            targetOpp.activeBuffs.push({ name: 'Deny the Victory (DEF Down)', type: 'debuff_def', value: 30, remainingTurns: 3 });
+            targetOpp.activeBuffs.push({ name: 'Deny the Victory (Crit Rate Down)', type: 'debuff_atk', value: 20, remainingTurns: 3 });
+          }
+
+          if (targetOpp === defender) {
+            npDmg = oppDmg;
+          }
+        });
+
+        if (npScope === 'aoe') {
+          chainTags.push(`💥 AOE Strike: Hit ${damageDetails.join(', ')}`);
         }
 
-        // Refund properties dictated by card type (Balanced FGO tuning)
+        // Refund properties dictated by card type
         if (npCardType === 'Buster') {
           const hasOverchargeRefund = /refund|recharge/i.test(attacker.servant.template.noblePhantasm?.overchargeEffect || '');
           npRefund = hasOverchargeRefund ? (overchargeLevel >= 2 ? 30 : 20) : 0;
@@ -2017,7 +2033,9 @@ function resolveStrike(
       attacker.npGauge = npRefund;
       totalNpGained += npRefund;
       totalStarsGained += npStars;
-      totalSeqDmg += npDmg;
+      if (npScope === 'single') {
+        totalSeqDmg += npDmg;
+      }
     } else if (card === 'Buster') {
       const ceBuster = attackerCe?.passiveType === 'buster_up' && attackerCe.id !== 'ce_black_grail' ? (attackerCe.passiveValue || 0) : 0;
       let cardMult = 1.4 * posMult * (1.0 + (madnessBonus + ceBuster) / 100);
