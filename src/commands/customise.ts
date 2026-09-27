@@ -509,7 +509,7 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
                     `**Class:** ${s.template?.servantClass} | **Status:** ⚖️ Balanced Parity\n` +
                     `**Level:** Lv.${s.level || 1} | **Bond:** Lv.${s.bondLevel || 1}\n` +
                     `**Noble Phantasm:** ${s.template?.noblePhantasm?.name || 'Classified'} [${s.template?.noblePhantasm?.rank || 'A++'}]\n\n` +
-                    `*Use \`/servant\` or \`!servant\` to view their full parameter radar card.*`
+                    `*Use \`/servant\` to view their full parameter radar card.*`
                   )
                   .setColor(0xd4af37)
               ]
