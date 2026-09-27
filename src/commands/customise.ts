@@ -351,7 +351,7 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
   let currentPage = 1;
   let selectedItemId: string | undefined = activeServant?.equippedCeId;
   let ceViewMode: 'all' | 'owned' = 'all';
-  let ceRarityFilter: 'all' | 5 | 4 | 3 | 'bond' = 'all';
+  let ceRarityFilter: 'all' | 5 | 4 | 3 | 'bond' | 'embers' = 'all';
   let ceSearchQuery = '';
 
   const collector = replyMessage.createMessageComponentCollector({
