@@ -703,7 +703,7 @@ export async function buildServantHub(
     const ceOptions = ownedCes.slice(0, 25).map((c: any, idx: number) => ({
       label: `${c.isEmber ? '✨ ' : ''}★${c.rarity || 3} ${c.name} (+${getCeExpValue(c).toLocaleString()} XP)`.slice(0, 100),
       description: (c.effectText || c.description || 'Craft Essence').slice(0, 100),
-      value: c.id || String(idx)
+      value: String(idx)
     }));
     if (ceOptions.length > 0) {
       const feedSelect = new StringSelectMenuBuilder()
@@ -1209,7 +1209,11 @@ export function attachServantCollector(
       // FEED CRAFT ESSENCE SYNTHESIS (Multi-select supported)
       else if (i.customId === 'servant_sel_feed_ce') {
         const ceIndices = i.values;
-        const owned = (master.craftEssences || []).filter(Boolean);
+        const owned = [...((master.craftEssences || []).filter(Boolean))].sort((a: any, b: any) => {
+          const aEmber = a.isEmber ? 1 : 0;
+          const bEmber = b.isEmber ? 1 : 0;
+          return bEmber - aEmber;
+        });
         const result = feedCraftEssences(targetServant, ceIndices, owned);
         
         master.craftEssences = result.remainingCraftEssences;
