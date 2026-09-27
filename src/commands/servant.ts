@@ -22,7 +22,8 @@ import {
   getCeExpValue, 
   respecServantStats, 
   reclaimServantLevelAndExp, 
-  getTotalExpForLevel 
+  getTotalExpForLevel,
+  calculateLevelFromExp
 } from '../engine/customization';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
@@ -314,12 +315,17 @@ export async function buildServantHub(
       `• ⚔️ **Battle Start:** *"${customQ.battleStart || t.battleStartQuote || 'Enemies ahead!'}"*\n` +
       `• 🏆 **Victory:** *"${customQ.victory || t.victoryQuote || 'A victorious battle.'}"*`;
 
+    const currentTotalExp = targetServant.experience ?? getTotalExpForLevel(lvl);
+    const expStatus = calculateLevelFromExp(currentTotalExp);
+    const expNeeded = expStatus.level >= 100 ? 0 : Math.max(0, expStatus.nextLevelExp - expStatus.currentLevelExp);
+
     const embed = new EmbedBuilder()
       .setTitle(`⚔️ Servant Workshop — Profile Card: ${sName}`)
       .setDescription(
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `*${t.title}* • **Master:** ${master.username}\n` +
-        `🌟 **Class:** ${t.servantClass} | **Status:** ⚖️ Balanced Parity | **Bond Lv:** ${bondLevel}/10 ♥ | **Level:** Lv.${lvl}/100\n` +
+        `🌟 **Class:** ${t.servantClass} | **Status:** ⚖️ Balanced Parity | **Bond Lv:** ${bondLevel}/10 ♥ | **Level:** Lv.${expStatus.level}/100\n` +
+        `🔮 **Level Progress:** \`${expStatus.currentLevelExp.toLocaleString()} / ${expStatus.nextLevelExp.toLocaleString()} XP\` (${expStatus.progressPercent}%) • \`${expNeeded.toLocaleString()} XP to Lv.${Math.min(100, expStatus.level + 1)}\`\n` +
         `❤️ **HP:** \`${currentHp.toLocaleString()} / ${totalHp.toLocaleString()}\` (${hpPercent}%) | ⚔️ **Total ATK:** \`${totalAtk.toLocaleString()}\` | 📈 **Stat Points:** **${targetServant.availableStatPoints || 0} pts**\n\n` +
         `📜 **Historical Legend & Lore:**\n> *${t.lore || 'A legendary heroic soul recorded in the Throne of Heroes, bound to fight in the Holy Grail War.'}*\n\n` +
         `📊 **Battle Parameters:**\n` +
@@ -353,12 +359,15 @@ export async function buildServantHub(
     const availPoints = targetServant.availableStatPoints || 0;
     const totalAllocated = (alloc.strength || 0) + (alloc.endurance || 0) + (alloc.agility || 0) + (alloc.mana || 0) + (alloc.luck || 0);
     const stepLabel = currentStep >= 9999 ? 'MAX' : `${currentStep}`;
+    const currentTotalExp = targetServant.experience ?? getTotalExpForLevel(lvl);
+    const expStatus = calculateLevelFromExp(currentTotalExp);
+    const expNeeded = expStatus.level >= 100 ? 0 : Math.max(0, expStatus.nextLevelExp - expStatus.currentLevelExp);
 
     const embed = new EmbedBuilder()
       .setTitle(`⭐ Parameter Point Allocation: ${sName}`)
       .setDescription(
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
-        `👑 **Servant:** **${sName}** (${t.servantClass}) • **Level:** Lv.${lvl}/100\n` +
+        `👑 **Servant:** **${sName}** (${t.servantClass}) • **Level:** \`Lv.${expStatus.level}/100\` *(${expNeeded.toLocaleString()} XP to Lv.${Math.min(100, expStatus.level + 1)})*\n` +
         `📊 **Total Allocated:** \`${totalAllocated.toLocaleString()} pts\` | 📈 **Unspent Stat Points:** \`${availPoints.toLocaleString()} pts\`\n\n` +
         `💪 **Strength (STR):** \`${strTotal}\` [**${getRank(strTotal)}**] — *Increases base attack damage (+${alloc.strength || 0} allocated)*\n` +
         `🛡️ **Endurance (END):** \`${endTotal}\` [**${getRank(endTotal)}**] — *Increases maximum health pool (+${alloc.endurance || 0} allocated)*\n` +
@@ -403,6 +412,11 @@ export async function buildServantHub(
     });
     const availPts = targetServant.availableStatPoints || 0;
     const currentTotalExp = targetServant.experience ?? getTotalExpForLevel(lvl);
+    const expStatus = calculateLevelFromExp(currentTotalExp);
+    const expNeeded = expStatus.level >= 100 ? 0 : Math.max(0, expStatus.nextLevelExp - expStatus.currentLevelExp);
+    const filledBlocks = Math.min(10, Math.max(0, Math.floor(expStatus.progressPercent / 10)));
+    const emptyBlocks = 10 - filledBlocks;
+    const expProgressBar = `[${'▰'.repeat(filledBlocks)}${'▱'.repeat(emptyBlocks)}] ${expStatus.progressPercent}%`;
 
     const ceSummaryLines = ownedCes.slice(0, 8).map((c: any) => {
       const expVal = getCeExpValue(c);
@@ -415,7 +429,9 @@ export async function buildServantHub(
       .setDescription(
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `👑 **Servant:** **${sName}** (${t.servantClass})\n` +
-        `📊 **Current Level:** \`Lv.${lvl}/100\` | **Total EXP:** \`${currentTotalExp.toLocaleString()} XP\`\n` +
+        `📊 **Current Level:** \`Lv.${expStatus.level}/100\` | **Total EXP:** \`${currentTotalExp.toLocaleString()} XP\`\n` +
+        `🔮 **EXP to Next Level:** \`${expNeeded > 0 ? `${expNeeded.toLocaleString()} XP needed` : 'MAX LEVEL REACHED'}\` *(${expStatus.currentLevelExp.toLocaleString()} / ${expStatus.nextLevelExp.toLocaleString()} XP)*\n` +
+        `📈 **Level Progress:** \`${expProgressBar}\`\n` +
         `⭐ **Unspent Stat Points:** \`${availPts} pts\` *(+10 Stat Points earned on every Level Up!)*\n\n` +
         `💡 **SYNTHESIS & EXTRACTION:**\n` +
         `• **Synthesize CEs:** Feed surplus Craft Essences or EXP Embers to increase Level & earn Stat Points.\n` +

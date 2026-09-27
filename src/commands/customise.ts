@@ -1284,15 +1284,21 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           return `\`#${idx + 1}\` **${ce.name}** [${star}] — **+${exp.toLocaleString()} EXP**${isEq}`;
         }).join('\n');
 
+        const expNeeded = expStatus.level >= 100 ? 0 : Math.max(0, expStatus.nextLevelExp - expStatus.currentLevelExp);
+        const filledBlocks = Math.min(10, Math.max(0, Math.floor(expStatus.progressPercent / 10)));
+        const emptyBlocks = 10 - filledBlocks;
+        const expProgressBar = `[${'▰'.repeat(filledBlocks)}${'▱'.repeat(emptyBlocks)}] ${expStatus.progressPercent}%`;
+
         const embed = new EmbedBuilder()
           .setTitle(`✨ Spirit Origin Enhancement: ${servantName}`)
           .setDescription(
             `Feed Craft Essences into **${servantName}**'s Saint Graph to grant massive Spirit EXP.\n` +
             `⭐ **Leveling Rule:** Every Level Up awards **+10 Available Stat Points**!\n\n` +
             `📊 **Current Status:**\n` +
-            `• **Level:** \`Lv. ${activeServant.level || 1} / 100\`\n` +
+            `• **Level:** \`Lv. ${expStatus.level} / 100\`\n` +
             `• **Total EXP:** \`${currentExp.toLocaleString()} EXP\`\n` +
-            `• **Next Level:** \`${expStatus.currentLevelExp.toLocaleString()} / ${expStatus.nextLevelExp.toLocaleString()} EXP\` (${expStatus.progressPercent}%)\n` +
+            `• **EXP to Next Level:** \`${expNeeded > 0 ? `${expNeeded.toLocaleString()} XP needed` : 'MAX LEVEL REACHED'}\` *(${expStatus.currentLevelExp.toLocaleString()} / ${expStatus.nextLevelExp.toLocaleString()} XP)*\n` +
+            `• **Level Progress:** \`${expProgressBar}\`\n` +
             `• **Unspent Stat Points:** \`${activeServant.availableStatPoints || 0} pts\`\n\n` +
             `📦 **Inventory Essences (${ownedCes.length} total):**\n` +
             `${ceSummary}\n\n` +
