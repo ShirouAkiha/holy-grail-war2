@@ -66,7 +66,8 @@ export function CanvasRenderer({ canvasType, payload }: { canvasType: string; pa
         payload.p1Ally,
         payload.p2Ally,
         payload.teamA,
-        payload.teamB
+        payload.teamB,
+        payload.teamSolo
       );
     } else if (canvasType === 'gacha') {
       renderGachaSummonBanner(canvas, payload.results || [], payload.bannerTitle || 'Craft Essence Forge');

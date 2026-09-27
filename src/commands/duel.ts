@@ -569,7 +569,11 @@ async function createTurnSummaryAttachment(
       lastLogText.includes(`to ${c.servant.template.name}`)
     )
   );
-  const activeDefender = foundDefender || (activeAttacker === p1 ? p2 : p1);
+  const activeDefender = foundDefender || (
+    activeAttacker.selectedTargetId
+      ? allCombatants.find(c => c.userId === activeAttacker.selectedTargetId && c.currentHp > 0)
+      : undefined
+  ) || (activeAttacker === p1 ? p2 : p1);
 
   const activeCards = activeAttacker === p2 ? p2Cards : p1Cards;
 
@@ -615,6 +619,16 @@ async function createTurnSummaryAttachment(
     .replace(/\s+/g, ' ')
     .trim();
 
+  const activeTeamSolo = teamSoloList.map(c => {
+    const mapped = mapToActive(c);
+    mapped.isSoloRogue = true;
+    mapped.roleTag = 'SOLO ROGUE ⚡';
+    return mapped;
+  });
+
+  const p1AllyCards = p1Ally?.currentHand?.slice(0, 3) || activeTeamSolo[1]?.commandDeck?.slice(0, 3);
+  const p2AllyCards = p2Ally?.currentHand?.slice(0, 3) || activeTeamSolo[0]?.commandDeck?.slice(0, 3);
+
   const turnLog: CombatTurnLog = {
     turnNumber: round,
     actorId: activeAttacker.userId,
@@ -628,6 +642,8 @@ async function createTurnSummaryAttachment(
     cardsUsed: activeCards,
     p1Cards: p1Cards,
     p2Cards: p2Cards,
+    p1AllyCards: p1AllyCards as any,
+    p2AllyCards: p2AllyCards as any,
     skillsUsed: [],
     npTriggered: isNP,
     isNoblePhantasm: isNP,
@@ -645,7 +661,16 @@ async function createTurnSummaryAttachment(
     targetNp: activeDefender.npGauge
   };
 
-  const imageBuffer = await renderBattleTurnSummary(turnLog, activeP1, activeP2, activeP1Ally, activeP2Ally);
+  const imageBuffer = await renderBattleTurnSummary(
+    turnLog,
+    activeP1,
+    activeP2,
+    activeP1Ally,
+    activeP2Ally,
+    undefined,
+    undefined,
+    activeTeamSolo
+  );
   return new AttachmentBuilder(imageBuffer, { name: 'turn_summary.png' });
 }
 
@@ -3346,7 +3371,11 @@ async function startInteractiveDuel(
   const getLivingTeamSolo = () => teamSolo.filter(c => c.currentHp > 0);
   const getTargetsFor = (combatant: DuelCombatant) => {
     if (teamSolo.includes(combatant)) {
-      return [...getLivingTeam1(), ...getLivingTeam2()];
+      return [
+        ...getLivingTeam1(),
+        ...getLivingTeam2(),
+        ...getLivingTeamSolo().filter(c => c.userId !== combatant.userId)
+      ];
     }
     if (team1.includes(combatant)) {
       return [...getLivingTeam2(), ...getLivingTeamSolo()];
@@ -3397,6 +3426,7 @@ async function startInteractiveDuel(
   let p2LastCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = ['Arts', 'Buster', 'Quick'];
 
   const buildCurrentButtons = () => {
+    getSelectedTarget(activeCombatant);
     const oppLiving = getTargetsFor(activeCombatant);
     const myTeam = getMyTeamFor(activeCombatant);
     const hasAlly = myTeam.length > 1;
@@ -3756,12 +3786,12 @@ async function startInteractiveDuel(
     const livingT1 = getLivingTeam1();
     const livingT2 = getLivingTeam2();
     const livingTS = getLivingTeamSolo();
-    const activeFactionsCount = (livingT1.length > 0 ? 1 : 0) + (livingT2.length > 0 ? 1 : 0) + (livingTS.length > 0 ? 1 : 0);
+    const activeFactionsCount = (livingT1.length > 0 ? 1 : 0) + (livingT2.length > 0 ? 1 : 0) + livingTS.length;
 
     // If 1 or fewer factions remain standing, conclude duel!
     if (activeFactionsCount <= 1) {
       collector.stop('finished');
-      const winningTeam = livingT1.length > 0 ? team1 : livingT2.length > 0 ? team2 : teamSolo;
+      const winningTeam = livingT1.length > 0 ? team1 : livingT2.length > 0 ? team2 : (livingTS.length > 0 ? [livingTS[0]] : teamSolo);
       const losingTeam = [
         ...(livingT1.length === 0 ? team1 : []),
         ...(livingT2.length === 0 ? team2 : []),
@@ -3995,9 +4025,10 @@ async function startInteractiveDuel(
 
         const updatedEmbeds = buildCurrentEmbeds();
         const updatedButtons = buildCurrentButtons();
+        const turnAttachment = await buildCurrentAttachment();
 
         await i.deferUpdate();
-        await i.editReply({ embeds: updatedEmbeds, components: updatedButtons });
+        await i.editReply({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
         return;
       }
 

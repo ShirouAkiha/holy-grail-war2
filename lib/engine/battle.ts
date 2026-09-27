@@ -2474,14 +2474,14 @@ export function executeBattleTurn(
   };
 
   // Determine primary targets based on choices or living opponents
-  const getEnemyTarget = (actorTeam: 'teamA' | 'teamB' | 'teamSolo', requestedTargetId?: string): ActiveCombatant | undefined => {
+  const getEnemyTarget = (actorTeam: 'teamA' | 'teamB' | 'teamSolo', requestedTargetId?: string, actorId?: string): ActiveCombatant | undefined => {
     let opposingCombatants: ActiveCombatant[] = [];
     if (actorTeam === 'teamA') {
       opposingCombatants = [...teamB, ...teamSolo];
     } else if (actorTeam === 'teamB') {
       opposingCombatants = [...teamA, ...teamSolo];
     } else {
-      opposingCombatants = [...teamA, ...teamB];
+      opposingCombatants = [...teamA, ...teamB, ...teamSolo.filter(c => c.id !== actorId)];
     }
     if (requestedTargetId) {
       const match = opposingCombatants.find(c => c.id === requestedTargetId && c.currentHp > 0);
@@ -2536,7 +2536,7 @@ export function executeBattleTurn(
   // Autonomous combat turns for Solo Rogues / 3rd Master (Hostile to both Team A & Team B)
   for (const rogue of teamSolo) {
     if (rogue.currentHp > 0) {
-      const rogueTarget = getEnemyTarget('teamSolo');
+      const rogueTarget = getEnemyTarget('teamSolo', undefined, rogue.id);
       if (rogueTarget && rogueTarget.currentHp > 0) {
         const rogueDeck = rogue.commandDeck || ['Buster', 'Buster', 'Arts', 'Quick', 'Quick'];
         const shuffled = [...rogueDeck].sort(() => 0.5 - Math.random());

@@ -5319,7 +5319,8 @@ export async function renderBattleTurnSummary(
   p1Ally?: ActiveCombatant,
   p2Ally?: ActiveCombatant,
   teamA?: ActiveCombatant[],
-  teamB?: ActiveCombatant[]
+  teamB?: ActiveCombatant[],
+  teamSolo?: ActiveCombatant[]
 ): Promise<Buffer>;
 export async function renderBattleTurnSummary(
   log: CombatTurnLog,
@@ -5328,7 +5329,8 @@ export async function renderBattleTurnSummary(
   p1Ally?: ActiveCombatant,
   p2Ally?: ActiveCombatant,
   teamA?: ActiveCombatant[],
-  teamB?: ActiveCombatant[]
+  teamB?: ActiveCombatant[],
+  teamSolo?: ActiveCombatant[]
 ): Promise<Buffer>;
 export async function renderBattleTurnSummary(
   canvasOrLog: any,
@@ -5338,7 +5340,8 @@ export async function renderBattleTurnSummary(
   p1AllyOptional?: any,
   p2AllyOptional?: any,
   teamAOptional?: any,
-  teamBOptional?: any
+  teamBOptional?: any,
+  teamSoloOptional?: any
 ): Promise<Buffer> {
   let canvas: any;
   let log: CombatTurnLog;
@@ -5348,6 +5351,8 @@ export async function renderBattleTurnSummary(
   let p2Ally: ActiveCombatant | undefined;
   let teamA: ActiveCombatant[] | undefined;
   let teamB: ActiveCombatant[] | undefined;
+  let teamSolo: ActiveCombatant[] | undefined;
+
   const isClientCanvas = canvasOrLog && typeof canvasOrLog.getContext === 'function';
 
   if (isClientCanvas) {
@@ -5359,6 +5364,7 @@ export async function renderBattleTurnSummary(
     p2Ally = p2AllyOptional;
     teamA = teamAOptional;
     teamB = teamBOptional;
+    teamSolo = teamSoloOptional;
   } else {
     canvas = createCanvas(640, 700);
     log = canvasOrLog;
@@ -5366,8 +5372,19 @@ export async function renderBattleTurnSummary(
     p2 = p1OrP2;
     p1Ally = p2Optional;
     p2Ally = p1AllyOptional;
-    teamA = p2AllyOptional;
-    teamB = teamAOptional;
+    if (Array.isArray(p2AllyOptional) && Array.isArray(teamAOptional)) {
+      teamA = p2AllyOptional;
+      teamB = teamAOptional;
+      teamSolo = teamBOptional;
+    } else if (Array.isArray(teamAOptional) && Array.isArray(teamBOptional)) {
+      teamA = teamAOptional;
+      teamB = teamBOptional;
+      teamSolo = teamSoloOptional;
+    } else if (Array.isArray(p2AllyOptional)) {
+      teamSolo = p2AllyOptional;
+    } else {
+      teamSolo = teamBOptional;
+    }
   }
 
   if (canvas.width !== 640 || canvas.height !== 700) {
@@ -5377,30 +5394,94 @@ export async function renderBattleTurnSummary(
   const ctx = canvas.getContext('2d');
 
   // Resolve teams dynamically
-  const resolvedTeamA = teamA && teamA.length > 0 ? teamA : [p1, ...(p1Ally ? [p1Ally] : [])].filter(Boolean);
-  const resolvedTeamB = teamB && teamB.length > 0 ? teamB : [p2, ...(p2Ally ? [p2Ally] : [])].filter(Boolean);
-
-  const isMultiTeamA = resolvedTeamA.length >= 2;
-  const isMultiTeamB = resolvedTeamB.length >= 2;
+  const resolvedTeamA = teamA && teamA.length > 0 ? [...teamA] : [p1, ...(p1Ally ? [p1Ally] : [])].filter(Boolean);
+  const resolvedTeamB = teamB && teamB.length > 0 ? [...teamB] : [p2, ...(p2Ally ? [p2Ally] : [])].filter(Boolean);
+  const resolvedTeamSolo = teamSolo && teamSolo.length > 0 ? [...teamSolo].filter(Boolean) : [];
 
   const activeP1 = resolvedTeamA[0] || p1;
-  const activeP1Ally = resolvedTeamA[1] || p1Ally;
+  let activeP1Ally = resolvedTeamA[1] || p1Ally;
   const activeP2 = resolvedTeamB[0] || p2;
-  const activeP2Ally = resolvedTeamB[1] || p2Ally;
+  let activeP2Ally = resolvedTeamB[1] || p2Ally;
+
+  // Allocate 3rd and 4th Solo Rogue combatants into the multi-combatant visual slots (beside other servants)
+  if (resolvedTeamSolo.length > 0) {
+    // If Slot 4 (Team B Flank) is open, allocate 3rd Master (first Solo Rogue) beside P2
+    if (!activeP2Ally && resolvedTeamSolo.length >= 1) {
+      activeP2Ally = {
+        ...resolvedTeamSolo[0],
+        isSoloRogue: true,
+        roleTag: resolvedTeamSolo[0].roleTag || 'SOLO ROGUE ⚡'
+      };
+      // If Slot 2 (Team A Flank) is open and there is a 4th Master (second Solo Rogue), allocate beside P1
+      if (!activeP1Ally && resolvedTeamSolo.length >= 2) {
+        activeP1Ally = {
+          ...resolvedTeamSolo[1],
+          isSoloRogue: true,
+          roleTag: resolvedTeamSolo[1].roleTag || 'SOLO ROGUE ⚡'
+        };
+      }
+    } else if (!activeP1Ally && resolvedTeamSolo.length >= 1) {
+      // If Slot 4 is already occupied by a Team B ally, place Solo Rogue in Slot 2 beside P1
+      activeP1Ally = {
+        ...resolvedTeamSolo[0],
+        isSoloRogue: true,
+        roleTag: resolvedTeamSolo[0].roleTag || 'SOLO ROGUE ⚡'
+      };
+    }
+  }
+
+  const isMultiTeamA = Boolean(activeP1 && activeP1Ally);
+  const isMultiTeamB = Boolean(activeP2 && activeP2Ally);
 
   // Determine combat format tag
   let formatTag = '1v1';
-  if (isMultiTeamA && isMultiTeamB) formatTag = '2v2';
-  else if (isMultiTeamB) formatTag = '1v2';
-  else if (isMultiTeamA) formatTag = '2v1';
+  const hasSoloRogue = Boolean(activeP1Ally?.isSoloRogue || activeP2Ally?.isSoloRogue || resolvedTeamSolo.length > 0);
+  if (hasSoloRogue) {
+    const totalLivingUnits = [activeP1, activeP1Ally, activeP2, activeP2Ally].filter(Boolean).length;
+    if (totalLivingUnits === 3) {
+      formatTag = '1v1v1';
+    } else if (totalLivingUnits >= 4) {
+      const isTeamAAlliance = isMultiTeamA && !activeP1Ally?.isSoloRogue;
+      const isTeamBAlliance = isMultiTeamB && !activeP2Ally?.isSoloRogue;
+      if (isTeamAAlliance || isTeamBAlliance) {
+        formatTag = '2v1v1';
+      } else {
+        formatTag = 'FFA';
+      }
+    } else {
+      formatTag = '1v1v1';
+    }
+  } else if (isMultiTeamA && isMultiTeamB) {
+    formatTag = '2v2';
+  } else if (isMultiTeamB) {
+    formatTag = '1v2';
+  } else if (isMultiTeamA) {
+    formatTag = '2v1';
+  }
 
-  // Target lock analysis: check which enemy or player unit was targeted
+  // Target lock analysis: check which enemy, ally or solo rogue unit was targeted
   const targetSummary = (log.actionSummary || '').toLowerCase();
-  const isP2AllyTargeted = isMultiTeamB && activeP2Ally && (log.targetIndex === 1 || targetSummary.includes(activeP2Ally.name.toLowerCase()));
-  const isP2LeadTargeted = !isP2AllyTargeted;
+  const isTargetMatch = (unit?: ActiveCombatant) => {
+    if (!unit) return false;
+    if (log.targetId && unit.id === log.targetId) return true;
+    if (log.targetName && unit.name && unit.name.toLowerCase() === log.targetName.toLowerCase()) return true;
+    if (targetSummary && unit.name && targetSummary.includes(unit.name.toLowerCase())) return true;
+    return false;
+  };
 
-  const isP1AllyTargeted = isMultiTeamA && activeP1Ally && (log.targetIndex === 1 || targetSummary.includes(activeP1Ally.name.toLowerCase()));
-  const isP1LeadTargeted = !isP1AllyTargeted;
+  let isP1LeadTargeted = isTargetMatch(activeP1);
+  let isP1AllyTargeted = isMultiTeamA && isTargetMatch(activeP1Ally);
+  let isP2LeadTargeted = isTargetMatch(activeP2);
+  let isP2AllyTargeted = isMultiTeamB && isTargetMatch(activeP2Ally);
+
+  // Default fallback if no specific unit ID was matched
+  if (!isP1LeadTargeted && !isP1AllyTargeted && !isP2LeadTargeted && !isP2AllyTargeted) {
+    if (isMultiTeamB && log.targetIndex === 1) {
+      isP2AllyTargeted = true;
+    } else {
+      isP2LeadTargeted = true;
+    }
+  }
 
   // Load Avatars concurrently
   const [p1Img, p1AllyImg, p2Img, p2AllyImg] = await Promise.all([
@@ -5438,7 +5519,9 @@ export async function renderBattleTurnSummary(
 
   if (!isMultiTeamA) {
     // Standard Single Vanguard Layout
-    drawUnitHudPlate(ctx, 16, 16, 172, 256, p1Img, activeP1, 'CHAMPION', '#38bdf8', isP1LeadTargeted, false);
+    const p1SingleRole = activeP1.isSoloRogue ? (activeP1.roleTag || 'SOLO ROGUE ⚡') : 'CHAMPION';
+    const p1SingleColor = activeP1.isSoloRogue ? '#f59e0b' : '#38bdf8';
+    drawUnitHudPlate(ctx, 16, 16, 172, 256, p1Img, activeP1, p1SingleRole, p1SingleColor, isP1LeadTargeted, false);
 
     // P1 Header Title & Class Pill
     const p1DisplayName = (activeP1.masterName || 'Master 1').replace(/[^\x00-\x7F]/g, '');
@@ -5607,9 +5690,13 @@ export async function renderBattleTurnSummary(
     });
   } else {
     // Multi-Combatant Team A: 2 Avatars on Left, 2-Row Card Grid on Right
-    drawUnitHudPlate(ctx, 16, 16, 138, 256, p1Img, activeP1, 'VANGUARD', '#38bdf8', isP1LeadTargeted);
+    const p1LeadRole = activeP1.isSoloRogue ? (activeP1.roleTag || 'SOLO ROGUE ⚡') : 'VANGUARD';
+    const p1LeadColor = activeP1.isSoloRogue ? '#f59e0b' : '#38bdf8';
+    drawUnitHudPlate(ctx, 16, 16, 138, 256, p1Img, activeP1, p1LeadRole, p1LeadColor, isP1LeadTargeted);
     if (activeP1Ally) {
-      drawUnitHudPlate(ctx, 158, 16, 138, 256, p1AllyImg, activeP1Ally, 'ALLIED FLANK', '#818cf8', isP1AllyTargeted);
+      const p1AllyRole = activeP1Ally.isSoloRogue ? (activeP1Ally.roleTag || 'SOLO ROGUE ⚡') : 'ALLIED FLANK';
+      const p1AllyColor = activeP1Ally.isSoloRogue ? '#f59e0b' : '#818cf8';
+      drawUnitHudPlate(ctx, 158, 16, 138, 256, p1AllyImg, activeP1Ally, p1AllyRole, p1AllyColor, isP1AllyTargeted);
     }
 
     // Right Side: 2-Row Grid with 4 Columns [Star, Card1, Card2, Card3]
@@ -5646,7 +5733,9 @@ export async function renderBattleTurnSummary(
       drawTarotCommandCard(ctx, 124 + idx * 108, 350, 100, 180, card, idx, activeP2.critStars || 0, isP2QuickLead);
     });
 
-    drawUnitHudPlate(ctx, 452, 350, 172, 256, p2Img, activeP2, 'RIVAL', '#ef4444', isP2LeadTargeted, false);
+    const p2SingleRole = activeP2.isSoloRogue ? (activeP2.roleTag || 'SOLO ROGUE ⚡') : 'RIVAL';
+    const p2SingleColor = activeP2.isSoloRogue ? '#f97316' : '#ef4444';
+    drawUnitHudPlate(ctx, 452, 350, 172, 256, p2Img, activeP2, p2SingleRole, p2SingleColor, isP2LeadTargeted, false);
 
     // Skills
     const p2Skills = activeP2.skills || [];
@@ -5823,10 +5912,14 @@ export async function renderBattleTurnSummary(
       drawCompactCommandCard(ctx, 90 + idx * 82, 482, 76, 124, card, idx, activeP2Ally?.critStars || 0, isP2AllyQuickLead, activeP2Ally?.name);
     });
 
-    // Right Side: 2 Avatars (Enemy Vanguard + Enemy Flank)
-    drawUnitHudPlate(ctx, 338, 350, 138, 256, p2Img, activeP2, 'ENEMY VANGUARD', '#ef4444', isP2LeadTargeted);
+    // Right Side: 2 Avatars (Enemy Vanguard + Enemy Flank / Solo Rogue)
+    const p2LeadRole = activeP2.isSoloRogue ? (activeP2.roleTag || 'SOLO ROGUE ⚡') : 'ENEMY VANGUARD';
+    const p2LeadColor = activeP2.isSoloRogue ? '#f97316' : '#ef4444';
+    drawUnitHudPlate(ctx, 338, 350, 138, 256, p2Img, activeP2, p2LeadRole, p2LeadColor, isP2LeadTargeted);
     if (activeP2Ally) {
-      drawUnitHudPlate(ctx, 480, 350, 138, 256, p2AllyImg, activeP2Ally, 'ENEMY FLANK', '#f43f5e', isP2AllyTargeted);
+      const p2AllyRole = activeP2Ally.isSoloRogue ? (activeP2Ally.roleTag || 'SOLO ROGUE ⚡') : 'ENEMY FLANK';
+      const p2AllyColor = activeP2Ally.isSoloRogue ? '#f97316' : '#f43f5e';
+      drawUnitHudPlate(ctx, 480, 350, 138, 256, p2AllyImg, activeP2Ally, p2AllyRole, p2AllyColor, isP2AllyTargeted);
     }
   }
 

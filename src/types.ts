@@ -392,6 +392,8 @@ export interface ActiveCombatant {
   customQuotes?: MasterServantInstance['customQuotes'];
   templateId?: string;
   traits?: string[];
+  isSoloRogue?: boolean;
+  roleTag?: string;
 }
 
 export type BattleCombatMode = '1v1' | '1v2' | '2v2' | '1v1v1' | 'ffa';
