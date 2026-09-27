@@ -24,6 +24,7 @@ import { getServantChainDialogue, shouldTriggerDialogueCutIn, getServantSkillQuo
 import { getServantMatchupDialogue } from '../data/servantMatchups';
 import { generateServantBattleReaction } from '../engine/talkService';
 import { addBondExpToServant } from '../../lib/engine/bondEvents';
+import { addServantBattleExp } from '../engine/customization';
 import { checkAndGrantBond10Ce, getBondCraftEssenceForServant } from '../data/craftEssences';
 
 // ==========================================
@@ -5774,11 +5775,13 @@ async function finalizeDuelRewardsAndSync(
 
   // Base rewards determination
   let winSq = 4;
+  let winLevelExp = 1800;
   let winBondExp = 160;
   let winStatPoints = isFreeBattle ? 0 : 2;
   let winManaPrisms = 20;
 
   let loseSq = 1;
+  let loseLevelExp = 700;
   let loseBondExp = 60;
   let loseStatPoints = 0;
   let loseManaPrisms = 5;
@@ -5787,37 +5790,45 @@ async function finalizeDuelRewardsAndSync(
     if (isSoloClutch1v2) {
       // 1 Solo Master overcomes 2 sparring opponents
       winSq = 6;
+      winLevelExp = 2500;
       winBondExp = 250;
       winStatPoints = 0;
       winManaPrisms = 40;
       loseSq = 1;
+      loseLevelExp = 500;
       loseBondExp = 60;
       loseManaPrisms = 5;
     } else if (isAlliance2v2) {
       // 2v2 Team sparring
       winSq = 4;
+      winLevelExp = 1500;
       winBondExp = 160;
       winStatPoints = 0;
       winManaPrisms = 25;
       loseSq = 2;
+      loseLevelExp = 650;
       loseBondExp = 80;
       loseManaPrisms = 10;
     } else if (isGank2v1) {
       // 2 winners beat 1 solo sparring defender
       winSq = 3;
+      winLevelExp = 1000;
       winBondExp = 100;
       winStatPoints = 0;
       winManaPrisms = 15;
       loseSq = 2;
-      loseBondExp = 90; // Courage bonus for solo defender
+      loseLevelExp = 800; // Courage bonus for solo defender
+      loseBondExp = 90;
       loseManaPrisms = 15;
     } else {
       // 1v1 Standard free battle
       winSq = 3;
+      winLevelExp = 1200;
       winBondExp = 120;
       winStatPoints = 0;
       winManaPrisms = 15;
       loseSq = 1;
+      loseLevelExp = 500;
       loseBondExp = 60;
       loseManaPrisms = 5;
     }
@@ -5826,38 +5837,46 @@ async function finalizeDuelRewardsAndSync(
     if (isSoloClutch1v2) {
       // 1 Solo Master overcomes 2 Tournament Contenders! Legendary achievement!
       winSq = 8;
+      winLevelExp = 3500;
       winBondExp = 350;
       winStatPoints = 5; // Legendary Underdog Stat Boost!
       winManaPrisms = 60;
       loseSq = 1;
+      loseLevelExp = 700;
       loseBondExp = 60;
       loseManaPrisms = 10;
     } else if (isAlliance2v2) {
       // 2v2 Team Tournament Victory
       winSq = 5;
+      winLevelExp = 2200;
       winBondExp = 200;
       winStatPoints = 3; // Team coordination stat point bonus
       winManaPrisms = 35;
       loseSq = 1;
+      loseLevelExp = 850;
       loseBondExp = 80;
       loseManaPrisms = 10;
     } else if (isGank2v1) {
       // 2 Allies overcome 1 Tournament Contender
       winSq = 4;
+      winLevelExp = 1400;
       winBondExp = 140;
       winStatPoints = 2;
       winManaPrisms = 20;
       loseSq = 2;
+      loseLevelExp = 1000; // Solo Defender courage under fire bonus
       loseBondExp = 120;
-      loseStatPoints = 1; // Solo Defender courage under fire bonus
+      loseStatPoints = 1;
       loseManaPrisms = 20;
     } else {
       // 1v1 Standard Holy Grail War Duel
       winSq = 4;
+      winLevelExp = 1800;
       winBondExp = 160;
       winStatPoints = 2;
       winManaPrisms = 20;
       loseSq = 1;
+      loseLevelExp = 700;
       loseBondExp = 60;
       loseManaPrisms = 5;
     }
@@ -5889,10 +5908,23 @@ async function finalizeDuelRewardsAndSync(
       const s = wMaster.servants?.find(srv => srv.id === winner.servant.id);
       let bondDidLvl = false;
       let bondNewLvl = 1;
+      let battleDidLvl = false;
+      let battleNewLvl = 1;
+      let battlePtsGained = 0;
 
       if (s) {
+        // 1. Bond EXP
         const bondRes = addBondExpToServant(s, winBondExp);
-        const updatedS = bondRes.updatedServant;
+        let updatedS = bondRes.updatedServant;
+
+        // 2. Battle Level EXP (Levels up Servant & awards +10 Stat Points per level!)
+        const battleExpRes = addServantBattleExp(updatedS, winLevelExp);
+        updatedS = battleExpRes.updatedServant;
+        battleDidLvl = battleExpRes.didLevelUp;
+        battleNewLvl = battleExpRes.newLevel;
+        battlePtsGained = battleExpRes.statPointsGained;
+
+        // 3. Tournament Bonus Stat Points (if ranked)
         if (!isFreeBattle && winStatPoints > 0) {
           updatedS.availableStatPoints = (updatedS.availableStatPoints || 0) + winStatPoints;
         }
@@ -5925,11 +5957,13 @@ async function finalizeDuelRewardsAndSync(
 
       await saveMaster(wMaster);
 
-      const statStr = (!isFreeBattle && winStatPoints > 0) ? ` | 📊 +${winStatPoints} Stat Pts` : '';
-      const lvlStr = bondDidLvl ? ` 🌟 **[Bond Lv.${bondNewLvl}!]**` : '';
+      const totalWinBonusPts = (!isFreeBattle && winStatPoints > 0 ? winStatPoints : 0) + battlePtsGained;
+      const statStr = totalWinBonusPts > 0 ? ` | 📊 +${totalWinBonusPts} Stat Pts` : '';
+      const battleLvlStr = battleDidLvl ? ` 🌟 **[LEVEL UP! Lv.${battleNewLvl}]**` : '';
+      const bondLvlStr = bondDidLvl ? ` 💖 **[Bond Lv.${bondNewLvl}!]**` : '';
       const roleStr = (isSoloClutch1v2) ? ' 👑 **[1v2 Solo Clutch]**' : (isAlliance2v2 ? ' 🛡️ **[Alliance Partner]**' : '');
       winnerRewardLines.push(
-        `• 🏆 **Master ${winner.username}** (${sName})${roleStr}: +${winSq} SQ 💎 | +${winBondExp} Bond EXP 💖 | +${winManaPrisms} Prisms 🔵${statStr}${lvlStr}`
+        `• 🏆 **Master ${winner.username}** (${sName})${roleStr}: +${winSq} SQ 💎 | +${winLevelExp.toLocaleString()} Level EXP ⚔️ | +${winBondExp} Bond EXP 💖 | +${winManaPrisms} Prisms 🔵${statStr}${battleLvlStr}${bondLvlStr}`
       );
     }
 
@@ -5958,12 +5992,25 @@ async function finalizeDuelRewardsAndSync(
       s.master.duelsLost = (s.master.duelsLost || 0) + 1;
 
       const sLoser = s.master.servants?.find((srv: any) => srv.id === s.combatant.servant.id);
-      let loserLvlUp = false;
-      let loserNewLvl = 1;
+      let loserBondLvlUp = false;
+      let loserNewBondLvl = 1;
+      let loserBattleLvlUp = false;
+      let loserNewBattleLvl = 1;
+      let loserPtsGained = 0;
 
       if (sLoser) {
+        // 1. Bond EXP
         const loserBondRes = addBondExpToServant(sLoser, loseBondExp);
-        const updatedLoser = loserBondRes.updatedServant;
+        let updatedLoser = loserBondRes.updatedServant;
+
+        // 2. Battle Level EXP (Consolation Level EXP for participating & learning in battle!)
+        const loserBattleExpRes = addServantBattleExp(updatedLoser, loseLevelExp);
+        updatedLoser = loserBattleExpRes.updatedServant;
+        loserBattleLvlUp = loserBattleExpRes.didLevelUp;
+        loserNewBattleLvl = loserBattleExpRes.newLevel;
+        loserPtsGained = loserBattleExpRes.statPointsGained;
+
+        // 3. Tournament Bonus Stat Points (if courageous defender)
         if (!isFreeBattle && loseStatPoints > 0) {
           updatedLoser.availableStatPoints = (updatedLoser.availableStatPoints || 0) + loseStatPoints;
         }
@@ -5980,17 +6027,19 @@ async function finalizeDuelRewardsAndSync(
         const sIdx = s.master.servants.findIndex((srv: any) => srv.id === s.combatant.servant.id);
         if (sIdx !== -1) s.master.servants[sIdx] = updatedLoser;
 
-        loserLvlUp = loserBondRes.didLevelUp;
-        loserNewLvl = loserBondRes.newLevel;
+        loserBondLvlUp = loserBondRes.didLevelUp;
+        loserNewBondLvl = loserBondRes.newLevel;
       }
 
       await saveMaster(s.master);
 
-      const statStr = (!isFreeBattle && loseStatPoints > 0) ? ` | 📊 +${loseStatPoints} Stat Pt` : '';
-      const lvlStr = loserLvlUp ? ` 🌟 **[Bond Lv.${loserNewLvl}!]**` : '';
+      const totalLoseBonusPts = (!isFreeBattle && loseStatPoints > 0 ? loseStatPoints : 0) + loserPtsGained;
+      const statStr = totalLoseBonusPts > 0 ? ` | 📊 +${totalLoseBonusPts} Stat Pt` : '';
+      const battleLvlStr = loserBattleLvlUp ? ` 🌟 **[LEVEL UP! Lv.${loserNewBattleLvl}]**` : '';
+      const bondLvlStr = loserBondLvlUp ? ` 💖 **[Bond Lv.${loserNewBondLvl}!]**` : '';
       const roleStr = (isGank2v1) ? ' 🛡️ **[Courageous Stand]**' : '';
       loserRewardLines.push(
-        `• 🎗️ **Master ${s.combatant.username}** (${sLoserName})${roleStr}: +${loseSq} SQ 💎 | +${loseBondExp} Bond EXP 💖 | +${loseManaPrisms} Prisms 🔵${statStr}${lvlStr}`
+        `• 🎗️ **Master ${s.combatant.username}** (${sLoserName})${roleStr}: +${loseSq} SQ 💎 | +${loseLevelExp.toLocaleString()} Level EXP ⚔️ | +${loseBondExp} Bond EXP 💖 | +${loseManaPrisms} Prisms 🔵${statStr}${battleLvlStr}${bondLvlStr}`
       );
     }
   }

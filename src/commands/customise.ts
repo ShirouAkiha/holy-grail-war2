@@ -12,7 +12,14 @@ import {
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 import { SERVANT_DATABASE } from '../data/servants';
-import { feedCraftEssences, getCeExpValue, calculateLevelFromExp, getTotalExpForLevel } from '../engine/customization';
+import { 
+  feedCraftEssences, 
+  getCeExpValue, 
+  calculateLevelFromExp, 
+  getTotalExpForLevel,
+  respecServantStats,
+  reclaimServantLevelAndExp
+} from '../engine/customization';
 import { 
   getOrInitWarSession, 
   invokeCommandSealInWar, 
@@ -882,6 +889,28 @@ export const data = new SlashCommandBuilder()
           .setDescription('Craft Essence name, "all_3star", "duplicates", or "all"')
           .setRequired(false)
       )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('respec')
+      .setDescription('Reallocate allocated parameter points back to available pool on your Servant')
+      .addStringOption(opt =>
+        opt
+          .setName('servant')
+          .setDescription('Servant name (defaults to active Servant)')
+          .setRequired(false)
+      )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('reclaim')
+      .setDescription('De-level Servant to Lv. 1 & reclaim all synthesized EXP as Universal EXP Embers')
+      .addStringOption(opt =>
+        opt
+          .setName('servant')
+          .setDescription('Servant name (defaults to active Servant)')
+          .setRequired(false)
+      )
   );
 
 // ==========================================
@@ -1317,6 +1346,108 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           `*To allocate your newly gained stat points, use:*\n\`/customise stats strength:5 endurance:5\``
         )
         .setColor(result.levelsGained > 0 ? 0x22c55e : 0x38bdf8);
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
+    // ==========================================
+    // SUBCOMMAND H: STAT RESPEC (TYPE A RESET)
+    // ==========================================
+    if (subcommand === 'respec') {
+      const servantTargetQuery = interaction.options.getString('servant');
+      let targetServant = activeServant;
+      if (servantTargetQuery) {
+        const found = master.servants.find(
+          (s: any) =>
+            s.id === servantTargetQuery ||
+            s.nickname?.toLowerCase().includes(servantTargetQuery.toLowerCase()) ||
+            s.template?.name?.toLowerCase().includes(servantTargetQuery.toLowerCase())
+        );
+        if (found) targetServant = found;
+      }
+
+      const sTargetName = targetServant.nickname || targetServant.template?.name || 'Servant';
+      const alloc = targetServant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
+      const allocatedSum = (alloc.strength || 0) + (alloc.endurance || 0) + (alloc.agility || 0) + (alloc.mana || 0) + (alloc.luck || 0);
+
+      if (allocatedSum <= 0) {
+        await interaction.reply({
+          content: `⚠️ **${sTargetName}** has no allocated parameter points to refund (0 pts allocated).`,
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+
+      const res = respecServantStats(targetServant);
+      master.servants = master.servants.map((s: any) => s.id === targetServant.id ? res.updatedServant : s);
+      await saveMaster(master);
+
+      const embed = new EmbedBuilder()
+        .setTitle(`🔄 Stat Respec Complete: ${sTargetName}`)
+        .setDescription(
+          `Successfully refunded **+${res.refundedPoints.toLocaleString()} Parameter Points** on **${sTargetName}**!\n\n` +
+          `• **Strength (STR):** Reset to base (+0)\n` +
+          `• **Endurance (END):** Reset to base (+0)\n` +
+          `• **Agility (AGI):** Reset to base (+0)\n` +
+          `• **Mana (MNA):** Reset to base (+0)\n` +
+          `• **Luck (LCK):** Reset to base (+0)\n\n` +
+          `📈 **New Unspent Points:** \`${res.newAvailablePoints.toLocaleString()} pts\`\n\n` +
+          `*To allocate your points, use:* \`/customise stats\` *or the* \`/servant\` *workshop!*`
+        )
+        .setColor(0x22c55e);
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
+    // ==========================================
+    // SUBCOMMAND I: DE-LEVEL & RECLAIM EXP (TYPE B RESET)
+    // ==========================================
+    if (subcommand === 'reclaim') {
+      const servantTargetQuery = interaction.options.getString('servant');
+      let targetServant = activeServant;
+      if (servantTargetQuery) {
+        const found = master.servants.find(
+          (s: any) =>
+            s.id === servantTargetQuery ||
+            s.nickname?.toLowerCase().includes(servantTargetQuery.toLowerCase()) ||
+            s.template?.name?.toLowerCase().includes(servantTargetQuery.toLowerCase())
+        );
+        if (found) targetServant = found;
+      }
+
+      const sTargetName = targetServant.nickname || targetServant.template?.name || 'Servant';
+      const oldLvl = targetServant.level || 1;
+      const currentExp = targetServant.experience ?? getTotalExpForLevel(oldLvl);
+
+      if (oldLvl <= 1 && currentExp <= 0) {
+        await interaction.reply({
+          content: `⚠️ **${sTargetName}** is already at **Level 1** with 0 synthesized EXP to extract.`,
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+
+      const res = reclaimServantLevelAndExp(targetServant, master.craftEssences);
+      master.craftEssences = res.updatedCraftEssences;
+      master.servants = master.servants.map((s: any) => s.id === targetServant.id ? res.updatedServant : s);
+      await saveMaster(master);
+
+      const embed = new EmbedBuilder()
+        .setTitle(`⚗️ Level Extraction & Resource Reclamation: ${sTargetName}`)
+        .setDescription(
+          `**${sTargetName}** has been de-leveled and all synthesized energy extracted into Universal EXP Relics!\n\n` +
+          `📊 **Level:** \`Lv.${res.oldLevel}\` ➔ \`Lv.1\`\n` +
+          `🔮 **Reclaimed EXP:** \`+${res.refundedExp.toLocaleString()} Synthesis EXP\`\n\n` +
+          `📦 **Universal EXP Embers Added to Inventory:**\n` +
+          `• ★5 Blaze of Wisdom (+10,000 EXP): **${res.embersGenerated.ssrCount}x**\n` +
+          `• ★4 Blaze of Wisdom (+3,000 EXP): **${res.embersGenerated.srCount}x**\n` +
+          `• ★3 Spark of Wisdom (+1,000 EXP): **${res.embersGenerated.rCount}x**\n\n` +
+          `⭐ **Protected Data:** Bond Level (${targetServant.bondLevel || 1}), NP Level, and custom dialogue quotes are **100% preserved**.\n\n` +
+          `*You can now feed these EXP Embers to any Servant using \`/servant\` or \`/customise feed\`!*`
+        )
+        .setColor(0x8b5cf6);
 
       await interaction.reply({ embeds: [embed] });
       return;

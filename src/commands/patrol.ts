@@ -1,6 +1,8 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, MessageFlags } from 'discord.js';
-import { getOrCreateMaster } from '../database/service';
+import { getOrCreateMaster, saveMaster } from '../database/service';
 import { getOrInitWarSession, patrolCityInWar } from '../engine/grailwar';
+import { addBondExpToServant } from '../../lib/engine/bondEvents';
+import { addServantBattleExp } from '../engine/customization';
 
 export const data = new SlashCommandBuilder()
   .setName('patrol')
@@ -35,9 +37,25 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const res = patrolCityInWar(war, interaction.user.id, interaction.user.username, currentChannelName);
 
+    let expRewardNote = '';
+    if (res.success && activeServant) {
+      const bRes = addBondExpToServant(activeServant, 40);
+      let updatedS = bRes.updatedServant;
+      const lvlRes = addServantBattleExp(updatedS, 500);
+      updatedS = lvlRes.updatedServant;
+
+      const sIdx = master.servants.findIndex((s: any) => s.id === activeServant.id);
+      if (sIdx !== -1) master.servants[sIdx] = updatedS;
+      await saveMaster(master);
+
+      const lvlUpStr = lvlRes.didLevelUp ? ` 🌟 **[LEVEL UP! Lv.${lvlRes.newLevel} • +${lvlRes.statPointsGained} Stat Pts]**` : '';
+      const bondLvlStr = bRes.didLevelUp ? ` 💖 **[Bond Lv.${bRes.newLevel}!]**` : '';
+      expRewardNote = `\n\n🎖️ **Reconnaissance Rewards:** \`+500 Level EXP ⚔️\` | \`+40 Bond EXP 💖\`${lvlUpStr}${bondLvlStr}`;
+    }
+
     const embed = new EmbedBuilder()
       .setTitle('👁️ CITY PATROL RECONNAISSANCE REPORT')
-      .setDescription(res.message)
+      .setDescription(res.message + expRewardNote)
       .setColor(0x0284c7)
       .setFooter({ text: 'Stealth Reconnaissance • Wards & Traps Detected Safely (No Trigger)' });
 
@@ -47,3 +65,4 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     await interaction.editReply({ content: `❌ Patrol error: ${error.message}` });
   }
 }
+

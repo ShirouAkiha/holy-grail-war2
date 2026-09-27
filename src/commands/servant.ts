@@ -16,7 +16,14 @@ import { getServantProfile } from '../engine/dialogue';
 import { getOrInitWarSession, exposeMasterInWar, getHealingStatus } from '../engine/grailwar';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { allocateStatPoints, calculateServantMaxHp, calculateServantMaxAtk } from '../engine/statSystem';
-import { equipCraftEssence, feedCraftEssences, getCeExpValue } from '../engine/customization';
+import { 
+  equipCraftEssence, 
+  feedCraftEssences, 
+  getCeExpValue, 
+  respecServantStats, 
+  reclaimServantLevelAndExp, 
+  getTotalExpForLevel 
+} from '../engine/customization';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
 // ==========================================
@@ -344,6 +351,7 @@ export async function buildServantHub(
 
   } else if (category === 'stats') {
     const availPoints = targetServant.availableStatPoints || 0;
+    const totalAllocated = (alloc.strength || 0) + (alloc.endurance || 0) + (alloc.agility || 0) + (alloc.mana || 0) + (alloc.luck || 0);
     const stepLabel = currentStep >= 9999 ? 'MAX' : `${currentStep}`;
 
     const embed = new EmbedBuilder()
@@ -351,16 +359,17 @@ export async function buildServantHub(
       .setDescription(
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `👑 **Servant:** **${sName}** (${t.servantClass}) • **Level:** Lv.${lvl}/100\n` +
-        `📈 **Available Stat Points:** \`${availPoints.toLocaleString()} pts\` *(+10 pts per level up from feeding CEs!)*\n\n` +
-        `💪 **Strength (STR):** \`${strTotal}\` [**${getRank(strTotal)}**] — *Increases base attack damage*\n` +
-        `🛡️ **Endurance (END):** \`${endTotal}\` [**${getRank(endTotal)}**] — *Increases maximum health pool*\n` +
-        `⚡ **Agility (AGI):** \`${agiTotal}\` [**${getRank(agiTotal)}**] — *Boosts crit generation and dodge rate*\n` +
-        `🔮 **Mana (MNA):** \`${mnaTotal}\` [**${getRank(mnaTotal)}**] — *Accelerates NP gauge gain rate*\n` +
-        `🍀 **Luck (LCK):** \`${lckTotal}\` [**${getRank(lckTotal)}**] — *Enhances status effect and crit resistance*\n\n` +
-        `💡 **BULK ALLOCATION METHODS:**\n` +
-        `• **Step Multipliers:** Click \`1x\`, \`10x\`, \`50x\`, \`100x\`, or \`MAX\` to change increment size, then click parameter buttons.\n` +
-        `• **Custom Numbers (Modal):** Click **📝 Custom Input** to type exact numeric amounts for each stat.\n` +
-        `• **Auto-Distribute:** Click **✨ Auto-Distribute All** to split all remaining points evenly.`
+        `📊 **Total Allocated:** \`${totalAllocated.toLocaleString()} pts\` | 📈 **Unspent Stat Points:** \`${availPoints.toLocaleString()} pts\`\n\n` +
+        `💪 **Strength (STR):** \`${strTotal}\` [**${getRank(strTotal)}**] — *Increases base attack damage (+${alloc.strength || 0} allocated)*\n` +
+        `🛡️ **Endurance (END):** \`${endTotal}\` [**${getRank(endTotal)}**] — *Increases maximum health pool (+${alloc.endurance || 0} allocated)*\n` +
+        `⚡ **Agility (AGI):** \`${agiTotal}\` [**${getRank(agiTotal)}**] — *Boosts crit generation & dodge (+${alloc.agility || 0} allocated)*\n` +
+        `🔮 **Mana (MNA):** \`${mnaTotal}\` [**${getRank(mnaTotal)}**] — *Accelerates NP gauge gain (+${alloc.mana || 0} allocated)*\n` +
+        `🍀 **Luck (LCK):** \`${lckTotal}\` [**${getRank(lckTotal)}**] — *Enhances status & crit resistance (+${alloc.luck || 0} allocated)*\n\n` +
+        `💡 **ALLOCATION & RESPEC CONTROLS:**\n` +
+        `• **Step Multipliers:** Click \`1x\`, \`10x\`, or \`100x/MAX\` to change increment size, then click parameter buttons.\n` +
+        `• **Custom Input:** Click **📝 Custom Input** to type exact numeric amounts for each stat.\n` +
+        `• **Auto-Distribute:** Click **✨ Auto-Distribute** to split remaining points evenly.\n` +
+        `• **🔄 Respec Stats:** Click **🔄 Respec** to refund all **${totalAllocated} allocated points** back to your unspent pool!`
       )
       .setColor(availPoints > 0 ? 0x22c55e : 0x38bdf8)
       .setFooter({ text: `Contracted to Master ${master.username} • Feed Craft Essences in /inventory to level up!` });
@@ -389,6 +398,7 @@ export async function buildServantHub(
   } else if (category === 'feed_ce') {
     const ownedCes = (master.craftEssences || []).filter(Boolean);
     const availPts = targetServant.availableStatPoints || 0;
+    const currentTotalExp = targetServant.experience ?? getTotalExpForLevel(lvl);
 
     const ceSummaryLines = ownedCes.slice(0, 6).map((c: any) => {
       const expVal = getCeExpValue(c);
@@ -400,10 +410,11 @@ export async function buildServantHub(
       .setDescription(
         (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
         `👑 **Servant:** **${sName}** (${t.servantClass})\n` +
-        `📊 **Current Level:** \`Lv.${lvl}/100\` | **Total EXP:** \`${(targetServant.experience || 0).toLocaleString()} XP\`\n` +
+        `📊 **Current Level:** \`Lv.${lvl}/100\` | **Total EXP:** \`${currentTotalExp.toLocaleString()} XP\`\n` +
         `⭐ **Unspent Stat Points:** \`${availPts} pts\` *(+10 Stat Points earned on every Level Up!)*\n\n` +
-        `💡 **SYNTHESIS MECHANICS:**\n` +
-        `Synthesize surplus Craft Essences from your inventory to bestow raw magical energy. Higher rarity CEs grant massive EXP boosts to accelerate Servant leveling.\n\n` +
+        `💡 **SYNTHESIS & EXTRACTION:**\n` +
+        `• **Synthesize CEs:** Feed surplus Craft Essences or EXP Embers to increase Level & earn Stat Points.\n` +
+        `• **⚗️ De-level & Reclaim EXP:** Reset **${sName}** to **Lv. 1** and extract all **${currentTotalExp.toLocaleString()} accumulated EXP** into **Universal EXP Embers** in your inventory! Feed these embers to *any* Servant in your roster! *(Bond & NP Levels are 100% preserved)*\n\n` +
         `📦 **Available CEs to Feed (${ownedCes.length}):**\n` +
         (ceSummaryLines || '• *No Craft Essences in inventory. Roll in /gacha!*') +
         `\n\n*Select a Craft Essence from the menu below to feed directly to **${sName}**!*`
@@ -623,6 +634,8 @@ export async function buildServantHub(
     components.push(actionButtonsRow);
   } else if (category === 'stats') {
     const avail = targetServant.availableStatPoints || 0;
+    const alloc = targetServant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
+    const totalAllocated = (alloc.strength || 0) + (alloc.endurance || 0) + (alloc.agility || 0) + (alloc.mana || 0) + (alloc.luck || 0);
     const stepLabel = currentStep >= 9999 ? 'MAX' : `${currentStep}`;
 
     // Row 1: Parameter Allocation Buttons (+Step)
@@ -634,14 +647,13 @@ export async function buildServantHub(
       new ButtonBuilder().setCustomId('servant_add_lck').setLabel(`+${stepLabel} LCK`).setEmoji('🍀').setStyle(ButtonStyle.Success).setDisabled(avail <= 0)
     );
 
-    // Row 2: Bulk Allocation & Step Controls (Max 5 buttons)
-    const step100Label = currentStep >= 9999 ? 'MAX Step' : '100x Step';
+    // Row 2: Bulk Allocation, Custom Input, Auto-Distribute & Stat Respec
     const ctrlRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('servant_step_1').setLabel('1x').setStyle(currentStep === 1 ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('servant_step_10').setLabel('10x').setStyle(currentStep === 10 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('servant_step_100').setLabel(step100Label).setStyle(currentStep >= 100 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('servant_add_auto').setLabel('Auto-Distribute').setEmoji('✨').setStyle(ButtonStyle.Success).setDisabled(avail <= 0),
       new ButtonBuilder().setCustomId('servant_act_open_stat_modal').setLabel('Custom Input').setEmoji('📝').setStyle(ButtonStyle.Primary).setDisabled(avail <= 0),
-      new ButtonBuilder().setCustomId('servant_add_auto').setLabel('Auto-Distribute').setEmoji('✨').setStyle(ButtonStyle.Success).setDisabled(avail <= 0)
+      new ButtonBuilder().setCustomId('servant_act_respec_stats').setLabel('Respec Stats').setEmoji('🔄').setStyle(ButtonStyle.Danger).setDisabled(totalAllocated <= 0)
     );
 
     components.push(paramRow, ctrlRow);
@@ -691,10 +703,12 @@ export async function buildServantHub(
         .addOptions(ceOptions);
       components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(feedSelect));
     }
+    const canReclaim = (targetServant.level || 1) > 1 || (targetServant.experience || 0) > 0;
     actionButtonsRow.addComponents(
       new ButtonBuilder().setCustomId('servant_act_feed_3star').setLabel('Feed 1-3★ CEs').setEmoji('⚡').setStyle(ButtonStyle.Success).setDisabled(ownedCes.length === 0),
-      new ButtonBuilder().setCustomId('servant_act_feed_dupes').setLabel('Feed Duplicates').setEmoji('🔥').setStyle(ButtonStyle.Primary).setDisabled(ownedCes.length === 0),
-      new ButtonBuilder().setCustomId('servant_act_feed_all').setLabel('Feed All CEs').setEmoji('☣️').setStyle(ButtonStyle.Danger).setDisabled(ownedCes.length === 0)
+      new ButtonBuilder().setCustomId('servant_act_feed_dupes').setLabel('Feed Dupes').setEmoji('🔥').setStyle(ButtonStyle.Primary).setDisabled(ownedCes.length === 0),
+      new ButtonBuilder().setCustomId('servant_act_feed_all').setLabel('Feed All CEs').setEmoji('☣️').setStyle(ButtonStyle.Danger).setDisabled(ownedCes.length === 0),
+      new ButtonBuilder().setCustomId('servant_act_reclaim_exp').setLabel('De-level & Reclaim EXP').setEmoji('⚗️').setStyle(ButtonStyle.Danger).setDisabled(!canReclaim)
     );
     components.push(actionButtonsRow);
   } else {
@@ -1253,6 +1267,47 @@ export function attachServantCollector(
 
         await i.showModal(modal);
         return;
+      }
+      // STAT RESPEC (Type A Reset: Reallocate Points)
+      else if (i.customId === 'servant_act_respec_stats') {
+        const alloc = targetServant.allocatedStats || { strength: 0, endurance: 0, agility: 0, mana: 0, luck: 0 };
+        const allocatedSum = (alloc.strength || 0) + (alloc.endurance || 0) + (alloc.agility || 0) + (alloc.mana || 0) + (alloc.luck || 0);
+
+        if (allocatedSum <= 0) {
+          actionOutcomeMsg = `⚠️ No parameter points currently allocated on **${sName}** to refund.`;
+        } else {
+          const res = respecServantStats(targetServant);
+          master.servants = master.servants.map((s: any) => s.id === targetServant.id ? res.updatedServant : s);
+          await saveMaster(master);
+          targetServant = res.updatedServant;
+          actionOutcomeMsg = `🔄 **STAT RESPEC COMPLETE!**\n` +
+            `• Successfully refunded **+${res.refundedPoints.toLocaleString()} Stat Points** back to **${sName}**!\n` +
+            `• All allocated battle parameters reset to 0.\n` +
+            `• **New Unspent Pool:** \`${res.newAvailablePoints.toLocaleString()} pts\` available to re-distribute!`;
+        }
+      }
+      // DE-LEVEL & RECLAIM EXP (Type B Reset: Universal EXP Embers Extraction)
+      else if (i.customId === 'servant_act_reclaim_exp') {
+        const oldLvl = targetServant.level || 1;
+        const currentExp = targetServant.experience ?? getTotalExpForLevel(oldLvl);
+
+        if (oldLvl <= 1 && currentExp <= 0) {
+          actionOutcomeMsg = `⚠️ **${sName}** is already at **Level 1** with 0 synthesized EXP to extract.`;
+        } else {
+          const res = reclaimServantLevelAndExp(targetServant, master.craftEssences);
+          master.craftEssences = res.updatedCraftEssences;
+          master.servants = master.servants.map((s: any) => s.id === targetServant.id ? res.updatedServant : s);
+          await saveMaster(master);
+          targetServant = res.updatedServant;
+
+          actionOutcomeMsg = `⚗️ **LEVEL EXTRACTION & RESPEC COMPLETE!**\n` +
+            `• **${sName}** has been de-leveled from **Lv.${res.oldLevel}** ➔ **Lv.1**.\n` +
+            `• Reclaimed **+${res.refundedExp.toLocaleString()} Synthesis EXP** converted into **${res.embersGenerated.totalEmbers} Universal EXP Embers** in your Master Vault!\n` +
+            `  - ★5 Blaze of Wisdom (10,000 XP): **${res.embersGenerated.ssrCount}x**\n` +
+            `  - ★4 Blaze of Wisdom (3,000 XP): **${res.embersGenerated.srCount}x**\n` +
+            `  - ★3 Spark of Wisdom (1,000 XP): **${res.embersGenerated.rCount}x**\n` +
+            `• *⭐ Bond Level (${targetServant.bondLevel || 1}), NP Level, and Custom Quotes are 100% preserved!*`;
+        }
       }
       // STAT ALLOCATION
       else if (i.customId.startsWith('servant_add_')) {
