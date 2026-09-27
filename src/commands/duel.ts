@@ -3859,6 +3859,7 @@ async function startInteractiveDuel(
       // AI tactical skill usage
       const aiSkills = activeCombatant.servant.template.skills || [];
       const aiBond = activeCombatant.servant.bondLevel || 3;
+      const alliesList = getMyTeamFor(activeCombatant);
       for (let sIdx = 0; sIdx < aiSkills.length; sIdx++) {
         if (sIdx === 2 && aiBond < 5) continue;
         if ((activeCombatant.skillCooldowns[sIdx] || 0) <= 0 && Math.random() < 0.35) {
@@ -3884,7 +3885,7 @@ async function startInteractiveDuel(
         pendingNpActors.push(activeCombatant);
       }
 
-      const aiLog = resolveStrike(activeCombatant, target, aiSequence, aiDialogue);
+      const aiLog = resolveStrike(activeCombatant, target, aiSequence, aiDialogue, opps, alliesList);
       refreshCombatantHand(activeCombatant);
       combatLogs.push(aiLog);
       if (combatLogs.length > 4) combatLogs.shift();
@@ -4009,7 +4010,8 @@ async function startInteractiveDuel(
         p2LastCards = aiSequence;
       }
       const aiDialogue = getCombatantChainDialogue(activeCombatant, aiSequence);
-      const aiLog = resolveStrike(activeCombatant, target, aiSequence, aiDialogue);
+      const alliesList = getMyTeamFor(activeCombatant);
+      const aiLog = resolveStrike(activeCombatant, target, aiSequence, aiDialogue, opps, alliesList);
       refreshCombatantHand(activeCombatant);
       combatLogs.push(aiLog);
 
@@ -4937,7 +4939,9 @@ async function startInteractiveDuel(
         }
       }
 
-      const log = resolveStrike(attacker, defender, playerSequence, playerDialogue);
+      const opps = getTargetsFor(attacker);
+      const allies = getMyTeamFor(attacker);
+      const log = resolveStrike(attacker, defender, playerSequence, playerDialogue, opps, allies);
       refreshCombatantHand(attacker);
       combatLogs.push(log);
       if (combatLogs.length > 4) combatLogs.shift();
