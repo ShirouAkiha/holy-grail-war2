@@ -749,31 +749,38 @@ export async function renderRaidBattlefield(state: RaidBattleState, animated = t
 
   const loadedImages = { bgImg, bossSpriteImg, bossAvatarImg, bossSpriteFrames, servantAvatars };
 
-  // 1. Try APNG (Animated PNG) encoding first using upng-js (Discord autoplays APNG natively without GIF pause overlay!)
-  if (animated && bossSpriteFrames && bossSpriteFrames.length > 0 && upngModule && typeof upngModule.encode === 'function') {
+  // 1. If gifenc is available and we have animated frames, generate a lightweight looping GIF attachment
+  if (animated && gifencModule && typeof gifencModule.GIFEncoder === 'function') {
     try {
-      const frameBuffers: ArrayBuffer[] = [];
-      let width = 640;
-      let height = 360;
+      const { GIFEncoder, quantize, applyPalette } = gifencModule;
+      const gif = GIFEncoder();
 
-      for (let f = 0; f < bossSpriteFrames.length; f++) {
+      const frameCount = (bossSpriteFrames && bossSpriteFrames.length > 0) ? bossSpriteFrames.length : 2;
+
+      for (let f = 0; f < frameCount; f++) {
         const frameCanvas = await renderSingleFrame(state, f, loadedImages);
-        width = frameCanvas.width;
-        height = frameCanvas.height;
+        const w = frameCanvas.width;
+        const h = frameCanvas.height;
         const ctx = frameCanvas.getContext('2d');
-        const imgData = ctx.getImageData(0, 0, width, height);
-        frameBuffers.push(imgData.data.buffer as ArrayBuffer);
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const palette = quantize(imgData.data, 128);
+        const index = applyPalette(imgData.data, palette);
+        gif.writeFrame(index, w, h, {
+          palette,
+          delay: 100, // 10 FPS
+          repeat: 0,  // Infinite loop
+          dispose: 2,
+          first: f === 0
+        });
       }
 
-      const delays = new Array(bossSpriteFrames.length).fill(100);
-      const apngArrayBuffer = upngModule.encode(frameBuffers, width, height, 0, delays);
-      const apngBuffer = Buffer.from(apngArrayBuffer);
-
-      if (apngBuffer && apngBuffer.length > 0) {
-        return { buffer: apngBuffer, fileName: 'raid_battlefield.png' };
+      gif.finish();
+      const gifBuffer = Buffer.from(gif.bytes());
+      if (gifBuffer && gifBuffer.length > 0) {
+        return { buffer: gifBuffer, fileName: 'raid_battlefield.gif' };
       }
     } catch (err) {
-      console.error('APNG encoding error, falling back:', err);
+      console.error('GIF encoding error, trying APNG fallback:', err);
     }
   }
 
