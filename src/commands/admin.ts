@@ -2197,7 +2197,7 @@ export async function handleAdminGlobalInteraction(interaction: any) {
           new ActionRowBuilder<TextInputBuilder>().addComponents(
             new TextInputBuilder()
               .setCustomId('custom_timer_input')
-              .setLabel('Duration (e.g. 45m, 2h, 6h, 12h, 24h, 3d, 120)')
+              .setLabel('Duration (e.g. 45m, 2h, 12h, 24h, 3d)')
               .setPlaceholder('Enter minutes, hours, or days (e.g. 2h, 120, 24h, 3d)')
               .setStyle(TextInputStyle.Short)
               .setRequired(true)
@@ -2214,7 +2214,7 @@ export async function handleAdminGlobalInteraction(interaction: any) {
           new ActionRowBuilder<TextInputBuilder>().addComponents(
             new TextInputBuilder()
               .setCustomId('custom_date_input')
-              .setLabel('Target Date & Time (UTC/YYYY-MM-DD HH:mm)')
+              .setLabel('Target Date & Time (e.g. YYYY-MM-DD HH:mm)')
               .setPlaceholder('e.g. 2026-10-01 18:00 UTC, 2026-09-30 20:00, or tomorrow 18:00')
               .setStyle(TextInputStyle.Short)
               .setRequired(true)
