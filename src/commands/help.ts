@@ -148,6 +148,12 @@ export const HELP_CATEGORIES: HelpCategory[] = [
     color: 0xef4444, // Crimson Red
     commands: [
       {
+        command: '/raid',
+        description: 'Challenge PvE Demon God Pillar Barbatos in 1-4 Master cooperative raids',
+        usage: '/raid [barbatos | info]',
+        tips: 'Assemble up to 4 Masters or fight solo! Generates authentic FGO battlefield Canvas.'
+      },
+      {
         command: '/duel',
         description: 'Challenge a fellow Master to an authentic turn-based battle',
         usage: '/duel @user',
