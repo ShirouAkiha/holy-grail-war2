@@ -380,7 +380,7 @@ async function runRaidBattle(
 
   const renderAndPostTurn = async (interactionToEdit?: any) => {
     const { buffer, fileName } = await renderRaidBattlefield(battleState, true);
-    const ext = fileName.endsWith('.mp4') ? 'mp4' : 'gif';
+    const ext = fileName.endsWith('.mp4') ? 'mp4' : fileName.endsWith('.png') ? 'png' : 'gif';
     const uniqueFileName = `raid_${Date.now()}_${Math.floor(Math.random() * 1000)}.${ext}`;
     const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
     const embeds = [buildBattleEmbed(uniqueFileName)];

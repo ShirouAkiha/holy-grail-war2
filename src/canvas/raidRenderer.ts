@@ -26,6 +26,13 @@ try {
   omggifModule = null;
 }
 
+let upngModule: any = null;
+try {
+  upngModule = require('upng-js');
+} catch {
+  upngModule = null;
+}
+
 export const MINIMAL_VALID_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
   'base64'
@@ -742,7 +749,35 @@ export async function renderRaidBattlefield(state: RaidBattleState, animated = t
 
   const loadedImages = { bgImg, bossSpriteImg, bossAvatarImg, bossSpriteFrames, servantAvatars };
 
-  // 1. Try MP4 encoding with FFmpeg first (Discord autoplays MP4 videos seamlessly!)
+  // 1. Try APNG (Animated PNG) encoding first using upng-js (Discord autoplays APNG natively without GIF pause overlay!)
+  if (animated && bossSpriteFrames && bossSpriteFrames.length > 0 && upngModule && typeof upngModule.encode === 'function') {
+    try {
+      const frameBuffers: ArrayBuffer[] = [];
+      let width = 640;
+      let height = 360;
+
+      for (let f = 0; f < bossSpriteFrames.length; f++) {
+        const frameCanvas = await renderSingleFrame(state, f, loadedImages);
+        width = frameCanvas.width;
+        height = frameCanvas.height;
+        const ctx = frameCanvas.getContext('2d');
+        const imgData = ctx.getImageData(0, 0, width, height);
+        frameBuffers.push(imgData.data.buffer as ArrayBuffer);
+      }
+
+      const delays = new Array(bossSpriteFrames.length).fill(100);
+      const apngArrayBuffer = upngModule.encode(frameBuffers, width, height, 0, delays);
+      const apngBuffer = Buffer.from(apngArrayBuffer);
+
+      if (apngBuffer && apngBuffer.length > 0) {
+        return { buffer: apngBuffer, fileName: 'raid_battlefield.png' };
+      }
+    } catch (err) {
+      console.error('APNG encoding error, falling back:', err);
+    }
+  }
+
+  // 2. Try MP4 encoding with FFmpeg second
   if (animated && bossSpriteFrames && bossSpriteFrames.length > 0) {
     try {
       const frameCanvases = [];
