@@ -18,6 +18,13 @@ try {
   gifencModule = null;
 }
 
+let omggifModule: any = null;
+try {
+  omggifModule = require('omggif');
+} catch {
+  omggifModule = null;
+}
+
 export const MINIMAL_VALID_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
   'base64'
@@ -169,6 +176,56 @@ export interface RaidBattleState {
   recentLogs: string[];
 }
 
+async function extractGifFrames(url: string, sampleCount = 10): Promise<any[]> {
+  if (!omggifModule) return [];
+  const buffer = await fetchImageBuffer(url);
+  if (!buffer) return [];
+
+  try {
+    const reader = new omggifModule.GifReader(buffer);
+    const total = reader.numFrames();
+    if (total <= 1) return [];
+
+    const width = reader.width;
+    const height = reader.height;
+
+    const frameIndices: number[] = [];
+    for (let i = 0; i < sampleCount; i++) {
+      frameIndices.push(Math.floor((i * total) / sampleCount));
+    }
+
+    const compCanvas = createCanvas(width, height);
+    const compCtx = compCanvas.getContext('2d');
+    const resultCanvases: any[] = [];
+
+    for (let f = 0; f < total; f++) {
+      const frameInfo = reader.frameInfo(f);
+      const pixelData = new Uint8ClampedArray(width * height * 4);
+      reader.decodeAndBlitFrameRGBA(f, pixelData);
+
+      const frameCanvas = createCanvas(width, height);
+      const frameCtx = frameCanvas.getContext('2d');
+      const imgData = frameCtx.createImageData(width, height);
+      imgData.data.set(pixelData);
+      frameCtx.putImageData(imgData, 0, 0);
+
+      if (frameInfo.disposal === 2) {
+        compCtx.clearRect(frameInfo.x, frameInfo.y, frameInfo.width, frameInfo.height);
+      }
+      compCtx.drawImage(frameCanvas, 0, 0);
+
+      if (frameIndices.includes(f)) {
+        const snap = createCanvas(width, height);
+        snap.getContext('2d').drawImage(compCanvas, 0, 0);
+        resultCanvases.push(snap);
+      }
+    }
+    return resultCanvases;
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Renders a single frame of the FGO Raid Battlefield
  */
@@ -178,7 +235,7 @@ async function renderSingleFrame(state: RaidBattleState, frameIndex: number, loa
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  const { bgImg, bossSpriteImg, bossAvatarImg, servantAvatars } = loadedImages;
+  const { bgImg, bossSpriteImg, bossSpriteFrames, bossAvatarImg, servantAvatars } = loadedImages;
 
   // 1. Render Background
   if (bgImg) {
@@ -199,8 +256,12 @@ async function renderSingleFrame(state: RaidBattleState, frameIndex: number, loa
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, width, height);
 
-  // 2. Render Boss Sprite (Extracted exact bounding box: sx=10, sy=30, sw=200, sh=430)
-  if (bossSpriteImg) {
+  // 2. Render Boss Sprite (Draw animated frame from extracted GIF frames if available!)
+  const activeBossFrame = (bossSpriteFrames && bossSpriteFrames.length > 0)
+    ? bossSpriteFrames[frameIndex % bossSpriteFrames.length]
+    : bossSpriteImg;
+
+  if (activeBossFrame) {
     ctx.save();
     // Precise bounding box crop from 512x512 GIF
     const sx = 10;
@@ -208,14 +269,11 @@ async function renderSingleFrame(state: RaidBattleState, frameIndex: number, loa
     const sw = 200;
     const sh = 430;
 
-    // Subtle idle float animation between frames
-    const floatY = frameIndex === 1 ? -4 : 0;
-
     const scale = 1.08;
     const destW = Math.round(sw * scale); // 216px
     const destH = Math.round(sh * scale); // 464px
     const destX = 35;
-    const destY = 65 + floatY;
+    const destY = 65;
 
     // Shadow on temple ground
     ctx.beginPath();
@@ -224,7 +282,7 @@ async function renderSingleFrame(state: RaidBattleState, frameIndex: number, loa
     ctx.fill();
 
     ctx.drawImage(
-      bossSpriteImg,
+      activeBossFrame,
       sx, sy, sw, sh,
       destX, destY, destW, destH
     );
@@ -647,32 +705,34 @@ async function renderSingleFrame(state: RaidBattleState, frameIndex: number, loa
  */
 export async function renderRaidBattlefield(state: RaidBattleState, animated = true): Promise<{ buffer: Buffer; fileName: string }> {
   // Preload all assets
-  const [bgImg, bossSpriteImg, bossAvatarImg, ...servantAvatars] = await Promise.all([
+  const [bgImg, bossSpriteImg, bossAvatarImg, bossSpriteFrames, ...servantAvatars] = await Promise.all([
     loadImage(state.boss.bgUrl),
     loadImage(state.boss.spriteUrl),
     loadImage(state.boss.avatarUrl),
+    animated ? extractGifFrames(state.boss.spriteUrl, 10) : Promise.resolve([]),
     ...state.participants.map(p => {
       const art = p.servant.customArtworkUrl || p.servant.template?.avatarUrl;
       return art ? loadImage(art) : Promise.resolve(null);
     })
   ]);
 
-  const loadedImages = { bgImg, bossSpriteImg, bossAvatarImg, servantAvatars };
+  const loadedImages = { bgImg, bossSpriteImg, bossAvatarImg, bossSpriteFrames, servantAvatars };
 
-  // If gifenc is available, generate a 2-frame looping GIF attachment for Discord!
+  // If gifenc is available and we have animated frames, generate a looping GIF attachment for Discord!
   if (animated && gifencModule && typeof gifencModule.GIFEncoder === 'function') {
     try {
       const { GIFEncoder, quantize, applyPalette } = gifencModule;
       const gif = GIFEncoder();
 
-      // Render 2 frames for smooth live breathing animation inside Discord
-      for (let f = 0; f < 2; f++) {
+      const frameCount = (bossSpriteFrames && bossSpriteFrames.length > 0) ? bossSpriteFrames.length : 2;
+
+      for (let f = 0; f < frameCount; f++) {
         const frameCanvas = await renderSingleFrame(state, f, loadedImages);
         const ctx = frameCanvas.getContext('2d');
         const imgData = ctx.getImageData(0, 0, 1280, 720);
         const palette = quantize(imgData.data, 256);
         const index = applyPalette(imgData.data, palette);
-        gif.writeFrame(index, 1280, 720, { palette, delay: 450 });
+        gif.writeFrame(index, 1280, 720, { palette, delay: 100 });
       }
 
       gif.finish();
