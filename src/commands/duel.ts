@@ -111,6 +111,7 @@ export interface DuelCombatant {
   drawPile?: ('Buster' | 'Arts' | 'Quick')[];
   masterAvatarUrl?: string;
   selectedTargetId?: string;
+  isFled?: boolean;
 }
 
 // ==========================================
@@ -771,14 +772,20 @@ function buildDuelEmbed(
   const team2List = [p2, p2Ally].filter((c): c is DuelCombatant => !!c);
 
   if (p1Ally || p2Ally || teamSoloList.length > 0) {
-    const team1Str = team1List.map(c => `• <@${c.userId}> (**${c.servant.nickname || c.servant.template?.name || 'Servant'}** • ${Math.round(c.currentHp).toLocaleString()} HP)`).join('\n');
-    const team2Str = team2List.map(c => `• <@${c.userId}> (**${c.servant.nickname || c.servant.template?.name || 'Servant'}** • ${Math.round(c.currentHp).toLocaleString()} HP)`).join('\n');
+    const formatStatus = (c: DuelCombatant) => {
+      if (c.isFled) return '🏃 Fled';
+      if (c.currentHp <= 0) return '💀 Fallen';
+      return `${Math.round(c.currentHp).toLocaleString()} HP`;
+    };
+
+    const team1Str = team1List.map(c => `• <@${c.userId}> (**${c.servant.nickname || c.servant.template?.name || 'Servant'}** • ${formatStatus(c)})`).join('\n');
+    const team2Str = team2List.map(c => `• <@${c.userId}> (**${c.servant.nickname || c.servant.template?.name || 'Servant'}** • ${formatStatus(c)})`).join('\n');
     const fields = [
       { name: '🛡️ Team 1', value: team1Str || 'None', inline: true },
       { name: '⚔️ Team 2', value: team2Str || 'None', inline: true }
     ];
     if (teamSoloList.length > 0) {
-      const soloStr = teamSoloList.map(c => `• <@${c.userId}> (**${c.servant.nickname || c.servant.template?.name || 'Servant'}** • ${Math.round(c.currentHp).toLocaleString()} HP)`).join('\n');
+      const soloStr = teamSoloList.map(c => `• <@${c.userId}> (**${c.servant.nickname || c.servant.template?.name || 'Servant'}** • ${formatStatus(c)})`).join('\n');
       fields.push({ name: '⚡ Solo Rogue (3rd Master)', value: soloStr, inline: true });
     }
     embed.addFields(fields);
@@ -3446,9 +3453,9 @@ async function startInteractiveDuel(
     });
   };
 
-  const getLivingTeam1 = () => team1.filter(c => c.currentHp > 0);
-  const getLivingTeam2 = () => team2.filter(c => c.currentHp > 0);
-  const getLivingTeamSolo = () => teamSolo.filter(c => c.currentHp > 0);
+  const getLivingTeam1 = () => team1.filter(c => c.currentHp > 0 && !c.isFled);
+  const getLivingTeam2 = () => team2.filter(c => c.currentHp > 0 && !c.isFled);
+  const getLivingTeamSolo = () => teamSolo.filter(c => c.currentHp > 0 && !c.isFled);
   const getTargetsFor = (combatant: DuelCombatant) => {
     if (teamSolo.includes(combatant)) {
       return [
@@ -3470,7 +3477,7 @@ async function startInteractiveDuel(
   const getSelectedTarget = (combatant: DuelCombatant): DuelCombatant | undefined => {
     const opps = getTargetsFor(combatant);
     if (opps.length === 0) return undefined;
-    let target = opps.find(o => o.userId === combatant.selectedTargetId && o.currentHp > 0);
+    let target = opps.find(o => o.userId === combatant.selectedTargetId && o.currentHp > 0 && !o.isFled);
     if (!target) {
       target = opps[0];
       combatant.selectedTargetId = target.userId;
@@ -3895,7 +3902,7 @@ async function startInteractiveDuel(
         round++;
       }
       const candidate = turnOrder[currentTurnIndex];
-      if (candidate.currentHp > 0) {
+      if (candidate.currentHp > 0 && !candidate.isFled) {
         activeCombatant = candidate;
         activeUserId = activeCombatant.userId;
         break;
@@ -4841,49 +4848,58 @@ async function startInteractiveDuel(
         const success = rollFleeSuccess(fleeInfo.chancePercent);
 
         if (success) {
-          collector.stop('flee_success');
+          fleeActor.isFled = true;
 
           const warSession = getOrInitWarSession(p1Master);
           const now = Date.now();
-          const p1Part = warSession.participants[p1.userId];
-          if (p1Part) {
-            p1Part.currentHp = Math.min(p1Part.maxHp, Math.max(1, p1.currentHp));
-            p1Part.baseHpAtDamage = p1Part.currentHp;
-            p1Part.lastDamageTime = now;
+          const fleePart = warSession.participants[fleeActor.userId];
+          if (fleePart) {
+            fleePart.currentHp = Math.min(fleePart.maxHp, Math.max(1, fleeActor.currentHp));
+            fleePart.baseHpAtDamage = fleePart.currentHp;
+            fleePart.lastDamageTime = now;
           }
-          const p2Part = warSession.participants[p2.userId];
-          if (p2Part) {
-            p2Part.currentHp = Math.min(p2Part.maxHp, Math.max(1, p2.currentHp));
-            p2Part.baseHpAtDamage = p2Part.currentHp;
-            p2Part.lastDamageTime = now;
-          }
-          if (p1Master && p1Master.servants) {
-            const s1 = p1Master.servants.find(s => s.id === p1.servant.id);
-            if (s1) s1.currentHp = p1.currentHp;
-            await saveMaster(p1Master);
-          }
-          if (p2Master && p2Master.servants) {
-            const s2 = p2Master.servants.find(s => s.id === p2.servant.id);
-            if (s2) s2.currentHp = p2.currentHp;
-            await saveMaster(p2Master);
+          const fleeMaster = fleeActor.userId === p1Master?.discordId
+            ? p1Master
+            : (p2Master && fleeActor.userId === p2Master.discordId ? p2Master : await getOrCreateMaster(fleeActor.userId, fleeActor.username));
+          if (fleeMaster && fleeMaster.servants) {
+            const s = fleeMaster.servants.find(serv => serv.id === fleeActor.servant.id);
+            if (s) s.currentHp = fleeActor.currentHp;
+            await saveMaster(fleeMaster);
           }
 
-          const retreatEmbed = new EmbedBuilder()
-            .setTitle('🏃 TACTICAL RETREAT SUCCESSFUL')
-            .setDescription(
-              `**${fleeActor.servant.nickname || fleeActor.servant.template.name}** broke line of sight and safely disengaged from combat!\n\n` +
-              `> *"A tactical withdrawal preserves the spirit for the decisive battle."*\n\n` +
-              `🛡️ **Retreat Outcome:**\n` +
-              `• Turn ${round} Action: **Tactical Retreat (Turn Consumed)**\n` +
-              `• Escape Success Rate: **${fleeInfo.chancePercent}%**${fleeInfo.isAgilityBonus ? ' *(+5% Agility bonus applied)*' : ''}\n` +
-              `• Current HP Preserved: **${fleeActor.currentHp.toLocaleString()} / ${fleeActor.maxHp.toLocaleString()}**\n` +
-              `• No Holy Grail War rating penalties or win streak deductions were incurred.`
-            )
-            .setColor(0xf59e0b)
-            .setFooter({ text: `Holy Grail War Engine • Round ${round} • Retreat Success Rate: ${fleeInfo.chancePercent}%` });
+          const fleeServantName = fleeActor.servant.nickname || fleeActor.servant.template?.name || 'Heroic Spirit';
+          const fleeSuccessLog = `🏃 **Tactical Retreat Successful!** **${fleeServantName}** (Master: ${fleeActor.username}) broke line of sight and safely disengaged from combat! (${fleeInfo.chancePercent}% chance • HP Preserved: ${fleeActor.currentHp.toLocaleString()}/${fleeActor.maxHp.toLocaleString()})`;
+          combatLogs.push(fleeSuccessLog);
+          if (combatLogs.length > 4) combatLogs.shift();
 
-          await i.editReply({ embeds: [retreatEmbed], components: [] });
-          return;
+          const livingT1 = getLivingTeam1();
+          const livingT2 = getLivingTeam2();
+          const livingTS = getLivingTeamSolo();
+          const activeFactionsCount = (livingT1.length > 0 ? 1 : 0) + (livingT2.length > 0 ? 1 : 0) + livingTS.length;
+
+          if (activeFactionsCount <= 1) {
+            collector.stop('flee_success');
+
+            const retreatEmbed = new EmbedBuilder()
+              .setTitle('🏃 TACTICAL RETREAT — COMBAT CONCLUDED')
+              .setDescription(
+                `**${fleeServantName}** broke line of sight and safely disengaged from combat!\n\n` +
+                `> *"A tactical withdrawal preserves the spirit for the decisive battle."*\n\n` +
+                `🛡️ **Retreat Outcome:**\n` +
+                `• Turn ${round} Action: **Tactical Retreat (Turn Consumed)**\n` +
+                `• Escape Success Rate: **${fleeInfo.chancePercent}%**${fleeInfo.isAgilityBonus ? ' *(+5% Agility bonus applied)*' : ''}\n` +
+                `• Current HP Preserved: **${fleeActor.currentHp.toLocaleString()} / ${fleeActor.maxHp.toLocaleString()}**\n` +
+                `• No Holy Grail War rating penalties or win streak deductions were incurred.`
+              )
+              .setColor(0xf59e0b)
+              .setFooter({ text: `Holy Grail War Engine • Round ${round} • Retreat Success Rate: ${fleeInfo.chancePercent}%` });
+
+            await i.editReply({ embeds: [retreatEmbed], components: [] });
+            return;
+          } else {
+            await advanceTurn(i);
+            return;
+          }
         } else {
           activePendingCards = [];
           activePendingIndices = [];
