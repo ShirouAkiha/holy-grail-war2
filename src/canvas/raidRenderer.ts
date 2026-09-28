@@ -11,6 +11,13 @@ try {
   canvasModule = null;
 }
 
+let gifencModule: any = null;
+try {
+  gifencModule = require('gifenc');
+} catch {
+  gifencModule = null;
+}
+
 export const MINIMAL_VALID_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
   'base64'
@@ -37,6 +44,7 @@ function createCanvas(width: number, height: number): any {
       clip: () => {},
       drawImage: () => {},
       fillText: () => {},
+      getImageData: () => ({ data: new Uint8ClampedArray(4) }),
       set fillStyle(_: any) {},
       set strokeStyle(_: any) {},
       set lineWidth(_: any) {},
@@ -161,14 +169,18 @@ export interface RaidBattleState {
   recentLogs: string[];
 }
 
-export async function renderRaidBattlefield(state: RaidBattleState): Promise<Buffer> {
+/**
+ * Renders a single frame of the FGO Raid Battlefield
+ */
+async function renderSingleFrame(state: RaidBattleState, frameIndex: number, loadedImages: any): Promise<any> {
   const width = 1280;
   const height = 720;
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
+  const { bgImg, bossSpriteImg, bossAvatarImg, servantAvatars } = loadedImages;
+
   // 1. Render Background
-  const bgImg = await loadImage(state.boss.bgUrl);
   if (bgImg) {
     ctx.drawImage(bgImg, 0, 0, width, height);
   } else {
@@ -180,36 +192,40 @@ export async function renderRaidBattlefield(state: RaidBattleState): Promise<Buf
     ctx.fillRect(0, 0, width, height);
   }
 
-  // Vignette overlay
+  // Vignette
   const vignette = ctx.createRadialGradient(width / 2, height / 2, 200, width / 2, height / 2, width * 0.7);
   vignette.addColorStop(0, 'rgba(0,0,0,0)');
   vignette.addColorStop(1, 'rgba(0,0,0,0.55)');
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, width, height);
 
-  // 2. Render Boss Sprite
-  const bossSpriteImg = await loadImage(state.boss.spriteUrl);
+  // 2. Render Boss Sprite (Extracted exact bounding box: sx=10, sy=30, sw=200, sh=430)
   if (bossSpriteImg) {
     ctx.save();
-    const cfg = state.boss.spriteConfig;
-    const cropRatio = cfg.cropRightRatio || 0.52;
-    const sWidth = bossSpriteImg.width * cropRatio;
-    const sHeight = bossSpriteImg.height;
+    // Precise bounding box crop from 512x512 GIF
+    const sx = 10;
+    const sy = 30;
+    const sw = 200;
+    const sh = 430;
 
-    const destW = 480 * cfg.scale;
-    const destH = 480 * cfg.scale;
-    const destX = 40 + cfg.offsetX;
-    const destY = 110 + cfg.offsetY;
+    // Subtle idle float animation between frames
+    const floatY = frameIndex === 1 ? -4 : 0;
 
-    // Shadow
+    const scale = 1.08;
+    const destW = Math.round(sw * scale); // 216px
+    const destH = Math.round(sh * scale); // 464px
+    const destX = 35;
+    const destY = 65 + floatY;
+
+    // Shadow on temple ground
     ctx.beginPath();
-    ctx.ellipse(destX + destW * 0.45, destY + destH * 0.9, destW * 0.35, 24, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.ellipse(destX + destW * 0.5, destY + destH - 12, destW * 0.45, 18, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
     ctx.fill();
 
     ctx.drawImage(
       bossSpriteImg,
-      0, 0, sWidth, sHeight,
+      sx, sy, sw, sh,
       destX, destY, destW, destH
     );
     ctx.restore();
@@ -217,13 +233,6 @@ export async function renderRaidBattlefield(state: RaidBattleState): Promise<Buf
 
   // 3. Render Player Servants
   const party = state.participants;
-  const servantAvatars = await Promise.all(
-    party.map(p => {
-      const art = p.servant.customArtworkUrl || p.servant.template?.avatarUrl;
-      return art ? loadImage(art) : Promise.resolve(null);
-    })
-  );
-
   const startX = 640;
   const availableFormationWidth = 540;
   const slotStep = party.length > 1 ? availableFormationWidth / party.length : 200;
@@ -288,7 +297,6 @@ export async function renderRaidBattlefield(state: RaidBattleState): Promise<Buf
   });
 
   // 4. Top-Left Boss HUD
-  const bossAvatarImg = await loadImage(state.boss.avatarUrl);
   const bossHudX = 24;
   const bossHudY = 24;
 
@@ -386,9 +394,9 @@ export async function renderRaidBattlefield(state: RaidBattleState): Promise<Buf
     ctx.restore();
   }
 
-  // Target Indicator
+  // Animated Target Chevron
   const targetX = bossHudX + 28;
-  const targetY = bossHudY + 95;
+  const targetY = bossHudY + 92 + (frameIndex === 1 ? 3 : 0);
   ctx.fillStyle = '#38bdf8';
   ctx.font = 'bold 12px sans-serif';
   ctx.textAlign = 'center';
@@ -631,5 +639,53 @@ export async function renderRaidBattlefield(state: RaidBattleState): Promise<Buf
 
   ctx.restore();
 
-  return canvas.toBuffer('image/png');
+  return canvas;
+}
+
+/**
+ * Generates an Animated GIF or PNG buffer for the FGO PvE Raid Battlefield
+ */
+export async function renderRaidBattlefield(state: RaidBattleState, animated = true): Promise<{ buffer: Buffer; fileName: string }> {
+  // Preload all assets
+  const [bgImg, bossSpriteImg, bossAvatarImg, ...servantAvatars] = await Promise.all([
+    loadImage(state.boss.bgUrl),
+    loadImage(state.boss.spriteUrl),
+    loadImage(state.boss.avatarUrl),
+    ...state.participants.map(p => {
+      const art = p.servant.customArtworkUrl || p.servant.template?.avatarUrl;
+      return art ? loadImage(art) : Promise.resolve(null);
+    })
+  ]);
+
+  const loadedImages = { bgImg, bossSpriteImg, bossAvatarImg, servantAvatars };
+
+  // If gifenc is available, generate a 2-frame looping GIF attachment for Discord!
+  if (animated && gifencModule && typeof gifencModule.GIFEncoder === 'function') {
+    try {
+      const { GIFEncoder, quantize, applyPalette } = gifencModule;
+      const gif = GIFEncoder();
+
+      // Render 2 frames for smooth live breathing animation inside Discord
+      for (let f = 0; f < 2; f++) {
+        const frameCanvas = await renderSingleFrame(state, f, loadedImages);
+        const ctx = frameCanvas.getContext('2d');
+        const imgData = ctx.getImageData(0, 0, 1280, 720);
+        const palette = quantize(imgData.data, 256);
+        const index = applyPalette(imgData.data, palette);
+        gif.writeFrame(index, 1280, 720, { palette, delay: 450 });
+      }
+
+      gif.finish();
+      const gifBuffer = Buffer.from(gif.bytes());
+      if (gifBuffer && gifBuffer.length > 0) {
+        return { buffer: gifBuffer, fileName: 'raid_battlefield.gif' };
+      }
+    } catch (err) {
+      console.error('GIF encoding error, falling back to static PNG:', err);
+    }
+  }
+
+  // Fallback to high-definition PNG
+  const singleCanvas = await renderSingleFrame(state, 0, loadedImages);
+  return { buffer: singleCanvas.toBuffer('image/png'), fileName: 'raid_battlefield.png' };
 }

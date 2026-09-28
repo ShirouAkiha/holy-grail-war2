@@ -346,7 +346,7 @@ async function runRaidBattle(
     return [row1, row2, row3];
   };
 
-  const buildBattleEmbed = () => {
+  const buildBattleEmbed = (attachmentFileName = 'raid_battlefield.gif') => {
     const active = currentActiveParticipant;
     const servName = active.servant.nickname || active.servant.template?.name || 'Heroic Spirit';
 
@@ -371,15 +371,15 @@ async function runRaidBattle(
         `\`[ 1: ${c1} ]\` ➔ \`[ 2: ${c2} ]\` ➔ \`[ 3: ${c3} ]\`\n\n` +
         `📜 **Battlefield Log:**\n${recent}`
       )
-      .setImage('attachment://raid_battlefield.png')
+      .setImage(`attachment://${attachmentFileName}`)
       .setColor(0x8b5cf6)
       .setFooter({ text: 'Fate/Grand Order PvE Raid • Select 3 Command Cards & Attack!' });
   };
 
   const renderAndPostTurn = async (interactionToEdit?: any) => {
-    const buffer = await renderRaidBattlefield(battleState);
-    const attachment = new AttachmentBuilder(buffer, { name: 'raid_battlefield.png' });
-    const embeds = [buildBattleEmbed()];
+    const { buffer, fileName } = await renderRaidBattlefield(battleState, true);
+    const attachment = new AttachmentBuilder(buffer, { name: fileName });
+    const embeds = [buildBattleEmbed(fileName)];
     const components = buildBattleButtons();
 
     if (interactionToEdit) {
