@@ -371,13 +371,8 @@ async function runRaidBattle(
         `\`[ 1: ${c1} ]\` ➔ \`[ 2: ${c2} ]\` ➔ \`[ 3: ${c3} ]\`\n\n` +
         `📜 **Battlefield Log:**\n${recent}`
       )
-      .setImage(`attachment://${attachmentFileName}`)
       .setColor(0x8b5cf6)
       .setFooter({ text: 'Fate/Grand Order PvE Raid • Select 3 Command Cards & Attack!' });
-
-    if (boss.spriteUrl) {
-      embed.setThumbnail(boss.spriteUrl);
-    }
 
     return embed;
   };

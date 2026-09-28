@@ -719,7 +719,13 @@ export async function renderRaidBattlefield(state: RaidBattleState, animated = t
         const imgData = ctx.getImageData(0, 0, w, h);
         const palette = quantize(imgData.data, 128); // 128 colors for lightweight autoplaying GIF
         const index = applyPalette(imgData.data, palette);
-        gif.writeFrame(index, w, h, { palette, delay: 120 });
+        gif.writeFrame(index, w, h, {
+          palette,
+          delay: 100,
+          repeat: 0,
+          dispose: 2,
+          first: f === 0
+        });
       }
 
       gif.finish();
