@@ -671,6 +671,9 @@ client.on(Events.InteractionCreate, async interaction => {
           components: card.components
         });
       }
+      else if (interaction.customId.startsWith('admin_modal_custom_timer') || interaction.customId.startsWith('admin_modal_custom_date')) {
+        await adminCommand.handleAdminGlobalInteraction(interaction);
+      }
       else if (interaction.customId.startsWith('modal_set_api_key:')) {
         const provider = interaction.customId.split(':')[1] as any;
         await apikeyCommand.handleApiKeyModalSubmit(interaction, provider);
