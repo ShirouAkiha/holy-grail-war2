@@ -163,6 +163,7 @@ export async function startWarRecruitment(
     maxSlots: number;
     presetKey?: string;
     forceRestart?: boolean;
+    customExpiresAt?: number;
   }
 ): Promise<{ success: boolean; message: string; recruitment?: WarRecruitmentCall }> {
   const war = getOrInitWarSession();
@@ -182,9 +183,14 @@ export async function startWarRecruitment(
   }
 
   const presetKey = options.presetKey || 'fuyuki_7';
-  const durationMs = options.durationMinutes > 0 ? options.durationMinutes * 60 * 1000 : 0;
   const startedAt = Date.now();
-  const expiresAt = durationMs > 0 ? startedAt + durationMs : 0;
+  let expiresAt = 0;
+
+  if (options.customExpiresAt && options.customExpiresAt > startedAt) {
+    expiresAt = options.customExpiresAt;
+  } else if (options.durationMinutes > 0) {
+    expiresAt = startedAt + (options.durationMinutes * 60 * 1000);
+  }
 
   const recruitment: WarRecruitmentCall = {
     id: `recruitment_${Date.now()}`,
@@ -1162,6 +1168,8 @@ export async function igniteWarFromRecruitment(
   };
 }
 
+let heartbeatInterval: NodeJS.Timeout | null = null;
+
 /**
  * Initializes automatic timer recovery upon bot reboot if a recruitment call is still pending.
  */
@@ -1180,6 +1188,7 @@ export function resumePendingRecruitment(client: Client): void {
         });
       } else {
         // Resume timeout
+        if (activeRecruitmentTimer) clearTimeout(activeRecruitmentTimer);
         activeRecruitmentTimer = setTimeout(() => {
           igniteWarFromRecruitment(client, war).catch(err => {
             console.error('Failed to auto-ignite recruitment on timer expiry:', err);
@@ -1187,5 +1196,25 @@ export function resumePendingRecruitment(client: Client): void {
         }, remainingMs);
       }
     }
+  }
+
+  // Periodic Leyline Safeguard Heartbeat (checks every 20s to handle system sleep/hibernate recovery)
+  if (!heartbeatInterval) {
+    heartbeatInterval = setInterval(() => {
+      try {
+        const currentWar = getOrInitWarSession();
+        const activeCall = currentWar.recruitmentCall;
+        if (activeCall && activeCall.active && activeCall.expiresAt > 0) {
+          if (Date.now() >= activeCall.expiresAt) {
+            console.log('[WarRecruitment] Periodic heartbeat detected expired countdown! Auto-igniting War now...');
+            igniteWarFromRecruitment(client, currentWar).catch(err => {
+              console.error('Failed to auto-ignite recruitment from heartbeat check:', err);
+            });
+          }
+        }
+      } catch (hbErr) {
+        console.error('Error in recruitment heartbeat check:', hbErr);
+      }
+    }, 20000);
   }
 }

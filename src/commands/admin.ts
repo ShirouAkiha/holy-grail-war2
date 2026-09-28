@@ -65,6 +65,8 @@ interface AnnounceDraft {
   durationMinutes: number;
   maxSlots: number;
   targetChannelId?: string;
+  customTargetTimestamp?: number;
+  customLabel?: string;
 }
 
 let adminAnnounceDraft: AnnounceDraft = {
@@ -72,6 +74,93 @@ let adminAnnounceDraft: AnnounceDraft = {
   durationMinutes: 15,
   maxSlots: 7
 };
+
+/**
+ * Parses flexible custom timer and date strings into minutes and target epoch timestamps.
+ * Examples supported:
+ * - Shorthand duration: "45m", "2h", "6h", "12h", "24h", "3d", "120"
+ * - Relative days: "tomorrow 18:00", "today 20:00"
+ * - Absolute dates: "2026-10-01 18:00", "2026-10-01 18:00 UTC", "2026/10/01 18:00"
+ */
+export function parseCustomTimerInput(inputStr: string): { durationMinutes: number; customExpiresAt?: number; label: string } | null {
+  const input = inputStr.trim().toLowerCase();
+  if (!input) return null;
+
+  const now = Date.now();
+
+  // 1. Shorthand durations: e.g. "15m", "45 mins", "2h", "6 hours", "12h", "24h", "3d", "7 days"
+  const shorthandMatch = input.match(/^(\d+(?:\.\d+)?)\s*(m|min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days)?$/);
+  if (shorthandMatch) {
+    const val = parseFloat(shorthandMatch[1]);
+    const unit = (shorthandMatch[2] || 'm').toLowerCase();
+
+    let minutes = val;
+    if (unit.startsWith('h')) {
+      minutes = val * 60;
+    } else if (unit.startsWith('d')) {
+      minutes = val * 24 * 60;
+    }
+
+    const durationMinutes = Math.round(minutes);
+    if (durationMinutes <= 0) return null;
+
+    const expiresAt = now + durationMinutes * 60 * 1000;
+    let label = `${durationMinutes} Minutes`;
+    if (durationMinutes >= 1440 && durationMinutes % 1440 === 0) {
+      label = `${durationMinutes / 1440} Day(s)`;
+    } else if (durationMinutes >= 60 && durationMinutes % 60 === 0) {
+      label = `${durationMinutes / 60} Hour(s)`;
+    }
+
+    return { durationMinutes, customExpiresAt: expiresAt, label };
+  }
+
+  // 2. Relative keywords: "tomorrow 18:00", "today 20:00"
+  if (input.includes('tomorrow') || input.includes('today')) {
+    const isTomorrow = input.includes('tomorrow');
+    const timeMatch = input.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
+    if (timeMatch) {
+      let hours = parseInt(timeMatch[1], 10);
+      const mins = parseInt(timeMatch[2] || '0', 10);
+      const ampm = timeMatch[3];
+
+      if (ampm === 'pm' && hours < 12) hours += 12;
+      if (ampm === 'am' && hours === 12) hours = 0;
+
+      const target = new Date();
+      if (isTomorrow) target.setDate(target.getDate() + 1);
+      target.setHours(hours, mins, 0, 0);
+
+      if (target.getTime() > now) {
+        const durationMinutes = Math.round((target.getTime() - now) / 60000);
+        return {
+          durationMinutes,
+          customExpiresAt: target.getTime(),
+          label: `${target.toISOString().replace('T', ' ').slice(0, 16)} UTC`
+        };
+      }
+    }
+  }
+
+  // 3. Absolute Date string: "2026-10-01 18:00", "2026-10-01 18:00 UTC", "2026/10/01 18:00"
+  let dateToParse = input;
+  if (!input.includes('z') && !input.includes('utc') && !input.includes('+') && !input.includes('-')) {
+    dateToParse = `${input} UTC`;
+  }
+
+  const parsedMs = Date.parse(dateToParse);
+  if (!isNaN(parsedMs) && parsedMs > now) {
+    const durationMinutes = Math.round((parsedMs - now) / 60000);
+    const targetDate = new Date(parsedMs);
+    return {
+      durationMinutes,
+      customExpiresAt: parsedMs,
+      label: `${targetDate.toUTCString().slice(0, 22)}`
+    };
+  }
+
+  return null;
+}
 import {
   getAllCharacterProfiles,
   getServantCharacterProfile,
@@ -107,6 +196,17 @@ export const data = new SlashCommandBuilder()
             { name: '📋 Registered Custom Animations', value: 'listnp' },
             { name: '💎 Economy & Saint Quartz Mint', value: 'economy' }
           )
+      )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('timer')
+      .setDescription('Set a custom universal countdown timer or target date for war recruitment')
+      .addStringOption(opt =>
+        opt
+          .setName('value')
+          .setDescription('Timer duration (e.g. 2h, 120, 24h, 3d) or target date (e.g. 2026-10-01 18:00 UTC)')
+          .setRequired(true)
       )
   )
   .addSubcommand(sub =>
@@ -569,6 +669,35 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 
   const category = (subcommand as any) || (interaction.options.getString('category') as any) || 'war';
+
+  // --- /admin timer ---
+  if (subcommand === 'timer') {
+    const val = interaction.options.getString('value', true);
+    const parsed = parseCustomTimerInput(val);
+    if (!parsed) {
+      await interaction.reply({
+        content: `❌ **Invalid Timer Format:** Could not parse \`${val}\`.\nUse e.g. \`2h\`, \`6h\`, \`12h\`, \`24h\`, \`3d\`, or \`2026-10-01 18:00 UTC\`.`,
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
+    adminAnnounceDraft.durationMinutes = parsed.durationMinutes;
+    adminAnnounceDraft.customTargetTimestamp = parsed.customExpiresAt;
+    adminAnnounceDraft.customLabel = parsed.label;
+
+    const war = getOrInitWarSession();
+    if (war.recruitmentCall && war.recruitmentCall.active) {
+      war.recruitmentCall.expiresAt = parsed.customExpiresAt || 0;
+      war.recruitmentCall.durationMinutes = parsed.durationMinutes;
+      saveWarToDisk();
+      resumePendingRecruitment(interaction.client);
+    }
+
+    const sec = Math.floor((parsed.customExpiresAt || Date.now()) / 1000);
+    const hub = buildAdminHub('war_announce', `⏱️ **Universal Target Timer Set:** **${parsed.label}** (<t:${sec}:R> • <t:${sec}:f>)!`);
+    await interaction.reply({ embeds: hub.embeds, components: hub.components, flags: MessageFlags.Ephemeral });
+    return;
+  }
 
   // --- /admin give ---
   if (subcommand === 'give') {
@@ -1331,6 +1460,15 @@ export function buildAdminHub(
     const targetChTag = adminAnnounceDraft.targetChannelId ? `<#${adminAnnounceDraft.targetChannelId}>` : '*Current / Select from menu below*';
     const presetName = WAR_PRESETS[adminAnnounceDraft.presetKey]?.formatName || '5th Fuyuki Holy Grail War';
 
+    let countdownDisplay = '`Manual Start (No Timer)`';
+    if (adminAnnounceDraft.customTargetTimestamp && adminAnnounceDraft.customTargetTimestamp > Date.now()) {
+      const sec = Math.floor(adminAnnounceDraft.customTargetTimestamp / 1000);
+      countdownDisplay = `\`${adminAnnounceDraft.customLabel || 'Custom Date/Time'}\` (<t:${sec}:R> • <t:${sec}:f>)`;
+    } else if (adminAnnounceDraft.durationMinutes > 0) {
+      const sec = Math.floor((Date.now() + adminAnnounceDraft.durationMinutes * 60 * 1000) / 1000);
+      countdownDisplay = `\`${adminAnnounceDraft.durationMinutes} Minutes\` (<t:${sec}:R>)`;
+    }
+
     const embed = new EmbedBuilder()
       .setTitle('📢 Overseer Dispatch: Holy Grail War Proclamation & Channel Broadcast')
       .setDescription(
@@ -1338,7 +1476,7 @@ export function buildAdminHub(
         `Broadcast the official Holy Grail War Proclamation into a chosen channel on this server.\n` +
         `Magi will be able to privately inscribe their Command Seals with complete anonymity and receive battle orders in their DMs upon war ignition.\n\n` +
         `📡 **Target Broadcast Channel:** ${targetChTag}\n` +
-        `⏱️ **Recruitment Countdown:** \`${adminAnnounceDraft.durationMinutes > 0 ? `${adminAnnounceDraft.durationMinutes} Minutes` : 'Manual Start (No Timer)'}\`\n` +
+        `⏱️ **Recruitment Countdown:** ${countdownDisplay}\n` +
         `🏆 **Format & Capacity:** \`${adminAnnounceDraft.maxSlots} Masters\` (*${presetName}*)\n\n` +
         (isCallActive 
           ? `🟢 **CURRENT ACTIVE RECRUITMENT CALL:**\n` +
@@ -1647,13 +1785,21 @@ export function buildAdminHub(
         .setChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
     );
 
-    // 2. Timer Presets Row
-    const timerRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId('admin_war_timer_0').setLabel('Manual (No Timer)').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 0 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_war_timer_5').setLabel('5 Mins').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 5 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    // 2. Timer Presets Row 1
+    const timerRow1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('admin_war_timer_0').setLabel('Manual (No Timer)').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 0 && !adminAnnounceDraft.customTargetTimestamp ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('admin_war_timer_15').setLabel('15 Mins').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 15 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_war_timer_30').setLabel('30 Mins').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 30 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_war_timer_60').setLabel('1 Hour').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 60 ? ButtonStyle.Primary : ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId('admin_war_timer_60').setLabel('1 Hour').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 60 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_war_timer_120').setLabel('2 Hours').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 120 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_war_timer_360').setLabel('6 Hours').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 360 ? ButtonStyle.Primary : ButtonStyle.Secondary)
+    );
+
+    // 2b. Timer Presets Row 2 (Extended & Custom Modals)
+    const timerRow2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('admin_war_timer_720').setLabel('12 Hours').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 720 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_war_timer_1440').setLabel('24 Hours').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 1440 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_war_timer_custom').setLabel('Custom Duration ⏱️').setStyle(adminAnnounceDraft.customTargetTimestamp ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_war_timer_date').setLabel('Set Target Date 📅').setStyle(adminAnnounceDraft.customTargetTimestamp ? ButtonStyle.Success : ButtonStyle.Secondary)
     );
 
     // 3. Format Presets Row
@@ -1685,7 +1831,7 @@ export function buildAdminHub(
 
     const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(executionButtons);
 
-    components.push(channelSelectRow, timerRow, presetRow, actionRow);
+    components.push(channelSelectRow, timerRow1, timerRow2, presetRow, actionRow);
 
   } else if (category === 'war_rules') {
     const war = getOrInitWarSession();
@@ -1753,6 +1899,36 @@ export async function handleAdminGlobalInteraction(interaction: any) {
     const customId = interaction.customId;
     let currentCategory: 'war' | 'war_announce' | 'war_rules' | 'masters' | 'personas' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war';
     let actionOutcome: string | undefined = undefined;
+
+    // Handle Custom Timer & Custom Date Modal Submissions
+    if (customId === 'admin_modal_custom_timer' || customId === 'admin_modal_custom_date') {
+      let inputVal = '';
+      try { inputVal = interaction.fields.getTextInputValue('custom_timer_input'); } catch {}
+      if (!inputVal) {
+        try { inputVal = interaction.fields.getTextInputValue('custom_date_input'); } catch {}
+      }
+
+      const parsed = parseCustomTimerInput(inputVal);
+      if (parsed) {
+        adminAnnounceDraft.durationMinutes = parsed.durationMinutes;
+        adminAnnounceDraft.customTargetTimestamp = parsed.customExpiresAt;
+        adminAnnounceDraft.customLabel = parsed.label;
+
+        const sec = Math.floor((parsed.customExpiresAt || Date.now()) / 1000);
+        actionOutcome = `⏱️ **Universal Target Timer Set:** **${parsed.label}** (<t:${sec}:R> • <t:${sec}:f>)!`;
+      } else {
+        actionOutcome = `❌ **Invalid Timer Format:** Could not parse \`${inputVal}\`. Use e.g. \`2h\`, \`6h\`, \`12h\`, \`24h\`, \`3d\`, or \`2026-10-01 18:00 UTC\`.`;
+      }
+
+      currentCategory = 'war_announce';
+      const hub = buildAdminHub(currentCategory, actionOutcome);
+      await interaction.reply({
+        embeds: hub.embeds,
+        components: hub.components,
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
 
     // Detect category
     if (customId === 'admin_tab_war_announce' || customId.startsWith('admin_war_announce') || customId.startsWith('admin_war_timer_') || customId.startsWith('admin_war_ann_preset_')) {
@@ -1936,14 +2112,17 @@ export async function handleAdminGlobalInteraction(interaction: any) {
             const res = await startWarRecruitment(interaction.client, targetChan, interaction.user, {
               durationMinutes: adminAnnounceDraft.durationMinutes,
               maxSlots: adminAnnounceDraft.maxSlots,
-              presetKey: adminAnnounceDraft.presetKey
+              presetKey: adminAnnounceDraft.presetKey,
+              customExpiresAt: adminAnnounceDraft.customTargetTimestamp
             });
 
             if (res.success) {
+              const sec = Math.floor((res.recruitment?.expiresAt || Date.now()) / 1000);
+              const timerStr = res.recruitment?.expiresAt ? `<t:${sec}:R> (<t:${sec}:f>)` : 'Manual Start';
               actionOutcome = `✅ **Holy Grail War Recruitment Broadcasted to <#${selectedChanId}>!**\n\n` +
                 `• **Target Channel:** <#${selectedChanId}>\n` +
                 `• **Format:** \`${WAR_PRESETS[adminAnnounceDraft.presetKey]?.formatName || 'Fuyuki 7'}\` (${adminAnnounceDraft.maxSlots} Max Masters)\n` +
-                `• **Timer:** ${adminAnnounceDraft.durationMinutes > 0 ? `\`${adminAnnounceDraft.durationMinutes} Minutes\`` : '`Manual Start`'}\n` +
+                `• **Countdown Deadline:** ${timerStr}\n` +
                 `• **Secrecy:** Magi can now safely click to enroll with complete anonymity!`;
             } else {
               actionOutcome = `❌ **Recruitment Dispatch Failed:** ${res.message}`;
@@ -1967,13 +2146,16 @@ export async function handleAdminGlobalInteraction(interaction: any) {
         const res = await startWarRecruitment(interaction.client, targetChan, interaction.user, {
           durationMinutes: adminAnnounceDraft.durationMinutes,
           maxSlots: adminAnnounceDraft.maxSlots,
-          presetKey: adminAnnounceDraft.presetKey
+          presetKey: adminAnnounceDraft.presetKey,
+          customExpiresAt: adminAnnounceDraft.customTargetTimestamp
         });
 
         if (res.success) {
+          const sec = Math.floor((res.recruitment?.expiresAt || Date.now()) / 1000);
+          const timerStr = res.recruitment?.expiresAt ? `<t:${sec}:R> (<t:${sec}:f>)` : 'Manual Start';
           actionOutcome = `✅ **Holy Grail War Recruitment Broadcasted to <#${targetChan.id}>!**\n\n` +
             `• **Channel:** <#${targetChan.id}>\n` +
-            `• **Timer:** ${adminAnnounceDraft.durationMinutes > 0 ? `${adminAnnounceDraft.durationMinutes} Minutes` : 'Manual Start'}\n` +
+            `• **Countdown Deadline:** ${timerStr}\n` +
             `• **Capacity:** ${adminAnnounceDraft.maxSlots} Masters\n` +
             `• **Secrecy:** Magi enrollment is completely anonymous.`;
         } else {
@@ -1997,13 +2179,16 @@ export async function handleAdminGlobalInteraction(interaction: any) {
           durationMinutes: adminAnnounceDraft.durationMinutes,
           maxSlots: adminAnnounceDraft.maxSlots,
           presetKey: adminAnnounceDraft.presetKey,
-          forceRestart: true
+          forceRestart: true,
+          customExpiresAt: adminAnnounceDraft.customTargetTimestamp
         });
 
         if (res.success) {
+          const sec = Math.floor((res.recruitment?.expiresAt || Date.now()) / 1000);
+          const timerStr = res.recruitment?.expiresAt ? `<t:${sec}:R> (<t:${sec}:f>)` : 'Manual Start';
           actionOutcome = `✅ **Previous Call Cancelled & New Proclamation Broadcasted to <#${targetChan.id}>!**\n\n` +
             `• **Channel:** <#${targetChan.id}>\n` +
-            `• **Timer:** ${adminAnnounceDraft.durationMinutes > 0 ? `${adminAnnounceDraft.durationMinutes} Minutes` : 'Manual Start'}\n` +
+            `• **Countdown Deadline:** ${timerStr}\n` +
             `• **Capacity:** ${adminAnnounceDraft.maxSlots} Masters\n` +
             `• **Clean Transition:** The previous proclamation card was safely cancelled.`;
         } else {
@@ -2012,13 +2197,56 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       } else {
         actionOutcome = `❌ Target channel is not accessible or lacks permissions.`;
       }
+    } else if (customId === 'admin_war_timer_custom') {
+      const modal = new ModalBuilder()
+        .setCustomId('admin_modal_custom_timer')
+        .setTitle('⏱️ Custom Recruitment Duration')
+        .addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('custom_timer_input')
+              .setLabel('Duration (e.g. 45m, 2h, 6h, 12h, 24h, 3d, 120)')
+              .setPlaceholder('Enter minutes, hours, or days (e.g. 2h, 120, 24h, 3d)')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+              .setMaxLength(30)
+          )
+        );
+      await interaction.showModal(modal);
+      return;
+    } else if (customId === 'admin_war_timer_date') {
+      const modal = new ModalBuilder()
+        .setCustomId('admin_modal_custom_date')
+        .setTitle('📅 Universal Target Date & Time')
+        .addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('custom_date_input')
+              .setLabel('Target Date & Time (UTC/YYYY-MM-DD HH:mm)')
+              .setPlaceholder('e.g. 2026-10-01 18:00 UTC, 2026-09-30 20:00, or tomorrow 18:00')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+              .setMaxLength(60)
+          )
+        );
+      await interaction.showModal(modal);
+      return;
     } else if (customId.startsWith('admin_war_timer_')) {
       currentCategory = 'war_announce';
       const minutes = parseInt(customId.replace('admin_war_timer_', ''), 10);
       adminAnnounceDraft.durationMinutes = minutes;
+      if (minutes > 0) {
+        adminAnnounceDraft.customTargetTimestamp = Date.now() + minutes * 60 * 1000;
+        adminAnnounceDraft.customLabel = minutes >= 1440 ? `${minutes/1440} Day(s)` : minutes >= 60 ? `${minutes/60} Hour(s)` : `${minutes} Minutes`;
+      } else {
+        adminAnnounceDraft.customTargetTimestamp = undefined;
+        adminAnnounceDraft.customLabel = undefined;
+      }
+      const sec = Math.floor((adminAnnounceDraft.customTargetTimestamp || Date.now()) / 1000);
       actionOutcome = minutes === 0 
         ? '⏱️ **Recruitment Timer:** Set to **Manual Start** (no automatic countdown timer).'
-        : `⏱️ **Recruitment Timer:** Set to **${minutes} minutes** countdown!`;
+        : `⏱️ **Recruitment Timer:** Set to **${adminAnnounceDraft.customLabel}** countdown (<t:${sec}:R> • <t:${sec}:f>)!`;
+    }
     } else if (customId.startsWith('admin_war_ann_preset_')) {
       currentCategory = 'war_announce';
       const pKey = customId.replace('admin_war_ann_preset_', '');
