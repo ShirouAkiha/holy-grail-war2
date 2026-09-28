@@ -1381,7 +1381,7 @@ export function getAvailableThroneServants(): ServantTemplate[] {
  * - 100 Action Points (AP) for tactical war moves
  * - No pre-assigned Servant (must perform the Summoning Ritual)
  */
-export async function getOrCreateMaster(discordId: string, username: string = 'Master'): Promise<MasterProfile> {
+export async function getOrCreateMaster(discordId: string, username: string = 'Master', guildId?: string): Promise<MasterProfile> {
   let master = masterStore.get(discordId);
 
   if (!master) {
@@ -1398,6 +1398,8 @@ export async function getOrCreateMaster(discordId: string, username: string = 'M
       maxActionPoints: 100,
       pityCount: 0,
       grailWarWins: 0,
+      guildId: guildId || undefined,
+      guildIds: guildId ? [guildId] : [],
       lastDailyClaim: undefined,
       activeServantId: undefined,
       servants: [],
@@ -1406,9 +1408,21 @@ export async function getOrCreateMaster(discordId: string, username: string = 'M
     masterStore.set(discordId, master);
     saveMastersToDisk();
   } else {
+    let changed = false;
     // Keep username synchronized in case the user changed their Discord display name
     if (username && master.username !== username) {
       master.username = username;
+      changed = true;
+    }
+    if (guildId) {
+      master.guildId = guildId;
+      if (!master.guildIds) master.guildIds = [];
+      if (!master.guildIds.includes(guildId)) {
+        master.guildIds.push(guildId);
+      }
+      changed = true;
+    }
+    if (changed) {
       saveMastersToDisk();
     }
   }

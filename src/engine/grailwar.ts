@@ -77,13 +77,26 @@ export const WAR_PRESETS: Record<string, WarRules> = {
 };
 
 // =========================================================================
-// GLOBAL SHARED HOLY GRAIL WAR SINGLETON (Shared across all Discord commands & users)
+// GLOBAL SHARED HOLY GRAIL WAR SINGLETON (Per-Guild Partitioned)
 // =========================================================================
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const BACKUPS_DIR = path.join(DATA_DIR, 'backups');
 const GRAIL_WAR_FILE = path.join(DATA_DIR, 'grail_war.json');
 
-let globalWarSession: HolyGrailWarSession | null = null;
+let warSessionsByGuild: Record<string, HolyGrailWarSession> = {};
+
+export function resolveGuildKey(master?: MasterProfile, guildId?: string): string {
+  if (guildId && typeof guildId === 'string' && guildId.trim().length > 0) {
+    return guildId.trim();
+  }
+  if (master?.guildId && typeof master.guildId === 'string' && master.guildId.trim().length > 0) {
+    return master.guildId.trim();
+  }
+  if (master?.guildIds && Array.isArray(master.guildIds) && master.guildIds.length > 0 && master.guildIds[0].trim().length > 0) {
+    return master.guildIds[0].trim();
+  }
+  return 'default-fuyuki-guild';
+}
 
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) {
@@ -94,7 +107,8 @@ function ensureDataDir() {
   }
 }
 
-function loadWarFromDisk(): HolyGrailWarSession | null {
+function loadWarFromDisk(): Record<string, HolyGrailWarSession> {
+  const result: Record<string, HolyGrailWarSession> = {};
   try {
     ensureDataDir();
     const backupPath = path.join(BACKUPS_DIR, 'grail_war.latest.json');
@@ -103,21 +117,19 @@ function loadWarFromDisk(): HolyGrailWarSession | null {
       const raw = fs.readFileSync(GRAIL_WAR_FILE, 'utf-8');
       if (raw && raw.trim().length > 0) {
         try {
-          const session = JSON.parse(raw);
-          if (session && session.id && session.participants && Object.keys(session.participants).length > 0) {
-            // Backup healthy session state
-            try {
-              fs.writeFileSync(backupPath, raw, 'utf-8');
-            } catch {}
-            return synchronizeWarParticipants(session);
-          } else if (fs.existsSync(backupPath)) {
-            // Empty or reset session detected: auto-recover from backup!
-            const backupRaw = fs.readFileSync(backupPath, 'utf-8');
-            const backupSession = JSON.parse(backupRaw);
-            if (backupSession && backupSession.id) {
-              console.warn('[GrailWar] Active session file was empty/reset (possibly by git pull). Auto-recovering previous Holy Grail War session from backup.');
-              saveWarToDisk();
-              return synchronizeWarParticipants(backupSession);
+          const parsed = JSON.parse(raw);
+          if (parsed) {
+            if (parsed.id && parsed.participants) {
+              result['default-fuyuki-guild'] = synchronizeWarParticipants(parsed);
+            } else if (typeof parsed === 'object') {
+              for (const [k, v] of Object.entries(parsed)) {
+                if (v && typeof v === 'object' && (v as any).id) {
+                  result[k] = synchronizeWarParticipants(v as HolyGrailWarSession);
+                }
+              }
+            }
+            if (Object.keys(result).length > 0) {
+              return result;
             }
           }
         } catch (parseErr) {
@@ -126,33 +138,41 @@ function loadWarFromDisk(): HolyGrailWarSession | null {
       }
     }
 
-    // Try backup if main file is missing or unparseable
     if (fs.existsSync(backupPath)) {
       try {
         const backupRaw = fs.readFileSync(backupPath, 'utf-8');
-        const backupSession = JSON.parse(backupRaw);
-        if (backupSession && backupSession.id) {
-          console.warn('[GrailWar] Successfully restored Holy Grail War session from backup.');
-          return synchronizeWarParticipants(backupSession);
+        const backupParsed = JSON.parse(backupRaw);
+        if (backupParsed) {
+          if (backupParsed.id && backupParsed.participants) {
+            result['default-fuyuki-guild'] = synchronizeWarParticipants(backupParsed);
+          } else if (typeof backupParsed === 'object') {
+            for (const [k, v] of Object.entries(backupParsed)) {
+              if (v && typeof v === 'object' && (v as any).id) {
+                result[k] = synchronizeWarParticipants(v as HolyGrailWarSession);
+              }
+            }
+          }
+          if (Object.keys(result).length > 0) {
+            console.warn('[GrailWar] Successfully restored Holy Grail War session from backup.');
+            return result;
+          }
         }
       } catch {}
     }
   } catch (err) {
     console.error('[GrailWar] Failed to load grail_war.json from disk:', err);
   }
-  return null;
+  return result;
 }
 
 export function saveWarToDisk(): void {
   try {
     ensureDataDir();
-    if (globalWarSession) {
-      const serialized = JSON.stringify(globalWarSession, null, 2);
-      // Update backup file
+    if (warSessionsByGuild && Object.keys(warSessionsByGuild).length > 0) {
+      const serialized = JSON.stringify(warSessionsByGuild, null, 2);
       const backupPath = path.join(BACKUPS_DIR, 'grail_war.latest.json');
       fs.writeFileSync(backupPath, serialized, 'utf-8');
 
-      // Atomic write to prevent partial file writes
       const tmpPath = `${GRAIL_WAR_FILE}.${Date.now()}.${Math.random().toString(36).substring(2, 7)}.tmp`;
       fs.writeFileSync(tmpPath, serialized, 'utf-8');
       fs.renameSync(tmpPath, GRAIL_WAR_FILE);
@@ -160,6 +180,10 @@ export function saveWarToDisk(): void {
   } catch (err) {
     console.error('[GrailWar] Failed to write grail_war.json to disk:', err);
   }
+}
+
+export function getAllWarSessions(): Record<string, HolyGrailWarSession> {
+  return warSessionsByGuild;
 }
 
 export function getReputationInfo(innocentKills: number = 0): {
@@ -286,13 +310,15 @@ export function synchronizeWarParticipants(war: HolyGrailWarSession): HolyGrailW
 }
 
 // Initial load from disk
-globalWarSession = loadWarFromDisk();
+warSessionsByGuild = loadWarFromDisk();
 
 export function createHolyGrailWarSession(
   initiatorMaster?: { discordId: string; username: string; servantId: string; servantName: string; avatarUrl: string; maxHp: number; servantClass?: string },
-  warTitle: string = 'Fuyuki Holy Grail War'
+  warTitle: string = 'Fuyuki Holy Grail War',
+  guildId?: string
 ): HolyGrailWarSession {
-  const warId = `grail_war_${Date.now()}`;
+  const gKey = resolveGuildKey(undefined, guildId);
+  const warId = `grail_war_${gKey}_${Date.now()}`;
 
   const participants: Record<string, WarMasterParticipant> = {};
 
@@ -332,7 +358,7 @@ export function createHolyGrailWarSession(
     ]
   };
 
-  globalWarSession = session;
+  warSessionsByGuild[gKey] = session;
   saveWarToDisk();
   return session;
 }
@@ -434,10 +460,12 @@ export function handleMasterReleaseInWar(discordId: string): HolyGrailWarSession
  * Real players register directly into the war.
  * Civilians (players with no contracted Servants) can view the war board without registration.
  */
-export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession {
-  if (!globalWarSession) {
+export function getOrInitWarSession(master?: MasterProfile, guildId?: string): HolyGrailWarSession {
+  const gKey = resolveGuildKey(master, guildId);
+
+  if (!warSessionsByGuild[gKey]) {
     const session: HolyGrailWarSession = {
-      id: `grail_war_${Date.now()}`,
+      id: `grail_war_${gKey}_${Date.now()}`,
       title: 'Fuyuki Holy Grail War',
       status: 'active',
       participants: {},
@@ -453,23 +481,25 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
         }
       ]
     };
-    globalWarSession = session;
+    warSessionsByGuild[gKey] = session;
     saveWarToDisk();
   }
 
+  const warSession = warSessionsByGuild[gKey];
+
   // Ensure arrays exist
-  if (!globalWarSession.leakedIntel) globalWarSession.leakedIntel = [];
-  if (!globalWarSession.civilianCasualties) globalWarSession.civilianCasualties = [];
-  if (!globalWarSession.eventLogs) globalWarSession.eventLogs = [];
+  if (!warSession.leakedIntel) warSession.leakedIntel = [];
+  if (!warSession.civilianCasualties) warSession.civilianCasualties = [];
+  if (!warSession.eventLogs) warSession.eventLogs = [];
 
   // If no master or civilian without contracted servants, return active session directly
   if (!master || !master.servants || master.servants.length === 0) {
-    synchronizeWarParticipants(globalWarSession);
-    return globalWarSession;
+    synchronizeWarParticipants(warSession);
+    return warSession;
   }
 
   // Always keep all participants synchronized
-  synchronizeWarParticipants(globalWarSession);
+  synchronizeWarParticipants(warSession);
 
   const activeServant =
     master.servants.find((s: any) => s.id === master.activeServantId) || master.servants[0];
@@ -482,22 +512,22 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
   const maxHp = calculateServantMaxHp(activeServant);
 
   // Check if this user was slain as an innocent civilian casualty earlier
-  const isSlainCiv = isUserSlainCivilianInWar(globalWarSession, master.discordId, master.username);
+  const isSlainCiv = isUserSlainCivilianInWar(warSession, master.discordId, master.username);
 
   // Check if this real player already occupies a slot
-  const existingKey = Object.keys(globalWarSession.participants).find(
+  const existingKey = Object.keys(warSession.participants).find(
     k => k === master.discordId || 
-         globalWarSession!.participants[k].discordId === master.discordId ||
-         globalWarSession!.participants[k].username.toLowerCase() === master.username.toLowerCase()
+         warSession.participants[k].discordId === master.discordId ||
+         warSession.participants[k].username.toLowerCase() === master.username.toLowerCase()
   );
 
   if (existingKey) {
-    const existing = globalWarSession.participants[existingKey];
+    const existing = warSession.participants[existingKey];
     
     if (existingKey !== master.discordId) {
-      delete globalWarSession.participants[existingKey];
+      delete warSession.participants[existingKey];
       existing.discordId = master.discordId;
-      globalWarSession.participants[master.discordId] = existing;
+      warSession.participants[master.discordId] = existing;
     }
 
     existing.username = master.username;
@@ -508,7 +538,7 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
       existing.isAlive = false;
       existing.isExposed = true;
       if (isSlainCiv) existing.eliminatedReason = 'slain_civilian';
-      return globalWarSession;
+      return warSession;
     }
 
     if (activeServant) {
@@ -528,16 +558,16 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
     }
 
     // Refresh real-time passive leyline healing
-    Object.values(globalWarSession.participants).forEach(p => {
+    Object.values(warSession.participants).forEach(p => {
       calculateCurrentHp(p);
     });
 
-    return globalWarSession;
+    return warSession;
   }
 
   // If the user was slain as a civilian, they enter the registry strictly as DECEASED (cannot be alive or active)
   if (isSlainCiv) {
-    globalWarSession.participants[master.discordId] = {
+    warSession.participants[master.discordId] = {
       discordId: master.discordId,
       username: master.username,
       servantId: activeServant?.id || 'servant_contract',
@@ -554,26 +584,26 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
       eliminatedReason: 'slain_civilian'
     };
     saveWarToDisk();
-    return globalWarSession;
+    return warSession;
   }
 
   // If Master is in Safe Mode (or uninitialized), DO NOT enroll them into an active Holy Grail War!
   if (master.environmentMode === 'safe' || !master.environmentMode) {
-    return globalWarSession;
+    return warSession;
   }
 
   // Master is in War Mode: check if an ongoing war prohibits late entry
-  const participantCount = Object.keys(globalWarSession.participants).length;
-  const isOngoing = participantCount >= 7 || (globalWarSession.eventLogs || []).some(e => e.type === 'clash');
+  const participantCount = Object.keys(warSession.participants).length;
+  const isOngoing = participantCount >= 7 || (warSession.eventLogs || []).some(e => e.type === 'clash');
 
   if (isOngoing) {
     // Cannot join an ongoing war
     master.environmentMode = 'safe';
-    return globalWarSession;
+    return warSession;
   }
 
   // Open tournament registration: Enroll new Master
-  globalWarSession.participants[master.discordId] = {
+  warSession.participants[master.discordId] = {
     discordId: master.discordId,
     username: master.username,
     servantId: activeServant?.id || 'servant_contract',
@@ -589,9 +619,9 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
     innocentKills: 0
   };
 
-  const totalCount = Object.keys(globalWarSession.participants).length;
+  const totalCount = Object.keys(warSession.participants).length;
 
-  globalWarSession.eventLogs.unshift({
+  warSession.eventLogs.unshift({
     id: `evt_enter_${Date.now()}`,
     timestamp: Date.now(),
     text: `🕯️ A new Master contracted with a Heroic Spirit in the shadows! (Holy Grail War: **${totalCount}/7** Masters Summoned)`,
@@ -599,7 +629,7 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
   });
 
   saveWarToDisk();
-  return globalWarSession;
+  return warSession;
 }
 
 /**
@@ -608,9 +638,10 @@ export function getOrInitWarSession(master?: MasterProfile): HolyGrailWarSession
  */
 export function forfeitWar(
   master: MasterProfile,
-  war?: HolyGrailWarSession
+  war?: HolyGrailWarSession,
+  guildId?: string
 ): { success: boolean; message: string; war: HolyGrailWarSession } {
-  const targetWar = war || globalWarSession || getOrInitWarSession(master);
+  const targetWar = war || getOrInitWarSession(master, guildId);
   master.environmentMode = 'safe';
   master.commandSeals = 3;
 
@@ -652,9 +683,10 @@ export function forfeitWar(
  */
 export function attemptJoinWar(
   master: MasterProfile,
-  war?: HolyGrailWarSession
+  war?: HolyGrailWarSession,
+  guildId?: string
 ): { success: boolean; message: string; war: HolyGrailWarSession } {
-  const targetWar = war || globalWarSession || getOrInitWarSession(master);
+  const targetWar = war || getOrInitWarSession(master, guildId);
 
   const existingP = targetWar.participants[master.discordId] ||
     Object.values(targetWar.participants).find(x => x.discordId === master.discordId);
@@ -686,15 +718,17 @@ export function attemptJoinWar(
   };
 }
 
-export function getActiveWarSession(): HolyGrailWarSession | null {
-  return globalWarSession;
+export function getActiveWarSession(guildId?: string): HolyGrailWarSession | null {
+  const gKey = resolveGuildKey(undefined, guildId);
+  return warSessionsByGuild[gKey] || null;
 }
 
-export function resetWarSession(): HolyGrailWarSession {
+export function resetWarSession(guildId?: string): HolyGrailWarSession {
+  const gKey = resolveGuildKey(undefined, guildId);
   // Clear all past Servant telepathic memories for the new Holy Grail War cycle
   try {
-    if (globalWarSession?.id) {
-      clearServantWarMemories(globalWarSession.id);
+    if (warSessionsByGuild[gKey]?.id) {
+      clearServantWarMemories(warSessionsByGuild[gKey].id);
     } else {
       clearServantWarMemories();
     }
@@ -702,8 +736,8 @@ export function resetWarSession(): HolyGrailWarSession {
     console.error('[grailwar] Error clearing servant war memories on reset:', err);
   }
 
-  globalWarSession = {
-    id: `grail_war_${Date.now()}`,
+  warSessionsByGuild[gKey] = {
+    id: `grail_war_${gKey}_${Date.now()}`,
     title: 'Fuyuki Holy Grail War',
     status: 'active',
     participants: {},
@@ -720,7 +754,7 @@ export function resetWarSession(): HolyGrailWarSession {
     ]
   };
   saveWarToDisk();
-  return globalWarSession;
+  return warSessionsByGuild[gKey];
 }
 
 export type WarActionType =

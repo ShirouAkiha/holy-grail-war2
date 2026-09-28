@@ -20,6 +20,7 @@ import {
 } from '../types';
 import { 
   getOrInitWarSession, 
+  getAllWarSessions,
   saveWarToDisk, 
   WAR_PRESETS,
   startOrRestartWar
@@ -166,7 +167,7 @@ export async function startWarRecruitment(
     customExpiresAt?: number;
   }
 ): Promise<{ success: boolean; message: string; recruitment?: WarRecruitmentCall }> {
-  const war = getOrInitWarSession();
+  const war = getOrInitWarSession(undefined, channel.guild?.id);
 
   // Check if an existing recruitment is already active
   if (war.recruitmentCall && war.recruitmentCall.active) {
@@ -179,7 +180,7 @@ export async function startWarRecruitment(
     }
 
     // Cleanly cancel and strip components from the old announcement message before creating a new one
-    await cancelRecruitmentCall(client, adminUser.username);
+    await cancelRecruitmentCall(client, adminUser.username, channel.guild?.id);
   }
 
   const presetKey = options.presetKey || 'fuyuki_7';
@@ -270,9 +271,10 @@ export async function startWarRecruitment(
  */
 export async function cancelRecruitmentCall(
   client: Client,
-  cancelledBy?: string
+  cancelledBy?: string,
+  guildId?: string
 ): Promise<{ success: boolean; message: string }> {
-  const war = getOrInitWarSession();
+  const war = getOrInitWarSession(undefined, guildId);
   const recruitment = war.recruitmentCall;
 
   if (!recruitment || !recruitment.active) {
@@ -320,7 +322,7 @@ export async function cancelRecruitmentCall(
  * Handles button and select menu interactions for the recruitment announcement card.
  */
 export async function handleRecruitmentInteraction(interaction: any, client: Client): Promise<void> {
-  const war = getOrInitWarSession();
+  const war = getOrInitWarSession(undefined, interaction.guildId || undefined);
   const recruitment = war.recruitmentCall;
 
   if (!recruitment || !recruitment.active) {
@@ -1174,26 +1176,29 @@ let heartbeatInterval: NodeJS.Timeout | null = null;
  * Initializes automatic timer recovery upon bot reboot if a recruitment call is still pending.
  */
 export function resumePendingRecruitment(client: Client): void {
-  const war = getOrInitWarSession();
-  const recruitment = war.recruitmentCall;
+  const allWars = getAllWarSessions();
 
-  if (recruitment && recruitment.active) {
-    const now = Date.now();
-    if (recruitment.expiresAt > 0) {
-      const remainingMs = recruitment.expiresAt - now;
-      if (remainingMs <= 0) {
-        // Expired while bot was offline; ignite immediately
-        igniteWarFromRecruitment(client, war).catch(err => {
-          console.error('Failed to auto-ignite expired recruitment on startup:', err);
-        });
-      } else {
-        // Resume timeout
-        if (activeRecruitmentTimer) clearTimeout(activeRecruitmentTimer);
-        activeRecruitmentTimer = setTimeout(() => {
+  for (const war of Object.values(allWars)) {
+    const recruitment = war.recruitmentCall;
+
+    if (recruitment && recruitment.active) {
+      const now = Date.now();
+      if (recruitment.expiresAt > 0) {
+        const remainingMs = recruitment.expiresAt - now;
+        if (remainingMs <= 0) {
+          // Expired while bot was offline; ignite immediately
           igniteWarFromRecruitment(client, war).catch(err => {
-            console.error('Failed to auto-ignite recruitment on timer expiry:', err);
+            console.error('Failed to auto-ignite expired recruitment on startup:', err);
           });
-        }, remainingMs);
+        } else {
+          // Resume timeout
+          if (activeRecruitmentTimer) clearTimeout(activeRecruitmentTimer);
+          activeRecruitmentTimer = setTimeout(() => {
+            igniteWarFromRecruitment(client, war).catch(err => {
+              console.error('Failed to auto-ignite recruitment on timer expiry:', err);
+            });
+          }, remainingMs);
+        }
       }
     }
   }
@@ -1202,14 +1207,16 @@ export function resumePendingRecruitment(client: Client): void {
   if (!heartbeatInterval) {
     heartbeatInterval = setInterval(() => {
       try {
-        const currentWar = getOrInitWarSession();
-        const activeCall = currentWar.recruitmentCall;
-        if (activeCall && activeCall.active && activeCall.expiresAt > 0) {
-          if (Date.now() >= activeCall.expiresAt) {
-            console.log('[WarRecruitment] Periodic heartbeat detected expired countdown! Auto-igniting War now...');
-            igniteWarFromRecruitment(client, currentWar).catch(err => {
-              console.error('Failed to auto-ignite recruitment from heartbeat check:', err);
-            });
+        const currentWars = getAllWarSessions();
+        for (const currentWar of Object.values(currentWars)) {
+          const activeCall = currentWar.recruitmentCall;
+          if (activeCall && activeCall.active && activeCall.expiresAt > 0) {
+            if (Date.now() >= activeCall.expiresAt) {
+              console.log('[WarRecruitment] Periodic heartbeat detected expired countdown! Auto-igniting War now...');
+              igniteWarFromRecruitment(client, currentWar).catch(err => {
+                console.error('Failed to auto-ignite recruitment from heartbeat check:', err);
+              });
+            }
           }
         }
       } catch (hbErr) {

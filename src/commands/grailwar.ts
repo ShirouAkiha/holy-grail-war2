@@ -139,10 +139,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   try {
-    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username, interaction.guildId || undefined);
     const category = (interaction.options.getString('category') as any) || 'board';
 
-    const war = getOrInitWarSession(master);
+    const war = getOrInitWarSession(master, interaction.guildId || undefined);
     const { embeds, components, files } = await buildGrailWarHub(war, master, category, undefined, interaction.client);
 
     const msg = await interaction.editReply({
@@ -760,8 +760,8 @@ export function attachGrailWarCollector(
     collector.resetTimer();
 
     try {
-      const master = await getOrCreateMaster(i.user.id, i.user.username);
-      let war = getOrInitWarSession(master);
+      const master = await getOrCreateMaster(i.user.id, i.user.username, i.guildId || undefined);
+      let war = getOrInitWarSession(master, i.guildId || undefined);
       let actionOutcome: string | undefined = undefined;
 
       const currentChan = i.channel && 'name' in i.channel ? `#${(i.channel as any).name}` : '#general';

@@ -685,7 +685,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     adminAnnounceDraft.customTargetTimestamp = parsed.customExpiresAt;
     adminAnnounceDraft.customLabel = parsed.label;
 
-    const war = getOrInitWarSession();
+    const war = getOrInitWarSession(undefined, interaction.guildId || undefined);
     if (war.recruitmentCall && war.recruitmentCall.active) {
       war.recruitmentCall.expiresAt = parsed.customExpiresAt || 0;
       war.recruitmentCall.durationMinutes = parsed.durationMinutes;
@@ -694,7 +694,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     const sec = Math.floor((parsed.customExpiresAt || Date.now()) / 1000);
-    const hub = buildAdminHub('war_announce', `⏱️ **Universal Target Timer Set:** **${parsed.label}** (<t:${sec}:R> • <t:${sec}:f>)!`);
+    const hub = buildAdminHub('war_announce', `⏱️ **Universal Target Timer Set:** **${parsed.label}** (<t:${sec}:R> • <t:${sec}:f>)!`, interaction.guildId || undefined);
     await interaction.reply({ embeds: hub.embeds, components: hub.components, flags: MessageFlags.Ephemeral });
     return;
   }
@@ -1229,7 +1229,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 
   // Open the interactive Admin Hub
-  const { embeds, components } = buildAdminHub(category);
+  const { embeds, components } = buildAdminHub(category, undefined, interaction.guildId || undefined);
   await interaction.reply({ embeds, components, flags: MessageFlags.Ephemeral });
 }
 
@@ -1399,12 +1399,13 @@ export function buildMasterDossier(
 // ==========================================
 export function buildAdminHub(
   category: 'war' | 'war_announce' | 'war_rules' | 'masters' | 'personas' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war',
-  actionOutcomeMsg?: string
+  actionOutcomeMsg?: string,
+  guildId?: string
 ) {
   let embeds: EmbedBuilder[] = [];
 
   if (category === 'war') {
-    const war = getOrInitWarSession();
+    const war = getOrInitWarSession(undefined, guildId);
     const rules = war.rules || WAR_PRESETS.fuyuki_7;
     const participants = Object.values(war.participants || {});
     const aliveCount = participants.filter(p => p.isAlive).length;
@@ -2521,7 +2522,7 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       currentCategory = 'economy';
     }
 
-    const hub = buildAdminHub(currentCategory, actionOutcome);
+    const hub = buildAdminHub(currentCategory, actionOutcome, interaction.guildId || undefined);
     if (interaction.replied || interaction.deferred) {
       await interaction.editReply({
         embeds: hub.embeds,
