@@ -2246,7 +2246,6 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       actionOutcome = minutes === 0 
         ? '⏱️ **Recruitment Timer:** Set to **Manual Start** (no automatic countdown timer).'
         : `⏱️ **Recruitment Timer:** Set to **${adminAnnounceDraft.customLabel}** countdown (<t:${sec}:R> • <t:${sec}:f>)!`;
-    }
     } else if (customId.startsWith('admin_war_ann_preset_')) {
       currentCategory = 'war_announce';
       const pKey = customId.replace('admin_war_ann_preset_', '');
