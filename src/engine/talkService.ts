@@ -787,7 +787,8 @@ VOICE & ROLEPLAY INSTRUCTIONS:
   appendServantChatTurn(masterId, servantId, context.servantName, context.playerMessage, fallback, warId);
   return {
     reply: fallback,
-    source: 'canon_heuristic'
+    source: 'canon_heuristic',
+    isFallback: true
   };
 }
 
@@ -977,6 +978,7 @@ export async function renderServantTalkVisualOutput(params: {
   bondLevel: number;
   sceneContext?: ServantSceneContext;
   commandSeals?: number;
+  isFallback?: boolean;
   quotaInfo?: {
     remainingToday: number;
     maxToday: number;
@@ -1007,6 +1009,7 @@ export async function renderServantTalkVisualOutput(params: {
     bondLevel,
     sceneContext = 'workshop',
     commandSeals = 3,
+    isFallback = false,
     quotaInfo
   } = params;
 
@@ -1032,6 +1035,14 @@ export async function renderServantTalkVisualOutput(params: {
       : `${activeSceneBadge} • Bond Rank ${bondLevel}/10 • Mana: ${quotaInfo.remainingToday}/${quotaInfo.maxToday} today (Resets 00:00 UTC)`;
   }
 
+  let fallbackNotice = '';
+  if (isFallback || (quotaInfo && quotaInfo.remainingToday <= 0 && !quotaInfo.isByok)) {
+    fallbackNotice =
+      `\n\n⚠️ **Notice: Generic Response Received**\n` +
+      `> *Your Servant replied with a generic fallback response. This happens when daily free chats are spent, or when the public AI server pool is rate-limited at peak hours.*\n` +
+      `> 💡 **Get Unlimited AI Responses:** Connect your own API key with \`/apikey\` or \`/byok setup\`! Choose **Groq Cloud (100% Free 70B)**, **OpenRouter (:free)**, **Google Gemini (Free)**, or **Ollama**.`;
+  }
+
   // Base embed data used for both Option A and Option B
   const embedData = {
     title: `💬 Telepathic Link [${activeSceneBadge}] | ${servantName} [${servantClass}]`,
@@ -1039,7 +1050,8 @@ export async function renderServantTalkVisualOutput(params: {
     description:
       `👤 **Master ${masterName}:**\n> *“${playerMessage}”*\n\n` +
       `⚔️ **${servantName}:**\n> ❝ ***${replyText}*** ❞\n\n` +
-      `*💖 Bond Rank: Lv. ${bondLevel}/10 • 🔱 Seals: ${commandSeals}/3${quotaLine}*`,
+      `*💖 Bond Rank: Lv. ${bondLevel}/10 • 🔱 Seals: ${commandSeals}/3${quotaLine}*` +
+      fallbackNotice,
     color: servantClass.toLowerCase() === 'saber' ? 0x38bdf8 : (servantClass.toLowerCase() === 'archer' ? 0xef4444 : 0xd4af37),
     footer: footerText,
     bondRank: bondLevel

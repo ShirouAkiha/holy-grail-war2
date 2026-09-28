@@ -265,7 +265,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const sceneContext: ServantSceneContext = explicitContext || (isInChurchAsylum ? 'church' : 'workshop');
 
     // 1. Generate the dynamic in-character reply with Holy Grail War chat memory and combat awareness
-    const { reply } = await generateServantTalkResponse({
+    const talkRes = await generateServantTalkResponse({
       servantName,
       servantClass,
       bondLevel,
@@ -305,6 +305,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       eliminatedMastersCount
     });
 
+    const reply = talkRes.reply;
+    const isFallback = talkRes.isFallback || talkRes.source === 'canon_heuristic';
+
     // Award Bond EXP for dialogue interaction
     const bondExpGain = sceneContext === 'bond' ? 35 : 25;
     const bondRes = addBondExpToServant(targetServant, bondExpGain);
@@ -331,6 +334,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       bondLevel: activeBondLevel,
       sceneContext,
       commandSeals,
+      isFallback,
       quotaInfo: {
         remainingToday,
         maxToday,
@@ -338,7 +342,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
     });
 
-    const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    const buttons: ButtonBuilder[] = [
       new ButtonBuilder()
         .setCustomId(`btn_talk_servant:${targetServant.id}:${sceneContext}`)
         .setLabel('Speak Again 💬')
@@ -351,7 +355,18 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setCustomId('vn_open_sanctum')
         .setLabel('Bond Sanctum 💖')
         .setStyle(ButtonStyle.Secondary)
-    );
+    ];
+
+    if (isFallback || (remainingToday <= 0 && !isByok)) {
+      buttons.push(
+        new ButtonBuilder()
+          .setCustomId('btn_apikey_dashboard')
+          .setLabel('Connect API Key (Unlimited) 🔑')
+          .setStyle(ButtonStyle.Success)
+      );
+    }
+
+    const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
 
     // OPTION A: Canvas Card
     if (visual.canvasBuffer) {

@@ -17,6 +17,7 @@ import {
 } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { ApiProviderType, UserCustomApiConfig } from '../types';
+import { explainGenericResponseReason } from '../engine/talkQuotaService';
 import {
   maskApiKey,
   PROVIDER_DISPLAY_NAMES,
@@ -37,6 +38,11 @@ export const data = new SlashCommandBuilder()
     sub
       .setName('dashboard')
       .setDescription('Open your private AI provider & model management dashboard')
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('status')
+      .setDescription('Check why your Servant gives generic responses & view your daily chat quota')
   )
   .addSubcommand(sub =>
     sub
@@ -936,9 +942,56 @@ export function createApiKeyModal(provider: ApiProviderType) {
   return modal;
 }
 
+export function buildGenericExplanationEmbed(master: any) {
+  const explanation = explainGenericResponseReason(master, 7, true);
+
+  const embed = new EmbedBuilder()
+    .setTitle(explanation.title)
+    .setDescription(
+      `${explanation.description}\n\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `❓ **Why does my Servant give generic replies or no response?**\n` +
+      `1. **Daily Free Chat Limit (Od Cap):** Free public server chats are capped per day (25 chats/day). When spent, Servants fall back to static generic dialogue lines.\n` +
+      `2. **Shared Server Peak Demand:** During high global traffic, Google AI Studio free tier models experience peak rate-limits, causing a fallback.\n\n` +
+      `💡 **How to Get Unlimited AI Responses (100% Free):**\n` +
+      `By connecting your own free API key (BYOK), you bypass all shared server limits!\n\n` +
+      `• ⚡ **Groq Cloud (100% FREE):** Get a free key at \`console.groq.com\` (Llama 3.3 70B & DeepSeek R1)\n` +
+      `• 🌐 **OpenRouter (:free):** Get a free key at \`openrouter.ai\` for 100% free DeepSeek V3 & Llama 3.3 70B\n` +
+      `• 🔮 **Google Gemini (FREE):** Get a free key at \`aistudio.google.com\` for Gemini 3.5 Flash\n` +
+      `• 💻 **Ollama (FREE Offline):** Run Llama 3.3 or DeepSeek R1 locally on your PC`
+    )
+    .setColor(explanation.reasonType === 'byok_active_ok' ? 0x22c55e : 0xef4444)
+    .setFooter({ text: 'BYOK Service • Unlimited Telepathic AI Dialogue' });
+
+  const components = [
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('btn_apikey_dashboard')
+        .setLabel('Open API Key Dashboard 🔑')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('btn_apikey_tutorial')
+        .setLabel('1-Min Setup Guide 📖')
+        .setStyle(ButtonStyle.Secondary)
+    )
+  ];
+
+  return { embed, components };
+}
+
 export async function execute(interaction: ChatInputCommandInteraction) {
   const subcommand = interaction.options.getSubcommand(false) || 'dashboard';
   const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+
+  if (subcommand === 'status' || subcommand === 'generic' || subcommand === 'explanation') {
+    const { embed, components } = buildGenericExplanationEmbed(master);
+    await interaction.reply({
+      embeds: [embed],
+      components,
+      flags: MessageFlags.Ephemeral
+    });
+    return;
+  }
 
   if (subcommand === 'tutorial' || subcommand === 'guide' || subcommand === 'help') {
     const { embed, components } = buildApiKeyTutorial();
@@ -1500,6 +1553,16 @@ export async function handleApiKeyButtonInteraction(interaction: ButtonInteracti
 
   if (btnId === 'btn_apikey_dashboard') {
     const { embed, components } = buildApiKeyDashboard(master);
+    if (isParentEphemeral && !interaction.replied && !interaction.deferred) {
+      await interaction.update({ embeds: [embed], components });
+    } else {
+      await interaction.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
+    }
+    return;
+  }
+
+  if (btnId === 'btn_explain_generic' || btnId === 'btn_apikey_status') {
+    const { embed, components } = buildGenericExplanationEmbed(master);
     if (isParentEphemeral && !interaction.replied && !interaction.deferred) {
       await interaction.update({ embeds: [embed], components });
     } else {
