@@ -3,6 +3,7 @@ import { MasterServantInstance } from '../types';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { getLocalMediaDiskPath } from '../utils/localMedia';
 import fs from 'fs';
+import { spawn } from 'child_process';
 
 let canvasModule: any = null;
 try {
@@ -685,8 +686,46 @@ async function renderSingleFrame(state: RaidBattleState, frameIndex: number, loa
   return canvas;
 }
 
+async function encodeFramesToMp4(frameCanvases: any[]): Promise<Buffer | null> {
+  return new Promise((resolve) => {
+    try {
+      const ffmpeg = spawn('ffmpeg', [
+        '-y',
+        '-f', 'image2pipe',
+        '-vcodec', 'mjpeg',
+        '-r', '10',
+        '-i', '-',
+        '-c:v', 'libx264',
+        '-pix_fmt', 'yuv420p',
+        '-movflags', '+frag_keyframe+empty_moov',
+        '-f', 'mp4',
+        'pipe:1'
+      ], { stdio: ['pipe', 'pipe', 'ignore'] });
+
+      const chunks: Buffer[] = [];
+      ffmpeg.stdout.on('data', (chunk) => chunks.push(chunk));
+      ffmpeg.on('close', (code) => {
+        if (code === 0 && chunks.length > 0) {
+          resolve(Buffer.concat(chunks));
+        } else {
+          resolve(null);
+        }
+      });
+      ffmpeg.on('error', () => resolve(null));
+
+      for (let i = 0; i < frameCanvases.length; i++) {
+        const jpegBuf = frameCanvases[i].toBuffer('image/jpeg');
+        ffmpeg.stdin.write(jpegBuf);
+      }
+      ffmpeg.stdin.end();
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
 /**
- * Generates an Animated GIF or PNG buffer for the FGO PvE Raid Battlefield
+ * Generates an Animated MP4, GIF or PNG buffer for the FGO PvE Raid Battlefield
  */
 export async function renderRaidBattlefield(state: RaidBattleState, animated = true): Promise<{ buffer: Buffer; fileName: string }> {
   // Preload all assets
@@ -703,7 +742,25 @@ export async function renderRaidBattlefield(state: RaidBattleState, animated = t
 
   const loadedImages = { bgImg, bossSpriteImg, bossAvatarImg, bossSpriteFrames, servantAvatars };
 
-  // If gifenc is available and we have animated frames, generate a lightweight 640x360 looping GIF attachment for Discord!
+  // 1. Try MP4 encoding with FFmpeg first (Discord autoplays MP4 videos seamlessly!)
+  if (animated && bossSpriteFrames && bossSpriteFrames.length > 0) {
+    try {
+      const frameCanvases = [];
+      for (let f = 0; f < bossSpriteFrames.length; f++) {
+        const frameCanvas = await renderSingleFrame(state, f, loadedImages);
+        frameCanvases.push(frameCanvas);
+      }
+
+      const mp4Buffer = await encodeFramesToMp4(frameCanvases);
+      if (mp4Buffer && mp4Buffer.length > 0) {
+        return { buffer: mp4Buffer, fileName: 'raid_battlefield.mp4' };
+      }
+    } catch (err) {
+      console.error('MP4 encoding error, trying GIF fallback:', err);
+    }
+  }
+
+  // 2. If gifenc is available and we have animated frames, generate a GIF attachment
   if (animated && gifencModule && typeof gifencModule.GIFEncoder === 'function') {
     try {
       const { GIFEncoder, quantize, applyPalette } = gifencModule;
@@ -717,7 +774,7 @@ export async function renderRaidBattlefield(state: RaidBattleState, animated = t
         const h = frameCanvas.height;
         const ctx = frameCanvas.getContext('2d');
         const imgData = ctx.getImageData(0, 0, w, h);
-        const palette = quantize(imgData.data, 128); // 128 colors for lightweight autoplaying GIF
+        const palette = quantize(imgData.data, 128);
         const index = applyPalette(imgData.data, palette);
         gif.writeFrame(index, w, h, {
           palette,
