@@ -346,7 +346,7 @@ async function runRaidBattle(
     return [row1, row2, row3];
   };
 
-  const buildBattleEmbed = (attachmentFileName = 'raid_battlefield.gif') => {
+  const buildBattleEmbed = (attachmentFileName: string) => {
     const active = currentActiveParticipant;
     const servName = active.servant.nickname || active.servant.template?.name || 'Heroic Spirit';
 
@@ -363,7 +363,7 @@ async function runRaidBattle(
 
     const recent = battleState.recentLogs.slice(-3).join('\n');
 
-    return new EmbedBuilder()
+    const embed = new EmbedBuilder()
       .setTitle(`⚔️ DEMON GOD PILLAR RAID — ROUND ${battleState.round}`)
       .setDescription(
         `👉 **Current Turn:** <@${active.userId}> (**${servName}**)\n\n` +
@@ -374,12 +374,19 @@ async function runRaidBattle(
       .setImage(`attachment://${attachmentFileName}`)
       .setColor(0x8b5cf6)
       .setFooter({ text: 'Fate/Grand Order PvE Raid • Select 3 Command Cards & Attack!' });
+
+    if (boss.spriteUrl) {
+      embed.setThumbnail(boss.spriteUrl);
+    }
+
+    return embed;
   };
 
   const renderAndPostTurn = async (interactionToEdit?: any) => {
-    const { buffer, fileName } = await renderRaidBattlefield(battleState, true);
-    const attachment = new AttachmentBuilder(buffer, { name: fileName });
-    const embeds = [buildBattleEmbed(fileName)];
+    const uniqueFileName = `raid_${Date.now()}_${Math.floor(Math.random() * 1000)}.gif`;
+    const { buffer } = await renderRaidBattlefield(battleState, true);
+    const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
+    const embeds = [buildBattleEmbed(uniqueFileName)];
     const components = buildBattleButtons();
 
     if (interactionToEdit) {
