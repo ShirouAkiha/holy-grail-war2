@@ -970,7 +970,7 @@ export function executeHealRitual(
   war: HolyGrailWarSession,
   masterId: string
 ): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
-  const targetWar = war || globalWarSession;
+  const targetWar = war || getOrInitWarSession();
   if (!targetWar) {
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
@@ -1179,7 +1179,7 @@ export function exposeMasterInWar(
   masterIdOrUsername: string,
   reason: 'public_command' | 'ambush_clash' | 'innocent_assault' | 'intel_leak' | 'direct_combat'
 ): { updatedWar: HolyGrailWarSession; newlyExposed: boolean; participant?: WarMasterParticipant } {
-  const targetWar = war || globalWarSession;
+  const targetWar = war  || getOrInitWarSession();
   if (!targetWar) return { updatedWar: war, newlyExposed: false };
 
   const participant = findTargetMaster(targetWar, masterIdOrUsername);
@@ -1236,7 +1236,7 @@ export function attackSuspectUserInWar(
   channelName?: string,
   resolvedTargetUsername?: string
 ): WarActionResult {
-  const targetWar = war || globalWarSession;
+  const targetWar = war  || getOrInitWarSession();
   if (!targetWar) {
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
@@ -1705,7 +1705,7 @@ export function leakIntelInWar(
   targetToExposeQuery?: string,
   channelName?: string
 ): WarActionResult {
-  const targetWar = war || globalWarSession;
+  const targetWar = war  || getOrInitWarSession();
   if (!targetWar) {
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
@@ -1785,7 +1785,7 @@ export function setChannelTrapInWar(
   channelName: string,
   trapType: 'alarm' | 'drain'
 ): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
-  const targetWar = war || globalWarSession;
+  const targetWar = war  || getOrInitWarSession();
   if (!targetWar) {
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
@@ -1887,7 +1887,7 @@ export function disarmChannelTrapsInWar(
   setterId: string,
   channelName?: string
 ): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
-  const targetWar = war || globalWarSession;
+  const targetWar = war  || getOrInitWarSession();
   if (!targetWar) {
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
@@ -1998,7 +1998,7 @@ export function checkAndTriggerChannelTraps(
   usedAutoEvade?: boolean;
   channelName?: string;
 } {
-  const targetWar = war || globalWarSession;
+  const targetWar = war  || getOrInitWarSession();
   if (!targetWar || !targetWar.channelTraps || targetWar.channelTraps.length === 0) {
     return { triggered: false };
   }
@@ -2121,7 +2121,7 @@ export function dispatchFamiliarInWar(
   channelName: string,
   familiarType: 'raven' | 'homunculus' | 'shadow_imp'
 ): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
-  const targetWar = war || globalWarSession;
+  const targetWar = war  || getOrInitWarSession();
   if (!targetWar) {
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
@@ -2206,7 +2206,7 @@ export function recallFamiliarsInWar(
   masterId: string,
   channelName?: string
 ): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
-  const targetWar = war || globalWarSession;
+  const targetWar = war  || getOrInitWarSession();
   if (!targetWar) {
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
@@ -2248,7 +2248,7 @@ export function recordFamiliarObservation(
   actionText: string,
   servantClass?: string
 ): void {
-  const targetWar = war || globalWarSession;
+  const targetWar = war  || getOrInitWarSession();
   if (!targetWar || !targetWar.familiars || targetWar.familiars.length === 0) return;
 
   const chanTag = channelName.startsWith('#') ? channelName : `#${channelName}`;
@@ -2287,7 +2287,7 @@ export function patrolCityInWar(
   actorUsername: string,
   channelName?: string
 ): WarActionResult {
-  const targetWar = war || globalWarSession;
+  const targetWar = war  || getOrInitWarSession();
   if (!targetWar) {
     return { success: false, message: 'Holy Grail War is not active.', updatedWar: war };
   }
@@ -2461,7 +2461,7 @@ export function executeWarAction(
   action: WarActionType,
   targetParam?: string
 ): WarActionResult {
-  const targetWar = war || globalWarSession;
+  const targetWar = war  || getOrInitWarSession();
   if (!targetWar) {
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
@@ -2625,7 +2625,7 @@ export function executeWarAction(
 }
 
 export function simulateWarSkirmish(war: HolyGrailWarSession, channelName?: string): WarActionResult {
-  const targetWar = war || globalWarSession;
+  const targetWar = war  || getOrInitWarSession();
   if (!targetWar) {
     return { success: false, message: 'Holy Grail War is not active.', updatedWar: war };
   }
@@ -2712,7 +2712,7 @@ export function recordDuelOutcome(
   victorMaster?: WarMasterParticipant;
   defeatedMaster?: WarMasterParticipant;
 } {
-  const targetWar = war || globalWarSession;
+  const targetWar = war  || getOrInitWarSession();
   if (!targetWar) {
     return {
       updatedWar: war,
@@ -2865,7 +2865,7 @@ export function enterChurchSanctuary(
   war: HolyGrailWarSession,
   masterId: string
 ): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
-  const targetWar = war || globalWarSession;
+  const targetWar = war  || getOrInitWarSession();
   if (!targetWar) {
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
@@ -2928,7 +2928,7 @@ export function leaveChurchSanctuary(
   war: HolyGrailWarSession,
   masterId: string
 ): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
-  const targetWar = war || globalWarSession;
+  const targetWar = war  || getOrInitWarSession();
   if (!targetWar) {
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
@@ -2978,7 +2978,7 @@ export function invokeCommandSealInWar(
   actorDiscordId: string,
   effect: 'heal' | 'overdrive' | 'toggle_evac'
 ): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
-  const targetWar = war || globalWarSession;
+  const targetWar = war  || getOrInitWarSession();
   if (!targetWar) {
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
@@ -3037,7 +3037,7 @@ export function setWorkshopWardInWar(
   wardType: 'ward' | 'decoy' | 'alarm' | 'none',
   channelName?: string
 ): { success: boolean; message: string; updatedWar: HolyGrailWarSession } {
-  const targetWar = war || globalWarSession;
+  const targetWar = war  || getOrInitWarSession();
   if (!targetWar) {
     return { success: false, message: 'Holy Grail War is not active!', updatedWar: war };
   }
@@ -3248,7 +3248,7 @@ export function updateWarRules(
   ruleChanges: Partial<WarRules>,
   adminUsername: string = 'Overseer'
 ): { updatedWar: HolyGrailWarSession; message: string } {
-  const targetWar = war || globalWarSession || getOrInitWarSession();
+  const targetWar = war || getOrInitWarSession();
   if (!targetWar.rules) {
     targetWar.rules = { ...WAR_PRESETS.fuyuki_7 };
   }
@@ -3277,7 +3277,7 @@ export function refillAllWarParticipantsSeals(
   war: HolyGrailWarSession,
   adminUsername: string = 'Overseer'
 ): { updatedWar: HolyGrailWarSession; message: string } {
-  const targetWar = war || globalWarSession || getOrInitWarSession();
+  const targetWar = war || getOrInitWarSession();
   const maxSeals = targetWar.rules?.startingCommandSeals || 3;
   let count = 0;
   for (const p of Object.values(targetWar.participants || {})) {
@@ -3296,7 +3296,7 @@ export function triggerAdminCataclysm(
   cataclysmType: 'grail_mud' | 'fuyuki_fire' | 'angra_mainyu' | 'mana_surge',
   adminUsername: string = 'Overseer'
 ): { updatedWar: HolyGrailWarSession; message: string; banner: string } {
-  const targetWar = war || globalWarSession || getOrInitWarSession();
+  const targetWar = war || getOrInitWarSession();
   const now = Date.now();
   let msg = '';
   let banner = '';

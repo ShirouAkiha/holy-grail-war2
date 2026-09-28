@@ -732,112 +732,23 @@ async function encodeFramesToMp4(frameCanvases: any[]): Promise<Buffer | null> {
 }
 
 /**
- * Generates an Animated MP4, GIF or PNG buffer for the FGO PvE Raid Battlefield
+ * Generates a PNG buffer for the FGO PvE Raid Battlefield
  */
-export async function renderRaidBattlefield(state: RaidBattleState, animated = true): Promise<{ buffer: Buffer; fileName: string }> {
+export async function renderRaidBattlefield(state: RaidBattleState, _animated = false): Promise<{ buffer: Buffer; fileName: string }> {
   // Preload all assets
-  const [bgImg, bossSpriteImg, bossAvatarImg, bossSpriteFrames, ...servantAvatars] = await Promise.all([
+  const [bgImg, bossSpriteImg, bossAvatarImg, ...servantAvatars] = await Promise.all([
     loadImage(state.boss.bgUrl),
     loadImage(state.boss.spriteUrl),
     loadImage(state.boss.avatarUrl),
-    animated ? extractGifFrames(state.boss.spriteUrl, 10) : Promise.resolve([]),
     ...state.participants.map(p => {
       const art = p.servant.customArtworkUrl || p.servant.template?.avatarUrl;
       return art ? loadImage(art) : Promise.resolve(null);
     })
   ]);
 
-  const loadedImages = { bgImg, bossSpriteImg, bossAvatarImg, bossSpriteFrames, servantAvatars };
+  const loadedImages = { bgImg, bossSpriteImg, bossAvatarImg, bossSpriteFrames: [], servantAvatars };
 
-  // 1. If gifenc is available and we have animated frames, generate a lightweight looping GIF attachment
-  if (animated && gifencModule && typeof gifencModule.GIFEncoder === 'function') {
-    try {
-      const { GIFEncoder, quantize, applyPalette } = gifencModule;
-      const gif = GIFEncoder();
-
-      const frameCount = (bossSpriteFrames && bossSpriteFrames.length > 0) ? bossSpriteFrames.length : 2;
-
-      for (let f = 0; f < frameCount; f++) {
-        const frameCanvas = await renderSingleFrame(state, f, loadedImages);
-        const w = frameCanvas.width;
-        const h = frameCanvas.height;
-        const ctx = frameCanvas.getContext('2d');
-        const imgData = ctx.getImageData(0, 0, w, h);
-        const palette = quantize(imgData.data, 128);
-        const index = applyPalette(imgData.data, palette);
-        gif.writeFrame(index, w, h, {
-          palette,
-          delay: 100, // 10 FPS
-          repeat: 0,  // Infinite loop
-          dispose: 2,
-          first: f === 0
-        });
-      }
-
-      gif.finish();
-      const gifBuffer = Buffer.from(gif.bytes());
-      if (gifBuffer && gifBuffer.length > 0) {
-        return { buffer: gifBuffer, fileName: 'raid_battlefield.gif' };
-      }
-    } catch (err) {
-      console.error('GIF encoding error, trying APNG fallback:', err);
-    }
-  }
-
-  // 2. Try MP4 encoding with FFmpeg second
-  if (animated && bossSpriteFrames && bossSpriteFrames.length > 0) {
-    try {
-      const frameCanvases = [];
-      for (let f = 0; f < bossSpriteFrames.length; f++) {
-        const frameCanvas = await renderSingleFrame(state, f, loadedImages);
-        frameCanvases.push(frameCanvas);
-      }
-
-      const mp4Buffer = await encodeFramesToMp4(frameCanvases);
-      if (mp4Buffer && mp4Buffer.length > 0) {
-        return { buffer: mp4Buffer, fileName: 'raid_battlefield.mp4' };
-      }
-    } catch (err) {
-      console.error('MP4 encoding error, trying GIF fallback:', err);
-    }
-  }
-
-  // 2. If gifenc is available and we have animated frames, generate a GIF attachment
-  if (animated && gifencModule && typeof gifencModule.GIFEncoder === 'function') {
-    try {
-      const { GIFEncoder, quantize, applyPalette } = gifencModule;
-      const gif = GIFEncoder();
-
-      const frameCount = (bossSpriteFrames && bossSpriteFrames.length > 0) ? bossSpriteFrames.length : 2;
-
-      for (let f = 0; f < frameCount; f++) {
-        const frameCanvas = await renderSingleFrame(state, f, loadedImages);
-        const w = frameCanvas.width;
-        const h = frameCanvas.height;
-        const ctx = frameCanvas.getContext('2d');
-        const imgData = ctx.getImageData(0, 0, w, h);
-        const palette = quantize(imgData.data, 128);
-        const index = applyPalette(imgData.data, palette);
-        gif.writeFrame(index, w, h, {
-          palette,
-          delay: 100,
-          repeat: 0,
-          dispose: 2,
-          first: f === 0
-        });
-      }
-
-      gif.finish();
-      const gifBuffer = Buffer.from(gif.bytes());
-      if (gifBuffer && gifBuffer.length > 0) {
-        return { buffer: gifBuffer, fileName: 'raid_battlefield.gif' };
-      }
-    } catch (err) {
-      console.error('GIF encoding error, falling back to static PNG:', err);
-    }
-  }
-
-  // Fallback to high-definition PNG
+  // Render single crisp PNG frame
   const singleCanvas = await renderSingleFrame(state, 0, loadedImages);
   return { buffer: singleCanvas.toBuffer('image/png'), fileName: 'raid_battlefield.png' };
 }

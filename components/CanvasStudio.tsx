@@ -22,7 +22,11 @@ import {
   Crosshair,
   Flame,
   Layers,
-  Check
+  Check,
+  Film,
+  FastForward,
+  Rewind,
+  Sliders
 } from 'lucide-react';
 
 interface CanvasStudioProps {
@@ -179,6 +183,28 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
 
   // Animation Replay & Trigger state
   const [animTrigger, setAnimTrigger] = useState(0);
+
+  // CSS Frame-Animation Engine state (Stable visual animation alternative to GIF/APNG)
+  const [animEnabled, setAnimEnabled] = useState(true);
+  const [animMode, setAnimMode] = useState<'frames' | 'spritesheet'>('frames');
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [currentFrame, setCurrentFrame] = useState(0);
+  const [animFps, setAnimFps] = useState(10);
+  const [spriteOverlay, setSpriteOverlay] = useState<'barbatos' | 'slash' | 'rune'>('barbatos');
+  const [overlayOpacity, setOverlayOpacity] = useState(0.85);
+  const [overlayScale, setOverlayScale] = useState(1.0);
+  const [overlayPosX, setOverlayPosX] = useState(0);
+  const [overlayPosY, setOverlayPosY] = useState(0);
+
+  // CSS Frame Animation Loop Effect
+  useEffect(() => {
+    if (!animEnabled || !isPlaying) return;
+    const intervalMs = Math.max(16, Math.floor(1000 / animFps));
+    const timer = setInterval(() => {
+      setCurrentFrame(prev => (prev + 1) % 10);
+    }, intervalMs);
+    return () => clearInterval(timer);
+  }, [animEnabled, isPlaying, animFps]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -416,13 +442,224 @@ export default function CanvasStudio({ master }: CanvasStudioProps) {
         ))}
       </div>
 
-      {/* Live Canvas Viewport */}
+      {/* Live Canvas Viewport with CSS Frame-Animation Engine */}
       <div className="p-6 rounded-xl bg-[#050505] border border-[#1a1a1a] flex flex-col items-center justify-center overflow-x-auto shadow-2xl relative">
-        <canvas
-          ref={canvasRef}
-          id="fate_vn_active_canvas"
-          className="rounded-lg border border-[#2a2a2a] shadow-2xl max-w-full h-auto"
-        />
+        {/* Frame Animation Control Bar */}
+        <div className="w-full max-w-4xl mb-4 p-3 bg-[#0a0a0a] rounded-lg border border-[#1f1f1f] flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30">
+              <Film className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-bold text-white uppercase tracking-wider block">
+                CSS Frame-Animation Engine
+              </span>
+              <span className="text-[10px] text-white/40">
+                Stable 60fps/10fps transparent PNG overlay & sprite-sheet slider
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={() => setAnimEnabled(!animEnabled)}
+              className={`px-3 py-1.5 rounded font-bold uppercase transition border ${
+                animEnabled
+                  ? 'bg-amber-500 text-black border-amber-400 shadow-md'
+                  : 'bg-[#161616] text-white/50 border-[#2a2a2a] hover:text-white'
+              }`}
+            >
+              {animEnabled ? 'CSS Animation ON' : 'CSS Animation OFF'}
+            </button>
+
+            {animEnabled && (
+              <>
+                <div className="flex items-center bg-[#141414] rounded border border-[#2a2a2a] p-0.5">
+                  <button
+                    onClick={() => setAnimMode('frames')}
+                    className={`px-2.5 py-1 rounded text-[10px] uppercase font-bold transition ${
+                      animMode === 'frames' ? 'bg-[#262626] text-amber-400' : 'text-white/40 hover:text-white'
+                    }`}
+                  >
+                    PNG Frames
+                  </button>
+                  <button
+                    onClick={() => setAnimMode('spritesheet')}
+                    className={`px-2.5 py-1 rounded text-[10px] uppercase font-bold transition ${
+                      animMode === 'spritesheet' ? 'bg-[#262626] text-amber-400' : 'text-white/40 hover:text-white'
+                    }`}
+                  >
+                    Sprite Sheet
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1 bg-[#141414] rounded border border-[#2a2a2a] px-2 py-1">
+                  <button
+                    onClick={() => setCurrentFrame(prev => (prev - 1 + 10) % 10)}
+                    className="p-1 hover:text-amber-400 text-white/60 transition"
+                    title="Step Previous Frame"
+                  >
+                    <Rewind className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    className="p-1 hover:text-amber-400 text-amber-400 transition"
+                    title={isPlaying ? 'Pause' : 'Play'}
+                  >
+                    {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                  </button>
+                  <button
+                    onClick={() => setCurrentFrame(prev => (prev + 1) % 10)}
+                    className="p-1 hover:text-amber-400 text-white/60 transition"
+                    title="Step Next Frame"
+                  >
+                    <FastForward className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-[#141414] rounded border border-[#2a2a2a] px-2.5 py-1 text-[11px]">
+                  <span className="text-white/40">FPS:</span>
+                  <input
+                    type="range"
+                    min="1"
+                    max="30"
+                    value={animFps}
+                    onChange={e => setAnimFps(parseInt(e.target.value))}
+                    className="w-16 accent-amber-400 cursor-pointer"
+                  />
+                  <span className="text-amber-400 font-bold">{animFps}</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Canvas Relative Container with Animation Layer */}
+        <div className="relative group max-w-full overflow-hidden flex items-center justify-center">
+          <canvas
+            ref={canvasRef}
+            id="fate_vn_active_canvas"
+            className="rounded-lg border border-[#2a2a2a] shadow-2xl max-w-full h-auto block"
+          />
+
+          {/* CSS Frame-Animation Overlay Layer */}
+          {animEnabled && (
+            <div
+              className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden rounded-lg transition-opacity duration-150"
+              style={{ opacity: overlayOpacity }}
+            >
+              {animMode === 'frames' ? (
+                /* Frame Overlay Mode - Transparent PNG Frame Cycle */
+                <div
+                  className="relative w-full h-full flex items-center justify-center"
+                  style={{
+                    transform: `translate(${overlayPosX}px, ${overlayPosY}px) scale(${overlayScale})`
+                  }}
+                >
+                  <div
+                    className="w-[220px] h-[220px] bg-no-repeat bg-contain bg-center transition-transform duration-75"
+                    style={{
+                      backgroundImage: `url(${
+                        spriteOverlay === 'barbatos'
+                          ? 'https://ella.janitorai.com/media-approved/CGFhQCyCSVrzWsWlBE-42.gif'
+                          : spriteOverlay === 'slash'
+                          ? 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=600'
+                          : 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600'
+                      })`,
+                      filter: spriteOverlay === 'slash' ? 'hue-rotate(180deg) brightness(1.3)' : 'none',
+                      transform: `translateY(${Math.sin((currentFrame / 10) * Math.PI * 2) * 6}px) scale(${1 + (currentFrame % 3) * 0.02})`
+                    }}
+                  />
+
+                  <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded text-[10px] font-mono text-amber-400 border border-amber-500/30">
+                    <span>CSS FRAME #{currentFrame + 1} / 10</span>
+                    <span className="ml-2 text-white/50">({animFps} FPS)</span>
+                  </div>
+                </div>
+              ) : (
+                /* Sprite Sheet Sliding Mode - CSS Step Sliding */
+                <div
+                  className="relative w-full h-full flex items-center justify-center"
+                  style={{
+                    transform: `translate(${overlayPosX}px, ${overlayPosY}px) scale(${overlayScale})`
+                  }}
+                >
+                  <div
+                    className="w-[200px] h-[200px] transition-all duration-75"
+                    style={{
+                      backgroundImage: `url(https://ella.janitorai.com/media-approved/CGFhQCyCSVrzWsWlBE-42.gif)`,
+                      backgroundSize: '500% 200%',
+                      backgroundPosition: `${(currentFrame % 5) * 25}% ${Math.floor(currentFrame / 5) * 100}%`,
+                      filter: 'drop-shadow(0 0 10px rgba(212,175,55,0.4))'
+                    }}
+                  />
+
+                  <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded text-[10px] font-mono text-sky-400 border border-sky-500/30">
+                    <span>SPRITE SHEET STEP #{(currentFrame % 5) + 1}</span>
+                    <span className="ml-2 text-white/50">(SLIDING MESH)</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Animation Control Sliders */}
+        {animEnabled && (
+          <div className="w-full max-w-4xl mt-4 p-3 bg-[#0a0a0a] rounded-lg border border-[#1a1a1a] grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px] font-mono text-white/60">
+            <div>
+              <label className="block text-white/40 mb-1">Sprite Overlay:</label>
+              <select
+                value={spriteOverlay}
+                onChange={e => setSpriteOverlay(e.target.value as any)}
+                className="w-full bg-[#141414] text-white py-1 px-2 rounded border border-[#262626] focus:outline-none"
+              >
+                <option value="barbatos">Barbatos Demon God</option>
+                <option value="slash">Excalibur Sword Slash</option>
+                <option value="rune">Arcane Runic Mana Burst</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-white/40 mb-1">Opacity: ({Math.round(overlayOpacity * 100)}%)</label>
+              <input
+                type="range"
+                min="0.1"
+                max="1"
+                step="0.05"
+                value={overlayOpacity}
+                onChange={e => setOverlayOpacity(parseFloat(e.target.value))}
+                className="w-full accent-amber-400 cursor-pointer"
+              />
+            </div>
+
+            <div>
+              <label className="block text-white/40 mb-1">Scale: ({overlayScale.toFixed(2)}x)</label>
+              <input
+                type="range"
+                min="0.5"
+                max="2.0"
+                step="0.1"
+                value={overlayScale}
+                onChange={e => setOverlayScale(parseFloat(e.target.value))}
+                className="w-full accent-amber-400 cursor-pointer"
+              />
+            </div>
+
+            <div>
+              <label className="block text-white/40 mb-1">Vertical Offset Y: ({overlayPosY}px)</label>
+              <input
+                type="range"
+                min="-100"
+                max="100"
+                step="5"
+                value={overlayPosY}
+                onChange={e => setOverlayPosY(parseInt(e.target.value))}
+                className="w-full accent-amber-400 cursor-pointer"
+              />
+            </div>
+          </div>
+        )}
 
         {activeTab === 'dialogue' && (
           <div className="mt-3 flex items-center gap-4 text-xs font-mono text-white/40">

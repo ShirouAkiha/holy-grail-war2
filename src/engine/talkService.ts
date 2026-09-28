@@ -276,7 +276,7 @@ export function generateCanonicalFallbackReply(ctx: ServantTalkContext): string 
 /**
  * Generate in-character Servant reply using Gemini (with fallback and persistent multi-turn memory)
  */
-export async function generateServantTalkResponse(context: ServantTalkContext): Promise<{ reply: string; source: 'gemini' | 'canon_heuristic' }> {
+export async function generateServantTalkResponse(context: ServantTalkContext): Promise<{ reply: string; source: 'gemini' | 'canon_heuristic'; isFallback?: boolean }> {
   const client = getAiClient();
   const bond = context.bondLevel || 1;
   const seals = context.commandSeals ?? 3;

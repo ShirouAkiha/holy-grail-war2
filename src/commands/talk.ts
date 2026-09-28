@@ -306,7 +306,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     });
 
     const reply = talkRes.reply;
-    const isFallback = talkRes.isFallback || talkRes.source === 'canon_heuristic';
+    const isFallback = (talkRes as any).isFallback || talkRes.source === 'canon_heuristic';
 
     // Award Bond EXP for dialogue interaction
     const bondExpGain = sceneContext === 'bond' ? 35 : 25;

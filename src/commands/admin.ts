@@ -56,7 +56,7 @@ import {
   triggerAdminCataclysm,
   refillAllWarParticipantsSeals
 } from '../engine/grailwar';
-import { startWarRecruitment, igniteWarFromRecruitment, cancelRecruitmentCall } from '../engine/warRecruitmentService';
+import { startWarRecruitment, igniteWarFromRecruitment, cancelRecruitmentCall, resumePendingRecruitment } from '../engine/warRecruitmentService';
 import { WarRules, MasterProfile } from '../types';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
