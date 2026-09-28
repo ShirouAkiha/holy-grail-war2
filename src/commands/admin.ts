@@ -1785,20 +1785,12 @@ export function buildAdminHub(
         .setChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
     );
 
-    // 2. Timer Presets Row 1
-    const timerRow1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    // 2. Timer Presets Row (Exactly 1 row of 5 buttons to respect Discord's 5-row limit)
+    const timerRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('admin_war_timer_0').setLabel('Manual (No Timer)').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 0 && !adminAnnounceDraft.customTargetTimestamp ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('admin_war_timer_15').setLabel('15 Mins').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 15 ? ButtonStyle.Primary : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('admin_war_timer_60').setLabel('1 Hour').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 60 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_war_timer_120').setLabel('2 Hours').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 120 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_war_timer_360').setLabel('6 Hours').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 360 ? ButtonStyle.Primary : ButtonStyle.Secondary)
-    );
-
-    // 2b. Timer Presets Row 2 (Extended & Custom Modals)
-    const timerRow2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId('admin_war_timer_720').setLabel('12 Hours').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 720 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_war_timer_1440').setLabel('24 Hours').setEmoji('⏱️').setStyle(adminAnnounceDraft.durationMinutes === 1440 ? ButtonStyle.Primary : ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_war_timer_custom').setLabel('Custom Duration ⏱️').setStyle(adminAnnounceDraft.customTargetTimestamp ? ButtonStyle.Success : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_war_timer_custom').setLabel('Custom Duration ⏱️').setStyle(adminAnnounceDraft.customTargetTimestamp && adminAnnounceDraft.durationMinutes !== 15 && adminAnnounceDraft.durationMinutes !== 60 ? ButtonStyle.Success : ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId('admin_war_timer_date').setLabel('Set Target Date 📅').setStyle(adminAnnounceDraft.customTargetTimestamp ? ButtonStyle.Success : ButtonStyle.Secondary)
     );
 
@@ -1831,7 +1823,7 @@ export function buildAdminHub(
 
     const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(executionButtons);
 
-    components.push(channelSelectRow, timerRow1, timerRow2, presetRow, actionRow);
+    components.push(channelSelectRow, timerRow, presetRow, actionRow);
 
   } else if (category === 'war_rules') {
     const war = getOrInitWarSession();
