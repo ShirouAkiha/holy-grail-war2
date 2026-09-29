@@ -563,9 +563,12 @@ async function runRaidBattle(
     return embed;
   };
 
+  let currentCanvasFileName = '';
+
   const renderAndPostTurn = async () => {
     const { buffer, fileName } = await renderRaidBattlefield(battleState, false);
     const uniqueFileName = `raid_${Date.now()}_${Math.floor(Math.random() * 1000)}.png`;
+    currentCanvasFileName = uniqueFileName;
     const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
     const embeds = [buildBattleEmbed(uniqueFileName)];
     const components = buildBattleButtons();
@@ -642,8 +645,10 @@ async function runRaidBattle(
     } else if (i.customId === 'raid_reset_cards') {
       pendingCards = [];
       pendingIndices = [];
-      await i.deferUpdate();
-      await renderAndPostTurn();
+      await i.update({
+        embeds: [buildBattleEmbed(currentCanvasFileName)],
+        components: buildBattleButtons()
+      });
       return;
     } else if (i.customId.startsWith('raid_skill_')) {
       const sIdx = parseInt(i.customId.replace('raid_skill_', ''), 10);
@@ -791,8 +796,10 @@ async function runRaidBattle(
         battleState.recentLogs.push(`✨ **${active.servant.nickname || active.servant.template.name}** invoked **${sName}**! ${buffLog}${quoteText}`);
         if (battleState.recentLogs.length > 4) battleState.recentLogs.shift();
 
-        await i.deferUpdate();
-        await renderAndPostTurn();
+        await i.update({
+          embeds: [buildBattleEmbed(currentCanvasFileName)],
+          components: buildBattleButtons()
+        });
         return;
       }
     } else if (i.customId === 'raid_command_seal') {
@@ -805,8 +812,10 @@ async function runRaidBattle(
           `🔱 <@${active.userId}> expended a **Command Seal** (${active.master.commandSeals} remaining)! **${active.servant.nickname || active.servant.template.name}** is fully healed and charged to **100% NP**!`
         );
         if (battleState.recentLogs.length > 4) battleState.recentLogs.shift();
-        await i.deferUpdate();
-        await renderAndPostTurn();
+        await i.update({
+          embeds: [buildBattleEmbed(currentCanvasFileName)],
+          components: buildBattleButtons()
+        });
         return;
       }
     } else if (i.customId === 'raid_flee') {
@@ -834,10 +843,12 @@ async function runRaidBattle(
       return;
     }
 
-    // If fewer than 3 cards selected, update buttons and render turn
+    // If fewer than 3 cards selected, update buttons and embed in-place with ZERO lag!
     if (pendingCards.length < 3) {
-      await i.deferUpdate();
-      await renderAndPostTurn();
+      await i.update({
+        embeds: [buildBattleEmbed(currentCanvasFileName)],
+        components: buildBattleButtons()
+      });
       return;
     }
 
@@ -872,23 +883,40 @@ async function runRaidBattle(
     const bossDefUp = (battleState.bossBuffs?.filter(b => b.type === 'def_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100;
     const bossDefFactor = Math.max(0.2, 1 + bossDefDown - bossDefUp);
 
+    const starsAvailableForCrits = active.critStars || 0;
+    const isQuickFirstLead = pendingCards[0] === 'Quick';
+    let totalCritsLanded = 0;
     let npTriggeredAntiThreat = false;
     let npDebuffNotice = '';
 
     pendingCards.forEach((card, cIdx) => {
       const stepMult = cIdx === 0 ? 1.0 : cIdx === 1 ? 1.2 : 1.4;
+
+      // Calculate critical hit rate based on current star pool
+      const baseCritMult = card === 'Buster' ? 2.0 : card === 'Arts' ? 1.8 : 2.2;
+      let critPct = Math.round(starsAvailableForCrits * baseCritMult);
+      if (isQuickFirstLead && cIdx > 0) critPct += 20;
+      critPct = Math.min(100, Math.max(0, critPct));
+
+      const isCrit = card !== 'NP' && (Math.random() * 100 < critPct);
+      if (isCrit) totalCritsLanded++;
+
+      const critDmgMult = isCrit ? 2.0 : 1.0;
+      const critNpBonus = isCrit ? 1.5 : 1.0;
+      const critStarBonus = isCrit ? 1.4 : 1.0;
+
       if (card === 'Buster') {
-        totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * (0.9 + Math.random() * 0.2));
-        starsGenerated += 3;
-        npGained += 5;
+        totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * (0.9 + Math.random() * 0.2));
+        starsGenerated += Math.round(3 * critStarBonus);
+        npGained += Math.round(5 * critNpBonus);
       } else if (card === 'Arts') {
-        totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * (0.9 + Math.random() * 0.2));
-        npGained += 25;
-        starsGenerated += 2;
+        totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * (0.9 + Math.random() * 0.2));
+        npGained += Math.round(25 * critNpBonus);
+        starsGenerated += Math.round(2 * critStarBonus);
       } else if (card === 'Quick') {
-        totalTurnDmg += Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * (0.9 + Math.random() * 0.2));
-        starsGenerated += 12;
-        npGained += 10;
+        totalTurnDmg += Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * (0.9 + Math.random() * 0.2));
+        starsGenerated += Math.round(12 * critStarBonus);
+        npGained += Math.round(10 * critNpBonus);
       } else if (card === 'NP') {
         const npMultiplier = 5.5;
         const npDesc = active.servant.template?.noblePhantasm?.description || '';
@@ -944,10 +972,14 @@ async function runRaidBattle(
 
     battleState.bossCurrentHp = Math.max(0, battleState.bossCurrentHp - totalTurnDmg);
     active.npGauge = Math.min(100, (active.npGauge || 0) + npGained);
-    active.critStars = Math.min(50, (active.critStars || 0) + starsGenerated);
+    // Consumes existing stars used during the attack; new star pool is based on stars generated this turn!
+    active.critStars = Math.min(50, Math.round(starsGenerated));
 
     const servName = active.servant.nickname || active.servant.template?.name || 'Servant';
     let traitLog = '';
+    if (totalCritsLanded > 0) {
+      traitLog += ` 💥 **[${totalCritsLanded} CRIT${totalCritsLanded > 1 ? 'S' : ''} (2.0x DMG)!]**`;
+    }
     if (npTriggeredAntiThreat) {
       traitLog += ' 👑 **[Anti-Calamity Protocol: +50% Special DMG vs Threat to Humanity!]**';
     } else if (antiThreatBuff > 0) {
