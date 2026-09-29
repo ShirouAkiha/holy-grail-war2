@@ -3,34 +3,12 @@ import { MasterServantInstance } from '../types';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { getLocalMediaDiskPath } from '../utils/localMedia';
 import fs from 'fs';
-import { spawn } from 'child_process';
 
 let canvasModule: any = null;
 try {
   canvasModule = require('@napi-rs/canvas');
 } catch {
   canvasModule = null;
-}
-
-let gifencModule: any = null;
-try {
-  gifencModule = require('gifenc');
-} catch {
-  gifencModule = null;
-}
-
-let omggifModule: any = null;
-try {
-  omggifModule = require('omggif');
-} catch {
-  omggifModule = null;
-}
-
-let upngModule: any = null;
-try {
-  upngModule = require('upng-js');
-} catch {
-  upngModule = null;
 }
 
 export const MINIMAL_VALID_PNG = Buffer.from(
@@ -184,66 +162,16 @@ export interface RaidBattleState {
   recentLogs: string[];
 }
 
-async function extractGifFrames(url: string, sampleCount = 10): Promise<any[]> {
-  if (!omggifModule) return [];
-  const buffer = await fetchImageBuffer(url);
-  if (!buffer) return [];
-
-  try {
-    const reader = new omggifModule.GifReader(buffer);
-    const total = reader.numFrames();
-    if (total <= 1) return [];
-
-    const width = reader.width;
-    const height = reader.height;
-
-    const frameIndices: number[] = [];
-    for (let i = 0; i < sampleCount; i++) {
-      frameIndices.push(Math.floor((i * total) / sampleCount));
-    }
-
-    const compCanvas = createCanvas(width, height);
-    const compCtx = compCanvas.getContext('2d');
-    const resultCanvases: any[] = [];
-
-    for (let f = 0; f < total; f++) {
-      const frameInfo = reader.frameInfo(f);
-      const pixelData = new Uint8ClampedArray(width * height * 4);
-      reader.decodeAndBlitFrameRGBA(f, pixelData);
-
-      const frameCanvas = createCanvas(width, height);
-      const frameCtx = frameCanvas.getContext('2d');
-      const imgData = frameCtx.createImageData(width, height);
-      imgData.data.set(pixelData);
-      frameCtx.putImageData(imgData, 0, 0);
-
-      if (frameInfo.disposal === 2) {
-        compCtx.clearRect(frameInfo.x, frameInfo.y, frameInfo.width, frameInfo.height);
-      }
-      compCtx.drawImage(frameCanvas, 0, 0);
-
-      if (frameIndices.includes(f)) {
-        const snap = createCanvas(width, height);
-        snap.getContext('2d').drawImage(compCanvas, 0, 0);
-        resultCanvases.push(snap);
-      }
-    }
-    return resultCanvases;
-  } catch {
-    return [];
-  }
-}
-
 /**
  * Renders a single frame of the FGO Raid Battlefield (640x360 optimized dimensions)
  */
-async function renderSingleFrame(state: RaidBattleState, frameIndex: number, loadedImages: any): Promise<any> {
+async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Promise<any> {
   const width = 640;
   const height = 360;
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  const { bgImg, bossSpriteImg, bossSpriteFrames, bossAvatarImg, servantAvatars } = loadedImages;
+  const { bgImg, bossSpriteImg, bossAvatarImg, servantAvatars } = loadedImages;
 
   // 1. Render Background
   if (bgImg) {
@@ -264,14 +192,10 @@ async function renderSingleFrame(state: RaidBattleState, frameIndex: number, loa
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, width, height);
 
-  // 2. Render Boss Sprite (Draw animated frame from extracted GIF frames if available!)
-  const activeBossFrame = (bossSpriteFrames && bossSpriteFrames.length > 0)
-    ? bossSpriteFrames[frameIndex % bossSpriteFrames.length]
-    : bossSpriteImg;
-
-  if (activeBossFrame) {
+  // 2. Render Boss Sprite
+  if (bossSpriteImg) {
     ctx.save();
-    // Precise crop from 512x512 GIF (sx=10, sy=30, sw=200, sh=430)
+    // Precise crop from boss sprite (sx=10, sy=30, sw=200, sh=430)
     const sx = 10;
     const sy = 30;
     const sw = 200;
@@ -290,7 +214,7 @@ async function renderSingleFrame(state: RaidBattleState, frameIndex: number, loa
     ctx.fill();
 
     ctx.drawImage(
-      activeBossFrame,
+      bossSpriteImg,
       sx, sy, sw, sh,
       destX, destY, destW, destH
     );
@@ -693,44 +617,6 @@ async function renderSingleFrame(state: RaidBattleState, frameIndex: number, loa
   return canvas;
 }
 
-async function encodeFramesToMp4(frameCanvases: any[]): Promise<Buffer | null> {
-  return new Promise((resolve) => {
-    try {
-      const ffmpeg = spawn('ffmpeg', [
-        '-y',
-        '-f', 'image2pipe',
-        '-vcodec', 'mjpeg',
-        '-r', '10',
-        '-i', '-',
-        '-c:v', 'libx264',
-        '-pix_fmt', 'yuv420p',
-        '-movflags', '+frag_keyframe+empty_moov',
-        '-f', 'mp4',
-        'pipe:1'
-      ], { stdio: ['pipe', 'pipe', 'ignore'] });
-
-      const chunks: Buffer[] = [];
-      ffmpeg.stdout.on('data', (chunk) => chunks.push(chunk));
-      ffmpeg.on('close', (code) => {
-        if (code === 0 && chunks.length > 0) {
-          resolve(Buffer.concat(chunks));
-        } else {
-          resolve(null);
-        }
-      });
-      ffmpeg.on('error', () => resolve(null));
-
-      for (let i = 0; i < frameCanvases.length; i++) {
-        const jpegBuf = frameCanvases[i].toBuffer('image/jpeg');
-        ffmpeg.stdin.write(jpegBuf);
-      }
-      ffmpeg.stdin.end();
-    } catch {
-      resolve(null);
-    }
-  });
-}
-
 /**
  * Generates a PNG buffer for the FGO PvE Raid Battlefield
  */
@@ -746,9 +632,9 @@ export async function renderRaidBattlefield(state: RaidBattleState, _animated = 
     })
   ]);
 
-  const loadedImages = { bgImg, bossSpriteImg, bossAvatarImg, bossSpriteFrames: [], servantAvatars };
+  const loadedImages = { bgImg, bossSpriteImg, bossAvatarImg, servantAvatars };
 
   // Render single crisp PNG frame
-  const singleCanvas = await renderSingleFrame(state, 0, loadedImages);
+  const singleCanvas = await renderSingleFrame(state, loadedImages);
   return { buffer: singleCanvas.toBuffer('image/png'), fileName: 'raid_battlefield.png' };
 }
