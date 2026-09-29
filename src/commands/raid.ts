@@ -585,19 +585,52 @@ async function runRaidBattle(
     } else if (i.customId.startsWith('raid_skill_')) {
       const sIdx = parseInt(i.customId.replace('raid_skill_', ''), 10);
       if (active.skillCooldowns[sIdx] === 0) {
-        active.skillCooldowns[sIdx] = 4;
+        const skillObj = active.servant.template?.skills?.[sIdx];
+        const cd = skillObj?.cooldown || 5;
+        active.skillCooldowns[sIdx] = cd;
         active.activeBuffs = active.activeBuffs || [];
-        active.activeBuffs.push({
-          name: `Skill ${sIdx + 1} Buff`,
-          type: 'atk_up',
-          value: 30,
-          remainingTurns: 3
-        });
-        active.critStars = (active.critStars || 0) + 15;
-        active.npGauge = Math.min(100, (active.npGauge || 0) + 20);
 
-        const sName = active.servant.template?.skills?.[sIdx]?.name || `Skill ${sIdx + 1}`;
-        battleState.recentLogs.push(`✨ **${active.servant.nickname || active.servant.template.name}** invoked **${sName}**! (+30% ATK, +20% NP, +15 Stars)`);
+        const sName = skillObj?.name || `Skill ${sIdx + 1}`;
+        const sDesc = skillObj?.description || '';
+
+        // Check for Calamity-Breaker Edict EX / Anti-Threat to Humanity skills
+        const isAntiThreatSkill = /Threat to Humanity|Foreigner|Beast|Otherworlder|Calamity-Breaker/i.test(sName + ' ' + sDesc);
+
+        let buffLog = '';
+        if (isAntiThreatSkill) {
+          // Calamity-Breaker Edict: Increases ATK of ALL allies by +20%, and grants all allies [Special Attack against Threat to Humanity / Beast] (+30% DMG) for 3 turns!
+          battleState.participants.forEach(p => {
+            p.activeBuffs = p.activeBuffs || [];
+            p.activeBuffs.push({
+              name: 'Calamity-Breaker ATK',
+              type: 'atk_up',
+              value: 20,
+              remainingTurns: 3
+            });
+            p.activeBuffs.push({
+              name: 'Anti-Threat to Humanity',
+              type: 'anti_threat',
+              value: 30,
+              remainingTurns: 3
+            });
+          });
+          active.critStars = (active.critStars || 0) + 15;
+          buffLog = `(+20% ATK & +30% Special ATK vs [Threat to Humanity] to ALL allies for 3T, +15 Stars)`;
+        } else {
+          active.activeBuffs.push({
+            name: `${sName} Buff`,
+            type: 'atk_up',
+            value: 30,
+            remainingTurns: 3
+          });
+          active.critStars = (active.critStars || 0) + 15;
+          active.npGauge = Math.min(100, (active.npGauge || 0) + 20);
+          buffLog = `(+30% ATK, +20% NP, +15 Stars)`;
+        }
+
+        const quote = skillObj?.quote || skillObj?.quotes?.[0] || '';
+        const quoteText = quote ? `\n> *${quote}*` : '';
+        battleState.recentLogs.push(`✨ **${active.servant.nickname || active.servant.template.name}** invoked **${sName}**! ${buffLog}${quoteText}`);
         if (battleState.recentLogs.length > 4) battleState.recentLogs.shift();
 
         await i.deferUpdate();
@@ -693,23 +726,34 @@ async function runRaidBattle(
     const baseAtk = Math.round((tAtk.baseAtk || 10000) + totalStr * 80 + ceAtk);
     const atkBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'atk_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
 
+    const isBossThreat = (boss.traits || []).some(t => ['threat_to_humanity', 'beast', 'demonic'].includes(t.toLowerCase()));
+    const antiThreatBuff = (active.activeBuffs?.filter(b => b.type === 'anti_threat').reduce((acc, b) => acc + b.value, 0) || 0) / 100;
+    const specialAtkMult = isBossThreat ? (1 + antiThreatBuff) : 1.0;
+
+    let npTriggeredAntiThreat = false;
+
     pendingCards.forEach((card, cIdx) => {
       const stepMult = cIdx === 0 ? 1.0 : cIdx === 1 ? 1.2 : 1.4;
       if (card === 'Buster') {
-        totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * (0.9 + Math.random() * 0.2));
+        totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * specialAtkMult * (0.9 + Math.random() * 0.2));
         starsGenerated += 3;
         npGained += 5;
       } else if (card === 'Arts') {
-        totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * (0.9 + Math.random() * 0.2));
+        totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * specialAtkMult * (0.9 + Math.random() * 0.2));
         npGained += 25;
         starsGenerated += 2;
       } else if (card === 'Quick') {
-        totalTurnDmg += Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * (0.9 + Math.random() * 0.2));
+        totalTurnDmg += Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * specialAtkMult * (0.9 + Math.random() * 0.2));
         starsGenerated += 12;
         npGained += 10;
       } else if (card === 'NP') {
         const npMultiplier = 5.5;
-        totalTurnDmg += Math.round(baseAtk * npMultiplier * atkBuffMult * (0.95 + Math.random() * 0.1));
+        const npDesc = active.servant.template?.noblePhantasm?.description || '';
+        const npHasAntiThreat = /Threat to Humanity|Beast|Divine|Foreigner/i.test(npDesc);
+        const npSpecialMult = (isBossThreat && npHasAntiThreat) ? 1.5 : 1.0;
+        if (isBossThreat && npHasAntiThreat) npTriggeredAntiThreat = true;
+
+        totalTurnDmg += Math.round(baseAtk * npMultiplier * atkBuffMult * specialAtkMult * npSpecialMult * (0.95 + Math.random() * 0.1));
         starsGenerated += 10;
         npGained += 15;
       }
@@ -720,8 +764,15 @@ async function runRaidBattle(
     active.critStars = Math.min(50, (active.critStars || 0) + starsGenerated);
 
     const servName = active.servant.nickname || active.servant.template?.name || 'Servant';
+    let traitLog = '';
+    if (npTriggeredAntiThreat) {
+      traitLog = ' 👑 **[Anti-Calamity Protocol: +50% Special DMG vs Threat to Humanity!]**';
+    } else if (antiThreatBuff > 0) {
+      traitLog = ' ⚡ **[Calamity-Breaker: +30% Special ATK vs Threat to Humanity!]**';
+    }
+
     battleState.recentLogs.push(
-      `⚔️ **${servName}** dealt **${totalTurnDmg.toLocaleString()} DMG** to Barbatos! (+${npGained}% NP, +${starsGenerated} Stars)`
+      `⚔️ **${servName}** dealt **${totalTurnDmg.toLocaleString()} DMG** to Barbatos! (+${npGained}% NP, +${starsGenerated} Stars)${traitLog}`
     );
     if (battleState.recentLogs.length > 4) battleState.recentLogs.shift();
 
