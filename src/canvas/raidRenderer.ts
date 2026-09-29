@@ -496,6 +496,9 @@ export interface RaidParticipantState {
   currentHand?: ('Buster' | 'Arts' | 'Quick')[];
   drawPile?: ('Buster' | 'Arts' | 'Quick')[];
   commandSeals?: number;
+  totalDamageDealt?: number;
+  totalDamageTaken?: number;
+  gutsTriggeredThisTurn?: boolean;
 }
 
 export interface RaidBattleState {
@@ -508,6 +511,27 @@ export interface RaidBattleState {
   activeMasterIndex: number;
   recentLogs: string[];
   lastPlayerAttackLog?: string;
+  bossBuffs?: { name: string; type: string; value: number; remainingTurns: number }[];
+  fullCombatLog?: string[];
+  finishingBlow?: {
+    userId: string;
+    servantName: string;
+    damage: number;
+    cardChain: string;
+    round: number;
+  };
+  lastEnemyPhase?: {
+    skillName?: string;
+    skillDesc?: string;
+    actionName: string;
+    actionTarget?: string;
+    strikeDamage: number;
+    curseDamage: number;
+    totalDamage: number;
+    debuffsInflicted: string[];
+    bossBuffsGained: string[];
+    specialEvents: string[];
+  };
 }
 
 /**

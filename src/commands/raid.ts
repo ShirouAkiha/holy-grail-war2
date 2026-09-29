@@ -349,7 +349,10 @@ async function runRaidBattle(
       skillCooldowns: [0, 0, 0],
       activeBuffs: initialBuffs,
       isDead: false,
-      commandSeals: 3
+      commandSeals: 3,
+      totalDamageDealt: 0,
+      totalDamageTaken: 0,
+      gutsTriggeredThisTurn: false
     };
     refreshParticipantHand(partState);
     return partState;
@@ -366,7 +369,9 @@ async function runRaidBattle(
     round: 1,
     participants,
     activeMasterIndex: 0,
-    recentLogs: [`⚡ **BATTLE COMMENCED!** Demon God Pillar Barbatos awakens in the Temple of Time!`]
+    recentLogs: [`⚡ **BATTLE COMMENCED!** Demon God Pillar Barbatos awakens in the Temple of Time!`],
+    bossBuffs: [],
+    fullCombatLog: [`⚡ **[Round 1]** Raid battle commenced against **Demon God Pillar Barbatos**!`]
   };
 
   let pendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = [];
@@ -601,24 +606,83 @@ async function runRaidBattle(
     const bossHpPct = Math.max(0, Math.round((battleState.bossCurrentHp / battleState.bossMaxHp) * 100));
     const bossChargeStr = '◆'.repeat(battleState.bossCharge) + '◇'.repeat(Math.max(0, battleState.boss.maxCharge - battleState.bossCharge));
 
+    const bossStatusList = (battleState.bossBuffs || []).map(b => {
+      if (b.type === 'def_down') return `\`🔻 -${b.value}% DEF (${b.remainingTurns}T)\``;
+      if (b.type === 'atk_down') return `\`🔻 -${b.value}% ATK (${b.remainingTurns}T)\``;
+      if (b.type === 'atk_up') return `\`⚔️ +${b.value}% ATK (${b.remainingTurns}T)\``;
+      if (b.type === 'def_up') return `\`🛡️ +${b.value}% DEF (${b.remainingTurns}T)\``;
+      if (b.type === 'curse') return `\`🔥 Curse ${b.value} (${b.remainingTurns}T)\``;
+      if (b.type === 'stun') return `\`⚡ STUN (${b.remainingTurns}T)\``;
+      if (b.type === 'np_seal') return `\`🔒 NP SEAL (${b.remainingTurns}T)\``;
+      return `\`${b.name} (${b.remainingTurns}T)\``;
+    });
+    const bossStatusStr = bossStatusList.length > 0 ? `\n   └ 🌀 **Boss Status:** ${bossStatusList.join(' ')}` : '';
+
     const partyLines = battleState.participants.map(p => {
       const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
       const isTurn = p.userId === active.userId;
       const arrow = isTurn ? '👉 ' : '• ';
       const hpStr = p.isDead ? 'FALLEN' : `${Math.round(p.currentHp).toLocaleString()} HP`;
-      return `${arrow}**${pName}** (<@${p.userId}>): \`${hpStr}\` • \`NP: ${Math.round(p.npGauge)}%\` • \`★ ${p.critStars || 0}\``;
+
+      const pDebuffs = (p.activeBuffs || []).filter(b => ['def_down', 'atk_down', 'curse', 'burn', 'poison', 'stun', 'np_seal', 'skill_seal'].includes(b.type)).map(b => {
+        if (b.type === 'def_down') return `\`🔻 -${b.value}% DEF (${b.remainingTurns}T)\``;
+        if (b.type === 'atk_down') return `\`🔻 -${b.value}% ATK (${b.remainingTurns}T)\``;
+        if (b.type === 'curse') return `\`🔥 Curse ${b.value} (${b.remainingTurns}T)\``;
+        if (b.type === 'stun') return `\`⚡ Stun (${b.remainingTurns}T)\``;
+        return `\`${b.name} (${b.remainingTurns}T)\``;
+      });
+      const pBuffs = (p.activeBuffs || []).filter(b => !['def_down', 'atk_down', 'curse', 'burn', 'poison', 'stun', 'np_seal', 'skill_seal', 'on_guts_buster'].includes(b.type)).map(b => {
+        if (b.type === 'guts') return `\`🩸 Guts ${b.remainingHits && b.remainingHits > 1 ? `x${b.remainingHits}` : ''} (${b.value} HP)\``;
+        if (b.type === 'evade') return `\`💨 Evade\``;
+        if (b.type === 'invincible') return `\`✨ Invincible\``;
+        if (b.type === 'atk_up') return `\`⚔️ +${b.value}% ATK (${b.remainingTurns}T)\``;
+        if (b.type === 'def_up') return `\`🛡️ +${b.value}% DEF (${b.remainingTurns}T)\``;
+        if (b.type === 'damage_cut') return `\`🛡️ Cut ${b.value} (${b.remainingTurns}T)\``;
+        return `\`${b.name} (${b.remainingTurns}T)\``;
+      });
+
+      let subLine = '';
+      if (pDebuffs.length > 0 && pBuffs.length > 0) {
+        subLine = `\n   └ 🛑 ${pDebuffs.join(' ')} • 🛡️ ${pBuffs.join(' ')}`;
+      } else if (pDebuffs.length > 0) {
+        subLine = `\n   └ 🛑 Debuffs: ${pDebuffs.join(' ')}`;
+      } else if (pBuffs.length > 0) {
+        subLine = `\n   └ 🛡️ Buffs: ${pBuffs.join(' ')}`;
+      }
+
+      return `${arrow}**${pName}** (<@${p.userId}>): \`${hpStr}\` • \`NP: ${Math.round(p.npGauge)}%\` • \`★ ${p.critStars || 0}\`${subLine}`;
     }).join('\n');
 
     let logContent = '';
     if (battleState.lastPlayerAttackLog) {
-      const bossRecent = battleState.recentLogs
-        .filter(l => l !== battleState.lastPlayerAttackLog)
-        .slice(-2);
       logContent = `⚔️ **Master Strike:**\n${battleState.lastPlayerAttackLog}`;
-      if (bossRecent.length > 0) {
-        logContent += `\n\n😈 **Enemy Phase:**\n${bossRecent.join('\n')}`;
+    }
+
+    if (battleState.lastEnemyPhase) {
+      const ep = battleState.lastEnemyPhase;
+      const enemyLines: string[] = [];
+      const dmgBreakdown = ep.curseDamage > 0 
+        ? ` *(Strike: ${ep.strikeDamage.toLocaleString()} DMG • Curse: ${ep.curseDamage.toLocaleString()} DMG)*`
+        : '';
+      enemyLines.push(`• 💥 **Total Barbatos Turn DMG:** __**${ep.totalDamage.toLocaleString()} DMG**__${dmgBreakdown}`);
+
+      if (ep.skillName) {
+        const debuffsText = ep.debuffsInflicted.length > 0 ? ` ➔ Inflicted: ${ep.debuffsInflicted.join(', ')}` : '';
+        const buffsText = ep.bossBuffsGained.length > 0 ? ` ➔ Gained: ${ep.bossBuffsGained.join(', ')}` : '';
+        enemyLines.push(`• 👁️ **Skill Used:** **[${ep.skillName}]**${debuffsText}${buffsText}`);
       }
-    } else {
+      if (ep.actionName) {
+        const targetStr = ep.actionTarget ? ` on **${ep.actionTarget}**` : '';
+        enemyLines.push(`• 👁️ **Action:** **${ep.actionName}**${targetStr} (Dealt **${ep.strikeDamage.toLocaleString()} DMG**)`);
+      }
+      if (ep.curseDamage > 0) {
+        enemyLines.push(`• 🔥 **Curse Burn:** Sapped party for **${ep.curseDamage.toLocaleString()} Curse DMG**!`);
+      }
+      if (ep.specialEvents && ep.specialEvents.length > 0) {
+        enemyLines.push(...ep.specialEvents);
+      }
+      logContent += `\n\n😈 **Enemy Phase:**\n${enemyLines.join('\n')}`;
+    } else if (!battleState.lastPlayerAttackLog) {
       logContent = `📜 **Log:** ${battleState.recentLogs.slice(-3).join('\n')}`;
     }
 
@@ -626,7 +690,7 @@ async function runRaidBattle(
       .setTitle(`⚔️ DEMON GOD PILLAR RAID — ROUND ${battleState.round}`)
       .setDescription(
         `😈 **${battleState.boss.name}**\n` +
-        `❤️ \`${Math.round(battleState.bossCurrentHp).toLocaleString()} / ${battleState.bossMaxHp.toLocaleString()}\` (${bossHpPct}%) • ⚡ Charge: \`[${bossChargeStr}]\`\n\n` +
+        `❤️ \`${Math.round(battleState.bossCurrentHp).toLocaleString()} / ${battleState.bossMaxHp.toLocaleString()}\` (${bossHpPct}%) • ⚡ Charge: \`[${bossChargeStr}]\`${bossStatusStr}\n\n` +
         `🛡️ **Party Status:**\n${partyLines}\n\n` +
         `🎴 **Selected Attack Chain (${pendingCards.length}/3):**\n` +
         `\`[ 1: ${c1} ]\` ➔ \`[ 2: ${c2} ]\` ➔ \`[ 3: ${c3} ]\`\n\n` +
@@ -650,38 +714,29 @@ async function runRaidBattle(
     const components = buildBattleButtons();
     const active = currentActiveParticipant;
 
-    let newMsg: any = null;
     try {
-      const channelToSend = interaction.channel || battleMsg.channel;
-      if (channelToSend && typeof channelToSend.send === 'function') {
-        newMsg = await channelToSend.send({
-          content: `⚔️ **<@${active.userId}>'s Turn!**`,
-          embeds,
-          files: [attachment],
-          components
-        });
-      }
-    } catch (sendErr) {
-      console.warn('[raid] channel.send failed, falling back to edit:', sendErr);
-      newMsg = null;
-    }
-
-    if (newMsg) {
-      const prevMsg = battleMsg;
-      battleMsg = newMsg;
-      if (prevMsg && typeof prevMsg.delete === 'function') {
-        await prevMsg.delete().catch(() => {});
-      }
-    } else {
       await battleMsg.edit({
         content: `⚔️ **<@${active.userId}>'s Turn!**`,
         embeds,
         files: [attachment],
         attachments: [], // Clears previous attachment cache in Discord so the new canvas renders!
         components
-      }).catch((editErr: any) => {
-        console.error('[raid] battleMsg.edit error:', editErr);
       });
+    } catch (editErr: any) {
+      console.warn('[raid] battleMsg.edit failed, falling back to channel.send:', editErr);
+      try {
+        const channelToSend = interaction.channel || battleMsg.channel;
+        if (channelToSend && typeof channelToSend.send === 'function') {
+          battleMsg = await channelToSend.send({
+            content: `⚔️ **<@${active.userId}>'s Turn!**`,
+            embeds,
+            files: [attachment],
+            components
+          });
+        }
+      } catch (sendErr) {
+        console.error('[raid] channel.send fallback also failed:', sendErr);
+      }
     }
   };
 
@@ -695,6 +750,22 @@ async function runRaidBattle(
   });
 
   collector.on('collect', async (i: any) => {
+    const safeUpdate = async (options: any) => {
+      try {
+        if (!i.replied && !i.deferred) {
+          await i.update(options);
+        } else {
+          await i.editReply(options);
+        }
+      } catch (err: any) {
+        if (err?.code === 10062 || err?.message?.includes('Unknown interaction')) {
+          console.warn('[raid] Handled 10062 interaction expiration gracefully.');
+        } else {
+          console.warn('[raid] safeUpdate warning:', err);
+        }
+      }
+    };
+
     try {
       // 0. Status Inspection Dossier (Accessible by any Master at any time)
     if (i.customId === 'raid_status') {
@@ -729,7 +800,7 @@ async function runRaidBattle(
     } else if (i.customId === 'raid_reset_cards') {
       pendingCards = [];
       pendingIndices = [];
-      await i.update({
+      await safeUpdate({
         embeds: [buildBattleEmbed(currentCanvasFileName)],
         components: buildBattleButtons()
       });
@@ -933,7 +1004,7 @@ async function runRaidBattle(
         currentCanvasFileName = uniqueFileName;
         const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
 
-        await i.update({
+        await safeUpdate({
           embeds: [buildBattleEmbed(uniqueFileName)],
           files: [attachment],
           attachments: [],
@@ -958,7 +1029,7 @@ async function runRaidBattle(
         currentCanvasFileName = uniqueFileName;
         const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
 
-        await i.update({
+        await safeUpdate({
           embeds: [buildBattleEmbed(uniqueFileName)],
           files: [attachment],
           attachments: [],
@@ -975,7 +1046,7 @@ async function runRaidBattle(
       if (livingRemaining.length === 0) {
         await cleanupNpGif();
         collector.stop('defeated');
-        await i.update({
+        await safeUpdate({
           content: '💀 **Raid Abandoned:** All Masters retreated from the battlefield.',
           embeds: [],
           components: []
@@ -986,14 +1057,14 @@ async function runRaidBattle(
       pendingCards = [];
       pendingIndices = [];
       advanceToNextPlayer();
-      await i.deferUpdate();
+      await i.deferUpdate().catch(() => {});
       await renderAndPostTurn();
       return;
     }
 
     // If fewer than 3 cards selected, update buttons and embed in-place with ZERO lag!
     if (pendingCards.length < 3) {
-      await i.update({
+      await safeUpdate({
         embeds: [buildBattleEmbed(currentCanvasFileName)],
         components: buildBattleButtons()
       });
@@ -1001,7 +1072,7 @@ async function runRaidBattle(
     }
 
     // 3 Cards selected -> Immediately update the message so the user sees Card 3 registered and all buttons disabled!
-    await i.update({
+    await safeUpdate({
       embeds: [buildBattleEmbed(currentCanvasFileName)],
       components: buildBattleButtons(true)
     });
@@ -1148,10 +1219,24 @@ async function runRaidBattle(
     battleState.recentLogs.push(playerAttackLog);
     while (battleState.recentLogs.length > 8) battleState.recentLogs.shift();
 
+    active.totalDamageDealt = (active.totalDamageDealt || 0) + totalTurnDmg;
+    battleState.fullCombatLog = battleState.fullCombatLog || [];
+    battleState.fullCombatLog.push(
+      `⚔️ **[Round ${battleState.round}]** **${servName}** (<@${active.userId}>) struck with \`[${pendingCards.join(' ➔ ')}]\` dealing **${totalTurnDmg.toLocaleString()} DMG**! *(Barbatos HP: ${battleState.bossCurrentHp.toLocaleString()} / ${battleState.bossMaxHp.toLocaleString()})*`
+    );
+
     if (battleState.bossCurrentHp <= 0) {
+      battleState.bossCurrentHp = 0;
       await cleanupNpGif();
       collector.stop('victory');
-      await concludeRaidVictory(battleMsg, boss, battleState.participants);
+      battleState.finishingBlow = {
+        userId: active.userId,
+        servantName: servName,
+        damage: totalTurnDmg,
+        cardChain: pendingCards.join(' ➔ '),
+        round: battleState.round
+      };
+      await concludeRaidVictory(battleMsg, boss, battleState);
       return;
     }
 
@@ -1171,7 +1256,7 @@ async function runRaidBattle(
       if (!anyAlive) {
         await cleanupNpGif();
         collector.stop('defeated');
-        await concludeRaidDefeat(battleMsg, boss);
+        await concludeRaidDefeat(battleMsg, boss, battleState);
         return;
       }
 
@@ -1226,6 +1311,24 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
   const livingParticipants = state.participants.filter(p => !p.isDead);
   if (livingParticipants.length === 0) return { bossUsedNp: false };
 
+  // Reset Guts activation flag for this turn
+  state.participants.forEach(p => {
+    p.gutsTriggeredThisTurn = false;
+  });
+
+  const enemyPhase = {
+    skillName: '',
+    skillDesc: '',
+    actionName: '',
+    actionTarget: '',
+    strikeDamage: 0,
+    curseDamage: 0,
+    totalDamage: 0,
+    debuffsInflicted: [] as string[],
+    bossBuffsGained: [] as string[],
+    specialEvents: [] as string[]
+  };
+
   // 1. HP Threshold & Enrage Phase Check (< 50% HP)
   const hpRatio = state.bossCurrentHp / state.bossMaxHp;
   const isEnraged = hpRatio <= 0.50;
@@ -1238,6 +1341,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
   const isBossStunned = state.bossBuffs.some(b => b.type === 'stun');
   if (isBossStunned) {
     state.recentLogs.push('⚡ **[STUNNED!] Barbatos is paralyzed and unable to act this turn!**');
+    enemyPhase.specialEvents.push('⚡ **[STUNNED!]** Barbatos was paralyzed by Stun and could not act!');
+    state.lastEnemyPhase = enemyPhase;
     const dotDmg = state.bossBuffs.filter(b => b.type === 'curse' || b.type === 'burn' || b.type === 'poison').reduce((acc, b) => acc + b.value, 0);
     if (dotDmg > 0) {
       state.bossCurrentHp = Math.max(0, state.bossCurrentHp - dotDmg);
@@ -1245,7 +1350,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
     }
     state.bossBuffs.forEach(b => b.remainingTurns--);
     state.bossBuffs = state.bossBuffs.filter(b => b.remainingTurns > 0);
-    if (state.recentLogs.length > 5) state.recentLogs.shift();
+    if (state.recentLogs.length > 8) state.recentLogs.shift();
     return { bossUsedNp: false };
   }
 
@@ -1265,6 +1370,9 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         p.critStars = Math.max(0, (p.critStars || 0) - 10);
       }
     });
+    enemyPhase.skillName = 'Gaze of the Thousand Eyes';
+    enemyPhase.skillDesc = 'All Servants suffer -20% DEF (2T) and -10 Critical Stars';
+    enemyPhase.debuffsInflicted.push('🔻 **-20% DEF Down (2T)** on all Servants', '⭐ **-10 Critical Stars drained**');
     state.recentLogs.push(
       `👁️ **Barbatos cast [Gaze of the Thousand Eyes]!** All Servants suffer **-20% DEF** (2T) and lost 10 Critical Stars!`
     );
@@ -1277,6 +1385,9 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       remainingTurns: 2
     });
     state.bossCharge = Math.min(state.boss.maxCharge, state.bossCharge + 1);
+    enemyPhase.skillName = 'Wailing of the Inverted Spire';
+    enemyPhase.skillDesc = 'Increases own ATK by +25% (2T) and charges NP gauge by 1 diamond';
+    enemyPhase.bossBuffsGained.push('⚔️ **+25% ATK Up (2T)**', '⚡ **+1 NP Charge Diamond**');
     state.recentLogs.push(
       `📢 **Barbatos cast [Wailing of the Inverted Spire]!** Demon God ATK increased by **+25%** and gained **+1 Charge Diamond**!`
     );
@@ -1293,6 +1404,9 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         remainingTurns: 3
       });
       const tName = highestNpTarget.servant.nickname || highestNpTarget.servant.template?.name || 'Servant';
+      enemyPhase.skillName = 'Curse of the Solomon Throne';
+      enemyPhase.skillDesc = `Drained 25% NP and inflicted Curse on ${tName}`;
+      enemyPhase.debuffsInflicted.push(`🔥 **Curse (1,200 DMG/T, 3T)** on **${tName}**`, `⚡ **-25% NP Drained** from **${tName}**`);
       state.recentLogs.push(
         `☠️ **Barbatos cast [Curse of the Solomon Throne]!** Drained **25% NP** from **${tName}** and inflicted **Curse** (1,200 DMG/Turn)!`
       );
@@ -1305,6 +1419,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
     state.bossCharge = Math.min(state.boss.maxCharge, state.bossCharge + (isEnraged ? 2 : 1));
   } else {
     state.recentLogs.push('🔒 **[NP SEALED!] Barbatos is sealed and cannot charge its NP!**');
+    enemyPhase.specialEvents.push('🔒 **[NP SEALED]** Barbatos was sealed and could not charge its NP diamond!');
   }
 
   let bossUsedNp = false;
@@ -1316,6 +1431,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
     state.bossCharge = 0;
     const baseAoeDamage = Math.round((14500 + Math.random() * 3000) * totalBossAtkMult);
     let evadesCount = 0;
+    enemyPhase.actionName = 'NOBLE PHANTASM: Incineration Ritual — Barbatos Calamity';
+    enemyPhase.actionTarget = 'ALL Servants';
 
     state.participants.forEach(p => {
       if (!p.isDead) {
@@ -1324,6 +1441,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         if (evIdx >= 0) {
           p.activeBuffs.splice(evIdx, 1);
           evadesCount++;
+          const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
+          enemyPhase.specialEvents.push(`🛡️ **${pName}** completely EVADED Barbatos's Noble Phantasm!`);
           return;
         }
 
@@ -1334,7 +1453,12 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         const defFactor = Math.max(0.4, 1 + (defDown - defUp) / 100);
 
         const finalAoe = Math.max(1500, Math.round((baseAoeDamage * defFactor) - dmgCut));
-        applyDamageToRaidParticipant(p, finalAoe, state);
+        enemyPhase.strikeDamage += finalAoe;
+
+        const res = applyDamageToRaidParticipant(p, finalAoe, state);
+        if (res.gutsLog) {
+          enemyPhase.specialEvents.push(res.gutsLog);
+        }
 
         // NP Drain and Curse Burn
         p.npGauge = Math.max(0, (p.npGauge || 0) - 25);
@@ -1356,12 +1480,16 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
     // Normal attack (1 target for solo, up to 2 targets for teams)
     const targetsToHit = livingParticipants.length >= 3 ? 2 : 1;
     const shuffled = [...livingParticipants].sort(() => 0.5 - Math.random());
+    const hitTargetNames: string[] = [];
+
+    enemyPhase.actionName = 'Demonic Gaze Strike';
 
     for (let i = 0; i < Math.min(targetsToHit, shuffled.length); i++) {
       const target = shuffled[i];
       if (target.isDead) continue;
 
       const tName = target.servant.nickname || target.servant.template?.name || 'Servant';
+      hitTargetNames.push(tName);
       const evIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'evade' || b.type === 'invincible') : -1;
 
       if (evIdx >= 0) {
@@ -1369,6 +1497,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         state.recentLogs.push(
           `🛡️ **[EVADED!]** **${tName}** read the trajectory and completely avoided Barbatos's strike!`
         );
+        enemyPhase.specialEvents.push(`🛡️ **${tName}** EVADED Barbatos's Demonic Gaze!`);
         continue;
       }
 
@@ -1379,12 +1508,17 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
 
       const baseSingle = Math.round((4800 + Math.random() * 2600) * totalBossAtkMult);
       const finalDmg = Math.max(800, Math.round((baseSingle * defFactor) - dmgCut));
+      enemyPhase.strikeDamage += finalDmg;
 
       state.recentLogs.push(
         `👁️ Barbatos struck **${tName}** with Demonic Gaze for **${finalDmg.toLocaleString()} DMG**!`
       );
-      applyDamageToRaidParticipant(target, finalDmg, state);
+      const res = applyDamageToRaidParticipant(target, finalDmg, state);
+      if (res.gutsLog) {
+        enemyPhase.specialEvents.push(res.gutsLog);
+      }
     }
+    enemyPhase.actionTarget = hitTargetNames.join(', ');
   }
 
   // 4. End-of-round Curse ticks on living participants
@@ -1393,10 +1527,42 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       const curseDamage = p.activeBuffs?.filter(b => b.type === 'curse').reduce((acc, b) => acc + b.value, 0) || 0;
       if (curseDamage > 0) {
         const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
-        state.recentLogs.push(`🔥 **${pName}** suffered **${curseDamage.toLocaleString()} Curse Burn DMG**!`);
-        applyDamageToRaidParticipant(p, curseDamage, state);
+        if (p.gutsTriggeredThisTurn) {
+          // In Fate battle mechanics, Guts cannot be double-consumed in the same enemy turn.
+          // Since the Servant was already revived by Guts from Barbatos's attack this round,
+          // Curse burns them down to a minimum of 1 HP so they are not instantly killed again.
+          p.currentHp = Math.max(1, p.currentHp - curseDamage);
+          state.recentLogs.push(`🔥 **${pName}** endured **${curseDamage.toLocaleString()} Curse Burn DMG** (Protected by Guts Grace)!`);
+          enemyPhase.specialEvents.push(`🛡️ **${pName}** survived Curse Burn at 1 HP due to Guts grace!`);
+        } else {
+          enemyPhase.curseDamage += curseDamage;
+          state.recentLogs.push(`🔥 **${pName}** suffered **${curseDamage.toLocaleString()} Curse Burn DMG**!`);
+          const res = applyDamageToRaidParticipant(p, curseDamage, state);
+          if (res.gutsLog) {
+            enemyPhase.specialEvents.push(res.gutsLog);
+          }
+        }
       }
     }
+  });
+
+  enemyPhase.totalDamage = enemyPhase.strikeDamage + enemyPhase.curseDamage;
+  state.lastEnemyPhase = enemyPhase;
+
+  // Record enemy turn events in fullCombatLog
+  state.fullCombatLog = state.fullCombatLog || [];
+  if (enemyPhase.skillName) {
+    const details = enemyPhase.debuffsInflicted.concat(enemyPhase.bossBuffsGained).join(', ') || enemyPhase.skillDesc;
+    state.fullCombatLog.push(`👁️ **[Round ${state.round}]** Barbatos cast **[${enemyPhase.skillName}]** (${details})`);
+  }
+  if (enemyPhase.actionName) {
+    state.fullCombatLog.push(`💥 **[Round ${state.round}]** Barbatos attacked with **${enemyPhase.actionName}** dealing **${enemyPhase.strikeDamage.toLocaleString()} DMG** to ${enemyPhase.actionTarget || 'party'}`);
+  }
+  if (enemyPhase.curseDamage > 0) {
+    state.fullCombatLog.push(`🔥 **[Round ${state.round}]** Curse Burn inflicted **${enemyPhase.curseDamage.toLocaleString()} DoT DMG**`);
+  }
+  enemyPhase.specialEvents.forEach(evt => {
+    state.fullCombatLog!.push(`🛡️ **[Round ${state.round}]** ${evt}`);
   });
 
   // End-of-round Curse / Burn / Poison DoT damage on Barbatos
@@ -1422,7 +1588,7 @@ function applyDamageToRaidParticipant(
   p: RaidParticipantState,
   damage: number,
   state: RaidBattleState
-): { wasFatal: boolean; gutsTriggered: boolean } {
+): { wasFatal: boolean; gutsTriggered: boolean; gutsLog?: string } {
   p.currentHp = p.currentHp - damage;
   if (p.currentHp <= 0) {
     const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
@@ -1430,19 +1596,18 @@ function applyDamageToRaidParticipant(
     if (gutsIdx !== -1) {
       const gutsBuff = p.activeBuffs[gutsIdx];
       const reviveHp = gutsBuff.value || Math.round(p.maxHp * 0.25);
+      let gutsMsg = '';
       if (gutsBuff.remainingHits !== undefined && gutsBuff.remainingHits > 1) {
         gutsBuff.remainingHits -= 1;
-        state.recentLogs.push(
-          `✝️ **[GUTS ACTIVATED!]** **${pName}** refused to fall! Revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} - ${gutsBuff.remainingHits} left)`
-        );
+        gutsMsg = `✝️ **[GUTS ACTIVATED!]** **${pName}** refused to fall! Revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} - ${gutsBuff.remainingHits} left)`;
       } else {
         p.activeBuffs.splice(gutsIdx, 1);
-        state.recentLogs.push(
-          `✝️ **[GUTS ACTIVATED!]** **${pName}** refused to fall! Revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} consumed)`
-        );
+        gutsMsg = `✝️ **[GUTS ACTIVATED!]** **${pName}** refused to fall! Revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} consumed)`;
       }
+      state.recentLogs.push(gutsMsg);
       p.currentHp = reviveHp;
       p.isDead = false;
+      p.gutsTriggeredThisTurn = true;
 
       // Check for On-Guts Buster buff (Indomitable A)
       const onGutsIdx = p.activeBuffs.findIndex(b => b.type === 'on_guts_buster');
@@ -1457,7 +1622,7 @@ function applyDamageToRaidParticipant(
         state.recentLogs.push(`🔥 **[INDOMITABLE A]** On-Guts triggered! Buster performance increased by **+20%**!`);
       }
 
-      return { wasFatal: false, gutsTriggered: true };
+      return { wasFatal: false, gutsTriggered: true, gutsLog: gutsMsg };
     } else {
       p.currentHp = 0;
       p.isDead = true;
@@ -1470,8 +1635,9 @@ function applyDamageToRaidParticipant(
 async function concludeRaidVictory(
   battleMsg: any,
   boss: RaidBossConfig,
-  participants: RaidParticipantState[]
+  battleState: RaidBattleState
 ) {
+  const participants = battleState.participants;
   const sqReward = Math.floor(boss.drops.minSq + Math.random() * (boss.drops.maxSq - boss.drops.minSq + 1));
   const servantExpReward = boss.drops.servantExp || 25_000;
   const bondExpReward = boss.drops.bondExp || 2_000;
@@ -1527,49 +1693,175 @@ async function concludeRaidVictory(
     await saveMaster(master);
   }
 
+  // Finishing Blow Section
+  const fb = battleState.finishingBlow;
+  let finishingBlowText = '';
+  if (fb) {
+    finishingBlowText = `🗡️ **Finishing Blow:**\n• Fatal Strike by **${fb.servantName}** (<@${fb.userId}>)\n• Dealt **${fb.damage.toLocaleString()} DMG** via \`[${fb.cardChain}]\` in **Round ${fb.round}**!\n\n`;
+  }
+
+  // Damage Contribution Leaderboard
+  const sortedByDamage = [...participants].sort((a, b) => (b.totalDamageDealt || 0) - (a.totalDamageDealt || 0));
+  const totalPartyDmg = sortedByDamage.reduce((acc, p) => acc + (p.totalDamageDealt || 0), 0) || 1;
+  const damageContributionText = sortedByDamage.map((p, idx) => {
+    const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
+    const dmg = p.totalDamageDealt || 0;
+    const pct = Math.round((dmg / totalPartyDmg) * 100);
+    const medal = idx === 0 ? '👑 MVP' : `#${idx + 1}`;
+    return `• **[${medal}]** <@${p.userId}> (**${pName}**): **${dmg.toLocaleString()} DMG** (${pct}% of total raid damage)`;
+  }).join('\n');
+
+  // Recent Combat Log Summary
+  const recentCombatLogText = (battleState.fullCombatLog || []).slice(-6).join('\n');
+
   const victoryEmbed = new EmbedBuilder()
     .setTitle('🏆 DEMON GOD PILLAR VANQUISHED — RAID COMPLETE!')
     .setDescription(
       `**Demon God Pillar Barbatos** has disintegrated into the void of the Temple of Time!\n\n` +
+      `${finishingBlowText}` +
+      `📊 **Damage Contribution:**\n${damageContributionText}\n\n` +
       `💎 **Spoils of War (Distributed to all Masters):**\n` +
       `• **+${sqReward} Saint Quartz** 💎\n` +
       `• **+${servantExpReward.toLocaleString()} Servant Battle EXP** ⚔️ *(Levels up Servant & awards unspent Stat Points)*\n` +
       `• **+${bondExpReward.toLocaleString()} Servant Bond EXP** 💖 *(Advances Bond Rank toward Bond 10 & Signature CEs)*\n` +
       `• **+3 Universal EXP Embers** ✨ *(1x ★5 SSR + 2x ★4 SR Blaze of Wisdom synthesized to inventory for \`/feed\`)*\n\n` +
       `👑 **Victorious Masters & Progression:**\n` +
-      progressionReports.join('\n')
+      progressionReports.join('\n') + `\n\n` +
+      `📜 **Recent Battle Log:**\n${recentCombatLogText}`
     )
     .setImage(boss.avatarUrl)
     .setColor(0x10b981)
     .setFooter({ text: 'Fate/Grand Order PvE Raid Engine • Victory Recorded' });
 
+  const logRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId('raid_view_full_log')
+      .setLabel('📜 Full Battle Log')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  let finalMsg: any = null;
   try {
-    await battleMsg.channel.send({ embeds: [victoryEmbed], components: [] });
-    if (battleMsg && typeof battleMsg.delete === 'function') {
-      await battleMsg.delete().catch(() => {});
-    }
+    finalMsg = await battleMsg.edit({ embeds: [victoryEmbed], components: [logRow] });
   } catch {
-    await battleMsg.edit({ embeds: [victoryEmbed], components: [] }).catch(() => {});
+    try {
+      finalMsg = await battleMsg.channel.send({ embeds: [victoryEmbed], components: [logRow] });
+    } catch {}
+  }
+
+  if (finalMsg) {
+    const postCollector = finalMsg.createMessageComponentCollector({
+      componentType: ComponentType.Button,
+      filter: (b: any) => b.customId === 'raid_view_full_log',
+      time: 600_000
+    });
+
+    postCollector.on('collect', async (i: any) => {
+      const fullLines = battleState.fullCombatLog || [];
+      const logChunks: string[] = [];
+      let cur = '';
+      for (const line of fullLines) {
+        if ((cur + '\n' + line).length > 3800) {
+          logChunks.push(cur);
+          cur = line;
+        } else {
+          cur = cur ? cur + '\n' + line : line;
+        }
+      }
+      if (cur) logChunks.push(cur);
+
+      const logEmbed = new EmbedBuilder()
+        .setTitle(`📜 Complete Battle Log • ${boss.name}`)
+        .setDescription(logChunks[0] || 'No events recorded.')
+        .setColor(0x3b82f6)
+        .setFooter({ text: `Total Battle Events: ${fullLines.length} • Fate/Grand Order PvE Raid` });
+
+      await i.reply({
+        embeds: [logEmbed],
+        flags: MessageFlags.Ephemeral
+      }).catch(() => {});
+    });
   }
 }
 
-async function concludeRaidDefeat(battleMsg: any, boss: RaidBossConfig) {
+async function concludeRaidDefeat(
+  battleMsg: any,
+  boss: RaidBossConfig,
+  battleState: RaidBattleState
+) {
+  const participants = battleState.participants;
+  const sortedByDamage = [...participants].sort((a, b) => (b.totalDamageDealt || 0) - (a.totalDamageDealt || 0));
+  const totalPartyDmg = sortedByDamage.reduce((acc, p) => acc + (p.totalDamageDealt || 0), 0) || 1;
+  const damageContributionText = sortedByDamage.map((p, idx) => {
+    const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
+    const dmg = p.totalDamageDealt || 0;
+    const pct = Math.round((dmg / totalPartyDmg) * 100);
+    return `• <@${p.userId}> (**${pName}**): **${dmg.toLocaleString()} DMG** (${pct}%)`;
+  }).join('\n');
+
+  const recentCombatLogText = (battleState.fullCombatLog || []).slice(-6).join('\n');
+  const bossHpPct = Math.round((battleState.bossCurrentHp / battleState.bossMaxHp) * 100);
+
   const defeatEmbed = new EmbedBuilder()
     .setTitle('💀 RAID DEFEAT — PARTY WIPED')
     .setDescription(
-      `All Servants have fallen to the incinerating mana of **${boss.name}**.\n\n` +
+      `All Servants have fallen to the incinerating mana of **${boss.name}** in **Round ${battleState.round}**.\n\n` +
+      `💔 **Boss Health Remaining:** ❤️ **${Math.round(battleState.bossCurrentHp).toLocaleString()} / ${battleState.bossMaxHp.toLocaleString()} HP** (${bossHpPct}% Remaining)\n\n` +
+      `📊 **Damage Contribution:**\n${damageContributionText}\n\n` +
+      `📜 **Recent Battle Log:**\n${recentCombatLogText}\n\n` +
       `*Regroup at Chaldea, reinforce your Saint Graphs, and challenge the Demon God Pillar once more!*`
     )
     .setColor(0xef4444)
     .setFooter({ text: 'Demon God Pillar Raid • Defeat' });
 
+  const logRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId('raid_view_full_log')
+      .setLabel('📜 Full Battle Log')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  let finalMsg: any = null;
   try {
-    await battleMsg.channel.send({ embeds: [defeatEmbed], components: [] });
-    if (battleMsg && typeof battleMsg.delete === 'function') {
-      await battleMsg.delete().catch(() => {});
-    }
+    finalMsg = await battleMsg.edit({ embeds: [defeatEmbed], components: [logRow] });
   } catch {
-    await battleMsg.edit({ embeds: [defeatEmbed], components: [] }).catch(() => {});
+    try {
+      finalMsg = await battleMsg.channel.send({ embeds: [defeatEmbed], components: [logRow] });
+    } catch {}
+  }
+
+  if (finalMsg) {
+    const postCollector = finalMsg.createMessageComponentCollector({
+      componentType: ComponentType.Button,
+      filter: (b: any) => b.customId === 'raid_view_full_log',
+      time: 600_000
+    });
+
+    postCollector.on('collect', async (i: any) => {
+      const fullLines = battleState.fullCombatLog || [];
+      const logChunks: string[] = [];
+      let cur = '';
+      for (const line of fullLines) {
+        if ((cur + '\n' + line).length > 3800) {
+          logChunks.push(cur);
+          cur = line;
+        } else {
+          cur = cur ? cur + '\n' + line : line;
+        }
+      }
+      if (cur) logChunks.push(cur);
+
+      const logEmbed = new EmbedBuilder()
+        .setTitle(`📜 Complete Battle Log • ${boss.name}`)
+        .setDescription(logChunks[0] || 'No events recorded.')
+        .setColor(0xef4444)
+        .setFooter({ text: `Total Battle Events: ${fullLines.length} • Fate/Grand Order PvE Raid` });
+
+      await i.reply({
+        embeds: [logEmbed],
+        flags: MessageFlags.Ephemeral
+      }).catch(() => {});
+    });
   }
 }
 
