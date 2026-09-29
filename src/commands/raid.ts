@@ -266,15 +266,23 @@ async function runRaidBattle(
 ) {
   const participants: RaidParticipantState[] = partyUsers.map(p => {
     const s = p.servant;
-    const baseHp = s.allocatedStats?.hp || s.template?.baseStats?.hp || 14000;
-    const hp = s.currentHp && s.currentHp > 0 ? s.currentHp : baseHp;
+    const t = s.template || {};
+    const alloc = s.allocatedStats || {};
+    const baseStats = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
+    const totalEnd = (baseStats.endurance || 10) + (alloc.endurance || 0);
+    const ceHp = s.equippedCe?.hpBonus || 0;
+    const calculatedMaxHp = s.maxHp || Math.round((t.baseHp || 28000) + totalEnd * 150 + ceHp);
+    const currentHp = (s.currentHp !== undefined && s.currentHp > 0)
+      ? Math.min(calculatedMaxHp, Math.round(s.currentHp))
+      : calculatedMaxHp;
+
     const partState: RaidParticipantState = {
       userId: p.userId,
       username: p.username,
       master: p.master,
       servant: s,
-      currentHp: hp,
-      maxHp: baseHp,
+      currentHp,
+      maxHp: calculatedMaxHp,
       npGauge: 0,
       critStars: 10,
       skillCooldowns: [0, 0, 0],
@@ -676,7 +684,13 @@ async function runRaidBattle(
     let starsGenerated = 0;
     let npGained = 0;
 
-    const baseAtk = active.servant.allocatedStats?.atk || active.servant.template?.baseStats?.atk || 10000;
+    const sAtk = active.servant;
+    const tAtk = sAtk.template || {};
+    const allocAtk = sAtk.allocatedStats || {};
+    const baseStatsAtk = tAtk.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
+    const totalStr = (baseStatsAtk.strength || 10) + (allocAtk.strength || 0);
+    const ceAtk = sAtk.equippedCe?.atkBonus || 0;
+    const baseAtk = Math.round((tAtk.baseAtk || 10000) + totalStr * 80 + ceAtk);
     const atkBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'atk_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
 
     pendingCards.forEach((card, cIdx) => {
