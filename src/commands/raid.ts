@@ -16,6 +16,7 @@ import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantas
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { safeSetEmbedImage } from '../utils/discordEmbedHelper';
 import { addServantBattleExp, createExpEmberCraftEssence } from '../engine/customization';
+import { calculateServantMaxHp } from '../engine/statSystem';
 import { addBondExpToServant } from '../../lib/engine/bondEvents';
 
 export const data = new SlashCommandBuilder()
@@ -268,15 +269,8 @@ async function runRaidBattle(
 ) {
   const participants: RaidParticipantState[] = partyUsers.map(p => {
     const s = p.servant;
-    const t = s.template || {};
-    const alloc = s.allocatedStats || {};
-    const baseStats = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
-    const totalEnd = (baseStats.endurance || 10) + (alloc.endurance || 0);
-    const ceHp = s.equippedCe?.hpBonus || 0;
-    const calculatedMaxHp = s.maxHp || Math.round((t.baseHp || 28000) + totalEnd * 150 + ceHp);
-    const currentHp = (s.currentHp !== undefined && s.currentHp > 0)
-      ? Math.min(calculatedMaxHp, Math.round(s.currentHp))
-      : calculatedMaxHp;
+    const calculatedMaxHp = calculateServantMaxHp(s);
+    const currentHp = calculatedMaxHp;
 
     // Ensure any user whose persistent profile command seals were reduced by prior raid battles is restored to 3
     if (p.master && (p.master.commandSeals === undefined || p.master.commandSeals < 3)) {

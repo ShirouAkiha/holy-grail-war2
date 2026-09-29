@@ -78,10 +78,18 @@ export function allocateStatPoints(
     luck: (currentAllocated.luck || 0) + (statsToAdd.luck || 0)
   };
 
+  const t = servant.template || {};
+  const baseStats = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
+  const totalEnd = (baseStats.endurance || 10) + (updatedAllocated.endurance || 0);
+  const ceHp = servant.equippedCe?.hpBonus || 0;
+  const newMaxHp = Math.round((t.baseHp || 28000) + totalEnd * 150 + ceHp);
+
   return {
     ...servant,
     allocatedStats: updatedAllocated,
-    availableStatPoints: (servant.availableStatPoints || 0) - totalCost
+    availableStatPoints: (servant.availableStatPoints || 0) - totalCost,
+    maxHp: newMaxHp,
+    currentHp: newMaxHp
   };
 }
 
