@@ -728,13 +728,13 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   ctx.restore();
 
   // ==========================================
-  // LAYER 4: Bottom Player HUD (Anchored Y: 380 to 720)
+  // LAYER 4: Bottom Player HUD (Anchored Y: 210 to 720)
   // Balanced distribution for 1, 2, 3, or 4 Servants
   // ==========================================
   const party = state.participants;
   const numPart = Math.max(1, Math.min(4, party.length));
-  const panelH = 340;
-  const panelTopY = 380;
+  const panelH = 510;
+  const panelTopY = 210;
 
   // Calculate balanced X positions and dynamic panel width
   let panelW = 295;
@@ -769,28 +769,29 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     ctx.clip();
 
     // Translucent glass base behind the sprite
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.35)';
     ctx.fillRect(slotX, panelTopY, panelW, panelH);
 
-    // Render Servant Sprite / Character Art (focused on face & bust, perfectly framed above the skills)
+    // Render Servant Sprite / Character Art (Framed so upper body & face are 100% ABOVE the skill icons)
     if (avatar) {
       const imgW = avatar.width || panelW;
       const imgH = avatar.height || panelH;
-      // Focus on character's upper torso and face
-      const scale = Math.max((panelW * 1.25) / imgW, (panelH * 1.05) / imgH);
+      // Fit sprite into the upper area (Y: 210 to 485)
+      const spriteAreaH = 280;
+      const scale = Math.max((panelW * 0.95) / imgW, (spriteAreaH * 1.15) / imgH);
       const drawW = imgW * scale;
       const drawH = imgH * scale;
       const drawX = slotX + (panelW - drawW) / 2;
-      // Position head higher up so eyes, hair, and face are completely visible above the skills
-      const drawY = panelTopY - Math.min(35, drawH * 0.08);
+      const drawY = panelTopY + 5; // Head and face proudly begin at the top of the panel
       ctx.drawImage(avatar, 0, 0, imgW, imgH, drawX, drawY, drawW, drawH);
     }
 
-    // Authentic FGO Vertical Gradient: Translucent at head -> dark black at bottom status gauges
+    // Authentic FGO Vertical Gradient: Completely clear on head & face -> dark black only below skills and gauges
     const fadeGrad = ctx.createLinearGradient(0, panelTopY, 0, height);
-    fadeGrad.addColorStop(0, 'rgba(15, 23, 42, 0.05)');
-    fadeGrad.addColorStop(0.32, 'rgba(15, 23, 42, 0.20)');
-    fadeGrad.addColorStop(0.58, 'rgba(15, 23, 42, 0.85)');
+    fadeGrad.addColorStop(0, 'rgba(15, 23, 42, 0)');
+    fadeGrad.addColorStop(0.48, 'rgba(15, 23, 42, 0.05)');
+    fadeGrad.addColorStop(0.58, 'rgba(15, 23, 42, 0.65)');
+    fadeGrad.addColorStop(0.72, 'rgba(15, 23, 42, 0.92)');
     fadeGrad.addColorStop(1, 'rgba(5, 8, 18, 0.98)');
     ctx.fillStyle = fadeGrad;
     ctx.fillRect(slotX, panelTopY, panelW, panelH);
@@ -803,7 +804,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
 
     ctx.restore();
 
-    // Subtle modern panel border (removed heavy gold frame and glow)
+    // Subtle modern panel border (clean accent without heavy gold glow)
     if (isTurnActive) {
       ctx.save();
       ctx.strokeStyle = 'rgba(56, 189, 248, 0.60)'; // Crisp subtle cyan accent for active turn
@@ -811,7 +812,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
       drawRoundRect(ctx, slotX, panelTopY, panelW, panelH, { tl: 10, tr: 10, bl: 0, br: 0 }, false, true);
       ctx.restore();
     } else {
-      ctx.strokeStyle = p.isDead ? 'rgba(239, 68, 68, 0.50)' : 'rgba(71, 85, 105, 0.40)';
+      ctx.strokeStyle = p.isDead ? 'rgba(239, 68, 68, 0.50)' : 'rgba(71, 85, 105, 0.35)';
       ctx.lineWidth = 1.0;
       drawRoundRect(ctx, slotX, panelTopY, panelW, panelH, { tl: 10, tr: 10, bl: 0, br: 0 }, false, true);
     }
