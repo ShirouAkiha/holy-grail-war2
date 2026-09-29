@@ -621,7 +621,8 @@ async function runRaidBattle(
   });
 
   collector.on('collect', async (i: any) => {
-    // 0. Status Inspection Dossier (Accessible by any Master at any time)
+    try {
+      // 0. Status Inspection Dossier (Accessible by any Master at any time)
     if (i.customId === 'raid_status') {
       const statusEmbed = buildRaidStatusEmbed(battleState, i.user.id);
       await i.reply({
@@ -1071,6 +1072,9 @@ async function runRaidBattle(
     } else if (bossUsedNp) {
       await dispatchBossNpGif();
     }
+    } catch (err: any) {
+      console.error('[raid] Unhandled error during raid turn execution:', err);
+    }
   });
 
   collector.on('end', async () => {
@@ -1104,6 +1108,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
   // 1. HP Threshold & Enrage Phase Check (< 50% HP)
   const hpRatio = state.bossCurrentHp / state.bossMaxHp;
   const isEnraged = hpRatio <= 0.50;
+  const enrageMult = isEnraged ? 1.25 : 1.0;
   const bossAtkBuffs = state.bossBuffs.filter(b => b.type === 'atk_up').reduce((acc, b) => acc + b.value, 0);
   const bossAtkDebuffs = state.bossBuffs.filter(b => b.type === 'atk_down').reduce((acc, b) => acc + b.value, 0);
   const totalBossAtkMult = Math.max(0.2, (1 + (bossAtkBuffs - bossAtkDebuffs) / 100) * enrageMult);
