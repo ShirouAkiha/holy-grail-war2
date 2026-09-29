@@ -221,53 +221,47 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     ctx.restore();
   }
 
-  // 3. Render Player Servants (Standing Portrayals)
+  // 3. Render Player Servants (Standing Arena Sprites on Field)
   const party = state.participants;
-  const startColX = 220;
-  const colW = 120;
-  const colGap = 15;
+  const arenaStartX = 410;
+  const arenaStepX = 65;
 
   party.slice(0, 3).forEach((p, idx) => {
     const avatar = servantAvatars[idx];
-    const cX = startColX + idx * (colW + colGap);
-    const colCenterX = cX + colW / 2;
-    const posY = 95;
+    const posX = arenaStartX + idx * arenaStepX;
+    const posY = 130 + (idx % 2 === 1 ? 20 : 0);
 
     ctx.save();
     if (p.isDead) ctx.globalAlpha = 0.35;
 
-    // Ground Shadow under Servant feet
+    // Ground Shadow under feet
     ctx.beginPath();
-    ctx.ellipse(colCenterX, posY + 152, 32, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(posX + 20, posY + 65, 20, 6, 0, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
     ctx.fill();
 
-    // Servant Standing Card Portrait
-    const portraitW = 100;
-    const portraitH = 150;
-    const portraitX = colCenterX - portraitW / 2;
-    const portraitY = posY;
+    // Small Arena Sprite
+    const spriteW = 45;
+    const spriteH = 70;
 
-    // Active Master Turn Highlight Glow
     if (idx === state.activeMasterIndex && !p.isDead) {
       ctx.save();
       ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 10;
       ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 2;
-      drawRoundRect(ctx, portraitX - 2, portraitY - 2, portraitW + 4, portraitH + 4, 6, false, true);
+      ctx.lineWidth = 1.5;
+      drawRoundRect(ctx, posX - 1, posY - 1, spriteW + 2, spriteH + 2, 4, false, true);
       ctx.restore();
     }
 
     ctx.save();
-    drawRoundRect(ctx, portraitX, portraitY, portraitW, portraitH, 6, false, false);
+    drawRoundRect(ctx, posX, posY, spriteW, spriteH, 4, false, false);
     ctx.clip();
     if (avatar) {
-      // Aspect ratio preserving centered crop (object-fit: cover) to prevent squishing
-      const imgW = avatar.width || portraitW;
-      const imgH = avatar.height || portraitH;
+      const imgW = avatar.width || spriteW;
+      const imgH = avatar.height || spriteH;
       const imgRatio = imgW / imgH;
-      const targetRatio = portraitW / portraitH;
+      const targetRatio = spriteW / spriteH;
       let sx = 0, sy = 0, sw = imgW, sh = imgH;
       if (imgRatio > targetRatio) {
         sw = imgH * targetRatio;
@@ -276,17 +270,12 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
         sh = imgW / targetRatio;
         sy = (imgH - sh) / 2;
       }
-      ctx.drawImage(avatar, sx, sy, sw, sh, portraitX, portraitY, portraitW, portraitH);
+      ctx.drawImage(avatar, sx, sy, sw, sh, posX, posY, spriteW, spriteH);
     } else {
       ctx.fillStyle = '#1e293b';
-      ctx.fillRect(portraitX, portraitY, portraitW, portraitH);
+      ctx.fillRect(posX, posY, spriteW, spriteH);
     }
     ctx.restore();
-
-    // Card Golden Outer Border Frame
-    ctx.strokeStyle = p.isDead ? '#ef4444' : '#f59e0b';
-    ctx.lineWidth = 1.5;
-    drawRoundRect(ctx, portraitX, portraitY, portraitW, portraitH, 6, false, true);
 
     ctx.restore();
   });
@@ -418,18 +407,59 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   ctx.restore();
 
   // 6. Bottom Authentic FGO Servant HUD (Matching Reference Image)
+  const hudStartColX = 15;
+  const hudColW = 190;
+  const hudColGap = 18;
+
   party.slice(0, 3).forEach((p, i) => {
-    const cX = startColX + i * (colW + colGap);
-    const colCenterX = cX + colW / 2;
+    const cX = hudStartColX + i * (hudColW + hudColGap);
+    const colCenterX = cX + hudColW / 2;
+    const avatar = servantAvatars[i];
 
     ctx.save();
+
+    // Servant Bust Artwork Portrait inside HUD Column
+    const portraitW = 125;
+    const portraitH = 115;
+    const portraitX = colCenterX - portraitW / 2;
+    const portraitY = 165;
+
+    ctx.save();
+    if (p.isDead) ctx.globalAlpha = 0.35;
+    if (avatar) {
+      const imgW = avatar.width || portraitW;
+      const imgH = avatar.height || portraitH;
+      const imgRatio = imgW / imgH;
+      const targetRatio = portraitW / portraitH;
+      let sx = 0, sy = 0, sw = imgW, sh = imgH;
+      if (imgRatio > targetRatio) {
+        sw = imgH * targetRatio;
+        sx = (imgW - sw) / 2;
+      } else {
+        sh = imgW / targetRatio;
+        sy = (imgH - sh) / 2;
+      }
+      ctx.drawImage(avatar, sx, sy, sw, sh, portraitX, portraitY, portraitW, portraitH);
+    }
+    ctx.restore();
+
+    // Turn Active Glow
+    if (i === state.activeMasterIndex && !p.isDead) {
+      ctx.save();
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 10;
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 1.5;
+      drawRoundRect(ctx, cX, 238, hudColW, 118, 6, false, true);
+      ctx.restore();
+    }
 
     // a. 3 Skill Icons Row
     const skillBoxSize = 22;
     const skillGap = 4;
     const totalSkillsW = 3 * skillBoxSize + 2 * skillGap;
     const skillStartX = colCenterX - totalSkillsW / 2;
-    const skillY = 252;
+    const skillY = 248;
 
     const skillBgGradients = ['#9a3412', '#1e3a8a', '#854d0e']; // Buster / Arts / Quick
     const skillSymbols = ['⚔️', '✨', '💥'];
@@ -467,9 +497,9 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     }
 
     // b. Authentic FGO HP Bar
-    const barW = colW - 8;
+    const barW = hudColW - 12;
     const barX = colCenterX - barW / 2;
-    const hpY = 279;
+    const hpY = 276;
     const hpH = 13;
 
     ctx.save();
@@ -507,7 +537,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     ctx.restore();
 
     // c. Authentic FGO NP Bar
-    const npY = 295;
+    const npY = 292;
     const npH = 11;
 
     ctx.save();
@@ -549,7 +579,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     ctx.restore();
 
     // d. Bottom Class Emblem Diamond & Servant Name Ribbon
-    const ribbonY = 311;
+    const ribbonY = 308;
     const classEmblemX = barX + 10;
     const classEmblemY = ribbonY + 12;
     const size = 18;
@@ -630,7 +660,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     // Line 2: Jeanne Alter / Oberon / Altria
     ctx.font = 'bold 9px sans-serif';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(servName.slice(0, 14), nameX, ribbonY + 12);
+    ctx.fillText(servName.slice(0, 16), nameX, ribbonY + 12);
     ctx.shadowBlur = 0;
     ctx.restore();
 
