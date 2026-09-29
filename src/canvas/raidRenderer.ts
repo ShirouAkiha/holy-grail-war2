@@ -2,6 +2,7 @@ import { RaidBossConfig } from '../data/raidBosses';
 import { MasterServantInstance } from '../types';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { getLocalMediaDiskPath } from '../utils/localMedia';
+import { getClassIconUrl } from '../data/classIcons';
 import fs from 'fs';
 
 let canvasModule: any = null;
@@ -459,7 +460,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  const { bgImg, bossSpriteImg, bossAvatarImg, servantAvatars } = loadedImages;
+  const { bgImg, bossSpriteImg, bossAvatarImg, bossClassIconImg, servantAvatars, servantClassIcons = [] } = loadedImages;
 
   // ==========================================
   // LAYER 1: Background & Arena Environment
@@ -522,19 +523,23 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   // 1. Top-Left Boss Status HUD (X: 30, Y: 30)
   const bossHudX = 30;
   const bossHudY = 30;
+  const avatarSize = 56;
 
   ctx.save();
-  // Boss Class Emblem / Avatar Diamond Box
-  const avatarSize = 54;
-  drawDiamond(ctx, bossHudX + avatarSize / 2, bossHudY + avatarSize / 2 + 2, avatarSize + 4, '#1e1b4b', '#d4af37', 2);
-
-  if (bossAvatarImg) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(bossHudX + avatarSize / 2, bossHudY + avatarSize / 2 + 2, (avatarSize - 6) / 2, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(bossAvatarImg, bossHudX + 3, bossHudY + 5, avatarSize - 6, avatarSize - 6);
-    ctx.restore();
+  if (bossClassIconImg) {
+    // Authentic FGO Golden Boss Class Emblem Crest
+    ctx.drawImage(bossClassIconImg, bossHudX, bossHudY, avatarSize, avatarSize);
+  } else {
+    // Fallback Diamond Box
+    drawDiamond(ctx, bossHudX + avatarSize / 2, bossHudY + avatarSize / 2 + 2, avatarSize + 4, '#1e1b4b', '#d4af37', 2);
+    if (bossAvatarImg) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(bossHudX + avatarSize / 2, bossHudY + avatarSize / 2 + 2, (avatarSize - 6) / 2, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(bossAvatarImg, bossHudX + 3, bossHudY + 5, avatarSize - 6, avatarSize - 6);
+      ctx.restore();
+    }
   }
 
   // Boss Class Tag below Diamond
@@ -794,23 +799,30 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     const footerY = 646;
     const emblemCx = barX + 22;
     const emblemCy = footerY + 28;
-    const diamondSize = 36;
-
-    // Diamond Class Emblem Badge
-    const goldGrad = ctx.createLinearGradient(-diamondSize / 2, -diamondSize / 2, diamondSize / 2, diamondSize / 2);
-    goldGrad.addColorStop(0, '#fef08a');
-    goldGrad.addColorStop(0.5, '#f59e0b');
-    goldGrad.addColorStop(1, '#78350f');
-    drawDiamond(ctx, emblemCx, emblemCy, diamondSize, goldGrad, '#fef08a', 1.5);
-    drawDiamond(ctx, emblemCx, emblemCy, diamondSize - 6, '#0f172a', null, 0);
-
     const sClass = p.servant.template?.servantClass || 'Saber';
-    ctx.save();
-    ctx.font = '17px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(CLASS_SYMBOLS[sClass] || '⚔️', emblemCx, emblemCy + 1);
-    ctx.restore();
+    const classIconImg = servantClassIcons[i];
+
+    if (classIconImg) {
+      // Authentic FGO Golden Class Crest Icon provided by Master
+      const iconSize = 44;
+      ctx.drawImage(classIconImg, emblemCx - iconSize / 2, emblemCy - iconSize / 2, iconSize, iconSize);
+    } else {
+      // Fallback Diamond Class Emblem Badge
+      const diamondSize = 36;
+      const goldGrad = ctx.createLinearGradient(-diamondSize / 2, -diamondSize / 2, diamondSize / 2, diamondSize / 2);
+      goldGrad.addColorStop(0, '#fef08a');
+      goldGrad.addColorStop(0.5, '#f59e0b');
+      goldGrad.addColorStop(1, '#78350f');
+      drawDiamond(ctx, emblemCx, emblemCy, diamondSize, goldGrad, '#fef08a', 1.5);
+      drawDiamond(ctx, emblemCx, emblemCy, diamondSize - 6, '#0f172a', null, 0);
+
+      ctx.save();
+      ctx.font = '17px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(CLASS_SYMBOLS[sClass] || '⚔️', emblemCx, emblemCy + 1);
+      ctx.restore();
+    }
 
     // Class Name, Level & Servant Name
     const nameX = emblemCx + 28;
@@ -875,18 +887,36 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
  * Generates a high-definition 1280x720 PNG buffer for the FGO PvE Raid Battlefield
  */
 export async function renderRaidBattlefield(state: RaidBattleState, _animated = false): Promise<{ buffer: Buffer; fileName: string }> {
-  // Preload all assets
-  const [bgImg, bossSpriteImg, bossAvatarImg, ...servantAvatars] = await Promise.all([
+  const bossClassIconUrl = getClassIconUrl(state.boss.servantClass);
+  const participantClassIconUrls = state.participants.map(p =>
+    getClassIconUrl(p.servant.template?.servantClass || 'Saber')
+  );
+
+  // Preload all assets including authentic FGO class icons
+  const [bgImg, bossSpriteImg, bossAvatarImg, bossClassIconImg, ...rest] = await Promise.all([
     loadImage(state.boss.bgUrl),
     loadImage(state.boss.spriteUrl),
     loadImage(state.boss.avatarUrl),
+    loadImage(bossClassIconUrl),
     ...state.participants.map(p => {
       const art = p.servant.customArtworkUrl || p.servant.template?.avatarUrl;
       return art ? loadImage(art) : Promise.resolve(null);
-    })
+    }),
+    ...participantClassIconUrls.map(url => loadImage(url))
   ]);
 
-  const loadedImages = { bgImg, bossSpriteImg, bossAvatarImg, servantAvatars };
+  const numPart = state.participants.length;
+  const servantAvatars = rest.slice(0, numPart);
+  const servantClassIcons = rest.slice(numPart);
+
+  const loadedImages = {
+    bgImg,
+    bossSpriteImg,
+    bossAvatarImg,
+    bossClassIconImg,
+    servantAvatars,
+    servantClassIcons
+  };
 
   // Render pristine 1280x720 PNG frame
   const singleCanvas = await renderSingleFrame(state, loadedImages);
