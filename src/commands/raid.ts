@@ -470,15 +470,27 @@ async function runRaidBattle(
     const c2 = pendingCards[1] ? cardEmojiMap[pendingCards[1]] : '❓ Card 2';
     const c3 = pendingCards[2] ? cardEmojiMap[pendingCards[2]] : '❓ Card 3';
 
-    const recent = battleState.recentLogs.slice(-3).join('\n');
+    const recent = battleState.recentLogs.slice(-2).join('\n');
+    const bossHpPct = Math.max(0, Math.round((battleState.bossCurrentHp / battleState.bossMaxHp) * 100));
+    const bossChargeStr = '◆'.repeat(battleState.bossCharge) + '◇'.repeat(Math.max(0, battleState.boss.maxCharge - battleState.bossCharge));
+
+    const partyLines = battleState.participants.map(p => {
+      const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
+      const isTurn = p.userId === active.userId;
+      const arrow = isTurn ? '👉 ' : '• ';
+      const hpStr = p.isDead ? 'FALLEN' : `${Math.round(p.currentHp).toLocaleString()} HP`;
+      return `${arrow}**${pName}** (<@${p.userId}>): \`${hpStr}\` • \`NP: ${Math.round(p.npGauge)}%\` • \`★ ${p.critStars || 0}\``;
+    }).join('\n');
 
     const embed = new EmbedBuilder()
       .setTitle(`⚔️ DEMON GOD PILLAR RAID — ROUND ${battleState.round}`)
       .setDescription(
-        `👉 **Current Turn:** <@${active.userId}> (**${servName}**)\n\n` +
+        `😈 **${battleState.boss.name}**\n` +
+        `❤️ \`${Math.round(battleState.bossCurrentHp).toLocaleString()} / ${battleState.bossMaxHp.toLocaleString()}\` (${bossHpPct}%) • ⚡ Charge: \`[${bossChargeStr}]\`\n\n` +
+        `🛡️ **Party Status:**\n${partyLines}\n\n` +
         `🎴 **Selected Attack Chain (${pendingCards.length}/3):**\n` +
         `\`[ 1: ${c1} ]\` ➔ \`[ 2: ${c2} ]\` ➔ \`[ 3: ${c3} ]\`\n\n` +
-        `📜 **Battlefield Log:**\n${recent}`
+        `📜 **Log:** ${recent}`
       )
       .setImage(`attachment://${attachmentFileName}`)
       .setColor(0x8b5cf6)
