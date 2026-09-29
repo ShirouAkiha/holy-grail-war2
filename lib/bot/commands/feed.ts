@@ -85,9 +85,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setTitle(`✨ Spirit Origin Enhancement: ${sName}`)
         .setDescription(
           `Feed Craft Essences into **${sName}**'s Saint Graph to grant massive Spirit EXP.\n` +
-          `⭐ **Leveling Rule:** Every Level Up grants **+10 Available Stat Points**!\n\n` +
+          `⭐ **Leveling Rule:** Level 500 Cap with **+10 Stat Points per Level** (1000 max per attribute for Complete Omnipotence)!\n\n` +
           `📊 **Current Status:**\n` +
-          `• **Level:** \`Lv. ${activeServant.level || 1} / 100\`\n` +
+          `• **Level:** \`Lv. ${activeServant.level || 1} / 500\`\n` +
           `• **Total EXP:** \`${currentExp.toLocaleString()} EXP\`\n` +
           `• **Next Level:** \`${expStatus.currentLevelExp.toLocaleString()} / ${expStatus.nextLevelExp.toLocaleString()} EXP\` (${expStatus.progressPercent}%)\n` +
           `• **Unspent Stat Points:** \`${activeServant.availableStatPoints || 0} pts\`\n\n` +
@@ -96,7 +96,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           `*Select an essence below or use quick batch feed buttons:*`
         )
         .setColor(0xd4af37)
-        .setFooter({ text: 'Each level up awards +10 stat points to allocate via /customise stats' });
+        .setFooter({ text: 'Each level up awards +10 stat points (cap 1,000 in all 5 parameters for omnipotence)' });
 
       const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
         new StringSelectMenuBuilder()

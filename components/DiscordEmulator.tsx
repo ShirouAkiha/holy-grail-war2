@@ -6477,7 +6477,13 @@ export default function DiscordEmulator({
     const base = tpl.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
 
     const getRank = (score: number) => {
-      if (score >= 40) return 'EX';
+      if (score >= 1000) return 'OMNIPOTENT (1000)';
+      if (score >= 800) return 'EX++++';
+      if (score >= 600) return 'EX+++';
+      if (score >= 400) return 'EX++';
+      if (score >= 200) return 'EX+';
+      if (score >= 100) return 'EX';
+      if (score >= 40) return 'A+++';
       if (score >= 30) return 'A+';
       if (score >= 25) return 'A';
       if (score >= 20) return 'B+';
@@ -6500,16 +6506,16 @@ export default function DiscordEmulator({
       embed: {
         title: `⭐ Parameter Point Allocation: ${sName}`,
         description:
-          `👑 **Servant:** **${sName}** (${sClass}) • **Level:** Lv.${sLvl}/100\n` +
-          `📈 **Available Stat Points:** \`${availPoints} pts\` *(Gained +10 pts per level up!)*\n\n` +
-          `📊 **Current Parameters & Allocations:**\n` +
-          `• ⚔️ **Strength (STR):** Rank \`${getRank(strTotal)}\` (\`${strTotal}\` total, \`+${alloc.strength || 0}\` allocated) — *Boosts Attack Damage*\n` +
-          `• 🛡️ **Endurance (END):** Rank \`${getRank(endTotal)}\` (\`${endTotal}\` total, \`+${alloc.endurance || 0}\` allocated) — *Boosts Max HP & Guard*\n` +
-          `• 💨 **Agility (AGI):** Rank \`${getRank(agiTotal)}\` (\`${agiTotal}\` total, \`+${alloc.agility || 0}\` allocated) — *Boosts Evade & Critical Rate*\n` +
-          `• 🔮 **Mana (MNA):** Rank \`${getRank(mnaTotal)}\` (\`${mnaTotal}\` total, \`+${alloc.mana || 0}\` allocated) — *Boosts NP Gauge Gain*\n` +
-          `• 🍀 **Luck (LCK):** Rank \`${getRank(lckTotal)}\` (\`${lckTotal}\` total, \`+${alloc.luck || 0}\` allocated) — *Boosts Flee & Critical Chance*\n\n` +
+          `👑 **Servant:** **${sName}** (${sClass}) • **Level:** Lv.${sLvl}/500\n` +
+          `📈 **Available Stat Points:** \`${availPoints} pts\` *(Gained +10 pts per level up up to Lv. 500!)*\n\n` +
+          `📊 **Current Parameters & Allocations (1,000 cap):**\n` +
+          `• ⚔️ **Strength (STR):** Rank \`${getRank(strTotal)}\` (\`${strTotal}/1000\` total, \`+${alloc.strength || 0}\` allocated)\n` +
+          `• 🛡️ **Endurance (END):** Rank \`${getRank(endTotal)}\` (\`${endTotal}/1000\` total, \`+${alloc.endurance || 0}\` allocated)\n` +
+          `• 💨 **Agility (AGI):** Rank \`${getRank(agiTotal)}\` (\`${agiTotal}/1000\` total, \`+${alloc.agility || 0}\` allocated)\n` +
+          `• 🔮 **Mana (MNA):** Rank \`${getRank(mnaTotal)}\` (\`${mnaTotal}/1000\` total, \`+${alloc.mana || 0}\` allocated)\n` +
+          `• 🍀 **Luck (LCK):** Rank \`${getRank(lckTotal)}\` (\`${lckTotal}/1000\` total, \`+${alloc.luck || 0}\` allocated)\n\n` +
           (availPoints > 0
-            ? `*Click the buttons below to distribute your available points.*`
+            ? `*Click the buttons below to distribute your available points (cap 1,000 per attribute).*`
             : `*No stat points remaining. Feed Craft Essences to level up and earn +10 points per level!*`),
         color: '#f59e0b',
         footer: 'Holy Grail War Parameter Enhancement System • All stat gains scale into battle and duels'
@@ -7236,7 +7242,13 @@ export default function DiscordEmulator({
     const availPoints = targetServant.availableStatPoints || 0;
 
     const getRank = (score: number) => {
-      if (score >= 40) return 'EX';
+      if (score >= 1000) return 'OMNIPOTENT (1000)';
+      if (score >= 800) return 'EX++++';
+      if (score >= 600) return 'EX+++';
+      if (score >= 400) return 'EX++';
+      if (score >= 200) return 'EX+';
+      if (score >= 100) return 'EX';
+      if (score >= 40) return 'A+++';
       if (score >= 30) return 'A+';
       if (score >= 25) return 'A';
       if (score >= 20) return 'B+';
@@ -7257,7 +7269,7 @@ export default function DiscordEmulator({
       title = `⚔️ Servant Workshop — Profile Card: ${sName}`;
       description =
         `*${t.title}* • **Master:** ${master.username}\n` +
-        `🌟 **Class:** ${t.servantClass} | **Parity:** Balanced | **Bond Lv:** ${bondLvl}/10 ♥ | **Level:** ${lvl}/100\n` +
+        `🌟 **Class:** ${t.servantClass} | **Parity:** Balanced | **Bond Lv:** ${bondLvl}/10 ♥ | **Level:** ${lvl}/500\n` +
         `❤️ **Max HP:** \`${totalHp.toLocaleString()}\` | ⚔️ **Total ATK:** \`${totalAtk.toLocaleString()}\` | 📈 **Stat Points:** **${availPoints} pts**\n\n` +
         `📊 **Battle Parameters:**\n` +
         `• **Strength (STR):** \`${strTotal}\` [${getRank(strTotal)}] | **Endurance (END):** \`${endTotal}\` [${getRank(endTotal)}]\n` +
@@ -7275,14 +7287,14 @@ export default function DiscordEmulator({
     } else if (category === 'stats') {
       title = `⭐ Parameter Point Allocation: ${sName}`;
       description =
-        `👑 **Servant:** **${sName}** (${t.servantClass}) • **Level:** Lv.${lvl}/100\n` +
-        `📈 **Available Stat Points:** \`${availPoints} pts\` *(Gained +10 pts per level up!)*\n\n` +
-        `💪 **Strength (STR):** \`${strTotal}\` [**${getRank(strTotal)}**] — *Increases physical attack damage*\n` +
-        `🛡️ **Endurance (END):** \`${endTotal}\` [**${getRank(endTotal)}**] — *Increases max HP pool*\n` +
-        `⚡ **Agility (AGI):** \`${agiTotal}\` [**${getRank(agiTotal)}**] — *Increases crit star generation & dodge rate*\n` +
-        `🔮 **Mana (MNA):** \`${mnaTotal}\` [**${getRank(mnaTotal)}**] — *Increases NP charge gain rate*\n` +
-        `🍀 **Luck (LCK):** \`${lckTotal}\` [**${getRank(lckTotal)}**] — *Increases status effect and critical resistance*\n\n` +
-        `*Click a parameter button below to allocate points or use Auto-Distribute.*`;
+        `👑 **Servant:** **${sName}** (${t.servantClass}) • **Level:** Lv.${lvl}/500\n` +
+        `📈 **Available Stat Points:** \`${availPoints} pts\` *(Gained +10 pts per level up up to Lv. 500!)*\n\n` +
+        `💪 **Strength (STR):** \`${strTotal}\` [**${getRank(strTotal)}**] — *Increases physical attack damage (max 1000)*\n` +
+        `🛡️ **Endurance (END):** \`${endTotal}\` [**${getRank(endTotal)}**] — *Increases max HP pool (max 1000)*\n` +
+        `⚡ **Agility (AGI):** \`${agiTotal}\` [**${getRank(agiTotal)}**] — *Increases crit star generation & dodge rate (max 1000)*\n` +
+        `🔮 **Mana (MNA):** \`${mnaTotal}\` [**${getRank(mnaTotal)}**] — *Increases NP charge gain rate (max 1000)*\n` +
+        `🍀 **Luck (LCK):** \`${lckTotal}\` [**${getRank(lckTotal)}**] — *Increases status effect & critical resistance (max 1000)*\n\n` +
+        `*Click a parameter button below to allocate points or use Auto-Distribute (1,000 max cap per stat).*`;
       color = availPoints > 0 ? '#22c55e' : '#38bdf8';
     } else if (category === 'np') {
       const np = t.noblePhantasm;

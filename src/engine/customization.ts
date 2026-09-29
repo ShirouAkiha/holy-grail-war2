@@ -11,9 +11,17 @@ export interface DialogueQuotes {
 }
 
 // ==========================================
+// CONSTANTS & CAPS
+// ==========================================
+export const MAX_STAT_VALUE = 1000; // 1000 Max Cap for each attribute
+export const MAX_SERVANT_LEVEL = 500; // Level 500 Cap
+export const STAT_POINTS_PER_LEVEL = 10; // +10 points earned per level up
+
+// ==========================================
 // 1. STAT POINT ALLOCATION ENGINE
 // ==========================================
 // Validates that the requested point allocation does not exceed available unspent points,
+// enforces the 1000 max cap on every attribute (STR, END, AGI, MNA, LCK),
 // then applies the stat increases and decrements the remaining point pool.
 export function allocateStatPoints(
   servant: MasterServantInstance,
@@ -25,6 +33,31 @@ export function allocateStatPoints(
       ? { [statsToAddOrKey]: amount }
       : statsToAddOrKey;
 
+  const currentAllocated = servant.allocatedStats || {
+    strength: 0,
+    endurance: 0,
+    agility: 0,
+    mana: 0,
+    luck: 0
+  };
+
+  const statKeys: (keyof ServantStats)[] = ['strength', 'endurance', 'agility', 'mana', 'luck'];
+
+  // Check stat limit (1000 max for each attribute)
+  for (const key of statKeys) {
+    const addVal = statsToAdd[key] || 0;
+    if (addVal < 0) {
+      throw new Error(`Cannot allocate negative points for ${key}.`);
+    }
+    const currentVal = currentAllocated[key] || 0;
+    if (currentVal + addVal > MAX_STAT_VALUE) {
+      const allowed = Math.max(0, MAX_STAT_VALUE - currentVal);
+      throw new Error(
+        `Attribute ${key.toUpperCase()} cannot exceed the omnipotence cap of ${MAX_STAT_VALUE} points (Current: ${currentVal}, Max addable: ${allowed}).`
+      );
+    }
+  }
+
   const totalCost =
     (statsToAdd.strength || 0) +
     (statsToAdd.endurance || 0) +
@@ -33,22 +66,22 @@ export function allocateStatPoints(
     (statsToAdd.luck || 0);
 
   // Validate budget
-  if (totalCost > servant.availableStatPoints) {
-    throw new Error(`Cannot allocate ${totalCost} points. Only ${servant.availableStatPoints} available.`);
+  if (totalCost > (servant.availableStatPoints || 0)) {
+    throw new Error(`Cannot allocate ${totalCost} points. Only ${servant.availableStatPoints || 0} available.`);
   }
 
   const updatedAllocated: ServantStats = {
-    strength: (servant.allocatedStats?.strength || 0) + (statsToAdd.strength || 0),
-    endurance: (servant.allocatedStats?.endurance || 0) + (statsToAdd.endurance || 0),
-    agility: (servant.allocatedStats?.agility || 0) + (statsToAdd.agility || 0),
-    mana: (servant.allocatedStats?.mana || 0) + (statsToAdd.mana || 0),
-    luck: (servant.allocatedStats?.luck || 0) + (statsToAdd.luck || 0)
+    strength: (currentAllocated.strength || 0) + (statsToAdd.strength || 0),
+    endurance: (currentAllocated.endurance || 0) + (statsToAdd.endurance || 0),
+    agility: (currentAllocated.agility || 0) + (statsToAdd.agility || 0),
+    mana: (currentAllocated.mana || 0) + (statsToAdd.mana || 0),
+    luck: (currentAllocated.luck || 0) + (statsToAdd.luck || 0)
   };
 
   return {
     ...servant,
     allocatedStats: updatedAllocated,
-    availableStatPoints: servant.availableStatPoints - totalCost
+    availableStatPoints: (servant.availableStatPoints || 0) - totalCost
   };
 }
 
@@ -109,12 +142,13 @@ export interface RadarPoint {
 // ==========================================
 // Calculates 5-axis pentagonal trigonometry coordinates (STR, END, AGI, MNA, LCK)
 // for rendering the visual status radar polygon in Canvas or SVG.
+// Supports full scale up to 1000 max points (Omnipotence).
 export function calculateRadarCoordinates(
   stats: ServantStats,
   centerX: number = 100,
   centerY: number = 100,
   maxRadius: number = 80,
-  maxStatValue: number = 30
+  maxStatValue: number = MAX_STAT_VALUE
 ): { points: RadarPoint[]; polygonString: string } {
   const statKeys: Array<{ key: keyof ServantStats; label: string }> = [
     { key: 'strength', label: 'STR' },
@@ -124,12 +158,20 @@ export function calculateRadarCoordinates(
     { key: 'luck', label: 'LCK' }
   ];
 
+  // Dynamically resolve scale: if user passes explicit maxStatValue use it,
+  // otherwise scale gracefully with an adaptive ceiling so small stats (e.g. 10) look great
+  // while high stats (up to 1000) fill the pentagon appropriately.
+  const highestStat = Math.max(1, ...statKeys.map(k => stats[k.key] || 0));
+  const effectiveMax = maxStatValue === MAX_STAT_VALUE
+    ? (highestStat <= 30 ? 30 : highestStat <= 100 ? 100 : highestStat <= 500 ? 500 : MAX_STAT_VALUE)
+    : maxStatValue;
+
   const totalAxes = statKeys.length;
   const points: RadarPoint[] = statKeys.map((item, index) => {
     // Offset angle by -90 deg (-Math.PI/2) so STR points vertically upwards
     const angle = (Math.PI * 2 / totalAxes) * index - Math.PI / 2;
-    const value = Math.min(maxStatValue, Math.max(1, stats[item.key] || 1));
-    const ratio = value / maxStatValue;
+    const value = Math.min(MAX_STAT_VALUE, Math.max(1, stats[item.key] || 1));
+    const ratio = Math.min(1, value / effectiveMax);
     const r = maxRadius * ratio;
     const x = centerX + r * Math.cos(angle);
     const y = centerY + r * Math.sin(angle);
@@ -222,8 +264,9 @@ export function getTotalExpForLevel(level: number): number {
 
 /**
  * Determines a Servant's current level, remaining EXP, and progress towards the next level.
+ * Capped at MAX_SERVANT_LEVEL (Level 500).
  */
-export function calculateLevelFromExp(totalExp: number, maxLevel: number = 100): {
+export function calculateLevelFromExp(totalExp: number, maxLevel: number = MAX_SERVANT_LEVEL): {
   level: number;
   currentLevelExp: number;
   nextLevelExp: number;
@@ -244,8 +287,8 @@ export function calculateLevelFromExp(totalExp: number, maxLevel: number = 100):
 }
 
 /**
- * Feeds a list of Craft Essences to a Servant, granting EXP, increasing level,
- * and awarding 10 stat points for every level gained.
+ * Feeds a list of Craft Essences to a Servant, granting EXP, increasing level (up to Lv. 500),
+ * and awarding +10 stat points for every level gained.
  */
 export function feedCraftEssences(
   servant: MasterServantInstance,
@@ -294,12 +337,12 @@ export function feedCraftEssences(
 
   const remaining = originalList.filter((_, idx) => !consumedIndices.has(idx));
 
-  const oldLevel = servant.level || 1;
+  const oldLevel = Math.min(MAX_SERVANT_LEVEL, servant.level || 1);
   const currentExp = servant.experience ?? getTotalExpForLevel(oldLevel);
   const newTotalExp = currentExp + totalExpGained;
-  const { level: newLevel } = calculateLevelFromExp(newTotalExp);
+  const { level: newLevel } = calculateLevelFromExp(newTotalExp, MAX_SERVANT_LEVEL);
   const levelsGained = Math.max(0, newLevel - oldLevel);
-  const statPointsGained = levelsGained * 10;
+  const statPointsGained = levelsGained * STAT_POINTS_PER_LEVEL;
 
   // Un-equip if the equipped CE was consumed
   const consumedIds = new Set(fedEssences.map((c: any) => c.id));
@@ -347,18 +390,18 @@ export interface BattleExpResult {
 
 /**
  * Awards Level EXP to a Servant from combat (Duels, Sparring, Patrols, Grail War).
- * Increases Servant level and awards +10 unspent Stat Points on every level up!
+ * Increases Servant level up to Level 500 and awards +10 unspent Stat Points on every level up!
  */
 export function addServantBattleExp(
   servant: MasterServantInstance,
   battleExp: number
 ): BattleExpResult {
-  const oldLevel = servant.level || 1;
+  const oldLevel = Math.min(MAX_SERVANT_LEVEL, servant.level || 1);
   const currentExp = servant.experience ?? getTotalExpForLevel(oldLevel);
   const newTotalExp = currentExp + battleExp;
-  const { level: newLevel } = calculateLevelFromExp(newTotalExp);
+  const { level: newLevel } = calculateLevelFromExp(newTotalExp, MAX_SERVANT_LEVEL);
   const levelsGained = Math.max(0, newLevel - oldLevel);
-  const statPointsGained = levelsGained * 10;
+  const statPointsGained = levelsGained * STAT_POINTS_PER_LEVEL;
 
   const updatedServant: MasterServantInstance = {
     ...servant,

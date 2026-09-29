@@ -612,35 +612,42 @@ client.on(Events.InteractionCreate, async interaction => {
             return;
           }
 
-          const updated = allocateStatPoints(servant, {
-            strength: str,
-            endurance: end,
-            agility: agi,
-            mana: mna,
-            luck: lck
-          });
+          try {
+            const updated = allocateStatPoints(servant, {
+              strength: str,
+              endurance: end,
+              agility: agi,
+              mana: mna,
+              luck: lck
+            });
 
-          master.servants = master.servants.map((s: any) => s.id === servant.id ? updated : s);
-          await saveMaster(master);
+            master.servants = master.servants.map((s: any) => s.id === servant.id ? updated : s);
+            await saveMaster(master);
 
-          const sName = updated.nickname || updated.template?.name || 'Servant';
-          const allocEmbed = new EmbedBuilder()
-            .setTitle(`📈 Bulk Stat Allocation Complete: ${sName}`)
-            .setDescription(
-              `Successfully allocated **${totalRequested.toLocaleString()} Stat Points**!\n\n` +
-              `💪 **STR:** +${str.toLocaleString()} *(Total: ${((updated.template?.baseStats?.strength || 10) + (updated.allocatedStats?.strength || 0)).toLocaleString()})*\n` +
-              `🛡️ **END:** +${end.toLocaleString()} *(Total: ${((updated.template?.baseStats?.endurance || 10) + (updated.allocatedStats?.endurance || 0)).toLocaleString()})*\n` +
-              `⚡ **AGI:** +${agi.toLocaleString()} *(Total: ${((updated.template?.baseStats?.agility || 10) + (updated.allocatedStats?.agility || 0)).toLocaleString()})*\n` +
-              `🔮 **MNA:** +${mna.toLocaleString()} *(Total: ${((updated.template?.baseStats?.mana || 10) + (updated.allocatedStats?.mana || 0)).toLocaleString()})*\n` +
-              `🍀 **LCK:** +${lck.toLocaleString()} *(Total: ${((updated.template?.baseStats?.luck || 10) + (updated.allocatedStats?.luck || 0)).toLocaleString()})*\n\n` +
-              `📈 **Remaining Unspent Points:** \`${updated.availableStatPoints.toLocaleString()} pts\``
-            )
-            .setColor(0x22c55e);
+            const sName = updated.nickname || updated.template?.name || 'Servant';
+            const allocEmbed = new EmbedBuilder()
+              .setTitle(`📈 Bulk Stat Allocation Complete: ${sName}`)
+              .setDescription(
+                `Successfully allocated **${totalRequested.toLocaleString()} Stat Points**!\n\n` +
+                `💪 **STR:** +${str.toLocaleString()} *(Allocated: ${updated.allocatedStats?.strength || 0} / 1,000)*\n` +
+                `🛡️ **END:** +${end.toLocaleString()} *(Allocated: ${updated.allocatedStats?.endurance || 0} / 1,000)*\n` +
+                `⚡ **AGI:** +${agi.toLocaleString()} *(Allocated: ${updated.allocatedStats?.agility || 0} / 1,000)*\n` +
+                `🔮 **MNA:** +${mna.toLocaleString()} *(Allocated: ${updated.allocatedStats?.mana || 0} / 1,000)*\n` +
+                `🍀 **LCK:** +${lck.toLocaleString()} *(Allocated: ${updated.allocatedStats?.luck || 0} / 1,000)*\n\n` +
+                `📈 **Remaining Unspent Points:** \`${updated.availableStatPoints.toLocaleString()} pts\``
+              )
+              .setColor(0x22c55e);
 
-          await interaction.reply({
-            flags: MessageFlags.Ephemeral,
-            embeds: [allocEmbed]
-          });
+            await interaction.reply({
+              flags: MessageFlags.Ephemeral,
+              embeds: [allocEmbed]
+            });
+          } catch (allocErr: any) {
+            await interaction.reply({
+              flags: MessageFlags.Ephemeral,
+              content: `❌ ${allocErr.message}`
+            });
+          }
         }
       }
       else if (interaction.customId.startsWith('admin_modal_persona_')) {

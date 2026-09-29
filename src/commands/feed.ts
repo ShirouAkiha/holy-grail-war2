@@ -90,7 +90,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         description: `+${getCeExpValue(ce).toLocaleString()} EXP • +10 Stat Pts/Lv`
       }));
 
-      const expNeeded = expStatus.level >= 100 ? 0 : Math.max(0, expStatus.nextLevelExp - expStatus.currentLevelExp);
+      const expNeeded = expStatus.level >= 500 ? 0 : Math.max(0, expStatus.nextLevelExp - expStatus.currentLevelExp);
       const filledBlocks = Math.min(10, Math.max(0, Math.floor(expStatus.progressPercent / 10)));
       const emptyBlocks = 10 - filledBlocks;
       const expProgressBar = `[${'▰'.repeat(filledBlocks)}${'▱'.repeat(emptyBlocks)}] ${expStatus.progressPercent}%`;
@@ -99,11 +99,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setTitle(`✨ Spirit Origin Enhancement: ${sName}`)
         .setDescription(
           `Feed Craft Essences into **${sName}**'s Saint Graph to grant massive Spirit EXP.\n` +
-          `⭐ **Leveling Rule:** Every Level Up grants **+10 Available Stat Points**!\n\n` +
+          `⭐ **Leveling Rule:** Level 500 Cap with **+10 Stat Points per Level** (1000 max per attribute for Complete Omnipotence)!\n\n` +
           `📊 **Current Status:**\n` +
-          `• **Level:** \`Lv. ${expStatus.level} / 100\`\n` +
+          `• **Level:** \`Lv. ${expStatus.level} / 500\`\n` +
           `• **Total EXP:** \`${currentExp.toLocaleString()} EXP\`\n` +
-          `• **EXP to Next Level:** \`${expNeeded > 0 ? `${expNeeded.toLocaleString()} XP needed` : 'MAX LEVEL REACHED'}\` *(${expStatus.currentLevelExp.toLocaleString()} / ${expStatus.nextLevelExp.toLocaleString()} XP)*\n` +
+          `• **EXP to Next Level:** \`${expNeeded > 0 ? `${expNeeded.toLocaleString()} XP needed` : 'MAX LEVEL 500 REACHED'}\` *(${expStatus.currentLevelExp.toLocaleString()} / ${expStatus.nextLevelExp.toLocaleString()} XP)*\n` +
           `• **Level Progress:** \`${expProgressBar}\`\n` +
           `• **Unspent Stat Points:** \`${activeServant.availableStatPoints || 0} pts\`\n\n` +
           `📦 **Available Essences to Feed (${ownedCes.length} total, ${emberCount} Embers):**\n` +
@@ -111,7 +111,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           `*Select an essence below or use quick batch feed buttons:*`
         )
         .setColor(0xd4af37)
-        .setFooter({ text: 'Each level up awards +10 stat points to allocate via /customise stats' });
+        .setFooter({ text: 'Each level up awards +10 stat points (cap 1,000 in all 5 parameters for omnipotence)' });
 
       const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
         new StringSelectMenuBuilder()

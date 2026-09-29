@@ -634,7 +634,7 @@ async function runRaidBattle(
         return `\`${b.name} (${b.remainingTurns}T)\``;
       });
       const pBuffs = (p.activeBuffs || []).filter(b => !['def_down', 'atk_down', 'curse', 'burn', 'poison', 'stun', 'np_seal', 'skill_seal', 'on_guts_buster'].includes(b.type)).map(b => {
-        if (b.type === 'guts') return `\`🩸 Guts ${b.remainingHits && b.remainingHits > 1 ? `x${b.remainingHits}` : ''} (${b.value} HP)\``;
+        if (b.type === 'guts') return `\`🩸 Guts ${(b as any).remainingHits && (b as any).remainingHits > 1 ? `x${(b as any).remainingHits}` : ''} (${b.value} HP)\``;
         if (b.type === 'evade') return `\`💨 Evade\``;
         if (b.type === 'invincible') return `\`✨ Invincible\``;
         if (b.type === 'atk_up') return `\`⚔️ +${b.value}% ATK (${b.remainingTurns}T)\``;
@@ -858,8 +858,8 @@ async function runRaidBattle(
         const isHeal = /Heal|Recover|Regenerat/i.test(sName + ' ' + sDesc) || sType === 'heal';
 
         // Check for DEBUFFS targeting Barbatos
-        const isDefDown = sType === 'debuff_def' || /def.*down|lower.*def|reduce.*def|decrease.*def|defense down/i.test(sName + ' ' + sDesc);
-        const isAtkDown = sType === 'debuff_atk' || /atk.*down|attack.*down|lower.*atk|reduce.*atk|reduce.*attack/i.test(sName + ' ' + sDesc);
+        const isDefDown = (sType as string) === 'debuff_def' || /def.*down|lower.*def|reduce.*def|decrease.*def|defense down/i.test(sName + ' ' + sDesc);
+        const isAtkDown = (sType as string) === 'debuff_atk' || /atk.*down|attack.*down|lower.*atk|reduce.*atk|reduce.*attack/i.test(sName + ' ' + sDesc);
         const isStun = sType === 'stun' || /stun|paralyze|charm|freeze|petrif/i.test(sName + ' ' + sDesc);
         const isNpDrainOrSeal = /np.*drain|charge.*drain|drain.*charge|seal.*np|np.*seal/i.test(sName + ' ' + sDesc);
         const isDot = /curse|poison|burn/i.test(sName + ' ' + sDesc);
@@ -895,7 +895,7 @@ async function runRaidBattle(
             remainingTurns: skillObj?.duration || 5,
             remainingHits: 1,
             isHitCount: true
-          });
+          } as any);
           if (/invincible/i.test(sDesc)) {
             active.activeBuffs.push({
               name: `${sName} (Invincibility)`,
@@ -1173,55 +1173,95 @@ async function runRaidBattle(
           starsGenerated += Math.round(12 * critStarBonus);
           npGained += Math.round(10 * critNpBonus);
         } else if (card === 'NP') {
-          const npMultiplier = 5.5;
+          const npMultiplier = active.servant.template?.noblePhantasm?.multiplier ?? 5.5;
           const npDesc = active.servant.template?.noblePhantasm?.description || '';
           const npName = active.servant.template?.noblePhantasm?.name || 'Noble Phantasm';
-          const npHasAntiThreat = /Threat to Humanity|Beast|Divine|Foreigner/i.test(npDesc);
-          const npSpecialMult = (isBossThreat && npHasAntiThreat) ? 1.5 : 1.0;
-          if (isBossThreat && npHasAntiThreat) npTriggeredAntiThreat = true;
+          const npTarget = active.servant.template?.noblePhantasm?.target || 'single';
+          const sName = active.servant.template?.name || active.servant.nickname || '';
 
-          // Apply secondary debuffs from Noble Phantasm to Barbatos
-          if (/def.*down|lower.*def|reduce.*def|decrease.*def/i.test(npDesc)) {
-            battleState.bossBuffs.push({
-              name: `${npName} (DEF Down)`,
-              type: 'def_down',
-              value: 30,
-              remainingTurns: 3
-            });
-            npDebuffNotice += ' 🔻 [-30% DEF Down]';
-          }
-          if (/curse|burn|poison/i.test(npDesc)) {
-            battleState.bossBuffs.push({
-              name: `${npName} (Affliction)`,
-              type: 'curse',
-              value: 6000,
-              remainingTurns: 3
-            });
-            npDebuffNotice += ' 🔥 [Curse/Burn]';
-          }
-          if (/stun|paraly|charm/i.test(npDesc)) {
-            battleState.bossBuffs.push({
-              name: `${npName} (Stun)`,
-              type: 'stun',
-              value: 100,
-              remainingTurns: 1
-            });
-            npDebuffNotice += ' ⚡ [Stun]';
-          }
-          if (/drain|seal/i.test(npDesc)) {
-            battleState.bossCharge = Math.max(0, battleState.bossCharge - 1);
-            battleState.bossBuffs.push({
-              name: `${npName} (NP Drain)`,
-              type: 'np_seal',
-              value: 1,
-              remainingTurns: 1
-            });
-            npDebuffNotice += ' 🔒 [NP Drained]';
-          }
+          const isSupportNp = npTarget === 'support' || npMultiplier === 0 || /party invincib|grant.*invincib|invincible|luminos|jeanne/i.test(npName + ' ' + npDesc + ' ' + sName);
 
-          totalTurnDmg += Math.round(baseAtk * npMultiplier * atkBuffMult * specialAtkMult * bossDefFactor * npSpecialMult * (0.95 + Math.random() * 0.1));
-          starsGenerated += 10;
-          npGained += 15;
+          if (isSupportNp) {
+            // Party Invincibility, DEF Up (+30% 3T), Debuff Cleanse & Heal (+3,000 HP) to ALL living allies in the raid!
+            battleState.participants.forEach(p => {
+              if (!p.isDead) {
+                p.activeBuffs = p.activeBuffs || [];
+                // Cleanse debuffs
+                p.activeBuffs = p.activeBuffs.filter(b => !['def_down', 'atk_down', 'curse', 'burn', 'poison', 'stun', 'np_seal', 'skill_seal'].includes(b.type));
+                p.isStunned = false;
+
+                // Grant Invincibility for 1 Turn
+                p.activeBuffs.push({
+                  name: `${npName} (Invincibility)`,
+                  type: 'invincible',
+                  value: 1,
+                  remainingTurns: 1
+                });
+
+                // Grant +30% DEF Up for 3 Turns
+                p.activeBuffs.push({
+                  name: `${npName} (DEF Up)`,
+                  type: 'def_up',
+                  value: 30,
+                  remainingTurns: 3
+                });
+
+                // Recovers +3,000 HP
+                p.currentHp = Math.min(p.maxHp, p.currentHp + 3000);
+              }
+            });
+            npDebuffNotice += ` 🕊️ **[LUMINOSITÉ ÉTERNELLE: Party Invincibility (1T), +30% DEF (3T), Debuff Cleanse & +3,000 HP Heal to ALL Allies!]**`;
+            starsGenerated += 15;
+            npGained += 20;
+          } else {
+            const npHasAntiThreat = /Threat to Humanity|Beast|Divine|Foreigner/i.test(npDesc);
+            const npSpecialMult = (isBossThreat && npHasAntiThreat) ? 1.5 : 1.0;
+            if (isBossThreat && npHasAntiThreat) npTriggeredAntiThreat = true;
+
+            // Apply secondary debuffs from Noble Phantasm to Barbatos
+            battleState.bossBuffs = battleState.bossBuffs || [];
+            if (/def.*down|lower.*def|reduce.*def|decrease.*def/i.test(npDesc)) {
+              battleState.bossBuffs.push({
+                name: `${npName} (DEF Down)`,
+                type: 'def_down',
+                value: 30,
+                remainingTurns: 3
+              });
+              npDebuffNotice += ' 🔻 [-30% DEF Down]';
+            }
+            if (/curse|burn|poison/i.test(npDesc)) {
+              battleState.bossBuffs.push({
+                name: `${npName} (Affliction)`,
+                type: 'curse',
+                value: 6000,
+                remainingTurns: 3
+              });
+              npDebuffNotice += ' 🔥 [Curse/Burn]';
+            }
+            if (/stun|paraly|charm/i.test(npDesc)) {
+              battleState.bossBuffs.push({
+                name: `${npName} (Stun)`,
+                type: 'stun',
+                value: 100,
+                remainingTurns: 1
+              });
+              npDebuffNotice += ' ⚡ [Stun]';
+            }
+            if (/drain|seal/i.test(npDesc)) {
+              battleState.bossCharge = Math.max(0, battleState.bossCharge - 1);
+              battleState.bossBuffs.push({
+                name: `${npName} (NP Drain)`,
+                type: 'np_seal',
+                value: 1,
+                remainingTurns: 1
+              });
+              npDebuffNotice += ' 🔒 [NP Drained]';
+            }
+
+            totalTurnDmg += Math.round(baseAtk * npMultiplier * atkBuffMult * specialAtkMult * bossDefFactor * npSpecialMult * (0.95 + Math.random() * 0.1));
+            starsGenerated += 10;
+            npGained += 15;
+          }
         }
       });
 
@@ -1437,10 +1477,9 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       `📢 **Barbatos cast [Wailing of the Inverted Spire]!** Demon God ATK increased by **+25%** and gained **+1 Charge Diamond**!`
     );
   } else {
-    // Skill 3: Curse of the Solomon Throne (Curses target with highest NP, drains 25% NP)
+    // Skill 3: Curse of the Solomon Throne (Curses target with highest NP & inflicts -20% ATK Down)
     const highestNpTarget = [...livingParticipants].sort((a, b) => (b.npGauge || 0) - (a.npGauge || 0))[0];
     if (highestNpTarget) {
-      highestNpTarget.npGauge = Math.max(0, (highestNpTarget.npGauge || 0) - 25);
       highestNpTarget.activeBuffs = highestNpTarget.activeBuffs || [];
       highestNpTarget.activeBuffs.push({
         name: 'Solomon\'s Curse',
@@ -1448,12 +1487,18 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         value: 1200,
         remainingTurns: 3
       });
+      highestNpTarget.activeBuffs.push({
+        name: 'Solomon\'s ATK Down',
+        type: 'atk_down',
+        value: 20,
+        remainingTurns: 2
+      });
       const tName = highestNpTarget.servant.nickname || highestNpTarget.servant.template?.name || 'Servant';
       enemyPhase.skillName = 'Curse of the Solomon Throne';
-      enemyPhase.skillDesc = `Drained 25% NP and inflicted Curse on ${tName}`;
-      enemyPhase.debuffsInflicted.push(`🔥 **Curse (1,200 DMG/T, 3T)** on **${tName}**`, `⚡ **-25% NP Drained** from **${tName}**`);
+      enemyPhase.skillDesc = `Inflicted Curse and -20% ATK Down on ${tName}`;
+      enemyPhase.debuffsInflicted.push(`🔥 **Curse (1,200 DMG/T, 3T)** on **${tName}**`, `🔻 **-20% ATK Down (2T)** on **${tName}**`);
       state.recentLogs.push(
-        `☠️ **Barbatos cast [Curse of the Solomon Throne]!** Drained **25% NP** from **${tName}** and inflicted **Curse** (1,200 DMG/Turn)!`
+        `☠️ **Barbatos cast [Curse of the Solomon Throne]!** Inflicted **Curse** (1,200 DMG/Turn) & **-20% ATK Down** on **${tName}**!`
       );
     }
   }
@@ -1483,7 +1528,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       if (!p.isDead) {
         // Check for Evade / Invincibility
         const evIdx = p.activeBuffs ? p.activeBuffs.findIndex(b => b.type === 'evade' || b.type === 'invincible') : -1;
-        if (evIdx >= 0) {
+        if (evIdx >= 0 && p.activeBuffs) {
           p.activeBuffs.splice(evIdx, 1);
           evadesCount++;
           const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
@@ -1505,8 +1550,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
           enemyPhase.specialEvents.push(res.gutsLog);
         }
 
-        // NP Drain and Curse Burn
-        p.npGauge = Math.max(0, (p.npGauge || 0) - 25);
+        // Calamity Curse Burn
         p.activeBuffs = p.activeBuffs || [];
         p.activeBuffs.push({
           name: 'Calamity Burn',
@@ -1519,7 +1563,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
 
     const evadeNotice = evadesCount > 0 ? ` 🛡️ (${evadesCount} Servant(s) EVADED!)` : '';
     state.recentLogs.push(
-      `💥 **NOBLE PHANTASM: INCINERATION RITUAL — BARBATOS CALAMITY!** Barbatos blasts the field for **${baseAoeDamage.toLocaleString()} AoE DMG** & drains 25% NP!${evadeNotice}`
+      `💥 **NOBLE PHANTASM: INCINERATION RITUAL — BARBATOS CALAMITY!** Barbatos blasts the field for **${baseAoeDamage.toLocaleString()} AoE DMG** & inflicts Calamity Curse!${evadeNotice}`
     );
   } else {
     // Normal attack (1 target for solo, up to 2 targets for teams)
@@ -1537,7 +1581,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       hitTargetNames.push(tName);
       const evIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'evade' || b.type === 'invincible') : -1;
 
-      if (evIdx >= 0) {
+      if (evIdx >= 0 && target.activeBuffs) {
         target.activeBuffs.splice(evIdx, 1);
         state.recentLogs.push(
           `🛡️ **[EVADED!]** **${tName}** read the trajectory and completely avoided Barbatos's strike!`
@@ -1638,8 +1682,8 @@ function applyDamageToRaidParticipant(
   if (p.currentHp <= 0) {
     const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
     const gutsIdx = p.activeBuffs ? p.activeBuffs.findIndex(b => b.type === 'guts') : -1;
-    if (gutsIdx !== -1) {
-      const gutsBuff = p.activeBuffs[gutsIdx];
+    if (gutsIdx !== -1 && p.activeBuffs) {
+      const gutsBuff = p.activeBuffs[gutsIdx] as any;
       const reviveHp = gutsBuff.value || Math.round(p.maxHp * 0.25);
       let gutsMsg = '';
       if (gutsBuff.remainingHits !== undefined && gutsBuff.remainingHits > 1) {

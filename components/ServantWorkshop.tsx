@@ -155,15 +155,46 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
     );
   }
 
-  const handleAddStat = (statKey: keyof ServantStats) => {
-    if (currentServant.availableStatPoints <= 0) return;
+  const handleAddStat = (statKey: keyof ServantStats, amount: number = 1) => {
+    if ((currentServant.availableStatPoints || 0) <= 0) return;
+    const currentAlloc = currentServant.allocatedStats?.[statKey] || 0;
+    const baseStat = currentServant.template?.baseStats?.[statKey] || 0;
+    const maxAddable = Math.max(0, 1000 - (baseStat + currentAlloc));
+    if (maxAddable <= 0) return;
+
+    const actualAmount = Math.min(amount, currentServant.availableStatPoints || 0, maxAddable);
+    if (actualAmount <= 0) return;
+
     try {
-      const updated = allocateStatPoints(currentServant, { [statKey]: 1 });
+      const updated = allocateStatPoints(currentServant, { [statKey]: actualAmount });
       const updatedServants = master.servants.map(s => (s.id === updated.id ? updated : s));
       onUpdateMaster({ ...master, servants: updatedServants });
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleAutoDistributeStats = () => {
+    const avail = currentServant.availableStatPoints || 0;
+    if (avail <= 0) return;
+    const keys: (keyof ServantStats)[] = ['strength', 'endurance', 'agility', 'mana', 'luck'];
+    let updated = { ...currentServant };
+
+    for (let i = 0; i < avail; i++) {
+      const targetKey = keys[i % keys.length];
+      const baseStat = updated.template.baseStats[targetKey] || 0;
+      const currentAlloc = updated.allocatedStats[targetKey] || 0;
+      if (baseStat + currentAlloc < 1000 && updated.availableStatPoints > 0) {
+        try {
+          updated = allocateStatPoints(updated, { [targetKey]: 1 });
+        } catch {
+          break;
+        }
+      }
+    }
+
+    const updatedServants = master.servants.map(s => (s.id === updated.id ? updated : s));
+    onUpdateMaster({ ...master, servants: updatedServants });
   };
 
   const handleEquipCe = (ceId?: string) => {
@@ -571,7 +602,8 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
     mana: currentServant.template.baseStats.mana + (currentServant.allocatedStats.mana || 0),
     luck: currentServant.template.baseStats.luck + (currentServant.allocatedStats.luck || 0)
   };
-  const radar = calculateRadarCoordinates(totalStats, 100, 100, 70, 30);
+  const radar = calculateRadarCoordinates(totalStats, 100, 100, 70, 1000);
+  const isOmnipotent = totalStats.strength >= 1000 && totalStats.endurance >= 1000 && totalStats.agility >= 1000 && totalStats.mana >= 1000 && totalStats.luck >= 1000;
 
   return (
     <div className="space-y-6">
@@ -584,7 +616,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
           <div>
             <h2 className="text-lg font-serif italic text-white tracking-wide">Servant Workshop & Stats</h2>
             <p className="text-[11px] font-mono text-white/40 uppercase tracking-wider">
-              Allocate Master stat points, equip Craft Essences, and write battle chants
+              Allocate Master stat points (1000 cap per stat), feed Craft Essences (Lv. 500 cap), and write combat quotes
             </p>
           </div>
         </div>
@@ -720,14 +752,21 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
           <div className="flex items-center justify-between border-b border-[#1a1a1a] pb-3">
             <div>
               <h3 className="text-sm font-serif italic text-white flex items-center gap-1.5">
-                <Zap className="w-4 h-4 text-[#d4af37]" /> Stats & Radar Polygon
+                <Zap className="w-4 h-4 text-[#d4af37]" /> Stats & Parameter Radar
               </h3>
               <p className="text-[11px] font-mono text-white/40 mt-0.5">Points: <strong className="text-[#d4af37]">{currentServant.availableStatPoints} pts</strong></p>
             </div>
             <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-sm bg-[#161616] text-[#d4af37] border border-[#d4af37]/30">
-              Lv. {currentServant.level} / 100
+              Lv. {currentServant.level} / 500
             </span>
           </div>
+
+          {isOmnipotent && (
+            <div className="p-2.5 rounded bg-amber-950/60 border border-amber-500/50 text-amber-200 text-xs font-serif italic flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>👑 <strong>COMPLETE OMNIPOTENCE ACHIEVED!</strong> All 5 parameters maximized at 1,000 pts!</span>
+            </div>
+          )}
 
           {/* SVG Radar Chart */}
           <div className="flex justify-center py-2">
@@ -782,6 +821,18 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
 
           {/* Stat Allocation Controls */}
           <div className="space-y-2 pt-2">
+            <div className="flex items-center justify-between pb-1">
+              <span className="text-[10px] font-mono text-white/40 uppercase">Attribute Cap: 1,000 pts</span>
+              {currentServant.availableStatPoints > 0 && (
+                <button
+                  onClick={handleAutoDistributeStats}
+                  className="text-[10px] font-mono text-emerald-400 hover:text-emerald-300 font-bold underline"
+                >
+                  ✨ Auto-Distribute ({currentServant.availableStatPoints} pts)
+                </button>
+              )}
+            </div>
+
             {[
               { key: 'strength' as const, label: 'Strength (STR)', desc: 'Buster ATK multiplier' },
               { key: 'endurance' as const, label: 'Endurance (END)', desc: 'Max HP & Mitigation' },
@@ -789,27 +840,51 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
               { key: 'mana' as const, label: 'Mana (MNA)', desc: 'Arts & NP Generation' },
               { key: 'luck' as const, label: 'Luck (LCK)', desc: 'Critical Strike Rate' }
             ].map(item => {
-              const base = currentServant.template.baseStats[item.key];
+              const base = currentServant.template.baseStats[item.key] || 0;
               const added = currentServant.allocatedStats[item.key] || 0;
+              const total = base + added;
+              const isMaxed = total >= 1000;
+
               return (
                 <div
                   key={item.key}
                   className="flex items-center justify-between p-2.5 rounded-sm bg-[#111] border border-[#1a1a1a]"
                 >
                   <div>
-                    <div className="text-xs font-serif italic text-white">{item.label}</div>
+                    <div className="text-xs font-serif italic text-white flex items-center gap-1.5">
+                      {item.label}
+                      {isMaxed && <span className="text-[9px] font-mono font-bold px-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">MAX</span>}
+                    </div>
                     <div className="text-[10px] font-mono text-white/40">{item.desc}</div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-[#d4af37]">
-                      {base} + {added}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-mono font-bold text-[#d4af37] mr-1">
+                      {total} <span className="text-[9px] text-white/30">/1000</span>
                     </span>
+
                     <button
-                      disabled={currentServant.availableStatPoints <= 0}
-                      onClick={() => handleAddStat(item.key)}
-                      className="px-2 py-0.5 rounded-sm bg-[#d4af37] hover:bg-[#c49f27] text-black text-xs font-mono font-bold transition disabled:opacity-30 disabled:cursor-not-allowed"
+                      disabled={currentServant.availableStatPoints <= 0 || isMaxed}
+                      onClick={() => handleAddStat(item.key, 1)}
+                      className="px-1.5 py-0.5 rounded-sm bg-[#d4af37] hover:bg-[#c49f27] text-black text-[10px] font-mono font-bold transition disabled:opacity-20 disabled:cursor-not-allowed"
+                      title="Add 1 Point"
                     >
                       +1
+                    </button>
+                    <button
+                      disabled={currentServant.availableStatPoints < 10 || isMaxed}
+                      onClick={() => handleAddStat(item.key, 10)}
+                      className="px-1.5 py-0.5 rounded-sm bg-[#38bdf8] hover:bg-[#0284c7] text-black text-[10px] font-mono font-bold transition disabled:opacity-20 disabled:cursor-not-allowed"
+                      title="Add 10 Points"
+                    >
+                      +10
+                    </button>
+                    <button
+                      disabled={currentServant.availableStatPoints < 50 || isMaxed}
+                      onClick={() => handleAddStat(item.key, 50)}
+                      className="px-1.5 py-0.5 rounded-sm bg-[#a855f7] hover:bg-[#7e22ce] text-white text-[10px] font-mono font-bold transition disabled:opacity-20 disabled:cursor-not-allowed"
+                      title="Add 50 Points"
+                    >
+                      +50
                     </button>
                   </div>
                 </div>
@@ -828,7 +903,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                   <Sparkles className="w-4 h-4 text-[#d4af37]" /> Craft Essence Workshop
                 </h3>
                 <p className="text-[11px] font-mono text-white/40 mt-0.5">
-                  Feed essences for EXP (+10 pts/lv) or equip passive artifacts
+                  Feed essences for EXP (+10 pts/lv up to Lv. 500)
                 </p>
               </div>
               <div className="flex rounded-sm bg-[#111] p-0.5 border border-[#222]">
@@ -867,7 +942,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                     <div className="flex items-center gap-2">
                       <span className="font-serif italic text-white font-bold">{currentServant.template.name}</span>
                       <span className="px-1.5 py-0.5 rounded bg-[#1a1a1a] text-[#d4af37] text-[10px] border border-[#d4af37]/30">
-                        Lv. {currentLvl} / 100
+                        Lv. {currentLvl} / 500
                       </span>
                     </div>
                     <span className="text-[#22c55e] font-bold text-[11px]">

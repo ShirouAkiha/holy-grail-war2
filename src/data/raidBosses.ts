@@ -76,8 +76,8 @@ export const RAID_BOSSES: Record<string, RaidBossConfig> = {
       },
       {
         name: 'Curse of the Solomon Throne',
-        description: 'Drains 20% NP Gauge from all attacking Servants and inflicts Curse (1,000 DMG/Turn).',
-        effect: 'np_drain',
+        description: 'Inflicts Curse (1,200 DMG/Turn, 3T) and lowers ATK by 20% on the target Servant.',
+        effect: 'aoe_curse',
         value: 20,
         cooldown: 3
       }

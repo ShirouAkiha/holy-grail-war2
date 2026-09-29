@@ -146,6 +146,7 @@ export interface MasterServantInstance {
   avatarUrl?: string;
   cardArtUrl?: string;
   spriteUrl?: string;
+  customArtworkUrl?: string;
   level: number;
   experience: number;
   currentHp?: number;
@@ -176,6 +177,19 @@ export interface MasterServantInstance {
   completedBondEvents?: string[];
   unlockedDialogueIds?: string[];
   npLevel?: number;
+  maxLevel?: number; // Base cap: 60-90. Grailed: 100. Super-Grailed: 120!
+  grailCount?: number; // Number of Holy Grails applied
+  fouHp?: number; // Fou HP enhancement (Silver up to 1000, Golden up to 2000)
+  fouAtk?: number; // Fou ATK enhancement (Silver up to 1000, Golden up to 2000)
+  fouPaws?: { Buster?: number; Arts?: number; Quick?: number }; // Beast Footprints (+0 to +500 per card)
+  bondCap?: number; // Max bond cap (10 up to 15 with Visionary Flames)
+  appendedSkills?: Array<{
+    id: string;
+    name: string;
+    level: number;
+    unlocked: boolean;
+    description: string;
+  }>;
   template: ServantTemplate;
 }
 
@@ -285,6 +299,15 @@ export interface MasterProfile {
   summonTickets: number;
   manaPrisms?: number;
   grailShards?: number;
+  holyGrails?: number; // Inventory of Holy Grails for Level 100/120 Palingenesis
+  silverFousHp?: number; // Silver Fou (+50 HP each, up to 1000)
+  silverFousAtk?: number; // Silver Fou (+50 ATK each, up to 1000)
+  goldenFousHp?: number; // Golden Fou (+100 HP each, 1000 to 2000)
+  goldenFousAtk?: number; // Golden Fou (+100 ATK each, 1000 to 2000)
+  fouPawsStock?: number; // Beast Footprints for card enhancements
+  visionaryFlames?: number; // Lanterns of Chaldea for Bond 11-15 cap unlocks
+  masterLevel?: number; // Master Level (1-160)
+  masterExp?: number;
   qp?: number;
   commandSeals: number;
   autoConsumeCommandSeal?: boolean;

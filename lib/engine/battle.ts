@@ -104,13 +104,20 @@ export function createCombatantFromMasterServant(
   const ceHp = ce ? (ce.hpBonus || 0) : 0;
   const ceAtk = ce ? (ce.atkBonus || 0) : 0;
 
+  // Fou stat enhancements (+2,000 HP / +2,000 ATK max)
+  const fouHp = Math.min(2000, Math.max(0, servantInstance.fouHp || 0));
+  const fouAtk = Math.min(2000, Math.max(0, servantInstance.fouAtk || 0));
+
   const lvl = servantInstance.level || 1;
+  const superGrailHp = lvl > 100 ? (lvl - 100) * 120 : 0;
+  const superGrailAtk = lvl > 100 ? (lvl - 100) * 80 : 0;
+
   // Base HP & ATK: under 'flat' mode, flat 28,000 HP / 10,000 ATK. Under 'archetype', use normalized balanced template stats.
   const baseHp = balanceMode === 'flat' ? 28000 : (t.baseHp || 29000);
   const baseAtk = balanceMode === 'flat' ? 10000 : (t.baseAtk || 11000);
 
-  const maxHp = Math.round(baseHp + totalEnd * 150 + ceHp);
-  const rawAtk = Math.round(baseAtk + totalStr * 80 + ceAtk);
+  const maxHp = Math.round(baseHp + totalEnd * 150 + ceHp + fouHp + superGrailHp);
+  const rawAtk = Math.round(baseAtk + totalStr * 80 + ceAtk + fouAtk + superGrailAtk);
   const def = Math.round(totalEnd * 25);
 
   let initialNp = 0;

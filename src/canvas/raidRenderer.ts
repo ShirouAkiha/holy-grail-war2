@@ -998,7 +998,7 @@ export async function renderRaidBattlefield(state: RaidBattleState, _animated = 
     loadImage(state.boss.avatarUrl),
     loadImage(bossClassIconUrl),
     ...state.participants.map(p => {
-      const art = p.servant.template?.spriteUrl || p.servant.customArtworkUrl || p.servant.template?.avatarUrl;
+      const art = p.servant.template?.spriteUrl || (p.servant as any).customArtworkUrl || p.servant.template?.avatarUrl;
       return art ? loadImage(art) : Promise.resolve(null);
     }),
     ...participantClassIconUrls.map(url => loadImage(url))

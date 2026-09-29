@@ -99,6 +99,11 @@ export function getInitialMasterProfile(): MasterProfile {
     },
     bondLevel: 4,
     bondExp: 0,
+    bondCap: 10,
+    maxLevel: 90,
+    grailCount: 0,
+    fouHp: 0,
+    fouAtk: 0,
     completedBondEvents: [],
     unlockedDialogueIds: ['artoria_summon', 'artoria_bond_1', 'artoria_bond_2', 'artoria_bond_3', 'artoria_bond_4'],
     template: defaultServantTemplate
@@ -111,6 +116,8 @@ export function getInitialMasterProfile(): MasterProfile {
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
     saintQuartz: 30,
     summonTickets: 0,
+    manaPrisms: 100,
+    holyGrails: 5,
     commandSeals: 3,
     actionPoints: 100,
     maxActionPoints: 100,
@@ -171,6 +178,11 @@ export function loadMasterProfile(): MasterProfile {
           ...s,
           bondLevel: typeof s.bondLevel === 'number' ? s.bondLevel : 1,
           bondExp: typeof s.bondExp === 'number' ? s.bondExp : 0,
+          bondCap: typeof s.bondCap === 'number' ? s.bondCap : 10,
+          maxLevel: typeof s.maxLevel === 'number' ? s.maxLevel : 90,
+          grailCount: typeof s.grailCount === 'number' ? s.grailCount : 0,
+          fouHp: typeof s.fouHp === 'number' ? s.fouHp : 0,
+          fouAtk: typeof s.fouAtk === 'number' ? s.fouAtk : 0,
           completedBondEvents: Array.isArray(s.completedBondEvents) ? s.completedBondEvents : [],
           unlockedDialogueIds: Array.isArray(s.unlockedDialogueIds) ? s.unlockedDialogueIds : [],
           equippedCeId,
@@ -180,6 +192,9 @@ export function loadMasterProfile(): MasterProfile {
           template: freshTemplate
         };
       });
+    }
+    if (parsed.holyGrails === undefined) {
+      parsed.holyGrails = 5;
     }
     return parsed;
   } catch {
