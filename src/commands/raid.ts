@@ -716,29 +716,40 @@ async function runRaidBattle(
     const components = buildBattleButtons();
     const active = currentActiveParticipant;
 
-    try {
+    const channelToSend = interaction.channel || battleMsg?.channel;
+    let newBattleMsg: any = null;
+
+    if (channelToSend && typeof channelToSend.send === 'function') {
+      try {
+        newBattleMsg = await channelToSend.send({
+          content: `⚔️ **<@${active.userId}>'s Turn!**`,
+          embeds,
+          files: [attachment],
+          components
+        });
+      } catch (sendErr: any) {
+        console.warn('[raid] channel.send fresh turn failed, falling back to in-place edit:', sendErr?.message || sendErr);
+      }
+    }
+
+    if (newBattleMsg) {
+      const prevMsg = battleMsg;
+      battleMsg = newBattleMsg;
+
+      if (prevMsg && typeof prevMsg.delete === 'function') {
+        await prevMsg.delete().catch(() => {});
+      }
+      if (interaction && typeof interaction.deleteReply === 'function') {
+        await interaction.deleteReply().catch(() => {});
+      }
+    } else if (battleMsg && typeof battleMsg.edit === 'function') {
       await battleMsg.edit({
         content: `⚔️ **<@${active.userId}>'s Turn!**`,
         embeds,
         files: [attachment],
         attachments: [], // Clears previous attachment cache in Discord so the new canvas renders!
         components
-      });
-    } catch (editErr: any) {
-      console.warn('[raid] battleMsg.edit failed, falling back to channel.send:', editErr);
-      try {
-        const channelToSend = interaction.channel || battleMsg.channel;
-        if (channelToSend && typeof channelToSend.send === 'function') {
-          battleMsg = await channelToSend.send({
-            content: `⚔️ **<@${active.userId}>'s Turn!**`,
-            embeds,
-            files: [attachment],
-            components
-          });
-        }
-      } catch (sendErr) {
-        console.error('[raid] channel.send fallback also failed:', sendErr);
-      }
+      }).catch(() => {});
     }
   };
 
