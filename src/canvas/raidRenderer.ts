@@ -438,6 +438,9 @@ export interface RaidParticipantState {
   skillCooldowns: number[];
   activeBuffs?: { name: string; type: string; value: number; remainingTurns: number }[];
   isDead?: boolean;
+  master?: any;
+  currentHand?: ('Buster' | 'Arts' | 'Quick')[];
+  drawPile?: ('Buster' | 'Arts' | 'Quick')[];
 }
 
 export interface RaidBattleState {

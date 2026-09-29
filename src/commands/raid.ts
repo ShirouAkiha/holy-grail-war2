@@ -223,6 +223,41 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   });
 }
 
+function getServantCommandDeck(servantClass: string = 'Saber'): ('Buster' | 'Arts' | 'Quick')[] {
+  switch (servantClass) {
+    case 'Berserker':
+      return ['Buster', 'Buster', 'Buster', 'Arts', 'Quick'];
+    case 'Assassin':
+      return ['Quick', 'Quick', 'Quick', 'Arts', 'Buster'];
+    case 'Lancer':
+      return ['Buster', 'Buster', 'Quick', 'Quick', 'Arts'];
+    case 'Rider':
+      return ['Quick', 'Quick', 'Arts', 'Arts', 'Buster'];
+    case 'Archer':
+      return ['Arts', 'Arts', 'Quick', 'Quick', 'Buster'];
+    case 'Caster':
+      return ['Arts', 'Arts', 'Arts', 'Buster', 'Quick'];
+    case 'Saber':
+    default:
+      return ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'];
+  }
+}
+
+function refreshParticipantHand(combatant: RaidParticipantState): ('Buster' | 'Arts' | 'Quick')[] {
+  if (!combatant.drawPile || combatant.drawPile.length < 5) {
+    const sClass = combatant.servant.template?.servantClass || 'Saber';
+    const deck = getServantCommandDeck(sClass);
+    const freshShoe: ('Buster' | 'Arts' | 'Quick')[] = [...deck, ...deck, ...deck];
+    for (let i = freshShoe.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [freshShoe[i], freshShoe[j]] = [freshShoe[j], freshShoe[i]];
+    }
+    combatant.drawPile = freshShoe;
+  }
+  combatant.currentHand = combatant.drawPile.splice(0, 5);
+  return combatant.currentHand;
+}
+
 async function runRaidBattle(
   interaction: ChatInputCommandInteraction,
   battleMsg: any,
@@ -233,9 +268,10 @@ async function runRaidBattle(
     const s = p.servant;
     const baseHp = s.allocatedStats?.hp || s.template?.baseStats?.hp || 14000;
     const hp = s.currentHp && s.currentHp > 0 ? s.currentHp : baseHp;
-    return {
+    const partState: RaidParticipantState = {
       userId: p.userId,
       username: p.username,
+      master: p.master,
       servant: s,
       currentHp: hp,
       maxHp: baseHp,
@@ -245,6 +281,8 @@ async function runRaidBattle(
       activeBuffs: [],
       isDead: false
     };
+    refreshParticipantHand(partState);
+    return partState;
   });
 
   const hpMultiplier = participants.length === 1 ? 1.0 : participants.length === 2 ? 1.25 : participants.length === 3 ? 1.5 : 1.75;
@@ -262,85 +300,156 @@ async function runRaidBattle(
   };
 
   let pendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = [];
+  let pendingIndices: number[] = [];
   let currentActiveParticipant = battleState.participants[battleState.activeMasterIndex];
+
+  // Active Noble Phantasm GIF message reference & auto-delete timer
+  let activeNpGifMessage: any = null;
+  let activeNpGifTimeout: any = null;
+
+  const cleanupNpGif = async () => {
+    if (activeNpGifTimeout) {
+      clearTimeout(activeNpGifTimeout);
+      activeNpGifTimeout = null;
+    }
+    if (activeNpGifMessage) {
+      const msgToDelete = activeNpGifMessage;
+      activeNpGifMessage = null;
+      try {
+        await msgToDelete.delete();
+      } catch {
+        // Ignored if already deleted
+      }
+    }
+  };
 
   const buildBattleButtons = () => {
     const active = currentActiveParticipant;
-    const s1Name = active.servant.template?.skills?.[0]?.name?.slice(0, 12) || 'Skill 1';
-    const s2Name = active.servant.template?.skills?.[1]?.name?.slice(0, 12) || 'Skill 2';
-    const s3Name = active.servant.template?.skills?.[2]?.name?.slice(0, 12) || 'Skill 3';
+    if (!active.currentHand || active.currentHand.length === 0) {
+      refreshParticipantHand(active);
+    }
 
-    const cd1 = active.skillCooldowns[0];
-    const cd2 = active.skillCooldowns[1];
-    const cd3 = active.skillCooldowns[2];
+    // Row 1: 5 Dealt Command Cards from Servant Class Deck (Exact layout from normal battles)
+    const row1 = new ActionRowBuilder<ButtonBuilder>();
+    const isQuickFirst = pendingCards[0] === 'Quick';
+    const hand = active.currentHand || ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'];
 
-    const isBond5 = (active.servant.bondLevel || 1) >= 5;
+    hand.forEach((cardType, idx) => {
+      const isUsed = pendingIndices.includes(idx);
+      const orderIndex = pendingIndices.indexOf(idx);
+      const isFirstCard = pendingIndices[0] === idx;
 
-    const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      let baseMult = cardType === 'Buster' ? 2.0 : cardType === 'Arts' ? 1.8 : 2.2;
+      let critPct = Math.round((active.critStars || 0) * baseMult);
+      if (isQuickFirst && !isFirstCard) {
+        critPct += 20;
+      }
+      critPct = Math.min(100, Math.max(0, critPct));
+
+      let emoji = '🔴';
+      let style = ButtonStyle.Danger;
+      if (cardType === 'Arts') {
+        emoji = '🔵';
+        style = ButtonStyle.Primary;
+      } else if (cardType === 'Quick') {
+        emoji = '🟢';
+        style = ButtonStyle.Success;
+      }
+
+      if (isUsed) {
+        row1.addComponents(
+          new ButtonBuilder()
+            .setCustomId(`raid_card_hand_${idx}`)
+            .setLabel(`#${orderIndex + 1}: ${cardType} (${critPct}%)`)
+            .setEmoji('✔️')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(true)
+        );
+      } else {
+        row1.addComponents(
+          new ButtonBuilder()
+            .setCustomId(`raid_card_hand_${idx}`)
+            .setLabel(`${cardType} (${critPct}%)`)
+            .setEmoji(emoji)
+            .setStyle(style)
+            .setDisabled(pendingCards.length >= 3 || active.isDead)
+        );
+      }
+    });
+
+    // Row 2: Noble Phantasm + Clear + Command Seal + Run (Exact layout from normal battles)
+    const isNpReady = active.npGauge >= 100;
+    const isNpSelected = pendingCards.includes('NP');
+    const npType = active.servant.template?.noblePhantasm?.cardType || 'Buster';
+    const hasPending = pendingCards.length > 0;
+    const masterSeals = active.master?.commandSeals ?? 3;
+
+    const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('raid_card_np')
+        .setLabel(isNpReady ? `NP [${npType}] (100%)` : `NP (${Math.round(active.npGauge)}%)`)
+        .setEmoji(isNpReady ? '💥' : (npType === 'Buster' ? '🔴' : npType === 'Arts' ? '🔵' : '🟢'))
+        .setStyle(isNpReady ? ButtonStyle.Danger : ButtonStyle.Secondary)
+        .setDisabled(!isNpReady || isNpSelected || pendingCards.length >= 3 || active.isDead),
+      new ButtonBuilder()
+        .setCustomId('raid_reset_cards')
+        .setLabel('Clear')
+        .setEmoji('🔄')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(!hasPending),
+      new ButtonBuilder()
+        .setCustomId('raid_command_seal')
+        .setLabel(`Seal (${masterSeals})`)
+        .setEmoji('🔱')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(masterSeals <= 0 || active.isDead),
+      new ButtonBuilder()
+        .setCustomId('raid_flee')
+        .setLabel('Run')
+        .setEmoji('🏃')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    // Row 3: 3 Active Skills (Exact layout from normal battles)
+    const row3 = new ActionRowBuilder<ButtonBuilder>();
+    const skills = active.servant.template?.skills || [];
+    const bondLevel = active.servant.bondLevel || 1;
+
+    // Skill 1
+    const s1 = skills[0];
+    const cd1 = active.skillCooldowns[0] || 0;
+    const s1Name = s1 ? s1.name.slice(0, 13) : 'Skill 1';
+    row3.addComponents(
       new ButtonBuilder()
         .setCustomId('raid_skill_0')
         .setLabel(cd1 > 0 ? `S1: ${s1Name} (${cd1}T)` : `✨ S1: ${s1Name}`)
         .setStyle(cd1 > 0 ? ButtonStyle.Secondary : ButtonStyle.Primary)
-        .setDisabled(cd1 > 0 || active.isDead),
+        .setDisabled(cd1 > 0 || !s1 || active.isDead)
+    );
+
+    // Skill 2
+    const s2 = skills[1];
+    const cd2 = active.skillCooldowns[1] || 0;
+    const s2Name = s2 ? s2.name.slice(0, 13) : 'Skill 2';
+    row3.addComponents(
       new ButtonBuilder()
         .setCustomId('raid_skill_1')
         .setLabel(cd2 > 0 ? `S2: ${s2Name} (${cd2}T)` : `🛡️ S2: ${s2Name}`)
         .setStyle(cd2 > 0 ? ButtonStyle.Secondary : ButtonStyle.Primary)
-        .setDisabled(cd2 > 0 || active.isDead),
+        .setDisabled(cd2 > 0 || !s2 || active.isDead)
+    );
+
+    // Skill 3 (Unlocked at Bond Level 5)
+    const s3 = skills[2];
+    const cd3 = active.skillCooldowns[2] || 0;
+    const isS3Unlocked = bondLevel >= 5;
+    const s3Name = s3 ? s3.name.slice(0, 13) : 'Skill 3';
+    row3.addComponents(
       new ButtonBuilder()
         .setCustomId('raid_skill_2')
-        .setLabel(!isBond5 ? `🔒 S3 (Bond 5)` : cd3 > 0 ? `S3: ${s3Name} (${cd3}T)` : `🌟 S3: ${s3Name}`)
-        .setStyle(!isBond5 || cd3 > 0 ? ButtonStyle.Secondary : ButtonStyle.Primary)
-        .setDisabled(!isBond5 || cd3 > 0 || active.isDead),
-      new ButtonBuilder()
-        .setCustomId('raid_command_seal')
-        .setLabel('🔱 Command Seal')
-        .setStyle(ButtonStyle.Success)
-        .setDisabled(active.isDead)
-    );
-
-    const isChainFull = pendingCards.length >= 3;
-    const isNpReady = active.npGauge >= 100;
-    const npType = active.servant.template?.noblePhantasm?.cardType || 'Buster';
-
-    const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId('raid_card_buster')
-        .setLabel('🔴 Buster')
-        .setStyle(ButtonStyle.Danger)
-        .setDisabled(isChainFull || active.isDead),
-      new ButtonBuilder()
-        .setCustomId('raid_card_arts')
-        .setLabel('🔵 Arts')
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(isChainFull || active.isDead),
-      new ButtonBuilder()
-        .setCustomId('raid_card_quick')
-        .setLabel('🟢 Quick')
-        .setStyle(ButtonStyle.Success)
-        .setDisabled(isChainFull || active.isDead),
-      new ButtonBuilder()
-        .setCustomId('raid_card_np')
-        .setLabel(isNpReady ? `💥 NP [${npType}]` : `🔒 NP (${Math.round(active.npGauge)}%)`)
-        .setStyle(isNpReady ? ButtonStyle.Danger : ButtonStyle.Secondary)
-        .setDisabled(!isNpReady || isChainFull || pendingCards.includes('NP') || active.isDead)
-    );
-
-    const row3 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId('raid_execute_attack')
-        .setLabel(`⚔️ Execute Attack (${pendingCards.length}/3)`)
-        .setStyle(isChainFull ? ButtonStyle.Success : ButtonStyle.Secondary)
-        .setDisabled(!isChainFull || active.isDead),
-      new ButtonBuilder()
-        .setCustomId('raid_reset_cards')
-        .setLabel('🔄 Clear Chain')
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(pendingCards.length === 0),
-      new ButtonBuilder()
-        .setCustomId('raid_flee')
-        .setLabel('🏃 Retreat')
-        .setStyle(ButtonStyle.Secondary)
+        .setLabel(!isS3Unlocked ? '🔒 S3 (Bond Lv 5)' : cd3 > 0 ? `S3: ${s3Name} (${cd3}T)` : `🌟 S3: ${s3Name}`)
+        .setStyle(!isS3Unlocked || cd3 > 0 ? ButtonStyle.Secondary : ButtonStyle.Success)
+        .setDisabled(!isS3Unlocked || cd3 > 0 || !s3 || active.isDead)
     );
 
     return [row1, row2, row3];
@@ -403,6 +512,9 @@ async function runRaidBattle(
   });
 
   collector.on('collect', async (i: any) => {
+    // 1. Immediately clean up active NP GIF whenever any button is clicked
+    await cleanupNpGif();
+
     const active = currentActiveParticipant;
 
     if (i.user.id !== active.userId && i.customId !== 'raid_flee') {
@@ -413,40 +525,23 @@ async function runRaidBattle(
       return;
     }
 
-    if (i.customId === 'raid_card_buster') {
-      if (pendingCards.length < 3) pendingCards.push('Buster');
-      await i.deferUpdate();
-      await renderAndPostTurn();
-      return;
-    }
-    if (i.customId === 'raid_card_arts') {
-      if (pendingCards.length < 3) pendingCards.push('Arts');
-      await i.deferUpdate();
-      await renderAndPostTurn();
-      return;
-    }
-    if (i.customId === 'raid_card_quick') {
-      if (pendingCards.length < 3) pendingCards.push('Quick');
-      await i.deferUpdate();
-      await renderAndPostTurn();
-      return;
-    }
-    if (i.customId === 'raid_card_np') {
-      if (pendingCards.length < 3 && !pendingCards.includes('NP') && active.npGauge >= 100) {
+    if (i.customId.startsWith('raid_card_hand_')) {
+      const handIdx = parseInt(i.customId.replace('raid_card_hand_', ''), 10);
+      if (!pendingIndices.includes(handIdx) && pendingCards.length < 3 && handIdx >= 0 && handIdx < 5) {
+        pendingIndices.push(handIdx);
+        pendingCards.push(active.currentHand?.[handIdx] || 'Buster');
+      }
+    } else if (i.customId === 'raid_card_np') {
+      if (!pendingCards.includes('NP') && pendingCards.length < 3 && active.npGauge >= 100) {
         pendingCards.push('NP');
       }
-      await i.deferUpdate();
-      await renderAndPostTurn();
-      return;
-    }
-    if (i.customId === 'raid_reset_cards') {
+    } else if (i.customId === 'raid_reset_cards') {
       pendingCards = [];
+      pendingIndices = [];
       await i.deferUpdate();
       await renderAndPostTurn();
       return;
-    }
-
-    if (i.customId.startsWith('raid_skill_')) {
+    } else if (i.customId.startsWith('raid_skill_')) {
       const sIdx = parseInt(i.customId.replace('raid_skill_', ''), 10);
       if (active.skillCooldowns[sIdx] === 0) {
         active.skillCooldowns[sIdx] = 4;
@@ -468,32 +563,28 @@ async function runRaidBattle(
         await renderAndPostTurn();
         return;
       }
-    }
-
-    if (i.customId === 'raid_command_seal') {
-      active.currentHp = active.maxHp;
-      active.npGauge = 100;
-      battleState.recentLogs.push(`🔱 <@${active.userId}> expended a **Command Seal**! **${active.servant.nickname || active.servant.template.name}** is fully healed and charged to **100% NP**!`);
-      if (battleState.recentLogs.length > 4) battleState.recentLogs.shift();
-      await i.deferUpdate();
-      await renderAndPostTurn();
-      return;
-    }
-
-    if (i.customId === 'raid_flee') {
-      if (i.user.id !== active.userId) {
-        await i.reply({
-          content: '❌ Only the active commander can retreat during their turn.',
-          flags: MessageFlags.Ephemeral
-        });
+    } else if (i.customId === 'raid_command_seal') {
+      if (active.master && (active.master.commandSeals ?? 3) > 0) {
+        active.master.commandSeals = Math.max(0, (active.master.commandSeals ?? 3) - 1);
+        await saveMaster(active.master);
+        active.currentHp = active.maxHp;
+        active.npGauge = 100;
+        battleState.recentLogs.push(
+          `🔱 <@${active.userId}> expended a **Command Seal** (${active.master.commandSeals} remaining)! **${active.servant.nickname || active.servant.template.name}** is fully healed and charged to **100% NP**!`
+        );
+        if (battleState.recentLogs.length > 4) battleState.recentLogs.shift();
+        await i.deferUpdate();
+        await renderAndPostTurn();
         return;
       }
+    } else if (i.customId === 'raid_flee') {
       active.isDead = true;
       battleState.recentLogs.push(`🏃 <@${active.userId}> ordered a tactical withdrawal from the raid.`);
       if (battleState.recentLogs.length > 4) battleState.recentLogs.shift();
 
       const livingRemaining = battleState.participants.filter(p => !p.isDead);
       if (livingRemaining.length === 0) {
+        await cleanupNpGif();
         collector.stop('defeated');
         await i.update({
           content: '💀 **Raid Abandoned:** All Masters retreated from the battlefield.',
@@ -504,108 +595,129 @@ async function runRaidBattle(
       }
 
       pendingCards = [];
+      pendingIndices = [];
       advanceToNextPlayer();
       await i.deferUpdate();
       await renderAndPostTurn();
       return;
     }
 
-    if (i.customId === 'raid_execute_attack') {
-      if (pendingCards.length < 3) return;
+    // If fewer than 3 cards selected, update buttons and render turn
+    if (pendingCards.length < 3) {
       await i.deferUpdate();
+      await renderAndPostTurn();
+      return;
+    }
 
-      const usedNp = pendingCards.includes('NP');
-      if (usedNp) {
-        active.npGauge = 0;
-        const npGif = getNoblePhantasmGif(active.servant);
-        const chant = getNoblePhantasmChant(active.servant);
-        const npName = active.servant.template?.noblePhantasm?.name || 'Noble Phantasm';
+    // 3 Cards selected -> Automatic attack execution!
+    await i.deferUpdate();
 
-        if (npGif) {
-          const npFiles: AttachmentBuilder[] = [];
-          const npEmbed = new EmbedBuilder()
-            .setTitle(`💥 NOBLE PHANTASM: ${npName.toUpperCase()}`)
-            .setDescription(`⚔️ **${active.servant.nickname || active.servant.template.name}** (Master: <@${active.userId}>)\n> *“${chant || 'True Name Unleashed!'}”*`)
-            .setColor(0xe11d48);
+    const usedNp = pendingCards.includes('NP');
+    if (usedNp) {
+      active.npGauge = 0;
+      const npGif = getNoblePhantasmGif(active.servant);
+      const chant = getNoblePhantasmChant(active.servant);
+      const npName = active.servant.template?.noblePhantasm?.name || 'Noble Phantasm';
 
-          safeSetEmbedImage(npEmbed, normalizeMediaUrl(npGif), npFiles);
+      if (npGif) {
+        await cleanupNpGif();
+        const npFiles: AttachmentBuilder[] = [];
+        const npEmbed = new EmbedBuilder()
+          .setTitle(`💥 NOBLE PHANTASM: ${npName.toUpperCase()}`)
+          .setDescription(`⚔️ **${active.servant.nickname || active.servant.template.name}** (Master: <@${active.userId}>)\n> *“${chant || 'True Name Unleashed!'}”*`)
+          .setColor(0xe11d48);
 
-          try {
-            await battleMsg.channel.send({ embeds: [npEmbed], files: npFiles });
-          } catch {}
-        }
+        safeSetEmbedImage(npEmbed, normalizeMediaUrl(npGif), npFiles);
+
+        try {
+          activeNpGifMessage = await battleMsg.channel.send({ embeds: [npEmbed], files: npFiles });
+          // Auto-delete after 12 seconds if idle
+          activeNpGifTimeout = setTimeout(() => {
+            cleanupNpGif().catch(() => {});
+          }, 12_000);
+        } catch {}
       }
+    }
 
-      let totalTurnDmg = 0;
-      let starsGenerated = 0;
-      let npGained = 0;
+    let totalTurnDmg = 0;
+    let starsGenerated = 0;
+    let npGained = 0;
 
-      const baseAtk = active.servant.allocatedStats?.atk || active.servant.template?.baseStats?.atk || 10000;
-      const atkBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'atk_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
+    const baseAtk = active.servant.allocatedStats?.atk || active.servant.template?.baseStats?.atk || 10000;
+    const atkBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'atk_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
 
-      pendingCards.forEach((card, cIdx) => {
-        const stepMult = cIdx === 0 ? 1.0 : cIdx === 1 ? 1.2 : 1.4;
-        if (card === 'Buster') {
-          totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * (0.9 + Math.random() * 0.2));
-          starsGenerated += 3;
-          npGained += 5;
-        } else if (card === 'Arts') {
-          totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * (0.9 + Math.random() * 0.2));
-          npGained += 25;
-          starsGenerated += 2;
-        } else if (card === 'Quick') {
-          totalTurnDmg += Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * (0.9 + Math.random() * 0.2));
-          starsGenerated += 12;
-          npGained += 10;
-        } else if (card === 'NP') {
-          const npMultiplier = 5.5;
-          totalTurnDmg += Math.round(baseAtk * npMultiplier * atkBuffMult * (0.95 + Math.random() * 0.1));
-          starsGenerated += 10;
-          npGained += 15;
-        }
-      });
+    pendingCards.forEach((card, cIdx) => {
+      const stepMult = cIdx === 0 ? 1.0 : cIdx === 1 ? 1.2 : 1.4;
+      if (card === 'Buster') {
+        totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * (0.9 + Math.random() * 0.2));
+        starsGenerated += 3;
+        npGained += 5;
+      } else if (card === 'Arts') {
+        totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * (0.9 + Math.random() * 0.2));
+        npGained += 25;
+        starsGenerated += 2;
+      } else if (card === 'Quick') {
+        totalTurnDmg += Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * (0.9 + Math.random() * 0.2));
+        starsGenerated += 12;
+        npGained += 10;
+      } else if (card === 'NP') {
+        const npMultiplier = 5.5;
+        totalTurnDmg += Math.round(baseAtk * npMultiplier * atkBuffMult * (0.95 + Math.random() * 0.1));
+        starsGenerated += 10;
+        npGained += 15;
+      }
+    });
 
-      battleState.bossCurrentHp = Math.max(0, battleState.bossCurrentHp - totalTurnDmg);
-      active.npGauge = Math.min(100, (active.npGauge || 0) + npGained);
-      active.critStars = Math.min(50, (active.critStars || 0) + starsGenerated);
+    battleState.bossCurrentHp = Math.max(0, battleState.bossCurrentHp - totalTurnDmg);
+    active.npGauge = Math.min(100, (active.npGauge || 0) + npGained);
+    active.critStars = Math.min(50, (active.critStars || 0) + starsGenerated);
 
-      const servName = active.servant.nickname || active.servant.template?.name || 'Servant';
-      battleState.recentLogs.push(
-        `⚔️ **${servName}** dealt **${totalTurnDmg.toLocaleString()} DMG** to Barbatos! (+${npGained}% NP, +${starsGenerated} Stars)`
-      );
-      if (battleState.recentLogs.length > 4) battleState.recentLogs.shift();
+    const servName = active.servant.nickname || active.servant.template?.name || 'Servant';
+    battleState.recentLogs.push(
+      `⚔️ **${servName}** dealt **${totalTurnDmg.toLocaleString()} DMG** to Barbatos! (+${npGained}% NP, +${starsGenerated} Stars)`
+    );
+    if (battleState.recentLogs.length > 4) battleState.recentLogs.shift();
 
-      if (battleState.bossCurrentHp <= 0) {
-        collector.stop('victory');
-        await concludeRaidVictory(battleMsg, boss, battleState.participants);
+    if (battleState.bossCurrentHp <= 0) {
+      await cleanupNpGif();
+      collector.stop('victory');
+      await concludeRaidVictory(battleMsg, boss, battleState.participants);
+      return;
+    }
+
+    // Refresh hand for this participant and clear selections
+    refreshParticipantHand(active);
+    pendingCards = [];
+    pendingIndices = [];
+
+    const hasMorePlayersInRound = advanceToNextPlayer();
+
+    if (!hasMorePlayersInRound) {
+      await executeBossTurn(battleState);
+
+      const anyAlive = battleState.participants.some(p => !p.isDead);
+      if (!anyAlive) {
+        await cleanupNpGif();
+        collector.stop('defeated');
+        await concludeRaidDefeat(battleMsg, boss);
         return;
       }
 
-      pendingCards = [];
-      const hasMorePlayersInRound = advanceToNextPlayer();
-
-      if (!hasMorePlayersInRound) {
-        await executeBossTurn(battleState);
-
-        const anyAlive = battleState.participants.some(p => !p.isDead);
-        if (!anyAlive) {
-          collector.stop('defeated');
-          await concludeRaidDefeat(battleMsg, boss);
-          return;
+      battleState.round++;
+      battleState.participants.forEach(p => {
+        p.skillCooldowns = p.skillCooldowns.map(cd => Math.max(0, cd - 1));
+        if (p.activeBuffs) {
+          p.activeBuffs.forEach(b => b.remainingTurns--);
+          p.activeBuffs = p.activeBuffs.filter(b => b.remainingTurns > 0);
         }
-
-        battleState.round++;
-        battleState.participants.forEach(p => {
-          p.skillCooldowns = p.skillCooldowns.map(cd => Math.max(0, cd - 1));
-          if (p.activeBuffs) {
-            p.activeBuffs.forEach(b => b.remainingTurns--);
-            p.activeBuffs = p.activeBuffs.filter(b => b.remainingTurns > 0);
-          }
-        });
-      }
-
-      await renderAndPostTurn();
+      });
     }
+
+    await renderAndPostTurn();
+  });
+
+  collector.on('end', async () => {
+    await cleanupNpGif();
   });
 
   function advanceToNextPlayer(): boolean {
