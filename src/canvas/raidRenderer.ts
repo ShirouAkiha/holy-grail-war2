@@ -37,12 +37,16 @@ function createCanvas(width: number, height: number): any {
       clip: () => {},
       drawImage: () => {},
       fillText: () => {},
+      measureText: () => ({ width: 0 }),
       getImageData: () => ({ data: new Uint8ClampedArray(4) }),
       set fillStyle(_: any) {},
       set strokeStyle(_: any) {},
       set lineWidth(_: any) {},
       set font(_: any) {},
-      set textAlign(_: any) {}
+      set textAlign(_: any) {},
+      set textBaseline(_: any) {},
+      set shadowColor(_: any) {},
+      set shadowBlur(_: any) {}
     }),
     toBuffer: (_type?: string) => MINIMAL_VALID_PNG
   };
@@ -113,30 +117,127 @@ async function loadImage(src: string): Promise<any> {
   return null;
 }
 
+// ==========================================
+// Helper Drawing Primitives
+// ==========================================
+
 function drawRoundRect(
   ctx: any,
   x: number,
   y: number,
   width: number,
   height: number,
-  radius: number,
+  radius: number | { tl?: number; tr?: number; br?: number; bl?: number },
   fill = false,
   stroke = true
 ) {
+  let tl = 0, tr = 0, br = 0, bl = 0;
+  if (typeof radius === 'number') {
+    tl = tr = br = bl = radius;
+  } else {
+    tl = radius.tl || 0;
+    tr = radius.tr || 0;
+    br = radius.br || 0;
+    bl = radius.bl || 0;
+  }
+
   ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.lineTo(x + width - radius, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-  ctx.lineTo(x + width, y + height - radius);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-  ctx.lineTo(x + radius, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-  ctx.lineTo(x, y + radius);
-  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.moveTo(x + tl, y);
+  ctx.lineTo(x + width - tr, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + tr);
+  ctx.lineTo(x + width, y + height - br);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - br, y + height);
+  ctx.lineTo(x + bl, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - bl);
+  ctx.lineTo(x, y + tl);
+  ctx.quadraticCurveTo(x, y, x + tl, y);
   ctx.closePath();
   if (fill) ctx.fill();
   if (stroke) ctx.stroke();
 }
+
+function drawDiamond(
+  ctx: any,
+  cx: number,
+  cy: number,
+  size: number,
+  fillStyle: any,
+  strokeStyle: any,
+  lineWidth = 1
+) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.beginPath();
+  ctx.moveTo(0, -size / 2);
+  ctx.lineTo(size / 2, 0);
+  ctx.lineTo(0, size / 2);
+  ctx.lineTo(-size / 2, 0);
+  ctx.closePath();
+
+  if (fillStyle) {
+    ctx.fillStyle = fillStyle;
+    ctx.fill();
+  }
+  if (strokeStyle) {
+    ctx.strokeStyle = strokeStyle;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawProgressBar(
+  ctx: any,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  current: number,
+  max: number,
+  fillGrad: any,
+  bgFill = 'rgba(15, 23, 42, 0.95)',
+  borderColor = '#64748b'
+) {
+  ctx.save();
+  // Background
+  ctx.fillStyle = bgFill;
+  ctx.fillRect(x, y, width, height);
+
+  // Border frame
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, width, height);
+
+  // End Bracket Metallic Accent Trims
+  ctx.fillStyle = '#cbd5e1';
+  ctx.fillRect(x - 3, y - 1, 3, height + 2);
+  ctx.fillRect(x + width, y - 1, 3, height + 2);
+
+  // Fill Ratio
+  const ratio = max > 0 ? Math.max(0, Math.min(1, current / max)) : 0;
+  if (ratio > 0) {
+    ctx.fillStyle = fillGrad;
+    ctx.fillRect(x + 1, y + 1, Math.max(1, (width - 2) * ratio), height - 2);
+  }
+  ctx.restore();
+}
+
+const CLASS_SYMBOLS: Record<string, string> = {
+  Saber: '⚔️',
+  Archer: '🏹',
+  Lancer: '🔱',
+  Rider: '🏇',
+  Caster: '🔮',
+  Assassin: '🗡️',
+  Berserker: '💥',
+  Ruler: '⚖️',
+  Avenger: '🔥',
+  Pretender: '🎭',
+  MoonCancer: '🌙',
+  AlterEgo: '⚡',
+  Foreigner: '🌌',
+  Shielder: '🛡️'
+};
 
 export interface RaidParticipantState {
   userId: string;
@@ -163,54 +264,60 @@ export interface RaidBattleState {
 }
 
 /**
- * Renders a single frame of the FGO Raid Battlefield (640x360 optimized dimensions)
+ * Standard 16:9 Canvas (1280 x 720) Fate/Grand Order Battle Scene Routine
  */
 async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Promise<any> {
-  const width = 640;
-  const height = 360;
+  const width = 1280;
+  const height = 720;
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
   const { bgImg, bossSpriteImg, bossAvatarImg, servantAvatars } = loadedImages;
 
-  // 1. Render Background
+  // ==========================================
+  // LAYER 1: Background & Arena Environment
+  // ==========================================
   if (bgImg) {
     ctx.drawImage(bgImg, 0, 0, width, height);
   } else {
-    const grad = ctx.createLinearGradient(0, 0, 0, height);
-    grad.addColorStop(0, '#1c1917');
-    grad.addColorStop(0.6, '#0c0a09');
-    grad.addColorStop(1, '#000000');
-    ctx.fillStyle = grad;
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+    bgGrad.addColorStop(0, '#1c1917');
+    bgGrad.addColorStop(0.6, '#0c0a09');
+    bgGrad.addColorStop(1, '#020617');
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, width, height);
   }
 
-  // Vignette
-  const vignette = ctx.createRadialGradient(width / 2, height / 2, 100, width / 2, height / 2, width * 0.7);
+  // Atmospheric dark vignette
+  const vignette = ctx.createRadialGradient(width / 2, height / 2, 220, width / 2, height / 2, width * 0.72);
   vignette.addColorStop(0, 'rgba(0,0,0,0)');
   vignette.addColorStop(1, 'rgba(0,0,0,0.55)');
   ctx.fillStyle = vignette;
   ctx.fillRect(0, 0, width, height);
 
-  // 2. Render Boss Sprite
+  // ==========================================
+  // LAYER 2: Field Sprites (Midground)
+  // ==========================================
+
+  // 1. Boss Sprite (Left-to-center field area: X: 150–400, Y: 140–500)
   if (bossSpriteImg) {
     ctx.save();
-    // Precise crop from boss sprite (sx=10, sy=30, sw=200, sh=430)
+    // Precise source crop from boss sprite
     const sx = 10;
     const sy = 30;
     const sw = 200;
     const sh = 430;
 
-    const scale = 0.54;
-    const destW = Math.round(sw * scale); // 108px
-    const destH = Math.round(sh * scale); // 232px
-    const destX = 18;
-    const destY = 32;
+    const scale = 1.05;
+    const destW = Math.round(sw * scale); // ~210px
+    const destH = Math.round(sh * scale); // ~450px
+    const destX = 140;
+    const destY = 85;
 
-    // Shadow on temple ground
+    // Ground shadow on temple floor
     ctx.beginPath();
-    ctx.ellipse(destX + destW * 0.5, destY + destH - 6, destW * 0.45, 9, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+    ctx.ellipse(destX + destW * 0.5, destY + destH - 12, destW * 0.48, 16, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fill();
 
     ctx.drawImage(
@@ -221,45 +328,47 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     ctx.restore();
   }
 
-  // 3. Render Player Servants (Standing Field Sprites)
+  // 2. Player Servant Field Sprites (Right side of field: X: 750–1150, Y: 220–460)
   const party = state.participants;
   const numServants = Math.max(1, Math.min(3, party.length));
-  const arenaStartX = 340;
-  const arenaStepX = 85;
+  const fieldStartX = 750;
+  const fieldStepX = 135;
 
   party.slice(0, 3).forEach((p, idx) => {
     const avatar = servantAvatars[idx];
-    const posX = arenaStartX + idx * arenaStepX;
-    const posY = 120 + (idx % 2 === 1 ? 15 : 0);
+    const posX = fieldStartX + idx * fieldStepX;
+    const posY = 220 + (idx % 2 === 1 ? 30 : -10);
 
     ctx.save();
     if (p.isDead) ctx.globalAlpha = 0.35;
 
     // Ground Shadow under feet
     ctx.beginPath();
-    ctx.ellipse(posX + 30, posY + 105, 28, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(posX + 45, posY + 155, 42, 12, 0, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
     ctx.fill();
 
-    // Standing Servant Card Sprite
-    const spriteW = 60;
-    const spriteH = 100;
+    // Standing Servant Proportional Sprite Box (90 x 150)
+    const spriteW = 90;
+    const spriteH = 150;
 
     // Active Master Turn Highlight Glow
     if (idx === state.activeMasterIndex && !p.isDead) {
       ctx.save();
       ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 12;
+      ctx.shadowBlur = 16;
       ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 2;
-      drawRoundRect(ctx, posX - 2, posY - 2, spriteW + 4, spriteH + 4, 5, false, true);
+      ctx.lineWidth = 2.5;
+      drawRoundRect(ctx, posX - 3, posY - 3, spriteW + 6, spriteH + 6, 8, false, true);
       ctx.restore();
     }
 
     ctx.save();
-    drawRoundRect(ctx, posX, posY, spriteW, spriteH, 4, false, false);
+    drawRoundRect(ctx, posX, posY, spriteW, spriteH, 6, false, false);
     ctx.clip();
+
     if (avatar) {
+      // Scale down proportionally (object-fit: cover) without squishing or stretching
       const imgW = avatar.width || spriteW;
       const imgH = avatar.height || spriteH;
       const imgRatio = imgW / imgH;
@@ -279,179 +388,211 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     }
     ctx.restore();
 
-    // Golden Outer Card Frame
-    ctx.strokeStyle = p.isDead ? '#ef4444' : '#f59e0b';
-    ctx.lineWidth = 1.2;
-    drawRoundRect(ctx, posX, posY, spriteW, spriteH, 4, false, true);
+    // Subtle Outer Golden Frame
+    ctx.strokeStyle = p.isDead ? '#ef4444' : '#d4af37';
+    ctx.lineWidth = 1.5;
+    drawRoundRect(ctx, posX, posY, spriteW, spriteH, 6, false, true);
 
     ctx.restore();
   });
 
-  // 4. Top-Left Boss HUD
-  const bossHudX = 12;
-  const bossHudY = 12;
+  // ==========================================
+  // LAYER 3: Top HUD (Header Elements)
+  // ==========================================
+
+  // 1. Top-Left Boss Status HUD (X: 30, Y: 30)
+  const bossHudX = 30;
+  const bossHudY = 30;
 
   ctx.save();
-  ctx.fillStyle = '#1e1b4b';
-  ctx.strokeStyle = '#d4af37';
-  ctx.lineWidth = 1.5;
-  drawRoundRect(ctx, bossHudX, bossHudY, 28, 28, 4, true, true);
+  // Boss Class Emblem / Avatar Diamond Box
+  const avatarSize = 54;
+  drawDiamond(ctx, bossHudX + avatarSize / 2, bossHudY + avatarSize / 2 + 2, avatarSize + 4, '#1e1b4b', '#d4af37', 2);
 
   if (bossAvatarImg) {
     ctx.save();
-    drawRoundRect(ctx, bossHudX + 1, bossHudY + 1, 26, 26, 3, false, false);
+    ctx.beginPath();
+    ctx.arc(bossHudX + avatarSize / 2, bossHudY + avatarSize / 2 + 2, (avatarSize - 6) / 2, 0, Math.PI * 2);
     ctx.clip();
-    ctx.drawImage(bossAvatarImg, bossHudX + 1, bossHudY + 1, 26, 26);
+    ctx.drawImage(bossAvatarImg, bossHudX + 3, bossHudY + 5, avatarSize - 6, avatarSize - 6);
     ctx.restore();
   }
 
+  // Boss Class Tag below Diamond
   ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 7px sans-serif';
+  ctx.font = 'bold 11px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(state.boss.servantClass.toUpperCase(), bossHudX + 14, bossHudY + 36);
+  ctx.fillText(state.boss.servantClass.toUpperCase(), bossHudX + avatarSize / 2, bossHudY + avatarSize + 16);
 
+  // Boss Header Texts
+  const textStartX = bossHudX + avatarSize + 20;
   ctx.textAlign = 'left';
   ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 7px sans-serif';
-  ctx.fillText(`Lv.${state.boss.level} ${state.boss.title.slice(0, 24)}`, bossHudX + 33, bossHudY + 8);
+  ctx.font = 'bold 12px sans-serif';
+  ctx.fillText(`Lv.${state.boss.level} ${state.boss.title}`, textStartX, bossHudY + 12);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 10px sans-serif';
+  ctx.font = 'bold 19px sans-serif';
   ctx.shadowColor = '#000000';
-  ctx.shadowBlur = 3;
-  ctx.fillText(state.boss.name, bossHudX + 33, bossHudY + 20);
+  ctx.shadowBlur = 4;
+  ctx.fillText(state.boss.name, textStartX, bossHudY + 34);
   ctx.shadowBlur = 0;
 
-  // Boss HP Bar
-  const hpBarX = bossHudX + 33;
-  const hpBarY = bossHudY + 23;
-  const hpBarW = 190;
-  const hpBarH = 10;
+  // Boss HP Bar (Width: 380px, Height: 18px)
+  const bossHpW = 380;
+  const bossHpH = 18;
+  const bossHpX = textStartX;
+  const bossHpY = bossHudY + 40;
 
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-  ctx.strokeStyle = '#64748b';
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, hpBarX, hpBarY, hpBarW, hpBarH, 2, true, true);
+  const bossHpGrad = ctx.createLinearGradient(bossHpX, 0, bossHpX + bossHpW, 0);
+  bossHpGrad.addColorStop(0, '#9333ea');
+  bossHpGrad.addColorStop(0.5, '#db2777');
+  bossHpGrad.addColorStop(1, '#ef4444');
 
-  const hpRatio = Math.max(0, Math.min(1, state.bossCurrentHp / state.bossMaxHp));
-  if (hpRatio > 0) {
-    const hpGrad = ctx.createLinearGradient(hpBarX, 0, hpBarX + hpBarW * hpRatio, 0);
-    hpGrad.addColorStop(0, '#a855f7');
-    hpGrad.addColorStop(0.5, '#ec4899');
-    hpGrad.addColorStop(1, '#ef4444');
-    ctx.fillStyle = hpGrad;
-    drawRoundRect(ctx, hpBarX + 1, hpBarY + 1, Math.max(2, (hpBarW - 2) * hpRatio), hpBarH - 2, 2, true, false);
-  }
+  drawProgressBar(ctx, bossHpX, bossHpY, bossHpW, bossHpH, state.bossCurrentHp, state.bossMaxHp, bossHpGrad, 'rgba(15, 23, 42, 0.95)', '#94a3b8');
 
+  // HP Numbers on Boss HP Bar
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 7px sans-serif';
+  ctx.font = 'bold 11px sans-serif';
   ctx.textAlign = 'right';
   ctx.fillText(
     `${Math.round(state.bossCurrentHp).toLocaleString()} / ${state.bossMaxHp.toLocaleString()}`,
-    hpBarX + hpBarW - 4,
-    hpBarY + 8
+    bossHpX + bossHpW - 8,
+    bossHpY + 13
   );
 
-  // Boss Charge Diamonds
-  const chargeStartX = hpBarX;
-  const chargeStartY = hpBarY + 14;
+  // Boss NP / Charge Gauge (4 to 5 small diamond/pip shapes directly below HP bar)
+  const chargeStartX = bossHpX;
+  const chargeStartY = bossHpY + 24;
   ctx.fillStyle = '#cbd5e1';
-  ctx.font = 'bold 7px sans-serif';
+  ctx.font = 'bold 12px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('Charge', chargeStartX, chargeStartY + 5);
+  ctx.fillText('Charge', chargeStartX, chargeStartY + 9);
 
   for (let c = 0; c < state.boss.maxCharge; c++) {
-    const dX = chargeStartX + 32 + c * 10;
-    const dY = chargeStartY + 2;
+    const dX = chargeStartX + 58 + c * 18;
+    const dY = chargeStartY + 5;
     const isCharged = c < state.bossCharge;
 
-    ctx.save();
-    ctx.translate(dX, dY);
-    ctx.rotate(Math.PI / 4);
+    const fill = isCharged
+      ? (state.bossCharge >= state.boss.maxCharge ? '#ef4444' : '#e11d48')
+      : 'rgba(30, 41, 59, 0.85)';
+    const stroke = isCharged ? '#fecdd3' : '#94a3b8';
 
-    if (isCharged) {
-      ctx.fillStyle = state.bossCharge >= state.boss.maxCharge ? '#ef4444' : '#e11d48';
-      ctx.strokeStyle = '#fecdd3';
-      ctx.lineWidth = 1;
-      ctx.fillRect(-3, -3, 6, 6);
-      ctx.strokeRect(-3, -3, 6, 6);
-    } else {
-      ctx.fillStyle = 'rgba(30, 41, 59, 0.8)';
-      ctx.strokeStyle = '#94a3b8';
-      ctx.lineWidth = 1;
-      ctx.fillRect(-3, -3, 6, 6);
-      ctx.strokeRect(-3, -3, 6, 6);
-    }
-    ctx.restore();
+    drawDiamond(ctx, dX, dY, 12, fill, stroke, 1.2);
   }
-
   ctx.restore();
 
-  // 5. Top-Right Battle HUD
+  // 2. Top-Right Quest Info Box (X: 1040, Y: 30)
   ctx.save();
-  const trX = width - 130;
-  const trY = 12;
+  const trX = width - 240;
+  const trY = 30;
+  const trW = 210;
+  const trH = 65;
 
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
   ctx.strokeStyle = '#d4af37';
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, trX, trY, 118, 34, 4, true, true);
+  ctx.lineWidth = 1.5;
+  drawRoundRect(ctx, trX, trY, trW, trH, 6, true, true);
 
   ctx.fillStyle = '#fbbf24';
-  ctx.font = 'bold 8px sans-serif';
+  ctx.font = 'bold 14px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('BATTLE 1/1', trX + 8, trY + 13);
+  ctx.fillText('BATTLE 1/1', trX + 16, trY + 26);
 
   ctx.fillStyle = '#38bdf8';
-  ctx.font = 'bold 7px sans-serif';
-  ctx.fillText(`TURN ${state.round} Turn(s)`, trX + 8, trY + 25);
+  ctx.font = 'bold 12px sans-serif';
+  ctx.fillText(`TURN ${state.round} Turn(s)`, trX + 16, trY + 48);
 
   ctx.fillStyle = '#f43f5e';
-  ctx.font = 'bold 7px sans-serif';
+  ctx.font = 'bold 11px sans-serif';
   ctx.textAlign = 'right';
-  ctx.fillText('DEMON GOD RAID', trX + 110, trY + 13);
-
+  ctx.fillText('DEMON GOD RAID', trX + trW - 14, trY + 26);
   ctx.restore();
 
-  // 6. Bottom Authentic FGO Servant HUD Cards (Clean Compact Panel)
-  const numPart = Math.max(1, Math.min(3, party.length));
-  const hudColW = 180;
-  const hudColGap = 16;
-  const totalW = numPart * hudColW + (numPart - 1) * hudColGap;
-  const startX = (width - totalW) / 2;
+  // ==========================================
+  // LAYER 4: Bottom Player HUD (Anchored Y: 420 to 720)
+  // ==========================================
+  const panelW = 300;
+  const panelH = 300;
+  const panelTopY = 420;
+
+  // 3-Servant Layout Slot distribution
+  const slotXPositions = [60, 380, 700];
 
   party.slice(0, 3).forEach((p, i) => {
-    const cX = startX + i * (hudColW + hudColGap);
-    const colCenterX = cX + hudColW / 2;
+    const slotX = slotXPositions[i] || (60 + i * 320);
+    const avatar = servantAvatars[i];
+    const isTurnActive = i === state.activeMasterIndex && !p.isDead;
 
     ctx.save();
 
-    // Dark Translucent Panel Card Background
-    const cardY = 265;
-    const cardH = 90;
+    // 1. Portrait Crop (Back of the HUD slot)
+    ctx.save();
+    // Rounded top corners for HUD slot panel
+    drawRoundRect(ctx, slotX, panelTopY, panelW, panelH, { tl: 10, tr: 10, bl: 0, br: 0 }, false, false);
+    ctx.clip();
 
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-    ctx.strokeStyle = i === state.activeMasterIndex && !p.isDead ? '#f59e0b' : '#334155';
-    ctx.lineWidth = i === state.activeMasterIndex && !p.isDead ? 1.5 : 1;
-    drawRoundRect(ctx, cX, cardY, hudColW, cardH, 6, true, true);
-
-    // Turn Active Glow for Card Box
-    if (i === state.activeMasterIndex && !p.isDead) {
-      ctx.save();
-      ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 8;
-      drawRoundRect(ctx, cX, cardY, hudColW, cardH, 6, false, true);
-      ctx.restore();
+    // Render Servant Bust Image using Object-fit: cover
+    if (avatar) {
+      const imgW = avatar.width || panelW;
+      const imgH = avatar.height || panelH;
+      const imgRatio = imgW / imgH;
+      const targetRatio = panelW / panelH;
+      let sx = 0, sy = 0, sw = imgW, sh = imgH;
+      if (imgRatio > targetRatio) {
+        sw = imgH * targetRatio;
+        sx = (imgW - sw) / 2;
+      } else {
+        sh = imgW / targetRatio;
+        sy = (imgH - sh) / 2;
+      }
+      ctx.drawImage(avatar, sx, sy, sw, sh, slotX, panelTopY, panelW, panelH);
+    } else {
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(slotX, panelTopY, panelW, panelH);
     }
 
-    // a. 3 Skill Icons Row
-    const skillBoxSize = 20;
-    const skillGap = 5;
-    const totalSkillsW = 3 * skillBoxSize + 2 * skillGap;
-    const skillStartX = colCenterX - totalSkillsW / 2;
-    const skillY = cardY + 6;
+    // Subtle Vertical Gradient: Transparent at top -> dark semi-transparent black at bottom
+    const fadeGrad = ctx.createLinearGradient(0, panelTopY, 0, height);
+    fadeGrad.addColorStop(0, 'rgba(15, 23, 42, 0)');
+    fadeGrad.addColorStop(0.35, 'rgba(15, 23, 42, 0.15)');
+    fadeGrad.addColorStop(0.65, 'rgba(15, 23, 42, 0.88)');
+    fadeGrad.addColorStop(1, 'rgba(5, 8, 18, 0.98)');
+    ctx.fillStyle = fadeGrad;
+    ctx.fillRect(slotX, panelTopY, panelW, panelH);
 
-    const skillBgGradients = ['#9a3412', '#1e3a8a', '#854d0e']; // Buster / Arts / Quick
+    // If Servant is dead, apply subdued desaturation overlay
+    if (p.isDead) {
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+      ctx.fillRect(slotX, panelTopY, panelW, panelH);
+    }
+
+    ctx.restore();
+
+    // Panel Outer Frame Border & Active Glow
+    if (isTurnActive) {
+      ctx.save();
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 18;
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2.5;
+      drawRoundRect(ctx, slotX, panelTopY, panelW, panelH, { tl: 10, tr: 10, bl: 0, br: 0 }, false, true);
+      ctx.restore();
+    } else {
+      ctx.strokeStyle = p.isDead ? '#ef4444' : '#475569';
+      ctx.lineWidth = 1.2;
+      drawRoundRect(ctx, slotX, panelTopY, panelW, panelH, { tl: 10, tr: 10, bl: 0, br: 0 }, false, true);
+    }
+
+    // 2. Skill Icons Row (Position: Y: 530, size: ~46x46px, gap: 6px)
+    const skillBoxSize = 46;
+    const skillGap = 8;
+    const totalSkillsW = 3 * skillBoxSize + 2 * skillGap;
+    const skillStartX = slotX + (panelW - totalSkillsW) / 2;
+    const skillY = 530;
+
+    const skillGradients = ['#9a3412', '#1e3a8a', '#854d0e'];
     const skillSymbols = ['⚔️', '✨', '💥'];
 
     for (let s = 0; s < 3; s++) {
@@ -460,192 +601,168 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
       const isAvailable = cd === 0 && !p.isDead;
 
       ctx.save();
-      ctx.fillStyle = isAvailable ? skillBgGradients[s] : '#1e293b';
+      // Outer FGO Frame & Background
+      ctx.fillStyle = isAvailable ? skillGradients[s] : '#1e293b';
       ctx.fillRect(sX, skillY, skillBoxSize, skillBoxSize);
 
       ctx.strokeStyle = isAvailable ? '#f59e0b' : '#64748b';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1.5;
       ctx.strokeRect(sX, skillY, skillBoxSize, skillBoxSize);
 
-      ctx.font = '9px sans-serif';
+      // Skill Symbol
+      ctx.font = '19px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(skillSymbols[s], sX + skillBoxSize / 2, skillY + skillBoxSize / 2);
 
+      // Cooldown Clock Overlay if on cooldown
       if (cd > 0 || p.isDead) {
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
         ctx.fillRect(sX, skillY, skillBoxSize, skillBoxSize);
 
         ctx.fillStyle = '#ef4444';
-        ctx.font = 'bold 8px sans-serif';
+        ctx.font = 'bold 15px sans-serif';
         ctx.fillText(`⏱️${cd}`, sX + skillBoxSize / 2, skillY + skillBoxSize / 2);
       }
       ctx.restore();
     }
 
-    // b. Authentic FGO HP Bar
-    const barW = hudColW - 12;
-    const barX = colCenterX - barW / 2;
-    const hpY = cardY + 31;
-    const hpH = 12;
+    // 3. Status Bars & Labels (Bottom anchor, Y: 595 to 705)
+    const barW = panelW - 24;
+    const barX = slotX + 12;
 
-    ctx.save();
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
-    ctx.fillRect(barX, hpY, barW, hpH);
-
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 0.8;
-    ctx.strokeRect(barX, hpY, barW, hpH);
-
+    // HP Bar (Y: 595, Height: 18px)
+    const hpY = 595;
+    const hpH = 18;
     const pHpRatio = p.isDead ? 0 : Math.max(0, Math.min(1, p.currentHp / p.maxHp));
-    if (pHpRatio > 0) {
-      const pGrad = ctx.createLinearGradient(barX, 0, barX + barW * pHpRatio, 0);
-      pGrad.addColorStop(0, '#0284c7');
-      pGrad.addColorStop(1, '#38bdf8');
-      ctx.fillStyle = pGrad;
-      ctx.fillRect(barX + 1, hpY + 1, Math.max(1, (barW - 2) * pHpRatio), hpH - 2);
-    }
+    const hpGrad = ctx.createLinearGradient(barX, 0, barX + barW * pHpRatio, 0);
+    hpGrad.addColorStop(0, '#0284c7');
+    hpGrad.addColorStop(1, '#38bdf8');
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 7px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('HP', barX + 3, hpY + hpH / 2);
-
-    ctx.textAlign = 'right';
-    const hpText = p.isDead ? 'FALLEN' : Math.round(p.currentHp).toLocaleString();
-    ctx.fillText(hpText, barX + barW - 3, hpY + hpH / 2);
-    ctx.restore();
-
-    // c. Authentic FGO NP Bar
-    const npY = cardY + 46;
-    const npH = 10;
+    drawProgressBar(ctx, barX, hpY, barW, hpH, p.currentHp, p.maxHp, hpGrad, 'rgba(15, 23, 42, 0.95)', '#94a3b8');
 
     ctx.save();
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
-    ctx.fillRect(barX, npY, barW, npH);
-
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 0.8;
-    ctx.strokeRect(barX, npY, barW, npH);
-
-    const pNpRatio = p.isDead ? 0 : Math.max(0, Math.min(1, (p.npGauge || 0) / 100));
-    if (pNpRatio > 0) {
-      const npGrad = ctx.createLinearGradient(barX, 0, barX + barW * pNpRatio, 0);
-      if (p.npGauge >= 100) {
-        npGrad.addColorStop(0, '#fbbf24');
-        npGrad.addColorStop(1, '#ef4444');
-      } else {
-        npGrad.addColorStop(0, '#2563eb');
-        npGrad.addColorStop(1, '#38bdf8');
-      }
-      ctx.fillStyle = npGrad;
-      ctx.fillRect(barX + 1, npY + 1, Math.max(1, (barW - 2) * pNpRatio), npH - 2);
-    }
-
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 7px sans-serif';
+    ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('NP', barX + 3, npY + npH / 2);
+    ctx.fillText('HP', barX + 6, hpY + hpH / 2);
 
     ctx.textAlign = 'right';
-    const npText = p.isDead ? '0%' : `${Math.round(p.npGauge || 0)}%`;
-    ctx.fillText(npText, barX + barW - 3, npY + npH / 2);
+    const hpText = p.isDead ? 'FALLEN' : `${Math.round(p.currentHp).toLocaleString()} / ${p.maxHp.toLocaleString()}`;
+    ctx.fillText(hpText, barX + barW - 6, hpY + hpH / 2);
     ctx.restore();
 
-    // d. Bottom Class Emblem Diamond & Servant Name Ribbon
-    const ribbonY = cardY + 60;
-    const classEmblemX = barX + 10;
-    const classEmblemY = ribbonY + 10;
-    const size = 16;
+    // NP Bar (Y: 620, Height: 15px)
+    const npY = 620;
+    const npH = 15;
+    const pNpRatio = p.isDead ? 0 : Math.max(0, Math.min(1, (p.npGauge || 0) / 100));
+    const npGrad = ctx.createLinearGradient(barX, 0, barX + barW * pNpRatio, 0);
+    if (p.npGauge >= 100) {
+      npGrad.addColorStop(0, '#fbbf24');
+      npGrad.addColorStop(1, '#ef4444');
+    } else {
+      npGrad.addColorStop(0, '#2563eb');
+      npGrad.addColorStop(1, '#38bdf8');
+    }
+
+    drawProgressBar(ctx, barX, npY, barW, npH, p.npGauge || 0, 100, npGrad, 'rgba(15, 23, 42, 0.95)', '#64748b');
+
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('NP', barX + 6, npY + npH / 2);
+
+    ctx.textAlign = 'right';
+    const npText = p.isDead ? '0%' : (p.npGauge >= 100 ? '100% READY' : `${Math.round(p.npGauge || 0)}%`);
+    ctx.fillText(npText, barX + barW - 6, npY + npH / 2);
+    ctx.restore();
+
+    // Footer Tag (Y: 648, Height: 55px)
+    const footerY = 648;
+    const emblemCx = barX + 20;
+    const emblemCy = footerY + 28;
+    const diamondSize = 34;
 
     // Diamond Class Emblem Badge
-    ctx.save();
-    ctx.translate(classEmblemX, classEmblemY);
-    ctx.beginPath();
-    ctx.moveTo(0, -size / 2);
-    ctx.lineTo(size / 2, 0);
-    ctx.lineTo(0, size / 2);
-    ctx.lineTo(-size / 2, 0);
-    ctx.closePath();
-
-    const goldGrad = ctx.createLinearGradient(-size / 2, -size / 2, size / 2, size / 2);
+    const goldGrad = ctx.createLinearGradient(-diamondSize / 2, -diamondSize / 2, diamondSize / 2, diamondSize / 2);
     goldGrad.addColorStop(0, '#fef08a');
     goldGrad.addColorStop(0.5, '#f59e0b');
     goldGrad.addColorStop(1, '#78350f');
-    ctx.fillStyle = goldGrad;
-    ctx.fill();
-    ctx.strokeStyle = '#fef08a';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    const innerSize = size - 4;
-    ctx.beginPath();
-    ctx.moveTo(0, -innerSize / 2);
-    ctx.lineTo(innerSize / 2, 0);
-    ctx.lineTo(0, innerSize / 2);
-    ctx.lineTo(-innerSize / 2, 0);
-    ctx.closePath();
-    ctx.fillStyle = '#0f172a';
-    ctx.fill();
+    drawDiamond(ctx, emblemCx, emblemCy, diamondSize, goldGrad, '#fef08a', 1.5);
+    drawDiamond(ctx, emblemCx, emblemCy, diamondSize - 6, '#0f172a', null, 0);
 
     const sClass = p.servant.template?.servantClass || 'Saber';
-    const classSymbols: Record<string, string> = {
-      Saber: '⚔️',
-      Archer: '🏹',
-      Lancer: '🔱',
-      Rider: '🏇',
-      Caster: '🔮',
-      Assassin: '🗡️',
-      Berserker: '💥',
-      Ruler: '⚖️',
-      Avenger: '🔥',
-      Pretender: '🎭',
-      MoonCancer: '🌙',
-      AlterEgo: '⚡',
-      Foreigner: '🌌',
-      Shielder: '🛡️'
-    };
-    ctx.font = '8px sans-serif';
+    ctx.save();
+    ctx.font = '16px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(classSymbols[sClass] || '⚔️', 0, 0.5);
+    ctx.fillText(CLASS_SYMBOLS[sClass] || '⚔️', emblemCx, emblemCy + 1);
     ctx.restore();
 
-    // Class Name & Level + Servant Name
-    const nameX = classEmblemX + 11;
+    // Class Name, Level & Servant Name
+    const nameX = emblemCx + 26;
     const servName = p.servant.nickname || p.servant.template?.name || 'Servant';
 
     ctx.save();
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
 
-    ctx.font = 'bold 7px sans-serif';
+    // Line 1: Class + Level
+    ctx.font = 'bold 13px sans-serif';
     ctx.fillStyle = '#fbbf24';
     ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 2;
+    ctx.shadowBlur = 3;
     const classTitle = `${sClass.toUpperCase()}`;
-    ctx.fillText(classTitle, nameX, ribbonY + 1);
+    ctx.fillText(classTitle, nameX, footerY + 14);
 
     const classWidth = ctx.measureText(classTitle).width;
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(` Lv.${p.servant.level || 90}`, nameX + classWidth, ribbonY + 1);
+    ctx.fillText(` Lv.${p.servant.level || 90}`, nameX + classWidth, footerY + 14);
 
-    ctx.font = 'bold 8px sans-serif';
+    // Line 2: Servant Name
+    ctx.font = 'bold 15px sans-serif';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(servName.slice(0, 16), nameX, ribbonY + 10);
+    ctx.fillText(servName.slice(0, 18), nameX, footerY + 31);
     ctx.shadowBlur = 0;
     ctx.restore();
 
     ctx.restore();
   });
 
+  // Right Side Critical Star Counter (matching FGO battle HUD)
+  const starX = 1040;
+  const starY = 660;
+  ctx.save();
+  ctx.font = '28px sans-serif';
+  ctx.fillStyle = '#fbbf24';
+  ctx.textAlign = 'left';
+  ctx.fillText('✦', starX, starY);
+
+  ctx.font = 'bold 16px sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('x', starX + 32, starY - 4);
+
+  ctx.font = 'italic bold 28px sans-serif';
+  ctx.fillStyle = '#ffffff';
+  const totalStars = party.reduce((sum, p) => sum + (p.critStars || 0), 0);
+  ctx.fillText(`${totalStars}`, starX + 48, starY);
+
+  ctx.font = 'bold 10px sans-serif';
+  ctx.fillStyle = '#fbbf24';
+  ctx.fillText('CRITICAL', starX + 2, starY + 20);
+
+  ctx.fillStyle = '#cbd5e1';
+  ctx.fillText('TOTAL', starX + 62, starY + 20);
+  ctx.restore();
+
   return canvas;
 }
 
 /**
- * Generates a PNG buffer for the FGO PvE Raid Battlefield
+ * Generates a high-definition 1280x720 PNG buffer for the FGO PvE Raid Battlefield
  */
 export async function renderRaidBattlefield(state: RaidBattleState, _animated = false): Promise<{ buffer: Buffer; fileName: string }> {
   // Preload all assets
@@ -661,7 +778,7 @@ export async function renderRaidBattlefield(state: RaidBattleState, _animated = 
 
   const loadedImages = { bgImg, bossSpriteImg, bossAvatarImg, servantAvatars };
 
-  // Render single crisp PNG frame
+  // Render pristine 1280x720 PNG frame
   const singleCanvas = await renderSingleFrame(state, loadedImages);
   return { buffer: singleCanvas.toBuffer('image/png'), fileName: 'raid_battlefield.png' };
 }
