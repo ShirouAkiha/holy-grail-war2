@@ -415,6 +415,11 @@ async function runRaidBattle(
         .setCustomId('raid_flee')
         .setLabel('Run')
         .setEmoji('🏃')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('raid_status')
+        .setLabel('Status')
+        .setEmoji('📊')
         .setStyle(ButtonStyle.Secondary)
     );
 
@@ -553,7 +558,17 @@ async function runRaidBattle(
   });
 
   collector.on('collect', async (i: any) => {
-    // 1. Immediately clean up active NP GIF whenever any button is clicked
+    // 0. Status Inspection Dossier (Accessible by any Master at any time)
+    if (i.customId === 'raid_status') {
+      const statusEmbed = buildRaidStatusEmbed(battleState, i.user.id);
+      await i.reply({
+        embeds: [statusEmbed],
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
+
+    // 1. Immediately clean up active NP GIF whenever any combat button is clicked
     await cleanupNpGif();
 
     const active = currentActiveParticipant;
@@ -938,3 +953,73 @@ async function concludeRaidDefeat(battleMsg: any, boss: RaidBossConfig) {
     await battleMsg.edit({ embeds: [defeatEmbed], components: [] }).catch(() => {});
   }
 }
+
+function buildRaidStatusEmbed(state: RaidBattleState, viewingUserId: string): EmbedBuilder {
+  const boss = state.boss;
+  const bossHpPct = Math.max(0, Math.round((state.bossCurrentHp / state.bossMaxHp) * 100));
+  const chargeDiamonds = '◆'.repeat(state.bossCharge) + '◇'.repeat(Math.max(0, boss.maxCharge - state.bossCharge));
+
+  const viewer = state.participants.find(p => p.userId === viewingUserId) || state.participants[state.activeMasterIndex];
+  const vServant = viewer.servant;
+  const vName = vServant.nickname || vServant.template?.name || 'Servant';
+  const vClass = (vServant.template?.servantClass || 'Saber').toUpperCase();
+  const vLvl = vServant.level || 90;
+  const vHpPct = Math.max(0, Math.round((viewer.currentHp / viewer.maxHp) * 100));
+
+  // Boss Traits & Active Buffs/Debuffs
+  const bossTraitsStr = (boss.traits || ['threat_to_humanity', 'beast', 'demonic', 'giant']).map(t => `\`${t.replace(/_/g, ' ')}\``).join(' • ');
+  const bossBuffsList = (state.bossBuffs && state.bossBuffs.length > 0)
+    ? state.bossBuffs.map(b => `• ${b.value >= 0 ? '🔺' : '🔻'} **${b.name}**: ${b.value >= 0 ? `+${b.value}%` : `${b.value}%`} (${b.remainingTurns} turn(s) left)`).join('\n')
+    : '_No active status effects or debuffs applied to the Demon God Pillar._';
+
+  // Viewer's Active Buffs
+  const vBuffsList = (viewer.activeBuffs && viewer.activeBuffs.length > 0)
+    ? viewer.activeBuffs.map(b => `• ✨ **${b.name}**: +${b.value}% (${b.remainingTurns} turn(s) left)`).join('\n')
+    : '_Operating at baseline battle parameters (No active buffs or debuffs)._';
+
+  // Viewer's Skills & Cooldowns
+  const skills = vServant.template?.skills || [];
+  const sList = skills.map((s, idx) => {
+    const cd = viewer.skillCooldowns[idx] || 0;
+    const cdStr = cd > 0 ? `\`[⏱ ${cd}T Cooldown]\`` : `\`[✨ READY]\``;
+    return `• **S${idx + 1}: ${s.name}** ${cdStr}\n  └─ *${s.description}*`;
+  }).join('\n') || '_No active skills found._';
+
+  // Allied Vanguard Roster
+  const partyRoster = state.participants.map(p => {
+    const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
+    const isViewer = p.userId === viewer.userId;
+    const arrow = isViewer ? '👉 ' : '• ';
+    const hpStr = p.isDead ? '💀 FALLEN' : `${Math.round(p.currentHp).toLocaleString()} / ${p.maxHp.toLocaleString()} HP (${Math.round((p.currentHp / p.maxHp) * 100)}%)`;
+    const buffCount = p.activeBuffs?.length || 0;
+    const buffSummary = buffCount > 0 ? p.activeBuffs!.map(b => `\`${b.name} (${b.remainingTurns}T)\``).join(', ') : 'None';
+    return `${arrow}**${pName}** (<@${p.userId}>):\n  └─ ❤️ \`${hpStr}\` • ⚡ \`NP: ${Math.round(p.npGauge)}%\` • ★ \`${p.critStars || 0}\`\n  └─ ✨ Buffs: ${buffSummary}`;
+  }).join('\n\n');
+
+  const embed = new EmbedBuilder()
+    .setTitle(`📊 BATTLE STATUS & BUFF DOSSIER — ROUND ${state.round}`)
+    .setDescription(
+      `### 😈 Enemy Raid Target: **${boss.name}**\n` +
+      `• **Class & Rank:** \`${boss.servantClass.toUpperCase()}\` • Lv.${boss.level} • **${boss.title}**\n` +
+      `• **Vitality:** ❤️ **${Math.round(state.bossCurrentHp).toLocaleString()} / ${state.bossMaxHp.toLocaleString()} HP** (${bossHpPct}%)\n` +
+      `• **Noble Phantasm Gauge:** ⚡ \`[ ${chargeDiamonds} ]\` (${state.bossCharge}/${boss.maxCharge} Charge)\n` +
+      `• **Classification Traits:** ${bossTraitsStr}\n` +
+      `• **Afflictions & Active Status:**\n${bossBuffsList}\n\n` +
+      `---\n` +
+      `### 🛡️ Your Servant: **${vName}** (<@${viewer.userId}>)\n` +
+      `• **Class & Level:** \`${vClass}\` • Lv.${vLvl}\n` +
+      `• **Health:** ❤️ **${Math.round(viewer.currentHp).toLocaleString()} / ${viewer.maxHp.toLocaleString()} HP** (${vHpPct}%)\n` +
+      `• **NP & Critical:** ⚡ **${Math.round(viewer.npGauge)}% NP** • ★ **${viewer.critStars || 0} Critical Stars**\n\n` +
+      `**Active Buffs & Modifiers:**\n${vBuffsList}\n\n` +
+      `**Skill Protocols & Readiness:**\n${sList}\n\n` +
+      `---\n` +
+      `### 👥 Allied Vanguard Party Overview:\n` +
+      partyRoster
+    )
+    .setColor(0x8b5cf6)
+    .setThumbnail(vServant.cardArtUrl || vServant.avatarUrl || boss.avatarUrl)
+    .setFooter({ text: 'Holy Grail War Tactical Engine • Real-Time Buff Inspection' });
+
+  return embed;
+}
+
