@@ -221,67 +221,55 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     ctx.restore();
   }
 
-  // 3. Render Player Servants
+  // 3. Render Player Servants (Standing Portrayals)
   const party = state.participants;
-  const startX = 320;
-  const availableFormationWidth = 270;
-  const slotStep = party.length > 1 ? availableFormationWidth / party.length : 100;
+  const numParticipants = Math.max(1, Math.min(3, party.length));
+  const startColX = 185;
+  const colW = 135;
+  const colGap = 10;
 
-  party.forEach((p, idx) => {
+  party.slice(0, 3).forEach((p, idx) => {
     const avatar = servantAvatars[idx];
-    const posX = startX + idx * slotStep + (idx % 2 === 1 ? 20 : 0);
-    const posY = 110 + (idx % 2 === 1 ? 15 : -5);
+    const cX = startColX + idx * (colW + colGap);
+    const colCenterX = cX + colW / 2;
+    const posY = 90;
 
     ctx.save();
     if (p.isDead) ctx.globalAlpha = 0.35;
 
-    // Shadow
+    // Ground Shadow under Servant feet
     ctx.beginPath();
-    ctx.ellipse(posX + 22, posY + 78, 22, 7, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.ellipse(colCenterX, posY + 160, 28, 8, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
     ctx.fill();
 
-    const sCardW = 45;
-    const sCardH = 65;
+    // Servant Standing Portrait / Sprite
+    const portraitW = 85;
+    const portraitH = 155;
+    const portraitX = colCenterX - portraitW / 2;
+    const portraitY = posY;
 
+    // Active Master Turn Highlight Glow
     if (idx === state.activeMasterIndex && !p.isDead) {
+      ctx.save();
+      ctx.shadowColor = '#fbbf24';
+      ctx.shadowBlur = 10;
       ctx.strokeStyle = '#f59e0b';
       ctx.lineWidth = 2;
-      ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 6;
-      drawRoundRect(ctx, posX - 1, posY - 1, sCardW + 2, sCardH + 2, 4, false, true);
-      ctx.shadowBlur = 0;
+      drawRoundRect(ctx, portraitX - 2, portraitY - 2, portraitW + 4, portraitH + 4, 6, false, true);
+      ctx.restore();
     }
 
     ctx.save();
-    drawRoundRect(ctx, posX, posY, sCardW, sCardH, 3, false, false);
+    drawRoundRect(ctx, portraitX, portraitY, portraitW, portraitH, 4, false, false);
     ctx.clip();
     if (avatar) {
-      ctx.drawImage(avatar, posX, posY, sCardW, sCardH);
+      ctx.drawImage(avatar, portraitX, portraitY, portraitW, portraitH);
     } else {
-      ctx.fillStyle = '#334155';
-      ctx.fillRect(posX, posY, sCardW, sCardH);
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(portraitX, portraitY, portraitW, portraitH);
     }
     ctx.restore();
-
-    ctx.strokeStyle = p.isDead ? '#ef4444' : '#d4af37';
-    ctx.lineWidth = 1;
-    drawRoundRect(ctx, posX, posY, sCardW, sCardH, 3, false, true);
-
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-    ctx.fillRect(posX, posY + sCardH - 12, sCardW, 12);
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 7px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`Lv.${p.servant.level || 90}`, posX + sCardW / 2, posY + sCardH - 3);
-
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = 'bold 7px sans-serif';
-    ctx.shadowColor = '#000000';
-    ctx.shadowBlur = 2;
-    const shortName = (p.servant.nickname || p.servant.template?.name || 'Servant').slice(0, 10);
-    ctx.fillText(shortName, posX + sCardW / 2, posY - 4);
-    ctx.shadowBlur = 0;
 
     ctx.restore();
   });
@@ -412,164 +400,225 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
 
   ctx.restore();
 
-  // 6. Bottom HUD (Servant Status Cards)
-  const bottomH = 95;
-  const bottomY = height - bottomH - 5;
-  const bottomW = width - 20;
-  const cardStartX = 10;
-
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
-  ctx.strokeStyle = '#334155';
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, cardStartX, bottomY, bottomW, bottomH, 6, true, true);
-
-  const numParticipants = Math.max(1, Math.min(4, party.length));
-  const attackBtnAreaWidth = 70;
-  const partyCardsTotalWidth = bottomW - attackBtnAreaWidth - 10;
-  const singleCardWidth = Math.floor(partyCardsTotalWidth / numParticipants) - 5;
-
-  for (let i = 0; i < numParticipants; i++) {
-    const p = party[i];
-    const cX = cardStartX + 6 + i * (singleCardWidth + 5);
-    const cY = bottomY + 6;
-    const cW = singleCardWidth;
-    const cH = bottomH - 12;
+  // 6. Bottom Authentic FGO Servant HUD (Matching Reference Image)
+  party.slice(0, 3).forEach((p, i) => {
+    const cX = startColX + i * (colW + colGap);
+    const colCenterX = cX + colW / 2;
 
     ctx.save();
-    const isActive = i === state.activeMasterIndex && !p.isDead;
 
-    ctx.fillStyle = p.isDead ? 'rgba(30, 41, 59, 0.5)' : isActive ? 'rgba(30, 41, 59, 0.95)' : 'rgba(15, 23, 42, 0.85)';
-    ctx.strokeStyle = p.isDead ? '#64748b' : isActive ? '#fbbf24' : '#475569';
-    ctx.lineWidth = isActive ? 1.5 : 1;
-    drawRoundRect(ctx, cX, cY, cW, cH, 4, true, true);
+    // a. 3 Skill Icons Row
+    const skillBoxSize = 22;
+    const skillGap = 4;
+    const totalSkillsW = 3 * skillBoxSize + 2 * skillGap;
+    const skillStartX = colCenterX - totalSkillsW / 2;
+    const skillY = 252;
 
-    const avatar = servantAvatars[i];
-    const thumbSize = 28;
-    const thumbX = cX + 4;
-    const thumbY = cY + 4;
-
-    ctx.save();
-    drawRoundRect(ctx, thumbX, thumbY, thumbSize, thumbSize, 3, false, false);
-    ctx.clip();
-    if (avatar) {
-      ctx.drawImage(avatar, thumbX, thumbY, thumbSize, thumbSize);
-    } else {
-      ctx.fillStyle = '#334155';
-      ctx.fillRect(thumbX, thumbY, thumbSize, thumbSize);
-    }
-    ctx.restore();
-
-    ctx.strokeStyle = '#d4af37';
-    ctx.lineWidth = 1;
-    drawRoundRect(ctx, thumbX, thumbY, thumbSize, thumbSize, 3, false, true);
-
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 6px sans-serif';
-    const sClass = p.servant.template?.servantClass || 'Saber';
-    ctx.fillText(`${sClass.toUpperCase()} Lv.${p.servant.level || 90}`, thumbX + thumbSize + 4, cY + 9);
-
-    ctx.fillStyle = p.isDead ? '#94a3b8' : '#ffffff';
-    ctx.font = 'bold 7px sans-serif';
-    const servName = (p.servant.nickname || p.servant.template?.name || 'Servant').slice(0, 11);
-    ctx.fillText(servName, thumbX + thumbSize + 4, cY + 18);
-
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '6px sans-serif';
-    ctx.fillText(`M: ${p.username.slice(0, 10)}`, thumbX + thumbSize + 4, cY + 26);
-
-    // Skill Badges
-    const skillStartX = thumbX + thumbSize + 4;
-    const skillY = cY + 28;
-    const skillBoxSize = 11;
+    const skillBgGradients = ['#9a3412', '#1e3a8a', '#854d0e']; // Buster / Arts / Quick
+    const skillSymbols = ['⚔️', '✨', '💥'];
 
     for (let s = 0; s < 3; s++) {
-      const sX = skillStartX + s * (skillBoxSize + 3);
+      const sX = skillStartX + s * (skillBoxSize + skillGap);
       const cd = p.skillCooldowns?.[s] || 0;
       const isAvailable = cd === 0 && !p.isDead;
 
-      ctx.fillStyle = isAvailable ? '#0284c7' : '#334155';
-      ctx.strokeStyle = isAvailable ? '#38bdf8' : '#64748b';
-      ctx.lineWidth = 0.5;
-      drawRoundRect(ctx, sX, skillY, skillBoxSize, skillBoxSize, 2, true, true);
+      ctx.save();
+      // Outer FGO Frame
+      ctx.fillStyle = isAvailable ? skillBgGradients[s] : '#1e293b';
+      ctx.fillRect(sX, skillY, skillBoxSize, skillBoxSize);
 
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 5px sans-serif';
+      ctx.strokeStyle = isAvailable ? '#f59e0b' : '#64748b';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(sX, skillY, skillBoxSize, skillBoxSize);
+
+      // Skill Symbol
+      ctx.font = '10px sans-serif';
       ctx.textAlign = 'center';
-      if (cd > 0) {
-        ctx.fillText(`${cd}T`, sX + skillBoxSize / 2, skillY + 8);
-      } else {
-        ctx.fillText(`S${s + 1}`, sX + skillBoxSize / 2, skillY + 8);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(skillSymbols[s], sX + skillBoxSize / 2, skillY + skillBoxSize / 2);
+
+      // Cooldown Clock Overlay
+      if (cd > 0 || p.isDead) {
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+        ctx.fillRect(sX, skillY, skillBoxSize, skillBoxSize);
+
+        ctx.fillStyle = '#ef4444';
+        ctx.font = 'bold 8px sans-serif';
+        ctx.fillText(`⏱️${cd}`, sX + skillBoxSize / 2, skillY + skillBoxSize / 2);
       }
+      ctx.restore();
     }
 
-    // HP Bar
-    const hpX = cX + 4;
-    const hpY = cY + 43;
-    const hpW = cW - 8;
-    const hpH = 9;
+    // b. Authentic FGO HP Bar
+    const barW = colW - 8;
+    const barX = colCenterX - barW / 2;
+    const hpY = 279;
+    const hpH = 13;
 
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 0.5;
-    drawRoundRect(ctx, hpX, hpY, hpW, hpH, 2, true, true);
+    ctx.save();
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+    ctx.fillRect(barX, hpY, barW, hpH);
 
-    const pHpRatio = Math.max(0, Math.min(1, p.currentHp / p.maxHp));
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(barX, hpY, barW, hpH);
+
+    // End Bracket Accent Trims
+    ctx.fillStyle = '#d1d5db';
+    ctx.fillRect(barX - 2, hpY, 2, hpH);
+    ctx.fillRect(barX + barW, hpY, 2, hpH);
+
+    const pHpRatio = p.isDead ? 0 : Math.max(0, Math.min(1, p.currentHp / p.maxHp));
     if (pHpRatio > 0) {
-      const pGrad = ctx.createLinearGradient(hpX, 0, hpX + hpW * pHpRatio, 0);
-      pGrad.addColorStop(0, '#10b981');
-      pGrad.addColorStop(1, '#059669');
+      const pGrad = ctx.createLinearGradient(barX, 0, barX + barW * pHpRatio, 0);
+      pGrad.addColorStop(0, '#0284c7');
+      pGrad.addColorStop(1, '#38bdf8');
       ctx.fillStyle = pGrad;
-      drawRoundRect(ctx, hpX + 0.5, hpY + 0.5, Math.max(1, (hpW - 1) * pHpRatio), hpH - 1, 1, true, false);
+      ctx.fillRect(barX + 1, hpY + 1, Math.max(1, (barW - 2) * pHpRatio), hpH - 2);
     }
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 5px sans-serif';
+    ctx.font = 'bold 8px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(`HP`, hpX + 2, hpY + 7);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('HP', barX + 4, hpY + hpH / 2);
+
     ctx.textAlign = 'right';
-    ctx.fillText(
-      p.isDead ? 'FALLEN' : `${Math.round(p.currentHp)}/${p.maxHp}`,
-      hpX + hpW - 2,
-      hpY + 7
-    );
+    ctx.font = 'bold 8px sans-serif';
+    const hpText = p.isDead ? 'FALLEN' : Math.round(p.currentHp).toLocaleString();
+    ctx.fillText(hpText, barX + barW - 4, hpY + hpH / 2);
+    ctx.restore();
 
-    // NP Bar
-    const npY = hpY + 11;
-    const npH = 9;
+    // c. Authentic FGO NP Bar
+    const npY = 295;
+    const npH = 11;
 
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-    ctx.strokeStyle = '#475569';
-    ctx.lineWidth = 0.5;
-    drawRoundRect(ctx, hpX, npY, hpW, npH, 2, true, true);
+    ctx.save();
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+    ctx.fillRect(barX, npY, barW, npH);
 
-    const pNpRatio = Math.max(0, Math.min(1, (p.npGauge || 0) / 100));
+    ctx.strokeStyle = '#64748b';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(barX, npY, barW, npH);
+
+    ctx.fillStyle = '#9ca3af';
+    ctx.fillRect(barX - 2, npY, 2, npH);
+    ctx.fillRect(barX + barW, npY, 2, npH);
+
+    const pNpRatio = p.isDead ? 0 : Math.max(0, Math.min(1, (p.npGauge || 0) / 100));
     if (pNpRatio > 0) {
-      const npGrad = ctx.createLinearGradient(hpX, 0, hpX + hpW * pNpRatio, 0);
+      const npGrad = ctx.createLinearGradient(barX, 0, barX + barW * pNpRatio, 0);
       if (p.npGauge >= 100) {
         npGrad.addColorStop(0, '#fbbf24');
         npGrad.addColorStop(1, '#ef4444');
       } else {
-        npGrad.addColorStop(0, '#38bdf8');
-        npGrad.addColorStop(1, '#2563eb');
+        npGrad.addColorStop(0, '#2563eb');
+        npGrad.addColorStop(1, '#38bdf8');
       }
       ctx.fillStyle = npGrad;
-      drawRoundRect(ctx, hpX + 0.5, npY + 0.5, Math.max(1, (hpW - 1) * pNpRatio), npH - 1, 1, true, false);
+      ctx.fillRect(barX + 1, npY + 1, Math.max(1, (barW - 2) * pNpRatio), npH - 2);
     }
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 5px sans-serif';
+    ctx.font = 'bold 8px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(`NP`, hpX + 2, npY + 7);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('NP', barX + 4, npY + npH / 2);
+
     ctx.textAlign = 'right';
-    ctx.fillText(
-      p.npGauge >= 100 ? '100% READY' : `${Math.round(p.npGauge || 0)}%`,
-      hpX + hpW - 2,
-      npY + 7
-    );
+    ctx.font = 'bold 8px sans-serif';
+    const npText = p.isDead ? '0%' : `${Math.round(p.npGauge || 0)}%`;
+    ctx.fillText(npText, barX + barW - 4, npY + npH / 2);
+    ctx.restore();
+
+    // d. Bottom Class Emblem Diamond & Servant Name Ribbon
+    const ribbonY = 311;
+    const classEmblemX = barX + 10;
+    const classEmblemY = ribbonY + 12;
+    const size = 18;
+
+    // Diamond Class Emblem Badge
+    ctx.save();
+    ctx.translate(classEmblemX, classEmblemY);
+    ctx.beginPath();
+    ctx.moveTo(0, -size / 2);
+    ctx.lineTo(size / 2, 0);
+    ctx.lineTo(0, size / 2);
+    ctx.lineTo(-size / 2, 0);
+    ctx.closePath();
+
+    const goldGrad = ctx.createLinearGradient(-size / 2, -size / 2, size / 2, size / 2);
+    goldGrad.addColorStop(0, '#fef08a');
+    goldGrad.addColorStop(0.5, '#f59e0b');
+    goldGrad.addColorStop(1, '#78350f');
+    ctx.fillStyle = goldGrad;
+    ctx.fill();
+    ctx.strokeStyle = '#fef08a';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const innerSize = size - 4;
+    ctx.beginPath();
+    ctx.moveTo(0, -innerSize / 2);
+    ctx.lineTo(innerSize / 2, 0);
+    ctx.lineTo(0, innerSize / 2);
+    ctx.lineTo(-innerSize / 2, 0);
+    ctx.closePath();
+    ctx.fillStyle = '#0f172a';
+    ctx.fill();
+
+    const sClass = p.servant.template?.servantClass || 'Saber';
+    const classSymbols: Record<string, string> = {
+      Saber: '⚔️',
+      Archer: '🏹',
+      Lancer: '🔱',
+      Rider: '🏇',
+      Caster: '🔮',
+      Assassin: '🗡️',
+      Berserker: '💥',
+      Ruler: '⚖️',
+      Avenger: '🔥',
+      Pretender: '🎭',
+      MoonCancer: '🌙',
+      AlterEgo: '⚡',
+      Foreigner: '🌌',
+      Shielder: '🛡️'
+    };
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(classSymbols[sClass] || '⚔️', 0, 0.5);
+    ctx.restore();
+
+    // Class Name & Level + Servant Name
+    const nameX = classEmblemX + 13;
+    const servName = p.servant.nickname || p.servant.template?.name || 'Servant';
+
+    ctx.save();
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+
+    // Line 1: AVENGER Lv.102
+    ctx.font = 'bold 8px sans-serif';
+    ctx.fillStyle = '#fbbf24';
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 2;
+    const classTitle = `${sClass.toUpperCase()}`;
+    ctx.fillText(classTitle, nameX, ribbonY + 2);
+
+    const classWidth = ctx.measureText(classTitle).width;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(` Lv.${p.servant.level || 90}`, nameX + classWidth, ribbonY + 2);
+
+    // Line 2: Jeanne Alter / Oberon / Altria
+    ctx.font = 'bold 9px sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(servName.slice(0, 14), nameX, ribbonY + 12);
+    ctx.shadowBlur = 0;
+    ctx.restore();
 
     ctx.restore();
-  }
+  });
 
   // 7. Circular ATTACK Button Sphere
   ctx.save();
