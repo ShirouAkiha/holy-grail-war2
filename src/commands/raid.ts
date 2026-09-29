@@ -452,7 +452,7 @@ async function runRaidBattle(
 
   const buildBattleButtons = (allDisabled = false) => {
     const active = currentActiveParticipant;
-    const shouldDisableAll = allDisabled || isProcessingTurn;
+    const shouldDisableAll = allDisabled;
     if (!active.currentHand || active.currentHand.length === 0) {
       refreshParticipantHand(active);
     }
