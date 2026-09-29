@@ -768,38 +768,35 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     drawRoundRect(ctx, slotX, panelTopY, panelW, panelH, { tl: 10, tr: 10, bl: 0, br: 0 }, false, false);
     ctx.clip();
 
-    // Render Servant Bust Image using Object-fit: cover
+    // Translucent glass base behind the sprite
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
+    ctx.fillRect(slotX, panelTopY, panelW, panelH);
+
+    // Render Servant Sprite / Character Art (scaled and positioned naturally in the slot)
     if (avatar) {
       const imgW = avatar.width || panelW;
       const imgH = avatar.height || panelH;
-      const imgRatio = imgW / imgH;
-      const targetRatio = panelW / panelH;
-      let sx = 0, sy = 0, sw = imgW, sh = imgH;
-      if (imgRatio > targetRatio) {
-        sw = imgH * targetRatio;
-        sx = (imgW - sw) / 2;
-      } else {
-        sh = imgW / targetRatio;
-        sy = (imgH - sh) / 2;
-      }
-      ctx.drawImage(avatar, sx, sy, sw, sh, slotX, panelTopY, panelW, panelH);
-    } else {
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(slotX, panelTopY, panelW, panelH);
+      // Scale to comfortably fit the panel with head and upper body visible
+      const scale = Math.max(panelW / imgW, (panelH * 0.95) / imgH);
+      const drawW = imgW * scale;
+      const drawH = imgH * scale;
+      const drawX = slotX + (panelW - drawW) / 2;
+      const drawY = panelTopY + 8;
+      ctx.drawImage(avatar, 0, 0, imgW, imgH, drawX, drawY, drawW, drawH);
     }
 
-    // Authentic FGO Vertical Gradient: Transparent at head/shoulders -> dark semi-transparent black at bottom
+    // Authentic FGO Vertical Gradient: Translucent at head -> dark black at bottom status gauges
     const fadeGrad = ctx.createLinearGradient(0, panelTopY, 0, height);
-    fadeGrad.addColorStop(0, 'rgba(15, 23, 42, 0)');
-    fadeGrad.addColorStop(0.30, 'rgba(15, 23, 42, 0.10)');
-    fadeGrad.addColorStop(0.55, 'rgba(15, 23, 42, 0.82)');
+    fadeGrad.addColorStop(0, 'rgba(15, 23, 42, 0.10)');
+    fadeGrad.addColorStop(0.35, 'rgba(15, 23, 42, 0.25)');
+    fadeGrad.addColorStop(0.60, 'rgba(15, 23, 42, 0.88)');
     fadeGrad.addColorStop(1, 'rgba(5, 8, 18, 0.98)');
     ctx.fillStyle = fadeGrad;
     ctx.fillRect(slotX, panelTopY, panelW, panelH);
 
     // If Servant is dead, apply subdued desaturation overlay
     if (p.isDead) {
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
       ctx.fillRect(slotX, panelTopY, panelW, panelH);
     }
 
@@ -1021,7 +1018,7 @@ export async function renderRaidBattlefield(state: RaidBattleState, _animated = 
     loadImage(state.boss.avatarUrl),
     loadImage(bossClassIconUrl),
     ...state.participants.map(p => {
-      const art = p.servant.customArtworkUrl || p.servant.template?.avatarUrl;
+      const art = p.servant.template?.spriteUrl || p.servant.customArtworkUrl || p.servant.template?.avatarUrl;
       return art ? loadImage(art) : Promise.resolve(null);
     }),
     ...participantClassIconUrls.map(url => loadImage(url))
