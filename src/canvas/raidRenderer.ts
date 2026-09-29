@@ -907,22 +907,25 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     ctx.fillStyle = '#ffffff';
     ctx.fillText(` Lv.${p.servant.level || 90}`, nameX + classWidth, footerY + 14);
 
-    // Line 2: Servant Name + Glowing Golden Crit Star Badge
+    // Line 2: Servant Name + Right-Aligned Prominent Crit Star Badge
     const stars = p.critStars || 0;
     const starStr = `${stars}`;
 
-    // Measure Star Badge dimensions
-    ctx.font = 'bold 13px sans-serif';
+    // Measure Larger Prominent Star Badge dimensions
+    ctx.font = 'bold 15px sans-serif';
     const numWidth = ctx.measureText(starStr).width;
-    const badgePad = 7;
-    const starIconSize = 8;
-    const badgeW = starIconSize * 2 + numWidth + badgePad * 2 + 3;
-    const badgeH = 22;
-    const badgeY = footerY + 28;
+    const badgePad = 9;
+    const starIconSize = 10.5;
+    const badgeW = Math.max(56, starIconSize * 2 + numWidth + badgePad * 2 + 6);
+    const badgeH = 26;
+    const badgeY = footerY + 25;
 
-    // Available horizontal space for the name
-    const maxAvailableNameW = (barX + barW) - nameX - badgeW - 10;
-    ctx.font = 'bold 14px sans-serif';
+    // Anchor badge to the far right side of the status bar/footer
+    const badgeX = barX + barW - badgeW - 2;
+
+    // Available horizontal space for the name (from nameX to badgeX - 8)
+    const maxAvailableNameW = badgeX - nameX - 8;
+    ctx.font = 'bold 15px sans-serif';
     let servName = rawServName;
     while (ctx.measureText(servName).width > maxAvailableNameW && servName.length > 3) {
       servName = servName.slice(0, -1);
@@ -931,39 +934,36 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
       servName = `${servName.trim()}…`;
     }
 
-    // Draw Servant Name
+    // Draw Servant Name cleanly on the left
     ctx.fillStyle = '#ffffff';
     ctx.shadowColor = '#000000';
     ctx.shadowBlur = 4;
-    ctx.fillText(servName, nameX, footerY + 32);
+    ctx.fillText(servName, nameX, footerY + 31);
 
-    const actualNameW = ctx.measureText(servName).width;
-    const badgeX = Math.min(nameX + actualNameW + 8, barX + barW - badgeW);
-
-    // Draw Sleek, High-Contrast Golden Crit Star Badge
+    // Draw Prominent, High-Contrast Golden Crit Star Badge on the Right Side
     ctx.save();
-    drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 6, true, true);
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+    drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 7, true, true);
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
     ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 1.4;
+    ctx.lineWidth = 1.6;
     ctx.shadowColor = '#f59e0b';
-    ctx.shadowBlur = 6;
+    ctx.shadowBlur = 8;
     ctx.fill();
     ctx.stroke();
 
-    // Draw Authentic FGO Radiant Vector Star
+    // Draw Larger Radiant FGO Vector Star
     const starCx = badgeX + badgePad + starIconSize;
     const starCy = badgeY + badgeH / 2;
     drawFGOCritStar(ctx, starCx, starCy, starIconSize);
 
-    // Draw Bright Yellow Number
-    ctx.font = 'bold 13px sans-serif';
+    // Draw Bright Bold Star Count Number
+    ctx.font = 'bold 15px sans-serif';
     ctx.fillStyle = '#fef08a';
     ctx.shadowColor = '#000000';
     ctx.shadowBlur = 3;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(starStr, starCx + starIconSize + 5, starCy + 0.5);
+    ctx.fillText(starStr, starCx + starIconSize + 6, starCy + 0.5);
     ctx.restore();
 
     ctx.shadowBlur = 0;
