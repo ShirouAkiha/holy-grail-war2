@@ -647,28 +647,34 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
 
   // ==========================================
   // LAYER 4: Bottom Player HUD (Anchored Y: 420 to 720)
-  // Balanced distribution for 1, 2, or 3 Servants
+  // Balanced distribution for 1, 2, 3, or 4 Servants
   // ==========================================
   const party = state.participants;
-  const numPart = Math.max(1, Math.min(3, party.length));
-  const panelW = 310;
+  const numPart = Math.max(1, Math.min(4, party.length));
   const panelH = 300;
   const panelTopY = 420;
 
-  // Calculate balanced X positions for party cards
+  // Calculate balanced X positions and dynamic panel width
+  let panelW = 285;
   let slotXPositions: number[] = [];
+
   if (numPart === 1) {
-    // Single servant: beautifully positioned on bottom left-center (X: 120) or centered (X: 380)
-    slotXPositions = [120];
+    panelW = 320;
+    slotXPositions = [480]; // Centered on canvas
   } else if (numPart === 2) {
-    slotXPositions = [100, 480];
+    panelW = 320;
+    slotXPositions = [280, 680];
+  } else if (numPart === 3) {
+    panelW = 310;
+    slotXPositions = [110, 485, 860];
   } else {
-    // 3 Servants: evenly distributed across the bottom
-    slotXPositions = [50, 390, 730];
+    // 4 Servants: perfectly balanced across 1280px canvas (40px margins, 20px gaps)
+    panelW = 285;
+    slotXPositions = [40, 345, 650, 955];
   }
 
-  party.slice(0, 3).forEach((p, i) => {
-    const slotX = slotXPositions[i] || (50 + i * 340);
+  party.slice(0, 4).forEach((p, i) => {
+    const slotX = slotXPositions[i] || (40 + i * (panelW + 20));
     const avatar = servantAvatars[i];
     const isTurnActive = i === state.activeMasterIndex && !p.isDead;
 
@@ -732,9 +738,9 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
       drawRoundRect(ctx, slotX, panelTopY, panelW, panelH, { tl: 10, tr: 10, bl: 0, br: 0 }, false, true);
     }
 
-    // 2. Skill Icons Row (Position: Y: 526, size: 50x50px, gap: 8px)
-    const skillBoxSize = 50;
-    const skillGap = 10;
+    // 2. Skill Icons Row (Position: Y: 526)
+    const skillBoxSize = numPart >= 4 ? 46 : 50;
+    const skillGap = numPart >= 4 ? 8 : 10;
     const totalSkillsW = 3 * skillBoxSize + 2 * skillGap;
     const skillStartX = slotX + (panelW - totalSkillsW) / 2;
     const skillY = 526;
@@ -746,8 +752,8 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     }
 
     // 3. Status Bars & Labels (Bottom anchor, Y: 592 to 705)
-    const barW = panelW - 24;
-    const barX = slotX + 12;
+    const barW = panelW - 20;
+    const barX = slotX + 10;
 
     // HP Bar (Y: 592, Height: 18px)
     const hpY = 592;
@@ -807,7 +813,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
 
     if (classIconImg) {
       // Authentic FGO Golden Class Crest Icon provided by Master
-      const iconSize = 44;
+      const iconSize = 42;
       ctx.drawImage(classIconImg, emblemCx - iconSize / 2, emblemCy - iconSize / 2, iconSize, iconSize);
     } else {
       // Fallback Diamond Class Emblem Badge
@@ -828,15 +834,15 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     }
 
     // Class Name, Level & Servant Name
-    const nameX = emblemCx + 28;
-    const servName = p.servant.nickname || p.servant.template?.name || 'Servant';
+    const nameX = emblemCx + 26;
+    const rawServName = p.servant.nickname || p.servant.template?.name || 'Servant';
 
     ctx.save();
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
 
     // Line 1: Class + Level
-    ctx.font = 'bold 13px sans-serif';
+    ctx.font = 'bold 12px sans-serif';
     ctx.fillStyle = '#fbbf24';
     ctx.shadowColor = '#000000';
     ctx.shadowBlur = 3;
@@ -847,41 +853,31 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     ctx.fillStyle = '#ffffff';
     ctx.fillText(` Lv.${p.servant.level || 90}`, nameX + classWidth, footerY + 14);
 
-    // Line 2: Servant Name
-    ctx.font = 'bold 15px sans-serif';
+    // Line 2: Servant Name + Individual Crit Stars Counter
+    const maxChars = numPart >= 4 ? 11 : 14;
+    const servName = rawServName.length > maxChars ? `${rawServName.slice(0, maxChars)}…` : rawServName;
+
+    ctx.font = 'bold 14px sans-serif';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(servName.slice(0, 18), nameX, footerY + 32);
+    ctx.fillText(servName, nameX, footerY + 32);
+
+    const nameWidth = ctx.measureText(servName).width;
+
+    // Glowing Golden Individual Crit Stars beside Servant Name
+    const stars = p.critStars || 0;
+    ctx.save();
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillStyle = '#fbbf24';
+    ctx.shadowColor = '#f59e0b';
+    ctx.shadowBlur = 5;
+    ctx.fillText(`✦ ${stars}`, nameX + nameWidth + 8, footerY + 32);
+    ctx.restore();
+
     ctx.shadowBlur = 0;
     ctx.restore();
 
     ctx.restore();
   });
-
-  // Right Side Critical Star Counter (matching FGO battle HUD)
-  const starX = 1060;
-  const starY = 660;
-  ctx.save();
-  ctx.font = '32px sans-serif';
-  ctx.fillStyle = '#fbbf24';
-  ctx.textAlign = 'left';
-  ctx.fillText('✦', starX, starY);
-
-  ctx.font = 'bold 18px sans-serif';
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText('x', starX + 36, starY - 5);
-
-  ctx.font = 'italic bold 32px sans-serif';
-  ctx.fillStyle = '#ffffff';
-  const totalStars = party.reduce((sum, p) => sum + (p.critStars || 0), 0);
-  ctx.fillText(`${totalStars}`, starX + 54, starY);
-
-  ctx.font = 'bold 11px sans-serif';
-  ctx.fillStyle = '#fbbf24';
-  ctx.fillText('CRITICAL', starX + 2, starY + 22);
-
-  ctx.fillStyle = '#cbd5e1';
-  ctx.fillText('TOTAL', starX + 68, starY + 22);
-  ctx.restore();
 
   return canvas;
 }
