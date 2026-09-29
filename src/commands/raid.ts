@@ -377,6 +377,7 @@ async function runRaidBattle(
   let pendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = [];
   let pendingIndices: number[] = [];
   let currentActiveParticipant = battleState.participants[battleState.activeMasterIndex];
+  let isProcessingTurn = false;
 
   // Active Noble Phantasm GIF message reference & auto-delete timer
   let activeNpGifMessage: any = null;
@@ -451,6 +452,7 @@ async function runRaidBattle(
 
   const buildBattleButtons = (allDisabled = false) => {
     const active = currentActiveParticipant;
+    const shouldDisableAll = allDisabled || isProcessingTurn;
     if (!active.currentHand || active.currentHand.length === 0) {
       refreshParticipantHand(active);
     }
@@ -498,7 +500,7 @@ async function runRaidBattle(
             .setLabel(`${cardType} (${critPct}%)`)
             .setEmoji(emoji)
             .setStyle(style)
-            .setDisabled(allDisabled || pendingCards.length >= 3 || active.isDead)
+            .setDisabled(shouldDisableAll || pendingCards.length >= 3 || active.isDead)
         );
       }
     });
@@ -516,31 +518,31 @@ async function runRaidBattle(
         .setLabel(isNpReady ? `NP [${npType}] (100%)` : `NP (${Math.round(active.npGauge)}%)`)
         .setEmoji(isNpReady ? '💥' : (npType === 'Buster' ? '🔴' : npType === 'Arts' ? '🔵' : '🟢'))
         .setStyle(isNpReady ? ButtonStyle.Danger : ButtonStyle.Secondary)
-        .setDisabled(allDisabled || !isNpReady || isNpSelected || pendingCards.length >= 3 || active.isDead),
+        .setDisabled(shouldDisableAll || !isNpReady || isNpSelected || pendingCards.length >= 3 || active.isDead),
       new ButtonBuilder()
         .setCustomId('raid_reset_cards')
         .setLabel('Clear')
         .setEmoji('🔄')
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(allDisabled || !hasPending),
+        .setDisabled(shouldDisableAll || !hasPending),
       new ButtonBuilder()
         .setCustomId('raid_command_seal')
         .setLabel(`Seal (${masterSeals})`)
         .setEmoji('🔱')
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(allDisabled || masterSeals <= 0 || active.isDead),
+        .setDisabled(shouldDisableAll || masterSeals <= 0 || active.isDead),
       new ButtonBuilder()
         .setCustomId('raid_flee')
         .setLabel('Run')
         .setEmoji('🏃')
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(allDisabled),
+        .setDisabled(shouldDisableAll),
       new ButtonBuilder()
         .setCustomId('raid_status')
         .setLabel('Status')
         .setEmoji('📊')
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(allDisabled)
+        .setDisabled(shouldDisableAll)
     );
 
     // Row 3: 3 Active Skills (Exact layout from normal battles)
@@ -557,7 +559,7 @@ async function runRaidBattle(
         .setCustomId('raid_skill_0')
         .setLabel(cd1 > 0 ? `S1: ${s1Name} (${cd1}T)` : `✨ S1: ${s1Name}`)
         .setStyle(cd1 > 0 ? ButtonStyle.Secondary : ButtonStyle.Primary)
-        .setDisabled(allDisabled || cd1 > 0 || !s1 || active.isDead)
+        .setDisabled(shouldDisableAll || cd1 > 0 || !s1 || active.isDead)
     );
 
     // Skill 2
@@ -569,7 +571,7 @@ async function runRaidBattle(
         .setCustomId('raid_skill_1')
         .setLabel(cd2 > 0 ? `S2: ${s2Name} (${cd2}T)` : `🛡️ S2: ${s2Name}`)
         .setStyle(cd2 > 0 ? ButtonStyle.Secondary : ButtonStyle.Primary)
-        .setDisabled(allDisabled || cd2 > 0 || !s2 || active.isDead)
+        .setDisabled(shouldDisableAll || cd2 > 0 || !s2 || active.isDead)
     );
 
     // Skill 3 (Unlocked at Bond Level 5)
@@ -582,7 +584,7 @@ async function runRaidBattle(
         .setCustomId('raid_skill_2')
         .setLabel(!isS3Unlocked ? '🔒 S3 (Bond Lv 5)' : cd3 > 0 ? `S3: ${s3Name} (${cd3}T)` : `🌟 S3: ${s3Name}`)
         .setStyle(!isS3Unlocked || cd3 > 0 ? ButtonStyle.Secondary : ButtonStyle.Success)
-        .setDisabled(allDisabled || !isS3Unlocked || cd3 > 0 || !s3 || active.isDead)
+        .setDisabled(shouldDisableAll || !isS3Unlocked || cd3 > 0 || !s3 || active.isDead)
     );
 
     return [row1, row2, row3];
@@ -750,6 +752,15 @@ async function runRaidBattle(
   });
 
   collector.on('collect', async (i: any) => {
+    if (isProcessingTurn && i.customId !== 'raid_status') {
+      try {
+        if (!i.replied && !i.deferred) {
+          await i.deferUpdate().catch(() => {});
+        }
+      } catch {}
+      return;
+    }
+
     const safeUpdate = async (options: any) => {
       try {
         if (!i.replied && !i.deferred) {
@@ -758,11 +769,15 @@ async function runRaidBattle(
           await i.editReply(options);
         }
       } catch (err: any) {
-        if (err?.code === 10062 || err?.message?.includes('Unknown interaction')) {
-          console.warn('[raid] Handled 10062 interaction expiration gracefully.');
-        } else {
-          console.warn('[raid] safeUpdate warning:', err);
+        if (
+          err?.code === 10062 ||
+          err?.code === 40060 ||
+          err?.message?.includes('Unknown interaction') ||
+          err?.message?.includes('already been acknowledged')
+        ) {
+          return;
         }
+        console.warn('[raid] safeUpdate warning:', err);
       }
     };
 
@@ -808,7 +823,9 @@ async function runRaidBattle(
     } else if (i.customId.startsWith('raid_skill_')) {
       const sIdx = parseInt(i.customId.replace('raid_skill_', ''), 10);
       if (active.skillCooldowns[sIdx] === 0) {
-        const skillObj = active.servant.template?.skills?.[sIdx];
+        isProcessingTurn = true;
+        try {
+          const skillObj = active.servant.template?.skills?.[sIdx];
         const cd = skillObj?.cooldown || 5;
         active.skillCooldowns[sIdx] = cd;
         active.activeBuffs = active.activeBuffs || [];
@@ -1010,6 +1027,9 @@ async function runRaidBattle(
           attachments: [],
           components: buildBattleButtons()
         });
+        } finally {
+          isProcessingTurn = false;
+        }
         return;
       }
     } else if (i.customId === 'raid_command_seal') {
@@ -1072,214 +1092,228 @@ async function runRaidBattle(
     }
 
     // 3 Cards selected -> Immediately update the message so the user sees Card 3 registered and all buttons disabled!
-    await safeUpdate({
-      embeds: [buildBattleEmbed(currentCanvasFileName)],
-      components: buildBattleButtons(true)
-    });
+    isProcessingTurn = true;
+    try {
+      await safeUpdate({
+        embeds: [buildBattleEmbed(currentCanvasFileName)],
+        components: buildBattleButtons(true)
+      });
 
-    const usedNp = pendingCards.includes('NP');
-    let pendingNpToDispatch: { servant: any; userId: string } | null = null;
-    if (usedNp) {
-      active.npGauge = 0;
-      pendingNpToDispatch = { servant: active.servant, userId: active.userId };
-    }
-
-    let totalTurnDmg = 0;
-    let starsGenerated = 0;
-    let npGained = 0;
-
-    const sAtk = active.servant;
-    const tAtk = sAtk.template || {};
-    const allocAtk = sAtk.allocatedStats || {};
-    const baseStatsAtk = tAtk.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
-    const totalStr = (baseStatsAtk.strength || 10) + (allocAtk.strength || 0);
-    const ceAtk = sAtk.equippedCe?.atkBonus || 0;
-    const baseAtk = Math.round((tAtk.baseAtk || 10000) + totalStr * 80 + ceAtk);
-    const atkBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'atk_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
-
-    const isBossThreat = (boss.traits || []).some(t => ['threat_to_humanity', 'beast', 'demonic'].includes(t.toLowerCase()));
-    const antiThreatBuff = (active.activeBuffs?.filter(b => b.type === 'anti_threat').reduce((acc, b) => acc + b.value, 0) || 0) / 100;
-    const specialAtkMult = isBossThreat ? (1 + antiThreatBuff) : 1.0;
-
-    const bossDefDown = (battleState.bossBuffs?.filter(b => b.type === 'def_down').reduce((acc, b) => acc + b.value, 0) || 0) / 100;
-    const bossDefUp = (battleState.bossBuffs?.filter(b => b.type === 'def_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100;
-    const bossDefFactor = Math.max(0.2, 1 + bossDefDown - bossDefUp);
-
-    const starsAvailableForCrits = active.critStars || 0;
-    const isQuickFirstLead = pendingCards[0] === 'Quick';
-    let totalCritsLanded = 0;
-    let npTriggeredAntiThreat = false;
-    let npDebuffNotice = '';
-
-    pendingCards.forEach((card, cIdx) => {
-      const stepMult = cIdx === 0 ? 1.0 : cIdx === 1 ? 1.2 : 1.4;
-
-      // Calculate critical hit rate based on current star pool
-      const baseCritMult = card === 'Buster' ? 2.0 : card === 'Arts' ? 1.8 : 2.2;
-      let critPct = Math.round(starsAvailableForCrits * baseCritMult);
-      if (isQuickFirstLead && cIdx > 0) critPct += 20;
-      critPct = Math.min(100, Math.max(0, critPct));
-
-      const isCrit = card !== 'NP' && (Math.random() * 100 < critPct);
-      if (isCrit) totalCritsLanded++;
-
-      const critDmgMult = isCrit ? 2.0 : 1.0;
-      const critNpBonus = isCrit ? 1.5 : 1.0;
-      const critStarBonus = isCrit ? 1.4 : 1.0;
-
-      if (card === 'Buster') {
-        totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * (0.9 + Math.random() * 0.2));
-        starsGenerated += Math.round(3 * critStarBonus);
-        npGained += Math.round(5 * critNpBonus);
-      } else if (card === 'Arts') {
-        totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * (0.9 + Math.random() * 0.2));
-        npGained += Math.round(25 * critNpBonus);
-        starsGenerated += Math.round(2 * critStarBonus);
-      } else if (card === 'Quick') {
-        totalTurnDmg += Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * (0.9 + Math.random() * 0.2));
-        starsGenerated += Math.round(12 * critStarBonus);
-        npGained += Math.round(10 * critNpBonus);
-      } else if (card === 'NP') {
-        const npMultiplier = 5.5;
-        const npDesc = active.servant.template?.noblePhantasm?.description || '';
-        const npName = active.servant.template?.noblePhantasm?.name || 'Noble Phantasm';
-        const npHasAntiThreat = /Threat to Humanity|Beast|Divine|Foreigner/i.test(npDesc);
-        const npSpecialMult = (isBossThreat && npHasAntiThreat) ? 1.5 : 1.0;
-        if (isBossThreat && npHasAntiThreat) npTriggeredAntiThreat = true;
-
-        // Apply secondary debuffs from Noble Phantasm to Barbatos
-        if (/def.*down|lower.*def|reduce.*def|decrease.*def/i.test(npDesc)) {
-          battleState.bossBuffs.push({
-            name: `${npName} (DEF Down)`,
-            type: 'def_down',
-            value: 30,
-            remainingTurns: 3
-          });
-          npDebuffNotice += ' 🔻 [-30% DEF Down]';
-        }
-        if (/curse|burn|poison/i.test(npDesc)) {
-          battleState.bossBuffs.push({
-            name: `${npName} (Affliction)`,
-            type: 'curse',
-            value: 6000,
-            remainingTurns: 3
-          });
-          npDebuffNotice += ' 🔥 [Curse/Burn]';
-        }
-        if (/stun|paraly|charm/i.test(npDesc)) {
-          battleState.bossBuffs.push({
-            name: `${npName} (Stun)`,
-            type: 'stun',
-            value: 100,
-            remainingTurns: 1
-          });
-          npDebuffNotice += ' ⚡ [Stun]';
-        }
-        if (/drain|seal/i.test(npDesc)) {
-          battleState.bossCharge = Math.max(0, battleState.bossCharge - 1);
-          battleState.bossBuffs.push({
-            name: `${npName} (NP Drain)`,
-            type: 'np_seal',
-            value: 1,
-            remainingTurns: 1
-          });
-          npDebuffNotice += ' 🔒 [NP Drained]';
-        }
-
-        totalTurnDmg += Math.round(baseAtk * npMultiplier * atkBuffMult * specialAtkMult * bossDefFactor * npSpecialMult * (0.95 + Math.random() * 0.1));
-        starsGenerated += 10;
-        npGained += 15;
+      const usedNp = pendingCards.includes('NP');
+      let pendingNpToDispatch: { servant: any; userId: string } | null = null;
+      if (usedNp) {
+        active.npGauge = 0;
+        pendingNpToDispatch = { servant: active.servant, userId: active.userId };
       }
-    });
 
-    battleState.bossCurrentHp = Math.max(0, battleState.bossCurrentHp - totalTurnDmg);
-    active.npGauge = Math.min(100, (active.npGauge || 0) + npGained);
-    // Consumes existing stars used during the attack; new star pool is based on stars generated this turn!
-    active.critStars = Math.min(50, Math.round(starsGenerated));
+      let totalTurnDmg = 0;
+      let starsGenerated = 0;
+      let npGained = 0;
 
-    const servName = active.servant.nickname || active.servant.template?.name || 'Servant';
-    let traitLog = '';
-    if (totalCritsLanded > 0) {
-      traitLog += ` 💥 **[${totalCritsLanded} CRIT${totalCritsLanded > 1 ? 'S' : ''} (2.0x DMG)!]**`;
-    }
-    if (npTriggeredAntiThreat) {
-      traitLog += ' 👑 **[Anti-Calamity Protocol: +50% Special DMG vs Threat to Humanity!]**';
-    } else if (antiThreatBuff > 0) {
-      traitLog += ' ⚡ **[Calamity-Breaker: +30% Special ATK vs Threat to Humanity!]**';
-    }
-    if (bossDefDown > 0) {
-      traitLog += ` 🔻 **[DEF Down: +${Math.round(bossDefDown * 100)}% DMG]**`;
-    }
-    if (npDebuffNotice) {
-      traitLog += npDebuffNotice;
-    }
+      const sAtk = active.servant;
+      const tAtk = sAtk.template || {};
+      const allocAtk = sAtk.allocatedStats || {};
+      const baseStatsAtk = tAtk.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
+      const totalStr = (baseStatsAtk.strength || 10) + (allocAtk.strength || 0);
+      const ceAtk = sAtk.equippedCe?.atkBonus || 0;
+      const baseAtk = Math.round((tAtk.baseAtk || 10000) + totalStr * 80 + ceAtk);
+      const atkBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'atk_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
 
-    const playerAttackLog = `⚔️ **${servName}** dealt **${totalTurnDmg.toLocaleString()} DMG** to Barbatos! (+${npGained}% NP, +${starsGenerated} Stars)${traitLog}`;
-    battleState.lastPlayerAttackLog = playerAttackLog;
-    battleState.recentLogs.push(playerAttackLog);
-    while (battleState.recentLogs.length > 8) battleState.recentLogs.shift();
+      const isBossThreat = (boss.traits || []).some(t => ['threat_to_humanity', 'beast', 'demonic'].includes(t.toLowerCase()));
+      const antiThreatBuff = (active.activeBuffs?.filter(b => b.type === 'anti_threat').reduce((acc, b) => acc + b.value, 0) || 0) / 100;
+      const specialAtkMult = isBossThreat ? (1 + antiThreatBuff) : 1.0;
 
-    active.totalDamageDealt = (active.totalDamageDealt || 0) + totalTurnDmg;
-    battleState.fullCombatLog = battleState.fullCombatLog || [];
-    battleState.fullCombatLog.push(
-      `⚔️ **[Round ${battleState.round}]** **${servName}** (<@${active.userId}>) struck with \`[${pendingCards.join(' ➔ ')}]\` dealing **${totalTurnDmg.toLocaleString()} DMG**! *(Barbatos HP: ${battleState.bossCurrentHp.toLocaleString()} / ${battleState.bossMaxHp.toLocaleString()})*`
-    );
+      const bossDefDown = (battleState.bossBuffs?.filter(b => b.type === 'def_down').reduce((acc, b) => acc + b.value, 0) || 0) / 100;
+      const bossDefUp = (battleState.bossBuffs?.filter(b => b.type === 'def_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100;
+      const bossDefFactor = Math.max(0.2, 1 + bossDefDown - bossDefUp);
 
-    if (battleState.bossCurrentHp <= 0) {
-      battleState.bossCurrentHp = 0;
-      await cleanupNpGif();
-      collector.stop('victory');
-      battleState.finishingBlow = {
-        userId: active.userId,
-        servantName: servName,
-        damage: totalTurnDmg,
-        cardChain: pendingCards.join(' ➔ '),
-        round: battleState.round
-      };
-      await concludeRaidVictory(battleMsg, boss, battleState);
-      return;
-    }
+      const starsAvailableForCrits = active.critStars || 0;
+      const isQuickFirstLead = pendingCards[0] === 'Quick';
+      let totalCritsLanded = 0;
+      let npTriggeredAntiThreat = false;
+      let npDebuffNotice = '';
 
-    // Refresh hand for this participant and clear selections
-    refreshParticipantHand(active);
-    pendingCards = [];
-    pendingIndices = [];
+      pendingCards.forEach((card, cIdx) => {
+        const stepMult = cIdx === 0 ? 1.0 : cIdx === 1 ? 1.2 : 1.4;
 
-    const hasMorePlayersInRound = advanceToNextPlayer();
+        // Calculate critical hit rate based on current star pool
+        const baseCritMult = card === 'Buster' ? 2.0 : card === 'Arts' ? 1.8 : 2.2;
+        let critPct = Math.round(starsAvailableForCrits * baseCritMult);
+        if (isQuickFirstLead && cIdx > 0) critPct += 20;
+        critPct = Math.min(100, Math.max(0, critPct));
 
-    let bossUsedNp = false;
-    if (!hasMorePlayersInRound) {
-      const bossTurnResult = await executeBossTurn(battleState);
-      bossUsedNp = bossTurnResult?.bossUsedNp || false;
+        const isCrit = card !== 'NP' && (Math.random() * 100 < critPct);
+        if (isCrit) totalCritsLanded++;
 
-      const anyAlive = battleState.participants.some(p => !p.isDead);
-      if (!anyAlive) {
+        const critDmgMult = isCrit ? 2.0 : 1.0;
+        const critNpBonus = isCrit ? 1.5 : 1.0;
+        const critStarBonus = isCrit ? 1.4 : 1.0;
+
+        if (card === 'Buster') {
+          totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * (0.9 + Math.random() * 0.2));
+          starsGenerated += Math.round(3 * critStarBonus);
+          npGained += Math.round(5 * critNpBonus);
+        } else if (card === 'Arts') {
+          totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * (0.9 + Math.random() * 0.2));
+          npGained += Math.round(25 * critNpBonus);
+          starsGenerated += Math.round(2 * critStarBonus);
+        } else if (card === 'Quick') {
+          totalTurnDmg += Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * (0.9 + Math.random() * 0.2));
+          starsGenerated += Math.round(12 * critStarBonus);
+          npGained += Math.round(10 * critNpBonus);
+        } else if (card === 'NP') {
+          const npMultiplier = 5.5;
+          const npDesc = active.servant.template?.noblePhantasm?.description || '';
+          const npName = active.servant.template?.noblePhantasm?.name || 'Noble Phantasm';
+          const npHasAntiThreat = /Threat to Humanity|Beast|Divine|Foreigner/i.test(npDesc);
+          const npSpecialMult = (isBossThreat && npHasAntiThreat) ? 1.5 : 1.0;
+          if (isBossThreat && npHasAntiThreat) npTriggeredAntiThreat = true;
+
+          // Apply secondary debuffs from Noble Phantasm to Barbatos
+          if (/def.*down|lower.*def|reduce.*def|decrease.*def/i.test(npDesc)) {
+            battleState.bossBuffs.push({
+              name: `${npName} (DEF Down)`,
+              type: 'def_down',
+              value: 30,
+              remainingTurns: 3
+            });
+            npDebuffNotice += ' 🔻 [-30% DEF Down]';
+          }
+          if (/curse|burn|poison/i.test(npDesc)) {
+            battleState.bossBuffs.push({
+              name: `${npName} (Affliction)`,
+              type: 'curse',
+              value: 6000,
+              remainingTurns: 3
+            });
+            npDebuffNotice += ' 🔥 [Curse/Burn]';
+          }
+          if (/stun|paraly|charm/i.test(npDesc)) {
+            battleState.bossBuffs.push({
+              name: `${npName} (Stun)`,
+              type: 'stun',
+              value: 100,
+              remainingTurns: 1
+            });
+            npDebuffNotice += ' ⚡ [Stun]';
+          }
+          if (/drain|seal/i.test(npDesc)) {
+            battleState.bossCharge = Math.max(0, battleState.bossCharge - 1);
+            battleState.bossBuffs.push({
+              name: `${npName} (NP Drain)`,
+              type: 'np_seal',
+              value: 1,
+              remainingTurns: 1
+            });
+            npDebuffNotice += ' 🔒 [NP Drained]';
+          }
+
+          totalTurnDmg += Math.round(baseAtk * npMultiplier * atkBuffMult * specialAtkMult * bossDefFactor * npSpecialMult * (0.95 + Math.random() * 0.1));
+          starsGenerated += 10;
+          npGained += 15;
+        }
+      });
+
+      battleState.bossCurrentHp = Math.max(0, battleState.bossCurrentHp - totalTurnDmg);
+      active.npGauge = Math.min(100, (active.npGauge || 0) + npGained);
+      // Consumes existing stars used during the attack; new star pool is based on stars generated this turn!
+      active.critStars = Math.min(50, Math.round(starsGenerated));
+
+      const servName = active.servant.nickname || active.servant.template?.name || 'Servant';
+      let traitLog = '';
+      if (totalCritsLanded > 0) {
+        traitLog += ` 💥 **[${totalCritsLanded} CRIT${totalCritsLanded > 1 ? 'S' : ''} (2.0x DMG)!]**`;
+      }
+      if (npTriggeredAntiThreat) {
+        traitLog += ' 👑 **[Anti-Calamity Protocol: +50% Special DMG vs Threat to Humanity!]**';
+      } else if (antiThreatBuff > 0) {
+        traitLog += ' ⚡ **[Calamity-Breaker: +30% Special ATK vs Threat to Humanity!]**';
+      }
+      if (bossDefDown > 0) {
+        traitLog += ` 🔻 **[DEF Down: +${Math.round(bossDefDown * 100)}% DMG]**`;
+      }
+      if (npDebuffNotice) {
+        traitLog += npDebuffNotice;
+      }
+
+      const playerAttackLog = `⚔️ **${servName}** dealt **${totalTurnDmg.toLocaleString()} DMG** to Barbatos! (+${npGained}% NP, +${starsGenerated} Stars)${traitLog}`;
+      battleState.lastPlayerAttackLog = playerAttackLog;
+      battleState.recentLogs.push(playerAttackLog);
+      while (battleState.recentLogs.length > 8) battleState.recentLogs.shift();
+
+      active.totalDamageDealt = (active.totalDamageDealt || 0) + totalTurnDmg;
+      battleState.fullCombatLog = battleState.fullCombatLog || [];
+      battleState.fullCombatLog.push(
+        `⚔️ **[Round ${battleState.round}]** **${servName}** (<@${active.userId}>) struck with \`[${pendingCards.join(' ➔ ')}]\` dealing **${totalTurnDmg.toLocaleString()} DMG**! *(Barbatos HP: ${battleState.bossCurrentHp.toLocaleString()} / ${battleState.bossMaxHp.toLocaleString()})*`
+      );
+
+      if (battleState.bossCurrentHp <= 0) {
+        battleState.bossCurrentHp = 0;
         await cleanupNpGif();
-        collector.stop('defeated');
-        await concludeRaidDefeat(battleMsg, boss, battleState);
+        collector.stop('victory');
+        battleState.finishingBlow = {
+          userId: active.userId,
+          servantName: servName,
+          damage: totalTurnDmg,
+          cardChain: pendingCards.join(' ➔ '),
+          round: battleState.round
+        };
+        await concludeRaidVictory(battleMsg, boss, battleState);
         return;
       }
 
-      battleState.round++;
-      battleState.participants.forEach(p => {
-        p.skillCooldowns = p.skillCooldowns.map(cd => Math.max(0, cd - 1));
-        if (p.activeBuffs) {
-          p.activeBuffs.forEach(b => b.remainingTurns--);
-          p.activeBuffs = p.activeBuffs.filter(b => b.remainingTurns > 0);
+      // Refresh hand for this participant and clear selections
+      refreshParticipantHand(active);
+      pendingCards = [];
+      pendingIndices = [];
+
+      const hasMorePlayersInRound = advanceToNextPlayer();
+
+      let bossUsedNp = false;
+      if (!hasMorePlayersInRound) {
+        const bossTurnResult = await executeBossTurn(battleState);
+        bossUsedNp = bossTurnResult?.bossUsedNp || false;
+
+        const anyAlive = battleState.participants.some(p => !p.isDead);
+        if (!anyAlive) {
+          await cleanupNpGif();
+          collector.stop('defeated');
+          await concludeRaidDefeat(battleMsg, boss, battleState);
+          return;
         }
-      });
-    }
 
-    await renderAndPostTurn();
+        battleState.round++;
+        battleState.participants.forEach(p => {
+          p.skillCooldowns = p.skillCooldowns.map(cd => Math.max(0, cd - 1));
+          if (p.activeBuffs) {
+            p.activeBuffs.forEach(b => b.remainingTurns--);
+            p.activeBuffs = p.activeBuffs.filter(b => b.remainingTurns > 0);
+          }
+        });
+      }
 
-    // Dispatch Noble Phantasm Visuals BELOW the newly rendered Battle Canvas!
-    if (pendingNpToDispatch) {
-      await dispatchRaidNpGif(pendingNpToDispatch.servant, pendingNpToDispatch.userId);
-    } else if (bossUsedNp) {
-      await dispatchBossNpGif();
+      await renderAndPostTurn();
+
+      // Dispatch Noble Phantasm Visuals BELOW the newly rendered Battle Canvas!
+      if (pendingNpToDispatch) {
+        await dispatchRaidNpGif(pendingNpToDispatch.servant, pendingNpToDispatch.userId);
+      } else if (bossUsedNp) {
+        await dispatchBossNpGif();
+      }
+    } finally {
+      isProcessingTurn = false;
     }
     } catch (err: any) {
-      console.error('[raid] Unhandled error during raid turn execution:', err);
+      if (
+        err?.code === 10062 ||
+        err?.code === 40060 ||
+        err?.message?.includes('Unknown interaction') ||
+        err?.message?.includes('already been acknowledged')
+      ) {
+        // Ignored harmless Discord interaction race
+      } else {
+        console.error('[raid] Unhandled error during raid turn execution:', err);
+      }
     }
   });
 
