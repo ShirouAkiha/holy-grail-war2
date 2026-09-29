@@ -34,11 +34,9 @@ export interface RaidBossConfig {
   drops: {
     minSq: number;
     maxSq: number;
-    minQp: number;
-    maxQp: number;
-    materials: string[];
+    servantExp: number;
     bondExp: number;
-    masterExp: number;
+    emberCount: number;
   };
 }
 
@@ -90,13 +88,11 @@ export const RAID_BOSSES: Record<string, RaidBossConfig> = {
       damageMultiplier: 2.8
     },
     drops: {
-      minSq: 5,
-      maxSq: 15,
-      minQp: 500_000,
-      maxQp: 1_500_000,
-      materials: ['Heart of a Foreign God', 'Void\'s Refuse', 'Forbidden Page', 'Dragon\'s Reverse Scale'],
-      bondExp: 2500,
-      masterExp: 15000
+      minSq: 10,
+      maxSq: 20,
+      servantExp: 25_000,
+      bondExp: 2_000,
+      emberCount: 3
     }
   }
 };

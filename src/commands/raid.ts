@@ -15,6 +15,8 @@ import { renderRaidBattlefield, RaidBattleState, RaidParticipantState } from '..
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { safeSetEmbedImage } from '../utils/discordEmbedHelper';
+import { addServantBattleExp, createExpEmberCraftEssence } from '../engine/customization';
+import { addBondExpToServant } from '../../lib/engine/bondEvents';
 
 export const data = new SlashCommandBuilder()
   .setName('raid')
@@ -43,10 +45,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         boss.skills.map(s => `• **${s.name}**: ${s.description}`).join('\n') +
         `\n• **Charge Attack**: **${boss.chargeAttack.name}** — ${boss.chargeAttack.description}\n\n` +
         `💎 **Victory Rewards (All Participating Masters):**\n` +
-        `• Saint Quartz: **${boss.drops.minSq} – ${boss.drops.maxSq} SQ**\n` +
-        `• QP: **${boss.drops.minQp.toLocaleString()} – ${boss.drops.maxQp.toLocaleString()} QP**\n` +
-        `• Bond EXP: **+${boss.drops.bondExp.toLocaleString()}** • Master EXP: **+${boss.drops.masterExp.toLocaleString()}**\n` +
-        `• Rare Materials: ${boss.drops.materials.join(', ')}`
+        `• Saint Quartz: **${boss.drops.minSq} – ${boss.drops.maxSq} SQ** 💎\n` +
+        `• Servant Battle EXP: **+${boss.drops.servantExp.toLocaleString()} EXP** ⚔️ *(Levels up Servant & awards Stat Points!)*\n` +
+        `• Servant Bond EXP: **+${boss.drops.bondExp.toLocaleString()} Bond EXP** 💖 *(Advances Bond Rank toward Bond 10 & Signature CEs!)*\n` +
+        `• Relic Drops: **${boss.drops.emberCount}x Blaze of Wisdom EXP Embers** ✨ *(Universal enhancement relics for \`/feed\`)*`
       )
       .setThumbnail(boss.avatarUrl)
       .setColor(0x7c3aed)
@@ -282,6 +284,52 @@ async function runRaidBattle(
       saveMaster(p.master).catch(() => {});
     }
 
+    const initialBuffs: any[] = [];
+    const equippedCe = s.equippedCe || p.master?.craftEssences?.find((c: any) => c.id === s.equippedCeId);
+    if (equippedCe) {
+      if (equippedCe.id === 'ce_castle_of_snow' || equippedCe.name?.includes('Castle of Snow')) {
+        initialBuffs.push({
+          name: 'Castle of Snow (Guts x3)',
+          type: 'guts',
+          value: 500,
+          remainingTurns: 99,
+          remainingHits: 3,
+          isHitCount: true
+        });
+      } else if (equippedCe.passiveType === 'guts' || equippedCe.name?.includes('Necromancy')) {
+        initialBuffs.push({
+          name: `${equippedCe.name} (Guts)`,
+          type: 'guts',
+          value: equippedCe.hpBonus || 1000,
+          remainingTurns: 99,
+          remainingHits: 1,
+          isHitCount: true
+        });
+      }
+    }
+
+    const passives = t.passives || [];
+    if (passives.some((ps: any) => ps.name?.includes('Absolute Permanence') || ps.type === 'absolute_permanence')) {
+      initialBuffs.push({
+        name: 'Absolute Permanence EX (Guts)',
+        type: 'guts',
+        value: 4000,
+        remainingTurns: 99,
+        remainingHits: 1,
+        isHitCount: true
+      });
+    }
+    if (passives.some((ps: any) => ps.name?.includes('Veteran of the Slums') || ps.type === 'veteran_of_the_slums')) {
+      initialBuffs.push({
+        name: 'Veteran of the Slums EX (Guts)',
+        type: 'guts',
+        value: 3000,
+        remainingTurns: 99,
+        remainingHits: 1,
+        isHitCount: true
+      });
+    }
+
     const partState: RaidParticipantState = {
       userId: p.userId,
       username: p.username,
@@ -292,7 +340,7 @@ async function runRaidBattle(
       npGauge: 0,
       critStars: 10,
       skillCooldowns: [0, 0, 0],
-      activeBuffs: [],
+      activeBuffs: initialBuffs,
       isDead: false,
       commandSeals: 3
     };
@@ -694,6 +742,8 @@ async function runRaidBattle(
 
         // Check for Calamity-Breaker Edict EX / Anti-Threat to Humanity skills
         const isAntiThreatSkill = /Threat to Humanity|Foreigner|Beast|Otherworlder|Calamity-Breaker/i.test(sName + ' ' + sDesc);
+        // Check for Guts / Battle Continuation / Revive
+        const isGuts = sType === 'guts' || /guts|continuation|indomitable|reviv|setting sun/i.test(sName + ' ' + sDesc);
         // Check for Evade / Invincibility
         const isEvade = /Evade|Invincible|Dodge/i.test(sName + ' ' + sDesc) || sType === 'evade';
         // Check for Damage Cut / Defense
@@ -729,6 +779,51 @@ async function runRaidBattle(
           });
           active.critStars = (active.critStars || 0) + 15;
           buffLog = `(+20% ATK & +30% Special ATK vs [Threat to Humanity] to ALL allies for 3T, +15 Stars)`;
+        } else if (isGuts) {
+          const reviveVal = skillObj?.value || (/4,000/i.test(sDesc) ? 4000 : /3,000/i.test(sDesc) ? 3000 : /2,500/i.test(sDesc) ? 2500 : 2000);
+          active.activeBuffs = active.activeBuffs || [];
+          active.activeBuffs.push({
+            name: `${sName} (Guts)`,
+            type: 'guts',
+            value: reviveVal,
+            remainingTurns: skillObj?.duration || 5,
+            remainingHits: 1,
+            isHitCount: true
+          });
+          if (/invincible/i.test(sDesc)) {
+            active.activeBuffs.push({
+              name: `${sName} (Invincibility)`,
+              type: 'invincible',
+              value: 1,
+              remainingTurns: 1
+            });
+          }
+          if (/100% Defense|100% DEF/i.test(sDesc)) {
+            active.activeBuffs.push({
+              name: `${sName} (DEF Up)`,
+              type: 'def_up',
+              value: 100,
+              remainingTurns: 1
+            });
+          }
+          if (/buster/i.test(sDesc)) {
+            active.activeBuffs.push({
+              name: `${sName} (Buster Up)`,
+              type: 'atk_up',
+              value: 20,
+              remainingTurns: 3
+            });
+          }
+          if (/on-guts|on guts/i.test(sDesc)) {
+            active.activeBuffs.push({
+              name: `${sName} (On-Guts Buster)`,
+              type: 'on_guts_buster',
+              value: 20,
+              remainingTurns: 5
+            });
+          }
+          active.critStars = (active.critStars || 0) + 10;
+          buffLog = `(🩸 Granted **Guts** [Revive with ${reviveVal.toLocaleString()} HP] for ${skillObj?.duration || 5}T!)`;
         } else if (isDefDown) {
           battleState.bossBuffs.push({
             name: `${sName} (DEF Down)`,
@@ -1232,11 +1327,11 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         const defFactor = Math.max(0.4, 1 + (defDown - defUp) / 100);
 
         const finalAoe = Math.max(1500, Math.round((baseAoeDamage * defFactor) - dmgCut));
-        p.currentHp = Math.max(0, p.currentHp - finalAoe);
-        if (p.currentHp <= 0) p.isDead = true;
+        applyDamageToRaidParticipant(p, finalAoe, state);
 
         // NP Drain and Curse Burn
         p.npGauge = Math.max(0, (p.npGauge || 0) - 25);
+        p.activeBuffs = p.activeBuffs || [];
         p.activeBuffs.push({
           name: 'Calamity Burn',
           type: 'curse',
@@ -1278,12 +1373,10 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       const baseSingle = Math.round((4800 + Math.random() * 2600) * totalBossAtkMult);
       const finalDmg = Math.max(800, Math.round((baseSingle * defFactor) - dmgCut));
 
-      target.currentHp = Math.max(0, target.currentHp - finalDmg);
-      if (target.currentHp <= 0) target.isDead = true;
-
       state.recentLogs.push(
         `👁️ Barbatos struck **${tName}** with Demonic Gaze for **${finalDmg.toLocaleString()} DMG**!`
       );
+      applyDamageToRaidParticipant(target, finalDmg, state);
     }
   }
 
@@ -1292,9 +1385,9 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
     if (!p.isDead) {
       const curseDamage = p.activeBuffs?.filter(b => b.type === 'curse').reduce((acc, b) => acc + b.value, 0) || 0;
       if (curseDamage > 0) {
-        p.currentHp = Math.max(1, p.currentHp - curseDamage);
         const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
         state.recentLogs.push(`🔥 **${pName}** suffered **${curseDamage.toLocaleString()} Curse Burn DMG**!`);
+        applyDamageToRaidParticipant(p, curseDamage, state);
       }
     }
   });
@@ -1315,39 +1408,129 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
   return { bossUsedNp };
 }
 
+/**
+ * Applies damage to a raid participant and evaluates Guts status revival.
+ */
+function applyDamageToRaidParticipant(
+  p: RaidParticipantState,
+  damage: number,
+  state: RaidBattleState
+): { wasFatal: boolean; gutsTriggered: boolean } {
+  p.currentHp = p.currentHp - damage;
+  if (p.currentHp <= 0) {
+    const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
+    const gutsIdx = p.activeBuffs ? p.activeBuffs.findIndex(b => b.type === 'guts') : -1;
+    if (gutsIdx !== -1) {
+      const gutsBuff = p.activeBuffs[gutsIdx];
+      const reviveHp = gutsBuff.value || Math.round(p.maxHp * 0.25);
+      if (gutsBuff.remainingHits !== undefined && gutsBuff.remainingHits > 1) {
+        gutsBuff.remainingHits -= 1;
+        state.recentLogs.push(
+          `✝️ **[GUTS ACTIVATED!]** **${pName}** refused to fall! Revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} - ${gutsBuff.remainingHits} left)`
+        );
+      } else {
+        p.activeBuffs.splice(gutsIdx, 1);
+        state.recentLogs.push(
+          `✝️ **[GUTS ACTIVATED!]** **${pName}** refused to fall! Revived with **${reviveHp.toLocaleString()} HP**! (${gutsBuff.name} consumed)`
+        );
+      }
+      p.currentHp = reviveHp;
+      p.isDead = false;
+
+      // Check for On-Guts Buster buff (Indomitable A)
+      const onGutsIdx = p.activeBuffs.findIndex(b => b.type === 'on_guts_buster');
+      if (onGutsIdx !== -1) {
+        p.activeBuffs.splice(onGutsIdx, 1);
+        p.activeBuffs.push({
+          name: 'Indomitable A (On-Guts +20% Buster)',
+          type: 'atk_up',
+          value: 20,
+          remainingTurns: 3
+        });
+        state.recentLogs.push(`🔥 **[INDOMITABLE A]** On-Guts triggered! Buster performance increased by **+20%**!`);
+      }
+
+      return { wasFatal: false, gutsTriggered: true };
+    } else {
+      p.currentHp = 0;
+      p.isDead = true;
+      return { wasFatal: true, gutsTriggered: false };
+    }
+  }
+  return { wasFatal: false, gutsTriggered: false };
+}
+
 async function concludeRaidVictory(
   battleMsg: any,
   boss: RaidBossConfig,
   participants: RaidParticipantState[]
 ) {
   const sqReward = Math.floor(boss.drops.minSq + Math.random() * (boss.drops.maxSq - boss.drops.minSq + 1));
-  const qpReward = Math.floor(boss.drops.minQp + Math.random() * (boss.drops.maxQp - boss.drops.minQp));
+  const servantExpReward = boss.drops.servantExp || 25_000;
+  const bondExpReward = boss.drops.bondExp || 2_000;
+
+  const progressionReports: string[] = [];
 
   for (const p of participants) {
     const master = await getOrCreateMaster(p.userId, p.username);
     master.saintQuartz = (master.saintQuartz || 0) + sqReward;
-    master.qp = (master.qp || 0) + qpReward;
 
     const s = master.servants?.find(s => s.id === p.servant.id);
+    let sReport = `• <@${p.userId}> (**${p.servant.nickname || p.servant.template.name}**)`;
+
     if (s) {
-      s.bondExp = (s.bondExp || 0) + boss.drops.bondExp;
+      // 1. Servant Level EXP & Real Level-Up
+      const expResult = addServantBattleExp(s, servantExpReward);
+      s.experience = expResult.updatedServant.experience;
+      s.level = expResult.updatedServant.level;
+      s.availableStatPoints = expResult.updatedServant.availableStatPoints;
+
+      let lvlDetail = `Lv. ${expResult.newLevel}`;
+      if (expResult.didLevelUp) {
+        lvlDetail += ` *(+${expResult.levelsGained} Level-Up! +${expResult.statPointsGained} Stat Points)*`;
+      }
+
+      // 2. Servant Bond EXP & Real Bond Level Progression
+      const bondResult = addBondExpToServant(s, bondExpReward);
+      s.bondExp = bondResult.updatedServant.bondExp;
+      s.bondLevel = bondResult.updatedServant.bondLevel;
+
+      let bondDetail = `Bond Lv. ${bondResult.newLevel}/10`;
+      if (bondResult.didLevelUp) {
+        bondDetail += ` *(Bond Level Up!)*`;
+      }
+
+      sReport += `\n  └─ ⚔️ **Level:** \`${lvlDetail}\` • 💖 **Bond:** \`${bondDetail}\``;
+
+      if (bondResult.unlockedBondCe) {
+        master.craftEssences = master.craftEssences || [];
+        master.craftEssences.push(bondResult.unlockedBondCe);
+        sReport += `\n  └─ 🌟 **UNLOCKED SIGNATURE BOND CE:** **${bondResult.unlockedBondCe.name}**!`;
+      }
     }
+
+    // 3. Universal EXP Embers (Blaze of Wisdom) deposited directly to Master inventory
+    master.craftEssences = master.craftEssences || [];
+    const emberSSR = createExpEmberCraftEssence(5, 1);
+    const emberSR1 = createExpEmberCraftEssence(4, 2);
+    const emberSR2 = createExpEmberCraftEssence(4, 3);
+    master.craftEssences.push(emberSSR, emberSR1, emberSR2);
+
+    progressionReports.push(sReport);
     await saveMaster(master);
   }
-
-  const winnersList = participants.map(p => `• <@${p.userId}> (**${p.servant.nickname || p.servant.template.name}**)`).join('\n');
 
   const victoryEmbed = new EmbedBuilder()
     .setTitle('🏆 DEMON GOD PILLAR VANQUISHED — RAID COMPLETE!')
     .setDescription(
       `**Demon God Pillar Barbatos** has disintegrated into the void of the Temple of Time!\n\n` +
-      `👑 **Victorious Masters:**\n${winnersList}\n\n` +
       `💎 **Spoils of War (Distributed to all Masters):**\n` +
       `• **+${sqReward} Saint Quartz** 💎\n` +
-      `• **+${qpReward.toLocaleString()} QP** 🪙\n` +
-      `• **+${boss.drops.bondExp.toLocaleString()} Servant Bond EXP** ✨\n` +
-      `• **+${boss.drops.masterExp.toLocaleString()} Master EXP** 📈\n` +
-      `• Materials: *${boss.drops.materials.join(', ')}*`
+      `• **+${servantExpReward.toLocaleString()} Servant Battle EXP** ⚔️ *(Levels up Servant & awards unspent Stat Points)*\n` +
+      `• **+${bondExpReward.toLocaleString()} Servant Bond EXP** 💖 *(Advances Bond Rank toward Bond 10 & Signature CEs)*\n` +
+      `• **+3 Universal EXP Embers** ✨ *(1x ★5 SSR + 2x ★4 SR Blaze of Wisdom synthesized to inventory for \`/feed\`)*\n\n` +
+      `👑 **Victorious Masters & Progression:**\n` +
+      progressionReports.join('\n')
     )
     .setImage(boss.avatarUrl)
     .setColor(0x10b981)
