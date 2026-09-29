@@ -407,22 +407,24 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   ctx.restore();
 
   // 6. Bottom Authentic FGO Servant HUD (Matching Reference Image)
-  const hudStartColX = 15;
+  const numPart = Math.max(1, Math.min(3, party.length));
   const hudColW = 190;
-  const hudColGap = 18;
+  const hudColGap = 20;
+  const totalW = numPart * hudColW + (numPart - 1) * hudColGap;
+  const startX = (width - totalW) / 2;
 
   party.slice(0, 3).forEach((p, i) => {
-    const cX = hudStartColX + i * (hudColW + hudColGap);
+    const cX = startX + i * (hudColW + hudColGap);
     const colCenterX = cX + hudColW / 2;
     const avatar = servantAvatars[i];
 
     ctx.save();
 
-    // Servant Bust Artwork Portrait inside HUD Column
-    const portraitW = 125;
-    const portraitH = 115;
+    // Servant Bust Artwork Portrait inside HUD Column (Lower Part of Screen)
+    const portraitW = 135;
+    const portraitH = 145;
     const portraitX = colCenterX - portraitW / 2;
-    const portraitY = 165;
+    const portraitY = 205;
 
     ctx.save();
     if (p.isDead) ctx.globalAlpha = 0.35;
@@ -447,10 +449,10 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     if (i === state.activeMasterIndex && !p.isDead) {
       ctx.save();
       ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 12;
       ctx.strokeStyle = '#f59e0b';
       ctx.lineWidth = 1.5;
-      drawRoundRect(ctx, cX, 238, hudColW, 118, 6, false, true);
+      drawRoundRect(ctx, cX, 268, hudColW, 88, 6, false, true);
       ctx.restore();
     }
 
@@ -459,7 +461,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     const skillGap = 4;
     const totalSkillsW = 3 * skillBoxSize + 2 * skillGap;
     const skillStartX = colCenterX - totalSkillsW / 2;
-    const skillY = 248;
+    const skillY = 272;
 
     const skillBgGradients = ['#9a3412', '#1e3a8a', '#854d0e']; // Buster / Arts / Quick
     const skillSymbols = ['⚔️', '✨', '💥'];
@@ -499,7 +501,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     // b. Authentic FGO HP Bar
     const barW = hudColW - 12;
     const barX = colCenterX - barW / 2;
-    const hpY = 276;
+    const hpY = 298;
     const hpH = 13;
 
     ctx.save();
@@ -537,7 +539,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     ctx.restore();
 
     // c. Authentic FGO NP Bar
-    const npY = 292;
+    const npY = 314;
     const npH = 11;
 
     ctx.save();
@@ -579,7 +581,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     ctx.restore();
 
     // d. Bottom Class Emblem Diamond & Servant Name Ribbon
-    const ribbonY = 308;
+    const ribbonY = 328;
     const classEmblemX = barX + 10;
     const classEmblemY = ribbonY + 12;
     const size = 18;
