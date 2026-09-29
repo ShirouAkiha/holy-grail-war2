@@ -309,7 +309,11 @@ async function runRaidBattle(
     }
 
     const passives = t.passives || [];
-    if (passives.some((ps: any) => ps.name?.includes('Absolute Permanence') || ps.type === 'absolute_permanence')) {
+    const servId = s.templateId || t.id || '';
+    if (
+      (servId === 'luvria_greenharte' || servId === 'adiosa_dragon_envoy') &&
+      passives.some((ps: any) => ps.name?.includes('Absolute Permanence') || ps.type === 'absolute_permanence')
+    ) {
       initialBuffs.push({
         name: 'Absolute Permanence EX (Guts)',
         type: 'guts',
@@ -319,7 +323,10 @@ async function runRaidBattle(
         isHitCount: true
       });
     }
-    if (passives.some((ps: any) => ps.name?.includes('Veteran of the Slums') || ps.type === 'veteran_of_the_slums')) {
+    if (
+      (servId === 'edmond_tank') &&
+      passives.some((ps: any) => ps.name?.includes('Veteran of the Slums') || ps.type === 'veteran_of_the_slums')
+    ) {
       initialBuffs.push({
         name: 'Veteran of the Slums EX (Guts)',
         type: 'guts',
@@ -742,8 +749,8 @@ async function runRaidBattle(
 
         // Check for Calamity-Breaker Edict EX / Anti-Threat to Humanity skills
         const isAntiThreatSkill = /Threat to Humanity|Foreigner|Beast|Otherworlder|Calamity-Breaker/i.test(sName + ' ' + sDesc);
-        // Check for Guts / Battle Continuation / Revive
-        const isGuts = sType === 'guts' || /guts|continuation|indomitable|reviv|setting sun/i.test(sName + ' ' + sDesc);
+        // Check for Guts / Battle Continuation
+        const isGuts = sType === 'guts' || /guts|battle continuation|indomitable will|setting sun/i.test(sName + ' ' + sDesc);
         // Check for Evade / Invincibility
         const isEvade = /Evade|Invincible|Dodge/i.test(sName + ' ' + sDesc) || sType === 'evade';
         // Check for Damage Cut / Defense
