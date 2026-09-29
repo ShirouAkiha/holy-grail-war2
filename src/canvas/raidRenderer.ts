@@ -769,27 +769,28 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     ctx.clip();
 
     // Translucent glass base behind the sprite
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
     ctx.fillRect(slotX, panelTopY, panelW, panelH);
 
-    // Render Servant Sprite / Character Art (scaled and positioned naturally in the slot)
+    // Render Servant Sprite / Character Art (focused on face & bust, perfectly framed above the skills)
     if (avatar) {
       const imgW = avatar.width || panelW;
       const imgH = avatar.height || panelH;
-      // Scale to comfortably fit the panel with head and upper body visible
-      const scale = Math.max(panelW / imgW, (panelH * 0.95) / imgH);
+      // Focus on character's upper torso and face
+      const scale = Math.max((panelW * 1.25) / imgW, (panelH * 1.05) / imgH);
       const drawW = imgW * scale;
       const drawH = imgH * scale;
       const drawX = slotX + (panelW - drawW) / 2;
-      const drawY = panelTopY + 8;
+      // Position head higher up so eyes, hair, and face are completely visible above the skills
+      const drawY = panelTopY - Math.min(35, drawH * 0.08);
       ctx.drawImage(avatar, 0, 0, imgW, imgH, drawX, drawY, drawW, drawH);
     }
 
     // Authentic FGO Vertical Gradient: Translucent at head -> dark black at bottom status gauges
     const fadeGrad = ctx.createLinearGradient(0, panelTopY, 0, height);
-    fadeGrad.addColorStop(0, 'rgba(15, 23, 42, 0.10)');
-    fadeGrad.addColorStop(0.35, 'rgba(15, 23, 42, 0.25)');
-    fadeGrad.addColorStop(0.60, 'rgba(15, 23, 42, 0.88)');
+    fadeGrad.addColorStop(0, 'rgba(15, 23, 42, 0.05)');
+    fadeGrad.addColorStop(0.32, 'rgba(15, 23, 42, 0.20)');
+    fadeGrad.addColorStop(0.58, 'rgba(15, 23, 42, 0.85)');
     fadeGrad.addColorStop(1, 'rgba(5, 8, 18, 0.98)');
     ctx.fillStyle = fadeGrad;
     ctx.fillRect(slotX, panelTopY, panelW, panelH);
@@ -802,18 +803,16 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
 
     ctx.restore();
 
-    // Panel Outer Frame Border & Active Glow
+    // Subtle modern panel border (removed heavy gold frame and glow)
     if (isTurnActive) {
       ctx.save();
-      ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 18;
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.60)'; // Crisp subtle cyan accent for active turn
+      ctx.lineWidth = 1.5;
       drawRoundRect(ctx, slotX, panelTopY, panelW, panelH, { tl: 10, tr: 10, bl: 0, br: 0 }, false, true);
       ctx.restore();
     } else {
-      ctx.strokeStyle = p.isDead ? '#ef4444' : '#475569';
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = p.isDead ? 'rgba(239, 68, 68, 0.50)' : 'rgba(71, 85, 105, 0.40)';
+      ctx.lineWidth = 1.0;
       drawRoundRect(ctx, slotX, panelTopY, panelW, panelH, { tl: 10, tr: 10, bl: 0, br: 0 }, false, true);
     }
 
