@@ -622,6 +622,8 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
 
   // 7. Circular ATTACK Button Sphere
   ctx.save();
+  const bottomH = 95;
+  const bottomY = height - bottomH - 5;
   const btnCenterX = width - 42;
   const btnCenterY = bottomY + bottomH / 2;
   const btnRadius = 26;
