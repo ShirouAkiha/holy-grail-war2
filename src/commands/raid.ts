@@ -276,6 +276,12 @@ async function runRaidBattle(
       ? Math.min(calculatedMaxHp, Math.round(s.currentHp))
       : calculatedMaxHp;
 
+    // Ensure any user whose persistent profile command seals were reduced by prior raid battles is restored to 3
+    if (p.master && (p.master.commandSeals === undefined || p.master.commandSeals < 3)) {
+      p.master.commandSeals = 3;
+      saveMaster(p.master).catch(() => {});
+    }
+
     const partState: RaidParticipantState = {
       userId: p.userId,
       username: p.username,
@@ -287,7 +293,8 @@ async function runRaidBattle(
       critStars: 10,
       skillCooldowns: [0, 0, 0],
       activeBuffs: [],
-      isDead: false
+      isDead: false,
+      commandSeals: 3
     };
     refreshParticipantHand(partState);
     return partState;
@@ -441,7 +448,7 @@ async function runRaidBattle(
     const isNpSelected = pendingCards.includes('NP');
     const npType = active.servant.template?.noblePhantasm?.cardType || 'Buster';
     const hasPending = pendingCards.length > 0;
-    const masterSeals = active.master?.commandSeals ?? 3;
+    const masterSeals = active.commandSeals !== undefined ? active.commandSeals : 3;
 
     const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
@@ -536,7 +543,6 @@ async function runRaidBattle(
     const c2 = pendingCards[1] ? cardEmojiMap[pendingCards[1]] : '❓ Card 2';
     const c3 = pendingCards[2] ? cardEmojiMap[pendingCards[2]] : '❓ Card 3';
 
-    const recent = battleState.recentLogs.slice(-2).join('\n');
     const bossHpPct = Math.max(0, Math.round((battleState.bossCurrentHp / battleState.bossMaxHp) * 100));
     const bossChargeStr = '◆'.repeat(battleState.bossCharge) + '◇'.repeat(Math.max(0, battleState.boss.maxCharge - battleState.bossCharge));
 
@@ -548,6 +554,19 @@ async function runRaidBattle(
       return `${arrow}**${pName}** (<@${p.userId}>): \`${hpStr}\` • \`NP: ${Math.round(p.npGauge)}%\` • \`★ ${p.critStars || 0}\``;
     }).join('\n');
 
+    let logContent = '';
+    if (battleState.lastPlayerAttackLog) {
+      const bossRecent = battleState.recentLogs
+        .filter(l => l !== battleState.lastPlayerAttackLog)
+        .slice(-2);
+      logContent = `⚔️ **Master Strike:**\n${battleState.lastPlayerAttackLog}`;
+      if (bossRecent.length > 0) {
+        logContent += `\n\n😈 **Enemy Phase:**\n${bossRecent.join('\n')}`;
+      }
+    } else {
+      logContent = `📜 **Log:** ${battleState.recentLogs.slice(-3).join('\n')}`;
+    }
+
     const embed = new EmbedBuilder()
       .setTitle(`⚔️ DEMON GOD PILLAR RAID — ROUND ${battleState.round}`)
       .setDescription(
@@ -556,7 +575,7 @@ async function runRaidBattle(
         `🛡️ **Party Status:**\n${partyLines}\n\n` +
         `🎴 **Selected Attack Chain (${pendingCards.length}/3):**\n` +
         `\`[ 1: ${c1} ]\` ➔ \`[ 2: ${c2} ]\` ➔ \`[ 3: ${c3} ]\`\n\n` +
-        `📜 **Log:** ${recent}`
+        `${logContent}`
       )
       .setImage(`attachment://${attachmentFileName}`)
       .setColor(0x8b5cf6)
@@ -821,15 +840,15 @@ async function runRaidBattle(
         return;
       }
     } else if (i.customId === 'raid_command_seal') {
-      if (active.master && (active.master.commandSeals ?? 3) > 0) {
-        active.master.commandSeals = Math.max(0, (active.master.commandSeals ?? 3) - 1);
-        await saveMaster(active.master);
+      const availableSeals = active.commandSeals !== undefined ? active.commandSeals : 3;
+      if (availableSeals > 0) {
+        active.commandSeals = availableSeals - 1;
         active.currentHp = active.maxHp;
         active.npGauge = 100;
         battleState.recentLogs.push(
-          `🔱 <@${active.userId}> expended a **Command Seal** (${active.master.commandSeals} remaining)! **${active.servant.nickname || active.servant.template.name}** is fully healed and charged to **100% NP**!`
+          `🔱 <@${active.userId}> expended a **Command Seal** (${active.commandSeals} remaining)! **${active.servant.nickname || active.servant.template.name}** is fully healed and charged to **100% NP**!`
         );
-        if (battleState.recentLogs.length > 4) battleState.recentLogs.shift();
+        while (battleState.recentLogs.length > 8) battleState.recentLogs.shift();
 
         // Render updated canvas reflecting the restored HP and 100% NP!
         const { buffer } = await renderRaidBattlefield(battleState, false);
@@ -1022,10 +1041,10 @@ async function runRaidBattle(
       traitLog += npDebuffNotice;
     }
 
-    battleState.recentLogs.push(
-      `⚔️ **${servName}** dealt **${totalTurnDmg.toLocaleString()} DMG** to Barbatos! (+${npGained}% NP, +${starsGenerated} Stars)${traitLog}`
-    );
-    if (battleState.recentLogs.length > 4) battleState.recentLogs.shift();
+    const playerAttackLog = `⚔️ **${servName}** dealt **${totalTurnDmg.toLocaleString()} DMG** to Barbatos! (+${npGained}% NP, +${starsGenerated} Stars)${traitLog}`;
+    battleState.lastPlayerAttackLog = playerAttackLog;
+    battleState.recentLogs.push(playerAttackLog);
+    while (battleState.recentLogs.length > 8) battleState.recentLogs.shift();
 
     if (battleState.bossCurrentHp <= 0) {
       await cleanupNpGif();
@@ -1291,7 +1310,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
   state.bossBuffs.forEach(b => b.remainingTurns--);
   state.bossBuffs = state.bossBuffs.filter(b => b.remainingTurns > 0);
 
-  if (state.recentLogs.length > 5) state.recentLogs.shift();
+  while (state.recentLogs.length > 8) state.recentLogs.shift();
 
   return { bossUsedNp };
 }

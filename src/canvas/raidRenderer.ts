@@ -495,6 +495,7 @@ export interface RaidParticipantState {
   master?: any;
   currentHand?: ('Buster' | 'Arts' | 'Quick')[];
   drawPile?: ('Buster' | 'Arts' | 'Quick')[];
+  commandSeals?: number;
 }
 
 export interface RaidBattleState {
@@ -506,6 +507,7 @@ export interface RaidBattleState {
   participants: RaidParticipantState[];
   activeMasterIndex: number;
   recentLogs: string[];
+  lastPlayerAttackLog?: string;
 }
 
 /**
