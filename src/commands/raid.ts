@@ -382,7 +382,7 @@ async function runRaidBattle(
     }
   };
 
-  const buildBattleButtons = () => {
+  const buildBattleButtons = (allDisabled = false) => {
     const active = currentActiveParticipant;
     if (!active.currentHand || active.currentHand.length === 0) {
       refreshParticipantHand(active);
@@ -431,7 +431,7 @@ async function runRaidBattle(
             .setLabel(`${cardType} (${critPct}%)`)
             .setEmoji(emoji)
             .setStyle(style)
-            .setDisabled(pendingCards.length >= 3 || active.isDead)
+            .setDisabled(allDisabled || pendingCards.length >= 3 || active.isDead)
         );
       }
     });
@@ -449,29 +449,31 @@ async function runRaidBattle(
         .setLabel(isNpReady ? `NP [${npType}] (100%)` : `NP (${Math.round(active.npGauge)}%)`)
         .setEmoji(isNpReady ? '💥' : (npType === 'Buster' ? '🔴' : npType === 'Arts' ? '🔵' : '🟢'))
         .setStyle(isNpReady ? ButtonStyle.Danger : ButtonStyle.Secondary)
-        .setDisabled(!isNpReady || isNpSelected || pendingCards.length >= 3 || active.isDead),
+        .setDisabled(allDisabled || !isNpReady || isNpSelected || pendingCards.length >= 3 || active.isDead),
       new ButtonBuilder()
         .setCustomId('raid_reset_cards')
         .setLabel('Clear')
         .setEmoji('🔄')
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(!hasPending),
+        .setDisabled(allDisabled || !hasPending),
       new ButtonBuilder()
         .setCustomId('raid_command_seal')
         .setLabel(`Seal (${masterSeals})`)
         .setEmoji('🔱')
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(masterSeals <= 0 || active.isDead),
+        .setDisabled(allDisabled || masterSeals <= 0 || active.isDead),
       new ButtonBuilder()
         .setCustomId('raid_flee')
         .setLabel('Run')
         .setEmoji('🏃')
-        .setStyle(ButtonStyle.Secondary),
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(allDisabled),
       new ButtonBuilder()
         .setCustomId('raid_status')
         .setLabel('Status')
         .setEmoji('📊')
         .setStyle(ButtonStyle.Secondary)
+        .setDisabled(allDisabled)
     );
 
     // Row 3: 3 Active Skills (Exact layout from normal battles)
@@ -488,7 +490,7 @@ async function runRaidBattle(
         .setCustomId('raid_skill_0')
         .setLabel(cd1 > 0 ? `S1: ${s1Name} (${cd1}T)` : `✨ S1: ${s1Name}`)
         .setStyle(cd1 > 0 ? ButtonStyle.Secondary : ButtonStyle.Primary)
-        .setDisabled(cd1 > 0 || !s1 || active.isDead)
+        .setDisabled(allDisabled || cd1 > 0 || !s1 || active.isDead)
     );
 
     // Skill 2
@@ -500,7 +502,7 @@ async function runRaidBattle(
         .setCustomId('raid_skill_1')
         .setLabel(cd2 > 0 ? `S2: ${s2Name} (${cd2}T)` : `🛡️ S2: ${s2Name}`)
         .setStyle(cd2 > 0 ? ButtonStyle.Secondary : ButtonStyle.Primary)
-        .setDisabled(cd2 > 0 || !s2 || active.isDead)
+        .setDisabled(allDisabled || cd2 > 0 || !s2 || active.isDead)
     );
 
     // Skill 3 (Unlocked at Bond Level 5)
@@ -513,7 +515,7 @@ async function runRaidBattle(
         .setCustomId('raid_skill_2')
         .setLabel(!isS3Unlocked ? '🔒 S3 (Bond Lv 5)' : cd3 > 0 ? `S3: ${s3Name} (${cd3}T)` : `🌟 S3: ${s3Name}`)
         .setStyle(!isS3Unlocked || cd3 > 0 ? ButtonStyle.Secondary : ButtonStyle.Success)
-        .setDisabled(!isS3Unlocked || cd3 > 0 || !s3 || active.isDead)
+        .setDisabled(allDisabled || !isS3Unlocked || cd3 > 0 || !s3 || active.isDead)
     );
 
     return [row1, row2, row3];
@@ -576,13 +578,17 @@ async function runRaidBattle(
 
     let newMsg: any = null;
     try {
-      newMsg = await battleMsg.channel.send({
-        content: `⚔️ **<@${active.userId}>'s Turn!**`,
-        embeds,
-        files: [attachment],
-        components
-      });
-    } catch {
+      const channelToSend = interaction.channel || battleMsg.channel;
+      if (channelToSend && typeof channelToSend.send === 'function') {
+        newMsg = await channelToSend.send({
+          content: `⚔️ **<@${active.userId}>'s Turn!**`,
+          embeds,
+          files: [attachment],
+          components
+        });
+      }
+    } catch (sendErr) {
+      console.warn('[raid] channel.send failed, falling back to edit:', sendErr);
       newMsg = null;
     }
 
@@ -597,8 +603,11 @@ async function runRaidBattle(
         content: `⚔️ **<@${active.userId}>'s Turn!**`,
         embeds,
         files: [attachment],
+        attachments: [], // Clears previous attachment cache in Discord so the new canvas renders!
         components
-      }).catch(() => {});
+      }).catch((editErr: any) => {
+        console.error('[raid] battleMsg.edit error:', editErr);
+      });
     }
   };
 
@@ -796,8 +805,16 @@ async function runRaidBattle(
         battleState.recentLogs.push(`✨ **${active.servant.nickname || active.servant.template.name}** invoked **${sName}**! ${buffLog}${quoteText}`);
         if (battleState.recentLogs.length > 4) battleState.recentLogs.shift();
 
+        // Render updated canvas reflecting the new HP, NP, or buffs from the skill!
+        const { buffer } = await renderRaidBattlefield(battleState, false);
+        const uniqueFileName = `raid_${Date.now()}_${Math.floor(Math.random() * 1000)}.png`;
+        currentCanvasFileName = uniqueFileName;
+        const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
+
         await i.update({
-          embeds: [buildBattleEmbed(currentCanvasFileName)],
+          embeds: [buildBattleEmbed(uniqueFileName)],
+          files: [attachment],
+          attachments: [],
           components: buildBattleButtons()
         });
         return;
@@ -812,8 +829,17 @@ async function runRaidBattle(
           `🔱 <@${active.userId}> expended a **Command Seal** (${active.master.commandSeals} remaining)! **${active.servant.nickname || active.servant.template.name}** is fully healed and charged to **100% NP**!`
         );
         if (battleState.recentLogs.length > 4) battleState.recentLogs.shift();
+
+        // Render updated canvas reflecting the restored HP and 100% NP!
+        const { buffer } = await renderRaidBattlefield(battleState, false);
+        const uniqueFileName = `raid_${Date.now()}_${Math.floor(Math.random() * 1000)}.png`;
+        currentCanvasFileName = uniqueFileName;
+        const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
+
         await i.update({
-          embeds: [buildBattleEmbed(currentCanvasFileName)],
+          embeds: [buildBattleEmbed(uniqueFileName)],
+          files: [attachment],
+          attachments: [],
           components: buildBattleButtons()
         });
         return;
@@ -852,8 +878,11 @@ async function runRaidBattle(
       return;
     }
 
-    // 3 Cards selected -> Automatic attack execution!
-    await i.deferUpdate();
+    // 3 Cards selected -> Immediately update the message so the user sees Card 3 registered and all buttons disabled!
+    await i.update({
+      embeds: [buildBattleEmbed(currentCanvasFileName)],
+      components: buildBattleButtons(true)
+    });
 
     const usedNp = pendingCards.includes('NP');
     let pendingNpToDispatch: { servant: any; userId: string } | null = null;
