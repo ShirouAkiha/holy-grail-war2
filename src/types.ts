@@ -150,6 +150,7 @@ export interface MasterServantInstance {
   level: number;
   experience: number;
   currentHp?: number;
+  maxHp?: number;
   baseHpAtDamage?: number;
   lastDamageTime?: number;
   allocatedStats: ServantStats;

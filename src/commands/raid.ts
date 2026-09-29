@@ -269,6 +269,7 @@ async function runRaidBattle(
 ) {
   const participants: RaidParticipantState[] = partyUsers.map(p => {
     const s = p.servant;
+    const t = s.template || {};
     const calculatedMaxHp = calculateServantMaxHp(s);
     const currentHp = calculatedMaxHp;
 
