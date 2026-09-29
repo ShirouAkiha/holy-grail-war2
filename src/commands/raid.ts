@@ -487,18 +487,39 @@ async function runRaidBattle(
     return embed;
   };
 
-  const renderAndPostTurn = async (interactionToEdit?: any) => {
+  const renderAndPostTurn = async () => {
     const { buffer, fileName } = await renderRaidBattlefield(battleState, false);
-    const ext = fileName.endsWith('.png') ? 'png' : 'png';
-    const uniqueFileName = `raid_${Date.now()}_${Math.floor(Math.random() * 1000)}.${ext}`;
+    const uniqueFileName = `raid_${Date.now()}_${Math.floor(Math.random() * 1000)}.png`;
     const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
     const embeds = [buildBattleEmbed(uniqueFileName)];
     const components = buildBattleButtons();
+    const active = currentActiveParticipant;
 
-    if (interactionToEdit) {
-      await interactionToEdit.editReply({ embeds, files: [attachment], components });
+    let newMsg: any = null;
+    try {
+      newMsg = await battleMsg.channel.send({
+        content: `⚔️ **<@${active.userId}>'s Turn!**`,
+        embeds,
+        files: [attachment],
+        components
+      });
+    } catch {
+      newMsg = null;
+    }
+
+    if (newMsg) {
+      const prevMsg = battleMsg;
+      battleMsg = newMsg;
+      if (prevMsg && typeof prevMsg.delete === 'function') {
+        await prevMsg.delete().catch(() => {});
+      }
     } else {
-      await battleMsg.edit({ embeds, files: [attachment], components });
+      await battleMsg.edit({
+        content: `⚔️ **<@${active.userId}>'s Turn!**`,
+        embeds,
+        files: [attachment],
+        components
+      }).catch(() => {});
     }
   };
 
@@ -811,7 +832,14 @@ async function concludeRaidVictory(
     .setColor(0x10b981)
     .setFooter({ text: 'Fate/Grand Order PvE Raid Engine • Victory Recorded' });
 
-  await battleMsg.edit({ embeds: [victoryEmbed], components: [] });
+  try {
+    await battleMsg.channel.send({ embeds: [victoryEmbed], components: [] });
+    if (battleMsg && typeof battleMsg.delete === 'function') {
+      await battleMsg.delete().catch(() => {});
+    }
+  } catch {
+    await battleMsg.edit({ embeds: [victoryEmbed], components: [] }).catch(() => {});
+  }
 }
 
 async function concludeRaidDefeat(battleMsg: any, boss: RaidBossConfig) {
@@ -824,5 +852,12 @@ async function concludeRaidDefeat(battleMsg: any, boss: RaidBossConfig) {
     .setColor(0xef4444)
     .setFooter({ text: 'Demon God Pillar Raid • Defeat' });
 
-  await battleMsg.edit({ embeds: [defeatEmbed], components: [] });
+  try {
+    await battleMsg.channel.send({ embeds: [defeatEmbed], components: [] });
+    if (battleMsg && typeof battleMsg.delete === 'function') {
+      await battleMsg.delete().catch(() => {});
+    }
+  } catch {
+    await battleMsg.edit({ embeds: [defeatEmbed], components: [] }).catch(() => {});
+  }
 }
