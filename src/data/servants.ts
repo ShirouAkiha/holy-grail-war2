@@ -803,7 +803,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     defeatQuote: 'Reactor core... overloaded... My sweets...',
     avatarUrl: 'https://ella.janitorai.com/media-approved/Syn9pbEhWP-Rh74E_yz2p.webp',
     cardArtUrl: 'https://ella.janitorai.com/media-approved/Syn9pbEhWP-Rh74E_yz2p.webp',
-    spriteUrl: 'https://ella.janitorai.com/media-approved/Syn9pbEhWP-Rh74E_yz2p.webp'
+    spriteUrl: 'https://ella.janitorai.com/media-approved/U3GgFIMJRYdVNS-BT_K1T.webp'
   },
 
   {
