@@ -1188,7 +1188,6 @@ async function runRaidBattle(
                 p.activeBuffs = p.activeBuffs || [];
                 // Cleanse debuffs
                 p.activeBuffs = p.activeBuffs.filter(b => !['def_down', 'atk_down', 'curse', 'burn', 'poison', 'stun', 'np_seal', 'skill_seal'].includes(b.type));
-                p.isStunned = false;
 
                 // Grant Invincibility for 1 Turn
                 p.activeBuffs.push({
