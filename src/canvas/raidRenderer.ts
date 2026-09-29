@@ -223,29 +223,28 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
 
   // 3. Render Player Servants (Standing Portrayals)
   const party = state.participants;
-  const numParticipants = Math.max(1, Math.min(3, party.length));
-  const startColX = 185;
-  const colW = 135;
-  const colGap = 10;
+  const startColX = 220;
+  const colW = 120;
+  const colGap = 15;
 
   party.slice(0, 3).forEach((p, idx) => {
     const avatar = servantAvatars[idx];
     const cX = startColX + idx * (colW + colGap);
     const colCenterX = cX + colW / 2;
-    const posY = 90;
+    const posY = 95;
 
     ctx.save();
     if (p.isDead) ctx.globalAlpha = 0.35;
 
     // Ground Shadow under Servant feet
     ctx.beginPath();
-    ctx.ellipse(colCenterX, posY + 160, 28, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(colCenterX, posY + 152, 32, 8, 0, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
     ctx.fill();
 
-    // Servant Standing Portrait / Sprite
-    const portraitW = 85;
-    const portraitH = 155;
+    // Servant Standing Card Portrait
+    const portraitW = 100;
+    const portraitH = 150;
     const portraitX = colCenterX - portraitW / 2;
     const portraitY = posY;
 
@@ -253,7 +252,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     if (idx === state.activeMasterIndex && !p.isDead) {
       ctx.save();
       ctx.shadowColor = '#fbbf24';
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 12;
       ctx.strokeStyle = '#f59e0b';
       ctx.lineWidth = 2;
       drawRoundRect(ctx, portraitX - 2, portraitY - 2, portraitW + 4, portraitH + 4, 6, false, true);
@@ -261,15 +260,33 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     }
 
     ctx.save();
-    drawRoundRect(ctx, portraitX, portraitY, portraitW, portraitH, 4, false, false);
+    drawRoundRect(ctx, portraitX, portraitY, portraitW, portraitH, 6, false, false);
     ctx.clip();
     if (avatar) {
-      ctx.drawImage(avatar, portraitX, portraitY, portraitW, portraitH);
+      // Aspect ratio preserving centered crop (object-fit: cover) to prevent squishing
+      const imgW = avatar.width || portraitW;
+      const imgH = avatar.height || portraitH;
+      const imgRatio = imgW / imgH;
+      const targetRatio = portraitW / portraitH;
+      let sx = 0, sy = 0, sw = imgW, sh = imgH;
+      if (imgRatio > targetRatio) {
+        sw = imgH * targetRatio;
+        sx = (imgW - sw) / 2;
+      } else {
+        sh = imgW / targetRatio;
+        sy = (imgH - sh) / 2;
+      }
+      ctx.drawImage(avatar, sx, sy, sw, sh, portraitX, portraitY, portraitW, portraitH);
     } else {
       ctx.fillStyle = '#1e293b';
       ctx.fillRect(portraitX, portraitY, portraitW, portraitH);
     }
     ctx.restore();
+
+    // Card Golden Outer Border Frame
+    ctx.strokeStyle = p.isDead ? '#ef4444' : '#f59e0b';
+    ctx.lineWidth = 1.5;
+    drawRoundRect(ctx, portraitX, portraitY, portraitW, portraitH, 6, false, true);
 
     ctx.restore();
   });
@@ -619,51 +636,6 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
 
     ctx.restore();
   });
-
-  // 7. Circular ATTACK Button Sphere
-  ctx.save();
-  const bottomH = 95;
-  const bottomY = height - bottomH - 5;
-  const btnCenterX = width - 42;
-  const btnCenterY = bottomY + bottomH / 2;
-  const btnRadius = 26;
-
-  const ringGrad = ctx.createLinearGradient(btnCenterX - btnRadius, btnCenterY - btnRadius, btnCenterX + btnRadius, btnCenterY + btnRadius);
-  ringGrad.addColorStop(0, '#38bdf8');
-  ringGrad.addColorStop(0.5, '#0284c7');
-  ringGrad.addColorStop(1, '#0369a1');
-
-  ctx.beginPath();
-  ctx.arc(btnCenterX, btnCenterY, btnRadius + 2, 0, Math.PI * 2);
-  ctx.fillStyle = ringGrad;
-  ctx.fill();
-  ctx.strokeStyle = '#d4af37';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  const sphereGrad = ctx.createRadialGradient(btnCenterX - 8, btnCenterY - 8, 2, btnCenterX, btnCenterY, btnRadius);
-  sphereGrad.addColorStop(0, '#67e8f9');
-  sphereGrad.addColorStop(0.6, '#0ea5e9');
-  sphereGrad.addColorStop(1, '#0369a1');
-
-  ctx.beginPath();
-  ctx.arc(btnCenterX, btnCenterY, btnRadius - 1, 0, Math.PI * 2);
-  ctx.fillStyle = sphereGrad;
-  ctx.fill();
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'italic bold 11px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.shadowColor = '#000000';
-  ctx.shadowBlur = 3;
-  ctx.fillText('Attack', btnCenterX, btnCenterY + 2);
-
-  ctx.font = 'bold 5px sans-serif';
-  ctx.fillStyle = '#e0f2fe';
-  ctx.fillText('Next Phase', btnCenterX, btnCenterY + 9);
-  ctx.shadowBlur = 0;
-
-  ctx.restore();
 
   return canvas;
 }
