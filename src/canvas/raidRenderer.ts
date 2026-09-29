@@ -228,6 +228,60 @@ function drawProgressBar(
 }
 
 /**
+ * Draws an authentic 4-pointed Fate/Grand Order Critical Star with radiant golden facets
+ */
+function drawFGOCritStar(
+  ctx: any,
+  cx: number,
+  cy: number,
+  size: number
+) {
+  ctx.save();
+  const rOuter = size;
+  const rInner = size * 0.32;
+
+  // Outer Golden Glow
+  ctx.shadowColor = '#fbbf24';
+  ctx.shadowBlur = 8;
+
+  ctx.beginPath();
+  for (let i = 0; i < 4; i++) {
+    const angleOuter = (i * Math.PI) / 2;
+    const angleInner = angleOuter + Math.PI / 4;
+    const ox = cx + Math.cos(angleOuter) * rOuter;
+    const oy = cy + Math.sin(angleOuter) * rOuter;
+    if (i === 0) ctx.moveTo(ox, oy);
+    else ctx.lineTo(ox, oy);
+
+    const ix = cx + Math.cos(angleInner) * rInner;
+    const iy = cy + Math.sin(angleInner) * rInner;
+    ctx.lineTo(ix, iy);
+  }
+  ctx.closePath();
+
+  const starGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rOuter);
+  starGrad.addColorStop(0, '#ffffff');
+  starGrad.addColorStop(0.35, '#fef08a');
+  starGrad.addColorStop(0.8, '#f59e0b');
+  starGrad.addColorStop(1, '#b45309');
+  ctx.fillStyle = starGrad;
+  ctx.fill();
+
+  // White Diamond Core Sparkle
+  ctx.beginPath();
+  const coreSize = size * 0.35;
+  ctx.moveTo(cx, cy - coreSize);
+  ctx.lineTo(cx + coreSize, cy);
+  ctx.lineTo(cx, cy + coreSize);
+  ctx.lineTo(cx - coreSize, cy);
+  ctx.closePath();
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/**
  * Draws an authentic Fate/Grand Order Skill Frame with crisp vector symbols
  */
 function drawFGOSkillIcon(
@@ -853,24 +907,63 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     ctx.fillStyle = '#ffffff';
     ctx.fillText(` Lv.${p.servant.level || 90}`, nameX + classWidth, footerY + 14);
 
-    // Line 2: Servant Name + Individual Crit Stars Counter
-    const maxChars = numPart >= 4 ? 11 : 14;
-    const servName = rawServName.length > maxChars ? `${rawServName.slice(0, maxChars)}…` : rawServName;
+    // Line 2: Servant Name + Glowing Golden Crit Star Badge
+    const stars = p.critStars || 0;
+    const starStr = `${stars}`;
 
+    // Measure Star Badge dimensions
+    ctx.font = 'bold 13px sans-serif';
+    const numWidth = ctx.measureText(starStr).width;
+    const badgePad = 7;
+    const starIconSize = 8;
+    const badgeW = starIconSize * 2 + numWidth + badgePad * 2 + 3;
+    const badgeH = 22;
+    const badgeY = footerY + 28;
+
+    // Available horizontal space for the name
+    const maxAvailableNameW = (barX + barW) - nameX - badgeW - 10;
     ctx.font = 'bold 14px sans-serif';
+    let servName = rawServName;
+    while (ctx.measureText(servName).width > maxAvailableNameW && servName.length > 3) {
+      servName = servName.slice(0, -1);
+    }
+    if (servName.length < rawServName.length) {
+      servName = `${servName.trim()}…`;
+    }
+
+    // Draw Servant Name
     ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 4;
     ctx.fillText(servName, nameX, footerY + 32);
 
-    const nameWidth = ctx.measureText(servName).width;
+    const actualNameW = ctx.measureText(servName).width;
+    const badgeX = Math.min(nameX + actualNameW + 8, barX + barW - badgeW);
 
-    // Glowing Golden Individual Crit Stars beside Servant Name
-    const stars = p.critStars || 0;
+    // Draw Sleek, High-Contrast Golden Crit Star Badge
     ctx.save();
-    ctx.font = 'bold 13px sans-serif';
-    ctx.fillStyle = '#fbbf24';
+    drawRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 6, true, true);
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 1.4;
     ctx.shadowColor = '#f59e0b';
-    ctx.shadowBlur = 5;
-    ctx.fillText(`✦ ${stars}`, nameX + nameWidth + 8, footerY + 32);
+    ctx.shadowBlur = 6;
+    ctx.fill();
+    ctx.stroke();
+
+    // Draw Authentic FGO Radiant Vector Star
+    const starCx = badgeX + badgePad + starIconSize;
+    const starCy = badgeY + badgeH / 2;
+    drawFGOCritStar(ctx, starCx, starCy, starIconSize);
+
+    // Draw Bright Yellow Number
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillStyle = '#fef08a';
+    ctx.shadowColor = '#000000';
+    ctx.shadowBlur = 3;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(starStr, starCx + starIconSize + 5, starCy + 0.5);
     ctx.restore();
 
     ctx.shadowBlur = 0;
