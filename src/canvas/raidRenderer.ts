@@ -762,17 +762,10 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
 
     ctx.save();
 
-    // 1. Portrait Crop (Back of the HUD slot)
+    // 1. Servant Sprite Rendering (Free-standing directly on battlefield, no box frame)
     ctx.save();
-    // Rounded top corners for HUD slot panel
-    drawRoundRect(ctx, slotX, panelTopY, panelW, panelH, { tl: 10, tr: 10, bl: 0, br: 0 }, false, false);
-    ctx.clip();
 
-    // Translucent glass base behind the sprite
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.35)';
-    ctx.fillRect(slotX, panelTopY, panelW, panelH);
-
-    // Render Servant Sprite / Character Art (Framed so upper body & face are 100% ABOVE the skill icons)
+    // Render Servant Sprite / Character Art (Upper body & face 100% ABOVE the skill icons)
     if (avatar) {
       const imgW = avatar.width || panelW;
       const imgH = avatar.height || panelH;
@@ -782,17 +775,17 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
       const drawW = imgW * scale;
       const drawH = imgH * scale;
       const drawX = slotX + (panelW - drawW) / 2;
-      const drawY = panelTopY + 5; // Head and face proudly begin at the top of the panel
+      const drawY = panelTopY + 5; // Head and face proudly begin at top
       ctx.drawImage(avatar, 0, 0, imgW, imgH, drawX, drawY, drawW, drawH);
     }
 
-    // Authentic FGO Vertical Gradient: Completely clear on head & face -> dark black only below skills and gauges
+    // Authentic FGO Vertical Gradient: Completely clear on field/head -> dark backing only under skills & gauges
     const fadeGrad = ctx.createLinearGradient(0, panelTopY, 0, height);
     fadeGrad.addColorStop(0, 'rgba(15, 23, 42, 0)');
-    fadeGrad.addColorStop(0.48, 'rgba(15, 23, 42, 0.05)');
-    fadeGrad.addColorStop(0.58, 'rgba(15, 23, 42, 0.65)');
-    fadeGrad.addColorStop(0.72, 'rgba(15, 23, 42, 0.92)');
-    fadeGrad.addColorStop(1, 'rgba(5, 8, 18, 0.98)');
+    fadeGrad.addColorStop(0.48, 'rgba(15, 23, 42, 0)');
+    fadeGrad.addColorStop(0.58, 'rgba(15, 23, 42, 0.70)');
+    fadeGrad.addColorStop(0.72, 'rgba(15, 23, 42, 0.95)');
+    fadeGrad.addColorStop(1, 'rgba(5, 8, 18, 0.99)');
     ctx.fillStyle = fadeGrad;
     ctx.fillRect(slotX, panelTopY, panelW, panelH);
 
@@ -803,19 +796,6 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     }
 
     ctx.restore();
-
-    // Subtle modern panel border (clean accent without heavy gold glow)
-    if (isTurnActive) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.60)'; // Crisp subtle cyan accent for active turn
-      ctx.lineWidth = 1.5;
-      drawRoundRect(ctx, slotX, panelTopY, panelW, panelH, { tl: 10, tr: 10, bl: 0, br: 0 }, false, true);
-      ctx.restore();
-    } else {
-      ctx.strokeStyle = p.isDead ? 'rgba(239, 68, 68, 0.50)' : 'rgba(71, 85, 105, 0.35)';
-      ctx.lineWidth = 1.0;
-      drawRoundRect(ctx, slotX, panelTopY, panelW, panelH, { tl: 10, tr: 10, bl: 0, br: 0 }, false, true);
-    }
 
     // 2. Skill Icons Row (Position: Y: 485)
     const skillBoxSize = numPart >= 4 ? 54 : 64;
