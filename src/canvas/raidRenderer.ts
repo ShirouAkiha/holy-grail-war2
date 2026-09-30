@@ -292,7 +292,9 @@ function drawFGOSkillIcon(
   size: number,
   skillIndex: number,
   cooldownTurns: number,
-  isDead: boolean
+  isDead: boolean,
+  skillObj?: any,
+  iconImg?: any
 ) {
   ctx.save();
 
@@ -312,22 +314,24 @@ function drawFGOSkillIcon(
   const innerX = x + pad;
   const innerY = y + pad;
 
+  const type = (skillObj?.effectType || skillObj?.name || '').toLowerCase();
+
   const bgGrad = ctx.createLinearGradient(innerX, innerY, innerX, innerY + innerSize);
-  if (skillIndex === 0) {
-    // Buster / Attack: Fiery Red-Orange
-    bgGrad.addColorStop(0, '#ef4444');
-    bgGrad.addColorStop(0.5, '#b91c1c');
-    bgGrad.addColorStop(1, '#7f1d1d');
-  } else if (skillIndex === 1) {
+  if (type.includes('arts') || type.includes('np_charge') || skillIndex === 1) {
     // Arts / NP Charge: Radiant Blue-Cyan
     bgGrad.addColorStop(0, '#38bdf8');
     bgGrad.addColorStop(0.5, '#2563eb');
     bgGrad.addColorStop(1, '#1e3a8a');
-  } else {
+  } else if (type.includes('quick') || type.includes('evade') || type.includes('crit') || skillIndex === 2) {
     // Quick / Crit / Buff: Amber-Gold / Emerald
     bgGrad.addColorStop(0, '#fbbf24');
     bgGrad.addColorStop(0.5, '#d97706');
     bgGrad.addColorStop(1, '#78350f');
+  } else {
+    // Buster / Attack: Fiery Red-Orange
+    bgGrad.addColorStop(0, '#ef4444');
+    bgGrad.addColorStop(0.5, '#b91c1c');
+    bgGrad.addColorStop(1, '#7f1d1d');
   }
 
   ctx.fillStyle = bgGrad;
@@ -338,107 +342,63 @@ function drawFGOSkillIcon(
   ctx.lineWidth = 1;
   ctx.strokeRect(innerX + 0.5, innerY + 0.5, innerSize - 1, innerSize - 1);
 
-  // 3. Vector Skill Emblem
+  // 3. Render Authentic Status Icon Image or Vector Fallback
   ctx.save();
   const cx = innerX + innerSize / 2;
   const cy = innerY + innerSize / 2;
 
-  if (skillIndex === 0) {
-    // Skill 1: Diagonal Sword Blade (Attack Up)
-    ctx.strokeStyle = '#ffffff';
-    ctx.fillStyle = '#fef08a';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(cx - 10, cy + 10);
-    ctx.lineTo(cx + 8, cy - 8);
-    ctx.stroke();
-
-    // Crossguard
-    ctx.beginPath();
-    ctx.moveTo(cx - 12, cy + 4);
-    ctx.lineTo(cx - 4, cy + 12);
-    ctx.stroke();
-
-    // Red Buff Arrow at bottom right
-    ctx.fillStyle = '#ef4444';
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(innerX + innerSize - 11, innerY + innerSize - 4);
-    ctx.lineTo(innerX + innerSize - 11, innerY + innerSize - 12);
-    ctx.lineTo(innerX + innerSize - 14, innerY + innerSize - 12);
-    ctx.lineTo(innerX + innerSize - 8, innerY + innerSize - 18);
-    ctx.lineTo(innerX + innerSize - 2, innerY + innerSize - 12);
-    ctx.lineTo(innerX + innerSize - 5, innerY + innerSize - 12);
-    ctx.lineTo(innerX + innerSize - 5, innerY + innerSize - 4);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-  } else if (skillIndex === 1) {
-    // Skill 2: Sunbeam / NP Ray Emitter
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(cx - 3, cy - 3, 5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = '#fef08a';
-    ctx.lineWidth = 2;
-    for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
-      ctx.beginPath();
-      ctx.moveTo(cx - 3 + Math.cos(angle) * 7, cy - 3 + Math.sin(angle) * 7);
-      ctx.lineTo(cx - 3 + Math.cos(angle) * 12, cy - 3 + Math.sin(angle) * 12);
-      ctx.stroke();
-    }
-
-    // Golden Buff Arrow at bottom right
-    ctx.fillStyle = '#fbbf24';
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(innerX + innerSize - 11, innerY + innerSize - 4);
-    ctx.lineTo(innerX + innerSize - 11, innerY + innerSize - 12);
-    ctx.lineTo(innerX + innerSize - 14, innerY + innerSize - 12);
-    ctx.lineTo(innerX + innerSize - 8, innerY + innerSize - 18);
-    ctx.lineTo(innerX + innerSize - 2, innerY + innerSize - 12);
-    ctx.lineTo(innerX + innerSize - 5, innerY + innerSize - 12);
-    ctx.lineTo(innerX + innerSize - 5, innerY + innerSize - 4);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+  if (iconImg) {
+    // Draw preloaded WebP status icon
+    const imgSize = Math.floor(innerSize * 0.72);
+    const imgX = cx - imgSize / 2;
+    const imgY = cy - imgSize / 2;
+    ctx.drawImage(iconImg, imgX, imgY, imgSize, imgSize);
   } else {
-    // Skill 3: 8-Point Starburst (Crit / Burst)
-    ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = '#fef08a';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    for (let i = 0; i < 8; i++) {
-      const r = i % 2 === 0 ? 11 : 4.5;
-      const a = (i * Math.PI) / 4;
-      const px = cx + Math.cos(a) * r;
-      const py = cy + Math.sin(a) * r;
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    // Fallback Vector Emblem
+    if (skillIndex === 0) {
+      ctx.strokeStyle = '#ffffff';
+      ctx.fillStyle = '#fef08a';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(cx - 10, cy + 10);
+      ctx.lineTo(cx + 8, cy - 8);
+      ctx.stroke();
 
-    // Cyan Buff Arrow at bottom right
-    ctx.fillStyle = '#38bdf8';
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(innerX + innerSize - 11, innerY + innerSize - 4);
-    ctx.lineTo(innerX + innerSize - 11, innerY + innerSize - 12);
-    ctx.lineTo(innerX + innerSize - 14, innerY + innerSize - 12);
-    ctx.lineTo(innerX + innerSize - 8, innerY + innerSize - 18);
-    ctx.lineTo(innerX + innerSize - 2, innerY + innerSize - 12);
-    ctx.lineTo(innerX + innerSize - 5, innerY + innerSize - 12);
-    ctx.lineTo(innerX + innerSize - 5, innerY + innerSize - 4);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - 12, cy + 4);
+      ctx.lineTo(cx - 4, cy + 12);
+      ctx.stroke();
+    } else if (skillIndex === 1) {
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 13, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      drawFGOCritStar(ctx, cx, cy, 10);
+    }
   }
+
+  // Buff Overlay Arrow on Bottom-Right Corner
+  ctx.fillStyle = '#fef08a';
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(innerX + innerSize - 8, innerY + innerSize - 2);
+  ctx.lineTo(innerX + innerSize - 8, innerY + innerSize - 8);
+  ctx.lineTo(innerX + innerSize - 11, innerY + innerSize - 8);
+  ctx.lineTo(innerX + innerSize - 6, innerY + innerSize - 13);
+  ctx.lineTo(innerX + innerSize - 1, innerY + innerSize - 8);
+  ctx.lineTo(innerX + innerSize - 4, innerY + innerSize - 8);
+  ctx.lineTo(innerX + innerSize - 4, innerY + innerSize - 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
   ctx.restore();
 
   // 4. Cooldown Overlay (if on cooldown or servant is dead)
@@ -805,10 +765,15 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     const skillStartX = slotX + (panelW - totalSkillsW) / 2;
     const skillY = 485;
 
+    const servantSkills = p.servant.template?.skills || p.servant.skills || [];
+
     for (let s = 0; s < 3; s++) {
       const sX = skillStartX + s * (skillBoxSize + skillGap);
       const cd = p.skillCooldowns?.[s] || 0;
-      drawFGOSkillIcon(ctx, sX, skillY, skillBoxSize, s, cd, !!p.isDead);
+      const skObj = servantSkills[s];
+      const iconUrl = getStatusIconUrl(skObj?.effectType || skObj?.name || (s === 0 ? 'buff_atk' : s === 1 ? 'arts' : 'crit_stars'));
+      const iconImg = buffImageMap?.get(iconUrl);
+      drawFGOSkillIcon(ctx, sX, skillY, skillBoxSize, s, cd, !!p.isDead, skObj, iconImg);
     }
 
     // 2.5 Active Status Buff/Debuff Badges Row (Position Y: 540)
@@ -1020,10 +985,19 @@ export async function renderRaidBattlefield(state: RaidBattleState, _animated = 
     getClassIconUrl(p.servant.template?.servantClass || 'Saber')
   );
 
-  // Collect all active buff/debuff types for preloading
+  // Collect all active buff/debuff types and skill icons for preloading
+  const skillTypes = state.participants.flatMap(p => {
+    const skills = p.servant.template?.skills || p.servant.skills || [];
+    return [0, 1, 2].map(sIdx => {
+      const sk = skills[sIdx];
+      return sk?.effectType || sk?.name || (sIdx === 0 ? 'buff_atk' : sIdx === 1 ? 'arts' : 'crit_stars');
+    });
+  });
+
   const allBuffTypes = Array.from(new Set([
     ...state.participants.flatMap(p => (p.activeBuffs || []).map(b => b.type)),
-    ...(state.bossBuffs || []).map(b => b.type)
+    ...(state.bossBuffs || []).map(b => b.type),
+    ...skillTypes
   ]));
   const buffUrls = allBuffTypes.map(t => getStatusIconUrl(t));
 
