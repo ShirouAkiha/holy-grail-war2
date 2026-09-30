@@ -144,10 +144,10 @@ export const RAID_BOSSES: Record<string, RaidBossConfig> = {
         maxCharge: 5,
         spriteUrl: 'https://ella.janitorai.com/media-approved/vIAH9W2EA76dznj4sTQP5.webp',
         drawBox: {
-          destX: 160,
-          destY: 60,
-          destW: 340,
-          destH: 460
+          destX: 80,
+          destY: 90,
+          destW: 410,
+          destH: 530
         },
         passives: [
           'Sea of Life / Chaos Tide: -2,000 HP & -15% NP Gain to all Servants every turn',

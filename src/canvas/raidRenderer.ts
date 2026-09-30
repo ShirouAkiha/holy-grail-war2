@@ -548,16 +548,16 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     if (isTiamat) {
       if (phase === 1) {
         // Phase 1: Femme Fatale Form (Limiter State)
-        // Centered vertically on left field. Bottom edge touches ground level (Y: 520).
-        // Draw Box: X: 160, Y: 60, Target Width: 340, Target Height: 460
-        const destX = 160;
-        const destY = 60;
-        const destW = 340;
-        const destH = 460;
+        // Positioned further left (destX: 80) and lower (destY: 90) with larger scale (410x530)
+        const phaseConfig = state.boss.phases?.[0];
+        const destX = phaseConfig?.drawBox?.destX ?? 80;
+        const destY = phaseConfig?.drawBox?.destY ?? 90;
+        const destW = phaseConfig?.drawBox?.destW ?? 410;
+        const destH = phaseConfig?.drawBox?.destH ?? 530;
 
         // Ground shadow on primordial shore
         ctx.beginPath();
-        ctx.ellipse(destX + destW * 0.5, 514, 140, 16, 0, 0, Math.PI * 2);
+        ctx.ellipse(destX + destW * 0.5, destY + destH - 12, destW * 0.42, 18, 0, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
         ctx.fill();
 
