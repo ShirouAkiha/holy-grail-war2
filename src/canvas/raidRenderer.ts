@@ -3,6 +3,7 @@ import { MasterServantInstance } from '../types';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { getLocalMediaDiskPath } from '../utils/localMedia';
 import { getClassIconUrl } from '../data/classIcons';
+import { getStatusIconUrl } from '../data/statusIcons';
 import fs from 'fs';
 
 let canvasModule: any = null;
@@ -543,7 +544,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
 
-  const { bgImg, bossSpriteImg, bossAvatarImg, bossClassIconImg, servantAvatars, servantClassIcons = [] } = loadedImages;
+  const { bgImg, bossSpriteImg, bossAvatarImg, bossClassIconImg, servantAvatars, servantClassIcons = [], buffImageMap } = loadedImages;
 
   // ==========================================
   // LAYER 1: Background & Arena Environment
@@ -810,6 +811,34 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
       drawFGOSkillIcon(ctx, sX, skillY, skillBoxSize, s, cd, !!p.isDead);
     }
 
+    // 2.5 Active Status Buff/Debuff Badges Row (Position Y: 540)
+    if (p.activeBuffs && p.activeBuffs.length > 0 && !p.isDead) {
+      const buffY = 540;
+      const buffSize = 18;
+      const buffGap = 4;
+      const maxBuffs = 8;
+      p.activeBuffs.slice(0, maxBuffs).forEach((b, bIdx) => {
+        const iconUrl = getStatusIconUrl(b.type);
+        const img = buffImageMap?.get(iconUrl);
+        const bX = slotX + 10 + bIdx * (buffSize + buffGap);
+        if (img) {
+          ctx.drawImage(img, bX, buffY, buffSize, buffSize);
+        } else {
+          ctx.save();
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1;
+          drawRoundRect(ctx, bX, buffY, buffSize, buffSize, 3, true, true);
+          ctx.fillStyle = '#38bdf8';
+          ctx.font = 'bold 9px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(b.type.slice(0, 1).toUpperCase(), bX + buffSize / 2, buffY + buffSize / 2);
+          ctx.restore();
+        }
+      });
+    }
+
     // 3. Status Bars & Labels (Y: 562 to 715)
     const barW = panelW - 20;
     const barX = slotX + 10;
@@ -991,7 +1020,14 @@ export async function renderRaidBattlefield(state: RaidBattleState, _animated = 
     getClassIconUrl(p.servant.template?.servantClass || 'Saber')
   );
 
-  // Preload all assets including authentic FGO class icons
+  // Collect all active buff/debuff types for preloading
+  const allBuffTypes = Array.from(new Set([
+    ...state.participants.flatMap(p => (p.activeBuffs || []).map(b => b.type)),
+    ...(state.bossBuffs || []).map(b => b.type)
+  ]));
+  const buffUrls = allBuffTypes.map(t => getStatusIconUrl(t));
+
+  // Preload all assets including authentic FGO class icons and status icons
   const [bgImg, bossSpriteImg, bossAvatarImg, bossClassIconImg, ...rest] = await Promise.all([
     loadImage(state.boss.bgUrl),
     loadImage(state.boss.spriteUrl),
@@ -1001,12 +1037,21 @@ export async function renderRaidBattlefield(state: RaidBattleState, _animated = 
       const art = p.servant.template?.spriteUrl || (p.servant as any).customArtworkUrl || p.servant.template?.avatarUrl;
       return art ? loadImage(art) : Promise.resolve(null);
     }),
-    ...participantClassIconUrls.map(url => loadImage(url))
+    ...participantClassIconUrls.map(url => loadImage(url)),
+    ...buffUrls.map(url => loadImage(url))
   ]);
 
   const numPart = state.participants.length;
   const servantAvatars = rest.slice(0, numPart);
-  const servantClassIcons = rest.slice(numPart);
+  const servantClassIcons = rest.slice(numPart, numPart + participantClassIconUrls.length);
+  const loadedBuffImgs = rest.slice(numPart + participantClassIconUrls.length);
+
+  const buffImageMap = new Map<string, any>();
+  buffUrls.forEach((url, idx) => {
+    if (loadedBuffImgs[idx]) {
+      buffImageMap.set(url, loadedBuffImgs[idx]);
+    }
+  });
 
   const loadedImages = {
     bgImg,
@@ -1014,7 +1059,8 @@ export async function renderRaidBattlefield(state: RaidBattleState, _animated = 
     bossAvatarImg,
     bossClassIconImg,
     servantAvatars,
-    servantClassIcons
+    servantClassIcons,
+    buffImageMap
   };
 
   // Render pristine 1280x720 PNG frame

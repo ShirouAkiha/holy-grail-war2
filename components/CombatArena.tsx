@@ -28,6 +28,7 @@ import {
   clearCombatBattleHistory,
   resetSeedCombatBattleHistory
 } from '../lib/engine/combatHistory';
+import { getStatusIconUrl } from '../src/data/statusIcons';
 import CombatLogHistory from './CombatLogHistory';
 import { SERVANT_DATABASE } from '../lib/data/servants';
 import { getNoblePhantasmGif } from '../lib/data/noblePhantasmGifs';
@@ -1700,7 +1701,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                       )}
                     </h3>
                     <p className="text-xs text-white/40 font-mono">Master: {member.masterName}</p>
-                    <div className="flex items-center gap-2 mt-1.5">
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded-sm bg-[#111] text-[#ef4444] border border-[#ef4444]/30">
                         ATK: {member.atk.toLocaleString()}
                       </span>
@@ -1708,6 +1709,16 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                         DEF: {member.def.toLocaleString()}
                       </span>
                     </div>
+                    {member.activeBuffs && member.activeBuffs.length > 0 && (
+                      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                        {member.activeBuffs.map((b, bIdx) => (
+                          <div key={bIdx} className="flex items-center gap-1 bg-black/60 border border-sky-500/40 rounded px-1.5 py-0.5 shadow-sm" title={`${b.name || b.type} (${b.remainingTurns || 1}T)`}>
+                            <img src={getStatusIconUrl(b.type)} alt={b.type} className="w-4 h-4 object-contain" />
+                            {b.remainingTurns && <span className="text-[9px] font-mono text-sky-300 font-bold">{b.remainingTurns}t</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
 
