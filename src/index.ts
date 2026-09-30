@@ -687,9 +687,8 @@ client.on(Events.InteractionCreate, async interaction => {
       else if (interaction.customId.startsWith('admin_modal_custom_timer') || interaction.customId.startsWith('admin_modal_custom_date')) {
         await adminCommand.handleAdminGlobalInteraction(interaction);
       }
-      else if (interaction.customId.startsWith('modal_set_api_key:')) {
-        const provider = interaction.customId.split(':')[1] as any;
-        await apikeyCommand.handleApiKeyModalSubmit(interaction, provider);
+      else if (interaction.customId.startsWith('modal_set_api_key:') || interaction.customId.startsWith('modal_set_custom_model:')) {
+        await apikeyCommand.handleApiKeyModalSubmit(interaction, interaction.customId);
       }
       else if (interaction.customId.startsWith('modal_talk_servant:')) {
         const servantId = interaction.customId.replace('modal_talk_servant:', '');

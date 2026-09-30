@@ -1223,51 +1223,80 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 /**
  * Handles modal submit for saving an API key or setting custom model ID.
  */
-export async function handleApiKeyModalSubmit(interaction: ModalSubmitInteraction, modalId: string) {
-  const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+export async function handleApiKeyModalSubmit(interaction: ModalSubmitInteraction, rawModalId?: string) {
+  const modalId = (rawModalId && rawModalId.includes(':')) ? rawModalId : interaction.customId;
 
-  // 1. Custom Model ID Modal Submit
-  if (modalId.startsWith('modal_set_custom_model:')) {
-    const provider = modalId.split(':')[1] as ApiProviderType;
-    const customModel = interaction.fields.getTextInputValue('custom_model_id_input')?.trim();
+  try {
+    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
 
-    if (!customModel) {
-      await interaction.reply({ content: '❌ Model identifier cannot be empty.', flags: MessageFlags.Ephemeral });
+    // 1. Custom Model ID Modal Submit
+    if (modalId.startsWith('modal_set_custom_model:')) {
+      const provider = modalId.split(':')[1] as ApiProviderType;
+      const customModel = interaction.fields.getTextInputValue('custom_model_id_input')?.trim();
+
+      if (!customModel) {
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ content: '❌ Model identifier cannot be empty.', flags: MessageFlags.Ephemeral });
+        }
+        return;
+      }
+
+      if (!master.customApiConfig) {
+        master.customApiConfig = {
+          activeProvider: provider,
+          enabled: true
+        };
+      }
+
+      master.customApiConfig.activeProvider = provider;
+      setProviderModel(master.customApiConfig, provider, customModel);
+
+      master.customApiConfig.enabled = true;
+      await saveMaster(master);
+
+      const { embed, components } = buildApiKeyDashboard(master);
+      const providerName = PROVIDER_DISPLAY_NAMES[provider] || provider;
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({
+          content: `✅ **Model successfully set to \`${customModel}\` for ${providerName}!**`,
+          embeds: [embed],
+          components,
+          flags: MessageFlags.Ephemeral
+        });
+      } else {
+        await interaction.editReply({
+          content: `✅ **Model successfully set to \`${customModel}\` for ${providerName}!**`,
+          embeds: [embed],
+          components
+        });
+      }
       return;
     }
 
-    if (!master.customApiConfig) {
-      master.customApiConfig = {
-        activeProvider: provider,
-        enabled: true
-      };
+    // 2. API Key Credential Modal Submit
+    const provider = (modalId.startsWith('modal_set_api_key:')
+      ? modalId.split(':')[1]
+      : (rawModalId || modalId)) as ApiProviderType;
+
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     }
 
-    master.customApiConfig.activeProvider = provider;
-    setProviderModel(master.customApiConfig, provider, customModel);
+    let rawKey = '';
+    try {
+      rawKey = interaction.fields.getTextInputValue('api_key_input')?.trim() || '';
+    } catch {
+      rawKey = '';
+    }
 
-    master.customApiConfig.enabled = true;
-    await saveMaster(master);
+    let model = '';
+    try {
+      model = interaction.fields.getTextInputValue('model_name_input')?.trim() || '';
+    } catch {
+      model = '';
+    }
 
-    const { embed, components } = buildApiKeyDashboard(master);
-    await interaction.reply({
-      content: `✅ **Model successfully set to \`${customModel}\` for ${PROVIDER_DISPLAY_NAMES[provider]}!**`,
-      embeds: [embed],
-      components,
-      flags: MessageFlags.Ephemeral
-    });
-    return;
-  }
-
-  // 2. API Key Credential Modal Submit
-  if (modalId.startsWith('modal_set_api_key:')) {
-    const provider = modalId.split(':')[1] as ApiProviderType;
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-    const rawKey = interaction.fields.getTextInputValue('api_key_input')?.trim();
-    const model = interaction.fields.getTextInputValue('model_name_input')?.trim();
     let endpoint: string | undefined;
-
     try {
       endpoint = interaction.fields.getTextInputValue('endpoint_input')?.trim();
     } catch {
@@ -1305,8 +1334,9 @@ export async function handleApiKeyModalSubmit(interaction: ModalSubmitInteractio
 
     const { embed, components } = buildApiKeyDashboard(master);
     const safeMessage = redactSensitiveKeysFromText(testRes.message, rawKey ? [rawKey] : []);
+    const providerName = PROVIDER_DISPLAY_NAMES[provider] || provider;
     const statusMsg = testRes.success
-      ? `✅ **${PROVIDER_DISPLAY_NAMES[provider]} connected and AES-256-GCM encrypted successfully!**\n• ${safeMessage}\n• Unlimited Servant chats are now **Active**.`
+      ? `✅ **${providerName} connected and AES-256-GCM encrypted successfully!**\n• ${safeMessage}\n• Unlimited Servant chats are now **Active**.`
       : `⚠️ **Saved, but connection test failed:**\n• *${safeMessage}*\n• You can edit your settings or re-test anytime from the dashboard.`;
 
     await interaction.editReply({
@@ -1314,6 +1344,13 @@ export async function handleApiKeyModalSubmit(interaction: ModalSubmitInteractio
       embeds: [embed],
       components
     });
+  } catch (err: any) {
+    console.error('[APIKeyModal] Unexpected error saving configuration:', err);
+    if (interaction.deferred) {
+      await interaction.editReply({ content: `❌ Error saving API key configuration: ${err?.message || 'Unknown error'}` }).catch(() => {});
+    } else if (!interaction.replied) {
+      await interaction.reply({ content: `❌ Error saving API key configuration: ${err?.message || 'Unknown error'}`, flags: MessageFlags.Ephemeral }).catch(() => {});
+    }
   }
 }
 
