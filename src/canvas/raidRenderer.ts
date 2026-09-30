@@ -546,18 +546,22 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     const phase = state.currentPhase || 1;
 
     if (isTiamat) {
+      // Compute intrinsic aspect ratio to prevent any horizontal squishing or stretching
+      const naturalW = bossSpriteImg.naturalWidth || bossSpriteImg.width || 400;
+      const naturalH = bossSpriteImg.naturalHeight || bossSpriteImg.height || 500;
+      const intrinsicAspect = naturalW / naturalH;
+
       if (phase === 1) {
         // Phase 1: Femme Fatale Form (Limiter State)
-        // Positioned further left (destX: 80) and lower (destY: 90) with larger scale (410x530)
-        const phaseConfig = state.boss.phases?.[0];
-        const destX = phaseConfig?.drawBox?.destX ?? 80;
-        const destY = phaseConfig?.drawBox?.destY ?? 90;
-        const destW = phaseConfig?.drawBox?.destW ?? 410;
-        const destH = phaseConfig?.drawBox?.destH ?? 530;
+        // Target height 520px with width calculated strictly from intrinsic aspect ratio
+        const destH = 520;
+        const destW = Math.round(destH * intrinsicAspect);
+        const destX = 60; // Shifted left on battle stage
+        const destY = 85; // Shifted lower
 
         // Ground shadow on primordial shore
         ctx.beginPath();
-        ctx.ellipse(destX + destW * 0.5, destY + destH - 12, destW * 0.42, 18, 0, 0, Math.PI * 2);
+        ctx.ellipse(destX + destW * 0.5, destY + destH - 12, destW * 0.45, 18, 0, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
         ctx.fill();
 
