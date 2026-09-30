@@ -15,6 +15,8 @@ export const CLASS_ICON_URLS: Record<string, string> = {
   mooncancer: 'https://ella.janitorai.com/media-approved/Jn2NcjIPZbF3VnXgFuzOt.webp',
   'moon cancer': 'https://ella.janitorai.com/media-approved/Jn2NcjIPZbF3VnXgFuzOt.webp',
   pretender: 'https://ella.janitorai.com/media-approved/2AgnJGGinmtCgDC7IvlpW.webp',
+  beast: 'https://ella.janitorai.com/media-approved/0e2G0RijgX5dnEjjuZPBm.webp',
+  'beast ii': 'https://ella.janitorai.com/media-approved/0e2G0RijgX5dnEjjuZPBm.webp',
 };
 
 export function getClassIconUrl(servantClass?: string): string {

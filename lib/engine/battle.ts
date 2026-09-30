@@ -584,12 +584,27 @@ export function applyCombatantSkill(
         ? 2
         : (descLower.includes('1 turn') || descLower.includes('1t') || idLower === 'kekkai_creation' ? 1 : (skill.duration || 1));
 
-      actor.activeBuffs.push({
-        name: skill.name,
-        type: 'invincible',
-        value: 100,
-        remainingTurns: invDuration
-      });
+      if (skill.id === 'concept_nullification_impact_space_a') {
+        actor.activeBuffs.push({
+          name: 'Concept Nullification (Invincible)',
+          type: 'invincible',
+          value: 100,
+          remainingTurns: 1
+        });
+        actor.activeBuffs.push({
+          name: 'Concept Nullification (Ignore Invincible)',
+          type: 'ignore_invincible',
+          value: 100,
+          remainingTurns: 1
+        });
+      } else {
+        actor.activeBuffs.push({
+          name: skill.name,
+          type: 'invincible',
+          value: 100,
+          remainingTurns: invDuration
+        });
+      }
       if (idLower === 'kekkai_creation' || descLower.includes('defense') || descLower.includes('increases def')) {
         actor.activeBuffs.push({
           name: `${skill.name} (DEF Up)`,
@@ -1713,12 +1728,14 @@ export function executeBattleTurn(
               ? 2
               : (invDesc.includes('1 turn') || invDesc.includes('1t') || invId === 'kekkai_creation' ? 1 : (skill.duration || 1));
 
-            actor.activeBuffs.push({
-              name: skill.name || 'Invincible',
-              type: 'invincible',
-              value: 100,
-              remainingTurns: invDuration
-            });
+            if (skill.id !== 'concept_nullification_impact_space_a') {
+              actor.activeBuffs.push({
+                name: skill.name || 'Invincible',
+                type: 'invincible',
+                value: 100,
+                remainingTurns: invDuration
+              });
+            }
             if (skill.id === 'ephemeral_dream_a' || (invDesc.includes('attack') && !invDesc.includes('attacks'))) {
               actor.activeBuffs.push({
                 name: `${skill.name} (ATK Up)`,
@@ -2180,28 +2197,6 @@ export function executeBattleTurn(
         totalStars += Math.round(2 * cardStarMult);
       });
 
-      // Consume turn-based and hit-based Evade / Invincibility and tick DEF buffs after defending against this attack sequence
-      if (target.activeBuffs) {
-        target.activeBuffs = target.activeBuffs.filter(b => {
-          const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
-          if (b.type === 'evade' || b.type === 'invincible') {
-            if (isHitBased) {
-              return b.remainingHits === undefined || b.remainingHits > 0;
-            }
-            b.remainingTurns--;
-            return b.remainingTurns > 0;
-          }
-          if ((b.type === 'buff_def' || b.type === 'debuff_def') && b.remainingTurns < 90) {
-            b.remainingTurns--;
-            return b.remainingTurns > 0;
-          }
-          return true;
-        });
-        if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
-        if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
-        if (!target.activeBuffs.some(b => b.type === 'stun')) target.isStunned = false;
-      }
-
       const chainNotice = cardChainType === 'Quick Chain'
         ? `\n🟢 **QUICK CHAIN BONUS:** +20 Critical Stars added & +25% Crit Rate!`
         : cardChainType === 'Buster Brave'
@@ -2211,6 +2206,20 @@ export function executeBattleTurn(
         : '';
       const critNotice = isCritical ? ' ⚡ **CRITICAL HIT!**' : '';
       actionText = `⚔️ ${actor.name} executed a ${cards.join(' • ')} sequence dealing ${totalDamage.toLocaleString()} DMG!${critNotice}${chainNotice}`;
+    }
+
+    // Filter out consumed hit-based Evade / Invincibility after defending against an attack or Noble Phantasm
+    if (target.activeBuffs) {
+      target.activeBuffs = target.activeBuffs.filter(b => {
+        const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
+        if (isHitBased) {
+          return b.remainingHits === undefined || b.remainingHits > 0;
+        }
+        return b.remainingTurns > 0;
+      });
+      target.isEvading = target.activeBuffs.some(b => b.type === 'evade');
+      target.isInvincible = target.activeBuffs.some(b => b.type === 'invincible');
+      target.isStunned = target.activeBuffs.some(b => b.type === 'stun');
     }
 
     if (usedSkillNames.length > 0) {
@@ -2417,8 +2426,8 @@ export function executeBattleTurn(
       .map(b => {
         const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
         if (b.type === 'evade' || b.type === 'invincible') {
-          if (isHitBased) return b;
-          return { ...b, remainingTurns: b.remainingTurns - 1 };
+          // Defensive buffs protect against incoming attacks; do not decrement on attacker when completing their own attack
+          return b;
         }
         if (
           b.type === 'buff_atk' ||
@@ -2559,11 +2568,19 @@ export function executeBattleTurn(
     }
   }
 
-  // Clean up expired buffs and sync status/defensive booleans for all team & solo members
+  // Clean up expired buffs and sync status/defensive booleans for all team & solo members at round end
   [...teamA, ...teamB, ...teamSolo].forEach(combatant => {
-    combatant.activeBuffs = combatant.activeBuffs.filter(
-      b => b.remainingTurns > 0 && (!b.isHitCount || b.remainingHits === undefined || b.remainingHits > 0)
-    );
+    combatant.activeBuffs = combatant.activeBuffs
+      .map(b => {
+        const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
+        if (!isHitBased && b.remainingTurns > 0 && b.remainingTurns < 90) {
+          return { ...b, remainingTurns: b.remainingTurns - 1 };
+        }
+        return b;
+      })
+      .filter(
+        b => b.remainingTurns > 0 && (!b.isHitCount || b.remainingHits === undefined || b.remainingHits > 0)
+      );
     combatant.isInvincible = combatant.activeBuffs.some(b => b.type === 'invincible');
     combatant.isEvading = combatant.activeBuffs.some(b => b.type === 'evade');
     combatant.isStunned = combatant.activeBuffs.some(b => b.type === 'stun');

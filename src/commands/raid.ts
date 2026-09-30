@@ -21,28 +21,55 @@ import { addBondExpToServant } from '../../lib/engine/bondEvents';
 
 export const data = new SlashCommandBuilder()
   .setName('raid')
-  .setDescription('Launch or join a cooperative PvE Demon God Pillar Raid Battle (1-4 Masters)')
+  .setDescription('Launch or join a cooperative PvE Demon God Pillar / Beast Raid Battle (1-4 Masters)')
+  .addSubcommand(sub =>
+    sub.setName('menu')
+      .setDescription('Open the Grand Raid Terminal to inspect bosses, phases, drops, and select your raid target')
+  )
   .addSubcommand(sub =>
     sub.setName('barbatos')
       .setDescription('Challenge Demon God Pillar Barbatos in the Solomon Temple of Time (Solo or 4P Co-op)')
   )
   .addSubcommand(sub =>
+    sub.setName('tiamat')
+      .setDescription('Challenge Beast II / Primordial Mother Tiamat in the Chaos Sea (3-Phase Break Gauge Raid)')
+  )
+  .addSubcommand(sub =>
     sub.setName('info')
-      .setDescription('View Demon God Pillar Barbatos raid mechanics, drops, and weaknesses')
+      .setDescription('View PvE raid mechanics, break gauges, drops, and weaknesses')
+      .addStringOption(opt =>
+        opt.setName('boss')
+          .setDescription('Select boss to inspect')
+          .setRequired(false)
+          .addChoices(
+            { name: 'Demon God Pillar Barbatos (Temple of Time)', value: 'barbatos' },
+            { name: 'Beast II / Primordial Mother Tiamat (Chaos Sea)', value: 'tiamat' }
+          )
+      )
   );
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-  const subcommand = interaction.options.getSubcommand() || 'barbatos';
+  const subcommand = interaction.options.getSubcommand(false) || 'menu';
 
   if (subcommand === 'info') {
-    const boss = RAID_BOSSES['barbatos'];
+    const requestedBoss = interaction.options.getString('boss') || 'barbatos';
+    const boss = RAID_BOSSES[requestedBoss] || RAID_BOSSES['barbatos'];
+    const isTiamat = boss.id === 'tiamat';
+
+    let phaseDesc = '';
+    if (boss.phases && boss.phases.length > 0) {
+      phaseDesc = `\n🔥 **Break Gauge Phases (${boss.totalPhases || 3} Phases):**\n` +
+        boss.phases.map(p => `• **Phase ${p.phaseNumber}: ${p.name}** (${p.baseHp.toLocaleString()} HP • ${p.maxCharge} Charge)\n  ${p.passives.map(ps => `  - *${ps}*`).join('\n')}`).join('\n') + '\n';
+    }
+
     const infoEmbed = new EmbedBuilder()
       .setTitle(`👑 PVE RAID: ${boss.name.toUpperCase()}`)
       .setDescription(
         `**Title:** ${boss.title}\n` +
         `**Class:** \`${boss.servantClass}\` • **Level:** \`${boss.level}\` • **HP:** \`${boss.baseHp.toLocaleString()}\`\n` +
-        `**Max Charge:** \`◆ ◆ ◆ ◆ (4 Diamonds)\`\n\n` +
-        `⚔️ **Raid Mechanics & Skills:**\n` +
+        `**Max Charge:** \`${Array(boss.maxCharge).fill('◆').join(' ')} (${boss.maxCharge} Diamonds)\`\n` +
+        phaseDesc +
+        `\n⚔️ **Raid Mechanics & Skills:**\n` +
         boss.skills.map(s => `• **${s.name}**: ${s.description}`).join('\n') +
         `\n• **Charge Attack**: **${boss.chargeAttack.name}** — ${boss.chargeAttack.description}\n\n` +
         `💎 **Victory Rewards (All Participating Masters):**\n` +
@@ -52,14 +79,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `• Relic Drops: **${boss.drops.emberCount}x Blaze of Wisdom EXP Embers** ✨ *(Universal enhancement relics for \`/feed\`)*`
       )
       .setThumbnail(boss.avatarUrl)
-      .setColor(0x7c3aed)
+      .setColor(isTiamat ? 0xd946ef : 0x7c3aed)
       .setFooter({ text: 'Holy Grail War Engine • Chaldea Raid Protocol' });
 
     await interaction.reply({ embeds: [infoEmbed] });
     return;
   }
 
-  // Barbatos Raid Initiation & Lobby
+  // Raid Initiation & Lobby
   await interaction.deferReply();
 
   const hostMaster = await getOrCreateMaster(interaction.user.id, interaction.user.username);
@@ -72,7 +99,137 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     return;
   }
 
-  const boss = RAID_BOSSES['barbatos'];
+  // If invoked with /raid or /raid menu: show interactive Grand Raid Terminal menu
+  if (subcommand === 'menu') {
+    const sName = hostServant.nickname || hostServant.template?.name || 'Contracted Servant';
+    const sClass = hostServant.template?.servantClass || 'Saber';
+    const sLvl = hostServant.level || 90;
+
+    const menuEmbed = new EmbedBuilder()
+      .setTitle('🔱 CHALDEA GRAND RAID TERMINAL — CALAMITY INCURSION HUB')
+      .setDescription(
+        `🚨 **CHALDEA SECURITY ORGANIZATION • PVE RAID OPERATIONS**\n\n` +
+        `Deploy your active Servant alongside allied Masters to suppress Demon God Pillars and World Evils threatening Human History.\n\n` +
+        `👑 **Active Vanguard:** **${sName}** (\`${sClass}\` Lv.${sLvl})\n` +
+        `❤️ **Vanguard Parameters:** \`${hostServant.template?.baseHp?.toLocaleString() || '14,000'} HP\` | \`${hostServant.template?.baseAtk?.toLocaleString() || '11,000'} ATK\`\n` +
+        `🔴 **Command Seals:** \`${hostMaster.commandSeals ?? 3}/3\`\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `👁️ **1. DEMON GOD PILLAR BARBATOS** — *Temple of Time*\n` +
+        `• **Class:** \`Caster\` • **Level:** \`90\` • **HP:** \`1,200,000\` (Single Phase)\n` +
+        `• **Threat:** Observation Pillar • Lowers party DEF & drains critical stars\n` +
+        `• **Victory Drops:** 💎 \`10–20 SQ\` • ⚔️ \`+25,000 EXP\` • 💖 \`+2,000 Bond\` • ✨ \`3x Embers\`\n\n` +
+        `🌊 **2. BEAST II / PRIMORDIAL MOTHER TIAMAT** — *Chaos Sea of Genesis*\n` +
+        `• **Class:** \`Beast\` • **Level:** \`95\` • **HP:** \`17,000,000\` (**3 Break Gauges**)\n` +
+        `• **Phases:** Limiter (3.5M HP) ➔ Titan (5.5M HP) ➔ Primeval Dragon (8M HP)\n` +
+        `• **Mechanics:** Sea of Life (-2,000 HP/T), Self-Limitation, Nega-Genesis (-50% card DMG, NP True DMG)\n` +
+        `• **Victory Drops:** 💎 \`20–35 SQ\` • ⚔️ \`+60,000 EXP\` • 💖 \`+5,000 Bond\` • ✨ \`5x Embers\`\n\n` +
+        `👉 *Select a Raid Boss below to establish your co-op incursion lobby:*`
+      )
+      .setColor(0xd946ef)
+      .setFooter({ text: 'Holy Grail War PvE Engine • 1-4 Masters Co-op' });
+
+    const menuButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId('raid_menu_barbatos')
+        .setLabel('Fight Barbatos (Lv.90)')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('👁️'),
+      new ButtonBuilder()
+        .setCustomId('raid_menu_tiamat')
+        .setLabel('Fight Tiamat (3-Phase)')
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji('🌊'),
+      new ButtonBuilder()
+        .setCustomId('raid_menu_info')
+        .setLabel('Boss Intel & Drops')
+        .setStyle(ButtonStyle.Secondary)
+        .setEmoji('📖')
+    );
+
+    const menuMsg = await interaction.editReply({
+      embeds: [menuEmbed],
+      components: [menuButtons]
+    });
+
+    const menuCollector = menuMsg.createMessageComponentCollector({
+      componentType: ComponentType.Button,
+      time: 90_000
+    });
+
+    menuCollector.on('collect', async (btn) => {
+      if (btn.user.id !== interaction.user.id) {
+        await btn.reply({
+          content: '❌ Only the initiating Master can pick the raid boss from this menu.',
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+
+      menuCollector.stop('selected');
+      await btn.deferUpdate();
+
+      if (btn.customId === 'raid_menu_info') {
+        const infoEmbed = new EmbedBuilder()
+          .setTitle('📖 CHALDEA RAID BOSS DOSSIER & DROP INTELLIGENCE')
+          .setDescription(
+            `**1. Demon God Pillar Barbatos (Temple of Time)**\n` +
+            `• Class: \`Caster\` • HP: \`1,200,000\` • Charge: 5\n` +
+            `• Traits: Demonic, Giant, Super Large, Demon God Pillar\n` +
+            `• Skills: DEF Shred 20%, Curse (1,200 DMG/T), 25% ATK buff\n` +
+            `• Drops: 10–20 SQ, 25k EXP, 2,000 Bond, 3x Embers\n\n` +
+            `**2. Beast II / Tiamat (Chaos Sea)**\n` +
+            `• Class: \`Beast\` • Total HP: \`17,000,000\` (3 Break Gauges)\n` +
+            `• Traits: Beast, Divine, Dragon, Super Large, Female\n` +
+            `• Skills: Sea of Life (corrosive mud), Mud Surge, Chaos Deluge\n` +
+            `• Drops: 20–35 SQ, 60k EXP, 5,000 Bond, 5x Embers`
+          )
+          .setColor(0x38bdf8);
+
+        await menuMsg.edit({
+          embeds: [infoEmbed],
+          components: [
+            new ActionRowBuilder<ButtonBuilder>().addComponents(
+              new ButtonBuilder().setCustomId('raid_menu_barbatos').setLabel('Fight Barbatos').setStyle(ButtonStyle.Primary).setEmoji('👁️'),
+              new ButtonBuilder().setCustomId('raid_menu_tiamat').setLabel('Fight Tiamat').setStyle(ButtonStyle.Danger).setEmoji('🌊')
+            )
+          ]
+        });
+
+        const subCollector = menuMsg.createMessageComponentCollector({
+          componentType: ComponentType.Button,
+          time: 60_000
+        });
+
+        subCollector.on('collect', async (subBtn) => {
+          if (subBtn.user.id !== interaction.user.id) return;
+          subCollector.stop();
+          await subBtn.deferUpdate();
+          const chosenKey = subBtn.customId === 'raid_menu_tiamat' ? 'tiamat' : 'barbatos';
+          await launchRaidLobby(interaction, menuMsg, chosenKey, hostMaster, hostServant);
+        });
+        return;
+      }
+
+      const chosenKey = btn.customId === 'raid_menu_tiamat' ? 'tiamat' : 'barbatos';
+      await launchRaidLobby(interaction, menuMsg, chosenKey, hostMaster, hostServant);
+    });
+
+    return;
+  }
+
+  const directBossKey = subcommand === 'tiamat' ? 'tiamat' : 'barbatos';
+  await launchRaidLobby(interaction, null, directBossKey, hostMaster, hostServant);
+}
+
+async function launchRaidLobby(
+  interaction: ChatInputCommandInteraction,
+  existingMsg: any,
+  bossKey: string,
+  hostMaster: any,
+  hostServant: any
+) {
+  const boss = RAID_BOSSES[bossKey] || RAID_BOSSES['barbatos'];
+  const isTiamat = boss.id === 'tiamat';
 
   const lobbyParticipants: {
     userId: string;
@@ -96,18 +253,29 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return `**${idx + 1}.** <@${p.userId}> — **${sName}** (\`${sClass}\` Lv.${sLvl})`;
     }).join('\n');
 
+    const locationText = isTiamat
+      ? 'Underworld Abyss • Chaos Sea of Genesis'
+      : isGoetia
+      ? 'Coronated Realm • Ars Paulina (Temple of Time)'
+      : 'Grand Temple of Time • Throne of Solomon';
+
+    const bossSubtitle = isTiamat
+      ? `**Boss:** **${boss.name}** (\`${boss.servantClass}\` • Lv.${boss.level} • 3-Phase Break Gauge Boss)\n**Phase 1 HP:** **${boss.baseHp.toLocaleString()} HP** (3 Break Gauges Total)\n\n`
+      : isGoetia
+      ? `**Boss:** **${boss.name}** (\`${boss.servantClass}\` • Lv.${boss.level} • Beast I Climax)\n**Total Boss HP:** **${boss.baseHp.toLocaleString()} HP**\n\n`
+      : `**Boss:** **${boss.name}** (\`${boss.servantClass}\` • Lv.${boss.level})\n**Total Boss HP:** **${boss.baseHp.toLocaleString()} HP**\n\n`;
+
     return new EmbedBuilder()
       .setTitle(`⚔️ PVE RAID LOBBY: ${boss.name.toUpperCase()}`)
       .setDescription(
-        `**Location:** Grand Temple of Time • Throne of Solomon\n` +
-        `**Boss:** **${boss.name}** (\`${boss.servantClass}\` • Lv.${boss.level})\n` +
-        `**Total Boss HP:** **${boss.baseHp.toLocaleString()} HP**\n\n` +
+        `**Location:** ${locationText}\n` +
+        bossSubtitle +
         `👥 **Raid Party Formation (${lobbyParticipants.length}/4 Masters):**\n` +
         `${partyList}\n\n` +
         `*Click **Join Raid** to bring your active Servant into the fight, or the host can launch immediately!*`
       )
       .setThumbnail(boss.avatarUrl)
-      .setColor(0x9333ea)
+      .setColor(isTiamat ? 0xd946ef : isGoetia ? 0xeab308 : 0x9333ea)
       .setFooter({ text: 'PvE Raid Engine • Up to 4 Masters can join' });
   };
 
@@ -131,10 +299,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     );
   };
 
-  const lobbyMsg = await interaction.editReply({
-    embeds: [buildLobbyEmbed()],
-    components: [buildLobbyButtons()]
-  });
+  const lobbyMsg = existingMsg
+    ? await existingMsg.edit({
+        embeds: [buildLobbyEmbed()],
+        components: [buildLobbyButtons()]
+      })
+    : await interaction.editReply({
+        embeds: [buildLobbyEmbed()],
+        components: [buildLobbyButtons()]
+      });
 
   const lobbyCollector = lobbyMsg.createMessageComponentCollector({
     componentType: ComponentType.Button,
@@ -354,7 +527,9 @@ async function runRaidBattle(
   });
 
   const hpMultiplier = participants.length === 1 ? 1.0 : participants.length === 2 ? 1.25 : participants.length === 3 ? 1.5 : 1.75;
-  const scaledBossHp = Math.round(boss.baseHp * hpMultiplier);
+  const isTiamat = boss.id === 'tiamat';
+  const initialBaseHp = isTiamat && boss.phases ? boss.phases[0].baseHp : boss.baseHp;
+  const scaledBossHp = Math.round(initialBaseHp * hpMultiplier);
 
   const battleState: RaidBattleState = {
     boss,
@@ -364,9 +539,17 @@ async function runRaidBattle(
     round: 1,
     participants,
     activeMasterIndex: 0,
-    recentLogs: [`⚡ **BATTLE COMMENCED!** Demon God Pillar Barbatos awakens in the Temple of Time!`],
+    recentLogs: [`⚡ **BATTLE COMMENCED!** ${boss.name} awakens!`],
     bossBuffs: [],
-    fullCombatLog: [`⚡ **[Round 1]** Raid battle commenced against **Demon God Pillar Barbatos**!`]
+    fullCombatLog: [`⚡ **[Round 1]** Raid battle commenced against **${boss.name}**!`],
+    currentPhase: isTiamat ? 1 : undefined,
+    totalPhases: isTiamat ? (boss.totalPhases || 3) : undefined,
+    breakGaugesRemaining: isTiamat ? ((boss.totalPhases || 3) - 1) : undefined,
+    phaseTurn: 1,
+    phaseUltsUsed: 0,
+    turnDamageTaken: 0,
+    chaosSporesActive: false,
+    bossShield: 0
   };
 
   let pendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = [];
@@ -424,16 +607,34 @@ async function runRaidBattle(
 
   const dispatchBossNpGif = async () => {
     await cleanupNpGif();
+    const isTiamat = boss.id === 'tiamat';
+    const isPhase3 = battleState.currentPhase === 3;
+    const npName = isTiamat ? (isPhase3 ? 'PRIMORDIAL ROAR' : 'PRIMORDIAL MURMUR') : boss.chargeAttack.name.toUpperCase();
+    const chant = isTiamat
+      ? (isPhase3
+        ? '“...AAAAAA—! (The primordial cry of genesis that birthed and swallowed the gods!)”'
+        : '“...Aaaaa... (The sorrowful murmur of the abandoned mother echoes through the dark sea...)”')
+      : '“O Solomon, look upon our despair! From the cradle of incinerated time, we offer your demise!”';
+    const desc = isTiamat
+      ? (isPhase3
+        ? 'Beast II spreads her titanic draconic wings, releasing a deafening roar of absolute annihilation that ignores all evasion and invulnerability!'
+        : 'Tiamat weeps as waves of primordial black mud crash over the entire party!')
+      : 'Barbatos opens all 72 crimson eyes of the Solomon Spire, unleashing an apocalyptic wave of cursed demon god mana across the entire battlefield!';
+
+    const bossImage = boss.phases && battleState.currentPhase
+      ? boss.phases[battleState.currentPhase - 1]?.spriteUrl || boss.avatarUrl
+      : boss.avatarUrl;
+
     const bossEmbed = new EmbedBuilder()
-      .setTitle(`🔥 APOCALYPTIC NOBLE PHANTASM: ${boss.chargeAttack.name.toUpperCase()}`)
+      .setTitle(`🔥 APOCALYPTIC NOBLE PHANTASM: ${npName}`)
       .setDescription(
-        `👁️ **${boss.name}** (${boss.title})\n` +
-        `> *“O Solomon, look upon our despair! From the cradle of incinerated time, we offer your demise!”*\n\n` +
-        `Barbatos opens all 72 crimson eyes of the Solomon Spire, unleashing an apocalyptic wave of cursed demon god mana across the entire battlefield!`
+        `👑 **${boss.name}** (${boss.title})\n` +
+        `> *${chant}*\n\n` +
+        `${desc}`
       )
-      .setColor(0x7c3aed)
-      .setImage(boss.avatarUrl)
-      .setFooter({ text: 'Demon God Pillar Raid • Cataclysmic Charge Attack' });
+      .setColor(isTiamat ? 0xd946ef : 0x7c3aed)
+      .setImage(bossImage)
+      .setFooter({ text: `${boss.name} Raid • Cataclysmic Charge Attack` });
 
     try {
       activeNpGifMessage = await battleMsg.channel.send({ embeds: [bossEmbed] });
@@ -661,7 +862,7 @@ async function runRaidBattle(
       const dmgBreakdown = ep.curseDamage > 0 
         ? ` *(Strike: ${ep.strikeDamage.toLocaleString()} DMG • Curse: ${ep.curseDamage.toLocaleString()} DMG)*`
         : '';
-      enemyLines.push(`• 💥 **Total Barbatos Turn DMG:** __**${ep.totalDamage.toLocaleString()} DMG**__${dmgBreakdown}`);
+      enemyLines.push(`• 💥 **Total ${battleState.boss.name} Turn DMG:** __**${ep.totalDamage.toLocaleString()} DMG**__${dmgBreakdown}`);
 
       if (ep.skillName) {
         const debuffsText = ep.debuffsInflicted.length > 0 ? ` ➔ Inflicted: ${ep.debuffsInflicted.join(', ')}` : '';
@@ -683,10 +884,23 @@ async function runRaidBattle(
       logContent = `📜 **Log:** ${battleState.recentLogs.slice(-3).join('\n')}`;
     }
 
+    const isTiamat = battleState.boss.id === 'tiamat';
+    const raidTitle = isTiamat
+      ? `⚔️ BEAST II CALAMITY RAID — ROUND ${battleState.round}`
+      : `⚔️ DEMON GOD PILLAR RAID — ROUND ${battleState.round}`;
+
+    let phaseGaugeStr = '';
+    if (isTiamat && battleState.currentPhase) {
+      const remainingGauges = battleState.breakGaugesRemaining || 0;
+      const diamondStr = Array(remainingGauges).fill('🔷').join(' ') || '🔻 [FINAL BREAK GAUGE]';
+      const shieldStr = battleState.bossShield && battleState.bossShield > 0 ? ` • 🛡️ Barrier: \`${battleState.bossShield.toLocaleString()} HP\`` : '';
+      phaseGaugeStr = `\n👑 **Phase ${battleState.currentPhase}/3:** \`${battleState.boss.phases?.[battleState.currentPhase - 1]?.name || battleState.boss.name}\` • Break Gauges: ${diamondStr}${shieldStr}`;
+    }
+
     const embed = new EmbedBuilder()
-      .setTitle(`⚔️ DEMON GOD PILLAR RAID — ROUND ${battleState.round}`)
+      .setTitle(raidTitle)
       .setDescription(
-        `😈 **${battleState.boss.name}**\n` +
+        `😈 **${battleState.boss.name}** (${battleState.boss.title})${phaseGaugeStr}\n` +
         `❤️ \`${Math.round(battleState.bossCurrentHp).toLocaleString()} / ${battleState.bossMaxHp.toLocaleString()}\` (${bossHpPct}%) • ⚡ Charge: \`[${bossChargeStr}]\`${bossStatusStr}\n\n` +
         `🛡️ **Party Status:**\n${partyLines}\n\n` +
         `🎴 **Selected Attack Chain (${pendingCards.length}/3):**\n` +
@@ -694,7 +908,7 @@ async function runRaidBattle(
         `${logContent}`
       )
       .setImage(`attachment://${attachmentFileName}`)
-      .setColor(0x8b5cf6)
+      .setColor(isTiamat ? 0xd946ef : 0x8b5cf6)
       .setFooter({ text: 'Fate/Grand Order PvE Raid • Select 3 Command Cards & Attack!' });
 
     return embed;
@@ -934,7 +1148,7 @@ async function runRaidBattle(
           });
           active.critStars = (active.critStars || 0) + 10;
           active.npGauge = Math.min(300, (active.npGauge || 0) + 10);
-          buffLog = `(🔻 Inflicted **-30% DEF Down** on Barbatos for 3T, +10% NP, +10 Stars)`;
+          buffLog = `(🔻 Inflicted **-30% DEF Down** on ${boss.name} for 3T, +10% NP, +10 Stars)`;
         } else if (isAtkDown) {
           battleState.bossBuffs.push({
             name: `${sName} (ATK Down)`,
@@ -942,15 +1156,20 @@ async function runRaidBattle(
             value: 25,
             remainingTurns: 3
           });
-          buffLog = `(🔻 Inflicted **-25% ATK Down** on Barbatos for 3T)`;
+          buffLog = `(🔻 Inflicted **-25% ATK Down** on ${boss.name} for 3T)`;
         } else if (isStun) {
-          battleState.bossBuffs.push({
-            name: `${sName} (Stun)`,
-            type: 'stun',
-            value: 100,
-            remainingTurns: 1
-          });
-          buffLog = `(⚡ Inflicted **STUN** on Barbatos for 1 turn!)`;
+          const isImmuneToStun = boss.id === 'tiamat' && (battleState.currentPhase || 1) >= 2;
+          if (isImmuneToStun) {
+            buffLog = `(🛡️ **[IMMENSE MASS]** ${boss.name} is immune to Stun, mental interference, and instant death!)`;
+          } else {
+            battleState.bossBuffs.push({
+              name: `${sName} (Stun)`,
+              type: 'stun',
+              value: 100,
+              remainingTurns: 1
+            });
+            buffLog = `(⚡ Inflicted **STUN** on ${boss.name} for 1 turn!)`;
+          }
         } else if (isNpDrainOrSeal) {
           battleState.bossCharge = Math.max(0, battleState.bossCharge - 1);
           battleState.bossBuffs.push({
@@ -959,7 +1178,7 @@ async function runRaidBattle(
             value: 1,
             remainingTurns: 1
           });
-          buffLog = `(⚡ Drained **1 Charge Diamond** & sealed Barbatos's NP for 1 turn!)`;
+          buffLog = `(⚡ Drained **1 Charge Diamond** & sealed ${boss.name}'s NP for 1 turn!)`;
         } else if (isDot) {
           battleState.bossBuffs.push({
             name: `${sName} (Cursed Affliction)`,
@@ -967,7 +1186,7 @@ async function runRaidBattle(
             value: 8000,
             remainingTurns: 3
           });
-          buffLog = `(🔥 Inflicted **Curse/Burn** on Barbatos: **8,000 DMG/Turn** for 3T)`;
+          buffLog = `(🔥 Inflicted **Curse/Burn** on ${boss.name}: **8,000 DMG/Turn** for 3T)`;
         } else if (isGeneralDebuff) {
           battleState.bossBuffs.push({
             name: `${sName} (DEF Down)`,
@@ -975,7 +1194,7 @@ async function runRaidBattle(
             value: 25,
             remainingTurns: 3
           });
-          buffLog = `(🔻 Inflicted **-25% DEF Down** on Barbatos for 3T)`;
+          buffLog = `(🔻 Inflicted **-25% DEF Down** on ${boss.name} for 3T)`;
         } else if (isEvade) {
           active.activeBuffs.push({
             name: `${sName} (Evade)`,
@@ -1005,6 +1224,12 @@ async function runRaidBattle(
           active.npGauge = Math.min(300, (active.npGauge || 0) + 20);
           active.activeBuffs = active.activeBuffs.filter(b => b.type !== 'curse' && b.type !== 'burn' && b.type !== 'poison');
           buffLog = `(💚 Restored +${healAmt.toLocaleString()} HP, +20% NP & Cleansed Afflictions)`;
+
+          // Tiamat Phase 1 Passive: Self-Limitation
+          if (boss.id === 'tiamat' && (battleState.currentPhase === 1)) {
+            battleState.bossCurrentHp = Math.min(battleState.bossMaxHp, battleState.bossCurrentHp + 150_000);
+            buffLog += `\n🌊 **[Self-Limitation]** Tiamat recoils from human healing, recovering +150,000 HP!`;
+          }
         } else {
           active.activeBuffs.push({
             name: `${sName} Buff`,
@@ -1156,16 +1381,19 @@ async function runRaidBattle(
         const critNpBonus = isCrit ? 1.5 : 1.0;
         const critStarBonus = isCrit ? 1.4 : 1.0;
 
+        const isNormalCard = card !== 'NP';
+        const negaGenesisMult = (boss.id === 'tiamat' && battleState.currentPhase === 3 && isNormalCard) ? 0.5 : 1.0;
+
         if (card === 'Buster') {
-          totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * (0.9 + Math.random() * 0.2));
+          totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
           starsGenerated += Math.round(3 * critStarBonus);
           npGained += Math.round(5 * critNpBonus);
         } else if (card === 'Arts') {
-          totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * (0.9 + Math.random() * 0.2));
+          totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
           npGained += Math.round(25 * critNpBonus);
           starsGenerated += Math.round(2 * critStarBonus);
         } else if (card === 'Quick') {
-          totalTurnDmg += Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * (0.9 + Math.random() * 0.2));
+          totalTurnDmg += Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
           starsGenerated += Math.round(12 * critStarBonus);
           npGained += Math.round(10 * critNpBonus);
         } else if (card === 'NP') {
@@ -1214,7 +1442,7 @@ async function runRaidBattle(
             const npSpecialMult = (isBossThreat && npHasAntiThreat) ? 1.5 : 1.0;
             if (isBossThreat && npHasAntiThreat) npTriggeredAntiThreat = true;
 
-            // Apply secondary debuffs from Noble Phantasm to Barbatos
+            // Apply secondary debuffs from Noble Phantasm to boss
             battleState.bossBuffs = battleState.bossBuffs || [];
             if (/def.*down|lower.*def|reduce.*def|decrease.*def/i.test(npDesc)) {
               battleState.bossBuffs.push({
@@ -1235,13 +1463,18 @@ async function runRaidBattle(
               npDebuffNotice += ' 🔥 [Curse/Burn]';
             }
             if (/stun|paraly|charm/i.test(npDesc)) {
-              battleState.bossBuffs.push({
-                name: `${npName} (Stun)`,
-                type: 'stun',
-                value: 100,
-                remainingTurns: 1
-              });
-              npDebuffNotice += ' ⚡ [Stun]';
+              const isImmuneToStun = boss.id === 'tiamat' && (battleState.currentPhase || 1) >= 2;
+              if (!isImmuneToStun) {
+                battleState.bossBuffs.push({
+                  name: `${npName} (Stun)`,
+                  type: 'stun',
+                  value: 100,
+                  remainingTurns: 1
+                });
+                npDebuffNotice += ' ⚡ [Stun]';
+              } else {
+                npDebuffNotice += ' 🛡️ [Stun Resisted: Immense Mass]';
+              }
             }
             if (/drain|seal/i.test(npDesc)) {
               battleState.bossCharge = Math.max(0, battleState.bossCharge - 1);
@@ -1261,7 +1494,31 @@ async function runRaidBattle(
         }
       });
 
+      // Chaos Spores Phase 2 Passive
+      if (boss.id === 'tiamat' && battleState.currentPhase === 2 && (battleState.round % 2 === 1)) {
+        if ((battleState.turnDamageTaken || 0) < 300_000) {
+          totalTurnDmg = Math.round(totalTurnDmg * 0.80);
+          battleState.chaosSporesActive = true;
+          npDebuffNotice += ' 🛡️ **[Chaos Spores: -20% DMG Shield active]**';
+        }
+      }
+
+      // Boss Barrier Absorption (e.g. from Chaos Deluge)
+      if (battleState.bossShield && battleState.bossShield > 0) {
+        if (totalTurnDmg <= battleState.bossShield) {
+          battleState.bossShield -= totalTurnDmg;
+          npDebuffNotice += ` 🛡️ **[Barrier Absorbed ${totalTurnDmg.toLocaleString()} DMG! (${battleState.bossShield.toLocaleString()} HP Left)]**`;
+          totalTurnDmg = 0;
+        } else {
+          const absorbed = battleState.bossShield;
+          totalTurnDmg -= absorbed;
+          battleState.bossShield = 0;
+          npDebuffNotice += ` 💥 **[Barrier Shattered! (${absorbed.toLocaleString()} DMG Absorbed)]**`;
+        }
+      }
+
       battleState.bossCurrentHp = Math.max(0, battleState.bossCurrentHp - totalTurnDmg);
+      battleState.turnDamageTaken = (battleState.turnDamageTaken || 0) + totalTurnDmg;
       active.npGauge = Math.min(300, (active.npGauge || 0) + npGained);
       // Consumes existing stars used during the attack; new star pool is based on stars generated this turn!
       active.critStars = Math.min(50, Math.round(starsGenerated));
@@ -1276,6 +1533,9 @@ async function runRaidBattle(
       } else if (antiThreatBuff > 0) {
         traitLog += ' ⚡ **[Calamity-Breaker: +30% Special ATK vs Threat to Humanity!]**';
       }
+      if (boss.id === 'tiamat' && battleState.currentPhase === 3 && pendingCards.some(c => c !== 'NP')) {
+        traitLog += ' 🌑 **[Nega-Genesis: -50% Normal Card DMG]**';
+      }
       if (bossDefDown > 0) {
         traitLog += ` 🔻 **[DEF Down: +${Math.round(bossDefDown * 100)}% DMG]**`;
       }
@@ -1283,7 +1543,7 @@ async function runRaidBattle(
         traitLog += npDebuffNotice;
       }
 
-      const playerAttackLog = `⚔️ **${servName}** dealt **${totalTurnDmg.toLocaleString()} DMG** to Barbatos! (+${npGained}% NP, +${starsGenerated} Stars)${traitLog}`;
+      const playerAttackLog = `⚔️ **${servName}** dealt **${totalTurnDmg.toLocaleString()} DMG** to ${boss.name}! (+${npGained}% NP, +${starsGenerated} Stars)${traitLog}`;
       battleState.lastPlayerAttackLog = playerAttackLog;
       battleState.recentLogs.push(playerAttackLog);
       while (battleState.recentLogs.length > 8) battleState.recentLogs.shift();
@@ -1291,22 +1551,46 @@ async function runRaidBattle(
       active.totalDamageDealt = (active.totalDamageDealt || 0) + totalTurnDmg;
       battleState.fullCombatLog = battleState.fullCombatLog || [];
       battleState.fullCombatLog.push(
-        `⚔️ **[Round ${battleState.round}]** **${servName}** (<@${active.userId}>) struck with \`[${pendingCards.join(' ➔ ')}]\` dealing **${totalTurnDmg.toLocaleString()} DMG**! *(Barbatos HP: ${battleState.bossCurrentHp.toLocaleString()} / ${battleState.bossMaxHp.toLocaleString()})*`
+        `⚔️ **[Round ${battleState.round}]** **${servName}** (<@${active.userId}>) struck with \`[${pendingCards.join(' ➔ ')}]\` dealing **${totalTurnDmg.toLocaleString()} DMG**! *(${boss.name} HP: ${battleState.bossCurrentHp.toLocaleString()} / ${battleState.bossMaxHp.toLocaleString()})*`
       );
 
       if (battleState.bossCurrentHp <= 0) {
-        battleState.bossCurrentHp = 0;
-        await cleanupNpGif();
-        collector.stop('victory');
-        battleState.finishingBlow = {
-          userId: active.userId,
-          servantName: servName,
-          damage: totalTurnDmg,
-          cardChain: pendingCards.join(' ➔ '),
-          round: battleState.round
-        };
-        await concludeRaidVictory(battleMsg, boss, battleState);
-        return;
+        if (battleState.breakGaugesRemaining && battleState.breakGaugesRemaining > 0) {
+          // Break gauge transition!
+          battleState.breakGaugesRemaining--;
+          battleState.currentPhase = (battleState.currentPhase || 1) + 1;
+          const phaseIdx = battleState.currentPhase - 1;
+          const nextPhase = boss.phases?.[phaseIdx];
+          const newBase = nextPhase?.baseHp || (battleState.currentPhase === 2 ? 5_500_000 : 8_000_000);
+          const scaledNewHp = Math.round(newBase * hpMultiplier);
+
+          battleState.bossCurrentHp = scaledNewHp;
+          battleState.bossMaxHp = scaledNewHp;
+          battleState.bossCharge = 0;
+          battleState.bossBuffs = []; // Cleanse debuffs upon break
+          battleState.phaseTurn = 1;
+          battleState.phaseUltsUsed = 0;
+          battleState.turnDamageTaken = 0;
+          battleState.bossShield = 0;
+
+          const breakMsg = `💥 **[BREAK GAUGE SHATTERED!]** ${nextPhase?.breakAnnouncement || 'The boss changes form and unleashes new power!'}`;
+          battleState.recentLogs.push(breakMsg);
+          battleState.fullCombatLog.push(breakMsg);
+          while (battleState.recentLogs.length > 8) battleState.recentLogs.shift();
+        } else {
+          battleState.bossCurrentHp = 0;
+          await cleanupNpGif();
+          collector.stop('victory');
+          battleState.finishingBlow = {
+            userId: active.userId,
+            servantName: servName,
+            damage: totalTurnDmg,
+            cardChain: pendingCards.join(' ➔ '),
+            round: battleState.round
+          };
+          await concludeRaidVictory(battleMsg, boss, battleState);
+          return;
+        }
       }
 
       // Refresh hand for this participant and clear selections
@@ -1418,16 +1702,36 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
   const bossAtkDebuffs = state.bossBuffs.filter(b => b.type === 'atk_down').reduce((acc, b) => acc + b.value, 0);
   const totalBossAtkMult = Math.max(0.2, (1 + (bossAtkBuffs - bossAtkDebuffs) / 100) * enrageMult);
 
-  // Check Stun on Barbatos
+  const isTiamat = state.boss.id === 'tiamat';
+  state.phaseTurn = (state.phaseTurn || 1) + 1;
+
+  // Tiamat Phase 1 Passive: Sea of Life / Chaos Tide
+  if (isTiamat && (state.currentPhase === 1)) {
+    state.participants.forEach(p => {
+      if (!p.isDead) {
+        p.currentHp = Math.max(1, p.currentHp - 2000);
+        p.npGauge = Math.max(0, (p.npGauge || 0) - 15);
+      }
+    });
+    state.recentLogs.push('🌊 **[Sea of Life]** Corrosive Chaos Tide roils across the field! (-2,000 HP & -15% NP to all Servants)');
+    enemyPhase.specialEvents.push('🌊 **[Sea of Life]** All Servants suffered 2,000 HP corrosion & -15% NP gauge!');
+  }
+
+  // Tiamat Phase 2 & 3 Passive: Immense Mass (Immunity to Stun)
+  if (isTiamat && (state.currentPhase || 1) >= 2) {
+    state.bossBuffs = state.bossBuffs.filter(b => b.type !== 'stun');
+  }
+
+  // Check Stun on Boss
   const isBossStunned = state.bossBuffs.some(b => b.type === 'stun');
   if (isBossStunned) {
-    state.recentLogs.push('⚡ **[STUNNED!] Barbatos is paralyzed and unable to act this turn!**');
-    enemyPhase.specialEvents.push('⚡ **[STUNNED!]** Barbatos was paralyzed by Stun and could not act!');
+    state.recentLogs.push(`⚡ **[STUNNED!] ${state.boss.name} is paralyzed and unable to act this turn!**`);
+    enemyPhase.specialEvents.push(`⚡ **[STUNNED!]** ${state.boss.name} was paralyzed by Stun and could not act!`);
     state.lastEnemyPhase = enemyPhase;
     const dotDmg = state.bossBuffs.filter(b => b.type === 'curse' || b.type === 'burn' || b.type === 'poison').reduce((acc, b) => acc + b.value, 0);
     if (dotDmg > 0) {
       state.bossCurrentHp = Math.max(0, state.bossCurrentHp - dotDmg);
-      state.recentLogs.push(`🔥 Barbatos took **${dotDmg.toLocaleString()} Affliction DoT DMG**!`);
+      state.recentLogs.push(`🔥 ${state.boss.name} took **${dotDmg.toLocaleString()} Affliction DoT DMG**!`);
     }
     state.bossBuffs.forEach(b => b.remainingTurns--);
     state.bossBuffs = state.bossBuffs.filter(b => b.remainingTurns > 0);
@@ -1435,76 +1739,157 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
     return { bossUsedNp: false };
   }
 
-  // 2. Action 1: Demonic Tactical Skill
-  const skillRoll = Math.random();
-  if (skillRoll < 0.35) {
-    // Skill 1: Gaze of the Thousand Eyes (-20% DEF for 2 turns, scatters 10 stars)
-    state.participants.forEach(p => {
-      if (!p.isDead) {
-        p.activeBuffs = p.activeBuffs || [];
-        p.activeBuffs.push({
-          name: 'Demonic DEF Down',
+  // 2. Action 1: Tactical Skill
+  if (isTiamat) {
+    const tiamatSkillRoll = Math.random();
+    if (tiamatSkillRoll < 0.20) {
+      // Skill: Wailing Voice (1T Skill Seal on highest NP Servant)
+      const target = [...livingParticipants].sort((a, b) => (b.npGauge || 0) - (a.npGauge || 0))[0];
+      if (target) {
+        target.activeBuffs = target.activeBuffs || [];
+        target.activeBuffs.push({
+          name: 'Wailing Voice (Skill Seal)',
+          type: 'skill_seal',
+          value: 1,
+          remainingTurns: 1
+        });
+        const tName = target.servant.nickname || target.servant.template?.name || 'Servant';
+        enemyPhase.skillName = 'Wailing Voice';
+        enemyPhase.skillDesc = `Inflicted 1T Skill Seal on ${tName}`;
+        enemyPhase.debuffsInflicted.push(`🔒 **Skill Seal (1T)** on **${tName}**`);
+        state.recentLogs.push(`📢 **Tiamat released [Wailing Voice]!** Inflicted **1-Turn Skill Seal** on **${tName}**!`);
+      }
+    } else if (tiamatSkillRoll < 0.40) {
+      // Skill: Mud Surge (shortens active buff durations by 1 turn on 2 random Servants)
+      const shuffled = [...livingParticipants].sort(() => 0.5 - Math.random());
+      const affected: string[] = [];
+      shuffled.slice(0, 2).forEach(p => {
+        if (p.activeBuffs && p.activeBuffs.length > 0) {
+          p.activeBuffs.forEach(b => {
+            if (b.remainingTurns > 0 && b.remainingTurns < 90) b.remainingTurns--;
+          });
+          p.activeBuffs = p.activeBuffs.filter(b => b.remainingTurns > 0);
+          affected.push(p.servant.nickname || p.servant.template?.name || 'Servant');
+        }
+      });
+      enemyPhase.skillName = 'Mud Surge';
+      enemyPhase.skillDesc = 'Shortened active buff durations by 1 turn';
+      if (affected.length > 0) enemyPhase.debuffsInflicted.push(`⏳ Shortened buffs on **${affected.join(', ')}**`);
+      state.recentLogs.push(`🌊 **Tiamat unleashed [Mud Surge]!** Corrosive primordial tide shortened ally buff durations!`);
+    } else if (tiamatSkillRoll < 0.60) {
+      // Skill: Tremor Step (reduces front-most Servant DEF by 20% for 3 turns)
+      const front = livingParticipants[0];
+      if (front) {
+        front.activeBuffs = front.activeBuffs || [];
+        front.activeBuffs.push({
+          name: 'Tremor DEF Down',
           type: 'def_down',
+          value: 20,
+          remainingTurns: 3
+        });
+        const tName = front.servant.nickname || front.servant.template?.name || 'Servant';
+        enemyPhase.skillName = 'Tremor Step';
+        enemyPhase.skillDesc = `-20% DEF on ${tName} for 3T`;
+        enemyPhase.debuffsInflicted.push(`🔻 **-20% DEF (3T)** on **${tName}**`);
+        state.recentLogs.push(`👣 **Tiamat shook the abyss with [Tremor Step]!** Inflicted **-20% DEF (3T)** on **${tName}**!`);
+      }
+    } else if (tiamatSkillRoll < 0.80) {
+      // Skill: Crying Eyes (drains 10% NP from 2 players)
+      const shuffled = [...livingParticipants].sort(() => 0.5 - Math.random());
+      const drainedNames: string[] = [];
+      shuffled.slice(0, 2).forEach(p => {
+        p.npGauge = Math.max(0, (p.npGauge || 0) - 10);
+        drainedNames.push(p.servant.nickname || p.servant.template?.name || 'Servant');
+      });
+      enemyPhase.skillName = 'Crying Eyes';
+      enemyPhase.skillDesc = 'Drained 10% NP from 2 Servants';
+      enemyPhase.debuffsInflicted.push(`⚡ Drained 10% NP from **${drainedNames.join(', ')}**`);
+      state.recentLogs.push(`👁️ **Tiamat shed tears of genesis [Crying Eyes]!** Drained **10% NP** from **${drainedNames.join(', ')}**!`);
+    } else {
+      // Skill: Chaos Deluge (siphons 15% NP from all Servants, converts into +50k shield)
+      let totalSiphoned = 0;
+      livingParticipants.forEach(p => {
+        const drain = Math.min(15, p.npGauge || 0);
+        p.npGauge = Math.max(0, (p.npGauge || 0) - 15);
+        totalSiphoned += drain;
+      });
+      state.bossShield = (state.bossShield || 0) + 50_000;
+      enemyPhase.skillName = 'Chaos Deluge';
+      enemyPhase.skillDesc = 'Siphoned 15% NP from all Servants and formed a 50,000 HP barrier';
+      enemyPhase.bossBuffsGained.push('🛡️ **+50,000 HP Chaos Barrier**');
+      state.recentLogs.push(`🌊 **Tiamat invoked [Chaos Deluge]!** Siphoned NP from all Servants and created a **50,000 HP Barrier**!`);
+    }
+  } else {
+    const skillRoll = Math.random();
+    if (skillRoll < 0.35) {
+      // Skill 1: Gaze of the Thousand Eyes (-20% DEF for 2 turns, scatters 10 stars)
+      state.participants.forEach(p => {
+        if (!p.isDead) {
+          p.activeBuffs = p.activeBuffs || [];
+          p.activeBuffs.push({
+            name: 'Demonic DEF Down',
+            type: 'def_down',
+            value: 20,
+            remainingTurns: 2
+          });
+          p.critStars = Math.max(0, (p.critStars || 0) - 10);
+        }
+      });
+      enemyPhase.skillName = 'Gaze of the Thousand Eyes';
+      enemyPhase.skillDesc = 'All Servants suffer -20% DEF (2T) and -10 Critical Stars';
+      enemyPhase.debuffsInflicted.push('🔻 **-20% DEF Down (2T)** on all Servants', '⭐ **-10 Critical Stars drained**');
+      state.recentLogs.push(
+        `👁️ **Barbatos cast [Gaze of the Thousand Eyes]!** All Servants suffer **-20% DEF** (2T) and lost 10 Critical Stars!`
+      );
+    } else if (skillRoll < 0.70) {
+      // Skill 2: Wailing of the Inverted Spire (+25% ATK, +1 Charge Diamond only when enraged)
+      state.bossBuffs.push({
+        name: 'Wailing of the Spire',
+        type: 'atk_up',
+        value: 25,
+        remainingTurns: 2
+      });
+      if (isEnraged) {
+        state.bossCharge = Math.min(state.boss.maxCharge, state.bossCharge + 1);
+        enemyPhase.skillName = 'Wailing of the Inverted Spire';
+        enemyPhase.skillDesc = 'Increases own ATK by +25% (2T) and charges NP gauge by 1 diamond';
+        enemyPhase.bossBuffsGained.push('⚔️ **+25% ATK Up (2T)**', '⚡ **+1 NP Charge Diamond**');
+        state.recentLogs.push(
+          `📢 **Barbatos cast [Wailing of the Inverted Spire]!** Demon God ATK increased by **+25%** and gained **+1 Charge Diamond**!`
+        );
+      } else {
+        enemyPhase.skillName = 'Wailing of the Inverted Spire';
+        enemyPhase.skillDesc = 'Increases own ATK by +25% (2T)';
+        enemyPhase.bossBuffsGained.push('⚔️ **+25% ATK Up (2T)**');
+        state.recentLogs.push(
+          `📢 **Barbatos cast [Wailing of the Inverted Spire]!** Demon God ATK increased by **+25%**!`
+        );
+      }
+    } else {
+      // Skill 3: Curse of the Solomon Throne (Curses target with highest NP & inflicts -20% ATK Down)
+      const highestNpTarget = [...livingParticipants].sort((a, b) => (b.npGauge || 0) - (a.npGauge || 0))[0];
+      if (highestNpTarget) {
+        highestNpTarget.activeBuffs = highestNpTarget.activeBuffs || [];
+        highestNpTarget.activeBuffs.push({
+          name: 'Solomon\'s Curse',
+          type: 'curse',
+          value: 1200,
+          remainingTurns: 3
+        });
+        highestNpTarget.activeBuffs.push({
+          name: 'Solomon\'s ATK Down',
+          type: 'atk_down',
           value: 20,
           remainingTurns: 2
         });
-        p.critStars = Math.max(0, (p.critStars || 0) - 10);
+        const tName = highestNpTarget.servant.nickname || highestNpTarget.servant.template?.name || 'Servant';
+        enemyPhase.skillName = 'Curse of the Solomon Throne';
+        enemyPhase.skillDesc = `Inflicted Curse and -20% ATK Down on ${tName}`;
+        enemyPhase.debuffsInflicted.push(`🔥 **Curse (1,200 DMG/T, 3T)** on **${tName}**`, `🔻 **-20% ATK Down (2T)** on **${tName}**`);
+        state.recentLogs.push(
+          `☠️ **Barbatos cast [Curse of the Solomon Throne]!** Inflicted **Curse** (1,200 DMG/Turn) & **-20% ATK Down** on **${tName}**!`
+        );
       }
-    });
-    enemyPhase.skillName = 'Gaze of the Thousand Eyes';
-    enemyPhase.skillDesc = 'All Servants suffer -20% DEF (2T) and -10 Critical Stars';
-    enemyPhase.debuffsInflicted.push('🔻 **-20% DEF Down (2T)** on all Servants', '⭐ **-10 Critical Stars drained**');
-    state.recentLogs.push(
-      `👁️ **Barbatos cast [Gaze of the Thousand Eyes]!** All Servants suffer **-20% DEF** (2T) and lost 10 Critical Stars!`
-    );
-  } else if (skillRoll < 0.70) {
-    // Skill 2: Wailing of the Inverted Spire (+25% ATK, +1 Charge Diamond only when enraged)
-    state.bossBuffs.push({
-      name: 'Wailing of the Spire',
-      type: 'atk_up',
-      value: 25,
-      remainingTurns: 2
-    });
-    if (isEnraged) {
-      state.bossCharge = Math.min(state.boss.maxCharge, state.bossCharge + 1);
-      enemyPhase.skillName = 'Wailing of the Inverted Spire';
-      enemyPhase.skillDesc = 'Increases own ATK by +25% (2T) and charges NP gauge by 1 diamond';
-      enemyPhase.bossBuffsGained.push('⚔️ **+25% ATK Up (2T)**', '⚡ **+1 NP Charge Diamond**');
-      state.recentLogs.push(
-        `📢 **Barbatos cast [Wailing of the Inverted Spire]!** Demon God ATK increased by **+25%** and gained **+1 Charge Diamond**!`
-      );
-    } else {
-      enemyPhase.skillName = 'Wailing of the Inverted Spire';
-      enemyPhase.skillDesc = 'Increases own ATK by +25% (2T)';
-      enemyPhase.bossBuffsGained.push('⚔️ **+25% ATK Up (2T)**');
-      state.recentLogs.push(
-        `📢 **Barbatos cast [Wailing of the Inverted Spire]!** Demon God ATK increased by **+25%**!`
-      );
-    }
-  } else {
-    // Skill 3: Curse of the Solomon Throne (Curses target with highest NP & inflicts -20% ATK Down)
-    const highestNpTarget = [...livingParticipants].sort((a, b) => (b.npGauge || 0) - (a.npGauge || 0))[0];
-    if (highestNpTarget) {
-      highestNpTarget.activeBuffs = highestNpTarget.activeBuffs || [];
-      highestNpTarget.activeBuffs.push({
-        name: 'Solomon\'s Curse',
-        type: 'curse',
-        value: 1200,
-        remainingTurns: 3
-      });
-      highestNpTarget.activeBuffs.push({
-        name: 'Solomon\'s ATK Down',
-        type: 'atk_down',
-        value: 20,
-        remainingTurns: 2
-      });
-      const tName = highestNpTarget.servant.nickname || highestNpTarget.servant.template?.name || 'Servant';
-      enemyPhase.skillName = 'Curse of the Solomon Throne';
-      enemyPhase.skillDesc = `Inflicted Curse and -20% ATK Down on ${tName}`;
-      enemyPhase.debuffsInflicted.push(`🔥 **Curse (1,200 DMG/T, 3T)** on **${tName}**`, `🔻 **-20% ATK Down (2T)** on **${tName}**`);
-      state.recentLogs.push(
-        `☠️ **Barbatos cast [Curse of the Solomon Throne]!** Inflicted **Curse** (1,200 DMG/Turn) & **-20% ATK Down** on **${tName}**!`
-      );
     }
   }
 
@@ -1513,70 +1898,139 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
   if (!isNpSealed) {
     state.bossCharge = Math.min(state.boss.maxCharge, state.bossCharge + (isEnraged ? 2 : 1));
   } else {
-    state.recentLogs.push('🔒 **[NP SEALED!] Barbatos is sealed and cannot charge its NP!**');
-    enemyPhase.specialEvents.push('🔒 **[NP SEALED]** Barbatos was sealed and could not charge its NP diamond!');
+    state.recentLogs.push(`🔒 **[NP SEALED!] ${state.boss.name} is sealed and cannot charge its NP!**`);
+    enemyPhase.specialEvents.push(`🔒 **[NP SEALED]** ${state.boss.name} was sealed and could not charge its NP diamond!`);
   }
 
   let bossUsedNp = false;
 
   // 3. Action 2: Attack or Noble Phantasm
   if (state.bossCharge >= state.boss.maxCharge && !isNpSealed) {
-    // DEVASTATING NOBLE PHANTASM: Incineration Ritual — Barbatos Calamity!
     bossUsedNp = true;
     state.bossCharge = 0;
-    const baseAoeDamage = Math.round((14500 + Math.random() * 3000) * totalBossAtkMult);
-    let evadesCount = 0;
-    enemyPhase.actionName = 'NOBLE PHANTASM: Incineration Ritual — Barbatos Calamity';
-    enemyPhase.actionTarget = 'ALL Servants';
 
-    state.participants.forEach(p => {
-      if (!p.isDead) {
-        // Check for Evade / Invincibility
-        const evIdx = p.activeBuffs ? p.activeBuffs.findIndex(b => b.type === 'evade' || b.type === 'invincible') : -1;
-        if (evIdx >= 0 && p.activeBuffs) {
-          p.activeBuffs.splice(evIdx, 1);
-          evadesCount++;
-          const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
-          enemyPhase.specialEvents.push(`🛡️ **${pName}** completely EVADED Barbatos's Noble Phantasm!`);
-          return;
-        }
+    if (isTiamat) {
+      const isPhase3 = state.currentPhase === 3;
+      if (isPhase3) {
+        state.phaseUltsUsed = (state.phaseUltsUsed || 0) + 1;
+        const isEnrageWipe = state.phaseUltsUsed >= 3 || state.round >= 20;
+        enemyPhase.actionName = isEnrageWipe
+          ? 'ENRAGE WIPE: Primordial Roar (Absolute Calamity)'
+          : 'NOBLE PHANTASM: Primordial Roar (True Genesis Annihilation)';
+        enemyPhase.actionTarget = 'ALL Servants (Ignores Evade & Invincible!)';
 
-        // Damage Cut & Defense modifiers
-        const dmgCut = p.activeBuffs?.filter(b => b.type === 'damage_cut').reduce((acc, b) => acc + b.value, 0) || 0;
-        const defDown = p.activeBuffs?.filter(b => b.type === 'def_down').reduce((acc, b) => acc + b.value, 0) || 0;
-        const defUp = p.activeBuffs?.filter(b => b.type === 'def_up').reduce((acc, b) => acc + b.value, 0) || 0;
-        const defFactor = Math.max(0.4, 1 + (defDown - defUp) / 100);
+        const baseAoeDamage = isEnrageWipe ? 99_999 : Math.round((22000 + Math.random() * 6000) * totalBossAtkMult);
 
-        const finalAoe = Math.max(1500, Math.round((baseAoeDamage * defFactor) - dmgCut));
-        enemyPhase.strikeDamage += finalAoe;
-
-        const res = applyDamageToRaidParticipant(p, finalAoe, state);
-        if (res.gutsLog) {
-          enemyPhase.specialEvents.push(res.gutsLog);
-        }
-
-        // Calamity Curse Burn
-        p.activeBuffs = p.activeBuffs || [];
-        p.activeBuffs.push({
-          name: 'Calamity Burn',
-          type: 'curse',
-          value: 1000,
-          remainingTurns: 3
+        state.participants.forEach(p => {
+          if (!p.isDead) {
+            enemyPhase.strikeDamage += baseAoeDamage;
+            const res = applyDamageToRaidParticipant(p, baseAoeDamage, state);
+            if (res.gutsLog) enemyPhase.specialEvents.push(res.gutsLog);
+          }
         });
-      }
-    });
 
-    const evadeNotice = evadesCount > 0 ? ` 🛡️ (${evadesCount} Servant(s) EVADED!)` : '';
-    state.recentLogs.push(
-      `💥 **NOBLE PHANTASM: INCINERATION RITUAL — BARBATOS CALAMITY!** Barbatos blasts the field for **${baseAoeDamage.toLocaleString()} AoE DMG** & inflicts Calamity Curse!${evadeNotice}`
-    );
+        state.recentLogs.push(
+          isEnrageWipe
+            ? `💀 **[ENRAGE WIPE!]** Beast II unleashes 3rd Primordial Roar—shattering the reality of the Holy Grail War!`
+            : `💥 **NOBLE PHANTASM: PRIMORDIAL ROAR!** Beast II spreads her wings and screams with true genesis mana for **${baseAoeDamage.toLocaleString()} True AoE DMG**! *(Ignores Evade/Invincibility!)*`
+        );
+      } else {
+        enemyPhase.actionName = 'NOBLE PHANTASM: Primordial Murmur';
+        enemyPhase.actionTarget = 'ALL Servants';
+        const baseAoeDamage = Math.round((14500 + Math.random() * 3500) * totalBossAtkMult);
+        let evadesCount = 0;
+
+        state.participants.forEach(p => {
+          if (!p.isDead) {
+            const evIdx = p.activeBuffs ? p.activeBuffs.findIndex(b => b.type === 'evade' || b.type === 'invincible') : -1;
+            if (evIdx >= 0 && p.activeBuffs) {
+              p.activeBuffs.splice(evIdx, 1);
+              evadesCount++;
+              const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
+              enemyPhase.specialEvents.push(`🛡️ **${pName}** completely EVADED Primordial Murmur!`);
+              return;
+            }
+
+            const dmgCut = p.activeBuffs?.filter(b => b.type === 'damage_cut').reduce((acc, b) => acc + b.value, 0) || 0;
+            const defDown = p.activeBuffs?.filter(b => b.type === 'def_down').reduce((acc, b) => acc + b.value, 0) || 0;
+            const defUp = p.activeBuffs?.filter(b => b.type === 'def_up').reduce((acc, b) => acc + b.value, 0) || 0;
+            const defFactor = Math.max(0.4, 1 + (defDown - defUp) / 100);
+
+            const finalAoe = Math.max(1500, Math.round((baseAoeDamage * defFactor) - dmgCut));
+            enemyPhase.strikeDamage += finalAoe;
+
+            const res = applyDamageToRaidParticipant(p, finalAoe, state);
+            if (res.gutsLog) enemyPhase.specialEvents.push(res.gutsLog);
+
+            p.activeBuffs = p.activeBuffs || [];
+            p.activeBuffs.push({
+              name: 'Chaos Curse',
+              type: 'curse',
+              value: 1500,
+              remainingTurns: 3
+            });
+          }
+        });
+
+        const evadeNotice = evadesCount > 0 ? ` 🛡️ (${evadesCount} Servant(s) EVADED!)` : '';
+        state.recentLogs.push(
+          `💥 **NOBLE PHANTASM: PRIMORDIAL MURMUR!** Tiamat weeps as cursed black waves deal **${baseAoeDamage.toLocaleString()} AoE DMG** & Curse!${evadeNotice}`
+        );
+      }
+    } else {
+      // Barbatos NP: Incineration Ritual — Barbatos Calamity
+      const baseAoeDamage = Math.round((14500 + Math.random() * 3000) * totalBossAtkMult);
+      let evadesCount = 0;
+      enemyPhase.actionName = 'NOBLE PHANTASM: Incineration Ritual — Barbatos Calamity';
+      enemyPhase.actionTarget = 'ALL Servants';
+
+      state.participants.forEach(p => {
+        if (!p.isDead) {
+          const evIdx = p.activeBuffs ? p.activeBuffs.findIndex(b => b.type === 'evade' || b.type === 'invincible') : -1;
+          if (evIdx >= 0 && p.activeBuffs) {
+            p.activeBuffs.splice(evIdx, 1);
+            evadesCount++;
+            const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
+            enemyPhase.specialEvents.push(`🛡️ **${pName}** completely EVADED Barbatos's Noble Phantasm!`);
+            return;
+          }
+
+          const dmgCut = p.activeBuffs?.filter(b => b.type === 'damage_cut').reduce((acc, b) => acc + b.value, 0) || 0;
+          const defDown = p.activeBuffs?.filter(b => b.type === 'def_down').reduce((acc, b) => acc + b.value, 0) || 0;
+          const defUp = p.activeBuffs?.filter(b => b.type === 'def_up').reduce((acc, b) => acc + b.value, 0) || 0;
+          const defFactor = Math.max(0.4, 1 + (defDown - defUp) / 100);
+
+          const finalAoe = Math.max(1500, Math.round((baseAoeDamage * defFactor) - dmgCut));
+          enemyPhase.strikeDamage += finalAoe;
+
+          const res = applyDamageToRaidParticipant(p, finalAoe, state);
+          if (res.gutsLog) {
+            enemyPhase.specialEvents.push(res.gutsLog);
+          }
+
+          p.activeBuffs = p.activeBuffs || [];
+          p.activeBuffs.push({
+            name: 'Calamity Burn',
+            type: 'curse',
+            value: 1000,
+            remainingTurns: 3
+          });
+        }
+      });
+
+      const evadeNotice = evadesCount > 0 ? ` 🛡️ (${evadesCount} Servant(s) EVADED!)` : '';
+      state.recentLogs.push(
+        `💥 **NOBLE PHANTASM: INCINERATION RITUAL — BARBATOS CALAMITY!** Barbatos blasts the field for **${baseAoeDamage.toLocaleString()} AoE DMG** & inflicts Calamity Curse!${evadeNotice}`
+      );
+    }
   } else {
-    // Normal attack (1 target for solo, up to 2 targets for teams)
-    const targetsToHit = livingParticipants.length >= 3 ? 2 : 1;
+    // Normal attack
+    const isPhase3Beast = isTiamat && state.currentPhase === 3;
+    const targetsToHit = (isPhase3Beast || livingParticipants.length >= 3) ? Math.min(2, livingParticipants.length) : 1;
     const shuffled = [...livingParticipants].sort(() => 0.5 - Math.random());
     const hitTargetNames: string[] = [];
 
-    enemyPhase.actionName = 'Demonic Gaze Strike';
+    enemyPhase.actionName = isPhase3Beast ? 'Authority of the Beast (Double Cleave)' : `${state.boss.name} Strike`;
 
     for (let i = 0; i < Math.min(targetsToHit, shuffled.length); i++) {
       const target = shuffled[i];
@@ -1589,9 +2043,9 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       if (evIdx >= 0 && target.activeBuffs) {
         target.activeBuffs.splice(evIdx, 1);
         state.recentLogs.push(
-          `🛡️ **[EVADED!]** **${tName}** read the trajectory and completely avoided Barbatos's strike!`
+          `🛡️ **[EVADED!]** **${tName}** read the trajectory and completely avoided ${state.boss.name}'s strike!`
         );
-        enemyPhase.specialEvents.push(`🛡️ **${tName}** EVADED Barbatos's Demonic Gaze!`);
+        enemyPhase.specialEvents.push(`🛡️ **${tName}** EVADED ${state.boss.name}'s strike!`);
         continue;
       }
 
@@ -1600,12 +2054,14 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       const defUp = target.activeBuffs?.filter(b => b.type === 'def_up').reduce((acc, b) => acc + b.value, 0) || 0;
       const defFactor = Math.max(0.4, 1 + (defDown - defUp) / 100);
 
-      const baseSingle = Math.round((4800 + Math.random() * 2600) * totalBossAtkMult);
+      const baseCritMult = isPhase3Beast ? 1.6 : 1.0;
+      const baseSingle = Math.round((5000 + Math.random() * 2800) * totalBossAtkMult * baseCritMult);
       const finalDmg = Math.max(800, Math.round((baseSingle * defFactor) - dmgCut));
       enemyPhase.strikeDamage += finalDmg;
 
+      const attackLabel = isPhase3Beast ? 'swept' : 'struck';
       state.recentLogs.push(
-        `👁️ Barbatos struck **${tName}** with Demonic Gaze for **${finalDmg.toLocaleString()} DMG**!`
+        `👁️ ${state.boss.name} ${attackLabel} **${tName}** for **${finalDmg.toLocaleString()} DMG**!${isPhase3Beast ? ' ⚡ **[CRITICAL CLEAVE]**' : ''}`
       );
       const res = applyDamageToRaidParticipant(target, finalDmg, state);
       if (res.gutsLog) {
@@ -1653,10 +2109,10 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
   state.fullCombatLog = state.fullCombatLog || [];
   if (enemyPhase.skillName) {
     const details = enemyPhase.debuffsInflicted.concat(enemyPhase.bossBuffsGained).join(', ') || enemyPhase.skillDesc;
-    state.fullCombatLog.push(`👁️ **[Round ${state.round}]** Barbatos cast **[${enemyPhase.skillName}]** (${details})`);
+    state.fullCombatLog.push(`👁️ **[Round ${state.round}]** ${state.boss.name} cast **[${enemyPhase.skillName}]** (${details})`);
   }
   if (enemyPhase.actionName) {
-    state.fullCombatLog.push(`💥 **[Round ${state.round}]** Barbatos attacked with **${enemyPhase.actionName}** dealing **${enemyPhase.strikeDamage.toLocaleString()} DMG** to ${enemyPhase.actionTarget || 'party'}`);
+    state.fullCombatLog.push(`💥 **[Round ${state.round}]** ${state.boss.name} attacked with **${enemyPhase.actionName}** dealing **${enemyPhase.strikeDamage.toLocaleString()} DMG** to ${enemyPhase.actionTarget || 'party'}`);
   }
   if (enemyPhase.curseDamage > 0) {
     state.fullCombatLog.push(`🔥 **[Round ${state.round}]** Curse Burn inflicted **${enemyPhase.curseDamage.toLocaleString()} DoT DMG**`);
@@ -1665,11 +2121,11 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
     state.fullCombatLog!.push(`🛡️ **[Round ${state.round}]** ${evt}`);
   });
 
-  // End-of-round Curse / Burn / Poison DoT damage on Barbatos
+  // End-of-round Curse / Burn / Poison DoT damage on boss
   const bossDotDmg = state.bossBuffs.filter(b => b.type === 'curse' || b.type === 'burn' || b.type === 'poison').reduce((acc, b) => acc + b.value, 0);
   if (bossDotDmg > 0) {
     state.bossCurrentHp = Math.max(0, state.bossCurrentHp - bossDotDmg);
-    state.recentLogs.push(`🔥 Barbatos took **${bossDotDmg.toLocaleString()} Affliction DoT DMG**!`);
+    state.recentLogs.push(`🔥 ${state.boss.name} took **${bossDotDmg.toLocaleString()} Affliction DoT DMG**!`);
   }
 
   // Tick boss buffs down

@@ -102,6 +102,8 @@ export interface DuelCombatant {
   npGauge: number;
   critStars: number;
   isStunned?: boolean;
+  isEvading?: boolean;
+  isInvincible?: boolean;
   passives?: PassiveSkill[];
   activeBuffs: CombatantBuff[];
   skillCooldowns: { [skillIdx: number]: number };
@@ -2281,32 +2283,25 @@ function resolveStrike(
   // Apply total damage to defender
   defender.currentHp = Math.max(0, defender.currentHp - totalSeqDmg);
 
-  // Consume turn-based and hit-based Evade / Invincibility and decrement DEF buffs after defending against an attack sequence
+  // Filter out consumed hit-based Evade / Invincibility after defending against an attack sequence
   defender.activeBuffs = defender.activeBuffs.filter(b => {
     const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
-    if (b.type === 'evade' || b.type === 'invincible') {
-      if (isHitBased) {
-        return b.remainingHits === undefined || b.remainingHits > 0;
-      }
-      b.remainingTurns--;
-      return b.remainingTurns > 0;
+    if (isHitBased) {
+      return b.remainingHits === undefined || b.remainingHits > 0;
     }
-    if ((b.type === 'buff_def' || b.type === 'debuff_def') && b.remainingTurns < 90) {
-      b.remainingTurns--;
-      return b.remainingTurns > 0;
-    }
-    return true;
+    return b.remainingTurns > 0;
   });
+  defender.isEvading = defender.activeBuffs.some(b => b.type === 'evade');
+  defender.isInvincible = defender.activeBuffs.some(b => b.type === 'invincible');
   defender.isStunned = defender.activeBuffs.some(b => b.type === 'stun');
 
-  // Decrement attacker offensive, utility, and turn-based defensive buffs after completing turn
+  // Decrement attacker offensive, utility, and special buffs after completing turn (defensive buffs persist for incoming strikes)
   attacker.activeBuffs = attacker.activeBuffs.filter(b => {
-    const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
     if (b.type === 'evade' || b.type === 'invincible') {
+      const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
       if (isHitBased) {
         return b.remainingHits === undefined || b.remainingHits > 0;
       }
-      b.remainingTurns--;
       return b.remainingTurns > 0;
     }
     if (
@@ -3910,6 +3905,21 @@ async function startInteractiveDuel(
       cycleCount++;
       if (currentTurnIndex === 0) {
         round++;
+        // Decrement round-based buffs on all active combatants so 1T Invincible/Evade and turn-limited buffs properly wear off
+        turnOrder.forEach(c => {
+          if (c && c.activeBuffs) {
+            c.activeBuffs = c.activeBuffs.map(b => {
+              const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
+              if (!isHitBased && b.remainingTurns > 0 && b.remainingTurns < 90) {
+                return { ...b, remainingTurns: b.remainingTurns - 1 };
+              }
+              return b;
+            }).filter(b => b.remainingTurns > 0 && (!b.isHitCount || b.remainingHits === undefined || b.remainingHits > 0));
+            c.isInvincible = c.activeBuffs.some(b => b.type === 'invincible');
+            c.isEvading = c.activeBuffs.some(b => b.type === 'evade');
+            c.isStunned = c.activeBuffs.some(b => b.type === 'stun');
+          }
+        });
       }
       const candidate = turnOrder[currentTurnIndex];
       if (candidate.currentHp > 0 && !candidate.isFled) {

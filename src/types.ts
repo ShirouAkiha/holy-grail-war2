@@ -13,7 +13,8 @@ export type ServantClass =
   | 'Foreigner'
   | 'MoonCancer'
   | 'Shitposter'
-  | 'Shielder';
+  | 'Shielder'
+  | 'Beast';
 
 export type Rarity = 1 | 2 | 3 | 4 | 5;
 

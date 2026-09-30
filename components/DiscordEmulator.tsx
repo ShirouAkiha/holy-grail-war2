@@ -1286,6 +1286,7 @@ export default function DiscordEmulator({
       color: '#ef4444',
       desc: 'Turn-based tactical battles with Buster, Arts, Quick cards & Noble Phantasms.',
       commands: [
+        { cmd: '/raid', desc: 'Open the Grand Raid Terminal to pick and challenge PvE Boss Raids (Barbatos, Tiamat, Goetia).', usage: '/raid [menu | barbatos | tiamat | goetia | info]' },
         { cmd: '/duel @user', desc: 'Challenge another Master to a real-time card duel with animated NPs.', usage: '/duel @user' },
         { cmd: '/heal', desc: 'Spend Command Seals or holy water to restore your Servant to full HP.', usage: '/heal' },
         { cmd: '/boast', desc: 'Proclaim your combat achievements on the Holy Church notice board.', usage: '/boast' }
@@ -5623,6 +5624,308 @@ export default function DiscordEmulator({
       return;
     }
 
+    // ----------------------------------------------------
+    // COMMAND: /raid, !raid (PvE Boss Raids)
+    // ----------------------------------------------------
+    if (trimmed.startsWith('/raid') || trimmed.startsWith('!raid')) {
+      const lower = trimmed.toLowerCase();
+      if (!activeServant) {
+        addMessage({
+          id: getNextId('bot_raid_no_servant'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: 'No Active Servant',
+            description: 'You must contract a Servant before challenging PvE Boss Raids! Use `/summon ritual`.',
+            color: '#ef4444'
+          }
+        });
+        return;
+      }
+
+      if (lower.includes('info')) {
+        const isTiamat = lower.includes('tiamat');
+        const isBarbatos = lower.includes('barbatos');
+
+        if (isTiamat) {
+          addMessage({
+            id: getNextId('bot_raid_info_tiamat'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '👑 PVE RAID: TIAMAT (BEAST II)',
+              description:
+                '**Title:** Beast II • Primordial Mother of Genesis\n' +
+                '**Class:** `Beast` • **Level:** `95` • **Total Phases:** `3 Break Gauges`\n' +
+                '**Max Charge:** `◆ ◆ ◆ (3-5 Diamonds per Phase)`\n\n' +
+                '🔥 **Break Gauge Phases:**\n' +
+                '• **Phase 1: Tiamat (Limiter State)** (3,500,000 HP)\n' +
+                '  - *Sea of Life: -2,000 HP & -15% NP to all Servants every turn*\n' +
+                '  - *Self-Limitation: Recovers +150,000 HP whenever players heal*\n' +
+                '• **Phase 2: Tiamat (Titan)** (5,500,000 HP)\n' +
+                '  - *Immense Mass: Complete immunity to Stun, Charm, and Instant Death*\n' +
+                '  - *Chaos Spores: 20% DEF shield on odd turns until 300,000 turn DMG is dealt*\n' +
+                '• **Phase 3: Beast II / Tiamat (Primeval Dragon)** (8,000,000 HP)\n' +
+                '  - *Nega-Genesis: Normal cards deal -50% DMG (Only Noble Phantasms deal unmitigated true damage!)*\n' +
+                '  - *Authority of the Beast: Normal attacks cleave 2 Servants with high critical rate*\n\n' +
+                '⚔️ **Raid Mechanics & Skills:**\n' +
+                '• **Wailing Voice**: Inflicts 1-turn Skill Seal on target\n' +
+                '• **Mud Surge**: Shortens active buff durations by 1 turn\n' +
+                '• **Tremor Step**: Reduces DEF by 20% for 3 turns\n' +
+                '• **Crying Eyes**: Drains 10% NP gauge from 2 players\n' +
+                '• **Jaw of the Primordial**: Massive single-target strike + 40% DEF shred\n' +
+                '• **Chaos Deluge**: Siphons 15% NP from all Servants -> converts into boss barrier\n\n' +
+                '• **Charge Attack**: **Primordial Murmur / Primordial Roar** (AoE True DMG, Phase 3 ignores Evade/Invincible!)\n\n' +
+                '💎 **Victory Rewards:** 20–35 Saint Quartz, +60,000 EXP, +5,000 Bond EXP, 5x Blaze of Wisdom Embers!',
+              color: '#d946ef'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'raid_btn_tiamat', label: 'Challenge Tiamat', style: 'danger', emoji: '🌊' },
+                { id: 'raid_btn_barbatos', label: 'Challenge Barbatos', style: 'primary', emoji: '👁️' },
+                { id: 'raid_btn_menu', label: 'Raid Menu', style: 'secondary', emoji: '🔱' }
+              ]
+            }
+          });
+        } else if (isBarbatos) {
+          addMessage({
+            id: getNextId('bot_raid_info_barbatos'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '👑 PVE RAID: DEMON GOD PILLAR BARBATOS',
+              description:
+                '**Title:** Observation Pillar • 72 Demon Gods of Solomon\n' +
+                '**Class:** `Caster` • **Level:** `90` • **HP:** `1,200,000`\n' +
+                '**Max Charge:** `◆ ◆ ◆ ◆ ◆ (5 Diamonds)`\n\n' +
+                '⚔️ **Raid Mechanics & Skills:**\n' +
+                '• **Gaze of the Thousand Eyes**: Lowers party DEF by 20% & drains 10 Stars\n' +
+                '• **Wailing of the Inverted Spire**: Increases own ATK by 25% (2T) & charges NP\n' +
+                '• **Curse of the Solomon Throne**: Inflicts Curse (1,200 DMG/T) & -20% ATK\n' +
+                '• **Charge Attack**: **Incineration Ritual: Barbatos Calamity** (AoE Cursed Mana Blast)\n\n' +
+                '💎 **Victory Rewards:** 10–20 Saint Quartz, +25,000 EXP, +2,000 Bond EXP, 3x Blaze of Wisdom Embers!',
+              color: '#7c3aed'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'raid_btn_barbatos', label: 'Challenge Barbatos', style: 'primary', emoji: '👁️' },
+                { id: 'raid_btn_tiamat', label: 'Challenge Tiamat', style: 'danger', emoji: '🌊' },
+                { id: 'raid_btn_menu', label: 'Raid Menu', style: 'secondary', emoji: '🔱' }
+              ]
+            }
+          });
+        } else {
+          // General Boss Intel Overview
+          addMessage({
+            id: getNextId('bot_raid_info_general'),
+            sender: 'bot',
+            timestamp: 'Just now',
+            embed: {
+              title: '📖 CHALDEA GRAND RAID CODEX — BOSS INTEL & DROPS',
+              description:
+                '**CHALDEA RAID SURVEILLANCE & DROP RECORDS**\n\n' +
+                '👁️ **1. Demon God Pillar Barbatos** (*Temple of Time*)\n' +
+                '• Class: `Caster` • Level 90 • HP: `1,200,000` • Charge: 5\n' +
+                '• Drops: **10–20 SQ**, +25,000 EXP, +2,000 Bond EXP, 3x Embers\n\n' +
+                '🌊 **2. Beast II / Primordial Mother Tiamat** (*Chaos Sea*)\n' +
+                '• Class: `Beast` • Level 95 • HP: `17,000,000` (3 Break Gauges)\n' +
+                '• Drops: **20–35 SQ**, +60,000 EXP, +5,000 Bond EXP, 5x Embers\n\n' +
+                '👉 *Click a button below to challenge a boss or inspect details:*',
+              color: '#38bdf8'
+            },
+            components: {
+              type: 'buttons',
+              items: [
+                { id: 'raid_btn_barbatos', label: 'Barbatos (Lv.90)', style: 'primary', emoji: '👁️' },
+                { id: 'raid_btn_tiamat', label: 'Tiamat (Lv.95)', style: 'danger', emoji: '🌊' },
+                { id: 'raid_btn_menu', label: 'Raid Terminal', style: 'secondary', emoji: '🔱' }
+              ]
+            }
+          });
+        }
+        return;
+      }
+
+      if (lower.includes('menu') || lower === '/raid' || lower === '!raid' || lower === '/raid menu' || lower === '!raid menu') {
+        postRaidMenu();
+        return;
+      }
+
+      if (lower.includes('tiamat')) {
+        // Launch Tiamat Boss Raid
+        const p1 = createCombatantFromMasterServant(activeServant, master.username);
+        const tiamatTemplate: any = {
+          id: 'beast_tiamat',
+          name: 'Beast II / Tiamat',
+          servantClass: 'Beast',
+          rarity: 5,
+          deck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
+          noblePhantasm: {
+            name: 'Primordial Roar',
+            cardType: 'Buster',
+            target: 'all',
+            description: 'Primordial roar that birthed and swallowed the gods. Deals massive unblockable true damage to all enemies.',
+            chant: '...AAAAAA—!',
+            multiplier: 800
+          },
+          skills: [
+            { id: 'wailing_voice', name: 'Wailing Voice', description: 'Inflicts 1-turn Skill Seal on target.', cooldown: 3, effectType: 'skill_seal', value: 1 },
+            { id: 'mud_surge', name: 'Mud Surge', description: 'Shortens active buff durations by 1 turn.', cooldown: 3, effectType: 'debuff', value: 1 },
+            { id: 'chaos_deluge', name: 'Chaos Deluge', description: 'Siphons 15% NP from all Servants into a barrier.', cooldown: 4, effectType: 'buff_def', value: 50 }
+          ],
+          summonQuote: '...Aaaaa...',
+          battleStartQuote: 'The primeval sea awakens to reclaim her children.',
+          victoryQuote: 'All life returns to the primeval mother.',
+          defeatQuote: 'The dream... has ended...',
+          avatarUrl: 'https://ella.janitorai.com/media-approved/0e2G0RijgX5dnEjjuZPBm.webp'
+        };
+
+        const tiamatCombatant: any = {
+          id: 'boss_tiamat',
+          name: 'Beast II / Tiamat',
+          masterName: 'Primordial Chaos',
+          servantClass: 'Beast',
+          currentHp: 3500000,
+          maxHp: 3500000,
+          currentPhase: 1,
+          atk: 14500,
+          def: 12000,
+          npGauge: 0,
+          critStars: 10,
+          activeBuffs: [],
+          isEvading: false,
+          isInvincible: false,
+          isStunned: false,
+          stats: { strength: 100, endurance: 100, agility: 80, mana: 120, luck: 50 },
+          skills: tiamatTemplate.skills.map((sk: any) => ({ ...sk, currentCooldown: 0 })),
+          noblePhantasm: tiamatTemplate.noblePhantasm,
+          deck: tiamatTemplate.deck,
+          currentHand: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
+          avatarUrl: 'https://ella.janitorai.com/media-approved/0e2G0RijgX5dnEjjuZPBm.webp',
+          servant: { template: tiamatTemplate }
+        };
+
+        const raidBattle = initializeMultiBattle([p1], [tiamatCombatant], '1v1');
+        setActiveDuel({ battle: raidBattle });
+
+        addMessage({
+          id: getNextId('bot_raid_tiamat_start'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '🌊 BEAST II CALAMITY RAID LAUNCHED: PRIMORDIAL MOTHER TIAMAT',
+            description:
+              `🚨 **CO-OP CALAMITY PROTOCOL ENGAGED!**\n\n` +
+              `• **Chaldea Champion:** **${p1.name}** (Master: ${master.username}) — \`${p1.currentHp.toLocaleString()} HP\`\n` +
+              `• **Beast of Genesis:** **Beast II / Tiamat** (\`Beast\` Lv.95 • 3 Break Gauges) — \`3,500,000 HP\`\n\n` +
+              `🌊 **Passive: Sea of Life** — Corrosive mud saps 2,000 HP & -15% NP gain per turn!\n` +
+              `🛡️ **Passive: Self-Limitation** — Tiamat recovers +150,000 HP whenever human healing is used!\n\n` +
+              `👉 *Execute your 3-card Command sequence or activate skills to challenge the Primordial Mother:*`,
+            color: '#d946ef'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'duel_card_bbb', label: 'Buster Brave Chain', style: 'danger', emoji: '🔴' },
+              { id: 'duel_card_aaa', label: 'Arts Chain', style: 'primary', emoji: '🔵' },
+              { id: 'duel_card_qqq', label: 'Quick Chain', style: 'success', emoji: '🟢' },
+              { id: 'duel_tab_active', label: 'Open Battle Stage', style: 'secondary', emoji: '🌊' }
+            ]
+          }
+        });
+        return;
+      }
+
+      if (lower.includes('barbatos')) {
+        // Launch Barbatos Boss Raid
+        const p1 = createCombatantFromMasterServant(activeServant, master.username);
+        const barbatosTemplate: any = {
+          id: 'pillar_barbatos',
+          name: 'Demon God Pillar Barbatos',
+          servantClass: 'Caster',
+          rarity: 5,
+          deck: ['Buster', 'Buster', 'Arts', 'Arts', 'Arts'],
+          noblePhantasm: {
+            name: 'Incineration Ritual: Barbatos Calamity',
+            cardType: 'Buster',
+            target: 'all',
+            description: 'Barbatos opens all 72 crimson eyes, unleashing an apocalyptic wave of cursed demon god mana.',
+            chant: 'O Solomon, look upon our despair!',
+            multiplier: 700
+          },
+          skills: [
+            { id: 'gaze_eyes', name: 'Gaze of the Thousand Eyes', description: 'Lowers all enemies DEF by 20% and inflicts Skill Seal for 1 turn.', cooldown: 3, effectType: 'debuff_def', value: 20 },
+            { id: 'wailing_spire', name: 'Wailing of the Inverted Spire', description: 'Increases own ATK by 25% (2T).', cooldown: 4, effectType: 'buff_atk', value: 25 },
+            { id: 'curse_throne', name: 'Curse of the Solomon Throne', description: 'Inflicts Curse (1,200 DMG/Turn, 3T).', cooldown: 3, effectType: 'debuff', value: 1200 }
+          ],
+          summonQuote: 'We are the 72 Demon Gods.',
+          battleStartQuote: 'Chaldean maggots... you shall burn in the incineration of human history!',
+          victoryQuote: 'Return to dust.',
+          defeatQuote: 'Solomon... our... pillar...',
+          avatarUrl: 'https://ella.janitorai.com/media-approved/Y-F0QFOyK7CJ33x4tVufH.webp'
+        };
+
+        const barbatosCombatant: any = {
+          id: 'boss_barbatos',
+          name: 'Demon God Pillar Barbatos',
+          masterName: 'Solomon Demon God',
+          servantClass: 'Caster',
+          currentHp: 1200000,
+          maxHp: 1200000,
+          atk: 12000,
+          def: 10000,
+          npGauge: 0,
+          critStars: 10,
+          activeBuffs: [],
+          isEvading: false,
+          isInvincible: false,
+          isStunned: false,
+          stats: { strength: 80, endurance: 90, agility: 50, mana: 100, luck: 40 },
+          skills: barbatosTemplate.skills.map((sk: any) => ({ ...sk, currentCooldown: 0 })),
+          noblePhantasm: barbatosTemplate.noblePhantasm,
+          deck: barbatosTemplate.deck,
+          currentHand: ['Buster', 'Buster', 'Arts', 'Arts', 'Arts'],
+          avatarUrl: 'https://ella.janitorai.com/media-approved/Y-F0QFOyK7CJ33x4tVufH.webp',
+          servant: { template: barbatosTemplate }
+        };
+
+        const raidBattle = initializeMultiBattle([p1], [barbatosCombatant], '1v1');
+        setActiveDuel({ battle: raidBattle });
+
+        addMessage({
+          id: getNextId('bot_raid_barbatos_start'),
+          sender: 'bot',
+          timestamp: 'Just now',
+          embed: {
+            title: '🔥 DEMON GOD PILLAR RAID: BARBATOS',
+            description:
+              `🚨 **SOLOMON TEMPLE OF TIME INCURSION!**\n\n` +
+              `• **Chaldea Vanguard:** **${p1.name}** (Master: ${master.username}) — \`${p1.currentHp.toLocaleString()} HP\`\n` +
+              `• **Demon God:** **Demon God Pillar Barbatos** (\`Caster\` Lv.90) — \`1,200,000 HP\`\n\n` +
+              `👁️ **Demonic Field:** Barbatos continuously scatters stars and debuffs party defense!\n\n` +
+              `👉 *Execute your 3-card Command sequence or activate skills below:*`,
+            color: '#7c3aed'
+          },
+          components: {
+            type: 'buttons',
+            items: [
+              { id: 'duel_card_bbb', label: 'Buster Brave Chain', style: 'danger', emoji: '🔴' },
+              { id: 'duel_card_aaa', label: 'Arts Chain', style: 'primary', emoji: '🔵' },
+              { id: 'duel_card_qqq', label: 'Quick Chain', style: 'success', emoji: '🟢' },
+              { id: 'duel_tab_active', label: 'Open Battle Stage', style: 'secondary', emoji: '👁️' }
+            ]
+          }
+        });
+        return;
+      }
+
+      // Default fallback when typing /raid without arguments
+      postRaidMenu();
+      return;
+    }
+
     // Default help
     addMessage({
       id: getNextId('bot_help'),
@@ -5639,6 +5942,7 @@ export default function DiscordEmulator({
           `• \`!servant\` — View your contracted Servant profile, radar card, and voice lines\n` +
           `• \`!heal\` — Perform workshop leylines healing ritual\n` +
           `• \`!duel [@master]\` — Challenge a rival Master to turn-based RPG combat\n` +
+          `• \`!raid [barbatos | tiamat | info]\` — Cooperative PvE Boss Raids with multi-phase break gauges & true damage\n` +
           `• \`!attack <@user>\` / \`!ambush <@user>\` — Ambush a suspected Master (if innocent, bystander dies & you are exposed!)\n` +
           `• \`!grailwar\` — 7-Master Tournament Battle Royal dashboard & scouting\n` +
           `• \`!profile\` & \`!defenses\` — Manage Master Command Seals, Mana, and workshop boundary fields\n` +
@@ -8327,6 +8631,54 @@ export default function DiscordEmulator({
     });
   };
 
+  // Helper: Post Grand Raid Terminal Menu
+  const postRaidMenu = () => {
+    const sName = activeServant?.nickname || activeServant?.template?.name || 'Contracted Servant';
+    const sClass = activeServant?.template?.servantClass || 'Saber';
+    const sLvl = activeServant?.level || 90;
+
+    const menuEmbed = {
+      title: '🔱 CHALDEA GRAND RAID TERMINAL — CALAMITY INCURSION HUB',
+      description:
+        `🚨 **CHALDEA SECURITY ORGANIZATION • PVE RAID OPERATIONS**\n\n` +
+        `Deploy your active Servant alongside allied Masters to suppress Demon God Pillars and World Evils threatening Human History.\n\n` +
+        `👑 **Active Vanguard:** **${sName}** (\`${sClass}\` Lv.${sLvl})\n` +
+        `❤️ **Combat Parameters:** \`${activeServant?.template?.baseHp?.toLocaleString() || '14,000'} HP\` | \`${activeServant?.template?.baseAtk?.toLocaleString() || '11,000'} ATK\`\n` +
+        `🔴 **Command Seals:** \`${master.commandSeals ?? 3}/3\`\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `👁️ **1. DEMON GOD PILLAR BARBATOS** — *Temple of Time*\n` +
+        `• **Class:** \`Caster\` • **Level:** \`90\` • **HP:** \`1,200,000\` (Single Phase)\n` +
+        `• **Threat:** Observation Pillar • Lowers party DEF & drains critical stars\n` +
+        `• **Victory Drops:** 💎 \`10–20 SQ\` • ⚔️ \`+25,000 EXP\` • 💖 \`+2,000 Bond\` • ✨ \`3x Embers\`\n\n` +
+        `🌊 **2. BEAST II / PRIMORDIAL MOTHER TIAMAT** — *Chaos Sea of Genesis*\n` +
+        `• **Class:** \`Beast\` • **Level:** \`95\` • **HP:** \`17,000,000\` (**3 Break Gauges**)\n` +
+        `• **Phases:** Limiter (3.5M HP) ➔ Titan (5.5M HP) ➔ Primeval Dragon (8M HP)\n` +
+        `• **Mechanics:** Sea of Life (-2,000 HP/T), Self-Limitation, Nega-Genesis (-50% card DMG, NP True DMG)\n` +
+        `• **Victory Drops:** 💎 \`20–35 SQ\` • ⚔️ \`+60,000 EXP\` • 💖 \`+5,000 Bond\` • ✨ \`5x Embers\`\n\n` +
+        `👉 *Select a Raid Boss below to establish your incursion lobby:*`,
+      color: '#d946ef',
+      footer: 'Chaldea Raid Protocol • Solo & Multi-Master Co-op Raids'
+    };
+
+    const components = {
+      type: 'buttons' as const,
+      items: [
+        { id: 'raid_btn_barbatos', label: 'Fight Barbatos (Lv.90)', style: 'primary' as const, emoji: '👁️' },
+        { id: 'raid_btn_tiamat', label: 'Fight Tiamat (3-Phase)', style: 'danger' as const, emoji: '🌊' },
+        { id: 'raid_btn_info', label: 'Boss Intel & Drops', style: 'secondary' as const, emoji: '📖' },
+        { id: 'duel_tab_arena', label: 'Combat Arena', style: 'secondary' as const, emoji: '⚔️' }
+      ]
+    };
+
+    addMessage({
+      id: getNextId('bot_raid_menu'),
+      sender: 'bot',
+      timestamp: 'Just now',
+      embed: menuEmbed,
+      components
+    });
+  };
+
   // Helper: Post Combat Arena & Duel Hub
   const postDuelHub = (
     category: 'arena' | 'active' | 'history' | 'leaderboard' = 'arena',
@@ -8434,10 +8786,10 @@ export default function DiscordEmulator({
     let actionButtons: any[] = [];
     if (category === 'arena') {
       actionButtons = [
+        { id: 'raid_btn_menu', label: '🔱 Grand Raid Terminal', style: 'danger', emoji: '🌊' },
         { id: 'duel_act_queue', label: 'Queue Matchmaking', style: 'success', emoji: '🎲' },
         { id: 'duel_act_practice', label: '1v1 Practice Clash', style: 'primary', emoji: '⚔️' },
         { id: 'duel_act_2v2', label: '2v2 Alliance Clash', style: 'primary', emoji: '🛡️' },
-        { id: 'duel_act_1v2', label: '1v2 Raid Clash', style: 'secondary', emoji: '⚔️' },
         { id: 'duel_prompt_forcejoin', label: '⚡ Force Join Arena', style: 'danger', emoji: '🚨' },
         { id: 'duel_act_refresh', label: 'Refresh Lobby', style: 'secondary', emoji: '🔄' }
       ];
@@ -11746,8 +12098,10 @@ export default function DiscordEmulator({
         handleCommand('/duel shadow_rival');
       } else if (btnId === 'duel_act_2v2' || btnId === 'duel_act_alliance') {
         handleCommand('/duel 2v2');
-      } else if (btnId === 'duel_act_1v2' || btnId === 'duel_act_raid') {
+      } else if (btnId === 'duel_act_1v2') {
         handleCommand('/duel 1v2');
+      } else if (btnId === 'duel_act_raid') {
+        handleCommand('/raid menu');
       } else if (btnId === 'duel_act_alliance_assist') {
         if (!activeDuel) return;
         const currentP1 = activeDuel.battle.player1;
@@ -11791,6 +12145,25 @@ export default function DiscordEmulator({
       } else if (btnId === 'duel_link_grailwar') {
         setGrailWarHubCategory('board');
         postGrailWarHub('board');
+      }
+      return;
+    } else if (btnId.startsWith('raid_btn_')) {
+      if (btnId === 'raid_btn_barbatos') {
+        handleCommand('/raid barbatos');
+      } else if (btnId === 'raid_btn_tiamat') {
+        handleCommand('/raid tiamat');
+      } else if (btnId === 'raid_btn_goetia') {
+        handleCommand('/raid goetia');
+      } else if (btnId === 'raid_btn_menu') {
+        handleCommand('/raid menu');
+      } else if (btnId === 'raid_btn_info') {
+        handleCommand('/raid info');
+      } else if (btnId === 'raid_btn_info_barbatos') {
+        handleCommand('/raid info barbatos');
+      } else if (btnId === 'raid_btn_info_tiamat') {
+        handleCommand('/raid info tiamat');
+      } else if (btnId === 'raid_btn_info_goetia') {
+        handleCommand('/raid info goetia');
       }
       return;
     } else if (btnId.startsWith('duel_')) {
