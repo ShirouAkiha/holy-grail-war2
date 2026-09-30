@@ -829,7 +829,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
       const drawW = imgW * scale;
       const drawH = imgH * scale;
       const drawX = slotX + (panelW - drawW) / 2;
-      const drawY = panelTopY + 5; // Head and face proudly begin at top
+      const drawY = panelTopY + 20; // Head and face begin at Y: 230px
       ctx.drawImage(avatar, 0, 0, imgW, imgH, drawX, drawY, drawW, drawH);
     }
 
