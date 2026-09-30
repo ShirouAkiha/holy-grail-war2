@@ -1168,7 +1168,8 @@ async function runRaidBattle(
           starsGenerated += Math.round(12 * critStarBonus);
           npGained += Math.round(10 * critNpBonus);
         } else if (card === 'NP') {
-          const npMultiplier = active.servant.template?.noblePhantasm?.multiplier ?? 5.5;
+          const rawNpMult = active.servant.template?.noblePhantasm?.multiplier ?? 600;
+          const npMultiplier = rawNpMult >= 20 ? rawNpMult / 100 : (rawNpMult || 6.0);
           const npDesc = active.servant.template?.noblePhantasm?.description || '';
           const npName = active.servant.template?.noblePhantasm?.name || 'Noble Phantasm';
           const npTarget = active.servant.template?.noblePhantasm?.target || 'single';
