@@ -831,20 +831,29 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     ctx.fillText(hpText, barX + barW - 8, hpY + hpH / 2 + 1);
     ctx.restore();
 
-    // NP Bar (Y: 595, Height: 22px)
+    // NP Bar (Y: 595, Height: 22px) — Supports 100% to 300% Overcharge Gauge
     const npY = 595;
     const npH = 22;
-    const pNpRatio = p.isDead ? 0 : Math.max(0, Math.min(1, (p.npGauge || 0) / 100));
+    const npVal = p.isDead ? 0 : Math.min(300, p.npGauge || 0);
+    const pNpRatio = Math.max(0, Math.min(1, npVal / 300));
     const npGrad = ctx.createLinearGradient(barX, 0, barX + barW * pNpRatio, 0);
-    if (p.npGauge >= 100) {
+
+    if (npVal >= 300) {
+      npGrad.addColorStop(0, '#a855f7');
+      npGrad.addColorStop(0.5, '#f59e0b');
+      npGrad.addColorStop(1, '#fef08a');
+    } else if (npVal >= 200) {
       npGrad.addColorStop(0, '#fbbf24');
       npGrad.addColorStop(1, '#ef4444');
+    } else if (npVal >= 100) {
+      npGrad.addColorStop(0, '#fbbf24');
+      npGrad.addColorStop(1, '#38bdf8');
     } else {
       npGrad.addColorStop(0, '#2563eb');
       npGrad.addColorStop(1, '#38bdf8');
     }
 
-    drawProgressBar(ctx, barX, npY, barW, npH, p.npGauge || 0, 100, npGrad, 'rgba(15, 23, 42, 0.95)', '#64748b');
+    drawProgressBar(ctx, barX, npY, barW, npH, npVal, 300, npGrad, 'rgba(15, 23, 42, 0.95)', '#64748b');
 
     ctx.save();
     ctx.fillStyle = '#ffffff';
@@ -854,7 +863,12 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     ctx.fillText('NP', barX + 8, npY + npH / 2 + 1);
 
     ctx.textAlign = 'right';
-    const npText = p.isDead ? '0%' : (p.npGauge >= 100 ? '100% READY' : `${Math.round(p.npGauge || 0)}%`);
+    let npText = `${Math.round(npVal)}%`;
+    if (p.isDead) npText = '0%';
+    else if (npVal >= 300) npText = '300% MAX OC3';
+    else if (npVal >= 200) npText = `${Math.round(npVal)}% OC2 READY`;
+    else if (npVal >= 100) npText = `${Math.round(npVal)}% READY`;
+
     ctx.font = 'bold 15px sans-serif';
     ctx.fillText(npText, barX + barW - 8, npY + npH / 2 + 1);
     ctx.restore();

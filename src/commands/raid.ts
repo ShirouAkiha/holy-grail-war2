@@ -510,7 +510,7 @@ async function runRaidBattle(
     const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setCustomId('raid_card_np')
-        .setLabel(isNpReady ? `NP [${npType}] (100%)` : `NP (${Math.round(active.npGauge)}%)`)
+        .setLabel(isNpReady ? `NP [${npType}] (${Math.round(active.npGauge)}%)` : `NP (${Math.round(active.npGauge)}%)`)
         .setEmoji(isNpReady ? '💥' : (npType === 'Buster' ? '🔴' : npType === 'Arts' ? '🔵' : '🟢'))
         .setStyle(isNpReady ? ButtonStyle.Danger : ButtonStyle.Secondary)
         .setDisabled(shouldDisableAll || !isNpReady || isNpSelected || pendingCards.length >= 3 || active.isDead),
@@ -933,7 +933,7 @@ async function runRaidBattle(
             remainingTurns: 3
           });
           active.critStars = (active.critStars || 0) + 10;
-          active.npGauge = Math.min(100, (active.npGauge || 0) + 10);
+          active.npGauge = Math.min(300, (active.npGauge || 0) + 10);
           buffLog = `(🔻 Inflicted **-30% DEF Down** on Barbatos for 3T, +10% NP, +10 Stars)`;
         } else if (isAtkDown) {
           battleState.bossBuffs.push({
@@ -1002,7 +1002,7 @@ async function runRaidBattle(
         } else if (isHeal) {
           const healAmt = 4500;
           active.currentHp = Math.min(active.maxHp, active.currentHp + healAmt);
-          active.npGauge = Math.min(100, (active.npGauge || 0) + 20);
+          active.npGauge = Math.min(300, (active.npGauge || 0) + 20);
           active.activeBuffs = active.activeBuffs.filter(b => b.type !== 'curse' && b.type !== 'burn' && b.type !== 'poison');
           buffLog = `(💚 Restored +${healAmt.toLocaleString()} HP, +20% NP & Cleansed Afflictions)`;
         } else {
@@ -1013,7 +1013,7 @@ async function runRaidBattle(
             remainingTurns: 3
           });
           active.critStars = (active.critStars || 0) + 15;
-          active.npGauge = Math.min(100, (active.npGauge || 0) + 20);
+          active.npGauge = Math.min(300, (active.npGauge || 0) + 20);
           buffLog = `(+30% ATK, +20% NP, +15 Stars)`;
         }
 
@@ -1044,9 +1044,9 @@ async function runRaidBattle(
       if (availableSeals > 0) {
         active.commandSeals = availableSeals - 1;
         active.currentHp = active.maxHp;
-        active.npGauge = 100;
+        active.npGauge = Math.min(300, Math.max(100, (active.npGauge || 0) + 100));
         battleState.recentLogs.push(
-          `🔱 <@${active.userId}> expended a **Command Seal** (${active.commandSeals} remaining)! **${active.servant.nickname || active.servant.template.name}** is fully healed and charged to **100% NP**!`
+          `🔱 <@${active.userId}> expended a **Command Seal** (${active.commandSeals} remaining)! **${active.servant.nickname || active.servant.template.name}** is fully healed and gained **+100% NP Gauge** (${Math.round(active.npGauge)}% total)!`
         );
         while (battleState.recentLogs.length > 8) battleState.recentLogs.shift();
 
@@ -1262,7 +1262,7 @@ async function runRaidBattle(
       });
 
       battleState.bossCurrentHp = Math.max(0, battleState.bossCurrentHp - totalTurnDmg);
-      active.npGauge = Math.min(100, (active.npGauge || 0) + npGained);
+      active.npGauge = Math.min(300, (active.npGauge || 0) + npGained);
       // Consumes existing stars used during the attack; new star pool is based on stars generated this turn!
       active.critStars = Math.min(50, Math.round(starsGenerated));
 
