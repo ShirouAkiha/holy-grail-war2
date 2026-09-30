@@ -255,14 +255,10 @@ async function launchRaidLobby(
 
     const locationText = isTiamat
       ? 'Underworld Abyss • Chaos Sea of Genesis'
-      : isGoetia
-      ? 'Coronated Realm • Ars Paulina (Temple of Time)'
       : 'Grand Temple of Time • Throne of Solomon';
 
     const bossSubtitle = isTiamat
       ? `**Boss:** **${boss.name}** (\`${boss.servantClass}\` • Lv.${boss.level} • 3-Phase Break Gauge Boss)\n**Phase 1 HP:** **${boss.baseHp.toLocaleString()} HP** (3 Break Gauges Total)\n\n`
-      : isGoetia
-      ? `**Boss:** **${boss.name}** (\`${boss.servantClass}\` • Lv.${boss.level} • Beast I Climax)\n**Total Boss HP:** **${boss.baseHp.toLocaleString()} HP**\n\n`
       : `**Boss:** **${boss.name}** (\`${boss.servantClass}\` • Lv.${boss.level})\n**Total Boss HP:** **${boss.baseHp.toLocaleString()} HP**\n\n`;
 
     return new EmbedBuilder()
@@ -275,7 +271,7 @@ async function launchRaidLobby(
         `*Click **Join Raid** to bring your active Servant into the fight, or the host can launch immediately!*`
       )
       .setThumbnail(boss.avatarUrl)
-      .setColor(isTiamat ? 0xd946ef : isGoetia ? 0xeab308 : 0x9333ea)
+      .setColor(isTiamat ? 0xd946ef : 0x9333ea)
       .setFooter({ text: 'PvE Raid Engine • Up to 4 Masters can join' });
   };
 
@@ -314,7 +310,7 @@ async function launchRaidLobby(
     time: 120_000
   });
 
-  lobbyCollector.on('collect', async (btn) => {
+  lobbyCollector.on('collect', async (btn: any) => {
     if (btn.customId === 'raid_lobby_join') {
       if (lobbyParticipants.some(p => p.userId === btn.user.id)) {
         await btn.reply({
@@ -389,7 +385,7 @@ async function launchRaidLobby(
     }
   });
 
-  lobbyCollector.on('end', async (_, reason) => {
+  lobbyCollector.on('end', async (_: any, reason: any) => {
     if (reason === 'time') {
       await lobbyMsg.edit({
         content: '⏳ Raid lobby recruitment expired.',
@@ -989,15 +985,13 @@ async function runRaidBattle(
           await i.editReply(options);
         }
       } catch (err: any) {
-        if (
-          err?.code === 10062 ||
-          err?.code === 40060 ||
-          err?.message?.includes('Unknown interaction') ||
-          err?.message?.includes('already been acknowledged')
-        ) {
-          return;
+        try {
+          if (battleMsg && typeof battleMsg.edit === 'function') {
+            await battleMsg.edit(options);
+          }
+        } catch (fallbackErr) {
+          console.warn('[raid] safeUpdate fallback warning:', fallbackErr);
         }
-        console.warn('[raid] safeUpdate warning:', err);
       }
     };
 

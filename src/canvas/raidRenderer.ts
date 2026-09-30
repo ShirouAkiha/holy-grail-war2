@@ -553,11 +553,11 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
 
       if (phase === 1) {
         // Phase 1: Femme Fatale Form (Limiter State)
-        // Target height 520px with width calculated strictly from intrinsic aspect ratio
-        const destH = 520;
+        // Target height 580px with width calculated strictly from intrinsic aspect ratio to avoid squishing
+        const destH = 580;
         const destW = Math.round(destH * intrinsicAspect);
-        const destX = 60; // Shifted left on battle stage
-        const destY = 85; // Shifted lower
+        const destX = 20; // Shifted further left on battle stage
+        const destY = 110; // Shifted lower on battlefield
 
         // Ground shadow on primordial shore
         ctx.beginPath();
@@ -567,31 +567,19 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
 
         ctx.drawImage(bossSpriteImg, destX, destY, destW, destH);
       } else if (phase === 2) {
-        // Phase 2: Titan Divine Form (The Marching Calamity)
-        // Pushed deeper into midground. Head and horns peak near top-left (Y: 30) with lower tentacles fading behind player panels.
-        // Draw Box: X: 100, Y: 30, Target Width: 500, Target Height: 540
-        const destX = 100;
-        const destY = 30;
-        const destW = 500;
-        const destH = 540;
-
-        // Ground shadow
-        ctx.beginPath();
-        ctx.ellipse(destX + destW * 0.5, 560, 200, 20, 0, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-        ctx.fill();
+        // Phase 2: Titan Divine Form (The Marching Calamity - Elevated Face & Shifted Left)
+        const destH = 1150;
+        const destW = Math.round(destH * intrinsicAspect);
+        const destX = -200;
+        const destY = -230;
 
         ctx.drawImage(bossSpriteImg, destX, destY, destW, destH);
       } else {
-        // Phase 3: True Draconic Form (Colossal Boss Close-Up)
-        // Babylonia Climax Perspective:
-        // Do NOT scale down to fit the floor.
-        // Heavily magnify sprite so only head, gaping maw, and horns dominate left/upper-left frame.
-        // Placement: X: -140, Y: -20, Width: 1100, Height: 720 (Anchored top-left, pointing toward player units)
-        const destX = -140;
-        const destY = -20;
-        const destW = 1100;
-        const destH = 720;
+        // Phase 3: True Draconic Form (Colossal Head Portrait - Shifted Left & Higher Up)
+        const destH = 1000;
+        const destW = Math.round(destH * intrinsicAspect);
+        const destX = -320;
+        const destY = -300;
 
         ctx.drawImage(bossSpriteImg, destX, destY, destW, destH);
       }

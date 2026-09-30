@@ -182,7 +182,7 @@ export const RAID_BOSSES: Record<string, RaidBossConfig> = {
         title: 'Beast of Calamity • Primeval Sea Dragon',
         baseHp: 8_000_000,
         maxCharge: 3,
-        spriteUrl: 'https://ella.janitorai.com/media-approved/y4fxHfCOgTtmNM0ijAouz.webp',
+        spriteUrl: 'https://ella.janitorai.com/media-approved/0e2G0RijgX5dnEjjuZPBm.webp',
         drawBox: {
           destX: -140,
           destY: -20,
