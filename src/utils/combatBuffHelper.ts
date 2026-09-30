@@ -133,14 +133,18 @@ export function calculateCombatantBuffSummary(
         buffDescriptions.push(`• **${b.name || 'NP Gain'}**: +${val}% NP Gain (${durationLabel})`);
         break;
       case 'evade':
-        isEvading = true;
-        if (hits) evadeHits = Math.max(evadeHits, hits);
-        buffDescriptions.push(`• **${b.name || 'Evade'}**: Evade Attacks (${durationLabel})`);
+        if (b.remainingTurns > 0 && (b.remainingHits === undefined || b.remainingHits > 0)) {
+          isEvading = true;
+          if (hits) evadeHits = Math.max(evadeHits, hits);
+          buffDescriptions.push(`• **${b.name || 'Evade'}**: Evade Attacks (${durationLabel})`);
+        }
         break;
       case 'invincible':
-        isInvincible = true;
-        if (hits) invincibleHits = Math.max(invincibleHits, hits);
-        buffDescriptions.push(`• **${b.name || 'Invincibility'}**: Complete Invulnerability (${durationLabel})`);
+        if (b.remainingTurns > 0 && (b.remainingHits === undefined || b.remainingHits > 0)) {
+          isInvincible = true;
+          if (hits) invincibleHits = Math.max(invincibleHits, hits);
+          buffDescriptions.push(`• **${b.name || 'Invincibility'}**: Complete Invulnerability (${durationLabel})`);
+        }
         break;
       case 'guts': {
         const buffHits = (hits && hits > 0) ? hits : 1;

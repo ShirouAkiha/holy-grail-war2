@@ -2299,8 +2299,16 @@ function resolveStrike(
   });
   defender.isStunned = defender.activeBuffs.some(b => b.type === 'stun');
 
-  // Decrement attacker offensive & turn-based buffs
+  // Decrement attacker offensive, utility, and turn-based defensive buffs after completing turn
   attacker.activeBuffs = attacker.activeBuffs.filter(b => {
+    const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
+    if (b.type === 'evade' || b.type === 'invincible') {
+      if (isHitBased) {
+        return b.remainingHits === undefined || b.remainingHits > 0;
+      }
+      b.remainingTurns--;
+      return b.remainingTurns > 0;
+    }
     if (
       b.type === 'buff_atk' ||
       b.type === 'debuff_atk' ||
@@ -2316,7 +2324,9 @@ function resolveStrike(
       b.type === 'stars_per_turn' ||
       b.type === 'hp_regen' ||
       b.type === 'debuff_np_strength' ||
-      b.type === 'debuff_np_dmg'
+      b.type === 'debuff_np_dmg' ||
+      b.type === 'buff_def' ||
+      b.type === 'debuff_def'
     ) {
       b.remainingTurns--;
       return b.remainingTurns > 0;

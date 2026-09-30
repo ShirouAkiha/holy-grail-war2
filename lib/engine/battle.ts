@@ -2412,10 +2412,14 @@ export function executeBattleTurn(
     const dialogueTag = dialogueInfo.tag;
     const dialogueTitle = dialogueInfo.speakerTitle;
 
-    // Decrement buff durations (offensive/attack-phase buffs, statuses, and utility buffs)
-    // Defensive buffs (evade, invincible, buff_def, guts) must NOT decrement when attacking!
+    // Decrement buff durations (offensive, utility, and turn-based defensive buffs after turn completion)
     actor.activeBuffs = actor.activeBuffs
       .map(b => {
+        const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
+        if (b.type === 'evade' || b.type === 'invincible') {
+          if (isHitBased) return b;
+          return { ...b, remainingTurns: b.remainingTurns - 1 };
+        }
         if (
           b.type === 'buff_atk' ||
           b.type === 'debuff_atk' ||
@@ -2431,13 +2435,15 @@ export function executeBattleTurn(
           b.type === 'ignore_defense' ||
           b.type === 'skill_seal' ||
           b.type === 'debuff_np_strength' ||
-          b.type === 'debuff_np_dmg'
+          b.type === 'debuff_np_dmg' ||
+          b.type === 'buff_def' ||
+          b.type === 'debuff_def'
         ) {
           return { ...b, remainingTurns: b.remainingTurns - 1 };
         }
         return b;
       })
-      .filter(b => b.remainingTurns > 0);
+      .filter(b => b.remainingTurns > 0 && (!b.isHitCount || b.remainingHits === undefined || b.remainingHits > 0));
     if (!actor.activeBuffs.some(b => b.type === 'evade')) actor.isEvading = false;
     if (!actor.activeBuffs.some(b => b.type === 'invincible')) actor.isInvincible = false;
     if (!actor.activeBuffs.some(b => b.type === 'stun')) actor.isStunned = false;
