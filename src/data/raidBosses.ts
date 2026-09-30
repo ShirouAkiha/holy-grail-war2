@@ -48,7 +48,7 @@ export const RAID_BOSSES: Record<string, RaidBossConfig> = {
     servantClass: 'Caster',
     level: 90,
     baseHp: 1_200_000,
-    maxCharge: 4,
+    maxCharge: 5,
     traits: ['threat_to_humanity', 'beast', 'demonic', 'giant', 'super_large', 'demon_god_pillar'],
     avatarUrl: 'https://ella.janitorai.com/media-approved/Y-F0QFOyK7CJ33x4tVufH.webp',
     spriteUrl: 'https://ella.janitorai.com/media-approved/CGFhQCyCSVrzWsWlBE-42.gif',

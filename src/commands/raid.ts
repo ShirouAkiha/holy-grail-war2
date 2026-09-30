@@ -1003,7 +1003,8 @@ async function runRaidBattle(
           const healAmt = 4500;
           active.currentHp = Math.min(active.maxHp, active.currentHp + healAmt);
           active.npGauge = Math.min(100, (active.npGauge || 0) + 20);
-          buffLog = `(💚 Restored +${healAmt.toLocaleString()} HP, +20% NP)`;
+          active.activeBuffs = active.activeBuffs.filter(b => b.type !== 'curse' && b.type !== 'burn' && b.type !== 'poison');
+          buffLog = `(💚 Restored +${healAmt.toLocaleString()} HP, +20% NP & Cleansed Afflictions)`;
         } else {
           active.activeBuffs.push({
             name: `${sName} Buff`,
@@ -1175,7 +1176,7 @@ async function runRaidBattle(
           const npTarget = active.servant.template?.noblePhantasm?.target || 'single';
           const sName = active.servant.template?.name || active.servant.nickname || '';
 
-          const isSupportNp = npTarget === 'support' || npMultiplier === 0 || /party invincib|grant.*invincib|invincible|luminos|jeanne/i.test(npName + ' ' + npDesc + ' ' + sName);
+          const isSupportNp = npTarget === 'support' || npMultiplier === 0 || /party invincib|grant.*invincib|luminos/i.test(npName + ' ' + npDesc);
 
           if (isSupportNp) {
             // Party Invincibility, DEF Up (+30% 3T), Debuff Cleanse & Heal (+3,000 HP) to ALL living allies in the raid!
@@ -1457,20 +1458,29 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       `👁️ **Barbatos cast [Gaze of the Thousand Eyes]!** All Servants suffer **-20% DEF** (2T) and lost 10 Critical Stars!`
     );
   } else if (skillRoll < 0.70) {
-    // Skill 2: Wailing of the Inverted Spire (+25% ATK, +1 Charge Diamond)
+    // Skill 2: Wailing of the Inverted Spire (+25% ATK, +1 Charge Diamond only when enraged)
     state.bossBuffs.push({
       name: 'Wailing of the Spire',
       type: 'atk_up',
       value: 25,
       remainingTurns: 2
     });
-    state.bossCharge = Math.min(state.boss.maxCharge, state.bossCharge + 1);
-    enemyPhase.skillName = 'Wailing of the Inverted Spire';
-    enemyPhase.skillDesc = 'Increases own ATK by +25% (2T) and charges NP gauge by 1 diamond';
-    enemyPhase.bossBuffsGained.push('⚔️ **+25% ATK Up (2T)**', '⚡ **+1 NP Charge Diamond**');
-    state.recentLogs.push(
-      `📢 **Barbatos cast [Wailing of the Inverted Spire]!** Demon God ATK increased by **+25%** and gained **+1 Charge Diamond**!`
-    );
+    if (isEnraged) {
+      state.bossCharge = Math.min(state.boss.maxCharge, state.bossCharge + 1);
+      enemyPhase.skillName = 'Wailing of the Inverted Spire';
+      enemyPhase.skillDesc = 'Increases own ATK by +25% (2T) and charges NP gauge by 1 diamond';
+      enemyPhase.bossBuffsGained.push('⚔️ **+25% ATK Up (2T)**', '⚡ **+1 NP Charge Diamond**');
+      state.recentLogs.push(
+        `📢 **Barbatos cast [Wailing of the Inverted Spire]!** Demon God ATK increased by **+25%** and gained **+1 Charge Diamond**!`
+      );
+    } else {
+      enemyPhase.skillName = 'Wailing of the Inverted Spire';
+      enemyPhase.skillDesc = 'Increases own ATK by +25% (2T)';
+      enemyPhase.bossBuffsGained.push('⚔️ **+25% ATK Up (2T)**');
+      state.recentLogs.push(
+        `📢 **Barbatos cast [Wailing of the Inverted Spire]!** Demon God ATK increased by **+25%**!`
+      );
+    }
   } else {
     // Skill 3: Curse of the Solomon Throne (Curses target with highest NP & inflicts -20% ATK Down)
     const highestNpTarget = [...livingParticipants].sort((a, b) => (b.npGauge || 0) - (a.npGauge || 0))[0];
@@ -1611,7 +1621,13 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       const curseDamage = p.activeBuffs?.filter(b => b.type === 'curse').reduce((acc, b) => acc + b.value, 0) || 0;
       if (curseDamage > 0) {
         const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
-        if (p.gutsTriggeredThisTurn) {
+        const hasEvadeOrInvincibility = p.activeBuffs?.some(b => b.type === 'evade' || b.type === 'invincible');
+
+        if (hasEvadeOrInvincibility) {
+          // Protective Evade / Invincible barrier completely nullifies Curse Burn DoT for this round
+          state.recentLogs.push(`🛡️ **[BARRIER PROTECTED!]** **${pName}**'s Evade/Invincible barrier completely blocked the **${curseDamage.toLocaleString()} Curse Burn DMG**!`);
+          enemyPhase.specialEvents.push(`🛡️ **${pName}**'s barrier blocked Curse Burn DoT!`);
+        } else if (p.gutsTriggeredThisTurn) {
           // In Fate battle mechanics, Guts cannot be double-consumed in the same enemy turn.
           // Since the Servant was already revived by Guts from Barbatos's attack this round,
           // Curse burns them down to a minimum of 1 HP so they are not instantly killed again.
