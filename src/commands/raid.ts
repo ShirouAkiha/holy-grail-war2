@@ -845,7 +845,6 @@ async function runRaidBattle(
         content: buildTurnContent(active, pendingCards),
         embeds: [],
         files: [attachment],
-        attachments: [], // Clears previous attachment cache in Discord so the new canvas renders!
         components
       }).catch(() => {});
     }
@@ -891,11 +890,19 @@ async function runRaidBattle(
     try {
       // 0. Status Inspection Dossier (Accessible by any Master at any time)
     if (i.customId === 'raid_status') {
-      const statusEmbed = buildRaidStatusEmbed(battleState, i.user.id);
-      await i.reply({
-        embeds: [statusEmbed],
-        flags: MessageFlags.Ephemeral
-      });
+      try {
+        const statusEmbed = buildRaidStatusEmbed(battleState, i.user.id);
+        await i.reply({
+          embeds: [statusEmbed],
+          flags: MessageFlags.Ephemeral
+        });
+      } catch (statusErr: any) {
+        console.error('[raid] Error generating raid status embed:', statusErr);
+        await i.reply({
+          content: '⚠️ Unable to format full tactical dossier. Please try again.',
+          flags: MessageFlags.Ephemeral
+        }).catch(() => {});
+      }
       return;
     }
 
@@ -1309,7 +1316,6 @@ async function runRaidBattle(
           content: buildTurnContent(active, pendingCards),
           embeds: [],
           files: [attachment],
-          attachments: [],
           components: buildBattleButtons()
         });
         } finally {
@@ -1350,7 +1356,6 @@ async function runRaidBattle(
           content: buildTurnContent(active, pendingCards),
           embeds: [],
           files: [attachment],
-          attachments: [],
           components: buildBattleButtons()
         });
         return;
@@ -2668,6 +2673,17 @@ async function concludeRaidDefeat(
   }
 }
 
+function cleanBuffNameForDisplay(name: string): string {
+  return name
+    .replace(/Round of Avalon: The Promised Star Which Gathers The True Round/gi, 'Round of Avalon')
+    .replace(/Strengthening Adaptation A\+/gi, 'Adaptation A+')
+    .replace(/Calamity-Breaker Edict EX/gi, 'Calamity-Breaker')
+    .replace(/Holy Sword Creation EX/gi, 'Holy Sword')
+    .replace(/Charisma of Hope B/gi, 'Charisma of Hope')
+    .replace(/Avalon le Fae A/gi, 'Avalon le Fae')
+    .replace(/Self-Modification EX/gi, 'Self-Mod EX');
+}
+
 function buildRaidStatusEmbed(state: RaidBattleState, viewingUserId: string): EmbedBuilder {
   const boss = state.boss;
   const bossHpPct = Math.max(0, Math.round((state.bossCurrentHp / state.bossMaxHp) * 100));
@@ -2680,64 +2696,75 @@ function buildRaidStatusEmbed(state: RaidBattleState, viewingUserId: string): Em
   const vLvl = vServant.level || 90;
   const vHpPct = Math.max(0, Math.round((viewer.currentHp / viewer.maxHp) * 100));
 
-  // Boss Traits & Active Buffs/Debuffs
-  const bossTraitsStr = (boss.traits || ['threat_to_humanity', 'beast', 'demonic', 'giant']).map(t => `\`${t.replace(/_/g, ' ')}\``).join(' • ');
-  const bossBuffsList = (state.bossBuffs && state.bossBuffs.length > 0)
-    ? state.bossBuffs.map(b => {
+  // Boss Traits & Active Buffs/Debuffs (compact)
+  const bossTraitsStr = (boss.traits || ['threat_to_humanity', 'beast', 'demonic', 'giant']).slice(0, 4).map(t => `\`${t.replace(/_/g, ' ')}\``).join(' • ');
+  const rawBossBuffs = state.bossBuffs || [];
+  const bossBuffsList = (rawBossBuffs.length > 0)
+    ? rawBossBuffs.slice(0, 5).map(b => {
         const isDebuff = b.type.includes('down') || b.type.includes('debuff') || ['stun', 'np_seal', 'curse', 'poison', 'burn'].includes(b.type);
         const icon = isDebuff ? '🔻' : '🔺';
         const sign = isDebuff ? '-' : '+';
         const formattedVal = ['stun', 'np_seal'].includes(b.type)
           ? ''
-          : `: ${sign}${Math.abs(b.value)}${['curse', 'poison', 'burn'].includes(b.type) ? ' DMG/Turn' : '%'}`;
-        return `• ${icon} **${b.name}**${formattedVal} (${b.remainingTurns} turn(s) left)`;
-      }).join('\n')
-    : `_No active status effects or debuffs applied to ${boss.name}._`;
+          : `: ${sign}${Math.abs(b.value)}${['curse', 'poison', 'burn'].includes(b.type) ? ' DMG/T' : '%'}`;
+        return `• ${icon} **${cleanBuffNameForDisplay(b.name)}**${formattedVal} (${b.remainingTurns}T)`;
+      }).join('\n') + (rawBossBuffs.length > 5 ? `\n• *...+${rawBossBuffs.length - 5} more*` : '')
+    : `_No active status effects or debuffs on ${boss.name}._`;
 
-  // Viewer's Active Buffs
-  const vBuffsList = (viewer.activeBuffs && viewer.activeBuffs.length > 0)
-    ? viewer.activeBuffs.map(b => `• ✨ **${b.name}**: +${b.value}% (${b.remainingTurns} turn(s) left)`).join('\n')
-    : '_Operating at baseline battle parameters (No active buffs or debuffs)._';
+  // Viewer's Active Buffs (compact)
+  const rawVBuffs = viewer.activeBuffs || [];
+  const vBuffsList = (rawVBuffs.length > 0)
+    ? rawVBuffs.slice(0, 6).map(b => `• ✨ **${cleanBuffNameForDisplay(b.name)}**: +${b.value}% (${b.remainingTurns}T)`).join('\n') +
+      (rawVBuffs.length > 6 ? `\n• *...+${rawVBuffs.length - 6} more active buffs*` : '')
+    : '_Operating at baseline parameters (No active buffs)._';
 
   // Viewer's Skills & Cooldowns
   const skills = vServant.template?.skills || [];
   const sList = skills.map((s, idx) => {
     const cd = viewer.skillCooldowns[idx] || 0;
-    const cdStr = cd > 0 ? `\`[⏱ ${cd}T Cooldown]\`` : `\`[✨ READY]\``;
-    return `• **S${idx + 1}: ${s.name}** ${cdStr}\n  └─ *${s.description}*`;
-  }).join('\n') || '_No active skills found._';
+    const cdStr = cd > 0 ? `\`[⏱ ${cd}T]\`` : `\`[✨ READY]\``;
+    const descShort = s.description.length > 70 ? s.description.slice(0, 67) + '...' : s.description;
+    return `• **S${idx + 1}: ${s.name}** ${cdStr} — *${descShort}*`;
+  }).join('\n') || '_No active skills._';
 
-  // Allied Vanguard Roster
+  // Allied Vanguard Roster (compact buffs)
   const partyRoster = state.participants.map(p => {
     const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
     const isViewer = p.userId === viewer.userId;
     const arrow = isViewer ? '👉 ' : '• ';
-    const hpStr = p.isDead ? '💀 FALLEN' : `${Math.round(p.currentHp).toLocaleString()} / ${p.maxHp.toLocaleString()} HP (${Math.round((p.currentHp / p.maxHp) * 100)}%)`;
-    const buffCount = p.activeBuffs?.length || 0;
-    const buffSummary = buffCount > 0 ? p.activeBuffs!.map(b => `\`${b.name} (${b.remainingTurns}T)\``).join(', ') : 'None';
-    return `${arrow}**${pName}** (<@${p.userId}>):\n  └─ ❤️ \`${hpStr}\` • ⚡ \`NP: ${Math.round(p.npGauge)}%\` • ★ \`${p.critStars || 0}\`\n  └─ ✨ Buffs: ${buffSummary}`;
+    const hpStr = p.isDead ? '💀 FALLEN' : `${Math.round(p.currentHp).toLocaleString()}/${p.maxHp.toLocaleString()} HP (${Math.round((p.currentHp / p.maxHp) * 100)}%)`;
+    const pBuffs = (p.activeBuffs || []).map(b => `\`${cleanBuffNameForDisplay(b.name)} (${b.remainingTurns}T)\``);
+    const buffSummary = pBuffs.length > 0
+      ? (pBuffs.length > 3 ? `${pBuffs.slice(0, 3).join(', ')} +${pBuffs.length - 3} more` : pBuffs.join(', '))
+      : 'None';
+    return `${arrow}**${pName}** (<@${p.userId}>): ❤️ \`${hpStr}\` • ⚡ \`NP: ${Math.round(p.npGauge)}%\`\n  └─ ✨ Buffs: ${buffSummary}`;
   }).join('\n\n');
+
+  let fullDesc =
+    `### 😈 Enemy Target: **${boss.name}**\n` +
+    `• **Class:** \`${boss.servantClass.toUpperCase()}\` • Lv.${boss.level} • **${boss.title}**\n` +
+    `• **Vitality:** ❤️ **${Math.round(state.bossCurrentHp).toLocaleString()} / ${state.bossMaxHp.toLocaleString()} HP** (${bossHpPct}%)\n` +
+    `• **NP Gauge:** ⚡ \`[ ${chargeDiamonds} ]\` (${state.bossCharge}/${boss.maxCharge})\n` +
+    `• **Traits:** ${bossTraitsStr}\n` +
+    `• **Afflictions & Status:**\n${bossBuffsList}\n\n` +
+    `---\n` +
+    `### 🛡️ Your Servant: **${vName}** (<@${viewer.userId}>)\n` +
+    `• **Class & Level:** \`${vClass}\` • Lv.${vLvl} • ❤️ **${Math.round(viewer.currentHp).toLocaleString()}/${viewer.maxHp.toLocaleString()} HP** (${vHpPct}%)\n` +
+    `• **NP & Stars:** ⚡ **${Math.round(viewer.npGauge)}% NP** • ★ **${viewer.critStars || 0} Stars**\n\n` +
+    `**Active Buffs:**\n${vBuffsList}\n\n` +
+    `**Skills:**\n${sList}\n\n` +
+    `---\n` +
+    `### 👥 Allied Vanguard Party:\n` +
+    partyRoster;
+
+  // Enforce Discord embed description safety limit (hard 4096 character ceiling)
+  if (fullDesc.length > 3950) {
+    fullDesc = fullDesc.slice(0, 3900) + '\n\n*(Status truncated for length)*';
+  }
 
   const embed = new EmbedBuilder()
     .setTitle(`📊 BATTLE STATUS & BUFF DOSSIER — ROUND ${state.round}`)
-    .setDescription(
-      `### 😈 Enemy Raid Target: **${boss.name}**\n` +
-      `• **Class & Rank:** \`${boss.servantClass.toUpperCase()}\` • Lv.${boss.level} • **${boss.title}**\n` +
-      `• **Vitality:** ❤️ **${Math.round(state.bossCurrentHp).toLocaleString()} / ${state.bossMaxHp.toLocaleString()} HP** (${bossHpPct}%)\n` +
-      `• **Noble Phantasm Gauge:** ⚡ \`[ ${chargeDiamonds} ]\` (${state.bossCharge}/${boss.maxCharge} Charge)\n` +
-      `• **Classification Traits:** ${bossTraitsStr}\n` +
-      `• **Afflictions & Active Status:**\n${bossBuffsList}\n\n` +
-      `---\n` +
-      `### 🛡️ Your Servant: **${vName}** (<@${viewer.userId}>)\n` +
-      `• **Class & Level:** \`${vClass}\` • Lv.${vLvl}\n` +
-      `• **Health:** ❤️ **${Math.round(viewer.currentHp).toLocaleString()} / ${viewer.maxHp.toLocaleString()} HP** (${vHpPct}%)\n` +
-      `• **NP & Critical:** ⚡ **${Math.round(viewer.npGauge)}% NP** • ★ **${viewer.critStars || 0} Critical Stars**\n\n` +
-      `**Active Buffs & Modifiers:**\n${vBuffsList}\n\n` +
-      `**Skill Protocols & Readiness:**\n${sList}\n\n` +
-      `---\n` +
-      `### 👥 Allied Vanguard Party Overview:\n` +
-      partyRoster
-    )
+    .setDescription(fullDesc)
     .setColor(0x8b5cf6)
     .setThumbnail(vServant.cardArtUrl || vServant.avatarUrl || boss.avatarUrl)
     .setFooter({ text: 'Holy Grail War Tactical Engine • Real-Time Buff Inspection' });
