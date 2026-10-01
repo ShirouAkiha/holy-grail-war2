@@ -940,15 +940,15 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   ctx.fillText(bigStat, logBoxX + 16, logBoxY + 128);
   ctx.shadowBlur = 0;
 
-  // 3. Line 3: Secondary Sub-Detail / Effect (Dynamic text sizing so it NEVER cuts off)
+  // 3. Line 3: Secondary Sub-Detail / Effect (Enhanced readability ~20px bold)
   ctx.fillStyle = subDetailColor;
-  let subFontSize = 16;
+  let subFontSize = 20;
   ctx.font = `bold ${subFontSize}px sans-serif`;
-  while (ctx.measureText(subDetail).width > logBoxW - 32 && subFontSize > 11) {
+  while (ctx.measureText(subDetail).width > logBoxW - 32 && subFontSize > 13) {
     subFontSize -= 1;
     ctx.font = `bold ${subFontSize}px sans-serif`;
   }
-  ctx.fillText(subDetail, logBoxX + 16, logBoxY + 174);
+  ctx.fillText(subDetail, logBoxX + 16, logBoxY + 176);
 
   ctx.restore();
 
