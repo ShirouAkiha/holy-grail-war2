@@ -697,7 +697,7 @@ async function runRaidBattle(
       }
     });
 
-    // Row 2: Noble Phantasm + Clear + Command Seal + Run (Exact layout from normal battles)
+    // Row 2: Noble Phantasm + Clear + Command Seal + Combat Log + Status
     const isNpReady = active.npGauge >= 100;
     const isNpSelected = pendingCards.includes('NP');
     const npType = active.servant.template?.noblePhantasm?.cardType || 'Buster';
@@ -724,9 +724,9 @@ async function runRaidBattle(
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(shouldDisableAll || masterSeals <= 0 || active.isDead),
       new ButtonBuilder()
-        .setCustomId('raid_flee')
-        .setLabel('Run')
-        .setEmoji('🏃')
+        .setCustomId('raid_combat_log')
+        .setLabel('Combat Log')
+        .setEmoji('📜')
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(shouldDisableAll),
       new ButtonBuilder()
@@ -737,7 +737,7 @@ async function runRaidBattle(
         .setDisabled(shouldDisableAll)
     );
 
-    // Row 3: 3 Active Skills (Exact layout from normal battles)
+    // Row 3: 3 Active Skills + Run
     const row3 = new ActionRowBuilder<ButtonBuilder>();
     const skills = active.servant.template?.skills || [];
     const bondLevel = active.servant.bondLevel || 1;
@@ -776,138 +776,34 @@ async function runRaidBattle(
         .setCustomId('raid_skill_2')
         .setLabel(!isS3Unlocked ? '🔒 S3 (Bond Lv 5)' : cd3 > 0 ? `S3: ${s3Name} (${cd3}T)` : `🌟 S3: ${s3Name}`)
         .setStyle(!isS3Unlocked || cd3 > 0 ? ButtonStyle.Secondary : ButtonStyle.Success)
-        .setDisabled(shouldDisableAll || !isS3Unlocked || cd3 > 0 || !s3 || active.isDead)
+        .setDisabled(shouldDisableAll || !isS3Unlocked || cd3 > 0 || !s3 || active.isDead),
+      new ButtonBuilder()
+        .setCustomId('raid_flee')
+        .setLabel('Run')
+        .setEmoji('🏃')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(shouldDisableAll)
     );
 
     return [row1, row2, row3];
   };
 
-  const buildBattleEmbed = (attachmentFileName: string) => {
-    const active = currentActiveParticipant;
-    const servName = active.servant.nickname || active.servant.template?.name || 'Heroic Spirit';
-
+  const buildTurnContent = (active: RaidParticipantState, selectedCards: string[] = pendingCards) => {
     const cardEmojiMap: Record<string, string> = {
-      Buster: '🔴 Buster (DMG)',
-      Arts: '🔵 Arts (NP Gain)',
-      Quick: '🟢 Quick (Crit Stars)',
-      NP: '💥 Noble Phantasm'
+      Buster: '🔴 Buster',
+      Arts: '🔵 Arts',
+      Quick: '🟢 Quick',
+      NP: '💥 NP'
     };
+    const activeServName = active.servant.nickname || active.servant.template?.name || 'Servant';
 
-    const c1 = pendingCards[0] ? cardEmojiMap[pendingCards[0]] : '❓ Card 1';
-    const c2 = pendingCards[1] ? cardEmojiMap[pendingCards[1]] : '❓ Card 2';
-    const c3 = pendingCards[2] ? cardEmojiMap[pendingCards[2]] : '❓ Card 3';
-
-    const bossHpPct = Math.max(0, Math.round((battleState.bossCurrentHp / battleState.bossMaxHp) * 100));
-    const bossChargeStr = '◆'.repeat(battleState.bossCharge) + '◇'.repeat(Math.max(0, battleState.boss.maxCharge - battleState.bossCharge));
-
-    const bossStatusList = (battleState.bossBuffs || []).map(b => {
-      if (b.type === 'def_down') return `\`🔻 -${b.value}% DEF (${b.remainingTurns}T)\``;
-      if (b.type === 'atk_down') return `\`🔻 -${b.value}% ATK (${b.remainingTurns}T)\``;
-      if (b.type === 'atk_up') return `\`⚔️ +${b.value}% ATK (${b.remainingTurns}T)\``;
-      if (b.type === 'def_up') return `\`🛡️ +${b.value}% DEF (${b.remainingTurns}T)\``;
-      if (b.type === 'curse') return `\`🔥 Curse ${b.value} (${b.remainingTurns}T)\``;
-      if (b.type === 'stun') return `\`⚡ STUN (${b.remainingTurns}T)\``;
-      if (b.type === 'np_seal') return `\`🔒 NP SEAL (${b.remainingTurns}T)\``;
-      return `\`${b.name} (${b.remainingTurns}T)\``;
-    });
-    const bossStatusStr = bossStatusList.length > 0 ? `\n   └ 🌀 **Boss Status:** ${bossStatusList.join(' ')}` : '';
-
-    const partyLines = battleState.participants.map(p => {
-      const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
-      const isTurn = p.userId === active.userId;
-      const arrow = isTurn ? '👉 ' : '• ';
-      const hpStr = p.isDead ? 'FALLEN' : `${Math.round(p.currentHp).toLocaleString()} HP`;
-
-      const pDebuffs = (p.activeBuffs || []).filter(b => ['def_down', 'atk_down', 'curse', 'burn', 'poison', 'stun', 'np_seal', 'skill_seal'].includes(b.type)).map(b => {
-        if (b.type === 'def_down') return `\`🔻 -${b.value}% DEF (${b.remainingTurns}T)\``;
-        if (b.type === 'atk_down') return `\`🔻 -${b.value}% ATK (${b.remainingTurns}T)\``;
-        if (b.type === 'curse') return `\`🔥 Curse ${b.value} (${b.remainingTurns}T)\``;
-        if (b.type === 'stun') return `\`⚡ Stun (${b.remainingTurns}T)\``;
-        return `\`${b.name} (${b.remainingTurns}T)\``;
-      });
-      const pBuffs = (p.activeBuffs || []).filter(b => !['def_down', 'atk_down', 'curse', 'burn', 'poison', 'stun', 'np_seal', 'skill_seal', 'on_guts_buster'].includes(b.type)).map(b => {
-        if (b.type === 'guts') return `\`🩸 Guts ${(b as any).remainingHits && (b as any).remainingHits > 1 ? `x${(b as any).remainingHits}` : ''} (${b.value} HP)\``;
-        if (b.type === 'evade') return `\`💨 Evade\``;
-        if (b.type === 'invincible') return `\`✨ Invincible\``;
-        if (b.type === 'atk_up') return `\`⚔️ +${b.value}% ATK (${b.remainingTurns}T)\``;
-        if (b.type === 'def_up') return `\`🛡️ +${b.value}% DEF (${b.remainingTurns}T)\``;
-        if (b.type === 'damage_cut') return `\`🛡️ Cut ${b.value} (${b.remainingTurns}T)\``;
-        return `\`${b.name} (${b.remainingTurns}T)\``;
-      });
-
-      let subLine = '';
-      if (pDebuffs.length > 0 && pBuffs.length > 0) {
-        subLine = `\n   └ 🛑 ${pDebuffs.join(' ')} • 🛡️ ${pBuffs.join(' ')}`;
-      } else if (pDebuffs.length > 0) {
-        subLine = `\n   └ 🛑 Debuffs: ${pDebuffs.join(' ')}`;
-      } else if (pBuffs.length > 0) {
-        subLine = `\n   └ 🛡️ Buffs: ${pBuffs.join(' ')}`;
-      }
-
-      return `${arrow}**${pName}** (<@${p.userId}>): \`${hpStr}\` • \`NP: ${Math.round(p.npGauge)}%\` • \`★ ${p.critStars || 0}\`${subLine}`;
-    }).join('\n');
-
-    let logContent = '';
-    if (battleState.lastPlayerAttackLog) {
-      logContent = `⚔️ **Master Strike:**\n${battleState.lastPlayerAttackLog}`;
+    let cardChainStr = '';
+    if (selectedCards.length > 0) {
+      const chain = selectedCards.map((c, idx) => `\`[ #${idx + 1}: ${cardEmojiMap[c] || c} ]\``).join(' ➔ ');
+      cardChainStr = ` • 🎴 **Selected:** ${chain}`;
     }
 
-    if (battleState.lastEnemyPhase) {
-      const ep = battleState.lastEnemyPhase;
-      const enemyLines: string[] = [];
-      const dmgBreakdown = ep.curseDamage > 0 
-        ? ` *(Strike: ${ep.strikeDamage.toLocaleString()} DMG • Curse: ${ep.curseDamage.toLocaleString()} DMG)*`
-        : '';
-      enemyLines.push(`• 💥 **Total ${battleState.boss.name} Turn DMG:** __**${ep.totalDamage.toLocaleString()} DMG**__${dmgBreakdown}`);
-
-      if (ep.skillName) {
-        const debuffsText = ep.debuffsInflicted.length > 0 ? ` ➔ Inflicted: ${ep.debuffsInflicted.join(', ')}` : '';
-        const buffsText = ep.bossBuffsGained.length > 0 ? ` ➔ Gained: ${ep.bossBuffsGained.join(', ')}` : '';
-        enemyLines.push(`• 👁️ **Skill Used:** **[${ep.skillName}]**${debuffsText}${buffsText}`);
-      }
-      if (ep.actionName) {
-        const targetStr = ep.actionTarget ? ` on **${ep.actionTarget}**` : '';
-        enemyLines.push(`• 👁️ **Action:** **${ep.actionName}**${targetStr} (Dealt **${ep.strikeDamage.toLocaleString()} DMG**)`);
-      }
-      if (ep.curseDamage > 0) {
-        enemyLines.push(`• 🔥 **Curse Burn:** Sapped party for **${ep.curseDamage.toLocaleString()} Curse DMG**!`);
-      }
-      if (ep.specialEvents && ep.specialEvents.length > 0) {
-        enemyLines.push(...ep.specialEvents);
-      }
-      logContent += `\n\n😈 **Enemy Phase:**\n${enemyLines.join('\n')}`;
-    } else if (!battleState.lastPlayerAttackLog) {
-      logContent = `📜 **Log:** ${battleState.recentLogs.slice(-3).join('\n')}`;
-    }
-
-    const isTiamat = battleState.boss.id === 'tiamat';
-    const raidTitle = isTiamat
-      ? `⚔️ BEAST II CALAMITY RAID — ROUND ${battleState.round}`
-      : `⚔️ DEMON GOD PILLAR RAID — ROUND ${battleState.round}`;
-
-    let phaseGaugeStr = '';
-    if (isTiamat && battleState.currentPhase) {
-      const remainingGauges = battleState.breakGaugesRemaining || 0;
-      const diamondStr = Array(remainingGauges).fill('🔷').join(' ') || '🔻 [FINAL BREAK GAUGE]';
-      const shieldStr = battleState.bossShield && battleState.bossShield > 0 ? ` • 🛡️ Barrier: \`${battleState.bossShield.toLocaleString()} HP\`` : '';
-      phaseGaugeStr = `\n👑 **Phase ${battleState.currentPhase}/3:** \`${battleState.boss.phases?.[battleState.currentPhase - 1]?.name || battleState.boss.name}\` • Break Gauges: ${diamondStr}${shieldStr}`;
-    }
-
-    const embed = new EmbedBuilder()
-      .setTitle(raidTitle)
-      .setDescription(
-        `😈 **${battleState.boss.name}** (${battleState.boss.title})${phaseGaugeStr}\n` +
-        `❤️ \`${Math.round(battleState.bossCurrentHp).toLocaleString()} / ${battleState.bossMaxHp.toLocaleString()}\` (${bossHpPct}%) • ⚡ Charge: \`[${bossChargeStr}]\`${bossStatusStr}\n\n` +
-        `🛡️ **Party Status:**\n${partyLines}\n\n` +
-        `🎴 **Selected Attack Chain (${pendingCards.length}/3):**\n` +
-        `\`[ 1: ${c1} ]\` ➔ \`[ 2: ${c2} ]\` ➔ \`[ 3: ${c3} ]\`\n\n` +
-        `${logContent}`
-      )
-      .setImage(`attachment://${attachmentFileName}`)
-      .setColor(isTiamat ? 0xd946ef : 0x8b5cf6)
-      .setFooter({ text: 'Fate/Grand Order PvE Raid • Select 3 Command Cards & Attack!' });
-
-    return embed;
+    return `⚔️ **<@${active.userId}>'s Turn!** (**${activeServName}**)${cardChainStr}`;
   };
 
   let currentCanvasFileName = '';
@@ -917,7 +813,6 @@ async function runRaidBattle(
     const uniqueFileName = `raid_${Date.now()}_${Math.floor(Math.random() * 1000)}.png`;
     currentCanvasFileName = uniqueFileName;
     const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
-    const embeds = [buildBattleEmbed(uniqueFileName)];
     const components = buildBattleButtons();
     const active = currentActiveParticipant;
 
@@ -927,8 +822,8 @@ async function runRaidBattle(
     if (channelToSend && typeof channelToSend.send === 'function') {
       try {
         newBattleMsg = await channelToSend.send({
-          content: `⚔️ **<@${active.userId}>'s Turn!**`,
-          embeds,
+          content: buildTurnContent(active, pendingCards),
+          embeds: [],
           files: [attachment],
           components
         });
@@ -949,8 +844,8 @@ async function runRaidBattle(
       }
     } else if (battleMsg && typeof battleMsg.edit === 'function') {
       await battleMsg.edit({
-        content: `⚔️ **<@${active.userId}>'s Turn!**`,
-        embeds,
+        content: buildTurnContent(active, pendingCards),
+        embeds: [],
         files: [attachment],
         attachments: [], // Clears previous attachment cache in Discord so the new canvas renders!
         components
@@ -968,7 +863,7 @@ async function runRaidBattle(
   });
 
   collector.on('collect', async (i: any) => {
-    if (isProcessingTurn && i.customId !== 'raid_status') {
+    if (isProcessingTurn && i.customId !== 'raid_status' && i.customId !== 'raid_combat_log') {
       try {
         if (!i.replied && !i.deferred) {
           await i.deferUpdate().catch(() => {});
@@ -1006,6 +901,40 @@ async function runRaidBattle(
       return;
     }
 
+    // 0.1 Combat Log Inspection (Accessible by any Master at any time)
+    if (i.customId === 'raid_combat_log') {
+      const fullLines = (battleState.fullCombatLog && battleState.fullCombatLog.length > 0)
+        ? battleState.fullCombatLog
+        : (battleState.recentLogs && battleState.recentLogs.length > 0)
+          ? battleState.recentLogs
+          : ['Battle commenced. No actions logged yet.'];
+
+      const logChunks: string[] = [];
+      let cur = '';
+      for (const line of fullLines) {
+        if ((cur + '\n' + line).length > 3800) {
+          logChunks.push(cur);
+          cur = line;
+        } else {
+          cur = cur ? cur + '\n' + line : line;
+        }
+      }
+      if (cur) logChunks.push(cur);
+
+      const isTiamat = battleState.boss.id === 'tiamat';
+      const logEmbed = new EmbedBuilder()
+        .setTitle(`📜 Complete Combat Log • Round ${battleState.round} • ${battleState.boss.name}`)
+        .setDescription(logChunks[logChunks.length - 1] || 'No events recorded yet.')
+        .setColor(isTiamat ? 0xd946ef : 0x8b5cf6)
+        .setFooter({ text: `Total Battle Events: ${fullLines.length} • Fate/Grand Order PvE Raid` });
+
+      await i.reply({
+        embeds: [logEmbed],
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
+
     const active = currentActiveParticipant;
 
     if (i.user.id !== active.userId && i.customId !== 'raid_flee') {
@@ -1030,7 +959,8 @@ async function runRaidBattle(
       pendingCards = [];
       pendingIndices = [];
       await safeUpdate({
-        embeds: [buildBattleEmbed(currentCanvasFileName)],
+        content: buildTurnContent(active, pendingCards),
+        embeds: [],
         components: buildBattleButtons()
       });
       return;
@@ -1248,7 +1178,8 @@ async function runRaidBattle(
         const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
 
         await safeUpdate({
-          embeds: [buildBattleEmbed(uniqueFileName)],
+          content: buildTurnContent(active, pendingCards),
+          embeds: [],
           files: [attachment],
           attachments: [],
           components: buildBattleButtons()
@@ -1276,7 +1207,8 @@ async function runRaidBattle(
         const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
 
         await safeUpdate({
-          embeds: [buildBattleEmbed(uniqueFileName)],
+          content: buildTurnContent(active, pendingCards),
+          embeds: [],
           files: [attachment],
           attachments: [],
           components: buildBattleButtons()
@@ -1308,10 +1240,11 @@ async function runRaidBattle(
       return;
     }
 
-    // If fewer than 3 cards selected, update buttons and embed in-place with ZERO lag!
+    // If fewer than 3 cards selected, update buttons and message in-place with ZERO lag!
     if (pendingCards.length < 3) {
       await safeUpdate({
-        embeds: [buildBattleEmbed(currentCanvasFileName)],
+        content: buildTurnContent(active, pendingCards),
+        embeds: [],
         components: buildBattleButtons()
       });
       return;
@@ -1321,7 +1254,8 @@ async function runRaidBattle(
     isProcessingTurn = true;
     try {
       await safeUpdate({
-        embeds: [buildBattleEmbed(currentCanvasFileName)],
+        content: buildTurnContent(active, pendingCards),
+        embeds: [],
         components: buildBattleButtons(true)
       });
 
