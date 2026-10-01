@@ -529,7 +529,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           if ((currentMaster.saintQuartz || 0) < cost) {
             await i.reply({
               flags: MessageFlags.Ephemeral,
-              content: `❌ Insufficient Saint Quartz! You need ${cost} SQ 💎, but only have ${currentMaster.saintQuartz || 0} SQ. Win Grail War battles or claim daily rewards!`
+              content:
+                `❌ Insufficient Saint Quartz! You need **${cost} SQ 💎**, but currently have **${currentMaster.saintQuartz || 0} SQ**.\n\n` +
+                `**Earn Saint Quartz (SQ) via:**\n` +
+                `• 🎁 \`/daily\` — Claim +30 SQ daily allowance (10x Multi-Summon ready!)\n` +
+                `• ⚔️ \`/raid\` — Defeat Grand Calamity bosses (Barbatos & Tiamat) for SQ & Grails\n` +
+                `• ⚔️ \`/war attack\` & \`/duel\` — Win Holy Grail War and PvP duel battles\n` +
+                `• 🕵️ \`/patrol\` — Scout Fuyuki sectors for SQ drops, secret stashes & scouts\n` +
+                `• ⛪ \`/church\` — Hunt excommunicated Heretics & claim Church bounties\n` +
+                `• 💖 \`/bond\` & \`/talk\` — Raise Servant Bond level & chat with Servants for SQ rewards\n` +
+                `• 🏆 \`/ranking\` & \`/reputation\` — Compete on Leaderboards & claim Fuyuki Reputation tiers`
             });
             return;
           }
@@ -598,8 +607,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         const embed = new EmbedBuilder()
           .setTitle('❌ Insufficient Saint Quartz')
           .setDescription(
-            `You need **${cost} Saint Quartz** 💎 to perform a ${rolls}x Summon, but you currently have **${master.saintQuartz || 0} SQ**.\n\n` +
-            `Earn more Saint Quartz by fighting in the Holy Grail War (\`/war attack\`, \`/pvp challenge\`), claiming bounties, or completing battles!`
+            `You need **${cost} Saint Quartz 💎** to perform a ${rolls}x Summon, but you currently have **${master.saintQuartz || 0} SQ**.\n\n` +
+            `**Earn Saint Quartz (SQ) via:**\n` +
+            `• 🎁 \`/daily\` — Claim +30 SQ daily allowance (10x Multi-Summon ready!)\n` +
+            `• ⚔️ \`/raid\` — Defeat Grand Calamity bosses (Barbatos & Tiamat) for SQ & Grails\n` +
+            `• ⚔️ \`/war attack\` & \`/duel\` — Win Holy Grail War and PvP duel battles\n` +
+            `• 🕵️ \`/patrol\` — Scout Fuyuki sectors for SQ drops, secret stashes & scouts\n` +
+            `• ⛪ \`/church\` — Hunt excommunicated Heretics & claim Church bounties\n` +
+            `• 💖 \`/bond\` & \`/talk\` — Raise Servant Bond level & chat with Servants for SQ rewards\n` +
+            `• 🏆 \`/ranking\` & \`/reputation\` — Compete on Leaderboards & claim Fuyuki Reputation tiers`
           )
           .setColor(0xef4444);
 

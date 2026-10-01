@@ -443,8 +443,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setTitle('💎 Insufficient Summon Resources')
         .setDescription(
           `You need **${cost} Saint Quartz** (or **${rolls} Summon Ticket(s) 🎫**) for a ${rolls}x Summon, but you currently have **${master.saintQuartz || 0} SQ** and **${master.summonTickets || 0} Tickets**.\n\n` +
-          `• Click **Claim Daily (+30 SQ)** below to receive a free 10x Multi-Summon!\n` +
-          `• Or exchange duplicate Mana Prisms for tickets in the **Shop**.`
+          `**Earn Saint Quartz (SQ) via:**\n` +
+          `• 🎁 \`/daily\` — Claim +30 SQ daily allowance (10x Multi-Summon ready!)\n` +
+          `• ⚔️ \`/raid\` — Defeat Grand Calamity bosses (Barbatos & Tiamat) for SQ & Grails\n` +
+          `• ⚔️ \`/war attack\` & \`/duel\` — Win Holy Grail War and PvP duel battles\n` +
+          `• 🕵️ \`/patrol\` — Scout Fuyuki sectors for SQ drops, secret stashes & scouts\n` +
+          `• ⛪ \`/church\` — Hunt excommunicated Heretics & claim Church bounties\n` +
+          `• 💖 \`/bond\` & \`/talk\` — Raise Servant Bond level & chat with Servants for SQ rewards\n` +
+          `• 🏆 \`/ranking\` & \`/reputation\` — Compete on Leaderboards & claim Fuyuki Reputation tiers`
         )
         .setColor(0xef4444);
 

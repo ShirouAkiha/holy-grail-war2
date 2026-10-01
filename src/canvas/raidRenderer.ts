@@ -836,13 +836,15 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
       .replace(/~~/g, '')
       .replace(/`/g, '')
       .replace(/<@!?[0-9]+>/g, '')
+      .replace(/\[/g, '')
+      .replace(/\]/g, '')
       .replace(/\s+/g, ' ')
       .trim();
   };
 
   if (state.lastHudAction) {
     const act = state.lastHudAction;
-    categoryTitle = act.category || 'COMBAT ACTION';
+    categoryTitle = cleanHudText(act.category || 'COMBAT ACTION');
     categoryColor = act.categoryColor || '#38bdf8';
     categoryBg = `${categoryColor}33`;
     headline = cleanHudText(act.headline || 'Battle Action');
@@ -857,7 +859,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     categoryColor = '#f87171';
     categoryBg = 'rgba(239, 68, 68, 0.22)';
 
-    headline = cleanHudText(ep.skillName ? `${dynamicBossName} • [${ep.skillName}]` : `${dynamicBossName} Strike`);
+    headline = cleanHudText(ep.skillName ? `${dynamicBossName} • ${ep.skillName}` : `${dynamicBossName} Strike`);
     headlineColor = '#fca5a5';
 
     if (ep.totalDamage && ep.totalDamage > 0) {
@@ -955,15 +957,15 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   ctx.fillText(bigStat, logBoxX + 16, logBoxY + 128);
   ctx.shadowBlur = 0;
 
-  // 3. Line 3: Secondary Sub-Detail / Effect (Enhanced readability ~20px bold)
+  // 3. Line 3: Secondary Sub-Detail / Effect (Bigger ~24px bold)
   ctx.fillStyle = subDetailColor;
-  let subFontSize = 20;
+  let subFontSize = 24;
   ctx.font = `bold ${subFontSize}px sans-serif`;
   while (ctx.measureText(subDetail).width > logBoxW - 32 && subFontSize > 13) {
     subFontSize -= 1;
     ctx.font = `bold ${subFontSize}px sans-serif`;
   }
-  ctx.fillText(subDetail, logBoxX + 16, logBoxY + 176);
+  ctx.fillText(subDetail, logBoxX + 16, logBoxY + 175);
 
   ctx.restore();
 

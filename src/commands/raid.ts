@@ -1585,6 +1585,9 @@ async function runRaidBattle(
 
       let bossUsedNp = false;
       if (!hasMorePlayersInRound) {
+        // Save player strike HUD action before boss turn execution
+        const playerStrikeHud = battleState.lastHudAction;
+
         // 1. Render and post the Player Strike Canvas so players see their strike damage & updated boss HP!
         await renderAndPostTurn();
 
@@ -1618,7 +1621,12 @@ async function runRaidBattle(
           }
         });
 
-        // 5. Render and post the new round turn canvas (with boss action in HUD and active buttons)
+        // Restore player strike HUD action so player sees their damage during card selection on new turn
+        if (playerStrikeHud) {
+          battleState.lastHudAction = playerStrikeHud;
+        }
+
+        // 5. Render and post the new round turn canvas (with active buttons & servant strike HUD)
         await renderAndPostTurn();
 
         // 6. Dispatch Boss NP GIF if used
@@ -2287,10 +2295,18 @@ async function concludeRaidVictory(
   // Recent Combat Log Summary
   const recentCombatLogText = (battleState.fullCombatLog || []).slice(-6).join('\n');
 
+  const isTiamat = boss.id === 'tiamat';
+  const victoryTitle = isTiamat
+    ? '🏆 BEAST II TIAMAT VANQUISHED — RAID COMPLETE!'
+    : '🏆 DEMON GOD PILLAR VANQUISHED — RAID COMPLETE!';
+  const victoryHeader = isTiamat
+    ? `**Beast II / Primordial Mother Tiamat** has been banished back into the depths of the Chaos Sea!\n\n`
+    : `**Demon God Pillar Barbatos** has disintegrated into the void of the Temple of Time!\n\n`;
+
   const victoryEmbed = new EmbedBuilder()
-    .setTitle('🏆 DEMON GOD PILLAR VANQUISHED — RAID COMPLETE!')
+    .setTitle(victoryTitle)
     .setDescription(
-      `**Demon God Pillar Barbatos** has disintegrated into the void of the Temple of Time!\n\n` +
+      `${victoryHeader}` +
       `${finishingBlowText}` +
       `📊 **Damage Contribution:**\n${damageContributionText}\n\n` +
       `💎 **Spoils of War (Distributed to all Masters):**\n` +

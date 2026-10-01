@@ -537,7 +537,19 @@ export function attachGachaCollector(
       // 1x Single SQ Summon Action
       else if (customId === 'gacha_act_single') {
         if ((master.saintQuartz || 0) < 3) {
-          await i.reply({ flags: MessageFlags.Ephemeral, content: '❌ You need at least 3 Saint Quartz to perform a summon! Claim daily SQ or earn quartz from battles.' });
+          await i.reply({
+            flags: MessageFlags.Ephemeral,
+            content:
+              `❌ Insufficient Saint Quartz! You need **3 SQ 💎**, but currently have **${master.saintQuartz || 0} SQ**.\n\n` +
+              `**Earn Saint Quartz (SQ) via:**\n` +
+              `• 🎁 \`/daily\` — Claim +30 SQ daily allowance (10x Multi-Summon ready!)\n` +
+              `• ⚔️ \`/raid\` — Defeat Grand Calamity bosses (Barbatos & Tiamat) for SQ & Grails\n` +
+              `• ⚔️ \`/war attack\` & \`/duel\` — Win Holy Grail War and PvP duel battles\n` +
+              `• 🕵️ \`/patrol\` — Scout Fuyuki sectors for SQ drops, secret stashes & scouts\n` +
+              `• ⛪ \`/church\` — Hunt excommunicated Heretics & claim Church bounties\n` +
+              `• 💖 \`/bond\` & \`/talk\` — Raise Servant Bond level & chat with Servants for SQ rewards\n` +
+              `• 🏆 \`/ranking\` & \`/reputation\` — Compete on Leaderboards & claim Fuyuki Reputation tiers`
+          });
           return;
         }
 
@@ -617,7 +629,19 @@ export function attachGachaCollector(
       // 10x Multi-Summon Action
       else if (customId === 'gacha_act_multi') {
         if ((master.saintQuartz || 0) < 30) {
-          await i.reply({ flags: MessageFlags.Ephemeral, content: '❌ You need at least 30 Saint Quartz for a 10x Multi-Summon!' });
+          await i.reply({
+            flags: MessageFlags.Ephemeral,
+            content:
+              `❌ Insufficient Saint Quartz! You need **30 SQ 💎** for a 10x Multi-Summon, but currently have **${master.saintQuartz || 0} SQ**.\n\n` +
+              `**Earn Saint Quartz (SQ) via:**\n` +
+              `• 🎁 \`/daily\` — Claim +30 SQ daily allowance (10x Multi-Summon ready!)\n` +
+              `• ⚔️ \`/raid\` — Defeat Grand Calamity bosses (Barbatos & Tiamat) for SQ & Grails\n` +
+              `• ⚔️ \`/war attack\` & \`/duel\` — Win Holy Grail War and PvP duel battles\n` +
+              `• 🕵️ \`/patrol\` — Scout Fuyuki sectors for SQ drops, secret stashes & scouts\n` +
+              `• ⛪ \`/church\` — Hunt excommunicated Heretics & claim Church bounties\n` +
+              `• 💖 \`/bond\` & \`/talk\` — Raise Servant Bond level & chat with Servants for SQ rewards\n` +
+              `• 🏆 \`/ranking\` & \`/reputation\` — Compete on Leaderboards & claim Fuyuki Reputation tiers`
+          });
           return;
         }
 
