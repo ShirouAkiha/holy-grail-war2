@@ -372,6 +372,8 @@ export function attachGachaCollector(
   initialCategory: 'servants' | 'ces' | 'shop' | 'daily' | 'rates' = 'servants',
   initialBanner: string = initialCategory === 'ces' ? 'standard_ce' : initialCategory === 'shop' ? 'prism_shop' : initialCategory === 'daily' ? 'daily_vault' : 'throne_servants'
 ) {
+  if (!replyMessage || typeof replyMessage.createMessageComponentCollector !== 'function') return;
+
   let master = initialMaster;
   let currentCategory: 'servants' | 'ces' | 'shop' | 'daily' | 'rates' = initialCategory;
   let currentBanner = initialBanner;

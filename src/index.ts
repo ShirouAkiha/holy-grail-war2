@@ -466,11 +466,25 @@ client.on(Events.InteractionCreate, async interaction => {
     if (interaction.isChatInputCommand()) {
       const command = commands.get(interaction.commandName) || commandAliasMap[interaction.commandName];
       if (!command) {
-        await interaction.reply({ flags: MessageFlags.Ephemeral, content: 'Command not found.' });
+        await interaction.reply({ flags: MessageFlags.Ephemeral, content: 'Command not found.' }).catch(() => {});
         return;
       }
-      // Execute the command's main handler
-      await command.execute(interaction);
+      try {
+        await command.execute(interaction);
+      } catch (err: any) {
+        if (err?.code === 10062 || err?.code === 40060 || err?.code === 50027) return;
+        console.error(`Error executing /${interaction.commandName}:`, err);
+        const errMsg = `❌ Error executing \`/${interaction.commandName}\`: ${err?.message || 'An unexpected error occurred.'}`;
+        try {
+          if (interaction.deferred || interaction.replied) {
+            await interaction.followUp({ content: errMsg, flags: MessageFlags.Ephemeral }).catch(async () => {
+              await interaction.editReply({ content: errMsg, components: [], embeds: [] }).catch(() => {});
+            });
+          } else {
+            await interaction.reply({ content: errMsg, flags: MessageFlags.Ephemeral }).catch(() => {});
+          }
+        } catch {}
+      }
       return;
     }
 

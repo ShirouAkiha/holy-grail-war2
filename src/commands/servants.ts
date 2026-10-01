@@ -205,13 +205,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const query = interaction.options.getString('query', true).trim();
       const { embed, components } = buildServantsListUI(allServants, 1, 'all', 'all', query);
 
-      const response = await interaction.reply({
+      await interaction.reply({
         embeds: [embed],
-        components,
-        withResponse: true
-      }).then(r => r.resource?.message || interaction.fetchReply());
+        components
+      });
+      const response = await interaction.fetchReply().catch(() => null);
 
-      setupServantListCollector(response, allServants, 1, 'all', 'all', query);
+      if (response) {
+        setupServantListCollector(response, allServants, 1, 'all', 'all', query);
+      }
       return;
     }
 
@@ -219,13 +221,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const filter = interaction.options.getString('filter') || 'all';
     const { embed, components } = buildServantsListUI(allServants, 1, filter, 'all');
 
-    const response = await interaction.reply({
+    await interaction.reply({
       embeds: [embed],
-      components,
-      withResponse: true
-    }).then(r => r.resource?.message || interaction.fetchReply());
+      components
+    });
+    const response = await interaction.fetchReply().catch(() => null);
 
-    setupServantListCollector(response, allServants, 1, filter, 'all');
+    if (response) {
+      setupServantListCollector(response, allServants, 1, filter, 'all');
+    }
 
   } catch (error: any) {
     if (error.code === 10062 || error.code === 40060) return;

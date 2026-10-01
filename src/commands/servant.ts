@@ -118,22 +118,25 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setStyle(ButtonStyle.Secondary)
       );
 
-      const reply = await interaction.editReply({ embeds: [emptyEmbed], components: [summonRow] });
+      await interaction.editReply({ embeds: [emptyEmbed], components: [summonRow] });
+      const reply = await interaction.fetchReply().catch(() => null);
       
-      const collector = reply.createMessageComponentCollector({
-        componentType: ComponentType.Button,
-        filter: (i: any) => i.user.id === interaction.user.id,
-        time: 60000
-      });
+      if (reply && typeof reply.createMessageComponentCollector === 'function') {
+        const collector = reply.createMessageComponentCollector({
+          componentType: ComponentType.Button,
+          filter: (i: any) => i.user.id === interaction.user.id,
+          time: 60000
+        });
 
-      collector.on('collect', async (i: any) => {
-        if (i.replied || i.deferred) return;
-        if (i.customId === 'go_gacha') {
-          await i.reply({ content: 'Opening `/gacha` Invocation Sanctum!', flags: MessageFlags.Ephemeral });
-        } else if (i.customId === 'go_summon') {
-          await i.reply({ content: 'Use the `/summon ritual` command to summon your Heroic Spirit!', flags: MessageFlags.Ephemeral });
-        }
-      });
+        collector.on('collect', async (i: any) => {
+          if (i.replied || i.deferred) return;
+          if (i.customId === 'go_gacha') {
+            await i.reply({ content: 'Opening `/gacha` Invocation Sanctum!', flags: MessageFlags.Ephemeral });
+          } else if (i.customId === 'go_summon') {
+            await i.reply({ content: 'Use the `/summon ritual` command to summon your Heroic Spirit!', flags: MessageFlags.Ephemeral });
+          }
+        });
+      }
       return;
     }
 
@@ -159,13 +162,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const { embeds, files, components } = await buildServantHub(master, targetServant, initialCategory, targetServant.id);
 
-    const msg = await interaction.editReply({
+    await interaction.editReply({
       embeds,
       files,
       components
     });
+    const msg = await interaction.fetchReply().catch(() => null);
 
-    attachServantCollector(msg, interaction.user.id, master, targetServant, initialCategory);
+    if (msg) {
+      attachServantCollector(msg, interaction.user.id, master, targetServant, initialCategory);
+    }
 
   } catch (error: any) {
     if (error?.code === 10062 || error?.code === 40060 || error?.code === 50027 || error?.code === 10008 || error?.message?.includes('Unknown interaction') || error?.message?.includes('acknowledged')) return;
@@ -782,6 +788,8 @@ export function attachServantCollector(
   initialServant: any,
   initialCategory: 'profile' | 'stats' | 'equip_ce' | 'feed_ce' | 'np' | 'dialogue' | 'roster' = 'profile'
 ) {
+  if (!message || typeof message.createMessageComponentCollector !== 'function') return;
+
   let currentCategory = initialCategory;
   let currentServantId = initialServant.id;
   let currentStep = 1;

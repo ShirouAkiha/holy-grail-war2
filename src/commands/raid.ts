@@ -964,85 +964,158 @@ async function runRaidBattle(
         components: buildBattleButtons()
       });
       return;
-    } else if (i.customId.startsWith('raid_skill_')) {
-      const sIdx = parseInt(i.customId.replace('raid_skill_', ''), 10);
-      if (active.skillCooldowns[sIdx] === 0) {
-        isProcessingTurn = true;
-        try {
-          const skillObj = active.servant.template?.skills?.[sIdx];
-        const cd = skillObj?.cooldown || 5;
-        active.skillCooldowns[sIdx] = cd;
-        active.activeBuffs = active.activeBuffs || [];
-        battleState.bossBuffs = battleState.bossBuffs || [];
+    } else if (i.customId === 'raid_cancel_target_skill') {
+      await i.reply({ content: '↩️ Skill targeting cancelled.', flags: MessageFlags.Ephemeral }).catch(() => {});
+      return;
+    } else if (i.customId.startsWith('raid_skill_') || i.customId.startsWith('raid_target_skill_')) {
+      let sIdx: number;
+      let targetUserId: string | null = null;
 
+      if (i.customId.startsWith('raid_target_skill_')) {
+        const parts = i.customId.replace('raid_target_skill_', '').split('_');
+        sIdx = parseInt(parts[0], 10);
+        targetUserId = parts[1] || null;
+      } else {
+        sIdx = parseInt(i.customId.replace('raid_skill_', ''), 10);
+      }
+
+      if (active.skillCooldowns[sIdx] === 0) {
+        const skillObj = active.servant.template?.skills?.[sIdx];
         const sName = skillObj?.name || `Skill ${sIdx + 1}`;
         const sDesc = skillObj?.description || '';
         const sType = skillObj?.effectType || '';
 
-        // Check for Calamity-Breaker Edict EX / Anti-Threat to Humanity skills
-        const isAntiThreatSkill = /Threat to Humanity|Foreigner|Beast|Otherworlder|Calamity-Breaker/i.test(sName + ' ' + sDesc);
-        // Check for Guts / Battle Continuation
-        const isGuts = sType === 'guts' || /guts|battle continuation|indomitable will|setting sun/i.test(sName + ' ' + sDesc);
-        // Check for Evade / Invincibility
-        const isEvade = /Evade|Invincible|Dodge/i.test(sName + ' ' + sDesc) || sType === 'evade';
-        // Check for Damage Cut / Defense
-        const isDefOrCut = /Damage Cut|Shield|Protection/i.test(sName + ' ' + sDesc) || sType === 'buff_def';
-        // Check for Healing / Regeneration
-        const isHeal = /Heal|Recover|Regenerat/i.test(sName + ' ' + sDesc) || sType === 'heal';
+        // Check if this skill targets a single ally
+        const isSingleAllyTargetable =
+          /avalon le fae|holy sword creation|hero creation|discerning eye|end of the dream|target ally|one ally|an ally|single ally/i.test(sName + ' ' + sDesc) ||
+          (skillObj as any)?.target === 'single_ally' ||
+          (skillObj as any)?.target === 'ally';
 
-        // Check for DEBUFFS targeting Barbatos
-        const isDefDown = (sType as string) === 'debuff_def' || /def.*down|lower.*def|reduce.*def|decrease.*def|defense down/i.test(sName + ' ' + sDesc);
-        const isAtkDown = (sType as string) === 'debuff_atk' || /atk.*down|attack.*down|lower.*atk|reduce.*atk|reduce.*attack/i.test(sName + ' ' + sDesc);
-        const isStun = sType === 'stun' || /stun|paralyze|charm|freeze|petrif/i.test(sName + ' ' + sDesc);
-        const isNpDrainOrSeal = /np.*drain|charge.*drain|drain.*charge|seal.*np|np.*seal/i.test(sName + ' ' + sDesc);
-        const isDot = /curse|poison|burn/i.test(sName + ' ' + sDesc);
-        const isGeneralDebuff = sType === 'debuff';
+        const livingParticipants = battleState.participants.filter(p => !p.isDead);
 
-        let buffLog = '';
-        if (/charisma of hope/i.test(sName)) {
-          // Charisma of Hope B: Increases party's ATK by 20% for 3 turns, charges party's NP gauge by 30%
-          battleState.participants.forEach(p => {
-            if (!p.isDead) {
-              p.activeBuffs = p.activeBuffs || [];
-              p.activeBuffs.push({
-                name: `${sName} (ATK Up)`,
-                type: 'atk_up',
-                value: 20,
-                remainingTurns: 3
-              });
-              p.npGauge = Math.min(300, (p.npGauge || 0) + 30);
-            }
+        // If skill targets a single ally and party has multiple living participants, and target is not selected yet
+        if (isSingleAllyTargetable && livingParticipants.length > 1 && !targetUserId) {
+          const targetRow = new ActionRowBuilder<ButtonBuilder>();
+          livingParticipants.forEach(p => {
+            const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
+            const isSelf = p.userId === active.userId;
+            targetRow.addComponents(
+              new ButtonBuilder()
+                .setCustomId(`raid_target_skill_${sIdx}_${p.userId}`)
+                .setLabel(`🎯 ${pName}${isSelf ? ' (Self)' : ` (@${p.username})`}`.slice(0, 80))
+                .setStyle(isSelf ? ButtonStyle.Secondary : ButtonStyle.Primary)
+            );
           });
-          active.critStars = (active.critStars || 0) + 10;
-          buffLog = `(+20% ATK & +30% NP Gauge to ALL Allies for 3T!)`;
-        } else if (/avalon le fae/i.test(sName)) {
-          // Avalon le Fae A: Charges NP gauge by 20% & increases party's NP generation rate by 30% for 3 turns
-          battleState.participants.forEach(p => {
-            if (!p.isDead) {
-              p.activeBuffs = p.activeBuffs || [];
-              p.activeBuffs.push({
-                name: `${sName} (NP Gain Rate Up)`,
-                type: 'np_gain_up',
-                value: 30,
-                remainingTurns: 3
-              });
-            }
-          });
-          active.npGauge = Math.min(300, (active.npGauge || 0) + 20);
-          buffLog = `(+20% NP Gauge & +30% Party NP Gain Rate for 3T!)`;
-        } else if (/holy sword creation/i.test(sName)) {
-          // Holy Sword Creation EX: +50% Arts Up (3T), +50% Special ATK vs Threat to Humanity (3T), Invincibility (1T)
+          targetRow.addComponents(
+            new ButtonBuilder()
+              .setCustomId('raid_cancel_target_skill')
+              .setLabel('↩️ Cancel')
+              .setStyle(ButtonStyle.Danger)
+          );
+
+          await i.reply({
+            content: `✨ **Select an Ally Target for [${sName}]**:\n*${sDesc}*`,
+            components: [targetRow],
+            flags: MessageFlags.Ephemeral
+          }).catch(() => {});
+          return;
+        }
+
+        const targetAlly = targetUserId
+          ? (battleState.participants.find(p => p.userId === targetUserId) || active)
+          : active;
+
+        if (targetUserId && i.isButton()) {
+          const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
+          await i.reply({
+            content: `🎯 Targeted **${tName}** with **[${sName}]**!`,
+            flags: MessageFlags.Ephemeral
+          }).catch(() => {});
+        }
+
+        isProcessingTurn = true;
+        try {
+          const cd = skillObj?.cooldown || 5;
+          active.skillCooldowns[sIdx] = cd;
           active.activeBuffs = active.activeBuffs || [];
-          active.activeBuffs.push({
-            name: `${sName} (Arts Up)`,
-            type: 'arts_up',
-            value: 50,
-            remainingTurns: 3
-          });
-          active.activeBuffs.push({
-            name: `${sName} (Anti-Threat)`,
-            type: 'anti_threat',
-            value: 50,
+          targetAlly.activeBuffs = targetAlly.activeBuffs || [];
+          battleState.bossBuffs = battleState.bossBuffs || [];
+
+          // Check for Calamity-Breaker Edict EX / Anti-Threat to Humanity skills
+          const isAntiThreatSkill = /Threat to Humanity|Foreigner|Beast|Otherworlder|Calamity-Breaker/i.test(sName + ' ' + sDesc);
+          // Check for Guts / Battle Continuation
+          const isGuts = sType === 'guts' || /guts|battle continuation|indomitable will|setting sun/i.test(sName + ' ' + sDesc);
+          // Check for Evade / Invincibility
+          const isEvade = /Evade|Invincible|Dodge/i.test(sName + ' ' + sDesc) || sType === 'evade';
+          // Check for Damage Cut / Defense
+          const isDefOrCut = /Damage Cut|Shield|Protection/i.test(sName + ' ' + sDesc) || sType === 'buff_def';
+          // Check for Healing / Regeneration
+          const isHeal = /Heal|Recover|Regenerat/i.test(sName + ' ' + sDesc) || sType === 'heal';
+
+          // Check for DEBUFFS targeting Barbatos
+          const isDefDown = (sType as string) === 'debuff_def' || /def.*down|lower.*def|reduce.*def|decrease.*def|defense down/i.test(sName + ' ' + sDesc);
+          const isAtkDown = (sType as string) === 'debuff_atk' || /atk.*down|attack.*down|lower.*atk|reduce.*atk|reduce.*attack/i.test(sName + ' ' + sDesc);
+          const isStun = sType === 'stun' || /stun|paralyze|charm|freeze|petrif/i.test(sName + ' ' + sDesc);
+          const isNpDrainOrSeal = /np.*drain|charge.*drain|drain.*charge|seal.*np|np.*seal/i.test(sName + ' ' + sDesc);
+          const isDot = /curse|poison|burn/i.test(sName + ' ' + sDesc);
+          const isGeneralDebuff = sType === 'debuff';
+
+          let buffLog = '';
+          if (/charisma of hope/i.test(sName)) {
+            // Charisma of Hope B: Increases party's ATK by 20% for 3 turns, charges party's NP gauge by 30%
+            battleState.participants.forEach(p => {
+              if (!p.isDead) {
+                p.activeBuffs = p.activeBuffs || [];
+                p.activeBuffs.push({
+                  name: `${sName} (ATK Up)`,
+                  type: 'atk_up',
+                  value: 20,
+                  remainingTurns: 3
+                });
+                p.npGauge = Math.min(300, (p.npGauge || 0) + 30);
+              }
+            });
+            active.critStars = (active.critStars || 0) + 10;
+            buffLog = `(+20% ATK & +30% NP Gauge to ALL Allies for 3T!)`;
+          } else if (/avalon le fae/i.test(sName)) {
+            // Avalon le Fae A: Charges target ally's NP gauge by 20% & increases party's NP generation rate by 30% for 3 turns
+            targetAlly.npGauge = Math.min(300, (targetAlly.npGauge || 0) + 20);
+            battleState.participants.forEach(p => {
+              if (!p.isDead) {
+                p.activeBuffs = p.activeBuffs || [];
+                p.activeBuffs.push({
+                  name: `${sName} (NP Gain Rate Up)`,
+                  type: 'np_gain_up',
+                  value: 30,
+                  remainingTurns: 3
+                });
+              }
+            });
+            const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
+            buffLog = `(+20% NP Gauge to **${tName}** & +30% Party NP Gain Rate for 3T!)`;
+          } else if (/holy sword creation/i.test(sName)) {
+            // Holy Sword Creation EX: +50% Arts Up (3T), +50% Special ATK vs Threat to Humanity (3T), Invincibility (1T) to target ally
+            targetAlly.activeBuffs = targetAlly.activeBuffs || [];
+            targetAlly.activeBuffs.push({
+              name: `${sName} (Arts Up)`,
+              type: 'arts_up',
+              value: 50,
+              remainingTurns: 3
+            });
+            targetAlly.activeBuffs.push({
+              name: `${sName} (Anti-Threat)`,
+              type: 'anti_threat',
+              value: 50,
+              remainingTurns: 3
+            });
+            targetAlly.activeBuffs.push({
+              name: `${sName} (Invincibility)`,
+              type: 'invincible',
+              value: 1,
+              remainingTurns: 1
+            });
+            const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
+            buffLog = `(+50% Arts Up, +50% Anti-Threat Special ATK & 1T Invincibility to **${tName}**!)`;
             remainingTurns: 3
           });
           active.activeBuffs.push({
@@ -1173,34 +1246,40 @@ async function runRaidBattle(
           });
           buffLog = `(🔻 Inflicted **-25% DEF Down** on ${boss.name} for 3T)`;
         } else if (isEvade) {
-          active.activeBuffs.push({
+          targetAlly.activeBuffs = targetAlly.activeBuffs || [];
+          targetAlly.activeBuffs.push({
             name: `${sName} (Evade)`,
             type: 'evade',
             value: 1,
             remainingTurns: 2
           });
           active.critStars = (active.critStars || 0) + 15;
-          buffLog = `(🛡️ Granted EVADE for 1 Hit, +15 Stars)`;
+          const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
+          buffLog = `(🛡️ Granted EVADE for 1 Hit to **${tName}**, +15 Stars)`;
         } else if (isDefOrCut) {
-          active.activeBuffs.push({
+          targetAlly.activeBuffs = targetAlly.activeBuffs || [];
+          targetAlly.activeBuffs.push({
             name: `${sName} (Damage Cut)`,
             type: 'damage_cut',
             value: 1200,
             remainingTurns: 3
           });
-          active.activeBuffs.push({
+          targetAlly.activeBuffs.push({
             name: `${sName} (DEF Up)`,
             type: 'def_up',
             value: 25,
             remainingTurns: 3
           });
-          buffLog = `(🛡️ +25% DEF & 1,200 Damage Cut for 3T)`;
+          const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
+          buffLog = `(🛡️ +25% DEF & 1,200 Damage Cut for 3T to **${tName}**)`;
         } else if (isHeal) {
           const healAmt = 4500;
-          active.currentHp = Math.min(active.maxHp, active.currentHp + healAmt);
-          active.npGauge = Math.min(300, (active.npGauge || 0) + 20);
-          active.activeBuffs = active.activeBuffs.filter(b => b.type !== 'curse' && b.type !== 'burn' && b.type !== 'poison');
-          buffLog = `(💚 Restored +${healAmt.toLocaleString()} HP, +20% NP & Cleansed Afflictions)`;
+          targetAlly.currentHp = Math.min(targetAlly.maxHp, targetAlly.currentHp + healAmt);
+          targetAlly.npGauge = Math.min(300, (targetAlly.npGauge || 0) + 20);
+          targetAlly.activeBuffs = targetAlly.activeBuffs || [];
+          targetAlly.activeBuffs = targetAlly.activeBuffs.filter(b => b.type !== 'curse' && b.type !== 'burn' && b.type !== 'poison');
+          const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
+          buffLog = `(💚 Restored +${healAmt.toLocaleString()} HP to **${tName}**, +20% NP & Cleansed Afflictions)`;
 
           // Tiamat Phase 1 Passive: Self-Limitation
           if (boss.id === 'tiamat' && (battleState.currentPhase === 1)) {

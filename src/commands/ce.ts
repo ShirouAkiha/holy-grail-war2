@@ -104,13 +104,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .addOptions(selectOptions)
       );
 
-      const reply = await interaction.reply({ embeds: [embed], components: [row] });
-      const collector = reply.createMessageComponentCollector({
-        componentType: ComponentType.StringSelect,
-        time: 120000
-      });
+      await interaction.reply({ embeds: [embed], components: [row] });
+      const reply = await interaction.fetchReply().catch(() => null);
 
-      collector.on('collect', async (i) => {
+      if (reply && typeof reply.createMessageComponentCollector === 'function') {
+        const collector = reply.createMessageComponentCollector({
+          componentType: ComponentType.StringSelect,
+          time: 120000
+        });
+
+        collector.on('collect', async (i) => {
         if (i.user.id !== interaction.user.id) {
           await i.reply({ content: 'Only the Master who invoked this archive may interact with it.', flags: MessageFlags.Ephemeral });
           return;
@@ -138,6 +141,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
       return;
     }
+  }
 
     // ==========================================
     // 2. SUBCOMMAND: ART / VIEW (SPECIFIC CE)
@@ -207,29 +211,33 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           .setStyle(ButtonStyle.Secondary)
       );
 
-      const reply = await interaction.reply({ embeds: [ceEmbed], components: [actionRow] });
-      const collector = reply.createMessageComponentCollector({
-        componentType: ComponentType.Button,
-        time: 60000
-      });
+      await interaction.reply({ embeds: [ceEmbed], components: [actionRow] });
+      const reply = await interaction.fetchReply().catch(() => null);
 
-      collector.on('collect', async (bi) => {
-        if (bi.customId === 'ce_btn_inventory') {
-          await bi.reply({
-            flags: MessageFlags.Ephemeral,
-            content: 'Use `/inventory` to equip, unequip, feed, or browse your full personal relic vault!'
-          });
-        } else if (bi.customId.startsWith('ce_btn_open_art_')) {
-          const artOnlyEmbed = new EmbedBuilder()
-            .setTitle(`🖼️ ${targetCe.name}`)
-            .setDescription(`*${targetCe.description}*`)
-            .setColor(0xd4af37);
-          if (targetCe.artworkUrl) {
-            safeSetEmbedImage(artOnlyEmbed, targetCe.artworkUrl);
+      if (reply && typeof reply.createMessageComponentCollector === 'function') {
+        const collector = reply.createMessageComponentCollector({
+          componentType: ComponentType.Button,
+          time: 60000
+        });
+
+        collector.on('collect', async (bi) => {
+          if (bi.customId === 'ce_btn_inventory') {
+            await bi.reply({
+              flags: MessageFlags.Ephemeral,
+              content: 'Use `/inventory` to equip, unequip, feed, or browse your full personal relic vault!'
+            });
+          } else if (bi.customId.startsWith('ce_btn_open_art_')) {
+            const artOnlyEmbed = new EmbedBuilder()
+              .setTitle(`🖼️ ${targetCe.name}`)
+              .setDescription(`*${targetCe.description}*`)
+              .setColor(0xd4af37);
+            if (targetCe.artworkUrl) {
+              safeSetEmbedImage(artOnlyEmbed, targetCe.artworkUrl);
+            }
+            await bi.reply({ embeds: [artOnlyEmbed], flags: MessageFlags.Ephemeral });
           }
-          await bi.reply({ embeds: [artOnlyEmbed], flags: MessageFlags.Ephemeral });
-        }
-      });
+        });
+      }
       return;
     }
 

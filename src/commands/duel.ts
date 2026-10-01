@@ -1084,6 +1084,45 @@ function activateCombatantSkill(
     });
     combatant.critStars = Math.min(50, (combatant.critStars || 0) + 15);
     logText = `🔴 **TRANSFORMATION AWAKENED!** **${sName}** ignited **${skill.name}** and entered **Super Aoko** form!${quoteLine}`;
+  } else if (skill.id === 'charisma_of_hope' || /charisma of hope/i.test(skill.name)) {
+    combatant.activeBuffs.push({
+      name: `${skill.name} (ATK Up)`,
+      type: 'buff_atk',
+      value: 20,
+      remainingTurns: 3
+    });
+    combatant.npGauge = Math.min(300, combatant.npGauge + 30);
+    combatant.critStars = Math.min(50, (combatant.critStars || 0) + 10);
+    logText = `👑 **${sName}** activated **${skill.name}**! (+20% ATK & +30% NP Gauge for 3T, +10 Stars)${quoteLine}`;
+  } else if (skill.id === 'avalon_le_fae' || /avalon le fae/i.test(skill.name)) {
+    combatant.npGauge = Math.min(300, combatant.npGauge + 20);
+    combatant.activeBuffs.push({
+      name: `${skill.name} (NP Gain Up)`,
+      type: 'np_gain',
+      value: 30,
+      remainingTurns: 3
+    });
+    logText = `✨ **${sName}** activated **${skill.name}**! (+20% NP Gauge & +30% NP Gain Rate for 3T)${quoteLine}`;
+  } else if (skill.id === 'holy_sword_creation' || /holy sword creation/i.test(skill.name)) {
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Arts Up)`,
+      type: 'arts_up',
+      value: 50,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Anti-Threat)`,
+      type: 'anti_threat',
+      value: 50,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Invincible)`,
+      type: 'invincible',
+      value: 100,
+      remainingTurns: 1
+    });
+    logText = `🗡️ **${sName}** activated **${skill.name}**! (+50% Arts Up, +50% Anti-Threat Special ATK & 1T Invincibility)${quoteLine}`;
   } else if (skill.id === 'infinite_wellspring_a') {
     combatant.npGauge = Math.min(300, combatant.npGauge + 30);
     combatant.activeBuffs.push({
