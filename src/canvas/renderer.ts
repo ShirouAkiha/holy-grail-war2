@@ -1133,7 +1133,7 @@ function drawCompactCritStarCard(
   ctx.fillStyle = textColor;
   ctx.font = 'bold 7.5px sans-serif';
   ctx.textAlign = 'center';
-  const cleanLabel = unitLabel.length > 8 ? unitLabel.slice(0, 7) + '…' : unitLabel;
+  const cleanLabel = unitLabel.length > 8 ? unitLabel.slice(0, 7) + '...' : unitLabel;
   ctx.fillText(cleanLabel.toUpperCase(), footerX + footerW / 2, footerY + 12);
 
   ctx.restore();
@@ -1263,24 +1263,120 @@ function cleanCanvasText(text: string): string {
     .replace(/\[/g, '')
     .replace(/\]/g, '')
     // Convert common punctuation that renders as tofu blocks on Linux
-    .replace(/[•·]/g, '|')
+    .replace(/[•·∙]/g, '|')
     .replace(/[…]/g, '...')
-    .replace(/[➔→➜➤]/g, '>>')
+    .replace(/[➔→➜➤⇒►▶]/g, '>>')
+    .replace(/[“”"❝❞]/g, '"')
+    .replace(/[’‘]/g, "'")
+    .replace(/[—–]/g, '-')
     // Strip emojis and non-standard unicode characters that render as tofu blocks on Linux
-    .replace(/[\u{1F300}-\u{1F9FF}]/gu, '')
-    .replace(/[\u{2600}-\u{26FF}]/gu, '')
-    .replace(/[\u{2700}-\u{27BF}]/gu, '')
-    .replace(/[\u{1F600}-\u{1F64F}]/gu, '')
-    .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')
-    .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '')
-    .replace(/[⚔️➔⚡★❤️✨💀🔻🔺💨🛡️🔥💥👑🔱🎯✔❌☠️]/g, '')
+    .replace(/[\u{1F000}-\u{1FAFF}]/gu, '')
+    .replace(/[\u{2600}-\u{27BF}]/gu, '')
+    .replace(/[\u{FE00}-\u{FE0F}]/gu, '')
+    .replace(/[⚔️➔⚡★❤️✨💀🔻🔺💨🛡️🔥💥👑🔱🎯✔❌☠️💬💎⛰️🧣💧🔴🔵🟢🌟⏳♥✦]/gu, '')
     .replace(/[^\x20-\x7E]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
 /**
- * Extract clean, high-impact tactical combat telemetry without redundant card names or repeated damage numbers.
+ * Extract actual gameplay effects of a tactical skill (zero servant dialogue quotes).
+ */
+function extractSkillActualEffects(
+  log: CombatTurnLog,
+  p1: ActiveCombatant,
+  p2: ActiveCombatant
+): string {
+  const rawSummary = log.actionSummary || '';
+  // Strip any quotes or blockquote markers
+  const noQuotes = rawSummary
+    .replace(/\n?>\s*.*$/gim, '')
+    .replace(/❝.*?❞/g, '')
+    .replace(/“.*?”/g, '')
+    .replace(/".*?"/g, '')
+    .replace(/💬.*$/g, '');
+
+  // 1. Look for parenthesized effect string in the log: e.g. "(+20% ATK & +30% NP Gauge for 3T, +10 Stars)"
+  const parenMatch = noQuotes.match(/\(([^)]+)\)/);
+  if (parenMatch && parenMatch[1]) {
+    let effectStr = cleanCanvasText(parenMatch[1]);
+    effectStr = effectStr
+      .replace(/\s*,\s*/g, ' | ')
+      .replace(/\s*&\s*/g, ' | ')
+      .replace(/for\s+/gi, '')
+      .replace(/\s*\|\s*\|\s*/g, ' | ')
+      .trim();
+    if (effectStr.length > 3) {
+      return effectStr;
+    }
+  }
+
+  // 2. Resolve combatant and check servant skills & buffs
+  const actor = (log.actorName && (log.actorName === p2.name || (p2.name && log.actorName.includes(p2.name)))) ? p2 : p1;
+  const cleanSummary = cleanCanvasText(noQuotes).toLowerCase();
+  const matchedSkill = (actor.skills || []).find(s => cleanSummary.includes(s.name.toLowerCase()));
+
+  if (matchedSkill?.description) {
+    let desc = cleanCanvasText(matchedSkill.description);
+    desc = desc
+      .replace(/^Increases?\s+(own\s+)?/i, '')
+      .replace(/^Grants?\s+/i, '')
+      .replace(/\.\s*$/, '')
+      .replace(/for\s+/gi, '')
+      .trim();
+    if (desc.length > 5 && desc.length < 65) {
+      return desc;
+    }
+  }
+
+  // 3. Inspect recent buffs on actor
+  if (actor.activeBuffs && actor.activeBuffs.length > 0) {
+    const recentBuff = actor.activeBuffs[actor.activeBuffs.length - 1];
+    if (recentBuff && recentBuff.name) {
+      const bName = cleanCanvasText(recentBuff.name).replace(/\s*\([^)]*\)/g, '');
+      const bVal = recentBuff.value ? `+${recentBuff.value}% ` : '';
+      const bTurns = recentBuff.remainingTurns ? ` (${recentBuff.remainingTurns}T)` : '';
+      return `${bVal}${bName}${bTurns} | Combat Augmentation Active`;
+    }
+  }
+
+  // 4. Keyword heuristics for Fate skill effects
+  if (cleanSummary.includes('mana burst')) return '+50% Buster Performance (1T) | Attack Power Surge';
+  if (cleanSummary.includes('charisma')) return '+20% Party Attack Up (3T) | Team Morale Boost';
+  if (cleanSummary.includes('protection from arrows')) return 'Evade Granted (3 Hits / 3T) | Defense Up';
+  if (cleanSummary.includes('instinct') || cleanSummary.includes('revelation')) return '+15 Critical Stars Generated | Evasion Instincts Active';
+  if (cleanSummary.includes('golden rule') || cleanSummary.includes('high speed')) return '+30% NP Battery | NP Generation Rate Up (3T)';
+  if (cleanSummary.includes('battle continuation') || cleanSummary.includes('guts')) return 'Guts Revival Granted (1 Time / 5T)';
+  if (cleanSummary.includes('evade') || cleanSummary.includes('eye of the mind')) return 'Evasion Granted (1 Turn) | Critical Damage Up';
+  if (cleanSummary.includes('invincible') || cleanSummary.includes('kekkai')) return 'Invincible Barrier Active (1 Turn) | Nullifies Damage';
+  if (cleanSummary.includes('heal') || cleanSummary.includes('blessing')) return '+2,000 HP Restored | Status Cleansed';
+  if (cleanSummary.includes('stun') || cleanSummary.includes('judgement')) return 'Target Stunned (1 Turn) | Enemy Action Denied';
+  if (cleanSummary.includes('fifth magic') || cleanSummary.includes('red hair')) return 'Super Aoko Awakened | +30% ATK & +40% Crit DMG (3T)';
+
+  return 'Tactical Skill Augmentation Active | Combat Enhancement Applied';
+}
+
+/**
+ * Extract clean skill name from combat log
+ */
+function extractSkillName(log: CombatTurnLog): string {
+  const summary = log.actionSummary || '';
+  const match = summary.match(/activated\s+\**([^*!(\n]+)\**/i) ||
+                summary.match(/ignited\s+\**([^*!(\n]+)\**/i) ||
+                summary.match(/unleashed\s+\**([^*!(\n]+)\**/i);
+  if (match && match[1]) {
+    const cleaned = cleanCanvasText(match[1]).trim();
+    if (cleaned.length > 2) return cleaned;
+  }
+  if (log.dialogueTag && log.dialogueTag.includes(':')) {
+    return cleanCanvasText(log.dialogueTag.split(':')[1]).trim();
+  }
+  return 'TACTICAL SKILL';
+}
+
+/**
+ * Extract clean, high-impact tactical combat telemetry without redundant card names,
+ * redundant servant dialogue quotes, or repeated damage numbers.
  * Zero tofu blocks (pure ASCII separators).
  */
 function extractCombatHudTelemetry(
@@ -1288,8 +1384,6 @@ function extractCombatHudTelemetry(
   p1: ActiveCombatant,
   p2: ActiveCombatant
 ): string {
-  const parts: string[] = [];
-
   // 1. Absolute Defense Evasion / Invincibility Nullification
   if (log.damageDealt === 0) {
     if (log.isEvaded || log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade')) {
@@ -1304,13 +1398,8 @@ function extractCombatHudTelemetry(
   if (log.dialogueTag?.includes('COMMAND SEAL') || log.actionSummary?.toLowerCase().includes('command seal')) {
     return 'Absolute Command Invoked | NP Gauge Surged to 100% Ready';
   }
-  if (log.dialogueTag?.includes('SKILL') || log.actionSummary?.toLowerCase().includes('activated')) {
-    let skillText = cleanCanvasText(log.actionSummary || '');
-    skillText = skillText.replace(/^.*?(activated|used|unleashed|expended|deployed)\s+/i, '');
-    if (skillText && skillText.length > 3) {
-      return skillText.replace(/•/g, '|').replace(/\s+/g, ' ').trim();
-    }
-    return 'Active Tactical Skill Triggered | Battle Augmentation Active';
+  if (log.dialogueTag?.includes('SKILL') || log.actionSummary?.toLowerCase().includes('activated') || (log as any).skillName) {
+    return extractSkillActualEffects(log, p1, p2);
   }
 
   // 3. Stun Affliction
@@ -1319,6 +1408,7 @@ function extractCombatHudTelemetry(
   }
 
   // 4. Chains Triggered (Buster, Arts, Quick, Brave)
+  const parts: string[] = [];
   const chainType = log.cardChainType || '';
   if (chainType.includes('Brave') && chainType.includes('Buster')) {
     parts.push('Buster Brave Chain (+50% ATK & Extra Strike)');
@@ -1334,14 +1424,8 @@ function extractCombatHudTelemetry(
     parts.push('Arts Chain (+20% Team NP Charge)');
   } else if (chainType.includes('Quick')) {
     parts.push('Quick Chain (+20 Critical Stars)');
-  } else if (chainType) {
+  } else if (chainType && chainType !== 'Normal') {
     parts.push(`${chainType} Synergy`);
-  } else if (log.actionSummary?.includes('Chains Triggered:')) {
-    const match = log.actionSummary.match(/Chains Triggered:\s*([^\n\r]+)/i);
-    if (match && match[1]) {
-      const cleanChains = cleanCanvasText(match[1]).replace(/•/g, '|');
-      if (cleanChains) parts.push(cleanChains);
-    }
   }
 
   // 5. Critical Strike
@@ -1362,26 +1446,17 @@ function extractCombatHudTelemetry(
     parts.push(`+${log.starsGenerated} Stars Generated`);
   }
 
-  // 8. Fallback to clean actionSummary without redundant actor/damage/cards
-  if (parts.length === 0 && log.actionSummary) {
-    let clean = cleanCanvasText(log.actionSummary);
-    clean = clean.replace(/^.*?(attacked with|struck with|barraged with|slashed with|cleaved with|invoked).*?dealing\s+[\d,]+\s*(damage|dmg)\.?\s*/i, '');
-    clean = clean.replace(/•/g, '|').trim();
-    if (clean.length > 5) {
-      parts.push(clean);
-    }
+  if (parts.length > 0) {
+    return parts.join('  |  ');
   }
 
-  if (parts.length === 0) {
-    return 'Standard Engagement Phase Completed';
-  }
-
-  return parts.join('  |  ');
+  return 'Standard Engagement Phase Completed';
 }
 
 /**
  * Draw Minimalist Floating Damage Clash Banner.
- * Upgraded with large typography, vibrant colored segments, pure tactical telemetry, zero tofu blocks.
+ * Streamlined 3-line layout: No wasted header bars, large typography,
+ * actual skill effects with zero dialogue quotes, zero text cut-off, zero tofu blocks.
  */
 function drawMinimalClashBanner(
   ctx: any,
@@ -1395,6 +1470,7 @@ function drawMinimalClashBanner(
   formatBadge: string = '1v1'
 ) {
   ctx.save();
+
   // 1. Sleek Dark Obsidian Glass Banner
   const bgGrad = ctx.createLinearGradient(x, y, x + w, y + h);
   bgGrad.addColorStop(0, '#0a0f1d');
@@ -1404,46 +1480,24 @@ function drawMinimalClashBanner(
   drawRoundRect(ctx, x, y, w, h, 8);
   ctx.fill();
 
-  // Determine category & theme colors
-  let categoryTitle = 'ATTACK PHASE';
-  let categoryColor = '#38bdf8';
-  let categoryBg = 'rgba(56, 189, 248, 0.16)';
+  // Determine theme border color
   let borderColor = '#334155';
+  const isSkill = Boolean(log.dialogueTag?.includes('SKILL') || log.actionSummary?.toLowerCase().includes('activated') || (log as any).skillName);
+  const isSeal = Boolean(log.dialogueTag?.includes('COMMAND SEAL') || log.actionSummary?.toLowerCase().includes('command seal'));
 
   if (log.isNoblePhantasm) {
-    categoryTitle = 'NOBLE PHANTASM';
-    categoryColor = '#facc15';
-    categoryBg = 'rgba(250, 204, 21, 0.2)';
     borderColor = '#eab308';
   } else if (log.isCritical) {
-    categoryTitle = 'CRITICAL STRIKE';
-    categoryColor = '#f87171';
-    categoryBg = 'rgba(239, 68, 68, 0.2)';
     borderColor = '#ef4444';
   } else if (log.cardChainType && log.cardChainType.includes('Brave')) {
-    categoryTitle = 'BRAVE CHAIN';
-    categoryColor = '#fb923c';
-    categoryBg = 'rgba(251, 146, 60, 0.2)';
     borderColor = '#f97316';
   } else if (log.cardChainType && log.cardChainType.includes('Arts')) {
-    categoryTitle = 'ARTS CHAIN';
-    categoryColor = '#60a5fa';
-    categoryBg = 'rgba(96, 165, 250, 0.2)';
     borderColor = '#3b82f6';
   } else if (log.cardChainType && log.cardChainType.includes('Quick')) {
-    categoryTitle = 'QUICK CHAIN';
-    categoryColor = '#34d399';
-    categoryBg = 'rgba(52, 211, 153, 0.2)';
     borderColor = '#10b981';
-  } else if (log.dialogueTag?.includes('SKILL') || log.actionSummary?.toLowerCase().includes('activated')) {
-    categoryTitle = 'TACTICAL SKILL';
-    categoryColor = '#38bdf8';
-    categoryBg = 'rgba(56, 189, 248, 0.2)';
+  } else if (isSkill) {
     borderColor = '#0ea5e9';
-  } else if (log.dialogueTag?.includes('COMMAND SEAL') || log.actionSummary?.toLowerCase().includes('command seal')) {
-    categoryTitle = 'COMMAND SEAL';
-    categoryColor = '#f43f5e';
-    categoryBg = 'rgba(244, 63, 94, 0.2)';
+  } else if (isSeal) {
     borderColor = '#e11d48';
   }
 
@@ -1459,70 +1513,26 @@ function drawMinimalClashBanner(
   drawRoundRect(ctx, x + 2, y + 2, w - 4, h - 4, 6);
   ctx.stroke();
 
-  // ----------------------------------------------------
-  // ROW 1: Category Pill (Left) & Round / Gains (Right)
-  // ----------------------------------------------------
-  const pillY = y + 9;
-  ctx.font = 'bold 11px sans-serif';
-  const catText = categoryTitle;
-  const catW = ctx.measureText(catText).width + 16;
-  const catH = 20;
-
-  ctx.fillStyle = categoryBg;
-  drawRoundRect(ctx, x + 12, pillY, catW, catH, 4);
+  // Corner Round Badge (Top Right - Ultra-compact, takes ZERO vertical row space)
+  const roundTag = `R${log.turnNumber || 1} | ${formatBadge.toUpperCase()}`;
+  ctx.font = 'bold 10px sans-serif';
+  const tagW = ctx.measureText(roundTag).width + 12;
+  const tagX = x + w - tagW - 10;
+  const tagY = y + 8;
+  ctx.fillStyle = 'rgba(30, 41, 59, 0.7)';
+  drawRoundRect(ctx, tagX, tagY, tagW, 16, 3);
   ctx.fill();
-  ctx.strokeStyle = categoryColor;
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, x + 12, pillY, catW, catH, 4);
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.3)';
+  ctx.lineWidth = 0.8;
+  drawRoundRect(ctx, tagX, tagY, tagW, 16, 3);
   ctx.stroke();
-
-  ctx.fillStyle = categoryColor;
+  ctx.fillStyle = '#94a3b8';
   ctx.textAlign = 'center';
-  ctx.fillText(catText, x + 12 + catW / 2, pillY + 14);
-
-  // Round / Format Pill (Top Right) - Zero tofu blocks, uses ASCII "|"
-  const roundText = `ROUND ${log.turnNumber || 1} | ${formatBadge.toUpperCase()}`;
-  ctx.font = 'bold 11px sans-serif';
-  const roundW = ctx.measureText(roundText).width + 16;
-  const roundX = x + w - roundW - 12;
-
-  ctx.fillStyle = 'rgba(30, 41, 59, 0.85)';
-  drawRoundRect(ctx, roundX, pillY, roundW, catH, 4);
-  ctx.fill();
-  ctx.strokeStyle = '#475569';
-  ctx.lineWidth = 1;
-  drawRoundRect(ctx, roundX, pillY, roundW, catH, 4);
-  ctx.stroke();
-
-  ctx.fillStyle = '#cbd5e1';
-  ctx.textAlign = 'center';
-  ctx.fillText(roundText, roundX + roundW / 2, pillY + 14);
-
-  // Tactical Gains (Between Category & Round Pill) - Zero tofu blocks, uses ASCII "|"
-  const npG = (log as any).npGained ?? log.npCharged ?? 0;
-  const starG = log.starsGenerated || 0;
-  if (npG > 0 || starG > 0) {
-    const gainParts: string[] = [];
-    if (npG > 0) gainParts.push(`+${Math.round(npG)}% NP`);
-    if (starG > 0) gainParts.push(`+${starG} Stars`);
-    const gainText = gainParts.join('  |  ');
-    ctx.font = 'bold 11px sans-serif';
-    ctx.fillStyle = '#38bdf8';
-    ctx.textAlign = 'right';
-    ctx.fillText(gainText, roundX - 12, pillY + 14);
-  }
-
-  // Subtle Header Divider Line
-  ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(x + 12, y + 35);
-  ctx.lineTo(x + w - 12, y + 35);
-  ctx.stroke();
+  ctx.fillText(roundTag, tagX + tagW / 2, tagY + 12);
 
   // ----------------------------------------------------
-  // ROW 2: Combatant Action Line (Actor -> Target)
-  // Larger, bold 17px typography, colored segments, smart fitting with zero clipping
+  // LINE 1: Combatant Action Line (Actor >> Target)
+  // Large, bold 18.5px font, generous horizontal room, zero 12-char cutting off
   // ----------------------------------------------------
   let actorClean = cleanCanvasText(log.actorName || p1.name || 'Heroic Spirit');
   let targetClean = cleanCanvasText(log.targetName || p2.name || 'Target Opponent');
@@ -1530,38 +1540,39 @@ function drawMinimalClashBanner(
     targetClean = 'ALL TARGETS (AoE)';
   }
 
-  const arrowText = '  >>  ';
-  let line1Font = 17;
+  const arrowText = '   >>   ';
+  let line1Font = 18.5;
   ctx.font = `bold ${line1Font}px sans-serif`;
 
-  let fullLine1 = `${actorClean}${arrowText}${targetClean}`;
-  while (ctx.measureText(fullLine1).width > w - 32 && line1Font > 14) {
+  let fullLine1 = `${actorClean.toUpperCase()}${arrowText}${targetClean.toUpperCase()}`;
+  const maxLine1Width = w - 30;
+
+  // Scale down smoothly if needed so full names are preserved without truncation
+  while (ctx.measureText(fullLine1).width > maxLine1Width && line1Font > 13.5) {
     line1Font -= 0.5;
     ctx.font = `bold ${line1Font}px sans-serif`;
   }
 
-  // Smart name trimmer if still exceeds max width
-  let displayActor = actorClean;
-  let displayTarget = targetClean;
-  if (ctx.measureText(`${displayActor}${arrowText}${displayTarget}`).width > w - 32) {
-    displayActor = displayActor.replace(/\s*\([^)]*\)/g, '').trim();
-    displayTarget = displayTarget.replace(/\s*\([^)]*\)/g, '').trim();
-    while (ctx.measureText(`${displayActor}...${arrowText}${displayTarget}...`).width > w - 32 && (displayActor.length > 12 || displayTarget.length > 12)) {
+  // Only if still exceeds max width at 13.5px, trim minimal excess characters
+  let displayActor = actorClean.toUpperCase();
+  let displayTarget = targetClean.toUpperCase();
+  if (ctx.measureText(`${displayActor}${arrowText}${displayTarget}`).width > maxLine1Width) {
+    while (ctx.measureText(`${displayActor}...${arrowText}${displayTarget}...`).width > maxLine1Width && (displayActor.length > 18 || displayTarget.length > 18)) {
       if (displayActor.length > displayTarget.length) {
         displayActor = displayActor.slice(0, -1);
       } else {
         displayTarget = displayTarget.slice(0, -1);
       }
     }
-    if (displayActor !== actorClean && !displayActor.endsWith('...')) displayActor += '...';
-    if (displayTarget !== targetClean && !displayTarget.endsWith('...')) displayTarget += '...';
+    if (displayActor !== actorClean.toUpperCase() && !displayActor.endsWith('...')) displayActor += '...';
+    if (displayTarget !== targetClean.toUpperCase() && !displayTarget.endsWith('...')) displayTarget += '...';
     fullLine1 = `${displayActor}${arrowText}${displayTarget}`;
   }
 
-  // Render centered with distinctive colors
+  // Render Line 1 centered with vibrant colors
   const totalW = ctx.measureText(fullLine1).width;
   const startX = x + (w - totalW) / 2;
-  const line1Y = y + 57;
+  const line1Y = y + 29;
 
   ctx.fillStyle = '#38bdf8';
   ctx.textAlign = 'left';
@@ -1576,9 +1587,10 @@ function drawMinimalClashBanner(
   ctx.fillText(displayTarget, startX + actorW + arrowW, line1Y);
 
   // ----------------------------------------------------
-  // ROW 3: Big Cinematic Damage / Outcome Stat (28px)
+  // LINE 2: Big Cinematic Clash Stat / Damage / Skill Name (28px)
+  // Perfectly centered vertically in the middle of the banner
   // ----------------------------------------------------
-  const dmgY = y + 89;
+  const dmgY = y + 69;
   const dmg = log.damageDealt > 0 ? log.damageDealt.toLocaleString() : '0';
 
   if (log.damageDealt === 0 && (log.isEvaded || log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade'))) {
@@ -1591,6 +1603,17 @@ function drawMinimalClashBanner(
     ctx.fillStyle = '#fde047';
     ctx.textAlign = 'center';
     ctx.fillText('INVINCIBLE! (0 DMG)', x + w / 2, dmgY);
+  } else if (isSeal) {
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillStyle = '#fb7185';
+    ctx.textAlign = 'center';
+    ctx.fillText('COMMAND SEAL: NP REFILLED TO 100%', x + w / 2, dmgY);
+  } else if (isSkill) {
+    const skillTitle = extractSkillName(log).toUpperCase();
+    ctx.font = 'bold 26px sans-serif';
+    ctx.fillStyle = '#38bdf8';
+    ctx.textAlign = 'center';
+    ctx.fillText(skillTitle, x + w / 2, dmgY);
   } else if (log.damageDealt > 0) {
     let dmgColor = '#ffffff';
     let suffix = ' DMG';
@@ -1609,16 +1632,6 @@ function drawMinimalClashBanner(
     ctx.textAlign = 'center';
     ctx.fillStyle = dmgColor;
     ctx.fillText(`${dmg}${suffix}`, x + w / 2, dmgY);
-  } else if (log.dialogueTag?.includes('COMMAND SEAL') || log.actionSummary?.toLowerCase().includes('command seal')) {
-    ctx.font = 'bold 24px sans-serif';
-    ctx.fillStyle = '#fb7185';
-    ctx.textAlign = 'center';
-    ctx.fillText('COMMAND SEAL: NP REFILLED TO 100%', x + w / 2, dmgY);
-  } else if (log.dialogueTag?.includes('SKILL') || log.actionSummary?.toLowerCase().includes('activated')) {
-    ctx.font = 'bold 24px sans-serif';
-    ctx.fillStyle = '#38bdf8';
-    ctx.textAlign = 'center';
-    ctx.fillText('TACTICAL SKILL ACTIVATED', x + w / 2, dmgY);
   } else {
     ctx.font = 'bold 28px sans-serif';
     ctx.fillStyle = '#cbd5e1';
@@ -1627,29 +1640,32 @@ function drawMinimalClashBanner(
   }
 
   // ----------------------------------------------------
-  // ROW 4: Combat Telemetry Strip (Effects & Battle Logs)
-  // Large 15px font, pure tactical telemetry, zero tofu blocks, zero clipping
+  // LINE 3: Tactical Telemetry & Actual Combat Effects
+  // Large 16.5px font, actual gameplay effects, zero dialogue quotes, zero tofu blocks
   // ----------------------------------------------------
   const telemetry = extractCombatHudTelemetry(log, p1, p2);
-  let line3Font = 15;
+  let line3Font = 16.5;
   ctx.font = `bold ${line3Font}px sans-serif`;
 
   let displayTelemetry = telemetry;
-  while (ctx.measureText(displayTelemetry).width > w - 32 && line3Font > 13) {
+  const maxLine3Width = w - 30;
+
+  // Scale down gracefully so effects are fully readable without cutoff
+  while (ctx.measureText(displayTelemetry).width > maxLine3Width && line3Font > 13) {
     line3Font -= 0.5;
     ctx.font = `bold ${line3Font}px sans-serif`;
   }
 
-  if (ctx.measureText(displayTelemetry).width > w - 32) {
-    while (ctx.measureText(displayTelemetry + '...').width > w - 32 && displayTelemetry.length > 10) {
+  if (ctx.measureText(displayTelemetry).width > maxLine3Width) {
+    while (ctx.measureText(displayTelemetry + '...').width > maxLine3Width && displayTelemetry.length > 20) {
       displayTelemetry = displayTelemetry.slice(0, -1).trim();
     }
     displayTelemetry += '...';
   }
 
-  ctx.fillStyle = log.isNoblePhantasm ? '#fde047' : log.isCritical ? '#fca5a5' : '#e2e8f0';
+  ctx.fillStyle = isSkill ? '#38bdf8' : (log.isNoblePhantasm ? '#fde047' : (log.isCritical ? '#fca5a5' : '#e2e8f0'));
   ctx.textAlign = 'center';
-  ctx.fillText(displayTelemetry, x + w / 2, y + 118);
+  ctx.fillText(displayTelemetry, x + w / 2, y + 107);
 
   ctx.restore();
 }
@@ -2814,7 +2830,7 @@ function drawHoveringDefender(
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
-    const defDisplay = defenderName.length > 17 ? defenderName.slice(0, 16) + '…' : defenderName;
+    const defDisplay = defenderName.length > 17 ? defenderName.slice(0, 16) + '...' : defenderName;
     ctx.fillText(defDisplay, nameX + nameW / 2, nameY + 14);
 
     ctx.fillStyle = '#fca5a5';
@@ -4022,12 +4038,12 @@ function drawHoveringContractedServant(
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 12px sans-serif';
   ctx.textAlign = 'center';
-  const sDisplay = servantName.length > 17 ? servantName.slice(0, 16) + '…' : servantName;
+  const sDisplay = servantName.length > 17 ? servantName.slice(0, 16) + '...' : servantName;
   ctx.fillText(sDisplay, nameX + nameW / 2, nameY + 15);
 
   ctx.fillStyle = '#38bdf8';
   ctx.font = 'bold 10px sans-serif';
-  ctx.fillText(`[${(servantClass || 'Servant').toUpperCase()}] • NP 100% READY`, nameX + nameW / 2, nameY + 30);
+  ctx.fillText(`[${(servantClass || 'Servant').toUpperCase()}] | NP 100% READY`, nameX + nameW / 2, nameY + 30);
 
   ctx.restore();
 }

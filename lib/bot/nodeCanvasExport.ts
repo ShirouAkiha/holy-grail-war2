@@ -516,7 +516,7 @@ export async function renderBattleTurnSummary(
   const p1NameWidth = ctx.measureText(p1.masterName || 'Master 1').width;
   ctx.fillStyle = '#94a3b8';
   ctx.font = 'bold 14px sans-serif';
-  ctx.fillText(\`• \${p1.name} [\${p1.servantClass}]\`, 158 + p1NameWidth, 38);
+  ctx.fillText(\`| \${p1.name} [\${p1.servantClass}]\`, 158 + p1NameWidth, 38);
 
   const p1HpRatio = Math.max(0, Math.min(1, p1.currentHp / p1.maxHp));
   ctx.fillStyle = '#1e293b';
@@ -543,7 +543,7 @@ export async function renderBattleTurnSummary(
   }
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 13px sans-serif';
-  ctx.fillText(\`NP: \${Math.round(p1.npGauge || 0)}% \${(p1.npGauge || 0) >= 100 ? '★ NP READY' : ''}\`, 160, 94);
+  ctx.fillText(\`NP: \${Math.round(p1.npGauge || 0)}% \${(p1.npGauge || 0) >= 100 ? '[NP READY]' : ''}\`, 160, 94);
 
   // Command Cards Top
   const p1Cards = log.p1Cards || ['Buster', 'Arts', 'Quick'];
@@ -615,13 +615,13 @@ export async function renderBattleTurnSummary(
   ctx.fillStyle = '#f59e0b';
   ctx.font = 'bold 13px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('★ TURN ' + log.turnNumber + ' CLASH • [' + dialogueTag + ']', 40, 263);
+  ctx.fillText('TURN ' + log.turnNumber + ' CLASH | [' + dialogueTag + ']', 40, 263);
 
   ctx.textAlign = 'right';
   ctx.fillStyle = '#fde047';
   ctx.font = 'bold 12px sans-serif';
   ctx.fillText(dialogueSpeaker.toUpperCase(), 600, 263);
-  ctx.fillText(\`★ HOLY GRAIL WAR • TURN \${log.turnNumber} CLASH RESOLUTION ★\`, 320, 229);
+  ctx.fillText(\`HOLY GRAIL WAR | TURN \${log.turnNumber} CLASH RESOLUTION\`, 320, 229);
 
   // Left Portrait Box (Square 60x60)
   ctx.fillStyle = '#140c07';
@@ -635,11 +635,11 @@ export async function renderBattleTurnSummary(
   ctx.fillStyle = '#f59e0b';
   ctx.font = 'bold 24px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(p1.servantClass?.[0] || '⚔️', 66, 322);
+  ctx.fillText(p1.servantClass?.[0] || 'S', 66, 322);
 
   ctx.fillStyle = '#fde047';
   ctx.font = 'bold 10px sans-serif';
-  ctx.fillText('5★ SERVANT', 66, 340);
+  ctx.fillText('5-STAR SERVANT', 66, 340);
 
   // Speaker Nameplate Box
   ctx.fillStyle = '#1f130b';

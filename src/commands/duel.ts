@@ -636,7 +636,13 @@ async function createTurnSummaryAttachment(
     cardChainType = 'Quick Chain';
   }
 
-  const cleanActionSummary = lastLogText
+  const logWithoutQuotes = lastLogText
+    .replace(/\n?>\s*.*$/gim, '')
+    .replace(/❝.*?❞/g, '')
+    .replace(/“.*?”/g, '')
+    .replace(/💬.*$/g, '');
+
+  const cleanActionSummary = logWithoutQuotes
     .replace(/[*_~`>#]/g, '')
     .replace(/[•·]/g, '|')
     .replace(/[⚔️💥✨🌀⚡🔴🔵🟢🛡️👑🌟🗡️🔥💀🩸]/gu, '')

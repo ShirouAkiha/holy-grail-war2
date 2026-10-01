@@ -454,7 +454,7 @@ export interface CombatTurnLog {
     hpRemaining?: number;
   }>;
   actionSummary: string;
-  cardChainType?: 'Buster Brave' | 'Arts Chain' | 'Quick Chain' | 'Normal';
+  cardChainType?: 'Buster Brave' | 'Arts Chain' | 'Quick Chain' | 'Normal' | string;
   cardsUsed: ('Buster' | 'Arts' | 'Quick' | 'NP')[];
   p1Cards?: ('Buster' | 'Arts' | 'Quick' | 'NP')[];
   p1AllyCards?: ('Buster' | 'Arts' | 'Quick' | 'NP')[];
