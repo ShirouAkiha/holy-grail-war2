@@ -952,6 +952,10 @@ client.on(Events.InteractionCreate, async interaction => {
             new ButtonBuilder()
               .setCustomId('vn_open_sanctum')
               .setLabel('Bond Sanctum 💖')
+              .setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder()
+              .setCustomId('btn_apikey_dashboard')
+              .setLabel('API Config 🔑')
               .setStyle(ButtonStyle.Secondary)
           );
 

@@ -354,17 +354,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       new ButtonBuilder()
         .setCustomId('vn_open_sanctum')
         .setLabel('Bond Sanctum 💖')
-        .setStyle(ButtonStyle.Secondary)
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('btn_apikey_dashboard')
+        .setLabel('API Config 🔑')
+        .setStyle(isFallback || (remainingToday <= 0 && !isByok) ? ButtonStyle.Success : ButtonStyle.Secondary)
     ];
-
-    if (isFallback || (remainingToday <= 0 && !isByok)) {
-      buttons.push(
-        new ButtonBuilder()
-          .setCustomId('btn_apikey_dashboard')
-          .setLabel('Connect API Key (Unlimited) 🔑')
-          .setStyle(ButtonStyle.Success)
-      );
-    }
 
     const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
 
