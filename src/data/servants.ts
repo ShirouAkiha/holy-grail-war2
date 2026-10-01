@@ -1794,5 +1794,101 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     cardArtUrl: 'https://ella.janitorai.com/media-approved/6tOCZiZo0xbTRAFmf85h5.webp',
     spriteUrl: 'https://ella.janitorai.com/media-approved/jEqJEDF_voG7Yd2eUO7QO.webp',
     isCustomOrMeme: false
+  },
+  {
+    id: 'artoria_caster',
+    name: 'Artoria Caster',
+    title: 'Child of Prophecy • Fairy of Avalon',
+    servantClass: 'Caster',
+    rarity: 5,
+    baseHp: 28000,
+    baseAtk: 11200,
+    baseStats: { strength: 10, endurance: 12, agility: 14, mana: 20, luck: 18 },
+    commandDeck: ['Arts', 'Arts', 'Arts', 'Buster', 'Quick'],
+    skills: [
+      {
+        id: 'charisma_of_hope',
+        name: 'Charisma of Hope B',
+        cooldown: 6,
+        description: "Increases party's attack by 20% for 3 turns. Charges party's NP gauge by 30%.",
+        effectType: 'buff_atk',
+        value: 20,
+        duration: 3,
+        icon: '👑',
+        quote: '"Now\'s the time to prepare!"',
+        quotes: [
+          '"Now\'s the time to prepare!"',
+          '"I may be inexperienced, but I\'ll try my best!"',
+          '"Everyone, follow me!"'
+        ]
+      },
+      {
+        id: 'avalon_le_fae',
+        name: 'Avalon le Fae A',
+        cooldown: 5,
+        description: "Charges one ally's NP gauge by 20%. Increases party's NP generation rate by 30% for 3 turns.",
+        effectType: 'np_charge',
+        value: 20,
+        duration: 3,
+        icon: '✨',
+        quote: '"It\'s a battle then!"',
+        quotes: [
+          '"It\'s a battle then!"',
+          '"It\'ll be okay... Stay calm...I just need to do it normally...!"',
+          '"I\'ll break through!"'
+        ]
+      },
+      {
+        id: 'holy_sword_creation',
+        name: 'Holy Sword Creation EX',
+        cooldown: 6,
+        description: "Increases one ally's Arts performance by 50% for 3 turns. Increases their damage against Threat to Humanity enemies by 50% for 3 turns. Grants them Invincibility for 1 turn.",
+        effectType: 'buff_atk',
+        value: 50,
+        duration: 3,
+        icon: '🗡️',
+        quote: '"...I don\'t want to do this."',
+        quotes: [
+          '"...I don\'t want to do this."',
+          '"If they are in our way...!"',
+          '"Burst, Chastiefol!"'
+        ]
+      }
+    ],
+    passives: [
+      {
+        name: 'Territory Creation EX',
+        type: 'territory_creation',
+        value: 12,
+        rank: 'EX',
+        description: 'Increases own Arts performance by 12%.'
+      },
+      {
+        name: "One's Own Magic B",
+        type: 'ones_own_magic',
+        value: 10,
+        rank: 'B',
+        description: "Increases own critical damage of Arts Cards by 10%."
+      }
+    ],
+    noblePhantasm: {
+      name: 'Round of Avalon: The Promised Star Which Gathers The True Round',
+      cardType: 'Arts',
+      chant: "The star's end that I once saw... Many words... Faint glimmers. No matter how far away or tarnished it is, I will still search for that star. Now then... Let's raise the curtain...Around Caliburn!",
+      description: "Increases party's attack by 50% for 3 turns. Removes party's debuffs. Grants party Anti-Purge Defense for 1 turn (completely nullifies damage, blocking even attacks that ignore invincible or evade; only loses to Anti-Purge Attack).",
+      target: 'support',
+      multiplier: 0,
+      overchargeEffect: 'Grants 15 Critical Stars to all allies.',
+      gifUrl: 'https://ella.janitorai.com/media-approved/FYGW6q4NCQ9bgeLMeOvCH.gif'
+    },
+    lore: 'Artoria Caster is the Child of Prophecy from the British Lostbelt, chosen by the Staff of Selection. Humble, earnest, and deeply empathetic, she journeys across harsh lands carrying the heavy burden of pilgrimage and hope. Unlike the majestic King of Knights, she is a countryside girl who worries, doubts herself, and loves sweets like crepes, yet when duty calls, she stands unflinchingly before impossible odds to forge the holy sword of light and protect her Master and allies.',
+    summonQuote: '"Servant Caster, Artoria. I materialized in response to your summons! Um... I\'m not the King of Knights with a giant shining sword, but I know some handy magecraft and I\'ll work really hard! Please take good care of me, Master!"',
+    battleStartQuote: '"I may be inexperienced, but I\'ll try my best!"',
+    victoryQuote: '"Phew...I did good this time."',
+    defeatQuote: '"I\'m sorry...I guess I really wasn\'t good enough..."',
+    avatarUrl: 'https://ella.janitorai.com/media-approved/fuzEz7ZBldGAP68c2bNJu.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/fuzEz7ZBldGAP68c2bNJu.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/jJ01B75AlmqdBUUK3JEfa.webp',
+    isCustomOrMeme: false
   }
 ];

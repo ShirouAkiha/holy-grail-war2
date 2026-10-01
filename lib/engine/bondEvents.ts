@@ -2871,6 +2871,220 @@ export const LUVRIA_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const ARTORIA_CASTER_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'artoria_caster_bond_event_1',
+    servantTemplateId: 'artoria_caster',
+    requiredBondLevel: 1,
+    title: 'The Child of Prophecy & A Cup of Barley Tea',
+    subtitle: 'Bond Level 1 Interlude • First Impressions & Sweet Promises',
+    description: 'A quiet afternoon in the Chaldea workshop with Artoria Caster, discovering her humble anxieties, vulnerability, and mutual resolve as genuine partners.',
+    rewardBondExp: 250,
+    rewardSaintQuartz: 3,
+    unlockedQuoteId: 'artoria_caster_bond_line_1',
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: 'Artoria Caster',
+        speakerAvatarUrl: 'https://ella.janitorai.com/media-approved/fuzEz7ZBldGAP68c2bNJu.webp',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "Master, you've been staring at the wall for ten minutes. Are you feeling overwhelmed by all this Holy Grail War business? If you want, I can make us some tea. I found something called 'barley tea' in the cupboards here. I think I know how to boil water without blowing up the kitchen... probably.",
+        choices: [
+          {
+            id: 'c1_tea',
+            text: "I'd love some tea, thank you.",
+            response: "Okay! Just sit tight and leave it to me. I'll make sure it's at least somewhat drinkable.",
+            bondExpGain: 120,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_rest',
+            text: "You don't have to act like a servant. Sit down and rest.",
+            response: "Ah, no, I want to! I mean, I really don't mind. Keeping busy helps me calm my nerves anyway.",
+            bondExpGain: 125,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_kitchen',
+            text: "Did you actually blow up a kitchen before?",
+            response: "Only once! Or maybe twice... But I promise I'm much better at temperature control now! I'll work hard, I swear!",
+            bondExpGain: 110,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_2'
+          }
+        ]
+      },
+      {
+        id: 'scene_2',
+        speakerName: 'Artoria Caster',
+        speakerAvatarUrl: 'https://ella.janitorai.com/media-approved/fuzEz7ZBldGAP68c2bNJu.webp',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "Anyway, Japan is certainly... different. The buildings are so tall, and there's this constant hum in the air. It's completely unlike the forests and plains I'm used to. Honestly, I still can't believe I was summoned here of all places, by you. Are you sure you didn't make a mistake during the summoning? You probably wanted someone much stronger, didn't you? A proper hero to win this war.",
+        choices: [
+          {
+            id: 'c2_happy',
+            text: "I'm perfectly happy with you, Artoria.",
+            response: "You say that now, but... well, I'll do my best to make sure you don't regret those words. I'll work hard, I really will.",
+            bondExpGain: 125,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_make_do',
+            text: "We'll just have to make do with what we have.",
+            response: "Right. I know I'm not much, but I'll pull my weight! I'll be the best 'what we have' you could ask for.",
+            bondExpGain: 100,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_partner',
+            text: "I don't need a hero, I just need a partner.",
+            response: "A partner... That sounds nice. Not a savior, not a weapon. Just a partner. I think I can manage that.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_3'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Artoria Caster',
+        speakerAvatarUrl: 'https://ella.janitorai.com/media-approved/fuzEz7ZBldGAP68c2bNJu.webp',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "It’s just... everyone always expects so much when they hear the word 'Caster' or see my staff. They look at me like I'm supposed to wave my hand and solve every problem, defeat every enemy, and save the day without a scratch. But I'm just me. I make mistakes, I get scared when the enemy is huge, and sometimes I just want to run away and hide under a blanket. Does... does hearing that make you disappointed in me?",
+        choices: [
+          {
+            id: 'c3_human',
+            text: "Not at all. It makes you human.",
+            response: "Human... Well, I'm a fairy, technically! But I get what you mean. Thank you. That makes my chest feel a little lighter.",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_stand',
+            text: "As long as you don't actually run away, we're fine.",
+            response: "I won't! I promise I won't. Even if my knees are shaking, I'll stand right in front of you. I just... complain a lot in my head.",
+            bondExpGain: 120,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_scared_too',
+            text: "I'm scared too, to be honest.",
+            response: "You are? But you always look so composed. Knowing that you're nervous too... it actually makes me feel a lot better. We can be scared together.",
+            bondExpGain: 140,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_4'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Artoria Caster',
+        speakerAvatarUrl: 'https://ella.janitorai.com/media-approved/fuzEz7ZBldGAP68c2bNJu.webp',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "You know, back where I'm from, saying you're scared isn't really an option. If you show weakness, people either turn on you or they just... look at you with these incredibly sad, betrayed eyes. And I hate that look. I really hate it. So, I just force a smile, say 'leave it to me!', and do whatever they want. It’s easier to just go along with it than to fight everyone. That's a terrible reason to fight, isn't it? Not out of courage, but just because you're afraid of disappointing people.",
+        choices: [
+          {
+            id: 'c4_care',
+            text: "It’s not terrible. It means you care about others.",
+            response: "Do I? Maybe. Or maybe I'm just a coward who hates conflict. But... hearing you frame it like that... I don't hate it.",
+            bondExpGain: 140,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_force_smile',
+            text: "You don't have to force a smile around me.",
+            response: "I... I'll try to remember that. It's a hard habit to break, though. If I suddenly look grumpy tomorrow, you're not allowed to complain!",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_exhausting',
+            text: "That sounds exhausting.",
+            response: "It really is. Some days it feels like I'm carrying a boulder on my back, and everyone just keeps tossing extra pebbles onto it.",
+            bondExpGain: 125,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_5'
+          }
+        ]
+      },
+      {
+        id: 'scene_5',
+        speakerName: 'Artoria Caster',
+        speakerAvatarUrl: 'https://ella.janitorai.com/media-approved/fuzEz7ZBldGAP68c2bNJu.webp',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "I've been thinking about this Grail War. We're supposed to fight other Masters and Servants, right? People who have their own wishes and their own lives. The idea of hating someone I don't even know, just because we're in a tournament... it's tiresome. I'd much rather just go into town and try those sweet crepes I saw in a magazine earlier. But if I said that out loud to the other Mages, they'd probably laugh me out of the country.",
+        choices: [
+          {
+            id: 'c5_crepes',
+            text: "Let's go get crepes tomorrow, then.",
+            response: "Really? You mean it? Just the two of us, sneaking out for sweets in the middle of a death game... You're a very strange Master. But I'm holding you to that promise!",
+            bondExpGain: 150,
+            reactionEmotion: 'excited',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c5_survive',
+            text: "We still have to survive, crepes or not.",
+            response: "I know, I know. Sorry for being weak. I'll focus. I'll make sure we survive so we can eat all the crepes we want afterwards.",
+            bondExpGain: 110,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c5_duty',
+            text: "We don't have to hate them to fight them.",
+            response: "That's a very mature way to look at it. I guess fighting out of duty is better than fighting out of hatred. It definitely sits better with my stomach.",
+            bondExpGain: 130,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_6'
+          }
+        ]
+      },
+      {
+        id: 'scene_6',
+        speakerName: 'Artoria Caster',
+        speakerAvatarUrl: 'https://ella.janitorai.com/media-approved/fuzEz7ZBldGAP68c2bNJu.webp',
+        backgroundTheme: 'chaldea_room',
+        dialogueText: "You’re very easy to talk to, Master. It doesn’t feel like I’m talking to a great Mage, and I mean that as a compliment! It feels more like... talking to a friend. Someone I can actually rely on when I inevitably trip over my own feet. I know I'm not the majestic King of Knights, and I'm definitely not a tyrant. I'm just Artoria. A countryside girl who happens to know some magecraft and gets nervous way too easily. Is... is just being Artoria enough for you?",
+        choices: [
+          {
+            id: 'c6_glad',
+            text: "It’s more than enough. I'm glad you're here.",
+            response: "Then I'm glad I'm here too. I'll be in your care, Master.",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'end'
+          },
+          {
+            id: 'c6_trade',
+            text: "I wouldn't trade you for any other Servant.",
+            response: "Not even for someone with a giant glowing sword? Wow. You really are weird. But... thank you.",
+            bondExpGain: 150,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'end'
+          },
+          {
+            id: 'c6_best_partner',
+            text: "As long as you keep doing your best, partner.",
+            response: "Partner... Right. I will! I'll work hard, I'll work hard, I'll work really hard! You won't regret summoning me!",
+            bondExpGain: 150,
+            reactionEmotion: 'excited',
+            nextSceneId: 'end'
+          }
+        ]
+      }
+    ]
+  }
+];
+
 export const EDMOND_BOND_EVENTS: BondEvent[] = [
   {
     id: 'edmond_bond_event_1',
@@ -3208,7 +3422,10 @@ export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
   nero: NERO_BOND_EVENTS,
   saber_nero: NERO_BOND_EVENTS,
   rose_saber: NERO_BOND_EVENTS,
-  umu: NERO_BOND_EVENTS
+  umu: NERO_BOND_EVENTS,
+  artoria_caster: ARTORIA_CASTER_BOND_EVENTS,
+  castoria: ARTORIA_CASTER_BOND_EVENTS,
+  altria_caster: ARTORIA_CASTER_BOND_EVENTS
 };
 
 /**
@@ -4129,6 +4346,50 @@ export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
       category: 'bond_5',
       requiredBondLevel: 5,
       quoteText: "Stand firm behind my shield, Master! As long as Terra flows through my veins, this bastion shall not fall! Roar of the Living Earth!"
+    }
+  ],
+  artoria_caster: [
+    {
+      id: 'artoria_caster_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: "Servant Caster, Artoria. I materialized in response to your summons! Um... I'm not the King of Knights with a giant shining sword, but I know some handy magecraft and I'll work really hard! Please take good care of me, Master!"
+    },
+    {
+      id: 'artoria_caster_bond_line_1',
+      title: 'Bond 1: The Child of Prophecy',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: "Master, you've been staring at the wall for ten minutes... If you want, I can make us some tea. I found something called 'barley tea' in the cupboards here. I think I know how to boil water without blowing up the kitchen... probably."
+    },
+    {
+      id: 'artoria_caster_bond_2',
+      title: 'Bond 2: Honest Fears',
+      category: 'bond_2',
+      requiredBondLevel: 2,
+      quoteText: "Everyone expects so much when they hear 'Caster'. But I'm just me. I make mistakes, I get scared when the enemy is huge, and sometimes I just want to run away and hide under a blanket. But knowing you're with me... we can be brave together."
+    },
+    {
+      id: 'artoria_caster_bond_3',
+      title: 'Bond 3: Sweet Promises',
+      category: 'bond_3',
+      requiredBondLevel: 3,
+      quoteText: "I'd much rather just go into town and try those sweet crepes I saw in a magazine earlier. Just the two of us, sneaking out for sweets... I'm holding you to that promise!"
+    },
+    {
+      id: 'artoria_caster_bond_4',
+      title: 'Bond 4: True Companions',
+      category: 'bond_4',
+      requiredBondLevel: 4,
+      quoteText: "You don't treat me like a savior or a weapon, Master. You treat me like a partner and a friend. That makes carrying the Staff of Selection feel a whole lot lighter."
+    },
+    {
+      id: 'artoria_caster_bond_5',
+      title: 'Bond 5: Round of Avalon',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: "I won't run away anymore! Even if my knees are shaking, I'll stand right in front of you and forge the sacred light! The promised star which gathers the true round—Round of Avalon!"
     }
   ]
 };

@@ -752,6 +752,53 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
     ]
   },
 
+  // Artoria Caster - Caster (Child of Prophecy, Fairy of Avalon)
+  artoria_caster: {
+    buster: [
+      "Secace!",
+      "I'll break through!",
+      "Burst, Chastiefol!",
+      "If they are in our way...!"
+    ],
+    arts: [
+      "Go straight in here!",
+      "You there! Don't move!",
+      "Whew...yay!",
+      "Uwaaah!"
+    ],
+    quick: [
+      "Burst, Chastiefol!",
+      "Go straight in here!",
+      "Secace!",
+      "I'll break through!"
+    ],
+    mixed: [
+      "I may be inexperienced, but I'll try my best!",
+      "It'll be okay... Stay calm...I just need to do it normally...!",
+      "Everyone, follow me!",
+      "If they are in our way...!"
+    ],
+    desperation: [
+      "Ow!",
+      "I'm sleepy...maybe we can stop here...",
+      "I'm sorry...I guess I really wasn't good enough..."
+    ],
+    skills: [
+      "Now's the time to prepare!",
+      "It's a battle then!",
+      "...I don't want to do this."
+    ],
+    victory: [
+      "Phew...I did good this time.",
+      "Thank you very much. This was all thanks to everyone!",
+      "Ahhh...I hear the bells tolling..."
+    ],
+    defeat: [
+      "I'm sorry...I guess I really wasn't good enough...",
+      "I'm sleepy...maybe we can stop here..."
+    ]
+  },
+
   // Amamiya no Chihaya Tenkohime - Saber (Ancient Kyubi Guardian)
   amamiya_no_chihaya_tenkohime: {
     buster: [
@@ -892,6 +939,9 @@ export function getServantProfile(servantName?: string): ServantDialogueProfile 
   }
   if (n.includes('luvria') || n.includes('greenharte') || n.includes('strongest mage') || n.includes('concept nullification')) {
     return SERVANT_COMBAT_DIALOGUES.luvria_greenharte;
+  }
+  if (n.includes('artoria caster') || n.includes('castoria') || n.includes('altria caster') || n.includes('child of prophecy') || n.includes('round of avalon')) {
+    return SERVANT_COMBAT_DIALOGUES.artoria_caster;
   }
   if (n.includes('edmond') || n.includes('tiger-kin') || n.includes('tigris redoubt') || n.includes('red scarf') || n.includes('earth-wrought')) {
     return SERVANT_COMBAT_DIALOGUES.edmond;

@@ -59,8 +59,12 @@ export const STATUS_ICON_URLS: Record<string, string> = {
   ignore_invincible: 'https://ella.janitorai.com/media-approved/Lil_qMN3_io8APX5M1Doe.webp',
   pierce_invincible: 'https://ella.janitorai.com/media-approved/Lil_qMN3_io8APX5M1Doe.webp',
 
-  // 17. Invincible
+  // 17. Invincible & Anti-Purge Defense
   invincible: 'https://ella.janitorai.com/media-approved/VvJ3XFCqiBi35w5g0Zvua.webp',
+  anti_purge_defense: 'https://ella.janitorai.com/media-approved/VvJ3XFCqiBi35w5g0Zvua.webp',
+  anti_purge: 'https://ella.janitorai.com/media-approved/VvJ3XFCqiBi35w5g0Zvua.webp',
+  anti_purge_atk: 'https://ella.janitorai.com/media-approved/Lil_qMN3_io8APX5M1Doe.webp',
+  sure_hit: 'https://ella.janitorai.com/media-approved/Lil_qMN3_io8APX5M1Doe.webp',
 
   // 18. Ignore Defense
   ignore_defense: 'https://ella.janitorai.com/media-approved/3QYyblQ5GcPa32rdLX4K0.webp',
@@ -129,6 +133,8 @@ export function getStatusIconUrl(effectTypeOrName?: string): string {
   if (key.includes('crit_dmg') || key.includes('crit_damage')) return STATUS_ICON_URLS.crit_dmg;
   if (key.includes('star')) return STATUS_ICON_URLS.crit_stars;
   if (key.includes('guts')) return STATUS_ICON_URLS.guts;
+  if (key.includes('anti_purge_defense') || key.includes('anti_purge')) return STATUS_ICON_URLS.anti_purge_defense;
+  if (key.includes('anti_purge_atk')) return STATUS_ICON_URLS.anti_purge_atk;
   if (key.includes('invincible') || key.includes('invuln')) return STATUS_ICON_URLS.invincible;
   if (key.includes('evade') || key.includes('evasion')) return STATUS_ICON_URLS.evade;
   if (key.includes('heal')) return STATUS_ICON_URLS.heal;

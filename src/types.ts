@@ -65,7 +65,8 @@ export type PassiveSkillType =
   | 'absolute_permanence'
   | 'magic_gunner'
   | 'terra_affinity'
-  | 'veteran_of_the_slums';
+  | 'veteran_of_the_slums'
+  | 'ones_own_magic';
 
 export interface PassiveSkill {
   name: string;
@@ -396,7 +397,7 @@ export interface ActiveCombatant {
   npGauge: number;
   activeBuffs: Array<{
     name: string;
-    type: 'buff_atk' | 'buff_def' | 'crit_rate' | 'evade' | 'invincible' | 'stun' | string;
+    type: 'buff_atk' | 'buff_def' | 'crit_rate' | 'evade' | 'invincible' | 'anti_purge_defense' | 'anti_purge_atk' | 'ignore_invincible' | 'sure_hit' | 'stun' | string;
     value: number;
     remainingTurns: number;
     remainingHits?: number;
@@ -407,6 +408,7 @@ export interface ActiveCombatant {
   noblePhantasm: NoblePhantasm;
   isEvading?: boolean;
   isInvincible?: boolean;
+  isAntiPurgeDefense?: boolean;
   isStunned?: boolean;
   gutsCount?: number;
   critStars: number;

@@ -39,6 +39,7 @@ export interface CombatantBuffSummary {
   evadeHits?: number;
   isInvincible: boolean;
   invincibleHits?: number;
+  isAntiPurgeDefense: boolean;
   gutsCount: number;
   isStunned: boolean;
   badges: CombatantBadge[];
@@ -63,6 +64,7 @@ export function calculateCombatantBuffSummary(
       npGainPercent: 0,
       isEvading: false,
       isInvincible: false,
+      isAntiPurgeDefense: false,
       gutsCount: 0,
       isStunned: false,
       badges: [],
@@ -82,6 +84,7 @@ export function calculateCombatantBuffSummary(
   let evadeHits = 0;
   let isInvincible = false;
   let invincibleHits = 0;
+  let isAntiPurgeDefense = false;
   let gutsCount = 0;
   let isStunned = Boolean(combatant.isStunned);
 
@@ -132,6 +135,13 @@ export function calculateCombatantBuffSummary(
         npGainBoost += val;
         buffDescriptions.push(`• **${b.name || 'NP Gain'}**: +${val}% NP Gain (${durationLabel})`);
         break;
+      case 'anti_purge_defense':
+      case 'anti_purge':
+        if (b.remainingTurns > 0) {
+          isAntiPurgeDefense = true;
+          buffDescriptions.push(`• **${b.name || 'Anti-Purge Defense'}**: Complete Damage Nullification [Blocks Ignore Invincible] (${durationLabel})`);
+        }
+        break;
       case 'evade':
         if (b.remainingTurns > 0 && (b.remainingHits === undefined || b.remainingHits > 0)) {
           isEvading = true;
@@ -146,18 +156,8 @@ export function calculateCombatantBuffSummary(
           buffDescriptions.push(`• **${b.name || 'Invincibility'}**: Complete Invulnerability (${durationLabel})`);
         }
         break;
-      case 'guts': {
-        const buffHits = (hits && hits > 0) ? hits : 1;
-        gutsCount += buffHits;
-        buffDescriptions.push(`• **${b.name || 'Guts'}**: Revive from lethal defeat with ${val.toLocaleString()} HP (${durationLabel})`);
-        break;
-      }
-      case 'stun':
-        isStunned = true;
-        buffDescriptions.push(`• **${b.name || 'Stun'}**: Incapacitated (${durationLabel})`);
-        break;
-      case 'skill_seal':
-        buffDescriptions.push(`• **${b.name || 'Skill Seal'}**: Active Skills Sealed (${durationLabel})`);
+      case 'anti_purge_atk':
+        buffDescriptions.push(`• **${b.name || 'Anti-Purge Attack'}**: Attacks Pierce Invincibility & Anti-Purge Defense (${durationLabel})`);
         break;
       case 'ignore_invincible':
         buffDescriptions.push(`• **${b.name || 'Ignore Invincibility'}**: Attacks Pierce Evade & Invincibility (${durationLabel})`);
@@ -212,8 +212,20 @@ export function calculateCombatantBuffSummary(
     });
   }
 
-  // INVINCIBLE Badge
-  if (isInvincible) {
+  // ANTI-PURGE DEFENSE Badge (Highest Defensive Priority)
+  if (isAntiPurgeDefense) {
+    badges.push({
+      id: 'anti_purge',
+      label: 'ANTI-PURGE',
+      shortLabel: 'A-PURGE',
+      iconSymbol: 'invincible',
+      type: 'invincible',
+      bgColor: 'rgba(91, 33, 182, 0.92)',
+      borderColor: '#a855f7',
+      textColor: '#f3e8ff'
+    });
+  } else if (isInvincible) {
+    // INVINCIBLE Badge
     badges.push({
       id: 'invincible',
       label: invincibleHits > 0 ? `INVINC (${invincibleHits}H)` : 'INVINC',
@@ -334,6 +346,7 @@ export function calculateCombatantBuffSummary(
     evadeHits: evadeHits > 0 ? evadeHits : undefined,
     isInvincible,
     invincibleHits: invincibleHits > 0 ? invincibleHits : undefined,
+    isAntiPurgeDefense,
     gutsCount,
     isStunned,
     badges,
@@ -371,7 +384,8 @@ export function formatCombatantBuffEmbedString(
   if (summary.quickPercent > 0) parts.push(`🟢 Quick: **+${summary.quickPercent}%**`);
 
   // Survivability
-  if (summary.isInvincible) parts.push(`✨ **Invincible**${summary.invincibleHits ? ` (${summary.invincibleHits}H)` : ''}`);
+  if (summary.isAntiPurgeDefense) parts.push(`👑 **Anti-Purge Defense**`);
+  else if (summary.isInvincible) parts.push(`✨ **Invincible**${summary.invincibleHits ? ` (${summary.invincibleHits}H)` : ''}`);
   else if (summary.isEvading) parts.push(`💨 **Evade**${summary.evadeHits ? ` (${summary.evadeHits}H)` : ''}`);
   if (summary.gutsCount > 0) parts.push(`🩸 **Guts (${summary.gutsCount}x)**`);
   if (summary.isStunned) parts.push(`💫 **STUNNED**`);

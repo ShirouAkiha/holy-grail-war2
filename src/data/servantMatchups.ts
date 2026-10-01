@@ -110,6 +110,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "A fortress of unyielding will... Your shield stands not for glory, but to shelter those behind you. I shall meet your bastion with full honor!",
       retort: "King of Knights, huh? That blade carries a hell of a reputation. Step forward, your Majesty—let's see if your holy light can crack this wall!",
       tag: "HOLY SWORD OF VICTORY VS TIGRIS REDOUBT"
+    },
+    artoria_caster: {
+      intro: "A king who bears the hopes of Britain must stand unyielding. Show me the strength behind your staff, Child of Selection!",
+      retort: "Uwah, please don't look at me with such piercing eyes! I'm really not regal or grand like you at all... but since you called me out, I can't back down now!",
+      tag: "THE PROPER KING & THE CHILD OF SELECTION"
     }
   },
 
@@ -206,6 +211,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "A scoundrel from the slums raising a slab of iron against the sovereign of mankind? Your insolence shall be repaid with a thousand divine blades, mongrel.",
       retort: "King of Heroes, huh? You've got an awful lot of shiny cutlery floating in the air. Step up and see how many shatter against this wall.",
       tag: "TOWER SHIELD VS GATE OF BABYLON"
+    },
+    artoria_caster: {
+      intro: "A country bumpkin wielding a walking stick dare cross paths with the King of Heroes? Kneel before you are buried beneath divine steel, girl!",
+      retort: "Guh, what an impossibly arrogant jerk! Flaunting all that gold isn't going to make me bow down to you! Staff of Selection, let's blow this peacock away!",
+      tag: "GOLDEN VAULT & PILGRIM'S STAFF"
     }
   },
 
@@ -302,6 +312,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "The stance of a man who has held the line through countless meat grinders. Your shield has weathered ruin, vanguard—let us see if it can withstand the gate of the dead.",
       retort: "They say you've killed gods and forged the finest warriors of the age. Don't hold back, teacher—let's see if those red spears can dent this wall.",
       tag: "GATE OF SKYE VS FORTRESS OF EBONWATCH"
+    },
+    artoria_caster: {
+      intro: "Your guard is wide open and your stance lacks foundation, girl. Show me if your spirit can survive a thrust honed by two thousand years of slaughter.",
+      retort: "T-Two thousand years?! That's way too intense! P-Please don't grade my footwork too harshly, master Scáthach—I'm doing everything I can just to stay upright!",
+      tag: "SHADOW INSTRUCTOR & STUMBLING APPRENTICE"
     }
   },
 
@@ -373,6 +388,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Lord have mercy... What cosmic calamity stands before us?! Hold fast, my banner! We shall not falter!",
       retort: "⟨ Voth Krav'nok kri. ⟩ Such an annoying white fluttering cloth. I will vaporize it and crystallize you where you stand.",
       tag: "SAINT'S PRAYER VS AZURE RUIN"
+    },
+    artoria_caster: {
+      intro: "Artoria... The burden of answering everyone's prayers is heavy, but do not lose heart. Let us share our convictions in this duel.",
+      retort: "You're so incredibly kind... It makes me want to cry a little. I'm clumsy and full of doubts, but I'll do everything I can to not disappoint you, Saint Jeanne!",
+      tag: "TWO MAIDENS OF DESTINY"
     }
   },
 
@@ -1757,14 +1777,116 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       retort: "Let's see who holds the true line, then. One shield stands, one shield falls!",
       tag: "REDOUBT OF THE DUAL TIGERS"
     }
+  },
+
+  // =========================================================================
+  // 19. ARTORIA CASTER (CASTORIA)
+  // =========================================================================
+  artoria_caster: {
+    artoria_pendragon: {
+      intro: "W-Wait, is that really the King of Knights?! S-So dignified and flawless... Ah, looking at her makes my knees shake, but I can't look bad here! E-Excuse me, please don't hit too hard!",
+      retort: "You carry the burden of an entire world upon those small shoulders. Stand tall, Child of Prophecy—let me see the conviction behind your staff!",
+      tag: "THE PROPER KING & THE CHILD OF SELECTION"
+    },
+    artoria_pendragon_alter: {
+      intro: "Uwah... Why is that me so terrifying and completely covered in black armor?! J-Just looking at that glare makes me want to apologize and run away... B-But I have to stand my ground!",
+      retort: "Trembling like a frightened rabbit. If that shaky staff is all you brought to save Britain, you'll be buried beneath the ash in an instant.",
+      tag: "BLACK TYRANT & FRAIL HOPE"
+    },
+    gilgamesh_archer: {
+      intro: "E-Excuse me, sir! All those floating golden weapons are way too bright, and honestly, terrifying! C-Can we maybe talk this over before you fire all of that at me?!",
+      retort: "A scruffy country girl tripping over her oversized hat? Fuhahaha! To think a world relied on such a fragile scrap of wood! Let us see if you can even dodge a single blade, girl!",
+      tag: "GOLDEN VAULT & PILGRIM'S STAFF"
+    },
+    emiya_archer: {
+      intro: "That red coat... You have that same exhausted look Uncle Ector gets when I break things. I-I promise I'm doing my best, so please don't look at me like I'm a lost cause!",
+      retort: "Tripping over your own hem again? Good grief... You don't belong on a battlefield, but since you're here, make sure you brace your feet before you cast.",
+      tag: "WROUGHT IRON & WEARY FAIRY"
+    },
+    cu_chulainn_lancer: {
+      intro: "H-Hold on a second! That red spear is aimed straight at my chest! You're way too fast and way too eager for a fight—p-please give me at least five seconds to set up my barrier!",
+      retort: "Haha! A battle doesn't wait for polite requests, little mage! Put up that staff and show me what that fairy magic can do!",
+      tag: "WILD HOUND & NERVOUS MAGE"
+    },
+    heracles_berserker: {
+      intro: "Hiii—! He's giant! He's so loud my ears are ringing, and the ground is shaking! O-Okay, calm down, Artoria... Deep breaths... Just don't let him hit you even once!",
+      retort: "■■■■■■■■■■■■———!!",
+      tag: "TITANIC RAGE & FRAIL DEFENSE"
+    },
+    karna_lancer: {
+      intro: "Your eyes... It feels like you can see right through every lie and excuse I've ever made. I-I'm really not as amazing as everyone says, but... I won't turn around!",
+      retort: "You tremble, yet you do not flee. A heart that bears crushing expectations without breaking carries a brilliance of its own. Face me, Child of Prophecy.",
+      tag: "SUN GOD'S FLAME & AVALON'S DEW"
+    },
+    scathach_lancer: {
+      intro: "A-A master instructor from the land of the dead?! Oh no, she has that exact sharp glare that means 'time for intensive training'... P-Please go easy on my footwork!",
+      retort: "Your grip is unsteady and your balance is terrible, girl. Yet you force yourself upright. Very well—let us see if your spirit survives my crimson thrust.",
+      tag: "SHADOW INSTRUCTOR & STUMBLING APPRENTICE"
+    },
+    jeanne_darc_ruler: {
+      intro: "The Saint of Orleans... You were given a terrible duty by the world, too, weren't you? Yet you're so warm and gentle... I-I want to become someone dependable like you!",
+      retort: "I understand how heavy the path feels when everyone places their prayers on you. But you are not alone, Artoria. Let us share our resolve in this duel.",
+      tag: "TWO MAIDENS OF DESTINY"
+    },
+    jeanne_alter: {
+      intro: "Eep! Why are you yelling so loudly?! I get that everything is annoying and everyone expects too much, but throwing fire around won't fix anything! ...W-Wait, don't aim it at me!",
+      retort: "What's with that timid, mopey attitude?! If you hate your duty so much, just blast everything to cinders like I do! Stop squeaking and fight back!",
+      tag: "COMPLAINTS & TEMPER TANTRUMS"
+    },
+    nero_claudius_saber: {
+      intro: "U-Um, your dress is very... striking, Emperor! Everyone is staring at you, and you seem so confident... I-I wish I could borrow even a tiny fraction of that confidence!",
+      retort: "Umu! A modest and charming flower from the countryside! Do not shrink away, little mage—the stage shines for anyone with passion in their heart!",
+      tag: "SHY COUNTRY GIRL & BLUSHING EMPEROR"
+    },
+    mhx_alter: {
+      intro: "W-Wait, you're eating wagashi right now?! Is this really the time for a snack break?! ...A-Actually, that bean paste smells really good... C-Could I have a bite after this?",
+      retort: "Emergency sweets competitor detected. High sugar interest noted. Defending rations with twin dark blades... Commencing duel.",
+      tag: "PASTRY BREAK & RUNAWAY REACTOR"
+    },
+    adiosa_dragon_envoy: {
+      intro: "T-That pressure... It feels like an entire sky is pressing down on my chest. I'm terrified, and I really just want to hide under a blanket... but I promised I'd see this through!",
+      retort: "⟨ Krav'nok rath. ⟩ A fragile fairy vessel chosen by a dying soil. You can barely lift your staff, little moth. Why stand against the coming night?",
+      tag: "COSMIC PRUNING & FAIRY OF THE INLAND SEA"
+    },
+    aoko_aozaki: {
+      intro: "Are you really firing pure destructive blasts with your bare fists?! M-Merlin never taught me anything that looks that violent! Please don't blow up my hat!",
+      retort: "Hey, if it works, it works! You've got an incredible reservoir of mystery inside you, kiddo—stop apologizing and let loose a real blast!",
+      tag: "COUNTRY MAGICIAN VS MODERN MAGICIAN"
+    },
+    amamiya_no_chihaya_tenkohime: {
+      intro: "W-Wah! Nine fluffy tails! She's so cute and divine... Ah, but that katana looks really sharp! P-Please don't bite me, miss fox goddess!",
+      retort: "H-Hmph! Don't thee stare at washi's sacred tails like they are feather dusters! Washi's Amazakura shall test thy rustic sorcery, thou timid little mage!",
+      tag: "SHRINE SPIRIT & PILGRIM'S CHARM"
+    },
+    lucia_lyozes: {
+      intro: "An elf vanguard from another realm... You look like someone who has lost so much, yet you keep marching forward. I-I'm clumsy and weak, but I'll do my best to match your resolve!",
+      retort: "Your eyes carry the quiet sorrow of someone forced to walk a path she never asked for. Do not drop your guard, Artoria—grief cannot defend your life.",
+      tag: "FIVE-SECOND FORESIGHT & SIGHT OF THE BELLS"
+    },
+    luvria_greenharte: {
+      intro: "An archmage who can erase concepts?! That sounds completely impossible and way above my pay grade! O-Okay, staff of selection, please don't fail me now...!",
+      retort: "My, what an adorable, frantic little savior! Carrying the destiny of an entire realm while trembling at the seams? How wonderfully poetic! Show me the miracle you carry, little star!",
+      tag: "CONCEPT NULLIFICATION & CREATION OF THE SWORD"
+    },
+    edmond: {
+      intro: "That huge shield... It feels so sturdy, like Uncle Ector's workshop wall. S-Sorry in advance if my spells leave any scorch marks on it, sir!",
+      retort: "Heh, don't worry about scratching the paint, kid. Plant your feet, stop shaking, and throw everything you've got right here—I won't move an inch.",
+      tag: "THE TRAVELER'S STAFF & THE RELIABLE SHIELD"
+    },
+    artoria_caster: {
+      intro: "U-Um, why am I looking at myself?! Does this mean there's another Child of Prophecy, or did I mess up a mirror spell again?! Ahh, this is so confusing...!",
+      retort: "H-Hey, don't look at me like that! I'm just as confused as you are! But if everyone is watching, I guess... we both have to do our best and not give up!",
+      tag: "THE PILGRIM'S REFLECTION"
+    }
   }
 };
 
-// Also alias amamiya, lucia, and luvria in the database
+// Also alias amamiya, lucia, luvria, edmond, and artoria_caster in the database
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['amamiya'] = SERVANT_MATCHUP_DATABASE.amamiya_no_chihaya_tenkohime;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['lucia'] = SERVANT_MATCHUP_DATABASE.lucia_lyozes;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['luvria'] = SERVANT_MATCHUP_DATABASE.luvria_greenharte;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['edmond'] = SERVANT_MATCHUP_DATABASE.edmond;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['castoria'] = SERVANT_MATCHUP_DATABASE.artoria_caster;
 
 /**
  * Fallback generator for custom servants, meme servants, or any servant pairs not explicitly defined.
@@ -1859,6 +1981,8 @@ export function getServantMatchupDialogue(
     if (id === 'lucia_lyozes') return 'lucia';
     if (id === 'luvria') return 'luvria_greenharte';
     if (id === 'luvria_greenharte') return 'luvria';
+    if (id === 'castoria') return 'artoria_caster';
+    if (id === 'artoria_caster') return 'castoria';
     return id;
   };
   const cAlt = getAltId(cId);

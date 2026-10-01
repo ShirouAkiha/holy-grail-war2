@@ -951,8 +951,68 @@ export function executeNoblePhantasmLogic(
     // Non-damaging Support Noble Phantasm
     damageDealt = 0;
     if (cardType === 'Arts') {
+      const isRoundOfAvalon = /round of avalon|avalon/i.test(np.name) || actor.id === 'artoria_caster';
       const isTigris = /tigris|edmond/i.test(np.name) || actor.id === 'edmond';
-      if (isTigris) {
+
+      if (isRoundOfAvalon) {
+        // Round of Avalon: The Promised Star Which Gathers The True Round
+        // 1. Party ATK Up +50% for 3 turns
+        actor.activeBuffs.push({
+          name: 'Round of Avalon (ATK Up)',
+          type: 'buff_atk',
+          value: 50,
+          remainingTurns: 3
+        });
+
+        // 2. Cleanse all debuffs
+        const debuffsFound = actor.activeBuffs.filter(b =>
+          b.type.startsWith('debuff') ||
+          b.type === 'stun' ||
+          b.type === 'burn' ||
+          b.type === 'poison' ||
+          b.type === 'curse' ||
+          b.type === 'np_dmg_down' ||
+          b.type === 'charm' ||
+          b.type === 'atk_down' ||
+          b.type === 'def_down' ||
+          (b.value < 0) ||
+          /debuff|down|curse|burn|poison|stun|bound/i.test(b.name)
+        );
+        const debuffCount = debuffsFound.length;
+
+        actor.activeBuffs = actor.activeBuffs.filter(b =>
+          !b.type.startsWith('debuff') &&
+          b.type !== 'stun' &&
+          b.type !== 'burn' &&
+          b.type !== 'poison' &&
+          b.type !== 'curse' &&
+          b.type !== 'np_dmg_down' &&
+          b.type !== 'charm' &&
+          b.type !== 'atk_down' &&
+          b.type !== 'def_down' &&
+          !(b.value < 0) &&
+          !/debuff|down|curse|burn|poison|stun|bound/i.test(b.name)
+        );
+        actor.isStunned = false;
+
+        // 3. Grants Anti-Purge Defense for 1 turn (Completely nullifies damage; only loses to Anti-Purge Attack)
+        actor.isAntiPurgeDefense = true;
+        actor.activeBuffs.push({
+          name: 'Round of Avalon (Anti-Purge Defense)',
+          type: 'anti_purge_defense',
+          value: 100,
+          remainingTurns: 1
+        });
+
+        // 4. Overcharge: 15-25 Critical Stars
+        const ocLevel = actor.npGauge >= 300 ? 3 : actor.npGauge >= 200 ? 2 : 1;
+        const starGrant = 15 + (ocLevel - 1) * 5;
+        actor.critStars = Math.min(50, (actor.critStars || 0) + starGrant);
+
+        npCharged = 0;
+        starsGenerated = starGrant;
+        actionSummary = `👑 **${actor.name}** deployed Support Noble Phantasm [${np.name}]! Bestowed Party **Anti-Purge Defense** (1 turn, Absolute Damage Nullification), +50% ATK (3T), Cleansed all debuffs${debuffCount > 0 ? ` (${debuffCount} removed)` : ''}, and generated ${starGrant} Critical Stars!`;
+      } else if (isTigris) {
         // Tigris Redoubt: Roar of the Living Earth
         const ocLevel = actor.npGauge >= 300 ? 3 : actor.npGauge >= 200 ? 2 : 1;
         const defBonus = 30 + (ocLevel - 1) * 10;
@@ -1141,65 +1201,95 @@ export function executeNoblePhantasmLogic(
     const variance = 0.96 + Math.random() * 0.08;
     totalDmg = Math.round(totalDmg * variance * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
-    // Check Ignore Invincible (e.g. Origin Bullet)
-    const actorIgnoresInvincible = actor.equippedCe?.id === 'ce_origin_bullet' || actor.equippedCe?.passiveType === 'ignore_invincible' || actor.activeBuffs.some(b => b.type === 'ignore_invincible');
+    // Offensive trait checks
+    const actorHasAntiPurgeAtk = actor.equippedCe?.passiveType === 'anti_purge_atk' || actor.activeBuffs.some(b => b.type === 'anti_purge_atk' || b.type === 'pierce_anti_purge');
+    const actorIgnoresInvincible = actor.equippedCe?.id === 'ce_origin_bullet' || actor.equippedCe?.passiveType === 'ignore_invincible' || actor.activeBuffs.some(b => b.type === 'ignore_invincible' || b.type === 'anti_invulnerable' || b.type === 'pierce_invincible');
+    const actorHasSureHit = actor.equippedCe?.passiveType === 'sure_hit' || actor.activeBuffs.some(b => b.type === 'sure_hit' || b.type === 'ignore_evade');
+
     if (actor.equippedCe?.id === 'ce_origin_bullet' && (target.servantClass === 'Caster' || (target.stats?.mana || 0) >= 12)) {
       totalDmg = Math.round(totalDmg * 1.35);
     }
 
-    // Check Invincibility & Evade on target
+    // Check Anti-Purge Defense, Invincibility & Evade on target (Triangle mechanic)
+    const apIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge') : -1;
     const invIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'invincible') : -1;
     const evaIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'evade') : -1;
-    if (invIdx !== -1 && !actorIgnoresInvincible && target.activeBuffs) {
-      const buff = target.activeBuffs[invIdx];
-      const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /volumen/i.test(buff.name);
-      if (isHitBased) {
-        if (buff.remainingHits === undefined) buff.remainingHits = 3;
-        if (buff.remainingHits <= 0) {
-          target.activeBuffs.splice(invIdx, 1);
-          if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
-          damageDealt = totalDmg;
-        } else {
-          damageDealt = 0;
-          isInvincible = true;
-          buff.remainingHits--;
-          if (buff.remainingHits <= 0) target.activeBuffs.splice(invIdx, 1);
-          if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
-        }
+
+    // 1. Anti-Purge Defense: completely nullifies dmg for 1T (blocks normal, sure hit & ignore invincible; loses ONLY to Anti-Purge Atk)
+    if (apIdx !== -1 && target.activeBuffs) {
+      const buff = target.activeBuffs[apIdx];
+      if (actorHasAntiPurgeAtk) {
+        // Pierced by Anti-Purge Attack!
+        damageDealt = totalDmg;
       } else {
         if (buff.remainingTurns > 0) {
           damageDealt = 0;
-          isInvincible = true;
+          isInvincible = true; // Absorbed by Anti-Purge barrier
         } else {
-          target.activeBuffs.splice(invIdx, 1);
-          if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
+          target.activeBuffs.splice(apIdx, 1);
           damageDealt = totalDmg;
         }
       }
-    } else if (evaIdx !== -1 && !actorIgnoresInvincible && target.activeBuffs) {
-      const buff = target.activeBuffs[evaIdx];
-      const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /protection from arrows/i.test(buff.name);
-      if (isHitBased) {
-        if (buff.remainingHits === undefined) buff.remainingHits = 3;
-        if (buff.remainingHits <= 0) {
-          target.activeBuffs.splice(evaIdx, 1);
-          if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
-          damageDealt = totalDmg;
-        } else {
-          damageDealt = 0;
-          isEvaded = true;
-          buff.remainingHits--;
-          if (buff.remainingHits <= 0) target.activeBuffs.splice(evaIdx, 1);
-          if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
-        }
+    } else if (invIdx !== -1 && target.activeBuffs) {
+      // 2. Invincible: pierced by Ignore Invincible AND Anti-Purge Attack
+      if (actorIgnoresInvincible || actorHasAntiPurgeAtk) {
+        damageDealt = totalDmg;
       } else {
-        if (buff.remainingTurns > 0) {
-          damageDealt = 0;
-          isEvaded = true;
+        const buff = target.activeBuffs[invIdx];
+        const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /volumen/i.test(buff.name);
+        if (isHitBased) {
+          if (buff.remainingHits === undefined) buff.remainingHits = 3;
+          if (buff.remainingHits <= 0) {
+            target.activeBuffs.splice(invIdx, 1);
+            if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
+            damageDealt = totalDmg;
+          } else {
+            damageDealt = 0;
+            isInvincible = true;
+            buff.remainingHits--;
+            if (buff.remainingHits <= 0) target.activeBuffs.splice(invIdx, 1);
+            if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
+          }
         } else {
-          target.activeBuffs.splice(evaIdx, 1);
-          if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
-          damageDealt = totalDmg;
+          if (buff.remainingTurns > 0) {
+            damageDealt = 0;
+            isInvincible = true;
+          } else {
+            target.activeBuffs.splice(invIdx, 1);
+            if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
+            damageDealt = totalDmg;
+          }
+        }
+      }
+    } else if (evaIdx !== -1 && target.activeBuffs) {
+      // 3. Evade: pierced by Ignore Invincible / Sure Hit; but EVADES Anti-Purge Attack!
+      if (actorIgnoresInvincible || actorHasSureHit) {
+        damageDealt = totalDmg;
+      } else {
+        const buff = target.activeBuffs[evaIdx];
+        const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /protection from arrows/i.test(buff.name);
+        if (isHitBased) {
+          if (buff.remainingHits === undefined) buff.remainingHits = 3;
+          if (buff.remainingHits <= 0) {
+            target.activeBuffs.splice(evaIdx, 1);
+            if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
+            damageDealt = totalDmg;
+          } else {
+            damageDealt = 0;
+            isEvaded = true;
+            buff.remainingHits--;
+            if (buff.remainingHits <= 0) target.activeBuffs.splice(evaIdx, 1);
+            if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
+          }
+        } else {
+          if (buff.remainingTurns > 0) {
+            damageDealt = 0;
+            isEvaded = true;
+          } else {
+            target.activeBuffs.splice(evaIdx, 1);
+            if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
+            damageDealt = totalDmg;
+          }
         }
       }
     } else {
@@ -2038,65 +2128,94 @@ export function executeBattleTurn(
     const effectiveAtk = actor.atk * (1 + atkBuff / 100) * (1 + (actor.stats.strength * 0.01));
     const effectiveDef = target.def * (1 + defBuff / 100);
 
-    const processHitProtection = (): { isProtected: boolean; isInvincible: boolean; isEvade: boolean } => {
-      const actorIgnores = actor.equippedCe?.id === 'ce_origin_bullet' || actor.equippedCe?.passiveType === 'ignore_invincible' || actor.activeBuffs.some(b => b.type === 'ignore_invincible');
-      if (actorIgnores) return { isProtected: false, isInvincible: false, isEvade: false };
+    const processHitProtection = (): { isProtected: boolean; isInvincible: boolean; isEvade: boolean; isAntiPurge: boolean } => {
+      const actorHasAntiPurgeAtk = actor.equippedCe?.passiveType === 'anti_purge_atk' || actor.activeBuffs.some(b => b.type === 'anti_purge_atk' || b.type === 'pierce_anti_purge');
+      const actorIgnores = actor.equippedCe?.id === 'ce_origin_bullet' || actor.equippedCe?.passiveType === 'ignore_invincible' || actor.activeBuffs.some(b => b.type === 'ignore_invincible' || b.type === 'anti_invulnerable' || b.type === 'pierce_invincible');
+      const actorHasSureHit = actor.equippedCe?.passiveType === 'sure_hit' || actor.activeBuffs.some(b => b.type === 'sure_hit' || b.type === 'ignore_evade');
 
+      // 1. Anti-Purge Defense: blocks normal attacks, sure hit, and ignore invincible. Pierced ONLY by Anti-Purge Attack.
+      const apIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge') : -1;
+      if (apIdx !== -1 && target.activeBuffs) {
+        const buff = target.activeBuffs[apIdx];
+        if (actorHasAntiPurgeAtk) {
+          // Pierced by Anti-Purge Attack!
+        } else {
+          if (buff.remainingTurns > 0) {
+            return { isProtected: true, isInvincible: true, isEvade: false, isAntiPurge: true };
+          } else {
+            target.activeBuffs.splice(apIdx, 1);
+            if (!target.activeBuffs.some(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge')) target.isAntiPurgeDefense = false;
+          }
+        }
+      } else {
+        target.isAntiPurgeDefense = false;
+      }
+
+      // 2. Invincible: pierced by Ignore Invincible AND Anti-Purge Attack
       const invIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'invincible') : -1;
       if (invIdx !== -1 && target.activeBuffs) {
         const buff = target.activeBuffs[invIdx];
-        const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /volumen/i.test(buff.name);
-        if (isHitBased) {
-          if (buff.remainingHits === undefined) buff.remainingHits = 3;
-          if (buff.remainingHits <= 0) {
-            target.activeBuffs.splice(invIdx, 1);
-            if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
-          } else {
-            buff.remainingHits--;
-            if (buff.remainingHits <= 0) target.activeBuffs.splice(invIdx, 1);
-            if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
-            return { isProtected: true, isInvincible: true, isEvade: false };
-          }
+        if (actorIgnores || actorHasAntiPurgeAtk) {
+          // Pierced by Ignore Invincible or Anti-Purge Attack!
         } else {
-          if (buff.remainingTurns > 0) {
-            return { isProtected: true, isInvincible: true, isEvade: false };
+          const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /volumen/i.test(buff.name);
+          if (isHitBased) {
+            if (buff.remainingHits === undefined) buff.remainingHits = 3;
+            if (buff.remainingHits <= 0) {
+              target.activeBuffs.splice(invIdx, 1);
+              if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
+            } else {
+              buff.remainingHits--;
+              if (buff.remainingHits <= 0) target.activeBuffs.splice(invIdx, 1);
+              if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
+              return { isProtected: true, isInvincible: true, isEvade: false, isAntiPurge: false };
+            }
           } else {
-            target.activeBuffs.splice(invIdx, 1);
-            if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
+            if (buff.remainingTurns > 0) {
+              return { isProtected: true, isInvincible: true, isEvade: false, isAntiPurge: false };
+            } else {
+              target.activeBuffs.splice(invIdx, 1);
+              if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
+            }
           }
         }
       } else {
         target.isInvincible = false;
       }
 
+      // 3. Evade: pierced by Ignore Invincible / Sure Hit; but EVADES Anti-Purge Attack!
       const evaIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'evade') : -1;
       if (evaIdx !== -1 && target.activeBuffs) {
         const buff = target.activeBuffs[evaIdx];
-        const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /protection from arrows/i.test(buff.name);
-        if (isHitBased) {
-          if (buff.remainingHits === undefined) buff.remainingHits = 3;
-          if (buff.remainingHits <= 0) {
-            target.activeBuffs.splice(evaIdx, 1);
-            if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
-          } else {
-            buff.remainingHits--;
-            if (buff.remainingHits <= 0) target.activeBuffs.splice(evaIdx, 1);
-            if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
-            return { isProtected: true, isInvincible: false, isEvade: true };
-          }
+        if (actorIgnores || actorHasSureHit) {
+          // Pierced by Ignore Invincible or Sure Hit!
         } else {
-          if (buff.remainingTurns > 0) {
-            return { isProtected: true, isInvincible: false, isEvade: true };
+          const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /protection from arrows/i.test(buff.name);
+          if (isHitBased) {
+            if (buff.remainingHits === undefined) buff.remainingHits = 3;
+            if (buff.remainingHits <= 0) {
+              target.activeBuffs.splice(evaIdx, 1);
+              if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
+            } else {
+              buff.remainingHits--;
+              if (buff.remainingHits <= 0) target.activeBuffs.splice(evaIdx, 1);
+              if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
+              return { isProtected: true, isInvincible: false, isEvade: true, isAntiPurge: false };
+            }
           } else {
-            target.activeBuffs.splice(evaIdx, 1);
-            if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
+            if (buff.remainingTurns > 0) {
+              return { isProtected: true, isInvincible: false, isEvade: true, isAntiPurge: false };
+            } else {
+              target.activeBuffs.splice(evaIdx, 1);
+              if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
+            }
           }
         }
       } else {
         target.isEvading = false;
       }
 
-      return { isProtected: false, isInvincible: false, isEvade: false };
+      return { isProtected: false, isInvincible: false, isEvade: false, isAntiPurge: false };
     };
 
     let turnWasEvaded = false;

@@ -248,6 +248,12 @@ export function resolveCombatTurn(
   // Calculate active buffs for attacker and defender
   let atkBuff = 1.0;
   let defBuff = 1.0;
+
+  const actorHasAntiPurgeAtk = attacker.equippedCe?.passiveType === 'anti_purge_atk' || (attacker.activeBuffs || []).some(b => b.type === 'anti_purge_atk' || b.type === 'pierce_anti_purge');
+  const actorIgnoresInvincible = attacker.equippedCe?.id === 'ce_origin_bullet' || attacker.equippedCe?.passiveType === 'ignore_invincible' || (attacker.activeBuffs || []).some(b => b.type === 'ignore_invincible' || b.type === 'anti_invulnerable' || b.type === 'pierce_invincible');
+  const actorHasSureHit = attacker.equippedCe?.passiveType === 'sure_hit' || (attacker.activeBuffs || []).some(b => b.type === 'sure_hit' || b.type === 'ignore_evade');
+
+  let hasAntiPurgeDef = defender.isAntiPurgeDefense || false;
   let isEvading = defender.isEvading || false;
   let isInvincible = defender.isInvincible || false;
 
@@ -256,10 +262,23 @@ export function resolveCombatTurn(
   }
   for (const b of defender.activeBuffs || []) {
     if (b.type === 'buff_def') defBuff += b.value / 100;
+    if (b.type === 'anti_purge_defense' || b.type === 'anti_purge') hasAntiPurgeDef = true;
     if (b.type === 'evade') isEvading = true;
     if (b.type === 'invincible') isInvincible = true;
   }
-  const isProtected = isEvading || isInvincible;
+
+  // Tactical Triangle Hit Protection:
+  // 1. Anti-Purge Defense: completely nullifies dmg; ONLY loses to Anti-Purge Attack
+  // 2. Invincible: blocked unless attacker has Ignore Invincible (Anti-Invulnerable) OR Anti-Purge Attack
+  // 3. Evade: blocked unless attacker has Ignore Invincible OR Sure Hit; EVADES Anti-Purge Attack!
+  let isProtected = false;
+  if (hasAntiPurgeDef) {
+    if (!actorHasAntiPurgeAtk) isProtected = true;
+  } else if (isInvincible) {
+    if (!actorIgnoresInvincible && !actorHasAntiPurgeAtk) isProtected = true;
+  } else if (isEvading) {
+    if (!actorIgnoresInvincible && !actorHasSureHit) isProtected = true;
+  }
 
   const effectiveAtk = attacker.atk * atkBuff;
   const effectiveDef = defender.def * defBuff;

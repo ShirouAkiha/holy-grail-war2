@@ -667,6 +667,24 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     isBondCe: true,
     bondServantId: 'luvria_greenharte',
     bondServantName: 'Luvria Greenharte'
+  },
+  artoria_caster: {
+    id: 'ce_bond_artoria_caster',
+    name: 'The Promised Moment',
+    rarity: 4,
+    description: 'A quiet, serene moment under the azure sky with the girl of prophecy. Sharing tea, laughter, and the promise of tomorrow, far away from bells, pilgrimage, and calamitous battles.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: "When equipped to Artoria Caster: Increases party's attack by 10% and increases party's NP generation rate by 10% while self is on the field.",
+    passiveType: 'buff_atk',
+    passiveValue: 10,
+    artworkUrl: 'https://ella.janitorai.com/media-approved/M_CtKrPvwydKIhD_A27Aq.webp',
+    isBondCe: true,
+    bondServantId: 'artoria_caster',
+    bondServantName: 'Artoria Caster'
   }
 };
 

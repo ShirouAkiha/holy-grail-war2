@@ -999,7 +999,60 @@ async function runRaidBattle(
         const isGeneralDebuff = sType === 'debuff';
 
         let buffLog = '';
-        if (isAntiThreatSkill) {
+        if (/charisma of hope/i.test(sName)) {
+          // Charisma of Hope B: Increases party's ATK by 20% for 3 turns, charges party's NP gauge by 30%
+          battleState.participants.forEach(p => {
+            if (!p.isDead) {
+              p.activeBuffs = p.activeBuffs || [];
+              p.activeBuffs.push({
+                name: `${sName} (ATK Up)`,
+                type: 'atk_up',
+                value: 20,
+                remainingTurns: 3
+              });
+              p.npGauge = Math.min(300, (p.npGauge || 0) + 30);
+            }
+          });
+          active.critStars = (active.critStars || 0) + 10;
+          buffLog = `(+20% ATK & +30% NP Gauge to ALL Allies for 3T!)`;
+        } else if (/avalon le fae/i.test(sName)) {
+          // Avalon le Fae A: Charges NP gauge by 20% & increases party's NP generation rate by 30% for 3 turns
+          battleState.participants.forEach(p => {
+            if (!p.isDead) {
+              p.activeBuffs = p.activeBuffs || [];
+              p.activeBuffs.push({
+                name: `${sName} (NP Gain Rate Up)`,
+                type: 'np_gain_up',
+                value: 30,
+                remainingTurns: 3
+              });
+            }
+          });
+          active.npGauge = Math.min(300, (active.npGauge || 0) + 20);
+          buffLog = `(+20% NP Gauge & +30% Party NP Gain Rate for 3T!)`;
+        } else if (/holy sword creation/i.test(sName)) {
+          // Holy Sword Creation EX: +50% Arts Up (3T), +50% Special ATK vs Threat to Humanity (3T), Invincibility (1T)
+          active.activeBuffs = active.activeBuffs || [];
+          active.activeBuffs.push({
+            name: `${sName} (Arts Up)`,
+            type: 'arts_up',
+            value: 50,
+            remainingTurns: 3
+          });
+          active.activeBuffs.push({
+            name: `${sName} (Anti-Threat)`,
+            type: 'anti_threat',
+            value: 50,
+            remainingTurns: 3
+          });
+          active.activeBuffs.push({
+            name: `${sName} (Invincibility)`,
+            type: 'invincible',
+            value: 1,
+            remainingTurns: 1
+          });
+          buffLog = `(+50% Arts Up, +50% Anti-Threat Special ATK & 1T Invincibility!)`;
+        } else if (isAntiThreatSkill) {
           // Calamity-Breaker Edict: Increases ATK of ALL allies by +20%, and grants all allies [Special Attack against Threat to Humanity / Beast] (+30% DMG) for 3 turns!
           battleState.participants.forEach(p => {
             p.activeBuffs = p.activeBuffs || [];
@@ -1359,38 +1412,60 @@ async function runRaidBattle(
           const npTarget = active.servant.template?.noblePhantasm?.target || 'single';
           npNameUsed = npName;
 
-          const isSupportNp = npTarget === 'support' || npMultiplier === 0 || /party invincib|grant.*invincib|luminos|tigris redoubt/i.test(npName + ' ' + npDesc);
+          const isSupportNp = npTarget === 'support' || npMultiplier === 0 || /party invincib|grant.*invincib|luminos|tigris redoubt|round of avalon/i.test(npName + ' ' + npDesc);
 
           if (isSupportNp) {
-            // Party Invincibility, DEF Up (+30% 3T), Debuff Cleanse & Heal (+3,000 HP) to ALL living allies in the raid!
+            const isRoundOfAvalon = /round of avalon/i.test(npName);
+            // Party Buffs & Protection to ALL living allies in the raid!
             battleState.participants.forEach(p => {
               if (!p.isDead) {
                 p.activeBuffs = p.activeBuffs || [];
                 // Cleanse debuffs
                 p.activeBuffs = p.activeBuffs.filter(b => !['def_down', 'atk_down', 'curse', 'burn', 'poison', 'stun', 'np_seal', 'skill_seal'].includes(b.type));
 
-                // Grant Invincibility for 1 Turn
+                // Grant Invincibility for 1 Turn (Anti-Purge Defense for Round of Avalon)
                 p.activeBuffs.push({
-                  name: `${npName} (Invincibility)`,
-                  type: 'invincible',
+                  name: isRoundOfAvalon ? `${npName} (Anti-Purge Defense)` : `${npName} (Invincibility)`,
+                  type: isRoundOfAvalon ? 'anti_purge_defense' : 'invincible',
                   value: 1,
                   remainingTurns: 1
                 });
 
-                // Grant +30% DEF Up for 3 Turns
-                p.activeBuffs.push({
-                  name: `${npName} (DEF Up)`,
-                  type: 'def_up',
-                  value: 30,
-                  remainingTurns: 3
-                });
-
-                // Recovers +3,000 HP
-                p.currentHp = Math.min(p.maxHp, p.currentHp + 3000);
+                if (isRoundOfAvalon) {
+                  // Round of Avalon: +50% ATK for 3 turns, 2,500 Damage Cut, +15 Stars to all allies
+                  p.activeBuffs.push({
+                    name: `${npName} (ATK Up)`,
+                    type: 'atk_up',
+                    value: 50,
+                    remainingTurns: 3
+                  });
+                  p.activeBuffs.push({
+                    name: `${npName} (Damage Cut)`,
+                    type: 'damage_cut',
+                    value: 2500,
+                    remainingTurns: 3
+                  });
+                  p.critStars = Math.min(50, (p.critStars || 0) + 15);
+                } else {
+                  // Standard Support NP: +30% DEF for 3 turns & +3,000 HP
+                  p.activeBuffs.push({
+                    name: `${npName} (DEF Up)`,
+                    type: 'def_up',
+                    value: 30,
+                    remainingTurns: 3
+                  });
+                  p.currentHp = Math.min(p.maxHp, p.currentHp + 3000);
+                }
               }
             });
-            npEffectsLog.push('🕊️ [Party Invincible (1T), +30% DEF (3T), Cleanse & +3,000 HP Heal]');
-            npEffectsHud.push('Party Invincible • +30% DEF • Heal');
+
+            if (isRoundOfAvalon) {
+              npEffectsLog.push('👑 [Round of Avalon: Party +50% ATK (3T), Anti-Purge Defense (1T), Cleanse & +15 Stars to ALL Allies!]');
+              npEffectsHud.push('+50% Party ATK • Anti-Purge Def • +15 Stars');
+            } else {
+              npEffectsLog.push('🕊️ [Party Invincible (1T), +30% DEF (3T), Cleanse & +3,000 HP Heal]');
+              npEffectsHud.push('Party Invincible • +30% DEF • Heal');
+            }
             starsGenerated += 15;
             npGained += 20;
           } else {
@@ -1996,19 +2071,30 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         enemyPhase.actionTarget = 'ALL Servants (Ignores Evade & Invincible!)';
 
         const baseAoeDamage = isEnrageWipe ? 99_999 : Math.round((22000 + Math.random() * 6000) * totalBossAtkMult);
+        let antiPurgeCount = 0;
 
         state.participants.forEach(p => {
           if (!p.isDead) {
+            // Anti-Purge Defense blocks attacks that ignore Evade/Invincible!
+            const apIdx = p.activeBuffs ? p.activeBuffs.findIndex(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge') : -1;
+            if (apIdx >= 0 && p.activeBuffs && !isEnrageWipe) {
+              antiPurgeCount++;
+              const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
+              enemyPhase.specialEvents.push(`👑 **${pName}**'s Anti-Purge Defense completely NULLIFIED Primordial Roar!`);
+              return;
+            }
+
             enemyPhase.strikeDamage += baseAoeDamage;
             const res = applyDamageToRaidParticipant(p, baseAoeDamage, state);
             if (res.gutsLog) enemyPhase.specialEvents.push(res.gutsLog);
           }
         });
 
+        const apNotice = antiPurgeCount > 0 ? ` 👑 (${antiPurgeCount} Protected by Anti-Purge Defense!)` : '';
         state.recentLogs.push(
           isEnrageWipe
             ? `💀 **[ENRAGE WIPE!]** Beast II unleashes 3rd Primordial Roar—shattering the reality of the Holy Grail War!`
-            : `💥 **NOBLE PHANTASM: PRIMORDIAL ROAR!** Beast II spreads her wings and screams with true genesis mana for **${baseAoeDamage.toLocaleString()} True AoE DMG**! *(Ignores Evade/Invincibility!)*`
+            : `💥 **NOBLE PHANTASM: PRIMORDIAL ROAR!** Beast II spreads her wings and screams with true genesis mana for **${baseAoeDamage.toLocaleString()} True AoE DMG**! *(Ignores Evade/Invincibility!)*${apNotice}`
         );
       } else {
         enemyPhase.actionName = 'NOBLE PHANTASM: Primordial Murmur';
@@ -2018,12 +2104,17 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
 
         state.participants.forEach(p => {
           if (!p.isDead) {
-            const evIdx = p.activeBuffs ? p.activeBuffs.findIndex(b => b.type === 'evade' || b.type === 'invincible') : -1;
+            const evIdx = p.activeBuffs ? p.activeBuffs.findIndex(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge' || b.type === 'evade' || b.type === 'invincible') : -1;
             if (evIdx >= 0 && p.activeBuffs) {
+              const bType = p.activeBuffs[evIdx].type;
               p.activeBuffs.splice(evIdx, 1);
               evadesCount++;
               const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
-              enemyPhase.specialEvents.push(`🛡️ **${pName}** completely EVADED Primordial Murmur!`);
+              if (bType === 'anti_purge_defense' || bType === 'anti_purge') {
+                enemyPhase.specialEvents.push(`👑 **${pName}** completely BLOCKED Primordial Murmur with Anti-Purge Defense!`);
+              } else {
+                enemyPhase.specialEvents.push(`🛡️ **${pName}** completely EVADED Primordial Murmur!`);
+              }
               return;
             }
 
@@ -2062,12 +2153,17 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
 
       state.participants.forEach(p => {
         if (!p.isDead) {
-          const evIdx = p.activeBuffs ? p.activeBuffs.findIndex(b => b.type === 'evade' || b.type === 'invincible') : -1;
+          const evIdx = p.activeBuffs ? p.activeBuffs.findIndex(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge' || b.type === 'evade' || b.type === 'invincible') : -1;
           if (evIdx >= 0 && p.activeBuffs) {
+            const bType = p.activeBuffs[evIdx].type;
             p.activeBuffs.splice(evIdx, 1);
             evadesCount++;
             const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
-            enemyPhase.specialEvents.push(`🛡️ **${pName}** completely EVADED Barbatos's Noble Phantasm!`);
+            if (bType === 'anti_purge_defense' || bType === 'anti_purge') {
+              enemyPhase.specialEvents.push(`👑 **${pName}** completely BLOCKED Barbatos's Noble Phantasm with Anti-Purge Defense!`);
+            } else {
+              enemyPhase.specialEvents.push(`🛡️ **${pName}** completely EVADED Barbatos's Noble Phantasm!`);
+            }
             return;
           }
 
@@ -2114,14 +2210,22 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
 
       const tName = target.servant.nickname || target.servant.template?.name || 'Servant';
       hitTargetNames.push(tName);
-      const evIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'evade' || b.type === 'invincible') : -1;
+      const evIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge' || b.type === 'evade' || b.type === 'invincible') : -1;
 
       if (evIdx >= 0 && target.activeBuffs) {
+        const bType = target.activeBuffs[evIdx].type;
         target.activeBuffs.splice(evIdx, 1);
-        state.recentLogs.push(
-          `🛡️ **[EVADED!]** **${tName}** read the trajectory and completely avoided ${state.boss.name}'s strike!`
-        );
-        enemyPhase.specialEvents.push(`🛡️ **${tName}** EVADED ${state.boss.name}'s strike!`);
+        if (bType === 'anti_purge_defense' || bType === 'anti_purge') {
+          state.recentLogs.push(
+            `👑 **[BLOCKED!]** **${tName}**'s Anti-Purge Defense completely nullified ${state.boss.name}'s strike!`
+          );
+          enemyPhase.specialEvents.push(`👑 **${tName}** BLOCKED ${state.boss.name}'s strike with Anti-Purge Defense!`);
+        } else {
+          state.recentLogs.push(
+            `🛡️ **[EVADED!]** **${tName}** read the trajectory and completely avoided ${state.boss.name}'s strike!`
+          );
+          enemyPhase.specialEvents.push(`🛡️ **${tName}** EVADED ${state.boss.name}'s strike!`);
+        }
         continue;
       }
 
@@ -2153,11 +2257,11 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       const curseDamage = p.activeBuffs?.filter(b => b.type === 'curse').reduce((acc, b) => acc + b.value, 0) || 0;
       if (curseDamage > 0) {
         const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
-        const hasEvadeOrInvincibility = p.activeBuffs?.some(b => b.type === 'evade' || b.type === 'invincible');
+        const hasEvadeOrInvincibility = p.activeBuffs?.some(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge' || b.type === 'evade' || b.type === 'invincible');
 
         if (hasEvadeOrInvincibility) {
-          // Protective Evade / Invincible barrier completely nullifies Curse Burn DoT for this round
-          state.recentLogs.push(`🛡️ **[BARRIER PROTECTED!]** **${pName}**'s Evade/Invincible barrier completely blocked the **${curseDamage.toLocaleString()} Curse Burn DMG**!`);
+          // Protective Anti-Purge / Evade / Invincible barrier completely nullifies Curse Burn DoT for this round
+          state.recentLogs.push(`🛡️ **[BARRIER PROTECTED!]** **${pName}**'s barrier completely blocked the **${curseDamage.toLocaleString()} Curse Burn DMG**!`);
           enemyPhase.specialEvents.push(`🛡️ **${pName}**'s barrier blocked Curse Burn DoT!`);
         } else if (p.gutsTriggeredThisTurn) {
           // In Fate battle mechanics, Guts cannot be double-consumed in the same enemy turn.
