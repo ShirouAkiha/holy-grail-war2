@@ -17,7 +17,6 @@ import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { safeSetEmbedImage } from '../utils/discordEmbedHelper';
 import { addServantBattleExp, createExpEmberCraftEssence } from '../engine/customization';
 import { calculateServantMaxHp } from '../engine/statSystem';
-import { addBondExpToServant } from '../../lib/engine/bondEvents';
 
 export const data = new SlashCommandBuilder()
   .setName('raid')
@@ -75,7 +74,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         `💎 **Victory Rewards (All Participating Masters):**\n` +
         `• Saint Quartz: **${boss.drops.minSq} – ${boss.drops.maxSq} SQ** 💎\n` +
         `• Servant Battle EXP: **+${boss.drops.servantExp.toLocaleString()} EXP** ⚔️ *(Levels up Servant & awards Stat Points!)*\n` +
-        `• Servant Bond EXP: **+${boss.drops.bondExp.toLocaleString()} Bond EXP** 💖 *(Advances Bond Rank toward Bond 10 & Signature CEs!)*\n` +
         `• Relic Drops: **${boss.drops.emberCount}x Blaze of Wisdom EXP Embers** ✨ *(Universal enhancement relics for \`/feed\`)*`
       )
       .setThumbnail(boss.avatarUrl)
@@ -2455,7 +2453,6 @@ async function concludeRaidVictory(
   const participants = battleState.participants;
   const sqReward = Math.floor(boss.drops.minSq + Math.random() * (boss.drops.maxSq - boss.drops.minSq + 1));
   const servantExpReward = boss.drops.servantExp || 25_000;
-  const bondExpReward = boss.drops.bondExp || 2_000;
 
   const progressionReports: string[] = [];
 
@@ -2478,26 +2475,10 @@ async function concludeRaidVictory(
         lvlDetail += ` *(+${expResult.levelsGained} Level-Up! +${expResult.statPointsGained} Stat Points)*`;
       }
 
-      // 2. Servant Bond EXP & Real Bond Level Progression
-      const bondResult = addBondExpToServant(s, bondExpReward);
-      s.bondExp = bondResult.updatedServant.bondExp;
-      s.bondLevel = bondResult.updatedServant.bondLevel;
-
-      let bondDetail = `Bond Lv. ${bondResult.newLevel}/10`;
-      if (bondResult.didLevelUp) {
-        bondDetail += ` *(Bond Level Up!)*`;
-      }
-
-      sReport += `\n  └─ ⚔️ **Level:** \`${lvlDetail}\` • 💖 **Bond:** \`${bondDetail}\``;
-
-      if (bondResult.unlockedBondCe) {
-        master.craftEssences = master.craftEssences || [];
-        master.craftEssences.push(bondResult.unlockedBondCe);
-        sReport += `\n  └─ 🌟 **UNLOCKED SIGNATURE BOND CE:** **${bondResult.unlockedBondCe.name}**!`;
-      }
+      sReport += `\n  └─ ⚔️ **Level:** \`${lvlDetail}\``;
     }
 
-    // 3. Universal EXP Embers (Blaze of Wisdom) deposited directly to Master inventory
+    // 2. Universal EXP Embers (Blaze of Wisdom) deposited directly to Master inventory
     master.craftEssences = master.craftEssences || [];
     const emberSSR = createExpEmberCraftEssence(5, 1);
     const emberSR1 = createExpEmberCraftEssence(4, 2);
@@ -2546,7 +2527,6 @@ async function concludeRaidVictory(
       `💎 **Spoils of War (Distributed to all Masters):**\n` +
       `• **+${sqReward} Saint Quartz** 💎\n` +
       `• **+${servantExpReward.toLocaleString()} Servant Battle EXP** ⚔️ *(Levels up Servant & awards unspent Stat Points)*\n` +
-      `• **+${bondExpReward.toLocaleString()} Servant Bond EXP** 💖 *(Advances Bond Rank toward Bond 10 & Signature CEs)*\n` +
       `• **+3 Universal EXP Embers** ✨ *(1x ★5 SSR + 2x ★4 SR Blaze of Wisdom synthesized to inventory for \`/feed\`)*\n\n` +
       `👑 **Victorious Masters & Progression:**\n` +
       progressionReports.join('\n') + `\n\n` +

@@ -56,7 +56,6 @@ export interface RaidBossConfig {
     minSq: number;
     maxSq: number;
     servantExp: number;
-    bondExp: number;
     emberCount: number;
   };
 }
@@ -112,7 +111,6 @@ export const RAID_BOSSES: Record<string, RaidBossConfig> = {
       minSq: 10,
       maxSq: 20,
       servantExp: 25_000,
-      bondExp: 2_000,
       emberCount: 3
     }
   },
@@ -248,7 +246,6 @@ export const RAID_BOSSES: Record<string, RaidBossConfig> = {
       minSq: 20,
       maxSq: 35,
       servantExp: 60_000,
-      bondExp: 5_000,
       emberCount: 5
     }
   }
