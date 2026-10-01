@@ -1585,6 +1585,19 @@ async function runRaidBattle(
 
       let bossUsedNp = false;
       if (!hasMorePlayersInRound) {
+        // 1. Render and post the Player Strike Canvas so players see their strike damage & updated boss HP!
+        await renderAndPostTurn();
+
+        // 2. Dispatch player Noble Phantasm Visuals if unleashed
+        if (pendingNpToDispatch) {
+          await dispatchRaidNpGif(pendingNpToDispatch.servant, pendingNpToDispatch.userId);
+          pendingNpToDispatch = null;
+        }
+
+        // 3. Brief dramatic pause (2.5s) to witness the strike impact before the enemy counter-attacks
+        await new Promise(resolve => setTimeout(resolve, 2500));
+
+        // 4. Execute Boss Turn
         const bossTurnResult = await executeBossTurn(battleState);
         bossUsedNp = bossTurnResult?.bossUsedNp || false;
 
@@ -1604,15 +1617,21 @@ async function runRaidBattle(
             p.activeBuffs = p.activeBuffs.filter(b => b.remainingTurns > 0);
           }
         });
-      }
 
-      await renderAndPostTurn();
+        // 5. Render and post the new round turn canvas (with boss action in HUD and active buttons)
+        await renderAndPostTurn();
 
-      // Dispatch Noble Phantasm Visuals BELOW the newly rendered Battle Canvas!
-      if (pendingNpToDispatch) {
-        await dispatchRaidNpGif(pendingNpToDispatch.servant, pendingNpToDispatch.userId);
-      } else if (bossUsedNp) {
-        await dispatchBossNpGif();
+        // 6. Dispatch Boss NP GIF if used
+        if (bossUsedNp) {
+          await dispatchBossNpGif();
+        }
+      } else {
+        // Multi-player: Advance to next player in the current round
+        await renderAndPostTurn();
+
+        if (pendingNpToDispatch) {
+          await dispatchRaidNpGif(pendingNpToDispatch.servant, pendingNpToDispatch.userId);
+        }
       }
     } finally {
       isProcessingTurn = false;
