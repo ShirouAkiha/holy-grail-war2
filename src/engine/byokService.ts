@@ -1,8 +1,10 @@
 import { GoogleGenAI } from '@google/genai';
 import { ApiProviderType, UserCustomApiConfig } from '../types';
 import { decryptSecret, maskApiKeySecurely, redactSensitiveKeysFromText } from '../utils/cryptoSecurity';
+import { pingApiProvider, ApiConnectivityResult } from '../utils/apiConnectivityTester';
 
-export type { ApiProviderType, UserCustomApiConfig };
+export type { ApiProviderType, UserCustomApiConfig, ApiConnectivityResult };
+export { pingApiProvider };
 
 export function maskApiKey(key?: string): string {
   return maskApiKeySecurely(key);
@@ -1179,6 +1181,26 @@ export const PROVIDER_FREE_TIER_NOTES: Record<ApiProviderType, string> = {
  * Never leaks the key in error outputs or telemetry.
  */
 export async function testProviderConnection(
+  provider: ApiProviderType,
+  apiKey: string,
+  modelName?: string,
+  customEndpoint?: string
+): Promise<{ success: boolean; message: string; modelUsed: string; latencyMs?: number }> {
+  const result = await pingApiProvider(provider, apiKey, {
+    model: modelName,
+    customEndpoint
+  });
+
+  return {
+    success: result.success,
+    message: result.message,
+    modelUsed: result.modelUsed,
+    latencyMs: result.latencyMs
+  };
+}
+
+// Keep legacy fallback for internal references if needed
+async function _legacyTestProviderConnection(
   provider: ApiProviderType,
   apiKey: string,
   modelName?: string,
