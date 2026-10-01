@@ -3678,8 +3678,26 @@ async function startInteractiveDuel(
   };
 
   const buildCurrentEmbeds = (): EmbedBuilder[] => {
-    const mainEmbed = buildCurrentEmbed();
-    return [mainEmbed];
+    return [];
+  };
+
+  const buildDuelTurnContent = (
+    active: DuelCombatant = activeCombatant,
+    selectedCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = activePendingCards
+  ) => {
+    const cardEmojiMap: Record<string, string> = {
+      Buster: '🔴 Buster',
+      Arts: '🔵 Arts',
+      Quick: '🟢 Quick',
+      NP: '💥 NP'
+    };
+    const sName = active.servant.nickname || active.servant.template?.name || 'Servant';
+    let cardChainStr = '';
+    if (selectedCards.length > 0) {
+      const chain = selectedCards.map((c, idx) => `\`[ #${idx + 1}: ${cardEmojiMap[c] || c} ]\``).join(' ➔ ');
+      cardChainStr = ` • 🎴 **Selected:** ${chain}`;
+    }
+    return `⚔️ **<@${active.userId}>'s Turn!** (**${sName}**)${cardChainStr}`;
   };
 
   const buildCurrentAttachment = async (logText?: string) => {
@@ -3704,10 +3722,9 @@ async function startInteractiveDuel(
   const p2AvatarUrl = t2?.avatarUrl;
 
   const initialAttachment = await buildCurrentAttachment();
-  const initialEmbed = buildCurrentEmbed();
   const initialButtons = buildCurrentButtons();
 
-  const startEmbeds = [initialEmbed];
+  const startEmbeds: EmbedBuilder[] = [];
   const startFiles = [initialAttachment];
 
   const p1StartBuffer = await renderDialogueCard(
@@ -3871,9 +3888,7 @@ async function startInteractiveDuel(
   const activeHumanUsers = [p1, p2, p1Ally, p2Ally]
     .filter((c): c is DuelCombatant => !!c && !c.isAi)
     .map(c => `<@${c.userId}>`);
-  const activePingsContent = activeHumanUsers.length > 0
-    ? `⚔️ **Holy Grail War Duel In Progress!** ${activeHumanUsers.join(' ')}`
-    : null;
+  const activePingsContent = buildDuelTurnContent(activeCombatant, activePendingCards);
 
   let battleMsg: any;
   if (contextInteraction.deferred || contextInteraction.replied) {
@@ -4138,6 +4153,7 @@ async function startInteractiveDuel(
     const turnAttachment = await buildCurrentAttachment();
     const updatedEmbeds = buildCurrentEmbeds();
     const updatedButtons = buildCurrentButtons();
+    const currentTurnContent = buildDuelTurnContent(activeCombatant, activePendingCards);
 
     try {
       const channelToSend = interactionToEdit?.channel || contextInteraction?.channel;
@@ -4145,7 +4161,7 @@ async function startInteractiveDuel(
 
       if (channelToSend && typeof channelToSend.send === 'function') {
         newBattleMsg = await channelToSend.send({
-          content: activePingsContent,
+          content: currentTurnContent,
           embeds: updatedEmbeds,
           files: [turnAttachment],
           components: updatedButtons
@@ -4170,21 +4186,21 @@ async function startInteractiveDuel(
         // Fallback: If channel.send failed (e.g. Missing Access / thread), edit existing message in-place
         if (battleMsg && typeof battleMsg.edit === 'function') {
           await battleMsg.edit({
-            content: activePingsContent,
+            content: currentTurnContent,
             embeds: updatedEmbeds,
             files: [turnAttachment],
             components: updatedButtons
           }).catch(() => {});
         } else if (interactionToEdit && (interactionToEdit.deferred || interactionToEdit.replied)) {
           await interactionToEdit.editReply({
-            content: activePingsContent,
+            content: currentTurnContent,
             embeds: updatedEmbeds,
             files: [turnAttachment],
             components: updatedButtons
           }).catch(() => {});
         } else if (contextInteraction && (contextInteraction.deferred || contextInteraction.replied)) {
           await contextInteraction.editReply({
-            content: activePingsContent,
+            content: currentTurnContent,
             embeds: updatedEmbeds,
             files: [turnAttachment],
             components: updatedButtons
@@ -4255,7 +4271,12 @@ async function startInteractiveDuel(
         const turnAttachment = await buildCurrentAttachment();
 
         await i.deferUpdate();
-        await i.editReply({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
+        await i.editReply({
+          content: buildDuelTurnContent(activeCombatant, activePendingCards),
+          embeds: updatedEmbeds,
+          files: [turnAttachment],
+          components: updatedButtons
+        });
         return;
       }
 
@@ -4339,7 +4360,12 @@ async function startInteractiveDuel(
         const updatedButtons = buildCurrentButtons();
 
         await i.deferUpdate();
-        await i.editReply({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
+        await i.editReply({
+          content: buildDuelTurnContent(activeCombatant, activePendingCards),
+          embeds: updatedEmbeds,
+          files: [turnAttachment],
+          components: updatedButtons
+        });
         return;
       }
 
@@ -4960,9 +4986,13 @@ async function startInteractiveDuel(
         if (combatLogs.length > 4) combatLogs.shift();
 
         const turnAttachment = await buildCurrentAttachment(res.log);
-        const updatedEmbeds = buildCurrentEmbeds();
         const updatedButtons = buildCurrentButtons();
-        await i.editReply({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
+        await i.editReply({
+          content: buildDuelTurnContent(activeCombatant, activePendingCards),
+          embeds: [],
+          files: [turnAttachment],
+          components: updatedButtons
+        });
         return;
       }
 
@@ -4970,9 +5000,12 @@ async function startInteractiveDuel(
       if (i.customId === 'card_reset') {
         activePendingCards = [];
         activePendingIndices = [];
-        const updatedEmbeds = buildCurrentEmbeds();
         const updatedButtons = buildCurrentButtons();
-        await i.editReply({ embeds: updatedEmbeds, components: updatedButtons });
+        await i.editReply({
+          content: buildDuelTurnContent(activeCombatant, activePendingCards),
+          embeds: [],
+          components: updatedButtons
+        });
         return;
       }
 
@@ -5095,9 +5128,12 @@ async function startInteractiveDuel(
       }
 
       if (activePendingCards.length < 3) {
-        const updatedEmbeds = buildCurrentEmbeds();
         const updatedButtons = buildCurrentButtons();
-        await i.editReply({ embeds: updatedEmbeds, components: updatedButtons });
+        await i.editReply({
+          content: buildDuelTurnContent(activeCombatant, activePendingCards),
+          embeds: [],
+          components: updatedButtons
+        });
         return;
       }
 
