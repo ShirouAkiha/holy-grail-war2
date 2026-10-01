@@ -97,10 +97,28 @@ async function generateAllPreviews() {
       bossCurrentHp: phase === 1 ? 14000000 : phase === 2 ? 10000000 : 5000000,
       bossMaxHp: 14000000,
       bossCharge: 2,
-      round: 3,
+      round: 4,
       participants: mockParticipants,
       activeMasterIndex: 0,
-      recentLogs: [`⚔️ Phase ${phase} Preview Render`],
+      recentLogs: [
+        '⚔️ Strike: Lucernalia dealt 921,483 CRIT DMG! (+63% NP, +25★)',
+        '😈 Enemy: Tiamat Strike (7,402 DMG)',
+        '👁️ Skill: [Tremor Step] 🔻 -20% DEF (3T)',
+        '🌊 [Sea of Life]: -2,000 HP Corrode • 🔒 NP Sealed'
+      ],
+      lastPlayerAttackLog: '⚔️ Strike: Lucernalia dealt 921,483 CRIT DMG! (+63% NP, +25★)',
+      turnDamageTaken: 921483,
+      lastEnemyPhase: {
+        actionName: 'Tiamat Strike',
+        strikeDamage: 7402,
+        curseDamage: 2000,
+        totalDamage: 9402,
+        skillName: 'Tremor Step',
+        skillDesc: '🔻 -20% DEF (3T)',
+        debuffsInflicted: ['-20% DEF (3T)'],
+        bossBuffsGained: [],
+        specialEvents: ['🌊 [Sea of Life]: -2,000 HP Corrode • 🔒 NP Sealed']
+      },
       currentPhase: phase,
       totalPhases: 3,
       breakGaugesRemaining: 3 - phase
