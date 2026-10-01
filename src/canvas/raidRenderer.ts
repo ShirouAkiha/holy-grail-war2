@@ -502,6 +502,15 @@ export interface RaidBattleState {
     bossBuffsGained: string[];
     specialEvents: string[];
   };
+  lastHudAction?: {
+    category: string;
+    categoryColor?: string;
+    headline: string;
+    bigStat: string;
+    bigStatColor?: string;
+    subDetail: string;
+    subDetailColor?: string;
+  };
 }
 
 /**
@@ -816,35 +825,17 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   let subDetail = 'Select 3 Command Cards below';
   let subDetailColor = '#38bdf8';
 
-  if (state.lastPlayerAttackLog || (state.turnDamageTaken && state.turnDamageTaken > 0)) {
-    categoryTitle = 'MASTER STRIKE';
-    categoryColor = '#38bdf8';
-    categoryBg = 'rgba(56, 189, 248, 0.22)';
-
-    // Extract actor name if available
-    const rawLog = state.lastPlayerAttackLog || '';
-    if (rawLog.includes('Lucernalia') || rawLog.includes('Jeanne') || rawLog.includes('Artoria') || rawLog.includes('Gilgamesh') || rawLog.includes('Scáthach')) {
-      const parts = rawLog.split(' dealt ');
-      headline = parts[0].replace(/[^a-zA-Z0-9\s]/g, '').trim() || 'Servant Attack Chain';
-    } else {
-      headline = 'Player Strike';
-    }
+  if (state.lastHudAction) {
+    const act = state.lastHudAction;
+    categoryTitle = act.category || 'COMBAT ACTION';
+    categoryColor = act.categoryColor || '#38bdf8';
+    categoryBg = `${categoryColor}33`;
+    headline = act.headline || 'Battle Action';
     headlineColor = '#ffffff';
-
-    const dmgValue = state.turnDamageTaken || (state.lastPlayerAttackLog ? parseInt(state.lastPlayerAttackLog.replace(/[^0-9]/g, ''), 10) : 0);
-    bigStat = dmgValue > 0 ? `${dmgValue.toLocaleString()} DMG` : 'MASSIVE DAMAGE';
-    bigStatColor = '#fde047'; // Vivid Gold
-
-    if (rawLog.toLowerCase().includes('crit')) {
-      subDetail = 'CRITICAL HIT (2.0x) • +63% NP';
-      subDetailColor = '#f43f5e';
-    } else if (rawLog.includes('NP')) {
-      subDetail = '+NP Gauge Charged • +Stars Generated';
-      subDetailColor = '#67e8f9';
-    } else {
-      subDetail = 'Command Chain Resonance Complete';
-      subDetailColor = '#94a3b8';
-    }
+    bigStat = act.bigStat || 'ACTION EXECUTED';
+    bigStatColor = act.bigStatColor || '#fde047';
+    subDetail = act.subDetail || 'Select Command Cards to attack';
+    subDetailColor = act.subDetailColor || '#38bdf8';
   } else if (state.lastEnemyPhase) {
     const ep = state.lastEnemyPhase;
     categoryTitle = 'ENEMY ACTION';
@@ -854,8 +845,8 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     headline = ep.skillName ? `${dynamicBossName} • [${ep.skillName}]` : `${dynamicBossName} Strike`;
     headlineColor = '#fca5a5';
 
-    if (ep.strikeDamage && ep.strikeDamage > 0) {
-      bigStat = `${ep.strikeDamage.toLocaleString()} DMG DEALT`;
+    if (ep.totalDamage && ep.totalDamage > 0) {
+      bigStat = `${ep.totalDamage.toLocaleString()} DMG DEALT`;
       bigStatColor = '#ef4444';
     } else {
       bigStat = ep.actionName || 'SKILL ACTIVATED';
@@ -872,25 +863,13 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
       subDetail = 'Enemy Turn Phase Concluded';
       subDetailColor = '#cbd5e1';
     }
-  } else if (state.recentLogs && state.recentLogs.length > 0) {
-    categoryTitle = 'COMBAT LOG';
-    categoryColor = '#fbbf24';
-    categoryBg = 'rgba(251, 191, 36, 0.2)';
-
-    const latest = state.recentLogs[state.recentLogs.length - 1] || 'Battle round in progress.';
-    headline = 'Battle Update';
-    headlineColor = '#ffffff';
-    bigStat = latest.replace(/[^a-zA-Z0-9\s:,\-\(\)!]/g, '').trim().slice(0, 30);
-    bigStatColor = '#fde047';
-    subDetail = 'Select Command Cards to attack';
-    subDetailColor = '#38bdf8';
   } else {
     categoryTitle = 'RAID COMMENCED';
     categoryColor = '#fbbf24';
     categoryBg = 'rgba(251, 191, 36, 0.2)';
     headline = `Encounter: ${dynamicBossName}`;
     headlineColor = '#ffffff';
-    bigStat = 'PHASE 1 ENGAGED';
+    bigStat = `PHASE ${state.currentPhase || 1} ENGAGED`;
     bigStatColor = '#38bdf8';
     subDetail = 'Break all 3 Gauges to defeat Calamity';
     subDetailColor = '#94a3b8';
@@ -936,25 +915,40 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   ctx.lineTo(logBoxX + logBoxW - 10, logBoxY + 38);
   ctx.stroke();
 
-  // 1. Line 1: Character / Action Name (22px bold)
+  // 1. Line 1: Character / Action Name (Dynamic text sizing so it NEVER cuts off)
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = headlineColor;
-  ctx.font = 'bold 22px sans-serif';
-  ctx.fillText(headline.slice(0, 32), logBoxX + 16, logBoxY + 74);
+  let headFontSize = 22;
+  ctx.font = `bold ${headFontSize}px sans-serif`;
+  while (ctx.measureText(headline).width > logBoxW - 32 && headFontSize > 14) {
+    headFontSize -= 1;
+    ctx.font = `bold ${headFontSize}px sans-serif`;
+  }
+  ctx.fillText(headline, logBoxX + 16, logBoxY + 74);
 
-  // 2. Line 2: Giant Stat / Damage (34px - 38px ultra-bold!)
+  // 2. Line 2: Giant Stat / Damage / Skill (Dynamic text sizing so it NEVER cuts off)
   ctx.fillStyle = bigStatColor;
-  ctx.font = 'bold 36px sans-serif';
+  let statFontSize = 34;
+  ctx.font = `bold ${statFontSize}px sans-serif`;
+  while (ctx.measureText(bigStat).width > logBoxW - 32 && statFontSize > 16) {
+    statFontSize -= 1;
+    ctx.font = `bold ${statFontSize}px sans-serif`;
+  }
   ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
   ctx.shadowBlur = 6;
-  ctx.fillText(bigStat.slice(0, 24), logBoxX + 16, logBoxY + 128);
+  ctx.fillText(bigStat, logBoxX + 16, logBoxY + 128);
   ctx.shadowBlur = 0;
 
-  // 3. Line 3: Secondary Sub-Detail / Effect (18px bold)
+  // 3. Line 3: Secondary Sub-Detail / Effect (Dynamic text sizing so it NEVER cuts off)
   ctx.fillStyle = subDetailColor;
-  ctx.font = 'bold 18px sans-serif';
-  ctx.fillText(subDetail.slice(0, 38), logBoxX + 16, logBoxY + 174);
+  let subFontSize = 16;
+  ctx.font = `bold ${subFontSize}px sans-serif`;
+  while (ctx.measureText(subDetail).width > logBoxW - 32 && subFontSize > 11) {
+    subFontSize -= 1;
+    ctx.font = `bold ${subFontSize}px sans-serif`;
+  }
+  ctx.fillText(subDetail, logBoxX + 16, logBoxY + 174);
 
   ctx.restore();
 

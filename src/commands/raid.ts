@@ -1168,8 +1168,21 @@ async function runRaidBattle(
 
         const quote = skillObj?.quote || skillObj?.quotes?.[0] || '';
         const quoteText = quote ? `\n> *${quote}*` : '';
-        battleState.recentLogs.push(`✨ **${active.servant.nickname || active.servant.template.name}** invoked **${sName}**! ${buffLog}${quoteText}`);
+        const sServName = active.servant.nickname || active.servant.template?.name || 'Heroic Spirit';
+        battleState.recentLogs.push(`✨ **${sServName}** invoked **${sName}**! ${buffLog}${quoteText}`);
         if (battleState.recentLogs.length > 4) battleState.recentLogs.shift();
+
+        // Update single-focus Tactical Action HUD for this skill activation!
+        const cleanBuffDetail = buffLog ? buffLog.replace(/[\(\)\*]/g, '').trim() : 'Active Skill Protocols Activated';
+        battleState.lastHudAction = {
+          category: 'SKILL ACTIVATED',
+          categoryColor: '#fbbf24',
+          headline: sServName,
+          bigStat: sName.toUpperCase(),
+          bigStatColor: '#fde047',
+          subDetail: cleanBuffDetail,
+          subDetailColor: '#38bdf8'
+        };
 
         // Render updated canvas reflecting the new HP, NP, or buffs from the skill!
         const { buffer } = await renderRaidBattlefield(battleState, false);
@@ -1195,10 +1208,22 @@ async function runRaidBattle(
         active.commandSeals = availableSeals - 1;
         active.currentHp = active.maxHp;
         active.npGauge = Math.min(300, Math.max(100, (active.npGauge || 0) + 100));
+        const sServName = active.servant.nickname || active.servant.template?.name || 'Servant';
         battleState.recentLogs.push(
-          `🔱 <@${active.userId}> expended a **Command Seal** (${active.commandSeals} remaining)! **${active.servant.nickname || active.servant.template.name}** is fully healed and gained **+100% NP Gauge** (${Math.round(active.npGauge)}% total)!`
+          `🔱 <@${active.userId}> expended a **Command Seal** (${active.commandSeals} remaining)! **${sServName}** is fully healed and gained **+100% NP Gauge** (${Math.round(active.npGauge)}% total)!`
         );
         while (battleState.recentLogs.length > 8) battleState.recentLogs.shift();
+
+        // Update single-focus Tactical Action HUD for Command Seal
+        battleState.lastHudAction = {
+          category: 'COMMAND SEAL',
+          categoryColor: '#c084fc',
+          headline: `${sServName} Empowered`,
+          bigStat: 'FULL RESTORE (100% NP)',
+          bigStatColor: '#38bdf8',
+          subDetail: `Full HP Healed • +100% NP (${active.commandSeals} Seals Left)`,
+          subDetailColor: '#a7f3d0'
+        };
 
         // Render updated canvas reflecting the restored HP and 100% NP!
         const { buffer } = await renderRaidBattlefield(battleState, false);
@@ -1476,6 +1501,26 @@ async function runRaidBattle(
       battleState.recentLogs.push(playerAttackLog);
       while (battleState.recentLogs.length > 8) battleState.recentLogs.shift();
 
+      // Update single-focus Tactical Action HUD with THIS turn's strike damage!
+      let subDetailStr = '';
+      if (totalCritsLanded > 0) {
+        subDetailStr = `CRITICAL HIT (${totalCritsLanded}x) • +${npGained}% NP • +${starsGenerated} Stars`;
+      } else if (usedNp) {
+        subDetailStr = `Noble Phantasm Unleashed • +${starsGenerated} Stars Generated`;
+      } else {
+        subDetailStr = `+${npGained}% NP • +${starsGenerated} Stars Generated`;
+      }
+
+      battleState.lastHudAction = {
+        category: 'MASTER STRIKE',
+        categoryColor: '#38bdf8',
+        headline: servName,
+        bigStat: `${totalTurnDmg.toLocaleString()} DMG`,
+        bigStatColor: '#fde047',
+        subDetail: subDetailStr,
+        subDetailColor: totalCritsLanded > 0 ? '#f43f5e' : '#67e8f9'
+      };
+
       active.totalDamageDealt = (active.totalDamageDealt || 0) + totalTurnDmg;
       battleState.fullCombatLog = battleState.fullCombatLog || [];
       battleState.fullCombatLog.push(
@@ -1505,6 +1550,16 @@ async function runRaidBattle(
           battleState.recentLogs.push(breakMsg);
           battleState.fullCombatLog.push(breakMsg);
           while (battleState.recentLogs.length > 8) battleState.recentLogs.shift();
+
+          battleState.lastHudAction = {
+            category: 'BREAK GAUGE',
+            categoryColor: '#ec4899',
+            headline: boss.name,
+            bigStat: 'GAUGE SHATTERED!',
+            bigStatColor: '#f43f5e',
+            subDetail: `Phase ${battleState.currentPhase}/3 Engaged • Boss Transformed`,
+            subDetailColor: '#fbcfe8'
+          };
         } else {
           battleState.bossCurrentHp = 0;
           await cleanupNpGif();
@@ -2032,6 +2087,21 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
 
   enemyPhase.totalDamage = enemyPhase.strikeDamage + enemyPhase.curseDamage;
   state.lastEnemyPhase = enemyPhase;
+
+  // Update single-focus Tactical Action HUD for Boss Turn
+  const isAoeOrMulti = enemyPhase.actionTarget === 'ALL Servants' || (enemyPhase.actionTarget && enemyPhase.actionTarget.includes(','));
+  const targetLabel = isAoeOrMulti ? 'ALL Vanguard' : (enemyPhase.actionTarget || 'Party');
+  state.lastHudAction = {
+    category: 'ENEMY ACTION',
+    categoryColor: '#f87171',
+    headline: enemyPhase.skillName ? `${state.boss.name} • [${enemyPhase.skillName}]` : `${state.boss.name} Assault`,
+    bigStat: enemyPhase.totalDamage > 0 ? `${enemyPhase.totalDamage.toLocaleString()} DMG DEALT` : (enemyPhase.skillName || enemyPhase.actionName || 'SKILL ACTIVATED'),
+    bigStatColor: '#ef4444',
+    subDetail: enemyPhase.debuffsInflicted.length > 0
+      ? `Inflicted: ${enemyPhase.debuffsInflicted.join(', ')}`
+      : (enemyPhase.actionName ? `${enemyPhase.actionName} on ${targetLabel}` : 'Enemy Phase Concluded'),
+    subDetailColor: '#cbd5e1'
+  };
 
   // Record enemy turn events in fullCombatLog
   state.fullCombatLog = state.fullCombatLog || [];

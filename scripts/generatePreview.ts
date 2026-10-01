@@ -92,6 +92,36 @@ async function generateAllPreviews() {
   ];
 
   for (let phase = 1; phase <= 3; phase++) {
+    const hudActions = [
+      {
+        category: 'MASTER STRIKE',
+        categoryColor: '#38bdf8',
+        headline: 'Lucernalia Lyozes',
+        bigStat: '921,483 DMG',
+        bigStatColor: '#fde047',
+        subDetail: 'CRITICAL HIT (2.0x) • +63% NP • +25 Stars',
+        subDetailColor: '#f43f5e'
+      },
+      {
+        category: 'SKILL ACTIVATED',
+        categoryColor: '#fbbf24',
+        headline: "Jeanne d'Arc (Alter)",
+        bigStat: 'DRAGON WITCH EX',
+        bigStatColor: '#fde047',
+        subDetail: '+20% ATK (3T) • +15 Stars Generated',
+        subDetailColor: '#38bdf8'
+      },
+      {
+        category: 'COMMAND SEAL',
+        categoryColor: '#c084fc',
+        headline: 'Artoria Pendragon',
+        bigStat: 'FULL RESTORE (100% NP)',
+        bigStatColor: '#38bdf8',
+        subDetail: 'Max HP Restored • +100% NP (2 Seals Left)',
+        subDetailColor: '#a7f3d0'
+      }
+    ];
+
     const mockState: RaidBattleState = {
       boss,
       bossCurrentHp: phase === 1 ? 14000000 : phase === 2 ? 10000000 : 5000000,
@@ -108,6 +138,7 @@ async function generateAllPreviews() {
       ],
       lastPlayerAttackLog: '⚔️ Strike: Lucernalia dealt 921,483 CRIT DMG! (+63% NP, +25★)',
       turnDamageTaken: 921483,
+      lastHudAction: hudActions[phase - 1],
       lastEnemyPhase: {
         actionName: 'Tiamat Strike',
         strikeDamage: 7402,
