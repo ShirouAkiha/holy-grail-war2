@@ -691,19 +691,30 @@ client.on(Events.InteractionCreate, async interaction => {
         await apikeyCommand.handleApiKeyModalSubmit(interaction, interaction.customId);
       }
       else if (interaction.customId.startsWith('modal_talk_servant:')) {
-        const servantId = interaction.customId.replace('modal_talk_servant:', '');
-        const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
-        let servant = master.servants?.find((s: any) => s.id === servantId) || master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-        if (servant) {
+        try {
+          const servantId = interaction.customId.replace('modal_talk_servant:', '');
+          const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+          let servant = bondCommand.resolveTargetServant(master, null, servantId) ||
+            master.servants?.find((s: any) => s.id === servantId) ||
+            master.servants?.find((s: any) => s.id === master.activeServantId) ||
+            master.servants?.[0];
+
+          if (!servant) {
+            await interaction.editReply({
+              content: '❌ You do not have an active contracted Servant. Use `/summon ritual` to summon a Heroic Spirit into your service.'
+            });
+            return;
+          }
+
           const war = getOrInitWarSession(master);
           const totalMastersCount = Object.keys(war.participants || {}).length || 7;
           const quotaStatus = checkMasterTalkQuota(master, totalMastersCount);
 
           if (!quotaStatus.allowed) {
             if (quotaStatus.reason === 'burst_cooldown') {
-              await interaction.reply({
-                flags: MessageFlags.Ephemeral,
+              await interaction.editReply({
                 embeds: [
                   new EmbedBuilder()
                     .setTitle('⏳ Telepathic Link Stabilizing')
@@ -734,8 +745,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
             const sealRefillButton = new ActionRowBuilder<ButtonBuilder>().addComponents(sealButtons);
 
-            await interaction.reply({
-              flags: MessageFlags.Ephemeral,
+            await interaction.editReply({
               embeds: [
                 new EmbedBuilder()
                   .setTitle('⚠️ Telepathic Mana Exhausted for Today')
@@ -759,8 +769,12 @@ client.on(Events.InteractionCreate, async interaction => {
           // Consume 1 daily chat
           const { remainingToday, maxToday, isByok } = await consumeMasterTalkQuota(master, totalMastersCount);
 
-          await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-          const playerMessage = interaction.fields.getTextInputValue('talk_input_message')?.trim() || 'What is our combat plan for tonight?';
+          let playerMessage = 'What is our combat plan for tonight?';
+          try {
+            playerMessage = interaction.fields.getTextInputValue('talk_input_message')?.trim() || playerMessage;
+          } catch {
+            // Field fallback
+          }
 
           const t = servant.template || servant;
           const servantName = servant.nickname || t.name || 'Heroic Spirit';
@@ -781,7 +795,7 @@ client.on(Events.InteractionCreate, async interaction => {
           // Actual combat skirmishes and ambushes (excluding trap siphons and maintenance)
           const recentBattleEvents = (war.eventLogs || [])
             .filter((evt: any) => {
-              const t = evt.type;
+              const evtType = evt.type;
               const txt = (evt.text || '').toLowerCase();
               if (
                 txt.includes('bounded field') ||
@@ -796,11 +810,11 @@ client.on(Events.InteractionCreate, async interaction => {
                 return false;
               }
               return (
-                t === 'clash' ||
-                t === 'ambush' ||
-                t === 'elimination' ||
-                t === 'casualty' ||
-                t === 'duel' ||
+                evtType === 'clash' ||
+                evtType === 'ambush' ||
+                evtType === 'elimination' ||
+                evtType === 'casualty' ||
+                evtType === 'duel' ||
                 txt.includes('ambush') ||
                 txt.includes('duel') ||
                 txt.includes('eliminated') ||
@@ -1005,6 +1019,11 @@ client.on(Events.InteractionCreate, async interaction => {
               components: [actionRow]
             });
           }
+        } catch (err: any) {
+          console.error('[ModalTalkServant] Error processing telepathic communion:', err);
+          await interaction.editReply({
+            content: `❌ Telepathic resonance failed: ${err?.message || 'Unknown leyline interference. Please try again.'}`
+          }).catch(() => {});
         }
       }
       return;
