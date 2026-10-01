@@ -1246,40 +1246,34 @@ async function runRaidBattle(
           });
           buffLog = `(🔻 Inflicted **-25% DEF Down** on ${boss.name} for 3T)`;
         } else if (isEvade) {
-          targetAlly.activeBuffs = targetAlly.activeBuffs || [];
-          targetAlly.activeBuffs.push({
+          active.activeBuffs.push({
             name: `${sName} (Evade)`,
             type: 'evade',
             value: 1,
             remainingTurns: 2
           });
           active.critStars = (active.critStars || 0) + 15;
-          const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
-          buffLog = `(🛡️ Granted EVADE for 1 Hit to **${tName}**, +15 Stars)`;
+          buffLog = `(🛡️ Granted EVADE for 1 Hit, +15 Stars)`;
         } else if (isDefOrCut) {
-          targetAlly.activeBuffs = targetAlly.activeBuffs || [];
-          targetAlly.activeBuffs.push({
+          active.activeBuffs.push({
             name: `${sName} (Damage Cut)`,
             type: 'damage_cut',
             value: 1200,
             remainingTurns: 3
           });
-          targetAlly.activeBuffs.push({
+          active.activeBuffs.push({
             name: `${sName} (DEF Up)`,
             type: 'def_up',
             value: 25,
             remainingTurns: 3
           });
-          const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
-          buffLog = `(🛡️ +25% DEF & 1,200 Damage Cut for 3T to **${tName}**)`;
+          buffLog = `(🛡️ +25% DEF & 1,200 Damage Cut for 3T)`;
         } else if (isHeal) {
           const healAmt = 4500;
-          targetAlly.currentHp = Math.min(targetAlly.maxHp, targetAlly.currentHp + healAmt);
-          targetAlly.npGauge = Math.min(300, (targetAlly.npGauge || 0) + 20);
-          targetAlly.activeBuffs = targetAlly.activeBuffs || [];
-          targetAlly.activeBuffs = targetAlly.activeBuffs.filter(b => b.type !== 'curse' && b.type !== 'burn' && b.type !== 'poison');
-          const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
-          buffLog = `(💚 Restored +${healAmt.toLocaleString()} HP to **${tName}**, +20% NP & Cleansed Afflictions)`;
+          active.currentHp = Math.min(active.maxHp, active.currentHp + healAmt);
+          active.npGauge = Math.min(300, (active.npGauge || 0) + 20);
+          active.activeBuffs = active.activeBuffs.filter(b => b.type !== 'curse' && b.type !== 'burn' && b.type !== 'poison');
+          buffLog = `(💚 Restored +${healAmt.toLocaleString()} HP, +20% NP & Cleansed Afflictions)`;
 
           // Tiamat Phase 1 Passive: Self-Limitation
           if (boss.id === 'tiamat' && (battleState.currentPhase === 1)) {
