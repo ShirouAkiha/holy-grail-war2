@@ -1116,16 +1116,7 @@ async function runRaidBattle(
             });
             const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
             buffLog = `(+50% Arts Up, +50% Anti-Threat Special ATK & 1T Invincibility to **${tName}**!)`;
-            remainingTurns: 3
-          });
-          active.activeBuffs.push({
-            name: `${sName} (Invincibility)`,
-            type: 'invincible',
-            value: 1,
-            remainingTurns: 1
-          });
-          buffLog = `(+50% Arts Up, +50% Anti-Threat Special ATK & 1T Invincibility!)`;
-        } else if (isAntiThreatSkill) {
+          } else if (isAntiThreatSkill) {
           // Calamity-Breaker Edict: Increases ATK of ALL allies by +20%, and grants all allies [Special Attack against Threat to Humanity / Beast] (+30% DMG) for 3 turns!
           battleState.participants.forEach(p => {
             p.activeBuffs = p.activeBuffs || [];
