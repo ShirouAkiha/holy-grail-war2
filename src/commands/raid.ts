@@ -1758,7 +1758,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         const tName = target.servant.nickname || target.servant.template?.name || 'Servant';
         enemyPhase.skillName = 'Wailing Voice';
         enemyPhase.skillDesc = `Inflicted 1T Skill Seal on ${tName}`;
-        enemyPhase.debuffsInflicted.push(`🔒 **Skill Seal (1T)** on **${tName}**`);
+        enemyPhase.debuffsInflicted.push(`Skill Seal (1T) on ${tName}`);
         state.recentLogs.push(`📢 **Tiamat released [Wailing Voice]!** Inflicted **1-Turn Skill Seal** on **${tName}**!`);
       }
     } else if (tiamatSkillRoll < 0.40) {
@@ -1776,7 +1776,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       });
       enemyPhase.skillName = 'Mud Surge';
       enemyPhase.skillDesc = 'Shortened active buff durations by 1 turn';
-      if (affected.length > 0) enemyPhase.debuffsInflicted.push(`⏳ Shortened buffs on **${affected.join(', ')}**`);
+      if (affected.length > 0) enemyPhase.debuffsInflicted.push(`Shortened buffs on ${affected.join(', ')}`);
       state.recentLogs.push(`🌊 **Tiamat unleashed [Mud Surge]!** Corrosive primordial tide shortened ally buff durations!`);
     } else if (tiamatSkillRoll < 0.60) {
       // Skill: Tremor Step (reduces front-most Servant DEF by 20% for 3 turns)
@@ -1792,7 +1792,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         const tName = front.servant.nickname || front.servant.template?.name || 'Servant';
         enemyPhase.skillName = 'Tremor Step';
         enemyPhase.skillDesc = `-20% DEF on ${tName} for 3T`;
-        enemyPhase.debuffsInflicted.push(`🔻 **-20% DEF (3T)** on **${tName}**`);
+        enemyPhase.debuffsInflicted.push(`-20% DEF (3T) on ${tName}`);
         state.recentLogs.push(`👣 **Tiamat shook the abyss with [Tremor Step]!** Inflicted **-20% DEF (3T)** on **${tName}**!`);
       }
     } else if (tiamatSkillRoll < 0.80) {
@@ -1805,7 +1805,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       });
       enemyPhase.skillName = 'Crying Eyes';
       enemyPhase.skillDesc = 'Drained 10% NP from 2 Servants';
-      enemyPhase.debuffsInflicted.push(`⚡ Drained 10% NP from **${drainedNames.join(', ')}**`);
+      enemyPhase.debuffsInflicted.push(`Drained 10% NP from ${drainedNames.join(', ')}`);
       state.recentLogs.push(`👁️ **Tiamat shed tears of genesis [Crying Eyes]!** Drained **10% NP** from **${drainedNames.join(', ')}**!`);
     } else {
       // Skill: Chaos Deluge (siphons 15% NP from all Servants, converts into +50k shield)
@@ -1818,7 +1818,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       state.bossShield = (state.bossShield || 0) + 50_000;
       enemyPhase.skillName = 'Chaos Deluge';
       enemyPhase.skillDesc = 'Siphoned 15% NP from all Servants and formed a 50,000 HP barrier';
-      enemyPhase.bossBuffsGained.push('🛡️ **+50,000 HP Chaos Barrier**');
+      enemyPhase.bossBuffsGained.push('+50,000 HP Chaos Barrier');
       state.recentLogs.push(`🌊 **Tiamat invoked [Chaos Deluge]!** Siphoned NP from all Servants and created a **50,000 HP Barrier**!`);
     }
   } else {
@@ -1839,7 +1839,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       });
       enemyPhase.skillName = 'Gaze of the Thousand Eyes';
       enemyPhase.skillDesc = 'All Servants suffer -20% DEF (2T) and -10 Critical Stars';
-      enemyPhase.debuffsInflicted.push('🔻 **-20% DEF Down (2T)** on all Servants', '⭐ **-10 Critical Stars drained**');
+      enemyPhase.debuffsInflicted.push('-20% DEF Down (2T) on all Servants', '-10 Critical Stars drained');
       state.recentLogs.push(
         `👁️ **Barbatos cast [Gaze of the Thousand Eyes]!** All Servants suffer **-20% DEF** (2T) and lost 10 Critical Stars!`
       );
@@ -1855,14 +1855,14 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         state.bossCharge = Math.min(state.boss.maxCharge, state.bossCharge + 1);
         enemyPhase.skillName = 'Wailing of the Inverted Spire';
         enemyPhase.skillDesc = 'Increases own ATK by +25% (2T) and charges NP gauge by 1 diamond';
-        enemyPhase.bossBuffsGained.push('⚔️ **+25% ATK Up (2T)**', '⚡ **+1 NP Charge Diamond**');
+        enemyPhase.bossBuffsGained.push('+25% ATK Up (2T)', '+1 NP Charge Diamond');
         state.recentLogs.push(
           `📢 **Barbatos cast [Wailing of the Inverted Spire]!** Demon God ATK increased by **+25%** and gained **+1 Charge Diamond**!`
         );
       } else {
         enemyPhase.skillName = 'Wailing of the Inverted Spire';
         enemyPhase.skillDesc = 'Increases own ATK by +25% (2T)';
-        enemyPhase.bossBuffsGained.push('⚔️ **+25% ATK Up (2T)**');
+        enemyPhase.bossBuffsGained.push('+25% ATK Up (2T)');
         state.recentLogs.push(
           `📢 **Barbatos cast [Wailing of the Inverted Spire]!** Demon God ATK increased by **+25%**!`
         );
@@ -1887,7 +1887,7 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         const tName = highestNpTarget.servant.nickname || highestNpTarget.servant.template?.name || 'Servant';
         enemyPhase.skillName = 'Curse of the Solomon Throne';
         enemyPhase.skillDesc = `Inflicted Curse and -20% ATK Down on ${tName}`;
-        enemyPhase.debuffsInflicted.push(`🔥 **Curse (1,200 DMG/T, 3T)** on **${tName}**`, `🔻 **-20% ATK Down (2T)** on **${tName}**`);
+        enemyPhase.debuffsInflicted.push(`Curse (1,200 DMG/T, 3T) on ${tName}`, `-20% ATK Down (2T) on ${tName}`);
         state.recentLogs.push(
           `☠️ **Barbatos cast [Curse of the Solomon Throne]!** Inflicted **Curse** (1,200 DMG/Turn) & **-20% ATK Down** on **${tName}**!`
         );

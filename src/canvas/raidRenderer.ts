@@ -825,16 +825,31 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   let subDetail = 'Select 3 Command Cards below';
   let subDetailColor = '#38bdf8';
 
+  // Helper to clean Markdown and special artifacts from canvas text
+  const cleanHudText = (text: string): string => {
+    if (!text) return '';
+    return text
+      .replace(/\*\*/g, '')
+      .replace(/\*/g, '')
+      .replace(/__/g, '')
+      .replace(/_/g, '')
+      .replace(/~~/g, '')
+      .replace(/`/g, '')
+      .replace(/<@!?[0-9]+>/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
   if (state.lastHudAction) {
     const act = state.lastHudAction;
     categoryTitle = act.category || 'COMBAT ACTION';
     categoryColor = act.categoryColor || '#38bdf8';
     categoryBg = `${categoryColor}33`;
-    headline = act.headline || 'Battle Action';
+    headline = cleanHudText(act.headline || 'Battle Action');
     headlineColor = '#ffffff';
-    bigStat = act.bigStat || 'ACTION EXECUTED';
+    bigStat = cleanHudText(act.bigStat || 'ACTION EXECUTED');
     bigStatColor = act.bigStatColor || '#fde047';
-    subDetail = act.subDetail || 'Select Command Cards to attack';
+    subDetail = cleanHudText(act.subDetail || 'Select Command Cards to attack');
     subDetailColor = act.subDetailColor || '#38bdf8';
   } else if (state.lastEnemyPhase) {
     const ep = state.lastEnemyPhase;
@@ -842,22 +857,22 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     categoryColor = '#f87171';
     categoryBg = 'rgba(239, 68, 68, 0.22)';
 
-    headline = ep.skillName ? `${dynamicBossName} • [${ep.skillName}]` : `${dynamicBossName} Strike`;
+    headline = cleanHudText(ep.skillName ? `${dynamicBossName} • [${ep.skillName}]` : `${dynamicBossName} Strike`);
     headlineColor = '#fca5a5';
 
     if (ep.totalDamage && ep.totalDamage > 0) {
       bigStat = `${ep.totalDamage.toLocaleString()} DMG DEALT`;
       bigStatColor = '#ef4444';
     } else {
-      bigStat = ep.actionName || 'SKILL ACTIVATED';
+      bigStat = cleanHudText(ep.actionName || 'SKILL ACTIVATED');
       bigStatColor = '#fbbf24';
     }
 
     if (ep.debuffsInflicted && ep.debuffsInflicted.length > 0) {
-      subDetail = `Debuff: ${ep.debuffsInflicted.join(', ')}`;
+      subDetail = cleanHudText(`Debuff: ${ep.debuffsInflicted.join(', ')}`);
       subDetailColor = '#c084fc';
     } else if (ep.specialEvents && ep.specialEvents.length > 0) {
-      subDetail = ep.specialEvents[0].replace(/[^a-zA-Z0-9\s:,\-\(\)]/g, '').trim();
+      subDetail = cleanHudText(ep.specialEvents[0]);
       subDetailColor = '#38bdf8';
     } else {
       subDetail = 'Enemy Turn Phase Concluded';
@@ -867,7 +882,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     categoryTitle = 'RAID COMMENCED';
     categoryColor = '#fbbf24';
     categoryBg = 'rgba(251, 191, 36, 0.2)';
-    headline = `Encounter: ${dynamicBossName}`;
+    headline = cleanHudText(`Encounter: ${dynamicBossName}`);
     headlineColor = '#ffffff';
     bigStat = `PHASE ${state.currentPhase || 1} ENGAGED`;
     bigStatColor = '#38bdf8';
