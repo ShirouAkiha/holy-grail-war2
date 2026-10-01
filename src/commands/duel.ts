@@ -14,7 +14,7 @@ import { getOrCreateMaster, saveMaster, getDuelNpSettings, getAllMasters, getAll
 import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog, PassiveSkill } from '../types';
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives, getServantAvatarAndCardArt } from '../data/servants';
 import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp, getReputationInfo, isUserSlainCivilianInWar } from '../engine/grailwar';
-import { renderBattleTurnSummary, renderDialogueCard, renderDefeatDialogueCard, renderMasterCommandSealDialogueCard, renderSkillDialogueCard } from '../canvas/renderer';
+import { renderBattleTurnSummary, renderDialogueCard, renderDefeatDialogueCard, renderMasterCommandSealDialogueCard, renderSkillDialogueCard, cleanCanvasText } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER, calculateFleeChance, rollFleeSuccess } from '../engine/battle';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
@@ -831,6 +831,84 @@ function buildDuelEmbed(
   return embed;
 }
 
+export interface DetailedDuelAction {
+  round: number;
+  actorName: string;
+  targetName?: string;
+  actionType: 'skill' | 'attack' | 'seal' | 'assist' | 'flee' | 'system';
+  title: string;
+  details: string;
+  timestamp: Date;
+}
+
+function buildDetailedCombatLogEmbed(
+  p1: DuelCombatant,
+  p2: DuelCombatant,
+  round: number,
+  activeUserId: string,
+  history: DetailedDuelAction[],
+  p1Ally?: DuelCombatant,
+  p2Ally?: DuelCombatant,
+  teamSoloList: DuelCombatant[] = []
+): EmbedBuilder {
+  const embed = new EmbedBuilder()
+    .setTitle(`📜 HOLY GRAIL WAR — COMBAT DOSSIER & BATTLE LOG`)
+    .setColor(0x38bdf8)
+    .setDescription(
+      `⚔️ **Current Battle State:** Round **${round}** • Turn Active: <@${activeUserId}>\n` +
+      `📊 **Total Actions Recorded:** **${history.length}** tactical event(s)\n` +
+      `──────────────────────────────────────────────`
+    );
+
+  // Recent Turn-by-Turn Actions (last 10)
+  const recentHistory = history.slice(-10);
+  if (recentHistory.length > 0) {
+    const historyText = recentHistory.map((entry, idx) => {
+      const num = history.length - recentHistory.length + idx + 1;
+      const targetStr = entry.targetName ? ` ➔ **${entry.targetName}**` : '';
+      return `**#${num} [R${entry.round}] ${entry.title}**\n` +
+             `• **Actor:** **${entry.actorName}**${targetStr}\n` +
+             `• **Details:** ${entry.details.length > 180 ? entry.details.slice(0, 180) + '...' : entry.details}`;
+    }).join('\n\n');
+
+    embed.addFields({
+      name: `🏆 Turn-by-Turn Combat Chronicle (Recent ${recentHistory.length} Actions)`,
+      value: historyText.slice(0, 1024)
+    });
+  }
+
+  // Combatant Health & Gauge Overview
+  const allLiving = [p1, p2, p1Ally, p2Ally, ...teamSoloList].filter((c): c is DuelCombatant => !!c);
+  const statusOverview = allLiving.map(c => {
+    const sName = c.servant.nickname || c.servant.template?.name || 'Servant';
+    const hpPct = Math.max(0, Math.min(100, Math.round((c.currentHp / c.maxHp) * 100)));
+    const hpBar = '█'.repeat(Math.round(hpPct / 10)) + '░'.repeat(10 - Math.round(hpPct / 10));
+    const npType = c.servant.template?.noblePhantasm?.cardType || 'Buster';
+    const seals = c.commandSeals !== undefined ? `${c.commandSeals} Seal(s)` : 'N/A';
+    const buffCount = c.activeBuffs ? c.activeBuffs.length : 0;
+    
+    // Skill cooldown status
+    const skills = c.servant.template?.skills || [];
+    const skillStatus = skills.map((s, idx) => {
+      const cd = c.skillCooldowns[idx] || 0;
+      return cd > 0 ? `\`${s.name} (${cd}T)\`` : `\`${s.name} (Ready)\``;
+    }).join(' • ');
+
+    return `**${sName}** (<@${c.userId}>)\n` +
+           `• **HP:** \`[${hpBar}]\` ${Math.round(c.currentHp).toLocaleString()} / ${c.maxHp.toLocaleString()} (${hpPct}%)\n` +
+           `• **NP:** **${Math.round(c.npGauge)}%** [${npType}] | **Seals:** ${seals} | **Buffs:** ${buffCount} active\n` +
+           `• **Skills:** ${skillStatus || 'None'}`;
+  }).join('\n\n');
+
+  embed.addFields({
+    name: '📊 Combatants Status & Tactical Skills',
+    value: statusOverview.slice(0, 1024)
+  });
+
+  embed.setFooter({ text: 'Holy Grail War Tactical Telemetry • Real-Time Combat Log Archive' });
+  return embed;
+}
+
 // ==========================================
 // 7. INTERACTIVE ACTION BUTTON BUILDER
 // ==========================================
@@ -971,7 +1049,7 @@ function buildCombatButtons(
   // Skill 3 (Unlocked at Bond Level 5)
   const s3 = skills[2];
   const cd3 = combatant.skillCooldowns[2] || 0;
-  // Row 3: Skills + Tactical Alliance Assist + Force Join
+  // Row 3: 3 Active Skill Sets + Combat Log Button
   const isS3Unlocked = bondLevel >= 5;
   const s3Name = s3 ? s3.name.slice(0, 13) : 'Skill 3';
   row3.addComponents(
@@ -982,8 +1060,19 @@ function buildCombatButtons(
       .setDisabled(!isS3Unlocked || isSkillSealed || cd3 > 0 || !s3)
   );
 
+  row3.addComponents(
+    new ButtonBuilder()
+      .setCustomId('card_combat_log')
+      .setLabel('Combat Log')
+      .setEmoji('📜')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  const actionRows: ActionRowBuilder<ButtonBuilder>[] = [row1, row2, row3];
+
+  const utilityRow = new ActionRowBuilder<ButtonBuilder>();
   if (hasAlly) {
-    row3.addComponents(
+    utilityRow.addComponents(
       new ButtonBuilder()
         .setCustomId('card_alliance_assist')
         .setLabel(
@@ -998,7 +1087,7 @@ function buildCombatButtons(
   }
 
   if (forceJoinAvailable) {
-    row3.addComponents(
+    utilityRow.addComponents(
       new ButtonBuilder()
         .setCustomId('card_forcejoin')
         .setLabel('Force Join Arena')
@@ -1007,7 +1096,9 @@ function buildCombatButtons(
     );
   }
 
-  const actionRows: ActionRowBuilder<ButtonBuilder>[] = [row1, row2, row3];
+  if (utilityRow.components.length > 0) {
+    actionRows.push(utilityRow);
+  }
 
   // Optional Row 4: Target Selection (when multiple opponents are alive in battle)
   if (livingOpponents.length > 1) {
@@ -1263,21 +1354,66 @@ function activateCombatantSkill(
     });
     combatant.activeBuffs = combatant.activeBuffs.filter(b => !b.type.startsWith('debuff') && b.type !== 'stun');
     logText = `⛰️ **${sName}** activated **${skill.name}**! (+30% Buster (3T), 2,000 Damage Cut (1T), Debuff Immunity (1T))${quoteLine}`;
+  } else if (skill.id === 'strengthening_adaptation_a' || skill.name.toLowerCase().includes('strengthening adaptation')) {
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Buster Up)`,
+      type: 'buster_up',
+      value: 30,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Arts Up)`,
+      type: 'arts_up',
+      value: 30,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Damage Cut)`,
+      type: 'damage_cut',
+      value: 1000,
+      remainingTurns: 1
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Debuff Immunity)`,
+      type: 'debuff_immunity',
+      value: 100,
+      remainingTurns: 1
+    });
+    combatant.activeBuffs = combatant.activeBuffs.filter(b => !b.type.startsWith('debuff') && b.type !== 'stun');
+    logText = `🛡️ **${sName}** activated **${skill.name}**! (+30% Buster & Arts (3T), 1,000 Damage Cut (1T), Debuff Immunity (1T))${quoteLine}`;
+  } else if (skill.id === 'calamity_breaker_edict_ex' || skill.name.toLowerCase().includes('calamity-breaker') || skill.name.toLowerCase().includes('calamity breaker')) {
+    combatant.activeBuffs.push({
+      name: `${skill.name} (ATK Up)`,
+      type: 'buff_atk',
+      value: 20,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Anti-Calamity Special Attack)`,
+      type: 'special_damage_up' as any,
+      value: 30,
+      remainingTurns: 3
+    });
+    logText = `👑 **${sName}** activated **${skill.name}**! (+20% Party ATK (3T), +30% Special ATK vs Threat/Foreigner/Beast/Calamity (3T))${quoteLine}`;
   } else if (skill.effectType === 'buff_atk') {
     const val = skill.value || 35;
     const desc = (skill.description || '').toLowerCase();
     const nameLower = (skill.name || '').toLowerCase();
+    let bonusText = `+${val}% ATK (${skill.duration || 2}T), +10 Stars`;
     if (desc.includes('buster') || nameLower.includes('buster') || nameLower.includes('mana burst')) {
       combatant.activeBuffs.push({ name: skill.name, type: 'buster_up', value: val, remainingTurns: skill.duration || 1 });
+      bonusText = `+${val}% Buster (${skill.duration || 1}T)`;
     } else if (desc.includes('arts') || nameLower.includes('arts') || nameLower.includes('fox')) {
       combatant.activeBuffs.push({ name: skill.name, type: 'arts_up', value: val, remainingTurns: skill.duration || 1 });
+      bonusText = `+${val}% Arts (${skill.duration || 1}T)`;
     } else if (desc.includes('quick') || nameLower.includes('quick') || nameLower.includes('primordial rune')) {
       combatant.activeBuffs.push({ name: skill.name, type: 'quick_up', value: val, remainingTurns: skill.duration || 1 });
+      bonusText = `+${val}% Quick (${skill.duration || 1}T)`;
     } else {
       combatant.activeBuffs.push({ name: skill.name, type: 'buff_atk', value: val, remainingTurns: skill.duration || 2 });
       combatant.critStars = Math.min(50, combatant.critStars + 10);
     }
-    logText = `⚔️ **${sName}** activated **${skill.name}**!${quoteLine}`;
+    logText = `⚔️ **${sName}** activated **${skill.name}**! (${bonusText})${quoteLine}`;
   } else if (skill.effectType === 'buff_def') {
     const val = skill.value || 30;
     const descLower = (skill.description || '').toLowerCase();
@@ -1296,7 +1432,8 @@ function activateCombatantSkill(
     if (descLower.includes('cleanse') || descLower.includes('debuff') || idLower === 'kekkai_creation') {
       combatant.activeBuffs = combatant.activeBuffs.filter(b => !b.type.startsWith('debuff'));
     }
-    logText = `🛡️ **${sName}** activated **${skill.name}**!${quoteLine}`;
+    const bonusText = `+${val}% DEF (${skill.duration || 2}T)${descLower.includes('invincible') ? ', Invincible (1T)' : ''}`;
+    logText = `🛡️ **${sName}** activated **${skill.name}**! (${bonusText})${quoteLine};`
   } else if (skill.effectType === 'evade' || skill.effectType === 'invincible') {
     const bType: 'evade' | 'invincible' = skill.effectType === 'invincible' ? 'invincible' : 'evade';
     const descLower = (skill.description || '').toLowerCase();
@@ -3557,6 +3694,18 @@ async function startInteractiveDuel(
     `💬 **${p2Speaker} (${t2.servantClass}):**\n> ❝ ***${clashMatchup.defenderLine}*** ❞`
   ];
 
+  const fullCombatHistory: DetailedDuelAction[] = [
+    {
+      round: 1,
+      actorName: p1Speaker,
+      targetName: p2Speaker,
+      actionType: 'system',
+      title: `⚔️ Holy Grail War Commenced [VS CLASH: ${clashMatchup.tag}]`,
+      details: `Duel began between ${p1Speaker} (${t1.servantClass}) and ${p2Speaker} (${t2.servantClass})`,
+      timestamp: new Date()
+    }
+  ];
+
   if (p1Ally) {
     const p1AllyTpl = p1Ally.servant.template;
     const p1AllySpeaker = p1Ally.servant.nickname || p1AllyTpl?.name || 'Ally Servant';
@@ -4114,6 +4263,15 @@ async function startInteractiveDuel(
           if (aiSkillRes.success) {
             combatLogs.push(aiSkillRes.log);
             if (combatLogs.length > 4) combatLogs.shift();
+            fullCombatHistory.push({
+              round,
+              actorName: activeCombatant.servant.nickname || activeCombatant.servant.template.name,
+              targetName: target ? (target.servant.nickname || target.servant.template.name) : undefined,
+              actionType: 'skill',
+              title: `✨ Skill: ${aiSkillRes.skillName || 'Tactical Skill'}`,
+              details: aiSkillRes.log.replace(/\n?>\s*.*$/gim, '').replace(/[*_~`]/g, '').trim(),
+              timestamp: new Date()
+            });
           }
           break;
         }
@@ -4136,6 +4294,15 @@ async function startInteractiveDuel(
       refreshCombatantHand(activeCombatant);
       combatLogs.push(aiLog);
       if (combatLogs.length > 4) combatLogs.shift();
+      fullCombatHistory.push({
+        round,
+        actorName: activeCombatant.servant.nickname || activeCombatant.servant.template.name,
+        targetName: target ? (target.servant.nickname || target.servant.template.name) : undefined,
+        actionType: 'attack',
+        title: `🎴 [${aiSequence.join(' ➔ ')}] ${aiSequence.includes('NP') ? 'Noble Phantasm' : 'Chain Strike'}`,
+        details: cleanCanvasText(aiLog).replace(/[*_~`]/g, '').trim(),
+        timestamp: new Date()
+      });
 
       // Check if target was slain
       if (target.currentHp <= 0) {
@@ -4316,6 +4483,26 @@ async function startInteractiveDuel(
 
         await i.reply({
           embeds: [dossierEmbed],
+          flags: MessageFlags.Ephemeral
+        });
+        return;
+      }
+
+      // CASE: COMPREHENSIVE COMBAT LOG & BATTLE CHRONICLE
+      if (i.customId === 'card_combat_log' || i.customId === 'duel_combat_log') {
+        const combatLogEmbed = buildDetailedCombatLogEmbed(
+          p1,
+          p2,
+          round,
+          activeUserId,
+          fullCombatHistory,
+          p1Ally,
+          p2Ally,
+          teamSolo
+        );
+
+        await i.reply({
+          embeds: [combatLogEmbed],
           flags: MessageFlags.Ephemeral
         });
         return;
@@ -4875,6 +5062,15 @@ async function startInteractiveDuel(
 
         combatLogs.push(res.log);
         if (combatLogs.length > 4) combatLogs.shift();
+        fullCombatHistory.push({
+          round,
+          actorName: actor.servant.nickname || actor.servant.template.name,
+          targetName: opponent ? (opponent.servant.nickname || opponent.servant.template.name) : undefined,
+          actionType: 'skill',
+          title: `✨ Skill: ${res.skillName || 'Tactical Skill'}`,
+          details: res.log.replace(/\n?>\s*.*$/gim, '').replace(/[*_~`]/g, '').trim(),
+          timestamp: new Date()
+        });
 
         // Check if this is a transformation skill (e.g. Aoko's Fifth Magic)
         if (res.isTransformation && res.transformationGif) {
@@ -5222,6 +5418,15 @@ async function startInteractiveDuel(
       refreshCombatantHand(attacker);
       combatLogs.push(log);
       if (combatLogs.length > 4) combatLogs.shift();
+      fullCombatHistory.push({
+        round,
+        actorName: attacker.servant.nickname || attacker.servant.template.name,
+        targetName: defender ? (defender.servant.nickname || defender.servant.template.name) : undefined,
+        actionType: 'attack',
+        title: `🎴 [${playerSequence.join(' ➔ ')}] ${isNoblePhantasm ? 'Noble Phantasm' : 'Chain Strike'}`,
+        details: cleanCanvasText(log).replace(/[*_~`]/g, '').trim(),
+        timestamp: new Date()
+      });
 
       if (team1.includes(attacker)) {
         p1LastCards = playerSequence;

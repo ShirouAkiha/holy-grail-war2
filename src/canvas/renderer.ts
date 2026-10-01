@@ -1250,7 +1250,7 @@ function drawServantPortraitCard(
   ctx.restore();
 }
 
-function cleanCanvasText(text: string): string {
+export function cleanCanvasText(text: string): string {
   if (!text) return '';
   return text
     .replace(/\*\*/g, '')
@@ -1306,52 +1306,143 @@ function extractSkillActualEffects(
       .replace(/for\s+/gi, '')
       .replace(/\s*\|\s*\|\s*/g, ' | ')
       .trim();
-    if (effectStr.length > 3) {
+    if (effectStr.length > 3 && !effectStr.toLowerCase().includes('super aoko form')) {
       return effectStr;
     }
   }
 
-  // 2. Resolve combatant and check servant skills & buffs
-  const actor = (log.actorName && (log.actorName === p2.name || (p2.name && log.actorName.includes(p2.name)))) ? p2 : p1;
-  const cleanSummary = cleanCanvasText(noQuotes).toLowerCase();
-  const matchedSkill = (actor.skills || []).find(s => cleanSummary.includes(s.name.toLowerCase()));
+  // 2. Identify the skill name that was used
+  const targetSkillName = extractSkillName(log).trim().toLowerCase();
 
-  if (matchedSkill?.description) {
-    let desc = cleanCanvasText(matchedSkill.description);
-    desc = desc
-      .replace(/^Increases?\s+(own\s+)?/i, '')
-      .replace(/^Grants?\s+/i, '')
-      .replace(/\.\s*$/, '')
-      .replace(/for\s+/gi, '')
-      .trim();
-    if (desc.length > 5 && desc.length < 65) {
-      return desc;
+  // Search all skills across p1 and p2 to find the skill by name
+  const allSkills = [...(p1.skills || []), ...(p2.skills || [])];
+  const matchedSkill = targetSkillName && targetSkillName !== 'tactical skill'
+    ? allSkills.find(s => s.name && (s.name.toLowerCase() === targetSkillName || s.name.toLowerCase().includes(targetSkillName) || targetSkillName.includes(s.name.toLowerCase())))
+    : undefined;
+
+  if (matchedSkill) {
+    const sId = (matchedSkill.id || '').toLowerCase();
+    const sName = matchedSkill.name.toLowerCase();
+    const sDesc = (matchedSkill.description || '').toLowerCase();
+    const val = matchedSkill.value || (sName.includes('mana burst') ? 35 : sName.includes('charisma') ? 20 : 25);
+    const dur = matchedSkill.duration || (sName.includes('charisma') ? 3 : 1);
+
+    // Specific skill ID matches
+    if (sId.includes('prescient_foresight') || sName.includes('prescient foresight')) {
+      return '1-Time Evade | +30% Crit DMG (3T) | +15 Critical Stars';
+    }
+    if (sId.includes('strengthening_adaptation') || sName.includes('strengthening adaptation')) {
+      return '+30% Buster & Arts (3T) | 1,000 Damage Cut & Debuff Immunity (1T)';
+    }
+    if (sId.includes('calamity_breaker_edict') || sName.includes('calamity-breaker') || sName.includes('calamity breaker')) {
+      return '+20% Party ATK (3T) | +30% Anti-Calamity & Threat Special ATK (3T)';
+    }
+    if (sId.includes('concept_nullification') || sName.includes('concept nullification')) {
+      return 'Invincible Barrier (1T) | Ignore Invincible (1T)';
+    }
+    if (sId.includes('nullify_the_law_of_magic') || sName.includes('nullify the law')) {
+      return 'Stripped Enemy Buffs | Skill Seal (1T) | +20% Arts (3T)';
+    }
+    if (sId.includes('fortress_stance') || sName.includes('fortress stance')) {
+      return '+30% DEF (3T) | 1,500 Damage Cut (3T) | Target Focus (1T)';
+    }
+    if (sId.includes('guardians_instinct') || sName.includes("guardian's instinct")) {
+      return '+20% NP Battery | +15% ATK (3T) | Invincibility (1T)';
+    }
+    if (sId.includes('earth_wrought_heart') || sName.includes('earth-wrought heart')) {
+      return '+30% Buster (3T) | 2,000 Damage Cut (1T) | Debuff Immunity (1T)';
+    }
+    if (sId.includes('charisma_of_hope') || sName.includes('charisma of hope')) {
+      return '+20% Party ATK (3T) | +30% NP Battery | +10 Critical Stars';
+    }
+    if (sId.includes('avalon_le_fae') || sName.includes('avalon le fae')) {
+      return '+20% NP Battery | +30% NP Gain Rate (3T)';
+    }
+    if (sId.includes('holy_sword_creation') || sName.includes('holy sword creation')) {
+      return '+50% Arts Up (3T) | +50% Anti-Threat | Invincible (1T)';
+    }
+    if (sId.includes('infinite_wellspring') || sName.includes('infinite wellspring')) {
+      return '+30% NP Battery | +20% NP Gain | +1,000 HP Regen (3T)';
+    }
+    if (sId.includes('fifth_magic') || sId.includes('red_hair') || sName.includes('fifth magic') || sName.includes('red hair')) {
+      return 'Super Aoko Form | +30% ATK & +40% Crit DMG (3T) | +15 Stars';
+    }
+
+    if (sName.includes('mana burst') || (sDesc.includes('buster') && matchedSkill.effectType === 'buff_atk')) {
+      return `+${val}% Buster Performance (${dur}T) | Attack Power Surge`;
+    }
+    if (sName.includes('charisma') || sDesc.includes('party attack') || sDesc.includes('all allies')) {
+      return `+${val}% Party Attack Power (${dur}T) | Team Morale Boosted`;
+    }
+    if (sName.includes('instinct') || sName.includes('revelation') || matchedSkill.effectType === 'crit_stars') {
+      return `+${val || 15} Critical Stars Generated | Critical Rate Surge`;
+    }
+    if (sName.includes('protection from arrows') || matchedSkill.effectType === 'evade') {
+      return `Evade Granted (${dur}T / 3 Hits) | Defense Augmentation`;
+    }
+    if (sDesc.includes('invincible') || matchedSkill.effectType === 'invincible') {
+      return `Invincible Barrier Active (${dur}T) | Absolute Damage Nullification`;
+    }
+    if (matchedSkill.effectType === 'buff_atk') {
+      return `+${val}% Attack Power (${dur}T) | Combat Augmentation Active`;
+    }
+    if (matchedSkill.effectType === 'buff_def') {
+      return `+${val}% Defense Up (${dur}T) | Defensive Stance Active`;
+    }
+    if (matchedSkill.effectType === 'np_charge') {
+      return `+${val}% NP Battery Surge | Noble Phantasm Acceleration`;
+    }
+    if (matchedSkill.effectType === 'heal') {
+      return `+${val.toLocaleString()} HP Restored | Status Cleansed`;
+    }
+    if (matchedSkill.effectType === 'stun') {
+      return `Target Stunned (1 Turn) | Enemy Action Denied`;
+    }
+    if (matchedSkill.effectType === 'guts' || sName.includes('guts') || sName.includes('battle continuation')) {
+      return `Guts Revival Granted (1 Time / ${dur || 5}T)`;
+    }
+
+    if (matchedSkill.description) {
+      const cleanDesc = cleanCanvasText(matchedSkill.description)
+        .replace(/^Increases?\s+(own\s+)?/i, '')
+        .replace(/^Grants?\s+/i, '')
+        .replace(/\.\s*$/, '')
+        .trim();
+      if (cleanDesc.length > 5 && cleanDesc.length < 80) {
+        return cleanDesc;
+      }
     }
   }
 
-  // 3. Inspect recent buffs on actor
+  // 3. Keyword heuristics for Fate skill effects based on targetSkillName
+  if (targetSkillName && targetSkillName !== 'tactical skill') {
+    if (targetSkillName.includes('prescient foresight')) return '1-Time Evade | +30% Crit DMG (3T) | +15 Critical Stars';
+    if (targetSkillName.includes('strengthening adaptation')) return '+30% Buster & Arts (3T) | 1,000 Damage Cut (1T)';
+    if (targetSkillName.includes('calamity-breaker') || targetSkillName.includes('calamity breaker')) return '+20% Party ATK (3T) | +30% Anti-Calamity Special ATK (3T)';
+    if (targetSkillName.includes('mana burst')) return '+50% Buster Performance (1T) | Attack Power Surge';
+    if (targetSkillName.includes('charisma')) return '+20% Party Attack Up (3T) | Team Morale Boost';
+    if (targetSkillName.includes('protection from arrows')) return 'Evade Granted (3 Hits / 3T) | Defense Up';
+    if (targetSkillName.includes('instinct') || targetSkillName.includes('revelation')) return '+15 Critical Stars Generated | Critical Rate Surge';
+    if (targetSkillName.includes('golden rule') || targetSkillName.includes('high speed')) return '+30% NP Battery | NP Generation Rate Up (3T)';
+    if (targetSkillName.includes('battle continuation') || targetSkillName.includes('guts')) return 'Guts Revival Granted (1 Time / 5T)';
+    if (targetSkillName.includes('evade') || targetSkillName.includes('eye of the mind')) return 'Evasion Granted (1 Turn) | Critical Damage Up';
+    if (targetSkillName.includes('invincible') || targetSkillName.includes('kekkai')) return 'Invincible Barrier Active (1 Turn) | Nullifies Damage';
+    if (targetSkillName.includes('heal') || targetSkillName.includes('blessing')) return '+2,000 HP Restored | Status Cleansed';
+    if (targetSkillName.includes('stun') || targetSkillName.includes('judgement')) return 'Target Stunned (1 Turn) | Enemy Action Denied';
+    if (targetSkillName.includes('fifth magic') || targetSkillName.includes('red hair')) return 'Super Aoko Awakened | +30% ATK & +40% Crit DMG (3T)';
+  }
+
+  // 4. Check recent buffs on active combatants as fallback
+  const actor = p1.activeBuffs && p1.activeBuffs.length > 0 ? p1 : p2;
   if (actor.activeBuffs && actor.activeBuffs.length > 0) {
-    const recentBuff = actor.activeBuffs[actor.activeBuffs.length - 1];
-    if (recentBuff && recentBuff.name) {
-      const bName = cleanCanvasText(recentBuff.name).replace(/\s*\([^)]*\)/g, '');
-      const bVal = recentBuff.value ? `+${recentBuff.value}% ` : '';
-      const bTurns = recentBuff.remainingTurns ? ` (${recentBuff.remainingTurns}T)` : '';
-      return `${bVal}${bName}${bTurns} | Combat Augmentation Active`;
+    const topBuff = actor.activeBuffs[actor.activeBuffs.length - 1];
+    if (topBuff && topBuff.name) {
+      const bName = cleanCanvasText(topBuff.name).replace(/\s*\([^)]*\)/g, '');
+      const bVal = topBuff.value ? `+${topBuff.value}% ` : '';
+      const bTurns = topBuff.remainingTurns ? ` (${topBuff.remainingTurns}T)` : '';
+      return `${bVal}${bName}${bTurns} | Combat Augmentation Applied`;
     }
   }
-
-  // 4. Keyword heuristics for Fate skill effects
-  if (cleanSummary.includes('mana burst')) return '+50% Buster Performance (1T) | Attack Power Surge';
-  if (cleanSummary.includes('charisma')) return '+20% Party Attack Up (3T) | Team Morale Boost';
-  if (cleanSummary.includes('protection from arrows')) return 'Evade Granted (3 Hits / 3T) | Defense Up';
-  if (cleanSummary.includes('instinct') || cleanSummary.includes('revelation')) return '+15 Critical Stars Generated | Evasion Instincts Active';
-  if (cleanSummary.includes('golden rule') || cleanSummary.includes('high speed')) return '+30% NP Battery | NP Generation Rate Up (3T)';
-  if (cleanSummary.includes('battle continuation') || cleanSummary.includes('guts')) return 'Guts Revival Granted (1 Time / 5T)';
-  if (cleanSummary.includes('evade') || cleanSummary.includes('eye of the mind')) return 'Evasion Granted (1 Turn) | Critical Damage Up';
-  if (cleanSummary.includes('invincible') || cleanSummary.includes('kekkai')) return 'Invincible Barrier Active (1 Turn) | Nullifies Damage';
-  if (cleanSummary.includes('heal') || cleanSummary.includes('blessing')) return '+2,000 HP Restored | Status Cleansed';
-  if (cleanSummary.includes('stun') || cleanSummary.includes('judgement')) return 'Target Stunned (1 Turn) | Enemy Action Denied';
-  if (cleanSummary.includes('fifth magic') || cleanSummary.includes('red hair')) return 'Super Aoko Awakened | +30% ATK & +40% Crit DMG (3T)';
 
   return 'Tactical Skill Augmentation Active | Combat Enhancement Applied';
 }
@@ -1369,7 +1460,8 @@ function extractSkillName(log: CombatTurnLog): string {
     if (cleaned.length > 2) return cleaned;
   }
   if (log.dialogueTag && log.dialogueTag.includes(':')) {
-    return cleanCanvasText(log.dialogueTag.split(':')[1]).trim();
+    const tagPart = cleanCanvasText(log.dialogueTag.split(':')[1]).trim();
+    if (tagPart.length > 2) return tagPart;
   }
   return 'TACTICAL SKILL';
 }
@@ -1641,17 +1733,17 @@ function drawMinimalClashBanner(
 
   // ----------------------------------------------------
   // LINE 3: Tactical Telemetry & Actual Combat Effects
-  // Large 16.5px font, actual gameplay effects, zero dialogue quotes, zero tofu blocks
+  // Large 21.5px bold font, actual gameplay effects, zero dialogue quotes, zero tofu blocks
   // ----------------------------------------------------
   const telemetry = extractCombatHudTelemetry(log, p1, p2);
-  let line3Font = 16.5;
+  let line3Font = 21.5;
   ctx.font = `bold ${line3Font}px sans-serif`;
 
   let displayTelemetry = telemetry;
-  const maxLine3Width = w - 30;
+  const maxLine3Width = w - 24;
 
   // Scale down gracefully so effects are fully readable without cutoff
-  while (ctx.measureText(displayTelemetry).width > maxLine3Width && line3Font > 13) {
+  while (ctx.measureText(displayTelemetry).width > maxLine3Width && line3Font > 15) {
     line3Font -= 0.5;
     ctx.font = `bold ${line3Font}px sans-serif`;
   }
@@ -1665,7 +1757,7 @@ function drawMinimalClashBanner(
 
   ctx.fillStyle = isSkill ? '#38bdf8' : (log.isNoblePhantasm ? '#fde047' : (log.isCritical ? '#fca5a5' : '#e2e8f0'));
   ctx.textAlign = 'center';
-  ctx.fillText(displayTelemetry, x + w / 2, y + 107);
+  ctx.fillText(displayTelemetry, x + w / 2, y + 109);
 
   ctx.restore();
 }
