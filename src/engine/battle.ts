@@ -539,7 +539,7 @@ export function resolveCombatTurn(
   applyEndTurnPassives(attacker);
   applyEndTurnPassives(defender);
 
-  const chainSummaryStr = chainTags.length > 0 ? `\n⛓️ **Chains Triggered:** ${chainTags.join(' • ')}` : '';
+  const chainSummaryStr = chainTags.length > 0 ? `\n⛓️ **Chains Triggered:** ${chainTags.join(' | ')}` : '';
 
   const dialogueInfo = generateTurnDialogueQuote(attacker, defender, attackerChoice, classMultiplier);
 
@@ -552,6 +552,7 @@ export function resolveCombatTurn(
     targetName: defender.name,
     actionSummary: `${attacker.name} attacked with [${attackerChoice.selectedCards.join(', ')}] dealing ${totalDmg.toLocaleString()} damage.${chainSummaryStr}`,
     cardsUsed: attackerChoice.selectedCards,
+    cardChainType: chainTags.length > 0 ? chainTags.join(' | ') : undefined,
     p1Cards: isP1Attacker ? attackerChoice.selectedCards : defenderChoice.selectedCards,
     p2Cards: isP1Attacker ? defenderChoice.selectedCards : attackerChoice.selectedCards,
     skillsUsed: [],

@@ -512,7 +512,7 @@ function drawCombatantNetStatPill(
 
   if (parts.length === 0) return;
 
-  const text = parts.join(' • ');
+  const text = parts.join(' | ');
   ctx.save();
   ctx.font = 'bold 8.5px sans-serif';
   const textW = ctx.measureText(text).width;
@@ -1250,8 +1250,138 @@ function drawServantPortraitCard(
   ctx.restore();
 }
 
+function cleanCanvasText(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/\*\*/g, '')
+    .replace(/\*/g, '')
+    .replace(/__/g, '')
+    .replace(/_/g, '')
+    .replace(/~~/g, '')
+    .replace(/`/g, '')
+    .replace(/<@!?[0-9]+>/g, '')
+    .replace(/\[/g, '')
+    .replace(/\]/g, '')
+    // Convert common punctuation that renders as tofu blocks on Linux
+    .replace(/[•·]/g, '|')
+    .replace(/[…]/g, '...')
+    .replace(/[➔→➜➤]/g, '>>')
+    // Strip emojis and non-standard unicode characters that render as tofu blocks on Linux
+    .replace(/[\u{1F300}-\u{1F9FF}]/gu, '')
+    .replace(/[\u{2600}-\u{26FF}]/gu, '')
+    .replace(/[\u{2700}-\u{27BF}]/gu, '')
+    .replace(/[\u{1F600}-\u{1F64F}]/gu, '')
+    .replace(/[\u{1F680}-\u{1F6FF}]/gu, '')
+    .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '')
+    .replace(/[⚔️➔⚡★❤️✨💀🔻🔺💨🛡️🔥💥👑🔱🎯✔❌☠️]/g, '')
+    .replace(/[^\x20-\x7E]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /**
- * Draw Minimalist Floating Damage Clash Banner (Option A - Zero redundant text).
+ * Extract clean, high-impact tactical combat telemetry without redundant card names or repeated damage numbers.
+ * Zero tofu blocks (pure ASCII separators).
+ */
+function extractCombatHudTelemetry(
+  log: CombatTurnLog,
+  p1: ActiveCombatant,
+  p2: ActiveCombatant
+): string {
+  const parts: string[] = [];
+
+  // 1. Absolute Defense Evasion / Invincibility Nullification
+  if (log.damageDealt === 0) {
+    if (log.isEvaded || log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade')) {
+      return 'Evade Triggered | Absolute Dodge (0 Damage Taken)';
+    }
+    if (log.isInvincible || log.actionSummary?.toLowerCase().includes('invincible')) {
+      return 'Invincible Barrier Active | Attack Nullified (0 Damage Taken)';
+    }
+  }
+
+  // 2. Command Seal or Tactical Skill
+  if (log.dialogueTag?.includes('COMMAND SEAL') || log.actionSummary?.toLowerCase().includes('command seal')) {
+    return 'Absolute Command Invoked | NP Gauge Surged to 100% Ready';
+  }
+  if (log.dialogueTag?.includes('SKILL') || log.actionSummary?.toLowerCase().includes('activated')) {
+    let skillText = cleanCanvasText(log.actionSummary || '');
+    skillText = skillText.replace(/^.*?(activated|used|unleashed|expended|deployed)\s+/i, '');
+    if (skillText && skillText.length > 3) {
+      return skillText.replace(/•/g, '|').replace(/\s+/g, ' ').trim();
+    }
+    return 'Active Tactical Skill Triggered | Battle Augmentation Active';
+  }
+
+  // 3. Stun Affliction
+  if (log.actionSummary?.toLowerCase().includes('stunned')) {
+    return 'Stun Affliction Active | Turn Skipped (Stun Worn Off)';
+  }
+
+  // 4. Chains Triggered (Buster, Arts, Quick, Brave)
+  const chainType = log.cardChainType || '';
+  if (chainType.includes('Brave') && chainType.includes('Buster')) {
+    parts.push('Buster Brave Chain (+50% ATK & Extra Strike)');
+  } else if (chainType.includes('Brave') && chainType.includes('Arts')) {
+    parts.push('Arts Brave Chain (+20% NP & Extra Strike)');
+  } else if (chainType.includes('Brave') && chainType.includes('Quick')) {
+    parts.push('Quick Brave Chain (+20 Stars & Extra Strike)');
+  } else if (chainType.includes('Brave')) {
+    parts.push('Brave Chain (Guaranteed Extra Strike)');
+  } else if (chainType.includes('Buster')) {
+    parts.push('Buster Chain (+50% First Card ATK)');
+  } else if (chainType.includes('Arts')) {
+    parts.push('Arts Chain (+20% Team NP Charge)');
+  } else if (chainType.includes('Quick')) {
+    parts.push('Quick Chain (+20 Critical Stars)');
+  } else if (chainType) {
+    parts.push(`${chainType} Synergy`);
+  } else if (log.actionSummary?.includes('Chains Triggered:')) {
+    const match = log.actionSummary.match(/Chains Triggered:\s*([^\n\r]+)/i);
+    if (match && match[1]) {
+      const cleanChains = cleanCanvasText(match[1]).replace(/•/g, '|');
+      if (cleanChains) parts.push(cleanChains);
+    }
+  }
+
+  // 5. Critical Strike
+  if (log.isCritical) {
+    parts.push('Critical Strike (+100% Damage)');
+  }
+
+  // 6. Noble Phantasm
+  if (log.isNoblePhantasm) {
+    parts.push('Noble Phantasm Overcharge');
+  }
+
+  // 7. Tactical Gains (NP Refund and Stars Generated)
+  if (log.npCharged && log.npCharged > 0) {
+    parts.push(`+${Math.round(log.npCharged)}% NP Refund`);
+  }
+  if (log.starsGenerated && log.starsGenerated > 0) {
+    parts.push(`+${log.starsGenerated} Stars Generated`);
+  }
+
+  // 8. Fallback to clean actionSummary without redundant actor/damage/cards
+  if (parts.length === 0 && log.actionSummary) {
+    let clean = cleanCanvasText(log.actionSummary);
+    clean = clean.replace(/^.*?(attacked with|struck with|barraged with|slashed with|cleaved with|invoked).*?dealing\s+[\d,]+\s*(damage|dmg)\.?\s*/i, '');
+    clean = clean.replace(/•/g, '|').trim();
+    if (clean.length > 5) {
+      parts.push(clean);
+    }
+  }
+
+  if (parts.length === 0) {
+    return 'Standard Engagement Phase Completed';
+  }
+
+  return parts.join('  |  ');
+}
+
+/**
+ * Draw Minimalist Floating Damage Clash Banner.
+ * Upgraded with large typography, vibrant colored segments, pure tactical telemetry, zero tofu blocks.
  */
 function drawMinimalClashBanner(
   ctx: any,
@@ -1259,9 +1389,9 @@ function drawMinimalClashBanner(
   p1: ActiveCombatant,
   p2: ActiveCombatant,
   x: number = 16,
-  y: number = 282,
+  y: number = 278,
   w: number = 608,
-  h: number = 126,
+  h: number = 134,
   formatBadge: string = '1v1'
 ) {
   ctx.save();
@@ -1332,8 +1462,8 @@ function drawMinimalClashBanner(
   // ----------------------------------------------------
   // ROW 1: Category Pill (Left) & Round / Gains (Right)
   // ----------------------------------------------------
-  const pillY = y + 10;
-  ctx.font = 'bold 10.5px sans-serif';
+  const pillY = y + 9;
+  ctx.font = 'bold 11px sans-serif';
   const catText = categoryTitle;
   const catW = ctx.measureText(catText).width + 16;
   const catH = 20;
@@ -1350,9 +1480,9 @@ function drawMinimalClashBanner(
   ctx.textAlign = 'center';
   ctx.fillText(catText, x + 12 + catW / 2, pillY + 14);
 
-  // Round / Format Pill (Top Right)
-  const roundText = `ROUND ${log.turnNumber || 1} • ${formatBadge.toUpperCase()}`;
-  ctx.font = 'bold 10.5px sans-serif';
+  // Round / Format Pill (Top Right) - Zero tofu blocks, uses ASCII "|"
+  const roundText = `ROUND ${log.turnNumber || 1} | ${formatBadge.toUpperCase()}`;
+  ctx.font = 'bold 11px sans-serif';
   const roundW = ctx.measureText(roundText).width + 16;
   const roundX = x + w - roundW - 12;
 
@@ -1368,74 +1498,129 @@ function drawMinimalClashBanner(
   ctx.textAlign = 'center';
   ctx.fillText(roundText, roundX + roundW / 2, pillY + 14);
 
-  // Tactical Gains (Next to Round Pill)
-  if ((log.npCharged && log.npCharged > 0) || (log.starsGenerated && log.starsGenerated > 0)) {
+  // Tactical Gains (Between Category & Round Pill) - Zero tofu blocks, uses ASCII "|"
+  const npG = (log as any).npGained ?? log.npCharged ?? 0;
+  const starG = log.starsGenerated || 0;
+  if (npG > 0 || starG > 0) {
     const gainParts: string[] = [];
-    if (log.npCharged && log.npCharged > 0) gainParts.push(`⚡ +${Math.round(log.npCharged)}% NP`);
-    if (log.starsGenerated && log.starsGenerated > 0) gainParts.push(`★ +${log.starsGenerated} Stars`);
-    const gainText = gainParts.join(' • ');
-    ctx.font = 'bold 10px sans-serif';
+    if (npG > 0) gainParts.push(`+${Math.round(npG)}% NP`);
+    if (starG > 0) gainParts.push(`+${starG} Stars`);
+    const gainText = gainParts.join('  |  ');
+    ctx.font = 'bold 11px sans-serif';
     ctx.fillStyle = '#38bdf8';
     ctx.textAlign = 'right';
-    ctx.fillText(gainText, roundX - 10, pillY + 14);
+    ctx.fillText(gainText, roundX - 12, pillY + 14);
   }
+
+  // Subtle Header Divider Line
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x + 12, y + 35);
+  ctx.lineTo(x + w - 12, y + 35);
+  ctx.stroke();
 
   // ----------------------------------------------------
   // ROW 2: Combatant Action Line (Actor -> Target)
+  // Larger, bold 17px typography, colored segments, smart fitting with zero clipping
   // ----------------------------------------------------
-  const actorClean = (log.actorName || p1.name || 'Heroic Spirit').replace(/[^\x00-\x7F]/g, '');
-  const targetClean = (log.targetName || p2.name || 'Target Opponent').replace(/[^\x00-\x7F]/g, '');
-  const actionLineY = y + 46;
+  let actorClean = cleanCanvasText(log.actorName || p1.name || 'Heroic Spirit');
+  let targetClean = cleanCanvasText(log.targetName || p2.name || 'Target Opponent');
+  if (log.isAoE || !log.targetName) {
+    targetClean = 'ALL TARGETS (AoE)';
+  }
 
-  ctx.font = 'bold 13px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#e2e8f0';
-  ctx.fillText(`⚔️ ${actorClean}  ➔  ${targetClean}`, x + w / 2, actionLineY);
+  const arrowText = '  >>  ';
+  let line1Font = 17;
+  ctx.font = `bold ${line1Font}px sans-serif`;
+
+  let fullLine1 = `${actorClean}${arrowText}${targetClean}`;
+  while (ctx.measureText(fullLine1).width > w - 32 && line1Font > 14) {
+    line1Font -= 0.5;
+    ctx.font = `bold ${line1Font}px sans-serif`;
+  }
+
+  // Smart name trimmer if still exceeds max width
+  let displayActor = actorClean;
+  let displayTarget = targetClean;
+  if (ctx.measureText(`${displayActor}${arrowText}${displayTarget}`).width > w - 32) {
+    displayActor = displayActor.replace(/\s*\([^)]*\)/g, '').trim();
+    displayTarget = displayTarget.replace(/\s*\([^)]*\)/g, '').trim();
+    while (ctx.measureText(`${displayActor}...${arrowText}${displayTarget}...`).width > w - 32 && (displayActor.length > 12 || displayTarget.length > 12)) {
+      if (displayActor.length > displayTarget.length) {
+        displayActor = displayActor.slice(0, -1);
+      } else {
+        displayTarget = displayTarget.slice(0, -1);
+      }
+    }
+    if (displayActor !== actorClean && !displayActor.endsWith('...')) displayActor += '...';
+    if (displayTarget !== targetClean && !displayTarget.endsWith('...')) displayTarget += '...';
+    fullLine1 = `${displayActor}${arrowText}${displayTarget}`;
+  }
+
+  // Render centered with distinctive colors
+  const totalW = ctx.measureText(fullLine1).width;
+  const startX = x + (w - totalW) / 2;
+  const line1Y = y + 57;
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.textAlign = 'left';
+  ctx.fillText(displayActor, startX, line1Y);
+
+  const actorW = ctx.measureText(displayActor).width;
+  ctx.fillStyle = '#fbbf24';
+  ctx.fillText(arrowText, startX + actorW, line1Y);
+
+  const arrowW = ctx.measureText(arrowText).width;
+  ctx.fillStyle = (log.isAoE || !log.targetName) ? '#c084fc' : '#f87171';
+  ctx.fillText(displayTarget, startX + actorW + arrowW, line1Y);
 
   // ----------------------------------------------------
-  // ROW 3: Big Cinematic Damage / Outcome Stat
+  // ROW 3: Big Cinematic Damage / Outcome Stat (28px)
   // ----------------------------------------------------
-  const dmgY = y + 78;
+  const dmgY = y + 89;
   const dmg = log.damageDealt > 0 ? log.damageDealt.toLocaleString() : '0';
 
   if (log.damageDealt === 0 && (log.isEvaded || log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade'))) {
-    ctx.font = 'bold 24px sans-serif';
+    ctx.font = 'bold 26px sans-serif';
     ctx.fillStyle = '#38bdf8';
     ctx.textAlign = 'center';
     ctx.fillText('ATTACK EVADED! (0 DMG)', x + w / 2, dmgY);
   } else if (log.damageDealt === 0 && (log.isInvincible || log.actionSummary?.toLowerCase().includes('invincible'))) {
-    ctx.font = 'bold 24px sans-serif';
+    ctx.font = 'bold 26px sans-serif';
     ctx.fillStyle = '#fde047';
     ctx.textAlign = 'center';
     ctx.fillText('INVINCIBLE! (0 DMG)', x + w / 2, dmgY);
   } else if (log.damageDealt > 0) {
-    ctx.font = 'bold 26px sans-serif';
-    ctx.textAlign = 'center';
-
     let dmgColor = '#ffffff';
     let suffix = ' DMG';
+    let baseDmgFont = 28;
     if (log.isNoblePhantasm) {
       dmgColor = '#fde047';
       suffix = ' NOBLE PHANTASM DMG';
+      baseDmgFont = 26;
     } else if (log.isCritical) {
       dmgColor = '#f87171';
       suffix = ' CRITICAL DMG';
+      baseDmgFont = 28;
     }
 
+    ctx.font = `bold ${baseDmgFont}px sans-serif`;
+    ctx.textAlign = 'center';
     ctx.fillStyle = dmgColor;
     ctx.fillText(`${dmg}${suffix}`, x + w / 2, dmgY);
   } else if (log.dialogueTag?.includes('COMMAND SEAL') || log.actionSummary?.toLowerCase().includes('command seal')) {
-    ctx.font = 'bold 20px sans-serif';
+    ctx.font = 'bold 24px sans-serif';
     ctx.fillStyle = '#fb7185';
     ctx.textAlign = 'center';
     ctx.fillText('COMMAND SEAL: NP REFILLED TO 100%', x + w / 2, dmgY);
   } else if (log.dialogueTag?.includes('SKILL') || log.actionSummary?.toLowerCase().includes('activated')) {
-    ctx.font = 'bold 20px sans-serif';
+    ctx.font = 'bold 24px sans-serif';
     ctx.fillStyle = '#38bdf8';
     ctx.textAlign = 'center';
-    ctx.fillText('TACTICAL SKILL ACTIVATED!', x + w / 2, dmgY);
+    ctx.fillText('TACTICAL SKILL ACTIVATED', x + w / 2, dmgY);
   } else {
-    ctx.font = 'bold 22px sans-serif';
+    ctx.font = 'bold 28px sans-serif';
     ctx.fillStyle = '#cbd5e1';
     ctx.textAlign = 'center';
     ctx.fillText(`${dmg} DMG`, x + w / 2, dmgY);
@@ -1443,35 +1628,28 @@ function drawMinimalClashBanner(
 
   // ----------------------------------------------------
   // ROW 4: Combat Telemetry Strip (Effects & Battle Logs)
+  // Large 15px font, pure tactical telemetry, zero tofu blocks, zero clipping
   // ----------------------------------------------------
-  const subY = y + 108;
-  let effectText = '';
+  const telemetry = extractCombatHudTelemetry(log, p1, p2);
+  let line3Font = 15;
+  ctx.font = `bold ${line3Font}px sans-serif`;
 
-  if (log.actionSummary) {
-    effectText = log.actionSummary
-      .replace(/\*\*/g, '')
-      .replace(/<@!?[0-9]+>/g, '')
-      .replace(/[`_]/g, '')
-      .trim();
+  let displayTelemetry = telemetry;
+  while (ctx.measureText(displayTelemetry).width > w - 32 && line3Font > 13) {
+    line3Font -= 0.5;
+    ctx.font = `bold ${line3Font}px sans-serif`;
   }
 
-  if (!effectText || effectText.length < 5) {
-    const parts: string[] = [];
-    if (log.cardChainType) parts.push(`${log.cardChainType} Synergy`);
-    if (log.isCritical) parts.push('Critical Hit Proc');
-    if (log.isNoblePhantasm) parts.push('Overcharge Deployed');
-    if (log.starsGenerated && log.starsGenerated > 0) parts.push(`+${log.starsGenerated} Stars Generated`);
-    effectText = parts.length > 0 ? parts.join(' • ') : 'Standard Engagement Phase Completed';
+  if (ctx.measureText(displayTelemetry).width > w - 32) {
+    while (ctx.measureText(displayTelemetry + '...').width > w - 32 && displayTelemetry.length > 10) {
+      displayTelemetry = displayTelemetry.slice(0, -1).trim();
+    }
+    displayTelemetry += '...';
   }
 
-  if (effectText.length > 80) {
-    effectText = effectText.substring(0, 77) + '…';
-  }
-
-  ctx.font = 'bold 11px sans-serif';
-  ctx.fillStyle = log.isNoblePhantasm ? '#fde047' : log.isCritical ? '#fca5a5' : '#94a3b8';
+  ctx.fillStyle = log.isNoblePhantasm ? '#fde047' : log.isCritical ? '#fca5a5' : '#e2e8f0';
   ctx.textAlign = 'center';
-  ctx.fillText(effectText, x + w / 2, subY);
+  ctx.fillText(displayTelemetry, x + w / 2, y + 118);
 
   ctx.restore();
 }
@@ -5118,7 +5296,7 @@ function drawDefeatedOverlay(
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 11px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`☠️ ${label}`, bannerX + bannerW / 2, bannerY + 17);
+  ctx.fillText(label, bannerX + bannerW / 2, bannerY + 17);
 
   ctx.restore();
 }
@@ -5232,7 +5410,7 @@ function drawUnitHudPlate(
   ctx.fillStyle = '#f8fafc';
   ctx.font = 'bold 10.5px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(sCleanName.length > 15 ? sCleanName.slice(0, 14) + '…' : sCleanName, pX + 6, pY + portraitH - 7);
+  ctx.fillText(sCleanName.length > 15 ? sCleanName.slice(0, 14) + '...' : sCleanName, pX + 6, pY + portraitH - 7);
 
   if (showBars) {
     // 3. Integrated HP Bar (Height: 18px)
@@ -5473,14 +5651,14 @@ export async function renderBattleTurnSummary(
       activeP2Ally = {
         ...resolvedTeamSolo[0],
         isSoloRogue: true,
-        roleTag: resolvedTeamSolo[0].roleTag || 'SOLO ROGUE ⚡'
+        roleTag: resolvedTeamSolo[0].roleTag || 'SOLO ROGUE'
       };
       // If Slot 2 (Team A Flank) is open and there is a 4th Master (second Solo Rogue), allocate beside P1
       if (!activeP1Ally && resolvedTeamSolo.length >= 2) {
         activeP1Ally = {
           ...resolvedTeamSolo[1],
           isSoloRogue: true,
-          roleTag: resolvedTeamSolo[1].roleTag || 'SOLO ROGUE ⚡'
+          roleTag: resolvedTeamSolo[1].roleTag || 'SOLO ROGUE'
         };
       }
     } else if (!activeP1Ally && resolvedTeamSolo.length >= 1) {
@@ -5488,7 +5666,7 @@ export async function renderBattleTurnSummary(
       activeP1Ally = {
         ...resolvedTeamSolo[0],
         isSoloRogue: true,
-        roleTag: resolvedTeamSolo[0].roleTag || 'SOLO ROGUE ⚡'
+        roleTag: resolvedTeamSolo[0].roleTag || 'SOLO ROGUE'
       };
     }
   }
@@ -5753,11 +5931,11 @@ export async function renderBattleTurnSummary(
     });
   } else {
     // Multi-Combatant Team A: 2 Avatars on Left, 2-Row Card Grid on Right
-    const p1LeadRole = activeP1.isSoloRogue ? (activeP1.roleTag || 'SOLO ROGUE ⚡') : 'VANGUARD';
+    const p1LeadRole = activeP1.isSoloRogue ? (activeP1.roleTag || 'SOLO ROGUE') : 'VANGUARD';
     const p1LeadColor = activeP1.isSoloRogue ? '#f59e0b' : '#38bdf8';
     drawUnitHudPlate(ctx, 16, 16, 138, 256, p1Img, activeP1, p1LeadRole, p1LeadColor, isP1LeadTargeted);
     if (activeP1Ally) {
-      const p1AllyRole = activeP1Ally.isSoloRogue ? (activeP1Ally.roleTag || 'SOLO ROGUE ⚡') : 'ALLIED FLANK';
+      const p1AllyRole = activeP1Ally.isSoloRogue ? (activeP1Ally.roleTag || 'SOLO ROGUE') : 'ALLIED FLANK';
       const p1AllyColor = activeP1Ally.isSoloRogue ? '#f59e0b' : '#818cf8';
       drawUnitHudPlate(ctx, 158, 16, 138, 256, p1AllyImg, activeP1Ally, p1AllyRole, p1AllyColor, isP1AllyTargeted);
     }
@@ -5779,9 +5957,9 @@ export async function renderBattleTurnSummary(
   }
 
   // ==========================================
-  // MIDDLE SECTION: EXPANDED TACTICAL CLASH HUD (126px)
+  // MIDDLE SECTION: EXPANDED TACTICAL CLASH HUD (134px)
   // ==========================================
-  drawMinimalClashBanner(ctx, log, activeP1, activeP2, 16, 282, 608, 126, formatTag);
+  drawMinimalClashBanner(ctx, log, activeP1, activeP2, 16, 278, 608, 134, formatTag);
 
   // ==========================================
   // BOTTOM SECTION: TEAM B (ENEMY RIVALS) - Shifted flush to bottom
@@ -5796,7 +5974,7 @@ export async function renderBattleTurnSummary(
       drawTarotCommandCard(ctx, 124 + idx * 108, 418, 100, 180, card, idx, activeP2.critStars || 0, isP2QuickLead);
     });
 
-    const p2SingleRole = activeP2.isSoloRogue ? (activeP2.roleTag || 'SOLO ROGUE ⚡') : 'RIVAL';
+    const p2SingleRole = activeP2.isSoloRogue ? (activeP2.roleTag || 'SOLO ROGUE') : 'RIVAL';
     const p2SingleColor = activeP2.isSoloRogue ? '#f97316' : '#ef4444';
     drawUnitHudPlate(ctx, 452, 418, 172, 256, p2Img, activeP2, p2SingleRole, p2SingleColor, isP2LeadTargeted, false);
 
@@ -5975,11 +6153,11 @@ export async function renderBattleTurnSummary(
     });
 
     // Right Side: 2 Avatars (Enemy Vanguard + Enemy Flank / Solo Rogue)
-    const p2LeadRole = activeP2.isSoloRogue ? (activeP2.roleTag || 'SOLO ROGUE ⚡') : 'ENEMY VANGUARD';
+    const p2LeadRole = activeP2.isSoloRogue ? (activeP2.roleTag || 'SOLO ROGUE') : 'ENEMY VANGUARD';
     const p2LeadColor = activeP2.isSoloRogue ? '#f97316' : '#ef4444';
     drawUnitHudPlate(ctx, 338, 418, 138, 256, p2Img, activeP2, p2LeadRole, p2LeadColor, isP2LeadTargeted);
     if (activeP2Ally) {
-      const p2AllyRole = activeP2Ally.isSoloRogue ? (activeP2Ally.roleTag || 'SOLO ROGUE ⚡') : 'ENEMY FLANK';
+      const p2AllyRole = activeP2Ally.isSoloRogue ? (activeP2Ally.roleTag || 'SOLO ROGUE') : 'ENEMY FLANK';
       const p2AllyColor = activeP2Ally.isSoloRogue ? '#f97316' : '#f43f5e';
       drawUnitHudPlate(ctx, 480, 418, 138, 256, p2AllyImg, activeP2Ally, p2AllyRole, p2AllyColor, isP2AllyTargeted);
     }

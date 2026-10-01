@@ -618,8 +618,27 @@ async function createTurnSummaryAttachment(
   const isEvaded = damageDealt === 0 && (/evaded/i.test(lastLogText) || /evaded/i.test(strikeLogText) || /evade/i.test(lastLogText));
   const isInvincible = damageDealt === 0 && (/invincible/i.test(lastLogText) || /invincible/i.test(strikeLogText));
 
+  let cardChainType: string | undefined = undefined;
+  const fullLogCheck = `${lastLogText} ${strikeLogText}`;
+  if (/Buster Brave Chain/i.test(fullLogCheck)) {
+    cardChainType = 'Buster Brave Chain';
+  } else if (/Arts Brave Chain/i.test(fullLogCheck)) {
+    cardChainType = 'Arts Brave Chain';
+  } else if (/Quick Brave Chain/i.test(fullLogCheck)) {
+    cardChainType = 'Quick Brave Chain';
+  } else if (/Brave Chain/i.test(fullLogCheck)) {
+    cardChainType = 'Brave Chain';
+  } else if (/Buster Chain/i.test(fullLogCheck)) {
+    cardChainType = 'Buster Chain';
+  } else if (/Arts Chain/i.test(fullLogCheck)) {
+    cardChainType = 'Arts Chain';
+  } else if (/Quick Chain/i.test(fullLogCheck)) {
+    cardChainType = 'Quick Chain';
+  }
+
   const cleanActionSummary = lastLogText
     .replace(/[*_~`>#]/g, '')
+    .replace(/[•·]/g, '|')
     .replace(/[⚔️💥✨🌀⚡🔴🔵🟢🛡️👑🌟🗡️🔥💀🩸]/gu, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -627,7 +646,7 @@ async function createTurnSummaryAttachment(
   const activeTeamSolo = teamSoloList.map(c => {
     const mapped = mapToActive(c);
     mapped.isSoloRogue = true;
-    mapped.roleTag = 'SOLO ROGUE ⚡';
+    mapped.roleTag = 'SOLO ROGUE';
     return mapped;
   });
 
@@ -641,6 +660,7 @@ async function createTurnSummaryAttachment(
     targetId: activeDefender.userId,
     targetName: activeDefender.servant.template.name,
     actionSummary: cleanActionSummary,
+    cardChainType,
     dialogueQuote: dQuote,
     dialogueTag: dTag,
     dialogueTitle: activeAttacker.servant.template.name,
