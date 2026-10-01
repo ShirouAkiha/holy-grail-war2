@@ -2382,10 +2382,10 @@ async function concludeRaidDefeat(
       `💔 **Boss Health Remaining:** ❤️ **${Math.round(battleState.bossCurrentHp).toLocaleString()} / ${battleState.bossMaxHp.toLocaleString()} HP** (${bossHpPct}% Remaining)\n\n` +
       `📊 **Damage Contribution:**\n${damageContributionText}\n\n` +
       `📜 **Recent Battle Log:**\n${recentCombatLogText}\n\n` +
-      `*Regroup at Chaldea, reinforce your Saint Graphs, and challenge the Demon God Pillar once more!*`
+      `*Regroup at Chaldea, reinforce your Saint Graphs, and challenge ${boss.name} once more!*`
     )
     .setColor(0xef4444)
-    .setFooter({ text: 'Demon God Pillar Raid • Defeat' });
+    .setFooter({ text: `${boss.name} Raid • Defeat` });
 
   const logRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -2462,7 +2462,7 @@ function buildRaidStatusEmbed(state: RaidBattleState, viewingUserId: string): Em
           : `: ${sign}${Math.abs(b.value)}${['curse', 'poison', 'burn'].includes(b.type) ? ' DMG/Turn' : '%'}`;
         return `• ${icon} **${b.name}**${formattedVal} (${b.remainingTurns} turn(s) left)`;
       }).join('\n')
-    : '_No active status effects or debuffs applied to the Demon God Pillar._';
+    : `_No active status effects or debuffs applied to ${boss.name}._`;
 
   // Viewer's Active Buffs
   const vBuffsList = (viewer.activeBuffs && viewer.activeBuffs.length > 0)
