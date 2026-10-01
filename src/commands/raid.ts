@@ -1316,7 +1316,9 @@ async function runRaidBattle(
       const isQuickFirstLead = pendingCards[0] === 'Quick';
       let totalCritsLanded = 0;
       let npTriggeredAntiThreat = false;
-      let npDebuffNotice = '';
+      let npEffectsLog: string[] = [];
+      let npEffectsHud: string[] = [];
+      let npNameUsed = '';
 
       pendingCards.forEach((card, cIdx) => {
         const stepMult = cIdx === 0 ? 1.0 : cIdx === 1 ? 1.2 : 1.4;
@@ -1352,12 +1354,12 @@ async function runRaidBattle(
         } else if (card === 'NP') {
           const rawNpMult = active.servant.template?.noblePhantasm?.multiplier ?? 600;
           const npMultiplier = rawNpMult >= 20 ? rawNpMult / 100 : (rawNpMult || 6.0);
-          const npDesc = active.servant.template?.noblePhantasm?.description || '';
+          const npDesc = ((active.servant.template?.noblePhantasm?.description || '') + ' ' + (active.servant.template?.noblePhantasm?.overchargeEffect || '')).trim();
           const npName = active.servant.template?.noblePhantasm?.name || 'Noble Phantasm';
           const npTarget = active.servant.template?.noblePhantasm?.target || 'single';
-          const sName = active.servant.template?.name || active.servant.nickname || '';
+          npNameUsed = npName;
 
-          const isSupportNp = npTarget === 'support' || npMultiplier === 0 || /party invincib|grant.*invincib|luminos/i.test(npName + ' ' + npDesc);
+          const isSupportNp = npTarget === 'support' || npMultiplier === 0 || /party invincib|grant.*invincib|luminos|tigris redoubt/i.test(npName + ' ' + npDesc);
 
           if (isSupportNp) {
             // Party Invincibility, DEF Up (+30% 3T), Debuff Cleanse & Heal (+3,000 HP) to ALL living allies in the raid!
@@ -1387,7 +1389,8 @@ async function runRaidBattle(
                 p.currentHp = Math.min(p.maxHp, p.currentHp + 3000);
               }
             });
-            npDebuffNotice += ` 🕊️ **[LUMINOSITÉ ÉTERNELLE: Party Invincibility (1T), +30% DEF (3T), Debuff Cleanse & +3,000 HP Heal to ALL Allies!]**`;
+            npEffectsLog.push('🕊️ [Party Invincible (1T), +30% DEF (3T), Cleanse & +3,000 HP Heal]');
+            npEffectsHud.push('Party Invincible • +30% DEF • Heal');
             starsGenerated += 15;
             npGained += 20;
           } else {
@@ -1397,39 +1400,66 @@ async function runRaidBattle(
 
             // Apply secondary debuffs from Noble Phantasm to boss
             battleState.bossBuffs = battleState.bossBuffs || [];
-            if (/def.*down|lower.*def|reduce.*def|decrease.*def/i.test(npDesc)) {
+
+            // 1. Stun / Paralysis / Charm / Bound Handling
+            if (/stun|paraly|charm|bound/i.test(npDesc)) {
+              const isImmuneToStun = boss.id === 'tiamat' && (battleState.currentPhase || 1) >= 2;
+              if (isImmuneToStun) {
+                npEffectsLog.push('🛡️ [Stun Resisted: Immense Mass (Boss Immune)]');
+                npEffectsHud.push('Stun Resisted (Immune)');
+              } else {
+                // Parse percentage chance (e.g. 50% chance for Luvria)
+                const chanceMatch = npDesc.match(/(\d+)%\s*(?:chance)?.*(?:stun|paraly|charm|bound)/i) ||
+                                    npDesc.match(/(?:stun|paraly|charm|bound).*(?:with\s*)?(\d+)%/i);
+                const stunChance = chanceMatch ? parseInt(chanceMatch[1], 10) : 100;
+                const roll = Math.random() * 100;
+                if (roll < stunChance) {
+                  battleState.bossBuffs.push({
+                    name: `${npName} (Stun)`,
+                    type: 'stun',
+                    value: 100,
+                    remainingTurns: 1
+                  });
+                  npEffectsLog.push('⚡ [Stun Inflicted (1 Turn)]');
+                  npEffectsHud.push('⚡ Stun Inflicted');
+                } else {
+                  npEffectsLog.push(`💨 [Stun Resisted]`);
+                  npEffectsHud.push('Stun Resisted');
+                }
+              }
+            }
+
+            // 2. DEF Down / Armor Shred
+            if (/def.*down|lower.*def|reduce.*def|decrease.*def|shred.*armor/i.test(npDesc)) {
+              const defMatch = npDesc.match(/def(?:ense)?\s*(?:by\s*|down\s*)?(\d+)%/i) ||
+                               npDesc.match(/(\d+)%\s*(?:def|defense\s*down)/i);
+              const defVal = defMatch ? parseInt(defMatch[1], 10) : 30;
               battleState.bossBuffs.push({
                 name: `${npName} (DEF Down)`,
                 type: 'def_down',
-                value: 30,
+                value: defVal,
                 remainingTurns: 3
               });
-              npDebuffNotice += ' 🔻 [-30% DEF Down]';
+              npEffectsLog.push(`🔻 [-${defVal}% DEF Down (3T)]`);
+              npEffectsHud.push(`-${defVal}% DEF`);
             }
-            if (/curse|burn|poison/i.test(npDesc)) {
+
+            // 3. Critical Rate Down
+            if (/crit.*down|reduce.*crit|decrease.*crit/i.test(npDesc)) {
+              const critMatch = npDesc.match(/crit(?:ical)?\s*(?:rate\s*)?(?:by\s*)?(\d+)%/i);
+              const critVal = critMatch ? parseInt(critMatch[1], 10) : 20;
               battleState.bossBuffs.push({
-                name: `${npName} (Affliction)`,
-                type: 'curse',
-                value: 6000,
+                name: `${npName} (Crit Down)`,
+                type: 'crit_rate_down',
+                value: critVal,
                 remainingTurns: 3
               });
-              npDebuffNotice += ' 🔥 [Curse/Burn]';
+              npEffectsLog.push(`🎯 [-${critVal}% Crit Rate (3T)]`);
+              npEffectsHud.push(`-${critVal}% Boss Crit`);
             }
-            if (/stun|paraly|charm/i.test(npDesc)) {
-              const isImmuneToStun = boss.id === 'tiamat' && (battleState.currentPhase || 1) >= 2;
-              if (!isImmuneToStun) {
-                battleState.bossBuffs.push({
-                  name: `${npName} (Stun)`,
-                  type: 'stun',
-                  value: 100,
-                  remainingTurns: 1
-                });
-                npDebuffNotice += ' ⚡ [Stun]';
-              } else {
-                npDebuffNotice += ' 🛡️ [Stun Resisted: Immense Mass]';
-              }
-            }
-            if (/drain|seal/i.test(npDesc)) {
+
+            // 4. NP Drain / Charge Reduction
+            if (/drain|reduce.*np\s*gauge|np\s*seal/i.test(npDesc)) {
               battleState.bossCharge = Math.max(0, battleState.bossCharge - 1);
               battleState.bossBuffs.push({
                 name: `${npName} (NP Drain)`,
@@ -1437,7 +1467,37 @@ async function runRaidBattle(
                 value: 1,
                 remainingTurns: 1
               });
-              npDebuffNotice += ' 🔒 [NP Drained]';
+              npEffectsLog.push('🔒 [-1 Boss NP Charge]');
+              npEffectsHud.push('-1 NP Charge');
+            }
+
+            // 5. Curse / Burn / Poison
+            if (/curse|burn|poison/i.test(npDesc)) {
+              battleState.bossBuffs.push({
+                name: `${npName} (Affliction)`,
+                type: 'curse',
+                value: 6000,
+                remainingTurns: 3
+              });
+              npEffectsLog.push('🔥 [Curse/Burn (3T)]');
+              npEffectsHud.push('Curse/Burn (3T)');
+            }
+
+            // 6. Buff Block
+            if (/buff\s*block/i.test(npDesc)) {
+              battleState.bossBuffs.push({
+                name: `${npName} (Buff Block)`,
+                type: 'buff_block',
+                value: 1,
+                remainingTurns: 3
+              });
+              npEffectsLog.push('🚫 [Buff Block (3T)]');
+              npEffectsHud.push('Buff Block');
+            }
+
+            // 7. Ignore Defense
+            if (/ignore.*def|bypass.*def|defense-ignoring/i.test(npDesc)) {
+              npEffectsLog.push('🛡️ [DEF-Ignoring]');
             }
 
             totalTurnDmg += Math.round(baseAtk * npMultiplier * atkBuffMult * specialAtkMult * bossDefFactor * npSpecialMult * (0.95 + Math.random() * 0.1));
@@ -1452,7 +1512,7 @@ async function runRaidBattle(
         if ((battleState.turnDamageTaken || 0) < 300_000) {
           totalTurnDmg = Math.round(totalTurnDmg * 0.80);
           battleState.chaosSporesActive = true;
-          npDebuffNotice += ' 🛡️ **[Chaos Spores: -20% DMG Shield active]**';
+          npEffectsLog.push('🛡️ [Chaos Spores: -20% Shield Active]');
         }
       }
 
@@ -1460,13 +1520,13 @@ async function runRaidBattle(
       if (battleState.bossShield && battleState.bossShield > 0) {
         if (totalTurnDmg <= battleState.bossShield) {
           battleState.bossShield -= totalTurnDmg;
-          npDebuffNotice += ` 🛡️ **[Barrier Absorbed ${totalTurnDmg.toLocaleString()} DMG! (${battleState.bossShield.toLocaleString()} HP Left)]**`;
+          npEffectsLog.push(`🛡️ [Barrier Absorbed ${totalTurnDmg.toLocaleString()} DMG (${battleState.bossShield.toLocaleString()} HP Left)]`);
           totalTurnDmg = 0;
         } else {
           const absorbed = battleState.bossShield;
           totalTurnDmg -= absorbed;
           battleState.bossShield = 0;
-          npDebuffNotice += ` 💥 **[Barrier Shattered! (${absorbed.toLocaleString()} DMG Absorbed)]**`;
+          npEffectsLog.push(`💥 [Barrier Shattered (${absorbed.toLocaleString()} DMG Absorbed)]`);
         }
       }
 
@@ -1492,39 +1552,45 @@ async function runRaidBattle(
       if (bossDefDown > 0) {
         traitLog += ` 🔻 **[DEF Down: +${Math.round(bossDefDown * 100)}% DMG]**`;
       }
-      if (npDebuffNotice) {
-        traitLog += npDebuffNotice;
-      }
 
-      const playerAttackLog = `⚔️ **${servName}** dealt **${totalTurnDmg.toLocaleString()} DMG** to ${boss.name}! (+${npGained}% NP, +${starsGenerated} Stars)${traitLog}`;
+      const npEffectsStr = npEffectsLog.length > 0 ? ` ${npEffectsLog.join(' ')}` : '';
+      const actionVerb = usedNp ? `unleashed **[${npNameUsed}]** dealing` : 'dealt';
+      const playerAttackLog = `⚔️ **${servName}** ${actionVerb} **${totalTurnDmg.toLocaleString()} DMG** to ${boss.name}! (+${npGained}% NP, +${starsGenerated} Stars)${traitLog}${npEffectsStr}`;
       battleState.lastPlayerAttackLog = playerAttackLog;
       battleState.recentLogs.push(playerAttackLog);
       while (battleState.recentLogs.length > 8) battleState.recentLogs.shift();
 
-      // Update single-focus Tactical Action HUD with THIS turn's strike damage!
+      // Update single-focus Tactical Action HUD with THIS turn's strike damage & full NP details!
       let subDetailStr = '';
-      if (totalCritsLanded > 0) {
+      if (usedNp) {
+        const shortNpName = npNameUsed.split(':')[0].trim();
+        if (npEffectsHud.length > 0) {
+          subDetailStr = `${shortNpName} • ${npEffectsHud.join(' • ')} • +${starsGenerated} Stars`;
+        } else {
+          subDetailStr = `${shortNpName} Unleashed • +${starsGenerated} Stars`;
+        }
+      } else if (totalCritsLanded > 0) {
         subDetailStr = `CRITICAL HIT (${totalCritsLanded}x) • +${npGained}% NP • +${starsGenerated} Stars`;
-      } else if (usedNp) {
-        subDetailStr = `Noble Phantasm Unleashed • +${starsGenerated} Stars Generated`;
       } else {
         subDetailStr = `+${npGained}% NP • +${starsGenerated} Stars Generated`;
       }
 
       battleState.lastHudAction = {
-        category: 'MASTER STRIKE',
-        categoryColor: '#38bdf8',
+        category: usedNp ? 'NOBLE PHANTASM' : 'MASTER STRIKE',
+        categoryColor: usedNp ? '#a855f7' : '#38bdf8',
         headline: servName,
         bigStat: `${totalTurnDmg.toLocaleString()} DMG`,
-        bigStatColor: '#fde047',
+        bigStatColor: usedNp ? '#facc15' : '#fde047',
         subDetail: subDetailStr,
-        subDetailColor: totalCritsLanded > 0 ? '#f43f5e' : '#67e8f9'
+        subDetailColor: usedNp ? '#c084fc' : (totalCritsLanded > 0 ? '#f43f5e' : '#67e8f9')
       };
 
       active.totalDamageDealt = (active.totalDamageDealt || 0) + totalTurnDmg;
       battleState.fullCombatLog = battleState.fullCombatLog || [];
+      const chainDesc = `[${pendingCards.join(' ➔ ')}]`;
+      const fullNpDetail = usedNp ? `unleashed **[${npNameUsed}]** with \`${chainDesc}\`` : `struck with \`${chainDesc}\``;
       battleState.fullCombatLog.push(
-        `⚔️ **[Round ${battleState.round}]** **${servName}** (<@${active.userId}>) struck with \`[${pendingCards.join(' ➔ ')}]\` dealing **${totalTurnDmg.toLocaleString()} DMG**! *(${boss.name} HP: ${battleState.bossCurrentHp.toLocaleString()} / ${battleState.bossMaxHp.toLocaleString()})*`
+        `⚔️ **[Round ${battleState.round}]** **${servName}** (<@${active.userId}>) ${fullNpDetail} dealing **${totalTurnDmg.toLocaleString()} DMG**! *(${boss.name} HP: ${battleState.bossCurrentHp.toLocaleString()} / ${battleState.bossMaxHp.toLocaleString()})*${npEffectsStr}${traitLog}`
       );
 
       if (battleState.bossCurrentHp <= 0) {
