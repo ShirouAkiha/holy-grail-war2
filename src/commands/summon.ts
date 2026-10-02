@@ -24,76 +24,16 @@ import { renderGachaSummonBanner } from '../canvas/renderer';
 // ==========================================
 export const data = new SlashCommandBuilder()
   .setName('summon')
-  .setDescription('👑 Throne of Heroes & Greater Grail Invocation — Summon Servants & Craft Essences')
-  .addSubcommand(sub =>
-    sub
-      .setName('servant')
-      .setDescription('Summon Heroic Spirits from the Throne of Heroes into your roster (3 SQ for 1x, 30 SQ for 10x)')
-      .addIntegerOption(opt =>
-        opt
-          .setName('rolls')
-          .setDescription('Number of summons (1x or 10x)')
-          .setRequired(false)
-          .addChoices(
-            { name: '1x Single Summon (3 Saint Quartz)', value: 1 },
-            { name: '10x Multi-Summon (30 Saint Quartz)', value: 10 }
-          )
+  .setDescription('👑 Greater Grail Unified Invocation — Summon Servants & Craft Essences (50/50)')
+  .addIntegerOption(opt =>
+    opt
+      .setName('rolls')
+      .setDescription('Summon count: 1x (3 SQ / 1 Ticket) or 10x (30 SQ - 5 Servants + 5 CEs)')
+      .setRequired(false)
+      .addChoices(
+        { name: '1x Single Summon (3 SQ or 1 Ticket)', value: 1 },
+        { name: '10x Multi-Summon (30 SQ - 5 Servants + 5 CEs)', value: 10 }
       )
-  )
-  .addSubcommand(sub =>
-    sub
-      .setName('ritual')
-      .setDescription('Channel magical energy into the summoning array to manifest a Heroic Spirit (Shortcut)')
-      .addIntegerOption(opt =>
-        opt
-          .setName('rolls')
-          .setDescription('Number of summons (1x or 10x)')
-          .setRequired(false)
-          .addChoices(
-            { name: '1x Single Summon (3 Saint Quartz)', value: 1 },
-            { name: '10x Multi-Summon (30 Saint Quartz)', value: 10 }
-          )
-      )
-  )
-  .addSubcommand(sub =>
-    sub
-      .setName('ce')
-      .setDescription('Forge Mystic Codes & Craft Essences from the Sanctum Pool (3 SQ for 1x, 30 SQ for 10x)')
-      .addIntegerOption(opt =>
-        opt
-          .setName('rolls')
-          .setDescription('Number of summons (1x or 10x)')
-          .setRequired(false)
-          .addChoices(
-            { name: '1x Single Summon (3 Saint Quartz)', value: 1 },
-            { name: '10x Multi-Summon (30 Saint Quartz - 4★+ Guaranteed)', value: 10 }
-          )
-      )
-  )
-  .addSubcommand(sub =>
-    sub
-      .setName('menu')
-      .setDescription('Open the interactive Gacha Invocation Sanctum Hub')
-  )
-  .addSubcommand(sub =>
-    sub
-      .setName('daily')
-      .setDescription('💎 Claim your Daily 30 Saint Quartz reward (Free 10x Multi-Summon)')
-  )
-  .addSubcommand(sub =>
-    sub
-      .setName('shop')
-      .setDescription('🛍️ Da Vinci Workshop — Exchange duplicate Mana Prisms for Summon Tickets')
-  )
-  .addSubcommand(sub =>
-    sub
-      .setName('status')
-      .setDescription('Inspect your active Servant contract, roster size, Command Seals & SQ balance')
-  )
-  .addSubcommand(sub =>
-    sub
-      .setName('rates')
-      .setDescription('📜 View summoning rates and balance mechanics')
   );
 
 // ==========================================
@@ -137,156 +77,19 @@ const SUMMONING_CHANTS = [
 // ==========================================
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
-    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
-    const subcommand = interaction.options.getSubcommand(false) || 'ritual';
+    let master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+    const rollsOption = interaction.options.getInteger('rolls');
 
-    // ------------------------------------------
-    // SUBCOMMAND: DAILY
-    // ------------------------------------------
-    if (subcommand === 'daily') {
-      const claimResult = await claimDailySaintQuartz(master.discordId || master.id);
-      if (claimResult.success) {
-        master.saintQuartz = claimResult.newTotalSq;
-        await saveMaster(master);
-        await interaction.reply({
-          flags: MessageFlags.Ephemeral,
-          content: `🎉 **Daily Reward Claimed!** Received **+30 Saint Quartz 💎**!\nNew Balance: **${master.saintQuartz} SQ** (Ready for a 10x Multi-Summon! Use \`/summon\` or \`/gacha\`)`
-        });
-      } else {
-        await interaction.reply({
-          flags: MessageFlags.Ephemeral,
-          content: `⏳ ${claimResult.message || 'You have already claimed your Daily Saint Quartz! Please check back tomorrow.'}`
-        });
-      }
-      return;
-    }
-
-    // ------------------------------------------
-    // SUBCOMMAND: STATUS
-    // ------------------------------------------
-    if (subcommand === 'status') {
-      const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
-      const rosterCount = master.servants?.length || 0;
-      const sq = master.saintQuartz || 0;
-
-      if (!activeServant) {
-        const emptyEmbed = new EmbedBuilder()
-          .setTitle('🕯️ Chaldea Summoning Sanctum — No Active Contract')
-          .setDescription(
-            `You have not summoned any Heroic Spirits into your Chaldea roster yet.\n\n` +
-            `💎 **Saint Quartz Balance:** \`${sq} SQ\`\n` +
-            `👥 **Contracted Roster:** \`0 Servants\`\n\n` +
-            `Use \`/summon servant\` or click the button below to draw the summoning circle and call forth your first Heroic Spirit!`
-          )
-          .setColor(0x3b82f6);
-
-        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setCustomId('gacha_act_single')
-            .setLabel('Summon First Servant (3 SQ)')
-            .setEmoji('✨')
-            .setStyle(ButtonStyle.Primary),
-          new ButtonBuilder()
-            .setCustomId('gacha_act_claim_daily')
-            .setLabel('Claim Daily SQ (+30)')
-            .setEmoji('💎')
-            .setStyle(ButtonStyle.Success)
-        );
-
-        await interaction.reply({ embeds: [emptyEmbed], components: [row], flags: MessageFlags.Ephemeral });
-        return;
-      }
-
-      const sAny = activeServant as any;
-      const t = sAny.template || sAny;
-      const sName = sAny.nickname || t.name || sAny.name || 'HEROIC SPIRIT';
-      const sClass = t.servantClass || sAny.servantClass || sAny.class || 'Saber';
-      const sTitle = t.title || sAny.title || 'Heroic Spirit';
-      const baseHp = t.baseHp || sAny.baseHp || 12000;
-      const baseAtk = t.baseAtk || sAny.baseAtk || 10000;
-      const np = t.noblePhantasm || sAny.noblePhantasm || { name: 'Excalibur', cardType: 'Buster', chant: 'Sword of Promised Victory' };
-      const baseStats = t.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
-      const alloc = activeServant.allocatedStats || {};
-      const totalStr = (baseStats.strength || 10) + (alloc.strength || 0);
-      const totalEnd = (baseStats.endurance || 10) + (alloc.endurance || 0);
-      const ceAtk = activeServant.equippedCe?.atkBonus || 0;
-      const ceHp = activeServant.equippedCe?.hpBonus || 0;
-      const calcHp = Math.round(baseHp + totalEnd * 150 + ceHp);
-      const calcAtk = Math.round(baseAtk + totalStr * 80 + ceAtk);
-
-      const statusEmbed = new EmbedBuilder()
-        .setTitle(`📜 ACTIVE COMPANION CONTRACT: ${sName.toUpperCase()}`)
-        .setDescription(
-          `**Master:** <@${interaction.user.id}> (${master.username})\n` +
-          `**Class:** \`${sClass}\` | **Title:** *${sTitle}*\n` +
-          `**Command Seals:** 🔴🔴🔴 **${master.commandSeals || 3}/3**\n` +
-          `**Action Points (AP):** **${master.actionPoints || 100}/100**\n` +
-          `💎 **Saint Quartz:** \`${sq} SQ\` | 👥 **Total Roster:** \`${rosterCount} Servants\`\n\n` +
-          `⚔️ **Combat Parameters:**\n` +
-          `• HP: \`${calcHp.toLocaleString()}\`\n` +
-          `• ATK: \`${calcAtk.toLocaleString()}\`\n` +
-          `• Available Parameter Points: **${activeServant.availableStatPoints || 0}** (Use \`/customise stats\`)\n\n` +
-          `💥 **Noble Phantasm:** **${np.name}** [${np.cardType}]\n` +
-          `* "${activeServant.customQuotes?.noblePhantasm || np.chant}" *\n\n` +
-          `💬 **Arrival Quote:**\n*"${activeServant.customQuotes?.summon || t.summonQuote || 'I ask of you, are you my Master?'}"*`
-        )
-        .setColor(0xd4af37);
-      safeSetEmbedImage(statusEmbed, t.cardArtUrl || t.avatarUrl || sAny.cardArtUrl || sAny.avatarUrl);
-
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId('gacha_act_single')
-          .setLabel('Summon More Servants')
-          .setEmoji('✨')
-          .setStyle(ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId('gacha_link_servant')
-          .setLabel('View Roster (/servant)')
-          .setEmoji('👥')
-          .setStyle(ButtonStyle.Primary)
-      );
-
-      await interaction.reply({ embeds: [statusEmbed], components: [row] });
-      return;
-    }
-
-    // ------------------------------------------
-    // SUBCOMMAND: SHOP
-    // ------------------------------------------
-    if (subcommand === 'shop') {
-      const { embed, components } = buildGachaHub(master, 'shop');
+    // If invoked with no options (e.g. /summon), open the interactive Greater Grail Sanctum Hub
+    if (!rollsOption) {
+      const { embed, components } = buildGachaHub(master, 'altar');
       await interaction.reply({ embeds: [embed], components });
       const reply = await interaction.fetchReply();
       attachGachaCollector(interaction, master, reply);
       return;
     }
 
-    // ------------------------------------------
-    // SUBCOMMAND: RATES
-    // ------------------------------------------
-    if (subcommand === 'rates') {
-      const { embed, components } = buildGachaHub(master, 'rates');
-      await interaction.reply({ embeds: [embed], components });
-      const reply = await interaction.fetchReply();
-      attachGachaCollector(interaction, master, reply);
-      return;
-    }
-
-    // ------------------------------------------
-    // SUBCOMMAND: MENU
-    // ------------------------------------------
-    if (subcommand === 'menu') {
-      const { embed, components } = buildGachaHub(master, 'servants');
-      await interaction.reply({ embeds: [embed], components });
-      const reply = await interaction.fetchReply();
-      attachGachaCollector(interaction, master, reply);
-      return;
-    }
-
-    // ------------------------------------------
-    // SUBCOMMAND: SERVANT, RITUAL & CE (Direct Unified Summoning)
-    // ------------------------------------------
-    const rolls = (interaction.options.getInteger('rolls') as 1 | 10) || 1;
+    const rolls = (rollsOption as 1 | 10) || 1;
     const cost = rolls === 10 ? 30 : 3;
 
     // First-Time Starter Gift: If a brand-new player has 0 servants and < 3 SQ, bestow starter SQ
@@ -339,8 +142,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     const useTickets = !canUseSq && canUseTickets;
 
-    // Execute Servant Gacha Roll
-    const rollResult = executeServantGachaRoll({ count: rolls, master, useTickets });
+    // Immediately defer reply to Discord so canvas generation never triggers "didn't respond in time"
+    await interaction.deferReply();
+
+    // Execute Unified Gacha Roll (50% Servants & 50% Craft Essences)
+    const rollResult = executeUnifiedGachaRoll({ count: rolls, master, useTickets });
     const updatedMaster = rollResult.updatedMaster;
 
     // Ensure active servant and command seals are set if this was the first summon
@@ -424,10 +230,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             .setStyle(ButtonStyle.Danger)
         );
 
-        await interaction.reply({
+        const reply = await interaction.editReply({
           embeds: [ritualEmbed, summonEmbed],
           components: [actionRow]
         });
+        attachGachaCollector(interaction, updatedMaster, reply);
         return;
       } else {
         const ce = pulled.item as any;
@@ -477,11 +284,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             .setStyle(ButtonStyle.Secondary)
         );
 
-        await interaction.reply({
+        const reply = await interaction.editReply({
           embeds: [embed],
           files,
           components: [actionRow]
         });
+        attachGachaCollector(interaction, updatedMaster, reply);
         return;
       }
     }
@@ -541,22 +349,34 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setStyle(ButtonStyle.Primary)
         .setDisabled((updatedMaster.saintQuartz || 0) < 30),
       new ButtonBuilder()
+        .setCustomId('gacha_act_single')
+        .setLabel('1x Summon (3 SQ)')
+        .setEmoji('✨')
+        .setStyle(ButtonStyle.Success)
+        .setDisabled((updatedMaster.saintQuartz || 0) < 3),
+      new ButtonBuilder()
+        .setCustomId('gacha_link_inventory')
+        .setLabel('Inventory (/inventory)')
+        .setEmoji('📦')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
         .setCustomId('gacha_link_servant')
-        .setLabel('Manage Roster (/servant)')
+        .setLabel('Servants (/servant)')
         .setEmoji('👥')
         .setStyle(ButtonStyle.Secondary),
       new ButtonBuilder()
         .setCustomId('btn_enter_war')
-        .setLabel('Holy Grail War (/grailwar)')
+        .setLabel('Grail War (/grailwar)')
         .setEmoji('🏰')
         .setStyle(ButtonStyle.Secondary)
     );
 
-    await interaction.reply({
+    const reply = await interaction.editReply({
       embeds: [multiEmbed],
       components: [multiActionRow],
       files
     });
+    attachGachaCollector(interaction, updatedMaster, reply);
 
   } catch (error: any) {
     if (error.code === 10062 || error.code === 40060 || error.message?.includes('Unknown interaction')) return;

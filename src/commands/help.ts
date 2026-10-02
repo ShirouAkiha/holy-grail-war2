@@ -70,22 +70,16 @@ export const HELP_CATEGORIES: HelpCategory[] = [
     color: 0x38bdf8, // Cyan leyline
     commands: [
       {
-        command: '/summon',
-        description: 'Conduct the Greater Grail summoning ritual for Heroic Spirits & Mystic Codes',
-        usage: '/summon [mode: single | multi]',
-        tips: 'Manifests 50% Servants and 50% Craft Essences with 1% 5★ SSR CE rate!'
-      },
-      {
         command: '/gacha',
-        description: 'Access the Unified Chaldea Summoning Gate (50% Servants + 50% CEs)',
-        usage: '/gacha',
+        description: 'Greater Grail Invocation Sanctum (Interactive Hub, Prism Shop, 1x/10x pulls)',
+        usage: '/gacha [rolls: 1 | 10]',
         tips: 'Every 10x roll manifests exactly 5 Servants and 5 Craft Essences with 1% 5★ CE rate.'
       },
       {
-        command: '/cegacha',
-        description: 'Roll on the Unified Greater Grail Altar (Shortcut)',
-        usage: '/cegacha [amount: 1 | 10]',
-        tips: 'Manifests 50% Servants and 50% Craft Essences with 1% 5★ CE rate.'
+        command: '/summon',
+        description: 'Conduct the Greater Grail summoning ritual for Heroic Spirits & Mystic Codes',
+        usage: '/summon [rolls: 1 | 10]',
+        tips: 'Direct summon or leave empty to open the interactive Sanctum Menu.'
       },
       {
         command: '/ce',
@@ -103,16 +97,10 @@ export const HELP_CATEGORIES: HelpCategory[] = [
     color: 0xa855f7, // Royal Purple
     commands: [
       {
-        command: '/servants',
-        description: 'Display your contracted Servants list with interactive inspect buttons',
-        usage: '/servants',
-        tips: 'Browse through your Servant roster with full stats and ascension info.'
-      },
-      {
         command: '/servant',
-        description: 'Inspect full Saint Graph parameters, Noble Phantasm, and lore',
-        usage: '/servant <name>',
-        tips: 'Displays animated NP cards, parameters (STR, END, AGL, MGI, LCK, NP), and battle traits.'
+        description: 'Master Servant Workshop — parameters, stats, CE equipment, dialogues & roster',
+        usage: '/servant [servant:optional] [category:optional]',
+        tips: 'Interactive workshop: distribute stat points, bind Craft Essences, view NP art, and hear dialogues.'
       },
       {
         command: '/switch',
@@ -121,16 +109,16 @@ export const HELP_CATEGORIES: HelpCategory[] = [
         tips: 'Your active partner represents you in duels, ambush defenses, and profile showcases.'
       },
       {
-        command: '/equip',
-        description: 'Attach a tactical Craft Essence to your active Servant',
-        usage: '/equip <ce_name>',
-        tips: 'Combines the CE bonus stats directly onto your Servant’s base parameters.'
-      },
-      {
         command: '/customise',
         description: 'Distribute stat points into ATK, HP, NP Gain, and Crit Rate',
         usage: '/customise',
         tips: 'Opens an interactive workshop UI to customize your Servant’s build.'
+      },
+      {
+        command: '/equip',
+        description: 'Attach a tactical Craft Essence to your active Servant',
+        usage: '/equip <ce_name>',
+        tips: 'Combines the CE bonus stats directly onto your Servant’s base parameters.'
       },
       {
         command: '/feed',

@@ -130,10 +130,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
         collector.on('collect', async (i: any) => {
           if (i.replied || i.deferred) return;
-          if (i.customId === 'go_gacha') {
-            await i.reply({ content: 'Opening `/gacha` Invocation Sanctum!', flags: MessageFlags.Ephemeral });
-          } else if (i.customId === 'go_summon') {
-            await i.reply({ content: 'Use the `/summon ritual` command to summon your Heroic Spirit!', flags: MessageFlags.Ephemeral });
+          if (i.customId === 'go_gacha' || i.customId === 'go_summon') {
+            const { buildGachaHub } = await import('./gacha');
+            const hub = buildGachaHub(master, 'altar');
+            await i.reply({ embeds: [hub.embed], components: hub.components, flags: MessageFlags.Ephemeral });
           }
         });
       }

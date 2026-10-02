@@ -711,21 +711,27 @@ export async function handleGlobalInventoryInteraction(interaction: any) {
 
     // Handle Quick Gacha
     if (customId === 'inv_quick_gacha') {
-      const sq = master.saintQuartz || 0;
+      const { buildGachaHub } = await import('./gacha');
+      const hub = buildGachaHub(master, 'altar');
       await interaction.reply({
         flags: MessageFlags.Ephemeral,
-        embeds: [
-          new EmbedBuilder()
-            .setTitle('🎲 Gacha Vault Invocation')
-            .setDescription(
-              `**Current Balance:** \`${sq} Saint Quartz 💎\`\n\n` +
-              `Perform invocations using:\n` +
-              `• \`/cegacha roll type:single\` — (3 SQ)\n` +
-              `• \`/cegacha roll type:multi\` — (30 SQ • Guaranteed 4★+)\n` +
-              `• \`/cegacha daily\` — Claim free daily login Saint Quartz!`
-            )
-            .setColor(0x8b5cf6)
-        ]
+        embeds: [hub.embed],
+        components: hub.components
+      });
+      return;
+    }
+
+    // Handle Quick Grail War
+    if (customId === 'inv_quick_war') {
+      const { buildWarEmbed, buildWarButtons } = await import('./grailwar');
+      const war = getOrInitWarSession(master);
+      const uP = war.participants[interaction.user.id];
+      const embed = await buildWarEmbed(war, uP, '🏰 Welcome to the Holy Grail War Board!');
+      const btns = buildWarButtons();
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        embeds: [embed],
+        components: btns
       });
       return;
     }

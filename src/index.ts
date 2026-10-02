@@ -72,8 +72,8 @@ import { buildWarEmbed, buildWarButtons, buildGrailWarHub, attachGrailWarCollect
 import * as grailCommand from './commands/grail';
 import * as boardCommand from './commands/board';
 import { handleGlobalInventoryInteraction } from './commands/customise';
-import { buildGachaHub, attachGachaCollector } from './commands/gacha';
-import { executeCraftEssenceGachaRoll } from './engine/ceGacha';
+import { buildGachaHub, attachGachaCollector, handleGlobalGachaInteraction } from './commands/gacha';
+import { executeCraftEssenceGachaRoll, executeUnifiedGachaRoll } from './engine/ceGacha';
 import { 
   buildServantFullProfileEmbed,
   buildServantArtworkEmbed,
@@ -148,7 +148,6 @@ export const client = new Client({
 export const commands = new Collection<string, any>();
 commands.set(summonCommand.data.name, summonCommand);
 commands.set(servantCommand.data.name, servantCommand);
-commands.set(servantsCommand.data.name, servantsCommand);
 commands.set(dialogueCommand.data.name, dialogueCommand);
 commands.set(duelCommand.data.name, duelCommand);
 commands.set(grailwarCommand.data.name, grailwarCommand);
@@ -160,7 +159,6 @@ commands.set(profileCommand.data.name, profileCommand);
 commands.set(churchCommand.data.name, churchCommand);
 commands.set(bountyCommand.data.name, bountyCommand);
 commands.set(reputationCommand.data.name, reputationCommand);
-commands.set(cegachaCommand.data.name, cegachaCommand);
 commands.set(healCommand.data.name, healCommand);
 commands.set(adminCommand.data.name, adminCommand);
 commands.set(addservantCommand.data.name, addservantCommand);
@@ -170,15 +168,11 @@ commands.set(addsqCommand.data.name, addsqCommand);
 commands.set(feedCommand.data.name, feedCommand);
 commands.set(gachaCommand.data.name, gachaCommand);
 commands.set(attackCommand.data.name, attackCommand);
-commands.set(ambushCommand.data.name, ambushCommand);
 commands.set(trapCommand.data.name, trapCommand);
 commands.set(familiarCommand.data.name, familiarCommand);
 commands.set(leakCommand.data.name, leakCommand);
 commands.set(patrolCommand.data.name, patrolCommand);
-commands.set(petrolCommand.data.name, petrolCommand);
 commands.set(equipCommand.data.name, equipCommand);
-commands.set(grailCommand.data.name, grailCommand);
-commands.set(boardCommand.data.name, boardCommand);
 commands.set(bondCommand.data.name, bondCommand);
 commands.set(talkCommand.data.name, talkCommand);
 commands.set(apikeyCommand.data.name, apikeyCommand);
@@ -190,6 +184,12 @@ commands.set(raidCommand.data.name, raidCommand);
 
 // Alias mapping for backward-compatible text shortcuts and interactions
 export const commandAliasMap: Record<string, any> = {
+  servants: servantCommand,
+  petrol: patrolCommand,
+  board: grailwarCommand,
+  grail: grailwarCommand,
+  ambush: attackCommand,
+  cegacha: gachaCommand,
   raid: raidCommand,
   boss: raidCommand,
   pve: raidCommand,
@@ -1065,6 +1065,11 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
+      // Gacha & Altar Select Menus (Banners, shop navigation)
+      if (await handleGlobalGachaInteraction(interaction)) {
+        return;
+      }
+
       if (interaction.customId === 'select_servant_registry' || interaction.customId.startsWith('select_servant_')) {
         await handleServantsListInteraction(interaction);
         return;
@@ -1365,6 +1370,11 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
+      // Universal Gacha & Invocation Sanctum Handler (10x multi, 1x single, tickets, tabs, shop, shortcuts)
+      if (await handleGlobalGachaInteraction(interaction)) {
+        return;
+      }
+
       // Daily Claim Buttons
       if (btnId === 'quick_daily_claim' || btnId === 'daily_claim') {
         const result = await claimDailySaintQuartz(interaction.user.id, interaction.user.username);
@@ -1448,101 +1458,6 @@ client.on(Events.InteractionCreate, async interaction => {
         const embed = buildProfileEmbed(master, war);
         const btns = buildProfileButtons(uP, master.activeServantId || master.servants?.[0]?.id, master);
         await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
-        return;
-      }
-
-      if (btnId === 'quick_ce_gacha_view') {
-        const { embed, components } = buildGachaHub(master, 'ces');
-        await interaction.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
-        const reply = await interaction.fetchReply();
-        attachGachaCollector(interaction, master, reply);
-        return;
-      }
-
-      if (btnId === 'quick_ce_gacha_ten') {
-        if ((master.saintQuartz || 0) < 30) {
-          await interaction.reply({
-            flags: MessageFlags.Ephemeral,
-            content: `❌ Insufficient Saint Quartz! You need **30 SQ** for a 10x Multi-Summon, but you currently have **${master.saintQuartz || 0} SQ**.`
-          });
-          return;
-        }
-        const rollResult = executeCraftEssenceGachaRoll({ count: 10, master });
-        master = rollResult.updatedMaster;
-        await saveMaster(master);
-
-        const servantList = rollResult.results.filter(r => r.type === 'servant');
-        const ceList = rollResult.results.filter(r => r.type === 'craft_essence');
-
-        const servantSummary = servantList.map((r, idx) => {
-          const s = (r.servant || r.item) as any;
-          const statusTag = r.isNew ? '🌟 **[NEW!]**' : `🔵 *(+50 Prisms)*`;
-          return `${idx + 1}. **${s.name}** (\`${s.servantClass}\`) ${statusTag}`;
-        }).join('\n');
-
-        const ceSummary = ceList.map((r: any, idx: number) => {
-          const ce = r.item;
-          const star = '⭐'.repeat(r.rarity || ce.rarity || 3);
-          const newTag = r.isNew ? ' 🌟 **[NEW!]**' : '';
-          const atk = ce.bonusAtk || ce.atkBonus || 0;
-          const hp = ce.bonusHp || ce.hpBonus || 0;
-          const effect = ce.effectText || ce.description || '';
-          return `${idx + 1}. ${star} **${ce.name}**${newTag}\n   ↳ *${effect}* (+${atk} ATK / +${hp} HP)`;
-        }).join('\n');
-
-        let files: AttachmentBuilder[] = [];
-        let imageAttachmentName: string | undefined = undefined;
-
-        try {
-          const canvasBuffer = await renderGachaSummonBanner(rollResult.results, '10x Greater Grail Unified Summon');
-          const attachment = new AttachmentBuilder(canvasBuffer, { name: 'unified_summon.png' });
-          files = [attachment];
-          imageAttachmentName = 'attachment://unified_summon.png';
-        } catch (canvasErr) {
-          console.error('Failed to render gacha canvas banner:', canvasErr);
-        }
-
-        const embedColor = rollResult.ssrsPulled > 0 ? 0xf59e0b : rollResult.srsPulled > 0 ? 0xa855f7 : 0x38bdf8;
-
-        const embed = new EmbedBuilder()
-          .setTitle('🎁 10x Greater Grail Multi-Summon (5 Servants + 5 CEs)')
-          .setDescription(
-            `**10x Greater Grail Invocations Complete!**\n\n` +
-            `💎 **Remaining Balance:** \`${master.saintQuartz} SQ\` *(Spent 30 SQ)*\n` +
-            `📦 **Total Essences in Vault:** \`${master.craftEssences?.length || 0}\`  •  👥 **Servants:** \`${master.servants?.length || 0}\`\n\n` +
-            `### ⚔️ Heroic Spirits Manifested (5x):\n` +
-            servantSummary +
-            `\n\n` +
-            `### 🔮 Relics Summoned (5x):\n` +
-            ceSummary +
-            `\n\n*Use \`/inventory\` or \`/customise equip\` to bind these Mystic Codes to your Servant!*`
-          )
-          .setColor(embedColor)
-          .setFooter({ text: 'Greater Grail Unified Altar • 50% Servants / 50% CEs (1% 5★ CE Rate)' });
-
-        if (imageAttachmentName) {
-          embed.setImage(imageAttachmentName);
-        }
-
-        const actionButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setCustomId('quick_ce_gacha_ten')
-            .setLabel('Roll 10x Again (30 SQ)')
-            .setEmoji('💎')
-            .setStyle(ButtonStyle.Success),
-          new ButtonBuilder()
-            .setCustomId('btn_view_inventory')
-            .setLabel('View Inventory')
-            .setEmoji('📦')
-            .setStyle(ButtonStyle.Secondary)
-        );
-
-        await interaction.reply({
-          embeds: [embed],
-          files,
-          components: [actionButtons],
-          flags: MessageFlags.Ephemeral
-        });
         return;
       }
 
