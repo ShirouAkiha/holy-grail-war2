@@ -1468,28 +1468,36 @@ client.on(Events.InteractionCreate, async interaction => {
           return;
         }
         const rollResult = executeCraftEssenceGachaRoll({ count: 10, master });
-        master.saintQuartz = rollResult.updatedMaster.saintQuartz;
-        master.craftEssences = rollResult.updatedMaster.craftEssences;
+        master = rollResult.updatedMaster;
         await saveMaster(master);
 
-        const cardSummary = rollResult.results.map((r: any, idx: number) => {
+        const servantList = rollResult.results.filter(r => r.type === 'servant');
+        const ceList = rollResult.results.filter(r => r.type === 'craft_essence');
+
+        const servantSummary = servantList.map((r, idx) => {
+          const s = (r.servant || r.item) as any;
+          const statusTag = r.isNew ? '🌟 **[NEW!]**' : `🔵 *(+50 Prisms)*`;
+          return `${idx + 1}. **${s.name}** (\`${s.servantClass}\`) ${statusTag}`;
+        }).join('\n');
+
+        const ceSummary = ceList.map((r: any, idx: number) => {
           const ce = r.item;
           const star = '⭐'.repeat(r.rarity || ce.rarity || 3);
           const newTag = r.isNew ? ' 🌟 **[NEW!]**' : '';
           const atk = ce.bonusAtk || ce.atkBonus || 0;
           const hp = ce.bonusHp || ce.hpBonus || 0;
           const effect = ce.effectText || ce.description || '';
-          return `**${idx + 1}.** ${star} **${ce.name}**${newTag}\n   ↳ *${effect}* (+${atk} ATK / +${hp} HP)`;
+          return `${idx + 1}. ${star} **${ce.name}**${newTag}\n   ↳ *${effect}* (+${atk} ATK / +${hp} HP)`;
         }).join('\n');
 
         let files: AttachmentBuilder[] = [];
         let imageAttachmentName: string | undefined = undefined;
 
         try {
-          const canvasBuffer = await renderGachaSummonBanner(rollResult.results, '10x Craft Essence Multi-Summon');
-          const attachment = new AttachmentBuilder(canvasBuffer, { name: 'ce_summon.png' });
+          const canvasBuffer = await renderGachaSummonBanner(rollResult.results, '10x Greater Grail Unified Summon');
+          const attachment = new AttachmentBuilder(canvasBuffer, { name: 'unified_summon.png' });
           files = [attachment];
-          imageAttachmentName = 'attachment://ce_summon.png';
+          imageAttachmentName = 'attachment://unified_summon.png';
         } catch (canvasErr) {
           console.error('Failed to render gacha canvas banner:', canvasErr);
         }
@@ -1497,17 +1505,20 @@ client.on(Events.InteractionCreate, async interaction => {
         const embedColor = rollResult.ssrsPulled > 0 ? 0xf59e0b : rollResult.srsPulled > 0 ? 0xa855f7 : 0x38bdf8;
 
         const embed = new EmbedBuilder()
-          .setTitle('🎁 10x Craft Essence Multi-Summon Results')
+          .setTitle('🎁 10x Greater Grail Multi-Summon (5 Servants + 5 CEs)')
           .setDescription(
-            `**10x Craft Essence Invocations Complete!**\n\n` +
+            `**10x Greater Grail Invocations Complete!**\n\n` +
             `💎 **Remaining Balance:** \`${master.saintQuartz} SQ\` *(Spent 30 SQ)*\n` +
-            `📦 **Total Essences in Vault:** \`${master.craftEssences?.length || 0}\`\n\n` +
-            `### 🔮 Relics Summoned:\n` +
-            cardSummary +
+            `📦 **Total Essences in Vault:** \`${master.craftEssences?.length || 0}\`  •  👥 **Servants:** \`${master.servants?.length || 0}\`\n\n` +
+            `### ⚔️ Heroic Spirits Manifested (5x):\n` +
+            servantSummary +
+            `\n\n` +
+            `### 🔮 Relics Summoned (5x):\n` +
+            ceSummary +
             `\n\n*Use \`/inventory\` or \`/customise equip\` to bind these Mystic Codes to your Servant!*`
           )
           .setColor(embedColor)
-          .setFooter({ text: 'Craft Essence Forge • Holy Grail War Protocol' });
+          .setFooter({ text: 'Greater Grail Unified Altar • 50% Servants / 50% CEs (1% 5★ CE Rate)' });
 
         if (imageAttachmentName) {
           embed.setImage(imageAttachmentName);

@@ -36,7 +36,7 @@ export function buildDailyEmbed(
         `💎 **Harvested:** \`+30 Saint Quartz\` *(Full 10x Pull Value)*\n` +
         `📊 **New Total Balance:** 💎 \`${result.newTotalSq.toLocaleString()} SQ\` (Previous: ${result.previousSq.toLocaleString()} SQ)\n\n` +
         `🌐 **Universal Daily Reset:** **00:00 UTC** (<t:${nextClaimTime}:R>)\n\n` +
-        `*Tip: You now have enough Saint Quartz to perform a 10x Craft Essence banner roll with \`/cegacha\`!*`
+        `*Tip: You now have enough Saint Quartz to perform a 10x Greater Grail Multi-Summon (5 Servants + 5 CEs) with \`/gacha\` or \`/summon\`!*`
       )
       .setColor(0x38bdf8)
       .setFooter({ text: 'Holy Grail War Daily Allowance • Universal Reset: 00:00 UTC' })

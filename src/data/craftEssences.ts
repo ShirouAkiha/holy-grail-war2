@@ -811,9 +811,9 @@ CRAFT_ESSENCE_DATABASE.push(...Object.values(BOND_CRAFT_ESSENCES));
 export const CE_GACHA_BANNERS: GachaBanner[] = [
   {
     id: 'ce_banner_fuyuki_relics',
-    title: 'Mystic Code Sanctum: Sacred Relics',
-    subtitle: 'Featured Rate-Up: Kaleidoscope & The Black Grail (5★ SSR)',
-    description: 'Channel your Saint Quartz into the leyline altar to forge legendary mystic Craft Essences!',
+    title: 'Greater Grail Sanctum: Heroic Spirits & Mystic Codes',
+    subtitle: 'Unified Altar: 50% Servants & 50% CEs (1% 5★ CE Rate)',
+    description: 'Channel your Saint Quartz into the Greater Grail Altar to summon Heroic Spirits and forge legendary Craft Essences in equal measure!',
     featuredServantIds: [],
     featuredCeIds: ['ce_kaleidoscope', 'ce_black_grail', 'ce_formal_craft'],
     bannerType: 'standard',
@@ -821,7 +821,7 @@ export const CE_GACHA_BANNERS: GachaBanner[] = [
     costTenPull: 30,
     bannerArtUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
     rates: {
-      ssrServant: 0,
+      ssrServant: 50.0,
       srServant: 0,
       rServant: 0,
       ssrCe: 1.0,

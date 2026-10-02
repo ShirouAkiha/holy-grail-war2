@@ -432,20 +432,23 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     // ========================================================
     if (sub === 'rates') {
       const embed = new EmbedBuilder()
-        .setTitle('📜 Mystic Code Sanctum: Summoning Rates & Probabilities')
+        .setTitle('📜 Greater Grail Sanctum: Summoning Rates & Probabilities')
         .setDescription(
-          `### 🌟 Craft Essence Drop Probabilities\n` +
-          `• **5★ SSR Craft Essence:** **${banner.rates.ssrCe}%** *(Featured: Kaleidoscope, The Black Grail, Formal Craft)*\n` +
+          `### 🌌 Unified Greater Grail Summoning Matrix\n` +
+          `• **10x Multi-Summon (30 SQ):** Exactly **5 Heroic Spirits (50%) & 5 Craft Essences (50%)**!\n` +
+          `• **1x Single Summon (3 SQ):** **50.0%** Servant / **50.0%** Craft Essence\n\n` +
+          `### 🛡️ Craft Essence Drop Probabilities\n` +
+          `• **5★ SSR Craft Essence:** strictly **${banner.rates.ssrCe}%** *(Kaleidoscope, The Black Grail, Formal Craft)*\n` +
           `• **4★ SR Craft Essence:** **${banner.rates.srCe}%** *(Featured: The Imaginary Element, Gamer Fuel, Gandr)*\n` +
           `• **3★ R Craft Essence:** **${banner.rates.rCe}%** *(Dragon's Meridian, Jeweled Sword Zelretch)*\n\n` +
+          `### 👑 Heroic Spirits Pool\n` +
+          `• Equalized base parameters for balanced tactical combat.\n` +
+          `• Duplicates grant **+50 Mana Prisms 🔵**, +5 stat points, and NP upgrade!\n\n` +
           `### 🛡️ 10-Pull Guarantee\n` +
-          `Performing a **10x Multi-Summon (30 Saint Quartz)** guarantees at least one **4★ SR or higher Craft Essence** in your roll batch!\n\n` +
-          `### 💎 Cost\n` +
-          `• **1x Summon:** 3 Saint Quartz\n` +
-          `• **10x Summon:** 30 Saint Quartz`
+          `Performing a **10x Multi-Summon (30 Saint Quartz)** guarantees at least one **4★ SR or higher Craft Essence**!`
         )
         .setColor(0xf59e0b)
-        .setFooter({ text: 'Authentic Fate Holy Grail War System' });
+        .setFooter({ text: 'Greater Grail Unified Invocation Altar • 50/50 Split' });
 
       await interaction.reply({ embeds: [embed] });
       return;
@@ -555,24 +558,33 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           const canvasBuffer = await renderGachaSummonBanner(pullResult.results, banner.title);
           const attachment = new AttachmentBuilder(canvasBuffer, { name: 'ce_summon.png' });
 
-          const resultsSummary = pullResult.results.map(r => {
+          const servantList = pullResult.results.filter(r => r.type === 'servant');
+          const ceList = pullResult.results.filter(r => r.type === 'craft_essence');
+
+          const sSummary = servantList.map(r => {
+            const s = (r.servant || r.item) as any;
+            return `• **${s.name}** (\`${s.servantClass}\`)${r.isNew ? ' 🌟 **[NEW CONTRACT!]**' : ' 🔵 *(+50 Prisms)*'}`;
+          }).join('\n');
+
+          const ceSummary = ceList.map(r => {
             const ce = r.item as any;
             const star = '★'.repeat(r.rarity);
             const newTag = r.isNew ? ' 🌟 **[NEW!]**' : '';
             return `• **${ce.name}** [${star}]${newTag} — *${ce.effectText}* (+${ce.bonusAtk || ce.atkBonus || 0} ATK)`;
           }).join('\n');
 
+          const desc = rollCount === 1
+            ? (servantList.length > 0 
+                ? `Channeling completed! Manifested Heroic Spirit:\n${sSummary}\n\n💎 **Remaining Saint Quartz:** **${pullResult.updatedMaster.saintQuartz} SQ**\n👥 **Contracted Servants:** **${pullResult.updatedMaster.servants.length}**`
+                : `Channeling completed! Forged Mystic Code:\n${ceSummary}\n\n💎 **Remaining Saint Quartz:** **${pullResult.updatedMaster.saintQuartz} SQ**\n📦 **Total Essences Owned:** **${pullResult.updatedMaster.craftEssences.length}**`)
+            : `Channeling completed! Manifested 5 Heroic Spirits & 5 Craft Essences:\n\n### 👑 Heroic Spirits Manifested (5x):\n${sSummary}\n\n### 🛡️ Mystic Codes Forged (5x):\n${ceSummary}\n\n💎 **Remaining Saint Quartz:** **${pullResult.updatedMaster.saintQuartz} SQ**\n📦 **Total Essences Owned:** **${pullResult.updatedMaster.craftEssences.length}** | 👥 **Total Servants:** **${pullResult.updatedMaster.servants.length}**`;
+
           const resultEmbed = new EmbedBuilder()
-            .setTitle(`✨ Sacred Relics Forged! (${rollCount}x Summon)`)
-            .setDescription(
-              `Channeling completed! You spent **${pullResult.spentQuartz} Saint Quartz** 💎.\n\n` +
-              `### 🔮 Relics Summoned:\n${resultsSummary}\n\n` +
-              `💎 **Remaining Saint Quartz:** **${pullResult.updatedMaster.saintQuartz} SQ**\n` +
-              `📦 **Total Essences Owned:** **${pullResult.updatedMaster.craftEssences.length}**`
-            )
+            .setTitle(rollCount === 1 ? '✨ Sacred Altar Invocation Complete!' : '👑 10x Greater Grail Unified Altar Results!')
+            .setDescription(desc)
             .setImage('attachment://ce_summon.png')
             .setColor(pullResult.ssrsPulled > 0 ? 0xfbbf24 : pullResult.srsPulled > 0 ? 0xa855f7 : 0x38bdf8)
-            .setFooter({ text: 'Use /customise equip to bind these Mystic Codes to your Servant!' });
+            .setFooter({ text: 'Greater Grail Unified Altar • 50% Servants / 50% CEs (1% 5★ CE Rate)' });
 
           await i.editReply({
             embeds: [resultEmbed],
@@ -635,24 +647,33 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const canvasBuffer = await renderGachaSummonBanner(pullResult.results, banner.title);
       const attachment = new AttachmentBuilder(canvasBuffer, { name: 'ce_summon.png' });
 
-      const resultsSummary = pullResult.results.map(r => {
+      const servantList = pullResult.results.filter(r => r.type === 'servant');
+      const ceList = pullResult.results.filter(r => r.type === 'craft_essence');
+
+      const sSummary = servantList.map(r => {
+        const s = (r.servant || r.item) as any;
+        return `• **${s.name}** (\`${s.servantClass}\`)${r.isNew ? ' 🌟 **[NEW CONTRACT!]**' : ' 🔵 *(+50 Prisms)*'}`;
+      }).join('\n');
+
+      const ceSummary = ceList.map(r => {
         const ce = r.item as any;
         const star = '★'.repeat(r.rarity);
         const newTag = r.isNew ? ' 🌟 **[NEW!]**' : '';
         return `• **${ce.name}** [${star}]${newTag} — *${ce.effectText}* (+${ce.bonusAtk || ce.atkBonus || 0} ATK)`;
       }).join('\n');
 
+      const desc = rolls === 1
+        ? (servantList.length > 0 
+            ? `Channeling completed! Manifested Heroic Spirit:\n${sSummary}\n\n💎 **Remaining Saint Quartz:** **${pullResult.updatedMaster.saintQuartz} SQ**\n👥 **Contracted Servants:** **${pullResult.updatedMaster.servants.length}**`
+            : `Channeling completed! Forged Mystic Code:\n${ceSummary}\n\n💎 **Remaining Saint Quartz:** **${pullResult.updatedMaster.saintQuartz} SQ**\n📦 **Total Essences in Vault:** **${pullResult.updatedMaster.craftEssences.length}**`)
+        : `Channeling completed! Manifested 5 Heroic Spirits & 5 Craft Essences:\n\n### 👑 Heroic Spirits Manifested (5x):\n${sSummary}\n\n### 🛡️ Mystic Codes Forged (5x):\n${ceSummary}\n\n💎 **Remaining Saint Quartz:** **${pullResult.updatedMaster.saintQuartz} SQ**\n📦 **Total Essences in Vault:** **${pullResult.updatedMaster.craftEssences.length}** | 👥 **Total Servants:** **${pullResult.updatedMaster.servants.length}**`;
+
       const resultEmbed = new EmbedBuilder()
-        .setTitle(`✨ Sacred Relics Forged! (${rolls}x Summon)`)
-        .setDescription(
-          `Channeling completed! You spent **${pullResult.spentQuartz} Saint Quartz** 💎.\n\n` +
-          `### 🔮 Relics Summoned:\n${resultsSummary}\n\n` +
-          `💎 **Remaining Saint Quartz:** **${pullResult.updatedMaster.saintQuartz} SQ**\n` +
-          `📦 **Total Essences in Vault:** **${pullResult.updatedMaster.craftEssences.length}**`
-        )
+        .setTitle(rolls === 1 ? '✨ Sacred Altar Invocation Complete!' : '👑 10x Greater Grail Unified Altar Results!')
+        .setDescription(desc)
         .setImage('attachment://ce_summon.png')
         .setColor(pullResult.ssrsPulled > 0 ? 0xfbbf24 : pullResult.srsPulled > 0 ? 0xa855f7 : 0x38bdf8)
-        .setFooter({ text: 'Use /customise equip to bind these Mystic Codes to your Servant!' });
+        .setFooter({ text: 'Greater Grail Unified Altar • 50% Servants / 50% CEs (1% 5★ CE Rate)' });
 
       const boastRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()

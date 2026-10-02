@@ -71,21 +71,21 @@ export const HELP_CATEGORIES: HelpCategory[] = [
     commands: [
       {
         command: '/summon',
-        description: 'Conduct the Holy Grail summoning ritual to manifest Heroic Spirits',
+        description: 'Conduct the Greater Grail summoning ritual for Heroic Spirits & Mystic Codes',
         usage: '/summon [mode: single | multi]',
-        tips: 'Manifests 3★, 4★, and 5★ SSR Servants with full Noble Phantasm chant cards!'
+        tips: 'Manifests 50% Servants and 50% Craft Essences with 1% 5★ SSR CE rate!'
       },
       {
         command: '/gacha',
-        description: 'Access the Chaldea Summoning Gate (Servants & Craft Essences)',
+        description: 'Access the Unified Chaldea Summoning Gate (50% Servants + 50% CEs)',
         usage: '/gacha',
-        tips: 'Select between Heroic Spirit banners and Craft Essence focus banners.'
+        tips: 'Every 10x roll manifests exactly 5 Servants and 5 Craft Essences with 1% 5★ CE rate.'
       },
       {
         command: '/cegacha',
-        description: 'Roll on the Craft Essence Relic Banner for tactical stat cards',
+        description: 'Roll on the Unified Greater Grail Altar (Shortcut)',
         usage: '/cegacha [amount: 1 | 10]',
-        tips: 'Craft Essences grant massive ATK/HP stats and combat passive skills.'
+        tips: 'Manifests 50% Servants and 50% Craft Essences with 1% 5★ CE rate.'
       },
       {
         command: '/ce',

@@ -6344,7 +6344,7 @@ export async function renderGachaSummonBanner(
 
   ctx.fillStyle = '#38bdf8';
   ctx.font = 'bold 12px sans-serif';
-  ctx.fillText('SACRED CRAFT ESSENCE RELICS FORGED VIA SAINT QUARTZ', width / 2, 58);
+  ctx.fillText('THRONE OF HEROES & MYSTIC CODES • GREATER GRAIL SUMMON', width / 2, 58);
 
   // Layout cards in 1 or 2 rows
   const isMultiRow = results.length > 5;

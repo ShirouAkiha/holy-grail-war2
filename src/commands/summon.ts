@@ -273,145 +273,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     // ------------------------------------------
-    // SUBCOMMAND: CE (Craft Essence Forge)
-    // ------------------------------------------
-    if (subcommand === 'ce') {
-      const rolls = (interaction.options.getInteger('rolls') as 1 | 10) || 10;
-      const cost = rolls === 10 ? 30 : 3;
-
-      if ((master.saintQuartz || 0) < cost) {
-        await interaction.reply({
-          flags: MessageFlags.Ephemeral,
-          content: `❌ Insufficient Saint Quartz! You need **${cost} SQ** to forge Craft Essences, but you currently have **${master.saintQuartz || 0} SQ**.\nUse \`/summon daily\` to claim **+30 SQ**!`
-        });
-        return;
-      }
-
-      const rollResult = executeCraftEssenceGachaRoll({ count: rolls, master });
-      master.saintQuartz = rollResult.updatedMaster.saintQuartz;
-      master.craftEssences = rollResult.updatedMaster.craftEssences;
-      await saveMaster(master);
-
-      if (rolls === 1) {
-        const pulled = rollResult.results[0].item as any;
-        const rarityStars = '★'.repeat(pulled.rarity);
-
-        let files: AttachmentBuilder[] = [];
-        let imageAttachmentName: string | undefined = undefined;
-
-        try {
-          const canvasBuffer = await renderGachaSummonBanner(rollResult.results, '1x Craft Essence Single Summon');
-          const attachment = new AttachmentBuilder(canvasBuffer, { name: 'ce_summon.png' });
-          files = [attachment];
-          imageAttachmentName = 'attachment://ce_summon.png';
-        } catch (canvasErr) {
-          console.error('Failed to render gacha canvas banner:', canvasErr);
-        }
-
-        const embed = new EmbedBuilder()
-          .setTitle(`✨ 1x Craft Essence Summon: ${pulled.name}!`)
-          .setDescription(
-            `Summoned **[${rarityStars}] ${pulled.name}**!\n\n` +
-            `🔮 **Effect:** *${pulled.effectText || pulled.description}*\n` +
-            `⚔️ **Stats:** +${pulled.bonusAtk || pulled.atkBonus || 0} ATK / +${pulled.bonusHp || pulled.hpBonus || 0} HP\n` +
-            `💎 **Remaining Saint Quartz:** \`${master.saintQuartz} SQ\`\n\n` +
-            `Use \`/inventory\` or \`/customise equip\` to equip it to your Servant!`
-          )
-          .setColor(pulled.rarity >= 5 ? 0xf59e0b : pulled.rarity >= 4 ? 0xa855f7 : 0x38bdf8);
-
-        if (imageAttachmentName) {
-          embed.setImage(imageAttachmentName);
-        }
-
-        const actionButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setCustomId('quick_ce_gacha_ten')
-            .setLabel('Forge 10x (30 SQ)')
-            .setEmoji('💎')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled((master.saintQuartz || 0) < 30),
-          new ButtonBuilder()
-            .setCustomId('btn_view_inventory')
-            .setLabel('View Inventory (/inventory)')
-            .setEmoji('📦')
-            .setStyle(ButtonStyle.Secondary)
-        );
-
-        await interaction.reply({
-          embeds: [embed],
-          files,
-          components: [actionButtons]
-        });
-        return;
-      }
-
-      // 10x CE Multi-Summon
-      const cardSummary = rollResult.results
-        .map((r: any, idx: number) => {
-          const ce = r.item;
-          const star = '⭐'.repeat(r.rarity || ce.rarity || 3);
-          const newTag = r.isNew ? ' 🌟 **[NEW!]**' : '';
-          const atk = ce.bonusAtk || ce.atkBonus || 0;
-          const hp = ce.bonusHp || ce.hpBonus || 0;
-          const effect = ce.effectText || ce.description || '';
-          return `**${idx + 1}.** ${star} **${ce.name}**${newTag}\n   ↳ *${effect}* (+${atk} ATK / +${hp} HP)`;
-        })
-        .join('\n');
-
-      let files: AttachmentBuilder[] = [];
-      let imageAttachmentName: string | undefined = undefined;
-
-      try {
-        const canvasBuffer = await renderGachaSummonBanner(rollResult.results, '10x Craft Essence Multi-Summon');
-        const attachment = new AttachmentBuilder(canvasBuffer, { name: 'ce_summon.png' });
-        files = [attachment];
-        imageAttachmentName = 'attachment://ce_summon.png';
-      } catch (canvasErr) {
-        console.error('Failed to render gacha canvas banner:', canvasErr);
-      }
-
-      const embedColor = rollResult.ssrsPulled > 0 ? 0xf59e0b : rollResult.srsPulled > 0 ? 0xa855f7 : 0x38bdf8;
-
-      const embed = new EmbedBuilder()
-        .setTitle('🎁 10x Craft Essence Multi-Summon Results!')
-        .setDescription(
-          `**10x Craft Essence Invocations Complete!**\n\n` +
-          `💎 **Remaining Balance:** \`${master.saintQuartz} SQ\` *(Spent 30 SQ)*\n` +
-          `📦 **Total Essences in Vault:** \`${master.craftEssences?.length || 0}\`\n\n` +
-          `### 🔮 Relics Summoned:\n` +
-          cardSummary +
-          `\n\n*Use \`/inventory\` or \`/customise equip\` to bind these Mystic Codes to your Servant!*`
-        )
-        .setColor(embedColor)
-        .setFooter({ text: 'Craft Essence Forge • 4★+ Guarantee Applied' });
-
-      if (imageAttachmentName) {
-        embed.setImage(imageAttachmentName);
-      }
-
-      const actionButtons = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId('quick_ce_gacha_ten')
-          .setLabel('Forge 10x Again (30 SQ)')
-          .setEmoji('💎')
-          .setStyle(ButtonStyle.Success)
-          .setDisabled((master.saintQuartz || 0) < 30),
-        new ButtonBuilder()
-          .setCustomId('btn_view_inventory')
-          .setLabel('View Inventory (/inventory)')
-          .setEmoji('📦')
-          .setStyle(ButtonStyle.Secondary)
-      );
-
-      await interaction.reply({
-        embeds: [embed],
-        files,
-        components: [actionButtons]
-      });
-      return;
-    }
-
-    // ------------------------------------------
     // SUBCOMMAND: MENU
     // ------------------------------------------
     if (subcommand === 'menu') {
@@ -423,7 +284,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     // ------------------------------------------
-    // SUBCOMMAND: SERVANT & RITUAL (Direct Summoning)
+    // SUBCOMMAND: SERVANT, RITUAL & CE (Direct Unified Summoning)
     // ------------------------------------------
     const rolls = (interaction.options.getInteger('rolls') as 1 | 10) || 1;
     const cost = rolls === 10 ? 30 : 3;
@@ -498,109 +359,178 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     // 1x Single Summon Result Display
     if (rolls === 1) {
-      const s = rollResult.results[0].servant;
-      const isNew = rollResult.results[0].isNew;
+      const pulled = rollResult.results[0];
       const chosenChant = SUMMONING_CHANTS[Math.floor(Math.random() * SUMMONING_CHANTS.length)];
 
-      const ritualEmbed = new EmbedBuilder()
-        .setTitle('🕯️ HOLY GRAIL WAR: SACRED SUMMONING RITUAL')
-        .setDescription(
-          `Master **<@${interaction.user.id}>** channels magical energy through circuits into the summoning array...\n\n` +
-          `${chosenChant}\n\n` +
-          `✨ *The Greater Grail responds! Mana surges through the Fuyuki leylines as the magic circle erupts in brilliant light!*`
-        )
-        .setImage(resolveDirectGifUrl(RIN_SUMMONING_GIF))
-        .setColor(0xa855f7)
-        .setFooter({ text: 'Magecraft Circuits Active • Channelling Mana into the Greater Grail' });
+      if (pulled.type === 'servant') {
+        const s = (pulled.servant || pulled.item) as any;
+        const isNew = pulled.isNew;
 
-      const summonEmbed = new EmbedBuilder()
-        .setTitle(`✨ HEROIC SPIRIT SUMMONED: ${s.name.toUpperCase()}`)
-        .setDescription(
-          `═══════════════════════════════════\n` +
-          `🗣️ **"${s.summonQuote || 'I ask of you, are you my Master?'}"**\n` +
-          `═══════════════════════════════════\n\n` +
-          `👤 **True Name:** **${s.name}**\n` +
-          `🗡️ **Class:** \`${s.servantClass}\` | **Title:** *${s.title || 'Heroic Spirit'}*\n` +
-          (isNew 
-            ? `🌟 **[NEW CONTRACT ESTABLISHED!]** Added to your permanent Chaldea roster!` 
-            : `🔄 **[DUPLICATE SPIRIT ORIGIN]** You already own this Servant. Awarded **+50 Mana Prisms 🔵**!`) +
-          `\n\n` +
-          `📊 **Base Parameters:**\n` +
-          `• **HP:** \`${(s.baseHp || 12000).toLocaleString()}\` | **ATK:** \`${(s.baseAtk || 10000).toLocaleString()}\`\n` +
-          `• **STR:** \`${s.baseStats?.strength || 10}\` | **END:** \`${s.baseStats?.endurance || 10}\` | **AGI:** \`${s.baseStats?.agility || 10}\` | **MNA:** \`${s.baseStats?.mana || 10}\` | **LCK:** \`${s.baseStats?.luck || 10}\`\n\n` +
-          `💥 **Noble Phantasm:** **${s.noblePhantasm?.name || 'Noble Phantasm'}** [${s.noblePhantasm?.cardType || 'Buster'}]\n` +
-          `* "${s.noblePhantasm?.chant || 'Unleash the Phantasm'}" *\n\n` +
-          `💎 **Remaining Saint Quartz:** \`${updatedMaster.saintQuartz} SQ\` | 👥 **Roster Size:** \`${updatedMaster.servants.length}\``
-        )
-        .setColor(isNew ? 0xd4af37 : 0x38bdf8)
-        .setFooter({ text: `Use /servant to view and switch companions • /duel to battle` });
-      safeSetEmbedImage(summonEmbed, s.cardArtUrl || s.avatarUrl);
+        const ritualEmbed = new EmbedBuilder()
+          .setTitle('🕯️ HOLY GRAIL WAR: SACRED SUMMONING RITUAL')
+          .setDescription(
+            `Master **<@${interaction.user.id}>** channels magical energy through circuits into the summoning array...\n\n` +
+            `${chosenChant}\n\n` +
+            `✨ *The Greater Grail responds! Mana surges through the Fuyuki leylines as the magic circle erupts in brilliant light!*`
+          )
+          .setImage(resolveDirectGifUrl(RIN_SUMMONING_GIF))
+          .setColor(0xa855f7)
+          .setFooter({ text: 'Magecraft Circuits Active • Channelling Mana into the Greater Grail' });
 
-      const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId('btn_view_servant')
-          .setLabel('View Active Servant (/servant)')
-          .setEmoji('📊')
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('gacha_act_single')
-          .setLabel('Summon Again (3 SQ)')
-          .setEmoji('✨')
-          .setStyle(ButtonStyle.Success)
-          .setDisabled((updatedMaster.saintQuartz || 0) < 3),
-        new ButtonBuilder()
-          .setCustomId('btn_enter_war')
-          .setLabel('Enter Grail War (/grailwar)')
-          .setEmoji('🏰')
-          .setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder()
-          .setCustomId('btn_boast_summon')
-          .setLabel('Boast to Server')
-          .setEmoji('📢')
-          .setStyle(ButtonStyle.Danger)
-      );
+        const summonEmbed = new EmbedBuilder()
+          .setTitle(`✨ HEROIC SPIRIT SUMMONED: ${s.name.toUpperCase()}`)
+          .setDescription(
+            `═══════════════════════════════════\n` +
+            `🗣️ **"${s.summonQuote || 'I ask of you, are you my Master?'}"**\n` +
+            `═══════════════════════════════════\n\n` +
+            `👤 **True Name:** **${s.name}**\n` +
+            `🗡️ **Class:** \`${s.servantClass}\` | **Title:** *${s.title || 'Heroic Spirit'}*\n` +
+            (isNew 
+              ? `🌟 **[NEW CONTRACT ESTABLISHED!]** Added to your permanent Chaldea roster!` 
+              : `🔄 **[DUPLICATE SPIRIT ORIGIN]** You already own this Servant. Awarded **+50 Mana Prisms 🔵**!`) +
+            `\n\n` +
+            `📊 **Base Parameters:**\n` +
+            `• **HP:** \`${(s.baseHp || 12000).toLocaleString()}\` | **ATK:** \`${(s.baseAtk || 10000).toLocaleString()}\`\n` +
+            `• **STR:** \`${s.baseStats?.strength || 10}\` | **END:** \`${s.baseStats?.endurance || 10}\` | **AGI:** \`${s.baseStats?.agility || 10}\` | **MNA:** \`${s.baseStats?.mana || 10}\` | **LCK:** \`${s.baseStats?.luck || 10}\`\n\n` +
+            `💥 **Noble Phantasm:** **${s.noblePhantasm?.name || 'Noble Phantasm'}** [${s.noblePhantasm?.cardType || 'Buster'}]\n` +
+            `* "${s.noblePhantasm?.chant || 'Unleash the Phantasm'}" *\n\n` +
+            `💎 **Remaining Saint Quartz:** \`${updatedMaster.saintQuartz} SQ\` | 👥 **Roster Size:** \`${updatedMaster.servants.length}\``
+          )
+          .setColor(isNew ? 0xd4af37 : 0x38bdf8)
+          .setFooter({ text: `Use /servant to view and switch companions • /duel to battle` });
+        safeSetEmbedImage(summonEmbed, s.cardArtUrl || s.avatarUrl);
 
-      await interaction.reply({
-        embeds: [ritualEmbed, summonEmbed],
-        components: [actionRow]
-      });
-      return;
+        const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId('btn_view_servant')
+            .setLabel('View Active Servant (/servant)')
+            .setEmoji('📊')
+            .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+            .setCustomId('gacha_act_single')
+            .setLabel('Summon Again (3 SQ)')
+            .setEmoji('✨')
+            .setStyle(ButtonStyle.Success)
+            .setDisabled((updatedMaster.saintQuartz || 0) < 3),
+          new ButtonBuilder()
+            .setCustomId('btn_enter_war')
+            .setLabel('Enter Grail War (/grailwar)')
+            .setEmoji('🏰')
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId('btn_boast_summon')
+            .setLabel('Boast to Server')
+            .setEmoji('📢')
+            .setStyle(ButtonStyle.Danger)
+        );
+
+        await interaction.reply({
+          embeds: [ritualEmbed, summonEmbed],
+          components: [actionRow]
+        });
+        return;
+      } else {
+        const ce = pulled.item as any;
+        const rarityStars = '★'.repeat(pulled.rarity);
+        let files: AttachmentBuilder[] = [];
+        try {
+          const canvasBuffer = await renderGachaSummonBanner(rollResult.results, '1x Craft Essence Forge');
+          files = [new AttachmentBuilder(canvasBuffer, { name: 'ce_summon.png' })];
+        } catch (canvasErr) {
+          console.error('Failed to render gacha canvas banner:', canvasErr);
+        }
+
+        const embed = new EmbedBuilder()
+          .setTitle(`🛡️ MYSTIC CODE FORGED: ${ce.name.toUpperCase()}!`)
+          .setDescription(
+            `Master **<@${interaction.user.id}>** has channeled ancient relics from the leyline altar!\n\n` +
+            `🔮 **Relic:** **[${rarityStars}] ${ce.name}**\n` +
+            `📜 **Effect:** *${ce.effectText || ce.description}*\n` +
+            `⚔️ **Combat Modifiers:** +${ce.bonusAtk || ce.atkBonus || 0} ATK / +${ce.bonusHp || ce.hpBonus || 0} HP\n` +
+            `💎 **Remaining Saint Quartz:** \`${updatedMaster.saintQuartz} SQ\`\n\n` +
+            `Use \`/inventory\` or \`/customise equip\` to bind this Mystic Code to your Servant!`
+          )
+          .setColor(pulled.rarity >= 5 ? 0xf59e0b : pulled.rarity >= 4 ? 0xa855f7 : 0x38bdf8)
+          .setFooter({ text: 'Greater Grail Unified Altar • 50% Servants / 50% CEs (1% 5★ CE Rate)' });
+
+        if (files.length > 0) {
+          embed.setImage('attachment://ce_summon.png');
+        }
+
+        const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId('gacha_act_single')
+            .setLabel('Summon Again (3 SQ)')
+            .setEmoji('✨')
+            .setStyle(ButtonStyle.Success)
+            .setDisabled((updatedMaster.saintQuartz || 0) < 3),
+          new ButtonBuilder()
+            .setCustomId('gacha_act_multi')
+            .setLabel('10x Multi (5 Servants + 5 CEs)')
+            .setEmoji('🌟')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled((updatedMaster.saintQuartz || 0) < 30),
+          new ButtonBuilder()
+            .setCustomId('gacha_link_inventory')
+            .setLabel('Inventory (/inventory)')
+            .setEmoji('📦')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        await interaction.reply({
+          embeds: [embed],
+          files,
+          components: [actionRow]
+        });
+        return;
+      }
     }
 
-    // 10x Multi-Summon Result Display
-    const listSummary = rollResult.results
-      .map((r, idx) => `${idx + 1}. **${r.servant.name}** (\`${r.servant.servantClass}\`) ${r.isNew ? '🌟 **[NEW!]**' : '🔵 *(+50 Prisms)*'}`)
-      .join('\n');
+    // 10x Multi-Summon Result Display (5 Servants + 5 Craft Essences)
+    const servantList = rollResult.results.filter(r => r.type === 'servant');
+    const ceList = rollResult.results.filter(r => r.type === 'craft_essence');
+
+    const servantSummary = servantList.map((r, idx) => {
+      const s = (r.servant || r.item) as any;
+      const statusTag = r.isNew ? '🌟 **[NEW!]**' : `🔵 *(+50 Prisms)*`;
+      return `${idx + 1}. **${s.name}** (\`${s.servantClass}\`) ${statusTag}`;
+    }).join('\n');
+
+    const ceSummary = ceList.map((r, idx) => {
+      const c = r.item as any;
+      const statusTag = r.isNew ? '🌟 **[NEW!]**' : '';
+      const stars = '★'.repeat(r.rarity || c.rarity || 3);
+      return `${idx + 1}. **[${stars}] ${c.name}** ${statusTag} — *${(c.effectText || c.description || '').slice(0, 36)}...*`;
+    }).join('\n');
 
     const multiEmbed = new EmbedBuilder()
-      .setTitle(`👑 10x Heroic Spirit Multi-Summon Results!`)
+      .setTitle(`👑 10x Greater Grail Unified Multi-Summon Results!`)
       .setDescription(
-        `**Throne of Heroes Gate Awakened:**\n\n` +
-        listSummary +
+        `**Greater Grail Invocation Manifested (5 Servants + 5 Craft Essences):**\n\n` +
+        `⚔️ **Heroic Spirits Manifested (5x):**\n` +
+        servantSummary +
         `\n\n` +
+        `🛡️ **Craft Essences Forged (5x):**\n` +
+        ceSummary +
+        `\n\n` +
+        `═══════════════════════════════════════════════\n` +
         `🌟 **New Servants Contracted:** **+${rollResult.newServantsCount}**\n` +
-        `🔵 **Mana Prisms Earned (Duplicates):** **+${rollResult.totalManaPrismsAwarded}**\n` +
+        `🛡️ **SSR / SR Relics Forged:** **${rollResult.ssrsPulled}x ★5 SSR**, **${rollResult.srsPulled}x ★4 SR**\n` +
+        `🔵 **Mana Prisms Earned (Duplicates):** **+${rollResult.totalManaPrismsAwarded} 🔵**\n` +
         `💎 **Remaining Saint Quartz:** \`${updatedMaster.saintQuartz} SQ\` | 🔵 **Total Prisms:** \`${updatedMaster.manaPrisms || 0}\`\n\n` +
-        `Use \`/servant\` to view your full roster, allocate stats, and select your active companion!`
+        `Use \`/servant\` to view your full roster, or \`/inventory\` to equip Mystic Codes!`
       )
-      .setColor(0xeab308)
-      .setFooter({ text: 'Throne of Heroes • Multi-Summon Protocol' });
+      .setColor(rollResult.ssrsPulled > 0 ? 0xf59e0b : 0xeab308)
+      .setFooter({ text: 'Greater Grail Sanctum • 50% Servants & 50% Craft Essences (1% 5★ CE Rate)' });
 
     let files: AttachmentBuilder[] = [];
     try {
-      const gachaItems = rollResult.results.map(r => ({
-        type: 'servant',
-        item: r.servant,
-        rarity: r.servant.rarity || 5,
-        isNew: r.isNew,
-        isRateUp: r.servant.rarity >= 5
-      }));
-      const canvasBuffer = await renderGachaSummonBanner(gachaItems as any, '10x Heroic Spirit Multi-Summon');
-      const attachment = new AttachmentBuilder(canvasBuffer, { name: 'servant_summon.png' });
+      const canvasBuffer = await renderGachaSummonBanner(rollResult.results, '10x Greater Grail Unified Summon');
+      const attachment = new AttachmentBuilder(canvasBuffer, { name: 'unified_summon.png' });
       files = [attachment];
-      multiEmbed.setImage('attachment://servant_summon.png');
+      multiEmbed.setImage('attachment://unified_summon.png');
     } catch (canvasErr) {
-      console.error('Failed to render servant gacha canvas banner:', canvasErr);
+      console.error('Failed to render summon gacha canvas banner:', canvasErr);
     }
 
     const multiActionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(

@@ -1,44 +1,61 @@
-import { CraftEssence, GachaBanner, GachaResultItem, MasterProfile, Rarity, ServantTemplate, MasterServantInstance } from '../types';
+import { CraftEssence, GachaResultItem, MasterProfile, Rarity, ServantTemplate, MasterServantInstance } from '../types';
 import { getAllCraftEssences, getActiveGachaBanner, getAllThroneServants } from '../database/service';
 import { createProjectedServantInstance } from './saintGraphProjection';
 
-export interface RollCeGachaOptions {
+export interface RollGachaOptions {
   count: 1 | 10;
   master: MasterProfile;
   bannerId?: string;
   useTickets?: boolean;
 }
 
-export interface ServantGachaPullResult {
-  servant: ServantTemplate;
+export interface UnifiedGachaResultItem extends GachaResultItem {
+  type: 'servant' | 'craft_essence';
+  rarity: Rarity;
+  item: any;
+  servant?: ServantTemplate;
   isNew: boolean;
-  manaPrismsAwarded: number;
+  manaPrismsAwarded?: number;
+  isRateUp?: boolean;
 }
 
-export interface ServantGachaPullResponse {
-  results: ServantGachaPullResult[];
+export interface UnifiedGachaPullResponse {
+  results: UnifiedGachaResultItem[];
   spentQuartz: number;
   spentTickets: number;
   updatedMaster: MasterProfile;
+  servantsPulled: number;
+  cesPulled: number;
+  ssrsPulled: number;
+  srsPulled: number;
   newServantsCount: number;
+  newCeCount: number;
   totalManaPrismsAwarded: number;
 }
 
+// Backward compatibility types
+export type ServantGachaPullResult = UnifiedGachaResultItem;
+export type ServantGachaPullResponse = UnifiedGachaPullResponse;
+export type CeGachaPullResponse = UnifiedGachaPullResponse;
+export type RollCeGachaOptions = RollGachaOptions;
+
 /**
- * Executes a Heroic Spirit Gacha roll from the Throne of Heroes.
- * All Servants are balanced equally for competitive multiplayer combat (no star rarities).
- * Pulling an unowned Servant adds them permanently to the Master's roster.
- * Pulling a duplicate Servant awards +50 Mana Prisms.
+ * Executes a Unified Greater Grail Gacha roll combining Servants and Craft Essences.
+ * 
+ * Rules:
+ * - 10x Multi-Summon: Exactly 5 Servants (50%) and 5 Craft Essences (50%).
+ * - 1x Single Summon: 50% chance for Servant, 50% chance for Craft Essence.
+ * - Craft Essence 5★ SSR pull rate: strictly 1.0% (Kaleidoscope, Black Grail, etc.).
+ * - Craft Essence 4★ SR pull rate: 19.0% (guaranteed at least one 4★+ CE in 10-pull).
+ * - Craft Essence 3★ R pull rate: 80.0%.
+ * - Heroic Spirits: Equalized Throne of Heroes roster. New Servants are permanently contracted.
+ *   Duplicates award +50 Mana Prisms, +5 stat points, and NP upgrades.
  */
-export function executeServantGachaRoll({
+export function executeUnifiedGachaRoll({
   count,
   master,
   useTickets = false
-}: {
-  count: 1 | 10;
-  master: MasterProfile;
-  useTickets?: boolean;
-}): ServantGachaPullResponse {
+}: RollGachaOptions): UnifiedGachaPullResponse {
   let spentQuartz = 0;
   let spentTickets = 0;
 
@@ -61,14 +78,27 @@ export function executeServantGachaRoll({
     throw new Error('The Throne of Heroes is currently silent. No Heroic Spirits available.');
   }
 
+  const banner = getActiveGachaBanner();
+  const allCes = getAllCraftEssences().filter(c => !c.isBondCe);
+  const ssrCes = allCes.filter(c => c.rarity === 5);
+  const srCes = allCes.filter(c => c.rarity === 4);
+  const rCes = allCes.filter(c => c.rarity === 3);
+
   const ownedTemplateIds = new Set((master.servants || []).map(s => s.templateId || s.id));
   const newServantsList: MasterServantInstance[] = [...(master.servants || [])];
-  const results: ServantGachaPullResult[] = [];
+  const initialCeIds = new Set((master.craftEssences || []).map(c => c.id));
+  const newMasterCraftEssences = [...(master.craftEssences || [])];
 
   let newServantsCount = 0;
   let totalManaPrismsAwarded = 0;
+  let ssrsPulled = 0;
+  let srsPulled = 0;
+  let newCeCount = 0;
+  let servantsPulled = 0;
+  let cesPulled = 0;
 
-  for (let i = 0; i < count; i++) {
+  const pullServant = (): UnifiedGachaResultItem => {
+    servantsPulled++;
     const randomTemplate = allServants[Math.floor(Math.random() * allServants.length)];
     const isAlreadyOwned = ownedTemplateIds.has(randomTemplate.id);
 
@@ -78,101 +108,48 @@ export function executeServantGachaRoll({
       ownedTemplateIds.add(randomTemplate.id);
       newServantsCount++;
 
-      results.push({
+      return {
+        type: 'servant',
+        rarity: 5,
+        item: randomTemplate,
         servant: randomTemplate,
         isNew: true,
         manaPrismsAwarded: 0
-      });
+      };
     } else {
       totalManaPrismsAwarded += 50;
-      results.push({
+      // Upgrade existing servant
+      const existing = newServantsList.find(s => (s.templateId || s.id) === randomTemplate.id);
+      if (existing) {
+        existing.availableStatPoints = (existing.availableStatPoints || 0) + 5;
+        existing.bondLevel = Math.min(10, (existing.bondLevel || 1) + 1);
+        existing.npLevel = Math.min(5, (existing.npLevel || 1) + 1);
+      }
+      return {
+        type: 'servant',
+        rarity: 5,
+        item: randomTemplate,
         servant: randomTemplate,
         isNew: false,
         manaPrismsAwarded: 50
-      });
+      };
     }
-  }
-
-  const updatedMaster: MasterProfile = {
-    ...master,
-    saintQuartz: Math.max(0, (master.saintQuartz || 0) - spentQuartz),
-    summonTickets: Math.max(0, (master.summonTickets || 0) - spentTickets),
-    manaPrisms: (master.manaPrisms || 0) + totalManaPrismsAwarded,
-    servants: newServantsList,
-    activeServantId: master.activeServantId || (newServantsList[0] ? newServantsList[0].id : undefined)
   };
 
-  return {
-    results,
-    spentQuartz,
-    spentTickets,
-    updatedMaster,
-    newServantsCount,
-    totalManaPrismsAwarded
-  };
-}
-
-export interface CeGachaPullResponse {
-  results: GachaResultItem[];
-  spentQuartz: number;
-  spentTickets: number;
-  updatedMaster: MasterProfile;
-  ssrsPulled: number;
-  srsPulled: number;
-  newCeCount: number;
-}
-
-/**
- * Executes a Craft Essence Gacha roll using Saint Quartz or Summon Tickets.
- */
-export function executeCraftEssenceGachaRoll({
-  count,
-  master,
-  useTickets = false
-}: RollCeGachaOptions): CeGachaPullResponse {
-  const banner = getActiveGachaBanner();
-  let spentQuartz = 0;
-  let spentTickets = 0;
-
-  if (useTickets) {
-    const ticketCost = count;
-    if ((master.summonTickets || 0) < ticketCost) {
-      throw new Error(`Insufficient Summon Tickets! You need ${ticketCost} Ticket(s) 🎫, but only have ${master.summonTickets || 0} Tickets.`);
-    }
-    spentTickets = ticketCost;
-  } else {
-    const cost = count === 10 ? banner.costTenPull : banner.costPerPull;
-    if ((master.saintQuartz || 0) < cost) {
-      throw new Error(`Insufficient Saint Quartz! You need ${cost} SQ 💎, but only have ${master.saintQuartz || 0} SQ.`);
-    }
-    spentQuartz = cost;
-  }
-
-  const results: GachaResultItem[] = [];
-  const initialCeIds = new Set((master.craftEssences || []).map(c => c.id));
-  const newMasterCraftEssences = [...(master.craftEssences || [])];
-
-  const allCes = getAllCraftEssences().filter(c => !c.isBondCe);
-  const ssrCes = allCes.filter(c => c.rarity === 5);
-  const srCes = allCes.filter(c => c.rarity === 4);
-  const rCes = allCes.filter(c => c.rarity === 3);
-
-  let ssrsPulled = 0;
-  let srsPulled = 0;
-  let newCeCount = 0;
-
-  const pullSingleCe = (guaranteeFourStar: boolean = false): GachaResultItem => {
+  const pullCraftEssence = (guaranteeFourStar: boolean = false): UnifiedGachaResultItem => {
+    cesPulled++;
     let targetRarity: Rarity = 3;
+    const roll = Math.random() * 100;
 
+    // Pull rate of 5-star CE is strictly 1.0% as requested
     if (guaranteeFourStar) {
-      // 10-pull guarantee: 4★ (95%) or 5★ (5%)
-      const roll = Math.random() * 100;
-      targetRarity = roll < 5 ? 5 : 4;
+      // Guaranteed 4★ or higher: 1.0% for 5★, 99.0% for 4★
+      targetRarity = roll < 1.0 ? 5 : 4;
     } else {
-      const roll = Math.random() * 100;
-      if (roll < banner.rates.ssrCe) {
+      // Normal pull: 1.0% for 5★ SSR, 19.0% for 4★ SR, 80.0% for 3★ R
+      if (roll < 1.0) {
         targetRarity = 5;
-      } else if (roll < banner.rates.ssrCe + banner.rates.srCe) {
+      } else if (roll < 20.0) {
         targetRarity = 4;
       } else {
         targetRarity = 3;
@@ -183,8 +160,8 @@ export function executeCraftEssenceGachaRoll({
     if (targetRarity === 4) srsPulled++;
 
     const pool = targetRarity === 5 ? ssrCes : targetRarity === 4 ? srCes : rCes;
-    const featuredInPool = pool.filter(c => banner.featuredCeIds.includes(c.id));
-    
+    const featuredInPool = pool.filter(c => banner.featuredCeIds?.includes(c.id));
+
     let chosenCe: CraftEssence;
     let isRateUp = false;
 
@@ -201,7 +178,7 @@ export function executeCraftEssenceGachaRoll({
       newCeCount++;
     }
 
-    // Add to inventory
+    // Add to Master's CE inventory
     newMasterCraftEssences.push({ ...chosenCe });
 
     return {
@@ -213,25 +190,48 @@ export function executeCraftEssenceGachaRoll({
     };
   };
 
+  const results: UnifiedGachaResultItem[] = [];
+
   if (count === 1) {
-    results.push(pullSingleCe(false));
-  } else {
-    let hasFourStarOrHigher = false;
-    for (let i = 0; i < 9; i++) {
-      const item = pullSingleCe(false);
-      if (item.rarity >= 4) hasFourStarOrHigher = true;
-      results.push(item);
+    // 1x Single Summon: 50% Servant, 50% Craft Essence
+    if (Math.random() < 0.5) {
+      results.push(pullServant());
+    } else {
+      results.push(pullCraftEssence(false));
     }
-    // 10th card guaranteed 4-star+ if none pulled in first 9
-    const tenthItem = pullSingleCe(!hasFourStarOrHigher);
-    results.push(tenthItem);
+  } else {
+    // 10x Multi-Summon: Exactly 5 Servants (50%) and 5 Craft Essences (50%)
+    const servantPulls: UnifiedGachaResultItem[] = [];
+    for (let i = 0; i < 5; i++) {
+      servantPulls.push(pullServant());
+    }
+
+    const cePulls: UnifiedGachaResultItem[] = [];
+    let hasFourStarOrHigherCe = false;
+    for (let i = 0; i < 4; i++) {
+      const ceItem = pullCraftEssence(false);
+      if (ceItem.rarity >= 4) hasFourStarOrHigherCe = true;
+      cePulls.push(ceItem);
+    }
+    // 5th CE guarantees 4★+ if none pulled yet among the first 4
+    const lastCeItem = pullCraftEssence(!hasFourStarOrHigherCe);
+    cePulls.push(lastCeItem);
+
+    // Interleave: Servant, CE, Servant, CE, Servant, CE, Servant, CE, Servant, CE
+    for (let i = 0; i < 5; i++) {
+      results.push(servantPulls[i]);
+      results.push(cePulls[i]);
+    }
   }
 
   const updatedMaster: MasterProfile = {
     ...master,
     saintQuartz: Math.max(0, (master.saintQuartz || 0) - spentQuartz),
     summonTickets: Math.max(0, (master.summonTickets || 0) - spentTickets),
-    craftEssences: newMasterCraftEssences
+    manaPrisms: (master.manaPrisms || 0) + totalManaPrismsAwarded,
+    servants: newServantsList,
+    craftEssences: newMasterCraftEssences,
+    activeServantId: master.activeServantId || (newServantsList[0] ? newServantsList[0].id : undefined)
   };
 
   return {
@@ -239,8 +239,23 @@ export function executeCraftEssenceGachaRoll({
     spentQuartz,
     spentTickets,
     updatedMaster,
+    servantsPulled,
+    cesPulled,
     ssrsPulled,
     srsPulled,
-    newCeCount
+    newServantsCount,
+    newCeCount,
+    totalManaPrismsAwarded
   };
+}
+
+/**
+ * Universal wrapper aliases so any existing command or legacy call gets the unified 50/50 gacha
+ */
+export function executeServantGachaRoll(opts: RollGachaOptions): UnifiedGachaPullResponse {
+  return executeUnifiedGachaRoll(opts);
+}
+
+export function executeCraftEssenceGachaRoll(opts: RollGachaOptions): UnifiedGachaPullResponse {
+  return executeUnifiedGachaRoll(opts);
 }
