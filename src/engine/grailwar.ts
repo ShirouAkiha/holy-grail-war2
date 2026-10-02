@@ -1079,6 +1079,7 @@ export function evaluateWarState(targetWar: HolyGrailWarSession): void {
   if (aliveList.length === 0) {
     targetWar.status = 'concluded';
     targetWar.grailWinnerId = undefined;
+    targetWar.concludedReason = 'all_fallen';
     targetWar.eventLogs.unshift({
       id: `evt_grail_collapse_${Date.now()}`,
       timestamp: Date.now(),
@@ -1089,10 +1090,46 @@ export function evaluateWarState(targetWar: HolyGrailWarSession): void {
     return;
   }
 
+  // 2.5. War Deadline Expiry Check: If active war timer expired and >1 Master remains alive -> Grail Corruption!
+  if (targetWar.deadlineTimestamp && targetWar.deadlineTimestamp > 0 && Date.now() >= targetWar.deadlineTimestamp && targetWar.status === 'active') {
+    if (aliveList.length > 1) {
+      targetWar.status = 'concluded';
+      targetWar.grailWinnerId = undefined;
+      targetWar.isCorrupted = true;
+      targetWar.concludedReason = 'grail_corruption';
+      targetWar.eventLogs.unshift({
+        id: `evt_grail_corrupt_${Date.now()}`,
+        timestamp: Date.now(),
+        text: `🔥 THE GREATER GRAIL HAS CORRUPTED! The tournament deadline has expired with ${aliveList.length} Masters remaining alive. The unharvested Leyline mana inverted into All the World's Evil (Angra Mainyu). The Greater Grail dissolved into the Fuyuki Great Fire—the war concludes with NO VICTOR!`,
+        type: 'cataclysm'
+      });
+
+      if (!targetWar.history) targetWar.history = [];
+      const alreadyLogged = targetWar.history.some(h => h.warId === targetWar.id);
+      if (!alreadyLogged) {
+        targetWar.history.unshift({
+          warId: targetWar.id,
+          title: targetWar.title,
+          concludedAt: Date.now(),
+          winnerMasterId: undefined,
+          winnerUsername: 'None (Grail Corrupted)',
+          winnerServantName: "Angra Mainyu / All The World's Evil",
+          totalParticipants: totalSummoned,
+          totalEliminations: deadCount,
+          rulesSummary: `${targetWar.rules?.formatName || 'Standard'} • Stalemate Corrupted (${aliveList.length} Survivors)`
+        });
+      }
+
+      saveWarToDisk();
+      return;
+    }
+  }
+
   // 3. Climax: Only 1 Master remains alive in an active tournament or multi-master war!
   if (aliveList.length === 1 && (totalSummoned >= 2 || targetWar.status === 'active' || totalSummoned >= maxMasters)) {
     targetWar.status = 'concluded';
     targetWar.grailWinnerId = aliveList[0].discordId;
+    targetWar.concludedReason = 'sole_survivor';
     aliveList[0].isExposed = true;
     targetWar.eventLogs.unshift({
       id: `evt_grail_win_${Date.now()}`,
@@ -2316,9 +2353,25 @@ export function patrolCityInWar(
   }
 
   if (!actorParticipant) {
+    // CIVILIAN PATROL / INVESTIGATION
+    const civilianReports = [
+      `👁️ **Civilian Patrol in ${chanTag}:** While investigating **${chanTag}**, you noticed strange glowing runes etched into an alley wall and overheard chanting! You gathered a tip-off: *"Faint Arts/Buster mana signature detected near ${chanTag}."* Use \`/grailwar leak\` or \`/leak\` to broadcast this rumor!`,
+      `👁️ **Civilian Patrol in ${chanTag}:** You surveyed **${chanTag}**. Citizens are walking by oblivious, but you detected a brief temperature drop and subtle magical static. A Servant was likely here recently!`,
+      `👁️ **Civilian Patrol in ${chanTag}:** You caught a glimpse of two shadowy figures leaping across rooftops in **${chanTag}** before vanishing into the night. You remained hidden in the crowd and escaped unnoticed!`,
+      `👁️ **Civilian Patrol in ${chanTag}:** **${chanTag}** appears calm tonight. No active Master confrontations or Servant clashes observed in this sector.`
+    ];
+    const report = civilianReports[Math.floor(Math.random() * civilianReports.length)];
+
+    targetWar.eventLogs.unshift({
+      id: `evt_patrol_${Date.now()}`,
+      timestamp: Date.now(),
+      text: `👁️ Civilian Investigation in ${chanTag}: An innocent bystander conducted a clandestine patrol of the sector.`,
+      type: 'patrol'
+    });
+
     return {
-      success: false,
-      message: `📜 **Civilian Notice:** Master <@${actorDiscordId}>, you are currently a civilian spectator outside the Holy Grail War.\n\nOnly registered Masters competing in the active war covenant can conduct tactical patrols.\n\n🕊️ *Peaceful Chaldea activities (/daily, /summon, and /duel) remain open to you!*`,
+      success: true,
+      message: report,
       updatedWar: targetWar
     };
   }
@@ -2451,15 +2504,8 @@ export function executeWarAction(
   }
 
   const actor = targetWar.participants[actorDiscordId];
-  if (!actor) {
-    return {
-      success: false,
-      message: `📜 **Civilian Notice:** Master <@${actorDiscordId}>, you are currently a civilian spectator outside the Holy Grail War.\n\nOnly registered Masters competing in the active war covenant can execute tactical war actions.\n\n🕊️ *Peaceful Chaldea activities (/daily, /summon, and /duel) remain open to you!*`,
-      updatedWar: targetWar
-    };
-  }
-  if (!actor.isAlive) {
-    return { success: false, message: '☠️ You were slain and permanently eliminated from this Holy Grail War! Deceased Masters cannot execute war actions.', updatedWar: targetWar };
+  if (!actor || !actor.isAlive) {
+    return { success: false, message: 'You are eliminated from the Holy Grail War!', updatedWar: targetWar };
   }
 
   if (action === 'attack_suspect' && targetParam) {
@@ -3152,9 +3198,19 @@ export function startOrRestartWar(
   war.grailWinnerId = undefined;
   war.recruitmentCall = undefined;
   war.status = 'active';
+  war.isCorrupted = false;
+  war.concludedReason = undefined;
   war.id = `grail_war_${Date.now()}`;
   war.title = newRules.formatName;
   war.rules = newRules;
+
+  if (newRules.warDurationMinutes && newRules.warDurationMinutes > 0) {
+    war.durationMinutes = newRules.warDurationMinutes;
+    war.deadlineTimestamp = Date.now() + newRules.warDurationMinutes * 60 * 1000;
+  } else {
+    war.durationMinutes = undefined;
+    war.deadlineTimestamp = undefined;
+  }
 
   // If Apocrypha faction mode, assign participants evenly to Red vs Black
   if (newRules.factionMode && Object.keys(war.participants).length > 0) {
@@ -3249,6 +3305,19 @@ export function updateWarRules(
     ...ruleChanges,
     preset: 'custom'
   };
+
+  if (ruleChanges.warDurationMinutes !== undefined) {
+    if (ruleChanges.warDurationMinutes > 0) {
+      targetWar.durationMinutes = ruleChanges.warDurationMinutes;
+      targetWar.deadlineTimestamp = Date.now() + ruleChanges.warDurationMinutes * 60 * 1000;
+      targetWar.rules.warDurationMinutes = ruleChanges.warDurationMinutes;
+      targetWar.rules.warEndAction = 'grail_corruption';
+    } else {
+      targetWar.durationMinutes = undefined;
+      targetWar.deadlineTimestamp = undefined;
+      targetWar.rules.warDurationMinutes = undefined;
+    }
+  }
 
   const changeSummaries = Object.entries(ruleChanges).map(([k, v]) => `• **${k}:** \`${String(v)}\``).join('\n');
   const msg = `⚙️ **War Rules Updated by Admin (${adminUsername}):**\n${changeSummaries}`;

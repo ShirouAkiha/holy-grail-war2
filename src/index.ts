@@ -228,10 +228,8 @@ export const commandAliasMap: Record<string, any> = {
   reputation: reputationCommand,
   rep: reputationCommand,
   attack: attackCommand,
-  ambush: ambushCommand,
   leak: leakCommand,
   patrol: patrolCommand,
-  petrol: petrolCommand,
   familiar: familiarCommand,
   familiars: familiarCommand,
   trap: trapCommand,
@@ -240,8 +238,6 @@ export const commandAliasMap: Record<string, any> = {
   feed: feedCommand,
   enhance: feedCommand,
   cutin: dialogueCommand,
-  grail: grailCommand,
-  board: boardCommand,
   war: grailwarCommand
 };
 

@@ -647,6 +647,8 @@ export interface WarRules {
   leylineDensity: 'standard' | 'fast' | 'desolate';
   churchAsylum: boolean;
   trapLimitPerMaster: number;
+  warDurationMinutes?: number;
+  warEndAction?: 'grail_corruption';
   factionMode?: boolean;
   factions?: {
     red?: string[];
@@ -761,6 +763,10 @@ export interface HolyGrailWarSession {
     type: 'clash' | 'alliance' | 'betrayal' | 'elimination' | 'heal' | 'ambush' | 'casualty' | 'exposure' | 'intel_leak' | 'cataclysm' | 'admin_reset' | string;
   }>;
   grailWinnerId?: string;
+  deadlineTimestamp?: number;
+  durationMinutes?: number;
+  isCorrupted?: boolean;
+  concludedReason?: 'sole_survivor' | 'grail_corruption' | 'admin_reset' | 'all_fallen' | string;
   history?: WarHistoryRecord[];
 }
 

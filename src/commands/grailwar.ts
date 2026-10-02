@@ -99,11 +99,14 @@ import {
   dispatchFamiliarInWar,
   recallFamiliarsInWar,
   enterChurchSanctuary,
-  leaveChurchSanctuary
+  leaveChurchSanctuary,
+  setWorkshopWardInWar,
+  invokeCommandSealInWar
 } from '../engine/grailwar';
 import { checkWarActionPermission } from '../engine/environmentService';
 import { buildProfileEmbed, buildProfileButtons } from './profile';
 import { buildChurchEmbed, buildChurchButtons, buildHomilyEmbed, buildNewsEmbed } from './church';
+import { buildBountyEmbed, buildBountyButtons } from './bounty';
 import { 
   generateKotomine24hHomily, 
   generateFuyuki2hNewsBulletin,
@@ -1344,7 +1347,7 @@ export async function handleGlobalGrailWarInteraction(interaction: any): Promise
       await saveMaster(master);
       targetCategory = 'traps';
     } else if (customId === 'trap_use_seal_heal') {
-      const res = executeWarAction(war, interaction.user.id, 'heal_seal');
+      const res = invokeCommandSealInWar(war, interaction.user.id, 'heal');
       war = res.updatedWar;
       actionOutcome = res.message;
       await saveMaster(master);

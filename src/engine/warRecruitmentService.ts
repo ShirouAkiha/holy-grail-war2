@@ -23,7 +23,8 @@ import {
   getAllWarSessions,
   saveWarToDisk, 
   WAR_PRESETS,
-  startOrRestartWar
+  startOrRestartWar,
+  evaluateWarState
 } from './grailwar';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { renderHolyGrailWarAwakeningCard } from '../canvas/renderer';
@@ -1209,6 +1210,7 @@ export function resumePendingRecruitment(client: Client): void {
       try {
         const currentWars = getAllWarSessions();
         for (const currentWar of Object.values(currentWars)) {
+          // 1. Check recruitment countdown
           const activeCall = currentWar.recruitmentCall;
           if (activeCall && activeCall.active && activeCall.expiresAt > 0) {
             if (Date.now() >= activeCall.expiresAt) {
@@ -1218,10 +1220,79 @@ export function resumePendingRecruitment(client: Client): void {
               });
             }
           }
+
+          // 2. Check active war deadline countdown (Option C: Grail Corruption on Stalemate)
+          if (currentWar.status === 'active' && currentWar.deadlineTimestamp && currentWar.deadlineTimestamp > 0) {
+            if (Date.now() >= currentWar.deadlineTimestamp) {
+              console.log('[WarRecruitment] Active War deadline reached! Evaluating final war state & Option C: Grail Corruption...');
+              const wasActive = currentWar.status === 'active';
+              evaluateWarState(currentWar);
+              if (wasActive && currentWar.status === 'concluded') {
+                saveWarToDisk();
+                if (currentWar.isCorrupted || currentWar.concludedReason === 'grail_corruption') {
+                  broadcastGrailCorruptionEvent(client, currentWar).catch(err => {
+                    console.error('Failed to broadcast Grail Corruption event:', err);
+                  });
+                }
+              }
+            }
+          }
         }
       } catch (hbErr) {
         console.error('Error in recruitment heartbeat check:', hbErr);
       }
     }, 20000);
+  }
+}
+
+/**
+ * Publicly broadcasts the catastrophic Grail Corruption event when a tournament deadline expires with >1 Master alive.
+ */
+export async function broadcastGrailCorruptionEvent(client: Client, war: HolyGrailWarSession): Promise<void> {
+  const participants = Object.values(war.participants || {});
+  const living = participants.filter(p => p.isAlive);
+
+  const survivorNames = living.length > 0 
+    ? living.map(p => `• **${p.username}** (*${p.servantName}*)`).join('\n')
+    : '*No surviving Masters.*';
+
+  const embed = new EmbedBuilder()
+    .setTitle('🔥 CATACLYSM: THE GREATER GRAIL HAS CORRUPTED!')
+    .setDescription(
+      `⌛ **THE TOURNAMENT DEADLINE HAS EXPIRED!**\n\n` +
+      `With **${living.length} Masters** still stalling on the battlefield and failing to achieve total victory, the unstable Leyline mana has inverted into **All The World's Evil (Angra Mainyu)**!\n\n` +
+      `🖤 Torrential **Black Mud** and cursed Fuyuki flames have erupted from Mount Enzo, dissolving the Greater Grail into ash!\n\n` +
+      `⚔️ **Surviving Stalled Combatants (${living.length}):**\n${survivorNames}\n\n` +
+      `🏺 **RITUAL OUTCOME: DRAW / NO VICTOR**\n` +
+      `The Holy Grail War has concluded in complete disaster. Zero wishes granted.`
+    )
+    .setColor(0x7f1d1d)
+    .setImage('https://images.alphacoders.com/131/1316499.png')
+    .setFooter({ text: 'Holy Grail War Overseer • Option C: Anti-Stall Stalemate Resolution' })
+    .setTimestamp();
+
+  // Try broadcasting to the recruitment channel or any accessible text channel
+  let targetChannelId = war.recruitmentCall?.channelId;
+  if (!targetChannelId && client.guilds.cache.size > 0) {
+    for (const guild of client.guilds.cache.values()) {
+      const defaultChan = guild.channels.cache.find(
+        (c: any) => c.isTextBased() && c.permissionsFor(guild.members.me || '')?.has(PermissionFlagsBits.SendMessages)
+      );
+      if (defaultChan) {
+        targetChannelId = defaultChan.id;
+        break;
+      }
+    }
+  }
+
+  if (targetChannelId) {
+    try {
+      const channel: any = await client.channels.fetch(targetChannelId).catch(() => null);
+      if (channel && typeof channel.send === 'function') {
+        await channel.send({ embeds: [embed] });
+      }
+    } catch (err) {
+      console.warn('Failed to send Grail Corruption broadcast to channel:', err);
+    }
   }
 }

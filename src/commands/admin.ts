@@ -470,6 +470,14 @@ export const data = new SlashCommandBuilder()
           .setMaxValue(30)
           .setRequired(false)
       )
+      .addIntegerOption(opt =>
+        opt
+          .setName('duration')
+          .setDescription('War duration limit in days (e.g. 1, 3, 7, 14, 30; 0 for unlimited). Anti-stall Grail corruption triggers on expiry!')
+          .setMinValue(0)
+          .setMaxValue(90)
+          .setRequired(false)
+      )
       .addChannelOption(opt =>
         opt
           .setName('channel')
@@ -960,7 +968,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     if (action === 'restart') {
-      const res = startOrRestartWar(preset, undefined, interaction.user.username);
+      const durationDays = interaction.options.getInteger('duration');
+      const customRules: any = {};
+      if (durationDays !== null && durationDays !== undefined) {
+        customRules.warDurationMinutes = durationDays > 0 ? durationDays * 1440 : 0;
+      }
+      const res = startOrRestartWar(preset, Object.keys(customRules).length > 0 ? customRules : undefined, interaction.user.username);
       const embed = new EmbedBuilder()
         .setTitle('🌟 HOLY GRAIL WAR RITUAL LAUNCHED')
         .setDescription(res.message)
@@ -1427,6 +1440,13 @@ export function buildAdminHub(
       recruitText = `🟢 **ACTIVE IN ${chMention}** • **${war.recruitmentCall?.applicantIds.length || 0} Applicants** (Ends: ${deadline})`;
     }
 
+    const durLabel = rules.warDurationMinutes && rules.warDurationMinutes > 0
+      ? (rules.warDurationMinutes >= 1440 ? `${Math.round(rules.warDurationMinutes / 1440)} Day(s)` : `${rules.warDurationMinutes} Min(s)`)
+      : 'Unlimited / Manual Overseer End';
+    const activeDeadlineText = war.deadlineTimestamp && war.deadlineTimestamp > 0 && war.status === 'active'
+      ? `<t:${Math.floor(war.deadlineTimestamp / 1000)}:R> (<t:${Math.floor(war.deadlineTimestamp / 1000)}:f>)`
+      : '`None (Infinite)`';
+
     const embed = new EmbedBuilder()
       .setTitle('🏆 Overseer Control: Holy Grail War Master Dashboard')
       .setDescription(
@@ -1435,7 +1455,8 @@ export function buildAdminHub(
         `📢 **Recruitment Proclamation:** ${recruitText}\n\n` +
         `🏰 **Active War Format:** **${rules.formatName}**\n` +
         `👥 **Roster Status:** **${aliveCount} Alive** / **${participants.length} Total** (Max Cap: **${rules.maxMasters} Masters**)\n` +
-        `☠️ **Eliminations:** **${deadCount} Fallen** | ⚱️ **Status:** \`${war.status.toUpperCase()}\`\n\n` +
+        `☠️ **Eliminations:** **${deadCount} Fallen** | ⚱️ **Status:** \`${war.status.toUpperCase()}\`\n` +
+        `⏳ **War Duration Limit:** \`${durLabel}\` | ⏰ **Active Deadline:** ${activeDeadlineText}\n\n` +
         `📋 **Active Ritual Configuration & Rules:**\n` +
         `• ⚔️ **Servant Pool:** ${poolTag}\n` +
         `• 🔒 **Class Exclusivity:** \`${rules.classExclusivity ? 'Strict (1 per Class)' : 'Open (Multiple Allowed)'}\`\n` +
@@ -1443,6 +1464,7 @@ export function buildAdminHub(
         `• 🔱 **Starting Command Seals:** \`${rules.startingCommandSeals} Seals\`\n` +
         `• 💧 **Leyline Density:** \`${rules.leylineDensity === 'fast' ? '⚡ High Surge (2x Fast Recovery)' : rules.leylineDensity === 'desolate' ? '🏜️ Desolate (No Auto-Regen)' : 'Balanced Standard (5 min full)'}\`\n` +
         `• ⛪ **Church Sanctuary:** \`${rules.churchAsylum ? '🟢 Active Asylum under Father Kotomine' : '🔴 Desecrated (No Asylum)'}\`\n` +
+        `• 🖤 **Anti-Stall Penalty:** \`Option C: Grail Corruption (Angra Mainyu / 0 Winners if >1 alive on expiry)\`\n` +
         `• 🕸️ **Trap Limit:** \`Max ${rules.trapLimitPerMaster || 3} per Master\` | 🚩 **Factions:** \`${rules.factionMode ? 'Red vs Black (Apocrypha)' : 'Free-For-All'}\`\n\n` +
         `*Click **📢 Announce War** to choose a broadcast channel, or adjust settings with the buttons below!*`
       )
@@ -1531,6 +1553,13 @@ export function buildAdminHub(
         ? '🎨 Custom Community Only' 
         : '✨ Canon + Custom Servants';
 
+    const durLabel = rules.warDurationMinutes && rules.warDurationMinutes > 0
+      ? (rules.warDurationMinutes >= 1440 ? `${Math.round(rules.warDurationMinutes / 1440)} Day(s)` : `${rules.warDurationMinutes} Min(s)`)
+      : 'Unlimited / No Expiry';
+    const activeDeadlineText = war.deadlineTimestamp && war.deadlineTimestamp > 0 && war.status === 'active'
+      ? `<t:${Math.floor(war.deadlineTimestamp / 1000)}:R> (<t:${Math.floor(war.deadlineTimestamp / 1000)}:f>)`
+      : '`None (Infinite)`';
+
     const embed = new EmbedBuilder()
       .setTitle('⚙️ Overseer Ritual Workshop — Interactive Rule Customizer')
       .setDescription(
@@ -1543,6 +1572,8 @@ export function buildAdminHub(
         `💀 **Lethality & Permadeath:** \`${rules.permadeath ? 'Permadeath (Eliminated on HP 0)' : 'Casual / Training Mode'}\`\n` +
         `⛪ **Church Sanctuary:** \`${rules.churchAsylum ? '🟢 Active Asylum (Father Kotomine)' : '🔴 Desecrated (No Asylum)'}\`\n` +
         `💧 **Leyline Mana Density:** \`${rules.leylineDensity === 'fast' ? '⚡ High Surge (2x Fast)' : rules.leylineDensity === 'desolate' ? '🏜️ Desolate (No Regen)' : 'Standard (5 min)'}\`\n` +
+        `⏳ **War Duration Limit:** \`${durLabel}\` *(Active Deadline: ${activeDeadlineText})*\n` +
+        `🖤 **Anti-Stall Resolution:** \`Option C: Grail Corruption (Angra Mainyu / 0 Winners if >1 alive on expiry)\`\n` +
         `🕸️ **Trap Limits:** \`Max ${rules.trapLimitPerMaster || 3} per Master\` | 🚩 **Factions:** \`${rules.factionMode ? 'Red vs Black (Apocrypha)' : 'Free-For-All'}\`\n\n` +
         `*Click any button below to instantly apply or toggle that rule!*`
       )
@@ -1671,7 +1702,6 @@ export function buildAdminHub(
   const createRuleSelectMenu = () => {
     const rawOptions = [
       new StringSelectMenuOptionBuilder().setLabel('Command Seals: 1 Seal (Hardcore)').setValue('seals_1').setEmoji('🔱').setDescription('1 Command Seal per Master (Desolate)'),
-      new StringSelectMenuOptionBuilder().setLabel('Command Seals: 2 Seals (Tactical)').setValue('seals_2').setEmoji('🔱').setDescription('2 Command Seals per Master'),
       new StringSelectMenuOptionBuilder().setLabel('Command Seals: 3 Seals (Canon Standard)').setValue('seals_3').setEmoji('🔱').setDescription('Standard 3 Command Seals (Fuyuki)'),
       new StringSelectMenuOptionBuilder().setLabel('Command Seals: 5 Seals (Mana Surge)').setValue('seals_5').setEmoji('🔱').setDescription('High mana 5 Command Seals'),
       new StringSelectMenuOptionBuilder().setLabel('Command Seals: 10 Seals (Chaos / Unlimited)').setValue('seals_10').setEmoji('🔱').setDescription('10 Command Seals for ultimate freedom'),
@@ -1690,15 +1720,17 @@ export function buildAdminHub(
       new StringSelectMenuOptionBuilder().setLabel('Leylines: Desolate (No Auto-Regen)').setValue('leyline_desolate').setEmoji('🏜️').setDescription('HP recovery only via Command Seals/rituals'),
       new StringSelectMenuOptionBuilder().setLabel('Church Sanctuary: Active Asylum').setValue('church_active').setEmoji('⛪').setDescription('Masters can take asylum with Father Kotomine'),
       new StringSelectMenuOptionBuilder().setLabel('Church Sanctuary: Desecrated (No Asylum)').setValue('church_desecrated').setEmoji('🔥').setDescription('Church is unsafe; no sanctuary granted'),
-      new StringSelectMenuOptionBuilder().setLabel('Trap Limit: Max 1 per Master').setValue('trap_1').setEmoji('🕸️').setDescription('Limit each Master to 1 Channel Trap'),
-      new StringSelectMenuOptionBuilder().setLabel('Trap Limit: Max 3 per Master').setValue('trap_3').setEmoji('🕸️').setDescription('Standard 3 Traps per Master'),
       new StringSelectMenuOptionBuilder().setLabel('Faction Mode: Free-For-All').setValue('faction_ffa').setEmoji('⚔️').setDescription('Every Master for themselves'),
-      new StringSelectMenuOptionBuilder().setLabel('Faction Mode: Red vs Black Factions').setValue('faction_teams').setEmoji('🚩').setDescription('Apocrypha team war')
+      new StringSelectMenuOptionBuilder().setLabel('Faction Mode: Red vs Black Factions').setValue('faction_teams').setEmoji('🚩').setDescription('Apocrypha team war'),
+      new StringSelectMenuOptionBuilder().setLabel('Duration: Unlimited (No Expiry)').setValue('wardur_0').setEmoji('♾️').setDescription('War runs indefinitely until 1 Master remains'),
+      new StringSelectMenuOptionBuilder().setLabel('Duration: 24 Hours (1-Day Blitz)').setValue('wardur_1440').setEmoji('⏱️').setDescription('Anti-stall Option C: Grail Corruption on expiry'),
+      new StringSelectMenuOptionBuilder().setLabel('Duration: 3 Days (Tactical)').setValue('wardur_4320').setEmoji('⏳').setDescription('Anti-stall Option C: Grail Corruption on expiry'),
+      new StringSelectMenuOptionBuilder().setLabel('Duration: 7 Days (1 Week Standard)').setValue('wardur_10080').setEmoji('🏆').setDescription('Anti-stall Option C: Grail Corruption on expiry')
     ];
 
     return new StringSelectMenuBuilder()
       .setCustomId('admin_war_rule_select')
-      .setPlaceholder('⚙️ Fine-Tune War Rules (Seals, Pools, Capacity, Lethality)...')
+      .setPlaceholder('⚙️ Fine-Tune War Rules (Seals, Pools, Capacity, Lethality, Duration)...')
       .addOptions(rawOptions.slice(0, 25));
   };
 
@@ -1856,9 +1888,17 @@ export function buildAdminHub(
       new ButtonBuilder().setCustomId('admin_toggle_factions').setLabel(`Factions: ${rules.factionMode ? 'Teams 🚩' : 'FFA ⚔️'}`).setEmoji('🚩').setStyle(rules.factionMode ? ButtonStyle.Success : ButtonStyle.Secondary)
     );
 
-    const ruleSelectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(createRuleSelectMenu());
+    // DIRECT 1-CLICK WAR DURATION TIMER ROW
+    const durationMinutes = rules.warDurationMinutes || 0;
+    const durRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('admin_set_wardur_0').setLabel('No Limit ♾️').setStyle(durationMinutes === 0 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_wardur_1440').setLabel('24h Blitz ⏱️').setStyle(durationMinutes === 1440 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_wardur_4320').setLabel('3 Days ⏳').setStyle(durationMinutes === 4320 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_wardur_10080').setLabel('7 Days 🏆').setStyle(durationMinutes === 10080 ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('admin_set_wardur_custom').setLabel('Custom 📅').setStyle(durationMinutes > 0 && durationMinutes !== 1440 && durationMinutes !== 4320 && durationMinutes !== 10080 ? ButtonStyle.Success : ButtonStyle.Secondary)
+    );
 
-    components.push(sealsRow, capPoolRow, toggleRow, ruleSelectRow);
+    components.push(sealsRow, capPoolRow, toggleRow, durRow);
 
   } else if (category === 'npsettings') {
     const settings = getDuelNpSettings();
@@ -1892,6 +1932,28 @@ export async function handleAdminGlobalInteraction(interaction: any) {
     const customId = interaction.customId;
     let currentCategory: 'war' | 'war_announce' | 'war_rules' | 'masters' | 'personas' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war';
     let actionOutcome: string | undefined = undefined;
+
+    // Handle Custom War Duration Modal Submission
+    if (customId === 'admin_modal_war_duration') {
+      let inputVal = '';
+      try { inputVal = interaction.fields.getTextInputValue('war_duration_input'); } catch {}
+      const parsed = parseCustomTimerInput(inputVal);
+      if (parsed) {
+        const war = getOrInitWarSession();
+        const updateRes = updateWarRules(war, { warDurationMinutes: parsed.durationMinutes }, interaction.user.username);
+        actionOutcome = `⏳ **War Duration Timer Set:** **${parsed.label}**! Anti-stall Option C (Grail Corruption) active on deadline.\n${updateRes.message}`;
+      } else {
+        actionOutcome = `❌ **Invalid Duration Format:** Could not parse \`${inputVal}\`. Use e.g. \`24h\`, \`3d\`, \`7d\`, \`14d\`, or \`30d\`.`;
+      }
+      currentCategory = 'war_rules';
+      const hub = buildAdminHub(currentCategory, actionOutcome);
+      await interaction.reply({
+        embeds: hub.embeds,
+        components: hub.components,
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
 
     // Handle Custom Timer & Custom Date Modal Submissions
     if (customId === 'admin_modal_custom_timer' || customId === 'admin_modal_custom_date') {
@@ -2421,6 +2483,29 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       const updateRes = updateWarRules(war, { factionMode: !current }, interaction.user.username);
       actionOutcome = `🚩 **Faction War Mode is now ${!current ? 'ACTIVE (Red vs Black Teams)' : 'FREE-FOR-ALL (Every Master for themselves)'}!**\n${updateRes.message}`;
       currentCategory = 'war_rules';
+    } else if (customId === 'admin_set_wardur_custom') {
+      const modal = new ModalBuilder()
+        .setCustomId('admin_modal_war_duration')
+        .setTitle('Set Holy Grail War Duration');
+
+      const input = new TextInputBuilder()
+        .setCustomId('war_duration_input')
+        .setLabel('Duration (e.g. 24h, 3d, 7d, 14d, 30d)')
+        .setStyle(TextInputStyle.Short)
+        .setPlaceholder('e.g. 24h, 3d, 7d, 14d, 30d, 2 weeks, or ISO date')
+        .setMaxLength(50)
+        .setRequired(true);
+
+      modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+      await interaction.showModal(modal);
+      return;
+    } else if (customId.startsWith('admin_set_wardur_')) {
+      const minutes = parseInt(customId.replace('admin_set_wardur_', ''), 10);
+      const war = getOrInitWarSession();
+      const updateRes = updateWarRules(war, { warDurationMinutes: minutes }, interaction.user.username);
+      const durLabel = minutes === 0 ? 'Unlimited (No Expiry)' : minutes >= 1440 ? `${Math.round(minutes / 1440)} Day(s)` : `${minutes} Minutes`;
+      actionOutcome = `⏳ **War Duration set to ${durLabel}!** Anti-stall Option C (Grail Corruption) active on deadline.\n${updateRes.message}`;
+      currentCategory = 'war_rules';
     }
 
     // RULE CUSTOMIZATION SELECT MENU
@@ -2455,6 +2540,10 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       else if (val === 'trap_5') ruleChanges = { trapLimitPerMaster: 5 };
       else if (val === 'faction_ffa') ruleChanges = { factionMode: false };
       else if (val === 'faction_teams') ruleChanges = { factionMode: true };
+      else if (val.startsWith('wardur_')) {
+        const minutes = parseInt(val.replace('wardur_', ''), 10);
+        ruleChanges = { warDurationMinutes: minutes };
+      }
 
       const updateRes = updateWarRules(war, ruleChanges, interaction.user.username);
       actionOutcome = `⚙️ **Rule Applied:** ${updateRes.message}`;

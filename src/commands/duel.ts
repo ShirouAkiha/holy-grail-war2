@@ -82,6 +82,7 @@ export interface CombatantBuff {
   remainingTurns: number;
   remainingHits?: number;
   isHitCount?: boolean;
+  appliedRound?: number;
 }
 
 export interface DuelCombatant {
@@ -1457,8 +1458,8 @@ function activateCombatantSkill(
     });
     logText = `🛡️ **${sName}** activated **${skill.name}**! (+30% DEF (3T), 1,500 Damage Cut (3T), Target Focus (1T))${quoteLine}`;
   } else if (skill.id === 'guardians_instinct_red_scarf_b' || skill.name.toLowerCase().includes("guardian's instinct") || skill.name.toLowerCase().includes("red scarf")) {
-    const alliesTeam = team1.includes(combatant) ? team1 : team2.includes(combatant) ? team2 : [combatant];
-    alliesTeam.forEach(ally => {
+    const alliesTeam: DuelCombatant[] = [combatant];
+    alliesTeam.forEach((ally: DuelCombatant) => {
       if (ally && ally.currentHp > 0) {
         ally.activeBuffs = ally.activeBuffs || [];
         ally.activeBuffs.push({

@@ -13,7 +13,7 @@ import {
   saveMaster, 
   claimDailySaintQuartz
 } from '../database/service';
-import { executeServantGachaRoll, executeCraftEssenceGachaRoll } from '../engine/ceGacha';
+import { executeServantGachaRoll, executeCraftEssenceGachaRoll, executeUnifiedGachaRoll } from '../engine/ceGacha';
 import { buildGachaHub, attachGachaCollector } from './gacha';
 import { registerMasterSummonInWar } from '../engine/grailwar';
 import { safeSetEmbedImage } from '../utils/discordEmbedHelper';
@@ -295,16 +295,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     // 10x Multi-Summon Result Display (5 Servants + 5 Craft Essences)
-    const servantList = rollResult.results.filter(r => r.type === 'servant');
-    const ceList = rollResult.results.filter(r => r.type === 'craft_essence');
+    const servantList = rollResult.results.filter((r: any) => r.type === 'servant');
+    const ceList = rollResult.results.filter((r: any) => r.type === 'craft_essence');
 
-    const servantSummary = servantList.map((r, idx) => {
+    const servantSummary = servantList.map((r: any, idx: number) => {
       const s = (r.servant || r.item) as any;
       const statusTag = r.isNew ? '🌟 **[NEW!]**' : `🔵 *(+50 Prisms)*`;
       return `${idx + 1}. **${s.name}** (\`${s.servantClass}\`) ${statusTag}`;
     }).join('\n');
 
-    const ceSummary = ceList.map((r, idx) => {
+    const ceSummary = ceList.map((r: any, idx: number) => {
       const c = r.item as any;
       const statusTag = r.isNew ? '🌟 **[NEW!]**' : '';
       const stars = '★'.repeat(r.rarity || c.rarity || 3);
