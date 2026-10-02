@@ -713,7 +713,7 @@ export function attachGachaCollector(
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
-    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+    let master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
     const sub = interaction.options.getSubcommand(false) || 'menu';
 
     if (sub === 'daily') {

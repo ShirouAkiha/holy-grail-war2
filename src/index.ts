@@ -1380,7 +1380,7 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
-      const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+      let master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
       let war = getOrInitWarSession(master);
       const isCivilian = !master.servants || master.servants.length === 0;
 
