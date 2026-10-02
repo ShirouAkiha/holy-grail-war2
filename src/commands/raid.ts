@@ -650,7 +650,7 @@ async function runRaidBattle(
     // Row 1: 5 Dealt Command Cards from Servant Class Deck (Exact layout from normal battles)
     const row1 = new ActionRowBuilder<ButtonBuilder>();
     const isQuickFirst = pendingCards[0] === 'Quick';
-    const hand = active.currentHand || ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'];
+    const hand = (active.currentHand && active.currentHand.length >= 5 ? active.currentHand : refreshParticipantHand(active)).slice(0, 5);
 
     hand.forEach((cardType, idx) => {
       const isUsed = pendingIndices.includes(idx);
@@ -1121,6 +1121,27 @@ async function runRaidBattle(
             });
             const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
             buffLog = `(+50% Arts Up, +50% Anti-Threat Special ATK & 1T Invincibility to **${tName}**!)`;
+          } else if (/guardian's instinct|guardians_instinct|red scarf/i.test(sName + ' ' + sDesc)) {
+            // Guardian's Instinct (Red Scarf) B+: Increases ATK of ALL allies by +15% (3T) & grants all allies Invincibility (1T), +20% NP Gauge to self
+            battleState.participants.forEach(p => {
+              if (!p.isDead) {
+                p.activeBuffs = p.activeBuffs || [];
+                p.activeBuffs.push({
+                  name: "Guardian's Instinct (ATK Up)",
+                  type: 'atk_up',
+                  value: 15,
+                  remainingTurns: 3
+                });
+                p.activeBuffs.push({
+                  name: 'Red Scarf Aegis (Invincibility)',
+                  type: 'invincible',
+                  value: 1,
+                  remainingTurns: 1
+                });
+              }
+            });
+            active.npGauge = Math.min(300, (active.npGauge || 0) + 20);
+            buffLog = `(+15% ATK & 1T Invincibility to ALL Allies, +20% NP Gauge to self!)`;
           } else if (isAntiThreatSkill) {
           // Calamity-Breaker Edict: Increases ATK of ALL allies by +20%, and grants all allies [Special Attack against Threat to Humanity / Beast] (+30% DMG) for 3 turns!
           battleState.participants.forEach(p => {
@@ -1452,7 +1473,9 @@ async function runRaidBattle(
         const isCrit = card !== 'NP' && (Math.random() * 100 < critPct);
         if (isCrit) totalCritsLanded++;
 
-        const critDmgMult = isCrit ? 2.0 : 1.0;
+        const totalLuckAtk = (baseStatsAtk.luck || 10) + (allocAtk.luck || 0);
+        const luckCritBonus = Math.min(0.35, (totalLuckAtk / (totalLuckAtk + 120)) * 0.35);
+        const critDmgMult = isCrit ? (2.0 + luckCritBonus) : 1.0;
         const critNpBonus = isCrit ? 1.5 : 1.0;
         const critStarBonus = isCrit ? 1.4 : 1.0;
 
@@ -1465,7 +1488,9 @@ async function runRaidBattle(
           npGained += Math.round(5 * critNpBonus);
         } else if (card === 'Arts') {
           totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
-          npGained += Math.round(25 * critNpBonus);
+          const totalAtkMana = (baseStatsAtk.mana || 10) + (allocAtk.mana || 0);
+          const manaNpBonus = Math.min(0.35, (totalAtkMana / (totalAtkMana + 120)) * 0.35);
+          npGained += Math.round(25 * critNpBonus * (1.0 + manaNpBonus));
           starsGenerated += Math.round(2 * critStarBonus);
         } else if (card === 'Quick') {
           totalTurnDmg += Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));

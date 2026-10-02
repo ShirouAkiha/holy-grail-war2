@@ -4736,22 +4736,22 @@ function extractCombatHudTelemetry(
   p1: ActiveCombatant,
   p2: ActiveCombatant
 ): string {
-  // 1. Absolute Defense Evasion / Invincibility Nullification
-  if (log.damageDealt === 0) {
-    if (log.isEvaded || log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade')) {
-      return 'Evade Triggered | Absolute Dodge (0 Damage Taken)';
-    }
-    if (log.isInvincible || log.actionSummary?.toLowerCase().includes('invincible')) {
-      return 'Invincible Barrier Active | Attack Nullified (0 Damage Taken)';
-    }
-  }
-
-  // 2. Command Seal or Tactical Skill
+  // 1. Command Seal or Tactical Skill (PRIORITY: Skills & Seals must never be overridden by zero-damage evasion/invincibility text!)
   if (log.dialogueTag?.includes('COMMAND SEAL') || log.actionSummary?.toLowerCase().includes('command seal')) {
     return 'Absolute Command Invoked | NP Gauge Surged to 100% Ready';
   }
   if (log.dialogueTag?.includes('SKILL') || log.actionSummary?.toLowerCase().includes('activated') || (log as any).skillName) {
     return extractSkillActualEffects(log, p1, p2);
+  }
+
+  // 2. Absolute Defense Evasion / Invincibility Nullification (Only for incoming attacks, not skill usage!)
+  if (log.damageDealt === 0) {
+    if (log.isEvaded || log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade')) {
+      return 'Evade Triggered | Absolute Dodge (0 Damage Taken)';
+    }
+    if (log.isInvincible || log.actionSummary?.toLowerCase().includes('invincible barrier active') || log.actionSummary?.toLowerCase().includes('invincible (0 dmg)')) {
+      return 'Invincible Barrier Active | Attack Nullified (0 Damage Taken)';
+    }
   }
 
   // 3. Stun Affliction
@@ -4944,17 +4944,7 @@ function drawMinimalClashBanner(
   const dmgY = y + 69;
   const dmg = log.damageDealt > 0 ? log.damageDealt.toLocaleString() : '0';
 
-  if (log.damageDealt === 0 && (log.isEvaded || log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade'))) {
-    ctx.font = 'bold 26px sans-serif';
-    ctx.fillStyle = '#38bdf8';
-    ctx.textAlign = 'center';
-    ctx.fillText('ATTACK EVADED! (0 DMG)', x + w / 2, dmgY);
-  } else if (log.damageDealt === 0 && (log.isInvincible || log.actionSummary?.toLowerCase().includes('invincible'))) {
-    ctx.font = 'bold 26px sans-serif';
-    ctx.fillStyle = '#fde047';
-    ctx.textAlign = 'center';
-    ctx.fillText('INVINCIBLE! (0 DMG)', x + w / 2, dmgY);
-  } else if (isSeal) {
+  if (isSeal) {
     ctx.font = 'bold 24px sans-serif';
     ctx.fillStyle = '#fb7185';
     ctx.textAlign = 'center';
@@ -4965,6 +4955,16 @@ function drawMinimalClashBanner(
     ctx.fillStyle = '#38bdf8';
     ctx.textAlign = 'center';
     ctx.fillText(skillTitle, x + w / 2, dmgY);
+  } else if (log.damageDealt === 0 && (log.isEvaded || log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade'))) {
+    ctx.font = 'bold 26px sans-serif';
+    ctx.fillStyle = '#38bdf8';
+    ctx.textAlign = 'center';
+    ctx.fillText('ATTACK EVADED! (0 DMG)', x + w / 2, dmgY);
+  } else if (log.damageDealt === 0 && (log.isInvincible || log.actionSummary?.toLowerCase().includes('invincible barrier active') || log.actionSummary?.toLowerCase().includes('invincible (0 dmg)'))) {
+    ctx.font = 'bold 26px sans-serif';
+    ctx.fillStyle = '#fde047';
+    ctx.textAlign = 'center';
+    ctx.fillText('INVINCIBLE! (0 DMG)', x + w / 2, dmgY);
   } else if (log.damageDealt > 0) {
     let dmgColor = '#ffffff';
     let suffix = ' DMG';

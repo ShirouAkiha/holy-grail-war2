@@ -542,9 +542,12 @@ async function createTurnSummaryAttachment(
   const activeP1Ally = p1Ally ? mapToActive(p1Ally) : undefined;
   const activeP2Ally = p2Ally ? mapToActive(p2Ally) : undefined;
 
-  // If lastLogText is a kill log or skill log without damage, look back in combatLogsHistory for the strike log
+  const isSkillActivation = Boolean(lastLogText && (lastLogText.includes('activated') || lastLogText.includes('Skill:')));
+  const isSealActivation = Boolean(lastLogText && lastLogText.includes('COMMAND SEAL INVOKED'));
+
+  // If lastLogText is a kill log or other non-damage log (and NOT a skill/seal action), look back in combatLogsHistory for the strike log
   let strikeLogText = lastLogText || '';
-  if (!/DMG/i.test(strikeLogText) && combatLogsHistory && combatLogsHistory.length > 0) {
+  if (!isSkillActivation && !isSealActivation && !/DMG/i.test(strikeLogText) && combatLogsHistory && combatLogsHistory.length > 0) {
     for (let k = combatLogsHistory.length - 1; k >= 0; k--) {
       if (/DMG/i.test(combatLogsHistory[k])) {
         strikeLogText = combatLogsHistory[k];
@@ -553,25 +556,36 @@ async function createTurnSummaryAttachment(
     }
   }
 
-  const isCrit = lastLogText.includes('CRITICAL') || strikeLogText.includes('CRITICAL');
-  const isNP = lastLogText.includes('NOBLE PHANTASM') || strikeLogText.includes('NOBLE PHANTASM');
+  const isCrit = !isSkillActivation && (lastLogText.includes('CRITICAL') || strikeLogText.includes('CRITICAL'));
+  const isNP = !isSkillActivation && (lastLogText.includes('NOBLE PHANTASM') || strikeLogText.includes('NOBLE PHANTASM'));
 
-  // Identify who was the attacker in the most recent combat log entry
+  // Identify who was the attacker / actor in the most recent combat log entry
   const allCombatants = [p1, p2, p1Ally, p2Ally, ...teamSoloList].filter((c): c is DuelCombatant => !!c);
 
-  // Extract leading bold attacker name from log string
   let activeAttacker: DuelCombatant | undefined = undefined;
-  const leadMatch = strikeLogText.match(/^(?:⚔️|🎴|✨|🔴|🛡️|💥|👁️)?\s*(?:\*\*[^*]+\*\*\s+)?\*\*([^*]+)\*\*/i)
-                 || lastLogText.match(/^(?:⚔️|🎴|✨|🔴|🛡️|💥|👁️)?\s*(?:\*\*[^*]+\*\*\s+)?\*\*([^*]+)\*\*/i);
-
-  if (leadMatch) {
-    const rawLeadName = leadMatch[1].trim().toLowerCase();
+  if (isSkillActivation || isSealActivation) {
     activeAttacker = allCombatants.find(c => {
       const sName = (c.servant.nickname || c.servant.template?.name || '').toLowerCase();
       const tName = (c.servant.template?.name || '').toLowerCase();
       const uName = (c.username || '').toLowerCase();
-      return sName === rawLeadName || tName === rawLeadName || uName === rawLeadName;
+      return (sName && lastLogText.toLowerCase().includes(sName)) ||
+             (tName && lastLogText.toLowerCase().includes(tName)) ||
+             (uName && lastLogText.toLowerCase().includes(uName));
     });
+  } else {
+    // Extract leading bold attacker name from log string
+    const leadMatch = strikeLogText.match(/^(?:⚔️|🎴|✨|🔴|🛡️|💥|👁️)?\s*(?:\*\*[^*]+\*\*\s+)?\*\*([^*]+)\*\*/i)
+                   || lastLogText.match(/^(?:⚔️|🎴|✨|🔴|🛡️|💥|👁️)?\s*(?:\*\*[^*]+\*\*\s+)?\*\*([^*]+)\*\*/i);
+
+    if (leadMatch) {
+      const rawLeadName = leadMatch[1].trim().toLowerCase();
+      activeAttacker = allCombatants.find(c => {
+        const sName = (c.servant.nickname || c.servant.template?.name || '').toLowerCase();
+        const tName = (c.servant.template?.name || '').toLowerCase();
+        const uName = (c.username || '').toLowerCase();
+        return sName === rawLeadName || tName === rawLeadName || uName === rawLeadName;
+      });
+    }
   }
 
   if (!activeAttacker) {
@@ -608,11 +622,11 @@ async function createTurnSummaryAttachment(
   let dQuote = '';
   let dTag = '';
 
-  if (lastLogText.includes('COMMAND SEAL INVOKED')) {
+  if (isSealActivation) {
     const quoteMatch = lastLogText.match(/❝ \*\*\*(.*?)\*\*\* ❞/) || lastLogText.match(/\*“{1,2}(.*?)[”"]{1,2}\*/);
     dQuote = quoteMatch ? quoteMatch[1] : (activeAttacker.servant.customQuotes?.commandSeal || 'By my Command Seal, unleash your Noble Phantasm!');
     dTag = 'COMMAND SEAL INVOCATION';
-  } else if (lastLogText.includes('activated')) {
+  } else if (isSkillActivation) {
     const quoteMatch = lastLogText.match(/❝ \*\*\*(.*?)\*\*\* ❞/) || lastLogText.match(/\*“(.*?)[”"]\*/);
     dQuote = quoteMatch ? quoteMatch[1] : (activeAttacker.servant.customQuotes?.skill || 'My power answers the command!');
     dTag = 'SKILL ACTIVATION';
@@ -626,20 +640,23 @@ async function createTurnSummaryAttachment(
   dQuote = dQuote.replace(/^[*_~`#💬✨🔱"“'❝\s]+|[*_~`#💬✨🔱"”'❞\s]+$/g, '').trim();
 
   // Extract damage, NP gained, stars generated via regex
-  const dmgMatch = strikeLogText.match(/Dealt \*\*([\d,]+) DMG\*\*/i)
-    || strikeLogText.match(/counter-attacked for \*\*([\d,]+) DMG\*\*/i)
-    || strikeLogText.match(/([\d,]+)\s*DMG/i)
-    || lastLogText.match(/Dealt \*\*([\d,]+) DMG\*\*/i)
-    || lastLogText.match(/([\d,]+)\s*DMG/i);
-  const damageDealt = dmgMatch ? parseInt(dmgMatch[1].replace(/,/g, ''), 10) : 0;
+  let damageDealt = 0;
+  if (!isSkillActivation && !isSealActivation) {
+    const dmgMatch = strikeLogText.match(/Dealt \*\*([\d,]+) DMG\*\*/i)
+      || strikeLogText.match(/counter-attacked for \*\*([\d,]+) DMG\*\*/i)
+      || strikeLogText.match(/([\d,]+)\s*DMG/i)
+      || lastLogText.match(/Dealt \*\*([\d,]+) DMG\*\*/i)
+      || lastLogText.match(/([\d,]+)\s*DMG/i);
+    damageDealt = dmgMatch ? parseInt(dmgMatch[1].replace(/,/g, ''), 10) : 0;
+  }
 
   const npMatch = strikeLogText.match(/\+(\d+)%\s*NP/i) || lastLogText.match(/\+(\d+)%\s*NP/i);
   const npCharged = npMatch ? parseInt(npMatch[1], 10) : 0;
 
   const starMatch = strikeLogText.match(/\+(\d+)\s*Critical Stars/i) || strikeLogText.match(/\+(\d+)\s*Stars/i) || lastLogText.match(/\+(\d+)\s*Critical Stars/i);
   const starsGenerated = starMatch ? parseInt(starMatch[1], 10) : 0;
-  const isEvaded = damageDealt === 0 && (/evaded/i.test(lastLogText) || /evaded/i.test(strikeLogText) || /evade/i.test(lastLogText));
-  const isInvincible = damageDealt === 0 && (/invincible/i.test(lastLogText) || /invincible/i.test(strikeLogText));
+  const isEvaded = !isSkillActivation && !isSealActivation && damageDealt === 0 && (/evaded/i.test(strikeLogText) || /evade/i.test(strikeLogText));
+  const isInvincible = !isSkillActivation && !isSealActivation && damageDealt === 0 && (/invincible/i.test(strikeLogText) || (/invincible/i.test(lastLogText) && !lastLogText.includes('activated')));
 
   let cardChainType: string | undefined = undefined;
   const fullLogCheck = `${lastLogText} ${strikeLogText}`;
@@ -1046,7 +1063,7 @@ function buildCombatButtons(
     refreshCombatantHand(combatant);
   }
 
-  const hand = combatant.currentHand!;
+  const hand = (combatant.currentHand && combatant.currentHand.length >= 5 ? combatant.currentHand : refreshCombatantHand(combatant)).slice(0, 5);
   const isNpReady = combatant.npGauge >= 100;
   const isNpSelected = pendingCards.includes('NP');
   const skills = combatant.servant.template?.skills || [];
@@ -1247,7 +1264,8 @@ function buildCombatButtons(
 function activateCombatantSkill(
   combatant: DuelCombatant,
   skillIdx: number,
-  opponent?: DuelCombatant
+  opponent?: DuelCombatant,
+  currentRound: number = 1
 ): {
   success: boolean;
   log: string;
@@ -1438,21 +1456,27 @@ function activateCombatantSkill(
       remainingTurns: 1
     });
     logText = `🛡️ **${sName}** activated **${skill.name}**! (+30% DEF (3T), 1,500 Damage Cut (3T), Target Focus (1T))${quoteLine}`;
-  } else if (skill.id === 'guardians_instinct_red_scarf_b' || skill.name.toLowerCase().includes("guardian's instinct")) {
-    combatant.activeBuffs.push({
-      name: "Guardian's Instinct (ATK Up)",
-      type: 'buff_atk',
-      value: 15,
-      remainingTurns: 3
-    });
-    combatant.activeBuffs.push({
-      name: 'Red Scarf Aegis (Invincible)',
-      type: 'invincible',
-      value: 100,
-      remainingTurns: 1
+  } else if (skill.id === 'guardians_instinct_red_scarf_b' || skill.name.toLowerCase().includes("guardian's instinct") || skill.name.toLowerCase().includes("red scarf")) {
+    const alliesTeam = team1.includes(combatant) ? team1 : team2.includes(combatant) ? team2 : [combatant];
+    alliesTeam.forEach(ally => {
+      if (ally && ally.currentHp > 0) {
+        ally.activeBuffs = ally.activeBuffs || [];
+        ally.activeBuffs.push({
+          name: "Guardian's Instinct (ATK Up)",
+          type: 'buff_atk',
+          value: 15,
+          remainingTurns: 3
+        });
+        ally.activeBuffs.push({
+          name: 'Red Scarf Aegis (Invincible)',
+          type: 'invincible',
+          value: 100,
+          remainingTurns: 1
+        });
+      }
     });
     combatant.npGauge = Math.min(300, combatant.npGauge + 20);
-    logText = `🧣 **${sName}** activated **${skill.name}**! (+20% NP Gauge, +15% ATK (3T), Invincibility (1 turn))${quoteLine}`;
+    logText = `🧣 **${sName}** activated **${skill.name}**! (+15% ATK & Invincibility (1T) to ALL allies, +20% NP Gauge to self!)${quoteLine}`;
   } else if (skill.id === 'earth_wrought_heart_ex' || skill.name.toLowerCase().includes('earth-wrought heart')) {
     combatant.activeBuffs.push({
       name: 'Earth-Wrought Heart (Buster Up)',
@@ -1615,25 +1639,38 @@ function activateCombatantSkill(
       : `💨 **${sName}** activated **${skill.name}** (Evade${bonusSummary})!${quoteLine}`;
   } else if (skill.effectType === 'guts' || skill.id?.includes('guts') || skill.id?.includes('battle_continuation') || skill.id?.includes('thrice')) {
     const reviveAmt = skill.value || Math.round(combatant.maxHp * 0.20);
+    const descLower = (skill.description || '').toLowerCase();
     combatant.gutsCount = (combatant.gutsCount || 0) + 1;
     combatant.activeBuffs.unshift({
       name: skill.name,
       type: 'guts',
       value: reviveAmt,
-      remainingTurns: skill.duration || 5
+      remainingTurns: skill.duration || 5,
+      appliedRound: currentRound
     });
+    if (descLower.includes('invincible') || descLower.includes('invincibility')) {
+      combatant.activeBuffs.push({
+        name: `${skill.name} (Invincible)`,
+        type: 'invincible',
+        value: 100,
+        remainingTurns: 1,
+        appliedRound: currentRound
+      });
+    }
     if (skill.id === 'indomitable_a' || skill.name.includes('Indomitable')) {
       combatant.activeBuffs.push({
         name: 'Indomitable A (On-Guts Buster Up)',
         type: 'on_guts_buster' as any,
         value: 20,
-        remainingTurns: skill.duration || 5
+        remainingTurns: skill.duration || 5,
+        appliedRound: currentRound
       });
       combatant.activeBuffs.push({
         name: `${skill.name} (Buster Up)`,
         type: 'buster_up',
         value: 20,
-        remainingTurns: 3
+        remainingTurns: 3,
+        appliedRound: currentRound
       });
     }
     if (skill.id?.includes('thrice')) {
@@ -1641,7 +1678,8 @@ function activateCombatantSkill(
         name: `${skill.name} (DEF Up)`,
         type: 'buff_def',
         value: 100,
-        remainingTurns: 1
+        remainingTurns: 1,
+        appliedRound: currentRound
       });
     }
     logText = `🩸 **${sName}** activated **${skill.name}**!${quoteLine}`;
@@ -1795,6 +1833,20 @@ function activateCombatantSkill(
   } else {
     combatant.activeBuffs.push({ name: skill.name, type: 'buff_atk', value: 25, remainingTurns: 2 });
     logText = `✨ **${sName}** activated **${skill.name}**!${quoteLine}`;
+  }
+
+  // Guarantee every newly applied buff has its origin round stamped so it survives round rollover
+  combatant.activeBuffs?.forEach(b => {
+    if (b.appliedRound === undefined) {
+      b.appliedRound = currentRound;
+    }
+  });
+  if (opponent?.activeBuffs) {
+    opponent.activeBuffs.forEach(b => {
+      if (b.appliedRound === undefined) {
+        b.appliedRound = currentRound;
+      }
+    });
   }
 
   return {
@@ -1999,6 +2051,11 @@ function resolveStrike(
 
   // Independent Action & Oblivion Correction boost Crit Damage
   critDmgBonus += critPassiveBonus / 100;
+
+  // Luck (LCK) parameter soft-capped scaling (+0% to +35% Crit DMG boost)
+  const attackerLuck = (attacker.servant.template?.baseStats?.luck || 10) + (attacker.servant.allocatedStats?.luck || 0);
+  const luckCritBonus = Math.min(0.35, (attackerLuck / (attackerLuck + 120)) * 0.35);
+  critDmgBonus += luckCritBonus;
 
   attacker.activeBuffs = attacker.activeBuffs.filter(b => {
     // Only decrement offensive / attack-phase / status buffs when executing an attack!
@@ -2450,7 +2507,9 @@ function resolveStrike(
           npStars = npScope === 'aoe' ? 5 : 2;
         } else if (npCardType === 'Arts') {
           const baseRefund = npScope === 'aoe' ? 18 : 12;
-          let artsRefundScale = 1.0 + artsBuff / 100;
+          const totalAtkMana = (attacker.servant.template?.baseStats?.mana || 10) + (attacker.servant.allocatedStats?.mana || 0);
+          const manaNpBonus = Math.min(0.35, (totalAtkMana / (totalAtkMana + 120)) * 0.35);
+          let artsRefundScale = 1.0 + (artsBuff / 100) + manaNpBonus;
           if (attackerCe?.id === 'ce_jeweled_sword') artsRefundScale *= 1.15;
           if (attackerCe?.id === 'ce_formal_craft') artsRefundScale *= 1.10;
           npRefund = Math.round(baseRefund * artsRefundScale);
@@ -2548,7 +2607,9 @@ function resolveStrike(
       let ceNpArtScale = 1.0;
       if (attackerCe?.id === 'ce_jeweled_sword') ceNpArtScale *= 1.15;
       if (attackerCe?.id === 'ce_formal_craft') ceNpArtScale *= 1.10;
-      let npGain = Math.round(baseArtsNp * posMult * npGenBonus * ceNpArtScale * (hitCrit ? 1.5 : 1.0) * (1.0 + (territoryBonus + ceArts) / 100));
+      const totalAtkMana = (attacker.servant.template?.baseStats?.mana || 10) + (attacker.servant.allocatedStats?.mana || 0);
+      const manaNpBonus = Math.min(0.35, (totalAtkMana / (totalAtkMana + 120)) * 0.35);
+      let npGain = Math.round(baseArtsNp * posMult * npGenBonus * ceNpArtScale * (hitCrit ? 1.5 : 1.0) * (1.0 + (territoryBonus + ceArts + Math.round(manaNpBonus * 100)) / 100));
       if (i > 0 && isArtsFirst) npGain = Math.round(npGain * 1.5); // Arts Lead Bonus
 
       attacker.npGauge = Math.min(300, attacker.npGauge + npGain);
@@ -4382,7 +4443,7 @@ async function startInteractiveDuel(
       for (let sIdx = 0; sIdx < aiSkills.length; sIdx++) {
         if (sIdx === 2 && aiBond < 5) continue;
         if ((activeCombatant.skillCooldowns[sIdx] || 0) <= 0 && Math.random() < 0.35) {
-          const aiSkillRes = activateCombatantSkill(activeCombatant, sIdx, target);
+          const aiSkillRes = activateCombatantSkill(activeCombatant, sIdx, target, round);
           if (aiSkillRes.success) {
             combatLogs.push(aiSkillRes.log);
             if (combatLogs.length > 4) combatLogs.shift();
@@ -5197,7 +5258,7 @@ async function startInteractiveDuel(
         const skillIdx = parseInt(i.customId.replace('skill_', ''), 10);
         const actor = activeCombatant;
         const opponent = getSelectedTarget(actor) || (team1.includes(actor) ? p2 : p1);
-        const res = activateCombatantSkill(actor, skillIdx, opponent);
+        const res = activateCombatantSkill(actor, skillIdx, opponent, round);
 
         if (!res.success) {
           await i.followUp({ content: res.log, flags: MessageFlags.Ephemeral });
