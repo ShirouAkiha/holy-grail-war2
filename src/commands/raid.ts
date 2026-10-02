@@ -1829,12 +1829,8 @@ async function runRaidBattle(
           }
         });
 
-        // Restore player strike HUD action so player sees their damage during card selection on new turn
-        if (playerStrikeHud) {
-          battleState.lastHudAction = playerStrikeHud;
-        }
-
-        // 5. Render and post the new round turn canvas (with active buttons & servant strike HUD)
+        // Keep Boss turn HUD action active so players see the Boss's damage & action on the new turn
+        // 5. Render and post the new round turn canvas (with active buttons & boss damage HUD)
         await renderAndPostTurn();
 
         // 6. Dispatch Boss NP GIF if used

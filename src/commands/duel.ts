@@ -558,19 +558,42 @@ async function createTurnSummaryAttachment(
 
   // Identify who was the attacker in the most recent combat log entry
   const allCombatants = [p1, p2, p1Ally, p2Ally, ...teamSoloList].filter((c): c is DuelCombatant => !!c);
-  const foundAttacker = allCombatants.find(c =>
-    strikeLogText.includes(`**${c.servant.template.name}**`) ||
-    strikeLogText.includes(`**${c.servant.nickname || c.servant.template.name}**`) ||
-    strikeLogText.includes(`**${c.username}**`) ||
-    lastLogText.includes(`**${c.servant.template.name}**`) ||
-    lastLogText.includes(`**${c.username}**`)
-  );
-  const activeAttacker = foundAttacker || p1;
+
+  // Extract leading bold attacker name from log string
+  let activeAttacker: DuelCombatant | undefined = undefined;
+  const leadMatch = strikeLogText.match(/^(?:⚔️|🎴|✨|🔴|🛡️|💥|👁️)?\s*(?:\*\*[^*]+\*\*\s+)?\*\*([^*]+)\*\*/i)
+                 || lastLogText.match(/^(?:⚔️|🎴|✨|🔴|🛡️|💥|👁️)?\s*(?:\*\*[^*]+\*\*\s+)?\*\*([^*]+)\*\*/i);
+
+  if (leadMatch) {
+    const rawLeadName = leadMatch[1].trim().toLowerCase();
+    activeAttacker = allCombatants.find(c => {
+      const sName = (c.servant.nickname || c.servant.template?.name || '').toLowerCase();
+      const tName = (c.servant.template?.name || '').toLowerCase();
+      const uName = (c.username || '').toLowerCase();
+      return sName === rawLeadName || tName === rawLeadName || uName === rawLeadName;
+    });
+  }
+
+  if (!activeAttacker) {
+    // Fallback: Check who executed or activated the action
+    activeAttacker = allCombatants.find(c => {
+      const sName = c.servant.nickname || c.servant.template?.name || '';
+      const tName = c.servant.template?.name || '';
+      const uName = c.username || '';
+      const pattern = new RegExp(`(${sName}|${tName}|${uName})\\s*(?:executed|activated|unleashed|attacked)`, 'i');
+      return pattern.test(strikeLogText) || pattern.test(lastLogText);
+    });
+  }
+
+  if (!activeAttacker) {
+    activeAttacker = p1;
+  }
 
   const foundDefender = allCombatants.find(c =>
     c !== activeAttacker && (
       strikeLogText.includes(`to ${c.servant.template.name}`) ||
       strikeLogText.includes(`to ${c.servant.nickname || c.servant.template.name}`) ||
+      strikeLogText.includes(`to ${c.username}`) ||
       lastLogText.includes(`to ${c.servant.template.name}`)
     )
   );
