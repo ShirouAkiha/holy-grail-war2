@@ -120,7 +120,7 @@ async function fetchWithHttpsModule(url: string, maxRedirects = 3): Promise<Buff
   }
 }
 
-async function fetchImageBuffer(url: string, retries = 2): Promise<Buffer | null> {
+async function fetchImageBuffer(url: string, retries = 1): Promise<Buffer | null> {
   const cached = imageBufferCache.get(url);
   if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
     return cached.buffer;
@@ -140,6 +140,7 @@ async function fetchImageBuffer(url: string, retries = 2): Promise<Buffer | null
           'Referer': referer,
           'Connection': 'keep-alive',
         },
+        signal: AbortSignal.timeout(1200)
       });
 
       if (res.ok) {
@@ -152,17 +153,22 @@ async function fetchImageBuffer(url: string, retries = 2): Promise<Buffer | null
       }
     } catch {
       if (attempt < retries) {
-        await new Promise((r) => setTimeout(r, (attempt + 1) * 150));
+        await new Promise((r) => setTimeout(r, 100));
       }
     }
   }
 
-  // Fallback to Node native https module if Bun/Node fetch threw ECONNRESET or socket closed
-  const httpsBuffer = await fetchWithHttpsModule(url);
-  if (httpsBuffer && httpsBuffer.length > 0) {
-    imageBufferCache.set(url, { buffer: httpsBuffer, timestamp: Date.now() });
-    return httpsBuffer;
-  }
+  // Fast fallback attempt
+  try {
+    const httpsBuffer = await Promise.race([
+      fetchWithHttpsModule(url),
+      new Promise<null>((r) => setTimeout(() => r(null), 1200))
+    ]);
+    if (httpsBuffer && httpsBuffer.length > 0) {
+      imageBufferCache.set(url, { buffer: httpsBuffer, timestamp: Date.now() });
+      return httpsBuffer;
+    }
+  } catch {}
 
   return null;
 }

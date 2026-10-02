@@ -178,14 +178,13 @@ JSON Output Schema:
     const CANDIDATE_MODELS = [
       'gemini-3.8-flash',
       'gemini-flash-latest',
-      'gemini-3.1-flash-lite',
-      'gemini-3.1-pro-preview'
+      'gemini-3.1-flash-lite'
     ];
 
     let response;
     for (const modelName of CANDIDATE_MODELS) {
       try {
-        response = await client.models.generateContent({
+        const genPromise = client.models.generateContent({
           model: modelName,
           contents: prompt,
           config: {
@@ -193,13 +192,14 @@ JSON Output Schema:
             responseMimeType: 'application/json'
           }
         });
+        // Strict 3.5s timeout to guarantee zero hang
+        response = await Promise.race([
+          genPromise,
+          new Promise<null>((_, reject) => setTimeout(() => reject(new Error('AI generation timed out')), 3500))
+        ]);
         if (response && response.text) break;
       } catch (primaryErr: any) {
-        const isHighDemand = primaryErr?.status === 503 || primaryErr?.error?.code === 503 || String(primaryErr?.message || '').includes('503') || String(primaryErr?.message || '').includes('high demand');
-        console.log(`[churchNewsService] ${modelName} unavailable (${isHighDemand ? 'temporary 503 high demand' : 'retrying'}), checking next model...`);
-        if (isHighDemand) {
-          await new Promise(r => setTimeout(r, 600));
-        }
+        console.log(`[churchNewsService] ${modelName} call skipped: ${primaryErr?.message || 'timeout'}`);
       }
     }
 
@@ -358,14 +358,13 @@ JSON Output Schema:
     const CANDIDATE_MODELS = [
       'gemini-3.8-flash',
       'gemini-flash-latest',
-      'gemini-3.1-flash-lite',
-      'gemini-3.1-pro-preview'
+      'gemini-3.1-flash-lite'
     ];
 
     let response;
     for (const modelName of CANDIDATE_MODELS) {
       try {
-        response = await client.models.generateContent({
+        const genPromise = client.models.generateContent({
           model: modelName,
           contents: prompt,
           config: {
@@ -373,13 +372,13 @@ JSON Output Schema:
             responseMimeType: 'application/json'
           }
         });
+        response = await Promise.race([
+          genPromise,
+          new Promise<null>((_, reject) => setTimeout(() => reject(new Error('News generation timed out')), 3500))
+        ]);
         if (response && response.text) break;
       } catch (primaryErr: any) {
-        const isHighDemand = primaryErr?.status === 503 || primaryErr?.error?.code === 503 || String(primaryErr?.message || '').includes('503') || String(primaryErr?.message || '').includes('high demand');
-        console.log(`[churchNewsService] ${modelName} unavailable (${isHighDemand ? 'temporary 503 high demand' : 'retrying'}), checking next model...`);
-        if (isHighDemand) {
-          await new Promise(r => setTimeout(r, 600));
-        }
+        console.log(`[churchNewsService] ${modelName} news skipped: ${primaryErr?.message || 'timeout'}`);
       }
     }
 
@@ -424,6 +423,7 @@ JSON Output Schema:
 
 /**
  * Ensures both 24h Kotomine Homily and 2h News Bulletin are initialized in the war session.
+ * Uses cached or canonical heuristic immediately, triggering async background generation if needed.
  */
 export async function getOrInitChurchIntel(
   war: HolyGrailWarSession,
@@ -432,8 +432,35 @@ export async function getOrInitChurchIntel(
   homily: ChurchOverseerHomily;
   news: FuyukiNewsBulletin;
 }> {
-  // Execute sequentially to avoid concurrent rate-limit bursts against Gemini endpoints
-  const homily = await generateKotomine24hHomily(war, forceRefresh);
-  const news = await generateFuyuki2hNewsBulletin(war, forceRefresh);
+  const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
+  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
+  let homily = war.latestChurchHomily;
+  let news = war.latestNewsBulletin;
+
+  const homilyExpired = !homily || (Date.now() - homily.timestamp >= TWENTY_FOUR_HOURS_MS);
+  const newsExpired = !news || (Date.now() - news.timestamp >= TWO_HOURS_MS);
+
+  if (!homily) {
+    homily = generateCanonicalKotomineHomily(war);
+    war.latestChurchHomily = homily;
+  }
+  if (!news) {
+    news = generateCanonicalNewsBulletin(war);
+    war.latestNewsBulletin = news;
+  }
+
+  // If expired or forceRefresh, trigger background generation asynchronously without blocking the caller
+  if (homilyExpired || newsExpired || forceRefresh) {
+    Promise.resolve().then(async () => {
+      try {
+        if (homilyExpired || forceRefresh) await generateKotomine24hHomily(war, true);
+        if (newsExpired || forceRefresh) await generateFuyuki2hNewsBulletin(war, true);
+      } catch (err) {
+        console.error('[churchNewsService] Background refresh error:', err);
+      }
+    });
+  }
+
   return { homily, news };
 }
