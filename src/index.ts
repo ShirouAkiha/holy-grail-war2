@@ -68,7 +68,7 @@ import { buildProfileEmbed, buildPublicProfileEmbed, buildProfileButtons } from 
 import { buildDailyEmbed, buildDailyButtons } from './commands/daily';
 import { buildDefensesEmbed, buildDefensesButtons } from './commands/defenses';
 import { buildChurchEmbed, buildChurchButtons } from './commands/church';
-import { buildWarEmbed, buildWarButtons, buildGrailWarHub, attachGrailWarCollector, handleGlobalGrailWarInteraction } from './commands/grailwar';
+import { buildWarEmbed, buildWarButtons, buildGrailWarHub, attachGrailWarCollector } from './commands/grailwar';
 import * as grailCommand from './commands/grail';
 import * as boardCommand from './commands/board';
 import { handleGlobalInventoryInteraction } from './commands/customise';
@@ -105,6 +105,7 @@ import {
   forfeitWar,
   attemptJoinWar
 } from './engine/grailwar';
+import { checkWarActionPermission } from './engine/environmentService';
 import { handleRecruitmentInteraction, resumePendingRecruitment, handleWarDmInteraction } from './engine/warRecruitmentService';
 
 // ==========================================
@@ -1116,7 +1117,68 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
-      if (await handleGlobalGrailWarInteraction(interaction)) {
+      if (interaction.customId === 'war_trap_channel_select') {
+        const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+        const war = getOrInitWarSession(master);
+        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        if (!perm.allowed) {
+          await interaction.reply({
+            flags: MessageFlags.Ephemeral,
+            content: perm.message
+          });
+          return;
+        }
+
+        const selectedChanId = interaction.values[0];
+        const selectedChan = interaction.guild?.channels.cache.get(selectedChanId);
+        const targetChanName = selectedChan ? `#${selectedChan.name}` : `#${selectedChanId}`;
+
+        const promptEmbed = new EmbedBuilder()
+          .setTitle(`🕸️ Anchor Bounded Field or Sanctuary in ${targetChanName}`)
+          .setDescription(
+            `You selected target channel: **${targetChanName}**\n\n` +
+            `Choose which Bounded Field to deploy or manage in this sector:\n\n` +
+            `• 🛡️ **Mage Sanctuary (Auto-Heal & 60% Block):** Anchors your primary workshop in this channel for continuous HP recovery.\n` +
+            `• 🚨 **Sensory Alarm Ward:** Conceals an early warning perimeter that exposes rival Master identity and Servant true class upon typing.\n` +
+            `• 🩸 **Bloodfort Mana Drain:** Traps the channel in a bounded field that siphons 1,800 HP from rival intruders directly into your Servant.\n` +
+            `• 🧹 **Disarm Sector:** Dissolves your own Bounded Field or infiltrates and dismantles rival traps in ${targetChanName}.\n\n` +
+            `*Or click Back to return.*`
+          )
+          .setColor(0x8b5cf6)
+          .setFooter({ text: `Sector Target: ${targetChanName} • Holy Grail War` });
+
+        const channelActionsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(`war_anchor_sanctuary_${selectedChanId}`)
+            .setLabel(`Anchor Sanctuary (${targetChanName})`)
+            .setEmoji('🛡️')
+            .setStyle(ButtonStyle.Success),
+          new ButtonBuilder()
+            .setCustomId(`war_anchor_alarm_${selectedChanId}`)
+            .setLabel(`Anchor Alarm (${targetChanName})`)
+            .setEmoji('🚨')
+            .setStyle(ButtonStyle.Primary),
+          new ButtonBuilder()
+            .setCustomId(`war_anchor_drain_${selectedChanId}`)
+            .setLabel(`Anchor Drain (${targetChanName})`)
+            .setEmoji('🩸')
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId(`war_anchor_disarm_${selectedChanId}`)
+            .setLabel(`Disarm ${targetChanName}`)
+            .setEmoji('🧹')
+            .setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder()
+            .setCustomId('war_tab_traps')
+            .setLabel('Back')
+            .setEmoji('⬅️')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        await interaction.update({
+          embeds: [promptEmbed],
+          components: [channelActionsRow]
+        });
         return;
       }
       return;
@@ -1325,11 +1387,6 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
-      // Universal Holy Grail War & Defense/Trap/Church Handler
-      if (await handleGlobalGrailWarInteraction(interaction)) {
-        return;
-      }
-
       // Daily Claim Buttons
       if (btnId === 'quick_daily_claim' || btnId === 'daily_claim') {
         const result = await claimDailySaintQuartz(interaction.user.id, interaction.user.username);
@@ -1348,6 +1405,77 @@ client.on(Events.InteractionCreate, async interaction => {
       let master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
       let war = getOrInitWarSession(master);
       const isCivilian = !master.servants || master.servants.length === 0;
+
+      // Trap actions from channel select menu or trap hub
+      if (btnId.startsWith('war_anchor_sanctuary_') || btnId.startsWith('trap_set_sanctuary_')) {
+        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        if (!perm.allowed) {
+          await interaction.reply({ content: perm.message, flags: MessageFlags.Ephemeral });
+          return;
+        }
+        const chanId = btnId.replace('war_anchor_sanctuary_', '').replace('trap_set_sanctuary_', '');
+        const chan = interaction.guild?.channels.cache.get(chanId);
+        const chanName = chan ? `#${chan.name}` : `#${chanId}`;
+        const res = setWorkshopWardInWar(war, interaction.user.id, 'ward', chanName);
+        war = res.updatedWar;
+        master.boundedField = 'ward';
+        master.sanctuaryChannelName = chanName;
+        await saveMaster(master);
+        await interaction.reply({ content: `🛡️ ${res.message}`, flags: MessageFlags.Ephemeral });
+        return;
+      }
+      if (btnId.startsWith('war_anchor_alarm_') || btnId.startsWith('trap_set_alarm_')) {
+        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        if (!perm.allowed) {
+          await interaction.reply({ content: perm.message, flags: MessageFlags.Ephemeral });
+          return;
+        }
+        const chanId = btnId.replace('war_anchor_alarm_', '').replace('trap_set_alarm_', '');
+        const chan = interaction.guild?.channels.cache.get(chanId);
+        const chanName = chan ? `#${chan.name}` : `#${chanId}`;
+        const res = setChannelTrapInWar(war, interaction.user.id, interaction.user.username, chanName, 'alarm');
+        war = res.updatedWar;
+        await saveMaster(master);
+        await interaction.reply({ content: `${res.success ? '✅' : '⚠️'} ${res.message}`, flags: MessageFlags.Ephemeral });
+        return;
+      }
+      if (btnId.startsWith('war_anchor_drain_') || btnId.startsWith('trap_set_drain_')) {
+        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        if (!perm.allowed) {
+          await interaction.reply({ content: perm.message, flags: MessageFlags.Ephemeral });
+          return;
+        }
+        const chanId = btnId.replace('war_anchor_drain_', '').replace('trap_set_drain_', '');
+        const chan = interaction.guild?.channels.cache.get(chanId);
+        const chanName = chan ? `#${chan.name}` : `#${chanId}`;
+        const res = setChannelTrapInWar(war, interaction.user.id, interaction.user.username, chanName, 'drain');
+        war = res.updatedWar;
+        await saveMaster(master);
+        await interaction.reply({ content: `${res.success ? '✅' : '⚠️'} ${res.message}`, flags: MessageFlags.Ephemeral });
+        return;
+      }
+      if (btnId.startsWith('war_anchor_disarm_') || btnId.startsWith('trap_disarm_')) {
+        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        if (!perm.allowed) {
+          await interaction.reply({ content: perm.message, flags: MessageFlags.Ephemeral });
+          return;
+        }
+        const chanId = btnId.replace('war_anchor_disarm_', '').replace('trap_disarm_', '');
+        const chan = interaction.guild?.channels.cache.get(chanId);
+        const chanName = chan ? `#${chan.name}` : `#${chanId}`;
+        const res = disarmChannelTrapsInWar(war, interaction.user.id, chanName);
+        war = res.updatedWar;
+        await saveMaster(master);
+        await interaction.reply({ content: `🧹 ${res.message}`, flags: MessageFlags.Ephemeral });
+        return;
+      }
+      if (btnId === 'war_status_board') {
+        const uP = war.participants[interaction.user.id];
+        const embed = await buildWarEmbed(war, uP, '🏰 Welcome to the Holy Grail War Board!');
+        const btns = buildWarButtons();
+        await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
+        return;
+      }
 
       // Quick Daily & Navigation Buttons
       if (btnId === 'quick_profile_view') {
@@ -1489,7 +1617,16 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       if (btnId.startsWith('profile_ward_') || btnId === 'profile_toggle_evade' || btnId === 'profile_heal' || btnId === 'profile_toggle_mode') {
-        if (isCivilian) {
+        if (btnId !== 'profile_toggle_mode') {
+          const perm = checkWarActionPermission(master, war, interaction.user.id);
+          if (!perm.allowed) {
+            await interaction.reply({
+              flags: MessageFlags.Ephemeral,
+              content: perm.message
+            });
+            return;
+          }
+        } else if (isCivilian) {
           await interaction.reply({
             flags: MessageFlags.Ephemeral,
             content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
@@ -1559,10 +1696,11 @@ client.on(Events.InteractionCreate, async interaction => {
 
       // Defenses Buttons
       if (btnId === 'war_defenses' || btnId === 'war_refresh_defenses') {
-        if (isCivilian) {
+        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        if (!perm.allowed) {
           await interaction.reply({
             flags: MessageFlags.Ephemeral,
-            content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
+            content: perm.message
           });
           return;
         }
@@ -1578,10 +1716,11 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       if (btnId.startsWith('ward_') || btnId === 'toggle_auto_evade' || btnId === 'church_enter' || btnId === 'church_leave') {
-        if (isCivilian) {
+        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        if (!perm.allowed) {
           await interaction.reply({
             flags: MessageFlags.Ephemeral,
-            content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
+            content: perm.message
           });
           return;
         }
@@ -1632,6 +1771,156 @@ client.on(Events.InteractionCreate, async interaction => {
         } else {
           await interaction.update({ embeds: [buildDefensesEmbed(uP, war, msg)], components: buildDefensesButtons(uP) });
         }
+        return;
+      }
+
+      // War Board Buttons
+      if (btnId === 'war_patrol') {
+        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        if (!perm.allowed) {
+          await interaction.reply({
+            flags: MessageFlags.Ephemeral,
+            content: perm.message
+          });
+          return;
+        }
+        const chanTag = interaction.channel && 'name' in interaction.channel ? `#${(interaction.channel as any).name}` : '#general';
+        const res = patrolCityInWar(war, interaction.user.id, interaction.user.username, chanTag);
+        const uP = res.updatedWar.participants[interaction.user.id];
+        const embed = await buildWarEmbed(res.updatedWar, uP, res.message);
+        await interaction.update({ embeds: [embed], components: buildWarButtons() });
+        return;
+      }
+
+      if (btnId === 'war_refresh' || btnId === 'war_status_board' || btnId === 'quick_war_status') {
+        const uP = war.participants[interaction.user.id];
+        const embed = await buildWarEmbed(war, uP, '🔄 Intelligence Board refreshed.');
+        const btns = buildWarButtons();
+        if (btnId === 'quick_war_status') {
+          await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
+        } else {
+          await interaction.update({ embeds: [embed], components: btns });
+        }
+        return;
+      }
+
+      if (btnId === 'disarm_all_traps') {
+        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        if (!perm.allowed) {
+          await interaction.reply({
+            flags: MessageFlags.Ephemeral,
+            content: perm.message
+          });
+          return;
+        }
+        const res = disarmChannelTrapsInWar(war, interaction.user.id);
+        war = res.updatedWar;
+        await saveMaster(master);
+        const disarmEmbed = new EmbedBuilder()
+          .setTitle('🧹 Bounded Fields Dissolved')
+          .setDescription(res.message)
+          .setColor(0x10b981);
+        await interaction.update({ embeds: [disarmEmbed], components: [] });
+        return;
+      }
+
+      if (btnId === 'war_refresh_church') {
+        const uP = war.participants[interaction.user.id];
+        const embed = buildChurchEmbed(uP, '🔄 Sanctuary records verified with Father Kotomine.');
+        const btns = buildChurchButtons(uP);
+        await interaction.update({ embeds: [embed], components: btns });
+        return;
+      }
+
+      if (btnId === 'quick_war_defenses') {
+        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        if (!perm.allowed) {
+          await interaction.reply({
+            flags: MessageFlags.Ephemeral,
+            content: perm.message
+          });
+          return;
+        }
+        const uP = war.participants[interaction.user.id];
+        const embed = buildDefensesEmbed(uP);
+        const btns = buildDefensesButtons(uP);
+        await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
+        return;
+      }
+
+      if (btnId === 'recall_all_familiars') {
+        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        if (!perm.allowed) {
+          await interaction.reply({
+            flags: MessageFlags.Ephemeral,
+            content: perm.message
+          });
+          return;
+        }
+        const res = recallFamiliarsInWar(war, interaction.user.id);
+        war = res.updatedWar;
+        await saveMaster(master);
+        const recallEmbed = new EmbedBuilder()
+          .setTitle('🕊️ Familiars Recalled')
+          .setDescription(res.message)
+          .setColor(0x0ea5e9);
+        await interaction.update({ embeds: [recallEmbed], components: [] });
+        return;
+      }
+
+      if (btnId === 'war_familiars_hub') {
+        const perm = checkWarActionPermission(master, war, interaction.user.id);
+        if (!perm.allowed) {
+          await interaction.reply({
+            flags: MessageFlags.Ephemeral,
+            content: perm.message
+          });
+          return;
+        }
+        const userFamiliars = (war.familiars || []).filter(f => f.masterId === interaction.user.id);
+        let desc = '';
+        if (userFamiliars.length === 0) {
+          desc = 'You currently have **no active familiars** dispatched in Fuyuki City.\n\nUse `/grailwar familiar` to deploy Scouting Ravens, Homunculus Decoys, or Shadow Imps!';
+        } else {
+          desc = `You currently command **${userFamiliars.length}/2** active familiars stationed across Fuyuki:\n\n` +
+            userFamiliars.map((f, idx) => {
+              const typeLabel = f.familiarType === 'raven'
+                ? '🦅 **Scouting Raven** (Surveillance)'
+                : f.familiarType === 'homunculus'
+                ? '🗿 **Homunculus Decoy** (Ambush Shield)'
+                : '🦇 **Shadow Imp** (Sabotage & Siphon)';
+              const intelLogs = (f.detectedIntel && f.detectedIntel.length > 0)
+                ? `\n  ↳ **Surveillance Logs:**\n  ${f.detectedIntel.slice(0, 3).join('\n  ')}`
+                : `\n  ↳ *No movement observed yet.*`;
+              return `**${idx + 1}. Sector ${f.channelName}** — ${typeLabel}\n*Deployed <t:${Math.floor(f.createdAt / 1000)}:R>*${intelLogs}`;
+            }).join('\n\n');
+        }
+
+        const famsEmbed = new EmbedBuilder()
+          .setTitle('🦅 Active Familiar Reconnaissance Network')
+          .setDescription(desc)
+          .setColor(0x0ea5e9)
+          .setFooter({ text: 'Familiars gather intelligence and shield their Masters' });
+
+        const row = new ActionRowBuilder<ButtonBuilder>();
+        if (userFamiliars.length > 0) {
+          row.addComponents(
+            new ButtonBuilder()
+              .setCustomId('recall_all_familiars')
+              .setLabel('Recall All Familiars')
+              .setEmoji('🕊️')
+              .setStyle(ButtonStyle.Danger)
+          );
+        }
+        row.addComponents(
+          new ButtonBuilder()
+            .setCustomId('war_status_board')
+            .setLabel('Grail War Status')
+            .setEmoji('📜')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        await interaction.reply({ embeds: [famsEmbed], components: [row], flags: MessageFlags.Ephemeral });
         return;
       }
 

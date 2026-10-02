@@ -2316,25 +2316,9 @@ export function patrolCityInWar(
   }
 
   if (!actorParticipant) {
-    // CIVILIAN PATROL / INVESTIGATION
-    const civilianReports = [
-      `👁️ **Civilian Patrol in ${chanTag}:** While investigating **${chanTag}**, you noticed strange glowing runes etched into an alley wall and overheard chanting! You gathered a tip-off: *"Faint Arts/Buster mana signature detected near ${chanTag}."* Use \`/grailwar leak\` or \`/leak\` to broadcast this rumor!`,
-      `👁️ **Civilian Patrol in ${chanTag}:** You surveyed **${chanTag}**. Citizens are walking by oblivious, but you detected a brief temperature drop and subtle magical static. A Servant was likely here recently!`,
-      `👁️ **Civilian Patrol in ${chanTag}:** You caught a glimpse of two shadowy figures leaping across rooftops in **${chanTag}** before vanishing into the night. You remained hidden in the crowd and escaped unnoticed!`,
-      `👁️ **Civilian Patrol in ${chanTag}:** **${chanTag}** appears calm tonight. No active Master confrontations or Servant clashes observed in this sector.`
-    ];
-    const report = civilianReports[Math.floor(Math.random() * civilianReports.length)];
-
-    targetWar.eventLogs.unshift({
-      id: `evt_patrol_${Date.now()}`,
-      timestamp: Date.now(),
-      text: `👁️ Civilian Investigation in ${chanTag}: An innocent bystander conducted a clandestine patrol of the sector.`,
-      type: 'patrol'
-    });
-
     return {
-      success: true,
-      message: report,
+      success: false,
+      message: `📜 **Civilian Notice:** Master <@${actorDiscordId}>, you are currently a civilian spectator outside the Holy Grail War.\n\nOnly registered Masters competing in the active war covenant can conduct tactical patrols.\n\n🕊️ *Peaceful Chaldea activities (/daily, /summon, and /duel) remain open to you!*`,
       updatedWar: targetWar
     };
   }
@@ -2467,8 +2451,15 @@ export function executeWarAction(
   }
 
   const actor = targetWar.participants[actorDiscordId];
-  if (!actor || !actor.isAlive) {
-    return { success: false, message: 'You are eliminated from the Holy Grail War!', updatedWar: targetWar };
+  if (!actor) {
+    return {
+      success: false,
+      message: `📜 **Civilian Notice:** Master <@${actorDiscordId}>, you are currently a civilian spectator outside the Holy Grail War.\n\nOnly registered Masters competing in the active war covenant can execute tactical war actions.\n\n🕊️ *Peaceful Chaldea activities (/daily, /summon, and /duel) remain open to you!*`,
+      updatedWar: targetWar
+    };
+  }
+  if (!actor.isAlive) {
+    return { success: false, message: '☠️ You were slain and permanently eliminated from this Holy Grail War! Deceased Masters cannot execute war actions.', updatedWar: targetWar };
   }
 
   if (action === 'attack_suspect' && targetParam) {

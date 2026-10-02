@@ -18,6 +18,7 @@ import {
   invokeCommandSealInWar,
   calculateServantMaxHp
 } from '../engine/grailwar';
+import { checkWarActionPermission } from '../engine/environmentService';
 
 export const data = new SlashCommandBuilder()
   .setName('trap')
@@ -91,21 +92,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     let war = getOrInitWarSession(master);
+    const perm = checkWarActionPermission(master, war, interaction.user.id);
+    if (!perm.allowed) {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: perm.message
+      });
+      return;
+    }
     const userParticipant = war.participants[interaction.user.id];
-    if (master.environmentMode === 'safe') {
-      await interaction.reply({
-        flags: MessageFlags.Ephemeral,
-        content: '🛡️ You are currently in **Safe Mode** outside the Holy Grail War. Bounded Field traps and territorial magecraft are restricted to active war competitors.'
-      });
-      return;
-    }
-    if (userParticipant && !userParticipant.isAlive) {
-      await interaction.reply({
-        flags: MessageFlags.Ephemeral,
-        content: '☠️ You were slain and permanently eliminated from the Holy Grail War! Deceased Masters cannot set Bounded Field traps, anchor Sanctuaries, or invoke Command Seals.'
-      });
-      return;
-    }
 
     const sub = interaction.options.getSubcommand(false) || 'list';
     const currentChannelName = interaction.channel && 'name' in interaction.channel 

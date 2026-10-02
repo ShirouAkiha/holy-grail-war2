@@ -12,6 +12,7 @@ import {
   dispatchFamiliarInWar, 
   recallFamiliarsInWar 
 } from '../engine/grailwar';
+import { checkWarActionPermission } from '../engine/environmentService';
 
 export const data = new SlashCommandBuilder()
   .setName('familiar')
@@ -61,6 +62,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     let war = getOrInitWarSession(master);
+    const perm = checkWarActionPermission(master, war, interaction.user.id);
+    if (!perm.allowed) {
+      await interaction.reply({
+        flags: MessageFlags.Ephemeral,
+        content: perm.message
+      });
+      return;
+    }
     const sub = interaction.options.getSubcommand();
     const currentChannelName = interaction.channel && 'name' in interaction.channel 
       ? `#${(interaction.channel as any).name}`

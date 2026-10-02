@@ -96,15 +96,14 @@ import {
   resetWarSession,
   setChannelTrapInWar,
   disarmChannelTrapsInWar,
-  setWorkshopWardInWar,
   dispatchFamiliarInWar,
   recallFamiliarsInWar,
   enterChurchSanctuary,
   leaveChurchSanctuary
 } from '../engine/grailwar';
+import { checkWarActionPermission } from '../engine/environmentService';
 import { buildProfileEmbed, buildProfileButtons } from './profile';
 import { buildChurchEmbed, buildChurchButtons, buildHomilyEmbed, buildNewsEmbed } from './church';
-import { buildBountyEmbed, buildBountyButtons } from './bounty';
 import { 
   generateKotomine24hHomily, 
   generateFuyuki2hNewsBulletin,
@@ -788,8 +787,47 @@ export function attachGrailWarCollector(
       } else if (i.customId === 'war_tab_church') {
         currentCategory = 'church';
       }
+      // Check if this action is a tactical combat/war action that requires active participation
+      const isTacticalWarAction =
+        i.customId === 'war_act_patrol' ||
+        i.customId === 'war_act_heal' ||
+        i.customId === 'ward_none' ||
+        i.customId === 'ward_ward' ||
+        i.customId === 'ward_alarm' ||
+        i.customId === 'toggle_auto_evade' ||
+        i.customId.startsWith('war_deploy_') ||
+        i.customId === 'recall_all_familiars' ||
+        i.customId === 'war_place_trap_alarm' ||
+        i.customId === 'war_place_trap_drain' ||
+        i.customId === 'trap_set_sanctuary' ||
+        i.customId === 'trap_set_decoy' ||
+        i.customId === 'trap_use_seal_heal' ||
+        i.customId === 'trap_toggle_evac' ||
+        i.customId === 'disarm_all_traps' ||
+        i.customId === 'war_trap_channel_select' ||
+        i.customId.startsWith('war_anchor_') ||
+        i.customId.startsWith('trap_set_') ||
+        i.customId.startsWith('trap_disarm_') ||
+        i.customId === 'church_claim_asylum' ||
+        i.customId === 'church_leave_asylum' ||
+        i.customId === 'church_enter' ||
+        i.customId === 'church_leave';
+
+      if (isTacticalWarAction) {
+        const perm = checkWarActionPermission(master, war, i.user.id);
+        if (!perm.allowed) {
+          if (!i.deferred && !i.replied) {
+            await i.reply({
+              flags: MessageFlags.Ephemeral,
+              content: perm.message
+            });
+          }
+          return;
+        }
+      }
+
       // BOARD ACTIONS
-      else if (i.customId === 'war_act_patrol') {
+      if (i.customId === 'war_act_patrol') {
         const res = patrolCityInWar(war, i.user.id, i.user.username, currentChan);
         war = res.updatedWar;
         actionOutcome = res.message;
@@ -1027,6 +1065,7 @@ export function buildWarButtons(category: string = 'board') {
 /**
  * Universal Global Interaction Handler for all Grail War Board, Tabs, Actions, and Traps.
  * Handles both ButtonInteraction and ChannelSelectMenuInteraction without throwing errors.
+ * Strictly checks that civilian spectators outside the war cannot trigger combat/war actions.
  */
 export async function handleGlobalGrailWarInteraction(interaction: any): Promise<boolean> {
   const customId: string = interaction.customId || '';
@@ -1049,7 +1088,7 @@ export async function handleGlobalGrailWarInteraction(interaction: any): Promise
     const uP = war.participants[interaction.user.id];
     const currentChan = interaction.channel && 'name' in interaction.channel ? `#${(interaction.channel as any).name}` : '#general';
 
-    // 1. Cross-hub shortcuts
+    // 1. Cross-hub shortcuts (open to all)
     if (customId === 'war_link_inventory') {
       if (!interaction.deferred && !interaction.replied) {
         await interaction.reply({ content: 'Use `/inventory` to open your Master Vault and equip Craft Essences!', flags: MessageFlags.Ephemeral });
@@ -1081,7 +1120,46 @@ export async function handleGlobalGrailWarInteraction(interaction: any): Promise
       return true;
     }
 
-    // 2. Tab Navigation & Sub-views
+    // 2. Tactical War Action Guard: Check if action requires active participation in this war
+    const isTacticalWarAction =
+      customId === 'war_act_patrol' ||
+      customId === 'war_act_heal' ||
+      customId === 'ward_none' ||
+      customId === 'ward_ward' ||
+      customId === 'ward_alarm' ||
+      customId === 'toggle_auto_evade' ||
+      customId.startsWith('war_deploy_') ||
+      customId === 'recall_all_familiars' ||
+      customId === 'war_place_trap_alarm' ||
+      customId === 'war_place_trap_drain' ||
+      customId === 'trap_set_sanctuary' ||
+      customId === 'trap_set_decoy' ||
+      customId === 'trap_use_seal_heal' ||
+      customId === 'trap_toggle_evac' ||
+      customId === 'disarm_all_traps' ||
+      customId === 'war_trap_channel_select' ||
+      customId.startsWith('war_anchor_') ||
+      customId.startsWith('trap_set_') ||
+      customId.startsWith('trap_disarm_') ||
+      customId === 'church_claim_asylum' ||
+      customId === 'church_leave_asylum' ||
+      customId === 'church_enter' ||
+      customId === 'church_leave';
+
+    if (isTacticalWarAction) {
+      const perm = checkWarActionPermission(master, war, interaction.user.id);
+      if (!perm.allowed) {
+        if (!interaction.deferred && !interaction.replied) {
+          await interaction.reply({
+            flags: MessageFlags.Ephemeral,
+            content: perm.message
+          });
+        }
+        return true;
+      }
+    }
+
+    // 3. Tab Navigation & Sub-views (Viewable by all spectators and Masters)
     let targetCategory: 'board' | 'casualties' | 'leaks' | 'battles' | 'defenses' | 'familiars' | 'traps' | 'church' = 'board';
     let actionOutcome: string | undefined = undefined;
 
@@ -1119,7 +1197,7 @@ export async function handleGlobalGrailWarInteraction(interaction: any): Promise
       targetCategory = 'board';
     }
 
-    // 3. Board Combat & Recovery Actions
+    // 4. Board Combat & Recovery Actions
     else if (customId === 'war_act_patrol') {
       const res = patrolCityInWar(war, interaction.user.id, interaction.user.username, currentChan);
       war = res.updatedWar;
@@ -1134,7 +1212,7 @@ export async function handleGlobalGrailWarInteraction(interaction: any): Promise
       targetCategory = 'board';
     }
 
-    // 4. Workshop & Ward Defenses
+    // 5. Workshop & Ward Defenses
     else if (customId === 'ward_none' || customId === 'ward_ward' || customId === 'ward_alarm') {
       const wType = customId.replace('ward_', '');
       const res = executeWarAction(war, interaction.user.id, 'set_ward', wType);
@@ -1151,7 +1229,7 @@ export async function handleGlobalGrailWarInteraction(interaction: any): Promise
       targetCategory = 'defenses';
     }
 
-    // 5. Familiar Deployments & Recalls
+    // 6. Familiar Deployments & Recalls
     else if (customId.startsWith('war_deploy_')) {
       const famType = customId.replace('war_deploy_', '') as any;
       const res = dispatchFamiliarInWar(war, interaction.user.id, interaction.user.username, currentChan, famType);
@@ -1167,7 +1245,7 @@ export async function handleGlobalGrailWarInteraction(interaction: any): Promise
       targetCategory = 'familiars';
     }
 
-    // 6. Traps & Bounded Fields
+    // 7. Traps & Bounded Fields
     else if (interaction.isChannelSelectMenu && interaction.isChannelSelectMenu() && customId === 'war_trap_channel_select') {
       const selectedChanId = interaction.values[0];
       const selectedChan = interaction.guild?.channels.cache.get(selectedChanId);
@@ -1279,7 +1357,7 @@ export async function handleGlobalGrailWarInteraction(interaction: any): Promise
       targetCategory = 'traps';
     }
 
-    // 7. Church & Sanctuary Actions
+    // 8. Church & Sanctuary Actions
     else if (customId === 'church_enter' || customId === 'church_claim_asylum') {
       const res = enterChurchSanctuary(war, interaction.user.id);
       war = res.updatedWar;

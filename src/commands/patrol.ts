@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { getOrInitWarSession, patrolCityInWar } from '../engine/grailwar';
+import { checkWarActionPermission } from '../engine/environmentService';
 import { addBondExpToServant } from '../../lib/engine/bondEvents';
 import { addServantBattleExp } from '../engine/customization';
 
@@ -28,6 +29,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     let war = getOrInitWarSession(master);
+    const perm = checkWarActionPermission(master, war, interaction.user.id);
+    if (!perm.allowed) {
+      await interaction.editReply({
+        content: perm.message
+      });
+      return;
+    }
     const targetChannelObj = interaction.options.getChannel('channel');
     const currentChannelName = targetChannelObj && 'name' in targetChannelObj
       ? `#${(targetChannelObj as any).name}`

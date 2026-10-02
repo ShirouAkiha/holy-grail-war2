@@ -122,3 +122,48 @@ export function isLoreVictimOnly(
 }
 
 export { forfeitWar, attemptJoinWar } from './grailwar';
+
+/**
+ * Checks if a user is an active, living participant in an ongoing Holy Grail War.
+ * Everyone outside the war is considered a civilian, even if they have servants in their collection.
+ * Tactical war actions (patrols, wards, traps, familiars, asylum, etc.) are strictly forbidden for civilians.
+ */
+export function checkWarActionPermission(
+  master: MasterProfile | null | undefined,
+  war: HolyGrailWarSession | null | undefined,
+  discordId: string
+): { allowed: boolean; reason?: 'civilian' | 'eliminated' | 'no_war'; message: string } {
+  // 1. Is the Holy Grail War currently active?
+  if (!war || war.status !== 'active') {
+    return {
+      allowed: false,
+      reason: 'no_war',
+      message: '🕊️ **No Active War:** The Holy Grail War is not currently active in this realm. Everyone outside an active tournament is a peaceful civilian. Tactical war actions (patrols, traps, wards, familiars, sanctuary) cannot be used until a Holy Grail War begins!'
+    };
+  }
+
+  // 2. Is the user enrolled as an active war participant with contracted servants?
+  const uP = war.participants ? (war.participants[discordId] || Object.values(war.participants).find(p => p.discordId === discordId)) : undefined;
+  const isEnrolledInWar = master?.environmentMode === 'war' && !!uP;
+  const hasServant = !!(master?.servants && master.servants.length > 0);
+
+  if (!isEnrolledInWar || !hasServant || !uP) {
+    return {
+      allowed: false,
+      reason: 'civilian',
+      message: '📜 **Civilian Notice:** You cannot use this option because you are currently a civilian outside the Holy Grail War.\n\nOnly registered Masters actively participating in an ongoing Holy Grail War can conduct tactical patrols, deploy workshop wards, dispatch familiars, anchor bounded fields, or claim church sanctuary.\n\n🕊️ *Peaceful Chaldea activities (`/daily`, `/summon`, and `/duel`) remain open to you!*'
+    };
+  }
+
+  // 3. Is the participant alive?
+  if (!uP.isAlive) {
+    return {
+      allowed: false,
+      reason: 'eliminated',
+      message: '💀 **Eliminated Master Notice:** You cannot use this option because your Servant\'s Saint Graph has been dissolved and you have fallen in this Holy Grail War.\n\nDeceased Masters cannot conduct tactical war actions until the next tournament begins.\n\n🕊️ *Peaceful Chaldea activities (`/daily`, `/summon`, and `/duel`) remain open to you!*'
+    };
+  }
+
+  return { allowed: true, message: '' };
+}
+

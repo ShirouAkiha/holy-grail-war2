@@ -17,6 +17,7 @@ import {
   enterChurchSanctuary,
   leaveChurchSanctuary
 } from '../engine/grailwar';
+import { checkWarActionPermission } from '../engine/environmentService';
 
 export const data = new SlashCommandBuilder()
   .setName('defenses')
@@ -177,35 +178,15 @@ export function buildDefensesButtons(userParticipant: any) {
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
-
-    if (!master.servants || master.servants.length === 0) {
+    let war = getOrInitWarSession(master);
+    const perm = checkWarActionPermission(master, war, interaction.user.id);
+    if (!perm.allowed) {
       await interaction.reply({
         flags: MessageFlags.Ephemeral,
-        content: '📜 Civilian Spectator Dossier: You are currently an innocent bystander in Fuyuki City with no contracted Servant. Use `/summon` to establish a covenant and enter the Holy Grail War.'
+        content: perm.message
       });
       return;
     }
-
-    if (master.environmentMode === 'safe') {
-      const safeEmbed = new EmbedBuilder()
-        .setTitle('🛡️ Chaldea Sanctuary | Safe Mode Active')
-        .setDescription(
-          `Master **${interaction.user.username}** is currently protected within **Safe Mode**.\n\n` +
-          `• 🏰 **Automatic Divine Sanctuary:** Chaldea's barrier provides 100% immunity to Holy Grail War ambushes, territorial traps, and tournament elimination.\n` +
-          `• ⚔️ **Combat & Sparring:** You can freely duel via \`/duel mode:free\` with instant recovery and rewards after battle.\n` +
-          `• ⚙️ **Workshop Defenses:** Bounded field wards and emergency evacuation seals are tactical systems exclusive to active competitors in **War Mode**.`
-        )
-        .setColor(0x0ea5e9)
-        .setFooter({ text: 'Chaldea Sanctuary Protocol • Safe Mode Active' });
-
-      await interaction.reply({
-        embeds: [safeEmbed],
-        flags: MessageFlags.Ephemeral
-      });
-      return;
-    }
-
-    let war = getOrInitWarSession(master);
     let lastMsg: string | undefined = undefined;
 
     const wardOpt = interaction.options.getString('ward');

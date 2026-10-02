@@ -15,6 +15,7 @@ import {
   leaveChurchSanctuary,
   getReputationInfo
 } from '../engine/grailwar';
+import { checkWarActionPermission } from '../engine/environmentService';
 import {
   generateKotomine24hHomily,
   generateFuyuki2hNewsBulletin,
@@ -232,6 +233,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     let lastMsg: string | undefined = undefined;
+
+    if (action === 'enter' || action === 'leave') {
+      const perm = checkWarActionPermission(master, war, interaction.user.id);
+      if (!perm.allowed) {
+        return interaction.editReply({
+          content: perm.message
+        });
+      }
+    }
 
     if (action === 'enter') {
       const res = enterChurchSanctuary(war, interaction.user.id);
