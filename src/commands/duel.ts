@@ -841,6 +841,55 @@ export interface DetailedDuelAction {
   timestamp: Date;
 }
 
+function formatCombatLogEntryDetails(entry: DetailedDuelAction): string {
+  if (!entry.details) return '• *No detailed action telemetry recorded.*';
+
+  let raw = entry.details;
+
+  // Convert pipes to line breaks if present
+  if (raw.includes('|')) {
+    raw = raw.split('|').map(s => s.trim()).filter(Boolean).join('\n');
+  }
+
+  // Strip redundant execution headers
+  raw = raw
+    .replace(/^[^\n:]*executed sequence [^:\n]*[:!]\s*/i, '')
+    .replace(/^[^\n:]*activated [^!\n]*!\s*/i, '')
+    .replace(/^(⚔️|🎴|✨|🔴|🛡️)?\s*(\*\*[\w\s]+\*\*|[A-Za-z0-9\s_]+)\s*(executed|activated|invoked)\s*[^:\n]*[:!]?\s*/i, '')
+    .trim();
+
+  const rawLines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  const formattedLines: string[] = [];
+
+  for (let line of rawLines) {
+    line = line.replace(/^[•*\-\s]+/, '').trim();
+    if (!line) continue;
+
+    if (line.startsWith('💬') || line.startsWith('“') || line.startsWith('"') || line.startsWith('*“')) {
+      const cleanQuote = line.replace(/^[💬*“"\s]+/, '').replace(/["”*]+$/, '').trim();
+      formattedLines.push(`💬 *“${cleanQuote}”*`);
+    } else if (/dealt|took|dmg/i.test(line)) {
+      formattedLines.push(`💥 **${line}**`);
+    } else if (/gained|np|critical stars|stars/i.test(line)) {
+      formattedLines.push(`⚡ **${line}**`);
+    } else if (/chain/i.test(line)) {
+      formattedLines.push(`⛓️ **${line}**`);
+    } else if (/revived|continuation|guts/i.test(line)) {
+      formattedLines.push(`✝️ **${line}**`);
+    } else if (/stun/i.test(line)) {
+      formattedLines.push(`💫 **${line}**`);
+    } else {
+      formattedLines.push(`• ${line}`);
+    }
+  }
+
+  if (formattedLines.length === 0) {
+    return `• ${entry.details}`;
+  }
+
+  return formattedLines.join('\n');
+}
+
 function buildDetailedCombatLogEmbed(
   p1: DuelCombatant,
   p2: DuelCombatant,
@@ -849,31 +898,52 @@ function buildDetailedCombatLogEmbed(
   history: DetailedDuelAction[],
   p1Ally?: DuelCombatant,
   p2Ally?: DuelCombatant,
-  teamSoloList: DuelCombatant[] = []
-): EmbedBuilder {
+  teamSoloList: DuelCombatant[] = [],
+  requestedPage: number = -1
+): { embed: EmbedBuilder; components: ActionRowBuilder<ButtonBuilder>[] } {
+  const PAGE_SIZE = 4;
+  const totalEntries = history.length;
+  const totalPages = Math.max(1, Math.ceil(totalEntries / PAGE_SIZE));
+
+  let page = requestedPage;
+  if (page === -1 || page >= totalPages) {
+    page = totalPages - 1; // Default to latest page so user sees recent actions
+  }
+  page = Math.max(0, Math.min(totalPages - 1, page));
+
+  const startIdx = page * PAGE_SIZE;
+  const pageEntries = history.slice(startIdx, startIdx + PAGE_SIZE);
+
   const embed = new EmbedBuilder()
     .setTitle(`📜 HOLY GRAIL WAR — COMBAT DOSSIER & BATTLE LOG`)
     .setColor(0x38bdf8)
     .setDescription(
       `⚔️ **Current Battle State:** Round **${round}** • Turn Active: <@${activeUserId}>\n` +
-      `📊 **Total Actions Recorded:** **${history.length}** tactical event(s)\n` +
+      `📊 **Total Actions Recorded:** **${history.length}** tactical event(s) • **Page ${page + 1} of ${totalPages}**\n` +
       `──────────────────────────────────────────────`
     );
 
-  // Recent Turn-by-Turn Actions (last 10)
-  const recentHistory = history.slice(-10);
-  if (recentHistory.length > 0) {
-    const historyText = recentHistory.map((entry, idx) => {
-      const num = history.length - recentHistory.length + idx + 1;
+  if (pageEntries.length > 0) {
+    for (let idx = 0; idx < pageEntries.length; idx++) {
+      const entry = pageEntries[idx];
+      const globalNum = startIdx + idx + 1;
       const targetStr = entry.targetName ? ` ➔ **${entry.targetName}**` : '';
-      return `**#${num} [R${entry.round}] ${entry.title}**\n` +
-             `• **Actor:** **${entry.actorName}**${targetStr}\n` +
-             `• **Details:** ${entry.details.length > 180 ? entry.details.slice(0, 180) + '...' : entry.details}`;
-    }).join('\n\n');
+      const formattedDetails = formatCombatLogEntryDetails(entry);
 
+      const fieldTitle = `#${globalNum} [R${entry.round}] ${entry.title}`;
+      const fieldValue =
+        `• **Actor:** **${entry.actorName}**${targetStr}\n` +
+        `${formattedDetails}`;
+
+      embed.addFields({
+        name: fieldTitle.slice(0, 256),
+        value: fieldValue.slice(0, 1024)
+      });
+    }
+  } else {
     embed.addFields({
-      name: `🏆 Turn-by-Turn Combat Chronicle (Recent ${recentHistory.length} Actions)`,
-      value: historyText.slice(0, 1024)
+      name: '🏆 Turn-by-Turn Combat Chronicle',
+      value: '• *No combat actions recorded in history yet.*'
     });
   }
 
@@ -905,8 +975,35 @@ function buildDetailedCombatLogEmbed(
     value: statusOverview.slice(0, 1024)
   });
 
-  embed.setFooter({ text: 'Holy Grail War Tactical Telemetry • Real-Time Combat Log Archive' });
-  return embed;
+  embed.setFooter({ text: `Holy Grail War Tactical Telemetry • Page ${page + 1}/${totalPages} • Real-Time Combat Log Archive` });
+
+  const components: ActionRowBuilder<ButtonBuilder>[] = [];
+  if (totalPages > 1 || history.length > 0) {
+    const navRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setCustomId(`combat_log_page_${Math.max(0, page - 1)}`)
+        .setLabel('◀ Prev Actions')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(page <= 0),
+      new ButtonBuilder()
+        .setCustomId('combat_log_page_indicator')
+        .setLabel(`Page ${page + 1} / ${totalPages}`)
+        .setStyle(ButtonStyle.Primary)
+        .setDisabled(true),
+      new ButtonBuilder()
+        .setCustomId(`combat_log_page_${Math.min(totalPages - 1, page + 1)}`)
+        .setLabel('Next Actions ▶')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(page >= totalPages - 1),
+      new ButtonBuilder()
+        .setCustomId(`combat_log_page_${page}`)
+        .setLabel('🔄 Refresh')
+        .setStyle(ButtonStyle.Success)
+    );
+    components.push(navRow);
+  }
+
+  return { embed, components };
 }
 
 // ==========================================
@@ -4489,8 +4586,20 @@ async function startInteractiveDuel(
       }
 
       // CASE: COMPREHENSIVE COMBAT LOG & BATTLE CHRONICLE
-      if (i.customId === 'card_combat_log' || i.customId === 'duel_combat_log') {
-        const combatLogEmbed = buildDetailedCombatLogEmbed(
+      if (i.customId === 'card_combat_log' || i.customId === 'duel_combat_log' || i.customId.startsWith('combat_log_page_')) {
+        let reqPage = -1; // -1 defaults to latest page
+        if (i.customId.startsWith('combat_log_page_')) {
+          const parts = i.customId.split('_');
+          const pageStr = parts[3];
+          if (pageStr === 'indicator') {
+            await i.deferUpdate().catch(() => {});
+            return;
+          }
+          reqPage = parseInt(pageStr, 10);
+          if (isNaN(reqPage)) reqPage = -1;
+        }
+
+        const { embed: combatLogEmbed, components: pageComponents } = buildDetailedCombatLogEmbed(
           p1,
           p2,
           round,
@@ -4498,13 +4607,22 @@ async function startInteractiveDuel(
           fullCombatHistory,
           p1Ally,
           p2Ally,
-          teamSolo
+          teamSolo,
+          reqPage
         );
 
-        await i.reply({
-          embeds: [combatLogEmbed],
-          flags: MessageFlags.Ephemeral
-        });
+        if (i.customId.startsWith('combat_log_page_')) {
+          await i.update({
+            embeds: [combatLogEmbed],
+            components: pageComponents
+          });
+        } else {
+          await i.reply({
+            embeds: [combatLogEmbed],
+            components: pageComponents,
+            flags: MessageFlags.Ephemeral
+          });
+        }
         return;
       }
 
@@ -5206,6 +5324,14 @@ async function startInteractiveDuel(
 
         combatLogs.push(res.log);
         if (combatLogs.length > 4) combatLogs.shift();
+        fullCombatHistory.push({
+          round,
+          actorName: actor.servant.nickname || actor.servant.template.name,
+          actionType: 'seal',
+          title: `🔴 Command Seal Invoked`,
+          details: res.log.replace(/[*_~`]/g, '').trim(),
+          timestamp: new Date()
+        });
 
         const turnAttachment = await buildCurrentAttachment(res.log);
         const updatedButtons = buildCurrentButtons();
