@@ -2062,8 +2062,7 @@ function resolveStrike(
       if (actorHasAntiPurgeAtk) {
         // Pierced by Anti-Purge Attack!
       } else {
-        // Protected against all attacks including Ignore Invincible!
-        if (buff.remainingTurns > 0) {
+        if (buff.remainingTurns > 0 || (buff.remainingHits !== undefined && buff.remainingHits > 0)) {
           return { isProtected: true, type: 'anti_purge_defense' };
         } else {
           targetDefender.activeBuffs.splice(apIdx, 1);
@@ -2081,14 +2080,10 @@ function resolveStrike(
         const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /volumen/i.test(buff.name);
         if (isHitBased) {
           if (buff.remainingHits === undefined) buff.remainingHits = 3;
-          if (buff.remainingHits <= 0) {
-            targetDefender.activeBuffs.splice(invIdx, 1);
-          } else {
-            buff.remainingHits--;
-            if (buff.remainingHits <= 0) {
-              targetDefender.activeBuffs.splice(invIdx, 1);
-            }
+          if (buff.remainingHits > 0) {
             return { isProtected: true, type: 'invincible' };
+          } else {
+            targetDefender.activeBuffs.splice(invIdx, 1);
           }
         } else {
           if (buff.remainingTurns > 0) {
@@ -2111,14 +2106,10 @@ function resolveStrike(
         const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /protection from arrows/i.test(buff.name);
         if (isHitBased) {
           if (buff.remainingHits === undefined) buff.remainingHits = 3;
-          if (buff.remainingHits <= 0) {
-            targetDefender.activeBuffs.splice(evaIdx, 1);
-          } else {
-            buff.remainingHits--;
-            if (buff.remainingHits <= 0) {
-              targetDefender.activeBuffs.splice(evaIdx, 1);
-            }
+          if (buff.remainingHits > 0) {
             return { isProtected: true, type: 'evade' };
+          } else {
+            targetDefender.activeBuffs.splice(evaIdx, 1);
           }
         } else {
           if (buff.remainingTurns > 0) {
@@ -2683,8 +2674,15 @@ function resolveStrike(
   // Apply total damage to defender
   defender.currentHp = Math.max(0, defender.currentHp - totalSeqDmg);
 
-  // Filter out consumed hit-based Evade / Invincibility after defending against an attack sequence
-  defender.activeBuffs = defender.activeBuffs.filter(b => {
+  // Deduct 1 hit instance from hit-based Evade/Invincibility AFTER defending against a full attack sequence
+  defender.activeBuffs = defender.activeBuffs.map(b => {
+    const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
+    if (isHitBased && (b.type === 'evade' || b.type === 'invincible' || b.type === 'anti_purge_defense' || b.type === 'anti_purge')) {
+      if (b.remainingHits === undefined) b.remainingHits = 3;
+      return { ...b, remainingHits: b.remainingHits - 1 };
+    }
+    return b;
+  }).filter(b => {
     const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
     if (isHitBased) {
       return b.remainingHits === undefined || b.remainingHits > 0;
@@ -4332,6 +4330,7 @@ async function startInteractiveDuel(
       currentTurnIndex = (currentTurnIndex + 1) % turnOrder.length;
       cycleCount++;
       if (currentTurnIndex === 0) {
+        const roundBeforeInc = round;
         round++;
         // Decrement round-based buffs on all active combatants so 1T Invincible/Evade and turn-limited buffs properly wear off
         turnOrder.forEach(c => {
@@ -4339,6 +4338,10 @@ async function startInteractiveDuel(
             c.activeBuffs = c.activeBuffs.map(b => {
               const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
               if (!isHitBased && b.remainingTurns > 0 && b.remainingTurns < 90) {
+                // Preserve buffs applied in the round that just concluded so they protect against the new round's strikes
+                if (b.appliedRound !== undefined && b.appliedRound === roundBeforeInc) {
+                  return b;
+                }
                 return { ...b, remainingTurns: b.remainingTurns - 1 };
               }
               return b;
