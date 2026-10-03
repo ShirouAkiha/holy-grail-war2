@@ -2271,7 +2271,8 @@ function resolveStrike(
       const scopeScale = npScope === 'single' ? 1.00 : npScope === 'aoe' ? 0.70 : 0.00;
 
       const overchargeLevel = attacker.npGauge >= 300 ? 3 : attacker.npGauge >= 200 ? 2 : 1;
-      const overchargeScale = 1.0 + (overchargeLevel - 1) * 0.20;
+      const isOvercharged = overchargeLevel >= 2;
+      const overchargeScale = isOvercharged ? (1.0 + (overchargeLevel - 1) * 0.20) : 1.00;
 
       let npDmg = 0;
       let npRefund = 0;
@@ -2308,11 +2309,14 @@ function resolveStrike(
               allyCombatant.activeBuffs.push({ name: 'Round of Avalon ATK', type: 'buff_atk', value: 50, remainingTurns: 3 });
               allyCombatant.activeBuffs.push({ name: 'Round of Avalon Protection', type: 'damage_cut', value: 2000, remainingTurns: 3 });
             } else if (isTigris) {
-              const defBonus = 30 + (overchargeLevel - 1) * 10;
+              const defBonus = isOvercharged ? (30 + (overchargeLevel - 1) * 10) : 30;
               allyCombatant.activeBuffs.push({ name: 'Tigris Bulwark (Defense Up)', type: 'buff_def', value: defBonus, remainingTurns: 3 });
               allyCombatant.activeBuffs.push({ name: 'Tigris Bastion (Invincible)', type: 'invincible', value: 100, remainingTurns: 1 });
-              const damageCutVal = 1500 + (overchargeLevel - 1) * 750;
-              allyCombatant.activeBuffs.push({ name: 'Living Earth (Damage Cut)', type: 'damage_cut', value: damageCutVal, remainingTurns: 3 });
+              // Living Earth Damage Cut is an Overcharge effect (only triggers when Overcharged >= 200% NP)
+              if (isOvercharged) {
+                const damageCutVal = 1500 + (overchargeLevel - 1) * 750;
+                allyCombatant.activeBuffs.push({ name: 'Living Earth (Damage Cut)', type: 'damage_cut', value: damageCutVal, remainingTurns: 3 });
+              }
             } else if (isLuminosite) {
               // Removes party debuffs
               allyCombatant.activeBuffs = allyCombatant.activeBuffs.filter(b =>
@@ -2330,12 +2334,15 @@ function resolveStrike(
               );
               allyCombatant.isStunned = false;
 
-              // Party Invincibility 1T, DEF Up +30% 3T, Holy Regen
+              // Party Invincibility 1T, DEF Up +30% 3T
               allyCombatant.activeBuffs.push({ name: 'Luminosité Invincibility', type: 'invincible', value: 100, remainingTurns: 1 });
               allyCombatant.activeBuffs.push({ name: 'Divine Protection', type: 'buff_def', value: 30, remainingTurns: 3 });
-              const regenPerTurn = 1000 + (overchargeLevel - 1) * 500;
-              allyCombatant.currentHp = Math.min(allyCombatant.maxHp, allyCombatant.currentHp + regenPerTurn);
-              allyCombatant.activeBuffs.push({ name: 'Luminosité Holy Regen', type: 'hp_regen', value: regenPerTurn, remainingTurns: 2 });
+              // Holy HP Regen is an Overcharge effect (only triggers when Overcharged >= 200% NP)
+              if (isOvercharged) {
+                const regenPerTurn = 1000 + (overchargeLevel - 1) * 500;
+                allyCombatant.currentHp = Math.min(allyCombatant.maxHp, allyCombatant.currentHp + regenPerTurn);
+                allyCombatant.activeBuffs.push({ name: 'Luminosité Holy Regen', type: 'hp_regen', value: regenPerTurn, remainingTurns: 2 });
+              }
             } else {
               const healAmount = Math.round(allyCombatant.maxHp * 0.20);
               allyCombatant.currentHp = Math.min(allyCombatant.maxHp, allyCombatant.currentHp + healAmount);
@@ -2350,11 +2357,15 @@ function resolveStrike(
         });
 
         if (npCardType === 'Arts') {
-          chainTags.push(`🕊️ Party Support NP Unleashed (Invincible 1T • DEF Up 3T • Debuff Cleanse • HP Regen)`);
+          const isRoundOfAvalon = /round of avalon|avalon/i.test(npTemplate.name) || attacker.servant.template.id === 'artoria_caster';
+          chainTags.push(`🕊️ Party Support NP Unleashed (Invincible 1T • DEF Up 3T • Debuff Cleanse)`);
           npRefund = 15;
-          npStars = 3;
+          // Overcharge Critical Stars for Round of Avalon (only when Overcharged)
+          const ocStars = (isRoundOfAvalon && isOvercharged) ? (overchargeLevel >= 3 ? 30 : 15) : 0;
+          npStars = 3 + ocStars;
         } else if (npCardType === 'Quick') {
-          npStars = Math.round(20 * (1.0 + quickBuff / 100));
+          const baseStars = isOvercharged ? (20 + (overchargeLevel - 1) * 10) : 20;
+          npStars = Math.round(baseStars * (1.0 + quickBuff / 100));
           npRefund = Math.round(8 * (1.0 + quickBuff / 100));
         } else {
           npStars = 5;
@@ -2364,10 +2375,16 @@ function resolveStrike(
         const allyNames = targetAllies.map(a => `**${(a.servant.nickname || a.servant.template?.name || 'Ally').toUpperCase()}**`).join(' & ');
         let effectDesc = 'Applied War Cry (+30% ATK for 3 Turns)';
         if (npCardType === 'Arts') {
-          effectDesc = 'Applied Party Invincibility (1T), DEF Up +30% (3T), Debuff Cleanse & Holy HP Regen!';
+          effectDesc = isOvercharged
+            ? 'Applied Party Protection (1T), DEF Up +30% (3T), Debuff Cleanse & [Overcharge Bonus Active]!'
+            : 'Applied Party Protection (1T), DEF Up +30% (3T) & Debuff Cleanse!';
         } else if (npCardType === 'Quick') {
           effectDesc = 'Applied Party Evade (1T)';
         }
+
+        const overchargeStatusText = isOvercharged
+          ? `Lv.${overchargeLevel} (${Math.round(overchargeScale * 100)}% Power • Overcharge Active)`
+          : `Inactive (100% Base NP Release)`;
 
         npLogBlock = 
           `\n> ════════════════════════════════════\n` +
@@ -2375,6 +2392,7 @@ function resolveStrike(
           `> 🌌 **[ ${npTemplate.name.toUpperCase()} ]**\n` +
           `> ────────────────────────────────────\n` +
           `> ◆ **TYPE:** PARTY SUPPORT (${npCardType.toUpperCase()})\n` +
+          `> ◆ **OVERCHARGE:** ${overchargeStatusText}\n` +
           `> ◆ **TARGETS:** ${allyNames}\n` +
           `> ◆ **EFFECTS:** ${effectDesc}\n` +
           `> ════════════════════════════════════`;
@@ -2443,18 +2461,20 @@ function resolveStrike(
             targetOpp.currentHp = 3000;
           }
 
-          // Secondary Concept Nullification / Anti-World debuffs
+          // Overcharge-exclusive debuffs (only trigger when Overcharged >= 200% NP)
           let isStunnedThisTurn = false;
           const isDenyTheVictory = (attacker.servant.template.noblePhantasm?.name || '').includes('Deny the Victory') || (attacker.servant.template.noblePhantasm?.name || '').includes('Concept Nullification');
-          if (isDenyTheVictory) {
+          if (isDenyTheVictory && isOvercharged) {
             targetOpp.npGauge = Math.max(0, targetOpp.npGauge - 20);
             if (Math.random() < 0.50) {
               targetOpp.isStunned = true;
               isStunnedThisTurn = true;
               targetOpp.activeBuffs.push({ name: 'Concept Nullification (Stun)', type: 'stun' as any, value: 100, remainingTurns: 1 });
             }
-            targetOpp.activeBuffs.push({ name: 'Deny the Victory (DEF Down)', type: 'debuff_def', value: 30, remainingTurns: 3 });
-            targetOpp.activeBuffs.push({ name: 'Deny the Victory (Crit Rate Down)', type: 'debuff_atk', value: 20, remainingTurns: 3 });
+            const defDownVal = overchargeLevel >= 3 ? 40 : 30;
+            const critDownVal = overchargeLevel >= 3 ? 30 : 20;
+            targetOpp.activeBuffs.push({ name: 'Deny the Victory (DEF Down)', type: 'debuff_def', value: defDownVal, remainingTurns: 3 });
+            targetOpp.activeBuffs.push({ name: 'Deny the Victory (Crit Rate Down)', type: 'debuff_atk', value: critDownVal, remainingTurns: 3 });
           }
 
           if (targetOpp === defender) {
@@ -2475,7 +2495,7 @@ function resolveStrike(
             statuses.push('DEFEATED');
           } else {
             if (isStunnedThisTurn) statuses.push('STUNNED');
-            if (isDenyTheVictory) statuses.push('DEF DOWN -30%', 'NP GAUGE -20%');
+            if (isDenyTheVictory && isOvercharged) statuses.push('OVERCHARGE: DEF DOWN', 'NP GAUGE -20%');
             if ((targetOpp as any).isSlumVeteranTriggered) statuses.push('SLUMS GUTS REVIVED');
           }
 
@@ -2488,13 +2508,17 @@ function resolveStrike(
         }
 
         const typeLabel = npScope === 'aoe' ? 'AREA-OF-EFFECT' : 'SINGLE TARGET';
+        const overchargeStatusText = isOvercharged
+          ? `Lv.${overchargeLevel} (${Math.round(overchargeScale * 100)}% Power • ${overchargeLevel === 3 ? 'MAX Overcharge Active' : 'Overcharge Active'})`
+          : `Inactive (100% Base NP Release)`;
+
         npLogBlock = 
           `\n> ════════════════════════════════════\n` +
           `> 🔱 **NOBLE PHANTASM ACTIVATED** 🔱\n` +
           `> 🌌 **[ ${npTemplate.name.toUpperCase()} ]**\n` +
           `> ────────────────────────────────────\n` +
           `> ◆ **TYPE:** ${typeLabel} (${npCardType.toUpperCase()})\n` +
-          `> ◆ **OVERCHARGE:** Lv.${overchargeLevel} (${Math.round(overchargeScale * 100)}% Power)\n` +
+          `> ◆ **OVERCHARGE:** ${overchargeStatusText}\n` +
           `> ────────────────────────────────────\n` +
           damageLines.join('\n') + `\n` +
           `> ────────────────────────────────────\n` +
@@ -2504,7 +2528,8 @@ function resolveStrike(
         // Refund properties dictated by card type
         if (npCardType === 'Buster') {
           const hasOverchargeRefund = /refund|recharge/i.test(attacker.servant.template.noblePhantasm?.overchargeEffect || '');
-          npRefund = hasOverchargeRefund ? (overchargeLevel >= 2 ? 30 : 20) : 0;
+          // Overcharge refund only triggers when Overcharged (>= 200% NP)
+          npRefund = (hasOverchargeRefund && isOvercharged) ? (overchargeLevel >= 3 ? 30 : 20) : 0;
           npStars = npScope === 'aoe' ? 5 : 2;
         } else if (npCardType === 'Arts') {
           const baseRefund = npScope === 'aoe' ? 18 : 12;
@@ -2517,7 +2542,8 @@ function resolveStrike(
           npStars = 2;
         } else {
           const baseStars = npScope === 'aoe' ? 20 : 14;
-          npStars = Math.round(baseStars * (1.0 + quickBuff / 100));
+          const ocStarsBonus = isOvercharged ? (overchargeLevel >= 3 ? 15 : 10) : 0;
+          npStars = Math.round((baseStars + ocStarsBonus) * (1.0 + quickBuff / 100));
           const baseRefund = npScope === 'aoe' ? 10 : 6;
           npRefund = Math.round(baseRefund * (1.0 + quickBuff / 100));
         }

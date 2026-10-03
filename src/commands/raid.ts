@@ -1426,6 +1426,11 @@ async function runRaidBattle(
       });
 
       const usedNp = pendingCards.includes('NP');
+      const initialNpGauge = active.npGauge || 0;
+      const overchargeLevel = initialNpGauge >= 300 ? 3 : initialNpGauge >= 200 ? 2 : 1;
+      const isOvercharged = overchargeLevel >= 2;
+      const overchargeScale = isOvercharged ? (1.0 + (overchargeLevel - 1) * 0.20) : 1.00;
+
       let pendingNpToDispatch: { servant: any; userId: string } | null = null;
       if (usedNp) {
         active.npGauge = 0;
@@ -1499,15 +1504,19 @@ async function runRaidBattle(
         } else if (card === 'NP') {
           const rawNpMult = active.servant.template?.noblePhantasm?.multiplier ?? 600;
           const npMultiplier = rawNpMult >= 20 ? rawNpMult / 100 : (rawNpMult || 6.0);
-          const npDesc = ((active.servant.template?.noblePhantasm?.description || '') + ' ' + (active.servant.template?.noblePhantasm?.overchargeEffect || '')).trim();
+          const npBaseDesc = (active.servant.template?.noblePhantasm?.description || '').trim();
+          const npOverchargeDesc = (active.servant.template?.noblePhantasm?.overchargeEffect || '').trim();
           const npName = active.servant.template?.noblePhantasm?.name || 'Noble Phantasm';
           const npTarget = active.servant.template?.noblePhantasm?.target || 'single';
           npNameUsed = npName;
 
-          const isSupportNp = npTarget === 'support' || npMultiplier === 0 || /party invincib|grant.*invincib|luminos|tigris redoubt|round of avalon/i.test(npName + ' ' + npDesc);
+          const isSupportNp = npTarget === 'support' || npMultiplier === 0 || /party invincib|grant.*invincib|luminos|tigris redoubt|round of avalon/i.test(npName + ' ' + npBaseDesc);
 
           if (isSupportNp) {
             const isRoundOfAvalon = /round of avalon/i.test(npName);
+            const isTigris = /tigris|edmond/i.test(npName);
+            const isLuminosite = /luminosit|jeanne/i.test(npName);
+
             // Party Buffs & Protection to ALL living allies in the raid!
             battleState.participants.forEach(p => {
               if (!p.isDead) {
@@ -1524,7 +1533,7 @@ async function runRaidBattle(
                 });
 
                 if (isRoundOfAvalon) {
-                  // Round of Avalon: +50% ATK for 3 turns, 2,500 Damage Cut, +15 Stars to all allies
+                  // Round of Avalon: +50% ATK for 3 turns, 2,500 Damage Cut, +15 Stars to all allies (Stars enhanced by Overcharge)
                   p.activeBuffs.push({
                     name: `${npName} (ATK Up)`,
                     type: 'atk_up',
@@ -1537,7 +1546,44 @@ async function runRaidBattle(
                     value: 2500,
                     remainingTurns: 3
                   });
-                  p.critStars = Math.min(50, (p.critStars || 0) + 15);
+                  const ocStarBonus = isOvercharged ? (overchargeLevel >= 3 ? 30 : 15) : 0;
+                  p.critStars = Math.min(50, (p.critStars || 0) + 15 + ocStarBonus);
+                } else if (isTigris) {
+                  const defBonus = isOvercharged ? (30 + (overchargeLevel - 1) * 10) : 30;
+                  p.activeBuffs.push({
+                    name: `${npName} (DEF Up)`,
+                    type: 'def_up',
+                    value: defBonus,
+                    remainingTurns: 3
+                  });
+                  // Overcharge Living Earth Damage Cut (only triggers when Overcharged >= 200% NP)
+                  if (isOvercharged) {
+                    const damageCutVal = 1500 + (overchargeLevel - 1) * 750;
+                    p.activeBuffs.push({
+                      name: `${npName} (Damage Cut)`,
+                      type: 'damage_cut',
+                      value: damageCutVal,
+                      remainingTurns: 3
+                    });
+                  }
+                } else if (isLuminosite) {
+                  p.activeBuffs.push({
+                    name: `${npName} (DEF Up)`,
+                    type: 'def_up',
+                    value: 30,
+                    remainingTurns: 3
+                  });
+                  // Overcharge Holy Regen (only triggers when Overcharged >= 200% NP)
+                  if (isOvercharged) {
+                    const regenVal = 1000 + (overchargeLevel - 1) * 500;
+                    p.currentHp = Math.min(p.maxHp, p.currentHp + regenVal);
+                    p.activeBuffs.push({
+                      name: `${npName} (Holy Regen)`,
+                      type: 'hp_regen',
+                      value: regenVal,
+                      remainingTurns: 2
+                    });
+                  }
                 } else {
                   // Standard Support NP: +30% DEF for 3 turns & +3,000 HP
                   p.activeBuffs.push({
@@ -1552,32 +1598,36 @@ async function runRaidBattle(
             });
 
             if (isRoundOfAvalon) {
-              npEffectsLog.push('👑 [Round of Avalon: Party +50% ATK (3T), Anti-Purge Defense (1T), Cleanse & +15 Stars to ALL Allies!]');
-              npEffectsHud.push('+50% Party ATK • Anti-Purge Def • +15 Stars');
+              const ocNote = isOvercharged ? ` • Overcharge Lv.${overchargeLevel} Active` : '';
+              npEffectsLog.push(`👑 [Round of Avalon: Party +50% ATK (3T), Anti-Purge Defense (1T), Cleanse & Stars to ALL Allies!${ocNote}]`);
+              npEffectsHud.push(`+50% Party ATK • Anti-Purge Def • Stars${isOvercharged ? ' (OC Active)' : ''}`);
             } else {
-              npEffectsLog.push('🕊️ [Party Invincible (1T), +30% DEF (3T), Cleanse & +3,000 HP Heal]');
-              npEffectsHud.push('Party Invincible • +30% DEF • Heal');
+              const ocNote = isOvercharged ? ` • Overcharge Lv.${overchargeLevel} Active` : '';
+              npEffectsLog.push(`🕊️ [Party Invincible (1T), +30% DEF (3T), Cleanse & Party Support!${ocNote}]`);
+              npEffectsHud.push(`Party Invincible • +30% DEF${isOvercharged ? ' • OC Regen/Cut' : ''}`);
             }
             starsGenerated += 15;
             npGained += 20;
           } else {
-            const npHasAntiThreat = /Threat to Humanity|Beast|Divine|Foreigner/i.test(npDesc);
+            const npHasAntiThreat = /Threat to Humanity|Beast|Divine|Foreigner/i.test(npBaseDesc + ' ' + npOverchargeDesc);
             const npSpecialMult = (isBossThreat && npHasAntiThreat) ? 1.5 : 1.0;
             if (isBossThreat && npHasAntiThreat) npTriggeredAntiThreat = true;
 
             // Apply secondary debuffs from Noble Phantasm to boss
             battleState.bossBuffs = battleState.bossBuffs || [];
 
-            // 1. Stun / Paralysis / Charm / Bound Handling
-            if (/stun|paraly|charm|bound/i.test(npDesc)) {
+            // 1. Stun / Paralysis / Charm / Bound Handling (Base effect or Overcharge trigger)
+            const stunInBase = /stun|paraly|charm|bound/i.test(npBaseDesc);
+            const stunInOvercharge = /stun|paraly|charm|bound/i.test(npOverchargeDesc);
+            if (stunInBase || (stunInOvercharge && isOvercharged)) {
               const isImmuneToStun = boss.id === 'tiamat' && (battleState.currentPhase || 1) >= 2;
               if (isImmuneToStun) {
                 npEffectsLog.push('🛡️ [Stun Resisted: Immense Mass (Boss Immune)]');
                 npEffectsHud.push('Stun Resisted (Immune)');
               } else {
-                // Parse percentage chance (e.g. 50% chance for Luvria)
-                const chanceMatch = npDesc.match(/(\d+)%\s*(?:chance)?.*(?:stun|paraly|charm|bound)/i) ||
-                                    npDesc.match(/(?:stun|paraly|charm|bound).*(?:with\s*)?(\d+)%/i);
+                const combinedStunDesc = stunInBase ? npBaseDesc : npOverchargeDesc;
+                const chanceMatch = combinedStunDesc.match(/(\d+)%\s*(?:chance)?.*(?:stun|paraly|charm|bound)/i) ||
+                                    combinedStunDesc.match(/(?:stun|paraly|charm|bound).*(?:with\s*)?(\d+)%/i);
                 const stunChance = chanceMatch ? parseInt(chanceMatch[1], 10) : 100;
                 const roll = Math.random() * 100;
                 if (roll < stunChance) {
@@ -1596,11 +1646,17 @@ async function runRaidBattle(
               }
             }
 
-            // 2. DEF Down / Armor Shred
-            if (/def.*down|lower.*def|reduce.*def|decrease.*def|shred.*armor/i.test(npDesc)) {
-              const defMatch = npDesc.match(/def(?:ense)?\s*(?:by\s*|down\s*)?(\d+)%/i) ||
-                               npDesc.match(/(\d+)%\s*(?:def|defense\s*down)/i);
-              const defVal = defMatch ? parseInt(defMatch[1], 10) : 30;
+            // 2. DEF Down / Armor Shred (Base effect or Overcharge trigger)
+            const defInBase = /def.*down|lower.*def|reduce.*def|decrease.*def|shred.*armor/i.test(npBaseDesc);
+            const defInOvercharge = /def.*down|lower.*def|reduce.*def|decrease.*def|shred.*armor/i.test(npOverchargeDesc);
+            if (defInBase || (defInOvercharge && isOvercharged)) {
+              const combinedDefDesc = defInBase ? npBaseDesc : npOverchargeDesc;
+              const defMatch = combinedDefDesc.match(/def(?:ense)?\s*(?:by\s*|down\s*)?(\d+)%/i) ||
+                               combinedDefDesc.match(/(\d+)%\s*(?:def|defense\s*down)/i);
+              let defVal = defMatch ? parseInt(defMatch[1], 10) : 30;
+              if (defInOvercharge && isOvercharged && overchargeLevel >= 3) {
+                defVal = Math.round(defVal * 1.33); // Enhanced tier at Lv.3 MAX Overcharge
+              }
               battleState.bossBuffs.push({
                 name: `${npName} (DEF Down)`,
                 type: 'def_down',
@@ -1611,9 +1667,12 @@ async function runRaidBattle(
               npEffectsHud.push(`-${defVal}% DEF`);
             }
 
-            // 3. Critical Rate Down
-            if (/crit.*down|reduce.*crit|decrease.*crit/i.test(npDesc)) {
-              const critMatch = npDesc.match(/crit(?:ical)?\s*(?:rate\s*)?(?:by\s*)?(\d+)%/i);
+            // 3. Critical Rate Down (Base effect or Overcharge trigger)
+            const critInBase = /crit.*down|reduce.*crit|decrease.*crit/i.test(npBaseDesc);
+            const critInOvercharge = /crit.*down|reduce.*crit|decrease.*crit/i.test(npOverchargeDesc);
+            if (critInBase || (critInOvercharge && isOvercharged)) {
+              const combinedCritDesc = critInBase ? npBaseDesc : npOverchargeDesc;
+              const critMatch = combinedCritDesc.match(/crit(?:ical)?\s*(?:rate\s*)?(?:by\s*)?(\d+)%/i);
               const critVal = critMatch ? parseInt(critMatch[1], 10) : 20;
               battleState.bossBuffs.push({
                 name: `${npName} (Crit Down)`,
@@ -1625,8 +1684,10 @@ async function runRaidBattle(
               npEffectsHud.push(`-${critVal}% Boss Crit`);
             }
 
-            // 4. NP Drain / Charge Reduction
-            if (/drain|reduce.*np\s*gauge|np\s*seal/i.test(npDesc)) {
+            // 4. NP Drain / Charge Reduction (Base effect or Overcharge trigger)
+            const drainInBase = /drain|reduce.*np\s*gauge|np\s*seal/i.test(npBaseDesc);
+            const drainInOvercharge = /drain|reduce.*np\s*gauge|np\s*seal/i.test(npOverchargeDesc);
+            if (drainInBase || (drainInOvercharge && isOvercharged)) {
               battleState.bossCharge = Math.max(0, battleState.bossCharge - 1);
               battleState.bossBuffs.push({
                 name: `${npName} (NP Drain)`,
@@ -1638,8 +1699,10 @@ async function runRaidBattle(
               npEffectsHud.push('-1 NP Charge');
             }
 
-            // 5. Curse / Burn / Poison
-            if (/curse|burn|poison/i.test(npDesc)) {
+            // 5. Curse / Burn / Poison (Base effect or Overcharge trigger)
+            const dotInBase = /curse|burn|poison/i.test(npBaseDesc);
+            const dotInOvercharge = /curse|burn|poison/i.test(npOverchargeDesc);
+            if (dotInBase || (dotInOvercharge && isOvercharged)) {
               battleState.bossBuffs.push({
                 name: `${npName} (Affliction)`,
                 type: 'curse',
@@ -1650,8 +1713,10 @@ async function runRaidBattle(
               npEffectsHud.push('Curse/Burn (3T)');
             }
 
-            // 6. Buff Block
-            if (/buff\s*block/i.test(npDesc)) {
+            // 6. Buff Block (Base effect or Overcharge trigger)
+            const blockInBase = /buff\s*block/i.test(npBaseDesc);
+            const blockInOvercharge = /buff\s*block/i.test(npOverchargeDesc);
+            if (blockInBase || (blockInOvercharge && isOvercharged)) {
               battleState.bossBuffs.push({
                 name: `${npName} (Buff Block)`,
                 type: 'buff_block',
@@ -1663,11 +1728,11 @@ async function runRaidBattle(
             }
 
             // 7. Ignore Defense
-            if (/ignore.*def|bypass.*def|defense-ignoring/i.test(npDesc)) {
+            if (/ignore.*def|bypass.*def|defense-ignoring/i.test(npBaseDesc + ' ' + npOverchargeDesc)) {
               npEffectsLog.push('🛡️ [DEF-Ignoring]');
             }
 
-            totalTurnDmg += Math.round(baseAtk * npMultiplier * atkBuffMult * specialAtkMult * bossDefFactor * npSpecialMult * (0.95 + Math.random() * 0.1));
+            totalTurnDmg += Math.round(baseAtk * npMultiplier * overchargeScale * atkBuffMult * specialAtkMult * bossDefFactor * npSpecialMult * (0.95 + Math.random() * 0.1));
             starsGenerated += 10;
             npGained += 15;
           }

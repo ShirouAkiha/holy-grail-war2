@@ -768,7 +768,7 @@ function drawTarotCommandCard(
     ringColor = 'rgba(245, 158, 11, 0.4)';
     cardTitle = 'N. PHANTASM';
     letter = 'NP';
-    stepMult = 'MAX OVERCHARGE';
+    stepMult = 'NOBLE PHANTASM';
   }
 
   // Card Background
@@ -1533,7 +1533,7 @@ function extractCombatHudTelemetry(
 
   // 6. Noble Phantasm
   if (log.isNoblePhantasm) {
-    parts.push('Noble Phantasm Overcharge');
+    parts.push((log as any).overchargeLevel && (log as any).overchargeLevel >= 2 ? `Noble Phantasm (Overcharge Lv.${(log as any).overchargeLevel})` : 'Noble Phantasm Unleashed');
   }
 
   // 7. Tactical Gains (NP Refund and Stars Generated)
