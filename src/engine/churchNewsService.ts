@@ -3,8 +3,33 @@ import { HolyGrailWarSession, ChurchOverseerHomily, FuyukiNewsBulletin } from '.
 import { saveWarToDisk } from './grailwar';
 
 let aiClient: GoogleGenAI | null = null;
+let geminiQuotaCooldownUntil = 0;
+
+export function isGeminiQuotaExceeded(err: any): boolean {
+  if (!err) return false;
+  const msg = String(err?.message || '');
+  const code = err?.status || err?.error?.code || err?.code;
+  return (
+    code === 429 ||
+    code === 'RESOURCE_EXHAUSTED' ||
+    err?.status === 'RESOURCE_EXHAUSTED' ||
+    msg.includes('RESOURCE_EXHAUSTED') ||
+    msg.includes('429') ||
+    msg.includes('Quota exceeded') ||
+    msg.includes('quota')
+  );
+}
+
+export function setGeminiQuotaCooldown(durationMs: number = 15 * 60 * 1000): void {
+  geminiQuotaCooldownUntil = Date.now() + durationMs;
+}
+
+export function isGeminiInCooldown(): boolean {
+  return Date.now() < geminiQuotaCooldownUntil;
+}
 
 function getAiClient(): GoogleGenAI | null {
+  if (Date.now() < geminiQuotaCooldownUntil) return null;
   if (aiClient) return aiClient;
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
@@ -183,6 +208,7 @@ JSON Output Schema:
 
     let response;
     for (const modelName of CANDIDATE_MODELS) {
+      if (isGeminiInCooldown()) break;
       try {
         const genPromise = client.models.generateContent({
           model: modelName,
@@ -199,7 +225,12 @@ JSON Output Schema:
         ]);
         if (response && response.text) break;
       } catch (primaryErr: any) {
-        console.log(`[churchNewsService] ${modelName} call skipped: ${primaryErr?.message || 'timeout'}`);
+        if (isGeminiQuotaExceeded(primaryErr)) {
+          setGeminiQuotaCooldown(15 * 60 * 1000);
+          console.log('[churchNewsService] Gemini API quota reached; falling back to canonical Kotomine homily.');
+          break;
+        }
+        // Non-fatal fallback to next model
       }
     }
 
@@ -363,6 +394,7 @@ JSON Output Schema:
 
     let response;
     for (const modelName of CANDIDATE_MODELS) {
+      if (isGeminiInCooldown()) break;
       try {
         const genPromise = client.models.generateContent({
           model: modelName,
@@ -378,7 +410,12 @@ JSON Output Schema:
         ]);
         if (response && response.text) break;
       } catch (primaryErr: any) {
-        console.log(`[churchNewsService] ${modelName} news skipped: ${primaryErr?.message || 'timeout'}`);
+        if (isGeminiQuotaExceeded(primaryErr)) {
+          setGeminiQuotaCooldown(15 * 60 * 1000);
+          console.log('[churchNewsService] Gemini API quota reached; broadcasting canonical Fuyuki news report.');
+          break;
+        }
+        // Non-fatal fallback to next model
       }
     }
 
@@ -451,13 +488,13 @@ export async function getOrInitChurchIntel(
   }
 
   // If expired or forceRefresh, trigger background generation asynchronously without blocking the caller
-  if (homilyExpired || newsExpired || forceRefresh) {
+  if ((homilyExpired || newsExpired || forceRefresh) && !isGeminiInCooldown()) {
     Promise.resolve().then(async () => {
       try {
         if (homilyExpired || forceRefresh) await generateKotomine24hHomily(war, true);
         if (newsExpired || forceRefresh) await generateFuyuki2hNewsBulletin(war, true);
       } catch (err) {
-        console.error('[churchNewsService] Background refresh error:', err);
+        // Handled silently
       }
     });
   }

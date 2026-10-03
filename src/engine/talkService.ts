@@ -1,4 +1,5 @@
 import { GoogleGenAI, Type, FunctionDeclaration } from '@google/genai';
+import { isGeminiInCooldown, setGeminiQuotaCooldown, isGeminiQuotaExceeded } from './churchNewsService';
 import { renderVisualNovelCard } from '../canvas/renderer';
 import {
   getServantChatHistory,
@@ -99,6 +100,7 @@ export interface ServantTalkContext {
 let aiClient: GoogleGenAI | null = null;
 
 function getAiClient(): GoogleGenAI | null {
+  if (isGeminiInCooldown()) return null;
   if (aiClient) return aiClient;
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
@@ -698,6 +700,7 @@ VOICE & ROLEPLAY INSTRUCTIONS:
   ];
 
   for (const modelName of CANDIDATE_MODELS) {
+    if (isGeminiInCooldown()) break;
     try {
       const response = await client.models.generateContent({
         model: modelName,
@@ -766,7 +769,7 @@ VOICE & ROLEPLAY INSTRUCTIONS:
             return { reply: cleaned, source: 'gemini' };
           }
         } catch (callErr) {
-          console.warn('[talkService] Function call second-turn failed, using initial text:', callErr);
+          // Function call second-turn failed, continue with initial text
         }
       }
 
@@ -779,7 +782,10 @@ VOICE & ROLEPLAY INSTRUCTIONS:
         return { reply: cleaned, source: 'gemini' };
       }
     } catch (err: any) {
-      console.warn(`[talkService] Model ${modelName} unavailable/rate-limited, cascading to next fallback:`, err?.message || err);
+      if (isGeminiQuotaExceeded(err)) {
+        setGeminiQuotaCooldown(15 * 60 * 1000);
+        break;
+      }
     }
   }
 
@@ -901,6 +907,7 @@ Voice Directive:
     ];
 
     for (const model of CANDIDATE_MODELS) {
+      if (isGeminiInCooldown()) break;
       try {
         const res = await client.models.generateContent({
           model,
@@ -915,7 +922,12 @@ Voice Directive:
           reply = text.replace(/^["'“](.*)["'”]$/, '$1').trim();
           break;
         }
-      } catch {}
+      } catch (reactionErr: any) {
+        if (isGeminiQuotaExceeded(reactionErr)) {
+          setGeminiQuotaCooldown(15 * 60 * 1000);
+          break;
+        }
+      }
     }
   }
 

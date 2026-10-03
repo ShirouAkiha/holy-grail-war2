@@ -1,4 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
+import { isGeminiInCooldown, setGeminiQuotaCooldown, isGeminiQuotaExceeded } from '../engine/churchNewsService';
 
 export interface ServantChatContext {
   servantName: string;
@@ -16,7 +17,7 @@ export interface ServantChatContext {
 export async function generateServantReply(ctx: ServantChatContext): Promise<string> {
   const fallback = "...Master, stay focused. We have an active war to fight.";
 
-  if (!process.env.GEMINI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY || isGeminiInCooldown()) {
     return fallback;
   }
 
@@ -59,6 +60,7 @@ Master says: "${ctx.playerMessage}"
 
     let response;
     for (const model of CANDIDATE_MODELS) {
+      if (isGeminiInCooldown()) break;
       try {
         response = await ai.models.generateContent({
           model,
@@ -66,8 +68,11 @@ Master says: "${ctx.playerMessage}"
         });
         if (response && response.text) break;
       } catch (err: any) {
+        if (isGeminiQuotaExceeded(err)) {
+          setGeminiQuotaCooldown(15 * 60 * 1000);
+          break;
+        }
         const isHighDemand = err?.status === 503 || err?.error?.code === 503 || String(err?.message || '').includes('503') || String(err?.message || '').includes('high demand');
-        console.log(`[servantDialogueService] ${model} unavailable (${isHighDemand ? 'temporary 503 high demand' : 'retrying'}), checking next candidate...`);
         if (isHighDemand) {
           await new Promise(r => setTimeout(r, 600));
         }
@@ -75,7 +80,6 @@ Master says: "${ctx.playerMessage}"
     }
     return response?.text?.trim() || fallback;
   } catch (error) {
-    console.log('[servantDialogueService] Using canonical dialogue fallback.');
     return fallback;
   }
 }
