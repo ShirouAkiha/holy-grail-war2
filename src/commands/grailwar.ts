@@ -185,7 +185,12 @@ export async function buildGrailWarHub(
   actionOutcomeMsg?: string,
   client?: any
 ): Promise<{ embeds: EmbedBuilder[]; components: any[]; files: AttachmentBuilder[] }> {
-  const userParticipant = war.participants[master.discordId];
+  const targetMasterId = typeof master === 'string'
+    ? master
+    : (master?.discordId || master?.userId || master?.id || '');
+  const userParticipant = (war?.participants && targetMasterId)
+    ? war.participants[targetMasterId]
+    : (master?.servantName ? master : undefined);
   let embeds: EmbedBuilder[] = [];
   let files: AttachmentBuilder[] = [];
 
@@ -544,7 +549,7 @@ export async function buildGrailWarHub(
       const embed = new EmbedBuilder()
         .setTitle('🏰 Mage Workshop & Personal Sanctuary Defenses')
         .setDescription(
-          `Master **${userParticipant?.username || master.username}**'s Defense Protocols\n\n` +
+          `Master **${userParticipant?.username || master?.username || 'Challenger'}**'s Defense Protocols\n\n` +
           (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
           `🛡️ **Bounded Field Ward:**\n${wardDescription}\n\n` +
           `🔴 **Command Seal Emergency Auto-Evacuation:**\n` +
@@ -560,7 +565,7 @@ export async function buildGrailWarHub(
     }
 
   } else if (category === 'familiars') {
-    const userFamiliars = (war.familiars || []).filter(f => f.masterId === master.discordId);
+    const userFamiliars = (war.familiars || []).filter(f => f.masterId === targetMasterId);
     let desc = '';
     if (userFamiliars.length === 0) {
       desc = 'You currently have **no active familiars** stationed in Fuyuki City.\n\nDeploy a reconnaissance familiar to gather intelligence and track rivals!';
@@ -591,7 +596,7 @@ export async function buildGrailWarHub(
     embeds = [embed];
 
   } else if (category === 'traps') {
-    const userTraps = (war.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
+    const userTraps = (war.channelTraps || []).filter(t => t.setterMasterId === targetMasterId);
     let desc = '';
     if (userTraps.length === 0) {
       desc = 'You currently have **no active Bounded Field traps (0/3)** placed in any channel sectors.\n\n' +
@@ -693,7 +698,7 @@ export async function buildGrailWarHub(
     );
     components.push(actionButtonsRow);
   } else if (category === 'familiars') {
-    const userFamiliars = (war.familiars || []).filter(f => f.masterId === master.discordId);
+    const userFamiliars = (war.familiars || []).filter(f => f.masterId === targetMasterId);
     const actionButtonsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('war_deploy_raven').setLabel('Deploy Raven').setEmoji('🦅').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('war_deploy_homunculus').setLabel('Deploy Decoy').setEmoji('🗿').setStyle(ButtonStyle.Success),
@@ -702,7 +707,7 @@ export async function buildGrailWarHub(
     );
     components.push(actionButtonsRow);
   } else if (category === 'traps') {
-    const userTraps = (war.channelTraps || []).filter(t => t.setterMasterId === master.discordId);
+    const userTraps = (war.channelTraps || []).filter(t => t.setterMasterId === targetMasterId);
     const actionButtonsRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId('war_place_trap_alarm').setLabel('Place Alarm Ward (Current)').setEmoji('🚨').setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId('war_place_trap_drain').setLabel('Place Bloodfort Drain (Current)').setEmoji('🩸').setStyle(ButtonStyle.Danger),

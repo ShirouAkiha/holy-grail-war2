@@ -800,8 +800,7 @@ export async function handleGlobalGachaInteraction(interaction: any): Promise<bo
 
     if (customId === 'gacha_link_grailwar' || customId === 'btn_enter_war') {
       const war = getOrInitWarSession(master);
-      const uP = war.participants[interaction.user.id];
-      const embed = await buildWarEmbed(war, uP, '🏰 Welcome to the Holy Grail War Board!');
+      const embed = await buildWarEmbed(war, master, '🏰 Welcome to the Holy Grail War Board!');
       const btns = buildWarButtons();
       await interaction.reply({ embeds: [embed], components: btns, flags: MessageFlags.Ephemeral });
       return true;
