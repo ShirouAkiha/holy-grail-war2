@@ -1142,6 +1142,25 @@ async function runRaidBattle(
             });
             active.npGauge = Math.min(300, (active.npGauge || 0) + 20);
             buffLog = `(+15% ATK & 1T Invincibility to ALL Allies, +20% NP Gauge to self!)`;
+          } else if (/kekkai creation|kekkai_creation|shrine boundary/i.test(sName + ' ' + sDesc) || skillObj?.id === 'kekkai_creation') {
+            // Kekkai Creation A: Grants Invincibility for 1 turn, increases Defense by 30% for 3 turns, and cleanses all debuffs
+            targetAlly.activeBuffs = targetAlly.activeBuffs || [];
+            targetAlly.activeBuffs.push({
+              name: `${sName} (Invincibility)`,
+              type: 'invincible',
+              value: 1,
+              remainingTurns: 1
+            });
+            targetAlly.activeBuffs.push({
+              name: `${sName} (DEF Up)`,
+              type: 'def_up',
+              value: 30,
+              remainingTurns: 3
+            });
+            targetAlly.activeBuffs = targetAlly.activeBuffs.filter(b => !/curse|burn|poison|debuff|down|stun|seal/i.test(b.type));
+            active.critStars = (active.critStars || 0) + 10;
+            const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Self';
+            buffLog = `(⛩️ Invincibility for 1T, +30% DEF for 3T & Cleansed All Debuffs on **${tName}**!)`;
           } else if (isAntiThreatSkill) {
           // Calamity-Breaker Edict: Increases ATK of ALL allies by +20%, and grants all allies [Special Attack against Threat to Humanity / Beast] (+30% DMG) for 3 turns!
           battleState.participants.forEach(p => {

@@ -83,6 +83,7 @@ export interface CombatantBuff {
   remainingHits?: number;
   isHitCount?: boolean;
   appliedRound?: number;
+  appliedTurnUserId?: string;
 }
 
 export interface DuelCombatant {
@@ -1836,16 +1837,22 @@ function activateCombatantSkill(
     logText = `✨ **${sName}** activated **${skill.name}**!${quoteLine}`;
   }
 
-  // Guarantee every newly applied buff has its origin round stamped so it survives round rollover
+  // Guarantee every newly applied buff has its origin round and caster stamped so it survives round rollover
   combatant.activeBuffs?.forEach(b => {
     if (b.appliedRound === undefined) {
       b.appliedRound = currentRound;
+    }
+    if (b.appliedTurnUserId === undefined) {
+      b.appliedTurnUserId = combatant.userId;
     }
   });
   if (opponent?.activeBuffs) {
     opponent.activeBuffs.forEach(b => {
       if (b.appliedRound === undefined) {
         b.appliedRound = currentRound;
+      }
+      if (b.appliedTurnUserId === undefined) {
+        b.appliedTurnUserId = combatant.userId;
       }
     });
   }
@@ -4426,7 +4433,15 @@ async function startInteractiveDuel(
             c.activeBuffs = c.activeBuffs.map(b => {
               const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
               if (!isHitBased && b.remainingTurns > 0 && b.remainingTurns < 90) {
-                // Preserve buffs applied in the round that just concluded so they protect against the new round's strikes
+                // If a 1T defensive buff was applied by the 1st actor in the round, they already received incoming attacks in this round
+                if (b.appliedRound !== undefined && b.appliedRound === roundBeforeInc && b.remainingTurns <= 1) {
+                  const isDefensive = b.type === 'invincible' || b.type === 'evade' || b.type === 'anti_purge_defense' || b.type === 'anti_purge';
+                  if (isDefensive && b.appliedTurnUserId && b.appliedTurnUserId === turnOrder[0]?.userId) {
+                    return { ...b, remainingTurns: 0 };
+                  }
+                  return b;
+                }
+                // Preserve other buffs applied in the round that just concluded so they protect against the new round's strikes
                 if (b.appliedRound !== undefined && b.appliedRound === roundBeforeInc) {
                   return b;
                 }
@@ -4444,6 +4459,20 @@ async function startInteractiveDuel(
       if (candidate.currentHp > 0 && !candidate.isFled) {
         activeCombatant = candidate;
         activeUserId = activeCombatant.userId;
+
+        // Expire 1-turn defensive buffs on activeCombatant whose turn has now arrived after defending
+        activeCombatant.activeBuffs = activeCombatant.activeBuffs.filter(b => {
+          const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
+          if (!isHitBased && (b.type === 'invincible' || b.type === 'evade' || b.type === 'anti_purge_defense' || b.type === 'anti_purge')) {
+            if (b.appliedTurnUserId === activeCombatant.userId && b.remainingTurns <= 1 && b.appliedRound !== undefined && b.appliedRound < round) {
+              return false;
+            }
+          }
+          return true;
+        });
+        activeCombatant.isInvincible = activeCombatant.activeBuffs.some(b => b.type === 'invincible');
+        activeCombatant.isEvading = activeCombatant.activeBuffs.some(b => b.type === 'evade');
+        activeCombatant.isAntiPurgeDefense = activeCombatant.activeBuffs.some(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge');
         break;
       }
     }

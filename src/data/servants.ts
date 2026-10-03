@@ -1454,7 +1454,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         description: 'Erects a sacred shrine boundary barrier. Grants Invincibility for 1 turn, increases Defense by 30% for 3 turns, and cleanses all debuffs.',
         effectType: 'invincible',
         value: 30,
-        duration: 3,
+        duration: 1,
         icon: '⛩️'
       },
       {
