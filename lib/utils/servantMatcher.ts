@@ -57,7 +57,8 @@ const ALIAS_MAP: Record<string, string[]> = {
   aoko_aozaki: ['aoko', 'aoko aozaki', 'fifth magician', 'miss blue', 'magic blue', 'super aoko', 'magic gunner', 'aozaki'],
   amamiya_no_chihaya_tenkohime: ['amamiya', 'chihaya', 'tenkohime', 'amamiya no chihaya tenkohime', 'ancient kyubi guardian', 'kyubi', 'kyuubi', 'nine tails', 'katana maiden', 'amazakura', 'ossuaron', 'kitsune saber', 'kitsune', 'amamiya saber'],
   lucia_lyozes: ['lucia', 'lucernalia', 'lucia lyozes', 'lucernalia lyozes', 'high elf', 'elf lancer', 'lyozes lancer', 'apocrypha terminus', 'hero\'s party'],
-  luvria_greenharte: ['luvria', 'luvria greenharte', 'greenharte', 'strongest mage', 'hero mage', 'concept nullification', 'elf mage', 'sylvanryth', 'deny the victory']
+  luvria_greenharte: ['luvria', 'luvria greenharte', 'greenharte', 'strongest mage', 'hero mage', 'concept nullification', 'elf mage', 'sylvanryth', 'deny the victory'],
+  typhon_ephemeros: ['typhon', 'ephemeros', 'typhon ephemeros', 'progenitor dragon', 'anti grail', 'dragon grail', 'pretender typhon', 'ephemeral fruit', 'blaze of etna']
 };
 
 /**

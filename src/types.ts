@@ -12,6 +12,8 @@ export type ServantClass =
   | 'Avenger'
   | 'Foreigner'
   | 'MoonCancer'
+  | 'AlterEgo'
+  | 'Pretender'
   | 'Shitposter'
   | 'Shielder'
   | 'Beast';
@@ -66,7 +68,10 @@ export type PassiveSkillType =
   | 'magic_gunner'
   | 'terra_affinity'
   | 'veteran_of_the_slums'
-  | 'ones_own_magic';
+  | 'ones_own_magic'
+  | 'progenitor_dragon'
+  | 'the_ephemeral_fruit'
+  | 'dragonforge_ignition';
 
 export interface PassiveSkill {
   name: string;

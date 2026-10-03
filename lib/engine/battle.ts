@@ -44,6 +44,18 @@ export function calculateClassMultiplier(attackerClass: ServantClass, defenderCl
   }
   if (attackerClass === 'Avenger' && defenderClass === 'Ruler') return 1.5;
 
+  // Pretender Class: Effective against Knights (Saber, Archer, Lancer) and AlterEgo, weak to Cavalry (Rider, Caster, Assassin) and Foreigner
+  if (attackerClass === 'Pretender' && ['Saber', 'Archer', 'Lancer', 'AlterEgo'].includes(defenderClass)) return 1.35;
+  if (attackerClass === 'Pretender' && ['Rider', 'Caster', 'Assassin', 'Foreigner'].includes(defenderClass)) return 0.75;
+  if (defenderClass === 'Pretender' && ['Rider', 'Caster', 'Assassin', 'Foreigner'].includes(attackerClass)) return 1.35;
+  if (defenderClass === 'Pretender' && ['Saber', 'Archer', 'Lancer', 'AlterEgo'].includes(attackerClass)) return 0.75;
+
+  // AlterEgo Class: Effective against Cavalry (Rider, Caster, Assassin) and Foreigner, weak to Knights (Saber, Archer, Lancer) and Pretender
+  if (attackerClass === 'AlterEgo' && ['Rider', 'Caster', 'Assassin', 'Foreigner'].includes(defenderClass)) return 1.35;
+  if (attackerClass === 'AlterEgo' && ['Saber', 'Archer', 'Lancer', 'Pretender'].includes(defenderClass)) return 0.75;
+  if (defenderClass === 'AlterEgo' && ['Saber', 'Archer', 'Lancer', 'Pretender'].includes(attackerClass)) return 1.35;
+  if (defenderClass === 'AlterEgo' && ['Rider', 'Caster', 'Assassin', 'Foreigner'].includes(attackerClass)) return 0.75;
+
   // Meme class: Shitposter deals chaotic 1.2x
   if (attackerClass === 'Shitposter') return 1.2;
 

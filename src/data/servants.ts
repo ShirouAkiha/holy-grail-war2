@@ -144,6 +144,23 @@ export function getDefaultClassPassives(servantClass: ServantClass): PassiveSkil
           description: 'Increases Quick Card damage and Star Generation by 6%.'
         }
       ];
+    case 'Pretender':
+      return [
+        {
+          name: 'Anti-Purge Defense A',
+          type: 'magic_resistance',
+          value: 20,
+          rank: 'A',
+          description: 'Increases debuff resistance by 20% and grants special defense against extra-class anomalies.'
+        },
+        {
+          name: 'Independent Action EX',
+          type: 'independent_action',
+          value: 10,
+          rank: 'EX',
+          description: 'Increases Critical Strike Damage by 10%.'
+        }
+      ];
     default:
       return [
         {
@@ -255,6 +272,23 @@ export function getServantAvatarAndCardArt(
       avatarUrl: 'https://ella.janitorai.com/media-approved/II1DtB1YFFjXHKcs8gU7q.webp',
       cardArtUrl: 'https://ella.janitorai.com/media-approved/II1DtB1YFFjXHKcs8gU7q.webp',
       spriteUrl: servantInput.spriteUrl || template.spriteUrl || 'https://ella.janitorai.com/media-approved/k_aK4SaC3HJVRNxDuMU13.webp'
+    };
+  }
+
+  // Strict check for Typhon Ephemeros
+  if (
+    templateId === 'typhon_ephemeros' ||
+    templateId === 'typhon' ||
+    templateId === 'ephemeros' ||
+    templateId.includes('typhon') ||
+    templateId.includes('ephemeros') ||
+    inputName.includes('typhon') ||
+    inputName.includes('ephemeros')
+  ) {
+    return {
+      avatarUrl: 'https://ella.janitorai.com/media-approved/kQzECU4XQGSezfzr6mOWo.webp',
+      cardArtUrl: 'https://ella.janitorai.com/media-approved/kQzECU4XQGSezfzr6mOWo.webp',
+      spriteUrl: servantInput.spriteUrl || template.spriteUrl || 'https://ella.janitorai.com/media-approved/OP7PiFQNT0RNCbGEyVNTY.webp'
     };
   }
 
@@ -1889,6 +1923,102 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     avatarUrl: 'https://ella.janitorai.com/media-approved/fuzEz7ZBldGAP68c2bNJu.webp',
     cardArtUrl: 'https://ella.janitorai.com/media-approved/fuzEz7ZBldGAP68c2bNJu.webp',
     spriteUrl: 'https://ella.janitorai.com/media-approved/jJ01B75AlmqdBUUK3JEfa.webp',
+    isCustomOrMeme: false
+  },
+  {
+    id: 'typhon_ephemeros',
+    name: 'Typhon Ephemeros',
+    title: 'Dragon Grail of the Ephemeral Fruit • Progenitor Dragon',
+    servantClass: 'Pretender',
+    rarity: 5,
+    baseHp: 31000,
+    baseAtk: 11500,
+    baseStats: { strength: 17, endurance: 15, agility: 14, mana: 18, luck: 12 },
+    commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
+    skills: [
+      {
+        id: 'blaze_of_etna',
+        name: 'Blaze of Etna - Dragon Prison Manifestation: Armor of Ashen Flames C',
+        cooldown: 6,
+        description: 'Grants self Invincibility for 2 attacks (3 turns). Increases own attack by 20% for 3 turns. Increases own Buster performance by 30% for 3 turns.',
+        effectType: 'buff_atk',
+        value: 20,
+        duration: 3,
+        icon: '🔥',
+        quote: '"Flames of the dragon prison, manifest as ash and ruin."',
+        quotes: [
+          '"Flames of the dragon prison, manifest as ash and ruin."',
+          '"My carapace burns with the embers of Etna."',
+          '"Let the dragon forge ignite."'
+        ]
+      },
+      {
+        id: 'black_wings_a',
+        name: 'Black Wings A',
+        cooldown: 7,
+        description: "Overcharges one ally's NP by 2 stages for 1 time (3 turns). Reduces their skill cooldown by 1. Increases their critical damage by 30% for 3 turns. Gains 15 critical stars.",
+        effectType: 'np_charge',
+        value: 20,
+        duration: 3,
+        icon: '🪶',
+        quote: '"Unfurl, wings of obsidian."',
+        quotes: [
+          '"Unfurl, wings of obsidian."',
+          '"Take flight through the shattered void."',
+          '"Soar, black wings of catastrophe."'
+        ]
+      },
+      {
+        id: 'let_this_become_a_prayer_ex',
+        name: 'Let This Become a Prayer EX',
+        cooldown: 6,
+        description: "Charges own NP gauge by 30% and party's NP gauge by 20% (Total self +50% NP). Increases party's attack by 20% for 3 turns. 500% chance to inflict Curse with 500 damage for 3 turns to them [Demerit].",
+        effectType: 'np_charge',
+        value: 50,
+        duration: 3,
+        icon: '🍷',
+        quote: '"Let this become a prayer... an inverted wish that devours hope."',
+        quotes: [
+          '"Let this become a prayer... an inverted wish that devours hope."',
+          '"Consume the bitter fruit. Let their desires turn to ash."',
+          '"Every prayer is a curse waiting to rot."'
+        ]
+      }
+    ],
+    passives: [
+      {
+        name: 'Dragonforge Ignition: Progenitor Dragon A',
+        type: 'progenitor_dragon',
+        value: 5,
+        rank: 'A',
+        description: 'Charges own NP gauge by 5% every turn automatically. (Active • Bond 1)'
+      },
+      {
+        name: 'The Ephemeral Fruit A',
+        type: 'the_ephemeral_fruit',
+        value: 30,
+        rank: 'A',
+        description: 'Increases own buff removal resistance by 30%. 500% Chance to reduce own debuff resistance by 30% [Demerit]. (Locked — Reaches Bond Lv. 5 to unlock)'
+      }
+    ],
+    noblePhantasm: {
+      name: 'Dragon Grail that Reverses the Void',
+      cardType: 'Buster',
+      chant: 'Drink deep of the ephemeral fruit... Reverse the cosmos, hollow the stars! Dragon Grail that Reverses the Void!',
+      description: 'Deals damage to all enemies (7 hits). Applies [Ignore Invincibility] (1 turn, activates first). Powerup: Deals extra damage scaling with own active debuffs (+10% per stack, up to +100% max). Inflicts Burn (1,000 dmg/turn, 5 turns) and Spread of Fire (+100% Burn dmg, 5 turns) to all enemies.',
+      target: 'aoe',
+      multiplier: 450,
+      overchargeEffect: 'Inflicts Burn (1,000 dmg/5T) + Spread of Fire (+100% Burn dmg/5T) & scales with self debuffs (+10% per stack, max 10)',
+      gifUrl: 'https://ella.janitorai.com/media-approved/WueTnw4QfurHe53DsTV-z.gif'
+    },
+    lore: `Typhon Ephemeros (テュフォン・エフェメロス, Tyufon Efemerosu), Class Name Pretender (プリテンダー, Puritendā), is a Pretender-class Servant.\n\nPrior to her True Name Fusion as a Pretender, she possesses the True Name Typhon. In the Greek Age of Gods, the Progenitor Dragon Typhon was tricked by the Moirai, the goddesses of fate, into eating an ephemeral fruit. He had thought it to be a fruit which could grant any wish, but it was actually a fruit which would make sure his wishes never came true. The fruit was an extension of a facet of the Moirai and represented the concept of being defeated by fate. After eating the fruit Typhon lost much of his power and would ultimately be defeated by Zeus.\n\nThe (false) Cerebral Corpus of a pure-blooded dragon, one that delivers judgement upon the gods. While the dragon Albion soared through Earth’s natural phenomena for its entire existence, Typhon, despite its origins as a spaceship from another star system, endured as those phenomena themselves.\n\nThis Servant's true identity is the ephemeral fruit as a Pretender, wearing the role of Typhon. Greek mythology has several examples of gods that were originally plants. She reacts instinctively to wishes, an anti-wish granter who will make sure someone's wish never comes true. A fusion of Typhon, the Progenitor Dragon who once forced Zeus to his knees, and the Ephemeral Fruit it consumed—one that negates wishes. Her manifestation as a Pretender, and thus a false brain, stems from the Ephemeral Fruit being the main body. This nature defines Typhon Ephemeros as an Anti-Holy Grail, or more aptly, an Anti-Wish Granter.\n\nUnlike Typhon who is a pure concept, Typhon Ephemeros acts with malice and hatred. She has a strong dislike for the Greek Chaos, and doesn't like that the Chaos Tide bears his name.`,
+    summonQuote: '"Pretender, Typhon Ephemeros. The false brain of the dragon and the ephemeral fruit that devours wishes. Tell me, Master... what foolish desire do you hope will never come true?"',
+    battleStartQuote: '"A wish? How detestable. I shall turn your prayers into ash."',
+    victoryQuote: '"Another delusion broken. The cosmos remains cold and void, as it should be."',
+    defeatQuote: '"To be undone by fate once more... The taste of that fruit... lingers..."',
+    avatarUrl: 'https://ella.janitorai.com/media-approved/kQzECU4XQGSezfzr6mOWo.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/kQzECU4XQGSezfzr6mOWo.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/OP7PiFQNT0RNCbGEyVNTY.webp',
     isCustomOrMeme: false
   }
 ];

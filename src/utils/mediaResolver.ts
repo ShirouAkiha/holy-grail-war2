@@ -49,7 +49,15 @@ export const CANON_MEDIA_FALLBACKS: Record<string, string> = {
   'ce_bond_artoria_caster.webp': 'https://ella.janitorai.com/media-approved/M_CtKrPvwydKIhD_A27Aq.webp',
   'M_CtKrPvwydKIhD_A27Aq.webp': 'https://ella.janitorai.com/media-approved/M_CtKrPvwydKIhD_A27Aq.webp',
   'holy_grail_ritual.webp': 'https://ella.janitorai.com/media-approved/mK-ekdLeM4n1Wb-_vRN4L.webp',
-  'mK-ekdLeM4n1Wb-_vRN4L.webp': 'https://ella.janitorai.com/media-approved/mK-ekdLeM4n1Wb-_vRN4L.webp'
+  'mK-ekdLeM4n1Wb-_vRN4L.webp': 'https://ella.janitorai.com/media-approved/mK-ekdLeM4n1Wb-_vRN4L.webp',
+  'avatar_typhon_ephemeros.webp': 'https://ella.janitorai.com/media-approved/kQzECU4XQGSezfzr6mOWo.webp',
+  'kQzECU4XQGSezfzr6mOWo.webp': 'https://ella.janitorai.com/media-approved/kQzECU4XQGSezfzr6mOWo.webp',
+  'np_typhon_ephemeros.gif': 'https://ella.janitorai.com/media-approved/WueTnw4QfurHe53DsTV-z.gif',
+  'WueTnw4QfurHe53DsTV-z.gif': 'https://ella.janitorai.com/media-approved/WueTnw4QfurHe53DsTV-z.gif',
+  'sprite_typhon_ephemeros.webp': 'https://ella.janitorai.com/media-approved/OP7PiFQNT0RNCbGEyVNTY.webp',
+  'OP7PiFQNT0RNCbGEyVNTY.webp': 'https://ella.janitorai.com/media-approved/OP7PiFQNT0RNCbGEyVNTY.webp',
+  'ce_bond_typhon_ephemeros.webp': 'https://ella.janitorai.com/media-approved/ooE7jWZ7K8iyxc9WJF21f.webp',
+  'ooE7jWZ7K8iyxc9WJF21f.webp': 'https://ella.janitorai.com/media-approved/ooE7jWZ7K8iyxc9WJF21f.webp'
 };
 
 export function normalizeMediaUrl(rawUrl: string): string {

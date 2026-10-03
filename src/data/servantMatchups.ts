@@ -1878,15 +1878,62 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       retort: "H-Hey, don't look at me like that! I'm just as confused as you are! But if everyone is watching, I guess... we both have to do our best and not give up!",
       tag: "THE PILGRIM'S REFLECTION"
     }
+  },
+  // =========================================================================
+  // 18. TYPHON EPHEMEROS (PRETENDER)
+  // =========================================================================
+  typhon_ephemeros: {
+    typhon_ephemeros: {
+      intro: "Another false container masquerading as the Progenitor Dragon? Fufu... Two anti-grails on the same field will reduce every prayer to zero.",
+      retort: "The ephemeral fruit knows only one master. Let us see whose poison is potent enough to devour the cosmos.",
+      tag: "MIRROR OF THE PROGENITOR DRAGON"
+    },
+    artoria_pendragon: {
+      intro: "The King of Knights... Clinging so desperately to an oath to save a kingdom that was destined to fall. How tragic. Allow me to show you how futile a king's prayer truly is.",
+      retort: "A foul dragon wearing the guise of an inverted grail... My sword was sworn to protect Britain's future, and no curse of yours shall extinguish its light!",
+      tag: "THE KING'S OATH & THE ANTI-GRAIL"
+    },
+    gilgamesh_archer: {
+      intro: "King of Heroes. You hoard treasures and declare yourself the arbiter of human desire, yet you are blind to the rot of fate itself.",
+      retort: "A mere plant playing at being the dragon that once shook Olympus? Know your place, mongrel, before I pin you to the earth with my treasury!",
+      tag: "GOLDEN ARROGANCE & DRACONIC VOID"
+    },
+    jeanne_alter: {
+      intro: "A witch born from an imaginary vengeful prayer... You think your hatred makes you special? You are merely a product of the very wishes I devour.",
+      retort: "Shut up, you overgrown lizard! My flames will burn that rotten fruit right out of your skull!",
+      tag: "DRAGON WITCH VS PROGENITOR DRAGON"
+    },
+    scathach_lancer: {
+      intro: "Immortal gatekeeper of Dún Scáith. You wish for death, do you not? Fufu... What an exquisite wish to deny.",
+      retort: "An Anti-Wish Granter? Hmph. If you cannot grant my death, let us see if your draconic shell can survive my twin spears.",
+      tag: "WISH OF MORTALITY & THE EPHEMERAL FRUIT"
+    },
+    artoria_caster: {
+      intro: "The Child of Prophecy... Bearing the hopes of a dying world on fragile little shoulders. Every step of your pilgrimage is a curse waiting to rot.",
+      retort: "Y-You're terrifying... but I didn't ring all those bells just to let a dragon eat everyone's hopes! Around Caliburn!",
+      tag: "PILGRIMAGE OF HOPE VS DRAGON GRAIL"
+    },
+    lucia_lyozes: {
+      intro: "High Elf of the Closed Door. You despise otherworlders and cheats, yet you fight alongside mortals who pray for miracles every day.",
+      retort: "I do not fight for miracles; I fight with five-second precision. Your draconic mass changes nothing—black iron pierces dragons just the same.",
+      tag: "PRESCIENT BLACK LANCE VS INVERTED DRAGON"
+    },
+    luvria_greenharte: {
+      intro: "The Strongest Mage. You nullify reality with a flick of your fingers... but can you nullify the very concept of defeat by fate?",
+      retort: "My my! What a magnificently bitter dragon-flower! Shall we test if thy Ephemeral Fruit can survive being unwritten from existence?",
+      tag: "CONCEPT NULLIFICATION VS ANTI-WISH GRAIL"
+    }
   }
 };
 
-// Also alias amamiya, lucia, luvria, edmond, and artoria_caster in the database
+// Also alias amamiya, lucia, luvria, edmond, castoria, and typhon in the database
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['amamiya'] = SERVANT_MATCHUP_DATABASE.amamiya_no_chihaya_tenkohime;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['lucia'] = SERVANT_MATCHUP_DATABASE.lucia_lyozes;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['luvria'] = SERVANT_MATCHUP_DATABASE.luvria_greenharte;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['edmond'] = SERVANT_MATCHUP_DATABASE.edmond;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['castoria'] = SERVANT_MATCHUP_DATABASE.artoria_caster;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['typhon'] = SERVANT_MATCHUP_DATABASE.typhon_ephemeros;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['ephemeros'] = SERVANT_MATCHUP_DATABASE.typhon_ephemeros;
 
 /**
  * Fallback generator for custom servants, meme servants, or any servant pairs not explicitly defined.

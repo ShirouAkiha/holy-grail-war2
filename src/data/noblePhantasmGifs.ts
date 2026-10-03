@@ -120,6 +120,16 @@ export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: 
     gifUrl: 'https://ella.janitorai.com/media-approved/v4h_m7mQL9PwjTmQb_7fg.gif',
     fallbackGif: 'https://ella.janitorai.com/media-approved/v4h_m7mQL9PwjTmQb_7fg.gif',
     chant: 'I have seen your sort before. You gather your miracles, call yourself chosen, and play at being God. In five seconds... none of your cheats will save you. Black Lance—Apocrypha Terminus!'
+  },
+  'Typhon Ephemeros': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/WueTnw4QfurHe53DsTV-z.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/WueTnw4QfurHe53DsTV-z.gif',
+    chant: 'Drink deep of the ephemeral fruit... Reverse the cosmos, hollow the stars! Dragon Grail that Reverses the Void!'
+  },
+  'Typhon': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/WueTnw4QfurHe53DsTV-z.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/WueTnw4QfurHe53DsTV-z.gif',
+    chant: 'Drink deep of the ephemeral fruit... Reverse the cosmos, hollow the stars! Dragon Grail that Reverses the Void!'
   }
 };
 

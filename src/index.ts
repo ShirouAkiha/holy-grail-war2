@@ -264,16 +264,18 @@ export async function registerSlashCommands() {
     const names = Array.from(commands.keys()).map(n => `/${n}`).join(', ');
     console.log(`🔄 Registering ${commandData.length} Slash Commands with Discord [${names}]...`);
     
-    // If DISCORD_GUILD_ID is provided, register commands immediately to that specific test server.
-    // (Guild commands update instantly, whereas global commands can take up to an hour to cache).
+    // 1. Always register globally so ALL servers (new & old) get the slash commands
+    await rest.put(Routes.applicationCommands(clientId), { body: commandData });
+    console.log(`✅ Successfully registered ${commandData.length} global application commands (Available across all servers).`);
+    
+    // 2. If DISCORD_GUILD_ID is provided in .env, also register directly to that guild for 0-second instant updates in dev
     if (guildId) {
-      await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commandData });
-      console.log(`✅ Successfully registered ${commandData.length} commands to Guild [${guildId}] (Instant availability).`);
-    } else {
-      // Otherwise, register globally to all servers where the bot is installed.
-      await rest.put(Routes.applicationCommands(clientId), { body: commandData });
-      console.log(`✅ Successfully registered ${commandData.length} global application commands.`);
-      console.log('💡 Note: Global commands can take up to 1 hour to propagate. Add DISCORD_GUILD_ID to .env for 0-second instant updates, then press Ctrl+R in Discord.');
+      try {
+        await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commandData });
+        console.log(`✅ Successfully registered ${commandData.length} commands to Guild [${guildId}] for instant availability.`);
+      } catch (gErr) {
+        console.warn(`⚠️ Guild-specific command registration notice:`, gErr);
+      }
     }
   } catch (error) {
     console.error('❌ Failed to register slash commands:', error);

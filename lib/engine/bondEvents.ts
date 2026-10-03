@@ -3378,6 +3378,200 @@ export const JEANNE_ALTER_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const TYPHON_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'typhon_bond_event_1',
+    servantTemplateId: 'typhon_ephemeros',
+    requiredBondLevel: 1,
+    title: "The Ephemeral Roost & Scalding Tea",
+    subtitle: "Bond Level 1 Interlude: Typhon Ephemeros",
+    description: "Typhon inspects your humble tatami base of operations and issues a venomous warning about the price of making wishes.",
+    rewardBondExp: 150,
+    rewardSaintQuartz: 3,
+    unlockedQuoteId: 'typhon_bond_line_1',
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: 'Typhon',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: 'Hmph. Look at this humid little island. You drag the supreme calamity across the cosmos, and your base of operations is a dusty room with tatami mats? You really have no sense of decorum, do you, anta?',
+        choices: [
+          {
+            id: 'c1_choice1',
+            text: 'It has good leylines. Practicality comes first.',
+            response: "Practicality? To force a cosmic-class weapon into a shoebox for 'tactical advantage' is sheer insolence. A dragon requires a proper roost, not an oversized storage closet.",
+            bondExpGain: 120,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_choice2',
+            text: 'Sorry. Should I order some sweets to make up for it?',
+            response: "A-A bribe? Don't think honey-glazed treats can purchase my forgiveness so easily! ...Though you'd better order three boxes, or I might accidentally incinerate the roof.",
+            bondExpGain: 150,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_choice3',
+            text: "You're free to remodel it if you have the energy.",
+            response: "Hah! Give me ten seconds and this whole district becomes an active volcanic caldera with atmospheric sulfur. Unless you want your lungs melting, don't tempt me.",
+            bondExpGain: 130,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_2'
+          }
+        ]
+      },
+      {
+        id: 'scene_2',
+        speakerName: 'Typhon',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Well, whatever. Since you're my contractor, I suppose I can lower myself to hear your desires. Go on, spit it out. What is it you came to this ridiculous ritual to obtain?",
+        choices: [
+          {
+            id: 'c2_choice1',
+            text: 'I want to survive this war and go home safely.',
+            response: "Hehehe... 'Survival.' What a sweet, fragile little prayer. You know, if I grant that, you might just survive by watching everyone and everything around you turn to ash first.",
+            bondExpGain: 130,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_choice2',
+            text: 'I want absolute victory and the Holy Grail.',
+            response: 'A standard, greedy ambition. Victory is so easy to twist into ruin. You obtain the gold cup, and it drowns your entire lineage in molten curses. How utterly delightful.',
+            bondExpGain: 140,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_choice3',
+            text: "I haven't decided yet. What would you do?",
+            response: "Asking me? Are you an idiot? If I took the Grail, I'd rewrite the crust until humanity is reduced to pleasant, quiet carbon footprints under my claws.",
+            bondExpGain: 150,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_3'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Typhon',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Don't look at me like I'm a monster, either. I am merely the mirror that answers prayers. The world cries out for salvation, and the universe provides an ending. It's perfectly fair, wouldn't you say?",
+        choices: [
+          {
+            id: 'c3_choice1',
+            text: 'That sounds less like a wish-granter and more like a curse.',
+            response: 'Sinful it is, blameworthy it is, evil it is... Words mortals invent when cause meets consequence. You ask for warmth, you receive a supernova. The math is spotless.',
+            bondExpGain: 140,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_choice2',
+            text: "Is that why you're a Pretender, and not a standard Dragon?",
+            response: "...Tch. Don't pry into my interior structure with that insolent look. Whether I am the beast's frame or the fruit's rot, I am the one standing here holding your leash.",
+            bondExpGain: 150,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_choice3',
+            text: 'You enjoy watching people regret their choices, don’t you?',
+            response: "Fufu, naturally! Watching a mortal beam with joy right before the foundation collapses under them is the finest theater in the cosmos. It's the peak of comedy!",
+            bondExpGain: 150,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_4'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Typhon',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: 'Which is why you should consider yourself warned, anta. I am listening to every whisper out of your mouth. The moment you genuinely beg me for a miracle, your fate is sealed.',
+        choices: [
+          {
+            id: 'c4_choice1',
+            text: "Then I won't ask for miracles. We fight on our own terms.",
+            response: 'A mortal relying on grit instead of draconic grace? How hopelessly stubborn. Fine, struggle all you want—it just makes the eventual collapse sweeter.',
+            bondExpGain: 150,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_choice2',
+            text: 'What if I wish for your happiness instead?',
+            response: 'W-Wha—?! My happiness?! Are you insane?! If you wish that, my inversion will probably crash a satellite into my own head! Take it back! Take it back this instant, idiot!',
+            bondExpGain: 200,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_choice3',
+            text: 'You sound almost worried about me.',
+            response: "W-Worried?! Who's worried about a flimsy little biped?! If you drop dead, I just lose my mana supply and have to go back to sleeping in the void! Don't flatter yourself!",
+            bondExpGain: 175,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_5'
+          }
+        ]
+      },
+      {
+        id: 'scene_5',
+        speakerName: 'Typhon',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: 'H-Hmph! Enough of this nonsense! The evening chill is setting in, and this body dislikes sub-optimal temperatures. Go brew tea, Master. And it better be scalding.',
+        choices: [
+          {
+            id: 'c5_choice1',
+            text: 'Right away, your majesty.',
+            response: 'Good! At least you remember your place. Bring two cups—it would be a waste to drink alone in such a depressing room.',
+            bondExpGain: 150,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_6_a'
+          },
+          {
+            id: 'c5_choice2',
+            text: 'Only if you promise not to vaporize the kitchen.',
+            response: 'I make no promises! If the kettle offends me, it dies. Now hurry up before I change my mind about sparing the local block!',
+            bondExpGain: 140,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_6_b'
+          },
+          {
+            id: 'c5_choice3',
+            text: "Make it yourself, you're the one with the dragon core furnace.",
+            response: "The audacity! Forcing the ancient terror of Olympus to boil tap water?! ...Fine, but I'm using your finest leaves, and you're cleaning the table!",
+            bondExpGain: 175,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_6_c'
+          }
+        ]
+      },
+      {
+        id: 'scene_6_a',
+        speakerName: 'Typhon',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: 'Good! At least you remember your place. Bring two cups—it would be a waste to drink alone in such a depressing room.'
+      },
+      {
+        id: 'scene_6_b',
+        speakerName: 'Typhon',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: 'I make no promises! If the kettle offends me, it dies. Now hurry up before I change my mind about sparing the local block!'
+      },
+      {
+        id: 'scene_6_c',
+        speakerName: 'Typhon',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "The audacity! Forcing the ancient terror of Olympus to boil tap water?! ...Fine, but I'm using your finest leaves, and you're cleaning the table!"
+      }
+    ]
+  }
+];
+
 /**
  * Registry of all available curated bond events by servant template ID.
  */
@@ -3425,7 +3619,10 @@ export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
   umu: NERO_BOND_EVENTS,
   artoria_caster: ARTORIA_CASTER_BOND_EVENTS,
   castoria: ARTORIA_CASTER_BOND_EVENTS,
-  altria_caster: ARTORIA_CASTER_BOND_EVENTS
+  altria_caster: ARTORIA_CASTER_BOND_EVENTS,
+  typhon_ephemeros: TYPHON_BOND_EVENTS,
+  typhon: TYPHON_BOND_EVENTS,
+  ephemeros: TYPHON_BOND_EVENTS
 };
 
 /**
@@ -4391,6 +4588,73 @@ export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
       requiredBondLevel: 5,
       quoteText: "I won't run away anymore! Even if my knees are shaking, I'll stand right in front of you and forge the sacred light! The promised star which gathers the true round—Round of Avalon!"
     }
+  ],
+  typhon_ephemeros: [
+    {
+      id: 'typhon_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: "Pretender, Typhon Ephemeros. The ephemeral fruit that rots the dragon's wishes... Hmph. You look far too soft to wield a calamity like me. Don't go crying when your prayers bring ruin."
+    },
+    {
+      id: 'typhon_bond_line_1',
+      title: 'Bond 1: The Ephemeral Roost',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: "To force a cosmic-class weapon into a dusty room with tatami mats is sheer insolence. If you want my cooperation, you'd better supply sweet bribes and keep the tea scalding."
+    },
+    {
+      id: 'typhon_bond_2',
+      title: 'Bond 2: Anti-Wish Granter',
+      category: 'bond_2',
+      requiredBondLevel: 2,
+      quoteText: "I am the mirror that answers prayers. Mortals beg for warmth, and I offer a supernova. The moment you genuinely beg me for a miracle, your fate is sealed, Master."
+    },
+    {
+      id: 'typhon_bond_3',
+      title: 'Bond 3: Bitter Taste',
+      category: 'bond_3',
+      requiredBondLevel: 3,
+      quoteText: "The Moirai thought they could bound me with an ephemeral fruit. In the end, the fruit became the beast, and the beast became the curse. An exquisite joke of destiny, isn't it?"
+    },
+    {
+      id: 'typhon_bond_4',
+      title: 'Bond 4: Dragonforge Flame',
+      category: 'bond_4',
+      requiredBondLevel: 4,
+      quoteText: "You keep standing right beside me even knowing my flames harbor curses... How hopelessly stubborn. Fine, struggle all you want—it just makes watching you prevail slightly less boring."
+    },
+    {
+      id: 'typhon_bond_5',
+      title: 'Bond 5: Dragon Grail that Reverses the Void',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: "Hear the proclamation of ruin, the dragon that forced Olympus to its knees! Dragon Grail that Reverses the Void! Let this become a prayer—and burn all stars to ash!"
+    }
+  ],
+  typhon: [
+    {
+      id: 'typhon_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: "Pretender, Typhon Ephemeros. The ephemeral fruit that rots the dragon's wishes... Hmph. You look far too soft to wield a calamity like me. Don't go crying when your prayers bring ruin."
+    },
+    {
+      id: 'typhon_bond_line_1',
+      title: 'Bond 1: The Ephemeral Roost',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: "To force a cosmic-class weapon into a dusty room with tatami mats is sheer insolence. If you want my cooperation, you'd better supply sweet bribes and keep the tea scalding."
+    },
+    {
+      id: 'typhon_bond_5',
+      title: 'Bond 5: Dragon Grail that Reverses the Void',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: "Hear the proclamation of ruin, the dragon that forced Olympus to its knees! Dragon Grail that Reverses the Void! Let this become a prayer—and burn all stars to ash!"
+    }
   ]
 };
 
@@ -5236,6 +5500,42 @@ export function getServantGiftReaction(
         responseText: "An ancient warding relic... It's sturdy. I'll fix this onto the inner brace of my tower shield. Thanks for having my back, Master.",
         emotion: 'thoughtful'
       }
+    },
+    typhon_ephemeros: {
+      chaldea_tea: {
+        responseText: "Scalding hot black tea... Acceptable. At least you didn't insult me with cold water. Go fetch some honey sweets to go with it, Master.",
+        emotion: 'thoughtful'
+      },
+      heroic_feast: {
+        responseText: "An entire banquet? Don't flatter yourself thinking food can sate a dragon's hunger... *takes a bite* ...Hmph. The seasoning is decent. I'll let the city stand for another day.",
+        emotion: 'amused'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple of divine origin? The mana tastes crisp, though nowhere near as sweet as watching mortals despair. I'll consume it nonetheless.",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "A sacred relic that answers holy prayers? In my hands, it merely converts divine grace into a vortex of cosmic cinders. An amusing gift, Master.",
+        emotion: 'amused'
+      }
+    },
+    typhon: {
+      chaldea_tea: {
+        responseText: "Scalding hot black tea... Acceptable. At least you didn't insult me with cold water. Go fetch some honey sweets to go with it, Master.",
+        emotion: 'thoughtful'
+      },
+      heroic_feast: {
+        responseText: "An entire banquet? Don't flatter yourself thinking food can sate a dragon's hunger... *takes a bite* ...Hmph. The seasoning is decent. I'll let the city stand for another day.",
+        emotion: 'amused'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple of divine origin? The mana tastes crisp, though nowhere near as sweet as watching mortals despair. I'll consume it nonetheless.",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "A sacred relic that answers holy prayers? In my hands, it merely converts divine grace into a vortex of cosmic cinders. An amusing gift, Master.",
+        emotion: 'amused'
+      }
     }
   };
 
@@ -5441,6 +5741,14 @@ export function getServantSparringDebrief(
     edmond: {
       responseText: "Solid stance, Master! Your center of gravity held firm even when I leaned into that shield-bash. Keep that up and not even an abyssal minotaur will knock you over.",
       emotion: 'happy'
+    },
+    typhon_ephemeros: {
+      responseText: "Hah! You barely avoided having your eyebrows vaporized by my cinder exhaust! If you want to survive a single skirmish against Heroic Spirits, keep your footwork twice as sharp!",
+      emotion: 'amused'
+    },
+    typhon: {
+      responseText: "Hah! You barely avoided having your eyebrows vaporized by my cinder exhaust! If you want to survive a single skirmish against Heroic Spirits, keep your footwork twice as sharp!",
+      emotion: 'amused'
     }
   };
 

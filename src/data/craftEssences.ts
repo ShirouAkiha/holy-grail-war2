@@ -685,6 +685,42 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     isBondCe: true,
     bondServantId: 'artoria_caster',
     bondServantName: 'Artoria Caster'
+  },
+  typhon_ephemeros: {
+    id: 'ce_bond_typhon_ephemeros',
+    name: 'The Ephemeral Fruit of Moirai',
+    rarity: 4,
+    description: 'The cursed fruit offered by the goddesses of fate. A trick of destiny that sealed the Progenitor Dragon, turning boundless strength into an inverted anti-grail that burns desires into ash.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to Typhon Ephemeros: Increases own NP damage by 30% and grants self Buff-On-Attack (When normal attacking: Increases own critical damage by 10% for 3 turns [activates first] and inflicts Curse with 200 damage for 3 turns to self [Demerit]).',
+    passiveType: 'np_damage',
+    passiveValue: 30,
+    artworkUrl: 'https://ella.janitorai.com/media-approved/ooE7jWZ7K8iyxc9WJF21f.webp',
+    isBondCe: true,
+    bondServantId: 'typhon_ephemeros',
+    bondServantName: 'Typhon Ephemeros'
+  },
+  typhon: {
+    id: 'ce_bond_typhon_ephemeros',
+    name: 'The Ephemeral Fruit of Moirai',
+    rarity: 4,
+    description: 'The cursed fruit offered by the goddesses of fate. A trick of destiny that sealed the Progenitor Dragon, turning boundless strength into an inverted anti-grail that burns desires into ash.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to Typhon Ephemeros: Increases own NP damage by 30% and grants self Buff-On-Attack (When normal attacking: Increases own critical damage by 10% for 3 turns [activates first] and inflicts Curse with 200 damage for 3 turns to self [Demerit]).',
+    passiveType: 'np_damage',
+    passiveValue: 30,
+    artworkUrl: 'https://ella.janitorai.com/media-approved/ooE7jWZ7K8iyxc9WJF21f.webp',
+    isBondCe: true,
+    bondServantId: 'typhon_ephemeros',
+    bondServantName: 'Typhon Ephemeros'
   }
 };
 
