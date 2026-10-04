@@ -17,7 +17,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Starts battle with 80% NP Gauge filled.',
     passiveType: 'starting_np',
     passiveValue: 80,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/ZfMdFndERcnabvS9WF6UR.webp'
   },
   {
     id: 'ce_black_grail',
@@ -32,7 +32,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Noble Phantasm Damage by 60%, but loses 500 HP each turn.',
     passiveType: 'np_damage',
     passiveValue: 60,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/dSq-fbIbTVHF7WdfsMZb3.webp'
   },
   {
     id: 'ce_formal_craft',
@@ -47,7 +47,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Arts Card effectiveness and NP gain by 25%.',
     passiveType: 'arts_up',
     passiveValue: 25,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/3/3a/CE31.webp/revision/latest?cb=20221009130050'
   },
   {
     id: 'ce_limited_zero_over',
@@ -77,7 +77,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Quick Card effectiveness by 25% and Critical Star generation.',
     passiveType: 'quick_up',
     passiveValue: 25,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/JOKsPympyDeoYPZ30ZNNq.webp'
   },
   {
     id: 'ce_fragment_2030',
@@ -92,7 +92,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Gains 10 Critical Stars every turn automatically.',
     passiveType: 'stars_per_turn',
     passiveValue: 10,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/0/07/CE67.webp/revision/latest?cb=20221009131815'
   },
   {
     id: 'ce_prisma_cosmos',
@@ -107,7 +107,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Regenerates 8% NP Gauge automatically at the start of each combat turn.',
     passiveType: 'np_per_turn',
     passiveValue: 8,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/M7EGMqW8FeegA-Z-LR-xU.webp'
   },
   {
     id: 'ce_volumen_hydragyrum',
@@ -137,7 +137,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Noble Phantasm Damage by 40%.',
     passiveType: 'np_damage',
     passiveValue: 40,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/ktbDIH9F1G8PV71wj5GmO.webp'
   },
   {
     id: 'ce_origin_bullet',

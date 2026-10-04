@@ -23,6 +23,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'static.wikia.nocookie.net',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   webpack: (config, {dev, isServer}) => {
