@@ -2029,7 +2029,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     title: 'Clytie of the Sunflowers',
     servantClass: 'Foreigner',
     rarity: 5,
-    baseHp: 15000,
+    baseHp: 29900,
     baseAtk: 11500,
     baseStats: { strength: 12, endurance: 14, agility: 18, mana: 19, luck: 10 },
     commandDeck: ['Quick', 'Quick', 'Quick', 'Arts', 'Buster'],
