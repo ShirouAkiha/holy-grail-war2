@@ -115,6 +115,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "A king who bears the hopes of Britain must stand unyielding. Show me the strength behind your staff, Child of Selection!",
       retort: "Uwah, please don't look at me with such piercing eyes! I'm really not regal or grand like you at all... but since you called me out, I can't back down now!",
       tag: "THE PROPER KING & THE CHILD OF SELECTION"
+    },
+    van_gogh: {
+      intro: "Your Spirit Origin is agonizingly distorted, Foreigner. To wield such madness for the sake of another requires a terrifying resolve. Show me that strength!",
+      retort: "S-Strength?! I don't have any of that! I'm just a broken vase leaking black paint everywhere! B-But if Master needs me to stop your sword, I'll throw myself right into the blade! Ehehe!",
+      tag: "THE PROMISED LIGHT & THE CURSED BRUSH"
     }
   },
 
@@ -216,6 +221,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "A country bumpkin wielding a walking stick dare cross paths with the King of Heroes? Kneel before you are buried beneath divine steel, girl!",
       retort: "Guh, what an impossibly arrogant jerk! Flaunting all that gold isn't going to make me bow down to you! Staff of Selection, let's blow this peacock away!",
       tag: "GOLDEN VAULT & PILGRIM'S STAFF"
+    },
+    van_gogh: {
+      intro: "A repulsive patchwork of a weeping nymph and a madman's delusions! You dare pollute the King's sight with that grotesque starry sky?! Burn to ash, eldritch weed!",
+      retort: "I-I know I'm an eyesore! I'm the worst kind of counterfeit! B-But my starry night isn't completely worthless, I promise! L-Let me show you... before you turn me into compost!",
+      tag: "GARDEN OF URUK & THE ALIEN WEED"
     }
   },
 
@@ -317,6 +327,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Your guard is wide open and your stance lacks foundation, girl. Show me if your spirit can survive a thrust honed by two thousand years of slaughter.",
       retort: "T-Two thousand years?! That's way too intense! P-Please don't grade my footwork too harshly, master Scáthach—I'm doing everything I can just to stay upright!",
       tag: "SHADOW INSTRUCTOR & STUMBLING APPRENTICE"
+    },
+    van_gogh: {
+      intro: "Your stance is a total mess, dictated by panic and madness rather than martial discipline. Yet, that chaotic frenzy holds a deadly, venomous edge. Let us see if your madness can outpace my spear.",
+      retort: "M-Martial discipline?! I only know how to swing a paintbrush and cry! I-If I start splashing cursed paint everywhere, please don't be mad if it ruins your nice tights! Ehehe!",
+      tag: "QUEEN OF SHADOWS & THE ABYSSAL CANVAS"
     }
   },
 
@@ -393,6 +408,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Artoria... The burden of answering everyone's prayers is heavy, but do not lose heart. Let us share our convictions in this duel.",
       retort: "You're so incredibly kind... It makes me want to cry a little. I'm clumsy and full of doubts, but I'll do everything I can to not disappoint you, Saint Jeanne!",
       tag: "TWO MAIDENS OF DESTINY"
+    },
+    van_gogh: {
+      intro: "Such a heavy, suffocating aura... Van Gogh, you do not need to carry the sins of the cosmos on your own shoulders. Let me purify the curses you've hoarded!",
+      retort: "N-No! Don't purify them! If you wash away my curses, I won't have any power left to protect Master! I-I'm meant to be dirty and sinful, Saint Jeanne! Leave the filth to me!",
+      tag: "THE HOLY MAIDEN & THE DAMNED ARTIST"
     }
   },
 
@@ -489,6 +509,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Out of my way, iron wall! If you stand between me and my quarry, I'll melt that rusty slab right into your chest!",
       retort: "Heh, I've spent years dealing with reckless, stubborn brats throwing magical fits. Plant your boots and roar all you want, witch—this wall isn't moving.",
       tag: "FLAMES OF VENGEANCE VS SCARRED BASTION"
+    },
+    van_gogh: {
+      intro: "Stop stammering and giggling like a broken toy, you gloomy freak! Your creepy little starry night is getting on my nerves—I'm going to burn it until there's nothing left but a blank canvas!",
+      retort: "Ahaha! A-A blank canvas?! That's a painter's worst nightmare! I-I can't let you do that! I'll drown your fire in so much sticky, cursed blue paint that you'll choke on the sky!",
+      tag: "DRAGON'S HELLFIRE & THE OUTER MADNESS"
     }
   },
 
@@ -560,6 +585,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Cataclysmic draconic sovereign from outer sector Lyozes. Target spiritual density exceeds galactic charts. Full overload engaged!",
       retort: "⟨ Voth zul Krav'nok! ⟩ Oh? A tiny dark creature buzzing like a cosmic wasp. Let me petrify you into black glass.",
       tag: "SERVANT UNIVERSE VS LYONIAN DRAGON"
+    },
+    van_gogh: {
+      intro: "Foreigner-class entity detected. Hostile Outer God influence confirming... Executing Anti-Abyss protocol. Prepare to be pruned from this sector, cursed painter.",
+      retort: "Eep! S-Space police?! I didn't ask to be possessed by an evil flower god, I swear! I-I'll share my sunflower seeds with you if you just let me go! Ehe... they're mildly cursed, but very crunchy!",
+      tag: "COSMIC HUNTER & ELDRITCH TARGET"
     }
   },
 
@@ -656,6 +686,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "No fortress holds against Excalibur. If you insist on playing the unyielding wall, I will shatter you into the bedrock.",
       retort: "That blackened blade carries a ridiculous amount of mana... but I've held off worse. Bring it on! This shield doesn't care how heavy your resentment is!",
       tag: "TYRANT'S CALIBURN VS SCARRED REDOUBT"
+    },
+    van_gogh: {
+      intro: "Your incessant whimpering is giving me a headache. If you loathe yourself that much, Foreigner, I will gladly sever your head and end your pathetic whining.",
+      retort: "Eep! S-So cold and mean! I-I'd love to just curl up and wither away, really I would, but I still have a canvas to finish! D-Don't chop my head off, I need my eyes to see the colors!",
+      tag: "TYRANT'S WRATH & THE WEEPING FLOWER"
     }
   },
 
@@ -727,6 +762,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Umu?! What a magnificent, awe-inspiring draconic sovereign! That azure-magenta aura is breathtaking! Are you a guest star from the stars?!",
       retort: "⟨ Krav'nok zhal. ⟩ A small red creature screaming compliments. Irritatingly loud, yet cute... I will crush you gently into obsidian glass.",
       tag: "EMPEROR'S AUDIENCE WITH THE DRAGON"
+    },
+    van_gogh: {
+      intro: "Umu! What a delightfully eccentric artist! But your colors are far too gloomy! Rome demands brilliance, passion, and joy! Allow me to show you how a true emperor paints the battlefield!",
+      retort: "J-Joy?! There is no joy in these brushstrokes, only pain and missing ears and alien gods trying to eat my brain! Ehehe! Y-Your bright red is too loud for my fragile little head!",
+      tag: "IMPERIAL PASSION & TORTURED GENIUS"
     }
   },
 
@@ -825,6 +865,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Looking at my own face never gets any easier. Tell me... how many more people did you kill before you realized it was all meaningless?",
       retort: "I stopped counting a long time ago. If you want to put an end to this pathetic existence, you'd better make sure your projection doesn't shatter first.",
       tag: "MIRROR OF THE WROUGHT IRON"
+    },
+    van_gogh: {
+      intro: "Sucking up curses and hoarding everyone's pain just to force out your Noble Phantasm... That's a sickeningly self-destructive way to fight, painter.",
+      retort: "Ahaha... ahahaha! But it's the only thing a fake like me is good for! If I don't recycle the garbage, what excuse do I have to exist?! Get it? Re-cycle?! Ehe... eh... please don't look at me with those pitying eyes...",
+      tag: "THE PRAGMATIST & THE MASOCHIST"
     }
   },
 
@@ -921,6 +966,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "■■■■■■■■■■■■———!!",
       retort: "■■■■■■■■■■■■———!! (An identical shockwave of sound and bloodlust that splits the earth beneath their feet.)",
       tag: "COLLISION OF TWO TITANS"
+    },
+    van_gogh: {
+      intro: "■■■■■■■■■■■■———!!",
+      retort: "HIIII! H-He's not even speaking, he's just pure, unfiltered violence! P-Please, Mr. Demigod, I'm already crushed under the weight of my own sins, I don't need a giant stone slab to flatten me too!",
+      tag: "MOUNTAIN BREAKER & SHIVERING PETALS"
     }
   },
 
@@ -1017,6 +1067,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Ha! Staring down my own ugly mug? Well, there's only room for one blue hound on this battlefield. Let's see who's got the sharper fangs!",
       retort: "Tch, don't get cocky just because you wear the same face! May the fastest thrust win, brother—don't die on the first pass!",
       tag: "DOG EAT DOG"
+    },
+    van_gogh: {
+      intro: "Man, the mana rolling off you is absolutely disgusting. I've fought sea monsters and death goddesses, but that squirming cosmic flower stuff gives me the creeps! Let's make this quick!",
+      retort: "I'm sorry! I'm sorry my mana is creepy! I'll try to keep the tentacles tucked away, I swear! B-But if you poke me with that red spear, they might just burst out anyway! Ehe... ehehe...",
+      tag: "HOUND OF ALBA & THE ELDRITCH FLORA"
     }
   },
 
@@ -1088,6 +1143,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "An ancient sovereign dragon predating mortal civilization... The sun watches over all existence; I shall stand as its defender.",
       retort: "⟨ Voth Krav'nok. ⟩ Such a bright little flame. I have incinerated entire star clusters with Ixenor's breath—you are merely a candle.",
       tag: "SOLAR DEVOTION VS COSMIC PRUNER"
+    },
+    van_gogh: {
+      intro: "You weep beneath the shadow of a sun that never answers you. Do not let that ancient rejection bind your heart, painter. Your current loyalty shines brightly enough.",
+      retort: "D-Don't! Don't be kind to me! If you look at me with that warm, blinding light, the Clytie inside me is going to start crying all over again, and I'll ruin the painting! Ahhh, the yellow is melting!",
+      tag: "THE COMPASSIONATE SUN & THE BROKEN HELIOTROPE"
     }
   },
 
@@ -1164,6 +1224,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "⟨ Hear me, Greenharte... ⟩ The mortal who denies death, space, and magic itself. My celestial dragon flames acknowledge no laws. Stand firm against the breath of Ixenor!",
       retort: "Verily, a greeting worthy of a world-pruning calamity! Concept Nullification: Heat and Impact! Come, great dragon, show this 140-year-old mage the fury of the ancients!",
       tag: "SOVEREIGNS OF CALAMITY"
+    },
+    van_gogh: {
+      intro: "⟨ Krav'nok rath. ⟩ A disgusting alien spore clinging to the fabric of this world. Your roots are rotting, little flower. I will incinerate you before you spread.",
+      retort: "I-I know I'm rotting! You don't have to announce it to everyone with your big, scary dragon voice! B-But even a rotting flower can leave a nasty stain! Let's see if your scales can handle abstract expressionism!",
+      tag: "PRIMORDIAL STAR-DRAGON & THE PARASITIC BLOOM"
     }
   },
 
@@ -1205,6 +1270,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Hey, green-haired hero! If you think you can just 'nullify' the Fifth Magic, you've got another thing coming! Magic Gunner, full throttle!",
       retort: "Such fiery enthusiasm! Let us trade incantations, Magician! Pyre, Gale, and Nullification—converge!",
       tag: "CLASH OF EXTRAORDINARY SORCERY"
+    },
+    van_gogh: {
+      intro: "Yikes, that is one seriously messed-up spiritual core you've got there! But standing around feeling sorry for yourself won't fix it! Brace yourself, Gogh—I'm going to blast that gloom right out of you!",
+      retort: "B-Blast it out of me?! If you hit me with that blue magic, I'll shatter into a million little pieces! Ahaha! W-Wait, maybe that wouldn't be so bad... No, Master would be sad! I have to dodge!",
+      tag: "THE FIFTH MAGIC & THE OUTER ABYSS"
     }
   },
 
@@ -1311,6 +1381,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Kyuuu?! What a giant tiger warrior! Thy shield looks like a boulder sliced straight from Mount Ossuaron! Washi will slice right around it!",
       retort: "Hahaha! You're quick, kid, but the earth doesn't move so easily. Come on, show me what those nine tails can do!",
       tag: "SACRED SHRINE GUARDIAN VS GUARDIAN OF EBONWATCH"
+    },
+    van_gogh: {
+      intro: "H-Hii! Such thick, gooey, terrifying curses clinging to thy soul! Washi cannot allow such foulness near the shrine! Stand still, thou weeping artist, and let washi exorcise thee!",
+      retort: "Don't exorcise me! If you pull Vulthoom out of me, there won't be enough of Clytie or Vincent left to hold a paintbrush! L-Let me keep my curses, pretty fox lady! Ehehe... I need them to function!",
+      tag: "SACRED PURIFICATION & ELDRITCH CURSES"
     }
   },
   lucia_lyozes: {
@@ -1423,6 +1498,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Edmond. You know I don't hold back, even against my own shield. Plant your stance, or I'll spear right through your guard.",
       retort: "Lucia! You're really going to make the vanguard spar against the leader? Alright, but don't blame me if this tower shield knocks you off balance!",
       tag: "THE UNNAMED HERO PARTY: SHIELD & SPEAR"
+    },
+    van_gogh: {
+      intro: "A fighting style completely devoid of reason... Even seeing your next move five seconds ahead, your strikes are so frantic and self-destructive it makes countering dangerous. Steady yourself, Foreigner!",
+      retort: "I-I'm sorry my movements are messy! I'm just swinging wildly because I'm absolutely terrified! Ehe... ehehe! If you know what I'm going to do, can you please just gently knock me out?!",
+      tag: "FIVE-SECOND FORESIGHT & UNPREDICTABLE CHAOS"
     }
   },
 
@@ -1550,6 +1630,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Edmond! You promised extra honey pastries if I behaved today! Don't make me erase the ground under that giant shield!",
       retort: "Luvria! Playtime's over, kid! Put that staff down before you blow up the camp kitchen again!",
       tag: "FAMILY OF EBONWATCH: FATHERLY SHIELD VS THE HERO"
+    },
+    van_gogh: {
+      intro: "A composite phantom anchored by an Outer God's malice! How wonderfully complex! I wonder, little artist... what happens to your beautiful tragedy if I simply erase the concept of 'madness'?",
+      retort: "E-Erase my madness?! But then I'd just be a sad, boring water nymph who stared at the sun until she died! The madness is the only thing keeping the canvas together! D-Don't take my colors away!",
+      tag: "CONCEPT NULLIFICATION & THE OUTER GOD'S VESSEL"
     }
   },
 
@@ -1776,6 +1861,11 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       intro: "Another scarred tiger with a red scarf and a heavy shield? Guess there's two of us who refuse to let our family die!",
       retort: "Let's see who holds the true line, then. One shield stands, one shield falls!",
       tag: "REDOUBT OF THE DUAL TIGERS"
+    },
+    van_gogh: {
+      intro: "You look like you're about to fall apart before I even raise my shield. Look, kid, if you can't handle the frontline, fall back. I'll take the hits so you don't have to keep hurting yourself.",
+      retort: "N-No! I have to be the one to get hurt! If I don't absorb the curses and take the damage, I'm completely useless! P-Please, Mr. Shield, let me suffer! It's the only way I know how to help! Ehehe!",
+      tag: "THE FRAGILE ARTIST & THE IRON BASTION"
     }
   },
 
@@ -1923,10 +2013,111 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       retort: "My my! What a magnificently bitter dragon-flower! Shall we test if thy Ephemeral Fruit can survive being unwritten from existence?",
       tag: "CONCEPT NULLIFICATION VS ANTI-WISH GRAIL"
     }
+  },
+
+  // =========================================================================
+  // 19. VAN GOGH (FOREIGNER)
+  // =========================================================================
+  van_gogh: {
+    van_gogh: {
+      intro: "N-No... nonono! Another imposter?! Another fake Gogh-chan standing there giggling?! Looking at you is like looking into a cracked mirror smeared with yellow bile! Which one of us is the bigger failure?! Ehehe... AHAHAA!",
+      retort: "Two sunflowers staring at a sun that isn't even there... Ehehe... It's double the Gogh, double the woe! If there are two of us, Master will definitely throw us both in the incinerator! Let's wipe each other clean off the canvas!",
+      tag: "THE CLONED CANVAS: TWIN STARRY NIGHTS"
+    },
+    artoria_pendragon: {
+      intro: "A-A king so dazzling and clean... I'm so sorry! Someone as filthy and counterfeit as Gogh-chan shouldn't be breathing the same air as your holy sword! Ehe... ehehe... but I promised Master I wouldn't run away!",
+      retort: "Your spirit origin is wrapped in heavy sorrow and alien darkness... Yet you raise your brush to protect someone precious. Steady your stance, painter—I will not strike a trembling heart without cause!",
+      tag: "THE RADIANT CROWN & THE TWISTED SUNFLOWER"
+    },
+    gilgamesh_archer: {
+      intro: "S-So much gold... it hurts to look at! It's like... like staring straight at the sun that abandoned me! Ahaha... gold and Gogh, we sound a bit alike, don't we? S-Sorry, that was a terrible joke, please don't impale me!",
+      retort: "An ink-stained nymph stitched together with a mad painter's rot? What an unsightly blot upon creation! Crawl back into the abyssal void, mongrel, before my light burns your canvas to ash!",
+      tag: "VAULT OF ORIGINAL SPLENDOR & THE CRACKED CANVAS"
+    },
+    emiya_archer: {
+      intro: "You smell like burnt metal and regret... You know, don't you? What it feels like when every stroke of the brush just screams: 'You're a fake! You're a fake!' Ehehe... ahahaha... it never washes out, does it?",
+      retort: "I know that self-loathing better than anyone. But drowning in your own curse won't paint a better tomorrow. Put down the chisel, girl—or let me show you how a real fake survives.",
+      tag: "TWO COUNTERFEIT SOULS"
+    },
+    artoria_pendragon_alter: {
+      intro: "Black... pure, thick black mud... It looks like a palette covered in wet tar! A-Are you angry because I'm an imposter? Everyone gets angry at me eventually... Ehehe... I'm ready to be stepped on!",
+      retort: "Stop that repulsive groveling. If you intend to stand on a battlefield, paint with blood instead of tears. Step forward and let Excalibur Morgan cut your misery short.",
+      tag: "BLACK PITCH & SWIRLING STARRY NIGHT"
+    },
+    cu_chulainn_lancer: {
+      intro: "A-A hound! A fierce, grinning red dog! D-Don't bite me, please! Sunflowers don't taste good at all, they're mostly bitter seeds and alien mud! Ehe... ehehe... a thorny situation, right?!",
+      retort: "Whoa, take a breath, kid! You're shaking so hard your paint is flying everywhere. Look, I don't usually enjoy roughing up gloomy little girls, but if that cosmic creep behind you starts twitching, I won't hold back!",
+      tag: "CRIMSON THORN & WITHERING FLOWER"
+    },
+    heracles_berserker: {
+      intro: "Hiii—! G-Greek myth! A real divine hero of Olympus! He looks so strong, and I'm just a water nymph who withered away like an idiot... A-Ahaha... please don't crush my skull into pigment!",
+      retort: "■■■■■■■■■■■■———!!",
+      tag: "THE TITAN'S WRATH & ALIEN BLIGHT"
+    },
+    karna_lancer: {
+      intro: "The sun... No, no, no, don't look at me with those burning eyes! Apollo... Surya... it doesn't matter! Every time I look up at the sun, I just shrivel up and die! S-Stay away! Don't scorch my petals!",
+      retort: "You look upon my flame with both adoration and agonizing terror. Poor flower... I am not the god who abandoned you. Yet if my light brings you only pain, I shall pierce the nightmare that binds you.",
+      tag: "THE BLINDING SUN & THE SPURNED HELIOTROPE"
+    },
+    scathach_lancer: {
+      intro: "You... you rule the Land of the Shadows, right? C-Can people who die by their own hand enter your kingdom? Or are wretched little mistakes like me barred at the door?! Ehehe... maybe you can pierce my heart just to check?!",
+      retort: "A soul fragmented across two tragedies, drowning in borrowed madness. You crave the peace of the grave, yet your hands desperately clutch the brush to live. Show me which desire cuts deeper, girl.",
+      tag: "GATE OF THE DEAD & THE SUICIDE'S RESENTMENT"
+    },
+    jeanne_darc_ruler: {
+      intro: "A saint... so pure, so holy... Vincent was a pastor once, you know? He wanted to save people with God's word, but he failed! And Clytie sinned out of petty jealousy! We're both damned, Saint Jeanne... damned, damned, damned!",
+      retort: "The Lord does not turn away from those who weep in the dark, Van Gogh. Even if an evil god grafted sorrow into your spirit, the love you hold for your Master is entirely real. Let me shelter you from that despair!",
+      tag: "SAINTLY GRACE & THE UNFORGIVABLE SIN"
+    },
+    jeanne_alter: {
+      intro: "You're angry too, aren't you? Screaming and spitting fire because you weren't supposed to exist either! Ahaha... we're both counterfeit dolls made from someone else's dirty wishes! Let's be friends! Let's burn together!",
+      retort: "Who are you calling a counterfeit, you neurotic weed?! Don't you dare lump my glorious fury in with your pathetic, sniveling self-pity! Stop giggling like a psycho before I torch that canvas!",
+      tag: "COUNTERFEIT WRATH & CRACKED DESPAIR"
+    },
+    nero_claudius_saber: {
+      intro: "S-So loud! So bright! An emperor who loves art?! Oh no, please don't look at my sketches, they're messy, the yellow is all sickly, and the perspective is all wrong! I-I'm the worst painter in human history, forgive me!",
+      retort: "Nonsense! Absolute foolishness! Art is passion, agony, and raw soul laid bare upon the canvas! Your swirling stars carry magnificent drama, little maiden! Rome demands you hold your head high and paint with pride!",
+      tag: "THE GOLDEN SUN OF ROME & THE WILTING PETAL"
+    },
+    mhx_alter: {
+      intro: "A visitor from the stars who eats bean paste? Ehe... ehehe... you come from deep space too, right? But your cosmos is all sweet and fluffy... while mine smells like rotting flowers and black holes! Want a sunflower seed instead?!",
+      retort: "Target evaluation: High concentration of void mana. Unstable spiritual wavelength detected. Calming protocol: offering half a sweet bun to soothe emotional instability. ...Commencing emergency engagement.",
+      tag: "COSMIC ENTROPY & SPACE DARKNESS"
+    },
+    adiosa_dragon_envoy: {
+      intro: "V-Vulthoom's cousins are everywhere... That cold, cosmic gravity... it's trying to pluck my petals one by one! B-But I won't let you use this world as compost! I'll paint a sky so thick with curses you'll choke on the stars!",
+      retort: "⟨ Voth Krav'nok. ⟩ A parasitic spore grafted onto the weeping shade of a dead nymph. You are neither flower nor human—merely a twisted knot of rot. Let the void dissolve your brittle sketch.",
+      tag: "COSMIC PRUNING & THE ABYSSAL BLOOM"
+    },
+    aoko_aozaki: {
+      intro: "Red beams... kicking through time itself?! That's not fine art at all, that's just pure, violent vandalism! Ehe... ehehe... though honestly, Vincent smashed a few things in his day too! Please don't blast my remaining ear off!",
+      retort: "Talk about a chaotic spiritual signature! Look, kid, I don't know what kind of eldritch flower god shoved itself into your head, but moping around isn't going to fix it! Let's blast away that gloomy fog with a heavy round!",
+      tag: "FIFTH MAGIC BLAST & ALIEN STAR-STREAMS"
+    },
+    amamiya_no_chihaya_tenkohime: {
+      intro: "A nine-tailed fox goddess! S-So soft, so pristine! But my paint is oily and cursed—if I get too close, I'll stain all nine of your beautiful tails with black mud! S-Stay away, holy beast, I'm bad luck!",
+      retort: "H-Hii! What foul, unearthly miasma is clinging to this weeping maiden?! Washi can sense both divine tears and an unspeakable cosmic curse! Stand still, child, while washi purifies thy twisted roots with sacred foxfire!",
+      tag: "SACRED FOXFIRE & HELLISH HELIOTROPE"
+    },
+    lucia_lyozes: {
+      intro: "You can see five seconds into the future?! Ahaha... ahahaha! What a horrible, agonizing curse! That means you have to see me make five more seconds of terrible mistakes before I even make them! I'm so sorry in advance!",
+      retort: "Your movements are jagged, erratic, and impossible to predict with standard logic... It is like trying to read a sky consumed by madness. Yet behind that erratic brush, I see someone desperate to protect her camp. On guard, Van Gogh.",
+      tag: "FIVE-SECOND FORESIGHT & SWIRLING MADNESS"
+    },
+    luvria_greenharte: {
+      intro: "You can erase concepts?! Really?! Truly?! C-Could you please erase the concept of 'Gogh-chan'?! If I just poof out of existence, nobody will have to deal with my awful jokes or my curses! Please! Do it! Do it now!",
+      retort: "My, what a heart-wrenching plea wrapped in hysterical laughter! To wish for one's own erasure with such desperate joy... How terribly tragic! But an artist's masterpiece cannot simply be erased while its colors still burn, little star!",
+      tag: "CONCEPT NULLIFICATION & THE STARRY NIGHT"
+    },
+    edmond: {
+      intro: "A giant shield that protects everyone... You look like an old tree trunk that won't ever snap. I-I absorb curses, you know! I suck up all the nasty, rotting poison so others don't have to! Can your shield block my self-hatred too?!",
+      retort: "Taking on everyone else's venom until you're ready to burst? That's not being an artist, kid—that's just being an idiot who needs someone to hold the line for her. Step behind me or step up—either way, this wall won't break.",
+      tag: "THE BLEEDING PALETTE & THE SCARRED BASTION"
+    }
   }
 };
 
-// Also alias amamiya, lucia, luvria, edmond, castoria, and typhon in the database
+// Also alias amamiya, lucia, luvria, edmond, castoria, typhon, and van_gogh in the database
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['amamiya'] = SERVANT_MATCHUP_DATABASE.amamiya_no_chihaya_tenkohime;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['lucia'] = SERVANT_MATCHUP_DATABASE.lucia_lyozes;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['luvria'] = SERVANT_MATCHUP_DATABASE.luvria_greenharte;
@@ -1934,6 +2125,8 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['castoria'] = SERVANT_MATCHUP_DATABASE.artoria_caster;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['typhon'] = SERVANT_MATCHUP_DATABASE.typhon_ephemeros;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['ephemeros'] = SERVANT_MATCHUP_DATABASE.typhon_ephemeros;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['gogh'] = SERVANT_MATCHUP_DATABASE.van_gogh;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['clytie'] = SERVANT_MATCHUP_DATABASE.van_gogh;
 
 /**
  * Fallback generator for custom servants, meme servants, or any servant pairs not explicitly defined.
