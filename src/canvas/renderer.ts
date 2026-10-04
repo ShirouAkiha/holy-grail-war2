@@ -32,32 +32,106 @@ export const MINIMAL_VALID_PNG = Buffer.from(
   'base64'
 );
 
+function createMockContext(width = 1200, height = 675): any {
+  const dummyGrad = { addColorStop: () => {} };
+  const baseCtx: any = {
+    canvas: { width, height },
+    createLinearGradient: () => dummyGrad,
+    createRadialGradient: () => dummyGrad,
+    createPattern: () => null,
+    fillRect: () => {},
+    strokeRect: () => {},
+    clearRect: () => {},
+    beginPath: () => {},
+    moveTo: () => {},
+    lineTo: () => {},
+    arc: () => {},
+    arcTo: () => {},
+    ellipse: () => {},
+    rect: () => {},
+    roundRect: () => {},
+    quadraticCurveTo: () => {},
+    bezierCurveTo: () => {},
+    closePath: () => {},
+    stroke: () => {},
+    fill: () => {},
+    save: () => {},
+    restore: () => {},
+    clip: () => {},
+    translate: () => {},
+    rotate: () => {},
+    scale: () => {},
+    transform: () => {},
+    resetTransform: () => {},
+    setTransform: () => {},
+    drawImage: () => {},
+    fillText: () => {},
+    strokeText: () => {},
+    measureText: () => ({ width: 0, actualBoundingBoxAscent: 0, actualBoundingBoxDescent: 0 }),
+    getImageData: () => ({ data: new Uint8ClampedArray(4) }),
+    putImageData: () => {},
+    createImageData: () => ({ data: new Uint8ClampedArray(4) }),
+    setLineDash: () => {},
+    getLineDash: () => [],
+    isPointInPath: () => false,
+    isPointInStroke: () => false,
+    set fillStyle(_: any) {},
+    get fillStyle() { return '#000000'; },
+    set strokeStyle(_: any) {},
+    get strokeStyle() { return '#000000'; },
+    set lineWidth(_: any) {},
+    get lineWidth() { return 1; },
+    set font(_: any) {},
+    get font() { return '10px sans-serif'; },
+    set textAlign(_: any) {},
+    get textAlign() { return 'start'; },
+    set textBaseline(_: any) {},
+    get textBaseline() { return 'alphabetic'; },
+    set shadowColor(_: any) {},
+    get shadowColor() { return 'transparent'; },
+    set shadowBlur(_: any) {},
+    get shadowBlur() { return 0; },
+    set shadowOffsetX(_: any) {},
+    get shadowOffsetX() { return 0; },
+    set shadowOffsetY(_: any) {},
+    get shadowOffsetY() { return 0; },
+    set globalAlpha(_: any) {},
+    get globalAlpha() { return 1; },
+    set globalCompositeOperation(_: any) {},
+    get globalCompositeOperation() { return 'source-over'; },
+  };
+
+  if (typeof Proxy !== 'undefined') {
+    return new Proxy(baseCtx, {
+      get(target, prop) {
+        if (prop in target) return target[prop];
+        if (typeof prop === 'string') {
+          return () => {};
+        }
+        return undefined;
+      },
+      set(target, prop, val) {
+        target[prop] = val;
+        return true;
+      }
+    });
+  }
+  return baseCtx;
+}
+
 function createCanvas(width: number, height: number): any {
   if (canvasModule && typeof canvasModule.createCanvas === 'function') {
-    return canvasModule.createCanvas(width, height);
+    try {
+      return canvasModule.createCanvas(width, height);
+    } catch {
+      // Fall through to mock
+    }
   }
+  const mockCtx = createMockContext(width, height);
   return {
-    getContext: () => ({
-      createLinearGradient: () => ({ addColorStop: () => {} }),
-      fillRect: () => {},
-      beginPath: () => {},
-      moveTo: () => {},
-      lineTo: () => {},
-      quadraticCurveTo: () => {},
-      closePath: () => {},
-      stroke: () => {},
-      fill: () => {},
-      save: () => {},
-      restore: () => {},
-      clip: () => {},
-      drawImage: () => {},
-      fillText: () => {},
-      set fillStyle(_: any) {},
-      set strokeStyle(_: any) {},
-      set lineWidth(_: any) {},
-      set font(_: any) {},
-      set textAlign(_: any) {}
-    }),
+    width,
+    height,
+    getContext: () => mockCtx,
     toBuffer: (_type?: string) => MINIMAL_VALID_PNG
   };
 }
