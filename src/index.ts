@@ -1085,6 +1085,11 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
+      if (interaction.customId === 'ce_list_select_view' || interaction.customId.startsWith('ce_list_')) {
+        await ceCommand.handleCeListInteraction(interaction);
+        return;
+      }
+
       if (interaction.customId === 'select_servant_registry' || interaction.customId.startsWith('select_servant_')) {
         await handleServantsListInteraction(interaction);
         return;
@@ -1368,6 +1373,16 @@ client.on(Events.InteractionCreate, async interaction => {
       // Admin Servant Registry Pagination Controls
       if (btnId.startsWith('aslist_')) {
         await addservantCommand.handleAdminServantListButton(interaction);
+        return;
+      }
+
+      // Craft Essence List Pagination, Filters, and Detail View Controls
+      if (
+        btnId.startsWith('ce_list_') ||
+        btnId.startsWith('ce_view_') ||
+        btnId.startsWith('ce_btn_open_art_')
+      ) {
+        await ceCommand.handleCeListInteraction(interaction);
         return;
       }
 
