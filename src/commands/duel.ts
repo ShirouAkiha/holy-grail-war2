@@ -1541,6 +1541,71 @@ function activateCombatantSkill(
       remainingTurns: 3
     });
     logText = `👑 **${sName}** activated **${skill.name}**! (+20% Party ATK (3T), +30% Special ATK vs Threat/Foreigner/Beast/Calamity (3T))${quoteLine}`;
+  } else if (skill.id === 'blaze_of_etna' || /blaze of etna|armor of ashen/i.test(skill.name)) {
+    // S1: Blaze of Etna - Dragon Prison Manifestation: Armor of Ashen Flames C
+    combatant.activeBuffs.push({
+      name: 'Blaze of Etna (Invincible)',
+      type: 'invincible',
+      value: 100,
+      remainingTurns: 3,
+      remainingHits: 2,
+      isHitCount: true
+    });
+    combatant.activeBuffs.push({
+      name: 'Blaze of Etna (ATK Up)',
+      type: 'buff_atk',
+      value: 20,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: 'Blaze of Etna (Buster Up)',
+      type: 'buster_up',
+      value: 30,
+      remainingTurns: 3
+    });
+    logText = `🔥 **${sName}** activated **${skill.name}**! (Invincibility for 2 attacks (3T), +20% ATK (3T), +30% Buster Up (3T))${quoteLine}`;
+  } else if (skill.id === 'black_wings_a' || /black wings/i.test(skill.name)) {
+    // S2: Black Wings A
+    combatant.activeBuffs.push({
+      name: 'Black Wings (Overcharge +2)',
+      type: 'overcharge_up',
+      value: 2,
+      remainingTurns: 3,
+      remainingHits: 1,
+      isHitCount: true
+    });
+    // Reduce other skill cooldowns by 1
+    combatant.skillCooldowns = combatant.skillCooldowns || {};
+    for (const k of Object.keys(combatant.skillCooldowns)) {
+      const idx = parseInt(k, 10);
+      if (idx !== skillIdx && combatant.skillCooldowns[idx] > 0) {
+        combatant.skillCooldowns[idx]--;
+      }
+    }
+    combatant.activeBuffs.push({
+      name: 'Black Wings (Crit DMG Up)',
+      type: 'crit_dmg',
+      value: 30,
+      remainingTurns: 3
+    });
+    combatant.critStars = Math.min(50, (combatant.critStars || 0) + 15);
+    logText = `🪶 **${sName}** activated **${skill.name}**! (NP Overcharge +2 stages (1 time/3T), Cooldowns -1, +30% Crit DMG (3T), +15 Stars)${quoteLine}`;
+  } else if (skill.id === 'let_this_become_a_prayer_ex' || /let this become a prayer/i.test(skill.name)) {
+    // S3: Let This Become a Prayer EX
+    combatant.npGauge = Math.min(300, combatant.npGauge + 50);
+    combatant.activeBuffs.push({
+      name: 'Let This Become a Prayer (ATK Up)',
+      type: 'buff_atk',
+      value: 20,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: 'Ephemeral Curse [Demerit]',
+      type: 'curse',
+      value: 500,
+      remainingTurns: 3
+    });
+    logText = `🍷 **${sName}** activated **${skill.name}**! (+50% NP Gauge, +20% ATK (3T), [Demerit] Inflicted Curse 500 dmg/turn (3T) to self)${quoteLine}`;
   } else if (skill.effectType === 'buff_atk') {
     const val = skill.value || 35;
     const desc = (skill.description || '').toLowerCase();
@@ -1964,6 +2029,12 @@ function resolveStrike(
     }
   }
 
+  // Servant Passive Skills: Turn-Start (e.g. Progenitor Dragon)
+  const attackerPassives = attacker.passives || [];
+  if (attackerPassives.some(p => p.type === 'progenitor_dragon' || (p.name && p.name.includes('Progenitor Dragon')))) {
+    attacker.npGauge = Math.min(300, attacker.npGauge + 5);
+  }
+
   // Turn-Start Skill Buffs (e.g. After Pure Prayer EX stars per turn)
   const starBuffs = attacker.activeBuffs.filter(b => b.type === 'stars_per_turn');
   const starsFromTurnBuffs = starBuffs.reduce((s, b) => s + b.value, 0);
@@ -2277,7 +2348,14 @@ function resolveStrike(
       const cardTypeScale = npCardType === 'Buster' ? 1.50 : npCardType === 'Quick' ? 0.80 : 1.00;
       const scopeScale = npScope === 'single' ? 1.00 : npScope === 'aoe' ? 0.70 : 0.00;
 
-      const overchargeLevel = attacker.npGauge >= 300 ? 3 : attacker.npGauge >= 200 ? 2 : 1;
+      let ocBonus = 0;
+      const ocIdx = attacker.activeBuffs.findIndex(b => b.type === 'overcharge_up');
+      if (ocIdx >= 0) {
+        ocBonus = attacker.activeBuffs[ocIdx].value || 2;
+        attacker.activeBuffs.splice(ocIdx, 1);
+      }
+      const baseOcLevel = attacker.npGauge >= 300 ? 3 : attacker.npGauge >= 200 ? 2 : 1;
+      const overchargeLevel = Math.min(5, baseOcLevel + ocBonus);
       const isOvercharged = overchargeLevel >= 2;
       const overchargeScale = isOvercharged ? (1.0 + (overchargeLevel - 1) * 0.20) : 1.00;
 
@@ -2438,7 +2516,27 @@ function resolveStrike(
           });
           const targetEffectiveDef = targetOpp.baseDef * oppDefBuff;
 
-          const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * targetClassMult * cardPerfMult * ceNpDmgMult * npStrengthScale * variance);
+          let typhonDebuffScale = 1.0;
+          if (attacker.servant.templateId === 'typhon_ephemeros' || /dragon grail that reverses/i.test(attacker.servant.template.noblePhantasm?.name || '')) {
+            const debuffCount = (attacker.activeBuffs || []).filter(b => ['curse', 'burn', 'poison', 'atk_down', 'def_down', 'stun', 'np_seal', 'skill_seal'].includes(b.type) || b.name.includes('[Demerit]') || b.type.includes('debuff')).length;
+            if (debuffCount > 0) {
+              typhonDebuffScale = 1.0 + Math.min(1.0, debuffCount * 0.10);
+            }
+            targetOpp.activeBuffs.push({
+              name: `${attacker.servant.template.noblePhantasm?.name || 'Dragon Grail'} (Burn)`,
+              type: 'burn',
+              value: 1000,
+              remainingTurns: 5
+            });
+            targetOpp.activeBuffs.push({
+              name: `${attacker.servant.template.noblePhantasm?.name || 'Dragon Grail'} (Spread of Fire)`,
+              type: 'spread_of_fire',
+              value: 100,
+              remainingTurns: 5
+            });
+          }
+
+          const rawNpDmg = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardTypeScale * scopeScale * overchargeScale * typhonDebuffScale * targetClassMult * cardPerfMult * ceNpDmgMult * npStrengthScale * variance);
           let oppDmg = Math.round(Math.max(600, rawNpDmg) * PVP_DAMAGE_MODIFIER) + flatDivinity;
 
           const hitProt = processTargetHitProtection(targetOpp);

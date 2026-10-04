@@ -113,14 +113,14 @@ import { handleRecruitmentInteraction, resumePendingRecruitment, handleWarDmInte
 // ==========================================
 // Prevents bot crashing from unavoidable Discord API timeouts (code 10062 Unknown interaction, 40060, 50027, 10008).
 process.on('unhandledRejection', (reason: any) => {
-  if (reason && (reason.code === 10062 || reason.code === 40060 || reason.code === 50027 || reason.code === 10008 || reason.message?.includes('Unknown interaction'))) {
-    return; // Token expired or acknowledged; ignore silently
+  if (reason && (reason.code === 10062 || reason.code === 40060 || reason.code === 50027 || reason.code === 10008 || reason.code === 50001 || reason.message?.includes('Unknown interaction') || reason.message?.includes('Missing Access'))) {
+    return; // Token expired, channel access denied, or acknowledged; ignore silently
   }
   console.warn('⚠️ Unhandled Promise Rejection:', reason?.message || reason);
 });
 
 process.on('uncaughtException', (err: any) => {
-  if (err && (err.code === 10062 || err.code === 40060 || err.code === 50027 || err.code === 10008 || err.message?.includes('Unknown interaction'))) {
+  if (err && (err.code === 10062 || err.code === 40060 || err.code === 50027 || err.code === 10008 || err.code === 50001 || err.message?.includes('Unknown interaction') || err.message?.includes('Missing Access'))) {
     return;
   }
   console.error('💥 Uncaught Exception:', err);

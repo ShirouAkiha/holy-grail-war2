@@ -416,10 +416,20 @@ function drawFGOSkillIcon(
     ctx.fillText(`${cooldownTurns}T`, cx, cy);
     ctx.shadowBlur = 0;
 
-    // Small Clock icon badge on top left corner
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = 'bold 13px sans-serif';
-    ctx.fillText('⏱', innerX + 10, innerY + 10);
+    // Small Clock icon badge on top left corner (drawn as vector clock so no missing glyph/box)
+    ctx.save();
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(innerX + 11, innerY + 11, 5.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(innerX + 11, innerY + 11);
+    ctx.lineTo(innerX + 11, innerY + 7.5);
+    ctx.moveTo(innerX + 11, innerY + 11);
+    ctx.lineTo(innerX + 14, innerY + 11);
+    ctx.stroke();
+    ctx.restore();
   }
 
   ctx.restore();
