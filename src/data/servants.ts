@@ -2022,5 +2022,104 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     cardArtUrl: 'https://ella.janitorai.com/media-approved/kQzECU4XQGSezfzr6mOWo.webp',
     spriteUrl: 'https://ella.janitorai.com/media-approved/OP7PiFQNT0RNCbGEyVNTY.webp',
     isCustomOrMeme: false
+  },
+  {
+    id: 'van_gogh',
+    name: 'Van Gogh',
+    title: 'Clytie of the Sunflowers',
+    servantClass: 'Foreigner',
+    rarity: 5,
+    baseHp: 15000,
+    baseAtk: 11500,
+    baseStats: { strength: 12, endurance: 14, agility: 18, mana: 19, luck: 10 },
+    commandDeck: ['Quick', 'Quick', 'Quick', 'Arts', 'Buster'],
+    skills: [
+      {
+        id: 'void_space_fine_arts',
+        name: 'Void Space Fine Arts B+',
+        cooldown: 6,
+        description: 'Grants self Guts status for 1 time, 5 turns (revives with 3,000 HP). 500% Chance to inflict 3 stacks of Curse with 100 damage for 10 turns to self [Demerit]. Charges own NP gauge by 10% per Curse stack on self.',
+        effectType: 'guts',
+        value: 3000,
+        duration: 5,
+        target: 'self',
+        icon: '🎨',
+        quote: '"Fine arts born of the void... Ehehe, look at the canvas rot."',
+        quotes: [
+          '"Fine arts born of the void... Ehehe, look at the canvas rot."',
+          '"Painting in the dark... my brushes are steeped in black ink."',
+          '"Even in despair, the colors never stop screaming!"'
+        ]
+      },
+      {
+        id: 'het_gele_huis',
+        name: 'Het Gele Huis: The Yellow House A+',
+        cooldown: 6,
+        description: '150% Chance to reduce all enemies\' defense by 20% for 3 turns. Reduces their Quick resistance by 20% for 3 turns. Grants party Evasion for 1 turn (3 turns). Recovers party\'s HP by 3,000 every turn for 5 turns. 500% Chance to inflict Curse with 100 damage for 10 turns to party [Demerit].',
+        effectType: 'debuff',
+        value: 20,
+        duration: 3,
+        target: 'all_enemies',
+        icon: '🌻',
+        quote: '"Welcome to the Yellow House... It\'s so warm... but why does it sting?"',
+        quotes: [
+          '"Welcome to the Yellow House... It\'s so warm... but why does it sting?"',
+          '"A shelter of brilliant sunflowers and scorching dreams!"',
+          '"Please, come inside... don\'t leave me alone in the cold."'
+        ]
+      },
+      {
+        id: 'soul_of_water_channels',
+        name: 'Soul of Water Channels EX',
+        cooldown: 5,
+        description: 'Increases ally\'s attack by 30% for 3 turns. Increases party critical star gain by 200% for 3 turns. Grants self Buff-On-Attack for 3 turns (Removes 1 latest Curse debuff on self when attacking with Quick cards; if removed, increases own attack by 10% for 3 turns). Absorbs all enemies\' and party\'s Curses to self [Demerit].',
+        effectType: 'buff_atk',
+        value: 30,
+        duration: 3,
+        target: 'ally',
+        icon: '💧',
+        quote: '"Give them to me... all your curses, all your sorrow! I\'ll take it all!"',
+        quotes: [
+          '"Give them to me... all your curses, all your sorrow! I\'ll take it all!"',
+          '"Water channels flowing into the abyss... let the poison pool in me."',
+          '"I\'m an imposter anyway... suffering a few more curses won\'t change that!"'
+        ]
+      }
+    ],
+    passives: [
+      {
+        name: 'Existence Outside the Domain A',
+        type: 'existence_outside_the_domain',
+        value: 2,
+        rank: 'A',
+        description: 'Gains 2 critical stars every turn automatically. Increases own debuff resistance by 10%. (Active • Bond 1)'
+      },
+      {
+        name: 'Curse of Sunflower A',
+        type: 'curse_of_sunflower',
+        value: 1,
+        rank: 'A',
+        description: 'HP will never fall below 1 when taking Curse damage. (Locked — Reaches Bond Lv. 5 to unlock)'
+      }
+    ],
+    noblePhantasm: {
+      name: 'De Sterrennacht (The Starry Night)',
+      cardType: 'Quick',
+      chant: 'Ehe... ehehe... Ah, look up at the swirling cosmos. To the azure heavens and golden stars... 『De Sterrennacht』!',
+      description: '500% Chance to inflict Terror status for 3 turns to all enemies (60% chance every turn to Stun for 1 turn). Increases party\'s Critical Damage by 100% for 3 turns. Gains 10 Critical Stars for party every turn for 3 turns. [Overcharge] Increases party\'s attack by 50% for 3 turns.',
+      target: 'support',
+      multiplier: 0,
+      overchargeEffect: 'Increases party\'s attack by 50% for 3 turns (scales with Overcharge)',
+      gifUrl: 'https://ella.janitorai.com/media-approved/_HQY3KD_L4lNGkG8Rq6y_.gif'
+    },
+    lore: `Van Gogh (ヴァン・ゴッホ), Class Name Foreigner (フォーリナー), is a 5★ SSR Foreigner-class Servant.\n\nIdentity & Lore Twist:\nVan Gogh’s summonable existence is one of the most tragic composite Servants in Fate/Grand Order:\n\n• The True Core (Clytie): Her primary physical and mythological base is not actually Vincent van Gogh, but the Greek Oceanid water nymph Clytie. Clytie fell madly in love with the sun god Apollo, was spurned, and withered away staring at the sun until she transformed into a sunflower/heliotrope.\n\n• The Outer God Plot: The Outer God Vulthoom (the flower god of Mars/the cosmos) sought to manifest on Earth. It required an anchor that was an artist intimately tied to sunflowers and suicidal despair, targeting the historical Vincent van Gogh.\n\n• Van Gogh's Resistance: The real, historical Vincent van Gogh utterly refused to become a herald for an evil god, choosing suicide even in spirit rather than allowing humanity to be harmed.\n\n• The Patchwork Servant: Unable to fully summon Van Gogh, Vulthoom grafted Van Gogh’s memories, madness, painter spirit, and severed left ear onto Clytie, creating a synthetic Foreigner. She believes herself to be Van Gogh at first, constantly battling severe identity crises and depressive guilt over being an "imposter."\n\nPersonality & Demeanor:\n• Self-Deprecating & Neurotic: She suffers from acute imposter syndrome, catastrophic mood swings, and crippling self-loathing. She frequently stammers, apologizes frantically, and expects rejection or punishment for simply existing.\n• Maniacal Giggles ("Ehe... ehehe"): Under pressure or when using her powers, a dark, unsettling nervous laughter slips out—a manifestation of the conflicting madness between Clytie’s heartbreak and Van Gogh’s mental torment.\n• Bad Dad Jokes & Puns: As a coping mechanism to lift spirits and prove she is "fine," she constantly cracks bizarre, awkward puns and dad jokes.\n• Fierce Loyalty to the Master: Despite seeing herself as a wretched monster, she becomes fiercely protective of the Master of Chaldea, often risking self-destruction to keep them safe.`,
+    summonQuote: '"Foreigner, Van Gogh... arrived! ...Ehe, ehehe. Ah, I\'m sorry, I\'m sorry! A wretched patchwork like me shouldn\'t be laughing so familiarly. But please, Master... let me paint for you!"',
+    battleStartQuote: '"U-Um, forgive me for being on the battlefield! But I won\'t let you hurt Master!"',
+    victoryQuote: '"We won...? We really won! Ehehe... Van Gogh-ing for the gold! ...That was a pun. Did you like it?"',
+    defeatQuote: '"The yellow blossoms... wither away... I couldn\'t even be a proper imposter..."',
+    avatarUrl: 'https://ella.janitorai.com/media-approved/4LKCJMSjsW8PBTXleUtll.webp',
+    cardArtUrl: 'https://ella.janitorai.com/media-approved/4LKCJMSjsW8PBTXleUtll.webp',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/M0eT6zv6yAIftUXUkrQ2a.webp',
+    isCustomOrMeme: false
   }
 ];

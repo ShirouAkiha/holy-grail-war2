@@ -113,8 +113,8 @@ export function createCombatantFromMasterServant(
   const totalMna = (base.mana || 10) + (servantInstance.allocatedStats?.mana || 0);
   const totalLck = (base.luck || 10) + (servantInstance.allocatedStats?.luck || 0);
 
-  const ceHp = ce ? (ce.hpBonus || 0) : 0;
-  const ceAtk = ce ? (ce.atkBonus || 0) : 0;
+  const ceHp = ce ? (ce.hpBonus ?? ce.bonusHp ?? 0) : 0;
+  const ceAtk = ce ? (ce.atkBonus ?? ce.bonusAtk ?? 0) : 0;
 
   // Base HP & ATK: under 'flat' mode, flat 28,000 HP / 10,000 ATK. Under 'archetype', use normalized balanced template stats.
   const baseHp = balanceMode === 'flat' ? 28000 : (t.baseHp || 29000);
@@ -493,6 +493,120 @@ export function applyCombatantSkill(
     return {
       success: true,
       log: `🍷 **${actor.name}** activated **${skill.name}**! Charged NP by +50%, boosted ATK by +20% (3T), and suffered Curse 500 dmg/turn (3T) [Demerit]!${quoteLine}`,
+      quote: skillQuote,
+      skillName: skill.name
+    };
+  }
+
+  // Handle Van Gogh (Foreigner) personal skills
+  if (skill.id === 'void_space_fine_arts' || /void space fine arts/i.test(skill.name)) {
+    actor.gutsCount = (actor.gutsCount || 0) + 1;
+    actor.activeBuffs.unshift({
+      name: 'Void Space Fine Arts (Guts)',
+      type: 'guts',
+      value: 3000,
+      remainingTurns: 5,
+      remainingHits: 1,
+      isHitCount: true
+    });
+    for (let k = 0; k < 3; k++) {
+      actor.activeBuffs.push({
+        name: `Void Curse Stack ${k + 1} [Demerit]`,
+        type: 'curse',
+        value: 100,
+        remainingTurns: 10
+      });
+    }
+    const currentCurses = actor.activeBuffs.filter(b => b.type === 'curse').length;
+    const npChargeAmount = currentCurses * 10;
+    actor.npGauge = Math.min(300, (actor.npGauge || 0) + npChargeAmount);
+    return {
+      success: true,
+      log: `🎨 **${actor.name}** activated **${skill.name}**! Granted self Guts (3,000 HP, 5T), inflicted 3 Curse stacks (100 dmg/10T) [Demerit], and charged NP by +${npChargeAmount}% (${currentCurses} active Curses)!${quoteLine}`,
+      quote: skillQuote,
+      skillName: skill.name
+    };
+  }
+
+  if (skill.id === 'het_gele_huis' || /het gele huis|the yellow house/i.test(skill.name)) {
+    target.activeBuffs.push({
+      name: 'Het Gele Huis (DEF Down -20%)',
+      type: 'debuff_def',
+      value: 20,
+      remainingTurns: 3
+    });
+    target.activeBuffs.push({
+      name: 'Het Gele Huis (Quick Res Down -20%)',
+      type: 'quick_res_down',
+      value: 20,
+      remainingTurns: 3
+    });
+    actor.isEvading = true;
+    actor.activeBuffs.push({
+      name: 'The Yellow House (Evasion 1 Hit)',
+      type: 'evade',
+      value: 100,
+      remainingTurns: 3,
+      remainingHits: 1,
+      isHitCount: true
+    });
+    actor.activeBuffs.push({
+      name: 'The Yellow House (HP Regen +3000)',
+      type: 'hp_regen',
+      value: 3000,
+      remainingTurns: 5
+    });
+    actor.activeBuffs.push({
+      name: 'Sunflower Curse [Demerit]',
+      type: 'curse',
+      value: 100,
+      remainingTurns: 10
+    });
+    return {
+      success: true,
+      log: `🌻 **${actor.name}** activated **${skill.name}**! Reduced enemy DEF by -20% (3T) & Quick Res by -20% (3T), granted party Evasion (1 hit/3T), activated HP Regen (+3,000/turn for 5T), and suffered 1 Curse stack [Demerit]!${quoteLine}`,
+      quote: skillQuote,
+      skillName: skill.name
+    };
+  }
+
+  if (skill.id === 'soul_of_water_channels' || /soul of water channels/i.test(skill.name)) {
+    actor.activeBuffs.push({
+      name: 'Soul of Water Channels (ATK Up)',
+      type: 'buff_atk',
+      value: 30,
+      remainingTurns: 3
+    });
+    actor.activeBuffs.push({
+      name: 'Soul of Water Channels (Star Gain +200%)',
+      type: 'star_gain_up',
+      value: 200,
+      remainingTurns: 3
+    });
+    actor.activeBuffs.push({
+      name: 'Soul of Water Channels (Quick Curse Cleanse & ATK Up)',
+      type: 'buff_on_quick_curse_cleanse',
+      value: 10,
+      remainingTurns: 3
+    });
+    // Absorb all curses from target
+    const targetCurses = (target.activeBuffs || []).filter(b => b.type === 'curse');
+    let absorbedCount = 0;
+    if (targetCurses.length > 0) {
+      target.activeBuffs = target.activeBuffs.filter(b => b.type !== 'curse');
+      targetCurses.forEach(c => {
+        actor.activeBuffs.push({
+          name: `Absorbed ${c.name}`,
+          type: 'curse',
+          value: c.value,
+          remainingTurns: c.remainingTurns
+        });
+        absorbedCount++;
+      });
+    }
+    return {
+      success: true,
+      log: `💧 **${actor.name}** activated **${skill.name}**! Granted +30% ATK (3T), +200% Star Gain (3T), Quick Attack Curse Cleanse (+10% ATK/cleanse, 3T), and absorbed ${absorbedCount} Curse stacks from the battlefield!${quoteLine}`,
       quote: skillQuote,
       skillName: skill.name
     };
@@ -1003,17 +1117,14 @@ export function executeNoblePhantasmLogic(
   // NP Damage Buff (The Black Grail, Heaven's Feel, etc.)
   let npDmgBonus = 1.0;
   if (actor.equippedCe) {
-    if (
-      actor.equippedCe.id === 'ce_black_grail' ||
-      actor.equippedCe.passiveType === 'np_damage' ||
-      actor.equippedCe.passiveType === 'np_dmg_up' ||
-      /black grail/i.test(actor.equippedCe.name || '')
-    ) {
-      npDmgBonus += (actor.equippedCe.passiveValue || (actor.equippedCe.id === 'ce_black_grail' || /black grail/i.test(actor.equippedCe.name || '') ? 60 : 30)) / 100;
-    } else if (actor.equippedCe.id === 'ce_heavens_feel') {
-      npDmgBonus += 0.40;
-    } else if (actor.equippedCe.id === 'ce_when_the_flowers_fall') {
-      npDmgBonus += 0.05;
+    const ce = actor.equippedCe;
+    if (ce.id === 'ce_black_grail' || ce.passiveType === 'np_damage' || ce.passiveType === 'np_dmg_up') {
+      const val = ce.passiveValue || (ce.id === 'ce_black_grail' ? 60 : ce.id === 'ce_heavens_feel' ? 40 : 30);
+      npDmgBonus += val / 100;
+    } else if (ce.id === 'ce_heavens_feel') {
+      npDmgBonus += (ce.passiveValue || 40) / 100;
+    } else if (ce.id === 'ce_when_the_flowers_fall') {
+      npDmgBonus += (ce.passiveValue || 5) / 100;
     }
   }
   const npBuffVal = actor.activeBuffs
@@ -1717,7 +1828,7 @@ export function executeBattleTurn(
       if (ce.id === 'ce_when_the_flowers_fall') {
         actor.npGauge = Math.min(300, actor.npGauge + 4);
       }
-      if (ce.id === 'ce_black_grail' || /black grail/i.test(ce.name || '')) {
+      if (ce.id === 'ce_black_grail') {
         actor.currentHp = Math.max(1, actor.currentHp - 500);
       }
     }

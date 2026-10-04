@@ -3572,6 +3572,220 @@ export const TYPHON_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const VAN_GOGH_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'van_gogh_bond_event_1',
+    servantTemplateId: 'van_gogh',
+    requiredBondLevel: 1,
+    title: 'The Night Sky & The Sunflower',
+    subtitle: 'A midnight conversation under foreign stars',
+    description: "Van Gogh wanders the quiet rooftops of Fuyuki at midnight, wrestling with her patchwork identity, Clytie's ancient tears, and the terrifying warmth of Master's kindness.",
+    rewardBondExp: 200,
+    rewardSaintQuartz: 3,
+    unlockedQuoteId: 'van_gogh_bond_line_1',
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: 'Van Gogh',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "U-Um, Master... are you awake? I'm sorry, I shouldn't be bothering you so late.\nIt's just that the night sky over this town... it doesn't look like mine at all.\nEhe... ehehehe, not that an imitation like me has any right to claim a sky, right?",
+        choices: [
+          {
+            id: 'c1_choice1',
+            text: "You aren't bothering me. Can't sleep either?",
+            response: "R-Really? Oh, thank goodness... I thought you'd tell me to dissolve into spirit form already.\nSleep is... difficult when your head is full of someone else's swirling paints and old letters.\nIt feels like if I close my eyes, I might wake up as someone completely different.",
+            bondExpGain: 150,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_choice2',
+            text: "What feels wrong about this sky?",
+            response: "It's too quiet, too clean... Japan's stars look sharp, like needles pinned on velvet.\nIn Saint-Rémy or Arles, the darkness was thick, dizzying, breathing with heavy yellow light.\nHere, it's polite. It makes me feel... violently out of place. Ehehehe.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'c1_choice3',
+            text: "Come on, stop calling yourself an imitation.",
+            response: "B-But it's just the truth! Stating facts isn't self-pity, it's just... accurate cataloging!\nA patched-together scarecrow wearing a genius's coat is still just straw and twine.\nAh, but look at me arguing with my own Master. I should be thrown into the sea, truly!",
+            bondExpGain: 175,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_2'
+          }
+        ]
+      },
+      {
+        id: 'scene_2',
+        speakerName: 'Van Gogh',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Speaking of this country... Vincent loved the woodblock prints from here, you know? Hiroshige, Hokusai...\nHe thought Japan was pure light, where artists lived like monks, painting a single blade of grass.\nIt makes me laugh—ehehe! He dreamed of this paradise, yet the one standing here is... this thing.",
+        choices: [
+          {
+            id: 'c2_choice1',
+            text: "Vincent’s love for art lives in you too, doesn't it?",
+            response: "L-Love?! Don't say such high-minded words, Master, my face is going to burst!\nIt's more like a phantom limb that won't stop itching. A compulsion to smear colors everywhere.\nThough... seeing the rain on the rooftops earlier did make my fingertips twitch. Just a tiny bit.",
+            bondExpGain: 160,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_choice2',
+            text: "You sound like you resent him a little.",
+            response: "Resent? No, never! Vincent was noble... he chose death over becoming a pawn for that thing in the dark.\nI'm just the leftover scraps that weren't strong enough to say no.\nIf anything, he should resent me for dragging his sacred name through the mud like this.",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'c2_choice3',
+            text: "Do you like being here in Japan, then?",
+            response: "I... I don't dislike it. The food here is strangely comforting.\nThough when I tried to paint an umbrella yesterday, it turned into a weeping black sun.\nEhe... you could say I really *canvas-ed* the whole tragic vibe! Get it? Canvas? ...I'm sorry.",
+            bondExpGain: 175,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_3'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Van Gogh',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Say, Master... about this Holy Grail War. The other Servants are real heroes, right?\nSaints, warlords, dragonslayers... people with grand causes and untarnished legends.\nWhen they look at me, they must see an error. A curse that took root in water and rot.",
+        choices: [
+          {
+            id: 'c3_choice1',
+            text: "I summoned you. You're the Servant I want to fight with.",
+            response: "H-Huh?! Don't look at me with such honest eyes, it’s blinding!\nYou're going to spoil a wretched tool with that kind of kindness...\nEhehe... if you keep saying things like that, my chest feels like it's blooming thorns.",
+            bondExpGain: 200,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_choice2',
+            text: "You have power they can't even begin to fathom.",
+            response: "That power belongs to a bottomless pit in the stars, Master. It isn't mine.\nEvery time I pull on that thread, it smells like alien pollen and dried blood.\nI use it because you command it, but... please don't mistake that horror for glory.",
+            bondExpGain: 150,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'c3_choice3',
+            text: "None of that matters if we win.",
+            response: "Straight to the point... yes, ruthless pragmatism suits a mage much better!\nTurn me into a weapon, grind my core into dust, use every brushstroke until I snap.\nThat would actually be easier... so why do you look at me like you care?",
+            bondExpGain: 160,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_4'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Van Gogh',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "...Sometimes, the voice inside my head isn't Vincent's sorrow at all.\nIt's an ancient, weeping girl sitting on cold rocks, staring at the sky until her roots tore open.\nShe loved the light so much it burned her into a sunflower, yet she was never once loved back.",
+        choices: [
+          {
+            id: 'c4_choice1',
+            text: "That girl is Clytie, isn't she?",
+            response: "Ah... so you figured it out. I-I didn't mean to deceive you, I swear!\nA pitiful nymph who suffocated on obsession, stitched to a mad painter who starved for understanding.\nWe're two drowned souls sharing one shivering vessel... repulsive, isn't it?",
+            bondExpGain: 175,
+            reactionEmotion: 'surprised',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_choice2',
+            text: "You don't have to wither away anymore.",
+            response: "Don't... don't make promises you can't keep. Withering is what sunflowers do.\nWhen the sun turns away, we bow our heads and drop our seeds into the cold dirt.\nThat's the rule of my existence. If I stop withering, who even am I?",
+            bondExpGain: 180,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'c4_choice3',
+            text: "Unrequited love is painful, but you survived it.",
+            response: "\"Survived\"? Ehehe... ehe, no, Master. Survival means you stayed yourself.\nI didn't survive; I was ground down into pigment to paint an evil god's altar.\nYet... hearing you say it like that makes my throat tighten up.",
+            bondExpGain: 160,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_5'
+          }
+        ]
+      },
+      {
+        id: 'scene_5',
+        speakerName: 'Van Gogh',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "I keep wondering... what is my wish for the Grail?\nVincent would want his brother to be proud, and Clytie would just want Apollo to glance down once.\nAnd me? The synthetic ghost caught between them? I have nothing of my own.",
+        choices: [
+          {
+            id: 'c5_choice1',
+            text: "You can wish for your own peace.",
+            response: "Peace... such a quiet, terrifying word. For someone born of madness, peace sounds like silence.\nAnd silence means fading away completely.\nMaybe... maybe I'm too cowardly to want true peace just yet.",
+            bondExpGain: 160,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c5_choice2',
+            text: "What do you want right now, in this very moment?",
+            response: "Right now...?\n...I think I just want to stay sitting here on this porch for five more minutes.\nListening to the wind, not having to be a legendary painter, or a Greek myth, or a monster.",
+            bondExpGain: 185,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'c5_choice3',
+            text: "You can borrow my wish until you find yours.",
+            response: "Borrow your wish...? Ehehe, what kind of ridiculous, soft-hearted Master are you?!\nYou'd lend a sacred Grail wish to a walking disaster who trips over her own paintbrushes?!\n...You really are unfair. You make me want to live long enough to see tomorrow.",
+            bondExpGain: 200,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_6'
+          }
+        ]
+      },
+      {
+        id: 'scene_6',
+        speakerName: 'Van Gogh',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Master. If one day the ink in my veins boils over, and the flowers on my skin stop being pretty...\nIf the thing from the dark void starts speaking with my tongue...\nPromise me you won't hesitate to use a Command Seal. Wipe me out before I hurt this world.",
+        choices: [
+          {
+            id: 'c6_choice1',
+            text: "I promise to save you, not destroy you.",
+            response: "You fool... you sweet, impossible fool.\nTo save a tangled root like me, you'd have to dig through so much filth.\n...Still, if you're determined to try, I guess I'll have to hold on as hard as I can.",
+            bondExpGain: 200,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'c6_choice2',
+            text: "I won't let the void take you. We fight together.",
+            response: "F-Fight together...? Even against something that crawls between the stars?\nEhehe... ehe. You really don't understand the scale of your own reckless courage.\nFine. If you're willing to stand in front of the abyss, I'll be the brush that paints your shield.",
+            bondExpGain: 190,
+            reactionEmotion: 'determined',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'c6_choice3',
+            text: "If that happens, I'll do what a Master has to do.",
+            response: "Thank you... genuinely. That's the greatest comfort you could offer.\nKnowing you have the strength to end it makes me feel safe.\nNow I can swing this brush with everything I have, without fearing what comes after.",
+            bondExpGain: 175,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_7'
+          }
+        ]
+      },
+      {
+        id: 'scene_7',
+        speakerName: 'Van Gogh',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Look... the sky is turning purple over the rooftops. The sun will be coming up soon.\nI used to hate dawn. It meant another day of failing to be human.\nB-But today, with you... maybe we can stop by a convenience store later? I want to try those sweet bean buns!"
+      }
+    ]
+  }
+];
+
 /**
  * Registry of all available curated bond events by servant template ID.
  */
@@ -3622,7 +3836,10 @@ export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
   altria_caster: ARTORIA_CASTER_BOND_EVENTS,
   typhon_ephemeros: TYPHON_BOND_EVENTS,
   typhon: TYPHON_BOND_EVENTS,
-  ephemeros: TYPHON_BOND_EVENTS
+  ephemeros: TYPHON_BOND_EVENTS,
+  van_gogh: VAN_GOGH_BOND_EVENTS,
+  gogh: VAN_GOGH_BOND_EVENTS,
+  clytie: VAN_GOGH_BOND_EVENTS
 };
 
 /**
@@ -4655,6 +4872,73 @@ export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
       requiredBondLevel: 5,
       quoteText: "Hear the proclamation of ruin, the dragon that forced Olympus to its knees! Dragon Grail that Reverses the Void! Let this become a prayer—and burn all stars to ash!"
     }
+  ],
+  van_gogh: [
+    {
+      id: 'van_gogh_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: '"Foreigner, Van Gogh... arrived! ...Ehe, ehehe. Ah, I\'m sorry, I\'m sorry! A wretched patchwork like me shouldn\'t be laughing so familiarly. But please, Master... let me paint for you!"'
+    },
+    {
+      id: 'van_gogh_bond_line_1',
+      title: 'Bond 1: The Midnight Sky',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: "Sleep is... difficult when your head is full of someone else's swirling paints and old letters. It feels like if I close my eyes, I might wake up as someone completely different."
+    },
+    {
+      id: 'van_gogh_bond_2',
+      title: 'Bond 2: Woodblock Dreams',
+      category: 'bond_2',
+      requiredBondLevel: 2,
+      quoteText: "Vincent loved the woodblock prints from Japan... Hiroshige, Hokusai. He thought Japan was pure light, where artists lived like monks, painting a single blade of grass."
+    },
+    {
+      id: 'van_gogh_bond_3',
+      title: 'Bond 3: Wretched Tool',
+      category: 'bond_3',
+      requiredBondLevel: 3,
+      quoteText: "You're going to spoil a wretched tool with that kind of kindness... Ehehe... if you keep saying things like that, my chest feels like it's blooming thorns."
+    },
+    {
+      id: 'van_gogh_bond_4',
+      title: 'Bond 4: Sunflowers & Water Channels',
+      category: 'bond_4',
+      requiredBondLevel: 4,
+      quoteText: "A pitiful nymph who suffocated on obsession, stitched to a mad painter who starved for understanding. We're two drowned souls sharing one shivering vessel... yet when you smile, the withering stops."
+    },
+    {
+      id: 'van_gogh_bond_5',
+      title: 'Bond 5: Starry Night Shield',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: "If you're willing to stand in front of the abyss, I'll be the brush that paints your shield! Ehe... ehehe! Look up at the golden stars—『De Sterrennacht』!"
+    }
+  ],
+  gogh: [
+    {
+      id: 'van_gogh_summon',
+      title: 'Summoning Pact',
+      category: 'summon',
+      requiredBondLevel: 1,
+      quoteText: '"Foreigner, Van Gogh... arrived! ...Ehe, ehehe. Ah, I\'m sorry, I\'m sorry! A wretched patchwork like me shouldn\'t be laughing so familiarly. But please, Master... let me paint for you!"'
+    },
+    {
+      id: 'van_gogh_bond_line_1',
+      title: 'Bond 1: The Midnight Sky',
+      category: 'bond_1',
+      requiredBondLevel: 1,
+      quoteText: "Sleep is... difficult when your head is full of someone else's swirling paints and old letters. It feels like if I close my eyes, I might wake up as someone completely different."
+    },
+    {
+      id: 'van_gogh_bond_5',
+      title: 'Bond 5: Starry Night Shield',
+      category: 'bond_5',
+      requiredBondLevel: 5,
+      quoteText: "If you're willing to stand in front of the abyss, I'll be the brush that paints your shield! Ehe... ehehe! Look up at the golden stars—『De Sterrennacht』!"
+    }
   ]
 };
 
@@ -5536,6 +5820,42 @@ export function getServantGiftReaction(
         responseText: "A sacred relic that answers holy prayers? In my hands, it merely converts divine grace into a vortex of cosmic cinders. An amusing gift, Master.",
         emotion: 'amused'
       }
+    },
+    van_gogh: {
+      chaldea_tea: {
+        responseText: "Hot tea... Ehehe, it warms up these cold, soggy roots. A-Ah, did I drink too loudly? I'm sorry, I'm sorry!",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "A whole feast for an imposter like me?! A-Are you sure I shouldn't be eating in the broom closet? ...The sweet bean buns are heavenly, Master!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A golden apple of pure sunlight... Back then, Apollo's golden light burned Clytie to cinders, but this mana... it feels so gentle.",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "A sacred warding relic... It suppresses the whispering from the void so well! My mind is so clear right now... Thank you, Master!",
+        emotion: 'happy'
+      }
+    },
+    gogh: {
+      chaldea_tea: {
+        responseText: "Hot tea... Ehehe, it warms up these cold, soggy roots. A-Ah, did I drink too loudly? I'm sorry, I'm sorry!",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "A whole feast for an imposter like me?! A-Are you sure I shouldn't be eating in the broom closet? ...The sweet bean buns are heavenly, Master!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A golden apple of pure sunlight... Back then, Apollo's golden light burned Clytie to cinders, but this mana... it feels so gentle.",
+        emotion: 'thoughtful'
+      },
+      sacred_relic: {
+        responseText: "A sacred warding relic... It suppresses the whispering from the void so well! My mind is so clear right now... Thank you, Master!",
+        emotion: 'happy'
+      }
     }
   };
 
@@ -5749,6 +6069,14 @@ export function getServantSparringDebrief(
     typhon: {
       responseText: "Hah! You barely avoided having your eyebrows vaporized by my cinder exhaust! If you want to survive a single skirmish against Heroic Spirits, keep your footwork twice as sharp!",
       emotion: 'amused'
+    },
+    van_gogh: {
+      responseText: "E-Ehehe! Did I dodge properly? I thought my legs would tangle in sunflower roots! Practicing with you makes me feel like a real Servant for once!",
+      emotion: 'happy'
+    },
+    gogh: {
+      responseText: "E-Ehehe! Did I dodge properly? I thought my legs would tangle in sunflower roots! Practicing with you makes me feel like a real Servant for once!",
+      emotion: 'happy'
     }
   };
 

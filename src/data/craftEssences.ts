@@ -721,6 +721,24 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     isBondCe: true,
     bondServantId: 'typhon_ephemeros',
     bondServantName: 'Typhon Ephemeros'
+  },
+  van_gogh: {
+    id: 'ce_bond_van_gogh',
+    name: 'Self-Portrait At Chaldea',
+    rarity: 4,
+    description: 'A canvas painted under the pale fluorescent lights of Chaldea. Not with the frantic, feverish brushstrokes of Arles or Saint-Rémy, but with quiet, hesitant colors. A sunflower holding hands with a drop of water, gazing upon the Master who smiled at her first.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to Van Gogh: Gains 8 critical stars every turn and increases party\'s critical damage by 15% while self is on the field.',
+    passiveType: 'stars_per_turn',
+    passiveValue: 8,
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-S9y-H-REfRKPTBMJUKxp.webp',
+    isBondCe: true,
+    bondServantId: 'van_gogh',
+    bondServantName: 'Van Gogh'
   }
 };
 

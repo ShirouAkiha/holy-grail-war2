@@ -91,8 +91,13 @@ export const STATUS_ICON_URLS: Record<string, string> = {
 
   // 24. Burn / Poison / Curse
   burn: 'https://ella.janitorai.com/media-approved/44jx6w5FleIv5suvmkiVE.webp',
-  curse: 'https://ella.janitorai.com/media-approved/44jx6w5FleIv5suvmkiVE.webp',
+  curse: 'https://ella.janitorai.com/media-approved/JB0_vPzjY_v4_8cKMlfE5.webp',
   poison: 'https://ella.janitorai.com/media-approved/44jx6w5FleIv5suvmkiVE.webp',
+
+  // 24b. Quick Resistance Down / Quick Down
+  quick_resistance_down: 'https://ella.janitorai.com/media-approved/9iV3XI6ih9HfvxkMO6u7_.webp',
+  quick_res_down: 'https://ella.janitorai.com/media-approved/9iV3XI6ih9HfvxkMO6u7_.webp',
+  quick_down: 'https://ella.janitorai.com/media-approved/9iV3XI6ih9HfvxkMO6u7_.webp',
 
   // 25. Evade / Evasion
   evade: 'https://ella.janitorai.com/media-approved/PGUkQJf8TRWRdx-ZvWBkh.webp',
@@ -150,6 +155,9 @@ export function getStatusIconUrl(effectTypeOrName?: string): string {
   }
   if (key.includes('buster')) return STATUS_ICON_URLS.buster_up;
   if (key.includes('arts')) return STATUS_ICON_URLS.arts_up;
+  if (key.includes('quick_down') || key.includes('quick_res') || key.includes('quick_resistance')) {
+    return STATUS_ICON_URLS.quick_resistance_down;
+  }
   if (key.includes('quick')) return STATUS_ICON_URLS.quick_up;
   if (key.includes('crit_dmg') || key.includes('crit_damage')) return STATUS_ICON_URLS.crit_dmg;
   if (key.includes('star')) return STATUS_ICON_URLS.crit_stars;
@@ -162,7 +170,8 @@ export function getStatusIconUrl(effectTypeOrName?: string): string {
   if (key.includes('stun')) return STATUS_ICON_URLS.stun;
   if (key.includes('skill_seal')) return STATUS_ICON_URLS.skill_seal;
   if (key.includes('np_seal')) return STATUS_ICON_URLS.np_seal;
-  if (key.includes('burn') || key.includes('curse') || key.includes('poison')) return STATUS_ICON_URLS.burn;
+  if (key.includes('curse')) return STATUS_ICON_URLS.curse;
+  if (key.includes('burn') || key.includes('poison')) return STATUS_ICON_URLS.burn;
 
   return STATUS_ICON_URLS.buff_atk;
 }

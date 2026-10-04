@@ -72,7 +72,10 @@ export type PassiveSkillType =
   | 'ones_own_magic'
   | 'progenitor_dragon'
   | 'the_ephemeral_fruit'
-  | 'dragonforge_ignition';
+  | 'dragonforge_ignition'
+  | 'existence_outside_the_domain'
+  | 'curse_of_sunflower'
+  | 'insanity';
 
 export interface PassiveSkill {
   name: string;

@@ -130,6 +130,11 @@ export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: 
     gifUrl: 'https://ella.janitorai.com/media-approved/WueTnw4QfurHe53DsTV-z.gif',
     fallbackGif: 'https://ella.janitorai.com/media-approved/WueTnw4QfurHe53DsTV-z.gif',
     chant: 'Drink deep of the ephemeral fruit... Reverse the cosmos, hollow the stars! Dragon Grail that Reverses the Void!'
+  },
+  'Van Gogh': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/_HQY3KD_L4lNGkG8Rq6y_.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/_HQY3KD_L4lNGkG8Rq6y_.gif',
+    chant: 'Ehe... ehehe... Ah, look up at the swirling cosmos. To the azure heavens and golden stars... 『De Sterrennacht』!'
   }
 };
 
@@ -203,6 +208,9 @@ export function getNoblePhantasmGif(servantOrTemplate: any): string {
     }
     if (lowerNp.includes('magic blue') || lowerNp.includes('first star of the morning') || lowerNp.includes('fifth magic')) {
       return NOBLE_PHANTASM_GIFS['Aoko Aozaki'].gifUrl;
+    }
+    if (lowerNp.includes('sterrennacht') || lowerNp.includes('starry night')) {
+      return NOBLE_PHANTASM_GIFS['Van Gogh'].gifUrl;
     }
   }
 
