@@ -4879,7 +4879,7 @@ export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
       title: 'Summoning Pact',
       category: 'summon',
       requiredBondLevel: 1,
-      quoteText: '"Foreigner, Van Gogh... arrived! ...Ehe, ehehe. Ah, I\'m sorry, I\'m sorry! A wretched patchwork like me shouldn\'t be laughing so familiarly. But please, Master... let me paint for you!"'
+      quoteText: '"Servant, Foreigner. As you can see, I\'m Van Gogh. Let\'s repaint this world together... J-just kidding! Hehehe...ehehehe!"'
     },
     {
       id: 'van_gogh_bond_line_1',
@@ -4923,7 +4923,7 @@ export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
       title: 'Summoning Pact',
       category: 'summon',
       requiredBondLevel: 1,
-      quoteText: '"Foreigner, Van Gogh... arrived! ...Ehe, ehehe. Ah, I\'m sorry, I\'m sorry! A wretched patchwork like me shouldn\'t be laughing so familiarly. But please, Master... let me paint for you!"'
+      quoteText: '"Servant, Foreigner. As you can see, I\'m Van Gogh. Let\'s repaint this world together... J-just kidding! Hehehe...ehehehe!"'
     },
     {
       id: 'van_gogh_bond_line_1',

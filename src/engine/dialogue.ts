@@ -846,6 +846,103 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "Washi's energy... ran dry... A piece of fried tofu would have saved washi...",
       "Master... forgive washi... washi could not hold the shrine..."
     ]
+  },
+
+  // Typhon Ephemeros - Pretender
+  typhon_ephemeros: {
+    buster: [
+      "Dragon breath of the Progenitor! Turn to cinders!",
+      "Hollow out their spirit origin! Ephemeral crushing blow!",
+      "Zeus could not break this dragon... You certainly won't!",
+      "Dragonforge ignition! Reduce every hope to ashes!"
+    ],
+    arts: [
+      "The fruit of defeat by fate... Circulate the anti-grail mana.",
+      "A whisper from the stars... Let their prayers unravel.",
+      "Cerebral corpus calculation... Prana negation complete.",
+      "An inverted miracle. Watch the leyline turn to dust."
+    ],
+    quick: [
+      "Ephemeral wing gale! Draconic ambush!",
+      "Faster than Olympus's lightning! Sever their stance!",
+      "Draconic slipstream! You cannot evade fate's verdict!",
+      "Twin dragon talons! Ripping through the sky!"
+    ],
+    mixed: [
+      "An anti-wish granter needs no elaborate strategy. Forward, Master.",
+      "Every strike brings their precious illusions closer to ruin.",
+      "Feel the malice of the false brain! Ephemeral advance!",
+      "Your commands are... tolerable, Master. Keep the momentum."
+    ],
+    desperation: [
+      "To be undone by fate once more...? Never! Ephemeral core, overload!",
+      "The Progenitor Dragon does not bow to insects!",
+      "I shall devour every wish in this realm before I fall!"
+    ],
+    skills: [
+      "Ephemeral Fruit... release.",
+      "False Brain Activation!",
+      "Dragonforge ignition!",
+      "Anti-Grail inversion!"
+    ],
+    victory: [
+      "Another delusion broken. The cosmos remains cold and void, as it should be.",
+      "A predictable conclusion. Human wishes are ever so fragile.",
+      "The taste of their crushed prayers... exquisite."
+    ],
+    defeat: [
+      "To be undone by fate once more... The taste of that fruit... lingers...",
+      "A false vessel... returning to the cosmic drift...",
+      "Master... this isn't over... The dragon will awaken again..."
+    ]
+  },
+
+  // Van Gogh - Foreigner (Clytie / Vincent composite)
+  van_gogh: {
+    buster: [
+      "Van Gogh cutter!",
+      "Do it lavishly!",
+      "Like the sun...",
+      "All I have to say is: Nooit, neen, nimmer!"
+    ],
+    arts: [
+      "Paint and paint!",
+      "This is just my study, but here you go... Ehehehe!",
+      "Like the sun...",
+      "It's a satisfactory work."
+    ],
+    quick: [
+      "Go go go to the flower garden!",
+      "Paint and paint!",
+      "Van Gogh cutter!",
+      "Ehehehe...!"
+    ],
+    mixed: [
+      "Paint and paint! Go go go to the flower garden!",
+      "This is just my study, but here you go... Ehehehe!",
+      "All I have to say is: Nooit, neen, nimmer!",
+      "Do it lavishly! Ehe... ehehehe!"
+    ],
+    desperation: [
+      "I'll go ahead... to the land without shadows... No! Not until Master is safe!",
+      "I'm sorry... I'm sorry...! But I won't let you hurt Master!",
+      "Ehe... ehehe... I have to keep painting! The colors haven't dried yet!"
+    ],
+    skills: [
+      "Ehehehe...!",
+      "It's a satisfactory work.",
+      "You're overrating me...!"
+    ],
+    victory: [
+      "And now, a handshake to you.",
+      "I wonder if Mauve saw me...",
+      "We won...? We really won! Ehehe... Van Gogh-ing for the gold!"
+    ],
+    defeat: [
+      "I'll go ahead... to the land without shadows...",
+      "I'm sorry... I'm sorry...!",
+      "The yellow blossoms... wither away... I couldn't even be a proper imposter..."
+    ]
   }
 };
 
@@ -948,6 +1045,12 @@ export function getServantProfile(servantName?: string): ServantDialogueProfile 
   }
   if (n.includes('amamiya') || n.includes('chihaya') || n.includes('tenkohime') || n.includes('kyubi') || n.includes('kyūbi') || n.includes('amazakura')) {
     return SERVANT_COMBAT_DIALOGUES.amamiya_no_chihaya_tenkohime;
+  }
+  if (n.includes('typhon') || n.includes('ephemeros') || n.includes('progenitor dragon') || n.includes('ephemeral fruit')) {
+    return SERVANT_COMBAT_DIALOGUES.typhon_ephemeros;
+  }
+  if (n.includes('gogh') || n.includes('clytie') || n.includes('sunflower') || n.includes('starry night')) {
+    return SERVANT_COMBAT_DIALOGUES.van_gogh;
   }
 
   return GENERIC_PROFILE;
