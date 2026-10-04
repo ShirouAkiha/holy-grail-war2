@@ -417,87 +417,6 @@ export function applyCombatantSkill(
     };
   }
 
-  // Handle Typhon Ephemeros personal skills
-  if (skill.id === 'blaze_of_etna' || /blaze of etna|armor of ashen/i.test(skill.name)) {
-    actor.activeBuffs.push({
-      name: 'Blaze of Etna (Invincible)',
-      type: 'invincible',
-      value: 100,
-      remainingTurns: 3,
-      remainingHits: 2,
-      isHitCount: true
-    });
-    actor.activeBuffs.push({
-      name: 'Blaze of Etna (ATK Up)',
-      type: 'buff_atk',
-      value: 20,
-      remainingTurns: 3
-    });
-    actor.activeBuffs.push({
-      name: 'Blaze of Etna (Buster Up)',
-      type: 'buster_up',
-      value: 30,
-      remainingTurns: 3
-    });
-    return {
-      success: true,
-      log: `🔥 **${actor.name}** activated **${skill.name}**! Granted self Invincibility for 2 attacks (3T), +20% ATK (3T), and +30% Buster Performance (3T)!${quoteLine}`,
-      quote: skillQuote,
-      skillName: skill.name
-    };
-  }
-
-  if (skill.id === 'black_wings_a' || /black wings/i.test(skill.name)) {
-    actor.activeBuffs.push({
-      name: 'Black Wings (Overcharge +2)',
-      type: 'overcharge_up',
-      value: 2,
-      remainingTurns: 3,
-      remainingHits: 1,
-      isHitCount: true
-    });
-    actor.skills.forEach((sk, idx) => {
-      if (idx !== skillIndex && sk.currentCooldown > 0) {
-        sk.currentCooldown = Math.max(0, sk.currentCooldown - 1);
-      }
-    });
-    actor.activeBuffs.push({
-      name: 'Black Wings (Crit DMG Up)',
-      type: 'crit_dmg',
-      value: 30,
-      remainingTurns: 3
-    });
-    actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
-    return {
-      success: true,
-      log: `🪶 **${actor.name}** activated **${skill.name}**! Overcharged NP by 2 stages (1 time/3T), reduced other skill cooldowns by 1T, +30% Crit DMG (3T), and gained +15 Stars!${quoteLine}`,
-      quote: skillQuote,
-      skillName: skill.name
-    };
-  }
-
-  if (skill.id === 'let_this_become_a_prayer_ex' || /let this become a prayer/i.test(skill.name)) {
-    actor.npGauge = Math.min(300, (actor.npGauge || 0) + 50);
-    actor.activeBuffs.push({
-      name: 'Let This Become a Prayer (ATK Up)',
-      type: 'buff_atk',
-      value: 20,
-      remainingTurns: 3
-    });
-    actor.activeBuffs.push({
-      name: 'Ephemeral Curse [Demerit]',
-      type: 'curse',
-      value: 500,
-      remainingTurns: 3
-    });
-    return {
-      success: true,
-      log: `🍷 **${actor.name}** activated **${skill.name}**! Charged NP by +50%, boosted ATK by +20% (3T), and suffered Curse 500 dmg/turn (3T) [Demerit]!${quoteLine}`,
-      quote: skillQuote,
-      skillName: skill.name
-    };
-  }
-
   // Handle Edmond (Shielder) personal skills
   if (skill.id.includes('fortress_stance_terra_barrier')) {
     actor.activeBuffs.push({
@@ -1759,64 +1678,7 @@ export function executeBattleTurn(
           actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
         }
 
-        if (skill.id === 'blaze_of_etna' || /blaze of etna|armor of ashen/i.test(skill.name)) {
-          actor.activeBuffs.push({
-            name: 'Blaze of Etna (Invincible)',
-            type: 'invincible',
-            value: 100,
-            remainingTurns: 3,
-            remainingHits: 2,
-            isHitCount: true
-          });
-          actor.activeBuffs.push({
-            name: 'Blaze of Etna (ATK Up)',
-            type: 'buff_atk',
-            value: 20,
-            remainingTurns: 3
-          });
-          actor.activeBuffs.push({
-            name: 'Blaze of Etna (Buster Up)',
-            type: 'buster_up',
-            value: 30,
-            remainingTurns: 3
-          });
-        } else if (skill.id === 'black_wings_a' || /black wings/i.test(skill.name)) {
-          actor.activeBuffs.push({
-            name: 'Black Wings (Overcharge +2)',
-            type: 'overcharge_up',
-            value: 2,
-            remainingTurns: 3,
-            remainingHits: 1,
-            isHitCount: true
-          });
-          actor.skills.forEach((sk, idx) => {
-            if (idx !== choice.useSkillIndex && sk.currentCooldown > 0) {
-              sk.currentCooldown = Math.max(0, sk.currentCooldown - 1);
-            }
-          });
-          actor.activeBuffs.push({
-            name: 'Black Wings (Crit DMG Up)',
-            type: 'crit_dmg',
-            value: 30,
-            remainingTurns: 3
-          });
-          actor.critStars = Math.min(50, (actor.critStars || 0) + 15);
-        } else if (skill.id === 'let_this_become_a_prayer_ex' || /let this become a prayer/i.test(skill.name)) {
-          actor.npGauge = Math.min(300, (actor.npGauge || 0) + 50);
-          actor.activeBuffs.push({
-            name: 'Let This Become a Prayer (ATK Up)',
-            type: 'buff_atk',
-            value: 20,
-            remainingTurns: 3
-          });
-          actor.activeBuffs.push({
-            name: 'Ephemeral Curse [Demerit]',
-            type: 'curse',
-            value: 500,
-            remainingTurns: 3
-          });
-        } else {
-          switch (skill.effectType) {
+        switch (skill.effectType) {
           case 'buff_atk': {
             const descLower = (skill.description || '').toLowerCase();
             const nameLower = skill.name.toLowerCase();
@@ -2087,7 +1949,6 @@ export function executeBattleTurn(
               remainingTurns: skill.duration
             });
             break;
-        }
         }
 
         // Custom Skill Enhancements for Luvria Greenharte
