@@ -50,7 +50,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await interaction.deferReply();
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
     const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
 

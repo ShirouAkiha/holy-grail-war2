@@ -616,7 +616,7 @@ export async function handleServantsListInteraction(i: any) {
       const target = allServants.find(s => s.id === servantId);
 
       if (target) {
-        await i.deferReply({ flags: MessageFlags.Ephemeral });
+        await i.deferReply();
         const profileEmbed = buildServantFullProfileEmbed(target);
         const artworkEmbed = buildServantArtworkEmbed(target);
         const actions = buildProfileActions(target.id);
@@ -626,7 +626,7 @@ export async function handleServantsListInteraction(i: any) {
           components: [actions] 
         });
       } else {
-        await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
+        await i.reply({ content: 'Heroic Spirit not found.' });
       }
       return true;
     }
@@ -673,7 +673,7 @@ export async function handleServantsListInteraction(i: any) {
       const id = customId.replace('view_servant_', '');
       const target = allServants.find(s => s.id === id);
       if (target) {
-        await i.deferReply({ flags: MessageFlags.Ephemeral });
+        await i.deferReply();
         const profileEmbed = buildServantFullProfileEmbed(target);
         const artworkEmbed = buildServantArtworkEmbed(target);
         const actions = buildProfileActions(target.id);
@@ -683,7 +683,7 @@ export async function handleServantsListInteraction(i: any) {
           components: [actions] 
         });
       } else {
-        await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
+        await i.reply({ content: 'Heroic Spirit not found.' });
       }
       return true;
     }
@@ -692,13 +692,13 @@ export async function handleServantsListInteraction(i: any) {
       const id = customId.replace('view_np_', '');
       const target = allServants.find(s => s.id === id);
       if (target) {
-        await i.deferReply({ flags: MessageFlags.Ephemeral });
+        await i.deferReply();
         const files: AttachmentBuilder[] = [];
         const npEmbed = buildNoblePhantasmEmbed(target, files);
         const actions = buildNoblePhantasmActions(target.id);
         await i.editReply({ embeds: [npEmbed], files, components: [actions] });
       } else {
-        await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
+        await i.reply({ content: 'Heroic Spirit not found.' });
       }
       return true;
     }
@@ -707,13 +707,13 @@ export async function handleServantsListInteraction(i: any) {
       const id = customId.replace('view_art_', '');
       const target = allServants.find(s => s.id === id);
       if (target) {
-        await i.deferReply({ flags: MessageFlags.Ephemeral });
+        await i.deferReply();
         const files: AttachmentBuilder[] = [];
         const artEmbed = buildServantArtworkEmbed(target, files);
         const actions = buildNoblePhantasmActions(target.id);
         await i.editReply({ embeds: [artEmbed], files, components: [actions] });
       } else {
-        await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
+        await i.reply({ content: 'Heroic Spirit not found.' });
       }
       return true;
     }
@@ -727,16 +727,16 @@ export async function handleServantsListInteraction(i: any) {
           .setDescription(`*"${target.summonQuote || target.battleStartQuote}"*`)
           .setColor(0xd4af37)
           .setFooter({ text: `${target.title} • Class: ${target.servantClass}` });
-        await i.reply({ embeds: [quoteEmbed], flags: MessageFlags.Ephemeral });
+        await i.reply({ embeds: [quoteEmbed] });
       } else {
-        await i.reply({ content: 'Heroic Spirit not found.', flags: MessageFlags.Ephemeral });
+        await i.reply({ content: 'Heroic Spirit not found.' });
       }
       return true;
     }
 
     if (customId === 'btn_back_servants_list') {
       const { embed, components } = buildServantsListUI(allServants, 1, 'all', 'all');
-      await i.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
+      await i.reply({ embeds: [embed], components });
       return true;
     }
 

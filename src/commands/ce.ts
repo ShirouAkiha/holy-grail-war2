@@ -136,7 +136,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             safeSetEmbedImage(artEmbed, selectedCe.artworkUrl);
           }
 
-          await i.reply({ embeds: [artEmbed], flags: MessageFlags.Ephemeral });
+          await i.reply({ embeds: [artEmbed] });
         }
       });
       return;
@@ -234,7 +234,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             if (targetCe.artworkUrl) {
               safeSetEmbedImage(artOnlyEmbed, targetCe.artworkUrl);
             }
-            await bi.reply({ embeds: [artOnlyEmbed], flags: MessageFlags.Ephemeral });
+            await bi.reply({ embeds: [artOnlyEmbed] });
           }
         });
       }

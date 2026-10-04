@@ -493,7 +493,6 @@ export function attachInventoryCollector(interaction: any, master: any, activeSe
           if (ce) {
             const artUrl = ce.artworkUrl || 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp';
             await i.reply({
-              flags: MessageFlags.Ephemeral,
               embeds: [
                 new EmbedBuilder()
                   .setTitle(`🖼️ Craft Essence Art: ${ce.name}`)

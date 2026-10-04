@@ -28,8 +28,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const { embed, components } = buildInventoryHub(master, activeServant, 'ces', 1);
     await interaction.reply({
       embeds: [embed],
-      components,
-      ephemeral: true
+      components
     });
   } catch (error: any) {
     console.error('Error executing /inventory:', error);
