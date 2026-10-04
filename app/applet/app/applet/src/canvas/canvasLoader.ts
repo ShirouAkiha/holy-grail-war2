@@ -103,14 +103,6 @@ class SVGGradient {
 }
 
 function createFallbackCanvasModule(): any {
-  let sharpModule: any = null;
-  try {
-    const req = getRuntimeRequire();
-    if (req) sharpModule = req('sharp');
-  } catch {
-    // ignore
-  }
-
   class FallbackContext2D {
     canvas: FallbackCanvas;
     fillStyle: any = '#000000';
@@ -321,17 +313,9 @@ function createFallbackCanvasModule(): any {
       return this.ctx;
     }
 
-    async toBuffer(type?: string): Promise<Buffer> {
+    toBuffer(type?: string): Buffer {
       const svg = this.ctx.toSVG();
-      const svgBuf = Buffer.from(svg);
-      if (sharpModule) {
-        try {
-          return await sharpModule(svgBuf).png().toBuffer();
-        } catch {
-          return svgBuf;
-        }
-      }
-      return svgBuf;
+      return Buffer.from(svg);
     }
 
     toDataURL(type?: string): string {
@@ -343,18 +327,7 @@ function createFallbackCanvasModule(): any {
   return {
     createCanvas: (w: number, h: number) => new FallbackCanvas(w, h),
     loadImage: async (src: any) => {
-      let width = 100;
-      let height = 100;
-      if (typeof src === 'string' && sharpModule) {
-        try {
-          const meta = await sharpModule(src).metadata();
-          if (meta.width) width = meta.width;
-          if (meta.height) height = meta.height;
-        } catch {
-          // ignore
-        }
-      }
-      return { src, width, height };
+      return { src, width: 100, height: 100 };
     }
   };
 }
@@ -370,7 +343,6 @@ export function getCanvasModule(): any {
     return loadedCanvas;
   }
 
-  console.log('⚡ Using High-Performance Sharp Vector Canvas Engine');
   loadedCanvas = createFallbackCanvasModule();
   return loadedCanvas;
 }
