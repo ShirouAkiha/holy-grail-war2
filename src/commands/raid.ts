@@ -805,6 +805,15 @@ async function runRaidBattle(
   };
 
   let currentCanvasFileName = '';
+  const buildRaidEmbed = (attachmentName?: string) => {
+    const embed = new EmbedBuilder()
+      .setColor(isTiamat ? 0xd946ef : 0xef4444);
+    const target = attachmentName || currentCanvasFileName;
+    if (target) {
+      embed.setImage(`attachment://${target}`);
+    }
+    return embed;
+  };
 
   const renderAndPostTurn = async () => {
     const { buffer, fileName } = await renderRaidBattlefield(battleState, false);
@@ -813,6 +822,7 @@ async function runRaidBattle(
     const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
     const components = buildBattleButtons();
     const active = currentActiveParticipant;
+    const raidEmbed = buildRaidEmbed(uniqueFileName);
 
     const channelToSend = interaction.channel || battleMsg?.channel;
     let newBattleMsg: any = null;
@@ -821,7 +831,7 @@ async function runRaidBattle(
       try {
         newBattleMsg = await channelToSend.send({
           content: buildTurnContent(active, pendingCards),
-          embeds: [],
+          embeds: [raidEmbed],
           files: [attachment],
           components
         });
@@ -843,7 +853,7 @@ async function runRaidBattle(
     } else if (battleMsg && typeof battleMsg.edit === 'function') {
       await battleMsg.edit({
         content: buildTurnContent(active, pendingCards),
-        embeds: [],
+        embeds: [raidEmbed],
         files: [attachment],
         components
       }).catch(() => {});
@@ -965,7 +975,7 @@ async function runRaidBattle(
       pendingIndices = [];
       await safeUpdate({
         content: buildTurnContent(active, pendingCards),
-        embeds: [],
+        embeds: [buildRaidEmbed(currentCanvasFileName)],
         components: buildBattleButtons()
       });
       return;
@@ -1426,7 +1436,7 @@ async function runRaidBattle(
 
         await safeUpdate({
           content: buildTurnContent(active, pendingCards),
-          embeds: [],
+        embeds: [buildRaidEmbed(currentCanvasFileName)],
           files: [attachment],
           components: buildBattleButtons()
         });
@@ -1466,7 +1476,7 @@ async function runRaidBattle(
 
         await safeUpdate({
           content: buildTurnContent(active, pendingCards),
-          embeds: [],
+        embeds: [buildRaidEmbed(currentCanvasFileName)],
           files: [attachment],
           components: buildBattleButtons()
         });
@@ -1483,7 +1493,7 @@ async function runRaidBattle(
         collector.stop('defeated');
         await safeUpdate({
           content: '💀 **Raid Abandoned:** All Masters retreated from the battlefield.',
-          embeds: [],
+        embeds: [buildRaidEmbed(currentCanvasFileName)],
           components: []
         });
         return;
@@ -1501,7 +1511,7 @@ async function runRaidBattle(
     if (pendingCards.length < 3) {
       await safeUpdate({
         content: buildTurnContent(active, pendingCards),
-        embeds: [],
+        embeds: [buildRaidEmbed(currentCanvasFileName)],
         components: buildBattleButtons()
       });
       return;
@@ -1512,7 +1522,7 @@ async function runRaidBattle(
     try {
       await safeUpdate({
         content: buildTurnContent(active, pendingCards),
-        embeds: [],
+        embeds: [buildRaidEmbed(currentCanvasFileName)],
         components: buildBattleButtons(true)
       });
 
