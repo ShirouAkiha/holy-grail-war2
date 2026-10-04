@@ -2030,7 +2030,9 @@ function resolveStrike(
   }
 
   // Servant Passive Skills: Turn-Start (e.g. Progenitor Dragon)
-  const attackerPassives = attacker.passives || [];
+  // 1. Resolve Attacker & Defender Passives (Max 2, 2nd unlocked after Bond 5)
+  const attackerPassives = attacker.passives || getUnlockedPassives(attacker.servant.template?.passives?.length ? attacker.servant.template.passives : attacker.servant.template?.servantClass, attacker.servant.bondLevel || 1);
+  const defenderPassives = defender.passives || getUnlockedPassives(defender.servant.template?.passives?.length ? defender.servant.template.passives : defender.servant.template?.servantClass, defender.servant.bondLevel || 1);
   if (attackerPassives.some(p => p.type === 'progenitor_dragon' || (p.name && p.name.includes('Progenitor Dragon')))) {
     attacker.npGauge = Math.min(300, attacker.npGauge + 5);
   }
@@ -2053,9 +2055,6 @@ function resolveStrike(
     attacker.currentHp = Math.min(attacker.maxHp, attacker.currentHp + totalDuelRegen);
   }
 
-  // 1. Resolve Attacker & Defender Passives (Max 2, 2nd unlocked after Bond 5)
-  const attackerPassives = attacker.passives || getUnlockedPassives(attacker.servant.template?.passives?.length ? attacker.servant.template.passives : attacker.servant.template?.servantClass, attacker.servant.bondLevel || 1);
-  const defenderPassives = defender.passives || getUnlockedPassives(defender.servant.template?.passives?.length ? defender.servant.template.passives : defender.servant.template?.servantClass, defender.servant.bondLevel || 1);
 
   // Turn-Start Servant Passives (e.g. Fifth Succession A grants +4% NP Gauge every turn)
   const fifthSuccessionBonus = attackerPassives.filter(p => p.type === 'fifth_succession').length > 0 ? 4 : 0;

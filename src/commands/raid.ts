@@ -1591,20 +1591,18 @@ async function runRaidBattle(
         const isNormalCard = card !== 'NP';
         const negaGenesisMult = (boss.id === 'tiamat' && battleState.currentPhase === 3 && isNormalCard) ? 0.5 : 1.0;
 
-        const finalCritDmgMult = isCrit ? (critDmgMult * critDmgBuffMult) : 1.0;
-
         if (card === 'Buster') {
-          totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * busterBuffMult * specialAtkMult * bossDefFactor * finalCritDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
+          totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
           starsGenerated += Math.round(3 * critStarBonus);
           npGained += Math.round(5 * critNpBonus);
         } else if (card === 'Arts') {
-          totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * artsBuffMult * specialAtkMult * bossDefFactor * finalCritDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
+          totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
           const totalAtkMana = (baseStatsAtk.mana || 10) + (allocAtk.mana || 0);
           const manaNpBonus = Math.min(0.35, (totalAtkMana / (totalAtkMana + 120)) * 0.35);
           npGained += Math.round(25 * critNpBonus * (1.0 + manaNpBonus));
           starsGenerated += Math.round(2 * critStarBonus);
         } else if (card === 'Quick') {
-          totalTurnDmg += Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * quickBuffMult * specialAtkMult * bossDefFactor * finalCritDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
+          totalTurnDmg += Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
           starsGenerated += Math.round(12 * critStarBonus);
           npGained += Math.round(10 * critNpBonus);
         } else if (card === 'NP') {
@@ -1838,36 +1836,7 @@ async function runRaidBattle(
               npEffectsLog.push('🛡️ [DEF-Ignoring]');
             }
 
-            // 8. Card Type Performance Multiplier
-            const npCardType = active.servant.template?.noblePhantasm?.cardType || 'Buster';
-            const npCardPerfMult = npCardType === 'Buster' ? busterBuffMult : npCardType === 'Arts' ? artsBuffMult : quickBuffMult;
-
-            // 9. Typhon Ephemeros: Debuff scaling powerup (+10% per active debuff, up to +100%) & Burn/Spread of Fire
-            let debuffPowerupMult = 1.0;
-            if (active.servant.templateId === 'typhon_ephemeros' || /dragon grail that reverses/i.test(npName)) {
-              const debuffCount = (active.activeBuffs || []).filter(b => ['curse', 'burn', 'poison', 'atk_down', 'def_down', 'stun', 'np_seal', 'skill_seal'].includes(b.type) || b.name.includes('[Demerit]') || b.type.includes('debuff')).length;
-              if (debuffCount > 0) {
-                debuffPowerupMult = 1.0 + Math.min(1.0, debuffCount * 0.10);
-                npEffectsLog.push(`💥 [Ephemeros Reversal: +${Math.round((debuffPowerupMult - 1) * 100)}% DMG from ${debuffCount} active debuffs!]`);
-                npEffectsHud.push(`+${Math.round((debuffPowerupMult - 1) * 100)}% Debuff Scaling`);
-              }
-              battleState.bossBuffs.push({
-                name: `${npName} (Burn)`,
-                type: 'burn',
-                value: 1000,
-                remainingTurns: 5
-              });
-              battleState.bossBuffs.push({
-                name: `${npName} (Spread of Fire)`,
-                type: 'spread_of_fire',
-                value: 100,
-                remainingTurns: 5
-              });
-              npEffectsLog.push('🔥 [Burn 1,000 DMG/5T + Spread of Fire (+100% Burn DMG)]');
-              npEffectsHud.push('Burn + Spread of Fire');
-            }
-
-            totalTurnDmg += Math.round(baseAtk * npMultiplier * overchargeScale * atkBuffMult * npCardPerfMult * debuffPowerupMult * specialAtkMult * bossDefFactor * npSpecialMult * (0.95 + Math.random() * 0.1));
+            totalTurnDmg += Math.round(baseAtk * npMultiplier * overchargeScale * atkBuffMult * specialAtkMult * bossDefFactor * npSpecialMult * (0.95 + Math.random() * 0.1));
             starsGenerated += 10;
             npGained += 15;
           }
@@ -2051,12 +2020,6 @@ async function runRaidBattle(
           if (p.activeBuffs) {
             p.activeBuffs.forEach(b => b.remainingTurns--);
             p.activeBuffs = p.activeBuffs.filter(b => b.remainingTurns > 0);
-          }
-          if (!p.isDead) {
-            const pPassives = p.servant.template?.passives || [];
-            if (pPassives.some((ps: any) => ps.type === 'progenitor_dragon' || (ps.name && ps.name.includes('Progenitor Dragon')))) {
-              p.npGauge = Math.min(300, (p.npGauge || 0) + 5);
-            }
           }
         });
 
@@ -2400,13 +2363,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
           if (!p.isDead) {
             const evIdx = p.activeBuffs ? p.activeBuffs.findIndex(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge' || b.type === 'evade' || b.type === 'invincible') : -1;
             if (evIdx >= 0 && p.activeBuffs) {
-              const buff = p.activeBuffs[evIdx] as any;
-              const bType = buff.type;
-              if (buff.remainingHits && buff.remainingHits > 1) {
-                buff.remainingHits--;
-              } else {
-                p.activeBuffs.splice(evIdx, 1);
-              }
+              const bType = p.activeBuffs[evIdx].type;
+              p.activeBuffs.splice(evIdx, 1);
               evadesCount++;
               const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
               if (bType === 'anti_purge_defense' || bType === 'anti_purge') {
@@ -2454,13 +2412,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
         if (!p.isDead) {
           const evIdx = p.activeBuffs ? p.activeBuffs.findIndex(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge' || b.type === 'evade' || b.type === 'invincible') : -1;
           if (evIdx >= 0 && p.activeBuffs) {
-            const buff = p.activeBuffs[evIdx] as any;
-            const bType = buff.type;
-            if (buff.remainingHits && buff.remainingHits > 1) {
-              buff.remainingHits--;
-            } else {
-              p.activeBuffs.splice(evIdx, 1);
-            }
+            const bType = p.activeBuffs[evIdx].type;
+            p.activeBuffs.splice(evIdx, 1);
             evadesCount++;
             const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
             if (bType === 'anti_purge_defense' || bType === 'anti_purge') {
@@ -2517,13 +2470,8 @@ async function executeBossTurn(state: RaidBattleState): Promise<{ bossUsedNp: bo
       const evIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge' || b.type === 'evade' || b.type === 'invincible') : -1;
 
       if (evIdx >= 0 && target.activeBuffs) {
-        const buff = target.activeBuffs[evIdx] as any;
-        const bType = buff.type;
-        if (buff.remainingHits && buff.remainingHits > 1) {
-          buff.remainingHits--;
-        } else {
-          target.activeBuffs.splice(evIdx, 1);
-        }
+        const bType = target.activeBuffs[evIdx].type;
+        target.activeBuffs.splice(evIdx, 1);
         if (bType === 'anti_purge_defense' || bType === 'anti_purge') {
           state.recentLogs.push(
             `👑 **[BLOCKED!]** **${tName}**'s Anti-Purge Defense completely nullified ${state.boss.name}'s strike!`
@@ -2917,10 +2865,6 @@ async function concludeRaidDefeat(
 
 function cleanBuffNameForDisplay(name: string): string {
   return name
-    .replace(/Blaze of Etna - Dragon Prison Manifestation: Armor of Ashen Flames C/gi, 'Blaze of Etna')
-    .replace(/Blaze of Etna - Dragon Prison Manifestation/gi, 'Blaze of Etna')
-    .replace(/Let This Become a Prayer EX/gi, 'Prayer EX')
-    .replace(/Black Wings A/gi, 'Black Wings')
     .replace(/Round of Avalon: The Promised Star Which Gathers The True Round/gi, 'Round of Avalon')
     .replace(/Strengthening Adaptation A\+/gi, 'Adaptation A+')
     .replace(/Calamity-Breaker Edict EX/gi, 'Calamity-Breaker')
