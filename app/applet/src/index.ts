@@ -58,7 +58,7 @@ import * as helpCommand from './commands/help';
 import * as rankingCommand from './commands/ranking';
 import * as raidCommand from './commands/raid';
 import { SERVANT_DATABASE } from './data/servants';
-import { getOrCreateMaster, getMaster, saveMaster, getAllThroneServants, findServantInPool, searchAndRankServants, claimDailySaintQuartz } from './database/service';
+import { getOrCreateMaster, getMaster, saveMaster, getAllThroneServants, getCustomServants, findServantInPool, searchAndRankServants, claimDailySaintQuartz } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
 import { allocateStatPoints } from './engine/statSystem';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from './data/noblePhantasmGifs';
@@ -149,7 +149,6 @@ export const client = new Client({
 export const commands = new Collection<string, any>();
 commands.set(summonCommand.data.name, summonCommand);
 commands.set(servantCommand.data.name, servantCommand);
-commands.set(servantsCommand.data.name, servantsCommand);
 commands.set(dialogueCommand.data.name, dialogueCommand);
 commands.set(duelCommand.data.name, duelCommand);
 commands.set(grailwarCommand.data.name, grailwarCommand);
@@ -186,7 +185,7 @@ commands.set(raidCommand.data.name, raidCommand);
 
 // Alias mapping for backward-compatible text shortcuts and interactions
 export const commandAliasMap: Record<string, any> = {
-  servants: servantsCommand,
+  servants: servantCommand,
   petrol: patrolCommand,
   board: grailwarCommand,
   grail: grailwarCommand,
@@ -1188,69 +1187,6 @@ client.on(Events.InteractionCreate, async interaction => {
       if (interaction.replied || interaction.deferred) return;
 
       const btnId = interaction.customId;
-
-      if (btnId.startsWith('aslist_')) {
-        const parts = btnId.split('_');
-        const action = parts[1];
-        let page = parseInt(parts[2], 10) || 1;
-        let filter = parts[3] || 'all';
-
-        if (action === 'prev') page = Math.max(1, page - 1);
-        if (action === 'next') page = page + 1;
-        if (action === 'filter') {
-          filter = parts[2];
-          page = 1;
-        }
-
-        const allThrone = getAllThroneServants();
-        const customList = getCustomServants();
-        let filtered = allThrone;
-        if (filter === 'custom') filtered = allThrone.filter(s => s.isCustomOrMeme);
-        if (filter === 'canon') filtered = allThrone.filter(s => !s.isCustomOrMeme);
-
-        const pageSize = 8;
-        const totalPages = Math.ceil(filtered.length / pageSize) || 1;
-        page = Math.max(1, Math.min(page, totalPages));
-        const pageItems = filtered.slice((page - 1) * pageSize, page * pageSize);
-
-        const itemsDesc = pageItems.map((s, idx) => {
-          const globalIdx = (page - 1) * pageSize + idx + 1;
-          const badge = s.isCustomOrMeme ? '🛠️ *[Custom]*' : '🏛️ *[Canon]*';
-          return `**${globalIdx}. ${s.name}** (` + `${s.servantClass}` + `) ${badge}\n` +
-            `   • Title: *${s.title || 'Heroic Spirit'}* | HP: \`${s.baseHp}\` | ATK: \`${s.baseAtk}\`\n` +
-            `   • ID: \`${s.id}\` | NP: *${s.noblePhantasm?.name || 'Phantasm'}*`;
-        }).join('\n\n');
-
-        const embed = new EmbedBuilder()
-          .setTitle(`📜 Throne of Heroes Servant Registry (Page ${page}/${totalPages})`)
-          .setDescription(
-            `**Total Spirits:** \`${allThrone.length}\` (🏛️ Canon: \`${allThrone.length - customList.length}\` | 🛠️ Custom: \`${customList.length}\`)\n` +
-            `*Use \`/addservant edit servant_id:<id>\` to edit pictures, stats, quotes, or NP!*\n\n` +
-            (itemsDesc || '*No Servants found in this filter.*')
-          )
-          .setColor(0xd4af37)
-          .setFooter({ text: `Page ${page} of ${totalPages} • Filter: ${filter.toUpperCase()}` });
-
-        const navRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          new ButtonBuilder()
-            .setCustomId(`aslist_prev_${page}_${filter}`)
-            .setLabel('◀️ Prev')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(page <= 1),
-          new ButtonBuilder()
-            .setCustomId(`aslist_next_${page}_${filter}`)
-            .setLabel('▶️ Next')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(page >= totalPages),
-          new ButtonBuilder()
-            .setCustomId(`aslist_filter_${filter === 'custom' ? 'all' : 'custom'}_${page}`)
-            .setLabel(filter === 'custom' ? `Show All (${allThrone.length})` : `Custom Only (${customList.length})`)
-            .setStyle(filter === 'custom' ? ButtonStyle.Success : ButtonStyle.Secondary)
-        );
-
-        await interaction.update({ embeds: [embed], components: [navRow] });
-        return;
-      }
 
       // Holy Grail War Recruitment Proclamation Buttons
       if (btnId.startsWith('war_call_')) {
