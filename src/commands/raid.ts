@@ -1840,7 +1840,32 @@ async function runRaidBattle(
               npEffectsLog.push('🛡️ [DEF-Ignoring]');
             }
 
-            totalTurnDmg += Math.round(baseAtk * npMultiplier * overchargeScale * atkBuffMult * specialAtkMult * bossDefFactor * npSpecialMult * (0.95 + Math.random() * 0.1));
+            // Typhon Ephemeros: Dragon Grail scaling with self debuffs (+10% per stack, up to +100%)
+            let typhonRaidDebuffScale = 1.0;
+            if (active.servant.templateId === 'typhon_ephemeros' || /dragon grail that reverses/i.test(npName)) {
+              const debuffCount = (active.activeBuffs || []).filter(b => ['curse', 'burn', 'poison', 'atk_down', 'def_down', 'stun', 'np_seal', 'skill_seal'].includes(b.type) || (b.name && (b.name.includes('[Demerit]') || b.type.includes('debuff')))).length;
+              if (debuffCount > 0) {
+                typhonRaidDebuffScale = 1.0 + Math.min(1.0, debuffCount * 0.10);
+                npEffectsLog.push(`🍷 [Dragon Grail Powerup: +${Math.round((typhonRaidDebuffScale - 1) * 100)}% DMG from ${debuffCount} Demerit/Debuff Stacks!]`);
+                npEffectsHud.push(`+${Math.round((typhonRaidDebuffScale - 1) * 100)}% Debuff DMG`);
+              }
+              battleState.bossBuffs.push({
+                name: 'Dragon Grail (Burn)',
+                type: 'burn',
+                value: 1000,
+                remainingTurns: 5
+              });
+              battleState.bossBuffs.push({
+                name: 'Dragon Grail (Spread of Fire)',
+                type: 'spread_of_fire',
+                value: 100,
+                remainingTurns: 5
+              });
+              npEffectsLog.push('🔥 [Burn (1,000/5T) + Spread of Fire (+100%/5T) Inflicted!]');
+              npEffectsHud.push('Burn + Spread of Fire');
+            }
+
+            totalTurnDmg += Math.round(baseAtk * npMultiplier * overchargeScale * typhonRaidDebuffScale * atkBuffMult * specialAtkMult * bossDefFactor * npSpecialMult * (0.95 + Math.random() * 0.1));
             starsGenerated += 10;
             npGained += 15;
           }
