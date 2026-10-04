@@ -18,39 +18,106 @@ export const MINIMAL_VALID_PNG = Buffer.from(
   'base64'
 );
 
+function createFallbackContext(): any {
+  const dummyGradient = {
+    addColorStop: () => {}
+  };
+  const dummyImageData = {
+    width: 1,
+    height: 1,
+    data: new Uint8ClampedArray(4)
+  };
+  const baseCtx: any = {
+    canvas: { width: 100, height: 100 },
+    fillStyle: '#000000',
+    strokeStyle: '#000000',
+    lineWidth: 1,
+    font: '10px sans-serif',
+    textAlign: 'left',
+    textBaseline: 'top',
+    shadowColor: 'transparent',
+    shadowBlur: 0,
+    shadowOffsetX: 0,
+    shadowOffsetY: 0,
+    globalAlpha: 1,
+    globalCompositeOperation: 'source-over',
+    createLinearGradient: () => dummyGradient,
+    createRadialGradient: () => dummyGradient,
+    createPattern: () => null,
+    getImageData: () => dummyImageData,
+    createImageData: () => dummyImageData,
+    putImageData: () => {},
+    measureText: (text: string) => ({
+      width: (text || '').length * 8,
+      actualBoundingBoxAscent: 10,
+      actualBoundingBoxDescent: 2
+    }),
+    save: () => {},
+    restore: () => {},
+    beginPath: () => {},
+    closePath: () => {},
+    moveTo: () => {},
+    lineTo: () => {},
+    quadraticCurveTo: () => {},
+    bezierCurveTo: () => {},
+    arc: () => {},
+    arcTo: () => {},
+    ellipse: () => {},
+    rect: () => {},
+    roundRect: () => {},
+    fill: () => {},
+    stroke: () => {},
+    clip: () => {},
+    fillRect: () => {},
+    strokeRect: () => {},
+    clearRect: () => {},
+    drawImage: () => {},
+    fillText: () => {},
+    strokeText: () => {},
+    translate: () => {},
+    rotate: () => {},
+    scale: () => {},
+    transform: () => {},
+    setTransform: () => {},
+    resetTransform: () => {},
+    setLineDash: () => {},
+    getLineDash: () => [],
+    isPointInPath: () => false,
+    isPointInStroke: () => false
+  };
+
+  return new Proxy(baseCtx, {
+    get(target, prop) {
+      if (prop in target) {
+        return target[prop];
+      }
+      return () => {};
+    },
+    set(target, prop, value) {
+      target[prop] = value;
+      return true;
+    }
+  });
+}
+
 function createCanvas(width: number, height: number): any {
   if (canvasModule && typeof canvasModule.createCanvas === 'function') {
-    return canvasModule.createCanvas(width, height);
+    try {
+      const c = canvasModule.createCanvas(width, height);
+      if (c && typeof c.getContext === 'function') {
+        const testCtx = c.getContext('2d');
+        if (testCtx) return c;
+      }
+    } catch {
+      // Fall through to fallback
+    }
   }
   return {
-    getContext: () => ({
-      createLinearGradient: () => ({ addColorStop: () => {} }),
-      createRadialGradient: () => ({ addColorStop: () => {} }),
-      fillRect: () => {},
-      beginPath: () => {},
-      moveTo: () => {},
-      lineTo: () => {},
-      quadraticCurveTo: () => {},
-      closePath: () => {},
-      stroke: () => {},
-      fill: () => {},
-      save: () => {},
-      restore: () => {},
-      clip: () => {},
-      drawImage: () => {},
-      fillText: () => {},
-      measureText: () => ({ width: 0 }),
-      getImageData: () => ({ data: new Uint8ClampedArray(4) }),
-      set fillStyle(_: any) {},
-      set strokeStyle(_: any) {},
-      set lineWidth(_: any) {},
-      set font(_: any) {},
-      set textAlign(_: any) {},
-      set textBaseline(_: any) {},
-      set shadowColor(_: any) {},
-      set shadowBlur(_: any) {}
-    }),
-    toBuffer: (_type?: string) => MINIMAL_VALID_PNG
+    width,
+    height,
+    getContext: () => createFallbackContext(),
+    toBuffer: (_type?: string) => MINIMAL_VALID_PNG,
+    encode: async () => MINIMAL_VALID_PNG
   };
 }
 
@@ -1275,70 +1342,75 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
  * Generates a high-definition 1280x720 PNG buffer for the FGO PvE Raid Battlefield
  */
 export async function renderRaidBattlefield(state: RaidBattleState, _animated = false): Promise<{ buffer: Buffer; fileName: string }> {
-  const bossClassIconUrl = getClassIconUrl(state.boss.servantClass);
-  const participantClassIconUrls = state.participants.map(p =>
-    getClassIconUrl(p.servant.template?.servantClass || 'Saber')
-  );
+  try {
+    const bossClassIconUrl = getClassIconUrl(state.boss.servantClass);
+    const participantClassIconUrls = state.participants.map(p =>
+      getClassIconUrl(p.servant.template?.servantClass || 'Saber')
+    );
 
-  // Collect all active buff/debuff types and skill icons for preloading
-  const skillTypes = state.participants.flatMap(p => {
-    const skills = p.servant.template?.skills || (p.servant as any).skills || [];
-    return [0, 1, 2].map(sIdx => {
-      const sk = skills[sIdx];
-      return sk?.effectType || sk?.name || (sIdx === 0 ? 'buff_atk' : sIdx === 1 ? 'arts' : 'crit_stars');
+    // Collect all active buff/debuff types and skill icons for preloading
+    const skillTypes = state.participants.flatMap(p => {
+      const skills = p.servant.template?.skills || (p.servant as any).skills || [];
+      return [0, 1, 2].map(sIdx => {
+        const sk = skills[sIdx];
+        return sk?.effectType || sk?.name || (sIdx === 0 ? 'buff_atk' : sIdx === 1 ? 'arts' : 'crit_stars');
+      });
     });
-  });
 
-  const allBuffTypes = Array.from(new Set([
-    ...state.participants.flatMap(p => (p.activeBuffs || []).map(b => b.type)),
-    ...(state.bossBuffs || []).map(b => b.type),
-    ...skillTypes
-  ]));
-  const buffUrls = allBuffTypes.map(t => getStatusIconUrl(t));
+    const allBuffTypes = Array.from(new Set([
+      ...state.participants.flatMap(p => (p.activeBuffs || []).map(b => b.type)),
+      ...(state.bossBuffs || []).map(b => b.type),
+      ...skillTypes
+    ]));
+    const buffUrls = allBuffTypes.map(t => getStatusIconUrl(t));
 
-  const isTiamat = state.boss.id === 'tiamat' || state.boss.name.toLowerCase().includes('tiamat');
-  const phase = state.currentPhase || 1;
-  const activeSpriteUrl = (isTiamat && state.boss.phases && state.boss.phases[phase - 1])
-    ? state.boss.phases[phase - 1].spriteUrl
-    : state.boss.spriteUrl;
+    const isTiamat = state.boss.id === 'tiamat' || state.boss.name.toLowerCase().includes('tiamat');
+    const phase = state.currentPhase || 1;
+    const activeSpriteUrl = (isTiamat && state.boss.phases && state.boss.phases[phase - 1])
+      ? state.boss.phases[phase - 1].spriteUrl
+      : state.boss.spriteUrl;
 
-  // Preload all assets including authentic FGO class icons and status icons
-  const [bgImg, bossSpriteImg, bossAvatarImg, bossClassIconImg, ...rest] = await Promise.all([
-    loadImage(state.boss.bgUrl),
-    loadImage(activeSpriteUrl),
-    loadImage(state.boss.avatarUrl),
-    loadImage(bossClassIconUrl),
-    ...state.participants.map(p => {
-      const art = p.servant.template?.spriteUrl || (p.servant as any).customArtworkUrl || p.servant.template?.avatarUrl;
-      return art ? loadImage(art) : Promise.resolve(null);
-    }),
-    ...participantClassIconUrls.map(url => loadImage(url)),
-    ...buffUrls.map(url => loadImage(url))
-  ]);
+    // Preload all assets including authentic FGO class icons and status icons
+    const [bgImg, bossSpriteImg, bossAvatarImg, bossClassIconImg, ...rest] = await Promise.all([
+      loadImage(state.boss.bgUrl),
+      loadImage(activeSpriteUrl),
+      loadImage(state.boss.avatarUrl),
+      loadImage(bossClassIconUrl),
+      ...state.participants.map(p => {
+        const art = p.servant.template?.spriteUrl || (p.servant as any).customArtworkUrl || p.servant.template?.avatarUrl;
+        return art ? loadImage(art) : Promise.resolve(null);
+      }),
+      ...participantClassIconUrls.map(url => loadImage(url)),
+      ...buffUrls.map(url => loadImage(url))
+    ]);
 
-  const numPart = state.participants.length;
-  const servantAvatars = rest.slice(0, numPart);
-  const servantClassIcons = rest.slice(numPart, numPart + participantClassIconUrls.length);
-  const loadedBuffImgs = rest.slice(numPart + participantClassIconUrls.length);
+    const numPart = state.participants.length;
+    const servantAvatars = rest.slice(0, numPart);
+    const servantClassIcons = rest.slice(numPart, numPart + participantClassIconUrls.length);
+    const loadedBuffImgs = rest.slice(numPart + participantClassIconUrls.length);
 
-  const buffImageMap = new Map<string, any>();
-  buffUrls.forEach((url, idx) => {
-    if (loadedBuffImgs[idx]) {
-      buffImageMap.set(url, loadedBuffImgs[idx]);
-    }
-  });
+    const buffImageMap = new Map<string, any>();
+    buffUrls.forEach((url, idx) => {
+      if (loadedBuffImgs[idx]) {
+        buffImageMap.set(url, loadedBuffImgs[idx]);
+      }
+    });
 
-  const loadedImages = {
-    bgImg,
-    bossSpriteImg,
-    bossAvatarImg,
-    bossClassIconImg,
-    servantAvatars,
-    servantClassIcons,
-    buffImageMap
-  };
+    const loadedImages = {
+      bgImg,
+      bossSpriteImg,
+      bossAvatarImg,
+      bossClassIconImg,
+      servantAvatars,
+      servantClassIcons,
+      buffImageMap
+    };
 
-  // Render pristine 1280x720 PNG frame
-  const singleCanvas = await renderSingleFrame(state, loadedImages);
-  return { buffer: singleCanvas.toBuffer('image/png'), fileName: 'raid_battlefield.png' };
+    // Render pristine 1280x720 PNG frame
+    const singleCanvas = await renderSingleFrame(state, loadedImages);
+    return { buffer: singleCanvas.toBuffer('image/png'), fileName: 'raid_battlefield.png' };
+  } catch (err) {
+    console.warn('[raidRenderer] Error rendering canvas frame, using safe fallback image buffer:', err);
+    return { buffer: MINIMAL_VALID_PNG, fileName: 'raid_battlefield.png' };
+  }
 }
