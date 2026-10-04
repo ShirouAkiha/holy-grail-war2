@@ -1349,6 +1349,12 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
+      // Admin Servant Registry Pagination Controls
+      if (btnId.startsWith('aslist_')) {
+        await addservantCommand.handleAdminServantListButton(interaction);
+        return;
+      }
+
       // Servant List Pagination, Filters, and Profile View Controls
       if (
         btnId.startsWith('servant_list_') ||

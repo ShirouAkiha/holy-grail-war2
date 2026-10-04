@@ -490,47 +490,26 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   // SUBCOMMAND B: LIST CUSTOM SERVANTS
   // ------------------------------------------
   if (subcommand === 'list') {
-    const allThrone = getAllThroneServants();
     const customList = getCustomServants();
-    const pageSize = 8;
-    const totalPages = Math.ceil(allThrone.length / pageSize) || 1;
-    const pageItems = allThrone.slice(0, pageSize);
+    const allThrone = getAllThroneServants();
 
-    const itemsDesc = pageItems.map((s, idx) => {
-      const badge = s.isCustomOrMeme ? '🛠️ *[Custom]*' : '🏛️ *[Canon]*';
-      return `**${idx + 1}. ${s.name}** (` + `${s.servantClass}` + `) ${badge}\n` +
-        `   • Title: *${s.title || 'Heroic Spirit'}* | HP: \`${s.baseHp}\` | ATK: \`${s.baseAtk}\`\n` +
-        `   • ID: \`${s.id}\` | NP: *${s.noblePhantasm?.name || 'Phantasm'}*`;
-    }).join('\n\n');
+    const items = allThrone.map((s, idx) => 
+      `**${idx + 1}. ${s.name}** [${s.servantClass}] ${s.isCustomOrMeme ? '🛠️ *[Custom]*' : '🏛️ *[Canon]*'}\n` +
+      `   • Title: *${s.title}* | HP: \`${s.baseHp}\` | ATK: \`${s.baseAtk}\`\n` +
+      `   • ID: \`${s.id}\` | NP: *${s.noblePhantasm.name}*`
+    ).join('\n\n');
 
     const embed = new EmbedBuilder()
-      .setTitle(`📜 Throne of Heroes Servant Registry (Page 1/${totalPages})`)
+      .setTitle(`📜 Throne of Heroes Servant Registry (${allThrone.length} Servants)`)
       .setDescription(
-        `**Total Spirits:** \`${allThrone.length}\` (🏛️ Canon: \`${allThrone.length - customList.length}\` | 🛠️ Custom: \`${customList.length}\`)\n` +
-        `*Use \`/addservant edit servant_id:<id>\` to edit pictures, stats, quotes, or NP!*\n\n` +
-        itemsDesc
+        `Below are all Heroic Spirits registered in the Throne of Heroes.\n` +
+        `Use \`/addservant edit servant_id:<id>\` to edit any Servant's image, stats, name, or quotes!\n\n` +
+        items
       )
       .setColor(0xd4af37)
-      .setFooter({ text: `Page 1 of ${totalPages} • Use /servants list for interactive browser` });
+      .setFooter({ text: `Canon: ${allThrone.length - customList.length} • Custom: ${customList.length}` });
 
-    const navRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId('aslist_prev_1_all')
-        .setLabel('◀️ Prev')
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(true),
-      new ButtonBuilder()
-        .setCustomId('aslist_next_1_all')
-        .setLabel('▶️ Next')
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(totalPages <= 1),
-      new ButtonBuilder()
-        .setCustomId('aslist_filter_custom_1')
-        .setLabel(`Custom Only (${customList.length})`)
-        .setStyle(ButtonStyle.Secondary)
-    );
-
-    await interaction.reply({ embeds: [embed], components: [navRow] });
+    await interaction.reply({ embeds: [embed] });
     return;
   }
 
@@ -732,4 +711,71 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     await interaction.reply({ embeds: [embed] });
     return;
   }
+}
+
+
+export async function handleAdminServantListButton(interaction: any): Promise<boolean> {
+  const btnId = interaction.customId;
+  if (!btnId || !btnId.startsWith("aslist_")) return false;
+
+  const parts = btnId.split("_");
+  const action = parts[1];
+  let page = parseInt(parts[2], 10) || 1;
+  let filter = parts[3] || "all";
+
+  if (action === "prev") page = Math.max(1, page - 1);
+  if (action === "next") page = page + 1;
+  if (action === "filter") {
+    filter = parts[2];
+    page = 1;
+  }
+
+  const allThrone = getAllThroneServants();
+  const customList = getCustomServants();
+  let filtered = allThrone;
+  if (filter === "custom") filtered = allThrone.filter(s => s.isCustomOrMeme);
+  if (filter === "canon") filtered = allThrone.filter(s => !s.isCustomOrMeme);
+
+  const pageSize = 8;
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  page = Math.max(1, Math.min(page, totalPages));
+  const pageItems = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  const itemsDesc = pageItems.map((s, idx) => {
+    const globalIdx = (page - 1) * pageSize + idx + 1;
+    const badge = s.isCustomOrMeme ? "🛠️ *[Custom]*" : "🏛️ *[Canon]*";
+    return `**${globalIdx}. ${s.name}** (` + `${s.servantClass}` + `) ${badge}\n` +
+      `   • Title: *${s.title || "Heroic Spirit"}* | HP: \`${s.baseHp}\` | ATK: \`${s.baseAtk}\`\n` +
+      `   • ID: \`${s.id}\` | NP: *${s.noblePhantasm?.name || "Phantasm"}*`;
+  }).join("\n\n");
+
+  const embed = new EmbedBuilder()
+    .setTitle(`📜 Throne of Heroes Servant Registry (Page ${page}/${totalPages})`)
+    .setDescription(
+      `**Total Spirits:** \`${allThrone.length}\` (🏛️ Canon: \`${allThrone.length - customList.length}\` | 🛠️ Custom: \`${customList.length}\`)\n` +
+      `*Use \`/addservant edit servant_id:<id>\` to edit pictures, stats, quotes, or NP!*\n\n` +
+      (itemsDesc || "*No Servants found in this filter.*")
+    )
+    .setColor(0xd4af37)
+    .setFooter({ text: `Page ${page} of ${totalPages} • Filter: ${filter.toUpperCase()}` });
+
+  const navRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`aslist_prev_${page}_${filter}`)
+      .setLabel("◀️ Prev")
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(page <= 1),
+    new ButtonBuilder()
+      .setCustomId(`aslist_next_${page}_${filter}`)
+      .setLabel("▶️ Next")
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(page >= totalPages),
+    new ButtonBuilder()
+      .setCustomId(`aslist_filter_${filter === "custom" ? "all" : "custom"}_${page}`)
+      .setLabel(filter === "custom" ? `Show All (${allThrone.length})` : `Custom Only (${customList.length})`)
+      .setStyle(filter === "custom" ? ButtonStyle.Success : ButtonStyle.Secondary)
+  );
+
+  await interaction.update({ embeds: [embed], components: [navRow] });
+  return true;
 }
