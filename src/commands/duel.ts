@@ -2024,8 +2024,10 @@ function resolveStrike(
     if (attackerCe.id === 'ce_when_the_flowers_fall') {
       attacker.npGauge = Math.min(300, attacker.npGauge + 4);
     }
-    if (attackerCe.id === 'ce_black_grail') {
-      attacker.currentHp = Math.max(1, attacker.currentHp - 500);
+    if (attackerCe.id === 'ce_black_grail' || /black grail/i.test(attackerCe.name || '')) {
+      const burnDmg = 500;
+      attacker.currentHp = Math.max(1, attacker.currentHp - burnDmg);
+      chainTags.push(`🩸 The Black Grail Tainted Curse (-${burnDmg} HP Demerit)`);
     }
   }
 
@@ -2484,8 +2486,15 @@ function resolveStrike(
         const variance = 0.96 + Math.random() * 0.08;
         let ceNpDmgMult = 1.0;
         if (attackerCe) {
-          if (attackerCe.id === 'ce_black_grail' || attackerCe.id === 'ce_heavens_feel' || attackerCe.id === 'ce_when_the_flowers_fall' || attackerCe.passiveType === 'np_dmg_up') {
-            ceNpDmgMult += (attackerCe.passiveValue || 30) / 100;
+          if (
+            attackerCe.id === 'ce_black_grail' ||
+            attackerCe.id === 'ce_heavens_feel' ||
+            attackerCe.id === 'ce_when_the_flowers_fall' ||
+            attackerCe.passiveType === 'np_damage' ||
+            attackerCe.passiveType === 'np_dmg_up' ||
+            /black grail/i.test(attackerCe.name || '')
+          ) {
+            ceNpDmgMult += (attackerCe.passiveValue || (attackerCe.id === 'ce_black_grail' || /black grail/i.test(attackerCe.name || '') ? 60 : 30)) / 100;
           }
         }
         const npDmgDebuff = attacker.activeBuffs

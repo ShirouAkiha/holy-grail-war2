@@ -543,7 +543,7 @@ export function resolveCombatTurn(
     }
 
     // Black Grail -500 HP self-burn
-    if (ce.id === 'ce_black_grail') {
+    if (ce.id === 'ce_black_grail' || /black grail/i.test(ce.name || '')) {
       combatant.currentHp = Math.max(1, combatant.currentHp - 500);
     }
   };

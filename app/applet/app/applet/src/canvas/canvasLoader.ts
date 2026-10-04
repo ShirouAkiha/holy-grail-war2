@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 
+declare const __non_webpack_require__: any;
+
 let loadedCanvas: any = null;
 
 function getRuntimeRequire(): ((id: string) => any) | null {

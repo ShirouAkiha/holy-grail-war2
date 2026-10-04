@@ -1003,8 +1003,13 @@ export function executeNoblePhantasmLogic(
   // NP Damage Buff (The Black Grail, Heaven's Feel, etc.)
   let npDmgBonus = 1.0;
   if (actor.equippedCe) {
-    if (actor.equippedCe.id === 'ce_black_grail' || actor.equippedCe.passiveType === 'np_damage') {
-      npDmgBonus += (actor.equippedCe.passiveValue || 60) / 100;
+    if (
+      actor.equippedCe.id === 'ce_black_grail' ||
+      actor.equippedCe.passiveType === 'np_damage' ||
+      actor.equippedCe.passiveType === 'np_dmg_up' ||
+      /black grail/i.test(actor.equippedCe.name || '')
+    ) {
+      npDmgBonus += (actor.equippedCe.passiveValue || (actor.equippedCe.id === 'ce_black_grail' || /black grail/i.test(actor.equippedCe.name || '') ? 60 : 30)) / 100;
     } else if (actor.equippedCe.id === 'ce_heavens_feel') {
       npDmgBonus += 0.40;
     } else if (actor.equippedCe.id === 'ce_when_the_flowers_fall') {
@@ -1712,7 +1717,7 @@ export function executeBattleTurn(
       if (ce.id === 'ce_when_the_flowers_fall') {
         actor.npGauge = Math.min(300, actor.npGauge + 4);
       }
-      if (ce.id === 'ce_black_grail') {
+      if (ce.id === 'ce_black_grail' || /black grail/i.test(ce.name || '')) {
         actor.currentHp = Math.max(1, actor.currentHp - 500);
       }
     }

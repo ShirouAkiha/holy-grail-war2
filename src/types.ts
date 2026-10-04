@@ -41,12 +41,13 @@ export interface ServantSkill {
   cooldown: number;
   currentCooldown?: number;
   description: string;
-  effectType: 'buff_atk' | 'buff_def' | 'heal' | 'np_charge' | 'crit_stars' | 'evade' | 'invincible' | 'stun' | 'debuff' | 'guts';
+  effectType: 'buff_atk' | 'buff_def' | 'heal' | 'np_charge' | 'crit_stars' | 'evade' | 'invincible' | 'stun' | 'debuff' | 'guts' | 'buster_up' | 'arts_up' | 'quick_up' | (string & {});
   value: number;
   duration: number;
   icon: string;
   quote?: string;
   quotes?: string[];
+  target?: 'self' | 'ally' | 'enemy' | 'all_allies' | 'all_enemies' | string;
   transformationAvatarUrl?: string;
   transformationGifUrl?: string;
 }

@@ -283,12 +283,14 @@ function loadFromDisk() {
         // Synchronize master servant instances with canonical stats & strip equipped Kaleidoscope
         if (m.servants && Array.isArray(m.servants)) {
           for (const inst of m.servants) {
-            if (inst.equippedCeId === 'ce_kaleidoscope' || inst.equippedCe?.id === 'ce_kaleidoscope') {
+            const ceId = inst.equippedCeId || inst.equippedCe?.id;
+            if (ceId === 'ce_kaleidoscope') {
               inst.equippedCeId = undefined;
               inst.equippedCe = undefined;
-            } else if (inst.equippedCeId) {
-              const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === inst.equippedCeId);
+            } else if (ceId) {
+              const canonCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === ceId) || (inst.equippedCe ? { ...inst.equippedCe } : undefined);
               if (canonCe) {
+                inst.equippedCeId = ceId;
                 inst.equippedCe = { ...canonCe };
               }
             }

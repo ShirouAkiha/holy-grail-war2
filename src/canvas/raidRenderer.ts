@@ -770,8 +770,8 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   bossHpGrad.addColorStop(0.5, '#db2777');
   bossHpGrad.addColorStop(1, '#ef4444');
 
-  const curHp = state.bossCurrentHp !== undefined ? state.bossCurrentHp : (state.boss?.currentHp || 0);
-  const maxHp = state.bossMaxHp !== undefined ? state.bossMaxHp : (state.boss?.maxHp || state.boss?.baseHp || 1);
+  const curHp = state.bossCurrentHp !== undefined ? state.bossCurrentHp : ((state.boss as any)?.currentHp || 0);
+  const maxHp = state.bossMaxHp !== undefined ? state.bossMaxHp : ((state.boss as any)?.maxHp || (state.boss as any)?.baseHp || 1);
 
   drawProgressBar(ctx, bossHpX, bossHpY, bossHpW, bossHpH, curHp, maxHp, bossHpGrad, 'rgba(15, 23, 42, 0.95)', '#94a3b8');
 

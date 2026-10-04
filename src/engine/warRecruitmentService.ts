@@ -1227,7 +1227,7 @@ export function resumePendingRecruitment(client: Client): void {
               console.log('[WarRecruitment] Active War deadline reached! Evaluating final war state & Option C: Grail Corruption...');
               const wasActive = currentWar.status === 'active';
               evaluateWarState(currentWar);
-              if (wasActive && currentWar.status === 'concluded') {
+              if (wasActive && (currentWar.status as string) === 'concluded') {
                 saveWarToDisk();
                 if (currentWar.isCorrupted || currentWar.concludedReason === 'grail_corruption') {
                   broadcastGrailCorruptionEvent(client, currentWar).catch(err => {
