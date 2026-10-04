@@ -103,7 +103,14 @@ export const STATUS_ICON_URLS: Record<string, string> = {
   attack_down: 'https://ella.janitorai.com/media-approved/Uc8B1gBRG1GEAHwDh5e_o.webp',
 
   // NP Charge / Battery
-  np_charge: 'https://ella.janitorai.com/media-approved/c2ZlxWaT67hHtiRNKTxpr.webp'
+  np_charge: 'https://ella.janitorai.com/media-approved/c2ZlxWaT67hHtiRNKTxpr.webp',
+
+  // Overcharge Up
+  overcharge_up: 'https://ella.janitorai.com/media-approved/B_miL56ijY-uYq8mY8eDv.webp',
+  overcharge: 'https://ella.janitorai.com/media-approved/B_miL56ijY-uYq8mY8eDv.webp',
+
+  // Spread of Fire
+  spread_of_fire: 'https://ella.janitorai.com/media-approved/44jx6w5FleIv5suvmkiVE.webp'
 };
 
 export function getStatusIconUrl(effectTypeOrName?: string): string {
@@ -112,6 +119,20 @@ export function getStatusIconUrl(effectTypeOrName?: string): string {
 
   if (STATUS_ICON_URLS[key]) {
     return STATUS_ICON_URLS[key];
+  }
+
+  // Typhon Ephemeros signature skill icons
+  if (key.includes('blaze_of_etna') || key.includes('armor_of_ashen')) {
+    return STATUS_ICON_URLS.buster_up;
+  }
+  if (key.includes('black_wings')) {
+    return STATUS_ICON_URLS.crit_dmg;
+  }
+  if (key.includes('let_this_become_a_prayer') || key.includes('prayer')) {
+    return STATUS_ICON_URLS.np_charge;
+  }
+  if (key.includes('overcharge')) {
+    return STATUS_ICON_URLS.overcharge_up;
   }
 
   // Substring matching helper

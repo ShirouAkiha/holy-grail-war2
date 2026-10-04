@@ -10,7 +10,14 @@ let canvasModule: any = null;
 try {
   canvasModule = require('@napi-rs/canvas');
 } catch {
-  canvasModule = null;
+  try {
+    const nonWebpackReq = typeof __non_webpack_require__ !== 'undefined' ? __non_webpack_require__ : null;
+    if (nonWebpackReq) {
+      canvasModule = nonWebpackReq('@napi-rs/canvas');
+    }
+  } catch {
+    canvasModule = null;
+  }
 }
 
 export const MINIMAL_VALID_PNG = Buffer.from(
@@ -18,38 +25,106 @@ export const MINIMAL_VALID_PNG = Buffer.from(
   'base64'
 );
 
+function createMockContext(width = 1200, height = 675): any {
+  const dummyGrad = { addColorStop: () => {} };
+  const baseCtx: any = {
+    canvas: { width, height },
+    createLinearGradient: () => dummyGrad,
+    createRadialGradient: () => dummyGrad,
+    createPattern: () => null,
+    fillRect: () => {},
+    strokeRect: () => {},
+    clearRect: () => {},
+    beginPath: () => {},
+    moveTo: () => {},
+    lineTo: () => {},
+    arc: () => {},
+    arcTo: () => {},
+    ellipse: () => {},
+    rect: () => {},
+    roundRect: () => {},
+    quadraticCurveTo: () => {},
+    bezierCurveTo: () => {},
+    closePath: () => {},
+    stroke: () => {},
+    fill: () => {},
+    save: () => {},
+    restore: () => {},
+    clip: () => {},
+    translate: () => {},
+    rotate: () => {},
+    scale: () => {},
+    transform: () => {},
+    resetTransform: () => {},
+    setTransform: () => {},
+    drawImage: () => {},
+    fillText: () => {},
+    strokeText: () => {},
+    measureText: () => ({ width: 0, actualBoundingBoxAscent: 0, actualBoundingBoxDescent: 0 }),
+    getImageData: () => ({ data: new Uint8ClampedArray(4) }),
+    putImageData: () => {},
+    createImageData: () => ({ data: new Uint8ClampedArray(4) }),
+    setLineDash: () => {},
+    getLineDash: () => [],
+    isPointInPath: () => false,
+    isPointInStroke: () => false,
+    set fillStyle(_: any) {},
+    get fillStyle() { return '#000000'; },
+    set strokeStyle(_: any) {},
+    get strokeStyle() { return '#000000'; },
+    set lineWidth(_: any) {},
+    get lineWidth() { return 1; },
+    set font(_: any) {},
+    get font() { return '10px sans-serif'; },
+    set textAlign(_: any) {},
+    get textAlign() { return 'start'; },
+    set textBaseline(_: any) {},
+    get textBaseline() { return 'alphabetic'; },
+    set shadowColor(_: any) {},
+    get shadowColor() { return 'transparent'; },
+    set shadowBlur(_: any) {},
+    get shadowBlur() { return 0; },
+    set shadowOffsetX(_: any) {},
+    get shadowOffsetX() { return 0; },
+    set shadowOffsetY(_: any) {},
+    get shadowOffsetY() { return 0; },
+    set globalAlpha(_: any) {},
+    get globalAlpha() { return 1; },
+    set globalCompositeOperation(_: any) {},
+    get globalCompositeOperation() { return 'source-over'; },
+  };
+
+  if (typeof Proxy !== 'undefined') {
+    return new Proxy(baseCtx, {
+      get(target, prop) {
+        if (prop in target) return target[prop];
+        if (typeof prop === 'string') {
+          return () => {};
+        }
+        return undefined;
+      },
+      set(target, prop, val) {
+        target[prop] = val;
+        return true;
+      }
+    });
+  }
+  return baseCtx;
+}
+
 function createCanvas(width: number, height: number): any {
   if (canvasModule && typeof canvasModule.createCanvas === 'function') {
-    return canvasModule.createCanvas(width, height);
+    try {
+      return canvasModule.createCanvas(width, height);
+    } catch {
+      // Fall through to mock
+    }
   }
+  const mockCtx = createMockContext(width, height);
   return {
-    getContext: () => ({
-      createLinearGradient: () => ({ addColorStop: () => {} }),
-      createRadialGradient: () => ({ addColorStop: () => {} }),
-      fillRect: () => {},
-      beginPath: () => {},
-      moveTo: () => {},
-      lineTo: () => {},
-      quadraticCurveTo: () => {},
-      closePath: () => {},
-      stroke: () => {},
-      fill: () => {},
-      save: () => {},
-      restore: () => {},
-      clip: () => {},
-      drawImage: () => {},
-      fillText: () => {},
-      measureText: () => ({ width: 0 }),
-      getImageData: () => ({ data: new Uint8ClampedArray(4) }),
-      set fillStyle(_: any) {},
-      set strokeStyle(_: any) {},
-      set lineWidth(_: any) {},
-      set font(_: any) {},
-      set textAlign(_: any) {},
-      set textBaseline(_: any) {},
-      set shadowColor(_: any) {},
-      set shadowBlur(_: any) {}
-    }),
+    width,
+    height,
+    getContext: () => mockCtx,
     toBuffer: (_type?: string) => MINIMAL_VALID_PNG
   };
 }
@@ -167,25 +242,28 @@ function drawDiamond(
   strokeStyle: any,
   lineWidth = 1
 ) {
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.beginPath();
-  ctx.moveTo(0, -size / 2);
-  ctx.lineTo(size / 2, 0);
-  ctx.lineTo(0, size / 2);
-  ctx.lineTo(-size / 2, 0);
-  ctx.closePath();
+  if (!ctx) return;
+  const half = size / 2;
+  if (typeof ctx.save === 'function') ctx.save();
+  if (typeof ctx.beginPath === 'function') ctx.beginPath();
+  if (typeof ctx.moveTo === 'function') ctx.moveTo(cx, cy - half);
+  if (typeof ctx.lineTo === 'function') {
+    ctx.lineTo(cx + half, cy);
+    ctx.lineTo(cx, cy + half);
+    ctx.lineTo(cx - half, cy);
+  }
+  if (typeof ctx.closePath === 'function') ctx.closePath();
 
   if (fillStyle) {
     ctx.fillStyle = fillStyle;
-    ctx.fill();
+    if (typeof ctx.fill === 'function') ctx.fill();
   }
   if (strokeStyle) {
     ctx.strokeStyle = strokeStyle;
     ctx.lineWidth = lineWidth;
-    ctx.stroke();
+    if (typeof ctx.stroke === 'function') ctx.stroke();
   }
-  ctx.restore();
+  if (typeof ctx.restore === 'function') ctx.restore();
 }
 
 function drawProgressBar(
@@ -416,10 +494,20 @@ function drawFGOSkillIcon(
     ctx.fillText(`${cooldownTurns}T`, cx, cy);
     ctx.shadowBlur = 0;
 
-    // Small Clock icon badge on top left corner
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = 'bold 13px sans-serif';
-    ctx.fillText('⏱', innerX + 10, innerY + 10);
+    // Small Clock icon badge on top left corner (drawn as vector clock so no missing glyph/box)
+    ctx.save();
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(innerX + 11, innerY + 11, 5.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(innerX + 11, innerY + 11);
+    ctx.lineTo(innerX + 11, innerY + 7.5);
+    ctx.moveTo(innerX + 11, innerY + 11);
+    ctx.lineTo(innerX + 14, innerY + 11);
+    ctx.stroke();
+    ctx.restore();
   }
 
   ctx.restore();
@@ -652,10 +740,11 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   }
 
   // Boss Class Tag below Diamond
-  ctx.fillStyle = state.boss.servantClass === 'Beast' ? '#f43f5e' : '#fbbf24';
+  const bossClassStr = String(state.boss?.servantClass || (state.boss as any)?.class || 'Beast');
+  ctx.fillStyle = bossClassStr === 'Beast' ? '#f43f5e' : '#fbbf24';
   ctx.font = 'bold 14px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(state.boss.servantClass.toUpperCase(), bossHudX + avatarSize / 2, bossHudY + avatarSize + 18);
+  ctx.fillText(bossClassStr.toUpperCase(), bossHudX + avatarSize / 2, bossHudY + avatarSize + 18);
 
   // Dynamic Boss Header Texts
   const textStartX = bossHudX + avatarSize + 20;
@@ -691,7 +780,10 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   bossHpGrad.addColorStop(0.5, '#db2777');
   bossHpGrad.addColorStop(1, '#ef4444');
 
-  drawProgressBar(ctx, bossHpX, bossHpY, bossHpW, bossHpH, state.bossCurrentHp, state.bossMaxHp, bossHpGrad, 'rgba(15, 23, 42, 0.95)', '#94a3b8');
+  const curHp = state.bossCurrentHp !== undefined ? state.bossCurrentHp : (state.boss?.currentHp || 0);
+  const maxHp = state.bossMaxHp !== undefined ? state.bossMaxHp : (state.boss?.maxHp || state.boss?.baseHp || 1);
+
+  drawProgressBar(ctx, bossHpX, bossHpY, bossHpW, bossHpH, curHp, maxHp, bossHpGrad, 'rgba(15, 23, 42, 0.95)', '#94a3b8');
 
   // HP Numbers on Boss HP Bar
   ctx.fillStyle = '#ffffff';
@@ -699,7 +791,7 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
   ctx.fillText(
-    `${Math.round(state.bossCurrentHp).toLocaleString()} / ${state.bossMaxHp.toLocaleString()}`,
+    `${Math.round(curHp).toLocaleString()} / ${Math.round(maxHp).toLocaleString()}`,
     bossHpX + bossHpW - 8,
     bossHpY + bossHpH / 2 + 1
   );
