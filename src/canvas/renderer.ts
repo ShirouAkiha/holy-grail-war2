@@ -12,20 +12,7 @@ import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { getLocalMediaDiskPath } from '../utils/localMedia';
 import { calculateCombatantBuffSummary } from '../utils/combatBuffHelper';
 import fs from 'fs';
-
-let canvasModule: any = null;
-try {
-  canvasModule = require('@napi-rs/canvas');
-} catch {
-  canvasModule = null;
-}
-
-let gifencModule: any = null;
-try {
-  gifencModule = require('gifenc');
-} catch {
-  gifencModule = null;
-}
+import { getCanvasModule, getGifencModule } from './canvasLoader';
 
 export const MINIMAL_VALID_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
@@ -120,6 +107,7 @@ function createMockContext(width = 1200, height = 675): any {
 }
 
 function createCanvas(width: number, height: number): any {
+  const canvasModule = getCanvasModule();
   if (canvasModule && typeof canvasModule.createCanvas === 'function') {
     try {
       return canvasModule.createCanvas(width, height);
@@ -252,6 +240,7 @@ async function loadImage(src: string): Promise<any> {
   const targetUrl = normalizeMediaUrl(src.trim());
   if (!targetUrl) return null;
 
+  const canvasModule = getCanvasModule();
   if (canvasModule && typeof canvasModule.loadImage === 'function') {
     try {
       // 1. Check if it's already a local disk file or /api/media path
@@ -3857,9 +3846,9 @@ export async function renderDialogueCard(
   }
 
   // Server execution: Build animated GIF with 8 action frames if gifenc is available
-  if (gifencModule && typeof gifencModule.GIFEncoder === 'function') {
+  if (getGifencModule() && typeof getGifencModule().GIFEncoder === 'function') {
     try {
-      const { GIFEncoder, quantize, applyPalette } = gifencModule;
+      const { GIFEncoder, quantize, applyPalette } = getGifencModule();
       const gif = GIFEncoder();
       const totalFrames = 8;
       const frameDelay = 120; // 120ms per frame = ~960ms loop cycle
@@ -4636,9 +4625,9 @@ export async function renderMasterCommandSealDialogueCard(
   }
 
   // Server execution: Build animated GIF with 8 action frames if gifenc is available
-  if (gifencModule && typeof gifencModule.GIFEncoder === 'function') {
+  if (getGifencModule() && typeof getGifencModule().GIFEncoder === 'function') {
     try {
-      const { GIFEncoder, quantize, applyPalette } = gifencModule;
+      const { GIFEncoder, quantize, applyPalette } = getGifencModule();
       const gif = GIFEncoder();
       const totalFrames = 8;
       const frameDelay = 120; // 120ms per frame
@@ -4910,9 +4899,9 @@ export async function renderSkillDialogueCard(
     return MINIMAL_VALID_PNG;
   }
 
-  if (gifencModule && typeof gifencModule.GIFEncoder === 'function') {
+  if (getGifencModule() && typeof getGifencModule().GIFEncoder === 'function') {
     try {
-      const { GIFEncoder, quantize, applyPalette } = gifencModule;
+      const { GIFEncoder, quantize, applyPalette } = getGifencModule();
       const gif = GIFEncoder();
       const totalFrames = 8;
       const frameDelay = 120;
@@ -5306,9 +5295,9 @@ export async function renderDefeatDialogueCard(
   }
 
   // Server Animated GIF execution
-  if (gifencModule && typeof gifencModule.GIFEncoder === 'function') {
+  if (getGifencModule() && typeof getGifencModule().GIFEncoder === 'function') {
     try {
-      const { GIFEncoder, quantize, applyPalette } = gifencModule;
+      const { GIFEncoder, quantize, applyPalette } = getGifencModule();
       const gif = GIFEncoder();
       const totalFrames = 8;
       const frameDelay = 120;

@@ -5,21 +5,9 @@ import { getLocalMediaDiskPath } from '../utils/localMedia';
 import { getClassIconUrl } from '../data/classIcons';
 import { getStatusIconUrl } from '../data/statusIcons';
 import fs from 'fs';
+import { getCanvasModule } from './canvasLoader';
 
-let canvasModule: any = null;
-try {
-  canvasModule = require('@napi-rs/canvas');
-} catch {
-  try {
-    const nonWebpackReq = typeof __non_webpack_require__ !== 'undefined' ? __non_webpack_require__ : null;
-    if (nonWebpackReq) {
-      canvasModule = nonWebpackReq('@napi-rs/canvas');
-    }
-  } catch {
-    canvasModule = null;
-  }
-}
-
+// Canvas module resolved dynamically via canvasLoader
 export const MINIMAL_VALID_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
   'base64'
@@ -113,6 +101,7 @@ function createMockContext(width = 1200, height = 675): any {
 }
 
 function createCanvas(width: number, height: number): any {
+  const canvasModule = getCanvasModule();
   if (canvasModule && typeof canvasModule.createCanvas === 'function') {
     try {
       return canvasModule.createCanvas(width, height);
@@ -168,6 +157,7 @@ async function loadImage(src: string): Promise<any> {
   const targetUrl = normalizeMediaUrl(src.trim());
   if (!targetUrl) return null;
 
+  const canvasModule = getCanvasModule();
   if (canvasModule && typeof canvasModule.loadImage === 'function') {
     try {
       const diskPath = getLocalMediaDiskPath(targetUrl);
