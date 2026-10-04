@@ -277,29 +277,27 @@ export function buildServantFullProfileEmbed(servant: ServantTemplate) {
       }).join('\n')
     : 'None';
 
-  const descriptionText = (
-    `Class: **${servant.servantClass}** | Origin: **${servant.isCustomOrMeme ? '🛠️ Custom Administrator Creation' : '🏛️ Canon Heroic Spirit'}** | Status: **⚖️ Balanced Parity**\n\n` +
-    `📜 **Historical Legend & Lore:**\n> ${servant.lore || 'A legendary soul recorded in the Throne of Heroes.'}\n\n` +
-    `📊 **Base Parameters:**\n` +
-    `• **STR:** ${servant.baseStats.strength} | **END:** ${servant.baseStats.endurance} | **AGI:** ${servant.baseStats.agility}\n` +
-    `• **MAN:** ${servant.baseStats.mana} | **LCK:** ${servant.baseStats.luck}\n` +
-    `• **Base HP:** \`${servant.baseHp.toLocaleString()}\` | **Base ATK:** \`${servant.baseAtk.toLocaleString()}\`\n\n` +
-    `🃏 **Command Deck:** ${deck}\n\n` +
-    `⚡ **Active Personal Skills:**\n${activeSkillsText}\n\n` +
-    `🛡️ **Class Passive Skills (Max 2 • 2nd Unlocks at Bond Lv. 5):**\n${passiveSkillsText}\n\n` +
-    `💥 **Noble Phantasm: ${np.name}** (${np.cardType} • ${np.target.toUpperCase()})\n` +
-    `> *"${np.chant || 'True power of the Noble Phantasm release!'}"*\n` +
-    `• **Multiplier:** ${np.multiplier}% | **Overcharge:** ${np.overchargeEffect || 'None'}\n` +
-    `• ${np.description}\n\n` +
-    `💬 **Master Quotes:**\n` +
-    `• **Summon:** *"${servant.summonQuote}"*\n` +
-    `• **Battle Start:** *"${servant.battleStartQuote}"*\n` +
-    `• **Victory:** *"${servant.victoryQuote}"*`
-  );
-
   const embed = new EmbedBuilder()
     .setTitle(`⚔️ ${servant.name} — ${servant.title}`)
-    .setDescription(descriptionText.length > 4000 ? descriptionText.slice(0, 3995) + '...' : descriptionText)
+    .setDescription(
+      `Class: **${servant.servantClass}** | Origin: **${servant.isCustomOrMeme ? '🛠️ Custom Administrator Creation' : '🏛️ Canon Heroic Spirit'}** | Status: **⚖️ Balanced Parity**\n\n` +
+      `📜 **Historical Legend & Lore:**\n> ${servant.lore || 'A legendary soul recorded in the Throne of Heroes.'}\n\n` +
+      `📊 **Base Parameters:**\n` +
+      `• **STR:** ${servant.baseStats.strength} | **END:** ${servant.baseStats.endurance} | **AGI:** ${servant.baseStats.agility}\n` +
+      `• **MAN:** ${servant.baseStats.mana} | **LCK:** ${servant.baseStats.luck}\n` +
+      `• **Base HP:** \`${servant.baseHp.toLocaleString()}\` | **Base ATK:** \`${servant.baseAtk.toLocaleString()}\`\n\n` +
+      `🃏 **Command Deck:** ${deck}\n\n` +
+      `⚡ **Active Personal Skills:**\n${activeSkillsText}\n\n` +
+      `🛡️ **Class Passive Skills (Max 2 • 2nd Unlocks at Bond Lv. 5):**\n${passiveSkillsText}\n\n` +
+      `💥 **Noble Phantasm: ${np.name}** (${np.cardType} • ${np.target.toUpperCase()})\n` +
+      `> *"${np.chant || 'True power of the Noble Phantasm release!'}"*\n` +
+      `• **Multiplier:** ${np.multiplier}% | **Overcharge:** ${np.overchargeEffect || 'None'}\n` +
+      `• ${np.description}\n\n` +
+      `💬 **Master Quotes:**\n` +
+      `• **Summon:** *"${servant.summonQuote}"*\n` +
+      `• **Battle Start:** *"${servant.battleStartQuote}"*\n` +
+      `• **Victory:** *"${servant.victoryQuote}"*`
+    )
     .setColor(cardColor)
     .setFooter({ text: `Throne ID: ${servant.id} • Holy Grail War Registry` });
 

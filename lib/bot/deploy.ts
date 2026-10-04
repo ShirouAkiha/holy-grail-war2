@@ -46,14 +46,14 @@ async function deploy() {
     const names = commands.map(c => \`/\${c.name}\`).join(', ');
     console.log(\`🔄 Deploying \${commands.length} Slash Commands [\${names}]...\`);
 
-    console.log('🌐 Target: Global Application Commands (All Servers)');
-    await rest.put(Routes.applicationCommands(clientId), { body: commands });
-    console.log('✅ Successfully deployed all global commands!');
-
     if (guildId) {
       console.log(\`⚡ Target: Guild ID [\${guildId}] (Instant deployment)\`);
       await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
       console.log(\`✅ Successfully deployed all commands to server [\${guildId}]!\`);
+    } else {
+      console.log('🌐 Target: Global Application Commands');
+      await rest.put(Routes.applicationCommands(clientId), { body: commands });
+      console.log('✅ Successfully deployed all global commands! (May take up to 1 hour to propagate globally. Provide DISCORD_GUILD_ID in .env for instant updates)');
     }
   } catch (error) {
     console.error('❌ Deployment error:', error);

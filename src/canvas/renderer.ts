@@ -32,106 +32,33 @@ export const MINIMAL_VALID_PNG = Buffer.from(
   'base64'
 );
 
-function createFallbackContext(): any {
-  const dummyGradient = {
-    addColorStop: () => {}
-  };
-  const dummyImageData = {
-    width: 1,
-    height: 1,
-    data: new Uint8ClampedArray(4)
-  };
-  const baseCtx: any = {
-    canvas: { width: 100, height: 100 },
-    fillStyle: '#000000',
-    strokeStyle: '#000000',
-    lineWidth: 1,
-    font: '10px sans-serif',
-    textAlign: 'left',
-    textBaseline: 'top',
-    shadowColor: 'transparent',
-    shadowBlur: 0,
-    shadowOffsetX: 0,
-    shadowOffsetY: 0,
-    globalAlpha: 1,
-    globalCompositeOperation: 'source-over',
-    createLinearGradient: () => dummyGradient,
-    createRadialGradient: () => dummyGradient,
-    createPattern: () => null,
-    getImageData: () => dummyImageData,
-    createImageData: () => dummyImageData,
-    putImageData: () => {},
-    measureText: (text: string) => ({
-      width: (text || '').length * 8,
-      actualBoundingBoxAscent: 10,
-      actualBoundingBoxDescent: 2
-    }),
-    save: () => {},
-    restore: () => {},
-    beginPath: () => {},
-    closePath: () => {},
-    moveTo: () => {},
-    lineTo: () => {},
-    quadraticCurveTo: () => {},
-    bezierCurveTo: () => {},
-    arc: () => {},
-    arcTo: () => {},
-    ellipse: () => {},
-    rect: () => {},
-    roundRect: () => {},
-    fill: () => {},
-    stroke: () => {},
-    clip: () => {},
-    fillRect: () => {},
-    strokeRect: () => {},
-    clearRect: () => {},
-    drawImage: () => {},
-    fillText: () => {},
-    strokeText: () => {},
-    translate: () => {},
-    rotate: () => {},
-    scale: () => {},
-    transform: () => {},
-    setTransform: () => {},
-    resetTransform: () => {},
-    setLineDash: () => {},
-    getLineDash: () => [],
-    isPointInPath: () => false,
-    isPointInStroke: () => false
-  };
-
-  return new Proxy(baseCtx, {
-    get(target, prop) {
-      if (prop in target) {
-        return target[prop];
-      }
-      return () => {};
-    },
-    set(target, prop, value) {
-      target[prop] = value;
-      return true;
-    }
-  });
-}
-
 function createCanvas(width: number, height: number): any {
   if (canvasModule && typeof canvasModule.createCanvas === 'function') {
-    try {
-      const c = canvasModule.createCanvas(width, height);
-      if (c && typeof c.getContext === 'function') {
-        const testCtx = c.getContext('2d');
-        if (testCtx) return c;
-      }
-    } catch {
-      // Fall through to fallback
-    }
+    return canvasModule.createCanvas(width, height);
   }
   return {
-    width,
-    height,
-    getContext: () => createFallbackContext(),
-    toBuffer: (_type?: string) => MINIMAL_VALID_PNG,
-    encode: async () => MINIMAL_VALID_PNG
+    getContext: () => ({
+      createLinearGradient: () => ({ addColorStop: () => {} }),
+      fillRect: () => {},
+      beginPath: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      quadraticCurveTo: () => {},
+      closePath: () => {},
+      stroke: () => {},
+      fill: () => {},
+      save: () => {},
+      restore: () => {},
+      clip: () => {},
+      drawImage: () => {},
+      fillText: () => {},
+      set fillStyle(_: any) {},
+      set strokeStyle(_: any) {},
+      set lineWidth(_: any) {},
+      set font(_: any) {},
+      set textAlign(_: any) {}
+    }),
+    toBuffer: (_type?: string) => MINIMAL_VALID_PNG
   };
 }
 

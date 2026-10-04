@@ -804,14 +804,19 @@ async function runRaidBattle(
     return `⚔️ **<@${active.userId}>'s Turn!** (**${activeServName}**)${cardChainStr}`;
   };
 
+  let currentCanvasFileName = '';
+
   const renderAndPostTurn = async () => {
-    const { buffer } = await renderRaidBattlefield(battleState, false);
-    const attachment = new AttachmentBuilder(buffer, { name: 'raid_battlefield.png' });
+    const { buffer, fileName } = await renderRaidBattlefield(battleState, false);
+    const uniqueFileName = `raid_${Date.now()}_${Math.floor(Math.random() * 1000)}.png`;
+    currentCanvasFileName = uniqueFileName;
+    const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
     const components = buildBattleButtons();
     const active = currentActiveParticipant;
 
     const channelToSend = interaction.channel || battleMsg?.channel;
     let newBattleMsg: any = null;
+
     if (channelToSend && typeof channelToSend.send === 'function') {
       try {
         newBattleMsg = await channelToSend.send({
@@ -821,26 +826,14 @@ async function runRaidBattle(
           components
         });
       } catch (sendErr: any) {
-        console.warn('[raid] channel.send fresh turn failed, falling back to followUp/edit:', sendErr?.message || sendErr);
-      }
-    }
-
-    if (!newBattleMsg && interaction && typeof interaction.followUp === 'function') {
-      try {
-        newBattleMsg = await interaction.followUp({
-          content: buildTurnContent(active, pendingCards),
-          embeds: [],
-          files: [attachment],
-          components
-        });
-      } catch (followErr) {
-        console.warn('[raid] interaction.followUp fallback failed:', followErr);
+        console.warn('[raid] channel.send fresh turn failed, falling back to in-place edit:', sendErr?.message || sendErr);
       }
     }
 
     if (newBattleMsg) {
       const prevMsg = battleMsg;
       battleMsg = newBattleMsg;
+
       if (prevMsg && typeof prevMsg.delete === 'function') {
         await prevMsg.delete().catch(() => {});
       }
@@ -878,10 +871,11 @@ async function runRaidBattle(
 
     const safeUpdate = async (options: any) => {
       try {
-        if (!i.deferred && !i.replied) {
-          await i.deferUpdate().catch(() => {});
+        if (!i.replied && !i.deferred) {
+          await i.update(options);
+        } else {
+          await i.editReply(options);
         }
-        await i.editReply(options);
       } catch (err: any) {
         try {
           if (battleMsg && typeof battleMsg.edit === 'function') {
@@ -1072,79 +1066,7 @@ async function runRaidBattle(
           const isGeneralDebuff = sType === 'debuff';
 
           let buffLog = '';
-          if (skillObj?.id === 'blaze_of_etna' || /blaze of etna|armor of ashen/i.test(sName)) {
-            // S1: Blaze of Etna - Dragon Prison Manifestation: Armor of Ashen Flames C
-            // Grants self Invincibility for 2 attacks (3 turns). Increases own attack by 20% for 3 turns. Increases own Buster performance by 30% for 3 turns.
-            active.activeBuffs = active.activeBuffs || [];
-            active.activeBuffs.push({
-              name: 'Blaze of Etna (Invincible)',
-              type: 'invincible',
-              value: 100,
-              remainingTurns: 3,
-              remainingHits: 2,
-              isHitCount: true
-            } as any);
-            active.activeBuffs.push({
-              name: 'Blaze of Etna (ATK Up)',
-              type: 'atk_up',
-              value: 20,
-              remainingTurns: 3
-            });
-            active.activeBuffs.push({
-              name: 'Blaze of Etna (Buster Up)',
-              type: 'buster_up',
-              value: 30,
-              remainingTurns: 3
-            });
-            buffLog = `(🛡️ Invincibility for 2 Attacks [3T], ⚔️ +20% ATK [3T], 🔥 +30% Buster Performance [3T])`;
-          } else if (skillObj?.id === 'black_wings_a' || /black wings/i.test(sName)) {
-            // S2: Black Wings A
-            // Overcharges one ally's NP by 2 stages for 1 time (3 turns). Reduces their skill cooldown by 1. Increases their critical damage by 30% for 3 turns. Gains 15 critical stars.
-            targetAlly.activeBuffs = targetAlly.activeBuffs || [];
-            targetAlly.activeBuffs.push({
-              name: 'Black Wings (Overcharge +2)',
-              type: 'overcharge_up',
-              value: 2,
-              remainingTurns: 3,
-              remainingHits: 1,
-              isHitCount: true
-            } as any);
-            targetAlly.skillCooldowns = targetAlly.skillCooldowns.map((cd, idx) =>
-              (targetAlly.userId === active.userId && idx === sIdx) ? cd : Math.max(0, cd - 1)
-            );
-            targetAlly.activeBuffs.push({
-              name: 'Black Wings (Crit DMG Up)',
-              type: 'crit_dmg',
-              value: 30,
-              remainingTurns: 3
-            });
-            active.critStars = (active.critStars || 0) + 15;
-            const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
-            buffLog = `(🪶 Overcharged **${tName}**'s NP by +2 Stages [1x/3T], ⏳ Skill Cooldowns -1T, 💥 +30% Crit DMG [3T], ★ +15 Stars)`;
-          } else if (skillObj?.id === 'let_this_become_a_prayer_ex' || /let this become a prayer/i.test(sName)) {
-            // S3: Let This Become a Prayer EX
-            // Charges own NP gauge by 30% and party's NP gauge by 20% (Total self +50% NP). Increases party's attack by 20% for 3 turns. 500% chance to inflict Curse with 500 damage for 3 turns to them [Demerit].
-            battleState.participants.forEach(p => {
-              if (!p.isDead) {
-                p.npGauge = Math.min(300, (p.npGauge || 0) + 20);
-                p.activeBuffs = p.activeBuffs || [];
-                p.activeBuffs.push({
-                  name: 'Let This Become a Prayer (ATK Up)',
-                  type: 'atk_up',
-                  value: 20,
-                  remainingTurns: 3
-                });
-                p.activeBuffs.push({
-                  name: 'Ephemeral Curse [Demerit]',
-                  type: 'curse',
-                  value: 500,
-                  remainingTurns: 3
-                });
-              }
-            });
-            active.npGauge = Math.min(300, (active.npGauge || 0) + 30);
-            buffLog = `(🍷 +50% NP Gauge to Self, +20% NP Gauge & +20% ATK to Party for 3T, 🩸 Inflicted Curse [500 DMG/3T] Demerit)`;
-          } else if (/charisma of hope/i.test(sName)) {
+          if (/charisma of hope/i.test(sName)) {
             // Charisma of Hope B: Increases party's ATK by 20% for 3 turns, charges party's NP gauge by 30%
             battleState.participants.forEach(p => {
               if (!p.isDead) {
@@ -1426,12 +1348,13 @@ async function runRaidBattle(
 
         // Render updated canvas reflecting the new HP, NP, or buffs from the skill!
         const { buffer } = await renderRaidBattlefield(battleState, false);
-        const uniqueFileName = 'raid_battlefield.png';
-                const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
+        const uniqueFileName = `raid_${Date.now()}_${Math.floor(Math.random() * 1000)}.png`;
+        currentCanvasFileName = uniqueFileName;
+        const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
 
         await safeUpdate({
           content: buildTurnContent(active, pendingCards),
-        embeds: [],
+          embeds: [],
           files: [attachment],
           components: buildBattleButtons()
         });
@@ -1465,12 +1388,13 @@ async function runRaidBattle(
 
         // Render updated canvas reflecting the restored HP and 100% NP!
         const { buffer } = await renderRaidBattlefield(battleState, false);
-        const uniqueFileName = 'raid_battlefield.png';
-                const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
+        const uniqueFileName = `raid_${Date.now()}_${Math.floor(Math.random() * 1000)}.png`;
+        currentCanvasFileName = uniqueFileName;
+        const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
 
         await safeUpdate({
           content: buildTurnContent(active, pendingCards),
-        embeds: [],
+          embeds: [],
           files: [attachment],
           components: buildBattleButtons()
         });
@@ -1487,7 +1411,7 @@ async function runRaidBattle(
         collector.stop('defeated');
         await safeUpdate({
           content: '💀 **Raid Abandoned:** All Masters retreated from the battlefield.',
-        embeds: [],
+          embeds: [],
           components: []
         });
         return;
@@ -1522,16 +1446,7 @@ async function runRaidBattle(
 
       const usedNp = pendingCards.includes('NP');
       const initialNpGauge = active.npGauge || 0;
-      let ocBonusStages = 0;
-      if (usedNp && active.activeBuffs) {
-        const ocIdx = active.activeBuffs.findIndex(b => b.type === 'overcharge_up');
-        if (ocIdx >= 0) {
-          ocBonusStages = active.activeBuffs[ocIdx].value || 2;
-          active.activeBuffs.splice(ocIdx, 1);
-        }
-      }
-      const baseOcLevel = initialNpGauge >= 300 ? 3 : initialNpGauge >= 200 ? 2 : 1;
-      const overchargeLevel = Math.min(5, baseOcLevel + ocBonusStages);
+      const overchargeLevel = initialNpGauge >= 300 ? 3 : initialNpGauge >= 200 ? 2 : 1;
       const isOvercharged = overchargeLevel >= 2;
       const overchargeScale = isOvercharged ? (1.0 + (overchargeLevel - 1) * 0.20) : 1.00;
 
@@ -1552,11 +1467,7 @@ async function runRaidBattle(
       const totalStr = (baseStatsAtk.strength || 10) + (allocAtk.strength || 0);
       const ceAtk = sAtk.equippedCe?.atkBonus || 0;
       const baseAtk = Math.round((tAtk.baseAtk || 10000) + totalStr * 80 + ceAtk);
-      const atkBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'atk_up' || b.type === 'buff_atk').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
-      const busterBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'buster_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
-      const artsBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'arts_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
-      const quickBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'quick_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
-      const critDmgBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'crit_dmg' || b.type === 'crit_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
+      const atkBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'atk_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
 
       const isBossThreat = (boss.traits || []).some(t => ['threat_to_humanity', 'beast', 'demonic'].includes(t.toLowerCase()));
       const antiThreatBuff = (active.activeBuffs?.filter(b => b.type === 'anti_threat').reduce((acc, b) => acc + b.value, 0) || 0) / 100;
