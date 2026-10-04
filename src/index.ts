@@ -149,6 +149,7 @@ export const client = new Client({
 export const commands = new Collection<string, any>();
 commands.set(summonCommand.data.name, summonCommand);
 commands.set(servantCommand.data.name, servantCommand);
+commands.set(servantsCommand.data.name, servantsCommand);
 commands.set(dialogueCommand.data.name, dialogueCommand);
 commands.set(duelCommand.data.name, duelCommand);
 commands.set(grailwarCommand.data.name, grailwarCommand);
@@ -185,7 +186,7 @@ commands.set(raidCommand.data.name, raidCommand);
 
 // Alias mapping for backward-compatible text shortcuts and interactions
 export const commandAliasMap: Record<string, any> = {
-  servants: servantCommand,
+  servants: servantsCommand,
   petrol: patrolCommand,
   board: grailwarCommand,
   grail: grailwarCommand,
@@ -264,19 +265,20 @@ export async function registerSlashCommands() {
     const names = Array.from(commands.keys()).map(n => `/${n}`).join(', ');
     console.log(`🔄 Registering ${commandData.length} Slash Commands with Discord [${names}]...`);
     
-    // 1. Always register globally so ALL servers (new & old) get the slash commands
-    await rest.put(Routes.applicationCommands(clientId), { body: commandData });
-    console.log(`✅ Successfully registered ${commandData.length} global application commands (Available across all servers).`);
-    
-    // 2. If DISCORD_GUILD_ID is provided in .env, also register directly to that guild for 0-second instant updates in dev
+    // 1. If DISCORD_GUILD_ID is provided, clear out guild-specific commands so Discord DOES NOT duplicate them with global commands
     if (guildId) {
       try {
-        await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commandData });
-        console.log(`✅ Successfully registered ${commandData.length} commands to Guild [${guildId}] for instant availability.`);
+        console.log(`🧹 Cleaning up guild-scoped commands in [${guildId}] to eliminate duplicates...`);
+        await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: [] });
+        console.log(`✅ Successfully purged duplicate guild-scoped commands in [${guildId}].`);
       } catch (gErr) {
-        console.warn(`⚠️ Guild-specific command registration notice:`, gErr);
+        console.warn(`⚠️ Guild cleanup notice:`, gErr);
       }
     }
+
+    // 2. Register global application commands (Single, unified copy across all Discord servers)
+    await rest.put(Routes.applicationCommands(clientId), { body: commandData });
+    console.log(`✅ Successfully registered ${commandData.length} global application commands (Single unified list).`);
   } catch (error) {
     console.error('❌ Failed to register slash commands:', error);
   }
@@ -286,8 +288,22 @@ export async function registerSlashCommands() {
 // 4. CLIENT READY EVENT
 // ==========================================
 // Triggered once when the bot successfully logs in and connects to Discord Gateway.
-client.once(Events.ClientReady, c => {
+client.once(Events.ClientReady, async c => {
   console.log(`🔥 Holy Grail War Discord Bot online as ${c.user.tag}!`);
+
+  // Automatically remove duplicate guild-scoped slash commands so only 1 copy shows in Discord
+  try {
+    for (const [gId, guild] of c.guilds.cache) {
+      const gCmds = await guild.commands.fetch().catch(() => null);
+      if (gCmds && gCmds.size > 0) {
+        console.log(`🧹 Purging ${gCmds.size} duplicate guild-scoped commands in ${guild.name} (${gId})...`);
+        await guild.commands.set([]);
+        console.log(`✅ Guild ${guild.name} deduplicated successfully!`);
+      }
+    }
+  } catch (err) {
+    console.warn("⚠️ Guild cleanup notice:", err);
+  }
   // Set Discord presence/status message
   c.user.setActivity('Fuyuki Holy Grail War | /summon', { type: 0 });
   try {
