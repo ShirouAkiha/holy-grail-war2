@@ -1162,8 +1162,50 @@ export function executeNoblePhantasmLogic(
     if (cardType === 'Arts') {
       const isRoundOfAvalon = /round of avalon|avalon/i.test(np.name) || actor.id === 'artoria_caster';
       const isTigris = /tigris|edmond/i.test(np.name) || actor.id === 'edmond';
+      const isDeSterrennacht = /sterrennacht|starry night|van gogh/i.test(np.name) || actor.id === 'van_gogh';
 
-      if (isRoundOfAvalon) {
+      if (isDeSterrennacht) {
+        // De Sterrennacht (The Starry Night) - Arts Support NP
+        // 1. Inflict Terror / Stun on enemy
+        target.isStunned = true;
+        target.activeBuffs.push({
+          name: 'De Sterrennacht (Terror/Stun)',
+          type: 'stun',
+          value: 100,
+          remainingTurns: 1
+        });
+
+        // 2. Party Critical Damage +100% for 3 turns
+        actor.activeBuffs.push({
+          name: 'De Sterrennacht (Crit DMG +100%)',
+          type: 'crit_dmg',
+          value: 100,
+          remainingTurns: 3
+        });
+
+        // 3. 10 Critical Stars every turn for 3 turns
+        actor.activeBuffs.push({
+          name: 'De Sterrennacht (Stars Per Turn)',
+          type: 'star_regen',
+          value: 10,
+          remainingTurns: 3
+        });
+        actor.critStars = Math.min(50, (actor.critStars || 0) + 10);
+
+        // 4. Overcharge: Party ATK Up +50% (+60% / +70%) for 3 turns
+        const ocLevel = actor.npGauge >= 300 ? 3 : actor.npGauge >= 200 ? 2 : 1;
+        const ocAtkBonus = 50 + (ocLevel - 1) * 10;
+        actor.activeBuffs.push({
+          name: 'De Sterrennacht (ATK Up)',
+          type: 'buff_atk',
+          value: ocAtkBonus,
+          remainingTurns: 3
+        });
+
+        npCharged = 0;
+        starsGenerated = 10;
+        actionSummary = `🌌 **${actor.name}** deployed Support Noble Phantasm [${np.name}]! Inflicted **Terror/Stun** on enemy, boosted Party **Crit DMG by +100%** (3T), Party **ATK by +${ocAtkBonus}%** (3T), and generated Critical Stars!`;
+      } else if (isRoundOfAvalon) {
         // Round of Avalon: The Promised Star Which Gathers The True Round
         // 1. Party ATK Up +50% for 3 turns
         actor.activeBuffs.push({
@@ -2553,6 +2595,20 @@ export function executeBattleTurn(
           cardDmgMult = 0.85;
           cardNpMult = 0.4 * (1.0 + quickBuff / 100);
           cardStarMult = (1.4 + (actor.stats.agility * 0.02)) * (1.0 + (quickBuff + presenceConcealBonus) / 100); // Balanced Quick star drop
+
+          // Quick Curse Cleanse Buff (Soul of Water Channels)
+          if (actor.activeBuffs && actor.activeBuffs.some(b => b.type === 'buff_on_quick_curse_cleanse')) {
+            const curseIdx = actor.activeBuffs.findIndex(b => b.type === 'curse');
+            if (curseIdx !== -1) {
+              actor.activeBuffs.splice(curseIdx, 1);
+              actor.activeBuffs.push({
+                name: 'Quick Cleanse (ATK Up +10%)',
+                type: 'buff_atk',
+                value: 10,
+                remainingTurns: 3
+              });
+            }
+          }
         }
 
         // Apply chain bonus

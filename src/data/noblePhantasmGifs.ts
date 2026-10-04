@@ -134,7 +134,7 @@ export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: 
   'Van Gogh': {
     gifUrl: 'https://ella.janitorai.com/media-approved/_HQY3KD_L4lNGkG8Rq6y_.gif',
     fallbackGif: 'https://ella.janitorai.com/media-approved/_HQY3KD_L4lNGkG8Rq6y_.gif',
-    chant: 'Ehe... ehehe... Ah, look up at the swirling cosmos. To the azure heavens and golden stars... 『De Sterrennacht』!'
+    chant: 'This is just a single snippet reflecting the hard times of Van Gogh\'s life... I can\'t guarantee what will happen, but that\'s not part of the creator\'s guarantee! My study of cypresses and a village! You know it as De Sterrennacht!'
   }
 };
 

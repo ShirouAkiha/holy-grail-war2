@@ -835,6 +835,54 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
 
     drawDiamond(ctx, dX, dY, 15, fill, stroke, 1.4);
   }
+
+  // 1.5 Active Boss Status Badges (Curses, DEF Down, Quick Res Down, Stun, ATK Down, etc.)
+  if (state.bossBuffs && state.bossBuffs.length > 0) {
+    const bossBuffStartY = isTiamat ? bossHpY + 48 : bossHpY + 56;
+    const badgeSize = 22;
+    const badgeGap = 5;
+    const maxBossBadges = 12;
+
+    state.bossBuffs.slice(0, maxBossBadges).forEach((b, bIdx) => {
+      const bX = bossHpX + bIdx * (badgeSize + badgeGap);
+      const bY = bossBuffStartY;
+      const iconUrl = getStatusIconUrl(b.type || b.name);
+      const img = buffImageMap?.get(iconUrl);
+
+      ctx.save();
+      const isCurseOrDot = b.type === 'curse' || b.type === 'burn' || b.type === 'poison';
+      const isDebuff = isCurseOrDot || b.type.includes('down') || b.type.includes('debuff') || b.type === 'stun' || b.type === 'np_seal';
+      
+      // Background Glow
+      ctx.fillStyle = isCurseOrDot ? 'rgba(88, 28, 135, 0.85)' : isDebuff ? 'rgba(153, 27, 27, 0.85)' : 'rgba(15, 23, 42, 0.85)';
+      ctx.strokeStyle = isCurseOrDot ? '#c084fc' : isDebuff ? '#f87171' : '#38bdf8';
+      ctx.lineWidth = 1.2;
+      drawRoundRect(ctx, bX, bY, badgeSize, badgeSize, 4, true, true);
+
+      if (img) {
+        ctx.drawImage(img, bX + 2, bY + 2, badgeSize - 4, badgeSize - 4);
+      } else {
+        ctx.fillStyle = isCurseOrDot ? '#e9d5ff' : isDebuff ? '#fecaca' : '#bae6fd';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const label = isCurseOrDot ? '💀' : b.type.slice(0, 2).toUpperCase();
+        ctx.fillText(label, bX + badgeSize / 2, bY + badgeSize / 2);
+      }
+
+      // Small remaining turns badge in bottom right corner
+      if (b.remainingTurns !== undefined && b.remainingTurns > 0) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        ctx.fillRect(bX + badgeSize - 9, bY + badgeSize - 9, 9, 9);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 8px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${b.remainingTurns}`, bX + badgeSize - 4.5, bY + badgeSize - 4.5);
+      }
+      ctx.restore();
+    });
+  }
   ctx.restore();
 
   // 2. Top-Right Quest Info Box (X: 1015, Y: 24)
@@ -1139,31 +1187,46 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
       drawFGOSkillIcon(ctx, sX, skillY, skillBoxSize, s, cd, !!p.isDead, skObj, iconImg);
     }
 
-    // 2.5 Active Status Buff/Debuff Badges Row (Position Y: 540)
+    // 2.5 Active Status Buff/Debuff Badges Row (Position Y: 538)
     if (p.activeBuffs && p.activeBuffs.length > 0 && !p.isDead) {
-      const buffY = 540;
-      const buffSize = 18;
+      const buffY = 538;
+      const buffSize = 20;
       const buffGap = 4;
-      const maxBuffs = 8;
+      const maxBuffs = 10;
       p.activeBuffs.slice(0, maxBuffs).forEach((b, bIdx) => {
-        const iconUrl = getStatusIconUrl(b.type);
+        const iconUrl = getStatusIconUrl(b.type || b.name);
         const img = buffImageMap?.get(iconUrl);
         const bX = slotX + 10 + bIdx * (buffSize + buffGap);
+        const isCurseOrDot = b.type === 'curse' || b.type === 'burn' || b.type === 'poison';
+        const isDebuff = isCurseOrDot || b.type.includes('down') || b.type.includes('debuff') || b.type === 'stun' || b.type === 'np_seal';
+
+        ctx.save();
+        ctx.fillStyle = isCurseOrDot ? 'rgba(88, 28, 135, 0.90)' : isDebuff ? 'rgba(153, 27, 27, 0.90)' : 'rgba(15, 23, 42, 0.90)';
+        ctx.strokeStyle = isCurseOrDot ? '#c084fc' : isDebuff ? '#f87171' : '#38bdf8';
+        ctx.lineWidth = 1.2;
+        drawRoundRect(ctx, bX, buffY, buffSize, buffSize, 3, true, true);
+
         if (img) {
-          ctx.drawImage(img, bX, buffY, buffSize, buffSize);
+          ctx.drawImage(img, bX + 2, buffY + 2, buffSize - 4, buffSize - 4);
         } else {
-          ctx.save();
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-          ctx.strokeStyle = '#38bdf8';
-          ctx.lineWidth = 1;
-          drawRoundRect(ctx, bX, buffY, buffSize, buffSize, 3, true, true);
-          ctx.fillStyle = '#38bdf8';
+          ctx.fillStyle = isCurseOrDot ? '#e9d5ff' : isDebuff ? '#fecaca' : '#38bdf8';
           ctx.font = 'bold 9px sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(b.type.slice(0, 1).toUpperCase(), bX + buffSize / 2, buffY + buffSize / 2);
-          ctx.restore();
+          const symbol = isCurseOrDot ? '💀' : b.type.slice(0, 1).toUpperCase();
+          ctx.fillText(symbol, bX + buffSize / 2, buffY + buffSize / 2);
         }
+
+        if (b.remainingTurns !== undefined && b.remainingTurns > 0) {
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+          ctx.fillRect(bX + buffSize - 8, buffY + buffSize - 8, 8, 8);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 7px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`${b.remainingTurns}`, bX + buffSize - 4, buffY + buffSize - 4);
+        }
+        ctx.restore();
       });
     }
 
@@ -1371,12 +1434,37 @@ export async function renderRaidBattlefield(state: RaidBattleState, _animated = 
     });
   });
 
+  const defaultPreloadBuffs = [
+    'curse',
+    'burn',
+    'poison',
+    'stun',
+    'guts',
+    'arts',
+    'quick',
+    'buster',
+    'crit_dmg',
+    'crit_stars',
+    'np_charge',
+    'quick_resistance_down',
+    'def_down',
+    'defense_down',
+    'atk_down',
+    'attack_down',
+    'buff_atk',
+    'buff_def',
+    'evade',
+    'invincible',
+    'anti_purge_defense'
+  ];
+
   const allBuffTypes = Array.from(new Set([
-    ...state.participants.flatMap(p => (p.activeBuffs || []).map(b => b.type)),
-    ...(state.bossBuffs || []).map(b => b.type),
+    ...defaultPreloadBuffs,
+    ...state.participants.flatMap(p => (p.activeBuffs || []).flatMap(b => [b.type, b.name])),
+    ...(state.bossBuffs || []).flatMap(b => [b.type, b.name]),
     ...skillTypes
-  ]));
-  const buffUrls = allBuffTypes.map(t => getStatusIconUrl(t));
+  ])).filter(Boolean);
+  const buffUrls = Array.from(new Set(allBuffTypes.map(t => getStatusIconUrl(t))));
 
   const isTiamat = state.boss.id === 'tiamat' || state.boss.name.toLowerCase().includes('tiamat');
   const phase = state.currentPhase || 1;

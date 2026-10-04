@@ -2104,7 +2104,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     ],
     noblePhantasm: {
       name: 'De Sterrennacht (The Starry Night)',
-      cardType: 'Quick',
+      cardType: 'Arts',
       chant: 'This is just a single snippet reflecting the hard times of Van Gogh\'s life... I can\'t guarantee what will happen, but that\'s not part of the creator\'s guarantee! My study of cypresses and a village! You know it as De Sterrennacht!',
       description: '500% Chance to inflict Terror status for 3 turns to all enemies (60% chance every turn to Stun for 1 turn). Increases party\'s Critical Damage by 100% for 3 turns. Gains 10 Critical Stars for party every turn for 3 turns. [Overcharge] Increases party\'s attack by 50% for 3 turns.',
       target: 'support',

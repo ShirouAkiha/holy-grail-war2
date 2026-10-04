@@ -1097,6 +1097,122 @@ async function runRaidBattle(
               remainingTurns: 3
             });
             buffLog = `(🛡️ Invincibility for 2 Attacks [3T], ⚔️ +20% ATK [3T], 🔥 +30% Buster Performance [3T])`;
+          } else if (skillObj?.id === 'void_space_fine_arts' || /void space fine arts/i.test(sName)) {
+            // Van Gogh S1: Void Space Fine Arts B+
+            // Grants self Guts status for 1 time, 5 turns (revives with 3,000 HP).
+            // 500% Chance to inflict 3 stacks of Curse with 100 damage for 10 turns to self [Demerit].
+            // Charges own NP gauge by 10% per Curse stack on self.
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: 'Void Space Fine Arts (Guts)',
+              type: 'guts',
+              value: 3000,
+              remainingTurns: 5,
+              remainingHits: 1,
+              isHitCount: true
+            } as any);
+            for (let k = 0; k < 3; k++) {
+              active.activeBuffs.push({
+                name: `Void Curse Stack ${k + 1} [Demerit]`,
+                type: 'curse',
+                value: 100,
+                remainingTurns: 10
+              });
+            }
+            const curCurses = active.activeBuffs.filter(b => b.type === 'curse').length;
+            const npGain = curCurses * 10;
+            active.npGauge = Math.min(300, (active.npGauge || 0) + npGain);
+            buffLog = `(🩸 Guts [3,000 HP/5T], 💀 +3 Curse Stacks [Demerit], ⚡ +${npGain}% NP Gauge from ${curCurses} active Curses!)`;
+          } else if (skillObj?.id === 'het_gele_huis' || /het gele huis|the yellow house/i.test(sName)) {
+            // Van Gogh S2: Het Gele Huis: The Yellow House A+
+            // Reduces all enemies' DEF by -20% (3T) & Quick Res by -20% (3T).
+            // Grants party Evasion (1 hit/3T). Recovers party HP by +3,000/turn (5T).
+            // Inflicts 1 Curse stack (100 dmg/10T) to party [Demerit].
+            battleState.bossBuffs.push({
+              name: 'Het Gele Huis (DEF Down)',
+              type: 'def_down',
+              value: 20,
+              remainingTurns: 3
+            });
+            battleState.bossBuffs.push({
+              name: 'Het Gele Huis (Quick Res Down)',
+              type: 'quick_res_down',
+              value: 20,
+              remainingTurns: 3
+            });
+            battleState.participants.forEach(p => {
+              if (!p.isDead) {
+                p.activeBuffs = p.activeBuffs || [];
+                p.activeBuffs.push({
+                  name: 'The Yellow House (Evasion)',
+                  type: 'evade',
+                  value: 1,
+                  remainingTurns: 3,
+                  remainingHits: 1,
+                  isHitCount: true
+                } as any);
+                p.activeBuffs.push({
+                  name: 'The Yellow House (HP Regen +3000)',
+                  type: 'hp_regen',
+                  value: 3000,
+                  remainingTurns: 5
+                });
+                p.activeBuffs.push({
+                  name: 'Sunflower Curse [Demerit]',
+                  type: 'curse',
+                  value: 100,
+                  remainingTurns: 10
+                });
+              }
+            });
+            buffLog = `(🔻 -20% DEF & -20% Quick Res on ${boss.name} [3T], 🛡️ Party Evasion [1 Hit/3T], 💚 Party HP Regen [+3,000/5T], 💀 1 Curse Stack to Party)`;
+          } else if (skillObj?.id === 'soul_of_water_channels' || /soul of water channels/i.test(sName)) {
+            // Van Gogh S3: Soul of Water Channels EX
+            // +30% ATK to target ally (3T), +200% Star Gain to party (3T).
+            // Quick Card Cleanse Buff (Removes 1 Curse per Quick card, gives +10% ATK for 3T).
+            // Absorbs all Curses from all allies and boss to self!
+            targetAlly.activeBuffs = targetAlly.activeBuffs || [];
+            targetAlly.activeBuffs.push({
+              name: 'Soul of Water Channels (ATK Up)',
+              type: 'atk_up',
+              value: 30,
+              remainingTurns: 3
+            });
+            battleState.participants.forEach(p => {
+              if (!p.isDead) {
+                p.activeBuffs = p.activeBuffs || [];
+                p.activeBuffs.push({
+                  name: 'Soul of Water Channels (Star Gain +200%)',
+                  type: 'star_gain_up',
+                  value: 200,
+                  remainingTurns: 3
+                });
+              }
+            });
+            active.activeBuffs.push({
+              name: 'Soul of Water Channels (Quick Curse Cleanse)',
+              type: 'buff_on_quick_curse_cleanse',
+              value: 10,
+              remainingTurns: 3
+            });
+            let absorbedCurses = 0;
+            battleState.participants.forEach(p => {
+              if (p.userId !== active.userId && p.activeBuffs) {
+                const cList = p.activeBuffs.filter(b => b.type === 'curse');
+                absorbedCurses += cList.length;
+                p.activeBuffs = p.activeBuffs.filter(b => b.type !== 'curse');
+                cList.forEach(c => {
+                  active.activeBuffs.push({
+                    name: `Absorbed ${c.name}`,
+                    type: 'curse',
+                    value: c.value,
+                    remainingTurns: c.remainingTurns
+                  });
+                });
+              }
+            });
+            const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Self';
+            buffLog = `(💧 +30% ATK to **${tName}** [3T], ⭐ +200% Party Star Gain [3T], 🧹 Quick Curse Cleanse Buff [3T], 🧲 Absorbed ${absorbedCurses} Curses to Self!)`;
           } else if (skillObj?.id === 'black_wings_a' || /black wings/i.test(sName)) {
             // S2: Black Wings A
             // Overcharges one ally's NP by 2 stages for 1 time (3 turns). Reduces their skill cooldown by 1. Increases their critical damage by 30% for 3 turns. Gains 15 critical stars.
@@ -1609,6 +1725,21 @@ async function runRaidBattle(
           totalTurnDmg += Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
           starsGenerated += Math.round(12 * critStarBonus);
           npGained += Math.round(10 * critNpBonus);
+
+          // Quick Curse Cleanse Buff (Soul of Water Channels)
+          if (active.activeBuffs && active.activeBuffs.some(b => b.type === 'buff_on_quick_curse_cleanse')) {
+            const curseIdx = active.activeBuffs.findIndex(b => b.type === 'curse');
+            if (curseIdx !== -1) {
+              active.activeBuffs.splice(curseIdx, 1);
+              active.activeBuffs.push({
+                name: 'Quick Cleanse (ATK Up +10%)',
+                type: 'atk_up',
+                value: 10,
+                remainingTurns: 3
+              });
+              npEffectsLog.push('🧹 [Quick Cleanse: Removed 1 Curse & Gained +10% ATK!]');
+            }
+          }
         } else if (card === 'NP') {
           const rawNpMult = active.servant.template?.noblePhantasm?.multiplier ?? 600;
           const npMultiplier = rawNpMult >= 20 ? rawNpMult / 100 : (rawNpMult || 6.0);
@@ -1624,95 +1755,130 @@ async function runRaidBattle(
             const isRoundOfAvalon = /round of avalon/i.test(npName);
             const isTigris = /tigris|edmond/i.test(npName);
             const isLuminosite = /luminosit|jeanne/i.test(npName);
+            const isDeSterrennacht = /sterrennacht|starry night|van gogh/i.test(npName) || active.servant.templateId === 'van_gogh';
 
-            // Party Buffs & Protection to ALL living allies in the raid!
-            battleState.participants.forEach(p => {
-              if (!p.isDead) {
-                p.activeBuffs = p.activeBuffs || [];
-                // Cleanse debuffs
-                p.activeBuffs = p.activeBuffs.filter(b => !['def_down', 'atk_down', 'curse', 'burn', 'poison', 'stun', 'np_seal', 'skill_seal'].includes(b.type));
-
-                // Grant Invincibility for 1 Turn (Anti-Purge Defense for Round of Avalon)
-                p.activeBuffs.push({
-                  name: isRoundOfAvalon ? `${npName} (Anti-Purge Defense)` : `${npName} (Invincibility)`,
-                  type: isRoundOfAvalon ? 'anti_purge_defense' : 'invincible',
-                  value: 1,
+            if (isDeSterrennacht) {
+              // De Sterrennacht: Inflict Terror (Stun) on boss, +100% Crit DMG (3T) & +50% ATK (3T) to Party, +20 Stars
+              const isImmuneToStun = boss.id === 'tiamat' && (battleState.currentPhase || 1) >= 2;
+              if (!isImmuneToStun) {
+                battleState.bossBuffs.push({
+                  name: 'De Sterrennacht (Terror)',
+                  type: 'stun',
+                  value: 100,
                   remainingTurns: 1
                 });
-
-                if (isRoundOfAvalon) {
-                  // Round of Avalon: +50% ATK for 3 turns, 2,500 Damage Cut, +15 Stars to all allies (Stars enhanced by Overcharge)
+              }
+              const ocAtk = isOvercharged ? (50 + (overchargeLevel - 1) * 10) : 50;
+              battleState.participants.forEach(p => {
+                if (!p.isDead) {
+                  p.activeBuffs = p.activeBuffs || [];
                   p.activeBuffs.push({
-                    name: `${npName} (ATK Up)`,
+                    name: 'De Sterrennacht (Crit DMG Up)',
+                    type: 'crit_dmg',
+                    value: 100,
+                    remainingTurns: 3
+                  });
+                  p.activeBuffs.push({
+                    name: 'De Sterrennacht (ATK Up)',
                     type: 'atk_up',
-                    value: 50,
+                    value: ocAtk,
                     remainingTurns: 3
                   });
+                  p.critStars = Math.min(50, (p.critStars || 0) + 15);
+                }
+              });
+              npEffectsLog.push(`🌌 [De Sterrennacht: Party +100% Crit DMG (3T), +${ocAtk}% ATK (3T), Terror/Stun Inflicted, +20 Stars!]`);
+              npEffectsHud.push(`+100% Crit DMG • +${ocAtk}% ATK`);
+            } else {
+              // Party Buffs & Protection to ALL living allies in the raid!
+              battleState.participants.forEach(p => {
+                if (!p.isDead) {
+                  p.activeBuffs = p.activeBuffs || [];
+                  // Cleanse debuffs
+                  p.activeBuffs = p.activeBuffs.filter(b => !['def_down', 'atk_down', 'curse', 'burn', 'poison', 'stun', 'np_seal', 'skill_seal'].includes(b.type));
+
+                  // Grant Invincibility for 1 Turn (Anti-Purge Defense for Round of Avalon)
                   p.activeBuffs.push({
-                    name: `${npName} (Damage Cut)`,
-                    type: 'damage_cut',
-                    value: 2500,
-                    remainingTurns: 3
+                    name: isRoundOfAvalon ? `${npName} (Anti-Purge Defense)` : `${npName} (Invincibility)`,
+                    type: isRoundOfAvalon ? 'anti_purge_defense' : 'invincible',
+                    value: 1,
+                    remainingTurns: 1
                   });
-                  const ocStarBonus = isOvercharged ? (overchargeLevel >= 3 ? 30 : 15) : 0;
-                  p.critStars = Math.min(50, (p.critStars || 0) + 15 + ocStarBonus);
-                } else if (isTigris) {
-                  const defBonus = isOvercharged ? (30 + (overchargeLevel - 1) * 10) : 30;
-                  p.activeBuffs.push({
-                    name: `${npName} (DEF Up)`,
-                    type: 'def_up',
-                    value: defBonus,
-                    remainingTurns: 3
-                  });
-                  // Overcharge Living Earth Damage Cut (only triggers when Overcharged >= 200% NP)
-                  if (isOvercharged) {
-                    const damageCutVal = 1500 + (overchargeLevel - 1) * 750;
+
+                  if (isRoundOfAvalon) {
+                    // Round of Avalon: +50% ATK for 3 turns, 2,500 Damage Cut, +15 Stars to all allies (Stars enhanced by Overcharge)
+                    p.activeBuffs.push({
+                      name: `${npName} (ATK Up)`,
+                      type: 'atk_up',
+                      value: 50,
+                      remainingTurns: 3
+                    });
                     p.activeBuffs.push({
                       name: `${npName} (Damage Cut)`,
                       type: 'damage_cut',
-                      value: damageCutVal,
+                      value: 2500,
                       remainingTurns: 3
                     });
-                  }
-                } else if (isLuminosite) {
-                  p.activeBuffs.push({
-                    name: `${npName} (DEF Up)`,
-                    type: 'def_up',
-                    value: 30,
-                    remainingTurns: 3
-                  });
-                  // Overcharge Holy Regen (only triggers when Overcharged >= 200% NP)
-                  if (isOvercharged) {
-                    const regenVal = 1000 + (overchargeLevel - 1) * 500;
-                    p.currentHp = Math.min(p.maxHp, p.currentHp + regenVal);
+                    const ocStarBonus = isOvercharged ? (overchargeLevel >= 3 ? 30 : 15) : 0;
+                    p.critStars = Math.min(50, (p.critStars || 0) + 15 + ocStarBonus);
+                  } else if (isTigris) {
+                    const defBonus = isOvercharged ? (30 + (overchargeLevel - 1) * 10) : 30;
                     p.activeBuffs.push({
-                      name: `${npName} (Holy Regen)`,
-                      type: 'hp_regen',
-                      value: regenVal,
-                      remainingTurns: 2
+                      name: `${npName} (DEF Up)`,
+                      type: 'def_up',
+                      value: defBonus,
+                      remainingTurns: 3
                     });
+                    // Overcharge Living Earth Damage Cut (only triggers when Overcharged >= 200% NP)
+                    if (isOvercharged) {
+                      const damageCutVal = 1500 + (overchargeLevel - 1) * 750;
+                      p.activeBuffs.push({
+                        name: `${npName} (Damage Cut)`,
+                        type: 'damage_cut',
+                        value: damageCutVal,
+                        remainingTurns: 3
+                      });
+                    }
+                  } else if (isLuminosite) {
+                    p.activeBuffs.push({
+                      name: `${npName} (DEF Up)`,
+                      type: 'def_up',
+                      value: 30,
+                      remainingTurns: 3
+                    });
+                    // Overcharge Holy Regen (only triggers when Overcharged >= 200% NP)
+                    if (isOvercharged) {
+                      const regenVal = 1000 + (overchargeLevel - 1) * 500;
+                      p.currentHp = Math.min(p.maxHp, p.currentHp + regenVal);
+                      p.activeBuffs.push({
+                        name: `${npName} (Holy Regen)`,
+                        type: 'hp_regen',
+                        value: regenVal,
+                        remainingTurns: 2
+                      });
+                    }
+                  } else {
+                    // Standard Support NP: +30% DEF for 3 turns & +3,000 HP
+                    p.activeBuffs.push({
+                      name: `${npName} (DEF Up)`,
+                      type: 'def_up',
+                      value: 30,
+                      remainingTurns: 3
+                    });
+                    p.currentHp = Math.min(p.maxHp, p.currentHp + 3000);
                   }
-                } else {
-                  // Standard Support NP: +30% DEF for 3 turns & +3,000 HP
-                  p.activeBuffs.push({
-                    name: `${npName} (DEF Up)`,
-                    type: 'def_up',
-                    value: 30,
-                    remainingTurns: 3
-                  });
-                  p.currentHp = Math.min(p.maxHp, p.currentHp + 3000);
                 }
-              }
-            });
+              });
 
-            if (isRoundOfAvalon) {
-              const ocNote = isOvercharged ? ` • Overcharge Lv.${overchargeLevel} Active` : '';
-              npEffectsLog.push(`👑 [Round of Avalon: Party +50% ATK (3T), Anti-Purge Defense (1T), Cleanse & Stars to ALL Allies!${ocNote}]`);
-              npEffectsHud.push(`+50% Party ATK • Anti-Purge Def • Stars${isOvercharged ? ' (OC Active)' : ''}`);
-            } else {
-              const ocNote = isOvercharged ? ` • Overcharge Lv.${overchargeLevel} Active` : '';
-              npEffectsLog.push(`🕊️ [Party Invincible (1T), +30% DEF (3T), Cleanse & Party Support!${ocNote}]`);
-              npEffectsHud.push(`Party Invincible • +30% DEF${isOvercharged ? ' • OC Regen/Cut' : ''}`);
+              if (isRoundOfAvalon) {
+                const ocNote = isOvercharged ? ` • Overcharge Lv.${overchargeLevel} Active` : '';
+                npEffectsLog.push(`👑 [Round of Avalon: Party +50% ATK (3T), Anti-Purge Defense (1T), Cleanse & Stars to ALL Allies!${ocNote}]`);
+                npEffectsHud.push(`+50% Party ATK • Anti-Purge Def • Stars${isOvercharged ? ' (OC Active)' : ''}`);
+              } else {
+                const ocNote = isOvercharged ? ` • Overcharge Lv.${overchargeLevel} Active` : '';
+                npEffectsLog.push(`🕊️ [Party Invincible (1T), +30% DEF (3T), Cleanse & Party Support!${ocNote}]`);
+                npEffectsHud.push(`Party Invincible • +30% DEF${isOvercharged ? ' • OC Regen/Cut' : ''}`);
+              }
             }
             starsGenerated += 15;
             npGained += 20;
