@@ -449,7 +449,7 @@ function drawVectorHeart(ctx: any, cx: number, cy: number, size: number, color: 
 }
 
 /**
- * Draw Combatant Status & Buff Badges Tray (Canvas UI) - High Visibility Icon Chips
+ * Draw Combatant Status & Buff Badges Tray (Canvas UI) - Large High-Visibility Icon Chips
  */
 function drawCombatantBuffPillTray(
   ctx: any,
@@ -467,8 +467,8 @@ function drawCombatantBuffPillTray(
 
   ctx.save();
 
-  const chipSize = 22;
-  const gap = 4;
+  const chipSize = 32;
+  const gap = 5;
   const maxChips = Math.floor((maxW + gap) / (chipSize + gap));
   const displayBadges = badges.slice(0, maxChips);
   const totalW = displayBadges.length * chipSize + (displayBadges.length - 1) * gap;
@@ -482,17 +482,17 @@ function drawCombatantBuffPillTray(
 
     if (isOverflow) {
       ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
-      drawRoundRect(ctx, chipX, y, chipSize, chipSize, 4);
+      drawRoundRect(ctx, chipX, y, chipSize, chipSize, 5);
       ctx.fill();
       ctx.strokeStyle = '#64748b';
-      ctx.lineWidth = 1;
-      drawRoundRect(ctx, chipX, y, chipSize, chipSize, 4);
+      ctx.lineWidth = 1.2;
+      drawRoundRect(ctx, chipX, y, chipSize, chipSize, 5);
       ctx.stroke();
 
       ctx.fillStyle = '#94a3b8';
-      ctx.font = 'bold 9px sans-serif';
+      ctx.font = 'bold 11px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`+${badges.length - maxChips + 1}`, chipX + chipSize / 2, y + 14);
+      ctx.fillText(`+${badges.length - maxChips + 1}`, chipX + chipSize / 2, y + 20);
       continue;
     }
 
@@ -500,18 +500,18 @@ function drawCombatantBuffPillTray(
     const iconImg = buffImageMap?.get(iconUrl);
 
     // Background Chip
-    ctx.fillStyle = b.bgColor || 'rgba(15, 23, 42, 0.92)';
-    drawRoundRect(ctx, chipX, y, chipSize, chipSize, 4);
+    ctx.fillStyle = b.bgColor || 'rgba(15, 23, 42, 0.94)';
+    drawRoundRect(ctx, chipX, y, chipSize, chipSize, 5);
     ctx.fill();
 
     // Border
     ctx.strokeStyle = b.borderColor || '#475569';
-    ctx.lineWidth = 1.2;
-    drawRoundRect(ctx, chipX, y, chipSize, chipSize, 4);
+    ctx.lineWidth = 1.4;
+    drawRoundRect(ctx, chipX, y, chipSize, chipSize, 5);
     ctx.stroke();
 
     const iconPad = 3;
-    const iconDim = chipSize - iconPad * 2; // 16x16px
+    const iconDim = chipSize - iconPad * 2; // 26x26px
 
     if (iconImg) {
       ctx.drawImage(iconImg, chipX + iconPad, y + iconPad, iconDim, iconDim);
@@ -519,17 +519,17 @@ function drawCombatantBuffPillTray(
       const iconCx = chipX + chipSize / 2;
       const iconCy = y + chipSize / 2;
       if (b.iconSymbol === 'atk') {
-        drawVectorCrossedSwords(ctx, iconCx, iconCy, 3.5, b.borderColor || '#ef4444');
+        drawVectorCrossedSwords(ctx, iconCx, iconCy, 5, b.borderColor || '#ef4444');
       } else if (b.iconSymbol === 'def') {
-        drawVectorShield(ctx, iconCx, iconCy, 7, 9, 'transparent', b.borderColor || '#38bdf8');
+        drawVectorShield(ctx, iconCx, iconCy, 9, 12, 'transparent', b.borderColor || '#38bdf8');
       } else if (b.iconSymbol === 'guts') {
-        drawVectorHeart(ctx, iconCx, iconCy, 4, b.borderColor || '#f43f5e');
+        drawVectorHeart(ctx, iconCx, iconCy, 5.5, b.borderColor || '#f43f5e');
       } else if (b.iconSymbol === 'invincible') {
-        drawVectorStar(ctx, iconCx, iconCy, 5, 4, 2, '#fde047');
+        drawVectorStar(ctx, iconCx, iconCy, 5, 5.5, 2.8, '#fde047');
       } else if (b.iconSymbol === 'evade') {
-        drawSparkDiamond(ctx, iconCx, iconCy, 3.5, '#06b6d4');
+        drawSparkDiamond(ctx, iconCx, iconCy, 5, '#06b6d4');
       } else {
-        drawSparkDiamond(ctx, iconCx, iconCy, 3.5, b.borderColor || '#fbbf24');
+        drawSparkDiamond(ctx, iconCx, iconCy, 5, b.borderColor || '#fbbf24');
       }
     }
 
@@ -543,23 +543,23 @@ function drawCombatantBuffPillTray(
           : '';
 
     if (countTag) {
-      ctx.font = 'bold 7px sans-serif';
-      const tagW = ctx.measureText(countTag).width + 3;
-      const tagH = 9;
-      const tagX = chipX + chipSize - tagW + 1;
-      const tagY = y + chipSize - tagH + 1;
+      ctx.font = 'bold 8px sans-serif';
+      const tagW = ctx.measureText(countTag).width + 4;
+      const tagH = 10;
+      const tagX = chipX + chipSize - tagW;
+      const tagY = y + chipSize - tagH;
 
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.88)';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.92)';
       drawRoundRect(ctx, tagX, tagY, tagW, tagH, 2);
       ctx.fill();
       ctx.strokeStyle = b.borderColor || '#64748b';
-      ctx.lineWidth = 0.6;
+      ctx.lineWidth = 0.8;
       drawRoundRect(ctx, tagX, tagY, tagW, tagH, 2);
       ctx.stroke();
 
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
-      ctx.fillText(countTag, tagX + tagW / 2, tagY + 7);
+      ctx.fillText(countTag, tagX + tagW / 2, tagY + 8);
     }
   }
 
@@ -5739,15 +5739,8 @@ function drawUnitHudPlate(
     }
   }
 
-  // Active Buff Micro-Chips Tray (Bottom of Portrait above name)
-  drawCombatantBuffPillTray(ctx, pX + 5, pY + portraitH - 27, pW - 10, servant, 'left', buffImageMap);
-
-  // Servant Name (Bottom of Portrait)
-  const sCleanName = (servant.name || 'Heroic Spirit').replace(/[^\x00-\x7F]/g, '');
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 10.5px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(sCleanName.length > 15 ? sCleanName.slice(0, 14) + '...' : sCleanName, pX + 6, pY + portraitH - 7);
+  // Active Buff Micro-Chips Tray (Cleanly at Bottom of Portrait)
+  drawCombatantBuffPillTray(ctx, pX + 5, pY + portraitH - 36, pW - 10, servant, 'left', buffImageMap);
 
   if (showBars) {
     // 3. Integrated HP Bar (Height: 18px)
@@ -6198,13 +6191,6 @@ export async function renderBattleTurnSummary(
     ctx.textAlign = 'left';
     ctx.fillText(p1ServantClean, pillX + pillW + 8, 32);
 
-    // Render P1 Net Stat Boost Pill if active
-    const p1ServantW = ctx.measureText(p1ServantClean).width;
-    const p1NetPillX = pillX + pillW + 8 + p1ServantW + 10;
-    if (p1NetPillX < 425) {
-      drawCombatantNetStatPill(ctx, p1NetPillX, 18, activeP1, 'left', buffImageMap);
-    }
-
     // 3 Active Skill Badges with authentic Skill Status Icons
     const p1Skills = activeP1.skills || [];
     const p1Bond = activeP1.bondLevel !== undefined ? activeP1.bondLevel : 5;
@@ -6521,13 +6507,6 @@ export async function renderBattleTurnSummary(
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText(p2ServantClean, p2PillX - 8, 619);
-
-    // Render P2 Net Stat Boost Pill if active
-    const p2ServantW = ctx.measureText(p2ServantClean).width;
-    const p2NetPillMaxX = p2PillX - 8 - p2ServantW - 10;
-    if (p2NetPillMaxX > 220) {
-      drawCombatantNetStatPill(ctx, p2NetPillMaxX, 605, activeP2, 'right', buffImageMap);
-    }
 
     // P2 NP Bar (y: 628)
     const p2NpRatio = Math.max(0, Math.min(1, (activeP2.npGauge || 0) / 100));
