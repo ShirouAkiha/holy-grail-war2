@@ -171,9 +171,29 @@ export function calculateCombatantBuffSummary(
     const turnTag = item.turns && item.turns < 90 ? `${item.turns}T` : '';
     const hitTag = item.hits ? `${item.hits} Hit${item.hits > 1 ? 's' : ''}` : '';
     const durationLabel = [hitTag, turnTag].filter(Boolean).join(', ') || 'Permanent';
-    const valTag = item.val ? `: +${item.val}%` : '';
 
-    buffDescriptions.push(`• **${item.name}**${stackTag}${valTag} (${durationLabel})`);
+    let valTag = '';
+    if (['curse', 'poison', 'burn', 'spread_of_fire', 'void_curse'].includes(item.type) || item.name.toLowerCase().includes('curse') || item.name.toLowerCase().includes('poison') || item.name.toLowerCase().includes('burn')) {
+      valTag = item.val ? `: ${item.val.toLocaleString()} DMG/T` : '';
+    } else if (item.type === 'hp_regen' || item.type === 'heal_per_turn' || item.name.toLowerCase().includes('regen')) {
+      valTag = item.val ? `: +${item.val.toLocaleString()} HP/T` : '';
+    } else if (item.type === 'stars_per_turn' || item.name.toLowerCase().includes('stars')) {
+      valTag = item.val ? `: +${item.val} Stars/T` : '';
+    } else if (item.type === 'np_per_turn') {
+      valTag = item.val ? `: +${item.val}% NP/T` : '';
+    } else if (['evade', 'invincible', 'anti_purge_defense', 'anti_purge', 'sure_hit', 'ignore_invincible'].includes(item.type)) {
+      valTag = '';
+    } else if (item.type === 'guts') {
+      valTag = item.val ? `: Revives with ${item.val.toLocaleString()} HP` : '';
+    } else if (item.val) {
+      const sign = item.val >= 0 ? '+' : '';
+      valTag = `: ${sign}${item.val}%`;
+    }
+
+    const isDebuffOrDot = ['curse', 'poison', 'burn', 'spread_of_fire', 'void_curse', 'debuff_def', 'debuff_atk', 'stun', 'np_seal', 'skill_seal'].includes(item.type) || item.name.toLowerCase().includes('[demerit]');
+    const icon = isDebuffOrDot ? '🩸' : '✨';
+
+    buffDescriptions.push(`• ${icon} **${item.name}**${stackTag}${valTag} (${durationLabel})`);
   }
 
   // 2. Process Passives

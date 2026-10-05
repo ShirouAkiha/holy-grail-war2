@@ -3138,11 +3138,10 @@ function buildRaidStatusEmbed(state: RaidBattleState, viewingUserId: string): Em
       }).join('\n') + (rawBossBuffs.length > 5 ? `\n• *...+${rawBossBuffs.length - 5} more*` : '')
     : `_No active status effects or debuffs on ${boss.name}._`;
 
-  // Viewer's Active Buffs (compact)
-  const rawVBuffs = viewer.activeBuffs || [];
-  const vBuffsList = (rawVBuffs.length > 0)
-    ? rawVBuffs.slice(0, 6).map(b => `• ✨ **${cleanBuffNameForDisplay(b.name)}**: +${b.value}% (${b.remainingTurns}T)`).join('\n') +
-      (rawVBuffs.length > 6 ? `\n• *...+${rawVBuffs.length - 6} more active buffs*` : '')
+  // Viewer's Active Buffs (full list with accurate units & stack groupings)
+  const vSummary = calculateCombatantBuffSummary(viewer);
+  const vBuffsList = (vSummary.buffDescriptions && vSummary.buffDescriptions.length > 0)
+    ? vSummary.buffDescriptions.join('\n')
     : '_Operating at baseline parameters (No active buffs)._';
 
   // Viewer's Skills & Cooldowns
@@ -3160,11 +3159,11 @@ function buildRaidStatusEmbed(state: RaidBattleState, viewingUserId: string): Em
     const isViewer = p.userId === viewer.userId;
     const arrow = isViewer ? '👉 ' : '• ';
     const hpStr = p.isDead ? '💀 FALLEN' : `${Math.round(p.currentHp).toLocaleString()}/${p.maxHp.toLocaleString()} HP (${Math.round((p.currentHp / p.maxHp) * 100)}%)`;
-    const pBuffs = (p.activeBuffs || []).map(b => `\`${cleanBuffNameForDisplay(b.name)} (${b.remainingTurns}T)\``);
-    const buffSummary = pBuffs.length > 0
-      ? (pBuffs.length > 3 ? `${pBuffs.slice(0, 3).join(', ')} +${pBuffs.length - 3} more` : pBuffs.join(', '))
+    const pSummary = calculateCombatantBuffSummary(p);
+    const pBuffsStr = (pSummary.buffDescriptions && pSummary.buffDescriptions.length > 0)
+      ? pSummary.buffDescriptions.map(d => d.replace(/^•\s*[✨🩸]?\s*/, '')).join(' | ')
       : 'None';
-    return `${arrow}**${pName}** (<@${p.userId}>): ❤️ \`${hpStr}\` • ⚡ \`NP: ${Math.round(p.npGauge)}%\`\n  └─ ✨ Buffs: ${buffSummary}`;
+    return `${arrow}**${pName}** (<@${p.userId}>): ❤️ \`${hpStr}\` • ⚡ \`NP: ${Math.round(p.npGauge)}%\`\n  └─ ✨ Buffs: ${pBuffsStr}`;
   }).join('\n\n');
 
   let fullDesc =
