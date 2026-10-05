@@ -2583,7 +2583,30 @@ export function executeBattleTurn(
         if (cardIsCrit) isCritical = true;
         const quickChainCritDmg = cardChainType === 'Quick Chain' ? 0.30 : 0.0;
         const ceCritBonus = (actor.equippedCe?.passiveType === 'crit_dmg' ? (actor.equippedCe.passiveValue || 0) : 0) / 100;
-        const critMultiplier = cardIsCrit ? 1.75 + (actor.stats.luck * 0.01) + (critPassiveBonus / 100) + ceCritBonus + quickChainCritDmg : 1.0;
+
+        // Typhon Ephemeros: The Ephemeral Fruit of Moirai (Buff-on-Attack)
+        if (
+          actor.equippedCe &&
+          (actor.equippedCe.id === 'ce_bond_typhon_ephemeros' || /ephemeral fruit/i.test(actor.equippedCe.name || '')) &&
+          (actor.id === 'typhon_ephemeros' || actor.id === 'typhon' || /typhon/i.test(actor.name || ''))
+        ) {
+          actor.activeBuffs = actor.activeBuffs || [];
+          actor.activeBuffs.push({
+            name: 'The Ephemeral Fruit of Moirai (Crit DMG +10%)',
+            type: 'crit_dmg',
+            value: 10,
+            remainingTurns: 3
+          });
+          actor.activeBuffs.push({
+            name: 'The Ephemeral Fruit of Moirai (Curse)',
+            type: 'curse',
+            value: 200,
+            remainingTurns: 3
+          });
+        }
+
+        const activeCritBuff = (actor.activeBuffs || []).filter(b => b.type === 'crit_dmg' || b.type === 'crit_dmg_up').reduce((s, b) => s + b.value, 0);
+        const critMultiplier = cardIsCrit ? 1.75 + (actor.stats.luck * 0.01) + (critPassiveBonus / 100) + ceCritBonus + (activeCritBuff / 100) + quickChainCritDmg : 1.0;
 
         let cardDmgMult = 1.0;
         let cardNpMult = 1.0;

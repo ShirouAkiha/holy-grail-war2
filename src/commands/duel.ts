@@ -2854,7 +2854,9 @@ function resolveStrike(
 
       const hitCrit = Math.random() < critChance;
       if (hitCrit) isAnyCrit = true;
-      const critMult = hitCrit ? (1.75 * critDmgBonus) : 1.0;
+      const activeCritBuffs = attacker.activeBuffs.filter(b => b.type === 'crit_dmg' || b.type === 'crit_dmg_up').reduce((s, b) => s + b.value, 0);
+      const currentCritDmgBonus = 1.0 + (critPassiveBonus / 100) + luckCritBonus + (activeCritBuffs / 100);
+      const critMult = hitCrit ? (1.75 * currentCritDmgBonus) : 1.0;
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2) + busterChainBonusDmg;
@@ -2903,7 +2905,9 @@ function resolveStrike(
 
       const hitCrit = Math.random() < critChance;
       if (hitCrit) isAnyCrit = true;
-      const critMult = hitCrit ? (1.75 * critDmgBonus) : 1.0;
+      const activeCritBuffs = attacker.activeBuffs.filter(b => b.type === 'crit_dmg' || b.type === 'crit_dmg_up').reduce((s, b) => s + b.value, 0);
+      const currentCritDmgBonus = 1.0 + (critPassiveBonus / 100) + luckCritBonus + (activeCritBuffs / 100);
+      const critMult = hitCrit ? (1.75 * currentCritDmgBonus) : 1.0;
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
@@ -2954,7 +2958,9 @@ function resolveStrike(
 
       const hitCrit = Math.random() < critChance;
       if (hitCrit) isAnyCrit = true;
-      const critMult = hitCrit ? (1.75 * critDmgBonus) : 1.0;
+      const activeCritBuffs = attacker.activeBuffs.filter(b => b.type === 'crit_dmg' || b.type === 'crit_dmg_up').reduce((s, b) => s + b.value, 0);
+      const currentCritDmgBonus = 1.0 + (critPassiveBonus / 100) + luckCritBonus + (activeCritBuffs / 100);
+      const critMult = hitCrit ? (1.75 * currentCritDmgBonus) : 1.0;
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);

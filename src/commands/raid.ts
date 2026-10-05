@@ -1693,13 +1693,19 @@ async function runRaidBattle(
         const isCrit = card !== 'NP' && (Math.random() * 100 < critPct);
         if (isCrit) totalCritsLanded++;
 
+        const isNormalCard = card !== 'NP';
+        if (isNormalCard) {
+          const ceLogs = processCeOnAttackEffects(active, null, card);
+          ceLogs.forEach((l: string) => npEffectsLog.push(l));
+        }
+
         const totalLuckAtk = (baseStatsAtk.luck || 10) + (allocAtk.luck || 0);
         const luckCritBonus = Math.min(0.35, (totalLuckAtk / (totalLuckAtk + 120)) * 0.35);
-        const critDmgMult = isCrit ? (2.0 + luckCritBonus) : 1.0;
+        const activeCritBuffs = (active.activeBuffs || []).filter(b => b.type === 'crit_dmg' || b.type === 'crit_dmg_up').reduce((s, b) => s + b.value, 0);
+        const critDmgMult = isCrit ? (2.0 + luckCritBonus + (activeCritBuffs / 100)) : 1.0;
         const critNpBonus = isCrit ? 1.5 : 1.0;
         const critStarBonus = isCrit ? 1.4 : 1.0;
 
-        const isNormalCard = card !== 'NP';
         const negaGenesisMult = (boss.id === 'tiamat' && battleState.currentPhase === 3 && isNormalCard) ? 0.5 : 1.0;
 
         if (card === 'Buster') {

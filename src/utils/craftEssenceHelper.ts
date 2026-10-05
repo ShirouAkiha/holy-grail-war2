@@ -611,11 +611,14 @@ export function applyCePartyAuras(combatants: any[]): void {
  */
 export function processCeTurnStartEffects(combatant: any): string[] {
   const logs: string[] = [];
-  if (!combatant || combatant.isDead || !combatant.servant?.equippedCe) return logs;
+  if (!combatant || combatant.isDead) return logs;
 
-  const ce = combatant.servant.equippedCe;
-  const ceStats = getCePassiveStats(ce, combatant.servant);
-  const sName = combatant.servant.template?.name || combatant.servant.name || 'Servant';
+  const servant = combatant.servant || combatant;
+  const ce = combatant.servant?.equippedCe || combatant.equippedCe;
+  if (!ce) return logs;
+
+  const ceStats = getCePassiveStats(ce, servant);
+  const sName = servant.nickname || servant.template?.name || servant.name || 'Servant';
 
   // 1. HP Regen
   if (ceStats.hpRegenPerTurn > 0 && combatant.currentHp < combatant.maxHp) {
@@ -645,10 +648,13 @@ export function processCeTurnStartEffects(combatant: any): string[] {
  */
 export function processCeOnAttackEffects(attacker: any, defender: any, card: string): string[] {
   const logs: string[] = [];
-  if (!attacker || !attacker.servant?.equippedCe) return logs;
+  if (!attacker) return logs;
 
-  const ce = attacker.servant.equippedCe;
-  const ceStats = getCePassiveStats(ce, attacker.servant);
+  const servant = attacker.servant || attacker;
+  const ce = attacker.servant?.equippedCe || attacker.equippedCe;
+  if (!ce) return logs;
+
+  const ceStats = getCePassiveStats(ce, servant);
 
   // Typhon Ephemeros: The Ephemeral Fruit of Moirai
   if (ceStats.buffOnAttackFruit && card !== 'NP') {
@@ -670,7 +676,8 @@ export function processCeOnAttackEffects(attacker: any, defender: any, card: str
       remainingTurns: 3
     });
 
-    logs.push(`🍎 **${attacker.servant.template?.name || 'Typhon'}** triggered *The Ephemeral Fruit of Moirai*! (+10% Crit DMG, Demerit: 200 Curse to self)`);
+    const sName = servant.nickname || servant.template?.name || servant.name || 'Typhon';
+    logs.push(`🍎 **${sName}** triggered *The Ephemeral Fruit of Moirai*! (+10% Crit DMG (3T), [Demerit] 200 Curse (3T) to self)`);
   }
 
   return logs;
