@@ -892,20 +892,14 @@ async function runRaidBattle(
           await i.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
         }
         const statusEmbed = buildRaidStatusEmbed(battleState, i.user.id);
-        await i.followUp({
-          embeds: [statusEmbed],
-          flags: MessageFlags.Ephemeral
-        }).catch(async () => {
+        if (i.deferred || i.replied) {
           await i.editReply({ embeds: [statusEmbed] }).catch(() => {});
-        });
-      } catch (statusErr: any) {
-        if (
-          statusErr?.code === 10062 ||
-          statusErr?.code === 40060 ||
-          statusErr?.message?.includes('Unknown interaction')
-        ) {
-          // Ignored harmless Discord interaction expiration
         } else {
+          await i.reply({ embeds: [statusEmbed], flags: MessageFlags.Ephemeral }).catch(() => {});
+        }
+      } catch (statusErr: any) {
+        const errCode = statusErr?.code || statusErr?.rawError?.code;
+        if (errCode !== 10062 && errCode !== 40060 && !statusErr?.message?.includes('Unknown interaction')) {
           console.error('[raid] Error generating raid status embed:', statusErr);
         }
       }
@@ -943,20 +937,14 @@ async function runRaidBattle(
           .setColor(isTiamat ? 0xd946ef : 0x8b5cf6)
           .setFooter({ text: `Total Battle Events: ${fullLines.length} • Fate/Grand Order PvE Raid` });
 
-        await i.followUp({
-          embeds: [logEmbed],
-          flags: MessageFlags.Ephemeral
-        }).catch(async () => {
+        if (i.deferred || i.replied) {
           await i.editReply({ embeds: [logEmbed] }).catch(() => {});
-        });
-      } catch (logErr: any) {
-        if (
-          logErr?.code === 10062 ||
-          logErr?.code === 40060 ||
-          logErr?.message?.includes('Unknown interaction')
-        ) {
-          // Ignored harmless Discord interaction expiration
         } else {
+          await i.reply({ embeds: [logEmbed], flags: MessageFlags.Ephemeral }).catch(() => {});
+        }
+      } catch (logErr: any) {
+        const errCode = logErr?.code || logErr?.rawError?.code;
+        if (errCode !== 10062 && errCode !== 40060 && !logErr?.message?.includes('Unknown interaction')) {
           console.error('[raid] Error generating combat log embed:', logErr);
         }
       }
