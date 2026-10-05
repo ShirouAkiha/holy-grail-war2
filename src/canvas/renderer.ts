@@ -11,6 +11,8 @@ import { SERVANT_DATABASE, getServantAvatarAndCardArt, getServantSprite } from '
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { getLocalMediaDiskPath } from '../utils/localMedia';
 import { calculateCombatantBuffSummary } from '../utils/combatBuffHelper';
+import { getStatusIconUrl, STATUS_ICON_URLS } from '../data/statusIcons';
+import { getClassIconUrl, CLASS_ICON_URLS } from '../data/classIcons';
 import fs from 'fs';
 import { getCanvasModule, getGifencModule } from './canvasLoader';
 
@@ -455,7 +457,8 @@ function drawCombatantBuffPillTray(
   y: number,
   maxW: number,
   servant: ActiveCombatant,
-  align: 'left' | 'right' = 'left'
+  align: 'left' | 'right' = 'left',
+  buffImageMap?: Map<string, any>
 ) {
   if (!servant) return;
   const summary = calculateCombatantBuffSummary(servant);
@@ -463,17 +466,19 @@ function drawCombatantBuffPillTray(
   if (!badges || badges.length === 0) return;
 
   ctx.save();
-  ctx.font = 'bold 8px sans-serif';
+  ctx.font = 'bold 8.5px sans-serif';
 
-  const badgeH = 15;
+  const badgeH = 16;
   const gap = 3;
-  const renderedBadges: { badge: any; width: number }[] = [];
+  const renderedBadges: { badge: any; width: number; iconImg: any }[] = [];
   let currentTotalW = 0;
 
   for (let i = 0; i < badges.length; i++) {
     const b = badges[i];
+    const iconUrl = getStatusIconUrl(b.type || b.iconSymbol || b.id || b.label || (b as any).name);
+    const iconImg = buffImageMap?.get(iconUrl);
     const textW = ctx.measureText(b.shortLabel || b.label).width;
-    const badgeW = Math.round(textW + 14); // 14px padding + icon space
+    const badgeW = Math.round(textW + (iconImg || b.iconSymbol ? 19 : 8));
     if (currentTotalW + badgeW > maxW && renderedBadges.length > 0) {
       const remainingCount = badges.length - renderedBadges.length;
       if (remainingCount > 0) {
@@ -491,12 +496,13 @@ function drawCombatantBuffPillTray(
             textColor: '#e2e8f0',
             iconSymbol: null
           },
-          width: ovW
+          width: ovW,
+          iconImg: null
         });
       }
       break;
     }
-    renderedBadges.push({ badge: b, width: badgeW });
+    renderedBadges.push({ badge: b, width: badgeW, iconImg });
     currentTotalW += badgeW + gap;
   }
 
@@ -505,44 +511,53 @@ function drawCombatantBuffPillTray(
   for (const item of renderedBadges) {
     const b = item.badge;
     const bW = item.width;
+    const iconImg = item.iconImg;
 
     // Background pill
-    ctx.fillStyle = b.bgColor || 'rgba(15, 23, 42, 0.88)';
-    drawRoundRect(ctx, startX, y, bW, badgeH, 3);
+    ctx.fillStyle = b.bgColor || 'rgba(15, 23, 42, 0.92)';
+    drawRoundRect(ctx, startX, y, bW, badgeH, 4);
     ctx.fill();
 
     // Border
     ctx.strokeStyle = b.borderColor || '#475569';
-    ctx.lineWidth = 0.9;
-    drawRoundRect(ctx, startX, y, bW, badgeH, 3);
+    ctx.lineWidth = 1;
+    drawRoundRect(ctx, startX, y, bW, badgeH, 4);
     ctx.stroke();
 
-    // Mini vector icon
-    const iconCx = startX + 6.5;
-    const iconCy = y + badgeH / 2;
+    const iconX = startX + 3;
+    const iconY = y + 2;
+    const iconSize = 12;
 
-    if (b.iconSymbol === 'atk') {
-      drawVectorCrossedSwords(ctx, iconCx, iconCy, 3, b.borderColor || '#ef4444');
-    } else if (b.iconSymbol === 'def') {
-      drawVectorShield(ctx, iconCx, iconCy, 6, 8, 'transparent', b.borderColor || '#38bdf8');
-    } else if (b.iconSymbol === 'guts') {
-      drawVectorHeart(ctx, iconCx, iconCy, 3.5, b.borderColor || '#f43f5e');
-    } else if (b.iconSymbol === 'invincible') {
-      drawVectorStar(ctx, iconCx, iconCy, 5, 3.5, 1.8, '#fde047');
-    } else if (b.iconSymbol === 'evade') {
-      drawSparkDiamond(ctx, iconCx, iconCy, 3, '#06b6d4');
-    } else if (b.iconSymbol === 'buster' || b.iconSymbol === 'arts' || b.iconSymbol === 'quick') {
-      drawSparkDiamond(ctx, iconCx, iconCy, 3, b.borderColor);
-    } else if (b.iconSymbol === 'stun') {
-      drawSparkDiamond(ctx, iconCx, iconCy, 3, '#fbbf24');
+    if (iconImg) {
+      ctx.save();
+      drawRoundRect(ctx, iconX, iconY, iconSize, iconSize, 2);
+      ctx.clip();
+      ctx.drawImage(iconImg, iconX, iconY, iconSize, iconSize);
+      ctx.restore();
+    } else if (b.iconSymbol) {
+      const iconCx = startX + 7;
+      const iconCy = y + badgeH / 2;
+      if (b.iconSymbol === 'atk') {
+        drawVectorCrossedSwords(ctx, iconCx, iconCy, 3, b.borderColor || '#ef4444');
+      } else if (b.iconSymbol === 'def') {
+        drawVectorShield(ctx, iconCx, iconCy, 6, 8, 'transparent', b.borderColor || '#38bdf8');
+      } else if (b.iconSymbol === 'guts') {
+        drawVectorHeart(ctx, iconCx, iconCy, 3.5, b.borderColor || '#f43f5e');
+      } else if (b.iconSymbol === 'invincible') {
+        drawVectorStar(ctx, iconCx, iconCy, 5, 3.5, 1.8, '#fde047');
+      } else if (b.iconSymbol === 'evade') {
+        drawSparkDiamond(ctx, iconCx, iconCy, 3, '#06b6d4');
+      } else {
+        drawSparkDiamond(ctx, iconCx, iconCy, 3, b.borderColor || '#fbbf24');
+      }
     }
 
     // Label
     ctx.fillStyle = b.textColor || '#ffffff';
-    ctx.font = 'bold 8px sans-serif';
-    ctx.textAlign = b.iconSymbol ? 'left' : 'center';
-    const textX = b.iconSymbol ? (startX + 12.5) : (startX + bW / 2);
-    ctx.fillText(b.shortLabel || b.label, textX, y + 10.5);
+    ctx.font = 'bold 8.5px sans-serif';
+    ctx.textAlign = (iconImg || b.iconSymbol) ? 'left' : 'center';
+    const textX = (iconImg || b.iconSymbol) ? (startX + 17) : (startX + bW / 2);
+    ctx.fillText(b.shortLabel || b.label, textX, y + 11.5);
 
     startX += bW + gap;
   }
@@ -551,41 +566,63 @@ function drawCombatantBuffPillTray(
 }
 
 /**
- * Draw Combatant Net Stat Pill in HUD header
+ * Draw Combatant Net Stat Pill in HUD header with authentic status icon assets
  */
 function drawCombatantNetStatPill(
   ctx: any,
   x: number,
   y: number,
   combatant: ActiveCombatant,
-  align: 'left' | 'right' = 'left'
+  align: 'left' | 'right' = 'left',
+  buffImageMap?: Map<string, any>
 ) {
   if (!combatant) return;
   const summary = calculateCombatantBuffSummary(combatant);
-  const parts: string[] = [];
+  const parts: { text: string; iconUrl?: string }[] = [];
 
   if (summary.totalAtkPercent !== 0) {
-    parts.push(`ATK ${summary.totalAtkPercent > 0 ? '+' : ''}${summary.totalAtkPercent}%`);
+    parts.push({
+      text: `ATK ${summary.totalAtkPercent > 0 ? '+' : ''}${summary.totalAtkPercent}%`,
+      iconUrl: summary.totalAtkPercent > 0 ? STATUS_ICON_URLS.buff_atk : STATUS_ICON_URLS.atk_down
+    });
   }
   if (summary.totalDefPercent !== 0) {
-    parts.push(`DEF ${summary.totalDefPercent > 0 ? '+' : ''}${summary.totalDefPercent}%`);
+    parts.push({
+      text: `DEF ${summary.totalDefPercent > 0 ? '+' : ''}${summary.totalDefPercent}%`,
+      iconUrl: summary.totalDefPercent > 0 ? STATUS_ICON_URLS.buff_def : STATUS_ICON_URLS.def_down
+    });
   }
   if (summary.gutsCount > 0) {
-    parts.push(`GUTS x${summary.gutsCount}`);
+    parts.push({
+      text: `GUTS x${summary.gutsCount}`,
+      iconUrl: STATUS_ICON_URLS.guts
+    });
   }
   if (summary.isInvincible) {
-    parts.push('INVINC');
+    parts.push({
+      text: 'INVINC',
+      iconUrl: STATUS_ICON_URLS.invincible
+    });
   } else if (summary.isEvading) {
-    parts.push(summary.evadeHits ? `EVD ${summary.evadeHits}H` : 'EVADE');
+    parts.push({
+      text: summary.evadeHits ? `EVD ${summary.evadeHits}H` : 'EVADE',
+      iconUrl: STATUS_ICON_URLS.evade
+    });
   }
 
   if (parts.length === 0) return;
 
-  const text = parts.join(' | ');
   ctx.save();
   ctx.font = 'bold 8.5px sans-serif';
-  const textW = ctx.measureText(text).width;
-  const pillW = Math.round(textW + 14);
+
+  let totalContentW = 0;
+  parts.forEach((p, idx) => {
+    const iconImg = buffImageMap?.get(p.iconUrl || '');
+    const itemW = ctx.measureText(p.text).width + (iconImg ? 16 : 0);
+    totalContentW += itemW + (idx > 0 ? 8 : 0);
+  });
+
+  const pillW = Math.round(totalContentW + 12);
   const pillH = 18;
   const pillX = align === 'right' ? (x - pillW) : x;
 
@@ -598,9 +635,25 @@ function drawCombatantNetStatPill(
   drawRoundRect(ctx, pillX, y, pillW, pillH, 4);
   ctx.stroke();
 
-  ctx.fillStyle = '#f8fafc';
-  ctx.textAlign = 'center';
-  ctx.fillText(text, pillX + pillW / 2, y + 12);
+  let curX = pillX + 6;
+  parts.forEach((p, idx) => {
+    if (idx > 0) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.textAlign = 'left';
+      ctx.fillText('|', curX, y + 12);
+      curX += 8;
+    }
+    const iconImg = buffImageMap?.get(p.iconUrl || '');
+    if (iconImg) {
+      ctx.drawImage(iconImg, curX, y + 3, 12, 12);
+      curX += 14;
+    }
+    ctx.fillStyle = '#f8fafc';
+    ctx.textAlign = 'left';
+    ctx.fillText(p.text, curX, y + 12);
+    curX += ctx.measureText(p.text).width;
+  });
+
   ctx.restore();
 }
 
@@ -680,7 +733,8 @@ function drawCritStarBox(
   w: number,
   h: number,
   starsCount: number,
-  isOpponent: boolean = false
+  isOpponent: boolean = false,
+  buffImageMap?: Map<string, any>
 ) {
   ctx.save();
   ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
@@ -747,17 +801,22 @@ function drawCritStarBox(
   const starCx = x + 28;
   const starCy = y + h / 2 - 4;
 
+  const starImg = buffImageMap?.get(STATUS_ICON_URLS.crit_stars) || buffImageMap?.get(STATUS_ICON_URLS.gain_stars);
+
   // Star soft glow halo
-  const starGlow = ctx.createRadialGradient(starCx, starCy, 2, starCx, starCy, 20);
+  const starGlow = ctx.createRadialGradient(starCx, starCy, 2, starCx, starCy, 22);
   starGlow.addColorStop(0, glowColor);
   starGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = starGlow;
   ctx.beginPath();
-  ctx.arc(starCx, starCy, 20, 0, Math.PI * 2);
+  ctx.arc(starCx, starCy, 22, 0, Math.PI * 2);
   ctx.fill();
 
-  // Vector star
-  drawVectorStar(ctx, starCx, starCy, 5, 12, 6, starColor, isOpponent ? '#fecaca' : '#bae6fd');
+  if (starImg) {
+    ctx.drawImage(starImg, starCx - 14, starCy - 14, 28, 28);
+  } else {
+    drawVectorStar(ctx, starCx, starCy, 5, 12, 6, starColor, isOpponent ? '#fecaca' : '#bae6fd');
+  }
 
   // Large Bold Numeric Star Count
   ctx.fillStyle = '#ffffff';
@@ -778,7 +837,6 @@ function drawCritStarBox(
 /**
  * Draw Tarot-style Command Card with Filigree Frame, Elemental Radial Gradient, 
  * Sigil Emblem, Order Roman Numeral, Position Stat Bonus, and Real-Time Crit % Badge.
- * (Zero unicode emojis - 100% Canvas vectors)
  */
 function drawTarotCommandCard(
   ctx: any,
@@ -789,7 +847,8 @@ function drawTarotCommandCard(
   card: 'Buster' | 'Arts' | 'Quick' | 'NP' | string,
   orderIdx: number,
   critStars: number,
-  isQuickFirstLead: boolean
+  isQuickFirstLead: boolean,
+  buffImageMap?: Map<string, any>
 ) {
   ctx.save();
   ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
@@ -905,11 +964,30 @@ function drawTarotCommandCard(
   ctx.arc(emblemCx, emblemCy, 22, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Glowing center letter
-  ctx.fillStyle = '#ffffff';
-  ctx.font = letter === 'NP' ? 'bold 20px sans-serif' : 'bold 28px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(letter, emblemCx, emblemCy + (letter === 'NP' ? 7 : 10));
+  let cardIconImg: any = null;
+  if (card === 'Buster') {
+    cardIconImg = buffImageMap?.get(STATUS_ICON_URLS.buster) || buffImageMap?.get(STATUS_ICON_URLS.buster_up);
+  } else if (card === 'Arts') {
+    cardIconImg = buffImageMap?.get(STATUS_ICON_URLS.arts) || buffImageMap?.get(STATUS_ICON_URLS.arts_up);
+  } else if (card === 'Quick') {
+    cardIconImg = buffImageMap?.get(STATUS_ICON_URLS.quick) || buffImageMap?.get(STATUS_ICON_URLS.quick_up);
+  } else if (card === 'NP' || card === 'Phantasm') {
+    cardIconImg = buffImageMap?.get(STATUS_ICON_URLS.overcharge_up) || buffImageMap?.get(STATUS_ICON_URLS.flat_dmg_up);
+  }
+
+  if (cardIconImg) {
+    ctx.save();
+    drawRoundRect(ctx, emblemCx - 17, emblemCy - 17, 34, 34, 6);
+    ctx.clip();
+    ctx.drawImage(cardIconImg, emblemCx - 17, emblemCy - 17, 34, 34);
+    ctx.restore();
+  } else {
+    // Glowing center letter
+    ctx.fillStyle = '#ffffff';
+    ctx.font = letter === 'NP' ? 'bold 20px sans-serif' : 'bold 28px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(letter, emblemCx, emblemCy + (letter === 'NP' ? 7 : 10));
+  }
 
   // Multiplier / Effect Text (e.g. "1st (+50% DMG)", "2nd (1.2x)")
   ctx.fillStyle = accentColor;
@@ -931,6 +1009,7 @@ function drawTarotCommandCard(
   drawRoundRect(ctx, footerX, footerY, footerW, footerH, 4);
   ctx.stroke();
 
+  const starIcon = buffImageMap?.get(STATUS_ICON_URLS.crit_stars) || buffImageMap?.get(STATUS_ICON_URLS.gain_stars);
   if (card === 'NP' || card === 'Phantasm') {
     ctx.fillStyle = '#fde047';
     ctx.font = 'bold 9.5px sans-serif';
@@ -938,12 +1017,16 @@ function drawTarotCommandCard(
     ctx.fillText('NOBLE CARD', footerX + footerW / 2, footerY + 15);
   } else {
     const critPercent = Math.min(100, Math.max(0, (critStars || 0) * 2));
-    drawVectorStar(ctx, footerX + 12, footerY + 11, 5, 4, 2, '#fbbf24');
+    if (starIcon) {
+      ctx.drawImage(starIcon, footerX + 8, footerY + 4, 14, 14);
+    } else {
+      drawVectorStar(ctx, footerX + 12, footerY + 11, 5, 4, 2, '#fbbf24');
+    }
 
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 9.5px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`CRIT ${critPercent}%`, footerX + footerW / 2 + 5, footerY + 15);
+    ctx.fillText(`CRIT ${critPercent}%`, footerX + footerW / 2 + 6, footerY + 15);
   }
 
   ctx.restore();
@@ -962,7 +1045,8 @@ function drawCompactCommandCard(
   orderIdx: number,
   critStars: number,
   isQuickLead: boolean = false,
-  ownerName?: string
+  ownerName?: string,
+  buffImageMap?: Map<string, any>
 ) {
   ctx.save();
   // Shadow
@@ -1063,11 +1147,30 @@ function drawCompactCommandCard(
   ctx.arc(emblemCx, emblemCy, 15, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Glowing center letter
-  ctx.fillStyle = '#ffffff';
-  ctx.font = letter === 'NP' ? 'bold 13px sans-serif' : 'bold 20px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(letter, emblemCx, emblemCy + (letter === 'NP' ? 5 : 7));
+  let cardIconImg: any = null;
+  if (card === 'Buster') {
+    cardIconImg = buffImageMap?.get(STATUS_ICON_URLS.buster) || buffImageMap?.get(STATUS_ICON_URLS.buster_up);
+  } else if (card === 'Arts') {
+    cardIconImg = buffImageMap?.get(STATUS_ICON_URLS.arts) || buffImageMap?.get(STATUS_ICON_URLS.arts_up);
+  } else if (card === 'Quick') {
+    cardIconImg = buffImageMap?.get(STATUS_ICON_URLS.quick) || buffImageMap?.get(STATUS_ICON_URLS.quick_up);
+  } else if (card === 'NP' || card === 'Phantasm') {
+    cardIconImg = buffImageMap?.get(STATUS_ICON_URLS.overcharge_up) || buffImageMap?.get(STATUS_ICON_URLS.flat_dmg_up);
+  }
+
+  if (cardIconImg) {
+    ctx.save();
+    drawRoundRect(ctx, emblemCx - 12, emblemCy - 12, 24, 24, 4);
+    ctx.clip();
+    ctx.drawImage(cardIconImg, emblemCx - 12, emblemCy - 12, 24, 24);
+    ctx.restore();
+  } else {
+    // Glowing center letter
+    ctx.fillStyle = '#ffffff';
+    ctx.font = letter === 'NP' ? 'bold 13px sans-serif' : 'bold 20px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(letter, emblemCx, emblemCy + (letter === 'NP' ? 5 : 7));
+  }
 
   // Step Multiplier Text
   ctx.fillStyle = accentColor;
@@ -1089,6 +1192,7 @@ function drawCompactCommandCard(
   drawRoundRect(ctx, footerX, footerY, footerW, footerH, 3);
   ctx.stroke();
 
+  const starIcon = buffImageMap?.get(STATUS_ICON_URLS.crit_stars) || buffImageMap?.get(STATUS_ICON_URLS.gain_stars);
   if (card === 'NP') {
     ctx.fillStyle = '#fde047';
     ctx.font = 'bold 8px sans-serif';
@@ -1096,11 +1200,15 @@ function drawCompactCommandCard(
     ctx.fillText('NOBLE NP', footerX + footerW / 2, footerY + 12);
   } else {
     const critPercent = Math.min(100, Math.max(0, (critStars || 0) * 2));
-    drawVectorStar(ctx, footerX + 9, footerY + 8.5, 5, 3.5, 1.8, '#fbbf24');
+    if (starIcon) {
+      ctx.drawImage(starIcon, footerX + 5, footerY + 2.5, 12, 12);
+    } else {
+      drawVectorStar(ctx, footerX + 9, footerY + 8.5, 5, 3.5, 1.8, '#fbbf24');
+    }
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 8px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`CRIT ${critPercent}%`, footerX + footerW / 2 + 4, footerY + 12);
+    ctx.fillText(`CRIT ${critPercent}%`, footerX + footerW / 2 + 5, footerY + 12);
   }
 
   ctx.restore();
@@ -1117,7 +1225,8 @@ function drawCompactCritStarCard(
   h: number,
   starsCount: number,
   isOpponent: boolean = false,
-  unitLabel: string = 'UNIT'
+  unitLabel: string = 'UNIT',
+  buffImageMap?: Map<string, any>
 ) {
   ctx.save();
   // Shadow
@@ -1177,7 +1286,12 @@ function drawCompactCritStarCard(
   ctx.arc(starCx, starCy, 16, 0, Math.PI * 2);
   ctx.fill();
 
-  drawVectorStar(ctx, starCx, starCy, 5, 9, 4.5, starColor, isOpponent ? '#fecaca' : '#bae6fd');
+  const starImg = buffImageMap?.get(STATUS_ICON_URLS.crit_stars) || buffImageMap?.get(STATUS_ICON_URLS.gain_stars);
+  if (starImg) {
+    ctx.drawImage(starImg, starCx - 11, starCy - 11, 22, 22);
+  } else {
+    drawVectorStar(ctx, starCx, starCy, 5, 9, 4.5, starColor, isOpponent ? '#fecaca' : '#bae6fd');
+  }
 
   // Large Bold Numeric Star Count
   ctx.fillStyle = '#ffffff';
@@ -1628,7 +1742,8 @@ function drawMinimalClashBanner(
   y: number = 278,
   w: number = 608,
   h: number = 134,
-  formatBadge: string = '1v1'
+  formatBadge: string = '1v1',
+  buffImageMap?: Map<string, any>
 ) {
   ctx.save();
 
@@ -1749,50 +1864,104 @@ function drawMinimalClashBanner(
 
   // ----------------------------------------------------
   // LINE 2: Big Cinematic Clash Stat / Damage / Skill Name (28px)
-  // Perfectly centered vertically in the middle of the banner
+  // Perfectly centered vertically in the middle of the banner with actual Icon Asset
   // ----------------------------------------------------
   const dmgY = y + 69;
   const dmg = log.damageDealt > 0 ? log.damageDealt.toLocaleString() : '0';
 
   if (isSeal) {
-    ctx.font = 'bold 24px sans-serif';
+    const sealIcon = buffImageMap?.get(STATUS_ICON_URLS.np_charge);
+    const sealTitle = 'COMMAND SEAL: NP REFILLED TO 100%';
+    ctx.font = 'bold 23px sans-serif';
     ctx.fillStyle = '#fb7185';
-    ctx.textAlign = 'center';
-    ctx.fillText('COMMAND SEAL: NP REFILLED TO 100%', x + w / 2, dmgY);
+    if (sealIcon) {
+      const textW = ctx.measureText(sealTitle).width;
+      const rowX = x + (w - textW - 28) / 2;
+      ctx.drawImage(sealIcon, rowX, dmgY - 20, 22, 22);
+      ctx.textAlign = 'left';
+      ctx.fillText(sealTitle, rowX + 28, dmgY);
+    } else {
+      ctx.textAlign = 'center';
+      ctx.fillText(sealTitle, x + w / 2, dmgY);
+    }
   } else if (isSkill) {
     const skillTitle = extractSkillName(log).toUpperCase();
-    ctx.font = 'bold 26px sans-serif';
+    const skillIconUrl = getStatusIconUrl((log as any).skillName || skillTitle);
+    const skillIcon = buffImageMap?.get(skillIconUrl);
+    ctx.font = 'bold 25px sans-serif';
     ctx.fillStyle = '#38bdf8';
-    ctx.textAlign = 'center';
-    ctx.fillText(skillTitle, x + w / 2, dmgY);
+    if (skillIcon) {
+      const textW = ctx.measureText(skillTitle).width;
+      const rowX = x + (w - textW - 32) / 2;
+      ctx.drawImage(skillIcon, rowX, dmgY - 22, 26, 26);
+      ctx.textAlign = 'left';
+      ctx.fillText(skillTitle, rowX + 32, dmgY);
+    } else {
+      ctx.textAlign = 'center';
+      ctx.fillText(skillTitle, x + w / 2, dmgY);
+    }
   } else if (log.damageDealt === 0 && (log.isEvaded || log.actionSummary?.toLowerCase().includes('evaded') || log.actionSummary?.toLowerCase().includes('evade'))) {
-    ctx.font = 'bold 26px sans-serif';
+    const evadeIcon = buffImageMap?.get(STATUS_ICON_URLS.evade);
+    const evTitle = 'ATTACK EVADED! (0 DMG)';
+    ctx.font = 'bold 25px sans-serif';
     ctx.fillStyle = '#38bdf8';
-    ctx.textAlign = 'center';
-    ctx.fillText('ATTACK EVADED! (0 DMG)', x + w / 2, dmgY);
+    if (evadeIcon) {
+      const textW = ctx.measureText(evTitle).width;
+      const rowX = x + (w - textW - 28) / 2;
+      ctx.drawImage(evadeIcon, rowX, dmgY - 20, 22, 22);
+      ctx.textAlign = 'left';
+      ctx.fillText(evTitle, rowX + 28, dmgY);
+    } else {
+      ctx.textAlign = 'center';
+      ctx.fillText(evTitle, x + w / 2, dmgY);
+    }
   } else if (log.damageDealt === 0 && (log.isInvincible || log.actionSummary?.toLowerCase().includes('invincible barrier active') || log.actionSummary?.toLowerCase().includes('invincible (0 dmg)'))) {
-    ctx.font = 'bold 26px sans-serif';
+    const invIcon = buffImageMap?.get(STATUS_ICON_URLS.invincible);
+    const invTitle = 'INVINCIBLE! (0 DMG)';
+    ctx.font = 'bold 25px sans-serif';
     ctx.fillStyle = '#fde047';
-    ctx.textAlign = 'center';
-    ctx.fillText('INVINCIBLE! (0 DMG)', x + w / 2, dmgY);
+    if (invIcon) {
+      const textW = ctx.measureText(invTitle).width;
+      const rowX = x + (w - textW - 28) / 2;
+      ctx.drawImage(invIcon, rowX, dmgY - 20, 22, 22);
+      ctx.textAlign = 'left';
+      ctx.fillText(invTitle, rowX + 28, dmgY);
+    } else {
+      ctx.textAlign = 'center';
+      ctx.fillText(invTitle, x + w / 2, dmgY);
+    }
   } else if (log.damageDealt > 0) {
     let dmgColor = '#ffffff';
     let suffix = ' DMG';
     let baseDmgFont = 28;
+    let leadingIcon: any = null;
+
     if (log.isNoblePhantasm) {
       dmgColor = '#fde047';
       suffix = ' NOBLE PHANTASM DMG';
-      baseDmgFont = 26;
+      baseDmgFont = 25;
+      leadingIcon = buffImageMap?.get(STATUS_ICON_URLS.overcharge_up) || buffImageMap?.get(STATUS_ICON_URLS.flat_dmg_up);
     } else if (log.isCritical) {
       dmgColor = '#f87171';
       suffix = ' CRITICAL DMG';
-      baseDmgFont = 28;
+      baseDmgFont = 27;
+      leadingIcon = buffImageMap?.get(STATUS_ICON_URLS.crit_dmg) || buffImageMap?.get(STATUS_ICON_URLS.crit_dmg_up);
     }
 
+    const fullDmgText = `${dmg}${suffix}`;
     ctx.font = `bold ${baseDmgFont}px sans-serif`;
-    ctx.textAlign = 'center';
     ctx.fillStyle = dmgColor;
-    ctx.fillText(`${dmg}${suffix}`, x + w / 2, dmgY);
+
+    if (leadingIcon) {
+      const textW = ctx.measureText(fullDmgText).width;
+      const rowX = x + (w - textW - 30) / 2;
+      ctx.drawImage(leadingIcon, rowX, dmgY - 21, 24, 24);
+      ctx.textAlign = 'left';
+      ctx.fillText(fullDmgText, rowX + 30, dmgY);
+    } else {
+      ctx.textAlign = 'center';
+      ctx.fillText(fullDmgText, x + w / 2, dmgY);
+    }
   } else {
     ctx.font = 'bold 28px sans-serif';
     ctx.fillStyle = '#cbd5e1';
@@ -1802,14 +1971,14 @@ function drawMinimalClashBanner(
 
   // ----------------------------------------------------
   // LINE 3: Tactical Telemetry & Actual Combat Effects
-  // Large 21.5px bold font, actual gameplay effects, zero dialogue quotes, zero tofu blocks
+  // Large 21.5px bold font with real FGO status icon asset
   // ----------------------------------------------------
   const telemetry = extractCombatHudTelemetry(log, p1, p2);
   let line3Font = 21.5;
   ctx.font = `bold ${line3Font}px sans-serif`;
 
   let displayTelemetry = telemetry;
-  const maxLine3Width = w - 24;
+  const maxLine3Width = w - 40;
 
   // Scale down gracefully so effects are fully readable without cutoff
   while (ctx.measureText(displayTelemetry).width > maxLine3Width && line3Font > 15) {
@@ -1824,9 +1993,40 @@ function drawMinimalClashBanner(
     displayTelemetry += '...';
   }
 
+  // Detect matching icon asset for telemetry
+  let teleIcon: any = null;
+  const teleLower = displayTelemetry.toLowerCase();
+  if (teleLower.includes('guts')) {
+    teleIcon = buffImageMap?.get(STATUS_ICON_URLS.guts);
+  } else if (teleLower.includes('curse')) {
+    teleIcon = buffImageMap?.get(STATUS_ICON_URLS.curse);
+  } else if (teleLower.includes('burn')) {
+    teleIcon = buffImageMap?.get(STATUS_ICON_URLS.burn);
+  } else if (teleLower.includes('poison')) {
+    teleIcon = buffImageMap?.get(STATUS_ICON_URLS.poison);
+  } else if (teleLower.includes('stun')) {
+    teleIcon = buffImageMap?.get(STATUS_ICON_URLS.stun);
+  } else if (teleLower.includes('star') || teleLower.includes('crit')) {
+    teleIcon = buffImageMap?.get(STATUS_ICON_URLS.crit_stars) || buffImageMap?.get(STATUS_ICON_URLS.gain_stars);
+  } else if (teleLower.includes('charge') || teleLower.includes('gauge') || teleLower.includes('np refund') || teleLower.includes('np')) {
+    teleIcon = buffImageMap?.get(STATUS_ICON_URLS.np_charge);
+  } else if (teleLower.includes('atk') || teleLower.includes('attack')) {
+    teleIcon = buffImageMap?.get(STATUS_ICON_URLS.buff_atk);
+  } else if (teleLower.includes('def') || teleLower.includes('shield')) {
+    teleIcon = buffImageMap?.get(STATUS_ICON_URLS.buff_def);
+  }
+
   ctx.fillStyle = isSkill ? '#38bdf8' : (log.isNoblePhantasm ? '#fde047' : (log.isCritical ? '#fca5a5' : '#e2e8f0'));
-  ctx.textAlign = 'center';
-  ctx.fillText(displayTelemetry, x + w / 2, y + 109);
+  if (teleIcon) {
+    const teleW = ctx.measureText(displayTelemetry).width;
+    const rowX = x + (w - teleW - 22) / 2;
+    ctx.drawImage(teleIcon, rowX, y + 93, 18, 18);
+    ctx.textAlign = 'left';
+    ctx.fillText(displayTelemetry, rowX + 22, y + 109);
+  } else {
+    ctx.textAlign = 'center';
+    ctx.fillText(displayTelemetry, x + w / 2, y + 109);
+  }
 
   ctx.restore();
 }
@@ -5493,7 +5693,9 @@ function drawUnitHudPlate(
   roleLabel: string,
   accentColor: string,
   isTargeted: boolean = false,
-  showBars: boolean = true
+  showBars: boolean = true,
+  buffImageMap?: Map<string, any>,
+  classImageMap?: Map<string, any>
 ) {
   const isDefeated = servant.currentHp <= 0;
   ctx.save();
@@ -5565,7 +5767,8 @@ function drawUnitHudPlate(
 
   // Class Pill on Top-Right
   const sClass = (servant.servantClass || 'SABER').toUpperCase();
-  const classW = 44;
+  const classIcon = classImageMap?.get(getClassIconUrl(servant.servantClass));
+  const classW = classIcon ? 56 : 44;
   ctx.fillStyle = 'rgba(10, 15, 26, 0.88)';
   drawRoundRect(ctx, pX + pW - classW - 4, pY + 4, classW, 16, 4);
   ctx.fill();
@@ -5574,13 +5777,21 @@ function drawUnitHudPlate(
   drawRoundRect(ctx, pX + pW - classW - 4, pY + 4, classW, 16, 4);
   ctx.stroke();
 
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 8px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText(sClass, pX + pW - classW / 2 - 4, pY + 15);
+  if (classIcon) {
+    ctx.drawImage(classIcon, pX + pW - classW - 2, pY + 5, 14, 14);
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = 'bold 7.5px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(sClass.slice(0, 7), pX + pW - classW + 14, pY + 15);
+  } else {
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(sClass, pX + pW - classW / 2 - 4, pY + 15);
+  }
 
   // Active Buff Micro-Chips Tray (Bottom of Portrait above name)
-  drawCombatantBuffPillTray(ctx, pX + 5, pY + portraitH - 27, pW - 10, servant, 'left');
+  drawCombatantBuffPillTray(ctx, pX + 5, pY + portraitH - 27, pW - 10, servant, 'left', buffImageMap);
 
   // Servant Name (Bottom of Portrait)
   const sCleanName = (servant.name || 'Heroic Spirit').replace(/[^\x00-\x7F]/g, '');
@@ -5901,13 +6112,69 @@ export async function renderBattleTurnSummary(
     }
   }
 
-  // Load Avatars concurrently
-  const [p1Img, p1AllyImg, p2Img, p2AllyImg] = await Promise.all([
+  // 1. Collect all relevant icon URLs to preload (Classes, Cards, Stars, Skills, Buffs)
+  const defaultPreloadBuffKeys = [
+    'crit_stars', 'gain_stars', 'buster', 'buster_up', 'arts', 'arts_up', 'quick', 'quick_up',
+    'overcharge_up', 'flat_dmg_up', 'buff_atk', 'atk_up', 'attack_up', 'buff_def', 'def_up', 'defense_up',
+    'guts', 'evade', 'evasion', 'invincible', 'anti_purge_defense', 'anti_purge', 'anti_purge_atk',
+    'curse', 'burn', 'poison', 'stun', 'skill_seal', 'np_seal', 'debuff_res', 'hp_regen', 'heal',
+    'crit_dmg', 'crit_dmg_up', 'damage_up', 'hit_count_up', 'star_gain_up', 'np_charge',
+    'def_down', 'defense_down', 'atk_down', 'attack_down', 'quick_resistance_down'
+  ];
+
+  const allCombatants = [activeP1, activeP1Ally, activeP2, activeP2Ally].filter(Boolean) as ActiveCombatant[];
+  const dynamicBuffKeys: string[] = [];
+  allCombatants.forEach(c => {
+    if (c.activeBuffs) {
+      c.activeBuffs.forEach(b => {
+        if (b.type) dynamicBuffKeys.push(b.type);
+        if (b.name) dynamicBuffKeys.push(b.name);
+      });
+    }
+    if (c.skills) {
+      c.skills.forEach(s => {
+        if (s?.effectType) dynamicBuffKeys.push(s.effectType);
+        if (s?.name) dynamicBuffKeys.push(s.name);
+        if (s?.id) dynamicBuffKeys.push(s.id);
+      });
+    }
+  });
+
+  const uniqueBuffUrls = Array.from(new Set([
+    ...defaultPreloadBuffKeys.map(k => getStatusIconUrl(k)),
+    ...dynamicBuffKeys.map(k => getStatusIconUrl(k))
+  ])).filter(Boolean);
+
+  const uniqueClassUrls = Array.from(new Set(
+    allCombatants.map(c => getClassIconUrl(c.servantClass))
+  )).filter(Boolean);
+
+  // Load Avatars, Class Icons, and Buff/Status Icons concurrently
+  const [
+    p1Img,
+    p1AllyImg,
+    p2Img,
+    p2AllyImg,
+    loadedClassImgs,
+    loadedBuffImgs
+  ] = await Promise.all([
     activeP1?.avatarUrl ? loadImage(activeP1.avatarUrl) : Promise.resolve(null),
     activeP1Ally?.avatarUrl ? loadImage(activeP1Ally.avatarUrl) : Promise.resolve(null),
     activeP2?.avatarUrl ? loadImage(activeP2.avatarUrl) : Promise.resolve(null),
-    activeP2Ally?.avatarUrl ? loadImage(activeP2Ally.avatarUrl) : Promise.resolve(null)
+    activeP2Ally?.avatarUrl ? loadImage(activeP2Ally.avatarUrl) : Promise.resolve(null),
+    Promise.all(uniqueClassUrls.map(url => loadImage(url))),
+    Promise.all(uniqueBuffUrls.map(url => loadImage(url)))
   ]);
+
+  const classImageMap = new Map<string, any>();
+  uniqueClassUrls.forEach((url, i) => {
+    if (loadedClassImgs && loadedClassImgs[i]) classImageMap.set(url, loadedClassImgs[i]);
+  });
+
+  const buffImageMap = new Map<string, any>();
+  uniqueBuffUrls.forEach((url, i) => {
+    if (loadedBuffImgs && loadedBuffImgs[i]) buffImageMap.set(url, loadedBuffImgs[i]);
+  });
 
   // Background - Deep Mystic Slate War Canvas
   const bgGrad = ctx.createLinearGradient(0, 0, 640, 700);
@@ -5939,7 +6206,7 @@ export async function renderBattleTurnSummary(
     // Standard Single Vanguard Layout
     const p1SingleRole = activeP1.isSoloRogue ? (activeP1.roleTag || 'SOLO ROGUE ⚡') : 'CHAMPION';
     const p1SingleColor = activeP1.isSoloRogue ? '#f59e0b' : '#38bdf8';
-    drawUnitHudPlate(ctx, 16, 16, 172, 256, p1Img, activeP1, p1SingleRole, p1SingleColor, isP1LeadTargeted, false);
+    drawUnitHudPlate(ctx, 16, 16, 172, 256, p1Img, activeP1, p1SingleRole, p1SingleColor, isP1LeadTargeted, false, buffImageMap, classImageMap);
 
     // P1 Header Title & Class Pill
     const p1DisplayName = (activeP1.masterName || 'Master 1').replace(/[^\x00-\x7F]/g, '');
@@ -5952,34 +6219,44 @@ export async function renderBattleTurnSummary(
     const p1ServantClean = (activeP1.name || 'Heroic Spirit').replace(/[^\x00-\x7F]/g, '');
     const p1ClassClean = (activeP1.servantClass || 'SABER').toUpperCase();
 
-    // Class badge pill
+    // Class badge pill with authentic FGO Class Icon
+    const p1ClassIcon = classImageMap.get(getClassIconUrl(activeP1.servantClass));
+    const pillW = p1ClassIcon ? 72 : 64;
     const pillX = 208 + p1NameWidth;
     const pillY = 18;
     ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
-    drawRoundRect(ctx, pillX, pillY, 64, 18, 9);
+    drawRoundRect(ctx, pillX, pillY, pillW, 18, 9);
     ctx.fill();
     ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
     ctx.lineWidth = 1;
-    drawRoundRect(ctx, pillX, pillY, 64, 18, 9);
+    drawRoundRect(ctx, pillX, pillY, pillW, 18, 9);
     ctx.stroke();
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = 'bold 9px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(p1ClassClean, pillX + 32, pillY + 13);
+    if (p1ClassIcon) {
+      ctx.drawImage(p1ClassIcon, pillX + 4, pillY + 2, 14, 14);
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 8.5px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(p1ClassClean, pillX + 22, pillY + 13);
+    } else {
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(p1ClassClean, pillX + pillW / 2, pillY + 13);
+    }
 
     ctx.fillStyle = '#cbd5e1';
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(p1ServantClean, pillX + 72, 32);
+    ctx.fillText(p1ServantClean, pillX + pillW + 8, 32);
 
     // Render P1 Net Stat Boost Pill if active
     const p1ServantW = ctx.measureText(p1ServantClean).width;
-    const p1NetPillX = pillX + 72 + p1ServantW + 10;
+    const p1NetPillX = pillX + pillW + 8 + p1ServantW + 10;
     if (p1NetPillX < 425) {
-      drawCombatantNetStatPill(ctx, p1NetPillX, 18, activeP1, 'left');
+      drawCombatantNetStatPill(ctx, p1NetPillX, 18, activeP1, 'left', buffImageMap);
     }
 
-    // 3 Active Skill Badges
+    // 3 Active Skill Badges with authentic Skill Status Icons
     const p1Skills = activeP1.skills || [];
     const p1Bond = activeP1.bondLevel !== undefined ? activeP1.bondLevel : 5;
     [0, 1, 2].forEach((sIdx) => {
@@ -5990,6 +6267,8 @@ export async function renderBattleTurnSummary(
       const sData = p1Skills[sIdx];
       const sCd = sData?.currentCooldown || 0;
       const isLocked = sIdx === 2 && p1Bond < 5;
+      const sIconUrl = getStatusIconUrl(sData?.effectType || sData?.name || sData?.id || (sIdx === 0 ? 'buff_atk' : sIdx === 1 ? 'arts' : 'crit_stars'));
+      const sIconImg = buffImageMap.get(sIconUrl);
 
       ctx.save();
       if (isLocked) {
@@ -6015,10 +6294,21 @@ export async function renderBattleTurnSummary(
         drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
         ctx.stroke();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = 'bold 9px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(`S${sIdx + 1}: ${sCd}T`, sBoxX + sBoxW / 2, sBoxY + 14);
+        if (sIconImg) {
+          ctx.save();
+          ctx.globalAlpha = 0.45;
+          ctx.drawImage(sIconImg, sBoxX + 3, sBoxY + 3, 14, 14);
+          ctx.restore();
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = 'bold 9px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(`S${sIdx + 1}:${sCd}T`, sBoxX + 19, sBoxY + 14);
+        } else {
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = 'bold 9px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`S${sIdx + 1}: ${sCd}T`, sBoxX + sBoxW / 2, sBoxY + 14);
+        }
       } else {
         ctx.fillStyle = sIdx === 2 ? '#064e3b' : '#075985';
         drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
@@ -6028,11 +6318,19 @@ export async function renderBattleTurnSummary(
         drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
         ctx.stroke();
 
-        drawSparkDiamond(ctx, sBoxX + 11, sBoxY + 10, 3, '#ffffff');
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 9px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(`S${sIdx + 1}: RDY`, sBoxX + sBoxW / 2 + 5, sBoxY + 14);
+        if (sIconImg) {
+          ctx.drawImage(sIconImg, sBoxX + 3, sBoxY + 3, 14, 14);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 9px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(`S${sIdx + 1}:RDY`, sBoxX + 19, sBoxY + 14);
+        } else {
+          drawSparkDiamond(ctx, sBoxX + 11, sBoxY + 10, 3, '#ffffff');
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 9px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`S${sIdx + 1}: RDY`, sBoxX + sBoxW / 2 + 5, sBoxY + 14);
+        }
       }
       ctx.restore();
     });
@@ -6102,41 +6400,41 @@ export async function renderBattleTurnSummary(
     }
 
     // Crit Star Box & 3 Cards
-    drawCritStarBox(ctx, 200, 92, 100, 180, activeP1.critStars || 0, false);
+    drawCritStarBox(ctx, 200, 92, 100, 180, activeP1.critStars || 0, false, buffImageMap);
     p1Cards.slice(0, 3).forEach((card, idx) => {
-      drawTarotCommandCard(ctx, 308 + idx * 108, 92, 100, 180, card, idx, activeP1.critStars || 0, isP1QuickLead);
+      drawTarotCommandCard(ctx, 308 + idx * 108, 92, 100, 180, card, idx, activeP1.critStars || 0, isP1QuickLead, buffImageMap);
     });
   } else {
     // Multi-Combatant Team A: 2 Avatars on Left, 2-Row Card Grid on Right
     const p1LeadRole = activeP1.isSoloRogue ? (activeP1.roleTag || 'SOLO ROGUE') : 'VANGUARD';
     const p1LeadColor = activeP1.isSoloRogue ? '#f59e0b' : '#38bdf8';
-    drawUnitHudPlate(ctx, 16, 16, 138, 256, p1Img, activeP1, p1LeadRole, p1LeadColor, isP1LeadTargeted);
+    drawUnitHudPlate(ctx, 16, 16, 138, 256, p1Img, activeP1, p1LeadRole, p1LeadColor, isP1LeadTargeted, true, buffImageMap, classImageMap);
     if (activeP1Ally) {
       const p1AllyRole = activeP1Ally.isSoloRogue ? (activeP1Ally.roleTag || 'SOLO ROGUE') : 'ALLIED FLANK';
       const p1AllyColor = activeP1Ally.isSoloRogue ? '#f59e0b' : '#818cf8';
-      drawUnitHudPlate(ctx, 158, 16, 138, 256, p1AllyImg, activeP1Ally, p1AllyRole, p1AllyColor, isP1AllyTargeted);
+      drawUnitHudPlate(ctx, 158, 16, 138, 256, p1AllyImg, activeP1Ally, p1AllyRole, p1AllyColor, isP1AllyTargeted, true, buffImageMap, classImageMap);
     }
 
     // Right Side: 2-Row Grid with 4 Columns [Star, Card1, Card2, Card3]
     // Row 1 (Avatar 1 / Vanguard)
-    drawCompactCritStarCard(ctx, 304, 16, 68, 124, activeP1.critStars || 0, false, activeP1.name || 'Vanguard');
+    drawCompactCritStarCard(ctx, 304, 16, 68, 124, activeP1.critStars || 0, false, activeP1.name || 'Vanguard', buffImageMap);
     p1Cards.slice(0, 3).forEach((card, idx) => {
-      drawCompactCommandCard(ctx, 378 + idx * 82, 16, 76, 124, card, idx, activeP1.critStars || 0, isP1QuickLead, activeP1.name);
+      drawCompactCommandCard(ctx, 378 + idx * 82, 16, 76, 124, card, idx, activeP1.critStars || 0, isP1QuickLead, activeP1.name, buffImageMap);
     });
 
     // Row 2 (Avatar 2 / Allied Flank)
     const p1AllyCards = (log.p1AllyCards || (activeP1Ally?.commandDeck && activeP1Ally.commandDeck.length >= 3 ? activeP1Ally.commandDeck.slice(0, 3) : ['Quick', 'Arts', 'Buster'])) as ('Buster' | 'Arts' | 'Quick' | 'NP')[];
     const isP1AllyQuickLead = p1AllyCards[0] === 'Quick';
-    drawCompactCritStarCard(ctx, 304, 148, 68, 124, activeP1Ally?.critStars || 0, false, activeP1Ally?.name || 'Flank');
+    drawCompactCritStarCard(ctx, 304, 148, 68, 124, activeP1Ally?.critStars || 0, false, activeP1Ally?.name || 'Flank', buffImageMap);
     p1AllyCards.slice(0, 3).forEach((card, idx) => {
-      drawCompactCommandCard(ctx, 378 + idx * 82, 148, 76, 124, card, idx, activeP1Ally?.critStars || 0, isP1AllyQuickLead, activeP1Ally?.name);
+      drawCompactCommandCard(ctx, 378 + idx * 82, 148, 76, 124, card, idx, activeP1Ally?.critStars || 0, isP1AllyQuickLead, activeP1Ally?.name, buffImageMap);
     });
   }
 
   // ==========================================
   // MIDDLE SECTION: EXPANDED TACTICAL CLASH HUD (134px)
   // ==========================================
-  drawMinimalClashBanner(ctx, log, activeP1, activeP2, 16, 278, 608, 134, formatTag);
+  drawMinimalClashBanner(ctx, log, activeP1, activeP2, 16, 278, 608, 134, formatTag, buffImageMap);
 
   // ==========================================
   // BOTTOM SECTION: TEAM B (ENEMY RIVALS) - Shifted flush to bottom
@@ -6146,16 +6444,16 @@ export async function renderBattleTurnSummary(
 
   if (!isMultiTeamB) {
     // Standard Single Rival Layout (y: 418)
-    drawCritStarBox(ctx, 16, 418, 100, 180, activeP2.critStars || 0, true);
+    drawCritStarBox(ctx, 16, 418, 100, 180, activeP2.critStars || 0, true, buffImageMap);
     p2Cards.slice(0, 3).forEach((card, idx) => {
-      drawTarotCommandCard(ctx, 124 + idx * 108, 418, 100, 180, card, idx, activeP2.critStars || 0, isP2QuickLead);
+      drawTarotCommandCard(ctx, 124 + idx * 108, 418, 100, 180, card, idx, activeP2.critStars || 0, isP2QuickLead, buffImageMap);
     });
 
     const p2SingleRole = activeP2.isSoloRogue ? (activeP2.roleTag || 'SOLO ROGUE') : 'RIVAL';
     const p2SingleColor = activeP2.isSoloRogue ? '#f97316' : '#ef4444';
-    drawUnitHudPlate(ctx, 452, 418, 172, 256, p2Img, activeP2, p2SingleRole, p2SingleColor, isP2LeadTargeted, false);
+    drawUnitHudPlate(ctx, 452, 418, 172, 256, p2Img, activeP2, p2SingleRole, p2SingleColor, isP2LeadTargeted, false, buffImageMap, classImageMap);
 
-    // Skills (y: 604)
+    // Skills (y: 604) with authentic Skill Status Icons
     const p2Skills = activeP2.skills || [];
     const p2Bond = activeP2.bondLevel !== undefined ? activeP2.bondLevel : 3;
     [0, 1, 2].forEach((sIdx) => {
@@ -6166,6 +6464,8 @@ export async function renderBattleTurnSummary(
       const sData = p2Skills[sIdx];
       const sCd = sData?.currentCooldown || 0;
       const isLocked = sIdx === 2 && p2Bond < 5;
+      const sIconUrl = getStatusIconUrl(sData?.effectType || sData?.name || sData?.id || (sIdx === 0 ? 'buff_atk' : sIdx === 1 ? 'arts' : 'crit_stars'));
+      const sIconImg = buffImageMap.get(sIconUrl);
 
       ctx.save();
       if (isLocked) {
@@ -6191,10 +6491,21 @@ export async function renderBattleTurnSummary(
         drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
         ctx.stroke();
 
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = 'bold 9px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(`S${sIdx + 1}: ${sCd}T`, sBoxX + sBoxW / 2, sBoxY + 14);
+        if (sIconImg) {
+          ctx.save();
+          ctx.globalAlpha = 0.45;
+          ctx.drawImage(sIconImg, sBoxX + 3, sBoxY + 3, 14, 14);
+          ctx.restore();
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = 'bold 9px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(`S${sIdx + 1}:${sCd}T`, sBoxX + 19, sBoxY + 14);
+        } else {
+          ctx.fillStyle = '#94a3b8';
+          ctx.font = 'bold 9px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`S${sIdx + 1}: ${sCd}T`, sBoxX + sBoxW / 2, sBoxY + 14);
+        }
       } else {
         ctx.fillStyle = sIdx === 2 ? '#064e3b' : '#881337';
         drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
@@ -6204,16 +6515,24 @@ export async function renderBattleTurnSummary(
         drawRoundRect(ctx, sBoxX, sBoxY, sBoxW, sBoxH, 4);
         ctx.stroke();
 
-        drawSparkDiamond(ctx, sBoxX + 11, sBoxY + 10, 3, '#ffffff');
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 9px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(`S${sIdx + 1}: RDY`, sBoxX + sBoxW / 2 + 5, sBoxY + 14);
+        if (sIconImg) {
+          ctx.drawImage(sIconImg, sBoxX + 3, sBoxY + 3, 14, 14);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 9px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText(`S${sIdx + 1}:RDY`, sBoxX + 19, sBoxY + 14);
+        } else {
+          drawSparkDiamond(ctx, sBoxX + 11, sBoxY + 10, 3, '#ffffff');
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 9px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`S${sIdx + 1}: RDY`, sBoxX + sBoxW / 2 + 5, sBoxY + 14);
+        }
       }
       ctx.restore();
     });
 
-    // P2 Header Title
+    // P2 Header Title with authentic Class Icon
     const p2DisplayName = (activeP2.masterName || 'Master 2').replace(/[^\x00-\x7F]/g, '');
     const p2ServantClean = (activeP2.name || 'Enemy Spirit').replace(/[^\x00-\x7F]/g, '');
     const p2ClassClean = (activeP2.servantClass || 'ARCHER').toUpperCase();
@@ -6223,20 +6542,31 @@ export async function renderBattleTurnSummary(
     ctx.textAlign = 'right';
     ctx.fillText(p2DisplayName, 440, 619);
 
+    const p2ClassIcon = classImageMap.get(getClassIconUrl(activeP2.servantClass));
+    const p2PillW = p2ClassIcon ? 68 : 60;
     const p2NameWidth = ctx.measureText(p2DisplayName).width;
-    const p2PillX = 432 - p2NameWidth - 64;
+    const p2PillX = 432 - p2NameWidth - p2PillW;
     const p2PillY = 605;
     ctx.fillStyle = 'rgba(244, 63, 94, 0.12)';
-    drawRoundRect(ctx, p2PillX, p2PillY, 60, 18, 9);
+    drawRoundRect(ctx, p2PillX, p2PillY, p2PillW, 18, 9);
     ctx.fill();
     ctx.strokeStyle = 'rgba(244, 63, 94, 0.4)';
     ctx.lineWidth = 1;
-    drawRoundRect(ctx, p2PillX, p2PillY, 60, 18, 9);
+    drawRoundRect(ctx, p2PillX, p2PillY, p2PillW, 18, 9);
     ctx.stroke();
-    ctx.fillStyle = '#f43f5e';
-    ctx.font = 'bold 9px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(p2ClassClean, p2PillX + 30, p2PillY + 13);
+
+    if (p2ClassIcon) {
+      ctx.drawImage(p2ClassIcon, p2PillX + 4, p2PillY + 2, 14, 14);
+      ctx.fillStyle = '#f43f5e';
+      ctx.font = 'bold 8px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(p2ClassClean, p2PillX + 22, p2PillY + 13);
+    } else {
+      ctx.fillStyle = '#f43f5e';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(p2ClassClean, p2PillX + p2PillW / 2, p2PillY + 13);
+    }
 
     ctx.fillStyle = '#cbd5e1';
     ctx.font = 'bold 12px sans-serif';
@@ -6247,7 +6577,7 @@ export async function renderBattleTurnSummary(
     const p2ServantW = ctx.measureText(p2ServantClean).width;
     const p2NetPillMaxX = p2PillX - 8 - p2ServantW - 10;
     if (p2NetPillMaxX > 220) {
-      drawCombatantNetStatPill(ctx, p2NetPillMaxX, 605, activeP2, 'right');
+      drawCombatantNetStatPill(ctx, p2NetPillMaxX, 605, activeP2, 'right', buffImageMap);
     }
 
     // P2 NP Bar (y: 628)
@@ -6316,27 +6646,27 @@ export async function renderBattleTurnSummary(
   } else {
     // Multi-Combatant Team B: 2-Row Card Grid on Left, 2 Avatars on Right (y: 418)
     // Row 1 (Enemy Vanguard)
-    drawCompactCritStarCard(ctx, 16, 418, 68, 124, activeP2.critStars || 0, true, activeP2.name || 'Enemy 1');
+    drawCompactCritStarCard(ctx, 16, 418, 68, 124, activeP2.critStars || 0, true, activeP2.name || 'Enemy 1', buffImageMap);
     p2Cards.slice(0, 3).forEach((card, idx) => {
-      drawCompactCommandCard(ctx, 90 + idx * 82, 418, 76, 124, card, idx, activeP2.critStars || 0, isP2QuickLead, activeP2.name);
+      drawCompactCommandCard(ctx, 90 + idx * 82, 418, 76, 124, card, idx, activeP2.critStars || 0, isP2QuickLead, activeP2.name, buffImageMap);
     });
 
     // Row 2 (Enemy Ally / Flank)
     const p2AllyCards = (log.p2AllyCards || (activeP2Ally?.commandDeck && activeP2Ally.commandDeck.length >= 3 ? activeP2Ally.commandDeck.slice(0, 3) : ['Arts', 'Buster', 'Buster'])) as ('Buster' | 'Arts' | 'Quick' | 'NP')[];
     const isP2AllyQuickLead = p2AllyCards[0] === 'Quick';
-    drawCompactCritStarCard(ctx, 16, 550, 68, 124, activeP2Ally?.critStars || 0, true, activeP2Ally?.name || 'Enemy 2');
+    drawCompactCritStarCard(ctx, 16, 550, 68, 124, activeP2Ally?.critStars || 0, true, activeP2Ally?.name || 'Enemy 2', buffImageMap);
     p2AllyCards.slice(0, 3).forEach((card, idx) => {
-      drawCompactCommandCard(ctx, 90 + idx * 82, 550, 76, 124, card, idx, activeP2Ally?.critStars || 0, isP2AllyQuickLead, activeP2Ally?.name);
+      drawCompactCommandCard(ctx, 90 + idx * 82, 550, 76, 124, card, idx, activeP2Ally?.critStars || 0, isP2AllyQuickLead, activeP2Ally?.name, buffImageMap);
     });
 
     // Right Side: 2 Avatars (Enemy Vanguard + Enemy Flank / Solo Rogue)
     const p2LeadRole = activeP2.isSoloRogue ? (activeP2.roleTag || 'SOLO ROGUE') : 'ENEMY VANGUARD';
     const p2LeadColor = activeP2.isSoloRogue ? '#f97316' : '#ef4444';
-    drawUnitHudPlate(ctx, 338, 418, 138, 256, p2Img, activeP2, p2LeadRole, p2LeadColor, isP2LeadTargeted);
+    drawUnitHudPlate(ctx, 338, 418, 138, 256, p2Img, activeP2, p2LeadRole, p2LeadColor, isP2LeadTargeted, true, buffImageMap, classImageMap);
     if (activeP2Ally) {
       const p2AllyRole = activeP2Ally.isSoloRogue ? (activeP2Ally.roleTag || 'SOLO ROGUE') : 'ENEMY FLANK';
       const p2AllyColor = activeP2Ally.isSoloRogue ? '#f97316' : '#f43f5e';
-      drawUnitHudPlate(ctx, 480, 418, 138, 256, p2AllyImg, activeP2Ally, p2AllyRole, p2AllyColor, isP2AllyTargeted);
+      drawUnitHudPlate(ctx, 480, 418, 138, 256, p2AllyImg, activeP2Ally, p2AllyRole, p2AllyColor, isP2AllyTargeted, true, buffImageMap, classImageMap);
     }
   }
 

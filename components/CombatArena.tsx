@@ -29,6 +29,7 @@ import {
   resetSeedCombatBattleHistory
 } from '../lib/engine/combatHistory';
 import { getStatusIconUrl } from '../src/data/statusIcons';
+import { getClassIconUrl } from '../src/data/classIcons';
 import CombatLogHistory from './CombatLogHistory';
 import { SERVANT_DATABASE } from '../lib/data/servants';
 import { getNoblePhantasmGif } from '../lib/data/noblePhantasmGifs';
@@ -1579,8 +1580,9 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                 member.currentHp <= 0 ? 'border-[#331111] opacity-50' : 'border-[#1a1a1a]'
               } relative overflow-hidden shadow-2xl transition-all`}
             >
-              <div className="absolute top-0 right-0 px-3 py-1 bg-[#161616] text-[#d4af37] text-[10px] font-mono uppercase tracking-widest border-l border-b border-[#1a1a1a]">
-                {idx === 0 ? 'PRIMARY' : 'INTERVENOR'} • {member.servantClass}
+              <div className="absolute top-0 right-0 px-3 py-1 bg-[#161616] text-[#d4af37] text-[10px] font-mono uppercase tracking-widest border-l border-b border-[#1a1a1a] flex items-center gap-1.5">
+                <img src={getClassIconUrl(member.servantClass)} alt={member.servantClass} className="w-3.5 h-3.5 object-contain" />
+                <span>{idx === 0 ? 'PRIMARY' : 'INTERVENOR'} • {member.servantClass}</span>
               </div>
 
               <div className="flex items-center gap-4 mb-5 mt-2">
@@ -1686,6 +1688,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                       <Crosshair className="w-3 h-3" /> TARGETED
                     </span>
                   )}
+                  <img src={getClassIconUrl(member.servantClass)} alt={member.servantClass} className="w-3.5 h-3.5 object-contain" />
                   <span>{idx === 0 ? 'RIVAL' : 'INTERVENOR'} • {member.servantClass}</span>
                 </div>
 
@@ -2330,6 +2333,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
             {p1.commandDeck.map((card, idx) => {
               const baseMult = card === 'Buster' ? 2.0 : card === 'Arts' ? 1.8 : 2.2;
               const critPct = Math.min(100, Math.round((p1.critStars || 0) * baseMult));
+              const cardIconUrl = getStatusIconUrl(card.toLowerCase());
               return (
                 <button
                   key={idx}
@@ -2343,6 +2347,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                       : 'bg-[#002200] hover:bg-[#003300] text-[#22c55e] border-[#22c55e]/40'
                   }`}
                 >
+                  <img src={cardIconUrl} alt={card} className="w-4 h-4 object-contain" />
                   <span>{card} ({critPct}% Crit)</span>
                 </button>
               );
@@ -2363,8 +2368,9 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-mono uppercase tracking-widest text-white/40">Active Skills:</span>
                 {p1.activeBuffs?.some(b => b.type === 'skill_seal') && (
-                  <span className="text-[10px] font-mono font-bold text-rose-400 bg-rose-950/60 px-1.5 py-0.5 rounded border border-rose-800/60">
-                    🚫 SKILLS SEALED (1T)
+                  <span className="text-[10px] font-mono font-bold text-rose-400 bg-rose-950/60 px-1.5 py-0.5 rounded border border-rose-800/60 flex items-center gap-1">
+                    <img src={getStatusIconUrl('skill_seal')} alt="Sealed" className="w-3.5 h-3.5 object-contain" />
+                    <span>SKILLS SEALED (1T)</span>
                   </span>
                 )}
               </div>
@@ -2372,12 +2378,13 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                 {p1.skills.map((sk, idx) => {
                   const isSealed = Boolean(p1.activeBuffs?.some(b => b.type === 'skill_seal'));
                   const isDisabled = sk.currentCooldown > 0 || isSealed;
+                  const skillIconUrl = getStatusIconUrl(sk.effectType || sk.name || sk.id);
                   return (
                     <button
                       key={sk.id}
                       disabled={isDisabled}
                       onClick={() => setSelectedSkillIdx(selectedSkillIdx === idx ? undefined : idx)}
-                      className={`px-3 py-1.5 rounded-sm text-xs font-mono transition border ${
+                      className={`px-3 py-1.5 rounded-sm text-xs font-mono transition border flex items-center gap-1.5 ${
                         selectedSkillIdx === idx
                           ? 'bg-[#d4af37] text-black border-[#d4af37] font-bold'
                           : isDisabled
@@ -2385,7 +2392,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                           : 'bg-[#111] hover:bg-[#161616] text-white/80 border-[#222]'
                       }`}
                     >
-                      <span>{sk.icon} </span>
+                      <img src={skillIconUrl} alt={sk.name} className="w-4 h-4 object-contain shrink-0" />
                       <span>{sk.name}</span>
                       {sk.currentCooldown > 0 ? (
                         <span className="text-[10px] text-white/40"> ({sk.currentCooldown}t)</span>
