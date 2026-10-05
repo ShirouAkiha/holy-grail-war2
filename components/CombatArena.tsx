@@ -1717,7 +1717,7 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                         {member.activeBuffs.map((b, bIdx) => {
                           const turnStr = b.remainingTurns && b.remainingTurns < 90 ? `${b.remainingTurns}T` : '';
                           const hitStr = b.remainingHits !== undefined && b.remainingHits > 0 ? `${b.remainingHits}H` : '';
-                          const stackStr = (b as any).stacks && (b as any).stacks > 1 ? `x${(b as any).stacks}` : (b as any).count && (b as any).count > 1 ? `x${(b as any).count}` : '';
+                          const stackStr = (b as any).stacks !== undefined && (b as any).stacks > 0 ? `x${(b as any).stacks}` : (b as any).count !== undefined && (b as any).count > 0 ? `x${(b as any).count}` : '';
                           const titleText = `${b.name || b.type} (${turnStr ? `${turnStr} duration` : 'Permanent'}${b.remainingHits !== undefined ? `, ${b.remainingHits} hit(s)` : ''}${(b as any).stacks ? `, ${(b as any).stacks} stack(s)` : ''})`;
 
                           return (
