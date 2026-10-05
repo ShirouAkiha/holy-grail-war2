@@ -1713,31 +1713,29 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                       </span>
                     </div>
                     {member.activeBuffs && member.activeBuffs.length > 0 && (
-                      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
                         {member.activeBuffs.map((b, bIdx) => {
                           const turnStr = b.remainingTurns && b.remainingTurns < 90 ? `${b.remainingTurns}T` : '';
                           const hitStr = b.remainingHits !== undefined && b.remainingHits > 0 ? `${b.remainingHits}H` : '';
                           const stackStr = (b as any).stacks && (b as any).stacks > 1 ? `x${(b as any).stacks}` : (b as any).count && (b as any).count > 1 ? `x${(b as any).count}` : '';
-                          
-                          let displayTag = '∞';
-                          if (turnStr && stackStr) displayTag = `${turnStr} (${stackStr})`;
-                          else if (turnStr && hitStr) displayTag = `${turnStr} (${hitStr})`;
-                          else if (stackStr) displayTag = stackStr;
-                          else if (hitStr) displayTag = hitStr;
-                          else if (turnStr) displayTag = turnStr;
-
                           const titleText = `${b.name || b.type} (${turnStr ? `${turnStr} duration` : 'Permanent'}${b.remainingHits !== undefined ? `, ${b.remainingHits} hit(s)` : ''}${(b as any).stacks ? `, ${(b as any).stacks} stack(s)` : ''})`;
 
                           return (
                             <div
                               key={bIdx}
-                              className="flex items-center gap-1.5 bg-black/80 border border-sky-400/50 rounded px-2 py-1 shadow-md"
+                              className="flex items-center gap-1.5 bg-[#090d16] border border-sky-500/60 rounded-md px-2 py-1 shadow-lg"
                               title={titleText}
                             >
-                              <img src={getStatusIconUrl(b.type || (b as any).name)} alt={b.type} className="w-5 h-5 object-contain" />
-                              <span className="text-[10px] font-mono text-sky-200 font-bold whitespace-nowrap">
-                                {displayTag}
-                              </span>
+                              <img src={getStatusIconUrl(b.type || (b as any).name)} alt={b.type} className="w-5.5 h-5.5 object-contain" />
+                              <div className="flex items-center gap-1 font-mono text-[10.5px] font-bold">
+                                {turnStr && <span className="text-sky-300 bg-sky-950/80 px-1 py-0.2 rounded border border-sky-700/50">{turnStr}</span>}
+                                {(stackStr || hitStr) && (
+                                  <span className={`px-1 py-0.2 rounded border ${hitStr ? 'text-amber-300 bg-amber-950/80 border-amber-700/50' : 'text-yellow-200 bg-yellow-950/80 border-yellow-700/50'}`}>
+                                    {stackStr || hitStr}
+                                  </span>
+                                )}
+                                {!turnStr && !hitStr && !stackStr && <span className="text-white/60">∞</span>}
+                              </div>
                             </div>
                           );
                         })}

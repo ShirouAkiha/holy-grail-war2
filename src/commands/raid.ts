@@ -1724,6 +1724,11 @@ async function runRaidBattle(
         const isNormalCard = card !== 'NP';
         const negaGenesisMult = (boss.id === 'tiamat' && battleState.currentPhase === 3 && isNormalCard) ? 0.5 : 1.0;
 
+        if (isNormalCard) {
+          const ceLogs = processCeOnAttackEffects(active, boss, card);
+          ceLogs.forEach(l => npEffectsLog.push(l));
+        }
+
         if (card === 'Buster') {
           totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
           starsGenerated += Math.round(3 * critStarBonus);

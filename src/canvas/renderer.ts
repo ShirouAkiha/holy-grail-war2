@@ -467,8 +467,8 @@ function drawCombatantBuffPillTray(
 
   ctx.save();
 
-  const chipSize = 32;
-  const gap = 5;
+  const chipSize = 34;
+  const gap = 6;
   const maxChips = Math.floor((maxW + gap) / (chipSize + gap));
   const displayBadges = badges.slice(0, maxChips);
   const totalW = displayBadges.length * chipSize + (displayBadges.length - 1) * gap;
@@ -492,7 +492,7 @@ function drawCombatantBuffPillTray(
       ctx.fillStyle = '#94a3b8';
       ctx.font = 'bold 11px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`+${badges.length - maxChips + 1}`, chipX + chipSize / 2, y + 20);
+      ctx.fillText(`+${badges.length - maxChips + 1}`, chipX + chipSize / 2, y + 21);
       continue;
     }
 
@@ -511,7 +511,7 @@ function drawCombatantBuffPillTray(
     ctx.stroke();
 
     const iconPad = 3;
-    const iconDim = chipSize - iconPad * 2; // 26x26px
+    const iconDim = chipSize - iconPad * 2;
 
     if (iconImg) {
       ctx.drawImage(iconImg, chipX + iconPad, y + iconPad, iconDim, iconDim);
@@ -533,45 +533,76 @@ function drawCombatantBuffPillTray(
       }
     }
 
-    // Mini Duration / Hit / Stack / Value Badge in Bottom-Right Corner
-    const turnStr = (b.turns !== undefined && b.turns > 0 && b.turns < 90) ? `${b.turns}T` : '';
-    const hitStr = (b.hits !== undefined && b.hits > 0) ? `${b.hits}H` : '';
-    const stackStr = (b.stacks !== undefined && b.stacks > 1) ? `x${b.stacks}` : ((b as any).count !== undefined && (b as any).count > 1 ? `x${(b as any).count}` : '');
-    const valStr = (b.value !== undefined) ? `${b.value > 0 ? '+' : ''}${b.value}%` : '';
+    // Ultra-Clear Multi-Corner Badge Rendering for Durations & Stacks
+    const turnTag = (b.turns !== undefined && b.turns > 0 && b.turns < 90) ? `${b.turns}T` : '';
+    const hitOrStackTag = (b.stacks !== undefined && b.stacks > 1) 
+      ? `x${b.stacks}` 
+      : ((b as any).count !== undefined && (b as any).count > 1) 
+        ? `x${(b as any).count}` 
+        : (b.hits !== undefined && b.hits > 0) 
+          ? `${b.hits}H` 
+          : '';
+    const valTag = (!turnTag && !hitOrStackTag && b.value !== undefined) ? `${b.value > 0 ? '+' : ''}${b.value}%` : '';
 
-    let countTag = '';
-    if (turnStr && stackStr) {
-      countTag = `${turnStr}/${stackStr}`;
-    } else if (turnStr && hitStr) {
-      countTag = `${turnStr}/${hitStr}`;
-    } else if (stackStr) {
-      countTag = stackStr;
-    } else if (hitStr) {
-      countTag = hitStr;
-    } else if (turnStr) {
-      countTag = turnStr;
-    } else if (valStr) {
-      countTag = valStr;
-    }
+    ctx.font = 'bold 9.5px sans-serif';
 
-    if (countTag) {
-      ctx.font = 'bold 8px sans-serif';
-      const tagW = ctx.measureText(countTag).width + 4;
-      const tagH = 10;
-      const tagX = chipX + chipSize - tagW;
-      const tagY = y + chipSize - tagH;
+    if (turnTag && hitOrStackTag) {
+      // Top-Right Badge: Turn Duration (e.g. "9T")
+      const tW = ctx.measureText(turnTag).width + 5;
+      const tH = 11;
+      const tX = chipX + chipSize - tW + 1;
+      const tY = y - 3;
 
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.92)';
-      drawRoundRect(ctx, tagX, tagY, tagW, tagH, 2);
+      ctx.fillStyle = 'rgba(2, 6, 23, 0.96)';
+      drawRoundRect(ctx, tX, tY, tW, tH, 3);
       ctx.fill();
-      ctx.strokeStyle = b.borderColor || '#64748b';
-      ctx.lineWidth = 0.8;
-      drawRoundRect(ctx, tagX, tagY, tagW, tagH, 2);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.0;
+      drawRoundRect(ctx, tX, tY, tW, tH, 3);
       ctx.stroke();
 
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = '#f0f9ff';
       ctx.textAlign = 'center';
-      ctx.fillText(countTag, tagX + tagW / 2, tagY + 8);
+      ctx.fillText(turnTag, tX + tW / 2, tY + 8.5);
+
+      // Bottom-Right Badge: Stack or Hit Count (e.g. "x2" or "1H")
+      const sW = ctx.measureText(hitOrStackTag).width + 5;
+      const sH = 11;
+      const sX = chipX + chipSize - sW + 1;
+      const sY = y + chipSize - sH + 2;
+
+      ctx.fillStyle = 'rgba(2, 6, 23, 0.96)';
+      drawRoundRect(ctx, sX, sY, sW, sH, 3);
+      ctx.fill();
+      ctx.strokeStyle = hitOrStackTag.includes('H') ? '#fde047' : '#f59e0b';
+      ctx.lineWidth = 1.0;
+      drawRoundRect(ctx, sX, sY, sW, sH, 3);
+      ctx.stroke();
+
+      ctx.fillStyle = hitOrStackTag.includes('H') ? '#fef08a' : '#fef3c7';
+      ctx.textAlign = 'center';
+      ctx.fillText(hitOrStackTag, sX + sW / 2, sY + 8.5);
+    } else {
+      // Single Badge: Bottom-Right
+      const singleTag = hitOrStackTag || turnTag || valTag;
+      if (singleTag) {
+        const tagW = ctx.measureText(singleTag).width + 5;
+        const tagH = 11;
+        const tagX = chipX + chipSize - tagW + 1;
+        const tagY = y + chipSize - tagH + 2;
+
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.96)';
+        drawRoundRect(ctx, tagX, tagY, tagW, tagH, 3);
+        ctx.fill();
+        ctx.strokeStyle = b.borderColor || '#64748b';
+        ctx.lineWidth = 1.0;
+        drawRoundRect(ctx, tagX, tagY, tagW, tagH, 3);
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.fillText(singleTag, tagX + tagW / 2, tagY + 8.5);
+      }
     }
   }
 

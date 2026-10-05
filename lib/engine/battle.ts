@@ -156,7 +156,7 @@ export function createCombatantFromMasterServant(
         name: 'Volumen Hydragyrum (Invincibility)',
         type: 'invincible',
         value: 100,
-        remainingTurns: 1,
+        remainingTurns: 99,
         remainingHits: hits,
         isHitCount: true
       });
@@ -2561,11 +2561,9 @@ export function executeBattleTurn(
         const ceCritBonus = (actor.equippedCe?.passiveType === 'crit_dmg' ? (actor.equippedCe.passiveValue || 0) : 0) / 100;
 
         // Typhon Ephemeros: The Ephemeral Fruit of Moirai (Buff-on-Attack)
-        if (
-          actor.equippedCe &&
-          (actor.equippedCe.id === 'ce_bond_typhon_ephemeros' || /ephemeral fruit/i.test(actor.equippedCe.name || '')) &&
-          (actor.id === 'typhon_ephemeros' || actor.id === 'typhon' || /typhon/i.test(actor.name || ''))
-        ) {
+        const actorCe = actor.equippedCe || (actor as any).servant?.equippedCe;
+        const isTyphonCe = actorCe && (actorCe.id === 'ce_bond_typhon_ephemeros' || /ephemeral fruit|typhon/i.test(actorCe.name || ''));
+        if (isTyphonCe) {
           actor.activeBuffs = actor.activeBuffs || [];
           actor.activeBuffs.push({
             name: 'The Ephemeral Fruit of Moirai (Crit DMG +10%)',
@@ -2991,7 +2989,8 @@ export function executeBattleTurn(
   [...teamA, ...teamB, ...teamSolo].forEach(combatant => {
     combatant.activeBuffs = combatant.activeBuffs
       .map(b => {
-        if (b.remainingTurns > 0 && b.remainingTurns < 90) {
+        const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
+        if (!isHitBased && b.remainingTurns > 0 && b.remainingTurns < 90) {
           return { ...b, remainingTurns: b.remainingTurns - 1 };
         }
         return b;

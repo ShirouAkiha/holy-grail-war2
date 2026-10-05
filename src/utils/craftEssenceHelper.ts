@@ -415,7 +415,7 @@ export function applyCeInitialCombatantEffects(combatant: any, allAllies?: any[]
       name: `${ce.name} (Invincibility)`,
       type: 'invincible',
       value: 100,
-      remainingTurns: 1,
+      remainingTurns: 99,
       remainingHits: ceStats.invincibleHits,
       isHitCount: true
     });
@@ -657,7 +657,11 @@ export function processCeOnAttackEffects(attacker: any, defender: any, card: str
   const ceStats = getCePassiveStats(ce, servant);
 
   // Typhon Ephemeros: The Ephemeral Fruit of Moirai
-  if (ceStats.buffOnAttackFruit && card !== 'NP') {
+  const isTyphonFruit = ceStats.buffOnAttackFruit ||
+    ce.id === 'ce_bond_typhon_ephemeros' ||
+    /ephemeral fruit|typhon/i.test(ce.name || '');
+
+  if (isTyphonFruit && card !== 'NP') {
     if (!attacker.activeBuffs) attacker.activeBuffs = [];
 
     // 1. Critical Damage Up +10% (3 turns, stacks)
