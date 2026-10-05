@@ -1182,8 +1182,9 @@ function buildCombatButtons(
   // Optional Row 4: Target Selection (when multiple opponents are alive in battle)
   if (livingOpponents.length > 1) {
     const targetRow = new ActionRowBuilder<ButtonBuilder>();
-    livingOpponents.forEach(opp => {
-      const isTarget = opp.userId === selectedTargetId;
+    livingOpponents.forEach((opp, oppIdx) => {
+      const targetKey = opp.userId || opp.servant?.id || `opp_${oppIdx}`;
+      const isTarget = selectedTargetId === targetKey || selectedTargetId === opp.userId;
       const oppServantName = opp.servant.nickname || opp.servant.template?.name || 'Foe';
       const label = isTarget
         ? `🎯 [TARGET] ${oppServantName} (${Math.round(opp.currentHp)})`
@@ -1191,7 +1192,7 @@ function buildCombatButtons(
 
       targetRow.addComponents(
         new ButtonBuilder()
-          .setCustomId(`target_${opp.userId}`)
+          .setCustomId(`target_${targetKey}_idx${oppIdx}`)
           .setLabel(label.slice(0, 80))
           .setStyle(isTarget ? ButtonStyle.Success : ButtonStyle.Secondary)
       );
@@ -4295,7 +4296,12 @@ async function startInteractiveDuel(
   const getSelectedTarget = (combatant: DuelCombatant): DuelCombatant | undefined => {
     const opps = getTargetsFor(combatant);
     if (opps.length === 0) return undefined;
-    let target = opps.find(o => o.userId === combatant.selectedTargetId && o.currentHp > 0 && !o.isFled);
+    let target = opps.find(o => 
+      combatant.selectedTargetId && 
+      (o.userId === combatant.selectedTargetId || combatant.selectedTargetId.includes(o.userId)) && 
+      o.currentHp > 0 && 
+      !o.isFled
+    );
     if (!target) {
       target = opps[0];
       combatant.selectedTargetId = target.userId;
@@ -5004,7 +5010,8 @@ async function startInteractiveDuel(
           return;
         }
 
-        const targetId = i.customId.replace('target_', '');
+        const rawKey = i.customId.replace('target_', '');
+        const targetId = rawKey.split('_idx')[0];
         activeCombatant.selectedTargetId = targetId;
 
         const target = getSelectedTarget(activeCombatant);
