@@ -26,6 +26,7 @@ import { generateServantBattleReaction } from '../engine/talkService';
 import { addBondExpToServant } from '../../lib/engine/bondEvents';
 import { addServantBattleExp } from '../engine/customization';
 import { checkAndGrantBond10Ce, getBondCraftEssenceForServant } from '../data/craftEssences';
+import { isBondCeActiveForServant, getCePassiveStats, applyCeInitialCombatantEffects, applyCePartyAuras, processCeTurnStartEffects, processCeOnAttackEffects } from '../utils/craftEssenceHelper';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -254,10 +255,11 @@ function createCombatant(
 
   // Check if equipped CE grants starting NP (e.g. Kaleidoscope grants 80% starting NP)
   let initialNp = 0;
-  if (servant.equippedCe) {
-    const ce = servant.equippedCe;
-    if (ce.passiveType === 'starting_np' || ce.id === 'ce_kaleidoscope' || ce.id === 'ce_imaginary_element' || ce.id === 'ce_hollow_magic' || ce.id === 'ce_dragon_meridian' || ce.id === 'ce_jeweled_sword') {
-      initialNp = ce.passiveValue || 50;
+  const ce = servant.equippedCe;
+  if (ce) {
+    const ceStats = getCePassiveStats(ce, servant);
+    if (ceStats.startingNp > 0) {
+      initialNp = ceStats.startingNp;
     }
   }
 
@@ -282,73 +284,6 @@ function createCombatant(
         : maxHp));
 
   const initialBuffs: CombatantBuff[] = [];
-  const ce = servant.equippedCe;
-  if (ce) {
-    if (ce.id === 'ce_volumen_hydragyrum' || ce.passiveType === 'invincible_hits') {
-      const hits = 3;
-      initialBuffs.push({
-        name: 'Volumen Hydragyrum (Invincibility)',
-        type: 'invincible',
-        value: 100,
-        remainingTurns: 99,
-        remainingHits: hits,
-        isHitCount: true
-      });
-      initialBuffs.push({
-        name: 'Volumen Hydragyrum (Damage Cut)',
-        type: 'buff_def',
-        value: 15,
-        remainingTurns: 99
-      });
-    }
-    if (ce.id === 'ce_code_cast' || ce.passiveType === 'atk_def_up') {
-      initialBuffs.push({
-        name: 'Code Cast (ATK Up)',
-        type: 'buff_atk',
-        value: 10,
-        remainingTurns: 99
-      });
-      initialBuffs.push({
-        name: 'Code Cast (DEF Up)',
-        type: 'buff_def',
-        value: 10,
-        remainingTurns: 99
-      });
-    }
-    if (ce.id === 'ce_origin_bullet' || ce.passiveType === 'ignore_invincible') {
-      initialBuffs.push({
-        name: 'Origin Bullet (Ignore Invincible)',
-        type: 'ignore_invincible',
-        value: 35,
-        remainingTurns: 99
-      });
-    }
-    if (
-      ce.id === 'ce_bond_heracles_berserker' ||
-      ce.id === 'ce_castle_of_snow' ||
-      ce.name === 'Castle of Snow' ||
-      /castle of snow/i.test(ce.name) ||
-      (ce.passiveType === 'guts' && (ce.passiveValue || 0) > 1)
-    ) {
-      initialBuffs.push({
-        name: 'Castle of Snow (Guts x3)',
-        type: 'guts',
-        value: 500,
-        remainingTurns: 99,
-        remainingHits: ce.passiveValue || 3,
-        isHitCount: true
-      });
-    } else if (ce.passiveType === 'guts') {
-      initialBuffs.push({
-        name: `${ce.name} (Guts)`,
-        type: 'guts',
-        value: ce.hpBonus || 1000,
-        remainingTurns: 99,
-        remainingHits: 1,
-        isHitCount: true
-      });
-    }
-  }
 
   // Absolute Permanence Passive (Luvria Greenharte / Concept Anchor)
   const hasAbsolutePermanence = passives.some(p => p.type === 'absolute_permanence' || (p.name && p.name.includes('Absolute Permanence'))) ||
@@ -386,11 +321,16 @@ function createCombatant(
     passives,
     activeBuffs: initialBuffs,
     skillCooldowns: {},
-    gutsCount: initialBuffs.filter(b => b.type === 'guts').reduce((sum, b) => sum + (b.remainingHits && b.remainingHits > 0 ? b.remainingHits : 1), 0),
+    gutsCount: 0,
     commandSeals: isAi ? 0 : (isFreeBattle || master.environmentMode === 'safe' ? 3 : (master.commandSeals ?? 3)),
     drawPile: [],
     masterAvatarUrl: master.avatarUrl
   };
+
+  // Apply all Craft Essence initial passives (Guts, starting NP, stats, card buffs, damage cuts)
+  applyCeInitialCombatantEffects(combatant);
+  combatant.gutsCount = combatant.activeBuffs.filter(b => b.type === 'guts').reduce((sum, b) => sum + (b.remainingHits && b.remainingHits > 0 ? b.remainingHits : 1), 0);
+
   refreshCombatantHand(combatant);
   return combatant;
 }
@@ -2181,14 +2121,15 @@ function resolveStrike(
     }
   }
 
-  // Craft Essence Turn-Start Passives
+  // Craft Essence Turn-Start Passives (strictly validated for matching servant on Bond CEs)
   const attackerCe = attacker.servant.equippedCe;
-  if (attackerCe) {
-    if (attackerCe.id === 'ce_prisma_cosmos' || attackerCe.passiveType === 'np_per_turn') {
-      attacker.npGauge = Math.min(300, attacker.npGauge + (attackerCe.passiveValue || 8));
+  const attackerCeStats = attackerCe ? getCePassiveStats(attackerCe, attacker.servant) : null;
+  if (attackerCe && attackerCeStats) {
+    if (attackerCeStats.npPerTurn > 0) {
+      attacker.npGauge = Math.min(300, attacker.npGauge + attackerCeStats.npPerTurn);
     }
-    if (attackerCe.id === 'ce_fragment_2030' || attackerCe.passiveType === 'stars_per_turn') {
-      attacker.critStars = Math.min(50, (attacker.critStars || 0) + (attackerCe.passiveValue || 10));
+    if (attackerCeStats.starsPerTurn > 0) {
+      attacker.critStars = Math.min(50, (attacker.critStars || 0) + attackerCeStats.starsPerTurn);
     }
     if (attackerCe.id === 'ce_when_the_flowers_fall') {
       attacker.npGauge = Math.min(300, attacker.npGauge + 4);
@@ -2219,7 +2160,7 @@ function resolveStrike(
   let turnRegenHealed = 0;
   const duelRegenBuffs = attacker.activeBuffs.filter(b => b.type === 'hp_regen');
   const duelHpRegenTotal = duelRegenBuffs.reduce((s, b) => s + b.value, 0);
-  const ceDuelRegen = (attackerCe?.passiveType === 'hp_regen' || attackerCe?.id === 'ce_bond_jeanne_darc_ruler') ? (attackerCe.passiveValue || 500) : 0;
+  const ceDuelRegen = attackerCeStats?.hpRegenPerTurn || 0;
   const totalDuelRegen = duelHpRegenTotal + ceDuelRegen;
   if (totalDuelRegen > 0 && attacker.currentHp < attacker.maxHp) {
     turnRegenHealed = totalDuelRegen;
@@ -2725,19 +2666,10 @@ function resolveStrike(
           `> ════════════════════════════════════`;
       } else {
         const variance = 0.96 + Math.random() * 0.08;
-        let ceNpDmgMult = 1.0;
-        if (attackerCe) {
-          if (
-            attackerCe.id === 'ce_black_grail' ||
-            attackerCe.id === 'ce_heavens_feel' ||
-            attackerCe.id === 'ce_when_the_flowers_fall' ||
-            attackerCe.passiveType === 'np_damage' ||
-            attackerCe.passiveType === 'np_dmg_up' ||
-            /black grail/i.test(attackerCe.name || '')
-          ) {
-            ceNpDmgMult += (attackerCe.passiveValue || (attackerCe.id === 'ce_black_grail' || /black grail/i.test(attackerCe.name || '') ? 60 : 30)) / 100;
-          }
-        }
+        const npDmgBuff = attacker.activeBuffs
+          .filter(b => b.type === 'np_dmg' || b.type === 'np_dmg_up' || /np damage|np dmg/i.test(b.name))
+          .reduce((s, b) => s + b.value, 0);
+        const ceNpDmgMult = 1.0 + (npDmgBuff / 100);
         const npDmgDebuff = attacker.activeBuffs
           .filter(b => b.type === 'debuff_np_strength' || b.type === 'debuff_np_dmg' || /np strength|radiant holy light|true name/i.test(b.name))
           .reduce((s, b) => s + b.value, 0);
@@ -2909,8 +2841,12 @@ function resolveStrike(
       totalStarsGained += npStars;
       // NP damage is handled separately in the flashy NP block.
     } else if (card === 'Buster') {
-      const ceBuster = attackerCe?.passiveType === 'buster_up' && attackerCe.id !== 'ce_black_grail' ? (attackerCe.passiveValue || 0) : 0;
-      let cardMult = 1.4 * posMult * (1.0 + (madnessBonus + ceBuster) / 100);
+      if (attackerCe) {
+        const ceLogs = processCeOnAttackEffects(attacker, defender, card);
+        ceLogs.forEach((l: string) => chainTags.push(l));
+      }
+      const busterBuff = attacker.activeBuffs.filter(b => b.type === 'buster_up').reduce((s, b) => s + b.value, 0);
+      let cardMult = 1.4 * posMult * (1.0 + (madnessBonus + busterBuff) / 100);
       if (i > 0 && isBusterFirst) cardMult += 0.50; // Buster Lead Bonus
 
       let critChance = Math.min(0.95, (starsForCrits * 2.0) / 100);
@@ -2918,8 +2854,7 @@ function resolveStrike(
 
       const hitCrit = Math.random() < critChance;
       if (hitCrit) isAnyCrit = true;
-      const ceCritBonus = (attackerCe?.passiveType === 'crit_dmg' ? (attackerCe.passiveValue || 0) : 0) / 100;
-      const critMult = hitCrit ? (1.75 * (critDmgBonus + ceCritBonus)) : 1.0;
+      const critMult = hitCrit ? (1.75 * critDmgBonus) : 1.0;
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2) + busterChainBonusDmg;
@@ -2955,8 +2890,12 @@ function resolveStrike(
 
       totalSeqDmg += hitDmg;
     } else if (card === 'Arts') {
-      const ceArts = attackerCe?.passiveType === 'arts_up' ? (attackerCe.passiveValue || 0) : 0;
-      let cardMult = 1.0 * posMult * (1.0 + (territoryBonus + ceArts) / 100);
+      if (attackerCe) {
+        const ceLogs = processCeOnAttackEffects(attacker, defender, card);
+        ceLogs.forEach((l: string) => chainTags.push(l));
+      }
+      const artsBuff = attacker.activeBuffs.filter(b => b.type === 'arts_up').reduce((s, b) => s + b.value, 0);
+      let cardMult = 1.0 * posMult * (1.0 + (territoryBonus + artsBuff) / 100);
       if (i > 0 && isBusterFirst) cardMult += 0.50;
 
       let critChance = Math.min(0.85, (starsForCrits * 1.8) / 100);
@@ -2964,8 +2903,7 @@ function resolveStrike(
 
       const hitCrit = Math.random() < critChance;
       if (hitCrit) isAnyCrit = true;
-      const ceCritBonus = (attackerCe?.passiveType === 'crit_dmg' ? (attackerCe.passiveValue || 0) : 0) / 100;
-      const critMult = hitCrit ? (1.75 * (critDmgBonus + ceCritBonus)) : 1.0;
+      const critMult = hitCrit ? (1.75 * critDmgBonus) : 1.0;
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
@@ -2990,7 +2928,7 @@ function resolveStrike(
       if (attackerCe?.id === 'ce_formal_craft') ceNpArtScale *= 1.10;
       const totalAtkMana = (attacker.servant.template?.baseStats?.mana || 10) + (attacker.servant.allocatedStats?.mana || 0);
       const manaNpBonus = Math.min(0.35, (totalAtkMana / (totalAtkMana + 120)) * 0.35);
-      let npGain = Math.round(baseArtsNp * posMult * npGenBonus * ceNpArtScale * (hitCrit ? 1.5 : 1.0) * (1.0 + (territoryBonus + ceArts + Math.round(manaNpBonus * 100)) / 100));
+      let npGain = Math.round(baseArtsNp * posMult * npGenBonus * ceNpArtScale * (hitCrit ? 1.5 : 1.0) * (1.0 + (territoryBonus + artsBuff + Math.round(manaNpBonus * 100)) / 100));
       if (i > 0 && isArtsFirst) npGain = Math.round(npGain * 1.5); // Arts Lead Bonus
 
       attacker.npGauge = Math.min(300, attacker.npGauge + npGain);
@@ -3002,10 +2940,13 @@ function resolveStrike(
 
       totalSeqDmg += hitDmg;
     } else if (card === 'Quick') {
-      const ceQuick = attackerCe?.passiveType === 'quick_up' ? (attackerCe.passiveValue || 0) : 0;
+      if (attackerCe) {
+        const ceLogs = processCeOnAttackEffects(attacker, defender, card);
+        ceLogs.forEach((l: string) => chainTags.push(l));
+      }
       const quickBuff = attacker.activeBuffs.filter(b => b.type === 'quick_up').reduce((s, b) => s + b.value, 0);
       const quickResDown = (defender.activeBuffs || []).filter(b => b.type === 'quick_res_down').reduce((s, b) => s + b.value, 0);
-      let cardMult = 0.85 * posMult * (1.0 + (ridingBonus + ceQuick + quickBuff + quickResDown) / 100);
+      let cardMult = 0.85 * posMult * (1.0 + (ridingBonus + quickBuff + quickResDown) / 100);
       if (i > 0 && isBusterFirst) cardMult += 0.50;
 
       let critChance = Math.min(0.95, (starsForCrits * 2.2) / 100);
@@ -3013,8 +2954,7 @@ function resolveStrike(
 
       const hitCrit = Math.random() < critChance;
       if (hitCrit) isAnyCrit = true;
-      const ceCritBonus = (attackerCe?.passiveType === 'crit_dmg' ? (attackerCe.passiveValue || 0) : 0) / 100;
-      const critMult = hitCrit ? (1.75 * (critDmgBonus + ceCritBonus)) : 1.0;
+      const critMult = hitCrit ? (1.75 * critDmgBonus) : 1.0;
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
@@ -3051,7 +2991,7 @@ function resolveStrike(
       // FGO Quick stars: 4-6 base stars scaled by position (1.0x/1.25x/1.5x), crit (1.4x), star gain buffs, and Quick 1st Lead (+30%)
       const starGainBuff = attacker.activeBuffs.filter(b => b.type === 'star_gain_up').reduce((s, b) => s + b.value, 0);
       const baseQuickStars = 4 + Math.floor(Math.random() * 3);
-      let starsGained = Math.round(baseQuickStars * (1.0 + (i * 0.25)) * (hitCrit ? 1.4 : 1.0) * (1.0 + (ridingBonus + ceQuick + presenceConcealBonus + starGainBuff) / 100));
+      let starsGained = Math.round(baseQuickStars * (1.0 + (i * 0.25)) * (hitCrit ? 1.4 : 1.0) * (1.0 + (ridingBonus + quickBuff + presenceConcealBonus + starGainBuff) / 100));
       if (i > 0 && isQuickFirst) starsGained = Math.round(starsGained * 1.3); // Quick Lead Bonus
 
       totalStarsGained += starsGained;

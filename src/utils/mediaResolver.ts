@@ -57,7 +57,9 @@ export const CANON_MEDIA_FALLBACKS: Record<string, string> = {
   'sprite_typhon_ephemeros.webp': 'https://ella.janitorai.com/media-approved/OP7PiFQNT0RNCbGEyVNTY.webp',
   'OP7PiFQNT0RNCbGEyVNTY.webp': 'https://ella.janitorai.com/media-approved/OP7PiFQNT0RNCbGEyVNTY.webp',
   'ce_bond_typhon_ephemeros.webp': 'https://ella.janitorai.com/media-approved/ooE7jWZ7K8iyxc9WJF21f.webp',
-  'ooE7jWZ7K8iyxc9WJF21f.webp': 'https://ella.janitorai.com/media-approved/ooE7jWZ7K8iyxc9WJF21f.webp'
+  'ooE7jWZ7K8iyxc9WJF21f.webp': 'https://ella.janitorai.com/media-approved/ooE7jWZ7K8iyxc9WJF21f.webp',
+  'ce_bond_edmond.webp': 'https://ella.janitorai.com/media-approved/6tOCZiZo0xbTRAFmf85h5.webp',
+  'ce_bond_van_gogh.webp': 'https://ella.janitorai.com/media-approved/-S9y-H-REfRKPTBMJUKxp.webp'
 };
 
 export function normalizeMediaUrl(rawUrl: string): string {

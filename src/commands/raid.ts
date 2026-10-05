@@ -17,6 +17,7 @@ import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { safeSetEmbedImage } from '../utils/discordEmbedHelper';
 import { addServantBattleExp, createExpEmberCraftEssence } from '../engine/customization';
 import { calculateServantMaxHp } from '../engine/statSystem';
+import { isBondCeActiveForServant, getCePassiveStats, applyCeInitialCombatantEffects, applyCePartyAuras, processCeTurnStartEffects, processCeOnAttackEffects } from '../utils/craftEssenceHelper';
 
 export const data = new SlashCommandBuilder()
   .setName('raid')
@@ -436,6 +437,10 @@ async function runRaidBattle(
 ) {
   const participants: RaidParticipantState[] = partyUsers.map(p => {
     const s = p.servant;
+    // Link equipped CE from master inventory if missing on instance
+    if (!s.equippedCe && s.equippedCeId) {
+      s.equippedCe = p.master?.craftEssences?.find((c: any) => c.id === s.equippedCeId);
+    }
     const t = s.template || {};
     const calculatedMaxHp = calculateServantMaxHp(s);
     const currentHp = calculatedMaxHp;
@@ -447,29 +452,6 @@ async function runRaidBattle(
     }
 
     const initialBuffs: any[] = [];
-    const equippedCe = s.equippedCe || p.master?.craftEssences?.find((c: any) => c.id === s.equippedCeId);
-    if (equippedCe) {
-      if (equippedCe.id === 'ce_castle_of_snow' || equippedCe.name?.includes('Castle of Snow')) {
-        initialBuffs.push({
-          name: 'Castle of Snow (Guts x3)',
-          type: 'guts',
-          value: 500,
-          remainingTurns: 99,
-          remainingHits: 3,
-          isHitCount: true
-        });
-      } else if (equippedCe.passiveType === 'guts' || equippedCe.name?.includes('Necromancy')) {
-        initialBuffs.push({
-          name: `${equippedCe.name} (Guts)`,
-          type: 'guts',
-          value: equippedCe.hpBonus || 1000,
-          remainingTurns: 99,
-          remainingHits: 1,
-          isHitCount: true
-        });
-      }
-    }
-
     const passives = t.passives || [];
     const servId = s.templateId || t.id || '';
     if (
@@ -486,7 +468,7 @@ async function runRaidBattle(
       });
     }
     if (
-      (servId === 'edmond_tank') &&
+      (servId === 'edmond_tank' || servId === 'edmond') &&
       passives.some((ps: any) => ps.name?.includes('Veteran of the Slums') || ps.type === 'veteran_of_the_slums')
     ) {
       initialBuffs.push({
@@ -516,9 +498,17 @@ async function runRaidBattle(
       totalDamageTaken: 0,
       gutsTriggeredThisTurn: false
     };
-    refreshParticipantHand(partState);
     return partState;
   });
+
+  // Apply all Craft Essence initial combatant effects (stats, starting NP, guts, passives)
+  participants.forEach(p => {
+    applyCeInitialCombatantEffects(p, participants);
+    refreshParticipantHand(p);
+  });
+
+  // Distribute all Bond CE party auras across the raid team
+  applyCePartyAuras(participants);
 
   const hpMultiplier = participants.length === 1 ? 1.0 : participants.length === 2 ? 1.25 : participants.length === 3 ? 1.5 : 1.75;
   const isTiamat = boss.id === 'tiamat';
@@ -2224,8 +2214,13 @@ async function runRaidBattle(
         battleState.participants.forEach(p => {
           p.skillCooldowns = p.skillCooldowns.map(cd => Math.max(0, cd - 1));
           if (p.activeBuffs) {
-            p.activeBuffs.forEach(b => b.remainingTurns--);
+            p.activeBuffs.forEach(b => {
+              if (b.remainingTurns < 90) b.remainingTurns--;
+            });
             p.activeBuffs = p.activeBuffs.filter(b => b.remainingTurns > 0);
+          }
+          if (!p.isDead) {
+            processCeTurnStartEffects(p);
           }
         });
 

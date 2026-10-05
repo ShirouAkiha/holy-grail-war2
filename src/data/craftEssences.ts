@@ -722,6 +722,24 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     bondServantId: 'typhon_ephemeros',
     bondServantName: 'Typhon Ephemeros'
   },
+  edmond: {
+    id: 'ce_bond_edmond',
+    name: 'Aegis of the Sunken Slums',
+    rarity: 4,
+    description: 'A colossal tower shield of dented titan-forged iron, etched with the tally marks of every ally shielded and every beast repelled. Held by the vanguard whose unbreakable resolve protects his comrades to the end.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped to Edmond: Increases own Defense by 20%, applies Damage Cut (1,000) to all allies, and grants self Guts (revives with 20% HP, 1 time).',
+    passiveType: 'def_up',
+    passiveValue: 20,
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
+    isBondCe: true,
+    bondServantId: 'edmond',
+    bondServantName: 'Edmond'
+  },
   van_gogh: {
     id: 'ce_bond_van_gogh',
     name: 'Self-Portrait At Chaldea',
@@ -745,6 +763,59 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
 export const CE_DEFAULT_ARTWORK = 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp';
 
 /**
+ * Canonical Servant ID to Bond CE key mapping.
+ * Strictly maps canonical IDs and aliases to their exact Bond CE.
+ */
+const CANONICAL_SERVANT_TO_BOND_KEY: Record<string, string> = {
+  artoria_pendragon: 'artoria_pendragon',
+  artoria: 'artoria_pendragon',
+  saber_artoria: 'artoria_pendragon',
+  artoria_pendragon_alter: 'artoria_pendragon_alter',
+  artoria_alter: 'artoria_pendragon_alter',
+  salter: 'artoria_pendragon_alter',
+  artoria_caster: 'artoria_caster',
+  castoria: 'artoria_caster',
+  gilgamesh_archer: 'gilgamesh_archer',
+  gilgamesh: 'gilgamesh_archer',
+  scathach_lancer: 'scathach_lancer',
+  scathach: 'scathach_lancer',
+  jeanne_darc_ruler: 'jeanne_darc_ruler',
+  jeanne: 'jeanne_darc_ruler',
+  jeanne_alter: 'jeanne_alter',
+  jalter: 'jeanne_alter',
+  mhx_alter: 'mhx_alter',
+  nero_claudius_saber: 'nero_claudius_saber',
+  nero: 'nero_claudius_saber',
+  emiya_archer: 'emiya_archer',
+  emiya: 'emiya_archer',
+  heracles_berserker: 'heracles_berserker',
+  heracles: 'heracles_berserker',
+  cu_chulainn_lancer: 'cu_chulainn_lancer',
+  cu_chulainn: 'cu_chulainn_lancer',
+  cu: 'cu_chulainn_lancer',
+  karna_lancer: 'karna_lancer',
+  karna: 'karna_lancer',
+  adiosa_dragon_envoy: 'adiosa_dragon_envoy',
+  adiosa: 'adiosa_dragon_envoy',
+  aoko_aozaki: 'aoko_aozaki',
+  aoko: 'aoko_aozaki',
+  amamiya_no_chihaya_tenkohime: 'amamiya_no_chihaya_tenkohime',
+  amamiya_no_chihaya: 'amamiya_no_chihaya_tenkohime',
+  chihaya: 'amamiya_no_chihaya_tenkohime',
+  tenkohime: 'amamiya_no_chihaya_tenkohime',
+  lucia_lyozes: 'lucia_lyozes',
+  lucia: 'lucia_lyozes',
+  luvria_greenharte: 'luvria_greenharte',
+  luvria: 'luvria_greenharte',
+  edmond: 'edmond',
+  edmond_tank: 'edmond',
+  typhon_ephemeros: 'typhon_ephemeros',
+  typhon: 'typhon_ephemeros',
+  van_gogh: 'van_gogh',
+  gogh: 'van_gogh'
+};
+
+/**
  * Retrieve the Bond Craft Essence corresponding to a Servant.
  * If canonical, returns the curated Bond CE.
  * For custom or unmapped servants, dynamically generates an authentic Bond CE.
@@ -755,24 +826,45 @@ export function getBondCraftEssenceForServant(
   customArt?: string
 ): CraftEssence {
   const normId = (servantIdentifier || '').toLowerCase().trim();
+  const normName = (servantName || '').toLowerCase().trim();
   
-  // 1. Direct match by templateId
+  // 1. Check strict canonical dictionary (highest precision, prevents Alter/Caster cross-matching)
+  if (CANONICAL_SERVANT_TO_BOND_KEY[normId]) {
+    const key = CANONICAL_SERVANT_TO_BOND_KEY[normId];
+    if (BOND_CRAFT_ESSENCES[key]) return BOND_CRAFT_ESSENCES[key];
+  }
+  if (CANONICAL_SERVANT_TO_BOND_KEY[normName]) {
+    const key = CANONICAL_SERVANT_TO_BOND_KEY[normName];
+    if (BOND_CRAFT_ESSENCES[key]) return BOND_CRAFT_ESSENCES[key];
+  }
+
+  // 2. Direct match by templateId
   if (BOND_CRAFT_ESSENCES[normId]) {
     return BOND_CRAFT_ESSENCES[normId];
   }
 
-  // 2. Fuzzy match against registered bond CEs
+  // 3. Exact matching against registered bond CEs (guarded against Alter/Caster mismatch)
+  const isAlter = normId.includes('alter') || normName.includes('alter');
+  const isCaster = normId.includes('caster') || normName.includes('caster');
+
   for (const [key, ce] of Object.entries(BOND_CRAFT_ESSENCES)) {
+    const keyIsAlter = key.includes('alter') || (ce.bondServantName || '').toLowerCase().includes('alter');
+    const keyIsCaster = key.includes('caster') || (ce.bondServantName || '').toLowerCase().includes('caster');
+
+    if (isAlter !== keyIsAlter || isCaster !== keyIsCaster) {
+      continue;
+    }
+
     if (
-      normId.includes(key) ||
-      key.includes(normId) ||
-      (servantName && (ce.bondServantName?.toLowerCase().includes(servantName.toLowerCase()) || servantName.toLowerCase().includes(key)))
+      normId === key ||
+      normId === ce.bondServantId?.toLowerCase() ||
+      (normName && ce.bondServantName?.toLowerCase() === normName)
     ) {
       return ce;
     }
   }
 
-  // 3. Procedurally generate custom Bond CE for custom/community servants
+  // 4. Procedurally generate custom Bond CE for custom/community servants
   const cleanName = servantName || servantIdentifier || 'Heroic Spirit';
   const cleanId = normId.replace(/[^a-z0-9_]/g, '_') || 'custom';
   
