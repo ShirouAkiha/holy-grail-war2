@@ -1182,6 +1182,15 @@ export function executeNoblePhantasmLogic(
           value: 100,
           remainingTurns: 3
         });
+        const isDomainActor = actor.servantClass === 'Foreigner' || actor.id === 'van_gogh' || (actor.passives && actor.passives.some((p: any) => p.type === 'existence_outside_the_domain'));
+        if (isDomainActor) {
+          actor.activeBuffs.push({
+            name: 'De Sterrennacht (Domain Crit DMG +100%)',
+            type: 'crit_dmg',
+            value: 100,
+            remainingTurns: 3
+          });
+        }
 
         // 3. 10 Critical Stars every turn for 3 turns
         actor.activeBuffs.push({

@@ -1267,7 +1267,9 @@ function activateCombatantSkill(
   combatant: DuelCombatant,
   skillIdx: number,
   opponent?: DuelCombatant,
-  currentRound: number = 1
+  currentRound: number = 1,
+  livingAllies?: DuelCombatant[],
+  livingEnemies?: DuelCombatant[]
 ): {
   success: boolean;
   log: string;
@@ -1606,6 +1608,171 @@ function activateCombatantSkill(
       remainingTurns: 3
     });
     logText = `🍷 **${sName}** activated **${skill.name}**! (+50% NP Gauge, +20% ATK (3T), [Demerit] Inflicted Curse 500 dmg/turn (3T) to self)${quoteLine}`;
+  } else if (skill.id === 'void_space_fine_arts' || /void space fine arts/i.test(skill.name)) {
+    // Van Gogh S1: Void Space Fine Arts B+
+    // Grants self Guts status for 1 time, 5 turns (revives with 3,000 HP).
+    // Inflicts 3 stacks of Curse with 100 damage for 10 turns to self [Demerit].
+    // Charges own NP gauge by 10% per Curse stack on self.
+    combatant.gutsCount = (combatant.gutsCount || 0) + 1;
+    combatant.activeBuffs.unshift({
+      name: 'Void Space Fine Arts (Guts)',
+      type: 'guts',
+      value: 3000,
+      remainingTurns: 5,
+      remainingHits: 1,
+      isHitCount: true,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    for (let k = 0; k < 3; k++) {
+      combatant.activeBuffs.push({
+        name: `Void Curse Stack ${k + 1} [Demerit]`,
+        type: 'curse',
+        value: 100,
+        remainingTurns: 10,
+        appliedRound: currentRound,
+        appliedTurnUserId: combatant.userId
+      });
+    }
+    const curCurses = combatant.activeBuffs.filter(b => b.type === 'curse').length;
+    const npGain = curCurses * 10;
+    combatant.npGauge = Math.min(300, (combatant.npGauge || 0) + npGain);
+    logText = `🎨 **${sName}** activated **${skill.name}**! (Guts 3,000 HP (5T), +3 Curse Stacks [Demerit], ⚡ +${npGain}% NP Gauge from ${curCurses} active Curses!)${quoteLine}`;
+  } else if (skill.id === 'het_gele_huis' || /het gele huis|the yellow house/i.test(skill.name)) {
+    // Van Gogh S2: Het Gele Huis: The Yellow House A+
+    // Reduces all enemies' defense by 20% for 3 turns. Reduces their Quick resistance by 20% for 3 turns.
+    // Grants party Evasion for 1 hit (3 turns). Recovers party's HP by 3,000 every turn for 5 turns.
+    // Inflicts Curse with 100 damage for 10 turns to party [Demerit].
+    const targetEnemies = (livingEnemies && livingEnemies.length > 0) ? livingEnemies.filter(e => e.currentHp > 0) : (opponent ? [opponent] : []);
+    const targetAllies = (livingAllies && livingAllies.length > 0) ? livingAllies.filter(a => a.currentHp > 0) : [combatant];
+
+    targetEnemies.forEach(opp => {
+      opp.activeBuffs = opp.activeBuffs || [];
+      opp.activeBuffs.push({
+        name: 'Het Gele Huis (DEF Down)',
+        type: 'debuff_def',
+        value: 20,
+        remainingTurns: 3,
+        appliedRound: currentRound,
+        appliedTurnUserId: combatant.userId
+      });
+      opp.activeBuffs.push({
+        name: 'Het Gele Huis (Quick Res Down)',
+        type: 'quick_res_down',
+        value: 20,
+        remainingTurns: 3,
+        appliedRound: currentRound,
+        appliedTurnUserId: combatant.userId
+      });
+    });
+
+    targetAllies.forEach(ally => {
+      ally.activeBuffs = ally.activeBuffs || [];
+      ally.activeBuffs.push({
+        name: 'The Yellow House (Evasion)',
+        type: 'evade',
+        value: 100,
+        remainingTurns: 3,
+        remainingHits: 1,
+        isHitCount: true,
+        appliedRound: currentRound,
+        appliedTurnUserId: combatant.userId
+      });
+      ally.activeBuffs.push({
+        name: 'The Yellow House (HP Regen)',
+        type: 'hp_regen',
+        value: 3000,
+        remainingTurns: 5,
+        appliedRound: currentRound,
+        appliedTurnUserId: combatant.userId
+      });
+      ally.activeBuffs.push({
+        name: 'Sunflower Curse [Demerit]',
+        type: 'curse',
+        value: 100,
+        remainingTurns: 10,
+        appliedRound: currentRound,
+        appliedTurnUserId: combatant.userId
+      });
+    });
+
+    logText = `🌻 **${sName}** activated **${skill.name}**! (-20% DEF & -20% Quick Res to enemies [3T], 1-Hit Evade [3T] & +3,000 HP Regen/turn [5T] to party, +1 Curse Stack [Demerit])${quoteLine}`;
+  } else if (skill.id === 'soul_of_water_channels' || /soul of water channels/i.test(skill.name)) {
+    // Van Gogh S3: Soul of Water Channels EX
+    // Increases ally's attack by 30% for 3 turns. Increases party critical star gain by 200% for 3 turns.
+    // Grants self Buff-On-Attack for 3 turns (Removes 1 Curse on Quick attack, grants +10% ATK for 3 turns).
+    // Absorbs all enemies' and party's Curses to self [Demerit].
+    const targetAllies = (livingAllies && livingAllies.length > 0) ? livingAllies.filter(a => a.currentHp > 0) : [combatant];
+    const targetEnemies = (livingEnemies && livingEnemies.length > 0) ? livingEnemies.filter(e => e.currentHp > 0) : (opponent ? [opponent] : []);
+
+    combatant.activeBuffs.push({
+      name: 'Soul of Water Channels (ATK Up)',
+      type: 'buff_atk',
+      value: 30,
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+
+    targetAllies.forEach(ally => {
+      ally.activeBuffs = ally.activeBuffs || [];
+      ally.activeBuffs.push({
+        name: 'Soul of Water Channels (Star Gain +200%)',
+        type: 'star_gain_up',
+        value: 200,
+        remainingTurns: 3,
+        appliedRound: currentRound,
+        appliedTurnUserId: combatant.userId
+      });
+    });
+
+    combatant.activeBuffs.push({
+      name: 'Soul of Water Channels (Quick Curse Cleanse)',
+      type: 'buff_on_quick_curse_cleanse',
+      value: 10,
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+
+    let absorbedCurses = 0;
+    targetAllies.forEach(ally => {
+      if (ally !== combatant && ally.activeBuffs) {
+        const allyCurses = ally.activeBuffs.filter(b => b.type === 'curse');
+        absorbedCurses += allyCurses.length;
+        ally.activeBuffs = ally.activeBuffs.filter(b => b.type !== 'curse');
+        allyCurses.forEach(c => {
+          combatant.activeBuffs.push({
+            name: `Absorbed ${c.name}`,
+            type: 'curse',
+            value: c.value,
+            remainingTurns: c.remainingTurns,
+            appliedRound: currentRound,
+            appliedTurnUserId: combatant.userId
+          });
+        });
+      }
+    });
+
+    targetEnemies.forEach(opp => {
+      if (opp.activeBuffs) {
+        const oppCurses = opp.activeBuffs.filter(b => b.type === 'curse');
+        absorbedCurses += oppCurses.length;
+        opp.activeBuffs = opp.activeBuffs.filter(b => b.type !== 'curse');
+        oppCurses.forEach(c => {
+          combatant.activeBuffs.push({
+            name: `Absorbed ${c.name}`,
+            type: 'curse',
+            value: c.value,
+            remainingTurns: c.remainingTurns,
+            appliedRound: currentRound,
+            appliedTurnUserId: combatant.userId
+          });
+        });
+      }
+    });
+
+    logText = `💧 **${sName}** activated **${skill.name}**! (+30% ATK [3T], +200% Party Star Gain [3T], Quick Curse Cleanse Buff [3T], absorbed ${absorbedCurses} Curses to self!)${quoteLine}`;
   } else if (skill.effectType === 'buff_atk') {
     const val = skill.value || 35;
     const desc = (skill.description || '').toLowerCase();
@@ -2081,6 +2248,27 @@ function resolveStrike(
     }
   }
 
+  // Curse damage at turn start
+  const curseBuffs = attacker.activeBuffs.filter(b => b.type === 'curse');
+  if (curseBuffs.length > 0) {
+    const totalCurseDmg = curseBuffs.reduce((s, b) => s + (b.value || 100), 0);
+    attacker.currentHp = Math.max(1, attacker.currentHp - totalCurseDmg);
+    chainTags.push(`💀 Curse Affliction (-${totalCurseDmg} HP from ${curseBuffs.length} stacks)`);
+  }
+
+  // Turn-Start Foreigner / Existence Outside the Domain Passive (+2 critical stars every turn)
+  const existenceOutsideBonus = attackerPassives.filter(p => p.type === 'existence_outside_the_domain').length > 0 ? 2 : 0;
+  if (existenceOutsideBonus > 0) {
+    attacker.critStars = Math.min(50, (attacker.critStars || 0) + existenceOutsideBonus);
+  }
+
+  // Turn-Start Stars per turn buffs (e.g. from De Sterrennacht)
+  const starsPerTurnBuffs = attacker.activeBuffs.filter(b => b.type === 'stars_per_turn' || b.type === 'star_regen');
+  const totalTurnStars = starsPerTurnBuffs.reduce((s, b) => s + b.value, 0);
+  if (totalTurnStars > 0) {
+    attacker.critStars = Math.min(50, (attacker.critStars || 0) + totalTurnStars);
+  }
+
   // Handle Stun status
   const isStunnedActor = attacker.isStunned || (attacker.activeBuffs && attacker.activeBuffs.some(b => b.type === 'stun'));
   if (isStunnedActor) {
@@ -2090,8 +2278,10 @@ function resolveStrike(
       .map(b => {
         if (
           b.type === 'buff_atk' ||
+          b.type === 'atk_up' ||
           b.type === 'debuff_atk' ||
           b.type === 'crit_dmg' ||
+          b.type === 'crit_dmg_up' ||
           b.type === 'np_gen' ||
           b.type === 'np_gain' ||
           b.type === 'buster_up' ||
@@ -2137,34 +2327,11 @@ function resolveStrike(
   const luckCritBonus = Math.min(0.35, (attackerLuck / (attackerLuck + 120)) * 0.35);
   critDmgBonus += luckCritBonus;
 
-  attacker.activeBuffs = attacker.activeBuffs.filter(b => {
-    // Only decrement offensive / attack-phase / status buffs when executing an attack!
-    // Defensive buffs (evade, invincible, buff_def, guts) must NOT decrement when attacking,
-    // so they remain active to protect against enemy strikes.
-    if (
-      b.type === 'buff_atk' ||
-      b.type === 'debuff_atk' ||
-      b.type === 'crit_dmg' ||
-      b.type === 'np_gen' ||
-      b.type === 'np_gain' ||
-      b.type === 'buster_up' ||
-      b.type === 'arts_up' ||
-      b.type === 'quick_up' ||
-      b.type === 'ignore_invincible' ||
-      b.type === 'ignore_defense' ||
-      b.type === 'skill_seal' ||
-      b.type === 'stars_per_turn' ||
-      b.type === 'hp_regen' ||
-      b.type === 'debuff_np_strength' ||
-      b.type === 'debuff_np_dmg'
-    ) {
-      b.remainingTurns--;
-    }
-    if (b.type === 'buff_atk') atkBuff += b.value / 100;
+  attacker.activeBuffs.forEach(b => {
+    if (b.type === 'buff_atk' || b.type === 'atk_up') atkBuff += b.value / 100;
     if (b.type === 'debuff_atk') atkBuff -= b.value / 100;
-    if (b.type === 'crit_dmg') critDmgBonus += b.value / 100;
+    if (b.type === 'crit_dmg' || b.type === 'crit_dmg_up') critDmgBonus += b.value / 100;
     if (b.type === 'np_gen' || b.type === 'np_gain') npGenBonus += b.value / 100;
-    return b.remainingTurns > 0;
   });
 
   let defBuff = 1.0;
@@ -2373,7 +2540,57 @@ function resolveStrike(
             const isRoundOfAvalon = /round of avalon|avalon/i.test(npTemplate.name) || attacker.servant.template.id === 'artoria_caster';
             const isLuminosite = /luminosit|jeanne/i.test(npTemplate.name) || attacker.servant.template.id === 'jeanne_darc_ruler';
             const isTigris = /tigris|edmond/i.test(npTemplate.name) || attacker.servant.template.id === 'edmond';
-            if (isRoundOfAvalon) {
+            const isDeSterrennacht = /sterrennacht|starry night|van gogh/i.test(npTemplate.name) || attacker.servant.template.id === 'van_gogh';
+            if (isDeSterrennacht) {
+              const isDomainAlly = allyCombatant.servant.template.servantClass === 'Foreigner' ||
+                (allyCombatant.passives && allyCombatant.passives.some(p => p.type === 'existence_outside_the_domain')) ||
+                (allyCombatant.servant.template.passives && allyCombatant.servant.template.passives.some(p => p.type === 'existence_outside_the_domain')) ||
+                allyCombatant.servant.template.id === 'van_gogh' ||
+                allyCombatant === attacker;
+
+              // 1. Party Crit DMG Up (100% to all party members for 3 turns)
+              allyCombatant.activeBuffs.push({
+                name: 'De Sterrennacht (Crit DMG Up)',
+                type: 'crit_dmg',
+                value: 100,
+                remainingTurns: 3,
+                appliedRound: currentRound,
+                appliedTurnUserId: attacker.userId
+              });
+
+              // 2. Existence Outside the Domain Crit DMG Up (+100% extra, boosts Van Gogh herself and any Foreigner!)
+              if (isDomainAlly) {
+                allyCombatant.activeBuffs.push({
+                  name: 'De Sterrennacht (Domain Crit DMG Up)',
+                  type: 'crit_dmg',
+                  value: 100,
+                  remainingTurns: 3,
+                  appliedRound: currentRound,
+                  appliedTurnUserId: attacker.userId
+                });
+              }
+
+              // 3. Stars per turn (10 stars/turn for 3 turns)
+              allyCombatant.activeBuffs.push({
+                name: 'De Sterrennacht (Stars Per Turn)',
+                type: 'stars_per_turn',
+                value: 10,
+                remainingTurns: 3,
+                appliedRound: currentRound,
+                appliedTurnUserId: attacker.userId
+              });
+
+              // 4. Overcharge ATK Up: 50% base + 10% per overcharge level for 3 turns
+              const ocAtkBonus = isOvercharged ? (50 + (overchargeLevel - 1) * 10) : 50;
+              allyCombatant.activeBuffs.push({
+                name: 'De Sterrennacht (ATK Up)',
+                type: 'buff_atk',
+                value: ocAtkBonus,
+                remainingTurns: 3,
+                appliedRound: currentRound,
+                appliedTurnUserId: attacker.userId
+              });
+            } else if (isRoundOfAvalon) {
               // Removes party debuffs
               allyCombatant.activeBuffs = allyCombatant.activeBuffs.filter(b =>
                 !b.type.startsWith('debuff') &&
@@ -2442,8 +2659,38 @@ function resolveStrike(
           }
         });
 
-        if (npCardType === 'Arts') {
+        const isDeSterrennacht = /sterrennacht|starry night|van gogh/i.test(npTemplate.name) || attacker.servant.template.id === 'van_gogh';
+        if (isDeSterrennacht) {
+          // Terror / Stun to all living enemies
+          const targetEnemies = (livingOpponents && livingOpponents.length > 0) ? livingOpponents.filter(o => o.currentHp > 0) : (defender ? [defender] : []);
+          targetEnemies.forEach(opp => {
+            opp.isStunned = true;
+            opp.activeBuffs = opp.activeBuffs || [];
+            opp.activeBuffs.push({
+              name: 'De Sterrennacht (Terror/Stun)',
+              type: 'stun',
+              value: 100,
+              remainingTurns: 1,
+              appliedRound: currentRound,
+              appliedTurnUserId: attacker.userId
+            });
+          });
+
+          // In-flight update of critDmgBonus and atkBuff for subsequent cards in this sequence
+          const selfCritBonus = 100 + 100; // Party +100% Crit DMG + Domain +100% Crit DMG (+200% for Van Gogh)
+          critDmgBonus += selfCritBonus / 100;
+          const ocAtkBonus = isOvercharged ? (50 + (overchargeLevel - 1) * 10) : 50;
+          atkBuff += ocAtkBonus / 100;
+
+          chainTags.push(`🌌 De Sterrennacht Unleashed (Terror/Stun • Party +100% Crit DMG [+200% to Van Gogh] • +${ocAtkBonus}% ATK • +15 Stars & +10 Stars/turn)`);
+          npRefund = 20;
+          npStars = 15;
+          attacker.critStars = Math.min(50, (attacker.critStars || 0) + 15);
+        } else if (npCardType === 'Arts') {
           const isRoundOfAvalon = /round of avalon|avalon/i.test(npTemplate.name) || attacker.servant.template.id === 'artoria_caster';
+          if (isRoundOfAvalon) {
+            atkBuff += 50 / 100;
+          }
           chainTags.push(`🕊️ Party Support NP Unleashed (Invincible 1T • DEF Up 3T • Debuff Cleanse)`);
           npRefund = 15;
           // Overcharge Critical Stars for Round of Avalon (only when Overcharged)
@@ -2460,7 +2707,10 @@ function resolveStrike(
 
         const allyNames = targetAllies.map(a => `**${(a.servant.nickname || a.servant.template?.name || 'Ally').toUpperCase()}**`).join(' & ');
         let effectDesc = 'Applied War Cry (+30% ATK for 3 Turns)';
-        if (npCardType === 'Arts') {
+        if (isDeSterrennacht) {
+          const ocAtkBonus = isOvercharged ? (50 + (overchargeLevel - 1) * 10) : 50;
+          effectDesc = `Inflicted Terror/Stun on enemies (1T), Party +100% Crit DMG (3T), Van Gogh & Foreigner Allies +100% Bonus Crit DMG (+200% Total, 3T), Party +${ocAtkBonus}% ATK (3T), +15 Stars & +10 Stars/turn (3T)!`;
+        } else if (npCardType === 'Arts') {
           effectDesc = isOvercharged
             ? 'Applied Party Protection (1T), DEF Up +30% (3T), Debuff Cleanse & [Overcharge Bonus Active]!'
             : 'Applied Party Protection (1T), DEF Up +30% (3T) & Debuff Cleanse!';
@@ -2762,7 +3012,9 @@ function resolveStrike(
       totalSeqDmg += hitDmg;
     } else if (card === 'Quick') {
       const ceQuick = attackerCe?.passiveType === 'quick_up' ? (attackerCe.passiveValue || 0) : 0;
-      let cardMult = 0.85 * posMult * (1.0 + (ridingBonus + ceQuick) / 100);
+      const quickBuff = attacker.activeBuffs.filter(b => b.type === 'quick_up').reduce((s, b) => s + b.value, 0);
+      const quickResDown = (defender.activeBuffs || []).filter(b => b.type === 'quick_res_down').reduce((s, b) => s + b.value, 0);
+      let cardMult = 0.85 * posMult * (1.0 + (ridingBonus + ceQuick + quickBuff + quickResDown) / 100);
       if (i > 0 && isBusterFirst) cardMult += 0.50;
 
       let critChance = Math.min(0.95, (starsForCrits * 2.2) / 100);
@@ -2789,9 +3041,28 @@ function resolveStrike(
         hitDmg = 0; // 0 DMG on Anti-Purge/Invincible/Evade
       }
 
-      // FGO Quick stars: 4-6 base stars scaled by position (1.0x/1.25x/1.5x), crit (1.4x), and Quick 1st Lead (+30%)
+      // Quick Curse Cleanse Buff (Soul of Water Channels EX)
+      if (attacker.activeBuffs && attacker.activeBuffs.some(b => b.type === 'buff_on_quick_curse_cleanse')) {
+        const curseIdx = attacker.activeBuffs.findIndex(b => b.type === 'curse');
+        if (curseIdx !== -1) {
+          attacker.activeBuffs.splice(curseIdx, 1);
+          attacker.activeBuffs.push({
+            name: 'Quick Cleanse (ATK Up +10%)',
+            type: 'buff_atk',
+            value: 10,
+            remainingTurns: 3,
+            appliedRound: currentRound,
+            appliedTurnUserId: attacker.userId
+          });
+          atkBuff += 0.10;
+          chainTags.push('🧹 Quick Curse Cleanse (+10% ATK)');
+        }
+      }
+
+      // FGO Quick stars: 4-6 base stars scaled by position (1.0x/1.25x/1.5x), crit (1.4x), star gain buffs, and Quick 1st Lead (+30%)
+      const starGainBuff = attacker.activeBuffs.filter(b => b.type === 'star_gain_up').reduce((s, b) => s + b.value, 0);
       const baseQuickStars = 4 + Math.floor(Math.random() * 3);
-      let starsGained = Math.round(baseQuickStars * (1.0 + (i * 0.25)) * (hitCrit ? 1.4 : 1.0) * (1.0 + (ridingBonus + ceQuick + presenceConcealBonus) / 100));
+      let starsGained = Math.round(baseQuickStars * (1.0 + (i * 0.25)) * (hitCrit ? 1.4 : 1.0) * (1.0 + (ridingBonus + ceQuick + presenceConcealBonus + starGainBuff) / 100));
       if (i > 0 && isQuickFirst) starsGained = Math.round(starsGained * 1.3); // Quick Lead Bonus
 
       totalStarsGained += starsGained;
@@ -2906,8 +3177,10 @@ function resolveStrike(
     }
     if (
       b.type === 'buff_atk' ||
+      b.type === 'atk_up' ||
       b.type === 'debuff_atk' ||
       b.type === 'crit_dmg' ||
+      b.type === 'crit_dmg_up' ||
       b.type === 'np_gen' ||
       b.type === 'np_gain' ||
       b.type === 'buster_up' ||
@@ -2917,11 +3190,17 @@ function resolveStrike(
       b.type === 'ignore_defense' ||
       b.type === 'skill_seal' ||
       b.type === 'stars_per_turn' ||
+      b.type === 'star_regen' ||
       b.type === 'hp_regen' ||
       b.type === 'debuff_np_strength' ||
       b.type === 'debuff_np_dmg' ||
       b.type === 'buff_def' ||
-      b.type === 'debuff_def'
+      b.type === 'def_up' ||
+      b.type === 'debuff_def' ||
+      b.type === 'quick_res_down' ||
+      b.type === 'star_gain_up' ||
+      b.type === 'buff_on_quick_curse_cleanse' ||
+      b.type === 'curse'
     ) {
       b.remainingTurns--;
       return b.remainingTurns > 0;
@@ -4605,7 +4884,7 @@ async function startInteractiveDuel(
       for (let sIdx = 0; sIdx < aiSkills.length; sIdx++) {
         if (sIdx === 2 && aiBond < 5) continue;
         if ((activeCombatant.skillCooldowns[sIdx] || 0) <= 0 && Math.random() < 0.35) {
-          const aiSkillRes = activateCombatantSkill(activeCombatant, sIdx, target, round);
+          const aiSkillRes = activateCombatantSkill(activeCombatant, sIdx, target, round, alliesList, opps);
           if (aiSkillRes.success) {
             combatLogs.push(aiSkillRes.log);
             if (combatLogs.length > 4) combatLogs.shift();
@@ -5420,7 +5699,9 @@ async function startInteractiveDuel(
         const skillIdx = parseInt(i.customId.replace('skill_', ''), 10);
         const actor = activeCombatant;
         const opponent = getSelectedTarget(actor) || (team1.includes(actor) ? p2 : p1);
-        const res = activateCombatantSkill(actor, skillIdx, opponent, round);
+        const alliesList = getMyTeamFor(actor);
+        const oppsList = getTargetsFor(actor);
+        const res = activateCombatantSkill(actor, skillIdx, opponent, round, alliesList, oppsList);
 
         if (!res.success) {
           await i.followUp({ content: res.log, flags: MessageFlags.Ephemeral });

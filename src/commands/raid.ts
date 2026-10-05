@@ -1778,6 +1778,15 @@ async function runRaidBattle(
                     value: 100,
                     remainingTurns: 3
                   });
+                  const isDomainAlly = p.servant.template?.servantClass === 'Foreigner' || p.servant.templateId === 'van_gogh' || p.userId === active.userId;
+                  if (isDomainAlly) {
+                    p.activeBuffs.push({
+                      name: 'De Sterrennacht (Domain Crit DMG Up)',
+                      type: 'crit_dmg',
+                      value: 100,
+                      remainingTurns: 3
+                    });
+                  }
                   p.activeBuffs.push({
                     name: 'De Sterrennacht (ATK Up)',
                     type: 'atk_up',
