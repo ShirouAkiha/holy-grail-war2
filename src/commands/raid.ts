@@ -888,52 +888,78 @@ async function runRaidBattle(
       // 0. Status Inspection Dossier (Accessible by any Master at any time)
     if (i.customId === 'raid_status') {
       try {
+        if (!i.deferred && !i.replied) {
+          await i.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
+        }
         const statusEmbed = buildRaidStatusEmbed(battleState, i.user.id);
-        await i.reply({
+        await i.followUp({
           embeds: [statusEmbed],
           flags: MessageFlags.Ephemeral
+        }).catch(async () => {
+          await i.editReply({ embeds: [statusEmbed] }).catch(() => {});
         });
       } catch (statusErr: any) {
-        console.error('[raid] Error generating raid status embed:', statusErr);
-        await i.reply({
-          content: '⚠️ Unable to format full tactical dossier. Please try again.',
-          flags: MessageFlags.Ephemeral
-        }).catch(() => {});
+        if (
+          statusErr?.code === 10062 ||
+          statusErr?.code === 40060 ||
+          statusErr?.message?.includes('Unknown interaction')
+        ) {
+          // Ignored harmless Discord interaction expiration
+        } else {
+          console.error('[raid] Error generating raid status embed:', statusErr);
+        }
       }
       return;
     }
 
     // 0.1 Combat Log Inspection (Accessible by any Master at any time)
     if (i.customId === 'raid_combat_log') {
-      const fullLines = (battleState.fullCombatLog && battleState.fullCombatLog.length > 0)
-        ? battleState.fullCombatLog
-        : (battleState.recentLogs && battleState.recentLogs.length > 0)
-          ? battleState.recentLogs
-          : ['Battle commenced. No actions logged yet.'];
+      try {
+        if (!i.deferred && !i.replied) {
+          await i.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
+        }
+        const fullLines = (battleState.fullCombatLog && battleState.fullCombatLog.length > 0)
+          ? battleState.fullCombatLog
+          : (battleState.recentLogs && battleState.recentLogs.length > 0)
+            ? battleState.recentLogs
+            : ['Battle commenced. No actions logged yet.'];
 
-      const logChunks: string[] = [];
-      let cur = '';
-      for (const line of fullLines) {
-        if ((cur + '\n' + line).length > 3800) {
-          logChunks.push(cur);
-          cur = line;
+        const logChunks: string[] = [];
+        let cur = '';
+        for (const line of fullLines) {
+          if ((cur + '\n' + line).length > 3800) {
+            logChunks.push(cur);
+            cur = line;
+          } else {
+            cur = cur ? cur + '\n' + line : line;
+          }
+        }
+        if (cur) logChunks.push(cur);
+
+        const isTiamat = battleState.boss.id === 'tiamat';
+        const logEmbed = new EmbedBuilder()
+          .setTitle(`📜 Complete Combat Log • Round ${battleState.round} • ${battleState.boss.name}`)
+          .setDescription(logChunks[logChunks.length - 1] || 'No events recorded yet.')
+          .setColor(isTiamat ? 0xd946ef : 0x8b5cf6)
+          .setFooter({ text: `Total Battle Events: ${fullLines.length} • Fate/Grand Order PvE Raid` });
+
+        await i.followUp({
+          embeds: [logEmbed],
+          flags: MessageFlags.Ephemeral
+        }).catch(async () => {
+          await i.editReply({ embeds: [logEmbed] }).catch(() => {});
+        });
+      } catch (logErr: any) {
+        if (
+          logErr?.code === 10062 ||
+          logErr?.code === 40060 ||
+          logErr?.message?.includes('Unknown interaction')
+        ) {
+          // Ignored harmless Discord interaction expiration
         } else {
-          cur = cur ? cur + '\n' + line : line;
+          console.error('[raid] Error generating combat log embed:', logErr);
         }
       }
-      if (cur) logChunks.push(cur);
-
-      const isTiamat = battleState.boss.id === 'tiamat';
-      const logEmbed = new EmbedBuilder()
-        .setTitle(`📜 Complete Combat Log • Round ${battleState.round} • ${battleState.boss.name}`)
-        .setDescription(logChunks[logChunks.length - 1] || 'No events recorded yet.')
-        .setColor(isTiamat ? 0xd946ef : 0x8b5cf6)
-        .setFooter({ text: `Total Battle Events: ${fullLines.length} • Fate/Grand Order PvE Raid` });
-
-      await i.reply({
-        embeds: [logEmbed],
-        flags: MessageFlags.Ephemeral
-      });
       return;
     }
 
@@ -1820,6 +1846,12 @@ async function runRaidBattle(
                     name: 'De Sterrennacht (ATK Up)',
                     type: 'atk_up',
                     value: ocAtk,
+                    remainingTurns: 3
+                  });
+                  p.activeBuffs.push({
+                    name: 'De Sterrennacht (Stars Per Turn)',
+                    type: 'stars_per_turn',
+                    value: 10,
                     remainingTurns: 3
                   });
                   p.critStars = Math.min(50, (p.critStars || 0) + 15);
