@@ -2,12 +2,14 @@ import { ActiveCombatant } from '../types';
 
 export interface CombatantBadge {
   id: string;
+  name?: string;
   label: string;
   shortLabel: string;
-  iconSymbol: 'atk' | 'def' | 'buster' | 'arts' | 'quick' | 'evade' | 'invincible' | 'guts' | 'crit' | 'stun' | 'np';
-  type: 'atk' | 'def' | 'buster' | 'arts' | 'quick' | 'evade' | 'invincible' | 'guts' | 'crit' | 'stun' | 'np';
+  iconSymbol: string;
+  type: string;
   turns?: number;
   hits?: number;
+  value?: number;
   bgColor: string;
   borderColor: string;
   textColor: string;
@@ -207,13 +209,17 @@ export function calculateCombatantBuffSummary(
 
   // GUTS Badge (Top Priority for tactical awareness)
   if (gutsCount > 0) {
+    const gutsBuff = buffs.find(b => b.type === 'guts');
+    const turns = gutsBuff?.remainingTurns;
     badges.push({
       id: 'guts',
       label: gutsCount > 1 ? `GUTS x${gutsCount}` : 'GUTS',
-      shortLabel: gutsCount > 1 ? `x${gutsCount}` : 'GUTS',
+      shortLabel: gutsCount > 1 ? `x${gutsCount}` : (turns !== undefined && turns > 0 && turns < 90 ? `${turns}T` : 'GUTS'),
       iconSymbol: 'guts',
       type: 'guts',
-      bgColor: 'rgba(159, 18, 57, 0.88)',
+      hits: gutsCount,
+      turns: turns,
+      bgColor: 'rgba(159, 18, 57, 0.92)',
       borderColor: '#f43f5e',
       textColor: '#ffe4e6'
     });
@@ -221,39 +227,47 @@ export function calculateCombatantBuffSummary(
 
   // ANTI-PURGE DEFENSE Badge (Highest Defensive Priority)
   if (isAntiPurgeDefense) {
+    const apBuff = buffs.find(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge');
     badges.push({
       id: 'anti_purge',
       label: 'ANTI-PURGE',
-      shortLabel: 'A-PURGE',
+      shortLabel: apBuff?.remainingTurns ? `${apBuff.remainingTurns}T` : 'A-PURGE',
       iconSymbol: 'invincible',
       type: 'invincible',
+      turns: apBuff?.remainingTurns,
       bgColor: 'rgba(91, 33, 182, 0.92)',
       borderColor: '#a855f7',
       textColor: '#f3e8ff'
     });
   } else if (isInvincible) {
     // INVINCIBLE Badge
+    const invBuff = buffs.find(b => b.type === 'invincible');
+    const invTurns = invBuff?.remainingTurns;
     badges.push({
       id: 'invincible',
       label: invincibleHits > 0 ? `INVINC (${invincibleHits}H)` : 'INVINC',
-      shortLabel: invincibleHits > 0 ? `${invincibleHits}H` : 'INV',
+      shortLabel: invincibleHits > 0 ? `${invincibleHits}H` : (invTurns ? `${invTurns}T` : 'INV'),
       iconSymbol: 'invincible',
       type: 'invincible',
       hits: invincibleHits,
-      bgColor: 'rgba(146, 64, 14, 0.88)',
+      turns: invTurns,
+      bgColor: 'rgba(146, 64, 14, 0.92)',
       borderColor: '#facc15',
       textColor: '#fef08a'
     });
   } else if (isEvading) {
     // EVADE Badge
+    const evBuff = buffs.find(b => b.type === 'evade');
+    const evTurns = evBuff?.remainingTurns;
     badges.push({
       id: 'evade',
       label: evadeHits > 0 ? `EVADE (${evadeHits}H)` : 'EVADE',
-      shortLabel: evadeHits > 0 ? `${evadeHits}H` : 'EVD',
+      shortLabel: evadeHits > 0 ? `${evadeHits}H` : (evTurns ? `${evTurns}T` : 'EVD'),
       iconSymbol: 'evade',
       type: 'evade',
       hits: evadeHits,
-      bgColor: 'rgba(8, 145, 178, 0.88)',
+      turns: evTurns,
+      bgColor: 'rgba(8, 145, 178, 0.92)',
       borderColor: '#06b6d4',
       textColor: '#cffafe'
     });
@@ -262,13 +276,17 @@ export function calculateCombatantBuffSummary(
   // ATK Up / Down Badge
   if (atkBoost !== 0) {
     const sign = atkBoost > 0 ? '+' : '';
+    const atkBuff = buffs.find(b => b.type === (atkBoost > 0 ? 'buff_atk' : 'debuff_atk'));
+    const turns = atkBuff?.remainingTurns;
     badges.push({
       id: 'atk',
       label: `${sign}${atkBoost}% ATK`,
-      shortLabel: `${sign}${atkBoost}%`,
-      iconSymbol: 'atk',
-      type: 'atk',
-      bgColor: atkBoost > 0 ? 'rgba(153, 27, 27, 0.88)' : 'rgba(88, 28, 135, 0.88)',
+      shortLabel: turns && turns < 90 ? `${sign}${atkBoost}% (${turns}T)` : `${sign}${atkBoost}%`,
+      iconSymbol: atkBoost > 0 ? 'atk' : 'debuff_atk',
+      type: atkBoost > 0 ? 'atk' : 'debuff_atk',
+      value: atkBoost,
+      turns: turns,
+      bgColor: atkBoost > 0 ? 'rgba(153, 27, 27, 0.92)' : 'rgba(88, 28, 135, 0.92)',
       borderColor: atkBoost > 0 ? '#ef4444' : '#a855f7',
       textColor: '#ffffff'
     });
@@ -277,13 +295,17 @@ export function calculateCombatantBuffSummary(
   // DEF Up / Down Badge
   if (defBoost !== 0) {
     const sign = defBoost > 0 ? '+' : '';
+    const defBuff = buffs.find(b => b.type === (defBoost > 0 ? 'buff_def' : 'debuff_def'));
+    const turns = defBuff?.remainingTurns;
     badges.push({
       id: 'def',
       label: `${sign}${defBoost}% DEF`,
-      shortLabel: `${sign}${defBoost}%`,
-      iconSymbol: 'def',
-      type: 'def',
-      bgColor: defBoost > 0 ? 'rgba(30, 58, 138, 0.88)' : 'rgba(107, 33, 168, 0.88)',
+      shortLabel: turns && turns < 90 ? `${sign}${defBoost}% (${turns}T)` : `${sign}${defBoost}%`,
+      iconSymbol: defBoost > 0 ? 'def' : 'debuff_def',
+      type: defBoost > 0 ? 'def' : 'debuff_def',
+      value: defBoost,
+      turns: turns,
+      bgColor: defBoost > 0 ? 'rgba(30, 58, 138, 0.92)' : 'rgba(107, 33, 168, 0.92)',
       borderColor: defBoost > 0 ? '#38bdf8' : '#c084fc',
       textColor: '#ffffff'
     });
@@ -291,37 +313,49 @@ export function calculateCombatantBuffSummary(
 
   // Card Performance Badges
   if (busterBoost > 0) {
+    const bstBuff = buffs.find(b => b.type === 'buster_up');
+    const turns = bstBuff?.remainingTurns;
     badges.push({
       id: 'buster',
       label: `+${busterBoost}% BST`,
-      shortLabel: `+${busterBoost}%`,
+      shortLabel: turns && turns < 90 ? `+${busterBoost}% (${turns}T)` : `+${busterBoost}%`,
       iconSymbol: 'buster',
-      type: 'buster',
-      bgColor: 'rgba(185, 28, 28, 0.88)',
+      type: 'buster_up',
+      value: busterBoost,
+      turns: turns,
+      bgColor: 'rgba(185, 28, 28, 0.92)',
       borderColor: '#f87171',
       textColor: '#fee2e2'
     });
   }
   if (artsBoost > 0) {
+    const artsBuff = buffs.find(b => b.type === 'arts_up');
+    const turns = artsBuff?.remainingTurns;
     badges.push({
       id: 'arts',
       label: `+${artsBoost}% ART`,
-      shortLabel: `+${artsBoost}%`,
+      shortLabel: turns && turns < 90 ? `+${artsBoost}% (${turns}T)` : `+${artsBoost}%`,
       iconSymbol: 'arts',
-      type: 'arts',
-      bgColor: 'rgba(29, 78, 216, 0.88)',
+      type: 'arts_up',
+      value: artsBoost,
+      turns: turns,
+      bgColor: 'rgba(29, 78, 216, 0.92)',
       borderColor: '#60a5fa',
       textColor: '#dbeafe'
     });
   }
   if (quickBoost > 0) {
+    const qckBuff = buffs.find(b => b.type === 'quick_up');
+    const turns = qckBuff?.remainingTurns;
     badges.push({
       id: 'quick',
       label: `+${quickBoost}% QCK`,
-      shortLabel: `+${quickBoost}%`,
+      shortLabel: turns && turns < 90 ? `+${quickBoost}% (${turns}T)` : `+${quickBoost}%`,
       iconSymbol: 'quick',
-      type: 'quick',
-      bgColor: 'rgba(4, 120, 87, 0.88)',
+      type: 'quick_up',
+      value: quickBoost,
+      turns: turns,
+      bgColor: 'rgba(4, 120, 87, 0.92)',
       borderColor: '#34d399',
       textColor: '#d1fae5'
     });
@@ -329,14 +363,120 @@ export function calculateCombatantBuffSummary(
 
   // Stun Debuff Badge
   if (isStunned) {
+    const stunBuff = buffs.find(b => b.type === 'stun');
+    const turns = stunBuff?.remainingTurns || 1;
     badges.push({
       id: 'stun',
       label: 'STUNNED',
-      shortLabel: 'STUN',
+      shortLabel: `${turns}T`,
       iconSymbol: 'stun',
       type: 'stun',
+      turns: turns,
       bgColor: 'rgba(180, 83, 9, 0.92)',
       borderColor: '#fbbf24',
+      textColor: '#fef3c7'
+    });
+  }
+
+  // 4. Specific Status Afflictions (Curse, Burn, Poison, NP Gain, Crit DMG, Skill Seal, NP Seal)
+  const curseBuffs = buffs.filter(b => b.type === 'curse' || b.type === 'void_curse' || (b.name && b.name.toLowerCase().includes('curse')));
+  if (curseBuffs.length > 0) {
+    const maxTurns = Math.max(...curseBuffs.map(b => b.remainingTurns || 1));
+    badges.push({
+      id: 'curse',
+      label: curseBuffs.length > 1 ? `CURSE x${curseBuffs.length}` : 'CURSE',
+      shortLabel: curseBuffs.length > 1 ? `x${curseBuffs.length}` : `${maxTurns}T`,
+      iconSymbol: 'curse',
+      type: 'curse',
+      turns: maxTurns,
+      bgColor: 'rgba(76, 29, 149, 0.92)',
+      borderColor: '#8b5cf6',
+      textColor: '#ede9fe'
+    });
+  }
+
+  const burnBuffs = buffs.filter(b => b.type === 'burn' || b.type === 'spread_of_fire' || (b.name && (b.name.toLowerCase().includes('burn') || b.name.toLowerCase().includes('dragon grail') || b.name.toLowerCase().includes('fire'))));
+  if (burnBuffs.length > 0) {
+    const maxTurns = Math.max(...burnBuffs.map(b => b.remainingTurns || 1));
+    badges.push({
+      id: 'burn',
+      label: burnBuffs.length > 1 ? `BURN x${burnBuffs.length}` : 'BURN',
+      shortLabel: burnBuffs.length > 1 ? `x${burnBuffs.length}` : `${maxTurns}T`,
+      iconSymbol: 'burn',
+      type: 'burn',
+      turns: maxTurns,
+      bgColor: 'rgba(154, 52, 18, 0.92)',
+      borderColor: '#ea580c',
+      textColor: '#ffedd5'
+    });
+  }
+
+  const poisonBuffs = buffs.filter(b => b.type === 'poison' || (b.name && b.name.toLowerCase().includes('poison')));
+  if (poisonBuffs.length > 0) {
+    const maxTurns = Math.max(...poisonBuffs.map(b => b.remainingTurns || 1));
+    badges.push({
+      id: 'poison',
+      label: poisonBuffs.length > 1 ? `POISON x${poisonBuffs.length}` : 'POISON',
+      shortLabel: poisonBuffs.length > 1 ? `x${poisonBuffs.length}` : `${maxTurns}T`,
+      iconSymbol: 'poison',
+      type: 'poison',
+      turns: maxTurns,
+      bgColor: 'rgba(6, 78, 59, 0.92)',
+      borderColor: '#10b981',
+      textColor: '#d1fae5'
+    });
+  }
+
+  if (critBoost > 0) {
+    badges.push({
+      id: 'crit_dmg',
+      label: `+${critBoost}% CRIT`,
+      shortLabel: `+${critBoost}%`,
+      iconSymbol: 'crit_dmg',
+      type: 'crit_dmg',
+      bgColor: 'rgba(133, 77, 14, 0.92)',
+      borderColor: '#eab308',
+      textColor: '#fef9c3'
+    });
+  }
+
+  if (npGainBoost > 0) {
+    badges.push({
+      id: 'np_gain',
+      label: `+${npGainBoost}% NP`,
+      shortLabel: `+${npGainBoost}%`,
+      iconSymbol: 'np_charge',
+      type: 'np_charge',
+      bgColor: 'rgba(21, 94, 117, 0.92)',
+      borderColor: '#06b6d4',
+      textColor: '#ecfeff'
+    });
+  }
+
+  const skillSeal = buffs.find(b => b.type === 'skill_seal');
+  if (skillSeal) {
+    badges.push({
+      id: 'skill_seal',
+      label: 'SKILL SEAL',
+      shortLabel: `${skillSeal.remainingTurns || 1}T`,
+      iconSymbol: 'skill_seal',
+      type: 'skill_seal',
+      bgColor: 'rgba(127, 29, 29, 0.92)',
+      borderColor: '#dc2626',
+      textColor: '#fee2e2'
+    });
+  }
+
+  const npSeal = buffs.find(b => b.type === 'np_seal');
+  if (npSeal) {
+    badges.push({
+      id: 'np_seal',
+      label: 'NP SEAL',
+      shortLabel: `${npSeal.remainingTurns || 1}T`,
+      iconSymbol: 'np_seal',
+      type: 'np_seal',
+      bgColor: 'rgba(120, 53, 15, 0.92)',
+      borderColor: '#d97706',
       textColor: '#fef3c7'
     });
   }

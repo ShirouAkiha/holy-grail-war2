@@ -1715,9 +1715,15 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                     {member.activeBuffs && member.activeBuffs.length > 0 && (
                       <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                         {member.activeBuffs.map((b, bIdx) => (
-                          <div key={bIdx} className="flex items-center gap-1 bg-black/60 border border-sky-500/40 rounded px-1.5 py-0.5 shadow-sm" title={`${b.name || b.type} (${b.remainingTurns || 1}T)`}>
-                            <img src={getStatusIconUrl(b.type)} alt={b.type} className="w-4 h-4 object-contain" />
-                            {b.remainingTurns && <span className="text-[9px] font-mono text-sky-300 font-bold">{b.remainingTurns}t</span>}
+                          <div
+                            key={bIdx}
+                            className="flex items-center gap-1 bg-black/80 border border-sky-400/50 rounded px-2 py-1 shadow-md"
+                            title={`${b.name || b.type} (${b.remainingTurns ? `${b.remainingTurns}T` : 'Permanent'})`}
+                          >
+                            <img src={getStatusIconUrl(b.type || (b as any).name)} alt={b.type} className="w-5 h-5 object-contain" />
+                            <span className="text-[10px] font-mono text-sky-200 font-bold">
+                              {b.remainingHits !== undefined ? `${b.remainingHits}H` : b.remainingTurns ? `${b.remainingTurns}T` : '∞'}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -2339,16 +2345,16 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                   key={idx}
                   disabled={selectedCards.length >= 3}
                   onClick={() => handleCardClick(card)}
-                  className={`px-4 py-2 rounded-sm font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2 border transition disabled:opacity-30 disabled:cursor-not-allowed ${
+                  className={`px-4 py-2.5 rounded font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-2.5 border transition shadow-sm disabled:opacity-30 disabled:cursor-not-allowed ${
                     card === 'Buster'
-                      ? 'bg-[#220000] hover:bg-[#330000] text-[#ef4444] border-[#ef4444]/40'
+                      ? 'bg-[#220000] hover:bg-[#380000] text-[#ef4444] border-[#ef4444]/50 hover:border-[#ef4444]'
                       : card === 'Arts'
-                      ? 'bg-[#001133] hover:bg-[#001c4d] text-[#3b82f6] border-[#3b82f6]/40'
-                      : 'bg-[#002200] hover:bg-[#003300] text-[#22c55e] border-[#22c55e]/40'
+                      ? 'bg-[#001133] hover:bg-[#001f5c] text-[#3b82f6] border-[#3b82f6]/50 hover:border-[#3b82f6]'
+                      : 'bg-[#002200] hover:bg-[#003800] text-[#22c55e] border-[#22c55e]/50 hover:border-[#22c55e]'
                   }`}
                 >
-                  <img src={cardIconUrl} alt={card} className="w-4 h-4 object-contain" />
-                  <span>{card} ({critPct}% Crit)</span>
+                  <img src={cardIconUrl} alt={card} className="w-5 h-5 object-contain" />
+                  <span>{card} <span className="text-white/60 font-normal">({critPct}% Crit)</span></span>
                 </button>
               );
             })}

@@ -449,7 +449,7 @@ function drawVectorHeart(ctx: any, cx: number, cy: number, size: number, color: 
 }
 
 /**
- * Draw Combatant Status & Buff Badges Tray (Canvas UI)
+ * Draw Combatant Status & Buff Badges Tray (Canvas UI) - High Visibility Icon Chips
  */
 function drawCombatantBuffPillTray(
   ctx: any,
@@ -466,100 +466,101 @@ function drawCombatantBuffPillTray(
   if (!badges || badges.length === 0) return;
 
   ctx.save();
-  ctx.font = 'bold 8.5px sans-serif';
 
-  const badgeH = 16;
-  const gap = 3;
-  const renderedBadges: { badge: any; width: number; iconImg: any }[] = [];
-  let currentTotalW = 0;
+  const chipSize = 22;
+  const gap = 4;
+  const maxChips = Math.floor((maxW + gap) / (chipSize + gap));
+  const displayBadges = badges.slice(0, maxChips);
+  const totalW = displayBadges.length * chipSize + (displayBadges.length - 1) * gap;
 
-  for (let i = 0; i < badges.length; i++) {
-    const b = badges[i];
+  let startX = align === 'right' ? (x + maxW - totalW) : x;
+
+  for (let i = 0; i < displayBadges.length; i++) {
+    const b = displayBadges[i];
+    const isOverflow = i === displayBadges.length - 1 && badges.length > maxChips;
+    const chipX = startX + i * (chipSize + gap);
+
+    if (isOverflow) {
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
+      drawRoundRect(ctx, chipX, y, chipSize, chipSize, 4);
+      ctx.fill();
+      ctx.strokeStyle = '#64748b';
+      ctx.lineWidth = 1;
+      drawRoundRect(ctx, chipX, y, chipSize, chipSize, 4);
+      ctx.stroke();
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`+${badges.length - maxChips + 1}`, chipX + chipSize / 2, y + 14);
+      continue;
+    }
+
     const iconUrl = getStatusIconUrl(b.type || b.iconSymbol || b.id || b.label || (b as any).name);
     const iconImg = buffImageMap?.get(iconUrl);
-    const textW = ctx.measureText(b.shortLabel || b.label).width;
-    const badgeW = Math.round(textW + (iconImg || b.iconSymbol ? 19 : 8));
-    if (currentTotalW + badgeW > maxW && renderedBadges.length > 0) {
-      const remainingCount = badges.length - renderedBadges.length;
-      if (remainingCount > 0) {
-        const ovText = `+${remainingCount}`;
-        const ovW = Math.round(ctx.measureText(ovText).width + 8);
-        while (renderedBadges.length > 0 && currentTotalW + ovW > maxW) {
-          const removed = renderedBadges.pop();
-          if (removed) currentTotalW -= (removed.width + gap);
-        }
-        renderedBadges.push({
-          badge: {
-            shortLabel: `+${badges.length - renderedBadges.length}`,
-            bgColor: 'rgba(30, 41, 59, 0.92)',
-            borderColor: '#94a3b8',
-            textColor: '#e2e8f0',
-            iconSymbol: null
-          },
-          width: ovW,
-          iconImg: null
-        });
-      }
-      break;
-    }
-    renderedBadges.push({ badge: b, width: badgeW, iconImg });
-    currentTotalW += badgeW + gap;
-  }
 
-  let startX = align === 'right' ? (x + maxW - (currentTotalW - gap)) : x;
-
-  for (const item of renderedBadges) {
-    const b = item.badge;
-    const bW = item.width;
-    const iconImg = item.iconImg;
-
-    // Background pill
+    // Background Chip
     ctx.fillStyle = b.bgColor || 'rgba(15, 23, 42, 0.92)';
-    drawRoundRect(ctx, startX, y, bW, badgeH, 4);
+    drawRoundRect(ctx, chipX, y, chipSize, chipSize, 4);
     ctx.fill();
 
     // Border
     ctx.strokeStyle = b.borderColor || '#475569';
-    ctx.lineWidth = 1;
-    drawRoundRect(ctx, startX, y, bW, badgeH, 4);
+    ctx.lineWidth = 1.2;
+    drawRoundRect(ctx, chipX, y, chipSize, chipSize, 4);
     ctx.stroke();
 
-    const iconX = startX + 3;
-    const iconY = y + 2;
-    const iconSize = 12;
+    const iconPad = 3;
+    const iconDim = chipSize - iconPad * 2; // 16x16px
 
     if (iconImg) {
-      ctx.save();
-      drawRoundRect(ctx, iconX, iconY, iconSize, iconSize, 2);
-      ctx.clip();
-      ctx.drawImage(iconImg, iconX, iconY, iconSize, iconSize);
-      ctx.restore();
+      ctx.drawImage(iconImg, chipX + iconPad, y + iconPad, iconDim, iconDim);
     } else if (b.iconSymbol) {
-      const iconCx = startX + 7;
-      const iconCy = y + badgeH / 2;
+      const iconCx = chipX + chipSize / 2;
+      const iconCy = y + chipSize / 2;
       if (b.iconSymbol === 'atk') {
-        drawVectorCrossedSwords(ctx, iconCx, iconCy, 3, b.borderColor || '#ef4444');
+        drawVectorCrossedSwords(ctx, iconCx, iconCy, 3.5, b.borderColor || '#ef4444');
       } else if (b.iconSymbol === 'def') {
-        drawVectorShield(ctx, iconCx, iconCy, 6, 8, 'transparent', b.borderColor || '#38bdf8');
+        drawVectorShield(ctx, iconCx, iconCy, 7, 9, 'transparent', b.borderColor || '#38bdf8');
       } else if (b.iconSymbol === 'guts') {
-        drawVectorHeart(ctx, iconCx, iconCy, 3.5, b.borderColor || '#f43f5e');
+        drawVectorHeart(ctx, iconCx, iconCy, 4, b.borderColor || '#f43f5e');
       } else if (b.iconSymbol === 'invincible') {
-        drawVectorStar(ctx, iconCx, iconCy, 5, 3.5, 1.8, '#fde047');
+        drawVectorStar(ctx, iconCx, iconCy, 5, 4, 2, '#fde047');
       } else if (b.iconSymbol === 'evade') {
-        drawSparkDiamond(ctx, iconCx, iconCy, 3, '#06b6d4');
+        drawSparkDiamond(ctx, iconCx, iconCy, 3.5, '#06b6d4');
       } else {
-        drawSparkDiamond(ctx, iconCx, iconCy, 3, b.borderColor || '#fbbf24');
+        drawSparkDiamond(ctx, iconCx, iconCy, 3.5, b.borderColor || '#fbbf24');
       }
     }
 
-    // Label
-    ctx.fillStyle = b.textColor || '#ffffff';
-    ctx.font = 'bold 8.5px sans-serif';
-    ctx.textAlign = (iconImg || b.iconSymbol) ? 'left' : 'center';
-    const textX = (iconImg || b.iconSymbol) ? (startX + 17) : (startX + bW / 2);
-    ctx.fillText(b.shortLabel || b.label, textX, y + 11.5);
+    // Mini Duration / Hit / Value Badge in Bottom-Right Corner
+    const countTag = b.hits !== undefined && b.hits > 0 
+      ? `${b.hits}H` 
+      : b.turns !== undefined && b.turns > 0 && b.turns < 90 
+        ? `${b.turns}T` 
+        : b.value !== undefined 
+          ? `${b.value > 0 ? '+' : ''}${b.value}%` 
+          : '';
 
-    startX += bW + gap;
+    if (countTag) {
+      ctx.font = 'bold 7px sans-serif';
+      const tagW = ctx.measureText(countTag).width + 3;
+      const tagH = 9;
+      const tagX = chipX + chipSize - tagW + 1;
+      const tagY = y + chipSize - tagH + 1;
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.88)';
+      drawRoundRect(ctx, tagX, tagY, tagW, tagH, 2);
+      ctx.fill();
+      ctx.strokeStyle = b.borderColor || '#64748b';
+      ctx.lineWidth = 0.6;
+      drawRoundRect(ctx, tagX, tagY, tagW, tagH, 2);
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(countTag, tagX + tagW / 2, tagY + 7);
+    }
   }
 
   ctx.restore();
@@ -737,13 +738,13 @@ function drawCritStarBox(
   buffImageMap?: Map<string, any>
 ) {
   ctx.save();
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
   drawRoundRect(ctx, x + 2, y + 2, w, h, 8);
   ctx.fill();
 
   const borderColor = isOpponent ? '#ef4444' : '#38bdf8';
-  const glowColor = isOpponent ? 'rgba(239, 68, 68, 0.28)' : 'rgba(56, 189, 248, 0.28)';
-  const starColor = isOpponent ? '#f87171' : '#38bdf8';
+  const glowColor = isOpponent ? 'rgba(239, 68, 68, 0.35)' : 'rgba(56, 189, 248, 0.35)';
+  const starColor = isOpponent ? '#f87171' : '#fbbf24';
   const textColor = isOpponent ? '#fca5a5' : '#7dd3fc';
 
   // Background Gradient
@@ -761,24 +762,13 @@ function drawCritStarBox(
   drawRoundRect(ctx, x, y, w, h, 8);
   ctx.fill();
 
-  // Subtle interior grid / scanlines
-  ctx.strokeStyle = isOpponent ? 'rgba(239, 68, 68, 0.08)' : 'rgba(56, 189, 248, 0.08)';
-  ctx.lineWidth = 1;
-  for (let ly = y + 8; ly < y + h; ly += 8) {
-    ctx.beginPath();
-    ctx.moveTo(x + 4, ly);
-    ctx.lineTo(x + w - 4, ly);
-    ctx.stroke();
-  }
-
-  // Neon Border
+  // Border & Inset
   ctx.strokeStyle = borderColor;
-  ctx.lineWidth = 1.8;
+  ctx.lineWidth = 1.6;
   drawRoundRect(ctx, x, y, w, h, 8);
   ctx.stroke();
 
-  // Inset hairline
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
   ctx.lineWidth = 0.8;
   drawRoundRect(ctx, x + 2, y + 2, w - 4, h - 4, 6);
   ctx.stroke();
@@ -787,49 +777,50 @@ function drawCritStarBox(
   ctx.fillStyle = textColor;
   ctx.font = 'bold 9.5px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('ETHER CRIT STARS', x + w / 2, y + 22);
+  ctx.fillText('ETHER CRIT STARS', x + w / 2, y + 20);
 
   // Top divider line
   ctx.strokeStyle = isOpponent ? 'rgba(239, 68, 68, 0.25)' : 'rgba(56, 189, 248, 0.25)';
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 0.8;
   ctx.beginPath();
-  ctx.moveTo(x + 6, y + 30);
-  ctx.lineTo(x + w - 6, y + 30);
+  ctx.moveTo(x + 8, y + 26);
+  ctx.lineTo(x + w - 8, y + 26);
   ctx.stroke();
 
-  // 2. Center Star Icon & Large Number
-  const starCx = x + 28;
-  const starCy = y + h / 2 - 4;
+  // 2. Center Large Star Icon & Bold Number (Unboxed, spacious, high visibility)
+  const starCx = x + w / 2;
+  const starCy = y + h / 2 - 12;
 
   const starImg = buffImageMap?.get(STATUS_ICON_URLS.crit_stars) || buffImageMap?.get(STATUS_ICON_URLS.gain_stars);
 
   // Star soft glow halo
-  const starGlow = ctx.createRadialGradient(starCx, starCy, 2, starCx, starCy, 22);
+  const starGlow = ctx.createRadialGradient(starCx, starCy, 4, starCx, starCy, 36);
   starGlow.addColorStop(0, glowColor);
   starGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = starGlow;
   ctx.beginPath();
-  ctx.arc(starCx, starCy, 22, 0, Math.PI * 2);
+  ctx.arc(starCx, starCy, 36, 0, Math.PI * 2);
   ctx.fill();
 
+  const starIconSize = 42;
   if (starImg) {
-    ctx.drawImage(starImg, starCx - 14, starCy - 14, 28, 28);
+    ctx.drawImage(starImg, starCx - starIconSize / 2, starCy - starIconSize / 2, starIconSize, starIconSize);
   } else {
-    drawVectorStar(ctx, starCx, starCy, 5, 12, 6, starColor, isOpponent ? '#fecaca' : '#bae6fd');
+    drawVectorStar(ctx, starCx, starCy, 5, 18, 9, starColor, isOpponent ? '#fecaca' : '#fef08a');
   }
 
   // Large Bold Numeric Star Count
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 34px sans-serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(`${starsCount || 0}`, x + 46, starCy + 12);
+  ctx.font = 'bold 32px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${starsCount || 0}`, starCx, y + h / 2 + 38);
 
   // 3. Bottom Subtitle: "ENEMY CRIT RESERVOIR" / "MASTER CRIT RESERVOIR"
   ctx.fillStyle = textColor;
   ctx.font = 'bold 8px sans-serif';
   ctx.textAlign = 'center';
-  const subText = isOpponent ? 'ENEMY CRIT RESERVOIR' : 'MASTER CRIT RESERVOIR';
-  ctx.fillText(subText, x + w / 2, y + h - 16);
+  const subText = isOpponent ? 'ENEMY RESERVOIR' : 'MASTER RESERVOIR';
+  ctx.fillText(subText, x + w / 2, y + h - 14);
 
   ctx.restore();
 }
@@ -858,8 +849,8 @@ function drawTarotCommandCard(
   let gradTop = '#5c1414';
   let gradBottom = '#140404';
   let borderColor = '#ef4444';
+  let glowColor = 'rgba(239, 68, 68, 0.35)';
   let accentColor = '#fca5a5';
-  let ringColor = 'rgba(239, 68, 68, 0.4)';
   let cardTitle = 'BUSTER';
   let letter = 'B';
   let stepMult = orderIdx === 0 ? '1st (+50% DMG)' : orderIdx === 1 ? '2nd (1.2x)' : '3rd (1.4x)';
@@ -868,8 +859,8 @@ function drawTarotCommandCard(
     gradTop = '#0f2942';
     gradBottom = '#040d16';
     borderColor = '#3b82f6';
+    glowColor = 'rgba(59, 130, 246, 0.35)';
     accentColor = '#93c5fd';
-    ringColor = 'rgba(59, 130, 246, 0.4)';
     cardTitle = 'ARTS';
     letter = 'A';
     stepMult = orderIdx === 0 ? '1st (+100% NP)' : orderIdx === 1 ? '2nd (1.2x)' : '3rd (1.4x)';
@@ -877,8 +868,8 @@ function drawTarotCommandCard(
     gradTop = '#064e3b';
     gradBottom = '#02150e';
     borderColor = '#10b981';
+    glowColor = 'rgba(16, 185, 129, 0.35)';
     accentColor = '#6ee7b7';
-    ringColor = 'rgba(16, 185, 129, 0.4)';
     cardTitle = 'QUICK';
     letter = 'Q';
     stepMult = orderIdx === 0 ? '1st (+STARS)' : orderIdx === 1 ? '2nd (1.2x)' : '3rd (1.4x)';
@@ -886,8 +877,8 @@ function drawTarotCommandCard(
     gradTop = '#5c3d05';
     gradBottom = '#160d02';
     borderColor = '#f59e0b';
+    glowColor = 'rgba(245, 158, 11, 0.4)';
     accentColor = '#fde047';
-    ringColor = 'rgba(245, 158, 11, 0.4)';
     cardTitle = 'N. PHANTASM';
     letter = 'NP';
     stepMult = 'NOBLE PHANTASM';
@@ -901,24 +892,13 @@ function drawTarotCommandCard(
   drawRoundRect(ctx, x, y, w, h, 8);
   ctx.fill();
 
-  // Subtle interior grid / scanlines
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
-  ctx.lineWidth = 1;
-  for (let ly = y + 8; ly < y + h; ly += 8) {
-    ctx.beginPath();
-    ctx.moveTo(x + 4, ly);
-    ctx.lineTo(x + w - 4, ly);
-    ctx.stroke();
-  }
-
-  // Border
+  // Border & Inset
   ctx.strokeStyle = borderColor;
-  ctx.lineWidth = 1.8;
+  ctx.lineWidth = 1.6;
   drawRoundRect(ctx, x, y, w, h, 8);
   ctx.stroke();
 
-  // Inset hairline
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
   ctx.lineWidth = 0.8;
   drawRoundRect(ctx, x + 2, y + 2, w - 4, h - 4, 6);
   ctx.stroke();
@@ -940,29 +920,23 @@ function drawTarotCommandCard(
 
   // Header bottom divider line
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 0.8;
   ctx.beginPath();
-  ctx.moveTo(x + 4, y + 26);
-  ctx.lineTo(x + w - 4, y + 26);
+  ctx.moveTo(x + 6, y + 25);
+  ctx.lineTo(x + w - 6, y + 25);
   ctx.stroke();
 
-  // Center Emblem with Concentric Rings
+  // Center Large Icon with Ambient Radial Glow (Spacious, No boxed-in rings)
   const emblemCx = x + w / 2;
   const emblemCy = y + 76;
 
-  // Outer ring
-  ctx.strokeStyle = ringColor;
-  ctx.lineWidth = 1.5;
+  const bgIconGlow = ctx.createRadialGradient(emblemCx, emblemCy, 6, emblemCx, emblemCy, 38);
+  bgIconGlow.addColorStop(0, glowColor);
+  bgIconGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = bgIconGlow;
   ctx.beginPath();
-  ctx.arc(emblemCx, emblemCy, 28, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Inner ring
-  ctx.strokeStyle = ringColor;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.arc(emblemCx, emblemCy, 22, 0, Math.PI * 2);
-  ctx.stroke();
+  ctx.arc(emblemCx, emblemCy, 38, 0, Math.PI * 2);
+  ctx.fill();
 
   let cardIconImg: any = null;
   if (card === 'Buster') {
@@ -975,25 +949,21 @@ function drawTarotCommandCard(
     cardIconImg = buffImageMap?.get(STATUS_ICON_URLS.overcharge_up) || buffImageMap?.get(STATUS_ICON_URLS.flat_dmg_up);
   }
 
+  const iconDrawSize = 50;
   if (cardIconImg) {
-    ctx.save();
-    drawRoundRect(ctx, emblemCx - 17, emblemCy - 17, 34, 34, 6);
-    ctx.clip();
-    ctx.drawImage(cardIconImg, emblemCx - 17, emblemCy - 17, 34, 34);
-    ctx.restore();
+    ctx.drawImage(cardIconImg, emblemCx - iconDrawSize / 2, emblemCy - iconDrawSize / 2, iconDrawSize, iconDrawSize);
   } else {
-    // Glowing center letter
     ctx.fillStyle = '#ffffff';
-    ctx.font = letter === 'NP' ? 'bold 20px sans-serif' : 'bold 28px sans-serif';
+    ctx.font = letter === 'NP' ? 'bold 22px sans-serif' : 'bold 30px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(letter, emblemCx, emblemCy + (letter === 'NP' ? 7 : 10));
+    ctx.fillText(letter, emblemCx, emblemCy + (letter === 'NP' ? 8 : 11));
   }
 
   // Multiplier / Effect Text (e.g. "1st (+50% DMG)", "2nd (1.2x)")
   ctx.fillStyle = accentColor;
-  ctx.font = '10px sans-serif';
+  ctx.font = 'bold 10px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(stepMult, emblemCx, y + 124);
+  ctx.fillText(stepMult, emblemCx, y + 126);
 
   // Bottom Crit Star Footer Pill (e.g. "★ CRIT 16%")
   const footerH = 22;
@@ -1004,12 +974,11 @@ function drawTarotCommandCard(
   ctx.fillStyle = 'rgba(10, 15, 26, 0.85)';
   drawRoundRect(ctx, footerX, footerY, footerW, footerH, 4);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
   ctx.lineWidth = 0.8;
   drawRoundRect(ctx, footerX, footerY, footerW, footerH, 4);
   ctx.stroke();
 
-  const starIcon = buffImageMap?.get(STATUS_ICON_URLS.crit_stars) || buffImageMap?.get(STATUS_ICON_URLS.gain_stars);
   if (card === 'NP' || card === 'Phantasm') {
     ctx.fillStyle = '#fde047';
     ctx.font = 'bold 9.5px sans-serif';
@@ -1017,10 +986,11 @@ function drawTarotCommandCard(
     ctx.fillText('NOBLE CARD', footerX + footerW / 2, footerY + 15);
   } else {
     const critPercent = Math.min(100, Math.max(0, (critStars || 0) * 2));
-    if (starIcon) {
-      ctx.drawImage(starIcon, footerX + 8, footerY + 4, 14, 14);
+    const starImg = buffImageMap?.get(STATUS_ICON_URLS.crit_stars);
+    if (starImg) {
+      ctx.drawImage(starImg, footerX + 6, footerY + 3, 16, 16);
     } else {
-      drawVectorStar(ctx, footerX + 12, footerY + 11, 5, 4, 2, '#fbbf24');
+      drawVectorStar(ctx, footerX + 12, footerY + 11, 5, 5, 2.5, '#fbbf24');
     }
 
     ctx.fillStyle = '#ffffff';
@@ -1049,7 +1019,6 @@ function drawCompactCommandCard(
   buffImageMap?: Map<string, any>
 ) {
   ctx.save();
-  // Shadow
   ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
   drawRoundRect(ctx, x + 2, y + 2, w, h, 6);
   ctx.fill();
@@ -1057,8 +1026,8 @@ function drawCompactCommandCard(
   let gradTop = '#5c1414';
   let gradBottom = '#140404';
   let borderColor = '#ef4444';
+  let glowColor = 'rgba(239, 68, 68, 0.35)';
   let accentColor = '#fca5a5';
-  let ringColor = 'rgba(239, 68, 68, 0.45)';
   let cardTitle = 'BUSTER';
   let letter = 'B';
   let stepMult = orderIdx === 0 ? '1st (+50%)' : orderIdx === 1 ? '2nd (1.2x)' : '3rd (1.4x)';
@@ -1067,8 +1036,8 @@ function drawCompactCommandCard(
     gradTop = '#0f2942';
     gradBottom = '#040d16';
     borderColor = '#3b82f6';
+    glowColor = 'rgba(59, 130, 246, 0.35)';
     accentColor = '#93c5fd';
-    ringColor = 'rgba(59, 130, 246, 0.45)';
     cardTitle = 'ARTS';
     letter = 'A';
     stepMult = orderIdx === 0 ? '1st (+100%)' : orderIdx === 1 ? '2nd (1.2x)' : '3rd (1.4x)';
@@ -1076,8 +1045,8 @@ function drawCompactCommandCard(
     gradTop = '#064e3b';
     gradBottom = '#02150e';
     borderColor = '#10b981';
+    glowColor = 'rgba(16, 185, 129, 0.35)';
     accentColor = '#6ee7b7';
-    ringColor = 'rgba(16, 185, 129, 0.45)';
     cardTitle = 'QUICK';
     letter = 'Q';
     stepMult = orderIdx === 0 ? '1st (+STAR)' : orderIdx === 1 ? '2nd (1.2x)' : '3rd (1.4x)';
@@ -1085,8 +1054,8 @@ function drawCompactCommandCard(
     gradTop = '#5c3d05';
     gradBottom = '#160d02';
     borderColor = '#f59e0b';
+    glowColor = 'rgba(245, 158, 11, 0.4)';
     accentColor = '#fde047';
-    ringColor = 'rgba(245, 158, 11, 0.5)';
     cardTitle = 'NP';
     letter = 'NP';
     stepMult = 'MAX CHG';
@@ -1106,7 +1075,7 @@ function drawCompactCommandCard(
   drawRoundRect(ctx, x, y, w, h, 6);
   ctx.stroke();
 
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
   ctx.lineWidth = 0.8;
   drawRoundRect(ctx, x + 2, y + 2, w - 4, h - 4, 4);
   ctx.stroke();
@@ -1131,21 +1100,17 @@ function drawCompactCommandCard(
   ctx.lineTo(x + w - 4, y + 18);
   ctx.stroke();
 
-  // Center Emblem with Concentric Rings
+  // Center Emblem (Unboxed with soft glow)
   const emblemCx = x + w / 2;
   const emblemCy = y + 54;
 
-  // Outer ring
-  ctx.strokeStyle = ringColor;
-  ctx.lineWidth = 1.2;
+  const bgGlow = ctx.createRadialGradient(emblemCx, emblemCy, 4, emblemCx, emblemCy, 26);
+  bgGlow.addColorStop(0, glowColor);
+  bgGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = bgGlow;
   ctx.beginPath();
-  ctx.arc(emblemCx, emblemCy, 19, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Inner ring
-  ctx.beginPath();
-  ctx.arc(emblemCx, emblemCy, 15, 0, Math.PI * 2);
-  ctx.stroke();
+  ctx.arc(emblemCx, emblemCy, 26, 0, Math.PI * 2);
+  ctx.fill();
 
   let cardIconImg: any = null;
   if (card === 'Buster') {
@@ -1158,18 +1123,14 @@ function drawCompactCommandCard(
     cardIconImg = buffImageMap?.get(STATUS_ICON_URLS.overcharge_up) || buffImageMap?.get(STATUS_ICON_URLS.flat_dmg_up);
   }
 
+  const compactIconSize = 36;
   if (cardIconImg) {
-    ctx.save();
-    drawRoundRect(ctx, emblemCx - 12, emblemCy - 12, 24, 24, 4);
-    ctx.clip();
-    ctx.drawImage(cardIconImg, emblemCx - 12, emblemCy - 12, 24, 24);
-    ctx.restore();
+    ctx.drawImage(cardIconImg, emblemCx - compactIconSize / 2, emblemCy - compactIconSize / 2, compactIconSize, compactIconSize);
   } else {
-    // Glowing center letter
     ctx.fillStyle = '#ffffff';
-    ctx.font = letter === 'NP' ? 'bold 13px sans-serif' : 'bold 20px sans-serif';
+    ctx.font = letter === 'NP' ? 'bold 14px sans-serif' : 'bold 22px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(letter, emblemCx, emblemCy + (letter === 'NP' ? 5 : 7));
+    ctx.fillText(letter, emblemCx, emblemCy + (letter === 'NP' ? 5 : 8));
   }
 
   // Step Multiplier Text
@@ -1192,7 +1153,6 @@ function drawCompactCommandCard(
   drawRoundRect(ctx, footerX, footerY, footerW, footerH, 3);
   ctx.stroke();
 
-  const starIcon = buffImageMap?.get(STATUS_ICON_URLS.crit_stars) || buffImageMap?.get(STATUS_ICON_URLS.gain_stars);
   if (card === 'NP') {
     ctx.fillStyle = '#fde047';
     ctx.font = 'bold 8px sans-serif';
@@ -1200,8 +1160,9 @@ function drawCompactCommandCard(
     ctx.fillText('NOBLE NP', footerX + footerW / 2, footerY + 12);
   } else {
     const critPercent = Math.min(100, Math.max(0, (critStars || 0) * 2));
-    if (starIcon) {
-      ctx.drawImage(starIcon, footerX + 5, footerY + 2.5, 12, 12);
+    const starImg = buffImageMap?.get(STATUS_ICON_URLS.crit_stars);
+    if (starImg) {
+      ctx.drawImage(starImg, footerX + 4, footerY + 2, 13, 13);
     } else {
       drawVectorStar(ctx, footerX + 9, footerY + 8.5, 5, 3.5, 1.8, '#fbbf24');
     }
@@ -1229,7 +1190,6 @@ function drawCompactCritStarCard(
   buffImageMap?: Map<string, any>
 ) {
   ctx.save();
-  // Shadow
   ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
   drawRoundRect(ctx, x + 2, y + 2, w, h, 6);
   ctx.fill();
@@ -1248,21 +1208,20 @@ function drawCompactCritStarCard(
   drawRoundRect(ctx, x, y, w, h, 6);
   ctx.fill();
 
-  // Border
+  // Border & Inset
   ctx.strokeStyle = borderColor;
   ctx.lineWidth = 1.3;
   drawRoundRect(ctx, x, y, w, h, 6);
   ctx.stroke();
 
-  // Inset hairline
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
   ctx.lineWidth = 0.8;
   drawRoundRect(ctx, x + 2, y + 2, w - 4, h - 4, 4);
   ctx.stroke();
 
-  // Top header label: STARS
+  // Top header label: CRIT STARS
   ctx.fillStyle = textColor;
-  ctx.font = 'bold 8.5px sans-serif';
+  ctx.font = 'bold 8px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('CRIT STARS', x + w / 2, y + 14);
 
@@ -1270,54 +1229,42 @@ function drawCompactCritStarCard(
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
   ctx.lineWidth = 0.8;
   ctx.beginPath();
-  ctx.moveTo(x + 4, y + 20);
-  ctx.lineTo(x + w - 4, y + 20);
+  ctx.moveTo(x + 4, y + 18);
+  ctx.lineTo(x + w - 4, y + 18);
   ctx.stroke();
 
-  // Center Glowing Star Vector
-  const starCx = x + w / 2;
-  const starCy = y + 48;
+  // Large Star Icon (Unboxed)
+  const starImg = buffImageMap?.get(STATUS_ICON_URLS.crit_stars) || buffImageMap?.get(STATUS_ICON_URLS.gain_stars);
+  const cx = x + w / 2;
+  const cy = y + 50;
 
-  const starGlow = ctx.createRadialGradient(starCx, starCy, 2, starCx, starCy, 16);
+  const starGlow = ctx.createRadialGradient(cx, cy, 3, cx, cy, 24);
   starGlow.addColorStop(0, glowColor);
   starGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = starGlow;
   ctx.beginPath();
-  ctx.arc(starCx, starCy, 16, 0, Math.PI * 2);
+  ctx.arc(cx, cy, 24, 0, Math.PI * 2);
   ctx.fill();
 
-  const starImg = buffImageMap?.get(STATUS_ICON_URLS.crit_stars) || buffImageMap?.get(STATUS_ICON_URLS.gain_stars);
+  const starSize = 30;
   if (starImg) {
-    ctx.drawImage(starImg, starCx - 11, starCy - 11, 22, 22);
+    ctx.drawImage(starImg, cx - starSize / 2, cy - starSize / 2, starSize, starSize);
   } else {
-    drawVectorStar(ctx, starCx, starCy, 5, 9, 4.5, starColor, isOpponent ? '#fecaca' : '#bae6fd');
+    drawVectorStar(ctx, cx, cy, 5, 12, 6, starColor, isOpponent ? '#fecaca' : '#bae6fd');
   }
 
-  // Large Bold Numeric Star Count
+  // Numeric count
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 22px sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(`${starsCount || 0}`, starCx, y + 86);
+  ctx.fillText(`${starsCount || 0}`, cx, y + 88);
 
-  // Bottom Unit Identifier Pill
-  const footerH = 17;
-  const footerY = y + h - footerH - 4;
-  const footerW = w - 8;
-  const footerX = x + 4;
-
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-  drawRoundRect(ctx, footerX, footerY, footerW, footerH, 3);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-  ctx.lineWidth = 0.6;
-  drawRoundRect(ctx, footerX, footerY, footerW, footerH, 3);
-  ctx.stroke();
-
-  ctx.fillStyle = textColor;
+  // Bottom label
+  ctx.fillStyle = '#94a3b8';
   ctx.font = 'bold 7.5px sans-serif';
   ctx.textAlign = 'center';
-  const cleanLabel = unitLabel.length > 8 ? unitLabel.slice(0, 7) + '...' : unitLabel;
-  ctx.fillText(cleanLabel.toUpperCase(), footerX + footerW / 2, footerY + 12);
+  const cleanLabel = (unitLabel || 'RESERVOIR').slice(0, 10).toUpperCase();
+  ctx.fillText(cleanLabel, cx, y + h - 8);
 
   ctx.restore();
 }
@@ -5765,29 +5712,31 @@ function drawUnitHudPlate(
   ctx.textAlign = 'center';
   ctx.fillText(roleLabel, pX + 4 + roleW / 2, pY + 15);
 
-  // Class Pill on Top-Right
-  const sClass = (servant.servantClass || 'SABER').toUpperCase();
-  const classIcon = classImageMap?.get(getClassIconUrl(servant.servantClass));
-  const classW = classIcon ? 56 : 44;
-  ctx.fillStyle = 'rgba(10, 15, 26, 0.88)';
-  drawRoundRect(ctx, pX + pW - classW - 4, pY + 4, classW, 16, 4);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-  ctx.lineWidth = 0.8;
-  drawRoundRect(ctx, pX + pW - classW - 4, pY + 4, classW, 16, 4);
-  ctx.stroke();
+  // Class Pill on Top-Right (Only for 2v2/multi-combat grid where showBars is true to avoid duplication with the 1v1 main header)
+  if (showBars) {
+    const sClass = (servant.servantClass || 'SABER').toUpperCase();
+    const classIcon = classImageMap?.get(getClassIconUrl(servant.servantClass));
+    const classW = classIcon ? 56 : 44;
+    ctx.fillStyle = 'rgba(10, 15, 26, 0.88)';
+    drawRoundRect(ctx, pX + pW - classW - 4, pY + 4, classW, 16, 4);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.lineWidth = 0.8;
+    drawRoundRect(ctx, pX + pW - classW - 4, pY + 4, classW, 16, 4);
+    ctx.stroke();
 
-  if (classIcon) {
-    ctx.drawImage(classIcon, pX + pW - classW - 2, pY + 5, 14, 14);
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = 'bold 7.5px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(sClass.slice(0, 7), pX + pW - classW + 14, pY + 15);
-  } else {
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = 'bold 8px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(sClass, pX + pW - classW / 2 - 4, pY + 15);
+    if (classIcon) {
+      ctx.drawImage(classIcon, pX + pW - classW - 2, pY + 5, 14, 14);
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 7.5px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(sClass.slice(0, 7), pX + pW - classW + 14, pY + 15);
+    } else {
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = 'bold 8px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(sClass, pX + pW - classW / 2 - 4, pY + 15);
+    }
   }
 
   // Active Buff Micro-Chips Tray (Bottom of Portrait above name)

@@ -2330,31 +2330,7 @@ export function executeBattleTurn(
     const hasStunBuff = actor.isStunned || (actor.activeBuffs && actor.activeBuffs.some(b => b.type === 'stun'));
     if (hasStunBuff) {
       actor.isStunned = false; // Stun wears off after this incapacitated turn
-      actor.activeBuffs = (actor.activeBuffs || [])
-        .filter(b => b.type !== 'stun') // explicitly remove the 1-turn stun buff so it cannot linger
-        .map(b => {
-          if (
-            b.type === 'buff_atk' ||
-            b.type === 'debuff_atk' ||
-            b.type === 'buster_up' ||
-            b.type === 'arts_up' ||
-            b.type === 'quick_up' ||
-            b.type === 'crit_dmg' ||
-            b.type === 'np_gen' ||
-            b.type === 'np_gain' ||
-            b.type === 'stars_per_turn' ||
-            b.type === 'hp_regen' ||
-            b.type === 'ignore_invincible' ||
-            b.type === 'ignore_defense' ||
-            b.type === 'skill_seal' ||
-            b.type === 'debuff_np_strength' ||
-            b.type === 'debuff_np_dmg'
-          ) {
-            return { ...b, remainingTurns: b.remainingTurns - 1 };
-          }
-          return b;
-        })
-        .filter(b => b.remainingTurns > 0);
+      actor.activeBuffs = (actor.activeBuffs || []).filter(b => b.type !== 'stun');
       if (!actor.activeBuffs.some(b => b.type === 'evade')) actor.isEvading = false;
       if (!actor.activeBuffs.some(b => b.type === 'invincible')) actor.isInvincible = false;
       turnLogs.push({
@@ -2895,41 +2871,10 @@ export function executeBattleTurn(
     const dialogueTag = dialogueInfo.tag;
     const dialogueTitle = dialogueInfo.speakerTitle;
 
-    // Decrement buff durations (offensive, utility, and turn-based defensive buffs after turn completion)
-    actor.activeBuffs = actor.activeBuffs
-      .map(b => {
-        const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
-        if (b.type === 'evade' || b.type === 'invincible') {
-          // Defensive buffs protect against incoming attacks; do not decrement on attacker when completing their own attack
-          return b;
-        }
-        if (
-          b.type === 'buff_atk' ||
-          b.type === 'debuff_atk' ||
-          b.type === 'buster_up' ||
-          b.type === 'arts_up' ||
-          b.type === 'quick_up' ||
-          b.type === 'crit_dmg' ||
-          b.type === 'np_gen' ||
-          b.type === 'np_gain' ||
-          b.type === 'stars_per_turn' ||
-          b.type === 'hp_regen' ||
-          b.type === 'ignore_invincible' ||
-          b.type === 'ignore_defense' ||
-          b.type === 'skill_seal' ||
-          b.type === 'debuff_np_strength' ||
-          b.type === 'debuff_np_dmg' ||
-          b.type === 'buff_def' ||
-          b.type === 'debuff_def'
-        ) {
-          return { ...b, remainingTurns: b.remainingTurns - 1 };
-        }
-        return b;
-      })
-      .filter(b => b.remainingTurns > 0 && (!b.isHitCount || b.remainingHits === undefined || b.remainingHits > 0));
-    if (!actor.activeBuffs.some(b => b.type === 'evade')) actor.isEvading = false;
-    if (!actor.activeBuffs.some(b => b.type === 'invincible')) actor.isInvincible = false;
-    if (!actor.activeBuffs.some(b => b.type === 'stun')) actor.isStunned = false;
+    // Sync defensive booleans after turn actions
+    actor.isInvincible = actor.activeBuffs.some(b => b.type === 'invincible');
+    actor.isEvading = actor.activeBuffs.some(b => b.type === 'evade');
+    actor.isStunned = actor.activeBuffs.some(b => b.type === 'stun');
 
     turnLogs.push({
       turnNumber: state.currentTurn,
