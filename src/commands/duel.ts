@@ -1553,17 +1553,27 @@ function activateCombatantSkill(
     // Grants self Guts status for 1 time, 5 turns (revives with 3,000 HP).
     // Inflicts 3 stacks of Curse with 100 damage for 10 turns to self [Demerit].
     // Charges own NP gauge by 10% per Curse stack on self.
-    combatant.gutsCount = (combatant.gutsCount || 0) + 1;
-    combatant.activeBuffs.unshift({
-      name: 'Void Space Fine Arts (Guts)',
-      type: 'guts',
-      value: 3000,
-      remainingTurns: 5,
-      remainingHits: 1,
-      isHitCount: true,
-      appliedRound: currentRound,
-      appliedTurnUserId: combatant.userId
-    });
+    const isHeracles = combatant.servant.templateId === 'heracles_berserker' ||
+                       combatant.servant.templateId === 'heracles' ||
+                       /heracles|herakles/i.test(combatant.servant.template?.name || combatant.servant.nickname || '');
+    const hasActiveGuts = combatant.activeBuffs.some((b: any) => b.type === 'guts' && (b.remainingTurns === undefined || b.remainingTurns > 0)) || ((combatant.gutsCount || 0) > 0);
+    let gutsGrantedText = '';
+    if (isHeracles || !hasActiveGuts) {
+      combatant.gutsCount = (combatant.gutsCount || 0) + 1;
+      combatant.activeBuffs.unshift({
+        name: 'Void Space Fine Arts (Guts)',
+        type: 'guts',
+        value: 3000,
+        remainingTurns: 5,
+        remainingHits: 1,
+        isHitCount: true,
+        appliedRound: currentRound,
+        appliedTurnUserId: combatant.userId
+      });
+      gutsGrantedText = 'Guts 3,000 HP (5T)';
+    } else {
+      gutsGrantedText = '[Guts Already Active - Does not stack]';
+    }
     for (let k = 0; k < 3; k++) {
       combatant.activeBuffs.push({
         name: `Void Curse Stack ${k + 1} [Demerit]`,
@@ -1577,7 +1587,7 @@ function activateCombatantSkill(
     const curCurses = combatant.activeBuffs.filter(b => b.type === 'curse').length;
     const npGain = curCurses * 10;
     combatant.npGauge = Math.min(300, (combatant.npGauge || 0) + npGain);
-    logText = `🎨 **${sName}** activated **${skill.name}**! (Guts 3,000 HP (5T), +3 Curse Stacks [Demerit], ⚡ +${npGain}% NP Gauge from ${curCurses} active Curses!)${quoteLine}`;
+    logText = `🎨 **${sName}** activated **${skill.name}**! (${gutsGrantedText}, +3 Curse Stacks [Demerit], ⚡ +${npGain}% NP Gauge from ${curCurses} active Curses!)${quoteLine}`;
   } else if (skill.id === 'het_gele_huis' || /het gele huis|the yellow house/i.test(skill.name)) {
     // Van Gogh S2: Het Gele Huis: The Yellow House A+
     // Reduces all enemies' defense by 20% for 3 turns. Reduces their Quick resistance by 20% for 3 turns.
@@ -1814,14 +1824,24 @@ function activateCombatantSkill(
   } else if (skill.effectType === 'guts' || skill.id?.includes('guts') || skill.id?.includes('battle_continuation') || skill.id?.includes('thrice')) {
     const reviveAmt = skill.value || Math.round(combatant.maxHp * 0.20);
     const descLower = (skill.description || '').toLowerCase();
-    combatant.gutsCount = (combatant.gutsCount || 0) + 1;
-    combatant.activeBuffs.unshift({
-      name: skill.name,
-      type: 'guts',
-      value: reviveAmt,
-      remainingTurns: skill.duration || 5,
-      appliedRound: currentRound
-    });
+    const isHeracles = combatant.servant.templateId === 'heracles_berserker' ||
+                       combatant.servant.templateId === 'heracles' ||
+                       /heracles|herakles/i.test(combatant.servant.template?.name || combatant.servant.nickname || '');
+    const hasActiveGuts = combatant.activeBuffs.some((b: any) => b.type === 'guts' && (b.remainingTurns === undefined || b.remainingTurns > 0)) || ((combatant.gutsCount || 0) > 0);
+    let gutsSummaryTag = '';
+    if (isHeracles || !hasActiveGuts) {
+      combatant.gutsCount = (combatant.gutsCount || 0) + 1;
+      combatant.activeBuffs.unshift({
+        name: skill.name,
+        type: 'guts',
+        value: reviveAmt,
+        remainingTurns: skill.duration || 5,
+        appliedRound: currentRound
+      });
+      gutsSummaryTag = `Granted Guts [${reviveAmt.toLocaleString()} HP / ${skill.duration || 5}T]`;
+    } else {
+      gutsSummaryTag = `[Guts Already Active - Does not stack]`;
+    }
     if (descLower.includes('invincible') || descLower.includes('invincibility')) {
       combatant.activeBuffs.push({
         name: `${skill.name} (Invincible)`,
@@ -1856,7 +1876,7 @@ function activateCombatantSkill(
         appliedRound: currentRound
       });
     }
-    logText = `🩸 **${sName}** activated **${skill.name}**!${quoteLine}`;
+    logText = `🩸 **${sName}** activated **${skill.name}**! (${gutsSummaryTag})${quoteLine}`;
   } else if (skill.effectType === 'heal') {
     const healVal = skill.value || Math.round(combatant.maxHp * 0.25);
     combatant.currentHp = Math.min(combatant.maxHp, combatant.currentHp + healVal);
@@ -2854,9 +2874,7 @@ function resolveStrike(
 
       const hitCrit = Math.random() < critChance;
       if (hitCrit) isAnyCrit = true;
-      const activeCritBuffs = attacker.activeBuffs.filter(b => b.type === 'crit_dmg' || b.type === 'crit_dmg_up').reduce((s, b) => s + b.value, 0);
-      const currentCritDmgBonus = 1.0 + (critPassiveBonus / 100) + luckCritBonus + (activeCritBuffs / 100);
-      const critMult = hitCrit ? (1.75 * currentCritDmgBonus) : 1.0;
+      const critMult = hitCrit ? (1.75 * critDmgBonus) : 1.0;
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2) + busterChainBonusDmg;
@@ -2905,9 +2923,7 @@ function resolveStrike(
 
       const hitCrit = Math.random() < critChance;
       if (hitCrit) isAnyCrit = true;
-      const activeCritBuffs = attacker.activeBuffs.filter(b => b.type === 'crit_dmg' || b.type === 'crit_dmg_up').reduce((s, b) => s + b.value, 0);
-      const currentCritDmgBonus = 1.0 + (critPassiveBonus / 100) + luckCritBonus + (activeCritBuffs / 100);
-      const critMult = hitCrit ? (1.75 * currentCritDmgBonus) : 1.0;
+      const critMult = hitCrit ? (1.75 * critDmgBonus) : 1.0;
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
@@ -2958,9 +2974,7 @@ function resolveStrike(
 
       const hitCrit = Math.random() < critChance;
       if (hitCrit) isAnyCrit = true;
-      const activeCritBuffs = attacker.activeBuffs.filter(b => b.type === 'crit_dmg' || b.type === 'crit_dmg_up').reduce((s, b) => s + b.value, 0);
-      const currentCritDmgBonus = 1.0 + (critPassiveBonus / 100) + luckCritBonus + (activeCritBuffs / 100);
-      const critMult = hitCrit ? (1.75 * currentCritDmgBonus) : 1.0;
+      const critMult = hitCrit ? (1.75 * critDmgBonus) : 1.0;
       const variance = 0.95 + Math.random() * 0.10;
 
       const baseHit = (effectiveAtk * cardMult * 0.11) - (effectiveDef * 2);
@@ -3103,40 +3117,15 @@ function resolveStrike(
 
   // Decrement attacker offensive, utility, and special buffs after completing turn (defensive buffs persist for incoming strikes)
   attacker.activeBuffs = attacker.activeBuffs.filter(b => {
-    if (b.type === 'evade' || b.type === 'invincible' || b.type === 'anti_purge_defense' || b.type === 'anti_purge') {
-      const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
-      if (isHitBased) {
-        return b.remainingHits === undefined || b.remainingHits > 0;
-      }
-      return b.remainingTurns > 0;
+    const isDefensive = b.type === 'evade' || b.type === 'invincible' || b.type === 'anti_purge_defense' || b.type === 'anti_purge' || b.type === 'guts' || b.type === 'damage_cut';
+    const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
+    if (isHitBased) {
+      return b.remainingHits === undefined || b.remainingHits > 0;
     }
-    if (
-      b.type === 'buff_atk' ||
-      b.type === 'atk_up' ||
-      b.type === 'debuff_atk' ||
-      b.type === 'crit_dmg' ||
-      b.type === 'crit_dmg_up' ||
-      b.type === 'np_gen' ||
-      b.type === 'np_gain' ||
-      b.type === 'buster_up' ||
-      b.type === 'arts_up' ||
-      b.type === 'quick_up' ||
-      b.type === 'ignore_invincible' ||
-      b.type === 'ignore_defense' ||
-      b.type === 'skill_seal' ||
-      b.type === 'stars_per_turn' ||
-      b.type === 'star_regen' ||
-      b.type === 'hp_regen' ||
-      b.type === 'debuff_np_strength' ||
-      b.type === 'debuff_np_dmg' ||
-      b.type === 'buff_def' ||
-      b.type === 'def_up' ||
-      b.type === 'debuff_def' ||
-      b.type === 'quick_res_down' ||
-      b.type === 'star_gain_up' ||
-      b.type === 'buff_on_quick_curse_cleanse' ||
-      b.type === 'curse'
-    ) {
+    if (isDefensive) {
+      return b.remainingTurns === undefined || b.remainingTurns > 0;
+    }
+    if (b.remainingTurns !== undefined && b.remainingTurns > 0 && b.remainingTurns < 90) {
       b.remainingTurns--;
       return b.remainingTurns > 0;
     }
@@ -4771,7 +4760,13 @@ async function startInteractiveDuel(
             }).filter(b => b.remainingTurns > 0 && (!b.isHitCount || b.remainingHits === undefined || b.remainingHits > 0));
             c.isInvincible = c.activeBuffs.some(b => b.type === 'invincible');
             c.isEvading = c.activeBuffs.some(b => b.type === 'evade');
+            c.isAntiPurgeDefense = c.activeBuffs.some(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge');
             c.isStunned = c.activeBuffs.some(b => b.type === 'stun');
+            // Re-sync gutsCount strictly with remaining active Guts buffs
+            const activeGutsHits = c.activeBuffs
+              .filter(b => b.type === 'guts' && (b.remainingTurns === undefined || b.remainingTurns > 0))
+              .reduce((acc, b) => acc + (b.remainingHits !== undefined ? b.remainingHits : 1), 0);
+            c.gutsCount = activeGutsHits;
           }
         });
       }

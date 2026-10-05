@@ -1093,14 +1093,25 @@ async function runRaidBattle(
             // 500% Chance to inflict 3 stacks of Curse with 100 damage for 10 turns to self [Demerit].
             // Charges own NP gauge by 10% per Curse stack on self.
             active.activeBuffs = active.activeBuffs || [];
-            active.activeBuffs.push({
-              name: 'Void Space Fine Arts (Guts)',
-              type: 'guts',
-              value: 3000,
-              remainingTurns: 5,
-              remainingHits: 1,
-              isHitCount: true
-            } as any);
+            const isHeracles = active.servant.templateId === 'heracles_berserker' ||
+                               active.servant.templateId === 'heracles' ||
+                               /heracles|herakles/i.test(active.servant.template?.name || '');
+            const hasActiveGuts = active.activeBuffs.some(b => b.type === 'guts' && (b.remainingTurns === undefined || b.remainingTurns > 0));
+
+            let gutsRaidMsg = '';
+            if (isHeracles || !hasActiveGuts) {
+              active.activeBuffs.push({
+                name: 'Void Space Fine Arts (Guts)',
+                type: 'guts',
+                value: 3000,
+                remainingTurns: 5,
+                remainingHits: 1,
+                isHitCount: true
+              } as any);
+              gutsRaidMsg = '🩸 Guts [3,000 HP/5T]';
+            } else {
+              gutsRaidMsg = '🩸 [Guts Already Active - Does not stack]';
+            }
             for (let k = 0; k < 3; k++) {
               active.activeBuffs.push({
                 name: `Void Curse Stack ${k + 1} [Demerit]`,
@@ -1112,7 +1123,7 @@ async function runRaidBattle(
             const curCurses = active.activeBuffs.filter(b => b.type === 'curse').length;
             const npGain = curCurses * 10;
             active.npGauge = Math.min(300, (active.npGauge || 0) + npGain);
-            buffLog = `(🩸 Guts [3,000 HP/5T], 💀 +3 Curse Stacks [Demerit], ⚡ +${npGain}% NP Gauge from ${curCurses} active Curses!)`;
+            buffLog = `(${gutsRaidMsg}, 💀 +3 Curse Stacks [Demerit], ⚡ +${npGain}% NP Gauge from ${curCurses} active Curses!)`;
           } else if (skillObj?.id === 'het_gele_huis' || /het gele huis|the yellow house/i.test(sName)) {
             // Van Gogh S2: Het Gele Huis: The Yellow House A+
             // Reduces all enemies' DEF by -20% (3T) & Quick Res by -20% (3T).
@@ -1368,14 +1379,25 @@ async function runRaidBattle(
         } else if (isGuts) {
           const reviveVal = skillObj?.value || (/4,000/i.test(sDesc) ? 4000 : /3,000/i.test(sDesc) ? 3000 : /2,500/i.test(sDesc) ? 2500 : 2000);
           active.activeBuffs = active.activeBuffs || [];
-          active.activeBuffs.push({
-            name: `${sName} (Guts)`,
-            type: 'guts',
-            value: reviveVal,
-            remainingTurns: skillObj?.duration || 5,
-            remainingHits: 1,
-            isHitCount: true
-          } as any);
+          const isHeracles = active.servant.templateId === 'heracles_berserker' ||
+                             active.servant.templateId === 'heracles' ||
+                             /heracles|herakles/i.test(active.servant.template?.name || '');
+          const hasActiveGuts = active.activeBuffs.some(b => b.type === 'guts' && (b.remainingTurns === undefined || b.remainingTurns > 0));
+
+          let gutsLogPart = '';
+          if (isHeracles || !hasActiveGuts) {
+            active.activeBuffs.push({
+              name: `${sName} (Guts)`,
+              type: 'guts',
+              value: reviveVal,
+              remainingTurns: skillObj?.duration || 5,
+              remainingHits: 1,
+              isHitCount: true
+            } as any);
+            gutsLogPart = `🩸 Granted **Guts** [Revive with ${reviveVal.toLocaleString()} HP] for ${skillObj?.duration || 5}T!`;
+          } else {
+            gutsLogPart = `🩸 [Guts Already Active - Does not stack!]`;
+          }
           if (/invincible/i.test(sDesc)) {
             active.activeBuffs.push({
               name: `${sName} (Invincibility)`,
@@ -1409,7 +1431,7 @@ async function runRaidBattle(
             });
           }
           active.critStars = (active.critStars || 0) + 10;
-          buffLog = `(🩸 Granted **Guts** [Revive with ${reviveVal.toLocaleString()} HP] for ${skillObj?.duration || 5}T!)`;
+          buffLog = `(${gutsLogPart})`;
         } else if (isDefDown) {
           battleState.bossBuffs.push({
             name: `${sName} (DEF Down)`,
@@ -1693,19 +1715,13 @@ async function runRaidBattle(
         const isCrit = card !== 'NP' && (Math.random() * 100 < critPct);
         if (isCrit) totalCritsLanded++;
 
-        const isNormalCard = card !== 'NP';
-        if (isNormalCard) {
-          const ceLogs = processCeOnAttackEffects(active, null, card);
-          ceLogs.forEach((l: string) => npEffectsLog.push(l));
-        }
-
         const totalLuckAtk = (baseStatsAtk.luck || 10) + (allocAtk.luck || 0);
         const luckCritBonus = Math.min(0.35, (totalLuckAtk / (totalLuckAtk + 120)) * 0.35);
-        const activeCritBuffs = (active.activeBuffs || []).filter(b => b.type === 'crit_dmg' || b.type === 'crit_dmg_up').reduce((s, b) => s + b.value, 0);
-        const critDmgMult = isCrit ? (2.0 + luckCritBonus + (activeCritBuffs / 100)) : 1.0;
+        const critDmgMult = isCrit ? (2.0 + luckCritBonus) : 1.0;
         const critNpBonus = isCrit ? 1.5 : 1.0;
         const critStarBonus = isCrit ? 1.4 : 1.0;
 
+        const isNormalCard = card !== 'NP';
         const negaGenesisMult = (boss.id === 'tiamat' && battleState.currentPhase === 3 && isNormalCard) ? 0.5 : 1.0;
 
         if (card === 'Buster') {

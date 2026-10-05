@@ -162,6 +162,13 @@ export function calculateCombatantBuffSummary(
       case 'ignore_invincible':
         buffDescriptions.push(`• **${b.name || 'Ignore Invincibility'}**: Attacks Pierce Evade & Invincibility (${durationLabel})`);
         break;
+      case 'guts':
+        if (b.remainingTurns === undefined || b.remainingTurns > 0) {
+          const count = b.remainingHits !== undefined ? b.remainingHits : 1;
+          gutsCount += count;
+          buffDescriptions.push(`• **${b.name || 'Guts'}**: Revive from lethal damage (${durationLabel})`);
+        }
+        break;
       default:
         if (b.name) {
           buffDescriptions.push(`• **${b.name}**: Active effect (${durationLabel})`);

@@ -551,6 +551,26 @@ export function resolveCombatTurn(
   applyEndTurnPassives(attacker);
   applyEndTurnPassives(defender);
 
+  // Decrement active buffs and expire timed-out effects
+  [attacker, defender].forEach(c => {
+    if (c && c.activeBuffs) {
+      c.activeBuffs = c.activeBuffs.map(b => {
+        const isHitBased = b.isHitCount || b.remainingHits !== undefined;
+        if (!isHitBased && b.remainingTurns !== undefined && b.remainingTurns > 0 && b.remainingTurns < 90) {
+          return { ...b, remainingTurns: b.remainingTurns - 1 };
+        }
+        return b;
+      }).filter(b => (b.remainingTurns === undefined || b.remainingTurns > 0) && (!b.isHitCount || b.remainingHits === undefined || b.remainingHits > 0));
+
+      c.isInvincible = c.activeBuffs.some(b => b.type === 'invincible');
+      c.isEvading = c.activeBuffs.some(b => b.type === 'evade');
+      const activeGutsHits = c.activeBuffs
+        .filter(b => b.type === 'guts' && (b.remainingTurns === undefined || b.remainingTurns > 0))
+        .reduce((acc, b) => acc + (b.remainingHits !== undefined ? b.remainingHits : 1), 0);
+      c.gutsCount = activeGutsHits;
+    }
+  });
+
   const chainSummaryStr = chainTags.length > 0 ? `\n⛓️ **Chains Triggered:** ${chainTags.join(' | ')}` : '';
 
   const dialogueInfo = generateTurnDialogueQuote(attacker, defender, attackerChoice, classMultiplier);
