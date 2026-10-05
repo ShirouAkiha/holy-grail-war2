@@ -533,14 +533,19 @@ function drawCombatantBuffPillTray(
       }
     }
 
-    // Mini Duration / Hit / Value Badge in Bottom-Right Corner
-    const turnStr = b.turns !== undefined && b.turns > 0 && b.turns < 90 ? `${b.turns}T` : '';
-    const hitStr = b.hits !== undefined && b.hits > 0 ? `${b.hits}H` : (b as any).count !== undefined && (b as any).count > 1 ? `x${(b as any).count}` : '';
-    const valStr = b.value !== undefined ? `${b.value > 0 ? '+' : ''}${b.value}%` : '';
+    // Mini Duration / Hit / Stack / Value Badge in Bottom-Right Corner
+    const turnStr = (b.turns !== undefined && b.turns > 0 && b.turns < 90) ? `${b.turns}T` : '';
+    const hitStr = (b.hits !== undefined && b.hits > 0) ? `${b.hits}H` : '';
+    const stackStr = (b.stacks !== undefined && b.stacks > 1) ? `x${b.stacks}` : ((b as any).count !== undefined && (b as any).count > 1 ? `x${(b as any).count}` : '');
+    const valStr = (b.value !== undefined) ? `${b.value > 0 ? '+' : ''}${b.value}%` : '';
 
     let countTag = '';
-    if (turnStr && hitStr) {
+    if (turnStr && stackStr) {
+      countTag = `${turnStr}/${stackStr}`;
+    } else if (turnStr && hitStr) {
       countTag = `${turnStr}/${hitStr}`;
+    } else if (stackStr) {
+      countTag = stackStr;
     } else if (hitStr) {
       countTag = hitStr;
     } else if (turnStr) {

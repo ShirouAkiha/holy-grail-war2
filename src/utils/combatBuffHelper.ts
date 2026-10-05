@@ -9,6 +9,7 @@ export interface CombatantBadge {
   type: string;
   turns?: number;
   hits?: number;
+  stacks?: number;
   value?: number;
   bgColor: string;
   borderColor: string;
@@ -92,91 +93,87 @@ export function calculateCombatantBuffSummary(
 
   const buffDescriptions: string[] = [];
 
-  // 1. Process active buffs
+  // 1. Process active buffs & group descriptions cleanly for Discord dossier
+  const buffGroupMap = new Map<string, { count: number; name: string; val: number; turns: number; hits?: number; type: string }>();
+
   for (const b of buffs) {
     const val = Number(b.value) || 0;
     const turns = b.remainingTurns ?? 1;
     const hits = b.remainingHits;
-    const durationLabel = hits ? `${hits} Hit${hits > 1 ? 's' : ''}` : `${turns}T`;
 
     switch (b.type) {
       case 'buff_atk':
         atkBoost += val;
-        buffDescriptions.push(`• **${b.name || 'ATK Up'}**: +${val}% ATK (${durationLabel})`);
         break;
       case 'debuff_atk':
         atkBoost -= val;
-        buffDescriptions.push(`• **${b.name || 'ATK Down'}**: -${val}% ATK (${durationLabel})`);
         break;
       case 'buff_def':
         defBoost += val;
-        buffDescriptions.push(`• **${b.name || 'DEF Up'}**: +${val}% DEF (${durationLabel})`);
         break;
       case 'debuff_def':
         defBoost -= val;
-        buffDescriptions.push(`• **${b.name || 'DEF Down'}**: -${val}% DEF (${durationLabel})`);
         break;
       case 'buster_up':
         busterBoost += val;
-        buffDescriptions.push(`• **${b.name || 'Buster Up'}**: +${val}% Buster (${durationLabel})`);
         break;
       case 'arts_up':
         artsBoost += val;
-        buffDescriptions.push(`• **${b.name || 'Arts Up'}**: +${val}% Arts (${durationLabel})`);
         break;
       case 'quick_up':
         quickBoost += val;
-        buffDescriptions.push(`• **${b.name || 'Quick Up'}**: +${val}% Quick (${durationLabel})`);
         break;
       case 'crit_dmg':
         critBoost += val;
-        buffDescriptions.push(`• **${b.name || 'Critical DMG'}**: +${val}% Crit (${durationLabel})`);
         break;
       case 'np_gen':
       case 'np_gain':
         npGainBoost += val;
-        buffDescriptions.push(`• **${b.name || 'NP Gain'}**: +${val}% NP Gain (${durationLabel})`);
         break;
       case 'anti_purge_defense':
       case 'anti_purge':
-        if (b.remainingTurns > 0) {
-          isAntiPurgeDefense = true;
-          buffDescriptions.push(`• **${b.name || 'Anti-Purge Defense'}**: Complete Damage Nullification [Blocks Ignore Invincible] (${durationLabel})`);
-        }
+        if (b.remainingTurns > 0) isAntiPurgeDefense = true;
         break;
       case 'evade':
         if (b.remainingTurns > 0 && (b.remainingHits === undefined || b.remainingHits > 0)) {
           isEvading = true;
           if (hits) evadeHits = Math.max(evadeHits, hits);
-          buffDescriptions.push(`• **${b.name || 'Evade'}**: Evade Attacks (${durationLabel})`);
         }
         break;
       case 'invincible':
         if (b.remainingTurns > 0 && (b.remainingHits === undefined || b.remainingHits > 0)) {
           isInvincible = true;
           if (hits) invincibleHits = Math.max(invincibleHits, hits);
-          buffDescriptions.push(`• **${b.name || 'Invincibility'}**: Complete Invulnerability (${durationLabel})`);
         }
-        break;
-      case 'anti_purge_atk':
-        buffDescriptions.push(`• **${b.name || 'Anti-Purge Attack'}**: Attacks Pierce Invincibility & Anti-Purge Defense (${durationLabel})`);
-        break;
-      case 'ignore_invincible':
-        buffDescriptions.push(`• **${b.name || 'Ignore Invincibility'}**: Attacks Pierce Evade & Invincibility (${durationLabel})`);
         break;
       case 'guts':
         if (b.remainingTurns === undefined || b.remainingTurns > 0) {
           const count = b.remainingHits !== undefined ? b.remainingHits : 1;
           gutsCount += count;
-          buffDescriptions.push(`• **${b.name || 'Guts'}**: Revive from lethal damage (${durationLabel})`);
-        }
-        break;
-      default:
-        if (b.name) {
-          buffDescriptions.push(`• **${b.name}**: Active effect (${durationLabel})`);
         }
         break;
     }
+
+    const cleanName = (b.name || b.type || 'Active Effect').replace(/\s*Stack\s*\d+/i, '').trim();
+    const groupKey = `${cleanName}_${b.type}`;
+    const existing = buffGroupMap.get(groupKey);
+    if (existing) {
+      existing.count += 1;
+      existing.turns = Math.max(existing.turns, turns);
+      if (hits) existing.hits = Math.max(existing.hits || 0, hits);
+    } else {
+      buffGroupMap.set(groupKey, { count: 1, name: cleanName, val, turns, hits, type: b.type });
+    }
+  }
+
+  for (const [, item] of buffGroupMap) {
+    const stackTag = item.count > 1 ? ` (x${item.count} Stacks)` : '';
+    const turnTag = item.turns && item.turns < 90 ? `${item.turns}T` : '';
+    const hitTag = item.hits ? `${item.hits} Hit${item.hits > 1 ? 's' : ''}` : '';
+    const durationLabel = [hitTag, turnTag].filter(Boolean).join(', ') || 'Permanent';
+    const valTag = item.val ? `: +${item.val}%` : '';
+
+    buffDescriptions.push(`• **${item.name}**${stackTag}${valTag} (${durationLabel})`);
   }
 
   // 2. Process Passives
@@ -382,14 +379,15 @@ export function calculateCombatantBuffSummary(
   const curseBuffs = buffs.filter(b => b.type === 'curse' || b.type === 'void_curse' || (b.name && b.name.toLowerCase().includes('curse')));
   if (curseBuffs.length > 0) {
     const maxTurns = Math.max(...curseBuffs.map(b => b.remainingTurns || 1));
+    const count = curseBuffs.length;
     badges.push({
       id: 'curse',
-      label: curseBuffs.length > 1 ? `CURSE x${curseBuffs.length}` : 'CURSE',
-      shortLabel: curseBuffs.length > 1 ? `${maxTurns}T (x${curseBuffs.length})` : `${maxTurns}T`,
+      label: count > 1 ? `CURSE x${count}` : 'CURSE',
+      shortLabel: count > 1 ? `${maxTurns}T/x${count}` : `${maxTurns}T`,
       iconSymbol: 'curse',
       type: 'curse',
       turns: maxTurns,
-      hits: curseBuffs.length > 1 ? curseBuffs.length : undefined,
+      stacks: count > 1 ? count : undefined,
       bgColor: 'rgba(76, 29, 149, 0.92)',
       borderColor: '#8b5cf6',
       textColor: '#ede9fe'
@@ -399,14 +397,15 @@ export function calculateCombatantBuffSummary(
   const burnBuffs = buffs.filter(b => b.type === 'burn' || b.type === 'spread_of_fire' || (b.name && (b.name.toLowerCase().includes('burn') || b.name.toLowerCase().includes('dragon grail') || b.name.toLowerCase().includes('fire'))));
   if (burnBuffs.length > 0) {
     const maxTurns = Math.max(...burnBuffs.map(b => b.remainingTurns || 1));
+    const count = burnBuffs.length;
     badges.push({
       id: 'burn',
-      label: burnBuffs.length > 1 ? `BURN x${burnBuffs.length}` : 'BURN',
-      shortLabel: burnBuffs.length > 1 ? `${maxTurns}T (x${burnBuffs.length})` : `${maxTurns}T`,
+      label: count > 1 ? `BURN x${count}` : 'BURN',
+      shortLabel: count > 1 ? `${maxTurns}T/x${count}` : `${maxTurns}T`,
       iconSymbol: 'burn',
       type: 'burn',
       turns: maxTurns,
-      hits: burnBuffs.length > 1 ? burnBuffs.length : undefined,
+      stacks: count > 1 ? count : undefined,
       bgColor: 'rgba(154, 52, 18, 0.92)',
       borderColor: '#ea580c',
       textColor: '#ffedd5'
@@ -416,14 +415,15 @@ export function calculateCombatantBuffSummary(
   const poisonBuffs = buffs.filter(b => b.type === 'poison' || (b.name && b.name.toLowerCase().includes('poison')));
   if (poisonBuffs.length > 0) {
     const maxTurns = Math.max(...poisonBuffs.map(b => b.remainingTurns || 1));
+    const count = poisonBuffs.length;
     badges.push({
       id: 'poison',
-      label: poisonBuffs.length > 1 ? `POISON x${poisonBuffs.length}` : 'POISON',
-      shortLabel: poisonBuffs.length > 1 ? `${maxTurns}T (x${poisonBuffs.length})` : `${maxTurns}T`,
+      label: count > 1 ? `POISON x${count}` : 'POISON',
+      shortLabel: count > 1 ? `${maxTurns}T/x${count}` : `${maxTurns}T`,
       iconSymbol: 'poison',
       type: 'poison',
       turns: maxTurns,
-      hits: poisonBuffs.length > 1 ? poisonBuffs.length : undefined,
+      stacks: count > 1 ? count : undefined,
       bgColor: 'rgba(6, 78, 59, 0.92)',
       borderColor: '#10b981',
       textColor: '#d1fae5'

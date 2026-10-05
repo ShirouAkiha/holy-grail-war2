@@ -1716,9 +1716,17 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                       <div className="flex items-center gap-1.5 mt-2 flex-wrap">
                         {member.activeBuffs.map((b, bIdx) => {
                           const turnStr = b.remainingTurns && b.remainingTurns < 90 ? `${b.remainingTurns}T` : '';
-                          const hitStr = b.remainingHits !== undefined && b.remainingHits > 0 ? `${b.remainingHits}H` : (b as any).stacks ? `x${(b as any).stacks}` : '';
-                          const displayTag = (turnStr && hitStr) ? `${turnStr} (${hitStr})` : (hitStr || turnStr || '∞');
-                          const titleText = `${b.name || b.type} (${turnStr ? `${turnStr} duration` : 'Permanent'}${b.remainingHits !== undefined ? `, ${b.remainingHits} hit(s)` : ''})`;
+                          const hitStr = b.remainingHits !== undefined && b.remainingHits > 0 ? `${b.remainingHits}H` : '';
+                          const stackStr = (b as any).stacks && (b as any).stacks > 1 ? `x${(b as any).stacks}` : (b as any).count && (b as any).count > 1 ? `x${(b as any).count}` : '';
+                          
+                          let displayTag = '∞';
+                          if (turnStr && stackStr) displayTag = `${turnStr} (${stackStr})`;
+                          else if (turnStr && hitStr) displayTag = `${turnStr} (${hitStr})`;
+                          else if (stackStr) displayTag = stackStr;
+                          else if (hitStr) displayTag = hitStr;
+                          else if (turnStr) displayTag = turnStr;
+
+                          const titleText = `${b.name || b.type} (${turnStr ? `${turnStr} duration` : 'Permanent'}${b.remainingHits !== undefined ? `, ${b.remainingHits} hit(s)` : ''}${(b as any).stacks ? `, ${(b as any).stacks} stack(s)` : ''})`;
 
                           return (
                             <div
