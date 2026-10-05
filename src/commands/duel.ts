@@ -2171,6 +2171,8 @@ function resolveStrike(
   livingOpponents?: DuelCombatant[],
   livingAllies?: DuelCombatant[]
 ): string {
+  const chainTags: string[] = [];
+
   // Decrement attacker skill cooldowns
   for (const idxStr of Object.keys(attacker.skillCooldowns)) {
     const idx = parseInt(idxStr, 10);
@@ -2446,7 +2448,6 @@ function resolveStrike(
 
   const busterChainBonusDmg = isBusterChain ? Math.round(attacker.baseAtk * 0.20 * PVP_DAMAGE_MODIFIER) : 0;
 
-  const chainTags: string[] = [];
   if (isBusterFirst) chainTags.push('🔥 Buster 1st Lead (+50% DMG)');
   if (isArtsFirst) chainTags.push('🌊 Arts 1st Lead (+50% NP Gain)');
   if (isQuickFirst) chainTags.push('⚡ Quick 1st Lead (+20% Crit Rate)');
@@ -2553,9 +2554,7 @@ function resolveStrike(
                 name: 'De Sterrennacht (Crit DMG Up)',
                 type: 'crit_dmg',
                 value: 100,
-                remainingTurns: 3,
-                appliedRound: currentRound,
-                appliedTurnUserId: attacker.userId
+                remainingTurns: 3
               });
 
               // 2. Existence Outside the Domain Crit DMG Up (+100% extra, boosts Van Gogh herself and any Foreigner!)
@@ -2564,9 +2563,7 @@ function resolveStrike(
                   name: 'De Sterrennacht (Domain Crit DMG Up)',
                   type: 'crit_dmg',
                   value: 100,
-                  remainingTurns: 3,
-                  appliedRound: currentRound,
-                  appliedTurnUserId: attacker.userId
+                  remainingTurns: 3
                 });
               }
 
@@ -2575,9 +2572,7 @@ function resolveStrike(
                 name: 'De Sterrennacht (Stars Per Turn)',
                 type: 'stars_per_turn',
                 value: 10,
-                remainingTurns: 3,
-                appliedRound: currentRound,
-                appliedTurnUserId: attacker.userId
+                remainingTurns: 3
               });
 
               // 4. Overcharge ATK Up: 50% base + 10% per overcharge level for 3 turns
@@ -2586,9 +2581,7 @@ function resolveStrike(
                 name: 'De Sterrennacht (ATK Up)',
                 type: 'buff_atk',
                 value: ocAtkBonus,
-                remainingTurns: 3,
-                appliedRound: currentRound,
-                appliedTurnUserId: attacker.userId
+                remainingTurns: 3
               });
             } else if (isRoundOfAvalon) {
               // Removes party debuffs
@@ -2670,9 +2663,7 @@ function resolveStrike(
               name: 'De Sterrennacht (Terror/Stun)',
               type: 'stun',
               value: 100,
-              remainingTurns: 1,
-              appliedRound: currentRound,
-              appliedTurnUserId: attacker.userId
+              remainingTurns: 1
             });
           });
 
@@ -3050,9 +3041,7 @@ function resolveStrike(
             name: 'Quick Cleanse (ATK Up +10%)',
             type: 'buff_atk',
             value: 10,
-            remainingTurns: 3,
-            appliedRound: currentRound,
-            appliedTurnUserId: attacker.userId
+            remainingTurns: 3
           });
           atkBuff += 0.10;
           chainTags.push('🧹 Quick Curse Cleanse (+10% ATK)');

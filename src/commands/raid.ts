@@ -1196,13 +1196,14 @@ async function runRaidBattle(
               remainingTurns: 3
             });
             let absorbedCurses = 0;
+            active.activeBuffs = active.activeBuffs || [];
             battleState.participants.forEach(p => {
               if (p.userId !== active.userId && p.activeBuffs) {
                 const cList = p.activeBuffs.filter(b => b.type === 'curse');
                 absorbedCurses += cList.length;
                 p.activeBuffs = p.activeBuffs.filter(b => b.type !== 'curse');
                 cList.forEach(c => {
-                  active.activeBuffs.push({
+                  active.activeBuffs!.push({
                     name: `Absorbed ${c.name}`,
                     type: 'curse',
                     value: c.value,
@@ -1759,6 +1760,7 @@ async function runRaidBattle(
 
             if (isDeSterrennacht) {
               // De Sterrennacht: Inflict Terror (Stun) on boss, +100% Crit DMG (3T) & +50% ATK (3T) to Party, +20 Stars
+              battleState.bossBuffs = battleState.bossBuffs || [];
               const isImmuneToStun = boss.id === 'tiamat' && (battleState.currentPhase || 1) >= 2;
               if (!isImmuneToStun) {
                 battleState.bossBuffs.push({
