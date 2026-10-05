@@ -538,28 +538,6 @@ async function runRaidBattle(
 
   let pendingCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = [];
   let pendingIndices: number[] = [];
-  const actedInRoundSet = new Set<string>();
-
-  function ensureActiveParticipantIsAlive(): void {
-    const participants = battleState.participants;
-    if (!participants || participants.length === 0) return;
-
-    const curr = participants[battleState.activeMasterIndex];
-    if (!curr || curr.isDead || (curr.currentHp || 0) <= 0) {
-      let nextIdx = (battleState.activeMasterIndex + 1) % participants.length;
-      let loops = 0;
-      while ((!participants[nextIdx] || participants[nextIdx].isDead || (participants[nextIdx].currentHp || 0) <= 0) && loops < participants.length) {
-        nextIdx = (nextIdx + 1) % participants.length;
-        loops++;
-      }
-      battleState.activeMasterIndex = nextIdx;
-      currentActiveParticipant = participants[battleState.activeMasterIndex];
-    } else {
-      currentActiveParticipant = participants[battleState.activeMasterIndex];
-    }
-  }
-
-  ensureActiveParticipantIsAlive();
   let currentActiveParticipant = battleState.participants[battleState.activeMasterIndex];
   let isProcessingTurn = false;
 
@@ -958,7 +936,6 @@ async function runRaidBattle(
       return;
     }
 
-    ensureActiveParticipantIsAlive();
     const active = currentActiveParticipant;
 
     if (i.user.id !== active.userId && i.customId !== 'raid_flee') {
@@ -1627,11 +1604,22 @@ async function runRaidBattle(
         return;
       }
     } else if (i.customId === 'raid_flee') {
-      active.isDead = true;
-      battleState.recentLogs.push(`🏃 <@${active.userId}> ordered a tactical withdrawal from the raid.`);
+      const fleeingParticipant = battleState.participants.find(p => p.userId === i.user.id);
+      if (!fleeingParticipant || fleeingParticipant.isDead) {
+        await i.reply({
+          content: '❌ You are not an active participant in this raid or your Servant has already fallen.',
+          flags: MessageFlags.Ephemeral
+        }).catch(() => {});
+        return;
+      }
+
+      fleeingParticipant.isDead = true;
+      fleeingParticipant.currentHp = 0;
+      const fName = fleeingParticipant.servant.nickname || fleeingParticipant.servant.template?.name || 'Servant';
+      battleState.recentLogs.push(`🏃 <@${fleeingParticipant.userId}> (**${fName}**) ordered a tactical withdrawal from the raid.`);
       if (battleState.recentLogs.length > 4) battleState.recentLogs.shift();
 
-      const livingRemaining = battleState.participants.filter(p => !p.isDead);
+      const livingRemaining = battleState.participants.filter(p => !p.isDead && (p.currentHp || 0) > 0);
       if (livingRemaining.length === 0) {
         await cleanupNpGif();
         collector.stop('defeated');
@@ -1645,7 +1633,7 @@ async function runRaidBattle(
 
       pendingCards = [];
       pendingIndices = [];
-      advanceToNextPlayer();
+      ensureActiveParticipantIsAlive();
       await i.deferUpdate().catch(() => {});
       await renderAndPostTurn();
       return;
@@ -2310,26 +2298,20 @@ async function runRaidBattle(
   });
 
   function advanceToNextPlayer(): boolean {
-    const participants = battleState.participants;
-    if (!participants || participants.length === 0) return false;
+    const living = battleState.participants;
+    let nextIdx = (battleState.activeMasterIndex + 1) % living.length;
+    let loops = 0;
 
-    if (currentActiveParticipant && currentActiveParticipant.userId) {
-      actedInRoundSet.add(currentActiveParticipant.userId);
+    while (living[nextIdx].isDead && loops < living.length) {
+      nextIdx = (nextIdx + 1) % living.length;
+      loops++;
     }
 
-    const unactedLiving = participants.filter(p => !p.isDead && (p.currentHp || 0) > 0 && !actedInRoundSet.has(p.userId));
+    const completedRound = nextIdx <= battleState.activeMasterIndex;
+    battleState.activeMasterIndex = nextIdx;
+    currentActiveParticipant = battleState.participants[battleState.activeMasterIndex];
 
-    if (unactedLiving.length > 0) {
-      const nextParticipant = unactedLiving[0];
-      const nextIdx = participants.findIndex(p => p.userId === nextParticipant.userId);
-      battleState.activeMasterIndex = nextIdx >= 0 ? nextIdx : 0;
-      currentActiveParticipant = participants[battleState.activeMasterIndex];
-      return true;
-    }
-
-    actedInRoundSet.clear();
-    ensureActiveParticipantIsAlive();
-    return false;
+    return !completedRound;
   }
 }
 
