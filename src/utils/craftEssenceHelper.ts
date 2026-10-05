@@ -415,7 +415,7 @@ export function applyCeInitialCombatantEffects(combatant: any, allAllies?: any[]
       name: `${ce.name} (Invincibility)`,
       type: 'invincible',
       value: 100,
-      remainingTurns: 99,
+      remainingTurns: 1,
       remainingHits: ceStats.invincibleHits,
       isHitCount: true
     });

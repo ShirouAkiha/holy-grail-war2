@@ -1714,18 +1714,25 @@ export default function CombatArena({ master, onUpdateMaster }: CombatArenaProps
                     </div>
                     {member.activeBuffs && member.activeBuffs.length > 0 && (
                       <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                        {member.activeBuffs.map((b, bIdx) => (
-                          <div
-                            key={bIdx}
-                            className="flex items-center gap-1 bg-black/80 border border-sky-400/50 rounded px-2 py-1 shadow-md"
-                            title={`${b.name || b.type} (${b.remainingTurns ? `${b.remainingTurns}T` : 'Permanent'})`}
-                          >
-                            <img src={getStatusIconUrl(b.type || (b as any).name)} alt={b.type} className="w-5 h-5 object-contain" />
-                            <span className="text-[10px] font-mono text-sky-200 font-bold">
-                              {b.remainingHits !== undefined ? `${b.remainingHits}H` : b.remainingTurns ? `${b.remainingTurns}T` : '∞'}
-                            </span>
-                          </div>
-                        ))}
+                        {member.activeBuffs.map((b, bIdx) => {
+                          const turnStr = b.remainingTurns && b.remainingTurns < 90 ? `${b.remainingTurns}T` : '';
+                          const hitStr = b.remainingHits !== undefined && b.remainingHits > 0 ? `${b.remainingHits}H` : (b as any).stacks ? `x${(b as any).stacks}` : '';
+                          const displayTag = (turnStr && hitStr) ? `${turnStr} (${hitStr})` : (hitStr || turnStr || '∞');
+                          const titleText = `${b.name || b.type} (${turnStr ? `${turnStr} duration` : 'Permanent'}${b.remainingHits !== undefined ? `, ${b.remainingHits} hit(s)` : ''})`;
+
+                          return (
+                            <div
+                              key={bIdx}
+                              className="flex items-center gap-1.5 bg-black/80 border border-sky-400/50 rounded px-2 py-1 shadow-md"
+                              title={titleText}
+                            >
+                              <img src={getStatusIconUrl(b.type || (b as any).name)} alt={b.type} className="w-5 h-5 object-contain" />
+                              <span className="text-[10px] font-mono text-sky-200 font-bold whitespace-nowrap">
+                                {displayTag}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

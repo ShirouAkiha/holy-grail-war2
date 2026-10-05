@@ -385,10 +385,11 @@ export function calculateCombatantBuffSummary(
     badges.push({
       id: 'curse',
       label: curseBuffs.length > 1 ? `CURSE x${curseBuffs.length}` : 'CURSE',
-      shortLabel: curseBuffs.length > 1 ? `x${curseBuffs.length}` : `${maxTurns}T`,
+      shortLabel: curseBuffs.length > 1 ? `${maxTurns}T (x${curseBuffs.length})` : `${maxTurns}T`,
       iconSymbol: 'curse',
       type: 'curse',
       turns: maxTurns,
+      hits: curseBuffs.length > 1 ? curseBuffs.length : undefined,
       bgColor: 'rgba(76, 29, 149, 0.92)',
       borderColor: '#8b5cf6',
       textColor: '#ede9fe'
@@ -401,10 +402,11 @@ export function calculateCombatantBuffSummary(
     badges.push({
       id: 'burn',
       label: burnBuffs.length > 1 ? `BURN x${burnBuffs.length}` : 'BURN',
-      shortLabel: burnBuffs.length > 1 ? `x${burnBuffs.length}` : `${maxTurns}T`,
+      shortLabel: burnBuffs.length > 1 ? `${maxTurns}T (x${burnBuffs.length})` : `${maxTurns}T`,
       iconSymbol: 'burn',
       type: 'burn',
       turns: maxTurns,
+      hits: burnBuffs.length > 1 ? burnBuffs.length : undefined,
       bgColor: 'rgba(154, 52, 18, 0.92)',
       borderColor: '#ea580c',
       textColor: '#ffedd5'
@@ -417,10 +419,11 @@ export function calculateCombatantBuffSummary(
     badges.push({
       id: 'poison',
       label: poisonBuffs.length > 1 ? `POISON x${poisonBuffs.length}` : 'POISON',
-      shortLabel: poisonBuffs.length > 1 ? `x${poisonBuffs.length}` : `${maxTurns}T`,
+      shortLabel: poisonBuffs.length > 1 ? `${maxTurns}T (x${poisonBuffs.length})` : `${maxTurns}T`,
       iconSymbol: 'poison',
       type: 'poison',
       turns: maxTurns,
+      hits: poisonBuffs.length > 1 ? poisonBuffs.length : undefined,
       bgColor: 'rgba(6, 78, 59, 0.92)',
       borderColor: '#10b981',
       textColor: '#d1fae5'

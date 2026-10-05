@@ -4740,8 +4740,7 @@ async function startInteractiveDuel(
         turnOrder.forEach(c => {
           if (c && c.activeBuffs) {
             c.activeBuffs = c.activeBuffs.map(b => {
-              const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
-              if (!isHitBased && b.remainingTurns > 0 && b.remainingTurns < 90) {
+              if (b.remainingTurns > 0 && b.remainingTurns < 90) {
                 // If a 1T defensive buff was applied by the 1st actor in the round, they already received incoming attacks in this round
                 if (b.appliedRound !== undefined && b.appliedRound === roundBeforeInc && b.remainingTurns <= 1) {
                   const isDefensive = b.type === 'invincible' || b.type === 'evade' || b.type === 'anti_purge_defense' || b.type === 'anti_purge';

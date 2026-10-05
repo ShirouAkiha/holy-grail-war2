@@ -555,8 +555,7 @@ export function resolveCombatTurn(
   [attacker, defender].forEach(c => {
     if (c && c.activeBuffs) {
       c.activeBuffs = c.activeBuffs.map(b => {
-        const isHitBased = b.isHitCount || b.remainingHits !== undefined;
-        if (!isHitBased && b.remainingTurns !== undefined && b.remainingTurns > 0 && b.remainingTurns < 90) {
+        if (b.remainingTurns !== undefined && b.remainingTurns > 0 && b.remainingTurns < 90) {
           return { ...b, remainingTurns: b.remainingTurns - 1 };
         }
         return b;

@@ -119,7 +119,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     bonusHp: 500,
     atkBonus: 500,
     hpBonus: 500,
-    effectText: 'Grants Invincibility for 3 attacks & +15% Damage Cut.',
+    effectText: 'Grants Invincibility for 1 turn (3 attacks) & +15% Damage Cut.',
     passiveType: 'invincible_hits',
     passiveValue: 3,
     artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'

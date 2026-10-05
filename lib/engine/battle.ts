@@ -156,7 +156,7 @@ export function createCombatantFromMasterServant(
         name: 'Volumen Hydragyrum (Invincibility)',
         type: 'invincible',
         value: 100,
-        remainingTurns: 99,
+        remainingTurns: 1,
         remainingHits: hits,
         isHitCount: true
       });
@@ -2991,8 +2991,7 @@ export function executeBattleTurn(
   [...teamA, ...teamB, ...teamSolo].forEach(combatant => {
     combatant.activeBuffs = combatant.activeBuffs
       .map(b => {
-        const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
-        if (!isHitBased && b.remainingTurns > 0 && b.remainingTurns < 90) {
+        if (b.remainingTurns > 0 && b.remainingTurns < 90) {
           return { ...b, remainingTurns: b.remainingTurns - 1 };
         }
         return b;

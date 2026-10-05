@@ -534,13 +534,20 @@ function drawCombatantBuffPillTray(
     }
 
     // Mini Duration / Hit / Value Badge in Bottom-Right Corner
-    const countTag = b.hits !== undefined && b.hits > 0 
-      ? `${b.hits}H` 
-      : b.turns !== undefined && b.turns > 0 && b.turns < 90 
-        ? `${b.turns}T` 
-        : b.value !== undefined 
-          ? `${b.value > 0 ? '+' : ''}${b.value}%` 
-          : '';
+    const turnStr = b.turns !== undefined && b.turns > 0 && b.turns < 90 ? `${b.turns}T` : '';
+    const hitStr = b.hits !== undefined && b.hits > 0 ? `${b.hits}H` : (b as any).count !== undefined && (b as any).count > 1 ? `x${(b as any).count}` : '';
+    const valStr = b.value !== undefined ? `${b.value > 0 ? '+' : ''}${b.value}%` : '';
+
+    let countTag = '';
+    if (turnStr && hitStr) {
+      countTag = `${turnStr}/${hitStr}`;
+    } else if (hitStr) {
+      countTag = hitStr;
+    } else if (turnStr) {
+      countTag = turnStr;
+    } else if (valStr) {
+      countTag = valStr;
+    }
 
     if (countTag) {
       ctx.font = 'bold 8px sans-serif';
