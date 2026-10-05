@@ -1940,7 +1940,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         id: 'blaze_of_etna',
         name: 'Blaze of Etna - Dragon Prison Manifestation: Armor of Ashen Flames C',
         cooldown: 6,
-        description: 'Grants self Invincibility for 2 attacks (3 turns). Increases own attack by 20% for 3 turns. Increases own Buster performance by 30% for 3 turns.',
+        description: 'Grants self Invincibility for 1 turn. Increases own attack by 20% for 3 turns. Increases own Buster performance by 30% for 3 turns.',
         effectType: 'buster_up',
         value: 30,
         duration: 3,

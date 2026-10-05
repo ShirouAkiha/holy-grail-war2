@@ -1489,9 +1489,7 @@ function activateCombatantSkill(
       name: 'Blaze of Etna (Invincible)',
       type: 'invincible',
       value: 100,
-      remainingTurns: 3,
-      remainingHits: 2,
-      isHitCount: true
+      remainingTurns: 1
     });
     combatant.activeBuffs.push({
       name: 'Blaze of Etna (ATK Up)',
@@ -1505,7 +1503,7 @@ function activateCombatantSkill(
       value: 30,
       remainingTurns: 3
     });
-    logText = `🔥 **${sName}** activated **${skill.name}**! (Invincibility for 2 attacks (3T), +20% ATK (3T), +30% Buster Up (3T))${quoteLine}`;
+    logText = `🔥 **${sName}** activated **${skill.name}**! (Invincibility (1T), +20% ATK (3T), +30% Buster Up (3T))${quoteLine}`;
   } else if (skill.id === 'black_wings_a' || /black wings/i.test(skill.name)) {
     // S2: Black Wings A
     combatant.activeBuffs.push({
@@ -4740,7 +4738,8 @@ async function startInteractiveDuel(
         turnOrder.forEach(c => {
           if (c && c.activeBuffs) {
             c.activeBuffs = c.activeBuffs.map(b => {
-              if (b.remainingTurns > 0 && b.remainingTurns < 90) {
+              const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
+              if (!isHitBased && b.remainingTurns > 0 && b.remainingTurns < 90) {
                 // If a 1T defensive buff was applied by the 1st actor in the round, they already received incoming attacks in this round
                 if (b.appliedRound !== undefined && b.appliedRound === roundBeforeInc && b.remainingTurns <= 1) {
                   const isDefensive = b.type === 'invincible' || b.type === 'evade' || b.type === 'anti_purge_defense' || b.type === 'anti_purge';

@@ -423,9 +423,7 @@ export function applyCombatantSkill(
       name: 'Blaze of Etna (Invincible)',
       type: 'invincible',
       value: 100,
-      remainingTurns: 3,
-      remainingHits: 2,
-      isHitCount: true
+      remainingTurns: 1
     });
     actor.activeBuffs.push({
       name: 'Blaze of Etna (ATK Up)',
@@ -441,7 +439,7 @@ export function applyCombatantSkill(
     });
     return {
       success: true,
-      log: `🔥 **${actor.name}** activated **${skill.name}**! Granted self Invincibility for 2 attacks (3T), +20% ATK (3T), and +30% Buster Performance (3T)!${quoteLine}`,
+      log: `🔥 **${actor.name}** activated **${skill.name}**! Granted self Invincibility (1T), +20% ATK (3T), and +30% Buster Performance (3T)!${quoteLine}`,
       quote: skillQuote,
       skillName: skill.name
     };
@@ -1931,9 +1929,7 @@ export function executeBattleTurn(
             name: 'Blaze of Etna (Invincible)',
             type: 'invincible',
             value: 100,
-            remainingTurns: 3,
-            remainingHits: 2,
-            isHitCount: true
+            remainingTurns: 1
           });
           actor.activeBuffs.push({
             name: 'Blaze of Etna (ATK Up)',

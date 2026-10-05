@@ -1064,15 +1064,13 @@ async function runRaidBattle(
           let buffLog = '';
           if (skillObj?.id === 'blaze_of_etna' || /blaze of etna|armor of ashen/i.test(sName)) {
             // S1: Blaze of Etna - Dragon Prison Manifestation: Armor of Ashen Flames C
-            // Grants self Invincibility for 2 attacks (3 turns). Increases own attack by 20% for 3 turns. Increases own Buster performance by 30% for 3 turns.
+            // Grants self Invincibility for 1 turn. Increases own attack by 20% for 3 turns. Increases own Buster performance by 30% for 3 turns.
             active.activeBuffs = active.activeBuffs || [];
             active.activeBuffs.push({
               name: 'Blaze of Etna (Invincible)',
               type: 'invincible',
               value: 100,
-              remainingTurns: 3,
-              remainingHits: 2,
-              isHitCount: true
+              remainingTurns: 1
             } as any);
             active.activeBuffs.push({
               name: 'Blaze of Etna (ATK Up)',
@@ -1086,7 +1084,7 @@ async function runRaidBattle(
               value: 30,
               remainingTurns: 3
             });
-            buffLog = `(🛡️ Invincibility for 2 Attacks [3T], ⚔️ +20% ATK [3T], 🔥 +30% Buster Performance [3T])`;
+            buffLog = `(🛡️ Invincibility [1T], ⚔️ +20% ATK [3T], 🔥 +30% Buster Performance [3T])`;
           } else if (skillObj?.id === 'void_space_fine_arts' || /void space fine arts/i.test(sName)) {
             // Van Gogh S1: Void Space Fine Arts B+
             // Grants self Guts status for 1 time, 5 turns (revives with 3,000 HP).
