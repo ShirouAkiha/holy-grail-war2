@@ -158,6 +158,7 @@ export interface MasterServantInstance {
   cardArtUrl?: string;
   spriteUrl?: string;
   customArtworkUrl?: string;
+  selectedAscensionStage?: 1 | 2 | 3 | 4 | 'costume' | string;
   level: number;
   experience: number;
   currentHp?: number;

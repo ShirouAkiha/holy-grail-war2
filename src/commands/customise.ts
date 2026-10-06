@@ -11,7 +11,13 @@ import {
 } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
-import { SERVANT_DATABASE } from '../data/servants';
+import { SERVANT_DATABASE, getServantAvatarAndCardArt } from '../data/servants';
+import { 
+  getUnlockedAscensionStages, 
+  isAscensionStageUnlocked, 
+  resolveAscensionArtwork 
+} from '../data/servantAscensions';
+import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 import { 
   feedCraftEssences, 
   getCeExpValue, 
@@ -26,7 +32,6 @@ import {
   setWorkshopWardInWar, 
   setChannelTrapInWar 
 } from '../engine/grailwar';
-import { ATLAS_ITEM_ICONS } from '../utils/atlasAssets';
 
 export interface InventoryHubOptions {
   ceViewMode?: 'all' | 'owned';
@@ -268,16 +273,6 @@ export function buildInventoryHub(
     .setDescription(`${equippedBanner}\n\n` + itemLines.join('\n'))
     .setColor(category === 'ces' ? 0x38bdf8 : category === 'servants' ? 0xd4af37 : 0xa855f7)
     .setFooter({ text: `Page ${currentPage}/${totalPages} • Total: ${totalItems} • Select an item below, then press Equip, View Art, or Inspect Lore.` });
-
-  if (category === 'items') {
-    if (selectedItemId === 'item_ticket') {
-      embed.setThumbnail(ATLAS_ITEM_ICONS.summonTicket);
-    } else if (selectedItemId === 'item_prism') {
-      embed.setThumbnail(ATLAS_ITEM_ICONS.manaPrism);
-    } else {
-      embed.setThumbnail(ATLAS_ITEM_ICONS.saintQuartz);
-    }
-  }
 
   // Row 1: Primary Categories
   const catRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -957,6 +952,30 @@ export const data = new SlashCommandBuilder()
           .setDescription('Servant name (defaults to active Servant)')
           .setRequired(false)
       )
+  )
+  .addSubcommand(sub =>
+    sub
+      .setName('ascension')
+      .setDescription('Select Spirit Origin Ascension stage & artwork (Stages 1-4, Costumes)')
+      .addStringOption(opt =>
+        opt
+          .setName('stage')
+          .setDescription('Ascension stage (1, 2, 3, 4, or costume)')
+          .setRequired(false)
+          .addChoices(
+            { name: 'Stage 1 (Base - Lv.1)', value: '1' },
+            { name: 'Stage 2 (Ascension 2 - Lv.20)', value: '2' },
+            { name: 'Stage 3 (Ascension 3 - Lv.35)', value: '3' },
+            { name: 'Stage 4 (Final Ascension - Lv.50 / Bond 10)', value: '4' },
+            { name: 'Costume (Lv.50 / Bond 5)', value: 'costume' }
+          )
+      )
+      .addStringOption(opt =>
+        opt
+          .setName('servant')
+          .setDescription('Servant name (defaults to active Servant)')
+          .setRequired(false)
+      )
   );
 
 // ==========================================
@@ -1507,6 +1526,76 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .setColor(0x8b5cf6);
 
       await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
+    // ==========================================
+    // SUBCOMMAND K: ASCENSION STAGE / SPIRIT ORIGIN
+    // ==========================================
+    if (subcommand === 'ascension') {
+      const servantTargetQuery = interaction.options.getString('servant');
+      const stageOption = interaction.options.getString('stage');
+
+      let targetServant = activeServant;
+      if (servantTargetQuery) {
+        const found = master.servants.find((s: any) =>
+          s.id === servantTargetQuery ||
+          s.nickname?.toLowerCase() === servantTargetQuery.toLowerCase() ||
+          s.template?.name?.toLowerCase() === servantTargetQuery.toLowerCase() ||
+          s.nickname?.toLowerCase().includes(servantTargetQuery.toLowerCase()) ||
+          s.template?.name?.toLowerCase().includes(servantTargetQuery.toLowerCase())
+        );
+        if (found) targetServant = found;
+      }
+
+      const sTargetName = targetServant.nickname || targetServant.template?.name || 'Servant';
+      const templateId = targetServant.templateId || targetServant.template?.id || targetServant.id;
+      const lvl = targetServant.level || 1;
+      const bondLevel = targetServant.bondLevel || 1;
+
+      if (stageOption) {
+        const unlocked = isAscensionStageUnlocked(stageOption as any, lvl, bondLevel);
+        if (!unlocked) {
+          const reqText = (stageOption === '4') 
+            ? 'Level 50 OR Bond Level 10' 
+            : (stageOption === '3') 
+            ? 'Level 35' 
+            : (stageOption === '2') 
+            ? 'Level 20' 
+            : 'Level 50 or Bond Level 5';
+          await interaction.reply({
+            content: `🔒 **Ascension Stage Locked!** Stage ${stageOption} requires **${reqText}** to unlock. (Current: Lv.${lvl}, Bond ${bondLevel})`,
+            flags: MessageFlags.Ephemeral
+          });
+          return;
+        }
+
+        const stageVal = stageOption === 'costume' ? 'costume' : parseInt(stageOption, 10);
+        targetServant.selectedAscensionStage = stageVal as any;
+        master.servants = master.servants.map((s: any) => s.id === targetServant.id ? targetServant : s);
+        await saveMaster(master);
+
+        const { cardArtUrl, avatarUrl } = getServantAvatarAndCardArt(targetServant);
+        const embed = new EmbedBuilder()
+          .setTitle(`🎨 Spirit Origin Transformed: ${sTargetName}`)
+          .setDescription(
+            `Successfully equipped **${stageOption === 'costume' ? 'Costume' : `Stage ${stageOption}${stageOption === '4' ? ' (Final Ascension)' : ''}`}** on **${sTargetName}**!\n\n` +
+            `• **Level:** \`Lv.${lvl}/500\` | **Bond Level:** \`Bond ${bondLevel}/10\`\n` +
+            `• **Atlas Academy HD Artwork Active**`
+          )
+          .setColor(0xd4af37);
+        safeSetEmbedImage(embed, cardArtUrl || avatarUrl);
+
+        await interaction.reply({ embeds: [embed] });
+        return;
+      }
+
+      // If no stage passed, open the full servant workshop ascension tab!
+      const { buildServantHub, attachServantCollector } = await import('./servant');
+      const hub = await buildServantHub(master, targetServant, 'ascension', targetServant.id);
+      await interaction.reply({ embeds: hub.embeds, components: hub.components, files: hub.files });
+      const msg = await interaction.fetchReply().catch(() => null);
+      if (msg) attachServantCollector(msg, interaction.user.id, master, targetServant, 'ascension');
       return;
     }
 

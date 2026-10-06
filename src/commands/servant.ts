@@ -13,6 +13,12 @@ import {
 import { getOrCreateMaster, saveMaster, getAllThroneServants } from '../database/service';
 import { buildServantsListUI } from './servants';
 import { SERVANT_DATABASE, getDefaultClassPassives, getServantAvatarAndCardArt } from '../data/servants';
+import { 
+  CANONICAL_SERVANT_ASCENSIONS, 
+  getUnlockedAscensionStages, 
+  isAscensionStageUnlocked, 
+  resolveAscensionArtwork 
+} from '../data/servantAscensions';
 import { getServantProfile } from '../engine/dialogue';
 import { getOrInitWarSession, exposeMasterInWar, getHealingStatus } from '../engine/grailwar';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from '../data/noblePhantasmGifs';
@@ -49,6 +55,7 @@ export const data = new SlashCommandBuilder()
       .addChoices(
         { name: '📊 Parameters & Status', value: 'profile' },
         { name: '⭐ Parameter Stat Points', value: 'stats' },
+        { name: '🎨 Ascension & Spirit Origin Art', value: 'ascension' },
         { name: '👔 Equip Craft Essence', value: 'equip_ce' },
         { name: '🧪 CE Synthesis & EXP Feed', value: 'feed_ce' },
         { name: '💥 Noble Phantasm Art', value: 'np' },
@@ -206,7 +213,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 export async function buildServantHub(
   master: any,
   activeServant: any,
-  category: 'profile' | 'stats' | 'equip_ce' | 'feed_ce' | 'np' | 'dialogue' | 'roster' = 'profile',
+  category: 'profile' | 'stats' | 'ascension' | 'equip_ce' | 'feed_ce' | 'np' | 'dialogue' | 'roster' = 'profile',
   selectedServantId?: string,
   actionOutcomeMsg?: string,
   currentStep: number = 1,
@@ -534,6 +541,55 @@ export async function buildServantHub(
 
     embeds = [embed];
 
+  } else if (category === 'ascension') {
+    const canonicalAscension = CANONICAL_SERVANT_ASCENSIONS[templateId];
+    const stages = getUnlockedAscensionStages(templateId, lvl, bondLevel);
+    const activeStage = targetServant.selectedAscensionStage || (isAscensionStageUnlocked(4, lvl, bondLevel) ? 4 : isAscensionStageUnlocked(3, lvl, bondLevel) ? 3 : isAscensionStageUnlocked(2, lvl, bondLevel) ? 2 : 1);
+
+    let stageLines = '';
+    if (stages.length > 0) {
+      stageLines = stages.map(s => {
+        const isCurrent = String(s.stage) === String(activeStage) || (s.stage === 'costume' && String(activeStage).startsWith('costume'));
+        const badge = s.unlocked ? '✅ **[UNLOCKED]**' : `🔒 **[LOCKED]** *(${s.reqText})*`;
+        const activeBadge = isCurrent ? ' 🌟 **[CURRENTLY EQUIPPED]**' : '';
+        return `• **${s.name}**\n  ↳ ${badge}${activeBadge}`;
+      }).join('\n\n');
+    } else {
+      stageLines = `• **Default Spirit Origin**\n  ↳ ✅ **[UNLOCKED]** 🌟 **[ACTIVE]**\n  *Custom Heroic Spirit with unique bespoke artwork.*`;
+    }
+
+    const { cardArtUrl, avatarUrl } = getServantAvatarAndCardArt(targetServant);
+
+    const embed = new EmbedBuilder()
+      .setTitle(`🎨 Spirit Origin Ascension Wardrobe: ${sName}`)
+      .setDescription(
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `👑 **Servant:** **${sName}** (${t.servantClass})\n` +
+        `⭐ **Level:** \`Lv.${lvl}/500\` | 🌸 **Bond Level:** \`Bond ${bondLevel}/10\`\n\n` +
+        `✨ **ASCENSION UNLOCK SYSTEM:**\n` +
+        `• 🌟 **Stage 1 (Base):** Unlocked by default at **Level 1**\n` +
+        `• ⚔️ **Stage 2:** Unlocked upon reaching **Level 20**\n` +
+        `• 🛡️ **Stage 3:** Unlocked upon reaching **Level 35**\n` +
+        `• 👑 **Stage 4 (Final Ascension):** Unlocked at **Level 50** OR **Bond Level 10**!\n` +
+        `• 🎭 **Special Costumes:** Unlocked at **Level 50** OR **Bond Level 5**!\n\n` +
+        `📜 **AVAILABLE SPIRIT ORIGIN STAGES:**\n` +
+        stageLines +
+        `\n\n*Click the stage buttons or use the dropdown below to transform your Servant's active character art!*`
+      )
+      .setColor(0xd4af37)
+      .setFooter({ text: `Master ${master.username} • Atlas Academy High-Definition Assets` });
+
+    if (avatarUrl) {
+      safeSetEmbedThumbnail(embed, avatarUrl, isUpdate ? undefined : files);
+    }
+
+    const artworkEmbed = new EmbedBuilder()
+      .setTitle(`🖼️ Active Spirit Origin Art: ${sName}`)
+      .setColor(0xd4af37);
+    safeSetEmbedImage(artworkEmbed, cardArtUrl || avatarUrl, isUpdate ? undefined : files);
+
+    embeds = [embed, artworkEmbed];
+
   } else if (category === 'roster') {
     const rosterList = master.servants.map((s: any, idx: number) => {
       const sN = s.nickname || s.template?.name || s.name || 'Heroic Spirit';
@@ -569,6 +625,11 @@ export async function buildServantHub(
       .setEmoji('⭐')
       .setStyle(category === 'stats' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
+      .setCustomId('servant_tab_ascension')
+      .setLabel('Ascension')
+      .setEmoji('🎨')
+      .setStyle(category === 'ascension' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+    new ButtonBuilder()
       .setCustomId('servant_tab_equip_ce')
       .setLabel('Equip CE')
       .setEmoji('👔')
@@ -577,15 +638,15 @@ export async function buildServantHub(
       .setCustomId('servant_tab_feed_ce')
       .setLabel('Feed CEs')
       .setEmoji('🧪')
-      .setStyle(category === 'feed_ce' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+      .setStyle(category === 'feed_ce' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+  );
+
+  const subNavRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId('servant_tab_dialogue')
       .setLabel('Voice Lines')
       .setEmoji('💬')
-      .setStyle(category === 'dialogue' ? ButtonStyle.Primary : ButtonStyle.Secondary)
-  );
-
-  const subNavRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      .setStyle(category === 'dialogue' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId('servant_tab_np')
       .setLabel('Noble Phantasm')
@@ -761,6 +822,41 @@ export async function buildServantHub(
       new ButtonBuilder().setCustomId('servant_act_reclaim_exp').setLabel('De-level & Reclaim').setEmoji('⚗️').setStyle(ButtonStyle.Danger).setDisabled(!canReclaim)
     );
     components.push(actionButtonsRow);
+  } else if (category === 'ascension') {
+    const stages = getUnlockedAscensionStages(templateId, lvl, bondLevel);
+    if (stages.length > 0) {
+      const stageOptions = stages.map(s => ({
+        label: s.name.slice(0, 100),
+        description: s.unlocked ? 'Unlocked • Click to equip Spirit Origin' : `Locked • ${s.reqText}`.slice(0, 100),
+        value: String(s.stage),
+        emoji: s.stage === 4 ? '👑' : s.stage === 3 ? '🛡️' : s.stage === 2 ? '⚔️' : s.stage === 'costume' ? '🎭' : '🌟',
+        default: String(targetServant.selectedAscensionStage || 1) === String(s.stage)
+      }));
+
+      const stageSelect = new StringSelectMenuBuilder()
+        .setCustomId('servant_sel_ascension_stage')
+        .setPlaceholder('🎨 Select Spirit Origin Ascension Stage...')
+        .addOptions(stageOptions);
+      components.push(new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(stageSelect));
+
+      const stageBtns = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder().setCustomId('servant_set_stage_1').setLabel('Stage 1').setEmoji('🌟').setStyle(targetServant.selectedAscensionStage == 1 || !targetServant.selectedAscensionStage ? ButtonStyle.Success : ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('servant_set_stage_2').setLabel('Stage 2').setEmoji('⚔️').setStyle(targetServant.selectedAscensionStage == 2 ? ButtonStyle.Success : ButtonStyle.Secondary).setDisabled(!isAscensionStageUnlocked(2, lvl, bondLevel)),
+        new ButtonBuilder().setCustomId('servant_set_stage_3').setLabel('Stage 3').setEmoji('🛡️').setStyle(targetServant.selectedAscensionStage == 3 ? ButtonStyle.Success : ButtonStyle.Secondary).setDisabled(!isAscensionStageUnlocked(3, lvl, bondLevel)),
+        new ButtonBuilder().setCustomId('servant_set_stage_4').setLabel('Final Art').setEmoji('👑').setStyle(targetServant.selectedAscensionStage == 4 ? ButtonStyle.Success : ButtonStyle.Secondary).setDisabled(!isAscensionStageUnlocked(4, lvl, bondLevel))
+      );
+      if (stages.some(s => s.stage === 'costume')) {
+        stageBtns.addComponents(
+          new ButtonBuilder().setCustomId('servant_set_stage_costume').setLabel('Costume').setEmoji('🎭').setStyle(targetServant.selectedAscensionStage === 'costume' ? ButtonStyle.Success : ButtonStyle.Secondary).setDisabled(!isAscensionStageUnlocked('costume', lvl, bondLevel))
+        );
+      }
+      components.push(stageBtns);
+    } else {
+      actionButtonsRow.addComponents(
+        new ButtonBuilder().setCustomId('servant_act_hear_voice').setLabel('Hear Voice Line').setEmoji('💬').setStyle(ButtonStyle.Primary)
+      );
+      components.push(actionButtonsRow);
+    }
   } else {
     actionButtonsRow.addComponents(
       new ButtonBuilder().setCustomId('servant_act_hear_voice').setLabel('Hear Voice Line').setEmoji('💬').setStyle(ButtonStyle.Primary)
@@ -795,7 +891,7 @@ export function attachServantCollector(
   userId: string,
   initialMaster: any,
   initialServant: any,
-  initialCategory: 'profile' | 'stats' | 'equip_ce' | 'feed_ce' | 'np' | 'dialogue' | 'roster' = 'profile'
+  initialCategory: 'profile' | 'stats' | 'ascension' | 'equip_ce' | 'feed_ce' | 'np' | 'dialogue' | 'roster' = 'profile'
 ) {
   if (!message || typeof message.createMessageComponentCollector !== 'function') return;
 
@@ -845,6 +941,8 @@ export function attachServantCollector(
         currentCategory = 'profile';
       } else if (i.customId === 'servant_tab_stats') {
         currentCategory = 'stats';
+      } else if (i.customId === 'servant_tab_ascension') {
+        currentCategory = 'ascension';
       } else if (i.customId === 'servant_tab_equip_ce') {
         currentCategory = 'equip_ce';
       } else if (i.customId === 'servant_tab_feed_ce') {
@@ -1272,6 +1370,54 @@ export function attachServantCollector(
         await saveMaster(master);
         getOrInitWarSession(master);
         actionOutcomeMsg = `👑 Contract updated! **${targetServant.nickname || targetServant.template?.name || 'Servant'}** is now your Active Servant.`;
+      }
+      // ASCENSION STAGE SELECTION (DROPDOWN)
+      else if (i.customId === 'servant_sel_ascension_stage') {
+        const val = i.values[0];
+        const lvl = targetServant.level || 1;
+        const bondLevel = targetServant.bondLevel || 1;
+        const unlocked = isAscensionStageUnlocked(val as any, lvl, bondLevel);
+
+        if (!unlocked) {
+          const reqText = (val === '4' || val === 4) 
+            ? 'Level 50 OR Bond Level 10' 
+            : (val === '3' || val === 3) 
+            ? 'Level 35' 
+            : (val === '2' || val === 2) 
+            ? 'Level 20' 
+            : 'Level 50 or Bond Level 5';
+          actionOutcomeMsg = `🔒 **Stage Locked!** This Spirit Origin requires **${reqText}** to unlock. (Current: Lv.${lvl}, Bond ${bondLevel})`;
+        } else {
+          const stageNum = val === 'costume' ? 'costume' : parseInt(val, 10);
+          targetServant.selectedAscensionStage = stageNum as any;
+          master.servants = master.servants.map((s: any) => s.id === targetServant.id ? targetServant : s);
+          await saveMaster(master);
+          actionOutcomeMsg = `🎨 **Spirit Origin Transformed!** Set active artwork for **${sName}** to **Stage ${val === 'costume' ? 'Costume' : val === '4' ? '4 (Final Ascension)' : val}**!`;
+        }
+      }
+      // ASCENSION STAGE SELECTION (BUTTONS)
+      else if (i.customId.startsWith('servant_set_stage_')) {
+        const stageKey = i.customId.replace('servant_set_stage_', '');
+        const lvl = targetServant.level || 1;
+        const bondLevel = targetServant.bondLevel || 1;
+        const unlocked = isAscensionStageUnlocked(stageKey as any, lvl, bondLevel);
+
+        if (!unlocked) {
+          const reqText = (stageKey === '4') 
+            ? 'Level 50 OR Bond Level 10' 
+            : (stageKey === '3') 
+            ? 'Level 35' 
+            : (stageKey === '2') 
+            ? 'Level 20' 
+            : 'Level 50 or Bond Level 5';
+          actionOutcomeMsg = `🔒 **Stage Locked!** This Spirit Origin requires **${reqText}** to unlock. (Current: Lv.${lvl}, Bond ${bondLevel})`;
+        } else {
+          const stageVal = stageKey === 'costume' ? 'costume' : parseInt(stageKey, 10);
+          targetServant.selectedAscensionStage = stageVal as any;
+          master.servants = master.servants.map((s: any) => s.id === targetServant.id ? targetServant : s);
+          await saveMaster(master);
+          actionOutcomeMsg = `🎨 **Spirit Origin Transformed!** Set active artwork for **${sName}** to **Stage ${stageKey === 'costume' ? 'Costume' : stageKey === '4' ? '4 (Final Ascension)' : stageKey}**!`;
+        }
       }
       // STEP MULTIPLIER TOGGLES
       else if (i.customId === 'servant_step_1') {

@@ -1,4 +1,5 @@
 import { ServantTemplate, ServantClass, PassiveSkill } from '../types';
+import { resolveAscensionArtwork } from './servantAscensions';
 
 export function getDefaultClassPassives(servantClass: ServantClass): PassiveSkill[] {
   switch (servantClass) {
@@ -340,7 +341,16 @@ export function getServantAvatarAndCardArt(
   }
 
   let cardArtUrl = '';
-  if (!isInvalid(servantInput.cardArtUrl)) {
+  const ascensionArt = resolveAscensionArtwork(
+    templateId,
+    servantInput.selectedAscensionStage,
+    servantInput.level || 1,
+    servantInput.bondLevel || 1
+  );
+
+  if (ascensionArt) {
+    cardArtUrl = ascensionArt;
+  } else if (!isInvalid(servantInput.cardArtUrl)) {
     cardArtUrl = servantInput.cardArtUrl;
   } else if (!isInvalid(template.cardArtUrl)) {
     cardArtUrl = template.cardArtUrl;

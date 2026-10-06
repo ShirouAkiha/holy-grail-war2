@@ -1,0 +1,257 @@
+// Official Atlas Academy Ascension Artworks for Canonical Fate/Grand Order Servants
+// Stages 1, 2, 3, and 4 (Final Ascension) + Special Costumes
+
+export interface ServantAscensionData {
+  stage1: string;
+  stage2: string;
+  stage3: string;
+  stage4: string; // Final Ascension
+  costume?: string;
+  costumes?: { id: string; name: string; url: string }[];
+}
+
+export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> = {
+  artoria_pendragon: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/100100/100100a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/100100/100100a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/100100/100100b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/100100/100100b@2.png',
+    costume: 'https://static.atlasacademy.io/NA/CharaGraph/100130/100130a.png',
+    costumes: [
+      { id: '100130', name: 'Invisible Air (Wind King Barrier)', url: 'https://static.atlasacademy.io/NA/CharaGraph/100130/100130a.png' }
+    ]
+  },
+  gilgamesh_archer: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/200200/200200a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/200200/200200a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/200200/200200b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/200200/200200b@2.png'
+  },
+  scathach_lancer: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/301300/301300a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/301300/301300a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/301300/301300b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/301300/301300b@2.png',
+    costume: 'https://static.atlasacademy.io/NA/CharaGraph/301330/301330a.png',
+    costumes: [
+      { id: '301330', name: 'Piercing Bunny of Dun Scaith', url: 'https://static.atlasacademy.io/NA/CharaGraph/301330/301330a.png' }
+    ]
+  },
+  jeanne_darc_ruler: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/900100/900100a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/900100/900100a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/900100/900100b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/900100/900100b@2.png',
+    costume: 'https://static.atlasacademy.io/NA/CharaGraph/900130/900130a.png',
+    costumes: [
+      { id: '900130', name: 'Formal Holy Maiden Gown', url: 'https://static.atlasacademy.io/NA/CharaGraph/900130/900130a.png' }
+    ]
+  },
+  jeanne_alter: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/1100100/1100100a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/1100100/1100100a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/1100100/1100100b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/1100100/1100100b@2.png'
+  },
+  mhx_alter: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/702600/702600a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/702600/702600a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/702600/702600b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/702600/702600b@2.png',
+    costume: 'https://static.atlasacademy.io/NA/CharaGraph/601830/601830a.png',
+    costumes: [
+      { id: '601830', name: 'Dark Knight Student Sailor Uniform', url: 'https://static.atlasacademy.io/NA/CharaGraph/601830/601830a.png' }
+    ]
+  },
+  artoria_pendragon_alter: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/100200/100200a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/100200/100200a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/100200/100200b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/100200/100200b@2.png',
+    costume: 'https://static.atlasacademy.io/NA/CharaGraph/100230/100230a.png',
+    costumes: [
+      { id: '100230', name: 'Shinjuku 1999 Leather Jacket', url: 'https://static.atlasacademy.io/NA/CharaGraph/100230/100230a.png' }
+    ]
+  },
+  nero_claudius_saber: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/100500/100500a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/100500/100500a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/100500/100500b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/100500/100500b@2.png',
+    costume: 'https://static.atlasacademy.io/NA/CharaGraph/100530/100530a.png',
+    costumes: [
+      { id: '100530', name: 'Olympia Bloomers', url: 'https://static.atlasacademy.io/NA/CharaGraph/100530/100530a.png' },
+      { id: '100540', name: 'Silk of Venus', url: 'https://static.atlasacademy.io/NA/CharaGraph/100540/100540a.png' },
+      { id: '100550', name: 'Chastity Bridle', url: 'https://static.atlasacademy.io/NA/CharaGraph/100550/100550a.png' }
+    ]
+  },
+  emiya_archer: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/200100/200100a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/200100/200100a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/200100/200100b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/200100/200100b@2.png',
+    costume: 'https://static.atlasacademy.io/NA/CharaGraph/200130/200130a.png',
+    costumes: [
+      { id: '200130', name: 'Summer Butler Chaldea Apron', url: 'https://static.atlasacademy.io/NA/CharaGraph/200130/200130a.png' }
+    ]
+  },
+  heracles_berserker: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/700100/700100a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/700100/700100a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/700100/700100b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/700100/700100b@2.png'
+  },
+  cu_chulainn_lancer: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/300100/300100a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/300100/300100a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/300100/300100b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/300100/300100b@2.png'
+  },
+  karna_lancer: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/301400/301400a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/301400/301400a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/301400/301400b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/301400/301400b@2.png'
+  },
+  aoko_aozaki: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/2501400/2501400a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/2501400/2501400a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/2501400/2501400b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/2501400/2501400b@2.png'
+  },
+  artoria_caster: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/504500/504500a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/504500/504500a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/504500/504500b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/504500/504500b@2.png'
+  },
+  typhon_ephemeros: {
+    stage1: 'https://static.atlasacademy.io/JP/CharaGraph/2801100/2801100a@1.png',
+    stage2: 'https://static.atlasacademy.io/JP/CharaGraph/2801100/2801100a@2.png',
+    stage3: 'https://static.atlasacademy.io/JP/CharaGraph/2801100/2801100b@1.png',
+    stage4: 'https://static.atlasacademy.io/JP/CharaGraph/2801100/2801100b@2.png',
+    costume: 'https://static.atlasacademy.io/JP/CharaGraph/2801130/2801130a.png',
+    costumes: [
+      { id: '2801130', name: 'Ancient Dragon Form Frame', url: 'https://static.atlasacademy.io/JP/CharaGraph/2801130/2801130a.png' }
+    ]
+  },
+  van_gogh: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/2500600/2500600a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/2500600/2500600a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/2500600/2500600b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/2500600/2500600b@2.png'
+  }
+};
+
+/**
+ * Returns whether a specific Ascension stage is unlocked for a servant based on level and bond level.
+ * Rule:
+ * - Stage 1 (Base): Unlocked at Level 1 (Default)
+ * - Stage 2: Unlocked at Level 20+
+ * - Stage 3: Unlocked at Level 35+
+ * - Stage 4 (Final Ascension): Unlocked at Level 50+ OR Bond Level 10!
+ * - Costume: Unlocked at Level 50+ OR Bond Level 5+
+ */
+export function isAscensionStageUnlocked(
+  stage: 1 | 2 | 3 | 4 | 'costume' | string,
+  level: number = 1,
+  bondLevel: number = 1
+): boolean {
+  if (stage === 1 || stage === '1') return true;
+  if (stage === 2 || stage === '2') return level >= 20;
+  if (stage === 3 || stage === '3') return level >= 35;
+  if (stage === 4 || stage === '4') return level >= 50 || bondLevel >= 10;
+  if (stage === 'costume' || String(stage).startsWith('costume')) return level >= 50 || bondLevel >= 5;
+  return true;
+}
+
+/**
+ * Returns all available and unlocked Ascension stages for a given Servant.
+ */
+export function getUnlockedAscensionStages(
+  templateId: string,
+  level: number = 1,
+  bondLevel: number = 1
+): { stage: 1 | 2 | 3 | 4 | 'costume'; name: string; url: string; unlocked: boolean; reqText: string }[] {
+  const data = CANONICAL_SERVANT_ASCENSIONS[templateId];
+  if (!data) return [];
+
+  return [
+    {
+      stage: 1,
+      name: 'Stage 1 (Base Spirit Origin)',
+      url: data.stage1,
+      unlocked: true,
+      reqText: 'Unlocked by default'
+    },
+    {
+      stage: 2,
+      name: 'Stage 2 (Ascension 2)',
+      url: data.stage2,
+      unlocked: isAscensionStageUnlocked(2, level, bondLevel),
+      reqText: 'Requires Level 20'
+    },
+    {
+      stage: 3,
+      name: 'Stage 3 (Ascension 3)',
+      url: data.stage3,
+      unlocked: isAscensionStageUnlocked(3, level, bondLevel),
+      reqText: 'Requires Level 35'
+    },
+    {
+      stage: 4,
+      name: 'Stage 4 (Final Ascension)',
+      url: data.stage4,
+      unlocked: isAscensionStageUnlocked(4, level, bondLevel),
+      reqText: 'Requires Level 50 OR Bond Level 10'
+    },
+    ...(data.costumes && data.costumes.length > 0
+      ? data.costumes.map(c => ({
+          stage: 'costume' as const,
+          name: `Costume: ${c.name}`,
+          url: c.url,
+          unlocked: isAscensionStageUnlocked('costume', level, bondLevel),
+          reqText: 'Requires Level 50 OR Bond Level 5'
+        }))
+      : [])
+  ];
+}
+
+/**
+ * Resolves the artwork URL for a servant based on their selected Ascension stage.
+ */
+export function resolveAscensionArtwork(
+  templateId: string,
+  selectedStage?: 1 | 2 | 3 | 4 | 'costume' | string,
+  level: number = 1,
+  bondLevel: number = 1,
+  fallbackUrl?: string
+): string {
+  const data = CANONICAL_SERVANT_ASCENSIONS[templateId];
+  if (!data) return fallbackUrl || '';
+
+  // If a specific stage is chosen and unlocked, return it
+  if (selectedStage) {
+    if ((selectedStage === 4 || selectedStage === '4') && isAscensionStageUnlocked(4, level, bondLevel)) {
+      return data.stage4;
+    }
+    if ((selectedStage === 3 || selectedStage === '3') && isAscensionStageUnlocked(3, level, bondLevel)) {
+      return data.stage3;
+    }
+    if ((selectedStage === 2 || selectedStage === '2') && isAscensionStageUnlocked(2, level, bondLevel)) {
+      return data.stage2;
+    }
+    if (selectedStage === 1 || selectedStage === '1') {
+      return data.stage1;
+    }
+    if ((selectedStage === 'costume' || String(selectedStage).startsWith('costume')) && isAscensionStageUnlocked('costume', level, bondLevel) && data.costume) {
+      return data.costume;
+    }
+  }
+
+  // Default automatic progression: return highest unlocked stage
+  if (isAscensionStageUnlocked(4, level, bondLevel)) return data.stage4;
+  if (isAscensionStageUnlocked(3, level, bondLevel)) return data.stage3;
+  if (isAscensionStageUnlocked(2, level, bondLevel)) return data.stage2;
+  return data.stage1;
+}
