@@ -26,6 +26,7 @@ import {
   setWorkshopWardInWar, 
   setChannelTrapInWar 
 } from '../engine/grailwar';
+import { ATLAS_ITEM_ICONS } from '../utils/atlasAssets';
 
 export interface InventoryHubOptions {
   ceViewMode?: 'all' | 'owned';
@@ -267,6 +268,16 @@ export function buildInventoryHub(
     .setDescription(`${equippedBanner}\n\n` + itemLines.join('\n'))
     .setColor(category === 'ces' ? 0x38bdf8 : category === 'servants' ? 0xd4af37 : 0xa855f7)
     .setFooter({ text: `Page ${currentPage}/${totalPages} • Total: ${totalItems} • Select an item below, then press Equip, View Art, or Inspect Lore.` });
+
+  if (category === 'items') {
+    if (selectedItemId === 'item_ticket') {
+      embed.setThumbnail(ATLAS_ITEM_ICONS.summonTicket);
+    } else if (selectedItemId === 'item_prism') {
+      embed.setThumbnail(ATLAS_ITEM_ICONS.manaPrism);
+    } else {
+      embed.setThumbnail(ATLAS_ITEM_ICONS.saintQuartz);
+    }
+  }
 
   // Row 1: Primary Categories
   const catRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
