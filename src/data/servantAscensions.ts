@@ -307,22 +307,23 @@ export function resolveAscensionArtwork(
   if (!match) return fallbackUrl || '';
   const data = match.data;
 
-  // If a specific stage is chosen and unlocked, return it
-  if (selectedStage) {
-    if ((selectedStage === 4 || selectedStage === '4') && isAscensionStageUnlocked(4, level, bondLevel)) {
+  // If a specific stage is chosen, return that stage's artwork directly
+  if (selectedStage !== undefined && selectedStage !== null && selectedStage !== '') {
+    const sStr = String(selectedStage).toLowerCase().trim();
+    if (sStr === '4' || sStr === 'stage4' || sStr === 'final') {
       return data.stage4;
     }
-    if ((selectedStage === 3 || selectedStage === '3') && isAscensionStageUnlocked(3, level, bondLevel)) {
+    if (sStr === '3' || sStr === 'stage3') {
       return data.stage3;
     }
-    if ((selectedStage === 2 || selectedStage === '2') && isAscensionStageUnlocked(2, level, bondLevel)) {
+    if (sStr === '2' || sStr === 'stage2') {
       return data.stage2;
     }
-    if (selectedStage === 1 || selectedStage === '1') {
+    if (sStr === '1' || sStr === 'stage1' || sStr === 'base') {
       return data.stage1;
     }
-    if ((selectedStage === 'costume' || String(selectedStage).startsWith('costume')) && isAscensionStageUnlocked('costume', level, bondLevel) && data.costume) {
-      return data.costume;
+    if (sStr.includes('costume') || sStr === 'costume') {
+      return data.costume || (data.costumes && data.costumes[0]?.url) || data.stage4;
     }
   }
 

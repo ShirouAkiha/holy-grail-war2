@@ -302,6 +302,7 @@ export function getServantAvatarAndCardArt(
     if (npGif && clean === npGif.trim().toLowerCase()) return true;
     if (clean.includes('banaaizq4gi91.gif') || clean.includes('cu_chulain_np')) return true;
     if (clean.includes('zutp5pqlu7fmkvyin9h-f') || clean.includes('super_aoko') || clean.includes('gr8x0bmk-phc95lo5mhal')) return true;
+    if (clean.includes('llgwffdhold') || clean.includes('4lkcjmsj')) return true;
     return false;
   };
 
@@ -2106,9 +2107,9 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     battleStartQuote: '"Do it lavishly! Paint and paint! Like the sun... Van Gogh cutter!"',
     victoryQuote: '"And now, a handshake to you. I wonder if Mauve saw me..."',
     defeatQuote: '"I\'ll go ahead... to the land without shadows... I\'m sorry... I\'m sorry...!"',
-    avatarUrl: 'https://ella.janitorai.com/media-approved/4LKCJMSjsW8PBTXleUtll.webp',
-    cardArtUrl: 'https://ella.janitorai.com/media-approved/4LKCJMSjsW8PBTXleUtll.webp',
-    spriteUrl: 'https://ella.janitorai.com/media-approved/M0eT6zv6yAIftUXUkrQ2a.webp',
+    avatarUrl: 'https://static.atlasacademy.io/NA/CharaGraph/2500600/2500600a@1.png',
+    cardArtUrl: 'https://static.atlasacademy.io/NA/CharaGraph/2500600/2500600a@1.png',
+    spriteUrl: 'https://static.atlasacademy.io/NA/CharaGraph/2500600/2500600a@1.png',
     isCustomOrMeme: false
   }
 ];

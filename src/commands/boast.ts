@@ -1,16 +1,56 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder , MessageFlags } from 'discord.js';
+import { SlashCommandBuilder, ChatInputCommandInteraction, AutocompleteInteraction, EmbedBuilder, MessageFlags, AttachmentBuilder } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { getOrInitWarSession } from '../engine/grailwar';
-import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
+import { safeSetEmbedThumbnail, safeSetEmbedImage } from '../utils/discordEmbedHelper';
+import { getServantAvatarAndCardArt } from '../data/servants';
 
 export const data = new SlashCommandBuilder()
   .setName('boast')
-  .setDescription('📢 Publicly boast your Servant to the entire server (Permanent War Exposure!)');
+  .setDescription('📢 Publicly boast your Servant to the entire server (Permanent War Exposure!)')
+  .addStringOption(opt =>
+    opt
+      .setName('servant')
+      .setDescription('Select a specific contracted Servant from your roster')
+      .setRequired(false)
+      .setAutocomplete(true)
+  );
+
+export async function autocomplete(interaction: AutocompleteInteraction) {
+  try {
+    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+    const focused = interaction.options.getFocused().toLowerCase();
+    const servants = master.servants || [];
+    const choices = servants.map((s: any) => {
+      const name = s.nickname || s.template?.name || s.name || 'Heroic Spirit';
+      const sClass = s.template?.servantClass || s.servantClass || 'Saber';
+      const isAct = master.activeServantId === s.id;
+      return {
+        name: `${isAct ? '👑 [ACTIVE] ' : ''}[${sClass}] ${name} (Lv.${s.level || 1})`.slice(0, 100),
+        value: s.id
+      };
+    }).filter(c => c.name.toLowerCase().includes(focused)).slice(0, 25);
+    await interaction.respond(choices);
+  } catch {
+    await interaction.respond([]);
+  }
+}
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
-    const s = master.servants?.find((x: any) => x.id === master.activeServantId) || master.servants?.[0];
+    const targetQuery = interaction.options.getString('servant');
+
+    let s = master.servants?.find((x: any) => x.id === master.activeServantId) || master.servants?.[0];
+    if (targetQuery) {
+      const found = master.servants?.find((x: any) =>
+        x.id === targetQuery ||
+        x.nickname?.toLowerCase() === targetQuery.toLowerCase() ||
+        x.template?.name?.toLowerCase() === targetQuery.toLowerCase() ||
+        x.nickname?.toLowerCase().includes(targetQuery.toLowerCase()) ||
+        x.template?.name?.toLowerCase().includes(targetQuery.toLowerCase())
+      );
+      if (found) s = found;
+    }
 
     if (!s) {
       await interaction.reply({
@@ -38,8 +78,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       await saveMaster(master);
     }
 
-    const sName = s.nickname || s.template?.name || 'Heroic Spirit';
-    const sClass = s.template?.servantClass || 'Saber';
+    const sName = s.nickname || s.template?.name || (s as any).name || 'Heroic Spirit';
+    const sClass = s.template?.servantClass || (s as any).servantClass || 'Saber';
 
     let description = '';
     if (isActivelyInWar && uP) {
@@ -69,11 +109,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           : 'Heroic Spirit Declaration • Throne of Heroes' 
       });
 
-    if (s.template?.avatarUrl) {
-      safeSetEmbedThumbnail(embed, s.template.avatarUrl);
+    const artInfo = getServantAvatarAndCardArt(s);
+    const boastFiles: AttachmentBuilder[] = [];
+    if (artInfo.cardArtUrl || artInfo.avatarUrl) {
+      safeSetEmbedImage(embed, artInfo.cardArtUrl || artInfo.avatarUrl, boastFiles);
+    }
+    if (artInfo.avatarUrl || artInfo.cardArtUrl) {
+      safeSetEmbedThumbnail(embed, artInfo.avatarUrl || artInfo.cardArtUrl, boastFiles);
     }
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.reply({ embeds: [embed], files: boastFiles });
   } catch (error: any) {
     console.error('Error executing /boast:', error);
     await interaction.reply({ content: `❌ Boast error: ${error.message}`, flags: MessageFlags.Ephemeral });
