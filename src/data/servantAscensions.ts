@@ -144,6 +144,77 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
 };
 
 /**
+ * Resolves canonical ascension dataset using exact key, name, or known alias.
+ */
+export function findCanonicalAscensionData(identifier?: string): { key: string; data: ServantAscensionData } | undefined {
+  if (!identifier) return undefined;
+  const raw = identifier.toLowerCase().trim().replace(/[\s\-']/g, '_');
+  
+  if (CANONICAL_SERVANT_ASCENSIONS[raw]) {
+    return { key: raw, data: CANONICAL_SERVANT_ASCENSIONS[raw] };
+  }
+
+  const ALIAS_MAP: Record<string, string> = {
+    scathach: 'scathach_lancer',
+    scathach_lancer: 'scathach_lancer',
+    scáthach: 'scathach_lancer',
+    artoria: 'artoria_pendragon',
+    artoria_pendragon: 'artoria_pendragon',
+    saber: 'artoria_pendragon',
+    gilgamesh: 'gilgamesh_archer',
+    gilgamesh_archer: 'gilgamesh_archer',
+    archer: 'emiya_archer',
+    emiya: 'emiya_archer',
+    emiya_archer: 'emiya_archer',
+    jeanne: 'jeanne_darc_ruler',
+    jeanne_darc: 'jeanne_darc_ruler',
+    jeanne_darc_ruler: 'jeanne_darc_ruler',
+    ruler: 'jeanne_darc_ruler',
+    jeanne_alter: 'jeanne_alter',
+    jalter: 'jeanne_alter',
+    mhx_alter: 'mhx_alter',
+    ecchan: 'mhx_alter',
+    mysterious_heroine_x_alter: 'mhx_alter',
+    artoria_pendragon_alter: 'artoria_pendragon_alter',
+    artoria_alter: 'artoria_pendragon_alter',
+    saber_alter: 'artoria_pendragon_alter',
+    salter: 'artoria_pendragon_alter',
+    nero: 'nero_claudius_saber',
+    nero_claudius: 'nero_claudius_saber',
+    nero_claudius_saber: 'nero_claudius_saber',
+    heracles: 'heracles_berserker',
+    heracles_berserker: 'heracles_berserker',
+    cu_chulainn: 'cu_chulainn_lancer',
+    cu_chulainn_lancer: 'cu_chulainn_lancer',
+    cú_chulainn: 'cu_chulainn_lancer',
+    cu: 'cu_chulainn_lancer',
+    karna: 'karna_lancer',
+    karna_lancer: 'karna_lancer',
+    aoko: 'aoko_aozaki',
+    aoko_aozaki: 'aoko_aozaki',
+    artoria_caster: 'artoria_caster',
+    castoria: 'artoria_caster',
+    typhon: 'typhon_ephemeros',
+    typhon_ephemeros: 'typhon_ephemeros',
+    ephemeros: 'typhon_ephemeros',
+    van_gogh: 'van_gogh',
+    gogh: 'van_gogh'
+  };
+
+  if (ALIAS_MAP[raw] && CANONICAL_SERVANT_ASCENSIONS[ALIAS_MAP[raw]]) {
+    return { key: ALIAS_MAP[raw], data: CANONICAL_SERVANT_ASCENSIONS[ALIAS_MAP[raw]] };
+  }
+
+  for (const [key, data] of Object.entries(CANONICAL_SERVANT_ASCENSIONS)) {
+    if (raw.includes(key) || key.includes(raw)) {
+      return { key, data };
+    }
+  }
+
+  return undefined;
+}
+
+/**
  * Returns whether a specific Ascension stage is unlocked for a servant based on level and bond level.
  * Rule:
  * - Stage 1 (Base): Unlocked at Level 1 (Default)
@@ -173,8 +244,9 @@ export function getUnlockedAscensionStages(
   level: number = 1,
   bondLevel: number = 1
 ): { stage: 1 | 2 | 3 | 4 | 'costume'; name: string; url: string; unlocked: boolean; reqText: string }[] {
-  const data = CANONICAL_SERVANT_ASCENSIONS[templateId];
-  if (!data) return [];
+  const match = findCanonicalAscensionData(templateId);
+  if (!match) return [];
+  const data = match.data;
 
   return [
     {
@@ -227,8 +299,9 @@ export function resolveAscensionArtwork(
   bondLevel: number = 1,
   fallbackUrl?: string
 ): string {
-  const data = CANONICAL_SERVANT_ASCENSIONS[templateId];
-  if (!data) return fallbackUrl || '';
+  const match = findCanonicalAscensionData(templateId);
+  if (!match) return fallbackUrl || '';
+  const data = match.data;
 
   // If a specific stage is chosen and unlocked, return it
   if (selectedStage) {

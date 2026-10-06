@@ -276,23 +276,6 @@ export function getServantAvatarAndCardArt(
     };
   }
 
-  // Strict check for Typhon Ephemeros
-  if (
-    templateId === 'typhon_ephemeros' ||
-    templateId === 'typhon' ||
-    templateId === 'ephemeros' ||
-    templateId.includes('typhon') ||
-    templateId.includes('ephemeros') ||
-    inputName.includes('typhon') ||
-    inputName.includes('ephemeros')
-  ) {
-    return {
-      avatarUrl: 'https://ella.janitorai.com/media-approved/kQzECU4XQGSezfzr6mOWo.webp',
-      cardArtUrl: 'https://ella.janitorai.com/media-approved/kQzECU4XQGSezfzr6mOWo.webp',
-      spriteUrl: servantInput.spriteUrl || template.spriteUrl || 'https://ella.janitorai.com/media-approved/OP7PiFQNT0RNCbGEyVNTY.webp'
-    };
-  }
-
   const findCanonical = (pool: ServantTemplate[]) => {
     let found = pool.find(s => s.id.toLowerCase() === templateId);
     if (found) return found;
@@ -305,14 +288,7 @@ export function getServantAvatarAndCardArt(
   };
 
   const canonical = findCanonical(SERVANT_DATABASE) || (customServants ? findCanonical(customServants) : undefined);
-
-  if (canonical && !canonical.isCustomOrMeme && canonical.avatarUrl) {
-    return {
-      avatarUrl: canonical.avatarUrl,
-      cardArtUrl: canonical.cardArtUrl || canonical.avatarUrl,
-      spriteUrl: servantInput.spriteUrl || template.spriteUrl || canonical.spriteUrl
-    };
-  }
+  const resolvedTemplateId = canonical?.id || templateId || inputName;
 
   const npGif = template.noblePhantasm?.animationUrl ||
                 template.noblePhantasm?.gifUrl ||
@@ -340,16 +316,19 @@ export function getServantAvatarAndCardArt(
     avatarUrl = canonical?.avatarUrl || 'https://ella.janitorai.com/media-approved/B9sAHeFp8-jdUk8VB4Y_f.webp';
   }
 
-  let cardArtUrl = '';
+  // 1. First priority for cardArtUrl: Selected / Unlocked Atlas Academy Ascension Stage
   const ascensionArt = resolveAscensionArtwork(
-    templateId,
+    resolvedTemplateId,
     servantInput.selectedAscensionStage,
     servantInput.level || 1,
     servantInput.bondLevel || 1
   );
 
+  let cardArtUrl = '';
   if (ascensionArt) {
     cardArtUrl = ascensionArt;
+  } else if (servantInput.customArtworkUrl && !isInvalid(servantInput.customArtworkUrl)) {
+    cardArtUrl = servantInput.customArtworkUrl;
   } else if (!isInvalid(servantInput.cardArtUrl)) {
     cardArtUrl = servantInput.cardArtUrl;
   } else if (!isInvalid(template.cardArtUrl)) {
