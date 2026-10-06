@@ -62,7 +62,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Buster Card effectiveness by 25%.',
     passiveType: 'buster_up',
     passiveValue: 25,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/2/2b/CE33.webp/revision/latest?cb=20221009130120'
   },
   {
     id: 'ce_imaginary_around',
@@ -122,7 +122,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Grants Invincibility for 1 turn (3 attacks) & +15% Damage Cut.',
     passiveType: 'invincible_hits',
     passiveValue: 3,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/4/4b/CE185.webp/revision/latest?cb=20221009142635'
   },
   {
     id: 'ce_heavens_feel',
@@ -152,7 +152,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Ignores Invincibility & +35% Special Damage against Magic users.',
     passiveType: 'ignore_invincible',
     passiveValue: 35,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/6/6d/CE263.webp/revision/latest?cb=20221013155833'
   },
 
   // --- 4★ SR CRAFT ESSENCES ---
@@ -169,7 +169,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Starts battle with 50% NP Gauge filled.',
     passiveType: 'starting_np',
     passiveValue: 50,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/e/e1/CE28.webp/revision/latest?cb=20221009130003'
   },
   {
     id: 'ce_gamer_fuel',
@@ -199,7 +199,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Quick Card effectiveness by 15%.',
     passiveType: 'quick_up',
     passiveValue: 15,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/8/87/CE24.webp/revision/latest?cb=20221009125901'
   },
   {
     id: 'ce_projection',
@@ -214,7 +214,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Arts Card effectiveness and NP damage by 15%.',
     passiveType: 'arts_up',
     passiveValue: 15,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/2/2b/CE23.webp/revision/latest?cb=20221009125846'
   },
   {
     id: 'ce_verdant_sound',
@@ -229,7 +229,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Buster Card effectiveness by 15%.',
     passiveType: 'buster_up',
     passiveValue: 15,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/e/e7/CE25.webp/revision/latest?cb=20221009125917'
   },
   {
     id: 'ce_hollow_magic',
@@ -259,7 +259,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases ATK and Defense by 10%.',
     passiveType: 'atk_up',
     passiveValue: 10,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/f/f7/CE56.webp/revision/latest?cb=20221009130848'
   },
   {
     id: 'ce_when_the_flowers_fall',
@@ -274,7 +274,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Charges NP gauge by 4% every turn. Increases Quick performance by 4%. Increases NP damage by 5%.',
     passiveType: 'quick_up',
     passiveValue: 4,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/8/8c/CE2470.webp/revision/latest?cb=20251008124913'
   },
   {
     id: 'ce_amazakura',
@@ -324,7 +324,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Starts battle with 30% NP Gauge.',
     passiveType: 'starting_np',
     passiveValue: 30,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://img.gamepress.gg/grandorder/FGOCEFull_9400180a.png?width=680'
   },
   {
     id: 'ce_jeweled_sword',
@@ -339,7 +339,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Starts battle with 20% NP Gauge & increases NP gain by 15%.',
     passiveType: 'starting_np',
     passiveValue: 20,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/9/94/CE247.webp/revision/latest?cb=20221013151845'
   },
   {
     id: 'ce_hydra_dagger',
@@ -354,7 +354,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Critical Strike Damage by 15%.',
     passiveType: 'crit_dmg',
     passiveValue: 15,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/0/0f/CE333.webp/revision/latest?cb=20221112055519'
   }
 ];
 
@@ -375,7 +375,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: 'When equipped to Artoria Pendragon: Increases party Attack by 15% and Noble Phantasm Damage by 20%.',
     passiveType: 'buster_up',
     passiveValue: 20,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/5/54/CE83.webp/revision/latest?cb=20221009132850',
     isBondCe: true,
     bondServantId: 'artoria_pendragon',
     bondServantName: 'Artoria Pendragon'
@@ -411,7 +411,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: 'When equipped to Gilgamesh: Increases Noble Phantasm Damage by 30% and Critical Damage by 20%.',
     passiveType: 'crit_dmg',
     passiveValue: 20,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/3/32/CE216.webp/revision/latest?cb=20221011124736',
     isBondCe: true,
     bondServantId: 'gilgamesh_archer',
     bondServantName: 'Gilgamesh'
@@ -501,7 +501,7 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     effectText: 'When equipped to Artoria Alter: Increases Buster Card effectiveness by 20% and increases NP Gain by 15%.',
     passiveType: 'buster_up',
     passiveValue: 20,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/5/5a/CE195.webp/revision/latest?cb=20221011123634',
     isBondCe: true,
     bondServantId: 'artoria_pendragon_alter',
     bondServantName: 'Artoria Pendragon (Alter)'
