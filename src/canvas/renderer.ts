@@ -6135,6 +6135,12 @@ export async function renderBattleTurnSummary(
   )).filter(Boolean);
 
   // Load Avatars, Class Icons, and Buff/Status Icons concurrently
+  const getCombatantArtUrl = (c?: ActiveCombatant) => {
+    if (!c) return '';
+    if (c.isTransformed && c.avatarUrl) return c.avatarUrl;
+    return c.cardArtUrl || c.avatarUrl || c.baseAvatarUrl || '';
+  };
+
   const [
     p1Img,
     p1AllyImg,
@@ -6143,10 +6149,10 @@ export async function renderBattleTurnSummary(
     loadedClassImgs,
     loadedBuffImgs
   ] = await Promise.all([
-    activeP1?.avatarUrl ? loadImage(activeP1.avatarUrl) : Promise.resolve(null),
-    activeP1Ally?.avatarUrl ? loadImage(activeP1Ally.avatarUrl) : Promise.resolve(null),
-    activeP2?.avatarUrl ? loadImage(activeP2.avatarUrl) : Promise.resolve(null),
-    activeP2Ally?.avatarUrl ? loadImage(activeP2Ally.avatarUrl) : Promise.resolve(null),
+    getCombatantArtUrl(activeP1) ? loadImage(getCombatantArtUrl(activeP1)) : Promise.resolve(null),
+    getCombatantArtUrl(activeP1Ally) ? loadImage(getCombatantArtUrl(activeP1Ally)) : Promise.resolve(null),
+    getCombatantArtUrl(activeP2) ? loadImage(getCombatantArtUrl(activeP2)) : Promise.resolve(null),
+    getCombatantArtUrl(activeP2Ally) ? loadImage(getCombatantArtUrl(activeP2Ally)) : Promise.resolve(null),
     Promise.all(uniqueClassUrls.map(url => loadImage(url))),
     Promise.all(uniqueBuffUrls.map(url => loadImage(url)))
   ]);

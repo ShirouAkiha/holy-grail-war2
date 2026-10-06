@@ -299,7 +299,8 @@ function createCombatant(
     });
   }
 
-  const baseAvatar = getServantAvatarAndCardArt(servant).avatarUrl;
+  const artInfo = getServantAvatarAndCardArt(servant);
+  const baseAvatar = artInfo.cardArtUrl || artInfo.avatarUrl;
 
   const combatant: DuelCombatant = {
     userId: master.discordId,
@@ -453,7 +454,8 @@ async function createTurnSummaryAttachment(
   teamSoloList: DuelCombatant[] = []
 ): Promise<AttachmentBuilder> {
   const mapToActive = (c: DuelCombatant): ActiveCombatant => {
-    const baseAvatar = c.baseAvatarUrl || getServantAvatarAndCardArt(c.servant).avatarUrl;
+    const artInfo = getServantAvatarAndCardArt(c.servant);
+    const baseAvatar = c.baseAvatarUrl || artInfo.cardArtUrl || artInfo.avatarUrl;
     const currentAvatar = c.isTransformed ? (c.avatarUrl || 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp') : baseAvatar;
     return {
       id: c.userId,
@@ -462,6 +464,7 @@ async function createTurnSummaryAttachment(
       servantClass: c.servant.template.servantClass,
       avatarUrl: currentAvatar,
       baseAvatarUrl: baseAvatar,
+      cardArtUrl: artInfo.cardArtUrl || currentAvatar,
       isTransformed: c.isTransformed,
       transformationTurns: c.transformationTurns,
       maxHp: c.maxHp,
@@ -1268,7 +1271,8 @@ function activateCombatantSkill(
     combatant.isTransformed = true;
     combatant.transformationTurns = skill.duration || 3;
     if (!combatant.baseAvatarUrl) {
-      combatant.baseAvatarUrl = getServantAvatarAndCardArt(combatant.servant).avatarUrl;
+      const artInfo = getServantAvatarAndCardArt(combatant.servant);
+      combatant.baseAvatarUrl = artInfo.cardArtUrl || artInfo.avatarUrl;
     }
     const transformedAvatar = (skill as any).transformationAvatarUrl || 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp';
     combatant.avatarUrl = transformedAvatar;
@@ -3142,7 +3146,8 @@ function resolveStrike(
     if (attacker.transformationTurns <= 0) {
       attacker.isTransformed = false;
       attacker.transformationTurns = 0;
-      attacker.avatarUrl = attacker.baseAvatarUrl || getServantAvatarAndCardArt(attacker.servant).avatarUrl;
+      const artInfo = getServantAvatarAndCardArt(attacker.servant);
+      attacker.avatarUrl = attacker.baseAvatarUrl || artInfo.cardArtUrl || artInfo.avatarUrl;
       revertText = `\n✨ **[Fifth Magic: Cooldown]** Transformation ended — ${attacker.servant.template.name} returned to base form.`;
     }
   }

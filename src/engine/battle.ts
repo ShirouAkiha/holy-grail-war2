@@ -172,7 +172,8 @@ export function createCombatantFromMasterServant(
     }
   }
 
-  const baseAvatar = getServantAvatarAndCardArt(servantInstance).avatarUrl;
+  const artInfo = getServantAvatarAndCardArt(servantInstance);
+  const baseAvatar = artInfo.cardArtUrl || artInfo.avatarUrl;
 
   return {
     id: servantInstance.id,
