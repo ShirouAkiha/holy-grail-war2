@@ -202,8 +202,7 @@ function EmbedVisual({ url }: { url: string }) {
   const primaryFallback = 'https://media1.tenor.com/m/8YpY9q6y430AAAAC/rin-tohsaka-fate.gif';
   const secondaryFallback = 'https://i.imgur.com/hyNsgc1.jpeg';
 
-  const normalized = normalizeMediaUrl(url);
-  let currentSrc = normalized || url;
+  let currentSrc = url;
   if (imgError) {
     currentSrc = useSecondaryFallback ? secondaryFallback : primaryFallback;
   }
@@ -13843,7 +13842,7 @@ export default function DiscordEmulator({
                   )}
                   <div className="rounded-md overflow-hidden border border-[#222] bg-[#050505] max-w-xl shadow-inner">
                     <img
-                      src={normalizeMediaUrl(msg.artworkEmbed.imageUrl)}
+                      src={msg.artworkEmbed.imageUrl}
                       alt="Servant Artwork"
                       className="w-full h-auto object-contain max-h-[550px]"
                       referrerPolicy="no-referrer"
@@ -13851,8 +13850,8 @@ export default function DiscordEmulator({
                         const currentSrc = e.currentTarget.src || '';
                         if (currentSrc.includes('wikia.nocookie.net') || currentSrc.includes('fandom.com')) {
                           const rawFilename = currentSrc.split('?')[0].split('/').pop()?.toLowerCase() || '';
-                          if (rawFilename && !currentSrc.includes('/media/')) {
-                            e.currentTarget.src = `/media/${rawFilename}`;
+                          if (rawFilename && !currentSrc.includes('/api/media/')) {
+                            e.currentTarget.src = `/api/media/${rawFilename}`;
                             return;
                           }
                         }
