@@ -5327,7 +5327,7 @@ export default function DiscordEmulator({
             servantId: activeServant.templateId || activeServant.id,
             servantName: activeServant.nickname || activeServant.template?.name || (activeServant as any).name || 'Heroic Spirit',
             servantClass: activeServant.template?.servantClass || 'Saber',
-            avatarUrl: master.avatarUrl,
+            avatarUrl: master.avatarUrl || '',
             maxHp: calculateServantMaxHp(activeServant)
           });
           onUpdateGrailWar(currentWar);
@@ -5539,7 +5539,7 @@ export default function DiscordEmulator({
           servantId: activeServant?.templateId || 'artoria_pendragon_saber',
           servantName: activeServant?.template.name || 'Artoria Pendragon',
           servantClass: activeServant?.template.servantClass || 'Saber',
-          avatarUrl: master.avatarUrl,
+          avatarUrl: master.avatarUrl || '',
           maxHp: activeServant ? calculateServantMaxHp(activeServant) : 15000
         });
         onUpdateGrailWar(newWar);
@@ -13405,7 +13405,7 @@ export default function DiscordEmulator({
           servantId: activeServant?.templateId || 'artoria_pendragon_saber',
           servantName: activeServant?.template.name || 'Artoria Pendragon',
           servantClass: activeServant?.template.servantClass || 'Saber',
-          avatarUrl: master.avatarUrl,
+          avatarUrl: master.avatarUrl || '',
           maxHp: activeServant ? calculateServantMaxHp(activeServant) : 15000
         });
         onUpdateGrailWar(newWar);

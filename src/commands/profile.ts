@@ -15,6 +15,7 @@ import {
   getHealingStatus
 } from '../engine/grailwar';
 import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
+import { getServantAvatarAndCardArt } from '../data/servants';
 
 export const data = new SlashCommandBuilder()
   .setName('profile')
@@ -112,8 +113,9 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
       .setColor(0x0ea5e9)
       .setFooter({ text: 'Private Master Dossier • Chaldea Sanctuary Protocol' });
 
-    if (activeServant.template?.avatarUrl) {
-      safeSetEmbedThumbnail(embed, activeServant.template.avatarUrl);
+    const { avatarUrl, cardArtUrl } = getServantAvatarAndCardArt(activeServant);
+    if (avatarUrl || cardArtUrl) {
+      safeSetEmbedThumbnail(embed, avatarUrl || cardArtUrl);
     }
     return embed;
   }
@@ -181,8 +183,9 @@ export function buildProfileEmbed(master: any, war: any, lastMsg?: string) {
     .setColor(isExposed ? 0xef4444 : 0x3b82f6)
     .setFooter({ text: 'Private Master Dossier • Holy Grail War Protocol' });
 
-  if (activeServant.template?.avatarUrl) {
-    safeSetEmbedThumbnail(embed, activeServant.template.avatarUrl);
+  const { avatarUrl, cardArtUrl } = getServantAvatarAndCardArt(activeServant);
+  if (avatarUrl || cardArtUrl) {
+    safeSetEmbedThumbnail(embed, avatarUrl || cardArtUrl);
   }
 
   return embed;
@@ -244,8 +247,9 @@ export function buildPublicProfileEmbed(master: any, war: any) {
       .setColor(0x0ea5e9)
       .setFooter({ text: 'Public Master Dossier • Chaldea Sanctuary Protocol' });
 
-    if (activeServant.template?.avatarUrl) {
-      safeSetEmbedThumbnail(embed, activeServant.template.avatarUrl);
+    const { avatarUrl, cardArtUrl } = getServantAvatarAndCardArt(activeServant);
+    if (avatarUrl || cardArtUrl) {
+      safeSetEmbedThumbnail(embed, avatarUrl || cardArtUrl);
     }
     return embed;
   }
@@ -278,8 +282,11 @@ export function buildPublicProfileEmbed(master: any, war: any) {
     .setColor(0x3b82f6)
     .setFooter({ text: 'Public Master Dossier • Holy Grail War Protocol' });
 
-  if (isExposed && activeServant.template?.avatarUrl) {
-    safeSetEmbedThumbnail(embed, activeServant.template.avatarUrl);
+  if (isExposed) {
+    const { avatarUrl, cardArtUrl } = getServantAvatarAndCardArt(activeServant);
+    if (avatarUrl || cardArtUrl) {
+      safeSetEmbedThumbnail(embed, avatarUrl || cardArtUrl);
+    }
   }
 
   return embed;

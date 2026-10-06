@@ -1526,7 +1526,7 @@ export function getMasterRankings(options: {
     const activeServant = m.servants?.find(s => s.id === m.activeServantId) || m.servants?.[0];
     const servantName = activeServant?.nickname || activeServant?.template?.name || (activeServant as any)?.name || 'Heroic Spirit';
     const servantClass = activeServant?.template?.servantClass || (activeServant as any)?.servantClass || 'Saber';
-    const servantAvatar = activeServant?.avatarUrl || activeServant?.template?.avatarUrl || m.avatarUrl;
+    const servantAvatar = activeServant?.avatarUrl || activeServant?.template?.avatarUrl || m.avatarUrl || '';
     const servantLevel = activeServant?.level || 1;
 
     return {

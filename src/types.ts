@@ -307,7 +307,7 @@ export interface MasterProfile {
   id: string;
   discordId: string;
   username: string;
-  avatarUrl: string;
+  avatarUrl?: string;
   saintQuartz: number;
   summonTickets: number;
   manaPrisms?: number;
@@ -395,6 +395,7 @@ export interface ActiveCombatant {
   masterName: string;
   servantClass: ServantClass;
   avatarUrl: string;
+  cardArtUrl?: string;
   baseAvatarUrl?: string;
   isTransformed?: boolean;
   transformationTurns?: number;

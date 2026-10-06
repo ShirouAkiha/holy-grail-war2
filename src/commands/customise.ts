@@ -1572,10 +1572,14 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
         const stageVal = stageOption === 'costume' ? 'costume' : parseInt(stageOption, 10);
         targetServant.selectedAscensionStage = stageVal as any;
+        const { cardArtUrl, avatarUrl } = getServantAvatarAndCardArt(targetServant);
+        targetServant.cardArtUrl = cardArtUrl;
+        if (targetServant.template) {
+          targetServant.template.cardArtUrl = cardArtUrl;
+        }
         master.servants = master.servants.map((s: any) => s.id === targetServant.id ? targetServant : s);
         await saveMaster(master);
 
-        const { cardArtUrl, avatarUrl } = getServantAvatarAndCardArt(targetServant);
         const embed = new EmbedBuilder()
           .setTitle(`🎨 Spirit Origin Transformed: ${sTargetName}`)
           .setDescription(

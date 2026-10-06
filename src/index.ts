@@ -17,7 +17,8 @@ import {
 } from 'discord.js';
 import { generateServantTalkResponse, renderServantTalkVisualOutput } from './engine/talkService';
 import { checkMasterTalkQuota, consumeMasterTalkQuota, refillTalkQuotaWithCommandSeal } from './engine/talkQuotaService';
-import { safeSetEmbedThumbnail } from './utils/discordEmbedHelper';
+import { safeSetEmbedThumbnail, safeSetEmbedImage } from './utils/discordEmbedHelper';
+import { SERVANT_DATABASE, getServantAvatarAndCardArt } from './data/servants';
 import * as summonCommand from './commands/summon';
 import * as servantCommand from './commands/servant';
 import * as servantsCommand from './commands/servants';
@@ -57,7 +58,6 @@ import * as ceCommand from './commands/ce';
 import * as helpCommand from './commands/help';
 import * as rankingCommand from './commands/ranking';
 import * as raidCommand from './commands/raid';
-import { SERVANT_DATABASE } from './data/servants';
 import { getOrCreateMaster, getMaster, saveMaster, getAllThroneServants, getCustomServants, findServantInPool, searchAndRankServants, claimDailySaintQuartz } from './database/service';
 import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
 import { allocateStatPoints } from './engine/statSystem';
@@ -1563,12 +1563,20 @@ client.on(Events.InteractionCreate, async interaction => {
         const template = activeServant.template || activeServant;
         exposeMasterInWar(war, interaction.user.id, 'public_command');
         await saveMaster(master);
-        const avatarUrl = interaction.user.displayAvatarURL ? interaction.user.displayAvatarURL() : undefined;
+        
+        const { cardArtUrl, avatarUrl } = getServantAvatarAndCardArt(activeServant);
+        const boastFiles: AttachmentBuilder[] = [];
         const boastEmbed = new EmbedBuilder()
           .setTitle(`📢 MASTER DECLARATION | Covenant Established!`)
-          .setDescription(`Master **${interaction.user.username}** boasts a covenant with **${template.name}** (${template.servantClass})!\n\n*"${activeServant.customQuotes?.summon || template.summonQuote || 'I answer your call, Master.'}"*`)
+          .setDescription(`Master **${interaction.user.username}** boasts a covenant with **${activeServant.nickname || template.name}** (${template.servantClass})!\n\n*"${activeServant.customQuotes?.summon || template.summonQuote || 'I answer your call, Master.'}"*`)
           .setColor(0xd4af37);
-        await interaction.reply({ embeds: [boastEmbed] });
+        if (cardArtUrl || avatarUrl) {
+          safeSetEmbedImage(boastEmbed, cardArtUrl || avatarUrl, boastFiles);
+        }
+        if (avatarUrl || cardArtUrl) {
+          safeSetEmbedThumbnail(boastEmbed, avatarUrl || cardArtUrl, boastFiles);
+        }
+        await interaction.reply({ embeds: [boastEmbed], files: boastFiles });
         return;
       }
 
