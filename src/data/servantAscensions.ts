@@ -48,20 +48,20 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
     ]
   },
   jeanne_alter: {
-    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/1100100/1100100a@1.png',
-    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/1100100/1100100a@2.png',
-    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/1100100/1100100b@1.png',
-    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/1100100/1100100b@2.png'
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/1100300/1100300a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/1100300/1100300a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/1100300/1100300b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/1100300/1100300b@2.png',
+    costume: 'https://static.atlasacademy.io/NA/CharaGraph/1100330/1100330a.png',
+    costumes: [
+      { id: '1100330', name: 'Shinjuku 1999 Casual Dress', url: 'https://static.atlasacademy.io/NA/CharaGraph/1100330/1100330a.png' }
+    ]
   },
   mhx_alter: {
-    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/702600/702600a@1.png',
-    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/702600/702600a@2.png',
-    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/702600/702600b@1.png',
-    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/702600/702600b@2.png',
-    costume: 'https://static.atlasacademy.io/NA/CharaGraph/601830/601830a.png',
-    costumes: [
-      { id: '601830', name: 'Dark Knight Student Sailor Uniform', url: 'https://static.atlasacademy.io/NA/CharaGraph/601830/601830a.png' }
-    ]
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/702400/702400a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/702400/702400a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/702400/702400b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/702400/702400b@2.png'
   },
   artoria_pendragon_alter: {
     stage1: 'https://static.atlasacademy.io/NA/CharaGraph/100200/100200a@1.png',
@@ -108,10 +108,14 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
     stage4: 'https://static.atlasacademy.io/NA/CharaGraph/300100/300100b@2.png'
   },
   karna_lancer: {
-    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/301400/301400a@1.png',
-    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/301400/301400a@2.png',
-    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/301400/301400b@1.png',
-    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/301400/301400b@2.png'
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/300400/300400a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/300400/300400a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/300400/300400b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/300400/300400b@2.png',
+    costume: 'https://static.atlasacademy.io/NA/CharaGraph/300430/300430a.png',
+    costumes: [
+      { id: '300430', name: 'Super Karna (Burning Flame Armor)', url: 'https://static.atlasacademy.io/NA/CharaGraph/300430/300430a.png' }
+    ]
   },
   aoko_aozaki: {
     stage1: 'https://static.atlasacademy.io/NA/CharaGraph/2501400/2501400a@1.png',
