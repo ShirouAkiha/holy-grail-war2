@@ -443,7 +443,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           `• **3★ R Craft Essence:** **${banner.rates.rCe}%** *(Dragon's Meridian, Jeweled Sword Zelretch)*\n\n` +
           `### 👑 Heroic Spirits Pool\n` +
           `• Equalized base parameters for balanced tactical combat.\n` +
-          `• Duplicates grant **+50 Mana Prisms 🔵**, +5 stat points, and NP upgrade!\n\n` +
+          `• Duplicates grant **+50 Mana Prisms 🔵** and NP upgrade!\n\n` +
           `### 🛡️ 10-Pull Guarantee\n` +
           `Performing a **10x Multi-Summon (30 Saint Quartz)** guarantees at least one **4★ SR or higher Craft Essence**!`
         )
