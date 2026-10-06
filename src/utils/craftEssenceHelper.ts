@@ -35,6 +35,7 @@ export interface CePartyPassiveSummary {
   partyBusterUp: number;
   partyQuickUp: number;
   partyCritDmgUp: number;
+  partyNpDmgUp: number;
   partyNpGainUp: number;
   partyDamageCut: number;
 }
@@ -216,55 +217,37 @@ export function getCePassiveStats(ce: any, servant?: any): CePassiveSummary {
   // --------------------------------------------------------------------------
   // 2. CANONICAL BOND CRAFT ESSENCES
   // --------------------------------------------------------------------------
-  if (ceId === 'ce_bond_artoria_pendragon' || ceName.includes('star of artoria')) {
-    summary.npDmgUp += 20;
+  if (ceId === 'ce_bond_artoria_pendragon' || ceName.includes('crown of stars') || ceName.includes('star of artoria')) {
     // Note: Party ATK +15% is handled via getCePartyPassiveStats
   } else if (ceId === 'ce_bond_heracles_berserker' || ceName.includes('castle of snow')) {
     summary.gutsCount = 3;
     summary.gutsReviveHp = 500;
     summary.isGutsPercent = false;
-  } else if (ceId === 'ce_bond_gilgamesh_archer' || ceName.includes('bab-ilu')) {
+  } else if (ceId === 'ce_bond_gilgamesh_archer' || ceName.includes("the king's law") || ceName.includes('bab-ilu')) {
+    // Note: Party NP DMG +20% is handled via getCePartyPassiveStats
+  } else if (ceId === 'ce_bond_scathach_lancer' || ceName.includes('gazing upon dún scáith') || ceName.includes('gate of skye')) {
+    // Note: Party Quick +15% is handled via getCePartyPassiveStats
+  } else if (ceId === 'ce_bond_jeanne_darc_ruler' || ceName.includes('revelation from heaven') || ceName.includes('luminosité')) {
+    // Note: Party Buster +15% is handled via getCePartyPassiveStats
+  } else if (ceId === 'ce_bond_jeanne_alter' || ceName.includes('hell of blazing punishment') || ceName.includes("cursed dragon's roar")) {
+    // Note: Party Buster +15% is handled via getCePartyPassiveStats
+  } else if (ceId === 'ce_bond_mhx_alter' || ceName.includes('dark knight-kun') || ceName.includes('darkness-infused anpan')) {
+    // Note: Party ATK against Sabers (+20%) is handled via getCePartyPassiveStats
+  } else if (ceId === 'ce_bond_artoria_pendragon_alter' || ceName.includes('memories of the dragon') || ceName.includes("dragon's memory")) {
     summary.npDmgUp += 30;
-    summary.critDmgUp += 20;
-  } else if (ceId === 'ce_bond_scathach_lancer' || ceName.includes('gate of skye')) {
-    summary.quickUp += 15;
-    summary.critDmgUp += 25;
-  } else if (ceId === 'ce_bond_jeanne_darc_ruler' || ceName.includes('luminosité')) {
-    summary.hpRegenPerTurn += 500;
-    summary.defUp += 15;
-    // Note: Party DEF +15% is handled via getCePartyPassiveStats
-  } else if (ceId === 'ce_bond_jeanne_alter' || ceName.includes("cursed dragon's roar")) {
-    summary.busterUp += 20;
-    summary.critDmgUp += 25;
-  } else if (ceId === 'ce_bond_mhx_alter' || ceName.includes('darkness-infused anpan')) {
-    summary.quickUp += 15;
-    summary.busterUp += 15;
-    summary.critDmgUp += 20;
-  } else if (ceId === 'ce_bond_artoria_pendragon_alter' || ceName.includes("dragon's memory")) {
-    summary.busterUp += 20;
-    summary.npGainUp += 15;
-  } else if (ceId === 'ce_bond_nero_claudius_saber' || ceName.includes("golden maiden's laurel")) {
-    summary.artsUp += 15;
-    summary.hpRegenPerTurn += 400;
-  } else if (ceId === 'ce_bond_emiya_archer' || ceName.includes('faded wrought iron')) {
-    summary.artsUp += 15;
-    summary.busterUp += 15;
-    summary.critDmgUp += 20;
-  } else if (ceId === 'ce_bond_cu_chulainn_lancer' || ceName.includes('red mead of ulster')) {
-    summary.gutsCount = 1;
-    summary.gutsReviveHp = 25;
-    summary.isGutsPercent = true;
-    summary.quickUp += 15;
-  } else if (ceId === 'ce_bond_karna_lancer' || ceName.includes("kavacha and kundala")) {
-    summary.busterUp += 20;
-    summary.npDmgUp += 20;
+  } else if (ceId === 'ce_bond_nero_claudius_saber' || ceName.includes('thunderous applause') || ceName.includes("golden maiden's laurel")) {
+    // Note: Party Arts +15% is handled via getCePartyPassiveStats
+  } else if (ceId === 'ce_bond_emiya_archer' || ceName.includes('hunter of the red plains') || ceName.includes('faded wrought iron')) {
+    summary.npDmgUp += 30;
+  } else if (ceId === 'ce_bond_cu_chulainn_lancer' || ceName.includes('star of prophecy') || ceName.includes('red mead of ulster')) {
+    summary.npDmgUp += 30;
+  } else if (ceId === 'ce_bond_karna_lancer' || ceName.includes("poor man's lamp") || ceName.includes("kavacha and kundala")) {
+    // Note: Party Arts, Buster, Quick +8% is handled via getCePartyPassiveStats
   } else if (ceId === 'ce_bond_adiosa_dragon_envoy' || ceName.includes('cosmic dragon fang')) {
     summary.busterUp += 20;
     summary.starsPerTurn += 10;
-  } else if (ceId === 'ce_bond_aoko_aozaki' || ceName.includes('magic blueprint: the fifth')) {
-    summary.artsUp += 15;
-    summary.busterUp += 15;
-    summary.startingNp = Math.max(summary.startingNp, 30);
+  } else if (ceId === 'ce_bond_aoko_aozaki' || ceName.includes('waiting in the sky') || ceName.includes('magic blueprint')) {
+    summary.npDmgUp += 30;
   } else if (ceId === 'ce_bond_amamiya_no_chihaya_tenkohime' || ceName.includes("tenko's divine mirror")) {
     summary.artsUp += 20;
     summary.npPerTurn += 10;
@@ -331,6 +314,7 @@ export function getCePartyPassiveStats(ce: any, servant?: any): CePartyPassiveSu
     partyBusterUp: 0,
     partyQuickUp: 0,
     partyCritDmgUp: 0,
+    partyNpDmgUp: 0,
     partyNpGainUp: 0,
     partyDamageCut: 0
   };
@@ -347,12 +331,38 @@ export function getCePartyPassiveStats(ce: any, servant?: any): CePartyPassiveSu
   const ceName = (ce.name || '').toLowerCase();
 
   // Artoria: Party ATK +15%
-  if (ceId === 'ce_bond_artoria_pendragon' || ceName.includes('star of artoria')) {
+  if (ceId === 'ce_bond_artoria_pendragon' || ceName.includes('crown of stars') || ceName.includes('star of artoria')) {
     partyStats.partyAtkUp += 15;
   }
-  // Jeanne: Party DEF +15%
-  if (ceId === 'ce_bond_jeanne_darc_ruler' || ceName.includes('luminosité')) {
-    partyStats.partyDefUp += 15;
+  // Gilgamesh: Party NP DMG +20%
+  if (ceId === 'ce_bond_gilgamesh_archer' || ceName.includes("the king's law") || ceName.includes('bab-ilu')) {
+    partyStats.partyNpDmgUp += 20;
+  }
+  // Scáthach: Party Quick +15%
+  if (ceId === 'ce_bond_scathach_lancer' || ceName.includes('gazing upon dún scáith') || ceName.includes('gate of skye')) {
+    partyStats.partyQuickUp += 15;
+  }
+  // Jeanne d'Arc (Ruler): Party Buster +15%
+  if (ceId === 'ce_bond_jeanne_darc_ruler' || ceName.includes('revelation from heaven') || ceName.includes('luminosité')) {
+    partyStats.partyBusterUp += 15;
+  }
+  // Jeanne d'Arc (Alter): Party Buster +15%
+  if (ceId === 'ce_bond_jeanne_alter' || ceName.includes('hell of blazing punishment') || ceName.includes("cursed dragon's roar")) {
+    partyStats.partyBusterUp += 15;
+  }
+  // MHX Alter: Party ATK against Sabers / Party ATK +20%
+  if (ceId === 'ce_bond_mhx_alter' || ceName.includes('dark knight-kun') || ceName.includes('darkness-infused anpan')) {
+    partyStats.partyAtkUp += 20;
+  }
+  // Nero Claudius: Party Arts +15%
+  if (ceId === 'ce_bond_nero_claudius_saber' || ceName.includes('thunderous applause') || ceName.includes("golden maiden's laurel")) {
+    partyStats.partyArtsUp += 15;
+  }
+  // Karna: Party Arts +8%, Party Buster +8%, Party Quick +8%
+  if (ceId === 'ce_bond_karna_lancer' || ceName.includes("poor man's lamp") || ceName.includes('kavacha and kundala')) {
+    partyStats.partyArtsUp += 8;
+    partyStats.partyBusterUp += 8;
+    partyStats.partyQuickUp += 8;
   }
   // Luvria: Party Arts +15%
   if (ceId === 'ce_bond_luvria_greenharte' || ceName.includes('the boundless weave')) {
@@ -568,6 +578,36 @@ export function applyCePartyAuras(combatants: any[]): void {
           name: `${ce.name} Aura (Party Arts +${partyStats.partyArtsUp}%)`,
           type: 'arts_up',
           value: partyStats.partyArtsUp,
+          remainingTurns: 99
+        });
+      }
+
+      // Party Buster Up
+      if (partyStats.partyBusterUp > 0 && !ally.activeBuffs.some((b: any) => b.name === `${ce.name} Aura (Party Buster +${partyStats.partyBusterUp}%)`)) {
+        ally.activeBuffs.push({
+          name: `${ce.name} Aura (Party Buster +${partyStats.partyBusterUp}%)`,
+          type: 'buster_up',
+          value: partyStats.partyBusterUp,
+          remainingTurns: 99
+        });
+      }
+
+      // Party Quick Up
+      if (partyStats.partyQuickUp > 0 && !ally.activeBuffs.some((b: any) => b.name === `${ce.name} Aura (Party Quick +${partyStats.partyQuickUp}%)`)) {
+        ally.activeBuffs.push({
+          name: `${ce.name} Aura (Party Quick +${partyStats.partyQuickUp}%)`,
+          type: 'quick_up',
+          value: partyStats.partyQuickUp,
+          remainingTurns: 99
+        });
+      }
+
+      // Party NP DMG Up
+      if (partyStats.partyNpDmgUp > 0 && !ally.activeBuffs.some((b: any) => b.name === `${ce.name} Aura (Party NP DMG +${partyStats.partyNpDmgUp}%)`)) {
+        ally.activeBuffs.push({
+          name: `${ce.name} Aura (Party NP DMG +${partyStats.partyNpDmgUp}%)`,
+          type: 'np_dmg',
+          value: partyStats.partyNpDmgUp,
           remainingTurns: 99
         });
       }

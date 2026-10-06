@@ -59,7 +59,19 @@ export const CANON_MEDIA_FALLBACKS: Record<string, string> = {
   'ce_bond_typhon_ephemeros.webp': 'https://ella.janitorai.com/media-approved/ooE7jWZ7K8iyxc9WJF21f.webp',
   'ooE7jWZ7K8iyxc9WJF21f.webp': 'https://ella.janitorai.com/media-approved/ooE7jWZ7K8iyxc9WJF21f.webp',
   'ce_bond_edmond.webp': 'https://ella.janitorai.com/media-approved/6tOCZiZo0xbTRAFmf85h5.webp',
-  'ce_bond_van_gogh.webp': 'https://ella.janitorai.com/media-approved/-S9y-H-REfRKPTBMJUKxp.webp'
+  'ce_bond_van_gogh.webp': 'https://ella.janitorai.com/media-approved/-S9y-H-REfRKPTBMJUKxp.webp',
+  'ce_bond_artoria_pendragon.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/1/10/CE191.webp/revision/latest?cb=20221011123600',
+  'ce_bond_gilgamesh_archer.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/3/32/CE216.webp/revision/latest?cb=20221011124736',
+  'ce_bond_scathach_lancer.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/1/17/CE251.webp/revision/latest?cb=20221013154318',
+  'ce_bond_jeanne_darc_ruler.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/c/c7/CE194.webp/revision/latest?cb=20221011123628',
+  'ce_bond_jeanne_alter.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/f/fe/CE350.webp/revision/latest?cb=20221113095032',
+  'ce_bond_mhx_alter.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/c/c0/CE429.webp/revision/latest?cb=20221209160900',
+  'ce_bond_artoria_pendragon_alter.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/5/5a/CE195.webp/revision/latest?cb=20221011123634',
+  'ce_bond_nero_claudius_saber.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/4/44/CE218.webp/revision/latest?cb=20221011124754',
+  'ce_bond_emiya_archer.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/d/d5/CE196.webp/revision/latest?cb=20221011123649',
+  'ce_bond_cu_chulainn_lancer.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/2/20/CE252.webp/revision/latest?cb=20221013154319',
+  'ce_bond_karna_lancer.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/9/94/CE283.webp/revision/latest?cb=20221107152341',
+  'ce_bond_aoko_aozaki.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/d/dd/CE2048.webp/revision/latest?cb=20240427051921'
 };
 
 export function normalizeMediaUrl(rawUrl: string): string {

@@ -1891,7 +1891,7 @@ export function executeBattleTurn(
 
     const regenBuffs = actor.activeBuffs.filter(b => b.type === 'hp_regen');
     const hpRegenTotal = regenBuffs.reduce((s, b) => s + b.value, 0);
-    const ceRegen = (actor.equippedCe?.passiveType === 'hp_regen' || actor.equippedCe?.id === 'ce_bond_jeanne_darc_ruler') ? (actor.equippedCe.passiveValue || 500) : 0;
+    const ceRegen = (actor.equippedCe?.passiveType === 'hp_regen') ? (actor.equippedCe.passiveValue || 500) : 0;
     const totalRegen = hpRegenTotal + ceRegen;
     if (totalRegen > 0 && actor.currentHp < actor.maxHp) {
       actor.currentHp = Math.min(actor.maxHp, actor.currentHp + totalRegen);

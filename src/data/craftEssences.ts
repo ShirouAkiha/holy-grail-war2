@@ -62,7 +62,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Buster Card effectiveness by 25%.',
     passiveType: 'buster_up',
     passiveValue: 25,
-    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/2/2b/CE33.webp/revision/latest?cb=20221009130120'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_imaginary_around',
@@ -122,7 +122,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Grants Invincibility for 1 turn (3 attacks) & +15% Damage Cut.',
     passiveType: 'invincible_hits',
     passiveValue: 3,
-    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/4/4b/CE185.webp/revision/latest?cb=20221009142635'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_heavens_feel',
@@ -152,7 +152,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Ignores Invincibility & +35% Special Damage against Magic users.',
     passiveType: 'ignore_invincible',
     passiveValue: 35,
-    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/6/6d/CE263.webp/revision/latest?cb=20221013155833'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
 
   // --- 4★ SR CRAFT ESSENCES ---
@@ -169,7 +169,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Starts battle with 50% NP Gauge filled.',
     passiveType: 'starting_np',
     passiveValue: 50,
-    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/e/e1/CE28.webp/revision/latest?cb=20221009130003'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_gamer_fuel',
@@ -199,7 +199,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Quick Card effectiveness by 15%.',
     passiveType: 'quick_up',
     passiveValue: 15,
-    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/8/87/CE24.webp/revision/latest?cb=20221009125901'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_projection',
@@ -214,7 +214,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Arts Card effectiveness and NP damage by 15%.',
     passiveType: 'arts_up',
     passiveValue: 15,
-    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/2/2b/CE23.webp/revision/latest?cb=20221009125846'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_verdant_sound',
@@ -229,7 +229,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Buster Card effectiveness by 15%.',
     passiveType: 'buster_up',
     passiveValue: 15,
-    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/e/e7/CE25.webp/revision/latest?cb=20221009125917'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_hollow_magic',
@@ -259,7 +259,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases ATK and Defense by 10%.',
     passiveType: 'atk_up',
     passiveValue: 10,
-    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/f/f7/CE56.webp/revision/latest?cb=20221009130848'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_when_the_flowers_fall',
@@ -274,7 +274,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Charges NP gauge by 4% every turn. Increases Quick performance by 4%. Increases NP damage by 5%.',
     passiveType: 'quick_up',
     passiveValue: 4,
-    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/8/8c/CE2470.webp/revision/latest?cb=20251008124913'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_amazakura',
@@ -324,7 +324,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Starts battle with 30% NP Gauge.',
     passiveType: 'starting_np',
     passiveValue: 30,
-    artworkUrl: 'https://img.gamepress.gg/grandorder/FGOCEFull_9400180a.png?width=680'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_jeweled_sword',
@@ -339,7 +339,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Starts battle with 20% NP Gauge & increases NP gain by 15%.',
     passiveType: 'starting_np',
     passiveValue: 20,
-    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/9/94/CE247.webp/revision/latest?cb=20221013151845'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   },
   {
     id: 'ce_hydra_dagger',
@@ -354,7 +354,7 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
     effectText: 'Increases Critical Strike Damage by 15%.',
     passiveType: 'crit_dmg',
     passiveValue: 15,
-    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/0/0f/CE333.webp/revision/latest?cb=20221112055519'
+    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp'
   }
 ];
 
@@ -364,18 +364,18 @@ export const CRAFT_ESSENCE_DATABASE: CraftEssence[] = [
 export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
   artoria_pendragon: {
     id: 'ce_bond_artoria_pendragon',
-    name: 'Star of Artoria',
+    name: 'Crown of Stars',
     rarity: 4,
-    description: 'The crown and sapphire mantle worn by the King of Knights when the oath of Camelot was sealed. Gazing upon it, the King remembers the Master who fought beside her to the very end.',
+    description: 'A shimmering silver crown bestowed upon the King of Knights. Even after Camelot fell to ruin, its starlight continues to illuminate the path forward beside her Master.',
     bonusAtk: 100,
     bonusDef: 0,
     bonusHp: 100,
     atkBonus: 100,
     hpBonus: 100,
-    effectText: 'When equipped to Artoria Pendragon: Increases party Attack by 15% and Noble Phantasm Damage by 20%.',
-    passiveType: 'buster_up',
-    passiveValue: 20,
-    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/5/54/CE83.webp/revision/latest?cb=20221009132850',
+    effectText: 'When equipped to Artoria Pendragon: Increases party Attack by 15% while on the field.',
+    passiveType: 'buff_atk',
+    passiveValue: 15,
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/1/10/CE191.webp/revision/latest?cb=20221011123600',
     isBondCe: true,
     bondServantId: 'artoria_pendragon',
     bondServantName: 'Artoria Pendragon'
@@ -408,8 +408,8 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     bonusHp: 100,
     atkBonus: 100,
     hpBonus: 100,
-    effectText: 'When equipped to Gilgamesh: Increases Noble Phantasm Damage by 30% and Critical Damage by 20%.',
-    passiveType: 'crit_dmg',
+    effectText: 'When equipped to Gilgamesh: Increases Noble Phantasm Damage of all allies by 20% while on the field.',
+    passiveType: 'np_damage',
     passiveValue: 20,
     artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/3/32/CE216.webp/revision/latest?cb=20221011124736',
     isBondCe: true,
@@ -418,89 +418,89 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
   },
   scathach_lancer: {
     id: 'ce_bond_scathach_lancer',
-    name: 'Gate of Skye',
+    name: 'Gazing Upon Dún Scáith',
     rarity: 4,
-    description: 'The weathered stone threshold of Dún Scáith overlooking the misty Celtic sea. For centuries she waited in the Land of Shadows, until a Master crossed the threshold into her heart.',
+    description: 'Looking out from the ramparts of Dún Scáith over the mist-veiled sea. For centuries she awaited one who could pierce her solitude, until a Master stood beside her in the Land of Shadows.',
     bonusAtk: 100,
     bonusDef: 0,
     bonusHp: 100,
     atkBonus: 100,
     hpBonus: 100,
-    effectText: 'When equipped to Scáthach: Increases Quick Card effectiveness by 15% and Critical Damage by 25%.',
+    effectText: 'When equipped to Scáthach: Increases Quick Card effectiveness of all allies by 15% while she is on the field.',
     passiveType: 'quick_up',
     passiveValue: 15,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/1/17/CE251.webp/revision/latest?cb=20221013154318',
     isBondCe: true,
     bondServantId: 'scathach_lancer',
     bondServantName: 'Scáthach'
   },
   jeanne_darc_ruler: {
     id: 'ce_bond_jeanne_darc_ruler',
-    name: "Luminosité Eternelle: Maiden's Standard",
+    name: 'Revelation from Heaven',
     rarity: 4,
-    description: 'The consecrated fleur-de-lis banner carried through flame and battle. Held aloft not to conquer, but to shield every soul marching under her righteous prayer.',
+    description: 'A divine revelation descending upon Domrémy, guiding the humble country maiden across flaming battlefields to protect those who believe.',
     bonusAtk: 100,
     bonusDef: 0,
     bonusHp: 100,
     atkBonus: 100,
     hpBonus: 100,
-    effectText: "When equipped to Jeanne d'Arc: Increases party Defense by 15% and recovers 500 HP each turn.",
-    passiveType: 'hp_regen',
-    passiveValue: 500,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
+    effectText: "When equipped to Jeanne d'Arc: Increases Buster Card effectiveness of all allies by 15% while she is on the field.",
+    passiveType: 'buster_up',
+    passiveValue: 15,
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/c/c7/CE194.webp/revision/latest?cb=20221011123628',
     isBondCe: true,
     bondServantId: 'jeanne_darc_ruler',
     bondServantName: "Jeanne d'Arc"
   },
   jeanne_alter: {
     id: 'ce_bond_jeanne_alter',
-    name: "Cursed Dragon's Roar",
+    name: 'Hell of Blazing Punishment',
     rarity: 4,
-    description: 'The ragged black standard steeped in vengeful dragonfire. Born of wrath and hatred, yet fiercely bound to the one Master who looked into her abyss and smiled.',
+    description: 'The scorching inferno of hatred and vengeance born from the stake. Yet even amidst the raging flames of hell, an unspoken covenant binds the Dragon Witch to her Master.',
     bonusAtk: 100,
     bonusDef: 0,
     bonusHp: 100,
     atkBonus: 100,
     hpBonus: 100,
-    effectText: "When equipped to Jeanne d'Arc (Alter): Increases Buster Card effectiveness by 20% and Critical Damage by 25%.",
+    effectText: "When equipped to Jeanne d'Arc (Alter): Increases Buster Card performance of all allies by 15% while she is on the field.",
     passiveType: 'buster_up',
-    passiveValue: 20,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
+    passiveValue: 15,
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/f/fe/CE350.webp/revision/latest?cb=20221113095032',
     isBondCe: true,
     bondServantId: 'jeanne_alter',
     bondServantName: "Jeanne d'Arc (Alter)"
   },
   mhx_alter: {
     id: 'ce_bond_mhx_alter',
-    name: 'Darkness-Infused Anpan',
+    name: 'Dark Knight-Kun',
     rarity: 4,
-    description: 'A confectionery snack filled with dark matter paste from the servant universe, secretly split in two and shared with Master late at night.',
+    description: 'A plush Dark Knight doll crafted with affectionate simplicity. Hugging it brings calm and warmth to the exhausted Berserker after a long sugar-fueled mission.',
     bonusAtk: 100,
     bonusDef: 0,
     bonusHp: 100,
     atkBonus: 100,
     hpBonus: 100,
-    effectText: 'When equipped to Mysterious Heroine X Alter: Increases Quick & Buster effectiveness by 15% and Critical Damage by 20%.',
-    passiveType: 'quick_up',
-    passiveValue: 15,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
+    effectText: 'When equipped to MHX Alter: Increases party\'s Attack against [Saber] class enemies by 20% while she is on the field.',
+    passiveType: 'buff_atk',
+    passiveValue: 20,
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/c/c0/CE429.webp/revision/latest?cb=20221209160900',
     isBondCe: true,
     bondServantId: 'mhx_alter',
     bondServantName: 'Mysterious Heroine X Alter'
   },
   artoria_pendragon_alter: {
     id: 'ce_bond_artoria_pendragon_alter',
-    name: "Dragon's Memory",
+    name: 'Memories of the Dragon',
     rarity: 4,
-    description: 'An obsidian dragon scale forged into an emblem of tyrannical majesty. It hums with merciless crimson mana, yet stays warm against Master\'s chest.',
+    description: 'An obsidian dragon scale echoing the tyrannical roar of the corrupted King. A ruthless heart tempered only by the silent bond shared with Master.',
     bonusAtk: 100,
     bonusDef: 0,
     bonusHp: 100,
     atkBonus: 100,
     hpBonus: 100,
-    effectText: 'When equipped to Artoria Alter: Increases Buster Card effectiveness by 20% and increases NP Gain by 15%.',
-    passiveType: 'buster_up',
-    passiveValue: 20,
+    effectText: 'When equipped to Artoria Alter: Increases own NP damage by 30% and grants 30% chance to reduce enemy defense by 5% for 3 turns on normal attack.',
+    passiveType: 'np_damage',
+    passiveValue: 30,
     artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/5/5a/CE195.webp/revision/latest?cb=20221011123634',
     isBondCe: true,
     bondServantId: 'artoria_pendragon_alter',
@@ -508,72 +508,72 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
   },
   nero_claudius_saber: {
     id: 'ce_bond_nero_claudius_saber',
-    name: "Golden Maiden's Laurel",
+    name: 'Thunderous Applause',
     rarity: 4,
-    description: 'A crown of golden laurel leaves plucked from the stage of Domus Aurea. Fashioned solely for the audience member whose applause she treasures above all Rome.',
+    description: 'The overwhelming applause that echoes from the Golden Theater. But of all the cheers in the empire, none matters more than the praise from the one she loves.',
     bonusAtk: 100,
     bonusDef: 0,
     bonusHp: 100,
     atkBonus: 100,
     hpBonus: 100,
-    effectText: 'When equipped to Nero Claudius: Increases Arts Card effectiveness by 15% and restores 400 HP each turn.',
+    effectText: 'When equipped to Nero Claudius: Increases Arts Card effectiveness of all allies by 15% while she is on the field.',
     passiveType: 'arts_up',
     passiveValue: 15,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/4/44/CE218.webp/revision/latest?cb=20221011124754',
     isBondCe: true,
     bondServantId: 'nero_claudius_saber',
     bondServantName: 'Nero Claudius'
   },
   emiya_archer: {
     id: 'ce_bond_emiya_archer',
-    name: 'Faded Wrought Iron',
+    name: 'Hunter of the Red Plains',
     rarity: 4,
-    description: 'A tattered red mantle draped over Kanshou & Bakuya upon a hill of countless blades. A life spent as an ally of justice, finally finding peace in the bond with his Master.',
+    description: 'The homing hound of Ulster, Hrunting, piercing the desolate crimson horizon. A weapon honed through countless battles to protect the bond he finally holds dear.',
     bonusAtk: 100,
     bonusDef: 0,
     bonusHp: 100,
     atkBonus: 100,
     hpBonus: 100,
-    effectText: 'When equipped to EMIYA: Increases Arts & Buster Card effectiveness by 15% and Critical Damage by 20%.',
-    passiveType: 'arts_up',
-    passiveValue: 15,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
+    effectText: 'When equipped to EMIYA: Increases own NP damage by 30% and grants 30% chance to gain 5 critical stars when attacking.',
+    passiveType: 'np_damage',
+    passiveValue: 30,
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/d/d5/CE196.webp/revision/latest?cb=20221011123649',
     isBondCe: true,
     bondServantId: 'emiya_archer',
     bondServantName: 'EMIYA'
   },
   cu_chulainn_lancer: {
     id: 'ce_bond_cu_chulainn_lancer',
-    name: 'Red Mead of Ulster',
+    name: 'Star of Prophecy',
     rarity: 4,
-    description: 'An ancient carved horn filled with the crimson wine of Dun Scaith and Ulster. Poured only for brothers-in-arms after surviving impossible battles together.',
+    description: 'The destined star shining down on the child of light. Born under the prophecy of a brief but brilliant life, blazing proudest at his Master\'s side.',
     bonusAtk: 100,
     bonusDef: 0,
     bonusHp: 100,
     atkBonus: 100,
     hpBonus: 100,
-    effectText: 'When equipped to Cú Chulainn: Grants Guts to self (revives with 25% HP, 1 time) and increases Quick Card effectiveness by 15%.',
-    passiveType: 'guts',
-    passiveValue: 1,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
+    effectText: 'When equipped to Cú Chulainn: Increases own NP damage by 30% and grants 30% chance to increase critical damage by 10% (3 turns) when attacking.',
+    passiveType: 'np_damage',
+    passiveValue: 30,
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/2/20/CE252.webp/revision/latest?cb=20221013154319',
     isBondCe: true,
     bondServantId: 'cu_chulainn_lancer',
     bondServantName: 'Cú Chulainn'
   },
   karna_lancer: {
     id: 'ce_bond_karna_lancer',
-    name: "Kavacha and Kundala's Radiance",
+    name: "Poor Man's Lamp",
     rarity: 4,
-    description: 'The celestial golden earrings and armor gifted by the Sun God Surya, glowing with the boundless compassion of the Hero of Charity.',
+    description: 'A humble, fragile lamp casting gentle warmth into the shadows. Shining not with destructive solar brilliance, but with the quiet compassion of the Hero of Charity.',
     bonusAtk: 100,
     bonusDef: 0,
     bonusHp: 100,
     atkBonus: 100,
     hpBonus: 100,
-    effectText: 'When equipped to Karna: Increases Buster Card effectiveness by 20% and Noble Phantasm Damage by 20%.',
+    effectText: 'When equipped to Karna: Increases Arts, Buster, and Quick Card effectiveness of all allies by 8% while he is on the field.',
     passiveType: 'buster_up',
-    passiveValue: 20,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
+    passiveValue: 8,
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/9/94/CE283.webp/revision/latest?cb=20221107152341',
     isBondCe: true,
     bondServantId: 'karna_lancer',
     bondServantName: 'Karna'
@@ -598,18 +598,18 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
   },
   aoko_aozaki: {
     id: 'ce_bond_aoko_aozaki',
-    name: 'Magic Blueprint: The Fifth',
+    name: 'Waiting in the Sky',
     rarity: 4,
-    description: 'A worn leather journal filled with the forbidden formulas of the Fifth Magic, wrapped with a scarlet hair ribbon given to Master.',
+    description: 'Leaning against the fence atop Misaki Hill beneath an endless azure sky. Magic bullets humming in tune with her heart as she waits for Master to catch up.',
     bonusAtk: 100,
     bonusDef: 0,
     bonusHp: 100,
     atkBonus: 100,
     hpBonus: 100,
-    effectText: 'When equipped to Aoko Aozaki: Increases Arts & Buster effectiveness by 15% and starts battle with 30% NP Gauge.',
-    passiveType: 'starting_np',
+    effectText: 'When equipped to Aoko Aozaki: Increases own NP damage by 30% and grants 1 [Magic Bullet] count every turn.',
+    passiveType: 'np_damage',
     passiveValue: 30,
-    artworkUrl: 'https://ella.janitorai.com/media-approved/-fHihOhhCzye-LbbIz3AA.webp',
+    artworkUrl: 'https://static.wikia.nocookie.net/fategrandorder/images/d/dd/CE2048.webp/revision/latest?cb=20240427051921',
     isBondCe: true,
     bondServantId: 'aoko_aozaki',
     bondServantName: 'Aoko Aozaki'
