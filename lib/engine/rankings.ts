@@ -18,7 +18,7 @@ export const SEED_MASTERS_ROSTER: Array<{
   {
     discordId: 'master_fujimaru_ritsuka',
     username: 'Fujimaru Ritsuka',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
+    avatarUrl: '',
     guildId: 'guild-chaldea',
     saintQuartz: 420,
     commandSeals: 3,
@@ -32,7 +32,7 @@ export const SEED_MASTERS_ROSTER: Array<{
   {
     discordId: 'master_rin_tohsaka',
     username: 'Rin Tohsaka',
-    avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400',
+    avatarUrl: '',
     guildId: 'guild-fuyuki',
     saintQuartz: 280,
     commandSeals: 3,
@@ -46,7 +46,7 @@ export const SEED_MASTERS_ROSTER: Array<{
   {
     discordId: 'master_kirschtaria_wodime',
     username: 'Kirschtaria Wodime',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+    avatarUrl: '',
     guildId: 'guild-chaldea',
     saintQuartz: 350,
     commandSeals: 3,
@@ -60,7 +60,7 @@ export const SEED_MASTERS_ROSTER: Array<{
   {
     discordId: 'master_shirou_emiya',
     username: 'Shirou Emiya',
-    avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400',
+    avatarUrl: '',
     guildId: 'guild-fuyuki',
     saintQuartz: 90,
     commandSeals: 3,
@@ -74,7 +74,7 @@ export const SEED_MASTERS_ROSTER: Array<{
   {
     discordId: 'master_kirei_kotomine',
     username: 'Father Kotomine',
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
+    avatarUrl: '',
     guildId: 'guild-fuyuki',
     saintQuartz: 150,
     commandSeals: 3,
@@ -88,7 +88,7 @@ export const SEED_MASTERS_ROSTER: Array<{
   {
     discordId: 'master_daybit_sem_void',
     username: 'Daybit Sem Void',
-    avatarUrl: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=400',
+    avatarUrl: '',
     guildId: 'guild-chaldea',
     saintQuartz: 300,
     commandSeals: 3,
@@ -102,7 +102,7 @@ export const SEED_MASTERS_ROSTER: Array<{
   {
     discordId: 'master_kiritsugu_emiya',
     username: 'Kiritsugu Emiya',
-    avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400',
+    avatarUrl: '',
     guildId: 'guild-fuyuki',
     saintQuartz: 120,
     commandSeals: 3,
@@ -116,7 +116,7 @@ export const SEED_MASTERS_ROSTER: Array<{
   {
     discordId: 'master_illya_einzbern',
     username: 'Illyasviel von Einzbern',
-    avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400',
+    avatarUrl: '',
     guildId: 'guild-fuyuki',
     saintQuartz: 200,
     commandSeals: 3,
@@ -130,7 +130,7 @@ export const SEED_MASTERS_ROSTER: Array<{
   {
     discordId: 'master_waver_velvet',
     username: 'Lord El-Melloi II',
-    avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400',
+    avatarUrl: '',
     guildId: 'guild-clocktower',
     saintQuartz: 180,
     commandSeals: 3,
@@ -144,7 +144,7 @@ export const SEED_MASTERS_ROSTER: Array<{
   {
     discordId: 'master_bazett_fraga',
     username: 'Bazett Fraga McRemitz',
-    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
+    avatarUrl: '',
     guildId: 'guild-clocktower',
     saintQuartz: 160,
     commandSeals: 3,
@@ -158,7 +158,7 @@ export const SEED_MASTERS_ROSTER: Array<{
   {
     discordId: 'master_hakuno_kishinami',
     username: 'Hakuno Kishinami',
-    avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400',
+    avatarUrl: '',
     guildId: 'guild-mooncell',
     saintQuartz: 210,
     commandSeals: 3,

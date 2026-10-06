@@ -396,7 +396,7 @@ function seedDefaultMastersIfEmpty() {
     {
       discordId: 'master_fujimaru_ritsuka',
       username: 'Fujimaru Ritsuka',
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
+      avatarUrl: '',
       guildId: 'guild-chaldea',
       saintQuartz: 420,
       commandSeals: 3,
@@ -410,7 +410,7 @@ function seedDefaultMastersIfEmpty() {
     {
       discordId: 'master_rin_tohsaka',
       username: 'Rin Tohsaka',
-      avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400',
+      avatarUrl: '',
       guildId: 'guild-fuyuki',
       saintQuartz: 280,
       commandSeals: 3,
@@ -424,7 +424,7 @@ function seedDefaultMastersIfEmpty() {
     {
       discordId: 'master_kirschtaria_wodime',
       username: 'Kirschtaria Wodime',
-      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+      avatarUrl: '',
       guildId: 'guild-chaldea',
       saintQuartz: 350,
       commandSeals: 3,
@@ -438,7 +438,7 @@ function seedDefaultMastersIfEmpty() {
     {
       discordId: 'master_shirou_emiya',
       username: 'Shirou Emiya',
-      avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400',
+      avatarUrl: '',
       guildId: 'guild-fuyuki',
       saintQuartz: 90,
       commandSeals: 3,
@@ -452,7 +452,7 @@ function seedDefaultMastersIfEmpty() {
     {
       discordId: 'master_kirei_kotomine',
       username: 'Father Kotomine',
-      avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
+      avatarUrl: '',
       guildId: 'guild-fuyuki',
       saintQuartz: 150,
       commandSeals: 3,
@@ -466,7 +466,7 @@ function seedDefaultMastersIfEmpty() {
     {
       discordId: 'master_daybit_sem_void',
       username: 'Daybit Sem Void',
-      avatarUrl: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=400',
+      avatarUrl: '',
       guildId: 'guild-chaldea',
       saintQuartz: 300,
       commandSeals: 3,
@@ -480,7 +480,7 @@ function seedDefaultMastersIfEmpty() {
     {
       discordId: 'master_kiritsugu_emiya',
       username: 'Kiritsugu Emiya',
-      avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400',
+      avatarUrl: '',
       guildId: 'guild-fuyuki',
       saintQuartz: 120,
       commandSeals: 3,
@@ -494,7 +494,7 @@ function seedDefaultMastersIfEmpty() {
     {
       discordId: 'master_illya_einzbern',
       username: 'Illyasviel von Einzbern',
-      avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400',
+      avatarUrl: '',
       guildId: 'guild-fuyuki',
       saintQuartz: 200,
       commandSeals: 3,
@@ -508,7 +508,7 @@ function seedDefaultMastersIfEmpty() {
     {
       discordId: 'master_waver_velvet',
       username: 'Lord El-Melloi II',
-      avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400',
+      avatarUrl: '',
       guildId: 'guild-clocktower',
       saintQuartz: 180,
       commandSeals: 3,
@@ -522,7 +522,7 @@ function seedDefaultMastersIfEmpty() {
     {
       discordId: 'master_bazett_fraga',
       username: 'Bazett Fraga McRemitz',
-      avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
+      avatarUrl: '',
       guildId: 'guild-clocktower',
       saintQuartz: 160,
       commandSeals: 3,
@@ -536,7 +536,7 @@ function seedDefaultMastersIfEmpty() {
     {
       discordId: 'master_hakuno_kishinami',
       username: 'Hakuno Kishinami',
-      avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400',
+      avatarUrl: '',
       guildId: 'guild-mooncell',
       saintQuartz: 210,
       commandSeals: 3,
@@ -1383,7 +1383,12 @@ export function getAvailableThroneServants(): ServantTemplate[] {
  * - 100 Action Points (AP) for tactical war moves
  * - No pre-assigned Servant (must perform the Summoning Ritual)
  */
-export async function getOrCreateMaster(discordId: string, username: string = 'Master', guildId?: string): Promise<MasterProfile> {
+export async function getOrCreateMaster(
+  discordId: string,
+  username: string = 'Master',
+  guildId?: string,
+  avatarUrl?: string
+): Promise<MasterProfile> {
   let master = masterStore.get(discordId);
 
   if (!master) {
@@ -1391,7 +1396,7 @@ export async function getOrCreateMaster(discordId: string, username: string = 'M
       id: `master_${discordId}`,
       discordId,
       username,
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
+      avatarUrl: (avatarUrl && !avatarUrl.includes('unsplash.com')) ? avatarUrl : undefined,
       saintQuartz: 0,
       summonTickets: 0,
       commandSeals: 3,
@@ -1411,6 +1416,14 @@ export async function getOrCreateMaster(discordId: string, username: string = 'M
     saveMastersToDisk();
   } else {
     let changed = false;
+    // Strip default NPC stock photos if previously assigned
+    if (master.avatarUrl && master.avatarUrl.includes('unsplash.com')) {
+      master.avatarUrl = (avatarUrl && !avatarUrl.includes('unsplash.com')) ? avatarUrl : undefined;
+      changed = true;
+    } else if (avatarUrl && !avatarUrl.includes('unsplash.com') && master.avatarUrl !== avatarUrl) {
+      master.avatarUrl = avatarUrl;
+      changed = true;
+    }
     // Keep username synchronized in case the user changed their Discord display name
     if (username && master.username !== username) {
       master.username = username;

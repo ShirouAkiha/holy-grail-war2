@@ -113,7 +113,7 @@ export function getInitialMasterProfile(): MasterProfile {
     id: 'master_user_01',
     discordId: '912420275492',
     username: 'Master Shirou',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
+    avatarUrl: '',
     saintQuartz: 30,
     summonTickets: 0,
     manaPrisms: 100,

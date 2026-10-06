@@ -324,7 +324,7 @@ function createCombatant(
     gutsCount: 0,
     commandSeals: isAi ? 0 : (isFreeBattle || master.environmentMode === 'safe' ? 3 : (master.commandSeals ?? 3)),
     drawPile: [],
-    masterAvatarUrl: master.avatarUrl
+    masterAvatarUrl: (master.avatarUrl && !master.avatarUrl.includes('unsplash.com')) ? master.avatarUrl : undefined
   };
 
   // Apply all Craft Essence initial passives (Guts, starting NP, stats, card buffs, damage cuts)
@@ -418,6 +418,10 @@ function buildMasterCommandSealDialogueCutInEmbed(
     .setTitle(`🔱 [COMMAND SEAL INVOCATION] — MASTER ${masterName.toUpperCase()}`)
     .setColor(0xe11d48)
     .setFooter({ text: 'Holy Grail War • Master Absolute Authority Invocation' });
+
+  if (masterAvatarUrl && !masterAvatarUrl.includes('unsplash.com')) {
+    embed.setAuthor({ name: `Master ${masterName}`, iconURL: masterAvatarUrl });
+  }
 
   const cleanQuote = quote.replace(/^["“]/, '').replace(/["”]$/, '').trim();
 
@@ -5752,9 +5756,33 @@ async function startInteractiveDuel(
           const servantAvatarUrl = actor.servant.template?.avatarUrl;
 
           const masterName = actingMaster?.username || actor.username;
-          const masterAvatarUrl = (i.user?.id === actingMaster?.discordId ? i.user.displayAvatarURL({ extension: 'png', size: 512 }) : undefined)
-            || actingMaster?.avatarUrl
-            || actor.masterAvatarUrl;
+
+          let masterAvatarUrl: string | undefined = undefined;
+
+          // 1. Direct active user click avatar
+          if (i.user && (i.user.id === actor.userId || i.user.id === actingMaster?.discordId)) {
+            masterAvatarUrl = i.user.displayAvatarURL({ extension: 'png', size: 512, forceStatic: true });
+          }
+
+          // 2. Client cached user for the combatant's userId
+          if (!masterAvatarUrl && actor.userId && !actor.isAi) {
+            const cachedUser = i.client.users.cache.get(actor.userId);
+            if (cachedUser) {
+              masterAvatarUrl = cachedUser.displayAvatarURL({ extension: 'png', size: 512, forceStatic: true });
+            }
+          }
+
+          // 3. Fallback to profile avatar only if it is a real custom/Discord avatar (never an unsplash NPC stock photo)
+          const candidateAvatar = actingMaster?.avatarUrl || actor.masterAvatarUrl;
+          if (!masterAvatarUrl && candidateAvatar && !candidateAvatar.includes('unsplash.com')) {
+            masterAvatarUrl = candidateAvatar;
+          }
+
+          // Update actingMaster's avatarUrl if we acquired a fresh Discord avatar
+          if (actingMaster && masterAvatarUrl && (!actingMaster.avatarUrl || actingMaster.avatarUrl.includes('unsplash.com') || actingMaster.avatarUrl !== masterAvatarUrl)) {
+            actingMaster.avatarUrl = masterAvatarUrl;
+            saveMaster(actingMaster).catch(() => {});
+          }
 
           const sealQuote = res.quote || 'By my Command Seal, unleash your Noble Phantasm!';
 

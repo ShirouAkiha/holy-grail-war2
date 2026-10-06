@@ -329,7 +329,7 @@ export function createHolyGrailWarSession(
       servantId: initiatorMaster.servantId,
       servantName: initiatorMaster.servantName,
       servantClass: (initiatorMaster.servantClass as any) || 'Saber',
-      avatarUrl: initiatorMaster.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
+      avatarUrl: initiatorMaster.avatarUrl || '',
       currentHp: initiatorMaster.maxHp,
       maxHp: initiatorMaster.maxHp,
       commandSeals: 3,

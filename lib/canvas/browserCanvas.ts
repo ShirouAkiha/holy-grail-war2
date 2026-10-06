@@ -3266,7 +3266,7 @@ export async function renderMasterCommandSealDialogueCard(
 
   const isCustomBgUrl = bgUrlOrPreset && (bgUrlOrPreset.startsWith('http') || bgUrlOrPreset.startsWith('data:image'));
   const [masterImg, servantImg, bgImg] = await Promise.all([
-    masterAvatarUrl ? loadBrowserImage(masterAvatarUrl) : Promise.resolve(null),
+    (masterAvatarUrl && !masterAvatarUrl.includes('unsplash.com')) ? loadBrowserImage(masterAvatarUrl) : Promise.resolve(null),
     servantAvatarUrl ? loadBrowserImage(servantAvatarUrl) : Promise.resolve(null),
     isCustomBgUrl ? loadBrowserImage(bgUrlOrPreset) : Promise.resolve(null)
   ]);

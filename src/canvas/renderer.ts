@@ -4762,9 +4762,9 @@ export async function renderMasterCommandSealDialogueCard(
     ctx = canvas.getContext('2d');
   }
 
-  // Pre-load images
+  // Pre-load images (ignore default NPC stock photos)
   let masterImg: any = null;
-  if (masterAvatarUrl) {
+  if (masterAvatarUrl && !masterAvatarUrl.includes('unsplash.com')) {
     try {
       masterImg = await loadImage(masterAvatarUrl);
     } catch {
@@ -7864,9 +7864,9 @@ export async function renderHolyGrailWarAwakeningCard(
     faction = 'none'
   } = options;
 
-  // 1. Preload Images
+  // 1. Preload Images (ignore default NPC stock photos)
   let masterImg: any = null;
-  if (masterAvatarUrl) {
+  if (masterAvatarUrl && !masterAvatarUrl.includes('unsplash.com')) {
     try {
       masterImg = await loadImage(masterAvatarUrl);
     } catch {
