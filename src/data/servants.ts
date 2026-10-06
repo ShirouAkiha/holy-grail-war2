@@ -306,23 +306,13 @@ export function getServantAvatarAndCardArt(
     return false;
   };
 
-  let avatarUrl = '';
-  if (!isInvalid(servantInput.avatarUrl)) {
-    avatarUrl = servantInput.avatarUrl;
-  } else if (!isInvalid(template.avatarUrl)) {
-    avatarUrl = template.avatarUrl;
-  } else if (canonical && !isInvalid(canonical.avatarUrl)) {
-    avatarUrl = canonical.avatarUrl;
-  } else {
-    avatarUrl = canonical?.avatarUrl || 'https://ella.janitorai.com/media-approved/B9sAHeFp8-jdUk8VB4Y_f.webp';
-  }
-
   // 1. First priority for cardArtUrl: Selected / Unlocked Atlas Academy Ascension Stage
+  const selectedStage = servantInput.selectedAscensionStage ?? template.selectedAscensionStage;
   const ascensionArt = resolveAscensionArtwork(
     resolvedTemplateId,
-    servantInput.selectedAscensionStage,
-    servantInput.level || 1,
-    servantInput.bondLevel || 1
+    selectedStage,
+    servantInput.level || template.level || 1,
+    servantInput.bondLevel || template.bondLevel || 1
   );
 
   let cardArtUrl = '';
@@ -337,7 +327,18 @@ export function getServantAvatarAndCardArt(
   } else if (canonical && !isInvalid(canonical.cardArtUrl)) {
     cardArtUrl = canonical.cardArtUrl;
   } else {
-    cardArtUrl = avatarUrl;
+    cardArtUrl = 'https://static.atlasacademy.io/NA/CharaGraph/2500600/2500600a@1.png';
+  }
+
+  let avatarUrl = cardArtUrl;
+  if (!ascensionArt) {
+    if (!isInvalid(servantInput.avatarUrl)) {
+      avatarUrl = servantInput.avatarUrl;
+    } else if (!isInvalid(template.avatarUrl)) {
+      avatarUrl = template.avatarUrl;
+    } else if (canonical && !isInvalid(canonical.avatarUrl)) {
+      avatarUrl = canonical.avatarUrl;
+    }
   }
 
   let spriteUrl: string | undefined = undefined;

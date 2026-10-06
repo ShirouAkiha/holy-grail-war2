@@ -146,6 +146,7 @@ export interface ServantTemplate {
   aliases?: string[];
   traits?: string[];
   isCustomOrMeme?: boolean;
+  selectedAscensionStage?: 1 | 2 | 3 | 4 | 'costume' | string;
   matchupDialogues?: Record<string, MatchupQuoteEntry>;
 }
 

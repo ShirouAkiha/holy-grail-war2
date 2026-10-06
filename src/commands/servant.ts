@@ -1390,7 +1390,36 @@ export function attachServantCollector(
         } else {
           const stageNum = val === 'costume' ? 'costume' : parseInt(val, 10);
           targetServant.selectedAscensionStage = stageNum as any;
-          master.servants = master.servants.map((s: any) => s.id === targetServant.id ? targetServant : s);
+          if (targetServant.template) targetServant.template.selectedAscensionStage = stageNum as any;
+          const { cardArtUrl, avatarUrl } = getServantAvatarAndCardArt(targetServant);
+          targetServant.cardArtUrl = cardArtUrl;
+          targetServant.avatarUrl = avatarUrl;
+          if (targetServant.template) {
+            targetServant.template.cardArtUrl = cardArtUrl;
+            targetServant.template.avatarUrl = avatarUrl;
+          }
+          master.servants = master.servants.map((s: any) => {
+            const isMatch = s.id === targetServant.id || 
+                            s.templateId === targetServant.templateId || 
+                            s.template?.id === targetServant.templateId ||
+                            s.id === targetServant.templateId ||
+                            s.templateId === targetServant.id;
+            if (isMatch) {
+              return {
+                ...s,
+                selectedAscensionStage: stageNum,
+                cardArtUrl,
+                avatarUrl,
+                template: {
+                  ...(s.template || {}),
+                  selectedAscensionStage: stageNum,
+                  cardArtUrl,
+                  avatarUrl
+                }
+              };
+            }
+            return s;
+          });
           await saveMaster(master);
           actionOutcomeMsg = `🎨 **Spirit Origin Transformed!** Set active artwork for **${sName}** to **Stage ${val === 'costume' ? 'Costume' : val === '4' ? '4 (Final Ascension)' : val}**!`;
         }
@@ -1414,7 +1443,36 @@ export function attachServantCollector(
         } else {
           const stageVal = stageKey === 'costume' ? 'costume' : parseInt(stageKey, 10);
           targetServant.selectedAscensionStage = stageVal as any;
-          master.servants = master.servants.map((s: any) => s.id === targetServant.id ? targetServant : s);
+          if (targetServant.template) targetServant.template.selectedAscensionStage = stageVal as any;
+          const { cardArtUrl, avatarUrl } = getServantAvatarAndCardArt(targetServant);
+          targetServant.cardArtUrl = cardArtUrl;
+          targetServant.avatarUrl = avatarUrl;
+          if (targetServant.template) {
+            targetServant.template.cardArtUrl = cardArtUrl;
+            targetServant.template.avatarUrl = avatarUrl;
+          }
+          master.servants = master.servants.map((s: any) => {
+            const isMatch = s.id === targetServant.id || 
+                            s.templateId === targetServant.templateId || 
+                            s.template?.id === targetServant.templateId ||
+                            s.id === targetServant.templateId ||
+                            s.templateId === targetServant.id;
+            if (isMatch) {
+              return {
+                ...s,
+                selectedAscensionStage: stageVal,
+                cardArtUrl,
+                avatarUrl,
+                template: {
+                  ...(s.template || {}),
+                  selectedAscensionStage: stageVal,
+                  cardArtUrl,
+                  avatarUrl
+                }
+              };
+            }
+            return s;
+          });
           await saveMaster(master);
           actionOutcomeMsg = `🎨 **Spirit Origin Transformed!** Set active artwork for **${sName}** to **Stage ${stageKey === 'costume' ? 'Costume' : stageKey === '4' ? '4 (Final Ascension)' : stageKey}**!`;
         }

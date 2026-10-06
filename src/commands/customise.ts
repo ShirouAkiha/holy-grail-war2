@@ -1572,12 +1572,36 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
         const stageVal = stageOption === 'costume' ? 'costume' : parseInt(stageOption, 10);
         targetServant.selectedAscensionStage = stageVal as any;
+        if (targetServant.template) targetServant.template.selectedAscensionStage = stageVal as any;
         const { cardArtUrl, avatarUrl } = getServantAvatarAndCardArt(targetServant);
         targetServant.cardArtUrl = cardArtUrl;
+        targetServant.avatarUrl = avatarUrl;
         if (targetServant.template) {
           targetServant.template.cardArtUrl = cardArtUrl;
+          targetServant.template.avatarUrl = avatarUrl;
         }
-        master.servants = master.servants.map((s: any) => s.id === targetServant.id ? targetServant : s);
+        master.servants = master.servants.map((s: any) => {
+          const isMatch = s.id === targetServant.id || 
+                          s.templateId === targetServant.templateId || 
+                          s.template?.id === targetServant.templateId ||
+                          s.id === targetServant.templateId ||
+                          s.templateId === targetServant.id;
+          if (isMatch) {
+            return {
+              ...s,
+              selectedAscensionStage: stageVal,
+              cardArtUrl,
+              avatarUrl,
+              template: {
+                ...(s.template || {}),
+                selectedAscensionStage: stageVal,
+                cardArtUrl,
+                avatarUrl
+              }
+            };
+          }
+          return s;
+        });
         await saveMaster(master);
 
         const embed = new EmbedBuilder()
