@@ -93,7 +93,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    let war = getOrInitWarSession(master);
+    let war = getOrInitWarSession(master, interaction.guildId || undefined);
     const sub = interaction.options.getSubcommand();
     const currentChannelName = interaction.channel && 'name' in interaction.channel 
       ? \`#\${(interaction.channel as any).name}\`

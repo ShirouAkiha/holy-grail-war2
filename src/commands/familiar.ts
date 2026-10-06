@@ -9,6 +9,7 @@ import {
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { 
   getOrInitWarSession, 
+  findActiveWarSessionForMaster,
   dispatchFamiliarInWar, 
   recallFamiliarsInWar 
 } from '../engine/grailwar';
@@ -52,7 +53,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
-    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username, interaction.guildId || undefined);
     if (!master.servants || master.servants.length === 0) {
       await interaction.reply({
         flags: MessageFlags.Ephemeral,
@@ -61,7 +62,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    let war = getOrInitWarSession(master);
+    let war = findActiveWarSessionForMaster(interaction.user.id, master, interaction.guildId || undefined);
     const perm = checkWarActionPermission(master, war, interaction.user.id);
     if (!perm.allowed) {
       await interaction.reply({

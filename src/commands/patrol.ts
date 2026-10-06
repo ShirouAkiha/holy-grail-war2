@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, MessageFlags } from 'discord.js';
 import { getOrCreateMaster, saveMaster } from '../database/service';
-import { getOrInitWarSession, patrolCityInWar } from '../engine/grailwar';
+import { getOrInitWarSession, findActiveWarSessionForMaster, patrolCityInWar } from '../engine/grailwar';
 import { checkWarActionPermission } from '../engine/environmentService';
 import { addBondExpToServant } from '../../lib/engine/bondEvents';
 import { addServantBattleExp } from '../engine/customization';
@@ -18,7 +18,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   try {
-    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username, interaction.guildId || undefined);
     const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
 
     if (!activeServant) {
@@ -28,7 +28,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    let war = getOrInitWarSession(master);
+    let war = findActiveWarSessionForMaster(interaction.user.id, master, interaction.guildId || undefined);
     const perm = checkWarActionPermission(master, war, interaction.user.id);
     if (!perm.allowed) {
       await interaction.editReply({

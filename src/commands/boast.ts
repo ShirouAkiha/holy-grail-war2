@@ -20,7 +20,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    let war = getOrInitWarSession(master);
+    let war = getOrInitWarSession(master, interaction.guildId || undefined);
     const uP = war.participants[interaction.user.id];
     const isActivelyInWar = !!(uP && uP.isAlive && (war.status === 'active' || war.status === 'gathering'));
 

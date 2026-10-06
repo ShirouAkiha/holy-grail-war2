@@ -35,7 +35,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    const war = getOrInitWarSession(master);
+    const war = getOrInitWarSession(master, interaction.guildId || undefined);
 
     const attackerPart = war.participants[interaction.user.id] ||
       Object.values(war.participants).find(p => p.discordId === interaction.user.id);

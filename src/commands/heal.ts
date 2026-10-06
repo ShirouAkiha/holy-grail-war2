@@ -42,7 +42,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    let war = getOrInitWarSession(master);
+    let war = getOrInitWarSession(master, interaction.guildId || undefined);
     const res = executeWarAction(war, interaction.user.id, 'heal_ritual');
     war = res.updatedWar;
     if (res.success && master.servants && master.servants.length > 0) {

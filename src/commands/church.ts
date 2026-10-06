@@ -191,7 +191,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    let war = getOrInitWarSession(master);
+    let war = getOrInitWarSession(master, interaction.guildId || undefined);
     const action = interaction.options.getString('action') || 'status';
 
     if (action === 'homily') {

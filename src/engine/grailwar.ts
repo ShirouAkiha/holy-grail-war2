@@ -592,13 +592,13 @@ export function getOrInitWarSession(master?: MasterProfile, guildId?: string): H
     return warSession;
   }
 
-  // Master is in War Mode: check if an ongoing war prohibits late entry
+  // Master is in War Mode: check if this war session has room
+  const maxCap = warSession.rules?.maxMasters || 7;
   const participantCount = Object.keys(warSession.participants).length;
-  const isOngoing = participantCount >= 7 || (warSession.eventLogs || []).some(e => e.type === 'clash');
 
-  if (isOngoing) {
-    // Cannot join an ongoing war
-    master.environmentMode = 'safe';
+  if (participantCount >= maxCap) {
+    // War is full; cannot add new participant to this specific session.
+    // Crucial: Do NOT demote master.environmentMode to 'safe' as they may be enrolled elsewhere!
     return warSession;
   }
 
@@ -711,11 +711,68 @@ export function attemptJoinWar(
   }
 
   master.environmentMode = 'war';
+
+  // If master is not yet registered in targetWar participants, register them immediately
+  if (!targetWar.participants[master.discordId]) {
+    const activeServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+    const sMaxHp = activeServant ? calculateServantMaxHp(activeServant) : 50000;
+    const sName = (activeServant as any)?.nickname || (activeServant as any)?.template?.name || (activeServant as any)?.name || 'Heroic Spirit';
+    const sClass = (activeServant as any)?.template?.servantClass || (activeServant as any)?.servantClass || 'Saber';
+    const avatar = (activeServant as any)?.template?.avatarUrl || (activeServant as any)?.avatarUrl || master.avatarUrl;
+
+    targetWar.participants[master.discordId] = {
+      discordId: master.discordId,
+      username: master.username,
+      servantId: activeServant?.id || 'servant_contract',
+      servantName: sName,
+      servantClass: sClass as any,
+      avatarUrl: avatar,
+      currentHp: sMaxHp,
+      maxHp: sMaxHp,
+      commandSeals: master.commandSeals || 3,
+      isAlive: true,
+      isExposed: false,
+      kills: 0,
+      innocentKills: 0
+    };
+    saveWarToDisk();
+  }
+
   return {
     success: true,
     message: `⚔️ **WAR MODE ACTIVATED!** You are an active competitor in the Holy Grail War!`,
     war: targetWar
   };
+}
+
+/**
+ * Resolves the active Holy Grail War session for a given Master/User.
+ * Checks the preferred guild, then searches all guild sessions for where this Master is an active participant.
+ */
+export function findActiveWarSessionForMaster(
+  discordId: string,
+  master?: MasterProfile,
+  preferredGuildId?: string
+): HolyGrailWarSession {
+  // 1. Try preferred guild if provided
+  const pKey = resolveGuildKey(master, preferredGuildId);
+  const preferredWar = warSessionsByGuild[pKey];
+  if (preferredWar?.participants && (preferredWar.participants[discordId] || Object.values(preferredWar.participants).some(p => p.discordId === discordId))) {
+    return preferredWar;
+  }
+
+  // 2. Search all war sessions to see if this user is a registered participant in any active war
+  for (const session of Object.values(warSessionsByGuild)) {
+    if (session?.status === 'active' && session.participants) {
+      const isParticipant = !!session.participants[discordId] || Object.values(session.participants).some(p => p.discordId === discordId);
+      if (isParticipant) {
+        return session;
+      }
+    }
+  }
+
+  // 3. Fallback to preferred or default war session
+  return getOrInitWarSession(master, preferredGuildId);
 }
 
 export function getActiveWarSession(guildId?: string): HolyGrailWarSession | null {
@@ -3139,9 +3196,11 @@ export function startOrRestartWar(
   presetKey: string = 'fuyuki_7',
   customRules?: Partial<WarRules>,
   adminUsername: string = 'Overseer',
-  options: { wipeRoster?: boolean } = { wipeRoster: true }
+  options: { wipeRoster?: boolean; guildId?: string } = { wipeRoster: true },
+  explicitGuildId?: string
 ): { war: HolyGrailWarSession; message: string } {
-  const war = getOrInitWarSession();
+  const targetGuildId = explicitGuildId || options.guildId || 'default-fuyuki-guild';
+  const war = getOrInitWarSession(undefined, targetGuildId);
   const basePreset = WAR_PRESETS[presetKey] || WAR_PRESETS.fuyuki_7;
   const newRules: WarRules = {
     ...basePreset,
@@ -3244,6 +3303,10 @@ export function startOrRestartWar(
     type: 'admin_reset'
   });
 
+  warSessionsByGuild[targetGuildId] = war;
+  if (targetGuildId !== 'default-fuyuki-guild') {
+    warSessionsByGuild['default-fuyuki-guild'] = war;
+  }
   saveWarToDisk();
   return { war, message: broadcastMsg };
 }

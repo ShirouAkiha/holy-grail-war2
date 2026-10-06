@@ -2254,27 +2254,28 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       adminAnnounceDraft.maxSlots = WAR_PRESETS[pKey]?.maxMasters || 7;
       actionOutcome = `🏆 **Recruitment Format:** Set to **${WAR_PRESETS[pKey]?.formatName || pKey}** (${adminAnnounceDraft.maxSlots} Max Masters)!`;
     } else if (customId === 'admin_war_announce_force_ignite') {
-      const res = await igniteWarFromRecruitment(interaction.client, interaction.user);
+      const warSession = getOrInitWarSession(undefined, interaction.guildId || undefined);
+      const res = await igniteWarFromRecruitment(interaction.client, warSession, interaction.channel as any);
       actionOutcome = `⚡ **${res.success ? 'WAR IGNITED' : 'Ignition Failed'}:**\n${res.message}`;
       currentCategory = 'war';
     } else if (customId === 'admin_war_announce_cancel') {
       currentCategory = 'war_announce';
-      const res = await cancelRecruitmentCall(interaction.client, interaction.user.username);
+      const res = await cancelRecruitmentCall(interaction.client, interaction.user.username, interaction.guildId || undefined);
       actionOutcome = res.message;
     }
 
     // WAR PRESETS
     else if (customId === 'admin_war_preset_fuyuki_7') {
-      const res = startOrRestartWar('fuyuki_7', undefined, interaction.user.username);
+      const res = startOrRestartWar('fuyuki_7', undefined, interaction.user.username, { wipeRoster: true, guildId: interaction.guildId || undefined });
       actionOutcome = `🏆 **Applied Preset: 5th Fuyuki Holy Grail War (7 Masters)!**\n${res.message}`;
     } else if (customId === 'admin_war_preset_apocrypha_14') {
-      const res = startOrRestartWar('apocrypha_14', undefined, interaction.user.username);
+      const res = startOrRestartWar('apocrypha_14', undefined, interaction.user.username, { wipeRoster: true, guildId: interaction.guildId || undefined });
       actionOutcome = `⚔️ **Applied Preset: Trifas Great Holy Grail War (14 Masters, Black vs Red)!**\n${res.message}`;
     } else if (customId === 'admin_war_preset_singularity_chaos') {
-      const res = startOrRestartWar('singularity_chaos', undefined, interaction.user.username);
+      const res = startOrRestartWar('singularity_chaos', undefined, interaction.user.username, { wipeRoster: true, guildId: interaction.guildId || undefined });
       actionOutcome = `🌌 **Applied Preset: Grand Singularity Chaos (30 Masters FFA, Fast Mana)!**\n${res.message}`;
     } else if (customId === 'admin_war_preset_desolate_hardcore') {
-      const res = startOrRestartWar('desolate_hardcore', undefined, interaction.user.username);
+      const res = startOrRestartWar('desolate_hardcore', undefined, interaction.user.username, { wipeRoster: true, guildId: interaction.guildId || undefined });
       actionOutcome = `💀 **Applied Preset: Desolate Hardcore Ritual (1 Seal, Permadeath, No Sanctuary)!**\n${res.message}`;
     }
 

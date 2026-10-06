@@ -87,6 +87,7 @@ export function safeSetDescription(embed: EmbedBuilder, text: string, maxLen: nu
 }
 import { 
   getOrInitWarSession,
+  findActiveWarSessionForMaster,
   calculateCurrentHp,
   executeWarAction, 
   simulateWarSkirmish,
@@ -146,7 +147,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username, interaction.guildId || undefined);
     const category = (interaction.options.getString('category') as any) || 'board';
 
-    const war = getOrInitWarSession(master, interaction.guildId || undefined);
+    const war = findActiveWarSessionForMaster(interaction.user.id, master, interaction.guildId || undefined);
     const { embeds, components, files } = await buildGrailWarHub(war, master, category, undefined, interaction.client);
 
     const msg = await interaction.editReply({
@@ -770,7 +771,7 @@ export function attachGrailWarCollector(
 
     try {
       const master = await getOrCreateMaster(i.user.id, i.user.username, i.guildId || undefined);
-      let war = getOrInitWarSession(master, i.guildId || undefined);
+      let war = findActiveWarSessionForMaster(i.user.id, master, i.guildId || undefined);
       let actionOutcome: string | undefined = undefined;
 
       const currentChan = i.channel && 'name' in i.channel ? `#${(i.channel as any).name}` : '#general';
@@ -1092,7 +1093,7 @@ export async function handleGlobalGrailWarInteraction(interaction: any): Promise
 
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username, interaction.guildId || undefined);
-    let war = getOrInitWarSession(master, interaction.guildId || undefined);
+    let war = findActiveWarSessionForMaster(interaction.user.id, master, interaction.guildId || undefined);
     const uP = war.participants[interaction.user.id];
     const currentChan = interaction.channel && 'name' in interaction.channel ? `#${(interaction.channel as any).name}` : '#general';
 

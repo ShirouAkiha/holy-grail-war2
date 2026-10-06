@@ -30,7 +30,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   try {
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
-    const war = getOrInitWarSession(master);
+    const war = getOrInitWarSession(master, interaction.guildId || undefined);
     const intelText = interaction.options.getString('intel', true);
     const targetQuery = interaction.options.getString('target') || undefined;
 

@@ -30,6 +30,8 @@
  */
 
 import { MasterProfile, HolyGrailWarSession } from '../types';
+import { getAllWarSessions } from './grailwar';
+import { saveMaster } from '../database/service';
 
 export type EnvironmentMode = 'safe' | 'war';
 
@@ -133,8 +135,26 @@ export function checkWarActionPermission(
   war: HolyGrailWarSession | null | undefined,
   discordId: string
 ): { allowed: boolean; reason?: 'civilian' | 'eliminated' | 'no_war'; message: string } {
-  // 1. Is the Holy Grail War currently active?
-  if (!war || war.status !== 'active') {
+  // 1. Locate the true active war session where this participant may be registered
+  let targetWar = war;
+  let uP = targetWar?.participants ? (targetWar.participants[discordId] || Object.values(targetWar.participants).find(p => p.discordId === discordId)) : undefined;
+
+  if (!uP) {
+    const allWars = getAllWarSessions();
+    for (const session of Object.values(allWars)) {
+      if (session && session.status === 'active' && session.participants) {
+        const found = session.participants[discordId] || Object.values(session.participants).find(p => p.discordId === discordId);
+        if (found) {
+          targetWar = session;
+          uP = found;
+          break;
+        }
+      }
+    }
+  }
+
+  // 2. Is the Holy Grail War currently active?
+  if (!targetWar || targetWar.status !== 'active') {
     return {
       allowed: false,
       reason: 'no_war',
@@ -142,10 +162,15 @@ export function checkWarActionPermission(
     };
   }
 
-  // 2. Is the user enrolled as an active war participant with contracted servants?
-  const uP = war.participants ? (war.participants[discordId] || Object.values(war.participants).find(p => p.discordId === discordId)) : undefined;
-  const isEnrolledInWar = master?.environmentMode === 'war' && !!uP;
+  // 3. Auto-heal master.environmentMode if user is an anointed participant
+  if (uP && master && master.environmentMode !== 'war') {
+    master.environmentMode = 'war';
+    saveMaster(master).catch(() => {});
+  }
+
+  // 4. Is the user enrolled as an active war participant with contracted servants?
   const hasServant = !!(master?.servants && master.servants.length > 0);
+  const isEnrolledInWar = (master?.environmentMode === 'war' || !!uP) && !!uP;
 
   if (!isEnrolledInWar || !hasServant || !uP) {
     return {
@@ -155,7 +180,7 @@ export function checkWarActionPermission(
     };
   }
 
-  // 3. Is the participant alive?
+  // 5. Is the participant alive?
   if (!uP.isAlive) {
     return {
       allowed: false,

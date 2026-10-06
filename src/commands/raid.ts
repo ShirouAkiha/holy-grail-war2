@@ -542,6 +542,20 @@ async function runRaidBattle(
   let currentActiveParticipant = battleState.participants[battleState.activeMasterIndex];
   let isProcessingTurn = false;
 
+  function ensureActiveParticipantIsAlive(): void {
+    const participants = battleState.participants;
+    if (!participants || participants.length === 0) return;
+
+    const curr = participants[battleState.activeMasterIndex];
+    if (!curr || curr.isDead) {
+      const livingIdx = participants.findIndex(p => !p.isDead);
+      if (livingIdx !== -1) {
+        battleState.activeMasterIndex = livingIdx;
+      }
+    }
+    currentActiveParticipant = battleState.participants[battleState.activeMasterIndex];
+  }
+
   // Active Noble Phantasm GIF message reference & auto-delete timer
   let activeNpGifMessage: any = null;
   let activeNpGifTimeout: any = null;

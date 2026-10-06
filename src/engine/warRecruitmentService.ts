@@ -953,12 +953,32 @@ export async function igniteWarFromRecruitment(
   warSession?: HolyGrailWarSession,
   fallbackChannel?: TextChannel | any
 ): Promise<{ success: boolean; message: string; chosenCount: number }> {
-  const war = warSession || getOrInitWarSession();
+  let war = (warSession && (warSession as any).participants !== undefined)
+    ? warSession
+    : undefined;
+
+  if (!war || !war.recruitmentCall) {
+    const allWars = getAllWarSessions();
+    for (const s of Object.values(allWars)) {
+      if (s?.recruitmentCall && s.recruitmentCall.active) {
+        war = s;
+        break;
+      }
+    }
+  }
+
+  if (!war) {
+    const gId = fallbackChannel?.guild?.id;
+    war = getOrInitWarSession(undefined, gId);
+  }
+
   const recruitment = war.recruitmentCall;
 
   if (!recruitment) {
     return { success: false, message: 'No active recruitment call found.', chosenCount: 0 };
   }
+
+  const targetGuildId = recruitment.guildId || (war as any).guildId || fallbackChannel?.guild?.id || 'default-fuyuki-guild';
 
   // Deactivate recruitment
   recruitment.active = false;
@@ -972,7 +992,7 @@ export async function igniteWarFromRecruitment(
   const validApplicants: { master: MasterProfile; discordId: string }[] = [];
   for (const uid of applicantIds) {
     try {
-      const m = await getOrCreateMaster(uid, `Master_${uid}`);
+      const m = await getOrCreateMaster(uid, `Master_${uid}`, targetGuildId);
       if (m && m.servants && m.servants.length > 0) {
         validApplicants.push({ master: m, discordId: uid });
       }
@@ -1014,7 +1034,8 @@ export async function igniteWarFromRecruitment(
     recruitment.presetKey,
     undefined,
     recruitment.initiatedBy,
-    { wipeRoster: true }
+    { wipeRoster: true, guildId: targetGuildId },
+    targetGuildId
   );
 
   // Register each chosen Master into the active war session
@@ -1029,8 +1050,13 @@ export async function igniteWarFromRecruitment(
     const activeServant = master.servants.find(s => s.id === chosenServantId) || master.servants[0];
     master.activeServantId = activeServant.id;
 
-    // Set Master into active War mode with full HP and 3 Command Seals
+    // Set Master into active War mode with full HP and starting Command Seals
     master.environmentMode = 'war';
+    if (targetGuildId) {
+      master.guildId = targetGuildId;
+      if (!master.guildIds) master.guildIds = [];
+      if (!master.guildIds.includes(targetGuildId)) master.guildIds.push(targetGuildId);
+    }
     master.commandSeals = freshWar.rules?.startingCommandSeals || 3;
     const sMaxHp = (activeServant as any).maxHp || activeServant.template?.baseHp || 50000;
     activeServant.currentHp = sMaxHp;

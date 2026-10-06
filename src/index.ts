@@ -103,7 +103,8 @@ import {
   exposeMasterInWar,
   handleMasterReleaseInWar,
   forfeitWar,
-  attemptJoinWar
+  attemptJoinWar,
+  findActiveWarSessionForMaster
 } from './engine/grailwar';
 import { checkWarActionPermission } from './engine/environmentService';
 import { handleRecruitmentInteraction, resumePendingRecruitment, handleWarDmInteraction } from './engine/warRecruitmentService';
@@ -1437,8 +1438,8 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
-      let master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
-      let war = getOrInitWarSession(master);
+      let master = await getOrCreateMaster(interaction.user.id, interaction.user.username, interaction.guildId || undefined);
+      let war = findActiveWarSessionForMaster(interaction.user.id, master, interaction.guildId || undefined);
       const isCivilian = !master.servants || master.servants.length === 0;
 
       // Trap actions from channel select menu or trap hub
@@ -2159,9 +2160,16 @@ export async function startBot() {
     console.warn('⚠️ DISCORD_BOT_TOKEN not provided. Bot cannot connect to Discord Gateway.');
     return;
   }
-  // Register slash commands first, then log in
-  await registerSlashCommands();
-  await client.login(token);
+  try {
+    await registerSlashCommands();
+  } catch (regErr: any) {
+    console.warn('⚠️ Slash command registration skipped or delayed due to network reachability:', regErr?.message || regErr);
+  }
+  try {
+    await client.login(token);
+  } catch (loginErr: any) {
+    console.error('❌ Failed to connect to Discord Gateway:', loginErr?.message || loginErr);
+  }
 }
 
 // Auto-start if running in Node environment with DISCORD_BOT_TOKEN defined

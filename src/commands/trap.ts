@@ -12,6 +12,7 @@ import {
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { 
   getOrInitWarSession, 
+  findActiveWarSessionForMaster,
   setChannelTrapInWar, 
   disarmChannelTrapsInWar,
   setWorkshopWardInWar,
@@ -82,7 +83,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
-    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username, interaction.guildId || undefined);
     if (!master.servants || master.servants.length === 0) {
       await interaction.reply({
         flags: MessageFlags.Ephemeral,
@@ -91,7 +92,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    let war = getOrInitWarSession(master);
+    let war = findActiveWarSessionForMaster(interaction.user.id, master, interaction.guildId || undefined);
     const perm = checkWarActionPermission(master, war, interaction.user.id);
     if (!perm.allowed) {
       await interaction.reply({
@@ -100,7 +101,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
       return;
     }
-    const userParticipant = war.participants[interaction.user.id];
+    const userParticipant = war.participants[interaction.user.id] || Object.values(war.participants).find(p => p.discordId === interaction.user.id);
 
     const sub = interaction.options.getSubcommand(false) || 'list';
     const currentChannelName = interaction.channel && 'name' in interaction.channel 

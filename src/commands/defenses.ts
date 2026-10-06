@@ -13,6 +13,7 @@ import {
 import { getOrCreateMaster, saveMaster } from '../database/service';
 import { 
   getOrInitWarSession,
+  findActiveWarSessionForMaster,
   executeWarAction,
   enterChurchSanctuary,
   leaveChurchSanctuary
@@ -177,8 +178,8 @@ export function buildDefensesButtons(userParticipant: any) {
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   try {
-    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
-    let war = getOrInitWarSession(master);
+    const master = await getOrCreateMaster(interaction.user.id, interaction.user.username, interaction.guildId || undefined);
+    let war = findActiveWarSessionForMaster(interaction.user.id, master, interaction.guildId || undefined);
     const perm = checkWarActionPermission(master, war, interaction.user.id);
     if (!perm.allowed) {
       await interaction.reply({
