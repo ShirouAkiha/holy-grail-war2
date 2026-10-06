@@ -60,18 +60,67 @@ export const CANON_MEDIA_FALLBACKS: Record<string, string> = {
   'ooE7jWZ7K8iyxc9WJF21f.webp': 'https://ella.janitorai.com/media-approved/ooE7jWZ7K8iyxc9WJF21f.webp',
   'ce_bond_edmond.webp': 'https://ella.janitorai.com/media-approved/6tOCZiZo0xbTRAFmf85h5.webp',
   'ce_bond_van_gogh.webp': 'https://ella.janitorai.com/media-approved/-S9y-H-REfRKPTBMJUKxp.webp',
-  'ce_bond_artoria_pendragon.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/1/10/CE191.webp/revision/latest?cb=20221011123600',
-  'ce_bond_gilgamesh_archer.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/3/32/CE216.webp/revision/latest?cb=20221011124736',
-  'ce_bond_scathach_lancer.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/1/17/CE251.webp/revision/latest?cb=20221013154318',
-  'ce_bond_jeanne_darc_ruler.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/c/c7/CE194.webp/revision/latest?cb=20221011123628',
-  'ce_bond_jeanne_alter.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/f/fe/CE350.webp/revision/latest?cb=20221113095032',
-  'ce_bond_mhx_alter.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/c/c0/CE429.webp/revision/latest?cb=20221209160900',
-  'ce_bond_artoria_pendragon_alter.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/5/5a/CE195.webp/revision/latest?cb=20221011123634',
-  'ce_bond_nero_claudius_saber.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/4/44/CE218.webp/revision/latest?cb=20221011124754',
-  'ce_bond_emiya_archer.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/d/d5/CE196.webp/revision/latest?cb=20221011123649',
-  'ce_bond_cu_chulainn_lancer.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/2/20/CE252.webp/revision/latest?cb=20221013154319',
-  'ce_bond_karna_lancer.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/9/94/CE283.webp/revision/latest?cb=20221107152341',
-  'ce_bond_aoko_aozaki.webp': 'https://static.wikia.nocookie.net/fategrandorder/images/d/dd/CE2048.webp/revision/latest?cb=20240427051921'
+  'ce_bond_artoria_pendragon.webp': '/api/media/ce_bond_artoria_pendragon.webp',
+  'ce_bond_gilgamesh_archer.webp': '/api/media/ce_bond_gilgamesh_archer.webp',
+  'ce_bond_scathach_lancer.webp': '/api/media/ce_bond_scathach_lancer.webp',
+  'ce_bond_jeanne_darc_ruler.webp': '/api/media/ce_bond_jeanne_darc_ruler.webp',
+  'ce_bond_jeanne_alter.webp': '/api/media/ce_bond_jeanne_alter.webp',
+  'ce_bond_mhx_alter.webp': '/api/media/ce_bond_mhx_alter.webp',
+  'ce_bond_artoria_pendragon_alter.webp': '/api/media/ce_bond_artoria_pendragon_alter.webp',
+  'ce_bond_nero_claudius_saber.webp': '/api/media/ce_bond_nero_claudius_saber.webp',
+  'ce_bond_emiya_archer.webp': '/api/media/ce_bond_emiya_archer.webp',
+  'ce_bond_cu_chulainn_lancer.webp': '/api/media/ce_bond_cu_chulainn_lancer.webp',
+  'ce_bond_karna_lancer.webp': '/api/media/ce_bond_karna_lancer.webp',
+  'ce_bond_aoko_aozaki.webp': '/api/media/ce_bond_aoko_aozaki.webp',
+  'ce_limited_zero_over.webp': '/api/media/ce_limited_zero_over.webp',
+  'ce_volumen_hydragyrum.webp': '/api/media/ce_volumen_hydragyrum.webp',
+  'ce_origin_bullet.webp': '/api/media/ce_origin_bullet.webp',
+  'ce_imaginary_element.webp': '/api/media/ce_imaginary_element.webp',
+  'ce_gandr.webp': '/api/media/ce_gandr.webp',
+  'ce_projection.webp': '/api/media/ce_projection.webp',
+  'ce_verdant_sound.webp': '/api/media/ce_verdant_sound.webp',
+  'ce_code_cast.webp': '/api/media/ce_code_cast.webp',
+  'ce_when_the_flowers_fall.webp': '/api/media/ce_when_the_flowers_fall.webp',
+  'ce_dragon_meridian.png': '/api/media/ce_dragon_meridian.png',
+  'ce_jeweled_sword.webp': '/api/media/ce_jeweled_sword.webp',
+  'ce_hydra_dagger.webp': '/api/media/ce_hydra_dagger.webp',
+  'ce_formal_craft.webp': '/api/media/ce_formal_craft.webp',
+  'ce_fragment_2030.webp': '/api/media/ce_fragment_2030.webp',
+  'ce_kaleidoscope.webp': '/api/media/ce_kaleidoscope.webp',
+  'ce_black_grail.webp': '/api/media/ce_black_grail.webp',
+  'ce_imaginary_around.webp': '/api/media/ce_imaginary_around.webp',
+  'ce_heavens_feel.webp': '/api/media/ce_heavens_feel.webp',
+  'ce_prisma_cosmos.webp': '/api/media/ce_prisma_cosmos.webp',
+  'ce_castle_of_snow.webp': '/api/media/ce_castle_of_snow.webp'
+};
+
+const WIKIA_FILE_MAP: Record<string, string> = {
+  'ce33.webp': '/api/media/ce_limited_zero_over.webp',
+  'ce185.webp': '/api/media/ce_volumen_hydragyrum.webp',
+  'ce263.webp': '/api/media/ce_origin_bullet.webp',
+  'ce28.webp': '/api/media/ce_imaginary_element.webp',
+  'ce24.webp': '/api/media/ce_gandr.webp',
+  'ce23.webp': '/api/media/ce_projection.webp',
+  'ce25.webp': '/api/media/ce_verdant_sound.webp',
+  'ce56.webp': '/api/media/ce_code_cast.webp',
+  'ce2470.webp': '/api/media/ce_when_the_flowers_fall.webp',
+  'fgocefull_9400180a.png': '/api/media/ce_dragon_meridian.png',
+  'ce247.webp': '/api/media/ce_jeweled_sword.webp',
+  'ce333.webp': '/api/media/ce_hydra_dagger.webp',
+  'ce31.webp': '/api/media/ce_formal_craft.webp',
+  'ce67.webp': '/api/media/ce_fragment_2030.webp',
+  'ce191.webp': '/api/media/ce_bond_artoria_pendragon.webp',
+  'ce216.webp': '/api/media/ce_bond_gilgamesh_archer.webp',
+  'ce251.webp': '/api/media/ce_bond_scathach_lancer.webp',
+  'ce194.webp': '/api/media/ce_bond_jeanne_darc_ruler.webp',
+  'ce350.webp': '/api/media/ce_bond_jeanne_alter.webp',
+  'ce429.webp': '/api/media/ce_bond_mhx_alter.webp',
+  'ce195.webp': '/api/media/ce_bond_artoria_pendragon_alter.webp',
+  'ce218.webp': '/api/media/ce_bond_nero_claudius_saber.webp',
+  'ce196.webp': '/api/media/ce_bond_emiya_archer.webp',
+  'ce252.webp': '/api/media/ce_bond_cu_chulainn_lancer.webp',
+  'ce283.webp': '/api/media/ce_bond_karna_lancer.webp',
+  'ce2048.webp': '/api/media/ce_bond_aoko_aozaki.webp'
 };
 
 export function normalizeMediaUrl(rawUrl: string): string {
@@ -89,6 +138,9 @@ export function normalizeMediaUrl(rawUrl: string): string {
   ) {
     if (trimmed.startsWith('data/media/')) {
       return `/api/media/${trimmed.replace(/^data\/media\//, '')}`;
+    }
+    if (trimmed.startsWith('/media/')) {
+      return `/api/media/${trimmed.replace(/^\/media\//, '')}`;
     }
     return trimmed;
   }
@@ -157,9 +209,13 @@ export function normalizeMediaUrl(rawUrl: string): string {
     }
   }
 
-  // 5. Handle Wikia / Fandom URLs
-  if (trimmed.includes('wikia.nocookie.net')) {
+  // 5. Handle Wikia / Fandom URLs (Prevent 403 Forbidden blocks)
+  if (trimmed.includes('wikia.nocookie.net') || trimmed.includes('fandom.com')) {
     const cleanWikia = trimmed.replace(/\/revision\/latest.*$/i, '').split('?')[0];
+    const filename = cleanWikia.split('/').pop()?.toLowerCase() || '';
+    if (WIKIA_FILE_MAP[filename]) {
+      return WIKIA_FILE_MAP[filename];
+    }
     return cleanWikia;
   }
 
