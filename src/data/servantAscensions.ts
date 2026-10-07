@@ -274,9 +274,14 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
 /**
  * Resolves canonical ascension dataset using exact key, name, or known alias.
  */
-export function findCanonicalAscensionData(identifier?: string): { key: string; data: ServantAscensionData } | undefined {
+export function findCanonicalAscensionData(identifier?: any): { key: string; data: ServantAscensionData } | undefined {
   if (!identifier) return undefined;
-  const raw = identifier.toLowerCase().trim().replace(/[\s\-']/g, '_');
+  const strId = typeof identifier === 'string'
+    ? identifier
+    : (identifier.templateId || identifier.template?.id || identifier.id || identifier.name || String(identifier));
+  if (!strId || typeof strId !== 'string') return undefined;
+
+  const raw = strId.toLowerCase().trim().replace(/[\s\-']/g, '_');
   
   if (CANONICAL_SERVANT_ASCENSIONS[raw]) {
     return { key: raw, data: CANONICAL_SERVANT_ASCENSIONS[raw] };
@@ -422,21 +427,59 @@ export function getUnlockedAscensionStages(
 
 /**
  * Resolves the artwork URL for a servant based on their selected Ascension stage.
+ * Accepts either a string templateId or a servant object instance.
+ * CRITICAL: Strictly preserves custom servants' artwork untouched!
  */
 export function resolveAscensionArtwork(
-  templateId: string,
+  servantOrTemplate: any,
   selectedStage?: 1 | 2 | 3 | 4 | 'costume' | string,
   level: number = 1,
   bondLevel: number = 1,
   fallbackUrl?: string
 ): string {
+  if (!servantOrTemplate) return fallbackUrl || '';
+
+  // 1. STRICT GUARANTEE: Never overwrite custom servants' artwork!
+  const isCustom = typeof servantOrTemplate === 'object' && (
+    servantOrTemplate.isCustom ||
+    servantOrTemplate.template?.isCustom ||
+    Boolean(servantOrTemplate.customArtworkUrl) ||
+    Boolean(servantOrTemplate.template?.customArtworkUrl) ||
+    Boolean(servantOrTemplate.isUserCreated) ||
+    Boolean(servantOrTemplate.template?.isUserCreated)
+  );
+  if (isCustom) {
+    return servantOrTemplate.customArtworkUrl ||
+           servantOrTemplate.template?.customArtworkUrl ||
+           servantOrTemplate.cardArtUrl ||
+           servantOrTemplate.template?.cardArtUrl ||
+           servantOrTemplate.avatarUrl ||
+           servantOrTemplate.template?.avatarUrl ||
+           fallbackUrl || '';
+  }
+
+  const templateId = typeof servantOrTemplate === 'string'
+    ? servantOrTemplate
+    : (servantOrTemplate.templateId || servantOrTemplate.template?.id || servantOrTemplate.id || '');
+
   const match = findCanonicalAscensionData(templateId);
-  if (!match) return fallbackUrl || '';
+  if (!match) {
+    return typeof servantOrTemplate === 'object'
+      ? (servantOrTemplate.cardArtUrl || servantOrTemplate.avatarUrl || fallbackUrl || '')
+      : (fallbackUrl || '');
+  }
   const data = match.data;
 
+  const effectiveStage = selectedStage ??
+                         (typeof servantOrTemplate === 'object'
+                           ? (servantOrTemplate.selectedAscensionStage ?? servantOrTemplate.template?.selectedAscensionStage)
+                           : undefined);
+  const effLevel = (typeof servantOrTemplate === 'object' ? (servantOrTemplate.level || servantOrTemplate.template?.level) : level) || level || 1;
+  const effBond = (typeof servantOrTemplate === 'object' ? (servantOrTemplate.bondLevel || servantOrTemplate.template?.bondLevel) : bondLevel) || bondLevel || 1;
+
   // If a specific stage is chosen, return that stage's artwork directly
-  if (selectedStage !== undefined && selectedStage !== null && selectedStage !== '') {
-    const sStr = String(selectedStage).toLowerCase().trim();
+  if (effectiveStage !== undefined && effectiveStage !== null && effectiveStage !== '') {
+    const sStr = String(effectiveStage).toLowerCase().trim();
     if (sStr === '4' || sStr === 'stage4' || sStr === 'final') {
       return data.stage4;
     }
@@ -455,9 +498,9 @@ export function resolveAscensionArtwork(
   }
 
   // Default automatic progression: return highest unlocked stage
-  if (isAscensionStageUnlocked(4, level, bondLevel)) return data.stage4;
-  if (isAscensionStageUnlocked(3, level, bondLevel)) return data.stage3;
-  if (isAscensionStageUnlocked(2, level, bondLevel)) return data.stage2;
+  if (isAscensionStageUnlocked(4, effLevel, effBond)) return data.stage4;
+  if (isAscensionStageUnlocked(3, effLevel, effBond)) return data.stage3;
+  if (isAscensionStageUnlocked(2, effLevel, effBond)) return data.stage2;
   return data.stage1;
 }
 
