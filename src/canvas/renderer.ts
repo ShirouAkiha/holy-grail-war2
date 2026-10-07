@@ -7273,8 +7273,10 @@ export async function renderVisualNovelCard(
           baseMaxHFactor = 0.92;
           spriteY = Math.round(height * 0.09);
         } else if (isLuvria) {
+          scaleMultiplier = 1.3;
           baseMaxHFactor = 0.95;
-          spriteY = Math.round(height * -0.05);
+          baseMaxWFactor = 0.55;
+          spriteY = Math.round(height * -0.29);
         }
 
         const maxSpriteH = Math.floor(height * baseMaxHFactor * scaleMultiplier);
