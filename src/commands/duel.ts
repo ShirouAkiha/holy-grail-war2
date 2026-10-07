@@ -6114,7 +6114,7 @@ async function startInteractiveDuel(
       let combatCutInEmbed: EmbedBuilder | null = null;
       let combatCutInFile: AttachmentBuilder | null = null;
 
-      if (shouldCutIn || isNoblePhantasm || playerSequence.length >= 3) {
+      if (shouldCutIn) {
         const cutInGifBuffer = await renderDialogueCard(
           attacker.servant.nickname || attacker.servant.template?.name || 'Heroic Spirit',
           playerDialogue.quote,
@@ -6521,17 +6521,17 @@ async function finishDuel(
             initialEvacMap.set(targetState.combatant.userId, 'defeat');
           }
 
+          const updatedRows = buildEvacRows(initialEvacMap);
+          await decision.editReply({ components: updatedRows }).catch(async () => {
+            await targetMsg?.edit({ components: updatedRows }).catch(() => {});
+          });
+
           if (initialEvacMap.size >= pendingEvacStates.length) {
             if (!allDone) {
               allDone = true;
               evacCollector.stop('all_resolved');
               resolve();
             }
-          } else {
-            const updatedRows = buildEvacRows(initialEvacMap);
-            await decision.editReply({ components: updatedRows }).catch(async () => {
-              await targetMsg?.edit({ components: updatedRows }).catch(() => {});
-            });
           }
         });
 
@@ -6735,17 +6735,17 @@ async function finishDuel(
         targetState.fate = decision;
         initialFateMap.set(targetState.combatant.userId, decision);
 
+        const updatedRows = buildFateRows(initialFateMap);
+        await confirmation.editReply({ components: updatedRows }).catch(async () => {
+          await targetMsg?.edit({ components: updatedRows }).catch(() => {});
+        });
+
         if (initialFateMap.size >= pendingFateStates.length) {
           if (!fateFinished) {
             fateFinished = true;
             fateCollector.stop('all_resolved');
             resolve();
           }
-        } else {
-          const updatedRows = buildFateRows(initialFateMap);
-          await confirmation.editReply({ components: updatedRows }).catch(async () => {
-            await targetMsg?.edit({ components: updatedRows }).catch(() => {});
-          });
         }
       });
 

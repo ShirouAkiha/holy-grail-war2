@@ -884,31 +884,24 @@ Voice Directive:
 - Do NOT use asterisks for actions (*sighs*). Return ONLY the spoken line.`;
 
   let reply = '';
-  const client = getAiClient();
+  const aiGenerationPromise = (async (): Promise<string> => {
+    let aiReply = '';
+    const client = getAiClient();
 
-  if (customApiConfig && customApiConfig.enabled) {
-    try {
-      const customRes = await generateWithCustomProvider(customApiConfig, prompt);
-      const text = customRes.reply?.trim();
-      if (text) {
-        reply = text.replace(/^["'“](.*)["'”]$/, '$1').trim();
-      }
-    } catch {}
-  }
+    if (customApiConfig && customApiConfig.enabled) {
+      try {
+        const customRes = await generateWithCustomProvider(customApiConfig, prompt);
+        const text = customRes.reply?.trim();
+        if (text) {
+          aiReply = text.replace(/^["'“](.*)["'”]$/, '$1').trim();
+        }
+      } catch {}
+    }
 
-  if (!reply && client) {
-    const CANDIDATE_MODELS = [
-      'gemini-3.8-flash',
-      'gemini-flash-latest',
-      'gemini-3.1-flash-lite',
-      'gemini-3.1-pro-preview'
-    ];
-
-    for (const model of CANDIDATE_MODELS) {
-      if (isGeminiInCooldown()) break;
+    if (!aiReply && client && !isGeminiInCooldown()) {
       try {
         const res = await client.models.generateContent({
-          model,
+          model: 'gemini-2.5-flash',
           contents: prompt,
           config: {
             temperature: 0.85,
@@ -917,17 +910,19 @@ Voice Directive:
         });
         const text = res.text?.trim();
         if (text) {
-          reply = text.replace(/^["'“](.*)["'”]$/, '$1').trim();
-          break;
+          aiReply = text.replace(/^["'“](.*)["'”]$/, '$1').trim();
         }
       } catch (reactionErr: any) {
         if (isGeminiQuotaExceeded(reactionErr)) {
           setGeminiQuotaCooldown(15 * 60 * 1000);
-          break;
         }
       }
     }
-  }
+    return aiReply;
+  })();
+
+  const timeoutPromise = new Promise<string>((resolve) => setTimeout(() => resolve(''), 1500));
+  reply = await Promise.race([aiGenerationPromise, timeoutPromise]).catch(() => '');
 
   // Canonical fallback if API is offline or rate-limited
   if (!reply) {

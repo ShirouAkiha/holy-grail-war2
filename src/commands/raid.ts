@@ -785,7 +785,7 @@ async function runRaidBattle(
         .setLabel('Run')
         .setEmoji('🏃')
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(shouldDisableAll)
+        .setDisabled(shouldDisableAll || active.isDead)
     );
 
     return [row1, row2, row3];
@@ -810,6 +810,7 @@ async function runRaidBattle(
   };
 
   const renderAndPostTurn = async () => {
+    ensureActiveParticipantIsAlive();
     const { buffer } = await renderRaidBattlefield(battleState, false);
     const attachment = new AttachmentBuilder(buffer, { name: 'raid_battlefield.png' });
     const components = buildBattleButtons();
@@ -965,9 +966,10 @@ async function runRaidBattle(
       return;
     }
 
+    ensureActiveParticipantIsAlive();
     const active = currentActiveParticipant;
 
-    if (i.user.id !== active.userId && i.customId !== 'raid_flee') {
+    if (i.user.id !== active.userId) {
       await i.reply({
         content: `❌ It is currently <@${active.userId}>'s turn to command their Servant!`,
         flags: MessageFlags.Ephemeral
@@ -2282,6 +2284,7 @@ async function runRaidBattle(
         }
 
         battleState.round++;
+        ensureActiveParticipantIsAlive();
         battleState.participants.forEach(p => {
           p.skillCooldowns = p.skillCooldowns.map(cd => Math.max(0, cd - 1));
           if (p.activeBuffs) {
@@ -2305,6 +2308,7 @@ async function runRaidBattle(
         }
       } else {
         // Multi-player: Advance to next player in the current round
+        ensureActiveParticipantIsAlive();
         await renderAndPostTurn();
 
         if (pendingNpToDispatch) {
@@ -2333,20 +2337,26 @@ async function runRaidBattle(
   });
 
   function advanceToNextPlayer(): boolean {
-    const living = battleState.participants;
-    let nextIdx = (battleState.activeMasterIndex + 1) % living.length;
-    let loops = 0;
+    const participants = battleState.participants;
+    const livingIndices = participants.map((p, idx) => (!p.isDead ? idx : -1)).filter(idx => idx !== -1);
 
-    while (living[nextIdx].isDead && loops < living.length) {
-      nextIdx = (nextIdx + 1) % living.length;
-      loops++;
+    if (livingIndices.length === 0) return false;
+
+    // Find current position among living participants
+    const currentPos = livingIndices.indexOf(battleState.activeMasterIndex);
+
+    if (currentPos !== -1 && currentPos < livingIndices.length - 1) {
+      // There are more living players in this round
+      battleState.activeMasterIndex = livingIndices[currentPos + 1];
+      currentActiveParticipant = battleState.participants[battleState.activeMasterIndex];
+      return true;
+    } else {
+      // All living players have acted in this round -> round completes, boss turn begins!
+      // Next round will start with the first living participant
+      battleState.activeMasterIndex = livingIndices[0];
+      currentActiveParticipant = battleState.participants[battleState.activeMasterIndex];
+      return false;
     }
-
-    const completedRound = nextIdx <= battleState.activeMasterIndex;
-    battleState.activeMasterIndex = nextIdx;
-    currentActiveParticipant = battleState.participants[battleState.activeMasterIndex];
-
-    return !completedRound;
   }
 }
 
