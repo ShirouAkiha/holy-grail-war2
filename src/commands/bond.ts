@@ -2638,11 +2638,24 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
     }
 
   } catch (error: any) {
+    if (
+      error.code === 10062 || 
+      error.code === 40060 || 
+      error.code === 50027 || 
+      error.code === 10008 ||
+      error.name === 'AbortError' ||
+      error.message?.includes('Unknown interaction') || 
+      error.message?.includes('Unknown Message') || 
+      error.message?.includes('already been acknowledged') ||
+      error.message?.includes('aborted')
+    ) return;
     console.error('Error in handleBondButtonInteraction:', error);
-    if (interaction.deferred || interaction.replied) {
-      await interaction.editReply({ content: `❌ Error: ${error.message}` });
-    } else {
-      await interaction.reply({ flags: MessageFlags.Ephemeral, content: `❌ Error: ${error.message}` });
-    }
+    try {
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({ content: `❌ Error: ${error.message}` });
+      } else {
+        await interaction.reply({ flags: MessageFlags.Ephemeral, content: `❌ Error: ${error.message}` });
+      }
+    } catch {}
   }
 }
