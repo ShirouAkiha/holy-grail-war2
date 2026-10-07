@@ -1080,6 +1080,7 @@ export async function renderServantTalkVisualOutput(params: {
       servantAvatarUrl,
       servantCardArtUrl,
       servantSpriteUrl,
+      backgroundImageUrl: (targetServant as any)?.customBackgroundUrl,
       speakerName: servantName,
       dialogueText: replyText,
       title: `Telepathic Link • Bond Lv. ${bondLevel}`,

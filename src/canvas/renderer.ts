@@ -9,6 +9,7 @@ import {
 import { calculateRadarCoordinates, RadarPoint } from '../engine/customization';
 import { SERVANT_DATABASE, getServantAvatarAndCardArt, getServantSprite } from '../data/servants';
 import { resolveAscensionArtwork, resolveAscensionSprite } from '../data/servantAscensions';
+import { getRandomBackgroundUrl } from '../data/backgrounds';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { getLocalMediaDiskPath } from '../utils/localMedia';
 import { calculateCombatantBuffSummary } from '../utils/combatBuffHelper';
@@ -770,10 +771,10 @@ export function drawServantBattleSprite(
     (img.src && String(img.src).includes('CharaFigure'))
   );
 
-  // For Atlas composite sheets, trim side transparent padding (X = ~8% to 92%)
+  // For Atlas composite sheets, trim side transparent padding (X = ~12% to 88%)
   // so the character body fills the frame width and scales up significantly larger!
-  const sx = isMerged ? Math.round(img.width * 0.08) : 0;
-  const sw = isMerged ? Math.round(img.width * 0.84) : img.width;
+  const sx = isMerged ? Math.round(img.width * 0.12) : 0;
+  const sw = isMerged ? Math.round(img.width * 0.76) : img.width;
   const sy = 0;
   const defaultSourceH = isMerged
     ? Math.min(img.height, Math.round(img.width * 0.735))
@@ -4141,15 +4142,19 @@ export async function renderDialogueCard(
 
   let bgImg: any = null;
   let stagePreset = 'fuyuki';
-  if (battlefieldPresetOrBg) {
-    if (battlefieldPresetOrBg.startsWith('http') || battlefieldPresetOrBg.startsWith('data:')) {
-      try {
-        bgImg = await loadImage(battlefieldPresetOrBg);
-      } catch {
-        bgImg = null;
-      }
-    } else {
-      stagePreset = battlefieldPresetOrBg;
+  if (battlefieldPresetOrBg && (battlefieldPresetOrBg.startsWith('http') || battlefieldPresetOrBg.startsWith('data:'))) {
+    try {
+      bgImg = await loadImage(battlefieldPresetOrBg);
+    } catch {
+      bgImg = null;
+    }
+  } else {
+    // Pick a random background from the 7 atmospheric Mahoyo/Fate stage backgrounds for combat dialogues
+    const randomBgUrl = getRandomBackgroundUrl();
+    try {
+      bgImg = await loadImage(randomBgUrl);
+    } catch {
+      stagePreset = battlefieldPresetOrBg || 'fuyuki';
     }
   }
 
@@ -7166,7 +7171,7 @@ export async function renderVisualNovelCard(
   // ==========================================
   // LAYER 1: BACKGROUND LAYER (BASE)
   // ==========================================
-  const defaultBgUrl = 'https://ella.janitorai.com/media-approved/IIRAOZkI3ENNvVT8H7gQC.webp';
+  const defaultBgUrl = getRandomBackgroundUrl();
   const bgUrlToUse = (opts.backgroundImageUrl && !candidateSpriteUrls.includes(opts.backgroundImageUrl))
     ? opts.backgroundImageUrl
     : defaultBgUrl;
@@ -7250,12 +7255,12 @@ export async function renderVisualNovelCard(
       if (spriteImg && spriteImg.width && spriteImg.height) {
         const isMerged = isAtlasMergedSprite(spriteImg);
         const sourceH = isMerged ? Math.min(spriteImg.height, Math.round(spriteImg.width * 0.735)) : spriteImg.height;
-        const sourceW = isMerged ? Math.round(spriteImg.width * 0.84) : spriteImg.width;
+        const sourceW = isMerged ? Math.round(spriteImg.width * 0.76) : spriteImg.width;
         const aspect = sourceW / sourceH;
 
-        // Target Scale: Large heroic half-body sprite, filling up to 96% of total canvas height (~690px)
-        const maxSpriteH = Math.floor(height * 0.96);
-        const maxSpriteW = Math.floor(width * 0.62);
+        // Target Scale: Large heroic half-body sprite, filling up to 108% of total canvas height (~778px)
+        const maxSpriteH = Math.floor(height * 1.08);
+        const maxSpriteW = Math.floor(width * 0.72);
 
         let spriteH = maxSpriteH;
         let spriteW = spriteH * aspect;
@@ -7266,7 +7271,7 @@ export async function renderVisualNovelCard(
         }
 
         // Anchor sprite to bottom right of canvas (resting at bottom edge y = 720)
-        const spriteX = width * 0.44 + (maxSpriteW - spriteW) / 2;
+        const spriteX = width * 0.38 + (maxSpriteW - spriteW) / 2;
         const spriteY = height - spriteH;
 
         ctx.save();

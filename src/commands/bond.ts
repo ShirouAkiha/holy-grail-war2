@@ -32,6 +32,7 @@ import {
 import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 import { renderVisualNovelCard } from '../canvas/renderer';
 import { checkAndGrantBond10Ce, getBondCraftEssenceForServant } from '../data/craftEssences';
+import { BACKGROUND_PRESETS, findBackgroundPreset } from '../data/backgrounds';
 
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
@@ -247,6 +248,10 @@ export function buildBondActionRow(master: any, targetServantId?: string): Actio
       .setLabel(sparsLeft > 0 ? `Spar & Train ⚔️ (${sparsLeft}/3)` : `Spar & Train ⚔️ (0/3)`)
       .setStyle(sparsLeft > 0 ? ButtonStyle.Secondary : ButtonStyle.Secondary)
       .setDisabled(sparsLeft <= 0),
+    new ButtonBuilder()
+      .setCustomId(safeCustomId(`vn_bg_menu:${sKey}`))
+      .setLabel('Stage BG 🖼️')
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId(safeCustomId(`vn_view_quotes:${sKey}`))
       .setLabel('Voice Quotes 🎙️')
@@ -520,6 +525,63 @@ export function buildBondGiftsActionRows(master: any, targetServantId?: string):
     new ButtonBuilder()
       .setCustomId('vn_view_roster')
       .setLabel('Bond Roster 👥')
+      .setStyle(ButtonStyle.Secondary)
+  );
+
+  return [row1, row2];
+}
+
+export function buildBondStageBgEmbed(master: any, targetServantId?: string) {
+  const targetServant = resolveTargetServant(master, null, targetServantId);
+  const sTemplate = targetServant?.template || targetServant || {};
+  const servantName = targetServant?.nickname || sTemplate.name || 'Heroic Spirit';
+  const currentBgPreset = targetServant?.customBackgroundPreset || 'fuyuki_burning';
+  const currentBgObj = findBackgroundPreset(currentBgPreset) || BACKGROUND_PRESETS[0];
+
+  const embed = new EmbedBuilder()
+    .setTitle(`🖼️ Bond Stage Background — ${servantName}`)
+    .setDescription(
+      `Select a stage background for **${servantName}**'s personal room, dialogue, and Bond scenes!\n\n` +
+      `✅ **Current Selected Stage Background:**\n` +
+      `• **${currentBgObj.name}**\n` +
+      `*${currentBgObj.description}*\n\n` +
+      `👇 *Choose a backdrop from the dropdown menu below:*`
+    )
+    .setColor(0x38bdf8);
+
+  if (currentBgObj.url) {
+    embed.setImage(currentBgObj.url);
+  }
+
+  return embed;
+}
+
+export function buildBondStageBgActionRows(master: any, targetServantId?: string): ActionRowBuilder<any>[] {
+  const targetServant = resolveTargetServant(master, null, targetServantId);
+  if (!targetServant) return [];
+
+  const sKey = getServantCompactKey(targetServant, master);
+  const currentBgPreset = targetServant.customBackgroundPreset || 'fuyuki_burning';
+
+  const selectOptions = BACKGROUND_PRESETS.map(bg => ({
+    label: bg.name,
+    value: `${sKey}:${bg.id}`,
+    description: bg.description.slice(0, 100),
+    emoji: '🖼️',
+    default: bg.id === currentBgPreset
+  }));
+
+  const selectMenu = new StringSelectMenuBuilder()
+    .setCustomId('vn_select_bg')
+    .setPlaceholder('🖼️ Select stage background for Bond scenes...')
+    .addOptions(selectOptions);
+
+  const row1 = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(selectMenu);
+
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
+      .setLabel('📊 Return to Bond Sanctum')
       .setStyle(ButtonStyle.Secondary)
   );
 
@@ -916,6 +978,71 @@ export async function handleBondSelectInteraction(interaction: StringSelectMenuI
   try {
     await interaction.deferUpdate();
     const master = await getOrCreateMaster(interaction.user.id, interaction.user.username);
+
+    if (interaction.customId === 'vn_select_bg' || interaction.customId.startsWith('vn_select_bg')) {
+      const val = interaction.values[0]; // e.g. s_0:misaki_walkway OR misaki_walkway
+      const parts = val.split(':');
+      const sKey = parts.length >= 2 ? parts[0] : '';
+      const presetId = parts.length >= 2 ? parts[1] : parts[0];
+
+      let targetServant = resolveTargetServant(master, null, sKey);
+      if (!targetServant) {
+        targetServant = master.servants?.find((s: any) => s.id === master.activeServantId) || master.servants?.[0];
+      }
+
+      if (!targetServant) {
+        return interaction.followUp({ flags: MessageFlags.Ephemeral, content: '❌ Servant not found in your contracted roster.' });
+      }
+
+      const preset = findBackgroundPreset(presetId) || BACKGROUND_PRESETS[0];
+      targetServant.customBackgroundPreset = preset.id;
+      targetServant.customBackgroundUrl = preset.url;
+
+      const sIdx = master.servants.findIndex((s: any) => s.id === targetServant.id);
+      if (sIdx !== -1) master.servants[sIdx] = targetServant;
+      await saveMaster(master);
+
+      const sTemplate = targetServant.template || targetServant;
+      const servantName = targetServant.nickname || sTemplate.name || 'Heroic Spirit';
+
+      // Render live Visual Novel preview card showing Servant on their new stage background!
+      const imageBuffer = await renderVisualNovelCard({
+        servantName,
+        servantClass: sTemplate.servantClass || 'Saber',
+        servantAvatarUrl: sTemplate.avatarUrl,
+        servantCardArtUrl: sTemplate.cardArtUrl || targetServant?.cardArtUrl,
+        servantSpriteUrl: sTemplate.spriteUrl || targetServant?.spriteUrl,
+        backgroundImageUrl: preset.url,
+        speakerName: servantName,
+        dialogueText: `Stage backdrop set to ${preset.name}! All Bond interludes, talk interactions, and My Room dialogues will now render in this setting.`,
+        title: `Stage Background Updated: ${preset.name}`,
+        subtitle: `Master: ${master.username}`,
+        currentBondLevel: targetServant.bondLevel || 1,
+        isComplete: true
+      });
+
+      const attachment = new AttachmentBuilder(imageBuffer, { name: 'stage_bg_preview.png' });
+
+      const bgEmbed = new EmbedBuilder()
+        .setTitle(`🖼️ Stage Background Selected: ${preset.name}`)
+        .setDescription(
+          `**${servantName}** stands on their newly designated stage backdrop:\n` +
+          `> ❝ *A fitting setting for our bond and battles, Master. Let us proceed!* ❞\n\n` +
+          `🖼️ **Selected Stage:** **${preset.name}**\n` +
+          `*${preset.description}*`
+        )
+        .setImage('attachment://stage_bg_preview.png')
+        .setColor(0x38bdf8);
+
+      const backRow = buildBondStageBgActionRows(master, targetServant.id);
+
+      return interaction.editReply({
+        embeds: [bgEmbed],
+        files: [attachment],
+        components: backRow
+      });
+    }
+
     const selectedServantId = interaction.values[0];
 
     const targetServant = resolveTargetServant(master, null, selectedServantId);
@@ -993,6 +1120,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
     let potentialEventId = '';
 
     if (btnId.startsWith('vn_gift_menu:')) targetServantId = btnId.split(':')[1];
+    else if (btnId.startsWith('vn_bg_menu:')) targetServantId = btnId.split(':')[1];
     else if (btnId.startsWith('vn_give_gift:')) targetServantId = btnId.split(':')[1];
     else if (btnId.startsWith('vn_spar:')) targetServantId = btnId.split(':')[1];
     else if (btnId.startsWith('vn_play_event:')) targetServantId = btnId.split(':')[1];
@@ -1091,6 +1219,13 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       }
 
       return interaction.reply({ embeds: [artEmbed], flags: MessageFlags.Ephemeral });
+    }
+
+    if (btnId.startsWith('vn_bg_menu')) {
+      await interaction.deferUpdate();
+      const bgEmbed = buildBondStageBgEmbed(master, targetServant.id);
+      const rows = buildBondStageBgActionRows(master, targetServant.id);
+      return interaction.editReply({ embeds: [bgEmbed], files: [], components: rows });
     }
 
     if (btnId.startsWith('vn_gift_menu')) {
