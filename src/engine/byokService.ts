@@ -145,8 +145,8 @@ export const PROVIDER_ALL_MODELS_CATALOG: Record<ApiProviderType, ProviderModelS
   // 3. Google Gemini
   gemini: [
     {
-      id: 'gemini-2.5-flash',
-      name: 'Gemini 2.5 Flash',
+      id: 'gemini-3.5-flash',
+      name: 'Gemini 3.5 Flash (Recommended)',
       provider: 'gemini',
       providerName: 'Google AI Studio',
       description: 'Superb visual novel character fidelity, deep emotional nuance, and generous free tier.',
@@ -156,8 +156,8 @@ export const PROVIDER_ALL_MODELS_CATALOG: Record<ApiProviderType, ProviderModelS
       recommended: true
     },
     {
-      id: 'gemini-2.0-flash',
-      name: 'Gemini 2.0 Flash',
+      id: 'gemini-3.8-flash',
+      name: 'Gemini 3.8 Flash',
       provider: 'gemini',
       providerName: 'Google AI Studio',
       description: 'Ultra-fast sub-second dialogue with highest rate-limits on the free AI Studio tier.',
@@ -165,67 +165,6 @@ export const PROVIDER_ALL_MODELS_CATALOG: Record<ApiProviderType, ProviderModelS
       contextWindow: '1M tokens',
       isFreeTier: true,
       recommended: true
-    },
-    {
-      id: 'gemini-2.5-pro',
-      name: 'Gemini 2.5 Pro',
-      provider: 'gemini',
-      providerName: 'Google AI Studio',
-      description: 'Elite complex reasoning, multi-turn tactical foresight, and legendary Servant lore depth.',
-      category: 'Reasoning & CoT',
-      contextWindow: '2M tokens',
-      isFreeTier: true,
-      recommended: true
-    },
-    {
-      id: 'gemini-2.5-flash',
-      name: 'Gemini 2.5 Flash',
-      provider: 'gemini',
-      providerName: 'Google AI Studio',
-      description: 'Balanced speed and multimodal dialogue capabilities.',
-      category: 'Fast & Instant',
-      contextWindow: '1M tokens',
-      isFreeTier: true
-    },
-    {
-      id: 'gemini-2.5-pro',
-      name: 'Gemini 2.5 Pro',
-      provider: 'gemini',
-      providerName: 'Google AI Studio',
-      description: 'Advanced reasoning and large-context comprehension.',
-      category: 'Reasoning & CoT',
-      contextWindow: '2M tokens',
-      isFreeTier: true
-    },
-    {
-      id: 'gemini-2.0-flash',
-      name: 'Gemini 2.0 Flash',
-      provider: 'gemini',
-      providerName: 'Google AI Studio',
-      description: 'Next-generation low latency dialogue engine.',
-      category: 'Fast & Instant',
-      contextWindow: '1M tokens',
-      isFreeTier: true
-    },
-    {
-      id: 'gemini-1.5-pro',
-      name: 'Gemini 1.5 Pro',
-      provider: 'gemini',
-      providerName: 'Google AI Studio',
-      description: 'Classic 2M context flagship with deep memory of previous Holy Grail War turns.',
-      category: 'Creative & Lore',
-      contextWindow: '2M tokens',
-      isFreeTier: true
-    },
-    {
-      id: 'gemini-1.5-flash',
-      name: 'Gemini 1.5 Flash',
-      provider: 'gemini',
-      providerName: 'Google AI Studio',
-      description: 'High-speed classic lightweight model.',
-      category: 'Fast & Instant',
-      contextWindow: '1M tokens',
-      isFreeTier: true
     }
   ],
 
@@ -1125,7 +1064,7 @@ export async function fetchLiveProviderModels(
 export const DEFAULT_PROVIDER_MODELS: Record<ApiProviderType, string> = {
   openai: 'gpt-4o',
   anthropic: 'claude-3-7-sonnet-20250219',
-  gemini: 'gemini-2.5-flash',
+  gemini: 'gemini-3.5-flash',
   groq: 'llama-3.3-70b-versatile',
   openrouter: 'meta-llama/llama-3.3-70b-instruct:free',
   deepseek: 'deepseek-chat',

@@ -328,6 +328,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       servantAvatarUrl: avatarUrl,
       servantCardArtUrl: cardArtUrl,
       servantSpriteUrl: spriteUrl,
+      customBackgroundUrl: (updatedTargetServant as any).customBackgroundUrl || (targetServant as any).customBackgroundUrl,
       replyText: reply,
       playerMessage,
       masterName: master.username || 'Master',

@@ -972,6 +972,7 @@ client.on(Events.InteractionCreate, async interaction => {
             servantAvatarUrl: avatarUrl,
             servantCardArtUrl: cardArtUrl,
             servantSpriteUrl: spriteUrl,
+            customBackgroundUrl: (servant as any).customBackgroundUrl,
             replyText: reply,
             playerMessage,
             masterName: master.username || 'Master',

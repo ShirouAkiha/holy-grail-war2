@@ -693,10 +693,8 @@ VOICE & ROLEPLAY INSTRUCTIONS:
   }
 
   const CANDIDATE_MODELS = [
-    'gemini-2.5-flash',
-    'gemini-2.5-pro',
-    'gemini-2.0-flash',
-    'gemini-1.5-flash'
+    'gemini-3.5-flash',
+    'gemini-3.8-flash'
   ];
 
   for (const modelName of CANDIDATE_MODELS) {
@@ -984,6 +982,8 @@ export async function renderServantTalkVisualOutput(params: {
   servantAvatarUrl?: string;
   servantCardArtUrl?: string;
   servantSpriteUrl?: string;
+  customBackgroundUrl?: string;
+  backgroundImageUrl?: string;
   replyText: string;
   playerMessage: string;
   masterName: string;
@@ -1015,6 +1015,8 @@ export async function renderServantTalkVisualOutput(params: {
     servantAvatarUrl,
     servantCardArtUrl,
     servantSpriteUrl,
+    customBackgroundUrl,
+    backgroundImageUrl,
     replyText,
     playerMessage,
     masterName,
@@ -1080,7 +1082,7 @@ export async function renderServantTalkVisualOutput(params: {
       servantAvatarUrl,
       servantCardArtUrl,
       servantSpriteUrl,
-      backgroundImageUrl: (targetServant as any)?.customBackgroundUrl,
+      backgroundImageUrl: customBackgroundUrl || backgroundImageUrl,
       speakerName: servantName,
       dialogueText: replyText,
       title: `Telepathic Link • Bond Lv. ${bondLevel}`,
