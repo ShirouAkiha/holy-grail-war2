@@ -7246,8 +7246,8 @@ export async function renderVisualNovelCard(
         const sourceW = isMerged ? Math.round(spriteImg.width * 0.84) : spriteImg.width;
         const aspect = sourceW / sourceH;
 
-        // Target Scale: Well-proportioned visual novel half-body sprite (~85% canvas height, ~612px)
-        const maxSpriteH = Math.floor(height * 0.85);
+        // Target Scale: Well-proportioned visual novel half-body sprite (~85% canvas height for Atlas, ~92% for custom artwork)
+        const maxSpriteH = Math.floor(height * (isMerged ? 0.85 : 0.92));
         const maxSpriteW = Math.floor(width * 0.50);
 
         let spriteH = maxSpriteH;
@@ -7258,9 +7258,14 @@ export async function renderVisualNovelCard(
           spriteH = spriteW / aspect;
         }
 
-        // Anchor sprite to bottom right of canvas (resting at bottom edge y = 720)
-        const spriteX = width * 0.42 + (maxSpriteW - spriteW) / 2;
-        const spriteY = height - spriteH;
+        // Anchor sprite slightly toward the right side of canvas (x ~ 614px to 1254px)
+        const spriteX = width * 0.48 + (maxSpriteW - spriteW) / 2;
+
+        // Vertical positioning:
+        // Official Atlas sprites (isMerged) rest at bottom edge y = 720 - spriteH
+        // Custom full-body artwork (!isMerged, e.g. Edmond, Lucia, Luvria, Adiosa) anchors near top y = 22px
+        // so face, head, and torso sit prominently at eye level above the dialogue box
+        const spriteY = isMerged ? (height - spriteH) : Math.round(height * 0.03);
 
         ctx.save();
         // Drop shadow for sprite figure
