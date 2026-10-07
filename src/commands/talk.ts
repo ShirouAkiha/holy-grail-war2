@@ -19,6 +19,7 @@ import { checkMasterTalkQuota, consumeMasterTalkQuota } from '../engine/talkQuot
 import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 import { addBondExpToServant } from '../../lib/engine/bondEvents';
 import { resolveAscensionArtwork, resolveAscensionSprite } from '../data/servantAscensions';
+import { findBackgroundPreset } from '../data/backgrounds';
 
 export const data = new SlashCommandBuilder()
   .setName('talk')
@@ -329,7 +330,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       servantAvatarUrl: avatarUrl,
       servantCardArtUrl: cardArtUrl,
       servantSpriteUrl: spriteUrl,
-      customBackgroundUrl: (updatedTargetServant as any).customBackgroundUrl || (targetServant as any).customBackgroundUrl,
+      customBackgroundUrl: (updatedTargetServant as any).customBackgroundUrl || (targetServant as any).customBackgroundUrl || (targetServant.customBackgroundPreset ? findBackgroundPreset(targetServant.customBackgroundPreset)?.url : undefined),
       replyText: reply,
       playerMessage,
       masterName: master.username || 'Master',

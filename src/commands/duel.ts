@@ -5786,7 +5786,7 @@ async function startInteractiveDuel(
         const avatarUrl = getCombatantSpriteUrl(actor) || actor.avatarUrl;
         const bondLevel = actor.servant.bondLevel || 5;
         const skillType = res.skillType || 'Buff';
-        const effectsText = res.effectsText || res.log.replace(/[*_~`]/g, '');
+        const effectsText = (res as any).effectsText || res.log.replace(/[*_~`]/g, '');
 
         const skillGifBuffer = await renderSkillDialogueCard(
           actor.servant.nickname || actor.servant.template?.name || 'Heroic Spirit',

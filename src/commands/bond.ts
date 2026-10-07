@@ -83,6 +83,61 @@ export function getResolvedServantCardProps(targetServant: any, sTemplate?: any)
   };
 }
 
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash;
+}
+
+/**
+ * Resolves a stable, deterministic background URL for Visual Novel interludes and sanctum scenes.
+ * Guarantees that the background stays consistent across all scenes, chunks, and choices within an interlude.
+ */
+export function resolveInterludeBackgroundUrl(targetServant: any, scene?: any, event?: any): string {
+  // 1. If scene has a specific backgroundTheme or backgroundImageUrl:
+  if (scene?.backgroundImageUrl) return scene.backgroundImageUrl;
+  if (scene?.backgroundTheme) {
+    const themePreset = findBackgroundPreset(scene.backgroundTheme);
+    if (themePreset) return themePreset.url;
+  }
+
+  // 2. If the servant has a chosen backdrop in Bond Sanctum (customBackgroundPreset / customBackgroundUrl)
+  if (targetServant?.customBackgroundUrl) {
+    return targetServant.customBackgroundUrl;
+  }
+  if (targetServant?.customBackgroundPreset) {
+    const preset = findBackgroundPreset(targetServant.customBackgroundPreset);
+    if (preset) return preset.url;
+  }
+
+  // 3. Thematic default presets based on canonical servant template
+  const templateId = (targetServant?.templateId || targetServant?.template?.id || targetServant?.id || '').toLowerCase();
+  if (templateId.includes('artoria') || templateId.includes('saber') || templateId.includes('nero')) {
+    const p = findBackgroundPreset('misaki_walkway');
+    if (p) return p.url;
+  }
+  if (templateId.includes('cu') || templateId.includes('scathach') || templateId.includes('winter') || templateId.includes('karna')) {
+    const p = findBackgroundPreset('winter_forest');
+    if (p) return p.url;
+  }
+  if (templateId.includes('gilgamesh') || templateId.includes('babylon') || templateId.includes('jeanne')) {
+    const p = findBackgroundPreset('night_overlook');
+    if (p) return p.url;
+  }
+  if (templateId.includes('emiya') || templateId.includes('alter')) {
+    const p = findBackgroundPreset('fuyuki_burning');
+    if (p) return p.url;
+  }
+
+  // 4. Stable deterministic fallback for this servant/event so it NEVER changes randomly between scenes
+  const stableKey = templateId || event?.id || 'chaldea_room';
+  const stableIdx = Math.abs(hashString(stableKey)) % BACKGROUND_PRESETS.length;
+  return BACKGROUND_PRESETS[stableIdx]?.url || BACKGROUND_PRESETS[0].url;
+}
+
 /**
  * Ensures any Discord customId stays strictly <= 100 chars (Discord API requirement).
  */
@@ -789,6 +844,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         servantName,
         servantClass: sTemplate.servantClass || 'Saber',
         ...getResolvedServantCardProps(updatedServant, sTemplate),
+        backgroundImageUrl: resolveInterludeBackgroundUrl(updatedServant),
         speakerName: servantName,
         dialogueText: debrief.responseText,
         title: 'Master-Servant Tactical Sparring',
@@ -904,6 +960,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         servantName,
         servantClass: sTemplate.servantClass || 'Saber',
         ...getResolvedServantCardProps(targetServant, sTemplate),
+        backgroundImageUrl: resolveInterludeBackgroundUrl(targetServant, scene1, event),
         speakerName: scene1.speakerName || servantName,
         dialogueText: currentChunk,
         title: event.title,
@@ -1300,6 +1357,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         servantName,
         servantClass: sTemplate.servantClass || 'Saber',
         ...getResolvedServantCardProps(updatedServant, sTemplate),
+        backgroundImageUrl: resolveInterludeBackgroundUrl(updatedServant),
         speakerName: servantName,
         dialogueText: reaction.responseText,
         title: `Gift Presented: ${gift.name}`,
@@ -1425,6 +1483,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         servantName,
         servantClass: sTemplate.servantClass || 'Saber',
         ...getResolvedServantCardProps(updatedServant, sTemplate),
+        backgroundImageUrl: resolveInterludeBackgroundUrl(updatedServant),
         speakerName: servantName,
         dialogueText: debrief.responseText,
         title: 'Master-Servant Tactical Sparring',
@@ -1533,6 +1592,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         servantName,
         servantClass: sTemplate.servantClass || 'Saber',
         ...getResolvedServantCardProps(targetServant, sTemplate),
+        backgroundImageUrl: resolveInterludeBackgroundUrl(targetServant, scene1, event),
         speakerName: scene1.speakerName || servantName,
         dialogueText: currentChunk,
         title: event.title,
@@ -1646,6 +1706,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         servantName,
         servantClass: sTemplate.servantClass || 'Saber',
         ...getResolvedServantCardProps(targetServant, sTemplate),
+        backgroundImageUrl: resolveInterludeBackgroundUrl(targetServant, scene, event),
         speakerName: scene.speakerName || servantName,
         dialogueText: currentChunk,
         title: event.title,
@@ -1766,6 +1827,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           servantName,
           servantClass: sTemplate.servantClass || 'Saber',
           ...getResolvedServantCardProps(targetServant, sTemplate),
+          backgroundImageUrl: resolveInterludeBackgroundUrl(targetServant, scene, event),
           speakerName: scene.speakerName || servantName,
           dialogueText: currentRespChunk,
           title: event.title,
@@ -1807,6 +1869,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           servantName,
           servantClass: sTemplate.servantClass || 'Saber',
           ...getResolvedServantCardProps(targetServant, sTemplate),
+          backgroundImageUrl: resolveInterludeBackgroundUrl(targetServant, scene, event),
           speakerName: scene.speakerName || servantName,
           dialogueText: currentRespChunk,
           title: event.title,
@@ -1882,9 +1945,8 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const imageBuffer = await renderVisualNovelCard({
         servantName,
         servantClass: sTemplate.servantClass || 'Saber',
-        servantAvatarUrl: sTemplate.avatarUrl,
-        servantCardArtUrl: sTemplate.cardArtUrl || targetServant?.cardArtUrl,
-        servantSpriteUrl: sTemplate.spriteUrl || targetServant?.spriteUrl,
+        ...getResolvedServantCardProps(updatedServant, sTemplate),
+        backgroundImageUrl: resolveInterludeBackgroundUrl(updatedServant, scene, event),
         speakerName: scene.speakerName || servantName,
         dialogueText: currentRespChunk,
         title: `${event.title} (Complete)`,
@@ -2062,9 +2124,8 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const imageBuffer = await renderVisualNovelCard({
         servantName,
         servantClass: sTemplate.servantClass || 'Saber',
-        servantAvatarUrl: sTemplate.avatarUrl,
-        servantCardArtUrl: sTemplate.cardArtUrl || targetServant?.cardArtUrl,
-        servantSpriteUrl: sTemplate.spriteUrl || targetServant?.spriteUrl,
+        ...getResolvedServantCardProps(updatedServant, sTemplate),
+        backgroundImageUrl: resolveInterludeBackgroundUrl(updatedServant, lastScene, event),
         speakerName: lastScene.speakerName || servantName,
         dialogueText: lastScene.dialogueText,
         title: `${event.title} (Complete)`,
@@ -2205,9 +2266,8 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         const imageBuffer = await renderVisualNovelCard({
           servantName,
           servantClass: sTemplate.servantClass || 'Saber',
-          servantAvatarUrl: sTemplate.avatarUrl,
-          servantCardArtUrl: sTemplate.cardArtUrl || targetServant?.cardArtUrl,
-          servantSpriteUrl: sTemplate.spriteUrl || targetServant?.spriteUrl,
+          ...getResolvedServantCardProps(targetServant, sTemplate),
+          backgroundImageUrl: resolveInterludeBackgroundUrl(targetServant, scene, event),
           speakerName: scene.speakerName || servantName,
           dialogueText: currentRespChunk,
           title: event.title,
@@ -2248,9 +2308,8 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         const imageBuffer = await renderVisualNovelCard({
           servantName,
           servantClass: sTemplate.servantClass || 'Saber',
-          servantAvatarUrl: sTemplate.avatarUrl,
-          servantCardArtUrl: sTemplate.cardArtUrl || targetServant?.cardArtUrl,
-          servantSpriteUrl: sTemplate.spriteUrl || targetServant?.spriteUrl,
+          ...getResolvedServantCardProps(targetServant, sTemplate),
+          backgroundImageUrl: resolveInterludeBackgroundUrl(targetServant, scene, event),
           speakerName: scene.speakerName || servantName,
           dialogueText: currentRespChunk,
           title: event.title,
@@ -2328,6 +2387,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         servantName,
         servantClass: sTemplate.servantClass || 'Saber',
         ...getResolvedServantCardProps(updatedServant, sTemplate),
+        backgroundImageUrl: resolveInterludeBackgroundUrl(updatedServant, scene, event),
         speakerName: scene.speakerName || servantName,
         dialogueText: servantResponse,
         title: `${event.title} (Complete)`,
@@ -2486,6 +2546,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           servantName,
           servantClass: sTemplate.servantClass || 'Saber',
           ...getResolvedServantCardProps(updatedServant, sTemplate),
+          backgroundImageUrl: resolveInterludeBackgroundUrl(updatedServant, lastScene, event),
           speakerName: lastScene.speakerName || servantName,
           dialogueText: lastDialogue,
           title: `${event.title} (Complete)`,
@@ -2578,6 +2639,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
         servantName,
         servantClass: sTemplate.servantClass || 'Saber',
         ...getResolvedServantCardProps(targetServant, sTemplate),
+        backgroundImageUrl: resolveInterludeBackgroundUrl(targetServant, scene, event),
         speakerName: scene.speakerName || servantName,
         dialogueText: currentChunk,
         title: event.title,

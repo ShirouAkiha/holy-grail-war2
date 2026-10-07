@@ -781,14 +781,43 @@ async function runRaidBattle(
         .setStyle(!isS3Unlocked || cd3 > 0 ? ButtonStyle.Secondary : ButtonStyle.Success)
         .setDisabled(shouldDisableAll || !isS3Unlocked || cd3 > 0 || !s3 || active.isDead),
       new ButtonBuilder()
+        .setCustomId('raid_pass_turn')
+        .setLabel('Auto/Pass')
+        .setEmoji('⏭️')
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(shouldDisableAll || active.isDead),
+      new ButtonBuilder()
         .setCustomId('raid_flee')
         .setLabel('Run')
         .setEmoji('🏃')
         .setStyle(ButtonStyle.Secondary)
-        .setDisabled(shouldDisableAll || active.isDead)
+        .setDisabled(shouldDisableAll)
     );
 
     return [row1, row2, row3];
+  };
+
+  let turnTimeoutHandle: NodeJS.Timeout | null = null;
+  let turnStartTime = Date.now();
+  const TURN_DURATION_MS = 120_000; // 2 Minutes AFK Auto-Action
+
+  const clearTurnTimer = () => {
+    if (turnTimeoutHandle) {
+      clearTimeout(turnTimeoutHandle);
+      turnTimeoutHandle = null;
+    }
+  };
+
+  const resetTurnTimer = () => {
+    clearTurnTimer();
+    turnStartTime = Date.now();
+    turnTimeoutHandle = setTimeout(async () => {
+      try {
+        await handleAutoPlayTurn(true);
+      } catch (timeoutErr) {
+        console.error('[raid] Error during AFK auto play turn execution:', timeoutErr);
+      }
+    }, TURN_DURATION_MS);
   };
 
   const buildTurnContent = (active: RaidParticipantState, selectedCards: string[] = pendingCards) => {
@@ -806,11 +835,10 @@ async function runRaidBattle(
       cardChainStr = ` • 🎴 **Selected:** ${chain}`;
     }
 
-    return `⚔️ **<@${active.userId}>'s Turn!** (**${activeServName}**)${cardChainStr}`;
+    return `⚔️ **<@${active.userId}>'s Turn!** (**${activeServName}**) • ⏳ **Turn Timer: 2 Min** *(Auto-play on timeout)*${cardChainStr}`;
   };
 
   const renderAndPostTurn = async () => {
-    ensureActiveParticipantIsAlive();
     const { buffer } = await renderRaidBattlefield(battleState, false);
     const attachment = new AttachmentBuilder(buffer, { name: 'raid_battlefield.png' });
     const components = buildBattleButtons();
@@ -861,6 +889,8 @@ async function runRaidBattle(
         components
       }).catch(() => {});
     }
+
+    resetTurnTimer();
   };
 
   await renderAndPostTurn();
@@ -871,6 +901,711 @@ async function runRaidBattle(
     idle: 180_000,
     time: 1_800_000
   });
+
+  const executeAttackSequence = async (interactionToEdit?: any) => {
+    if (isProcessingTurn) return;
+    isProcessingTurn = true;
+    clearTurnTimer();
+
+    try {
+      const active = currentActiveParticipant;
+      if (interactionToEdit) {
+        try {
+          if (!interactionToEdit.deferred && !interactionToEdit.replied) {
+            await interactionToEdit.deferUpdate().catch(() => {});
+          }
+          await interactionToEdit.editReply({
+            content: buildTurnContent(active, pendingCards),
+            embeds: [],
+            components: buildBattleButtons(true)
+          }).catch(() => {});
+        } catch {
+          if (battleMsg && typeof battleMsg.edit === 'function') {
+            await battleMsg.edit({
+              content: buildTurnContent(active, pendingCards),
+              embeds: [],
+              components: buildBattleButtons(true)
+            }).catch(() => {});
+          }
+        }
+      } else if (battleMsg && typeof battleMsg.edit === 'function') {
+        await battleMsg.edit({
+          content: buildTurnContent(active, pendingCards),
+          embeds: [],
+          components: buildBattleButtons(true)
+        }).catch(() => {});
+      }
+
+      const usedNp = pendingCards.includes('NP');
+      const initialNpGauge = active.npGauge || 0;
+      let ocBonusStages = 0;
+      if (usedNp && active.activeBuffs) {
+        const ocIdx = active.activeBuffs.findIndex(b => b.type === 'overcharge_up');
+        if (ocIdx >= 0) {
+          ocBonusStages = active.activeBuffs[ocIdx].value || 2;
+          active.activeBuffs.splice(ocIdx, 1);
+        }
+      }
+      const baseOcLevel = initialNpGauge >= 300 ? 3 : initialNpGauge >= 200 ? 2 : 1;
+      const overchargeLevel = Math.min(5, baseOcLevel + ocBonusStages);
+      const isOvercharged = overchargeLevel >= 2;
+      const overchargeScale = isOvercharged ? (1.0 + (overchargeLevel - 1) * 0.20) : 1.00;
+
+      let pendingNpToDispatch: { servant: any; userId: string } | null = null;
+      if (usedNp) {
+        active.npGauge = 0;
+        pendingNpToDispatch = { servant: active.servant, userId: active.userId };
+      }
+
+      let totalTurnDmg = 0;
+      let starsGenerated = 0;
+      let npGained = 0;
+
+      const sAtk = active.servant;
+      const tAtk = sAtk.template || {};
+      const allocAtk = sAtk.allocatedStats || {};
+      const baseStatsAtk = tAtk.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
+      const totalStr = (baseStatsAtk.strength || 10) + (allocAtk.strength || 0);
+      const ceAtk = sAtk.equippedCe?.atkBonus || 0;
+      const baseAtk = Math.round((tAtk.baseAtk || 10000) + totalStr * 80 + ceAtk);
+      const atkBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'atk_up' || b.type === 'buff_atk').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
+      const busterBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'buster_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
+      const artsBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'arts_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
+      const quickBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'quick_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
+      const critDmgBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'crit_dmg' || b.type === 'crit_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
+
+      const isBossThreat = (boss.traits || []).some(t => ['threat_to_humanity', 'beast', 'demonic'].includes(t.toLowerCase()));
+      const antiThreatBuff = (active.activeBuffs?.filter(b => b.type === 'anti_threat').reduce((acc, b) => acc + b.value, 0) || 0) / 100;
+      const specialAtkMult = isBossThreat ? (1 + antiThreatBuff) : 1.0;
+
+      const bossDefDown = (battleState.bossBuffs?.filter(b => b.type === 'def_down').reduce((acc, b) => acc + b.value, 0) || 0) / 100;
+      const bossDefUp = (battleState.bossBuffs?.filter(b => b.type === 'def_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100;
+      const bossDefFactor = Math.max(0.2, 1 + bossDefDown - bossDefUp);
+
+      const starsAvailableForCrits = active.critStars || 0;
+      const isQuickFirstLead = pendingCards[0] === 'Quick';
+      let totalCritsLanded = 0;
+      let npTriggeredAntiThreat = false;
+      let npEffectsLog: string[] = [];
+      let npEffectsHud: string[] = [];
+      let npNameUsed = '';
+
+      pendingCards.forEach((card, cIdx) => {
+        const stepMult = cIdx === 0 ? 1.0 : cIdx === 1 ? 1.2 : 1.4;
+
+        // Calculate critical hit rate based on current star pool
+        const baseCritMult = card === 'Buster' ? 2.0 : card === 'Arts' ? 1.8 : 2.2;
+        let critPct = Math.round(starsAvailableForCrits * baseCritMult);
+        if (isQuickFirstLead && cIdx > 0) critPct += 20;
+        critPct = Math.min(100, Math.max(0, critPct));
+
+        const isCrit = card !== 'NP' && (Math.random() * 100 < critPct);
+        if (isCrit) totalCritsLanded++;
+
+        const totalLuckAtk = (baseStatsAtk.luck || 10) + (allocAtk.luck || 0);
+        const luckCritBonus = Math.min(0.35, (totalLuckAtk / (totalLuckAtk + 120)) * 0.35);
+        const critDmgMult = isCrit ? (2.0 + luckCritBonus) : 1.0;
+        const critNpBonus = isCrit ? 1.5 : 1.0;
+        const critStarBonus = isCrit ? 1.4 : 1.0;
+
+        const isNormalCard = card !== 'NP';
+        const negaGenesisMult = (boss.id === 'tiamat' && battleState.currentPhase === 3 && isNormalCard) ? 0.5 : 1.0;
+
+        if (isNormalCard) {
+          const ceLogs = processCeOnAttackEffects(active, boss, card);
+          ceLogs.forEach(l => npEffectsLog.push(l));
+        }
+
+        if (card === 'Buster') {
+          totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
+          starsGenerated += Math.round(3 * critStarBonus);
+          npGained += Math.round(5 * critNpBonus);
+        } else if (card === 'Arts') {
+          totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
+          const totalAtkMana = (baseStatsAtk.mana || 10) + (allocAtk.mana || 0);
+          const manaNpBonus = Math.min(0.35, (totalAtkMana / (totalAtkMana + 120)) * 0.35);
+          npGained += Math.round(25 * critNpBonus * (1.0 + manaNpBonus));
+          starsGenerated += Math.round(2 * critStarBonus);
+        } else if (card === 'Quick') {
+          totalTurnDmg += Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
+          starsGenerated += Math.round(12 * critStarBonus);
+          npGained += Math.round(10 * critNpBonus);
+
+          // Quick Curse Cleanse Buff (Soul of Water Channels)
+          if (active.activeBuffs && active.activeBuffs.some(b => b.type === 'buff_on_quick_curse_cleanse')) {
+            const curseIdx = active.activeBuffs.findIndex(b => b.type === 'curse');
+            if (curseIdx !== -1) {
+              active.activeBuffs.splice(curseIdx, 1);
+              active.activeBuffs.push({
+                name: 'Quick Cleanse (ATK Up +10%)',
+                type: 'atk_up',
+                value: 10,
+                remainingTurns: 3
+              });
+              npEffectsLog.push('🧹 [Quick Cleanse: Removed 1 Curse & Gained +10% ATK!]');
+            }
+          }
+        } else if (card === 'NP') {
+          const rawNpMult = active.servant.template?.noblePhantasm?.multiplier ?? 600;
+          const npMultiplier = rawNpMult >= 20 ? rawNpMult / 100 : (rawNpMult || 6.0);
+          const npBaseDesc = (active.servant.template?.noblePhantasm?.description || '').trim();
+          const npOverchargeDesc = (active.servant.template?.noblePhantasm?.overchargeEffect || '').trim();
+          const npName = active.servant.template?.noblePhantasm?.name || 'Noble Phantasm';
+          const npTarget = active.servant.template?.noblePhantasm?.target || 'single';
+          npNameUsed = npName;
+
+          const isSupportNp = npTarget === 'support' || npMultiplier === 0 || /party invincib|grant.*invincib|luminos|tigris redoubt|round of avalon/i.test(npName + ' ' + npBaseDesc);
+
+          if (isSupportNp) {
+            const isRoundOfAvalon = /round of avalon/i.test(npName);
+            const isTigris = /tigris|edmond/i.test(npName);
+            const isLuminosite = /luminosit|jeanne/i.test(npName);
+            const isDeSterrennacht = /sterrennacht|starry night|van gogh/i.test(npName) || active.servant.templateId === 'van_gogh';
+
+            if (isDeSterrennacht) {
+              // De Sterrennacht: Inflict Terror (Stun) on boss, +100% Crit DMG (3T) & +50% ATK (3T) to Party, +20 Stars
+              battleState.bossBuffs = battleState.bossBuffs || [];
+              const isImmuneToStun = boss.id === 'tiamat' && (battleState.currentPhase || 1) >= 2;
+              if (!isImmuneToStun) {
+                battleState.bossBuffs.push({
+                  name: 'De Sterrennacht (Terror)',
+                  type: 'stun',
+                  value: 100,
+                  remainingTurns: 1
+                });
+              }
+              const ocAtk = isOvercharged ? (50 + (overchargeLevel - 1) * 10) : 50;
+              battleState.participants.forEach(p => {
+                if (!p.isDead) {
+                  p.activeBuffs = p.activeBuffs || [];
+                  p.activeBuffs.push({
+                    name: 'De Sterrennacht (Crit DMG Up)',
+                    type: 'crit_dmg',
+                    value: 100,
+                    remainingTurns: 3
+                  });
+                  const isDomainAlly = p.servant.template?.servantClass === 'Foreigner' || p.servant.templateId === 'van_gogh' || p.userId === active.userId;
+                  if (isDomainAlly) {
+                    p.activeBuffs.push({
+                      name: 'De Sterrennacht (Domain Crit DMG Up)',
+                      type: 'crit_dmg',
+                      value: 100,
+                      remainingTurns: 3
+                    });
+                  }
+                  p.activeBuffs.push({
+                    name: 'De Sterrennacht (ATK Up)',
+                    type: 'atk_up',
+                    value: ocAtk,
+                    remainingTurns: 3
+                  });
+                  p.activeBuffs.push({
+                    name: 'De Sterrennacht (Stars Per Turn)',
+                    type: 'stars_per_turn',
+                    value: 10,
+                    remainingTurns: 3
+                  });
+                  p.critStars = Math.min(50, (p.critStars || 0) + 15);
+                }
+              });
+              npEffectsLog.push(`🌌 [De Sterrennacht: Party +100% Crit DMG (3T), +${ocAtk}% ATK (3T), Terror/Stun Inflicted, +20 Stars!]`);
+              npEffectsHud.push(`+100% Crit DMG • +${ocAtk}% ATK`);
+            } else {
+              // Party Buffs & Protection to ALL living allies in the raid!
+              battleState.participants.forEach(p => {
+                if (!p.isDead) {
+                  p.activeBuffs = p.activeBuffs || [];
+                  // Cleanse debuffs
+                  p.activeBuffs = p.activeBuffs.filter(b => !['def_down', 'atk_down', 'curse', 'burn', 'poison', 'stun', 'np_seal', 'skill_seal'].includes(b.type));
+
+                  // Grant Invincibility for 1 Turn (Anti-Purge Defense for Round of Avalon)
+                  p.activeBuffs.push({
+                    name: isRoundOfAvalon ? `${npName} (Anti-Purge Defense)` : `${npName} (Invincibility)`,
+                    type: isRoundOfAvalon ? 'anti_purge_defense' : 'invincible',
+                    value: 1,
+                    remainingTurns: 1
+                  });
+
+                  if (isRoundOfAvalon) {
+                    // Round of Avalon: +50% ATK for 3 turns, 2,500 Damage Cut, +15 Stars to all allies (Stars enhanced by Overcharge)
+                    p.activeBuffs.push({
+                      name: `${npName} (ATK Up)`,
+                      type: 'atk_up',
+                      value: 50,
+                      remainingTurns: 3
+                    });
+                    p.activeBuffs.push({
+                      name: `${npName} (Damage Cut)`,
+                      type: 'damage_cut',
+                      value: 2500,
+                      remainingTurns: 3
+                    });
+                    const ocStarBonus = isOvercharged ? (overchargeLevel >= 3 ? 30 : 15) : 0;
+                    p.critStars = Math.min(50, (p.critStars || 0) + 15 + ocStarBonus);
+                  } else if (isTigris) {
+                    const defBonus = isOvercharged ? (30 + (overchargeLevel - 1) * 10) : 30;
+                    p.activeBuffs.push({
+                      name: `${npName} (DEF Up)`,
+                      type: 'def_up',
+                      value: defBonus,
+                      remainingTurns: 3
+                    });
+                    // Overcharge Living Earth Damage Cut (only triggers when Overcharged >= 200% NP)
+                    if (isOvercharged) {
+                      const damageCutVal = 1500 + (overchargeLevel - 1) * 750;
+                      p.activeBuffs.push({
+                        name: `${npName} (Damage Cut)`,
+                        type: 'damage_cut',
+                        value: damageCutVal,
+                        remainingTurns: 3
+                      });
+                    }
+                  } else if (isLuminosite) {
+                    p.activeBuffs.push({
+                      name: `${npName} (DEF Up)`,
+                      type: 'def_up',
+                      value: 30,
+                      remainingTurns: 3
+                    });
+                    // Overcharge Holy Regen (only triggers when Overcharged >= 200% NP)
+                    if (isOvercharged) {
+                      const regenVal = 1000 + (overchargeLevel - 1) * 500;
+                      p.currentHp = Math.min(p.maxHp, p.currentHp + regenVal);
+                      p.activeBuffs.push({
+                        name: `${npName} (Holy Regen)`,
+                        type: 'hp_regen',
+                        value: regenVal,
+                        remainingTurns: 2
+                      });
+                    }
+                  } else {
+                    // Standard Support NP: +30% DEF for 3 turns & +3,000 HP
+                    p.activeBuffs.push({
+                      name: `${npName} (DEF Up)`,
+                      type: 'def_up',
+                      value: 30,
+                      remainingTurns: 3
+                    });
+                    p.currentHp = Math.min(p.maxHp, p.currentHp + 3000);
+                  }
+                }
+              });
+
+              if (isRoundOfAvalon) {
+                const ocNote = isOvercharged ? ` • Overcharge Lv.${overchargeLevel} Active` : '';
+                npEffectsLog.push(`👑 [Round of Avalon: Party +50% ATK (3T), Anti-Purge Defense (1T), Cleanse & Stars to ALL Allies!${ocNote}]`);
+                npEffectsHud.push(`+50% Party ATK • Anti-Purge Def • Stars${isOvercharged ? ' (OC Active)' : ''}`);
+              } else {
+                const ocNote = isOvercharged ? ` • Overcharge Lv.${overchargeLevel} Active` : '';
+                npEffectsLog.push(`🕊️ [Party Invincible (1T), +30% DEF (3T), Cleanse & Party Support!${ocNote}]`);
+                npEffectsHud.push(`Party Invincible • +30% DEF${isOvercharged ? ' • OC Regen/Cut' : ''}`);
+              }
+            }
+            starsGenerated += 15;
+            npGained += 20;
+          } else {
+            const npHasAntiThreat = /Threat to Humanity|Beast|Divine|Foreigner/i.test(npBaseDesc + ' ' + npOverchargeDesc);
+            const npSpecialMult = (isBossThreat && npHasAntiThreat) ? 1.5 : 1.0;
+            if (isBossThreat && npHasAntiThreat) npTriggeredAntiThreat = true;
+
+            // Apply secondary debuffs from Noble Phantasm to boss
+            battleState.bossBuffs = battleState.bossBuffs || [];
+
+            // 1. Stun / Paralysis / Charm / Bound Handling (Base effect or Overcharge trigger)
+            const stunInBase = /stun|paraly|charm|bound/i.test(npBaseDesc);
+            const stunInOvercharge = /stun|paraly|charm|bound/i.test(npOverchargeDesc);
+            if (stunInBase || (stunInOvercharge && isOvercharged)) {
+              const isImmuneToStun = boss.id === 'tiamat' && (battleState.currentPhase || 1) >= 2;
+              if (isImmuneToStun) {
+                npEffectsLog.push('🛡️ [Stun Resisted: Immense Mass (Boss Immune)]');
+                npEffectsHud.push('Stun Resisted (Immune)');
+              } else {
+                const combinedStunDesc = stunInBase ? npBaseDesc : npOverchargeDesc;
+                const chanceMatch = combinedStunDesc.match(/(\d+)%\s*(?:chance)?.*(?:stun|paraly|charm|bound)/i) ||
+                                    combinedStunDesc.match(/(?:stun|paraly|charm|bound).*(?:with\s*)?(\d+)%/i);
+                const stunChance = chanceMatch ? parseInt(chanceMatch[1], 10) : 100;
+                const roll = Math.random() * 100;
+                if (roll < stunChance) {
+                  battleState.bossBuffs.push({
+                    name: `${npName} (Stun)`,
+                    type: 'stun',
+                    value: 100,
+                    remainingTurns: 1
+                  });
+                  npEffectsLog.push('⚡ [Stun Inflicted (1 Turn)]');
+                  npEffectsHud.push('⚡ Stun Inflicted');
+                } else {
+                  npEffectsLog.push(`💨 [Stun Resisted]`);
+                  npEffectsHud.push('Stun Resisted');
+                }
+              }
+            }
+
+            // 2. DEF Down / Armor Shred (Base effect or Overcharge trigger)
+            const defInBase = /def.*down|lower.*def|reduce.*def|decrease.*def|shred.*armor/i.test(npBaseDesc);
+            const defInOvercharge = /def.*down|lower.*def|reduce.*def|decrease.*def|shred.*armor/i.test(npOverchargeDesc);
+            if (defInBase || (defInOvercharge && isOvercharged)) {
+              const combinedDefDesc = defInBase ? npBaseDesc : npOverchargeDesc;
+              const defMatch = combinedDefDesc.match(/def(?:ense)?\s*(?:by\s*|down\s*)?(\d+)%/i) ||
+                               combinedDefDesc.match(/(\d+)%\s*(?:def|defense\s*down)/i);
+              let defVal = defMatch ? parseInt(defMatch[1], 10) : 30;
+              if (defInOvercharge && isOvercharged && overchargeLevel >= 3) {
+                defVal = Math.round(defVal * 1.33); // Enhanced tier at Lv.3 MAX Overcharge
+              }
+              battleState.bossBuffs.push({
+                name: `${npName} (DEF Down)`,
+                type: 'def_down',
+                value: defVal,
+                remainingTurns: 3
+              });
+              npEffectsLog.push(`🔻 [-${defVal}% DEF Down (3T)]`);
+              npEffectsHud.push(`-${defVal}% DEF`);
+            }
+
+            // 3. Critical Rate Down (Base effect or Overcharge trigger)
+            const critInBase = /crit.*down|reduce.*crit|decrease.*crit/i.test(npBaseDesc);
+            const critInOvercharge = /crit.*down|reduce.*crit|decrease.*crit/i.test(npOverchargeDesc);
+            if (critInBase || (critInOvercharge && isOvercharged)) {
+              const combinedCritDesc = critInBase ? npBaseDesc : npOverchargeDesc;
+              const critMatch = combinedCritDesc.match(/crit(?:ical)?\s*(?:rate\s*)?(?:by\s*)?(\d+)%/i);
+              const critVal = critMatch ? parseInt(critMatch[1], 10) : 20;
+              battleState.bossBuffs.push({
+                name: `${npName} (Crit Down)`,
+                type: 'crit_rate_down',
+                value: critVal,
+                remainingTurns: 3
+              });
+              npEffectsLog.push(`🎯 [-${critVal}% Crit Rate (3T)]`);
+              npEffectsHud.push(`-${critVal}% Boss Crit`);
+            }
+
+            // 4. NP Drain / Charge Reduction (Base effect or Overcharge trigger)
+            const drainInBase = /drain|reduce.*np\s*gauge|np\s*seal/i.test(npBaseDesc);
+            const drainInOvercharge = /drain|reduce.*np\s*gauge|np\s*seal/i.test(npOverchargeDesc);
+            if (drainInBase || (drainInOvercharge && isOvercharged)) {
+              battleState.bossCharge = Math.max(0, battleState.bossCharge - 1);
+              battleState.bossBuffs.push({
+                name: `${npName} (NP Drain)`,
+                type: 'np_seal',
+                value: 1,
+                remainingTurns: 1
+              });
+              npEffectsLog.push('🔒 [-1 Boss NP Charge]');
+              npEffectsHud.push('-1 NP Charge');
+            }
+
+            // 5. Curse / Burn / Poison (Base effect or Overcharge trigger)
+            const dotInBase = /curse|burn|poison/i.test(npBaseDesc);
+            const dotInOvercharge = /curse|burn|poison/i.test(npOverchargeDesc);
+            if (dotInBase || (dotInOvercharge && isOvercharged)) {
+              battleState.bossBuffs.push({
+                name: `${npName} (Affliction)`,
+                type: 'curse',
+                value: 6000,
+                remainingTurns: 3
+              });
+              npEffectsLog.push('🔥 [Curse/Burn (3T)]');
+              npEffectsHud.push('Curse/Burn (3T)');
+            }
+
+            // 6. Buff Block (Base effect or Overcharge trigger)
+            const blockInBase = /buff\s*block/i.test(npBaseDesc);
+            const blockInOvercharge = /buff\s*block/i.test(npOverchargeDesc);
+            if (blockInBase || (blockInOvercharge && isOvercharged)) {
+              battleState.bossBuffs.push({
+                name: `${npName} (Buff Block)`,
+                type: 'buff_block',
+                value: 1,
+                remainingTurns: 3
+              });
+              npEffectsLog.push('🚫 [Buff Block (3T)]');
+              npEffectsHud.push('Buff Block');
+            }
+
+            // 7. Ignore Defense
+            if (/ignore.*def|bypass.*def|defense-ignoring/i.test(npBaseDesc + ' ' + npOverchargeDesc)) {
+              npEffectsLog.push('🛡️ [DEF-Ignoring]');
+            }
+
+            // Typhon Ephemeros: Dragon Grail scaling with self debuffs (+10% per stack, up to +100%)
+            let typhonRaidDebuffScale = 1.0;
+            if (active.servant.templateId === 'typhon_ephemeros' || /dragon grail that reverses/i.test(npName)) {
+              const debuffCount = (active.activeBuffs || []).filter(b => ['curse', 'burn', 'poison', 'atk_down', 'def_down', 'stun', 'np_seal', 'skill_seal'].includes(b.type) || (b.name && (b.name.includes('[Demerit]') || b.type.includes('debuff')))).length;
+              if (debuffCount > 0) {
+                typhonRaidDebuffScale = 1.0 + Math.min(1.0, debuffCount * 0.10);
+                npEffectsLog.push(`🍷 [Dragon Grail Powerup: +${Math.round((typhonRaidDebuffScale - 1) * 100)}% DMG from ${debuffCount} Demerit/Debuff Stacks!]`);
+                npEffectsHud.push(`+${Math.round((typhonRaidDebuffScale - 1) * 100)}% Debuff DMG`);
+              }
+              battleState.bossBuffs.push({
+                name: 'Dragon Grail (Burn)',
+                type: 'burn',
+                value: 1000,
+                remainingTurns: 5
+              });
+              battleState.bossBuffs.push({
+                name: 'Dragon Grail (Spread of Fire)',
+                type: 'spread_of_fire',
+                value: 100,
+                remainingTurns: 5
+              });
+              npEffectsLog.push('🔥 [Burn (1,000/5T) + Spread of Fire (+100%/5T) Inflicted!]');
+              npEffectsHud.push('Burn + Spread of Fire');
+            }
+
+            totalTurnDmg += Math.round(baseAtk * npMultiplier * overchargeScale * typhonRaidDebuffScale * atkBuffMult * specialAtkMult * bossDefFactor * npSpecialMult * (0.95 + Math.random() * 0.1));
+            starsGenerated += 10;
+            npGained += 15;
+          }
+        }
+      });
+
+      // Chaos Spores Phase 2 Passive
+      if (boss.id === 'tiamat' && battleState.currentPhase === 2 && (battleState.round % 2 === 1)) {
+        if ((battleState.turnDamageTaken || 0) < 300_000) {
+          totalTurnDmg = Math.round(totalTurnDmg * 0.80);
+          battleState.chaosSporesActive = true;
+          npEffectsLog.push('🛡️ [Chaos Spores: -20% Shield Active]');
+        }
+      }
+
+      // Boss Barrier Absorption (e.g. from Chaos Deluge)
+      if (battleState.bossShield && battleState.bossShield > 0) {
+        if (totalTurnDmg <= battleState.bossShield) {
+          battleState.bossShield -= totalTurnDmg;
+          npEffectsLog.push(`🛡️ [Barrier Absorbed ${totalTurnDmg.toLocaleString()} DMG (${battleState.bossShield.toLocaleString()} HP Left)]`);
+          totalTurnDmg = 0;
+        } else {
+          const absorbed = battleState.bossShield;
+          totalTurnDmg -= absorbed;
+          battleState.bossShield = 0;
+          npEffectsLog.push(`💥 [Barrier Shattered (${absorbed.toLocaleString()} DMG Absorbed)]`);
+        }
+      }
+
+      battleState.bossCurrentHp = Math.max(0, battleState.bossCurrentHp - totalTurnDmg);
+      battleState.turnDamageTaken = (battleState.turnDamageTaken || 0) + totalTurnDmg;
+      active.npGauge = Math.min(300, (active.npGauge || 0) + npGained);
+      // Consumes existing stars used during the attack; new star pool is based on stars generated this turn!
+      active.critStars = Math.min(50, Math.round(starsGenerated));
+
+      const servName = active.servant.nickname || active.servant.template?.name || 'Servant';
+      let traitLog = '';
+      if (totalCritsLanded > 0) {
+        traitLog += ` 💥 **[${totalCritsLanded} CRIT${totalCritsLanded > 1 ? 'S' : ''} (2.0x DMG)!]**`;
+      }
+      if (npTriggeredAntiThreat) {
+        traitLog += ' 👑 **[Anti-Calamity Protocol: +50% Special DMG vs Threat to Humanity!]**';
+      } else if (antiThreatBuff > 0) {
+        traitLog += ' ⚡ **[Calamity-Breaker: +30% Special ATK vs Threat to Humanity!]**';
+      }
+      if (boss.id === 'tiamat' && battleState.currentPhase === 3 && pendingCards.some(c => c !== 'NP')) {
+        traitLog += ' 🌑 **[Nega-Genesis: -50% Normal Card DMG]**';
+      }
+      if (bossDefDown > 0) {
+        traitLog += ` 🔻 **[DEF Down: +${Math.round(bossDefDown * 100)}% DMG]**`;
+      }
+
+      const npEffectsStr = npEffectsLog.length > 0 ? ` ${npEffectsLog.join(' ')}` : '';
+      const actionVerb = usedNp ? `unleashed **[${npNameUsed}]** dealing` : 'dealt';
+      const playerAttackLog = `⚔️ **${servName}** ${actionVerb} **${totalTurnDmg.toLocaleString()} DMG** to ${boss.name}! (+${npGained}% NP, +${starsGenerated} Stars)${traitLog}${npEffectsStr}`;
+      battleState.lastPlayerAttackLog = playerAttackLog;
+      battleState.recentLogs.push(playerAttackLog);
+      while (battleState.recentLogs.length > 8) battleState.recentLogs.shift();
+
+      // Update single-focus Tactical Action HUD with THIS turn's strike damage & full NP details!
+      let subDetailStr = '';
+      if (usedNp) {
+        const shortNpName = npNameUsed.split(':')[0].trim();
+        if (npEffectsHud.length > 0) {
+          subDetailStr = `${shortNpName} • ${npEffectsHud.join(' • ')} • +${starsGenerated} Stars`;
+        } else {
+          subDetailStr = `${shortNpName} Unleashed • +${starsGenerated} Stars`;
+        }
+      } else if (totalCritsLanded > 0) {
+        subDetailStr = `CRITICAL HIT (${totalCritsLanded}x) • +${npGained}% NP • +${starsGenerated} Stars`;
+      } else {
+        subDetailStr = `+${npGained}% NP • +${starsGenerated} Stars Generated`;
+      }
+
+      battleState.lastHudAction = {
+        category: usedNp ? 'NOBLE PHANTASM' : 'MASTER STRIKE',
+        categoryColor: usedNp ? '#a855f7' : '#38bdf8',
+        headline: servName,
+        bigStat: `${totalTurnDmg.toLocaleString()} DMG`,
+        bigStatColor: usedNp ? '#facc15' : '#fde047',
+        subDetail: subDetailStr,
+        subDetailColor: usedNp ? '#c084fc' : (totalCritsLanded > 0 ? '#f43f5e' : '#67e8f9')
+      };
+
+      active.totalDamageDealt = (active.totalDamageDealt || 0) + totalTurnDmg;
+      battleState.fullCombatLog = battleState.fullCombatLog || [];
+      const chainDesc = `[${pendingCards.join(' ➔ ')}]`;
+      const fullNpDetail = usedNp ? `unleashed **[${npNameUsed}]** with \`${chainDesc}\`` : `struck with \`${chainDesc}\``;
+      battleState.fullCombatLog.push(
+        `⚔️ **[Round ${battleState.round}]** **${servName}** (<@${active.userId}>) ${fullNpDetail} dealing **${totalTurnDmg.toLocaleString()} DMG**! *(${boss.name} HP: ${battleState.bossCurrentHp.toLocaleString()} / ${battleState.bossMaxHp.toLocaleString()})*${npEffectsStr}${traitLog}`
+      );
+
+      if (battleState.bossCurrentHp <= 0) {
+        if (battleState.breakGaugesRemaining && battleState.breakGaugesRemaining > 0) {
+          // Break gauge transition!
+          battleState.breakGaugesRemaining--;
+          battleState.currentPhase = (battleState.currentPhase || 1) + 1;
+          const phaseIdx = battleState.currentPhase - 1;
+          const nextPhase = boss.phases?.[phaseIdx];
+          const newBase = nextPhase?.baseHp || (battleState.currentPhase === 2 ? 5_500_000 : 8_000_000);
+          const scaledNewHp = Math.round(newBase * hpMultiplier);
+
+          battleState.bossCurrentHp = scaledNewHp;
+          battleState.bossMaxHp = scaledNewHp;
+          battleState.bossCharge = 0;
+          battleState.bossBuffs = []; // Cleanse debuffs upon break
+          battleState.phaseTurn = 1;
+          battleState.phaseUltsUsed = 0;
+          battleState.turnDamageTaken = 0;
+          battleState.bossShield = 0;
+
+          const breakMsg = `💥 **[BREAK GAUGE SHATTERED!]** ${nextPhase?.breakAnnouncement || 'The boss changes form and unleashes new power!'}`;
+          battleState.recentLogs.push(breakMsg);
+          battleState.fullCombatLog.push(breakMsg);
+          while (battleState.recentLogs.length > 8) battleState.recentLogs.shift();
+
+          battleState.lastHudAction = {
+            category: 'BREAK GAUGE',
+            categoryColor: '#ec4899',
+            headline: boss.name,
+            bigStat: 'GAUGE SHATTERED!',
+            bigStatColor: '#f43f5e',
+            subDetail: `Phase ${battleState.currentPhase}/3 Engaged • Boss Transformed`,
+            subDetailColor: '#fbcfe8'
+          };
+        } else {
+          battleState.bossCurrentHp = 0;
+          clearTurnTimer();
+          await cleanupNpGif();
+          collector.stop('victory');
+          battleState.finishingBlow = {
+            userId: active.userId,
+            servantName: servName,
+            damage: totalTurnDmg,
+            cardChain: pendingCards.join(' ➔ '),
+            round: battleState.round
+          };
+          await concludeRaidVictory(battleMsg, boss, battleState);
+          return;
+        }
+      }
+
+      // Refresh hand for this participant and clear selections
+      refreshParticipantHand(active);
+      pendingCards = [];
+      pendingIndices = [];
+
+      const hasMorePlayersInRound = advanceToNextPlayer();
+
+      let bossUsedNp = false;
+      if (!hasMorePlayersInRound) {
+        // 1. Render and post the Player Strike Canvas so players see their strike damage & updated boss HP!
+        await renderAndPostTurn();
+
+        // 2. Dispatch player Noble Phantasm Visuals if unleashed
+        if (pendingNpToDispatch) {
+          await dispatchRaidNpGif(pendingNpToDispatch.servant, pendingNpToDispatch.userId);
+          pendingNpToDispatch = null;
+        }
+
+        // 3. Brief dramatic pause (2.5s) to witness the strike impact before the enemy counter-attacks
+        await new Promise(resolve => setTimeout(resolve, 2500));
+
+        // 4. Execute Boss Turn
+        const bossTurnResult = await executeBossTurn(battleState);
+        bossUsedNp = bossTurnResult?.bossUsedNp || false;
+
+        const anyAlive = battleState.participants.some(p => !p.isDead);
+        if (!anyAlive) {
+          clearTurnTimer();
+          await cleanupNpGif();
+          collector.stop('defeated');
+          await concludeRaidDefeat(battleMsg, boss, battleState);
+          return;
+        }
+
+        battleState.round++;
+        battleState.participants.forEach(p => {
+          p.skillCooldowns = p.skillCooldowns.map(cd => Math.max(0, cd - 1));
+          if (p.activeBuffs) {
+            p.activeBuffs.forEach(b => {
+              if (b.remainingTurns < 90) b.remainingTurns--;
+            });
+            p.activeBuffs = p.activeBuffs.filter(b => b.remainingTurns > 0);
+          }
+          if (!p.isDead) {
+            processCeTurnStartEffects(p);
+          }
+        });
+
+        // Keep Boss turn HUD action active so players see the Boss's damage & action on the new turn
+        // 5. Render and post the new round turn canvas (with active buttons & boss damage HUD)
+        await renderAndPostTurn();
+
+        // 6. Dispatch Boss NP GIF if used
+        if (bossUsedNp) {
+          await dispatchBossNpGif();
+        }
+      } else {
+        // Multi-player: Advance to next player in the current round
+        await renderAndPostTurn();
+
+        if (pendingNpToDispatch) {
+          await dispatchRaidNpGif(pendingNpToDispatch.servant, pendingNpToDispatch.userId);
+        }
+      }
+    } finally {
+      isProcessingTurn = false;
+    }
+  };
+
+  const handleAutoPlayTurn = async (isTimeout = true, triggeredByUserId?: string) => {
+    if (isProcessingTurn) return;
+    clearTurnTimer();
+    ensureActiveParticipantIsAlive();
+    const active = currentActiveParticipant;
+    if (!active || active.isDead) return;
+
+    // Pick cards automatically: include NP if ready
+    const autoCards: ('Buster' | 'Arts' | 'Quick' | 'NP')[] = [];
+    const autoIndices: number[] = [];
+
+    if (active.npGauge >= 100) {
+      autoCards.push('NP');
+    }
+
+    const hand = active.currentHand || ['Buster', 'Arts', 'Quick', 'Buster', 'Arts'];
+    for (let hIdx = 0; hIdx < hand.length && autoCards.length < 3; hIdx++) {
+      if (!autoIndices.includes(hIdx)) {
+        autoIndices.push(hIdx);
+        autoCards.push(hand[hIdx]);
+      }
+    }
+
+    while (autoCards.length < 3) {
+      autoCards.push('Buster');
+    }
+
+    pendingCards = autoCards;
+    pendingIndices = autoIndices;
+
+    const servName = active.servant.nickname || active.servant.template?.name || 'Servant';
+    if (isTimeout) {
+      battleState.recentLogs.push(`⏳ **[AFK AUTO-PLAY]** <@${active.userId}> (${servName}) reached the 2-minute turn limit. Tactical Auto-Attack engaged!`);
+    } else if (triggeredByUserId && triggeredByUserId !== active.userId) {
+      battleState.recentLogs.push(`⏭️ **[TEAM AUTO-PLAY]** <@${triggeredByUserId}> initiated Tactical Auto-Action for <@${active.userId}> (${servName})!`);
+    } else {
+      battleState.recentLogs.push(`⏭️ **[COMMAND AUTO-PLAY]** <@${active.userId}> (${servName}) engaged Tactical Auto-Attack!`);
+    }
+    while (battleState.recentLogs.length > 8) battleState.recentLogs.shift();
+
+    await executeAttackSequence();
+  };
 
   collector.on('collect', async (i: any) => {
     if (isProcessingTurn && i.customId !== 'raid_status' && i.customId !== 'raid_combat_log') {
@@ -966,14 +1701,42 @@ async function runRaidBattle(
       return;
     }
 
-    ensureActiveParticipantIsAlive();
     const active = currentActiveParticipant;
 
-    if (i.user.id !== active.userId) {
+    if (i.user.id !== active.userId && i.customId !== 'raid_flee' && i.customId !== 'raid_pass_turn') {
       await i.reply({
         content: `❌ It is currently <@${active.userId}>'s turn to command their Servant!`,
         flags: MessageFlags.Ephemeral
       });
+      return;
+    }
+
+    if (i.customId === 'raid_pass_turn') {
+      const isSelf = i.user.id === active.userId;
+      const turnElapsed = Date.now() - turnStartTime;
+      const isParticipant = battleState.participants.some(p => p.userId === i.user.id && !p.isDead);
+
+      if (!isSelf && !isParticipant) {
+        await i.reply({
+          content: '❌ Only living raid participants can trigger Auto-Play.',
+          flags: MessageFlags.Ephemeral
+        }).catch(() => {});
+        return;
+      }
+
+      if (!isSelf && turnElapsed < 30_000) {
+        const remainingSec = Math.ceil((30_000 - turnElapsed) / 1000);
+        await i.reply({
+          content: `⏳ Please give <@${active.userId}> at least **${remainingSec}s** before initiating a team auto-play!`,
+          flags: MessageFlags.Ephemeral
+        }).catch(() => {});
+        return;
+      }
+
+      if (!i.deferred && !i.replied) {
+        await i.deferUpdate().catch(() => {});
+      }
+      await handleAutoPlayTurn(false, i.user.id);
       return;
     }
 
@@ -1582,14 +2345,19 @@ async function runRaidBattle(
           subDetailColor: '#38bdf8'
         };
 
+        // Instantly acknowledge Discord interaction before canvas rendering to prevent timeouts
+        if (!i.deferred && !i.replied) {
+          await i.deferUpdate().catch(() => {});
+        }
+
         // Render updated canvas reflecting the new HP, NP, or buffs from the skill!
         const { buffer } = await renderRaidBattlefield(battleState, false);
         const uniqueFileName = 'raid_battlefield.png';
-                const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
+        const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
 
         await safeUpdate({
           content: buildTurnContent(active, pendingCards),
-        embeds: [],
+          embeds: [],
           files: [attachment],
           components: buildBattleButtons()
         });
@@ -1621,14 +2389,19 @@ async function runRaidBattle(
           subDetailColor: '#a7f3d0'
         };
 
+        // Instantly acknowledge Discord interaction before canvas rendering to prevent timeouts
+        if (!i.deferred && !i.replied) {
+          await i.deferUpdate().catch(() => {});
+        }
+
         // Render updated canvas reflecting the restored HP and 100% NP!
         const { buffer } = await renderRaidBattlefield(battleState, false);
         const uniqueFileName = 'raid_battlefield.png';
-                const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
+        const attachment = new AttachmentBuilder(buffer, { name: uniqueFileName });
 
         await safeUpdate({
           content: buildTurnContent(active, pendingCards),
-        embeds: [],
+          embeds: [],
           files: [attachment],
           components: buildBattleButtons()
         });
@@ -1680,644 +2453,8 @@ async function runRaidBattle(
       return;
     }
 
-    // 3 Cards selected -> Immediately update the message so the user sees Card 3 registered and all buttons disabled!
-    isProcessingTurn = true;
-    try {
-      await safeUpdate({
-        content: buildTurnContent(active, pendingCards),
-        embeds: [],
-        components: buildBattleButtons(true)
-      });
-
-      const usedNp = pendingCards.includes('NP');
-      const initialNpGauge = active.npGauge || 0;
-      let ocBonusStages = 0;
-      if (usedNp && active.activeBuffs) {
-        const ocIdx = active.activeBuffs.findIndex(b => b.type === 'overcharge_up');
-        if (ocIdx >= 0) {
-          ocBonusStages = active.activeBuffs[ocIdx].value || 2;
-          active.activeBuffs.splice(ocIdx, 1);
-        }
-      }
-      const baseOcLevel = initialNpGauge >= 300 ? 3 : initialNpGauge >= 200 ? 2 : 1;
-      const overchargeLevel = Math.min(5, baseOcLevel + ocBonusStages);
-      const isOvercharged = overchargeLevel >= 2;
-      const overchargeScale = isOvercharged ? (1.0 + (overchargeLevel - 1) * 0.20) : 1.00;
-
-      let pendingNpToDispatch: { servant: any; userId: string } | null = null;
-      if (usedNp) {
-        active.npGauge = 0;
-        pendingNpToDispatch = { servant: active.servant, userId: active.userId };
-      }
-
-      let totalTurnDmg = 0;
-      let starsGenerated = 0;
-      let npGained = 0;
-
-      const sAtk = active.servant;
-      const tAtk = sAtk.template || {};
-      const allocAtk = sAtk.allocatedStats || {};
-      const baseStatsAtk = tAtk.baseStats || { strength: 10, endurance: 10, agility: 10, mana: 10, luck: 10 };
-      const totalStr = (baseStatsAtk.strength || 10) + (allocAtk.strength || 0);
-      const ceAtk = sAtk.equippedCe?.atkBonus || 0;
-      const baseAtk = Math.round((tAtk.baseAtk || 10000) + totalStr * 80 + ceAtk);
-      const atkBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'atk_up' || b.type === 'buff_atk').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
-      const busterBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'buster_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
-      const artsBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'arts_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
-      const quickBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'quick_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
-      const critDmgBuffMult = 1 + ((active.activeBuffs?.filter(b => b.type === 'crit_dmg' || b.type === 'crit_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100);
-
-      const isBossThreat = (boss.traits || []).some(t => ['threat_to_humanity', 'beast', 'demonic'].includes(t.toLowerCase()));
-      const antiThreatBuff = (active.activeBuffs?.filter(b => b.type === 'anti_threat').reduce((acc, b) => acc + b.value, 0) || 0) / 100;
-      const specialAtkMult = isBossThreat ? (1 + antiThreatBuff) : 1.0;
-
-      const bossDefDown = (battleState.bossBuffs?.filter(b => b.type === 'def_down').reduce((acc, b) => acc + b.value, 0) || 0) / 100;
-      const bossDefUp = (battleState.bossBuffs?.filter(b => b.type === 'def_up').reduce((acc, b) => acc + b.value, 0) || 0) / 100;
-      const bossDefFactor = Math.max(0.2, 1 + bossDefDown - bossDefUp);
-
-      const starsAvailableForCrits = active.critStars || 0;
-      const isQuickFirstLead = pendingCards[0] === 'Quick';
-      let totalCritsLanded = 0;
-      let npTriggeredAntiThreat = false;
-      let npEffectsLog: string[] = [];
-      let npEffectsHud: string[] = [];
-      let npNameUsed = '';
-
-      pendingCards.forEach((card, cIdx) => {
-        const stepMult = cIdx === 0 ? 1.0 : cIdx === 1 ? 1.2 : 1.4;
-
-        // Calculate critical hit rate based on current star pool
-        const baseCritMult = card === 'Buster' ? 2.0 : card === 'Arts' ? 1.8 : 2.2;
-        let critPct = Math.round(starsAvailableForCrits * baseCritMult);
-        if (isQuickFirstLead && cIdx > 0) critPct += 20;
-        critPct = Math.min(100, Math.max(0, critPct));
-
-        const isCrit = card !== 'NP' && (Math.random() * 100 < critPct);
-        if (isCrit) totalCritsLanded++;
-
-        const totalLuckAtk = (baseStatsAtk.luck || 10) + (allocAtk.luck || 0);
-        const luckCritBonus = Math.min(0.35, (totalLuckAtk / (totalLuckAtk + 120)) * 0.35);
-        const critDmgMult = isCrit ? (2.0 + luckCritBonus) : 1.0;
-        const critNpBonus = isCrit ? 1.5 : 1.0;
-        const critStarBonus = isCrit ? 1.4 : 1.0;
-
-        const isNormalCard = card !== 'NP';
-        const negaGenesisMult = (boss.id === 'tiamat' && battleState.currentPhase === 3 && isNormalCard) ? 0.5 : 1.0;
-
-        if (isNormalCard) {
-          const ceLogs = processCeOnAttackEffects(active, boss, card);
-          ceLogs.forEach(l => npEffectsLog.push(l));
-        }
-
-        if (card === 'Buster') {
-          totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
-          starsGenerated += Math.round(3 * critStarBonus);
-          npGained += Math.round(5 * critNpBonus);
-        } else if (card === 'Arts') {
-          totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
-          const totalAtkMana = (baseStatsAtk.mana || 10) + (allocAtk.mana || 0);
-          const manaNpBonus = Math.min(0.35, (totalAtkMana / (totalAtkMana + 120)) * 0.35);
-          npGained += Math.round(25 * critNpBonus * (1.0 + manaNpBonus));
-          starsGenerated += Math.round(2 * critStarBonus);
-        } else if (card === 'Quick') {
-          totalTurnDmg += Math.round(baseAtk * 0.8 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
-          starsGenerated += Math.round(12 * critStarBonus);
-          npGained += Math.round(10 * critNpBonus);
-
-          // Quick Curse Cleanse Buff (Soul of Water Channels)
-          if (active.activeBuffs && active.activeBuffs.some(b => b.type === 'buff_on_quick_curse_cleanse')) {
-            const curseIdx = active.activeBuffs.findIndex(b => b.type === 'curse');
-            if (curseIdx !== -1) {
-              active.activeBuffs.splice(curseIdx, 1);
-              active.activeBuffs.push({
-                name: 'Quick Cleanse (ATK Up +10%)',
-                type: 'atk_up',
-                value: 10,
-                remainingTurns: 3
-              });
-              npEffectsLog.push('🧹 [Quick Cleanse: Removed 1 Curse & Gained +10% ATK!]');
-            }
-          }
-        } else if (card === 'NP') {
-          const rawNpMult = active.servant.template?.noblePhantasm?.multiplier ?? 600;
-          const npMultiplier = rawNpMult >= 20 ? rawNpMult / 100 : (rawNpMult || 6.0);
-          const npBaseDesc = (active.servant.template?.noblePhantasm?.description || '').trim();
-          const npOverchargeDesc = (active.servant.template?.noblePhantasm?.overchargeEffect || '').trim();
-          const npName = active.servant.template?.noblePhantasm?.name || 'Noble Phantasm';
-          const npTarget = active.servant.template?.noblePhantasm?.target || 'single';
-          npNameUsed = npName;
-
-          const isSupportNp = npTarget === 'support' || npMultiplier === 0 || /party invincib|grant.*invincib|luminos|tigris redoubt|round of avalon/i.test(npName + ' ' + npBaseDesc);
-
-          if (isSupportNp) {
-            const isRoundOfAvalon = /round of avalon/i.test(npName);
-            const isTigris = /tigris|edmond/i.test(npName);
-            const isLuminosite = /luminosit|jeanne/i.test(npName);
-            const isDeSterrennacht = /sterrennacht|starry night|van gogh/i.test(npName) || active.servant.templateId === 'van_gogh';
-
-            if (isDeSterrennacht) {
-              // De Sterrennacht: Inflict Terror (Stun) on boss, +100% Crit DMG (3T) & +50% ATK (3T) to Party, +20 Stars
-              battleState.bossBuffs = battleState.bossBuffs || [];
-              const isImmuneToStun = boss.id === 'tiamat' && (battleState.currentPhase || 1) >= 2;
-              if (!isImmuneToStun) {
-                battleState.bossBuffs.push({
-                  name: 'De Sterrennacht (Terror)',
-                  type: 'stun',
-                  value: 100,
-                  remainingTurns: 1
-                });
-              }
-              const ocAtk = isOvercharged ? (50 + (overchargeLevel - 1) * 10) : 50;
-              battleState.participants.forEach(p => {
-                if (!p.isDead) {
-                  p.activeBuffs = p.activeBuffs || [];
-                  p.activeBuffs.push({
-                    name: 'De Sterrennacht (Crit DMG Up)',
-                    type: 'crit_dmg',
-                    value: 100,
-                    remainingTurns: 3
-                  });
-                  const isDomainAlly = p.servant.template?.servantClass === 'Foreigner' || p.servant.templateId === 'van_gogh' || p.userId === active.userId;
-                  if (isDomainAlly) {
-                    p.activeBuffs.push({
-                      name: 'De Sterrennacht (Domain Crit DMG Up)',
-                      type: 'crit_dmg',
-                      value: 100,
-                      remainingTurns: 3
-                    });
-                  }
-                  p.activeBuffs.push({
-                    name: 'De Sterrennacht (ATK Up)',
-                    type: 'atk_up',
-                    value: ocAtk,
-                    remainingTurns: 3
-                  });
-                  p.activeBuffs.push({
-                    name: 'De Sterrennacht (Stars Per Turn)',
-                    type: 'stars_per_turn',
-                    value: 10,
-                    remainingTurns: 3
-                  });
-                  p.critStars = Math.min(50, (p.critStars || 0) + 15);
-                }
-              });
-              npEffectsLog.push(`🌌 [De Sterrennacht: Party +100% Crit DMG (3T), +${ocAtk}% ATK (3T), Terror/Stun Inflicted, +20 Stars!]`);
-              npEffectsHud.push(`+100% Crit DMG • +${ocAtk}% ATK`);
-            } else {
-              // Party Buffs & Protection to ALL living allies in the raid!
-              battleState.participants.forEach(p => {
-                if (!p.isDead) {
-                  p.activeBuffs = p.activeBuffs || [];
-                  // Cleanse debuffs
-                  p.activeBuffs = p.activeBuffs.filter(b => !['def_down', 'atk_down', 'curse', 'burn', 'poison', 'stun', 'np_seal', 'skill_seal'].includes(b.type));
-
-                  // Grant Invincibility for 1 Turn (Anti-Purge Defense for Round of Avalon)
-                  p.activeBuffs.push({
-                    name: isRoundOfAvalon ? `${npName} (Anti-Purge Defense)` : `${npName} (Invincibility)`,
-                    type: isRoundOfAvalon ? 'anti_purge_defense' : 'invincible',
-                    value: 1,
-                    remainingTurns: 1
-                  });
-
-                  if (isRoundOfAvalon) {
-                    // Round of Avalon: +50% ATK for 3 turns, 2,500 Damage Cut, +15 Stars to all allies (Stars enhanced by Overcharge)
-                    p.activeBuffs.push({
-                      name: `${npName} (ATK Up)`,
-                      type: 'atk_up',
-                      value: 50,
-                      remainingTurns: 3
-                    });
-                    p.activeBuffs.push({
-                      name: `${npName} (Damage Cut)`,
-                      type: 'damage_cut',
-                      value: 2500,
-                      remainingTurns: 3
-                    });
-                    const ocStarBonus = isOvercharged ? (overchargeLevel >= 3 ? 30 : 15) : 0;
-                    p.critStars = Math.min(50, (p.critStars || 0) + 15 + ocStarBonus);
-                  } else if (isTigris) {
-                    const defBonus = isOvercharged ? (30 + (overchargeLevel - 1) * 10) : 30;
-                    p.activeBuffs.push({
-                      name: `${npName} (DEF Up)`,
-                      type: 'def_up',
-                      value: defBonus,
-                      remainingTurns: 3
-                    });
-                    // Overcharge Living Earth Damage Cut (only triggers when Overcharged >= 200% NP)
-                    if (isOvercharged) {
-                      const damageCutVal = 1500 + (overchargeLevel - 1) * 750;
-                      p.activeBuffs.push({
-                        name: `${npName} (Damage Cut)`,
-                        type: 'damage_cut',
-                        value: damageCutVal,
-                        remainingTurns: 3
-                      });
-                    }
-                  } else if (isLuminosite) {
-                    p.activeBuffs.push({
-                      name: `${npName} (DEF Up)`,
-                      type: 'def_up',
-                      value: 30,
-                      remainingTurns: 3
-                    });
-                    // Overcharge Holy Regen (only triggers when Overcharged >= 200% NP)
-                    if (isOvercharged) {
-                      const regenVal = 1000 + (overchargeLevel - 1) * 500;
-                      p.currentHp = Math.min(p.maxHp, p.currentHp + regenVal);
-                      p.activeBuffs.push({
-                        name: `${npName} (Holy Regen)`,
-                        type: 'hp_regen',
-                        value: regenVal,
-                        remainingTurns: 2
-                      });
-                    }
-                  } else {
-                    // Standard Support NP: +30% DEF for 3 turns & +3,000 HP
-                    p.activeBuffs.push({
-                      name: `${npName} (DEF Up)`,
-                      type: 'def_up',
-                      value: 30,
-                      remainingTurns: 3
-                    });
-                    p.currentHp = Math.min(p.maxHp, p.currentHp + 3000);
-                  }
-                }
-              });
-
-              if (isRoundOfAvalon) {
-                const ocNote = isOvercharged ? ` • Overcharge Lv.${overchargeLevel} Active` : '';
-                npEffectsLog.push(`👑 [Round of Avalon: Party +50% ATK (3T), Anti-Purge Defense (1T), Cleanse & Stars to ALL Allies!${ocNote}]`);
-                npEffectsHud.push(`+50% Party ATK • Anti-Purge Def • Stars${isOvercharged ? ' (OC Active)' : ''}`);
-              } else {
-                const ocNote = isOvercharged ? ` • Overcharge Lv.${overchargeLevel} Active` : '';
-                npEffectsLog.push(`🕊️ [Party Invincible (1T), +30% DEF (3T), Cleanse & Party Support!${ocNote}]`);
-                npEffectsHud.push(`Party Invincible • +30% DEF${isOvercharged ? ' • OC Regen/Cut' : ''}`);
-              }
-            }
-            starsGenerated += 15;
-            npGained += 20;
-          } else {
-            const npHasAntiThreat = /Threat to Humanity|Beast|Divine|Foreigner/i.test(npBaseDesc + ' ' + npOverchargeDesc);
-            const npSpecialMult = (isBossThreat && npHasAntiThreat) ? 1.5 : 1.0;
-            if (isBossThreat && npHasAntiThreat) npTriggeredAntiThreat = true;
-
-            // Apply secondary debuffs from Noble Phantasm to boss
-            battleState.bossBuffs = battleState.bossBuffs || [];
-
-            // 1. Stun / Paralysis / Charm / Bound Handling (Base effect or Overcharge trigger)
-            const stunInBase = /stun|paraly|charm|bound/i.test(npBaseDesc);
-            const stunInOvercharge = /stun|paraly|charm|bound/i.test(npOverchargeDesc);
-            if (stunInBase || (stunInOvercharge && isOvercharged)) {
-              const isImmuneToStun = boss.id === 'tiamat' && (battleState.currentPhase || 1) >= 2;
-              if (isImmuneToStun) {
-                npEffectsLog.push('🛡️ [Stun Resisted: Immense Mass (Boss Immune)]');
-                npEffectsHud.push('Stun Resisted (Immune)');
-              } else {
-                const combinedStunDesc = stunInBase ? npBaseDesc : npOverchargeDesc;
-                const chanceMatch = combinedStunDesc.match(/(\d+)%\s*(?:chance)?.*(?:stun|paraly|charm|bound)/i) ||
-                                    combinedStunDesc.match(/(?:stun|paraly|charm|bound).*(?:with\s*)?(\d+)%/i);
-                const stunChance = chanceMatch ? parseInt(chanceMatch[1], 10) : 100;
-                const roll = Math.random() * 100;
-                if (roll < stunChance) {
-                  battleState.bossBuffs.push({
-                    name: `${npName} (Stun)`,
-                    type: 'stun',
-                    value: 100,
-                    remainingTurns: 1
-                  });
-                  npEffectsLog.push('⚡ [Stun Inflicted (1 Turn)]');
-                  npEffectsHud.push('⚡ Stun Inflicted');
-                } else {
-                  npEffectsLog.push(`💨 [Stun Resisted]`);
-                  npEffectsHud.push('Stun Resisted');
-                }
-              }
-            }
-
-            // 2. DEF Down / Armor Shred (Base effect or Overcharge trigger)
-            const defInBase = /def.*down|lower.*def|reduce.*def|decrease.*def|shred.*armor/i.test(npBaseDesc);
-            const defInOvercharge = /def.*down|lower.*def|reduce.*def|decrease.*def|shred.*armor/i.test(npOverchargeDesc);
-            if (defInBase || (defInOvercharge && isOvercharged)) {
-              const combinedDefDesc = defInBase ? npBaseDesc : npOverchargeDesc;
-              const defMatch = combinedDefDesc.match(/def(?:ense)?\s*(?:by\s*|down\s*)?(\d+)%/i) ||
-                               combinedDefDesc.match(/(\d+)%\s*(?:def|defense\s*down)/i);
-              let defVal = defMatch ? parseInt(defMatch[1], 10) : 30;
-              if (defInOvercharge && isOvercharged && overchargeLevel >= 3) {
-                defVal = Math.round(defVal * 1.33); // Enhanced tier at Lv.3 MAX Overcharge
-              }
-              battleState.bossBuffs.push({
-                name: `${npName} (DEF Down)`,
-                type: 'def_down',
-                value: defVal,
-                remainingTurns: 3
-              });
-              npEffectsLog.push(`🔻 [-${defVal}% DEF Down (3T)]`);
-              npEffectsHud.push(`-${defVal}% DEF`);
-            }
-
-            // 3. Critical Rate Down (Base effect or Overcharge trigger)
-            const critInBase = /crit.*down|reduce.*crit|decrease.*crit/i.test(npBaseDesc);
-            const critInOvercharge = /crit.*down|reduce.*crit|decrease.*crit/i.test(npOverchargeDesc);
-            if (critInBase || (critInOvercharge && isOvercharged)) {
-              const combinedCritDesc = critInBase ? npBaseDesc : npOverchargeDesc;
-              const critMatch = combinedCritDesc.match(/crit(?:ical)?\s*(?:rate\s*)?(?:by\s*)?(\d+)%/i);
-              const critVal = critMatch ? parseInt(critMatch[1], 10) : 20;
-              battleState.bossBuffs.push({
-                name: `${npName} (Crit Down)`,
-                type: 'crit_rate_down',
-                value: critVal,
-                remainingTurns: 3
-              });
-              npEffectsLog.push(`🎯 [-${critVal}% Crit Rate (3T)]`);
-              npEffectsHud.push(`-${critVal}% Boss Crit`);
-            }
-
-            // 4. NP Drain / Charge Reduction (Base effect or Overcharge trigger)
-            const drainInBase = /drain|reduce.*np\s*gauge|np\s*seal/i.test(npBaseDesc);
-            const drainInOvercharge = /drain|reduce.*np\s*gauge|np\s*seal/i.test(npOverchargeDesc);
-            if (drainInBase || (drainInOvercharge && isOvercharged)) {
-              battleState.bossCharge = Math.max(0, battleState.bossCharge - 1);
-              battleState.bossBuffs.push({
-                name: `${npName} (NP Drain)`,
-                type: 'np_seal',
-                value: 1,
-                remainingTurns: 1
-              });
-              npEffectsLog.push('🔒 [-1 Boss NP Charge]');
-              npEffectsHud.push('-1 NP Charge');
-            }
-
-            // 5. Curse / Burn / Poison (Base effect or Overcharge trigger)
-            const dotInBase = /curse|burn|poison/i.test(npBaseDesc);
-            const dotInOvercharge = /curse|burn|poison/i.test(npOverchargeDesc);
-            if (dotInBase || (dotInOvercharge && isOvercharged)) {
-              battleState.bossBuffs.push({
-                name: `${npName} (Affliction)`,
-                type: 'curse',
-                value: 6000,
-                remainingTurns: 3
-              });
-              npEffectsLog.push('🔥 [Curse/Burn (3T)]');
-              npEffectsHud.push('Curse/Burn (3T)');
-            }
-
-            // 6. Buff Block (Base effect or Overcharge trigger)
-            const blockInBase = /buff\s*block/i.test(npBaseDesc);
-            const blockInOvercharge = /buff\s*block/i.test(npOverchargeDesc);
-            if (blockInBase || (blockInOvercharge && isOvercharged)) {
-              battleState.bossBuffs.push({
-                name: `${npName} (Buff Block)`,
-                type: 'buff_block',
-                value: 1,
-                remainingTurns: 3
-              });
-              npEffectsLog.push('🚫 [Buff Block (3T)]');
-              npEffectsHud.push('Buff Block');
-            }
-
-            // 7. Ignore Defense
-            if (/ignore.*def|bypass.*def|defense-ignoring/i.test(npBaseDesc + ' ' + npOverchargeDesc)) {
-              npEffectsLog.push('🛡️ [DEF-Ignoring]');
-            }
-
-            // Typhon Ephemeros: Dragon Grail scaling with self debuffs (+10% per stack, up to +100%)
-            let typhonRaidDebuffScale = 1.0;
-            if (active.servant.templateId === 'typhon_ephemeros' || /dragon grail that reverses/i.test(npName)) {
-              const debuffCount = (active.activeBuffs || []).filter(b => ['curse', 'burn', 'poison', 'atk_down', 'def_down', 'stun', 'np_seal', 'skill_seal'].includes(b.type) || (b.name && (b.name.includes('[Demerit]') || b.type.includes('debuff')))).length;
-              if (debuffCount > 0) {
-                typhonRaidDebuffScale = 1.0 + Math.min(1.0, debuffCount * 0.10);
-                npEffectsLog.push(`🍷 [Dragon Grail Powerup: +${Math.round((typhonRaidDebuffScale - 1) * 100)}% DMG from ${debuffCount} Demerit/Debuff Stacks!]`);
-                npEffectsHud.push(`+${Math.round((typhonRaidDebuffScale - 1) * 100)}% Debuff DMG`);
-              }
-              battleState.bossBuffs.push({
-                name: 'Dragon Grail (Burn)',
-                type: 'burn',
-                value: 1000,
-                remainingTurns: 5
-              });
-              battleState.bossBuffs.push({
-                name: 'Dragon Grail (Spread of Fire)',
-                type: 'spread_of_fire',
-                value: 100,
-                remainingTurns: 5
-              });
-              npEffectsLog.push('🔥 [Burn (1,000/5T) + Spread of Fire (+100%/5T) Inflicted!]');
-              npEffectsHud.push('Burn + Spread of Fire');
-            }
-
-            totalTurnDmg += Math.round(baseAtk * npMultiplier * overchargeScale * typhonRaidDebuffScale * atkBuffMult * specialAtkMult * bossDefFactor * npSpecialMult * (0.95 + Math.random() * 0.1));
-            starsGenerated += 10;
-            npGained += 15;
-          }
-        }
-      });
-
-      // Chaos Spores Phase 2 Passive
-      if (boss.id === 'tiamat' && battleState.currentPhase === 2 && (battleState.round % 2 === 1)) {
-        if ((battleState.turnDamageTaken || 0) < 300_000) {
-          totalTurnDmg = Math.round(totalTurnDmg * 0.80);
-          battleState.chaosSporesActive = true;
-          npEffectsLog.push('🛡️ [Chaos Spores: -20% Shield Active]');
-        }
-      }
-
-      // Boss Barrier Absorption (e.g. from Chaos Deluge)
-      if (battleState.bossShield && battleState.bossShield > 0) {
-        if (totalTurnDmg <= battleState.bossShield) {
-          battleState.bossShield -= totalTurnDmg;
-          npEffectsLog.push(`🛡️ [Barrier Absorbed ${totalTurnDmg.toLocaleString()} DMG (${battleState.bossShield.toLocaleString()} HP Left)]`);
-          totalTurnDmg = 0;
-        } else {
-          const absorbed = battleState.bossShield;
-          totalTurnDmg -= absorbed;
-          battleState.bossShield = 0;
-          npEffectsLog.push(`💥 [Barrier Shattered (${absorbed.toLocaleString()} DMG Absorbed)]`);
-        }
-      }
-
-      battleState.bossCurrentHp = Math.max(0, battleState.bossCurrentHp - totalTurnDmg);
-      battleState.turnDamageTaken = (battleState.turnDamageTaken || 0) + totalTurnDmg;
-      active.npGauge = Math.min(300, (active.npGauge || 0) + npGained);
-      // Consumes existing stars used during the attack; new star pool is based on stars generated this turn!
-      active.critStars = Math.min(50, Math.round(starsGenerated));
-
-      const servName = active.servant.nickname || active.servant.template?.name || 'Servant';
-      let traitLog = '';
-      if (totalCritsLanded > 0) {
-        traitLog += ` 💥 **[${totalCritsLanded} CRIT${totalCritsLanded > 1 ? 'S' : ''} (2.0x DMG)!]**`;
-      }
-      if (npTriggeredAntiThreat) {
-        traitLog += ' 👑 **[Anti-Calamity Protocol: +50% Special DMG vs Threat to Humanity!]**';
-      } else if (antiThreatBuff > 0) {
-        traitLog += ' ⚡ **[Calamity-Breaker: +30% Special ATK vs Threat to Humanity!]**';
-      }
-      if (boss.id === 'tiamat' && battleState.currentPhase === 3 && pendingCards.some(c => c !== 'NP')) {
-        traitLog += ' 🌑 **[Nega-Genesis: -50% Normal Card DMG]**';
-      }
-      if (bossDefDown > 0) {
-        traitLog += ` 🔻 **[DEF Down: +${Math.round(bossDefDown * 100)}% DMG]**`;
-      }
-
-      const npEffectsStr = npEffectsLog.length > 0 ? ` ${npEffectsLog.join(' ')}` : '';
-      const actionVerb = usedNp ? `unleashed **[${npNameUsed}]** dealing` : 'dealt';
-      const playerAttackLog = `⚔️ **${servName}** ${actionVerb} **${totalTurnDmg.toLocaleString()} DMG** to ${boss.name}! (+${npGained}% NP, +${starsGenerated} Stars)${traitLog}${npEffectsStr}`;
-      battleState.lastPlayerAttackLog = playerAttackLog;
-      battleState.recentLogs.push(playerAttackLog);
-      while (battleState.recentLogs.length > 8) battleState.recentLogs.shift();
-
-      // Update single-focus Tactical Action HUD with THIS turn's strike damage & full NP details!
-      let subDetailStr = '';
-      if (usedNp) {
-        const shortNpName = npNameUsed.split(':')[0].trim();
-        if (npEffectsHud.length > 0) {
-          subDetailStr = `${shortNpName} • ${npEffectsHud.join(' • ')} • +${starsGenerated} Stars`;
-        } else {
-          subDetailStr = `${shortNpName} Unleashed • +${starsGenerated} Stars`;
-        }
-      } else if (totalCritsLanded > 0) {
-        subDetailStr = `CRITICAL HIT (${totalCritsLanded}x) • +${npGained}% NP • +${starsGenerated} Stars`;
-      } else {
-        subDetailStr = `+${npGained}% NP • +${starsGenerated} Stars Generated`;
-      }
-
-      battleState.lastHudAction = {
-        category: usedNp ? 'NOBLE PHANTASM' : 'MASTER STRIKE',
-        categoryColor: usedNp ? '#a855f7' : '#38bdf8',
-        headline: servName,
-        bigStat: `${totalTurnDmg.toLocaleString()} DMG`,
-        bigStatColor: usedNp ? '#facc15' : '#fde047',
-        subDetail: subDetailStr,
-        subDetailColor: usedNp ? '#c084fc' : (totalCritsLanded > 0 ? '#f43f5e' : '#67e8f9')
-      };
-
-      active.totalDamageDealt = (active.totalDamageDealt || 0) + totalTurnDmg;
-      battleState.fullCombatLog = battleState.fullCombatLog || [];
-      const chainDesc = `[${pendingCards.join(' ➔ ')}]`;
-      const fullNpDetail = usedNp ? `unleashed **[${npNameUsed}]** with \`${chainDesc}\`` : `struck with \`${chainDesc}\``;
-      battleState.fullCombatLog.push(
-        `⚔️ **[Round ${battleState.round}]** **${servName}** (<@${active.userId}>) ${fullNpDetail} dealing **${totalTurnDmg.toLocaleString()} DMG**! *(${boss.name} HP: ${battleState.bossCurrentHp.toLocaleString()} / ${battleState.bossMaxHp.toLocaleString()})*${npEffectsStr}${traitLog}`
-      );
-
-      if (battleState.bossCurrentHp <= 0) {
-        if (battleState.breakGaugesRemaining && battleState.breakGaugesRemaining > 0) {
-          // Break gauge transition!
-          battleState.breakGaugesRemaining--;
-          battleState.currentPhase = (battleState.currentPhase || 1) + 1;
-          const phaseIdx = battleState.currentPhase - 1;
-          const nextPhase = boss.phases?.[phaseIdx];
-          const newBase = nextPhase?.baseHp || (battleState.currentPhase === 2 ? 5_500_000 : 8_000_000);
-          const scaledNewHp = Math.round(newBase * hpMultiplier);
-
-          battleState.bossCurrentHp = scaledNewHp;
-          battleState.bossMaxHp = scaledNewHp;
-          battleState.bossCharge = 0;
-          battleState.bossBuffs = []; // Cleanse debuffs upon break
-          battleState.phaseTurn = 1;
-          battleState.phaseUltsUsed = 0;
-          battleState.turnDamageTaken = 0;
-          battleState.bossShield = 0;
-
-          const breakMsg = `💥 **[BREAK GAUGE SHATTERED!]** ${nextPhase?.breakAnnouncement || 'The boss changes form and unleashes new power!'}`;
-          battleState.recentLogs.push(breakMsg);
-          battleState.fullCombatLog.push(breakMsg);
-          while (battleState.recentLogs.length > 8) battleState.recentLogs.shift();
-
-          battleState.lastHudAction = {
-            category: 'BREAK GAUGE',
-            categoryColor: '#ec4899',
-            headline: boss.name,
-            bigStat: 'GAUGE SHATTERED!',
-            bigStatColor: '#f43f5e',
-            subDetail: `Phase ${battleState.currentPhase}/3 Engaged • Boss Transformed`,
-            subDetailColor: '#fbcfe8'
-          };
-        } else {
-          battleState.bossCurrentHp = 0;
-          await cleanupNpGif();
-          collector.stop('victory');
-          battleState.finishingBlow = {
-            userId: active.userId,
-            servantName: servName,
-            damage: totalTurnDmg,
-            cardChain: pendingCards.join(' ➔ '),
-            round: battleState.round
-          };
-          await concludeRaidVictory(battleMsg, boss, battleState);
-          return;
-        }
-      }
-
-      // Refresh hand for this participant and clear selections
-      refreshParticipantHand(active);
-      pendingCards = [];
-      pendingIndices = [];
-
-      const hasMorePlayersInRound = advanceToNextPlayer();
-
-      let bossUsedNp = false;
-      if (!hasMorePlayersInRound) {
-        // Save player strike HUD action before boss turn execution
-        const playerStrikeHud = battleState.lastHudAction;
-
-        // 1. Render and post the Player Strike Canvas so players see their strike damage & updated boss HP!
-        await renderAndPostTurn();
-
-        // 2. Dispatch player Noble Phantasm Visuals if unleashed
-        if (pendingNpToDispatch) {
-          await dispatchRaidNpGif(pendingNpToDispatch.servant, pendingNpToDispatch.userId);
-          pendingNpToDispatch = null;
-        }
-
-        // 3. Brief dramatic pause (2.5s) to witness the strike impact before the enemy counter-attacks
-        await new Promise(resolve => setTimeout(resolve, 2500));
-
-        // 4. Execute Boss Turn
-        const bossTurnResult = await executeBossTurn(battleState);
-        bossUsedNp = bossTurnResult?.bossUsedNp || false;
-
-        const anyAlive = battleState.participants.some(p => !p.isDead);
-        if (!anyAlive) {
-          await cleanupNpGif();
-          collector.stop('defeated');
-          await concludeRaidDefeat(battleMsg, boss, battleState);
-          return;
-        }
-
-        battleState.round++;
-        ensureActiveParticipantIsAlive();
-        battleState.participants.forEach(p => {
-          p.skillCooldowns = p.skillCooldowns.map(cd => Math.max(0, cd - 1));
-          if (p.activeBuffs) {
-            p.activeBuffs.forEach(b => {
-              if (b.remainingTurns < 90) b.remainingTurns--;
-            });
-            p.activeBuffs = p.activeBuffs.filter(b => b.remainingTurns > 0);
-          }
-          if (!p.isDead) {
-            processCeTurnStartEffects(p);
-          }
-        });
-
-        // Keep Boss turn HUD action active so players see the Boss's damage & action on the new turn
-        // 5. Render and post the new round turn canvas (with active buttons & boss damage HUD)
-        await renderAndPostTurn();
-
-        // 6. Dispatch Boss NP GIF if used
-        if (bossUsedNp) {
-          await dispatchBossNpGif();
-        }
-      } else {
-        // Multi-player: Advance to next player in the current round
-        ensureActiveParticipantIsAlive();
-        await renderAndPostTurn();
-
-        if (pendingNpToDispatch) {
-          await dispatchRaidNpGif(pendingNpToDispatch.servant, pendingNpToDispatch.userId);
-        }
-      }
-    } finally {
-      isProcessingTurn = false;
-    }
+    // 3 Cards selected -> Immediately execute attack sequence!
+    await executeAttackSequence(i);
     } catch (err: any) {
       if (
         err?.code === 10062 ||
@@ -2333,30 +2470,25 @@ async function runRaidBattle(
   });
 
   collector.on('end', async () => {
+    clearTurnTimer();
     await cleanupNpGif();
   });
 
   function advanceToNextPlayer(): boolean {
-    const participants = battleState.participants;
-    const livingIndices = participants.map((p, idx) => (!p.isDead ? idx : -1)).filter(idx => idx !== -1);
+    const living = battleState.participants;
+    let nextIdx = (battleState.activeMasterIndex + 1) % living.length;
+    let loops = 0;
 
-    if (livingIndices.length === 0) return false;
-
-    // Find current position among living participants
-    const currentPos = livingIndices.indexOf(battleState.activeMasterIndex);
-
-    if (currentPos !== -1 && currentPos < livingIndices.length - 1) {
-      // There are more living players in this round
-      battleState.activeMasterIndex = livingIndices[currentPos + 1];
-      currentActiveParticipant = battleState.participants[battleState.activeMasterIndex];
-      return true;
-    } else {
-      // All living players have acted in this round -> round completes, boss turn begins!
-      // Next round will start with the first living participant
-      battleState.activeMasterIndex = livingIndices[0];
-      currentActiveParticipant = battleState.participants[battleState.activeMasterIndex];
-      return false;
+    while (living[nextIdx].isDead && loops < living.length) {
+      nextIdx = (nextIdx + 1) % living.length;
+      loops++;
     }
+
+    const completedRound = nextIdx <= battleState.activeMasterIndex;
+    battleState.activeMasterIndex = nextIdx;
+    currentActiveParticipant = battleState.participants[battleState.activeMasterIndex];
+
+    return !completedRound;
   }
 }
 
