@@ -4650,6 +4650,50 @@ async function startInteractiveDuel(
     battleMsg = res?.resource?.message || await contextInteraction.fetchReply();
   }
 
+  // Active dialogue cut-in auto-disappear timer
+  let activeCutInTimer: any = null;
+
+  const clearCutInTimer = () => {
+    if (activeCutInTimer) {
+      clearTimeout(activeCutInTimer);
+      activeCutInTimer = null;
+    }
+  };
+
+  const scheduleCutInAutoClear = (delayMs = 2500) => {
+    clearCutInTimer();
+    activeCutInTimer = setTimeout(async () => {
+      activeCutInTimer = null;
+      try {
+        const freshAttachment = await buildCurrentAttachment();
+        const currentTurnContent = buildDuelTurnContent(activeCombatant, activePendingCards);
+        const updatedButtons = buildCurrentButtons();
+
+        if (battleMsg && typeof battleMsg.edit === 'function') {
+          await battleMsg.edit({
+            content: currentTurnContent,
+            embeds: [],
+            files: [freshAttachment],
+            components: updatedButtons
+          }).catch(() => {});
+        } else if (contextInteraction && (contextInteraction.deferred || contextInteraction.replied)) {
+          await contextInteraction.editReply({
+            content: currentTurnContent,
+            embeds: [],
+            files: [freshAttachment],
+            components: updatedButtons
+          }).catch(() => {});
+        }
+      } catch (err) {
+        // Ignored
+      }
+    }, delayMs);
+  };
+
+  if (startEmbeds.length > 0) {
+    scheduleCutInAutoClear(2500);
+  }
+
   // Active Noble Phantasm GIF message reference & auto-delete timer
   let activeNpGifMessage: any = null;
   let activeNpGifTimeout: any = null;
@@ -5002,6 +5046,10 @@ async function startInteractiveDuel(
             components: updatedButtons
           }).catch(() => {});
         }
+      }
+
+      if (combatCutInEmbed) {
+        scheduleCutInAutoClear(2500);
       }
 
       // Dispatch any pending Noble Phantasm GIFs asynchronously BELOW the newly relayed Battle Canvas!
@@ -5667,6 +5715,9 @@ async function startInteractiveDuel(
       // Acknowledge Discord immediately so the 3s timeout never triggers during canvas rendering or async cleanup
       await i.deferUpdate();
 
+      // Clear any active dialogue cut-in auto-disappear timer
+      clearCutInTimer();
+
       // Reset inactivity idle timer on active player action
       collector.resetTimer();
 
@@ -5779,6 +5830,9 @@ async function startInteractiveDuel(
           files: skillFiles,
           components: updatedButtons
         });
+        if (skillGifBuffer) {
+          scheduleCutInAutoClear(2500);
+        }
         return;
       }
 
@@ -5859,6 +5913,9 @@ async function startInteractiveDuel(
           files: sealFiles,
           components: updatedButtons
         });
+        if (sealGifBuffer) {
+          scheduleCutInAutoClear(2500);
+        }
         return;
       }
 
