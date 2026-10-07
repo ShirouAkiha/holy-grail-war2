@@ -34,6 +34,41 @@ import {
 } from '../engine/customization';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 
+export function findServantInRoster(servants: any[], query?: string): any {
+  if (!servants || servants.length === 0 || !query) return undefined;
+  const clean = query.trim().toLowerCase();
+
+  // 1. Direct ID match
+  let found = servants.find((s: any) => s.id && s.id.toLowerCase() === clean);
+  if (found) return found;
+
+  // 2. Template ID match
+  found = servants.find((s: any) => 
+    (s.templateId && s.templateId.toLowerCase() === clean) ||
+    (s.template?.id && s.template.id.toLowerCase() === clean)
+  );
+  if (found) return found;
+
+  // 3. Exact nickname / name match
+  found = servants.find((s: any) => 
+    (s.nickname && s.nickname.toLowerCase() === clean) ||
+    (s.template?.name && s.template.name.toLowerCase() === clean) ||
+    (s.name && s.name.toLowerCase() === clean)
+  );
+  if (found) return found;
+
+  // 4. Substring nickname / name match
+  found = servants.find((s: any) => 
+    (s.nickname && s.nickname.toLowerCase().includes(clean)) ||
+    (s.template?.name && s.template.name.toLowerCase().includes(clean)) ||
+    (s.templateId && s.templateId.toLowerCase().includes(clean)) ||
+    (s.template?.servantClass && s.template.servantClass.toLowerCase() === clean)
+  );
+  if (found) return found;
+
+  return undefined;
+}
+
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
 // ==========================================
@@ -158,19 +193,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     const activeServant =
-      master.servants.find((s: any) => s.id === master.activeServantId) || master.servants[0];
+      findServantInRoster(master.servants, master.activeServantId) || master.servants[0];
 
     let targetServant = activeServant;
     if (servantOption) {
-      const found = master.servants.find((s: any) => 
-        s.id === servantOption ||
-        (s.nickname && s.nickname.toLowerCase() === servantOption.toLowerCase()) ||
-        (s.template?.name && s.template.name.toLowerCase() === servantOption.toLowerCase()) ||
-        (s.templateId && s.templateId.toLowerCase() === servantOption.toLowerCase()) ||
-        (s.nickname && s.nickname.toLowerCase().includes(servantOption.toLowerCase())) ||
-        (s.template?.name && s.template.name.toLowerCase().includes(servantOption.toLowerCase())) ||
-        (s.template?.servantClass && s.template.servantClass.toLowerCase() === servantOption.toLowerCase())
-      );
+      const found = findServantInRoster(master.servants, servantOption);
       if (found) {
         targetServant = found;
       }
@@ -219,7 +246,7 @@ export async function buildServantHub(
   currentStep: number = 1,
   isUpdate: boolean = false
 ) {
-  const targetServant = (selectedServantId ? master.servants.find((s: any) => s.id === selectedServantId) : null) || activeServant;
+  const targetServant = (selectedServantId ? findServantInRoster(master.servants, selectedServantId) : null) || activeServant || master.servants[0];
   const templateId = targetServant.templateId || targetServant.template?.id || targetServant.id;
   const canonical = SERVANT_DATABASE.find(
     s => s.id === templateId || 
@@ -914,7 +941,7 @@ export function attachServantCollector(
 
     try {
       const master = await getOrCreateMaster(i.user.id, i.user.username);
-      let targetServant = master.servants.find((s: any) => s.id === currentServantId) || master.servants[0];
+      let targetServant = findServantInRoster(master.servants, currentServantId) || master.servants[0];
       const sName = targetServant?.nickname || targetServant?.template?.name || 'Servant';
       let actionOutcomeMsg = '';
 
@@ -957,7 +984,7 @@ export function attachServantCollector(
       // ROSTER DROPDOWN
       else if (i.customId === 'servant_sel_switch') {
         currentServantId = i.values[0];
-        const found = master.servants.find((s: any) => s.id === currentServantId) 
+        const found = findServantInRoster(master.servants, currentServantId) 
           || master.servants.find((s: any, idx: number) => `servant_${idx}` === currentServantId || `s_${idx}` === currentServantId);
         if (found) {
           targetServant = found;

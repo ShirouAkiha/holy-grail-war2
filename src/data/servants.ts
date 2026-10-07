@@ -2110,7 +2110,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     defeatQuote: '"I\'ll go ahead... to the land without shadows... I\'m sorry... I\'m sorry...!"',
     avatarUrl: 'https://static.atlasacademy.io/NA/CharaGraph/2500600/2500600a@1.png',
     cardArtUrl: 'https://static.atlasacademy.io/NA/CharaGraph/2500600/2500600a@1.png',
-    spriteUrl: 'https://static.atlasacademy.io/NA/CharaGraph/2500600/2500600a@1.png',
+    spriteUrl: 'https://ella.janitorai.com/media-approved/M0eT6zv6yAIftUXUkrQ2a.webp',
     isCustomOrMeme: false
   }
 ];
