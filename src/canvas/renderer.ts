@@ -4208,7 +4208,48 @@ export async function renderDialogueCard(
     return MINIMAL_VALID_PNG;
   }
 
-  // Fast high-fidelity PNG render of climax frame (Frame 2 - Climax Impact)
+  // Fast animated GIF encoding (4 frames, 128 colors) if gifenc module is present
+  if (getGifencModule() && typeof getGifencModule().GIFEncoder === 'function') {
+    try {
+      const { GIFEncoder, quantize, applyPalette } = getGifencModule();
+      const gif = GIFEncoder();
+
+      for (let frameIdx = 0; frameIdx < 4; frameIdx++) {
+        ctx.clearRect(0, 0, 800, 420);
+        renderDialogueSingleFrame(
+          ctx,
+          800,
+          420,
+          frameIdx,
+          speakerName,
+          quoteText,
+          chainTagOrTitle,
+          servantClass,
+          portraitImg,
+          bondOrLevel,
+          defenderName,
+          defenderImg,
+          defenderClass,
+          sequence,
+          bgImg,
+          stagePreset
+        );
+        const data = ctx.getImageData(0, 0, 800, 420).data;
+        const palette = quantize(data, 128);
+        const index = applyPalette(data, palette);
+        gif.writeFrame(index, 800, 420, { palette, delay: 200 });
+      }
+
+      gif.finish();
+      const buffer = Buffer.from(gif.bytes());
+      if (buffer && buffer.length > 0) {
+        return buffer;
+      }
+    } catch {}
+  }
+
+  // Fallback high-fidelity PNG render of climax frame (Frame 2)
+  ctx.clearRect(0, 0, 800, 420);
   renderDialogueSingleFrame(
     ctx,
     800,
@@ -4926,7 +4967,45 @@ export async function renderMasterCommandSealDialogueCard(
     return MINIMAL_VALID_PNG;
   }
 
-  // Fast high-fidelity PNG of climax frame (Frame 2)
+  // Fast animated GIF encoding (4 frames, 128 colors) if gifenc module is present
+  if (getGifencModule() && typeof getGifencModule().GIFEncoder === 'function') {
+    try {
+      const { GIFEncoder, quantize, applyPalette } = getGifencModule();
+      const gif = GIFEncoder();
+
+      for (let frameIdx = 0; frameIdx < 4; frameIdx++) {
+        ctx.clearRect(0, 0, 800, 420);
+        renderMasterCommandSealSingleFrame(
+          ctx,
+          800,
+          420,
+          frameIdx,
+          masterName,
+          quoteText,
+          masterImg,
+          commandSealsCount,
+          servantName,
+          servantClass,
+          servantImg,
+          bgImg,
+          stagePreset
+        );
+        const data = ctx.getImageData(0, 0, 800, 420).data;
+        const palette = quantize(data, 128);
+        const index = applyPalette(data, palette);
+        gif.writeFrame(index, 800, 420, { palette, delay: 200 });
+      }
+
+      gif.finish();
+      const buffer = Buffer.from(gif.bytes());
+      if (buffer && buffer.length > 0) {
+        return buffer;
+      }
+    } catch {}
+  }
+
+  // Fallback high-fidelity PNG of climax frame (Frame 2)
+  ctx.clearRect(0, 0, 800, 420);
   renderMasterCommandSealSingleFrame(
     ctx,
     800,
@@ -5149,6 +5228,46 @@ export async function renderSkillDialogueCard(
     return MINIMAL_VALID_PNG;
   }
 
+  // Fast animated GIF encoding (4 frames, 128 colors) if gifenc module is present
+  if (getGifencModule() && typeof getGifencModule().GIFEncoder === 'function') {
+    try {
+      const { GIFEncoder, quantize, applyPalette } = getGifencModule();
+      const gif = GIFEncoder();
+
+      for (let frameIdx = 0; frameIdx < 4; frameIdx++) {
+        ctx.clearRect(0, 0, 800, 420);
+        renderSkillSingleFrame(
+          ctx,
+          800,
+          420,
+          frameIdx,
+          speakerName,
+          skillName,
+          skillQuote,
+          servantClass,
+          portraitImg,
+          bondOrLevel,
+          skillType,
+          effects,
+          bgImg,
+          stagePreset
+        );
+        const data = ctx.getImageData(0, 0, 800, 420).data;
+        const palette = quantize(data, 128);
+        const index = applyPalette(data, palette);
+        gif.writeFrame(index, 800, 420, { palette, delay: 200 });
+      }
+
+      gif.finish();
+      const buffer = Buffer.from(gif.bytes());
+      if (buffer && buffer.length > 0) {
+        return buffer;
+      }
+    } catch {}
+  }
+
+  // Fallback high-fidelity PNG
+  ctx.clearRect(0, 0, 800, 420);
   renderSkillSingleFrame(
     ctx,
     800,
