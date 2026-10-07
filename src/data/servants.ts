@@ -1,5 +1,6 @@
 import { ServantTemplate, ServantClass, PassiveSkill } from '../types';
 import { resolveAscensionArtwork, resolveAscensionSprite } from './servantAscensions';
+export { resolveAscensionArtwork, resolveAscensionSprite };
 
 export function getDefaultClassPassives(servantClass: ServantClass): PassiveSkill[] {
   switch (servantClass) {
