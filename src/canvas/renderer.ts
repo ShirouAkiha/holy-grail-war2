@@ -744,9 +744,9 @@ export function isAtlasMergedSprite(imgOrUrl?: any): boolean {
 /**
  * Helper to draw Servant battle sprites & character figures onto Canvas.
  * For Atlas Academy composite figures (where reaction faces start at Y >= 760px),
- * it samples strictly the upper figure (Y = 0 to ~740px / width * 0.735).
- * This ensures reaction faces stay completely out of frame and are never drawn,
- * while allowing the servant figure to scale up large and heroic.
+ * it samples strictly the upper figure (Y = 0 to ~740px / width * 0.735) and trims side padding.
+ * This ensures reaction faces stay completely out of frame while allowing the servant figure
+ * to scale up large, heroic, and prominent.
  */
 export function drawServantBattleSprite(
   ctx: any,
@@ -756,7 +756,7 @@ export function drawServantBattleSprite(
   dw: number,
   dh: number,
   options?: {
-    fitMode?: 'cover' | 'contain' | 'top_contain' | 'fill';
+    fitMode?: 'cover' | 'contain' | 'top_contain' | 'fill' | 'hero';
     cropRatio?: number;
     isAtlasMerged?: boolean;
   }
@@ -770,58 +770,73 @@ export function drawServantBattleSprite(
     (img.src && String(img.src).includes('CharaFigure'))
   );
 
-  const sourceWidth = img.width;
+  // For Atlas composite sheets, trim side transparent padding (X = ~8% to 92%)
+  // so the character body fills the frame width and scales up significantly larger!
+  const sx = isMerged ? Math.round(img.width * 0.08) : 0;
+  const sw = isMerged ? Math.round(img.width * 0.84) : img.width;
+  const sy = 0;
   const defaultSourceH = isMerged
     ? Math.min(img.height, Math.round(img.width * 0.735))
     : img.height;
 
-  const sourceHeight = options?.cropRatio && options.cropRatio > 0 && options.cropRatio <= 1.0
+  const sh = options?.cropRatio && options.cropRatio > 0 && options.cropRatio <= 1.0
     ? Math.round(defaultSourceH * options.cropRatio)
     : defaultSourceH;
 
   const fitMode = options?.fitMode || 'cover';
 
+  if (fitMode === 'hero') {
+    // Fill full target height dh, anchored to bottom, centered horizontally
+    const scale = dh / sh;
+    const drawW = Math.round(sw * scale);
+    const drawH = dh;
+    const drawX = dx + Math.round((dw - drawW) / 2);
+    const drawY = dy;
+    ctx.drawImage(img, sx, sy, sw, sh, drawX, drawY, drawW, drawH);
+    return;
+  }
+
   if (fitMode === 'top_contain') {
-    const scale = Math.min(dw / sourceWidth, dh / sourceHeight);
-    const drawW = Math.round(sourceWidth * scale);
-    const drawH = Math.round(sourceHeight * scale);
+    const scale = Math.max(dw / sw, dh / sh); // Fill frame prominently instead of shrinking
+    const drawW = Math.round(sw * scale);
+    const drawH = Math.round(sh * scale);
     const drawX = dx + Math.round((dw - drawW) / 2);
     const drawY = dy; // Anchor to top
-    ctx.drawImage(img, 0, 0, sourceWidth, sourceHeight, drawX, drawY, drawW, drawH);
+    ctx.drawImage(img, sx, sy, sw, sh, drawX, drawY, drawW, drawH);
     return;
   }
 
   if (fitMode === 'contain') {
-    const scale = Math.min(dw / sourceWidth, dh / sourceHeight);
-    const drawW = Math.round(sourceWidth * scale);
-    const drawH = Math.round(sourceHeight * scale);
+    const scale = Math.min(dw / sw, dh / sh);
+    const drawW = Math.round(sw * scale);
+    const drawH = Math.round(sh * scale);
     const drawX = dx + Math.round((dw - drawW) / 2);
     const drawY = dy + (dh - drawH); // Anchor to bottom edge
-    ctx.drawImage(img, 0, 0, sourceWidth, sourceHeight, drawX, drawY, drawW, drawH);
+    ctx.drawImage(img, sx, sy, sw, sh, drawX, drawY, drawW, drawH);
     return;
   }
 
   if (fitMode === 'fill') {
-    ctx.drawImage(img, 0, 0, sourceWidth, sourceHeight, dx, dy, dw, dh);
+    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
     return;
   }
 
   // Default: 'cover'
-  const imgRatio = sourceWidth / sourceHeight;
+  const imgRatio = sw / sh;
   const targetRatio = dw / dh;
-  let sx = 0, sy = 0, sw = sourceWidth, sh = sourceHeight;
+  let finalSx = sx, finalSy = sy, finalSw = sw, finalSh = sh;
 
   if (imgRatio > targetRatio) {
     // Source is wider than target frame: crop horizontal overflow centered
-    sw = Math.round(sourceHeight * targetRatio);
-    sx = Math.round((sourceWidth - sw) / 2);
+    finalSw = Math.round(sh * targetRatio);
+    finalSx = sx + Math.round((sw - finalSw) / 2);
   } else {
     // Source is taller than target frame: crop vertical overflow anchored to top
-    sh = Math.round(sourceWidth / targetRatio);
-    sy = 0; // Anchor to top so head/face stays in view
+    finalSh = Math.round(sw / targetRatio);
+    finalSy = sy;
   }
 
-  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+  ctx.drawImage(img, finalSx, finalSy, finalSw, finalSh, dx, dy, dw, dh);
 }
 
 /**
@@ -7234,12 +7249,13 @@ export async function renderVisualNovelCard(
       const spriteImg = await loadImage(spriteUrl);
       if (spriteImg && spriteImg.width && spriteImg.height) {
         const isMerged = isAtlasMergedSprite(spriteImg);
-        const sourceH = isMerged ? Math.round(spriteImg.height * 0.60) : spriteImg.height;
-        const aspect = spriteImg.width / sourceH;
+        const sourceH = isMerged ? Math.min(spriteImg.height, Math.round(spriteImg.width * 0.735)) : spriteImg.height;
+        const sourceW = isMerged ? Math.round(spriteImg.width * 0.84) : spriteImg.width;
+        const aspect = sourceW / sourceH;
 
-        // Target Scale: Prominent half-body / 3/4-body sprite, roughly 86% of total canvas height (~620px)
-        const maxSpriteH = Math.floor(height * 0.86);
-        const maxSpriteW = Math.floor(width * 0.50);
+        // Target Scale: Large heroic half-body sprite, filling up to 96% of total canvas height (~690px)
+        const maxSpriteH = Math.floor(height * 0.96);
+        const maxSpriteW = Math.floor(width * 0.62);
 
         let spriteH = maxSpriteH;
         let spriteW = spriteH * aspect;
@@ -7249,8 +7265,8 @@ export async function renderVisualNovelCard(
           spriteH = spriteW / aspect;
         }
 
-        // Anchor sprite to the bottom right of the canvas (resting at bottom edge y = 720)
-        const spriteX = width * 0.58 + (maxSpriteW - spriteW) / 2;
+        // Anchor sprite to bottom right of canvas (resting at bottom edge y = 720)
+        const spriteX = width * 0.44 + (maxSpriteW - spriteW) / 2;
         const spriteY = height - spriteH;
 
         ctx.save();

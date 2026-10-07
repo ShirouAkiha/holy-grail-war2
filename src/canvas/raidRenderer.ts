@@ -1156,9 +1156,9 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
 
     // Render Servant Sprite / Character Art (Upper body & face 100% ABOVE the skill icons, reaction faces stripped)
     if (avatar) {
-      const spriteAreaH = 280;
-      drawServantBattleSprite(ctx, avatar, slotX, panelTopY + 36, panelW, spriteAreaH, {
-        fitMode: 'top_contain'
+      const spriteAreaH = 340;
+      drawServantBattleSprite(ctx, avatar, slotX, panelTopY + 10, panelW, spriteAreaH, {
+        fitMode: 'hero'
       });
     }
 
