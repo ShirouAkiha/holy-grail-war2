@@ -4740,7 +4740,12 @@ async function startInteractiveDuel(
         time: 3600000 // 1 hour absolute safety ceiling
       });
 
-  const advanceTurn = async (interactionToEdit?: any, pendingNpActors: DuelCombatant[] = []) => {
+  const advanceTurn = async (
+    interactionToEdit?: any,
+    pendingNpActors: DuelCombatant[] = [],
+    combatCutInEmbed?: EmbedBuilder | null,
+    combatCutInFile?: AttachmentBuilder | null
+  ) => {
     const livingT1 = getLivingTeam1();
     const livingT2 = getLivingTeam2();
     const livingTS = getLivingTeamSolo();
@@ -4758,7 +4763,7 @@ async function startInteractiveDuel(
       const finalAttachment = await buildCurrentAttachment();
       if (pendingNpActors.length > 0) {
         for (const npActor of pendingNpActors) {
-          await dispatchNpGif(npActor, interactionToEdit || contextInteraction);
+          dispatchNpGif(npActor, interactionToEdit || contextInteraction).catch(() => {});
         }
       }
       await finishDuel(interactionToEdit || contextInteraction, winningTeam, losingTeam, p1Master, p2Master, finalAttachment, isFreeBattle, battleBgUrl);
@@ -4921,7 +4926,7 @@ async function startInteractiveDuel(
         const finalAttachment = await buildCurrentAttachment();
         if (pendingNpActors.length > 0) {
           for (const npActor of pendingNpActors) {
-            await dispatchNpGif(npActor, interactionToEdit || contextInteraction);
+            dispatchNpGif(npActor, interactionToEdit || contextInteraction).catch(() => {});
           }
         }
         await finishDuel(interactionToEdit || contextInteraction, winningTeam, losingTeam, p1Master, p2Master, finalAttachment, isFreeBattle, battleBgUrl);
@@ -4935,7 +4940,14 @@ async function startInteractiveDuel(
 
     // Human player turn reached: auto-relay fresh battle message to bottom of channel
     const turnAttachment = await buildCurrentAttachment();
-    const updatedEmbeds = buildCurrentEmbeds();
+    const updatedEmbeds: EmbedBuilder[] = buildCurrentEmbeds();
+    if (combatCutInEmbed) {
+      updatedEmbeds.push(combatCutInEmbed);
+    }
+    const updatedFiles: AttachmentBuilder[] = [turnAttachment];
+    if (combatCutInFile) {
+      updatedFiles.push(combatCutInFile);
+    }
     const updatedButtons = buildCurrentButtons();
     const currentTurnContent = buildDuelTurnContent(activeCombatant, activePendingCards);
 
@@ -4947,7 +4959,7 @@ async function startInteractiveDuel(
         newBattleMsg = await channelToSend.send({
           content: currentTurnContent,
           embeds: updatedEmbeds,
-          files: [turnAttachment],
+          files: updatedFiles,
           components: updatedButtons
         }).catch((err: any) => {
           console.warn('[duel] Auto-relay send to channel failed, falling back to in-place edit:', err?.message || err);
@@ -4972,30 +4984,30 @@ async function startInteractiveDuel(
           await battleMsg.edit({
             content: currentTurnContent,
             embeds: updatedEmbeds,
-            files: [turnAttachment],
+            files: updatedFiles,
             components: updatedButtons
           }).catch(() => {});
         } else if (interactionToEdit && (interactionToEdit.deferred || interactionToEdit.replied)) {
           await interactionToEdit.editReply({
             content: currentTurnContent,
             embeds: updatedEmbeds,
-            files: [turnAttachment],
+            files: updatedFiles,
             components: updatedButtons
           }).catch(() => {});
         } else if (contextInteraction && (contextInteraction.deferred || contextInteraction.replied)) {
           await contextInteraction.editReply({
             content: currentTurnContent,
             embeds: updatedEmbeds,
-            files: [turnAttachment],
+            files: updatedFiles,
             components: updatedButtons
           }).catch(() => {});
         }
       }
 
-      // Dispatch any pending Noble Phantasm GIFs BELOW the newly relayed Battle Canvas!
+      // Dispatch any pending Noble Phantasm GIFs asynchronously BELOW the newly relayed Battle Canvas!
       if (pendingNpActors.length > 0) {
         for (const npActor of pendingNpActors) {
-          await dispatchNpGif(npActor, interactionToEdit || contextInteraction);
+          dispatchNpGif(npActor, interactionToEdit || contextInteraction).catch(() => {});
         }
       }
     } catch (relayErr) {
@@ -5717,13 +5729,54 @@ async function startInteractiveDuel(
         }
 
         // Skill executed successfully!
+        const skillName = res.skillName || 'TACTICAL SKILL';
+        const skillQuote = res.quote || getServantSkillQuote(actor.servant, skillIdx);
+        const sClass = actor.servant.template?.servantClass || 'Saber';
+        const avatarUrl = getCombatantSpriteUrl(actor) || actor.avatarUrl;
+        const bondLevel = actor.servant.bondLevel || 5;
+        const skillType = res.skillType || 'Buff';
+        const effectsText = res.effectsText || res.log.replace(/[*_~`]/g, '');
+
+        const skillGifBuffer = await renderSkillDialogueCard(
+          actor.servant.nickname || actor.servant.template?.name || 'Heroic Spirit',
+          skillName,
+          skillQuote,
+          sClass,
+          avatarUrl,
+          bondLevel,
+          skillType,
+          effectsText,
+          battleBgUrl
+        ).catch((err) => {
+          console.error('Error rendering skill dialogue card:', err);
+          return null;
+        });
+
         const turnAttachment = await buildCurrentAttachment(res.log);
-        const updatedEmbeds = buildCurrentEmbeds();
         const updatedButtons = buildCurrentButtons();
+        const skillEmbeds: EmbedBuilder[] = [];
+        const skillFiles: AttachmentBuilder[] = [turnAttachment];
+
+        if (skillGifBuffer) {
+          const skillFile = new AttachmentBuilder(skillGifBuffer, { name: 'skill_dialogue.gif' });
+          skillFiles.push(skillFile);
+          const skillEmbed = new EmbedBuilder()
+            .setTitle(`✨ [SKILL ACTIVATED] — ${skillName.toUpperCase()}`)
+            .setDescription(
+              `### ⚔️ **${actor.servant.nickname || actor.servant.template?.name}** *(${sClass})*\n` +
+              `> ❝ ***“${skillQuote}”*** ❞\n\n` +
+              `✨ **Effect:** ${cleanCanvasText(res.log).replace(/[*_~`]/g, '').trim()}`
+            )
+            .setImage('attachment://skill_dialogue.gif')
+            .setColor(0x3b82f6)
+            .setFooter({ text: 'Holy Grail War • Tactical Skill Activation' });
+          skillEmbeds.push(skillEmbed);
+        }
+
         await i.editReply({
           content: buildDuelTurnContent(activeCombatant, activePendingCards),
-          embeds: updatedEmbeds,
-          files: [turnAttachment],
+          embeds: skillEmbeds,
+          files: skillFiles,
           components: updatedButtons
         });
         return;
@@ -5759,12 +5812,50 @@ async function startInteractiveDuel(
           timestamp: new Date()
         });
 
+        const masterName = actingMaster?.username || actor.username;
+        const masterAvatar = actor.masterAvatarUrl || actingMaster?.avatarUrl;
+        const sName = actor.servant.nickname || actor.servant.template?.name || 'Servant';
+        const sClass = actor.servant.template?.servantClass || 'Saber';
+        const sAvatar = getCombatantSpriteUrl(actor) || actor.avatarUrl;
+        const csQuote = res.quote || 'By my Command Seal... unleash your full power!';
+
+        const sealGifBuffer = await renderMasterCommandSealDialogueCard(
+          masterName,
+          csQuote,
+          masterAvatar,
+          actor.commandSeals,
+          sName,
+          sClass,
+          sAvatar,
+          battleBgUrl
+        ).catch((err) => {
+          console.error('Error rendering command seal card:', err);
+          return null;
+        });
+
         const turnAttachment = await buildCurrentAttachment(res.log);
         const updatedButtons = buildCurrentButtons();
+        const sealEmbeds: EmbedBuilder[] = [];
+        const sealFiles: AttachmentBuilder[] = [turnAttachment];
+
+        if (sealGifBuffer) {
+          const sealFile = new AttachmentBuilder(sealGifBuffer, { name: 'seal_dialogue.gif' });
+          sealFiles.push(sealFile);
+          const sealEmbed = buildMasterCommandSealDialogueCutInEmbed(
+            masterName,
+            masterAvatar,
+            sName,
+            sClass,
+            csQuote,
+            true
+          );
+          sealEmbeds.push(sealEmbed);
+        }
+
         await i.editReply({
           content: buildDuelTurnContent(activeCombatant, activePendingCards),
-          embeds: [],
-          files: [turnAttachment],
+          embeds: sealEmbeds,
+          files: sealFiles,
           components: updatedButtons
         });
         return;
@@ -5961,8 +6052,36 @@ async function startInteractiveDuel(
         if (combatLogs.length > 4) combatLogs.shift();
       }
 
+      // Render combat dialogue cut-in GIF card
+      let combatCutInEmbed: EmbedBuilder | null = null;
+      let combatCutInFile: AttachmentBuilder | null = null;
+
+      if (shouldCutIn || isNoblePhantasm || playerSequence.length >= 3) {
+        const cutInGifBuffer = await renderDialogueCard(
+          attacker.servant.nickname || attacker.servant.template?.name || 'Heroic Spirit',
+          playerDialogue.quote,
+          playerDialogue.tag,
+          attacker.servant.template?.servantClass || 'Saber',
+          getCombatantSpriteUrl(attacker) || attacker.avatarUrl,
+          attacker.servant.bondLevel || 5,
+          defender.servant.nickname || defender.servant.template?.name || 'Opponent',
+          getCombatantSpriteUrl(defender) || defender.avatarUrl,
+          defender.servant.template?.servantClass || 'Saber',
+          playerSequence,
+          battleBgUrl
+        ).catch(err => {
+          console.error('Error rendering combat dialogue card:', err);
+          return null;
+        });
+
+        if (cutInGifBuffer) {
+          combatCutInFile = new AttachmentBuilder(cutInGifBuffer, { name: 'vn_dialogue.gif' });
+          combatCutInEmbed = buildDialogueCutInEmbed(attacker, defender, playerSequence, playerDialogue, true);
+        }
+      }
+
       // Advance to the next player's / servant's turn!
-      await advanceTurn(i, pendingNpList);
+      await advanceTurn(i, pendingNpList, combatCutInEmbed, combatCutInFile);
     } catch (err: any) {
       if (
         err.code === 10062 || 
