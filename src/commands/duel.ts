@@ -5716,47 +5716,16 @@ async function startInteractiveDuel(
           return;
         }
 
-        try {
-          const sName = actor.servant.nickname || actor.servant.template?.name || 'Heroic Spirit';
-          const sClass = actor.servant.template?.servantClass || 'Servant';
-          const avatarUrl = getCombatantSpriteUrl(actor) || actor.servant.template?.avatarUrl;
-          const bondLvl = actor.servant.bondLevel || 8;
-
-          const skillName = res.skillName || 'TACTICAL SKILL';
-          const skillQuote = res.quote || 'My power answers the command!';
-
-          const skillDiaBuffer = await renderSkillDialogueCard(
-            sName,
-            skillName,
-            skillQuote,
-            sClass,
-            avatarUrl,
-            bondLvl,
-            res.skillType || 'buff',
-            res.skillDescription ? [res.skillDescription] : [],
-            battleBgUrl
-          );
-
-          if (skillDiaBuffer && skillDiaBuffer.length > 500) {
-            const attachment = new AttachmentBuilder(skillDiaBuffer, { name: 'vn_dialogue.gif' });
-            const skillDialogueObj = {
-              quote: skillQuote,
-              tag: `SKILL: ${skillName.toUpperCase()}`,
-              color: 0x38bdf8
-            };
-            const cutInEmbed = buildDialogueCutInEmbed(actor, opponent, ['Arts'], skillDialogueObj, true);
-
-            await i.editReply({ embeds: [cutInEmbed], files: [attachment], components: [] });
-            await new Promise(r => setTimeout(r, 2500));
-          }
-        } catch (err) {
-          console.warn('Failed to render Skill visual novel dialogue cut-in:', err);
-        }
-
+        // Skill executed successfully!
         const turnAttachment = await buildCurrentAttachment(res.log);
         const updatedEmbeds = buildCurrentEmbeds();
         const updatedButtons = buildCurrentButtons();
-        await i.editReply({ embeds: updatedEmbeds, files: [turnAttachment], components: updatedButtons });
+        await i.editReply({
+          content: buildDuelTurnContent(activeCombatant, activePendingCards),
+          embeds: updatedEmbeds,
+          files: [turnAttachment],
+          components: updatedButtons
+        });
         return;
       }
 
@@ -5778,71 +5747,7 @@ async function startInteractiveDuel(
           }
         }
 
-        try {
-          const sName = actor.servant.nickname || actor.servant.template?.name || 'Heroic Spirit';
-          const sClass = actor.servant.template?.servantClass || 'Servant';
-          const servantAvatarUrl = actor.servant.template?.avatarUrl;
-
-          const masterName = actingMaster?.username || actor.username;
-
-          let masterAvatarUrl: string | undefined = undefined;
-
-          // 1. Direct active user click avatar
-          if (i.user && (i.user.id === actor.userId || i.user.id === actingMaster?.discordId)) {
-            masterAvatarUrl = i.user.displayAvatarURL({ extension: 'png', size: 512, forceStatic: true });
-          }
-
-          // 2. Client cached user for the combatant's userId
-          if (!masterAvatarUrl && actor.userId && !actor.isAi) {
-            const cachedUser = i.client.users.cache.get(actor.userId);
-            if (cachedUser) {
-              masterAvatarUrl = cachedUser.displayAvatarURL({ extension: 'png', size: 512, forceStatic: true });
-            }
-          }
-
-          // 3. Fallback to profile avatar only if it is a real custom/Discord avatar (never an unsplash NPC stock photo)
-          const candidateAvatar = actingMaster?.avatarUrl || actor.masterAvatarUrl;
-          if (!masterAvatarUrl && candidateAvatar && !candidateAvatar.includes('unsplash.com')) {
-            masterAvatarUrl = candidateAvatar;
-          }
-
-          // Update actingMaster's avatarUrl if we acquired a fresh Discord avatar
-          if (actingMaster && masterAvatarUrl && (!actingMaster.avatarUrl || actingMaster.avatarUrl.includes('unsplash.com') || actingMaster.avatarUrl !== masterAvatarUrl)) {
-            actingMaster.avatarUrl = masterAvatarUrl;
-            saveMaster(actingMaster).catch(() => {});
-          }
-
-          const sealQuote = res.quote || 'By my Command Seal, unleash your Noble Phantasm!';
-
-          const sealDiaBuffer = await renderMasterCommandSealDialogueCard(
-            masterName,
-            sealQuote,
-            masterAvatarUrl,
-            actor.commandSeals,
-            sName,
-            sClass,
-            servantAvatarUrl,
-            battleBgUrl
-          );
-
-          if (sealDiaBuffer && sealDiaBuffer.length > 500) {
-            const attachment = new AttachmentBuilder(sealDiaBuffer, { name: 'vn_dialogue.gif' });
-            const cutInEmbed = buildMasterCommandSealDialogueCutInEmbed(
-              masterName,
-              masterAvatarUrl,
-              sName,
-              sClass,
-              sealQuote,
-              true
-            );
-            await i.editReply({ embeds: [cutInEmbed], files: [attachment], components: [] });
-
-            await new Promise(r => setTimeout(r, 2500));
-          }
-        } catch (err) {
-          console.warn('Failed to render Command Seal visual novel dialogue cut-in:', err);
-        }
-
+        // Command seal invoked successfully
         combatLogs.push(res.log);
         if (combatLogs.length > 4) combatLogs.shift();
         fullCombatHistory.push({
@@ -6023,41 +5928,6 @@ async function startInteractiveDuel(
       const pendingNpList: DuelCombatant[] = [];
       if (isNoblePhantasm) {
         pendingNpList.push(attacker);
-      } else if (shouldCutIn) {
-        try {
-          const sName = attacker.servant.nickname || attacker.servant.template?.name || 'Heroic Spirit';
-          const sClass = attacker.servant.template?.servantClass || 'Servant';
-          const avatarUrl = getCombatantSpriteUrl(attacker) || attacker.servant.template?.avatarUrl;
-          const bondLvl = attacker.servant.bondLevel || 8;
-
-          const dName = defender.servant.nickname || defender.servant.template?.name || 'Opponent Servant';
-          const dClass = defender.servant.template?.servantClass || 'Servant';
-          const dAvatarUrl = getCombatantSpriteUrl(defender) || defender.servant.template?.avatarUrl;
-
-          const diaBuffer = await renderDialogueCard(
-            sName,
-            playerDialogue.quote,
-            playerDialogue.tag,
-            sClass,
-            avatarUrl,
-            bondLvl,
-            dName,
-            dAvatarUrl,
-            dClass,
-            playerSequence,
-            battleBgUrl
-          );
-
-          if (diaBuffer && diaBuffer.length > 500) {
-            const attachment = new AttachmentBuilder(diaBuffer, { name: 'vn_dialogue.gif' });
-            const cutInEmbed = buildDialogueCutInEmbed(attacker, defender, playerSequence, playerDialogue, true);
-            await i.editReply({ embeds: [cutInEmbed], files: [attachment], components: [] });
-
-            await new Promise(r => setTimeout(r, 3000));
-          }
-        } catch (err) {
-          console.warn('Failed to render visual novel dialogue cut-in:', err);
-        }
       }
 
       const opps = getTargetsFor(attacker);

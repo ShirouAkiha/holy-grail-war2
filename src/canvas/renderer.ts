@@ -129,9 +129,11 @@ function createCanvas(width: number, height: number): any {
 }
 
 const imageBufferCache = new Map<string, { buffer: Buffer; timestamp: number }>();
+const failedUrlCache = new Map<string, number>();
 const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour memory cache
+const FAILED_TTL_MS = 1000 * 60 * 5; // 5 minutes negative cache for broken URLs
 
-async function fetchWithHttpsModule(url: string, maxRedirects = 3): Promise<Buffer | null> {
+async function fetchWithHttpsModule(url: string, maxRedirects = 2): Promise<Buffer | null> {
   try {
     const parsedUrl = new URL(url);
     const isHttps = parsedUrl.protocol === 'https:';
@@ -153,7 +155,7 @@ async function fetchWithHttpsModule(url: string, maxRedirects = 3): Promise<Buff
               'Referer': referer,
               'Connection': 'keep-alive',
             },
-            timeout: 10000,
+            timeout: 1500,
           },
           (res: any) => {
             if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && maxRedirects > 0) {
@@ -186,49 +188,48 @@ async function fetchWithHttpsModule(url: string, maxRedirects = 3): Promise<Buff
   }
 }
 
-async function fetchImageBuffer(url: string, retries = 1): Promise<Buffer | null> {
+async function fetchImageBuffer(url: string): Promise<Buffer | null> {
   const cached = imageBufferCache.get(url);
   if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
     return cached.buffer;
   }
 
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const parsedUrl = new URL(url);
-      const referer = parsedUrl.hostname.includes('wikia.nocookie.net')
-        ? 'https://fategrandorder.fandom.com/'
-        : parsedUrl.origin + '/';
+  const failedTimestamp = failedUrlCache.get(url);
+  if (failedTimestamp && (Date.now() - failedTimestamp < FAILED_TTL_MS)) {
+    return null; // Fast fail without network stall
+  }
 
-      const res = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-          'Referer': referer,
-          'Connection': 'keep-alive',
-        },
-        signal: AbortSignal.timeout(1200)
-      });
+  try {
+    const parsedUrl = new URL(url);
+    const referer = parsedUrl.hostname.includes('wikia.nocookie.net')
+      ? 'https://fategrandorder.fandom.com/'
+      : parsedUrl.origin + '/';
 
-      if (res.ok) {
-        const arrayBuffer = await res.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        if (buffer && buffer.length > 0) {
-          imageBufferCache.set(url, { buffer, timestamp: Date.now() });
-          return buffer;
-        }
-      }
-    } catch {
-      if (attempt < retries) {
-        await new Promise((r) => setTimeout(r, 100));
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        'Referer': referer,
+        'Connection': 'keep-alive',
+      },
+      signal: AbortSignal.timeout(900)
+    });
+
+    if (res.ok) {
+      const arrayBuffer = await res.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      if (buffer && buffer.length > 0) {
+        imageBufferCache.set(url, { buffer, timestamp: Date.now() });
+        return buffer;
       }
     }
-  }
+  } catch {}
 
   // Fast fallback attempt
   try {
     const httpsBuffer = await Promise.race([
       fetchWithHttpsModule(url),
-      new Promise<null>((r) => setTimeout(() => r(null), 1200))
+      new Promise<null>((r) => setTimeout(() => r(null), 800))
     ]);
     if (httpsBuffer && httpsBuffer.length > 0) {
       imageBufferCache.set(url, { buffer: httpsBuffer, timestamp: Date.now() });
@@ -236,6 +237,7 @@ async function fetchImageBuffer(url: string, retries = 1): Promise<Buffer | null
     }
   } catch {}
 
+  failedUrlCache.set(url, Date.now());
   return null;
 }
 
@@ -4206,56 +4208,7 @@ export async function renderDialogueCard(
     return MINIMAL_VALID_PNG;
   }
 
-  // Server execution: Build animated GIF with 8 action frames if gifenc is available
-  if (getGifencModule() && typeof getGifencModule().GIFEncoder === 'function') {
-    try {
-      const { GIFEncoder, quantize, applyPalette } = getGifencModule();
-      const gif = GIFEncoder();
-      const totalFrames = 8;
-      const frameDelay = 120; // 120ms per frame = ~960ms loop cycle
-
-      for (let f = 0; f < totalFrames; f++) {
-        // Clear canvas
-        ctx.clearRect(0, 0, 800, 420);
-
-        // Render frame f
-        renderDialogueSingleFrame(
-          ctx,
-          800,
-          420,
-          f,
-          speakerName,
-          quoteText,
-          chainTagOrTitle,
-          servantClass,
-          portraitImg,
-          bondOrLevel,
-          defenderName,
-          defenderImg,
-          defenderClass,
-          sequence,
-          bgImg,
-          stagePreset
-        );
-
-        // Quantize and write GIF frame with Netscape 2.0 loop extension on frame 0
-        const imgData = ctx.getImageData(0, 0, 800, 420);
-        const palette = quantize(imgData.data, 256);
-        const index = applyPalette(imgData.data, palette);
-        gif.writeFrame(index, 800, 420, { palette, delay: frameDelay, repeat: f === 0 ? 0 : undefined });
-      }
-
-      gif.finish();
-      const gifBuffer = Buffer.from(gif.bytes());
-      if (gifBuffer && gifBuffer.length > 500) {
-        return gifBuffer;
-      }
-    } catch (animErr) {
-      console.warn('Animated GIF generation failed, falling back to static PNG:', animErr);
-    }
-  }
-
-  // Fallback: Static PNG render (Frame 2 - Climax Impact)
+  // Fast high-fidelity PNG render of climax frame (Frame 2 - Climax Impact)
   renderDialogueSingleFrame(
     ctx,
     800,
@@ -4973,47 +4926,7 @@ export async function renderMasterCommandSealDialogueCard(
     return MINIMAL_VALID_PNG;
   }
 
-  // Server execution: Build animated GIF with 8 action frames if gifenc is available
-  if (getGifencModule() && typeof getGifencModule().GIFEncoder === 'function') {
-    try {
-      const { GIFEncoder, quantize, applyPalette } = getGifencModule();
-      const gif = GIFEncoder();
-      const totalFrames = 8;
-      const frameDelay = 120; // 120ms per frame
-
-      for (let f = 0; f < totalFrames; f++) {
-        ctx.clearRect(0, 0, 800, 420);
-        renderMasterCommandSealSingleFrame(
-          ctx,
-          800,
-          420,
-          f,
-          masterName,
-          quoteText,
-          masterImg,
-          commandSealsCount,
-          servantName,
-          servantClass,
-          servantImg,
-          bgImg,
-          stagePreset
-        );
-
-        const imgData = ctx.getImageData(0, 0, 800, 420);
-        const palette = quantize(imgData.data, 256);
-        const index = applyPalette(imgData.data, palette);
-        gif.writeFrame(index, 800, 420, { palette, delay: frameDelay });
-      }
-
-      gif.finish();
-      const gifBytes = gif.bytes();
-      return Buffer.from(gifBytes);
-    } catch (gifErr) {
-      console.warn('GIF encoding failed for Master Command Seal dialogue, falling back to static PNG:', gifErr);
-    }
-  }
-
-  // Fallback: Static PNG of climax frame (Frame 2)
+  // Fast high-fidelity PNG of climax frame (Frame 2)
   renderMasterCommandSealSingleFrame(
     ctx,
     800,
@@ -5234,44 +5147,6 @@ export async function renderSkillDialogueCard(
       stagePreset
     );
     return MINIMAL_VALID_PNG;
-  }
-
-  if (getGifencModule() && typeof getGifencModule().GIFEncoder === 'function') {
-    try {
-      const { GIFEncoder, quantize, applyPalette } = getGifencModule();
-      const gif = GIFEncoder();
-      const totalFrames = 8;
-      const frameDelay = 120;
-
-      for (let f = 0; f < totalFrames; f++) {
-        ctx.clearRect(0, 0, 800, 420);
-        renderSkillSingleFrame(
-          ctx,
-          800,
-          420,
-          f,
-          speakerName,
-          skillName,
-          skillQuote,
-          servantClass,
-          portraitImg,
-          bondOrLevel,
-          skillType,
-          effects,
-          bgImg,
-          stagePreset
-        );
-        const imgData = ctx.getImageData(0, 0, 800, 420);
-        const palette = quantize(imgData.data, 256);
-        const index = applyPalette(imgData.data, palette);
-        gif.writeFrame(index, 800, 420, { palette, delay: frameDelay });
-      }
-      gif.finish();
-      const gifBytes = gif.bytes();
-      return Buffer.from(gifBytes);
-    } catch (gifErr) {
-      console.warn('GIF encoding failed for skill dialogue, falling back to static PNG:', gifErr);
-    }
   }
 
   renderSkillSingleFrame(
