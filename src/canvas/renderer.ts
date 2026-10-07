@@ -7246,9 +7246,39 @@ export async function renderVisualNovelCard(
         const sourceW = isMerged ? Math.round(spriteImg.width * 0.84) : spriteImg.width;
         const aspect = sourceW / sourceH;
 
-        // Target Scale: Well-proportioned visual novel half-body sprite (~85% canvas height for Atlas, ~92% for custom artwork)
-        const maxSpriteH = Math.floor(height * (isMerged ? 0.85 : 0.92));
-        const maxSpriteW = Math.floor(width * 0.50);
+        const nameLower = `${opts.servantName || ''} ${opts.speakerName || ''} ${opts.title || ''}`.toLowerCase();
+        const isEdmond = nameLower.includes('edmond');
+        const isAdiosa = nameLower.includes('adiosa') || nameLower.includes('typhon');
+        const isLucia = nameLower.includes('lucia') || nameLower.includes('lucernalia');
+        const isLuvria = nameLower.includes('luvria');
+
+        // Target Scale & Position per servant requirements:
+        // - Edmond & Adiosa: 1.5x scale, positioned lower so bottom extends behind text box (no floating)
+        // - Lucia: same size, lowered a bit
+        // - Luvria: same size, positioned higher so face is well above text box
+        let scaleMultiplier = 1.0;
+        let baseMaxHFactor = 0.92;
+        let baseMaxWFactor = 0.50;
+        let spriteY = Math.round(height * 0.04);
+
+        if (isMerged) {
+          baseMaxHFactor = 0.85;
+          spriteY = height - (height * baseMaxHFactor);
+        } else if (isEdmond || isAdiosa) {
+          scaleMultiplier = 1.5;
+          baseMaxHFactor = 0.92;
+          baseMaxWFactor = 0.60;
+          spriteY = Math.round(height * 0.12);
+        } else if (isLucia) {
+          baseMaxHFactor = 0.92;
+          spriteY = Math.round(height * 0.09);
+        } else if (isLuvria) {
+          baseMaxHFactor = 0.95;
+          spriteY = Math.round(height * -0.05);
+        }
+
+        const maxSpriteH = Math.floor(height * baseMaxHFactor * scaleMultiplier);
+        const maxSpriteW = Math.floor(width * baseMaxWFactor * scaleMultiplier);
 
         let spriteH = maxSpriteH;
         let spriteW = spriteH * aspect;
@@ -7259,13 +7289,12 @@ export async function renderVisualNovelCard(
         }
 
         // Anchor sprite slightly toward the right side of canvas (x ~ 614px to 1254px)
-        const spriteX = width * 0.48 + (maxSpriteW - spriteW) / 2;
+        const baseXFactor = (isEdmond || isAdiosa) ? 0.44 : 0.48;
+        const spriteX = width * baseXFactor + (maxSpriteW - spriteW) / 2;
 
-        // Vertical positioning:
-        // Official Atlas sprites (isMerged) rest at bottom edge y = 720 - spriteH
-        // Custom full-body artwork (!isMerged, e.g. Edmond, Lucia, Luvria, Adiosa) anchors near top y = 22px
-        // so face, head, and torso sit prominently at eye level above the dialogue box
-        const spriteY = isMerged ? (height - spriteH) : Math.round(height * 0.03);
+        if (isMerged) {
+          spriteY = height - spriteH;
+        }
 
         ctx.save();
         // Drop shadow for sprite figure
