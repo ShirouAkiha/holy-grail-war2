@@ -18,6 +18,7 @@ import {
 import { checkMasterTalkQuota, consumeMasterTalkQuota } from '../engine/talkQuotaService';
 import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 import { addBondExpToServant } from '../../lib/engine/bondEvents';
+import { resolveAscensionArtwork, resolveAscensionSprite } from '../data/servantAscensions';
 
 export const data = new SlashCommandBuilder()
   .setName('talk')
@@ -141,8 +142,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const servantClass = t.servantClass || 'Saber';
     const bondLevel = targetServant.bondLevel || 1;
     const avatarUrl = targetServant.avatarUrl || t.avatarUrl;
-    const cardArtUrl = targetServant.cardArtUrl || t.cardArtUrl;
-    const spriteUrl = targetServant.spriteUrl || t.spriteUrl;
+    const cardArtUrl = resolveAscensionArtwork(targetServant, targetServant.selectedAscensionStage, targetServant.level, targetServant.bondLevel, targetServant.cardArtUrl || t.cardArtUrl);
+    const spriteUrl = resolveAscensionSprite(targetServant, targetServant.selectedAscensionStage, targetServant.level, targetServant.bondLevel, targetServant.spriteUrl || t.spriteUrl);
     const commandSeals = master.commandSeals ?? 3;
     const playerMessage = interaction.options.getString('message', true);
 
