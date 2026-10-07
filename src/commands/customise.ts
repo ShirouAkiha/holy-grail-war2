@@ -17,6 +17,7 @@ import {
   isAscensionStageUnlocked, 
   resolveAscensionArtwork 
 } from '../data/servantAscensions';
+import { findServantIndexInRoster } from './servant';
 import { safeSetEmbedImage, safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
 import { 
   feedCraftEssences, 
@@ -1397,7 +1398,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       const result = feedCraftEssences(activeServant, targetsToFeed, master.craftEssences);
       master.craftEssences = result.remainingCraftEssences;
-      const sIdx = master.servants.findIndex((s: any) => s.id === activeServant.id);
+      const sIdx = findServantIndexInRoster(master.servants, activeServant);
       if (sIdx !== -1) {
         master.servants[sIdx] = result.updatedServant;
       }
@@ -1456,7 +1457,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
 
       const res = respecServantStats(targetServant);
-      master.servants = master.servants.map((s: any) => s.id === targetServant.id ? res.updatedServant : s);
+      const sIdx = findServantIndexInRoster(master.servants, targetServant);
+      if (sIdx !== -1) {
+        master.servants[sIdx] = res.updatedServant;
+      }
       await saveMaster(master);
 
       const embed = new EmbedBuilder()
@@ -1507,7 +1511,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
       const res = reclaimServantLevelAndExp(targetServant, master.craftEssences);
       master.craftEssences = res.updatedCraftEssences;
-      master.servants = master.servants.map((s: any) => s.id === targetServant.id ? res.updatedServant : s);
+      const sIdx = findServantIndexInRoster(master.servants, targetServant);
+      if (sIdx !== -1) {
+        master.servants[sIdx] = res.updatedServant;
+      }
       await saveMaster(master);
 
       const embed = new EmbedBuilder()
@@ -1570,7 +1577,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           return;
         }
 
-        const stageVal = stageOption === 'costume' ? 'costume' : parseInt(stageOption, 10);
+        const stageVal = (stageOption === 'costume' ? 'costume' : parseInt(stageOption, 10)) as any;
         targetServant.selectedAscensionStage = stageVal as any;
         if (targetServant.template) targetServant.template.selectedAscensionStage = stageVal as any;
         const { cardArtUrl, avatarUrl } = getServantAvatarAndCardArt(targetServant);
@@ -1580,28 +1587,21 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           targetServant.template.cardArtUrl = cardArtUrl;
           targetServant.template.avatarUrl = avatarUrl;
         }
-        master.servants = master.servants.map((s: any) => {
-          const isMatch = s.id === targetServant.id || 
-                          s.templateId === targetServant.templateId || 
-                          s.template?.id === targetServant.templateId ||
-                          s.id === targetServant.templateId ||
-                          s.templateId === targetServant.id;
-          if (isMatch) {
-            return {
-              ...s,
+        const sIdx = findServantIndexInRoster(master.servants, targetServant);
+        if (sIdx !== -1) {
+          master.servants[sIdx] = {
+            ...master.servants[sIdx],
+            selectedAscensionStage: stageVal,
+            cardArtUrl,
+            avatarUrl,
+            template: {
+              ...(master.servants[sIdx].template || {}),
               selectedAscensionStage: stageVal,
               cardArtUrl,
-              avatarUrl,
-              template: {
-                ...(s.template || {}),
-                selectedAscensionStage: stageVal,
-                cardArtUrl,
-                avatarUrl
-              }
-            };
-          }
-          return s;
-        });
+              avatarUrl
+            }
+          };
+        }
         await saveMaster(master);
 
         const embed = new EmbedBuilder()

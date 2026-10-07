@@ -330,15 +330,15 @@ export function getServantAvatarAndCardArt(
     cardArtUrl = 'https://static.atlasacademy.io/NA/CharaGraph/2500600/2500600a@1.png';
   }
 
-  let avatarUrl = cardArtUrl;
-  if (!ascensionArt) {
-    if (!isInvalid(servantInput.avatarUrl)) {
-      avatarUrl = servantInput.avatarUrl;
-    } else if (!isInvalid(template.avatarUrl)) {
-      avatarUrl = template.avatarUrl;
-    } else if (canonical && !isInvalid(canonical.avatarUrl)) {
-      avatarUrl = canonical.avatarUrl;
-    }
+  let avatarUrl = '';
+  if (!isInvalid(servantInput.avatarUrl)) {
+    avatarUrl = servantInput.avatarUrl;
+  } else if (!isInvalid(template.avatarUrl)) {
+    avatarUrl = template.avatarUrl;
+  } else if (canonical && !isInvalid(canonical.avatarUrl)) {
+    avatarUrl = canonical.avatarUrl;
+  } else {
+    avatarUrl = cardArtUrl;
   }
 
   let spriteUrl: string | undefined = undefined;

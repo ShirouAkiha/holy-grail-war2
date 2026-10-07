@@ -22,7 +22,7 @@ export interface ApiPingOptions {
 export const DEFAULT_PING_MODELS: Record<ApiProviderType, string> = {
   openai: 'gpt-4o',
   anthropic: 'claude-3-7-sonnet-20250219',
-  gemini: 'gemini-3.8-flash',
+  gemini: 'gemini-2.5-flash',
   groq: 'llama-3.3-70b-versatile',
   openrouter: 'meta-llama/llama-3.3-70b-instruct:free',
   deepseek: 'deepseek-chat',

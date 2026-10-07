@@ -12,7 +12,7 @@
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@hookform/resolvers": "^5.2.1",
-    "@napi-rs/canvas": "^1.0.8",
+    "@napi-rs/canvas": "^0.1.66",
     "@types/upng-js": "^2.1.5",
     "autoprefixer": "^10.4.21",
     "canvas-confetti": "^1.9.4",
@@ -27,8 +27,17 @@
     "postcss": "^8.5.6",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
+    "sharp": "^0.33.5",
     "tailwind-merge": "^3.3.1",
     "upng-js": "^2.1.0"
+  },
+  "optionalDependencies": {
+    "@napi-rs/canvas-win32-x64-msvc": "^0.1.66",
+    "@napi-rs/canvas-win32-ia32-msvc": "^0.1.66",
+    "@napi-rs/canvas-win32-arm64-msvc": "^0.1.66",
+    "@napi-rs/canvas-linux-x64-gnu": "^0.1.66",
+    "@napi-rs/canvas-darwin-x64": "^0.1.66",
+    "@napi-rs/canvas-darwin-arm64": "^0.1.66"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.1.11",

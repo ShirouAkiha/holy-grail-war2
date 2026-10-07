@@ -145,8 +145,8 @@ export const PROVIDER_ALL_MODELS_CATALOG: Record<ApiProviderType, ProviderModelS
   // 3. Google Gemini
   gemini: [
     {
-      id: 'gemini-3.5-flash',
-      name: 'Gemini 3.5 Flash',
+      id: 'gemini-2.5-flash',
+      name: 'Gemini 2.5 Flash',
       provider: 'gemini',
       providerName: 'Google AI Studio',
       description: 'Superb visual novel character fidelity, deep emotional nuance, and generous free tier.',
@@ -156,8 +156,8 @@ export const PROVIDER_ALL_MODELS_CATALOG: Record<ApiProviderType, ProviderModelS
       recommended: true
     },
     {
-      id: 'gemini-3.5-flash-lite',
-      name: 'Gemini 3.5 Flash-Lite',
+      id: 'gemini-2.0-flash',
+      name: 'Gemini 2.0 Flash',
       provider: 'gemini',
       providerName: 'Google AI Studio',
       description: 'Ultra-fast sub-second dialogue with highest rate-limits on the free AI Studio tier.',
@@ -167,8 +167,8 @@ export const PROVIDER_ALL_MODELS_CATALOG: Record<ApiProviderType, ProviderModelS
       recommended: true
     },
     {
-      id: 'gemini-3.5-pro',
-      name: 'Gemini 3.5 Pro',
+      id: 'gemini-2.5-pro',
+      name: 'Gemini 2.5 Pro',
       provider: 'gemini',
       providerName: 'Google AI Studio',
       description: 'Elite complex reasoning, multi-turn tactical foresight, and legendary Servant lore depth.',
@@ -1125,7 +1125,7 @@ export async function fetchLiveProviderModels(
 export const DEFAULT_PROVIDER_MODELS: Record<ApiProviderType, string> = {
   openai: 'gpt-4o',
   anthropic: 'claude-3-7-sonnet-20250219',
-  gemini: 'gemini-3.5-flash',
+  gemini: 'gemini-2.5-flash',
   groq: 'llama-3.3-70b-versatile',
   openrouter: 'meta-llama/llama-3.3-70b-instruct:free',
   deepseek: 'deepseek-chat',

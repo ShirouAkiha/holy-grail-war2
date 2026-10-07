@@ -69,6 +69,37 @@ export function findServantInRoster(servants: any[], query?: string): any {
   return undefined;
 }
 
+export function findServantIndexInRoster(servants: any[], target: any): number {
+  if (!servants || !target) return -1;
+  // 1. Direct object identity
+  let idx = servants.findIndex((s: any) => s === target);
+  if (idx !== -1) return idx;
+
+  // 2. Direct ID match
+  idx = servants.findIndex((s: any) => s.id && target.id && s.id === target.id);
+  if (idx !== -1) return idx;
+
+  // 3. Template ID match
+  const tId = target.templateId || target.template?.id;
+  if (tId) {
+    idx = servants.findIndex((s: any) => s.templateId === tId || s.template?.id === tId || s.id === tId);
+    if (idx !== -1) return idx;
+  }
+
+  // 4. Name / nickname fallback match
+  const name = target.nickname || target.name || target.template?.name;
+  if (name) {
+    idx = servants.findIndex((s: any) => 
+      (s.nickname && s.nickname === name) || 
+      (s.template?.name && s.template.name === name) || 
+      (s.name && s.name === name)
+    );
+    if (idx !== -1) return idx;
+  }
+
+  return -1;
+}
+
 // ==========================================
 // 1. SLASH COMMAND DEFINITION
 // ==========================================
@@ -1280,7 +1311,8 @@ export function attachServantCollector(
         } else {
           const result = feedCraftEssences(targetServant, emberIndexes, owned);
           master.craftEssences = result.remainingCraftEssences;
-          master.servants = master.servants.map((s: any) => s.id === targetServant.id ? result.updatedServant : s);
+          const sIdx = findServantIndexInRoster(master.servants, targetServant);
+          if (sIdx !== -1) master.servants[sIdx] = result.updatedServant;
           await saveMaster(master);
           targetServant = result.updatedServant;
           const levelDiff = result.newLevel - result.oldLevel;
@@ -1299,7 +1331,8 @@ export function attachServantCollector(
         } else {
           const result = feedCraftEssences(targetServant, lowRarityIndexes, owned);
           master.craftEssences = result.remainingCraftEssences;
-          master.servants = master.servants.map((s: any) => s.id === targetServant.id ? result.updatedServant : s);
+          const sIdx = findServantIndexInRoster(master.servants, targetServant);
+          if (sIdx !== -1) master.servants[sIdx] = result.updatedServant;
           await saveMaster(master);
           targetServant = result.updatedServant;
           const levelDiff = result.newLevel - result.oldLevel;
@@ -1329,7 +1362,8 @@ export function attachServantCollector(
         } else {
           const result = feedCraftEssences(targetServant, dupeIndexes, owned);
           master.craftEssences = result.remainingCraftEssences;
-          master.servants = master.servants.map((s: any) => s.id === targetServant.id ? result.updatedServant : s);
+          const sIdx = findServantIndexInRoster(master.servants, targetServant);
+          if (sIdx !== -1) master.servants[sIdx] = result.updatedServant;
           await saveMaster(master);
           targetServant = result.updatedServant;
           const levelDiff = result.newLevel - result.oldLevel;
@@ -1345,7 +1379,8 @@ export function attachServantCollector(
           const allIndexes = owned.map((_: any, idx: number) => String(idx));
           const result = feedCraftEssences(targetServant, allIndexes, owned);
           master.craftEssences = result.remainingCraftEssences;
-          master.servants = master.servants.map((s: any) => s.id === targetServant.id ? result.updatedServant : s);
+          const sIdx = findServantIndexInRoster(master.servants, targetServant);
+          if (sIdx !== -1) master.servants[sIdx] = result.updatedServant;
           await saveMaster(master);
           targetServant = result.updatedServant;
           const levelDiff = result.newLevel - result.oldLevel;
@@ -1358,7 +1393,8 @@ export function attachServantCollector(
       else if (i.customId === 'servant_sel_equip_ce') {
         const selectedCeId = i.values[0];
         const updated = equipCraftEssence(targetServant, selectedCeId);
-        master.servants = master.servants.map((s: any) => s.id === targetServant.id ? updated : s);
+        const sIdx = findServantIndexInRoster(master.servants, targetServant);
+        if (sIdx !== -1) master.servants[sIdx] = updated;
         await saveMaster(master);
         targetServant = updated;
         actionOutcomeMsg = `✅ Successfully equipped **${updated.equippedCe?.name || 'Craft Essence'}**!`;
@@ -1366,7 +1402,8 @@ export function attachServantCollector(
       // UNEQUIP CRAFT ESSENCE
       else if (i.customId === 'servant_act_unequip_ce') {
         const updated = equipCraftEssence(targetServant, undefined);
-        master.servants = master.servants.map((s: any) => s.id === targetServant.id ? updated : s);
+        const sIdx = findServantIndexInRoster(master.servants, targetServant);
+        if (sIdx !== -1) master.servants[sIdx] = updated;
         await saveMaster(master);
         targetServant = updated;
         actionOutcomeMsg = `🚫 Craft Essence unequipped.`;
@@ -1382,7 +1419,8 @@ export function attachServantCollector(
         const result = feedCraftEssences(targetServant, ceIndices, owned);
         
         master.craftEssences = result.remainingCraftEssences;
-        master.servants = master.servants.map((s: any) => s.id === targetServant.id ? result.updatedServant : s);
+        const sIdx = findServantIndexInRoster(master.servants, targetServant);
+        if (sIdx !== -1) master.servants[sIdx] = result.updatedServant;
         await saveMaster(master);
         targetServant = result.updatedServant;
 
@@ -1415,7 +1453,7 @@ export function attachServantCollector(
             : 'Level 50 or Bond Level 5';
           actionOutcomeMsg = `🔒 **Stage Locked!** This Spirit Origin requires **${reqText}** to unlock. (Current: Lv.${lvl}, Bond ${bondLevel})`;
         } else {
-          const stageNum = val === 'costume' ? 'costume' : parseInt(val, 10);
+          const stageNum = (val === 'costume' ? 'costume' : parseInt(val, 10)) as any;
           targetServant.selectedAscensionStage = stageNum as any;
           if (targetServant.template) targetServant.template.selectedAscensionStage = stageNum as any;
           const { cardArtUrl, avatarUrl } = getServantAvatarAndCardArt(targetServant);
@@ -1425,28 +1463,21 @@ export function attachServantCollector(
             targetServant.template.cardArtUrl = cardArtUrl;
             targetServant.template.avatarUrl = avatarUrl;
           }
-          master.servants = master.servants.map((s: any) => {
-            const isMatch = s.id === targetServant.id || 
-                            s.templateId === targetServant.templateId || 
-                            s.template?.id === targetServant.templateId ||
-                            s.id === targetServant.templateId ||
-                            s.templateId === targetServant.id;
-            if (isMatch) {
-              return {
-                ...s,
+          const sIdx = findServantIndexInRoster(master.servants, targetServant);
+          if (sIdx !== -1) {
+            master.servants[sIdx] = {
+              ...master.servants[sIdx],
+              selectedAscensionStage: stageNum,
+              cardArtUrl,
+              avatarUrl,
+              template: {
+                ...(master.servants[sIdx].template || {}),
                 selectedAscensionStage: stageNum,
                 cardArtUrl,
-                avatarUrl,
-                template: {
-                  ...(s.template || {}),
-                  selectedAscensionStage: stageNum,
-                  cardArtUrl,
-                  avatarUrl
-                }
-              };
-            }
-            return s;
-          });
+                avatarUrl
+              }
+            };
+          }
           await saveMaster(master);
           actionOutcomeMsg = `🎨 **Spirit Origin Transformed!** Set active artwork for **${sName}** to **Stage ${val === 'costume' ? 'Costume' : val === '4' ? '4 (Final Ascension)' : val}**!`;
         }
@@ -1468,7 +1499,7 @@ export function attachServantCollector(
             : 'Level 50 or Bond Level 5';
           actionOutcomeMsg = `🔒 **Stage Locked!** This Spirit Origin requires **${reqText}** to unlock. (Current: Lv.${lvl}, Bond ${bondLevel})`;
         } else {
-          const stageVal = stageKey === 'costume' ? 'costume' : parseInt(stageKey, 10);
+          const stageVal = (stageKey === 'costume' ? 'costume' : parseInt(stageKey, 10)) as any;
           targetServant.selectedAscensionStage = stageVal as any;
           if (targetServant.template) targetServant.template.selectedAscensionStage = stageVal as any;
           const { cardArtUrl, avatarUrl } = getServantAvatarAndCardArt(targetServant);
@@ -1478,28 +1509,21 @@ export function attachServantCollector(
             targetServant.template.cardArtUrl = cardArtUrl;
             targetServant.template.avatarUrl = avatarUrl;
           }
-          master.servants = master.servants.map((s: any) => {
-            const isMatch = s.id === targetServant.id || 
-                            s.templateId === targetServant.templateId || 
-                            s.template?.id === targetServant.templateId ||
-                            s.id === targetServant.templateId ||
-                            s.templateId === targetServant.id;
-            if (isMatch) {
-              return {
-                ...s,
+          const sIdx = findServantIndexInRoster(master.servants, targetServant);
+          if (sIdx !== -1) {
+            master.servants[sIdx] = {
+              ...master.servants[sIdx],
+              selectedAscensionStage: stageVal,
+              cardArtUrl,
+              avatarUrl,
+              template: {
+                ...(master.servants[sIdx].template || {}),
                 selectedAscensionStage: stageVal,
                 cardArtUrl,
-                avatarUrl,
-                template: {
-                  ...(s.template || {}),
-                  selectedAscensionStage: stageVal,
-                  cardArtUrl,
-                  avatarUrl
-                }
-              };
-            }
-            return s;
-          });
+                avatarUrl
+              }
+            };
+          }
           await saveMaster(master);
           actionOutcomeMsg = `🎨 **Spirit Origin Transformed!** Set active artwork for **${sName}** to **Stage ${stageKey === 'costume' ? 'Costume' : stageKey === '4' ? '4 (Final Ascension)' : stageKey}**!`;
         }
@@ -1583,7 +1607,8 @@ export function attachServantCollector(
           actionOutcomeMsg = `⚠️ No parameter points currently allocated on **${sName}** to refund.`;
         } else {
           const res = respecServantStats(targetServant);
-          master.servants = master.servants.map((s: any) => s.id === targetServant.id ? res.updatedServant : s);
+          const sIdx = findServantIndexInRoster(master.servants, targetServant);
+          if (sIdx !== -1) master.servants[sIdx] = res.updatedServant;
           await saveMaster(master);
           targetServant = res.updatedServant;
           actionOutcomeMsg = `🔄 **STAT RESPEC COMPLETE!**\n` +
@@ -1602,7 +1627,8 @@ export function attachServantCollector(
         } else {
           const res = reclaimServantLevelAndExp(targetServant, master.craftEssences);
           master.craftEssences = res.updatedCraftEssences;
-          master.servants = master.servants.map((s: any) => s.id === targetServant.id ? res.updatedServant : s);
+          const sIdx = findServantIndexInRoster(master.servants, targetServant);
+          if (sIdx !== -1) master.servants[sIdx] = res.updatedServant;
           await saveMaster(master);
           targetServant = res.updatedServant;
 
@@ -1649,7 +1675,8 @@ export function attachServantCollector(
             actionOutcomeMsg = `⚡ Allocated **+${amountToAdd.toLocaleString()} ${label}** into **${sName}**! (\`${updated.availableStatPoints.toLocaleString()} pts\` left)`;
           }
 
-          master.servants = master.servants.map((s: any) => s.id === targetServant.id ? updated : s);
+          const sIdx = findServantIndexInRoster(master.servants, targetServant);
+          if (sIdx !== -1) master.servants[sIdx] = updated;
           await saveMaster(master);
           targetServant = updated;
         }
