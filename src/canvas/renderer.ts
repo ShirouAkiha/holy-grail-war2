@@ -9,7 +9,7 @@ import {
 import { calculateRadarCoordinates, RadarPoint } from '../engine/customization';
 import { SERVANT_DATABASE, getServantAvatarAndCardArt, getServantSprite } from '../data/servants';
 import { resolveAscensionArtwork, resolveAscensionSprite } from '../data/servantAscensions';
-import { getRandomBackgroundUrl } from '../data/backgrounds';
+import { getRandomBackgroundUrl, findBackgroundPreset } from '../data/backgrounds';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { getLocalMediaDiskPath } from '../utils/localMedia';
 import { calculateCombatantBuffSummary } from '../utils/combatBuffHelper';
@@ -4080,6 +4080,46 @@ function renderDialogueSingleFrame(
 }
 
 /**
+ * Helper to resolve background image and preset name across all dialogue card types.
+ * Supports direct URLs, preset IDs, and random atmospheric fallbacks.
+ */
+export async function resolveBattlefieldBackgroundImage(battlefieldPresetOrBg?: string): Promise<{ bgImg: any; stagePreset: string }> {
+  let bgImg: any = null;
+  let stagePreset = 'fuyuki';
+
+  if (battlefieldPresetOrBg) {
+    if (battlefieldPresetOrBg.startsWith('http') || battlefieldPresetOrBg.startsWith('data:')) {
+      try {
+        bgImg = await loadImage(battlefieldPresetOrBg);
+        return { bgImg, stagePreset: 'custom' };
+      } catch {
+        bgImg = null;
+      }
+    }
+
+    const presetObj = findBackgroundPreset(battlefieldPresetOrBg);
+    if (presetObj && presetObj.url) {
+      try {
+        bgImg = await loadImage(presetObj.url);
+        return { bgImg, stagePreset: presetObj.id };
+      } catch {
+        bgImg = null;
+      }
+    }
+  }
+
+  // Fallback: Pick a random background from atmospheric stage backgrounds
+  const randomBgUrl = getRandomBackgroundUrl();
+  try {
+    bgImg = await loadImage(randomBgUrl);
+  } catch {
+    stagePreset = battlefieldPresetOrBg || 'fuyuki';
+  }
+
+  return { bgImg, stagePreset };
+}
+
+/**
  * 2. Render Visual Novel Dialogue Frame (800x420 Authentic Fate VN Animated Frame)
  * Features Ornate Double Gold Borders, Framed Servant Portrait with Level Badge, 
  * Persona-Style Dynamic Slash Cut-In (Animated GIF / Action Sequence), 
@@ -4140,23 +4180,7 @@ export async function renderDialogueCard(
     }
   }
 
-  let bgImg: any = null;
-  let stagePreset = 'fuyuki';
-  if (battlefieldPresetOrBg && (battlefieldPresetOrBg.startsWith('http') || battlefieldPresetOrBg.startsWith('data:'))) {
-    try {
-      bgImg = await loadImage(battlefieldPresetOrBg);
-    } catch {
-      bgImg = null;
-    }
-  } else {
-    // Pick a random background from the 7 atmospheric Mahoyo/Fate stage backgrounds for combat dialogues
-    const randomBgUrl = getRandomBackgroundUrl();
-    try {
-      bgImg = await loadImage(randomBgUrl);
-    } catch {
-      stagePreset = battlefieldPresetOrBg || 'fuyuki';
-    }
-  }
+  const { bgImg, stagePreset } = await resolveBattlefieldBackgroundImage(battlefieldPresetOrBg);
 
   // If rendering on client canvas (HTML5 Canvas element in browser):
   if (isClientCanvas) {
@@ -4928,19 +4952,7 @@ export async function renderMasterCommandSealDialogueCard(
     }
   }
 
-  let bgImg: any = null;
-  let stagePreset = 'fuyuki';
-  if (battlefieldPresetOrBg) {
-    if (battlefieldPresetOrBg.startsWith('http') || battlefieldPresetOrBg.startsWith('data:')) {
-      try {
-        bgImg = await loadImage(battlefieldPresetOrBg);
-      } catch {
-        bgImg = null;
-      }
-    } else {
-      stagePreset = battlefieldPresetOrBg;
-    }
-  }
+  const { bgImg, stagePreset } = await resolveBattlefieldBackgroundImage(battlefieldPresetOrBg);
 
   if (isClientCanvas) {
     renderMasterCommandSealSingleFrame(
@@ -5202,19 +5214,7 @@ export async function renderSkillDialogueCard(
     }
   }
 
-  let bgImg: any = null;
-  let stagePreset = 'fuyuki';
-  if (battlefieldPresetOrBg) {
-    if (battlefieldPresetOrBg.startsWith('http') || battlefieldPresetOrBg.startsWith('data:')) {
-      try {
-        bgImg = await loadImage(battlefieldPresetOrBg);
-      } catch {
-        bgImg = null;
-      }
-    } else {
-      stagePreset = battlefieldPresetOrBg;
-    }
-  }
+  const { bgImg, stagePreset } = await resolveBattlefieldBackgroundImage(battlefieldPresetOrBg);
 
   if (isClientCanvas) {
     renderSkillSingleFrame(
@@ -5596,19 +5596,7 @@ export async function renderDefeatDialogueCard(
     }
   }
 
-  let bgImg: any = null;
-  let stagePreset = 'fuyuki';
-  if (battlefieldPresetOrBg) {
-    if (battlefieldPresetOrBg.startsWith('http') || battlefieldPresetOrBg.startsWith('data:')) {
-      try {
-        bgImg = await loadImage(battlefieldPresetOrBg);
-      } catch {
-        bgImg = null;
-      }
-    } else {
-      stagePreset = battlefieldPresetOrBg;
-    }
-  }
+  const { bgImg, stagePreset } = await resolveBattlefieldBackgroundImage(battlefieldPresetOrBg);
 
   if (isClientCanvas) {
     renderDefeatSingleFrame(

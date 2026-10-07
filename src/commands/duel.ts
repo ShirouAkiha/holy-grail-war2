@@ -27,6 +27,7 @@ import { generateServantBattleReaction } from '../engine/talkService';
 import { addBondExpToServant } from '../../lib/engine/bondEvents';
 import { addServantBattleExp } from '../engine/customization';
 import { checkAndGrantBond10Ce, getBondCraftEssenceForServant } from '../data/craftEssences';
+import { getRandomBackgroundUrl } from '../data/backgrounds';
 import { isBondCeActiveForServant, getCePassiveStats, applyCeInitialCombatantEffects, applyCePartyAuras, processCeTurnStartEffects, processCeOnAttackEffects } from '../utils/craftEssenceHelper';
 
 // ==========================================
@@ -4337,6 +4338,9 @@ async function startInteractiveDuel(
     return target;
   };
 
+  // Pick a single, consistent stage background for the entire duel session
+  const battleBgUrl = getRandomBackgroundUrl();
+
   let turnOrder: DuelCombatant[] = [p1, p2, ...(p1Ally ? [p1Ally] : []), ...(p2Ally ? [p2Ally] : [])];
   let currentTurnIndex = 0;
 
@@ -4467,7 +4471,7 @@ async function startInteractiveDuel(
     p2AvatarUrl,
     p2Class,
     ['Buster', 'Buster', 'Buster'],
-    'fuyuki'
+    battleBgUrl
   ).catch((err) => {
     console.error('Error rendering p1 starting dialogue card:', err);
     return null;
@@ -4484,7 +4488,7 @@ async function startInteractiveDuel(
     p1AvatarUrl,
     p1Class,
     ['Buster', 'Buster', 'Buster'],
-    'fuyuki'
+    battleBgUrl
   ).catch((err) => {
     console.error('Error rendering p2 starting dialogue card:', err);
     return null;
@@ -4545,7 +4549,7 @@ async function startInteractiveDuel(
       p2AvatarUrl,
       p2Class,
       ['Buster', 'Arts', 'Quick'],
-      'fuyuki'
+      battleBgUrl
     ).catch(err => {
       console.error('Error rendering p1Ally starting dialogue card:', err);
       return null;
@@ -4589,7 +4593,7 @@ async function startInteractiveDuel(
       p1AvatarUrl,
       p1Class,
       ['Buster', 'Arts', 'Quick'],
-      'fuyuki'
+      battleBgUrl
     ).catch(err => {
       console.error('Error rendering p2Ally starting dialogue card:', err);
       return null;
@@ -4757,7 +4761,7 @@ async function startInteractiveDuel(
           await dispatchNpGif(npActor, interactionToEdit || contextInteraction);
         }
       }
-      await finishDuel(interactionToEdit || contextInteraction, winningTeam, losingTeam, p1Master, p2Master, finalAttachment, isFreeBattle);
+      await finishDuel(interactionToEdit || contextInteraction, winningTeam, losingTeam, p1Master, p2Master, finalAttachment, isFreeBattle, battleBgUrl);
       return;
     }
 
@@ -4920,7 +4924,7 @@ async function startInteractiveDuel(
             await dispatchNpGif(npActor, interactionToEdit || contextInteraction);
           }
         }
-        await finishDuel(interactionToEdit || contextInteraction, winningTeam, losingTeam, p1Master, p2Master, finalAttachment, isFreeBattle);
+        await finishDuel(interactionToEdit || contextInteraction, winningTeam, losingTeam, p1Master, p2Master, finalAttachment, isFreeBattle, battleBgUrl);
         return;
       }
 
@@ -5730,7 +5734,7 @@ async function startInteractiveDuel(
             bondLvl,
             res.skillType || 'buff',
             res.skillDescription ? [res.skillDescription] : [],
-            'fuyuki'
+            battleBgUrl
           );
 
           if (skillDiaBuffer && skillDiaBuffer.length > 500) {
@@ -5818,7 +5822,7 @@ async function startInteractiveDuel(
             sName,
             sClass,
             servantAvatarUrl,
-            'fuyuki'
+            battleBgUrl
           );
 
           if (sealDiaBuffer && sealDiaBuffer.length > 500) {
@@ -6040,7 +6044,8 @@ async function startInteractiveDuel(
             dName,
             dAvatarUrl,
             dClass,
-            playerSequence
+            playerSequence,
+            battleBgUrl
           );
 
           if (diaBuffer && diaBuffer.length > 500) {
@@ -6128,8 +6133,10 @@ async function finishDuel(
   p1Master: MasterProfile,
   p2Master: MasterProfile | null,
   finalAttachment: AttachmentBuilder,
-  isFreeBattle?: boolean
+  isFreeBattle?: boolean,
+  battlefieldBgUrl?: string
 ) {
+  const battleBgUrl = battlefieldBgUrl || getRandomBackgroundUrl();
   const winningTeam = Array.isArray(winnerOrTeam) ? winnerOrTeam : [winnerOrTeam];
   const primaryWinner = winningTeam.find(c => c.currentHp > 0) || winningTeam[0];
   const losingTeam = Array.isArray(loserOrTeam) ? loserOrTeam : [loserOrTeam];
@@ -6237,7 +6244,7 @@ async function finishDuel(
     winnerName,
     winnerAvatarUrl,
     winnerClass,
-    'fuyuki'
+    battleBgUrl
   ).catch(() => null);
 
   const defeatCardAttachment = defeatCardBuffer
@@ -6822,7 +6829,7 @@ async function finishDuel(
     loserAvatarUrl,
     primaryLoser.servant.template?.servantClass || 'Lancer',
     ['Buster', 'Buster', 'Buster'],
-    'fuyuki'
+    battleBgUrl
   ).catch(() => null);
 
   const victoryCardAttachment = victoryCardBuffer 
