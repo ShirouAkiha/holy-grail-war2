@@ -725,6 +725,10 @@ function drawCombatantNetStatPill(
 export function isAtlasMergedSprite(imgOrUrl?: any): boolean {
   if (!imgOrUrl) return false;
   if (imgOrUrl._isAtlasMerged) return true;
+  if (imgOrUrl.width && imgOrUrl.height) {
+    if (imgOrUrl.width === 1024 && imgOrUrl.height >= 1200) return true;
+    if (imgOrUrl.height / imgOrUrl.width >= 1.22 && imgOrUrl.height >= 1200) return true;
+  }
   const str = typeof imgOrUrl === 'string' 
     ? imgOrUrl 
     : (imgOrUrl._sourceUrl || imgOrUrl.src || imgOrUrl.url || imgOrUrl.currentSrc || '');
@@ -739,10 +743,10 @@ export function isAtlasMergedSprite(imgOrUrl?: any): boolean {
 
 /**
  * Helper to draw Servant battle sprites & character figures onto Canvas.
- * For Atlas Academy composite figures (which have the half-body character in the upper ~60%
- * and reaction faces in the lower ~40%), it samples strictly the upper 60% of the image,
- * ensuring reaction faces stay completely out of frame and are never drawn.
- * Custom servants and standard images are preserved and drawn in full.
+ * For Atlas Academy composite figures (where reaction faces start at Y >= 760px),
+ * it samples strictly the upper figure (Y = 0 to ~740px / width * 0.735).
+ * This ensures reaction faces stay completely out of frame and are never drawn,
+ * while allowing the servant figure to scale up large and heroic.
  */
 export function drawServantBattleSprite(
   ctx: any,
@@ -766,9 +770,14 @@ export function drawServantBattleSprite(
     (img.src && String(img.src).includes('CharaFigure'))
   );
 
-  const cropRatio = options?.cropRatio ?? (isMerged ? 0.60 : 1.0);
   const sourceWidth = img.width;
-  const sourceHeight = Math.round(img.height * cropRatio);
+  const defaultSourceH = isMerged
+    ? Math.min(img.height, Math.round(img.width * 0.735))
+    : img.height;
+
+  const sourceHeight = options?.cropRatio && options.cropRatio > 0 && options.cropRatio <= 1.0
+    ? Math.round(defaultSourceH * options.cropRatio)
+    : defaultSourceH;
 
   const fitMode = options?.fitMode || 'cover';
 
@@ -787,7 +796,7 @@ export function drawServantBattleSprite(
     const drawW = Math.round(sourceWidth * scale);
     const drawH = Math.round(sourceHeight * scale);
     const drawX = dx + Math.round((dw - drawW) / 2);
-    const drawY = dy + Math.round((dh - drawH) / 2);
+    const drawY = dy + (dh - drawH); // Anchor to bottom edge
     ctx.drawImage(img, 0, 0, sourceWidth, sourceHeight, drawX, drawY, drawW, drawH);
     return;
   }
@@ -7253,7 +7262,6 @@ export async function renderVisualNovelCard(
         if (isMerged) {
           drawServantBattleSprite(ctx, spriteImg, spriteX, spriteY, spriteW, spriteH, {
             fitMode: 'contain',
-            cropRatio: 0.60,
             isAtlasMerged: true
           });
         } else {
