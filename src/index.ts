@@ -1366,7 +1366,7 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       // Visual Novel / Bond System Buttons
-      if (btnId.startsWith('vn_')) {
+      if (btnId.startsWith('vn_') || btnId.startsWith('ce_art_bond:')) {
         await bondCommand.handleBondButtonInteraction(interaction);
         return;
       }
