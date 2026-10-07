@@ -449,7 +449,7 @@ function buildMasterCommandSealDialogueCutInEmbed(
   );
 
   if (hasImageAttachment) {
-    embed.setImage('attachment://vn_dialogue.gif');
+    embed.setImage('attachment://seal_dialogue.png');
   }
 
   return embed;
@@ -5758,7 +5758,7 @@ async function startInteractiveDuel(
         const skillFiles: AttachmentBuilder[] = [turnAttachment];
 
         if (skillGifBuffer) {
-          const skillFile = new AttachmentBuilder(skillGifBuffer, { name: 'skill_dialogue.gif' });
+          const skillFile = new AttachmentBuilder(skillGifBuffer, { name: 'skill_dialogue.png' });
           skillFiles.push(skillFile);
           const skillEmbed = new EmbedBuilder()
             .setTitle(`✨ [SKILL ACTIVATED] — ${skillName.toUpperCase()}`)
@@ -5767,7 +5767,7 @@ async function startInteractiveDuel(
               `> ❝ ***“${skillQuote}”*** ❞\n\n` +
               `✨ **Effect:** ${cleanCanvasText(res.log).replace(/[*_~`]/g, '').trim()}`
             )
-            .setImage('attachment://skill_dialogue.gif')
+            .setImage('attachment://skill_dialogue.png')
             .setColor(0x3b82f6)
             .setFooter({ text: 'Holy Grail War • Tactical Skill Activation' });
           skillEmbeds.push(skillEmbed);
@@ -5839,7 +5839,7 @@ async function startInteractiveDuel(
         const sealFiles: AttachmentBuilder[] = [turnAttachment];
 
         if (sealGifBuffer) {
-          const sealFile = new AttachmentBuilder(sealGifBuffer, { name: 'seal_dialogue.gif' });
+          const sealFile = new AttachmentBuilder(sealGifBuffer, { name: 'seal_dialogue.png' });
           sealFiles.push(sealFile);
           const sealEmbed = buildMasterCommandSealDialogueCutInEmbed(
             masterName,
@@ -5849,6 +5849,7 @@ async function startInteractiveDuel(
             csQuote,
             true
           );
+          sealEmbed.setImage('attachment://seal_dialogue.png');
           sealEmbeds.push(sealEmbed);
         }
 
