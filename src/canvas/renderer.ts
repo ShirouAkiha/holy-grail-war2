@@ -7262,9 +7262,9 @@ export async function renderVisualNovelCard(
         let spriteY = Math.round(height * 0.04);
 
         if (isMerged) {
-          scaleMultiplier = 1.6;
-          baseMaxHFactor = 0.85;
-          baseMaxWFactor = 0.75;
+          scaleMultiplier = 1.15;
+          baseMaxHFactor = 0.88;
+          baseMaxWFactor = 0.54;
           spriteY = height - (height * baseMaxHFactor * scaleMultiplier);
         } else if (isEdmond || isAdiosa) {
           scaleMultiplier = 1.5;
