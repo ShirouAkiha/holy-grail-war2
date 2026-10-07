@@ -771,10 +771,10 @@ export function drawServantBattleSprite(
     (img.src && String(img.src).includes('CharaFigure'))
   );
 
-  // For Atlas composite sheets, trim side transparent padding (X = ~12% to 88%)
-  // so the character body fills the frame width and scales up significantly larger!
-  const sx = isMerged ? Math.round(img.width * 0.12) : 0;
-  const sw = isMerged ? Math.round(img.width * 0.76) : img.width;
+  // For Atlas composite sheets, trim side transparent padding (X = ~8% to 92%)
+  // so the character body fills the frame width cleanly without clipping.
+  const sx = isMerged ? Math.round(img.width * 0.08) : 0;
+  const sw = isMerged ? Math.round(img.width * 0.84) : img.width;
   const sy = 0;
   const defaultSourceH = isMerged
     ? Math.min(img.height, Math.round(img.width * 0.735))
@@ -7243,12 +7243,12 @@ export async function renderVisualNovelCard(
       if (spriteImg && spriteImg.width && spriteImg.height) {
         const isMerged = isAtlasMergedSprite(spriteImg);
         const sourceH = isMerged ? Math.min(spriteImg.height, Math.round(spriteImg.width * 0.735)) : spriteImg.height;
-        const sourceW = isMerged ? Math.round(spriteImg.width * 0.76) : spriteImg.width;
+        const sourceW = isMerged ? Math.round(spriteImg.width * 0.84) : spriteImg.width;
         const aspect = sourceW / sourceH;
 
-        // Target Scale: Large heroic half-body sprite, filling up to 108% of total canvas height (~778px)
-        const maxSpriteH = Math.floor(height * 1.08);
-        const maxSpriteW = Math.floor(width * 0.72);
+        // Target Scale: Well-proportioned visual novel half-body sprite (~85% canvas height, ~612px)
+        const maxSpriteH = Math.floor(height * 0.85);
+        const maxSpriteW = Math.floor(width * 0.50);
 
         let spriteH = maxSpriteH;
         let spriteW = spriteH * aspect;
@@ -7259,7 +7259,7 @@ export async function renderVisualNovelCard(
         }
 
         // Anchor sprite to bottom right of canvas (resting at bottom edge y = 720)
-        const spriteX = width * 0.38 + (maxSpriteW - spriteW) / 2;
+        const spriteX = width * 0.42 + (maxSpriteW - spriteW) / 2;
         const spriteY = height - spriteH;
 
         ctx.save();
