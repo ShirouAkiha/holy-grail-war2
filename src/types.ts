@@ -398,6 +398,9 @@ export interface ActiveCombatant {
   avatarUrl: string;
   cardArtUrl?: string;
   baseAvatarUrl?: string;
+  spriteUrl?: string;
+  selectedAscensionStage?: 1 | 2 | 3 | 4 | 'costume' | string;
+  customArtworkUrl?: string;
   isTransformed?: boolean;
   transformationTurns?: number;
   maxHp: number;

@@ -4,6 +4,8 @@ import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { getLocalMediaDiskPath } from '../utils/localMedia';
 import { getClassIconUrl } from '../data/classIcons';
 import { getStatusIconUrl } from '../data/statusIcons';
+import { resolveAscensionSprite } from '../data/servantAscensions';
+import { drawServantBattleSprite, isAtlasMergedSprite } from './renderer';
 import fs from 'fs';
 import { getCanvasModule } from './canvasLoader';
 
@@ -159,24 +161,39 @@ async function loadImage(src: string): Promise<any> {
 
   const canvasModule = getCanvasModule();
   if (canvasModule && typeof canvasModule.loadImage === 'function') {
+    const attachMeta = (img: any) => {
+      if (!img) return img;
+      try { img._sourceUrl = targetUrl; } catch {}
+      try { if (!img.src) img.src = targetUrl; } catch {}
+      if (isAtlasMergedSprite(targetUrl)) {
+        try { img._isAtlasMerged = true; } catch {}
+      }
+      return img;
+    };
+
     try {
       const diskPath = getLocalMediaDiskPath(targetUrl);
       if (diskPath && fs.existsSync(diskPath)) {
         try {
           const localBuffer = fs.readFileSync(diskPath);
-          return await canvasModule.loadImage(localBuffer);
+          const loaded = await canvasModule.loadImage(localBuffer);
+          return attachMeta(loaded);
         } catch {
-          return await canvasModule.loadImage(diskPath);
+          const loaded = await canvasModule.loadImage(diskPath);
+          return attachMeta(loaded);
         }
       }
       if (targetUrl.startsWith('data:') || !targetUrl.startsWith('http')) {
-        return await canvasModule.loadImage(targetUrl);
+        const loaded = await canvasModule.loadImage(targetUrl);
+        return attachMeta(loaded);
       }
       const buffer = await fetchImageBuffer(targetUrl);
       if (buffer && buffer.length > 0) {
-        return await canvasModule.loadImage(buffer);
+        const loaded = await canvasModule.loadImage(buffer);
+        return attachMeta(loaded);
       }
-      return await canvasModule.loadImage(targetUrl).catch(() => null);
+      const loaded = await canvasModule.loadImage(targetUrl).catch(() => null);
+      return attachMeta(loaded);
     } catch {
       return null;
     }
@@ -1137,18 +1154,12 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     // 1. Servant Sprite Rendering (Free-standing directly on battlefield, no box frame)
     ctx.save();
 
-    // Render Servant Sprite / Character Art (Upper body & face 100% ABOVE the skill icons)
+    // Render Servant Sprite / Character Art (Upper body & face 100% ABOVE the skill icons, reaction faces stripped)
     if (avatar) {
-      const imgW = avatar.width || panelW;
-      const imgH = avatar.height || panelH;
-      // Fit sprite into the upper area (Y: 210 to 485)
       const spriteAreaH = 280;
-      const scale = Math.max((panelW * 0.95) / imgW, (spriteAreaH * 1.15) / imgH);
-      const drawW = imgW * scale;
-      const drawH = imgH * scale;
-      const drawX = slotX + (panelW - drawW) / 2;
-      const drawY = panelTopY + 40; // Head and face begin at Y: 250px
-      ctx.drawImage(avatar, 0, 0, imgW, imgH, drawX, drawY, drawW, drawH);
+      drawServantBattleSprite(ctx, avatar, slotX, panelTopY + 36, panelW, spriteAreaH, {
+        fitMode: 'top_contain'
+      });
     }
 
     // Authentic FGO Vertical Gradient: Completely clear on field/head -> dark backing only under skills & gauges
@@ -1479,7 +1490,9 @@ export async function renderRaidBattlefield(state: RaidBattleState, _animated = 
     loadImage(state.boss.avatarUrl),
     loadImage(bossClassIconUrl),
     ...state.participants.map(p => {
-      const art = p.servant.template?.spriteUrl || (p.servant as any).customArtworkUrl || p.servant.template?.avatarUrl;
+      const activeStage = (p.servant as any).selectedAscensionStage ?? p.servant.template?.selectedAscensionStage;
+      const stageSprite = resolveAscensionSprite(p.servant, activeStage);
+      const art = stageSprite || (p.servant as any).customArtworkUrl || p.servant.template?.spriteUrl || p.servant.template?.avatarUrl;
       return art ? loadImage(art) : Promise.resolve(null);
     }),
     ...participantClassIconUrls.map(url => loadImage(url)),

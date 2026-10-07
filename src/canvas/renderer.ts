@@ -8,6 +8,7 @@ import {
 } from '../types';
 import { calculateRadarCoordinates, RadarPoint } from '../engine/customization';
 import { SERVANT_DATABASE, getServantAvatarAndCardArt, getServantSprite } from '../data/servants';
+import { resolveAscensionArtwork, resolveAscensionSprite } from '../data/servantAscensions';
 import { normalizeMediaUrl } from '../utils/mediaResolver';
 import { getLocalMediaDiskPath } from '../utils/localMedia';
 import { calculateCombatantBuffSummary } from '../utils/combatBuffHelper';
@@ -244,29 +245,44 @@ async function loadImage(src: string): Promise<any> {
 
   const canvasModule = getCanvasModule();
   if (canvasModule && typeof canvasModule.loadImage === 'function') {
+    const attachMeta = (img: any) => {
+      if (!img) return img;
+      try { img._sourceUrl = targetUrl; } catch {}
+      try { if (!img.src) img.src = targetUrl; } catch {}
+      if (isAtlasMergedSprite(targetUrl)) {
+        try { img._isAtlasMerged = true; } catch {}
+      }
+      return img;
+    };
+
     try {
       // 1. Check if it's already a local disk file or /api/media path
       const diskPath = getLocalMediaDiskPath(targetUrl);
       if (diskPath && fs.existsSync(diskPath)) {
         try {
           const localBuffer = fs.readFileSync(diskPath);
-          return await canvasModule.loadImage(localBuffer);
+          const loaded = await canvasModule.loadImage(localBuffer);
+          return attachMeta(loaded);
         } catch {
-          return await canvasModule.loadImage(diskPath);
+          const loaded = await canvasModule.loadImage(diskPath);
+          return attachMeta(loaded);
         }
       }
 
       if (targetUrl.startsWith('data:') || !targetUrl.startsWith('http')) {
-        return await canvasModule.loadImage(targetUrl);
+        const loaded = await canvasModule.loadImage(targetUrl);
+        return attachMeta(loaded);
       }
 
       const buffer = await fetchImageBuffer(targetUrl);
       if (buffer && buffer.length > 0) {
-        return await canvasModule.loadImage(buffer);
+        const loaded = await canvasModule.loadImage(buffer);
+        return attachMeta(loaded);
       }
 
       // Final fallback attempt
-      return await canvasModule.loadImage(targetUrl).catch(() => null);
+      const loaded = await canvasModule.loadImage(targetUrl).catch(() => null);
+      return attachMeta(loaded);
     } catch {
       return null;
     }
@@ -702,6 +718,104 @@ function drawCombatantNetStatPill(
 }
 
 /**
+ * Detects whether an image represents an Atlas Academy composite sprite sheet
+ * (CharaFigure _merged.png or similar composite assets that have the character in the top ~60%
+ * and reaction face strips in the lower ~40%).
+ */
+export function isAtlasMergedSprite(imgOrUrl?: any): boolean {
+  if (!imgOrUrl) return false;
+  if (imgOrUrl._isAtlasMerged) return true;
+  const str = typeof imgOrUrl === 'string' 
+    ? imgOrUrl 
+    : (imgOrUrl._sourceUrl || imgOrUrl.src || imgOrUrl.url || imgOrUrl.currentSrc || '');
+  if (typeof str === 'string' && str.length > 0) {
+    const lower = str.toLowerCase();
+    if (lower.includes('charafigure') || lower.includes('_merged') || (lower.includes('atlasacademy') && lower.includes('/charafigure/'))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Helper to draw Servant battle sprites & character figures onto Canvas.
+ * For Atlas Academy composite figures (which have the half-body character in the upper ~60%
+ * and reaction faces in the lower ~40%), it samples strictly the upper 60% of the image,
+ * ensuring reaction faces stay completely out of frame and are never drawn.
+ * Custom servants and standard images are preserved and drawn in full.
+ */
+export function drawServantBattleSprite(
+  ctx: any,
+  img: any,
+  dx: number,
+  dy: number,
+  dw: number,
+  dh: number,
+  options?: {
+    fitMode?: 'cover' | 'contain' | 'top_contain' | 'fill';
+    cropRatio?: number;
+    isAtlasMerged?: boolean;
+  }
+) {
+  if (!img || !img.width || !img.height) return;
+
+  const isMerged = options?.isAtlasMerged ?? (
+    isAtlasMergedSprite(img) ||
+    Boolean(img._isAtlasMerged) ||
+    (img._sourceUrl && String(img._sourceUrl).includes('CharaFigure')) ||
+    (img.src && String(img.src).includes('CharaFigure'))
+  );
+
+  const cropRatio = options?.cropRatio ?? (isMerged ? 0.60 : 1.0);
+  const sourceWidth = img.width;
+  const sourceHeight = Math.round(img.height * cropRatio);
+
+  const fitMode = options?.fitMode || 'cover';
+
+  if (fitMode === 'top_contain') {
+    const scale = Math.min(dw / sourceWidth, dh / sourceHeight);
+    const drawW = Math.round(sourceWidth * scale);
+    const drawH = Math.round(sourceHeight * scale);
+    const drawX = dx + Math.round((dw - drawW) / 2);
+    const drawY = dy; // Anchor to top
+    ctx.drawImage(img, 0, 0, sourceWidth, sourceHeight, drawX, drawY, drawW, drawH);
+    return;
+  }
+
+  if (fitMode === 'contain') {
+    const scale = Math.min(dw / sourceWidth, dh / sourceHeight);
+    const drawW = Math.round(sourceWidth * scale);
+    const drawH = Math.round(sourceHeight * scale);
+    const drawX = dx + Math.round((dw - drawW) / 2);
+    const drawY = dy + Math.round((dh - drawH) / 2);
+    ctx.drawImage(img, 0, 0, sourceWidth, sourceHeight, drawX, drawY, drawW, drawH);
+    return;
+  }
+
+  if (fitMode === 'fill') {
+    ctx.drawImage(img, 0, 0, sourceWidth, sourceHeight, dx, dy, dw, dh);
+    return;
+  }
+
+  // Default: 'cover'
+  const imgRatio = sourceWidth / sourceHeight;
+  const targetRatio = dw / dh;
+  let sx = 0, sy = 0, sw = sourceWidth, sh = sourceHeight;
+
+  if (imgRatio > targetRatio) {
+    // Source is wider than target frame: crop horizontal overflow centered
+    sw = Math.round(sourceHeight * targetRatio);
+    sx = Math.round((sourceWidth - sw) / 2);
+  } else {
+    // Source is taller than target frame: crop vertical overflow anchored to top
+    sh = Math.round(sourceWidth / targetRatio);
+    sy = 0; // Anchor to top so head/face stays in view
+  }
+
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+}
+
+/**
   * Draw an image into a target bounding box using object-fit: cover logic.
   * Prevents squishing/stretching regardless of the image's aspect ratio.
   */
@@ -714,6 +828,10 @@ function drawImageCover(
   dh: number
 ) {
   if (!img || !img.width || !img.height) return;
+  if (isAtlasMergedSprite(img)) {
+    drawServantBattleSprite(ctx, img, dx, dy, dw, dh, { fitMode: 'cover' });
+    return;
+  }
   const imgRatio = img.width / img.height;
   const targetRatio = dw / dh;
   let sx = 0, sy = 0, sw = img.width, sh = img.height;
@@ -6138,7 +6256,21 @@ export async function renderBattleTurnSummary(
   const getCombatantArtUrl = (c?: ActiveCombatant) => {
     if (!c) return '';
     if (c.isTransformed && c.avatarUrl) return c.avatarUrl;
-    return c.cardArtUrl || c.avatarUrl || c.baseAvatarUrl || '';
+
+    // Custom servant check: strictly preserve custom avatar/spriteUrl untouched!
+    const isCustom = (c as any).isCustom ||
+                     Boolean((c as any).customArtworkUrl) ||
+                     Boolean((c as any).isUserCreated);
+    if (isCustom) {
+      return (c as any).customArtworkUrl || c.spriteUrl || c.avatarUrl || c.cardArtUrl || c.baseAvatarUrl || '';
+    }
+
+    // Canonical servant: dynamically resolve based on chosen / unlocked Ascension stage
+    const activeStage = c.selectedAscensionStage;
+    const stageSprite = resolveAscensionSprite(c, activeStage, (c as any).level || (c as any).stats?.level || 1, c.bondLevel);
+    if (stageSprite) return stageSprite;
+
+    return c.spriteUrl || c.cardArtUrl || c.avatarUrl || c.baseAvatarUrl || '';
   };
 
   const [
@@ -7092,7 +7224,9 @@ export async function renderVisualNovelCard(
     try {
       const spriteImg = await loadImage(spriteUrl);
       if (spriteImg && spriteImg.width && spriteImg.height) {
-        const aspect = spriteImg.width / spriteImg.height;
+        const isMerged = isAtlasMergedSprite(spriteImg);
+        const sourceH = isMerged ? Math.round(spriteImg.height * 0.60) : spriteImg.height;
+        const aspect = spriteImg.width / sourceH;
 
         // Target Scale: Prominent half-body / 3/4-body sprite, roughly 86% of total canvas height (~620px)
         const maxSpriteH = Math.floor(height * 0.86);
@@ -7116,7 +7250,15 @@ export async function renderVisualNovelCard(
         ctx.shadowBlur = 30;
         ctx.shadowOffsetY = 10;
 
-        ctx.drawImage(spriteImg, spriteX, spriteY, spriteW, spriteH);
+        if (isMerged) {
+          drawServantBattleSprite(ctx, spriteImg, spriteX, spriteY, spriteW, spriteH, {
+            fitMode: 'contain',
+            cropRatio: 0.60,
+            isAtlasMerged: true
+          });
+        } else {
+          ctx.drawImage(spriteImg, spriteX, spriteY, spriteW, spriteH);
+        }
         ctx.restore();
         break; // Successfully rendered primary or fallback sprite
       }

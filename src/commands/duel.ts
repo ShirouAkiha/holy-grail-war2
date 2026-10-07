@@ -13,6 +13,7 @@ import {
 import { getOrCreateMaster, saveMaster, getDuelNpSettings, getAllMasters, getAllThroneServants } from '../database/service';
 import { MasterProfile, MasterServantInstance, CardType, ServantClass, ActiveCombatant, CombatTurnLog, PassiveSkill } from '../types';
 import { SERVANT_DATABASE, getDefaultClassPassives, getUnlockedPassives, getServantAvatarAndCardArt } from '../data/servants';
+import { resolveAscensionSprite } from '../data/servantAscensions';
 import { getOrInitWarSession, recordDuelOutcome, calculateCurrentHp, getReputationInfo, isUserSlainCivilianInWar } from '../engine/grailwar';
 import { renderBattleTurnSummary, renderDialogueCard, renderDefeatDialogueCard, renderMasterCommandSealDialogueCard, renderSkillDialogueCard, cleanCanvasText } from '../canvas/renderer';
 import { PVP_DAMAGE_MODIFIER, calculateFleeChance, rollFleeSuccess } from '../engine/battle';
@@ -94,6 +95,7 @@ export interface DuelCombatant {
   servant: MasterServantInstance;
   avatarUrl?: string;
   baseAvatarUrl?: string;
+  spriteUrl?: string;
   isTransformed?: boolean;
   transformationTurns?: number;
   currentHp: number;
@@ -118,6 +120,15 @@ export interface DuelCombatant {
   masterAvatarUrl?: string;
   selectedTargetId?: string;
   isFled?: boolean;
+}
+
+export function getCombatantSpriteUrl(combatantOrServant: any): string {
+  const servant = combatantOrServant?.servant || combatantOrServant;
+  if (!servant) return '';
+  const artInfo = getServantAvatarAndCardArt(servant);
+  const activeStage = (servant as any).selectedAscensionStage ?? servant.template?.selectedAscensionStage;
+  const stageSprite = resolveAscensionSprite(servant, activeStage, servant.level, servant.bondLevel);
+  return stageSprite || artInfo.spriteUrl || artInfo.cardArtUrl || servant.avatarUrl || servant.template?.avatarUrl || '';
 }
 
 // ==========================================
@@ -301,6 +312,7 @@ function createCombatant(
 
   const artInfo = getServantAvatarAndCardArt(servant);
   const baseAvatar = artInfo.cardArtUrl || artInfo.avatarUrl;
+  const spriteUrl = getCombatantSpriteUrl(servant) || baseAvatar;
 
   const combatant: DuelCombatant = {
     userId: master.discordId,
@@ -309,6 +321,7 @@ function createCombatant(
     servant,
     avatarUrl: baseAvatar,
     baseAvatarUrl: baseAvatar,
+    spriteUrl,
     isTransformed: false,
     transformationTurns: 0,
     currentHp: startingHp,
@@ -457,6 +470,9 @@ async function createTurnSummaryAttachment(
     const artInfo = getServantAvatarAndCardArt(c.servant);
     const baseAvatar = c.baseAvatarUrl || artInfo.cardArtUrl || artInfo.avatarUrl;
     const currentAvatar = c.isTransformed ? (c.avatarUrl || 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp') : baseAvatar;
+    const activeStage = (c.servant as any).selectedAscensionStage ?? c.servant.template?.selectedAscensionStage;
+    const stageSprite = resolveAscensionSprite(c.servant, activeStage, c.servant.level, c.servant.bondLevel);
+    const resolvedSprite = c.isTransformed ? currentAvatar : (stageSprite || c.spriteUrl || artInfo.spriteUrl || currentAvatar);
     return {
       id: c.userId,
       name: c.isTransformed ? `${c.servant.nickname || c.servant.template.name} (Super Aoko)` : (c.servant.nickname || c.servant.template.name),
@@ -465,6 +481,9 @@ async function createTurnSummaryAttachment(
       avatarUrl: currentAvatar,
       baseAvatarUrl: baseAvatar,
       cardArtUrl: artInfo.cardArtUrl || currentAvatar,
+      spriteUrl: resolvedSprite,
+      selectedAscensionStage: activeStage,
+      customArtworkUrl: (c.servant as any).customArtworkUrl,
       isTransformed: c.isTransformed,
       transformationTurns: c.transformationTurns,
       maxHp: c.maxHp,
@@ -4426,10 +4445,10 @@ async function startInteractiveDuel(
   };
 
   const p1Class = t1?.servantClass || 'Saber';
-  const p1AvatarUrl = t1?.avatarUrl;
+  const p1AvatarUrl = getCombatantSpriteUrl(p1) || t1?.avatarUrl;
 
   const p2Class = t2?.servantClass || 'Saber';
-  const p2AvatarUrl = t2?.avatarUrl;
+  const p2AvatarUrl = getCombatantSpriteUrl(p2) || t2?.avatarUrl;
 
   const initialAttachment = await buildCurrentAttachment();
   const initialButtons = buildCurrentButtons();
@@ -4511,7 +4530,7 @@ async function startInteractiveDuel(
     const p1AllyTpl = p1Ally.servant.template;
     const p1AllySpeaker = p1Ally.servant.nickname || p1AllyTpl?.name || 'Ally Servant';
     const p1AllyClass = p1AllyTpl?.servantClass || 'Saber';
-    const p1AllyAvatarUrl = p1AllyTpl?.avatarUrl;
+    const p1AllyAvatarUrl = getCombatantSpriteUrl(p1Ally) || p1AllyTpl?.avatarUrl;
     const p1AllyMatchup = getServantMatchupDialogue(p1Ally.servant, t2);
     const p1AllyQuote = p1AllyMatchup.challengerLine;
 
@@ -4555,7 +4574,7 @@ async function startInteractiveDuel(
     const p2AllyTpl = p2Ally.servant.template;
     const p2AllySpeaker = p2Ally.servant.nickname || p2AllyTpl?.name || 'Opponent Ally Servant';
     const p2AllyClass = p2AllyTpl?.servantClass || 'Saber';
-    const p2AllyAvatarUrl = p2AllyTpl?.avatarUrl;
+    const p2AllyAvatarUrl = getCombatantSpriteUrl(p2Ally) || p2AllyTpl?.avatarUrl;
     const p2AllyMatchup = getServantMatchupDialogue(p2Ally.servant, t1);
     const p2AllyQuote = p2AllyMatchup.challengerLine;
 
@@ -5696,7 +5715,7 @@ async function startInteractiveDuel(
         try {
           const sName = actor.servant.nickname || actor.servant.template?.name || 'Heroic Spirit';
           const sClass = actor.servant.template?.servantClass || 'Servant';
-          const avatarUrl = actor.servant.template?.avatarUrl;
+          const avatarUrl = getCombatantSpriteUrl(actor) || actor.servant.template?.avatarUrl;
           const bondLvl = actor.servant.bondLevel || 8;
 
           const skillName = res.skillName || 'TACTICAL SKILL';
@@ -6004,12 +6023,12 @@ async function startInteractiveDuel(
         try {
           const sName = attacker.servant.nickname || attacker.servant.template?.name || 'Heroic Spirit';
           const sClass = attacker.servant.template?.servantClass || 'Servant';
-          const avatarUrl = attacker.servant.template?.avatarUrl;
+          const avatarUrl = getCombatantSpriteUrl(attacker) || attacker.servant.template?.avatarUrl;
           const bondLvl = attacker.servant.bondLevel || 8;
 
           const dName = defender.servant.nickname || defender.servant.template?.name || 'Opponent Servant';
           const dClass = defender.servant.template?.servantClass || 'Servant';
-          const dAvatarUrl = defender.servant.template?.avatarUrl;
+          const dAvatarUrl = getCombatantSpriteUrl(defender) || defender.servant.template?.avatarUrl;
 
           const diaBuffer = await renderDialogueCard(
             sName,
@@ -6162,12 +6181,12 @@ async function finishDuel(
 
   const winnerName = primaryWinner.servant.nickname || primaryWinner.servant.template?.name || 'Heroic Spirit';
   const winnerClass = primaryWinner.servant.template?.servantClass || 'Saber';
-  const winnerAvatarUrl = primaryWinner.servant.template?.avatarUrl;
+  const winnerAvatarUrl = getCombatantSpriteUrl(primaryWinner) || primaryWinner.servant.template?.avatarUrl;
 
   const primaryLoser = defeatedStates[0].combatant;
   const loserName = primaryLoser.servant.nickname || primaryLoser.servant.template?.name || 'Heroic Spirit';
   const loserClass = primaryLoser.servant.template?.servantClass || 'Saber';
-  const loserAvatarUrl = primaryLoser.servant.template?.avatarUrl;
+  const loserAvatarUrl = getCombatantSpriteUrl(primaryLoser) || primaryLoser.servant.template?.avatarUrl;
   const loserBond = primaryLoser.servant.bondLevel || 5;
   const loserDefeatQuote = primaryLoser.servant.customQuotes?.defeat || primaryLoser.servant.template?.defeatQuote || "Master... I have failed you in battle...";
 

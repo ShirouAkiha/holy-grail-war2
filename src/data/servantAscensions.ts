@@ -7,7 +7,14 @@ export interface ServantAscensionData {
   stage3: string;
   stage4: string; // Final Ascension
   costume?: string;
-  costumes?: { id: string; name: string; url: string }[];
+  costumes?: { id: string; name: string; url: string; spriteUrl?: string }[];
+  sprites?: {
+    stage1?: string;
+    stage2?: string;
+    stage3?: string;
+    stage4?: string;
+    costume?: string;
+  };
 }
 
 export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> = {
@@ -19,13 +26,26 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
     costume: 'https://static.atlasacademy.io/NA/CharaGraph/100130/100130a.png',
     costumes: [
       { id: '100130', name: 'Invisible Air (Wind King Barrier)', url: 'https://static.atlasacademy.io/NA/CharaGraph/100130/100130a.png' }
-    ]
+    ],
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/1001000/1001000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/1001001/1001001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/1001002/1001002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/1001002/1001002_merged.png',
+      costume: 'https://static.atlasacademy.io/NA/CharaFigure/1001300/1001300_merged.png'
+    }
   },
   gilgamesh_archer: {
     stage1: 'https://static.atlasacademy.io/NA/CharaGraph/200200/200200a@1.png',
     stage2: 'https://static.atlasacademy.io/NA/CharaGraph/200200/200200a@2.png',
     stage3: 'https://static.atlasacademy.io/NA/CharaGraph/200200/200200b@1.png',
-    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/200200/200200b@2.png'
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/200200/200200b@2.png',
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/2002000/2002000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/2002001/2002001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/2002002/2002002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/2002002/2002002_merged.png'
+    }
   },
   scathach_lancer: {
     stage1: 'https://static.atlasacademy.io/NA/CharaGraph/301300/301300a@1.png',
@@ -35,7 +55,14 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
     costume: 'https://static.atlasacademy.io/NA/CharaGraph/301330/301330a.png',
     costumes: [
       { id: '301330', name: 'Piercing Bunny of Dun Scaith', url: 'https://static.atlasacademy.io/NA/CharaGraph/301330/301330a.png' }
-    ]
+    ],
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/3013000/3013000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/3013001/3013001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/3013002/3013002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/3013002/3013002_merged.png',
+      costume: 'https://static.atlasacademy.io/NA/CharaFigure/3013300/3013300_merged.png'
+    }
   },
   jeanne_darc_ruler: {
     stage1: 'https://static.atlasacademy.io/NA/CharaGraph/900100/900100a@1.png',
@@ -45,7 +72,14 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
     costume: 'https://static.atlasacademy.io/NA/CharaGraph/900130/900130a.png',
     costumes: [
       { id: '900130', name: 'Formal Holy Maiden Gown', url: 'https://static.atlasacademy.io/NA/CharaGraph/900130/900130a.png' }
-    ]
+    ],
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/9001000/9001000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/9001001/9001001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/9001002/9001002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/9001002/9001002_merged.png',
+      costume: 'https://static.atlasacademy.io/NA/CharaFigure/9001300/9001300_merged.png'
+    }
   },
   jeanne_alter: {
     stage1: 'https://static.atlasacademy.io/NA/CharaGraph/1100300/1100300a@1.png',
@@ -55,13 +89,26 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
     costume: 'https://static.atlasacademy.io/NA/CharaGraph/1100330/1100330a.png',
     costumes: [
       { id: '1100330', name: 'Shinjuku 1999 Casual Dress', url: 'https://static.atlasacademy.io/NA/CharaGraph/1100330/1100330a.png' }
-    ]
+    ],
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/11003000/11003000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/11003001/11003001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/11003002/11003002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/11003002/11003002_merged.png',
+      costume: 'https://static.atlasacademy.io/NA/CharaFigure/11003300/11003300_merged.png'
+    }
   },
   mhx_alter: {
     stage1: 'https://static.atlasacademy.io/NA/CharaGraph/702400/702400a@1.png',
     stage2: 'https://static.atlasacademy.io/NA/CharaGraph/702400/702400a@2.png',
     stage3: 'https://static.atlasacademy.io/NA/CharaGraph/702400/702400b@1.png',
-    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/702400/702400b@2.png'
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/702400/702400b@2.png',
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/7024000/7024000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/7024001/7024001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/7024002/7024002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/7024002/7024002_merged.png'
+    }
   },
   artoria_pendragon_alter: {
     stage1: 'https://static.atlasacademy.io/NA/CharaGraph/100200/100200a@1.png',
@@ -71,7 +118,14 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
     costume: 'https://static.atlasacademy.io/NA/CharaGraph/100230/100230a.png',
     costumes: [
       { id: '100230', name: 'Shinjuku 1999 Leather Jacket', url: 'https://static.atlasacademy.io/NA/CharaGraph/100230/100230a.png' }
-    ]
+    ],
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/1002000/1002000_merged.png', // With visor
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/1002001/1002001_merged.png', // No visor
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/1002002/1002002_merged.png', // Armor dress
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/1002002/1002002_merged.png',
+      costume: 'https://static.atlasacademy.io/NA/CharaFigure/1002300/1002300_merged.png' // Shinjuku jacket
+    }
   },
   nero_claudius_saber: {
     stage1: 'https://static.atlasacademy.io/NA/CharaGraph/100500/100500a@1.png',
@@ -83,7 +137,14 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
       { id: '100530', name: 'Olympia Bloomers', url: 'https://static.atlasacademy.io/NA/CharaGraph/100530/100530a.png' },
       { id: '100540', name: 'Silk of Venus', url: 'https://static.atlasacademy.io/NA/CharaGraph/100540/100540a.png' },
       { id: '100550', name: 'Chastity Bridle', url: 'https://static.atlasacademy.io/NA/CharaGraph/100550/100550a.png' }
-    ]
+    ],
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/1005000/1005000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/1005001/1005001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/1005002/1005002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/1005002/1005002_merged.png',
+      costume: 'https://static.atlasacademy.io/NA/CharaFigure/1005300/1005300_merged.png'
+    }
   },
   emiya_archer: {
     stage1: 'https://static.atlasacademy.io/NA/CharaGraph/200100/200100a@1.png',
@@ -93,19 +154,50 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
     costume: 'https://static.atlasacademy.io/NA/CharaGraph/200130/200130a.png',
     costumes: [
       { id: '200130', name: 'Summer Butler Chaldea Apron', url: 'https://static.atlasacademy.io/NA/CharaGraph/200130/200130a.png' }
-    ]
+    ],
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/2001000/2001000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/2001001/2001001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/2001002/2001002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/2001002/2001002_merged.png',
+      costume: 'https://static.atlasacademy.io/NA/CharaFigure/2001300/2001300_merged.png'
+    }
+  },
+  emiya_alter: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/201600/201600a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/201600/201600a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/201600/201600b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/201600/201600b@2.png',
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/2016000/2016000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/2016001/2016001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/2016002/2016002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/2016002/2016002_merged.png'
+    }
   },
   heracles_berserker: {
     stage1: 'https://static.atlasacademy.io/NA/CharaGraph/700100/700100a@1.png',
     stage2: 'https://static.atlasacademy.io/NA/CharaGraph/700100/700100a@2.png',
     stage3: 'https://static.atlasacademy.io/NA/CharaGraph/700100/700100b@1.png',
-    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/700100/700100b@2.png'
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/700100/700100b@2.png',
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/7001000/7001000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/7001001/7001001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/7001002/7001002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/7001002/7001002_merged.png'
+    }
   },
   cu_chulainn_lancer: {
     stage1: 'https://static.atlasacademy.io/NA/CharaGraph/300100/300100a@1.png',
     stage2: 'https://static.atlasacademy.io/NA/CharaGraph/300100/300100a@2.png',
     stage3: 'https://static.atlasacademy.io/NA/CharaGraph/300100/300100b@1.png',
-    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/300100/300100b@2.png'
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/300100/300100b@2.png',
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/3001000/3001000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/3001001/3001001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/3001002/3001002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/3001002/3001002_merged.png'
+    }
   },
   karna_lancer: {
     stage1: 'https://static.atlasacademy.io/NA/CharaGraph/300400/300400a@1.png',
@@ -115,19 +207,38 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
     costume: 'https://static.atlasacademy.io/NA/CharaGraph/300430/300430a.png',
     costumes: [
       { id: '300430', name: 'Super Karna (Burning Flame Armor)', url: 'https://static.atlasacademy.io/NA/CharaGraph/300430/300430a.png' }
-    ]
+    ],
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/3004000/3004000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/3004001/3004001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/3004002/3004002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/3004002/3004002_merged.png',
+      costume: 'https://static.atlasacademy.io/NA/CharaFigure/3004300/3004300_merged.png'
+    }
   },
   aoko_aozaki: {
     stage1: 'https://static.atlasacademy.io/NA/CharaGraph/2501400/2501400a@1.png',
     stage2: 'https://static.atlasacademy.io/NA/CharaGraph/2501400/2501400a@2.png',
     stage3: 'https://static.atlasacademy.io/NA/CharaGraph/2501400/2501400b@1.png',
-    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/2501400/2501400b@2.png'
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/2501400/2501400b@2.png',
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/25014000/25014000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/25014001/25014001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/25014002/25014002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/25014002/25014002_merged.png'
+    }
   },
   artoria_caster: {
     stage1: 'https://static.atlasacademy.io/NA/CharaGraph/504500/504500a@1.png',
     stage2: 'https://static.atlasacademy.io/NA/CharaGraph/504500/504500a@2.png',
     stage3: 'https://static.atlasacademy.io/NA/CharaGraph/504500/504500b@1.png',
-    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/504500/504500b@2.png'
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/504500/504500b@2.png',
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/5045000/5045000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/5045001/5045001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/5045002/5045002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/5045002/5045002_merged.png'
+    }
   },
   typhon_ephemeros: {
     stage1: 'https://static.atlasacademy.io/JP/CharaGraph/2801100/2801100a@1.png',
@@ -137,13 +248,26 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
     costume: 'https://static.atlasacademy.io/JP/CharaGraph/2801130/2801130a.png',
     costumes: [
       { id: '2801130', name: 'Ancient Dragon Form Frame', url: 'https://static.atlasacademy.io/JP/CharaGraph/2801130/2801130a.png' }
-    ]
+    ],
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/JP/CharaFigure/28011000/28011000_merged.png',
+      stage2: 'https://static.atlasacademy.io/JP/CharaFigure/28011001/28011001_merged.png',
+      stage3: 'https://static.atlasacademy.io/JP/CharaFigure/28011002/28011002_merged.png',
+      stage4: 'https://static.atlasacademy.io/JP/CharaFigure/28011002/28011002_merged.png',
+      costume: 'https://static.atlasacademy.io/JP/CharaFigure/28011300/28011300_merged.png'
+    }
   },
   van_gogh: {
     stage1: 'https://static.atlasacademy.io/NA/CharaGraph/2500600/2500600a@1.png',
     stage2: 'https://static.atlasacademy.io/NA/CharaGraph/2500600/2500600a@2.png',
     stage3: 'https://static.atlasacademy.io/NA/CharaGraph/2500600/2500600b@1.png',
-    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/2500600/2500600b@2.png'
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/2500600/2500600b@2.png',
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/25006000/25006000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/25006001/25006001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/25006002/25006002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/25006002/25006002_merged.png'
+    }
   }
 };
 
@@ -202,7 +326,10 @@ export function findCanonicalAscensionData(identifier?: string): { key: string; 
     typhon_ephemeros: 'typhon_ephemeros',
     ephemeros: 'typhon_ephemeros',
     van_gogh: 'van_gogh',
-    gogh: 'van_gogh'
+    gogh: 'van_gogh',
+    emiya_alter: 'emiya_alter',
+    edgemiya: 'emiya_alter',
+    demiya: 'emiya_alter'
   };
 
   if (ALIAS_MAP[raw] && CANONICAL_SERVANT_ASCENSIONS[ALIAS_MAP[raw]]) {
@@ -333,3 +460,81 @@ export function resolveAscensionArtwork(
   if (isAscensionStageUnlocked(2, level, bondLevel)) return data.stage2;
   return data.stage1;
 }
+
+/**
+ * Resolves the battle sprite URL for a servant based on their selected Ascension stage.
+ * Returns the transparent Atlas Academy CharaFigure sprite for canonical servants,
+ * or falls back to the servant's existing spriteUrl / custom artwork.
+ * CRITICAL: Strictly preserves custom servants' avatar and spriteUrl untouched!
+ */
+export function resolveAscensionSprite(
+  servantOrTemplate: any,
+  selectedStage?: 1 | 2 | 3 | 4 | 'costume' | string,
+  level: number = 1,
+  bondLevel: number = 1,
+  fallbackUrl?: string
+): string {
+  if (!servantOrTemplate) return fallbackUrl || '';
+
+  // 1. STRICT GUARANTEE: Never overwrite custom servants' avatar or spriteUrl!
+  const isCustom = servantOrTemplate.isCustom ||
+                   servantOrTemplate.template?.isCustom ||
+                   Boolean(servantOrTemplate.customArtworkUrl) ||
+                   Boolean(servantOrTemplate.template?.customArtworkUrl) ||
+                   Boolean(servantOrTemplate.isUserCreated) ||
+                   Boolean(servantOrTemplate.template?.isUserCreated);
+  if (isCustom) {
+    return servantOrTemplate.spriteUrl ||
+           servantOrTemplate.template?.spriteUrl ||
+           servantOrTemplate.customArtworkUrl ||
+           servantOrTemplate.template?.customArtworkUrl ||
+           servantOrTemplate.avatarUrl ||
+           servantOrTemplate.template?.avatarUrl ||
+           fallbackUrl || '';
+  }
+
+  const templateId = servantOrTemplate.templateId ||
+                     servantOrTemplate.template?.id ||
+                     servantOrTemplate.id || '';
+  const match = findCanonicalAscensionData(templateId);
+  if (!match || !match.data.sprites) {
+    return servantOrTemplate.spriteUrl ||
+           servantOrTemplate.template?.spriteUrl ||
+           servantOrTemplate.customArtworkUrl ||
+           servantOrTemplate.avatarUrl ||
+           fallbackUrl || '';
+  }
+
+  const sprites = match.data.sprites;
+  const effectiveStage = selectedStage ??
+                         servantOrTemplate.selectedAscensionStage ??
+                         servantOrTemplate.template?.selectedAscensionStage;
+
+  if (effectiveStage !== undefined && effectiveStage !== null && effectiveStage !== '') {
+    const sStr = String(effectiveStage).toLowerCase().trim();
+    if (sStr === '4' || sStr === 'stage4' || sStr === 'final') {
+      return sprites.stage4 || sprites.stage3 || sprites.stage1 || '';
+    }
+    if (sStr === '3' || sStr === 'stage3') {
+      return sprites.stage3 || sprites.stage2 || sprites.stage1 || '';
+    }
+    if (sStr === '2' || sStr === 'stage2') {
+      return sprites.stage2 || sprites.stage1 || '';
+    }
+    if (sStr === '1' || sStr === 'stage1' || sStr === 'base') {
+      return sprites.stage1 || '';
+    }
+    if (sStr.includes('costume') || sStr === 'costume') {
+      return sprites.costume || sprites.stage3 || sprites.stage1 || '';
+    }
+  }
+
+  // Automatic progression based on unlock level
+  const effLevel = servantOrTemplate.level || servantOrTemplate.template?.level || level || 1;
+  const effBond = servantOrTemplate.bondLevel || servantOrTemplate.template?.bondLevel || bondLevel || 1;
+  if (isAscensionStageUnlocked(4, effLevel, effBond) && sprites.stage4) return sprites.stage4;
+  if (isAscensionStageUnlocked(3, effLevel, effBond) && sprites.stage3) return sprites.stage3;
+  if (isAscensionStageUnlocked(2, effLevel, effBond) && sprites.stage2) return sprites.stage2;
+  return sprites.stage1 || servantOrTemplate.spriteUrl || '';
+}
+

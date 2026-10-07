@@ -1,5 +1,5 @@
 import { ServantTemplate, ServantClass, PassiveSkill } from '../types';
-import { resolveAscensionArtwork } from './servantAscensions';
+import { resolveAscensionArtwork, resolveAscensionSprite } from './servantAscensions';
 
 export function getDefaultClassPassives(servantClass: ServantClass): PassiveSkill[] {
   switch (servantClass) {
@@ -342,12 +342,33 @@ export function getServantAvatarAndCardArt(
   }
 
   let spriteUrl: string | undefined = undefined;
-  if (!isInvalid(servantInput.spriteUrl)) {
-    spriteUrl = servantInput.spriteUrl;
-  } else if (!isInvalid(template.spriteUrl)) {
-    spriteUrl = template.spriteUrl;
-  } else if (canonical && !isInvalid(canonical.spriteUrl)) {
-    spriteUrl = canonical.spriteUrl;
+  // If custom servant, strictly prioritize their custom spriteUrl / customArtworkUrl / avatarUrl!
+  const isCustomServant = servantInput.isCustom || template.isCustom || Boolean(servantInput.customArtworkUrl);
+  if (isCustomServant) {
+    if (!isInvalid(servantInput.spriteUrl)) {
+      spriteUrl = servantInput.spriteUrl;
+    } else if (!isInvalid(servantInput.customArtworkUrl)) {
+      spriteUrl = servantInput.customArtworkUrl;
+    } else if (!isInvalid(template.spriteUrl)) {
+      spriteUrl = template.spriteUrl;
+    }
+  } else {
+    // Canonical servant: dynamically resolve based on chosen / unlocked Ascension stage
+    const ascensionSprite = resolveAscensionSprite(
+      servantInput,
+      selectedStage,
+      servantInput.level || template.level || 1,
+      servantInput.bondLevel || template.bondLevel || 1
+    );
+    if (ascensionSprite && !isInvalid(ascensionSprite)) {
+      spriteUrl = ascensionSprite;
+    } else if (!isInvalid(servantInput.spriteUrl)) {
+      spriteUrl = servantInput.spriteUrl;
+    } else if (!isInvalid(template.spriteUrl)) {
+      spriteUrl = template.spriteUrl;
+    } else if (canonical && !isInvalid(canonical.spriteUrl)) {
+      spriteUrl = canonical.spriteUrl;
+    }
   }
 
   return { avatarUrl, cardArtUrl, spriteUrl };
