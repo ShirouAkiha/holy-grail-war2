@@ -1660,6 +1660,12 @@ async function runRaidBattle(
 
     const safeUpdate = async (options: any) => {
       try {
+        if (i.customId.startsWith('raid_target_skill_') || (i.message && i.message.flags && i.message.flags.has(MessageFlags.Ephemeral))) {
+          if (battleMsg && typeof battleMsg.edit === 'function') {
+            await battleMsg.edit(options);
+            return;
+          }
+        }
         if (!i.deferred && !i.replied) {
           await i.deferUpdate().catch(() => {});
         }
@@ -1863,9 +1869,9 @@ async function runRaidBattle(
 
         if (targetUserId && i.isButton()) {
           const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
-          await i.reply({
+          await i.update({
             content: `🎯 Targeted **${tName}** with **[${sName}]**!`,
-            flags: MessageFlags.Ephemeral
+            components: []
           }).catch(() => {});
         }
 
