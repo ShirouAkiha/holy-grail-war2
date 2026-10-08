@@ -1378,6 +1378,7 @@ async function runRaidBattle(
             // Typhon Ephemeros: Dragon Grail scaling with self debuffs (+10% per stack, up to +100%)
             let typhonRaidDebuffScale = 1.0;
             if (active.servant.templateId === 'typhon_ephemeros' || /dragon grail that reverses/i.test(npName)) {
+              if (!active.activeBuffs) active.activeBuffs = [];
               if (!active.activeBuffs.some(b => b.type === 'ignore_invincible' || b.type === 'anti_invulnerable' || b.type === 'pierce_invincible')) {
                 active.activeBuffs.push({
                   name: `${npName} (Ignore Invincible)`,

@@ -153,7 +153,7 @@ async function fetchWithHttpsModule(url: string, maxRedirects = 3): Promise<Buff
               'Referer': referer,
               'Connection': 'keep-alive',
             },
-            timeout: 3500,
+            timeout: 15000,
           },
           (res: any) => {
             if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && maxRedirects > 0) {
@@ -203,13 +203,13 @@ function getOptimalReferer(url: string): string {
   }
 }
 
-async function fetchImageBuffer(url: string): Promise<Buffer | null> {
+export async function fetchImageBuffer(url: string): Promise<Buffer | null> {
   const cached = imageBufferCache.get(url);
   if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
     return cached.buffer;
   }
 
-  // 1. Try modern fetch API with 3.5s timeout
+  // 1. Try modern fetch API with generous 15s timeout to ensure images always download
   try {
     const referer = getOptimalReferer(url);
     const res = await fetch(url, {
@@ -219,7 +219,7 @@ async function fetchImageBuffer(url: string): Promise<Buffer | null> {
         'Referer': referer,
         'Connection': 'keep-alive',
       },
-      signal: AbortSignal.timeout(3500)
+      signal: AbortSignal.timeout(15000)
     });
 
     if (res.ok) {
@@ -244,7 +244,7 @@ async function fetchImageBuffer(url: string): Promise<Buffer | null> {
   return null;
 }
 
-async function loadImage(src: string): Promise<any> {
+export async function loadImage(src: string): Promise<any> {
   if (!src || typeof src !== 'string') return null;
   const targetUrl = normalizeMediaUrl(src.trim());
   if (!targetUrl) return null;

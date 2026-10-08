@@ -5,7 +5,7 @@ import { getLocalMediaDiskPath } from '../utils/localMedia';
 import { getClassIconUrl } from '../data/classIcons';
 import { getStatusIconUrl } from '../data/statusIcons';
 import { resolveAscensionSprite } from '../data/servantAscensions';
-import { drawServantBattleSprite, isAtlasMergedSprite } from './renderer';
+import { drawServantBattleSprite, isAtlasMergedSprite, loadImage } from './renderer';
 import fs from 'fs';
 import { getCanvasModule } from './canvasLoader';
 
@@ -120,85 +120,20 @@ function createCanvas(width: number, height: number): any {
   };
 }
 
-const imageBufferCache = new Map<string, { buffer: Buffer; timestamp: number }>();
-const CACHE_TTL_MS = 1000 * 60 * 60;
+const loadedImageObjectCache = new Map<string, any>();
 
-async function fetchImageBuffer(url: string, retries = 2): Promise<Buffer | null> {
-  const cached = imageBufferCache.get(url);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-    return cached.buffer;
-  }
-
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const res = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-        }
-      });
-      if (res.ok) {
-        const arrayBuffer = await res.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        if (buffer && buffer.length > 0) {
-          imageBufferCache.set(url, { buffer, timestamp: Date.now() });
-          return buffer;
-        }
-      }
-    } catch {
-      if (attempt < retries) {
-        await new Promise(r => setTimeout(r, 200));
-      }
-    }
-  }
-  return null;
-}
-
-async function loadImage(src: string): Promise<any> {
-  if (!src || typeof src !== 'string') return null;
+async function loadImageCached(src: string): Promise<any> {
+  if (!src) return null;
   const targetUrl = normalizeMediaUrl(src.trim());
   if (!targetUrl) return null;
-
-  const canvasModule = getCanvasModule();
-  if (canvasModule && typeof canvasModule.loadImage === 'function') {
-    const attachMeta = (img: any) => {
-      if (!img) return img;
-      try { img._sourceUrl = targetUrl; } catch {}
-      try { if (!img.src) img.src = targetUrl; } catch {}
-      if (isAtlasMergedSprite(targetUrl)) {
-        try { img._isAtlasMerged = true; } catch {}
-      }
-      return img;
-    };
-
-    try {
-      const diskPath = getLocalMediaDiskPath(targetUrl);
-      if (diskPath && fs.existsSync(diskPath)) {
-        try {
-          const localBuffer = fs.readFileSync(diskPath);
-          const loaded = await canvasModule.loadImage(localBuffer);
-          return attachMeta(loaded);
-        } catch {
-          const loaded = await canvasModule.loadImage(diskPath);
-          return attachMeta(loaded);
-        }
-      }
-      if (targetUrl.startsWith('data:') || !targetUrl.startsWith('http')) {
-        const loaded = await canvasModule.loadImage(targetUrl);
-        return attachMeta(loaded);
-      }
-      const buffer = await fetchImageBuffer(targetUrl);
-      if (buffer && buffer.length > 0) {
-        const loaded = await canvasModule.loadImage(buffer);
-        return attachMeta(loaded);
-      }
-      const loaded = await canvasModule.loadImage(targetUrl).catch(() => null);
-      return attachMeta(loaded);
-    } catch {
-      return null;
-    }
+  if (loadedImageObjectCache.has(targetUrl)) {
+    return loadedImageObjectCache.get(targetUrl);
   }
-  return null;
+  const img = await loadImage(targetUrl);
+  if (img) {
+    loadedImageObjectCache.set(targetUrl, img);
+  }
+  return img;
 }
 
 // ==========================================
@@ -1436,7 +1371,7 @@ export async function renderRaidBattlefield(state: RaidBattleState, _animated = 
     getClassIconUrl(p.servant.template?.servantClass || 'Saber')
   );
 
-  // Collect all active buff/debuff types and skill icons for preloading
+  // Collect active buff/debuff types and skill icons for preloading
   const skillTypes = state.participants.flatMap(p => {
     const skills = p.servant.template?.skills || (p.servant as any).skills || [];
     return [0, 1, 2].map(sIdx => {
@@ -1445,32 +1380,7 @@ export async function renderRaidBattlefield(state: RaidBattleState, _animated = 
     });
   });
 
-  const defaultPreloadBuffs = [
-    'curse',
-    'burn',
-    'poison',
-    'stun',
-    'guts',
-    'arts',
-    'quick',
-    'buster',
-    'crit_dmg',
-    'crit_stars',
-    'np_charge',
-    'quick_resistance_down',
-    'def_down',
-    'defense_down',
-    'atk_down',
-    'attack_down',
-    'buff_atk',
-    'buff_def',
-    'evade',
-    'invincible',
-    'anti_purge_defense'
-  ];
-
   const allBuffTypes = Array.from(new Set([
-    ...defaultPreloadBuffs,
     ...state.participants.flatMap(p => (p.activeBuffs || []).flatMap(b => [b.type, b.name])),
     ...(state.bossBuffs || []).flatMap(b => [b.type, b.name]),
     ...skillTypes
@@ -1483,20 +1393,20 @@ export async function renderRaidBattlefield(state: RaidBattleState, _animated = 
     ? state.boss.phases[phase - 1].spriteUrl
     : state.boss.spriteUrl;
 
-  // Preload all assets including authentic FGO class icons and status icons
+  // Preload all assets using in-memory cached image loader
   const [bgImg, bossSpriteImg, bossAvatarImg, bossClassIconImg, ...rest] = await Promise.all([
-    loadImage(state.boss.bgUrl),
-    loadImage(activeSpriteUrl),
-    loadImage(state.boss.avatarUrl),
-    loadImage(bossClassIconUrl),
+    loadImageCached(state.boss.bgUrl),
+    loadImageCached(activeSpriteUrl),
+    loadImageCached(state.boss.avatarUrl),
+    loadImageCached(bossClassIconUrl),
     ...state.participants.map(p => {
       const activeStage = (p.servant as any).selectedAscensionStage ?? p.servant.template?.selectedAscensionStage;
       const stageSprite = resolveAscensionSprite(p.servant, activeStage);
       const art = stageSprite || (p.servant as any).customArtworkUrl || p.servant.template?.spriteUrl || p.servant.template?.avatarUrl;
-      return art ? loadImage(art) : Promise.resolve(null);
+      return art ? loadImageCached(art) : Promise.resolve(null);
     }),
-    ...participantClassIconUrls.map(url => loadImage(url)),
-    ...buffUrls.map(url => loadImage(url))
+    ...participantClassIconUrls.map(url => loadImageCached(url)),
+    ...buffUrls.map(url => loadImageCached(url))
   ]);
 
   const numPart = state.participants.length;
