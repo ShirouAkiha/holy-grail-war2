@@ -453,6 +453,23 @@ async function runRaidBattle(
     }
 
     const initialBuffs: any[] = [];
+
+  const raidSessionId = `raid_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const raidMessageIds = new Set<string>();
+  if (battleMsg?.id) {
+    raidMessageIds.add(battleMsg.id);
+  }
+
+  const isInteractionForThisRaid = (btn: any): boolean => {
+    const msgId = btn?.message?.id;
+    if (msgId && (raidMessageIds.has(msgId) || msgId === battleMsg?.id)) {
+      return true;
+    }
+    if (typeof btn?.customId === 'string' && btn.customId.includes(raidSessionId)) {
+      return true;
+    }
+    return false;
+  };
     const passives = t.passives || [];
     const servId = s.templateId || t.id || '';
     if (
@@ -873,6 +890,9 @@ async function runRaidBattle(
     }
 
     if (newBattleMsg) {
+      if (newBattleMsg.id) {
+        raidMessageIds.add(newBattleMsg.id);
+      }
       const prevMsg = battleMsg;
       battleMsg = newBattleMsg;
       if (prevMsg && typeof prevMsg.delete === 'function') {
@@ -897,7 +917,7 @@ async function runRaidBattle(
 
   const collector = battleMsg.channel.createMessageComponentCollector({
     componentType: ComponentType.Button,
-    filter: (b: any) => b.customId.startsWith('raid_'),
+    filter: (b: any) => isInteractionForThisRaid(b) && b.customId.startsWith('raid_'),
     idle: 180_000,
     time: 1_800_000
   });
@@ -1628,6 +1648,7 @@ async function runRaidBattle(
   };
 
   collector.on('collect', async (i: any) => {
+    if (!isInteractionForThisRaid(i)) return;
     if (isProcessingTurn && i.customId !== 'raid_status' && i.customId !== 'raid_combat_log') {
       try {
         if (!i.replied && !i.deferred) {

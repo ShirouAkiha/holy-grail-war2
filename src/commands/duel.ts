@@ -4918,15 +4918,22 @@ async function startInteractiveDuel(
         idle: 300000, // 5 minutes per player turn
         time: 3600000, // 1 hour absolute safety ceiling
         filter: (btn: any) =>
-          btn.customId.startsWith('card_') ||
-          btn.customId.startsWith('target_') ||
-          btn.customId.startsWith('skill_') ||
-          btn.customId.startsWith('fj_')
+          isInteractionForThisDuel(btn) &&
+          (btn.customId.startsWith('card_') ||
+           btn.customId.startsWith('target_') ||
+           btn.customId.startsWith('skill_') ||
+           btn.customId.startsWith('fj_'))
       })
     : battleMsg.createMessageComponentCollector({
         componentType: ComponentType.Button,
         idle: 300000, // 5 minutes per player turn
-        time: 3600000 // 1 hour absolute safety ceiling
+        time: 3600000, // 1 hour absolute safety ceiling
+        filter: (btn: any) =>
+          isInteractionForThisDuel(btn) &&
+          (btn.customId.startsWith('card_') ||
+           btn.customId.startsWith('target_') ||
+           btn.customId.startsWith('skill_') ||
+           btn.customId.startsWith('fj_'))
       });
 
   const advanceTurn = async (
@@ -5232,6 +5239,7 @@ async function startInteractiveDuel(
 
   collector.on('collect', async (i: any) => {
     try {
+      if (!isInteractionForThisDuel(i)) return;
       if (i.replied || i.deferred) return;
 
       // CASE: TARGET SELECTION BUTTON (e.g. target_123456789)
@@ -5467,7 +5475,7 @@ async function startInteractiveDuel(
         if (livingT1.length < 2) {
           fjButtons.push(
             new ButtonBuilder()
-              .setCustomId('fj_join_team1')
+              .setCustomId(`fj_join_team1_${duelSessionId}`)
               .setLabel(`Ally with Team 1 (${p1Name.slice(0, 15)})`)
               .setStyle(ButtonStyle.Primary)
               .setEmoji('🛡️')
@@ -5476,7 +5484,7 @@ async function startInteractiveDuel(
         if (livingT2.length < 2) {
           fjButtons.push(
             new ButtonBuilder()
-              .setCustomId('fj_join_team2')
+              .setCustomId(`fj_join_team2_${duelSessionId}`)
               .setLabel(`Ally with Team 2 (${p2Name.slice(0, 15)})`)
               .setStyle(ButtonStyle.Danger)
               .setEmoji('⚔️')
@@ -5484,7 +5492,7 @@ async function startInteractiveDuel(
         }
         fjButtons.push(
           new ButtonBuilder()
-            .setCustomId('fj_join_solo')
+            .setCustomId(`fj_join_solo_${duelSessionId}`)
             .setLabel('👑 Solo Rogue Intervention (No Team)')
             .setStyle(ButtonStyle.Success)
             .setEmoji('⚡')
@@ -5492,23 +5500,31 @@ async function startInteractiveDuel(
 
         const fjRow = new ActionRowBuilder<ButtonBuilder>().addComponents(fjButtons);
 
-        await i.reply({
+        const ephemRes = await i.reply({
           content: `⚡ **FORCE JOIN ARENA:** Select how you wish to intervene in combat (Alliance vs Solo Rogue / No Team):`,
           components: [fjRow],
-          flags: MessageFlags.Ephemeral
-        });
+          flags: MessageFlags.Ephemeral,
+          withResponse: true
+        }).catch(() => null);
+        const ephemMsgId = ephemRes?.resource?.message?.id || ephemRes?.id;
+        if (ephemMsgId) {
+          battleMessageIds.add(ephemMsgId);
+        }
         return;
       }
 
       // CASE: FORCE JOIN SELECTION RESPONSE (From ephemeral prompt buttons)
-      if (i.customId === 'fj_join_team1' || i.customId === 'fj_join_team2' || i.customId === 'fj_join_solo') {
+      if (i.customId.startsWith('fj_join_team1') || i.customId.startsWith('fj_join_team2') || i.customId.startsWith('fj_join_solo')) {
+        if (!i.customId.includes(duelSessionId) && !isInteractionForThisDuel(i)) {
+          return;
+        }
         recordFallenCombatants();
         const livingT1 = getLivingTeam1();
         const livingT2 = getLivingTeam2();
         const livingTS = getLivingTeamSolo();
-        const targetTeam1 = i.customId === 'fj_join_team1';
-        const targetTeam2 = i.customId === 'fj_join_team2';
-        const targetSolo = i.customId === 'fj_join_solo';
+        const targetTeam1 = i.customId.startsWith('fj_join_team1');
+        const targetTeam2 = i.customId.startsWith('fj_join_team2');
+        const targetSolo = i.customId.startsWith('fj_join_solo');
 
         if (targetTeam1 && livingT1.length >= 2) {
           await i.update({
