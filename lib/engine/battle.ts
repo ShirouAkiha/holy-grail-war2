@@ -1510,6 +1510,40 @@ export function executeNoblePhantasmLogic(
     // Damaging Noble Phantasm (ST or AoE)
     const isApocryphaTerminus = np.name.includes('Apocrypha Terminus');
     const isDenyTheVictory = np.name.includes('Deny the Victory') || np.name.includes('Concept Nullification');
+    const isTyphonNP = actor.id === 'typhon_ephemeros' || actor.templateId === 'typhon_ephemeros' || /dragon grail that reverses|typhon/i.test(np.name || '');
+    const hasNpIgnoreInvincible = isApocryphaTerminus || isTyphonNP || /ignore invincib|pierce invincib|anti-invulnerab/i.test((np.description || '') + ' ' + (np.overchargeEffect || ''));
+
+    if (hasNpIgnoreInvincible && !isApocryphaTerminus) {
+      if (!actor.activeBuffs.some(b => b.type === 'ignore_invincible' || b.type === 'anti_invulnerable' || b.type === 'pierce_invincible')) {
+        actor.activeBuffs.push({
+          name: `${np.name || 'Noble Phantasm'} (Ignore Invincible)`,
+          type: 'ignore_invincible',
+          value: 100,
+          remainingTurns: 1
+        });
+      }
+    }
+
+    let typhonDebuffScale = 1.0;
+    if (isTyphonNP) {
+      const debuffCount = (actor.activeBuffs || []).filter(b => ['curse', 'burn', 'poison', 'atk_down', 'def_down', 'stun', 'np_seal', 'skill_seal'].includes(b.type) || (b.name && b.name.includes('[Demerit]')) || b.type.includes('debuff')).length;
+      if (debuffCount > 0) {
+        typhonDebuffScale = 1.0 + Math.min(1.0, debuffCount * 0.10);
+      }
+      target.activeBuffs = target.activeBuffs || [];
+      target.activeBuffs.push({
+        name: `${np.name || 'Dragon Grail'} (Burn)`,
+        type: 'burn',
+        value: 1000,
+        remainingTurns: 5
+      });
+      target.activeBuffs.push({
+        name: `${np.name || 'Dragon Grail'} (Spread of Fire)`,
+        type: 'spread_of_fire',
+        value: 100,
+        remainingTurns: 5
+      });
+    }
 
     if (isApocryphaTerminus) {
       // Anti-Cheat Protocol (Before Damage):
@@ -1544,7 +1578,7 @@ export function executeNoblePhantasmLogic(
       });
     }
 
-    const baseDamage = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardDamageModifier * scopeModifier * overchargeDamageBonus * classMult);
+    const baseDamage = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardDamageModifier * scopeModifier * overchargeDamageBonus * typhonDebuffScale * classMult);
     const defValue = (isApocryphaTerminus || isDenyTheVictory) ? 0 : effectiveDef;
     let totalDmg = (baseDamage * cardPerformanceMultiplier * npDmgBonus) - (defValue * 0.25);
     totalDmg = Math.max(1200, totalDmg);

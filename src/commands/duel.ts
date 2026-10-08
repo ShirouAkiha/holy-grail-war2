@@ -2865,6 +2865,23 @@ function resolveStrike(
           .reduce((s, b) => s + b.value, 0);
         const npStrengthScale = Math.max(0.05, 1.0 - (npDmgDebuff / 100));
 
+        // Check if NP applies Ignore Invincibility (activates first)
+        const npDesc = npTemplate.description || '';
+        const npOcDesc = npTemplate.overchargeEffect || '';
+        const isTyphonNP = attacker.servant.templateId === 'typhon_ephemeros' || /dragon grail that reverses/i.test(npTemplate.name || '');
+        const hasNpIgnoreInvincible = isTyphonNP || /ignore invincib|pierce invincib|anti-invulnerab/i.test(npDesc + ' ' + npOcDesc);
+
+        if (hasNpIgnoreInvincible) {
+          if (!attacker.activeBuffs.some(b => b.type === 'ignore_invincible' || b.type === 'anti_invulnerable' || b.type === 'pierce_invincible')) {
+            attacker.activeBuffs.push({
+              name: `${npTemplate.name || 'Noble Phantasm'} (Ignore Invincible)`,
+              type: 'ignore_invincible',
+              value: 100,
+              remainingTurns: 1
+            });
+          }
+        }
+
         // Offense Noble Phantasms: ST hits locked defender, AoE hits EXCLUSIVELY living opponents (NEVER allies)
         const targetEnemies = (npScope === 'aoe')
           ? ((livingOpponents && livingOpponents.length > 0) ? livingOpponents.filter(o => o.currentHp > 0) : [defender])
