@@ -1510,7 +1510,7 @@ export function executeNoblePhantasmLogic(
     // Damaging Noble Phantasm (ST or AoE)
     const isApocryphaTerminus = np.name.includes('Apocrypha Terminus');
     const isDenyTheVictory = np.name.includes('Deny the Victory') || np.name.includes('Concept Nullification');
-    const isTyphonNP = actor.id === 'typhon_ephemeros' || actor.templateId === 'typhon_ephemeros' || /dragon grail that reverses|typhon/i.test(np.name || '');
+    const isTyphonNP = actor.id === 'typhon_ephemeros' || actor.templateId === 'typhon_ephemeros' || (actor as any).template?.id === 'typhon_ephemeros' || /dragon grail that reverses|typhon/i.test(np.name || '');
     const hasNpIgnoreInvincible = isApocryphaTerminus || isTyphonNP || /ignore invincib|pierce invincib|anti-invulnerab/i.test((np.description || '') + ' ' + (np.overchargeEffect || ''));
 
     if (hasNpIgnoreInvincible && !isApocryphaTerminus) {

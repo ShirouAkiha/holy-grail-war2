@@ -507,7 +507,14 @@ export async function handleGlobalGachaInteraction(interaction: any): Promise<bo
           )
           .setColor(pulled.isNew ? 0xeab308 : 0x38bdf8);
 
-        safeSetEmbedImage(embed, s.cardArtUrl || s.avatarUrl);
+        let files: AttachmentBuilder[] = [];
+        try {
+          const canvasBuffer = await renderGachaSummonBanner(rollResult.results, '1x Heroic Spirit Summon');
+          files = [new AttachmentBuilder(canvasBuffer, { name: 'servant_summon.png' })];
+          embed.setImage('attachment://servant_summon.png');
+        } catch {
+          safeSetEmbedImage(embed, s.cardArtUrl || s.avatarUrl);
+        }
         safeSetEmbedThumbnail(embed, s.avatarUrl);
 
         const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -530,7 +537,7 @@ export async function handleGlobalGachaInteraction(interaction: any): Promise<bo
             .setStyle(ButtonStyle.Secondary)
         );
 
-        await interaction.editReply({ embeds: [embed], components: [actionRow] });
+        await interaction.editReply({ embeds: [embed], files, components: [actionRow] });
         return true;
       } else {
         const ce = pulled.item as any;

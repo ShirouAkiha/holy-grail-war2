@@ -1213,8 +1213,12 @@ function buildCombatButtons(
   if (livingOpponents.length > 1) {
     const targetRow = new ActionRowBuilder<ButtonBuilder>();
     livingOpponents.forEach((opp, oppIdx) => {
-      const targetKey = opp.userId || opp.servant?.id || `opp_${oppIdx}`;
-      const isTarget = selectedTargetId === targetKey || selectedTargetId === opp.userId;
+      const targetKey = opp.servant?.id ? `serv_${opp.servant.id}` : (opp.userId && opp.userId !== 'ai' ? `usr_${opp.userId}` : `idx_${oppIdx}`);
+      const isTarget =
+        selectedTargetId === targetKey ||
+        selectedTargetId === opp.servant?.id ||
+        (opp.userId && opp.userId !== 'ai' && selectedTargetId === opp.userId) ||
+        selectedTargetId === `idx_${oppIdx}`;
       const oppServantName = opp.servant.nickname || opp.servant.template?.name || 'Foe';
       const label = isTarget
         ? `🎯 [TARGET] ${oppServantName} (${Math.round(opp.currentHp)})`
@@ -2227,6 +2231,28 @@ function resolveStrike(
   livingAllies?: DuelCombatant[]
 ): string {
   const chainTags: string[] = [];
+
+  // Auto-activate [Ignore Invincibility] if Noble Phantasm is selected and has Ignore Invincible (e.g. Typhon Ephemeros)
+  const npTpl = attacker.servant.template?.noblePhantasm;
+  if (npTpl && cardsSequence.includes('NP')) {
+    const npDesc = npTpl.description || '';
+    const npOcDesc = npTpl.overchargeEffect || '';
+    const isTyphon = attacker.servant.templateId === 'typhon_ephemeros' ||
+                     attacker.servant.template?.id === 'typhon_ephemeros' ||
+                     attacker.servant.id === 'typhon_ephemeros' ||
+                     /dragon grail that reverses|typhon/i.test(npTpl.name || '');
+    const hasIgnoreInv = isTyphon || /ignore invincib|pierce invincib|anti-invulnerab/i.test(npDesc + ' ' + npOcDesc);
+    if (hasIgnoreInv) {
+      if (!attacker.activeBuffs.some(b => b.type === 'ignore_invincible' || b.type === 'anti_invulnerable' || b.type === 'pierce_invincible')) {
+        attacker.activeBuffs.push({
+          name: `${npTpl.name || 'Noble Phantasm'} (Ignore Invincible)`,
+          type: 'ignore_invincible',
+          value: 100,
+          remainingTurns: 1
+        });
+      }
+    }
+  }
 
   // Decrement attacker skill cooldowns
   for (const idxStr of Object.keys(attacker.skillCooldowns)) {
@@ -4487,15 +4513,25 @@ async function startInteractiveDuel(
   const getSelectedTarget = (combatant: DuelCombatant): DuelCombatant | undefined => {
     const opps = getTargetsFor(combatant);
     if (opps.length === 0) return undefined;
-    let target = opps.find(o => 
-      combatant.selectedTargetId && 
-      (o.userId === combatant.selectedTargetId || combatant.selectedTargetId.includes(o.userId)) && 
-      o.currentHp > 0 && 
-      !o.isFled
-    );
+    let target = opps.find((o, idx) => {
+      if (!combatant.selectedTargetId) return false;
+      if (o.currentHp <= 0 || o.isFled) return false;
+      const keyServ = o.servant?.id ? `serv_${o.servant.id}` : '';
+      const keyUsr = (o.userId && o.userId !== 'ai') ? `usr_${o.userId}` : '';
+      const keyIdx = `idx_${idx}`;
+      return (
+        combatant.selectedTargetId === keyServ ||
+        combatant.selectedTargetId === keyUsr ||
+        combatant.selectedTargetId === keyIdx ||
+        combatant.selectedTargetId === o.servant?.id ||
+        (o.userId && o.userId !== 'ai' && combatant.selectedTargetId === o.userId)
+      );
+    });
     if (!target) {
       target = opps[0];
-      combatant.selectedTargetId = target.userId;
+      if (target) {
+        combatant.selectedTargetId = target.servant?.id ? `serv_${target.servant.id}` : (target.userId ? `usr_${target.userId}` : 'idx_0');
+      }
     }
     return target;
   };

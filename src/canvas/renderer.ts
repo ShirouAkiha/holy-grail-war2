@@ -188,6 +188,23 @@ async function fetchWithHttpsModule(url: string, maxRedirects = 2): Promise<Buff
   }
 }
 
+function getOptimalReferer(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    if (host.includes('atlasacademy.io')) return 'https://atlasacademy.io/';
+    if (host.includes('janitorai.com')) return 'https://janitorai.com/';
+    if (host.includes('gamepress.gg')) return 'https://gamepress.gg/';
+    if (host.includes('wikia.nocookie.net') || host.includes('fandom.com')) return 'https://fategrandorder.fandom.com/';
+    if (host.includes('imgur.com')) return 'https://imgur.com/';
+    if (host.includes('giphy.com')) return 'https://giphy.com/';
+    if (host.includes('catbox.moe')) return 'https://catbox.moe/';
+    return parsed.origin + '/';
+  } catch {
+    return 'https://fategrandorder.fandom.com/';
+  }
+}
+
 async function fetchImageBuffer(url: string): Promise<Buffer | null> {
   const cached = imageBufferCache.get(url);
   if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
@@ -200,11 +217,7 @@ async function fetchImageBuffer(url: string): Promise<Buffer | null> {
   }
 
   try {
-    const parsedUrl = new URL(url);
-    const referer = parsedUrl.hostname.includes('wikia.nocookie.net')
-      ? 'https://fategrandorder.fandom.com/'
-      : parsedUrl.origin + '/';
-
+    const referer = getOptimalReferer(url);
     const res = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -212,7 +225,7 @@ async function fetchImageBuffer(url: string): Promise<Buffer | null> {
         'Referer': referer,
         'Connection': 'keep-alive',
       },
-      signal: AbortSignal.timeout(900)
+      signal: AbortSignal.timeout(600)
     });
 
     if (res.ok) {
@@ -222,18 +235,6 @@ async function fetchImageBuffer(url: string): Promise<Buffer | null> {
         imageBufferCache.set(url, { buffer, timestamp: Date.now() });
         return buffer;
       }
-    }
-  } catch {}
-
-  // Fast fallback attempt
-  try {
-    const httpsBuffer = await Promise.race([
-      fetchWithHttpsModule(url),
-      new Promise<null>((r) => setTimeout(() => r(null), 800))
-    ]);
-    if (httpsBuffer && httpsBuffer.length > 0) {
-      imageBufferCache.set(url, { buffer: httpsBuffer, timestamp: Date.now() });
-      return httpsBuffer;
     }
   } catch {}
 
@@ -272,18 +273,20 @@ async function loadImage(src: string): Promise<any> {
         }
       }
 
-      if (targetUrl.startsWith('data:') || !targetUrl.startsWith('http')) {
+      if (targetUrl.startsWith('data:')) {
         const loaded = await canvasModule.loadImage(targetUrl);
         return attachMeta(loaded);
       }
 
-      const buffer = await fetchImageBuffer(targetUrl);
-      if (buffer && buffer.length > 0) {
-        const loaded = await canvasModule.loadImage(buffer);
-        return attachMeta(loaded);
+      if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+        const buffer = await fetchImageBuffer(targetUrl);
+        if (buffer && buffer.length > 0) {
+          const loaded = await canvasModule.loadImage(buffer);
+          return attachMeta(loaded);
+        }
+        return null;
       }
 
-      // Final fallback attempt
       const loaded = await canvasModule.loadImage(targetUrl).catch(() => null);
       return attachMeta(loaded);
     } catch {
@@ -6939,27 +6942,106 @@ export async function renderGachaSummonBanner(
       ctx.fillRect(x + 6, y + 60, cardWidth - 12, 46);
       ctx.restore();
     } else {
-      // Fallback vector shield graphic
+      // Stylized high-fidelity Servant Class / Craft Essence Relic Art Face
       ctx.save();
-      ctx.fillStyle = item.rarity === 5 ? '#2d1e40' : item.rarity === 4 ? '#1e203c' : '#1a2234';
-      ctx.beginPath();
-      ctx.roundRect(x + 6, y + 6, cardWidth - 12, 100, 6);
-      ctx.fill();
+      const artX = x + 6;
+      const artY = y + 6;
+      const artW = cardWidth - 12;
+      const artH = 100;
 
-      ctx.strokeStyle = borderGrad;
-      ctx.lineWidth = 2;
       ctx.beginPath();
-      const cx = x + cardWidth / 2;
-      const cy = y + 46;
-      ctx.moveTo(cx - 16, cy - 20);
-      ctx.lineTo(cx + 16, cy - 20);
-      ctx.lineTo(cx + 16, cy);
-      ctx.quadraticCurveTo(cx + 16, cy + 20, cx, cy + 26);
-      ctx.quadraticCurveTo(cx - 16, cy + 20, cx - 16, cy);
-      ctx.closePath();
-      ctx.stroke();
+      ctx.roundRect(artX, artY, artW, artH, 6);
+      ctx.clip();
 
-      drawVectorStar(ctx, cx, cy - 2, 5, 8, 4, borderGrad);
+      const cx = artX + artW / 2;
+      const cy = artY + artH / 2;
+
+      if (isServant) {
+        const sClass = (rawObj.servantClass || 'SABER').toUpperCase();
+        let cGradStart = '#1e3a8a';
+        let cGradEnd = '#0a1026';
+        let emblemColor = '#60a5fa';
+
+        if (sClass.includes('SABER')) {
+          cGradStart = '#1e3a8a'; cGradEnd = '#09153d'; emblemColor = '#93c5fd';
+        } else if (sClass.includes('ARCHER')) {
+          cGradStart = '#064e3b'; cGradEnd = '#022018'; emblemColor = '#6ee7b7';
+        } else if (sClass.includes('LANCER')) {
+          cGradStart = '#155e75'; cGradEnd = '#082f3d'; emblemColor = '#67e8f9';
+        } else if (sClass.includes('CASTER')) {
+          cGradStart = '#4c1d95'; cGradEnd = '#1e0a3d'; emblemColor = '#c084fc';
+        } else if (sClass.includes('RIDER')) {
+          cGradStart = '#701a75'; cGradEnd = '#2e0a30'; emblemColor = '#f0abfc';
+        } else if (sClass.includes('ASSASSIN')) {
+          cGradStart = '#334155'; cGradEnd = '#0f172a'; emblemColor = '#cbd5e1';
+        } else if (sClass.includes('BERSERKER')) {
+          cGradStart = '#7f1d1d'; cGradEnd = '#360808'; emblemColor = '#fca5a5';
+        } else if (sClass.includes('RULER') || sClass.includes('AVENGER')) {
+          cGradStart = '#78350f'; cGradEnd = '#291003'; emblemColor = '#fde047';
+        }
+
+        const bgGrad = ctx.createRadialGradient(cx, cy, 5, cx, cy, artW * 0.7);
+        bgGrad.addColorStop(0, cGradStart);
+        bgGrad.addColorStop(1, cGradEnd);
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(artX, artY, artW, artH);
+
+        // Radiant starburst rays
+        ctx.strokeStyle = `${emblemColor}33`;
+        ctx.lineWidth = 1;
+        for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + Math.cos(a) * 80, cy + Math.sin(a) * 80);
+          ctx.stroke();
+        }
+
+        // Center Heroic Spirit Shield & Crown Emblem
+        drawVectorShield(ctx, cx, cy - 6, 32, 40, `${emblemColor}33`, emblemColor);
+        drawVectorCrossedSwords(ctx, cx, cy - 6, 10, '#ffffff');
+
+        // Class Label Banner
+        ctx.fillStyle = 'rgba(10, 15, 26, 0.88)';
+        ctx.fillRect(artX, artY + artH - 22, artW, 22);
+        ctx.fillStyle = emblemColor;
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${sClass} SPIRIT ORIGIN`, cx, artY + artH - 7);
+      } else {
+        // Craft Essence Arcane Relic Art
+        const bgGrad = ctx.createRadialGradient(cx, cy, 5, cx, cy, artW * 0.7);
+        if (item.rarity === 5) {
+          bgGrad.addColorStop(0, '#581c87');
+          bgGrad.addColorStop(1, '#1e0f33');
+        } else if (item.rarity === 4) {
+          bgGrad.addColorStop(0, '#1e3a8a');
+          bgGrad.addColorStop(1, '#0b1636');
+        } else {
+          bgGrad.addColorStop(0, '#134e4a');
+          bgGrad.addColorStop(1, '#082422');
+        }
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(artX, artY, artW, artH);
+
+        // Arcane Leyline Ring
+        ctx.strokeStyle = rarityColor;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(cx, cy - 6, 22, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Inner glowing gem
+        drawSparkDiamond(ctx, cx, cy - 6, 10, rarityColor);
+
+        // Mystic Code Label
+        ctx.fillStyle = 'rgba(10, 15, 26, 0.88)';
+        ctx.fillRect(artX, artY + artH - 22, artW, 22);
+        ctx.fillStyle = rarityColor;
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('MYSTIC CODE RELIC', cx, artY + artH - 7);
+      }
+
       ctx.restore();
     }
 
