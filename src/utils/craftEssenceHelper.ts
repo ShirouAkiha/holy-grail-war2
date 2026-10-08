@@ -436,6 +436,7 @@ export function applyCeInitialCombatantEffects(combatant: any, allAllies?: any[]
       remainingHits: ceStats.invincibleHits,
       isHitCount: true
     });
+    combatant.isInvincible = true;
   }
 
   // 4. Damage Cut

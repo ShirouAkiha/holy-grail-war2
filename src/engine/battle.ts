@@ -160,6 +160,21 @@ export function createCombatantFromMasterServant(
         remainingHits: ce.passiveValue || 3,
         isHitCount: true
       });
+    } else if (ce.id === 'ce_volumen_hydragyrum' || ce.passiveType === 'invincible_hits' || /volumen/i.test(ce.name)) {
+      initialBuffs.push({
+        name: 'Volumen Hydragyrum (Invincibility)',
+        type: 'invincible',
+        value: 100,
+        remainingTurns: 99,
+        remainingHits: ce.passiveValue || 3,
+        isHitCount: true
+      });
+      initialBuffs.push({
+        name: 'Volumen Hydragyrum (Damage Cut)',
+        type: 'damage_cut',
+        value: 200,
+        remainingTurns: 99
+      });
     } else if (ce.passiveType === 'guts') {
       initialBuffs.push({
         name: `${ce.name} (Guts)`,
@@ -280,18 +295,94 @@ export function resolveCombatTurn(
     if (b.type === 'invincible') isInvincible = true;
   }
 
-  // Tactical Triangle Hit Protection:
-  // 1. Anti-Purge Defense: completely nullifies dmg; ONLY loses to Anti-Purge Attack
-  // 2. Invincible: blocked unless attacker has Ignore Invincible (Anti-Invulnerable) OR Anti-Purge Attack
-  // 3. Evade: blocked unless attacker has Ignore Invincible OR Sure Hit; EVADES Anti-Purge Attack!
-  let isProtected = false;
-  if (hasAntiPurgeDef) {
-    if (!actorHasAntiPurgeAtk) isProtected = true;
-  } else if (isInvincible) {
-    if (!actorIgnoresInvincible && !actorHasAntiPurgeAtk) isProtected = true;
-  } else if (isEvading) {
-    if (!actorIgnoresInvincible && !actorHasSureHit) isProtected = true;
-  }
+  // Per-hit defense check and consumption function
+  const checkHitProtection = (): boolean => {
+    // 1. Anti-Purge Defense
+    const apIdx = defender.activeBuffs ? defender.activeBuffs.findIndex(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge') : -1;
+    if (apIdx !== -1 && defender.activeBuffs) {
+      if (!actorHasAntiPurgeAtk) return true;
+    }
+
+    // 2. Invincibility
+    if (!actorIgnoresInvincible && !actorHasAntiPurgeAtk) {
+      // Prioritize turn-based Invincible if active
+      const turnInvIdx = defender.activeBuffs ? defender.activeBuffs.findIndex(b => b.type === 'invincible' && !b.isHitCount && b.remainingHits === undefined && (b.remainingTurns === undefined || b.remainingTurns > 0)) : -1;
+      if (turnInvIdx !== -1 && defender.activeBuffs) {
+        defender.activeBuffs[turnInvIdx].hasDefendedOnce = true;
+        return true;
+      }
+
+      // Hit-based Invincible (e.g. Volumen Hydragyrum)
+      const hitInvIdx = defender.activeBuffs ? defender.activeBuffs.findIndex(b => b.type === 'invincible') : -1;
+      if (hitInvIdx !== -1 && defender.activeBuffs) {
+        const buff = defender.activeBuffs[hitInvIdx];
+        const isHit = buff.isHitCount || buff.remainingHits !== undefined || /volumen/i.test(buff.name);
+        if (isHit) {
+          if (buff.remainingHits === undefined) buff.remainingHits = 3;
+          if (buff.remainingHits > 0) {
+            buff.remainingHits--;
+            buff.hasDefendedOnce = true;
+            if (buff.remainingHits <= 0) {
+              defender.activeBuffs.splice(hitInvIdx, 1);
+              defender.isInvincible = defender.activeBuffs.some(b => b.type === 'invincible');
+            }
+            return true;
+          } else {
+            defender.activeBuffs.splice(hitInvIdx, 1);
+            defender.isInvincible = defender.activeBuffs.some(b => b.type === 'invincible');
+          }
+        } else {
+          if (buff.remainingTurns && buff.remainingTurns > 0) {
+            buff.hasDefendedOnce = true;
+            return true;
+          } else {
+            defender.activeBuffs.splice(hitInvIdx, 1);
+            defender.isInvincible = defender.activeBuffs.some(b => b.type === 'invincible');
+          }
+        }
+      }
+    }
+
+    // 3. Evade
+    if (!actorIgnoresInvincible && !actorHasSureHit) {
+      const turnEvaIdx = defender.activeBuffs ? defender.activeBuffs.findIndex(b => b.type === 'evade' && !b.isHitCount && b.remainingHits === undefined && (b.remainingTurns === undefined || b.remainingTurns > 0)) : -1;
+      if (turnEvaIdx !== -1 && defender.activeBuffs) {
+        defender.activeBuffs[turnEvaIdx].hasDefendedOnce = true;
+        return true;
+      }
+
+      const hitEvaIdx = defender.activeBuffs ? defender.activeBuffs.findIndex(b => b.type === 'evade') : -1;
+      if (hitEvaIdx !== -1 && defender.activeBuffs) {
+        const buff = defender.activeBuffs[hitEvaIdx];
+        const isHit = buff.isHitCount || buff.remainingHits !== undefined || /protection from arrows/i.test(buff.name);
+        if (isHit) {
+          if (buff.remainingHits === undefined) buff.remainingHits = 3;
+          if (buff.remainingHits > 0) {
+            buff.remainingHits--;
+            buff.hasDefendedOnce = true;
+            if (buff.remainingHits <= 0) {
+              defender.activeBuffs.splice(hitEvaIdx, 1);
+              defender.isEvading = defender.activeBuffs.some(b => b.type === 'evade');
+            }
+            return true;
+          } else {
+            defender.activeBuffs.splice(hitEvaIdx, 1);
+            defender.isEvading = defender.activeBuffs.some(b => b.type === 'evade');
+          }
+        } else {
+          if (buff.remainingTurns && buff.remainingTurns > 0) {
+            buff.hasDefendedOnce = true;
+            return true;
+          } else {
+            defender.activeBuffs.splice(hitEvaIdx, 1);
+            defender.isEvading = defender.activeBuffs.some(b => b.type === 'evade');
+          }
+        }
+      }
+    }
+
+    return false;
+  };
 
   const effectiveAtk = attacker.atk * atkBuff;
   const effectiveDef = defender.def * defBuff;
@@ -413,7 +504,7 @@ export function resolveCombatTurn(
 
     let hitDamage = Math.max(300, Math.round(baseHit * classMultiplier * (hitCrit ? critMult : 1.0) * variance)) + busterChainBonusDmg;
 
-    if (isProtected) {
+    if (checkHitProtection()) {
       hitDamage = 0;
     }
 
@@ -425,7 +516,7 @@ export function resolveCombatTurn(
     chainTags.push('⚔️ BRAVE CHAIN (Extra Attack Finisher)');
     const extraBase = (effectiveAtk * 1.2 * 0.11) - (effectiveDef * 2);
     let extraDamage = Math.max(400, Math.round(extraBase * classMultiplier * (0.95 + Math.random() * 0.10)));
-    if (isProtected) {
+    if (checkHitProtection()) {
       extraDamage = 0;
     }
     totalDmg += Math.round(extraDamage * PVP_DAMAGE_MODIFIER);
@@ -556,7 +647,15 @@ export function resolveCombatTurn(
   [attacker, defender].forEach(c => {
     if (c && c.activeBuffs) {
       c.activeBuffs = c.activeBuffs.map(b => {
-        if (b.remainingTurns !== undefined && b.remainingTurns > 0 && b.remainingTurns < 90) {
+        const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
+        if (!isHitBased && b.remainingTurns !== undefined && b.remainingTurns > 0 && b.remainingTurns < 90) {
+          const isDefensive = b.type === 'invincible' || b.type === 'evade' || b.type === 'anti_purge_defense' || b.type === 'anti_purge';
+          if (isDefensive && b.remainingTurns <= 1 && b.hasDefendedOnce) {
+            return { ...b, remainingTurns: 0 };
+          }
+          if (isDefensive && b.remainingTurns <= 1 && !b.hasDefendedOnce) {
+            return b;
+          }
           return { ...b, remainingTurns: b.remainingTurns - 1 };
         }
         return b;

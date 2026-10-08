@@ -87,6 +87,7 @@ export interface CombatantBuff {
   isHitCount?: boolean;
   appliedRound?: number;
   appliedTurnUserId?: string;
+  hasDefendedOnce?: boolean;
 }
 
 export interface DuelCombatant {
@@ -345,6 +346,8 @@ function createCombatant(
   // Apply all Craft Essence initial passives (Guts, starting NP, stats, card buffs, damage cuts)
   applyCeInitialCombatantEffects(combatant);
   combatant.gutsCount = combatant.activeBuffs.filter(b => b.type === 'guts').reduce((sum, b) => sum + (b.remainingHits && b.remainingHits > 0 ? b.remainingHits : 1), 0);
+  combatant.isInvincible = combatant.activeBuffs.some(b => b.type === 'invincible');
+  combatant.isEvading = combatant.activeBuffs.some(b => b.type === 'evade');
 
   refreshCombatantHand(combatant);
   return combatant;
@@ -1930,13 +1933,17 @@ function activateCombatantSkill(
       gutsSummaryTag = `[Guts Already Active - Does not stack]`;
     }
     if (descLower.includes('invincible') || descLower.includes('invincibility')) {
+      const invDur = descLower.includes('2 turns') || descLower.includes('2t') ? 2 : 1;
       combatant.activeBuffs.push({
         name: `${skill.name} (Invincible)`,
         type: 'invincible',
         value: 100,
-        remainingTurns: 1,
-        appliedRound: currentRound
+        remainingTurns: invDur,
+        appliedRound: currentRound,
+        appliedTurnUserId: combatant.userId,
+        hasDefendedOnce: false
       });
+      combatant.isInvincible = true;
     }
     if (skill.id === 'indomitable_a' || skill.name.includes('Indomitable')) {
       combatant.activeBuffs.push({
@@ -1963,7 +1970,8 @@ function activateCombatantSkill(
         appliedRound: currentRound
       });
     }
-    logText = `🩸 **${sName}** activated **${skill.name}**! (${gutsSummaryTag})${quoteLine}`;
+    const invNotice = descLower.includes('invincible') || descLower.includes('invincibility') ? ', 🛡️ Invincible (1T)' : '';
+    logText = `🩸 **${sName}** activated **${skill.name}**! (${gutsSummaryTag}${invNotice})${quoteLine}`;
   } else if (skill.effectType === 'heal') {
     const healVal = skill.value || Math.round(combatant.maxHp * 0.25);
     combatant.currentHp = Math.min(combatant.maxHp, combatant.currentHp + healVal);
@@ -2416,60 +2424,112 @@ function resolveStrike(
       if (actorHasAntiPurgeAtk) {
         // Pierced by Anti-Purge Attack!
       } else {
-        if (buff.remainingTurns > 0 || (buff.remainingHits !== undefined && buff.remainingHits > 0)) {
+        const isHitBased = buff.isHitCount || buff.remainingHits !== undefined;
+        if (isHitBased) {
+          if (buff.remainingHits === undefined) buff.remainingHits = 1;
+          if (buff.remainingHits > 0) {
+            buff.remainingHits--;
+            buff.hasDefendedOnce = true;
+            if (buff.remainingHits <= 0) {
+              targetDefender.activeBuffs.splice(apIdx, 1);
+              targetDefender.isAntiPurgeDefense = targetDefender.activeBuffs.some(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge');
+            }
+            return { isProtected: true, type: 'anti_purge_defense' };
+          } else {
+            targetDefender.activeBuffs.splice(apIdx, 1);
+            targetDefender.isAntiPurgeDefense = targetDefender.activeBuffs.some(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge');
+          }
+        } else if (buff.remainingTurns > 0) {
+          buff.hasDefendedOnce = true;
           return { isProtected: true, type: 'anti_purge_defense' };
         } else {
           targetDefender.activeBuffs.splice(apIdx, 1);
+          targetDefender.isAntiPurgeDefense = targetDefender.activeBuffs.some(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge');
         }
       }
     }
 
     // 2. Invincible (Blocks normal attacks & Sure Hit; Pierced by Ignore Invincible AND Anti-Purge Attack)
-    const invIdx = targetDefender.activeBuffs.findIndex(b => b.type === 'invincible');
-    if (invIdx !== -1) {
-      const buff = targetDefender.activeBuffs[invIdx];
-      if (actorHasAntiPurgeAtk || actorIgnoresInvincible) {
-        // Pierced by Ignore Invincible or Anti-Purge Attack!
-      } else {
+    if (actorHasAntiPurgeAtk || actorIgnoresInvincible) {
+      // Pierced by Ignore Invincible or Anti-Purge Attack!
+    } else {
+      // Prioritize turn-based Invincible if active so hit charges (e.g. Volumen Hydragyrum) are preserved
+      const turnInvIdx = targetDefender.activeBuffs.findIndex(b => b.type === 'invincible' && !b.isHitCount && b.remainingHits === undefined && (b.remainingTurns === undefined || b.remainingTurns > 0));
+      if (turnInvIdx !== -1) {
+        const buff = targetDefender.activeBuffs[turnInvIdx];
+        buff.hasDefendedOnce = true;
+        return { isProtected: true, type: 'invincible' };
+      }
+
+      // Hit-based Invincible (e.g. Volumen Hydragyrum)
+      const hitInvIdx = targetDefender.activeBuffs.findIndex(b => b.type === 'invincible');
+      if (hitInvIdx !== -1) {
+        const buff = targetDefender.activeBuffs[hitInvIdx];
         const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /volumen/i.test(buff.name);
         if (isHitBased) {
           if (buff.remainingHits === undefined) buff.remainingHits = 3;
           if (buff.remainingHits > 0) {
+            buff.remainingHits--;
+            buff.hasDefendedOnce = true;
+            if (buff.remainingHits <= 0) {
+              targetDefender.activeBuffs.splice(hitInvIdx, 1);
+              targetDefender.isInvincible = targetDefender.activeBuffs.some(b => b.type === 'invincible');
+            }
             return { isProtected: true, type: 'invincible' };
           } else {
-            targetDefender.activeBuffs.splice(invIdx, 1);
+            targetDefender.activeBuffs.splice(hitInvIdx, 1);
+            targetDefender.isInvincible = targetDefender.activeBuffs.some(b => b.type === 'invincible');
           }
         } else {
           if (buff.remainingTurns > 0) {
+            buff.hasDefendedOnce = true;
             return { isProtected: true, type: 'invincible' };
           } else {
-            targetDefender.activeBuffs.splice(invIdx, 1);
+            targetDefender.activeBuffs.splice(hitInvIdx, 1);
+            targetDefender.isInvincible = targetDefender.activeBuffs.some(b => b.type === 'invincible');
           }
         }
       }
     }
 
     // 3. Evade (Blocks normal attacks AND Anti-Purge Attack; Pierced by Ignore Invincible AND Sure Hit)
-    const evaIdx = targetDefender.activeBuffs.findIndex(b => b.type === 'evade');
-    if (evaIdx !== -1) {
-      const buff = targetDefender.activeBuffs[evaIdx];
-      if (actorIgnoresInvincible || actorHasSureHit) {
-        // Pierced by Ignore Invincible / Sure Hit!
-      } else {
-        // Evades normal attack and evades Anti-Purge Attack!
+    if (actorIgnoresInvincible || actorHasSureHit) {
+      // Pierced by Ignore Invincible / Sure Hit!
+    } else {
+      // Prioritize turn-based Evade if active so hit charges (e.g. Protection from Arrows) are preserved
+      const turnEvaIdx = targetDefender.activeBuffs.findIndex(b => b.type === 'evade' && !b.isHitCount && b.remainingHits === undefined && (b.remainingTurns === undefined || b.remainingTurns > 0));
+      if (turnEvaIdx !== -1) {
+        const buff = targetDefender.activeBuffs[turnEvaIdx];
+        buff.hasDefendedOnce = true;
+        return { isProtected: true, type: 'evade' };
+      }
+
+      // Hit-based Evade (e.g. Protection from Arrows)
+      const hitEvaIdx = targetDefender.activeBuffs.findIndex(b => b.type === 'evade');
+      if (hitEvaIdx !== -1) {
+        const buff = targetDefender.activeBuffs[hitEvaIdx];
         const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /protection from arrows/i.test(buff.name);
         if (isHitBased) {
           if (buff.remainingHits === undefined) buff.remainingHits = 3;
           if (buff.remainingHits > 0) {
+            buff.remainingHits--;
+            buff.hasDefendedOnce = true;
+            if (buff.remainingHits <= 0) {
+              targetDefender.activeBuffs.splice(hitEvaIdx, 1);
+              targetDefender.isEvading = targetDefender.activeBuffs.some(b => b.type === 'evade');
+            }
             return { isProtected: true, type: 'evade' };
           } else {
-            targetDefender.activeBuffs.splice(evaIdx, 1);
+            targetDefender.activeBuffs.splice(hitEvaIdx, 1);
+            targetDefender.isEvading = targetDefender.activeBuffs.some(b => b.type === 'evade');
           }
         } else {
           if (buff.remainingTurns > 0) {
+            buff.hasDefendedOnce = true;
             return { isProtected: true, type: 'evade' };
           } else {
-            targetDefender.activeBuffs.splice(evaIdx, 1);
+            targetDefender.activeBuffs.splice(hitEvaIdx, 1);
+            targetDefender.isEvading = targetDefender.activeBuffs.some(b => b.type === 'evade');
           }
         }
       }
@@ -3205,12 +3265,11 @@ function resolveStrike(
   // Apply total damage to defender
   defender.currentHp = Math.max(0, defender.currentHp - totalSeqDmg);
 
-  // Deduct 1 hit instance from hit-based Evade/Invincibility AFTER defending against a full attack sequence
+  // Filter out consumed hit-based Evade/Invincibility and mark defended turn
   defender.activeBuffs = defender.activeBuffs.map(b => {
-    const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
-    if (isHitBased && (b.type === 'evade' || b.type === 'invincible' || b.type === 'anti_purge_defense' || b.type === 'anti_purge')) {
-      if (b.remainingHits === undefined) b.remainingHits = 3;
-      return { ...b, remainingHits: b.remainingHits - 1 };
+    const isDefensive = b.type === 'evade' || b.type === 'invincible' || b.type === 'anti_purge_defense' || b.type === 'anti_purge';
+    if (isDefensive) {
+      return { ...b, hasDefendedOnce: true };
     }
     return b;
   }).filter(b => {
@@ -3241,6 +3300,9 @@ function resolveStrike(
     }
     return true;
   });
+  attacker.isEvading = attacker.activeBuffs.some(b => b.type === 'evade');
+  attacker.isInvincible = attacker.activeBuffs.some(b => b.type === 'invincible');
+  attacker.isAntiPurgeDefense = attacker.activeBuffs.some(b => b.type === 'anti_purge_defense' || b.type === 'anti_purge');
 
   // Decrement transformation duration and revert if expired
   let revertText = '';
@@ -4910,16 +4972,13 @@ async function startInteractiveDuel(
             c.activeBuffs = c.activeBuffs.map(b => {
               const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
               if (!isHitBased && b.remainingTurns > 0 && b.remainingTurns < 90) {
-                // If a 1T defensive buff was applied by the 1st actor in the round, they already received incoming attacks in this round
-                if (b.appliedRound !== undefined && b.appliedRound === roundBeforeInc && b.remainingTurns <= 1) {
-                  const isDefensive = b.type === 'invincible' || b.type === 'evade' || b.type === 'anti_purge_defense' || b.type === 'anti_purge';
-                  if (isDefensive && b.appliedTurnUserId && b.appliedTurnUserId === turnOrder[0]?.userId) {
-                    return { ...b, remainingTurns: 0 };
-                  }
-                  return b;
+                const isDefensive = b.type === 'invincible' || b.type === 'evade' || b.type === 'anti_purge_defense' || b.type === 'anti_purge';
+                // If a 1T defensive buff already protected against incoming attacks, it expires at round end
+                if (isDefensive && b.remainingTurns <= 1 && b.hasDefendedOnce) {
+                  return { ...b, remainingTurns: 0 };
                 }
-                // Preserve other buffs applied in the round that just concluded so they protect against the new round's strikes
-                if (b.appliedRound !== undefined && b.appliedRound === roundBeforeInc) {
+                // Preserve newly applied defensive buffs that haven't faced an incoming attack yet
+                if (b.appliedRound !== undefined && b.appliedRound === roundBeforeInc && !b.hasDefendedOnce) {
                   return b;
                 }
                 return { ...b, remainingTurns: b.remainingTurns - 1 };
@@ -4947,7 +5006,7 @@ async function startInteractiveDuel(
         activeCombatant.activeBuffs = activeCombatant.activeBuffs.filter(b => {
           const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
           if (!isHitBased && (b.type === 'invincible' || b.type === 'evade' || b.type === 'anti_purge_defense' || b.type === 'anti_purge')) {
-            if (b.appliedTurnUserId === activeCombatant.userId && b.remainingTurns <= 1 && b.appliedRound !== undefined && b.appliedRound < round) {
+            if (b.remainingTurns <= 1 && (b.hasDefendedOnce || (b.appliedRound !== undefined && b.appliedRound < round))) {
               return false;
             }
           }

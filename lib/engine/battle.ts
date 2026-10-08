@@ -880,6 +880,16 @@ export function applyCombatantSkill(
       if (idLower === 'kekkai_creation' || descLower.includes('cleanse') || descLower.includes('debuff')) {
         actor.activeBuffs = actor.activeBuffs.filter(b => !b.type.startsWith('debuff'));
       }
+      if (descLower.includes('guts') || descLower.includes('revive') || skill.id === 'absolute_permanence') {
+        const reviveVal = skill.value || Math.round(actor.maxHp * 0.20);
+        actor.gutsCount = (actor.gutsCount || 0) + 1;
+        actor.activeBuffs.unshift({
+          name: `${skill.name} (Guts)`,
+          type: 'guts',
+          value: reviveVal,
+          remainingTurns: 5
+        });
+      }
       logText = `🛡️ **${actor.name}** activated **${skill.name}** (Invincible)!${quoteLine}`;
       break;
     }
@@ -892,6 +902,19 @@ export function applyCombatantSkill(
         value: reviveVal,
         remainingTurns: skill.duration || 5
       });
+      const descLower = (skill.description || '').toLowerCase();
+      let hasInvincible = false;
+      if (descLower.includes('invincible') || descLower.includes('invincibility')) {
+        actor.isInvincible = true;
+        hasInvincible = true;
+        const invDur = descLower.includes('2 turns') || descLower.includes('2t') ? 2 : 1;
+        actor.activeBuffs.push({
+          name: `${skill.name} (Invincible)`,
+          type: 'invincible',
+          value: 100,
+          remainingTurns: invDur
+        });
+      }
       if (skill.id === 'indomitable_a' || skill.name.includes('Indomitable')) {
         actor.activeBuffs.push({
           name: 'Indomitable A (On-Guts Buster Up)',
@@ -914,7 +937,8 @@ export function applyCombatantSkill(
           remainingTurns: 1
         });
       }
-      logText = `🩸 **${actor.name}** activated **${skill.name}**!${quoteLine}`;
+      const invTag = hasInvincible ? ' (Guts & Invincible)' : '';
+      logText = `🩸 **${actor.name}** activated **${skill.name}**${invTag}!${quoteLine}`;
       break;
     }
     case 'debuff':
@@ -2253,6 +2277,18 @@ export function executeBattleTurn(
               value: reviveVal,
               remainingTurns: skill.duration || 5
             });
+            const descLower = (skill.description || '').toLowerCase();
+            if (descLower.includes('invincible') || descLower.includes('invincibility')) {
+              actor.isInvincible = true;
+              const invDur = descLower.includes('2 turns') || descLower.includes('2t') ? 2 : 1;
+              actor.activeBuffs.push({
+                name: `${skill.name} (Invincible)`,
+                type: 'invincible',
+                value: 100,
+                remainingTurns: invDur,
+                hasDefendedOnce: false
+              });
+            }
             if (skill.id === 'indomitable_a' || skill.name.includes('Indomitable')) {
               actor.activeBuffs.push({
                 name: 'Indomitable A (On-Guts Buster Up)',
@@ -2525,12 +2561,20 @@ export function executeBattleTurn(
       }
 
       // 2. Invincible: pierced by Ignore Invincible AND Anti-Purge Attack
-      const invIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'invincible') : -1;
-      if (invIdx !== -1 && target.activeBuffs) {
-        const buff = target.activeBuffs[invIdx];
-        if (actorIgnores || actorHasAntiPurgeAtk) {
-          // Pierced by Ignore Invincible or Anti-Purge Attack!
-        } else {
+      if (actorIgnores || actorHasAntiPurgeAtk) {
+        // Pierced by Ignore Invincible or Anti-Purge Attack!
+      } else {
+        // Prioritize turn-based Invincible if active so hit charges (e.g. Volumen Hydragyrum) are preserved
+        const turnInvIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'invincible' && !b.isHitCount && b.remainingHits === undefined && (b.remainingTurns === undefined || b.remainingTurns > 0)) : -1;
+        if (turnInvIdx !== -1 && target.activeBuffs) {
+          const buff = target.activeBuffs[turnInvIdx];
+          buff.hasDefendedOnce = true;
+          return { isProtected: true, isInvincible: true, isEvade: false, isAntiPurge: false };
+        }
+
+        const invIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'invincible') : -1;
+        if (invIdx !== -1 && target.activeBuffs) {
+          const buff = target.activeBuffs[invIdx];
           const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /volumen/i.test(buff.name);
           if (isHitBased) {
             if (buff.remainingHits === undefined) buff.remainingHits = 3;
@@ -2539,30 +2583,40 @@ export function executeBattleTurn(
               if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
             } else {
               buff.remainingHits--;
+              buff.hasDefendedOnce = true;
               if (buff.remainingHits <= 0) target.activeBuffs.splice(invIdx, 1);
               if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
               return { isProtected: true, isInvincible: true, isEvade: false, isAntiPurge: false };
             }
           } else {
             if (buff.remainingTurns > 0) {
+              buff.hasDefendedOnce = true;
               return { isProtected: true, isInvincible: true, isEvade: false, isAntiPurge: false };
             } else {
               target.activeBuffs.splice(invIdx, 1);
               if (!target.activeBuffs.some(b => b.type === 'invincible')) target.isInvincible = false;
             }
           }
+        } else {
+          target.isInvincible = false;
         }
-      } else {
-        target.isInvincible = false;
       }
 
       // 3. Evade: pierced by Ignore Invincible / Sure Hit; but EVADES Anti-Purge Attack!
-      const evaIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'evade') : -1;
-      if (evaIdx !== -1 && target.activeBuffs) {
-        const buff = target.activeBuffs[evaIdx];
-        if (actorIgnores || actorHasSureHit) {
-          // Pierced by Ignore Invincible or Sure Hit!
-        } else {
+      if (actorIgnores || actorHasSureHit) {
+        // Pierced by Ignore Invincible or Sure Hit!
+      } else {
+        // Prioritize turn-based Evade if active so hit charges (e.g. Protection from Arrows) are preserved
+        const turnEvaIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'evade' && !b.isHitCount && b.remainingHits === undefined && (b.remainingTurns === undefined || b.remainingTurns > 0)) : -1;
+        if (turnEvaIdx !== -1 && target.activeBuffs) {
+          const buff = target.activeBuffs[turnEvaIdx];
+          buff.hasDefendedOnce = true;
+          return { isProtected: true, isInvincible: false, isEvade: true, isAntiPurge: false };
+        }
+
+        const evaIdx = target.activeBuffs ? target.activeBuffs.findIndex(b => b.type === 'evade') : -1;
+        if (evaIdx !== -1 && target.activeBuffs) {
+          const buff = target.activeBuffs[evaIdx];
           const isHitBased = buff.isHitCount || buff.remainingHits !== undefined || /protection from arrows/i.test(buff.name);
           if (isHitBased) {
             if (buff.remainingHits === undefined) buff.remainingHits = 3;
@@ -2571,21 +2625,23 @@ export function executeBattleTurn(
               if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
             } else {
               buff.remainingHits--;
+              buff.hasDefendedOnce = true;
               if (buff.remainingHits <= 0) target.activeBuffs.splice(evaIdx, 1);
               if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
               return { isProtected: true, isInvincible: false, isEvade: true, isAntiPurge: false };
             }
           } else {
             if (buff.remainingTurns > 0) {
+              buff.hasDefendedOnce = true;
               return { isProtected: true, isInvincible: false, isEvade: true, isAntiPurge: false };
             } else {
               target.activeBuffs.splice(evaIdx, 1);
               if (!target.activeBuffs.some(b => b.type === 'evade')) target.isEvading = false;
             }
           }
+        } else {
+          target.isEvading = false;
         }
-      } else {
-        target.isEvading = false;
       }
 
       return { isProtected: false, isInvincible: false, isEvade: false, isAntiPurge: false };
@@ -3070,6 +3126,15 @@ export function executeBattleTurn(
       .map(b => {
         const isHitBased = b.isHitCount || b.remainingHits !== undefined || /volumen|protection from arrows/i.test(b.name);
         if (!isHitBased && b.remainingTurns > 0 && b.remainingTurns < 90) {
+          const isDefensive = b.type === 'invincible' || b.type === 'evade' || b.type === 'anti_purge_defense' || b.type === 'anti_purge';
+          // If a 1T defensive buff already protected against incoming attacks, it expires at round end
+          if (isDefensive && b.remainingTurns <= 1 && b.hasDefendedOnce) {
+            return { ...b, remainingTurns: 0 };
+          }
+          // If a 1T defensive buff was applied this round and hasn't defended against incoming attacks yet, preserve it
+          if (isDefensive && b.remainingTurns <= 1 && !b.hasDefendedOnce) {
+            return b;
+          }
           return { ...b, remainingTurns: b.remainingTurns - 1 };
         }
         return b;
