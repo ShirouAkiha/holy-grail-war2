@@ -717,6 +717,31 @@ async function createTurnSummaryAttachment(
   return new AttachmentBuilder(imageBuffer, { name: 'turn_summary.png' });
 }
 
+// Helper to determine active effective NP Card type (respects Circuit Connect EX np_card_override buff)
+export function getCombatantEffectiveNpCardType(combatant?: DuelCombatant): 'Buster' | 'Arts' | 'Quick' {
+  if (!combatant) return 'Buster';
+  const overrideBuff = combatant.activeBuffs?.find(b => b.type === 'np_card_override');
+  if (overrideBuff && (overrideBuff as any).cardType) {
+    return (overrideBuff as any).cardType;
+  }
+  const rawType = combatant.servant?.template?.noblePhantasm?.cardType;
+  if (rawType === 'Arts' || rawType === 'Quick' || rawType === 'Buster') {
+    return rawType;
+  }
+  return 'Buster';
+}
+
+export function getCombatantNpCardTypeDisplay(combatant?: DuelCombatant): string {
+  if (!combatant) return 'Buster';
+  const overrideBuff = combatant.activeBuffs?.find(b => b.type === 'np_card_override');
+  if (overrideBuff && (overrideBuff as any).cardType) {
+    return (overrideBuff as any).cardType;
+  }
+  const rawType = combatant.servant?.template?.noblePhantasm?.cardType;
+  if (rawType === '???') return '???';
+  return rawType || 'Buster';
+}
+
 // ==========================================
 // 6. DUEL UI EMBED BUILDER
 // ==========================================
@@ -749,7 +774,8 @@ function buildDuelEmbed(
     return isUsed ? `\`[#${pendingIndices.indexOf(i) + 1}: ${c} ✔️]\`` : `\`[${i + 1}: ${emoji} ${c}]\``;
   }).join(' ');
 
-  const npType = activeCombatant.servant.template?.noblePhantasm?.cardType || 'Buster';
+  const npType = getCombatantEffectiveNpCardType(activeCombatant);
+  const npDisplayType = getCombatantNpCardTypeDisplay(activeCombatant);
   const npScope = activeCombatant.servant.template?.noblePhantasm?.target || 'single';
   const npEmoji = npType === 'Buster' ? '🔴' : npType === 'Arts' ? '🔵' : '🟢';
 
@@ -757,7 +783,7 @@ function buildDuelEmbed(
     Buster: '🔴 Buster',
     Arts: '🔵 Arts',
     Quick: '🟢 Quick',
-    NP: `${npEmoji} NP [${npType} • ${npScope.toUpperCase()}]`
+    NP: `${npEmoji} NP [${npDisplayType.toUpperCase()} • ${npScope.toUpperCase()}]`
   };
 
   const c1Text = pendingCards[0] ? cardEmojiMap[pendingCards[0]] || pendingCards[0] : '❓ Card 1 (1.0x Lead)';
@@ -965,7 +991,7 @@ function buildDetailedCombatLogEmbed(
     const sName = c.servant.nickname || c.servant.template?.name || 'Servant';
     const hpPct = Math.max(0, Math.min(100, Math.round((c.currentHp / c.maxHp) * 100)));
     const hpBar = '█'.repeat(Math.round(hpPct / 10)) + '░'.repeat(10 - Math.round(hpPct / 10));
-    const npType = c.servant.template?.noblePhantasm?.cardType || 'Buster';
+    const npType = getCombatantNpCardTypeDisplay(c);
     const seals = c.commandSeals !== undefined ? `${c.commandSeals} Seal(s)` : 'N/A';
     const buffCount = c.activeBuffs ? c.activeBuffs.length : 0;
     
@@ -1091,7 +1117,8 @@ function buildCombatButtons(
 
   // Row 2: Noble Phantasm + Clear + Command Seal + Run / Flee
   const hasSeals = (combatant.commandSeals || 0) > 0;
-  const npType = combatant.servant.template?.noblePhantasm?.cardType || 'Buster';
+  const npType = getCombatantEffectiveNpCardType(combatant);
+  const npDisplayType = getCombatantNpCardTypeDisplay(combatant);
   const sClass = combatant.servant.template?.servantClass || 'Saber';
   const agility = combatant.servant.template?.baseStats?.agility || combatant.servant.allocatedStats?.agility || 10;
   const fleeCalc = calculateFleeChance(combatant.currentHp, combatant.maxHp, sClass, agility);
@@ -1099,7 +1126,7 @@ function buildCombatButtons(
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId('card_np')
-      .setLabel(`NP [${npType}] (${Math.round(combatant.npGauge)}%)`)
+      .setLabel(`NP [${npDisplayType}] (${Math.round(combatant.npGauge)}%)`)
       .setEmoji(npType === 'Buster' ? '🔴' : npType === 'Arts' ? '🔵' : '🟢')
       .setStyle(isNpReady ? ButtonStyle.Danger : ButtonStyle.Secondary)
       .setDisabled(!isNpReady || isNpSelected || pendingCards.length >= 3),
@@ -1244,7 +1271,8 @@ function activateCombatantSkill(
   opponent?: DuelCombatant,
   currentRound: number = 1,
   livingAllies?: DuelCombatant[],
-  livingEnemies?: DuelCombatant[]
+  livingEnemies?: DuelCombatant[],
+  chosenNpType?: 'Arts' | 'Buster'
 ): {
   success: boolean;
   log: string;
@@ -1319,6 +1347,88 @@ function activateCombatantSkill(
     });
     combatant.critStars = Math.min(50, (combatant.critStars || 0) + 15);
     logText = `🔴 **TRANSFORMATION AWAKENED!** **${sName}** ignited **${skill.name}** and entered **Super Aoko** form!${quoteLine}`;
+  } else if (skill.id === 'eye_of_the_mind_true_ex' || /eye of the mind \(true\) ex/i.test(skill.name)) {
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Evade)`,
+      type: 'evade',
+      value: 100,
+      remainingTurns: 1,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (ATK Up)`,
+      type: 'buff_atk',
+      value: 30,
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (DEF Up)`,
+      type: 'buff_def',
+      value: 30,
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.critStars = Math.min(50, (combatant.critStars || 0) + 40);
+    logText = `👁️ **${sName}** activated **${skill.name}**! (Evade [1T], +30% ATK [3T], +30% DEF [3T], +40 Critical Stars!)${quoteLine}`;
+  } else if (skill.id === 'hawkeye_b_plus' || /hawkeye/i.test(skill.name)) {
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Star Gen Rate Up)`,
+      type: 'star_gain_up',
+      value: 100,
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Crit DMG Up)`,
+      type: 'crit_dmg',
+      value: 100,
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    logText = `🎯 **${sName}** activated **${skill.name}**! (+100% Star Generation Rate [3T], +100% Critical Damage [3T]!)${quoteLine}`;
+  } else if (skill.id === 'circuit_connect_ex' || /circuit connect/i.test(skill.name)) {
+    const selectedType: 'Arts' | 'Buster' = chosenNpType || 'Arts';
+    combatant.activeBuffs = (combatant.activeBuffs || []).filter(b => b.type !== 'np_card_override');
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Quick Up)`,
+      type: 'quick_up',
+      value: 50,
+      remainingTurns: 1,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Arts Up)`,
+      type: 'arts_up',
+      value: 50,
+      remainingTurns: 1,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Buster Up)`,
+      type: 'buster_up',
+      value: 50,
+      remainingTurns: 1,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.activeBuffs.push({
+      name: `Circuit Connect (NP: ${selectedType})`,
+      type: 'np_card_override',
+      value: 0,
+      cardType: selectedType,
+      remainingTurns: 1,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    } as any);
+    logText = `⚡ **${sName}** activated **${skill.name}**! (+50% Quick, Arts & Buster [1T] • Unlimited Blade Works tuned to **${selectedType}** NP for 1T!)${quoteLine}`;
   } else if (skill.id === 'charisma_of_hope' || /charisma of hope/i.test(skill.name)) {
     combatant.activeBuffs.push({
       name: `${skill.name} (ATK Up)`,
@@ -2567,7 +2677,7 @@ function resolveStrike(
   const processHitProtection = () => processTargetHitProtection(defender);
 
   // 1st Card Lead Bonus Evaluation (NP card uses its permanently mapped Card Type)
-  const npEffectiveCard = attacker.servant.template.noblePhantasm?.cardType || 'Buster';
+  const npEffectiveCard = getCombatantEffectiveNpCardType(attacker);
   const firstEffectiveCard = cardsSequence[0] === 'NP' ? npEffectiveCard : (cardsSequence[0] || 'Buster');
   const isBusterFirst = firstEffectiveCard === 'Buster';
   const isArtsFirst = firstEffectiveCard === 'Arts';
@@ -2621,7 +2731,7 @@ function resolveStrike(
     if (card === 'NP') {
       hasNpHit = true;
       const npTemplate = attacker.servant.template.noblePhantasm;
-      const npCardType = npTemplate.cardType || 'Buster';
+      const npCardType = getCombatantEffectiveNpCardType(attacker);
       const npScope = npTemplate.target || 'single';
 
       // Multipliers: ST vs AoE vs Support
@@ -2923,9 +3033,14 @@ function resolveStrike(
             targetOpp.servant.template.servantClass
           );
 
+          const isIgnoreDef = attacker.activeBuffs.some(b => b.type === 'ignore_defense') ||
+            attacker.servant.templateId === 'emiya_archer' ||
+            attacker.servant.template?.id === 'emiya_archer' ||
+            /ignore.*def|defense-ignoring|ignores defense/i.test((npTemplate.description || '') + ' ' + (npTemplate.effect || '') + ' ' + (npTemplate.overchargeEffect || ''));
+
           let oppDefBuff = 1.0;
           targetOpp.activeBuffs.forEach(b => {
-            if (b.type === 'buff_def') oppDefBuff += b.value / 100;
+            if (b.type === 'buff_def' && !isIgnoreDef) oppDefBuff += b.value / 100;
             if (b.type === 'debuff_def') oppDefBuff -= b.value / 100;
           });
           const targetEffectiveDef = targetOpp.baseDef * oppDefBuff;
@@ -2996,6 +3111,17 @@ function resolveStrike(
             targetOpp.activeBuffs.push({ name: 'Deny the Victory (Crit Rate Down)', type: 'debuff_atk', value: critDownVal, remainingTurns: 3 });
           }
 
+          const isUbw = (attacker.servant.template.noblePhantasm?.name || '').includes('Unlimited Blade Works') ||
+            /reduces.*attack|atk.*down|reduce.*atk/i.test(npTemplate.overchargeEffect || '');
+          if (isUbw) {
+            targetOpp.activeBuffs.push({
+              name: `${attacker.servant.template.noblePhantasm?.name || 'Unlimited Blade Works'} (ATK Down)`,
+              type: 'debuff_atk',
+              value: 30,
+              remainingTurns: 3
+            });
+          }
+
           if (targetOpp === defender) {
             npDmg = oppDmg;
           }
@@ -3015,6 +3141,7 @@ function resolveStrike(
           } else {
             if (isStunnedThisTurn) statuses.push('STUNNED');
             if (isDenyTheVictory && isOvercharged) statuses.push('OVERCHARGE: DEF DOWN', 'NP GAUGE -20%');
+            if (isUbw) statuses.push('OVERCHARGE: ATK -30% (3T)');
             if ((targetOpp as any).isSlumVeteranTriggered) statuses.push('SLUMS GUTS REVIVED');
           }
 
@@ -5966,9 +6093,101 @@ async function startInteractiveDuel(
       cleanupNpGif().catch(() => {});
 
       // CASE: SKILL ACTIVATION (Instant - does NOT end turn)
+      if (i.customId.startsWith('skill_npselect_')) {
+        const parts = i.customId.replace('skill_npselect_', '').split('_');
+        const chosenType = parts[0] as 'Arts' | 'Buster' | 'Cancel';
+        if (chosenType === 'Cancel') {
+          await i.editReply({ content: '↩️ Circuit Connect EX cancelled.', components: [] }).catch(async () => {
+            await i.followUp({ content: '↩️ Circuit Connect EX cancelled.', flags: MessageFlags.Ephemeral }).catch(() => {});
+          });
+          return;
+        }
+
+        const actor = activeCombatant;
+        const opponent = getSelectedTarget(actor) || (team1.includes(actor) ? p2 : p1);
+        const alliesList = getMyTeamFor(actor);
+        const oppsList = getTargetsFor(actor);
+        const res = activateCombatantSkill(actor, 2, opponent, round, alliesList, oppsList, chosenType);
+
+        if (!res.success) {
+          await i.editReply({ content: res.log, components: [] }).catch(async () => {
+            await i.followUp({ content: res.log, flags: MessageFlags.Ephemeral }).catch(() => {});
+          });
+          return;
+        }
+
+        await i.editReply({
+          content: `⚡ **Circuit Connect EX Initialized!** Command Card for **Unlimited Blade Works** set to **${chosenType}** for 1 turn!`,
+          components: []
+        }).catch(async () => {
+          await i.followUp({
+            content: `⚡ **Circuit Connect EX Initialized!** Command Card for **Unlimited Blade Works** set to **${chosenType}** for 1 turn!`,
+            flags: MessageFlags.Ephemeral
+          }).catch(() => {});
+        });
+
+        combatLogs.push(res.log);
+        if (combatLogs.length > 4) combatLogs.shift();
+        fullCombatHistory.push({
+          round,
+          actorName: actor.servant.nickname || actor.servant.template.name,
+          targetName: opponent ? (opponent.servant.nickname || opponent.servant.template.name) : undefined,
+          actionType: 'skill',
+          title: `✨ Skill: ${res.skillName || 'Circuit Connect EX'}`,
+          details: res.log.replace(/\n?>\s*.*$/gim, '').replace(/[*_~`]/g, '').trim(),
+          timestamp: new Date()
+        });
+
+        const turnAttachment = await buildCurrentAttachment(res.log);
+        const mainEmbed = buildCurrentEmbed();
+        const updatedButtons = buildCurrentButtons();
+
+        await battleMsg.edit({
+          content: buildDuelTurnContent(activeCombatant, activePendingCards),
+          embeds: [mainEmbed],
+          files: [turnAttachment],
+          components: updatedButtons
+        });
+        return;
+      }
+
       if (i.customId.startsWith('skill_')) {
         const skillIdx = parseInt(i.customId.replace('skill_', ''), 10);
         const actor = activeCombatant;
+
+        // Interactive NP Command Card Select for Circuit Connect EX (Skill 3)
+        if (skillIdx === 2) {
+          const sObj = actor.servant.template?.skills?.[2];
+          const isCircuitConnect = sObj?.id === 'circuit_connect_ex' || /circuit connect/i.test(sObj?.name || '');
+          const bondLevel = actor.servant.bondLevel || 1;
+          const isSkillSealed = Boolean(actor.activeBuffs && actor.activeBuffs.some(b => b.type === 'skill_seal'));
+          if (isCircuitConnect && bondLevel >= 5 && !isSkillSealed && (actor.skillCooldowns[2] || 0) === 0) {
+            const selectRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+              new ButtonBuilder()
+                .setCustomId(`skill_npselect_Arts_${duelSessionId}`)
+                .setLabel('🔵 Arts NP (Unlimited Blade Works)')
+                .setStyle(ButtonStyle.Primary),
+              new ButtonBuilder()
+                .setCustomId(`skill_npselect_Buster_${duelSessionId}`)
+                .setLabel('🔴 Buster NP (Unlimited Blade Works)')
+                .setStyle(ButtonStyle.Danger),
+              new ButtonBuilder()
+                .setCustomId(`skill_npselect_Cancel_${duelSessionId}`)
+                .setLabel('Cancel')
+                .setStyle(ButtonStyle.Secondary)
+            );
+            const followUpMsg = await i.followUp({
+              content: `⚡ **Circuit Connect EX — NP Command Card Selection**\nChoose whether **Unlimited Blade Works** manifests as an **Arts** or **Buster** Noble Phantasm for 1 turn:\n*${sObj?.description}*`,
+              components: [selectRow],
+              flags: MessageFlags.Ephemeral
+            });
+            if (followUpMsg?.id) {
+              battleMessageIds.add(followUpMsg.id);
+            }
+            return;
+          }
+        }
+
         const opponent = getSelectedTarget(actor) || (team1.includes(actor) ? p2 : p1);
         const alliesList = getMyTeamFor(actor);
         const oppsList = getTargetsFor(actor);

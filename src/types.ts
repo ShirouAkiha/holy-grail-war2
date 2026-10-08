@@ -87,12 +87,14 @@ export interface PassiveSkill {
 
 export interface NoblePhantasm {
   name: string;
-  cardType: CardType;
+  cardType: CardType | '???' | string;
   chant: string;
   description: string;
   target: 'single' | 'aoe' | 'support';
   multiplier: number;
   overchargeEffect: string;
+  rank?: string;
+  effect?: string;
   animationUrl?: string;
   gifUrl?: string;
 }

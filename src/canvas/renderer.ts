@@ -2907,7 +2907,7 @@ export async function renderServantProfileCard(
   ctx.stroke();
 
   const np = t.noblePhantasm || { name: 'Excalibur', cardType: 'Buster', chant: '...', description: '' };
-  const npCardEmoji = np.cardType === 'Arts' ? '🔵' : np.cardType === 'Quick' ? '🟢' : '🔴';
+  const npCardEmoji = np.cardType === 'Arts' ? '🔵' : np.cardType === 'Quick' ? '🟢' : np.cardType === 'Buster' ? '🔴' : '❓';
   ctx.fillStyle = '#fbbf24';
   ctx.font = 'bold 18px sans-serif';
   ctx.fillText(`Noble Phantasm: ${np.name} [${npCardEmoji} ${np.cardType}]`, 46, 678);

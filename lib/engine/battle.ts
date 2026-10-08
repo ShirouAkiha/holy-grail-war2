@@ -1128,7 +1128,8 @@ export function executeNoblePhantasmLogic(
     multiplier: 600,
     overchargeEffect: ''
   };
-  const cardType: CardType = np.cardType || 'Buster';
+  const npOverride = actor.activeBuffs?.find(b => b.type === 'np_card_override');
+  const cardType: CardType = (npOverride as any)?.cardType || (np.cardType === '???' ? 'Buster' : ((np.cardType as CardType) || 'Buster'));
   const scope: 'single' | 'aoe' | 'support' = (np.target as any) || 'single';
 
   // Base Multipliers according to Fate/Grand Order parameters:
@@ -1579,7 +1580,8 @@ export function executeNoblePhantasmLogic(
     }
 
     const baseDamage = (effectiveAtk * (baseMultiplier / 100) * 0.18 * cardDamageModifier * scopeModifier * overchargeDamageBonus * typhonDebuffScale * classMult);
-    const defValue = (isApocryphaTerminus || isDenyTheVictory) ? 0 : effectiveDef;
+    const isIgnoreDef = isApocryphaTerminus || isDenyTheVictory || actor.id === 'emiya_archer' || (actor as any).templateId === 'emiya_archer' || /ignore.*def|defense-ignoring|ignores defense/i.test((np.description || '') + ' ' + (np.overchargeEffect || ''));
+    const defValue = isIgnoreDef ? 0 : effectiveDef;
     let totalDmg = (baseDamage * cardPerformanceMultiplier * npDmgBonus) - (defValue * 0.25);
     totalDmg = Math.max(1200, totalDmg);
 
@@ -1797,6 +1799,15 @@ export function executeNoblePhantasmLogic(
         : isEvaded
         ? `💨 **${actor.name}** unleashed Quick Noble Phantasm [${np.name}] (${scope === 'single' ? 'ST' : 'AoE'}), but **${target.name}** Evaded! (Generated +${starsGenerated} Stars, +${npCharged}% NP)`
         : `🟢 **${actor.name}** unleashed Quick Noble Phantasm [${np.name}] (${scope === 'single' ? 'Single Target ST' : 'AoE'}) for **${damageDealt.toLocaleString()} DMG**, generating **+${starsGenerated} Critical Stars** and refilling **+${npCharged}% NP**!`;
+    }
+    if (np.overchargeEffect && /reduces.*attack|atk.*down|reduce.*atk/i.test(np.overchargeEffect)) {
+      if (!target.activeBuffs) target.activeBuffs = [];
+      target.activeBuffs.push({
+        name: `${np.name} (ATK Down)`,
+        type: 'debuff_atk' as any,
+        value: 30,
+        remainingTurns: 3
+      });
     }
   }
 

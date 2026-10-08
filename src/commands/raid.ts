@@ -732,15 +732,17 @@ async function runRaidBattle(
     // Row 2: Noble Phantasm + Clear + Command Seal + Combat Log + Status
     const isNpReady = active.npGauge >= 100;
     const isNpSelected = pendingCards.includes('NP');
-    const npType = active.servant.template?.noblePhantasm?.cardType || 'Buster';
+    const npOverride = active.activeBuffs?.find(b => b.type === 'np_card_override');
+    const effectiveNpType = (npOverride as any)?.cardType || (active.servant.template?.noblePhantasm?.cardType === '???' ? 'Buster' : (active.servant.template?.noblePhantasm?.cardType || 'Buster'));
+    const displayNpType = (npOverride as any)?.cardType || (active.servant.template?.noblePhantasm?.cardType || 'Buster');
     const hasPending = pendingCards.length > 0;
     const masterSeals = active.commandSeals !== undefined ? active.commandSeals : 3;
 
     const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setCustomId('raid_card_np')
-        .setLabel(isNpReady ? `NP [${npType}] (${Math.round(active.npGauge)}%)` : `NP (${Math.round(active.npGauge)}%)`)
-        .setEmoji(isNpReady ? '💥' : (npType === 'Buster' ? '🔴' : npType === 'Arts' ? '🔵' : '🟢'))
+        .setLabel(isNpReady ? `NP [${displayNpType}] (${Math.round(active.npGauge)}%)` : `NP (${Math.round(active.npGauge)}%)`)
+        .setEmoji(isNpReady ? '💥' : (effectiveNpType === 'Buster' ? '🔴' : effectiveNpType === 'Arts' ? '🔵' : '🟢'))
         .setStyle(isNpReady ? ButtonStyle.Danger : ButtonStyle.Secondary)
         .setDisabled(shouldDisableAll || !isNpReady || isNpSelected || pendingCards.length >= 3 || active.isDead),
       new ButtonBuilder()
@@ -1375,8 +1377,33 @@ async function runRaidBattle(
             }
 
             // 7. Ignore Defense
-            if (/ignore.*def|bypass.*def|defense-ignoring/i.test(npBaseDesc + ' ' + npOverchargeDesc)) {
+            const isIgnoreDef = active.servant.templateId === 'emiya_archer' ||
+              active.servant.template?.id === 'emiya_archer' ||
+              /ignore.*def|bypass.*def|defense-ignoring|ignores defense/i.test(npBaseDesc + ' ' + npOverchargeDesc);
+            if (isIgnoreDef) {
               npEffectsLog.push('🛡️ [DEF-Ignoring]');
+              npEffectsHud.push('DEF-Ignoring');
+            }
+
+            // 8. ATK Down (Base effect or Overcharge trigger)
+            const atkInBase = /atk.*down|lower.*atk|reduce.*atk|decrease.*atk|reduces.*attack/i.test(npBaseDesc);
+            const atkInOvercharge = /atk.*down|lower.*atk|reduce.*atk|decrease.*atk|reduces.*attack/i.test(npOverchargeDesc);
+            if (atkInBase || (atkInOvercharge && isOvercharged)) {
+              const combinedAtkDesc = atkInBase ? npBaseDesc : npOverchargeDesc;
+              const atkMatch = combinedAtkDesc.match(/atk|attack\s*(?:by\s*|down\s*)?(\d+)%/i) ||
+                               combinedAtkDesc.match(/(\d+)%\s*(?:atk|attack\s*down)/i);
+              let atkVal = atkMatch ? parseInt(atkMatch[1], 10) : 30;
+              if (atkInOvercharge && isOvercharged && overchargeLevel >= 3) {
+                atkVal = Math.round(atkVal * 1.33);
+              }
+              battleState.bossBuffs.push({
+                name: `${npName} (ATK Down)`,
+                type: 'atk_down',
+                value: atkVal,
+                remainingTurns: 3
+              });
+              npEffectsLog.push(`🔻 [-${atkVal}% ATK Down (3T)]`);
+              npEffectsHud.push(`-${atkVal}% ATK`);
             }
 
             // Typhon Ephemeros: Dragon Grail scaling with self debuffs (+10% per stack, up to +100%)
@@ -1415,9 +1442,22 @@ async function runRaidBattle(
               npEffectsHud.push('Burn + Spread of Fire');
             }
 
-            totalTurnDmg += Math.round(baseAtk * npMultiplier * overchargeScale * typhonRaidDebuffScale * atkBuffMult * specialAtkMult * bossDefFactor * npSpecialMult * (0.95 + Math.random() * 0.1));
-            starsGenerated += 10;
-            npGained += 15;
+            const effectiveBossDef = isIgnoreDef ? Math.max(0.2, 1 + bossDefDown) : bossDefFactor;
+            const npOverrideBuff = active.activeBuffs?.find(b => b.type === 'np_card_override');
+            const effectiveNpCardType = (npOverrideBuff as any)?.cardType || (active.servant.template?.noblePhantasm?.cardType === '???' ? 'Buster' : (active.servant.template?.noblePhantasm?.cardType || 'Buster'));
+            const cardPerfMult = effectiveNpCardType === 'Arts' ? artsBuffMult : effectiveNpCardType === 'Quick' ? quickBuffMult : busterBuffMult;
+
+            totalTurnDmg += Math.round(baseAtk * npMultiplier * overchargeScale * cardPerfMult * typhonRaidDebuffScale * atkBuffMult * specialAtkMult * effectiveBossDef * npSpecialMult * (0.95 + Math.random() * 0.1));
+            if (effectiveNpCardType === 'Arts') {
+              npGained += Math.round(25 * (1.0 + (artsBuffMult - 1.0)));
+              starsGenerated += 5;
+            } else if (effectiveNpCardType === 'Quick') {
+              starsGenerated += Math.round(25 * (1.0 + (quickBuffMult - 1.0)));
+              npGained += 10;
+            } else {
+              starsGenerated += 10;
+              npGained += 15;
+            }
           }
         }
       });
@@ -1841,16 +1881,21 @@ async function runRaidBattle(
         components: buildBattleButtons()
       });
       return;
-    } else if (i.customId.startsWith('raid_cancel_target_skill')) {
-      await i.update({ content: '↩️ Skill targeting cancelled.', components: [] }).catch(async () => {
-        await i.reply({ content: '↩️ Skill targeting cancelled.', flags: MessageFlags.Ephemeral }).catch(() => {});
+    } else if (i.customId.startsWith('raid_cancel_target_skill') || i.customId.startsWith('raid_cancel_np_skill')) {
+      await i.update({ content: '↩️ Action cancelled.', components: [] }).catch(async () => {
+        await i.reply({ content: '↩️ Action cancelled.', flags: MessageFlags.Ephemeral }).catch(() => {});
       });
       return;
-    } else if (i.customId.startsWith('raid_skill_') || i.customId.startsWith('raid_target_skill_')) {
+    } else if (i.customId.startsWith('raid_skill_') || i.customId.startsWith('raid_target_skill_') || i.customId.startsWith('raid_skill_np_')) {
       let sIdx: number;
       let targetUserId: string | null = null;
+      let chosenNpType: 'Arts' | 'Buster' | null = null;
 
-      if (i.customId.startsWith('raid_target_skill_')) {
+      if (i.customId.startsWith('raid_skill_np_')) {
+        const parts = i.customId.replace('raid_skill_np_', '').split('_');
+        chosenNpType = parts[0] as 'Arts' | 'Buster';
+        sIdx = parseInt(parts[1], 10);
+      } else if (i.customId.startsWith('raid_target_skill_')) {
         const parts = i.customId.replace('raid_target_skill_', '').split('_');
         sIdx = parseInt(parts[0], 10);
         targetUserId = parts[1] || null;
@@ -1863,6 +1908,43 @@ async function runRaidBattle(
         const sName = skillObj?.name || `Skill ${sIdx + 1}`;
         const sDesc = skillObj?.description || '';
         const sType = skillObj?.effectType || '';
+
+        // Circuit Connect EX interactive NP Card select (Skill 3)
+        const isCircuitConnect = skillObj?.id === 'circuit_connect_ex' || /circuit connect/i.test(sName + ' ' + sDesc);
+        if (isCircuitConnect && !chosenNpType) {
+          const selectRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+              .setCustomId(`raid_skill_np_Arts_${sIdx}_${raidSessionId}`)
+              .setLabel('🔵 Arts NP (Unlimited Blade Works)')
+              .setStyle(ButtonStyle.Primary),
+            new ButtonBuilder()
+              .setCustomId(`raid_skill_np_Buster_${sIdx}_${raidSessionId}`)
+              .setLabel('🔴 Buster NP (Unlimited Blade Works)')
+              .setStyle(ButtonStyle.Danger),
+            new ButtonBuilder()
+              .setCustomId(`raid_cancel_np_skill_${raidSessionId}`)
+              .setLabel('↩️ Cancel')
+              .setStyle(ButtonStyle.Secondary)
+          );
+          const targetReply = await i.reply({
+            content: `⚡ **Circuit Connect EX — NP Command Card Selection**\nChoose whether **Unlimited Blade Works** manifests as an **Arts** or **Buster** Noble Phantasm for 1 turn:\n*${sDesc}*`,
+            components: [selectRow],
+            flags: MessageFlags.Ephemeral,
+            fetchReply: true
+          }).catch(() => null);
+
+          if (targetReply?.id) {
+            raidMessageIds.add(targetReply.id);
+          }
+          return;
+        }
+
+        if (chosenNpType && typeof i.update === 'function') {
+          await i.update({
+            content: `⚡ Activated **Circuit Connect EX**! Tuned Unlimited Blade Works to **${chosenNpType}** for 1 turn!`,
+            components: []
+          }).catch(() => {});
+        }
 
         // Check if this skill targets a single ally
         const isSingleAllyTargetable =
@@ -1957,7 +2039,79 @@ async function runRaidBattle(
           const isGeneralDebuff = sType === 'debuff';
 
           let buffLog = '';
-          if (skillObj?.id === 'blaze_of_etna' || /blaze of etna|armor of ashen/i.test(sName)) {
+          if (skillObj?.id === 'eye_of_the_mind_true_ex' || /eye of the mind \(true\) ex/i.test(sName)) {
+            // Emiya S1: Eye of the Mind (True) EX
+            // Grants self Evasion for 1 turn. Increases own attack by 30% for 3 turns. Increases own defense by 30% for 3 turns. Gains 40 critical stars.
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: `${sName} (Evade)`,
+              type: 'evade',
+              value: 1,
+              remainingTurns: 1
+            });
+            active.activeBuffs.push({
+              name: `${sName} (ATK Up)`,
+              type: 'atk_up',
+              value: 30,
+              remainingTurns: 3
+            });
+            active.activeBuffs.push({
+              name: `${sName} (DEF Up)`,
+              type: 'def_up',
+              value: 30,
+              remainingTurns: 3
+            });
+            active.critStars = (active.critStars || 0) + 40;
+            buffLog = `(🛡️ Granted Evade [1T], ⚔️ +30% ATK [3T], 🛡️ +30% DEF [3T], ★ +40 Critical Stars!)`;
+          } else if (skillObj?.id === 'hawkeye_b_plus' || /hawkeye/i.test(sName)) {
+            // Emiya S2: Hawkeye B+
+            // Increases own critical star generation rate by 100% for 3 turns. Increases own critical damage by 100% for 3 turns.
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: `${sName} (Star Gen Rate Up)`,
+              type: 'star_gain_up',
+              value: 100,
+              remainingTurns: 3
+            });
+            active.activeBuffs.push({
+              name: `${sName} (Crit DMG Up)`,
+              type: 'crit_dmg',
+              value: 100,
+              remainingTurns: 3
+            });
+            buffLog = `(🎯 +100% Critical Star Generation Rate [3T], 💥 +100% Critical Damage [3T]!)`;
+          } else if (skillObj?.id === 'circuit_connect_ex' || /circuit connect/i.test(sName)) {
+            // Emiya S3: Circuit Connect EX
+            // Increases own Quick performance by 50% for 1 turn. Increases own Arts performance by 50% for 1 turn. Increases own Buster performance by 50% for 1 turn. Selects own NP Command Card's type between Arts or Buster for 1 turn.
+            const selectedType: 'Arts' | 'Buster' = chosenNpType || 'Arts';
+            active.activeBuffs = (active.activeBuffs || []).filter(b => b.type !== 'np_card_override');
+            active.activeBuffs.push({
+              name: `${sName} (Quick Up)`,
+              type: 'quick_up',
+              value: 50,
+              remainingTurns: 1
+            });
+            active.activeBuffs.push({
+              name: `${sName} (Arts Up)`,
+              type: 'arts_up',
+              value: 50,
+              remainingTurns: 1
+            });
+            active.activeBuffs.push({
+              name: `${sName} (Buster Up)`,
+              type: 'buster_up',
+              value: 50,
+              remainingTurns: 1
+            });
+            active.activeBuffs.push({
+              name: `Circuit Connect (NP: ${selectedType})`,
+              type: 'np_card_override',
+              value: 0,
+              cardType: selectedType,
+              remainingTurns: 1
+            } as any);
+            buffLog = `(⚡ +50% Quick, Arts & Buster Performance [1T] • Tuned Unlimited Blade Works to **${selectedType}** [1T]!)`;
+          } else if (skillObj?.id === 'blaze_of_etna' || /blaze of etna|armor of ashen/i.test(sName)) {
             // S1: Blaze of Etna - Dragon Prison Manifestation: Armor of Ashen Flames C
             // Grants self Invincibility for 1 turn. Increases own attack by 20% for 3 turns. Increases own Buster performance by 30% for 3 turns.
             active.activeBuffs = active.activeBuffs || [];

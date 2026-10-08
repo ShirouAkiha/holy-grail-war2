@@ -273,6 +273,11 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "Tracing last projection... As long as I can draw breath, the forge still burns!",
       "My entire life was Unlimited Blade Works... I will not falter here!",
       "Master, give the order! I'll hold the line with every blade I have!"
+    ],
+    skills: [
+      "I see right through you. Eye of the Mind, True!",
+      "Locked on target. Hawkeye, maximum vantage!",
+      "Magic Circuits connected... Altering Noble Phantasm projection parameters!"
     ]
   },
 

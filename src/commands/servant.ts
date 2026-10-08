@@ -379,7 +379,7 @@ export async function buildServantHub(
       multiplier: 600,
       description: 'Deals massive damage to a single enemy.'
     };
-    const npCardEmoji = np.cardType === 'Buster' ? '🔴' : np.cardType === 'Arts' ? '🔵' : '🟢';
+    const npCardEmoji = np.cardType === 'Buster' ? '🔴' : np.cardType === 'Arts' ? '🔵' : np.cardType === 'Quick' ? '🟢' : '❓';
     const npChant = targetServant.customQuotes?.noblePhantasm || np.chant || 'True Name Release!';
 
     const npText = 

@@ -1010,34 +1010,34 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     commandDeck: ['Arts', 'Arts', 'Arts', 'Buster', 'Quick'],
     skills: [
       {
-        id: 'mind_eye_true',
-        name: 'Mind\'s Eye (True) B',
+        id: 'eye_of_the_mind_true_ex',
+        name: 'Eye of the Mind (True) EX',
         cooldown: 6,
-        description: 'Grants self Evade for 1 turn and increases DEF by 18% for 3 turns.',
+        description: 'Grants self Evasion for 1 turn. Increases own attack by 30% for 3 turns. Increases own defense by 30% for 3 turns. Gains 40 critical stars.',
         effectType: 'evade',
-        value: 100,
-        duration: 1,
+        value: 30,
+        duration: 3,
         icon: '👁️'
       },
       {
-        id: 'clarairvoyance_c',
+        id: 'hawkeye_b_plus',
         name: 'Hawkeye B+',
         cooldown: 6,
-        description: 'Increases Critical Star generation and Critical Damage by 25% for 2 turns.',
+        description: 'Increases own critical star generation rate by 100% for 3 turns. Increases own critical damage by 100% for 3 turns.',
         effectType: 'crit_stars',
-        value: 25,
-        duration: 2,
+        value: 100,
+        duration: 3,
         icon: '🎯'
       },
       {
-        id: 'projection_magecraft',
-        name: 'Projection Magecraft A',
+        id: 'circuit_connect_ex',
+        name: 'Circuit Connect EX',
         cooldown: 5,
-        description: 'Increases own Buster, Arts, and Quick card effectiveness by 20% for 1 turn.',
+        description: 'Increases own Quick performance by 50% for 1 turn. Increases own Arts performance by 50% for 1 turn. Increases own Buster performance by 50% for 1 turn. Selects own NP Command Card\'s type between Arts or Buster for 1 turn.',
         effectType: 'buff_atk',
-        value: 20,
+        value: 50,
         duration: 1,
-        icon: '⚔️'
+        icon: '⚡'
       }
     ],
     passives: [
@@ -1046,24 +1046,26 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         type: 'magic_resistance',
         value: 12.5,
         rank: 'D',
-        description: 'Increases debuff resistance by 12.5%.'
+        description: 'Increases own debuff resistance by 12.5%.'
       },
       {
         name: 'Independent Action B',
         type: 'independent_action',
         value: 8,
         rank: 'B',
-        description: 'Increases Critical Strike Damage by 8%.'
+        description: 'Increases own critical damage by 8%.'
       }
     ],
     noblePhantasm: {
       name: 'Unlimited Blade Works: Infinite Creation of Swords',
-      cardType: 'Buster',
+      rank: 'E-A',
+      cardType: '???',
       chant: 'I am the bone of my sword. Steel is my body and fire is my blood... UNLIMITED BLADE WORKS!',
-      description: 'Deploys a Reality Marble containing infinite projected blades that rain down upon all enemies.',
+      description: 'Deals damage that ignores defense buffs to all enemies.',
+      effect: 'Deals damage that ignores defense buffs to all enemies.',
       target: 'aoe',
-      multiplier: 360,
-      overchargeEffect: 'Reduces enemy ATK by 20% + high star drop'
+      multiplier: 900,
+      overchargeEffect: 'Reduces all enemies\' attack by 30% for 3 turns.'
     },
     lore: 'A nameless Guardian forged in steel and idealism who commands the pinnacle of projection magecraft.',
     summonQuote: 'Servant Archer. I have answered your summons. Well, let\'s see how far your ideals take us.',
