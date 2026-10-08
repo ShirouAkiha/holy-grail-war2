@@ -2241,9 +2241,9 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     battleStartQuote: '"Mikokon! Allow this devoted fox maiden to clear the path for my Master!"',
     victoryQuote: '"A flawless victory! Now then, Master, shall we return to the My Room for some tea and fluffy tail grooming?"',
     defeatQuote: '"Forgive me, Master... to let my beloved see me in such a state... my heart aches..."',
-    avatarUrl: 'https://static.atlasacademy.io/NA/CharaGraph/500600/500600a@1.png',
-    cardArtUrl: 'https://static.atlasacademy.io/NA/CharaGraph/500600/500600a@1.png',
-    spriteUrl: 'https://static.atlasacademy.io/NA/CharaFigure/5006000/5006000_merged.png',
+    avatarUrl: 'https://static.atlasacademy.io/NA/CharaGraph/500300/500300a@1.png',
+    cardArtUrl: 'https://static.atlasacademy.io/NA/CharaGraph/500300/500300a@1.png',
+    spriteUrl: 'https://static.atlasacademy.io/NA/CharaFigure/5003000/5003000_merged.png',
     isCustomOrMeme: false
   }
 ];

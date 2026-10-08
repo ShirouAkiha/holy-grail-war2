@@ -29,6 +29,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'static.atlasacademy.io',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   webpack: (config, {dev, isServer}) => {

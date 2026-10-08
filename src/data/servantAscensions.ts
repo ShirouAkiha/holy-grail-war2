@@ -270,20 +270,15 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
     }
   },
   tamamo_no_mae: {
-    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/500600/500600a@1.png',
-    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/500600/500600a@2.png',
-    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/500600/500600b@1.png',
-    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/500600/500600b@2.png',
-    costume: 'https://static.atlasacademy.io/NA/CharaGraph/500630/500630a.png',
-    costumes: [
-      { id: '500630', name: 'Springtime Sunlight (Memories of Lunar Sea)', url: 'https://static.atlasacademy.io/NA/CharaGraph/500630/500630a.png' }
-    ],
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/500300/500300a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/500300/500300a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/500300/500300b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/500300/500300b@2.png',
     sprites: {
-      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/5006000/5006000_merged.png',
-      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/5006001/5006001_merged.png',
-      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/5006002/5006002_merged.png',
-      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/5006002/5006002_merged.png',
-      costume: 'https://static.atlasacademy.io/NA/CharaFigure/5006300/5006300_merged.png'
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/5003000/5003000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/5003001/5003001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/5003002/5003002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/5003002/5003002_merged.png'
     }
   }
 };
@@ -558,22 +553,21 @@ export function resolveAscensionSprite(
            fallbackUrl || '';
   }
 
-  const templateId = servantOrTemplate.templateId ||
-                     servantOrTemplate.template?.id ||
-                     servantOrTemplate.id || '';
+  const templateId = typeof servantOrTemplate === 'string'
+    ? servantOrTemplate
+    : (servantOrTemplate.templateId || servantOrTemplate.template?.id || servantOrTemplate.id || '');
   const match = findCanonicalAscensionData(templateId);
   if (!match || !match.data.sprites) {
-    return servantOrTemplate.spriteUrl ||
-           servantOrTemplate.template?.spriteUrl ||
-           servantOrTemplate.customArtworkUrl ||
-           servantOrTemplate.avatarUrl ||
-           fallbackUrl || '';
+    return typeof servantOrTemplate === 'object'
+      ? (servantOrTemplate.spriteUrl || servantOrTemplate.template?.spriteUrl || servantOrTemplate.customArtworkUrl || servantOrTemplate.avatarUrl || fallbackUrl || '')
+      : (fallbackUrl || '');
   }
 
   const sprites = match.data.sprites;
   const effectiveStage = selectedStage ??
-                         servantOrTemplate.selectedAscensionStage ??
-                         servantOrTemplate.template?.selectedAscensionStage;
+                         (typeof servantOrTemplate === 'object'
+                           ? (servantOrTemplate.selectedAscensionStage ?? servantOrTemplate.template?.selectedAscensionStage)
+                           : undefined);
 
   if (effectiveStage !== undefined && effectiveStage !== null && effectiveStage !== '') {
     const sStr = String(effectiveStage).toLowerCase().trim();
@@ -595,11 +589,11 @@ export function resolveAscensionSprite(
   }
 
   // Automatic progression based on unlock level
-  const effLevel = servantOrTemplate.level || servantOrTemplate.template?.level || level || 1;
-  const effBond = servantOrTemplate.bondLevel || servantOrTemplate.template?.bondLevel || bondLevel || 1;
+  const effLevel = (typeof servantOrTemplate === 'object' ? (servantOrTemplate.level || servantOrTemplate.template?.level) : level) || level || 1;
+  const effBond = (typeof servantOrTemplate === 'object' ? (servantOrTemplate.bondLevel || servantOrTemplate.template?.bondLevel) : bondLevel) || bondLevel || 1;
   if (isAscensionStageUnlocked(4, effLevel, effBond) && sprites.stage4) return sprites.stage4;
   if (isAscensionStageUnlocked(3, effLevel, effBond) && sprites.stage3) return sprites.stage3;
   if (isAscensionStageUnlocked(2, effLevel, effBond) && sprites.stage2) return sprites.stage2;
-  return sprites.stage1 || servantOrTemplate.spriteUrl || '';
+  return sprites.stage1 || (typeof servantOrTemplate === 'object' ? servantOrTemplate.spriteUrl : '') || '';
 }
 
