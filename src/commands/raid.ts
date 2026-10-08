@@ -1054,15 +1054,35 @@ async function runRaidBattle(
           const npTarget = active.servant.template?.noblePhantasm?.target || 'single';
           npNameUsed = npName;
 
-          const isSupportNp = npTarget === 'support' || npMultiplier === 0 || /party invincib|grant.*invincib|luminos|tigris redoubt|round of avalon/i.test(npName + ' ' + npBaseDesc);
+          const isSupportNp = npTarget === 'support' || npMultiplier === 0 || /party invincib|grant.*invincib|luminos|tigris redoubt|round of avalon|suiten|amaterasu|shizu-ishi/i.test(npName + ' ' + npBaseDesc);
 
           if (isSupportNp) {
             const isRoundOfAvalon = /round of avalon/i.test(npName);
             const isTigris = /tigris|edmond/i.test(npName);
             const isLuminosite = /luminosit|jeanne/i.test(npName);
             const isDeSterrennacht = /sterrennacht|starry night|van gogh/i.test(npName) || active.servant.templateId === 'van_gogh';
+            const isAmaterasu = /suiten|amaterasu|shizu-ishi|tamamo/i.test(npName) || active.servant.templateId === 'tamamo_no_mae';
 
-            if (isDeSterrennacht) {
+            if (isAmaterasu) {
+              // Suiten Nikkō Amaterasu Yano Shizu-Ishi: Reduces all party & self skill cooldown by 1, recovers party & self HP by 5,000, +50% NP gain (3T)
+              const ocNpGain = isOvercharged ? (50 + (overchargeLevel - 1) * 10) : 50;
+              battleState.participants.forEach(p => {
+                if (!p.isDead) {
+                  p.activeBuffs = p.activeBuffs || [];
+                  p.skillCooldowns = (p.skillCooldowns || [0, 0, 0]).map(cd => Math.max(0, cd - 1));
+                  const maxHp = calculateServantMaxHp(p.servant);
+                  p.currentHp = Math.min(maxHp, p.currentHp + 5000);
+                  p.activeBuffs.push({
+                    name: `${npName} (NP Gain Up)`,
+                    type: 'np_gain_up',
+                    value: ocNpGain,
+                    remainingTurns: 3
+                  });
+                }
+              });
+              npEffectsLog.push(`☀️ [Eightfold Blessings of Amaterasu: All Party CDs -1T, +5,000 HP Heal, +${ocNpGain}% NP Gain (3T)!]`);
+              npEffectsHud.push(`Party CD -1T • +5,000 HP • +${ocNpGain}% NP Gain`);
+            } else if (isDeSterrennacht) {
               // De Sterrennacht: Inflict Terror (Stun) on boss, +100% Crit DMG (3T) & +50% ATK (3T) to Party, +20 Stars
               battleState.bossBuffs = battleState.bossBuffs || [];
               const isImmuneToStun = boss.id === 'tiamat' && (battleState.currentPhase || 1) >= 2;
@@ -2054,6 +2074,53 @@ async function runRaidBattle(
             });
             active.npGauge = Math.min(300, (active.npGauge || 0) + 30);
             buffLog = `(🍷 +50% NP Gauge to Self, +20% NP Gauge & +20% ATK to Party for 3T, 🩸 Inflicted Curse [500 DMG/3T] Demerit)`;
+          } else if (skillObj?.id === 'mantra_boundless_sunlight_a' || /mantra: boundless sunlight|boundless sunlight/i.test(sName)) {
+            // Tamamo no Mae S1: Mantra: Boundless Sunlight A
+            // Reduces boss NP gauge by 1. Increases party's NP damage by 30% for 3 turns.
+            battleState.bossCharge = Math.max(0, (battleState.bossCharge || 0) - 1);
+            battleState.participants.forEach(p => {
+              if (!p.isDead) {
+                p.activeBuffs = p.activeBuffs || [];
+                p.activeBuffs.push({
+                  name: `${sName} (NP DMG Up)`,
+                  type: 'np_damage_up',
+                  value: 30,
+                  remainingTurns: 3
+                });
+              }
+            });
+            buffLog = `(☀️ Drained 1 NP Charge Diamond from ${boss.name}, +30% NP DMG to ALL Allies for 3T!)`;
+          } else if (skillObj?.id === 'shapeshift_a' || /shapeshift a/i.test(sName)) {
+            // Tamamo no Mae S2: Shapeshift A
+            // Increases own defense by 30% for 1 turn. Increases own defense by 30% for 3 turns.
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: `${sName} (DEF Up 1T)`,
+              type: 'def_up',
+              value: 30,
+              remainingTurns: 1
+            });
+            active.activeBuffs.push({
+              name: `${sName} (DEF Up 3T)`,
+              type: 'def_up',
+              value: 30,
+              remainingTurns: 3
+            });
+            buffLog = `(🦊 +60% DEF on Turn 1, +30% DEF for 3T!)`;
+          } else if (skillObj?.id === 'foxs_wedding_ex' || /fox's wedding/i.test(sName)) {
+            // Tamamo no Mae S3: Fox's Wedding EX
+            // Increases one ally's Arts performance by 50% for 3 turns. Recovers 3,000 of their HP.
+            targetAlly.activeBuffs = targetAlly.activeBuffs || [];
+            targetAlly.activeBuffs.push({
+              name: `${sName} (Arts Up)`,
+              type: 'arts_up',
+              value: 50,
+              remainingTurns: 3
+            });
+            const maxHp = calculateServantMaxHp(targetAlly.servant);
+            targetAlly.currentHp = Math.min(maxHp, targetAlly.currentHp + 3000);
+            const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
+            buffLog = `(💍 +50% Arts Performance for 3T & +3,000 HP Heal to **${tName}**!)`;
           } else if (/charisma of hope/i.test(sName)) {
             // Charisma of Hope B: Increases party's ATK by 20% for 3 turns, charges party's NP gauge by 30%
             battleState.participants.forEach(p => {

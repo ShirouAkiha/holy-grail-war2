@@ -611,6 +611,64 @@ export function applyCombatantSkill(
     };
   }
 
+  // Handle Tamamo no Mae (Caster) personal skills
+  if (skill.id === 'mantra_boundless_sunlight_a' || /mantra: boundless sunlight|boundless sunlight/i.test(skill.name)) {
+    // 1st skill: Mantra: Boundless Sunlight A - reduces enemy NP gauge by 30%, increases party/self NP damage by 30% for 3 turns
+    target.npGauge = Math.max(0, (target.npGauge || 0) - 30);
+    actor.activeBuffs.push({
+      name: 'Mantra: Boundless Sunlight (NP DMG Up)',
+      type: 'np_damage_up',
+      value: 30,
+      remainingTurns: 3
+    });
+    return {
+      success: true,
+      log: `☀️ **${actor.name}** activated **${skill.name}**! Drained -30% NP Gauge from **${target.name}** and granted +30% NP Damage (3T)!${quoteLine}`,
+      quote: skillQuote,
+      skillName: skill.name
+    };
+  }
+
+  if (skill.id === 'shapeshift_a' || /shapeshift a/i.test(skill.name)) {
+    // 2nd skill: Shapeshift A - +30% DEF for 1 turn, +30% DEF for 3 turns
+    actor.activeBuffs.push({
+      name: 'Shapeshift (DEF Up 1T)',
+      type: 'buff_def',
+      value: 30,
+      remainingTurns: 1
+    });
+    actor.activeBuffs.push({
+      name: 'Shapeshift (DEF Up 3T)',
+      type: 'buff_def',
+      value: 30,
+      remainingTurns: 3
+    });
+    return {
+      success: true,
+      log: `🦊 **${actor.name}** activated **${skill.name}**! Granted self +60% DEF (Turn 1) and +30% DEF (3T)!${quoteLine}`,
+      quote: skillQuote,
+      skillName: skill.name
+    };
+  }
+
+  if (skill.id === 'foxs_wedding_ex' || /fox's wedding/i.test(skill.name)) {
+    // 3rd skill: Fox's Wedding EX - +50% Arts performance for 3 turns, recovers 3,000 HP
+    actor.activeBuffs.push({
+      name: "Fox's Wedding (Arts Up)",
+      type: 'arts_up',
+      value: 50,
+      remainingTurns: 3
+    });
+    const healAmount = 3000;
+    actor.currentHp = Math.min(actor.maxHp, (actor.currentHp || 0) + healAmount);
+    return {
+      success: true,
+      log: `💍 **${actor.name}** activated **${skill.name}**! Granted +50% Arts Performance (3T) and recovered ${healAmount.toLocaleString()} HP!${quoteLine}`,
+      quote: skillQuote,
+      skillName: skill.name
+    };
+  }
+
   // Handle Edmond (Shielder) personal skills
   if (skill.id.includes('fortress_stance_terra_barrier')) {
     actor.activeBuffs.push({
@@ -1162,8 +1220,32 @@ export function executeNoblePhantasmLogic(
       const isRoundOfAvalon = /round of avalon|avalon/i.test(np.name) || actor.id === 'artoria_caster';
       const isTigris = /tigris|edmond/i.test(np.name) || actor.id === 'edmond';
       const isDeSterrennacht = /sterrennacht|starry night|van gogh/i.test(np.name) || actor.id === 'van_gogh';
+      const isAmaterasu = /suiten|amaterasu|shizu-ishi|tamamo/i.test(np.name) || actor.id === 'tamamo_no_mae';
 
-      if (isDeSterrennacht) {
+      if (isAmaterasu) {
+        // Suiten Nikkō Amaterasu Yano Shizu-Ishi
+        // 1. Recover HP by 5000
+        hpHealed = 5000;
+        actor.currentHp = Math.min(actor.maxHp, (actor.currentHp || 0) + 5000);
+        // 2. Reduce skill cooldowns by 1
+        if (actor.skills && Array.isArray(actor.skills)) {
+          actor.skills.forEach(sk => {
+            if (sk && typeof sk.currentCooldown === 'number' && sk.currentCooldown > 0) {
+              sk.currentCooldown = Math.max(0, sk.currentCooldown - 1);
+            }
+          });
+        }
+        // 3. Overcharge: +50% NP gain for 3 turns
+        const ocLevel = actor.npGauge >= 300 ? 3 : actor.npGauge >= 200 ? 2 : 1;
+        const ocNpGain = 50 + (ocLevel - 1) * 10;
+        actor.activeBuffs.push({
+          name: 'Eightfold Blessings (NP Gain Up)',
+          type: 'np_gain',
+          value: ocNpGain,
+          remainingTurns: 3
+        });
+        actionSummary = `☀️ **${actor.name}** unleashed Support Noble Phantasm [${np.name}]! Reduced party skill cooldowns by 1, healed **5,000 HP**, and granted **+${ocNpGain}% NP Gain** for 3 turns!`;
+      } else if (isDeSterrennacht) {
         // De Sterrennacht (The Starry Night) - Arts Support NP
         // 1. Inflict Terror / Stun on enemy
         target.isStunned = true;

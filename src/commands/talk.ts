@@ -330,7 +330,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       servantAvatarUrl: avatarUrl,
       servantCardArtUrl: cardArtUrl,
       servantSpriteUrl: spriteUrl,
-      customBackgroundUrl: (updatedTargetServant as any).customBackgroundUrl || (targetServant as any).customBackgroundUrl || (targetServant.customBackgroundPreset ? findBackgroundPreset(targetServant.customBackgroundPreset)?.url : undefined),
+      customBackgroundUrl: (updatedTargetServant as any).customBackgroundUrl || (targetServant as any).customBackgroundUrl || ((targetServant as any).customBackgroundPreset ? findBackgroundPreset((targetServant as any).customBackgroundPreset)?.url : undefined),
       replyText: reply,
       playerMessage,
       masterName: master.username || 'Master',

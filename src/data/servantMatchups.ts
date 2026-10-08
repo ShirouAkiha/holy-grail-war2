@@ -2114,10 +2114,112 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
       retort: "Taking on everyone else's venom until you're ready to burst? That's not being an artist, kid—that's just being an idiot who needs someone to hold the line for her. Step behind me or step up—either way, this wall won't break.",
       tag: "THE BLEEDING PALETTE & THE SCARRED BASTION"
     }
+  },
+  tamamo_no_mae: {
+    tamamo_no_mae: {
+      intro: "Mikon?! Another fox maiden claiming to be Master's one and only dedicated wife?! Unforgivable! There can only be one perfect bride in this household!",
+      retort: "How bold of a counterfeit fox to challenge the genuine article! Let us see whose cooking and divine mantras hold supreme authority!",
+      tag: "THE BATTLE OF THE NINE-TAILED BRIDES"
+    },
+    artoria_pendragon: {
+      intro: "Oh my, a king who gave up romance and fashion for a cold steel sword? How utterly tragic! Let this good wife show you the true, world-conquering power of a maiden in love! Mikon!",
+      retort: "Caster. Your playful demeanor hides a terrifying spiritual foundation. I will not lower my sword against a beast of your caliber. On guard!",
+      tag: "THE STOIC KING & THE DEVOTED WIFE"
+    },
+    gilgamesh_archer: {
+      intro: "Ugh, the Golden Tyrant. Still walking around like you own the universe? Stay far away from my Master, or I'll have to curse you into a shiny golden toad! *Haaah*, just looking at you is stressful...",
+      retort: "A severed tail of the Golden White Face playing house as a mere Servant? What a sickeningly sweet delusion. I shall shatter that farce and mount your pelt on my wall, fox!",
+      tag: "THE GOLDEN TYRANT & THE SUN'S SHADOW"
+    },
+    emiya_archer: {
+      intro: "Well, if it isn't the nameless cynic! Still wearing that dreary red coat? My Master's camp doesn't need your gloomy kitchen cooking when they have my perfect, love-filled, hand-made meals!",
+      retort: "And here I thought I smelled a troublesome fox. Try not to cause too much collateral damage with those curses, Caster. I don't want to clean up your mess.",
+      tag: "EXTRA VETERANS"
+    },
+    artoria_pendragon_alter: {
+      intro: "Eek! The tyrant king is in a terrible mood today! Eating nothing but fast food is bad for your health, you know! Let me fix you a proper, nutritious cursed bento!",
+      retort: "Silence, beast. Your obnoxious prattling is a waste of oxygen. Excalibur Morgan will silence you permanently.",
+      tag: "BLACK DRAGON & BEAST OF CALAMITY"
+    },
+    cu_chulainn_lancer: {
+      intro: "A dog? Eww, my natural enemy! Shoo, shoo, bad dog! Get those muddy paws away from my pristine, perfectly tailored shrine maiden outfit!",
+      retort: "Foxes and hounds don't exactly get along, do they? Hope you're ready to run, Caster, because this dog bites a lot harder than you think!",
+      tag: "THE FOX AND THE HOUND"
+    },
+    heracles_berserker: {
+      intro: "Mikon! What a massive, muscular mountain of a man! But raw brawn means nothing when an intricate curse of a devoted wife slips right past your guard!",
+      retort: "■■■■■■■■■■■■———!!",
+      tag: "TITANIC MIGHT VS EIGHTFOLD BLESSINGS"
+    },
+    karna_lancer: {
+      intro: "The Hero of Charity! You're so glaringly bright and painfully honest, it's making my tails curl up! Too much sun isn't good for a delicate maiden's skin, you know!",
+      retort: "You mask a terrifying divine radiance behind a cheerful facade, Caster. But the sun recognizes its own. Let us see the truth hidden beneath those curses.",
+      tag: "THE SUN GOD'S SON & THE SUN GOD'S AVATAR"
+    },
+    scathach_lancer: {
+      intro: "A strict teacher from the Land of Shadows? No, no, no! My Master only needs the gentle, doting pampering of a devoted fox wife, not a spartan boot camp!",
+      retort: "A beast of calamity playing the dutiful wife. Let us see if your martial arts have dulled beneath all that domestic pampering, Caster.",
+      tag: "SHADOW INSTRUCTOR & DOMESTIC GODDESS"
+    },
+    jeanne_darc_ruler: {
+      intro: "A holy saint? Hmm... your dedication is admirable, but true love requires worldly passion, not just prayer! Let me teach you the romantic arts of a true heroine!",
+      retort: "Lady Tamamo, your definition of love is... a bit too intense. Please, let us keep this spar within the bounds of reason!",
+      tag: "HOLY PIETY & WORLDLY ROMANCE"
+    },
+    jeanne_darc_alter_avenger: {
+      intro: "Oh my, a rebellious phase! So edgy and loud! A true lady destroys her enemies with elegance, magic, and a smile, not by screaming and setting the furniture on fire!",
+      retort: "Shut up, you annoying, giggling furball! I'll roast those stupid fluffy tails of yours and turn you into a fox-fur scarf!",
+      tag: "DRAGON'S TEMPER & FOX'S SPITE"
+    },
+    nero_claudius_saber: {
+      intro: "Giiiiii! Emperor of Roses! Why do you always have to show up and steal the spotlight?! I am the only main heroine this franchise needs! Polygamist Castration Fist, incoming!",
+      retort: "Umu! My eternal rival! Your curses are as sharp as ever, Tamamo, but the brilliant beauty of Rome shall always claim the center stage of love!",
+      tag: "ETERNAL RIVALS IN LOVE"
+    },
+    mhx_alter: {
+      intro: "A space assassin...? And you're snacking on Japanese sweets right in front of me?! Unforgivable! I am the only one allowed to feed Master hand-made wagashi!",
+      retort: "Fox entity exhibiting dangerous culinary hostility. Defending wagashi stash. Activating dark matter reactor for immediate anti-fluff suppression.",
+      tag: "SWEET TOOTH ASSASSIN & CULINARY WIFE"
+    },
+    adiosa_dragon_envoy: {
+      intro: "My, my... a cosmic dragon. How terrifying. But you see... this planet is *my* garden. If you try to prune it, I might just have to drop the wife act and let the Golden White Face out to play.",
+      retort: "⟨ Krav'nok rath. ⟩ A star's shadow masquerading as a mortal concubine. Drop the act, beast. I can smell the burning sun beneath your skin.",
+      tag: "COSMIC PRUNER & THE GOLDEN WHITE FACE"
+    },
+    aoko_aozaki: {
+      intro: "Magic that blows away the future?! That's way too violent for a modern girl! A true maiden solves her problems with elegant curses, not by throwing cosmic punches!",
+      retort: "Elegant, huh? Coming from the girl throwing literal explosive paper charms? Save the cute act, fox—let's see who hits harder!",
+      tag: "MAGIC BULLETS & DIVINE CURSES"
+    },
+    amamiya_no_chihaya_tenkohime: {
+      intro: "Mikon...?! Another fox?! And a shrine guardian?! Absolutely not! There is only room for ONE fluffy, devoted fox-wife in Master's heart! Pack your bags, you pink imposter!",
+      retort: "I-Imposter?! Washi is a sacred celestial guardian, not a scandalous beast of calamity like thee! Keep thy cursed paper charms away from washi's divine tails!",
+      tag: "BATTLE OF THE FOXES"
+    },
+    lucia_lyozes: {
+      intro: "An elven vanguard! Your discipline is impressive, but you're way too serious! Seeing five seconds into the future won't help you dodge a curse aimed straight at your heart!",
+      retort: "You hide your divine cruelty behind a cheerful mask, Caster. I don't need five seconds to know how dangerous you truly are. Black Lance, engage!",
+      tag: "FIVE-SECOND FORESIGHT & DIVINE DECEIT"
+    },
+    luvria_greenharte: {
+      intro: "Concept Nullification? How completely unbalanced! If you dare erase the concept of a devoted wife's love, I'll never forgive you! Prepare for a divine curse, you cheat!",
+      retort: "My, what an incredibly dramatic fox! But can a curse of love persist if I erase the very concept of your affection? Let us test this divine romance!",
+      tag: "CONCEPT NULLIFICATION & CURSES OF LOVE"
+    },
+    edmond: {
+      intro: "A heavy shield to protect everyone? How manly! But brute force and heavy armor won't stop the delicate, piercing curses of a devoted wife! Mikon!",
+      retort: "A beast playing house with a shrine maiden's bells. Try all the curses you want, fox—nothing slips past this shield when I'm standing guard.",
+      tag: "THE DEVOTED WIFE & THE FRONTLINE BASTION"
+    },
+    van_gogh: {
+      intro: "My my, what a tearful little sunflower! Don't look so gloomy, child—under the radiant sunlight of Amaterasu, even the deepest curses can be cleansed!",
+      retort: "S-Such blinding, warm solar divinity... Apollo's light was scorching and cruel, but your sunlight... it feels so comforting. P-Please don't burn my petals!",
+      tag: "SOLAR GODDESS & THE SUNFLOWER NYMPH"
+    }
   }
 };
 
-// Also alias amamiya, lucia, luvria, edmond, castoria, typhon, and van_gogh in the database
+// Also alias amamiya, lucia, luvria, edmond, castoria, typhon, van_gogh, and tamamo in the database
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['amamiya'] = SERVANT_MATCHUP_DATABASE.amamiya_no_chihaya_tenkohime;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['lucia'] = SERVANT_MATCHUP_DATABASE.lucia_lyozes;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['luvria'] = SERVANT_MATCHUP_DATABASE.luvria_greenharte;
@@ -2127,6 +2229,8 @@ export const SERVANT_MATCHUP_DATABASE: Record<string, Record<string, MatchupQuot
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['ephemeros'] = SERVANT_MATCHUP_DATABASE.typhon_ephemeros;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['gogh'] = SERVANT_MATCHUP_DATABASE.van_gogh;
 (SERVANT_MATCHUP_DATABASE as Record<string, any>)['clytie'] = SERVANT_MATCHUP_DATABASE.van_gogh;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['tamamo'] = SERVANT_MATCHUP_DATABASE.tamamo_no_mae;
+(SERVANT_MATCHUP_DATABASE as Record<string, any>)['tamamo_no_mae'] = SERVANT_MATCHUP_DATABASE.tamamo_no_mae;
 
 /**
  * Fallback generator for custom servants, meme servants, or any servant pairs not explicitly defined.

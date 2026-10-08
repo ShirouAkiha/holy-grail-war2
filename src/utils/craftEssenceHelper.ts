@@ -64,7 +64,8 @@ const CANONICAL_SERVANT_ALIASES: Record<string, string[]> = {
   luvria_greenharte: ['luvria_greenharte', 'luvria', 'greenharte'],
   edmond: ['edmond', 'edmond_tank', 'shielder_edmond', 's-rank adventurer'],
   typhon_ephemeros: ['typhon_ephemeros', 'typhon', 'progenitor dragon'],
-  van_gogh: ['van_gogh', 'gogh', 'clytie van gogh']
+  van_gogh: ['van_gogh', 'gogh', 'clytie van gogh'],
+  tamamo_no_mae: ['tamamo_no_mae', 'tamamo', 'caster of extra', 'mikokon', 'fox wife', 'caster_tamamo']
 };
 
 /**
@@ -273,6 +274,8 @@ export function getCePassiveStats(ce: any, servant?: any): CePassiveSummary {
   } else if (ceId === 'ce_bond_van_gogh' || ceName.includes('self-portrait at chaldea')) {
     summary.starsPerTurn += 8;
     // Note: Party Crit DMG +15% handled via getCePartyPassiveStats
+  } else if (ceId === 'ce_bond_tamamo_no_mae' || ceName.includes("tamamo's fan club") || ceName.includes('tamamo club') || ceName.includes('fan club')) {
+    // Note: Party Arts +15% handled via getCePartyPassiveStats
   }
 
   // --------------------------------------------------------------------------
@@ -380,6 +383,10 @@ export function getCePartyPassiveStats(ce: any, servant?: any): CePartyPassiveSu
   // Edmond: Party Damage Cut 1000
   if (ceId === 'ce_bond_edmond' || ceName.includes('aegis of the sunken slums')) {
     partyStats.partyDamageCut += 1000;
+  }
+  // Tamamo no Mae: Party Arts +15%
+  if (ceId === 'ce_bond_tamamo_no_mae' || ceName.includes("tamamo's fan club") || ceName.includes('tamamo club') || ceName.includes('fan club')) {
+    partyStats.partyArtsUp += 15;
   }
 
   return partyStats;

@@ -757,6 +757,24 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     isBondCe: true,
     bondServantId: 'van_gogh',
     bondServantName: 'Van Gogh'
+  },
+  tamamo_no_mae: {
+    id: 'ce_bond_tamamo_no_mae',
+    name: "Tamamo's Fan Club",
+    rarity: 4,
+    description: "A sacred guild established for the devoted followers of the peerless sun fox maiden. When held high by her Master, the radiance of the golden white fox blesses all allies with boundless spiritual energy.",
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: "When equipped to Tamamo no Mae: Increases party's and self Arts performance by 15% while self is on the field.",
+    passiveType: 'arts_up',
+    passiveValue: 15,
+    artworkUrl: 'https://static.atlasacademy.io/NA/CharaGraph/9302480/9302480a.png',
+    isBondCe: true,
+    bondServantId: 'tamamo_no_mae',
+    bondServantName: 'Tamamo no Mae'
   }
 };
 
@@ -812,7 +830,12 @@ const CANONICAL_SERVANT_TO_BOND_KEY: Record<string, string> = {
   typhon_ephemeros: 'typhon_ephemeros',
   typhon: 'typhon_ephemeros',
   van_gogh: 'van_gogh',
-  gogh: 'van_gogh'
+  gogh: 'van_gogh',
+  tamamo_no_mae: 'tamamo_no_mae',
+  tamamo: 'tamamo_no_mae',
+  caster_tamamo: 'tamamo_no_mae',
+  mikokon: 'tamamo_no_mae',
+  fox_wife: 'tamamo_no_mae'
 };
 
 /**

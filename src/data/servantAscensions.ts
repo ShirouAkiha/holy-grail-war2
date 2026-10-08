@@ -268,6 +268,23 @@ export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> 
       stage3: 'https://static.atlasacademy.io/NA/CharaFigure/25006002/25006002_merged.png',
       stage4: 'https://static.atlasacademy.io/NA/CharaFigure/25006002/25006002_merged.png'
     }
+  },
+  tamamo_no_mae: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/500600/500600a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/500600/500600a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/500600/500600b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/500600/500600b@2.png',
+    costume: 'https://static.atlasacademy.io/NA/CharaGraph/500630/500630a.png',
+    costumes: [
+      { id: '500630', name: 'Springtime Sunlight (Memories of Lunar Sea)', url: 'https://static.atlasacademy.io/NA/CharaGraph/500630/500630a.png' }
+    ],
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/5006000/5006000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/5006001/5006001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/5006002/5006002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/5006002/5006002_merged.png',
+      costume: 'https://static.atlasacademy.io/NA/CharaFigure/5006300/5006300_merged.png'
+    }
   }
 };
 
@@ -332,6 +349,11 @@ export function findCanonicalAscensionData(identifier?: any): { key: string; dat
     ephemeros: 'typhon_ephemeros',
     van_gogh: 'van_gogh',
     gogh: 'van_gogh',
+    tamamo: 'tamamo_no_mae',
+    tamamo_no_mae: 'tamamo_no_mae',
+    caster_tamamo: 'tamamo_no_mae',
+    mikokon: 'tamamo_no_mae',
+    fox_wife: 'tamamo_no_mae',
     emiya_alter: 'emiya_alter',
     edgemiya: 'emiya_alter',
     demiya: 'emiya_alter'

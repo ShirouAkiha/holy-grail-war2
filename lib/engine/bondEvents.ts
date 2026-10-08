@@ -3786,6 +3786,284 @@ export const VAN_GOGH_BOND_EVENTS: BondEvent[] = [
   }
 ];
 
+export const TAMAMO_BOND_EVENTS: BondEvent[] = [
+  {
+    id: 'tamamo_bond_event_1',
+    servantTemplateId: 'tamamo_no_mae',
+    requiredBondLevel: 1,
+    title: "A Wife's Eternal Devotion",
+    subtitle: "A quiet moment with your loyal fox wife",
+    description: "Tamamo no Mae reflects on her dream of being a dedicated housewife and asks you what kind of commitment you want with her.",
+    rewardBondExp: 200,
+    rewardSaintQuartz: 3,
+    unlockedQuoteId: 'tamamo_bond_line_1',
+    scenes: [
+      {
+        id: 'scene_1',
+        speakerName: 'Tamamo no Mae',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Phew, patrolling modern Japan is exhausting! But serving by your side makes every drop of sweat sparkle like dew on a morning blossom, Master!",
+        choices: [
+          {
+            id: 'tamamo_c1_a',
+            text: "You shouldn't push yourself so hard. Take a rest.",
+            response: "Eeeek, your kindness hits straight to the heart! A devoted maiden like me could practically melt into a puddle right here.",
+            bondExpGain: 150,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'tamamo_c1_b',
+            text: "Sweat doesn't sparkle, Tamamo. That's just light reflecting off bodily fluids.",
+            response: "Bwah?! Master, where is your poetic soul?! You just ruined a perfectly good romantic moment with middle school biology!",
+            bondExpGain: 150,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_2'
+          },
+          {
+            id: 'tamamo_c1_c',
+            text: "Patrolling is standard procedure. We must remain vigilant.",
+            response: "Always so serious! A little playful banter is essential for building combat synergy, you know!",
+            bondExpGain: 150,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_2'
+          }
+        ]
+      },
+      {
+        id: 'scene_2',
+        speakerName: 'Tamamo no Mae',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Ahem! Anyway, now that we've set up base, have you put any thought into what kind of dynamic you want between us during this Holy Grail War?",
+        choices: [
+          {
+            id: 'tamamo_c2_a',
+            text: "A standard Master and Servant contract based on mutual survival.",
+            response: "Ugh, how dry! You talk like an instruction manual! I didn't answer the summon just to be treated like an appliance!",
+            bondExpGain: 150,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'tamamo_c2_b',
+            text: "I want to be your friend and understand who you truly are.",
+            response: "M-Master... Saying that with such clear eyes isn't fair. You're going to give an innocent fox maiden funny ideas.",
+            bondExpGain: 180,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_3'
+          },
+          {
+            id: 'tamamo_c2_c',
+            text: "Whatever role makes you most comfortable.",
+            response: "Oh? Giving me free rein? You might regret handing the reins of your fate over to a wicked beauty like me~",
+            bondExpGain: 150,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_3'
+          }
+        ]
+      },
+      {
+        id: 'scene_3',
+        speakerName: 'Tamamo no Mae',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "To tell you the truth, my lifelong dream has always been exceptionally simple: to be the absolute ideal, devoted, picture-perfect house-wife!",
+        choices: [
+          {
+            id: 'tamamo_c3_a',
+            text: "A housewife? But you're a legendary Heroic Spirit.",
+            response: "Hmph, who cares about grand legends and bloody battles? Warm miso soup waiting at the dinner table beats a golden cup any day!",
+            bondExpGain: 150,
+            reactionEmotion: 'stern',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'tamamo_c3_b',
+            text: "Running a household is hard work. That's a respectable ambition.",
+            response: "Right?! Finally, someone who understands the sheer nobility of domestic bliss! You really get it, Master!",
+            bondExpGain: 180,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_4'
+          },
+          {
+            id: 'tamamo_c3_c',
+            text: "I can do the cooking and cleaning if you're tired.",
+            response: "Wait, no! If you do the housework, what's left for me?! Don't steal a maiden's life purpose with pure kindness!",
+            bondExpGain: 160,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_4'
+          }
+        ]
+      },
+      {
+        id: 'scene_4',
+        speakerName: 'Tamamo no Mae',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Besides, you're so defenseless and honest. In a treacherous death match like this, you need someone devoted to protect your heart.",
+        choices: [
+          {
+            id: 'tamamo_c4_a',
+            text: "I'm not defenseless; I have Command Seals and you.",
+            response: "'And you'... Ah! You say these devastating things without flinching! My heart almost skipped three beats!",
+            bondExpGain: 180,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'tamamo_c4_b',
+            text: "I trust you completely to watch my back.",
+            response: "Blind trust in a mythical fox spirit? You really are a pure soul... It makes me want to protect you even more.",
+            bondExpGain: 180,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_5'
+          },
+          {
+            id: 'tamamo_c4_c',
+            text: "Is modern Japan really that dangerous for us?",
+            response: "Not the streets, silly, the other Masters! Treachery, backstabbing, poison... though I suppose I'm an expert on schemes myself.",
+            bondExpGain: 150,
+            reactionEmotion: 'smug',
+            nextSceneId: 'scene_5'
+          }
+        ]
+      },
+      {
+        id: 'scene_5',
+        speakerName: 'Tamamo no Mae',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Which brings me to an important point: you aren't hiding any secret fiancées or dark childhood promises, right? My heart can only take monogamy!",
+        choices: [
+          {
+            id: 'tamamo_c5_a',
+            text: "No. I have dedicated all my focus to this war.",
+            response: "A clean slate! How refreshing! Though calling our relationship just 'focus on the war' still stings a tiny bit!",
+            bondExpGain: 150,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'tamamo_c5_b',
+            text: "I don't have anyone like that in my life.",
+            response: "Hooray! An unoccupied heart waiting to be claimed by yours truly! The universe is finally smiling upon me!",
+            bondExpGain: 180,
+            reactionEmotion: 'happy',
+            nextSceneId: 'scene_6'
+          },
+          {
+            id: 'tamamo_c5_c',
+            text: "A contract with a Servant requires absolute focus, so no.",
+            response: "You really interpret everything through rules and duties, don't you? It's endearing, but goodness, you're literal.",
+            bondExpGain: 150,
+            reactionEmotion: 'amused',
+            nextSceneId: 'scene_6'
+          }
+        ]
+      },
+      {
+        id: 'scene_6',
+        speakerName: 'Tamamo no Mae',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Then hypothetically speaking... if a certain gorgeous, nine-tailed shrine maiden offered to devote her entire eternity to you, what would you say?",
+        choices: [
+          {
+            id: 'tamamo_c6_a',
+            text: "I would take that commitment very seriously.",
+            response: "S-Seriously? No jokes, no stuttering, just pure earnestness? Master, you're playing dangerously with my romantic delusions here!",
+            bondExpGain: 180,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'tamamo_c6_b',
+            text: "Eternity is a very long time to promise someone.",
+            response: "A realistic assessment! But love is supposed to defy logic and reason, Master! Dream a little with me!",
+            bondExpGain: 150,
+            reactionEmotion: 'thoughtful',
+            nextSceneId: 'scene_7'
+          },
+          {
+            id: 'tamamo_c6_c',
+            text: "Are you asking to marry me?",
+            response: "Kyaah! You just blurted it out! A maiden is supposed to drop hints, not get interrogated with direct legal terms!",
+            bondExpGain: 180,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_7'
+          }
+        ]
+      },
+      {
+        id: 'scene_7',
+        speakerName: 'Tamamo no Mae',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Well! Since you brought it up, what if I *did* want that?! What if I declared right here and now that I want to become your lawful, adoring wife?!",
+        choices: [
+          {
+            id: 'tamamo_c7_a',
+            text: "Then we need to handle the legal paperwork immediately.",
+            response: "Legal paper—wait, what? Master, that was a dramatic declaration of affection, not a trip to City Hall!",
+            bondExpGain: 160,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_8'
+          },
+          {
+            id: 'tamamo_c7_b',
+            text: "I prepared for this eventuality just in case.",
+            response: "Prepared?! What could you possibly have prepared for a spontaneous romantic outburst?!",
+            bondExpGain: 180,
+            reactionEmotion: 'surprised',
+            nextSceneId: 'scene_8'
+          },
+          {
+            id: 'tamamo_c7_c',
+            text: "I accept. Here is the registration form.",
+            response: "Registration... form? Why are you reaching into your coat with such solemn determination?!",
+            bondExpGain: 180,
+            reactionEmotion: 'surprised',
+            nextSceneId: 'scene_8'
+          }
+        ]
+      },
+      {
+        id: 'scene_8',
+        speakerName: 'Tamamo no Mae',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "Wait... wait, wait, wait! Is that an official Japanese Marriage Registration form?! Filled out with your name, seal, and the date?!",
+        choices: [
+          {
+            id: 'tamamo_c8_a',
+            text: "Yes. You asked for marriage, so I had the document ready.",
+            response: "You brought legal municipal paperwork to a Holy Grail War?! Because you thought I might ask?!",
+            bondExpGain: 180,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_9'
+          },
+          {
+            id: 'tamamo_c8_b',
+            text: "You only need to sign your section. Can Servants provide identification?",
+            response: "Identification?! I'm an ancient spirit from the Heian period! What am I going to give them, a mirror and a prayer bead?!",
+            bondExpGain: 180,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_9'
+          },
+          {
+            id: 'tamamo_c8_c',
+            text: "I take promises to my Servant seriously. Please sign.",
+            response: "I can't tell if you're the purest saint in history or the most terrifyingly literal human being I've ever encountered in my entire existence!",
+            bondExpGain: 180,
+            reactionEmotion: 'flustered',
+            nextSceneId: 'scene_9'
+          }
+        ]
+      },
+      {
+        id: 'scene_9',
+        speakerName: 'Tamamo no Mae',
+        backgroundTheme: 'fuyuki_moonlight',
+        dialogueText: "M-My face is on fire... Put that away for five seconds so I can calm down! Or wait—no, keep it safe! Tamamo's maidenly heart cannot handle this level of sincerity!"
+      }
+    ]
+  }
+];
+
 /**
  * Registry of all available curated bond events by servant template ID.
  */
@@ -3839,7 +4117,12 @@ export const SERVANT_BOND_EVENT_DATABASE: Record<string, BondEvent[]> = {
   ephemeros: TYPHON_BOND_EVENTS,
   van_gogh: VAN_GOGH_BOND_EVENTS,
   gogh: VAN_GOGH_BOND_EVENTS,
-  clytie: VAN_GOGH_BOND_EVENTS
+  clytie: VAN_GOGH_BOND_EVENTS,
+  tamamo_no_mae: TAMAMO_BOND_EVENTS,
+  tamamo: TAMAMO_BOND_EVENTS,
+  caster_tamamo: TAMAMO_BOND_EVENTS,
+  mikokon: TAMAMO_BOND_EVENTS,
+  fox_wife: TAMAMO_BOND_EVENTS
 };
 
 /**
@@ -5856,6 +6139,42 @@ export function getServantGiftReaction(
         responseText: "A sacred warding relic... It suppresses the whispering from the void so well! My mind is so clear right now... Thank you, Master!",
         emotion: 'happy'
       }
+    },
+    tamamo_no_mae: {
+      chaldea_tea: {
+        responseText: "A cup of tea brewed with love by my Master?! Mikokon~! I shall savor every single drop! Here, let me wrap you with my fluffy tail while we drink together!",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "A feast prepared for your devoted fox wife?! Kyaaa! Master, this is beyond delicious! Next time, I promise to cook an imperial feast just for the two of us!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple brimming with solar mana! Oh Master, feeding this to me makes my nine-tailed power radiate like the midday sun! Thank you so much!",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "A consecrated holy relic! Its spiritual resonance mirrors the Eightfold Blessings of Amaterasu! With this, my mirror will protect Master from any curse in the cosmos!",
+        emotion: 'thoughtful'
+      }
+    },
+    tamamo: {
+      chaldea_tea: {
+        responseText: "A cup of tea brewed with love by my Master?! Mikokon~! I shall savor every single drop! Here, let me wrap you with my fluffy tail while we drink together!",
+        emotion: 'happy'
+      },
+      heroic_feast: {
+        responseText: "A feast prepared for your devoted fox wife?! Kyaaa! Master, this is beyond delicious! Next time, I promise to cook an imperial feast just for the two of us!",
+        emotion: 'happy'
+      },
+      golden_apple: {
+        responseText: "A Golden Apple brimming with solar mana! Oh Master, feeding this to me makes my nine-tailed power radiate like the midday sun! Thank you so much!",
+        emotion: 'happy'
+      },
+      sacred_relic: {
+        responseText: "A consecrated holy relic! Its spiritual resonance mirrors the Eightfold Blessings of Amaterasu! With this, my mirror will protect Master from any curse in the cosmos!",
+        emotion: 'thoughtful'
+      }
     }
   };
 
@@ -6076,6 +6395,14 @@ export function getServantSparringDebrief(
     },
     gogh: {
       responseText: "E-Ehehe! Did I dodge properly? I thought my legs would tangle in sunflower roots! Practicing with you makes me feel like a real Servant for once!",
+      emotion: 'happy'
+    },
+    tamamo_no_mae: {
+      responseText: "*Fluffy tail swishing energetically.* Mikokon~! What wonderful footwork, Master! You dodged my solar charms like a seasoned onmyouji! Now then, as a reward for surviving practice, it's time for mandatory ear petting!",
+      emotion: 'happy'
+    },
+    tamamo: {
+      responseText: "*Fluffy tail swishing energetically.* Mikokon~! What wonderful footwork, Master! You dodged my solar charms like a seasoned onmyouji! Now then, as a reward for surviving practice, it's time for mandatory ear petting!",
       emotion: 'happy'
     }
   };

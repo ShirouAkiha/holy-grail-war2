@@ -2134,5 +2134,116 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     cardArtUrl: 'https://static.atlasacademy.io/NA/CharaGraph/2500600/2500600a@1.png',
     spriteUrl: 'https://ella.janitorai.com/media-approved/M0eT6zv6yAIftUXUkrQ2a.webp',
     isCustomOrMeme: false
+  },
+  {
+    id: 'tamamo_no_mae',
+    name: 'Tamamo no Mae',
+    title: 'Sun Goddess of the Ninefold Tail',
+    servantClass: 'Caster',
+    rarity: 5,
+    baseHp: 30200,
+    baseAtk: 10600,
+    baseStats: { strength: 10, endurance: 12, agility: 16, mana: 22, luck: 16 },
+    commandDeck: ['Quick', 'Arts', 'Arts', 'Arts', 'Buster'],
+    traits: [
+      'Animal Characteristics Servant',
+      'Demonic Beast Servant',
+      'Divine Spirit',
+      'Divinity',
+      'Goddess Servant',
+      'Humanoid',
+      'Non-Hominidae Servant',
+      'Servant',
+      'Seven Knights Servant',
+      'Weak to Enuma Elish'
+    ],
+    skills: [
+      {
+        id: 'mantra_boundless_sunlight_a',
+        name: 'Mantra: Boundless Sunlight A',
+        cooldown: 5,
+        description: "Chance to reduce one enemy's NP gauge by 1 on raid boss and 30% on duels. Increases party's NP damage by 30% for 3 turns.",
+        effectType: 'debuff',
+        value: 30,
+        duration: 3,
+        target: 'single_enemy',
+        icon: '☀️',
+        quote: '"Mantra of the solar soul... Mikokon, shine forth!"',
+        quotes: [
+          '"Mantra of the solar soul... Mikokon, shine forth!"',
+          '"Mikokon! Let me drain that pesky spirit energy right out of you!"',
+          '"Under the boundless sun, your petty schemes dissolve into mist!"'
+        ]
+      },
+      {
+        id: 'shapeshift_a',
+        name: 'Shapeshift A',
+        cooldown: 5,
+        description: 'Increases own defense by 30% for 1 turn. Increases own defense by 30% for 3 turns.',
+        effectType: 'buff_def',
+        value: 30,
+        duration: 3,
+        target: 'self',
+        icon: '🦊',
+        quote: '"A devoted fox wife knows how to protect her fluffiness~"',
+        quotes: [
+          '"A devoted fox wife knows how to protect her fluffiness~"',
+          '"Hengue no jutsu! Soft, fluffy, and absolutely impenetrable!"',
+          '"You won\'t put a single scratch on this glossy coat!"'
+        ]
+      },
+      {
+        id: 'foxs_wedding_ex',
+        name: "Fox's Wedding EX",
+        cooldown: 5,
+        description: "Increases one ally's Arts performance by 50% for 3 turns. Recovers 3,000 of their HP.",
+        effectType: 'arts_up',
+        value: 50,
+        duration: 3,
+        target: 'ally',
+        icon: '💍',
+        quote: '"May the sun shower you in eternal blessings, Master!"',
+        quotes: [
+          '"May the sun shower you in eternal blessings, Master!"',
+          '"A sacred matrimonial rite for my beloved! Feel the power of true love!"',
+          '"Mikokon! Receive the divine warmth of the sun goddess!"'
+        ]
+      }
+    ],
+    passives: [
+      {
+        name: 'Territory Creation C',
+        type: 'territory_creation',
+        value: 6,
+        rank: 'C',
+        description: 'Increases own Arts performance by 6%.'
+      },
+      {
+        name: 'Divinity A',
+        type: 'divinity',
+        value: 1000,
+        rank: 'A',
+        description: 'Powerup: Increases own damage by 1,000.'
+      }
+    ],
+    noblePhantasm: {
+      name: 'Suiten Nikkō Amaterasu Yano Shizu-Ishi',
+      cardType: 'Arts',
+      chant: 'Eightfold Blessings of Amaterasu on the Weight Stone under the Sunlit Watery Heavens... Suiten Nikkō Amaterasu Yano Shizu-Ishi!',
+      description: "Reduces all party's and self skill cooldown by 1. Recovers party's and self HP by 5,000. [Overcharge] Increases party's NP gain by 50% for 3 turns.",
+      target: 'support',
+      multiplier: 0,
+      overchargeEffect: "Increases party's NP gain by 50% for 3 turns (scales with Overcharge)",
+      gifUrl: 'https://ella.janitorai.com/media-approved/_ePWNS7EhfZ058rS15mCK.gif'
+    },
+    lore: `Tamamo no Mae (玉藻の前), Class Name Caster (キャスター), is a 5★ SSR Caster-class Servant.\n\nA legendary beauty who served the retired Emperor Toba in the late Heian period, she is renowned as a divine fox maiden and an incarnation of the sun goddess Amaterasu Omikami (specifically, a facet of the golden white-faced nine-tailed celestial fox).\n\nDespite possessing divine power that could easily ravage nations, her ultimate, earnest wish is simply to be a dedicated, loving, and supportive "good wife" (ryousai kenbo) to her Master. She views service to her beloved Master not as a duty, but as her greatest joy and destiny.\n\nPersonality & Demeanor:\n• Faithful & Affectionate ("Mikokon~!"): Cheerful, charming, and endlessly devoted, she greets her Master with bright smiles, playful fox-ear twitches, and boundless domestic zeal.\n• Shrewd & Witty: Beneath her adorable miko persona lies an ancient divine intelligence capable of reading people like open scrolls and manipulating spiritual leylines with effortless grace.\n• Jealous & Protective: If anyone threatens her Master or if romantic rivals appear, her golden eyes flash with ancient fox divinity.`,
+    summonQuote: '"Caster Tamamo no Mae has answered your call! Hehe, are you my Master? Or perhaps... my destined soulmate? Either way, your loyal fox wife is at your service! Mikokon~!"',
+    battleStartQuote: '"Mikokon! Allow this devoted fox maiden to clear the path for my Master!"',
+    victoryQuote: '"A flawless victory! Now then, Master, shall we return to the My Room for some tea and fluffy tail grooming?"',
+    defeatQuote: '"Forgive me, Master... to let my beloved see me in such a state... my heart aches..."',
+    avatarUrl: 'https://static.atlasacademy.io/NA/CharaGraph/500600/500600a@1.png',
+    cardArtUrl: 'https://static.atlasacademy.io/NA/CharaGraph/500600/500600a@1.png',
+    spriteUrl: 'https://static.atlasacademy.io/NA/CharaFigure/5006000/5006000_merged.png',
+    isCustomOrMeme: false
   }
 ];

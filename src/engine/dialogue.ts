@@ -943,6 +943,50 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "I'm sorry... I'm sorry...!",
       "The yellow blossoms... wither away... I couldn't even be a proper imposter..."
     ]
+  },
+  // Tamamo no Mae - Caster (Amaterasu divine fox maiden)
+  tamamo_no_mae: {
+    buster: [
+      "Scatter and perish before the Higanbana Sesshouseki!",
+      "Gather the yin energy! Tamamo Resentment Shot!",
+      "Well, am I shining?",
+      "A fox's bite is sharper than steel!"
+    ],
+    arts: [
+      "Gather the yin energy! Tamamo Resentment Shot!",
+      "Scatter and perish before the Higanbana Sesshouseki!",
+      "Well, am I shining?",
+      "Oh, how I will curse you!"
+    ],
+    quick: [
+      "Well, am I shining?",
+      "Gather the yin energy! Tamamo Resentment Shot!",
+      "Scatter and perish before the Higanbana Sesshouseki!",
+      "A good wife always makes do!"
+    ],
+    mixed: [
+      "Scatter and perish before the Higanbana Sesshouseki!",
+      "Gather the yin energy! Tamamo Resentment Shot!",
+      "Well, am I shining?",
+      "Oh, how I will curse you!"
+    ],
+    desperation: [
+      "Master, stay behind me! Even if my tails turn to ash, I will protect you!",
+      "I will always be there for you! Your reliable Shrine Maiden Fox, Caster, is right here!",
+      "I will not let you take my beloved away from me!"
+    ],
+    skills: [
+      "Oh, how I will curse you!",
+      "A good wife always makes do!"
+    ],
+    victory: [
+      "This is way too easy♪",
+      "Now then, shall I chop you up and cook you?"
+    ],
+    defeat: [
+      "I should have set aside my grudges...",
+      "Oww! That's it, I'm going home..."
+    ]
   }
 };
 
@@ -1051,6 +1095,9 @@ export function getServantProfile(servantName?: string): ServantDialogueProfile 
   }
   if (n.includes('gogh') || n.includes('clytie') || n.includes('sunflower') || n.includes('starry night')) {
     return SERVANT_COMBAT_DIALOGUES.van_gogh;
+  }
+  if (n.includes('tamamo') || n.includes('mikokon') || n.includes('fox wife') || n.includes('amaterasu')) {
+    return SERVANT_COMBAT_DIALOGUES.tamamo_no_mae;
   }
 
   return GENERIC_PROFILE;

@@ -1750,6 +1750,66 @@ function activateCombatantSkill(
     });
 
     logText = `💧 **${sName}** activated **${skill.name}**! (+30% ATK [3T], +200% Party Star Gain [3T], Quick Curse Cleanse Buff [3T], absorbed ${absorbedCurses} Curses to self!)${quoteLine}`;
+  } else if (skill.id === 'mantra_boundless_sunlight_a' || /mantra: boundless sunlight|boundless sunlight/i.test(skill.name)) {
+    // Tamamo no Mae S1: Mantra: Boundless Sunlight A
+    // Reduces enemy's NP gauge by 30% in duels. Increases party's and self NP damage by 30% for 3 turns.
+    if (opponent) {
+      const oppPassives = opponent.passives || getUnlockedPassives(opponent.servant.template?.passives?.length ? opponent.servant.template.passives : opponent.servant.template?.servantClass, opponent.servant.bondLevel || 1);
+      const debuffResist = oppPassives.filter(p => p.type === 'magic_resistance' || p.type === 'fifth_succession').reduce((s, p) => s + p.value, 0);
+      const didResist = Math.random() * 100 < debuffResist;
+      if (!didResist) {
+        opponent.npGauge = Math.max(0, opponent.npGauge - 30);
+      }
+    }
+    const alliesList = livingAllies && livingAllies.length > 0 ? livingAllies.filter(a => a.currentHp > 0) : [combatant];
+    alliesList.forEach(a => {
+      a.activeBuffs = a.activeBuffs || [];
+      a.activeBuffs.push({
+        name: `${skill.name} (NP DMG Up)`,
+        type: 'np_damage_up',
+        value: 30,
+        remainingTurns: 3,
+        appliedRound: currentRound,
+        appliedTurnUserId: combatant.userId
+      });
+    });
+    logText = `☀️ **${sName}** activated **${skill.name}**! (Drained -30% Enemy NP Gauge & granted +30% NP DMG to party for 3T!)${quoteLine}`;
+  } else if (skill.id === 'shapeshift_a' || /shapeshift a/i.test(skill.name)) {
+    // Tamamo no Mae S2: Shapeshift A
+    // Increases own defense by 30% for 1 turn. Increases own defense by 30% for 3 turns.
+    combatant.activeBuffs = combatant.activeBuffs || [];
+    combatant.activeBuffs.push({
+      name: `${skill.name} (DEF Up 1T)`,
+      type: 'buff_def',
+      value: 30,
+      remainingTurns: 1,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (DEF Up 3T)`,
+      type: 'buff_def',
+      value: 30,
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    logText = `🦊 **${sName}** activated **${skill.name}**! (+60% DEF on Turn 1, +30% DEF for 3T)${quoteLine}`;
+  } else if (skill.id === 'foxs_wedding_ex' || /fox's wedding/i.test(skill.name)) {
+    // Tamamo no Mae S3: Fox's Wedding EX
+    // Increases one ally's Arts performance by 50% for 3 turns. Recovers 3,000 of their HP.
+    combatant.activeBuffs = combatant.activeBuffs || [];
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Arts Up)`,
+      type: 'arts_up',
+      value: 50,
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    const healAmount = 3000;
+    combatant.currentHp = Math.min(combatant.maxHp, combatant.currentHp + healAmount);
+    logText = `💍 **${sName}** activated **${skill.name}**! (+50% Arts Performance for 3T, recovered ${healAmount.toLocaleString()} HP!)${quoteLine}`;
   } else if (skill.effectType === 'buff_atk') {
     const val = skill.value || 35;
     const desc = (skill.description || '').toLowerCase();
@@ -2530,7 +2590,30 @@ function resolveStrike(
             const isLuminosite = /luminosit|jeanne/i.test(npTemplate.name) || attacker.servant.template.id === 'jeanne_darc_ruler';
             const isTigris = /tigris|edmond/i.test(npTemplate.name) || attacker.servant.template.id === 'edmond';
             const isDeSterrennacht = /sterrennacht|starry night|van gogh/i.test(npTemplate.name) || attacker.servant.template.id === 'van_gogh';
-            if (isDeSterrennacht) {
+            const isAmaterasu = /suiten|amaterasu|shizu-ishi|tamamo/i.test(npTemplate.name) || attacker.servant.template.id === 'tamamo_no_mae';
+            if (isAmaterasu) {
+              // Tamamo no Mae NP: Suiten Nikkō Amaterasu Yano Shizu-Ishi
+              // 1. Reduces all party's and self skill cooldown by 1
+              if (allyCombatant.skillCooldowns) {
+                for (const idxStr of Object.keys(allyCombatant.skillCooldowns)) {
+                  const sIdx = parseInt(idxStr, 10);
+                  if (allyCombatant.skillCooldowns[sIdx] > 0) {
+                    allyCombatant.skillCooldowns[sIdx] = Math.max(0, allyCombatant.skillCooldowns[sIdx] - 1);
+                  }
+                }
+              }
+              // 2. Recovers party's and self HP by 5,000
+              allyCombatant.currentHp = Math.min(allyCombatant.maxHp, allyCombatant.currentHp + 5000);
+              // 3. Overcharge: Increases party NP gain by 50% for 3 turns (scales with Overcharge)
+              const ocNpGain = isOvercharged ? (50 + (overchargeLevel - 1) * 10) : 50;
+              allyCombatant.activeBuffs = allyCombatant.activeBuffs || [];
+              allyCombatant.activeBuffs.push({
+                name: 'Blessings of Amaterasu (NP Gain Up)',
+                type: 'np_gain',
+                value: ocNpGain,
+                remainingTurns: 3
+              });
+            } else if (isDeSterrennacht) {
               const isDomainAlly = allyCombatant.servant.template.servantClass === 'Foreigner' ||
                 (allyCombatant.passives && allyCombatant.passives.some(p => p.type === 'existence_outside_the_domain')) ||
                 (allyCombatant.servant.template.passives && allyCombatant.servant.template.passives.some(p => p.type === 'existence_outside_the_domain')) ||
