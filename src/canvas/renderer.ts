@@ -133,7 +133,7 @@ const failedUrlCache = new Map<string, number>();
 const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour memory cache
 const FAILED_TTL_MS = 1000 * 60 * 5; // 5 minutes negative cache for broken URLs
 
-async function fetchWithHttpsModule(url: string, maxRedirects = 2): Promise<Buffer | null> {
+async function fetchWithHttpsModule(url: string, maxRedirects = 3): Promise<Buffer | null> {
   try {
     const parsedUrl = new URL(url);
     const isHttps = parsedUrl.protocol === 'https:';
@@ -142,9 +142,7 @@ async function fetchWithHttpsModule(url: string, maxRedirects = 2): Promise<Buff
 
     return new Promise((resolve) => {
       try {
-        const referer = parsedUrl.hostname.includes('wikia.nocookie.net')
-          ? 'https://fategrandorder.fandom.com/'
-          : parsedUrl.origin + '/';
+        const referer = getOptimalReferer(url);
 
         const req = client.get(
           url,
@@ -155,7 +153,7 @@ async function fetchWithHttpsModule(url: string, maxRedirects = 2): Promise<Buff
               'Referer': referer,
               'Connection': 'keep-alive',
             },
-            timeout: 1500,
+            timeout: 3500,
           },
           (res: any) => {
             if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && maxRedirects > 0) {
@@ -211,11 +209,7 @@ async function fetchImageBuffer(url: string): Promise<Buffer | null> {
     return cached.buffer;
   }
 
-  const failedTimestamp = failedUrlCache.get(url);
-  if (failedTimestamp && (Date.now() - failedTimestamp < FAILED_TTL_MS)) {
-    return null; // Fast fail without network stall
-  }
-
+  // 1. Try modern fetch API with 3.5s timeout
   try {
     const referer = getOptimalReferer(url);
     const res = await fetch(url, {
@@ -225,7 +219,7 @@ async function fetchImageBuffer(url: string): Promise<Buffer | null> {
         'Referer': referer,
         'Connection': 'keep-alive',
       },
-      signal: AbortSignal.timeout(600)
+      signal: AbortSignal.timeout(3500)
     });
 
     if (res.ok) {
@@ -238,7 +232,15 @@ async function fetchImageBuffer(url: string): Promise<Buffer | null> {
     }
   } catch {}
 
-  failedUrlCache.set(url, Date.now());
+  // 2. Fallback to native node http/https client with redirects support
+  try {
+    const buffer = await fetchWithHttpsModule(url);
+    if (buffer && buffer.length > 0) {
+      imageBufferCache.set(url, { buffer, timestamp: Date.now() });
+      return buffer;
+    }
+  } catch {}
+
   return null;
 }
 
