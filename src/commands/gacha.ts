@@ -378,6 +378,9 @@ export async function handleGlobalGachaInteraction(interaction: any): Promise<bo
       if (!interaction.deferred && !interaction.replied) {
         await interaction.deferReply();
       }
+      await interaction.editReply({
+        content: '🔮 **Channeling Saint Quartz into the Greater Grail Invocation Circle...**\n> ⏳ *Manifesting 5 Heroic Spirits and 5 Craft Essences...*'
+      }).catch(() => {});
 
       const rollResult = executeUnifiedGachaRoll({ count: 10, master });
       master = rollResult.updatedMaster;
@@ -454,6 +457,7 @@ export async function handleGlobalGachaInteraction(interaction: any): Promise<bo
       );
 
       await interaction.editReply({
+        content: '',
         embeds: [embed],
         files,
         components: [multiActionRow]
@@ -484,6 +488,9 @@ export async function handleGlobalGachaInteraction(interaction: any): Promise<bo
       if (!interaction.deferred && !interaction.replied) {
         await interaction.deferReply();
       }
+      await interaction.editReply({
+        content: '✨ **Channeling Mana into the Greater Grail Invocation Circle...**\n> ⏳ *Manifesting Heroic Spirit / Craft Essence...*'
+      }).catch(() => {});
 
       const useTickets = !canUseSq && canUseTickets;
       const rollResult = executeUnifiedGachaRoll({ count: 1, master, useTickets });
@@ -537,7 +544,7 @@ export async function handleGlobalGachaInteraction(interaction: any): Promise<bo
             .setStyle(ButtonStyle.Secondary)
         );
 
-        await interaction.editReply({ embeds: [embed], files, components: [actionRow] });
+        await interaction.editReply({ content: '', embeds: [embed], files, components: [actionRow] });
         return true;
       } else {
         const ce = pulled.item as any;
@@ -585,7 +592,7 @@ export async function handleGlobalGachaInteraction(interaction: any): Promise<bo
             .setStyle(ButtonStyle.Secondary)
         );
 
-        await interaction.editReply({ embeds: [embed], files, components: [actionRow] });
+        await interaction.editReply({ content: '', embeds: [embed], files, components: [actionRow] });
         return true;
       }
     }
@@ -610,6 +617,9 @@ export async function handleGlobalGachaInteraction(interaction: any): Promise<bo
       if (!interaction.deferred && !interaction.replied) {
         await interaction.deferReply();
       }
+      await interaction.editReply({
+        content: '🎫 **Offering Summon Ticket to the Throne of Heroes...**\n> ⏳ *Communing with the Greater Grail...*'
+      }).catch(() => {});
 
       const rollResult = executeUnifiedGachaRoll({ count: 1, master, useTickets: true });
       master = rollResult.updatedMaster;
@@ -655,7 +665,7 @@ export async function handleGlobalGachaInteraction(interaction: any): Promise<bo
             .setStyle(ButtonStyle.Secondary)
         );
 
-        await interaction.editReply({ embeds: [embed], components: [actionRow] });
+        await interaction.editReply({ content: '', embeds: [embed], components: [actionRow] });
         return true;
       } else {
         const ce = pulled.item as any;
@@ -703,7 +713,7 @@ export async function handleGlobalGachaInteraction(interaction: any): Promise<bo
             .setStyle(ButtonStyle.Secondary)
         );
 
-        await interaction.editReply({ embeds: [embed], files, components: [actionRow] });
+        await interaction.editReply({ content: '', embeds: [embed], files, components: [actionRow] });
         return true;
       }
     }
@@ -869,6 +879,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     // Immediately defer reply to Discord so canvas generation never triggers "didn't respond in time"
     await interaction.deferReply();
+    await interaction.editReply({
+      content: rolls === 10
+        ? '🔮 **Channeling Saint Quartz into the Greater Grail Invocation Circle...**\n> ⏳ *Manifesting 5 Heroic Spirits and 5 Craft Essences...*'
+        : '✨ **Channeling Mana into the Greater Grail...**\n> ⏳ *Invoking summon ritual...*'
+    }).catch(() => {});
 
     const useTickets = !canUseSq && canUseTickets;
     const rollResult = executeUnifiedGachaRoll({ count: rolls as 1 | 10, master, useTickets });
@@ -916,7 +931,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             .setStyle(ButtonStyle.Secondary)
         );
 
-        await interaction.editReply({ embeds: [embed], components: [actionRow] });
+        await interaction.editReply({ content: '', embeds: [embed], components: [actionRow] });
         return;
       } else {
         const ce = pulled.item as any;
@@ -964,7 +979,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
             .setStyle(ButtonStyle.Secondary)
         );
 
-        await interaction.editReply({ embeds: [embed], files, components: [actionRow] });
+        await interaction.editReply({ content: '', embeds: [embed], files, components: [actionRow] });
         return;
       }
     }
@@ -1034,6 +1049,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     );
 
     await interaction.editReply({
+      content: '',
       embeds: [embed],
       files,
       components: [multiActionRow]

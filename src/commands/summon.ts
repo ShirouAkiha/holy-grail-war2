@@ -144,6 +144,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     // Immediately defer reply to Discord so canvas generation never triggers "didn't respond in time"
     await interaction.deferReply();
+    await interaction.editReply({
+      content: rolls === 10
+        ? '🔮 **Channeling Saint Quartz into the Greater Grail Invocation Circle...**\n> ⏳ *Manifesting 5 Heroic Spirits and 5 Craft Essences...*'
+        : '✨ **Channeling Mana into the Greater Grail...**\n> ⏳ *Invoking summon ritual...*'
+    }).catch(() => {});
 
     // Execute Unified Gacha Roll (50% Servants & 50% Craft Essences)
     const rollResult = executeUnifiedGachaRoll({ count: rolls, master, useTickets });
@@ -231,6 +236,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         );
 
         const reply = await interaction.editReply({
+          content: '',
           embeds: [ritualEmbed, summonEmbed],
           components: [actionRow]
         });
@@ -285,6 +291,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         );
 
         const reply = await interaction.editReply({
+          content: '',
           embeds: [embed],
           files,
           components: [actionRow]
@@ -372,6 +379,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     );
 
     const reply = await interaction.editReply({
+      content: '',
       embeds: [multiEmbed],
       components: [multiActionRow],
       files

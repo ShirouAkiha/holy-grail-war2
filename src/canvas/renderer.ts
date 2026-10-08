@@ -18,6 +18,7 @@ import { getClassIconUrl, CLASS_ICON_URLS } from '../data/classIcons';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 import { getCanvasModule, getGifencModule } from './canvasLoader';
 
 export const MINIMAL_VALID_PNG = Buffer.from(
@@ -131,9 +132,22 @@ function createCanvas(width: number, height: number): any {
 }
 
 const imageBufferCache = new Map<string, { buffer: Buffer; timestamp: number }>();
+const inFlightFetches = new Map<string, Promise<Buffer | null>>();
 const failedUrlCache = new Map<string, number>();
 const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours memory cache
 const FAILED_TTL_MS = 1000 * 60 * 5; // 5 minutes negative cache for broken URLs
+
+const MAX_DECODED_IMAGES = 300;
+const decodedCanvasImageCache = new Map<string, any>();
+
+function cacheDecodedImage(key: string, img: any) {
+  if (!img) return;
+  if (decodedCanvasImageCache.size >= MAX_DECODED_IMAGES) {
+    const oldestKey = decodedCanvasImageCache.keys().next().value;
+    if (oldestKey) decodedCanvasImageCache.delete(oldestKey);
+  }
+  decodedCanvasImageCache.set(key, img);
+}
 
 const DISK_CACHE_DIR = path.join(process.cwd(), 'data', 'media_cache');
 try {
@@ -249,59 +263,78 @@ export async function fetchImageBuffer(url: string, retries = 1): Promise<Buffer
     } catch {}
   }
 
-  // 4. Remote Fetch with generous 10s window & Keep-Alive
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const referer = getOptimalReferer(url);
-      const res = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-          'Referer': referer,
-          'Connection': 'keep-alive',
-        },
-        signal: AbortSignal.timeout(10000)
-      });
-
-      if (res.ok) {
-        const arrayBuffer = await res.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        if (buffer && buffer.length > 0) {
-          imageBufferCache.set(url, { buffer, timestamp: Date.now() });
-          if (diskPath) {
-            try { fs.writeFileSync(diskPath, buffer); } catch {}
-          }
-          return buffer;
-        }
-      }
-    } catch {}
-
-    // Fallback to native Node client with 10s timeout
-    try {
-      const buffer = await fetchWithHttpsModule(url);
-      if (buffer && buffer.length > 0) {
-        imageBufferCache.set(url, { buffer, timestamp: Date.now() });
-        if (diskPath) {
-          try { fs.writeFileSync(diskPath, buffer); } catch {}
-        }
-        return buffer;
-      }
-    } catch {}
-
-    if (attempt < retries) {
-      await new Promise(r => setTimeout(r, 200));
-    }
+  // 4. In-flight request deduplication
+  if (inFlightFetches.has(url)) {
+    return inFlightFetches.get(url)!;
   }
 
-  // Record failure to prevent repeating hangs
-  failedUrlCache.set(url, Date.now());
-  return null;
+  const fetchPromise = (async () => {
+    try {
+      // Remote Fetch with generous 10s window & Keep-Alive
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          const referer = getOptimalReferer(url);
+          const res = await fetch(url, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+              'Referer': referer,
+              'Connection': 'keep-alive',
+            },
+            signal: AbortSignal.timeout(10000)
+          });
+
+          if (res.ok) {
+            const arrayBuffer = await res.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            if (buffer && buffer.length > 0) {
+              imageBufferCache.set(url, { buffer, timestamp: Date.now() });
+              if (diskPath) {
+                try { fs.writeFileSync(diskPath, buffer); } catch {}
+              }
+              return buffer;
+            }
+          }
+        } catch {}
+
+        // Fallback to native Node client with 10s timeout
+        try {
+          const buffer = await fetchWithHttpsModule(url);
+          if (buffer && buffer.length > 0) {
+            imageBufferCache.set(url, { buffer, timestamp: Date.now() });
+            if (diskPath) {
+              try { fs.writeFileSync(diskPath, buffer); } catch {}
+            }
+            return buffer;
+          }
+        } catch {}
+
+        if (attempt < retries) {
+          await new Promise(r => setTimeout(r, 200));
+        }
+      }
+
+      // Record failure to prevent repeating hangs
+      failedUrlCache.set(url, Date.now());
+      return null;
+    } finally {
+      inFlightFetches.delete(url);
+    }
+  })();
+
+  inFlightFetches.set(url, fetchPromise);
+  return fetchPromise;
 }
 
 export async function loadImage(src: string): Promise<any> {
   if (!src || typeof src !== 'string') return null;
   const targetUrl = normalizeMediaUrl(src.trim());
   if (!targetUrl) return null;
+
+  // 1. Fast in-memory decoded image cache check (<0.01ms)
+  if (decodedCanvasImageCache.has(targetUrl)) {
+    return decodedCanvasImageCache.get(targetUrl);
+  }
 
   const canvasModule = getCanvasModule();
   if (canvasModule && typeof canvasModule.loadImage === 'function') {
@@ -312,11 +345,12 @@ export async function loadImage(src: string): Promise<any> {
       if (isAtlasMergedSprite(targetUrl)) {
         try { img._isAtlasMerged = true; } catch {}
       }
+      cacheDecodedImage(targetUrl, img);
       return img;
     };
 
     try {
-      // 1. Check if it's already a local disk file or /api/media path
+      // 2. Check if it's already a local disk file or /api/media path
       const diskPath = getLocalMediaDiskPath(targetUrl);
       if (diskPath && fs.existsSync(diskPath)) {
         try {
@@ -350,6 +384,53 @@ export async function loadImage(src: string): Promise<any> {
     }
   }
   return null;
+}
+
+let prewarmPromise: Promise<void> | null = null;
+export async function prewarmGachaAssets(): Promise<void> {
+  if (prewarmPromise) return prewarmPromise;
+  prewarmPromise = (async () => {
+    try {
+      if (!fs.existsSync(DISK_CACHE_DIR)) {
+        fs.mkdirSync(DISK_CACHE_DIR, { recursive: true });
+      }
+      const urlsToWarm = new Set<string>();
+
+      // Servants
+      for (const s of SERVANT_DATABASE) {
+        try {
+          const art = getServantAvatarAndCardArt(s);
+          if (art?.cardArtUrl) urlsToWarm.add(normalizeMediaUrl(art.cardArtUrl));
+          if (art?.avatarUrl) urlsToWarm.add(normalizeMediaUrl(art.avatarUrl));
+        } catch {}
+      }
+
+      // Craft Essences
+      for (const ce of CRAFT_ESSENCE_DATABASE) {
+        const u = ce.artworkUrl || ce.imageUrl || ce.cardArtUrl;
+        if (u) urlsToWarm.add(normalizeMediaUrl(u));
+      }
+
+      // Common banners
+      urlsToWarm.add('https://ella.janitorai.com/media-approved/4eou5BGEGK91VbIpEukgO.webp');
+
+      const urlList = Array.from(urlsToWarm).filter(Boolean);
+      const BATCH_SIZE = 4;
+      for (let i = 0; i < urlList.length; i += BATCH_SIZE) {
+        const batch = urlList.slice(i, i + BATCH_SIZE);
+        await Promise.all(
+          batch.map(async (url) => {
+            try {
+              await fetchImageBuffer(url, 1);
+            } catch {}
+          })
+        );
+      }
+    } catch (err) {
+      console.warn('Gacha prewarm completed with notice:', err);
+    }
+  })();
+  return prewarmPromise;
 }
 
 // Helper to draw a 5-pointed vector star

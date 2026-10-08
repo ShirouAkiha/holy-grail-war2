@@ -636,6 +636,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       }
 
       await interaction.deferReply();
+      await interaction.editReply({
+        content: rolls === 10
+          ? '🔮 **Channeling Saint Quartz into the Greater Grail Invocation Circle...**\n> ⏳ *Manifesting 5 Heroic Spirits and 5 Craft Essences...*'
+          : '✨ **Channeling Mana into the Greater Grail...**\n> ⏳ *Forging Mystic Code / Heroic Spirit...*'
+      }).catch(() => {});
 
       const pullResult = executeCraftEssenceGachaRoll({
         count: rolls,
@@ -684,6 +689,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       );
 
       const pullMsg = await interaction.editReply({
+        content: '',
         embeds: [resultEmbed],
         files: [attachment],
         components: [boastRow]

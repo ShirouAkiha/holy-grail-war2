@@ -63,7 +63,7 @@ import { CRAFT_ESSENCE_DATABASE } from './data/craftEssences';
 import { allocateStatPoints } from './engine/statSystem';
 import { getNoblePhantasmGif, getNoblePhantasmChant } from './data/noblePhantasmGifs';
 import { saveCustomCharacterProfile, getServantCharacterProfile } from './data/characterProfiles';
-import { renderServantProfileCard, renderDialogueCard, renderGachaSummonBanner } from './canvas/renderer';
+import { renderServantProfileCard, renderDialogueCard, renderGachaSummonBanner, prewarmGachaAssets } from './canvas/renderer';
 import { buildProfileEmbed, buildPublicProfileEmbed, buildProfileButtons } from './commands/profile';
 import { buildDailyEmbed, buildDailyButtons } from './commands/daily';
 import { buildDefensesEmbed, buildDefensesButtons } from './commands/defenses';
@@ -307,6 +307,12 @@ client.once(Events.ClientReady, async c => {
   }
   // Set Discord presence/status message
   c.user.setActivity('Fuyuki Holy Grail War | /summon', { type: 0 });
+
+  // Pre-warm Gacha pool assets in the background into disk cache for instant summon loading
+  prewarmGachaAssets().catch(err => {
+    console.warn('⚠️ Gacha prewarm background notice:', err);
+  });
+
   try {
     resumePendingRecruitment(client);
   } catch (err) {
