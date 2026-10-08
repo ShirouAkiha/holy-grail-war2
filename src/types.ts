@@ -417,6 +417,7 @@ export interface ActiveCombatant {
     remainingTurns: number;
     remainingHits?: number;
     isHitCount?: boolean;
+    hasDefendedOnce?: boolean;
   }>;
   skills: Array<ServantSkill & { currentCooldown: number }>;
   passives?: PassiveSkill[];

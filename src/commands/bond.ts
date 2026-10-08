@@ -27,6 +27,8 @@ import {
   splitDialogueIntoChunks,
   findBondEventById,
   findServantForBondEvent,
+  isTerminalScene,
+  getNextSceneIndex,
   type BondEvent
 } from '../../lib/engine/bondEvents';
 import { safeSetEmbedThumbnail } from '../utils/discordEmbedHelper';
@@ -995,10 +997,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           );
         });
       } else {
+        const isLastScene = isTerminalScene(event, 0);
         choicesRow.addComponents(
           new ButtonBuilder()
             .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:1`))
-            .setLabel(event.scenes.length > 1 ? 'Next Scene ➔' : '🏁 Complete Interlude')
+            .setLabel(isLastScene ? '🏁 Complete Interlude' : 'Next Scene ➔')
             .setStyle(ButtonStyle.Success)
         );
       }
@@ -1547,6 +1550,55 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       await interaction.deferUpdate();
 
       const events = getBondEventsForServant(targetServant);
+
+      if (btnId.startsWith('vn_play_event') && !btnId.startsWith('vn_start_specific:') && events.length > 1) {
+        const completedIds: string[] = targetServant.completedBondEvents || [];
+        const currentBondLv = targetServant.bondLevel || 1;
+
+        const chapterLines = events.map((e, idx) => {
+          const isUnlocked = e.requiredBondLevel <= currentBondLv;
+          const isDone = completedIds.includes(e.id);
+          const statusIcon = isDone ? '✅ [Completed / Replay Available]' : isUnlocked ? '✨ [Ready to Play]' : `🔒 [Locked • Bond Lv. ${e.requiredBondLevel} Required]`;
+          return `**${idx + 1}. ${e.title}** (Bond Lv. ${e.requiredBondLevel})\n> *${e.description}*\n> ${statusIcon}`;
+        }).join('\n\n');
+
+        const listEmbed = new EmbedBuilder()
+          .setTitle(`📖 Story Chapters & Bond Interludes: ${servantName}`)
+          .setDescription(
+            `Select a story chapter to play or replay for **${servantName}**:\n\n` +
+            chapterLines
+          )
+          .setColor(0xec4899)
+          .setFooter({ text: `Bond Level: ${currentBondLv} / 10 • Completed Interludes: ${completedIds.length}` });
+
+        const rowButtons: ButtonBuilder[] = [];
+        events.forEach((e, idx) => {
+          const isUnlocked = e.requiredBondLevel <= currentBondLv;
+          rowButtons.push(
+            new ButtonBuilder()
+              .setCustomId(safeCustomId(`vn_start_specific:${sKey}:${e.id}`))
+              .setLabel(`Play Ch. ${e.requiredBondLevel}: ${e.title.length > 20 ? e.title.slice(0, 18) + '...' : e.title}`)
+              .setStyle(isUnlocked ? ButtonStyle.Primary : ButtonStyle.Secondary)
+              .setDisabled(!isUnlocked)
+          );
+        });
+
+        rowButtons.push(
+          new ButtonBuilder()
+            .setCustomId(safeCustomId(`vn_back_status:${sKey}`))
+            .setLabel('📊 Bond Sanctum')
+            .setStyle(ButtonStyle.Secondary)
+        );
+
+        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(rowButtons.slice(0, 5));
+
+        return interaction.editReply({
+          embeds: [listEmbed],
+          files: [],
+          components: [row]
+        });
+      }
+
       let event: BondEvent;
       let isReplay = false;
       let statusNote = '';
@@ -1627,10 +1679,11 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           );
         });
       } else {
+        const isLastScene = isTerminalScene(event, 0);
         choicesRow.addComponents(
           new ButtonBuilder()
             .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:1`))
-            .setLabel(event.scenes.length > 1 ? 'Next Scene ➔' : '🏁 Complete Interlude')
+            .setLabel(isLastScene ? '🏁 Complete Interlude' : 'Next Scene ➔')
             .setStyle(ButtonStyle.Success)
         );
       }
@@ -1740,10 +1793,12 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           );
         });
       } else {
-        const isLastScene = sceneIdx >= event.scenes.length - 1;
+        const isLastScene = isTerminalScene(event, sceneIdx);
+        const nextIdx = getNextSceneIndex(event, sceneIdx);
+        const targetBtnIdx = nextIdx !== -1 ? nextIdx : event.scenes.length;
         choicesRow.addComponents(
           new ButtonBuilder()
-            .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:${sceneIdx + 1}`))
+            .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:${targetBtnIdx}`))
             .setLabel(isLastScene ? '🏁 Complete Interlude' : 'Next Scene ➔')
             .setStyle(ButtonStyle.Success)
         );
@@ -1816,11 +1871,20 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const currentRespChunk = respChunks[respChunkIdx] || respChunks[0] || servantResponse;
       const isLastRespChunk = respChunkIdx >= respChunks.length - 1;
 
-      const targetNextIndex = pickedChoice?.nextSceneId
-        ? event.scenes.findIndex(s => s.id === pickedChoice.nextSceneId)
-        : sceneIdx + 1;
-      const effectiveNextIndex = targetNextIndex !== -1 ? targetNextIndex : sceneIdx + 1;
-      const hasNextScene = effectiveNextIndex < event.scenes.length;
+      const targetNextIndex = getNextSceneIndex(event, sceneIdx, pickedChoice);
+      let hasNextScene = targetNextIndex !== -1 && targetNextIndex < event.scenes.length;
+
+      if (hasNextScene && targetNextIndex !== -1) {
+        const nextScene = event.scenes[targetNextIndex];
+        if (
+          nextScene &&
+          (!nextScene.choices || nextScene.choices.length === 0) &&
+          isTerminalScene(event, targetNextIndex) &&
+          (servantResponse === nextScene.dialogueText || servantResponse.includes(nextScene.dialogueText.slice(0, 30)))
+        ) {
+          hasNextScene = false;
+        }
+      }
 
       if (!isLastRespChunk) {
         const imageBuffer = await renderVisualNovelCard({
@@ -1892,7 +1956,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
         const nextRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:${effectiveNextIndex}`))
+            .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:${targetNextIndex}`))
             .setLabel('Next Scene ➔')
             .setStyle(ButtonStyle.Success)
         );
@@ -2256,11 +2320,20 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       const currentRespChunk = respChunks[0] || servantResponse;
       const isLastRespChunk = respChunks.length <= 1;
 
-      const targetNextIndex = pickedChoice?.nextSceneId
-        ? event.scenes.findIndex(s => s.id === pickedChoice.nextSceneId)
-        : sceneIdx + 1;
-      const effectiveNextIndex = targetNextIndex !== -1 ? targetNextIndex : sceneIdx + 1;
-      const hasNextScene = effectiveNextIndex < event.scenes.length;
+      const targetNextIndex = getNextSceneIndex(event, sceneIdx, pickedChoice);
+      let hasNextScene = targetNextIndex !== -1 && targetNextIndex < event.scenes.length;
+
+      if (hasNextScene && targetNextIndex !== -1) {
+        const nextScene = event.scenes[targetNextIndex];
+        if (
+          nextScene &&
+          (!nextScene.choices || nextScene.choices.length === 0) &&
+          isTerminalScene(event, targetNextIndex) &&
+          (servantResponse === nextScene.dialogueText || servantResponse.includes(nextScene.dialogueText.slice(0, 30)))
+        ) {
+          hasNextScene = false;
+        }
+      }
 
       if (!isLastRespChunk) {
         const imageBuffer = await renderVisualNovelCard({
@@ -2333,7 +2406,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
 
         const nextRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
           new ButtonBuilder()
-            .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:${effectiveNextIndex}`))
+            .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:${targetNextIndex}`))
             .setLabel('Next Scene ➔')
             .setStyle(ButtonStyle.Success)
         );
@@ -2630,7 +2703,7 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
       }
 
       const scene = event.scenes[nextSceneIdx];
-      const isLastScene = nextSceneIdx === event.scenes.length - 1;
+      const isLastScene = isTerminalScene(event, nextSceneIdx);
       const chunks = splitDialogueIntoChunks(scene.dialogueText);
       const currentChunk = chunks[0] || scene.dialogueText;
       const isLastChunk = chunks.length <= 1;
@@ -2673,9 +2746,11 @@ export async function handleBondButtonInteraction(interaction: ButtonInteraction
           );
         });
       } else {
+        const nextIdx = getNextSceneIndex(event, nextSceneIdx);
+        const targetBtnIdx = nextIdx !== -1 ? nextIdx : event.scenes.length;
         choicesRow.addComponents(
           new ButtonBuilder()
-            .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:${nextSceneIdx + 1}`))
+            .setCustomId(safeCustomId(`vn_next:${sKey}:${event.id}:${targetBtnIdx}`))
             .setLabel(isLastScene ? '🏁 Finish Interlude' : 'Next Scene ➔')
             .setStyle(ButtonStyle.Success)
         );

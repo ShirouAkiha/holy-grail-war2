@@ -728,9 +728,19 @@ function drawCombatantNetStatPill(
 export function isAtlasMergedSprite(imgOrUrl?: any): boolean {
   if (!imgOrUrl) return false;
   if (imgOrUrl._isAtlasMerged) return true;
-  if (imgOrUrl.width && imgOrUrl.height) {
-    if (imgOrUrl.width === 1024 && imgOrUrl.height >= 1200) return true;
-    if (imgOrUrl.height / imgOrUrl.width >= 1.22 && imgOrUrl.height >= 1200) return true;
+  if (typeof imgOrUrl === 'object') {
+    if (imgOrUrl._sourceUrl && typeof imgOrUrl._sourceUrl === 'string') {
+      const lower = imgOrUrl._sourceUrl.toLowerCase();
+      if (lower.includes('charafigure') || lower.includes('_merged') || lower.includes('atlasacademy')) return true;
+    }
+    if (typeof imgOrUrl.src === 'string') {
+      const lower = imgOrUrl.src.toLowerCase();
+      if (lower.includes('charafigure') || lower.includes('_merged') || lower.includes('atlasacademy')) return true;
+    }
+    if (imgOrUrl.width && imgOrUrl.height) {
+      if (imgOrUrl.width === 1024 && imgOrUrl.height >= 1200) return true;
+      if (imgOrUrl.width >= 1024 && imgOrUrl.height >= 1200 && (imgOrUrl.height / imgOrUrl.width >= 1.15)) return true;
+    }
   }
   const str = typeof imgOrUrl === 'string' 
     ? imgOrUrl 
@@ -745,9 +755,73 @@ export function isAtlasMergedSprite(imgOrUrl?: any): boolean {
 }
 
 /**
+ * Computes exact character figure bounds for Atlas Academy composite sheets.
+ * In Atlas composite sheets, the figure occupies the upper region (Y = 0 to 768px),
+ * and reaction facial expression variants begin in horizontal strips at Y >= 768px.
+ * Automatically scans and trims excessive empty top/side padding so the figure fills
+ * the duel portrait and raid cards prominently, without leaking facial expression strips.
+ */
+export function getAtlasFigureBounds(img: any): { sx: number; sy: number; sw: number; sh: number } {
+  if (!img || !img.width || !img.height) {
+    return { sx: 0, sy: 0, sw: 0, sh: 0 };
+  }
+  if (img._figureBounds) {
+    return img._figureBounds;
+  }
+
+  const maxScanH = Math.min(img.height, 768);
+  const canvasModule = getCanvasModule();
+  if (canvasModule && typeof canvasModule.createCanvas === 'function') {
+    try {
+      const scanCanvas = canvasModule.createCanvas(img.width, maxScanH);
+      const scanCtx = scanCanvas.getContext('2d');
+      scanCtx.drawImage(img, 0, 0, img.width, maxScanH, 0, 0, img.width, maxScanH);
+      const imgData = scanCtx.getImageData(0, 0, img.width, maxScanH).data;
+
+      let minY = maxScanH, maxY = 0, minX = img.width, maxX = 0;
+      for (let y = 0; y < maxScanH; y += 2) {
+        for (let x = 0; x < img.width; x += 4) {
+          if (imgData[(y * img.width + x) * 4 + 3] > 25) {
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+          }
+        }
+      }
+
+      if (minY <= maxY && minX <= maxX) {
+        // Add gentle breathing margin around the figure (14px top/sides) without crossing into reaction faces (<= 768)
+        const padTop = Math.min(minY, 14);
+        const sy = minY - padTop;
+        const sh = Math.min(maxScanH - sy, (maxY - sy) + 6);
+        const padLeft = Math.min(minX, 14);
+        const sx = minX - padLeft;
+        const sw = Math.min(img.width - sx, (maxX - sx) + 16);
+
+        const bounds = { sx, sy, sw, sh };
+        try { img._figureBounds = bounds; } catch {}
+        return bounds;
+      }
+    } catch {
+      // Fall through to safe fallback
+    }
+  }
+
+  // Safe fallback if canvas scanning fails
+  const sx = Math.round(img.width * 0.08);
+  const sw = Math.round(img.width * 0.84);
+  const sy = 0;
+  const sh = Math.min(img.height, 760);
+  const bounds = { sx, sy, sw, sh };
+  try { img._figureBounds = bounds; } catch {}
+  return bounds;
+}
+
+/**
  * Helper to draw Servant battle sprites & character figures onto Canvas.
- * For Atlas Academy composite figures (where reaction faces start at Y >= 760px),
- * it samples strictly the upper figure (Y = 0 to ~740px / width * 0.735) and trims side padding.
+ * For Atlas Academy composite figures (where reaction faces start at Y >= 768px),
+ * it samples strictly the upper figure bounds and trims empty padding.
  * This ensures reaction faces stay completely out of frame while allowing the servant figure
  * to scale up large, heroic, and prominent.
  */
@@ -773,18 +847,17 @@ export function drawServantBattleSprite(
     (img.src && String(img.src).includes('CharaFigure'))
   );
 
-  // For Atlas composite sheets, trim side transparent padding (X = ~8% to 92%)
-  // so the character body fills the frame width cleanly without clipping.
-  const sx = isMerged ? Math.round(img.width * 0.08) : 0;
-  const sw = isMerged ? Math.round(img.width * 0.84) : img.width;
-  const sy = 0;
-  const defaultSourceH = isMerged
-    ? Math.min(img.height, Math.round(img.width * 0.735))
-    : img.height;
-
-  const sh = options?.cropRatio && options.cropRatio > 0 && options.cropRatio <= 1.0
-    ? Math.round(defaultSourceH * options.cropRatio)
-    : defaultSourceH;
+  let sx = 0, sy = 0, sw = img.width, sh = img.height;
+  if (isMerged) {
+    const bounds = getAtlasFigureBounds(img);
+    sx = bounds.sx;
+    sy = bounds.sy;
+    sw = bounds.sw;
+    sh = bounds.sh;
+    if (options?.cropRatio && options.cropRatio > 0 && options.cropRatio <= 1.0) {
+      sh = Math.round(sh * options.cropRatio);
+    }
+  }
 
   const fitMode = options?.fitMode || 'cover';
 
@@ -7161,8 +7234,13 @@ export async function renderVisualNovelCard(
       const spriteImg = await loadImage(spriteUrl);
       if (spriteImg && spriteImg.width && spriteImg.height) {
         const isMerged = isAtlasMergedSprite(spriteImg);
-        const sourceH = isMerged ? Math.min(spriteImg.height, Math.round(spriteImg.width * 0.735)) : spriteImg.height;
-        const sourceW = isMerged ? Math.round(spriteImg.width * 0.84) : spriteImg.width;
+        let sourceW = spriteImg.width;
+        let sourceH = spriteImg.height;
+        if (isMerged) {
+          const bounds = getAtlasFigureBounds(spriteImg);
+          sourceW = bounds.sw;
+          sourceH = bounds.sh;
+        }
         const aspect = sourceW / sourceH;
 
         const nameLower = `${opts.servantName || ''} ${opts.speakerName || ''} ${opts.title || ''}`.toLowerCase();

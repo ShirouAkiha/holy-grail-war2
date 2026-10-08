@@ -4290,6 +4290,71 @@ export function findServantForBondEvent(master: any, eventOrId: BondEvent | stri
 }
 
 /**
+ * Determines whether a scene index in a BondEvent represents a terminal scene for the current story branch flow.
+ * A scene is terminal if:
+ * 1. It is the last scene in event.scenes array
+ * 2. OR its own nextSceneId is 'end' (or points to an invalid scene ID)
+ * 3. OR the subsequent scene in event.scenes array is an alternate branch target (i.e. explicitly targeted as nextSceneId by a choice in an earlier scene), meaning linear progression must stop here instead of bleeding into parallel choice outcomes.
+ */
+export function isTerminalScene(event: BondEvent, sceneIdx: number): boolean {
+  if (!event || !event.scenes || sceneIdx < 0) return true;
+  if (sceneIdx >= event.scenes.length - 1) return true;
+
+  const currentScene = event.scenes[sceneIdx];
+  if (!currentScene) return true;
+
+  if ((currentScene as any).nextSceneId) {
+    const target = (currentScene as any).nextSceneId;
+    if (target === 'end') return true;
+    const targetIdx = event.scenes.findIndex(s => s.id === target);
+    if (targetIdx === -1) return true;
+  }
+
+  const nextSceneInArray = event.scenes[sceneIdx + 1];
+  if (nextSceneInArray) {
+    const isBranchTarget = event.scenes.some(s =>
+      s.choices?.some(c => c.nextSceneId === nextSceneInArray.id)
+    );
+    if (isBranchTarget) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Resolves the next scene index in an event given the current scene index and an optional choice made.
+ * Returns -1 if the story flow has ended (completing the interlude).
+ */
+export function getNextSceneIndex(event: BondEvent, currentSceneIdx: number, choice?: BondChoice): number {
+  if (!event || !event.scenes || currentSceneIdx < 0 || currentSceneIdx >= event.scenes.length) return -1;
+  const currentScene = event.scenes[currentSceneIdx];
+
+  // 1. If a choice was selected with a specific nextSceneId
+  if (choice && choice.nextSceneId) {
+    if (choice.nextSceneId === 'end') return -1;
+    const idx = event.scenes.findIndex(s => s.id === choice.nextSceneId);
+    return idx;
+  }
+
+  // 2. If the current scene itself specifies nextSceneId
+  if (currentScene && (currentScene as any).nextSceneId) {
+    const target = (currentScene as any).nextSceneId;
+    if (target === 'end') return -1;
+    return event.scenes.findIndex(s => s.id === target);
+  }
+
+  // 3. If current scene is terminal for its branch
+  if (isTerminalScene(event, currentSceneIdx)) {
+    return -1;
+  }
+
+  const nextIdx = currentSceneIdx + 1;
+  return nextIdx < event.scenes.length ? nextIdx : -1;
+}
+
+/**
  * Unlocked dialogue quotes database associated with Bond levels.
  */
 export const SERVANT_BOND_DIALOGUE_LINES: Record<string, BondDialogueLine[]> = {
