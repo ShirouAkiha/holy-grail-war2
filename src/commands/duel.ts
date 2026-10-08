@@ -4795,6 +4795,33 @@ async function startInteractiveDuel(
     battleMsg = res?.resource?.message || await contextInteraction.fetchReply();
   }
 
+  // Duel session identifier and active battle message ID registry to isolate concurrent battles in the same channel
+  const duelSessionId = `duel_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const battleMessageIds = new Set<string>();
+
+  if (battleMsg?.id) {
+    battleMessageIds.add(battleMsg.id);
+  } else if (contextInteraction && typeof contextInteraction.fetchReply === 'function') {
+    try {
+      const fetched = await contextInteraction.fetchReply();
+      if (fetched?.id) {
+        battleMessageIds.add(fetched.id);
+        if (!battleMsg) battleMsg = fetched;
+      }
+    } catch {}
+  }
+
+  const isInteractionForThisDuel = (interaction: any): boolean => {
+    const msgId = interaction?.message?.id;
+    if (msgId && (battleMessageIds.has(msgId) || msgId === battleMsg?.id)) {
+      return true;
+    }
+    if (typeof interaction?.customId === 'string' && interaction.customId.includes(duelSessionId)) {
+      return true;
+    }
+    return false;
+  };
+
   // Active dialogue cut-in auto-disappear timer
   let activeCutInTimer: any = null;
 
@@ -5162,6 +5189,9 @@ async function startInteractiveDuel(
 
       if (newBattleMsg) {
         // Successfully sent fresh message at bottom: safely clean up previous battle message
+        if (newBattleMsg.id) {
+          battleMessageIds.add(newBattleMsg.id);
+        }
         const prevMsg = battleMsg;
         battleMsg = newBattleMsg;
 

@@ -434,20 +434,6 @@ async function runRaidBattle(
   boss: RaidBossConfig,
   partyUsers: { userId: string; username: string; master: any; servant: any }[]
 ) {
-  const participants: RaidParticipantState[] = partyUsers.map(p => {
-    const s = p.servant;
-    const t = s.template || {};
-    const calculatedMaxHp = calculateServantMaxHp(s);
-    const currentHp = calculatedMaxHp;
-
-    // Ensure any user whose persistent profile command seals were reduced by prior raid battles is restored to 3
-    if (p.master && (p.master.commandSeals === undefined || p.master.commandSeals < 3)) {
-      p.master.commandSeals = 3;
-      saveMaster(p.master).catch(() => {});
-    }
-
-    const initialBuffs: any[] = [];
-
   const raidSessionId = `raid_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const raidMessageIds = new Set<string>();
   if (battleMsg?.id) {
@@ -464,6 +450,20 @@ async function runRaidBattle(
     }
     return false;
   };
+
+  const participants: RaidParticipantState[] = partyUsers.map(p => {
+    const s = p.servant;
+    const t = s.template || {};
+    const calculatedMaxHp = calculateServantMaxHp(s);
+    const currentHp = calculatedMaxHp;
+
+    // Ensure any user whose persistent profile command seals were reduced by prior raid battles is restored to 3
+    if (p.master && (p.master.commandSeals === undefined || p.master.commandSeals < 3)) {
+      p.master.commandSeals = 3;
+      saveMaster(p.master).catch(() => {});
+    }
+
+    const initialBuffs: any[] = [];
     const equippedCe = s.equippedCe || p.master?.craftEssences?.find((c: any) => c.id === s.equippedCeId);
     if (equippedCe) {
       if (equippedCe.id === 'ce_castle_of_snow' || equippedCe.name?.includes('Castle of Snow')) {

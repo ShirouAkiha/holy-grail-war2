@@ -436,6 +436,23 @@ async function runRaidBattle(
   boss: RaidBossConfig,
   partyUsers: { userId: string; username: string; master: any; servant: any }[]
 ) {
+  const raidSessionId = `raid_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const raidMessageIds = new Set<string>();
+  if (battleMsg?.id) {
+    raidMessageIds.add(battleMsg.id);
+  }
+
+  const isInteractionForThisRaid = (btn: any): boolean => {
+    const msgId = btn?.message?.id;
+    if (msgId && (raidMessageIds.has(msgId) || msgId === battleMsg?.id)) {
+      return true;
+    }
+    if (typeof btn?.customId === 'string' && btn.customId.includes(raidSessionId)) {
+      return true;
+    }
+    return false;
+  };
+
   const participants: RaidParticipantState[] = partyUsers.map(p => {
     const s = p.servant;
     // Link equipped CE from master inventory if missing on instance
@@ -453,23 +470,6 @@ async function runRaidBattle(
     }
 
     const initialBuffs: any[] = [];
-
-  const raidSessionId = `raid_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-  const raidMessageIds = new Set<string>();
-  if (battleMsg?.id) {
-    raidMessageIds.add(battleMsg.id);
-  }
-
-  const isInteractionForThisRaid = (btn: any): boolean => {
-    const msgId = btn?.message?.id;
-    if (msgId && (raidMessageIds.has(msgId) || msgId === battleMsg?.id)) {
-      return true;
-    }
-    if (typeof btn?.customId === 'string' && btn.customId.includes(raidSessionId)) {
-      return true;
-    }
-    return false;
-  };
     const passives = t.passives || [];
     const servId = s.templateId || t.id || '';
     if (
