@@ -379,7 +379,11 @@ async function launchRaidLobby(
         return;
       }
       lobbyCollector.stop('commenced');
-      await btn.deferUpdate();
+      await btn.deferUpdate().catch(() => {});
+      await lobbyMsg.edit({
+        content: `⚔️ **Commencing Raid Battle against ${boss.name}!**\n> ⏳ *Preparing the Grand Battlefield and summoning Servants...*`,
+        components: []
+      }).catch(() => {});
       await runRaidBattle(interaction, lobbyMsg, boss, lobbyParticipants);
       return;
     }

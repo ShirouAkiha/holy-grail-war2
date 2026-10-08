@@ -1402,7 +1402,7 @@ export async function renderRaidBattlefield(state: RaidBattleState, _animated = 
     ...state.participants.map(p => {
       const activeStage = (p.servant as any).selectedAscensionStage ?? p.servant.template?.selectedAscensionStage;
       const stageSprite = resolveAscensionSprite(p.servant, activeStage);
-      const art = stageSprite || (p.servant as any).customArtworkUrl || p.servant.template?.spriteUrl || p.servant.template?.avatarUrl;
+      const art = (p.servant as any).customArtworkUrl || stageSprite || p.servant.spriteUrl || p.servant.template?.spriteUrl || p.servant.avatarUrl || p.servant.template?.avatarUrl;
       return art ? loadImageCached(art) : Promise.resolve(null);
     }),
     ...participantClassIconUrls.map(url => loadImageCached(url)),

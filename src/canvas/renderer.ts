@@ -16,6 +16,8 @@ import { calculateCombatantBuffSummary } from '../utils/combatBuffHelper';
 import { getStatusIconUrl, STATUS_ICON_URLS } from '../data/statusIcons';
 import { getClassIconUrl, CLASS_ICON_URLS } from '../data/classIcons';
 import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
 import { getCanvasModule, getGifencModule } from './canvasLoader';
 
 export const MINIMAL_VALID_PNG = Buffer.from(
@@ -130,8 +132,26 @@ function createCanvas(width: number, height: number): any {
 
 const imageBufferCache = new Map<string, { buffer: Buffer; timestamp: number }>();
 const failedUrlCache = new Map<string, number>();
-const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour memory cache
+const CACHE_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours memory cache
 const FAILED_TTL_MS = 1000 * 60 * 5; // 5 minutes negative cache for broken URLs
+
+const DISK_CACHE_DIR = path.join(process.cwd(), 'data', 'media_cache');
+try {
+  if (!fs.existsSync(DISK_CACHE_DIR)) {
+    fs.mkdirSync(DISK_CACHE_DIR, { recursive: true });
+  }
+} catch {}
+
+function getDiskCachePath(url: string): string | null {
+  try {
+    const hash = crypto.createHash('sha256').update(url).digest('hex').slice(0, 32);
+    const parsed = new URL(url);
+    const ext = path.extname(parsed.pathname) || '.png';
+    return path.join(DISK_CACHE_DIR, `${hash}${ext}`);
+  } catch {
+    return null;
+  }
+}
 
 async function fetchWithHttpsModule(url: string, maxRedirects = 3): Promise<Buffer | null> {
   try {
@@ -153,7 +173,7 @@ async function fetchWithHttpsModule(url: string, maxRedirects = 3): Promise<Buff
               'Referer': referer,
               'Connection': 'keep-alive',
             },
-            timeout: 15000,
+            timeout: 10000
           },
           (res: any) => {
             if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && maxRedirects > 0) {
@@ -172,11 +192,12 @@ async function fetchWithHttpsModule(url: string, maxRedirects = 3): Promise<Buff
           }
         );
 
-        req.on('error', () => resolve(null));
         req.on('timeout', () => {
           req.destroy();
           resolve(null);
         });
+
+        req.on('error', () => resolve(null));
       } catch {
         resolve(null);
       }
@@ -203,44 +224,77 @@ function getOptimalReferer(url: string): string {
   }
 }
 
-export async function fetchImageBuffer(url: string): Promise<Buffer | null> {
+export async function fetchImageBuffer(url: string, retries = 1): Promise<Buffer | null> {
+  // 1. In-memory Cache check (<0.1ms)
   const cached = imageBufferCache.get(url);
   if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
     return cached.buffer;
   }
 
-  // 1. Try modern fetch API with generous 15s timeout to ensure images always download
-  try {
-    const referer = getOptimalReferer(url);
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-        'Referer': referer,
-        'Connection': 'keep-alive',
-      },
-      signal: AbortSignal.timeout(15000)
-    });
+  // 2. Negative Cache check (prevents repeat hangs on 404/broken URLs)
+  const failedAt = failedUrlCache.get(url);
+  if (failedAt && (Date.now() - failedAt < FAILED_TTL_MS)) {
+    return null;
+  }
 
-    if (res.ok) {
-      const arrayBuffer = await res.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+  // 3. Persistent Local Disk Cache check (<1ms)
+  const diskPath = getDiskCachePath(url);
+  if (diskPath && fs.existsSync(diskPath)) {
+    try {
+      const diskBuffer = fs.readFileSync(diskPath);
+      if (diskBuffer && diskBuffer.length > 0) {
+        imageBufferCache.set(url, { buffer: diskBuffer, timestamp: Date.now() });
+        return diskBuffer;
+      }
+    } catch {}
+  }
+
+  // 4. Remote Fetch with generous 10s window & Keep-Alive
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const referer = getOptimalReferer(url);
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+          'Referer': referer,
+          'Connection': 'keep-alive',
+        },
+        signal: AbortSignal.timeout(10000)
+      });
+
+      if (res.ok) {
+        const arrayBuffer = await res.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        if (buffer && buffer.length > 0) {
+          imageBufferCache.set(url, { buffer, timestamp: Date.now() });
+          if (diskPath) {
+            try { fs.writeFileSync(diskPath, buffer); } catch {}
+          }
+          return buffer;
+        }
+      }
+    } catch {}
+
+    // Fallback to native Node client with 10s timeout
+    try {
+      const buffer = await fetchWithHttpsModule(url);
       if (buffer && buffer.length > 0) {
         imageBufferCache.set(url, { buffer, timestamp: Date.now() });
+        if (diskPath) {
+          try { fs.writeFileSync(diskPath, buffer); } catch {}
+        }
         return buffer;
       }
-    }
-  } catch {}
+    } catch {}
 
-  // 2. Fallback to native node http/https client with redirects support
-  try {
-    const buffer = await fetchWithHttpsModule(url);
-    if (buffer && buffer.length > 0) {
-      imageBufferCache.set(url, { buffer, timestamp: Date.now() });
-      return buffer;
+    if (attempt < retries) {
+      await new Promise(r => setTimeout(r, 200));
     }
-  } catch {}
+  }
 
+  // Record failure to prevent repeating hangs
+  failedUrlCache.set(url, Date.now());
   return null;
 }
 
