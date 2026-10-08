@@ -447,8 +447,16 @@ async function runRaidBattle(
     if (msgId && (raidMessageIds.has(msgId) || msgId === battleMsg?.id)) {
       return true;
     }
-    if (typeof btn?.customId === 'string' && btn.customId.includes(raidSessionId)) {
-      return true;
+    if (typeof btn?.customId === 'string') {
+      if (btn.customId.includes(raidSessionId)) {
+        return true;
+      }
+      if (
+        (btn.customId.startsWith('raid_target_skill_') || btn.customId.startsWith('raid_cancel_target_skill')) &&
+        btn?.user?.id === currentActiveParticipant?.userId
+      ) {
+        return true;
+      }
     }
     return false;
   };
@@ -1659,13 +1667,25 @@ async function runRaidBattle(
     }
 
     const safeUpdate = async (options: any) => {
-      try {
-        if (i.customId.startsWith('raid_target_skill_') || (i.message && i.message.flags && i.message.flags.has(MessageFlags.Ephemeral))) {
-          if (battleMsg && typeof battleMsg.edit === 'function') {
+      const isTargetSkill = typeof i?.customId === 'string' && i.customId.startsWith('raid_target_skill_');
+      const isEphemeral = Boolean(
+        isTargetSkill ||
+        (i?.message?.flags && typeof i.message.flags.has === 'function' && i.message.flags.has(MessageFlags.Ephemeral)) ||
+        (typeof i?.message?.flags === 'number' && (i.message.flags & MessageFlags.Ephemeral) !== 0)
+      );
+
+      if (isEphemeral) {
+        if (battleMsg && typeof battleMsg.edit === 'function') {
+          try {
             await battleMsg.edit(options);
             return;
+          } catch (bEditErr) {
+            console.warn('[raid] safeUpdate battleMsg.edit warning:', bEditErr);
           }
         }
+      }
+
+      try {
         if (!i.deferred && !i.replied) {
           await i.deferUpdate().catch(() => {});
         }
@@ -1806,8 +1826,10 @@ async function runRaidBattle(
         components: buildBattleButtons()
       });
       return;
-    } else if (i.customId === 'raid_cancel_target_skill') {
-      await i.reply({ content: '↩️ Skill targeting cancelled.', flags: MessageFlags.Ephemeral }).catch(() => {});
+    } else if (i.customId.startsWith('raid_cancel_target_skill')) {
+      await i.update({ content: '↩️ Skill targeting cancelled.', components: [] }).catch(async () => {
+        await i.reply({ content: '↩️ Skill targeting cancelled.', flags: MessageFlags.Ephemeral }).catch(() => {});
+      });
       return;
     } else if (i.customId.startsWith('raid_skill_') || i.customId.startsWith('raid_target_skill_')) {
       let sIdx: number;
@@ -1837,29 +1859,46 @@ async function runRaidBattle(
 
         // If skill targets a single ally and party has multiple living participants, and target is not selected yet
         if (isSingleAllyTargetable && livingParticipants.length > 1 && !targetUserId) {
-          const targetRow = new ActionRowBuilder<ButtonBuilder>();
+          const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+          let currentRow = new ActionRowBuilder<ButtonBuilder>();
+
           livingParticipants.forEach(p => {
+            if (currentRow.components.length >= 5) {
+              rows.push(currentRow);
+              currentRow = new ActionRowBuilder<ButtonBuilder>();
+            }
             const pName = p.servant.nickname || p.servant.template?.name || 'Servant';
             const isSelf = p.userId === active.userId;
-            targetRow.addComponents(
+            currentRow.addComponents(
               new ButtonBuilder()
-                .setCustomId(`raid_target_skill_${sIdx}_${p.userId}`)
+                .setCustomId(`raid_target_skill_${sIdx}_${p.userId}_${raidSessionId}`)
                 .setLabel(`🎯 ${pName}${isSelf ? ' (Self)' : ` (@${p.username})`}`.slice(0, 80))
                 .setStyle(isSelf ? ButtonStyle.Secondary : ButtonStyle.Primary)
             );
           });
-          targetRow.addComponents(
+
+          if (currentRow.components.length >= 5) {
+            rows.push(currentRow);
+            currentRow = new ActionRowBuilder<ButtonBuilder>();
+          }
+          currentRow.addComponents(
             new ButtonBuilder()
-              .setCustomId('raid_cancel_target_skill')
+              .setCustomId(`raid_cancel_target_skill_${raidSessionId}`)
               .setLabel('↩️ Cancel')
               .setStyle(ButtonStyle.Danger)
           );
+          rows.push(currentRow);
 
-          await i.reply({
+          const targetReply = await i.reply({
             content: `✨ **Select an Ally Target for [${sName}]**:\n*${sDesc}*`,
-            components: [targetRow],
-            flags: MessageFlags.Ephemeral
-          }).catch(() => {});
+            components: rows,
+            flags: MessageFlags.Ephemeral,
+            fetchReply: true
+          }).catch(() => null);
+
+          if (targetReply?.id) {
+            raidMessageIds.add(targetReply.id);
+          }
           return;
         }
 
@@ -1867,7 +1906,7 @@ async function runRaidBattle(
           ? (battleState.participants.find(p => p.userId === targetUserId) || active)
           : active;
 
-        if (targetUserId && i.isButton()) {
+        if (targetUserId && typeof i.update === 'function') {
           const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
           await i.update({
             content: `🎯 Targeted **${tName}** with **[${sName}]**!`,
@@ -2203,6 +2242,49 @@ async function runRaidBattle(
             });
             const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
             buffLog = `(+50% Arts Up, +50% Anti-Threat Special ATK & 1T Invincibility to **${tName}**!)`;
+          } else if (/hero creation/i.test(sName)) {
+            // Hero Creation EX: Increases one ally's Buster performance by 50% for 3 turns, max HP by 3,000 for 3 turns, and critical damage by 100% for 1 turn.
+            targetAlly.activeBuffs = targetAlly.activeBuffs || [];
+            targetAlly.activeBuffs.push({
+              name: `${sName} (Buster Up)`,
+              type: 'buster_up',
+              value: 50,
+              remainingTurns: 3
+            });
+            targetAlly.activeBuffs.push({
+              name: `${sName} (Crit DMG Up)`,
+              type: 'crit_dmg',
+              value: 100,
+              remainingTurns: 1
+            });
+            const maxHp = calculateServantMaxHp(targetAlly.servant);
+            targetAlly.currentHp = Math.min(maxHp + 3000, targetAlly.currentHp + 3000);
+            const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
+            buffLog = `(👑 +50% Buster [3T], +100% Crit DMG [1T] & +3,000 HP to **${tName}**!)`;
+          } else if (/discerning eye/i.test(sName)) {
+            // Discerning Eye A: Increases one ally's critical damage by 50% for 3 turns and charges their NP gauge by 30%.
+            targetAlly.activeBuffs = targetAlly.activeBuffs || [];
+            targetAlly.activeBuffs.push({
+              name: `${sName} (Crit DMG Up)`,
+              type: 'crit_dmg',
+              value: 50,
+              remainingTurns: 3
+            });
+            targetAlly.npGauge = Math.min(300, (targetAlly.npGauge || 0) + 30);
+            const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
+            buffLog = `(👁️ +50% Crit DMG [3T] & +30% NP Gauge to **${tName}**!)`;
+          } else if (/end of the dream/i.test(sName)) {
+            // End of the Dream EX: Increases one ally's Buster performance by 50% for 1 turn, charges their NP gauge by 50%.
+            targetAlly.activeBuffs = targetAlly.activeBuffs || [];
+            targetAlly.activeBuffs.push({
+              name: `${sName} (Buster Up)`,
+              type: 'buster_up',
+              value: 50,
+              remainingTurns: 1
+            });
+            targetAlly.npGauge = Math.min(300, (targetAlly.npGauge || 0) + 50);
+            const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Ally';
+            buffLog = `(🌙 +50% Buster [1T] & +50% NP Gauge to **${tName}**!)`;
           } else if (/guardian's instinct|guardians_instinct|red scarf/i.test(sName + ' ' + sDesc)) {
             // Guardian's Instinct (Red Scarf) B+: Increases ATK of ALL allies by +15% (3T) & grants all allies Invincibility (1T), +20% NP Gauge to self
             battleState.participants.forEach(p => {
@@ -2399,10 +2481,12 @@ async function runRaidBattle(
           buffLog = `(🛡️ +25% DEF & 1,200 Damage Cut for 3T)`;
         } else if (isHeal) {
           const healAmt = 4500;
-          active.currentHp = Math.min(active.maxHp, active.currentHp + healAmt);
-          active.npGauge = Math.min(300, (active.npGauge || 0) + 20);
-          active.activeBuffs = active.activeBuffs.filter(b => b.type !== 'curse' && b.type !== 'burn' && b.type !== 'poison');
-          buffLog = `(💚 Restored +${healAmt.toLocaleString()} HP, +20% NP & Cleansed Afflictions)`;
+          const maxHp = calculateServantMaxHp(targetAlly.servant);
+          targetAlly.currentHp = Math.min(maxHp, targetAlly.currentHp + healAmt);
+          targetAlly.npGauge = Math.min(300, (targetAlly.npGauge || 0) + 20);
+          targetAlly.activeBuffs = (targetAlly.activeBuffs || []).filter(b => b.type !== 'curse' && b.type !== 'burn' && b.type !== 'poison');
+          const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Self';
+          buffLog = `(💚 Restored +${healAmt.toLocaleString()} HP, +20% NP & Cleansed Afflictions on **${tName}**)`;
 
           // Tiamat Phase 1 Passive: Self-Limitation
           if (boss.id === 'tiamat' && (battleState.currentPhase === 1)) {
@@ -2410,15 +2494,17 @@ async function runRaidBattle(
             buffLog += `\n🌊 **[Self-Limitation]** Tiamat recoils from human healing, recovering +150,000 HP!`;
           }
         } else {
-          active.activeBuffs.push({
+          targetAlly.activeBuffs = targetAlly.activeBuffs || [];
+          targetAlly.activeBuffs.push({
             name: `${sName} Buff`,
             type: 'atk_up',
             value: 30,
             remainingTurns: 3
           });
           active.critStars = (active.critStars || 0) + 15;
-          active.npGauge = Math.min(300, (active.npGauge || 0) + 20);
-          buffLog = `(+30% ATK, +20% NP, +15 Stars)`;
+          targetAlly.npGauge = Math.min(300, (targetAlly.npGauge || 0) + 20);
+          const tName = targetAlly.servant.nickname || targetAlly.servant.template?.name || 'Self';
+          buffLog = `(+30% ATK, +20% NP to **${tName}**, +15 Stars)`;
         }
 
         const quote = skillObj?.quote || skillObj?.quotes?.[0] || '';
