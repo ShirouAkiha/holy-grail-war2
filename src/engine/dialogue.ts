@@ -10,6 +10,17 @@ export interface ServantDialogueProfile {
   skills?: string[];
   defeat?: string[];
   victory?: string[];
+  commandCard1?: string[];
+  commandCard2?: string[];
+  commandCard3?: string[];
+  npSelect?: string[];
+  extraAttack?: string[];
+  noblePhantasm?: string[];
+  skill1?: string[];
+  skill2?: string[];
+  skill3?: string[];
+  damage?: string[];
+  heavyDamage?: string[];
 }
 
 export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = {
@@ -53,23 +64,88 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
 
   // Artoria Pendragon - Saber
   artoria: {
+    commandCard1: [
+      "Yes.",
+      "I understand.",
+      "Understood."
+    ],
+    commandCard2: [
+      "Very well.",
+      "Leave it to me.",
+      "I'm off."
+    ],
+    commandCard3: [
+      "Prepare yourself!",
+      "I'm going!",
+      "Here I come!"
+    ],
+    npSelect: [
+      "The holy sword shall shine!",
+      "Gather, breath of the stars!",
+      "Light of hope, guide us!"
+    ],
+    extraAttack: [
+      "Take this!",
+      "Unseen Air!",
+      "I shall pierce through!"
+    ],
+    noblePhantasm: [
+      "Sword of Promised Victory... Excalibur!",
+      "This is the light of the king that shines across the galaxy! Excalibur!",
+      "O Holy Sword, grant us victory! Excalibur!"
+    ],
+    skill1: [
+      "Knights of Utopia, assemble! Let our holy light pierce the shadows!",
+      "All hands, prepare to charge!",
+      "To protect my people!"
+    ],
+    skill2: [
+      "Ignite, Dragon Reactor! Unleash the furnace of red dragon!",
+      "Burn, core of the dragon!",
+      "Power of the Dragon, manifest!"
+    ],
+    skill3: [
+      "The radiance of Avalon reveals our path!",
+      "Avalon's blessing upon us!",
+      "Light of the ideal nation, shine!"
+    ],
+    damage: [
+      "Guh!",
+      "Is that all?!",
+      "Not yet...!"
+    ],
+    heavyDamage: [
+      "Kh...!",
+      "Master, forgive me...!"
+    ],
+    defeat: [
+      "My sword... has failed...",
+      "Is this... as far as I go...?",
+      "Forgive me... everyone..."
+    ],
+    victory: [
+      "Victory is ours! Let us give thanks for this triumph.",
+      "The light of the holy sword shall never be extinguished.",
+      "We have prevailed. Good work, Master."
+    ],
     buster: [
+      "Prepare yourself!",
+      "I'm going!",
+      "Here I come!",
       "Blade of Selection... Strike true! Dragon Core, ignite!",
-      "Excalibur's radiant light shall vanquish all! Yield!",
-      "All mana into my blade! For the honor of the Holy Vow!",
-      "Smite evil with the sacred golden flame of Britain!"
+      "Excalibur's radiant light shall vanquish all! Yield!"
     ],
     arts: [
-      "With pure heart and steadfast oath... I channel the holy sword.",
-      "Clear your mind, breathe as one... Prana circulation stable!",
-      "Channelling the breath of the dragon into our sacred strike.",
-      "The battlefield reveals all truths. I shall cut down your hesitation."
+      "Yes.",
+      "I understand.",
+      "Understood.",
+      "With pure heart and steadfast oath... I channel the holy sword."
     ],
     quick: [
-      "Invisible Air, release! Wind of the King, sweep the field!",
-      "Fleet-footed chivalry! You shall not evade the strike of Camelot!",
-      "A gale of unseen blades! Striking before you draw breath!",
-      "Critical Star convergence! Slicing through your guard with blinding speed!"
+      "Very well.",
+      "Leave it to me.",
+      "I'm off.",
+      "Invisible Air, release! Wind of the King, sweep the field!"
     ],
     mixed: [
       "Executing tactical chain! Master, observe the swordsmanship of the King!",
@@ -78,14 +154,21 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "Advancing across the front line with steady blade and steadfast heart."
     ],
     desperation: [
+      "Kh...!",
+      "Master, forgive me...!",
       "Even if my body falters, the oath to my kingdom and Master shall never break!",
-      "Stand tall, Artoria! As long as Excalibur shines, victory is not lost!",
-      "Forgive me, Master... My duty... remains unfulfilled..."
+      "Stand tall, Artoria! As long as Excalibur shines, victory is not lost!"
     ],
     skills: [
       "Knights of Utopia, assemble! Let our holy light pierce the shadows!",
+      "All hands, prepare to charge!",
+      "To protect my people!",
       "Ignite, Dragon Reactor! Unleash the furnace of red dragon!",
-      "The radiance of Avalon reveals our path!"
+      "Burn, core of the dragon!",
+      "Power of the Dragon, manifest!",
+      "The radiance of Avalon reveals our path!",
+      "Avalon's blessing upon us!",
+      "Light of the ideal nation, shine!"
     ]
   },
 
@@ -1248,8 +1331,13 @@ export function getServantChainDialogue(
   };
 
   if (isNP) {
-    const npChant = customQuotes?.noblePhantasm || 
-      (profile.buster[0] ? `“${profile.buster[0]}”` : "Noble Phantasm Unleashed!");
+    let npChant = customQuotes?.noblePhantasm;
+    if (!npChant && profile.noblePhantasm && profile.noblePhantasm.length > 0) {
+      npChant = pickVaried(profile.noblePhantasm);
+    }
+    if (!npChant) {
+      npChant = profile.buster[0] ? `“${profile.buster[0]}”` : "Noble Phantasm Unleashed!";
+    }
     return {
       quote: npChant,
       tag: 'NOBLE PHANTASM CHANT',
@@ -1382,12 +1470,21 @@ export function getServantSkillQuote(
     return skillObj.quote;
   }
 
-  // 3. Fallback to profile skills list
+  // 3. Fallback to profile skills list or specific skill1/2/3 pools
   const name = typeof servantTemplateOrName === 'string'
     ? servantTemplateOrName
     : (servantTemplateOrName?.name || servantTemplateOrName?.id || '');
 
   const profile = getServantProfile(name);
+  if (skillIdx === 0 && profile.skill1 && profile.skill1.length > 0) {
+    return profile.skill1[Math.floor(Math.random() * profile.skill1.length)];
+  }
+  if (skillIdx === 1 && profile.skill2 && profile.skill2.length > 0) {
+    return profile.skill2[Math.floor(Math.random() * profile.skill2.length)];
+  }
+  if (skillIdx === 2 && profile.skill3 && profile.skill3.length > 0) {
+    return profile.skill3[Math.floor(Math.random() * profile.skill3.length)];
+  }
   if (profile.skills && profile.skills.length > 0) {
     return profile.skills[skillIdx % profile.skills.length] || profile.skills[0];
   }

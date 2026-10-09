@@ -406,23 +406,31 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         id: 'knight_of_utopia_ex',
         name: 'Knight of Utopia EX',
         cooldown: 5,
-        description: "Increases party's and self attack by 30% for 3 turns. Increases the attack of Round Table Knight allies by 20% for 3 turns. Grants self Buff-On-Attack buff for 3 turns (Charges own NP gauge by 10% per enemy hit when attacking with Buster Cards).",
+        description: "Increases party's and self attack by 30% for 3 turns. Increases the attack of Round Table Knight allies by 20% for 3 turns. Grants self Buff-On-Attack buff for 3 turns. (Charges own NP gauge by 10% per enemy hit when attacking with Buster Cards.)",
         effectType: 'buff_atk',
         value: 30,
         duration: 3,
-        icon: '🛡️',
-        quotes: ["Knights of Utopia, assemble! Let our holy light pierce the shadows!"]
+        icon: '⚔️',
+        quotes: [
+          "Knights of Utopia, assemble! Let our holy light pierce the shadows!",
+          "All hands, prepare to charge!",
+          "To protect my people!"
+        ]
       },
       {
         id: 'dragon_reactor_core_b',
         name: 'Dragon Reactor Core B',
         cooldown: 5,
         description: "Increases own Buster performance by 50% for 1 turn. Increases own NP damage by 20% for 1 turn. Changes all own Command Cards' type to Buster for 1 turn.",
-        effectType: 'buster_up',
+        effectType: 'buff_buster',
         value: 50,
         duration: 1,
         icon: '🐉',
-        quotes: ["Ignite, Dragon Reactor! Unleash the furnace of red dragon!"]
+        quotes: [
+          "Ignite, Dragon Reactor! Unleash the furnace of red dragon!",
+          "Burn, core of the dragon!",
+          "Power of the Dragon, manifest!"
+        ]
       },
       {
         id: 'radiant_road_ex',
@@ -433,7 +441,11 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         value: 30,
         duration: 1,
         icon: '✨',
-        quotes: ["The radiance of Avalon reveals our path!"]
+        quotes: [
+          "The radiance of Avalon reveals our path!",
+          "Avalon's blessing upon us!",
+          "Light of the ideal nation, shine!"
+        ]
       }
     ],
     passives: [
@@ -455,7 +467,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     noblePhantasm: {
       name: 'Excalibur: Sword of Promised Victory',
       cardType: 'Buster',
-      chant: 'Gathered breath of the planet, torrential stream of shining life... Take this! EX---CALIBUR!',
+      chant: 'Sword of Promised Victory... Excalibur!',
       description: 'Deals devastating holy burst damage to all foes and recharges 20% NP gauge. Gains critical stars.',
       target: 'aoe',
       multiplier: 700,
