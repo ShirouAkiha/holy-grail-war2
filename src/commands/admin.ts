@@ -44,7 +44,12 @@ import {
   resetSingleMasterCurrency,
   resetSingleMasterInventory,
   resetSingleMasterVault,
-  resetAllMastersInventoryAndCurrency
+  resetAllMastersInventoryAndCurrency,
+  getAllServantSpriteConfigs,
+  getServantSpriteConfig,
+  setServantSpriteConfig,
+  removeServantSpriteConfig,
+  ServantSpriteConfig
 } from '../database/service';
 import {
   getOrInitWarSession,
@@ -194,7 +199,8 @@ export const data = new SlashCommandBuilder()
             { name: '🎬 NP Animations & Chant Registry', value: 'npanim' },
             { name: '⚙️ Duel NP Settings & Timing', value: 'npsettings' },
             { name: '📋 Registered Custom Animations', value: 'listnp' },
-            { name: '💎 Economy & Saint Quartz Mint', value: 'economy' }
+            { name: '💎 Economy & Saint Quartz Mint', value: 'economy' },
+            { name: '🖼️ Custom Servant Sprite Tuner', value: 'sprites' }
           )
       )
   )
@@ -559,6 +565,66 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand(sub =>
     sub
+      .setName('sprites')
+      .setDescription('Configure sprite size and position offsets for custom servants individually')
+      .addStringOption(opt =>
+        opt
+          .setName('servant')
+          .setDescription('Target Servant name or Heroic Spirit identity')
+          .setRequired(true)
+          .setAutocomplete(true)
+      )
+      .addNumberOption(opt =>
+        opt
+          .setName('vn_scale')
+          .setDescription('Visual Novel UI Scale Factor (e.g. 0.84, 1.0, 1.25)')
+          .setMinValue(0.2)
+          .setMaxValue(3.0)
+          .setRequired(false)
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('vn_offset_y')
+          .setDescription('Visual Novel Y Offset in pixels (e.g. -20, 0, +15)')
+          .setMinValue(-300)
+          .setMaxValue(300)
+          .setRequired(false)
+      )
+      .addNumberOption(opt =>
+        opt
+          .setName('duel_scale')
+          .setDescription('Duel Combat Slot Scale Factor (e.g. 0.94, 1.15, 1.20)')
+          .setMinValue(0.2)
+          .setMaxValue(3.0)
+          .setRequired(false)
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('duel_offset_y')
+          .setDescription('Duel Combat Slot Y Offset in pixels (e.g. -20, 0, +15)')
+          .setMinValue(-300)
+          .setMaxValue(300)
+          .setRequired(false)
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('raid_height')
+          .setDescription('Raid Battlefield Sprite Height in pixels (e.g. 310, 350, 370)')
+          .setMinValue(100)
+          .setMaxValue(600)
+          .setRequired(false)
+      )
+      .addIntegerOption(opt =>
+        opt
+          .setName('raid_offset_y')
+          .setDescription('Raid Battlefield Y Offset in pixels (e.g. -20, 0, +15)')
+          .setMinValue(-300)
+          .setMaxValue(300)
+          .setRequired(false)
+      )
+  )
+  .addSubcommand(sub =>
+    sub
       .setName('economy')
       .setDescription('Manage currency minting, inventory resets, and vault wipes')
       .addStringOption(opt =>
@@ -704,6 +770,42 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const sec = Math.floor((parsed.customExpiresAt || Date.now()) / 1000);
     const hub = buildAdminHub('war_announce', `⏱️ **Universal Target Timer Set:** **${parsed.label}** (<t:${sec}:R> • <t:${sec}:f>)!`, interaction.guildId || undefined);
     await interaction.reply({ embeds: hub.embeds, components: hub.components, flags: MessageFlags.Ephemeral });
+    return;
+  }
+
+  // --- /admin give ---
+  if (subcommand === 'sprites') {
+    const servantName = interaction.options.getString('servant', true);
+    const vnScale = interaction.options.getNumber('vn_scale') ?? undefined;
+    const vnOffsetY = interaction.options.getInteger('vn_offset_y') ?? undefined;
+    const duelScale = interaction.options.getNumber('duel_scale') ?? undefined;
+    const duelOffsetY = interaction.options.getInteger('duel_offset_y') ?? undefined;
+    const raidHeight = interaction.options.getInteger('raid_height') ?? undefined;
+    const raidOffsetY = interaction.options.getInteger('raid_offset_y') ?? undefined;
+
+    const updated = setServantSpriteConfig({
+      servantName,
+      vnScale,
+      vnOffsetY,
+      duelScale,
+      duelOffsetY,
+      raidHeight,
+      raidOffsetY,
+      customBy: interaction.user.username
+    });
+
+    const embed = new EmbedBuilder()
+      .setTitle(`🖼️ Custom Sprite Dimensions Configured — ${updated.servantName}`)
+      .setDescription(
+        `Successfully updated custom sprite scaling and position settings for **${updated.servantName}** (\`${updated.servantId}\`).\n\n` +
+        `• 📖 **Visual Novel Scale:** \`${updated.vnScale ?? '1.0'}x\` | **VN Y Offset:** \`${updated.vnOffsetY ?? 0}px\`\n` +
+        `• ⚔️ **Duel Combat Scale:** \`${updated.duelScale ?? '0.94'}x\` | **Duel Y Offset:** \`${updated.duelOffsetY ?? 0}px\`\n` +
+        `• 🐲 **Raid Battlefield Height:** \`${updated.raidHeight ?? 310}px\` | **Raid Y Offset:** \`${updated.raidOffsetY ?? 0}px\``
+      )
+      .setColor(0xec4899)
+      .setFooter({ text: `Authorized by Overseer ${interaction.user.username}` });
+
+    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     return;
   }
 
@@ -1406,7 +1508,7 @@ export function buildMasterDossier(
 // 4. ADMIN HUB BUILDER
 // ==========================================
 export function buildAdminHub(
-  category: 'war' | 'war_announce' | 'war_rules' | 'masters' | 'personas' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war',
+  category: 'war' | 'war_announce' | 'war_rules' | 'masters' | 'personas' | 'npanim' | 'npsettings' | 'listnp' | 'economy' | 'sprites' = 'war',
   actionOutcomeMsg?: string,
   guildId?: string
 ) {
@@ -1662,6 +1764,35 @@ export function buildAdminHub(
       .setFooter({ text: 'Admin Suite • Holy Grail Treasury & Inventory Manager' });
 
     embeds = [embed];
+
+  } else if (category === 'sprites') {
+    const spriteList = getAllServantSpriteConfigs();
+    let desc = '';
+    if (spriteList.length === 0) {
+      desc = '⚪ *No custom sprite size or position overrides registered. Default auto-scaling applies to all servants.*\n\n' +
+             'Click **✏️ Configure Servant Sprite** or use `/admin sprites servant:<name>` to set custom dimensions for any Servant!';
+    } else {
+      desc = spriteList.slice(0, 15).map((cfg, idx) => {
+        const vnStr = cfg.vnScale ? `VN Scale: \`${cfg.vnScale}x\`` : 'VN Scale: `Default`';
+        const vnYStr = cfg.vnOffsetY ? ` | VN Y: \`${cfg.vnOffsetY > 0 ? '+' : ''}${cfg.vnOffsetY}px\`` : '';
+        const duelStr = cfg.duelScale ? ` | Duel Scale: \`${cfg.duelScale}x\`` : '';
+        const raidStr = cfg.raidHeight ? ` | Raid Height: \`${cfg.raidHeight}px\`` : '';
+        return `**${idx + 1}. ${cfg.servantName}** (\`${cfg.servantId}\`)\n> ${vnStr}${vnYStr}${duelStr}${raidStr}`;
+      }).join('\n\n');
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle(`🖼️ Admin Control: Custom Servant Sprite Size & Position Tuner (${spriteList.length})`)
+      .setDescription(
+        (actionOutcomeMsg ? `📢 **Action Outcome:**\n${actionOutcomeMsg}\n\n` : '') +
+        `Tune sprite scale multipliers and pixel offsets for custom Heroic Spirits across Visual Novel UI, Duels, and Raids.\n\n` +
+        desc +
+        `\n\n*Click **✏️ Configure Servant Sprite** below to open the interactive dimension tuner:*`
+      )
+      .setColor(0xec4899)
+      .setFooter({ text: 'Admin Suite • Custom Servant Sprite Engine' });
+
+    embeds = [embed];
   }
 
   // --- UI BUTTON ROWS ---
@@ -1670,7 +1801,7 @@ export function buildAdminHub(
     new ButtonBuilder().setCustomId('admin_tab_war_announce').setLabel('Announce War').setEmoji('📢').setStyle(category === 'war_announce' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('admin_tab_masters').setLabel('Masters').setEmoji('👤').setStyle(category === 'masters' ? ButtonStyle.Primary : ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId('admin_tab_personas').setLabel('Personas').setEmoji('🎭').setStyle(category === 'personas' ? ButtonStyle.Primary : ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId('admin_tab_war_rules').setLabel('Rules').setEmoji('⚙️').setStyle(category === 'war_rules' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+    new ButtonBuilder().setCustomId('admin_tab_sprites').setLabel('Sprites').setEmoji('🖼️').setStyle(category === 'sprites' ? ButtonStyle.Primary : ButtonStyle.Secondary)
   );
 
   const components: any[] = [categoryNavRow];
@@ -1878,15 +2009,29 @@ export function buildAdminHub(
     );
     components.push(actionButtonsRow);
 
-  } else if (category === 'economy') {
-    const mintRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId('admin_mint_30sq').setLabel('+30 SQ (1 Multi)').setEmoji('💎').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('admin_mint_100sq').setLabel('+100 SQ').setEmoji('💎').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId('admin_mint_5tickets').setLabel('+5 Tickets').setEmoji('🎫').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId('admin_refill_seals').setLabel('Refill 3 Seals').setEmoji('🔱').setStyle(ButtonStyle.Primary)
+  } else if (category === 'sprites') {
+    const spriteRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId('admin_btn_config_sprite').setLabel('Configure Servant Sprite').setEmoji('✏️').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('admin_btn_reset_sprite').setLabel('Reset to Default Scale').setEmoji('🔄').setStyle(ButtonStyle.Danger)
     );
 
-    components.push(mintRow);
+    const allServants = getAllThroneServants();
+    const servantSelectMenu = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('admin_select_sprite_servant')
+        .setPlaceholder('Select a Servant to configure sprite size & position...')
+        .addOptions(
+          allServants.slice(0, 25).map(s =>
+            new StringSelectMenuOptionBuilder()
+              .setLabel(`${s.name} (${s.servantClass})`)
+              .setValue(s.id)
+              .setDescription(`Rarity: ${s.rarity}★ | ID: ${s.id}`)
+              .setEmoji('🖼️')
+          )
+        )
+    );
+
+    components.push(spriteRow, servantSelectMenu);
   }
 
   return { embeds, components };
@@ -1898,8 +2043,55 @@ export function buildAdminHub(
 export async function handleAdminGlobalInteraction(interaction: any) {
   try {
     const customId = interaction.customId;
-    let currentCategory: 'war' | 'war_announce' | 'war_rules' | 'masters' | 'personas' | 'npanim' | 'npsettings' | 'listnp' | 'economy' = 'war';
+    let currentCategory: 'war' | 'war_announce' | 'war_rules' | 'masters' | 'personas' | 'npanim' | 'npsettings' | 'listnp' | 'economy' | 'sprites' = 'war';
     let actionOutcome: string | undefined = undefined;
+
+    // Handle Custom Sprite Modal Submission
+    if (customId === 'admin_modal_sprite_config') {
+      let servantName = '';
+      let vnScaleStr = '';
+      let vnOffsetYStr = '';
+      let duelScaleStr = '';
+      let raidHeightStr = '';
+
+      try { servantName = interaction.fields.getTextInputValue('sprite_servant_name'); } catch {}
+      try { vnScaleStr = interaction.fields.getTextInputValue('sprite_vn_scale'); } catch {}
+      try { vnOffsetYStr = interaction.fields.getTextInputValue('sprite_vn_offset_y'); } catch {}
+      try { duelScaleStr = interaction.fields.getTextInputValue('sprite_duel_scale'); } catch {}
+      try { raidHeightStr = interaction.fields.getTextInputValue('sprite_raid_height'); } catch {}
+
+      if (!servantName) {
+        actionOutcome = `❌ **Error:** Please specify a valid Servant Name or ID.`;
+      } else {
+        const vnScale = vnScaleStr ? parseFloat(vnScaleStr) : undefined;
+        const vnOffsetY = vnOffsetYStr ? parseInt(vnOffsetYStr, 10) : undefined;
+        const duelScale = duelScaleStr ? parseFloat(duelScaleStr) : undefined;
+        const raidHeight = raidHeightStr ? parseInt(raidHeightStr, 10) : undefined;
+
+        const updated = setServantSpriteConfig({
+          servantName,
+          vnScale,
+          vnOffsetY,
+          duelScale,
+          raidHeight,
+          customBy: interaction.user.username
+        });
+
+        actionOutcome = `✨ **Sprite Configuration Updated for ${updated.servantName}!**\n` +
+          `• **Visual Novel Scale:** \`${updated.vnScale ?? '1.0'}x\` | **Y Offset:** \`${updated.vnOffsetY ?? 0}px\`\n` +
+          `• **Duel Combat Scale:** \`${updated.duelScale ?? '0.94'}x\`\n` +
+          `• **Raid Battlefield Height:** \`${updated.raidHeight ?? 310}px\``;
+      }
+
+      currentCategory = 'sprites';
+      const hub = buildAdminHub(currentCategory, actionOutcome);
+      await interaction.reply({
+        embeds: hub.embeds,
+        components: hub.components,
+        flags: MessageFlags.Ephemeral
+      });
+      return;
+    }
 
     // Handle Custom Timer & Custom Date Modal Submissions
     if (customId === 'admin_modal_custom_timer' || customId === 'admin_modal_custom_date') {
@@ -1950,6 +2142,8 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       currentCategory = 'listnp';
     } else if (customId === 'admin_tab_economy' || customId.startsWith('admin_mint_') || customId === 'admin_refill_seals' || customId.startsWith('admin_reset_')) {
       currentCategory = 'economy';
+    } else if (customId === 'admin_tab_sprites' || customId === 'admin_btn_config_sprite' || customId === 'admin_btn_reset_sprite' || customId === 'admin_select_sprite_servant') {
+      currentCategory = 'sprites';
     }
 
     // PERSONA PROFILE DROPDOWN SELECTION
@@ -2480,6 +2674,78 @@ export async function handleAdminGlobalInteraction(interaction: any) {
       const updated = setDuelNpSettings({ afkTimeoutSeconds: val });
       actionOutcome = `AFK Safety Timeout updated to: **${updated.afkTimeoutSeconds}s**`;
       currentCategory = 'npsettings';
+    }
+
+    // SPRITE TUNER ACTIONS
+    else if (customId === 'admin_btn_config_sprite') {
+      const modal = new ModalBuilder()
+        .setCustomId('admin_modal_sprite_config')
+        .setTitle('🖼️ Custom Servant Sprite Tuner')
+        .addComponents(
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('sprite_servant_name')
+              .setLabel('Servant Name or ID')
+              .setPlaceholder('e.g. Lucia, Luvria, Adiosa, Edmond, Amamiya')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(true)
+          ),
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('sprite_vn_scale')
+              .setLabel('Visual Novel Scale Factor (e.g. 0.84, 1.0, 1.25)')
+              .setPlaceholder('1.0')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(false)
+          ),
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('sprite_vn_offset_y')
+              .setLabel('Visual Novel Y Offset in px (e.g. -20, 0, +15)')
+              .setPlaceholder('0')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(false)
+          ),
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('sprite_duel_scale')
+              .setLabel('Duel Combat Scale Factor (e.g. 0.94, 1.15, 1.20)')
+              .setPlaceholder('0.94')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(false)
+          ),
+          new ActionRowBuilder<TextInputBuilder>().addComponents(
+            new TextInputBuilder()
+              .setCustomId('sprite_raid_height')
+              .setLabel('Raid Battlefield Height in px (e.g. 310, 350, 370)')
+              .setPlaceholder('310')
+              .setStyle(TextInputStyle.Short)
+              .setRequired(false)
+          )
+        );
+      await interaction.showModal(modal);
+      return;
+    } else if (customId === 'admin_btn_reset_sprite') {
+      const spriteList = getAllServantSpriteConfigs();
+      if (spriteList.length === 0) {
+        actionOutcome = '⚪ No custom sprite configs registered to reset.';
+      } else {
+        const last = spriteList[spriteList.length - 1];
+        removeServantSpriteConfig(last.servantId);
+        actionOutcome = `🔄 **Reset custom sprite config for ${last.servantName}!**`;
+      }
+      currentCategory = 'sprites';
+    } else if (customId === 'admin_select_sprite_servant') {
+      const selectedId = interaction.values?.[0] || '';
+      const template = findServantInPool(selectedId);
+      const existing = getServantSpriteConfig(selectedId);
+      if (template) {
+        actionOutcome = `🖼️ **Selected ${template.name} (${template.servantClass})**\n` +
+          `• Current VN Scale: \`${existing?.vnScale ?? 'Default'}x\` | VN Y Offset: \`${existing?.vnOffsetY ?? '0'}px\`\n` +
+          `• Current Duel Scale: \`${existing?.duelScale ?? 'Default'}x\` | Raid Height: \`${existing?.raidHeight ?? '310'}px\`\n\n` +
+          `Click **✏️ Configure Servant Sprite** to edit dimensions.`;
+      }
+      currentCategory = 'sprites';
     }
 
     // ECONOMY MINT ACTIONS

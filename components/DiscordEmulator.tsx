@@ -8636,8 +8636,8 @@ export default function DiscordEmulator({
     const categoryNavButtons = [
       { id: 'admin_tab_war', label: 'Grail War', style: (category === 'war' ? 'primary' : 'secondary') as any, emoji: '🏆' },
       { id: 'admin_tab_war_rules', label: 'Customize Rules', style: (category === 'war_rules' ? 'primary' : 'secondary') as any, emoji: '⚙️' },
+      { id: 'admin_tab_sprites', label: 'Sprites Tuner', style: ((category as string) === 'sprites' ? 'primary' : 'secondary') as any, emoji: '🖼️' },
       { id: 'admin_tab_npanim', label: 'NP Animations', style: (category === 'npanim' ? 'primary' : 'secondary') as any, emoji: '🎬' },
-      { id: 'admin_tab_npsettings', label: 'Duel Settings', style: (category === 'npsettings' ? 'primary' : 'secondary') as any, emoji: '⚙️' },
       { id: 'admin_tab_economy', label: 'Economy Mint', style: (category === 'economy' ? 'primary' : 'secondary') as any, emoji: '💎' }
     ];
 
@@ -8689,6 +8689,11 @@ export default function DiscordEmulator({
         { id: 'admin_reset_inventory', label: 'Reset Inventory', style: 'danger', emoji: '🎒' },
         { id: 'admin_reset_vault', label: 'Reset All Vault', style: 'danger', emoji: '🔄' },
         { id: 'admin_reset_all_economy', label: 'Server-Wide Wipe', style: 'danger', emoji: '⚠️' }
+      ];
+    } else if ((category as string) === 'sprites') {
+      actionButtons = [
+        { id: 'admin_btn_config_sprite', label: 'Configure Sprite Dimensions', style: 'primary', emoji: '✏️' },
+        { id: 'admin_btn_reset_sprite', label: 'Reset Last Custom Sprite', style: 'danger', emoji: '🔄' }
       ];
     } else if (category === 'npsettings') {
       actionButtons = [
@@ -11521,6 +11526,9 @@ export default function DiscordEmulator({
       } else if (btnId === 'admin_tab_economy') {
         setAdminHubCategory('economy');
         postAdminHub('economy');
+      } else if (btnId === 'admin_tab_sprites') {
+        setAdminHubCategory('sprites' as any);
+        postAdminHub('sprites' as any);
       }
       // 2. Command Seals Customization
       else if (btnId.startsWith('admin_set_seals_')) {

@@ -20,6 +20,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { CRAFT_ESSENCE_DATABASE } from '../data/craftEssences';
 import { getCanvasModule, getGifencModule } from './canvasLoader';
+import { getServantSpriteConfig } from '../database/service';
 
 export const MINIMAL_VALID_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
@@ -3348,11 +3349,15 @@ function drawHoveringAttacker(
   if (portraitImg) {
     const isMerged = isAtlasMergedSprite(portraitImg);
     if (!isMerged) {
-      // Custom OC artwork: scale gently (~94% scale) so it fills frame properly
-      const cW = Math.round(spriteW * 0.94);
-      const cH = Math.round(spriteH * 0.94);
+      // Custom OC artwork: scale gently so it fills frame properly (supports admin custom sprite configs)
+      const cfg = getServantSpriteConfig(servantName || '');
+      const isAdiosa = (servantName || '').toLowerCase().includes('adiosa') || (servantName || '').toLowerCase().includes('typhon');
+      const scale = (cfg?.duelScale && cfg.duelScale > 0) ? cfg.duelScale : (isAdiosa ? 1.18 : 0.94);
+      const cW = Math.round(spriteW * scale);
+      const cH = Math.round(spriteH * scale);
       const cX = spriteX + Math.round((spriteW - cW) / 2);
-      const cY = spriteY + (spriteH - cH);
+      let cY = spriteY + (spriteH - cH);
+      if (cfg?.duelOffsetY !== undefined) cY += cfg.duelOffsetY;
       drawImageCover(ctx, portraitImg, cX, cY, cW, cH);
     } else {
       drawImageCover(ctx, portraitImg, spriteX, spriteY, spriteW, spriteH);
@@ -3447,11 +3452,15 @@ function drawHoveringDefender(
   if (defenderImg) {
     const isMerged = isAtlasMergedSprite(defenderImg);
     if (!isMerged) {
-      // Custom OC artwork: scale gently (~94% scale) so it fills frame properly
-      const cW = Math.round(spriteW * 0.94);
-      const cH = Math.round(spriteH * 0.94);
+      // Custom OC artwork: scale gently so it fills frame properly (supports admin custom sprite configs)
+      const cfg = getServantSpriteConfig(defenderName || '');
+      const isAdiosa = (defenderName || '').toLowerCase().includes('adiosa') || (defenderName || '').toLowerCase().includes('typhon');
+      const scale = (cfg?.duelScale && cfg.duelScale > 0) ? cfg.duelScale : (isAdiosa ? 1.18 : 0.94);
+      const cW = Math.round(spriteW * scale);
+      const cH = Math.round(spriteH * scale);
       const cX = spriteX + Math.round((spriteW - cW) / 2);
-      const cY = spriteY + (spriteH - cH);
+      let cY = spriteY + (spriteH - cH);
+      if (cfg?.duelOffsetY !== undefined) cY += cfg.duelOffsetY;
       drawImageCover(ctx, defenderImg, cX, cY, cW, cH);
     } else {
       drawImageCover(ctx, defenderImg, spriteX, spriteY, spriteW, spriteH);
@@ -7518,6 +7527,13 @@ export async function renderVisualNovelCard(
           baseMaxHFactor = 0.88;
           baseMaxWFactor = 0.52;
           spriteY = Math.round(height * 0.10);
+        }
+
+        // Check admin custom sprite configuration
+        const spriteCfg = getServantSpriteConfig(opts.servantName || opts.speakerName || opts.title || '');
+        if (spriteCfg) {
+          if (spriteCfg.vnScale && spriteCfg.vnScale > 0) scaleMultiplier *= spriteCfg.vnScale;
+          if (spriteCfg.vnOffsetY !== undefined) spriteY += spriteCfg.vnOffsetY;
         }
 
         const maxSpriteH = Math.floor(height * baseMaxHFactor * scaleMultiplier);
