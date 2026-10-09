@@ -1093,9 +1093,9 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     if (avatar) {
       const isMerged = isAtlasMergedSprite(avatar);
       if (!isMerged) {
-        // Custom OC artwork: scale down to ~72% height (245px) anchored lower above skills
-        const customH = 245;
-        const customY = panelTopY + 105;
+        // Custom OC artwork: scaled gracefully (~310px height)
+        const customH = 310;
+        const customY = panelTopY + 40;
         drawServantBattleSprite(ctx, avatar, slotX, customY, panelW, customH, {
           fitMode: 'contain',
           isCustomOC: true

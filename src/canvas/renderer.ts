@@ -3348,9 +3348,9 @@ function drawHoveringAttacker(
   if (portraitImg) {
     const isMerged = isAtlasMergedSprite(portraitImg);
     if (!isMerged) {
-      // Custom OC artwork: scale down to ~82% scale so bust/torso isn't oversized
-      const cW = Math.round(spriteW * 0.82);
-      const cH = Math.round(spriteH * 0.82);
+      // Custom OC artwork: scale gently (~94% scale) so it fills frame properly
+      const cW = Math.round(spriteW * 0.94);
+      const cH = Math.round(spriteH * 0.94);
       const cX = spriteX + Math.round((spriteW - cW) / 2);
       const cY = spriteY + (spriteH - cH);
       drawImageCover(ctx, portraitImg, cX, cY, cW, cH);
@@ -3447,9 +3447,9 @@ function drawHoveringDefender(
   if (defenderImg) {
     const isMerged = isAtlasMergedSprite(defenderImg);
     if (!isMerged) {
-      // Custom OC artwork: scale down to ~82% scale so bust/torso isn't oversized
-      const cW = Math.round(spriteW * 0.82);
-      const cH = Math.round(spriteH * 0.82);
+      // Custom OC artwork: scale gently (~94% scale) so it fills frame properly
+      const cW = Math.round(spriteW * 0.94);
+      const cH = Math.round(spriteH * 0.94);
       const cX = spriteX + Math.round((spriteW - cW) / 2);
       const cY = spriteY + (spriteH - cH);
       drawImageCover(ctx, defenderImg, cX, cY, cW, cH);
@@ -7513,11 +7513,11 @@ export async function renderVisualNovelCard(
           baseMaxWFactor = 0.50;
           spriteY = Math.round(height * -0.15);
         } else {
-          // Custom OC / Non-merged portrait: scale down to 80%
-          scaleMultiplier = 0.82;
-          baseMaxHFactor = 0.80;
-          baseMaxWFactor = 0.48;
-          spriteY = Math.round(height * 0.14);
+          // Standard Custom OC / Non-merged portrait: full scale
+          scaleMultiplier = 1.0;
+          baseMaxHFactor = 0.88;
+          baseMaxWFactor = 0.52;
+          spriteY = Math.round(height * 0.10);
         }
 
         const maxSpriteH = Math.floor(height * baseMaxHFactor * scaleMultiplier);

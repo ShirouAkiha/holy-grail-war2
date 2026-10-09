@@ -1568,9 +1568,9 @@ function checkAtlasSprite(img: any): boolean {
     ctx.save();
     const isMerged = checkAtlasSprite(portraitImg);
     if (!isMerged) {
-      // Custom OC artwork: scale down to ~82% scale so bust/torso isn't oversized
-      const cW = Math.round(sprW * 0.82);
-      const cH = Math.round(sprH * 0.82);
+      // Custom OC artwork: scale gently (~94% scale) so it fills frame properly
+      const cW = Math.round(sprW * 0.94);
+      const cH = Math.round(sprH * 0.94);
       const cX = sprX + Math.round((sprW - cW) / 2);
       const cY = sprY + (sprH - cH);
       drawImageCover(ctx, portraitImg, cX, cY, cW, cH);
@@ -1672,9 +1672,9 @@ function drawHoveringDefender(
     ctx.save();
     const isMerged = checkAtlasSprite(defenderImg);
     if (!isMerged) {
-      // Custom OC artwork: scale down to ~82% scale so bust/torso isn't oversized
-      const cW = Math.round(sprW * 0.82);
-      const cH = Math.round(sprH * 0.82);
+      // Custom OC artwork: scale gently (~94% scale) so it fills frame properly
+      const cW = Math.round(sprW * 0.94);
+      const cH = Math.round(sprH * 0.94);
       const cX = sprX + Math.round((sprW - cW) / 2);
       const cY = sprY + (sprH - cH);
       drawImageCover(ctx, defenderImg, cX, cY, cW, cH);
