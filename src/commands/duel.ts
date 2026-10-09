@@ -5248,8 +5248,9 @@ async function startInteractiveDuel(
     }, delayMs);
   };
 
+  // Do NOT auto-clear starting face dialogues embed — keep it visible until a button is clicked!
   if (startEmbeds.length > 0) {
-    scheduleCutInAutoClear(2500);
+    clearCutInTimer();
   }
 
   // Active Noble Phantasm GIF message reference & auto-delete timer
