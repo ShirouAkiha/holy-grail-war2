@@ -10405,8 +10405,11 @@ export default function DiscordEmulator({
         }
 
         if (gachaCategory === 'servants' || gachaBanner === 'throne_servants') {
-          // 1x Servant Summon
-          const randomTemplate = allThrone[Math.floor(Math.random() * allThrone.length)];
+          // 1x Servant Summon (Featuring Altera Rate-Up)
+          const alteraInPool = allThrone.find(s => s.id === 'altera');
+          const randomTemplate = (alteraInPool && Math.random() < 0.45)
+            ? alteraInPool
+            : allThrone[Math.floor(Math.random() * allThrone.length)];
           const curServants = master.servants || [];
           const isOwned = curServants.some((s: any) => (s.template?.id || s.id) === randomTemplate.id);
 
@@ -10509,7 +10512,10 @@ export default function DiscordEmulator({
           const multiResults: any[] = [];
 
           for (let i = 0; i < 10; i++) {
-            const randomTemplate = allThrone[Math.floor(Math.random() * allThrone.length)];
+            const alteraInPool = allThrone.find(s => s.id === 'altera');
+            const randomTemplate = (alteraInPool && Math.random() < 0.35)
+              ? alteraInPool
+              : allThrone[Math.floor(Math.random() * allThrone.length)];
             const isOwned = curServants.some((s: any) => (s.template?.id || s.id) === randomTemplate.id);
 
             multiResults.push({

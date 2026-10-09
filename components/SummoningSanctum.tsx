@@ -109,7 +109,10 @@ export default function SummoningSanctum({
     setStatusNotice(null);
 
     setTimeout(() => {
-      const randomTemplate = allThrone[Math.floor(Math.random() * allThrone.length)];
+      const alteraInPool = allThrone.find(s => s.id === 'altera');
+      const randomTemplate = (alteraInPool && Math.random() < 0.45)
+        ? alteraInPool
+        : allThrone[Math.floor(Math.random() * allThrone.length)];
       let curServants = master.servants ? [...master.servants] : [];
       const isOwned = curServants.some(s => (s.templateId || s.template?.id) === randomTemplate.id);
 
@@ -176,7 +179,10 @@ export default function SummoningSanctum({
       let totalPrisms = 0;
 
       for (let i = 0; i < 10; i++) {
-        const randomTemplate = allThrone[Math.floor(Math.random() * allThrone.length)];
+        const alteraInPool = allThrone.find(s => s.id === 'altera');
+        const randomTemplate = (alteraInPool && Math.random() < 0.35)
+          ? alteraInPool
+          : allThrone[Math.floor(Math.random() * allThrone.length)];
         const isOwned = curServants.some(s => (s.templateId || s.template?.id) === randomTemplate.id);
 
         resultsArr.push({
