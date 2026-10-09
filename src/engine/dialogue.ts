@@ -175,49 +175,49 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
   // Altera - Saber
   altera: {
     commandCard1: [
-      "Understood.",
-      "I will destroy.",
-      "Under the War God's light."
+      "Huh!",
+      "Fuh!",
+      "Hah!"
     ],
     commandCard2: [
-      "Engaging.",
-      "Tear to pieces.",
-      "My blade is ready."
+      "Huh!",
+      "Fuh!",
+      "Hah!"
     ],
     commandCard3: [
-      "Trample.",
-      "Shatter.",
-      "Target confirmed."
+      "Huh!",
+      "Fuh!",
+      "Hah!"
     ],
     npSelect: [
+      "I treasure life, but I will destroy that civilization!",
       "Sword of the War God... awaken.",
-      "Rainbow of destruction, shine.",
-      "I shall sweep away civilization."
+      "Under the War God's light."
     ],
     extraAttack: [
       "Tear to pieces! Shatter! Trample!",
-      "Photon burst!",
+      "Photon Ray!",
       "Turn to dust!"
     ],
     noblePhantasm: [
-      "This is the sword of the God of War... Photon Ray!",
+      "I treasure life, but I will destroy that civilization! Photon Ray!",
       "Tear to pieces, shatter, trample... Sword of Mars, Photon Ray!",
-      "Light of the star, cleanse all... Photon Ray!"
+      "This is the sword of the God of War... Photon Ray!"
     ],
     skill1: [
-      "Scourge of God... All defense is meaningless.",
-      "The scourge arrives. Defenses crumble.",
-      "I shall purge their guard."
+      "Your prosperity ends here.",
+      "The power of the War God rests with me.",
+      "Scourge of God... All defense is meaningless."
     ],
     skill2: [
-      "Reconstructing spirit origin. Perfect form.",
-      "My body is a weapon. Restoring energy.",
-      "Perfect Construct engaged."
+      "The power of the War God rests with me.",
+      "Your prosperity ends here.",
+      "Reconstructing spirit origin."
     ],
     skill3: [
-      "Crest of the Star, blaze forth!",
-      "The war god's emblem shines.",
-      "Power surges through this weapon."
+      "Your prosperity ends here.",
+      "The power of the War God rests with me.",
+      "Crest of the Star, blaze forth!"
     ],
     damage: [
       "Ngh...",
@@ -229,14 +229,14 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "My spirit core...!"
     ],
     defeat: [
-      "Is this... bad civilization...?",
-      "The weapon... has broken...",
-      "Master... forgive me..."
+      "Beings exist... That even my blade...cannot destroy...",
+      "It's been... A long journey...",
+      "Is this... bad civilization...?"
     ],
     victory: [
-      "Destruction complete. Bad civilization has been eradicated.",
-      "All obstacles shattered. The battlefield is clear.",
-      "The war god has spoken. Good work, Master."
+      "Past, present, or future. I will destroy, and I will be victorious.",
+      "I pity you... No one can defeat me.",
+      "Destruction complete. The battlefield is clear."
     ],
     buster: [
       "Tear to pieces!",

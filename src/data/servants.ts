@@ -502,7 +502,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         value: 20,
         duration: 3,
         icon: '⚔️',
-        quotes: ["Destruction awaits.", "Under the command of the War God."]
+        quotes: ['"Your prosperity ends here."', '"The power of the War God rests with me."']
       },
       {
         id: 'perfect_construct_ex',
@@ -513,7 +513,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         value: 30,
         duration: 3,
         icon: '🛡️',
-        quotes: ["My body is a weapon.", "Reconstructing spirit origin."]
+        quotes: ['"The power of the War God rests with me."', '"Reconstructing spirit origin."']
       },
       {
         id: 'star_emblem_ex',
@@ -524,7 +524,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         value: 30,
         duration: 3,
         icon: '🌟',
-        quotes: ["The crest of the war god shines.", "I will destroy everything."]
+        quotes: ['"Your prosperity ends here."', '"The power of the War God rests with me."']
       }
     ],
     passives: [
@@ -545,7 +545,7 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     ],
     noblePhantasm: {
       name: 'Photon Ray',
-      chant: 'Sword of the War God',
+      chant: 'I treasure life, but I will destroy that civilization! Photon Ray!',
       rank: 'A',
       cardType: 'Buster',
       target: 'aoe',
@@ -556,10 +556,10 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       animationUrl: 'https://ella.janitorai.com/media-approved/GDJMOW2n8X1ub8K0mVMt3.gif'
     },
     lore: 'Attila the Hun, a great king who created a great empire. A descendant as well as a warrior of the Hunnu, and its king. The great hero of the 5th century that conquered empires from Western Asia to Russia, Eastern Europe, and even Gaul. It is said she brought forth the ruin of the Western Roman Empire.',
-    summonQuote: 'Servant, Saber. I have answered your summon. I am a weapon. I exist to destroy... Direct me toward the enemy.',
-    battleStartQuote: 'Tear to pieces. Shatter. Trample.',
-    victoryQuote: 'All things that are civilization must be destroyed.',
-    defeatQuote: 'Is this... also bad civilization...?',
+    summonQuote: 'My name is Altera. ...I am the Hun and I am a warrior serving the God of War.',
+    battleStartQuote: 'Past, present, or future. I will destroy, and I will be victorious.',
+    victoryQuote: 'I pity you... No one can defeat me.',
+    defeatQuote: 'Beings exist... That even my blade...cannot destroy...',
     avatarUrl: 'https://static.atlasacademy.io/NA/CharaGraph/101800/101800a@1.png',
     cardArtUrl: 'https://static.atlasacademy.io/NA/CharaGraph/101800/101800b@2.png',
     spriteUrl: 'https://static.atlasacademy.io/NA/CharaFigure/1018000/1018000_merged.png',
