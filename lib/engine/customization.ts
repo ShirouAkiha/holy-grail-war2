@@ -268,7 +268,12 @@ export function feedCraftEssences(
     // If it's a valid original array index, consume that exact index
     if (!isNaN(asNum) && Number.isInteger(asNum) && asNum >= 0 && asNum < originalList.length && !consumedIndices.has(asNum)) {
       const candidate = originalList[asNum];
-      if (candidate.locked) {
+      const isEmber = Boolean(
+        candidate.isEmber || candidate.isExpCard || candidate.isExp ||
+        (candidate.id && String(candidate.id).toLowerCase().includes('ember')) ||
+        (candidate.name && (candidate.name.includes('Wisdom') || candidate.name.includes('Blaze') || candidate.name.includes('Spark') || candidate.name.includes('Ember') || candidate.name.includes('Hellfire')))
+      );
+      if (candidate.locked && !isEmber) {
         throw new Error(`Cannot synthesize locked Craft Essence: "${candidate.name}". Please unlock it first in Inventory or Workshop.`);
       }
       consumedIndices.add(asNum);
@@ -285,7 +290,12 @@ export function feedCraftEssences(
 
     if (matchIdx !== -1) {
       const candidate = originalList[matchIdx];
-      if (candidate.locked) {
+      const isEmber = Boolean(
+        candidate.isEmber || candidate.isExpCard || candidate.isExp ||
+        (candidate.id && String(candidate.id).toLowerCase().includes('ember')) ||
+        (candidate.name && (candidate.name.includes('Wisdom') || candidate.name.includes('Blaze') || candidate.name.includes('Spark') || candidate.name.includes('Ember') || candidate.name.includes('Hellfire')))
+      );
+      if (candidate.locked && !isEmber) {
         throw new Error(`Cannot synthesize locked Craft Essence: "${candidate.name}". Please unlock it first in Inventory or Workshop.`);
       }
       consumedIndices.add(matchIdx);

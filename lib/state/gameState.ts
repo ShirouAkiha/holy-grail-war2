@@ -140,18 +140,25 @@ export function loadMasterProfile(): MasterProfile {
     }
     const parsed: MasterProfile = JSON.parse(raw);
     
-    // Synchronize Craft Essences with definitions, ensure unique instanceId, and auto-lock 5★ / Bond CEs
+    // Synchronize Craft Essences with definitions, ensure unique instanceId, and auto-lock 5★ / Bond CEs (excluding EXP Embers)
     if (parsed.craftEssences && Array.isArray(parsed.craftEssences)) {
       parsed.craftEssences = parsed.craftEssences
         .filter(Boolean)
         .map((ce, idx) => {
           const freshCe = CRAFT_ESSENCE_DATABASE.find(c => c.id === ce.id);
           const base = freshCe ? { ...freshCe, ...ce } : { ...ce };
-          const isFiveStarOrBond = base.rarity === 5 || base.isBondCe;
+          const isEmberCard = Boolean(
+            base.isEmber ||
+            base.isExpCard ||
+            base.isExp ||
+            (base.id && String(base.id).toLowerCase().includes('ember')) ||
+            (base.name && (base.name.includes('Wisdom') || base.name.includes('Blaze') || base.name.includes('Spark') || base.name.includes('Ember') || base.name.includes('Hellfire')))
+          );
+          const isFiveStarOrBond = !isEmberCard && (base.rarity === 5 || base.isBondCe);
           return {
             ...base,
             instanceId: base.instanceId || `ce_inst_${base.id}_${idx}_${Date.now()}`,
-            locked: base.locked !== undefined ? base.locked : isFiveStarOrBond
+            locked: isEmberCard ? false : (base.locked !== undefined ? base.locked : isFiveStarOrBond)
           };
         });
     } else {

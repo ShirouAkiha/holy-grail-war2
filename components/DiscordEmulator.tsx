@@ -6906,9 +6906,18 @@ export default function DiscordEmulator({
 
     let indicesToFeed: number[] = [];
     const q = feedArg.toLowerCase().trim();
+    const isEmberCard = (ce: any) => Boolean(
+      ce && (
+        ce.isEmber || ce.isExpCard || ce.isExp ||
+        (ce.id && String(ce.id).toLowerCase().includes('ember')) ||
+        (ce.name && (ce.name.includes('Wisdom') || ce.name.includes('Blaze') || ce.name.includes('Spark') || ce.name.includes('Ember') || ce.name.includes('Hellfire')))
+      )
+    );
 
-    if (q === '3star' || q === '1-3star' || q === 'low' || q === 'bronze' || q === 'silver') {
-      indicesToFeed = ownedCes.map((ce, idx) => (!ce || ce.locked || (ce.rarity || 3) > 3 || ce.isBondCe ? -1 : idx)).filter(i => i !== -1);
+    if (q === 'ember' || q === 'embers' || q === 'exp') {
+      indicesToFeed = ownedCes.map((ce, idx) => (!ce || (ce.locked && !isEmberCard(ce)) || !isEmberCard(ce) ? -1 : idx)).filter(i => i !== -1);
+    } else if (q === '3star' || q === '1-3star' || q === 'low' || q === 'bronze' || q === 'silver') {
+      indicesToFeed = ownedCes.map((ce, idx) => (!ce || (ce.locked && !isEmberCard(ce)) || ((ce.rarity || 3) > 3 && !isEmberCard(ce)) || ce.isBondCe ? -1 : idx)).filter(i => i !== -1);
     } else if (q === 'dupes' || q === 'duplicates' || q === 'dupe') {
       const nameCounts = new Map<string, number>();
       ownedCes.forEach(c => {
@@ -6916,7 +6925,7 @@ export default function DiscordEmulator({
       });
       const seen = new Set<string>();
       indicesToFeed = ownedCes.map((ce, idx) => {
-        if (!ce || ce.locked || (ce.rarity || 3) >= 5 || ce.isBondCe) return -1; // Strict 5-star & locked protection
+        if (!ce || (ce.locked && !isEmberCard(ce)) || ((ce.rarity || 3) >= 5 && !isEmberCard(ce)) || ce.isBondCe) return -1;
         if ((nameCounts.get(ce.name) || 0) > 1) {
           if (seen.has(ce.name)) {
             return idx;
@@ -6928,15 +6937,15 @@ export default function DiscordEmulator({
         return -1;
       }).filter(i => i !== -1);
     } else if (q === 'all' || q === 'all_low' || q === 'safe_all') {
-      // Strict Safeguard: NEVER feed 5★ SSRs, Bond CEs, or locked CEs!
-      indicesToFeed = ownedCes.map((ce, idx) => (!ce || ce.locked || (ce.rarity || 3) > 3 || ce.isBondCe ? -1 : idx)).filter(i => i !== -1);
+      // Safe Feed All: Feeds all 1-3★ low rarity CEs and ALL EXP Embers! Protects 4-5★ non-Ember SSRs and Bond CEs.
+      indicesToFeed = ownedCes.map((ce, idx) => (!ce || (ce.locked && !isEmberCard(ce)) || ((ce.rarity || 3) > 3 && !isEmberCard(ce)) || ce.isBondCe ? -1 : idx)).filter(i => i !== -1);
     } else {
       const cleanQ = q.replace(/_confirmed$/, '').trim();
       // Find matching CE by name
       const targetIdx = ownedCes.findIndex(ce => ce.name.toLowerCase().includes(cleanQ) || ce.id.toLowerCase() === cleanQ);
       if (targetIdx !== -1) {
         const targetCe = ownedCes[targetIdx];
-        if (targetCe.locked) {
+        if (targetCe.locked && !isEmberCard(targetCe)) {
           addMessage({
             id: getNextId('bot_feed_locked_err'),
             sender: 'bot',
@@ -6950,8 +6959,8 @@ export default function DiscordEmulator({
           return;
         }
 
-        // Extra confirmation safeguard for 5★ SSR or Bond CE if manually fed
-        if ((targetCe.rarity >= 5 || targetCe.isBondCe) && !feedArg.endsWith('_confirmed')) {
+        // Extra confirmation safeguard for non-Ember 5★ SSR or Bond CE if manually fed
+        if ((targetCe.rarity >= 5 || targetCe.isBondCe) && !isEmberCard(targetCe) && !feedArg.endsWith('_confirmed')) {
           addMessage({
             id: getNextId('bot_feed_5star_warn'),
             sender: 'bot',
@@ -7393,9 +7402,10 @@ export default function DiscordEmulator({
       ];
     } else if (category === 'feed') {
       actionButtons = [
+        { id: 'inv_act_feed_embers', label: 'Feed All Embers ✨', style: 'primary', emoji: '✨' },
         { id: 'inv_act_feed_1_3star', label: 'Feed 1-3★ CEs', style: 'success', emoji: '⚡' },
-        { id: 'inv_act_feed_duplicates', label: 'Feed Dupes (Safe)', style: 'primary', emoji: '⚡' },
-        { id: 'inv_act_feed_all', label: 'Feed All 1-3★ CEs', style: 'danger', emoji: '🔥' },
+        { id: 'inv_act_feed_duplicates', label: 'Feed Dupes (Safe)', style: 'secondary', emoji: '🔄' },
+        { id: 'inv_act_feed_all', label: 'Feed All (1-3★ + Embers)', style: 'danger', emoji: '🔥' },
         { id: 'inv_act_lock_all_5star', label: 'Lock All 5★ 🔒', style: 'secondary', emoji: '🛡️' },
         { id: 'inv_act_allocate_stats', label: `Allocate Stats (${activeServant?.availableStatPoints || 0} pts)`, style: 'primary', emoji: '⭐' },
         ...(ownedCes.length === 0 ? [{ id: 'inv_act_claim_practice_ces', label: 'Claim 5 Practice CEs', style: 'secondary' as const, emoji: '🎁' }] : []),
@@ -10028,8 +10038,15 @@ export default function DiscordEmulator({
         postInventoryHub('ces', invPage, curSel.id);
       } else if (btnId === 'inv_act_lock_all_5star') {
         let count = 0;
+        const isEmberCard = (ce: any) => Boolean(
+          ce && (
+            ce.isEmber || ce.isExpCard || ce.isExp ||
+            (ce.id && String(ce.id).toLowerCase().includes('ember')) ||
+            (ce.name && (ce.name.includes('Wisdom') || ce.name.includes('Blaze') || ce.name.includes('Spark') || ce.name.includes('Ember') || ce.name.includes('Hellfire')))
+          )
+        );
         const updatedCes = ownedCes.map(c => {
-          if ((c.rarity === 5 || c.isBondCe) && !c.locked) {
+          if ((c.rarity === 5 || c.isBondCe) && !c.locked && !isEmberCard(c)) {
             count++;
             return { ...c, locked: true };
           }
@@ -10067,6 +10084,8 @@ export default function DiscordEmulator({
         if (targetCe) {
           executeDirectFeed(targetCe.name);
         }
+      } else if (btnId === 'inv_act_feed_embers') {
+        executeDirectFeed('embers');
       } else if (btnId === 'inv_act_feed_1_3star') {
         executeDirectFeed('3star');
       } else if (btnId === 'inv_act_feed_duplicates') {

@@ -102,7 +102,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
   // Craft Essence Feeding & Synthesis State
   const [workshopCeTab, setWorkshopCeTab] = useState<'feed' | 'equip'>('feed');
   const [selectedFeedIndices, setSelectedFeedIndices] = useState<number[]>([]);
-  const [feedFilter, setFeedFilter] = useState<'all' | '1-3' | '4' | '5' | 'dupes' | 'locked'>('all');
+  const [feedFilter, setFeedFilter] = useState<'all' | '1-3' | '4' | '5' | 'embers' | 'dupes' | 'locked'>('all');
   const [confirmFiveStarFeed, setConfirmFiveStarFeed] = useState<boolean>(false);
   const [feedResult, setFeedResult] = useState<{
     message: string;
@@ -227,8 +227,16 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
   const handleLockAllFiveStarCes = () => {
     const owned = (master.craftEssences || []).filter(Boolean);
     let lockedCount = 0;
+    const isEmberCard = (ce: any) => Boolean(
+      ce && (
+        ce.isEmber || ce.isExpCard || ce.isExp ||
+        (ce.id && String(ce.id).toLowerCase().includes('ember')) ||
+        (ce.name && (ce.name.includes('Wisdom') || ce.name.includes('Blaze') || ce.name.includes('Spark') || ce.name.includes('Ember') || ce.name.includes('Hellfire')))
+      )
+    );
+
     const updatedCes = owned.map(c => {
-      if ((c.rarity === 5 || c.isBondCe) && !c.locked) {
+      if ((c.rarity === 5 || c.isBondCe) && !c.locked && !isEmberCard(c)) {
         lockedCount++;
         return { ...c, locked: true };
       }
@@ -246,10 +254,18 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
     setTimeout(() => setFeedResult(null), 4000);
   };
 
+  const isEmberCard = (ce: any) => Boolean(
+    ce && (
+      ce.isEmber || ce.isExpCard || ce.isExp ||
+      (ce.id && String(ce.id).toLowerCase().includes('ember')) ||
+      (ce.name && (ce.name.includes('Wisdom') || ce.name.includes('Blaze') || ce.name.includes('Spark') || ce.name.includes('Ember') || ce.name.includes('Hellfire')))
+    )
+  );
+
   const handleToggleSelectCe = (index: number) => {
     const owned = (master.craftEssences || []).filter(Boolean);
     const target = owned[index];
-    if (target?.locked) {
+    if (target?.locked && !isEmberCard(target)) {
       setFeedError(`"${target.name}" is locked. Click the lock icon to unlock it first if you wish to feed.`);
       setTimeout(() => setFeedError(null), 3000);
       return;
@@ -261,12 +277,21 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
 
   const handleSelectAllCes = () => {
     const owned = (master.craftEssences || []).filter(Boolean);
-    // Strict Safety: ONLY selects unlocked 1-3★ low rarity CEs, NEVER locked or 4-5★
+    // Selects all unlocked 1-3★ low rarity CEs AND ALL EXP Embers!
     const safeIndices = owned
       .map((ce, i) => ({ ce, i }))
-      .filter(({ ce }) => !ce.locked && (ce?.rarity || 3) <= 3 && !ce.isBondCe)
+      .filter(({ ce }) => !ce.locked && (((ce?.rarity || 3) <= 3) || isEmberCard(ce)) && !ce.isBondCe)
       .map(({ i }) => i);
     setSelectedFeedIndices(safeIndices);
+  };
+
+  const handleSelectEmbers = () => {
+    const owned = (master.craftEssences || []).filter(Boolean);
+    const emberIndices = owned
+      .map((ce, i) => ({ ce, i }))
+      .filter(({ ce }) => isEmberCard(ce))
+      .map(({ i }) => i);
+    setSelectedFeedIndices(emberIndices);
   };
 
   const handleSelectLowRarityCes = () => {
@@ -312,10 +337,10 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
       return;
     }
 
-    // Check if any selected CE is 5★ SSR or Bond CE
+    // Check if any selected CE is non-Ember 5★ SSR or Bond CE
     const hasFiveStar = selectedFeedIndices.some(idx => {
       const ce = owned[idx];
-      return ce && (ce.rarity === 5 || ce.isBondCe);
+      return ce && (ce.rarity === 5 || ce.isBondCe) && !isEmberCard(ce);
     });
 
     if (hasFiveStar && !confirmFiveStarFeed) {
@@ -1096,6 +1121,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                 if (feedFilter === '1-3') return (ce.rarity || 3) <= 3 && !ce.isBondCe;
                 if (feedFilter === '4') return ce.rarity === 4 && !ce.isBondCe;
                 if (feedFilter === '5') return ce.rarity === 5 || ce.isBondCe;
+                if (feedFilter === 'embers') return isEmberCard(ce);
                 if (feedFilter === 'locked') return ce.locked;
                 if (feedFilter === 'dupes') return (nameCounts.get(ce.name) || 0) > 1;
                 return true;
@@ -1108,6 +1134,7 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                     <div className="flex items-center gap-1 flex-wrap">
                       {[
                         { id: 'all' as const, label: `All (${ownedCes.length})` },
+                        { id: 'embers' as const, label: `✨ Embers (${ownedCes.filter(isEmberCard).length})` },
                         { id: '1-3' as const, label: '1-3★ Low' },
                         { id: '4' as const, label: '4★ SR' },
                         { id: '5' as const, label: '5★ SSR' },
@@ -1142,6 +1169,13 @@ export default function ServantWorkshop({ master, onUpdateMaster }: ServantWorks
                       Showing: <strong className="text-white">{filteredCesWithIndex.length}</strong> CEs
                     </span>
                     <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        onClick={handleSelectEmbers}
+                        disabled={ownedCes.filter(isEmberCard).length === 0}
+                        className="px-2 py-0.5 rounded-sm bg-[#8b5cf6]/20 hover:bg-[#8b5cf6]/40 text-[#c084fc] text-[10px] uppercase tracking-wider border border-[#8b5cf6]/40 disabled:opacity-30 flex items-center gap-1"
+                      >
+                        ✨ Select All Embers
+                      </button>
                       <button
                         onClick={handleSelectLowRarityCes}
                         disabled={ownedCes.length === 0}

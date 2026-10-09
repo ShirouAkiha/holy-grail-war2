@@ -220,9 +220,21 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     let targetsToFeed: string[] = [];
     const lowQuery = query.toLowerCase();
 
-    if (lowQuery === 'all_3star' || lowQuery === '3star' || lowQuery === '3*') {
+    const isEmberCard = (ce: any) => Boolean(
+      ce && (
+        ce.isEmber || ce.isExpCard || ce.isExp ||
+        (ce.id && String(ce.id).toLowerCase().includes('ember')) ||
+        (ce.name && (ce.name.includes('Wisdom') || ce.name.includes('Blaze') || ce.name.includes('Spark') || ce.name.includes('Ember') || ce.name.includes('Hellfire')))
+      )
+    );
+
+    if (lowQuery === 'embers' || lowQuery === 'ember' || lowQuery === 'exp' || lowQuery === 'exp_embers') {
       targetsToFeed = ownedCes
-        .map((c: any, idx: number) => (c && !c.locked && c.rarity <= 3 && !c.isBondCe ? String(idx) : null))
+        .map((c: any, idx: number) => (c && isEmberCard(c) ? String(idx) : null))
+        .filter(Boolean) as string[];
+    } else if (lowQuery === 'all_3star' || lowQuery === '3star' || lowQuery === '3*') {
+      targetsToFeed = ownedCes
+        .map((c: any, idx: number) => (c && ((c.rarity || 3) <= 3 || isEmberCard(c)) ? String(idx) : null))
         .filter(Boolean) as string[];
     } else if (lowQuery === 'duplicates' || lowQuery === 'dupes') {
       const nameCounts = new Map<string, number>();
@@ -232,7 +244,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       const seen = new Set<string>();
       targetsToFeed = ownedCes
         .map((c: any, idx: number) => {
-          if (!c || c.locked || (c.rarity || 3) >= 5 || c.isBondCe) return null; // Protect 5-stars & locked
+          if (!c || ((c.rarity || 3) >= 5 && !isEmberCard(c)) || c.isBondCe) return null; // Protect non-Ember 5-stars & locked
           if ((nameCounts.get(c.name) || 0) > 1) {
             if (seen.has(c.name)) return String(idx);
             seen.add(c.name);
@@ -241,16 +253,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         })
         .filter(Boolean) as string[];
     } else if (lowQuery === 'all' || lowQuery === 'all_low' || lowQuery === 'safe_all') {
-      // Safe Feed All: NEVER feed 5-star CEs, Bond CEs, or locked CEs!
+      // Safe Feed All: Feeds 1-3★ low rarity CEs and ALL EXP Embers! Protects 4-5★ non-Ember SSRs and Bond CEs.
       targetsToFeed = ownedCes
-        .map((c: any, idx: number) => (c && !c.locked && c.rarity <= 3 && !c.isBondCe ? String(idx) : null))
+        .map((c: any, idx: number) => (c && (!c.locked || isEmberCard(c)) && ((c.rarity || 3) <= 3 || isEmberCard(c)) && !c.isBondCe ? String(idx) : null))
         .filter(Boolean) as string[];
     } else {
       const matchIdx = ownedCes.findIndex(
         (c: any) => c.name?.toLowerCase().includes(lowQuery) || c.id === query
       );
       if (matchIdx !== -1) {
-        if (ownedCes[matchIdx]?.locked) {
+        if (ownedCes[matchIdx]?.locked && !isEmberCard(ownedCes[matchIdx])) {
           await interaction.reply({
             ephemeral: true,
             content: `🔒 **${ownedCes[matchIdx].name}** is locked to prevent accidental synthesis! Unlock it first before feeding.`
