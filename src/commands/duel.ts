@@ -185,6 +185,9 @@ function refreshCombatantHand(combatant: DuelCombatant): ('Buster' | 'Arts' | 'Q
 
   // Draw top 5 cards from the 15-card shoe
   const hand = combatant.drawPile.splice(0, 5);
+  if (combatant.activeBuffs && combatant.activeBuffs.some(b => b.type === 'convert_cards_buster' || b.type === 'command_cards_buster')) {
+    hand.fill('Buster');
+  }
   combatant.currentHand = hand;
   return hand;
 }
@@ -1927,6 +1930,86 @@ function activateCombatantSkill(
     const healAmount = 3000;
     combatant.currentHp = Math.min(combatant.maxHp, combatant.currentHp + healAmount);
     logText = `💍 **${sName}** activated **${skill.name}**! (+50% Arts Performance for 3T, recovered ${healAmount.toLocaleString()} HP!)${quoteLine}`;
+  } else if (skill.id === 'knight_of_utopia_ex' || /knight of utopia/i.test(skill.name)) {
+    // Artoria S1: Knight of Utopia EX
+    // Increases party's and self attack by 30% for 3 turns.
+    // Increases attack of Round Table Knight allies by 20% for 3 turns.
+    // Grants self Buff-On-Attack buff for 3 turns (Charges own NP gauge by 10% per enemy hit when attacking with Buster Cards).
+    const allies = livingAllies && livingAllies.length > 0 ? livingAllies.filter(a => a.currentHp > 0) : [combatant];
+    allies.forEach(ally => {
+      ally.activeBuffs = ally.activeBuffs || [];
+      ally.activeBuffs.push({
+        name: `${skill.name} (Party ATK Up)`,
+        type: 'buff_atk',
+        value: 30,
+        remainingTurns: 3,
+        appliedRound: currentRound,
+        appliedTurnUserId: combatant.userId
+      });
+      const sId = (ally.servant.template?.id || ally.servant.templateId || '').toLowerCase();
+      const sNameLow = (ally.servant.template?.name || '').toLowerCase();
+      const isRoundTable = sId.includes('artoria') || sId.includes('saber') || sId.includes('lancelot') || sId.includes('gawain') || sId.includes('tristan') || sId.includes('bedivere') || sId.includes('mordred') || sId.includes('gareth') || sId.includes('percival') || sNameLow.includes('round table') || sNameLow.includes('artoria') || sNameLow.includes('saber');
+      if (isRoundTable) {
+        ally.activeBuffs.push({
+          name: `${skill.name} (Round Table ATK Up)`,
+          type: 'buff_atk',
+          value: 20,
+          remainingTurns: 3,
+          appliedRound: currentRound,
+          appliedTurnUserId: combatant.userId
+        });
+      }
+    });
+    combatant.activeBuffs = combatant.activeBuffs || [];
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Buster NP Charge On Attack)`,
+      type: 'buff_on_attack_buster_np',
+      value: 10,
+      remainingTurns: 3,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    logText = `🛡️ **${sName}** activated **${skill.name}**! (+30% Party ATK, +20% Round Table ATK, +10% NP Gauge on Buster Attack [3T])${quoteLine}`;
+  } else if (skill.id === 'dragon_reactor_core_b' || /dragon reactor core/i.test(skill.name)) {
+    // Artoria S2: Dragon Reactor Core B
+    // Increases own Buster performance by 50% for 1 turn.
+    // Increases own NP damage by 20% for 1 turn.
+    // Changes all own Command Cards' type to Buster for 1 turn.
+    combatant.activeBuffs = combatant.activeBuffs || [];
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Buster Up)`,
+      type: 'buster_up',
+      value: 50,
+      remainingTurns: 1,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (NP DMG Up)`,
+      type: 'np_damage_up',
+      value: 20,
+      remainingTurns: 1,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Command Cards -> Buster)`,
+      type: 'convert_cards_buster',
+      value: 100,
+      remainingTurns: 1,
+      appliedRound: currentRound,
+      appliedTurnUserId: combatant.userId
+    });
+    if (combatant.currentHand) {
+      combatant.currentHand = ['Buster', 'Buster', 'Buster', 'Buster', 'Buster'];
+    }
+    logText = `🐉 **${sName}** activated **${skill.name}**! (+50% Buster, +20% NP DMG, all Command Cards converted to Buster [1T])${quoteLine}`;
+  } else if (skill.id === 'radiant_road_ex' || /radiant road/i.test(skill.name)) {
+    // Artoria S3: Radiant Road EX
+    // Charges own NP gauge by 30% and gains 20 Critical Stars.
+    combatant.npGauge = Math.min(300, combatant.npGauge + 30);
+    combatant.critStars = Math.min(50, combatant.critStars + 20);
+    logText = `✨ **${sName}** activated **${skill.name}**! (+30% NP Gauge, +20 Critical Stars)${quoteLine}`;
   } else if (skill.effectType === 'buff_atk') {
     const val = skill.value || 35;
     const desc = (skill.description || '').toLowerCase();
@@ -3236,6 +3319,9 @@ function resolveStrike(
       let npAmt = 0;
       if (i > 0 && isArtsFirst) {
         npAmt = hitCrit ? 3 : 2;
+      }
+      if (attacker.activeBuffs && attacker.activeBuffs.some(b => b.type === 'buff_on_attack_buster_np' || (b.name && b.name.includes('Knight of Utopia')))) {
+        npAmt += 10;
       }
       if (npAmt > 0) {
         attacker.npGauge = Math.min(300, attacker.npGauge + npAmt);

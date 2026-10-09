@@ -431,6 +431,9 @@ function refreshParticipantHand(combatant: RaidParticipantState): ('Buster' | 'A
     combatant.drawPile = freshShoe;
   }
   combatant.currentHand = combatant.drawPile.splice(0, 5);
+  if (combatant.activeBuffs && combatant.activeBuffs.some(b => b.type === 'convert_cards_buster' || b.type === 'command_cards_buster')) {
+    combatant.currentHand.fill('Buster');
+  }
   return combatant.currentHand;
 }
 
@@ -1053,7 +1056,11 @@ async function runRaidBattle(
         if (card === 'Buster') {
           totalTurnDmg += Math.round(baseAtk * 1.5 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
           starsGenerated += Math.round(3 * critStarBonus);
-          npGained += Math.round(5 * critNpBonus);
+          let bsterNp = Math.round(5 * critNpBonus);
+          if (active.activeBuffs && active.activeBuffs.some(b => b.type === 'buff_on_attack_buster_np' || (b.name && b.name.includes('Knight of Utopia')))) {
+            bsterNp += 10;
+          }
+          npGained += bsterNp;
         } else if (card === 'Arts') {
           totalTurnDmg += Math.round(baseAtk * 1.0 * stepMult * atkBuffMult * specialAtkMult * bossDefFactor * critDmgMult * negaGenesisMult * (0.9 + Math.random() * 0.2));
           const totalAtkMana = (baseStatsAtk.mana || 10) + (allocAtk.mana || 0);
@@ -2039,7 +2046,67 @@ async function runRaidBattle(
           const isGeneralDebuff = sType === 'debuff';
 
           let buffLog = '';
-          if (skillObj?.id === 'eye_of_the_mind_true_ex' || /eye of the mind \(true\) ex/i.test(sName)) {
+          if (skillObj?.id === 'knight_of_utopia_ex' || /knight of utopia/i.test(sName)) {
+            // Artoria S1: Knight of Utopia EX
+            participants.forEach(p => {
+              p.activeBuffs = p.activeBuffs || [];
+              p.activeBuffs.push({
+                name: `${sName} (Party ATK Up)`,
+                type: 'atk_up',
+                value: 30,
+                remainingTurns: 3
+              });
+              const sId = (p.servant.templateId || p.servant.template?.id || '').toLowerCase();
+              const sNameLow = (p.servant.template?.name || '').toLowerCase();
+              const isRoundTable = sId.includes('artoria') || sId.includes('saber') || sId.includes('lancelot') || sId.includes('gawain') || sId.includes('tristan') || sId.includes('bedivere') || sId.includes('mordred') || sId.includes('gareth') || sId.includes('percival') || sNameLow.includes('round table') || sNameLow.includes('artoria') || sNameLow.includes('saber');
+              if (isRoundTable) {
+                p.activeBuffs.push({
+                  name: `${sName} (Round Table ATK Up)`,
+                  type: 'atk_up',
+                  value: 20,
+                  remainingTurns: 3
+                });
+              }
+            });
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: `${sName} (Buster NP Charge On Attack)`,
+              type: 'buff_on_attack_buster_np',
+              value: 10,
+              remainingTurns: 3
+            });
+            buffLog = `(🛡️ +30% Party ATK [3T], 👑 +20% Round Table ATK [3T], 💥 +10% NP Gauge on Buster Attack [3T]!)`;
+          } else if (skillObj?.id === 'dragon_reactor_core_b' || /dragon reactor core/i.test(sName)) {
+            // Artoria S2: Dragon Reactor Core B
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: `${sName} (Buster Up)`,
+              type: 'buster_up',
+              value: 50,
+              remainingTurns: 1
+            });
+            active.activeBuffs.push({
+              name: `${sName} (NP DMG Up)`,
+              type: 'np_damage_up',
+              value: 20,
+              remainingTurns: 1
+            });
+            active.activeBuffs.push({
+              name: `${sName} (Command Cards -> Buster)`,
+              type: 'convert_cards_buster',
+              value: 100,
+              remainingTurns: 1
+            });
+            if (active.currentHand) {
+              active.currentHand = ['Buster', 'Buster', 'Buster', 'Buster', 'Buster'];
+            }
+            buffLog = `(🐉 +50% Buster Performance [1T], ⚡ +20% NP Damage [1T], 🃏 All Cards converted to Buster [1T]!)`;
+          } else if (skillObj?.id === 'radiant_road_ex' || /radiant road/i.test(sName)) {
+            // Artoria S3: Radiant Road EX
+            active.npGauge = Math.min(300, (active.npGauge || 0) + 30);
+            active.critStars = (active.critStars || 0) + 20;
+            buffLog = `(✨ +30% NP Gauge Charge, ★ +20 Critical Stars!)`;
+          } else if (skillObj?.id === 'eye_of_the_mind_true_ex' || /eye of the mind \(true\) ex/i.test(sName)) {
             // Emiya S1: Eye of the Mind (True) EX
             // Grants self Evasion for 1 turn. Increases own attack by 30% for 3 turns. Increases own defense by 30% for 3 turns. Gains 20 critical stars.
             active.activeBuffs = active.activeBuffs || [];

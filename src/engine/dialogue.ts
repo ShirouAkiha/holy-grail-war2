@@ -43,6 +43,11 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "Core warning... Emergency override engaged! I will NOT fall without tea!",
       "Dark Matter reactor meltdown threshold breached! Taking you with me!",
       "My pact with Master isn't over yet... Sweet bean energy, grant me strength!"
+    ],
+    skills: [
+      "Replenishing Dark Matter sugar reserves... Sweet bean energy max!",
+      "Sovereign Unseen Hand engaged! Out of my path!",
+      "Overclocking Dark Knight reactor! Dark Side energy 300%!"
     ]
   },
 
@@ -76,6 +81,11 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "Even if my body falters, the oath to my kingdom and Master shall never break!",
       "Stand tall, Artoria! As long as Excalibur shines, victory is not lost!",
       "Forgive me, Master... My duty... remains unfulfilled..."
+    ],
+    skills: [
+      "Knights of Utopia, assemble! Let our holy light pierce the shadows!",
+      "Ignite, Dragon Reactor! Unleash the furnace of red dragon!",
+      "The radiance of Avalon reveals our path!"
     ]
   },
 
@@ -109,6 +119,11 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "How dare an insect push the King of Heroes this far?! Pay with your life!",
       "Insolence beyond measure! The Vault of Babylon opens its deepest armaments!",
       "You think you have cornered me?! Know your place, worm!"
+    ],
+    skills: [
+      "All treasures under heaven belong to me!",
+      "Wealth and glory naturally flow to the King!",
+      "Rejoice, mongrel! Open, Gate of Babylon!"
     ]
   },
 
@@ -240,6 +255,11 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "Battle Continuation isn't just for show! Come on, I'm just getting warmed up!",
       "Heh... You really think a mortal blow will keep the Hound down?!",
       "I promised my Master a victory, and I don't break promises!"
+    ],
+    skills: [
+      "Runes of protection! Projectiles won't touch the Hound of Ulster!",
+      "Heh! A Hound of Culann doesn't die that easily!",
+      "Tactical repositioning! Watch your back!"
     ]
   },
 
@@ -361,6 +381,11 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "You think this hurts?! My hatred is an infinite inferno! BURN!",
       "I died in flames once... Do you really think mortal wounds can stop me?!",
       "I refuse to lose! Not to this scum, and not before my Master!"
+    ],
+    skills: [
+      "Invert my spirit origin... Burn it all to ash!",
+      "Hear me, dragons of calamity! Obey the Dragon Witch!",
+      "A fleeting dream... Consume everything in dragon flames!"
     ]
   },
 
@@ -427,6 +452,11 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "The final act has just begun! The spotlight never dims on the Emperor!",
       "Imperial Privilege EX! Even death itself must wait for the curtain call!",
       "I shall not fall while my beloved Master's eyes are upon me! UMU!"
+    ],
+    skills: [
+      "Umu! A minor headache cannot dim my artistic brilliance!",
+      "Imperial Privilege EX! The entire world is a stage for Roma!",
+      "The sun sets three times before Nero falls! Umu!"
     ]
   },
 
@@ -460,6 +490,11 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "A hero is judged by his conduct in extremity. Witness the end.",
       "Even stripped of my armor, the pride of Surya burns undiminished.",
       "I gave my word to Master. I will not fail that promise."
+    ],
+    skills: [
+      "Your true nature is transparent to me. Flaws revealed.",
+      "Uncrowned Arms Mastership... Peerless spear techniques of the Sun.",
+      "Surging flames of Surya! Burn with divine solar heat!"
     ]
   },
 
@@ -493,6 +528,11 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "■■■■■■■■■■■■■■■■! (God Hand awakens... unyielding resurrecting fury!)",
       "ROOOOOOAAAARRRR! (Refuses death through legendary Twelve Labors endurance!)",
       "■■■■■■■■■■! (The Great Hero of Greece will never fall on his knees!)"
+    ],
+    skills: [
+      "■■■■■■■■ーーーーーーッッッ！！！ (Roar of Unyielding Valor!)",
+      "━━━━━━━ッッッ！！！ (Battle instincts sharpen through intuition!)",
+      "■■■■■■■■■■■■ッッッ！！！ (The 12 Labors grant unyielding life!)"
     ]
   },
 
@@ -559,6 +599,11 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "⟨ Vrak! Voth zul Vael'drom Kor Lyozes! ⟩ No! I am bound for eternity to planet Lyozes—I cannot be erased!",
       "⟨ Zar Rok Aeth'ra! ⟩ Breath of pure power! The corruption of this world will NOT claim the Envoy!",
       "⟨ Krag Zol, Ghul Voth zul Throk! ⟩ Earth broken, but I am absolute! The Black Glass shall remember..."
+    ],
+    skills: [
+      "Dragon Envoy protocol active... Pruning timelines that stray from harmony!",
+      "Hehe... You look so crushable! Receive dragon-tier affection!",
+      "Across all dragon realms, my origin remains absolute and immutable!"
     ]
   },
 
@@ -592,6 +637,47 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "Ugh... circuits overheating... but I haven't even deployed the core fifth yet!",
       "Alice is going to lecture me forever if I lose here! Ignition, damn it!",
       "Master, hang on! Even if I have to burn through tomorrow's time, I won't lose!"
+    ],
+    skills: [
+      "Fifth Magic ignition... Crimson hair ablaze! Overdrive engaged!",
+      "Circuit acceleration 500%! Magic bullet density reaching critical!",
+      "Channeling raw destruction... Magic Blast Stream, FIRE!"
+    ]
+  },
+  artoria_pendragon_alter: {
+    buster: [
+      "Dark Mana Burst... Grind them to dust.",
+      "Vanquish them. The Dark King commands it.",
+      "Morgan's shadow... Fall before my blade.",
+      "Insolent fools. Know your place."
+    ],
+    arts: [
+      "Cold prana circulating through the blackened sword.",
+      "Focusing the dark dragon core. No hesitation.",
+      "The dragon of Fuyuki awakens.",
+      "Silence your prayers. They will not reach the heavens."
+    ],
+    quick: [
+      "Dark wind of Camelot, slash!",
+      "Swift execution. No mercy granted.",
+      "A flash of black lightning!",
+      "Critical surge of corrupt prana!"
+    ],
+    mixed: [
+      "Master, give the command. I shall crush them.",
+      "Do not stand in my way. Watch the front line crumble.",
+      "My blade serves your will... for now.",
+      "Advancing without mercy."
+    ],
+    desperation: [
+      "A scratch on my armor... You will pay tenfold for this!",
+      "The dragon core burns red! Fall before the Dark King!",
+      "Forgive me, Master... My duty is incomplete..."
+    ],
+    skills: [
+      "Dark Mana Burst... Grind them into dust.",
+      "Obey or perish. Follow the Dark King.",
+      "Cold wind of Fuyuki... Your fate is sealed."
     ]
   },
 
@@ -1042,6 +1128,9 @@ export function getServantProfile(servantName?: string): ServantDialogueProfile 
 
   if (n.includes('alter') && (n.includes('heroine') || n.includes('mhx') || n.includes('ecchan'))) {
     return SERVANT_COMBAT_DIALOGUES.mhx_alter;
+  }
+  if ((n.includes('artoria') || n.includes('altria') || n.includes('saber')) && (n.includes('alter') || n.includes('salter'))) {
+    return SERVANT_COMBAT_DIALOGUES.artoria_pendragon_alter;
   }
   if (n.includes('artoria') || n.includes('arthur') || n.includes('saber')) {
     return SERVANT_COMBAT_DIALOGUES.artoria;

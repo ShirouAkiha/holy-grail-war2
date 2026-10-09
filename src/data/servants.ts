@@ -403,34 +403,37 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     commandDeck: ['Buster', 'Buster', 'Arts', 'Arts', 'Quick'],
     skills: [
       {
-        id: 'mana_burst_a',
-        name: 'Mana Burst A',
+        id: 'knight_of_utopia_ex',
+        name: 'Knight of Utopia EX',
         cooldown: 5,
-        description: 'Increases own Buster Card effectiveness by 25% for 1 turn.',
+        description: "Increases party's and self attack by 30% for 3 turns. Increases the attack of Round Table Knight allies by 20% for 3 turns. Grants self Buff-On-Attack buff for 3 turns (Charges own NP gauge by 10% per enemy hit when attacking with Buster Cards).",
         effectType: 'buff_atk',
-        value: 25,
-        duration: 1,
-        icon: '⚔️'
-      },
-      {
-        id: 'charisma_b',
-        name: 'Charisma B',
-        cooldown: 5,
-        description: 'Increases party attack power by 15% for 3 turns.',
-        effectType: 'buff_atk',
-        value: 15,
+        value: 30,
         duration: 3,
-        icon: '👑'
+        icon: '🛡️',
+        quotes: ["Knights of Utopia, assemble! Let our holy light pierce the shadows!"]
       },
       {
-        id: 'radiant_path',
-        name: 'Radiant Path EX',
-        cooldown: 6,
-        description: 'Charges own NP gauge by 20% and gains 12 Critical Stars.',
-        effectType: 'np_charge',
-        value: 20,
+        id: 'dragon_reactor_core_b',
+        name: 'Dragon Reactor Core B',
+        cooldown: 5,
+        description: "Increases own Buster performance by 50% for 1 turn. Increases own NP damage by 20% for 1 turn. Changes all own Command Cards' type to Buster for 1 turn.",
+        effectType: 'buster_up',
+        value: 50,
         duration: 1,
-        icon: '✨'
+        icon: '🐉',
+        quotes: ["Ignite, Dragon Reactor! Unleash the furnace of red dragon!"]
+      },
+      {
+        id: 'radiant_road_ex',
+        name: 'Radiant Road EX',
+        cooldown: 5,
+        description: 'Charges own NP gauge by 30% and gains 20 Critical Stars.',
+        effectType: 'np_charge',
+        value: 30,
+        duration: 1,
+        icon: '✨',
+        quotes: ["The radiance of Avalon reveals our path!"]
       }
     ],
     passives: [
@@ -453,10 +456,10 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
       name: 'Excalibur: Sword of Promised Victory',
       cardType: 'Buster',
       chant: 'Gathered breath of the planet, torrential stream of shining life... Take this! EX---CALIBUR!',
-      description: 'Deals devastating holy burst damage to all foes and recharges 20% NP gauge.',
+      description: 'Deals devastating holy burst damage to all foes and recharges 20% NP gauge. Gains critical stars.',
       target: 'aoe',
-      multiplier: 380,
-      overchargeEffect: 'NP gauge refund +20%'
+      multiplier: 700,
+      overchargeEffect: 'NP gauge refund +50%'
     },
     lore: 'The legendary King of Britain who pulled the sword of selection Caliburn from the stone. Bearer of the Holy Sword Excalibur.',
     summonQuote: 'Servant Saber. I have answered your summons. I ask of you, are you my Master?',
@@ -486,7 +489,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'np_charge',
         value: 15,
         duration: 2,
-        icon: '💎'
+        icon: '💎',
+        quotes: ["All treasures under heaven belong to me!"]
       },
       {
         id: 'golden_rule_a',
@@ -496,7 +500,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'np_charge',
         value: 10,
         duration: 2,
-        icon: '🪙'
+        icon: '🪙',
+        quotes: ["Wealth and glory naturally flow to the King!"]
       },
       {
         id: 'treasury_of_babylon',
@@ -506,7 +511,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'crit_stars',
         value: 8,
         duration: 2,
-        icon: '🗝️'
+        icon: '🗝️',
+        quotes: ["Rejoice, mongrel! Open, Gate of Babylon!"]
       }
     ],
     passives: [
@@ -719,7 +725,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'buff_atk',
         value: 35,
         duration: 3,
-        icon: '⚡'
+        icon: '⚡',
+        quotes: ["Invert my spirit origin... Burn it all to ash!"]
       },
       {
         id: 'dragon_witch_ex',
@@ -729,7 +736,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'buff_atk',
         value: 20,
         duration: 3,
-        icon: '🐉'
+        icon: '🐉',
+        quotes: ["Hear me, dragons of calamity! Obey the Dragon Witch!"]
       },
       {
         id: 'ephemeral_dream_a',
@@ -739,7 +747,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'invincible',
         value: 40,
         duration: 1,
-        icon: '🦋'
+        icon: '🦋',
+        quotes: ["A fleeting dream... Consume everything in dragon flames!"]
       }
     ],
     passives: [
@@ -795,7 +804,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'heal',
         value: 3000,
         duration: 3,
-        icon: '🍡'
+        icon: '🍡',
+        quotes: ["Replenishing Dark Matter sugar reserves... Sweet bean energy max!"]
       },
       {
         id: 'sovereign_hand_c',
@@ -805,7 +815,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'crit_stars',
         value: 15,
         duration: 3,
-        icon: '🌌'
+        icon: '🌌',
+        quotes: ["Sovereign Unseen Hand engaged! Out of my path!"]
       },
       {
         id: 'altro_reactor_a',
@@ -815,7 +826,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'buff_atk',
         value: 25,
         duration: 3,
-        icon: '⚡'
+        icon: '⚡',
+        quotes: ["Overclocking Dark Knight reactor! Dark Side energy 300%!"]
       }
     ],
     passives: [
@@ -872,7 +884,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'buff_atk',
         value: 25,
         duration: 1,
-        icon: '🔥'
+        icon: '🔥',
+        quotes: ["Dark Mana Burst... Grind them into dust."]
       },
       {
         id: 'charisma_e',
@@ -882,7 +895,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'buff_atk',
         value: 12,
         duration: 3,
-        icon: '👑'
+        icon: '👑',
+        quotes: ["Obey or perish. Follow the Dark King."]
       },
       {
         id: 'defender_of_fuyuki_a',
@@ -892,7 +906,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'np_charge',
         value: 20,
         duration: 1,
-        icon: '🖤'
+        icon: '🖤',
+        quotes: ["Cold wind of Fuyuki... Your fate is sealed."]
       }
     ],
     passives: [
@@ -941,7 +956,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'np_charge',
         value: 20,
         duration: 1,
-        icon: '🌸'
+        icon: '🌸',
+        quotes: ["Umu! A minor headache cannot dim my artistic brilliance!"]
       },
       {
         id: 'imperial_privilege_ex',
@@ -951,7 +967,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'heal',
         value: 4200,
         duration: 3,
-        icon: '👑'
+        icon: '👑',
+        quotes: ["Imperial Privilege EX! The entire world is a stage for Roma!"]
       },
       {
         id: 'thrice_setting_sun_a',
@@ -961,7 +978,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'guts',
         value: 3000,
         duration: 5,
-        icon: '🌹'
+        icon: '🌹',
+        quotes: ["The sun sets three times before Nero falls! Umu!"]
       }
     ],
     passives: [
@@ -1098,7 +1116,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'buff_atk',
         value: 20,
         duration: 3,
-        icon: '🦁'
+        icon: '🦁',
+        quotes: ["■■■■■■■■ーーーーーーッッッ！！！ (Roar of Unyielding Valor!)"]
       },
       {
         id: 'minds_eye_fake',
@@ -1108,7 +1127,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'evade',
         value: 100,
         duration: 1,
-        icon: '👁️'
+        icon: '👁️',
+        quotes: ["━━━━━━━ッッッ！！！ (Battle instincts sharpen through intuition!)"]
       },
       {
         id: 'indomitable_a',
@@ -1118,7 +1138,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'guts',
         value: 2500,
         duration: 5,
-        icon: '🩸'
+        icon: '🩸',
+        quotes: ["■■■■■■■■■■■■ッッッ！！！ (The 12 Labors grant unyielding life!)"]
       }
     ],
     passives: [
@@ -1174,7 +1195,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'evade',
         value: 100,
         duration: 2,
-        icon: '🛡️'
+        icon: '🛡️',
+        quotes: ["Runes of protection! Projectiles won't touch the Hound of Ulster!"]
       },
       {
         id: 'battle_continuation_b',
@@ -1184,7 +1206,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'guts',
         value: 2000,
         duration: 5,
-        icon: '🩸'
+        icon: '🩸',
+        quotes: ["Heh! A Hound of Culann doesn't die that easily!"]
       },
       {
         id: 'disengage_c',
@@ -1194,7 +1217,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'heal',
         value: 2500,
         duration: 1,
-        icon: '💨'
+        icon: '💨',
+        quotes: ["Tactical repositioning! Watch your back!"]
       }
     ],
     passives: [
@@ -1250,7 +1274,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'debuff',
         value: 20,
         duration: 1,
-        icon: '👁️'
+        icon: '👁️',
+        quotes: ["Your true nature is transparent to me. Flaws revealed."]
       },
       {
         id: 'uncrowned_arms_mastership',
@@ -1260,7 +1285,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'np_charge',
         value: 25,
         duration: 3,
-        icon: '🏹'
+        icon: '🏹',
+        quotes: ["Uncrowned Arms Mastership... Peerless spear techniques of the Sun."]
       },
       {
         id: 'mana_burst_flame_a',
@@ -1270,7 +1296,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'buff_atk',
         value: 30,
         duration: 1,
-        icon: '🔥'
+        icon: '🔥',
+        quotes: ["Surging flames of Surya! Burn with divine solar heat!"]
       }
     ],
     passives: [
@@ -1333,7 +1360,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'buff_atk',
         value: 30,
         duration: 3,
-        icon: '⚔️'
+        icon: '⚔️',
+        quotes: ["Dragon Envoy protocol active... Pruning timelines that stray from harmony!"]
       },
       {
         id: 'cute_aggression_lethal',
@@ -1343,7 +1371,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'crit_stars',
         value: 20,
         duration: 1,
-        icon: '🐾'
+        icon: '🐾',
+        quotes: ["Hehe... You look so crushable! Receive dragon-tier affection!"]
       },
       {
         id: 'absolute_permanence',
@@ -1353,7 +1382,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'guts',
         value: 4000,
         duration: 5,
-        icon: '🪐'
+        icon: '🪐',
+        quotes: ["Across all dragon realms, my origin remains absolute and immutable!"]
       }
     ],
     passives: [
@@ -1419,7 +1449,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         duration: 3,
         icon: '🔴',
         transformationAvatarUrl: 'https://ella.janitorai.com/media-approved/zUtP5PQLU7fMKVyin9H-f.webp',
-        transformationGifUrl: 'https://ella.janitorai.com/media-approved/gR8x0bMk-pHc95lo5mhAL.gif'
+        transformationGifUrl: 'https://ella.janitorai.com/media-approved/gR8x0bMk-pHc95lo5mhAL.gif',
+        quotes: ["Fifth Magic ignition... Crimson hair ablaze! Overdrive engaged!"]
       },
       {
         id: 'magic_circuit_acceleration',
@@ -1429,7 +1460,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'np_charge',
         value: 30,
         duration: 3,
-        icon: '⚡'
+        icon: '⚡',
+        quotes: ["Circuit acceleration 500%! Magic bullet density reaching critical!"]
       },
       {
         id: 'magic_bullet_blast_stream',
@@ -1439,7 +1471,8 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         effectType: 'heal',
         value: 2500,
         duration: 3,
-        icon: '💥'
+        icon: '💥',
+        quotes: ["Channeling raw destruction... Magic Blast Stream, FIRE!"]
       }
     ],
     passives: [
