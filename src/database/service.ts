@@ -19,7 +19,6 @@ const CUSTOM_CES_FILE = path.join(DATA_DIR, 'custom_ces.json');
 const GACHA_BANNER_FILE = path.join(DATA_DIR, 'gacha_banner.json');
 const NP_ANIMS_FILE = path.join(DATA_DIR, 'servant_np_anims.json');
 const DUEL_SETTINGS_FILE = path.join(DATA_DIR, 'duel_settings.json');
-const SPRITE_CONFIGS_FILE = path.join(DATA_DIR, 'servant_sprite_configs.json');
 
 // Interface for custom Noble Phantasm animation configurations
 export interface ServantNpAnimConfig {
@@ -28,20 +27,6 @@ export interface ServantNpAnimConfig {
   gifUrl: string;
   chant?: string;
   updatedAt: number;
-  customBy?: string;
-}
-
-export interface ServantSpriteConfig {
-  servantId: string;
-  servantName: string;
-  vnScale?: number;        // Visual Novel UI Scale Factor (e.g. 0.85, 1.0, 1.25)
-  vnOffsetY?: number;      // Visual Novel UI Vertical Offset in px (e.g. -20, 0, +15)
-  vnOffsetX?: number;      // Visual Novel UI Horizontal Offset in px
-  duelScale?: number;      // Duel Combat Slot Scale Factor (e.g. 0.94, 1.15)
-  duelOffsetY?: number;    // Duel Combat Slot Vertical Offset in px
-  raidHeight?: number;     // Raid Battlefield Sprite Height in px (e.g. 310, 370)
-  raidOffsetY?: number;    // Raid Battlefield Vertical Offset in px
-  updatedAt?: number;
   customBy?: string;
 }
 
@@ -64,9 +49,6 @@ let currentGachaBanner: GachaBanner = { ...CE_GACHA_BANNERS[0] };
 
 // Store for custom Servant Noble Phantasm animations (mapped by servant ID and lowercase name)
 const customNpAnims: Map<string, ServantNpAnimConfig> = new Map();
-
-// Store for custom Servant sprite size/position configurations
-const customSpriteConfigs: Map<string, ServantSpriteConfig> = new Map();
 
 // Duel Noble Phantasm settings (stay active until next turn, with 60s AFK timeout default)
 let duelNpSettings: DuelNpSettings = {
@@ -276,24 +258,6 @@ function loadFromDisk() {
         autoDelete: savedSettings.autoDelete !== false,
         afkTimeoutSeconds: Math.max(15, Number(savedSettings.afkTimeoutSeconds) || 60)
       };
-    }
-
-    // 6. Load Custom Servant Sprite Configurations
-    const savedSpriteConfigs = readJsonWithBackupFallback<ServantSpriteConfig[]>(
-      SPRITE_CONFIGS_FILE,
-      'servant_sprite_configs',
-      []
-    );
-    if (Array.isArray(savedSpriteConfigs)) {
-      for (const cfg of savedSpriteConfigs) {
-        if (cfg && (cfg.servantId || cfg.servantName)) {
-          const keyId = cfg.servantId || cfg.servantName.toLowerCase();
-          customSpriteConfigs.set(keyId, cfg);
-          if (cfg.servantName) {
-            customSpriteConfigs.set(cfg.servantName.toLowerCase(), cfg);
-          }
-        }
-      }
     }
 
     // 6. Load Master Profiles (with auto-recovery)
@@ -700,19 +664,6 @@ function saveDuelSettingsToDisk() {
     writeJsonAtomic(DUEL_SETTINGS_FILE, duelNpSettings, 'duel_settings');
   } catch (err) {
     console.error('[Database] Failed to write duel_settings.json to disk:', err);
-  }
-}
-
-function saveSpriteConfigsToDisk() {
-  try {
-    ensureDataDirectory();
-    const unique = new Map<string, ServantSpriteConfig>();
-    for (const cfg of customSpriteConfigs.values()) {
-      unique.set(cfg.servantId || cfg.servantName, cfg);
-    }
-    writeJsonAtomic(SPRITE_CONFIGS_FILE, Array.from(unique.values()), 'servant_sprite_configs');
-  } catch (err) {
-    console.error('[Database] Failed to write servant_sprite_configs.json to disk:', err);
   }
 }
 
@@ -1346,79 +1297,6 @@ export function getAllCustomNpAnimations(): ServantNpAnimConfig[] {
  */
 export function getDuelNpSettings(): DuelNpSettings {
   return { ...duelNpSettings };
-}
-
-/**
- * Gets custom sprite size/position configuration for a servant.
- */
-export function getServantSpriteConfig(queryOrId: string): ServantSpriteConfig | undefined {
-  if (!queryOrId) return undefined;
-  const q = queryOrId.trim().toLowerCase();
-  return customSpriteConfigs.get(queryOrId) || customSpriteConfigs.get(q) || Array.from(customSpriteConfigs.values()).find(c =>
-    c.servantId.toLowerCase() === q ||
-    c.servantName.toLowerCase() === q ||
-    c.servantName.toLowerCase().includes(q)
-  );
-}
-
-/**
- * Saves or updates custom sprite size/position configuration for a servant.
- */
-export function setServantSpriteConfig(config: Partial<ServantSpriteConfig> & { servantName: string }): ServantSpriteConfig {
-  const servantName = config.servantName.trim();
-  const template = findServantInPool(servantName);
-  const servantId = template?.id || config.servantId || servantName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-
-  const existing = getServantSpriteConfig(servantId) || {
-    servantId,
-    servantName: template?.name || servantName
-  };
-
-  const updated: ServantSpriteConfig = {
-    ...existing,
-    servantId,
-    servantName: template?.name || servantName,
-    vnScale: config.vnScale !== undefined && !isNaN(config.vnScale) ? config.vnScale : existing.vnScale,
-    vnOffsetY: config.vnOffsetY !== undefined && !isNaN(config.vnOffsetY) ? config.vnOffsetY : existing.vnOffsetY,
-    vnOffsetX: config.vnOffsetX !== undefined && !isNaN(config.vnOffsetX) ? config.vnOffsetX : existing.vnOffsetX,
-    duelScale: config.duelScale !== undefined && !isNaN(config.duelScale) ? config.duelScale : existing.duelScale,
-    duelOffsetY: config.duelOffsetY !== undefined && !isNaN(config.duelOffsetY) ? config.duelOffsetY : existing.duelOffsetY,
-    raidHeight: config.raidHeight !== undefined && !isNaN(config.raidHeight) ? config.raidHeight : existing.raidHeight,
-    raidOffsetY: config.raidOffsetY !== undefined && !isNaN(config.raidOffsetY) ? config.raidOffsetY : existing.raidOffsetY,
-    updatedAt: Date.now(),
-    customBy: config.customBy || existing.customBy
-  };
-
-  customSpriteConfigs.set(servantId, updated);
-  customSpriteConfigs.set(servantName.toLowerCase(), updated);
-  if (template?.id) customSpriteConfigs.set(template.id.toLowerCase(), updated);
-
-  saveSpriteConfigsToDisk();
-  return updated;
-}
-
-/**
- * Returns all custom registered servant sprite configs.
- */
-export function getAllServantSpriteConfigs(): ServantSpriteConfig[] {
-  const unique = new Map<string, ServantSpriteConfig>();
-  for (const item of customSpriteConfigs.values()) {
-    unique.set(item.servantId, item);
-  }
-  return Array.from(unique.values());
-}
-
-/**
- * Removes custom sprite config for a servant.
- */
-export function removeServantSpriteConfig(servantIdOrName: string): boolean {
-  const existing = getServantSpriteConfig(servantIdOrName);
-  if (!existing) return false;
-
-  customSpriteConfigs.delete(existing.servantId);
-  customSpriteConfigs.delete(existing.servantName.toLowerCase());
-  saveSpriteConfigsToDisk();
-  return true;
 }
 
 /**

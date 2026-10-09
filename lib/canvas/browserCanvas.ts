@@ -11,7 +11,6 @@ import { SERVANT_DATABASE, getServantAvatarAndCardArt } from '../data/servants';
 import { calculateCombatantBuffSummary } from '@/src/utils/combatBuffHelper';
 import { STATUS_ICON_URLS, getStatusIconUrl } from '@/src/data/statusIcons';
 import { CLASS_ICON_URLS, getClassIconUrl } from '@/src/data/classIcons';
-import { getServantSpriteConfig } from '@/src/database/service';
 
 // Helper to draw a 5-pointed vector star
 function drawVectorStar(
@@ -1569,15 +1568,11 @@ function checkAtlasSprite(img: any): boolean {
     ctx.save();
     const isMerged = checkAtlasSprite(portraitImg);
     if (!isMerged) {
-      // Custom OC artwork: scale gently so it fills frame properly (supports admin custom sprite configs)
-      const cfg = getServantSpriteConfig(servantName || '');
-      const isAdiosa = (servantName || '').toLowerCase().includes('adiosa') || (servantName || '').toLowerCase().includes('typhon');
-      const scale = (cfg?.duelScale && cfg.duelScale > 0) ? cfg.duelScale : (isAdiosa ? 1.18 : 0.94);
-      const cW = Math.round(sprW * scale);
-      const cH = Math.round(sprH * scale);
+      // Custom OC artwork: scale gently (~94% scale) so it fills frame properly
+      const cW = Math.round(sprW * 0.94);
+      const cH = Math.round(sprH * 0.94);
       const cX = sprX + Math.round((sprW - cW) / 2);
-      let cY = sprY + (sprH - cH);
-      if (cfg?.duelOffsetY !== undefined) cY += cfg.duelOffsetY;
+      const cY = sprY + (sprH - cH);
       drawImageCover(ctx, portraitImg, cX, cY, cW, cH);
     } else {
       drawImageCover(ctx, portraitImg, sprX, sprY, sprW, sprH);
@@ -1677,15 +1672,11 @@ function drawHoveringDefender(
     ctx.save();
     const isMerged = checkAtlasSprite(defenderImg);
     if (!isMerged) {
-      // Custom OC artwork: scale gently so it fills frame properly (supports admin custom sprite configs)
-      const cfg = getServantSpriteConfig(defenderName || '');
-      const isAdiosa = (defenderName || '').toLowerCase().includes('adiosa') || (defenderName || '').toLowerCase().includes('typhon');
-      const scale = (cfg?.duelScale && cfg.duelScale > 0) ? cfg.duelScale : (isAdiosa ? 1.18 : 0.94);
-      const cW = Math.round(sprW * scale);
-      const cH = Math.round(sprH * scale);
+      // Custom OC artwork: scale gently (~94% scale) so it fills frame properly
+      const cW = Math.round(sprW * 0.94);
+      const cH = Math.round(sprH * 0.94);
       const cX = sprX + Math.round((sprW - cW) / 2);
-      let cY = sprY + (sprH - cH);
-      if (cfg?.duelOffsetY !== undefined) cY += cfg.duelOffsetY;
+      const cY = sprY + (sprH - cH);
       drawImageCover(ctx, defenderImg, cX, cY, cW, cH);
     } else {
       drawImageCover(ctx, defenderImg, sprX, sprY, sprW, sprH);

@@ -6,7 +6,6 @@ import { getClassIconUrl } from '../data/classIcons';
 import { getStatusIconUrl } from '../data/statusIcons';
 import { resolveAscensionSprite } from '../data/servantAscensions';
 import { drawServantBattleSprite, isAtlasMergedSprite, loadImage } from './renderer';
-import { getServantSpriteConfig } from '../database/service';
 import fs from 'fs';
 import { getCanvasModule } from './canvasLoader';
 
@@ -1094,17 +1093,11 @@ async function renderSingleFrame(state: RaidBattleState, loadedImages: any): Pro
     if (avatar) {
       const isMerged = isAtlasMergedSprite(avatar);
       if (!isMerged) {
-        const servName = p?.servant?.nickname || p?.servant?.template?.name || p?.servant?.template?.id || p?.servant?.id || '';
-        const servNameLower = servName.toLowerCase();
-        const isAdiosa = servNameLower.includes('adiosa') || servNameLower.includes('typhon');
-        const cfg = getServantSpriteConfig(servName);
-
-        // Custom OC artwork: supports admin sprite tuning
-        let customH = (cfg?.raidHeight && cfg.raidHeight > 0) ? cfg.raidHeight : (isAdiosa ? 370 : 310);
-        let customY = (cfg?.raidOffsetY !== undefined) ? (panelTopY + 40 + cfg.raidOffsetY) : (isAdiosa ? (panelTopY + 5) : (panelTopY + 40));
-
+        // Custom OC artwork: scaled gracefully (~310px height)
+        const customH = 310;
+        const customY = panelTopY + 40;
         drawServantBattleSprite(ctx, avatar, slotX, customY, panelW, customH, {
-          fitMode: (cfg?.raidHeight || isAdiosa) ? 'top_contain' : 'contain',
+          fitMode: 'contain',
           isCustomOC: true
         });
       } else {
