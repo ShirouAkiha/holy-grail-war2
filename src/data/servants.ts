@@ -733,66 +733,66 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
         id: 'self_modification_ex',
         name: 'Self-Modification EX',
         cooldown: 5,
-        description: 'Increases self attack by +35% and critical star conversion for 3 turns.',
-        effectType: 'buff_atk',
-        value: 35,
+        description: 'Increases own critical damage by 50% for 3 turns. Increases own critical star gain for 3 turns.',
+        effectType: 'buff_crit_damage',
+        value: 50,
         duration: 3,
         icon: '⚡',
-        quotes: ["Invert my spirit origin... Burn it all to ash!"]
+        quotes: ["Burn to ashes!", "How's that!"]
       },
       {
         id: 'dragon_witch_ex',
         name: 'Dragon Witch EX',
-        cooldown: 6,
-        description: 'Increases attack of all allies by +20% for 3 turns.',
+        cooldown: 5,
+        description: 'Increases party\'s attack by 20% for 3 turns. Increases the attack of Dragon allies by 20% for 3 turns.',
         effectType: 'buff_atk',
         value: 20,
         duration: 3,
         icon: '🐉',
-        quotes: ["Hear me, dragons of calamity! Obey the Dragon Witch!"]
+        quotes: ["Come, my dragon!", "How's that!"]
       },
       {
-        id: 'ephemeral_dream_a',
-        name: 'Ephemeral Dream A',
-        cooldown: 5,
-        description: 'Grants self Invincibility for 1 turn and increases attack by +40% for 1 turn.',
-        effectType: 'invincible',
-        value: 40,
+        id: 'ephemeral_dream_ex',
+        name: 'Ephemeral Dream EX',
+        cooldown: 6,
+        description: 'Increases own Buster performance by 50% for 1 turn. Grants self Invincibility for 1 turn. Charges own NP gauge by 50%. Deals 1000 self-demerit damage.',
+        effectType: 'buff_buster',
+        value: 50,
         duration: 1,
         icon: '🦋',
-        quotes: ["A fleeting dream... Consume everything in dragon flames!"]
+        quotes: ["Ahahahahaha! I'm getting chills!", "How's that!"]
       }
     ],
     passives: [
       {
         name: 'Avenger B',
         type: 'avenger',
-        value: 16,
+        value: 18,
         rank: 'B',
-        description: 'Increases NP gain when taking damage (+16% NP refund on received attacks).'
+        description: 'Increases own NP generation rate when taking attack by 18%. Reduces party\'s debuff resistance by 8% (except self).'
       },
       {
-        name: 'Oblivion Correction A',
-        type: 'oblivion_correction',
-        value: 10,
-        rank: 'A',
-        description: 'Increases Critical Strike Damage by 10%.'
+        name: 'Self-Replenishment (Magic) A+',
+        type: 'self_replenishment',
+        value: 4,
+        rank: 'A+',
+        description: 'Charges own NP gauge by 4% every turn.'
       }
     ],
     noblePhantasm: {
-      name: 'La Grondement Du Haine: Roar, O Rage of Mine',
+      name: 'Le Grondement de la Haine',
       cardType: 'Buster',
-      chant: 'This is the roar of my soul, polished by hate... La Grondement Du Haine!',
-      description: 'Deals devastating single-target Buster damage and inflicts Curse and Buff Block.',
+      chant: 'Roar, O\' Rage of Mine',
+      description: 'Deals devastating single-target Buster damage (1200%), inflicts Buff Block for 1 time, and gains 30 critical stars. Overcharge: Inflicts Curse (2,000 damage/turn) for 5 turns.',
       target: 'single',
-      multiplier: 800,
-      overchargeEffect: 'Apply heavy burn and target defense down for 3 turns'
+      multiplier: 1200,
+      overchargeEffect: 'Inflicts Curse (2,000 damage/turn for 5 turns).'
     },
     lore: 'A replica of Jeanne d\'Arc created by the Holy Grail using the desires and malice of Gilles de Rais. An Avenger who seeks vengeance against the country that burned her at the stake.',
     summonQuote: 'Servant, Avenger. I have answered your summon. ...What\'s with that look? Come on, we have a world to burn.',
-    battleStartQuote: 'Every last one of you... I\'ll burn you to ashes!',
-    victoryQuote: 'A predictable outcome. Now, clean up this mess.',
-    defeatQuote: 'To burn again... is this my only fate...?',
+    battleStartQuote: 'Hehe, HAHAHAHAHA! Now, it\'s time for despair!',
+    victoryQuote: 'Hehehe... HAHAHAHAHA! Pathetic! Burn to ashes like bugs!',
+    defeatQuote: 'No... NO! I don\'t want to burn again! NEVER AGAIN!',
     avatarUrl: 'https://ella.janitorai.com/media-approved/LLgWFfDHOldSBezIlG2bE.webp',
     cardArtUrl: 'https://ella.janitorai.com/media-approved/LLgWFfDHOldSBezIlG2bE.webp',
     spriteUrl: 'https://ella.janitorai.com/media-approved/YMbl6kwoqjKu4rLue9_Gq.webp'

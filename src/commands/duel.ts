@@ -2071,7 +2071,7 @@ function activateCombatantSkill(
     if (skill.id === 'wisdom_dun_scaith' || idLower.includes('prescient_foresight')) {
       combatant.critStars = Math.min(50, combatant.critStars + 15);
     }
-    if (skill.id === 'ephemeral_dream_a' || (descLower.includes('attack') && !descLower.includes('attacks'))) {
+    if (idLower.startsWith('ephemeral_dream') || (descLower.includes('attack') && !descLower.includes('attacks'))) {
       combatant.activeBuffs.push({
         name: `${skill.name} (ATK Up)`,
         type: 'buff_atk',
@@ -2099,7 +2099,7 @@ function activateCombatantSkill(
       combatant.activeBuffs = combatant.activeBuffs.filter(b => !b.type.startsWith('debuff'));
     }
     const bonusLabels: string[] = [];
-    if (idLower === 'ephemeral_dream_a' || (descLower.includes('attack') && !descLower.includes('attacks'))) bonusLabels.push(`+${skill.value || 40}% ATK`);
+    if (idLower.startsWith('ephemeral_dream') || (descLower.includes('attack') && !descLower.includes('attacks'))) bonusLabels.push(`+${skill.value || 40}% ATK`);
     if (idLower === 'kekkai_creation' || descLower.includes('defense') || descLower.includes('increases def')) bonusLabels.push(`+${skill.value || 30}% DEF`);
     if (idLower.includes('prescient_foresight')) bonusLabels.push('1-Time Evade', '+30% Crit DMG');
     if (idLower === 'kekkai_creation' || descLower.includes('cleanse') || descLower.includes('debuff')) bonusLabels.push('Debuffs Cleansed');

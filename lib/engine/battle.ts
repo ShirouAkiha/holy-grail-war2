@@ -2291,7 +2291,7 @@ export function executeBattleTurn(
                 remainingTurns: invDuration
               });
             }
-            if (skill.id === 'ephemeral_dream_a' || (invDesc.includes('attack') && !invDesc.includes('attacks'))) {
+            if (skill.id === 'ephemeral_dream_a' || skill.id === 'ephemeral_dream_ex' || skill.id?.startsWith('ephemeral_dream') || (invDesc.includes('attack') && !invDesc.includes('attacks'))) {
               actor.activeBuffs.push({
                 name: `${skill.name} (ATK Up)`,
                 type: 'buff_atk',

@@ -436,6 +436,66 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
 
   // Jeanne d'Arc (Alter) - Avenger
   jeanne_alter: {
+    commandCard1: [
+      "Yeah.",
+      "Fine.",
+      "I'll chop you to pieces!"
+    ],
+    commandCard2: [
+      "Yeah.",
+      "Fine.",
+      "I'll chop you to pieces!"
+    ],
+    commandCard3: [
+      "Yeah.",
+      "Fine.",
+      "I'll chop you to pieces!"
+    ],
+    npSelect: [
+      "Roar, O' Rage of Mine!",
+      "I'll show you true hell!",
+      "Burn to ashes!"
+    ],
+    extraAttack: [
+      "Die, die, DIE!",
+      "I'll turn you to cinder!",
+      "Out of my sight!"
+    ],
+    noblePhantasm: [
+      "This is the roar of my soul, polished by hate... Le Grondement de la Haine!",
+      "Roar, O' Rage of Mine! Burn them to ashes!"
+    ],
+    skill1: [
+      "Invert my spirit origin... Burn it all to ash!",
+      "I'll make you pay!"
+    ],
+    skill2: [
+      "Hear me, dragons of calamity! Obey the Dragon Witch!",
+      "Burn them all!"
+    ],
+    skill3: [
+      "A fleeting dream... Consume everything in dragon flames!",
+      "Even if it consumes me!"
+    ],
+    damage: [
+      "Kugh!",
+      "That hurt!",
+      "Not bad!"
+    ],
+    heavyDamage: [
+      "Damn it...!",
+      "No... NO!"
+    ],
+    defeat: [
+      "Don't joke around...! I'm... I'm not finished yet...!",
+      "To burn again... is this my fate...?"
+    ],
+    victory: [
+      "Burn to ashes like bugs!",
+      "Learn your lesson and never stand in my way again.",
+      "Pointless. This was just a waste of time.",
+      "Well, I guess it was good stress relief? Heh, heh."
+    ],
     buster: [
       "Turn to ash! Every single ember shall consume your pathetic soul!",
       "Burn! BURN TO CINDERS! There is no salvation for you!",
