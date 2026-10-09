@@ -2106,6 +2106,126 @@ async function runRaidBattle(
             active.npGauge = Math.min(300, (active.npGauge || 0) + 30);
             active.critStars = (active.critStars || 0) + 20;
             buffLog = `(✨ +30% NP Gauge Charge, ★ +20 Critical Stars!)`;
+          } else if (skillObj?.id === 'scourge_of_god_a' || /scourge of god/i.test(sName)) {
+            // Altera S1: Scourge of God A
+            // Increases party's NP damage by 20% for 3 turns. Removes all enemies' Defensive Buffs.
+            battleState.participants.forEach(p => {
+              if (!p.isDead) {
+                p.activeBuffs = p.activeBuffs || [];
+                p.activeBuffs.push({
+                  name: `${sName} (NP DMG Up)`,
+                  type: 'np_damage_up',
+                  value: 20,
+                  remainingTurns: 3
+                });
+              }
+            });
+            battleState.bossBuffs = (battleState.bossBuffs || []).filter(b => 
+              b.type !== 'def_up' && 
+              b.type !== 'damage_cut' && 
+              b.type !== 'evade' && 
+              b.type !== 'invincible' && 
+              b.type !== 'anti_purge_defense' && 
+              b.type !== 'anti_purge'
+            );
+            buffLog = `(⚔️ +20% Party NP Damage [3T] & Cleansed ALL Boss Defensive Buffs!)`;
+          } else if (skillObj?.id === 'perfect_construct_ex' || /perfect construct/i.test(sName)) {
+            // Altera S2: Perfect Construct EX
+            // Charges own NP gauge by 30%, Crit DMG +30% for 3T, Debuff Resist +120% for 3T, Recovers HP by 7,000, Star Drop +300% for 1T
+            active.npGauge = Math.min(300, (active.npGauge || 0) + 30);
+            const maxHp = calculateServantMaxHp(active.servant);
+            active.currentHp = Math.min(maxHp, active.currentHp + 7000);
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: `${sName} (Crit DMG Up)`,
+              type: 'crit_dmg',
+              value: 30,
+              remainingTurns: 3
+            });
+            active.activeBuffs.push({
+              name: `${sName} (Debuff Resist)`,
+              type: 'debuff_resist',
+              value: 120,
+              remainingTurns: 3
+            });
+            active.activeBuffs.push({
+              name: `${sName} (Star Drop Up)`,
+              type: 'star_gain_up',
+              value: 300,
+              remainingTurns: 1
+            });
+            buffLog = `(⚡ +30% NP Gauge, 💖 +7,000 HP, 💥 +30% Crit DMG [3T], 🛡️ +120% Debuff Resist [3T], ★ +300% Star Drop [1T]!)`;
+          } else if (skillObj?.id === 'star_emblem_ex' || /star emblem/i.test(sName)) {
+            // Altera S3: Star Emblem EX
+            // Increases own attack by 30% for 3 turns. Gains 15 critical stars.
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: `${sName} (ATK Up)`,
+              type: 'atk_up',
+              value: 30,
+              remainingTurns: 3
+            });
+            active.critStars = (active.critStars || 0) + 15;
+            buffLog = `(⚔️ +30% ATK for 3T, ★ +15 Critical Stars!)`;
+          } else if (skillObj?.id === 'self_modification_ex' || /self-modification|self modification/i.test(sName)) {
+            // Jeanne Alter S1: Self-Modification EX
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: `${sName} (Crit DMG Up)`,
+              type: 'crit_dmg',
+              value: 50,
+              remainingTurns: 3
+            });
+            active.activeBuffs.push({
+              name: `${sName} (Star Gen Rate Up)`,
+              type: 'star_gain_up',
+              value: 50,
+              remainingTurns: 3
+            });
+            buffLog = `(💥 +50% Crit DMG [3T], ★ +50% Star Gain [3T]!)`;
+          } else if (skillObj?.id === 'dragon_witch_ex' || /dragon witch/i.test(sName)) {
+            // Jeanne Alter S2: Dragon Witch EX
+            battleState.participants.forEach(p => {
+              if (!p.isDead) {
+                p.activeBuffs = p.activeBuffs || [];
+                p.activeBuffs.push({
+                  name: `${sName} (Party ATK Up)`,
+                  type: 'atk_up',
+                  value: 20,
+                  remainingTurns: 3
+                });
+                const sTraits = (p.servant.template as any)?.traits || [];
+                const sNameLow = (p.servant.template?.name || '').toLowerCase();
+                const isDragon = sTraits.includes('Dragon') || /artoria|siegfried|kiyohime|melusine|typhon|dragon/i.test(sNameLow);
+                if (isDragon) {
+                  p.activeBuffs.push({
+                    name: `${sName} (Dragon ATK Up)`,
+                    type: 'atk_up',
+                    value: 20,
+                    remainingTurns: 3
+                  });
+                }
+              }
+            });
+            buffLog = `(🐉 +20% Party ATK [3T] & +20% Dragon Ally ATK [3T]!)`;
+          } else if (skillObj?.id === 'ephemeral_dream_ex' || /ephemeral dream/i.test(sName)) {
+            // Jeanne Alter S3: Ephemeral Dream EX
+            active.activeBuffs = active.activeBuffs || [];
+            active.activeBuffs.push({
+              name: `${sName} (Buster Up)`,
+              type: 'buster_up',
+              value: 50,
+              remainingTurns: 1
+            });
+            active.activeBuffs.push({
+              name: `${sName} (Invincible)`,
+              type: 'invincible',
+              value: 1,
+              remainingTurns: 1
+            });
+            active.npGauge = Math.min(300, (active.npGauge || 0) + 50);
+            active.currentHp = Math.max(1, active.currentHp - 1000);
+            buffLog = `(🔥 +50% Buster [1T], 🛡️ Invincible [1T], ⚡ +50% NP Gauge, 💔 -1,000 HP Demerit!)`;
           } else if (skillObj?.id === 'eye_of_the_mind_true_ex' || /eye of the mind \(true\) ex/i.test(sName)) {
             // Emiya S1: Eye of the Mind (True) EX
             // Grants self Evasion for 1 turn. Increases own attack by 30% for 3 turns. Increases own defense by 30% for 3 turns. Gains 20 critical stars.

@@ -6,6 +6,12 @@
 
 // Known reliable fallbacks for canon servants and assets
 export const CANON_MEDIA_FALLBACKS: Record<string, string> = {
+  'np_altera.gif': 'https://ella.janitorai.com/media-approved/GDJMOW2n8X1ub8K0mVMt3.gif',
+  'GDJMOW2n8X1ub8K0mVMt3.gif': 'https://ella.janitorai.com/media-approved/GDJMOW2n8X1ub8K0mVMt3.gif',
+  'ce_bond_altera.webp': 'https://static.atlasacademy.io/NA/CharaGraph/9300110/9300110a.png',
+  'ce201.webp': 'https://static.atlasacademy.io/NA/CharaGraph/9300110/9300110a.png',
+  'avatar_altera.webp': 'https://static.atlasacademy.io/NA/CharaGraph/101800/101800a@1.png',
+  'sprite_altera.webp': 'https://static.atlasacademy.io/NA/CharaFigure/1018000/1018000_merged.png',
   'np_artoria_pendragon.gif': 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
   'np_artoria_pendragon_alter.gif': 'https://ella.janitorai.com/media-approved/Ym7LYYmkmCu9hVfPEVQo8.gif',
   'Ym7LYYmkmCu9hVfPEVQo8.gif': 'https://ella.janitorai.com/media-approved/Ym7LYYmkmCu9hVfPEVQo8.gif',

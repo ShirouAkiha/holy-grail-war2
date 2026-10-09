@@ -380,6 +380,24 @@ export const BOND_CRAFT_ESSENCES: Record<string, CraftEssence> = {
     bondServantId: 'artoria_pendragon',
     bondServantName: 'Artoria Pendragon'
   },
+  altera: {
+    id: 'ce_bond_altera',
+    name: 'Eternal Solitude',
+    rarity: 4,
+    description: 'Standing upon the desolate wilderness, the King of Combat gazes into the horizon. No companion, no warmth, only the solemn path of destruction that carved a legacy across empires.',
+    bonusAtk: 100,
+    bonusDef: 0,
+    bonusHp: 100,
+    atkBonus: 100,
+    hpBonus: 100,
+    effectText: 'When equipped on Altera: Increases party\'s and self attack by 20% while self is on the field.',
+    passiveType: 'buff_atk',
+    passiveValue: 20,
+    artworkUrl: 'https://static.atlasacademy.io/NA/CharaGraph/9300110/9300110a.png',
+    isBondCe: true,
+    bondServantId: 'altera',
+    bondServantName: 'Altera'
+  },
   heracles_berserker: {
     id: 'ce_bond_heracles_berserker',
     name: 'Castle of Snow',
@@ -785,6 +803,11 @@ export const CE_DEFAULT_ARTWORK = 'https://ella.janitorai.com/media-approved/-fH
  * Strictly maps canonical IDs and aliases to their exact Bond CE.
  */
 const CANONICAL_SERVANT_TO_BOND_KEY: Record<string, string> = {
+  altera: 'altera',
+  attila: 'altera',
+  etzel: 'altera',
+  attila_the_hun: 'altera',
+  saber_altera: 'altera',
   artoria_pendragon: 'artoria_pendragon',
   artoria: 'artoria_pendragon',
   saber_artoria: 'artoria_pendragon',

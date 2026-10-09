@@ -842,6 +842,7 @@ const ALIAS_MAP: Record<string, string[]> = {
   morg_le_fay: ['morgan', 'queen of faerie', 'ruler of camelot', 'morgan le fay'],
   jeanne_d_arc: ['jeanne', 'ruler', 'holy maiden of orleans', 'la pucelle', 'saint jeanne'],
   jeanne_alter: ['jalter', 'avenger jeanne', 'dragon witch', 'jeanne d\'arc (alter)'],
+  altera: ['altera', 'attila', 'attila the hun', 'great king of destruction', 'destroyer of civilization', 'etzel', 'king of combat', 'photon ray', 'saber altera'],
   sasaki_kojirou: ['kojirou', 'fake assassin', 'swallow slayer', 'gatekeeper', 'tsubame gaeshi'],
   hassan_of_cursed_arm: ['cursed arm', 'true assassin', 'zabaniya', 'hassan'],
   king_hassan: ['first hassan', 'grand assassin', 'old man of the mountain'],

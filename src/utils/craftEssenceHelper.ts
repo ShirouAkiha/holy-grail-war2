@@ -44,6 +44,7 @@ export interface CePartyPassiveSummary {
  * Strict canonical alias mapping to ensure Alter, Caster, and base servants never collide.
  */
 const CANONICAL_SERVANT_ALIASES: Record<string, string[]> = {
+  altera: ['altera', 'attila', 'attila the hun', 'great king of destruction', 'destroyer of civilization', 'etzel', 'king of combat', 'saber_altera'],
   artoria_pendragon: ['artoria_pendragon', 'artoria', 'saber_artoria', 'king of knights'],
   artoria_pendragon_alter: ['artoria_pendragon_alter', 'artoria_alter', 'salter', 'saber alter'],
   artoria_caster: ['artoria_caster', 'castoria', 'caster artoria'],
@@ -220,6 +221,8 @@ export function getCePassiveStats(ce: any, servant?: any): CePassiveSummary {
   // --------------------------------------------------------------------------
   if (ceId === 'ce_bond_artoria_pendragon' || ceName.includes('crown of stars') || ceName.includes('star of artoria')) {
     // Note: Party ATK +15% is handled via getCePartyPassiveStats
+  } else if (ceId === 'ce_bond_altera' || ceName.includes('eternal solitude')) {
+    // Note: Party & self ATK +20% is handled via getCePartyPassiveStats
   } else if (ceId === 'ce_bond_heracles_berserker' || ceName.includes('castle of snow')) {
     summary.gutsCount = 3;
     summary.gutsReviveHp = 500;
@@ -336,6 +339,10 @@ export function getCePartyPassiveStats(ce: any, servant?: any): CePartyPassiveSu
   // Artoria: Party ATK +15%
   if (ceId === 'ce_bond_artoria_pendragon' || ceName.includes('crown of stars') || ceName.includes('star of artoria')) {
     partyStats.partyAtkUp += 15;
+  }
+  // Altera: Increases party's and self attack by 20% while self is on the field
+  if (ceId === 'ce_bond_altera' || ceName.includes('eternal solitude')) {
+    partyStats.partyAtkUp += 20;
   }
   // Gilgamesh: Party NP DMG +20%
   if (ceId === 'ce_bond_gilgamesh_archer' || ceName.includes("the king's law") || ceName.includes('bab-ilu')) {

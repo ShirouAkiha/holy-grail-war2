@@ -172,6 +172,102 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
     ]
   },
 
+  // Altera - Saber
+  altera: {
+    commandCard1: [
+      "Understood.",
+      "I will destroy.",
+      "Under the War God's light."
+    ],
+    commandCard2: [
+      "Engaging.",
+      "Tear to pieces.",
+      "My blade is ready."
+    ],
+    commandCard3: [
+      "Trample.",
+      "Shatter.",
+      "Target confirmed."
+    ],
+    npSelect: [
+      "Sword of the War God... awaken.",
+      "Rainbow of destruction, shine.",
+      "I shall sweep away civilization."
+    ],
+    extraAttack: [
+      "Tear to pieces! Shatter! Trample!",
+      "Photon burst!",
+      "Turn to dust!"
+    ],
+    noblePhantasm: [
+      "This is the sword of the God of War... Photon Ray!",
+      "Tear to pieces, shatter, trample... Sword of Mars, Photon Ray!",
+      "Light of the star, cleanse all... Photon Ray!"
+    ],
+    skill1: [
+      "Scourge of God... All defense is meaningless.",
+      "The scourge arrives. Defenses crumble.",
+      "I shall purge their guard."
+    ],
+    skill2: [
+      "Reconstructing spirit origin. Perfect form.",
+      "My body is a weapon. Restoring energy.",
+      "Perfect Construct engaged."
+    ],
+    skill3: [
+      "Crest of the Star, blaze forth!",
+      "The war god's emblem shines.",
+      "Power surges through this weapon."
+    ],
+    damage: [
+      "Ngh...",
+      "A scratch...",
+      "Impact registered."
+    ],
+    heavyDamage: [
+      "Kuh...!",
+      "My spirit core...!"
+    ],
+    defeat: [
+      "Is this... bad civilization...?",
+      "The weapon... has broken...",
+      "Master... forgive me..."
+    ],
+    victory: [
+      "Destruction complete. Bad civilization has been eradicated.",
+      "All obstacles shattered. The battlefield is clear.",
+      "The war god has spoken. Good work, Master."
+    ],
+    buster: [
+      "Tear to pieces!",
+      "Shatter!",
+      "Ruin!"
+    ],
+    arts: [
+      "Pierce through.",
+      "Calculated strike.",
+      "Understood."
+    ],
+    quick: [
+      "Swiftly.",
+      "Slice.",
+      "Cut down."
+    ],
+    mixed: [
+      "Tear to pieces, shatter, trample!",
+      "Continuous destruction protocol engaged."
+    ],
+    desperation: [
+      "Even if this body crumbles, the Sword of Mars will strike!",
+      "I cannot fall here... Bad civilization must be stopped!"
+    ],
+    skills: [
+      "Scourge of God, sweep their defense away!",
+      "Perfect Construct, spirit origin reinforced!",
+      "Star Emblem, unleash the light of destruction!"
+    ]
+  },
+
   // Gilgamesh - Archer
   gilgamesh: {
     buster: [
@@ -452,83 +548,100 @@ export const SERVANT_COMBAT_DIALOGUES: Record<string, ServantDialogueProfile> = 
       "I'll chop you to pieces!"
     ],
     npSelect: [
-      "Roar, O' Rage of Mine!",
-      "I'll show you true hell!",
-      "Burn to ashes!"
+      "Gyahahaha!",
+      "Yeah, I'll show you!",
+      "I won't even leave ashes!"
     ],
     extraAttack: [
-      "Die, die, DIE!",
-      "I'll turn you to cinder!",
-      "Out of my sight!"
+      "Burn, burn, BURN! HAHAHAHAHAHA!",
+      "Die wretchedly!"
     ],
     noblePhantasm: [
-      "This is the roar of my soul, polished by hate... Le Grondement de la Haine!",
-      "Roar, O' Rage of Mine! Burn them to ashes!"
+      "This is a roar of my soul, honed by hatred... \"Le Grondement de la Haine\"! ...Heh, serves you right!",
+      "O Dragon, O Dragon of Calamity! Unleash my resentment with your roar! \"Le Grondement de la Haine\"! Burn to ashes!"
     ],
     skill1: [
-      "Invert my spirit origin... Burn it all to ash!",
-      "I'll make you pay!"
+      "Burn to ashes!",
+      "How's that!"
     ],
     skill2: [
-      "Hear me, dragons of calamity! Obey the Dragon Witch!",
-      "Burn them all!"
+      "Come, my dragon!",
+      "How's that!"
     ],
     skill3: [
-      "A fleeting dream... Consume everything in dragon flames!",
-      "Even if it consumes me!"
+      "Ahahahahaha! I'm getting chills!",
+      "How's that!"
+    ],
+    skills: [
+      "Burn to ashes!",
+      "Come, my dragon!",
+      "Ahahahahaha! I'm getting chills!",
+      "How's that!"
     ],
     damage: [
       "Kugh!",
       "That hurt!",
-      "Not bad!"
+      "Not bad!",
+      "Don't get ahead of yourself over this!"
     ],
     heavyDamage: [
-      "Damn it...!",
-      "No... NO!"
+      "Don't get ahead of yourself over this!",
+      "That hurt!"
     ],
     defeat: [
-      "Don't joke around...! I'm... I'm not finished yet...!",
-      "To burn again... is this my fate...?"
+      "No... NO! I don't want to burn again! NEVER AGAIN!",
+      "Damn it...! To fall in a place like this...!",
+      "Hmph... whatever. It was like a dream from the beginning anyway...",
+      "Don't joke around...! I'm... I'm not finished yet...!"
     ],
     victory: [
-      "Burn to ashes like bugs!",
+      "Hehehe... HAHAHAHAHA! Pathetic! Burn to ashes like bugs!",
       "Learn your lesson and never stand in my way again.",
       "Pointless. This was just a waste of time.",
       "Well, I guess it was good stress relief? Heh, heh."
     ],
+    battleStart: [
+      "Hehe, HAHAHAHAHA! Now, it's time for despair!",
+      "I'll burn every last one of you to death!",
+      "Die a miserable death!",
+      "Heh, heh... Let's start the slaughter!"
+    ],
+    attacks: [
+      "Eat this!",
+      "Too slow!",
+      "Right there!",
+      "I'll kill you!",
+      "Hmph!",
+      "Pierce!"
+    ],
     buster: [
-      "Turn to ash! Every single ember shall consume your pathetic soul!",
-      "Burn! BURN TO CINDERS! There is no salvation for you!",
-      "La Grondement du Haine! Suffer the agony of my black flames!",
-      "Pulverize them! Trample their hopes beneath our boots!"
+      "Eat this!",
+      "I'll kill you!",
+      "Burn to ashes!",
+      "Die a miserable death!",
+      "I'll burn every last one of you to death!"
     ],
     arts: [
-      "Curse the heavens, curse the earth... Dark fire burns brightest in despair.",
-      "Gathering the black flames... The hatred in my chest never cools.",
-      "Ponder your sins while my dark flames lick your skin.",
-      "Vengeance requires cold calculation before the grand inferno."
+      "Right there!",
+      "Hmph!",
+      "Yeah.",
+      "Fine."
     ],
     quick: [
-      "Too slow! Laughable! I'll carve you up before you even scream!",
-      "Flickering cursed flames! You cannot escape my retribution!",
-      "Dancing through the ash! Every strike leaves a searing brand!",
-      "Critical Star massacre! Let's hear your desperate cries!"
+      "Too slow!",
+      "Pierce!",
+      "I'll chop you to pieces!"
     ],
     mixed: [
-      "Hmph! Don't get in my way, Master, or I might burn you by accident!",
-      "More fodder for the fire. Make it amusing at least.",
-      "You dare command the Dragon Witch? Fine, watch me slaughter them.",
-      "Is that all they've got? How thoroughly disappointing."
+      "Hehe, HAHAHAHAHA! Now, it's time for despair!",
+      "I'll burn every last one of you to death!",
+      "Heh, heh... Let's start the slaughter!",
+      "Well, I guess it was good stress relief? Heh, heh."
     ],
     desperation: [
-      "You think this hurts?! My hatred is an infinite inferno! BURN!",
-      "I died in flames once... Do you really think mortal wounds can stop me?!",
-      "I refuse to lose! Not to this scum, and not before my Master!"
-    ],
-    skills: [
-      "Invert my spirit origin... Burn it all to ash!",
-      "Hear me, dragons of calamity! Obey the Dragon Witch!",
-      "A fleeting dream... Consume everything in dragon flames!"
+      "Don't get ahead of yourself over this!",
+      "Don't joke around...! I'm... I'm not finished yet...!",
+      "No... NO! I don't want to burn again! NEVER AGAIN!"
     ]
   },
 
@@ -1274,6 +1387,9 @@ export function getServantProfile(servantName?: string): ServantDialogueProfile 
   }
   if ((n.includes('artoria') || n.includes('altria') || n.includes('saber')) && (n.includes('alter') || n.includes('salter'))) {
     return SERVANT_COMBAT_DIALOGUES.artoria_pendragon_alter;
+  }
+  if (n.includes('altera') || n.includes('attila') || n.includes('etzel') || n.includes('destroyer of civilization')) {
+    return SERVANT_COMBAT_DIALOGUES.altera;
   }
   if (n.includes('artoria') || n.includes('arthur') || n.includes('saber')) {
     return SERVANT_COMBAT_DIALOGUES.artoria;

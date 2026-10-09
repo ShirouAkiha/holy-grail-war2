@@ -18,6 +18,28 @@ export interface ServantAscensionData {
 }
 
 export const CANONICAL_SERVANT_ASCENSIONS: Record<string, ServantAscensionData> = {
+  altera: {
+    stage1: 'https://static.atlasacademy.io/NA/CharaGraph/101800/101800a@1.png',
+    stage2: 'https://static.atlasacademy.io/NA/CharaGraph/101800/101800a@2.png',
+    stage3: 'https://static.atlasacademy.io/NA/CharaGraph/101800/101800b@1.png',
+    stage4: 'https://static.atlasacademy.io/NA/CharaGraph/101800/101800b@2.png',
+    costume: 'https://static.atlasacademy.io/NA/CharaGraph/101830/101830a.png',
+    costumes: [
+      {
+        id: '101830',
+        name: 'Memories of Trifas',
+        url: 'https://static.atlasacademy.io/NA/CharaGraph/101830/101830a.png',
+        spriteUrl: 'https://static.atlasacademy.io/NA/CharaFigure/1018300/1018300_merged.png'
+      }
+    ],
+    sprites: {
+      stage1: 'https://static.atlasacademy.io/NA/CharaFigure/1018000/1018000_merged.png',
+      stage2: 'https://static.atlasacademy.io/NA/CharaFigure/1018001/1018001_merged.png',
+      stage3: 'https://static.atlasacademy.io/NA/CharaFigure/1018002/1018002_merged.png',
+      stage4: 'https://static.atlasacademy.io/NA/CharaFigure/1018002/1018002_merged.png',
+      costume: 'https://static.atlasacademy.io/NA/CharaFigure/1018300/1018300_merged.png'
+    }
+  },
   artoria_pendragon: {
     stage1: 'https://static.atlasacademy.io/NA/CharaGraph/100100/100100a@1.png',
     stage2: 'https://static.atlasacademy.io/NA/CharaGraph/100100/100100a@2.png',
@@ -300,6 +322,11 @@ export function findCanonicalAscensionData(identifier?: any): { key: string; dat
   }
 
   const ALIAS_MAP: Record<string, string> = {
+    altera: 'altera',
+    attila: 'altera',
+    etzel: 'altera',
+    attila_the_hun: 'altera',
+    saber_altera: 'altera',
     scathach: 'scathach_lancer',
     scathach_lancer: 'scathach_lancer',
     scáthach: 'scathach_lancer',

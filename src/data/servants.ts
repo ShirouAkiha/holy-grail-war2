@@ -483,6 +483,109 @@ export const SERVANT_DATABASE: ServantTemplate[] = [
     spriteUrl: 'https://ella.janitorai.com/media-approved/Z9He7mkUzzf3BA9jPKUDH.webp'
   },
   {
+    id: 'altera',
+    name: 'Altera',
+    title: 'Destroyer of Civilization',
+    servantClass: 'Saber',
+    rarity: 5,
+    baseHp: 29000,
+    baseAtk: 11500,
+    baseStats: { strength: 18, endurance: 17, agility: 17, mana: 12, luck: 12 },
+    commandDeck: ['Quick', 'Arts', 'Arts', 'Buster', 'Buster'],
+    skills: [
+      {
+        id: 'scourge_of_god_a',
+        name: 'Scourge of God A',
+        cooldown: 5,
+        description: 'Increases party\'s NP damage by 20% for 3 turns. Removes all enemies\' Defensive Buffs.',
+        effectType: 'buff_np_damage',
+        value: 20,
+        duration: 3,
+        icon: '⚔️',
+        quotes: ["Destruction awaits.", "Under the command of the War God."]
+      },
+      {
+        id: 'perfect_construct_ex',
+        name: 'Perfect Construct EX',
+        cooldown: 5,
+        description: 'Charges own NP gauge by 30%. Increases own critical damage by 30% for 3 turns. Increases own Offensive Debuff resistance by 120% for 3 turns. Recovers own HP by 7,000. Increases own critical star gain by 300% for 1 turn.',
+        effectType: 'np_charge',
+        value: 30,
+        duration: 3,
+        icon: '🛡️',
+        quotes: ["My body is a weapon.", "Reconstructing spirit origin."]
+      },
+      {
+        id: 'star_emblem_ex',
+        name: 'Star Emblem EX',
+        cooldown: 5,
+        description: 'Increases own attack by 30% for 3 turns. Gains 15 critical stars.',
+        effectType: 'buff_atk',
+        value: 30,
+        duration: 3,
+        icon: '🌟',
+        quotes: ["The crest of the war god shines.", "I will destroy everything."]
+      }
+    ],
+    passives: [
+      {
+        name: 'Magic Resistance B',
+        type: 'magic_resistance',
+        value: 17.5,
+        rank: 'B',
+        description: 'Increases own debuff resistance by 17.5%.'
+      },
+      {
+        name: 'Riding A',
+        type: 'riding',
+        value: 10,
+        rank: 'A',
+        description: 'Increases own Quick performance by 10%.'
+      }
+    ],
+    noblePhantasm: {
+      name: 'Photon Ray',
+      chant: 'Sword of the War God',
+      rank: 'A',
+      cardType: 'Buster',
+      target: 'aoe',
+      multiplier: 900,
+      description: 'Deals damage to all enemies (900%). Overcharge: Reduces their defense by 40% for 3 turns.',
+      overchargeEffect: 'Reduces all enemies\' defense by 40% for 3 turns.',
+      gifUrl: 'https://ella.janitorai.com/media-approved/GDJMOW2n8X1ub8K0mVMt3.gif',
+      animationUrl: 'https://ella.janitorai.com/media-approved/GDJMOW2n8X1ub8K0mVMt3.gif'
+    },
+    lore: 'Attila the Hun, a great king who created a great empire. A descendant as well as a warrior of the Hunnu, and its king. The great hero of the 5th century that conquered empires from Western Asia to Russia, Eastern Europe, and even Gaul. It is said she brought forth the ruin of the Western Roman Empire.',
+    summonQuote: 'Servant, Saber. I have answered your summon. I am a weapon. I exist to destroy... Direct me toward the enemy.',
+    battleStartQuote: 'Tear to pieces. Shatter. Trample.',
+    victoryQuote: 'All things that are civilization must be destroyed.',
+    defeatQuote: 'Is this... also bad civilization...?',
+    avatarUrl: 'https://static.atlasacademy.io/NA/CharaGraph/101800/101800a@1.png',
+    cardArtUrl: 'https://static.atlasacademy.io/NA/CharaGraph/101800/101800b@2.png',
+    spriteUrl: 'https://static.atlasacademy.io/NA/CharaFigure/1018000/1018000_merged.png',
+    traits: [
+      'Costume-Owning',
+      'Divinity',
+      'Hominidae Servant',
+      'Humanoid',
+      'King',
+      'Riding',
+      'Servant',
+      'Seven Knights Servant',
+      'Weak to Enuma Elish'
+    ],
+    aliases: [
+      'altera',
+      'attila',
+      'attila the hun',
+      'great king of destruction',
+      'destroyer of civilization',
+      'etzel',
+      'king of combat',
+      'saber_altera'
+    ]
+  },
+  {
     id: 'gilgamesh_archer',
     name: 'Gilgamesh',
     title: 'King of Heroes',

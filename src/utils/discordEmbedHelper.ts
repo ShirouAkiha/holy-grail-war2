@@ -33,6 +33,7 @@ const EXTERNAL_TO_LOCAL_MAP: Record<string, string> = {
   'ce283.webp': 'ce_bond_karna_lancer.webp',
   'ce2048.webp': 'ce_bond_aoko_aozaki.webp',
   'ce248.webp': 'ce_bond_tamamo_no_mae.webp',
+  'ce201.webp': 'ce_bond_altera.webp',
 };
 
 /**

@@ -2010,6 +2010,108 @@ function activateCombatantSkill(
     combatant.npGauge = Math.min(300, combatant.npGauge + 30);
     combatant.critStars = Math.min(50, combatant.critStars + 20);
     logText = `✨ **${sName}** activated **${skill.name}**! (+30% NP Gauge, +20 Critical Stars)${quoteLine}`;
+  } else if (skill.id === 'scourge_of_god_a' || /scourge of god/i.test(skill.name)) {
+    // Altera S1: Scourge of God A
+    combatant.activeBuffs.push({
+      name: `${skill.name} (NP DMG Up)`,
+      type: 'buff_np_damage',
+      value: 20,
+      remainingTurns: 3
+    });
+    if (opponent?.activeBuffs) {
+      opponent.activeBuffs = opponent.activeBuffs.filter(b => 
+        b.type !== 'buff_def' && 
+        b.type !== 'evade' && 
+        b.type !== 'invincible' && 
+        b.type !== 'anti_purge_defense' && 
+        b.type !== 'anti_purge' &&
+        b.type !== 'damage_cut'
+      );
+    }
+    logText = `⚔️ **${sName}** activated **${skill.name}**! (+20% NP Damage [3T], Stripped all Enemy Defensive Buffs!)${quoteLine}`;
+  } else if (skill.id === 'perfect_construct_ex' || /perfect construct/i.test(skill.name)) {
+    // Altera S2: Perfect Construct EX
+    combatant.npGauge = Math.min(300, combatant.npGauge + 30);
+    combatant.currentHp = Math.min(combatant.maxHp, combatant.currentHp + 7000);
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Crit DMG Up)`,
+      type: 'crit_dmg',
+      value: 30,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Debuff Resist)`,
+      type: 'magic_resistance',
+      value: 120,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Star Drop Up)`,
+      type: 'star_drop_up',
+      value: 300,
+      remainingTurns: 1
+    });
+    logText = `🛡️ **${sName}** activated **${skill.name}**! (+30% NP Gauge, +7,000 HP Restored, +30% Crit DMG [3T], +120% Debuff Resist [3T], +300% Star Drop [1T])${quoteLine}`;
+  } else if (skill.id === 'star_emblem_ex' || /star emblem/i.test(skill.name)) {
+    // Altera S3: Star Emblem EX
+    combatant.activeBuffs.push({
+      name: `${skill.name} (ATK Up)`,
+      type: 'buff_atk',
+      value: 30,
+      remainingTurns: 3
+    });
+    combatant.critStars = Math.min(50, (combatant.critStars || 0) + 15);
+    logText = `🌟 **${sName}** activated **${skill.name}**! (+30% ATK [3T], +15 Critical Stars)${quoteLine}`;
+  } else if (skill.id === 'self_modification_ex' || /self-modification|self modification/i.test(skill.name)) {
+    // Jeanne Alter S1: Self-Modification EX
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Crit DMG Up)`,
+      type: 'crit_dmg',
+      value: 50,
+      remainingTurns: 3
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Star Drop Up)`,
+      type: 'star_drop_up',
+      value: 50,
+      remainingTurns: 3
+    });
+    logText = `⚡ **${sName}** activated **${skill.name}**! (+50% Crit DMG [3T], +50% Star Drop [3T])${quoteLine}`;
+  } else if (skill.id === 'dragon_witch_ex' || /dragon witch/i.test(skill.name)) {
+    // Jeanne Alter S2: Dragon Witch EX
+    combatant.activeBuffs.push({
+      name: `${skill.name} (ATK Up)`,
+      type: 'buff_atk',
+      value: 20,
+      remainingTurns: 3
+    });
+    const isDragon = (combatant.servant.template as any)?.traits?.includes('Dragon') || false;
+    if (isDragon) {
+      combatant.activeBuffs.push({
+        name: `${skill.name} (Dragon ATK Up)`,
+        type: 'buff_atk',
+        value: 20,
+        remainingTurns: 3
+      });
+    }
+    logText = `🐉 **${sName}** activated **${skill.name}**! (+20% ATK [3T]${isDragon ? ', +20% Dragon Ally ATK [3T]' : ''})${quoteLine}`;
+  } else if (skill.id === 'ephemeral_dream_ex' || /ephemeral dream/i.test(skill.name)) {
+    // Jeanne Alter S3: Ephemeral Dream EX
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Buster Up)`,
+      type: 'buster_up',
+      value: 50,
+      remainingTurns: 1
+    });
+    combatant.activeBuffs.push({
+      name: `${skill.name} (Invincible)`,
+      type: 'invincible',
+      value: 100,
+      remainingTurns: 1
+    });
+    combatant.npGauge = Math.min(300, combatant.npGauge + 50);
+    combatant.currentHp = Math.max(1, combatant.currentHp - 1000);
+    logText = `🦋 **${sName}** activated **${skill.name}**! (+50% Buster [1T], Invincible [1T], +50% NP Gauge, -1,000 HP Demerit)${quoteLine}`;
   } else if (skill.effectType === 'buff_atk') {
     const val = skill.value || 35;
     const desc = (skill.description || '').toLowerCase();
@@ -3201,6 +3303,18 @@ function resolveStrike(
               name: `${attacker.servant.template.noblePhantasm?.name || 'Unlimited Blade Works'} (ATK Down)`,
               type: 'debuff_atk',
               value: 30,
+              remainingTurns: 3
+            });
+          }
+
+          const isPhotonRay = (attacker.servant.template.noblePhantasm?.name || '').includes('Photon Ray') ||
+            /reduces.*defense|def.*down|reduce.*def/i.test(npTemplate.overchargeEffect || '');
+          if (isPhotonRay) {
+            const defVal = (attacker.servant.template.noblePhantasm?.name || '').includes('Photon Ray') ? 40 : 20;
+            targetOpp.activeBuffs.push({
+              name: `${attacker.servant.template.noblePhantasm?.name || 'Photon Ray'} (DEF Down)`,
+              type: 'debuff_def',
+              value: defVal,
               remainingTurns: 3
             });
           }

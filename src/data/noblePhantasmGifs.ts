@@ -26,6 +26,11 @@ export function setCustomNpAnimationsBatch(anims: Record<string, { gifUrl: strin
 }
 
 export const NOBLE_PHANTASM_GIFS: Record<string, { gifUrl: string; fallbackGif: string; chant: string }> = {
+  'Altera': {
+    gifUrl: 'https://ella.janitorai.com/media-approved/GDJMOW2n8X1ub8K0mVMt3.gif',
+    fallbackGif: 'https://ella.janitorai.com/media-approved/GDJMOW2n8X1ub8K0mVMt3.gif',
+    chant: 'Sword of the War God... Tear to pieces, shatter, trample! PHOTON RAY!'
+  },
   'Artoria Pendragon': {
     gifUrl: '/api/media/np_artoria_pendragon.gif',
     fallbackGif: 'https://i.giphy.com/media/tO2sY2i2LgZSo/giphy.gif',
